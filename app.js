@@ -174,7 +174,7 @@
           ${diagramHtml}
           <div style="margin-top: 22px; display: flex; align-items: center; flex-wrap: wrap; gap: 14px;">
             <button class="link-arrow work-open" style="padding: 0;">View project →</button>
-            ${!s.demo ? `
+            ${(!s.demo && isAdmin()) ? `
               <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0;" data-id="${s.id}">Edit details</button>
               <button class="link-arrow work-delete" style="color: #b22222; font-weight: 700; padding: 0;" data-id="${s.id}">Delete</button>
             ` : ""}
