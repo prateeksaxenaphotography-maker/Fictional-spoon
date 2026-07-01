@@ -189,12 +189,15 @@ a { color: inherit; text-decoration: none; }
 .dropzone-title { font-family: "Archivo", sans-serif; font-weight: 700; font-size: 20px; margin: 0 0 6px; }
 .dropzone-hint { color: var(--ink-soft); font-size: 14px; margin: 0; }
 .dropzone-hint .link { color: var(--accent); font-weight: 600; text-decoration: underline; }
-.thumb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; margin-top: 18px; }
+.thumb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; margin-top: 18px; }
 .thumb-grid:empty { display: none; }
 .thumb { position: relative; aspect-ratio: 1; border-radius: 6px; overflow: hidden; background: var(--paper); border: 1px solid var(--line); animation: pop .4s var(--ease) both; }
 @keyframes pop { from { opacity: 0; transform: scale(.9); } }
 .thumb img { width: 100%; height: 100%; object-fit: cover; }
-.thumb-remove { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; background: rgba(14,14,14,.78); color: #fff; border: 0; font-size: 14px; cursor: pointer; display: grid; place-items: center; }
+.thumb-remove { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; background: rgba(14,14,14,.78); color: #fff; border: 0; font-size: 14px; z-index: 2; cursor: pointer; display: grid; place-items: center; }
+.thumb-align-ctrl { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(14,14,14,.88); padding: 4px 2px; display: flex; justify-content: center; align-items: center; border-top: 1px solid rgba(255,255,255,.08); }
+.thumb-align-select { width: 100%; font-family: inherit; font-size: 9px; font-weight: 700; background: transparent; color: #fff; border: none; text-align-last: center; outline: none; cursor: pointer; padding: 0; text-transform: uppercase; letter-spacing: 0.05em; }
+.thumb-align-select option { background: var(--ink-2); color: #fff; }
 
 .shoot-form { display: flex; flex-direction: column; gap: 22px; }
 .shoot-form fieldset { border: 1px solid var(--line); border-radius: 12px; padding: 22px 22px 24px; margin: 0; display: flex; flex-direction: column; gap: 16px; }

@@ -71,7 +71,7 @@
   const lb = $("#lightbox"), lbImg = $("#lightboxImg"), lbCap = $("#lightboxCaption"), lbCount = $("#lbCounter");
   let lbList = [], lbIdx = 0;
   function openLb(list, idx) { lbList = list; lbIdx = idx; paintLb(); lb.hidden = false; document.body.style.overflow = "hidden"; $("#lightboxClose").focus(); }
-  function paintLb() { const p = lbList[lbIdx]; if (!p) return; lbImg.src = p.dataUrl; lbImg.alt = p.shoot.title; lbCap.textContent = `${p.shoot.title} — ${p.shoot.brand} · by ${p.shoot.photographer}`; lbCount.textContent = `${lbIdx + 1} / ${lbList.length}`; }
+  function paintLb() { const p = lbList[lbIdx]; if (!p) return; lbImg.src = p.dataUrl; lbImg.alt = p.shoot.title; lbImg.style.objectPosition = p.objectPosition || "center"; lbCap.textContent = `${p.shoot.title} — ${p.shoot.brand} · by ${p.shoot.photographer}`; lbCount.textContent = `${lbIdx + 1} / ${lbList.length}`; }
   function stepLb(d) { if (!lbList.length) return; lbIdx = (lbIdx + d + lbList.length) % lbList.length; paintLb(); }
   function closeLb() { lb.hidden = true; lbImg.src = ""; document.body.style.overflow = ""; }
   $("#lightboxClose").addEventListener("click", closeLb);
@@ -96,7 +96,7 @@
     return `
       <article class="work-block ${i % 2 ? "flip" : ""} reveal" data-shoot="${s.id}">
         <button class="work-media" aria-label="View ${esc(s.title)}">
-          <img src="${cover.dataUrl}" alt="${esc(s.title)}" loading="lazy" />
+          <img src="${cover.dataUrl}" style="object-position: ${esc(cover.objectPosition || 'center')}" alt="${esc(s.title)}" loading="lazy" />
           <span class="work-count">${s.photos.length} frames</span>
         </button>
         <div class="work-info">
@@ -349,15 +349,41 @@
     async function ingest(files) {
       const imgs = Array.from(files).filter((f) => f.type.startsWith("image/"));
       if (!imgs.length) { toast("Those weren't images — try JPG, PNG or WEBP."); return; }
-      for (const f of imgs) { const raw = await readAsDataURL(f); staged.push({ id: uid(), dataUrl: await resize(raw), name: f.name }); }
+      for (const f of imgs) { const raw = await readAsDataURL(f); staged.push({ id: uid(), dataUrl: await resize(raw), name: f.name, objectPosition: "center" }); }
       renderStaged();
     }
     function renderStaged() {
       const n = staged.length; pub.disabled = n === 0;
       note.textContent = n ? `${n} photo${n > 1 ? "s" : ""} ready.` : "No photos staged yet.";
       note.classList.toggle("ready", n > 0);
-      grid.innerHTML = staged.map((f) => `<div class="thumb"><img src="${f.dataUrl}" alt="${esc(f.name)}"/><button class="thumb-remove" data-id="${f.id}" aria-label="Remove">×</button></div>`).join("");
+      grid.innerHTML = staged.map((f) => `
+        <div class="thumb" data-id="${f.id}">
+          <img src="${f.dataUrl}" style="object-position: ${f.objectPosition || 'center'}" alt="${esc(f.name)}"/>
+          <button class="thumb-remove" data-id="${f.id}" aria-label="Remove">×</button>
+          <div class="thumb-align-ctrl">
+            <select class="thumb-align-select" data-id="${f.id}" aria-label="Align image">
+              <option value="center" ${f.objectPosition === 'center' ? 'selected' : ''}>Center</option>
+              <option value="top" ${f.objectPosition === 'top' ? 'selected' : ''}>Top</option>
+              <option value="bottom" ${f.objectPosition === 'bottom' ? 'selected' : ''}>Bottom</option>
+              <option value="left" ${f.objectPosition === 'left' ? 'selected' : ''}>Left</option>
+              <option value="right" ${f.objectPosition === 'right' ? 'selected' : ''}>Right</option>
+            </select>
+          </div>
+        </div>
+      `).join("");
       grid.querySelectorAll(".thumb-remove").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); staged = staged.filter((x) => x.id !== b.dataset.id); renderStaged(); }));
+      grid.querySelectorAll(".thumb-align-select").forEach((select) => {
+        select.addEventListener("change", (e) => {
+          const id = e.target.dataset.id;
+          const pos = e.target.value;
+          const item = staged.find((x) => x.id === id);
+          if (item) {
+            item.objectPosition = pos;
+            const thumbImg = grid.querySelector(`.thumb[data-id="${id}"] img`);
+            if (thumbImg) thumbImg.style.objectPosition = pos;
+          }
+        });
+      });
     }
     dz.addEventListener("click", (e) => { if (!e.target.closest(".thumb")) fi.click(); });
     dz.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fi.click(); } });
@@ -380,7 +406,7 @@
         client: val("f_client"), date: val("f_date"), instagram: val("f_ig"), link: val("f_link"), rights: val("f_rights"),
         testimonial: quote ? { quote, by: val("f_quoteby") || "Client" } : null,
         palette: ["#3a3a3a", "#0d0d0d"],
-        photos: staged.map((f, i) => ({ id: f.id + "-" + i, dataUrl: f.dataUrl })),
+        photos: staged.map((f, i) => ({ id: f.id + "-" + i, dataUrl: f.dataUrl, objectPosition: f.objectPosition || "center" })),
         featured: false,
       };
       pub.disabled = true; pub.textContent = "Publishing…";
