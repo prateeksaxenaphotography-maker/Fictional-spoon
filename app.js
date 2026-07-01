@@ -95,6 +95,11 @@
     adminBtn.textContent = `Admin Mode: ${active ? "On" : "Off"}`;
     adminBtn.style.borderColor = active ? "var(--accent)" : "currentColor";
     adminBtn.style.color = active ? "var(--accent)" : "#fff";
+
+    const uploadLi = $("#navUploadLi");
+    if (uploadLi) {
+      uploadLi.style.display = active ? "block" : "none";
+    }
   }
   adminBtn?.addEventListener("click", () => {
     localStorage.setItem("wps-admin", isAdmin() ? "0" : "1");
@@ -617,6 +622,13 @@
     const raw = location.hash.replace(/^#\/?/, "");
     const parts = raw.split("/").filter(Boolean); // e.g. ["categories","activity","Trail"]
     const key = parts[0] || "";
+    
+    // Redirect non-admins trying to access upload page
+    if (key === "upload" && !isAdmin()) {
+      location.hash = "#/";
+      return;
+    }
+
     const fn = ROUTES[key] || (() => `<section class="page-head"><div class="container"><h1>Not found</h1><p class="page-sub"><a href="#/" data-link>Back home</a></p></div></section>`);
 
     view.classList.add("leaving");
