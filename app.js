@@ -196,10 +196,10 @@
             <span class="line"><span>Every&nbsp;Shoot.</span></span>
             <span class="line accent-line"><span>Better.</span></span>
           </h1>
-          <p class="lede reveal">${esc(window.STUDIO_CONFIG?.tagline || "The photography behind our brands — directed, shot, and archived in one place.")} Browse the work, or publish your own shoot.</p>
+          <p class="lede reveal">${esc(window.STUDIO_CONFIG?.tagline || "The photography behind our brands — directed, shot, and archived in one place.")}${isAdmin() ? " Browse the work, or publish your own shoot." : ""}</p>
           <div class="hero-actions reveal">
             <a href="#/work" data-link class="btn btn-light">View the work →</a>
-            <a href="#/upload" data-link class="btn btn-ghost">Publish a shoot</a>
+            ${isAdmin() ? `<a href="#/upload" data-link class="btn btn-ghost">Publish a shoot</a>` : ""}
           </div>
           <dl class="hero-stats reveal">
             <div><dt data-count>${allPhotos().length}</dt><dd>Frames archived</dd></div>
@@ -220,12 +220,13 @@
         <div class="work-list">${feat.map(fullBleedBlock).join("")}</div>
       </section>
 
+      ${isAdmin() ? `
       <section class="cta-band">
         <div class="container reveal">
           <h2>Your shoot belongs in the archive.</h2>
           <a href="#/upload" data-link class="btn btn-dark">Publish your photoshoot →</a>
         </div>
-      </section>`;
+      </section>` : ""}`;
   }
 
   function viewWork() {
@@ -327,7 +328,7 @@
         <div class="section-head reveal"><p class="eyebrow">Our house</p><h2>The brands we shoot for.</h2></div>
         <ul class="brand-row">${BRANDS.map((b, i) => `<li class="reveal" style="--d:${i * 0.04}s">${b}</li>`).join("")}</ul>
       </section>
-      <section class="cta-band"><div class="container reveal"><h2>Have a shoot to add?</h2><a href="#/upload" data-link class="btn btn-dark">Publish to the archive →</a></div></section>`;
+      ${isAdmin() ? `<section class="cta-band"><div class="container reveal"><h2>Have a shoot to add?</h2><a href="#/upload" data-link class="btn btn-dark">Publish to the archive →</a></div></section>` : ""}`;
   }
 
   /* ---------- Upload view (rich, grouped form) ---------- */
