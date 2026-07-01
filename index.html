@@ -27,14 +27,14 @@
   <div class="loader" id="loader" aria-hidden="true">
     <div class="loader-mark"></div>
     <div class="loader-bar"><span></span></div>
-    <p class="loader-label">WOLVERINE&nbsp;PHOTOSTUDIO</p>
+    <p class="loader-label" id="loaderLabel">STUDIO</p>
   </div>
 
   <!-- ============ Minimal floating header ============ -->
   <header class="site-header" id="top">
-    <a href="#/" class="brand" data-link aria-label="Wolverine PhotoStudio home">
+    <a href="#/" class="brand" data-link aria-label="Studio Home">
       <span class="brand-mark" aria-hidden="true"></span>
-      <span class="brand-text">WOLVERINE<span class="brand-sub">PhotoStudio</span></span>
+      <span class="brand-text" id="headerBrandText">STUDIO<span class="brand-sub" id="headerBrandSub">PhotoStudio</span></span>
     </a>
     <button class="menu-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false">
       <span>Menu</span><i aria-hidden="true"></i>
@@ -54,12 +54,12 @@
       <div class="nav-meta">
         <div>
           <p class="nav-meta-label">Studio</p>
-          <p>The Creative Studio of<br />Wolverine Worldwide</p>
+          <p id="navStudioDesc">The Creative Studio</p>
         </div>
         <div>
           <p class="nav-meta-label">Reach out</p>
-          <p><a href="mailto:studio@wolverine.example">studio@wolverine.example</a></p>
-          <p class="nav-social"><a href="#/" data-link>Instagram</a> · <a href="#/" data-link>Behance</a> · <a href="#/" data-link>LinkedIn</a></p>
+          <p><a href="mailto:hello@example.com" id="navEmail">hello@example.com</a></p>
+          <p class="nav-social" id="navSocials"></p>
         </div>
       </div>
     </div>
@@ -72,8 +72,8 @@
   <footer class="site-footer">
     <div class="container footer-inner">
       <div class="footer-brand">
-        <span class="brand-text">WOLVERINE<span class="brand-sub">PhotoStudio</span></span>
-        <p>Together we will build a better portfolio from the ground up.</p>
+        <span class="brand-text" id="footerBrandText">STUDIO<span class="brand-sub" id="footerBrandSub">PhotoStudio</span></span>
+        <p id="footerTagline">Together we will build a better portfolio from the ground up.</p>
       </div>
       <nav class="footer-nav" aria-label="Footer">
         <a href="#/" data-link>Home</a><a href="#/work" data-link>Work</a>
@@ -81,7 +81,7 @@
         <a href="#/upload" data-link>Upload</a>
       </nav>
       <div class="footer-meta">
-        <p>A concept studio site · Not affiliated with Wolverine World Wide, Inc.</p>
+        <p id="footerNotice">Personal PhotoStudio Portfolio</p>
         <p>© <span id="year"></span> · Crafted for the love of the shot.</p>
       </div>
     </div>
@@ -99,6 +99,7 @@
     <span class="lightbox-counter" id="lbCounter"></span>
   </div>
 
+  <script src="config.js"></script>
   <script src="data.js"></script>
   <script src="app.js"></script>
 </body>

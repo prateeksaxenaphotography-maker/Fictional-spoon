@@ -12,7 +12,7 @@
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
   /* ---------------- IndexedDB (shoots) ---------------- */
-  const DB = "wolverine-photostudio-v2", STORE = "shoots";
+  const DB = "personal-photostudio-v2", STORE = "shoots";
   let dbP;
   function db() {
     if (dbP) return dbP;
@@ -122,13 +122,13 @@
       <section class="hero">
         <div class="hero-bg" aria-hidden="true"></div>
         <div class="container hero-inner">
-          <p class="eyebrow reveal">The Creative Studio of Wolverine Worldwide</p>
+          <p class="eyebrow reveal">The Creative Studio of ${esc(window.STUDIO_CONFIG?.studioName || "Our Studio")}</p>
           <h1 class="reveal">
             <span class="line"><span>Make.</span></span>
             <span class="line"><span>Every&nbsp;Shoot.</span></span>
             <span class="line accent-line"><span>Better.</span></span>
           </h1>
-          <p class="lede reveal">The photography behind our brands — directed, shot, and archived in one place. Browse the work, or publish your own shoot.</p>
+          <p class="lede reveal">${esc(window.STUDIO_CONFIG?.tagline || "The photography behind our brands — directed, shot, and archived in one place.")} Browse the work, or publish your own shoot.</p>
           <div class="hero-actions reveal">
             <a href="#/work" data-link class="btn btn-light">View the work →</a>
             <a href="#/upload" data-link class="btn btn-ghost">Publish a shoot</a>
@@ -241,12 +241,12 @@
         <div class="container">
           <p class="eyebrow reveal">04 — The studio</p>
           <h1 class="reveal">Built for the craft.</h1>
-          <p class="page-sub reveal">A home for the photography behind Wolverine Worldwide's brands — a working studio and a living archive, in one place.</p>
+          <p class="page-sub reveal">A home for the photography behind ${esc(window.STUDIO_CONFIG?.studioName || "our studio")}'s work — a working studio and a living archive, in one place.</p>
         </div>
       </section>
       <section class="section container">
         <div class="studio-intro reveal">
-          <p class="serif-lead">“The best product photography doesn't sell the shoe. It sells the mile you'll walk in it.”</p>
+          <p class="serif-lead">${esc(window.STUDIO_CONFIG?.introQuote || "“The best photography doesn't just record a moment. It captures the light, the mood, and the silent story within the frame.”")}</p>
         </div>
       </section>
       <section class="section container">
@@ -469,9 +469,41 @@
 
   /* ---------------- Boot ---------------- */
   window.addEventListener("hashchange", render);
+  function initBranding() {
+    const cfg = window.STUDIO_CONFIG;
+    if (!cfg) return;
+    document.title = `${cfg.studioName} — The Creative Studio`;
+    const loaderLbl = $("#loaderLabel");
+    if (loaderLbl) loaderLbl.textContent = `${cfg.studioShortName} ${cfg.studioSubName}`;
+    const headerBrandText = $("#headerBrandText");
+    if (headerBrandText) headerBrandText.innerHTML = `${esc(cfg.studioShortName)}<span class="brand-sub">${esc(cfg.studioSubName)}</span>`;
+    const footerBrandText = $("#footerBrandText");
+    if (footerBrandText) footerBrandText.innerHTML = `${esc(cfg.studioShortName)}<span class="brand-sub">${esc(cfg.studioSubName)}</span>`;
+    const footerTagline = $("#footerTagline");
+    if (footerTagline) footerTagline.textContent = cfg.tagline;
+    const footerNotice = $("#footerNotice");
+    if (footerNotice) footerNotice.textContent = `The Creative Studio of ${cfg.studioName}`;
+    const navStudioDesc = $("#navStudioDesc");
+    if (navStudioDesc) navStudioDesc.innerHTML = `The Creative Studio of<br />${esc(cfg.studioName)}`;
+    const navEmail = $("#navEmail");
+    if (navEmail) {
+      navEmail.href = `mailto:${cfg.email}`;
+      navEmail.textContent = cfg.email;
+    }
+    const navSocials = $("#navSocials");
+    if (navSocials) {
+      const links = [];
+      if (cfg.instagram) links.push(`<a href="${cfg.instagram}" target="_blank" rel="noopener">Instagram</a>`);
+      if (cfg.behance) links.push(`<a href="${cfg.behance}" target="_blank" rel="noopener">Behance</a>`);
+      if (cfg.linkedin) links.push(`<a href="${cfg.linkedin}" target="_blank" rel="noopener">LinkedIn</a>`);
+      navSocials.innerHTML = links.join(" · ");
+    }
+  }
+
   (async function boot() {
     try {
       $("#year").textContent = new Date().getFullYear();
+      initBranding();
       await loadShoots();
       if (!location.hash) location.hash = "#/";
       render();
