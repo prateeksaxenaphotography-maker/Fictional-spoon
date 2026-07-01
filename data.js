@@ -1,5 +1,5 @@
 /* ============================================================
-   Wolverine PhotoStudio — data model + demo content
+   thenerdyphotographer.in — data model + demo content
    A "shoot" is the unit: metadata (categories, credits, links,
    testimonial) + an array of photos. Demo shoots seed a full,
    gorgeous site on first visit; real uploads (IndexedDB) replace
@@ -72,7 +72,7 @@
     { id: "s6", brand: BRANDS[5 % BRANDS.length], title: `Built to Last — ${BRANDS[5 % BRANDS.length]}`, activity: ACTIVITIES[5 % ACTIVITIES.length], type: TYPES[0 % TYPES.length], season: "Fall 2026",
       photographer: "R. Blake", artDirector: "A. Reyes", stylist: "L. Cho", talent: "Trades cast", location: "Detroit, MI",
       description: "Hands, leather, and honest work — the workwear campaign, unvarnished.", client: BRANDS[5 % BRANDS.length], date: "Oct 2026",
-      instagram: "@wolverine", palette: ["#3a3a3a", "#0d0d0d"], featured: true,
+      instagram: "@thenerdyphotographer", palette: ["#3a3a3a", "#0d0d0d"], featured: true,
       testimonial: { quote: "This is exactly who we are.", by: `VP Marketing, ${BRANDS[5 % BRANDS.length]}` } },
     { id: "s7", brand: BRANDS[0 % BRANDS.length], title: `${BRANDS[0 % BRANDS.length]} Neutrals`, activity: ACTIVITIES[1 % ACTIVITIES.length], type: TYPES[1 % TYPES.length], season: "Spring 2026",
       photographer: "L. Cho", artDirector: "M. Vance", stylist: "K. Osei", talent: "—", location: "Studio 2, Rockford",

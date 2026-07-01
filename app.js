@@ -1,5 +1,5 @@
 /* ============================================================
-   Wolverine PhotoStudio — app (multi-view studio)
+   thenerdyphotographer.in — app (multi-view studio)
    Hash router · 5 views · overlay nav · rich upload form ·
    IndexedDB persistence · lightbox. No backend, no framework.
    ============================================================ */

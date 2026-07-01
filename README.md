@@ -1,8 +1,6 @@
-# Wolverine PhotoStudio
+# thenerdyphotographer.in
 
-A concept **photo studio website** inspired by the [Wolverine Worldwide](https://wolverineworldwide.com/) aesthetic — minimalist, neutral palette, bold geometric-sans headlines, generous whitespace — with an **easy portfolio photoshoot uploader** baked in.
-
-> Concept / portfolio piece. Not affiliated with Wolverine World Wide, Inc.
+A personal **photo studio website** for thenerdyphotographer.in — minimalist, neutral palette, bold headlines, generous whitespace — with an **easy portfolio photoshoot uploader** baked in.
 
 ## Features
 
