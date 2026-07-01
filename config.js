@@ -19,7 +19,7 @@ const STUDIO_CONFIG = {
   // Categories & Taxonomies
   // These drive the navigation, filtering, and upload options
   activities: ["Portrait", "Street", "Landscape", "Fashion", "Minimalist", "Travel"],
-  types: ["Editorial", "Fine Art", "Commercial", "Documentary", "Campaign"],
+  types: ["Editorial", "Fine Art", "Commercial", "Documentary", "Campaign", "Test Shoot"],
   brands: ["Personal Project", "Vogue", "National Geographic", "Patagonia", "Local Cafe", "Independent Film"],
 
   // Custom Colors Theme (Tailor the clay-orange to your own vibe if wanted!)

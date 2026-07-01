@@ -131,6 +131,10 @@
           <p class="work-by">${creditsHtml}</p>
           ${s.testimonial ? `<blockquote class="work-quote">“${esc(s.testimonial.quote)}” <cite>— ${esc(s.testimonial.by)}</cite></blockquote>` : ""}
           <button class="link-arrow work-open">View project →</button>
+          ${!s.demo ? `
+            <button class="link-arrow work-edit" style="margin-left: 20px; color: var(--accent); font-weight: 700;" data-id="${s.id}">Edit details</button>
+            <button class="link-arrow work-delete" style="margin-left: 20px; color: #b22222; font-weight: 700;" data-id="${s.id}">Delete</button>
+          ` : ""}
         </div>
       </article>`;
   }
@@ -367,9 +371,53 @@
       </section>`;
   }
 
-  function wireUpload() {
+  function wireUpload(editId) {
     staged = [];
     const dz = $("#dropzone"), fi = $("#fileInput"), grid = $("#stagingGrid"), note = $("#queueNote"), pub = $("#publishBtn"), form = $("#shootForm");
+    
+    let editingShoot = null;
+    if (editId) {
+      editingShoot = SHOOTS.find(x => x.id === editId);
+      if (editingShoot) {
+        const pageTitle = $(".page-head h1");
+        if (pageTitle) pageTitle.textContent = "Edit photoshoot details";
+        const pageSub = $(".page-head .page-sub");
+        if (pageSub) pageSub.textContent = `Editing: ${editingShoot.title}`;
+        pub.textContent = "Save changes";
+        
+        $("#f_title").value = editingShoot.title || "";
+        $("#f_brand").value = editingShoot.brand || "Other";
+        $("#f_activity").value = editingShoot.activity || "";
+        $("#f_type").value = editingShoot.type || "";
+        $("#f_season").value = editingShoot.season || "";
+        $("#f_photographer").value = editingShoot.photographer || "";
+        $("#f_ad").value = editingShoot.artDirector || "";
+        $("#f_stylist").value = editingShoot.stylist || "";
+        $("#f_hair").value = editingShoot.hair || "";
+        $("#f_mua").value = editingShoot.mua || "";
+        $("#f_talent").value = editingShoot.talent || "";
+        $("#f_location").value = editingShoot.location || "";
+        $("#f_desc").value = editingShoot.description || "";
+        $("#f_tags").value = editingShoot.tags || "";
+        $("#f_gear").value = editingShoot.gear || "";
+        $("#f_client").value = editingShoot.client || "";
+        $("#f_date").value = editingShoot.date || "";
+        $("#f_ig").value = editingShoot.instagram || "";
+        $("#f_link").value = editingShoot.link || "";
+        $("#f_rights").value = editingShoot.rights || "";
+        if (editingShoot.testimonial) {
+          $("#f_quote").value = editingShoot.testimonial.quote || "";
+          $("#f_quoteby").value = editingShoot.testimonial.by || "";
+        }
+        
+        staged = editingShoot.photos.map(p => ({
+          id: p.id.split("-")[0], 
+          dataUrl: p.dataUrl,
+          name: "Existing Frame",
+          objectPosition: p.objectPosition || "center"
+        }));
+      }
+    }
     async function ingest(files) {
       const imgs = Array.from(files).filter((f) => f.type.startsWith("image/"));
       if (!imgs.length) { toast("Those weren't images — try JPG, PNG or WEBP."); return; }
@@ -422,7 +470,8 @@
       const val = (id) => $("#" + id)?.value.trim();
       const quote = val("f_quote");
       const shoot = {
-        id: uid(), createdAt: Date.now(),
+        id: editingShoot ? editingShoot.id : uid(),
+        createdAt: editingShoot ? editingShoot.createdAt : Date.now(),
         title: val("f_title") || "Untitled photoshoot",
         brand: val("f_brand") || "Other", activity: $("#f_activity").value, type: $("#f_type").value, season: val("f_season"),
         photographer: val("f_photographer") || "Studio", artDirector: val("f_ad"), stylist: val("f_stylist") || "—",
@@ -430,14 +479,14 @@
         description: val("f_desc"), tags: val("f_tags"), gear: val("f_gear"),
         client: val("f_client"), date: val("f_date"), instagram: val("f_ig"), link: val("f_link"), rights: val("f_rights"),
         testimonial: quote ? { quote, by: val("f_quoteby") || "Client" } : null,
-        palette: ["#3a3a3a", "#0d0d0d"],
+        palette: editingShoot ? editingShoot.palette : ["#3a3a3a", "#0d0d0d"],
         photos: staged.map((f, i) => ({ id: f.id + "-" + i, dataUrl: f.dataUrl, objectPosition: f.objectPosition || "center" })),
-        featured: false,
+        featured: editingShoot ? editingShoot.featured : false,
       };
-      pub.disabled = true; pub.textContent = "Publishing…";
+      pub.disabled = true; pub.textContent = editingShoot ? "Saving changes…" : "Publishing…";
       await putShoot(shoot);
       await loadShoots();
-      toast(`Published “${shoot.title}” — ${staged.length} frame${staged.length > 1 ? "s" : ""}.`);
+      toast(editingShoot ? `Saved changes to “${shoot.title}”.` : `Published “${shoot.title}” — ${staged.length} frame${staged.length > 1 ? "s" : ""}.`);
       staged = [];
       location.hash = "#/work";
     });
@@ -474,8 +523,29 @@
       const open = () => openLb(list, 0);
       block.querySelector(".work-media")?.addEventListener("click", open);
       block.querySelector(".work-open")?.addEventListener("click", open);
+      
+      // edit button click handler
+      block.querySelector(".work-edit")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        location.hash = `#/upload/edit/${s.id}`;
+      });
+      
+      // delete button click handler
+      block.querySelector(".work-delete")?.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if (confirm(`Are you sure you want to delete the photoshoot "${s.title}"?`)) {
+          await delShoot(s.id);
+          await loadShoots();
+          toast(`Deleted "${s.title}".`);
+          render(); // re-render view
+        }
+      });
     });
-    if (key === "upload") wireUpload();
+    
+    if (key === "upload") {
+      const parts = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
+      wireUpload(parts[1] === "edit" ? parts[2] : null);
+    }
     // animate hero counts
     view.querySelectorAll("[data-count]").forEach((el) => animateCount(el, parseInt(el.textContent, 10) || 0));
   }
