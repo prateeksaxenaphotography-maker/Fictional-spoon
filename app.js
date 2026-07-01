@@ -92,7 +92,27 @@
 
   function fullBleedBlock(s, i) {
     const cover = s.photos[0];
-    const credits = [s.artDirector && `AD ${s.artDirector}`, `Photo ${s.photographer}`, s.stylist && s.stylist !== "—" && `Styling ${s.stylist}`].filter(Boolean).join(" · ");
+    
+    // Parse multiple Instagram accounts to clickable links
+    let igHtml = "";
+    if (s.instagram) {
+      const handles = s.instagram.split(",").map(x => x.trim()).filter(Boolean);
+      igHtml = handles.map(h => {
+        const clean = h.replace(/^@/, "");
+        return `<a href="https://instagram.com/${clean}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600;">@${clean}</a>`;
+      }).join(" · ");
+    }
+
+    const creditsList = [];
+    if (s.photographer) creditsList.push(`Photo <strong>${esc(s.photographer)}</strong>`);
+    if (s.artDirector) creditsList.push(`AD <strong>${esc(s.artDirector)}</strong>`);
+    if (s.stylist && s.stylist !== "—") creditsList.push(`Style <strong>${esc(s.stylist)}</strong>`);
+    if (s.hair && s.hair !== "—") creditsList.push(`Hair <strong>${esc(s.hair)}</strong>`);
+    if (s.mua && s.mua !== "—") creditsList.push(`Makeup <strong>${esc(s.mua)}</strong>`);
+    if (s.talent && s.talent !== "—") creditsList.push(`Talent <strong>${esc(s.talent)}</strong>`);
+    if (igHtml) creditsList.push(`Socials ${igHtml}`);
+    const creditsHtml = creditsList.join("  ·  ");
+
     return `
       <article class="work-block ${i % 2 ? "flip" : ""} reveal" data-shoot="${s.id}">
         <button class="work-media" aria-label="View ${esc(s.title)}">
@@ -108,7 +128,7 @@
             <div><dt>Season</dt><dd>${esc(s.season || "—")}</dd></div>
             <div><dt>Location</dt><dd>${esc(s.location || "—")}</dd></div>
           </dl>
-          <p class="work-by">${esc(credits)}</p>
+          <p class="work-by">${creditsHtml}</p>
           ${s.testimonial ? `<blockquote class="work-quote">“${esc(s.testimonial.quote)}” <cite>— ${esc(s.testimonial.by)}</cite></blockquote>` : ""}
           <button class="link-arrow work-open">View project →</button>
         </div>
@@ -306,7 +326,11 @@
               </div>
               <div class="field-row">
                 <label class="field"><span>Stylist</span><input id="f_stylist" type="text" placeholder="—" /></label>
-                <label class="field"><span>Model / talent</span><input id="f_talent" type="text" placeholder="—" /></label>
+                <label class="field"><span>Hair stylist</span><input id="f_hair" type="text" placeholder="—" /></label>
+              </div>
+              <div class="field-row">
+                <label class="field"><span>Makeup artist (MUA)</span><input id="f_mua" type="text" placeholder="—" /></label>
+                <label class="field"><span>Model / talent (comma-separated)</span><input id="f_talent" type="text" placeholder="e.g. Model A, Model B" /></label>
               </div>
               <label class="field"><span>Location</span><input id="f_location" type="text" placeholder="Studio 3, Brooklyn" /></label>
             </fieldset>
@@ -325,7 +349,7 @@
                 <label class="field"><span>Date shot</span><input id="f_date" type="text" placeholder="Mar 2026" /></label>
               </div>
               <div class="field-row">
-                <label class="field"><span>Instagram</span><input id="f_ig" type="text" placeholder="@handle" /></label>
+                <label class="field"><span>Instagram (comma-separated)</span><input id="f_ig" type="text" placeholder="e.g. @handle1, @handle2" /></label>
                 <label class="field"><span>Portfolio link</span><input id="f_link" type="url" placeholder="https://…" /></label>
               </div>
               <label class="field"><span>Usage rights</span><input id="f_rights" type="text" placeholder="e.g. Web + social, 1 year" /></label>
@@ -401,7 +425,8 @@
         id: uid(), createdAt: Date.now(),
         title: val("f_title") || "Untitled photoshoot",
         brand: val("f_brand") || "Other", activity: $("#f_activity").value, type: $("#f_type").value, season: val("f_season"),
-        photographer: val("f_photographer") || "Studio", artDirector: val("f_ad"), stylist: val("f_stylist") || "—", talent: val("f_talent"), location: val("f_location"),
+        photographer: val("f_photographer") || "Studio", artDirector: val("f_ad"), stylist: val("f_stylist") || "—",
+        hair: val("f_hair") || "—", mua: val("f_mua") || "—", talent: val("f_talent"), location: val("f_location"),
         description: val("f_desc"), tags: val("f_tags"), gear: val("f_gear"),
         client: val("f_client"), date: val("f_date"), instagram: val("f_ig"), link: val("f_link"), rights: val("f_rights"),
         testimonial: quote ? { quote, by: val("f_quoteby") || "Client" } : null,
