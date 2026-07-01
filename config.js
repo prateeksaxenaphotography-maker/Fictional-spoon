@@ -18,7 +18,7 @@ const STUDIO_CONFIG = {
 
   // Categories & Taxonomies
   // These drive the navigation, filtering, and upload options
-  activities: ["Portrait", "Street", "Landscape", "Fashion", "Minimalist", "Travel", "Sports"],
+  activities: ["Portrait", "Street", "Landscape", "Fashion", "Minimalist", "Travel", "Sports", "Fitness"],
   types: ["Editorial", "Fine Art", "Commercial", "Documentary", "Campaign", "Test Shoot", "E-commerce"],
   brands: ["Slugger"],
 
