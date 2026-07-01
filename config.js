@@ -18,8 +18,8 @@ const STUDIO_CONFIG = {
 
   // Categories & Taxonomies
   // These drive the navigation, filtering, and upload options
-  activities: ["Portrait", "Street", "Landscape", "Fashion", "Minimalist", "Travel"],
-  types: ["Editorial", "Fine Art", "Commercial", "Documentary", "Campaign", "Test Shoot"],
+  activities: ["Portrait", "Street", "Landscape", "Fashion", "Minimalist", "Travel", "Sports"],
+  types: ["Editorial", "Fine Art", "Commercial", "Documentary", "Campaign", "Test Shoot", "E-commerce"],
   brands: ["Slugger"],
 
   // Custom Colors Theme (Tailor the clay-orange to your own vibe if wanted!)
