@@ -10,6 +10,7 @@
   const $ = (s, r = document) => r.querySelector(s);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const isAdmin = () => localStorage.getItem("wps-admin") === "1";
 
   /* ---------------- IndexedDB (shoots) ---------------- */
   const DB = "personal-photostudio-v2", STORE = "shoots";
@@ -87,6 +88,21 @@
   overlay.addEventListener("click", (e) => { if (e.target.closest("[data-link]")) toggleMenu(false); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && overlay.classList.contains("open")) toggleMenu(false); });
 
+  const adminBtn = $("#adminModeBtn");
+  function updateAdminBtn() {
+    if (!adminBtn) return;
+    const active = isAdmin();
+    adminBtn.textContent = `Admin Mode: ${active ? "On" : "Off"}`;
+    adminBtn.style.borderColor = active ? "var(--accent)" : "currentColor";
+    adminBtn.style.color = active ? "var(--accent)" : "#fff";
+  }
+  adminBtn?.addEventListener("click", () => {
+    localStorage.setItem("wps-admin", isAdmin() ? "0" : "1");
+    updateAdminBtn();
+    toast(`Admin Mode ${isAdmin() ? "enabled" : "disabled"}.`);
+    render();
+  });
+
   /* ================= VIEWS ================= */
   const view = $("#view");
 
@@ -113,6 +129,26 @@
     if (igHtml) creditsList.push(`Socials ${igHtml}`);
     const creditsHtml = creditsList.join("  ·  ");
 
+    const testimonials = s.testimonials || (s.testimonial ? [s.testimonial] : []);
+    const testimonialsHtml = testimonials.map(t => `
+      <blockquote class="work-quote">“${esc(t.quote)}” <cite>— ${esc(t.by)}</cite></blockquote>
+    `).join("");
+
+    const showDiagram = s.lightingDiagram && (
+      s.lightingDiagramVisibility === "public" || 
+      (s.lightingDiagramVisibility === "private" && isAdmin())
+    );
+
+    const diagramHtml = showDiagram ? `
+      <div class="work-diagram" style="margin-top: 24px; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--bone);">
+        <p class="eyebrow" style="margin: 0 0 10px; font-size: 9px;">Lighting Setup ${s.lightingDiagramVisibility === 'private' ? '🔒 (Admin Only)' : '🌐 (Public)'}</p>
+        <button class="btn btn-ghost btn-block view-diagram-btn" style="padding: 10px; font-size: 12px; height: auto;" data-id="${s.id}">View Lighting Diagram</button>
+        <div class="diagram-img-wrap" style="display: none; margin-top: 14px; text-align: center;">
+          <img src="${s.lightingDiagram}" style="max-width: 100%; height: auto; border-radius: 6px; box-shadow: var(--shadow);" alt="Lighting Setup Diagram" />
+        </div>
+      </div>
+    ` : "";
+
     return `
       <article class="work-block ${i % 2 ? "flip" : ""} reveal" data-shoot="${s.id}">
         <button class="work-media" aria-label="View ${esc(s.title)}">
@@ -129,12 +165,15 @@
             <div><dt>Location</dt><dd>${esc(s.location || "—")}</dd></div>
           </dl>
           <p class="work-by">${creditsHtml}</p>
-          ${s.testimonial ? `<blockquote class="work-quote">“${esc(s.testimonial.quote)}” <cite>— ${esc(s.testimonial.by)}</cite></blockquote>` : ""}
-          <button class="link-arrow work-open">View project →</button>
-          ${!s.demo ? `
-            <button class="link-arrow work-edit" style="margin-left: 20px; color: var(--accent); font-weight: 700;" data-id="${s.id}">Edit details</button>
-            <button class="link-arrow work-delete" style="margin-left: 20px; color: #b22222; font-weight: 700;" data-id="${s.id}">Delete</button>
-          ` : ""}
+          ${testimonialsHtml}
+          ${diagramHtml}
+          <div style="margin-top: 22px; display: flex; align-items: center; flex-wrap: wrap; gap: 14px;">
+            <button class="link-arrow work-open" style="padding: 0;">View project →</button>
+            ${!s.demo ? `
+              <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0;" data-id="${s.id}">Edit details</button>
+              <button class="link-arrow work-delete" style="color: #b22222; font-weight: 700; padding: 0;" data-id="${s.id}">Delete</button>
+            ` : ""}
+          </div>
         </div>
       </article>`;
   }
@@ -359,9 +398,37 @@
               <label class="field"><span>Usage rights</span><input id="f_rights" type="text" placeholder="e.g. Web + social, 1 year" /></label>
             </fieldset>
 
-            <fieldset><legend>Testimonial <span class="legend-opt">optional</span></legend>
-              <label class="field"><span>Quote</span><textarea id="f_quote" rows="2" placeholder="“They shot the feeling of the mountain.”"></textarea></label>
-              <label class="field"><span>Attribution</span><input id="f_quoteby" type="text" placeholder="Brand Lead, Merrell" /></label>
+            <fieldset><legend>Testimonials <span class="legend-opt">optional (up to 3)</span></legend>
+              <div class="testimonial-group">
+                <h4>Testimonial 1</h4>
+                <label class="field"><span>Quote</span><textarea id="f_quote_1" rows="2" placeholder="“First quote…”"></textarea></label>
+                <label class="field"><span>Attribution</span><input id="f_quoteby_1" type="text" placeholder="Attribution 1" /></label>
+              </div>
+              <div style="margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px;">
+                <h4>Testimonial 2</h4>
+                <label class="field"><span>Quote</span><textarea id="f_quote_2" rows="2" placeholder="“Second quote…”"></textarea></label>
+                <label class="field"><span>Attribution</span><input id="f_quoteby_2" type="text" placeholder="Attribution 2" /></label>
+              </div>
+              <div style="margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px;">
+                <h4>Testimonial 3</h4>
+                <label class="field"><span>Quote</span><textarea id="f_quote_3" rows="2" placeholder="“Third quote…”"></textarea></label>
+                <label class="field"><span>Attribution</span><input id="f_quoteby_3" type="text" placeholder="Attribution 3" /></label>
+              </div>
+            </fieldset>
+
+            <fieldset id="fieldsetLighting"><legend>Lighting Diagram <span class="legend-opt">optional</span></legend>
+              <label class="field"><span>Diagram image</span><input type="file" id="f_diagram_file" accept="image/*" /></label>
+              <div id="diagramPreview" style="margin-top: 10px; display: none;">
+                <img id="f_diagram_img" style="max-height: 180px; width: auto; object-fit: contain; border-radius: 6px; border: 1px solid var(--line);" alt="Diagram Preview" />
+                <button type="button" id="clearDiagramBtn" style="display: block; margin-top: 6px; background: none; border: none; color: #b22222; font-size: 11px; cursor: pointer; text-decoration: underline; padding: 0;">Remove Diagram</button>
+              </div>
+              <label class="field"><span>Visibility mode</span>
+                <select id="f_diagram_visibility">
+                  <option value="private">Private (Admin Only)</option>
+                  <option value="public">Public (Visible to everyone)</option>
+                  <option value="disabled">Disabled (Do not show at all)</option>
+                </select>
+              </label>
             </fieldset>
 
             <p class="field-note" id="queueNote">No photos staged yet.</p>
@@ -374,6 +441,29 @@
   function wireUpload(editId) {
     staged = [];
     const dz = $("#dropzone"), fi = $("#fileInput"), grid = $("#stagingGrid"), note = $("#queueNote"), pub = $("#publishBtn"), form = $("#shootForm");
+    const diagInput = $("#f_diagram_file"), diagPreview = $("#diagramPreview"), diagImg = $("#f_diagram_img"), diagVisibility = $("#f_diagram_visibility"), clearDiagBtn = $("#clearDiagramBtn");
+    let diagramDataUrl = null;
+
+    diagInput?.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (file && file.type.startsWith("image/")) {
+        const raw = await readAsDataURL(file);
+        diagramDataUrl = await resize(raw, 1200);
+        diagImg.src = diagramDataUrl;
+        diagPreview.style.display = "block";
+      } else {
+        diagramDataUrl = null;
+        diagImg.src = "";
+        diagPreview.style.display = "none";
+      }
+    });
+
+    clearDiagBtn?.addEventListener("click", () => {
+      diagramDataUrl = null;
+      diagInput.value = "";
+      diagImg.src = "";
+      diagPreview.style.display = "none";
+    });
     
     let editingShoot = null;
     if (editId) {
@@ -405,9 +495,28 @@
         $("#f_ig").value = editingShoot.instagram || "";
         $("#f_link").value = editingShoot.link || "";
         $("#f_rights").value = editingShoot.rights || "";
-        if (editingShoot.testimonial) {
-          $("#f_quote").value = editingShoot.testimonial.quote || "";
-          $("#f_quoteby").value = editingShoot.testimonial.by || "";
+        
+        const testimonials = editingShoot.testimonials || (editingShoot.testimonial ? [editingShoot.testimonial] : []);
+        if (testimonials[0]) {
+          $("#f_quote_1").value = testimonials[0].quote || "";
+          $("#f_quoteby_1").value = testimonials[0].by || "";
+        }
+        if (testimonials[1]) {
+          $("#f_quote_2").value = testimonials[1].quote || "";
+          $("#f_quoteby_2").value = testimonials[1].by || "";
+        }
+        if (testimonials[2]) {
+          $("#f_quote_3").value = testimonials[2].quote || "";
+          $("#f_quoteby_3").value = testimonials[2].by || "";
+        }
+
+        if (editingShoot.lightingDiagram) {
+          diagramDataUrl = editingShoot.lightingDiagram;
+          diagImg.src = diagramDataUrl;
+          diagPreview.style.display = "block";
+        }
+        if (editingShoot.lightingDiagramVisibility) {
+          diagVisibility.value = editingShoot.lightingDiagramVisibility;
         }
         
         staged = editingShoot.photos.map(p => ({
@@ -468,7 +577,13 @@
       e.preventDefault();
       if (!staged.length) { toast("Add at least one photo first."); return; }
       const val = (id) => $("#" + id)?.value.trim();
-      const quote = val("f_quote");
+      
+      const testimonialsList = [
+        val("f_quote_1") ? { quote: val("f_quote_1"), by: val("f_quoteby_1") || "Client" } : null,
+        val("f_quote_2") ? { quote: val("f_quote_2"), by: val("f_quoteby_2") || "Client" } : null,
+        val("f_quote_3") ? { quote: val("f_quote_3"), by: val("f_quoteby_3") || "Client" } : null,
+      ].filter(Boolean);
+
       const shoot = {
         id: editingShoot ? editingShoot.id : uid(),
         createdAt: editingShoot ? editingShoot.createdAt : Date.now(),
@@ -478,7 +593,9 @@
         hair: val("f_hair") || "—", mua: val("f_mua") || "—", talent: val("f_talent"), location: val("f_location"),
         description: val("f_desc"), tags: val("f_tags"), gear: val("f_gear"),
         client: val("f_client"), date: val("f_date"), instagram: val("f_ig"), link: val("f_link"), rights: val("f_rights"),
-        testimonial: quote ? { quote, by: val("f_quoteby") || "Client" } : null,
+        testimonials: testimonialsList,
+        lightingDiagram: diagramDataUrl,
+        lightingDiagramVisibility: $("#f_diagram_visibility").value,
         palette: editingShoot ? editingShoot.palette : ["#3a3a3a", "#0d0d0d"],
         photos: staged.map((f, i) => ({ id: f.id + "-" + i, dataUrl: f.dataUrl, objectPosition: f.objectPosition || "center" })),
         featured: editingShoot ? editingShoot.featured : false,
@@ -539,6 +656,19 @@
           toast(`Deleted "${s.title}".`);
           render(); // re-render view
         }
+      });
+
+      // view diagram button click handler
+      block.querySelectorAll(".view-diagram-btn").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const wrap = block.querySelector(".diagram-img-wrap");
+          if (wrap) {
+            const visible = wrap.style.display === "block";
+            wrap.style.display = visible ? "none" : "block";
+            btn.textContent = visible ? "View Lighting Diagram" : "Hide Lighting Diagram";
+          }
+        });
       });
     });
     
@@ -625,6 +755,7 @@
     try {
       $("#year").textContent = new Date().getFullYear();
       initBranding();
+      updateAdminBtn();
       await loadShoots();
       if (!location.hash) location.hash = "#/";
       render();
