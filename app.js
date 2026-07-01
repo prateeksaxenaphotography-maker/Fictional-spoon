@@ -96,10 +96,9 @@
     adminBtn.style.borderColor = active ? "var(--accent)" : "currentColor";
     adminBtn.style.color = active ? "var(--accent)" : "#fff";
 
-    const uploadLi = $("#navUploadLi");
-    if (uploadLi) {
-      uploadLi.style.display = active ? "block" : "none";
-    }
+    const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi");
+    if (uploadLi) uploadLi.style.display = active ? "block" : "none";
+    if (bookLi) bookLi.style.display = active ? "none" : "block";
   }
   adminBtn?.addEventListener("click", () => {
     localStorage.setItem("wps-admin", isAdmin() ? "0" : "1");
@@ -196,10 +195,10 @@
             <span class="line"><span>Every&nbsp;Shoot.</span></span>
             <span class="line accent-line"><span>Better.</span></span>
           </h1>
-          <p class="lede reveal">${esc(window.STUDIO_CONFIG?.tagline || "The photography behind our brands — directed, shot, and archived in one place.")}${isAdmin() ? " Browse the work, or publish your own shoot." : ""}</p>
+          <p class="lede reveal">${esc(window.STUDIO_CONFIG?.tagline || "The photography behind our brands — directed, shot, and archived in one place.")}${isAdmin() ? " Browse the work, or publish your own shoot." : " Browse the work or book a photoshoot session."}</p>
           <div class="hero-actions reveal">
             <a href="#/work" data-link class="btn btn-light">View the work →</a>
-            ${isAdmin() ? `<a href="#/upload" data-link class="btn btn-ghost">Publish a shoot</a>` : ""}
+            ${isAdmin() ? `<a href="#/upload" data-link class="btn btn-ghost">Publish a shoot</a>` : `<a href="#/book" data-link class="btn btn-ghost">Book a shoot</a>`}
           </div>
           <dl class="hero-stats reveal">
             <div><dt data-count>${allPhotos().length}</dt><dd>Frames archived</dd></div>
@@ -220,13 +219,17 @@
         <div class="work-list">${feat.map(fullBleedBlock).join("")}</div>
       </section>
 
-      ${isAdmin() ? `
       <section class="cta-band">
         <div class="container reveal">
-          <h2>Your shoot belongs in the archive.</h2>
-          <a href="#/upload" data-link class="btn btn-dark">Publish your photoshoot →</a>
+          ${isAdmin() ? `
+            <h2>Your shoot belongs in the archive.</h2>
+            <a href="#/upload" data-link class="btn btn-dark">Publish your photoshoot →</a>
+          ` : `
+            <h2>Ready to capture your story?</h2>
+            <a href="#/book" data-link class="btn btn-dark">Book your photoshoot session →</a>
+          `}
         </div>
-      </section>` : ""}`;
+      </section>`;
   }
 
   function viewWork() {
@@ -328,7 +331,17 @@
         <div class="section-head reveal"><p class="eyebrow">Our house</p><h2>The brands we shoot for.</h2></div>
         <ul class="brand-row">${BRANDS.map((b, i) => `<li class="reveal" style="--d:${i * 0.04}s">${b}</li>`).join("")}</ul>
       </section>
-      ${isAdmin() ? `<section class="cta-band"><div class="container reveal"><h2>Have a shoot to add?</h2><a href="#/upload" data-link class="btn btn-dark">Publish to the archive →</a></div></section>` : ""}`;
+      <section class="cta-band">
+        <div class="container reveal">
+          ${isAdmin() ? `
+            <h2>Have a shoot to add?</h2>
+            <a href="#/upload" data-link class="btn btn-dark">Publish to the archive →</a>
+          ` : `
+            <h2>Looking to collaborate?</h2>
+            <a href="#/book" data-link class="btn btn-dark">Book a photoshoot session →</a>
+          `}
+        </div>
+      </section>`;
   }
 
   /* ---------- Upload view (rich, grouped form) ---------- */
@@ -442,6 +455,59 @@
           </form>
         </div>
       </section>`;
+  }
+
+  function viewBook() {
+    const opt = (arr) => arr.map((v) => `<option value="${v}">${v}</option>`).join("");
+    return `
+      <section class="page-head">
+        <div class="container">
+          <p class="eyebrow reveal">Book a session</p>
+          <h1 class="reveal">Let's collaborate</h1>
+          <p class="page-sub reveal">Fill out the details below to book a photoshoot session. Whether you are a brand, a model, or looking for a test shoot, we will get back to you within 24 hours.</p>
+        </div>
+      </section>
+      <section class="section container">
+        <div class="upload-grid" style="grid-template-columns: 1fr; max-width: 680px; margin: 0 auto;">
+          <form class="shoot-form" id="bookingForm">
+            <fieldset>
+              <legend>Contact Information</legend>
+              <div class="field-row">
+                <label class="field"><span>Your Name / Brand *</span><input id="b_name" type="text" required placeholder="e.g. John Doe / Slugger" /></label>
+                <label class="field"><span>Role *</span>
+                  <select id="b_role">
+                    <option value="Model">Model / Talent</option>
+                    <option value="Brand">Brand / Client</option>
+                    <option value="Agency">Agency / Agent</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </label>
+              </div>
+              <div class="field-row">
+                <label class="field"><span>Email Address *</span><input id="b_email" type="email" required placeholder="name@example.com" /></label>
+                <label class="field"><span>Phone Number</span><input id="b_phone" type="tel" placeholder="+1 (555) 000-0000" /></label>
+              </div>
+              <label class="field"><span>Instagram Handle</span><input id="b_instagram" type="text" placeholder="e.g. @handle" /></label>
+            </fieldset>
+
+            <fieldset>
+              <legend>Shoot Details</legend>
+              <div class="field-row">
+                <label class="field"><span>Desired Shoot Type *</span>
+                  <select id="b_type">
+                    ${opt(TYPES)}
+                  </select>
+                </label>
+                <label class="field"><span>Proposed Date / Timeline *</span><input id="b_date" type="text" required placeholder="e.g. Mid-July 2026" /></label>
+              </div>
+              <label class="field"><span>Project Concept & Vision</span><textarea id="b_concept" rows="4" placeholder="Describe the mood, location, number of frames, or styling ideas you have in mind..."></textarea></label>
+            </fieldset>
+
+            <button type="submit" class="btn btn-dark btn-block" id="bookSubmitBtn">Submit Booking Request</button>
+          </form>
+        </div>
+      </section>
+    `;
   }
 
   function wireUpload(editId) {
@@ -616,8 +682,79 @@
     renderStaged();
   }
 
+  function wireBook() {
+    const form = $("#bookingForm"), btn = $("#bookSubmitBtn");
+    if (!form) return;
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const val = (id) => $("#" + id)?.value.trim();
+
+      const name = val("b_name");
+      const role = val("b_role");
+      const email = val("b_email");
+      const phone = val("b_phone");
+      const instagram = val("b_instagram");
+      const type = val("b_type");
+      const date = val("b_date");
+      const concept = val("b_concept");
+
+      btn.disabled = true;
+      btn.textContent = "Submitting request...";
+
+      const formData = {
+        name,
+        role,
+        email,
+        phone,
+        instagram,
+        type,
+        date,
+        concept
+      };
+
+      try {
+        const response = await fetch("https://formspree.io/prateeksaxenaphotography@gmail.com", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify(formData)
+        });
+
+        if (response.ok) {
+          alert("Request submitted! Your booking inquiry has been sent successfully. We will get back to you shortly.");
+          form.reset();
+          location.hash = "#/";
+        } else {
+          throw new Error("Formspree response not OK");
+        }
+      } catch (err) {
+        console.error("Booking submit error, falling back to mailto:", err);
+        const subject = encodeURIComponent(`Shoot Booking Request from ${name}`);
+        const body = encodeURIComponent(
+          `Shoot Booking Details:\n\n` +
+          `Name: ${name}\n` +
+          `Role: ${role}\n` +
+          `Email: ${email}\n` +
+          `Phone: ${phone || '—'}\n` +
+          `Instagram: ${instagram || '—'}\n` +
+          `Shoot Type: ${type}\n` +
+          `Proposed Date: ${date}\n\n` +
+          `Concept/Vision:\n${concept || '—'}`
+        );
+        window.location.href = `mailto:prateeksaxenaphotography@gmail.com?subject=${subject}&body=${body}`;
+        alert("We started your email app to send the request. Please click 'Send' in your mail client to complete the booking submission!");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Submit Booking Request";
+      }
+    });
+  }
+
   /* ---------------- Router ---------------- */
-  const ROUTES = { "": viewHome, "work": viewWork, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload };
+  const ROUTES = { "": viewHome, "work": viewWork, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload, "book": viewBook };
 
   function render() {
     const raw = location.hash.replace(/^#\/?/, "");
@@ -689,6 +826,7 @@
       const parts = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
       wireUpload(parts[1] === "edit" ? parts[2] : null);
     }
+    if (key === "book") wireBook();
     // animate hero counts
     view.querySelectorAll("[data-count]").forEach((el) => animateCount(el, parseInt(el.textContent, 10) || 0));
   }
