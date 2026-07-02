@@ -415,6 +415,12 @@
                 <label class="field"><span>Portfolio link</span><input id="f_link" type="url" placeholder="https://…" /></label>
               </div>
               <label class="field"><span>Usage rights</span><input id="f_rights" type="text" placeholder="e.g. Web + social, 1 year" /></label>
+              <div class="field-row" style="align-items: center; margin-top: 10px;">
+                <label style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; font-weight: 700; cursor: pointer; color: #fff;">
+                  <input id="f_featured" type="checkbox" checked style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
+                  Feature on homepage
+                </label>
+              </div>
             </fieldset>
 
             <fieldset><legend>Testimonials <span class="legend-opt">optional (up to 3)</span></legend>
@@ -590,6 +596,10 @@
         if (editingShoot.lightingDiagramVisibility) {
           diagVisibility.value = editingShoot.lightingDiagramVisibility;
         }
+        const featInput = $("#f_featured");
+        if (featInput) {
+          featInput.checked = !!editingShoot.featured;
+        }
         
         staged = editingShoot.photos.map(p => ({
           id: p.id.split("-")[0], 
@@ -670,7 +680,7 @@
         lightingDiagramVisibility: $("#f_diagram_visibility").value,
         palette: editingShoot ? editingShoot.palette : ["#3a3a3a", "#0d0d0d"],
         photos: staged.map((f, i) => ({ id: f.id + "-" + i, dataUrl: f.dataUrl, objectPosition: f.objectPosition || "center" })),
-        featured: editingShoot ? editingShoot.featured : false,
+        featured: $("#f_featured") ? $("#f_featured").checked : false,
       };
       pub.disabled = true; pub.textContent = editingShoot ? "Saving changes…" : "Publishing…";
       await putShoot(shoot);
