@@ -20,7 +20,7 @@ const STUDIO_CONFIG = {
   // These drive the navigation, filtering, and upload options
   activities: ["Portrait", "Street", "Landscape", "Fashion", "Minimalist", "Travel", "Sports", "Fitness"],
   types: ["Editorial", "Fine Art", "Commercial", "Documentary", "Campaign", "Test Shoot", "E-commerce"],
-  brands: ["Slugger"],
+  brands: ["Personal Project", "Vogue", "National Geographic", "Patagonia", "Local Cafe", "Independent Film"],
 
   // Custom Colors Theme (Tailor the clay-orange to your own vibe if wanted!)
   colors: {
