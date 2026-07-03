@@ -233,8 +233,8 @@
   }
 
   function viewHome() {
-    const featured = SHOOTS.filter((s) => s.featured).slice(0, 6);
-    const feat = featured.length ? featured : SHOOTS.slice(0, 6);
+    const featured = SHOOTS.filter((s) => s.featured).slice(0, 7);
+    const feat = featured.length ? featured : SHOOTS.slice(0, 7);
     return `
       <section class="hero">
         <div class="hero-bg" aria-hidden="true"></div>
