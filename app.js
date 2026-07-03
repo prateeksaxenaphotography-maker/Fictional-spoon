@@ -469,8 +469,8 @@
       <section class="page-head">
         <div class="container">
           <p class="eyebrow reveal">Book a session</p>
-          <h1 class="reveal">Let's collaborate</h1>
-          <p class="page-sub reveal">Fill out the details below to book a photoshoot session. Whether you are a brand, a model, or looking for a test shoot, we will get back to you within 24 hours.</p>
+          <h1 class="reveal">Book Your Shoot</h1>
+          <p class="page-sub reveal">Fill out the details below to inquire about booking a session. Whether you are booking a commercial campaign, e-commerce production, editorial work, or scheduling a selective test shoot, please submit your brief and project specs below.</p>
         </div>
       </section>
       <section class="section container">
