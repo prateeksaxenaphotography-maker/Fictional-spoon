@@ -929,12 +929,8 @@
       navEmail.textContent = cfg.email;
     }
     const navSocials = $("#navSocials");
-    if (navSocials) {
-      const links = [];
-      if (cfg.instagram) links.push(`<a href="${cfg.instagram}" target="_blank" rel="noopener">Instagram</a>`);
-      if (cfg.behance) links.push(`<a href="${cfg.behance}" target="_blank" rel="noopener">Behance</a>`);
-      if (cfg.linkedin) links.push(`<a href="${cfg.linkedin}" target="_blank" rel="noopener">LinkedIn</a>`);
-      navSocials.innerHTML = links.join(" · ");
+    if (navSocials && cfg.instagram) {
+      navSocials.innerHTML = `<a href="${cfg.instagram}" target="_blank" rel="noopener">Instagram</a>`;
     }
   }
 
