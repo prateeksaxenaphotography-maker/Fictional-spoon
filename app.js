@@ -262,13 +262,11 @@
         <div class="hero-scroll" aria-hidden="true"><span></span>SCROLL</div>
       </section>
 
-      ${clientNames.length ? `
-        <div class="marquee" aria-hidden="true">
-          <div class="marquee-track">
-            ${(clientNames.concat(clientNames)).map((c) => `<span>${esc(c)}</span><span>·</span>`).join("")}
-          </div>
+      <div class="marquee" aria-hidden="true">
+        <div class="marquee-track">
+          ${clientNames.length ? (clientNames.concat(clientNames)).map((c) => `<span>${esc(c)}</span><span>·</span>`).join("") : "<span>&nbsp;</span>"}
         </div>
-      ` : ""}
+      </div>
 
       <section class="section container">
         <div class="section-head row reveal">
