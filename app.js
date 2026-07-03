@@ -144,7 +144,17 @@
 
   /* ---------------- Overlay nav ---------------- */
   const menuBtn = $("#menuBtn"), overlay = $("#navOverlay");
-  function toggleMenu(open) { const o = open ?? !overlay.classList.contains("open"); overlay.classList.toggle("open", o); overlay.setAttribute("aria-hidden", String(!o)); menuBtn.setAttribute("aria-expanded", String(o)); document.body.style.overflow = o ? "hidden" : ""; }
+  function toggleMenu(open) {
+    const o = open ?? !overlay.classList.contains("open");
+    overlay.classList.toggle("open", o);
+    overlay.setAttribute("aria-hidden", String(!o));
+    menuBtn.setAttribute("aria-expanded", String(o));
+    document.body.style.overflow = o ? "hidden" : "";
+    const header = $(".site-header");
+    if (header) {
+      header.classList.toggle("menu-open", o);
+    }
+  }
   menuBtn.addEventListener("click", () => toggleMenu());
   overlay.addEventListener("click", (e) => { if (e.target.closest("[data-link]")) toggleMenu(false); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && overlay.classList.contains("open")) toggleMenu(false); });
@@ -981,6 +991,15 @@ window.WPS_DATA = {
     const raw = location.hash.replace(/^#\/?/, "").split("?")[0];
     const parts = raw.split("/").filter(Boolean); // e.g. ["categories","activity","Trail"]
     const key = parts[0] || "";
+    
+    const header = $(".site-header");
+    if (header) {
+      if (key === "") {
+        header.classList.remove("header-light");
+      } else {
+        header.classList.add("header-light");
+      }
+    }
     
     // Redirect non-admins trying to access upload page
     if (key === "upload" && !isAdmin()) {
