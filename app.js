@@ -1191,7 +1191,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
       // SEO optimization: update page title and description dynamically
       const cfg = window.STUDIO_CONFIG || { studioName: "thenerdyphotographer.in" };
-      let pageTitle = `${cfg.studioName} — Noida Creative Photography Studio`;
+      let pageTitle = `${cfg.studioName} — The Creative Studio`;
       let pageDesc = "Noida based creative photographer studio by Prateek Saxena. Cinematic photoshoot portfolio — browse by activity, brand and type.";
       
       if (key === "work") {
