@@ -124,6 +124,19 @@
   lb.addEventListener("click", (e) => { if (e.target === lb) closeLb(); });
   document.addEventListener("keydown", (e) => { if (lb.hidden) return; if (e.key === "Escape") closeLb(); else if (e.key === "ArrowLeft") stepLb(-1); else if (e.key === "ArrowRight") stepLb(1); });
 
+  // Touch swipe support for lightbox on mobile
+  let touchStartX = 0;
+  let touchEndX = 0;
+  lb.addEventListener("touchstart", (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+  }, { passive: true });
+  lb.addEventListener("touchend", (e) => {
+    touchEndX = e.changedTouches[0].screenX;
+    const diff = touchEndX - touchStartX;
+    if (diff < -50) stepLb(1);      // Swipe left -> Next
+    else if (diff > 50) stepLb(-1); // Swipe right -> Prev
+  }, { passive: true });
+
   /* ---------------- Overlay nav ---------------- */
   const menuBtn = $("#menuBtn"), overlay = $("#navOverlay");
   function toggleMenu(open) { const o = open ?? !overlay.classList.contains("open"); overlay.classList.toggle("open", o); overlay.setAttribute("aria-hidden", String(!o)); menuBtn.setAttribute("aria-expanded", String(o)); document.body.style.overflow = o ? "hidden" : ""; }
@@ -418,6 +431,9 @@
   let staged = []; // {id,dataUrl,name}
   function viewUpload() {
     const opt = (arr) => arr.map((v) => `<option value="${v}">${v}</option>`).join("");
+    const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+    const dropTitle = isTouch ? "Tap to upload photos" : "Drag your photoshoot here";
+    const dropHint = isTouch ? "Select images from files or photo library" : "or <span class=\"link\">browse files</span> — JPG, PNG, WEBP";
     return `
       <section class="page-head">
         <div class="container">
@@ -432,8 +448,8 @@
             <input type="file" id="fileInput" accept="image/*" multiple hidden />
             <div class="dropzone-inner">
               <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 16V4m0 0L7 9m5-5l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-              <p class="dropzone-title">Drag your photoshoot here</p>
-              <p class="dropzone-hint">or <span class="link">browse files</span> — JPG, PNG, WEBP, GIF</p>
+              <p class="dropzone-title">${dropTitle}</p>
+              <p class="dropzone-hint">${dropHint}</p>
             </div>
             <div class="thumb-grid" id="stagingGrid"></div>
           </div>
