@@ -219,9 +219,13 @@ window.WPS_DATA = {
 };
 `;
 
-      const bytes = new TextEncoder().encode(fileContent);
-      const binString = String.fromCodePoint(...bytes);
-      const contentBase64 = btoa(binString);
+      const blob = new Blob([fileContent], { type: "application/octet-stream" });
+      const contentBase64 = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result.split(",")[1]);
+        r.onerror = rej;
+        r.readAsDataURL(blob);
+      });
 
       const putRes = await fetch(url, {
         method: "PUT",
