@@ -10,13 +10,12 @@
   const $ = (s, r = document) => r.querySelector(s);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-  // Check for admin unlock parameter (?admin=1 or ?admin=0)
-  const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.has("admin")) {
-    const val = urlParams.get("admin");
-    if (val === "1") {
+  // Check for admin unlock parameter (?admin=1 or ?admin=0, supporting both search query and hash routing params)
+  const fullUrlString = window.location.search + window.location.hash;
+  if (fullUrlString.includes("admin=")) {
+    if (fullUrlString.includes("admin=1")) {
       localStorage.setItem("wps-admin-authorized", "1");
-    } else if (val === "0") {
+    } else if (fullUrlString.includes("admin=0")) {
       localStorage.removeItem("wps-admin-authorized");
       localStorage.removeItem("wps-admin");
     }
