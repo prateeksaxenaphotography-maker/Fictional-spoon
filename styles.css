@@ -65,8 +65,8 @@ a { color: inherit; text-decoration: none; }
 /* ---------- Header ---------- */
 .site-header { position: fixed; top: 0; left: 0; right: 0; z-index: 60; display: flex; align-items: center; justify-content: space-between; padding: 22px 32px; background: transparent; border-bottom: 1px solid transparent; transition: padding 0.3s var(--ease), background 0.3s var(--ease), border-color 0.3s var(--ease); }
 .site-header.scrolled { padding: 14px 32px; background: rgba(14, 14, 14, 0.88); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
-.site-header .brand-text, .site-header .menu-btn { color: #fff; }
-.brand { display: flex; align-items: center; gap: 11px; }
+.site-header .brand, .site-header .menu-btn { color: #fff; }
+.brand { display: flex; align-items: center; gap: 11px; color: inherit; }
 .brand-mark { width: 28px; height: 28px; object-fit: contain; transition: transform .4s var(--ease); }
 .brand:hover .brand-mark { transform: rotate(-8deg) scale(1.08); }
 .brand-text { font-weight: 900; font-size: 16px; letter-spacing: .04em; line-height: 1; }
@@ -270,7 +270,7 @@ a { color: inherit; text-decoration: none; }
 .site-header.header-light {
   color: var(--ink);
 }
-.site-header.header-light .brand-text,
+.site-header.header-light .brand,
 .site-header.header-light .menu-btn {
   color: var(--ink);
 }
@@ -285,7 +285,7 @@ a { color: inherit; text-decoration: none; }
 .site-header.menu-open {
   --logo-bg: #0e0e0e !important;
 }
-.site-header.menu-open .brand-text,
+.site-header.menu-open .brand,
 .site-header.menu-open .menu-btn {
   color: #fff !important;
 }
