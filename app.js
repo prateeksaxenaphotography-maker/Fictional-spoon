@@ -893,7 +893,7 @@
   const ROUTES = { "": viewHome, "work": viewWork, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload, "book": viewBook };
 
   function render() {
-    const raw = location.hash.replace(/^#\/?/, "");
+    const raw = location.hash.replace(/^#\/?/, "").split("?")[0];
     const parts = raw.split("/").filter(Boolean); // e.g. ["categories","activity","Trail"]
     const key = parts[0] || "";
     
