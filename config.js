@@ -19,7 +19,7 @@ const STUDIO_CONFIG = {
   activities: ["Portrait", "Street", "Landscape", "Fashion", "Minimalist", "Travel", "Sports", "Fitness"],
   types: ["Editorial", "Fine Art", "Commercial", "Documentary", "Campaign", "Test Shoot", "E-commerce"],
   brands: ["Personal Project", "Vogue", "National Geographic", "Patagonia", "Local Cafe", "Independent Film"],
-  adminPasscode: "nerdyphoto",
+  adminPasscode: "canonr5markii",
 
   // Custom Colors Theme (Tailor the clay-orange to your own vibe if wanted!)
   colors: {
