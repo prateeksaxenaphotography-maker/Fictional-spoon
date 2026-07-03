@@ -56,10 +56,17 @@
 
   async function loadShoots() {
     let real = [];
-    try { real = (await allShoots()).sort((a, b) => b.createdAt - a.createdAt); }
-    catch { real = []; } // IndexedDB blocked (private mode etc.) → fall back to demo
+    try { real = await allShoots(); }
+    catch { real = []; }
     usingDemo = real.length === 0;
-    SHOOTS = usingDemo ? DEMO_SHOOTS : real;
+    
+    const parseShootDate = (s) => {
+      if (!s.date) return s.createdAt || 0;
+      const t = Date.parse(s.date);
+      return isNaN(t) ? (s.createdAt || 0) : t;
+    };
+    
+    SHOOTS = (usingDemo ? DEMO_SHOOTS : real).sort((a, b) => parseShootDate(b) - parseShootDate(a));
   }
   const allPhotos = () => SHOOTS.flatMap((s) => s.photos.map((p) => ({ ...p, shoot: s })));
 
@@ -472,7 +479,7 @@
             <fieldset><legend>Links & meta</legend>
               <div class="field-row">
                 <label class="field"><span>Client</span><input id="f_client" type="text" placeholder="Brand name" /></label>
-                <label class="field"><span>Date shot</span><input id="f_date" type="text" placeholder="Mar 2026" /></label>
+                <label class="field"><span>Date shot</span><input id="f_date" type="date" /></label>
               </div>
               <div class="field-row">
                 <label class="field"><span>Instagram (comma-separated)</span><input id="f_ig" type="text" placeholder="e.g. @handle1, @handle2" /></label>
@@ -633,7 +640,17 @@
         $("#f_tags").value = editingShoot.tags || "";
         $("#f_gear").value = editingShoot.gear || "";
         $("#f_client").value = editingShoot.client || "";
-        $("#f_date").value = editingShoot.date || "";
+        const toIsoDate = (dStr) => {
+          if (!dStr) return "";
+          if (/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return dStr;
+          const t = Date.parse(dStr);
+          if (isNaN(t)) return "";
+          const d = new Date(t);
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, "0");
+          return `${y}-${m}-01`;
+        };
+        $("#f_date").value = toIsoDate(editingShoot.date);
         $("#f_ig").value = editingShoot.instagram || "";
         $("#f_link").value = editingShoot.link || "";
         $("#f_rights").value = editingShoot.rights || "";
@@ -768,6 +785,13 @@
       if (coverItem) {
         pColors = await extractPalette(coverItem.dataUrl);
       }
+      let dateVal = val("f_date");
+      if (!dateVal) {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, "0");
+        dateVal = `${y}-${m}-01`;
+      }
       const shoot = {
         id: editingShoot ? editingShoot.id : uid(),
         createdAt: editingShoot ? editingShoot.createdAt : Date.now(),
@@ -776,7 +800,7 @@
         photographer: val("f_photographer") || "Studio", artDirector: val("f_ad"), stylist: val("f_stylist") || "—",
         hair: val("f_hair") || "—", mua: val("f_mua") || "—", talent: val("f_talent"), location: val("f_location"),
         description: val("f_desc"), tags: val("f_tags"), gear: val("f_gear"),
-        client: val("f_client"), date: val("f_date"), instagram: val("f_ig"), link: val("f_link"), rights: val("f_rights"),
+        client: val("f_client"), date: dateVal, instagram: val("f_ig"), link: val("f_link"), rights: val("f_rights"),
         testimonials: testimonialsList,
         lightingDiagram: diagramDataUrl,
         lightingDiagramVisibility: $("#f_diagram_visibility").value,
