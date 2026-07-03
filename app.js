@@ -337,7 +337,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   const view = $("#view");
 
   function fullBleedBlock(s, i) {
-    const cover = s.photos.find(p => p.id.split("-")[0] === s.coverPhotoId) || s.photos[0] || { dataUrl: "", objectPosition: "center" };
+    const cover = s.photos.find(p => p.id.split("-")[0] === s.coverPhotoId) || s.photos[0] || { dataUrl: "", objectPosition: "top" };
+    let coverPos = cover.objectPosition || "top";
+    if (coverPos === "center") coverPos = "top";
+    else if (coverPos === "center center") coverPos = "center";
     
     // Parse multiple Instagram accounts to clickable links
     let igHtml = "";
@@ -382,7 +385,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     return `
       <article class="work-block ${i % 2 ? "flip" : ""} reveal" data-shoot="${s.id}">
         <button class="work-media" style="background-color: ${esc((s.palette && s.palette[1]) || '#1a1a1a')}; display: flex; align-items: center; justify-content: center;" aria-label="View ${esc(s.title)}">
-          <img src="${esc(photoSrc(cover))}" style="object-position: ${esc(cover.objectPosition || 'center')}" alt="${esc(s.title)}" loading="lazy" />
+          <img src="${esc(photoSrc(cover))}" style="object-position: ${esc(coverPos)}" alt="${esc(s.title)}" loading="lazy" />
           <span class="work-count">${s.photos.length} frames</span>
         </button>
         <div class="work-info">
@@ -877,16 +880,23 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           featInput.checked = !!editingShoot.featured;
         }
         
-        staged = editingShoot.photos.map(p => ({
-          id: p.id.split("-")[0],
-          dataUrl: p.dataUrl,
-          url: p.url,
-          name: "Existing Frame",
-          objectPosition: p.objectPosition || "center",
-          isCover: editingShoot.coverPhotoId ? (p.id.split("-")[0] === editingShoot.coverPhotoId) : false
-        }));
+        staged = editingShoot.photos.map(p => {
+          const isCover = editingShoot.coverPhotoId ? (p.id.split("-")[0] === editingShoot.coverPhotoId) : false;
+          let pos = p.objectPosition || (isCover ? "top" : "center");
+          if (isCover && pos === "center") pos = "top";
+          return {
+            id: p.id.split("-")[0],
+            dataUrl: p.dataUrl,
+            url: p.url,
+            name: "Existing Frame",
+            objectPosition: pos,
+            isCover,
+            manuallyAligned: !!(p.objectPosition && p.objectPosition !== "center")
+          };
+        });
         if (staged.length && !staged.some(x => x.isCover)) {
           staged[0].isCover = true;
+          if (!staged[0].manuallyAligned) staged[0].objectPosition = "top";
         }
       }
     }
@@ -899,8 +909,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           id: uid(),
           dataUrl: await resize(raw),
           name: f.name,
-          objectPosition: "center",
-          isCover: staged.length === 0
+          objectPosition: staged.length === 0 ? "top" : "center",
+          isCover: staged.length === 0,
+          manuallyAligned: false
         });
       }
       renderStaged();
@@ -921,7 +932,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <button class="thumb-remove" data-id="${f.id}" aria-label="Remove">×</button>
           <div class="thumb-align-ctrl">
             <select class="thumb-align-select" data-id="${f.id}" aria-label="Align image">
-              <option value="center" ${f.objectPosition === 'center' ? 'selected' : ''}>Center</option>
+              <option value="center" ${(f.objectPosition === 'center' || f.objectPosition === 'center center') ? 'selected' : ''}>Center</option>
               <option value="top" ${f.objectPosition === 'top' ? 'selected' : ''}>Top</option>
               <option value="bottom" ${f.objectPosition === 'bottom' ? 'selected' : ''}>Bottom</option>
               <option value="left" ${f.objectPosition === 'left' ? 'selected' : ''}>Left</option>
@@ -936,16 +947,22 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         staged = staged.filter((x) => x.id !== b.dataset.id);
         if (removedWasCover && staged.length) {
           staged[0].isCover = true;
+          if (!staged[0].manuallyAligned) staged[0].objectPosition = "top";
         }
         renderStaged();
       }));
       grid.querySelectorAll(".thumb-align-select").forEach((select) => {
         select.addEventListener("change", (e) => {
           const id = e.target.dataset.id;
-          const pos = e.target.value;
+          let pos = e.target.value;
           const item = staged.find((x) => x.id === id);
           if (item) {
-            item.objectPosition = pos;
+            if (pos === "center") {
+              item.objectPosition = "center center";
+            } else {
+              item.objectPosition = pos;
+            }
+            item.manuallyAligned = true;
             const thumbImg = grid.querySelector(`.thumb[data-id="${id}"] img`);
             if (thumbImg) thumbImg.style.objectPosition = pos;
           }
@@ -954,7 +971,17 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       grid.querySelectorAll(".thumb-cover-radio").forEach((radio) => {
         radio.addEventListener("change", (e) => {
           const id = e.target.dataset.id;
-          staged.forEach(x => x.isCover = (x.id === id));
+          staged.forEach(x => {
+            const wasCover = x.isCover;
+            x.isCover = (x.id === id);
+            if (x.isCover && !x.manuallyAligned) {
+              x.objectPosition = "top";
+            }
+            if (wasCover && !x.isCover && !x.manuallyAligned) {
+              x.objectPosition = "center";
+            }
+          });
+          renderStaged();
         });
       });
     }
@@ -1001,7 +1028,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         lightingDiagram: diagramDataUrl,
         lightingDiagramVisibility: $("#f_diagram_visibility").value,
         palette: pColors,
-        photos: staged.map((f, i) => ({ id: f.id + "-" + i, dataUrl: f.dataUrl, url: f.url, objectPosition: f.objectPosition || "center" })),
+        photos: staged.map((f, i) => ({ id: f.id + "-" + i, dataUrl: f.dataUrl, url: f.url, objectPosition: f.objectPosition || (f.isCover ? "top" : "center") })),
         featured: $("#f_featured") ? $("#f_featured").checked : false,
         coverPhotoId: coverItem ? coverItem.id : null,
       };
