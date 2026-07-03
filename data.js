@@ -336,7 +336,7 @@ window.WPS_DATA = {
       "gear": "",
       "client": "",
       "date": "2026-03-14",
-      "instagram": "",
+      "instagram": "https://www.instagram.com/kunaal_raghav07",
       "link": "",
       "rights": "",
       "testimonials": [],
