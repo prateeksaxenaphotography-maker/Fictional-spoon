@@ -342,12 +342,27 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     if (coverPos === "center") coverPos = "top";
     else if (coverPos === "center center") coverPos = "center";
     
-    // Parse multiple Instagram accounts to clickable links
+    // Parse multiple Instagram accounts/URLs to clickable links
     let igHtml = "";
     if (s.instagram) {
       const handles = s.instagram.split(",").map(x => x.trim()).filter(Boolean);
       igHtml = handles.map(h => {
-        const clean = h.replace(/^@/, "");
+        let clean = h;
+        if (h.includes("instagram.com")) {
+          try {
+            let val = h;
+            if (!val.startsWith("http://") && !val.startsWith("https://")) {
+              val = "https://" + val;
+            }
+            const url = new URL(val);
+            const parts = url.pathname.split("/").filter(Boolean);
+            if (parts.length > 0) clean = parts[0];
+          } catch {
+            const segments = h.split("/").filter(Boolean);
+            clean = segments[segments.length - 1] || h;
+          }
+        }
+        clean = clean.replace(/^@/, "");
         return `<a href="https://instagram.com/${encodeURIComponent(clean)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600;">@${esc(clean)}</a>`;
       }).join(" · ");
     }
