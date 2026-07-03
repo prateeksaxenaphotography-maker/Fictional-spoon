@@ -233,8 +233,7 @@
   }
 
   function viewHome() {
-    const featured = SHOOTS.filter((s) => s.featured).slice(0, 7);
-    const feat = featured.length ? featured : SHOOTS.slice(0, 7);
+    const feat = SHOOTS.slice(0, 7);
     const brandCount = new Set(SHOOTS.filter(s => s.client && s.client.trim()).map(s => s.brand)).size;
     const activeBrands = BRANDS.filter(b => SHOOTS.some(s => s.brand === b && s.client && s.client.trim()));
     const displayBrands = activeBrands.length ? activeBrands : BRANDS;
