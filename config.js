@@ -11,8 +11,8 @@ const STUDIO_CONFIG = {
   introQuote: "“The best photography doesn't just record a moment. It captures the light, the mood, and the silent story within the frame.”",
 
   // Contact & Socials
-  email: "hello@thenerdyphotographer.in",
-  instagram: "https://instagram.com/thenerdyphotographer",
+  email: "prateeksaxenaphotography@gmail.com",
+  instagram: "https://www.instagram.com/thenerdyphotographer.in/",
   behance: "https://behance.net/thenerdyphotographer",
   linkedin: "https://linkedin.com/in/thenerdyphotographer",
 
