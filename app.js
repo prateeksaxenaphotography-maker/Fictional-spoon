@@ -235,6 +235,9 @@
   function viewHome() {
     const featured = SHOOTS.filter((s) => s.featured).slice(0, 7);
     const feat = featured.length ? featured : SHOOTS.slice(0, 7);
+    const brandCount = new Set(SHOOTS.filter(s => s.client && s.client.trim()).map(s => s.brand)).size;
+    const activeBrands = BRANDS.filter(b => SHOOTS.some(s => s.brand === b && s.client && s.client.trim()));
+    const displayBrands = activeBrands.length ? activeBrands : BRANDS;
     return `
       <section class="hero">
         <div class="hero-bg" aria-hidden="true"></div>
@@ -253,13 +256,13 @@
           <dl class="hero-stats reveal">
             <div><dt data-count>${allPhotos().length}</dt><dd>Frames archived</dd></div>
             <div><dt data-count>${SHOOTS.length}</dt><dd>Photoshoots</dd></div>
-            <div><dt data-count>${BRANDS.length}</dt><dd>Iconic brands</dd></div>
+            <div><dt data-count>${brandCount}</dt><dd>Iconic brands</dd></div>
           </dl>
         </div>
         <div class="hero-scroll" aria-hidden="true"><span></span>SCROLL</div>
       </section>
 
-      <div class="marquee" aria-hidden="true"><div class="marquee-track">${(BRANDS.concat(BRANDS)).map((b) => `<span>${b}</span><span>·</span>`).join("")}</div></div>
+      <div class="marquee" aria-hidden="true"><div class="marquee-track">${(displayBrands.concat(displayBrands)).map((b) => `<span>${b}</span><span>·</span>`).join("")}</div></div>
 
       <section class="section container">
         <div class="section-head row reveal">
@@ -283,12 +286,13 @@
   }
 
   function viewWork() {
+    const brandCount = new Set(SHOOTS.filter(s => s.client && s.client.trim()).map(s => s.brand)).size;
     return `
       <section class="page-head">
         <div class="container">
           <p class="eyebrow reveal">02 — The archive</p>
           <h1 class="reveal">The Work</h1>
-          <p class="page-sub reveal">${SHOOTS.length} photoshoots across ${BRANDS.length} brands. Every frame, full-bleed.</p>
+          <p class="page-sub reveal">${SHOOTS.length} photoshoots across ${brandCount} brands. Every frame, full-bleed.</p>
         </div>
       </section>
       <section class="section container">
@@ -309,7 +313,10 @@
     // Detail: a filtered work list
     if (kind && val) {
       const d = decodeURIComponent(val);
-      const list = SHOOTS.filter((s) => (kind === "activity" ? s.activity : kind === "brand" ? s.brand : s.type) === d);
+      const list = SHOOTS.filter((s) => {
+        if (kind === "brand" && (!s.client || !s.client.trim())) return false;
+        return (kind === "activity" ? s.activity : kind === "brand" ? s.brand : s.type) === d;
+      });
       return `
         <section class="page-head">
           <div class="container">
@@ -322,7 +329,10 @@
     }
     // Index: three lenses
     const grp = (arr, key) => arr.map((v) => {
-      const shoots = SHOOTS.filter((s) => s[key] === v);
+      const shoots = SHOOTS.filter((s) => {
+        if (key === "brand" && (!s.client || !s.client.trim())) return false;
+        return s[key] === v;
+      });
       const sample = (shoots[0] || SHOOTS[0]).palette;
       return { v, count: shoots.length, sample };
     }).filter((x) => x.count > 0);
@@ -379,7 +389,7 @@
       </section>
       <section class="section container">
         <div class="section-head reveal"><p class="eyebrow">Our house</p><h2>The brands we shoot for.</h2></div>
-        <ul class="brand-row">${BRANDS.map((b, i) => `<li class="reveal" style="--d:${i * 0.04}s">${b}</li>`).join("")}</ul>
+        <ul class="brand-row">${displayBrands.map((b, i) => `<li class="reveal" style="--d:${i * 0.04}s">${b}</li>`).join("")}</ul>
       </section>
       <section class="cta-band">
         <div class="container reveal">
