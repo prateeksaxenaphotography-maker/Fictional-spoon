@@ -13,8 +13,6 @@ const STUDIO_CONFIG = {
   // Contact & Socials
   email: "prateeksaxenaphotography@gmail.com",
   instagram: "https://www.instagram.com/thenerdyphotographer.in/",
-  behance: "https://behance.net/thenerdyphotographer",
-  linkedin: "https://linkedin.com/in/thenerdyphotographer",
 
   // Categories & Taxonomies
   // These drive the navigation, filtering, and upload options
