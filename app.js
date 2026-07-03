@@ -1006,6 +1006,32 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     ["dragenter", "dragover"].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.add("is-drag"); }));
     ["dragleave", "dragend", "drop"].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.remove("is-drag"); }));
     dz.addEventListener("drop", (e) => { if (e.dataTransfer?.files?.length) ingest(e.dataTransfer.files); });
+    const igInput = $("#f_ig");
+    igInput?.addEventListener("blur", () => {
+      let val = igInput.value.trim();
+      if (!val) return;
+      const cleaned = val.split(",").map(h => {
+        let clean = h.trim();
+        if (!clean) return "";
+        if (clean.includes("instagram.com")) {
+          try {
+            let temp = clean;
+            if (!temp.startsWith("http://") && !temp.startsWith("https://")) {
+              temp = "https://" + temp;
+            }
+            const url = new URL(temp);
+            const parts = url.pathname.split("/").filter(Boolean);
+            if (parts.length > 0) clean = parts[0];
+          } catch {
+            const segments = clean.split("/").filter(Boolean);
+            clean = segments[segments.length - 1] || clean;
+          }
+        }
+        clean = clean.replace(/^@/, "");
+        return clean ? `@${clean}` : "";
+      }).filter(Boolean).join(", ");
+      igInput.value = cleaned;
+    });
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
