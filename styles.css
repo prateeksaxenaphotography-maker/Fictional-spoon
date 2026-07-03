@@ -309,3 +309,13 @@ button:focus-visible,
   outline: 2px solid var(--accent); 
   outline-offset: 4px; 
 }
+
+/* ---------- Tactile Micro-Interactions (Press states) ---------- */
+.btn:active, 
+.lightbox-nav:active, 
+.menu-btn:active,
+.thumb-remove:active,
+.work-media:active,
+.cat-card:active {
+  transform: scale(0.97);
+}
