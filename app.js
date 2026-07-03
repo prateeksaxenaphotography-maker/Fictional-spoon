@@ -10,16 +10,19 @@
   const $ = (s, r = document) => r.querySelector(s);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  // A photo renders from its published file URL when it has one, else its local base64.
+  const photoSrc = (p) => (p && (p.url || p.dataUrl)) || "";
   // Check for admin unlock parameter (?admin=1 or ?admin=0, supporting both search query and hash routing params)
   const fullUrlString = window.location.search + window.location.hash;
-  if (fullUrlString.includes("admin=")) {
-    if (fullUrlString.includes("admin=1")) {
+  const adminMatch = fullUrlString.match(/[?&]admin=([01])\b/);
+  if (adminMatch) {
+    if (adminMatch[1] === "1") {
       localStorage.setItem("wps-admin-authorized", "1");
-      const patMatch = fullUrlString.match(/[?&]pat=([^&|#]+)/);
+      const patMatch = fullUrlString.match(/[?&]pat=([^&#]+)/);
       if (patMatch) {
-        localStorage.setItem("wps-github-pat", patMatch[1]);
+        localStorage.setItem("wps-github-pat", decodeURIComponent(patMatch[1]));
       }
-    } else if (fullUrlString.includes("admin=0")) {
+    } else {
       localStorage.removeItem("wps-admin-authorized");
       localStorage.removeItem("wps-admin");
       localStorage.removeItem("wps-github-pat");
@@ -70,7 +73,7 @@
       return isNaN(t) ? (s.createdAt || 0) : t;
     };
     
-    SHOOTS = (usingDemo ? DEMO_SHOOTS : real).sort((a, b) => parseShootDate(b) - parseShootDate(a));
+    SHOOTS = (usingDemo ? (window.WPS_DATA.DEMO_SHOOTS || DEMO_SHOOTS) : real).sort((a, b) => parseShootDate(b) - parseShootDate(a));
   }
   const allPhotos = () => SHOOTS.flatMap((s) => s.photos.map((p) => ({ ...p, shoot: s })));
 
@@ -120,7 +123,7 @@
   const lb = $("#lightbox"), lbImg = $("#lightboxImg"), lbCap = $("#lightboxCaption"), lbCount = $("#lbCounter");
   let lbList = [], lbIdx = 0;
   function openLb(list, idx) { lbList = list; lbIdx = idx; paintLb(); lb.hidden = false; document.body.style.overflow = "hidden"; $("#lightboxClose").focus(); }
-  function paintLb() { const p = lbList[lbIdx]; if (!p) return; lbImg.src = p.dataUrl; lbImg.alt = p.shoot.title; lbImg.style.objectPosition = p.objectPosition || "center"; lbCap.textContent = `${p.shoot.title} — ${p.shoot.brand} · by ${p.shoot.photographer}`; lbCount.textContent = `${lbIdx + 1} / ${lbList.length}`; }
+  function paintLb() { const p = lbList[lbIdx]; if (!p) return; lbImg.src = photoSrc(p); lbImg.alt = p.shoot.title; lbImg.style.objectPosition = p.objectPosition || "center"; lbCap.textContent = `${p.shoot.title} — ${p.shoot.brand} · by ${p.shoot.photographer}`; lbCount.textContent = `${lbIdx + 1} / ${lbList.length}`; }
   function stepLb(d) { if (!lbList.length) return; lbIdx = (lbIdx + d + lbList.length) % lbList.length; paintLb(); }
   function closeLb() { lb.hidden = true; lbImg.src = ""; document.body.style.overflow = ""; }
   $("#lightboxClose").addEventListener("click", closeLb);
@@ -191,66 +194,142 @@
     render();
   });
 
-  async function syncToGitHub(shootsList) {
+  /* ---------------- GitHub sync ----------------
+     Publishes the portfolio into the repo so every visitor sees it.
+     - Merges per-shoot with what's already in data.js (local wins by id),
+       so publishing from one device can't wipe another device's shoots.
+     - Uploads photos as real image files under photos/ and stores only
+       their paths in data.js, keeping data.js small and images cacheable.
+     - Writes everything as one atomic commit via the git data API. */
+  const GH_REPO = "prateeksaxenaphotography-maker/Fictional-spoon";
+  const GH_BRANCH = "main";
+  const GH_API = `https://api.github.com/repos/${GH_REPO}`;
+
+  async function ghApi(pat, path, opts = {}) {
+    const res = await fetch(`${GH_API}${path}`, {
+      ...opts,
+      headers: {
+        "Authorization": `token ${pat}`,
+        "Accept": "application/vnd.github+json",
+        ...(opts.body ? { "Content-Type": "application/json" } : {}),
+      },
+    });
+    if (res.status === 401) {
+      localStorage.removeItem("wps-github-pat");
+      throw new Error("GitHub rejected the token (401). It was cleared — you'll be asked for it again on the next sync.");
+    }
+    if (!res.ok) throw new Error(`GitHub ${opts.method || "GET"} ${path} failed (${res.status})`);
+    return res.json();
+  }
+
+  // Pull the DEMO_SHOOTS array out of a data.js source string. The array is
+  // always the last JSON value in the file, in every format we've published.
+  function parseShootsFromDataJs(text) {
+    try {
+      const key = text.lastIndexOf("DEMO_SHOOTS");
+      if (key === -1) return null;
+      const start = text.indexOf("[", key);
+      const end = text.lastIndexOf("]");
+      if (start === -1 || end <= start) return null;
+      const arr = JSON.parse(text.slice(start, end + 1));
+      return Array.isArray(arr) ? arr : null;
+    } catch { return null; }
+  }
+
+  async function fetchRemoteShoots(pat) {
+    const res = await fetch(`${GH_API}/contents/data.js?ref=${GH_BRANCH}`, {
+      headers: { "Authorization": `token ${pat}`, "Accept": "application/vnd.github.raw+json" },
+    });
+    if (!res.ok) return null;
+    return parseShootsFromDataJs(await res.text());
+  }
+
+  const MIME_EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
+
+  async function syncToGitHub(shootsList, { deletedIds = [] } = {}) {
     let pat = localStorage.getItem("wps-github-pat");
     if (!pat) {
-      pat = prompt("Enter your GitHub Personal Access Token (PAT) to enable auto-sync with your friend:");
+      pat = prompt("Enter your GitHub Personal Access Token (PAT) to publish this change for everyone:");
       if (pat) {
         pat = pat.trim();
         localStorage.setItem("wps-github-pat", pat);
       } else {
-        toast("Auto-sync skipped. Changes saved locally.");
+        toast("Auto-sync skipped. Changes saved locally only.");
         return;
       }
     }
     try {
-      toast("Syncing portfolio database to GitHub...");
-      const repo = "prateeksaxenaphotography-maker/Fictional-spoon";
-      const path = "data.js";
-      const url = `https://api.github.com/repos/${repo}/contents/${path}`;
-      const headers = {
-        "Authorization": `token ${pat}`,
-        "Accept": "application/vnd.github.v3+json"
-      };
-      const getRes = await fetch(url, { headers });
-      if (!getRes.ok) throw new Error("Failed to get SHA");
-      const getData = await getRes.json();
-      const sha = getData.sha;
+      toast("Syncing portfolio to GitHub…");
 
+      // Merge with the published shoots: local wins by id; shoots that only
+      // exist remotely (added from another device) survive; deletes propagate.
+      const remote = await fetchRemoteShoots(pat);
+      const removed = new Set(deletedIds);
+      const merged = new Map();
+      (remote || []).forEach((s) => { if (s && s.id && !s.demo && !removed.has(s.id)) merged.set(s.id, s); });
+      shootsList.forEach((s) => { if (s && s.id && !s.demo && !removed.has(s.id)) merged.set(s.id, s); });
+      const shoots = [...merged.values()];
+
+      // Upload any photo still stored as base64 to photos/<shoot>/<photo>.<ext>.
+      const photoEntries = [];
+      for (const s of shoots) {
+        for (const p of s.photos || []) {
+          if (p.url || !p.dataUrl) continue;
+          const m = p.dataUrl.match(/^data:(image\/[a-z.+-]+);base64,/);
+          if (!m) continue; // not a base64 image (e.g. demo SVG) — leave inline
+          const path = `photos/${s.id}/${p.id}.${MIME_EXT[m[1]] || "jpg"}`;
+          const blob = await ghApi(pat, "/git/blobs", {
+            method: "POST",
+            body: JSON.stringify({ content: p.dataUrl.slice(m[0].length), encoding: "base64" }),
+          });
+          photoEntries.push({ path, mode: "100644", type: "blob", sha: blob.sha });
+          p.url = path;
+          toast(`Uploading photos… (${photoEntries.length})`);
+        }
+      }
+
+      // Published copy references photo files instead of inline base64.
+      const published = shoots.map((s) => ({
+        ...s,
+        photos: (s.photos || []).map((p) => p.url
+          ? { id: p.id, url: p.url, objectPosition: p.objectPosition || "center" }
+          : p),
+      }));
       const fileContent = `/* ============================================================
-   thenerdyphotographer.in — Hardcoded Portfolio Data
-   This file is auto-synced by the Admin Panel browser editor.
+   thenerdyphotographer.in — published portfolio data
+   Auto-synced by the Admin Panel. Photo files live under photos/.
    ============================================================ */
-window.WPS_DATA = {
-  ACTIVITIES: ${JSON.stringify(ACTIVITIES, null, 2)},
-  TYPES: ${JSON.stringify(TYPES, null, 2)},
-  BRANDS: ${JSON.stringify(BRANDS, null, 2)},
-  DEMO_SHOOTS: ${JSON.stringify(shootsList, null, 2)}
-};
+window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: published }, null, 2)};
 `;
 
-      const blob = new Blob([fileContent], { type: "application/octet-stream" });
-      const contentBase64 = await new Promise((res, rej) => {
-        const r = new FileReader();
-        r.onload = () => res(r.result.split(",")[1]);
-        r.onerror = rej;
-        r.readAsDataURL(blob);
-      });
-
-      const putRes = await fetch(url, {
-        method: "PUT",
-        headers: { ...headers, "Content-Type": "application/json" },
+      // One atomic commit: photo blobs + regenerated data.js.
+      const ref = await ghApi(pat, `/git/ref/heads/${GH_BRANCH}`);
+      const baseCommit = await ghApi(pat, `/git/commits/${ref.object.sha}`);
+      const tree = await ghApi(pat, "/git/trees", {
+        method: "POST",
         body: JSON.stringify({
-          message: "Auto-sync portfolio data from Admin Panel",
-          content: contentBase64,
-          sha
-        })
+          base_tree: baseCommit.tree.sha,
+          tree: [...photoEntries, { path: "data.js", mode: "100644", type: "blob", content: fileContent }],
+        }),
       });
-      if (!putRes.ok) throw new Error("Failed to write file");
-      toast("Sync complete! Changes will be live for everyone in 1 minute.");
+      const commit = await ghApi(pat, "/git/commits", {
+        method: "POST",
+        body: JSON.stringify({ message: "Auto-sync portfolio data from Admin Panel", tree: tree.sha, parents: [ref.object.sha] }),
+      });
+      await ghApi(pat, `/git/refs/heads/${GH_BRANCH}`, { method: "PATCH", body: JSON.stringify({ sha: commit.sha }) });
+
+      // Bring this browser up to date with the merged result (photo URLs and
+      // any shoots that only existed on the other device).
+      try {
+        for (const s of shoots) await putShoot(s);
+        await loadShoots();
+        render();
+      } catch {}
+
+      toast("Sync complete! Changes go live for everyone within a few minutes.");
     } catch (e) {
       console.error(e);
-      toast("GitHub sync failed. Please check connection.");
+      toast(e.message && e.message.includes("401") ? e.message : "GitHub sync failed — changes are saved locally. Check the token and connection, then publish again.");
     }
   }
 
@@ -266,7 +345,7 @@ window.WPS_DATA = {
       const handles = s.instagram.split(",").map(x => x.trim()).filter(Boolean);
       igHtml = handles.map(h => {
         const clean = h.replace(/^@/, "");
-        return `<a href="https://instagram.com/${clean}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600;">@${clean}</a>`;
+        return `<a href="https://instagram.com/${encodeURIComponent(clean)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600;">@${esc(clean)}</a>`;
       }).join(" · ");
     }
 
@@ -295,15 +374,15 @@ window.WPS_DATA = {
         <p class="eyebrow" style="margin: 0 0 10px; font-size: 9px;">Lighting Setup ${s.lightingDiagramVisibility === 'private' ? '🔒 (Admin Only)' : '🌐 (Public)'}</p>
         <button class="btn btn-ghost btn-block view-diagram-btn" style="padding: 10px; font-size: 12px; height: auto;" data-id="${s.id}">View Lighting Diagram</button>
         <div class="diagram-img-wrap" style="display: none; margin-top: 14px; text-align: center;">
-          <img src="${s.lightingDiagram}" style="max-width: 100%; height: auto; border-radius: 6px; box-shadow: var(--shadow);" alt="Lighting Setup Diagram" />
+          <img src="${esc(s.lightingDiagram)}" style="max-width: 100%; height: auto; border-radius: 6px; box-shadow: var(--shadow);" alt="Lighting Setup Diagram" />
         </div>
       </div>
     ` : "";
 
     return `
       <article class="work-block ${i % 2 ? "flip" : ""} reveal" data-shoot="${s.id}">
-        <button class="work-media" style="background-color: ${s.palette ? s.palette[1] || '#1a1a1a' : '#1a1a1a'}; display: flex; align-items: center; justify-content: center;" aria-label="View ${esc(s.title)}">
-          <img src="${cover.dataUrl}" style="object-position: ${esc(cover.objectPosition || 'center')}" alt="${esc(s.title)}" loading="lazy" />
+        <button class="work-media" style="background-color: ${esc((s.palette && s.palette[1]) || '#1a1a1a')}; display: flex; align-items: center; justify-content: center;" aria-label="View ${esc(s.title)}">
+          <img src="${esc(photoSrc(cover))}" style="object-position: ${esc(cover.objectPosition || 'center')}" alt="${esc(s.title)}" loading="lazy" />
           <span class="work-count">${s.photos.length} frames</span>
         </button>
         <div class="work-info">
@@ -404,7 +483,7 @@ window.WPS_DATA = {
   function catCard(label, kind, val, count, sample) {
     return `
       <a href="#/categories/${kind}/${encodeURIComponent(val)}" data-link class="cat-card reveal">
-        <span class="cat-swatch" style="background:linear-gradient(150deg,${sample[0]},${sample[1]})"></span>
+        <span class="cat-swatch" style="background:linear-gradient(150deg,${esc(sample[0])},${esc(sample[1])})"></span>
         <div class="cat-body"><span class="cat-kind">${kind}</span><h3>${esc(label)}</h3><span class="cat-count">${count} shoot${count !== 1 ? "s" : ""}</span></div>
         <span class="cat-arrow">→</span>
       </a>`;
@@ -434,7 +513,7 @@ window.WPS_DATA = {
         if (key === "brand" && (!s.client || !s.client.trim())) return false;
         return s[key] === v;
       });
-      const sample = (shoots[0] || SHOOTS[0]).palette;
+      const sample = (shoots[0] || SHOOTS[0] || {}).palette || ["#3a3a3a", "#0d0d0d"];
       return { v, count: shoots.length, sample };
     }).filter((x) => x.count > 0);
     const act = grp(ACTIVITIES, "activity"), brs = grp(BRANDS, "brand"), typ = grp(TYPES, "type");
@@ -469,6 +548,8 @@ window.WPS_DATA = {
     ["Deliver", "Tagged, credited, and filed by activity, brand, and type — ready to find in seconds."],
   ];
   function viewStudio() {
+    const activeBrands = BRANDS.filter(b => SHOOTS.some(s => s.brand === b && s.client && s.client.trim()));
+    const displayBrands = activeBrands.length ? activeBrands : BRANDS;
     return `
       <section class="page-head">
         <div class="container">
@@ -490,7 +571,7 @@ window.WPS_DATA = {
       </section>
       <section class="section container">
         <div class="section-head reveal"><p class="eyebrow">Our house</p><h2>The brands we shoot for.</h2></div>
-        <ul class="brand-row">${displayBrands.map((b, i) => `<li class="reveal" style="--d:${i * 0.04}s">${b}</li>`).join("")}</ul>
+        <ul class="brand-row">${displayBrands.map((b, i) => `<li class="reveal" style="--d:${i * 0.04}s">${esc(b)}</li>`).join("")}</ul>
       </section>
       <section class="cta-band">
         <div class="container reveal">
@@ -776,8 +857,9 @@ window.WPS_DATA = {
         }
         
         staged = editingShoot.photos.map(p => ({
-          id: p.id.split("-")[0], 
+          id: p.id.split("-")[0],
           dataUrl: p.dataUrl,
+          url: p.url,
           name: "Existing Frame",
           objectPosition: p.objectPosition || "center",
           isCover: editingShoot.coverPhotoId ? (p.id.split("-")[0] === editingShoot.coverPhotoId) : false
@@ -814,7 +896,7 @@ window.WPS_DATA = {
               Cover
             </label>
           </div>
-          <img src="${f.dataUrl}" style="object-position: ${f.objectPosition || 'center'}" alt="${esc(f.name)}"/>
+          <img src="${esc(photoSrc(f))}" style="object-position: ${esc(f.objectPosition || 'center')}" alt="${esc(f.name)}"/>
           <button class="thumb-remove" data-id="${f.id}" aria-label="Remove">×</button>
           <div class="thumb-align-ctrl">
             <select class="thumb-align-select" data-id="${f.id}" aria-label="Align image">
@@ -876,7 +958,7 @@ window.WPS_DATA = {
       const coverItem = staged.find(x => x.isCover) || staged[0];
       let pColors = editingShoot ? editingShoot.palette : ["#3a3a3a", "#0d0d0d"];
       if (coverItem) {
-        pColors = await extractPalette(coverItem.dataUrl);
+        pColors = await extractPalette(photoSrc(coverItem));
       }
       let dateVal = val("f_date");
       if (!dateVal) {
@@ -898,7 +980,7 @@ window.WPS_DATA = {
         lightingDiagram: diagramDataUrl,
         lightingDiagramVisibility: $("#f_diagram_visibility").value,
         palette: pColors,
-        photos: staged.map((f, i) => ({ id: f.id + "-" + i, dataUrl: f.dataUrl, objectPosition: f.objectPosition || "center" })),
+        photos: staged.map((f, i) => ({ id: f.id + "-" + i, dataUrl: f.dataUrl, url: f.url, objectPosition: f.objectPosition || "center" })),
         featured: $("#f_featured") ? $("#f_featured").checked : false,
         coverPhotoId: coverItem ? coverItem.id : null,
       };
@@ -1045,7 +1127,7 @@ window.WPS_DATA = {
           await loadShoots();
           toast(`Deleted "${s.title}".`);
           render(); // re-render view
-          await syncToGitHub(SHOOTS);
+          await syncToGitHub(SHOOTS, { deletedIds: [s.id] });
         }
       });
 
@@ -1111,6 +1193,22 @@ window.WPS_DATA = {
   }
 
   /* ---------------- Boot ---------------- */
+  // GitHub Pages caches data.js for ~10 minutes, so visitors can see a stale
+  // portfolio right after a sync. Refetch it bypassing the cache and re-render
+  // if the published shoots changed. Local (IndexedDB) shoots take precedence.
+  async function refreshPublishedData() {
+    try {
+      const res = await fetch(`data.js?fresh=${Date.now()}`, { cache: "no-store" });
+      if (!res.ok) return;
+      const fresh = parseShootsFromDataJs(await res.text());
+      if (!fresh || !usingDemo) return;
+      if (JSON.stringify(fresh) === JSON.stringify(window.WPS_DATA.DEMO_SHOOTS)) return;
+      window.WPS_DATA.DEMO_SHOOTS = fresh;
+      await loadShoots();
+      render();
+    } catch { /* offline or unparsable — keep what we have */ }
+  }
+
   window.addEventListener("hashchange", render);
   function initBranding() {
     const cfg = window.STUDIO_CONFIG;
@@ -1147,6 +1245,7 @@ window.WPS_DATA = {
       await loadShoots();
       if (!location.hash) location.hash = "#/";
       render();
+      refreshPublishedData();
     } catch (err) {
       // Never leave the user on a blank page under the loader.
       console.error("boot failed:", err);
