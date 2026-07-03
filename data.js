@@ -39,7 +39,7 @@ window.WPS_DATA = {
     "activity": "Portrait",
     "type": "Test Shoot",
     "season": "June 2026",
-    "photographer": "Prateek Saxena",
+    "photographer": "Studio",
     "artDirector": "",
     "stylist": "—",
     "hair": "—",
