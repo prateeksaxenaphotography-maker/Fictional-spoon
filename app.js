@@ -260,7 +260,7 @@
             ${isAdmin() ? `<a href="#/upload" data-link class="btn btn-ghost">Publish a shoot</a>` : `<a href="#/book" data-link class="btn btn-ghost">Book a shoot</a>`}
           </div>
           <dl class="hero-stats reveal">
-            <div><dt data-count>${allPhotos().length}</dt><dd>Frames 43 archived</dd></div>
+            <div><dt data-count>${allPhotos().length}</dt><dd>Frames archived</dd></div>
             <div><dt data-count>${SHOOTS.length}</dt><dd>Photoshoots</dd></div>
             <div><dt data-count>${brandCount}</dt><dd>Iconic brands</dd></div>
           </dl>
