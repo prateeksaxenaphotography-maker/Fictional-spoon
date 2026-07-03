@@ -1147,6 +1147,35 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       wireView(key);
       initReveal();
       setActiveNav(key);
+
+      // SEO optimization: update page title and description dynamically
+      const cfg = window.STUDIO_CONFIG || { studioName: "thenerdyphotographer.in" };
+      let pageTitle = `${cfg.studioName} — Noida Creative Photography Studio`;
+      let pageDesc = "Noida based creative photographer studio by Prateek Saxena. Cinematic photoshoot portfolio — browse by activity, brand and type.";
+      
+      if (key === "work") {
+        pageTitle = `The Photo Archive — ${cfg.studioName}`;
+        pageDesc = `Browse through the complete photoshoot archive of ${cfg.studioName}. Editorial, fine art, and commercial photography projects.`;
+      } else if (key === "categories") {
+        if (parts[1] && parts[2]) {
+          const catName = decodeURIComponent(parts[2]);
+          pageTitle = `${catName} (${parts[1]}) — ${cfg.studioName}`;
+          pageDesc = `Photoshoots filed under the ${parts[1]} category "${catName}" in the photography archive.`;
+        } else {
+          pageTitle = `Browse by Category — ${cfg.studioName}`;
+          pageDesc = `Explore creative photoshoots categorized by activity (genre), brand, or production type.`;
+        }
+      } else if (key === "studio") {
+        pageTitle = `The Creative Studio — ${cfg.studioName}`;
+        pageDesc = `Learn about our creative process, vision, philosophy, and tools behind the photography craft. Noida, India.`;
+      } else if (key === "book") {
+        pageTitle = `Book a Shoot — ${cfg.studioName}`;
+        pageDesc = `Collaborate with us on your next photoshoot. Send a project brief or book a session with Noida's creative studio.`;
+      }
+      
+      document.title = pageTitle;
+      const metaDesc = document.querySelector('meta[name="description"]');
+      if (metaDesc) metaDesc.setAttribute("content", pageDesc);
     };
     if (prefersReduced) paint(); else setTimeout(paint, 180);
   }
