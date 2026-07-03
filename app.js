@@ -137,7 +137,7 @@
   const view = $("#view");
 
   function fullBleedBlock(s, i) {
-    const cover = s.photos[0];
+    const cover = s.photos.find(p => p.id.split("-")[0] === s.coverPhotoId) || s.photos[0] || { dataUrl: "", objectPosition: "center" };
     
     // Parse multiple Instagram accounts to clickable links
     let igHtml = "";
@@ -631,14 +631,27 @@
           id: p.id.split("-")[0], 
           dataUrl: p.dataUrl,
           name: "Existing Frame",
-          objectPosition: p.objectPosition || "center"
+          objectPosition: p.objectPosition || "center",
+          isCover: editingShoot.coverPhotoId ? (p.id.split("-")[0] === editingShoot.coverPhotoId) : false
         }));
+        if (staged.length && !staged.some(x => x.isCover)) {
+          staged[0].isCover = true;
+        }
       }
     }
     async function ingest(files) {
       const imgs = Array.from(files).filter((f) => f.type.startsWith("image/"));
       if (!imgs.length) { toast("Those weren't images — try JPG, PNG or WEBP."); return; }
-      for (const f of imgs) { const raw = await readAsDataURL(f); staged.push({ id: uid(), dataUrl: await resize(raw), name: f.name, objectPosition: "center" }); }
+      for (const f of imgs) {
+        const raw = await readAsDataURL(f);
+        staged.push({
+          id: uid(),
+          dataUrl: await resize(raw),
+          name: f.name,
+          objectPosition: "center",
+          isCover: staged.length === 0
+        });
+      }
       renderStaged();
     }
     function renderStaged() {
@@ -647,6 +660,12 @@
       note.classList.toggle("ready", n > 0);
       grid.innerHTML = staged.map((f) => `
         <div class="thumb" data-id="${f.id}">
+          <div class="thumb-cover-ctrl" style="position: absolute; top: 10px; left: 10px; z-index: 10;">
+            <label style="background: rgba(0,0,0,0.65); color: #fff; padding: 4px 8px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 8px; text-transform: uppercase; font-weight: 700; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+              <input type="radio" name="coverSelect" class="thumb-cover-radio" data-id="${f.id}" ${f.isCover ? 'checked' : ''} style="margin: 0; width: 12px; height: 12px; accent-color: var(--accent);" />
+              Cover
+            </label>
+          </div>
           <img src="${f.dataUrl}" style="object-position: ${f.objectPosition || 'center'}" alt="${esc(f.name)}"/>
           <button class="thumb-remove" data-id="${f.id}" aria-label="Remove">×</button>
           <div class="thumb-align-ctrl">
@@ -660,7 +679,15 @@
           </div>
         </div>
       `).join("");
-      grid.querySelectorAll(".thumb-remove").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); staged = staged.filter((x) => x.id !== b.dataset.id); renderStaged(); }));
+      grid.querySelectorAll(".thumb-remove").forEach((b) => b.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const removedWasCover = staged.find(x => x.id === b.dataset.id)?.isCover;
+        staged = staged.filter((x) => x.id !== b.dataset.id);
+        if (removedWasCover && staged.length) {
+          staged[0].isCover = true;
+        }
+        renderStaged();
+      }));
       grid.querySelectorAll(".thumb-align-select").forEach((select) => {
         select.addEventListener("change", (e) => {
           const id = e.target.dataset.id;
@@ -671,6 +698,12 @@
             const thumbImg = grid.querySelector(`.thumb[data-id="${id}"] img`);
             if (thumbImg) thumbImg.style.objectPosition = pos;
           }
+        });
+      });
+      grid.querySelectorAll(".thumb-cover-radio").forEach((radio) => {
+        radio.addEventListener("change", (e) => {
+          const id = e.target.dataset.id;
+          staged.forEach(x => x.isCover = (x.id === id));
         });
       });
     }
@@ -692,6 +725,7 @@
         val("f_quote_3") ? { quote: val("f_quote_3"), by: val("f_quoteby_3") || "Client" } : null,
       ].filter(Boolean);
 
+      const coverItem = staged.find(x => x.isCover) || staged[0];
       const shoot = {
         id: editingShoot ? editingShoot.id : uid(),
         createdAt: editingShoot ? editingShoot.createdAt : Date.now(),
@@ -707,6 +741,7 @@
         palette: editingShoot ? editingShoot.palette : ["#3a3a3a", "#0d0d0d"],
         photos: staged.map((f, i) => ({ id: f.id + "-" + i, dataUrl: f.dataUrl, objectPosition: f.objectPosition || "center" })),
         featured: $("#f_featured") ? $("#f_featured").checked : false,
+        coverPhotoId: coverItem ? coverItem.id : null,
       };
       pub.disabled = true; pub.textContent = editingShoot ? "Saving changes…" : "Publishing…";
       await putShoot(shoot);
