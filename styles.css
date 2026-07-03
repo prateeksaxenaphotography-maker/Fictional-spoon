@@ -300,3 +300,12 @@ a { color: inherit; text-decoration: none; }
   .loader { display: none; }
   .nav-overlay { transition: none; }
 }
+
+/* ---------- Accessibility Focus States ---------- */
+a:focus-visible, 
+button:focus-visible, 
+.cat-card:focus-visible, 
+.work-media:focus-visible { 
+  outline: 2px solid var(--accent); 
+  outline-offset: 4px; 
+}
