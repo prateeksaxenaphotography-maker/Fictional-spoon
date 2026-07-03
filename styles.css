@@ -263,6 +263,33 @@ a { color: inherit; text-decoration: none; }
   .site-header.scrolled { padding: 12px 20px; }
 }
 
+/* ---------- Header Color Shift for Light Pages ---------- */
+.site-header {
+  --logo-bg: #0e0e0e;
+}
+.site-header.header-light {
+  color: var(--ink);
+}
+.site-header.header-light .brand-text,
+.site-header.header-light .menu-btn {
+  color: var(--ink);
+}
+.site-header.header-light.scrolled {
+  background: rgba(245, 243, 239, 0.88);
+  border-bottom: 1px solid var(--line);
+  --logo-bg: #f5f3ef;
+}
+.site-header.header-light:not(.scrolled) {
+  --logo-bg: #f5f3ef;
+}
+.site-header.menu-open {
+  --logo-bg: #0e0e0e !important;
+}
+.site-header.menu-open .brand-text,
+.site-header.menu-open .menu-btn {
+  color: #fff !important;
+}
+
 /* ---------- Reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
