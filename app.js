@@ -64,6 +64,30 @@
   const allPhotos = () => SHOOTS.flatMap((s) => s.photos.map((p) => ({ ...p, shoot: s })));
 
   /* ---------------- Helpers ---------------- */
+  function extractPalette(imgDataUrl) {
+    return new Promise((res) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = 10;
+        canvas.height = 10;
+        ctx.drawImage(img, 0, 0, 10, 10);
+        const data = ctx.getImageData(0, 0, 10, 10).data;
+        let r = 0, g = 0, b = 0, count = data.length / 4;
+        for (let i = 0; i < data.length; i += 4) {
+          r += data[i]; g += data[i+1]; b += data[i+2];
+        }
+        r = Math.round(r / count); g = Math.round(g / count); b = Math.round(b / count);
+        const hex = (x, y, z) => "#" + [x, y, z].map(v => v.toString(16).padStart(2, "0")).join("");
+        const dom = hex(r, g, b);
+        const dark = hex(Math.max(10, Math.round(r * 0.45)), Math.max(10, Math.round(g * 0.45)), Math.max(10, Math.round(b * 0.45)));
+        res([dom, dark]);
+      };
+      img.onerror = () => res(["#3a3a3a", "#0d0d0d"]);
+      img.src = imgDataUrl;
+    });
+  }
   let toastTimer;
   function toast(msg) {
     let el = $(".toast"); if (!el) { el = document.createElement("div"); el.className = "toast"; document.body.appendChild(el); }
@@ -181,7 +205,7 @@
 
     return `
       <article class="work-block ${i % 2 ? "flip" : ""} reveal" data-shoot="${s.id}">
-        <button class="work-media" aria-label="View ${esc(s.title)}">
+        <button class="work-media" style="background-color: ${s.palette ? s.palette[1] || '#1a1a1a' : '#1a1a1a'}; display: flex; align-items: center; justify-content: center;" aria-label="View ${esc(s.title)}">
           <img src="${cover.dataUrl}" style="object-position: ${esc(cover.objectPosition || 'center')}" alt="${esc(s.title)}" loading="lazy" />
           <span class="work-count">${s.photos.length} frames</span>
         </button>
@@ -726,6 +750,10 @@
       ].filter(Boolean);
 
       const coverItem = staged.find(x => x.isCover) || staged[0];
+      let pColors = editingShoot ? editingShoot.palette : ["#3a3a3a", "#0d0d0d"];
+      if (coverItem) {
+        pColors = await extractPalette(coverItem.dataUrl);
+      }
       const shoot = {
         id: editingShoot ? editingShoot.id : uid(),
         createdAt: editingShoot ? editingShoot.createdAt : Date.now(),
@@ -738,7 +766,7 @@
         testimonials: testimonialsList,
         lightingDiagram: diagramDataUrl,
         lightingDiagramVisibility: $("#f_diagram_visibility").value,
-        palette: editingShoot ? editingShoot.palette : ["#3a3a3a", "#0d0d0d"],
+        palette: pColors,
         photos: staged.map((f, i) => ({ id: f.id + "-" + i, dataUrl: f.dataUrl, objectPosition: f.objectPosition || "center" })),
         featured: $("#f_featured") ? $("#f_featured").checked : false,
         coverPhotoId: coverItem ? coverItem.id : null,
