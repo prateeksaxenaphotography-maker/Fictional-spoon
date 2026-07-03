@@ -1350,8 +1350,15 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       navEmail.textContent = cfg.email;
     }
     const navSocials = $("#navSocials");
-    if (navSocials && cfg.instagram) {
-      navSocials.innerHTML = `<a href="${cfg.instagram}" target="_blank" rel="noopener">Instagram</a>`;
+    if (navSocials) {
+      const links = [];
+      if (cfg.instagram) {
+        links.push(`<a href="${cfg.instagram}" target="_blank" rel="noopener">Instagram</a>`);
+      }
+      if (cfg.kavyar) {
+        links.push(`<a href="${cfg.kavyar}" target="_blank" rel="noopener">Kavyar</a>`);
+      }
+      navSocials.innerHTML = links.join(" · ");
     }
   }
 
