@@ -237,6 +237,7 @@
     const brandCount = new Set(SHOOTS.filter(s => s.client && s.client.trim()).map(s => s.brand)).size;
     const activeBrands = BRANDS.filter(b => SHOOTS.some(s => s.brand === b && s.client && s.client.trim()));
     const displayBrands = activeBrands.length ? activeBrands : BRANDS;
+    const clientNames = [...new Set(SHOOTS.map(s => s.client).filter(c => c && c.trim()))];
     return `
       <section class="hero">
         <div class="hero-bg" aria-hidden="true"></div>
@@ -261,7 +262,13 @@
         <div class="hero-scroll" aria-hidden="true"><span></span>SCROLL</div>
       </section>
 
-      <div class="marquee" aria-hidden="true"><div class="marquee-track">${(displayBrands.concat(displayBrands)).map((b) => `<span>${b}</span><span>·</span>`).join("")}</div></div>
+      ${clientNames.length ? `
+        <div class="marquee" aria-hidden="true">
+          <div class="marquee-track">
+            ${(clientNames.concat(clientNames)).map((c) => `<span>${esc(c)}</span><span>·</span>`).join("")}
+          </div>
+        </div>
+      ` : ""}
 
       <section class="section container">
         <div class="section-head row reveal">
