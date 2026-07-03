@@ -15,9 +15,14 @@
   if (fullUrlString.includes("admin=")) {
     if (fullUrlString.includes("admin=1")) {
       localStorage.setItem("wps-admin-authorized", "1");
+      const patMatch = fullUrlString.match(/[?&]pat=([^&|#]+)/);
+      if (patMatch) {
+        localStorage.setItem("wps-github-pat", patMatch[1]);
+      }
     } else if (fullUrlString.includes("admin=0")) {
       localStorage.removeItem("wps-admin-authorized");
       localStorage.removeItem("wps-admin");
+      localStorage.removeItem("wps-github-pat");
     }
   }
 
@@ -165,7 +170,7 @@
     const turningOn = !isAdmin();
     if (turningOn) {
       const code = prompt("Enter admin passcode to enable Admin Mode:");
-      if (code !== (window.STUDIO_CONFIG?.adminPasscode || "nerdyphoto")) {
+      if (code !== (window.STUDIO_CONFIG?.adminPasscode || "canonr5markii")) {
         alert("Incorrect passcode.");
         return;
       }
@@ -175,6 +180,65 @@
     toast(`Admin Mode ${isAdmin() ? "enabled" : "disabled"}.`);
     render();
   });
+
+  async function syncToGitHub(shootsList) {
+    let pat = localStorage.getItem("wps-github-pat");
+    if (!pat) {
+      pat = prompt("Enter your GitHub Personal Access Token (PAT) to enable auto-sync with your friend:");
+      if (pat) {
+        pat = pat.trim();
+        localStorage.setItem("wps-github-pat", pat);
+      } else {
+        toast("Auto-sync skipped. Changes saved locally.");
+        return;
+      }
+    }
+    try {
+      toast("Syncing portfolio database to GitHub...");
+      const repo = "prateeksaxenaphotography-maker/Fictional-spoon";
+      const path = "data.js";
+      const url = `https://api.github.com/repos/${repo}/contents/${path}`;
+      const headers = {
+        "Authorization": `token ${pat}`,
+        "Accept": "application/vnd.github.v3+json"
+      };
+      const getRes = await fetch(url, { headers });
+      if (!getRes.ok) throw new Error("Failed to get SHA");
+      const getData = await getRes.json();
+      const sha = getData.sha;
+
+      const fileContent = `/* ============================================================
+   thenerdyphotographer.in — Hardcoded Portfolio Data
+   This file is auto-synced by the Admin Panel browser editor.
+   ============================================================ */
+window.WPS_DATA = {
+  ACTIVITIES: ${JSON.stringify(ACTIVITIES, null, 2)},
+  TYPES: ${JSON.stringify(TYPES, null, 2)},
+  BRANDS: ${JSON.stringify(BRANDS, null, 2)},
+  DEMO_SHOOTS: ${JSON.stringify(shootsList, null, 2)}
+};
+`;
+
+      const bytes = new TextEncoder().encode(fileContent);
+      const binString = String.fromCodePoint(...bytes);
+      const contentBase64 = btoa(binString);
+
+      const putRes = await fetch(url, {
+        method: "PUT",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "Auto-sync portfolio data from Admin Panel",
+          content: contentBase64,
+          sha
+        })
+      });
+      if (!putRes.ok) throw new Error("Failed to write file");
+      toast("Sync complete! Changes will be live for everyone in 1 minute.");
+    } catch (e) {
+      console.error(e);
+      toast("GitHub sync failed. Please check connection.");
+    }
+  }
 
   /* ================= VIEWS ================= */
   const view = $("#view");
@@ -830,6 +894,7 @@
       toast(editingShoot ? `Saved changes to “${shoot.title}”.` : `Published “${shoot.title}” — ${staged.length} frame${staged.length > 1 ? "s" : ""}.`);
       staged = [];
       location.hash = "#/work";
+      await syncToGitHub(SHOOTS);
     });
     renderStaged();
   }
@@ -957,6 +1022,7 @@
           await loadShoots();
           toast(`Deleted "${s.title}".`);
           render(); // re-render view
+          await syncToGitHub(SHOOTS);
         }
       });
 
