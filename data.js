@@ -124,7 +124,7 @@ window.WPS_DATA = {
     {
       "id": "mr4x6kwx3f8rs3",
       "createdAt": 1783082332258,
-      "title": "Prachi Chaudhary",
+      "title": "Prachi Choudhary",
       "brand": "Personal Project",
       "activity": "Minimalist",
       "type": "Test Shoot",
@@ -134,7 +134,7 @@ window.WPS_DATA = {
       "stylist": "—",
       "hair": "—",
       "mua": "Rashi Sehgal",
-      "talent": "Prachi Chaudhary",
+      "talent": "Prachi Choudhary",
       "location": "Noida",
       "description": "",
       "tags": "",
