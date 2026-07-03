@@ -432,17 +432,19 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <dl class="hero-stats reveal">
             <div><dt data-count>${allPhotos().length}</dt><dd>Frames archived</dd></div>
             <div><dt data-count>${SHOOTS.length}</dt><dd>Photoshoots</dd></div>
-            <div><dt data-count>${brandCount}</dt><dd>Iconic brands</dd></div>
+            ${brandCount > 0 ? `<div><dt data-count>${brandCount}</dt><dd>Iconic brand${brandCount !== 1 ? 's' : ''}</dd></div>` : ''}
           </dl>
         </div>
         <div class="hero-scroll" aria-hidden="true"><span></span>SCROLL</div>
       </section>
 
+      ${clientNames.length ? `
       <div class="marquee" aria-hidden="true">
         <div class="marquee-track">
-          ${clientNames.length ? (clientNames.concat(clientNames)).map((c) => `<span>${esc(c)}</span><span>·</span>`).join("") : "<span>&nbsp;</span>"}
+          ${(clientNames.concat(clientNames)).map((c) => `<span>${esc(c)}</span><span>·</span>`).join("")}
         </div>
       </div>
+      ` : ''}
 
       <section class="section container">
         <div class="section-head row reveal">
@@ -472,7 +474,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         <div class="container">
           <p class="eyebrow reveal">02 — The archive</p>
           <h1 class="reveal">The Work</h1>
-          <p class="page-sub reveal">${SHOOTS.length} photoshoots across ${brandCount} brands. Every frame, full-bleed.</p>
+          <p class="page-sub reveal">${SHOOTS.length} photoshoot${SHOOTS.length !== 1 ? 's' : ''}${brandCount > 0 ? ` across ${brandCount} brand${brandCount !== 1 ? 's' : ''}` : ''}. Every frame, full-bleed.</p>
         </div>
       </section>
       <section class="section container">
@@ -517,6 +519,18 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       return { v, count: shoots.length, sample };
     }).filter((x) => x.count > 0);
     const act = grp(ACTIVITIES, "activity"), brs = grp(BRANDS, "brand"), typ = grp(TYPES, "type");
+    
+    if (act.length === 0 && brs.length === 0 && typ.length === 0) {
+      return `
+        <section class="page-head">
+          <div class="container">
+            <p class="eyebrow reveal">03 — Browse</p>
+            <h1 class="reveal">Categories</h1>
+            <p class="page-sub reveal">No categories or shoots exist yet. Publish a shoot to populate the archive.</p>
+          </div>
+        </section>`;
+    }
+
     return `
       <section class="page-head">
         <div class="container">
@@ -525,18 +539,24 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <p class="page-sub reveal">Three ways into the archive — by what was shot, who it was for, and how it was made.</p>
         </div>
       </section>
+      ${act.length ? `
       <section class="section container">
         <div class="section-head reveal"><p class="eyebrow">By activity</p><h2>What we shot</h2></div>
         <div class="cat-grid">${act.map((x) => catCard(x.v, "activity", x.v, x.count, x.sample)).join("")}</div>
       </section>
+      ` : ""}
+      ${brs.length ? `
       <section class="section container">
         <div class="section-head reveal"><p class="eyebrow">By brand</p><h2>Who it was for</h2></div>
         <div class="cat-grid">${brs.map((x) => catCard(x.v, "brand", x.v, x.count, x.sample)).join("")}</div>
       </section>
+      ` : ""}
+      ${typ.length ? `
       <section class="section container">
         <div class="section-head reveal"><p class="eyebrow">By type</p><h2>How it was made</h2></div>
         <div class="cat-grid">${typ.map((x) => catCard(x.v, "type", x.v, x.count, x.sample)).join("")}</div>
-      </section>`;
+      </section>
+      ` : ""}`;
   }
   const emptyCat = () => `<p class="page-sub">Nothing here yet — publish a shoot in this category.</p>`;
 
@@ -549,7 +569,6 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   ];
   function viewStudio() {
     const activeBrands = BRANDS.filter(b => SHOOTS.some(s => s.brand === b && s.client && s.client.trim()));
-    const displayBrands = activeBrands.length ? activeBrands : BRANDS;
     return `
       <section class="page-head">
         <div class="container">
@@ -569,10 +588,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           ${PROCESS.map(([t, d], i) => `<li class="reveal" style="--d:${i * 0.06}s"><span class="process-num">0${i + 1}</span><h3>${t}</h3><p>${d}</p></li>`).join("")}
         </ol>
       </section>
+      ${activeBrands.length ? `
       <section class="section container">
         <div class="section-head reveal"><p class="eyebrow">Our house</p><h2>The brands we shoot for.</h2></div>
-        <ul class="brand-row">${displayBrands.map((b, i) => `<li class="reveal" style="--d:${i * 0.04}s">${esc(b)}</li>`).join("")}</ul>
+        <ul class="brand-row">${activeBrands.map((b, i) => `<li class="reveal" style="--d:${i * 0.04}s">${esc(b)}</li>`).join("")}</ul>
       </section>
+      ` : ""}
       <section class="cta-band">
         <div class="container reveal">
           ${isAdmin() ? `
