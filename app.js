@@ -1353,12 +1353,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     if (navSocials) {
       const links = [];
       if (cfg.instagram) {
-        links.push(`<a href="${cfg.instagram}" target="_blank" rel="noopener">Instagram</a>`);
+        links.push(`<a href="${cfg.instagram}" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg></a>`);
       }
       if (cfg.kavyar) {
-        links.push(`<a href="${cfg.kavyar}" target="_blank" rel="noopener">Kavyar</a>`);
+        links.push(`<a href="${cfg.kavyar}" target="_blank" rel="noopener" aria-label="Kavyar"><svg viewBox="0 0 24 24" style="stroke-width: 2.5;"><line x1="6" y1="4" x2="6" y2="20"></line><line x1="18" y1="4" x2="6" y2="12"></line><line x1="6" y1="12" x2="18" y2="20"></line></svg></a>`);
       }
-      navSocials.innerHTML = links.join(" · ");
+      navSocials.innerHTML = links.join("");
     }
   }
 
