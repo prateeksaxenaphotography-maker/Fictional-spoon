@@ -4,20 +4,21 @@
    ============================================================ */
 window.WPS_DATA = {
   "ACTIVITIES": [
-    "Portrait",
-    "Fashion",
+    "Beauty",
     "Editorial",
-    "Sports",
-    "Fitness"
+    "Fashion",
+    "Fitness",
+    "Portrait",
+    "Sports"
   ],
   "TYPES": [
-    "Editorial",
-    "Fine Art",
+    "Campaign",
     "Commercial",
     "Documentary",
-    "Campaign",
-    "Test Shoot",
-    "E-commerce"
+    "E-commerce",
+    "Editorial",
+    "Fine Art",
+    "Test Shoot"
   ],
   "BRANDS": [
     "Personal Project",
