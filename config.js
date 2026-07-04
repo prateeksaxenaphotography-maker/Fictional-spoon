@@ -17,7 +17,7 @@ const STUDIO_CONFIG = {
 
   // Categories & Taxonomies
   // These drive the navigation, filtering, and upload options
-  activities: ["Portrait", "Street", "Landscape", "Fashion", "Minimalist", "Travel", "Sports", "Fitness"],
+  activities: ["Portrait", "Fashion", "Editorial", "Sports", "Fitness"],
   types: ["Editorial", "Fine Art", "Commercial", "Documentary", "Campaign", "Test Shoot", "E-commerce"],
   brands: ["Personal Project", "Vogue", "National Geographic", "Patagonia", "Local Cafe", "Independent Film"],
   adminPasscode: "canonr5markii",
