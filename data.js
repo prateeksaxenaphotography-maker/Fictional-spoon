@@ -5,11 +5,8 @@
 window.WPS_DATA = {
   "ACTIVITIES": [
     "Portrait",
-    "Street",
-    "Landscape",
     "Fashion",
-    "Minimalist",
-    "Travel",
+    "Editorial",
     "Sports",
     "Fitness"
   ],
@@ -126,7 +123,7 @@ window.WPS_DATA = {
       "createdAt": 1783082332258,
       "title": "Prachi Choudhary",
       "brand": "Personal Project",
-      "activity": "Minimalist",
+      "activity": "Fashion",
       "type": "Test Shoot",
       "season": "June 2026",
       "photographer": "Studio",
