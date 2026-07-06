@@ -453,12 +453,12 @@ window.WPS_DATA = {
         {
           "id": "mr8ld69w1fq1e5-0",
           "url": "photos/mr8legmk0o8mqz/mr8ld69w1fq1e5-0.jpg",
-          "objectPosition": "center"
+          "objectPosition": "top"
         },
         {
           "id": "mr8ld6fw8o533l-1",
           "url": "photos/mr8legmk0o8mqz/mr8ld6fw8o533l-1.jpg",
-          "objectPosition": "center"
+          "objectPosition": "top"
         },
         {
           "id": "mr8ld6oabyimod-2",
@@ -468,7 +468,7 @@ window.WPS_DATA = {
         {
           "id": "mr8ld6tds7z3f0-3",
           "url": "photos/mr8legmk0o8mqz/mr8ld6tds7z3f0-3.jpg",
-          "objectPosition": "center"
+          "objectPosition": "top"
         },
         {
           "id": "mr8ld720pjapet-4",
@@ -478,7 +478,7 @@ window.WPS_DATA = {
         {
           "id": "mr8ld764kc9619-5",
           "url": "photos/mr8legmk0o8mqz/mr8ld764kc9619-5.jpg",
-          "objectPosition": "center"
+          "objectPosition": "top"
         }
       ],
       "featured": true,
