@@ -496,7 +496,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           </h1>
           <p class="lede reveal">${esc(window.STUDIO_CONFIG?.tagline || "The photography behind our brands — directed, shot, and archived in one place.")}${isAdmin() ? " Browse the work, or publish your own shoot." : " Browse the work or book a photoshoot session."}</p>
           <div class="hero-actions reveal">
-            <a href="#/work" data-link class="btn btn-light">View the work →</a>
+            <a href="#/work" data-link class="btn btn-dark">View the work →</a>
             ${isAdmin() ? `<a href="#/upload" data-link class="btn btn-ghost">Publish a shoot</a>` : `<a href="#/book" data-link class="btn btn-ghost">Book a shoot</a>`}
           </div>
           <dl class="hero-stats reveal">
