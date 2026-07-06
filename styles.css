@@ -320,3 +320,49 @@ button:focus-visible,
 .cat-card:active {
   transform: scale(0.97);
 }
+
+/* ============================================================
+   Dark Mode Theme Overrides
+   ============================================================ */
+.theme-dark {
+  --ink: #f6f4ef;
+  --ink-2: #ffffff;
+  --ink-soft: #a6a199;
+  --paper: #0e0e0e;
+  --bone: #171613;
+  --line: #2b2924;
+  --line-dk: rgba(255,255,255,.08);
+}
+
+/* Dark Mode overrides for Header */
+.theme-dark .site-header.scrolled,
+.theme-dark .site-header.header-light.scrolled {
+  background: rgba(14, 14, 14, 0.88) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.theme-dark .site-header.header-light,
+.theme-dark .site-header.header-light .brand,
+.theme-dark .site-header.header-light .menu-btn {
+  color: var(--ink) !important;
+}
+
+.theme-dark .site-header.header-light:not(.scrolled),
+.theme-dark .site-header.header-light.scrolled {
+  --logo-bg: #0e0e0e !important;
+}
+
+/* Dark Mode overrides for upload page dropzone */
+.theme-dark .dropzone:hover,
+.theme-dark .dropzone:focus-visible {
+  background: #23120a;
+}
+.theme-dark .dropzone.is-drag {
+  background: #331508;
+}
+
+/* Modal and panel corrections */
+.theme-dark .thumb-align-select option {
+  background: var(--ink-2);
+  color: var(--paper);
+}
