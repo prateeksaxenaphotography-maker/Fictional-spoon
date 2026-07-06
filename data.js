@@ -124,7 +124,7 @@ window.WPS_DATA = {
       "createdAt": 1783082332258,
       "title": "Prachi Choudhary",
       "brand": "Personal Project",
-      "activity": "Fashion",
+      "activity": "Minimalist",
       "type": "Test Shoot",
       "season": "June 2026",
       "photographer": "Studio",
@@ -139,7 +139,7 @@ window.WPS_DATA = {
       "gear": "",
       "client": "",
       "date": "2026-06-13",
-      "instagram": "https://www.instagram.com/prachichoudharyyy/, https://www.instagram.com/glamnationbyrashi/",
+      "instagram": "https://www.instagram.com/prachichoudharyyy , https://www.instagram.com/glamnationbyrashi",
       "link": "",
       "rights": "",
       "testimonials": [],
@@ -234,7 +234,7 @@ window.WPS_DATA = {
       "gear": "",
       "client": "",
       "date": "2026-06-13",
-      "instagram": "https://www.instagram.com/prachichoudharyyy/, https://www.instagram.com/glamnationbyrashi/",
+      "instagram": "https://www.instagram.com/prachichoudharyyy, https://www.instagram.com/glamnationbyrashi",
       "link": "",
       "rights": "",
       "testimonials": [],
@@ -418,6 +418,71 @@ window.WPS_DATA = {
       ],
       "featured": true,
       "coverPhotoId": "mr5525erdhzei6"
+    },
+    {
+      "id": "mr8legmk0o8mqz",
+      "createdAt": 1783304409260,
+      "title": "Abhishek Yadav",
+      "brand": "Personal Project",
+      "activity": "Fashion",
+      "type": "Test Shoot",
+      "season": "July 2026",
+      "photographer": "Studio",
+      "artDirector": "",
+      "stylist": "—",
+      "hair": "—",
+      "mua": "—",
+      "talent": "Abhishek Yadav",
+      "location": "Noida",
+      "description": "",
+      "tags": "",
+      "gear": "",
+      "client": "",
+      "date": "2026-07-05",
+      "instagram": "",
+      "link": "",
+      "rights": "",
+      "testimonials": [],
+      "lightingDiagram": null,
+      "lightingDiagramVisibility": "private",
+      "palette": [
+        "#c9c3be",
+        "#5a5856"
+      ],
+      "photos": [
+        {
+          "id": "mr8ld69w1fq1e5-0",
+          "url": "photos/mr8legmk0o8mqz/mr8ld69w1fq1e5-0.jpg",
+          "objectPosition": "center"
+        },
+        {
+          "id": "mr8ld6fw8o533l-1",
+          "url": "photos/mr8legmk0o8mqz/mr8ld6fw8o533l-1.jpg",
+          "objectPosition": "center"
+        },
+        {
+          "id": "mr8ld6oabyimod-2",
+          "url": "photos/mr8legmk0o8mqz/mr8ld6oabyimod-2.jpg",
+          "objectPosition": "top"
+        },
+        {
+          "id": "mr8ld6tds7z3f0-3",
+          "url": "photos/mr8legmk0o8mqz/mr8ld6tds7z3f0-3.jpg",
+          "objectPosition": "center"
+        },
+        {
+          "id": "mr8ld720pjapet-4",
+          "url": "photos/mr8legmk0o8mqz/mr8ld720pjapet-4.jpg",
+          "objectPosition": "center"
+        },
+        {
+          "id": "mr8ld764kc9619-5",
+          "url": "photos/mr8legmk0o8mqz/mr8ld764kc9619-5.jpg",
+          "objectPosition": "center"
+        }
+      ],
+      "featured": true,
+      "coverPhotoId": "mr8ld6oabyimod"
     }
   ]
 };
