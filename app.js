@@ -12,6 +12,25 @@
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   // A photo renders from its published file URL when it has one, else its local base64.
   const photoSrc = (p) => (p && (p.url || p.dataUrl)) || "";
+  const parseIgHandle = (h) => {
+    let clean = String(h ?? "").trim();
+    if (!clean) return "";
+    if (clean.includes("instagram.com")) {
+      try {
+        let temp = clean;
+        if (!temp.startsWith("http://") && !temp.startsWith("https://")) {
+          temp = "https://" + temp;
+        }
+        const url = new URL(temp);
+        const parts = url.pathname.split("/").filter(Boolean);
+        if (parts.length > 0) clean = parts[0];
+      } catch {
+        const segments = clean.split("/").filter(Boolean);
+        clean = segments[segments.length - 1] || clean;
+      }
+    }
+    return clean.replace(/^@/, "");
+  };
   // Check for admin unlock parameter (?admin=1 or ?admin=0, supporting both search query and hash routing params)
   const fullUrlString = window.location.search + window.location.hash;
   const adminMatch = fullUrlString.match(/[?&]admin=([01])\b/);
@@ -346,22 +365,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     if (s.instagram) {
       const handles = s.instagram.split(",").map(x => x.trim()).filter(Boolean);
       igHtml = handles.map(h => {
-        let clean = h;
-        if (h.includes("instagram.com")) {
-          try {
-            let val = h;
-            if (!val.startsWith("http://") && !val.startsWith("https://")) {
-              val = "https://" + val;
-            }
-            const url = new URL(val);
-            const parts = url.pathname.split("/").filter(Boolean);
-            if (parts.length > 0) clean = parts[0];
-          } catch {
-            const segments = h.split("/").filter(Boolean);
-            clean = segments[segments.length - 1] || h;
-          }
-        }
-        clean = clean.replace(/^@/, "");
+        const clean = parseIgHandle(h);
         return `<a href="https://instagram.com/${encodeURIComponent(clean)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600;">@${esc(clean)}</a>`;
       }).join(" · ");
     }
@@ -1023,26 +1027,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         igVerify.innerHTML = "";
         return;
       }
-      const handles = val.split(",").map(h => {
-        let clean = h.trim();
-        if (!clean) return null;
-        if (clean.includes("instagram.com")) {
-          try {
-            let temp = clean;
-            if (!temp.startsWith("http://") && !temp.startsWith("https://")) {
-              temp = "https://" + temp;
-            }
-            const url = new URL(temp);
-            const parts = url.pathname.split("/").filter(Boolean);
-            if (parts.length > 0) clean = parts[0];
-          } catch {
-            const segments = clean.split("/").filter(Boolean);
-            clean = segments[segments.length - 1] || clean;
-          }
-        }
-        return clean.replace(/^@/, "");
-      }).filter(Boolean);
-
+      const handles = val.split(",").map(parseIgHandle).filter(Boolean);
       if (handles.length === 0) {
         igVerify.style.display = "none";
         igVerify.innerHTML = "";
@@ -1062,24 +1047,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       let val = igInput.value.trim();
       if (val) {
         const cleaned = val.split(",").map(h => {
-          let clean = h.trim();
-          if (!clean) return "";
-          if (clean.includes("instagram.com")) {
-            try {
-              let temp = clean;
-              if (!temp.startsWith("http://") && !temp.startsWith("https://")) {
-                temp = "https://" + temp;
-              }
-              const url = new URL(temp);
-              const parts = url.pathname.split("/").filter(Boolean);
-              if (parts.length > 0) clean = parts[0];
-            } catch {
-              const segments = clean.split("/").filter(Boolean);
-              clean = segments[segments.length - 1] || clean;
-            }
-          }
-          clean = clean.replace(/^@/, "");
-          return clean ? `@${clean}` : "";
+          const parsed = parseIgHandle(h);
+          return parsed ? `@${parsed}` : "";
         }).filter(Boolean).join(", ");
         igInput.value = cleaned;
       }
