@@ -31,6 +31,14 @@
     }
     return clean.replace(/^@/, "");
   };
+  const isFutureShoot = (s) => {
+    if (!s.date) return false;
+    const t = Date.parse(s.date);
+    if (isNaN(t)) return false;
+    const todayTime = new Date().setHours(0, 0, 0, 0);
+    const shootTime = new Date(t).setHours(0, 0, 0, 0);
+    return shootTime > todayTime;
+  };
   // Check for admin unlock parameter (?admin=1 or ?admin=0, supporting both search query and hash routing params)
   const fullUrlString = window.location.search + window.location.hash;
   const adminMatch = fullUrlString.match(/[?&]admin=([01])\b/);
@@ -92,7 +100,13 @@
       return isNaN(t) ? (s.createdAt || 0) : t;
     };
     
-    SHOOTS = (usingDemo ? (window.WPS_DATA.DEMO_SHOOTS || DEMO_SHOOTS) : real).sort((a, b) => parseShootDate(b) - parseShootDate(a));
+    const sorted = (usingDemo ? (window.WPS_DATA.DEMO_SHOOTS || DEMO_SHOOTS) : real).sort((a, b) => parseShootDate(b) - parseShootDate(a));
+    
+    if (isAdmin()) {
+      SHOOTS = sorted;
+    } else {
+      SHOOTS = sorted.filter(s => !isFutureShoot(s));
+    }
   }
   const allPhotos = () => SHOOTS.flatMap((s) => s.photos.map((p) => ({ ...p, shoot: s })));
 
@@ -198,7 +212,7 @@
     if (uploadLi) uploadLi.style.display = active ? "block" : "none";
     if (bookLi) bookLi.style.display = active ? "none" : "block";
   }
-  adminBtn?.addEventListener("click", () => {
+  adminBtn?.addEventListener("click", async () => {
     const turningOn = !isAdmin();
     if (turningOn) {
       const code = prompt("Enter admin passcode to enable Admin Mode:");
@@ -208,6 +222,7 @@
       }
     }
     localStorage.setItem("wps-admin", turningOn ? "1" : "0");
+    await loadShoots();
     updateAdminBtn();
     toast(`Admin Mode ${isAdmin() ? "enabled" : "disabled"}.`);
     render();
@@ -407,6 +422,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <span class="work-count">${s.photos.length} frames</span>
         </button>
         <div class="work-info">
+          ${isFutureShoot(s) ? `
+            <div class="future-schedule-badge" style="display: inline-block; background: rgba(210,78,26,0.12); color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 6px 12px; border-radius: 4px; margin-bottom: 16px; border: 1px solid rgba(210,78,26,0.25);">
+              To be visible to public after ${esc(s.date)}
+            </div>
+          ` : ""}
           <p class="eyebrow">${esc(s.brand)} · ${esc(s.type)}</p>
           <h3>${esc(s.title)}</h3>
           <p class="work-desc">${esc(s.description || "")}</p>
