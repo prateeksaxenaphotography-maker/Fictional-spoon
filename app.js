@@ -1011,6 +1011,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     dz.addEventListener("drop", (e) => { if (e.dataTransfer?.files?.length) ingest(e.dataTransfer.files); });
     const igInput = $("#f_ig");
     const igVerify = $("#f_ig_verify");
+    let clickedVerify = false;
+    igVerify?.addEventListener("click", (e) => {
+      if (e.target.closest("a")) clickedVerify = true;
+    });
     function updateIgVerify() {
       if (!igInput || !igVerify) return;
       const val = igInput.value.trim();
@@ -1084,8 +1088,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      if (!staged.length) { toast("Add at least one photo first."); return; }
       const val = (id) => $("#" + id)?.value.trim();
+      const igVal = val("f_ig");
+      const originalIg = editingShoot ? (editingShoot.instagram || "") : "";
+      if (igVal && igVal !== originalIg && !clickedVerify) {
+        const proceed = confirm("You haven't tested the new Instagram links. Would you like to proceed and publish anyway?");
+        if (!proceed) return;
+      }
+      if (!staged.length) { toast("Add at least one photo first."); return; }
       
       const testimonialsList = [
         val("f_quote_1") ? { quote: val("f_quote_1"), by: val("f_quoteby_1") || "Client" } : null,
