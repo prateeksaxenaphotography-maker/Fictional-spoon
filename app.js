@@ -371,9 +371,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   const view = $("#view");
 
   function fullBleedBlock(s, i) {
-    const cover = s.photos.find(p => p.id.split("-")[0] === s.coverPhotoId) || s.photos[0] || { dataUrl: "", objectPosition: "top center" };
-    let coverPos = cover.objectPosition || "top center";
-    if (coverPos === "center" || coverPos === "center center") coverPos = "top center";
+    const cover = s.photos.find(p => p.id.split("-")[0] === s.coverPhotoId) || s.photos[0] || { dataUrl: "", objectPosition: "center" };
+    let coverPos = cover.objectPosition || "center";
     
     // Parse multiple Instagram accounts/URLs to clickable links
     let igHtml = "";
