@@ -274,7 +274,7 @@ window.WPS_DATA = {
       "createdAt": 1783082629485,
       "title": "Prachi Choudhary",
       "brand": "Personal Project",
-      "activity": "Portrait",
+      "activity": "Beauty",
       "type": "Test Shoot",
       "season": "June 2026",
       "photographer": "Studio",
