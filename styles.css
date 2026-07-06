@@ -141,7 +141,7 @@ a { color: inherit; text-decoration: none; }
 .work-block { display: grid; grid-template-columns: 1.25fr 1fr; gap: 48px; align-items: center; }
 .work-block.flip { direction: rtl; } .work-block.flip > * { direction: ltr; }
 .work-media { position: relative; padding: 0; border: 0; background: none; cursor: zoom-in; overflow: hidden; border-radius: 8px; aspect-ratio: 4/5; box-shadow: var(--shadow); }
-.work-media img { width: 100%; height: 100%; object-fit: contain; transition: transform .7s var(--ease); }
+.work-media img { width: 100%; height: 100%; object-fit: contain; object-position: top center; transition: transform .7s var(--ease); }
 .work-media:hover img { transform: scale(1.05); }
 .work-count { position: absolute; left: 14px; bottom: 14px; font-family: "JetBrains Mono", monospace; font-size: 10px; letter-spacing: .12em; color: #fff; background: rgba(0,0,0,.5); backdrop-filter: blur(4px); padding: 6px 10px; border-radius: 100px; }
 .work-info h3 { font-size: clamp(26px, 3.4vw, 42px); font-weight: 800; line-height: 1.02; margin: 4px 0 14px; }
@@ -197,7 +197,7 @@ a { color: inherit; text-decoration: none; }
 .thumb-grid:empty { display: none; }
 .thumb { position: relative; aspect-ratio: 1; border-radius: 6px; overflow: hidden; background: var(--paper); border: 1px solid var(--line); animation: pop .4s var(--ease) both; }
 @keyframes pop { from { opacity: 0; transform: scale(.9); } }
-.thumb img { width: 100%; height: 100%; object-fit: cover; }
+.thumb img { width: 100%; height: 100%; object-fit: cover; object-position: top center; }
 .thumb-remove { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; background: rgba(14,14,14,.78); color: #fff; border: 0; font-size: 14px; z-index: 2; cursor: pointer; display: grid; place-items: center; }
 .thumb-align-ctrl { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(14,14,14,.88); padding: 4px 2px; display: flex; justify-content: center; align-items: center; border-top: 1px solid rgba(255,255,255,.08); }
 .thumb-align-select { width: 100%; font-family: inherit; font-size: 9px; font-weight: 700; background: transparent; color: #fff; border: none; text-align-last: center; outline: none; cursor: pointer; padding: 0; text-transform: uppercase; letter-spacing: 0.05em; }

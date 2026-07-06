@@ -123,7 +123,7 @@
   const lb = $("#lightbox"), lbImg = $("#lightboxImg"), lbCap = $("#lightboxCaption"), lbCount = $("#lbCounter");
   let lbList = [], lbIdx = 0;
   function openLb(list, idx) { lbList = list; lbIdx = idx; paintLb(); lb.hidden = false; document.body.style.overflow = "hidden"; $("#lightboxClose").focus(); }
-  function paintLb() { const p = lbList[lbIdx]; if (!p) return; lbImg.src = photoSrc(p); lbImg.alt = p.shoot.title; lbImg.style.objectPosition = p.objectPosition || "center"; lbCap.textContent = `${p.shoot.title} — ${p.shoot.brand} · by ${p.shoot.photographer}`; lbCount.textContent = `${lbIdx + 1} / ${lbList.length}`; }
+  function paintLb() { const p = lbList[lbIdx]; if (!p) return; lbImg.src = photoSrc(p); lbImg.alt = p.shoot.title; lbImg.style.objectPosition = p.objectPosition || "top center"; lbCap.textContent = `${p.shoot.title} — ${p.shoot.brand} · by ${p.shoot.photographer}`; lbCount.textContent = `${lbIdx + 1} / ${lbList.length}`; }
   function stepLb(d) { if (!lbList.length) return; lbIdx = (lbIdx + d + lbList.length) % lbList.length; paintLb(); }
   function closeLb() { lb.hidden = true; lbImg.src = ""; document.body.style.overflow = ""; }
   $("#lightboxClose").addEventListener("click", closeLb);
@@ -337,10 +337,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   const view = $("#view");
 
   function fullBleedBlock(s, i) {
-    const cover = s.photos.find(p => p.id.split("-")[0] === s.coverPhotoId) || s.photos[0] || { dataUrl: "", objectPosition: "top" };
-    let coverPos = cover.objectPosition || "top";
-    if (coverPos === "center") coverPos = "top";
-    else if (coverPos === "center center") coverPos = "center";
+    const cover = s.photos.find(p => p.id.split("-")[0] === s.coverPhotoId) || s.photos[0] || { dataUrl: "", objectPosition: "top center" };
+    let coverPos = cover.objectPosition || "top center";
+    if (coverPos === "center" || coverPos === "center center") coverPos = "top center";
     
     // Parse multiple Instagram accounts/URLs to clickable links
     let igHtml = "";
@@ -695,7 +694,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                 <label class="field"><span>Date shot</span><input id="f_date" type="date" /></label>
               </div>
               <div class="field-row">
-                <label class="field"><span>Instagram (comma-separated)</span><input id="f_ig" type="text" placeholder="e.g. @handle1, @handle2" /></label>
+                <label class="field" style="position: relative;">
+                  <span>Instagram (comma-separated)</span>
+                  <input id="f_ig" type="text" placeholder="e.g. @handle1, @handle2" />
+                  <div id="f_ig_verify" style="margin-top: 5px; font-size: 11px; display: none;"></div>
+                </label>
                 <label class="field"><span>Portfolio link</span><input id="f_link" type="url" placeholder="https://…" /></label>
               </div>
               <label class="field"><span>Usage rights</span><input id="f_rights" type="text" placeholder="e.g. Web + social, 1 year" /></label>
@@ -943,7 +946,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               Cover
             </label>
           </div>
-          <img src="${esc(photoSrc(f))}" style="object-position: ${esc(f.objectPosition || 'center')}" alt="${esc(f.name)}"/>
+          <img src="${esc(photoSrc(f))}" style="object-position: ${esc(f.objectPosition || 'top center')}" alt="${esc(f.name)}"/>
           <button class="thumb-remove" data-id="${f.id}" aria-label="Remove">×</button>
           <div class="thumb-align-ctrl">
             <select class="thumb-align-select" data-id="${f.id}" aria-label="Align image">
@@ -1007,12 +1010,18 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     ["dragleave", "dragend", "drop"].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.remove("is-drag"); }));
     dz.addEventListener("drop", (e) => { if (e.dataTransfer?.files?.length) ingest(e.dataTransfer.files); });
     const igInput = $("#f_ig");
-    igInput?.addEventListener("blur", () => {
-      let val = igInput.value.trim();
-      if (!val) return;
-      const cleaned = val.split(",").map(h => {
+    const igVerify = $("#f_ig_verify");
+    function updateIgVerify() {
+      if (!igInput || !igVerify) return;
+      const val = igInput.value.trim();
+      if (!val) {
+        igVerify.style.display = "none";
+        igVerify.innerHTML = "";
+        return;
+      }
+      const handles = val.split(",").map(h => {
         let clean = h.trim();
-        if (!clean) return "";
+        if (!clean) return null;
         if (clean.includes("instagram.com")) {
           try {
             let temp = clean;
@@ -1027,10 +1036,50 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             clean = segments[segments.length - 1] || clean;
           }
         }
-        clean = clean.replace(/^@/, "");
-        return clean ? `@${clean}` : "";
-      }).filter(Boolean).join(", ");
-      igInput.value = cleaned;
+        return clean.replace(/^@/, "");
+      }).filter(Boolean);
+
+      if (handles.length === 0) {
+        igVerify.style.display = "none";
+        igVerify.innerHTML = "";
+        return;
+      }
+      const linksHtml = handles.map(username => {
+        return `<a href="https://instagram.com/${encodeURIComponent(username)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600; text-decoration:underline; display:inline-flex; align-items:center; gap:2px; margin-right:12px;">@${esc(username)} ↗</a>`;
+      }).join("");
+      igVerify.innerHTML = `<span style="color:var(--ink-soft); font-family:'JetBrains Mono', monospace; font-size:10px; margin-right:6px; text-transform:uppercase;">Verify links:</span> ${linksHtml}`;
+      igVerify.style.display = "block";
+    }
+
+    setTimeout(updateIgVerify, 50);
+
+    igInput?.addEventListener("input", updateIgVerify);
+    igInput?.addEventListener("blur", () => {
+      let val = igInput.value.trim();
+      if (val) {
+        const cleaned = val.split(",").map(h => {
+          let clean = h.trim();
+          if (!clean) return "";
+          if (clean.includes("instagram.com")) {
+            try {
+              let temp = clean;
+              if (!temp.startsWith("http://") && !temp.startsWith("https://")) {
+                temp = "https://" + temp;
+              }
+              const url = new URL(temp);
+              const parts = url.pathname.split("/").filter(Boolean);
+              if (parts.length > 0) clean = parts[0];
+            } catch {
+              const segments = clean.split("/").filter(Boolean);
+              clean = segments[segments.length - 1] || clean;
+            }
+          }
+          clean = clean.replace(/^@/, "");
+          return clean ? `@${clean}` : "";
+        }).filter(Boolean).join(", ");
+        igInput.value = cleaned;
+      }
+      updateIgVerify();
     });
 
     form.addEventListener("submit", async (e) => {
