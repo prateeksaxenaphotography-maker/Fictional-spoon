@@ -1271,6 +1271,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const parts = raw.split("/").filter(Boolean); // e.g. ["categories","activity","Trail"]
     const key = parts[0] || "";
     
+    if (typeof gtag === 'function') {
+      gtag('config', 'G-S0Q7T5Y2J4', {
+        'page_path': location.hash || '#/'
+      });
+    }
+    
     const header = $(".site-header");
     if (header) {
       if (key === "") {
