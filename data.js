@@ -463,7 +463,7 @@ window.WPS_DATA = {
         {
           "id": "mr8ld6oabyimod-2",
           "url": "photos/mr8legmk0o8mqz/mr8ld6oabyimod-2.jpg",
-          "objectPosition": "top"
+          "objectPosition": "center center"
         },
         {
           "id": "mr8ld6tds7z3f0-3",
