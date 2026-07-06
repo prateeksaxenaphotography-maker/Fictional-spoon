@@ -156,7 +156,7 @@
   const lb = $("#lightbox"), lbImg = $("#lightboxImg"), lbCap = $("#lightboxCaption"), lbCount = $("#lbCounter");
   let lbList = [], lbIdx = 0;
   function openLb(list, idx) { lbList = list; lbIdx = idx; paintLb(); lb.hidden = false; document.body.style.overflow = "hidden"; $("#lightboxClose").focus(); }
-  function paintLb() { const p = lbList[lbIdx]; if (!p) return; lbImg.src = photoSrc(p); lbImg.alt = p.shoot.title; lbImg.style.objectPosition = p.objectPosition || "top center"; lbCap.textContent = `${p.shoot.title} — ${p.shoot.brand} · by ${p.shoot.photographer}`; lbCount.textContent = `${lbIdx + 1} / ${lbList.length}`; }
+  function paintLb() { const p = lbList[lbIdx]; if (!p) return; lbImg.src = photoSrc(p); lbImg.alt = p.shoot.title; lbImg.style.objectPosition = "center"; lbCap.textContent = `${p.shoot.title} — ${p.shoot.brand} · by ${p.shoot.photographer}`; lbCount.textContent = `${lbIdx + 1} / ${lbList.length}`; }
   function stepLb(d) { if (!lbList.length) return; lbIdx = (lbIdx + d + lbList.length) % lbList.length; paintLb(); }
   function closeLb() { lb.hidden = true; lbImg.src = ""; document.body.style.overflow = ""; }
   $("#lightboxClose").addEventListener("click", closeLb);
@@ -417,7 +417,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     return `
       <article class="work-block ${i % 2 ? "flip" : ""} reveal" data-shoot="${s.id}">
         <button class="work-media" style="background-color: ${esc((s.palette && s.palette[1]) || '#1a1a1a')}; display: flex; align-items: center; justify-content: center;" aria-label="View ${esc(s.title)}">
-          <img src="${esc(photoSrc(cover))}" style="object-position: ${esc(coverPos)}" alt="${esc(s.title)}" loading="lazy" />
+          <img src="${esc(photoSrc(cover))}" style="object-position: center;" alt="${esc(s.title)}" loading="lazy" />
           <span class="work-count">${s.photos.length} frames</span>
         </button>
         <div class="work-info">
