@@ -23,6 +23,25 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Fraunces:opsz,ital,wght@9..144,0,300;9..144,1,400;9..144,1,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=3" />
+  <script>
+    (function() {
+      function updateTheme() {
+        const override = localStorage.getItem("wps-theme-override") || "auto";
+        const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        if (override === "dark" || (override === "auto" && systemDark)) {
+          document.documentElement.classList.add("theme-dark");
+        } else {
+          document.documentElement.classList.remove("theme-dark");
+        }
+      }
+      updateTheme();
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", updateTheme);
+      window.addEventListener("storage", (e) => {
+        if (e.key === "wps-theme-override") updateTheme();
+      });
+      window.applyWpsThemeOverride = updateTheme;
+    })();
+  </script>
 
   <script type="application/ld+json">
   {
