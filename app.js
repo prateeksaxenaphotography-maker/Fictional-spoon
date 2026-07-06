@@ -1303,7 +1303,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       // SEO optimization: update page title and description dynamically
       const cfg = window.STUDIO_CONFIG || { studioName: "thenerdyphotographer.in" };
       let pageTitle = `${cfg.studioName} — The Creative Studio`;
-      let pageDesc = "Noida and Delhi NCR based professional photography studio. Specializing in high-end fashion, beauty, editorial, sports, and fitness photography. Browse portfolios by nerdyphotographer.in — Noida, Delhi NCR, India.";
+      let pageDesc = "Noida and Delhi NCR based professional photography studio. Specializing in high-end male and female model photography, fashion, beauty, editorial, sports, and fitness photography. Browse portfolios by nerdyphotographer.in — Noida, Delhi NCR, India.";
       
       if (key === "work") {
         pageTitle = `The Photo Archive — ${cfg.studioName}`;
