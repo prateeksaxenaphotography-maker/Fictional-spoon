@@ -198,6 +198,7 @@
   const adminBtn = $("#adminModeBtn");
   const themeBtn = $("#themeOverrideBtn");
   const visitorStatsLabel = $("#visitorStatsLabel");
+  const visitorStatsBlock = $("#visitorStatsBlock");
 
   function getVisitorStats(seedString) {
     function random(seed) {
@@ -247,13 +248,13 @@
       updateThemeBtnText();
     }
 
-    if (visitorStatsLabel) {
+    if (visitorStatsBlock && visitorStatsLabel) {
       if (active) {
         const stats = getVisitorStats("Wolverine Photo Studio");
         visitorStatsLabel.innerHTML = `Visits: <strong>${stats.visits7}</strong> (7d) · <strong>${stats.visits24}</strong> (24d)`;
-        visitorStatsLabel.style.display = "inline-block";
+        visitorStatsBlock.style.display = "block";
       } else {
-        visitorStatsLabel.style.display = "none";
+        visitorStatsBlock.style.display = "none";
       }
     }
   }
