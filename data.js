@@ -446,8 +446,8 @@ window.WPS_DATA = {
       "lightingDiagram": null,
       "lightingDiagramVisibility": "private",
       "palette": [
-        "#b1b2b6",
-        "#505052"
+        "#c9c3be",
+        "#5a5856"
       ],
       "photos": [
         {
@@ -482,7 +482,7 @@ window.WPS_DATA = {
         }
       ],
       "featured": true,
-      "coverPhotoId": "mr8ld69w1fq1e5"
+      "coverPhotoId": "mr8ld6oabyimod"
     }
   ]
 };
