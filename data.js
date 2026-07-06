@@ -439,7 +439,7 @@ window.WPS_DATA = {
       "gear": "",
       "client": "",
       "date": "2026-07-05",
-      "instagram": "",
+      "instagram": "@_abhishek.yadavv",
       "link": "",
       "rights": "",
       "testimonials": [],
