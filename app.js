@@ -196,6 +196,16 @@
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && overlay.classList.contains("open")) toggleMenu(false); });
 
   const adminBtn = $("#adminModeBtn");
+  const themeBtn = $("#themeOverrideBtn");
+
+  function updateThemeBtnText() {
+    if (!themeBtn) return;
+    const mode = localStorage.getItem("wps-theme-override") || "auto";
+    themeBtn.textContent = `Theme: ${mode}`;
+    themeBtn.style.borderColor = mode !== "auto" ? "var(--accent)" : "currentColor";
+    themeBtn.style.color = mode !== "auto" ? "var(--accent)" : "#fff";
+  }
+
   function updateAdminBtn() {
     if (!adminBtn) return;
     const active = isAdmin();
@@ -211,7 +221,13 @@
     const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi");
     if (uploadLi) uploadLi.style.display = active ? "block" : "none";
     if (bookLi) bookLi.style.display = active ? "none" : "block";
+
+    if (themeBtn) {
+      themeBtn.style.display = active ? "inline-block" : "none";
+      updateThemeBtnText();
+    }
   }
+
   adminBtn?.addEventListener("click", async () => {
     const turningOn = !isAdmin();
     if (turningOn) {
@@ -226,6 +242,20 @@
     updateAdminBtn();
     toast(`Admin Mode ${isAdmin() ? "enabled" : "disabled"}.`);
     render();
+  });
+
+  themeBtn?.addEventListener("click", () => {
+    const current = localStorage.getItem("wps-theme-override") || "auto";
+    let next = "auto";
+    if (current === "auto") next = "light";
+    else if (current === "light") next = "dark";
+    else next = "auto";
+
+    localStorage.setItem("wps-theme-override", next);
+    updateThemeBtnText();
+    if (window.applyWpsThemeOverride) {
+      window.applyWpsThemeOverride();
+    }
   });
 
   /* ---------------- GitHub sync ----------------
