@@ -436,7 +436,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     // Parse multiple Instagram accounts/URLs to clickable links
     let igHtml = "";
     if (s.instagram) {
-      const handles = s.instagram.split(",").map(x => x.trim()).filter(Boolean);
+      let handles = s.instagram.split(",").map(x => x.trim()).filter(Boolean);
+      if (s.isCompCard) {
+        // Only show the model's (first) Instagram link for comp cards
+        handles = handles.slice(0, 1);
+      }
       igHtml = handles.map(h => {
         const clean = parseIgHandle(h);
         return `<a href="https://instagram.com/${encodeURIComponent(clean)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600;">@${esc(clean)}</a>`;
