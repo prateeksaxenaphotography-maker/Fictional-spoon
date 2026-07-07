@@ -63,7 +63,7 @@ window.WPS_DATA = {
         {
           "id": "mr4x1ect353v87-0",
           "url": "photos/mr4x3r7e4l5g4m/mr4x1ect353v87-0.jpg",
-          "objectPosition": "center"
+          "objectPosition": "top"
         },
         {
           "id": "mr4x1ein5o1aaq-1",
@@ -451,19 +451,19 @@ window.WPS_DATA = {
       ],
       "photos": [
         {
-          "id": "mr8ld69w1fq1e5-0",
-          "url": "photos/mr8legmk0o8mqz/mr8ld69w1fq1e5-0.jpg",
-          "objectPosition": "top"
-        },
-        {
-          "id": "mr8ld6fw8o533l-1",
+          "id": "mr8ld6fw8o533l-0",
           "url": "photos/mr8legmk0o8mqz/mr8ld6fw8o533l-1.jpg",
           "objectPosition": "top"
         },
         {
-          "id": "mr8ld6oabyimod-2",
+          "id": "mr8ld6oabyimod-1",
           "url": "photos/mr8legmk0o8mqz/mr8ld6oabyimod-2.jpg",
           "objectPosition": "center center"
+        },
+        {
+          "id": "mr8ld69w1fq1e5-2",
+          "url": "photos/mr8legmk0o8mqz/mr8ld69w1fq1e5-0.jpg",
+          "objectPosition": "top"
         },
         {
           "id": "mr8ld6tds7z3f0-3",
@@ -471,14 +471,19 @@ window.WPS_DATA = {
           "objectPosition": "top"
         },
         {
-          "id": "mr8ld720pjapet-4",
-          "url": "photos/mr8legmk0o8mqz/mr8ld720pjapet-4.jpg",
+          "id": "mr8ld764kc9619-4",
+          "url": "photos/mr8legmk0o8mqz/mr8ld764kc9619-5.jpg",
+          "objectPosition": "top"
+        },
+        {
+          "id": "mracianzxnpa86-5",
+          "url": "photos/mr8legmk0o8mqz/mracianzxnpa86-5.jpg",
           "objectPosition": "center"
         },
         {
-          "id": "mr8ld764kc9619-5",
-          "url": "photos/mr8legmk0o8mqz/mr8ld764kc9619-5.jpg",
-          "objectPosition": "top"
+          "id": "mr8ld720pjapet-6",
+          "url": "photos/mr8legmk0o8mqz/mr8ld720pjapet-4.jpg",
+          "objectPosition": "center"
         }
       ],
       "featured": true,
