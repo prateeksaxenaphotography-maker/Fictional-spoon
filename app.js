@@ -645,7 +645,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const activeBrands = BRANDS.filter(b => SHOOTS.some(s => s.brand === b && s.client && s.client.trim()));
     const displayBrands = activeBrands.length ? activeBrands : BRANDS;
     const clientNames = [...new Set(SHOOTS.map(s => s.client).filter(c => c && c.trim()))];
-    const wordmark = (window.STUDIO_CONFIG?.studioShortName || "NERDY").toUpperCase();
+    const wordmark = "nerdyphotographer";
     const wordmarkLetters = wordmark.split("").map((ch, i) =>
       `<span class="wm-letter" style="--i:${i}">${esc(ch)}</span>`
     ).join("");
@@ -657,7 +657,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             <span class="hero-topline-l">The Creative Studio</span>
             <span class="hero-topline-r">Noida · Delhi NCR</span>
           </div>
-          <h1 class="hero-wordmark" aria-label="${esc(window.STUDIO_CONFIG?.studioName || 'nerdyphotographer.in')}">
+          <h1 class="hero-wordmark hero-wordmark-long" aria-label="${esc(window.STUDIO_CONFIG?.studioName || 'nerdyphotographer.in')}">
             ${wordmarkLetters}
           </h1>
           <div class="hero-mono-foot">
@@ -667,11 +667,6 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               ${isAdmin() ? `<a href="/upload" data-link class="btn btn-ghost">Publish a shoot</a>` : `<a href="/book" data-link class="btn btn-ghost">Book a shoot</a>`}
             </div>
           </div>
-          <dl class="hero-stats reveal">
-            <div><dt data-count>${allPhotos().length}</dt><dd>Frames archived</dd></div>
-            <div><dt data-count>${SHOOTS.length}</dt><dd>Photoshoots</dd></div>
-            ${brandCount > 0 ? `<div><dt data-count>${brandCount}</dt><dd>Iconic brand${brandCount !== 1 ? 's' : ''}</dd></div>` : ''}
-          </dl>
         </div>
         <div class="hero-scroll" aria-hidden="true"><span></span>SCROLL</div>
       </section>
@@ -715,9 +710,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         ${kineticWord("WORKS")}
         <div class="section-head row reveal" style="margin-top: 8px;">
           <div><p class="eyebrow">01 — Selected work</p><h2>Featured photoshoots</h2></div>
-          <a href="/categories" data-link class="link-arrow">All Categories →</a>
+          <a href="/albums" data-link class="link-arrow">All albums →</a>
         </div>
         <div class="noth-work-list">${feat.map(nothWorkCard).join("")}</div>
+        ${SHOOTS.length > feat.length ? `
+        <div class="works-all-cta reveal">
+          <a href="/albums" data-link class="btn btn-dark">View all ${SHOOTS.length} albums →</a>
+        </div>
+        ` : ""}
       </section>
 
 
@@ -746,6 +746,34 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           ${isAdmin() ? `
             <h2>Your shoot belongs in the archive.</h2>
             <a href="/upload" data-link class="btn btn-dark">Publish your photoshoot →</a>
+          ` : `
+            <h2>Ready to capture your story?</h2>
+            <a href="/book" data-link class="btn btn-dark">Book your photoshoot session →</a>
+          `}
+        </div>
+      </section>`;
+  }
+
+  // Full listing of every album — the "All albums" page.
+  function viewAlbums() {
+    const list = SHOOTS.slice();
+    CURRENT_VIEW_SHOOTS = list;
+    return `
+      <section class="page-head">
+        <div class="container">
+          <p class="eyebrow reveal">02 — The archive</p>
+          ${kineticH1("Albums")}
+          <p class="page-sub reveal">${list.length} album${list.length !== 1 ? "s" : ""} in the archive — every photoshoot, newest first.</p>
+        </div>
+      </section>
+      <section class="section container">
+        <div class="noth-work-list">${list.map(nothWorkCard).join("") || emptyCat()}</div>
+      </section>
+      <section class="cta-band">
+        <div class="container reveal">
+          ${isAdmin() ? `
+            <h2>Add another to the archive.</h2>
+            <a href="/upload" data-link class="btn btn-dark">Publish a photoshoot →</a>
           ` : `
             <h2>Ready to capture your story?</h2>
             <a href="/book" data-link class="btn btn-dark">Book your photoshoot session →</a>
@@ -1818,7 +1846,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     });
   }
 
-  const ROUTES = { "": viewHome, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload, "book": viewBook };
+  const ROUTES = { "": viewHome, "albums": viewAlbums, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload, "book": viewBook };
 
   function render() {
     let raw = location.pathname;
@@ -1871,9 +1899,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       let pageTitle = `${cfg.studioName} — The Creative Studio`;
       let pageDesc = "Noida and Delhi NCR based professional photography studio. Specializing in high-end male and female model photography, fashion, beauty, editorial, sports, and fitness photography. Browse portfolios by nerdyphotographer.in — Noida, Delhi NCR, India.";
       
-      if (key === "work") {
-        pageTitle = `The Photo Archive — ${cfg.studioName}`;
-        pageDesc = `Browse through the complete photoshoot archive of ${cfg.studioName}. Editorial, fine art, and commercial photography projects.`;
+      if (key === "work" || key === "albums") {
+        pageTitle = `All Albums — ${cfg.studioName}`;
+        pageDesc = `Browse the complete photoshoot album archive of ${cfg.studioName} — fashion, beauty, editorial, sports, and fitness photography in Noida & Delhi NCR.`;
       } else if (key === "categories") {
         if (parts[1] && parts[2]) {
           const catName = decodeURIComponent(parts[2]);
@@ -2099,49 +2127,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     window.addEventListener("mouseout", (e) => { if (!e.relatedTarget) { active = false; cursor.classList.remove("show"); } });
   })();
 
-  /* ---------------- Smooth inertia scroll (noth.in-style) ----------------
-     Lightweight Lenis-style wheel lerp. Desktop + fine pointer only; native
-     touch scrolling is already smooth and is left untouched. Auto-pauses when
-     the lightbox or nav overlay locks the page. Respects reduced motion. */
-  const smoothScroll = (function initSmoothScroll() {
-    const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
-    const fine = window.matchMedia("(pointer: fine)").matches;
-    if (prefersReduced || isTouch || !fine) return { enabled: false };
-
-    let target = window.scrollY;
-    let current = window.scrollY;
-    let raf = null;
-    let running = false;
-    const EASE = 0.09;
-
-    const maxScroll = () => Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-    const paused = () => document.body.style.overflow === "hidden"; // lightbox/nav lock
-
-    function frame() {
-      const diff = target - current;
-      if (Math.abs(diff) < 0.4) { current = target; window.scrollTo(0, current); running = false; raf = null; return; }
-      current += diff * EASE;
-      window.scrollTo(0, current);
-      raf = requestAnimationFrame(frame);
-    }
-    function onWheel(e) {
-      if (paused() || e.ctrlKey) return;           // let pinch-zoom + locked states pass
-      e.preventDefault();
-      target = Math.min(maxScroll(), Math.max(0, target + e.deltaY));
-      if (!running) { running = true; current = window.scrollY; raf = requestAnimationFrame(frame); }
-    }
-    window.addEventListener("wheel", onWheel, { passive: false });
-    // Keep target in sync when scroll happens by other means (keyboard, anchors, resize).
-    window.addEventListener("scroll", () => { if (!running) { target = window.scrollY; current = window.scrollY; } }, { passive: true });
-    window.addEventListener("resize", () => { target = Math.min(target, maxScroll()); }, { passive: true });
-
-    // Smooth-scroll for in-page anchor links (e.g. footer #footer).
-    return {
-      enabled: true,
-      to(y) { target = Math.min(maxScroll(), Math.max(0, y)); if (!running) { running = true; current = window.scrollY; raf = requestAnimationFrame(frame); } },
-      reset() { target = window.scrollY; current = window.scrollY; }
-    };
-  })();
+  /* ---------------- Scrolling ----------------
+     Native scrolling is used (trackpads/modern browsers are already smooth and
+     JS wheel-hijacking makes them feel laggy). Smoothness for anchor jumps comes
+     from CSS `scroll-behavior: smooth`. This shim keeps the old API as a no-op. */
+  const smoothScroll = { enabled: false, reset() {}, to(y) { window.scrollTo({ top: y, behavior: prefersReduced ? "auto" : "smooth" }); } };
 
   /* ---------------- Header scroll + loader ---------------- */
   const header = $(".site-header");
