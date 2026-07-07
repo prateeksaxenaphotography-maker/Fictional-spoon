@@ -73,6 +73,8 @@ a { color: inherit; text-decoration: none; }
 .loader-bar { width: 170px; height: 2px; background: rgba(255,255,255,.14); overflow: hidden; }
 .loader-bar span { display: block; height: 100%; width: 0; background: var(--accent); animation: load 1.3s var(--ease) forwards; }
 .loader-label { font-family: "JetBrains Mono", monospace; font-size: 10px; letter-spacing: .34em; color: rgba(255,255,255,.5); margin: 0; }
+.loader-count { position: absolute; right: 28px; bottom: 22px; font-family: var(--mono-font, "JetBrains Mono", monospace); font-size: clamp(48px, 9vw, 108px); font-weight: 500; line-height: 1; color: #fff; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.loader-count::after { content: ""; }
 @keyframes load { to { width: 100%; } }
 @keyframes mp { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(.85); opacity: .55; } }
 
@@ -539,4 +541,178 @@ button:focus-visible,
 
 @media (max-width: 620px) {
   .comp-card-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+}
+
+/* ============================================================
+   NOTH.IN-STYLE MONOCHROME LAYER
+   Black/white base + IBM Plex Mono UI, photos supply all color.
+   Kept as an override layer so the light/dark toggle still works.
+   ============================================================ */
+:root {
+  /* Monochrome base — near-pure paper/ink, neutral gray surfaces */
+  --ink: #0a0a0a;
+  --ink-2: #000000;
+  --ink-soft: #6a6a6a;
+  --paper: #f6f5f3;
+  --bone: #eceae7;
+  --bone-2: #e2dfdb;
+  --line: #dedbd6;
+  --line-2: #cbc7c0;
+  --line-dk: rgba(0,0,0,.08);
+  /* Accent kept as a rare highlight, not a fill */
+  --mono-font: "IBM Plex Mono", "JetBrains Mono", monospace;
+}
+.theme-dark {
+  --ink: #f2f1ee;
+  --ink-2: #ffffff;
+  --ink-soft: #8f8c86;
+  --paper: #0a0a0a;
+  --bone: #141413;
+  --bone-2: #1d1c1a;
+  --line: #262523;
+  --line-2: #35332f;
+  --line-dk: rgba(255,255,255,.07);
+}
+
+/* Technical/mono treatment for all micro-labels and UI chrome */
+.eyebrow,
+.menu-btn,
+.nav-idx,
+.nav-meta-label,
+.hero-scroll,
+.work-count,
+.cat-kind,
+.alpha-filter-bar,
+.lightbox-counter,
+.marquee-track,
+.loader-label,
+.comp-card-header .comp-card-eyebrow,
+.specialty-thumb-empty { font-family: var(--mono-font); }
+
+/* Monochrome buttons: ink/paper only, accent reserved for focus */
+.btn-dark { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.btn-dark:hover { background: transparent; color: var(--ink); border-color: var(--ink); }
+.theme-dark .btn-dark:hover { color: var(--ink); border-color: var(--ink); }
+.hero .btn-ghost:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+/* Neutralize the marquee (was solid clay) into a mono band */
+.marquee { background: var(--ink); color: var(--paper); }
+
+/* Surfaces go flat gray; borders do the work, not warm fills */
+.service-card, .testimonial-card, .cat-card,
+.specialty-thumb-wrap, .comp-card-thumb, .cat-cover,
+.work-media, .book-success { background: var(--bone); }
+
+/* Section labels/eyebrows monochrome by default; accent only where it earns it */
+.eyebrow { color: var(--ink-soft); }
+.eyebrow a { color: var(--ink); }
+
+/* Alpha filter active state → mono */
+.alpha-btn.active { color: var(--paper); background: var(--ink); }
+
+/* Category tiles: remove accent hover border in favor of ink */
+.cat-card:hover { border-color: var(--ink); }
+.service-card:hover { border-color: var(--ink); }
+
+/* Keep the accent alive as a deliberate spark: links, focus, key CTAs */
+.link-arrow { color: var(--ink); }
+.link-arrow:hover { color: var(--accent); }
+.hero-accent { color: var(--ink); font-style: italic; }
+.work-quote { border-left-color: var(--ink); }
+
+/* Service kickers + comp-card eyebrow → mono, neutral */
+.service-card .service-kicker { color: var(--ink); font-family: "Fraunces", serif; }
+.comp-card-header .comp-card-eyebrow { color: var(--ink-soft); }
+/* Micro-labels neutral throughout (accent reserved for interaction) */
+.cat-kind, .work-credits dt, .field-note.ready { color: var(--ink-soft); }
+.work-credits dt { color: var(--ink); }
+
+/* Flatten the warm hero glow into a neutral, structural grid wash */
+.hero-bg { background:
+  radial-gradient(60% 80% at 76% 30%, rgba(0,0,0,.05), transparent 62%),
+  radial-gradient(50% 60% at 6% 96%, rgba(0,0,0,.03), transparent 60%); }
+.theme-dark .hero-bg { background:
+  radial-gradient(60% 80% at 76% 30%, rgba(255,255,255,.05), transparent 62%),
+  radial-gradient(50% 60% at 6% 96%, rgba(255,255,255,.03), transparent 60%); }
+
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ---------- noth.in-style monumental wordmark hero ---------- */
+.hero-mono { min-height: min(100vh, 940px); padding: 150px 0 78px; display: flex; align-items: stretch; }
+.hero-mono .hero-inner { display: flex; flex-direction: column; justify-content: space-between; width: 100%; }
+.hero-topline { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--mono-font); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft); padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+.hero-topline-r { color: var(--ink); }
+
+.hero-wordmark { font-family: "Archivo", sans-serif; font-weight: 900; line-height: .82; letter-spacing: -.03em; margin: 0; display: flex; justify-content: space-between; width: 100%; font-size: clamp(84px, 21vw, 300px); color: var(--ink); overflow: hidden; padding-bottom: .06em; }
+.wm-letter { display: inline-block; transform: translateY(115%); animation: wmRise 1s var(--ease) both; animation-delay: calc(.35s + var(--i) * .07s); }
+@keyframes wmRise { to { transform: none; } }
+
+.hero-mono-foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 40px; flex-wrap: wrap; margin-top: 8px; }
+.hero-mono-tagline { font-family: "Fraunces", serif; font-size: clamp(18px, 2.2vw, 26px); line-height: 1.3; color: var(--ink); max-width: 30ch; margin: 0; }
+.hero-mono .hero-actions { margin: 0; }
+.hero-mono .hero-stats { margin-top: 40px; }
+
+@media (max-width: 760px) {
+  .hero-wordmark { justify-content: flex-start; flex-wrap: wrap; letter-spacing: -.03em; font-size: 18vw; line-height: .9; }
+  .hero-wordmark .wm-letter { flex: 0 0 auto; }
+  .hero-mono-foot { flex-direction: column; align-items: flex-start; gap: 22px; }
+  .hero-topline { font-size: 10px; }
+  .hero-topline-r { text-align: right; }
+  .hero-mono .hero-actions { width: 100%; flex-wrap: wrap; }
+  .hero-mono .hero-actions .btn { flex: 1 1 auto; justify-content: center; }
+}
+@media (max-width: 420px) {
+  .hero-wordmark { font-size: 19vw; }
+}
+
+/* ---------- Custom hover cursor follower ---------- */
+.cursor-follow { position: fixed; top: 0; left: 0; z-index: 210; width: 82px; height: 82px; border-radius: 50%; background: var(--ink); color: var(--paper); display: grid; place-items: center; font-family: var(--mono-font); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; pointer-events: none; opacity: 0; scale: .4; transition: opacity .3s var(--ease), scale .35s var(--ease); will-change: transform, scale; mix-blend-mode: difference; }
+.cursor-follow.show { opacity: 1; scale: 1; }
+.cursor-follow span { display: block; }
+/* Hide the native pointer over the hot targets so only the follower shows */
+@media (pointer: fine) {
+  .noth-work-media, .work-media, .comp-card-thumb, .cat-cover, .specialty-thumb-wrap { cursor: none; }
+}
+
+/* ---------- Kinetic per-letter section word ---------- */
+.kinetic-word { font-family: "Archivo", sans-serif; font-weight: 900; line-height: .9; letter-spacing: -.03em; font-size: clamp(56px, 13vw, 200px); color: var(--ink); display: flex; flex-wrap: wrap; overflow: hidden; opacity: 1; transform: none; margin: 0 0 4px; }
+.kw-letter { display: inline-block; transform: translateY(115%); transition: transform .8s var(--ease); transition-delay: calc(var(--i) * .05s); }
+.kinetic-word.in .kw-letter { transform: none; }
+.kw-space { width: .28em; }
+@media (prefers-reduced-motion: reduce) { .kw-letter { transform: none; transition: none; } }
+
+/* ---------- noth.in full-bleed work cards ---------- */
+.noth-work-list { display: flex; flex-direction: column; gap: 8px; }
+.noth-work { border-top: 1px solid var(--line); padding-top: 8px; }
+.noth-work:first-child { border-top: 0; padding-top: 0; }
+.noth-work-media { position: relative; display: block; width: 100%; aspect-ratio: 16/9; overflow: hidden; border: 0; padding: 0; background: var(--bone); cursor: pointer; border-radius: var(--r-sm); }
+.noth-work-media img { width: 100%; height: 100%; object-fit: cover; transition: transform .9s var(--ease), filter .6s var(--ease); transform: scale(1.02); }
+.noth-work-media::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 60%, rgba(0,0,0,.22)); opacity: 0; transition: opacity .5s var(--ease); }
+.noth-work:hover .noth-work-media img { transform: scale(1.06); }
+.noth-work:hover .noth-work-media::after { opacity: 1; }
+.noth-work-index { position: absolute; top: 16px; left: 18px; font-family: var(--mono-font); font-size: 12px; color: #fff; mix-blend-mode: difference; letter-spacing: .05em; }
+.noth-work-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; padding: 16px 4px 24px; flex-wrap: wrap; }
+.noth-work-titles { min-width: 0; }
+.noth-work-title { font-family: "Archivo", sans-serif; font-weight: 800; font-size: clamp(24px, 3.4vw, 44px); line-height: 1.02; letter-spacing: -.02em; margin: 0; color: var(--ink); }
+.noth-work-tagline { font-family: "Fraunces", serif; font-style: italic; font-size: clamp(15px, 1.5vw, 19px); color: var(--ink-soft); margin: 8px 0 0; max-width: 48ch; }
+.noth-work-meta { display: flex; align-items: center; gap: 20px; font-family: var(--mono-font); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-soft); white-space: nowrap; }
+.noth-work-cta { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); font-weight: 500; transition: gap .3s var(--ease), color .3s; }
+.noth-work:hover .noth-work-cta { gap: 14px; color: var(--accent); }
+.noth-work-cta svg { transition: transform .3s var(--ease); }
+.noth-work:hover .noth-work-cta svg { transform: translateX(3px); }
+
+@media (max-width: 620px) {
+  .noth-work-media { aspect-ratio: 4/5; }
+  .noth-work-row { padding-bottom: 18px; }
+  .noth-work-meta { width: 100%; justify-content: space-between; }
+}
+
+/* Page-head H1 as a kinetic per-letter headline */
+.kinetic-h1 { opacity: 1; transform: none; margin: 0; }
+.kinetic-word-inner { display: flex; flex-wrap: wrap; overflow: hidden; padding-bottom: .04em; }
+.kinetic-h1 .kw-letter { transform: translateY(115%); transition: transform .8s var(--ease); transition-delay: calc(var(--i) * .045s); }
+.kinetic-h1.in .kw-letter { transform: none; }
+@media (prefers-reduced-motion: reduce) { .kinetic-h1 .kw-letter { transform: none; transition: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .wm-letter { transform: none; animation: none; }
 }

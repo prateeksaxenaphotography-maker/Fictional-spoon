@@ -12,6 +12,24 @@
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   // A photo renders from its published file URL when it has one, else its local base64.
   const photoSrc = (p) => (p && (p.url || p.dataUrl)) || "";
+  // noth.in-style oversized section word that rises per-letter on scroll.
+  const kineticWord = (word) => {
+    const letters = String(word).split("").map((ch, i) =>
+      ch === " "
+        ? `<span class="kw-space">&nbsp;</span>`
+        : `<span class="kw-letter" style="--i:${i}">${esc(ch)}</span>`
+    ).join("");
+    return `<div class="kinetic-word reveal" aria-hidden="true">${letters}</div>`;
+  };
+  // Turn a page-head <h1> into a per-letter kinetic headline (stays semantic for SEO).
+  const kineticH1 = (word, extraClass = "") => {
+    const letters = String(word).split("").map((ch, i) =>
+      ch === " "
+        ? `<span class="kw-space">&nbsp;</span>`
+        : `<span class="kw-letter" style="--i:${i}">${esc(ch)}</span>`
+    ).join("");
+    return `<h1 class="reveal kinetic-h1 ${extraClass}"><span class="kinetic-word-inner">${letters}</span></h1>`;
+  };
   const parseIgHandle = (h) => {
     let clean = String(h ?? "").trim();
     if (!clean) return "";
@@ -457,6 +475,35 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   /* ================= VIEWS ================= */
   const view = $("#view");
 
+  // noth.in-style full-bleed work card: big image, title + tagline overlay,
+  // image reveal on hover. Opens the shoot in the lightbox via .noth-work wiring.
+  function nothWorkCard(s, i) {
+    const cover = s.photos.find(p => p.id.split("-")[0] === s.coverPhotoId) || s.photos[0] || { objectPosition: "center" };
+    const coverPos = cover.objectPosition || "center";
+    const tagline = s.description
+      ? s.description
+      : [s.activity, s.type].filter(Boolean).join(" · ");
+    const meta = [s.brand, s.season].filter(v => v && v !== "Personal Project").join(" · ");
+    const title = s.isCompCard ? s.talent : (s.title || "Untitled");
+    return `
+      <article class="noth-work reveal" data-shoot="${s.id}" data-talent="${esc(s.talent || '')}" style="--d:${(i % 2) * 0.08}s">
+        <button class="noth-work-media" aria-label="View ${esc(title)}">
+          <img src="${esc(photoSrc(cover))}" style="object-position: ${esc(coverPos)};" alt="${esc(title)}" loading="lazy" />
+          <span class="noth-work-index">${String(i + 1).padStart(2, "0")}</span>
+        </button>
+        <div class="noth-work-row">
+          <div class="noth-work-titles">
+            <h3 class="noth-work-title">${esc(title)}</h3>
+            <p class="noth-work-tagline">${esc(tagline)}</p>
+          </div>
+          <div class="noth-work-meta">
+            ${meta ? `<span>${esc(meta)}</span>` : ""}
+            <span class="noth-work-cta">View <svg viewBox="0 0 14 10" width="14" height="10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 5h12M9 1l4 4-4 4"/></svg></span>
+          </div>
+        </div>
+      </article>`;
+  }
+
   function fullBleedBlock(s, i) {
     const cover = s.photos.find(p => p.id.split("-")[0] === s.coverPhotoId) || s.photos[0] || { dataUrl: "", objectPosition: "center" };
     let coverPos = cover.objectPosition || "center";
@@ -577,18 +624,27 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const activeBrands = BRANDS.filter(b => SHOOTS.some(s => s.brand === b && s.client && s.client.trim()));
     const displayBrands = activeBrands.length ? activeBrands : BRANDS;
     const clientNames = [...new Set(SHOOTS.map(s => s.client).filter(c => c && c.trim()))];
+    const wordmark = (window.STUDIO_CONFIG?.studioShortName || "NERDY").toUpperCase();
+    const wordmarkLetters = wordmark.split("").map((ch, i) =>
+      `<span class="wm-letter" style="--i:${i}">${esc(ch)}</span>`
+    ).join("");
     return `
-      <section class="hero">
+      <section class="hero hero-mono">
         <div class="hero-bg" aria-hidden="true"></div>
         <div class="container hero-inner">
-          <p class="eyebrow reveal">The Creative Studio of ${esc(window.STUDIO_CONFIG?.studioName || "Our Studio")}</p>
-          <h1 class="reveal hero-headline">
-            Fashion, Fitness &amp; Sports Photography in Noida &amp; Delhi NCR – <span class="hero-accent">Editorial-Grade Portfolios</span> for Models &amp; Brands
+          <div class="hero-topline reveal">
+            <span class="hero-topline-l">The Creative Studio</span>
+            <span class="hero-topline-r">Noida · Delhi NCR</span>
+          </div>
+          <h1 class="hero-wordmark" aria-label="${esc(window.STUDIO_CONFIG?.studioName || 'nerdyphotographer.in')}">
+            ${wordmarkLetters}
           </h1>
-          <p class="lede reveal">High-impact visuals for lookbooks, campaigns, and portfolios that get you noticed.</p>
-          <div class="hero-actions reveal">
-            <a href="/categories" data-link class="btn btn-dark">Explore Specialties →</a>
-            ${isAdmin() ? `<a href="/upload" data-link class="btn btn-ghost">Publish a shoot</a>` : `<a href="/book" data-link class="btn btn-ghost">Book a shoot</a>`}
+          <div class="hero-mono-foot">
+            <p class="hero-mono-tagline reveal">Not just photos, a perspective. <span class="hero-accent">Editorial-grade portfolios</span> for models &amp; brands.</p>
+            <div class="hero-actions reveal">
+              <a href="/categories" data-link class="btn btn-dark">Explore work →</a>
+              ${isAdmin() ? `<a href="/upload" data-link class="btn btn-ghost">Publish a shoot</a>` : `<a href="/book" data-link class="btn btn-ghost">Book a shoot</a>`}
+            </div>
           </div>
           <dl class="hero-stats reveal">
             <div><dt data-count>${allPhotos().length}</dt><dd>Frames archived</dd></div>
@@ -598,6 +654,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         </div>
         <div class="hero-scroll" aria-hidden="true"><span></span>SCROLL</div>
       </section>
+      <h2 class="visually-hidden">Fashion, Fitness &amp; Sports Photography in Noida &amp; Delhi NCR — editorial-grade portfolios for models &amp; brands</h2>
 
       ${clientNames.length ? `
       <div class="marquee" aria-hidden="true">
@@ -633,12 +690,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       </section>
 
       <!-- FEATURED PHOTOSHOOTS -->
-      <section class="section container" style="border-top: 1px solid var(--line); padding-top: 60px; margin-top: 60px;">
-        <div class="section-head row reveal">
+      <section class="section container section-divider">
+        ${kineticWord("WORKS")}
+        <div class="section-head row reveal" style="margin-top: 8px;">
           <div><p class="eyebrow">01 — Selected work</p><h2>Featured photoshoots</h2></div>
           <a href="/categories" data-link class="link-arrow">All Categories →</a>
         </div>
-        <div class="work-list">${feat.map(fullBleedBlock).join("")}</div>
+        <div class="noth-work-list">${feat.map(nothWorkCard).join("")}</div>
       </section>
 
 
@@ -880,7 +938,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       <section class="page-head">
         <div class="container">
           <p class="eyebrow reveal">03 — Browse</p>
-          <h1 class="reveal">Categories</h1>
+          ${kineticH1("Categories")}
           <p class="page-sub reveal">Three ways into the archive — by what was shot, who it was for, and how it was made.</p>
         </div>
       </section>
@@ -1012,7 +1070,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       <section class="page-head">
         <div class="container">
           <p class="eyebrow reveal">04 — The studio</p>
-          <h1 class="reveal">Built for the craft.</h1>
+          ${kineticH1("Studio")}
           <p class="page-sub reveal">A home for the photography behind ${esc(window.STUDIO_CONFIG?.studioName || "our studio")}'s work — a working studio and a living archive, in one place.</p>
         </div>
       </section>
@@ -1181,7 +1239,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       <section class="page-head">
         <div class="container">
           <p class="eyebrow reveal">Book a session</p>
-          <h1 class="reveal">Book Your Shoot</h1>
+          ${kineticH1("Book", "kinetic-h1-wide")}
           <p class="page-sub reveal">Fill out the details below to inquire about booking a session. Whether you are booking a commercial campaign, e-commerce production, editorial work, or scheduling a selective test shoot, please submit your brief and project specs below.</p>
         </div>
       </section>
@@ -1785,6 +1843,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   }
 
   function wireView(key) {
+    // noth.in full-bleed work cards → open the shoot in the lightbox.
+    view.querySelectorAll(".noth-work").forEach((card) => {
+      const s = CURRENT_VIEW_SHOOTS.find((x) => x.id === card.dataset.shoot) || SHOOTS.find((x) => x.id === card.dataset.shoot);
+      if (!s) return;
+      const list = s.photos.map((p) => ({ ...p, shoot: s }));
+      card.querySelector(".noth-work-media")?.addEventListener("click", () => openLb(list, 0));
+    });
+
     // work-block interactions (open lightbox on media or "View project")
     view.querySelectorAll(".work-block").forEach((block) => {
       const s = CURRENT_VIEW_SHOOTS.find((x) => x.id === block.dataset.shoot) || SHOOTS.find((x) => x.id === block.dataset.shoot);
@@ -1893,6 +1959,41 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     items.forEach((el) => io.observe(el));
   }
 
+  /* ---------------- Custom hover cursor (noth.in-style) ----------------
+     A "View" follower that appears over portfolio imagery. Skipped entirely
+     on touch devices and when the user prefers reduced motion. */
+  (function initCursorFollow() {
+    const cursor = $("#cursorFollow");
+    if (!cursor) return;
+    const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+    const fine = window.matchMedia("(pointer: fine)").matches;
+    if (isTouch || !fine || prefersReduced) { cursor.remove(); return; }
+
+    const HOT = ".noth-work-media, .work-media, .comp-card-thumb, .cat-cover, .specialty-thumb-wrap";
+    let x = 0, y = 0, cx = 0, cy = 0, raf = null, active = false;
+
+    const loop = () => {
+      cx += (x - cx) * 0.18; cy += (y - cy) * 0.18;
+      cursor.style.transform = `translate(${cx}px, ${cy}px) translate(-50%, -50%)`;
+      raf = Math.abs(x - cx) > 0.1 || Math.abs(y - cy) > 0.1 ? requestAnimationFrame(loop) : null;
+      if (!raf) { cx = x; cy = y; cursor.style.transform = `translate(${cx}px, ${cy}px) translate(-50%, -50%)`; }
+    };
+    window.addEventListener("mousemove", (e) => {
+      x = e.clientX; y = e.clientY;
+      if (!raf) raf = requestAnimationFrame(loop);
+      const over = e.target.closest(HOT);
+      if (over && !active) { active = true; cursor.classList.add("show"); }
+      else if (!over && active) { active = false; cursor.classList.remove("show"); }
+      // Comp-card thumbs and cat covers say "Open"; big media says "View".
+      if (over) {
+        const label = over.matches(".cat-cover, .specialty-thumb-wrap") ? "Open" : "View";
+        const span = cursor.firstElementChild;
+        if (span && span.textContent !== label) span.textContent = label;
+      }
+    }, { passive: true });
+    window.addEventListener("mouseout", (e) => { if (!e.relatedTarget) { active = false; cursor.classList.remove("show"); } });
+  })();
+
   /* ---------------- Header scroll + loader ---------------- */
   const header = $(".site-header");
   window.addEventListener("scroll", () => header.classList.toggle("scrolled", window.scrollY > 8), { passive: true });
@@ -1902,6 +2003,24 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     let seen = false;
     try { seen = sessionStorage.getItem("wps-loaded") === "1"; sessionStorage.setItem("wps-loaded", "1"); } catch {}
     const w = prefersReduced || seen ? 0 : 1200;
+
+    // noth.in-style numeric counter 000 -> 100 that runs while the bar fills.
+    const countEl = $("#loaderCount");
+    if (countEl) {
+      if (w === 0) {
+        countEl.textContent = "100";
+      } else {
+        const t0 = performance.now();
+        (function tick(now) {
+          const p = Math.min(1, (now - t0) / w);
+          // Ease-out so it races then settles, like noth.in's counter.
+          const eased = 1 - Math.pow(1 - p, 2);
+          countEl.textContent = String(Math.round(eased * 100)).padStart(3, "0");
+          if (p < 1) requestAnimationFrame(tick);
+        })(t0);
+      }
+    }
+
     setTimeout(() => l.classList.add("done"), w);
     setTimeout(() => l.remove(), w + (prefersReduced || seen ? 100 : 900));
   }
