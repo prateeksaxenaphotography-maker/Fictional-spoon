@@ -1,5 +1,5 @@
 /* ============================================================
-   thenerdyphotographer.in — app (multi-view studio)
+   nerdyphotographer.in — app (multi-view studio)
    Hash router · 5 views · overlay nav · rich upload form ·
    IndexedDB persistence · lightbox. No backend, no framework.
    ============================================================ */
@@ -388,7 +388,7 @@
           : p),
       }));
       const fileContent = `/* ============================================================
-   thenerdyphotographer.in — published portfolio data
+   nerdyphotographer.in — published portfolio data
    Auto-synced by the Admin Panel. Photo files live under photos/.
    ============================================================ */
 window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: published }, null, 2)};
@@ -1562,7 +1562,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       setActiveNav(key);
 
       // SEO optimization: update page title and description dynamically
-      const cfg = window.STUDIO_CONFIG || { studioName: "thenerdyphotographer.in" };
+      const cfg = window.STUDIO_CONFIG || { studioName: "nerdyphotographer.in" };
       let pageTitle = `${cfg.studioName} — The Creative Studio`;
       let pageDesc = "Noida and Delhi NCR based professional photography studio. Specializing in high-end male and female model photography, fashion, beauty, editorial, sports, and fitness photography. Browse portfolios by nerdyphotographer.in — Noida, Delhi NCR, India.";
       

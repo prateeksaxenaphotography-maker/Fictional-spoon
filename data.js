@@ -1,5 +1,5 @@
 /* ============================================================
-   thenerdyphotographer.in — published portfolio data
+   nerdyphotographer.in — published portfolio data
    Auto-synced by the Admin Panel. Photo files live under photos/.
    ============================================================ */
 window.WPS_DATA = {
