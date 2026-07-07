@@ -1,5 +1,5 @@
 /* ============================================================
-   thenerdyphotographer.in — published portfolio data
+   nerdyphotographer.in — published portfolio data
    Auto-synced by the Admin Panel. Photo files live under photos/.
    ============================================================ */
 window.WPS_DATA = {
@@ -458,7 +458,7 @@ window.WPS_DATA = {
         {
           "id": "mr8ld6oabyimod-1",
           "url": "photos/mr8legmk0o8mqz/mr8ld6oabyimod-2.jpg",
-          "objectPosition": "center center"
+          "objectPosition": "left"
         },
         {
           "id": "mr8ld69w1fq1e5-2",
