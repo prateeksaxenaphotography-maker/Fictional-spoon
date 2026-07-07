@@ -178,10 +178,15 @@
   function paintLb() { const p = lbList[lbIdx]; if (!p) return; lbImg.src = photoSrc(p); lbImg.alt = p.shoot.title; lbImg.style.objectPosition = "center"; lbCap.textContent = `${p.shoot.title} — ${p.shoot.brand} · by ${p.shoot.photographer}`; lbCount.textContent = `${lbIdx + 1} / ${lbList.length}`; }
   function stepLb(d) { if (!lbList.length) return; lbIdx = (lbIdx + d + lbList.length) % lbList.length; paintLb(); }
   function closeLb() { lb.hidden = true; lbImg.src = ""; document.body.style.overflow = ""; }
-  $("#lightboxClose").addEventListener("click", closeLb);
-  $("#lbPrev").addEventListener("click", () => stepLb(-1));
-  $("#lbNext").addEventListener("click", () => stepLb(1));
-  lb.addEventListener("click", (e) => { if (e.target === lb) closeLb(); });
+  $("#lightboxClose").addEventListener("click", (e) => { e.stopPropagation(); closeLb(); });
+  $("#lbPrev").addEventListener("click", (e) => { e.stopPropagation(); stepLb(-1); });
+  $("#lbNext").addEventListener("click", (e) => { e.stopPropagation(); stepLb(1); });
+  // Close only on a genuine backdrop click — never when the click lands on the
+  // nav buttons, close button, image, caption, or counter (or their children).
+  lb.addEventListener("click", (e) => {
+    if (e.target.closest(".lightbox-nav, .lightbox-close, .lightbox-figure, .lightbox-counter")) return;
+    closeLb();
+  });
   document.addEventListener("keydown", (e) => { if (lb.hidden) return; if (e.key === "Escape") closeLb(); else if (e.key === "ArrowLeft") stepLb(-1); else if (e.key === "ArrowRight") stepLb(1); });
 
   // Touch swipe support for lightbox on mobile
@@ -488,6 +493,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     return `
       <article class="noth-work reveal" data-shoot="${s.id}" data-talent="${esc(s.talent || '')}" style="--d:${(i % 2) * 0.08}s">
         <button class="noth-work-media" aria-label="View ${esc(title)}">
+          <span class="noth-work-backdrop" style="background-image: url('${esc(photoSrc(cover))}');" aria-hidden="true"></span>
           <img src="${esc(photoSrc(cover))}" style="object-position: ${esc(coverPos)};" alt="${esc(title)}" loading="lazy" />
           <span class="noth-work-index">${String(i + 1).padStart(2, "0")}</span>
         </button>
@@ -665,8 +671,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       ` : ''}
 
       <!-- SERVICES (WHO I SHOOT FOR) -->
-      <section class="section container" style="border-top: 1px solid var(--line); padding-top: 60px; margin-top: 60px;">
-        <div class="section-head reveal" style="margin-bottom: 40px; text-align: center;">
+      <section class="section container section-divider">
+        <div class="section-head section-head-center reveal">
           <p class="eyebrow">Services</p>
           <h2>Who I shoot for</h2>
         </div>
@@ -1848,7 +1854,25 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const s = CURRENT_VIEW_SHOOTS.find((x) => x.id === card.dataset.shoot) || SHOOTS.find((x) => x.id === card.dataset.shoot);
       if (!s) return;
       const list = s.photos.map((p) => ({ ...p, shoot: s }));
-      card.querySelector(".noth-work-media")?.addEventListener("click", () => openLb(list, 0));
+      const media = card.querySelector(".noth-work-media");
+      media?.addEventListener("click", () => openLb(list, 0));
+
+      // Dynamic padding: if the cover's orientation clashes with the 16:9 frame,
+      // contain the image (show it whole) over a blurred fill instead of cropping.
+      const img = media?.querySelector("img");
+      if (img) {
+        const evaluateFit = () => {
+          const nw = img.naturalWidth, nh = img.naturalHeight;
+          if (!nw || !nh) return;
+          const imgRatio = nw / nh;
+          const frameRatio = media.clientWidth / media.clientHeight || (16 / 9);
+          // Portrait covers, or ratios that differ a lot, get contained + padded.
+          const mismatch = imgRatio < 1 || Math.abs(imgRatio - frameRatio) / frameRatio > 0.35;
+          media.classList.toggle("fit-contain", mismatch);
+        };
+        if (img.complete) evaluateFit();
+        img.addEventListener("load", evaluateFit, { once: true });
+      }
     });
 
     // work-block interactions (open lightbox on media or "View project")
@@ -2085,6 +2109,21 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         links.push(`<a href="${cfg.kavyar}" target="_blank" rel="noopener" aria-label="Kavyar"><svg viewBox="0 0 24 24" style="stroke-width: 2.5;"><line x1="6" y1="4" x2="6" y2="20"></line><line x1="18" y1="4" x2="6" y2="12"></line><line x1="6" y1="12" x2="18" y2="20"></line></svg></a>`);
       }
       navSocials.innerHTML = links.join("");
+    }
+
+    // Footer email link (mailto) — mirrors nav email.
+    const footerEmail = $("#footerEmail");
+    if (footerEmail && cfg.email) {
+      footerEmail.href = `mailto:${cfg.email}`;
+    }
+    // Footer social icons — reuse the same set as the nav.
+    const footerSocials = $("#footerSocials");
+    if (footerSocials) {
+      const fl = [];
+      if (cfg.instagram) fl.push(`<a href="${cfg.instagram}" target="_blank" rel="noopener" aria-label="Instagram">Instagram</a>`);
+      if (cfg.kavyar) fl.push(`<a href="${cfg.kavyar}" target="_blank" rel="noopener" aria-label="Kavyar">Kavyar</a>`);
+      fl.push(`<a href="${cfg.email ? `mailto:${cfg.email}` : '#'}" aria-label="Email">Email</a>`);
+      footerSocials.innerHTML = fl.join("");
     }
   }
 
