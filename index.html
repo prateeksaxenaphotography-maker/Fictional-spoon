@@ -172,21 +172,41 @@
   <!-- ============ View mount ============ -->
   <main id="view" class="view"></main>
 
-  <!-- ============ Footer ============ -->
-  <footer class="site-footer">
-    <div class="container footer-inner">
-      <div class="footer-brand">
-        <span class="brand-text" id="footerBrandText">STUDIO<span class="brand-sub" id="footerBrandSub">PhotoStudio</span></span>
-        <p id="footerTagline">Fashion, Fitness &amp; Sports Photography | Noida &amp; Delhi NCR</p>
+  <!-- ============ Footer (noth.in-style) ============ -->
+  <footer class="site-footer" id="footer">
+    <div class="container">
+      <!-- Big contact statement -->
+      <div class="footer-cta">
+        <p class="footer-eyebrow">Let's make something</p>
+        <a href="/book" data-link class="footer-headline" id="footerHeadlineLink">
+          Let's create<br /><em>something worth</em> looking&nbsp;at.
+        </a>
+        <div class="footer-cta-actions">
+          <a href="/book" data-link class="btn btn-light">Book a shoot →</a>
+          <a href="#" class="footer-email-link" id="footerEmail">drop us an email</a>
+        </div>
       </div>
-      <nav class="footer-nav" aria-label="Footer">
-        <a href="/" data-link>Home</a>
-        <a href="/categories" data-link>Categories</a><a href="/studio" data-link>Studio</a>
-        <a href="/upload" data-link>Upload</a>
-      </nav>
-      <div class="footer-meta">
-        <p id="footerNotice">Personal PhotoStudio Portfolio</p>
-        <p>© <span id="year"></span> · Crafted for the love of the shot.</p>
+
+      <!-- Lower bar: brand · nav · socials · credits -->
+      <div class="footer-lower">
+        <div class="footer-col footer-brand">
+          <span class="brand-text" id="footerBrandText">STUDIO<span class="brand-sub" id="footerBrandSub">PhotoStudio</span></span>
+          <p id="footerTagline">Fashion, Fitness &amp; Sports Photography | Noida &amp; Delhi NCR</p>
+        </div>
+        <nav class="footer-col footer-nav" aria-label="Footer">
+          <a href="/" data-link>Home</a>
+          <a href="/categories" data-link>Categories</a>
+          <a href="/studio" data-link>Studio</a>
+          <a href="/book" data-link>Book a shoot</a>
+        </nav>
+        <div class="footer-col footer-connect">
+          <p class="footer-col-label">Connect</p>
+          <div class="footer-socials" id="footerSocials"></div>
+        </div>
+        <div class="footer-col footer-meta">
+          <p id="footerNotice">The Creative Studio of nerdyphotographer.in</p>
+          <p>© <span id="year"></span> nerdyphotographer.in · Noida &amp; Delhi NCR</p>
+        </div>
       </div>
     </div>
   </footer>
