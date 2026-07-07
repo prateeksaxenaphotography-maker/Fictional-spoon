@@ -505,6 +505,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
     return `
       <article class="work-block ${i % 2 ? "flip" : ""} reveal" data-shoot="${s.id}" data-talent="${esc(s.talent)}">
+        ${s.isCompCard ? `
+          <div class="comp-card-header" style="grid-column: 1 / -1; margin-bottom: -15px; border-bottom: 1px solid var(--line); padding-bottom: 14px; direction: ltr; text-align: left;">
+            <h2 style="font-family: 'Outfit', sans-serif; font-size: 32px; font-weight: 700; margin: 0; color: var(--ink);">${esc(s.talent)}</h2>
+            <p class="eyebrow" style="margin: 6px 0 0; color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.05em;">COMP CARD</p>
+          </div>
+        ` : ""}
         ${mediaHtml}
         <div class="work-info">
           ${isFutureShoot(s) ? `
@@ -512,8 +518,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               To be visible to public after ${esc(s.date)}
             </div>
           ` : ""}
-          <p class="eyebrow">${esc(s.brand)} · ${esc(s.type)}</p>
-          <h3>${esc(s.title)}</h3>
+          ${s.isCompCard ? "" : `
+            <p class="eyebrow">${esc(s.brand)} · ${esc(s.type)}</p>
+            <h3>${esc(s.title)}</h3>
+          `}
           <p class="work-desc">${esc(s.description || "")}</p>
           <dl class="work-credits">
             <div><dt>Activity</dt><dd>${esc(s.activity)}</dd></div>
