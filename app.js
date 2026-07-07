@@ -676,18 +676,18 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <p class="eyebrow">Services</p>
           <h2>Who I shoot for</h2>
         </div>
-        <div class="services-grid">
-          <div class="service-card reveal">
+        <div class="services-grid reveal-stagger">
+          <div class="service-card">
             <div class="service-kicker">Brands</div>
             <h3>Campaigns &amp; Lookbooks</h3>
             <p>High-concept visual storytelling, commercial lookbooks, and campaigns tailored to elevate brand identities and drive customer engagement.</p>
           </div>
-          <div class="service-card reveal" style="--d:.06s">
+          <div class="service-card">
             <div class="service-kicker">Models</div>
             <h3>Portfolio Building &amp; TFP</h3>
             <p>Editorial-grade portfolio building, comp card shoot development, and selective test shoots (TFP) to help models stand out in agency submissions.</p>
           </div>
-          <div class="service-card reveal" style="--d:.12s">
+          <div class="service-card">
             <div class="service-kicker">Athletes</div>
             <h3>Fitness &amp; Sports Action</h3>
             <p>Dynamic action-freezing athletic portraits and editorial-grade fitness content that highlights physique, strength, and raw athletic performance.</p>
@@ -1812,6 +1812,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       view.innerHTML = key === "categories" ? viewCategories(kind, val) : fn();
       view.classList.remove("leaving");
       window.scrollTo({ top: 0, behavior: "auto" });
+      if (typeof smoothScroll !== "undefined" && smoothScroll.enabled) smoothScroll.reset();
       wireView(key);
       initReveal();
       setActiveNav(key);
@@ -1977,9 +1978,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   }
 
   function initReveal() {
-    const items = view.querySelectorAll(".reveal");
+    const items = view.querySelectorAll(".reveal, .reveal-stagger, .kinetic-word, .kinetic-h1");
     if (prefersReduced || !("IntersectionObserver" in window)) { items.forEach((el) => el.classList.add("in")); return; }
-    const io = new IntersectionObserver((ents) => ents.forEach((en) => { if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); } }), { threshold: 0.1, rootMargin: "0px 0px -6% 0px" });
+    const io = new IntersectionObserver((ents) => ents.forEach((en) => { if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); } }), { threshold: 0.1, rootMargin: "0px 0px -8% 0px" });
     items.forEach((el) => io.observe(el));
   }
 
@@ -2016,6 +2017,50 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       }
     }, { passive: true });
     window.addEventListener("mouseout", (e) => { if (!e.relatedTarget) { active = false; cursor.classList.remove("show"); } });
+  })();
+
+  /* ---------------- Smooth inertia scroll (noth.in-style) ----------------
+     Lightweight Lenis-style wheel lerp. Desktop + fine pointer only; native
+     touch scrolling is already smooth and is left untouched. Auto-pauses when
+     the lightbox or nav overlay locks the page. Respects reduced motion. */
+  const smoothScroll = (function initSmoothScroll() {
+    const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+    const fine = window.matchMedia("(pointer: fine)").matches;
+    if (prefersReduced || isTouch || !fine) return { enabled: false };
+
+    let target = window.scrollY;
+    let current = window.scrollY;
+    let raf = null;
+    let running = false;
+    const EASE = 0.09;
+
+    const maxScroll = () => Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    const paused = () => document.body.style.overflow === "hidden"; // lightbox/nav lock
+
+    function frame() {
+      const diff = target - current;
+      if (Math.abs(diff) < 0.4) { current = target; window.scrollTo(0, current); running = false; raf = null; return; }
+      current += diff * EASE;
+      window.scrollTo(0, current);
+      raf = requestAnimationFrame(frame);
+    }
+    function onWheel(e) {
+      if (paused() || e.ctrlKey) return;           // let pinch-zoom + locked states pass
+      e.preventDefault();
+      target = Math.min(maxScroll(), Math.max(0, target + e.deltaY));
+      if (!running) { running = true; current = window.scrollY; raf = requestAnimationFrame(frame); }
+    }
+    window.addEventListener("wheel", onWheel, { passive: false });
+    // Keep target in sync when scroll happens by other means (keyboard, anchors, resize).
+    window.addEventListener("scroll", () => { if (!running) { target = window.scrollY; current = window.scrollY; } }, { passive: true });
+    window.addEventListener("resize", () => { target = Math.min(target, maxScroll()); }, { passive: true });
+
+    // Smooth-scroll for in-page anchor links (e.g. footer #footer).
+    return {
+      enabled: true,
+      to(y) { target = Math.min(maxScroll(), Math.max(0, y)); if (!running) { running = true; current = window.scrollY; raf = requestAnimationFrame(frame); } },
+      reset() { target = window.scrollY; current = window.scrollY; }
+    };
   })();
 
   /* ---------------- Header scroll + loader ---------------- */
