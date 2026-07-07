@@ -670,9 +670,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
       let displayList = list;
       if (kind === "type" && d === "Test Shoot") {
+        const filteredList = list.filter(s => s.instagram && s.instagram.trim());
         const groupable = [];
         const nonGroupable = [];
-        for (const s of list) {
+        for (const s of filteredList) {
           const talentClean = (s.talent || "").trim();
           const hasExactlyOneModel = talentClean && !talentClean.includes(",") && !talentClean.toLowerCase().includes(" and ") && !talentClean.toLowerCase().includes("&");
           const hasNoBrandOrClient = (!s.client || !s.client.trim()) && (!s.brand || s.brand === "Personal Project" || !s.brand.trim());
