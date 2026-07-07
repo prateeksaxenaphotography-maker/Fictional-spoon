@@ -607,16 +607,23 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               To be visible to public after ${esc(s.date)}
             </div>
           ` : ""}
-          ${s.isCompCard ? "" : `
-            <p class="eyebrow">${esc(s.brand)} · ${esc(s.type)}</p>
-            <h3>${esc(s.title)}</h3>
-          `}
-          <p class="work-desc">${esc(s.description || "")}</p>
-          <dl class="work-credits">
-            <div><dt>Activity</dt><dd>${esc(s.activity)}</dd></div>
-            <div><dt>Season</dt><dd>${esc(s.season || "—")}</dd></div>
-            <div><dt>Location</dt><dd>${esc(s.location || "—")}</dd></div>
-          </dl>
+          ${(() => {
+            const canInline = !s.demo && !s.isCompCard && isAdmin();
+            const ed = (field, extra = "") => canInline
+              ? ` class="inline-edit ${extra}" contenteditable="true" spellcheck="false" data-shoot="${s.id}" data-field="${field}" title="Click to edit"`
+              : (extra ? ` class="${extra}"` : "");
+            return `
+            ${s.isCompCard ? "" : `
+              <p class="eyebrow">${esc(s.brand)} · ${esc(s.type)}</p>
+              <h3><span${ed("title")}>${esc(s.title)}</span></h3>
+            `}
+            <p class="work-desc"><span${ed("description")}>${esc(s.description || (canInline ? "Add a description…" : ""))}</span></p>
+            <dl class="work-credits">
+              <div><dt>Activity</dt><dd>${esc(s.activity)}</dd></div>
+              <div><dt>Season</dt><dd><span${ed("season")}>${esc(s.season || "—")}</span></dd></div>
+              <div><dt>Location</dt><dd><span${ed("location")}>${esc(s.location || "—")}</span></dd></div>
+            </dl>`;
+          })()}
           <p class="work-by">${creditsHtml}</p>
           ${testimonialsHtml}
           ${diagramHtml}
@@ -1892,6 +1899,37 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   }
 
   function wireView(key) {
+    // Inline live-page editing (Admin mode): edit title/desc/season/location in
+    // place; save to IndexedDB on blur/Enter and sync to the repo.
+    view.querySelectorAll(".inline-edit").forEach((el) => {
+      const original = () => el.dataset.original ?? (el.dataset.original = el.textContent);
+      original();
+      el.addEventListener("focus", () => { if (el.textContent.trim() === "Add a description…" || el.textContent.trim() === "—") el.textContent = ""; });
+      el.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); el.blur(); }
+        if (e.key === "Escape") { el.textContent = el.dataset.original || ""; el.blur(); }
+      });
+      el.addEventListener("blur", async () => {
+        const id = el.dataset.shoot, field = el.dataset.field;
+        let value = el.textContent.replace(/\s+/g, " ").trim();
+        const s = SHOOTS.find((x) => x.id === id);
+        if (!s) return;
+        if (value === (el.dataset.original || "").trim()) return; // unchanged
+        if (!value && (field === "season" || field === "location")) value = "—";
+        s[field] = value;
+        el.dataset.original = el.textContent;
+        try {
+          await putShoot(s);
+          await loadShoots();
+          toast(`Updated ${field}.`);
+          syncToGitHub(SHOOTS);
+        } catch (err) {
+          console.error("Inline edit save failed:", err);
+          toast("Couldn't save that change.");
+        }
+      });
+    });
+
     // noth.in full-bleed work cards → open the shoot in the lightbox.
     view.querySelectorAll(".noth-work").forEach((card) => {
       const s = CURRENT_VIEW_SHOOTS.find((x) => x.id === card.dataset.shoot) || SHOOTS.find((x) => x.id === card.dataset.shoot);
