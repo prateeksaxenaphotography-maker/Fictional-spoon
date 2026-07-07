@@ -419,3 +419,17 @@ button:focus-visible,
   border-top: none !important;
   padding-top: 0 !important;
 }
+
+/* Comp Card Thumbnail Grid Styles */
+.comp-card-thumb:hover {
+  transform: scale(1.03);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: var(--accent) !important;
+}
+
+@media (max-width: 620px) {
+  .comp-card-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+}
