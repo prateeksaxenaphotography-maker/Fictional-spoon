@@ -221,7 +221,7 @@
     const mode = localStorage.getItem("wps-theme-override") || "auto";
     themeBtn.textContent = `Theme: ${mode}`;
     themeBtn.style.borderColor = mode !== "auto" ? "var(--accent)" : "currentColor";
-    themeBtn.style.color = mode !== "auto" ? "var(--accent)" : "#fff";
+    themeBtn.style.color = mode !== "auto" ? "var(--accent)" : "var(--ink)";
   }
 
   function updateAdminBtn() {
@@ -229,11 +229,11 @@
     const active = isAdmin();
     adminBtn.textContent = `Admin Mode: ${active ? "On" : "Off"}`;
     adminBtn.style.borderColor = active ? "var(--accent)" : "currentColor";
-    adminBtn.style.color = active ? "var(--accent)" : "#fff";
+    adminBtn.style.color = active ? "var(--accent)" : "var(--ink)";
 
     const adminSec = $("#navAdminSec");
     if (adminSec) {
-      adminSec.style.display = isAdminAuthorized() ? "block" : "none";
+      adminSec.style.display = isAdminAuthorized() ? "flex" : "none";
     }
 
     const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi");
@@ -517,15 +517,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         <div class="hero-bg" aria-hidden="true"></div>
         <div class="container hero-inner">
           <p class="eyebrow reveal">The Creative Studio of ${esc(window.STUDIO_CONFIG?.studioName || "Our Studio")}</p>
-          <h1 class="reveal">
-            <span class="line"><span>Make.</span></span>
-            <span class="line"><span>Every&nbsp;Shoot.</span></span>
-            <span class="line accent-line"><span>Better.</span></span>
+          <h1 class="reveal" style="font-size: clamp(38px, 6.2vw, 72px); line-height: 1.05; max-width: 900px; margin: 0 0 24px;">
+            Fashion, Fitness &amp; Sports Photography in Noida &amp; Delhi NCR – <span style="color: var(--accent); font-family: 'Fraunces', serif; font-style: italic; font-weight: 400;">Editorial-Grade Portfolios</span> for Models &amp; Brands
           </h1>
-          <p class="lede reveal">${esc(window.STUDIO_CONFIG?.tagline || "The photography behind our brands — directed, shot, and archived in one place.")}${isAdmin() ? " Browse the work, or publish your own shoot." : " Browse the work or book a photoshoot session."}</p>
+          <p class="lede reveal">High-impact visuals for lookbooks, campaigns, and portfolios that get you noticed.</p>
           <div class="hero-actions reveal">
-            <a href="#/work" data-link class="btn btn-dark">View the work →</a>
-            ${isAdmin() ? `<a href="#/upload" data-link class="btn btn-ghost">Publish a shoot</a>` : `<a href="#/book" data-link class="btn btn-ghost">Book a shoot</a>`}
+            <a href="/work" data-link class="btn btn-dark">View the work →</a>
+            ${isAdmin() ? `<a href="/upload" data-link class="btn btn-ghost">Publish a shoot</a>` : `<a href="/book" data-link class="btn btn-ghost">Book a shoot</a>`}
           </div>
           <dl class="hero-stats reveal">
             <div><dt data-count>${allPhotos().length}</dt><dd>Frames archived</dd></div>
@@ -544,22 +542,120 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       </div>
       ` : ''}
 
-      <section class="section container">
+      <!-- SERVICES (WHO I SHOOT FOR) -->
+      <section class="section container" style="border-top: 1px solid var(--line); padding-top: 60px; margin-top: 60px;">
+        <div class="section-head reveal" style="margin-bottom: 40px; text-align: center;">
+          <p class="eyebrow">Services</p>
+          <h2>Who I shoot for</h2>
+        </div>
+        <div class="services-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px;">
+          <div class="service-card reveal" style="background: var(--bone); border: 1px solid var(--line); padding: 40px 30px; border-radius: 6px; transition: transform .3s var(--ease), box-shadow .3s var(--ease);">
+            <div style="font-family: 'Fraunces', serif; font-style: italic; font-size: 24px; color: var(--accent); margin-bottom: 16px;">Brands</div>
+            <h3 style="font-size: 18px; margin-bottom: 12px; font-weight: 700;">Campaigns &amp; Lookbooks</h3>
+            <p style="font-size: 14px; color: var(--ink-soft); line-height: 1.6;">High-concept visual storytelling, commercial lookbooks, and campaigns tailored to elevate brand identities and drive customer engagement.</p>
+          </div>
+          <div class="service-card reveal" style="background: var(--bone); border: 1px solid var(--line); padding: 40px 30px; border-radius: 6px; transition: transform .3s var(--ease), box-shadow .3s var(--ease);">
+            <div style="font-family: 'Fraunces', serif; font-style: italic; font-size: 24px; color: var(--accent); margin-bottom: 16px;">Models</div>
+            <h3 style="font-size: 18px; margin-bottom: 12px; font-weight: 700;">Portfolio Building &amp; TFP</h3>
+            <p style="font-size: 14px; color: var(--ink-soft); line-height: 1.6;">Editorial-grade portfolio building, comp card shoot development, and selective test shoots (TFP) to help models stand out in agency submissions.</p>
+          </div>
+          <div class="service-card reveal" style="background: var(--bone); border: 1px solid var(--line); padding: 40px 30px; border-radius: 6px; transition: transform .3s var(--ease), box-shadow .3s var(--ease);">
+            <div style="font-family: 'Fraunces', serif; font-style: italic; font-size: 24px; color: var(--accent); margin-bottom: 16px;">Athletes</div>
+            <h3 style="font-size: 18px; margin-bottom: 12px; font-weight: 700;">Fitness &amp; Sports Action</h3>
+            <p style="font-size: 14px; color: var(--ink-soft); line-height: 1.6;">Dynamic action-freezing athletic portraits and editorial-grade fitness content that highlights physique, strength, and raw athletic performance.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- FEATURED PHOTOSHOOTS -->
+      <section class="section container" style="border-top: 1px solid var(--line); padding-top: 60px; margin-top: 60px;">
         <div class="section-head row reveal">
           <div><p class="eyebrow">01 — Selected work</p><h2>Featured photoshoots</h2></div>
-          <a href="#/work" data-link class="link-arrow">All work →</a>
+          <a href="/work" data-link class="link-arrow">All work →</a>
         </div>
         <div class="work-list">${feat.map(fullBleedBlock).join("")}</div>
       </section>
 
-      <section class="cta-band">
+      <!-- RATES & PACKAGES -->
+      <section class="section container" style="border-top: 1px solid var(--line); padding-top: 60px; margin-top: 60px;">
+        <div class="section-head reveal" style="margin-bottom: 40px; text-align: center;">
+          <p class="eyebrow">Rates &amp; Packages</p>
+          <h2>Start a Project</h2>
+        </div>
+        <div class="rates-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px;">
+          <div class="rate-card reveal" style="background: var(--bone); border: 1px solid var(--line); padding: 40px 30px; border-radius: 6px;">
+            <div style="font-family: 'Fraunces', serif; font-style: italic; font-size: 20px; color: var(--accent); margin-bottom: 12px;">Commercial &amp; Brand</div>
+            <h3 style="font-size: 16px; margin-bottom: 12px; font-weight: 700;">From ₹25,000 / Day</h3>
+            <p style="font-size: 13px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 20px;">Full-day commercial photoshoots, lookbooks, product catalogs, or advertising campaigns. Includes full studio setup, lighting director, and high-res master selects.</p>
+            <a href="/book?type=Commercial" data-link class="btn btn-dark" style="font-size: 12px; padding: 10px 18px; display: inline-block;">Inquire package →</a>
+          </div>
+          <div class="rate-card reveal" style="background: var(--bone); border: 1px solid var(--line); padding: 40px 30px; border-radius: 6px;">
+            <div style="font-family: 'Fraunces', serif; font-style: italic; font-size: 20px; color: var(--accent); margin-bottom: 12px;">Editorial &amp; Portrait</div>
+            <h3 style="font-size: 16px; margin-bottom: 12px; font-weight: 700;">From ₹12,000 / Session</h3>
+            <p style="font-size: 13px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 20px;">Individual modeling portfolios, comp cards, athletic shoots, or creative portraits. Includes styling direction guidance, high-end retouches, and studio setup.</p>
+            <a href="/book?type=Editorial" data-link class="btn btn-dark" style="font-size: 12px; padding: 10px 18px; display: inline-block;">Inquire package →</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- TESTIMONIALS -->
+      <section class="section container" style="border-top: 1px solid var(--line); padding-top: 60px; margin-top: 60px;">
+        <div class="section-head reveal" style="margin-bottom: 40px; text-align: center;">
+          <p class="eyebrow">Client Reactions</p>
+          <h2>Testimonials &amp; Trust</h2>
+        </div>
+        <div class="testimonials-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px;">
+          <div class="testimonial-card reveal" style="background: var(--bone); border: 1px solid var(--line); padding: 40px 30px; border-radius: 6px;">
+            <p style="font-family: 'Fraunces', serif; font-style: italic; font-size: 15px; line-height: 1.6; color: var(--ink); margin-bottom: 20px;">
+              “The attention to detail and cinematic lighting was unreal. Our brand campaign lookbook turned out exactly as we envisioned—clean, editorial, and high-impact. Highly recommend for any brand looking to level up their visuals.”
+            </p>
+            <div style="font-size: 13px; font-weight: 700;">Sarah Jenkins</div>
+            <div style="font-size: 11px; color: var(--ink-soft); margin-top: 2px;">Creative Director, SLUGGER</div>
+          </div>
+          <div class="testimonial-card reveal" style="background: var(--bone); border: 1px solid var(--line); padding: 40px 30px; border-radius: 6px;">
+            <p style="font-family: 'Fraunces', serif; font-style: italic; font-size: 15px; line-height: 1.6; color: var(--ink); margin-bottom: 20px;">
+              “I needed to update my modeling portfolio comp cards. The photoshoot was incredibly professional, well-directed, and the output helped me land my latest agency contract. The lighting diagram details are a great touch!”
+            </p>
+            <div style="font-size: 13px; font-weight: 700;">Rhythm Vohra</div>
+            <div style="font-size: 11px; color: var(--ink-soft); margin-top: 2px;">Professional Model, TFP Project</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FEATURED ON INSTAGRAM -->
+      <section class="section container" style="border-top: 1px solid var(--line); padding-top: 60px; margin-top: 60px;">
+        <div class="section-head row reveal">
+          <div>
+            <p class="eyebrow">Social Connection</p>
+            <h2>Featured on Instagram</h2>
+          </div>
+          <a href="${esc(window.STUDIO_CONFIG?.instagram || 'https://instagram.com')}" target="_blank" rel="noopener noreferrer" class="link-arrow">@thenerdyphotographer.in →</a>
+        </div>
+        <div class="instagram-mock-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+          ${feat.slice(0, 4).map((s, idx) => {
+            const photo = s.photos[0];
+            if (!photo) return '';
+            return `
+              <a href="${esc(window.STUDIO_CONFIG?.instagram || 'https://instagram.com')}" target="_blank" rel="noopener noreferrer" class="instagram-mock-card reveal" style="display: block; aspect-ratio: 1; overflow: hidden; position: relative; border-radius: 4px; border: 1px solid var(--line);">
+                <img src="${esc(photoSrc(photo))}" style="width: 100%; height: 100%; object-fit: cover; transition: transform .4s var(--ease);" alt="Instagram feature" />
+                <div class="instagram-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .3s var(--ease);">
+                  <svg viewBox="0 0 24 24" width="28" height="28" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="display:block; margin:auto;"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                </div>
+              </a>
+            `;
+          }).join("")}
+        </div>
+      </section>
+
+      <!-- CTA BAND -->
+      <section class="cta-band" style="border-top: 1px solid var(--line); margin-top: 60px;">
         <div class="container reveal">
           ${isAdmin() ? `
             <h2>Your shoot belongs in the archive.</h2>
-            <a href="#/upload" data-link class="btn btn-dark">Publish your photoshoot →</a>
+            <a href="/upload" data-link class="btn btn-dark">Publish your photoshoot →</a>
           ` : `
             <h2>Ready to capture your story?</h2>
-            <a href="#/book" data-link class="btn btn-dark">Book your photoshoot session →</a>
+            <a href="/book" data-link class="btn btn-dark">Book your photoshoot session →</a>
           `}
         </div>
       </section>`;
@@ -582,7 +678,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
   function catCard(label, kind, val, count, sample) {
     return `
-      <a href="#/categories/${kind}/${encodeURIComponent(val)}" data-link class="cat-card reveal">
+      <a href="/categories?kind=${kind}&amp;val=${encodeURIComponent(val)}" data-link class="cat-card reveal">
         <span class="cat-swatch" style="background:linear-gradient(150deg,${esc(sample[0])},${esc(sample[1])})"></span>
         <div class="cat-body"><span class="cat-kind">${kind}</span><h3>${esc(label)}</h3><span class="cat-count">${count} shoot${count !== 1 ? "s" : ""}</span></div>
         <span class="cat-arrow">→</span>
@@ -629,6 +725,35 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         </section>`;
     }
 
+    const getSamples = (key, val, limit = 3) => {
+      const shoots = SHOOTS.filter(s => s[key] === val);
+      const photos = shoots.flatMap(s => s.photos.map(p => ({ ...p, parent: s })));
+      return photos.slice(0, limit);
+    };
+
+    const renderSpecialtyGallery = (samples, placeholderPrefix) => {
+      let html = '';
+      for (let i = 0; i < 3; i++) {
+        const photo = samples[i];
+        if (photo) {
+          html += `<div class="specialty-thumb-wrap" style="aspect-ratio: 3/4; overflow: hidden; background: var(--bone); border: 1px solid var(--line); border-radius: 4px;">
+                     <img src="${esc(photoSrc(photo))}" style="width:100%; height:100%; object-fit:cover; object-position:center; transition: transform .4s var(--ease);" alt="${esc(photo.parent?.title || placeholderPrefix)}" />
+                   </div>`;
+        } else {
+          html += `<div style="aspect-ratio: 3/4; background: var(--bone); border: 1px solid var(--line); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--ink-soft); font-family: monospace;">
+                     ${placeholderPrefix}_0${i+1}
+                   </div>`;
+        }
+      }
+      return html;
+    };
+
+    const fashionSamples = getSamples("activity", "Fashion");
+    const portraitSamples = getSamples("activity", "Portrait");
+    const fitnessSamples = getSamples("activity", "Fitness");
+    const sportsSamples = getSamples("activity", "Sports");
+    const testShootSamples = getSamples("type", "Test Shoot");
+
     return `
       <section class="page-head">
         <div class="container">
@@ -654,7 +779,93 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         <div class="section-head reveal"><p class="eyebrow">By type</p><h2>How it was made</h2></div>
         <div class="cat-grid">${typ.map((x) => catCard(x.v, "type", x.v, x.count, x.sample)).join("")}</div>
       </section>
-      ` : ""}`;
+      ` : ""}
+
+      <!-- SPECIALTIES DIRECTORY -->
+      <section class="section container" style="border-top: 1px solid var(--line); margin-top: 60px; padding-top: 60px;">
+        <div class="section-head reveal" style="margin-bottom: 45px;">
+          <p class="eyebrow">Our Specialties</p>
+          <h2>Photography Focus Areas</h2>
+        </div>
+        <div class="specialties-list" style="display: flex; flex-direction: column; gap: 50px;">
+          
+          <div class="specialty-item reveal" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; align-items: center;">
+            <div class="specialty-meta">
+              <h3 style="font-size: 24px; margin-bottom: 12px; font-weight: 800;">
+                <a href="/categories?kind=activity&amp;val=Fashion" data-link style="color: inherit; text-decoration: none;">Fashion Editorial</a>
+              </h3>
+              <p style="font-size: 14px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 16px;">
+                Editorial-grade fashion photography combining styling, dramatic concepts, and high-fashion modeling portfolios. Crafted for designer campaigns, apparel lookbooks, and modeling agency submissions in Noida &amp; Delhi NCR.
+              </p>
+              <a href="/categories?kind=activity&amp;val=Fashion" data-link class="link-arrow" style="font-size: 12px; font-weight: 700;">Explore fashion edit →</a>
+            </div>
+            <div class="specialty-gallery" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+              ${renderSpecialtyGallery(fashionSamples, "FASHION")}
+            </div>
+          </div>
+
+          <div class="specialty-item reveal" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; align-items: center; border-top: 1px solid var(--line-dk); padding-top: 40px;">
+            <div class="specialty-meta">
+              <h3 style="font-size: 24px; margin-bottom: 12px; font-weight: 800;">
+                <a href="/categories?kind=activity&amp;val=Portrait" data-link style="color: inherit; text-decoration: none;">Beauty &amp; Portrait</a>
+              </h3>
+              <p style="font-size: 14px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 16px;">
+                Fine art beauty portraits, cinematic lighting setups, and magazine-style close-ups. Focused on capturing expressive features, professional model headshots, and high-fidelity skin textures with natural detailing.
+              </p>
+              <a href="/categories?kind=activity&amp;val=Portrait" data-link class="link-arrow" style="font-size: 12px; font-weight: 700;">Explore beauty &amp; portraits →</a>
+            </div>
+            <div class="specialty-gallery" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+              ${renderSpecialtyGallery(portraitSamples, "BEAUTY")}
+            </div>
+          </div>
+
+          <div class="specialty-item reveal" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; align-items: center; border-top: 1px solid var(--line-dk); padding-top: 40px;">
+            <div class="specialty-meta">
+              <h3 style="font-size: 24px; margin-bottom: 12px; font-weight: 800;">
+                <a href="/categories?kind=activity&amp;val=Fitness" data-link style="color: inherit; text-decoration: none;">Fitness &amp; Athletic</a>
+              </h3>
+              <p style="font-size: 14px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 16px;">
+                Physique, fitness, and bodybuilding editorial photography. High-contrast athletic portraits, highlighting musculature, dedication, and form for personal trainers, fitness models, and activewear brands.
+              </p>
+              <a href="/categories?kind=activity&amp;val=Fitness" data-link class="link-arrow" style="font-size: 12px; font-weight: 700;">Explore fitness catalog →</a>
+            </div>
+            <div class="specialty-gallery" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+              ${renderSpecialtyGallery(fitnessSamples, "FITNESS")}
+            </div>
+          </div>
+
+          <div class="specialty-item reveal" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; align-items: center; border-top: 1px solid var(--line-dk); padding-top: 40px;">
+            <div class="specialty-meta">
+              <h3 style="font-size: 24px; margin-bottom: 12px; font-weight: 800;">
+                <a href="/categories?kind=activity&amp;val=Sports" data-link style="color: inherit; text-decoration: none;">Sports Action</a>
+              </h3>
+              <p style="font-size: 14px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 16px;">
+                Action-stopping sports photography capturing motion, speed, and raw intensity. Documenting athletes in their element with high-speed shutter setups and responsive editorial lensing.
+              </p>
+              <a href="/categories?kind=activity&amp;val=Sports" data-link class="link-arrow" style="font-size: 12px; font-weight: 700;">Explore sports action →</a>
+            </div>
+            <div class="specialty-gallery" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+              ${renderSpecialtyGallery(sportsSamples, "SPORTS")}
+            </div>
+          </div>
+
+          <div class="specialty-item reveal" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; align-items: center; border-top: 1px solid var(--line-dk); padding-top: 40px;">
+            <div class="specialty-meta">
+              <h3 style="font-size: 24px; margin-bottom: 12px; font-weight: 800;">
+                <a href="/categories?kind=type&amp;val=Test%20Shoot" data-link style="color: inherit; text-decoration: none;">Model Portfolio (Comp Cards)</a>
+              </h3>
+              <p style="font-size: 14px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 16px;">
+                Comprehensive testing shoots and comp card layout photography designed for aspiring and professional model talent. Direct submissions focus: clean test lighting, polaroids, digitals, and styling versatility.
+              </p>
+              <a href="/categories?kind=type&amp;val=Test%20Shoot" data-link class="link-arrow" style="font-size: 12px; font-weight: 700;">Explore test shoots →</a>
+            </div>
+            <div class="specialty-gallery" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+              ${renderSpecialtyGallery(testShootSamples, "MODEL")}
+            </div>
+          </div>
+
+        </div>
+      </section>
   }
   const emptyCat = () => `<p class="page-sub">Nothing here yet — publish a shoot in this category.</p>`;
 
@@ -832,7 +1043,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   }
 
   function viewBook() {
-    const opt = (arr) => arr.map((v) => `<option value="${v}">${v}</option>`).join("");
+    const params = new URLSearchParams(location.search);
+    const prefilledType = params.get("type") || "";
+    const isSelected = (val) => val === prefilledType ? "selected" : "";
+
     return `
       <section class="page-head">
         <div class="container">
@@ -859,7 +1073,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               </div>
               <div class="field-row">
                 <label class="field"><span>Email Address *</span><input id="b_email" type="email" required placeholder="name@example.com" /></label>
-                <label class="field"><span>Phone Number</span><input id="b_phone" type="tel" placeholder="+1 (555) 000-0000" /></label>
+                <label class="field"><span>Phone Number</span><input id="b_phone" type="tel" placeholder="+91 99999-99999" /></label>
               </div>
               <label class="field"><span>Instagram Handle</span><input id="b_instagram" type="text" placeholder="e.g. @handle" /></label>
             </fieldset>
@@ -867,14 +1081,38 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             <fieldset>
               <legend>Shoot Details</legend>
               <div class="field-row">
-                <label class="field"><span>Desired Shoot Type *</span>
+                <label class="field"><span>Desired Project Type *</span>
                   <select id="b_type">
-                    ${opt(TYPES)}
+                    <option value="Fashion Editorial" ${isSelected("Fashion Editorial")}>Fashion Editorial</option>
+                    <option value="Fitness &amp; Athletic" ${isSelected("Fitness &amp; Athletic")}>Fitness &amp; Athletic</option>
+                    <option value="Sports Action" ${isSelected("Sports Action")}>Sports Action</option>
+                    <option value="Commercial Campaign" ${prefilledType === "Commercial" ? "selected" : ""}>Commercial Campaign</option>
+                    <option value="Model Portfolio" ${prefilledType === "Editorial" ? "selected" : ""}>Model Portfolio (Comp Cards)</option>
+                    <option value="Other" ${isSelected("Other")}>Other Focus Area</option>
                   </select>
                 </label>
-                <label class="field"><span>Proposed Date / Timeline *</span><input id="b_date" type="text" required placeholder="e.g. Mid-July 2026" /></label>
+                <label class="field"><span>Preferred Date / Timeline *</span><input id="b_date" type="text" required placeholder="e.g. Mid-July 2026" /></label>
               </div>
-              <label class="field"><span>Project Concept & Vision</span><textarea id="b_concept" rows="4" placeholder="Describe the mood, location, number of frames, or styling ideas you have in mind..."></textarea></label>
+              <div class="field-row">
+                <label class="field"><span>Preferred Location *</span>
+                  <select id="b_location">
+                    <option value="Noida Studio">Noida Studio Setup</option>
+                    <option value="Delhi NCR Outdoor">Delhi NCR Outdoor / Location</option>
+                    <option value="Outstation">Outstation Shoot</option>
+                    <option value="Other">Other / TBD</option>
+                  </select>
+                </label>
+                <label class="field"><span>Estimated Budget Range *</span>
+                  <select id="b_budget">
+                    <option value="Under ₹10,000">Under ₹10,000 (Selective Tests)</option>
+                    <option value="₹10,000 - ₹25,000">₹10,000 - ₹25,000 (Standard Portfolio)</option>
+                    <option value="₹25,000 - ₹50,000">₹25,000 - ₹50,000 (Premium Campaign)</option>
+                    <option value="₹50,000+">₹50,000+ (High-End Commercial)</option>
+                  </select>
+                </label>
+              </div>
+              <label class="field"><span>Reference / Mood Board Link</span><input id="b_moodboard" type="url" placeholder="Pinterest board, Dropbox, or Google Drive URL" /></label>
+              <label class="field"><span>Project Concept &amp; Detailed Brief</span><textarea id="b_concept" rows="4" placeholder="Describe the mood, location style, styling ideas, and deliverables you have in mind..."></textarea></label>
             </fieldset>
 
             <button type="submit" class="btn btn-dark btn-block" id="bookSubmitBtn">Submit Booking Request</button>
@@ -1233,6 +1471,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const instagram = val("b_instagram");
       const type = val("b_type");
       const date = val("b_date");
+      const locationVal = val("b_location");
+      const budget = val("b_budget");
+      const moodboard = val("b_moodboard");
       const concept = val("b_concept");
 
       btn.disabled = true;
@@ -1246,6 +1487,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         instagram,
         type,
         date,
+        location: locationVal,
+        budget,
+        moodboard,
         concept
       };
 
@@ -1262,7 +1506,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         if (response.ok) {
           alert("Request submitted! Your booking inquiry has been sent successfully. We will get back to you shortly.");
           form.reset();
-          location.hash = "#/";
+          history.pushState(null, "", "/");
+          render();
         } else {
           throw new Error("Formspree response not OK");
         }
@@ -1277,7 +1522,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           `Phone: ${phone || '—'}\n` +
           `Instagram: ${instagram || '—'}\n` +
           `Shoot Type: ${type}\n` +
-          `Proposed Date: ${date}\n\n` +
+          `Proposed Date: ${date}\n` +
+          `Location Pref: ${locationVal}\n` +
+          `Budget Range: ${budget}\n` +
+          `Moodboard Link: ${moodboard || '—'}\n\n` +
           `Concept/Vision:\n${concept || '—'}`
         );
         window.location.href = `mailto:prateeksaxenaphotography@gmail.com?subject=${subject}&body=${body}`;
@@ -1293,13 +1541,20 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   const ROUTES = { "": viewHome, "work": viewWork, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload, "book": viewBook };
 
   function render() {
-    const raw = location.hash.replace(/^#\/?/, "").split("?")[0];
-    const parts = raw.split("/").filter(Boolean); // e.g. ["categories","activity","Trail"]
+    let raw = location.pathname;
+    raw = raw.replace(/\/index\.html$/, "").replace(/^\//, "").replace(/\/$/, "");
+    const parts = raw.split("/").filter(Boolean);
     const key = parts[0] || "";
+    
+    const params = new URLSearchParams(location.search);
+    const qKind = params.get("kind");
+    const qVal = params.get("val");
+    const kind = parts[1] || qKind;
+    const val = parts[2] || qVal;
     
     if (typeof gtag === 'function') {
       gtag('config', 'G-S0Q7T5Y2J4', {
-        'page_path': location.hash || '#/'
+        'page_path': location.pathname + location.search
       });
     }
     
@@ -1314,15 +1569,16 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     
     // Redirect non-admins trying to access upload page
     if (key === "upload" && !isAdmin()) {
-      location.hash = "#/";
+      history.pushState(null, "", "/");
+      render();
       return;
     }
 
-    const fn = ROUTES[key] || (() => `<section class="page-head"><div class="container"><h1>Not found</h1><p class="page-sub"><a href="#/" data-link>Back home</a></p></div></section>`);
+    const fn = ROUTES[key] || (() => `<section class="page-head"><div class="container"><h1>Not found</h1><p class="page-sub"><a href="/" data-link>Back home</a></p></div></section>`);
 
     view.classList.add("leaving");
     const paint = () => {
-      view.innerHTML = key === "categories" ? viewCategories(parts[1], parts[2]) : fn();
+      view.innerHTML = key === "categories" ? viewCategories(kind, val) : fn();
       view.classList.remove("leaving");
       window.scrollTo({ top: 0, behavior: "auto" });
       wireView(key);
@@ -1374,7 +1630,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       // edit button click handler
       block.querySelector(".work-edit")?.addEventListener("click", (e) => {
         e.stopPropagation();
-        location.hash = `#/upload/edit/${s.id}`;
+        history.pushState(null, "", `/upload?edit=${s.id}`);
+        render();
       });
       
       // delete button click handler
@@ -1404,8 +1661,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     });
     
     if (key === "upload") {
-      const parts = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
-      wireUpload(parts[1] === "edit" ? parts[2] : null);
+      const editId = new URLSearchParams(location.search).get("edit");
+      wireUpload(editId);
     }
     if (key === "book") wireBook();
     // animate hero counts
@@ -1467,7 +1724,18 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     } catch { /* offline or unparsable — keep what we have */ }
   }
 
-  window.addEventListener("hashchange", render);
+  window.addEventListener("popstate", render);
+  document.addEventListener("click", (e) => {
+    const link = e.target.closest("[data-link]");
+    if (link) {
+      const href = link.getAttribute("href");
+      if (href && (href.startsWith("/") || !href.includes("://"))) {
+        e.preventDefault();
+        history.pushState(null, "", href);
+        render();
+      }
+    }
+  });
   function initBranding() {
     const cfg = window.STUDIO_CONFIG;
     if (!cfg) return;
@@ -1508,7 +1776,6 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       initBranding();
       updateAdminBtn();
       await loadShoots();
-      if (!location.hash) location.hash = "#/";
       render();
       refreshPublishedData();
     } catch (err) {

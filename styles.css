@@ -366,3 +366,46 @@ button:focus-visible,
   background: var(--ink-2);
   color: var(--paper);
 }
+
+/* Custom Homepage and Specialties enhancements */
+.service-card, .rate-card {
+  transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease), border-color 0.3s var(--ease) !important;
+}
+.service-card:hover, .rate-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--accent) !important;
+}
+
+.instagram-mock-card:hover img {
+  transform: scale(1.05);
+}
+
+.instagram-mock-card:hover .instagram-overlay {
+  opacity: 1 !important;
+}
+
+/* Specialties Directory responsiveness */
+@media (max-width: 768px) {
+  .specialty-item {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+  .specialty-item .specialty-gallery {
+    gap: 8px !important;
+  }
+}
+
+/* Floating admin panel styling overrides */
+#navAdminSec {
+  transition: opacity 0.3s var(--ease), transform 0.3s var(--ease);
+}
+#navAdminSec button:hover {
+  background: var(--accent) !important;
+  color: #fff !important;
+  border-color: var(--accent) !important;
+}
+
+.theme-dark #navAdminSec {
+  background: rgba(18, 18, 17, 0.95) !important;
+}
