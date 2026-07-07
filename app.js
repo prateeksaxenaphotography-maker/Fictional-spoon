@@ -87,6 +87,7 @@
   /* ---------------- State ---------------- */
   let SHOOTS = [];      // live shoots (real or demo)
   let usingDemo = true;
+  let CURRENT_VIEW_SHOOTS = [];
 
   async function loadShoots() {
     let real = [];
@@ -497,7 +498,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           ${diagramHtml}
           <div style="margin-top: 22px; display: flex; align-items: center; flex-wrap: wrap; gap: 14px;">
             <button class="link-arrow work-open" style="padding: 0;">View project →</button>
-            ${(!s.demo && isAdmin()) ? `
+            ${(!s.demo && !s.isCompCard && isAdmin()) ? `
               <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0;" data-id="${s.id}">Edit details</button>
               <button class="link-arrow work-delete" style="color: #b22222; font-weight: 700; padding: 0;" data-id="${s.id}">Delete</button>
             ` : ""}
@@ -508,6 +509,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
   function viewHome() {
     const feat = SHOOTS.slice(0, 7);
+    CURRENT_VIEW_SHOOTS = feat;
     const brandCount = new Set(SHOOTS.filter(s => s.client && s.client.trim()).map(s => s.brand)).size;
     const activeBrands = BRANDS.filter(b => SHOOTS.some(s => s.brand === b && s.client && s.client.trim()));
     const displayBrands = activeBrands.length ? activeBrands : BRANDS;
@@ -630,15 +632,84 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         if (kind === "brand" && (!s.client || !s.client.trim())) return false;
         return (kind === "activity" ? s.activity : kind === "brand" ? s.brand : s.type) === d;
       });
+
+      let displayList = list;
+      if (kind === "type" && d === "Test Shoot") {
+        const groupable = [];
+        const nonGroupable = [];
+        for (const s of list) {
+          const talentClean = (s.talent || "").trim();
+          const hasExactlyOneModel = talentClean && !talentClean.includes(",") && !talentClean.toLowerCase().includes(" and ") && !talentClean.toLowerCase().includes("&");
+          const hasNoBrandOrClient = (!s.client || !s.client.trim()) && (!s.brand || s.brand === "Personal Project" || !s.brand.trim());
+          const hasSocialLinks = s.instagram && s.instagram.trim();
+          
+          if (hasExactlyOneModel && hasNoBrandOrClient && hasSocialLinks) {
+            groupable.push(s);
+          } else {
+            nonGroupable.push(s);
+          }
+        }
+        
+        const groups = {};
+        for (const s of groupable) {
+          const modelName = s.talent.trim();
+          if (!groups[modelName]) groups[modelName] = [];
+          groups[modelName].push(s);
+        }
+        
+        const unifiedAlbums = Object.keys(groups).map(modelName => {
+          const shootsInGroup = groups[modelName];
+          shootsInGroup.sort((a, b) => {
+            const parseDate = (x) => x.date ? Date.parse(x.date) : (x.createdAt || 0);
+            return parseDate(b) - parseDate(a);
+          });
+          const latestShoot = shootsInGroup[0];
+          const allGroupPhotos = shootsInGroup.flatMap(gs => gs.photos.map(p => ({ ...p, parent: gs })));
+          
+          return {
+            id: `comp-card-${encodeURIComponent(modelName)}`,
+            title: `${modelName} — Unified Comp Card`,
+            brand: "Personal Project",
+            activity: latestShoot.activity,
+            type: "Test Shoot",
+            season: latestShoot.season || "Comp Card",
+            photographer: latestShoot.photographer || "Studio",
+            artDirector: latestShoot.artDirector || "",
+            stylist: latestShoot.stylist || "",
+            hair: latestShoot.hair || "",
+            mua: latestShoot.mua || "",
+            talent: modelName,
+            location: latestShoot.location || "Studio",
+            description: `Unified modeling portfolio and comp card archive for ${modelName}. Contains ${shootsInGroup.length} photoshoot sessions.`,
+            tags: latestShoot.tags || "",
+            gear: latestShoot.gear || "",
+            client: "",
+            date: latestShoot.date,
+            instagram: latestShoot.instagram,
+            link: latestShoot.link,
+            rights: latestShoot.rights,
+            palette: latestShoot.palette || ["#3a3a3a", "#0d0d0d"],
+            photos: allGroupPhotos,
+            coverPhotoId: latestShoot.coverPhotoId || (latestShoot.photos[0] && latestShoot.photos[0].id),
+            isCompCard: true,
+            originalShoots: shootsInGroup
+          };
+        });
+        
+        displayList = [...unifiedAlbums, ...nonGroupable];
+      }
+
+      CURRENT_VIEW_SHOOTS = displayList;
+
       return `
         <section class="page-head">
           <div class="container">
-            <p class="eyebrow reveal"><a href="#/categories" data-link>Categories</a> / ${esc(kind)}</p>
+            <p class="eyebrow reveal"><a href="/categories" data-link>Categories</a> / ${esc(kind)}</p>
             <h1 class="reveal">${esc(d)}</h1>
-            <p class="page-sub reveal">${list.length} photoshoot${list.length !== 1 ? "s" : ""} in this ${esc(kind)}.</p>
+            <p class="page-sub reveal">${displayList.length} master album${displayList.length !== 1 ? "s" : ""} in this ${esc(kind)}.</p>
           </div>
         </section>
-        <section class="section container"><div class="work-list">${list.map(fullBleedBlock).join("") || emptyCat()}</div></section>`;
+        <section class="section container"><div class="work-list">${displayList.map(fullBleedBlock).join("") || emptyCat()}</div></section>`;
     }
     // Index: three lenses
     const grp = (arr, key) => arr.map((v) => {
@@ -1596,7 +1667,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   function wireView(key) {
     // work-block interactions (open lightbox on media or "View project")
     view.querySelectorAll(".work-block").forEach((block) => {
-      const s = SHOOTS.find((x) => x.id === block.dataset.shoot);
+      const s = CURRENT_VIEW_SHOOTS.find((x) => x.id === block.dataset.shoot) || SHOOTS.find((x) => x.id === block.dataset.shoot);
       if (!s) return;
       const list = s.photos.map((p) => ({ ...p, shoot: s }));
       const open = () => openLb(list, 0);
