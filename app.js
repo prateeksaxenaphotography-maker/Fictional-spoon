@@ -173,8 +173,12 @@
 
   /* ---------------- Lightbox ---------------- */
   const lb = $("#lightbox"), lbImg = $("#lightboxImg"), lbCap = $("#lightboxCaption"), lbCount = $("#lbCounter");
-  let lbList = [], lbIdx = 0;
-  function openLb(list, idx) { lbList = list; lbIdx = idx; paintLb(); lb.hidden = false; document.body.style.overflow = "hidden"; $("#lightboxClose").focus(); }
+  let lbList = [], lbIdx = 0, lbReturnFocus = null;
+  function openLb(list, idx) {
+    lbReturnFocus = document.activeElement;   // remember what to focus on close
+    lbList = list; lbIdx = idx; paintLb(); lb.hidden = false;
+    document.body.style.overflow = "hidden"; $("#lightboxClose").focus();
+  }
   function paintLb() {
     const p = lbList[lbIdx]; if (!p) return;
     lbImg.src = photoSrc(p); lbImg.alt = p.caption || p.shoot.title; lbImg.style.objectPosition = "center";
@@ -185,7 +189,21 @@
     lbCount.textContent = `${lbIdx + 1} / ${lbList.length}`;
   }
   function stepLb(d) { if (!lbList.length) return; lbIdx = (lbIdx + d + lbList.length) % lbList.length; paintLb(); }
-  function closeLb() { lb.hidden = true; lbImg.src = ""; document.body.style.overflow = ""; }
+  function closeLb() {
+    lb.hidden = true; lbImg.src = ""; document.body.style.overflow = "";
+    // Return focus to the thumbnail/card that opened the viewer.
+    if (lbReturnFocus && document.contains(lbReturnFocus)) { try { lbReturnFocus.focus(); } catch {} }
+    lbReturnFocus = null;
+  }
+  // Simple focus trap: keep Tab within the lightbox while it's open.
+  lb.addEventListener("keydown", (e) => {
+    if (e.key !== "Tab") return;
+    const f = [...lb.querySelectorAll("button:not([disabled])")].filter(el => el.offsetParent !== null);
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
   $("#lightboxClose").addEventListener("click", (e) => { e.stopPropagation(); closeLb(); });
   $("#lbPrev").addEventListener("click", (e) => { e.stopPropagation(); stepLb(-1); });
   $("#lbNext").addEventListener("click", (e) => { e.stopPropagation(); stepLb(1); });
@@ -222,8 +240,24 @@
     if (header) {
       header.classList.toggle("menu-open", o);
     }
+    // Focus management: into the menu on open, back to the button on close.
+    if (o) {
+      const firstLink = overlay.querySelector(".nav-links a");
+      setTimeout(() => firstLink?.focus(), 60);
+    } else if (document.activeElement && overlay.contains(document.activeElement)) {
+      menuBtn.focus();
+    }
   }
   menuBtn.addEventListener("click", () => toggleMenu());
+  // Trap Tab within the open menu overlay.
+  overlay.addEventListener("keydown", (e) => {
+    if (e.key !== "Tab" || !overlay.classList.contains("open")) return;
+    const f = [...overlay.querySelectorAll("a[href], button:not([disabled])")].filter(el => el.offsetParent !== null);
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
   overlay.addEventListener("click", (e) => { if (e.target.closest("[data-link]")) toggleMenu(false); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && overlay.classList.contains("open")) toggleMenu(false); });
 

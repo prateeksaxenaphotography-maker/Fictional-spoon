@@ -121,8 +121,8 @@ a { color: inherit; text-decoration: none; }
 .menu-btn[aria-expanded="true"] i::after { transform: translateY(-4px) rotate(-45deg); }
 
 /* ---------- Overlay nav ---------- */
-.nav-overlay { position: fixed; inset: 0; z-index: 55; background: #121211; color: #e8e6e1; clip-path: circle(0% at calc(100% - 60px) 40px); transition: clip-path .7s var(--ease); pointer-events: none; }
-.nav-overlay.open { clip-path: circle(150% at calc(100% - 60px) 40px); pointer-events: auto; }
+.nav-overlay { position: fixed; inset: 0; z-index: 55; background: #121211; color: #e8e6e1; clip-path: circle(0% at calc(100% - 60px) 40px); transition: clip-path .7s var(--ease), visibility 0s linear .7s; pointer-events: none; visibility: hidden; }
+.nav-overlay.open { clip-path: circle(150% at calc(100% - 60px) 40px); pointer-events: auto; visibility: visible; transition: clip-path .7s var(--ease), visibility 0s; }
 .nav-overlay-inner { max-width: var(--maxw); margin: 0 auto; padding: 140px 32px 60px; height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
 .nav-links { list-style: none; margin: 0; padding: 0; }
 .nav-links li { overflow: hidden; }
@@ -334,7 +334,7 @@ a { color: inherit; text-decoration: none; }
 .footer-email-link:hover { color: var(--paper); border-color: var(--paper); }
 
 .footer-lower { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1.3fr; gap: 30px; align-items: start; }
-.footer-col-label { font-family: var(--mono-font); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.4); margin: 0 0 12px; }
+.footer-col-label { font-family: var(--mono-font); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.6); margin: 0 0 12px; }
 .footer-brand .brand-text { color: var(--paper); font-size: 19px; }
 .footer-brand .brand-sub { color: rgba(255,255,255,.55); }
 .footer-brand p { max-width: 300px; margin: 14px 0 0; font-size: 13px; color: rgba(255,255,255,.55); line-height: 1.55; }
@@ -344,7 +344,7 @@ a { color: inherit; text-decoration: none; }
 .footer-socials { display: flex; flex-direction: column; gap: 9px; font-size: 14px; }
 .footer-socials a { color: rgba(255,255,255,.75); transition: color .25s; width: fit-content; }
 .footer-socials a:hover { color: var(--paper); }
-.footer-meta { font-size: 12px; color: rgba(255,255,255,.45); }
+.footer-meta { font-size: 12px; color: rgba(255,255,255,.55); }
 .footer-meta p { margin: 0 0 8px; line-height: 1.5; }
 
 /* ---------- Lightbox ---------- */
@@ -455,12 +455,42 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* ---------- Accessibility Focus States ---------- */
-a:focus-visible, 
-button:focus-visible, 
-.cat-card:focus-visible, 
-.work-media:focus-visible { 
-  outline: 2px solid var(--accent); 
-  outline-offset: 4px; 
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[contenteditable]:focus-visible,
+[tabindex]:focus-visible,
+.cat-card:focus-visible,
+.work-media:focus-visible,
+.noth-work-media:focus-visible,
+.comp-card-thumb:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+/* Keep a visible focus ring even where the custom cursor hides the pointer */
+.noth-work-media:focus-visible, .work-media:focus-visible { outline-offset: -3px; }
+main:focus { outline: none; }
+
+/* ---------- Skip link ---------- */
+.skip-link {
+  position: fixed; top: 10px; left: 10px; z-index: 500;
+  background: var(--ink); color: var(--paper);
+  font-family: var(--mono-font, monospace); font-size: 13px; font-weight: 600;
+  padding: 12px 18px; border-radius: 8px;
+  transform: translateY(-160%); transition: transform .25s var(--ease);
+}
+.skip-link:focus { transform: translateY(0); outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- Touch targets: ensure comfortable tap area ---------- */
+@media (hover: none), (pointer: coarse) {
+  .footer-nav a, .footer-socials a { padding: 6px 0; min-height: 44px; display: inline-flex; align-items: center; }
+  .link-arrow { min-height: 44px; display: inline-flex; align-items: center; }
+  .footer-email-link { min-height: 44px; display: inline-flex; align-items: center; }
+  .menu-btn { min-height: 44px; }
+  .nav-social a { min-width: 44px; min-height: 44px; }
 }
 
 /* ---------- Tactile Micro-Interactions (Press states) ---------- */
