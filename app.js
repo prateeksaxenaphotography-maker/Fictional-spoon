@@ -664,8 +664,32 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
     const getSamples = (key, val, limit = 3) => {
       const shoots = SHOOTS.filter(s => s[key] === val);
-      const photos = shoots.flatMap(s => s.photos.map(p => ({ ...p, parent: s })));
-      return photos.slice(0, limit);
+      if (!shoots.length) return [];
+      
+      const samples = [];
+      // 1. Take the first photo from each distinct shoot to maximize variety
+      for (const s of shoots) {
+        if (s.photos && s.photos[0]) {
+          samples.push({ ...s.photos[0], parent: s });
+        }
+      }
+      
+      // 2. If we need more samples to fill the grid, take subsequent photos from those same shoots
+      if (samples.length < limit) {
+        const remaining = [];
+        for (const s of shoots) {
+          if (s.photos && s.photos.length > 1) {
+            for (let i = 1; i < s.photos.length; i++) {
+              remaining.push({ ...s.photos[i], parent: s });
+            }
+          }
+        }
+        for (const photo of remaining) {
+          if (samples.length >= limit) break;
+          samples.push(photo);
+        }
+      }
+      return samples.slice(0, limit);
     };
 
     const renderSpecialtyGallery = (samples, placeholderPrefix) => {
