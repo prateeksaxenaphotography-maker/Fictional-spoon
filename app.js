@@ -285,7 +285,35 @@
     if (window.applyWpsThemeOverride) {
       window.applyWpsThemeOverride();
     }
+    syncHeaderThemeToggle();
   });
+
+  /* Public header theme toggle — simple light <-> dark for every visitor.
+     Resolves the current effective theme, then flips to the opposite and
+     stores it as an explicit override (leaving "auto" behind once used). */
+  const headerThemeToggle = $("#headerThemeToggle");
+  function currentEffectiveTheme() {
+    return document.documentElement.classList.contains("theme-dark") ? "dark" : "light";
+  }
+  function syncHeaderThemeToggle() {
+    if (!headerThemeToggle) return;
+    const isDark = currentEffectiveTheme() === "dark";
+    headerThemeToggle.setAttribute("aria-pressed", String(isDark));
+    headerThemeToggle.setAttribute(
+      "title",
+      isDark ? "Switch to light theme" : "Switch to dark theme"
+    );
+  }
+  headerThemeToggle?.addEventListener("click", () => {
+    const next = currentEffectiveTheme() === "dark" ? "light" : "dark";
+    localStorage.setItem("wps-theme-override", next);
+    if (window.applyWpsThemeOverride) window.applyWpsThemeOverride();
+    updateThemeBtnText();
+    syncHeaderThemeToggle();
+  });
+  // Keep the toggle icon/state in sync when the system theme changes in auto mode.
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncHeaderThemeToggle);
+  syncHeaderThemeToggle();
 
   /* ---------------- GitHub sync ----------------
      Publishes the portfolio into the repo so every visitor sees it.
@@ -482,37 +510,33 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const remainingCount = s.photos.length - 3;
       const fourthPhoto = s.photos[3];
       return `
-        <div class="comp-card-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; align-self: start;">
+        <div class="comp-card-grid">
           ${shownPhotos.map((p, idx) => `
-            <button class="comp-card-thumb reveal" data-index="${idx}" style="aspect-ratio: 3/4; overflow: hidden; background: var(--bone); border: 1px solid var(--line); border-radius: 4px; padding: 0; cursor: pointer; position: relative; transition: transform .3s var(--ease);">
-              <img src="${esc(photoSrc(p))}" style="width: 100%; height: 100%; object-fit: cover; object-position: center;" alt="Comp card frame ${idx + 1}" loading="lazy" />
+            <button class="comp-card-thumb reveal" data-index="${idx}">
+              <img src="${esc(photoSrc(p))}" alt="Comp card frame ${idx + 1}" loading="lazy" />
             </button>
           `).join("")}
           ${fourthPhoto ? `
-            <button class="comp-card-thumb comp-card-more reveal" data-index="3" style="aspect-ratio: 3/4; overflow: hidden; background: var(--bone); border: 1px solid var(--line); border-radius: 4px; padding: 0; cursor: pointer; position: relative; transition: transform .3s var(--ease);">
-              <img src="${esc(photoSrc(fourthPhoto))}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; filter: brightness(0.4);" alt="Comp card frame 4" loading="lazy" />
-              ${remainingCount > 1 ? `
-                <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
-                  +${remainingCount} more
-                </div>
-              ` : ""}
+            <button class="comp-card-thumb comp-card-more reveal" data-index="3">
+              <img src="${esc(photoSrc(fourthPhoto))}" style="filter: brightness(0.42);" alt="Comp card frame 4" loading="lazy" />
+              ${remainingCount > 1 ? `<div class="comp-card-more-overlay">+${remainingCount} more</div>` : ""}
             </button>
           ` : ""}
         </div>
       `;
     })() : `
-      <button class="work-media" style="background-color: ${esc((s.palette && s.palette[1]) || '#1a1a1a')}; display: flex; align-items: center; justify-content: center;" aria-label="View ${esc(s.title)}">
-        <img src="${esc(photoSrc(cover))}" style="object-position: center;" alt="${esc(s.title)}" loading="lazy" />
-        <span class="work-count">${s.photos.length} frames</span>
+      <button class="work-media" aria-label="View ${esc(s.title)}">
+        <img src="${esc(photoSrc(cover))}" style="object-position: ${esc(coverPos)};" alt="${esc(s.title)}" loading="lazy" />
+        <span class="work-count">${s.photos.length} frame${s.photos.length !== 1 ? 's' : ''}</span>
       </button>
     `;
 
     return `
       <article class="work-block ${i % 2 ? "flip" : ""} reveal" data-shoot="${s.id}" data-talent="${esc(s.talent)}">
         ${s.isCompCard ? `
-          <div class="comp-card-header" style="grid-column: 1 / -1; margin-bottom: -15px; border-bottom: 1px solid var(--line); padding-bottom: 14px; direction: ltr; text-align: left;">
-            <h2 style="font-family: 'Outfit', sans-serif; font-size: 32px; font-weight: 700; margin: 0; color: var(--ink);">${esc(s.talent)}</h2>
-            <p class="eyebrow" style="margin: 6px 0 0; color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.05em;">COMP CARD</p>
+          <div class="comp-card-header">
+            <h2>${esc(s.talent)}</h2>
+            <p class="comp-card-eyebrow">Comp Card</p>
           </div>
         ` : ""}
         ${mediaHtml}
@@ -558,8 +582,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         <div class="hero-bg" aria-hidden="true"></div>
         <div class="container hero-inner">
           <p class="eyebrow reveal">The Creative Studio of ${esc(window.STUDIO_CONFIG?.studioName || "Our Studio")}</p>
-          <h1 class="reveal" style="font-size: clamp(38px, 6.2vw, 72px); line-height: 1.05; max-width: 900px; margin: 0 0 24px;">
-            Fashion, Fitness &amp; Sports Photography in Noida &amp; Delhi NCR – <span style="color: var(--accent); font-family: 'Fraunces', serif; font-style: italic; font-weight: 400;">Editorial-Grade Portfolios</span> for Models &amp; Brands
+          <h1 class="reveal hero-headline">
+            Fashion, Fitness &amp; Sports Photography in Noida &amp; Delhi NCR – <span class="hero-accent">Editorial-Grade Portfolios</span> for Models &amp; Brands
           </h1>
           <p class="lede reveal">High-impact visuals for lookbooks, campaigns, and portfolios that get you noticed.</p>
           <div class="hero-actions reveal">
@@ -589,21 +613,21 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <p class="eyebrow">Services</p>
           <h2>Who I shoot for</h2>
         </div>
-        <div class="services-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px;">
-          <div class="service-card reveal" style="background: var(--bone); border: 1px solid var(--line); padding: 40px 30px; border-radius: 6px; transition: transform .3s var(--ease), box-shadow .3s var(--ease);">
-            <div style="font-family: 'Fraunces', serif; font-style: italic; font-size: 24px; color: var(--accent); margin-bottom: 16px;">Brands</div>
-            <h3 style="font-size: 18px; margin-bottom: 12px; font-weight: 700;">Campaigns &amp; Lookbooks</h3>
-            <p style="font-size: 14px; color: var(--ink-soft); line-height: 1.6;">High-concept visual storytelling, commercial lookbooks, and campaigns tailored to elevate brand identities and drive customer engagement.</p>
+        <div class="services-grid">
+          <div class="service-card reveal">
+            <div class="service-kicker">Brands</div>
+            <h3>Campaigns &amp; Lookbooks</h3>
+            <p>High-concept visual storytelling, commercial lookbooks, and campaigns tailored to elevate brand identities and drive customer engagement.</p>
           </div>
-          <div class="service-card reveal" style="background: var(--bone); border: 1px solid var(--line); padding: 40px 30px; border-radius: 6px; transition: transform .3s var(--ease), box-shadow .3s var(--ease);">
-            <div style="font-family: 'Fraunces', serif; font-style: italic; font-size: 24px; color: var(--accent); margin-bottom: 16px;">Models</div>
-            <h3 style="font-size: 18px; margin-bottom: 12px; font-weight: 700;">Portfolio Building &amp; TFP</h3>
-            <p style="font-size: 14px; color: var(--ink-soft); line-height: 1.6;">Editorial-grade portfolio building, comp card shoot development, and selective test shoots (TFP) to help models stand out in agency submissions.</p>
+          <div class="service-card reveal" style="--d:.06s">
+            <div class="service-kicker">Models</div>
+            <h3>Portfolio Building &amp; TFP</h3>
+            <p>Editorial-grade portfolio building, comp card shoot development, and selective test shoots (TFP) to help models stand out in agency submissions.</p>
           </div>
-          <div class="service-card reveal" style="background: var(--bone); border: 1px solid var(--line); padding: 40px 30px; border-radius: 6px; transition: transform .3s var(--ease), box-shadow .3s var(--ease);">
-            <div style="font-family: 'Fraunces', serif; font-style: italic; font-size: 24px; color: var(--accent); margin-bottom: 16px;">Athletes</div>
-            <h3 style="font-size: 18px; margin-bottom: 12px; font-weight: 700;">Fitness &amp; Sports Action</h3>
-            <p style="font-size: 14px; color: var(--ink-soft); line-height: 1.6;">Dynamic action-freezing athletic portraits and editorial-grade fitness content that highlights physique, strength, and raw athletic performance.</p>
+          <div class="service-card reveal" style="--d:.12s">
+            <div class="service-kicker">Athletes</div>
+            <h3>Fitness &amp; Sports Action</h3>
+            <p>Dynamic action-freezing athletic portraits and editorial-grade fitness content that highlights physique, strength, and raw athletic performance.</p>
           </div>
         </div>
       </section>
@@ -625,14 +649,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <p class="eyebrow">Client Reactions</p>
           <h2>Testimonials &amp; Trust</h2>
         </div>
-        <div class="testimonials-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px;">
-          ${window.STUDIO_CONFIG.testimonials.map(t => `
-            <div class="testimonial-card reveal" style="background: var(--bone); border: 1px solid var(--line); padding: 40px 30px; border-radius: 6px;">
-              <p style="font-family: 'Fraunces', serif; font-style: italic; font-size: 15px; line-height: 1.6; color: var(--ink); margin-bottom: 20px;">
-                ${esc(t.quote)}
-              </p>
-              <div style="font-size: 13px; font-weight: 700;">${esc(t.author)}</div>
-              ${t.role ? `<div style="font-size: 11px; color: var(--ink-soft); margin-top: 2px;">${esc(t.role)}</div>` : ''}
+        <div class="testimonials-grid">
+          ${window.STUDIO_CONFIG.testimonials.map((t, i) => `
+            <div class="testimonial-card reveal" style="--d:${(i * 0.06).toFixed(2)}s">
+              <p class="t-quote">${esc(t.quote)}</p>
+              <div class="t-author">${esc(t.author)}</div>
+              ${t.role ? `<div class="t-role">${esc(t.role)}</div>` : ''}
             </div>
           `).join("")}
         </div>
@@ -654,10 +676,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   }
 
 
-  function catCard(label, kind, val, count, sample) {
+  function catCard(label, kind, val, count, sample, cover) {
+    const coverSrc = cover ? photoSrc(cover) : "";
+    const swatch = coverSrc
+      ? `<span class="cat-cover"><img src="${esc(coverSrc)}" alt="${esc(label)}" loading="lazy" /></span>`
+      : `<span class="cat-swatch" style="background:linear-gradient(150deg,${esc(sample[0])},${esc(sample[1])})"></span>`;
     return `
       <a href="/categories?kind=${kind}&amp;val=${encodeURIComponent(val)}" data-link class="cat-card reveal">
-        <span class="cat-swatch" style="background:linear-gradient(150deg,${esc(sample[0])},${esc(sample[1])})"></span>
+        ${swatch}
         <div class="cat-body"><span class="cat-kind">${kind}</span><h3>${esc(label)}</h3><span class="cat-count">${count} shoot${count !== 1 ? "s" : ""}</span></div>
         <span class="cat-arrow">→</span>
       </a>`;
@@ -743,13 +769,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
       const isTestShoot = (kind === "type" && d === "Test Shoot");
       const alphaFilterHtml = isTestShoot ? `
-        <div class="alpha-filter-bar container reveal" style="margin-top: 40px; margin-bottom: 20px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 13px;">
-          <button class="alpha-btn active" data-alpha="ALL" style="background: none; border: none; color: var(--accent); font-weight: 700; cursor: pointer; padding: 5px 8px; text-transform: uppercase;">ALL</button>
+        <div class="alpha-filter-bar container reveal">
+          <button class="alpha-btn active" data-alpha="ALL">ALL</button>
           ${"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(char => {
             const hasMatches = displayList.some(s => (s.talent || "").trim().charAt(0).toUpperCase() === char);
-            return `
-              <button class="alpha-btn" data-alpha="${char}" ${!hasMatches ? 'disabled style="background: none; border: none; color: var(--line); cursor: not-allowed; padding: 5px 8px;"' : 'style="background: none; border: none; color: var(--ink-soft); cursor: pointer; padding: 5px 8px; transition: color .3s;"'}>${char}</button>
-            `;
+            return `<button class="alpha-btn" data-alpha="${char}"${!hasMatches ? " disabled" : ""}>${char}</button>`;
           }).join("")}
         </div>
       ` : "";
@@ -772,7 +796,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         return s[key] === v;
       });
       const sample = (shoots[0] || SHOOTS[0] || {}).palette || ["#3a3a3a", "#0d0d0d"];
-      return { v, count: shoots.length, sample };
+      // Pick a representative cover photo for the tile
+      let cover = null;
+      for (const s of shoots) {
+        const c = s.photos && (s.photos.find(p => p.id && p.id.split("-")[0] === s.coverPhotoId) || s.photos[0]);
+        if (c) { cover = c; break; }
+      }
+      return { v, count: shoots.length, sample, cover };
     }).filter((x) => x.count > 0);
     const act = grp(ACTIVITIES, "activity"), brs = grp(BRANDS, "brand"), typ = grp(TYPES, "type");
     
@@ -830,13 +860,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       for (let i = 0; i < 3; i++) {
         const photo = samples[i];
         if (photo) {
-          html += `<div class="specialty-thumb-wrap" style="aspect-ratio: 3/4; overflow: hidden; background: var(--bone); border: 1px solid var(--line); border-radius: 4px;">
-                     <img src="${esc(photoSrc(photo))}" style="width:100%; height:100%; object-fit:cover; object-position:center; transition: transform .4s var(--ease);" alt="${esc(photo.parent?.title || placeholderPrefix)}" />
+          html += `<div class="specialty-thumb-wrap">
+                     <img src="${esc(photoSrc(photo))}" alt="${esc(photo.parent?.title || placeholderPrefix)}" loading="lazy" />
                    </div>`;
         } else {
-          html += `<div style="aspect-ratio: 3/4; background: var(--bone); border: 1px solid var(--line); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--ink-soft); font-family: monospace;">
-                     ${placeholderPrefix}_0${i+1}
-                   </div>`;
+          html += `<div class="specialty-thumb-empty">${placeholderPrefix}_0${i+1}</div>`;
         }
       }
       return html;
@@ -859,106 +887,106 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       ${act.length ? `
       <section class="section container">
         <div class="section-head reveal"><p class="eyebrow">By activity</p><h2>What we shot</h2></div>
-        <div class="cat-grid">${act.map((x) => catCard(x.v, "activity", x.v, x.count, x.sample)).join("")}</div>
+        <div class="cat-grid">${act.map((x) => catCard(x.v, "activity", x.v, x.count, x.sample, x.cover)).join("")}</div>
       </section>
       ` : ""}
       ${brs.length ? `
       <section class="section container">
         <div class="section-head reveal"><p class="eyebrow">By brand</p><h2>Who it was for</h2></div>
-        <div class="cat-grid">${brs.map((x) => catCard(x.v, "brand", x.v, x.count, x.sample)).join("")}</div>
+        <div class="cat-grid">${brs.map((x) => catCard(x.v, "brand", x.v, x.count, x.sample, x.cover)).join("")}</div>
       </section>
       ` : ""}
 
 
       <!-- SPECIALTIES DIRECTORY -->
       ${(fashionSamples.length || portraitSamples.length || fitnessSamples.length || sportsSamples.length || testShootSamples.length) ? `
-      <section class="section container" style="border-top: 1px solid var(--line); margin-top: 60px; padding-top: 60px;">
+      <section class="section container section-divider">
         <div class="section-head reveal" style="margin-bottom: 45px;">
           <p class="eyebrow">Our Specialties</p>
           <h2>Photography Focus Areas</h2>
         </div>
-        <div class="specialties-list" style="display: flex; flex-direction: column; gap: 50px;">
+        <div class="specialties-list">
           
           ${fashionSamples.length ? `
-          <div class="specialty-item reveal" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; align-items: center;">
+          <div class="specialty-item reveal">
             <div class="specialty-meta">
-              <h3 style="font-size: 24px; margin-bottom: 12px; font-weight: 800;">
-                <a href="/categories?kind=activity&amp;val=Fashion" data-link style="color: inherit; text-decoration: none;">Fashion Editorial</a>
+              <h3>
+                <a href="/categories?kind=activity&amp;val=Fashion" data-link>Fashion Editorial</a>
               </h3>
-              <p style="font-size: 14px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 16px;">
+              <p>
                 Editorial-grade fashion photography combining styling, dramatic concepts, and high-fashion modeling portfolios. Crafted for designer campaigns, apparel lookbooks, and modeling agency submissions in Noida &amp; Delhi NCR.
               </p>
               <a href="/categories?kind=activity&amp;val=Fashion" data-link class="link-arrow" style="font-size: 12px; font-weight: 700;">Explore fashion edit →</a>
             </div>
-            <div class="specialty-gallery" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+            <div class="specialty-gallery">
               ${renderSpecialtyGallery(fashionSamples, "FASHION")}
             </div>
           </div>
           ` : ""}
 
           ${portraitSamples.length ? `
-          <div class="specialty-item reveal" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; align-items: center;">
+          <div class="specialty-item reveal">
             <div class="specialty-meta">
-              <h3 style="font-size: 24px; margin-bottom: 12px; font-weight: 800;">
-                <a href="/categories?kind=activity&amp;val=Portrait" data-link style="color: inherit; text-decoration: none;">Beauty &amp; Portrait</a>
+              <h3>
+                <a href="/categories?kind=activity&amp;val=Portrait" data-link>Beauty &amp; Portrait</a>
               </h3>
-              <p style="font-size: 14px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 16px;">
+              <p>
                 Fine art beauty portraits, cinematic lighting setups, and magazine-style close-ups. Focused on capturing expressive features, professional model headshots, and high-fidelity skin textures with natural detailing.
               </p>
               <a href="/categories?kind=activity&amp;val=Portrait" data-link class="link-arrow" style="font-size: 12px; font-weight: 700;">Explore beauty &amp; portraits →</a>
             </div>
-            <div class="specialty-gallery" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+            <div class="specialty-gallery">
               ${renderSpecialtyGallery(portraitSamples, "BEAUTY")}
             </div>
           </div>
           ` : ""}
 
           ${fitnessSamples.length ? `
-          <div class="specialty-item reveal" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; align-items: center;">
+          <div class="specialty-item reveal">
             <div class="specialty-meta">
-              <h3 style="font-size: 24px; margin-bottom: 12px; font-weight: 800;">
-                <a href="/categories?kind=activity&amp;val=Fitness" data-link style="color: inherit; text-decoration: none;">Fitness &amp; Athletic</a>
+              <h3>
+                <a href="/categories?kind=activity&amp;val=Fitness" data-link>Fitness &amp; Athletic</a>
               </h3>
-              <p style="font-size: 14px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 16px;">
+              <p>
                 Physique, fitness, and bodybuilding editorial photography. High-contrast athletic portraits, highlighting musculature, dedication, and form for personal trainers, fitness models, and activewear brands.
               </p>
               <a href="/categories?kind=activity&amp;val=Fitness" data-link class="link-arrow" style="font-size: 12px; font-weight: 700;">Explore fitness catalog →</a>
             </div>
-            <div class="specialty-gallery" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+            <div class="specialty-gallery">
               ${renderSpecialtyGallery(fitnessSamples, "FITNESS")}
             </div>
           </div>
           ` : ""}
 
           ${sportsSamples.length ? `
-          <div class="specialty-item reveal" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; align-items: center;">
+          <div class="specialty-item reveal">
             <div class="specialty-meta">
-              <h3 style="font-size: 24px; margin-bottom: 12px; font-weight: 800;">
-                <a href="/categories?kind=activity&amp;val=Sports" data-link style="color: inherit; text-decoration: none;">Sports Action</a>
+              <h3>
+                <a href="/categories?kind=activity&amp;val=Sports" data-link>Sports Action</a>
               </h3>
-              <p style="font-size: 14px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 16px;">
+              <p>
                 Action-stopping sports photography capturing motion, speed, and raw intensity. Documenting athletes in their element with high-speed shutter setups and responsive editorial lensing.
               </p>
               <a href="/categories?kind=activity&amp;val=Sports" data-link class="link-arrow" style="font-size: 12px; font-weight: 700;">Explore sports action →</a>
             </div>
-            <div class="specialty-gallery" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+            <div class="specialty-gallery">
               ${renderSpecialtyGallery(sportsSamples, "SPORTS")}
             </div>
           </div>
           ` : ""}
 
           ${testShootSamples.length ? `
-          <div class="specialty-item reveal" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; align-items: center;">
+          <div class="specialty-item reveal">
             <div class="specialty-meta">
-              <h3 style="font-size: 24px; margin-bottom: 12px; font-weight: 800;">
-                <a href="/categories?kind=type&amp;val=Test%20Shoot" data-link style="color: inherit; text-decoration: none;">Model Portfolio (Comp Cards)</a>
+              <h3>
+                <a href="/categories?kind=type&amp;val=Test%20Shoot" data-link>Model Portfolio (Comp Cards)</a>
               </h3>
-              <p style="font-size: 14px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 16px;">
+              <p>
                 Comprehensive testing shoots and comp card layout photography designed for aspiring and professional model talent. Direct submissions focus: clean test lighting, polaroids, digitals, and styling versatility.
               </p>
               <a href="/categories?kind=type&amp;val=Test%20Shoot" data-link class="link-arrow" style="font-size: 12px; font-weight: 700;">Explore test shoots →</a>
             </div>
-            <div class="specialty-gallery" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+            <div class="specialty-gallery">
               ${renderSpecialtyGallery(testShootSamples, "MODEL")}
             </div>
           </div>
@@ -1158,8 +1186,19 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         </div>
       </section>
       <section class="section container">
-        <div class="upload-grid" style="grid-template-columns: 1fr; max-width: 680px; margin: 0 auto;">
-          <form class="shoot-form" id="bookingForm">
+        <div class="book-wrap">
+          <div class="book-success" id="bookSuccess" hidden>
+            <div class="book-success-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+            </div>
+            <h2>Request on its way.</h2>
+            <p id="bookSuccessMsg">Your booking inquiry is ready in your email app — hit <strong>Send</strong> to complete it, and we'll get back to you shortly.</p>
+            <div class="book-success-actions">
+              <a href="/" data-link class="btn btn-dark">Back to home</a>
+              <button type="button" class="btn btn-ghost" id="bookAnother">Send another request</button>
+            </div>
+          </div>
+          <form class="shoot-form" id="bookingForm" novalidate>
             <fieldset>
               <legend>Contact Information</legend>
               <div class="field-row">
@@ -1561,81 +1600,108 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   function wireBook() {
     const form = $("#bookingForm"), btn = $("#bookSubmitBtn");
     if (!form) return;
+    const successPanel = $("#bookSuccess");
+    const studioEmail = window.STUDIO_CONFIG?.email || "prateeksaxenaphotography@gmail.com";
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const val = (id) => $("#" + id)?.value.trim();
+    const val = (id) => $("#" + id)?.value.trim() || "";
+    const fieldOf = (id) => $("#" + id)?.closest(".field");
 
-      const name = val("b_name");
-      const role = val("b_role");
+    // Inline validation: mark a field invalid + show a message under it.
+    function setError(id, msg) {
+      const field = fieldOf(id);
+      if (!field) return;
+      field.classList.add("field-invalid");
+      let note = field.querySelector(".field-error");
+      if (!note) {
+        note = document.createElement("span");
+        note.className = "field-error";
+        field.appendChild(note);
+      }
+      note.textContent = msg;
+    }
+    function clearError(id) {
+      const field = fieldOf(id);
+      if (!field) return;
+      field.classList.remove("field-invalid");
+      field.querySelector(".field-error")?.remove();
+    }
+    // Clear an error the moment the visitor starts fixing it.
+    ["b_name", "b_email", "b_date"].forEach((id) => {
+      $("#" + id)?.addEventListener("input", () => clearError(id));
+    });
+
+    function validate() {
+      let firstBad = null;
+      const require = (id, msg) => {
+        if (!val(id)) { setError(id, msg); firstBad = firstBad || id; }
+        else clearError(id);
+      };
+      require("b_name", "Please add your name or brand.");
+      require("b_date", "Let us know a rough date or timeline.");
       const email = val("b_email");
-      const phone = val("b_phone");
-      const instagram = val("b_instagram");
-      const type = val("b_type");
-      const date = val("b_date");
-      const locationVal = val("b_location");
-      const budget = val("b_budget");
-      const moodboard = val("b_moodboard");
-      const concept = val("b_concept");
+      if (!email) { setError("b_email", "We need an email to reply to."); firstBad = firstBad || "b_email"; }
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("b_email", "That email doesn't look right."); firstBad = firstBad || "b_email"; }
+      else clearError("b_email");
+      return firstBad;
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      const firstBad = validate();
+      if (firstBad) {
+        const el = $("#" + firstBad);
+        el?.focus();
+        el?.scrollIntoView({ behavior: prefersReduced ? "auto" : "smooth", block: "center" });
+        return;
+      }
+
+      const name = val("b_name"), role = val("b_role"), email = val("b_email");
+      const phone = val("b_phone"), instagram = val("b_instagram"), type = val("b_type");
+      const date = val("b_date"), locationVal = val("b_location"), budget = val("b_budget");
+      const moodboard = val("b_moodboard"), concept = val("b_concept");
 
       btn.disabled = true;
-      btn.textContent = "Submitting request...";
+      btn.classList.add("is-loading");
+      btn.textContent = "Preparing your request…";
 
-      const formData = {
-        name,
-        role,
-        email,
-        phone,
-        instagram,
-        type,
-        date,
-        location: locationVal,
-        budget,
-        moodboard,
-        concept
-      };
+      const subject = encodeURIComponent(`Shoot Booking Request — ${name}`);
+      const body = encodeURIComponent(
+        `Shoot Booking Details:\n\n` +
+        `Name: ${name}\n` +
+        `Role: ${role}\n` +
+        `Email: ${email}\n` +
+        `Phone: ${phone || '—'}\n` +
+        `Instagram: ${instagram || '—'}\n` +
+        `Shoot Type: ${type}\n` +
+        `Proposed Date: ${date}\n` +
+        `Location Pref: ${locationVal}\n` +
+        `Budget Range: ${budget}\n` +
+        `Moodboard Link: ${moodboard || '—'}\n\n` +
+        `Concept/Vision:\n${concept || '—'}`
+      );
 
-      try {
-        const response = await fetch("https://formspree.io/prateeksaxenaphotography@gmail.com", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-          },
-          body: JSON.stringify(formData)
-        });
+      // Open the visitor's mail client with everything pre-filled.
+      window.location.href = `mailto:${studioEmail}?subject=${subject}&body=${body}`;
 
-        if (response.ok) {
-          alert("Request submitted! Your booking inquiry has been sent successfully. We will get back to you shortly.");
-          form.reset();
-          history.pushState(null, "", "/");
-          render();
-        } else {
-          throw new Error("Formspree response not OK");
-        }
-      } catch (err) {
-        console.error("Booking submit error, falling back to mailto:", err);
-        const subject = encodeURIComponent(`Shoot Booking Request from ${name}`);
-        const body = encodeURIComponent(
-          `Shoot Booking Details:\n\n` +
-          `Name: ${name}\n` +
-          `Role: ${role}\n` +
-          `Email: ${email}\n` +
-          `Phone: ${phone || '—'}\n` +
-          `Instagram: ${instagram || '—'}\n` +
-          `Shoot Type: ${type}\n` +
-          `Proposed Date: ${date}\n` +
-          `Location Pref: ${locationVal}\n` +
-          `Budget Range: ${budget}\n` +
-          `Moodboard Link: ${moodboard || '—'}\n\n` +
-          `Concept/Vision:\n${concept || '—'}`
-        );
-        window.location.href = `mailto:prateeksaxenaphotography@gmail.com?subject=${subject}&body=${body}`;
-        alert("We started your email app to send the request. Please click 'Send' in your mail client to complete the booking submission!");
-      } finally {
-        btn.disabled = false;
-        btn.textContent = "Submit Booking Request";
+      // Reveal the in-page success state (replaces the old alert()).
+      if (successPanel) {
+        form.hidden = true;
+        successPanel.hidden = false;
+        successPanel.scrollIntoView({ behavior: prefersReduced ? "auto" : "smooth", block: "center" });
       }
+      btn.disabled = false;
+      btn.classList.remove("is-loading");
+      btn.textContent = "Submit Booking Request";
+    });
+
+    // "Send another request" — reset back to a clean form.
+    $("#bookAnother")?.addEventListener("click", () => {
+      form.reset();
+      ["b_name", "b_email", "b_date"].forEach(clearError);
+      if (successPanel) successPanel.hidden = true;
+      form.hidden = false;
+      form.scrollIntoView({ behavior: prefersReduced ? "auto" : "smooth", block: "start" });
     });
   }
 
