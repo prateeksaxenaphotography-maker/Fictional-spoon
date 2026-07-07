@@ -474,7 +474,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     ` : "";
 
     return `
-      <article class="work-block ${i % 2 ? "flip" : ""} reveal" data-shoot="${s.id}">
+      <article class="work-block ${i % 2 ? "flip" : ""} reveal" data-shoot="${s.id}" data-talent="${esc(s.talent)}">
         <button class="work-media" style="background-color: ${esc((s.palette && s.palette[1]) || '#1a1a1a')}; display: flex; align-items: center; justify-content: center;" aria-label="View ${esc(s.title)}">
           <img src="${esc(photoSrc(cover))}" style="object-position: center;" alt="${esc(s.title)}" loading="lazy" />
           <span class="work-count">${s.photos.length} frames</span>
@@ -701,15 +701,29 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
       CURRENT_VIEW_SHOOTS = displayList;
 
+      const isTestShoot = (kind === "type" && d === "Test Shoot");
+      const alphaFilterHtml = isTestShoot ? `
+        <div class="alpha-filter-bar container reveal" style="margin-top: 40px; margin-bottom: 20px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 13px;">
+          <button class="alpha-btn active" data-alpha="ALL" style="background: none; border: none; color: var(--accent); font-weight: 700; cursor: pointer; padding: 5px 8px; text-transform: uppercase;">ALL</button>
+          \${"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(char => {
+            const hasMatches = displayList.some(s => (s.talent || "").trim().charAt(0).toUpperCase() === char);
+            return \`
+              <button class="alpha-btn" data-alpha="\${char}" \${!hasMatches ? 'disabled style="background: none; border: none; color: var(--line); cursor: not-allowed; padding: 5px 8px;"' : 'style="background: none; border: none; color: var(--ink-soft); cursor: pointer; padding: 5px 8px; transition: color .3s;"'}>\${char}</button>
+            \`;
+          }).join("")}
+        </div>
+      ` : "";
+
       return `
         <section class="page-head">
           <div class="container">
-            <p class="eyebrow reveal"><a href="/categories" data-link>Categories</a> / ${esc(kind)}</p>
-            <h1 class="reveal">${esc(d)}</h1>
-            <p class="page-sub reveal">${displayList.length} master album${displayList.length !== 1 ? "s" : ""} in this ${esc(kind)}.</p>
+            <p class="eyebrow reveal"><a href="/categories" data-link>Categories</a> / \${esc(kind)}</p>
+            <h1 class="reveal">\${esc(d)}</h1>
+            \${isTestShoot ? "" : \`<p class="page-sub reveal">\${displayList.length} master album\${displayList.length !== 1 ? "s" : ""} in this \${esc(kind)}.</p>\`}
           </div>
         </section>
-        <section class="section container"><div class="work-list">${displayList.map(fullBleedBlock).join("") || emptyCat()}</div></section>`;
+        \${alphaFilterHtml}
+        <section class="section container"><div class="work-list">\${displayList.map(fullBleedBlock).join("") || emptyCat()}</div></section>`;
     }
     // Index: three lenses
     const grp = (arr, key) => arr.map((v) => {
@@ -1706,6 +1720,29 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         });
       });
     });
+
+    // Alphabetical filter wiring for Model Portfolio
+    const alphaBtns = view.querySelectorAll(".alpha-btn");
+    if (alphaBtns.length) {
+      alphaBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          alphaBtns.forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          
+          const filterVal = btn.dataset.alpha;
+          const blocks = view.querySelectorAll(".work-block");
+          blocks.forEach(block => {
+            const talent = block.dataset.talent || "";
+            const firstChar = talent.trim().charAt(0).toUpperCase();
+            if (filterVal === "ALL" || firstChar === filterVal) {
+              block.style.display = "";
+            } else {
+              block.style.display = "none";
+            }
+          });
+        });
+      });
+    }
     
     if (key === "upload") {
       const editId = new URLSearchParams(location.search).get("edit");
