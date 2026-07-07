@@ -116,7 +116,7 @@ window.WPS_DATA = {
           "objectPosition": "center"
         }
       ],
-      "featured": true,
+      "featured": false,
       "coverPhotoId": "mr4x1ect353v87"
     },
     {
@@ -586,7 +586,7 @@ window.WPS_DATA = {
           "objectPosition": "center"
         }
       ],
-      "featured": true,
+      "featured": false,
       "coverPhotoId": "mrania1npq2mxa"
     }
   ]
