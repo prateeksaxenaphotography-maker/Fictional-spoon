@@ -15,6 +15,11 @@ const STUDIO_CONFIG = {
   instagram: "https://www.instagram.com/thenerdyphotographer.in/",
   kavyar: "https://kavyar.com/uucurn46ib8f",
 
+  // Testimonials (Client Reactions)
+  // To show testimonials on the homepage, populate this array with real reviews.
+  // Example: { quote: "My review...", author: "Client Name", role: "Company Role" }
+  testimonials: [],
+
   // Categories & Taxonomies
   // These drive the navigation, filtering, and upload options
   activities: ["Beauty", "Editorial", "Fashion", "Fitness", "Portrait", "Sports"],
