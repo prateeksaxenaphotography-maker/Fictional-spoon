@@ -806,6 +806,8 @@ main:focus { outline: none; }
 .hero-camera .hc-view { animation-delay: 1.5s; }
 @keyframes hcDraw { to { stroke-dashoffset: 0; } }
 
+.hero-404 .notfound-mark { justify-content: flex-start; gap: .02em; }
+
 @media (max-width: 760px) {
   .hero-wordmark-nerdy { font-size: 27vw; }
   .hero-subword { font-size: 3.2vw; }
