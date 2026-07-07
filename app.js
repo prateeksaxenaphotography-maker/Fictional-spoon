@@ -600,6 +600,26 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           }).join("")}
         </div>
       </section>
+      ${window.STUDIO_CONFIG?.testimonials?.length ? `
+      <!-- TESTIMONIALS (CLIENT REACTIONS) -->
+      <section class="section container" style="border-top: 1px solid var(--line); padding-top: 60px; margin-top: 60px;">
+        <div class="section-head reveal" style="margin-bottom: 40px; text-align: center;">
+          <p class="eyebrow">Client Reactions</p>
+          <h2>Testimonials &amp; Trust</h2>
+        </div>
+        <div class="testimonials-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px;">
+          ${window.STUDIO_CONFIG.testimonials.map(t => `
+            <div class="testimonial-card reveal" style="background: var(--bone); border: 1px solid var(--line); padding: 40px 30px; border-radius: 6px;">
+              <p style="font-family: 'Fraunces', serif; font-style: italic; font-size: 15px; line-height: 1.6; color: var(--ink); margin-bottom: 20px;">
+                ${esc(t.quote)}
+              </p>
+              <div style="font-size: 13px; font-weight: 700;">${esc(t.author)}</div>
+              ${t.role ? `<div style="font-size: 11px; color: var(--ink-soft); margin-top: 2px;">${esc(t.role)}</div>` : ''}
+            </div>
+          `).join("")}
+        </div>
+      </section>
+      ` : ''}
 
       <!-- CTA BAND -->
       <section class="cta-band" style="border-top: 1px solid var(--line); margin-top: 60px;">
