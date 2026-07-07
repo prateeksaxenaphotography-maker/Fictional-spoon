@@ -672,6 +672,24 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       </article>`;
   }
 
+  // Minimal line-art camera drawn behind the hero wordmark. Uses stroke-dash
+  // draw-on animation (see .hero-camera CSS). Decorative, so aria-hidden.
+  function cameraSvg() {
+    return `
+      <div class="hero-camera" aria-hidden="true">
+        <svg viewBox="0 0 640 440" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+          <g stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+            <path class="hc-body" pathLength="1" d="M70 130 h110 l34 -46 h172 l34 46 h110 a30 30 0 0 1 30 30 v190 a30 30 0 0 1 -30 30 H70 a30 30 0 0 1 -30 -30 V160 a30 30 0 0 1 30 -30 Z"/>
+            <circle class="hc-lens-outer" pathLength="1" cx="320" cy="258" r="96"/>
+            <circle class="hc-lens-inner" pathLength="1" cx="320" cy="258" r="58"/>
+            <circle class="hc-lens-dot" pathLength="1" cx="292" cy="230" r="14"/>
+            <path class="hc-flash" pathLength="1" d="M120 176 h70"/>
+            <rect class="hc-view" pathLength="1" x="470" y="168" width="70" height="42" rx="8"/>
+          </g>
+        </svg>
+      </div>`;
+  }
+
   function viewHome() {
     const feat = SHOOTS.slice(0, 7);
     CURRENT_VIEW_SHOOTS = feat;
@@ -679,21 +697,27 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const activeBrands = BRANDS.filter(b => SHOOTS.some(s => s.brand === b && s.client && s.client.trim()));
     const displayBrands = activeBrands.length ? activeBrands : BRANDS;
     const clientNames = [...new Set(SHOOTS.map(s => s.client).filter(c => c && c.trim()))];
-    const wordmark = "nerdyphotographer";
-    const wordmarkLetters = wordmark.split("").map((ch, i) =>
+    const nerdyLetters = "NERDY".split("").map((ch, i) =>
       `<span class="wm-letter" style="--i:${i}">${esc(ch)}</span>`
     ).join("");
+    const subLetters = "PHOTOGRAPHER".split("").map((ch, i) =>
+      `<span class="wm-sub-letter" style="--i:${i}">${esc(ch)}</span>`
+    ).join("");
     return `
-      <section class="hero hero-mono">
+      <section class="hero hero-mono hero-brand">
         <div class="hero-bg" aria-hidden="true"></div>
+        ${cameraSvg()}
         <div class="container hero-inner">
           <div class="hero-topline reveal">
             <span class="hero-topline-l">The Creative Studio</span>
             <span class="hero-topline-r">Noida · Delhi NCR</span>
           </div>
-          <h1 class="hero-wordmark hero-wordmark-long" aria-label="${esc(window.STUDIO_CONFIG?.studioName || 'nerdyphotographer.in')}">
-            ${wordmarkLetters}
-          </h1>
+          <div class="hero-brandmark">
+            <h1 class="hero-wordmark hero-wordmark-nerdy" aria-label="Nerdy Photographer">
+              ${nerdyLetters}
+            </h1>
+            <p class="hero-subword" aria-hidden="true">${subLetters}</p>
+          </div>
           <div class="hero-mono-foot">
             <p class="hero-mono-tagline reveal">Not just photos, a perspective. <span class="hero-accent">Editorial-grade portfolios</span> for models &amp; brands.</p>
             <div class="hero-actions reveal">
@@ -2126,6 +2150,28 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     items.forEach((el) => io.observe(el));
   }
 
+  // The footer lives outside the SPA view mount, so it needs its own persistent
+  // reveal observer (set up once at boot, survives navigations). A generous
+  // rootMargin means bottom-of-page elements still trigger, and a safety timer
+  // guarantees footer content can never stay stuck invisible.
+  function initFooterReveal() {
+    const footer = $(".site-footer"); if (!footer) return;
+    const items = [...footer.querySelectorAll(".reveal, .reveal-stagger")];
+    const revealAll = () => items.forEach((el) => el.classList.add("in"));
+    if (prefersReduced || !("IntersectionObserver" in window)) { revealAll(); return; }
+    const io = new IntersectionObserver((ents) => ents.forEach((en) => {
+      if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); }
+    }), { threshold: 0, rootMargin: "0px 0px 120px 0px" });
+    items.forEach((el) => io.observe(el));
+    // Safety net: if anything is still hidden shortly after it's on-screen, show it.
+    const sweep = () => items.forEach((el) => {
+      const r = el.getBoundingClientRect();
+      if (r.top < window.innerHeight + 200) el.classList.add("in");
+    });
+    window.addEventListener("scroll", sweep, { passive: true });
+    setTimeout(sweep, 1200);
+  }
+
   /* ---------------- Custom hover cursor (noth.in-style) ----------------
      A "View" follower that appears over portfolio imagery. Skipped entirely
      on touch devices and when the user prefers reduced motion. */
@@ -2283,6 +2329,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       updateAdminBtn();
       await loadShoots();
       render();
+      initFooterReveal();
       refreshPublishedData();
     } catch (err) {
       // Never leave the user on a blank page under the loader.
