@@ -473,15 +473,30 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       </div>
     ` : "";
 
-    const mediaHtml = s.isCompCard ? `
-      <div class="comp-card-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; align-self: start;">
-        ${s.photos.map((p, idx) => `
-          <button class="comp-card-thumb reveal" data-index="${idx}" style="aspect-ratio: 3/4; overflow: hidden; background: var(--bone); border: 1px solid var(--line); border-radius: 4px; padding: 0; cursor: pointer; position: relative; transition: transform .3s var(--ease);">
-            <img src="${esc(photoSrc(p))}" style="width: 100%; height: 100%; object-fit: cover; object-position: center;" alt="Comp card frame ${idx + 1}" loading="lazy" />
-          </button>
-        `).join("")}
-      </div>
-    ` : `
+    const mediaHtml = s.isCompCard ? (() => {
+      const shownPhotos = s.photos.slice(0, 3);
+      const remainingCount = s.photos.length - 3;
+      const fourthPhoto = s.photos[3];
+      return `
+        <div class="comp-card-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; align-self: start;">
+          ${shownPhotos.map((p, idx) => `
+            <button class="comp-card-thumb reveal" data-index="${idx}" style="aspect-ratio: 3/4; overflow: hidden; background: var(--bone); border: 1px solid var(--line); border-radius: 4px; padding: 0; cursor: pointer; position: relative; transition: transform .3s var(--ease);">
+              <img src="${esc(photoSrc(p))}" style="width: 100%; height: 100%; object-fit: cover; object-position: center;" alt="Comp card frame ${idx + 1}" loading="lazy" />
+            </button>
+          `).join("")}
+          ${fourthPhoto ? `
+            <button class="comp-card-thumb comp-card-more reveal" data-index="3" style="aspect-ratio: 3/4; overflow: hidden; background: var(--bone); border: 1px solid var(--line); border-radius: 4px; padding: 0; cursor: pointer; position: relative; transition: transform .3s var(--ease);">
+              <img src="${esc(photoSrc(fourthPhoto))}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; filter: brightness(0.4);" alt="Comp card frame 4" loading="lazy" />
+              ${remainingCount > 1 ? `
+                <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+                  +${remainingCount} more
+                </div>
+              ` : ""}
+            </button>
+          ` : ""}
+        </div>
+      `;
+    })() : `
       <button class="work-media" style="background-color: ${esc((s.palette && s.palette[1]) || '#1a1a1a')}; display: flex; align-items: center; justify-content: center;" aria-label="View ${esc(s.title)}">
         <img src="${esc(photoSrc(cover))}" style="object-position: center;" alt="${esc(s.title)}" loading="lazy" />
         <span class="work-count">${s.photos.length} frames</span>
@@ -680,7 +695,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           
           return {
             id: `comp-card-${encodeURIComponent(modelName)}`,
-            title: `${modelName} — Unified Comp Card`,
+            title: `${modelName} — Comp Card`,
             brand: "Personal Project",
             activity: latestShoot.activity,
             type: "Test Shoot",
@@ -692,7 +707,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             mua: latestShoot.mua || "",
             talent: modelName,
             location: latestShoot.location || "Studio",
-            description: `Unified modeling portfolio and comp card archive for ${modelName}. Contains ${shootsInGroup.length} photoshoot sessions.`,
+            description: `Modeling portfolio and comp card archive for ${modelName}. Contains ${shootsInGroup.length} photoshoot sessions.`,
             tags: latestShoot.tags || "",
             gear: latestShoot.gear || "",
             client: "",
