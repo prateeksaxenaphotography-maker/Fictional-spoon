@@ -735,6 +735,11 @@ button:focus-visible,
 .hero-topline-r { color: var(--ink); }
 
 .hero-wordmark { font-family: "Archivo", sans-serif; font-weight: 900; line-height: .82; letter-spacing: -.03em; margin: 0; display: flex; justify-content: space-between; width: 100%; font-size: clamp(84px, 21vw, 300px); color: var(--ink); overflow: hidden; padding-bottom: .06em; }
+/* Long wordmark (full studio name): sized so all 17 glyphs fit one line.
+   Slightly tighter tracking + a fit-capped size prevents the last letter
+   clipping; space-between then distributes the small remainder edge-to-edge. */
+.hero .hero-wordmark-long { justify-content: space-between; flex-wrap: nowrap; letter-spacing: -.055em; font-size: min(6.8vw, 112px); line-height: .9; white-space: nowrap; }
+.hero .hero-wordmark-long .wm-letter { flex: 0 0 auto; }
 .wm-letter { display: inline-block; transform: translateY(115%); animation: wmRise 1s var(--ease) both; animation-delay: calc(.35s + var(--i) * .07s); }
 @keyframes wmRise { to { transform: none; } }
 
@@ -746,6 +751,8 @@ button:focus-visible,
 @media (max-width: 760px) {
   .hero-wordmark { justify-content: flex-start; flex-wrap: wrap; letter-spacing: -.03em; font-size: 18vw; line-height: .9; }
   .hero-wordmark .wm-letter { flex: 0 0 auto; }
+  /* Long name: allow it to wrap across lines on narrow screens */
+  .hero-wordmark-long { flex-wrap: wrap; white-space: normal; font-size: 12.5vw; letter-spacing: -.04em; }
   .hero-mono-foot { flex-direction: column; align-items: flex-start; gap: 22px; }
   .hero-topline { font-size: 10px; }
   .hero-topline-r { text-align: right; }
@@ -803,6 +810,7 @@ button:focus-visible,
   .noth-work-row { padding-bottom: 18px; }
   .noth-work-meta { width: 100%; justify-content: space-between; }
 }
+.works-all-cta { display: flex; justify-content: center; margin-top: 48px; padding-top: 44px; border-top: 1px solid var(--line); }
 
 /* Page-head H1 as a kinetic per-letter headline */
 .kinetic-h1 { opacity: 1; transform: none; margin: 0; }
