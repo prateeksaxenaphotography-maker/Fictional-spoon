@@ -473,12 +473,24 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       </div>
     ` : "";
 
+    const mediaHtml = s.isCompCard ? `
+      <div class="comp-card-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; align-self: start;">
+        ${s.photos.map((p, idx) => `
+          <button class="comp-card-thumb reveal" data-index="${idx}" style="aspect-ratio: 3/4; overflow: hidden; background: var(--bone); border: 1px solid var(--line); border-radius: 4px; padding: 0; cursor: pointer; position: relative; transition: transform .3s var(--ease);">
+            <img src="${esc(photoSrc(p))}" style="width: 100%; height: 100%; object-fit: cover; object-position: center;" alt="Comp card frame ${idx + 1}" loading="lazy" />
+          </button>
+        `).join("")}
+      </div>
+    ` : `
+      <button class="work-media" style="background-color: ${esc((s.palette && s.palette[1]) || '#1a1a1a')}; display: flex; align-items: center; justify-content: center;" aria-label="View ${esc(s.title)}">
+        <img src="${esc(photoSrc(cover))}" style="object-position: center;" alt="${esc(s.title)}" loading="lazy" />
+        <span class="work-count">${s.photos.length} frames</span>
+      </button>
+    `;
+
     return `
       <article class="work-block ${i % 2 ? "flip" : ""} reveal" data-shoot="${s.id}" data-talent="${esc(s.talent)}">
-        <button class="work-media" style="background-color: ${esc((s.palette && s.palette[1]) || '#1a1a1a')}; display: flex; align-items: center; justify-content: center;" aria-label="View ${esc(s.title)}">
-          <img src="${esc(photoSrc(cover))}" style="object-position: center;" alt="${esc(s.title)}" loading="lazy" />
-          <span class="work-count">${s.photos.length} frames</span>
-        </button>
+        ${mediaHtml}
         <div class="work-info">
           ${isFutureShoot(s) ? `
             <div class="future-schedule-badge" style="display: inline-block; background: rgba(210,78,26,0.12); color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 6px 12px; border-radius: 4px; margin-bottom: 16px; border: 1px solid rgba(210,78,26,0.25);">
@@ -1685,7 +1697,16 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       if (!s) return;
       const list = s.photos.map((p) => ({ ...p, shoot: s }));
       const open = () => openLb(list, 0);
-      block.querySelector(".work-media")?.addEventListener("click", open);
+      if (s.isCompCard) {
+        block.querySelectorAll(".comp-card-thumb").forEach(thumb => {
+          thumb.addEventListener("click", () => {
+            const idx = parseInt(thumb.dataset.index, 10) || 0;
+            openLb(list, idx);
+          });
+        });
+      } else {
+        block.querySelector(".work-media")?.addEventListener("click", open);
+      }
       block.querySelector(".work-open")?.addEventListener("click", open);
       
       // edit button click handler
