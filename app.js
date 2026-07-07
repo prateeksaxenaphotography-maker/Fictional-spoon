@@ -576,52 +576,6 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         <div class="work-list">${feat.map(fullBleedBlock).join("")}</div>
       </section>
 
-      <!-- RATES & PACKAGES -->
-      <section class="section container" style="border-top: 1px solid var(--line); padding-top: 60px; margin-top: 60px;">
-        <div class="section-head reveal" style="margin-bottom: 40px; text-align: center;">
-          <p class="eyebrow">Rates &amp; Packages</p>
-          <h2>Start a Project</h2>
-        </div>
-        <div class="rates-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px;">
-          <div class="rate-card reveal" style="background: var(--bone); border: 1px solid var(--line); padding: 40px 30px; border-radius: 6px;">
-            <div style="font-family: 'Fraunces', serif; font-style: italic; font-size: 20px; color: var(--accent); margin-bottom: 12px;">Commercial &amp; Brand</div>
-            <h3 style="font-size: 16px; margin-bottom: 12px; font-weight: 700;">From ₹25,000 / Day</h3>
-            <p style="font-size: 13px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 20px;">Full-day commercial photoshoots, lookbooks, product catalogs, or advertising campaigns. Includes full studio setup, lighting director, and high-res master selects.</p>
-            <a href="/book?type=Commercial" data-link class="btn btn-dark" style="font-size: 12px; padding: 10px 18px; display: inline-block;">Inquire package →</a>
-          </div>
-          <div class="rate-card reveal" style="background: var(--bone); border: 1px solid var(--line); padding: 40px 30px; border-radius: 6px;">
-            <div style="font-family: 'Fraunces', serif; font-style: italic; font-size: 20px; color: var(--accent); margin-bottom: 12px;">Editorial &amp; Portrait</div>
-            <h3 style="font-size: 16px; margin-bottom: 12px; font-weight: 700;">From ₹12,000 / Session</h3>
-            <p style="font-size: 13px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 20px;">Individual modeling portfolios, comp cards, athletic shoots, or creative portraits. Includes styling direction guidance, high-end retouches, and studio setup.</p>
-            <a href="/book?type=Editorial" data-link class="btn btn-dark" style="font-size: 12px; padding: 10px 18px; display: inline-block;">Inquire package →</a>
-          </div>
-        </div>
-      </section>
-
-      <!-- TESTIMONIALS -->
-      <section class="section container" style="border-top: 1px solid var(--line); padding-top: 60px; margin-top: 60px;">
-        <div class="section-head reveal" style="margin-bottom: 40px; text-align: center;">
-          <p class="eyebrow">Client Reactions</p>
-          <h2>Testimonials &amp; Trust</h2>
-        </div>
-        <div class="testimonials-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px;">
-          <div class="testimonial-card reveal" style="background: var(--bone); border: 1px solid var(--line); padding: 40px 30px; border-radius: 6px;">
-            <p style="font-family: 'Fraunces', serif; font-style: italic; font-size: 15px; line-height: 1.6; color: var(--ink); margin-bottom: 20px;">
-              “The attention to detail and cinematic lighting was unreal. Our brand campaign lookbook turned out exactly as we envisioned—clean, editorial, and high-impact. Highly recommend for any brand looking to level up their visuals.”
-            </p>
-            <div style="font-size: 13px; font-weight: 700;">Sarah Jenkins</div>
-            <div style="font-size: 11px; color: var(--ink-soft); margin-top: 2px;">Creative Director, SLUGGER</div>
-          </div>
-          <div class="testimonial-card reveal" style="background: var(--bone); border: 1px solid var(--line); padding: 40px 30px; border-radius: 6px;">
-            <p style="font-family: 'Fraunces', serif; font-style: italic; font-size: 15px; line-height: 1.6; color: var(--ink); margin-bottom: 20px;">
-              “I needed to update my modeling portfolio comp cards. The photoshoot was incredibly professional, well-directed, and the output helped me land my latest agency contract. The lighting diagram details are a great touch!”
-            </p>
-            <div style="font-size: 13px; font-weight: 700;">Rhythm Vohra</div>
-            <div style="font-size: 11px; color: var(--ink-soft); margin-top: 2px;">Professional Model, TFP Project</div>
-          </div>
-        </div>
-      </section>
-
       <!-- FEATURED ON INSTAGRAM -->
       <section class="section container" style="border-top: 1px solid var(--line); padding-top: 60px; margin-top: 60px;">
         <div class="section-head row reveal">
