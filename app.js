@@ -733,6 +733,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       ` : ""}
 
       <!-- SPECIALTIES DIRECTORY -->
+      ${(fashionSamples.length || portraitSamples.length || fitnessSamples.length || sportsSamples.length || testShootSamples.length) ? `
       <section class="section container" style="border-top: 1px solid var(--line); margin-top: 60px; padding-top: 60px;">
         <div class="section-head reveal" style="margin-bottom: 45px;">
           <p class="eyebrow">Our Specialties</p>
@@ -740,6 +741,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         </div>
         <div class="specialties-list" style="display: flex; flex-direction: column; gap: 50px;">
           
+          ${fashionSamples.length ? `
           <div class="specialty-item reveal" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; align-items: center;">
             <div class="specialty-meta">
               <h3 style="font-size: 24px; margin-bottom: 12px; font-weight: 800;">
@@ -754,8 +756,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               ${renderSpecialtyGallery(fashionSamples, "FASHION")}
             </div>
           </div>
+          ` : ""}
 
-          <div class="specialty-item reveal" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; align-items: center; border-top: 1px solid var(--line-dk); padding-top: 40px;">
+          ${portraitSamples.length ? `
+          <div class="specialty-item reveal" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; align-items: center;">
             <div class="specialty-meta">
               <h3 style="font-size: 24px; margin-bottom: 12px; font-weight: 800;">
                 <a href="/categories?kind=activity&amp;val=Portrait" data-link style="color: inherit; text-decoration: none;">Beauty &amp; Portrait</a>
@@ -769,8 +773,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               ${renderSpecialtyGallery(portraitSamples, "BEAUTY")}
             </div>
           </div>
+          ` : ""}
 
-          <div class="specialty-item reveal" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; align-items: center; border-top: 1px solid var(--line-dk); padding-top: 40px;">
+          ${fitnessSamples.length ? `
+          <div class="specialty-item reveal" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; align-items: center;">
             <div class="specialty-meta">
               <h3 style="font-size: 24px; margin-bottom: 12px; font-weight: 800;">
                 <a href="/categories?kind=activity&amp;val=Fitness" data-link style="color: inherit; text-decoration: none;">Fitness &amp; Athletic</a>
@@ -784,8 +790,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               ${renderSpecialtyGallery(fitnessSamples, "FITNESS")}
             </div>
           </div>
+          ` : ""}
 
-          <div class="specialty-item reveal" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; align-items: center; border-top: 1px solid var(--line-dk); padding-top: 40px;">
+          ${sportsSamples.length ? `
+          <div class="specialty-item reveal" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; align-items: center;">
             <div class="specialty-meta">
               <h3 style="font-size: 24px; margin-bottom: 12px; font-weight: 800;">
                 <a href="/categories?kind=activity&amp;val=Sports" data-link style="color: inherit; text-decoration: none;">Sports Action</a>
@@ -799,8 +807,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               ${renderSpecialtyGallery(sportsSamples, "SPORTS")}
             </div>
           </div>
+          ` : ""}
 
-          <div class="specialty-item reveal" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; align-items: center; border-top: 1px solid var(--line-dk); padding-top: 40px;">
+          ${testShootSamples.length ? `
+          <div class="specialty-item reveal" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; align-items: center;">
             <div class="specialty-meta">
               <h3 style="font-size: 24px; margin-bottom: 12px; font-weight: 800;">
                 <a href="/categories?kind=type&amp;val=Test%20Shoot" data-link style="color: inherit; text-decoration: none;">Model Portfolio (Comp Cards)</a>
@@ -814,9 +824,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               ${renderSpecialtyGallery(testShootSamples, "MODEL")}
             </div>
           </div>
+          ` : ""}
 
         </div>
-      </section>`;
+      </section>
+      ` : ""}
+      `;
   }
   const emptyCat = () => `<p class="page-sub">Nothing here yet — publish a shoot in this category.</p>`;
 

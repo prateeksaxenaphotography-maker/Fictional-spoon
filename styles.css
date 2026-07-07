@@ -409,3 +409,13 @@ button:focus-visible,
 .theme-dark #navAdminSec {
   background: rgba(18, 18, 17, 0.95) !important;
 }
+
+/* Specialties list spacing and borders */
+.specialties-list .specialty-item {
+  border-top: 1px solid var(--line-dk);
+  padding-top: 40px;
+}
+.specialties-list .specialty-item:first-of-type {
+  border-top: none !important;
+  padding-top: 0 !important;
+}
