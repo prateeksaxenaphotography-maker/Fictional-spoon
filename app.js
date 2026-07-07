@@ -576,30 +576,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         <div class="work-list">${feat.map(fullBleedBlock).join("")}</div>
       </section>
 
-      <!-- FEATURED ON INSTAGRAM -->
-      <section class="section container" style="border-top: 1px solid var(--line); padding-top: 60px; margin-top: 60px;">
-        <div class="section-head row reveal">
-          <div>
-            <p class="eyebrow">Social Connection</p>
-            <h2>Featured on Instagram</h2>
-          </div>
-          <a href="${esc(window.STUDIO_CONFIG?.instagram || 'https://instagram.com')}" target="_blank" rel="noopener noreferrer" class="link-arrow">@thenerdyphotographer.in →</a>
-        </div>
-        <div class="instagram-mock-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-          ${feat.slice(0, 4).map((s, idx) => {
-            const photo = s.photos[0];
-            if (!photo) return '';
-            return `
-              <a href="${esc(window.STUDIO_CONFIG?.instagram || 'https://instagram.com')}" target="_blank" rel="noopener noreferrer" class="instagram-mock-card reveal" style="display: block; aspect-ratio: 1; overflow: hidden; position: relative; border-radius: 4px; border: 1px solid var(--line);">
-                <img src="${esc(photoSrc(photo))}" style="width: 100%; height: 100%; object-fit: cover; transition: transform .4s var(--ease);" alt="Instagram feature" />
-                <div class="instagram-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .3s var(--ease);">
-                  <svg viewBox="0 0 24 24" width="28" height="28" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="display:block; margin:auto;"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
-                </div>
-              </a>
-            `;
-          }).join("")}
-        </div>
-      </section>
+
       ${window.STUDIO_CONFIG?.testimonials?.length ? `
       <!-- TESTIMONIALS (CLIENT REACTIONS) -->
       <section class="section container" style="border-top: 1px solid var(--line); padding-top: 60px; margin-top: 60px;">
