@@ -666,25 +666,33 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const shoots = SHOOTS.filter(s => s[key] === val);
       if (!shoots.length) return [];
       
+      // Shuffle the shoots array to randomize album selection on each page view
+      const shuffledShoots = [...shoots].sort(() => Math.random() - 0.5);
+      
       const samples = [];
-      // 1. Take the first photo from each distinct shoot to maximize variety
-      for (const s of shoots) {
-        if (s.photos && s.photos[0]) {
-          samples.push({ ...s.photos[0], parent: s });
+      // 1. Take a random photo from each distinct shoot to maximize variety
+      for (const s of shuffledShoots) {
+        if (s.photos && s.photos.length) {
+          const randomIdx = Math.floor(Math.random() * s.photos.length);
+          samples.push({ ...s.photos[randomIdx], parent: s, index: randomIdx });
         }
       }
       
-      // 2. If we need more samples to fill the grid, take subsequent photos from those same shoots
+      // 2. If we need more samples to fill the grid, take other random photos from those same shoots
       if (samples.length < limit) {
         const remaining = [];
-        for (const s of shoots) {
+        for (const s of shuffledShoots) {
           if (s.photos && s.photos.length > 1) {
-            for (let i = 1; i < s.photos.length; i++) {
-              remaining.push({ ...s.photos[i], parent: s });
+            const selectedIdxs = samples.filter(p => p.parent.id === s.id).map(p => p.index);
+            for (let i = 0; i < s.photos.length; i++) {
+              if (!selectedIdxs.includes(i)) {
+                remaining.push({ ...s.photos[i], parent: s, index: i });
+              }
             }
           }
         }
-        for (const photo of remaining) {
+        const shuffledRemaining = remaining.sort(() => Math.random() - 0.5);
+        for (const photo of shuffledRemaining) {
           if (samples.length >= limit) break;
           samples.push(photo);
         }
