@@ -12,6 +12,30 @@
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   // A photo renders from its published file URL when it has one, else its local base64.
   const photoSrc = (p) => (p && (p.url || p.dataUrl)) || "";
+  // Build responsive srcset attributes when a photo has generated size variants.
+  // Existing single-size photos return "" (plain src is used, unchanged behaviour).
+  const srcsetAttr = (p, sizes = "(max-width: 620px) 90vw, (max-width: 1100px) 45vw, 640px") => {
+    if (!p || !p.url) return "";                 // base64/local: no srcset
+    const set = [];
+    if (p.small)  set.push(`${p.small} 480w`);
+    if (p.medium) set.push(`${p.medium} 960w`);
+    if (set.length) set.push(`${p.url} 1600w`);
+    return set.length ? ` srcset="${esc(set.join(", "))}" sizes="${esc(sizes)}"` : "";
+  };
+  // Descriptive, SEO-friendly alt text for a shoot's photo (Google Images).
+  const altFor = (s, frame) => {
+    if (!s) return "Photograph by nerdyphotographer.in";
+    if (s.caption) return s.caption;
+    const who = (s.talent && s.talent.trim()) || (s.title && s.title.trim()) || "";
+    const what = [s.activity, s.type].filter(Boolean).join(" ");
+    const parts = [
+      what ? `${what} photography` : "Photography",
+      who ? `featuring ${who}` : "",
+      "by nerdyphotographer.in, Noida & Delhi NCR",
+      frame ? `(frame ${frame})` : ""
+    ].filter(Boolean);
+    return parts.join(" ");
+  };
   // noth.in-style oversized section word that rises per-letter on scroll.
   const kineticWord = (word) => {
     const letters = String(word).split("").map((ch, i) =>
@@ -181,7 +205,7 @@
   }
   function paintLb() {
     const p = lbList[lbIdx]; if (!p) return;
-    lbImg.src = photoSrc(p); lbImg.alt = p.caption || p.shoot.title; lbImg.style.objectPosition = "center";
+    lbImg.src = photoSrc(p); lbImg.alt = p.caption || altFor(p.shoot); lbImg.style.objectPosition = "center";
     // Prefer a per-photo caption when present, else the shoot credit line.
     lbCap.textContent = p.caption
       ? `${p.caption} — ${p.shoot.title}`
@@ -457,19 +481,36 @@
       const shoots = [...merged.values()];
 
       // Upload any photo still stored as base64 to photos/<shoot>/<photo>.<ext>.
+      // Also generate 480px + 960px variants for responsive srcset (mobile perf).
       const photoEntries = [];
+      const commitBlob = async (path, base64) => {
+        const blob = await ghApi(pat, "/git/blobs", {
+          method: "POST",
+          body: JSON.stringify({ content: base64, encoding: "base64" }),
+        });
+        photoEntries.push({ path, mode: "100644", type: "blob", sha: blob.sha });
+      };
       for (const s of shoots) {
         for (const p of s.photos || []) {
           if (p.url || !p.dataUrl) continue;
           const m = p.dataUrl.match(/^data:(image\/[a-z.+-]+);base64,/);
           if (!m) continue; // not a base64 image (e.g. demo SVG) — leave inline
-          const path = `photos/${s.id}/${p.id}.${MIME_EXT[m[1]] || "jpg"}`;
-          const blob = await ghApi(pat, "/git/blobs", {
-            method: "POST",
-            body: JSON.stringify({ content: p.dataUrl.slice(m[0].length), encoding: "base64" }),
-          });
-          photoEntries.push({ path, mode: "100644", type: "blob", sha: blob.sha });
-          p.url = path;
+          const dir = `photos/${s.id}`;
+          const fullPath = `${dir}/${p.id}.${MIME_EXT[m[1]] || "jpg"}`;
+          await commitBlob(fullPath, p.dataUrl.slice(m[0].length));
+          p.url = fullPath;
+          // Responsive variants (JPEG). Skip a variant if it doesn't shrink.
+          try {
+            for (const [w, key] of [[480, "small"], [960, "medium"]]) {
+              const variant = await resize(p.dataUrl, w, 0.8);
+              const vm = variant.match(/^data:(image\/[a-z.+-]+);base64,/);
+              if (variant !== p.dataUrl && vm) {
+                const vPath = `${dir}/${p.id}@${w}.jpg`;
+                await commitBlob(vPath, variant.slice(vm[0].length));
+                p[key] = vPath;
+              }
+            }
+          } catch (err) { console.warn("variant gen failed for", p.id, err); }
           toast(`Uploading photos… (${photoEntries.length})`);
         }
       }
@@ -478,7 +519,13 @@
       const published = shoots.map((s) => ({
         ...s,
         photos: (s.photos || []).map((p) => p.url
-          ? { id: p.id, url: p.url, objectPosition: p.objectPosition || "center" }
+          ? {
+              id: p.id, url: p.url, objectPosition: p.objectPosition || "center",
+              ...(p.small ? { small: p.small } : {}),
+              ...(p.medium ? { medium: p.medium } : {}),
+              ...(p.caption ? { caption: p.caption } : {}),
+              ...(typeof p.focalX === "number" ? { focalX: p.focalX, focalY: p.focalY } : {})
+            }
           : p),
       }));
       const fileContent = `/* ============================================================
@@ -536,7 +583,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       <article class="noth-work reveal" data-shoot="${s.id}" data-talent="${esc(s.talent || '')}" style="--d:${(i % 2) * 0.08}s">
         <button class="noth-work-media" aria-label="View ${esc(title)}">
           <span class="noth-work-backdrop" style="background-image: url('${esc(photoSrc(cover))}');" aria-hidden="true"></span>
-          <img src="${esc(photoSrc(cover))}" style="object-position: ${esc(coverPos)};" alt="${esc(title)}" loading="lazy" />
+          <img src="${esc(photoSrc(cover))}"${srcsetAttr(cover, "(max-width: 620px) 100vw, 100vw")} style="object-position: ${esc(coverPos)};" alt="${esc(altFor(s))}" loading="lazy" />
           <span class="noth-work-index">${String(i + 1).padStart(2, "0")}</span>
         </button>
         <div class="noth-work-row">
@@ -608,12 +655,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         <div class="comp-card-grid">
           ${shownPhotos.map((p, idx) => `
             <button class="comp-card-thumb reveal" data-index="${idx}">
-              <img src="${esc(photoSrc(p))}" alt="Comp card frame ${idx + 1}" loading="lazy" />
+              <img src="${esc(photoSrc(p))}"${srcsetAttr(p, "(max-width: 620px) 45vw, 22vw")} alt="${esc(altFor(s, idx + 1))}" loading="lazy" />
             </button>
           `).join("")}
           ${fourthPhoto ? `
             <button class="comp-card-thumb comp-card-more reveal" data-index="3">
-              <img src="${esc(photoSrc(fourthPhoto))}" style="filter: brightness(0.42);" alt="Comp card frame 4" loading="lazy" />
+              <img src="${esc(photoSrc(fourthPhoto))}" style="filter: brightness(0.42);" alt="${esc(altFor(s, 4))}" loading="lazy" />
               ${remainingCount > 1 ? `<div class="comp-card-more-overlay">+${remainingCount} more</div>` : ""}
             </button>
           ` : ""}
@@ -621,7 +668,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       `;
     })() : `
       <button class="work-media" aria-label="View ${esc(s.title)}">
-        <img src="${esc(photoSrc(cover))}" style="object-position: ${esc(coverPos)};" alt="${esc(s.title)}" loading="lazy" />
+        <img src="${esc(photoSrc(cover))}"${srcsetAttr(cover)} style="object-position: ${esc(coverPos)};" alt="${esc(altFor(s))}" loading="lazy" />
         <span class="work-count">${s.photos.length} frame${s.photos.length !== 1 ? 's' : ''}</span>
       </button>
     `;
@@ -1026,7 +1073,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         const photo = samples[i];
         if (photo) {
           html += `<div class="specialty-thumb-wrap">
-                     <img src="${esc(photoSrc(photo))}" alt="${esc(photo.parent?.title || placeholderPrefix)}" loading="lazy" />
+                     <img src="${esc(photoSrc(photo))}"${srcsetAttr(photo, "(max-width: 620px) 30vw, 18vw")} alt="${esc(photo.parent ? altFor(photo.parent) : placeholderPrefix + ' photography by nerdyphotographer.in')}" loading="lazy" />
                    </div>`;
         } else {
           html += `<div class="specialty-thumb-empty">${placeholderPrefix}_0${i+1}</div>`;
@@ -1940,7 +1987,26 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       return;
     }
 
-    const fn = ROUTES[key] || (() => `<section class="page-head"><div class="container"><h1>Not found</h1><p class="page-sub"><a href="/" data-link>Back home</a></p></div></section>`);
+    const fn = ROUTES[key] || (() => `
+      <section class="hero hero-mono hero-404">
+        <div class="hero-bg" aria-hidden="true"></div>
+        <div class="container hero-inner">
+          <div class="hero-topline">
+            <span class="hero-topline-l">Error 404</span>
+            <span class="hero-topline-r">Page not found</span>
+          </div>
+          <h1 class="hero-wordmark hero-wordmark-nerdy notfound-mark" aria-label="404 — page not found">
+            <span class="wm-letter" style="--i:0">4</span><span class="wm-letter" style="--i:1">0</span><span class="wm-letter" style="--i:2">4</span>
+          </h1>
+          <div class="hero-mono-foot">
+            <p class="hero-mono-tagline">This frame doesn't exist — but the archive does.</p>
+            <div class="hero-actions">
+              <a href="/" data-link class="btn btn-dark">Back home →</a>
+              <a href="/albums" data-link class="btn btn-ghost">Browse albums</a>
+            </div>
+          </div>
+        </div>
+      </section>`);
 
     view.classList.add("leaving");
     const paint = () => {
@@ -1980,8 +2046,45 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       document.title = pageTitle;
       const metaDesc = document.querySelector('meta[name="description"]');
       if (metaDesc) metaDesc.setAttribute("content", pageDesc);
+      updateImageSchema();
     };
     if (prefersReduced) paint(); else setTimeout(paint, 180);
+  }
+
+  // Inject/refresh ImageGallery + ImageObject structured data for the shoots in
+  // the current view, so the photography surfaces in Google Images / rich results.
+  function updateImageSchema() {
+    const ORIGIN = "https://www.nerdyphotographer.in";
+    const abs = (u) => u ? (u.startsWith("http") ? u : `${ORIGIN}/${u.replace(/^\//, "")}`) : "";
+    const shoots = (CURRENT_VIEW_SHOOTS && CURRENT_VIEW_SHOOTS.length ? CURRENT_VIEW_SHOOTS : SHOOTS).slice(0, 12);
+    const images = [];
+    for (const s of shoots) {
+      if (!s.photos) continue;
+      for (const p of s.photos) {
+        const url = abs(p.url);
+        if (!url) continue; // only real published files (not base64)
+        images.push({
+          "@type": "ImageObject",
+          "contentUrl": url,
+          "name": s.title || s.talent || "Photoshoot",
+          "caption": p.caption || altFor(s),
+          "creditText": "nerdyphotographer.in",
+          "creator": { "@type": "Organization", "name": "Nerdy Photographer" }
+        });
+        if (images.length >= 30) break;
+      }
+      if (images.length >= 30) break;
+    }
+    let el = document.getElementById("wps-image-schema");
+    if (!images.length) { if (el) el.remove(); return; }
+    if (!el) { el = document.createElement("script"); el.type = "application/ld+json"; el.id = "wps-image-schema"; document.head.appendChild(el); }
+    el.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "ImageGallery",
+      "name": `${window.STUDIO_CONFIG?.studioName || "nerdyphotographer.in"} — photography archive`,
+      "url": location.href,
+      "image": images
+    });
   }
 
   function wireView(key) {
