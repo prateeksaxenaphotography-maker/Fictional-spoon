@@ -221,7 +221,7 @@
     const mode = localStorage.getItem("wps-theme-override") || "auto";
     themeBtn.textContent = `Theme: ${mode}`;
     themeBtn.style.borderColor = mode !== "auto" ? "var(--accent)" : "currentColor";
-    themeBtn.style.color = mode !== "auto" ? "var(--accent)" : "var(--ink)";
+    themeBtn.style.color = mode !== "auto" ? "var(--accent)" : "#fff";
   }
 
   function updateAdminBtn() {
@@ -229,11 +229,11 @@
     const active = isAdmin();
     adminBtn.textContent = `Admin Mode: ${active ? "On" : "Off"}`;
     adminBtn.style.borderColor = active ? "var(--accent)" : "currentColor";
-    adminBtn.style.color = active ? "var(--accent)" : "var(--ink)";
+    adminBtn.style.color = active ? "var(--accent)" : "#fff";
 
     const adminSec = $("#navAdminSec");
     if (adminSec) {
-      adminSec.style.display = isAdminAuthorized() ? "flex" : "none";
+      adminSec.style.display = isAdminAuthorized() ? "block" : "none";
     }
 
     const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi");
