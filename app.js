@@ -522,7 +522,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           </h1>
           <p class="lede reveal">High-impact visuals for lookbooks, campaigns, and portfolios that get you noticed.</p>
           <div class="hero-actions reveal">
-            <a href="/work" data-link class="btn btn-dark">View the work →</a>
+            <a href="/categories" data-link class="btn btn-dark">Explore Specialties →</a>
             ${isAdmin() ? `<a href="/upload" data-link class="btn btn-ghost">Publish a shoot</a>` : `<a href="/book" data-link class="btn btn-ghost">Book a shoot</a>`}
           </div>
           <dl class="hero-stats reveal">
@@ -571,7 +571,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       <section class="section container" style="border-top: 1px solid var(--line); padding-top: 60px; margin-top: 60px;">
         <div class="section-head row reveal">
           <div><p class="eyebrow">01 — Selected work</p><h2>Featured photoshoots</h2></div>
-          <a href="/work" data-link class="link-arrow">All work →</a>
+          <a href="/categories" data-link class="link-arrow">All Categories →</a>
         </div>
         <div class="work-list">${feat.map(fullBleedBlock).join("")}</div>
       </section>
@@ -612,20 +612,6 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       </section>`;
   }
 
-  function viewWork() {
-    const brandCount = new Set(SHOOTS.filter(s => s.client && s.client.trim()).map(s => s.brand)).size;
-    return `
-      <section class="page-head">
-        <div class="container">
-          <p class="eyebrow reveal">02 — The archive</p>
-          <h1 class="reveal">The Work</h1>
-          <p class="page-sub reveal">${SHOOTS.length} photoshoot${SHOOTS.length !== 1 ? 's' : ''}${brandCount > 0 ? ` across ${brandCount} brand${brandCount !== 1 ? 's' : ''}` : ''}. Every frame, full-bleed.</p>
-        </div>
-      </section>
-      <section class="section container">
-        <div class="work-list">${SHOOTS.map(fullBleedBlock).join("")}</div>
-      </section>`;
-  }
 
   function catCard(label, kind, val, count, sample) {
     return `
@@ -725,12 +711,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         <div class="cat-grid">${brs.map((x) => catCard(x.v, "brand", x.v, x.count, x.sample)).join("")}</div>
       </section>
       ` : ""}
-      ${typ.length ? `
-      <section class="section container">
-        <div class="section-head reveal"><p class="eyebrow">By type</p><h2>How it was made</h2></div>
-        <div class="cat-grid">${typ.map((x) => catCard(x.v, "type", x.v, x.count, x.sample)).join("")}</div>
-      </section>
-      ` : ""}
+
 
       <!-- SPECIALTIES DIRECTORY -->
       ${(fashionSamples.length || portraitSamples.length || fitnessSamples.length || sportsSamples.length || testShootSamples.length) ? `
@@ -1501,8 +1482,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     });
   }
 
-  /* ---------------- Router ---------------- */
-  const ROUTES = { "": viewHome, "work": viewWork, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload, "book": viewBook };
+  const ROUTES = { "": viewHome, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload, "book": viewBook };
 
   function render() {
     let raw = location.pathname;
