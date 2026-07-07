@@ -1019,13 +1019,17 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const n = staged.length; pub.disabled = n === 0;
       note.textContent = n ? `${n} photo${n > 1 ? "s" : ""} ready.` : "No photos staged yet.";
       note.classList.toggle("ready", n > 0);
-      grid.innerHTML = staged.map((f) => `
+      grid.innerHTML = staged.map((f, index) => `
         <div class="thumb" data-id="${f.id}">
           <div class="thumb-cover-ctrl" style="position: absolute; top: 10px; left: 10px; z-index: 10;">
             <label style="background: rgba(0,0,0,0.65); color: #fff; padding: 4px 8px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 8px; text-transform: uppercase; font-weight: 700; display: flex; align-items: center; gap: 4px; cursor: pointer;">
               <input type="radio" name="coverSelect" class="thumb-cover-radio" data-id="${f.id}" ${f.isCover ? 'checked' : ''} style="margin: 0; width: 12px; height: 12px; accent-color: var(--accent);" />
               Cover
             </label>
+          </div>
+          <div class="thumb-move-ctrl" style="position: absolute; top: 10px; right: 30px; z-index: 10; display: flex; gap: 4px;">
+            <button type="button" class="thumb-move-left" data-id="${f.id}" ${index === 0 ? 'disabled style="opacity: 0.3; cursor: not-allowed; background: rgba(0,0,0,0.65); color: #fff; border: 0; width: 20px; height: 20px; border-radius: 50%; font-family: monospace; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center;"' : 'style="background: rgba(0,0,0,0.65); color: #fff; border: 0; width: 20px; height: 20px; border-radius: 50%; font-family: monospace; font-size: 10px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center;"'}>&lt;</button>
+            <button type="button" class="thumb-move-right" data-id="${f.id}" ${index === staged.length - 1 ? 'disabled style="opacity: 0.3; cursor: not-allowed; background: rgba(0,0,0,0.65); color: #fff; border: 0; width: 20px; height: 20px; border-radius: 50%; font-family: monospace; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center;"' : 'style="background: rgba(0,0,0,0.65); color: #fff; border: 0; width: 20px; height: 20px; border-radius: 50%; font-family: monospace; font-size: 10px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center;"'}>&gt;</button>
           </div>
           <img src="${esc(photoSrc(f))}" style="object-position: ${esc(f.objectPosition || 'top center')}" alt="${esc(f.name)}"/>
           <button class="thumb-remove" data-id="${f.id}" aria-label="Remove">×</button>
@@ -1040,6 +1044,31 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           </div>
         </div>
       `).join("");
+      
+      grid.querySelectorAll(".thumb-move-left").forEach((b) => b.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const id = b.dataset.id;
+        const idx = staged.findIndex(x => x.id === id);
+        if (idx > 0) {
+          const temp = staged[idx];
+          staged[idx] = staged[idx - 1];
+          staged[idx - 1] = temp;
+          renderStaged();
+        }
+      }));
+      
+      grid.querySelectorAll(".thumb-move-right").forEach((b) => b.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const id = b.dataset.id;
+        const idx = staged.findIndex(x => x.id === id);
+        if (idx < staged.length - 1) {
+          const temp = staged[idx];
+          staged[idx] = staged[idx + 1];
+          staged[idx + 1] = temp;
+          renderStaged();
+        }
+      }));
+
       grid.querySelectorAll(".thumb-remove").forEach((b) => b.addEventListener("click", (e) => {
         e.stopPropagation();
         const removedWasCover = staged.find(x => x.id === b.dataset.id)?.isCover;
