@@ -283,6 +283,13 @@ a { color: inherit; text-decoration: none; }
 .thumb-caption::placeholder { color: rgba(255,255,255,.45); }
 .thumb-caption:focus { background: rgba(14,14,14,.98); box-shadow: inset 0 1px 0 var(--accent); }
 
+/* Inline live-page editing (Admin mode) */
+.inline-edit { cursor: text; border-radius: 3px; transition: background .2s var(--ease), box-shadow .2s var(--ease); outline: none; }
+.inline-edit:hover { background: var(--accent-soft); box-shadow: 0 0 0 3px var(--accent-soft); }
+.inline-edit:focus { background: var(--paper); box-shadow: 0 0 0 2px var(--accent); }
+.theme-dark .inline-edit:focus { background: var(--bone); }
+.inline-edit[data-field]::selection { background: var(--accent); color: #fff; }
+
 .shoot-form { display: flex; flex-direction: column; gap: 22px; }
 .shoot-form fieldset { border: 1px solid var(--line); border-radius: 12px; padding: 22px 22px 24px; margin: 0; display: flex; flex-direction: column; gap: 16px; }
 .shoot-form h4 { font-family: "Archivo", sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--accent); margin: 0 0 4px; letter-spacing: 0.05em; }
