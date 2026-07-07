@@ -865,7 +865,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           </div>
 
         </div>
-      </section>
+      </section>`;
   }
   const emptyCat = () => `<p class="page-sub">Nothing here yet — publish a shoot in this category.</p>`;
 
