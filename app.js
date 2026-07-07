@@ -175,7 +175,15 @@
   const lb = $("#lightbox"), lbImg = $("#lightboxImg"), lbCap = $("#lightboxCaption"), lbCount = $("#lbCounter");
   let lbList = [], lbIdx = 0;
   function openLb(list, idx) { lbList = list; lbIdx = idx; paintLb(); lb.hidden = false; document.body.style.overflow = "hidden"; $("#lightboxClose").focus(); }
-  function paintLb() { const p = lbList[lbIdx]; if (!p) return; lbImg.src = photoSrc(p); lbImg.alt = p.shoot.title; lbImg.style.objectPosition = "center"; lbCap.textContent = `${p.shoot.title} — ${p.shoot.brand} · by ${p.shoot.photographer}`; lbCount.textContent = `${lbIdx + 1} / ${lbList.length}`; }
+  function paintLb() {
+    const p = lbList[lbIdx]; if (!p) return;
+    lbImg.src = photoSrc(p); lbImg.alt = p.caption || p.shoot.title; lbImg.style.objectPosition = "center";
+    // Prefer a per-photo caption when present, else the shoot credit line.
+    lbCap.textContent = p.caption
+      ? `${p.caption} — ${p.shoot.title}`
+      : `${p.shoot.title} — ${p.shoot.brand} · by ${p.shoot.photographer}`;
+    lbCount.textContent = `${lbIdx + 1} / ${lbList.length}`;
+  }
   function stepLb(d) { if (!lbList.length) return; lbIdx = (lbIdx + d + lbList.length) % lbList.length; paintLb(); }
   function closeLb() { lb.hidden = true; lbImg.src = ""; document.body.style.overflow = ""; }
   $("#lightboxClose").addEventListener("click", (e) => { e.stopPropagation(); closeLb(); });
@@ -1433,7 +1441,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             name: "Existing Frame",
             objectPosition: pos,
             isCover,
-            manuallyAligned: !!(p.objectPosition && p.objectPosition !== "center")
+            manuallyAligned: !!(p.objectPosition && p.objectPosition !== "center"),
+            caption: p.caption || "",
+            ...(typeof p.focalX === "number" ? { focalX: p.focalX, focalY: p.focalY } : {})
           };
         });
         if (staged.length && !staged.some(x => x.isCover)) {
@@ -1460,57 +1470,39 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     }
     function renderStaged() {
       const n = staged.length; pub.disabled = n === 0;
-      note.textContent = n ? `${n} photo${n > 1 ? "s" : ""} ready.` : "No photos staged yet.";
+      note.textContent = n ? `${n} photo${n > 1 ? "s" : ""} ready — drag to reorder, drag the dot to set focus.` : "No photos staged yet.";
       note.classList.toggle("ready", n > 0);
-      grid.innerHTML = staged.map((f, index) => `
-        <div class="thumb" data-id="${f.id}">
-          <div class="thumb-cover-ctrl" style="position: absolute; top: 10px; left: 10px; z-index: 10;">
-            <label style="background: rgba(0,0,0,0.65); color: #fff; padding: 4px 8px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 8px; text-transform: uppercase; font-weight: 700; display: flex; align-items: center; gap: 4px; cursor: pointer;">
-              <input type="radio" name="coverSelect" class="thumb-cover-radio" data-id="${f.id}" ${f.isCover ? 'checked' : ''} style="margin: 0; width: 12px; height: 12px; accent-color: var(--accent);" />
-              Cover
-            </label>
+      grid.innerHTML = staged.map((f, index) => {
+        const pos = f.objectPosition && f.objectPosition !== "center" ? f.objectPosition : "center center";
+        // Focal dot position: derive % from a stored focalX/focalY, else map keyword.
+        const fp = focalPercent(f);
+        return `
+        <div class="thumb" data-id="${f.id}" draggable="true">
+          <span class="thumb-order">${index + 1}</span>
+          <label class="thumb-cover-ctrl">
+            <input type="radio" name="coverSelect" class="thumb-cover-radio" data-id="${f.id}" ${f.isCover ? 'checked' : ''} />
+            Cover
+          </label>
+          <img src="${esc(photoSrc(f))}" style="object-position: ${esc(pos)}" alt="${esc(f.name)}"/>
+          <div class="thumb-focal" data-id="${f.id}" title="Drag to set focal point">
+            <span class="thumb-focal-dot" style="left:${fp.x}%; top:${fp.y}%;"></span>
           </div>
-          <div class="thumb-move-ctrl" style="position: absolute; top: 10px; right: 30px; z-index: 10; display: flex; gap: 4px;">
-            <button type="button" class="thumb-move-left" data-id="${f.id}" ${index === 0 ? 'disabled style="opacity: 0.3; cursor: not-allowed; background: rgba(0,0,0,0.65); color: #fff; border: 0; width: 20px; height: 20px; border-radius: 50%; font-family: monospace; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center;"' : 'style="background: rgba(0,0,0,0.65); color: #fff; border: 0; width: 20px; height: 20px; border-radius: 50%; font-family: monospace; font-size: 10px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center;"'}>&lt;</button>
-            <button type="button" class="thumb-move-right" data-id="${f.id}" ${index === staged.length - 1 ? 'disabled style="opacity: 0.3; cursor: not-allowed; background: rgba(0,0,0,0.65); color: #fff; border: 0; width: 20px; height: 20px; border-radius: 50%; font-family: monospace; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center;"' : 'style="background: rgba(0,0,0,0.65); color: #fff; border: 0; width: 20px; height: 20px; border-radius: 50%; font-family: monospace; font-size: 10px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center;"'}>&gt;</button>
-          </div>
-          <img src="${esc(photoSrc(f))}" style="object-position: ${esc(f.objectPosition || 'top center')}" alt="${esc(f.name)}"/>
-          <button class="thumb-remove" data-id="${f.id}" aria-label="Remove">×</button>
-          <div class="thumb-align-ctrl">
-            <select class="thumb-align-select" data-id="${f.id}" aria-label="Align image">
-              <option value="center" ${(f.objectPosition === 'center' || f.objectPosition === 'center center') ? 'selected' : ''}>Center</option>
-              <option value="top" ${f.objectPosition === 'top' ? 'selected' : ''}>Top</option>
-              <option value="bottom" ${f.objectPosition === 'bottom' ? 'selected' : ''}>Bottom</option>
-              <option value="left" ${f.objectPosition === 'left' ? 'selected' : ''}>Left</option>
-              <option value="right" ${f.objectPosition === 'right' ? 'selected' : ''}>Right</option>
-            </select>
-          </div>
-        </div>
-      `).join("");
-      
-      grid.querySelectorAll(".thumb-move-left").forEach((b) => b.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const id = b.dataset.id;
-        const idx = staged.findIndex(x => x.id === id);
-        if (idx > 0) {
-          const temp = staged[idx];
-          staged[idx] = staged[idx - 1];
-          staged[idx - 1] = temp;
-          renderStaged();
-        }
-      }));
-      
-      grid.querySelectorAll(".thumb-move-right").forEach((b) => b.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const id = b.dataset.id;
-        const idx = staged.findIndex(x => x.id === id);
-        if (idx < staged.length - 1) {
-          const temp = staged[idx];
-          staged[idx] = staged[idx + 1];
-          staged[idx + 1] = temp;
-          renderStaged();
-        }
-      }));
+          <button type="button" class="thumb-remove" data-id="${f.id}" aria-label="Remove">×</button>
+          <input type="text" class="thumb-caption" data-id="${f.id}" value="${esc(f.caption || '')}" placeholder="Add caption…" aria-label="Photo caption" />
+        </div>`;
+      }).join("");
+
+      wireDragReorder();
+      wireFocalPoints();
+
+      grid.querySelectorAll(".thumb-caption").forEach((inp) => {
+        inp.addEventListener("input", (e) => {
+          const item = staged.find(x => x.id === e.target.dataset.id);
+          if (item) item.caption = e.target.value;
+        });
+        // Don't let caption typing trigger drag / thumb click.
+        inp.addEventListener("mousedown", (e) => e.stopPropagation());
+      });
 
       grid.querySelectorAll(".thumb-remove").forEach((b) => b.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -1522,40 +1514,83 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         }
         renderStaged();
       }));
-      grid.querySelectorAll(".thumb-align-select").forEach((select) => {
-        select.addEventListener("change", (e) => {
-          const id = e.target.dataset.id;
-          let pos = e.target.value;
-          const item = staged.find((x) => x.id === id);
-          if (item) {
-            if (pos === "center") {
-              item.objectPosition = "center center";
-            } else {
-              item.objectPosition = pos;
-            }
-            item.manuallyAligned = true;
-            const thumbImg = grid.querySelector(`.thumb[data-id="${id}"] img`);
-            if (thumbImg) thumbImg.style.objectPosition = pos;
-          }
-        });
-      });
       grid.querySelectorAll(".thumb-cover-radio").forEach((radio) => {
         radio.addEventListener("change", (e) => {
           const id = e.target.dataset.id;
-          staged.forEach(x => {
-            const wasCover = x.isCover;
-            x.isCover = (x.id === id);
-            if (x.isCover && !x.manuallyAligned) {
-              x.objectPosition = "top";
-            }
-            if (wasCover && !x.isCover && !x.manuallyAligned) {
-              x.objectPosition = "center";
-            }
-          });
+          staged.forEach(x => { x.isCover = (x.id === id); });
           renderStaged();
         });
       });
     }
+
+    // Convert a photo's focal setting into { x, y } percentages for the dot.
+    function focalPercent(f) {
+      if (typeof f.focalX === "number" && typeof f.focalY === "number") {
+        return { x: Math.round(f.focalX), y: Math.round(f.focalY) };
+      }
+      const map = { "top": [50, 0], "bottom": [50, 100], "left": [0, 50], "right": [100, 50] };
+      const key = (f.objectPosition || "center").split(" ")[0];
+      const [x, y] = map[key] || [50, 50];
+      return { x, y };
+    }
+
+    // Drag-and-drop reordering of staged thumbnails.
+    let dragId = null;
+    function wireDragReorder() {
+      grid.querySelectorAll(".thumb").forEach((el) => {
+        el.addEventListener("dragstart", (e) => {
+          dragId = el.dataset.id;
+          el.classList.add("dragging");
+          e.dataTransfer.effectAllowed = "move";
+          try { e.dataTransfer.setData("text/plain", dragId); } catch {}
+        });
+        el.addEventListener("dragend", () => { el.classList.remove("dragging"); dragId = null; grid.querySelectorAll(".thumb").forEach(t => t.classList.remove("drop-target")); });
+        el.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          if (!dragId || el.dataset.id === dragId) return;
+          el.classList.add("drop-target");
+          e.dataTransfer.dropEffect = "move";
+        });
+        el.addEventListener("dragleave", () => el.classList.remove("drop-target"));
+        el.addEventListener("drop", (e) => {
+          e.preventDefault(); e.stopPropagation();
+          const from = staged.findIndex(x => x.id === dragId);
+          const to = staged.findIndex(x => x.id === el.dataset.id);
+          if (from < 0 || to < 0 || from === to) return;
+          const [moved] = staged.splice(from, 1);
+          staged.splice(to, 0, moved);
+          renderStaged();
+        });
+      });
+    }
+
+    // Drag a focal point directly on each thumbnail to set object-position.
+    function wireFocalPoints() {
+      grid.querySelectorAll(".thumb-focal").forEach((area) => {
+        const item = staged.find(x => x.id === area.dataset.id);
+        if (!item) return;
+        const dot = area.querySelector(".thumb-focal-dot");
+        const img = area.parentElement.querySelector("img");
+        let dragging = false;
+        const setFromEvent = (clientX, clientY) => {
+          const r = area.getBoundingClientRect();
+          const x = Math.max(0, Math.min(100, ((clientX - r.left) / r.width) * 100));
+          const y = Math.max(0, Math.min(100, ((clientY - r.top) / r.height) * 100));
+          item.focalX = x; item.focalY = y;
+          item.objectPosition = `${x.toFixed(1)}% ${y.toFixed(1)}%`;
+          item.manuallyAligned = true;
+          dot.style.left = x + "%"; dot.style.top = y + "%";
+          if (img) img.style.objectPosition = item.objectPosition;
+        };
+        dot.addEventListener("mousedown", (e) => { e.preventDefault(); e.stopPropagation(); dragging = true; area.classList.add("focal-active"); });
+        area.addEventListener("click", (e) => { if (e.target === area) setFromEvent(e.clientX, e.clientY); });
+        window.addEventListener("mousemove", (e) => { if (dragging) setFromEvent(e.clientX, e.clientY); });
+        window.addEventListener("mouseup", () => { if (dragging) { dragging = false; area.classList.remove("focal-active"); } });
+        // Prevent the thumb's HTML5 drag from starting when adjusting focus.
+        area.addEventListener("dragstart", (e) => e.preventDefault());
+      });
+    }
+
     dz.addEventListener("click", (e) => { if (!e.target.closest(".thumb")) fi.click(); });
     dz.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fi.click(); } });
     fi.addEventListener("change", (e) => { ingest(e.target.files); fi.value = ""; });
@@ -1646,7 +1681,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         lightingDiagram: diagramDataUrl,
         lightingDiagramVisibility: $("#f_diagram_visibility").value,
         palette: pColors,
-        photos: staged.map((f, i) => ({ id: f.id + "-" + i, dataUrl: f.dataUrl, url: f.url, objectPosition: f.objectPosition || (f.isCover ? "top" : "center") })),
+        photos: staged.map((f, i) => ({
+          id: f.id + "-" + i,
+          dataUrl: f.dataUrl,
+          url: f.url,
+          objectPosition: f.objectPosition || (f.isCover ? "top" : "center"),
+          ...(typeof f.focalX === "number" ? { focalX: f.focalX, focalY: f.focalY } : {}),
+          ...(f.caption && f.caption.trim() ? { caption: f.caption.trim() } : {})
+        })),
         featured: $("#f_featured") ? $("#f_featured").checked : false,
         coverPhotoId: coverItem ? coverItem.id : null,
       };

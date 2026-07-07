@@ -262,15 +262,26 @@ a { color: inherit; text-decoration: none; }
 .dropzone-title { font-family: "Archivo", sans-serif; font-weight: 700; font-size: 20px; margin: 0 0 6px; }
 .dropzone-hint { color: var(--ink-soft); font-size: 14px; margin: 0; }
 .dropzone-hint .link { color: var(--accent); font-weight: 600; text-decoration: underline; }
-.thumb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-top: 18px; }
+.thumb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-top: 18px; }
 .thumb-grid:empty { display: none; }
-.thumb { position: relative; aspect-ratio: 1; border-radius: 6px; overflow: hidden; background: var(--paper); border: 1px solid var(--line); animation: pop .4s var(--ease) both; }
+.thumb { position: relative; border-radius: 8px; overflow: hidden; background: var(--paper); border: 1px solid var(--line); animation: pop .4s var(--ease) both; }
 @keyframes pop { from { opacity: 0; transform: scale(.9); } }
-.thumb img { width: 100%; height: 100%; object-fit: cover; object-position: top center; }
-.thumb-remove { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; background: rgba(14,14,14,.78); color: #fff; border: 0; font-size: 14px; z-index: 2; cursor: pointer; display: grid; place-items: center; }
-.thumb-align-ctrl { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(14,14,14,.88); padding: 4px 2px; display: flex; justify-content: center; align-items: center; border-top: 1px solid rgba(255,255,255,.08); }
-.thumb-align-select { width: 100%; font-family: inherit; font-size: 9px; font-weight: 700; background: transparent; color: #fff; border: none; text-align-last: center; outline: none; cursor: pointer; padding: 0; text-transform: uppercase; letter-spacing: 0.05em; }
-.thumb-align-select option { background: var(--ink-2); color: #fff; }
+.thumb > img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; object-position: top center; cursor: grab; }
+.thumb.dragging { opacity: .5; }
+.thumb.drop-target { outline: 2px dashed var(--accent); outline-offset: -2px; }
+.thumb-order { position: absolute; top: 6px; left: 6px; z-index: 3; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 100px; background: rgba(14,14,14,.72); color: #fff; font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 700; display: grid; place-items: center; pointer-events: none; }
+.thumb-cover-ctrl { position: absolute; top: 6px; left: 30px; z-index: 3; display: inline-flex; align-items: center; gap: 4px; background: rgba(14,14,14,.72); color: #fff; padding: 3px 8px; border-radius: 100px; font-family: "JetBrains Mono", monospace; font-size: 8px; text-transform: uppercase; font-weight: 700; letter-spacing: .05em; cursor: pointer; }
+.thumb-cover-radio { margin: 0; width: 11px; height: 11px; accent-color: var(--accent); }
+.thumb-remove { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%; background: rgba(14,14,14,.78); color: #fff; border: 0; font-size: 14px; z-index: 4; cursor: pointer; display: grid; place-items: center; }
+.thumb-remove:hover { background: #b22222; }
+/* Focal-point picker overlay */
+.thumb-focal { position: absolute; inset: 0 0 34px 0; z-index: 2; cursor: crosshair; }
+.thumb-focal-dot { position: absolute; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #fff; background: rgba(210,78,26,.7); box-shadow: 0 0 0 2px rgba(0,0,0,.35), 0 2px 8px rgba(0,0,0,.4); transform: translate(-50%, -50%); cursor: grab; transition: transform .1s var(--ease); }
+.thumb-focal.focal-active .thumb-focal-dot, .thumb-focal-dot:active { cursor: grabbing; transform: translate(-50%, -50%) scale(1.25); }
+/* Per-photo caption input */
+.thumb-caption { position: absolute; bottom: 0; left: 0; right: 0; z-index: 5; height: 34px; font-family: inherit; font-size: 11px; background: rgba(14,14,14,.9); color: #fff; border: 0; border-top: 1px solid rgba(255,255,255,.1); padding: 0 10px; outline: none; }
+.thumb-caption::placeholder { color: rgba(255,255,255,.45); }
+.thumb-caption:focus { background: rgba(14,14,14,.98); box-shadow: inset 0 1px 0 var(--accent); }
 
 .shoot-form { display: flex; flex-direction: column; gap: 22px; }
 .shoot-form fieldset { border: 1px solid var(--line); border-radius: 12px; padding: 22px 22px 24px; margin: 0; display: flex; flex-direction: column; gap: 16px; }
