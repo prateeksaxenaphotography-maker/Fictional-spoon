@@ -1419,7 +1419,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       await loadShoots();
       toast(editingShoot ? `Saved changes to “${shoot.title}”.` : `Published “${shoot.title}” — ${staged.length} frame${staged.length > 1 ? "s" : ""}.`);
       staged = [];
-      location.hash = "#/work";
+      history.pushState(null, "", "/"); render();
       await syncToGitHub(SHOOTS);
     });
     renderStaged();
