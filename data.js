@@ -1,5 +1,5 @@
 /* ============================================================
-   nerdyphotographer.in — published portfolio data
+   thenerdyphotographer.in — published portfolio data
    Auto-synced by the Admin Panel. Photo files live under photos/.
    ============================================================ */
 window.WPS_DATA = {
@@ -488,6 +488,106 @@ window.WPS_DATA = {
       ],
       "featured": true,
       "coverPhotoId": "mr8ld6oabyimod"
+    },
+    {
+      "id": "mranmpzmfblohv",
+      "createdAt": 1783429086226,
+      "title": "Harshit Maindola",
+      "brand": "Personal Project",
+      "activity": "Portrait",
+      "type": "Test Shoot",
+      "season": "May 2026",
+      "photographer": "Studio",
+      "artDirector": "",
+      "stylist": "—",
+      "hair": "—",
+      "mua": "—",
+      "talent": "Harshit Maindola",
+      "location": "Jaipur",
+      "description": "",
+      "tags": "",
+      "gear": "",
+      "client": "",
+      "date": "2026-05-15",
+      "instagram": "",
+      "link": "",
+      "rights": "",
+      "testimonials": [],
+      "lightingDiagram": null,
+      "lightingDiagramVisibility": "private",
+      "palette": [
+        "#84735c",
+        "#3b3429"
+      ],
+      "photos": [
+        {
+          "id": "mrani9uxvdi4p5-0",
+          "url": "photos/mranmpzmfblohv/mrani9uxvdi4p5-0.jpg",
+          "objectPosition": "center"
+        },
+        {
+          "id": "mrani9vnvhuykf-1",
+          "url": "photos/mranmpzmfblohv/mrani9vnvhuykf-1.jpg",
+          "objectPosition": "top"
+        },
+        {
+          "id": "mrania0x467ghm-2",
+          "url": "photos/mranmpzmfblohv/mrania0x467ghm-2.jpg",
+          "objectPosition": "top"
+        },
+        {
+          "id": "mrania1npq2mxa-3",
+          "url": "photos/mranmpzmfblohv/mrania1npq2mxa-3.jpg",
+          "objectPosition": "top"
+        },
+        {
+          "id": "mrania2ctwyenm-4",
+          "url": "photos/mranmpzmfblohv/mrania2ctwyenm-4.jpg",
+          "objectPosition": "center"
+        },
+        {
+          "id": "mraniaawhur5kq-5",
+          "url": "photos/mranmpzmfblohv/mraniaawhur5kq-5.jpg",
+          "objectPosition": "center"
+        },
+        {
+          "id": "mraniak65nyfwg-6",
+          "url": "photos/mranmpzmfblohv/mraniak65nyfwg-6.jpg",
+          "objectPosition": "center"
+        },
+        {
+          "id": "mraniakbsu4lze-7",
+          "url": "photos/mranmpzmfblohv/mraniakbsu4lze-7.jpg",
+          "objectPosition": "top"
+        },
+        {
+          "id": "mranib0ummy3kf-8",
+          "url": "photos/mranmpzmfblohv/mranib0ummy3kf-8.jpg",
+          "objectPosition": "center"
+        },
+        {
+          "id": "mraniber0p6mjp-9",
+          "url": "photos/mranmpzmfblohv/mraniber0p6mjp-9.jpg",
+          "objectPosition": "center"
+        },
+        {
+          "id": "mranibfsaarou5-10",
+          "url": "photos/mranmpzmfblohv/mranibfsaarou5-10.jpg",
+          "objectPosition": "center"
+        },
+        {
+          "id": "mranibghfdcl2u-11",
+          "url": "photos/mranmpzmfblohv/mranibghfdcl2u-11.jpg",
+          "objectPosition": "center"
+        },
+        {
+          "id": "mranibh9u0mmmg-12",
+          "url": "photos/mranmpzmfblohv/mranibh9u0mmmg-12.jpg",
+          "objectPosition": "center"
+        }
+      ],
+      "featured": true,
+      "coverPhotoId": "mrania1npq2mxa"
     }
   ]
 };
