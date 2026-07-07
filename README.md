@@ -1,6 +1,6 @@
-# thenerdyphotographer.in
+# nerdyphotographer.in
 
-A personal **photo studio website** for thenerdyphotographer.in — minimalist, neutral palette, bold headlines, generous whitespace — with an **easy portfolio photoshoot uploader** baked in.
+A personal **photo studio website** for nerdyphotographer.in — minimalist, neutral palette, bold headlines, generous whitespace — with an **easy portfolio photoshoot uploader** baked in.
 
 ## Features
 

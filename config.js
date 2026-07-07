@@ -4,15 +4,15 @@
    ============================================================ */
 const STUDIO_CONFIG = {
   // Brand & Naming
-  studioName: "thenerdyphotographer.in",
-  studioShortName: "THENERDY",
+  studioName: "nerdyphotographer.in",
+  studioShortName: "NERDY",
   studioSubName: "PHOTOGRAPHER.IN",
   tagline: "Cinematic photography, visual stories, and fine art prints.",
   introQuote: "“The best photography doesn't just record a moment. It captures the light, the mood, and the silent story within the frame.”",
 
   // Contact & Socials
   email: "prateeksaxenaphotography@gmail.com",
-  instagram: "https://www.instagram.com/thenerdyphotographer.in/",
+  instagram: "https://www.instagram.com/nerdyphotographer.in/",
   kavyar: "https://kavyar.com/uucurn46ib8f",
 
   // Testimonials (Client Reactions)
