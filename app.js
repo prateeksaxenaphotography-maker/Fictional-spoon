@@ -1668,9 +1668,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             <p id="bookSuccessMsg" style="margin: 0; line-height: 1.6;">Your booking inquiry is ready in your email app — please hit <strong>Send</strong> in your mail client to complete the request.</p>
             
             <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; width: 100%;">
-              <a href="" id="bookMailtoLink" class="btn btn-dark" style="font-size: 12px; height: auto; padding: 12px 24px; text-decoration: none;">Launch Email App Again</a>
-              <button type="button" class="btn btn-ghost" id="bookAnother" style="font-size: 12px; height: auto; padding: 12px 24px;">Send another request</button>
-              <a href="/" data-link class="btn btn-ghost" style="font-size: 12px; height: auto; padding: 12px 24px; text-decoration: none;">Back to home</a>
+              <a href="" id="bookMailtoLink" class="btn btn-dark" style="font-size: 11px; height: auto; padding: 10px 18px; text-decoration: none;">Launch Mail App</a>
+              <a href="" id="bookGmailLink" target="_blank" rel="noopener noreferrer" class="btn btn-dark" style="font-size: 11px; height: auto; padding: 10px 18px; text-decoration: none; background: #ea4335; border-color: #ea4335; color: #fff;">Send via Gmail (Web)</a>
+              <a href="" id="bookOutlookLink" target="_blank" rel="noopener noreferrer" class="btn btn-dark" style="font-size: 11px; height: auto; padding: 10px 18px; text-decoration: none; background: #0078d4; border-color: #0078d4; color: #fff;">Send via Outlook (Web)</a>
+            </div>
+            <div style="display: flex; gap: 12px; justify-content: center; width: 100%; margin-top: 6px;">
+              <button type="button" class="btn btn-ghost" id="bookAnother" style="font-size: 11px; height: auto; padding: 8px 18px;">Send another request</button>
+              <a href="/" data-link class="btn btn-ghost" style="font-size: 11px; height: auto; padding: 8px 18px; text-decoration: none;">Back to home</a>
             </div>
 
             <div style="margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 20px; width: 100%; display: flex; flex-direction: column; gap: 10px; align-items: center;">
@@ -2594,10 +2598,18 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         );
 
         const mailtoUrl = `mailto:${studioEmail}?subject=${subject}&body=${body}`;
+        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(studioEmail)}&su=${subject}&body=${body}`;
+        const outlookUrl = `https://outlook.live.com/default.aspx?rru=compose&to=${encodeURIComponent(studioEmail)}&subject=${subject}&body=${body}`;
 
         // Populate manual link and copy block
         const mailtoLink = $("#bookMailtoLink");
         if (mailtoLink) mailtoLink.href = mailtoUrl;
+
+        const gmailLink = $("#bookGmailLink");
+        if (gmailLink) gmailLink.href = gmailUrl;
+
+        const outlookLink = $("#bookOutlookLink");
+        if (outlookLink) outlookLink.href = outlookUrl;
 
         const previewText = $("#inquiryTextPreview");
         if (previewText) previewText.textContent = plainTextBody;
