@@ -444,6 +444,7 @@
     if (shoot.artDirector && shoot.artDirector !== "—") credits.push(`<div><dt>Art Direction</dt><dd>${formatCrew(shoot.artDirector)}</dd></div>`);
     if (shoot.stylist && shoot.stylist !== "—") credits.push(`<div><dt>Stylist</dt><dd>${formatCrew(shoot.stylist)}</dd></div>`);
     if (shoot.mua && shoot.mua !== "—") credits.push(`<div><dt>MUA</dt><dd>${formatCrew(shoot.mua)}</dd></div>`);
+    if (shoot.videographer && shoot.videographer !== "—") credits.push(`<div><dt>Video</dt><dd>${formatCrew(shoot.videographer)}</dd></div>`);
     if (shoot.hair && shoot.hair !== "—") credits.push(`<div><dt>Hair</dt><dd>${formatCrew(shoot.hair)}</dd></div>`);
     if (shoot.talent && shoot.talent !== "—") credits.push(`<div><dt>Model / Talent</dt><dd>${renderCreditValue(shoot.talent)}</dd></div>`);
     if (igHtml) credits.push(igHtml);
@@ -1389,6 +1390,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             stylist: latestShoot.stylist || "",
             hair: latestShoot.hair || "",
             mua: latestShoot.mua || "",
+            videographer: latestShoot.videographer || "",
             talent: modelName,
             location: latestShoot.location || "Studio",
             description: latestShoot.description || "",
@@ -1794,9 +1796,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               </div>
               <div class="field-row">
                 <label class="field"><span>Makeup artist (MUA)</span><input id="f_mua" type="text" placeholder="—" /></label>
-                <label class="field"><span>Model / talent (comma-separated)</span><input id="f_talent" type="text" placeholder="e.g. Model A, Model B" /></label>
+                <label class="field"><span>Videographer(s)</span><input id="f_video" type="text" placeholder="—" /></label>
               </div>
-              <label class="field"><span>Location</span><input id="f_location" type="text" placeholder="Studio 3, Brooklyn" /></label>
+              <div class="field-row">
+                <label class="field"><span>Model / talent (comma-separated)</span><input id="f_talent" type="text" placeholder="e.g. Model A, Model B" /></label>
+                <label class="field"><span>Location</span><input id="f_location" type="text" placeholder="Studio 3, Brooklyn" /></label>
+              </div>
             </fieldset>
 
             <fieldset id="modelStatsFieldset"><legend>Model stats (Comp Cards)</legend>
@@ -2171,6 +2176,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         $("#f_stylist").value = editingShoot.stylist || "";
         $("#f_hair").value = editingShoot.hair || "";
         $("#f_mua").value = editingShoot.mua || "";
+        if ($("#f_video")) $("#f_video").value = editingShoot.videographer || "";
         $("#f_talent").value = editingShoot.talent || "";
         $("#f_location").value = editingShoot.location || "";
         $("#f_desc").value = editingShoot.description || "";
@@ -2539,6 +2545,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         stylist: isTestimonialOnly ? "" : (val("f_stylist") || "—"),
         hair: isTestimonialOnly ? "" : (val("f_hair") || "—"),
         mua: isTestimonialOnly ? "" : (val("f_mua") || "—"),
+        videographer: isTestimonialOnly ? "" : (val("f_video") || "—"),
         talent: val("f_talent"),
         location: isTestimonialOnly ? "" : val("f_location"),
         height: isTestimonialOnly ? "" : val("f_height"),
