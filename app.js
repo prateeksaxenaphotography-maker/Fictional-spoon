@@ -3488,9 +3488,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       <div class="print-photo-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; flex-grow: 1; margin-bottom: 16px;">
         ${photosHtml}
       </div>
-      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #ccc; padding-top: 12px; margin-top: auto; font-family: sans-serif; font-size: 9px; color: #777;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #ccc; padding-top: 12px; margin-top: auto; font-family: sans-serif; font-size: 8.5px; color: #777; gap: 20px;">
         <span>To book this talent, please connect directly via their verified socials.</span>
-        <span>Generated under nerdyphotographer.in studio or its subsidiaries.</span>
+        <span style="text-align: right; line-height: 1.4;">All images are proprietary to nerdyphotographer.in studio and its subsidiaries. They cannot be sold or used for commercial purposes without prior written approval.</span>
       </div>
     `;
     window.print();
