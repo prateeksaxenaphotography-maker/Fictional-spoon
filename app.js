@@ -1707,7 +1707,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                  <label class="field"><span>Email Address *</span><input id="b_email" type="email" required placeholder="name@example.com" /></label>
                  <label class="field"><span>Phone Number</span><input id="b_phone" type="tel" placeholder="+91 99999-99999" /></label>
                </div>
-               <label class="field"><span id="b_instagram_label">Instagram Handle</span><input id="b_instagram" type="text" placeholder="e.g. @handle" /></label>
+               <label class="field"><span id="b_instagram_label">Instagram / Website</span><input id="b_instagram" type="text" placeholder="e.g. @handle or website.com" /></label>
              </fieldset>
  
              <fieldset>
@@ -2245,7 +2245,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const igLabel = $("#b_instagram_label");
 
       if (igLabel) {
-        igLabel.innerHTML = (type === "Test Shoot" ? "Instagram Handle *" : "Instagram Handle");
+        igLabel.innerHTML = (type === "Test Shoot" ? "Instagram / Website *" : "Instagram / Website");
       }
 
       if (type === "Test Shoot") {
@@ -2298,7 +2298,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const type = $("#b_type")?.value;
       if (type === "Test Shoot") {
         if (!val("b_instagram")) {
-          setError("b_instagram", "Instagram handle is mandatory for test shoots.");
+          setError("b_instagram", "Instagram / Website is mandatory for test shoots.");
           firstBad = firstBad || "b_instagram";
         } else {
           clearError("b_instagram");
@@ -2376,7 +2376,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           `Role: ${role}\n` +
           `Email: ${email}\n` +
           `Phone: ${phone || '—'}\n` +
-          `Instagram: ${instagram || '—'}\n` +
+          `Instagram / Website: ${instagram || '—'}\n` +
           `Shoot Type: ${type}\n` +
           `Proposed Date: ${date}\n` +
           `Location Pref: ${locationVal}\n` +
@@ -2393,7 +2393,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           `Role: ${role}\n` +
           `Email: ${email}\n` +
           `Phone: ${phone || '—'}\n` +
-          `Instagram: ${instagram || '—'}\n` +
+          `Instagram / Website: ${instagram || '—'}\n` +
           `Shoot Type: ${type}\n` +
           `Proposed Date: ${date}\n` +
           `Location Pref: ${locationVal}\n` +
