@@ -749,13 +749,18 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     }
 
     const creditsList = [];
-    if (s.photographer) creditsList.push(`Photo <strong>${esc(s.photographer)}</strong>`);
-    if (s.artDirector) creditsList.push(`AD <strong>${esc(s.artDirector)}</strong>`);
-    if (s.stylist && s.stylist !== "—") creditsList.push(`Style <strong>${esc(s.stylist)}</strong>`);
-    if (s.hair && s.hair !== "—") creditsList.push(`Hair <strong>${esc(s.hair)}</strong>`);
-    if (s.mua && s.mua !== "—") creditsList.push(`Makeup <strong>${esc(s.mua)}</strong>`);
-    if (s.talent && s.talent !== "—") creditsList.push(`Talent <strong>${esc(s.talent)}</strong>`);
-    if (igHtml) creditsList.push(`Socials ${igHtml}`);
+    if (s.isCompCard) {
+      if (s.talent && s.talent !== "—") creditsList.push(`Talent <strong>${esc(s.talent)}</strong>`);
+      if (igHtml) creditsList.push(`Socials ${igHtml}`);
+    } else {
+      if (s.photographer) creditsList.push(`Photo <strong>${esc(s.photographer)}</strong>`);
+      if (s.artDirector) creditsList.push(`AD <strong>${esc(s.artDirector)}</strong>`);
+      if (s.stylist && s.stylist !== "—") creditsList.push(`Style <strong>${esc(s.stylist)}</strong>`);
+      if (s.hair && s.hair !== "—") creditsList.push(`Hair <strong>${esc(s.hair)}</strong>`);
+      if (s.mua && s.mua !== "—") creditsList.push(`Makeup <strong>${esc(s.mua)}</strong>`);
+      if (s.talent && s.talent !== "—") creditsList.push(`Talent <strong>${esc(s.talent)}</strong>`);
+      if (igHtml) creditsList.push(`Socials ${igHtml}`);
+    }
     const creditsHtml = creditsList.join("  ·  ");
 
     const testimonials = s.testimonials || (s.testimonial ? [s.testimonial] : []);
