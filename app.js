@@ -229,18 +229,19 @@
 
     // Model Stats
     let statsHtml = "";
-    if (isCc) {
+    const hasStats = shoot.height || shoot.chest || shoot.waist || shoot.hips || shoot.shoes || shoot.modelHair || shoot.modelEyes;
+    if (isCc && hasStats) {
       statsHtml = `
         <div class="lb-sidebar-section">
           <h4 style="font-family:'Outfit', sans-serif; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); margin:0 0 10px;">Model Stats</h4>
           <div class="stats-row">
-            <div class="stats-item"><dt>Height</dt><dd>${esc(shoot.height) || "—"}</dd></div>
-            <div class="stats-item"><dt>Chest/Bust</dt><dd>${esc(shoot.chest) || "—"}</dd></div>
-            <div class="stats-item"><dt>Waist</dt><dd>${esc(shoot.waist) || "—"}</dd></div>
-            <div class="stats-item"><dt>Hips</dt><dd>${esc(shoot.hips) || "—"}</dd></div>
-            <div class="stats-item"><dt>Shoes</dt><dd>${esc(shoot.shoes) || "—"}</dd></div>
-            <div class="stats-item"><dt>Hair</dt><dd>${esc(shoot.modelHair) || "—"}</dd></div>
-            <div class="stats-item"><dt>Eyes</dt><dd>${esc(shoot.modelEyes) || "—"}</dd></div>
+            ${shoot.height ? `<div class="stats-item"><dt>Height</dt><dd>${esc(shoot.height)}</dd></div>` : ""}
+            ${shoot.chest ? `<div class="stats-item"><dt>Chest/Bust</dt><dd>${esc(shoot.chest)}</dd></div>` : ""}
+            ${shoot.waist ? `<div class="stats-item"><dt>Waist</dt><dd>${esc(shoot.waist)}</dd></div>` : ""}
+            ${shoot.hips ? `<div class="stats-item"><dt>Hips</dt><dd>${esc(shoot.hips)}</dd></div>` : ""}
+            ${shoot.shoes ? `<div class="stats-item"><dt>Shoes</dt><dd>${esc(shoot.shoes)}</dd></div>` : ""}
+            ${shoot.modelHair ? `<div class="stats-item"><dt>Hair</dt><dd>${esc(shoot.modelHair)}</dd></div>` : ""}
+            ${shoot.modelEyes ? `<div class="stats-item"><dt>Eyes</dt><dd>${esc(shoot.modelEyes)}</dd></div>` : ""}
           </div>
         </div>
       `;
@@ -841,17 +842,17 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             </dl>`;
           })()}
           
-          ${s.isCompCard ? `
+          ${s.isCompCard && (latestShoot.height || latestShoot.chest || latestShoot.waist || latestShoot.hips || latestShoot.shoes || latestShoot.modelHair || latestShoot.modelEyes) ? `
             <div style="margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px; width: 100%;">
               <p class="eyebrow" style="font-size: 9px; margin-bottom: 8px; color: var(--ink-soft); letter-spacing: 0.05em; text-align: left;">Model Stats</p>
               <div class="stats-row">
-                <div class="stats-item"><dt>Height</dt><dd>${esc(latestShoot.height) || "—"}</dd></div>
-                <div class="stats-item"><dt>Chest/Bust</dt><dd>${esc(latestShoot.chest) || "—"}</dd></div>
-                <div class="stats-item"><dt>Waist</dt><dd>${esc(latestShoot.waist) || "—"}</dd></div>
-                <div class="stats-item"><dt>Hips</dt><dd>${esc(latestShoot.hips) || "—"}</dd></div>
-                <div class="stats-item"><dt>Shoes</dt><dd>${esc(latestShoot.shoes) || "—"}</dd></div>
-                <div class="stats-item"><dt>Hair</dt><dd>${esc(latestShoot.modelHair) || "—"}</dd></div>
-                <div class="stats-item"><dt>Eyes</dt><dd>${esc(latestShoot.modelEyes) || "—"}</dd></div>
+                ${latestShoot.height ? `<div class="stats-item"><dt>Height</dt><dd>${esc(latestShoot.height)}</dd></div>` : ""}
+                ${latestShoot.chest ? `<div class="stats-item"><dt>Chest/Bust</dt><dd>${esc(latestShoot.chest)}</dd></div>` : ""}
+                ${latestShoot.waist ? `<div class="stats-item"><dt>Waist</dt><dd>${esc(latestShoot.waist)}</dd></div>` : ""}
+                ${latestShoot.hips ? `<div class="stats-item"><dt>Hips</dt><dd>${esc(latestShoot.hips)}</dd></div>` : ""}
+                ${latestShoot.shoes ? `<div class="stats-item"><dt>Shoes</dt><dd>${esc(latestShoot.shoes)}</dd></div>` : ""}
+                ${latestShoot.modelHair ? `<div class="stats-item"><dt>Hair</dt><dd>${esc(latestShoot.modelHair)}</dd></div>` : ""}
+                ${latestShoot.modelEyes ? `<div class="stats-item"><dt>Eyes</dt><dd>${esc(latestShoot.modelEyes)}</dd></div>` : ""}
               </div>
             </div>
           ` : ""}
