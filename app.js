@@ -223,8 +223,29 @@
     if (shoot.instagram) {
       const handles = shoot.instagram.split(",").map(x => x.trim()).filter(Boolean);
       if (handles.length) {
-        const primaryIg = handles[0].replace(/^@/, "");
-        igHtml = `<div><dt>Instagram</dt><dd><a href="https://instagram.com/${primaryIg}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none;">@${primaryIg}</a></dd></div>`;
+        const links = handles.map(h => {
+          let url = h;
+          let label = h;
+          if (!/^https?:\/\//i.test(h)) {
+            const clean = h.replace(/^@/, "");
+            url = `https://instagram.com/${clean}`;
+            label = `@${clean}`;
+          } else {
+            try {
+              const urlObj = new URL(h);
+              const cleanPath = urlObj.pathname.replace(/^\/|\/$/g, "");
+              if (cleanPath && !cleanPath.includes("/")) {
+                label = `@${cleanPath}`;
+              } else {
+                label = `@${cleanPath.split("/").pop() || h}`;
+              }
+            } catch {
+              label = h;
+            }
+          }
+          return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none; margin-right: 14px; display: inline-block;">${esc(label)}</a>`;
+        }).join("");
+        igHtml = `<div><dt>Instagram</dt><dd>${links}</dd></div>`;
       }
     }
 
@@ -2512,8 +2533,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
      A "View" follower that appears over portfolio imagery. Skipped entirely
      on touch devices and when the user prefers reduced motion. */
   (function initCursorFollow() {
-    const cursor = $("#cursorFollow");
-    if (!cursor) return;
+    return; // Disabled by user request: cursor should not show 'view' badge
     const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
     const fine = window.matchMedia("(pointer: fine)").matches;
     if (isTouch || !fine || prefersReduced) { cursor.remove(); return; }
