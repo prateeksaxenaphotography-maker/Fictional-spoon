@@ -451,19 +451,23 @@ window.WPS_DATA = {
       ],
       "photos": [
         {
-          "id": "mr8ld6fw8o533l-0",
-          "url": "photos/mr8legmk0o8mqz/mr8ld6fw8o533l-1.jpg",
-          "objectPosition": "top"
-        },
-        {
-          "id": "mr8ld6oabyimod-1",
+          "id": "mr8ld6oabyimod-0",
           "url": "photos/mr8legmk0o8mqz/mr8ld6oabyimod-2.jpg",
           "objectPosition": "left"
         },
         {
-          "id": "mr8ld69w1fq1e5-2",
+          "id": "mr8ld69w1fq1e5-1",
           "url": "photos/mr8legmk0o8mqz/mr8ld69w1fq1e5-0.jpg",
-          "objectPosition": "top"
+          "objectPosition": "53.8% 19.1%",
+          "focalX": 53.84582395196741,
+          "focalY": 19.094695771380366
+        },
+        {
+          "id": "mr8ld6fw8o533l-2",
+          "url": "photos/mr8legmk0o8mqz/mr8ld6fw8o533l-1.jpg",
+          "objectPosition": "54.0% 32.6%",
+          "focalX": 54.02809048997534,
+          "focalY": 32.59253400822524
         },
         {
           "id": "mr8ld6tds7z3f0-3",
