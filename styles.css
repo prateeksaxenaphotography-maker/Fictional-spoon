@@ -991,7 +991,7 @@ main:focus { outline: none; }
 .noth-work-title { font-family: "Archivo", sans-serif; font-weight: 800; font-size: clamp(24px, 3.4vw, 44px); line-height: 1.02; letter-spacing: -.02em; margin: 0; color: var(--ink); }
 .noth-work-tagline { font-family: "Fraunces", serif; font-style: italic; font-size: clamp(15px, 1.5vw, 19px); color: var(--ink-soft); margin: 8px 0 0; max-width: 48ch; }
 .noth-work-meta { display: flex; align-items: center; gap: 20px; font-family: var(--mono-font); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-soft); white-space: nowrap; }
-.noth-work-cta { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); font-weight: 500; transition: gap .3s var(--ease), color .3s; }
+.noth-work-cta { cursor: pointer; display: inline-flex; align-items: center; gap: 8px; color: var(--ink); font-weight: 500; transition: gap .3s var(--ease), color .3s; }
 .noth-work:hover .noth-work-cta { gap: 14px; color: var(--accent); }
 .noth-work-cta svg { transition: transform .3s var(--ease); }
 .noth-work:hover .noth-work-cta svg { transform: translateX(3px); }
