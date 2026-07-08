@@ -140,6 +140,7 @@ window.WPS_DATA = {
       "stylist": "—",
       "hair": "—",
       "mua": "Rashi Sehgal",
+      "videographer": "—",
       "talent": "Prachi Choudhary",
       "location": "Noida",
       "height": "",
@@ -162,14 +163,16 @@ window.WPS_DATA = {
       "lightingDiagram": null,
       "lightingDiagramVisibility": "private",
       "palette": [
-        "#919091",
-        "#414141"
+        "#a9a19c",
+        "#4c4846"
       ],
       "photos": [
         {
           "id": "mr4x4vq62sxjxw-0",
           "url": "photos/mr4x6kwx3f8rs3/mr4x4vq62sxjxw-0.jpg",
-          "objectPosition": "top"
+          "objectPosition": "51.2% 0.0%",
+          "focalX": 51.16325116325117,
+          "focalY": 0
         },
         {
           "id": "mr4x4vvwlxrl2g-1",
@@ -229,7 +232,8 @@ window.WPS_DATA = {
       ],
       "featured": true,
       "hideFromCompCard": false,
-      "coverPhotoId": "mr4x4vq62sxjxw"
+      "disableCompCardDownload": false,
+      "coverPhotoId": "mr4xef6bqu7p7h"
     },
     {
       "id": "mr4x8hlwftbzar",
