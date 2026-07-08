@@ -204,7 +204,7 @@
   }
 
   const isAdminAuthorized = () => localStorage.getItem("wps-admin-authorized") === "1";
-  const isAdmin = () => isAdminAuthorized() && localStorage.getItem("wps-admin") === "1";
+  const isAdmin = () => isAdminAuthorized() && sessionStorage.getItem("wps-admin") === "1";
 
   /* ---------------- IndexedDB (shoots) ---------------- */
   const DB = "personal-photostudio-v2", STORE = "shoots";
@@ -480,7 +480,7 @@
         window.currentCompCardShootObj = shoot;
         pdfBtnHtml = `
           <div class="lb-sidebar-section" style="margin-top: 10px;">
-            <button class="btn btn-dark btn-block" style="font-size: 11px; height: auto; padding: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;" onclick="window.printCompCard('${shoot.id}')">
+            <button class="btn btn-dark btn-block" style="font-size: 11px; height: auto; padding: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;" onclick="window.triggerCompCardDownload('${shoot.id}')">
               Export PDF Comp Card ↗
             </button>
           </div>
@@ -493,10 +493,11 @@
         `;
       }
     }
-
     const disclaimerHtml = isCc ? `
       <p class="lb-disclaimer" style="font-size: 11px; font-style: italic; color: var(--ink-soft); margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; line-height: 1.5; font-family: sans-serif;">
         To book this talent, please connect directly via their verified social channels or contact their representing agency.
+        <br/><br/>
+        Studio charges would apply in case the studio is booked.
         <br/><br/>
         This compcard includes photos clicked or produced under nerdyphotographer.in studio or its subsidiaries.
       </p>
@@ -710,10 +711,11 @@
       adminSec.style.display = isAdminAuthorized() ? "block" : "none";
     }
 
-    const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi"), compCardsLi = $("#navCompCardsLi");
+    const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi"), compCardsLi = $("#navCompCardsLi"), logsLi = $("#navLogsLi");
     if (uploadLi) uploadLi.style.display = active ? "block" : "none";
     if (bookLi) bookLi.style.display = active ? "none" : "block";
     if (compCardsLi) compCardsLi.style.display = active ? "block" : "none";
+    if (logsLi) logsLi.style.display = active ? "block" : "none";
 
     if (themeBtn) {
       themeBtn.style.display = active ? "inline-block" : "none";
@@ -740,7 +742,7 @@
         return;
       }
     }
-    localStorage.setItem("wps-admin", turningOn ? "1" : "0");
+    sessionStorage.setItem("wps-admin", turningOn ? "1" : "0");
     await loadShoots();
     updateAdminBtn();
     toast(`Admin Mode ${isAdmin() ? "enabled" : "disabled"}.`);
@@ -906,6 +908,7 @@
         photos: (s.photos || []).map((p) => p.url
           ? {
               id: p.id, url: p.url, objectPosition: p.objectPosition || "center",
+              ...(p.excludeFromCompCard ? { excludeFromCompCard: true } : {}),
               ...(p.small ? { small: p.small } : {}),
               ...(p.medium ? { medium: p.medium } : {}),
               ...(p.caption ? { caption: p.caption } : {}),
@@ -1056,10 +1059,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       </div>
     ` : "";
 
-    const mediaHtml = s.isCompCard ? (() => {
-      const shownPhotos = s.photos.slice(0, 3);
-      const remainingCount = s.photos.length - 3;
-      const fourthPhoto = s.photos[3];
+    const mediaHtml = (s.isCompCard || s.type === "Test Shoot") ? (() => {
+      const activePhotos = s.photos.filter(p => !p.excludeFromCompCard);
+      const shownPhotos = activePhotos.slice(0, 3);
+      const remainingCount = activePhotos.length - 3;
+      const fourthPhoto = activePhotos[3];
       return `
         <div class="comp-card-grid">
           ${shownPhotos.map((p, idx) => `
@@ -1108,11 +1112,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               <h3><span${ed("title")}>${esc(s.title)}</span></h3>
             `}
             <p class="work-desc"><span${ed("description")}>${esc(s.description || (canInline ? "Add a description…" : ""))}</span></p>
+            ${s.isCompCard ? "" : `
             <dl class="work-credits">
               <div><dt>Activity</dt><dd>${esc(s.activity)}</dd></div>
               <div><dt>Season</dt><dd><span${ed("season")}>${esc(s.season || "—")}</span></dd></div>
-              ${s.isCompCard ? "" : `<div><dt>Location</dt><dd><span${ed("location")}>${esc(s.location || "—")}</span></dd></div>`}
-            </dl>`;
+              <div><dt>Location</dt><dd><span${ed("location")}>${esc(s.location || "—")}</span></dd></div>
+            </dl>
+            `}`;
           })()}
           
           ${s.isCompCard && (latestShoot.height || latestShoot.chest || latestShoot.waist || latestShoot.hips || latestShoot.shoes || latestShoot.modelHair || latestShoot.modelEyes) ? `
@@ -1406,7 +1412,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             return parseDate(b) - parseDate(a);
           });
           const latestShoot = shootsInGroup[0];
-          const allGroupPhotos = shootsInGroup.flatMap(gs => gs.photos.map(p => ({ ...p, parent: gs })));
+          const allGroupPhotos = shootsInGroup.flatMap(gs => (gs.photos || []).filter(p => !p.excludeFromCompCard).map(p => ({ ...p, parent: gs })));
           const coverId = latestShoot.coverPhotoId || (latestShoot.photos[0] && latestShoot.photos[0].id);
           const coverPhotoObj = allGroupPhotos.find(p => p.id.split("-")[0] === coverId);
           const remainingPhotos = allGroupPhotos.filter(p => p.id.split("-")[0] !== coverId);
@@ -2292,6 +2298,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             isCover,
             manuallyAligned: !!(p.objectPosition && p.objectPosition !== "center"),
             caption: p.caption || "",
+            excludeFromCompCard: !!p.excludeFromCompCard,
             ...(typeof p.focalX === "number" ? { focalX: p.focalX, focalY: p.focalY } : {})
           };
         });
@@ -2333,6 +2340,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             Cover
           </label>
           <img src="${esc(photoSrc(f))}" style="object-position: ${esc(pos)}" alt="${esc(f.name)}"/>
+          <label class="thumb-compcard-ctrl" style="position: absolute; bottom: 32px; left: 6px; font-family: 'JetBrains Mono', monospace; font-size: 8px; color: #fff; background: rgba(0,0,0,0.7); padding: 2px 5px; border-radius: 3px; display: flex; align-items: center; gap: 4px; z-index: 10; cursor: pointer; text-transform: uppercase; font-weight: 700; user-select: none;">
+            <input type="checkbox" class="thumb-compcard-check" data-id="${f.id}" ${f.excludeFromCompCard ? '' : 'checked'} style="width: 10px; height: 10px; accent-color: var(--accent); margin: 0;" />
+            In Comp Card
+          </label>
           <div class="thumb-focal" data-id="${f.id}" title="Drag to set focal point">
             <span class="thumb-focal-dot" style="left:${fp.x}%; top:${fp.y}%;"></span>
           </div>
@@ -2369,6 +2380,15 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           staged.forEach(x => { x.isCover = (x.id === id); });
           renderStaged();
         });
+      });
+      grid.querySelectorAll(".thumb-compcard-check").forEach((check) => {
+        check.addEventListener("change", (e) => {
+          const item = staged.find(x => x.id === e.target.dataset.id);
+          if (item) {
+            item.excludeFromCompCard = !e.target.checked;
+          }
+        });
+        check.addEventListener("mousedown", (e) => e.stopPropagation());
       });
     }
 
@@ -2615,6 +2635,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           dataUrl: f.dataUrl,
           url: f.url,
           objectPosition: f.objectPosition || (f.isCover ? "top" : "center"),
+          excludeFromCompCard: !!f.excludeFromCompCard,
           ...(typeof f.focalX === "number" ? { focalX: f.focalX, focalY: f.focalY } : {}),
           ...(f.caption && f.caption.trim() ? { caption: f.caption.trim() } : {})
         })),
@@ -3137,7 +3158,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     view.querySelectorAll(".noth-work").forEach((card) => {
       const s = CURRENT_VIEW_SHOOTS.find((x) => x.id === card.dataset.shoot) || SHOOTS.find((x) => x.id === card.dataset.shoot);
       if (!s) return;
-      const list = s.photos.map((p) => ({ ...p, shoot: s }));
+      const isCc = s.isCompCard || s.type === "Test Shoot";
+      const list = s.photos.filter((p) => !(isCc && p.excludeFromCompCard)).map((p) => ({ ...p, shoot: s }));
       const media = card.querySelector(".noth-work-media");
       const cta = card.querySelector(".noth-work-cta");
       const open = () => openLb(list, 0);
@@ -3192,7 +3214,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     view.querySelectorAll(".work-block").forEach((block) => {
       const s = CURRENT_VIEW_SHOOTS.find((x) => x.id === block.dataset.shoot) || SHOOTS.find((x) => x.id === block.dataset.shoot);
       if (!s) return;
-      const list = s.photos.map((p) => ({ ...p, shoot: s }));
+      const isCc = s.isCompCard || s.type === "Test Shoot";
+      const list = s.photos.filter((p) => !(isCc && p.excludeFromCompCard)).map((p) => ({ ...p, shoot: s }));
       const open = () => openLb(list, 0);
       if (s.isCompCard) {
         block.querySelectorAll(".comp-card-thumb").forEach(thumb => {
@@ -3493,7 +3516,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const shoot = SHOOTS.find(x => x.id === shootId) || (window.currentCompCardShootObj);
     if (!shoot) return;
     
-    const allPhotos = shoot.photos || [];
+    const allPhotos = (shoot.photos || []).filter(p => !p.excludeFromCompCard);
     // Strictly limit to max 9 photos for a compact 1-page comp card
     const photosToPrint = allPhotos.slice(0, 9);
     
@@ -3592,7 +3615,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     
     const footerHtml = `
       <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #ccc; padding-top: 12px; margin-top: auto; font-family: sans-serif; font-size: 8.5px; color: #777; gap: 20px;">
-        <span>To book this talent, please connect directly via their verified socials.</span>
+        <span>To book this talent, please connect directly via verified socials. Studio charges would apply in case the studio is booked.</span>
         <span style="text-align: right; line-height: 1.4;">All images are proprietary to nerdyphotographer.in studio and its subsidiaries. They cannot be sold or used for commercial purposes without prior written approval.</span>
       </div>
     `;
@@ -3617,15 +3640,23 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     let loadedCount = 0;
     const totalImgs = imgs.length;
     
-    if (totalImgs === 0) {
+    const triggerPrint = () => {
+      const oldTitle = document.title;
+      const cleanModelName = getTalentCleanName(shoot.talent || shoot.title).trim().replace(/\s+/g, '_');
+      document.title = `${cleanModelName}_compcard_nerdyphotographer`;
       window.print();
+      document.title = oldTitle;
+    };
+
+    if (totalImgs === 0) {
+      triggerPrint();
       return;
     }
     
     const onImgLoad = () => {
       loadedCount++;
       if (loadedCount === totalImgs) {
-        window.print();
+        triggerPrint();
       }
     };
     
@@ -3637,6 +3668,106 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         img.addEventListener("error", onImgLoad); // Ensure failed images don't block printing
       }
     });
+  };
+
+  window.triggerCompCardDownload = (shootId) => {
+    if (isAdmin()) {
+      window.printCompCard(shootId);
+      return;
+    }
+    
+    let modal = document.getElementById("emailDownloadModal");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "emailDownloadModal";
+      modal.style = `
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(10px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      `;
+      modal.innerHTML = `
+        <div style="background: var(--bone); border: 1px solid var(--line); padding: 32px; border-radius: 16px; width: 100%; max-width: 420px; box-sizing: border-box; text-align: center; display: flex; flex-direction: column; gap: 20px; box-shadow: var(--shadow);">
+          <div>
+            <h3 style="font-family:'Outfit', sans-serif; font-size: 20px; font-weight: 700; margin: 0 0 8px; color: var(--ink);">Enter your Email</h3>
+            <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin: 0;">Please enter your email to proceed with downloading this talent comp card for verification and document logging.</p>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px; text-align: left;">
+            <label style="font-family:'JetBrains Mono', monospace; font-size: 9px; text-transform: uppercase; font-weight: 700; color: var(--ink-soft);">Email Address</label>
+            <input type="email" id="downloadEmailInput" placeholder="name@example.com" style="width: 100%; height: 42px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 8px; padding: 0 14px; box-sizing: border-box; font-size: 14px; outline: none; transition: border-color 0.2s;" />
+            <span id="downloadEmailError" style="font-size: 10px; color: var(--accent); display: none; margin-top: 4px;">Please enter a valid email address.</span>
+          </div>
+          <div style="display: flex; gap: 12px; margin-top: 8px;">
+            <button id="cancelEmailDownload" class="btn btn-ghost btn-block" style="flex: 1; height: 42px;">Cancel</button>
+            <button id="submitEmailDownload" class="btn btn-dark btn-block" style="flex: 1; height: 42px; font-family:'JetBrains Mono', monospace; font-weight: 700;">Download</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      
+      modal.querySelector("#cancelEmailDownload").addEventListener("click", () => {
+        modal.style.opacity = "0";
+        setTimeout(() => { modal.style.display = "none"; }, 300);
+      });
+    }
+    
+    const emailInput = modal.querySelector("#downloadEmailInput");
+    const errorText = modal.querySelector("#downloadEmailError");
+    emailInput.value = "";
+    emailInput.style.borderColor = "var(--line)";
+    errorText.style.display = "none";
+    
+    modal.style.display = "flex";
+    modal.offsetHeight;
+    modal.style.opacity = "1";
+    emailInput.focus();
+    
+    const submitBtn = modal.querySelector("#submitEmailDownload");
+    const newSubmitBtn = submitBtn.cloneNode(true);
+    submitBtn.replaceWith(newSubmitBtn);
+    
+    newSubmitBtn.addEventListener("click", async () => {
+      const email = emailInput.value.trim();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        emailInput.style.borderColor = "var(--accent)";
+        errorText.style.display = "block";
+        return;
+      }
+      
+      errorText.style.display = "none";
+      emailInput.style.borderColor = "var(--line)";
+      
+      const shoot = SHOOTS.find(x => x.id === shootId) || (window.currentCompCardShootObj);
+      const modelName = shoot ? getTalentCleanName(shoot.talent || shoot.title) : "Unknown Model";
+      
+      modal.style.opacity = "0";
+      setTimeout(() => { modal.style.display = "none"; }, 300);
+      
+      try {
+        await fetch("/api/logs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, modelName })
+        });
+      } catch (err) {
+        console.warn("Failed to write to download server log:", err);
+      }
+      
+      window.printCompCard(shootId);
+    });
+  };
+
+  window.downloadLogsCSV = () => {
+    const passcode = window.STUDIO_CONFIG?.adminPasscode || "canonr5markii";
+    window.location.href = `/api/logs/download?passcode=${encodeURIComponent(passcode)}`;
   };
 
   (async function boot() {
