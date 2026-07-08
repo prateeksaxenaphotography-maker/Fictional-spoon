@@ -394,11 +394,17 @@
 
     // Credits
     const credits = [];
-    if (shoot.photographer) credits.push(`<div><dt>Photo</dt><dd>${renderCreditValue(shoot.photographer)}</dd></div>`);
-    if (shoot.artDirector && shoot.artDirector !== "—") credits.push(`<div><dt>Art Direction</dt><dd>${renderCreditValue(shoot.artDirector)}</dd></div>`);
-    if (shoot.stylist && shoot.stylist !== "—") credits.push(`<div><dt>Stylist</dt><dd>${renderCreditValue(shoot.stylist)}</dd></div>`);
-    if (shoot.mua && shoot.mua !== "—") credits.push(`<div><dt>MUA</dt><dd>${renderCreditValue(shoot.mua)}</dd></div>`);
-    if (shoot.hair && shoot.hair !== "—") credits.push(`<div><dt>Hair</dt><dd>${renderCreditValue(shoot.hair)}</dd></div>`);
+    const isCcPage = !!shoot.isCompCard;
+    const formatCrew = (val) => {
+      if (!val) return "";
+      return isCcPage ? esc(getTalentCleanName(val)) : renderCreditValue(val);
+    };
+
+    if (shoot.photographer) credits.push(`<div><dt>Photo</dt><dd>${formatCrew(shoot.photographer)}</dd></div>`);
+    if (shoot.artDirector && shoot.artDirector !== "—") credits.push(`<div><dt>Art Direction</dt><dd>${formatCrew(shoot.artDirector)}</dd></div>`);
+    if (shoot.stylist && shoot.stylist !== "—") credits.push(`<div><dt>Stylist</dt><dd>${formatCrew(shoot.stylist)}</dd></div>`);
+    if (shoot.mua && shoot.mua !== "—") credits.push(`<div><dt>MUA</dt><dd>${formatCrew(shoot.mua)}</dd></div>`);
+    if (shoot.hair && shoot.hair !== "—") credits.push(`<div><dt>Hair</dt><dd>${formatCrew(shoot.hair)}</dd></div>`);
     if (shoot.talent && shoot.talent !== "—") credits.push(`<div><dt>Model / Talent</dt><dd>${renderCreditValue(shoot.talent)}</dd></div>`);
     if (igHtml) credits.push(igHtml);
     if (kavyarHtml) credits.push(kavyarHtml);
