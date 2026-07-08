@@ -1658,15 +1658,23 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       </section>
       <section class="section container">
         <div class="book-wrap">
-          <div class="book-success" id="bookSuccess" hidden>
+          <div class="book-success" id="bookSuccess" style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 20px; width: 100%; max-width: 580px; margin: 0 auto;" hidden>
             <div class="book-success-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
             </div>
-            <h2>Request on its way.</h2>
-            <p id="bookSuccessMsg">Your booking inquiry is ready in your email app — hit <strong>Send</strong> to complete it, and we'll get back to you shortly.</p>
-            <div class="book-success-actions">
-              <a href="/" data-link class="btn btn-dark">Back to home</a>
-              <button type="button" class="btn btn-ghost" id="bookAnother">Send another request</button>
+            <h2>Request prepared.</h2>
+            <p id="bookSuccessMsg" style="margin: 0; line-height: 1.6;">Your booking inquiry is ready in your email app — please hit <strong>Send</strong> in your mail client to complete the request.</p>
+            
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; width: 100%;">
+              <a href="" id="bookMailtoLink" class="btn btn-dark" style="font-size: 12px; height: auto; padding: 12px 24px; text-decoration: none;">Launch Email App Again</a>
+              <button type="button" class="btn btn-ghost" id="bookAnother" style="font-size: 12px; height: auto; padding: 12px 24px;">Send another request</button>
+              <a href="/" data-link class="btn btn-ghost" style="font-size: 12px; height: auto; padding: 12px 24px; text-decoration: none;">Back to home</a>
+            </div>
+
+            <div style="margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 20px; width: 100%; display: flex; flex-direction: column; gap: 10px; align-items: center;">
+              <p style="font-size: 12px; color: var(--ink-soft); margin: 0; line-height: 1.5;">Mail app didn't open? Copy the inquiry details below and email them to <strong style="color: var(--ink); font-family: monospace;">prateeksaxenaphotography@gmail.com</strong>:</p>
+              <button type="button" class="btn btn-ghost" id="copyInquiryBtn" style="font-size: 11px; padding: 8px 16px; height: auto;">Copy Inquiry Text</button>
+              <pre id="inquiryTextPreview" style="width: 100%; box-sizing: border-box; background: var(--bone); padding: 14px; border-radius: 6px; font-size: 11px; font-family: monospace; white-space: pre-wrap; text-align: left; max-height: 200px; overflow-y: auto; border: 1px solid var(--line); color: var(--ink); margin: 0;"></pre>
             </div>
           </div>
           <form class="shoot-form" id="bookingForm" novalidate>
@@ -2500,6 +2508,21 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           }
         }
 
+        const plainTextBody = `To: ${studioEmail}\nSubject: Shoot Booking Request — ${name}\n\n` +
+          `Shoot Booking Details:\n\n` +
+          `Name: ${name}\n` +
+          `Role: ${role}\n` +
+          `Email: ${email}\n` +
+          `Phone: ${phone || '—'}\n` +
+          `Instagram: ${instagram || '—'}\n` +
+          `Shoot Type: ${type}\n` +
+          `Proposed Date: ${date}\n` +
+          `Location Pref: ${locationVal}\n` +
+          `Budget Range: ${budget}\n` +
+          `Moodboard Link: ${moodboard || '—'}\n` +
+          (agreedToTerms ? `TFP Release terms: Agreed (TFP-LIABILITY-RELEASE-V3)\n\n` : `\n`) +
+          `Concept/Vision:\n${concept || '—'}`;
+
         const subject = encodeURIComponent(`Shoot Booking Request — ${name}`);
         const body = encodeURIComponent(
           `Shoot Booking Details:\n\n` +
@@ -2517,8 +2540,17 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           `Concept/Vision:\n${concept || '—'}`
         );
 
+        const mailtoUrl = `mailto:${studioEmail}?subject=${subject}&body=${body}`;
+
+        // Populate manual link and copy block
+        const mailtoLink = $("#bookMailtoLink");
+        if (mailtoLink) mailtoLink.href = mailtoUrl;
+
+        const previewText = $("#inquiryTextPreview");
+        if (previewText) previewText.textContent = plainTextBody;
+
         // Open the visitor's mail client with everything pre-filled.
-        window.location.href = `mailto:${studioEmail}?subject=${subject}&body=${body}`;
+        window.location.href = mailtoUrl;
 
         // Reveal the in-page success state (replaces the old alert()).
         if (successPanel) {
@@ -2527,7 +2559,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           if (agreedToTerms) {
             const msgEl = $("#bookSuccessMsg");
             if (msgEl) {
-              msgEl.innerHTML = `Your booking inquiry is ready in your email app — hit <strong>Send</strong> to complete it. <br/><br/><strong style="color: var(--accent);">Digital Release Signed:</strong> The signed PDF copy of the <em>Studio Production & Liability Release</em> terms has been generated and downloaded to your device. Please send the email to finish!`;
+              msgEl.innerHTML = `Your booking inquiry is ready in your email app — please hit <strong>Send</strong> in your mail client to complete the request. <br/><br/><strong style="color: var(--accent);">Digital Release Signed:</strong> The signed PDF copy of the <em>Studio Production & Liability Release</em> terms has been generated and downloaded to your device. Please send the email to finish!`;
             }
           }
           successPanel.scrollIntoView({ behavior: prefersReduced ? "auto" : "smooth", block: "center" });
@@ -2566,6 +2598,18 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         declineBtn.addEventListener("click", onDecline);
       } else {
         proceedSubmit(false);
+      }
+    });
+
+    // Wire copy button
+    $("#copyInquiryBtn")?.addEventListener("click", () => {
+      const txt = $("#inquiryTextPreview")?.textContent || "";
+      navigator.clipboard.writeText(txt);
+      const btnEl = $("#copyInquiryBtn");
+      if (btnEl) {
+        const orig = btnEl.textContent;
+        btnEl.textContent = "Copied! ✓";
+        setTimeout(() => { btnEl.textContent = orig; }, 2000);
       }
     });
 
