@@ -1733,6 +1733,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                      <option value="₹10,000 - ₹25,000">₹10,000 - ₹25,000 (Standard Portfolio)</option>
                      <option value="₹25,000 - ₹50,000">₹25,000 - ₹50,000 (Premium Campaign)</option>
                      <option value="₹50,000+">₹50,000+ (High-End Commercial)</option>
+                     <option value="Not Decided">Not Decided / TBD</option>
                    </select>
                  </label>
                </div>
