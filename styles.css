@@ -1065,39 +1065,47 @@ main:focus { outline: none; }
     color: #000 !important;
     padding: 0 !important;
     margin: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   .print-page {
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: space-between !important;
+    display: block !important;
     width: 100% !important;
-    height: 95vh !important;
+    height: 92vh !important;
     page-break-after: always !important;
     break-after: page !important;
     box-sizing: border-box !important;
     padding: 10px !important;
+    overflow: hidden !important;
   }
   .print-page:last-child {
     page-break-after: avoid !important;
     break-after: avoid !important;
-    height: 98vh !important;
+    height: 95vh !important;
   }
   .print-photo-grid {
-    display: grid !important;
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 8px !important;
-    width: 100% !important;
-    margin: 10px 0 !important;
-    flex-grow: 1 !important;
-  }
-  .print-photo-item {
     display: block !important;
     width: 100% !important;
+    margin: 10px 0 !important;
+    clear: both !important;
+  }
+  .print-photo-grid::after {
+    content: "" !important;
+    display: table !important;
+    clear: both !important;
+  }
+  .print-photo-item {
+    display: inline-block !important;
+    float: left !important;
+    width: 31.33% !important;
+    margin: 1% !important;
+    box-sizing: border-box !important;
     break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
   .print-photo-item img {
     width: 100% !important;
-    height: 100% !important;
+    height: auto !important;
     aspect-ratio: 1 / 1 !important;
     object-fit: cover !important;
     border: 1px solid #ccc !important;
