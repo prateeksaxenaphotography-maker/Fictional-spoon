@@ -1058,23 +1058,37 @@ main:focus { outline: none; }
     display: block !important;
   }
   #compCardPrintContainer {
-    display: flex !important;
-    flex-direction: column !important;
+    display: block !important;
     width: 100% !important;
-    height: 100% !important;
-    min-height: 100vh !important;
-    box-sizing: border-box !important;
+    height: auto !important;
     background: #fff !important;
     color: #000 !important;
     padding: 0 !important;
     margin: 0 !important;
   }
+  .print-page {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    height: 95vh !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    box-sizing: border-box !important;
+    padding: 10px !important;
+  }
+  .print-page:last-child {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    height: 98vh !important;
+  }
   .print-photo-grid {
     display: grid !important;
     grid-template-columns: repeat(3, 1fr) !important;
-    gap: 10px !important;
+    gap: 8px !important;
     width: 100% !important;
-    margin: 15px 0 !important;
+    margin: 10px 0 !important;
+    flex-grow: 1 !important;
   }
   .print-photo-item {
     display: block !important;
