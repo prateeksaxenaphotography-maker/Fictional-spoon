@@ -1075,8 +1075,9 @@ main:focus { outline: none; }
     page-break-after: always !important;
     break-after: page !important;
     box-sizing: border-box !important;
-    padding: 10px !important;
+    padding: 24px !important;
     overflow: hidden !important;
+    border: 3px solid #000 !important;
   }
   .print-page:last-child {
     page-break-after: avoid !important;
@@ -1095,20 +1096,25 @@ main:focus { outline: none; }
     clear: both !important;
   }
   .print-photo-item {
-    display: inline-block !important;
+    display: inline-flex !important;
     float: left !important;
     width: 31.33% !important;
     margin: 1% !important;
     box-sizing: border-box !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+    aspect-ratio: 1 / 1 !important;
+    background: #fff !important;
+    border: 1px solid #fff !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
   }
   .print-photo-item img {
     width: 100% !important;
-    height: auto !important;
-    aspect-ratio: 1 / 1 !important;
-    object-fit: cover !important;
-    border: 1px solid #ccc !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    background: #fff !important;
     display: block !important;
   }
 }
