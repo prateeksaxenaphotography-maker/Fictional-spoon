@@ -760,7 +760,6 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         <button class="noth-work-media" aria-label="View ${esc(title)}">
           <span class="noth-work-backdrop" style="background-image: url('${esc(photoSrc(cover))}');" aria-hidden="true"></span>
           <img src="${esc(photoSrc(cover))}"${srcsetAttr(cover, "(max-width: 620px) 100vw, 100vw")} style="object-position: ${esc(coverPos)};" alt="${esc(altFor(s))}" loading="lazy" />
-          <span class="noth-work-index">${String(i + 1).padStart(2, "0")}</span>
         </button>
         <div class="noth-work-row">
           <div class="noth-work-titles">
@@ -1673,60 +1672,135 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <form class="shoot-form" id="bookingForm" novalidate>
             <fieldset>
               <legend>Contact Information</legend>
-              <div class="field-row">
-                <label class="field"><span>Your Name / Brand *</span><input id="b_name" type="text" required placeholder="e.g. John Doe / Slugger" /></label>
-                <label class="field"><span>Role *</span>
-                  <select id="b_role">
-                    <option value="Model">Model / Talent</option>
-                    <option value="Brand">Brand / Client</option>
-                    <option value="Agency">Agency / Agent</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </label>
-              </div>
-              <div class="field-row">
-                <label class="field"><span>Email Address *</span><input id="b_email" type="email" required placeholder="name@example.com" /></label>
-                <label class="field"><span>Phone Number</span><input id="b_phone" type="tel" placeholder="+91 99999-99999" /></label>
-              </div>
-              <label class="field"><span>Instagram Handle</span><input id="b_instagram" type="text" placeholder="e.g. @handle" /></label>
-            </fieldset>
-
-            <fieldset>
-              <legend>Shoot Details</legend>
-              <div class="field-row">
-                <label class="field"><span>Desired Project Type *</span>
-                  <select id="b_type">
-                    <option value="Fashion Editorial" ${isSelected("Fashion Editorial")}>Fashion Editorial</option>
-                    <option value="Fitness &amp; Athletic" ${isSelected("Fitness &amp; Athletic")}>Fitness &amp; Athletic</option>
-                    <option value="Sports Action" ${isSelected("Sports Action")}>Sports Action</option>
-                    <option value="Commercial Campaign" ${prefilledType === "Commercial" ? "selected" : ""}>Commercial Campaign</option>
-                    <option value="Model Portfolio" ${prefilledType === "Editorial" ? "selected" : ""}>Model Portfolio (Comp Cards)</option>
-                    <option value="Other" ${isSelected("Other")}>Other Focus Area</option>
-                  </select>
-                </label>
-                <label class="field"><span>Preferred Date / Timeline *</span><input id="b_date" type="text" required placeholder="e.g. Mid-July 2026" /></label>
-              </div>
-              <div class="field-row">
-                <label class="field"><span>Preferred Location *</span>
-                  <select id="b_location">
-                    <option value="Noida Studio">Noida Studio Setup</option>
-                    <option value="Delhi NCR Outdoor">Delhi NCR Outdoor / Location</option>
-                    <option value="Outstation">Outstation Shoot</option>
-                    <option value="Other">Other / TBD</option>
-                  </select>
-                </label>
-                <label class="field"><span>Estimated Budget Range *</span>
-                  <select id="b_budget">
-                    <option value="Under ₹10,000">Under ₹10,000 (Selective Tests)</option>
-                    <option value="₹10,000 - ₹25,000">₹10,000 - ₹25,000 (Standard Portfolio)</option>
-                    <option value="₹25,000 - ₹50,000">₹25,000 - ₹50,000 (Premium Campaign)</option>
-                    <option value="₹50,000+">₹50,000+ (High-End Commercial)</option>
-                  </select>
-                </label>
-              </div>
-              <label class="field"><span>Reference / Mood Board Link</span><input id="b_moodboard" type="url" placeholder="Pinterest board, Dropbox, or Google Drive URL" /></label>
-              <label class="field"><span>Project Concept &amp; Detailed Brief</span><textarea id="b_concept" rows="4" placeholder="Describe the mood, location style, styling ideas, and deliverables you have in mind..."></textarea></label>
-            </fieldset>
+               <div class="field-row">
+                 <label class="field"><span>Your Name / Brand *</span><input id="b_name" type="text" required placeholder="e.g. John Doe / Slugger" /></label>
+                 <label class="field"><span>Role *</span>
+                   <select id="b_role">
+                     <option value="Model">Model / Talent</option>
+                     <option value="MUA">Makeup Artist / MUA</option>
+                     <option value="Stylist">Stylist / Wardrobe</option>
+                     <option value="Brand">Brand / Client</option>
+                     <option value="Agency">Agency / Agent</option>
+                     <option value="Other">Other</option>
+                   </select>
+                 </label>
+               </div>
+               <div class="field-row">
+                 <label class="field"><span>Email Address *</span><input id="b_email" type="email" required placeholder="name@example.com" /></label>
+                 <label class="field"><span>Phone Number</span><input id="b_phone" type="tel" placeholder="+91 99999-99999" /></label>
+               </div>
+               <label class="field"><span>Instagram Handle</span><input id="b_instagram" type="text" placeholder="e.g. @handle" /></label>
+             </fieldset>
+ 
+             <fieldset>
+               <legend>Shoot Details</legend>
+               <div class="field-row">
+                 <label class="field"><span>Desired Project Type *</span>
+                   <select id="b_type">
+                     <option value="Fashion Editorial" ${isSelected("Fashion Editorial")}>Fashion Editorial</option>
+                     <option value="Fitness &amp; Athletic" ${isSelected("Fitness &amp; Athletic")}>Fitness &amp; Athletic</option>
+                     <option value="Sports Action" ${isSelected("Sports Action")}>Sports Action</option>
+                     <option value="Commercial Campaign" ${prefilledType === "Commercial" ? "selected" : ""}>Commercial Campaign</option>
+                     <option value="Model Portfolio" ${prefilledType === "Editorial" ? "selected" : ""}>Model Portfolio (Comp Cards)</option>
+                     <option value="Test Shoot" ${prefilledType === "Test Shoot" ? "selected" : ""}>Test Shoot (TFP Collab)</option>
+                     <option value="Other" ${isSelected("Other")}>Other Focus Area</option>
+                   </select>
+                 </label>
+                 <label class="field"><span>Preferred Date / Timeline *</span><input id="b_date" type="text" required placeholder="e.g. Mid-July 2026" /></label>
+               </div>
+               <div class="field-row">
+                 <label class="field"><span>Preferred Location *</span>
+                   <select id="b_location">
+                     <option value="Noida Studio">Noida Studio Setup</option>
+                     <option value="Delhi NCR Outdoor">Delhi NCR Outdoor / Location</option>
+                     <option value="Outstation">Outstation Shoot</option>
+                     <option value="Other">Other / TBD</option>
+                   </select>
+                 </label>
+                 <label class="field" id="b_budget_field"><span>Estimated Budget Range *</span>
+                   <select id="b_budget">
+                     <option value="Under ₹10,000">Under ₹10,000 (Selective Tests)</option>
+                     <option value="₹10,000 - ₹25,000">₹10,000 - ₹25,000 (Standard Portfolio)</option>
+                     <option value="₹25,000 - ₹50,000">₹25,000 - ₹50,000 (Premium Campaign)</option>
+                     <option value="₹50,000+">₹50,000+ (High-End Commercial)</option>
+                   </select>
+                 </label>
+               </div>
+               <label class="field"><span>Reference / Mood Board Link</span><input id="b_moodboard" type="url" placeholder="Pinterest board, Dropbox, or Google Drive URL" /></label>
+               <label class="field"><span>Project Concept &amp; Detailed Brief</span><textarea id="b_concept" rows="4" placeholder="Describe the mood, location style, styling ideas, and deliverables you have in mind..."></textarea></label>
+             </fieldset>
+ 
+             <!-- TFP Liability Release Terms Modal -->
+             <div id="termsModal" class="modal-overlay" style="display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 20px;">
+               <div class="modal-content" style="background: var(--bg); border: 1px solid var(--line); border-radius: 12px; max-width: 680px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.15); overflow: hidden; animation: modalFadeIn 0.3s ease;">
+                 <div style="padding: 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; background: var(--bone);">
+                   <h3 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink);">Studio Production &amp; Liability Release</h3>
+                   <span style="font-family: var(--mono-font); font-size: 10px; background: var(--line); padding: 4px 8px; border-radius: 4px; color: var(--ink-soft);">TFP-LIABILITY-RELEASE-V3</span>
+                 </div>
+                 <div style="padding: 24px; overflow-y: auto; font-size: 13px; line-height: 1.6; color: var(--ink); display: flex; flex-direction: column; gap: 20px; text-align: left;">
+                   <p style="margin: 0; font-family: var(--mono-font); font-size: 10px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em;">TFP Collaboration, Model Release &amp; Digital Consent Terms</p>
+                   
+                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 14px; font-size: 11px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px;">
+                     <div><strong>Studio/Photographer:</strong> nerdyphotographer.in studios</div>
+                     <div><strong>Creative Partner/Model:</strong> <span id="terms_partner_name">[Your Name]</span></div>
+                     <div><strong>Business Handle:</strong> @thenerdyphotographer.in</div>
+                     <div><strong>Consent Tracking:</strong> Verified via Email / Digital Acknowledgment</div>
+                     <div><strong>Production Status:</strong> Time-For-Print (TFP) Collab</div>
+                     <div><strong>Location:</strong> Studio Production Space</div>
+                   </div>
+ 
+                   <div>
+                     <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700;">1. SCOPE OF CREATIVE COLLABORATION</h4>
+                     <p style="margin: 0;">This session is scheduled as a peer-to-peer creative collaboration structured for mutual portfolio growth, asset curation, and personal branding advancement. No monetary compensation is required or exchanged. The Studio provides specialized equipment, lighting architecture, workspace, and post-production engineering; the Participant(s) provide technical modeling direction, personal wardrobe, and makeup artistry.</p>
+                   </div>
+ 
+                   <div>
+                     <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700;">2. INTELLECTUAL PROPERTY, MODEL RELEASE &amp; INTEGRITY</h4>
+                     <p style="margin: 0;">The legal copyright of all visual media remains exclusively with the Studio. The Participant hereby grants the Studio the absolute, irrevocable right to use, publish, and distribute the images for portfolio, promotional, or web display. All parties are granted a non-exclusive license to use final retouched files for personal self-promotion on social media grids and personal websites.</p>
+                     <p style="margin: 6px 0 0 0; font-style: italic;"><strong>No Alterations:</strong> To preserve the lighting design and capture integrity, no party shall apply secondary mobile filters, automated presets, cropping adjustments, or third-party digital modifications to the delivered files.</p>
+                   </div>
+ 
+                   <div style="border-left: 3px solid var(--accent); padding-left: 14px; background: rgba(var(--accent-rgb), 0.04);">
+                     <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700; color: #b22222;">3. COMPREHENSIVE LIABILITY WAIVER &amp; INDEMNIFICATION</h4>
+                     <p style="margin: 0; font-weight: 500;">CRITICAL SAFETY &amp; LIABILITY RELEASE: The Participant enters the studio environment, uses studio blocks, cubes, chairs, furniture, or props, and performs physical poses entirely at their own risk. The Studio shall not be held liable for any physical injury, illness, accident, psychological distress, property damage, or clothing wear-and-tear incurred before, during, or after this production. The Participant explicitly waives any right to seek damages or legal recourse against the Studio or its operating photographers for accidents or injuries occurring on the premises.</p>
+                     <p style="margin: 6px 0 0 0;">Furthermore, the Participant agrees to indemnify and hold harmless the Studio from any claims, damages, liabilities, or legal expenses arising out of the Participant’s conduct or injuries on set.</p>
+                   </div>
+ 
+                   <div>
+                     <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700;">4. TECHNICAL PERFORMANCE &amp; DELIVERY DISCLAIMER</h4>
+                     <p style="margin: 0;">As a creative collaboration, the Studio offers no guarantees regarding the exact number of final images delivered, the specific turnaround time, or the subjective artistic satisfaction of the deliverables. The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered to the Participant.</p>
+                   </div>
+ 
+                   <div>
+                     <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700;">5. MANDATORY ALL-PARTY ATTRIBUTION WORKFLOW</h4>
+                     <p style="margin: 0 0 6px 0;">To ensure creative transparency, all parties agree to execute the following mandatory publishing workflow:</p>
+                     <ul style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px;">
+                       <li><strong>Instagram Collaboration Feature:</strong> For all primary feed or grid publications, the publishing party must issue an Instagram Co-Author Collaboration Invite to <strong>@thenerdyphotographer.in</strong> prior to publishing.</li>
+                       <li><strong>Full Production Credits Block:</strong> Every party publishing an asset must explicitly credit all contributors in the caption. In formats where joint collaboration tools are restricted, a comprehensive credit block must be placed within the first three lines of the caption body text as follows:
+                         <pre style="margin: 6px 0; background: var(--bone); padding: 8px; border-radius: 4px; font-family: monospace; font-size: 11px; white-space: pre-wrap; line-height: 1.4;">
+📷 Photography &amp; Light Design: @thenerdyphotographer.in
+👤 Model / Talent: @[Handle]
+💄 Makeup Artist / MUA: @[Handle]
+👔 Styling / Wardrobe: @[Handle]</pre>
+                       </li>
+                     </ul>
+                   </div>
+ 
+                   <div>
+                     <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700;">6. DIGITAL CONSENT, EMAIL ACCEPTANCE &amp; BINDING NATURE</h4>
+                     <p style="margin: 0;">In accordance with standard digital contract practices, a physical or handwritten signature is not required to validate these terms. Definitive legal acceptance and a binding obligation to these conditions are established through any of the following actions:</p>
+                     <ul style="margin: 6px 0 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px;">
+                       <li>Sending a reply stating "I agree", "Confirmed", or equivalent confirmation over email or direct digital messaging channels.</li>
+                       <li>Voluntarily entering the studio workspace environment and participating in the scheduled production session following receipt of these terms.</li>
+                     </ul>
+                   </div>
+                 </div>
+                 <div style="padding: 20px; border-top: 1px solid var(--line); display: flex; gap: 12px; justify-content: flex-end; background: var(--bone);">
+                   <button type="button" class="btn btn-ghost" id="termsDeclineBtn" style="font-size: 12px; height: auto; padding: 10px 20px;">Decline</button>
+                   <button type="button" class="btn btn-dark" id="termsAcceptBtn" style="font-size: 12px; height: auto; padding: 10px 20px;">Agree &amp; Continue</button>
+                 </div>
+               </div>
+             </div>
 
             <button type="submit" class="btn btn-dark btn-block" id="bookSubmitBtn">Submit Booking Request</button>
           </form>
@@ -2150,6 +2224,238 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       $("#" + id)?.addEventListener("input", () => clearError(id));
     });
 
+    // Dynamic field update logic
+    const updateFields = () => {
+      const type = $("#b_type")?.value;
+      const role = $("#b_role")?.value;
+      const budgetField = $("#b_budget_field");
+      const brandOpt = $("#b_role")?.querySelector('option[value="Brand"]');
+
+      if (type === "Test Shoot") {
+        if (budgetField) budgetField.style.display = "none";
+        if (brandOpt) {
+          brandOpt.disabled = true;
+          if ($("#b_role").value === "Brand") {
+            $("#b_role").value = "Model";
+          }
+        }
+      } else {
+        if (budgetField) budgetField.style.display = "";
+        if (brandOpt) brandOpt.disabled = false;
+      }
+
+      if (role === "Brand") {
+        const testShootOpt = $("#b_type")?.querySelector('option[value="Test Shoot"]');
+        if (testShootOpt) {
+          testShootOpt.disabled = true;
+          if ($("#b_type").value === "Test Shoot") {
+            $("#b_type").value = "Fashion Editorial";
+          }
+        }
+      } else {
+        const testShootOpt = $("#b_type")?.querySelector('option[value="Test Shoot"]');
+        if (testShootOpt) testShootOpt.disabled = false;
+      }
+    };
+
+    $("#b_type")?.addEventListener("change", updateFields);
+    $("#b_role")?.addEventListener("change", updateFields);
+    updateFields();
+
+    async function loadJsPDF() {
+      if (window.jspdf) return window.jspdf;
+      return new Promise((resolve) => {
+        const script = document.createElement("script");
+        script.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+        script.onload = () => resolve(window.jspdf);
+        script.onerror = () => resolve(null);
+        document.head.appendChild(script);
+      });
+    }
+
+    async function generateAndDownloadTfpReleasePDF(name) {
+      const jspdfLib = await loadJsPDF();
+      if (!jspdfLib) return;
+      const { jsPDF } = jspdfLib;
+      const doc = new jsPDF();
+      
+      // Page 1 header
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.setTextColor(20, 20, 20);
+      doc.text("STUDIO PRODUCTION & LIABILITY RELEASE", 14, 20);
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 100, 100);
+      doc.text("TFP COLLABORATION, MODEL RELEASE & DIGITAL CONSENT TERMS", 14, 25);
+      
+      doc.setLineWidth(0.5);
+      doc.setDrawColor(200, 200, 200);
+      doc.line(14, 28, 196, 28);
+      
+      // Metadata table block
+      doc.setFillColor(245, 245, 245);
+      doc.rect(14, 32, 182, 34, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(60, 60, 60);
+      
+      doc.text("Studio/Photographer:", 18, 38);
+      doc.setFont("helvetica", "normal");
+      doc.text("nerdyphotographer.in studios", 55, 38);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Creative Partner/Model:", 110, 38);
+      doc.setFont("helvetica", "normal");
+      doc.text(name, 150, 38);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Business Handle:", 18, 48);
+      doc.setFont("helvetica", "normal");
+      doc.text("@thenerdyphotographer.in", 55, 48);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Consent Tracking:", 110, 48);
+      doc.setFont("helvetica", "normal");
+      doc.text("Verified via Email / Digital Acknowledgment", 150, 48);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Production Status:", 18, 58);
+      doc.setFont("helvetica", "normal");
+      doc.text("Time-For-Print (TFP) Collab", 55, 58);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Location:", 110, 58);
+      doc.setFont("helvetica", "normal");
+      doc.text("Studio Production Space", 150, 58);
+      
+      // Section 1
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(20, 20, 20);
+      doc.text("1. SCOPE OF CREATIVE COLLABORATION", 14, 76);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(60, 60, 60);
+      const sec1Text = "This session is scheduled as a peer-to-peer creative collaboration structured for mutual portfolio growth, asset curation, and personal branding advancement. No monetary compensation is required or exchanged. The Studio provides specialized equipment, lighting architecture, workspace, and post-production engineering; the Participant(s) provide technical modeling direction, personal wardrobe, and makeup artistry.";
+      const split1 = doc.splitTextToSize(sec1Text, 182);
+      doc.text(split1, 14, 82);
+      
+      // Section 2
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(20, 20, 20);
+      doc.text("2. INTELLECTUAL PROPERTY, MODEL RELEASE & INTEGRITY", 14, 102);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(60, 60, 60);
+      const sec2Text = "The legal copyright of all visual media remains exclusively with the Studio. The Participant hereby grants the Studio the absolute, irrevocable right to use, publish, and distribute the images for portfolio, promotional, or web display. All parties are granted a non-exclusive license to use final retouched files for personal self-promotion on social media grids and personal websites.\n\nNo Alterations: To preserve the lighting design and capture integrity, no party shall apply secondary mobile filters, automated presets, cropping adjustments, or third-party digital modifications to the delivered files.";
+      const split2 = doc.splitTextToSize(sec2Text, 182);
+      doc.text(split2, 14, 108);
+      
+      // Section 3 (highlight block box style)
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(20, 20, 20);
+      doc.text("3. COMPREHENSIVE LIABILITY WAIVER & INDEMNIFICATION", 14, 134);
+      
+      doc.setFillColor(254, 246, 246);
+      doc.rect(14, 138, 182, 34, "F");
+      doc.setDrawColor(240, 200, 200);
+      doc.line(14, 138, 14, 172);
+      
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(180, 40, 40);
+      doc.text("CRITICAL SAFETY & LIABILITY RELEASE:", 18, 144);
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(60, 60, 60);
+      const sec3Text = "The Participant enters the studio environment, uses studio blocks, cubes, chairs, furniture, or props, and performs physical poses entirely at their own risk. The Studio shall not be held liable for any physical injury, illness, accident, psychological distress, property damage, or clothing wear-and-tear incurred before, during, or after this production. The Participant explicitly waives any right to seek damages or legal recourse against the Studio or its operating photographers for accidents or injuries occurring on the premises.";
+      const split3 = doc.splitTextToSize(sec3Text, 174);
+      doc.text(split3, 18, 149);
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(60, 60, 60);
+      const sec3Text2 = "Furthermore, the Participant agrees to indemnify and hold harmless the Studio from any claims, damages, liabilities, or legal expenses arising out of the Participant's conduct or injuries on set.";
+      const split3_2 = doc.splitTextToSize(sec3Text2, 182);
+      doc.text(split3_2, 14, 180);
+      
+      // Section 4
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(20, 20, 20);
+      doc.text("4. TECHNICAL PERFORMANCE & DELIVERY DISCLAIMER", 14, 196);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(60, 60, 60);
+      const sec4Text = "As a creative collaboration, the Studio offers no guarantees regarding the exact number of final images delivered, the specific turnaround time, or the subjective artistic satisfaction of the deliverables. The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered to the Participant.";
+      const split4 = doc.splitTextToSize(sec4Text, 182);
+      doc.text(split4, 14, 202);
+      
+      // Page footer
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text("Page 1", 175, 285);
+      
+      // PAGE 2
+      doc.addPage();
+      
+      // Section 5
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(20, 20, 20);
+      doc.text("5. MANDATORY ALL-PARTY ATTRIBUTION WORKFLOW", 14, 20);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(60, 60, 60);
+      const sec5Text = "To ensure creative transparency, all parties agree to execute the following mandatory publishing workflow:\n\n" +
+        "• Instagram Collaboration Feature: For all primary feed or grid publications, the publishing party must issue an Instagram Co-Author Collaboration Invite to @thenerdyphotographer.in prior to publishing.\n\n" +
+        "• Full Production Credits Block: Every party publishing an asset must explicitly credit all contributors in the caption. In formats where joint collaboration tools are restricted, a comprehensive credit block must be placed within the first three lines of the caption body text as follows:\n\n" +
+        "   📷 Photography & Light Design: @thenerdyphotographer.in\n" +
+        "   👤 Model / Talent: @[Handle]\n" +
+        "   💄 Makeup Artist / MUA: @[Handle]\n" +
+        "   👔 Styling / Wardrobe: @[Handle]";
+      const split5 = doc.splitTextToSize(sec5Text, 182);
+      doc.text(split5, 14, 26);
+      
+      // Section 6
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(20, 20, 20);
+      doc.text("6. DIGITAL CONSENT, EMAIL ACCEPTANCE & BINDING NATURE", 14, 76);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(60, 60, 60);
+      const sec6Text = "In accordance with standard digital contract practices, a physical or handwritten signature is not required to validate these terms. Definitive legal acceptance and a binding obligation to these conditions are established through any of the following actions:\n\n" +
+        "• Sending a reply stating \"I agree\", \"Confirmed\", or equivalent confirmation over email or direct digital messaging channels.\n\n" +
+        "• Voluntarily entering the studio workspace environment and participating in the scheduled production session following receipt of these terms.";
+      const split6 = doc.splitTextToSize(sec6Text, 182);
+      doc.text(split6, 14, 82);
+      
+      // Footer signature box
+      doc.setFillColor(245, 245, 245);
+      doc.rect(14, 130, 182, 30, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9.5);
+      doc.setTextColor(60, 60, 60);
+      doc.text("nerdyphotographer.in studios", 20, 138);
+      doc.setFont("helvetica", "normal");
+      doc.text("Digital Operations & Production Management", 20, 144);
+      doc.setTextColor(150, 150, 150);
+      doc.setFontSize(8.5);
+      doc.text("Document Reference: TFP-LIABILITY-RELEASE-V3", 20, 152);
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.text("Page 2", 175, 285);
+      
+      doc.save("TFP_Liability_Release.pdf");
+    }
+
     function validate() {
       let firstBad = null;
       const require = (id, msg) => {
@@ -2178,41 +2484,89 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
       const name = val("b_name"), role = val("b_role"), email = val("b_email");
       const phone = val("b_phone"), instagram = val("b_instagram"), type = val("b_type");
-      const date = val("b_date"), locationVal = val("b_location"), budget = val("b_budget");
+      const date = val("b_date"), locationVal = val("b_location"), budget = (type === "Test Shoot" ? "Collab / TFP (No Budget)" : val("b_budget"));
       const moodboard = val("b_moodboard"), concept = val("b_concept");
 
-      btn.disabled = true;
-      btn.classList.add("is-loading");
-      btn.textContent = "Preparing your request…";
+      const proceedSubmit = async (agreedToTerms = false) => {
+        btn.disabled = true;
+        btn.classList.add("is-loading");
+        btn.textContent = "Preparing your request…";
 
-      const subject = encodeURIComponent(`Shoot Booking Request — ${name}`);
-      const body = encodeURIComponent(
-        `Shoot Booking Details:\n\n` +
-        `Name: ${name}\n` +
-        `Role: ${role}\n` +
-        `Email: ${email}\n` +
-        `Phone: ${phone || '—'}\n` +
-        `Instagram: ${instagram || '—'}\n` +
-        `Shoot Type: ${type}\n` +
-        `Proposed Date: ${date}\n` +
-        `Location Pref: ${locationVal}\n` +
-        `Budget Range: ${budget}\n` +
-        `Moodboard Link: ${moodboard || '—'}\n\n` +
-        `Concept/Vision:\n${concept || '—'}`
-      );
+        if (agreedToTerms) {
+          try {
+            await generateAndDownloadTfpReleasePDF(name);
+          } catch (err) {
+            console.error("PDF generation failed:", err);
+          }
+        }
 
-      // Open the visitor's mail client with everything pre-filled.
-      window.location.href = `mailto:${studioEmail}?subject=${subject}&body=${body}`;
+        const subject = encodeURIComponent(`Shoot Booking Request — ${name}`);
+        const body = encodeURIComponent(
+          `Shoot Booking Details:\n\n` +
+          `Name: ${name}\n` +
+          `Role: ${role}\n` +
+          `Email: ${email}\n` +
+          `Phone: ${phone || '—'}\n` +
+          `Instagram: ${instagram || '—'}\n` +
+          `Shoot Type: ${type}\n` +
+          `Proposed Date: ${date}\n` +
+          `Location Pref: ${locationVal}\n` +
+          `Budget Range: ${budget}\n` +
+          `Moodboard Link: ${moodboard || '—'}\n` +
+          (agreedToTerms ? `TFP Release terms: Agreed (TFP-LIABILITY-RELEASE-V3)\n\n` : `\n`) +
+          `Concept/Vision:\n${concept || '—'}`
+        );
 
-      // Reveal the in-page success state (replaces the old alert()).
-      if (successPanel) {
-        form.hidden = true;
-        successPanel.hidden = false;
-        successPanel.scrollIntoView({ behavior: prefersReduced ? "auto" : "smooth", block: "center" });
+        // Open the visitor's mail client with everything pre-filled.
+        window.location.href = `mailto:${studioEmail}?subject=${subject}&body=${body}`;
+
+        // Reveal the in-page success state (replaces the old alert()).
+        if (successPanel) {
+          form.hidden = true;
+          successPanel.hidden = false;
+          if (agreedToTerms) {
+            const msgEl = $("#bookSuccessMsg");
+            if (msgEl) {
+              msgEl.innerHTML = `Your booking inquiry is ready in your email app — hit <strong>Send</strong> to complete it. <br/><br/><strong style="color: var(--accent);">Digital Release Signed:</strong> The signed PDF copy of the <em>Studio Production & Liability Release</em> terms has been generated and downloaded to your device. Please send the email to finish!`;
+            }
+          }
+          successPanel.scrollIntoView({ behavior: prefersReduced ? "auto" : "smooth", block: "center" });
+        }
+        btn.disabled = false;
+        btn.classList.remove("is-loading");
+        btn.textContent = "Submit Booking Request";
+      };
+
+      if (type === "Test Shoot") {
+        // Show terms modal
+        $("#terms_partner_name").textContent = name;
+        $("#termsModal").style.display = "flex";
+        
+        // Remove previous listeners if any to avoid double bindings
+        const acceptBtn = $("#termsAcceptBtn");
+        const declineBtn = $("#termsDeclineBtn");
+        
+        const onAccept = () => {
+          $("#termsModal").style.display = "none";
+          cleanup();
+          proceedSubmit(true);
+        };
+        
+        const onDecline = () => {
+          $("#termsModal").style.display = "none";
+          cleanup();
+        };
+        
+        function cleanup() {
+          acceptBtn.removeEventListener("click", onAccept);
+          declineBtn.removeEventListener("click", onDecline);
+        }
+        
+        acceptBtn.addEventListener("click", onAccept);
+        declineBtn.addEventListener("click", onDecline);
+      } else {
+        proceedSubmit(false);
       }
-      btn.disabled = false;
-      btn.classList.remove("is-loading");
-      btn.textContent = "Submit Booking Request";
     });
 
     // "Send another request" — reset back to a clean form.
@@ -2222,6 +2576,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       if (successPanel) successPanel.hidden = true;
       form.hidden = false;
       form.scrollIntoView({ behavior: prefersReduced ? "auto" : "smooth", block: "start" });
+      updateFields();
     });
   }
 
