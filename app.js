@@ -476,14 +476,22 @@
 
     let pdfBtnHtml = "";
     if (isCc) {
-      window.currentCompCardShootObj = shoot;
-      pdfBtnHtml = `
-        <div class="lb-sidebar-section" style="margin-top: 10px;">
-          <button class="btn btn-dark btn-block" style="font-size: 11px; height: auto; padding: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;" onclick="window.printCompCard('${shoot.id}')">
-            Export PDF Comp Card ↗
-          </button>
-        </div>
-      `;
+      if (!shoot.disableCompCardDownload) {
+        window.currentCompCardShootObj = shoot;
+        pdfBtnHtml = `
+          <div class="lb-sidebar-section" style="margin-top: 10px;">
+            <button class="btn btn-dark btn-block" style="font-size: 11px; height: auto; padding: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;" onclick="window.printCompCard('${shoot.id}')">
+              Export PDF Comp Card ↗
+            </button>
+          </div>
+        `;
+      } else if (isAdmin()) {
+        pdfBtnHtml = `
+          <div class="lb-sidebar-section" style="margin-top: 10px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--accent); border: 1px dashed var(--accent); padding: 8px 12px; text-transform: uppercase; text-align: center; border-radius: 4px;">
+            🔒 Comp card PDF download disabled by agency override
+          </div>
+        `;
+      }
     }
 
     const disclaimerHtml = isCc ? `
@@ -1875,7 +1883,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                 <label class="field"><span>Portfolio link / Website</span><input id="f_link" type="url" placeholder="https://…" /></label>
                 <label class="field"><span>Usage rights</span><input id="f_rights" type="text" placeholder="e.g. Web + social, 1 year" /></label>
               </div>
-              <div class="field-row" style="align-items: center; margin-top: 10px; gap: 20px;">
+              <div class="field-row" style="align-items: center; margin-top: 10px; gap: 20px; flex-wrap: wrap;">
                 <label style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; font-weight: 700; cursor: pointer; color: #fff;">
                   <input id="f_featured" type="checkbox" checked style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
                   Feature on homepage
@@ -1883,6 +1891,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                 <label style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; font-weight: 700; cursor: pointer; color: #fff;">
                   <input id="f_hide_compcard" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
                   Hide from Comp Cards Page
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; font-weight: 700; cursor: pointer; color: #fff;">
+                  <input id="f_disable_download" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
+                  Disable Comp Card PDF Download
                 </label>
               </div>
             </fieldset>
@@ -2262,6 +2274,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         if (hideCompcardInput) {
           hideCompcardInput.checked = !!editingShoot.hideFromCompCard;
         }
+        const disableDownloadInput = $("#f_disable_download");
+        if (disableDownloadInput) {
+          disableDownloadInput.checked = !!editingShoot.disableCompCardDownload;
+        }
         
         staged = editingShoot.photos.map(p => {
           const isCover = editingShoot.coverPhotoId ? (p.id.split("-")[0] === editingShoot.coverPhotoId) : false;
@@ -2604,6 +2620,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         })),
         featured: isTestimonialOnly ? false : ($("#f_featured") ? $("#f_featured").checked : false),
         hideFromCompCard: $("#f_hide_compcard") ? $("#f_hide_compcard").checked : false,
+        disableCompCardDownload: $("#f_disable_download") ? $("#f_disable_download").checked : false,
         coverPhotoId: isTestimonialOnly ? null : (coverItem ? coverItem.id : null),
       };
       pub.disabled = true; pub.textContent = editingShoot ? "Saving changes…" : "Publishing…";
