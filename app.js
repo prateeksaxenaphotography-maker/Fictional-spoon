@@ -3495,6 +3495,71 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       </div>
     ` : "";
     
+    const printSocials = [];
+    if (shoot.instagram) {
+      const handles = shoot.instagram.split(",").map(x => x.trim()).filter(Boolean);
+      let filteredHandles = handles;
+      if (shoot.isCompCard) {
+        const talentNameLower = getTalentCleanName(shoot.talent).toLowerCase();
+        const words = talentNameLower.split(/\s+/).filter(w => w.length > 2);
+        const parenRegex = /\(([^)]+)\)/;
+        const talentMatch = shoot.talent.match(parenRegex);
+        if (talentMatch) {
+          const inlineSocials = talentMatch[1].split(";").map(s => s.trim()).filter(Boolean);
+          const inlineIg = inlineSocials.filter(s => !s.includes("kavyar.com") && (s.startsWith("@") || s.includes("instagram.com")));
+          if (inlineIg.length) filteredHandles = inlineIg;
+        } else if (words.length) {
+          const matched = handles.filter(h => {
+            const hClean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
+            return words.some(word => hClean.includes(word));
+          });
+          if (matched.length) filteredHandles = matched;
+          else filteredHandles = [handles[0]];
+        } else {
+          filteredHandles = [handles[0]];
+        }
+      }
+      if (filteredHandles.length) {
+        const cleaned = filteredHandles.map(h => h.startsWith("@") ? h : `@${h.split("/").pop()}`);
+        printSocials.push(`Instagram: ${cleaned.join(", ")}`);
+      }
+    }
+    
+    if (shoot.kavyar) {
+      const handles = shoot.kavyar.split(",").map(x => x.trim()).filter(Boolean);
+      let filteredHandles = handles;
+      if (shoot.isCompCard) {
+        const talentNameLower = getTalentCleanName(shoot.talent).toLowerCase();
+        const words = talentNameLower.split(/\s+/).filter(w => w.length > 2);
+        const parenRegex = /\(([^)]+)\)/;
+        const talentMatch = shoot.talent.match(parenRegex);
+        if (talentMatch) {
+          const inlineSocials = talentMatch[1].split(";").map(s => s.trim()).filter(Boolean);
+          const inlineKavyar = inlineSocials.filter(s => s.includes("kavyar.com"));
+          if (inlineKavyar.length) filteredHandles = inlineKavyar;
+        } else if (words.length) {
+          const matched = handles.filter(h => {
+            const hClean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
+            return words.some(word => hClean.includes(word));
+          });
+          if (matched.length) filteredHandles = matched;
+          else filteredHandles = [handles[0]];
+        } else {
+          filteredHandles = [handles[0]];
+        }
+      }
+      if (filteredHandles.length) {
+        const cleaned = filteredHandles.map(h => h.split("/").pop());
+        printSocials.push(`Kavyar: ${cleaned.join(", ")}`);
+      }
+    }
+    const socialsLine = printSocials.join("   |   ");
+    const socialsBarHtml = socialsLine ? `
+      <div style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #333; padding: 4px 12px; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; margin-bottom: 16px; border-bottom: 1px solid #eee; padding-bottom: 8px;">
+        ${socialsLine}
+      </div>
+    ` : "";
+    
     const renderGridHtml = (photos) => {
       const photosHtml = photos.map(p => {
         return `<div class="print-photo-item"><img src="${photoSrc(p)}" alt="Portfolio frame" /></div>`;
@@ -3525,6 +3590,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       <div class="print-page">
         ${headerHtml(1)}
         ${statsBarHtml}
+        ${socialsBarHtml}
         ${renderGridHtml(page1Photos)}
         ${footerHtml}
       </div>
@@ -3534,6 +3600,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       fullHtml += `
         <div class="print-page">
           ${headerHtml(2)}
+          ${socialsBarHtml}
           ${renderGridHtml(page2Photos)}
           ${footerHtml}
         </div>
