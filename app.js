@@ -1332,6 +1332,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           });
           const latestShoot = shootsInGroup[0];
           const allGroupPhotos = shootsInGroup.flatMap(gs => gs.photos.map(p => ({ ...p, parent: gs })));
+          const coverId = latestShoot.coverPhotoId || (latestShoot.photos[0] && latestShoot.photos[0].id);
+          const coverPhotoObj = allGroupPhotos.find(p => p.id.split("-")[0] === coverId);
+          const remainingPhotos = allGroupPhotos.filter(p => p.id.split("-")[0] !== coverId);
+          const finalPhotos = coverPhotoObj ? [coverPhotoObj, ...shuffleArray(remainingPhotos)] : shuffleArray(allGroupPhotos);
           
           return {
             id: `comp-card-${encodeURIComponent(modelName)}`,
@@ -1357,7 +1361,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             link: latestShoot.link,
             rights: latestShoot.rights,
             palette: latestShoot.palette || ["#3a3a3a", "#0d0d0d"],
-            photos: allGroupPhotos,
+            photos: finalPhotos,
             coverPhotoId: latestShoot.coverPhotoId || (latestShoot.photos[0] && latestShoot.photos[0].id),
             isCompCard: true,
             originalShoots: shootsInGroup
