@@ -1012,3 +1012,37 @@ main:focus { outline: none; }
 @media (prefers-reduced-motion: reduce) {
   .wm-letter { transform: none; animation: none; }
 }
+
+/* ---------- Model Stats Row ---------- */
+.stats-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
+}
+.stats-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: 1;
+  min-width: 0;
+}
+.stats-item dt {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 0 0 4px;
+}
+.stats-item dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
