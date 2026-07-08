@@ -330,6 +330,18 @@
         ${creditsHtml}
         ${diagHtml}
         ${disclaimerHtml}
+        ${(() => {
+          if (!isAdmin()) return "";
+          return `
+            <div class="lb-sidebar-section" style="margin-top: 20px; border-top: 1px dashed var(--line); padding-top: 16px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; width: 100%;">
+              <h4 style="font-family:'Outfit', sans-serif; font-size:9px; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-soft); margin:0;">Admin Controls <span style="font-weight: normal; opacity: 0.7; font-size: 8px; margin-left: 4px;">(🔒 Visible Only to Admins)</span></h4>
+              <div style="display: flex; gap: 14px; width: 100%; margin-top: 6px;">
+                <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0; font-size: 11px; height: auto;" data-id="${shoot.id}">Edit details →</button>
+                <button class="link-arrow work-delete" style="color: #b22222; font-weight: 700; padding: 0; font-size: 11px; height: auto;" data-id="${shoot.id}">Delete shoot →</button>
+              </div>
+            </div>
+          `;
+        })()}
       </div>
     `;
   }
@@ -347,6 +359,34 @@
     lbImg.style.objectPosition = "center";
     lbSidebar.innerHTML = renderLbSidebar(p);
     lbCount.textContent = `${lbIdx + 1} / ${lbList.length}`;
+
+    // Wire edit & delete buttons inside the lightbox sidebar if in admin mode
+    if (isAdmin()) {
+      const shoot = SHOOTS.find(x => x.id === p.shootId) || p.shoot;
+      if (shoot) {
+        lbSidebar.querySelectorAll(".work-edit").forEach(btn => {
+          btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            closeLb();
+            history.pushState(null, "", `/upload?edit=${shoot.id}`);
+            render();
+          });
+        });
+        lbSidebar.querySelectorAll(".work-delete").forEach(btn => {
+          btn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            if (confirm(`Are you sure you want to delete the photoshoot "${shoot.title || shoot.talent}"?`)) {
+              closeLb();
+              await delShoot(shoot.id);
+              await loadShoots();
+              toast(`Deleted "${shoot.title || shoot.talent}".`);
+              render();
+              await syncToGitHub(SHOOTS, { deletedIds: [shoot.id] });
+            }
+          });
+        });
+      }
+    }
   }
   function stepLb(d) { if (!lbList.length) return; lbIdx = (lbIdx + d + lbList.length) % lbList.length; paintLb(); }
   function closeLb() {
