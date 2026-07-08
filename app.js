@@ -1817,6 +1817,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
              </div>
 
             <button type="submit" class="btn btn-dark btn-block" id="bookSubmitBtn">Submit Booking Request</button>
+            <p style="font-size: 11px; color: var(--ink-soft); margin-top: 15px; text-align: center; line-height: 1.4;">By submitting a booking request, you agree to our standard terms. For test shoots, read our online <a href="#tfp-terms" id="tfpTermsTrigger" style="text-decoration: underline; color: var(--accent); font-weight: 600;">Studio Production &amp; Liability Release</a>.</p>
           </form>
         </div>
       </section>
@@ -2383,7 +2384,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           `Location Pref: ${locationVal}\n` +
           `Budget Range: ${budget}\n` +
           `Moodboard Link: ${moodboard || '—'}\n` +
-          (agreedToTerms ? `TFP Release terms: Agreed (TFP-LIABILITY-RELEASE-V3)\n\n` : `\n`) +
+          (agreedToTerms ? `TFP Release terms: Agreed (TFP-LIABILITY-RELEASE-V3)\nRead online: https://www.nerdyphotographer.in/book/#tfp-terms\n\n` : `\n`) +
           `Concept/Vision:\n${concept || '—'}` +
           tfpReleaseText;
 
@@ -2400,7 +2401,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           `Location Pref: ${locationVal}\n` +
           `Budget Range: ${budget}\n` +
           `Moodboard Link: ${moodboard || '—'}\n` +
-          (agreedToTerms ? `TFP Release terms: Agreed (TFP-LIABILITY-RELEASE-V3)\n\n` : `\n`) +
+          (agreedToTerms ? `TFP Release terms: Agreed (TFP-LIABILITY-RELEASE-V3)\nRead online: https://www.nerdyphotographer.in/book/#tfp-terms\n\n` : `\n`) +
           `Concept/Vision:\n${concept || '—'}` +
           tfpReleaseText
         );
@@ -2485,6 +2486,43 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         setTimeout(() => { btnEl.textContent = orig; }, 2000);
       }
     });
+
+    // Wire the terms trigger link
+    $("#tfpTermsTrigger")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      $("#terms_partner_name").textContent = $("#b_name")?.value || "Creative Partner";
+      $("#termsModal").style.display = "flex";
+      
+      const acceptBtn = $("#termsAcceptBtn");
+      const declineBtn = $("#termsDeclineBtn");
+      const closeTerms = () => {
+        $("#termsModal").style.display = "none";
+        acceptBtn.removeEventListener("click", onAcceptClick);
+        declineBtn.removeEventListener("click", onDeclineClick);
+      };
+      const onAcceptClick = () => closeTerms();
+      const onDeclineClick = () => closeTerms();
+      acceptBtn.addEventListener("click", onAcceptClick);
+      declineBtn.addEventListener("click", onDeclineClick);
+    });
+
+    // Check if loaded with Hash link
+    if (location.hash === "#tfp-terms") {
+      $("#terms_partner_name").textContent = "Creative Partner";
+      $("#termsModal").style.display = "flex";
+      
+      const acceptBtn = $("#termsAcceptBtn");
+      const declineBtn = $("#termsDeclineBtn");
+      const closeTerms = () => {
+        $("#termsModal").style.display = "none";
+        acceptBtn.removeEventListener("click", onAcceptClick);
+        declineBtn.removeEventListener("click", onDeclineClick);
+      };
+      const onAcceptClick = () => closeTerms();
+      const onDeclineClick = () => closeTerms();
+      acceptBtn.addEventListener("click", onAcceptClick);
+      declineBtn.addEventListener("click", onDeclineClick);
+    }
 
     // "Send another request" — reset back to a clean form.
     $("#bookAnother")?.addEventListener("click", () => {
