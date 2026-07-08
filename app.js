@@ -771,6 +771,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             ${meta ? `<span>${esc(meta)}</span>` : ""}
             <span class="noth-work-cta">View <svg viewBox="0 0 14 10" width="14" height="10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 5h12M9 1l4 4-4 4"/></svg></span>
           </div>
+          ${isAdmin() ? `
+            <div class="noth-work-admin" style="margin-top: 12px; display: flex; gap: 14px; width: 100%; border-top: 1px dashed var(--line); padding-top: 12px;">
+              <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0; font-size: 11px; height: auto;" data-id="${s.id}">Edit details →</button>
+              <button class="link-arrow work-delete" style="color: #b22222; font-weight: 700; padding: 0; font-size: 11px; height: auto;" data-id="${s.id}">Delete →</button>
+            </div>
+          ` : ""}
         </div>
       </article>`;
   }
@@ -2398,6 +2404,25 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const open = () => openLb(list, 0);
       media?.addEventListener("click", open);
       cta?.addEventListener("click", open);
+
+      // Wire admin edit & delete buttons
+      card.querySelectorAll(".work-edit").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          history.pushState(null, "", `/upload?edit=${s.id}`);
+          render();
+        });
+      });
+      card.querySelector(".work-delete")?.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if (confirm(`Are you sure you want to delete the photoshoot "${s.title || s.talent}"?`)) {
+          await delShoot(s.id);
+          await loadShoots();
+          toast(`Deleted "${s.title || s.talent}".`);
+          render();
+          await syncToGitHub(SHOOTS, { deletedIds: [s.id] });
+        }
+      });
 
       // Dynamic padding: if the cover's orientation clashes with the 16:9 frame,
       // contain the image (show it whole) over a blurred fill instead of cropping.
