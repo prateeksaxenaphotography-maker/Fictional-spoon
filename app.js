@@ -3488,11 +3488,16 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     if (shoot.shoes) statsArr.push(`Shoes: ${shoot.shoes}`);
     if (shoot.modelHair) statsArr.push(`Hair: ${shoot.modelHair}`);
     if (shoot.modelEyes) statsArr.push(`Eyes: ${shoot.modelEyes}`);
-    const statsLine = statsArr.join("  ·  ") || "Stats not specified";
+    const statsLine = statsArr.join("  ·  ");
+    const statsBarHtml = statsLine ? `
+      <div style="font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; background: #f0f0f0; color: #000; padding: 8px 12px; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; border-radius: 4px; margin-bottom: 16px;">
+        ${statsLine}
+      </div>
+    ` : "";
     
     const renderGridHtml = (photos) => {
       const photosHtml = photos.map(p => {
-        return `<div class="print-photo-item" style="break-inside: avoid;"><img src="${photoSrc(p)}" alt="Portfolio frame" style="width: 100%; height: 100%; aspect-ratio: 1 / 1; object-fit: cover; border: 1px solid #ccc; display: block;" /></div>`;
+        return `<div class="print-photo-item"><img src="${photoSrc(p)}" alt="Portfolio frame" /></div>`;
       }).join("");
       return `<div class="print-photo-grid">
         ${photosHtml}
@@ -3519,9 +3524,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     let fullHtml = `
       <div class="print-page">
         ${headerHtml(1)}
-        <div style="font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; background: #f0f0f0; color: #000; padding: 8px 12px; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; border-radius: 4px; margin-bottom: 16px;">
-          ${statsLine}
-        </div>
+        ${statsBarHtml}
         ${renderGridHtml(page1Photos)}
         ${footerHtml}
       </div>
