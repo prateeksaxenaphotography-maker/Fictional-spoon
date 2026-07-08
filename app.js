@@ -2281,199 +2281,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     $("#b_role")?.addEventListener("change", updateFields);
     updateFields();
 
-    async function loadJsPDF() {
-      if (window.jspdf) return window.jspdf;
-      return new Promise((resolve) => {
-        const script = document.createElement("script");
-        script.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
-        script.onload = () => resolve(window.jspdf);
-        script.onerror = () => resolve(null);
-        document.head.appendChild(script);
-      });
-    }
 
-    async function generateAndDownloadTfpReleasePDF(name) {
-      const jspdfLib = await loadJsPDF();
-      if (!jspdfLib) return;
-      const { jsPDF } = jspdfLib;
-      const doc = new jsPDF();
-      
-      // Page 1 header
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(18);
-      doc.setTextColor(20, 20, 20);
-      doc.text("STUDIO PRODUCTION & LIABILITY RELEASE", 14, 20);
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(100, 100, 100);
-      doc.text("TFP COLLABORATION, MODEL RELEASE & DIGITAL CONSENT TERMS", 14, 25);
-      
-      doc.setLineWidth(0.5);
-      doc.setDrawColor(200, 200, 200);
-      doc.line(14, 28, 196, 28);
-      
-      // Metadata table block
-      doc.setFillColor(245, 245, 245);
-      doc.rect(14, 32, 182, 34, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.setTextColor(60, 60, 60);
-      
-      doc.text("Studio/Photographer:", 18, 38);
-      doc.setFont("helvetica", "normal");
-      doc.text("nerdyphotographer.in studios", 55, 38);
-      
-      doc.setFont("helvetica", "bold");
-      doc.text("Creative Partner/Model:", 110, 38);
-      doc.setFont("helvetica", "normal");
-      doc.text(name, 150, 38);
-      
-      doc.setFont("helvetica", "bold");
-      doc.text("Business Handle:", 18, 48);
-      doc.setFont("helvetica", "normal");
-      doc.text("@thenerdyphotographer.in", 55, 48);
-      
-      doc.setFont("helvetica", "bold");
-      doc.text("Consent Tracking:", 110, 48);
-      doc.setFont("helvetica", "normal");
-      doc.text("Verified via Email / Digital Acknowledgment", 150, 48);
-      
-      doc.setFont("helvetica", "bold");
-      doc.text("Production Status:", 18, 58);
-      doc.setFont("helvetica", "normal");
-      doc.text("Time-For-Print (TFP) Collab", 55, 58);
-      
-      doc.setFont("helvetica", "bold");
-      doc.text("Location:", 110, 58);
-      doc.setFont("helvetica", "normal");
-      doc.text("Studio Production Space", 150, 58);
-      
-      // Section 1
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.setTextColor(20, 20, 20);
-      doc.text("1. SCOPE OF CREATIVE COLLABORATION", 14, 76);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9.5);
-      doc.setTextColor(60, 60, 60);
-      const sec1Text = "This session is scheduled as a peer-to-peer creative collaboration structured for mutual portfolio growth, asset curation, and personal branding advancement. No monetary compensation is required or exchanged. The Studio provides specialized equipment, lighting architecture, workspace, and post-production engineering; the Participant(s) provide technical modeling direction, personal wardrobe, and makeup artistry.";
-      const split1 = doc.splitTextToSize(sec1Text, 182);
-      doc.text(split1, 14, 82);
-      
-      // Section 2
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.setTextColor(20, 20, 20);
-      doc.text("2. INTELLECTUAL PROPERTY, MODEL RELEASE & INTEGRITY", 14, 102);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9.5);
-      doc.setTextColor(60, 60, 60);
-      const sec2Text = "The legal copyright of all visual media remains exclusively with the Studio. The Participant hereby grants the Studio the absolute, irrevocable right to use, publish, and distribute the images for portfolio, promotional, or web display. All parties are granted a non-exclusive license to use final retouched files for personal self-promotion on social media grids and personal websites.\n\nNo Alterations: To preserve the lighting design and capture integrity, no party shall apply secondary mobile filters, automated presets, cropping adjustments, or third-party digital modifications to the delivered files.";
-      const split2 = doc.splitTextToSize(sec2Text, 182);
-      doc.text(split2, 14, 108);
-      
-      // Section 3 (highlight block box style)
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.setTextColor(20, 20, 20);
-      doc.text("3. COMPREHENSIVE LIABILITY WAIVER & INDEMNIFICATION", 14, 134);
-      
-      doc.setFillColor(254, 246, 246);
-      doc.rect(14, 138, 182, 34, "F");
-      doc.setDrawColor(240, 200, 200);
-      doc.line(14, 138, 14, 172);
-      
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.setTextColor(180, 40, 40);
-      doc.text("CRITICAL SAFETY & LIABILITY RELEASE:", 18, 144);
-      
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(60, 60, 60);
-      const sec3Text = "The Participant enters the studio environment, uses studio blocks, cubes, chairs, furniture, or props, and performs physical poses entirely at their own risk. The Studio shall not be held liable for any physical injury, illness, accident, psychological distress, property damage, or clothing wear-and-tear incurred before, during, or after this production. The Participant explicitly waives any right to seek damages or legal recourse against the Studio or its operating photographers for accidents or injuries occurring on the premises.";
-      const split3 = doc.splitTextToSize(sec3Text, 174);
-      doc.text(split3, 18, 149);
-      
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9.5);
-      doc.setTextColor(60, 60, 60);
-      const sec3Text2 = "Furthermore, the Participant agrees to indemnify and hold harmless the Studio from any claims, damages, liabilities, or legal expenses arising out of the Participant's conduct or injuries on set.";
-      const split3_2 = doc.splitTextToSize(sec3Text2, 182);
-      doc.text(split3_2, 14, 180);
-      
-      // Section 4
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.setTextColor(20, 20, 20);
-      doc.text("4. TECHNICAL PERFORMANCE & DELIVERY DISCLAIMER", 14, 196);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9.5);
-      doc.setTextColor(60, 60, 60);
-      const sec4Text = "As a creative collaboration, the Studio offers no guarantees regarding the exact number of final images delivered, the specific turnaround time, or the subjective artistic satisfaction of the deliverables. The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered to the Participant.";
-      const split4 = doc.splitTextToSize(sec4Text, 182);
-      doc.text(split4, 14, 202);
-      
-      // Page footer
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      doc.text("Page 1", 175, 285);
-      
-      // PAGE 2
-      doc.addPage();
-      
-      // Section 5
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.setTextColor(20, 20, 20);
-      doc.text("5. MANDATORY ALL-PARTY ATTRIBUTION WORKFLOW", 14, 20);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9.5);
-      doc.setTextColor(60, 60, 60);
-      const sec5Text = "To ensure creative transparency, all parties agree to execute the following mandatory publishing workflow:\n\n" +
-        "• Instagram Collaboration Feature: For all primary feed or grid publications, the publishing party must issue an Instagram Co-Author Collaboration Invite to @thenerdyphotographer.in prior to publishing.\n\n" +
-        "• Full Production Credits Block: Every party publishing an asset must explicitly credit all contributors in the caption. In formats where joint collaboration tools are restricted, a comprehensive credit block must be placed within the first three lines of the caption body text as follows:\n\n" +
-        "   📷 Photography & Light Design: @thenerdyphotographer.in\n" +
-        "   👤 Model / Talent: @[Handle]\n" +
-        "   💄 Makeup Artist / MUA: @[Handle]\n" +
-        "   👔 Styling / Wardrobe: @[Handle]";
-      const split5 = doc.splitTextToSize(sec5Text, 182);
-      doc.text(split5, 14, 26);
-      
-      // Section 6
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.setTextColor(20, 20, 20);
-      doc.text("6. DIGITAL CONSENT, EMAIL ACCEPTANCE & BINDING NATURE", 14, 76);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9.5);
-      doc.setTextColor(60, 60, 60);
-      const sec6Text = "In accordance with standard digital contract practices, a physical or handwritten signature is not required to validate these terms. Definitive legal acceptance and a binding obligation to these conditions are established through any of the following actions:\n\n" +
-        "• Sending a reply stating \"I agree\", \"Confirmed\", or equivalent confirmation over email or direct digital messaging channels.\n\n" +
-        "• Voluntarily entering the studio workspace environment and participating in the scheduled production session following receipt of these terms.";
-      const split6 = doc.splitTextToSize(sec6Text, 182);
-      doc.text(split6, 14, 82);
-      
-      // Footer signature box
-      doc.setFillColor(245, 245, 245);
-      doc.rect(14, 130, 182, 30, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9.5);
-      doc.setTextColor(60, 60, 60);
-      doc.text("nerdyphotographer.in studios", 20, 138);
-      doc.setFont("helvetica", "normal");
-      doc.text("Digital Operations & Production Management", 20, 144);
-      doc.setTextColor(150, 150, 150);
-      doc.setFontSize(8.5);
-      doc.text("Document Reference: TFP-LIABILITY-RELEASE-V3", 20, 152);
-      
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.text("Page 2", 175, 285);
-      
-      doc.save("TFP_Liability_Release.pdf");
-    }
 
     function validate() {
       let firstBad = null;
@@ -2617,17 +2425,6 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         // Open the visitor's mail client with everything pre-filled.
         window.location.href = mailtoUrl;
 
-        // Defer PDF generation so it runs in the background and doesn't block the synchronous mailto link launch
-        if (agreedToTerms) {
-          setTimeout(async () => {
-            try {
-              await generateAndDownloadTfpReleasePDF(name);
-            } catch (err) {
-              console.error("PDF generation failed:", err);
-            }
-          }, 150);
-        }
-
         // Reveal the in-page success state (replaces the old alert()).
         if (successPanel) {
           form.hidden = true;
@@ -2635,7 +2432,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           if (agreedToTerms) {
             const msgEl = $("#bookSuccessMsg");
             if (msgEl) {
-              msgEl.innerHTML = `Your booking inquiry is ready in your email app — please hit <strong>Send</strong> in your mail client to complete the request. <br/><br/><strong style="color: var(--accent);">Digital Release Signed:</strong> The signed PDF copy of the <em>Studio Production & Liability Release</em> terms has been generated and downloaded to your device. Please send the email to finish!`;
+              msgEl.innerHTML = `Your booking inquiry is ready in your email app — please hit <strong>Send</strong> in your mail client to complete the request. <br/><br/><strong style="color: var(--accent);">Release Agreed:</strong> The full text of the <em>Studio Production & Liability Release</em> terms has been embedded directly in the email body for your records. Please send the email to finish!`;
             }
           }
           successPanel.scrollIntoView({ behavior: prefersReduced ? "auto" : "smooth", block: "center" });
