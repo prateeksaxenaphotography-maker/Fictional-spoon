@@ -323,7 +323,7 @@
         <dl class="work-credits" style="margin: 0; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);">
           ${shoot.activity ? `<div><dt>Activity</dt><dd>${esc(shoot.activity)}</dd></div>` : ""}
           ${shoot.season ? `<div><dt>Season</dt><dd>${esc(shoot.season)}</dd></div>` : ""}
-          ${shoot.location ? `<div><dt>Location</dt><dd>${esc(shoot.location)}</dd></div>` : ""}
+          ${(shoot.location && !isCc) ? `<div><dt>Location</dt><dd>${esc(shoot.location)}</dd></div>` : ""}
         </dl>
         
         ${statsHtml}
@@ -901,7 +901,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             <dl class="work-credits">
               <div><dt>Activity</dt><dd>${esc(s.activity)}</dd></div>
               <div><dt>Season</dt><dd><span${ed("season")}>${esc(s.season || "—")}</span></dd></div>
-              <div><dt>Location</dt><dd><span${ed("location")}>${esc(s.location || "—")}</span></dd></div>
+              ${s.isCompCard ? "" : `<div><dt>Location</dt><dd><span${ed("location")}>${esc(s.location || "—")}</span></dd></div>`}
             </dl>`;
           })()}
           
@@ -2436,6 +2436,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           // Portrait covers, or ratios that differ a lot, get contained + padded.
           const mismatch = imgRatio < 1 || Math.abs(imgRatio - frameRatio) / frameRatio > 0.35;
           media.classList.toggle("fit-contain", mismatch);
+          if (mismatch) {
+            const isPortrait = imgRatio < 1;
+            media.classList.toggle("fit-portrait", isPortrait);
+            media.classList.toggle("fit-landscape", !isPortrait);
+          } else {
+            media.classList.remove("fit-portrait", "fit-landscape");
+          }
         };
         if (img.complete) evaluateFit();
         img.addEventListener("load", evaluateFit, { once: true });
