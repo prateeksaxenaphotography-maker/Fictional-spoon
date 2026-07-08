@@ -3462,7 +3462,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   window.printCompCard = (shootId) => {
     const shoot = SHOOTS.find(x => x.id === shootId) || (window.currentCompCardShootObj);
     if (!shoot) return;
-    const photosToPrint = (shoot.photos || []).slice(0, 9);
+    
+    const allPhotos = shoot.photos || [];
+    const page1Photos = allPhotos.slice(0, 9);
+    const page2Photos = allPhotos.slice(9, 18);
+    
     const statsArr = [];
     if (shoot.height) statsArr.push(`Height: ${shoot.height}`);
     if (shoot.chest) statsArr.push(`Chest/Bust: ${shoot.chest}`);
@@ -3472,27 +3476,57 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     if (shoot.modelHair) statsArr.push(`Hair: ${shoot.modelHair}`);
     if (shoot.modelEyes) statsArr.push(`Eyes: ${shoot.modelEyes}`);
     const statsLine = statsArr.join("  ·  ") || "Stats not specified";
-    const photosHtml = photosToPrint.map(p => {
-      return `<div class="print-photo-item" style="break-inside: avoid;"><img src="${photoSrc(p)}" alt="Portfolio frame" style="width: 100%; height: 100%; aspect-ratio: 1 / 1; object-fit: cover; border: 1px solid #ccc; display: block;" /></div>`;
-    }).join("");
-    const printContainer = document.getElementById("compCardPrintContainer");
-    if (!printContainer) return;
-    printContainer.innerHTML = `
+    
+    const renderGridHtml = (photos) => {
+      const photosHtml = photos.map(p => {
+        return `<div class="print-photo-item" style="break-inside: avoid;"><img src="${photoSrc(p)}" alt="Portfolio frame" style="width: 100%; height: 100%; aspect-ratio: 1 / 1; object-fit: cover; border: 1px solid #ccc; display: block;" /></div>`;
+      }).join("");
+      return `<div class="print-photo-grid">
+        ${photosHtml}
+      </div>`;
+    };
+    
+    const headerHtml = (pageNumber) => `
       <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 12px;">
-        <h1 style="font-family:'Outfit', sans-serif; font-size: 28px; font-weight: 800; margin: 0; text-transform: uppercase; color: #000; letter-spacing: -0.02em;">${getTalentCleanName(shoot.talent || shoot.title)}</h1>
+        <h1 style="font-family:'Outfit', sans-serif; font-size: 28px; font-weight: 800; margin: 0; text-transform: uppercase; color: #000; letter-spacing: -0.02em;">
+          ${getTalentCleanName(shoot.talent || shoot.title)}
+          ${pageNumber > 1 ? `<span style="font-size: 16px; font-weight: 600; color: #666; margin-left: 8px;">(Page ${pageNumber})</span>` : ""}
+        </h1>
         <span style="font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: #666; text-transform: uppercase;">nerdyphotographer.in studio</span>
       </div>
-      <div style="font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; background: #f0f0f0; color: #000; padding: 8px 12px; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; border-radius: 4px; margin-bottom: 16px;">
-        ${statsLine}
-      </div>
-      <div class="print-photo-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; flex-grow: 1; margin-bottom: 16px;">
-        ${photosHtml}
-      </div>
+    `;
+    
+    const footerHtml = `
       <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #ccc; padding-top: 12px; margin-top: auto; font-family: sans-serif; font-size: 8.5px; color: #777; gap: 20px;">
         <span>To book this talent, please connect directly via their verified socials.</span>
         <span style="text-align: right; line-height: 1.4;">All images are proprietary to nerdyphotographer.in studio and its subsidiaries. They cannot be sold or used for commercial purposes without prior written approval.</span>
       </div>
     `;
+    
+    let fullHtml = `
+      <div class="print-page">
+        ${headerHtml(1)}
+        <div style="font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; background: #f0f0f0; color: #000; padding: 8px 12px; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; border-radius: 4px; margin-bottom: 16px;">
+          ${statsLine}
+        </div>
+        ${renderGridHtml(page1Photos)}
+        ${footerHtml}
+      </div>
+    `;
+    
+    if (page2Photos.length > 0) {
+      fullHtml += `
+        <div class="print-page">
+          ${headerHtml(2)}
+          ${renderGridHtml(page2Photos)}
+          ${footerHtml}
+        </div>
+      `;
+    }
+    
+    const printContainer = document.getElementById("compCardPrintContainer");
+    if (!printContainer) return;
+    printContainer.innerHTML = fullHtml;
     window.print();
   };
 
