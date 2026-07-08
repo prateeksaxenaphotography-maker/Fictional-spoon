@@ -1169,7 +1169,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         <section class="page-head">
           <div class="container">
             <p class="eyebrow reveal"><a href="/categories" data-link>Categories</a> / ${esc(kind)}</p>
-            <h1 class="reveal">${esc(d)}</h1>
+             <h1 class="reveal">${d === "Test Shoot" ? "Model Portfolio (Comp Cards)" : esc(d)}</h1>
             ${isTestShoot ? "" : `<p class="page-sub reveal">${displayList.length} master album${displayList.length !== 1 ? "s" : ""} in this ${esc(kind)}.</p>`}
           </div>
         </section>
@@ -2237,7 +2237,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         pageDesc = `Browse the complete photoshoot album archive of ${cfg.studioName} — fashion, beauty, editorial, sports, and fitness photography in Noida & Delhi NCR.`;
       } else if (key === "categories") {
         if (parts[1] && parts[2]) {
-          const catName = decodeURIComponent(parts[2]);
+          const rawCatName = decodeURIComponent(parts[2]);
+          const catName = rawCatName === "Test Shoot" ? "Model Portfolio (Comp Cards)" : rawCatName;
           pageTitle = `${catName} (${parts[1]}) — ${cfg.studioName}`;
           pageDesc = `Photoshoots filed under the ${parts[1]} category "${catName}" in the photography archive.`;
         } else {
