@@ -286,6 +286,31 @@
       }
     }
 
+    let kavyarHtml = "";
+    if (shoot.kavyar) {
+      const handles = shoot.kavyar.split(",").map(x => x.trim()).filter(Boolean);
+      if (handles.length) {
+        const links = handles.map(h => {
+          let url = h;
+          let label = h;
+          if (!/^https?:\/\//i.test(h)) {
+            url = `https://kavyar.com/${h}`;
+            label = `Kavyar: ${h}`;
+          } else {
+            try {
+              const urlObj = new URL(h);
+              const cleanPath = urlObj.pathname.replace(/^\/|\/$/g, "");
+              label = `Kavyar: ${cleanPath.split("/").pop() || h}`;
+            } catch {
+              label = "Kavyar";
+            }
+          }
+          return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none; margin-right: 14px; display: inline-block;">${esc(label)}</a>`;
+        }).join("");
+        kavyarHtml = `<div><dt>Kavyar</dt><dd>${links}</dd></div>`;
+      }
+    }
+
     // Model Stats
     let statsHtml = "";
     const hasStats = shoot.height || shoot.chest || shoot.waist || shoot.hips || shoot.shoes || shoot.modelHair || shoot.modelEyes;
@@ -314,6 +339,7 @@
     if (shoot.mua && shoot.mua !== "—") credits.push(`<div><dt>MUA</dt><dd>${esc(shoot.mua)}</dd></div>`);
     if (shoot.hair && shoot.hair !== "—") credits.push(`<div><dt>Hair</dt><dd>${esc(shoot.hair)}</dd></div>`);
     if (igHtml) credits.push(igHtml);
+    if (kavyarHtml) credits.push(kavyarHtml);
 
     const creditsHtml = credits.length ? `
       <div class="lb-sidebar-section">
@@ -1204,14 +1230,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
       let displayList = list;
       if (kind === "type" && d === "Test Shoot") {
-        const filteredList = list.filter(s => s.instagram && s.instagram.trim());
+        const filteredList = list.filter(s => ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim())) && !s.hideFromCompCard);
         const groupable = [];
         const nonGroupable = [];
         for (const s of filteredList) {
           const talentClean = (s.talent || "").trim();
           const hasExactlyOneModel = talentClean && !talentClean.includes(",") && !talentClean.toLowerCase().includes(" and ") && !talentClean.toLowerCase().includes("&");
           const hasNoBrandOrClient = (!s.client || !s.client.trim()) && (!s.brand || s.brand === "Personal Project" || !s.brand.trim());
-          const hasSocialLinks = s.instagram && s.instagram.trim();
+          const hasSocialLinks = (s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim());
           
           if (hasExactlyOneModel && hasNoBrandOrClient && hasSocialLinks) {
             groupable.push(s);
@@ -1256,6 +1282,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             client: "",
             date: latestShoot.date,
             instagram: latestShoot.instagram,
+            kavyar: latestShoot.kavyar,
             link: latestShoot.link,
             rights: latestShoot.rights,
             palette: latestShoot.palette || ["#3a3a3a", "#0d0d0d"],
@@ -1691,13 +1718,20 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                   <input id="f_ig" type="text" placeholder="e.g. @handle1, @handle2" />
                   <div id="f_ig_verify" style="margin-top: 5px; font-size: 11px; display: none;"></div>
                 </label>
-                <label class="field"><span>Portfolio link</span><input id="f_link" type="url" placeholder="https://…" /></label>
+                <label class="field"><span>Kavyar Profile / Links</span><input id="f_kavyar" type="text" placeholder="e.g. https://kavyar.com/profile" /></label>
               </div>
-              <label class="field"><span>Usage rights</span><input id="f_rights" type="text" placeholder="e.g. Web + social, 1 year" /></label>
-              <div class="field-row" style="align-items: center; margin-top: 10px;">
+              <div class="field-row">
+                <label class="field"><span>Portfolio link / Website</span><input id="f_link" type="url" placeholder="https://…" /></label>
+                <label class="field"><span>Usage rights</span><input id="f_rights" type="text" placeholder="e.g. Web + social, 1 year" /></label>
+              </div>
+              <div class="field-row" style="align-items: center; margin-top: 10px; gap: 20px;">
                 <label style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; font-weight: 700; cursor: pointer; color: #fff;">
                   <input id="f_featured" type="checkbox" checked style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
                   Feature on homepage
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; font-weight: 700; cursor: pointer; color: #fff;">
+                  <input id="f_hide_compcard" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
+                  Hide from Comp Cards Page
                 </label>
               </div>
             </fieldset>
@@ -2042,6 +2076,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         };
         $("#f_date").value = toIsoDate(editingShoot.date);
         $("#f_ig").value = editingShoot.instagram || "";
+        $("#f_kavyar").value = editingShoot.kavyar || "";
         $("#f_link").value = editingShoot.link || "";
         $("#f_rights").value = editingShoot.rights || "";
         
@@ -2070,6 +2105,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         const featInput = $("#f_featured");
         if (featInput) {
           featInput.checked = !!editingShoot.featured;
+        }
+        const hideCompcardInput = $("#f_hide_compcard");
+        if (hideCompcardInput) {
+          hideCompcardInput.checked = !!editingShoot.hideFromCompCard;
         }
         
         staged = editingShoot.photos.map(p => {
@@ -2346,6 +2385,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         client: isTestimonialOnly ? "" : val("f_client"),
         date: dateVal,
         instagram: val("f_ig"),
+        kavyar: val("f_kavyar"),
         link: val("f_link"),
         rights: isTestimonialOnly ? "" : val("f_rights"),
         testimonials: testimonialsList,
@@ -2361,6 +2401,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           ...(f.caption && f.caption.trim() ? { caption: f.caption.trim() } : {})
         })),
         featured: isTestimonialOnly ? false : ($("#f_featured") ? $("#f_featured").checked : false),
+        hideFromCompCard: $("#f_hide_compcard") ? $("#f_hide_compcard").checked : false,
         coverPhotoId: isTestimonialOnly ? null : (coverItem ? coverItem.id : null),
       };
       pub.disabled = true; pub.textContent = editingShoot ? "Saving changes…" : "Publishing…";
