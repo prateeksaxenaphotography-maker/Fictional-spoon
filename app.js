@@ -205,6 +205,11 @@
 
   const isAdminAuthorized = () => localStorage.getItem("wps-admin-authorized") === "1";
   const isAdmin = () => isAdminAuthorized() && sessionStorage.getItem("wps-admin") === "1";
+  
+  function isCurrentlyCompCardView() {
+    const search = location.pathname + location.search;
+    return search.includes("categories") && (search.includes("Test%20Shoot") || decodeURIComponent(search).includes("Test Shoot"));
+  }
 
   /* ---------------- IndexedDB (shoots) ---------------- */
   const DB = "personal-photostudio-v2", STORE = "shoots";
@@ -314,7 +319,7 @@
   function renderLbSidebar(p) {
     const shoot = SHOOTS.find(x => x.id === p.shootId) || p.shoot;
     if (!shoot) return "";
-    const isCc = shoot.type === "Test Shoot";
+    const isCc = shoot.type === "Test Shoot" && isCurrentlyCompCardView();
     
     // Parse social handle
     let igHtml = "";
@@ -1822,6 +1827,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               <div class="field-row">
                 <label class="field"><span>Type</span><select id="f_type">${opt(TYPES)}</select></label>
                 <label class="field"><span>Season / Year</span><input id="f_season" type="text" placeholder="Spring 2026" /></label>
+                <label class="field"><span>Shoot Location</span><input id="f_location" type="text" placeholder="e.g. Studio, Noida, Outdoor" /></label>
               </div>
             </fieldset>
 
@@ -1840,7 +1846,6 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               </div>
               <div class="field-row">
                 <label class="field"><span>Model / talent (comma-separated)</span><input id="f_talent" type="text" placeholder="e.g. Model A, Model B" /></label>
-                <label class="field"><span>Location</span><input id="f_location" type="text" placeholder="Studio 3, Brooklyn" /></label>
               </div>
             </fieldset>
 
