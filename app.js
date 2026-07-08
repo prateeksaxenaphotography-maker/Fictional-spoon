@@ -1128,7 +1128,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             mua: latestShoot.mua || "",
             talent: modelName,
             location: latestShoot.location || "Studio",
-            description: `Modeling portfolio and comp card archive for ${modelName}. Contains ${shootsInGroup.length} photoshoot sessions.`,
+            description: latestShoot.description || "",
             tags: latestShoot.tags || "",
             gear: latestShoot.gear || "",
             client: "",
