@@ -388,6 +388,8 @@
     const disclaimerHtml = isCc ? `
       <p class="lb-disclaimer" style="font-size: 11px; font-style: italic; color: var(--ink-soft); margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; line-height: 1.5; font-family: sans-serif;">
         To book this talent, please connect directly via their verified social channels or contact their representing agency.
+        <br/><br/>
+        This compcard includes photos clicked or produced under nerdyphotographer.in studio or its subsidiaries.
       </p>
     ` : "";
 
@@ -1334,7 +1336,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <div class="container">
             <p class="eyebrow reveal"><a href="/categories" data-link>Categories</a> / ${esc(kind)}</p>
              <h1 class="reveal">${d === "Test Shoot" ? "Model Portfolio (Comp Cards)" : esc(d)}</h1>
-            ${isTestShoot ? "" : `<p class="page-sub reveal">${displayList.length} master album${displayList.length !== 1 ? "s" : ""} in this ${esc(kind)}.</p>`}
+            ${isTestShoot ? `<p class="page-sub" style="max-width: 600px; line-height: 1.6; opacity: 1 !important; visibility: visible !important; transform: none !important;">This compcard archive includes photos clicked or produced under nerdyphotographer.in studio or its subsidiaries.</p>` : `<p class="page-sub reveal">${displayList.length} master album${displayList.length !== 1 ? "s" : ""} in this ${esc(kind)}.</p>`}
           </div>
         </section>
         ${alphaFilterHtml}
@@ -1538,6 +1540,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               </h3>
               <p>
                 Comprehensive testing shoots and comp card layout photography designed for aspiring and professional model talent. Direct submissions focus: clean test lighting, polaroids, digitals, and styling versatility.
+                <span style="display: block; margin-top: 8px; font-size: 11.5px; color: var(--ink-soft); line-height: 1.4;">This compcard includes photos clicked or produced under nerdyphotographer.in studio or its subsidiaries.</span>
               </p>
               <a href="/categories?kind=type&amp;val=Test%20Shoot" data-link class="link-arrow" style="font-size: 12px; font-weight: 700;">Explore test shoots →</a>
             </div>
