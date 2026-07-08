@@ -319,7 +319,27 @@
     // Parse social handle
     let igHtml = "";
     if (shoot.instagram) {
-      const handles = shoot.instagram.split(",").map(x => x.trim()).filter(Boolean);
+      let handles = shoot.instagram.split(",").map(x => x.trim()).filter(Boolean);
+      if (shoot.isCompCard) {
+        const talentNameLower = getTalentCleanName(shoot.talent).toLowerCase();
+        const words = talentNameLower.split(/\s+/).filter(w => w.length > 2);
+        const parenRegex = /\(([^)]+)\)/;
+        const talentMatch = shoot.talent.match(parenRegex);
+        if (talentMatch) {
+          const inlineSocials = talentMatch[1].split(";").map(s => s.trim()).filter(Boolean);
+          const inlineIg = inlineSocials.filter(s => !s.includes("kavyar.com") && (s.startsWith("@") || s.includes("instagram.com")));
+          if (inlineIg.length) handles = inlineIg;
+        } else if (words.length) {
+          const matched = handles.filter(h => {
+            const hClean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
+            return words.some(word => hClean.includes(word));
+          });
+          if (matched.length) handles = matched;
+          else handles = [handles[0]];
+        } else {
+          handles = [handles[0]];
+        }
+      }
       if (handles.length) {
         const links = handles.map(h => {
           let url = h;
@@ -349,7 +369,27 @@
 
     let kavyarHtml = "";
     if (shoot.kavyar) {
-      const handles = shoot.kavyar.split(",").map(x => x.trim()).filter(Boolean);
+      let handles = shoot.kavyar.split(",").map(x => x.trim()).filter(Boolean);
+      if (shoot.isCompCard) {
+        const talentNameLower = getTalentCleanName(shoot.talent).toLowerCase();
+        const words = talentNameLower.split(/\s+/).filter(w => w.length > 2);
+        const parenRegex = /\(([^)]+)\)/;
+        const talentMatch = shoot.talent.match(parenRegex);
+        if (talentMatch) {
+          const inlineSocials = talentMatch[1].split(";").map(s => s.trim()).filter(Boolean);
+          const inlineKavyar = inlineSocials.filter(s => s.includes("kavyar.com"));
+          if (inlineKavyar.length) handles = inlineKavyar;
+        } else if (words.length) {
+          const matched = handles.filter(h => {
+            const hClean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
+            return words.some(word => hClean.includes(word));
+          });
+          if (matched.length) handles = matched;
+          else handles = [handles[0]];
+        } else {
+          handles = [handles[0]];
+        }
+      }
       if (handles.length) {
         const links = handles.map(h => {
           let url = h;
