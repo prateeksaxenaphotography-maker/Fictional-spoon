@@ -250,16 +250,12 @@
 
     // Credits
     const credits = [];
-    if (isCc) {
-      if (igHtml) credits.push(igHtml);
-    } else {
-      if (shoot.photographer) credits.push(`<div><dt>Photo</dt><dd>${esc(shoot.photographer)}</dd></div>`);
-      if (shoot.artDirector && shoot.artDirector !== "—") credits.push(`<div><dt>Art Direction</dt><dd>${esc(shoot.artDirector)}</dd></div>`);
-      if (shoot.stylist && shoot.stylist !== "—") credits.push(`<div><dt>Stylist</dt><dd>${esc(shoot.stylist)}</dd></div>`);
-      if (shoot.mua && shoot.mua !== "—") credits.push(`<div><dt>MUA</dt><dd>${esc(shoot.mua)}</dd></div>`);
-      if (shoot.hair && shoot.hair !== "—") credits.push(`<div><dt>Hair</dt><dd>${esc(shoot.hair)}</dd></div>`);
-      if (igHtml) credits.push(igHtml);
-    }
+    if (shoot.photographer) credits.push(`<div><dt>Photo</dt><dd>${esc(shoot.photographer)}</dd></div>`);
+    if (shoot.artDirector && shoot.artDirector !== "—") credits.push(`<div><dt>Art Direction</dt><dd>${esc(shoot.artDirector)}</dd></div>`);
+    if (shoot.stylist && shoot.stylist !== "—") credits.push(`<div><dt>Stylist</dt><dd>${esc(shoot.stylist)}</dd></div>`);
+    if (shoot.mua && shoot.mua !== "—") credits.push(`<div><dt>MUA</dt><dd>${esc(shoot.mua)}</dd></div>`);
+    if (shoot.hair && shoot.hair !== "—") credits.push(`<div><dt>Hair</dt><dd>${esc(shoot.hair)}</dd></div>`);
+    if (igHtml) credits.push(igHtml);
 
     const creditsHtml = credits.length ? `
       <div class="lb-sidebar-section">
