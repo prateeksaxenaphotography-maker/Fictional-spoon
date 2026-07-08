@@ -498,7 +498,7 @@
       <div style="display:flex; flex-direction:column; gap: 24px; width: 100%;">
         <div>
           <span class="eyebrow" style="color:var(--accent); font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:0.05em; text-transform:uppercase;">
-            ${esc(shoot.brand)} · ${esc(shoot.type)}
+            ${isCc ? "Model Portfolio" : `${esc(shoot.brand)} · ${esc(shoot.type)}`}
           </span>
           <h2 style="font-family:'Outfit', sans-serif; font-size: 24px; font-weight:700; margin: 6px 0 0; color:var(--ink); line-height: 1.2;">
             ${esc(getTalentCleanName(shoot.talent || shoot.title))}
@@ -506,14 +506,27 @@
           ${shoot.description ? `<p style="font-size:13px; color:var(--ink-soft); line-height:1.5; margin:14px 0 0;">${esc(shoot.description)}</p>` : ""}
         </div>
         
+        ${isCc ? "" : `
         <dl class="work-credits" style="margin: 0; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);">
           ${shoot.activity ? `<div><dt>Activity</dt><dd>${esc(shoot.activity)}</dd></div>` : ""}
           ${shoot.season ? `<div><dt>Season</dt><dd>${esc(shoot.season)}</dd></div>` : ""}
-          ${(shoot.location && !isCc) ? `<div><dt>Location</dt><dd>${esc(shoot.location)}</dd></div>` : ""}
+          ${(shoot.location) ? `<div><dt>Location</dt><dd>${esc(shoot.location)}</dd></div>` : ""}
         </dl>
+        `}
         
         ${statsHtml}
-        ${creditsHtml}
+        
+        ${isCc ? `
+          <div class="lb-sidebar-section" style="border-top: 1px solid var(--line); padding-top: 16px;">
+            <dl class="work-credits" style="margin: 0;">
+              ${igHtml}
+              ${kavyarHtml}
+            </dl>
+          </div>
+        ` : `
+          ${creditsHtml}
+        `}
+        
         ${diagHtml}
         ${pdfBtnHtml}
         ${disclaimerHtml}
@@ -1128,7 +1141,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           ${testimonialsHtml}
           ${diagramHtml}
           <div style="margin-top: 22px; display: flex; align-items: center; flex-wrap: wrap; gap: 14px; width: 100%;">
-            <button class="link-arrow work-open" style="padding: 0;">View project →</button>
+            <button class="link-arrow work-open" style="padding: 0;">${s.isCompCard ? "View model details" : "View project"} →</button>
             ${(!s.demo && !s.isCompCard && isAdmin()) ? `
               <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0;" data-id="${s.id}">Edit details</button>
               <button class="link-arrow work-delete" style="color: #b22222; font-weight: 700; padding: 0;" data-id="${s.id}">Delete</button>
