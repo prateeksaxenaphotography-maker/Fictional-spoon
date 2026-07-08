@@ -117,6 +117,26 @@
     }
     return clean.replace(/^@/, "");
   };
+  const parseKavyarLink = (h) => {
+    let clean = String(h ?? "").trim();
+    if (!clean) return "";
+    if (clean.includes("kavyar.com")) {
+      try {
+        let temp = clean;
+        if (!temp.startsWith("http://") && !temp.startsWith("https://")) {
+          temp = "https://" + temp;
+        }
+        const url = new URL(temp);
+        const parts = url.pathname.split("/").filter(Boolean);
+        if (parts.length > 0) return "https://kavyar.com/" + parts[0];
+      } catch {
+        const segments = clean.split("/").filter(Boolean);
+        const last = segments[segments.length - 1] || clean;
+        return "https://kavyar.com/" + last;
+      }
+    }
+    return "https://kavyar.com/" + clean.replace(/^@/, "");
+  };
   const isFutureShoot = (s) => {
     if (!s.date) return false;
     const t = Date.parse(s.date);
@@ -1718,7 +1738,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                   <input id="f_ig" type="text" placeholder="e.g. @handle1, @handle2" />
                   <div id="f_ig_verify" style="margin-top: 5px; font-size: 11px; display: none;"></div>
                 </label>
-                <label class="field"><span>Kavyar Profile / Links</span><input id="f_kavyar" type="text" placeholder="e.g. https://kavyar.com/profile" /></label>
+                <label class="field" style="position: relative;">
+                  <span>Kavyar Profile / Links</span>
+                  <input id="f_kavyar" type="text" placeholder="e.g. https://kavyar.com/profile" />
+                  <div id="f_kavyar_verify" style="margin-top: 5px; font-size: 11px; display: none;"></div>
+                </label>
               </div>
               <div class="field-row">
                 <label class="field"><span>Portfolio link / Website</span><input id="f_link" type="url" placeholder="https://…" /></label>
@@ -2320,6 +2344,49 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       updateIgVerify();
     });
 
+    const kavyarInput = $("#f_kavyar");
+    const kavyarVerify = $("#f_kavyar_verify");
+    let clickedKavyarVerify = false;
+    kavyarVerify?.addEventListener("click", (e) => {
+      if (e.target.closest("a")) clickedKavyarVerify = true;
+    });
+    function updateKavyarVerify() {
+      if (!kavyarInput || !kavyarVerify) return;
+      const val = kavyarInput.value.trim();
+      if (!val) {
+        kavyarVerify.style.display = "none";
+        kavyarVerify.innerHTML = "";
+        return;
+      }
+      const links = val.split(",").map(parseKavyarLink).filter(Boolean);
+      if (links.length === 0) {
+        kavyarVerify.style.display = "none";
+        kavyarVerify.innerHTML = "";
+        return;
+      }
+      const linksHtml = links.map(url => {
+        const username = url.split("/").pop();
+        return `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600; text-decoration:underline; display:inline-flex; align-items:center; gap:2px; margin-right:12px;">Kavyar: ${esc(username)} ↗</a>`;
+      }).join("");
+      kavyarVerify.innerHTML = `<span style="color:var(--ink-soft); font-family:'JetBrains Mono', monospace; font-size:10px; margin-right:6px; text-transform:uppercase;">Verify links:</span> ${linksHtml}`;
+      kavyarVerify.style.display = "block";
+    }
+
+    setTimeout(updateKavyarVerify, 50);
+
+    kavyarInput?.addEventListener("input", updateKavyarVerify);
+    kavyarInput?.addEventListener("blur", () => {
+      let val = kavyarInput.value.trim();
+      if (val) {
+        const cleaned = val.split(",").map(h => {
+          const parsed = parseKavyarLink(h);
+          return parsed;
+        }).filter(Boolean).join(", ");
+        kavyarInput.value = cleaned;
+      }
+      updateKavyarVerify();
+    });
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const val = (id) => $("#" + id)?.value.trim();
@@ -2327,6 +2394,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const originalIg = editingShoot ? (editingShoot.instagram || "") : "";
       if (igVal && igVal !== originalIg && !clickedVerify) {
         const proceed = confirm("You haven't tested the new Instagram links. Would you like to proceed and publish anyway?");
+        if (!proceed) return;
+      }
+      const kavyarVal = val("f_kavyar");
+      const originalKavyar = editingShoot ? (editingShoot.kavyar || "") : "";
+      if (kavyarVal && kavyarVal !== originalKavyar && !clickedKavyarVerify) {
+        const proceed = confirm("You haven't tested the new Kavyar links. Would you like to proceed and publish anyway?");
         if (!proceed) return;
       }
       const isTestimonialOnly = !!$("#f_is_testimonial_only")?.checked;
