@@ -228,7 +228,7 @@ window.WPS_DATA = {
         }
       ],
       "featured": true,
-      "hideFromCompCard": true,
+      "hideFromCompCard": false,
       "coverPhotoId": "mr4x4vq62sxjxw"
     },
     {
@@ -446,6 +446,7 @@ window.WPS_DATA = {
     {
       "id": "mr8legmk0o8mqz",
       "createdAt": 1783304409260,
+      "isTestimonial": false,
       "title": "Abhishek Yadav",
       "brand": "Personal Project",
       "activity": "Fashion",
@@ -456,6 +457,7 @@ window.WPS_DATA = {
       "stylist": "—",
       "hair": "—",
       "mua": "—",
+      "videographer": "—",
       "talent": "Abhishek Yadav",
       "location": "Noida",
       "height": "",
@@ -470,7 +472,8 @@ window.WPS_DATA = {
       "gear": "",
       "client": "",
       "date": "2026-07-05",
-      "instagram": "",
+      "instagram": "@_abhishek.yadavv",
+      "kavyar": "",
       "link": "",
       "rights": "",
       "testimonials": [],
@@ -522,6 +525,8 @@ window.WPS_DATA = {
         }
       ],
       "featured": true,
+      "hideFromCompCard": false,
+      "disableCompCardDownload": false,
       "coverPhotoId": "mr8ld6oabyimod"
     },
     {
