@@ -228,7 +228,7 @@ window.WPS_DATA = {
         }
       ],
       "featured": true,
-      "hideFromCompCard": false,
+      "hideFromCompCard": true,
       "coverPhotoId": "mr4x4vq62sxjxw"
     },
     {
