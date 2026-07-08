@@ -2334,7 +2334,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       if (!s) return;
       const list = s.photos.map((p) => ({ ...p, shoot: s }));
       const media = card.querySelector(".noth-work-media");
-      media?.addEventListener("click", () => openLb(list, 0));
+      const cta = card.querySelector(".noth-work-cta");
+      const open = () => openLb(list, 0);
+      media?.addEventListener("click", open);
+      cta?.addEventListener("click", open);
 
       // Dynamic padding: if the cover's orientation clashes with the 16:9 frame,
       // contain the image (show it whole) over a blurred fill instead of cropping.
