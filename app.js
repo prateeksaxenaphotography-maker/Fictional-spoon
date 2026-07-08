@@ -216,6 +216,7 @@
   function renderLbSidebar(p) {
     const shoot = SHOOTS.find(x => x.id === p.shootId) || p.shoot;
     if (!shoot) return "";
+    const isCc = shoot.type === "Test Shoot";
     
     // Parse social handle
     let igHtml = "";
@@ -249,7 +250,6 @@
 
     // Credits
     const credits = [];
-    const isCc = shoot.type === "Test Shoot";
     if (isCc) {
       if (igHtml) credits.push(igHtml);
     } else {
