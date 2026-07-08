@@ -474,6 +474,18 @@
       `;
     }
 
+    let pdfBtnHtml = "";
+    if (isCc) {
+      window.currentCompCardShootObj = shoot;
+      pdfBtnHtml = `
+        <div class="lb-sidebar-section" style="margin-top: 10px;">
+          <button class="btn btn-dark btn-block" style="font-size: 11px; height: auto; padding: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;" onclick="window.printCompCard('${shoot.id}')">
+            Export PDF Comp Card ↗
+          </button>
+        </div>
+      `;
+    }
+
     const disclaimerHtml = isCc ? `
       <p class="lb-disclaimer" style="font-size: 11px; font-style: italic; color: var(--ink-soft); margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; line-height: 1.5; font-family: sans-serif;">
         To book this talent, please connect directly via their verified social channels or contact their representing agency.
@@ -503,6 +515,7 @@
         ${statsHtml}
         ${creditsHtml}
         ${diagHtml}
+        ${pdfBtnHtml}
         ${disclaimerHtml}
         ${(() => {
           if (!isAdmin()) return "";
@@ -3445,6 +3458,43 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       footerSocials.innerHTML = fl.join("");
     }
   }
+
+  window.printCompCard = (shootId) => {
+    const shoot = SHOOTS.find(x => x.id === shootId) || (window.currentCompCardShootObj);
+    if (!shoot) return;
+    const photosToPrint = (shoot.photos || []).slice(0, 9);
+    const statsArr = [];
+    if (shoot.height) statsArr.push(`Height: ${shoot.height}`);
+    if (shoot.chest) statsArr.push(`Chest/Bust: ${shoot.chest}`);
+    if (shoot.waist) statsArr.push(`Waist: ${shoot.waist}`);
+    if (shoot.hips) statsArr.push(`Hips: ${shoot.hips}`);
+    if (shoot.shoes) statsArr.push(`Shoes: ${shoot.shoes}`);
+    if (shoot.modelHair) statsArr.push(`Hair: ${shoot.modelHair}`);
+    if (shoot.modelEyes) statsArr.push(`Eyes: ${shoot.modelEyes}`);
+    const statsLine = statsArr.join("  ·  ") || "Stats not specified";
+    const photosHtml = photosToPrint.map(p => {
+      return `<div class="print-photo-item" style="break-inside: avoid;"><img src="${photoSrc(p)}" alt="Portfolio frame" style="width: 100%; height: 100%; aspect-ratio: 1 / 1; object-fit: cover; border: 1px solid #ccc; display: block;" /></div>`;
+    }).join("");
+    const printContainer = document.getElementById("compCardPrintContainer");
+    if (!printContainer) return;
+    printContainer.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 12px;">
+        <h1 style="font-family:'Outfit', sans-serif; font-size: 28px; font-weight: 800; margin: 0; text-transform: uppercase; color: #000; letter-spacing: -0.02em;">${getTalentCleanName(shoot.talent || shoot.title)}</h1>
+        <span style="font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: #666; text-transform: uppercase;">nerdyphotographer.in studio</span>
+      </div>
+      <div style="font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; background: #f0f0f0; color: #000; padding: 8px 12px; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; border-radius: 4px; margin-bottom: 16px;">
+        ${statsLine}
+      </div>
+      <div class="print-photo-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; flex-grow: 1; margin-bottom: 16px;">
+        ${photosHtml}
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #ccc; padding-top: 12px; margin-top: auto; font-family: sans-serif; font-size: 9px; color: #777;">
+        <span>To book this talent, please connect directly via their verified socials.</span>
+        <span>Generated under nerdyphotographer.in studio or its subsidiaries.</span>
+      </div>
+    `;
+    window.print();
+  };
 
   (async function boot() {
     try {
