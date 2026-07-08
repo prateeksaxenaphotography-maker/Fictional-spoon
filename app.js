@@ -43,6 +43,43 @@
     ].filter(Boolean);
     return parts.join(" ");
   };
+
+  function getAllTestimonials() {
+    const list = [];
+    SHOOTS.forEach(s => {
+      if (s.isTestimonial) {
+        list.push({
+          quote: s.description || "",
+          by: s.talent || "Anonymous",
+          meta: s.brand || "",
+          season: s.season || "",
+          shootId: s.id,
+          shootTitle: s.title
+        });
+      } else if (s.testimonials && s.testimonials.length) {
+        s.testimonials.forEach(t => {
+          list.push({
+            quote: t.quote || "",
+            by: t.by || "Anonymous",
+            meta: s.brand === "Personal Project" ? "" : s.brand,
+            season: s.season || "",
+            shootId: s.id,
+            shootTitle: s.title
+          });
+        });
+      }
+    });
+    return list;
+  }
+
+  function shuffleArray(array) {
+    const copy = [...array];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
   // noth.in-style oversized section word that rises per-letter on scroll.
   const kineticWord = (word) => {
     const letters = String(word).split("").map((ch, i) =>
@@ -979,7 +1016,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   }
 
   function viewHome() {
-    const feat = SHOOTS.slice(0, 7);
+    const feat = SHOOTS.filter(s => !s.isTestimonial).slice(0, 7);
     CURRENT_VIEW_SHOOTS = feat;
     const brandCount = new Set(SHOOTS.filter(s => s.client && s.client.trim()).map(s => s.brand)).size;
     const activeBrands = BRANDS.filter(b => SHOOTS.some(s => s.brand === b && s.client && s.client.trim()));
@@ -991,6 +1028,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const subLetters = "PHOTOGRAPHER".split("").map((ch, i) =>
       `<span class="wm-sub-letter" style="--i:${i}">${esc(ch)}</span>`
     ).join("");
+
+    const allT = getAllTestimonials();
+    const shuffledT = shuffleArray(allT);
+    const homeT = shuffledT.slice(0, 5);
     return `
       <section class="hero hero-mono hero-brand">
         <div class="hero-bg" aria-hidden="true"></div>
@@ -1067,22 +1108,32 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       </section>
 
 
-      ${window.STUDIO_CONFIG?.testimonials?.length ? `
+      ${homeT.length ? `
       <!-- TESTIMONIALS (CLIENT REACTIONS) -->
       <section class="section container" style="border-top: 1px solid var(--line); padding-top: 60px; margin-top: 60px;">
-        <div class="section-head reveal" style="margin-bottom: 40px; text-align: center;">
-          <p class="eyebrow">Client Reactions</p>
-          <h2>Testimonials &amp; Trust</h2>
+        <div class="section-head row reveal" style="margin-bottom: 40px;">
+          <div>
+            <p class="eyebrow">Client Reactions</p>
+            <h2>Testimonials &amp; Trust</h2>
+          </div>
+          ${allT.length > 5 ? `<a href="/testimonials" data-link class="link-arrow">All Testimonials (${allT.length}) →</a>` : ""}
         </div>
-        <div class="testimonials-grid">
-          ${window.STUDIO_CONFIG.testimonials.map((t, i) => `
-            <div class="testimonial-card reveal" style="--d:${(i * 0.06).toFixed(2)}s">
-              <p class="t-quote">${esc(t.quote)}</p>
-              <div class="t-author">${esc(t.author)}</div>
-              ${t.role ? `<div class="t-role">${esc(t.role)}</div>` : ''}
+        <div class="testimonials-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 30px;">
+          ${homeT.map((t, i) => `
+            <div class="testimonial-card reveal" style="--d:${(i * 0.06).toFixed(2)}s; background: var(--bone); border: 1px solid var(--line); padding: 24px; border-radius: 12px; display: flex; flex-direction: column; gap: 15px; justify-content: space-between;">
+              <p style="font-family: 'Georgia', serif; font-size: 15px; font-style: italic; line-height: 1.6; color: var(--ink); margin: 0;">“${esc(t.quote)}”</p>
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <strong style="font-family: 'Archivo', sans-serif; font-size: 13px; color: var(--ink);">${esc(t.by)}</strong>
+                <span style="font-size: 11px; color: var(--ink-soft); font-family: var(--mono-font);">${esc(t.meta)} ${t.season ? `· ${esc(t.season)}` : ""}</span>
+              </div>
             </div>
           `).join("")}
         </div>
+        ${allT.length > 5 ? `
+        <div style="text-align: center; margin-top: 40px;" class="reveal">
+          <a href="/testimonials" data-link class="btn btn-dark">View all ${allT.length} testimonials →</a>
+        </div>
+        ` : ""}
       </section>
       ` : ''}
 
@@ -1503,6 +1554,46 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       </section>`;
   }
 
+  function viewTestimonials() {
+    const allT = getAllTestimonials();
+    const shuffledT = shuffleArray(allT);
+    return `
+      <section class="page-head">
+        <div class="container">
+          <p class="eyebrow reveal">06 — Social Proof</p>
+          ${kineticH1("Testimonials")}
+          <p class="page-sub reveal">Words from our creative partners, brands, and models about their shoot experience and production results at nerdyphotographer.in.</p>
+        </div>
+      </section>
+      <section class="section container">
+        ${shuffledT.length ? `
+        <div class="testimonials-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 30px;">
+          ${shuffledT.map((t, i) => `
+            <div class="testimonial-card reveal" style="--d:${(i * 0.05).toFixed(2)}s; background: var(--bone); border: 1px solid var(--line); padding: 28px; border-radius: 12px; display: flex; flex-direction: column; gap: 20px; justify-content: space-between;">
+              <p style="font-family: 'Georgia', serif; font-size: 16px; font-style: italic; line-height: 1.6; color: var(--ink); margin: 0;">“${esc(t.quote)}”</p>
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <strong style="font-family: 'Archivo', sans-serif; font-size: 14px; color: var(--ink);">${esc(t.by)}</strong>
+                <span style="font-size: 11px; color: var(--ink-soft); font-family: var(--mono-font);">${esc(t.meta)} ${t.season ? `· ${esc(t.season)}` : ""}</span>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+        ` : `<p class="page-sub">No testimonials published yet.</p>`}
+      </section>
+      <section class="cta-band" style="border-top: 1px solid var(--line); margin-top: 60px;">
+        <div class="container reveal">
+          ${isAdmin() ? `
+            <h2>Have a testimonial to publish?</h2>
+            <a href="/upload" data-link class="btn btn-dark">Publish testimonial →</a>
+          ` : `
+            <h2>Ready to collaborate?</h2>
+            <a href="/book" data-link class="btn btn-dark">Book your photoshoot session →</a>
+          `}
+        </div>
+      </section>
+    `;
+  }
+
   /* ---------- Upload view (rich, grouped form) ---------- */
   let staged = []; // {id,dataUrl,name}
   function viewUpload() {
@@ -1531,11 +1622,17 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           </div>
 
           <form class="shoot-form reveal" id="shootForm" autocomplete="off">
+            <div style="margin-bottom: 24px; padding: 14px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--bone); display: flex; align-items: center; gap: 10px; width: 100%;">
+              <input id="f_is_testimonial_only" type="checkbox" style="width: 16px; height: 16px; accent-color: var(--accent); margin: 0; cursor: pointer;" />
+              <label for="f_is_testimonial_only" style="font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; font-weight: 700; cursor: pointer; color: var(--ink);">Testimonial Only (No Photoshoot Album)</label>
+            </div>
+
             <fieldset><legend>The shoot</legend>
               <label class="field"><span>Shoot title *</span><input id="f_title" type="text" placeholder="e.g. Merrell Trail — Spring '26" required /></label>
               <div class="field-row">
-                <label class="field"><span>Brand</span><select id="f_brand">${opt(BRANDS)}<option>Other</option></select></label>
-                <label class="field"><span>Activity</span><select id="f_activity">${opt(ACTIVITIES)}</select></label>
+                <label class="field" id="f_brand_select_field"><span>Brand</span><select id="f_brand">${opt(BRANDS)}<option>Other</option></select></label>
+                <label class="field" id="f_brand_text_field" style="display: none;"><span>Company / Role *</span><input id="f_brand_text" type="text" placeholder="e.g. Model, Vogue, Brand Director" /></label>
+                <label class="field" id="f_activity_field"><span>Activity</span><select id="f_activity">${opt(ACTIVITIES)}</select></label>
               </div>
               <div class="field-row">
                 <label class="field"><span>Type</span><select id="f_type">${opt(TYPES)}</select></label>
@@ -1605,7 +1702,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               </div>
             </fieldset>
 
-            <fieldset><legend>Testimonials <span class="legend-opt">optional (up to 3)</span></legend>
+            <fieldset id="extraTestimonialsFs"><legend>Testimonials <span class="legend-opt">optional (up to 3)</span></legend>
               <div class="testimonial-group">
                 <h4>Testimonial 1</h4>
                 <label class="field"><span>Quote</span><textarea id="f_quote_1" rows="2" placeholder="“First quote…”"></textarea></label>
@@ -1825,6 +1922,50 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     staged = [];
     const dz = $("#dropzone"), fi = $("#fileInput"), grid = $("#stagingGrid"), note = $("#queueNote"), pub = $("#publishBtn"), form = $("#shootForm");
     const diagInput = $("#f_diagram_file"), diagPreview = $("#diagramPreview"), diagImg = $("#f_diagram_img"), diagVisibility = $("#f_diagram_visibility"), clearDiagBtn = $("#clearDiagramBtn");
+    const testimonialOnlyCheckbox = $("#f_is_testimonial_only");
+    const updateTestimonialFormState = () => {
+      const isTestimonialOnly = !!testimonialOnlyCheckbox?.checked;
+
+      // Hide / show the dropzone
+      if (dz) dz.style.display = isTestimonialOnly ? "none" : "";
+
+      // Hide / show other fieldsets
+      const statsFs = $("#modelStatsFieldset");
+      if (statsFs) statsFs.style.display = isTestimonialOnly ? "none" : "";
+
+      const lightingFs = $("#fieldsetLighting");
+      if (lightingFs) lightingFs.style.display = isTestimonialOnly ? "none" : "";
+
+      const extraTestimonialsFs = $("#extraTestimonialsFs");
+      if (extraTestimonialsFs) extraTestimonialsFs.style.display = isTestimonialOnly ? "none" : "";
+
+      // Hide / show Brand Dropdown vs Custom Text Input
+      const brandSelectField = $("#f_brand_select_field");
+      const brandTextField = $("#f_brand_text_field");
+      if (brandSelectField) brandSelectField.style.display = isTestimonialOnly ? "none" : "";
+      if (brandTextField) brandTextField.style.display = isTestimonialOnly ? "" : "none";
+
+      const activityField = $("#f_activity_field");
+      if (activityField) activityField.style.display = isTestimonialOnly ? "none" : "";
+
+      // Change labels and descriptions
+      const titleLabel = $("#f_title")?.closest(".field")?.querySelector("span");
+      if (titleLabel) {
+        titleLabel.textContent = isTestimonialOnly ? "Testimonial Subject / Headline *" : "Shoot title *";
+      }
+
+      const talentLabel = $("#f_talent")?.closest(".field")?.querySelector("span");
+      if (talentLabel) {
+        talentLabel.textContent = isTestimonialOnly ? "Client Name *" : "Model / talent (comma-separated)";
+      }
+
+      const descLabel = $("#f_desc")?.closest(".field")?.querySelector("span");
+      if (descLabel) {
+        descLabel.textContent = isTestimonialOnly ? "Testimonial Quote *" : "Description";
+      }
+    };
+    testimonialOnlyCheckbox?.addEventListener("change", updateTestimonialFormState);
+    updateTestimonialFormState();
     let diagramDataUrl = null;
 
     diagInput?.addEventListener("change", async (e) => {
@@ -1858,8 +1999,16 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         if (pageSub) pageSub.textContent = `Editing: ${editingShoot.title}`;
         pub.textContent = "Save changes";
         
+        if (editingShoot.isTestimonial) {
+          if (testimonialOnlyCheckbox) testimonialOnlyCheckbox.checked = true;
+          $("#f_brand_text").value = editingShoot.brand || "";
+        } else {
+          if (testimonialOnlyCheckbox) testimonialOnlyCheckbox.checked = false;
+          $("#f_brand").value = editingShoot.brand || "Other";
+        }
+        updateTestimonialFormState();
+
         $("#f_title").value = editingShoot.title || "";
-        $("#f_brand").value = editingShoot.brand || "Other";
         $("#f_activity").value = editingShoot.activity || "";
         $("#f_type").value = editingShoot.type || "";
         $("#f_season").value = editingShoot.season || "";
@@ -2141,9 +2290,16 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         const proceed = confirm("You haven't tested the new Instagram links. Would you like to proceed and publish anyway?");
         if (!proceed) return;
       }
-      if (!staged.length) { toast("Add at least one photo first."); return; }
+      const isTestimonialOnly = !!$("#f_is_testimonial_only")?.checked;
+      if (isTestimonialOnly) {
+        if (!val("f_title")) { toast("Testimonial Subject / Headline is required."); return; }
+        if (!val("f_talent")) { toast("Client Name is required."); return; }
+        if (!val("f_desc")) { toast("Testimonial Quote is required."); return; }
+      } else {
+        if (!staged.length) { toast("Add at least one photo first."); return; }
+      }
       
-      const testimonialsList = [
+      const testimonialsList = isTestimonialOnly ? [] : [
         val("f_quote_1") ? { quote: val("f_quote_1"), by: val("f_quoteby_1") || "Client" } : null,
         val("f_quote_2") ? { quote: val("f_quote_2"), by: val("f_quoteby_2") || "Client" } : null,
         val("f_quote_3") ? { quote: val("f_quote_3"), by: val("f_quoteby_3") || "Client" } : null,
@@ -2151,7 +2307,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
       const coverItem = staged.find(x => x.isCover) || staged[0];
       let pColors = editingShoot ? editingShoot.palette : ["#3a3a3a", "#0d0d0d"];
-      if (coverItem) {
+      if (coverItem && !isTestimonialOnly) {
         pColors = await extractPalette(photoSrc(coverItem));
       }
       let dateVal = val("f_date");
@@ -2164,24 +2320,39 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const shoot = {
         id: editingShoot ? editingShoot.id : uid(),
         createdAt: editingShoot ? editingShoot.createdAt : Date.now(),
-        title: val("f_title") || "Untitled photoshoot",
-        brand: val("f_brand") || "Other", activity: $("#f_activity").value, type: $("#f_type").value, season: val("f_season"),
-        photographer: val("f_photographer") || "Studio", artDirector: val("f_ad"), stylist: val("f_stylist") || "—",
-        hair: val("f_hair") || "—", mua: val("f_mua") || "—", talent: val("f_talent"), location: val("f_location"),
-        height: val("f_height"),
-        chest: val("f_chest"),
-        waist: val("f_waist"),
-        hips: val("f_hips"),
-        shoes: val("f_shoes"),
-        modelHair: val("f_model_hair"),
-        modelEyes: val("f_model_eyes"),
-        description: val("f_desc"), tags: val("f_tags"), gear: val("f_gear"),
-        client: val("f_client"), date: dateVal, instagram: val("f_ig"), link: val("f_link"), rights: val("f_rights"),
+        isTestimonial: isTestimonialOnly,
+        title: val("f_title") || "Untitled",
+        brand: isTestimonialOnly ? val("f_brand_text") : (val("f_brand") || "Other"),
+        activity: isTestimonialOnly ? "Testimonial" : $("#f_activity").value,
+        type: isTestimonialOnly ? "Testimonial" : $("#f_type").value,
+        season: val("f_season"),
+        photographer: isTestimonialOnly ? "" : (val("f_photographer") || "Studio"),
+        artDirector: isTestimonialOnly ? "" : val("f_ad"),
+        stylist: isTestimonialOnly ? "" : (val("f_stylist") || "—"),
+        hair: isTestimonialOnly ? "" : (val("f_hair") || "—"),
+        mua: isTestimonialOnly ? "" : (val("f_mua") || "—"),
+        talent: val("f_talent"),
+        location: isTestimonialOnly ? "" : val("f_location"),
+        height: isTestimonialOnly ? "" : val("f_height"),
+        chest: isTestimonialOnly ? "" : val("f_chest"),
+        waist: isTestimonialOnly ? "" : val("f_waist"),
+        hips: isTestimonialOnly ? "" : val("f_hips"),
+        shoes: isTestimonialOnly ? "" : val("f_shoes"),
+        modelHair: isTestimonialOnly ? "" : val("f_model_hair"),
+        modelEyes: isTestimonialOnly ? "" : val("f_model_eyes"),
+        description: val("f_desc"),
+        tags: isTestimonialOnly ? "" : val("f_tags"),
+        gear: isTestimonialOnly ? "" : val("f_gear"),
+        client: isTestimonialOnly ? "" : val("f_client"),
+        date: dateVal,
+        instagram: val("f_ig"),
+        link: val("f_link"),
+        rights: isTestimonialOnly ? "" : val("f_rights"),
         testimonials: testimonialsList,
-        lightingDiagram: diagramDataUrl,
-        lightingDiagramVisibility: $("#f_diagram_visibility").value,
+        lightingDiagram: isTestimonialOnly ? null : diagramDataUrl,
+        lightingDiagramVisibility: isTestimonialOnly ? "disabled" : $("#f_diagram_visibility").value,
         palette: pColors,
-        photos: staged.map((f, i) => ({
+        photos: isTestimonialOnly ? [] : staged.map((f, i) => ({
           id: f.id + "-" + i,
           dataUrl: f.dataUrl,
           url: f.url,
@@ -2189,8 +2360,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           ...(typeof f.focalX === "number" ? { focalX: f.focalX, focalY: f.focalY } : {}),
           ...(f.caption && f.caption.trim() ? { caption: f.caption.trim() } : {})
         })),
-        featured: $("#f_featured") ? $("#f_featured").checked : false,
-        coverPhotoId: coverItem ? coverItem.id : null,
+        featured: isTestimonialOnly ? false : ($("#f_featured") ? $("#f_featured").checked : false),
+        coverPhotoId: isTestimonialOnly ? null : (coverItem ? coverItem.id : null),
       };
       pub.disabled = true; pub.textContent = editingShoot ? "Saving changes…" : "Publishing…";
       await putShoot(shoot);
@@ -2533,7 +2704,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     });
   }
 
-  const ROUTES = { "": viewHome, "albums": viewAlbums, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload, "book": viewBook };
+  const ROUTES = { "": viewHome, "albums": viewAlbums, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload, "book": viewBook, "testimonials": viewTestimonials };
 
   function render() {
     let raw = location.pathname;
