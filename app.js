@@ -1648,7 +1648,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   function viewBook() {
     const params = new URLSearchParams(location.search);
     const prefilledType = params.get("type") || "";
-    const isSelected = (val) => val === prefilledType ? "selected" : "";
+    const isSelected = (val) => {
+      if (val === "Fashion Editorial" && prefilledType === "Editorial") return "selected";
+      if (val === "Commercial Campaign" && prefilledType === "Commercial") return "selected";
+      return val === prefilledType ? "selected" : "";
+    };
 
     return `
       <section class="page-head">
@@ -1714,9 +1718,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                      <option value="Fashion Editorial" ${isSelected("Fashion Editorial")}>Fashion Editorial</option>
                      <option value="Fitness &amp; Athletic" ${isSelected("Fitness &amp; Athletic")}>Fitness &amp; Athletic</option>
                      <option value="Sports Action" ${isSelected("Sports Action")}>Sports Action</option>
-                     <option value="Commercial Campaign" ${prefilledType === "Commercial" ? "selected" : ""}>Commercial Campaign</option>
-                     <option value="Model Portfolio" ${prefilledType === "Editorial" ? "selected" : ""}>Model Portfolio (Comp Cards)</option>
-                     <option value="Test Shoot" ${prefilledType === "Test Shoot" ? "selected" : ""}>Test Shoot (TFP Collab)</option>
+                     <option value="Commercial Campaign" ${isSelected("Commercial Campaign")}>Commercial Campaign</option>
+                     <option value="Test Shoot" ${isSelected("Test Shoot")}>Test Shoot (TFP Collab)</option>
                      <option value="Other" ${isSelected("Other")}>Other Focus Area</option>
                    </select>
                  </label>
