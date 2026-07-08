@@ -3614,9 +3614,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     `;
     
     const footerHtml = `
-      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #ccc; padding-top: 12px; margin-top: auto; font-family: sans-serif; font-size: 8.5px; color: #777; gap: 20px;">
-        <span>To book this talent, please connect directly via verified socials. Studio charges would apply in case the studio is booked.</span>
-        <span style="text-align: right; line-height: 1.4;">All images are proprietary to nerdyphotographer.in studio and its subsidiaries. They cannot be sold or used for commercial purposes without prior written approval.</span>
+      <div style="border-top: 1px solid #ccc; padding-top: 10px; margin-top: auto; font-family: sans-serif; font-size: 8px; color: #555; line-height: 1.5; display: flex; flex-direction: column; gap: 4px; text-align: left; width: 100%;">
+        <div style="font-weight: 700;">To book this talent, please connect directly via verified socials. Studio charges would apply in case the studio is booked.</div>
+        <div style="color: #888; font-size: 7px;">All images are proprietary to nerdyphotographer.in studio and its subsidiaries. They cannot be sold or used for commercial purposes without prior written approval.</div>
       </div>
     `;
     
