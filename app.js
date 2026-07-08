@@ -11,7 +11,14 @@
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   // A photo renders from its published file URL when it has one, else its local base64.
-  const photoSrc = (p) => (p && (p.url || p.dataUrl)) || "";
+  const photoSrc = (p) => {
+    if (!p) return "";
+    let src = p.url || p.dataUrl || "";
+    if (src.startsWith("photos/")) {
+      src = "/" + src;
+    }
+    return src;
+  };
   // Build responsive srcset attributes when a photo has generated size variants.
   // Existing single-size photos return "" (plain src is used, unchanged behaviour).
   const srcsetAttr = (p, sizes = "(max-width: 620px) 90vw, (max-width: 1100px) 45vw, 640px") => {
@@ -196,20 +203,132 @@
   const brandTag = (s) => `${esc(s.brand)}${s.activity ? " · " + esc(s.activity) : ""}`;
 
   /* ---------------- Lightbox ---------------- */
-  const lb = $("#lightbox"), lbImg = $("#lightboxImg"), lbCap = $("#lightboxCaption"), lbCount = $("#lbCounter");
+  const lb = $("#lightbox"), lbImg = $("#lightboxImg"), lbSidebar = $("#lightboxSidebar"), lbCount = $("#lbCounter");
   let lbList = [], lbIdx = 0, lbReturnFocus = null;
+  
+  window.toggleLbDiagram = () => {
+    const el = document.getElementById("lbDiagramImg");
+    if (el) {
+      el.style.display = el.style.display === "none" ? "block" : "none";
+    }
+  };
+
+  function renderLbSidebar(p) {
+    const shoot = SHOOTS.find(x => x.id === p.shootId) || p.shoot;
+    if (!shoot) return "";
+    
+    // Parse social handle
+    let igHtml = "";
+    if (shoot.instagram) {
+      const handles = shoot.instagram.split(",").map(x => x.trim()).filter(Boolean);
+      if (handles.length) {
+        const primaryIg = handles[0].replace(/^@/, "");
+        igHtml = `<div><dt>Instagram</dt><dd><a href="https://instagram.com/${primaryIg}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none;">@${primaryIg}</a></dd></div>`;
+      }
+    }
+
+    // Model Stats
+    let statsHtml = "";
+    const hasStats = shoot.height || shoot.chest || shoot.waist || shoot.hips || shoot.shoes || shoot.modelHair || shoot.modelEyes;
+    if (hasStats) {
+      statsHtml = `
+        <div class="lb-sidebar-section">
+          <h4 style="font-family:'Outfit', sans-serif; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); margin:0 0 10px;">Model Stats</h4>
+          <dl class="work-credits" style="margin: 0;">
+            ${shoot.height ? `<div><dt>Height</dt><dd>${esc(shoot.height)}</dd></div>` : ""}
+            ${shoot.chest ? `<div><dt>Chest/Bust</dt><dd>${esc(shoot.chest)}</dd></div>` : ""}
+            ${shoot.waist ? `<div><dt>Waist</dt><dd>${esc(shoot.waist)}</dd></div>` : ""}
+            ${shoot.hips ? `<div><dt>Hips</dt><dd>${esc(shoot.hips)}</dd></div>` : ""}
+            ${shoot.shoes ? `<div><dt>Shoes</dt><dd>${esc(shoot.shoes)}</dd></div>` : ""}
+            ${shoot.modelHair ? `<div><dt>Hair</dt><dd>${esc(shoot.modelHair)}</dd></div>` : ""}
+            ${shoot.modelEyes ? `<div><dt>Eyes</dt><dd>${esc(shoot.modelEyes)}</dd></div>` : ""}
+          </dl>
+        </div>
+      `;
+    }
+
+    // Credits
+    const credits = [];
+    const isCc = shoot.type === "Test Shoot";
+    if (isCc) {
+      if (igHtml) credits.push(igHtml);
+    } else {
+      if (shoot.photographer) credits.push(`<div><dt>Photo</dt><dd>${esc(shoot.photographer)}</dd></div>`);
+      if (shoot.artDirector && shoot.artDirector !== "—") credits.push(`<div><dt>Art Direction</dt><dd>${esc(shoot.artDirector)}</dd></div>`);
+      if (shoot.stylist && shoot.stylist !== "—") credits.push(`<div><dt>Stylist</dt><dd>${esc(shoot.stylist)}</dd></div>`);
+      if (shoot.mua && shoot.mua !== "—") credits.push(`<div><dt>MUA</dt><dd>${esc(shoot.mua)}</dd></div>`);
+      if (shoot.hair && shoot.hair !== "—") credits.push(`<div><dt>Hair</dt><dd>${esc(shoot.hair)}</dd></div>`);
+      if (igHtml) credits.push(igHtml);
+    }
+
+    const creditsHtml = credits.length ? `
+      <div class="lb-sidebar-section">
+        <h4 style="font-family:'Outfit', sans-serif; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); margin:0 0 10px;">Credits</h4>
+        <dl class="work-credits" style="margin: 0;">
+          ${credits.join("")}
+        </dl>
+      </div>
+    ` : "";
+
+    // Lighting diagram
+    let diagHtml = "";
+    if (shoot.lightingDiagram && (shoot.lightingDiagramVisibility === "public" || isAdmin())) {
+      diagHtml = `
+        <div class="lb-sidebar-section" style="margin-top: 10px;">
+          <button class="btn btn-ghost btn-block" style="font-size: 11px; height: auto; padding: 8px;" onclick="window.toggleLbDiagram()">
+            View Lighting Setup
+          </button>
+          <div id="lbDiagramImg" style="display:none; margin-top:12px; border:1px solid var(--line); padding:10px; background:var(--bone); border-radius:4px;">
+            <img src="${esc(shoot.lightingDiagram)}" style="max-width:100%; height:auto;" alt="Lighting setup" />
+          </div>
+        </div>
+      `;
+    }
+
+    const disclaimerHtml = isCc ? `
+      <p class="lb-disclaimer" style="font-size: 11px; font-style: italic; color: var(--ink-soft); margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; line-height: 1.5; font-family: sans-serif;">
+        To book this talent, please connect directly via their verified social channels or contact their representing agency.
+      </p>
+    ` : "";
+
+    return `
+      <div style="display:flex; flex-direction:column; gap: 24px; width: 100%;">
+        <div>
+          <span class="eyebrow" style="color:var(--accent); font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:0.05em; text-transform:uppercase;">
+            ${esc(shoot.brand)} · ${esc(shoot.type)}
+          </span>
+          <h2 style="font-family:'Outfit', sans-serif; font-size: 24px; font-weight:700; margin: 6px 0 0; color:var(--ink); line-height: 1.2;">
+            ${esc(shoot.talent || shoot.title)}
+          </h2>
+          ${shoot.description ? `<p style="font-size:13px; color:var(--ink-soft); line-height:1.5; margin:14px 0 0;">${esc(shoot.description)}</p>` : ""}
+        </div>
+        
+        <dl class="work-credits" style="margin: 0; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);">
+          ${shoot.activity ? `<div><dt>Activity</dt><dd>${esc(shoot.activity)}</dd></div>` : ""}
+          ${shoot.season ? `<div><dt>Season</dt><dd>${esc(shoot.season)}</dd></div>` : ""}
+          ${shoot.location ? `<div><dt>Location</dt><dd>${esc(shoot.location)}</dd></div>` : ""}
+        </dl>
+        
+        ${statsHtml}
+        ${creditsHtml}
+        ${diagHtml}
+        ${disclaimerHtml}
+      </div>
+    `;
+  }
+
   function openLb(list, idx) {
-    lbReturnFocus = document.activeElement;   // remember what to focus on close
+    lbReturnFocus = document.activeElement;
     lbList = list; lbIdx = idx; paintLb(); lb.hidden = false;
     document.body.style.overflow = "hidden"; $("#lightboxClose").focus();
   }
   function paintLb() {
     const p = lbList[lbIdx]; if (!p) return;
-    lbImg.src = photoSrc(p); lbImg.alt = p.caption || altFor(p.shoot); lbImg.style.objectPosition = "center";
-    // Prefer a per-photo caption when present, else the shoot credit line.
-    lbCap.textContent = p.caption
-      ? `${p.caption} — ${p.shoot.title}`
-      : `${p.shoot.title} — ${p.shoot.brand} · by ${p.shoot.photographer}`;
+    lbImg.src = photoSrc(p);
+    lbImg.srcset = p.url ? srcsetAttr(p) : "";
+    lbImg.alt = p.caption || altFor(p.shoot);
+    lbImg.style.objectPosition = "center";
+    lbSidebar.innerHTML = renderLbSidebar(p);
     lbCount.textContent = `${lbIdx + 1} / ${lbList.length}`;
   }
   function stepLb(d) { if (!lbList.length) return; lbIdx = (lbIdx + d + lbList.length) % lbList.length; paintLb(); }
@@ -603,6 +722,18 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const cover = s.photos.find(p => p.id.split("-")[0] === s.coverPhotoId) || s.photos[0] || { dataUrl: "", objectPosition: "center" };
     let coverPos = cover.objectPosition || "center";
     
+    const latestShoot = s.originalShoots ? s.originalShoots[0] : s;
+    const missingStats = [];
+    if (s.isCompCard) {
+      if (!latestShoot.height) missingStats.push("Height");
+      if (!latestShoot.chest) missingStats.push("Bust/Chest");
+      if (!latestShoot.waist) missingStats.push("Waist");
+      if (!latestShoot.hips) missingStats.push("Hips");
+      if (!latestShoot.shoes) missingStats.push("Shoes");
+      if (!latestShoot.modelHair) missingStats.push("Hair Color");
+      if (!latestShoot.modelEyes) missingStats.push("Eye Color");
+    }
+    
     // Parse multiple Instagram accounts/URLs to clickable links
     let igHtml = "";
     if (s.instagram) {
@@ -705,14 +836,53 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               <div><dt>Location</dt><dd><span${ed("location")}>${esc(s.location || "—")}</span></dd></div>
             </dl>`;
           })()}
+          
+          ${s.isCompCard && (latestShoot.height || latestShoot.chest || latestShoot.waist || latestShoot.hips || latestShoot.shoes || latestShoot.modelHair || latestShoot.modelEyes) ? `
+            <dl class="work-credits" style="margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px;">
+              <div style="grid-column: 1 / -1;"><dt style="font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 8px;">Model Stats</dt></div>
+              ${latestShoot.height ? `<div><dt>Height</dt><dd>${esc(latestShoot.height)}</dd></div>` : ""}
+              ${latestShoot.chest ? `<div><dt>Chest/Bust</dt><dd>${esc(latestShoot.chest)}</dd></div>` : ""}
+              ${latestShoot.waist ? `<div><dt>Waist</dt><dd>${esc(latestShoot.waist)}</dd></div>` : ""}
+              ${latestShoot.hips ? `<div><dt>Hips</dt><dd>${esc(latestShoot.hips)}</dd></div>` : ""}
+              ${latestShoot.shoes ? `<div><dt>Shoes</dt><dd>${esc(latestShoot.shoes)}</dd></div>` : ""}
+              ${latestShoot.modelHair ? `<div><dt>Hair</dt><dd>${esc(latestShoot.modelHair)}</dd></div>` : ""}
+              ${latestShoot.modelEyes ? `<div><dt>Eyes</dt><dd>${esc(latestShoot.modelEyes)}</dd></div>` : ""}
+            </dl>
+          ` : ""}
+
+          ${s.isCompCard ? `
+            <p style="font-size: 10px; font-style: italic; color: var(--ink-soft); margin-top: 10px; line-height: 1.4; font-family: sans-serif; text-align: left; width: 100%;">
+              To book this talent, please connect directly via their verified social channels or contact their representing agency.
+            </p>
+          ` : ""}
+
+          ${s.isCompCard && isAdmin() && missingStats.length > 0 ? `
+            <div class="admin-warning-banner" style="background: rgba(210,78,26,0.06); border: 1px dashed var(--accent); padding: 14px 18px; border-radius: 6px; margin: 18px 0; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent); line-height: 1.5; text-align: left; width: 100%; box-sizing: border-box;">
+              <span style="font-weight: 800; display: block; margin-bottom: 4px;">⚠️ MISSING COMP CARD STATS <span style="font-weight: normal; opacity: 0.7; font-size: 10px; margin-left: 6px;">(🔒 Visible Only to Admins)</span></span>
+              The following details are missing for this model: ${missingStats.join(", ")}.
+              <div style="margin-top: 8px;">
+                <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0; font-size: 11px; height: auto;" data-id="${latestShoot.id}">Add stats now →</button>
+              </div>
+            </div>
+          ` : ""}
           <p class="work-by">${creditsHtml}</p>
           ${testimonialsHtml}
           ${diagramHtml}
-          <div style="margin-top: 22px; display: flex; align-items: center; flex-wrap: wrap; gap: 14px;">
+          <div style="margin-top: 22px; display: flex; align-items: center; flex-wrap: wrap; gap: 14px; width: 100%;">
             <button class="link-arrow work-open" style="padding: 0;">View project →</button>
             ${(!s.demo && !s.isCompCard && isAdmin()) ? `
               <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0;" data-id="${s.id}">Edit details</button>
               <button class="link-arrow work-delete" style="color: #b22222; font-weight: 700; padding: 0;" data-id="${s.id}">Delete</button>
+            ` : ""}
+            ${s.isCompCard && isAdmin() ? `
+              <div style="margin-top: 20px; border-top: 1px dashed var(--line); padding-top: 16px; width: 100%; text-align: left;">
+                <p class="eyebrow" style="font-size: 9px; margin-bottom: 8px; color: var(--ink-soft); letter-spacing: 0.05em;">Admin Edit Portfolio Shoots</p>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  ${s.originalShoots.map(shootInfo => `
+                    <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0; text-align: left; font-size: 11px; height: auto;" data-id="${shootInfo.id}">Edit: "${esc(shootInfo.title)}" →</button>
+                  `).join("")}
+                </div>
+              </div>
             ` : ""}
           </div>
         </div>
@@ -1030,7 +1200,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     }
 
     const getSamples = (key, val, limit = 3) => {
-      const shoots = SHOOTS.filter(s => s[key] === val);
+      let shoots = SHOOTS.filter(s => s[key] === val);
+      if (key === "type" && val === "Test Shoot") {
+        shoots = shoots.filter(s => s.instagram && s.instagram.trim());
+      }
       if (!shoots.length) return [];
       
       // Shuffle the shoots array to randomize album selection on each page view
@@ -1067,14 +1240,15 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       return samples.slice(0, limit);
     };
 
-    const renderSpecialtyGallery = (samples, placeholderPrefix) => {
+    const renderSpecialtyGallery = (samples, placeholderPrefix, kind = "", val = "") => {
       let html = '';
       for (let i = 0; i < 3; i++) {
         const photo = samples[i];
         if (photo) {
-          html += `<div class="specialty-thumb-wrap">
-                     <img src="${esc(photoSrc(photo))}"${srcsetAttr(photo, "(max-width: 620px) 30vw, 18vw")} alt="${esc(photo.parent ? altFor(photo.parent) : placeholderPrefix + ' photography by nerdyphotographer.in')}" loading="lazy" />
-                   </div>`;
+          const src = photoSrc(photo);
+          html += `<button class="specialty-thumb-btn reveal" data-kind="${esc(kind)}" data-val="${esc(val)}" data-src="${esc(src)}" style="aspect-ratio: 3/4; overflow: hidden; background: var(--bone); border: 1px solid var(--line); border-radius: 4px; padding: 0; cursor: pointer; display: block; width: 100%;">
+                     <img src="${esc(src)}"${srcsetAttr(photo, "(max-width: 620px) 30vw, 18vw")} style="width:100%; height:100%; object-fit:cover; object-position:center; transition: transform .4s var(--ease);" alt="${esc(photo.parent ? altFor(photo.parent) : placeholderPrefix + ' photography by nerdyphotographer.in')}" loading="lazy" />
+                   </button>`;
         } else {
           html += `<div class="specialty-thumb-empty">${placeholderPrefix}_0${i+1}</div>`;
         }
@@ -1130,8 +1304,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               </p>
               <a href="/categories?kind=activity&amp;val=Fashion" data-link class="link-arrow" style="font-size: 12px; font-weight: 700;">Explore fashion edit →</a>
             </div>
-            <div class="specialty-gallery">
-              ${renderSpecialtyGallery(fashionSamples, "FASHION")}
+            <div class="specialty-gallery" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+              ${renderSpecialtyGallery(fashionSamples, "FASHION", "activity", "Fashion")}
             </div>
           </div>
           ` : ""}
@@ -1147,8 +1321,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               </p>
               <a href="/categories?kind=activity&amp;val=Portrait" data-link class="link-arrow" style="font-size: 12px; font-weight: 700;">Explore beauty &amp; portraits →</a>
             </div>
-            <div class="specialty-gallery">
-              ${renderSpecialtyGallery(portraitSamples, "BEAUTY")}
+            <div class="specialty-gallery" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+              ${renderSpecialtyGallery(portraitSamples, "BEAUTY", "activity", "Portrait")}
             </div>
           </div>
           ` : ""}
@@ -1164,8 +1338,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               </p>
               <a href="/categories?kind=activity&amp;val=Fitness" data-link class="link-arrow" style="font-size: 12px; font-weight: 700;">Explore fitness catalog →</a>
             </div>
-            <div class="specialty-gallery">
-              ${renderSpecialtyGallery(fitnessSamples, "FITNESS")}
+            <div class="specialty-gallery" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+              ${renderSpecialtyGallery(fitnessSamples, "FITNESS", "activity", "Fitness")}
             </div>
           </div>
           ` : ""}
@@ -1181,8 +1355,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               </p>
               <a href="/categories?kind=activity&amp;val=Sports" data-link class="link-arrow" style="font-size: 12px; font-weight: 700;">Explore sports action →</a>
             </div>
-            <div class="specialty-gallery">
-              ${renderSpecialtyGallery(sportsSamples, "SPORTS")}
+            <div class="specialty-gallery" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+              ${renderSpecialtyGallery(sportsSamples, "SPORTS", "activity", "Sports")}
             </div>
           </div>
           ` : ""}
@@ -1198,8 +1372,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               </p>
               <a href="/categories?kind=type&amp;val=Test%20Shoot" data-link class="link-arrow" style="font-size: 12px; font-weight: 700;">Explore test shoots →</a>
             </div>
-            <div class="specialty-gallery">
-              ${renderSpecialtyGallery(testShootSamples, "MODEL")}
+            <div class="specialty-gallery" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+              ${renderSpecialtyGallery(testShootSamples, "MODEL", "type", "Test Shoot")}
             </div>
           </div>
           ` : ""}
@@ -1300,7 +1474,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
             <fieldset><legend>Credits</legend>
               <div class="field-row">
-                <label class="field"><span>Photographer</span><input id="f_photographer" type="text" placeholder="Your name" /></label>
+                <label class="field"><span>Photographer</span><input id="f_photographer" type="text" value="nerdyphotographer" placeholder="Your name" /></label>
                 <label class="field"><span>Art director</span><input id="f_ad" type="text" placeholder="—" /></label>
               </div>
               <div class="field-row">
@@ -1312,6 +1486,22 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                 <label class="field"><span>Model / talent (comma-separated)</span><input id="f_talent" type="text" placeholder="e.g. Model A, Model B" /></label>
               </div>
               <label class="field"><span>Location</span><input id="f_location" type="text" placeholder="Studio 3, Brooklyn" /></label>
+            </fieldset>
+
+            <fieldset id="modelStatsFieldset"><legend>Model stats (Comp Cards)</legend>
+              <div class="field-row">
+                <label class="field"><span>Height</span><input id="f_height" type="text" placeholder="e.g. 5'11&quot; / 180 cm" /></label>
+                <label class="field"><span>Bust / Chest</span><input id="f_chest" type="text" placeholder="e.g. 34&quot; / 86 cm" /></label>
+              </div>
+              <div class="field-row">
+                <label class="field"><span>Waist</span><input id="f_waist" type="text" placeholder="e.g. 26&quot; / 66 cm" /></label>
+                <label class="field"><span>Hips</span><input id="f_hips" type="text" placeholder="e.g. 36&quot; / 91 cm" /></label>
+              </div>
+              <div class="field-row">
+                <label class="field"><span>Shoes</span><input id="f_shoes" type="text" placeholder="e.g. 8 US / 41 EU" /></label>
+                <label class="field"><span>Hair color</span><input id="f_model_hair" type="text" placeholder="e.g. Dark Brown" /></label>
+              </div>
+              <label class="field"><span>Eye color</span><input id="f_model_eyes" type="text" placeholder="e.g. Green" /></label>
             </fieldset>
 
             <fieldset><legend>Details</legend>
@@ -1517,7 +1707,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         $("#f_activity").value = editingShoot.activity || "";
         $("#f_type").value = editingShoot.type || "";
         $("#f_season").value = editingShoot.season || "";
-        $("#f_photographer").value = editingShoot.photographer || "";
+        $("#f_photographer").value = editingShoot.photographer || "nerdyphotographer";
         $("#f_ad").value = editingShoot.artDirector || "";
         $("#f_stylist").value = editingShoot.stylist || "";
         $("#f_hair").value = editingShoot.hair || "";
@@ -1528,6 +1718,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         $("#f_tags").value = editingShoot.tags || "";
         $("#f_gear").value = editingShoot.gear || "";
         $("#f_client").value = editingShoot.client || "";
+        $("#f_height").value = editingShoot.height || "";
+        $("#f_chest").value = editingShoot.chest || "";
+        $("#f_waist").value = editingShoot.waist || "";
+        $("#f_hips").value = editingShoot.hips || "";
+        $("#f_shoes").value = editingShoot.shoes || "";
+        $("#f_model_hair").value = editingShoot.modelHair || "";
+        $("#f_model_eyes").value = editingShoot.modelEyes || "";
         const toIsoDate = (dStr) => {
           if (!dStr) return "";
           if (/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return dStr;
@@ -1815,6 +2012,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         brand: val("f_brand") || "Other", activity: $("#f_activity").value, type: $("#f_type").value, season: val("f_season"),
         photographer: val("f_photographer") || "Studio", artDirector: val("f_ad"), stylist: val("f_stylist") || "—",
         hair: val("f_hair") || "—", mua: val("f_mua") || "—", talent: val("f_talent"), location: val("f_location"),
+        height: val("f_height"),
+        chest: val("f_chest"),
+        waist: val("f_waist"),
+        hips: val("f_hips"),
+        shoes: val("f_shoes"),
+        modelHair: val("f_model_hair"),
+        modelEyes: val("f_model_eyes"),
         description: val("f_desc"), tags: val("f_tags"), gear: val("f_gear"),
         client: val("f_client"), date: dateVal, instagram: val("f_ig"), link: val("f_link"), rights: val("f_rights"),
         testimonials: testimonialsList,
@@ -2163,11 +2367,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       }
       block.querySelector(".work-open")?.addEventListener("click", open);
       
-      // edit button click handler
-      block.querySelector(".work-edit")?.addEventListener("click", (e) => {
-        e.stopPropagation();
-        history.pushState(null, "", `/upload?edit=${s.id}`);
-        render();
+      // edit buttons click handler
+      block.querySelectorAll(".work-edit").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const targetId = btn.dataset.id || s.id;
+          history.pushState(null, "", `/upload?edit=${targetId}`);
+          render();
+        });
       });
       
       // delete button click handler
@@ -2193,6 +2400,25 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             btn.textContent = visible ? "View Lighting Diagram" : "Hide Lighting Diagram";
           }
         });
+      });
+    });
+    
+    // specialty thumb click interactions
+    view.querySelectorAll(".specialty-thumb-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const kind = btn.dataset.kind;
+        const val = btn.dataset.val;
+        const clickedSrc = btn.dataset.src;
+        
+        let shoots = SHOOTS.filter(s => s[kind] === val);
+        if (val === "Test Shoot") {
+          shoots = shoots.filter(s => s.instagram && s.instagram.trim());
+        }
+        
+        const list = shoots.flatMap(s => s.photos.map(p => ({ ...p, shoot: s })));
+        const idx = list.findIndex(p => photoSrc(p) === clickedSrc);
+        openLb(list, idx >= 0 ? idx : 0);
       });
     });
 
