@@ -1691,7 +1691,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             <fieldset>
               <legend>Contact Information</legend>
                <div class="field-row">
-                 <label class="field"><span>Your Name / Brand *</span><input id="b_name" type="text" required placeholder="e.g. John Doe / Slugger" /></label>
+                 <label class="field"><span>Your Name / Brand *</span><input id="b_name" type="text" required placeholder="e.g. John Doe / Brand Name" /></label>
                  <label class="field"><span>Role *</span>
                    <select id="b_role">
                      <option value="Model">Model / Talent</option>
@@ -1726,14 +1726,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                  <label class="field"><span>Preferred Date / Timeline *</span><input id="b_date" type="text" required placeholder="e.g. Mid-July 2026" /></label>
                </div>
                <div class="field-row">
-                 <label class="field"><span>Preferred Location *</span>
-                   <select id="b_location">
-                     <option value="Noida Studio">Noida Studio Setup</option>
-                     <option value="Delhi NCR Outdoor">Delhi NCR Outdoor / Location</option>
-                     <option value="Outstation">Outstation Shoot</option>
-                     <option value="Other">Other / TBD</option>
-                   </select>
-                 </label>
+                 <label class="field"><span>Preferred Location *</span><input id="b_location" type="text" required placeholder="e.g. Noida Studio / Outdoor NCR" /></label>
                  <label class="field" id="b_budget_field"><span>Estimated Budget Range *</span>
                    <select id="b_budget">
                      <option value="Under ₹10,000">Under ₹10,000 (Selective Tests)</option>
@@ -2238,7 +2231,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       field.querySelector(".field-error")?.remove();
     }
     // Clear an error the moment the visitor starts fixing it.
-    ["b_name", "b_email", "b_date", "b_instagram"].forEach((id) => {
+    ["b_name", "b_email", "b_date", "b_instagram", "b_location"].forEach((id) => {
       $("#" + id)?.addEventListener("input", () => clearError(id));
     });
 
@@ -2295,6 +2288,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       };
       require("b_name", "Please add your name or brand.");
       require("b_date", "Let us know a rough date or timeline.");
+      require("b_location", "Please let us know your preferred location.");
       const email = val("b_email");
       if (!email) { setError("b_email", "We need an email to reply to."); firstBad = firstBad || "b_email"; }
       else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("b_email", "That email doesn't look right."); firstBad = firstBad || "b_email"; }
