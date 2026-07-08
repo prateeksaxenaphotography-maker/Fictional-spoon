@@ -753,7 +753,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const tagline = s.description
       ? s.description
       : [s.activity, s.type].filter(Boolean).join(" · ");
-    const meta = [s.brand, s.season].filter(v => v && v !== "Personal Project").join(" · ");
+    const photoCount = s.photos ? s.photos.length : 0;
+    const countText = photoCount ? `${photoCount} Photo${photoCount > 1 ? "s" : ""}` : "";
+    const meta = [s.brand, s.season, countText].filter(v => v && v !== "Personal Project").join(" · ");
     const title = s.isCompCard ? s.talent : (s.title || "Untitled");
     return `
       <article class="noth-work reveal" data-shoot="${s.id}" data-talent="${esc(s.talent || '')}" style="--d:${(i % 2) * 0.08}s">
