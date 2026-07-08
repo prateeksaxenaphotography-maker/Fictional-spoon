@@ -3494,8 +3494,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     if (!shoot) return;
     
     const allPhotos = shoot.photos || [];
-    const page1Photos = allPhotos.slice(0, 9);
-    const page2Photos = allPhotos.slice(9, 18);
+    // Strictly limit to max 9 photos for a compact 1-page comp card
+    const photosToPrint = allPhotos.slice(0, 9);
     
     const statsArr = [];
     if (shoot.height) statsArr.push(`Height: ${shoot.height}`);
@@ -3577,20 +3577,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       </div>
     ` : "";
     
-    const renderGridHtml = (photos) => {
-      const photosHtml = photos.map(p => {
-        return `<div class="print-photo-item"><img src="${photoSrc(p)}" alt="Portfolio frame" /></div>`;
-      }).join("");
-      return `<div class="print-photo-grid">
-        ${photosHtml}
-      </div>`;
-    };
+    const photosHtml = photosToPrint.map(p => {
+      return `<div class="print-photo-item"><img src="${photoSrc(p)}" alt="Portfolio frame" /></div>`;
+    }).join("");
     
-    const headerHtml = (pageNumber) => `
+    const headerHtml = `
       <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 12px;">
         <h1 style="font-family:'Outfit', sans-serif; font-size: 28px; font-weight: 800; margin: 0; text-transform: uppercase; color: #000; letter-spacing: -0.02em;">
           ${getTalentCleanName(shoot.talent || shoot.title)}
-          ${pageNumber > 1 ? `<span style="font-size: 16px; font-weight: 600; color: #666; margin-left: 8px;">(Page ${pageNumber})</span>` : ""}
         </h1>
         <span style="font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: #666; text-transform: uppercase;">nerdyphotographer.in studio</span>
       </div>
@@ -3603,31 +3597,46 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       </div>
     `;
     
-    let fullHtml = `
+    const printContainer = document.getElementById("compCardPrintContainer");
+    if (!printContainer) return;
+    
+    printContainer.innerHTML = `
       <div class="print-page">
-        ${headerHtml(1)}
+        ${headerHtml}
         ${statsBarHtml}
         ${socialsBarHtml}
-        ${renderGridHtml(page1Photos)}
+        <div class="print-photo-grid">
+          ${photosHtml}
+        </div>
         ${footerHtml}
       </div>
     `;
     
-    if (page2Photos.length > 0) {
-      fullHtml += `
-        <div class="print-page">
-          ${headerHtml(2)}
-          ${socialsBarHtml}
-          ${renderGridHtml(page2Photos)}
-          ${footerHtml}
-        </div>
-      `;
+    // Ensure all images are fully loaded in browser memory before launching print preview
+    const imgs = printContainer.querySelectorAll("img");
+    let loadedCount = 0;
+    const totalImgs = imgs.length;
+    
+    if (totalImgs === 0) {
+      window.print();
+      return;
     }
     
-    const printContainer = document.getElementById("compCardPrintContainer");
-    if (!printContainer) return;
-    printContainer.innerHTML = fullHtml;
-    window.print();
+    const onImgLoad = () => {
+      loadedCount++;
+      if (loadedCount === totalImgs) {
+        window.print();
+      }
+    };
+    
+    imgs.forEach(img => {
+      if (img.complete) {
+        onImgLoad();
+      } else {
+        img.addEventListener("load", onImgLoad);
+        img.addEventListener("error", onImgLoad); // Ensure failed images don't block printing
+      }
+    });
   };
 
   (async function boot() {
