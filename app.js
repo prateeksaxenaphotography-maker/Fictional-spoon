@@ -1697,7 +1697,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                  <label class="field"><span>Email Address *</span><input id="b_email" type="email" required placeholder="name@example.com" /></label>
                  <label class="field"><span>Phone Number</span><input id="b_phone" type="tel" placeholder="+91 99999-99999" /></label>
                </div>
-               <label class="field"><span>Instagram Handle</span><input id="b_instagram" type="text" placeholder="e.g. @handle" /></label>
+               <label class="field"><span id="b_instagram_label">Instagram Handle</span><input id="b_instagram" type="text" placeholder="e.g. @handle" /></label>
              </fieldset>
  
              <fieldset>
@@ -1740,7 +1740,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
  
              <!-- TFP Liability Release Terms Modal -->
              <div id="termsModal" class="modal-overlay" style="display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 20px;">
-               <div class="modal-content" style="background: var(--bg); border: 1px solid var(--line); border-radius: 12px; max-width: 680px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.15); overflow: hidden; animation: modalFadeIn 0.3s ease;">
+               <div class="modal-content" style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; max-width: 680px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.15); overflow: hidden; animation: modalFadeIn 0.3s ease;">
                  <div style="padding: 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; background: var(--bone);">
                    <h3 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink);">Studio Production &amp; Liability Release</h3>
                    <span style="font-family: var(--mono-font); font-size: 10px; background: var(--line); padding: 4px 8px; border-radius: 4px; color: var(--ink-soft);">TFP-LIABILITY-RELEASE-V3</span>
@@ -2228,7 +2228,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       field.querySelector(".field-error")?.remove();
     }
     // Clear an error the moment the visitor starts fixing it.
-    ["b_name", "b_email", "b_date"].forEach((id) => {
+    ["b_name", "b_email", "b_date", "b_instagram"].forEach((id) => {
       $("#" + id)?.addEventListener("input", () => clearError(id));
     });
 
@@ -2238,6 +2238,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const role = $("#b_role")?.value;
       const budgetField = $("#b_budget_field");
       const brandOpt = $("#b_role")?.querySelector('option[value="Brand"]');
+      const igLabel = $("#b_instagram_label");
+
+      if (igLabel) {
+        igLabel.innerHTML = (type === "Test Shoot" ? "Instagram Handle *" : "Instagram Handle");
+      }
 
       if (type === "Test Shoot") {
         if (budgetField) budgetField.style.display = "none";
@@ -2476,6 +2481,16 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       if (!email) { setError("b_email", "We need an email to reply to."); firstBad = firstBad || "b_email"; }
       else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("b_email", "That email doesn't look right."); firstBad = firstBad || "b_email"; }
       else clearError("b_email");
+
+      const type = $("#b_type")?.value;
+      if (type === "Test Shoot") {
+        if (!val("b_instagram")) {
+          setError("b_instagram", "Instagram handle is mandatory for test shoots.");
+          firstBad = firstBad || "b_instagram";
+        } else {
+          clearError("b_instagram");
+        }
+      }
       return firstBad;
     }
 
@@ -2495,18 +2510,52 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const date = val("b_date"), locationVal = val("b_location"), budget = (type === "Test Shoot" ? "Collab / TFP (No Budget)" : val("b_budget"));
       const moodboard = val("b_moodboard"), concept = val("b_concept");
 
-      const proceedSubmit = async (agreedToTerms = false) => {
+      const proceedSubmit = (agreedToTerms = false) => {
         btn.disabled = true;
         btn.classList.add("is-loading");
         btn.textContent = "Preparing your request…";
 
-        if (agreedToTerms) {
-          try {
-            await generateAndDownloadTfpReleasePDF(name);
-          } catch (err) {
-            console.error("PDF generation failed:", err);
-          }
-        }
+        const tfpReleaseText = agreedToTerms ? (
+          `\n\n==================================================\n` +
+          `STUDIO PRODUCTION & LIABILITY RELEASE\n` +
+          `TFP COLLABORATION, MODEL RELEASE & DIGITAL CONSENT TERMS\n` +
+          `Document Reference: TFP-LIABILITY-RELEASE-V3\n` +
+          `--------------------------------------------------\n` +
+          `Studio/Photographer: nerdyphotographer.in studios\n` +
+          `Creative Partner/Model: ${name}\n` +
+          `Business Handle: @thenerdyphotographer.in\n` +
+          `Consent Tracking: Verified via Email / Digital Acknowledgment\n` +
+          `Production Status: Time-For-Print (TFP) Collab\n` +
+          `Location: Studio Production Space\n` +
+          `--------------------------------------------------\n\n` +
+          `1. SCOPE OF CREATIVE COLLABORATION\n` +
+          `This session is scheduled as a peer-to-peer creative collaboration structured for mutual portfolio growth, asset curation, and personal branding advancement. No monetary compensation is required or exchanged. The Studio provides specialized equipment, lighting architecture, workspace, and post-production engineering; the Participant(s) provide technical modeling direction, personal wardrobe, and makeup artistry.\n\n` +
+          `2. INTELLECTUAL PROPERTY, MODEL RELEASE & INTEGRITY\n` +
+          `The legal copyright of all visual media remains exclusively with the Studio. The Participant hereby grants the Studio the absolute, irrevocable right to use, publish, and distribute the images for portfolio, promotional, or web display. All parties are granted a non-exclusive license to use final retouched files for personal self-promotion on social media grids and personal websites.\n` +
+          `* No Alterations: To preserve the lighting design and capture integrity, no party shall apply secondary mobile filters, automated presets, cropping adjustments, or third-party digital modifications to the delivered files.\n\n` +
+          `3. COMPREHENSIVE LIABILITY WAIVER & INDEMNIFICATION\n` +
+          `CRITICAL SAFETY & LIABILITY RELEASE: The Participant enters the studio environment, uses studio blocks, cubes, chairs, furniture, or props, and performs physical poses entirely at their own risk. The Studio shall not be held liable for any physical injury, illness, accident, psychological distress, property damage, or clothing wear-and-tear incurred before, during, or after this production. The Participant explicitly waives any right to seek damages or legal recourse against the Studio or its operating photographers for accidents or injuries occurring on the premises.\n` +
+          `Furthermore, the Participant agrees to indemnify and hold harmless the Studio from any claims, damages, liabilities, or legal expenses arising out of the Participant's conduct or injuries on set.\n\n` +
+          `4. TECHNICAL PERFORMANCE & DELIVERY DISCLAIMER\n` +
+          `As a creative collaboration, the Studio offers no guarantees regarding the exact number of final images delivered, the specific turnaround time, or the subjective artistic satisfaction of the deliverables. The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered to the Participant.\n\n` +
+          `5. MANDATORY ALL-PARTY ATTRIBUTION WORKFLOW\n` +
+          `To ensure creative transparency, all parties agree to execute the following mandatory publishing workflow:\n` +
+          `• Instagram Collaboration Feature: For all primary feed or grid publications, the publishing party must issue an Instagram Co-Author Collaboration Invite to @thenerdyphotographer.in prior to publishing.\n` +
+          `• Full Production Credits Block: Every party publishing an asset must explicitly credit all contributors in the caption:\n` +
+          `  📷 Photography & Light Design: @thenerdyphotographer.in\n` +
+          `  👤 Model / Talent: @[Handle]\n` +
+          `  💄 Makeup Artist / MUA: @[Handle]\n` +
+          `  👔 Styling / Wardrobe: @[Handle]\n\n` +
+          `6. DIGITAL CONSENT, EMAIL ACCEPTANCE & BINDING NATURE\n` +
+          `In accordance with standard digital contract practices, a physical or handwritten signature is not required to validate these terms. Definitive legal acceptance and a binding obligation to these conditions are established through any of the following actions:\n` +
+          `• Sending a reply stating "I agree", "Confirmed", or equivalent confirmation over email or direct digital messaging channels.\n` +
+          `• Voluntarily entering the studio workspace environment and participating in the scheduled production session following receipt of these terms.\n\n` +
+          `nerdyphotographer.in studios\n` +
+          `Digital Operations & Production Management\n` +
+          `--------------------------------------------------\n` +
+          `DIGITAL AGREEMENT SIGNED: The Participant (${name}) has read and agreed to the terms of the Studio Production & Liability Release (TFP-LIABILITY-RELEASE-V3) by submitting this booking request.\n` +
+          `==================================================`
+        ) : "";
 
         const plainTextBody = `To: ${studioEmail}\nSubject: Shoot Booking Request — ${name}\n\n` +
           `Shoot Booking Details:\n\n` +
@@ -2521,7 +2570,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           `Budget Range: ${budget}\n` +
           `Moodboard Link: ${moodboard || '—'}\n` +
           (agreedToTerms ? `TFP Release terms: Agreed (TFP-LIABILITY-RELEASE-V3)\n\n` : `\n`) +
-          `Concept/Vision:\n${concept || '—'}`;
+          `Concept/Vision:\n${concept || '—'}` +
+          tfpReleaseText;
 
         const subject = encodeURIComponent(`Shoot Booking Request — ${name}`);
         const body = encodeURIComponent(
@@ -2537,7 +2587,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           `Budget Range: ${budget}\n` +
           `Moodboard Link: ${moodboard || '—'}\n` +
           (agreedToTerms ? `TFP Release terms: Agreed (TFP-LIABILITY-RELEASE-V3)\n\n` : `\n`) +
-          `Concept/Vision:\n${concept || '—'}`
+          `Concept/Vision:\n${concept || '—'}` +
+          tfpReleaseText
         );
 
         const mailtoUrl = `mailto:${studioEmail}?subject=${subject}&body=${body}`;
@@ -2551,6 +2602,17 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
         // Open the visitor's mail client with everything pre-filled.
         window.location.href = mailtoUrl;
+
+        // Defer PDF generation so it runs in the background and doesn't block the synchronous mailto link launch
+        if (agreedToTerms) {
+          setTimeout(async () => {
+            try {
+              await generateAndDownloadTfpReleasePDF(name);
+            } catch (err) {
+              console.error("PDF generation failed:", err);
+            }
+          }, 150);
+        }
 
         // Reveal the in-page success state (replaces the old alert()).
         if (successPanel) {
