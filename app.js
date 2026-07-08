@@ -229,19 +229,18 @@
 
     // Model Stats
     let statsHtml = "";
-    const hasStats = shoot.height || shoot.chest || shoot.waist || shoot.hips || shoot.shoes || shoot.modelHair || shoot.modelEyes;
-    if (hasStats) {
+    if (isCc) {
       statsHtml = `
         <div class="lb-sidebar-section">
           <h4 style="font-family:'Outfit', sans-serif; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); margin:0 0 10px;">Model Stats</h4>
           <dl class="work-credits" style="margin: 0;">
-            ${shoot.height ? `<div><dt>Height</dt><dd>${esc(shoot.height)}</dd></div>` : ""}
-            ${shoot.chest ? `<div><dt>Chest/Bust</dt><dd>${esc(shoot.chest)}</dd></div>` : ""}
-            ${shoot.waist ? `<div><dt>Waist</dt><dd>${esc(shoot.waist)}</dd></div>` : ""}
-            ${shoot.hips ? `<div><dt>Hips</dt><dd>${esc(shoot.hips)}</dd></div>` : ""}
-            ${shoot.shoes ? `<div><dt>Shoes</dt><dd>${esc(shoot.shoes)}</dd></div>` : ""}
-            ${shoot.modelHair ? `<div><dt>Hair</dt><dd>${esc(shoot.modelHair)}</dd></div>` : ""}
-            ${shoot.modelEyes ? `<div><dt>Eyes</dt><dd>${esc(shoot.modelEyes)}</dd></div>` : ""}
+            <div><dt>Height</dt><dd>${esc(shoot.height) || "—"}</dd></div>
+            <div><dt>Chest/Bust</dt><dd>${esc(shoot.chest) || "—"}</dd></div>
+            <div><dt>Waist</dt><dd>${esc(shoot.waist) || "—"}</dd></div>
+            <div><dt>Hips</dt><dd>${esc(shoot.hips) || "—"}</dd></div>
+            <div><dt>Shoes</dt><dd>${esc(shoot.shoes) || "—"}</dd></div>
+            <div><dt>Hair</dt><dd>${esc(shoot.modelHair) || "—"}</dd></div>
+            <div><dt>Eyes</dt><dd>${esc(shoot.modelEyes) || "—"}</dd></div>
           </dl>
         </div>
       `;
@@ -842,16 +841,16 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             </dl>`;
           })()}
           
-          ${s.isCompCard && (latestShoot.height || latestShoot.chest || latestShoot.waist || latestShoot.hips || latestShoot.shoes || latestShoot.modelHair || latestShoot.modelEyes) ? `
+          ${s.isCompCard ? `
             <dl class="work-credits" style="margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px;">
               <div style="grid-column: 1 / -1;"><dt style="font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 8px;">Model Stats</dt></div>
-              ${latestShoot.height ? `<div><dt>Height</dt><dd>${esc(latestShoot.height)}</dd></div>` : ""}
-              ${latestShoot.chest ? `<div><dt>Chest/Bust</dt><dd>${esc(latestShoot.chest)}</dd></div>` : ""}
-              ${latestShoot.waist ? `<div><dt>Waist</dt><dd>${esc(latestShoot.waist)}</dd></div>` : ""}
-              ${latestShoot.hips ? `<div><dt>Hips</dt><dd>${esc(latestShoot.hips)}</dd></div>` : ""}
-              ${latestShoot.shoes ? `<div><dt>Shoes</dt><dd>${esc(latestShoot.shoes)}</dd></div>` : ""}
-              ${latestShoot.modelHair ? `<div><dt>Hair</dt><dd>${esc(latestShoot.modelHair)}</dd></div>` : ""}
-              ${latestShoot.modelEyes ? `<div><dt>Eyes</dt><dd>${esc(latestShoot.modelEyes)}</dd></div>` : ""}
+              <div><dt>Height</dt><dd>${esc(latestShoot.height) || "—"}</dd></div>
+              <div><dt>Chest/Bust</dt><dd>${esc(latestShoot.chest) || "—"}</dd></div>
+              <div><dt>Waist</dt><dd>${esc(latestShoot.waist) || "—"}</dd></div>
+              <div><dt>Hips</dt><dd>${esc(latestShoot.hips) || "—"}</dd></div>
+              <div><dt>Shoes</dt><dd>${esc(latestShoot.shoes) || "—"}</dd></div>
+              <div><dt>Hair</dt><dd>${esc(latestShoot.modelHair) || "—"}</dd></div>
+              <div><dt>Eyes</dt><dd>${esc(latestShoot.modelEyes) || "—"}</dd></div>
             </dl>
           ` : ""}
 
