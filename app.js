@@ -80,6 +80,47 @@
     }
     return copy;
   }
+
+  function getTalentCleanName(talentStr) {
+    return (talentStr || "").replace(/\s*\([^)]+\)/g, "").trim();
+  }
+
+  function renderCreditValue(text) {
+    if (!text || text === "—") return "—";
+    const items = text.split(",").map(item => item.trim()).filter(Boolean);
+    const renderedItems = items.map(item => {
+      const parenRegex = /\(([^)]+)\)/;
+      const match = item.match(parenRegex);
+      if (match) {
+        const rawName = item.replace(parenRegex, "").trim();
+        const rawSocials = match[1].split(";").map(s => s.trim()).filter(Boolean);
+        const socialLinks = rawSocials.map(s => {
+          let url = s;
+          let label = s;
+          if (s.includes("instagram.com")) {
+            url = s.startsWith("http") ? s : "https://" + s;
+            label = "@" + url.split("/").pop();
+          } else if (s.includes("kavyar.com")) {
+            url = s.startsWith("http") ? s : "https://" + s;
+            label = "Kavyar: " + url.split("/").pop();
+          } else if (s.startsWith("@")) {
+            url = "https://instagram.com/" + s.replace(/^@/, "");
+            label = s;
+          } else if (s.startsWith("http")) {
+            url = s;
+            label = s.split("//")[1]?.split("/")[0] || "Link";
+          } else {
+            url = "https://instagram.com/" + s;
+            label = "@" + s;
+          }
+          return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent); font-weight:600; text-decoration:none; margin-left:6px; display:inline-flex; align-items:center; gap:2px;">${esc(label)} ↗</a>`;
+        }).join(" ");
+        return `${esc(rawName)} ${socialLinks}`;
+      }
+      return esc(item);
+    });
+    return renderedItems.join(", ");
+  }
   // noth.in-style oversized section word that rises per-letter on scroll.
   const kineticWord = (word) => {
     const letters = String(word).split("").map((ch, i) =>
@@ -353,11 +394,12 @@
 
     // Credits
     const credits = [];
-    if (shoot.photographer) credits.push(`<div><dt>Photo</dt><dd>${esc(shoot.photographer)}</dd></div>`);
-    if (shoot.artDirector && shoot.artDirector !== "—") credits.push(`<div><dt>Art Direction</dt><dd>${esc(shoot.artDirector)}</dd></div>`);
-    if (shoot.stylist && shoot.stylist !== "—") credits.push(`<div><dt>Stylist</dt><dd>${esc(shoot.stylist)}</dd></div>`);
-    if (shoot.mua && shoot.mua !== "—") credits.push(`<div><dt>MUA</dt><dd>${esc(shoot.mua)}</dd></div>`);
-    if (shoot.hair && shoot.hair !== "—") credits.push(`<div><dt>Hair</dt><dd>${esc(shoot.hair)}</dd></div>`);
+    if (shoot.photographer) credits.push(`<div><dt>Photo</dt><dd>${renderCreditValue(shoot.photographer)}</dd></div>`);
+    if (shoot.artDirector && shoot.artDirector !== "—") credits.push(`<div><dt>Art Direction</dt><dd>${renderCreditValue(shoot.artDirector)}</dd></div>`);
+    if (shoot.stylist && shoot.stylist !== "—") credits.push(`<div><dt>Stylist</dt><dd>${renderCreditValue(shoot.stylist)}</dd></div>`);
+    if (shoot.mua && shoot.mua !== "—") credits.push(`<div><dt>MUA</dt><dd>${renderCreditValue(shoot.mua)}</dd></div>`);
+    if (shoot.hair && shoot.hair !== "—") credits.push(`<div><dt>Hair</dt><dd>${renderCreditValue(shoot.hair)}</dd></div>`);
+    if (shoot.talent && shoot.talent !== "—") credits.push(`<div><dt>Model / Talent</dt><dd>${renderCreditValue(shoot.talent)}</dd></div>`);
     if (igHtml) credits.push(igHtml);
     if (kavyarHtml) credits.push(kavyarHtml);
 
@@ -400,7 +442,7 @@
             ${esc(shoot.brand)} · ${esc(shoot.type)}
           </span>
           <h2 style="font-family:'Outfit', sans-serif; font-size: 24px; font-weight:700; margin: 6px 0 0; color:var(--ink); line-height: 1.2;">
-            ${esc(shoot.talent || shoot.title)}
+            ${esc(getTalentCleanName(shoot.talent || shoot.title))}
           </h2>
           ${shoot.description ? `<p style="font-size:13px; color:var(--ink-soft); line-height:1.5; margin:14px 0 0;">${esc(shoot.description)}</p>` : ""}
         </div>
@@ -842,7 +884,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const photoCount = s.photos ? s.photos.length : 0;
     const countText = photoCount ? `${photoCount} Photo${photoCount > 1 ? "s" : ""}` : "";
     const meta = [s.brand, s.season, countText].filter(v => v && v !== "Personal Project").join(" · ");
-    const title = s.isCompCard ? s.talent : (s.title || "Untitled");
+    const title = getTalentCleanName(s.isCompCard ? s.talent : (s.title || "Untitled"));
     return `
       <article class="noth-work reveal" data-shoot="${s.id}" data-talent="${esc(s.talent || '')}" style="--d:${(i % 2) * 0.08}s">
         <button class="noth-work-media" aria-label="View ${esc(title)}">
@@ -1326,7 +1368,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         <div class="alpha-filter-bar container reveal">
           <button class="alpha-btn active" data-alpha="ALL">ALL</button>
           ${"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(char => {
-            const hasMatches = displayList.some(s => (s.talent || "").trim().charAt(0).toUpperCase() === char);
+            const hasMatches = displayList.some(s => getTalentCleanName(s.talent).trim().charAt(0).toUpperCase() === char);
             return `<button class="alpha-btn" data-alpha="${char}"${!hasMatches ? " disabled" : ""}>${char}</button>`;
           }).join("")}
         </div>
@@ -3130,7 +3172,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           const filterVal = btn.dataset.alpha;
           const blocks = view.querySelectorAll(".work-block");
           blocks.forEach(block => {
-            const talent = block.dataset.talent || "";
+            const talent = getTalentCleanName(block.dataset.talent || "");
             const firstChar = talent.trim().charAt(0).toUpperCase();
             if (filterVal === "ALL" || firstChar === filterVal) {
               block.style.display = "";
