@@ -587,9 +587,10 @@
       adminSec.style.display = isAdminAuthorized() ? "block" : "none";
     }
 
-    const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi");
+    const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi"), compCardsLi = $("#navCompCardsLi");
     if (uploadLi) uploadLi.style.display = active ? "block" : "none";
     if (bookLi) bookLi.style.display = active ? "none" : "block";
+    if (compCardsLi) compCardsLi.style.display = active ? "block" : "none";
 
     if (themeBtn) {
       themeBtn.style.display = active ? "inline-block" : "none";
