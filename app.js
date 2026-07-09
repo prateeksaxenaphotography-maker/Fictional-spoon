@@ -208,7 +208,8 @@
   
   function isCurrentlyCompCardView() {
     const search = location.pathname + location.search;
-    return search.includes("categories") && (search.includes("Test%20Shoot") || decodeURIComponent(search).includes("Test Shoot"));
+    const decoded = decodeURIComponent(search).replace(/\+/g, " ");
+    return search.includes("categories") && (search.includes("Test%20Shoot") || decoded.includes("Test Shoot") || search.includes("Test+Shoot"));
   }
 
   /* ---------------- IndexedDB (shoots) ---------------- */
