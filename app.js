@@ -3707,9 +3707,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const shoot = SHOOTS.find(x => x.id === shootId) || (window.currentCompCardShootObj);
     if (!shoot) return;
     
-    const allPhotos = (shoot.photos || []).filter(p => !p.excludeFromCompCard);
-    // Strictly limit to max 9 photos for a compact 1-page comp card
-    const photosToPrint = allPhotos.slice(0, 9);
+    // Get all photos for this talent
+    const allPhotos = (shoot.photos || []);
+    
+    // Find cover photo
+    const coverPhoto = allPhotos.find(p => p.isCover) || allPhotos[0];
+    // Remaining photos for the grid on page 2 (strictly up to 6 photos to fit A4 layout)
+    const gridPhotos = allPhotos.filter(p => p !== coverPhoto).slice(0, 6);
     
     const statsArr = [];
     if (shoot.height) statsArr.push(`Height: ${shoot.height}`);
@@ -3721,7 +3725,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     if (shoot.modelEyes) statsArr.push(`Eyes: ${shoot.modelEyes}`);
     const statsLine = statsArr.join("  ·  ");
     const statsBarHtml = statsLine ? `
-      <div style="font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; background: #f0f0f0; color: #000; padding: 8px 12px; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; border-radius: 4px; margin-bottom: 16px;">
+      <div style="font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; background: #f5f5f5; color: #000; padding: 10px 14px; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; border-radius: 6px; margin-bottom: 20px; border: 1px solid #e0e0e0;">
         ${statsLine}
       </div>
     ` : "";
@@ -3786,45 +3790,86 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     }
     const socialsLine = printSocials.join("   |   ");
     const socialsBarHtml = socialsLine ? `
-      <div style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #333; padding: 4px 12px; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; margin-bottom: 16px; border-bottom: 1px solid #eee; padding-bottom: 8px;">
+      <div style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #333; padding: 6px 12px; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; margin-bottom: 20px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">
         ${socialsLine}
       </div>
     ` : "";
     
-    const photosHtml = photosToPrint.map(p => {
-      return `<div class="print-photo-item"><img src="${photoSrc(p)}" alt="Portfolio frame" /></div>`;
+    // Page 1 Layout (Full Portrait Cover Card)
+    const page1Html = `
+      <div class="print-page" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%; box-sizing: border-box; page-break-after: always; break-after: page;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px;">
+          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;">MODEL PORTFOLIO CARD</span>
+          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #666; text-transform: uppercase;">nerdyphotographer.in studio</span>
+        </div>
+        
+        <div style="flex-grow: 1; position: relative; border-radius: 8px; overflow: hidden; background: #f9f9f9; border: 1px solid #ddd; box-sizing: border-box;">
+          ${coverPhoto ? `<img src="${photoSrc(coverPhoto)}" style="width: 100%; height: 100%; object-fit: cover; object-position: ${coverPhoto.objectPosition || 'center top'};" alt="Cover headshot" />` : ''}
+        </div>
+        
+        <div style="text-align: center; padding-top: 24px; margin-top: 16px; border-top: 1px solid #eee;">
+          <h1 style="font-family:'Outfit', sans-serif; font-size: 38px; font-weight: 800; margin: 0 0 4px; text-transform: uppercase; color: #000; letter-spacing: -0.03em;">
+            ${getTalentCleanName(shoot.talent || shoot.title)}
+          </h1>
+          <p style="font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--accent, #d24e1a); text-transform: uppercase; letter-spacing: 0.15em; margin: 0;">
+            OFFICIAL TALENT COMPOSITE · PAGE 1
+          </p>
+        </div>
+      </div>
+    `;
+
+    // Page 2 Layout (Classified 3x2 Grid and Stats)
+    const gridPhotosHtml = gridPhotos.map(p => {
+      let labelHtml = "";
+      if (p.angle) {
+        const angleLabels = {
+          "front": "Front Portrait",
+          "side": "Side Profile",
+          "back": "Back Profile",
+          "three-quarter": "3/4 Profile",
+          "close-up": "Close-up / Headshot"
+        };
+        labelHtml = `<span style="position: absolute; bottom: 8px; left: 8px; font-family:'JetBrains Mono', monospace; font-size:8px; font-weight:700; background:rgba(0,0,0,0.72); color:#fff; padding:2px 6px; border-radius:3px; text-transform:uppercase;">${angleLabels[p.angle] || p.angle}</span>`;
+      }
+      return `
+        <div class="print-photo-item" style="position: relative; aspect-ratio: 4/5; border-radius: 6px; overflow: hidden; border: 1px solid #eee; background: #fafafa;">
+          <img src="${photoSrc(p)}" style="width:100%; height:100%; object-fit:cover; object-position: ${p.objectPosition || 'center top'};" alt="Portfolio Grid Frame" />
+          ${labelHtml}
+        </div>
+      `;
     }).join("");
-    
-    const headerHtml = `
-      <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 12px;">
-        <h1 style="font-family:'Outfit', sans-serif; font-size: 28px; font-weight: 800; margin: 0; text-transform: uppercase; color: #000; letter-spacing: -0.02em;">
-          ${getTalentCleanName(shoot.talent || shoot.title)}
-        </h1>
-        <span style="font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: #666; text-transform: uppercase;">nerdyphotographer.in studio</span>
-      </div>
-    `;
-    
+
     const footerHtml = `
-      <div style="border-top: 1px solid #ccc; padding-top: 10px; margin-top: auto; font-family: sans-serif; font-size: 8px; color: #000; line-height: 1.5; display: flex; flex-direction: column; gap: 4px; text-align: left; width: 100%;">
-        <div style="font-weight: 700; color: #000;">To book this talent, please connect directly via verified socials. Studio charges would apply in case the studio is booked.</div>
-        <div style="color: #000; font-size: 7px;">All images are proprietary to nerdyphotographer.in studio and its subsidiaries. They cannot be sold or used for commercial purposes without prior written approval.</div>
+      <div style="border-top: 1px solid #ccc; padding-top: 12px; margin-top: auto; font-family: sans-serif; font-size: 8.5px; color: #000; line-height: 1.6; display: flex; flex-direction: column; gap: 4px; text-align: left; width: 100%;">
+        <div style="font-weight: 700; color: #000;">Booking Details: To schedule sessions or bookings for this talent, connect directly via verified social handles or contact agency representation.</div>
+        <div style="color: #444; font-size: 7.5px;">All portfolio cards and photography frames are intellectual properties of nerdyphotographer.in studio and represented divisions. Unapproved reprint, resale, or commercial misuse is strictly prohibited under federal copyright laws.</div>
       </div>
     `;
-    
-    const printContainer = document.getElementById("compCardPrintContainer");
-    if (!printContainer) return;
-    
-    printContainer.innerHTML = `
-      <div class="print-page">
-        ${headerHtml}
+
+    const page2Html = `
+      <div class="print-page" style="display: flex; flex-direction: column; height: 100%; box-sizing: border-box; padding-top: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px;">
+          <h2 style="font-family:'Outfit', sans-serif; font-size: 24px; font-weight: 800; margin: 0; text-transform: uppercase; color: #000; letter-spacing: -0.02em;">
+            ${getTalentCleanName(shoot.talent || shoot.title)} — Portfolio
+          </h2>
+          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #666; text-transform: uppercase;">nerdyphotographer.in studio</span>
+        </div>
+        
         ${statsBarHtml}
         ${socialsBarHtml}
+        
         <div class="print-photo-grid">
-          ${photosHtml}
+          ${gridPhotosHtml}
         </div>
+        
         ${footerHtml}
       </div>
     `;
+
+    const printContainer = document.getElementById("compCardPrintContainer");
+    if (!printContainer) return;
+    
+    printContainer.innerHTML = page1Html + page2Html;
     
     // Ensure all images are fully loaded in browser memory before launching print preview
     const imgs = printContainer.querySelectorAll("img");
