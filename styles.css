@@ -1054,9 +1054,6 @@ main:focus { outline: none; }
   body * {
     display: none !important;
   }
-  #compCardPrintContainer, #compCardPrintContainer * {
-    display: block !important;
-  }
   #compCardPrintContainer {
     display: block !important;
     width: 100% !important;
@@ -1069,9 +1066,10 @@ main:focus { outline: none; }
     print-color-adjust: exact !important;
   }
   .print-page {
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
     width: 100% !important;
-    height: 92vh !important;
+    height: 94vh !important;
     page-break-after: always !important;
     break-after: page !important;
     box-sizing: border-box !important;
@@ -1082,24 +1080,17 @@ main:focus { outline: none; }
   .print-page:last-child {
     page-break-after: avoid !important;
     break-after: avoid !important;
-    height: 95vh !important;
+    height: 94vh !important;
   }
   .print-photo-grid {
-    display: block !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 12px !important;
+    margin: 12px 0 !important;
     width: 100% !important;
-    margin: 10px 0 !important;
-    clear: both !important;
-  }
-  .print-photo-grid::after {
-    content: "" !important;
-    display: table !important;
-    clear: both !important;
   }
   .print-photo-item {
-    display: inline-flex !important;
-    float: left !important;
-    width: 31.33% !important;
-    margin: 1% !important;
+    display: flex !important;
     box-sizing: border-box !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
