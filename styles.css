@@ -1054,10 +1054,14 @@ main:focus { outline: none; }
   body * {
     display: none !important;
   }
+  @page {
+    size: A4 portrait;
+    margin: 15mm 12mm;
+  }
   #compCardPrintContainer {
     display: block !important;
     width: 100% !important;
-    height: auto !important;
+    height: 100% !important;
     background: #fff !important;
     color: #000 !important;
     padding: 0 !important;
@@ -1069,18 +1073,17 @@ main:focus { outline: none; }
     display: flex !important;
     flex-direction: column !important;
     width: 100% !important;
-    height: 94vh !important;
+    height: 100% !important;
     page-break-after: always !important;
     break-after: page !important;
     box-sizing: border-box !important;
     padding: 24px !important;
-    overflow: hidden !important;
     border: 3px solid #000 !important;
   }
   .print-page:last-child {
     page-break-after: avoid !important;
     break-after: avoid !important;
-    height: 94vh !important;
+    height: 100% !important;
   }
   .print-photo-grid {
     display: grid !important;
