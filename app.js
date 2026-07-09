@@ -1424,12 +1424,24 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           const remainingPhotos = allGroupPhotos.filter(p => p.id.split("-")[0] !== coverId);
           const finalPhotos = coverPhotoObj ? [coverPhotoObj, ...shuffleArray(remainingPhotos)] : shuffleArray(allGroupPhotos);
           
+          const findStat = (key) => {
+             const found = shootsInGroup.find(s => s[key] && String(s[key]).trim());
+             return found ? String(found[key]).trim() : "";
+          };
+          
           return {
             id: `comp-card-${encodeURIComponent(modelName)}`,
             title: `${modelName} — Comp Card`,
             brand: "Personal Project",
             activity: latestShoot.activity,
             type: "Test Shoot",
+            height: findStat("height"),
+            chest: findStat("chest"),
+            waist: findStat("waist"),
+            hips: findStat("hips"),
+            shoes: findStat("shoes"),
+            modelHair: findStat("modelHair"),
+            modelEyes: findStat("modelEyes"),
             season: latestShoot.season || "Comp Card",
             photographer: latestShoot.photographer || "Studio",
             artDirector: latestShoot.artDirector || "",
