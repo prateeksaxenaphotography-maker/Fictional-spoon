@@ -209,7 +209,18 @@
   function isCurrentlyCompCardView() {
     const search = location.pathname + location.search;
     const decoded = decodeURIComponent(search).replace(/\+/g, " ");
-    return search.includes("categories") && (search.includes("Test%20Shoot") || decoded.includes("Test Shoot") || search.includes("Test+Shoot"));
+    return search.includes("categories") && (
+      search.includes("Comp%20Cards") || decoded.includes("Comp Cards") ||
+      search.includes("Test%20Shoot") || decoded.includes("Test Shoot") || search.includes("Test+Shoot")
+    );
+  }
+
+  function isCurrentlyModelPortfolioView() {
+    const search = location.pathname + location.search;
+    const decoded = decodeURIComponent(search).replace(/\+/g, " ");
+    return search.includes("categories") && (
+      search.includes("Model%20Portfolio") || decoded.includes("Model Portfolio")
+    );
   }
 
   /* ---------------- IndexedDB (shoots) ---------------- */
@@ -320,7 +331,7 @@
   function renderLbSidebar(p) {
     const shoot = SHOOTS.find(x => x.id === p.shootId) || p.shoot;
     if (!shoot) return "";
-    const isCc = shoot.type === "Test Shoot" && isCurrentlyCompCardView();
+    const isCc = shoot.type === "Test Shoot" && (isCurrentlyCompCardView() || isCurrentlyModelPortfolioView());
     
     // Parse social handle
     let igHtml = "";
@@ -438,6 +449,51 @@
       `;
     }
 
+    let angleHtml = "";
+    let filterBarHtml = "";
+    if (isCurrentlyModelPortfolioView()) {
+      if (p.angle) {
+        const labels = {
+          "front": "Front Portrait",
+          "side": "Side Profile",
+          "back": "Back Angle",
+          "three-quarter": "3/4 Angle",
+          "close-up": "Close-up / Headshot"
+        };
+        const label = labels[p.angle] || p.angle;
+        angleHtml = `
+          <div style="margin-top: 8px;">
+            <span style="font-family:'JetBrains Mono', monospace; font-size:10px; font-weight: 700; color:var(--accent); background:rgba(210,78,26,0.1); border: 1px solid var(--accent); padding: 4px 8px; border-radius: 4px; text-transform: uppercase; display: inline-block;">
+              ${esc(label)}
+            </span>
+          </div>
+        `;
+      }
+      
+      const anglesInShoot = [...new Set((shoot.photos || []).map(x => x.angle).filter(Boolean))];
+      if (anglesInShoot.length > 0) {
+        const labels = {
+          "front": "Front",
+          "side": "Side",
+          "back": "Back",
+          "three-quarter": "3/4",
+          "close-up": "Close-up"
+        };
+        filterBarHtml = `
+          <div class="lb-sidebar-section" style="border-top: 1px solid var(--line); padding-top: 16px; margin-top: 16px;">
+            <span class="eyebrow" style="font-family:'JetBrains Mono', monospace; font-size:9px; text-transform:uppercase; color:var(--ink-soft); display:block; margin-bottom: 8px;">Filter Portfolio</span>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button class="angle-filter-btn ${window.activeAngleFilter === 'all' ? 'active' : ''}" data-angle="all" style="font-family:inherit; font-size:10px; font-weight:700; padding:4px 8px; border-radius:4px; border:1px solid var(--line); background:${window.activeAngleFilter === 'all' ? 'var(--accent)' : 'var(--paper)'}; color:${window.activeAngleFilter === 'all' ? '#fff' : 'var(--ink)'}; cursor:pointer;">All</button>
+              ${anglesInShoot.map(ang => {
+                const isActive = window.activeAngleFilter === ang;
+                return `<button class="angle-filter-btn ${isActive ? 'active' : ''}" data-angle="${ang}" style="font-family:inherit; font-size:10px; font-weight:700; padding:4px 8px; border-radius:4px; border:1px solid var(--line); background:${isActive ? 'var(--accent)' : 'var(--paper)'}; color:${isActive ? '#fff' : 'var(--ink)'}; cursor:pointer;">${labels[ang] || ang}</button>`;
+              }).join("")}
+            </div>
+          </div>
+        `;
+      }
+    }
+
     // Credits
     const credits = [];
     const isCcPage = !!shoot.isCompCard;
@@ -481,7 +537,7 @@
     }
 
     let pdfBtnHtml = "";
-    if (isCc) {
+    if (isCc && !isCurrentlyModelPortfolioView()) {
       if (!shoot.disableCompCardDownload) {
         window.currentCompCardShootObj = shoot;
         pdfBtnHtml = `
@@ -518,6 +574,7 @@
           <h2 style="font-family:'Outfit', sans-serif; font-size: 24px; font-weight:700; margin: 6px 0 0; color:var(--ink); line-height: 1.2;">
             ${esc(getTalentCleanName(shoot.talent || shoot.title))}
           </h2>
+          ${angleHtml}
           ${shoot.description ? `<p style="font-size:13px; color:var(--ink-soft); line-height:1.5; margin:14px 0 0;">${esc(shoot.description)}</p>` : ""}
         </div>
         
@@ -530,6 +587,7 @@
         `}
         
         ${statsHtml}
+        ${filterBarHtml}
         
         ${isCc ? `
           <div class="lb-sidebar-section" style="border-top: 1px solid var(--line); padding-top: 16px;">
@@ -562,6 +620,7 @@
   }
 
   function openLb(list, idx) {
+    window.activeAngleFilter = "all";
     lbReturnFocus = document.activeElement;
     lbList = list; lbIdx = idx; paintLb(); lb.hidden = false;
     document.body.style.overflow = "hidden"; $("#lightboxClose").focus();
@@ -602,6 +661,34 @@
         });
       }
     }
+
+    // Wire angle filter buttons for Model Portfolio view inside lightbox
+    lbSidebar.querySelectorAll(".angle-filter-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const selectedAngle = btn.dataset.angle;
+        window.activeAngleFilter = selectedAngle;
+        
+        // Find parent shoot to rebuild filtered list
+        const currentShoot = SHOOTS.find(x => x.id === p.shootId) || p.shoot;
+        const fullList = (currentShoot.photos || []).filter(x => {
+          return x.usage === "portfolio" || x.usage === "both" || x.usage === undefined;
+        }).map(x => ({ ...x, shoot: currentShoot }));
+        
+        let filteredList = fullList;
+        if (selectedAngle !== "all") {
+          filteredList = fullList.filter(x => x.angle === selectedAngle);
+        }
+        
+        if (filteredList.length) {
+          lbList = filteredList;
+          lbIdx = 0;
+          paintLb();
+        } else {
+          toast("No photos matching this profile.");
+        }
+      });
+    });
   }
   function stepLb(d) { if (!lbList.length) return; lbIdx = (lbIdx + d + lbList.length) % lbList.length; paintLb(); }
   function closeLb() {
@@ -717,10 +804,11 @@
       adminSec.style.display = isAdminAuthorized() ? "block" : "none";
     }
 
-    const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi"), compCardsLi = $("#navCompCardsLi"), logsLi = $("#navLogsLi");
+    const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi"), compCardsLi = $("#navCompCardsLi"), portfolioLi = $("#navModelPortfolioLi"), logsLi = $("#navLogsLi");
     if (uploadLi) uploadLi.style.display = active ? "block" : "none";
     if (bookLi) bookLi.style.display = active ? "none" : "block";
     if (compCardsLi) compCardsLi.style.display = active ? "block" : "none";
+    if (portfolioLi) portfolioLi.style.display = active ? "block" : "none";
     if (logsLi) logsLi.style.display = active ? "block" : "none";
 
     if (themeBtn) {
@@ -1066,7 +1154,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     ` : "";
 
     const mediaHtml = (s.isCompCard || s.type === "Test Shoot") ? (() => {
-      const activePhotos = s.photos.filter(p => !p.excludeFromCompCard);
+      const activePhotos = s.photos || [];
       const shownPhotos = activePhotos.slice(0, 3);
       const remainingCount = activePhotos.length - 3;
       const fourthPhoto = activePhotos[3];
@@ -1383,11 +1471,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const d = decodeURIComponent(val);
       const list = SHOOTS.filter((s) => {
         if (kind === "brand" && (!s.client || !s.client.trim())) return false;
+        if (kind === "type" && (d === "Model Portfolio" || d === "Comp Cards" || d === "Test Shoot")) {
+          return s.type === "Test Shoot";
+        }
         return (kind === "activity" ? s.activity : kind === "brand" ? s.brand : s.type) === d;
       });
 
       let displayList = list;
-      if (kind === "type" && d === "Test Shoot") {
+      if (kind === "type" && (d === "Test Shoot" || d === "Model Portfolio" || d === "Comp Cards")) {
         const filteredList = list.filter(s => ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim())) && !s.hideFromCompCard);
         const groupable = [];
         const nonGroupable = [];
@@ -1418,7 +1509,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             return parseDate(b) - parseDate(a);
           });
           const latestShoot = shootsInGroup[0];
-          const allGroupPhotos = shootsInGroup.flatMap(gs => (gs.photos || []).filter(p => !p.excludeFromCompCard).map(p => ({ ...p, parent: gs })));
+          const isPortView = (d === "Model Portfolio");
+          const allGroupPhotos = shootsInGroup.flatMap(gs => (gs.photos || []).filter(p => {
+            if (isPortView) {
+              return p.usage === "portfolio" || p.usage === "both" || p.usage === undefined;
+            } else {
+              return p.usage === "comp" || p.usage === "both" || !p.excludeFromCompCard;
+            }
+          }).map(p => ({ ...p, parent: gs })));
           const coverId = latestShoot.coverPhotoId || (latestShoot.photos[0] && latestShoot.photos[0].id);
           const coverPhotoObj = allGroupPhotos.find(p => p.id.split("-")[0] === coverId);
           const remainingPhotos = allGroupPhotos.filter(p => p.id.split("-")[0] !== coverId);
@@ -1429,9 +1527,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
              return found ? String(found[key]).trim() : "";
           };
           
+          const isPort = d === "Model Portfolio";
           return {
-            id: `comp-card-${encodeURIComponent(modelName)}`,
-            title: `${modelName} — Comp Card`,
+            id: isPort ? `portfolio-${encodeURIComponent(modelName)}` : `comp-card-${encodeURIComponent(modelName)}`,
+            title: isPort ? `${modelName} — Portfolio` : `${modelName} — Comp Card`,
             brand: "Personal Project",
             activity: latestShoot.activity,
             type: "Test Shoot",
@@ -1473,7 +1572,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
       CURRENT_VIEW_SHOOTS = displayList;
 
-      const isTestShoot = (kind === "type" && d === "Test Shoot");
+      const isTestShoot = (kind === "type" && (d === "Test Shoot" || d === "Comp Cards" || d === "Model Portfolio"));
       const alphaFilterHtml = isTestShoot ? `
         <div class="alpha-filter-bar container reveal">
           <button class="alpha-btn active" data-alpha="ALL">ALL</button>
@@ -1484,12 +1583,25 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         </div>
       ` : "";
 
+      const getCategoryTitle = (val) => {
+        if (val === "Test Shoot" || val === "Comp Cards") return "Model Comp Cards";
+        if (val === "Model Portfolio") return "Model Portfolio";
+        return val;
+      };
+
+      const getCategoryDescription = (val) => {
+        if (val === "Model Portfolio") {
+          return "This portfolio archive displays curated agency-standard portfolios, filtered and tagged by profile angles (Front, Side, Back, 3/4, Close-up).";
+        }
+        return "This compcard archive includes photos clicked or produced under nerdyphotographer.in studio or its subsidiaries.";
+      };
+
       return `
         <section class="page-head">
           <div class="container">
             <p class="eyebrow reveal"><a href="/categories" data-link>Categories</a> / ${esc(kind)}</p>
-             <h1 class="reveal">${d === "Test Shoot" ? "Model Portfolio (Comp Cards)" : esc(d)}</h1>
-            ${isTestShoot ? `<p class="page-sub" style="max-width: 600px; line-height: 1.6; opacity: 1 !important; visibility: visible !important; transform: none !important;">This compcard archive includes photos clicked or produced under nerdyphotographer.in studio or its subsidiaries.</p>` : `<p class="page-sub reveal">${displayList.length} master album${displayList.length !== 1 ? "s" : ""} in this ${esc(kind)}.</p>`}
+             <h1 class="reveal">${esc(getCategoryTitle(d))}</h1>
+            ${isTestShoot ? `<p class="page-sub" style="max-width: 600px; line-height: 1.6; opacity: 1 !important; visibility: visible !important; transform: none !important;">${esc(getCategoryDescription(d))}</p>` : `<p class="page-sub reveal">${displayList.length} master album${displayList.length !== 1 ? "s" : ""} in this ${esc(kind)}.</p>`}
           </div>
         </section>
         ${alphaFilterHtml}
@@ -1524,8 +1636,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     }
 
     const getSamples = (key, val, limit = 3) => {
-      let shoots = SHOOTS.filter(s => s[key] === val);
-      if (key === "type" && val === "Test Shoot") {
+      const targetVal = (key === "type" && (val === "Comp Cards" || val === "Model Portfolio" || val === "Test Shoot")) ? "Test Shoot" : val;
+      let shoots = SHOOTS.filter(s => s[key] === targetVal);
+      if (key === "type" && targetVal === "Test Shoot") {
         shoots = shoots.filter(s => s.instagram && s.instagram.trim());
       }
       if (!shoots.length) return [];
@@ -1689,16 +1802,34 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <div class="specialty-item reveal">
             <div class="specialty-meta">
               <h3>
-                <a href="/categories?kind=type&amp;val=Test%20Shoot" data-link>Model Portfolio (Comp Cards)</a>
+                <a href="/categories?kind=type&amp;val=Comp%20Cards" data-link>Model Comp Cards</a>
               </h3>
               <p>
                 Comprehensive testing shoots and comp card layout photography designed for aspiring and professional model talent. Direct submissions focus: clean test lighting, polaroids, digitals, and styling versatility.
-                <span style="display: block; margin-top: 8px; font-size: 11.5px; color: var(--ink-soft); line-height: 1.4;">This compcard includes photos clicked or produced under nerdyphotographer.in studio or its subsidiaries.</span>
+                <span style="display: block; margin-top: 8px; font-size: 11.5px; color: var(--ink-soft); line-height: 1.4;">This compcard archive includes photos clicked or produced under nerdyphotographer.in studio or its subsidiaries.</span>
               </p>
-              <a href="/categories?kind=type&amp;val=Test%20Shoot" data-link class="link-arrow" style="font-size: 12px; font-weight: 700;">Explore test shoots →</a>
+              <a href="/categories?kind=type&amp;val=Comp%20Cards" data-link class="link-arrow" style="font-size: 12px; font-weight: 700;">Explore comp cards →</a>
             </div>
             <div class="specialty-gallery" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
-              ${renderSpecialtyGallery(testShootSamples, "MODEL", "type", "Test Shoot")}
+              ${renderSpecialtyGallery(testShootSamples, "MODEL", "type", "Comp Cards")}
+            </div>
+          </div>
+          ` : ""}
+
+          ${testShootSamples.length && isAdmin() ? `
+          <div class="specialty-item reveal" style="border-top: 1px dashed var(--line); padding-top: 40px; margin-top: 40px;">
+            <div class="specialty-meta">
+              <span style="font-family:var(--mono-font); font-size:9px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom: 6px;">🔒 Admin Portfolio View</span>
+              <h3>
+                <a href="/categories?kind=type&amp;val=Model%20Portfolio" data-link>Model Portfolio</a>
+              </h3>
+              <p>
+                Curated model portfolios displaying agency-ready grids. Optimized for casting directors with quick filters to segment by shooting angle (Front, Side, Back, 3/4, Close-up).
+              </p>
+              <a href="/categories?kind=type&amp;val=Model%20Portfolio" data-link class="link-arrow" style="font-size: 12px; font-weight: 700; color: var(--accent);">Explore portfolio angles →</a>
+            </div>
+            <div class="specialty-gallery" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+              ${renderSpecialtyGallery(testShootSamples, "PORTFOLIO", "type", "Model Portfolio")}
             </div>
           </div>
           ` : ""}
@@ -2322,6 +2453,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             manuallyAligned: !!(p.objectPosition && p.objectPosition !== "center"),
             caption: p.caption || "",
             excludeFromCompCard: !!p.excludeFromCompCard,
+            usage: p.usage || (p.excludeFromCompCard ? "portfolio" : "both"),
+            angle: p.angle || "",
             ...(typeof p.focalX === "number" ? { focalX: p.focalX, focalY: p.focalY } : {})
           };
         });
@@ -2353,38 +2486,79 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       note.classList.toggle("ready", n > 0);
       grid.innerHTML = staged.map((f, index) => {
         const pos = f.objectPosition && f.objectPosition !== "center" ? f.objectPosition : "center center";
-        // Focal dot position: derive % from a stored focalX/focalY, else map keyword.
         const fp = focalPercent(f);
         return `
-        <div class="thumb" data-id="${f.id}" draggable="true">
+        <div class="thumb" data-id="${f.id}" draggable="true" style="display: flex; flex-direction: column;">
           <span class="thumb-order">${index + 1}</span>
           <label class="thumb-cover-ctrl">
             <input type="radio" name="coverSelect" class="thumb-cover-radio" data-id="${f.id}" ${f.isCover ? 'checked' : ''} />
             Cover
           </label>
-          <img src="${esc(photoSrc(f))}" style="object-position: ${esc(pos)}" alt="${esc(f.name)}"/>
-          <label class="thumb-compcard-ctrl" style="position: absolute; bottom: 32px; left: 6px; font-family: 'JetBrains Mono', monospace; font-size: 8px; color: #fff; background: rgba(0,0,0,0.7); padding: 2px 5px; border-radius: 3px; display: flex; align-items: center; gap: 4px; z-index: 10; cursor: pointer; text-transform: uppercase; font-weight: 700; user-select: none;">
-            <input type="checkbox" class="thumb-compcard-check" data-id="${f.id}" ${f.excludeFromCompCard ? '' : 'checked'} style="width: 10px; height: 10px; accent-color: var(--accent); margin: 0;" />
-            In Comp Card
-          </label>
-          <div class="thumb-focal" data-id="${f.id}" title="Drag to set focal point">
-            <span class="thumb-focal-dot" style="left:${fp.x}%; top:${fp.y}%;"></span>
+          <div style="position: relative; width: 100%; aspect-ratio: 1; overflow: hidden;">
+            <img src="${esc(photoSrc(f))}" style="width: 100%; height: 100%; object-fit: cover; object-position: ${esc(pos)}" alt="${esc(f.name)}"/>
+            <div class="thumb-focal" data-id="${f.id}" title="Drag to set focal point" style="position: absolute; inset: 0; z-index: 2; cursor: crosshair;">
+              <span class="thumb-focal-dot" style="left:${fp.x}%; top:${fp.y}%;"></span>
+            </div>
+            <button type="button" class="thumb-remove" data-id="${f.id}" aria-label="Remove">×</button>
           </div>
-          <button type="button" class="thumb-remove" data-id="${f.id}" aria-label="Remove">×</button>
-          <input type="text" class="thumb-caption" data-id="${f.id}" value="${esc(f.caption || '')}" placeholder="Add caption…" aria-label="Photo caption" />
+          
+          <div style="padding: 8px; display: flex; flex-direction: column; gap: 6px; background: var(--bone); border-top: 1px solid var(--line); flex-grow: 1;">
+            <input type="text" class="thumb-caption-input" data-id="${f.id}" value="${esc(f.caption || '')}" placeholder="Add caption…" style="width: 100%; box-sizing: border-box; font-size: 10px; padding: 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--paper); color: var(--ink); outline: none;" />
+            
+            <div style="display: grid; grid-template-columns: 1fr; gap: 4px;">
+              <label style="font-size: 9px; color: var(--ink-soft); display: flex; flex-direction: column; gap: 2px;">
+                <span>Usage</span>
+                <select class="thumb-usage-select" data-id="${f.id}" style="font-size: 9px; padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--paper); color: var(--ink); width: 100%;">
+                  <option value="both" ${f.usage === 'both' ? 'selected' : ''}>Both (Comp & Port)</option>
+                  <option value="portfolio" ${f.usage === 'portfolio' ? 'selected' : ''}>Portfolio Only</option>
+                  <option value="comp" ${f.usage === 'comp' ? 'selected' : ''}>Comp Card Only</option>
+                </select>
+              </label>
+              <label style="font-size: 9px; color: var(--ink-soft); display: flex; flex-direction: column; gap: 2px;">
+                <span>Angle / Profile</span>
+                <select class="thumb-angle-select" data-id="${f.id}" style="font-size: 9px; padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--paper); color: var(--ink); width: 100%;">
+                  <option value="" ${!f.angle ? 'selected' : ''}>Unspecified</option>
+                  <option value="front" ${f.angle === 'front' ? 'selected' : ''}>Front Portrait</option>
+                  <option value="side" ${f.angle === 'side' ? 'selected' : ''}>Side Profile</option>
+                  <option value="back" ${f.angle === 'back' ? 'selected' : ''}>Back Angle</option>
+                  <option value="three-quarter" ${f.angle === 'three-quarter' ? 'selected' : ''}>3/4 Angle</option>
+                  <option value="close-up" ${f.angle === 'close-up' ? 'selected' : ''}>Close-up / Headshot</option>
+                </select>
+              </label>
+            </div>
+          </div>
         </div>`;
       }).join("");
 
       wireDragReorder();
       wireFocalPoints();
 
-      grid.querySelectorAll(".thumb-caption").forEach((inp) => {
+      grid.querySelectorAll(".thumb-caption-input").forEach((inp) => {
         inp.addEventListener("input", (e) => {
           const item = staged.find(x => x.id === e.target.dataset.id);
           if (item) item.caption = e.target.value;
         });
-        // Don't let caption typing trigger drag / thumb click.
         inp.addEventListener("mousedown", (e) => e.stopPropagation());
+      });
+
+      grid.querySelectorAll(".thumb-usage-select").forEach((sel) => {
+        sel.addEventListener("change", (e) => {
+          const item = staged.find(x => x.id === e.target.dataset.id);
+          if (item) {
+            item.usage = e.target.value;
+            // Maintain backwards compatibility:
+            item.excludeFromCompCard = (e.target.value === "portfolio");
+          }
+        });
+        sel.addEventListener("mousedown", (e) => e.stopPropagation());
+      });
+
+      grid.querySelectorAll(".thumb-angle-select").forEach((sel) => {
+        sel.addEventListener("change", (e) => {
+          const item = staged.find(x => x.id === e.target.dataset.id);
+          if (item) item.angle = e.target.value;
+        });
+        sel.addEventListener("mousedown", (e) => e.stopPropagation());
       });
 
       grid.querySelectorAll(".thumb-remove").forEach((b) => b.addEventListener("click", (e) => {
@@ -2403,15 +2577,6 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           staged.forEach(x => { x.isCover = (x.id === id); });
           renderStaged();
         });
-      });
-      grid.querySelectorAll(".thumb-compcard-check").forEach((check) => {
-        check.addEventListener("change", (e) => {
-          const item = staged.find(x => x.id === e.target.dataset.id);
-          if (item) {
-            item.excludeFromCompCard = !e.target.checked;
-          }
-        });
-        check.addEventListener("mousedown", (e) => e.stopPropagation());
       });
     }
 
@@ -2659,6 +2824,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           url: f.url,
           objectPosition: f.objectPosition || (f.isCover ? "top" : "center"),
           excludeFromCompCard: !!f.excludeFromCompCard,
+          usage: f.usage || (f.excludeFromCompCard ? "portfolio" : "both"),
+          angle: f.angle || "",
           ...(typeof f.focalX === "number" ? { focalX: f.focalX, focalY: f.focalY } : {}),
           ...(f.caption && f.caption.trim() ? { caption: f.caption.trim() } : {})
         })),
