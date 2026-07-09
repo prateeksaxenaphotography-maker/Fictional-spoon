@@ -1051,7 +1051,7 @@ main:focus { outline: none; }
 
 /* ---------- Print layout styles for PDF export ---------- */
 @media print {
-  body * {
+  body > *:not(#compCardPrintContainer) {
     display: none !important;
   }
   @page {
@@ -1069,10 +1069,7 @@ main:focus { outline: none; }
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-  #compCardPrintContainer * {
-    display: revert !important;
-  }
-  #compCardPrintContainer .print-page {
+  .print-page {
     display: flex !important;
     flex-direction: column !important;
     width: 100% !important;
@@ -1083,19 +1080,19 @@ main:focus { outline: none; }
     padding: 24px !important;
     border: 3px solid #000 !important;
   }
-  #compCardPrintContainer .print-page:last-child {
+  .print-page:last-child {
     page-break-after: avoid !important;
     break-after: avoid !important;
     height: 100% !important;
   }
-  #compCardPrintContainer .print-photo-grid {
+  .print-photo-grid {
     display: grid !important;
     grid-template-columns: repeat(3, 1fr) !important;
     gap: 12px !important;
     margin: 12px 0 !important;
     width: 100% !important;
   }
-  #compCardPrintContainer .print-photo-item {
+  .print-photo-item {
     display: flex !important;
     box-sizing: border-box !important;
     break-inside: avoid !important;
@@ -1107,7 +1104,7 @@ main:focus { outline: none; }
     justify-content: center !important;
     overflow: hidden !important;
   }
-  #compCardPrintContainer .print-photo-item img {
+  .print-photo-item img {
     width: 100% !important;
     height: 100% !important;
     object-fit: contain !important;
