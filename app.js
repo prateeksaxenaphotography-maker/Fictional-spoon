@@ -319,7 +319,7 @@
   function renderLbSidebar(p) {
     const shoot = SHOOTS.find(x => x.id === p.shootId) || p.shoot;
     if (!shoot) return "";
-    const isCc = shoot.type === "Test Shoot" && lightboxCompCardView;
+    const isCc = shoot.type === "Test Shoot" && isCurrentlyCompCardView();
     
     // Parse social handle
     let igHtml = "";
@@ -560,9 +560,7 @@
     `;
   }
 
-  let lightboxCompCardView = false;
-  function openLb(list, idx, { isCompCardView = false } = {}) {
-    lightboxCompCardView = isCompCardView;
+  function openLb(list, idx) {
     lbReturnFocus = document.activeElement;
     lbList = list; lbIdx = idx; paintLb(); lb.hidden = false;
     document.body.style.overflow = "hidden"; $("#lightboxClose").focus();
@@ -3165,11 +3163,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     view.querySelectorAll(".noth-work").forEach((card) => {
       const s = CURRENT_VIEW_SHOOTS.find((x) => x.id === card.dataset.shoot) || SHOOTS.find((x) => x.id === card.dataset.shoot);
       if (!s) return;
-      const isCc = s.isCompCard || s.type === "Test Shoot";
+      const isCc = (s.isCompCard || s.type === "Test Shoot") && isCurrentlyCompCardView();
       const list = s.photos.filter((p) => !(isCc && p.excludeFromCompCard)).map((p) => ({ ...p, shoot: s }));
       const media = card.querySelector(".noth-work-media");
       const cta = card.querySelector(".noth-work-cta");
-      const open = () => openLb(list, 0, { isCompCardView: false });
+      const open = () => openLb(list, 0);
       media?.addEventListener("click", open);
       cta?.addEventListener("click", open);
 
@@ -3221,14 +3219,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     view.querySelectorAll(".work-block").forEach((block) => {
       const s = CURRENT_VIEW_SHOOTS.find((x) => x.id === block.dataset.shoot) || SHOOTS.find((x) => x.id === block.dataset.shoot);
       if (!s) return;
-      const isCc = s.isCompCard || s.type === "Test Shoot";
+      const isCc = (s.isCompCard || s.type === "Test Shoot") && isCurrentlyCompCardView();
       const list = s.photos.filter((p) => !(isCc && p.excludeFromCompCard)).map((p) => ({ ...p, shoot: s }));
-      const open = () => openLb(list, 0, { isCompCardView: false });
+      const open = () => openLb(list, 0);
       if (s.isCompCard) {
         block.querySelectorAll(".comp-card-thumb").forEach(thumb => {
           thumb.addEventListener("click", () => {
             const idx = parseInt(thumb.dataset.index, 10) || 0;
-            openLb(list, idx, { isCompCardView: true });
+            openLb(list, idx);
           });
         });
       } else {
@@ -3285,10 +3283,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           shoots = shoots.filter(s => s.instagram && s.instagram.trim());
         }
         
-        const isCc = val === "Test Shoot";
+        const isCc = val === "Test Shoot" && isCurrentlyCompCardView();
         const list = shoots.flatMap(s => (s.photos || []).filter(p => !(isCc && p.excludeFromCompCard)).map(p => ({ ...p, shoot: s })));
         const idx = list.findIndex(p => photoSrc(p) === clickedSrc);
-        openLb(list, idx >= 0 ? idx : 0, { isCompCardView: isCc });
+        openLb(list, idx >= 0 ? idx : 0);
       });
     });
 
