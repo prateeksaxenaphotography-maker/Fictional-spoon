@@ -1069,7 +1069,10 @@ main:focus { outline: none; }
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-  .print-page {
+  #compCardPrintContainer * {
+    display: revert !important;
+  }
+  #compCardPrintContainer .print-page {
     display: flex !important;
     flex-direction: column !important;
     width: 100% !important;
@@ -1080,19 +1083,19 @@ main:focus { outline: none; }
     padding: 24px !important;
     border: 3px solid #000 !important;
   }
-  .print-page:last-child {
+  #compCardPrintContainer .print-page:last-child {
     page-break-after: avoid !important;
     break-after: avoid !important;
     height: 100% !important;
   }
-  .print-photo-grid {
+  #compCardPrintContainer .print-photo-grid {
     display: grid !important;
     grid-template-columns: repeat(3, 1fr) !important;
     gap: 12px !important;
     margin: 12px 0 !important;
     width: 100% !important;
   }
-  .print-photo-item {
+  #compCardPrintContainer .print-photo-item {
     display: flex !important;
     box-sizing: border-box !important;
     break-inside: avoid !important;
@@ -1104,7 +1107,7 @@ main:focus { outline: none; }
     justify-content: center !important;
     overflow: hidden !important;
   }
-  .print-photo-item img {
+  #compCardPrintContainer .print-photo-item img {
     width: 100% !important;
     height: 100% !important;
     object-fit: contain !important;
