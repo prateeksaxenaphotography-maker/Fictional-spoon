@@ -1097,7 +1097,7 @@ main:focus { outline: none; }
     box-sizing: border-box !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
-    aspect-ratio: 1 / 1 !important;
+    aspect-ratio: 4 / 5 !important;
     background: #fff !important;
     border: 1px solid #fff !important;
     align-items: center !important;
@@ -1107,7 +1107,7 @@ main:focus { outline: none; }
   .print-photo-item img {
     width: 100% !important;
     height: 100% !important;
-    object-fit: contain !important;
+    object-fit: cover !important;
     background: #fff !important;
     display: block !important;
   }
