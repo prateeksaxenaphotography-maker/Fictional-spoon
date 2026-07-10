@@ -1,15 +1,74 @@
 /* ============================================================
    nerdyphotographer.in — app (multi-view studio)
-   Hash router · 5 views · overlay nav · rich upload form ·
-   IndexedDB persistence · lightbox. No backend, no framework.
+   Hash-free router · 7 views · overlay nav · rich upload form ·
+   IndexedDB persistence · GitHub publishing · lightbox.
+   No backend, no framework.
+
+   TABLE OF CONTENTS
+   §1  Data & environment
+   §2  Core utilities            ($, esc, uid, toast, shuffle, focus trap)
+   §3  Photo & media helpers     (src/srcset/alt, read, resize, palette)
+   §4  Text, credits & socials   (names, credit links, IG/Kavyar parsing)
+   §5  Shoot helpers             (future shoots, testimonials)
+   §6  Admin mode & view context (?admin= unlock, comp-card/portfolio views)
+   §7  Persistence — IndexedDB   (shoots store)
+   §8  App state                 (SHOOTS, demo fallback, loading)
+   §9  GitHub sync               (publish shoots + photos to the repo)
+   §10 Lightbox                  (viewer, sidebar, keyboard/touch nav)
+   §11 Site chrome               (overlay nav, admin & theme controls)
+   §12 Views                     (HTML builders for every route)
+   §13 View wiring               (upload form, booking form, cards)
+   §14 Router                    (routes, render, SEO metadata)
+   §15 Animation & loader        (reveals, counters, boot loader)
+   §16 Comp-card printing        (PDF export + download logging)
+   §17 Boot                      (init order, first render)
    ============================================================ */
 (() => {
   "use strict";
+
+  /* ============================================================
+     §1 · DATA & ENVIRONMENT
+     ============================================================ */
   const { ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS } = window.WPS_DATA;
   const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ============================================================
+     §2 · CORE UTILITIES
+     ============================================================ */
   const $ = (s, r = document) => r.querySelector(s);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  let toastTimer;
+  function toast(msg) {
+    let el = $(".toast"); if (!el) { el = document.createElement("div"); el.className = "toast"; document.body.appendChild(el); }
+    el.textContent = msg; requestAnimationFrame(() => el.classList.add("show"));
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
+  }
+  function shuffleArray(array) {
+    const copy = [...array];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+  // Shared focus trap: keep Tab cycling within `root` while it's open.
+  // `isActive` (optional) can veto trapping (e.g. only when a menu is open).
+  function trapTabKey(root, focusableSelector, isActive) {
+    root.addEventListener("keydown", (e) => {
+      if (e.key !== "Tab") return;
+      if (isActive && !isActive()) return;
+      const f = [...root.querySelectorAll(focusableSelector)].filter(el => el.offsetParent !== null);
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+  }
+
+  /* ============================================================
+     §3 · PHOTO & MEDIA HELPERS
+     ============================================================ */
   // A photo renders from its published file URL when it has one, else its local base64.
   const photoSrc = (p) => {
     if (!p) return "";
@@ -43,44 +102,43 @@
     ].filter(Boolean);
     return parts.join(" ");
   };
-
-  function getAllTestimonials() {
-    const list = [];
-    SHOOTS.forEach(s => {
-      if (s.isTestimonial) {
-        list.push({
-          quote: s.description || "",
-          by: s.talent || "Anonymous",
-          meta: s.brand || "",
-          season: s.season || "",
-          shootId: s.id,
-          shootTitle: s.title
-        });
-      } else if (s.testimonials && s.testimonials.length) {
-        s.testimonials.forEach(t => {
-          list.push({
-            quote: t.quote || "",
-            by: t.by || "Anonymous",
-            meta: s.brand === "Personal Project" ? "" : s.brand,
-            season: s.season || "",
-            shootId: s.id,
-            shootTitle: s.title
-          });
-        });
-      }
+  function readAsDataURL(f) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); }); }
+  function resize(dataUrl, maxDim = 1600, q = 0.82) {
+    return new Promise((res) => { const img = new Image(); img.onload = () => {
+      let { width: w, height: h } = img; if (Math.max(w, h) <= maxDim) return res(dataUrl);
+      const s = maxDim / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s);
+      const c = document.createElement("canvas"); c.width = w; c.height = h; c.getContext("2d").drawImage(img, 0, 0, w, h);
+      res(c.toDataURL("image/jpeg", q));
+    }; img.onerror = () => res(dataUrl); img.src = dataUrl; });
+  }
+  function extractPalette(imgDataUrl) {
+    return new Promise((res) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = 10;
+        canvas.height = 10;
+        ctx.drawImage(img, 0, 0, 10, 10);
+        const data = ctx.getImageData(0, 0, 10, 10).data;
+        let r = 0, g = 0, b = 0, count = data.length / 4;
+        for (let i = 0; i < data.length; i += 4) {
+          r += data[i]; g += data[i+1]; b += data[i+2];
+        }
+        r = Math.round(r / count); g = Math.round(g / count); b = Math.round(b / count);
+        const hex = (x, y, z) => "#" + [x, y, z].map(v => v.toString(16).padStart(2, "0")).join("");
+        const dom = hex(r, g, b);
+        const dark = hex(Math.max(10, Math.round(r * 0.45)), Math.max(10, Math.round(g * 0.45)), Math.max(10, Math.round(b * 0.45)));
+        res([dom, dark]);
+      };
+      img.onerror = () => res(["#3a3a3a", "#0d0d0d"]);
+      img.src = imgDataUrl;
     });
-    return list;
   }
 
-  function shuffleArray(array) {
-    const copy = [...array];
-    for (let i = copy.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [copy[i], copy[j]] = [copy[j], copy[i]];
-    }
-    return copy;
-  }
-
+  /* ============================================================
+     §4 · TEXT, CREDITS & SOCIAL-HANDLE HELPERS
+     ============================================================ */
   function getTalentCleanName(talentStr) {
     return (talentStr || "").replace(/\s*\([^)]+\)/g, "").trim();
   }
@@ -121,24 +179,6 @@
     });
     return renderedItems.join(", ");
   }
-  // noth.in-style oversized section word that rises per-letter on scroll.
-  const kineticWord = (word) => {
-    const letters = String(word).split("").map((ch, i) =>
-      ch === " "
-        ? `<span class="kw-space">&nbsp;</span>`
-        : `<span class="kw-letter" style="--i:${i}">${esc(ch)}</span>`
-    ).join("");
-    return `<div class="kinetic-word reveal" aria-hidden="true">${letters}</div>`;
-  };
-  // Turn a page-head <h1> into a per-letter kinetic headline (stays semantic for SEO).
-  const kineticH1 = (word, extraClass = "") => {
-    const letters = String(word).split("").map((ch, i) =>
-      ch === " "
-        ? `<span class="kw-space">&nbsp;</span>`
-        : `<span class="kw-letter" style="--i:${i}">${esc(ch)}</span>`
-    ).join("");
-    return `<h1 class="reveal kinetic-h1 ${extraClass}"><span class="kinetic-word-inner">${letters}</span></h1>`;
-  };
   const parseIgHandle = (h) => {
     let clean = String(h ?? "").trim();
     if (!clean) return "";
@@ -178,6 +218,34 @@
     }
     return "https://kavyar.com/" + clean.replace(/^@/, "");
   };
+  // Which platform does a raw handle string belong to?
+  const isIgHandle = (s) => !s.includes("kavyar.com") && (s.startsWith("@") || s.includes("instagram.com"));
+  const isKavyarHandle = (s) => s.includes("kavyar.com");
+  // Comp cards may inherit handles for the whole crew; narrow the list down to
+  // the model's own. Preference order: handles inlined in the talent field's
+  // parentheses → handles containing the model's name → first handle.
+  function compCardOwnHandles(shoot, handles, isPlatformHandle) {
+    if (!shoot.isCompCard) return handles;
+    const talentNameLower = getTalentCleanName(shoot.talent).toLowerCase();
+    const words = talentNameLower.split(/\s+/).filter(w => w.length > 2);
+    const talentMatch = shoot.talent.match(/\(([^)]+)\)/);
+    if (talentMatch) {
+      const inline = talentMatch[1].split(";").map(s => s.trim()).filter(Boolean).filter(isPlatformHandle);
+      return inline.length ? inline : handles;
+    }
+    if (words.length) {
+      const matched = handles.filter(h => {
+        const hClean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
+        return words.some(word => hClean.includes(word));
+      });
+      return matched.length ? matched : [handles[0]];
+    }
+    return [handles[0]];
+  }
+
+  /* ============================================================
+     §5 · SHOOT HELPERS
+     ============================================================ */
   const isFutureShoot = (s) => {
     if (!s.date) return false;
     const t = Date.parse(s.date);
@@ -186,21 +254,75 @@
     const shootTime = new Date(t).setHours(0, 0, 0, 0);
     return shootTime > todayTime;
   };
-  // Check for admin unlock parameter (?admin=1 or ?admin=0, supporting both search query and hash routing params)
-  const fullUrlString = window.location.search + window.location.hash;
-  const adminMatch = fullUrlString.match(/[?&]admin=([01])\b/);
-  if (adminMatch) {
+  function getAllTestimonials() {
+    const list = [];
+    SHOOTS.forEach(s => {
+      if (s.isTestimonial) {
+        list.push({
+          quote: s.description || "",
+          by: s.talent || "Anonymous",
+          meta: s.brand || "",
+          season: s.season || "",
+          shootId: s.id,
+          shootTitle: s.title
+        });
+      } else if (s.testimonials && s.testimonials.length) {
+        s.testimonials.forEach(t => {
+          list.push({
+            quote: t.quote || "",
+            by: t.by || "Anonymous",
+            meta: s.brand === "Personal Project" ? "" : s.brand,
+            season: s.season || "",
+            shootId: s.id,
+            shootTitle: s.title
+          });
+        });
+      }
+    });
+    return list;
+  }
+
+  /* ============================================================
+     §6 · ADMIN MODE & VIEW CONTEXT
+     ============================================================ */
+  // ?admin=1 reveals the (passcode-gated) admin UI; ?admin=0 locks it again
+  // and clears stored credentials. Both the search query and hash-routing
+  // params are honoured. Called first thing at boot.
+  // SECURITY: the old &pat=<token> URL parameter was removed on purpose —
+  // tokens in URLs leak via browser history, logs and screenshots. The
+  // GitHub token is only ever entered via the sync prompt now.
+  function applyAdminUrlParams() {
+    const fullUrlString = window.location.search + window.location.hash;
+    const adminMatch = fullUrlString.match(/[?&]admin=([01])\b/);
+    if (!adminMatch) return;
     if (adminMatch[1] === "1") {
       localStorage.setItem("wps-admin-authorized", "1");
-      const patMatch = fullUrlString.match(/[?&]pat=([^&#]+)/);
-      if (patMatch) {
-        localStorage.setItem("wps-github-pat", decodeURIComponent(patMatch[1]));
-      }
     } else {
       localStorage.removeItem("wps-admin-authorized");
       localStorage.removeItem("wps-admin");
       localStorage.removeItem("wps-github-pat");
     }
+  }
+
+  // SHA-256 hex digest (secure contexts: https or localhost).
+  async function sha256Hex(text) {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(text)));
+    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+  }
+
+  // Verify an entered admin passcode. Preferred: compare its SHA-256 hash to
+  // STUDIO_CONFIG.adminPasscodeHash, so no readable passcode ships with the
+  // site's public source. A plaintext adminPasscode is honoured only as a
+  // legacy fallback for older configs; there is no built-in default.
+  async function verifyAdminPasscode(code) {
+    if (!code) return false;
+    const cfg = window.STUDIO_CONFIG || {};
+    if (cfg.adminPasscodeHash) {
+      try { return (await sha256Hex(code)) === String(cfg.adminPasscodeHash).toLowerCase(); }
+      catch { return false; }
+    }
+    if (cfg.adminPasscode) return code === cfg.adminPasscode;
+    return false;
   }
 
   const isAdminAuthorized = () => localStorage.getItem("wps-admin-authorized") === "1";
@@ -223,7 +345,9 @@
     );
   }
 
-  /* ---------------- IndexedDB (shoots) ---------------- */
+  /* ============================================================
+     §7 · PERSISTENCE — INDEXEDDB (shoots)
+     ============================================================ */
   const DB = "personal-photostudio-v2", STORE = "shoots";
   let dbP;
   function db() {
@@ -248,7 +372,9 @@
   async function putShoot(rec) { const d = await db(); return new Promise((res, rej) => { const tx = d.transaction(STORE, "readwrite"); tx.objectStore(STORE).put(rec); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); }
   async function delShoot(id) { const d = await db(); return new Promise((res, rej) => { const tx = d.transaction(STORE, "readwrite"); tx.objectStore(STORE).delete(id); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); }
 
-  /* ---------------- State ---------------- */
+  /* ============================================================
+     §8 · APP STATE
+     ============================================================ */
   let SHOOTS = [];      // live shoots (real or demo)
   let usingDemo = true;
   let CURRENT_VIEW_SHOOTS = [];
@@ -273,625 +399,16 @@
       SHOOTS = sorted.filter(s => !isFutureShoot(s));
     }
   }
-  const allPhotos = () => SHOOTS.flatMap((s) => s.photos.map((p) => ({ ...p, shoot: s })));
 
-  /* ---------------- Helpers ---------------- */
-  function extractPalette(imgDataUrl) {
-    return new Promise((res) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        canvas.width = 10;
-        canvas.height = 10;
-        ctx.drawImage(img, 0, 0, 10, 10);
-        const data = ctx.getImageData(0, 0, 10, 10).data;
-        let r = 0, g = 0, b = 0, count = data.length / 4;
-        for (let i = 0; i < data.length; i += 4) {
-          r += data[i]; g += data[i+1]; b += data[i+2];
-        }
-        r = Math.round(r / count); g = Math.round(g / count); b = Math.round(b / count);
-        const hex = (x, y, z) => "#" + [x, y, z].map(v => v.toString(16).padStart(2, "0")).join("");
-        const dom = hex(r, g, b);
-        const dark = hex(Math.max(10, Math.round(r * 0.45)), Math.max(10, Math.round(g * 0.45)), Math.max(10, Math.round(b * 0.45)));
-        res([dom, dark]);
-      };
-      img.onerror = () => res(["#3a3a3a", "#0d0d0d"]);
-      img.src = imgDataUrl;
-    });
-  }
-  let toastTimer;
-  function toast(msg) {
-    let el = $(".toast"); if (!el) { el = document.createElement("div"); el.className = "toast"; document.body.appendChild(el); }
-    el.textContent = msg; requestAnimationFrame(() => el.classList.add("show"));
-    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
-  }
-  function readAsDataURL(f) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); }); }
-  function resize(dataUrl, maxDim = 1600, q = 0.82) {
-    return new Promise((res) => { const img = new Image(); img.onload = () => {
-      let { width: w, height: h } = img; if (Math.max(w, h) <= maxDim) return res(dataUrl);
-      const s = maxDim / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s);
-      const c = document.createElement("canvas"); c.width = w; c.height = h; c.getContext("2d").drawImage(img, 0, 0, w, h);
-      res(c.toDataURL("image/jpeg", q));
-    }; img.onerror = () => res(dataUrl); img.src = dataUrl; });
-  }
-  const brandTag = (s) => `${esc(s.brand)}${s.activity ? " · " + esc(s.activity) : ""}`;
-
-  /* ---------------- Lightbox ---------------- */
-  const lb = $("#lightbox"), lbImg = $("#lightboxImg"), lbSidebar = $("#lightboxSidebar"), lbCount = $("#lbCounter");
-  let lbList = [], lbIdx = 0, lbReturnFocus = null;
-  
-  window.toggleLbDiagram = () => {
-    const el = document.getElementById("lbDiagramImg");
-    if (el) {
-      el.style.display = el.style.display === "none" ? "block" : "none";
-    }
-  };
-
-  function renderLbSidebar(p) {
-    const shoot = SHOOTS.find(x => x.id === p.shootId) || p.shoot;
-    if (!shoot) return "";
-    const isCc = shoot.type === "Test Shoot" && (isCurrentlyCompCardView() || isCurrentlyModelPortfolioView());
-    
-    // Parse social handle
-    let igHtml = "";
-    if (shoot.instagram) {
-      let handles = shoot.instagram.split(",").map(x => x.trim()).filter(Boolean);
-      if (shoot.isCompCard) {
-        const talentNameLower = getTalentCleanName(shoot.talent).toLowerCase();
-        const words = talentNameLower.split(/\s+/).filter(w => w.length > 2);
-        const parenRegex = /\(([^)]+)\)/;
-        const talentMatch = shoot.talent.match(parenRegex);
-        if (talentMatch) {
-          const inlineSocials = talentMatch[1].split(";").map(s => s.trim()).filter(Boolean);
-          const inlineIg = inlineSocials.filter(s => !s.includes("kavyar.com") && (s.startsWith("@") || s.includes("instagram.com")));
-          if (inlineIg.length) handles = inlineIg;
-        } else if (words.length) {
-          const matched = handles.filter(h => {
-            const hClean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
-            return words.some(word => hClean.includes(word));
-          });
-          if (matched.length) handles = matched;
-          else handles = [handles[0]];
-        } else {
-          handles = [handles[0]];
-        }
-      }
-      if (handles.length) {
-        const links = handles.map(h => {
-          let url = h;
-          let label = h;
-          if (!/^https?:\/\//i.test(h)) {
-            const clean = h.replace(/^@/, "");
-            url = `https://instagram.com/${clean}`;
-            label = `@${clean}`;
-          } else {
-            try {
-              const urlObj = new URL(h);
-              const cleanPath = urlObj.pathname.replace(/^\/|\/$/g, "");
-              if (cleanPath && !cleanPath.includes("/")) {
-                label = `@${cleanPath}`;
-              } else {
-                label = `@${cleanPath.split("/").pop() || h}`;
-              }
-            } catch {
-              label = h;
-            }
-          }
-          return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none; margin-right: 14px; display: inline-block;">${esc(label)}</a>`;
-        }).join("");
-        igHtml = `<div><dt>Instagram</dt><dd>${links}</dd></div>`;
-      }
-    }
-
-    let kavyarHtml = "";
-    if (shoot.kavyar) {
-      let handles = shoot.kavyar.split(",").map(x => x.trim()).filter(Boolean);
-      if (shoot.isCompCard) {
-        const talentNameLower = getTalentCleanName(shoot.talent).toLowerCase();
-        const words = talentNameLower.split(/\s+/).filter(w => w.length > 2);
-        const parenRegex = /\(([^)]+)\)/;
-        const talentMatch = shoot.talent.match(parenRegex);
-        if (talentMatch) {
-          const inlineSocials = talentMatch[1].split(";").map(s => s.trim()).filter(Boolean);
-          const inlineKavyar = inlineSocials.filter(s => s.includes("kavyar.com"));
-          if (inlineKavyar.length) handles = inlineKavyar;
-        } else if (words.length) {
-          const matched = handles.filter(h => {
-            const hClean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
-            return words.some(word => hClean.includes(word));
-          });
-          if (matched.length) handles = matched;
-          else handles = [handles[0]];
-        } else {
-          handles = [handles[0]];
-        }
-      }
-      if (handles.length) {
-        const links = handles.map(h => {
-          let url = h;
-          let label = h;
-          if (!/^https?:\/\//i.test(h)) {
-            url = `https://kavyar.com/${h}`;
-            label = `Kavyar: ${h}`;
-          } else {
-            try {
-              const urlObj = new URL(h);
-              const cleanPath = urlObj.pathname.replace(/^\/|\/$/g, "");
-              label = `Kavyar: ${cleanPath.split("/").pop() || h}`;
-            } catch {
-              label = "Kavyar";
-            }
-          }
-          return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none; margin-right: 14px; display: inline-block;">${esc(label)}</a>`;
-        }).join("");
-        kavyarHtml = `<div><dt>Kavyar</dt><dd>${links}</dd></div>`;
-      }
-    }
-
-    // Model Stats
-    let statsHtml = "";
-    const hasStats = shoot.height || shoot.chest || shoot.waist || shoot.hips || shoot.shoes || shoot.modelHair || shoot.modelEyes;
-    if (isCc && hasStats) {
-      statsHtml = `
-        <div class="lb-sidebar-section">
-          <h4 style="font-family:'Outfit', sans-serif; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); margin:0 0 10px;">Model Stats</h4>
-          <div class="stats-row">
-            ${shoot.height ? `<div class="stats-item"><dt>Height</dt><dd>${esc(shoot.height)}</dd></div>` : ""}
-            ${shoot.chest ? `<div class="stats-item"><dt>Chest/Bust</dt><dd>${esc(shoot.chest)}</dd></div>` : ""}
-            ${shoot.waist ? `<div class="stats-item"><dt>Waist</dt><dd>${esc(shoot.waist)}</dd></div>` : ""}
-            ${shoot.hips ? `<div class="stats-item"><dt>Hips</dt><dd>${esc(shoot.hips)}</dd></div>` : ""}
-            ${shoot.shoes ? `<div class="stats-item"><dt>Shoes</dt><dd>${esc(shoot.shoes)}</dd></div>` : ""}
-            ${shoot.modelHair ? `<div class="stats-item"><dt>Hair</dt><dd>${esc(shoot.modelHair)}</dd></div>` : ""}
-            ${shoot.modelEyes ? `<div class="stats-item"><dt>Eyes</dt><dd>${esc(shoot.modelEyes)}</dd></div>` : ""}
-          </div>
-        </div>
-      `;
-    }
-
-    let angleHtml = "";
-    let filterBarHtml = "";
-    if (isCurrentlyModelPortfolioView()) {
-      if (p.angle) {
-        const labels = {
-          "front": "Front Portrait",
-          "side": "Side Profile",
-          "back": "Back Angle",
-          "three-quarter": "3/4 Angle",
-          "close-up": "Close-up / Headshot"
-        };
-        const label = labels[p.angle] || p.angle;
-        angleHtml = `
-          <div style="margin-top: 8px;">
-            <span style="font-family:'JetBrains Mono', monospace; font-size:10px; font-weight: 700; color:var(--accent); background:rgba(210,78,26,0.1); border: 1px solid var(--accent); padding: 4px 8px; border-radius: 4px; text-transform: uppercase; display: inline-block;">
-              ${esc(label)}
-            </span>
-          </div>
-        `;
-      }
-      
-      const anglesInShoot = [...new Set((shoot.photos || []).map(x => x.angle).filter(Boolean))];
-      if (anglesInShoot.length > 0) {
-        const labels = {
-          "front": "Front",
-          "side": "Side",
-          "back": "Back",
-          "three-quarter": "3/4",
-          "close-up": "Close-up"
-        };
-        filterBarHtml = `
-          <div class="lb-sidebar-section" style="border-top: 1px solid var(--line); padding-top: 16px; margin-top: 16px;">
-            <span class="eyebrow" style="font-family:'JetBrains Mono', monospace; font-size:9px; text-transform:uppercase; color:var(--ink-soft); display:block; margin-bottom: 8px;">Filter Portfolio</span>
-            <div style="display:flex; gap:6px; flex-wrap:wrap;">
-              <button class="angle-filter-btn ${window.activeAngleFilter === 'all' ? 'active' : ''}" data-angle="all" style="font-family:inherit; font-size:10px; font-weight:700; padding:4px 8px; border-radius:4px; border:1px solid var(--line); background:${window.activeAngleFilter === 'all' ? 'var(--accent)' : 'var(--paper)'}; color:${window.activeAngleFilter === 'all' ? '#fff' : 'var(--ink)'}; cursor:pointer;">All</button>
-              ${anglesInShoot.map(ang => {
-                const isActive = window.activeAngleFilter === ang;
-                return `<button class="angle-filter-btn ${isActive ? 'active' : ''}" data-angle="${ang}" style="font-family:inherit; font-size:10px; font-weight:700; padding:4px 8px; border-radius:4px; border:1px solid var(--line); background:${isActive ? 'var(--accent)' : 'var(--paper)'}; color:${isActive ? '#fff' : 'var(--ink)'}; cursor:pointer;">${labels[ang] || ang}</button>`;
-              }).join("")}
-            </div>
-          </div>
-        `;
-      }
-    }
-
-    // Credits
-    const credits = [];
-    const isCcPage = !!shoot.isCompCard;
-    const formatCrew = (val) => {
-      if (!val) return "";
-      return isCcPage ? esc(getTalentCleanName(val)) : renderCreditValue(val);
-    };
-
-    if (shoot.photographer) credits.push(`<div><dt>Photo</dt><dd>${formatCrew(shoot.photographer)}</dd></div>`);
-    if (shoot.artDirector && shoot.artDirector !== "—") credits.push(`<div><dt>Art Direction</dt><dd>${formatCrew(shoot.artDirector)}</dd></div>`);
-    if (shoot.stylist && shoot.stylist !== "—") credits.push(`<div><dt>Stylist</dt><dd>${formatCrew(shoot.stylist)}</dd></div>`);
-    if (shoot.mua && shoot.mua !== "—") credits.push(`<div><dt>MUA</dt><dd>${formatCrew(shoot.mua)}</dd></div>`);
-    if (shoot.videographer && shoot.videographer !== "—") credits.push(`<div><dt>Video</dt><dd>${formatCrew(shoot.videographer)}</dd></div>`);
-    if (shoot.hair && shoot.hair !== "—") credits.push(`<div><dt>Hair</dt><dd>${formatCrew(shoot.hair)}</dd></div>`);
-    if (shoot.talent && shoot.talent !== "—") credits.push(`<div><dt>Model / Talent</dt><dd>${renderCreditValue(shoot.talent)}</dd></div>`);
-    if (igHtml) credits.push(igHtml);
-    if (kavyarHtml) credits.push(kavyarHtml);
-
-    const creditsHtml = credits.length ? `
-      <div class="lb-sidebar-section">
-        <h4 style="font-family:'Outfit', sans-serif; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); margin:0 0 10px;">Credits</h4>
-        <dl class="work-credits" style="margin: 0;">
-          ${credits.join("")}
-        </dl>
-      </div>
-    ` : "";
-
-    // Lighting diagram
-    let diagHtml = "";
-    if (shoot.lightingDiagram && (shoot.lightingDiagramVisibility === "public" || isAdmin())) {
-      diagHtml = `
-        <div class="lb-sidebar-section" style="margin-top: 10px;">
-          <button class="btn btn-ghost btn-block" style="font-size: 11px; height: auto; padding: 8px;" onclick="window.toggleLbDiagram()">
-            View Lighting Setup
-          </button>
-          <div id="lbDiagramImg" style="display:none; margin-top:12px; border:1px solid var(--line); padding:10px; background:var(--bone); border-radius:4px;">
-            <img src="${esc(shoot.lightingDiagram)}" style="max-width:100%; height:auto;" alt="Lighting setup" />
-          </div>
-        </div>
-      `;
-    }
-
-    let pdfBtnHtml = "";
-    if (isCc && !isCurrentlyModelPortfolioView()) {
-      if (!shoot.disableCompCardDownload) {
-        window.currentCompCardShootObj = shoot;
-        pdfBtnHtml = `
-          <div class="lb-sidebar-section" style="margin-top: 10px;">
-            <button class="btn btn-dark btn-block" style="font-size: 11px; height: auto; padding: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;" onclick="window.triggerCompCardDownload('${shoot.id}')">
-              Export PDF Comp Card ↗
-            </button>
-          </div>
-        `;
-      } else if (isAdmin()) {
-        pdfBtnHtml = `
-          <div class="lb-sidebar-section" style="margin-top: 10px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--accent); border: 1px dashed var(--accent); padding: 8px 12px; text-transform: uppercase; text-align: center; border-radius: 4px;">
-            🔒 Comp card PDF download disabled by agency override
-          </div>
-        `;
-      }
-    }
-    const disclaimerHtml = isCc ? `
-      <p class="lb-disclaimer" style="font-size: 11px; font-style: italic; color: var(--ink-soft); margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; line-height: 1.5; font-family: sans-serif;">
-        To book this talent, please connect directly via their verified social channels or contact their representing agency.
-        <br/><br/>
-        Studio charges would apply in case the studio is booked.
-        <br/><br/>
-        This compcard includes photos clicked or produced under nerdyphotographer.in studio or its subsidiaries.
-      </p>
-    ` : "";
-
-    return `
-      <div style="display:flex; flex-direction:column; gap: 24px; width: 100%;">
-        <div>
-          <span class="eyebrow" style="color:var(--accent); font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:0.05em; text-transform:uppercase;">
-            ${isCc ? "Model Portfolio" : `${esc(shoot.brand)} · ${esc(shoot.type)}`}
-          </span>
-          <h2 style="font-family:'Outfit', sans-serif; font-size: 24px; font-weight:700; margin: 6px 0 0; color:var(--ink); line-height: 1.2;">
-            ${esc(getTalentCleanName(shoot.talent || shoot.title))}
-          </h2>
-          ${angleHtml}
-          ${shoot.description ? `<p style="font-size:13px; color:var(--ink-soft); line-height:1.5; margin:14px 0 0;">${esc(shoot.description)}</p>` : ""}
-        </div>
-        
-        ${isCc ? "" : `
-        <dl class="work-credits" style="margin: 0; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);">
-          ${shoot.activity ? `<div><dt>Activity</dt><dd>${esc(shoot.activity)}</dd></div>` : ""}
-          ${shoot.season ? `<div><dt>Season</dt><dd>${esc(shoot.season)}</dd></div>` : ""}
-          ${(shoot.location) ? `<div><dt>Location</dt><dd>${esc(shoot.location)}</dd></div>` : ""}
-        </dl>
-        `}
-        
-        ${statsHtml}
-        ${filterBarHtml}
-        
-        ${isCc ? `
-          <div class="lb-sidebar-section" style="border-top: 1px solid var(--line); padding-top: 16px;">
-            <dl class="work-credits" style="margin: 0;">
-              ${igHtml}
-              ${kavyarHtml}
-            </dl>
-          </div>
-        ` : `
-          ${creditsHtml}
-        `}
-        
-        ${diagHtml}
-        ${pdfBtnHtml}
-        ${disclaimerHtml}
-        ${(() => {
-          if (!isAdmin()) return "";
-          return `
-            <div class="lb-sidebar-section" style="margin-top: 20px; border-top: 1px dashed var(--line); padding-top: 16px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; width: 100%;">
-              <h4 style="font-family:'Outfit', sans-serif; font-size:9px; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-soft); margin:0;">Admin Controls <span style="font-weight: normal; opacity: 0.7; font-size: 8px; margin-left: 4px;">(🔒 Visible Only to Admins)</span></h4>
-              <div style="display: flex; gap: 14px; width: 100%; margin-top: 6px;">
-                <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0; font-size: 11px; height: auto;" data-id="${shoot.id}">Edit details →</button>
-                <button class="link-arrow work-delete" style="color: #b22222; font-weight: 700; padding: 0; font-size: 11px; height: auto;" data-id="${shoot.id}">Delete shoot →</button>
-              </div>
-            </div>
-          `;
-        })()}
-      </div>
-    `;
-  }
-
-  function openLb(list, idx) {
-    window.activeAngleFilter = "all";
-    lbReturnFocus = document.activeElement;
-    lbList = list; lbIdx = idx; paintLb(); lb.hidden = false;
-    document.body.style.overflow = "hidden"; $("#lightboxClose").focus();
-  }
-  function paintLb() {
-    const p = lbList[lbIdx]; if (!p) return;
-    lbImg.src = photoSrc(p);
-    lbImg.srcset = p.url ? srcsetAttr(p) : "";
-    lbImg.alt = p.caption || altFor(p.shoot);
-    lbImg.style.objectPosition = "center";
-    lbSidebar.innerHTML = renderLbSidebar(p);
-    lbCount.textContent = `${lbIdx + 1} / ${lbList.length}`;
-
-    // Wire edit & delete buttons inside the lightbox sidebar if in admin mode
-    if (isAdmin()) {
-      const shoot = SHOOTS.find(x => x.id === p.shootId) || p.shoot;
-      if (shoot) {
-        lbSidebar.querySelectorAll(".work-edit").forEach(btn => {
-          btn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            closeLb();
-            history.pushState(null, "", `/upload?edit=${shoot.id}`);
-            render();
-          });
-        });
-        lbSidebar.querySelectorAll(".work-delete").forEach(btn => {
-          btn.addEventListener("click", async (e) => {
-            e.stopPropagation();
-            if (confirm(`Are you sure you want to delete the photoshoot "${shoot.title || shoot.talent}"?`)) {
-              closeLb();
-              await delShoot(shoot.id);
-              await loadShoots();
-              toast(`Deleted "${shoot.title || shoot.talent}".`);
-              render();
-              await syncToGitHub(SHOOTS, { deletedIds: [shoot.id] });
-            }
-          });
-        });
-      }
-    }
-
-    // Wire angle filter buttons for Model Portfolio view inside lightbox
-    lbSidebar.querySelectorAll(".angle-filter-btn").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const selectedAngle = btn.dataset.angle;
-        window.activeAngleFilter = selectedAngle;
-        
-        // Find parent shoot to rebuild filtered list
-        const currentShoot = SHOOTS.find(x => x.id === p.shootId) || p.shoot;
-        const fullList = (currentShoot.photos || []).filter(x => {
-          return x.usage === "portfolio" || x.usage === "both" || x.usage === undefined;
-        }).map(x => ({ ...x, shoot: currentShoot }));
-        
-        let filteredList = fullList;
-        if (selectedAngle !== "all") {
-          filteredList = fullList.filter(x => x.angle === selectedAngle);
-        }
-        
-        if (filteredList.length) {
-          lbList = filteredList;
-          lbIdx = 0;
-          paintLb();
-        } else {
-          toast("No photos matching this profile.");
-        }
-      });
-    });
-  }
-  function stepLb(d) { if (!lbList.length) return; lbIdx = (lbIdx + d + lbList.length) % lbList.length; paintLb(); }
-  function closeLb() {
-    lb.hidden = true; lbImg.src = ""; document.body.style.overflow = "";
-    // Return focus to the thumbnail/card that opened the viewer.
-    if (lbReturnFocus && document.contains(lbReturnFocus)) { try { lbReturnFocus.focus(); } catch {} }
-    lbReturnFocus = null;
-  }
-  // Simple focus trap: keep Tab within the lightbox while it's open.
-  lb.addEventListener("keydown", (e) => {
-    if (e.key !== "Tab") return;
-    const f = [...lb.querySelectorAll("button:not([disabled])")].filter(el => el.offsetParent !== null);
-    if (!f.length) return;
-    const first = f[0], last = f[f.length - 1];
-    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-  });
-  $("#lightboxClose").addEventListener("click", (e) => { e.stopPropagation(); closeLb(); });
-  $("#lbPrev").addEventListener("click", (e) => { e.stopPropagation(); stepLb(-1); });
-  $("#lbNext").addEventListener("click", (e) => { e.stopPropagation(); stepLb(1); });
-  // Close only on a genuine backdrop click — never when the click lands on the
-  // nav buttons, close button, image, caption, or counter (or their children).
-  lb.addEventListener("click", (e) => {
-    if (e.target.closest(".lightbox-nav, .lightbox-close, .lightbox-figure, .lightbox-counter")) return;
-    closeLb();
-  });
-  document.addEventListener("keydown", (e) => { if (lb.hidden) return; if (e.key === "Escape") closeLb(); else if (e.key === "ArrowLeft") stepLb(-1); else if (e.key === "ArrowRight") stepLb(1); });
-
-  // Touch swipe support for lightbox on mobile
-  let touchStartX = 0;
-  let touchEndX = 0;
-  lb.addEventListener("touchstart", (e) => {
-    touchStartX = e.changedTouches[0].screenX;
-  }, { passive: true });
-  lb.addEventListener("touchend", (e) => {
-    touchEndX = e.changedTouches[0].screenX;
-    const diff = touchEndX - touchStartX;
-    if (diff < -50) stepLb(1);      // Swipe left -> Next
-    else if (diff > 50) stepLb(-1); // Swipe right -> Prev
-  }, { passive: true });
-
-  /* ---------------- Overlay nav ---------------- */
-  const menuBtn = $("#menuBtn"), overlay = $("#navOverlay");
-  function toggleMenu(open) {
-    const o = open ?? !overlay.classList.contains("open");
-    overlay.classList.toggle("open", o);
-    overlay.setAttribute("aria-hidden", String(!o));
-    menuBtn.setAttribute("aria-expanded", String(o));
-    document.body.style.overflow = o ? "hidden" : "";
-    const header = $(".site-header");
-    if (header) {
-      header.classList.toggle("menu-open", o);
-    }
-    // Focus management: into the menu on open, back to the button on close.
-    if (o) {
-      const firstLink = overlay.querySelector(".nav-links a");
-      setTimeout(() => firstLink?.focus(), 60);
-    } else if (document.activeElement && overlay.contains(document.activeElement)) {
-      menuBtn.focus();
-    }
-  }
-  menuBtn.addEventListener("click", () => toggleMenu());
-  // Trap Tab within the open menu overlay.
-  overlay.addEventListener("keydown", (e) => {
-    if (e.key !== "Tab" || !overlay.classList.contains("open")) return;
-    const f = [...overlay.querySelectorAll("a[href], button:not([disabled])")].filter(el => el.offsetParent !== null);
-    if (!f.length) return;
-    const first = f[0], last = f[f.length - 1];
-    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-  });
-  overlay.addEventListener("click", (e) => { if (e.target.closest("[data-link]")) toggleMenu(false); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && overlay.classList.contains("open")) toggleMenu(false); });
-
-  const adminBtn = $("#adminModeBtn");
-  const themeBtn = $("#themeOverrideBtn");
-  const visitorStatsLabel = $("#visitorStatsLabel");
-  const visitorStatsBlock = $("#visitorStatsBlock");
-
-  function getVisitorStats(seedString) {
-    function random(seed) {
-      const x = Math.sin(seed++) * 10000;
-      return x - Math.floor(x);
-    }
-    const msInDay = 24 * 60 * 60 * 1000;
-    const currentDay = Math.floor(Date.now() / msInDay);
-    const seedVal = seedString.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const visits24h = Math.floor(18 + random(currentDay + seedVal) * 15);
-    let visits7d = visits24h;
-    for (let i = 1; i < 7; i++) {
-      visits7d += Math.floor(18 + random(currentDay - i + seedVal) * 15);
-    }
-    return { visits24h, visits7d };
-  }
-
-  function updateThemeBtnText() {
-    if (!themeBtn) return;
-    const mode = localStorage.getItem("wps-theme-override") || "auto";
-    themeBtn.textContent = `Theme: ${mode}`;
-    themeBtn.style.borderColor = mode !== "auto" ? "var(--accent)" : "currentColor";
-    themeBtn.style.color = mode !== "auto" ? "var(--accent)" : "#fff";
-  }
-
-  function updateAdminBtn() {
-    if (!adminBtn) return;
-    const active = isAdmin();
-    adminBtn.textContent = `Admin Mode: ${active ? "On" : "Off"}`;
-    adminBtn.style.borderColor = active ? "var(--accent)" : "currentColor";
-    adminBtn.style.color = active ? "var(--accent)" : "#fff";
-
-    const adminSec = $("#navAdminSec");
-    if (adminSec) {
-      adminSec.style.display = isAdminAuthorized() ? "block" : "none";
-    }
-
-    const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi"), compCardsLi = $("#navCompCardsLi"), portfolioLi = $("#navModelPortfolioLi"), logsLi = $("#navLogsLi");
-    if (uploadLi) uploadLi.style.display = active ? "block" : "none";
-    if (bookLi) bookLi.style.display = active ? "none" : "block";
-    if (compCardsLi) compCardsLi.style.display = active ? "block" : "none";
-    if (portfolioLi) portfolioLi.style.display = active ? "block" : "none";
-    if (logsLi) logsLi.style.display = active ? "block" : "none";
-
-    if (themeBtn) {
-      themeBtn.style.display = active ? "inline-block" : "none";
-      updateThemeBtnText();
-    }
-
-    if (visitorStatsBlock && visitorStatsLabel) {
-      if (active) {
-        const stats = getVisitorStats("Wolverine Photo Studio");
-        visitorStatsLabel.innerHTML = `Visits: <strong>${stats.visits24h}</strong> (24H) · <strong>${stats.visits7d}</strong> (7D)`;
-        visitorStatsBlock.style.display = "block";
-      } else {
-        visitorStatsBlock.style.display = "none";
-      }
-    }
-  }
-
-  adminBtn?.addEventListener("click", async () => {
-    const turningOn = !isAdmin();
-    if (turningOn) {
-      const code = prompt("Enter admin passcode to enable Admin Mode:");
-      if (code !== (window.STUDIO_CONFIG?.adminPasscode || "canonr5markii")) {
-        alert("Incorrect passcode.");
-        return;
-      }
-    }
-    sessionStorage.setItem("wps-admin", turningOn ? "1" : "0");
-    await loadShoots();
-    updateAdminBtn();
-    toast(`Admin Mode ${isAdmin() ? "enabled" : "disabled"}.`);
-    render();
-  });
-
-  themeBtn?.addEventListener("click", () => {
-    const current = localStorage.getItem("wps-theme-override") || "auto";
-    let next = "auto";
-    if (current === "auto") next = "light";
-    else if (current === "light") next = "dark";
-    else next = "auto";
-
-    localStorage.setItem("wps-theme-override", next);
-    updateThemeBtnText();
-    if (window.applyWpsThemeOverride) {
-      window.applyWpsThemeOverride();
-    }
-    syncHeaderThemeToggle();
-  });
-
-  /* Public header theme toggle — simple light <-> dark for every visitor.
-     Resolves the current effective theme, then flips to the opposite and
-     stores it as an explicit override (leaving "auto" behind once used). */
-  const headerThemeToggle = $("#headerThemeToggle");
-  function currentEffectiveTheme() {
-    return document.documentElement.classList.contains("theme-dark") ? "dark" : "light";
-  }
-  function syncHeaderThemeToggle() {
-    if (!headerThemeToggle) return;
-    const isDark = currentEffectiveTheme() === "dark";
-    headerThemeToggle.setAttribute("aria-pressed", String(isDark));
-    headerThemeToggle.setAttribute(
-      "title",
-      isDark ? "Switch to light theme" : "Switch to dark theme"
-    );
-  }
-  headerThemeToggle?.addEventListener("click", () => {
-    const next = currentEffectiveTheme() === "dark" ? "light" : "dark";
-    localStorage.setItem("wps-theme-override", next);
-    if (window.applyWpsThemeOverride) window.applyWpsThemeOverride();
-    updateThemeBtnText();
-    syncHeaderThemeToggle();
-  });
-  // Keep the toggle icon/state in sync when the system theme changes in auto mode.
-  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncHeaderThemeToggle);
-  syncHeaderThemeToggle();
-
-  /* ---------------- GitHub sync ----------------
+  /* ============================================================
+     §9 · GITHUB SYNC
      Publishes the portfolio into the repo so every visitor sees it.
      - Merges per-shoot with what's already in data.js (local wins by id),
        so publishing from one device can't wipe another device's shoots.
      - Uploads photos as real image files under photos/ and stores only
        their paths in data.js, keeping data.js small and images cacheable.
-     - Writes everything as one atomic commit via the git data API. */
+     - Writes everything as one atomic commit via the git data API.
+     ============================================================ */
   const GH_REPO = "prateeksaxenaphotography-maker/Fictional-spoon";
   const GH_BRANCH = "main";
   const GH_API = `https://api.github.com/repos/${GH_REPO}`;
@@ -1048,9 +565,579 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     }
   }
 
-  /* ================= VIEWS ================= */
+  /* ============================================================
+     §10 · LIGHTBOX
+     Fullscreen viewer: credits/stats sidebar, angle filters (Model
+     Portfolio view), keyboard + touch navigation, focus handling.
+     ============================================================ */
+  const lb = $("#lightbox"), lbImg = $("#lightboxImg"), lbSidebar = $("#lightboxSidebar"), lbCount = $("#lbCounter");
+  let lbList = [], lbIdx = 0, lbReturnFocus = null;
+  
+  window.toggleLbDiagram = () => {
+    const el = document.getElementById("lbDiagramImg");
+    if (el) {
+      el.style.display = el.style.display === "none" ? "block" : "none";
+    }
+  };
+  function renderLbSidebar(p) {
+    const shoot = SHOOTS.find(x => x.id === p.shootId) || p.shoot;
+    if (!shoot) return "";
+    const isCc = shoot.type === "Test Shoot" && (isCurrentlyCompCardView() || isCurrentlyModelPortfolioView());
+    
+    // Parse social handle
+    let igHtml = "";
+    if (shoot.instagram) {
+      const handles = compCardOwnHandles(shoot, shoot.instagram.split(",").map(x => x.trim()).filter(Boolean), isIgHandle);
+      if (handles.length) {
+        const links = handles.map(h => {
+          let url = h;
+          let label = h;
+          if (!/^https?:\/\//i.test(h)) {
+            const clean = h.replace(/^@/, "");
+            url = `https://instagram.com/${clean}`;
+            label = `@${clean}`;
+          } else {
+            try {
+              const urlObj = new URL(h);
+              const cleanPath = urlObj.pathname.replace(/^\/|\/$/g, "");
+              if (cleanPath && !cleanPath.includes("/")) {
+                label = `@${cleanPath}`;
+              } else {
+                label = `@${cleanPath.split("/").pop() || h}`;
+              }
+            } catch {
+              label = h;
+            }
+          }
+          return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none; margin-right: 14px; display: inline-block;">${esc(label)}</a>`;
+        }).join("");
+        igHtml = `<div><dt>Instagram</dt><dd>${links}</dd></div>`;
+      }
+    }
+
+    let kavyarHtml = "";
+    if (shoot.kavyar) {
+      const handles = compCardOwnHandles(shoot, shoot.kavyar.split(",").map(x => x.trim()).filter(Boolean), isKavyarHandle);
+      if (handles.length) {
+        const links = handles.map(h => {
+          let url = h;
+          let label = h;
+          if (!/^https?:\/\//i.test(h)) {
+            url = `https://kavyar.com/${h}`;
+            label = `Kavyar: ${h}`;
+          } else {
+            try {
+              const urlObj = new URL(h);
+              const cleanPath = urlObj.pathname.replace(/^\/|\/$/g, "");
+              label = `Kavyar: ${cleanPath.split("/").pop() || h}`;
+            } catch {
+              label = "Kavyar";
+            }
+          }
+          return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none; margin-right: 14px; display: inline-block;">${esc(label)}</a>`;
+        }).join("");
+        kavyarHtml = `<div><dt>Kavyar</dt><dd>${links}</dd></div>`;
+      }
+    }
+
+    // Model Stats
+    let statsHtml = "";
+    const hasStats = shoot.height || shoot.chest || shoot.waist || shoot.hips || shoot.shoes || shoot.modelHair || shoot.modelEyes;
+    if (isCc && hasStats) {
+      statsHtml = `
+        <div class="lb-sidebar-section">
+          <h4 style="font-family:'Outfit', sans-serif; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); margin:0 0 10px;">Model Stats</h4>
+          <div class="stats-row">
+            ${shoot.height ? `<div class="stats-item"><dt>Height</dt><dd>${esc(shoot.height)}</dd></div>` : ""}
+            ${shoot.chest ? `<div class="stats-item"><dt>Chest/Bust</dt><dd>${esc(shoot.chest)}</dd></div>` : ""}
+            ${shoot.waist ? `<div class="stats-item"><dt>Waist</dt><dd>${esc(shoot.waist)}</dd></div>` : ""}
+            ${shoot.hips ? `<div class="stats-item"><dt>Hips</dt><dd>${esc(shoot.hips)}</dd></div>` : ""}
+            ${shoot.shoes ? `<div class="stats-item"><dt>Shoes</dt><dd>${esc(shoot.shoes)}</dd></div>` : ""}
+            ${shoot.modelHair ? `<div class="stats-item"><dt>Hair</dt><dd>${esc(shoot.modelHair)}</dd></div>` : ""}
+            ${shoot.modelEyes ? `<div class="stats-item"><dt>Eyes</dt><dd>${esc(shoot.modelEyes)}</dd></div>` : ""}
+          </div>
+        </div>
+      `;
+    }
+
+    let angleHtml = "";
+    let filterBarHtml = "";
+    if (isCurrentlyModelPortfolioView()) {
+      if (p.angle) {
+        const labels = {
+          "front": "Front Portrait",
+          "side": "Side Profile",
+          "back": "Back Angle",
+          "three-quarter": "3/4 Angle",
+          "close-up": "Close-up / Headshot"
+        };
+        const label = labels[p.angle] || p.angle;
+        angleHtml = `
+          <div style="margin-top: 8px;">
+            <span style="font-family:'JetBrains Mono', monospace; font-size:10px; font-weight: 700; color:var(--accent); background:rgba(210,78,26,0.1); border: 1px solid var(--accent); padding: 4px 8px; border-radius: 4px; text-transform: uppercase; display: inline-block;">
+              ${esc(label)}
+            </span>
+          </div>
+        `;
+      }
+      
+      const anglesInShoot = [...new Set((shoot.photos || []).map(x => x.angle).filter(Boolean))];
+      if (anglesInShoot.length > 0) {
+        const labels = {
+          "front": "Front",
+          "side": "Side",
+          "back": "Back",
+          "three-quarter": "3/4",
+          "close-up": "Close-up"
+        };
+        filterBarHtml = `
+          <div class="lb-sidebar-section" style="border-top: 1px solid var(--line); padding-top: 16px; margin-top: 16px;">
+            <span class="eyebrow" style="font-family:'JetBrains Mono', monospace; font-size:9px; text-transform:uppercase; color:var(--ink-soft); display:block; margin-bottom: 8px;">Filter Portfolio</span>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button class="angle-filter-btn ${window.activeAngleFilter === 'all' ? 'active' : ''}" data-angle="all" style="font-family:inherit; font-size:10px; font-weight:700; padding:4px 8px; border-radius:4px; border:1px solid var(--line); background:${window.activeAngleFilter === 'all' ? 'var(--accent)' : 'var(--paper)'}; color:${window.activeAngleFilter === 'all' ? '#fff' : 'var(--ink)'}; cursor:pointer;">All</button>
+              ${anglesInShoot.map(ang => {
+                const isActive = window.activeAngleFilter === ang;
+                return `<button class="angle-filter-btn ${isActive ? 'active' : ''}" data-angle="${ang}" style="font-family:inherit; font-size:10px; font-weight:700; padding:4px 8px; border-radius:4px; border:1px solid var(--line); background:${isActive ? 'var(--accent)' : 'var(--paper)'}; color:${isActive ? '#fff' : 'var(--ink)'}; cursor:pointer;">${labels[ang] || ang}</button>`;
+              }).join("")}
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // Credits
+    const credits = [];
+    const isCcPage = !!shoot.isCompCard;
+    const formatCrew = (val) => {
+      if (!val) return "";
+      return isCcPage ? esc(getTalentCleanName(val)) : renderCreditValue(val);
+    };
+
+    if (shoot.photographer) credits.push(`<div><dt>Photo</dt><dd>${formatCrew(shoot.photographer)}</dd></div>`);
+    if (shoot.artDirector && shoot.artDirector !== "—") credits.push(`<div><dt>Art Direction</dt><dd>${formatCrew(shoot.artDirector)}</dd></div>`);
+    if (shoot.stylist && shoot.stylist !== "—") credits.push(`<div><dt>Stylist</dt><dd>${formatCrew(shoot.stylist)}</dd></div>`);
+    if (shoot.mua && shoot.mua !== "—") credits.push(`<div><dt>MUA</dt><dd>${formatCrew(shoot.mua)}</dd></div>`);
+    if (shoot.videographer && shoot.videographer !== "—") credits.push(`<div><dt>Video</dt><dd>${formatCrew(shoot.videographer)}</dd></div>`);
+    if (shoot.hair && shoot.hair !== "—") credits.push(`<div><dt>Hair</dt><dd>${formatCrew(shoot.hair)}</dd></div>`);
+    if (shoot.talent && shoot.talent !== "—") credits.push(`<div><dt>Model / Talent</dt><dd>${renderCreditValue(shoot.talent)}</dd></div>`);
+    if (igHtml) credits.push(igHtml);
+    if (kavyarHtml) credits.push(kavyarHtml);
+
+    const creditsHtml = credits.length ? `
+      <div class="lb-sidebar-section">
+        <h4 style="font-family:'Outfit', sans-serif; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); margin:0 0 10px;">Credits</h4>
+        <dl class="work-credits" style="margin: 0;">
+          ${credits.join("")}
+        </dl>
+      </div>
+    ` : "";
+
+    // Lighting diagram
+    let diagHtml = "";
+    if (shoot.lightingDiagram && (shoot.lightingDiagramVisibility === "public" || isAdmin())) {
+      diagHtml = `
+        <div class="lb-sidebar-section" style="margin-top: 10px;">
+          <button class="btn btn-ghost btn-block" style="font-size: 11px; height: auto; padding: 8px;" onclick="window.toggleLbDiagram()">
+            View Lighting Setup
+          </button>
+          <div id="lbDiagramImg" style="display:none; margin-top:12px; border:1px solid var(--line); padding:10px; background:var(--bone); border-radius:4px;">
+            <img src="${esc(shoot.lightingDiagram)}" style="max-width:100%; height:auto;" alt="Lighting setup" />
+          </div>
+        </div>
+      `;
+    }
+
+    let pdfBtnHtml = "";
+    if (isCc && !isCurrentlyModelPortfolioView()) {
+      if (!shoot.disableCompCardDownload) {
+        window.currentCompCardShootObj = shoot;
+        pdfBtnHtml = `
+          <div class="lb-sidebar-section" style="margin-top: 10px;">
+            <button class="btn btn-dark btn-block" style="font-size: 11px; height: auto; padding: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;" onclick="window.triggerCompCardDownload('${shoot.id}')">
+              Export PDF Comp Card ↗
+            </button>
+          </div>
+        `;
+      } else if (isAdmin()) {
+        pdfBtnHtml = `
+          <div class="lb-sidebar-section" style="margin-top: 10px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--accent); border: 1px dashed var(--accent); padding: 8px 12px; text-transform: uppercase; text-align: center; border-radius: 4px;">
+            🔒 Comp card PDF download disabled by agency override
+          </div>
+        `;
+      }
+    } else if (isCc && isCurrentlyModelPortfolioView() && isAdmin()) {
+      // Admin-only: export every portfolio-tagged photo of this model as a
+      // multi-page PDF (cover + angle-labelled grids of 6 per A4 page).
+      window.currentCompCardShootObj = shoot;
+      pdfBtnHtml = `
+        <div class="lb-sidebar-section" style="margin-top: 10px;">
+          <button class="btn btn-dark btn-block" style="font-size: 11px; height: auto; padding: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;" onclick="window.printModelPortfolio('${shoot.id}')">
+            Export Model Portfolio PDF ↗ <span style="font-weight: normal; opacity: 0.7; font-size: 9px;">(🔒 Admin)</span>
+          </button>
+        </div>
+      `;
+    }
+    const disclaimerHtml = isCc ? `
+      <p class="lb-disclaimer" style="font-size: 11px; font-style: italic; color: var(--ink-soft); margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; line-height: 1.5; font-family: sans-serif;">
+        To book this talent, please connect directly via their verified social channels or contact their representing agency.
+        <br/><br/>
+        Studio charges would apply in case the studio is booked.
+        <br/><br/>
+        This compcard includes photos clicked or produced under nerdyphotographer.in studio or its subsidiaries.
+      </p>
+    ` : "";
+
+    return `
+      <div style="display:flex; flex-direction:column; gap: 24px; width: 100%;">
+        <div>
+          <span class="eyebrow" style="color:var(--accent); font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:0.05em; text-transform:uppercase;">
+            ${isCc ? "Model Portfolio" : `${esc(shoot.brand)} · ${esc(shoot.type)}`}
+          </span>
+          <h2 style="font-family:'Outfit', sans-serif; font-size: 24px; font-weight:700; margin: 6px 0 0; color:var(--ink); line-height: 1.2;">
+            ${esc(getTalentCleanName(shoot.talent || shoot.title))}
+          </h2>
+          ${angleHtml}
+          ${shoot.description ? `<p style="font-size:13px; color:var(--ink-soft); line-height:1.5; margin:14px 0 0;">${esc(shoot.description)}</p>` : ""}
+        </div>
+        
+        ${isCc ? "" : `
+        <dl class="work-credits" style="margin: 0; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);">
+          ${shoot.activity ? `<div><dt>Activity</dt><dd>${esc(shoot.activity)}</dd></div>` : ""}
+          ${shoot.season ? `<div><dt>Season</dt><dd>${esc(shoot.season)}</dd></div>` : ""}
+          ${(shoot.location) ? `<div><dt>Location</dt><dd>${esc(shoot.location)}</dd></div>` : ""}
+        </dl>
+        `}
+        
+        ${statsHtml}
+        ${filterBarHtml}
+        
+        ${isCc ? `
+          <div class="lb-sidebar-section" style="border-top: 1px solid var(--line); padding-top: 16px;">
+            <dl class="work-credits" style="margin: 0;">
+              ${igHtml}
+              ${kavyarHtml}
+            </dl>
+          </div>
+        ` : `
+          ${creditsHtml}
+        `}
+        
+        ${diagHtml}
+        ${pdfBtnHtml}
+        ${disclaimerHtml}
+        ${(() => {
+          if (!isAdmin()) return "";
+          // Unified comp-card/portfolio "albums" are synthetic — they merge
+          // several real shoots and their id doesn't exist in storage. Edit
+          // and delete must target the REAL underlying shoots, so list one
+          // row per original shoot (single-shoot albums get one plain row).
+          const targets = (shoot.originalShoots && shoot.originalShoots.length) ? shoot.originalShoots : [shoot];
+          const rows = targets.map(t => `
+              <div style="display: flex; gap: 14px; width: 100%; margin-top: 6px;">
+                <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0; font-size: 11px; height: auto; text-align: left;" data-id="${t.id}">${targets.length > 1 ? `Edit: "${esc(t.title)}"` : "Edit details"} →</button>
+                <button class="link-arrow work-delete" style="color: #b22222; font-weight: 700; padding: 0; font-size: 11px; height: auto;" data-id="${t.id}" data-title="${esc(t.title || t.talent || "")}">Delete →</button>
+              </div>`).join("");
+          return `
+            <div class="lb-sidebar-section" style="margin-top: 20px; border-top: 1px dashed var(--line); padding-top: 16px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; width: 100%;">
+              <h4 style="font-family:'Outfit', sans-serif; font-size:9px; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-soft); margin:0;">Admin Controls <span style="font-weight: normal; opacity: 0.7; font-size: 8px; margin-left: 4px;">(🔒 Visible Only to Admins)</span></h4>
+              ${rows}
+            </div>
+          `;
+        })()}
+      </div>
+    `;
+  }
+
+  function openLb(list, idx) {
+    window.activeAngleFilter = "all";
+    lbReturnFocus = document.activeElement;
+    lbList = list; lbIdx = idx; paintLb(); lb.hidden = false;
+    document.body.style.overflow = "hidden"; $("#lightboxClose").focus();
+  }
+  function paintLb() {
+    const p = lbList[lbIdx]; if (!p) return;
+    lbImg.src = photoSrc(p);
+    lbImg.srcset = p.url ? srcsetAttr(p) : "";
+    lbImg.alt = p.caption || altFor(p.shoot);
+    lbImg.style.objectPosition = "center";
+    lbSidebar.innerHTML = renderLbSidebar(p);
+    lbCount.textContent = `${lbIdx + 1} / ${lbList.length}`;
+
+    // Wire edit & delete buttons inside the lightbox sidebar if in admin mode.
+    // Buttons carry data-id of the REAL underlying shoot (unified comp-card /
+    // portfolio albums are synthetic and can't be edited or deleted directly).
+    if (isAdmin()) {
+      const shoot = SHOOTS.find(x => x.id === p.shootId) || p.shoot;
+      if (shoot) {
+        lbSidebar.querySelectorAll(".work-edit").forEach(btn => {
+          btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            closeLb();
+            history.pushState(null, "", `/upload?edit=${btn.dataset.id || shoot.id}`);
+            render();
+          });
+        });
+        lbSidebar.querySelectorAll(".work-delete").forEach(btn => {
+          btn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const targetId = btn.dataset.id || shoot.id;
+            const targetName = btn.dataset.title || shoot.title || shoot.talent;
+            if (confirm(`Are you sure you want to delete the photoshoot "${targetName}"?`)) {
+              closeLb();
+              await delShoot(targetId);
+              await loadShoots();
+              toast(`Deleted "${targetName}".`);
+              render();
+              await syncToGitHub(SHOOTS, { deletedIds: [targetId] });
+            }
+          });
+        });
+      }
+    }
+
+    // Wire angle filter buttons for Model Portfolio view inside lightbox
+    lbSidebar.querySelectorAll(".angle-filter-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const selectedAngle = btn.dataset.angle;
+        window.activeAngleFilter = selectedAngle;
+        
+        // Find parent shoot to rebuild filtered list
+        const currentShoot = SHOOTS.find(x => x.id === p.shootId) || p.shoot;
+        const fullList = (currentShoot.photos || []).filter(x => {
+          return x.usage === "portfolio" || x.usage === "both" || x.usage === undefined;
+        }).map(x => ({ ...x, shoot: currentShoot }));
+        
+        let filteredList = fullList;
+        if (selectedAngle !== "all") {
+          filteredList = fullList.filter(x => x.angle === selectedAngle);
+        }
+        
+        if (filteredList.length) {
+          lbList = filteredList;
+          lbIdx = 0;
+          paintLb();
+        } else {
+          toast("No photos matching this profile.");
+        }
+      });
+    });
+  }
+  function stepLb(d) { if (!lbList.length) return; lbIdx = (lbIdx + d + lbList.length) % lbList.length; paintLb(); }
+  function closeLb() {
+    lb.hidden = true; lbImg.src = ""; document.body.style.overflow = "";
+    // Return focus to the thumbnail/card that opened the viewer.
+    if (lbReturnFocus && document.contains(lbReturnFocus)) { try { lbReturnFocus.focus(); } catch {} }
+    lbReturnFocus = null;
+  }
+  function initLightbox() {
+    // Simple focus trap: keep Tab within the lightbox while it's open.
+    trapTabKey(lb, "button:not([disabled])");
+    $("#lightboxClose").addEventListener("click", (e) => { e.stopPropagation(); closeLb(); });
+    $("#lbPrev").addEventListener("click", (e) => { e.stopPropagation(); stepLb(-1); });
+    $("#lbNext").addEventListener("click", (e) => { e.stopPropagation(); stepLb(1); });
+    // Close only on a genuine backdrop click — never when the click lands on the
+    // nav buttons, close button, image, caption, or counter (or their children).
+    lb.addEventListener("click", (e) => {
+      if (e.target.closest(".lightbox-nav, .lightbox-close, .lightbox-figure, .lightbox-counter")) return;
+      closeLb();
+    });
+    document.addEventListener("keydown", (e) => { if (lb.hidden) return; if (e.key === "Escape") closeLb(); else if (e.key === "ArrowLeft") stepLb(-1); else if (e.key === "ArrowRight") stepLb(1); });
+
+    // Touch swipe support for lightbox on mobile
+    let touchStartX = 0;
+    let touchEndX = 0;
+    lb.addEventListener("touchstart", (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+    lb.addEventListener("touchend", (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+      const diff = touchEndX - touchStartX;
+      if (diff < -50) stepLb(1);      // Swipe left -> Next
+      else if (diff > 50) stepLb(-1); // Swipe right -> Prev
+    }, { passive: true });
+  }
+
+  /* ============================================================
+     §11 · SITE CHROME — overlay nav, admin & theme controls
+     ============================================================ */
+  const menuBtn = $("#menuBtn"), overlay = $("#navOverlay");
+  function toggleMenu(open) {
+    const o = open ?? !overlay.classList.contains("open");
+    overlay.classList.toggle("open", o);
+    overlay.setAttribute("aria-hidden", String(!o));
+    menuBtn.setAttribute("aria-expanded", String(o));
+    document.body.style.overflow = o ? "hidden" : "";
+    const header = $(".site-header");
+    if (header) {
+      header.classList.toggle("menu-open", o);
+    }
+    // Focus management: into the menu on open, back to the button on close.
+    if (o) {
+      const firstLink = overlay.querySelector(".nav-links a");
+      setTimeout(() => firstLink?.focus(), 60);
+    } else if (document.activeElement && overlay.contains(document.activeElement)) {
+      menuBtn.focus();
+    }
+  }
+  function initNav() {
+    menuBtn.addEventListener("click", () => toggleMenu());
+    // Trap Tab within the open menu overlay.
+    trapTabKey(overlay, "a[href], button:not([disabled])", () => overlay.classList.contains("open"));
+    overlay.addEventListener("click", (e) => { if (e.target.closest("[data-link]")) toggleMenu(false); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && overlay.classList.contains("open")) toggleMenu(false); });
+  }
+
+  const adminBtn = $("#adminModeBtn");
+  const themeBtn = $("#themeOverrideBtn");
+  const visitorStatsLabel = $("#visitorStatsLabel");
+  const visitorStatsBlock = $("#visitorStatsBlock");
+
+  function getVisitorStats(seedString) {
+    function random(seed) {
+      const x = Math.sin(seed++) * 10000;
+      return x - Math.floor(x);
+    }
+    const msInDay = 24 * 60 * 60 * 1000;
+    const currentDay = Math.floor(Date.now() / msInDay);
+    const seedVal = seedString.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const visits24h = Math.floor(18 + random(currentDay + seedVal) * 15);
+    let visits7d = visits24h;
+    for (let i = 1; i < 7; i++) {
+      visits7d += Math.floor(18 + random(currentDay - i + seedVal) * 15);
+    }
+    return { visits24h, visits7d };
+  }
+
+  function updateThemeBtnText() {
+    if (!themeBtn) return;
+    const mode = localStorage.getItem("wps-theme-override") || "auto";
+    themeBtn.textContent = `Theme: ${mode}`;
+    themeBtn.style.borderColor = mode !== "auto" ? "var(--accent)" : "currentColor";
+    themeBtn.style.color = mode !== "auto" ? "var(--accent)" : "#fff";
+  }
+
+  function updateAdminBtn() {
+    if (!adminBtn) return;
+    const active = isAdmin();
+    adminBtn.textContent = `Admin Mode: ${active ? "On" : "Off"}`;
+    adminBtn.style.borderColor = active ? "var(--accent)" : "currentColor";
+    adminBtn.style.color = active ? "var(--accent)" : "#fff";
+
+    const adminSec = $("#navAdminSec");
+    if (adminSec) {
+      adminSec.style.display = isAdminAuthorized() ? "block" : "none";
+    }
+
+    const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi"), compCardsLi = $("#navCompCardsLi"), portfolioLi = $("#navModelPortfolioLi"), logsLi = $("#navLogsLi");
+    if (uploadLi) uploadLi.style.display = active ? "block" : "none";
+    if (bookLi) bookLi.style.display = active ? "none" : "block";
+    if (compCardsLi) compCardsLi.style.display = active ? "block" : "none";
+    if (portfolioLi) portfolioLi.style.display = active ? "block" : "none";
+    if (logsLi) logsLi.style.display = active ? "block" : "none";
+
+    if (themeBtn) {
+      themeBtn.style.display = active ? "inline-block" : "none";
+      updateThemeBtnText();
+    }
+
+    if (visitorStatsBlock && visitorStatsLabel) {
+      if (active) {
+        const stats = getVisitorStats("Wolverine Photo Studio");
+        visitorStatsLabel.innerHTML = `Visits: <strong>${stats.visits24h}</strong> (24H) · <strong>${stats.visits7d}</strong> (7D)`;
+        visitorStatsBlock.style.display = "block";
+      } else {
+        visitorStatsBlock.style.display = "none";
+      }
+    }
+  }
+
+  function initAdminControls() {
+    adminBtn?.addEventListener("click", async () => {
+      const turningOn = !isAdmin();
+      if (turningOn) {
+        const code = prompt("Enter admin passcode to enable Admin Mode:");
+        if (!(await verifyAdminPasscode(code))) {
+          alert("Incorrect passcode.");
+          return;
+        }
+      }
+      sessionStorage.setItem("wps-admin", turningOn ? "1" : "0");
+      await loadShoots();
+      updateAdminBtn();
+      toast(`Admin Mode ${isAdmin() ? "enabled" : "disabled"}.`);
+      render();
+    });
+
+    themeBtn?.addEventListener("click", () => {
+      const current = localStorage.getItem("wps-theme-override") || "auto";
+      let next = "auto";
+      if (current === "auto") next = "light";
+      else if (current === "light") next = "dark";
+      else next = "auto";
+
+      localStorage.setItem("wps-theme-override", next);
+      updateThemeBtnText();
+      if (window.applyWpsThemeOverride) {
+        window.applyWpsThemeOverride();
+      }
+      syncHeaderThemeToggle();
+    });
+  }
+
+  /* Public header theme toggle — simple light <-> dark for every visitor.
+     Resolves the current effective theme, then flips to the opposite and
+     stores it as an explicit override (leaving "auto" behind once used). */
+  const headerThemeToggle = $("#headerThemeToggle");
+  function currentEffectiveTheme() {
+    return document.documentElement.classList.contains("theme-dark") ? "dark" : "light";
+  }
+  function syncHeaderThemeToggle() {
+    if (!headerThemeToggle) return;
+    const isDark = currentEffectiveTheme() === "dark";
+    headerThemeToggle.setAttribute("aria-pressed", String(isDark));
+    headerThemeToggle.setAttribute(
+      "title",
+      isDark ? "Switch to light theme" : "Switch to dark theme"
+    );
+  }
+
+  function initThemeControls() {
+    headerThemeToggle?.addEventListener("click", () => {
+      const next = currentEffectiveTheme() === "dark" ? "light" : "dark";
+      localStorage.setItem("wps-theme-override", next);
+      if (window.applyWpsThemeOverride) window.applyWpsThemeOverride();
+      updateThemeBtnText();
+      syncHeaderThemeToggle();
+    });
+    // Keep the toggle icon/state in sync when the system theme changes in auto mode.
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncHeaderThemeToggle);
+    syncHeaderThemeToggle();
+  }
+
+  /* ============================================================
+     §12 · VIEWS — HTML builders for every route
+     ============================================================ */
   const view = $("#view");
 
+  // noth.in-style oversized section word that rises per-letter on scroll.
+  const kineticWord = (word) => {
+    const letters = String(word).split("").map((ch, i) =>
+      ch === " "
+        ? `<span class="kw-space">&nbsp;</span>`
+        : `<span class="kw-letter" style="--i:${i}">${esc(ch)}</span>`
+    ).join("");
+    return `<div class="kinetic-word reveal" aria-hidden="true">${letters}</div>`;
+  };
+  // Turn a page-head <h1> into a per-letter kinetic headline (stays semantic for SEO).
+  const kineticH1 = (word, extraClass = "") => {
+    const letters = String(word).split("").map((ch, i) =>
+      ch === " "
+        ? `<span class="kw-space">&nbsp;</span>`
+        : `<span class="kw-letter" style="--i:${i}">${esc(ch)}</span>`
+    ).join("");
+    return `<h1 class="reveal kinetic-h1 ${extraClass}"><span class="kinetic-word-inner">${letters}</span></h1>`;
+  };
   // noth.in-style full-bleed work card: big image, title + tagline overlay,
   // image reveal on hover. Opens the shoot in the lightbox via .noth-work wiring.
   function nothWorkCard(s, i) {
@@ -1346,21 +1433,24 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <h2>Who I shoot for</h2>
         </div>
         <div class="services-grid reveal-stagger">
-          <div class="service-card">
+          <a href="/categories" data-link class="service-card" style="display: block; text-decoration: none; color: inherit; cursor: pointer;">
             <div class="service-kicker">Brands</div>
             <h3>Campaigns &amp; Lookbooks</h3>
             <p>High-concept visual storytelling, commercial lookbooks, and campaigns tailored to elevate brand identities and drive customer engagement.</p>
-          </div>
-          <div class="service-card">
+            <span class="link-arrow" style="margin-top: 12px; display: inline-block; font-size: 12px; font-weight: 700;">Browse categories →</span>
+          </a>
+          <a href="/categories?kind=type&amp;val=Comp%20Cards" data-link class="service-card" style="display: block; text-decoration: none; color: inherit; cursor: pointer;">
             <div class="service-kicker">Models</div>
             <h3>Portfolio Building &amp; TFP</h3>
             <p>Editorial-grade portfolio building, comp card shoot development, and selective test shoots (TFP) to help models stand out in agency submissions.</p>
-          </div>
-          <div class="service-card">
+            <span class="link-arrow" style="margin-top: 12px; display: inline-block; font-size: 12px; font-weight: 700; color: var(--accent);">View model comp cards →</span>
+          </a>
+          <a href="/categories?kind=activity&amp;val=Fitness" data-link class="service-card" style="display: block; text-decoration: none; color: inherit; cursor: pointer;">
             <div class="service-kicker">Athletes</div>
             <h3>Fitness &amp; Sports Action</h3>
             <p>Dynamic action-freezing athletic portraits and editorial-grade fitness content that highlights physique, strength, and raw athletic performance.</p>
-          </div>
+            <span class="link-arrow" style="margin-top: 12px; display: inline-block; font-size: 12px; font-weight: 700;">See fitness work →</span>
+          </a>
         </div>
       </section>
 
@@ -2275,6 +2365,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     `;
   }
 
+  /* ============================================================
+     §13 · VIEW WIRING — event handlers per view
+     ============================================================ */
   function wireUpload(editId) {
     staged = [];
     const dz = $("#dropzone"), fi = $("#fileInput"), grid = $("#stagingGrid"), note = $("#queueNote"), pub = $("#publishBtn"), form = $("#shootForm");
@@ -2475,7 +2568,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           name: f.name,
           objectPosition: staged.length === 0 ? "top" : "center",
           isCover: staged.length === 0,
-          manuallyAligned: false
+          manuallyAligned: false,
+          // New uploads default to the comp-card page only; the admin
+          // opts photos into Portfolio (or Both) manually per photo.
+          usage: "comp",
+          excludeFromCompCard: false
         });
       }
       renderStaged();
@@ -2968,7 +3065,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const proceedSubmit = (agreedToTerms = false) => {
         btn.disabled = true;
         btn.classList.add("is-loading");
-        btn.textContent = "Preparing your request…";
+        btn.textContent = "Sending your request…";
 
         const tfpReleaseText = agreedToTerms ? (
           `\n\n==================================================\n` +
@@ -3012,7 +3109,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           `==================================================`
         ) : "";
 
-        const plainTextBody = `To: ${studioEmail}\nSubject: Shoot Booking Request — ${name}\n\n` +
+        // One canonical inquiry body — the copy-paste block gets the full
+        // version (release text included). The mailto/Gmail/Outlook links get
+        // a COMPACT body without the release: embedding the full release used
+        // to blow past browser URL length limits, so for test shoots the mail
+        // app silently refused to open at all.
+        const compactBody =
           `Shoot Booking Details:\n\n` +
           `Name: ${name}\n` +
           `Role: ${role}\n` +
@@ -3025,26 +3127,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           `Budget Range: ${budget}\n` +
           `Moodboard Link: ${moodboard || '—'}\n` +
           (agreedToTerms ? `TFP Release terms: Agreed (TFP-LIABILITY-RELEASE-V3)\nRead online: https://www.nerdyphotographer.in/book/#tfp-terms\n\n` : `\n`) +
-          `Concept/Vision:\n${concept || '—'}` +
-          tfpReleaseText;
+          `Concept/Vision:\n${concept || '—'}`;
+        const inquiryBody = compactBody + tfpReleaseText;
+        const plainTextBody = `To: ${studioEmail}\nSubject: Shoot Booking Request — ${name}\n\n` + inquiryBody;
 
         const subject = encodeURIComponent(`Shoot Booking Request — ${name}`);
-        const body = encodeURIComponent(
-          `Shoot Booking Details:\n\n` +
-          `Name: ${name}\n` +
-          `Role: ${role}\n` +
-          `Email: ${email}\n` +
-          `Phone: ${phone || '—'}\n` +
-          `Instagram / Website: ${instagram || '—'}\n` +
-          `Shoot Type: ${type}\n` +
-          `Proposed Date: ${date}\n` +
-          `Location Pref: ${locationVal}\n` +
-          `Budget Range: ${budget}\n` +
-          `Moodboard Link: ${moodboard || '—'}\n` +
-          (agreedToTerms ? `TFP Release terms: Agreed (TFP-LIABILITY-RELEASE-V3)\nRead online: https://www.nerdyphotographer.in/book/#tfp-terms\n\n` : `\n`) +
-          `Concept/Vision:\n${concept || '—'}` +
-          tfpReleaseText
-        );
+        const body = encodeURIComponent(compactBody);
 
         const mailtoUrl = `mailto:${studioEmail}?subject=${subject}&body=${body}`;
         const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(studioEmail)}&su=${subject}&body=${body}`;
@@ -3063,57 +3151,98 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         const previewText = $("#inquiryTextPreview");
         if (previewText) previewText.textContent = plainTextBody;
 
-        // Open the visitor's mail client with everything pre-filled.
-        window.location.href = mailtoUrl;
-
-        // Reveal the in-page success state (replaces the old alert()).
-        if (successPanel) {
-          form.hidden = true;
-          successPanel.hidden = false;
-          if (agreedToTerms) {
+        // Reveal the in-page success state with the right message for how
+        // the inquiry actually went out (direct send vs. visitor's mail app).
+        const showSuccess = (sentDirectly) => {
+          if (successPanel) {
+            form.hidden = true;
+            successPanel.hidden = false;
             const msgEl = $("#bookSuccessMsg");
             if (msgEl) {
-              msgEl.innerHTML = `Your booking inquiry is ready in your email app — please hit <strong>Send</strong> in your mail client to complete the request. <br/><br/><strong style="color: var(--accent);">Release Agreed:</strong> The full text of the <em>Studio Production & Liability Release</em> terms has been embedded directly in the email body for your records. Please send the email to finish!`;
+              if (sentDirectly) {
+                msgEl.innerHTML = `<strong style="color: var(--accent);">Request sent!</strong> Your booking inquiry has been delivered straight to the studio — no further action needed. We'll reply to <strong>${esc(email)}</strong>.` +
+                  (agreedToTerms ? `<br/><br/><strong style="color: var(--accent);">Release Agreed:</strong> Your acceptance of the <em>Studio Production &amp; Liability Release</em> (TFP-LIABILITY-RELEASE-V3) was recorded with the request.` : "") +
+                  `<br/><br/><span style="opacity: 0.8;">Want a copy for your own records? The buttons below open the same inquiry in your email app.</span>`;
+              } else if (agreedToTerms) {
+                msgEl.innerHTML = `Your booking inquiry is ready in your email app — please hit <strong>Send</strong> in your mail client to complete the request. <br/><br/><strong style="color: var(--accent);">Release Agreed:</strong> Your acceptance of the <em>Studio Production &amp; Liability Release</em> is noted in the email; the full terms text is included in the copy block below for your records.`;
+              } else {
+                msgEl.innerHTML = `Your booking inquiry is ready in your email app — please hit <strong>Send</strong> in your mail client to complete the request.`;
+              }
             }
+            successPanel.scrollIntoView({ behavior: prefersReduced ? "auto" : "smooth", block: "center" });
           }
-          successPanel.scrollIntoView({ behavior: prefersReduced ? "auto" : "smooth", block: "center" });
-        }
-        btn.disabled = false;
-        btn.classList.remove("is-loading");
-        btn.textContent = "Submit Booking Request";
+          btn.disabled = false;
+          btn.classList.remove("is-loading");
+          btn.textContent = "Submit Booking Request";
+        };
+
+        // Deliver the inquiry directly to the studio inbox via FormSubmit
+        // (free relay — needs a one-time activation click in the studio's
+        // email the first time it's used). If the relay is unreachable or
+        // rejects, fall back to opening the visitor's mail app pre-filled.
+        const relayFields = {
+          _subject: `Shoot Booking Request — ${name}`,
+          _replyto: email,
+          _template: "box",
+          "Name": name,
+          "Role": role,
+          "Email": email,
+          "Phone": phone || "—",
+          "Instagram / Website": instagram || "—",
+          "Shoot Type": type,
+          "Proposed Date": date,
+          "Location Pref": locationVal,
+          "Budget Range": budget,
+          "Moodboard Link": moodboard || "—",
+          "Concept / Vision": concept || "—",
+          "TFP Release": agreedToTerms ? "AGREED — TFP-LIABILITY-RELEASE-V3 (full text below)" : "Not applicable",
+        };
+        if (agreedToTerms) relayFields["Release Full Text"] = tfpReleaseText.trim();
+
+        fetch(`https://formsubmit.co/ajax/${encodeURIComponent(studioEmail)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify(relayFields),
+          signal: (typeof AbortSignal !== "undefined" && AbortSignal.timeout) ? AbortSignal.timeout(12000) : undefined,
+        })
+          .then((res) => { if (!res.ok) throw new Error(`relay ${res.status}`); return res.json(); })
+          .then((j) => {
+            if (String(j.success) !== "true") throw new Error(j.message || "relay rejected");
+            showSuccess(true);
+          })
+          .catch(() => {
+            // Fallback: open the visitor's mail client with everything
+            // pre-filled (compact body, so it opens reliably).
+            window.location.href = mailtoUrl;
+            showSuccess(false);
+          });
       };
 
       if (type === "Test Shoot") {
-        // Show terms modal
-        $("#terms_partner_name").textContent = name;
-        $("#termsModal").style.display = "flex";
-        
-        // Remove previous listeners if any to avoid double bindings
-        const acceptBtn = $("#termsAcceptBtn");
-        const declineBtn = $("#termsDeclineBtn");
-        
-        const onAccept = () => {
-          $("#termsModal").style.display = "none";
-          cleanup();
-          proceedSubmit(true);
-        };
-        
-        const onDecline = () => {
-          $("#termsModal").style.display = "none";
-          cleanup();
-        };
-        
-        function cleanup() {
-          acceptBtn.removeEventListener("click", onAccept);
-          declineBtn.removeEventListener("click", onDecline);
-        }
-        
-        acceptBtn.addEventListener("click", onAccept);
-        declineBtn.addEventListener("click", onDecline);
+        openTermsModal(name, () => proceedSubmit(true));
       } else {
         proceedSubmit(false);
       }
     });
+
+    // Open the TFP terms modal for `partnerName`. Listeners are added per
+    // opening and removed on close, so repeat openings never double-bind.
+    // `onAccept` (optional) runs after the modal closes via "Agree".
+    function openTermsModal(partnerName, onAccept) {
+      $("#terms_partner_name").textContent = partnerName;
+      $("#termsModal").style.display = "flex";
+      const acceptBtn = $("#termsAcceptBtn");
+      const declineBtn = $("#termsDeclineBtn");
+      const close = () => {
+        $("#termsModal").style.display = "none";
+        acceptBtn.removeEventListener("click", onAcceptClick);
+        declineBtn.removeEventListener("click", onDeclineClick);
+      };
+      const onAcceptClick = () => { close(); if (onAccept) onAccept(); };
+      const onDeclineClick = () => close();
+      acceptBtn.addEventListener("click", onAcceptClick);
+      declineBtn.addEventListener("click", onDeclineClick);
+    }
 
     // Wire copy button
     $("#copyInquiryBtn")?.addEventListener("click", () => {
@@ -3130,38 +3259,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     // Wire the terms trigger link
     $("#tfpTermsTrigger")?.addEventListener("click", (e) => {
       e.preventDefault();
-      $("#terms_partner_name").textContent = $("#b_name")?.value || "Creative Partner";
-      $("#termsModal").style.display = "flex";
-      
-      const acceptBtn = $("#termsAcceptBtn");
-      const declineBtn = $("#termsDeclineBtn");
-      const closeTerms = () => {
-        $("#termsModal").style.display = "none";
-        acceptBtn.removeEventListener("click", onAcceptClick);
-        declineBtn.removeEventListener("click", onDeclineClick);
-      };
-      const onAcceptClick = () => closeTerms();
-      const onDeclineClick = () => closeTerms();
-      acceptBtn.addEventListener("click", onAcceptClick);
-      declineBtn.addEventListener("click", onDeclineClick);
+      openTermsModal($("#b_name")?.value || "Creative Partner");
     });
 
     // Check if loaded with Hash link
     if (location.hash === "#tfp-terms") {
-      $("#terms_partner_name").textContent = "Creative Partner";
-      $("#termsModal").style.display = "flex";
-      
-      const acceptBtn = $("#termsAcceptBtn");
-      const declineBtn = $("#termsDeclineBtn");
-      const closeTerms = () => {
-        $("#termsModal").style.display = "none";
-        acceptBtn.removeEventListener("click", onAcceptClick);
-        declineBtn.removeEventListener("click", onDeclineClick);
-      };
-      const onAcceptClick = () => closeTerms();
-      const onDeclineClick = () => closeTerms();
-      acceptBtn.addEventListener("click", onAcceptClick);
-      declineBtn.addEventListener("click", onDeclineClick);
+      openTermsModal("Creative Partner");
     }
 
     // "Send another request" — reset back to a clean form.
@@ -3172,143 +3275,6 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       form.hidden = false;
       form.scrollIntoView({ behavior: prefersReduced ? "auto" : "smooth", block: "start" });
       updateFields();
-    });
-  }
-
-  const ROUTES = { "": viewHome, "albums": viewAlbums, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload, "book": viewBook, "testimonials": viewTestimonials };
-
-  function render() {
-    let raw = location.pathname;
-    raw = raw.replace(/\/index\.html$/, "").replace(/^\//, "").replace(/\/$/, "");
-    const parts = raw.split("/").filter(Boolean);
-    const key = parts[0] || "";
-    
-    const params = new URLSearchParams(location.search);
-    const qKind = params.get("kind");
-    const qVal = params.get("val");
-    const kind = parts[1] || qKind;
-    const val = parts[2] || qVal;
-    
-    if (typeof gtag === 'function') {
-      gtag('config', 'G-S0Q7T5Y2J4', {
-        'page_path': location.pathname + location.search
-      });
-    }
-    
-    const header = $(".site-header");
-    if (header) {
-      if (key === "") {
-        header.classList.remove("header-light");
-      } else {
-        header.classList.add("header-light");
-      }
-    }
-    
-    // Redirect non-admins trying to access upload page
-    if (key === "upload" && !isAdmin()) {
-      history.pushState(null, "", "/");
-      render();
-      return;
-    }
-
-    const fn = ROUTES[key] || (() => `
-      <section class="hero hero-mono hero-404">
-        <div class="hero-bg" aria-hidden="true"></div>
-        <div class="container hero-inner">
-          <div class="hero-topline">
-            <span class="hero-topline-l">Error 404</span>
-            <span class="hero-topline-r">Page not found</span>
-          </div>
-          <h1 class="hero-wordmark hero-wordmark-nerdy notfound-mark" aria-label="404 — page not found">
-            <span class="wm-letter" style="--i:0">4</span><span class="wm-letter" style="--i:1">0</span><span class="wm-letter" style="--i:2">4</span>
-          </h1>
-          <div class="hero-mono-foot">
-            <p class="hero-mono-tagline">This frame doesn't exist — but the archive does.</p>
-            <div class="hero-actions">
-              <a href="/" data-link class="btn btn-dark">Back home →</a>
-              <a href="/albums" data-link class="btn btn-ghost">Browse albums</a>
-            </div>
-          </div>
-        </div>
-      </section>`);
-
-    view.classList.add("leaving");
-    const paint = () => {
-      view.innerHTML = key === "categories" ? viewCategories(kind, val) : fn();
-      view.classList.remove("leaving");
-      window.scrollTo({ top: 0, behavior: "auto" });
-      if (typeof smoothScroll !== "undefined" && smoothScroll.enabled) smoothScroll.reset();
-      wireView(key);
-      initReveal();
-      setActiveNav(key);
-
-      // SEO optimization: update page title and description dynamically
-      const cfg = window.STUDIO_CONFIG || { studioName: "nerdyphotographer.in" };
-      let pageTitle = `${cfg.studioName} — The Creative Studio`;
-      let pageDesc = "Noida and Delhi NCR based professional photography studio. Specializing in high-end male and female model photography, fashion, beauty, editorial, sports, and fitness photography. Browse portfolios by nerdyphotographer.in — Noida, Delhi NCR, India.";
-      
-      if (key === "work" || key === "albums") {
-        pageTitle = `All Albums — ${cfg.studioName}`;
-        pageDesc = `Browse the complete photoshoot album archive of ${cfg.studioName} — fashion, beauty, editorial, sports, and fitness photography in Noida & Delhi NCR.`;
-      } else if (key === "categories") {
-        if (parts[1] && parts[2]) {
-          const rawCatName = decodeURIComponent(parts[2]);
-          const catName = rawCatName === "Test Shoot" ? "Model Portfolio (Comp Cards)" : rawCatName;
-          pageTitle = `${catName} (${parts[1]}) — ${cfg.studioName}`;
-          pageDesc = `Photoshoots filed under the ${parts[1]} category "${catName}" in the photography archive.`;
-        } else {
-          pageTitle = `Browse by Category — ${cfg.studioName}`;
-          pageDesc = `Explore creative photoshoots categorized by activity (genre), brand, or production type.`;
-        }
-      } else if (key === "studio") {
-        pageTitle = `The Creative Studio — ${cfg.studioName}`;
-        pageDesc = `Learn about our creative process, vision, philosophy, and tools behind the photography craft. Noida, India.`;
-      } else if (key === "book") {
-        pageTitle = `Book a Shoot — ${cfg.studioName}`;
-        pageDesc = `Collaborate with us on your next photoshoot. Send a project brief or book a session with Noida's creative studio.`;
-      }
-      
-      document.title = pageTitle;
-      const metaDesc = document.querySelector('meta[name="description"]');
-      if (metaDesc) metaDesc.setAttribute("content", pageDesc);
-      updateImageSchema();
-    };
-    if (prefersReduced) paint(); else setTimeout(paint, 180);
-  }
-
-  // Inject/refresh ImageGallery + ImageObject structured data for the shoots in
-  // the current view, so the photography surfaces in Google Images / rich results.
-  function updateImageSchema() {
-    const ORIGIN = "https://www.nerdyphotographer.in";
-    const abs = (u) => u ? (u.startsWith("http") ? u : `${ORIGIN}/${u.replace(/^\//, "")}`) : "";
-    const shoots = (CURRENT_VIEW_SHOOTS && CURRENT_VIEW_SHOOTS.length ? CURRENT_VIEW_SHOOTS : SHOOTS).slice(0, 12);
-    const images = [];
-    for (const s of shoots) {
-      if (!s.photos) continue;
-      for (const p of s.photos) {
-        const url = abs(p.url);
-        if (!url) continue; // only real published files (not base64)
-        images.push({
-          "@type": "ImageObject",
-          "contentUrl": url,
-          "name": s.title || s.talent || "Photoshoot",
-          "caption": p.caption || altFor(s),
-          "creditText": "nerdyphotographer.in",
-          "creator": { "@type": "Organization", "name": "Nerdy Photographer" }
-        });
-        if (images.length >= 30) break;
-      }
-      if (images.length >= 30) break;
-    }
-    let el = document.getElementById("wps-image-schema");
-    if (!images.length) { if (el) el.remove(); return; }
-    if (!el) { el = document.createElement("script"); el.type = "application/ld+json"; el.id = "wps-image-schema"; document.head.appendChild(el); }
-    el.textContent = JSON.stringify({
-      "@context": "https://schema.org",
-      "@type": "ImageGallery",
-      "name": `${window.STUDIO_CONFIG?.studioName || "nerdyphotographer.in"} — photography archive`,
-      "url": location.href,
-      "image": images
     });
   }
 
@@ -3507,6 +3473,146 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     view.querySelectorAll("[data-count]").forEach((el) => animateCount(el, parseInt(el.textContent, 10) || 0));
   }
 
+  /* ============================================================
+     §14 · ROUTER
+     ============================================================ */
+  const ROUTES = { "": viewHome, "albums": viewAlbums, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload, "book": viewBook, "testimonials": viewTestimonials };
+
+  function render() {
+    let raw = location.pathname;
+    raw = raw.replace(/\/index\.html$/, "").replace(/^\//, "").replace(/\/$/, "");
+    const parts = raw.split("/").filter(Boolean);
+    const key = parts[0] || "";
+    
+    const params = new URLSearchParams(location.search);
+    const qKind = params.get("kind");
+    const qVal = params.get("val");
+    const kind = parts[1] || qKind;
+    const val = parts[2] || qVal;
+    
+    if (typeof gtag === 'function') {
+      gtag('config', 'G-S0Q7T5Y2J4', {
+        'page_path': location.pathname + location.search
+      });
+    }
+    
+    const header = $(".site-header");
+    if (header) {
+      if (key === "") {
+        header.classList.remove("header-light");
+      } else {
+        header.classList.add("header-light");
+      }
+    }
+    
+    // Redirect non-admins trying to access upload page
+    if (key === "upload" && !isAdmin()) {
+      history.pushState(null, "", "/");
+      render();
+      return;
+    }
+
+    const fn = ROUTES[key] || (() => `
+      <section class="hero hero-mono hero-404">
+        <div class="hero-bg" aria-hidden="true"></div>
+        <div class="container hero-inner">
+          <div class="hero-topline">
+            <span class="hero-topline-l">Error 404</span>
+            <span class="hero-topline-r">Page not found</span>
+          </div>
+          <h1 class="hero-wordmark hero-wordmark-nerdy notfound-mark" aria-label="404 — page not found">
+            <span class="wm-letter" style="--i:0">4</span><span class="wm-letter" style="--i:1">0</span><span class="wm-letter" style="--i:2">4</span>
+          </h1>
+          <div class="hero-mono-foot">
+            <p class="hero-mono-tagline">This frame doesn't exist — but the archive does.</p>
+            <div class="hero-actions">
+              <a href="/" data-link class="btn btn-dark">Back home →</a>
+              <a href="/albums" data-link class="btn btn-ghost">Browse albums</a>
+            </div>
+          </div>
+        </div>
+      </section>`);
+
+    view.classList.add("leaving");
+    const paint = () => {
+      view.innerHTML = key === "categories" ? viewCategories(kind, val) : fn();
+      view.classList.remove("leaving");
+      window.scrollTo({ top: 0, behavior: "auto" });
+      if (typeof smoothScroll !== "undefined" && smoothScroll.enabled) smoothScroll.reset();
+      wireView(key);
+      initReveal();
+      setActiveNav(key);
+
+      // SEO optimization: update page title and description dynamically
+      const cfg = window.STUDIO_CONFIG || { studioName: "nerdyphotographer.in" };
+      let pageTitle = `${cfg.studioName} — The Creative Studio`;
+      let pageDesc = "Noida and Delhi NCR based professional photography studio. Specializing in high-end male and female model photography, fashion, beauty, editorial, sports, and fitness photography. Browse portfolios by nerdyphotographer.in — Noida, Delhi NCR, India.";
+      
+      if (key === "work" || key === "albums") {
+        pageTitle = `All Albums — ${cfg.studioName}`;
+        pageDesc = `Browse the complete photoshoot album archive of ${cfg.studioName} — fashion, beauty, editorial, sports, and fitness photography in Noida & Delhi NCR.`;
+      } else if (key === "categories") {
+        if (parts[1] && parts[2]) {
+          const rawCatName = decodeURIComponent(parts[2]);
+          const catName = rawCatName === "Test Shoot" ? "Model Portfolio (Comp Cards)" : rawCatName;
+          pageTitle = `${catName} (${parts[1]}) — ${cfg.studioName}`;
+          pageDesc = `Photoshoots filed under the ${parts[1]} category "${catName}" in the photography archive.`;
+        } else {
+          pageTitle = `Browse by Category — ${cfg.studioName}`;
+          pageDesc = `Explore creative photoshoots categorized by activity (genre), brand, or production type.`;
+        }
+      } else if (key === "studio") {
+        pageTitle = `The Creative Studio — ${cfg.studioName}`;
+        pageDesc = `Learn about our creative process, vision, philosophy, and tools behind the photography craft. Noida, India.`;
+      } else if (key === "book") {
+        pageTitle = `Book a Shoot — ${cfg.studioName}`;
+        pageDesc = `Collaborate with us on your next photoshoot. Send a project brief or book a session with Noida's creative studio.`;
+      }
+      
+      document.title = pageTitle;
+      const metaDesc = document.querySelector('meta[name="description"]');
+      if (metaDesc) metaDesc.setAttribute("content", pageDesc);
+      updateImageSchema();
+    };
+    if (prefersReduced) paint(); else setTimeout(paint, 180);
+  }
+
+  // Inject/refresh ImageGallery + ImageObject structured data for the shoots in
+  // the current view, so the photography surfaces in Google Images / rich results.
+  function updateImageSchema() {
+    const ORIGIN = "https://www.nerdyphotographer.in";
+    const abs = (u) => u ? (u.startsWith("http") ? u : `${ORIGIN}/${u.replace(/^\//, "")}`) : "";
+    const shoots = (CURRENT_VIEW_SHOOTS && CURRENT_VIEW_SHOOTS.length ? CURRENT_VIEW_SHOOTS : SHOOTS).slice(0, 12);
+    const images = [];
+    for (const s of shoots) {
+      if (!s.photos) continue;
+      for (const p of s.photos) {
+        const url = abs(p.url);
+        if (!url) continue; // only real published files (not base64)
+        images.push({
+          "@type": "ImageObject",
+          "contentUrl": url,
+          "name": s.title || s.talent || "Photoshoot",
+          "caption": p.caption || altFor(s),
+          "creditText": "nerdyphotographer.in",
+          "creator": { "@type": "Organization", "name": "Nerdy Photographer" }
+        });
+        if (images.length >= 30) break;
+      }
+      if (images.length >= 30) break;
+    }
+    let el = document.getElementById("wps-image-schema");
+    if (!images.length) { if (el) el.remove(); return; }
+    if (!el) { el = document.createElement("script"); el.type = "application/ld+json"; el.id = "wps-image-schema"; document.head.appendChild(el); }
+    el.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "ImageGallery",
+      "name": `${window.STUDIO_CONFIG?.studioName || "nerdyphotographer.in"} — photography archive`,
+      "url": location.href,
+      "image": images
+    });
+  }
+
   function setActiveNav(key) {
     overlay.querySelectorAll(".nav-links a").forEach((a) => {
       const h = a.getAttribute("href").replace(/^#\/?/, "");
@@ -3514,6 +3620,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     });
   }
 
+  /* ============================================================
+     §15 · ANIMATION, SCROLL & LOADER
+     ============================================================ */
   function animateCount(el, target) {
     target = Math.max(0, target | 0);
     if (prefersReduced) { el.textContent = target; return; }
@@ -3554,39 +3663,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     setTimeout(sweep, 1200);
   }
 
-  /* ---------------- Custom hover cursor (noth.in-style) ----------------
-     A "View" follower that appears over portfolio imagery. Skipped entirely
-     on touch devices and when the user prefers reduced motion. */
-  (function initCursorFollow() {
-    return; // Disabled by user request: cursor should not show 'view' badge
-    const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
-    const fine = window.matchMedia("(pointer: fine)").matches;
-    if (isTouch || !fine || prefersReduced) { cursor.remove(); return; }
-
-    const HOT = ".noth-work-media, .work-media, .comp-card-thumb, .cat-cover, .specialty-thumb-wrap";
-    let x = 0, y = 0, cx = 0, cy = 0, raf = null, active = false;
-
-    const loop = () => {
-      cx += (x - cx) * 0.18; cy += (y - cy) * 0.18;
-      cursor.style.transform = `translate(${cx}px, ${cy}px) translate(-50%, -50%)`;
-      raf = Math.abs(x - cx) > 0.1 || Math.abs(y - cy) > 0.1 ? requestAnimationFrame(loop) : null;
-      if (!raf) { cx = x; cy = y; cursor.style.transform = `translate(${cx}px, ${cy}px) translate(-50%, -50%)`; }
-    };
-    window.addEventListener("mousemove", (e) => {
-      x = e.clientX; y = e.clientY;
-      if (!raf) raf = requestAnimationFrame(loop);
-      const over = e.target.closest(HOT);
-      if (over && !active) { active = true; cursor.classList.add("show"); }
-      else if (!over && active) { active = false; cursor.classList.remove("show"); }
-      // Comp-card thumbs and cat covers say "Open"; big media says "View".
-      if (over) {
-        const label = over.matches(".cat-cover, .specialty-thumb-wrap") ? "Open" : "View";
-        const span = cursor.firstElementChild;
-        if (span && span.textContent !== label) span.textContent = label;
-      }
-    }, { passive: true });
-    window.addEventListener("mouseout", (e) => { if (!e.relatedTarget) { active = false; cursor.classList.remove("show"); } });
-  })();
+  // (The noth.in-style "View" hover cursor was removed by request —
+  //  portfolio imagery no longer shows a follower badge.)
 
   /* ---------------- Scrolling ----------------
      Native scrolling is used (trackpads/modern browsers are already smooth and
@@ -3594,9 +3672,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
      from CSS `scroll-behavior: smooth`. This shim keeps the old API as a no-op. */
   const smoothScroll = { enabled: false, reset() {}, to(y) { window.scrollTo({ top: y, behavior: prefersReduced ? "auto" : "smooth" }); } };
 
-  /* ---------------- Header scroll + loader ---------------- */
-  const header = $(".site-header");
-  window.addEventListener("scroll", () => header.classList.toggle("scrolled", window.scrollY > 8), { passive: true });
+  function initHeaderScroll() {
+    const header = $(".site-header");
+    window.addEventListener("scroll", () => header.classList.toggle("scrolled", window.scrollY > 8), { passive: true });
+  }
+
   function dismissLoader() {
     const l = $("#loader"); if (!l) return;
     // Show the full loader only once per session; on later loads dismiss fast.
@@ -3625,96 +3705,26 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     setTimeout(() => l.remove(), w + (prefersReduced || seen ? 100 : 900));
   }
 
-  /* ---------------- Boot ---------------- */
-  // GitHub Pages caches data.js for ~10 minutes, so visitors can see a stale
-  // portfolio right after a sync. Refetch it bypassing the cache and re-render
-  // if the published shoots changed. Local (IndexedDB) shoots take precedence.
-  async function refreshPublishedData() {
-    try {
-      const res = await fetch(`data.js?fresh=${Date.now()}`, { cache: "no-store" });
-      if (!res.ok) return;
-      const fresh = parseShootsFromDataJs(await res.text());
-      if (!fresh || !usingDemo) return;
-      if (JSON.stringify(fresh) === JSON.stringify(window.WPS_DATA.DEMO_SHOOTS)) return;
-      window.WPS_DATA.DEMO_SHOOTS = fresh;
-      await loadShoots();
-      render();
-    } catch { /* offline or unparsable — keep what we have */ }
-  }
+  /* ============================================================
+     §16 · COMP-CARD PRINTING & DOWNLOAD LOGGING
+     ============================================================ */
+  /* ---- Shared print builders (comp card + model portfolio) ---- */
+  const PRINT_ANGLE_LABELS = {
+    "front": "Front Portrait",
+    "side": "Side Profile",
+    "back": "Back Profile",
+    "three-quarter": "3/4 Profile",
+    "close-up": "Close-up / Headshot"
+  };
 
-  window.addEventListener("popstate", render);
-  document.addEventListener("click", (e) => {
-    const link = e.target.closest("[data-link]");
-    if (link) {
-      const href = link.getAttribute("href");
-      if (href && (href.startsWith("/") || !href.includes("://"))) {
-        e.preventDefault();
-        history.pushState(null, "", href);
-        render();
-      }
-    }
-  });
-  function initBranding() {
-    const cfg = window.STUDIO_CONFIG;
-    if (!cfg) return;
-    document.title = `${cfg.studioName} — The Creative Studio`;
-    const loaderLbl = $("#loaderLabel");
-    if (loaderLbl) loaderLbl.textContent = `${cfg.studioShortName} ${cfg.studioSubName}`;
-    const headerBrandText = $("#headerBrandText");
-    if (headerBrandText) headerBrandText.innerHTML = `<span style="text-transform: lowercase; font-weight: 800; font-size: 15px; letter-spacing: 0.02em;">${esc(cfg.studioName)}</span>`;
-    const footerBrandText = $("#footerBrandText");
-    if (footerBrandText) footerBrandText.innerHTML = `${esc(cfg.studioShortName)}<span class="brand-sub">${esc(cfg.studioSubName)}</span>`;
-    const footerTagline = $("#footerTagline");
-    if (footerTagline) footerTagline.textContent = cfg.tagline;
-    const footerNotice = $("#footerNotice");
-    if (footerNotice) footerNotice.textContent = `The Creative Studio of ${cfg.studioName}`;
-    const navStudioDesc = $("#navStudioDesc");
-    if (navStudioDesc) navStudioDesc.innerHTML = `The Creative Studio of<br />${esc(cfg.studioName)}`;
-    const navEmail = $("#navEmail");
-    if (navEmail) {
-      navEmail.href = `mailto:${cfg.email}`;
-      navEmail.textContent = cfg.email;
-    }
-    const navSocials = $("#navSocials");
-    if (navSocials) {
-      const links = [];
-      if (cfg.instagram) {
-        links.push(`<a href="${cfg.instagram}" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg></a>`);
-      }
-      if (cfg.kavyar) {
-        links.push(`<a href="${cfg.kavyar}" target="_blank" rel="noopener" aria-label="Kavyar"><svg viewBox="0 0 24 24" style="stroke-width: 2.5;"><line x1="6" y1="4" x2="6" y2="20"></line><line x1="18" y1="4" x2="6" y2="12"></line><line x1="6" y1="12" x2="18" y2="20"></line></svg></a>`);
-      }
-      navSocials.innerHTML = links.join("");
-    }
+  const PRINT_FOOTER_HTML = `
+    <div style="border-top: 1px solid #ccc; padding-top: 12px; margin-top: auto; font-family: sans-serif; font-size: 8.5px; color: #000; line-height: 1.6; display: flex; flex-direction: column; gap: 4px; text-align: left; width: 100%;">
+      <div style="font-weight: 700; color: #000;">Booking Details: To schedule sessions or bookings for this talent, connect directly via verified social handles or contact agency representation.</div>
+      <div style="color: #444; font-size: 7.5px;">All portfolio cards and photography frames are intellectual properties of nerdyphotographer.in studio and represented divisions. Unapproved reprint, resale, or commercial misuse is strictly prohibited under federal copyright laws.</div>
+    </div>
+  `;
 
-    // Footer email link (mailto) — mirrors nav email.
-    const footerEmail = $("#footerEmail");
-    if (footerEmail && cfg.email) {
-      footerEmail.href = `mailto:${cfg.email}`;
-    }
-    // Footer social icons — reuse the same set as the nav.
-    const footerSocials = $("#footerSocials");
-    if (footerSocials) {
-      const fl = [];
-      if (cfg.instagram) fl.push(`<a href="${cfg.instagram}" target="_blank" rel="noopener" aria-label="Instagram">Instagram</a>`);
-      if (cfg.kavyar) fl.push(`<a href="${cfg.kavyar}" target="_blank" rel="noopener" aria-label="Kavyar">Kavyar</a>`);
-      fl.push(`<a href="${cfg.email ? `mailto:${cfg.email}` : '#'}" aria-label="Email">Email</a>`);
-      footerSocials.innerHTML = fl.join("");
-    }
-  }
-
-  window.printCompCard = (shootId) => {
-    const shoot = SHOOTS.find(x => x.id === shootId) || (window.currentCompCardShootObj);
-    if (!shoot) return;
-    
-    // Get all photos for this talent
-    const allPhotos = (shoot.photos || []);
-    
-    // Find cover photo
-    const coverPhoto = allPhotos.find(p => p.isCover) || allPhotos[0];
-    // Remaining photos for the grid on page 2 (strictly up to 6 photos to fit A4 layout)
-    const gridPhotos = allPhotos.filter(p => p !== coverPhoto).slice(0, 6);
-    
+  function printStatsBarHtml(shoot) {
     const statsArr = [];
     if (shoot.height) statsArr.push(`Height: ${shoot.height}`);
     if (shoot.chest) statsArr.push(`Chest/Bust: ${shoot.chest}`);
@@ -3724,87 +3734,48 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     if (shoot.modelHair) statsArr.push(`Hair: ${shoot.modelHair}`);
     if (shoot.modelEyes) statsArr.push(`Eyes: ${shoot.modelEyes}`);
     const statsLine = statsArr.join("  ·  ");
-    const statsBarHtml = statsLine ? `
+    return statsLine ? `
       <div style="font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; background: #f5f5f5; color: #000; padding: 10px 14px; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; border-radius: 6px; margin-bottom: 20px; border: 1px solid #e0e0e0;">
         ${statsLine}
       </div>
     ` : "";
-    
+  }
+
+  function printSocialsBarHtml(shoot) {
     const printSocials = [];
     if (shoot.instagram) {
-      const handles = shoot.instagram.split(",").map(x => x.trim()).filter(Boolean);
-      let filteredHandles = handles;
-      if (shoot.isCompCard) {
-        const talentNameLower = getTalentCleanName(shoot.talent).toLowerCase();
-        const words = talentNameLower.split(/\s+/).filter(w => w.length > 2);
-        const parenRegex = /\(([^)]+)\)/;
-        const talentMatch = shoot.talent.match(parenRegex);
-        if (talentMatch) {
-          const inlineSocials = talentMatch[1].split(";").map(s => s.trim()).filter(Boolean);
-          const inlineIg = inlineSocials.filter(s => !s.includes("kavyar.com") && (s.startsWith("@") || s.includes("instagram.com")));
-          if (inlineIg.length) filteredHandles = inlineIg;
-        } else if (words.length) {
-          const matched = handles.filter(h => {
-            const hClean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
-            return words.some(word => hClean.includes(word));
-          });
-          if (matched.length) filteredHandles = matched;
-          else filteredHandles = [handles[0]];
-        } else {
-          filteredHandles = [handles[0]];
-        }
-      }
+      const filteredHandles = compCardOwnHandles(shoot, shoot.instagram.split(",").map(x => x.trim()).filter(Boolean), isIgHandle);
       if (filteredHandles.length) {
         const cleaned = filteredHandles.map(h => h.startsWith("@") ? h : `@${h.split("/").pop()}`);
         printSocials.push(`Instagram: ${cleaned.join(", ")}`);
       }
     }
-    
     if (shoot.kavyar) {
-      const handles = shoot.kavyar.split(",").map(x => x.trim()).filter(Boolean);
-      let filteredHandles = handles;
-      if (shoot.isCompCard) {
-        const talentNameLower = getTalentCleanName(shoot.talent).toLowerCase();
-        const words = talentNameLower.split(/\s+/).filter(w => w.length > 2);
-        const parenRegex = /\(([^)]+)\)/;
-        const talentMatch = shoot.talent.match(parenRegex);
-        if (talentMatch) {
-          const inlineSocials = talentMatch[1].split(";").map(s => s.trim()).filter(Boolean);
-          const inlineKavyar = inlineSocials.filter(s => s.includes("kavyar.com"));
-          if (inlineKavyar.length) filteredHandles = inlineKavyar;
-        } else if (words.length) {
-          const matched = handles.filter(h => {
-            const hClean = h.toLowerCase().replace(/[^a-z0-9]/g, "");
-            return words.some(word => hClean.includes(word));
-          });
-          if (matched.length) filteredHandles = matched;
-          else filteredHandles = [handles[0]];
-        } else {
-          filteredHandles = [handles[0]];
-        }
-      }
+      const filteredHandles = compCardOwnHandles(shoot, shoot.kavyar.split(",").map(x => x.trim()).filter(Boolean), isKavyarHandle);
       if (filteredHandles.length) {
         const cleaned = filteredHandles.map(h => h.split("/").pop());
         printSocials.push(`Kavyar: ${cleaned.join(", ")}`);
       }
     }
     const socialsLine = printSocials.join("   |   ");
-    const socialsBarHtml = socialsLine ? `
+    return socialsLine ? `
       <div style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #333; padding: 6px 12px; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; margin-bottom: 20px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">
         ${socialsLine}
       </div>
     ` : "";
-    
-    // Page 1 Layout (Full Portrait Cover Card)
-    const page1Html = `
+  }
+
+  // Full-bleed cover page: big portrait, model name, document label.
+  function printCoverPageHtml(shoot, coverPhoto, headerLabel, subLabel) {
+    return `
       <div class="print-page" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%; box-sizing: border-box; page-break-after: always; break-after: page;">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px;">
-          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;">MODEL PORTFOLIO CARD</span>
+          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;">${headerLabel}</span>
           <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #666; text-transform: uppercase;">nerdyphotographer.in studio</span>
         </div>
         
-        <div style="flex-grow: 1; position: relative; border-radius: 8px; overflow: hidden; background: #f9f9f9; border: 1px solid #ddd; box-sizing: border-box;">
-          ${coverPhoto ? `<img src="${photoSrc(coverPhoto)}" style="width: 100%; height: 100%; object-fit: cover; object-position: ${coverPhoto.objectPosition || 'center top'};" alt="Cover headshot" />` : ''}
+        <div class="print-cover-panel" style="flex-grow: 1;">
+          ${coverPhoto ? `<img src="${photoSrc(coverPhoto)}" alt="Cover photo" />` : ''}
         </div>
         
         <div style="text-align: center; padding-top: 24px; margin-top: 16px; border-top: 1px solid #eee;">
@@ -3812,41 +3783,31 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             ${getTalentCleanName(shoot.talent || shoot.title)}
           </h1>
           <p style="font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--accent, #d24e1a); text-transform: uppercase; letter-spacing: 0.15em; margin: 0;">
-            OFFICIAL TALENT COMPOSITE · PAGE 1
+            ${subLabel}
           </p>
         </div>
       </div>
     `;
+  }
 
-    // Page 2 Layout (Classified 3x2 Grid and Stats)
-    const gridPhotosHtml = gridPhotos.map(p => {
-      let labelHtml = "";
-      if (p.angle) {
-        const angleLabels = {
-          "front": "Front Portrait",
-          "side": "Side Profile",
-          "back": "Back Profile",
-          "three-quarter": "3/4 Profile",
-          "close-up": "Close-up / Headshot"
-        };
-        labelHtml = `<span style="position: absolute; bottom: 8px; left: 8px; font-family:'JetBrains Mono', monospace; font-size:8px; font-weight:700; background:rgba(0,0,0,0.72); color:#fff; padding:2px 6px; border-radius:3px; text-transform:uppercase;">${angleLabels[p.angle] || p.angle}</span>`;
-      }
-      return `
-        <div class="print-photo-item" style="position: relative; aspect-ratio: 4/5; border-radius: 6px; overflow: hidden; border: 1px solid #eee; background: #fafafa;">
-          <img src="${photoSrc(p)}" style="width:100%; height:100%; object-fit:cover; object-position: ${p.objectPosition || 'center top'};" alt="Portfolio Grid Frame" />
-          ${labelHtml}
-        </div>
-      `;
-    }).join("");
-
-    const footerHtml = `
-      <div style="border-top: 1px solid #ccc; padding-top: 12px; margin-top: auto; font-family: sans-serif; font-size: 8.5px; color: #000; line-height: 1.6; display: flex; flex-direction: column; gap: 4px; text-align: left; width: 100%;">
-        <div style="font-weight: 700; color: #000;">Booking Details: To schedule sessions or bookings for this talent, connect directly via verified social handles or contact agency representation.</div>
-        <div style="color: #444; font-size: 7.5px;">All portfolio cards and photography frames are intellectual properties of nerdyphotographer.in studio and represented divisions. Unapproved reprint, resale, or commercial misuse is strictly prohibited under federal copyright laws.</div>
+  // One grid cell. Images are CONTAINED (padded on a light background),
+  // never cropped — full-length shots keep their heads. Sizing comes from
+  // the print stylesheet (.print-photo-item). Angle badge optional.
+  function printGridCellHtml(p, showAngle = true) {
+    const labelHtml = showAngle && p.angle
+      ? `<span style="position: absolute; bottom: 6px; left: 6px; font-family:'JetBrains Mono', monospace; font-size:8px; font-weight:700; background:rgba(0,0,0,0.72); color:#fff; padding:2px 6px; border-radius:3px; text-transform:uppercase;">${PRINT_ANGLE_LABELS[p.angle] || p.angle}</span>`
+      : "";
+    return `
+      <div class="print-photo-item">
+        <img src="${photoSrc(p)}" alt="Portfolio frame" />
+        ${labelHtml}
       </div>
     `;
+  }
 
-    const page2Html = `
+  // A 3×2 photo grid page (stats/socials bars can be injected via extrasHtml).
+  function printGridPageHtml(shoot, cellsHtml, extrasHtml = "") {
+    return `
       <div class="print-page" style="display: flex; flex-direction: column; height: 100%; box-sizing: border-box; padding-top: 10px;">
         <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px;">
           <h2 style="font-family:'Outfit', sans-serif; font-size: 24px; font-weight: 800; margin: 0; text-transform: uppercase; color: #000; letter-spacing: -0.02em;">
@@ -3855,55 +3816,218 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #666; text-transform: uppercase;">nerdyphotographer.in studio</span>
         </div>
         
-        ${statsBarHtml}
-        ${socialsBarHtml}
+        ${extrasHtml}
         
         <div class="print-photo-grid">
-          ${gridPhotosHtml}
+          ${cellsHtml}
         </div>
         
-        ${footerHtml}
+        ${PRINT_FOOTER_HTML}
       </div>
     `;
+  }
 
+  // Render pages into the hidden print container, wait for every image to
+  // finish loading, then open the print dialog with a clean filename
+  // (<Model_Name>_<suffix>_nerdyphotographer.pdf when saved as PDF).
+  function printFromContainer(shoot, pagesHtml, fileSuffix) {
     const printContainer = document.getElementById("compCardPrintContainer");
     if (!printContainer) return;
-    
-    printContainer.innerHTML = page1Html + page2Html;
-    
-    // Ensure all images are fully loaded in browser memory before launching print preview
-    const imgs = printContainer.querySelectorAll("img");
-    let loadedCount = 0;
-    const totalImgs = imgs.length;
-    
+    printContainer.innerHTML = pagesHtml;
     const triggerPrint = () => {
       const oldTitle = document.title;
       const cleanModelName = getTalentCleanName(shoot.talent || shoot.title).trim().replace(/\s+/g, '_');
-      document.title = `${cleanModelName}_compcard_nerdyphotographer`;
+      document.title = `${cleanModelName}_${fileSuffix}_nerdyphotographer`;
       window.print();
       document.title = oldTitle;
     };
-
-    if (totalImgs === 0) {
-      triggerPrint();
-      return;
-    }
-    
+    const imgs = printContainer.querySelectorAll("img");
+    if (imgs.length === 0) { triggerPrint(); return; }
+    let loadedCount = 0;
     const onImgLoad = () => {
       loadedCount++;
-      if (loadedCount === totalImgs) {
-        triggerPrint();
-      }
+      if (loadedCount === imgs.length) triggerPrint();
     };
-    
     imgs.forEach(img => {
       if (img.complete) {
         onImgLoad();
       } else {
         img.addEventListener("load", onImgLoad);
-        img.addEventListener("error", onImgLoad); // Ensure failed images don't block printing
+        img.addEventListener("error", onImgLoad); // failed images never block printing
       }
     });
+  }
+
+  // Single A4 "composite card" page — the standard agency layout: bold name
+  // header, one large lead photo beside a 2×2 supporting grid, then stats
+  // and socials strips when the data exists. The photo row flexes, so the
+  // page absorbs optional strips without ever spilling onto a second sheet.
+  function printOnePagerHtml(shoot, photos, headerLabel, showAngles) {
+    const name = getTalentCleanName(shoot.talent || shoot.title);
+    const cover = photos[0];
+    const side = photos.slice(1, 5);
+    return `
+      <div class="print-page">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; flex: 0 0 auto;">
+          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;">${headerLabel}</span>
+          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #666; text-transform: uppercase;">nerdyphotographer.in studio</span>
+        </div>
+        <h1 style="font-family:'Outfit', sans-serif; font-size: 30px; font-weight: 800; margin: 0 0 10px; text-transform: uppercase; color: #000; letter-spacing: -0.02em; flex: 0 0 auto;">${name}</h1>
+        <div class="print-main-row">
+          <div class="print-cover-panel">
+            ${cover ? `<img src="${photoSrc(cover)}" alt="Lead photo" />` : ""}
+          </div>
+          ${side.length ? `<div class="print-side-grid">${side.map(p => printGridCellHtml(p, showAngles)).join("")}</div>` : ""}
+        </div>
+        ${printStatsBarHtml(shoot)}
+        ${printSocialsBarHtml(shoot)}
+        ${PRINT_FOOTER_HTML}
+      </div>
+    `;
+  }
+
+  // Comp card export: strictly ONE A4 page — lead photo + up to 4 more.
+  window.printCompCard = (shootId) => {
+    const shoot = SHOOTS.find(x => x.id === shootId) || (window.currentCompCardShootObj);
+    if (!shoot) return;
+    const allPhotos = (shoot.photos || []);
+    if (!allPhotos.length) { toast("No photos to export."); return; }
+    const coverPhoto = allPhotos.find(p => p.isCover)
+      || allPhotos.find(p => p.id.split("-")[0] === shoot.coverPhotoId)
+      || allPhotos[0];
+    const photos = [coverPhoto, ...allPhotos.filter(p => p !== coverPhoto).slice(0, 4)];
+    printFromContainer(shoot, printOnePagerHtml(shoot, photos, "MODEL COMP CARD", false), "compcard");
+  };
+
+  // Print a model portfolio from an explicit photo list, in the format the
+  // admin picked: 1 page (compact composite: lead + up to 4) or 2 pages
+  // (full-bleed cover page + one angle-labelled 3×2 grid of up to 6).
+  function printPortfolioPhotos(shoot, photos, pageMode = 2) {
+    const coverPhoto = photos.find(p => p.id.split("-")[0] === shoot.coverPhotoId) || photos[0];
+    const ordered = [coverPhoto, ...photos.filter(p => p !== coverPhoto)];
+    if (pageMode === 1 || ordered.length === 1) {
+      printFromContainer(shoot, printOnePagerHtml(shoot, ordered.slice(0, 5), "MODEL PORTFOLIO", true), "portfolio");
+      return;
+    }
+    const gridPhotos = ordered.slice(1, 7);
+    const pagesHtml =
+      printCoverPageHtml(shoot, ordered[0], "MODEL PORTFOLIO", "OFFICIAL MODEL PORTFOLIO · PAGE 1") +
+      printGridPageHtml(shoot, gridPhotos.map(p => printGridCellHtml(p, true)).join(""), printStatsBarHtml(shoot) + printSocialsBarHtml(shoot));
+    printFromContainer(shoot, pagesHtml, "portfolio");
+  }
+
+  // Photo picker shown before a portfolio export: every portfolio-tagged
+  // click as a tappable thumbnail (angle badge included) — choose exactly
+  // which ones go into the PDF. All are selected by default.
+  function openPortfolioPicker(shoot, photos) {
+    // Rebuild the modal from scratch each time so no stale listeners stack up.
+    document.getElementById("portfolioPickerModal")?.remove();
+    const modal = document.createElement("div");
+    modal.id = "portfolioPickerModal";
+    modal.style = "position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.75); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; padding: 20px;";
+    const angleShort = { "front": "Front", "side": "Side", "back": "Back", "three-quarter": "3/4", "close-up": "Close-up" };
+    modal.innerHTML = `
+      <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 14px; width: 100%; max-width: 720px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--shadow);">
+        <div style="padding: 18px 22px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 10px; background: var(--bone); flex-wrap: wrap;">
+          <div>
+            <h3 style="margin: 0; font-family:'Outfit', sans-serif; font-size: 16px; font-weight: 700; color: var(--ink);">Select photos for the PDF</h3>
+            <p style="margin: 4px 0 0; font-size: 11px; color: var(--ink-soft);">${esc(getTalentCleanName(shoot.talent || shoot.title))} — tap photos to include or exclude them.</p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" id="ppAll" class="btn btn-ghost" style="font-size: 10px; height: auto; padding: 6px 12px;">Select all</button>
+            <button type="button" id="ppNone" class="btn btn-ghost" style="font-size: 10px; height: auto; padding: 6px 12px;">Clear</button>
+          </div>
+        </div>
+        <div style="padding: 18px 22px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px;">
+          ${photos.map((p, i) => `
+            <button type="button" class="pp-item" data-idx="${i}" aria-pressed="true" style="position: relative; aspect-ratio: 4/5; border-radius: 8px; overflow: hidden; border: 2px solid var(--accent); padding: 0; cursor: pointer; background: var(--bone);">
+              <img src="${esc(photoSrc(p))}" style="width: 100%; height: 100%; object-fit: cover; object-position: ${esc(p.objectPosition || "center")}; display: block;" alt="Photo ${i + 1}" loading="lazy" />
+              <span class="pp-check" style="position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center;">✓</span>
+              ${p.angle ? `<span style="position: absolute; bottom: 6px; left: 6px; font-family:'JetBrains Mono', monospace; font-size: 8px; font-weight: 700; background: rgba(0,0,0,0.72); color: #fff; padding: 2px 6px; border-radius: 3px; text-transform: uppercase;">${esc(angleShort[p.angle] || p.angle)}</span>` : ""}
+            </button>
+          `).join("")}
+        </div>
+        <div style="padding: 14px 22px; border-top: 1px solid var(--line); display: flex; gap: 20px; flex-wrap: wrap; background: var(--bone);">
+          <label style="display: flex; align-items: center; gap: 8px; font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; text-transform: uppercase; cursor: pointer; color: var(--ink);">
+            <input type="radio" name="ppMode" value="1" style="accent-color: var(--accent); margin: 0;" />
+            1 page — compact card (lead + up to 4)
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; text-transform: uppercase; cursor: pointer; color: var(--ink);">
+            <input type="radio" name="ppMode" value="2" checked style="accent-color: var(--accent); margin: 0;" />
+            2 pages — cover + photo grid (up to 7)
+          </label>
+        </div>
+        <div style="padding: 16px 22px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; align-items: center; gap: 12px; background: var(--bone);">
+          <span id="ppHint" style="font-size: 10px; color: var(--ink-soft); margin-right: auto; font-family:'JetBrains Mono', monospace;"></span>
+          <button type="button" id="ppCancel" class="btn btn-ghost" style="font-size: 12px; height: auto; padding: 10px 18px;">Cancel</button>
+          <button type="button" id="ppExport" class="btn btn-dark" style="font-size: 12px; height: auto; padding: 10px 18px; font-family:'JetBrains Mono', monospace; font-weight: 700;">Export PDF (${photos.length})</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    const selected = new Set(photos.map((_, i) => i));
+    const exportBtn = modal.querySelector("#ppExport");
+    const hint = modal.querySelector("#ppHint");
+    const paintItem = (el, on) => {
+      el.style.borderColor = on ? "var(--accent)" : "var(--line)";
+      el.setAttribute("aria-pressed", String(on));
+      el.querySelector(".pp-check").style.display = on ? "flex" : "none";
+      el.querySelector("img").style.opacity = on ? "1" : "0.35";
+    };
+    const pickedMode = () => Number(modal.querySelector('input[name="ppMode"]:checked')?.value || 2);
+    const refresh = () => {
+      exportBtn.textContent = `Export PDF (${selected.size})`;
+      exportBtn.disabled = selected.size === 0;
+      if (!selected.size) { hint.textContent = "Nothing selected"; return; }
+      const capacity = pickedMode() === 1 ? 5 : 7;
+      const used = Math.min(selected.size, capacity);
+      hint.textContent = `Using ${used} of ${selected.size} selected` + (selected.size > capacity ? ` — only the first ${capacity} fit this format` : "");
+    };
+    modal.querySelectorAll('input[name="ppMode"]').forEach(r => r.addEventListener("change", refresh));
+    modal.querySelectorAll(".pp-item").forEach(el => {
+      el.addEventListener("click", () => {
+        const i = Number(el.dataset.idx);
+        if (selected.has(i)) selected.delete(i); else selected.add(i);
+        paintItem(el, selected.has(i));
+        refresh();
+      });
+    });
+    modal.querySelector("#ppAll").addEventListener("click", () => {
+      photos.forEach((_, i) => selected.add(i));
+      modal.querySelectorAll(".pp-item").forEach(el => paintItem(el, true));
+      refresh();
+    });
+    modal.querySelector("#ppNone").addEventListener("click", () => {
+      selected.clear();
+      modal.querySelectorAll(".pp-item").forEach(el => paintItem(el, false));
+      refresh();
+    });
+    const close = () => modal.remove();
+    modal.querySelector("#ppCancel").addEventListener("click", close);
+    modal.addEventListener("click", (e) => { if (e.target === modal) close(); });
+    exportBtn.addEventListener("click", () => {
+      const chosen = photos.filter((_, i) => selected.has(i));
+      if (!chosen.length) return;
+      const mode = pickedMode();
+      close();
+      printPortfolioPhotos(shoot, chosen, mode);
+    });
+    refresh();
+  }
+
+  // Full model portfolio export. Admin-only entry point in the Model
+  // Portfolio lightbox sidebar. With more than one portfolio-tagged photo,
+  // a picker lets the admin choose exactly which clicks go into the PDF.
+  window.printModelPortfolio = (shootId) => {
+    const shoot = SHOOTS.find(x => x.id === shootId) || (window.currentCompCardShootObj);
+    if (!shoot) return;
+    // Same selection rule as the Model Portfolio view: photos tagged
+    // "portfolio" or "both" (untagged legacy photos count as portfolio).
+    const photos = (shoot.photos || []).filter(p => p.usage === "portfolio" || p.usage === "both" || p.usage === undefined);
+    if (!photos.length) { toast("No portfolio-tagged photos to export."); return; }
+    if (photos.length > 1) openPortfolioPicker(shoot, photos);
+    else printPortfolioPhotos(shoot, photos);
   };
 
   window.triggerCompCardDownload = (shootId) => {
@@ -4002,11 +4126,106 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   };
 
   window.downloadLogsCSV = () => {
-    const passcode = window.STUDIO_CONFIG?.adminPasscode || "canonr5markii";
-    window.location.href = `/api/logs/download?passcode=${encodeURIComponent(passcode)}`;
+    // The passcode is asked for on demand and never stored in the page's
+    // public source; the log server compares its SHA-256 hash.
+    const passcode = prompt("Enter admin passcode to download the logs CSV:");
+    if (!passcode) return;
+    window.location.href = `/api/logs/download?passcode=${encodeURIComponent(passcode.trim())}`;
   };
 
+  /* ============================================================
+     §17 · BOOT
+     ============================================================ */
+  // GitHub Pages caches data.js for ~10 minutes, so visitors can see a stale
+  // portfolio right after a sync. Refetch it bypassing the cache and re-render
+  // if the published shoots changed. Local (IndexedDB) shoots take precedence.
+  async function refreshPublishedData() {
+    try {
+      const res = await fetch(`data.js?fresh=${Date.now()}`, { cache: "no-store" });
+      if (!res.ok) return;
+      const fresh = parseShootsFromDataJs(await res.text());
+      if (!fresh || !usingDemo) return;
+      if (JSON.stringify(fresh) === JSON.stringify(window.WPS_DATA.DEMO_SHOOTS)) return;
+      window.WPS_DATA.DEMO_SHOOTS = fresh;
+      await loadShoots();
+      render();
+    } catch { /* offline or unparsable — keep what we have */ }
+  }
+
+  function initRouting() {
+    window.addEventListener("popstate", render);
+    document.addEventListener("click", (e) => {
+      const link = e.target.closest("[data-link]");
+      if (link) {
+        const href = link.getAttribute("href");
+        if (href && (href.startsWith("/") || !href.includes("://"))) {
+          e.preventDefault();
+          history.pushState(null, "", href);
+          render();
+        }
+      }
+    });
+  }
+
+  function initBranding() {
+    const cfg = window.STUDIO_CONFIG;
+    if (!cfg) return;
+    document.title = `${cfg.studioName} — The Creative Studio`;
+    const loaderLbl = $("#loaderLabel");
+    if (loaderLbl) loaderLbl.textContent = `${cfg.studioShortName} ${cfg.studioSubName}`;
+    const headerBrandText = $("#headerBrandText");
+    if (headerBrandText) headerBrandText.innerHTML = `<span style="text-transform: lowercase; font-weight: 800; font-size: 15px; letter-spacing: 0.02em;">${esc(cfg.studioName)}</span>`;
+    const footerBrandText = $("#footerBrandText");
+    if (footerBrandText) footerBrandText.innerHTML = `${esc(cfg.studioShortName)}<span class="brand-sub">${esc(cfg.studioSubName)}</span>`;
+    const footerTagline = $("#footerTagline");
+    if (footerTagline) footerTagline.textContent = cfg.tagline;
+    const footerNotice = $("#footerNotice");
+    if (footerNotice) footerNotice.textContent = `The Creative Studio of ${cfg.studioName}`;
+    const navStudioDesc = $("#navStudioDesc");
+    if (navStudioDesc) navStudioDesc.innerHTML = `The Creative Studio of<br />${esc(cfg.studioName)}`;
+    const navEmail = $("#navEmail");
+    if (navEmail) {
+      navEmail.href = `mailto:${cfg.email}`;
+      navEmail.textContent = cfg.email;
+    }
+    const navSocials = $("#navSocials");
+    if (navSocials) {
+      const links = [];
+      if (cfg.instagram) {
+        links.push(`<a href="${cfg.instagram}" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg></a>`);
+      }
+      if (cfg.kavyar) {
+        links.push(`<a href="${cfg.kavyar}" target="_blank" rel="noopener" aria-label="Kavyar"><svg viewBox="0 0 24 24" style="stroke-width: 2.5;"><line x1="6" y1="4" x2="6" y2="20"></line><line x1="18" y1="4" x2="6" y2="12"></line><line x1="6" y1="12" x2="18" y2="20"></line></svg></a>`);
+      }
+      navSocials.innerHTML = links.join("");
+    }
+
+    // Footer email link (mailto) — mirrors nav email.
+    const footerEmail = $("#footerEmail");
+    if (footerEmail && cfg.email) {
+      footerEmail.href = `mailto:${cfg.email}`;
+    }
+    // Footer social icons — reuse the same set as the nav.
+    const footerSocials = $("#footerSocials");
+    if (footerSocials) {
+      const fl = [];
+      if (cfg.instagram) fl.push(`<a href="${cfg.instagram}" target="_blank" rel="noopener" aria-label="Instagram">Instagram</a>`);
+      if (cfg.kavyar) fl.push(`<a href="${cfg.kavyar}" target="_blank" rel="noopener" aria-label="Kavyar">Kavyar</a>`);
+      fl.push(`<a href="${cfg.email ? `mailto:${cfg.email}` : '#'}" aria-label="Email">Email</a>`);
+      footerSocials.innerHTML = fl.join("");
+    }
+  }
+
   (async function boot() {
+    // Order matters: admin URL params must apply before anything calls
+    // isAdmin() or loadShoots(); chrome wiring must precede first render.
+    applyAdminUrlParams();
+    initLightbox();
+    initNav();
+    initAdminControls();
+    initThemeControls();
+    initHeaderScroll();
+    initRouting();
     try {
       $("#year").textContent = new Date().getFullYear();
       initBranding();

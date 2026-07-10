@@ -25,7 +25,10 @@ const STUDIO_CONFIG = {
   activities: ["Beauty", "Editorial", "Fashion", "Fitness", "Portrait", "Sports"],
   types: ["Campaign", "Commercial", "Documentary", "E-commerce", "Editorial", "Fine Art", "Test Shoot"],
   brands: ["Personal Project", "Vogue", "National Geographic", "Patagonia", "Local Cafe", "Independent Film"],
-  adminPasscode: "canonr5markii",
+  // Admin passcode is stored ONLY as a SHA-256 hash (the site is public
+  // source — a readable passcode here could be seen by anyone). To change
+  // it, put the SHA-256 hex of your new passcode below.
+  adminPasscodeHash: "2e55b636fd71c28ad7c20658421a20086eb22a6ecb9c065c6b1c9c6ecc05b6c5",
 
   // Custom Colors Theme (Tailor the clay-orange to your own vibe if wanted!)
   colors: {

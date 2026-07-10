@@ -1056,12 +1056,12 @@ main:focus { outline: none; }
   }
   @page {
     size: A4 portrait;
-    margin: 15mm 12mm;
+    margin: 10mm 10mm;
   }
   #compCardPrintContainer {
     display: block !important;
     width: 100% !important;
-    height: 100% !important;
+    height: auto !important;
     background: #fff !important;
     color: #000 !important;
     padding: 0 !important;
@@ -1073,42 +1073,83 @@ main:focus { outline: none; }
     display: flex !important;
     flex-direction: column !important;
     width: 100% !important;
-    height: 100% !important;
+    /* A4 is 297mm tall; @page margins are 10mm top+bottom -> pin the page
+       card to the printable height so it always fills exactly one sheet. */
+    height: 276mm !important;
+    max-height: 276mm !important;
     page-break-after: always !important;
     break-after: page !important;
     box-sizing: border-box !important;
-    padding: 24px !important;
+    padding: 18px !important;
     border: 3px solid #000 !important;
+    overflow: hidden !important; /* a page may never spill into a second sheet */
   }
   .print-page:last-child {
     page-break-after: avoid !important;
     break-after: avoid !important;
-    height: 100% !important;
   }
+  /* One-pager composite layout: lead photo panel beside a 2x2 grid */
+  .print-main-row {
+    display: flex !important;
+    gap: 12px !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    margin: 0 0 12px !important;
+  }
+  .print-cover-panel {
+    flex: 1.25 1 0 !important;
+    position: relative !important;
+    background: #f4f4f2 !important;
+    border: 1px solid #e2e0dc !important;
+    border-radius: 6px !important;
+    overflow: hidden !important;
+    min-height: 0 !important;
+  }
+  .print-cover-panel img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important; /* pad, never crop — no cut heads */
+    display: block !important;
+    background: #f4f4f2 !important;
+  }
+  .print-side-grid {
+    flex: 1 1 0 !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    grid-auto-rows: 1fr !important;
+    gap: 10px !important;
+    min-height: 0 !important;
+  }
+  /* Grid page (2-page portfolio) */
   .print-photo-grid {
     display: grid !important;
     grid-template-columns: repeat(3, 1fr) !important;
+    grid-auto-rows: 1fr !important;
     gap: 12px !important;
     margin: 12px 0 !important;
     width: 100% !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
   }
   .print-photo-item {
     display: flex !important;
     box-sizing: border-box !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
-    aspect-ratio: 4 / 5 !important;
-    background: #fff !important;
-    border: 1px solid #fff !important;
+    background: #f4f4f2 !important;
+    border: 1px solid #e2e0dc !important;
+    border-radius: 6px !important;
+    position: relative !important;
     align-items: center !important;
     justify-content: center !important;
     overflow: hidden !important;
+    min-height: 0 !important;
   }
   .print-photo-item img {
     width: 100% !important;
     height: 100% !important;
-    object-fit: cover !important;
-    background: #fff !important;
+    object-fit: contain !important; /* pad, never crop — no cut heads */
+    background: #f4f4f2 !important;
     display: block !important;
   }
 }

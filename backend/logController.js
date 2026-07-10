@@ -1,4 +1,5 @@
 const fs = require("fs");
+const crypto = require("crypto");
 const path = require("path");
 
 const LOGS_FILE = path.join(__dirname, "logs.json");
@@ -63,8 +64,13 @@ exports.logDownload = (req, res) => {
 exports.downloadCSV = (req, res) => {
   const { passcode } = req.query;
 
-  // Simple secure validation of admin credentials
-  if (passcode !== "canonr5markii") {
+  // Compare the SHA-256 hash of the supplied passcode — no plaintext
+  // passcode lives in the source. Must match adminPasscodeHash in config.js.
+  const ADMIN_PASSCODE_HASH = "2e55b636fd71c28ad7c20658421a20086eb22a6ecb9c065c6b1c9c6ecc05b6c5";
+  const suppliedHash = passcode
+    ? crypto.createHash("sha256").update(String(passcode)).digest("hex")
+    : "";
+  if (suppliedHash !== ADMIN_PASSCODE_HASH) {
     return res.status(401).send("Unauthorized access - invalid passcode.");
   }
 
