@@ -511,6 +511,7 @@ window.WPS_DATA = {
           "id": "mr8ld6tds7z3f0-3",
           "url": "photos/mr8legmk0o8mqz/mr8ld6tds7z3f0-3.jpg",
           "objectPosition": "49.9% 0.0%",
+          "excludeFromCompCard": true,
           "focalX": 49.8960498960499,
           "focalY": 0
         },
@@ -525,6 +526,7 @@ window.WPS_DATA = {
           "id": "mracianzxnpa86-5",
           "url": "photos/mr8legmk0o8mqz/mracianzxnpa86-5.jpg",
           "objectPosition": "44.4% 0.0%",
+          "excludeFromCompCard": true,
           "focalX": 44.411444411444414,
           "focalY": 0
         },
