@@ -523,69 +523,82 @@ window.WPS_DATA = {
           "focalY": 13.699883284438977
         },
         {
-          "id": "mracianzxnpa86-5",
-          "url": "photos/mr8legmk0o8mqz/mracianzxnpa86-5.jpg",
-          "objectPosition": "44.4% 0.0%",
-          "excludeFromCompCard": true,
-          "focalX": 44.411444411444414,
-          "focalY": 0
-        },
-        {
-          "id": "mr8ld720pjapet-6",
+          "id": "mr8ld720pjapet-5",
           "url": "photos/mr8legmk0o8mqz/mr8ld720pjapet-4.jpg",
           "objectPosition": "51.8% 61.1%",
           "focalX": 51.7968517968518,
           "focalY": 61.08009211065897
         },
         {
-          "id": "mrcy17qlnkcgt0-7",
+          "id": "mrcy17qlnkcgt0-6",
           "url": "photos/mr8legmk0o8mqz/mrcy17qlnkcgt0-7.jpg",
           "objectPosition": "center"
         },
         {
-          "id": "mrcy18109s244m-8",
+          "id": "mrcy18109s244m-7",
           "url": "photos/mr8legmk0o8mqz/mrcy18109s244m-8.jpg",
           "objectPosition": "center"
         },
         {
-          "id": "mrcy189dfa7lp5-9",
+          "id": "mrcy189dfa7lp5-8",
           "url": "photos/mr8legmk0o8mqz/mrcy189dfa7lp5-9.jpg",
           "objectPosition": "center"
         },
         {
-          "id": "mrcy18g8ido45k-10",
+          "id": "mrcy18g8ido45k-9",
           "url": "photos/mr8legmk0o8mqz/mrcy18g8ido45k-10.jpg",
           "objectPosition": "center"
         },
         {
-          "id": "mrcy18o00aecf6-11",
+          "id": "mrcy18o00aecf6-10",
           "url": "photos/mr8legmk0o8mqz/mrcy18o00aecf6-11.jpg",
           "objectPosition": "center"
         },
         {
-          "id": "mrcy18x0sztqix-12",
+          "id": "mrcy18x0sztqix-11",
           "url": "photos/mr8legmk0o8mqz/mrcy18x0sztqix-12.jpg",
           "objectPosition": "center"
         },
         {
-          "id": "mrcy19i4egx5ra-13",
+          "id": "mrcy19i4egx5ra-12",
           "url": "photos/mr8legmk0o8mqz/mrcy19i4egx5ra-14.jpg",
           "objectPosition": "center"
         },
         {
-          "id": "mrcy19u4jgcfhu-14",
+          "id": "mrcy19u4jgcfhu-13",
           "url": "photos/mr8legmk0o8mqz/mrcy19u4jgcfhu-15.jpg",
           "objectPosition": "center"
         },
         {
-          "id": "mrczrnxxdkew30-15",
+          "id": "mrczrnxxdkew30-14",
           "url": "photos/mr8legmk0o8mqz/mrczrnxxdkew30-15.jpg",
           "objectPosition": "center"
         },
         {
-          "id": "mrczro58o00quj-16",
+          "id": "mrczro58o00quj-15",
           "url": "photos/mr8legmk0o8mqz/mrczro58o00quj-16.jpg",
           "objectPosition": "center"
+        },
+        {
+          "id": "mrkbt93zfkswtx-16",
+          "url": "photos/mr8legmk0o8mqz/mrkbt93zfkswtx-16.jpg",
+          "objectPosition": "center",
+          "small": "photos/mr8legmk0o8mqz/mrkbt93zfkswtx-16@480.jpg",
+          "medium": "photos/mr8legmk0o8mqz/mrkbt93zfkswtx-16@960.jpg"
+        },
+        {
+          "id": "mrkbt9ca8j1ym1-17",
+          "url": "photos/mr8legmk0o8mqz/mrkbt9ca8j1ym1-17.jpg",
+          "objectPosition": "center",
+          "small": "photos/mr8legmk0o8mqz/mrkbt9ca8j1ym1-17@480.jpg",
+          "medium": "photos/mr8legmk0o8mqz/mrkbt9ca8j1ym1-17@960.jpg"
+        },
+        {
+          "id": "mrkbt9jjdgc3jz-18",
+          "url": "photos/mr8legmk0o8mqz/mrkbt9jjdgc3jz-18.jpg",
+          "objectPosition": "center",
+          "small": "photos/mr8legmk0o8mqz/mrkbt9jjdgc3jz-18@480.jpg",
+          "medium": "photos/mr8legmk0o8mqz/mrkbt9jjdgc3jz-18@960.jpg"
         }
       ],
       "featured": true,
