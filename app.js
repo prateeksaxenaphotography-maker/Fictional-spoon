@@ -29,7 +29,11 @@
   /* ============================================================
      §1 · DATA & ENVIRONMENT
      ============================================================ */
-  const { ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS } = window.WPS_DATA;
+  const { ACTIVITIES: rawAct, TYPES: rawTyp, BRANDS: rawBrs, DEMO_SHOOTS } = window.WPS_DATA;
+  const cfgData = window.STUDIO_CONFIG || {};
+  const ACTIVITIES = [...new Set([...(rawAct || []), ...(cfgData.activities || [])])];
+  const TYPES = [...new Set([...(rawTyp || []), ...(cfgData.types || [])])];
+  const BRANDS = [...new Set([...(rawBrs || []), ...(cfgData.brands || [])])];
   const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   /* ============================================================
@@ -1106,11 +1110,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       adminSec.style.display = isAdminAuthorized() ? "block" : "none";
     }
 
-    const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi"), compCardsLi = $("#navCompCardsLi"), portfolioLi = $("#navModelPortfolioLi"), logsLi = $("#navLogsLi");
+    const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi"), compCardsLi = $("#navCompCardsLi"), portfolioLi = $("#navModelPortfolioLi"), workshopLi = $("#navWorkshopLi"), logsLi = $("#navLogsLi");
     if (uploadLi) uploadLi.style.display = active ? "block" : "none";
     if (bookLi) bookLi.style.display = active ? "none" : "block";
     if (compCardsLi) compCardsLi.style.display = active ? "block" : "none";
     if (portfolioLi) portfolioLi.style.display = active ? "block" : "none";
+    if (workshopLi) workshopLi.style.display = active ? "block" : "none";
     if (logsLi) logsLi.style.display = active ? "block" : "none";
 
     if (themeBtn) {
@@ -1452,12 +1457,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   }
 
   function viewHome() {
-    const feat = SHOOTS.filter(s => !s.isTestimonial).slice(0, 7);
+    const feat = SHOOTS.filter(s => !s.isTestimonial && s.type !== "Workshop Attended").slice(0, 7);
     CURRENT_VIEW_SHOOTS = feat;
-    const brandCount = new Set(SHOOTS.filter(s => s.client && s.client.trim()).map(s => s.brand)).size;
-    const activeBrands = BRANDS.filter(b => SHOOTS.some(s => s.brand === b && s.client && s.client.trim()));
+    const brandCount = new Set(SHOOTS.filter(s => s.client && s.client.trim() && s.type !== "Workshop Attended").map(s => s.brand)).size;
+    const activeBrands = BRANDS.filter(b => SHOOTS.some(s => s.brand === b && s.client && s.client.trim() && s.type !== "Workshop Attended"));
     const displayBrands = activeBrands.length ? activeBrands : BRANDS;
-    const clientNames = [...new Set(SHOOTS.map(s => s.client).filter(c => c && c.trim()))];
+    const clientNames = [...new Set(SHOOTS.filter(s => s.type !== "Workshop Attended").map(s => s.client).filter(c => c && c.trim()))];
     const nerdyLetters = "NERDY".split("").map((ch, i) =>
       `<span class="wm-letter" style="--i:${i}">${esc(ch)}</span>`
     ).join("");
@@ -1539,9 +1544,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <a href="/albums" data-link class="link-arrow">All albums →</a>
         </div>
         <div class="noth-work-list">${feat.map(nothWorkCard).join("")}</div>
-        ${SHOOTS.length > feat.length ? `
+        ${SHOOTS.filter(s => s.type !== "Workshop Attended").length > feat.length ? `
         <div class="works-all-cta reveal">
-          <a href="/albums" data-link class="btn btn-dark">View all ${SHOOTS.length} albums →</a>
+          <a href="/albums" data-link class="btn btn-dark">View all ${SHOOTS.filter(s => s.type !== "Workshop Attended").length} albums →</a>
         </div>
         ` : ""}
       </section>
@@ -1592,7 +1597,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
   // Full listing of every album — the "All albums" page.
   function viewAlbums() {
-    const list = SHOOTS.slice();
+    const list = SHOOTS.filter(s => s.type !== "Workshop Attended");
     CURRENT_VIEW_SHOOTS = list;
     return `
       <section class="page-head">
@@ -1616,6 +1621,23 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           `}
         </div>
       </section>`;
+  }
+
+  function viewWorkshopAttended() {
+    const list = SHOOTS.filter(s => s.type === "Workshop Attended");
+    CURRENT_VIEW_SHOOTS = list;
+    return `
+      <section class="page-head">
+        <div class="container">
+          <p class="eyebrow reveal">🔒 Admin View Only</p>
+          ${kineticH1("Workshops", "kinetic-h1-wide")}
+          <p class="page-sub reveal" style="max-width: 600px; line-height: 1.6; opacity: 1 !important; visibility: visible !important; transform: none !important;">A dedicated record of professional photography workshops attended, people trained, and creative techniques learned to build editorial proficiency.</p>
+        </div>
+      </section>
+      <section class="section container">
+        <div class="noth-work-list">${list.map(nothWorkCard).join("") || `<p class="page-sub">No workshop albums published yet. Go to <a href="/upload" data-link style="text-decoration:underline; font-weight:600; color:var(--accent);">Upload</a> to add one with type 'Workshop Attended'.</p>`}</div>
+      </section>
+    `;
   }
 
 
@@ -1777,6 +1799,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     // Index: three lenses
     const grp = (arr, key) => arr.map((v) => {
       const shoots = SHOOTS.filter((s) => {
+        if (s.type === "Workshop Attended") return false;
         if (key === "brand" && (!s.client || !s.client.trim())) return false;
         return s[key] === v;
       });
@@ -1789,7 +1812,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       }
       return { v, count: shoots.length, sample, cover };
     }).filter((x) => x.count > 0);
-    const act = grp(ACTIVITIES, "activity"), brs = grp(BRANDS, "brand"), typ = grp(TYPES, "type");
+    const act = grp(ACTIVITIES, "activity"), brs = grp(BRANDS, "brand"), typ = grp(TYPES.filter(t => t !== "Workshop Attended"), "type");
     
     if (act.length === 0 && brs.length === 0 && typ.length === 0) {
       return `
@@ -2174,6 +2197,16 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                 <label class="field"><span>Hair color</span><input id="f_model_hair" type="text" placeholder="e.g. Dark Brown" /></label>
               </div>
               <label class="field"><span>Eye color</span><input id="f_model_eyes" type="text" placeholder="e.g. Green" /></label>
+              <div class="field-row" style="margin-top: 12px; gap: 20px; flex-wrap: wrap;">
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--ink); cursor: pointer; user-select: none;">
+                  <input id="f_show_stats_comp" type="checkbox" checked style="width: 16px; height: 16px; accent-color: var(--accent);" />
+                  Show stats on Comp Cards
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--ink); cursor: pointer; user-select: none;">
+                  <input id="f_show_stats_port" type="checkbox" checked style="width: 16px; height: 16px; accent-color: var(--accent);" />
+                  Show stats on Model Portfolio
+                </label>
+              </div>
             </fieldset>
 
             <fieldset><legend>Details</legend>
@@ -2558,6 +2591,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         $("#f_shoes").value = editingShoot.shoes || "";
         $("#f_model_hair").value = editingShoot.modelHair || "";
         $("#f_model_eyes").value = editingShoot.modelEyes || "";
+        if ($("#f_show_stats_comp")) $("#f_show_stats_comp").checked = (editingShoot.showStatsOnCompCard !== false);
+        if ($("#f_show_stats_port")) $("#f_show_stats_port").checked = (editingShoot.showStatsOnModelPortfolio !== false);
         const toIsoDate = (dStr) => {
           if (!dStr) return "";
           if (/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return dStr;
@@ -2979,6 +3014,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         shoes: isTestimonialOnly ? "" : val("f_shoes"),
         modelHair: isTestimonialOnly ? "" : val("f_model_hair"),
         modelEyes: isTestimonialOnly ? "" : val("f_model_eyes"),
+        showStatsOnCompCard: isTestimonialOnly ? true : ($("#f_show_stats_comp") ? $("#f_show_stats_comp").checked : true),
+        showStatsOnModelPortfolio: isTestimonialOnly ? true : ($("#f_show_stats_port") ? $("#f_show_stats_port").checked : true),
         description: val("f_desc"),
         tags: isTestimonialOnly ? "" : val("f_tags"),
         gear: isTestimonialOnly ? "" : val("f_gear"),
@@ -3062,6 +3099,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
       if (igLabel) {
         igLabel.innerHTML = (type === "Test Shoot" ? "Instagram / Website *" : "Instagram / Website");
+      }
+
+      if (btn) {
+        btn.textContent = (type === "Test Shoot" ? "Request for a Test Shoot" : "Submit Booking Request");
       }
 
       if (type === "Test Shoot") {
@@ -3553,7 +3594,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   /* ============================================================
      §14 · ROUTER
      ============================================================ */
-  const ROUTES = { "": viewHome, "albums": viewAlbums, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload, "book": viewBook, "testimonials": viewTestimonials };
+  const ROUTES = { "": viewHome, "albums": viewAlbums, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload, "book": viewBook, "testimonials": viewTestimonials, "workshop-attended": viewWorkshopAttended };
 
   function render() {
     let raw = location.pathname;
@@ -3582,9 +3623,15 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       }
     }
     
-    // Redirect non-admins trying to access upload page
-    if (key === "upload" && !isAdmin()) {
+    // Redirect non-admins trying to access upload page or workshop-attended views
+    if ((key === "upload" || key === "workshop-attended") && !isAdmin()) {
       history.pushState(null, "", "/");
+      render();
+      return;
+    }
+
+    if (key === "categories" && val === "Workshop Attended") {
+      history.pushState(null, "", isAdmin() ? "/workshop-attended" : "/");
       render();
       return;
     }
@@ -3801,7 +3848,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     </div>
   `;
 
-  function printStatsBarHtml(shoot) {
+  function printStatsBarHtml(shoot, targetType) {
+    if (targetType === "comp" && shoot.showStatsOnCompCard === false) return "";
+    if (targetType === "portfolio" && shoot.showStatsOnModelPortfolio === false) return "";
+
     const statsArr = [];
     if (shoot.height) statsArr.push(`Height: ${shoot.height}`);
     if (shoot.chest) statsArr.push(`Chest/Bust: ${shoot.chest}`);
@@ -3943,6 +3993,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const name = getTalentCleanName(shoot.talent || shoot.title);
     const cover = photos[0];
     const side = photos.slice(1, 5);
+    const targetType = (headerLabel === "MODEL PORTFOLIO" ? "portfolio" : "comp");
     return `
       <div class="print-page">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; flex: 0 0 auto;">
@@ -3956,7 +4007,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           </div>
           ${side.length ? `<div class="print-side-grid">${side.map(p => printGridCellHtml(p, showAngles)).join("")}</div>` : ""}
         </div>
-        ${printStatsBarHtml(shoot)}
+        ${printStatsBarHtml(shoot, targetType)}
         ${printSocialsBarHtml(shoot)}
         ${PRINT_FOOTER_HTML}
       </div>
@@ -3989,7 +4040,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const gridPhotos = ordered.slice(1, 7);
     const pagesHtml =
       printCoverPageHtml(shoot, ordered[0], "MODEL PORTFOLIO", "OFFICIAL MODEL PORTFOLIO · PAGE 1") +
-      printGridPageHtml(shoot, gridPhotos.map(p => printGridCellHtml(p, true)).join(""), printStatsBarHtml(shoot) + printSocialsBarHtml(shoot));
+      printGridPageHtml(shoot, gridPhotos.map(p => printGridCellHtml(p, true)).join(""), printStatsBarHtml(shoot, "portfolio") + printSocialsBarHtml(shoot));
     printFromContainer(shoot, pagesHtml, "portfolio");
   }
 
