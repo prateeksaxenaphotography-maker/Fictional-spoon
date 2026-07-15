@@ -2496,6 +2496,17 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const dz = $("#dropzone"), fi = $("#fileInput"), grid = $("#stagingGrid"), note = $("#queueNote"), pub = $("#publishBtn"), form = $("#shootForm");
     const diagInput = $("#f_diagram_file"), diagPreview = $("#diagramPreview"), diagImg = $("#f_diagram_img"), diagVisibility = $("#f_diagram_visibility"), clearDiagBtn = $("#clearDiagramBtn");
     const testimonialOnlyCheckbox = $("#f_is_testimonial_only");
+    
+    const mentorRow = $("#f_mentor_row");
+    const typeSelect = $("#f_type");
+    const updateMentorRowState = () => {
+      const isTestimonialOnly = !!testimonialOnlyCheckbox?.checked;
+      if (mentorRow && typeSelect) {
+        mentorRow.style.display = (!isTestimonialOnly && typeSelect.value === "Workshop Attended") ? "" : "none";
+      }
+    };
+    typeSelect?.addEventListener("change", updateMentorRowState);
+
     const updateTestimonialFormState = () => {
       const isTestimonialOnly = !!testimonialOnlyCheckbox?.checked;
 
@@ -2505,6 +2516,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       // Hide / show other fieldsets
       const statsFs = $("#modelStatsFieldset");
       if (statsFs) statsFs.style.display = isTestimonialOnly ? "none" : "";
+
+      // Hide / show Credits mentor field
+      updateMentorRowState();
 
       const lightingFs = $("#fieldsetLighting");
       if (lightingFs) lightingFs.style.display = isTestimonialOnly ? "none" : "";
@@ -2539,15 +2553,6 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     };
     testimonialOnlyCheckbox?.addEventListener("change", updateTestimonialFormState);
     updateTestimonialFormState();
-
-    const mentorRow = $("#f_mentor_row");
-    const typeSelect = $("#f_type");
-    const updateMentorRowState = () => {
-      if (mentorRow && typeSelect) {
-        mentorRow.style.display = typeSelect.value === "Workshop Attended" ? "block" : "none";
-      }
-    };
-    typeSelect?.addEventListener("change", updateMentorRowState);
     updateMentorRowState();
     let diagramDataUrl = null;
 
