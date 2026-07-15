@@ -406,6 +406,14 @@
     return false;
   }
 
+  const shouldShowWorkshopsToAll = () => {
+    const workshops = SHOOTS.filter(s => s.type === "Workshop Attended");
+    const uniqueMentors = new Set(
+      workshops.map(s => String(s.mentor || "").trim().toLowerCase()).filter(Boolean)
+    );
+    return uniqueMentors.size >= 3;
+  };
+
   const isAdminAuthorized = () => localStorage.getItem("wps-admin-authorized") === "1";
   const isAdmin = () => isAdminAuthorized() && sessionStorage.getItem("wps-admin") === "1";
   
@@ -795,6 +803,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     };
 
     if (shoot.photographer) credits.push(`<div><dt>Photo</dt><dd>${formatCrew(shoot.photographer)}</dd></div>`);
+    if (shoot.type === "Workshop Attended" && shoot.mentor) credits.push(`<div><dt>Teacher / Mentor</dt><dd>${esc(shoot.mentor)}</dd></div>`);
     if (shoot.artDirector && shoot.artDirector !== "—") credits.push(`<div><dt>Art Direction</dt><dd>${formatCrew(shoot.artDirector)}</dd></div>`);
     if (shoot.stylist && shoot.stylist !== "—") credits.push(`<div><dt>Stylist</dt><dd>${formatCrew(shoot.stylist)}</dd></div>`);
     if (shoot.mua && shoot.mua !== "—") credits.push(`<div><dt>MUA</dt><dd>${formatCrew(shoot.mua)}</dd></div>`);
@@ -1115,7 +1124,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     if (bookLi) bookLi.style.display = active ? "none" : "block";
     if (compCardsLi) compCardsLi.style.display = active ? "block" : "none";
     if (portfolioLi) portfolioLi.style.display = active ? "block" : "none";
-    if (workshopLi) workshopLi.style.display = active ? "block" : "none";
+    if (workshopLi) workshopLi.style.display = (active || shouldShowWorkshopsToAll()) ? "block" : "none";
     if (logsLi) logsLi.style.display = active ? "block" : "none";
 
     if (themeBtn) {
@@ -1230,7 +1239,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       : [s.activity, s.type].filter(Boolean).join(" · ");
     const photoCount = s.photos ? s.photos.length : 0;
     const countText = photoCount ? `${photoCount} Photo${photoCount > 1 ? "s" : ""}` : "";
-    const meta = [s.brand, s.season, countText].filter(v => v && v !== "Personal Project").join(" · ");
+    const mentorText = (s.type === "Workshop Attended" && s.mentor) ? `Mentor: ${s.mentor}` : "";
+    const meta = [s.brand, s.season, mentorText, countText].filter(v => v && v !== "Personal Project").join(" · ");
     const title = getTalentCleanName(s.isCompCard ? s.talent : (s.title || "Untitled"));
     return `
       <article class="noth-work reveal" data-shoot="${s.id}" data-talent="${esc(s.talent || '')}" style="--d:${(i % 2) * 0.08}s">
@@ -2181,6 +2191,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               <div class="field-row">
                 <label class="field"><span>Model / talent (comma-separated)</span><input id="f_talent" type="text" placeholder="e.g. Model A, Model B" /></label>
               </div>
+              <div class="field-row" id="f_mentor_row" style="display: none;">
+                <label class="field"><span>Teacher / Mentor (only for Workshops)</span><input id="f_mentor" type="text" placeholder="e.g. Mentor Name" /></label>
+              </div>
             </fieldset>
 
             <fieldset id="modelStatsFieldset"><legend>Model stats (Comp Cards)</legend>
@@ -2526,6 +2539,16 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     };
     testimonialOnlyCheckbox?.addEventListener("change", updateTestimonialFormState);
     updateTestimonialFormState();
+
+    const mentorRow = $("#f_mentor_row");
+    const typeSelect = $("#f_type");
+    const updateMentorRowState = () => {
+      if (mentorRow && typeSelect) {
+        mentorRow.style.display = typeSelect.value === "Workshop Attended" ? "block" : "none";
+      }
+    };
+    typeSelect?.addEventListener("change", updateMentorRowState);
+    updateMentorRowState();
     let diagramDataUrl = null;
 
     diagInput?.addEventListener("change", async (e) => {
@@ -2593,6 +2616,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         $("#f_model_eyes").value = editingShoot.modelEyes || "";
         if ($("#f_show_stats_comp")) $("#f_show_stats_comp").checked = (editingShoot.showStatsOnCompCard !== false);
         if ($("#f_show_stats_port")) $("#f_show_stats_port").checked = (editingShoot.showStatsOnModelPortfolio !== false);
+        if ($("#f_mentor")) $("#f_mentor").value = editingShoot.mentor || "";
+        updateMentorRowState();
         const toIsoDate = (dStr) => {
           if (!dStr) return "";
           if (/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return dStr;
@@ -3016,6 +3041,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         modelEyes: isTestimonialOnly ? "" : val("f_model_eyes"),
         showStatsOnCompCard: isTestimonialOnly ? true : ($("#f_show_stats_comp") ? $("#f_show_stats_comp").checked : true),
         showStatsOnModelPortfolio: isTestimonialOnly ? true : ($("#f_show_stats_port") ? $("#f_show_stats_port").checked : true),
+        mentor: isTestimonialOnly ? "" : val("f_mentor"),
         description: val("f_desc"),
         tags: isTestimonialOnly ? "" : val("f_tags"),
         gear: isTestimonialOnly ? "" : val("f_gear"),
@@ -3623,15 +3649,23 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       }
     }
     
-    // Redirect non-admins trying to access upload page or workshop-attended views
-    if ((key === "upload" || key === "workshop-attended") && !isAdmin()) {
+    // Redirect non-admins trying to access upload page
+    if (key === "upload" && !isAdmin()) {
+      history.pushState(null, "", "/");
+      render();
+      return;
+    }
+
+    // Redirect to home if trying to access workshop-attended and not authorized
+    if (key === "workshop-attended" && !isAdmin() && !shouldShowWorkshopsToAll()) {
       history.pushState(null, "", "/");
       render();
       return;
     }
 
     if (key === "categories" && val === "Workshop Attended") {
-      history.pushState(null, "", isAdmin() ? "/workshop-attended" : "/");
+      const allowed = isAdmin() || shouldShowWorkshopsToAll();
+      history.pushState(null, "", allowed ? "/workshop-attended" : "/");
       render();
       return;
     }
