@@ -18,7 +18,8 @@ window.WPS_DATA = {
     "E-commerce",
     "Editorial",
     "Fine Art",
-    "Test Shoot"
+    "Test Shoot",
+    "Workshop Attended"
   ],
   "BRANDS": [
     "Personal Project",
@@ -471,6 +472,10 @@ window.WPS_DATA = {
       "shoes": "",
       "modelHair": "",
       "modelEyes": "",
+      "showStatsOnCompCard": true,
+      "showStatsOnModelPortfolio": true,
+      "showTestShootCategory": false,
+      "mentor": "",
       "description": "",
       "tags": "",
       "gear": "",
@@ -491,7 +496,7 @@ window.WPS_DATA = {
         {
           "id": "mrcy189dfa7lp5-0",
           "url": "photos/mr8legmk0o8mqz/mrcy189dfa7lp5-9.jpg",
-          "objectPosition": "center"
+          "objectPosition": "top"
         },
         {
           "id": "mr8ld69w1fq1e5-1",
@@ -504,7 +509,6 @@ window.WPS_DATA = {
           "id": "mr8ld6tds7z3f0-2",
           "url": "photos/mr8legmk0o8mqz/mr8ld6tds7z3f0-3.jpg",
           "objectPosition": "49.9% 0.0%",
-          "excludeFromCompCard": true,
           "focalX": 49.8960498960499,
           "focalY": 0
         },
