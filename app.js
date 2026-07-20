@@ -846,9 +846,15 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <div class="lb-sidebar-section" style="margin-top: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bone); display: flex; flex-direction: column; gap: 10px;">
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
               <span style="font-family:'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--ink-soft);">PDF Orientation</span>
-              <div style="display: flex; gap: 4px;" id="compCardOrientGroup">
-                <button type="button" class="comp-orient-btn active" onclick="if (event) { event.preventDefault(); event.stopPropagation(); } window.setCompCardOrientation('portrait', this, event); return false;" style="font-family:'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--ink); background: var(--ink); color: var(--paper); cursor: pointer;">Portrait</button>
-                <button type="button" class="comp-orient-btn" onclick="if (event) { event.preventDefault(); event.stopPropagation(); } window.setCompCardOrientation('landscape', this, event); return false;" style="font-family:'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer;">Landscape</button>
+              <div style="display: inline-flex; background: var(--paper); padding: 2px; border-radius: 6px; border: 1px solid var(--line);" id="compCardOrientGroup">
+                <label style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-family:'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; border-radius: 4px; cursor: pointer; transition: all 0.2s ease; background: var(--ink); color: var(--paper);" class="orient-radio-label active">
+                  <input type="radio" name="compCardOrientRadio" value="portrait" checked onchange="window.setCompCardOrientation('portrait', this)" style="display: none;" />
+                  <span>Portrait</span>
+                </label>
+                <label style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-family:'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; border-radius: 4px; cursor: pointer; transition: all 0.2s ease; background: transparent; color: var(--ink-soft);" class="orient-radio-label">
+                  <input type="radio" name="compCardOrientRadio" value="landscape" onchange="window.setCompCardOrientation('landscape', this)" style="display: none;" />
+                  <span>Landscape</span>
+                </label>
               </div>
             </div>
             <button class="btn btn-dark btn-block" style="font-size: 11px; height: auto; padding: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;" onclick="window.triggerCompCardDownload('${shoot.id}', window.selectedCompCardOrientation || 'portrait')">
@@ -4400,22 +4406,20 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   };
 
   window.selectedCompCardOrientation = "portrait";
-  window.setCompCardOrientation = (orient, btn, event) => {
-    if (event) event.stopPropagation();
+  window.setCompCardOrientation = (orient, inputEl) => {
     window.selectedCompCardOrientation = orient;
-    const parent = btn ? btn.closest("#compCardOrientGroup") : document.getElementById("compCardOrientGroup");
+    const parent = inputEl ? inputEl.closest("#compCardOrientGroup") : document.getElementById("compCardOrientGroup");
     if (parent) {
-      parent.querySelectorAll(".comp-orient-btn").forEach(b => {
-        b.style.background = "var(--paper)";
-        b.style.color = "var(--ink)";
-        b.style.borderColor = "var(--line)";
-        b.classList.remove("active");
+      parent.querySelectorAll(".orient-radio-label").forEach(lbl => {
+        lbl.style.background = "transparent";
+        lbl.style.color = "var(--ink-soft)";
+        lbl.classList.remove("active");
       });
-      if (btn) {
-        btn.style.background = "var(--ink)";
-        btn.style.color = "var(--paper)";
-        btn.style.borderColor = "var(--ink)";
-        btn.classList.add("active");
+      const targetLabel = inputEl ? inputEl.closest("label") : null;
+      if (targetLabel) {
+        targetLabel.style.background = "var(--ink)";
+        targetLabel.style.color = "var(--paper)";
+        targetLabel.classList.add("active");
       }
     }
   };
