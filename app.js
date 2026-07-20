@@ -3913,7 +3913,6 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         <span>📸 Photographed by nerdyphotographer.in · prateeksaxenaphotography@gmail.com</span>
         <span style="font-weight: 700; color: var(--accent, #d24e1a);">www.nerdyphotographer.in</span>
       </div>
-      <div style="font-weight: 700; color: #111; margin-top: 2px;">Booking &amp; Talent Inquiries: Email prateeksaxenaphotography@gmail.com or connect via verified social handles.</div>
       <div style="color: #555; font-size: 7.5px;">All portfolio cards, comp cards, and photography frames are official creative works produced under nerdyphotographer.in studio Noida &amp; Delhi NCR.</div>
     </div>
   `;
