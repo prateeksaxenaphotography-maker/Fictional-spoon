@@ -162,10 +162,10 @@ async function sendMagicDownloadEmail(email, modelName, downloadUrl) {
 exports.logDownload = async (req, res) => {
   const { email, modelName, shootId, orientation, originUrl } = req.body;
   
-  // Real-Time Option 3 Email Verification (MX Lookup + Disposable Filter)
-  const verification = await validateRealEmail(email);
-  if (!verification.valid) {
-    return res.status(400).json({ error: verification.error });
+  // Option 1: Basic Email Format Validation (skip MX lookup to avoid blocking valid emails)
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: "Invalid email format." });
   }
 
   if (!modelName) {
