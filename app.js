@@ -97,7 +97,8 @@
     if (!s) return "Photograph by nerdyphotographer.in";
     if (s.caption) return s.caption;
     const who = (s.talent && s.talent.trim()) || (s.title && s.title.trim()) || "";
-    const what = [s.activity, s.type].filter(Boolean).join(" ");
+    const typeTag = (s.type === "Test Shoot" && !s.showTestShootCategory) ? "" : s.type;
+    const what = [s.activity, typeTag].filter(Boolean).join(" ");
     const parts = [
       what ? `${what} photography` : "Photography",
       who ? `featuring ${who}` : "",
@@ -1234,9 +1235,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   function nothWorkCard(s, i) {
     const cover = s.photos.find(p => p.id.split("-")[0] === s.coverPhotoId) || s.photos[0] || { objectPosition: "center" };
     const coverPos = cover.objectPosition || "center";
+    const typeTag = (s.type === "Test Shoot" && !s.showTestShootCategory) ? "" : s.type;
     const tagline = s.description
       ? s.description
-      : [s.activity, s.type].filter(Boolean).join(" · ");
+      : [s.activity, typeTag].filter(Boolean).join(" · ");
     const photoCount = s.photos ? s.photos.length : 0;
     const countText = photoCount ? `${photoCount} Photo${photoCount > 1 ? "s" : ""}` : "";
     const mentorText = (s.type === "Workshop Attended" && s.mentor) ? `Mentor: ${s.mentor}` : "";
@@ -1379,9 +1381,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             const ed = (field, extra = "") => canInline
               ? ` class="inline-edit ${extra}" contenteditable="true" spellcheck="false" data-shoot="${s.id}" data-field="${field}" title="Click to edit"`
               : (extra ? ` class="${extra}"` : "");
+            const typeTag = (s.type === "Test Shoot" && !s.showTestShootCategory) ? "" : s.type;
+            const brandAndType = [s.brand, typeTag].filter(Boolean).join(" · ");
             return `
             ${s.isCompCard ? "" : `
-              <p class="eyebrow">${esc(s.brand)} · ${esc(s.type)}</p>
+              <p class="eyebrow">${esc(brandAndType)}</p>
               <h3><span${ed("title")}>${esc(s.title)}</span></h3>
             `}
             <p class="work-desc"><span${ed("description")}>${esc(s.description || (canInline ? "Add a description…" : ""))}</span></p>
@@ -1822,7 +1826,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       }
       return { v, count: shoots.length, sample, cover };
     }).filter((x) => x.count > 0);
-    const act = grp(ACTIVITIES, "activity"), brs = grp(BRANDS, "brand"), typ = grp(TYPES.filter(t => t !== "Workshop Attended"), "type");
+    const typFilter = TYPES.filter(t => {
+      if (t === "Workshop Attended") return false;
+      if (t === "Test Shoot") return SHOOTS.some(s => s.type === "Test Shoot" && s.showTestShootCategory);
+      return true;
+    });
+    const act = grp(ACTIVITIES, "activity"), brs = grp(BRANDS, "brand"), typ = grp(typFilter, "type");
     
     if (act.length === 0 && brs.length === 0 && typ.length === 0) {
       return `
@@ -2172,6 +2181,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                 <label class="field"><span>Type</span><select id="f_type">${opt(TYPES)}</select></label>
                 <label class="field"><span>Season / Year</span><input id="f_season" type="text" placeholder="Spring 2026" /></label>
                 <label class="field"><span>Shoot Location</span><input id="f_location" type="text" placeholder="e.g. Studio, Noida, Outdoor" /></label>
+              </div>
+              <div class="field-row" style="margin-top: 12px; gap: 20px; flex-wrap: wrap;">
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--ink); cursor: pointer; user-select: none;">
+                  <input id="f_show_test_shoot_cat" type="checkbox" style="width: 16px; height: 16px; accent-color: var(--accent);" />
+                  Display "Test Shoot" category tag publicly
+                </label>
               </div>
             </fieldset>
 
@@ -2621,6 +2636,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         $("#f_model_eyes").value = editingShoot.modelEyes || "";
         if ($("#f_show_stats_comp")) $("#f_show_stats_comp").checked = (editingShoot.showStatsOnCompCard !== false);
         if ($("#f_show_stats_port")) $("#f_show_stats_port").checked = (editingShoot.showStatsOnModelPortfolio !== false);
+        if ($("#f_show_test_shoot_cat")) $("#f_show_test_shoot_cat").checked = !!editingShoot.showTestShootCategory;
         if ($("#f_mentor")) $("#f_mentor").value = editingShoot.mentor || "";
         updateMentorRowState();
         const toIsoDate = (dStr) => {
@@ -3046,6 +3062,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         modelEyes: isTestimonialOnly ? "" : val("f_model_eyes"),
         showStatsOnCompCard: isTestimonialOnly ? true : ($("#f_show_stats_comp") ? $("#f_show_stats_comp").checked : true),
         showStatsOnModelPortfolio: isTestimonialOnly ? true : ($("#f_show_stats_port") ? $("#f_show_stats_port").checked : true),
+        showTestShootCategory: isTestimonialOnly ? false : ($("#f_show_test_shoot_cat") ? $("#f_show_test_shoot_cat").checked : false),
         mentor: isTestimonialOnly ? "" : val("f_mentor"),
         description: val("f_desc"),
         tags: isTestimonialOnly ? "" : val("f_tags"),
@@ -3993,14 +4010,93 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     `;
   }
 
+  function detectPhotosOrientation(photos, imgs) {
+    if (imgs && imgs.length) {
+      const coverImg = imgs[0];
+      if (coverImg && coverImg.naturalWidth && coverImg.naturalHeight) {
+        const aspect = coverImg.naturalWidth / coverImg.naturalHeight;
+        if (aspect > 1.1) return "landscape";
+      }
+      let landscapeCount = 0, portraitCount = 0;
+      imgs.forEach(img => {
+        if (img.naturalWidth && img.naturalHeight) {
+          if (img.naturalWidth / img.naturalHeight > 1.05) landscapeCount++;
+          else portraitCount++;
+        }
+      });
+      if (landscapeCount > portraitCount) return "landscape";
+    }
+    if (photos && photos.length) {
+      const cover = photos[0];
+      if (cover.width && cover.height && cover.width / cover.height > 1.1) return "landscape";
+    }
+    return "portrait";
+  }
+
   // Render pages into the hidden print container, wait for every image to
   // finish loading, then open the print dialog with a clean filename
   // (<Model_Name>_<suffix>_nerdyphotographer.pdf when saved as PDF).
-  function printFromContainer(shoot, pagesHtml, fileSuffix) {
+  function printFromContainer(shoot, pagesHtml, fileSuffix, forcedOrientation = "auto") {
     const printContainer = document.getElementById("compCardPrintContainer");
     if (!printContainer) return;
     printContainer.innerHTML = pagesHtml;
     const triggerPrint = () => {
+      const imgs = printContainer.querySelectorAll("img");
+      let orientation = forcedOrientation;
+      if (orientation === "auto") {
+        orientation = detectPhotosOrientation(shoot.photos, imgs);
+      }
+      
+      let styleTag = document.getElementById("dynamicPrintOrientationStyle");
+      if (!styleTag) {
+        styleTag = document.createElement("style");
+        styleTag.id = "dynamicPrintOrientationStyle";
+        document.head.appendChild(styleTag);
+      }
+
+      if (orientation === "landscape") {
+        styleTag.textContent = `
+          @media print {
+            @page { size: A4 landscape !important; margin: 8mm 10mm !important; }
+            .print-page {
+              height: 192mm !important;
+              max-height: 192mm !important;
+              padding: 12px 16px !important;
+            }
+            .print-main-row {
+              gap: 14px !important;
+              margin: 0 0 10px !important;
+            }
+            .print-cover-panel {
+              flex: 1.5 1 0 !important;
+            }
+            .print-side-grid {
+              flex: 1 1 0 !important;
+              grid-template-columns: repeat(2, 1fr) !important;
+              gap: 8px !important;
+            }
+            .print-photo-grid {
+              grid-template-columns: repeat(3, 1fr) !important;
+              gap: 10px !important;
+              margin: 8px 0 !important;
+            }
+          }
+        `;
+        printContainer.querySelectorAll(".print-page").forEach(p => p.classList.add("landscape"));
+      } else {
+        styleTag.textContent = `
+          @media print {
+            @page { size: A4 portrait !important; margin: 10mm 10mm !important; }
+            .print-page {
+              height: 276mm !important;
+              max-height: 276mm !important;
+              padding: 18px !important;
+            }
+          }
+        `;
+        printContainer.querySelectorAll(".print-page").forEach(p => p.classList.remove("landscape"));
+      }
+
       const oldTitle = document.title;
       const cleanModelName = getTalentCleanName(shoot.talent || shoot.title).trim().replace(/\s+/g, '_');
       document.title = `${cleanModelName}_${fileSuffix}_nerdyphotographer`;
@@ -4114,15 +4210,32 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             </button>
           `).join("")}
         </div>
-        <div style="padding: 14px 22px; border-top: 1px solid var(--line); display: flex; gap: 20px; flex-wrap: wrap; background: var(--bone);">
-          <label style="display: flex; align-items: center; gap: 8px; font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; text-transform: uppercase; cursor: pointer; color: var(--ink);">
-            <input type="radio" name="ppMode" value="1" style="accent-color: var(--accent); margin: 0;" />
-            1 page — compact card (lead + up to 4)
-          </label>
-          <label style="display: flex; align-items: center; gap: 8px; font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; text-transform: uppercase; cursor: pointer; color: var(--ink);">
-            <input type="radio" name="ppMode" value="2" checked style="accent-color: var(--accent); margin: 0;" />
-            2 pages — cover + photo grid (up to 7)
-          </label>
+        <div style="padding: 14px 22px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 12px; background: var(--bone);">
+          <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+            <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--ink-soft);">PDF Orientation:</span>
+            <label style="display: flex; align-items: center; gap: 6px; font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; cursor: pointer; color: var(--ink);">
+              <input type="radio" name="ppOrientation" value="auto" checked style="accent-color: var(--accent); margin: 0;" />
+              Auto (Content-Aware)
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; cursor: pointer; color: var(--ink);">
+              <input type="radio" name="ppOrientation" value="portrait" style="accent-color: var(--accent); margin: 0;" />
+              Portrait
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; cursor: pointer; color: var(--ink);">
+              <input type="radio" name="ppOrientation" value="landscape" style="accent-color: var(--accent); margin: 0;" />
+              Landscape
+            </label>
+          </div>
+          <div style="display: flex; gap: 20px; flex-wrap: wrap; border-top: 1px dashed var(--line); padding-top: 10px;">
+            <label style="display: flex; align-items: center; gap: 8px; font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; text-transform: uppercase; cursor: pointer; color: var(--ink);">
+              <input type="radio" name="ppMode" value="1" style="accent-color: var(--accent); margin: 0;" />
+              1 page — compact card (lead + up to 4)
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; text-transform: uppercase; cursor: pointer; color: var(--ink);">
+              <input type="radio" name="ppMode" value="2" checked style="accent-color: var(--accent); margin: 0;" />
+              2 pages — cover + photo grid (up to 7)
+            </label>
+          </div>
         </div>
         <div style="padding: 16px 22px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; align-items: center; gap: 12px; background: var(--bone);">
           <span id="ppHint" style="font-size: 10px; color: var(--ink-soft); margin-right: auto; font-family:'JetBrains Mono', monospace;"></span>
@@ -4177,8 +4290,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const chosen = photos.filter((_, i) => selected.has(i));
       if (!chosen.length) return;
       const mode = pickedMode();
+      const orientation = modal.querySelector('input[name="ppOrientation"]:checked')?.value || "auto";
       close();
-      printPortfolioPhotos(shoot, chosen, mode);
+      printPortfolioPhotos(shoot, chosen, mode, orientation);
     });
     refresh();
   }
