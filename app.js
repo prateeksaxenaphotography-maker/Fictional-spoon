@@ -4167,8 +4167,23 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   window.printCompCard = (shootId, orientation = "auto") => {
     const shoot = SHOOTS.find(x => x.id === shootId) || (window.currentCompCardShootObj);
     if (!shoot) return;
-    const allPhotos = (shoot.photos || []).filter(p => !p.excludeFromCompCard && p.usage !== "portfolio");
-    const rawPhotos = allPhotos.length ? allPhotos : (shoot.photos || []);
+
+    // Gather ALL photos across ALL shoots tagged to this model
+    const modelName = getTalentCleanName(shoot.talent || shoot.title).trim();
+    let allModelPhotos = [];
+    if (modelName) {
+      const matchingShoots = SHOOTS.filter(s => {
+        if (s.type === "Workshop Attended") return false;
+        if (!s.talent) return false;
+        const names = s.talent.split(",").map(t => getTalentCleanName(t).trim().toLowerCase());
+        return names.includes(modelName.toLowerCase());
+      });
+      allModelPhotos = matchingShoots.flatMap(s => (s.photos || []).filter(p => !p.excludeFromCompCard && p.usage !== "portfolio"));
+    }
+    if (!allModelPhotos.length) {
+      allModelPhotos = (shoot.photos || []).filter(p => !p.excludeFromCompCard && p.usage !== "portfolio");
+    }
+    const rawPhotos = allModelPhotos.length ? allModelPhotos : (shoot.photos || []);
     if (!rawPhotos.length) { toast("No photos to export."); return; }
 
     const coverPhoto = rawPhotos.find(p => p.isCover)
@@ -4182,6 +4197,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const hasDetails = !!(statsHtml.trim() || socialsHtml.trim());
     const sideCount = hasDetails ? 4 : 5;
 
+    // Freshly shuffle remaining photos across all model clicks every time button is clicked
     const remaining = rawPhotos.filter(p => p !== coverPhoto);
     const shuffledSidePhotos = [...remaining].sort(() => Math.random() - 0.5);
 
