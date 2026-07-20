@@ -4149,7 +4149,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     `;
   }
 
-  // Comp card export: strictly ONE A4 page — lead photo + up to 4 structured side photos.
+  // Comp card export (Location 1): ONE A4 page — lead photo + 4 randomized side photos from model's tagged clicks.
   window.printCompCard = (shootId, orientation = "auto") => {
     const shoot = SHOOTS.find(x => x.id === shootId) || (window.currentCompCardShootObj);
     if (!shoot) return;
@@ -4162,15 +4162,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       || rawPhotos.find(p => p.angle === "front" || p.angle === "close-up")
       || rawPhotos[0];
 
-    // Standard agency profile angle order for comp cards: Front/Headshot -> Side -> 3/4 -> Back -> Close-up
-    const angleOrder = { "side": 1, "three-quarter": 2, "back": 3, "close-up": 4, "front": 5 };
-    const sidePhotos = rawPhotos.filter(p => p !== coverPhoto).sort((a, b) => {
-      const pA = angleOrder[a.angle] || 50;
-      const pB = angleOrder[b.angle] || 50;
-      return pA - pB;
-    });
+    // Location 1 Comp Card feature: Randomize side photos from the clicks tagged to the model
+    const remaining = rawPhotos.filter(p => p !== coverPhoto);
+    const shuffledSidePhotos = [...remaining].sort(() => Math.random() - 0.5);
 
-    const photos = [coverPhoto, ...sidePhotos.slice(0, 4)];
+    const photos = [coverPhoto, ...shuffledSidePhotos.slice(0, 4)];
     printFromContainer(shoot, printOnePagerHtml(shoot, photos, "MODEL COMP CARD", false), "compcard", orientation);
   };
 
