@@ -84,11 +84,12 @@ function writeLogs(logs) {
   }
 }
 
-// Send magic download link copy to user's verified inbox
+// Send magic download link copy to user's verified inbox (Inviting Marketing Email)
 async function sendMagicDownloadEmail(email, modelName, downloadUrl) {
   const resendApiKey = process.env.RESEND_API_KEY;
   if (resendApiKey) {
     try {
+      const baseUrl = "https://nerdyphotographer.in";
       await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
@@ -98,7 +99,7 @@ async function sendMagicDownloadEmail(email, modelName, downloadUrl) {
         body: JSON.stringify({
           from: "nerdyphotographer.in studio <prateeksaxenaphotography@gmail.com>",
           to: [email],
-          subject: `Your requested Comp Card for ${modelName}`,
+          subject: `Model Comp Card — ${modelName} · nerdyphotographer.in`,
           reply_to: "prateeksaxenaphotography@gmail.com",
           headers: {
             "X-Entity-Ref-ID": `compcard-${Date.now()}`,
@@ -107,22 +108,44 @@ async function sendMagicDownloadEmail(email, modelName, downloadUrl) {
             "Importance": "high"
           },
           html: `
-            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #111; max-width: 540px; margin: 0 auto; padding: 20px 0;">
-              <p style="margin: 0 0 16px;">Hello,</p>
-              <p style="margin: 0 0 16px;">Here is the requested Model Comp Card for <strong>${modelName}</strong> from <strong>nerdyphotographer.in studio</strong>.</p>
-              <p style="margin: 20px 0;">
-                <a href="${downloadUrl}" style="background-color: #000000; color: #ffffff; text-decoration: none; padding: 12px 22px; border-radius: 6px; font-weight: 700; font-size: 13px; display: inline-block;">View &amp; Print Comp Card (PDF) &rarr;</a>
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #111; max-width: 580px; margin: 0 auto; padding: 24px 20px; background: #ffffff; border: 1px solid #e8e6e2; border-radius: 12px;">
+              <div style="border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: baseline;">
+                <span style="font-weight: 800; font-size: 16px; letter-spacing: -0.02em; text-transform: uppercase; color: #000;">nerdyphotographer.in studio</span>
+                <span style="font-size: 11px; color: #666; font-weight: 600; text-transform: uppercase;">Noida / Delhi NCR</span>
+              </div>
+
+              <p style="margin: 0 0 16px; font-size: 15px; color: #222;">Hello,</p>
+              <p style="margin: 0 0 18px; font-size: 15px; color: #333; line-height: 1.6;">
+                Thank you for connecting with <strong>nerdyphotographer.in studio</strong>! We're excited to share the official Model Comp Card for <strong>${modelName}</strong> with you.
               </p>
-              <p style="margin: 16px 0; font-size: 13px; color: #555;">
-                Direct link: <a href="${downloadUrl}" style="color: #000; text-decoration: underline;">${downloadUrl}</a>
-              </p>
-              <br/>
-              <p style="margin: 0; font-size: 13px; color: #444; border-top: 1px solid #eee; padding-top: 16px;">
-                Regards,<br/>
-                <strong>nerdyphotographer.in studio</strong><br/>
-                <span style="color: #444; font-size: 12px;">Email: <a href="mailto:prateeksaxenaphotography@gmail.com" style="color: #000; text-decoration: underline;">prateeksaxenaphotography@gmail.com</a></span><br/>
-                <span style="color: #777; font-size: 12px;">Noida / Delhi NCR · www.nerdyphotographer.in</span>
-              </p>
+
+              <div style="text-align: center; margin: 24px 0 28px;">
+                <a href="${downloadUrl}" style="background-color: #000000; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; display: inline-block; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                  View &amp; Print Comp Card (PDF) &rarr;
+                </a>
+              </div>
+
+              <div style="background-color: #f8f7f5; border: 1px solid #e2e0dc; border-radius: 10px; padding: 20px; margin: 28px 0 20px; text-align: left;">
+                <h4 style="margin: 0 0 8px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #d24e1a;">
+                  📸 Ready to Book a Shoot or Test Session?
+                </h4>
+                <p style="margin: 0 0 14px; font-size: 13px; color: #444; line-height: 1.55;">
+                  We specialize in high-impact model portfolios, commercial lookbooks, and fashion test shoots across Delhi NCR &amp; Noida. Whether you're looking to cast talent, shoot a campaign, or create a brand new portfolio, we'd love to collaborate with you!
+                </p>
+                <a href="${baseUrl}/book" style="background-color: #ffffff; color: #000000; border: 1.5px solid #000000; text-decoration: none; padding: 10px 18px; border-radius: 6px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: inline-block;">
+                  Request a Test Shoot / Book Session &rarr;
+                </a>
+              </div>
+
+              <div style="border-top: 1px solid #eee; padding-top: 18px; margin-top: 24px; font-size: 13px; color: #555;">
+                <p style="margin: 0 0 6px;">Have questions or custom casting requirements? Reach out directly anytime:</p>
+                <p style="margin: 0 0 4px; font-weight: 700; color: #000;">
+                  📧 Email: <a href="mailto:prateeksaxenaphotography@gmail.com" style="color: #000; text-decoration: underline;">prateeksaxenaphotography@gmail.com</a>
+                </p>
+                <p style="margin: 0; font-weight: 700; color: #000;">
+                  🌐 Website: <a href="https://nerdyphotographer.in" style="color: #d24e1a; text-decoration: underline;">www.nerdyphotographer.in</a>
+                </p>
+              </div>
             </div>
           `
         })
