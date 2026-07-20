@@ -3910,7 +3910,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   const PRINT_FOOTER_HTML = `
     <div style="border-top: 2px solid #000; padding-top: 10px; margin-top: auto; font-family: sans-serif; font-size: 8.5px; color: #000; line-height: 1.5; display: flex; flex-direction: column; gap: 4px; text-align: left; width: 100%;">
       <div style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: #000; text-transform: uppercase; letter-spacing: 0.05em; background: #f4f4f2; padding: 6px 10px; border-radius: 4px; border: 1px solid #dcdad5; display: flex; justify-content: space-between; align-items: center;">
-        <span>📸 Photographed by nerdyphotographer.in · prateeksaxenaphotography@gmail.com</span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span>📸 Photographed by nerdyphotographer.in</span>
+          <span>·</span>
+          <span style="display: inline-flex; align-items: center; gap: 4px;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+            @nerdyphotographer.in
+          </span>
+        </div>
         <span style="font-weight: 700; color: var(--accent, #d24e1a);">www.nerdyphotographer.in</span>
       </div>
       <div style="color: #555; font-size: 7.5px;">All portfolio cards, comp cards, and photography frames are official creative works produced under nerdyphotographer.in studio Noida &amp; Delhi NCR.</div>
