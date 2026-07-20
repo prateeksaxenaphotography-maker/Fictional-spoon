@@ -843,10 +843,20 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       if (!shoot.disableCompCardDownload) {
         window.currentCompCardShootObj = shoot;
         pdfBtnHtml = `
-          <div class="lb-sidebar-section" style="margin-top: 10px;">
-            <button class="btn btn-dark btn-block" style="font-size: 11px; height: auto; padding: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;" onclick="window.triggerCompCardDownload('${shoot.id}')">
+          <div class="lb-sidebar-section" style="margin-top: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bone); display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+              <span style="font-family:'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--ink-soft);">PDF Orientation</span>
+              <div style="display: flex; gap: 4px;" id="compCardOrientGroup">
+                <button type="button" class="comp-orient-btn active" onclick="window.setCompCardOrientation('portrait', this)" style="font-family:'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--ink); background: var(--ink); color: var(--paper); cursor: pointer;">Portrait</button>
+                <button type="button" class="comp-orient-btn" onclick="window.setCompCardOrientation('landscape', this)" style="font-family:'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer;">Landscape</button>
+              </div>
+            </div>
+            <button class="btn btn-dark btn-block" style="font-size: 11px; height: auto; padding: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;" onclick="window.triggerCompCardDownload('${shoot.id}', window.selectedCompCardOrientation || 'portrait')">
               Export PDF Comp Card ↗
             </button>
+            <p style="font-size: 10px; color: var(--ink-soft); margin: 0; line-height: 1.4; text-align: center; font-family: 'JetBrains Mono', monospace;">
+              🎲 Supporting images are randomly selected from the clicks tagged to this model on each export.
+            </p>
           </div>
         `;
       } else if (isAdmin()) {
@@ -4374,9 +4384,30 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     else printPortfolioPhotos(shoot, photos);
   };
 
-  window.triggerCompCardDownload = (shootId) => {
+  window.selectedCompCardOrientation = "portrait";
+  window.setCompCardOrientation = (orient, btn) => {
+    window.selectedCompCardOrientation = orient;
+    const parent = btn ? btn.closest("#compCardOrientGroup") : document.getElementById("compCardOrientGroup");
+    if (parent) {
+      parent.querySelectorAll(".comp-orient-btn").forEach(b => {
+        b.style.background = "var(--paper)";
+        b.style.color = "var(--ink)";
+        b.style.borderColor = "var(--line)";
+        b.classList.remove("active");
+      });
+      if (btn) {
+        btn.style.background = "var(--ink)";
+        btn.style.color = "var(--paper)";
+        btn.style.borderColor = "var(--ink)";
+        btn.classList.add("active");
+      }
+    }
+  };
+
+  window.triggerCompCardDownload = (shootId, orientation = "portrait") => {
+    const targetOrient = orientation || window.selectedCompCardOrientation || "portrait";
     if (isAdmin()) {
-      window.printCompCard(shootId);
+      window.printCompCard(shootId, targetOrient);
       return;
     }
     
@@ -4465,7 +4496,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         console.warn("Failed to write to download server log:", err);
       }
       
-      window.printCompCard(shootId);
+      window.printCompCard(shootId, targetOrient);
     });
   };
 
