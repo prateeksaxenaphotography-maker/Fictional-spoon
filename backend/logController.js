@@ -1,8 +1,65 @@
 const fs = require("fs");
 const crypto = require("crypto");
 const path = require("path");
+const dns = require("dns");
+const util = require("util");
+const resolveMx = util.promisify(dns.resolveMx);
 
 const LOGS_FILE = path.join(__dirname, "logs.json");
+
+// Known disposable / temporary email domains list
+const DISPOSABLE_DOMAINS = new Set([
+  "10minutemail.com", "temp-mail.org", "tempmail.com", "guerrillamail.com",
+  "mailinator.com", "throwawaymail.com", "yopmail.com", "trashmail.com",
+  "sharklasers.com", "dispostable.com", "getnada.com", "boun.cr",
+  "inboxalias.com", "fakeinbox.com", "emailondeck.com", "crazymailing.com",
+  "mohmal.com", "tempmailo.com", "byom.de", "burnermail.io", "maildrop.cc",
+  "temp-mail.com", "disposablemail.com", "mytemp.email", "guerrillamail.net"
+]);
+
+// Helper to validate email format, disposable list, and real DNS MX records
+async function validateRealEmail(email) {
+  const cleanEmail = String(email || "").trim().toLowerCase();
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  
+  if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+    return { valid: false, error: "Please enter a valid email address (e.g., name@example.com)." };
+  }
+
+  const parts = cleanEmail.split("@");
+  if (parts.length !== 2) {
+    return { valid: false, error: "Invalid email structure." };
+  }
+
+  const domain = parts[1];
+
+  // 1. Check disposable domain blacklist
+  if (DISPOSABLE_DOMAINS.has(domain)) {
+    return { valid: false, error: "Temporary or disposable email addresses are not allowed." };
+  }
+
+  // 2. Common domain typo checks
+  const commonTypos = ["gmai.com", "gamil.com", "hotmial.com", "outlok.com", "yaho.com"];
+  if (commonTypos.includes(domain)) {
+    const suggested = domain.replace("gmai", "gmail").replace("gamil", "gmail").replace("hotmial", "hotmail").replace("outlok", "outlook").replace("yaho", "yahoo");
+    return { valid: false, error: `Did you mean @${suggested}? Please check for typos.` };
+  }
+
+  // 3. Real-time DNS MX Lookup to verify domain has active mail servers
+  try {
+    const mxRecords = await resolveMx(domain);
+    if (!mxRecords || !mxRecords.length) {
+      return { valid: false, error: `Domain '@${domain}' does not have active mail servers.` };
+    }
+  } catch (err) {
+    if (err.code === "ENOTFOUND" || err.code === "ENODATA") {
+      return { valid: false, error: `Domain '@${domain}' does not exist or cannot receive email.` };
+    }
+    console.warn(`DNS MX lookup warning for domain ${domain}:`, err.message);
+  }
+
+  return { valid: true };
+}
 
 // Helper to read logs safely
 function readLogs() {
@@ -27,12 +84,12 @@ function writeLogs(logs) {
   }
 }
 
-// Send magic download link to user's verified inbox (Optimized for Primary / Main Inbox placement)
+// Send magic download link copy to user's verified inbox
 async function sendMagicDownloadEmail(email, modelName, downloadUrl) {
   const resendApiKey = process.env.RESEND_API_KEY;
   if (resendApiKey) {
     try {
-      const response = await fetch("https://api.resend.com/emails", {
+      await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${resendApiKey}`,
@@ -68,23 +125,20 @@ async function sendMagicDownloadEmail(email, modelName, downloadUrl) {
           `
         })
       });
-      return await response.json();
     } catch (err) {
       console.error("Failed to dispatch email via Resend API:", err);
     }
-  } else {
-    console.log(`[DEV MODE] Primary inbox magic link created for ${email}: ${downloadUrl}`);
   }
 }
 
-// POST /api/logs - Log download request & dispatch magic email link
+// POST /api/logs - Option 3: Real-time MX & Disposable Email Verification + Instant PDF Download
 exports.logDownload = async (req, res) => {
   const { email, modelName, shootId, orientation, originUrl } = req.body;
   
-  // Basic server-side email validation check
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!email || !emailRegex.test(email)) {
-    return res.status(400).json({ error: "Invalid email address format." });
+  // Real-Time Option 3 Email Verification (MX Lookup + Disposable Filter)
+  const verification = await validateRealEmail(email);
+  if (!verification.valid) {
+    return res.status(400).json({ error: verification.error });
   }
 
   if (!modelName) {
@@ -96,8 +150,7 @@ exports.logDownload = async (req, res) => {
   const ip = forwarded ? forwarded.split(",")[0].trim() : req.socket.remoteAddress;
 
   const baseUrl = originUrl || "https://nerdyphotographer.in";
-  const downloadToken = crypto.randomBytes(16).toString("hex");
-  const downloadUrl = `${baseUrl.replace(/\/$/, "")}/?downloadCompCard=1&shootId=${encodeURIComponent(shootId || "")}&orientation=${encodeURIComponent(orientation || "portrait")}&token=${downloadToken}`;
+  const downloadUrl = `${baseUrl.replace(/\/$/, "")}/?downloadCompCard=1&shootId=${encodeURIComponent(shootId || "")}&orientation=${encodeURIComponent(orientation || "portrait")}`;
 
   const logs = readLogs();
   const entry = {
@@ -105,7 +158,6 @@ exports.logDownload = async (req, res) => {
     modelName: modelName.trim(),
     email: email.trim(),
     shootId: shootId || "",
-    token: downloadToken,
     ip: ip || "unknown",
     timestamp: new Date().toISOString()
   };
@@ -113,13 +165,12 @@ exports.logDownload = async (req, res) => {
   logs.push(entry);
   writeLogs(logs);
 
-  // Dispatch magic email download link
-  await sendMagicDownloadEmail(email.trim(), modelName.trim(), downloadUrl);
+  // Send email copy in background
+  sendMagicDownloadEmail(email.trim(), modelName.trim(), downloadUrl);
 
   return res.status(200).json({
     success: true,
-    message: "Magic download link sent to email.",
-    downloadUrl: downloadUrl
+    message: "Email verified successfully."
   });
 };
 
