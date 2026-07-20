@@ -860,9 +860,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             <button class="btn btn-dark btn-block" style="font-size: 11px; height: auto; padding: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;" onclick="window.triggerCompCardDownload('${shoot.id}', window.selectedCompCardOrientation || 'portrait')">
               Export PDF Comp Card ↗
             </button>
-            <p style="font-size: 10px; color: var(--ink-soft); margin: 0; line-height: 1.4; text-align: center; font-family: 'JetBrains Mono', monospace;">
-              🎲 Supporting images are randomly selected from the clicks tagged to this model on each export.
-            </p>
+            <div style="margin-top: 4px; padding: 10px 12px; background: #fdf6f0; border: 1px solid #f2c9b6; border-left: 4px solid var(--accent); border-radius: 6px; display: flex; align-items: flex-start; gap: 8px; text-align: left;">
+              <span style="font-size: 15px; line-height: 1;">🎲</span>
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink); line-height: 1.45;">
+                <strong style="color: var(--accent); text-transform: uppercase; font-size: 10px; letter-spacing: 0.03em;">Random Selection:</strong><br/>
+                Supporting photos are randomly selected from all photos tagged to this model every time you export.
+              </div>
+            </div>
           </div>
         `;
       } else if (isAdmin()) {
@@ -887,8 +891,6 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const disclaimerHtml = isCc ? `
       <p class="lb-disclaimer" style="font-size: 11px; font-style: italic; color: var(--ink-soft); margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; line-height: 1.5; font-family: sans-serif;">
         To book this talent, please connect directly via their verified social channels or contact their representing agency.
-        <br/><br/>
-        Studio charges would apply in case the studio is booked.
         <br/><br/>
         This compcard includes photos clicked or produced under nerdyphotographer.in studio or its subsidiaries.
       </p>
@@ -4467,6 +4469,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <div>
             <h3 style="font-family:'Outfit', sans-serif; font-size: 20px; font-weight: 700; margin: 0 0 8px; color: var(--ink);">Enter your Email</h3>
             <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin: 0;">Please enter your email to proceed with downloading this talent comp card for verification and document logging.</p>
+            <p style="font-size: 10.5px; color: var(--accent); margin: 8px 0 0; font-family: 'JetBrains Mono', monospace; font-weight: 600; line-height: 1.4;">
+              🎲 Note: Supporting images are randomly selected from all photos tagged to this model on each export.
+            </p>
           </div>
           <div style="display: flex; flex-direction: column; gap: 6px; text-align: left;">
             <label style="font-family:'JetBrains Mono', monospace; font-size: 9px; text-transform: uppercase; font-weight: 700; color: var(--ink-soft);">Email Address</label>
