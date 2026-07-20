@@ -3910,10 +3910,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   const PRINT_FOOTER_HTML = `
     <div style="border-top: 2px solid #000; padding-top: 10px; margin-top: auto; font-family: sans-serif; font-size: 8.5px; color: #000; line-height: 1.5; display: flex; flex-direction: column; gap: 4px; text-align: left; width: 100%;">
       <div style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: #000; text-transform: uppercase; letter-spacing: 0.05em; background: #f4f4f2; padding: 6px 10px; border-radius: 4px; border: 1px solid #dcdad5; display: flex; justify-content: space-between; align-items: center;">
-        <span>📸 All photographs clicked &amp; produced by nerdyphotographer.in</span>
+        <span>📸 Photographed by nerdyphotographer.in · prateeksaxenaphotography@gmail.com</span>
         <span style="font-weight: 700; color: var(--accent, #d24e1a);">www.nerdyphotographer.in</span>
       </div>
-      <div style="font-weight: 700; color: #111; margin-top: 2px;">Booking &amp; Talent Inquiries: Connect directly via verified social handles or contact studio representation.</div>
+      <div style="font-weight: 700; color: #111; margin-top: 2px;">Booking &amp; Talent Inquiries: Email prateeksaxenaphotography@gmail.com or connect via verified social handles.</div>
       <div style="color: #555; font-size: 7.5px;">All portfolio cards, comp cards, and photography frames are official creative works produced under nerdyphotographer.in studio Noida &amp; Delhi NCR.</div>
     </div>
   `;
