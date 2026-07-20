@@ -138,7 +138,6 @@ async function sendMagicDownloadEmail(email, modelName, downloadUrl) {
               </div>
 
               <div style="border-top: 1px solid #eee; padding-top: 18px; margin-top: 24px; font-size: 13px; color: #555;">
-                <p style="margin: 0 0 6px;">Have questions or custom casting requirements? Reach out directly anytime:</p>
                 <p style="margin: 0 0 4px; font-weight: 700; color: #000;">
                   📧 Email: <a href="mailto:prateeksaxenaphotography@gmail.com" style="color: #000; text-decoration: underline;">prateeksaxenaphotography@gmail.com</a>
                 </p>
