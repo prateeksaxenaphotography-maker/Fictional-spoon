@@ -4058,13 +4058,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       if (orientation === "landscape") {
         styleTag.textContent = `
           @media print {
-            @page { size: A4 landscape !important; margin: 8mm 10mm !important; }
+            @page { size: auto !important; margin: 6mm 8mm !important; }
             .print-page {
-              height: 192mm !important;
-              max-height: 192mm !important;
+              height: 96vh !important;
+              min-height: 96vh !important;
               padding: 12px 16px !important;
             }
             .print-main-row {
+              flex: 1 1 0% !important;
               gap: 14px !important;
               margin: 0 0 10px !important;
             }
@@ -4087,11 +4088,16 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       } else {
         styleTag.textContent = `
           @media print {
-            @page { size: A4 portrait !important; margin: 10mm 10mm !important; }
+            @page { size: auto !important; margin: 6mm 8mm !important; }
             .print-page {
-              height: 276mm !important;
-              max-height: 276mm !important;
-              padding: 18px !important;
+              height: 96vh !important;
+              min-height: 96vh !important;
+              padding: 14px 16px !important;
+            }
+            .print-main-row {
+              flex: 1 1 0% !important;
+              gap: 12px !important;
+              margin: 0 0 10px !important;
             }
           }
         `;
