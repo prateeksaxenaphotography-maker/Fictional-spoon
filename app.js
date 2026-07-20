@@ -1700,7 +1700,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
       let displayList = list;
       if (kind === "type" && (d === "Test Shoot" || d === "Model Portfolio" || d === "Comp Cards")) {
-        const filteredList = list.filter(s => !s.hideFromCompCard);
+        const filteredList = list.filter(s => !s.hideFromCompCard && ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim())));
         const groupable = [];
         const nonGroupable = [];
         for (const s of filteredList) {
@@ -1863,7 +1863,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
     const getSamples = (key, val, limit = 3) => {
       const targetVal = (key === "type" && (val === "Comp Cards" || val === "Model Portfolio" || val === "Test Shoot")) ? "Test Shoot" : val;
-      let shoots = SHOOTS.filter(s => s[key] === targetVal || (targetVal === "Test Shoot" && (s.isCompCard || s.type === "Test Shoot")));
+      let shoots = SHOOTS.filter(s => (s[key] === targetVal || (targetVal === "Test Shoot" && (s.isCompCard || s.type === "Test Shoot"))) && ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim())));
       if (!shoots.length) return [];
       
       // Group shoots by UNIQUE model/talent name to ensure distinct models in thumbnails!
@@ -3628,8 +3628,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         const clickedSrc = btn.dataset.src;
         
         let shoots = SHOOTS.filter(s => s[kind] === val);
-        if (val === "Test Shoot") {
-          shoots = shoots.filter(s => s.instagram && s.instagram.trim());
+        if (val === "Test Shoot" || val === "Comp Cards" || val === "Model Portfolio") {
+          shoots = shoots.filter(s => (s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim()));
         }
         
         const isCc = val === "Test Shoot" && isCurrentlyCompCardView();
