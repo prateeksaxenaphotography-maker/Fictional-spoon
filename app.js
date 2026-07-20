@@ -1700,16 +1700,15 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
       let displayList = list;
       if (kind === "type" && (d === "Test Shoot" || d === "Model Portfolio" || d === "Comp Cards")) {
-        const filteredList = list.filter(s => ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim())) && !s.hideFromCompCard);
+        const filteredList = list.filter(s => !s.hideFromCompCard);
         const groupable = [];
         const nonGroupable = [];
         for (const s of filteredList) {
           const talentClean = (s.talent || "").trim();
           const hasExactlyOneModel = talentClean && !talentClean.includes(",") && !talentClean.toLowerCase().includes(" and ") && !talentClean.toLowerCase().includes("&");
           const hasNoBrandOrClient = (!s.client || !s.client.trim()) && (!s.brand || s.brand === "Personal Project" || !s.brand.trim());
-          const hasSocialLinks = (s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim());
           
-          if (hasExactlyOneModel && hasNoBrandOrClient && hasSocialLinks) {
+          if (hasExactlyOneModel && hasNoBrandOrClient) {
             groupable.push(s);
           } else {
             nonGroupable.push(s);
@@ -1864,28 +1863,43 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
     const getSamples = (key, val, limit = 3) => {
       const targetVal = (key === "type" && (val === "Comp Cards" || val === "Model Portfolio" || val === "Test Shoot")) ? "Test Shoot" : val;
-      let shoots = SHOOTS.filter(s => s[key] === targetVal);
-      if (key === "type" && targetVal === "Test Shoot") {
-        shoots = shoots.filter(s => s.instagram && s.instagram.trim());
-      }
+      let shoots = SHOOTS.filter(s => s[key] === targetVal || (targetVal === "Test Shoot" && (s.isCompCard || s.type === "Test Shoot")));
       if (!shoots.length) return [];
       
-      // Shuffle the shoots array to randomize album selection on each page view
-      const shuffledShoots = [...shoots].sort(() => Math.random() - 0.5);
+      // Group shoots by UNIQUE model/talent name to ensure distinct models in thumbnails!
+      const modelGroups = new Map();
+      shoots.forEach(s => {
+        const modelName = getTalentCleanName(s.talent || s.title).trim().toLowerCase();
+        if (!modelGroups.has(modelName)) {
+          modelGroups.set(modelName, []);
+        }
+        modelGroups.get(modelName).push(s);
+      });
+
+      // Pick 1 random shoot per unique model
+      const distinctModelShoots = [];
+      for (const [mName, mShoots] of modelGroups.entries()) {
+        const randShoot = mShoots[Math.floor(Math.random() * mShoots.length)];
+        distinctModelShoots.push(randShoot);
+      }
+
+      // Shuffle the distinct models array to randomize thumbnail selection on each page view
+      const shuffledShoots = distinctModelShoots.sort(() => Math.random() - 0.5);
       
       const samples = [];
-      // 1. Take a random photo from each distinct shoot to maximize variety
+      // 1. Take a random photo from each distinct model to guarantee distinct models!
       for (const s of shuffledShoots) {
         if (s.photos && s.photos.length) {
           const randomIdx = Math.floor(Math.random() * s.photos.length);
           samples.push({ ...s.photos[randomIdx], parent: s, index: randomIdx });
         }
+        if (samples.length >= limit) break;
       }
       
-      // 2. If we need more samples to fill the grid, take other random photos from those same shoots
+      // 2. Fallback: If total unique models < 3, fill remaining slots with remaining photos from available shoots
       if (samples.length < limit) {
         const remaining = [];
-        for (const s of shuffledShoots) {
+        for (const s of shoots) {
           if (s.photos && s.photos.length > 1) {
             const selectedIdxs = samples.filter(p => p.parent.id === s.id).map(p => p.index);
             for (let i = 0; i < s.photos.length; i++) {
