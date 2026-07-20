@@ -96,9 +96,10 @@ async function sendMagicDownloadEmail(email, modelName, downloadUrl) {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          from: "nerdyphotographer.in studio <studio@nerdyphotographer.in>",
+          from: "nerdyphotographer.in studio <prateeksaxenaphotography@gmail.com>",
           to: [email],
           subject: `Your requested Comp Card for ${modelName}`,
+          reply_to: "prateeksaxenaphotography@gmail.com",
           headers: {
             "X-Entity-Ref-ID": `compcard-${Date.now()}`,
             "X-Priority": "1",
@@ -119,6 +120,7 @@ async function sendMagicDownloadEmail(email, modelName, downloadUrl) {
               <p style="margin: 0; font-size: 13px; color: #444; border-top: 1px solid #eee; padding-top: 16px;">
                 Regards,<br/>
                 <strong>nerdyphotographer.in studio</strong><br/>
+                <span style="color: #444; font-size: 12px;">Email: <a href="mailto:prateeksaxenaphotography@gmail.com" style="color: #000; text-decoration: underline;">prateeksaxenaphotography@gmail.com</a></span><br/>
                 <span style="color: #777; font-size: 12px;">Noida / Delhi NCR · www.nerdyphotographer.in</span>
               </p>
             </div>
