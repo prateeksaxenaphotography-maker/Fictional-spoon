@@ -4149,17 +4149,29 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     `;
   }
 
-  // Comp card export: strictly ONE A4 page — lead photo + up to 4 more.
-  window.printCompCard = (shootId) => {
+  // Comp card export: strictly ONE A4 page — lead photo + up to 4 structured side photos.
+  window.printCompCard = (shootId, orientation = "auto") => {
     const shoot = SHOOTS.find(x => x.id === shootId) || (window.currentCompCardShootObj);
     if (!shoot) return;
-    const allPhotos = (shoot.photos || []);
-    if (!allPhotos.length) { toast("No photos to export."); return; }
-    const coverPhoto = allPhotos.find(p => p.isCover)
-      || allPhotos.find(p => p.id.split("-")[0] === shoot.coverPhotoId)
-      || allPhotos[0];
-    const photos = [coverPhoto, ...allPhotos.filter(p => p !== coverPhoto).slice(0, 4)];
-    printFromContainer(shoot, printOnePagerHtml(shoot, photos, "MODEL COMP CARD", false), "compcard");
+    const allPhotos = (shoot.photos || []).filter(p => !p.excludeFromCompCard && p.usage !== "portfolio");
+    const rawPhotos = allPhotos.length ? allPhotos : (shoot.photos || []);
+    if (!rawPhotos.length) { toast("No photos to export."); return; }
+
+    const coverPhoto = rawPhotos.find(p => p.isCover)
+      || rawPhotos.find(p => p.id.split("-")[0] === shoot.coverPhotoId)
+      || rawPhotos.find(p => p.angle === "front" || p.angle === "close-up")
+      || rawPhotos[0];
+
+    // Standard agency profile angle order for comp cards: Front/Headshot -> Side -> 3/4 -> Back -> Close-up
+    const angleOrder = { "side": 1, "three-quarter": 2, "back": 3, "close-up": 4, "front": 5 };
+    const sidePhotos = rawPhotos.filter(p => p !== coverPhoto).sort((a, b) => {
+      const pA = angleOrder[a.angle] || 50;
+      const pB = angleOrder[b.angle] || 50;
+      return pA - pB;
+    });
+
+    const photos = [coverPhoto, ...sidePhotos.slice(0, 4)];
+    printFromContainer(shoot, printOnePagerHtml(shoot, photos, "MODEL COMP CARD", false), "compcard", orientation);
   };
 
   // Print a model portfolio from an explicit photo list, in the format the
