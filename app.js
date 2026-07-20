@@ -3989,12 +3989,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   }
 
   // A 3×2 photo grid page (stats/socials bars can be injected via extrasHtml).
-  function printGridPageHtml(shoot, cellsHtml, extrasHtml = "") {
+  function printGridPageHtml(shoot, cellsHtml, extrasHtml = "", pageLabel = "") {
+    const headerTitle = pageLabel || `${getTalentCleanName(shoot.talent || shoot.title)} — Portfolio`;
     return `
       <div class="print-page" style="display: flex; flex-direction: column; height: 100%; box-sizing: border-box; padding-top: 10px;">
         <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px;">
           <h2 style="font-family:'Outfit', sans-serif; font-size: 24px; font-weight: 800; margin: 0; text-transform: uppercase; color: #000; letter-spacing: -0.02em;">
-            ${getTalentCleanName(shoot.talent || shoot.title)} — Portfolio
+            ${headerTitle}
           </h2>
           <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #666; text-transform: uppercase;">nerdyphotographer.in studio</span>
         </div>
@@ -4171,20 +4172,35 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   };
 
   // Print a model portfolio from an explicit photo list, in the format the
-  // admin picked: 1 page (compact composite: lead + up to 4) or 2 pages
-  // (full-bleed cover page + one angle-labelled 3×2 grid of up to 6).
-  function printPortfolioPhotos(shoot, photos, pageMode = 2) {
+  // admin/user picked: 1 page (compact composite: lead + up to 4) or multi-page
+  // (full-bleed cover page + angle-labelled 3×2 grids for all selected photos).
+  function printPortfolioPhotos(shoot, photos, pageMode = 2, orientation = "auto") {
     const coverPhoto = photos.find(p => p.id.split("-")[0] === shoot.coverPhotoId) || photos[0];
     const ordered = [coverPhoto, ...photos.filter(p => p !== coverPhoto)];
     if (pageMode === 1 || ordered.length === 1) {
-      printFromContainer(shoot, printOnePagerHtml(shoot, ordered.slice(0, 5), "MODEL PORTFOLIO", true), "portfolio");
+      printFromContainer(shoot, printOnePagerHtml(shoot, ordered.slice(0, 5), "MODEL PORTFOLIO", true), "portfolio", orientation);
       return;
     }
-    const gridPhotos = ordered.slice(1, 7);
-    const pagesHtml =
-      printCoverPageHtml(shoot, ordered[0], "MODEL PORTFOLIO", "OFFICIAL MODEL PORTFOLIO · PAGE 1") +
-      printGridPageHtml(shoot, gridPhotos.map(p => printGridCellHtml(p, true)).join(""), printStatsBarHtml(shoot, "portfolio") + printSocialsBarHtml(shoot));
-    printFromContainer(shoot, pagesHtml, "portfolio");
+    
+    // Page 1: Cover page
+    let pagesHtml = printCoverPageHtml(shoot, ordered[0], "MODEL PORTFOLIO", "OFFICIAL MODEL PORTFOLIO · COVER");
+    
+    // Remaining photos split into 3x2 grid pages (6 photos per page)
+    const remainingGridPhotos = ordered.slice(1);
+    const pageSize = 6;
+    const totalGridPages = Math.ceil(remainingGridPhotos.length / pageSize) || 1;
+    
+    for (let i = 0; i < remainingGridPhotos.length; i += pageSize) {
+      const chunk = remainingGridPhotos.slice(i, i + pageSize);
+      const gridNum = Math.floor(i / pageSize) + 1;
+      const pageLabel = `${getTalentCleanName(shoot.talent || shoot.title)} — Page ${gridNum + 1} of ${totalGridPages + 1}`;
+      const cellsHtml = chunk.map(p => printGridCellHtml(p, true)).join("");
+      const isLastGridPage = (i + pageSize >= remainingGridPhotos.length);
+      const extrasHtml = isLastGridPage ? (printStatsBarHtml(shoot, "portfolio") + printSocialsBarHtml(shoot)) : "";
+      pagesHtml += printGridPageHtml(shoot, cellsHtml, extrasHtml, pageLabel);
+    }
+    
+    printFromContainer(shoot, pagesHtml, "portfolio", orientation);
   }
 
   // Photo picker shown before a portfolio export: every portfolio-tagged
@@ -4237,11 +4253,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <div style="display: flex; gap: 20px; flex-wrap: wrap; border-top: 1px dashed var(--line); padding-top: 10px;">
             <label style="display: flex; align-items: center; gap: 8px; font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; text-transform: uppercase; cursor: pointer; color: var(--ink);">
               <input type="radio" name="ppMode" value="1" style="accent-color: var(--accent); margin: 0;" />
-              1 page — compact card (lead + up to 4)
+              1 page — compact card (1 lead + up to 4 side photos)
             </label>
             <label style="display: flex; align-items: center; gap: 8px; font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; text-transform: uppercase; cursor: pointer; color: var(--ink);">
               <input type="radio" name="ppMode" value="2" checked style="accent-color: var(--accent); margin: 0;" />
-              2 pages — cover + photo grid (up to 7)
+              Multi-page — cover page + photo grids (6 per grid page)
             </label>
           </div>
         </div>
@@ -4265,12 +4281,17 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     };
     const pickedMode = () => Number(modal.querySelector('input[name="ppMode"]:checked')?.value || 2);
     const refresh = () => {
-      exportBtn.textContent = `Export PDF (${selected.size})`;
+      exportBtn.textContent = `Export PDF (${selected.size} selected)`;
       exportBtn.disabled = selected.size === 0;
       if (!selected.size) { hint.textContent = "Nothing selected"; return; }
-      const capacity = pickedMode() === 1 ? 5 : 7;
-      const used = Math.min(selected.size, capacity);
-      hint.textContent = `Using ${used} of ${selected.size} selected` + (selected.size > capacity ? ` — only the first ${capacity} fit this format` : "");
+      if (pickedMode() === 1) {
+        const capacity = 5;
+        const used = Math.min(selected.size, capacity);
+        hint.textContent = `Including ${used} of ${selected.size} selected` + (selected.size > capacity ? ` (compact 1-page mode uses first 5 photos)` : "");
+      } else {
+        const pages = Math.ceil(Math.max(0, selected.size - 1) / 6) + 1;
+        hint.textContent = `Including all ${selected.size} selected photo${selected.size > 1 ? "s" : ""} across ${pages} page${pages > 1 ? "s" : ""}`;
+      }
     };
     modal.querySelectorAll('input[name="ppMode"]').forEach(r => r.addEventListener("change", refresh));
     modal.querySelectorAll(".pp-item").forEach(el => {
