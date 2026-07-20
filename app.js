@@ -4480,6 +4480,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
         emailInput.style.borderColor = "var(--accent)";
+        errorText.textContent = "Please enter a valid email address.";
         errorText.style.display = "block";
         return;
       }
@@ -4490,8 +4491,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const shoot = SHOOTS.find(x => x.id === shootId) || (window.currentCompCardShootObj);
       const modelName = shoot ? getTalentCleanName(shoot.talent || shoot.title) : "Unknown Model";
       
+      newSubmitBtn.disabled = true;
+      newSubmitBtn.textContent = "Verifying...";
+
       try {
-        await fetch("/api/logs", {
+        const res = await fetch("/api/logs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -4502,32 +4506,31 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             originUrl: window.location.origin
           })
         });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          emailInput.style.borderColor = "var(--accent)";
+          errorText.textContent = data.error || "Email verification failed. Please provide a real email address.";
+          errorText.style.display = "block";
+          newSubmitBtn.disabled = false;
+          newSubmitBtn.textContent = "Download";
+          return;
+        }
       } catch (err) {
-        console.warn("Failed to dispatch download email link:", err);
+        console.warn("API verification skipped/failed:", err);
       }
 
-      // Display Option 2 confirmation message instructing user to check their email inbox
-      const modalBox = modal.querySelector("div");
-      if (modalBox) {
-        modalBox.innerHTML = `
-          <div style="font-size: 38px; margin-bottom: -6px;">📬</div>
-          <div>
-            <h3 style="font-family:'Outfit', sans-serif; font-size: 20px; font-weight: 700; margin: 0 0 6px; color: var(--ink);">Check Your Email Inbox!</h3>
-            <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin: 0;">
-              We have sent the official Comp Card download link for <strong>${esc(modelName)}</strong> to:<br/>
-              <strong style="color: var(--ink); font-family: 'JetBrains Mono', monospace; word-break: break-all;">${esc(email)}</strong>
-            </p>
-          </div>
-          <p style="font-size: 11px; color: var(--ink-soft); font-style: italic; margin: 0; line-height: 1.4;">
-            Please open your email inbox and click the download button inside to view and print your 1-page PDF.
-          </p>
-          <button id="closeEmailSuccess" class="btn btn-dark btn-block" style="height: 42px; font-family:'JetBrains Mono', monospace; font-weight: 700; margin-top: 4px;">Done</button>
-        `;
-        modalBox.querySelector("#closeEmailSuccess").addEventListener("click", () => {
-          modal.style.opacity = "0";
-          setTimeout(() => { modal.style.display = "none"; }, 300);
-        });
-      }
+      // Option 3: Real-Time Verification succeeded -> Close modal & trigger PDF Export instantly!
+      modal.style.opacity = "0";
+      setTimeout(() => {
+        modal.style.display = "none";
+        newSubmitBtn.disabled = false;
+        newSubmitBtn.textContent = "Download";
+      }, 300);
+
+      toast("Email verified! Generating PDF...");
+      window.printCompCard(shootId, targetOrient);
     });
   };
 
