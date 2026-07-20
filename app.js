@@ -847,8 +847,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
               <span style="font-family:'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--ink-soft);">PDF Orientation</span>
               <div style="display: flex; gap: 4px;" id="compCardOrientGroup">
-                <button type="button" class="comp-orient-btn active" onclick="window.setCompCardOrientation('portrait', this)" style="font-family:'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--ink); background: var(--ink); color: var(--paper); cursor: pointer;">Portrait</button>
-                <button type="button" class="comp-orient-btn" onclick="window.setCompCardOrientation('landscape', this)" style="font-family:'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer;">Landscape</button>
+                <button type="button" class="comp-orient-btn active" onclick="event.stopPropagation(); window.setCompCardOrientation('portrait', this, event)" style="font-family:'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--ink); background: var(--ink); color: var(--paper); cursor: pointer;">Portrait</button>
+                <button type="button" class="comp-orient-btn" onclick="event.stopPropagation(); window.setCompCardOrientation('landscape', this, event)" style="font-family:'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer;">Landscape</button>
               </div>
             </div>
             <button class="btn btn-dark btn-block" style="font-size: 11px; height: auto; padding: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;" onclick="window.triggerCompCardDownload('${shoot.id}', window.selectedCompCardOrientation || 'portrait')">
@@ -1038,9 +1038,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     $("#lbPrev").addEventListener("click", (e) => { e.stopPropagation(); stepLb(-1); });
     $("#lbNext").addEventListener("click", (e) => { e.stopPropagation(); stepLb(1); });
     // Close only on a genuine backdrop click — never when the click lands on the
-    // nav buttons, close button, image, caption, or counter (or their children).
+    // nav buttons, close button, image, caption, sidebar, or counter (or their children).
     lb.addEventListener("click", (e) => {
-      if (e.target.closest(".lightbox-nav, .lightbox-close, .lightbox-figure, .lightbox-counter")) return;
+      if (e.target.closest(".lightbox-nav, .lightbox-close, .lightbox-figure, .lightbox-counter, .lightbox-sidebar, #lightboxSidebar, .lb-sidebar-section")) return;
       closeLb();
     });
     document.addEventListener("keydown", (e) => { if (lb.hidden) return; if (e.key === "Escape") closeLb(); else if (e.key === "ArrowLeft") stepLb(-1); else if (e.key === "ArrowRight") stepLb(1); });
@@ -4398,7 +4398,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   };
 
   window.selectedCompCardOrientation = "portrait";
-  window.setCompCardOrientation = (orient, btn) => {
+  window.setCompCardOrientation = (orient, btn, event) => {
+    if (event) event.stopPropagation();
     window.selectedCompCardOrientation = orient;
     const parent = btn ? btn.closest("#compCardOrientGroup") : document.getElementById("compCardOrientGroup");
     if (parent) {
