@@ -4128,10 +4128,17 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   function printOnePagerHtml(shoot, photos, headerLabel, showAngles) {
     const name = getTalentCleanName(shoot.talent || shoot.title);
     const cover = photos[0];
-    const side = photos.slice(1, 5);
     const targetType = (headerLabel === "MODEL PORTFOLIO" ? "portfolio" : "comp");
+    const statsHtml = printStatsBarHtml(shoot, targetType);
+    const socialsHtml = printSocialsBarHtml(shoot);
+    const hasDetails = !!(statsHtml.trim() || socialsHtml.trim());
+    
+    // Content-Aware: If model stats/socials are missing, include up to 5 side photos (6 photos total) to eliminate white space!
+    const sideCount = hasDetails ? 4 : 5;
+    const side = photos.slice(1, 1 + sideCount);
+
     return `
-      <div class="print-page">
+      <div class="print-page${!hasDetails ? " no-details" : ""}">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; flex: 0 0 auto;">
           <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;">${headerLabel}</span>
           <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #666; text-transform: uppercase;">nerdyphotographer.in studio</span>
@@ -4141,16 +4148,16 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <div class="print-cover-panel">
             ${cover ? `<img src="${photoSrc(cover)}" alt="Lead photo" />` : ""}
           </div>
-          ${side.length ? `<div class="print-side-grid">${side.map(p => printGridCellHtml(p, showAngles)).join("")}</div>` : ""}
+          ${side.length ? `<div class="print-side-grid${side.length === 5 ? " grid-5" : ""}">${side.map(p => printGridCellHtml(p, showAngles)).join("")}</div>` : ""}
         </div>
-        ${printStatsBarHtml(shoot, targetType)}
-        ${printSocialsBarHtml(shoot)}
+        ${statsHtml}
+        ${socialsHtml}
         ${PRINT_FOOTER_HTML}
       </div>
     `;
   }
 
-  // Comp card export (Location 1): ONE A4 page — lead photo + 4 randomized side photos from model's tagged clicks.
+  // Comp card export (Location 1): ONE A4 page — lead photo + 4 or 5 randomized side photos (content-aware of model details).
   window.printCompCard = (shootId, orientation = "auto") => {
     const shoot = SHOOTS.find(x => x.id === shootId) || (window.currentCompCardShootObj);
     if (!shoot) return;
@@ -4163,11 +4170,16 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       || rawPhotos.find(p => p.angle === "front" || p.angle === "close-up")
       || rawPhotos[0];
 
-    // Location 1 Comp Card feature: Randomize side photos from the clicks tagged to the model
+    // Location 1 Comp Card feature: Content-aware side photo count based on details availability
+    const statsHtml = printStatsBarHtml(shoot, "comp");
+    const socialsHtml = printSocialsBarHtml(shoot);
+    const hasDetails = !!(statsHtml.trim() || socialsHtml.trim());
+    const sideCount = hasDetails ? 4 : 5;
+
     const remaining = rawPhotos.filter(p => p !== coverPhoto);
     const shuffledSidePhotos = [...remaining].sort(() => Math.random() - 0.5);
 
-    const photos = [coverPhoto, ...shuffledSidePhotos.slice(0, 4)];
+    const photos = [coverPhoto, ...shuffledSidePhotos.slice(0, sideCount)];
     printFromContainer(shoot, printOnePagerHtml(shoot, photos, "MODEL COMP CARD", false), "compcard", orientation);
   };
 

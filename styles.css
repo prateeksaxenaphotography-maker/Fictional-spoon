@@ -1120,6 +1120,9 @@ main:focus { outline: none; }
     gap: 10px !important;
     min-height: 0 !important;
   }
+  .print-side-grid.grid-5 > .print-photo-item:nth-child(5):last-child {
+    grid-column: span 2 !important;
+  }
   /* Grid page (2-page portfolio) */
   .print-photo-grid {
     display: grid !important;
