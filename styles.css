@@ -1050,18 +1050,28 @@ main:focus { outline: none; }
 }
 
 /* ---------- Print layout styles for PDF export ---------- */
+/* ---------- Print layout styles for PDF export ---------- */
 @media print {
+  html, body {
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
   body > *:not(#compCardPrintContainer) {
     display: none !important;
   }
   @page {
-    size: A4 portrait;
-    margin: 10mm 10mm;
+    size: auto; /* Responsive to Letter, A4, or any paper size selected by printer */
+    margin: 6mm 8mm;
   }
   #compCardPrintContainer {
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
     width: 100% !important;
-    height: auto !important;
+    height: 100% !important;
+    min-height: 96vh !important;
     background: #fff !important;
     color: #000 !important;
     padding: 0 !important;
@@ -1072,16 +1082,16 @@ main:focus { outline: none; }
   .print-page {
     display: flex !important;
     flex-direction: column !important;
+    justify-content: space-between !important;
     width: 100% !important;
-    /* A4 is 297mm tall; @page margins are 10mm top+bottom -> pin the page
-       card to the printable height so it always fills exactly one sheet. */
-    height: 276mm !important;
-    max-height: 276mm !important;
+    height: 96vh !important;
+    min-height: 96vh !important;
+    flex: 1 1 auto !important;
     page-break-after: always !important;
     break-after: page !important;
     box-sizing: border-box !important;
-    padding: 18px !important;
-    border: 3px solid #000 !important;
+    padding: 14px 16px !important;
+    border: 2px solid #000 !important;
     overflow: hidden !important; /* a page may never spill into a second sheet */
   }
   .print-page:last-child {
@@ -1092,12 +1102,14 @@ main:focus { outline: none; }
   .print-main-row {
     display: flex !important;
     gap: 12px !important;
-    flex: 1 1 auto !important;
+    flex: 1 1 0% !important; /* Take all available vertical height on the sheet */
+    height: 100% !important;
     min-height: 0 !important;
-    margin: 0 0 12px !important;
+    margin: 0 0 10px !important;
   }
   .print-cover-panel {
     flex: 1.25 1 0 !important;
+    height: 100% !important;
     position: relative !important;
     background: #f4f4f2 !important;
     border: 1px solid #e2e0dc !important;
@@ -1108,12 +1120,13 @@ main:focus { outline: none; }
   .print-cover-panel img {
     width: 100% !important;
     height: 100% !important;
-    object-fit: contain !important; /* pad, never crop — no cut heads */
+    object-fit: cover !important;
+    object-position: center !important;
     display: block !important;
-    background: #f4f4f2 !important;
   }
   .print-side-grid {
     flex: 1 1 0 !important;
+    height: 100% !important;
     display: grid !important;
     grid-template-columns: repeat(2, 1fr) !important;
     grid-auto-rows: 1fr !important;
@@ -1131,11 +1144,12 @@ main:focus { outline: none; }
     gap: 12px !important;
     margin: 12px 0 !important;
     width: 100% !important;
-    flex: 1 1 auto !important;
+    flex: 1 1 0% !important;
     min-height: 0 !important;
   }
   .print-photo-item {
     display: flex !important;
+    height: 100% !important;
     box-sizing: border-box !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
@@ -1151,8 +1165,8 @@ main:focus { outline: none; }
   .print-photo-item img {
     width: 100% !important;
     height: 100% !important;
-    object-fit: contain !important; /* pad, never crop — no cut heads */
-    background: #f4f4f2 !important;
+    object-fit: cover !important;
+    object-position: center !important;
     display: block !important;
   }
 }
