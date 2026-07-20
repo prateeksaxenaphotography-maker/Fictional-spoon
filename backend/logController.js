@@ -27,9 +27,59 @@ function writeLogs(logs) {
   }
 }
 
-// POST /api/logs - Log a PDF download event
-exports.logDownload = (req, res) => {
-  const { email, modelName } = req.body;
+// Send magic download link to user's verified inbox
+async function sendMagicDownloadEmail(email, modelName, downloadUrl) {
+  const resendApiKey = process.env.RESEND_API_KEY;
+  if (resendApiKey) {
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          from: "nerdyphotographer.in <studio@nerdyphotographer.in>",
+          to: [email],
+          subject: `Your Model Comp Card PDF — ${modelName}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 28px; border: 1px solid #e2e0dc; border-radius: 12px; background: #ffffff; color: #111;">
+              <h2 style="font-family: Arial, sans-serif; font-size: 22px; font-weight: 800; text-transform: uppercase; margin: 0 0 12px; color: #000; letter-spacing: -0.02em;">
+                nerdyphotographer.in studio
+              </h2>
+              <p style="font-size: 14px; line-height: 1.6; color: #333;">
+                Hi there,<br/><br/>
+                Thank you for requesting the official Model Comp Card for <strong>${modelName}</strong>. Click the link below to open and print your 1-page PDF:
+              </p>
+              <div style="text-align: center; margin: 28px 0;">
+                <a href="${downloadUrl}" style="background: #000; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 6px; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; display: inline-block;">
+                  Open &amp; Print Comp Card (PDF) ↗
+                </a>
+              </div>
+              <p style="font-size: 12px; color: #666; line-height: 1.5;">
+                Or copy and paste this link into your browser:<br/>
+                <a href="${downloadUrl}" style="color: #d24e1a; word-break: break-all;">${downloadUrl}</a>
+              </p>
+              <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+              <p style="font-size: 10.5px; color: #888; margin: 0; line-height: 1.4;">
+                All photographs &amp; comp cards are official creative works of nerdyphotographer.in studio Noida &amp; Delhi NCR.
+              </p>
+            </div>
+          `
+        })
+      });
+      return await response.json();
+    } catch (err) {
+      console.error("Failed to dispatch email via Resend API:", err);
+    }
+  } else {
+    console.log(`[DEV MODE] Magic link created for ${email}: ${downloadUrl}`);
+  }
+}
+
+// POST /api/logs - Log download request & dispatch magic email link
+exports.logDownload = async (req, res) => {
+  const { email, modelName, shootId, orientation, originUrl } = req.body;
   
   // Basic server-side email validation check
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -45,11 +95,17 @@ exports.logDownload = (req, res) => {
   const forwarded = req.headers["x-forwarded-for"];
   const ip = forwarded ? forwarded.split(",")[0].trim() : req.socket.remoteAddress;
 
+  const baseUrl = originUrl || "https://nerdyphotographer.in";
+  const downloadToken = crypto.randomBytes(16).toString("hex");
+  const downloadUrl = `${baseUrl.replace(/\/$/, "")}/?downloadCompCard=1&shootId=${encodeURIComponent(shootId || "")}&orientation=${encodeURIComponent(orientation || "portrait")}&token=${downloadToken}`;
+
   const logs = readLogs();
   const entry = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
     modelName: modelName.trim(),
     email: email.trim(),
+    shootId: shootId || "",
+    token: downloadToken,
     ip: ip || "unknown",
     timestamp: new Date().toISOString()
   };
@@ -57,7 +113,14 @@ exports.logDownload = (req, res) => {
   logs.push(entry);
   writeLogs(logs);
 
-  return res.status(200).json({ success: true, message: "Download logged successfully." });
+  // Dispatch magic email download link
+  await sendMagicDownloadEmail(email.trim(), modelName.trim(), downloadUrl);
+
+  return res.status(200).json({
+    success: true,
+    message: "Magic download link sent to email.",
+    downloadUrl: downloadUrl
+  });
 };
 
 // GET /api/logs/download - Export download logs to CSV (Admin Only)

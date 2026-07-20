@@ -4490,22 +4490,67 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const shoot = SHOOTS.find(x => x.id === shootId) || (window.currentCompCardShootObj);
       const modelName = shoot ? getTalentCleanName(shoot.talent || shoot.title) : "Unknown Model";
       
-      modal.style.opacity = "0";
-      setTimeout(() => { modal.style.display = "none"; }, 300);
-      
       try {
         await fetch("/api/logs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, modelName })
+          body: JSON.stringify({
+            email,
+            modelName,
+            shootId,
+            orientation: targetOrient,
+            originUrl: window.location.origin
+          })
         });
       } catch (err) {
-        console.warn("Failed to write to download server log:", err);
+        console.warn("Failed to dispatch download email link:", err);
       }
-      
-      window.printCompCard(shootId, targetOrient);
+
+      // Display Option 2 confirmation message instructing user to check their email inbox
+      const modalBox = modal.querySelector("div");
+      if (modalBox) {
+        modalBox.innerHTML = `
+          <div style="font-size: 38px; margin-bottom: -6px;">📬</div>
+          <div>
+            <h3 style="font-family:'Outfit', sans-serif; font-size: 20px; font-weight: 700; margin: 0 0 6px; color: var(--ink);">Check Your Email Inbox!</h3>
+            <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin: 0;">
+              We have sent the official Comp Card download link for <strong>${esc(modelName)}</strong> to:<br/>
+              <strong style="color: var(--ink); font-family: 'JetBrains Mono', monospace; word-break: break-all;">${esc(email)}</strong>
+            </p>
+          </div>
+          <p style="font-size: 11px; color: var(--ink-soft); font-style: italic; margin: 0; line-height: 1.4;">
+            Please open your email inbox and click the download button inside to view and print your 1-page PDF.
+          </p>
+          <button id="closeEmailSuccess" class="btn btn-dark btn-block" style="height: 42px; font-family:'JetBrains Mono', monospace; font-weight: 700; margin-top: 4px;">Done</button>
+        `;
+        modalBox.querySelector("#closeEmailSuccess").addEventListener("click", () => {
+          modal.style.opacity = "0";
+          setTimeout(() => { modal.style.display = "none"; }, 300);
+        });
+      }
     });
   };
+
+  // Auto-trigger Comp Card print preview when opening via magic email link
+  (function checkMagicDownloadLink() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("downloadCompCard") === "1") {
+      const shootId = params.get("shootId");
+      const orientation = params.get("orientation") || "portrait";
+      if (shootId) {
+        const trigger = () => {
+          setTimeout(() => {
+            window.printCompCard(shootId, orientation);
+          }, 800);
+        };
+        if (document.readyState === "complete" || document.readyState === "interactive") {
+          trigger();
+        } else {
+          window.addEventListener("DOMContentLoaded", trigger);
+        }
+      }
+    }
+  })();
 
   window.downloadLogsCSV = () => {
     // The passcode is asked for on demand and never stored in the page's
