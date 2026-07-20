@@ -3908,9 +3908,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   };
 
   const PRINT_FOOTER_HTML = `
-    <div style="border-top: 1px solid #ccc; padding-top: 12px; margin-top: auto; font-family: sans-serif; font-size: 8.5px; color: #000; line-height: 1.6; display: flex; flex-direction: column; gap: 4px; text-align: left; width: 100%;">
-      <div style="font-weight: 700; color: #000;">Booking Details: To schedule sessions or bookings for this talent, connect directly via verified social handles or contact agency representation.</div>
-      <div style="color: #444; font-size: 7.5px;">All portfolio cards and photography frames are intellectual properties of nerdyphotographer.in studio and represented divisions. Unapproved reprint, resale, or commercial misuse is strictly prohibited under federal copyright laws.</div>
+    <div style="border-top: 2px solid #000; padding-top: 10px; margin-top: auto; font-family: sans-serif; font-size: 8.5px; color: #000; line-height: 1.5; display: flex; flex-direction: column; gap: 4px; text-align: left; width: 100%;">
+      <div style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: #000; text-transform: uppercase; letter-spacing: 0.05em; background: #f4f4f2; padding: 6px 10px; border-radius: 4px; border: 1px solid #dcdad5; display: flex; justify-content: space-between; align-items: center;">
+        <span>📸 All photographs clicked &amp; produced by nerdyphotographer.in</span>
+        <span style="font-weight: 700; color: var(--accent, #d24e1a);">www.nerdyphotographer.in</span>
+      </div>
+      <div style="font-weight: 700; color: #111; margin-top: 2px;">Booking &amp; Talent Inquiries: Connect directly via verified social handles or contact studio representation.</div>
+      <div style="color: #555; font-size: 7.5px;">All portfolio cards, comp cards, and photography frames are official creative works produced under nerdyphotographer.in studio Noida &amp; Delhi NCR.</div>
     </div>
   `;
 
@@ -3964,7 +3968,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       <div class="print-page" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%; box-sizing: border-box; page-break-after: always; break-after: page;">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px;">
           <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;">${headerLabel}</span>
-          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #666; text-transform: uppercase;">nerdyphotographer.in studio</span>
+          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: #000; text-transform: uppercase;">Clicked by nerdyphotographer.in</span>
         </div>
         
         <div class="print-cover-panel" style="flex-grow: 1;">
@@ -3977,6 +3981,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           </h1>
           <p style="font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--accent, #d24e1a); text-transform: uppercase; letter-spacing: 0.15em; margin: 0;">
             ${subLabel}
+          </p>
+          <p style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 6px;">
+            Photographed &amp; Produced by nerdyphotographer.in studio
           </p>
         </div>
       </div>
@@ -4007,7 +4014,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <h2 style="font-family:'Outfit', sans-serif; font-size: 24px; font-weight: 800; margin: 0; text-transform: uppercase; color: #000; letter-spacing: -0.02em;">
             ${headerTitle}
           </h2>
-          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #666; text-transform: uppercase;">nerdyphotographer.in studio</span>
+          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: #000; text-transform: uppercase;">Clicked by nerdyphotographer.in</span>
         </div>
         
         ${extrasHtml}
@@ -4157,7 +4164,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       <div class="print-page${!hasDetails ? " no-details" : ""}">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; flex: 0 0 auto;">
           <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;">${headerLabel}</span>
-          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #666; text-transform: uppercase;">nerdyphotographer.in studio</span>
+          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: #000; text-transform: uppercase;">Clicked by nerdyphotographer.in</span>
         </div>
         <h1 style="font-family:'Outfit', sans-serif; font-size: 30px; font-weight: 800; margin: 0 0 10px; text-transform: uppercase; color: #000; letter-spacing: -0.02em; flex: 0 0 auto;">${name}</h1>
         <div class="print-main-row">
