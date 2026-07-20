@@ -892,8 +892,6 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       <p class="lb-disclaimer" style="font-size: 11px; font-style: italic; color: var(--ink-soft); margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; line-height: 1.5; font-family: sans-serif;">
         To book this talent, please connect directly via their verified social channels or contact their representing agency.
         <br/><br/>
-        Note: If a studio space is booked for the shoot, applicable studio rental charges will apply.
-        <br/><br/>
         This compcard includes photos clicked or produced under nerdyphotographer.in studio or its subsidiaries.
       </p>
     ` : "";
@@ -4555,16 +4553,21 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         console.warn("API verification skipped/failed:", err);
       }
 
-      // Option 3: Real-Time Verification succeeded -> Close modal & trigger PDF Export instantly!
-      modal.style.opacity = "0";
-      setTimeout(() => {
-        modal.style.display = "none";
-        newSubmitBtn.disabled = false;
-        newSubmitBtn.textContent = "Download";
-      }, 300);
-
-      toast("Email verified! Generating PDF...");
-      window.printCompCard(shootId, targetOrient);
+      // Option 1: Send Magic Link -> Show success message!
+      modal.innerHTML = `
+        <div style="background: var(--bone); border: 1px solid var(--line); padding: 32px; border-radius: 16px; width: 100%; max-width: 420px; box-sizing: border-box; text-align: center; display: flex; flex-direction: column; gap: 20px; box-shadow: var(--shadow);">
+          <div>
+            <span style="font-size: 32px; display: block; margin-bottom: 12px;">✅</span>
+            <h3 style="font-family:'Outfit', sans-serif; font-size: 20px; font-weight: 700; margin: 0 0 8px; color: var(--ink);">Check Your Email</h3>
+            <p style="font-size: 13px; color: var(--ink-soft); line-height: 1.5; margin: 0;">We've sent a magic download link to <strong>${email}</strong>.<br/><br/>Please check your inbox (and spam folder) to download the Comp Card PDF.</p>
+          </div>
+          <button id="closeSuccessModal" class="btn btn-dark btn-block" style="height: 42px; font-family:'JetBrains Mono', monospace; font-weight: 700;">Close</button>
+        </div>
+      `;
+      modal.querySelector("#closeSuccessModal").addEventListener("click", () => {
+        modal.style.opacity = "0";
+        setTimeout(() => { modal.style.display = "none"; }, 300);
+      });
     });
   };
 
