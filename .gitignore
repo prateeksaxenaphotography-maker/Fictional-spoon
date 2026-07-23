@@ -1,5 +1,6 @@
 .DS_Store
 node_modules/
 *.log
+.env
 # Visitor emails collected by the log server — never publish these
 backend/logs.json

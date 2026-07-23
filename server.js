@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const express = require("express");
 const path = require("path");
 const cors = require("cors");
@@ -6,8 +8,22 @@ const logController = require("./backend/logController");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Enable CORS and JSON parsing
-app.use(cors());
+const ALLOWED_ORIGINS = [
+  "https://www.nerdyphotographer.in",
+  "https://nerdyphotographer.in",
+  "http://localhost:3000",
+  "http://localhost:8000",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:8000"
+];
+
+// Enable CORS (restricted to the real site + local dev) and JSON parsing
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    callback(new Error("Not allowed by CORS"));
+  }
+}));
 app.use(express.json());
 
 // API Routes
