@@ -1,9 +1,6 @@
 const fs = require("fs");
 const crypto = require("crypto");
 const path = require("path");
-const dns = require("dns");
-const util = require("util");
-const resolveMx = util.promisify(dns.resolveMx);
 
 const LOGS_FILE = path.join(__dirname, "logs.json");
 
@@ -17,48 +14,34 @@ const DISPOSABLE_DOMAINS = new Set([
   "temp-mail.com", "disposablemail.com", "mytemp.email", "guerrillamail.net"
 ]);
 
-// Helper to validate email format, disposable list, and real DNS MX records
-async function validateRealEmail(email) {
+const COMMON_DOMAIN_TYPOS = {
+  "gmai.com": "gmail.com", "gamil.com": "gmail.com", "hotmial.com": "hotmail.com",
+  "outlok.com": "outlook.com", "yaho.com": "yahoo.com"
+};
+
+// Format + disposable/typo checks only. Real proof of ownership comes from the
+// magic link click-through (checkMagicDownloadLink in app.js), not from this —
+// a prior DNS MX-lookup step was tried here and reverted (commit da03ed4) because
+// it produced false rejections for real visitors.
+function validateEmailShape(email) {
   const cleanEmail = String(email || "").trim().toLowerCase();
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  
+
   if (!cleanEmail || !emailRegex.test(cleanEmail)) {
     return { valid: false, error: "Please enter a valid email address (e.g., name@example.com)." };
   }
 
-  const parts = cleanEmail.split("@");
-  if (parts.length !== 2) {
-    return { valid: false, error: "Invalid email structure." };
-  }
+  const domain = cleanEmail.split("@")[1];
 
-  const domain = parts[1];
-
-  // 1. Check disposable domain blacklist
   if (DISPOSABLE_DOMAINS.has(domain)) {
     return { valid: false, error: "Temporary or disposable email addresses are not allowed." };
   }
 
-  // 2. Common domain typo checks
-  const commonTypos = ["gmai.com", "gamil.com", "hotmial.com", "outlok.com", "yaho.com"];
-  if (commonTypos.includes(domain)) {
-    const suggested = domain.replace("gmai", "gmail").replace("gamil", "gmail").replace("hotmial", "hotmail").replace("outlok", "outlook").replace("yaho", "yahoo");
-    return { valid: false, error: `Did you mean @${suggested}? Please check for typos.` };
+  if (COMMON_DOMAIN_TYPOS[domain]) {
+    return { valid: false, error: `Did you mean @${COMMON_DOMAIN_TYPOS[domain]}? Please check for typos.` };
   }
 
-  // 3. Real-time DNS MX Lookup to verify domain has active mail servers
-  try {
-    const mxRecords = await resolveMx(domain);
-    if (!mxRecords || !mxRecords.length) {
-      return { valid: false, error: `Domain '@${domain}' does not have active mail servers.` };
-    }
-  } catch (err) {
-    if (err.code === "ENOTFOUND" || err.code === "ENODATA") {
-      return { valid: false, error: `Domain '@${domain}' does not exist or cannot receive email.` };
-    }
-    console.warn(`DNS MX lookup warning for domain ${domain}:`, err.message);
-  }
-
-  return { valid: true };
+  return { valid: true, cleanEmail };
 }
 
 // Helper to read logs safely
@@ -87,18 +70,24 @@ function writeLogs(logs) {
 // Send magic download link copy to user's verified inbox (Inviting Marketing Email)
 async function sendMagicDownloadEmail(email, modelName, downloadUrl) {
   const resendApiKey = process.env.RESEND_API_KEY;
-  if (resendApiKey) {
-    try {
-      const baseUrl = "https://nerdyphotographer.in";
-      await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${resendApiKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          from: "nerdyphotographer.in studio <prateeksaxenaphotography@gmail.com>",
-          to: [email],
+  const fromAddress = process.env.RESEND_FROM_EMAIL || "noreply@nerdyphotographer.in";
+
+  if (!resendApiKey) {
+    console.error("RESEND_API_KEY is not set — cannot send magic download email.");
+    return { success: false, error: "Email service is not configured." };
+  }
+
+  try {
+    const baseUrl = "https://nerdyphotographer.in";
+    const resendRes = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        from: `nerdyphotographer.in studio <${fromAddress}>`,
+        to: [email],
           subject: `Model Comp Card — ${modelName} · nerdyphotographer.in`,
           reply_to: "prateeksaxenaphotography@gmail.com",
           headers: {
@@ -150,23 +139,33 @@ async function sendMagicDownloadEmail(email, modelName, downloadUrl) {
               </div>
             </div>
           `
-        })
-      });
-    } catch (err) {
-      console.error("Failed to dispatch email via Resend API:", err);
+      })
+    });
+
+    if (!resendRes.ok) {
+      const errorBody = await resendRes.text().catch(() => "");
+      console.error(`Resend API rejected the send (${resendRes.status}):`, errorBody);
+      return { success: false, error: `Resend API error ${resendRes.status}` };
     }
+
+    return { success: true };
+  } catch (err) {
+    console.error("Failed to dispatch email via Resend API:", err);
+    return { success: false, error: err.message };
   }
 }
 
-// POST /api/logs - Option 3: Real-time MX & Disposable Email Verification + Instant PDF Download
+// POST /api/logs - validates the email shape, logs the download attempt for
+// analytics, and emails a magic download link. Real proof the address is
+// reachable comes from the visitor clicking that link, not from validation here.
 exports.logDownload = async (req, res) => {
   const { email, modelName, shootId, orientation, originUrl } = req.body;
-  
-  // Option 1: Basic Email Format Validation (skip MX lookup to avoid blocking valid emails)
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    return res.status(400).json({ error: "Invalid email format." });
+
+  const shapeCheck = validateEmailShape(email);
+  if (!shapeCheck.valid) {
+    return res.status(400).json({ error: shapeCheck.error });
   }
+  const cleanEmail = shapeCheck.cleanEmail;
 
   if (!modelName) {
     return res.status(400).json({ error: "Model name is required." });
@@ -179,25 +178,32 @@ exports.logDownload = async (req, res) => {
   const baseUrl = originUrl || "https://nerdyphotographer.in";
   const downloadUrl = `${baseUrl.replace(/\/$/, "")}/?downloadCompCard=1&shootId=${encodeURIComponent(shootId || "")}&orientation=${encodeURIComponent(orientation || "portrait")}`;
 
+  const emailResult = await sendMagicDownloadEmail(cleanEmail, modelName.trim(), downloadUrl);
+
+  // Log the attempt regardless of send outcome — the id/email/ip is what
+  // powers analytics, and we still want it even if Resend rejects the send.
   const logs = readLogs();
   const entry = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
     modelName: modelName.trim(),
-    email: email.trim(),
+    email: cleanEmail,
     shootId: shootId || "",
     ip: ip || "unknown",
+    emailSent: emailResult.success,
     timestamp: new Date().toISOString()
   };
-
   logs.push(entry);
   writeLogs(logs);
 
-  // Send email copy in background
-  sendMagicDownloadEmail(email.trim(), modelName.trim(), downloadUrl);
+  if (!emailResult.success) {
+    return res.status(502).json({
+      error: "We couldn't send the verification email right now. Please try again in a moment."
+    });
+  }
 
   return res.status(200).json({
     success: true,
-    message: "Email verified successfully."
+    message: "Magic download link sent."
   });
 };
 
@@ -218,7 +224,7 @@ exports.downloadCSV = (req, res) => {
   const logs = readLogs();
 
   // Excel-compatible CSV header and rows
-  const headers = ["Timestamp", "Model Name", "Email Address", "IP Address"];
+  const headers = ["Timestamp", "Model Name", "Email Address", "IP Address", "Email Sent"];
   const csvRows = [headers.join(",")];
 
   logs.forEach(log => {
@@ -226,7 +232,8 @@ exports.downloadCSV = (req, res) => {
       `"${log.timestamp.replace(/"/g, '""')}"`,
       `"${log.modelName.replace(/"/g, '""')}"`,
       `"${log.email.replace(/"/g, '""')}"`,
-      `"${log.ip.replace(/"/g, '""')}"`
+      `"${log.ip.replace(/"/g, '""')}"`,
+      `"${log.emailSent === undefined ? "n/a" : log.emailSent}"`
     ];
     csvRows.push(row.join(","));
   });

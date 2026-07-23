@@ -35,6 +35,11 @@
   const TYPES = [...new Set([...(rawTyp || []), ...(cfgData.types || [])])];
   const BRANDS = [...new Set([...(rawBrs || []), ...(cfgData.brands || [])])];
   const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // The site itself is static (GitHub Pages) but /api/logs is served by server.js
+  // running elsewhere (Render). Same-origin locally; absolute URL in production.
+  // TODO: replace with your actual Render service URL after deploying.
+  const IS_LOCAL_HOST = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+  const COMP_CARD_API_BASE = IS_LOCAL_HOST ? "" : "https://wolverine-photostudio-api.onrender.com";
 
   /* ============================================================
      §2 · CORE UTILITIES
@@ -4527,7 +4532,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       newSubmitBtn.textContent = "Verifying...";
 
       try {
-        const res = await fetch("/api/logs", {
+        const res = await fetch(`${COMP_CARD_API_BASE}/api/logs`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -4550,7 +4555,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           return;
         }
       } catch (err) {
-        console.warn("API verification skipped/failed:", err);
+        console.error("Comp card email request failed:", err);
+        emailInput.style.borderColor = "var(--accent)";
+        errorText.textContent = "Couldn't reach the server. Please check your connection and try again.";
+        errorText.style.display = "block";
+        newSubmitBtn.disabled = false;
+        newSubmitBtn.textContent = "Download";
+        return;
       }
 
       // Option 1: Send Magic Link -> Show success message!
