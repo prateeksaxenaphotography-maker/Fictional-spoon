@@ -1148,7 +1148,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi"), compCardsLi = $("#navCompCardsLi"), portfolioLi = $("#navModelPortfolioLi"), workshopLi = $("#navWorkshopLi"), logsLi = $("#navLogsLi");
     if (uploadLi) uploadLi.style.display = active ? "block" : "none";
     if (bookLi) bookLi.style.display = active ? "none" : "block";
-    if (compCardsLi) compCardsLi.style.display = active ? "block" : "none";
+    if (compCardsLi) compCardsLi.style.display = "block";
     if (portfolioLi) portfolioLi.style.display = active ? "block" : "none";
     if (workshopLi) workshopLi.style.display = (active || shouldShowWorkshopsToAll()) ? "block" : "none";
     if (logsLi) logsLi.style.display = active ? "block" : "none";
