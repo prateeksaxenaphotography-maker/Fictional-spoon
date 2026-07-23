@@ -1051,6 +1051,121 @@ main:focus { outline: none; }
 
 /* ---------- Print layout styles for PDF export ---------- */
 /* ---------- Print layout styles for PDF export ---------- */
+/* These structural rules (display:flex/grid, sizing) are deliberately NOT
+   scoped to @media print. printFromContainer needs to measure real layout
+   heights *before* window.print() is called, to compute --print-scale — and
+   @media print rules only match during actual print rendering, not during
+   that pre-print JS measurement pass. Since .print-page and its descendants
+   only ever exist inside #compCardPrintContainer (normally display:none,
+   briefly flipped off-screen for measurement/printing), making these rules
+   always-active is harmless to the rest of the site. Only the "hide
+   everything else" rule and @page truly need to stay print-only. */
+#compCardPrintContainer {
+  display: none !important;
+  flex-direction: column !important;
+  background: #fff !important;
+  color: #000 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+/* Width/height are set in mm per-page by JS (printFromContainer), matching
+   the real A4 printable area for the chosen orientation — deliberately not
+   vh here, since vh-in-print is inconsistent across browsers. JS also sets
+   --print-scale on each page after measuring real content height, so
+   text/spacing shrink to fit rather than clipping or spilling to page 2. */
+.print-page {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  flex: 1 1 auto !important;
+  page-break-after: always !important;
+  break-after: page !important;
+  box-sizing: border-box !important;
+  padding: 14px 16px !important;
+  border: 2px solid #000 !important;
+  overflow: hidden !important; /* hard safety net: a page may never spill into a second sheet */
+  background: #fff !important;
+  color: #000 !important;
+  --print-scale: 1;
+}
+.print-page:last-child {
+  page-break-after: avoid !important;
+  break-after: avoid !important;
+}
+/* One-pager composite layout: lead photo panel beside a 2x2 grid */
+.print-main-row {
+  display: flex !important;
+  gap: 12px !important;
+  flex: 1 1 0% !important; /* Take all available vertical height on the sheet */
+  height: 100% !important;
+  min-height: 0 !important;
+  margin: 0 0 10px !important;
+}
+.print-cover-panel {
+  flex: 1.25 1 0 !important;
+  height: 100% !important;
+  position: relative !important;
+  background: #f4f4f2 !important;
+  border: 1px solid #e2e0dc !important;
+  border-radius: 6px !important;
+  overflow: hidden !important;
+  min-height: 0 !important;
+}
+.print-cover-panel img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  display: block !important;
+}
+.print-side-grid {
+  flex: 1 1 0 !important;
+  height: 100% !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  grid-auto-rows: 1fr !important;
+  gap: 10px !important;
+  min-height: 0 !important;
+}
+.print-side-grid.grid-5 > .print-photo-item:nth-child(5):last-child {
+  grid-column: span 2 !important;
+}
+/* Grid page (2-page portfolio) */
+.print-photo-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  grid-auto-rows: 1fr !important;
+  gap: 12px !important;
+  margin: 12px 0 !important;
+  width: 100% !important;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+}
+.print-photo-item {
+  display: flex !important;
+  height: 100% !important;
+  box-sizing: border-box !important;
+  break-inside: avoid !important;
+  page-break-inside: avoid !important;
+  background: #f4f4f2 !important;
+  border: 1px solid #e2e0dc !important;
+  border-radius: 6px !important;
+  position: relative !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+  min-height: 0 !important;
+}
+.print-photo-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  display: block !important;
+}
+
 @media print {
   html, body {
     width: 100% !important;
@@ -1063,110 +1178,10 @@ main:focus { outline: none; }
     display: none !important;
   }
   @page {
-    size: auto; /* Responsive to Letter, A4, or any paper size selected by printer */
+    size: A4; /* every export is forced to A4, regardless of printer/OS default */
     margin: 6mm 8mm;
   }
   #compCardPrintContainer {
     display: flex !important;
-    flex-direction: column !important;
-    width: 100% !important;
-    height: 100% !important;
-    min-height: 96vh !important;
-    background: #fff !important;
-    color: #000 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-  .print-page {
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: space-between !important;
-    width: 100% !important;
-    height: 96vh !important;
-    min-height: 96vh !important;
-    flex: 1 1 auto !important;
-    page-break-after: always !important;
-    break-after: page !important;
-    box-sizing: border-box !important;
-    padding: 14px 16px !important;
-    border: 2px solid #000 !important;
-    overflow: hidden !important; /* a page may never spill into a second sheet */
-  }
-  .print-page:last-child {
-    page-break-after: avoid !important;
-    break-after: avoid !important;
-  }
-  /* One-pager composite layout: lead photo panel beside a 2x2 grid */
-  .print-main-row {
-    display: flex !important;
-    gap: 12px !important;
-    flex: 1 1 0% !important; /* Take all available vertical height on the sheet */
-    height: 100% !important;
-    min-height: 0 !important;
-    margin: 0 0 10px !important;
-  }
-  .print-cover-panel {
-    flex: 1.25 1 0 !important;
-    height: 100% !important;
-    position: relative !important;
-    background: #f4f4f2 !important;
-    border: 1px solid #e2e0dc !important;
-    border-radius: 6px !important;
-    overflow: hidden !important;
-    min-height: 0 !important;
-  }
-  .print-cover-panel img {
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: cover !important;
-    object-position: center !important;
-    display: block !important;
-  }
-  .print-side-grid {
-    flex: 1 1 0 !important;
-    height: 100% !important;
-    display: grid !important;
-    grid-template-columns: repeat(2, 1fr) !important;
-    grid-auto-rows: 1fr !important;
-    gap: 10px !important;
-    min-height: 0 !important;
-  }
-  .print-side-grid.grid-5 > .print-photo-item:nth-child(5):last-child {
-    grid-column: span 2 !important;
-  }
-  /* Grid page (2-page portfolio) */
-  .print-photo-grid {
-    display: grid !important;
-    grid-template-columns: repeat(3, 1fr) !important;
-    grid-auto-rows: 1fr !important;
-    gap: 12px !important;
-    margin: 12px 0 !important;
-    width: 100% !important;
-    flex: 1 1 0% !important;
-    min-height: 0 !important;
-  }
-  .print-photo-item {
-    display: flex !important;
-    height: 100% !important;
-    box-sizing: border-box !important;
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
-    background: #f4f4f2 !important;
-    border: 1px solid #e2e0dc !important;
-    border-radius: 6px !important;
-    position: relative !important;
-    align-items: center !important;
-    justify-content: center !important;
-    overflow: hidden !important;
-    min-height: 0 !important;
-  }
-  .print-photo-item img {
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: cover !important;
-    object-position: center !important;
-    display: block !important;
   }
 }
