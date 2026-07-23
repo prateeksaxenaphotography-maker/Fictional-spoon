@@ -4473,7 +4473,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         <div style="background: var(--bone); border: 1px solid var(--line); padding: 32px; border-radius: 16px; width: 100%; max-width: 420px; box-sizing: border-box; text-align: center; display: flex; flex-direction: column; gap: 20px; box-shadow: var(--shadow);">
           <div>
             <h3 style="font-family:'Outfit', sans-serif; font-size: 20px; font-weight: 700; margin: 0 0 8px; color: var(--ink);">Enter your Email</h3>
-            <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin: 0;">Please enter your email to proceed with downloading this talent comp card for verification and document logging.</p>
+            <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin: 0;">Please enter your email to proceed with downloading this talent comp card.</p>
             <p style="font-size: 10.5px; color: var(--accent); margin: 8px 0 0; font-family: 'JetBrains Mono', monospace; font-weight: 600; line-height: 1.4;">
               🎲 Note: Supporting images are randomly selected from all photos tagged to this model on each export.
             </p>
@@ -4512,7 +4512,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const newSubmitBtn = submitBtn.cloneNode(true);
     submitBtn.replaceWith(newSubmitBtn);
     
-    newSubmitBtn.addEventListener("click", async () => {
+    newSubmitBtn.addEventListener("click", () => {
       const email = emailInput.value.trim();
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
@@ -4521,64 +4521,31 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         errorText.style.display = "block";
         return;
       }
-      
+
       errorText.style.display = "none";
       emailInput.style.borderColor = "var(--line)";
-      
+
       const shoot = SHOOTS.find(x => x.id === shootId) || (window.currentCompCardShootObj);
       const modelName = shoot ? getTalentCleanName(shoot.talent || shoot.title) : "Unknown Model";
-      
-      newSubmitBtn.disabled = true;
-      newSubmitBtn.textContent = "Verifying...";
 
-      try {
-        const res = await fetch(`${COMP_CARD_API_BASE}/api/logs`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email,
-            modelName,
-            shootId,
-            orientation: targetOrient,
-            originUrl: window.location.origin
-          })
-        });
+      // Best-effort analytics log — never blocks or fails the download itself,
+      // since the visitor has no way to fix a backend outage on their end.
+      fetch(`${COMP_CARD_API_BASE}/api/logs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          modelName,
+          shootId,
+          orientation: targetOrient,
+          originUrl: window.location.origin
+        })
+      }).catch((err) => console.warn("Comp card download logging failed (non-blocking):", err));
 
-        const data = await res.json().catch(() => ({}));
+      modal.style.opacity = "0";
+      setTimeout(() => { modal.style.display = "none"; }, 300);
 
-        if (!res.ok) {
-          emailInput.style.borderColor = "var(--accent)";
-          errorText.textContent = data.error || "Email verification failed. Please provide a real email address.";
-          errorText.style.display = "block";
-          newSubmitBtn.disabled = false;
-          newSubmitBtn.textContent = "Download";
-          return;
-        }
-      } catch (err) {
-        console.error("Comp card email request failed:", err);
-        emailInput.style.borderColor = "var(--accent)";
-        errorText.textContent = "Couldn't reach the server. Please check your connection and try again.";
-        errorText.style.display = "block";
-        newSubmitBtn.disabled = false;
-        newSubmitBtn.textContent = "Download";
-        return;
-      }
-
-      // Option 1: Send Magic Link -> Show success message!
-      modal.innerHTML = `
-        <div style="background: var(--bone); border: 1px solid var(--line); padding: 32px; border-radius: 16px; width: 100%; max-width: 420px; box-sizing: border-box; text-align: center; display: flex; flex-direction: column; gap: 20px; box-shadow: var(--shadow);">
-          <div>
-            <span style="font-size: 32px; display: block; margin-bottom: 12px;">✅</span>
-            <h3 style="font-family:'Outfit', sans-serif; font-size: 20px; font-weight: 700; margin: 0 0 8px; color: var(--ink);">Check Your Email</h3>
-            <p style="font-size: 13px; color: var(--ink-soft); line-height: 1.5; margin: 0;">We've sent a magic download link to <strong>${email}</strong>.<br/><br/>Please check your inbox (and spam folder) to download the Comp Card PDF.</p>
-          </div>
-          <button id="closeSuccessModal" class="btn btn-dark btn-block" style="height: 42px; font-family:'JetBrains Mono', monospace; font-weight: 700;">Close</button>
-        </div>
-      `;
-      modal.querySelector("#closeSuccessModal").addEventListener("click", () => {
-        modal.style.opacity = "0";
-        setTimeout(() => { modal.style.display = "none"; }, 300);
-      });
+      window.printCompCard(shootId, targetOrient);
     });
   };
 
