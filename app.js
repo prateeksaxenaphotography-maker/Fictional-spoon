@@ -4123,7 +4123,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   // Render pages into the hidden print container, wait for every image to
   // finish loading, then open the print dialog with a clean filename
   // (<Model_Name>_<suffix>_nerdyphotographer.pdf when saved as PDF).
-  function printFromContainer(shoot, pagesHtml, forcedOrientation = "auto") {
+  function printFromContainer(shoot, pagesHtml, docType, forcedOrientation = "auto") {
     const printContainer = document.getElementById("compCardPrintContainer");
     if (!printContainer) return;
     printContainer.innerHTML = pagesHtml;
@@ -4202,7 +4202,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       // "nerdyphotographer.in" would leave a stray dot right before ".pdf" in
       // the saved filename (e.g. "..._NerdyPhotographer.in.pdf") — dropped to
       // avoid that, per explicit instruction to prefer the no-dot form.
-      document.title = `${cleanModelName}_Shot_By_NerdyPhotographerin`;
+      document.title = `${cleanModelName}_${docType}_Shot_By_NerdyPhotographerin`;
       window.print();
       document.title = oldTitle;
 
@@ -4303,7 +4303,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const shuffledSidePhotos = [...remaining].sort(() => Math.random() - 0.5);
 
     const photos = [coverPhoto, ...shuffledSidePhotos.slice(0, sideCount)];
-    printFromContainer(shoot, printOnePagerHtml(shoot, photos, "MODEL COMP CARD", false), orientation);
+    printFromContainer(shoot, printOnePagerHtml(shoot, photos, "MODEL COMP CARD", false), "CompCard", orientation);
   };
 
   // Print a model portfolio from an explicit photo list, in the format the
@@ -4313,7 +4313,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const coverPhoto = photos.find(p => p.id.split("-")[0] === shoot.coverPhotoId) || photos[0];
     const ordered = [coverPhoto, ...photos.filter(p => p !== coverPhoto)];
     if (pageMode === 1 || ordered.length === 1) {
-      printFromContainer(shoot, printOnePagerHtml(shoot, ordered.slice(0, 5), "MODEL PORTFOLIO", true), orientation);
+      printFromContainer(shoot, printOnePagerHtml(shoot, ordered.slice(0, 5), "MODEL PORTFOLIO", true), "Portfolio", orientation);
       return;
     }
     
@@ -4335,7 +4335,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       pagesHtml += printGridPageHtml(shoot, cellsHtml, extrasHtml, pageLabel);
     }
     
-    printFromContainer(shoot, pagesHtml, orientation);
+    printFromContainer(shoot, pagesHtml, "Portfolio", orientation);
   }
 
   // Photo picker shown before a portfolio export: every portfolio-tagged
