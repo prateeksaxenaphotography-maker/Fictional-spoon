@@ -19,6 +19,36 @@ const COMMON_DOMAIN_TYPOS = {
   "outlok.com": "outlook.com", "yaho.com": "yahoo.com"
 };
 
+const PRIVATE_IP_REGEX = /^(::1$|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.|::ffff:127\.)/;
+
+// Best-effort city/region/country lookup for the visitor's IP (free, keyless
+// ip-api.com tier — plain HTTP only on the free tier, fine for a server-to-server
+// call). Never throws — logging analytics must not depend on this.
+async function getGeoLocation(ip) {
+  const empty = { city: "", region: "", country: "" };
+  if (!ip || PRIVATE_IP_REGEX.test(ip)) return empty;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const res = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,city,regionName,country`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (!res.ok) return empty;
+    const data = await res.json();
+    if (data.status !== "success") return empty;
+
+    return {
+      city: data.city || "",
+      region: data.regionName || "",
+      country: data.country || ""
+    };
+  } catch (err) {
+    console.warn(`Geo-IP lookup failed for ${ip}:`, err.message);
+    return empty;
+  }
+}
+
 // Format + disposable/typo checks only. Real proof of ownership comes from the
 // magic link click-through (checkMagicDownloadLink in app.js), not from this —
 // a prior DNS MX-lookup step was tried here and reverted (commit da03ed4) because
@@ -178,10 +208,13 @@ exports.logDownload = async (req, res) => {
   const baseUrl = originUrl || "https://nerdyphotographer.in";
   const downloadUrl = `${baseUrl.replace(/\/$/, "")}/?downloadCompCard=1&shootId=${encodeURIComponent(shootId || "")}&orientation=${encodeURIComponent(orientation || "portrait")}`;
 
-  const emailResult = await sendMagicDownloadEmail(cleanEmail, modelName.trim(), downloadUrl);
+  const [emailResult, geo] = await Promise.all([
+    sendMagicDownloadEmail(cleanEmail, modelName.trim(), downloadUrl),
+    getGeoLocation(ip)
+  ]);
 
-  // Log the attempt regardless of send outcome — the id/email/ip is what
-  // powers analytics, and we still want it even if Resend rejects the send.
+  // Log the attempt regardless of send outcome — the id/email/ip/location is
+  // what powers analytics, and we still want it even if Resend rejects the send.
   const logs = readLogs();
   const entry = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
@@ -189,6 +222,9 @@ exports.logDownload = async (req, res) => {
     email: cleanEmail,
     shootId: shootId || "",
     ip: ip || "unknown",
+    city: geo.city,
+    region: geo.region,
+    country: geo.country,
     emailSent: emailResult.success,
     timestamp: new Date().toISOString()
   };
@@ -224,7 +260,7 @@ exports.downloadCSV = (req, res) => {
   const logs = readLogs();
 
   // Excel-compatible CSV header and rows
-  const headers = ["Timestamp", "Model Name", "Email Address", "IP Address", "Email Sent"];
+  const headers = ["Timestamp", "Model Name", "Email Address", "IP Address", "City", "Region", "Country", "Email Sent"];
   const csvRows = [headers.join(",")];
 
   logs.forEach(log => {
@@ -233,6 +269,9 @@ exports.downloadCSV = (req, res) => {
       `"${log.modelName.replace(/"/g, '""')}"`,
       `"${log.email.replace(/"/g, '""')}"`,
       `"${log.ip.replace(/"/g, '""')}"`,
+      `"${(log.city || "").replace(/"/g, '""')}"`,
+      `"${(log.region || "").replace(/"/g, '""')}"`,
+      `"${(log.country || "").replace(/"/g, '""')}"`,
       `"${log.emailSent === undefined ? "n/a" : log.emailSent}"`
     ];
     csvRows.push(row.join(","));
