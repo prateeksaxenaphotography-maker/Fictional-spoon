@@ -3936,9 +3936,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     "close-up": "Close-up / Headshot"
   };
 
+  // Branding footer — this doubles as a marketing touchpoint, so it's always
+  // included and only ever shrinks (via --print-scale), never gets dropped.
   const PRINT_FOOTER_HTML = `
-    <div style="border-top: 2px solid #000; padding-top: 10px; margin-top: auto; font-family: sans-serif; font-size: 8.5px; color: #000; line-height: 1.5; display: flex; flex-direction: column; gap: 4px; text-align: left; width: 100%;">
-      <div style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: #000; text-transform: uppercase; letter-spacing: 0.05em; background: #f4f4f2; padding: 6px 10px; border-radius: 4px; border: 1px solid #dcdad5; display: flex; justify-content: space-between; align-items: center;">
+    <div style="border-top: 2px solid #000; padding-top: calc(10px * var(--print-scale, 1)); margin-top: auto; font-family: sans-serif; font-size: calc(8.5px * var(--print-scale, 1)); color: #000; line-height: 1.5; display: flex; flex-direction: column; gap: calc(4px * var(--print-scale, 1)); text-align: left; width: 100%; flex: 0 0 auto;">
+      <div style="font-family:'JetBrains Mono', monospace; font-size: calc(10px * var(--print-scale, 1)); font-weight: 800; color: #000; text-transform: uppercase; letter-spacing: 0.05em; background: #f4f4f2; padding: calc(6px * var(--print-scale, 1)) calc(10px * var(--print-scale, 1)); border-radius: 4px; border: 1px solid #dcdad5; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
         <div style="display: flex; align-items: center; gap: 8px;">
           <span>📸 Photographed by nerdyphotographer.in</span>
           <span>·</span>
@@ -3949,7 +3951,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         </div>
         <span style="font-weight: 700; color: var(--accent, #d24e1a);">www.nerdyphotographer.in</span>
       </div>
-      <div style="color: #555; font-size: 7.5px;">All portfolio cards, comp cards, and photography frames are official creative works produced under nerdyphotographer.in studio Noida &amp; Delhi NCR.</div>
+      <div style="color: #555; font-size: calc(7.5px * var(--print-scale, 1));">All portfolio cards, comp cards, and photography frames are official creative works produced under nerdyphotographer.in studio Noida &amp; Delhi NCR.</div>
     </div>
   `;
 
@@ -3967,7 +3969,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     if (shoot.modelEyes) statsArr.push(`Eyes: ${shoot.modelEyes}`);
     const statsLine = statsArr.join("  ·  ");
     return statsLine ? `
-      <div style="font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; background: #f5f5f5; color: #000; padding: 10px 14px; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; border-radius: 6px; margin-bottom: 20px; border: 1px solid #e0e0e0;">
+      <div style="font-family:'JetBrains Mono', monospace; font-size: calc(11px * var(--print-scale, 1)); font-weight: 700; background: #f5f5f5; color: #000; padding: calc(10px * var(--print-scale, 1)) calc(14px * var(--print-scale, 1)); text-transform: uppercase; letter-spacing: 0.05em; text-align: center; border-radius: 6px; margin-bottom: calc(20px * var(--print-scale, 1)); border: 1px solid #e0e0e0; flex: 0 0 auto;">
         ${statsLine}
       </div>
     ` : "";
@@ -3991,7 +3993,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     }
     const socialsLine = printSocials.join("   |   ");
     return socialsLine ? `
-      <div style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #333; padding: 6px 12px; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; margin-bottom: 20px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">
+      <div style="font-family:'JetBrains Mono', monospace; font-size: calc(10px * var(--print-scale, 1)); font-weight: 700; color: #333; padding: calc(6px * var(--print-scale, 1)) calc(12px * var(--print-scale, 1)); text-transform: uppercase; letter-spacing: 0.05em; text-align: center; margin-bottom: calc(20px * var(--print-scale, 1)); border-bottom: 1px solid #ddd; padding-bottom: calc(10px * var(--print-scale, 1)); flex: 0 0 auto;">
         ${socialsLine}
       </div>
     ` : "";
@@ -4086,6 +4088,38 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     return "portrait";
   }
 
+  // A4 = 210mm x 297mm. Printable area after the @page margin (6mm top/bottom,
+  // 8mm left/right) — used to size .print-page in real, deterministic units
+  // instead of vh (which is inconsistent across browsers in @media print).
+  const A4_PRINTABLE_MM = {
+    portrait: { width: 194, height: 285 },
+    landscape: { width: 281, height: 198 }
+  };
+
+  // Measures each .print-page against its fixed A4 box and, if content is
+  // taller than the page (e.g. a full stats bar + socials + 6 photos),
+  // shrinks --print-scale in small steps until it fits — so content is
+  // accommodated by shrinking proportionally rather than clipping or
+  // spilling onto a second sheet. The outer overflow:hidden stays on as a
+  // hard backstop so a page can never spill regardless of edge cases.
+  function fitPrintPagesToA4(printContainer, isLandscape) {
+    const { width, height } = isLandscape ? A4_PRINTABLE_MM.landscape : A4_PRINTABLE_MM.portrait;
+    printContainer.querySelectorAll(".print-page").forEach((pageEl) => {
+      pageEl.style.setProperty("width", `${width}mm`, "important");
+      pageEl.style.setProperty("height", `${height}mm`, "important");
+      pageEl.style.setProperty("--print-scale", "1");
+
+      const fits = () => pageEl.scrollHeight <= pageEl.clientHeight + 1;
+      if (fits()) return;
+      const MIN_SCALE = 0.72;
+      let scale = 1;
+      while (scale > MIN_SCALE && !fits()) {
+        scale = Math.max(MIN_SCALE, scale - 0.03);
+        pageEl.style.setProperty("--print-scale", String(scale));
+      }
+    });
+  }
+
   // Render pages into the hidden print container, wait for every image to
   // finish loading, then open the print dialog with a clean filename
   // (<Model_Name>_<suffix>_nerdyphotographer.pdf when saved as PDF).
@@ -4099,7 +4133,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       if (orientation === "auto") {
         orientation = detectPhotosOrientation(shoot.photos, imgs);
       }
-      
+      const isLandscape = orientation === "landscape";
+
       let styleTag = document.getElementById("dynamicPrintOrientationStyle");
       if (!styleTag) {
         styleTag = document.createElement("style");
@@ -4107,15 +4142,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         document.head.appendChild(styleTag);
       }
 
-      if (orientation === "landscape") {
+      if (isLandscape) {
         styleTag.textContent = `
           @media print {
-            @page { size: auto !important; margin: 6mm 8mm !important; }
-            .print-page {
-              height: 96vh !important;
-              min-height: 96vh !important;
-              padding: 12px 16px !important;
-            }
+            @page { size: A4 landscape !important; margin: 6mm 8mm !important; }
+            .print-page { padding: 12px 16px !important; }
             .print-main-row {
               flex: 1 1 0% !important;
               gap: 14px !important;
@@ -4140,12 +4171,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       } else {
         styleTag.textContent = `
           @media print {
-            @page { size: auto !important; margin: 6mm 8mm !important; }
-            .print-page {
-              height: 96vh !important;
-              min-height: 96vh !important;
-              padding: 14px 16px !important;
-            }
+            @page { size: A4 portrait !important; margin: 6mm 8mm !important; }
+            .print-page { padding: 14px 16px !important; }
             .print-main-row {
               flex: 1 1 0% !important;
               gap: 12px !important;
@@ -4156,11 +4183,30 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         printContainer.querySelectorAll(".print-page").forEach(p => p.classList.remove("landscape"));
       }
 
+      // The container is normally display:none on screen — make it
+      // participate in layout, off-screen, so real heights can be measured
+      // and fitted before the print dialog opens.
+      const prevDisplay = printContainer.style.display;
+      const prevPosition = printContainer.style.position;
+      const prevLeft = printContainer.style.left;
+      const prevTop = printContainer.style.top;
+      printContainer.style.setProperty("display", "flex", "important");
+      printContainer.style.setProperty("position", "fixed", "important");
+      printContainer.style.setProperty("left", "-99999px", "important");
+      printContainer.style.setProperty("top", "0", "important");
+
+      fitPrintPagesToA4(printContainer, isLandscape);
+
       const oldTitle = document.title;
       const cleanModelName = getTalentCleanName(shoot.talent || shoot.title).trim().replace(/\s+/g, '_');
       document.title = `${cleanModelName}_${fileSuffix}_nerdyphotographer`;
       window.print();
       document.title = oldTitle;
+
+      printContainer.style.display = prevDisplay;
+      printContainer.style.position = prevPosition;
+      printContainer.style.left = prevLeft;
+      printContainer.style.top = prevTop;
     };
     const imgs = printContainer.querySelectorAll("img");
     if (imgs.length === 0) { triggerPrint(); return; }
@@ -4197,11 +4243,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
     return `
       <div class="print-page${!hasDetails ? " no-details" : ""}">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; flex: 0 0 auto;">
-          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;">${headerLabel}</span>
-          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: #000; text-transform: uppercase;">Clicked by nerdyphotographer.in</span>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: calc(8px * var(--print-scale, 1)); margin-bottom: calc(10px * var(--print-scale, 1)); flex: 0 0 auto;">
+          <span style="font-family:'JetBrains Mono', monospace; font-size: calc(10px * var(--print-scale, 1)); font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;">${headerLabel}</span>
+          <span style="font-family:'JetBrains Mono', monospace; font-size: calc(10px * var(--print-scale, 1)); font-weight: 800; color: #000; text-transform: uppercase;">Clicked by nerdyphotographer.in</span>
         </div>
-        <h1 style="font-family:'Outfit', sans-serif; font-size: 30px; font-weight: 800; margin: 0 0 10px; text-transform: uppercase; color: #000; letter-spacing: -0.02em; flex: 0 0 auto;">${name}</h1>
+        <h1 style="font-family:'Outfit', sans-serif; font-size: calc(30px * var(--print-scale, 1)); font-weight: 800; margin: 0 0 calc(10px * var(--print-scale, 1)); text-transform: uppercase; color: #000; letter-spacing: -0.02em; flex: 0 0 auto;">${name}</h1>
         <div class="print-main-row">
           <div class="print-cover-panel">
             ${cover ? `<img src="${photoSrc(cover)}" alt="Lead photo" />` : ""}
