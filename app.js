@@ -2366,6 +2366,18 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               <p class="dropzone-title">${dropTitle}</p>
               <p class="dropzone-hint">${dropHint}</p>
             </div>
+            <div class="thumb-bulk-toolbar" id="thumbBulkToolbar" style="display:none; align-items:center; flex-wrap:wrap; gap:8px; margin-top:14px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--paper); pointer-events:auto;">
+              <span style="font-family:'JetBrains Mono', monospace; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft);">Bulk-tag pose:</span>
+              <button type="button" class="thumb-bulk-angle-btn" data-angle="front" style="font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line); background:var(--bone); color:var(--ink); cursor:pointer;">Front</button>
+              <button type="button" class="thumb-bulk-angle-btn" data-angle="side" style="font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line); background:var(--bone); color:var(--ink); cursor:pointer;">Side</button>
+              <button type="button" class="thumb-bulk-angle-btn" data-angle="three-quarter" style="font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line); background:var(--bone); color:var(--ink); cursor:pointer;">3/4</button>
+              <button type="button" class="thumb-bulk-angle-btn" data-angle="back" style="font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line); background:var(--bone); color:var(--ink); cursor:pointer;">Back</button>
+              <button type="button" class="thumb-bulk-angle-btn" data-angle="close-up" style="font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line); background:var(--bone); color:var(--ink); cursor:pointer;">Close-up</button>
+              <span style="width:1px; align-self:stretch; background:var(--line);"></span>
+              <button type="button" id="thumbBulkSelectAll" style="font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line); background:transparent; color:var(--ink-soft); cursor:pointer;">Select all</button>
+              <button type="button" id="thumbBulkClear" style="font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line); background:transparent; color:var(--ink-soft); cursor:pointer;">Clear</button>
+              <span id="thumbBulkCount" style="margin-left:auto; font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--ink-soft);">0 selected</span>
+            </div>
             <div class="thumb-grid" id="stagingGrid"></div>
           </div>
 
@@ -2714,6 +2726,36 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   function wireUpload(editId) {
     staged = [];
     const dz = $("#dropzone"), fi = $("#fileInput"), grid = $("#stagingGrid"), note = $("#queueNote"), pub = $("#publishBtn"), form = $("#shootForm");
+    // Bulk pose-tagging: tick photos, click a pose once to tag all of them —
+    // avoids setting the Angle/Profile dropdown one photo at a time on
+    // shoots with a dozen-plus frames. selectedForBulk is transient UI state
+    // (never saved), cleared on every re-render of the grid.
+    const selectedForBulk = new Set();
+    const bulkToolbar = $("#thumbBulkToolbar"), bulkCount = $("#thumbBulkCount");
+    const ANGLE_LABELS = { "front": "Front", "side": "Side", "three-quarter": "Three-Quarter", "back": "Back", "close-up": "Close-up" };
+    function updateBulkToolbar() {
+      if (bulkToolbar) bulkToolbar.style.display = staged.length ? "flex" : "none";
+      if (bulkCount) bulkCount.textContent = `${selectedForBulk.size} selected`;
+    }
+    bulkToolbar?.querySelectorAll(".thumb-bulk-angle-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (!selectedForBulk.size) { toast("Tick the checkbox on each photo you want to tag first."); return; }
+        const angle = btn.dataset.angle;
+        let n = 0;
+        staged.forEach((item) => { if (selectedForBulk.has(item.id)) { item.angle = angle; n++; } });
+        selectedForBulk.clear();
+        renderStaged();
+        toast(`Tagged ${n} photo${n > 1 ? "s" : ""} as ${ANGLE_LABELS[angle]}.`);
+      });
+    });
+    $("#thumbBulkSelectAll")?.addEventListener("click", () => {
+      staged.forEach((item) => selectedForBulk.add(item.id));
+      renderStaged();
+    });
+    $("#thumbBulkClear")?.addEventListener("click", () => {
+      selectedForBulk.clear();
+      renderStaged();
+    });
     const diagInput = $("#f_diagram_file"), diagPreview = $("#diagramPreview"), diagImg = $("#f_diagram_img"), diagVisibility = $("#f_diagram_visibility"), clearDiagBtn = $("#clearDiagramBtn");
     const testimonialOnlyCheckbox = $("#f_is_testimonial_only");
     
@@ -2964,6 +3006,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           </div>
           
           <div style="padding: 8px; display: flex; flex-direction: column; gap: 6px; background: var(--bone); border-top: 1px solid var(--line); flex-grow: 1;">
+            <label style="display: flex; align-items: center; gap: 5px; font-size: 9px; color: var(--ink-soft); cursor: pointer;">
+              <input type="checkbox" class="thumb-bulk-check" data-id="${f.id}" ${selectedForBulk.has(f.id) ? 'checked' : ''} style="width: 12px; height: 12px; accent-color: var(--accent); margin: 0; cursor: pointer;" />
+              Select for bulk tagging
+            </label>
             <input type="text" class="thumb-caption-input" data-id="${f.id}" value="${esc(f.caption || '')}" placeholder="Add caption…" style="width: 100%; box-sizing: border-box; font-size: 10px; padding: 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--paper); color: var(--ink); outline: none;" />
             
             <div style="display: grid; grid-template-columns: 1fr; gap: 4px;">
@@ -3039,6 +3085,16 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           renderStaged();
         });
       });
+
+      grid.querySelectorAll(".thumb-bulk-check").forEach((cb) => {
+        cb.addEventListener("change", (e) => {
+          const id = e.target.dataset.id;
+          if (e.target.checked) selectedForBulk.add(id); else selectedForBulk.delete(id);
+          updateBulkToolbar();
+        });
+        cb.addEventListener("mousedown", (e) => e.stopPropagation());
+      });
+      updateBulkToolbar();
     }
 
     // Convert a photo's focal setting into { x, y } percentages for the dot.
@@ -4115,13 +4171,6 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
      §16 · COMP-CARD PRINTING & DOWNLOAD LOGGING
      ============================================================ */
   /* ---- Shared print builders (comp card + model portfolio) ---- */
-  const PRINT_ANGLE_LABELS = {
-    "front": "Front Portrait",
-    "side": "Side Profile",
-    "back": "Back Profile",
-    "three-quarter": "3/4 Profile",
-    "close-up": "Close-up / Headshot"
-  };
 
   // Branding footer — this doubles as a marketing touchpoint, so it's always
   // included and only ever shrinks (via --print-scale), never gets dropped.
@@ -4142,9 +4191,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     </div>
   `;
 
-  function printStatsBarHtml(shoot, targetType) {
-    if (targetType === "comp" && shoot.showStatsOnCompCard === false) return "";
-    if (targetType === "portfolio" && shoot.showStatsOnModelPortfolio === false) return "";
+  function printStatsBarHtml(shoot) {
+    if (shoot.showStatsOnCompCard === false) return "";
 
     const statsArr = [];
     if (shoot.height) statsArr.push(`Height: ${shoot.height}`);
@@ -4189,70 +4237,15 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     ` : "";
   }
 
-  // Full-bleed cover page: big portrait, model name, document label.
-  function printCoverPageHtml(shoot, coverPhoto, headerLabel, subLabel) {
-    return `
-      <div class="print-page" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%; box-sizing: border-box; page-break-after: always; break-after: page;">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px;">
-          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;">${headerLabel}</span>
-          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: #000; text-transform: uppercase;">Clicked by nerdyphotographer.in</span>
-        </div>
-        
-        <div class="pf-cover-page-photo">
-          ${coverPhoto ? `<img src="${photoSrc(coverPhoto)}" alt="Cover photo" />` : ''}
-        </div>
-        
-        <div style="text-align: center; padding-top: 24px; margin-top: 16px; border-top: 1px solid #eee;">
-          <h1 style="font-family:'Outfit', sans-serif; font-size: 38px; font-weight: 800; margin: 0 0 4px; text-transform: uppercase; color: #000; letter-spacing: -0.03em;">
-            ${getTalentCleanName(shoot.talent || shoot.title)}
-          </h1>
-          <p style="font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--accent, #d24e1a); text-transform: uppercase; letter-spacing: 0.15em; margin: 0;">
-            ${subLabel}
-          </p>
-          <p style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 6px;">
-            Photographed &amp; Produced by nerdyphotographer.in studio
-          </p>
-        </div>
-      </div>
-    `;
-  }
-
   // One grid cell. Cell shapes are re-derived from each photo's real aspect
   // ratio at export time (justifyPrintGrid), so photos tile the grid
   // edge-to-edge with at most a few percent of even all-edge trim — and the
   // layout falls back to contain (padded, zero-crop) rather than ever
-  // trimming more. Full-length shots keep their heads. Angle badge optional.
-  function printGridCellHtml(p, showAngle = true) {
-    const labelHtml = showAngle && p.angle
-      ? `<span style="position: absolute; bottom: 6px; left: 6px; font-family:'JetBrains Mono', monospace; font-size:8px; font-weight:700; background:rgba(0,0,0,0.72); color:#fff; padding:2px 6px; border-radius:3px; text-transform:uppercase;">${PRINT_ANGLE_LABELS[p.angle] || p.angle}</span>`
-      : "";
+  // trimming more. Full-length shots keep their heads.
+  function printGridCellHtml(p) {
     return `
       <div class="print-photo-item">
         <img src="${photoSrc(p)}" alt="Portfolio frame" />
-        ${labelHtml}
-      </div>
-    `;
-  }
-
-  // A 3×2 photo grid page (stats/socials bars can be injected via extrasHtml).
-  function printGridPageHtml(shoot, cellsHtml, extrasHtml = "", pageLabel = "") {
-    const headerTitle = pageLabel || `${getTalentCleanName(shoot.talent || shoot.title)} — Portfolio`;
-    return `
-      <div class="print-page" style="display: flex; flex-direction: column; height: 100%; box-sizing: border-box; padding-top: 10px;">
-        <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px;">
-          <h2 style="font-family:'Outfit', sans-serif; font-size: 24px; font-weight: 800; margin: 0; text-transform: uppercase; color: #000; letter-spacing: -0.02em;">
-            ${headerTitle}
-          </h2>
-          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: #000; text-transform: uppercase;">Clicked by nerdyphotographer.in</span>
-        </div>
-        
-        ${extrasHtml}
-        
-        <div class="pf-photo-grid">
-          ${cellsHtml}
-        </div>
-
-        ${PRINT_FOOTER_HTML}
       </div>
     `;
   }
@@ -4408,18 +4401,15 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     }
   }
 
-  // ---- One-pager main-row layout: forked, not shared -----------------------
-  // Comp Card and Model Portfolio's "1 page" mode used to run through the
-  // exact same layoutPrintMainRows()/constants — a tuning change made for one
-  // document type silently changed the other's output too. Below are two
-  // independent copies (own CSS classes, own tunable constants) so each PDF's
-  // generation logic can evolve on its own from here. The shapes of the
-  // functions are identical on purpose (both do the same job): only what's
+  // ---- Comp Card one-pager main-row layout ---------------------------------
+  // Comp Card's own copy (own CSS classes, own tunable constants) of the
+  // one-pager layout — kept independent from Model Portfolio's template
+  // system so tuning one can never silently change the other. Only what's
   // genuinely generic geometry — bestJustifiedSplit/collectGridPhotos/
-  // applyJustifiedLayout/trimOf above — stays shared, parametrized by each
+  // applyJustifiedLayout/trimOf above — stays shared, parametrized by the
   // caller's own thresholds.
   //
-  // One-pager main row: the cover panel's size and the side grid's layout
+  // The cover panel's size and the side grid's layout
   // constrain each other (bigger hero = less grid room), and the ideal split
   // depends on the shapes drawn this export. Two arrangements are swept:
   //   "row"    — hero left, grid right: suits a portrait hero.
@@ -4494,82 +4484,6 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     });
   }
 
-  // Model Portfolio's independent copy of the same layout pass, for its "1
-  // page" export mode. Starts identical to Comp Card's tuning (so today's
-  // output is unchanged) but is free to diverge — e.g. different photo-count
-  // caps or trim tolerances — without touching Comp Card at all.
-  const PF_JUSTIFY_MAX_TRIM = 0.16;
-  const PF_COVER_MAX_TRIM = 0.12;
-  const PF_GRID_GAP = 10;
-  const PF_DROP_PENALTY = 0.02;
-  function layoutPortfolioMainRow(printContainer) {
-    printContainer.querySelectorAll(".pf-main-row").forEach((row) => {
-      const panel = row.querySelector(".pf-cover-panel");
-      const grid = row.querySelector(".pf-side-grid");
-      const coverImg = panel && panel.querySelector("img");
-      if (!panel || !coverImg || !coverImg.naturalWidth || !coverImg.naturalHeight) return;
-      const W = row.clientWidth, H = row.clientHeight;
-      if (!W || !H) return;
-      const coverAspect = coverImg.naturalWidth / coverImg.naturalHeight;
-      const rowGap = parseFloat(getComputedStyle(row).columnGap) || 12;
-
-      const gp = grid ? collectGridPhotos(grid) : { cells: [], imgs: [], aspects: [] };
-      if (gp.cells.length < 2) {
-        const clamped = Math.max(W * 0.28, Math.min(W * 0.62, H * coverAspect));
-        panel.style.setProperty("flex", `0 0 ${clamped}px`, "important");
-        if (grid) grid.style.setProperty("flex", "1 1 0", "important");
-        return;
-      }
-
-      let best = null;
-      for (let frac = 0.26; frac <= 0.661; frac += 0.02) {
-        for (let n = Math.min(2, gp.cells.length); n <= gp.cells.length; n++) {
-          const aspects = gp.aspects.slice(0, n);
-          const dropped = gp.cells.length - n;
-          const heroW = W * frac;
-          const rowCoverTrim = trimOf((heroW / H) / coverAspect);
-          const rowSplit = bestJustifiedSplit(W - heroW - rowGap, H, aspects, PF_GRID_GAP);
-          if (rowSplit) {
-            const score = Math.max(rowCoverTrim, rowSplit.trim) + 0.1 * rowCoverTrim + PF_DROP_PENALTY * dropped;
-            if (!best || score < best.score) best = { score, mode: "row", size: heroW, n, split: rowSplit, coverTrim: rowCoverTrim };
-          }
-          const heroH = H * frac;
-          const colCoverTrim = trimOf((W / heroH) / coverAspect);
-          const colSplit = bestJustifiedSplit(W, H - heroH - rowGap, aspects, PF_GRID_GAP);
-          if (colSplit) {
-            const score = Math.max(colCoverTrim, colSplit.trim) + 0.1 * colCoverTrim + PF_DROP_PENALTY * dropped;
-            if (!best || score < best.score) best = { score, mode: "column", size: heroH, n, split: colSplit, coverTrim: colCoverTrim };
-          }
-        }
-      }
-      if (!best) return;
-
-      if (best.mode === "column") {
-        row.style.setProperty("flex-direction", "column", "important");
-        panel.style.setProperty("height", "auto", "important");
-        panel.style.setProperty("width", "100%", "important");
-        grid.style.setProperty("height", "auto", "important");
-      }
-      panel.style.setProperty("flex", `0 0 ${best.size}px`, "important");
-      grid.style.setProperty("flex", "1 1 0", "important");
-      coverImg.style.setProperty("object-fit", best.coverTrim <= PF_COVER_MAX_TRIM ? "cover" : "contain", "important");
-      for (let i = best.n; i < gp.cells.length; i++) gp.cells[i].remove();
-      applyJustifiedLayout(grid, gp.cells.slice(0, best.n), gp.imgs.slice(0, best.n), gp.aspects.slice(0, best.n), best.split, PF_GRID_GAP, PF_JUSTIFY_MAX_TRIM);
-    });
-  }
-
-  // Multi-page portfolio grids only (.pf-photo-grid — Comp Card never
-  // produces this markup at all): the photo count per page is fixed
-  // upstream, so just justify what's there.
-  function justifyPortfolioGrids(printContainer) {
-    printContainer.querySelectorAll(".pf-photo-grid").forEach((grid) => {
-      const { cells, imgs, aspects } = collectGridPhotos(grid);
-      if (cells.length < 2) return;
-      const best = bestJustifiedSplit(grid.clientWidth, grid.clientHeight, aspects, 12);
-      if (best) applyJustifiedLayout(grid, cells, imgs, aspects, best, 12, PF_JUSTIFY_MAX_TRIM);
-    });
-  }
-
   // Render pages into the hidden print container, wait for every image to
   // finish loading, then open the print dialog with a clean filename
   // (<Model_Name>_<suffix>_nerdyphotographer.pdf when saved as PDF).
@@ -4592,35 +4506,27 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         document.head.appendChild(styleTag);
       }
 
-      // Selectors keyed off docType ("CompCard" vs "Portfolio") rather than
-      // one shared rule set — the last piece of the one-pager pipeline that
-      // was still implicitly shared between the two document types.
-      const rowSel = docType === "CompCard" ? ".cc-main-row" : ".pf-main-row";
-      const coverSel = docType === "CompCard" ? ".cc-cover-panel" : ".pf-cover-panel";
-      const sideSel = docType === "CompCard" ? ".cc-side-grid" : ".pf-side-grid";
-
+      // .cc-main-row/.cc-cover-panel/.cc-side-grid are Comp Card's own
+      // one-pager classes — the only document type that still produces this
+      // markup (Model Portfolio's template pages use fixed, non-justified
+      // layouts instead, so they need no selector here at all).
       if (isLandscape) {
         styleTag.textContent = `
           @media print {
             @page { size: A4 landscape !important; margin: 6mm 8mm !important; }
             .print-page { padding: 12px 16px !important; }
-            ${rowSel} {
+            .cc-main-row {
               flex: 1 1 0% !important;
               gap: 14px !important;
               margin: 0 0 10px !important;
             }
-            ${coverSel} {
+            .cc-cover-panel {
               flex: 1.5 1 0 !important;
             }
-            ${sideSel} {
+            .cc-side-grid {
               flex: 1 1 0 !important;
               grid-template-columns: repeat(2, 1fr) !important;
               gap: 8px !important;
-            }
-            .pf-photo-grid {
-              grid-template-columns: repeat(3, 1fr) !important;
-              gap: 10px !important;
-              margin: 8px 0 !important;
             }
           }
         `;
@@ -4630,7 +4536,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           @media print {
             @page { size: A4 portrait !important; margin: 6mm 8mm !important; }
             .print-page { padding: 14px 16px !important; }
-            ${rowSel} {
+            .cc-main-row {
               flex: 1 1 0% !important;
               gap: 12px !important;
               margin: 0 0 10px !important;
@@ -4661,13 +4567,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       printContainer.style.setProperty("visibility", "hidden", "important");
 
       fitPrintPagesToA4(printContainer, isLandscape);
-      // Each only matches its own class (.cc-main-row / .pf-main-row /
-      // .pf-photo-grid), so calling all three unconditionally is a safe
-      // no-op for whichever document type didn't produce that markup —
-      // printFromContainer doesn't need to know which caller invoked it.
+      // A no-op for any page that doesn't produce .cc-main-row markup (i.e.
+      // every Model Portfolio template page) — printFromContainer doesn't
+      // need to know which caller invoked it.
       layoutCompCardMainRow(printContainer);
-      layoutPortfolioMainRow(printContainer);
-      justifyPortfolioGrids(printContainer);
 
       const oldTitle = document.title;
       const cleanModelName = getTalentCleanName(shoot.talent || shoot.title).trim().replace(/\s+/g, '_');
@@ -4720,15 +4623,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   // socials strips when the data exists. The photo row flexes, so the page
   // absorbs optional strips without ever spilling onto a second sheet.
   //
-  // Forked into two independent templates (Comp Card vs Model Portfolio's
-  // "1 page" mode) — they used to be one shared function keyed by a
-  // headerLabel string, which meant a layout tweak made for one document
-  // type silently changed the other's too. Each owns its own CSS classes
-  // (.cc-* / .pf-*) so they can diverge freely from here.
+  // Comp Card's own copy of the one-pager layout (own .cc-* CSS classes) —
+  // Model Portfolio now uses the template system below instead of a
+  // matching one-pager, so this is Comp Card-only.
   function printCompCardPageHtml(shoot, photos) {
     const name = getTalentCleanName(shoot.talent || shoot.title);
     const cover = photos[0];
-    const statsHtml = printStatsBarHtml(shoot, "comp");
+    const statsHtml = printStatsBarHtml(shoot);
     const socialsHtml = printSocialsBarHtml(shoot);
     const hasDetails = !!(statsHtml.trim() || socialsHtml.trim());
 
@@ -4750,39 +4651,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <div class="cc-cover-panel">
             ${cover ? `<img src="${photoSrc(cover)}" alt="Lead photo" />` : ""}
           </div>
-          ${side.length ? `<div class="cc-side-grid${side.length === 5 ? " grid-5" : ""}">${side.map(p => printGridCellHtml(p, false)).join("")}</div>` : ""}
-        </div>
-        ${statsHtml}
-        ${socialsHtml}
-        ${PRINT_FOOTER_HTML}
-      </div>
-    `;
-  }
-
-  // Model Portfolio's independent copy for its "1 page" export mode (see
-  // printCompCardPageHtml above for why these are separate). Starts
-  // pixel-identical to the Comp Card version; free to diverge from here —
-  // e.g. showAngles is already portfolio-only behavior.
-  function printPortfolioOnePagerHtml(shoot, photos) {
-    const name = getTalentCleanName(shoot.talent || shoot.title);
-    const cover = photos[0];
-    const statsHtml = printStatsBarHtml(shoot, "portfolio");
-    const socialsHtml = printSocialsBarHtml(shoot);
-    const hasDetails = !!(statsHtml.trim() || socialsHtml.trim());
-    const side = photos.slice(1, 6);
-
-    return `
-      <div class="print-page${!hasDetails ? " no-details" : ""}">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: calc(8px * var(--print-scale, 1)); margin-bottom: calc(10px * var(--print-scale, 1)); flex: 0 0 auto;">
-          <span style="font-family:'JetBrains Mono', monospace; font-size: calc(10px * var(--print-scale, 1)); font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;">MODEL PORTFOLIO</span>
-          <span style="font-family:'JetBrains Mono', monospace; font-size: calc(10px * var(--print-scale, 1)); font-weight: 800; color: #000; text-transform: uppercase;">Clicked by nerdyphotographer.in</span>
-        </div>
-        <h1 style="font-family:'Outfit', sans-serif; font-size: calc(30px * var(--print-scale, 1)); font-weight: 800; margin: 0 0 calc(10px * var(--print-scale, 1)); text-transform: uppercase; color: #000; letter-spacing: -0.02em; flex: 0 0 auto;">${name}</h1>
-        <div class="pf-main-row">
-          <div class="pf-cover-panel">
-            ${cover ? `<img src="${photoSrc(cover)}" alt="Lead photo" />` : ""}
-          </div>
-          ${side.length ? `<div class="pf-side-grid${side.length === 5 ? " grid-5" : ""}">${side.map(p => printGridCellHtml(p, true)).join("")}</div>` : ""}
+          ${side.length ? `<div class="cc-side-grid${side.length === 5 ? " grid-5" : ""}">${side.map(p => printGridCellHtml(p)).join("")}</div>` : ""}
         </div>
         ${statsHtml}
         ${socialsHtml}
@@ -4833,164 +4702,323 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     printFromContainer(shoot, printCompCardPageHtml(shoot, photos), "CompCard", orientation);
   };
 
-  // Print a model portfolio from an explicit photo list, in the format the
-  // admin/user picked: 1 page (compact composite: lead + up to 4) or multi-page
-  // (full-bleed cover page + angle-labelled 3×2 grids for all selected photos).
-  function printPortfolioPhotos(shoot, photos, pageMode = 2, orientation = "auto") {
-    const coverPhoto = photos.find(p => p.id.split("-")[0] === shoot.coverPhotoId) || photos[0];
-    const ordered = [coverPhoto, ...photos.filter(p => p !== coverPhoto)];
-    if (pageMode === 1 || ordered.length === 1) {
-      printFromContainer(shoot, printPortfolioOnePagerHtml(shoot, ordered.slice(0, 5)), "Portfolio", orientation);
-      return;
-    }
-    
-    // Page 1: Cover page
-    let pagesHtml = printCoverPageHtml(shoot, ordered[0], "MODEL PORTFOLIO", "OFFICIAL MODEL PORTFOLIO · COVER");
-    
-    // Remaining photos split into 3x2 grid pages (6 photos per page)
-    const remainingGridPhotos = ordered.slice(1);
-    const pageSize = 6;
-    const totalGridPages = Math.ceil(remainingGridPhotos.length / pageSize) || 1;
-    
-    for (let i = 0; i < remainingGridPhotos.length; i += pageSize) {
-      const chunk = remainingGridPhotos.slice(i, i + pageSize);
-      const gridNum = Math.floor(i / pageSize) + 1;
-      const pageLabel = `${getTalentCleanName(shoot.talent || shoot.title)} — Page ${gridNum + 1} of ${totalGridPages + 1}`;
-      const cellsHtml = chunk.map(p => printGridCellHtml(p, true)).join("");
-      const isLastGridPage = (i + pageSize >= remainingGridPhotos.length);
-      const extrasHtml = isLastGridPage ? (printStatsBarHtml(shoot, "portfolio") + printSocialsBarHtml(shoot)) : "";
-      pagesHtml += printGridPageHtml(shoot, cellsHtml, extrasHtml, pageLabel);
-    }
-    
-    printFromContainer(shoot, pagesHtml, "Portfolio", orientation);
+  // ---- Model Portfolio template system (Template 1: The Composite Lookbook) ----
+  // Replaces the old "select any photos, 1-page or multi-page" flat export.
+  // Every slot here is pinned to an existing angle tag (front/side/three-
+  // quarter/back/close-up) — the customer can only ever put a photo into the
+  // slot it was already tagged for. A slot with zero tagged candidates is
+  // simply skipped (no page for it), rather than forced with a placeholder.
+  const PORTFOLIO_TEMPLATE1_SLOTS = [
+    { angle: "front", label: "Front" },
+    { angle: "side", label: "Side" },
+    { angle: "three-quarter", label: "Three-Quarter" },
+    { angle: "back", label: "Back" },
+    { angle: "close-up", label: "Close-Up" }
+  ];
+
+  function printTemplate1StatBlocksHtml(shoot) {
+    if (shoot.showStatsOnModelPortfolio === false) return "";
+    const rows = [];
+    if (shoot.height) rows.push(["Height", shoot.height]);
+    if (shoot.chest) rows.push(["Chest/Bust", shoot.chest]);
+    if (shoot.waist) rows.push(["Waist", shoot.waist]);
+    if (shoot.hips) rows.push(["Hips", shoot.hips]);
+    if (shoot.shoes) rows.push(["Shoes", shoot.shoes]);
+    if (shoot.modelHair) rows.push(["Hair", shoot.modelHair]);
+    if (shoot.modelEyes) rows.push(["Eyes", shoot.modelEyes]);
+    if (!rows.length) return "";
+    return rows.map(([label, val]) => `
+      <div>
+        <p style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); letter-spacing: 0.1em; text-transform: uppercase; color: #999; margin: 0 0 2px;">${esc(label)}</p>
+        <p style="font-size: calc(12px * var(--print-scale, 1)); font-weight: 700; color: #000; margin: 0;">${esc(val)}</p>
+      </div>
+    `).join("");
   }
 
-  // Photo picker shown before a portfolio export: every portfolio-tagged
-  // click as a tappable thumbnail (angle badge included) — choose exactly
-  // which ones go into the PDF. All are selected by default.
-  function openPortfolioPicker(shoot, photos) {
-    // Rebuild the modal from scratch each time so no stale listeners stack up.
-    document.getElementById("portfolioPickerModal")?.remove();
+  // manualFields (location/phone/brands) are typed in by the customer at
+  // export time and only ever flow into this generated HTML — never written
+  // back onto the shoot object, never persisted, never sent to the backend.
+  function printTemplate1ContactRowsHtml(shoot, manualFields) {
+    const rows = [];
+    if (shoot.instagram) {
+      const handles = compCardOwnHandles(shoot, shoot.instagram.split(",").map(x => x.trim()).filter(Boolean), isIgHandle);
+      if (handles.length) {
+        const cleaned = handles.map(h => h.startsWith("@") ? h : `@${h.split("/").pop()}`);
+        rows.push(["Instagram", cleaned.join(", "), false]);
+      }
+    }
+    if (manualFields.phone) rows.push(["Phone", manualFields.phone, true]);
+    if (manualFields.brands && manualFields.brands.length) rows.push(["Worked With", manualFields.brands.join(" · "), true]);
+    if (!rows.length) return "";
+    return rows.map(([label, val, isManual]) => `
+      <div>
+        <p style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); letter-spacing: 0.1em; text-transform: uppercase; color: #999; margin: 0 0 2px;">${esc(label)}${isManual ? ` <span style="font-weight:400; text-transform:none; letter-spacing:0;">(optional, provided by model)</span>` : ""}</p>
+        <p style="font-size: calc(11px * var(--print-scale, 1)); font-weight: 700; color: ${label === "Instagram" ? "var(--accent, #d24e1a)" : "#000"}; margin: 0;">${esc(val)}</p>
+      </div>
+    `).join("");
+  }
+
+  // Page 1 — full-bleed-feeling cover: name + template label + optional
+  // manual location beside the lead pose, in the same bordered-page look as
+  // every other export on this site (Outfit heading, JetBrains Mono labels,
+  // accent-orange eyebrow) so it reads as one product family, not a one-off.
+  function printTemplate1CoverHtml(shoot, name, heroSlot, manualFields) {
+    const locationLine = manualFields.location ? ` &nbsp;·&nbsp; ${esc(manualFields.location)}` : "";
+    return `
+      <div class="print-page">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px; flex: 0 0 auto;">
+          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;">MODEL PORTFOLIO</span>
+          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: #000; text-transform: uppercase;">Clicked by nerdyphotographer.in</span>
+        </div>
+        <div style="display: flex; gap: 16px; flex: 1 1 auto; min-height: 0;">
+          <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px;">
+            <p style="font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--accent, #d24e1a); text-transform: uppercase; letter-spacing: 0.15em; margin: 0;">The Composite Lookbook</p>
+            <h1 style="font-family:'Outfit', sans-serif; font-size: 34px; font-weight: 800; margin: 0; text-transform: uppercase; color: #000; letter-spacing: -0.03em; line-height: 1.05;">${esc(name)}</h1>
+            <p style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #555; letter-spacing: 0.05em; margin: 0;">SEASON ${new Date().getFullYear()}${locationLine}</p>
+          </div>
+          <div style="flex: 1.3; position: relative; background: #f4f4f2; border: 1px solid #e2e0dc; border-radius: 6px; overflow: hidden; min-height: 0;">
+            ${heroSlot ? `<img src="${photoSrc(heroSlot.photo)}" alt="Cover" style="width:100%; height:100%; object-fit:cover; object-position: top center; display:block;" />` : ""}
+          </div>
+        </div>
+        <div style="text-align: center; padding-top: 16px; margin-top: 16px; border-top: 1px solid #eee; flex: 0 0 auto;">
+          <p style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: #000; text-transform: uppercase; letter-spacing: 0.1em; margin: 0;">
+            Photographed &amp; Produced by nerdyphotographer.in studio
+          </p>
+        </div>
+      </div>
+    `;
+  }
+
+  // Page 2 — stats/contact on the left, a numbered contents list of every
+  // template slot on the right (unfilled slots stay listed but dimmed, so
+  // the document is honest about which poses this export actually has).
+  function printTemplate1ContentsHtml(shoot, name, filledSlots, manualFields) {
+    const statBlocks = printTemplate1StatBlocksHtml(shoot);
+    const contactRows = printTemplate1ContactRowsHtml(shoot, manualFields);
+    const contentsItems = PORTFOLIO_TEMPLATE1_SLOTS.map((slot, i) => {
+      const num = String(i + 1).padStart(2, "0");
+      const filled = filledSlots.find(f => f.angle === slot.angle);
+      if (!filled) {
+        return `
+          <div style="display:flex; align-items:center; gap:10px; opacity:0.4;">
+            <span style="font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:800; color:var(--accent, #d24e1a); width:18px;">${num}</span>
+            <span style="font-size:11px; font-weight:650; flex:1;">${esc(slot.label)}</span>
+          </div>
+        `;
+      }
+      return `
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:800; color:var(--accent, #d24e1a); width:18px;">${num}</span>
+          <span style="font-size:11px; font-weight:650; flex:1;">${esc(slot.label)}</span>
+          <img src="${photoSrc(filled.photo)}" style="width:28px; height:34px; object-fit:cover; border-radius:2px;" alt="" />
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <div class="print-page">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px; flex: 0 0 auto;">
+          <h2 style="font-family:'Outfit', sans-serif; font-size: 22px; font-weight: 800; margin: 0; text-transform: uppercase; color: #000; letter-spacing: -0.02em;">${esc(name)} — Contents</h2>
+          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: #000; text-transform: uppercase;">Clicked by nerdyphotographer.in</span>
+        </div>
+        <div style="display: flex; gap: 24px; flex: 1 1 auto; min-height: 0;">
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 16px; justify-content: center;">
+            ${statBlocks}
+            ${contactRows}
+          </div>
+          <div style="flex: 1.1; display: flex; flex-direction: column; gap: 10px; justify-content: center; border-left: 1px solid #eee; padding-left: 24px;">
+            <p style="font-family:'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: #999; margin: 0 0 4px;">Contents</p>
+            ${contentsItems}
+          </div>
+        </div>
+        ${PRINT_FOOTER_HTML}
+      </div>
+    `;
+  }
+
+  // Pages 3+ — one spread per filled slot: full-bleed pose photo beside a
+  // simple caption panel. Deliberately doesn't fabricate shoot-specific copy
+  // (no invented location/story) — the only facts printed are the pose name,
+  // the model's name, and studio credit.
+  function printTemplate1SpreadHtml(shoot, name, slot, index, totalCount) {
+    const num = String(index + 1).padStart(2, "0");
+    return `
+      <div class="print-page">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 14px; flex: 0 0 auto;">
+          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;">${num} / ${String(totalCount).padStart(2, "0")} — ${esc(slot.label.toUpperCase())}</span>
+          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: #000; text-transform: uppercase;">Clicked by nerdyphotographer.in</span>
+        </div>
+        <div style="display: flex; gap: 16px; flex: 1 1 auto; min-height: 0;">
+          <div style="flex: 1.6; position: relative; background: #f4f4f2; border: 1px solid #e2e0dc; border-radius: 6px; overflow: hidden; min-height: 0;">
+            <img src="${photoSrc(slot.photo)}" alt="${esc(slot.label)}" style="width:100%; height:100%; object-fit:cover; display:block;" />
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 8px;">
+            <p style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: var(--accent, #d24e1a); letter-spacing: 0.08em; margin: 0;">${num} — ${esc(slot.label.toUpperCase())}</p>
+            <p style="font-family:'Outfit', sans-serif; font-size: 19px; font-weight: 750; margin: 0; color: #000;">${esc(name)}</p>
+            <p style="font-size: 11px; color: #666; line-height: 1.5; margin: 0;">Selected by ${esc(name)} from their own ${esc(slot.label.toLowerCase())}-tagged photographs.</p>
+          </div>
+        </div>
+        ${PRINT_FOOTER_HTML}
+      </div>
+    `;
+  }
+
+  // Assembles cover + contents + one spread per filled slot, then hands off
+  // to the shared print pipeline. Template 1 is a fixed landscape format —
+  // not user-choosable, since the template itself defines its own shape.
+  function printPortfolioTemplate1(shoot, filledSlots, manualFields) {
+    const name = getTalentCleanName(shoot.talent || shoot.title);
+    const heroSlot = filledSlots[0];
+    let pagesHtml = printTemplate1CoverHtml(shoot, name, heroSlot, manualFields);
+    pagesHtml += printTemplate1ContentsHtml(shoot, name, filledSlots, manualFields);
+    filledSlots.forEach((slot, i) => {
+      pagesHtml += printTemplate1SpreadHtml(shoot, name, slot, i, filledSlots.length);
+    });
+    printFromContainer(shoot, pagesHtml, "Portfolio", "landscape");
+  }
+
+  // The customer-facing flow: role fork (Model vs Agency) up top, then one
+  // pick-a-photo row per available pose, then — Model only — optional
+  // location/phone/brand fields that are typed in here and nowhere else;
+  // Agency exports skip those three fields entirely since an agency rep
+  // wouldn't have (and shouldn't be asked for) that talent's personal info.
+  function openPortfolioTemplateFlow(shoot, photos) {
+    document.getElementById("portfolioTemplateModal")?.remove();
+    const name = getTalentCleanName(shoot.talent || shoot.title);
+
+    const slotsWithCandidates = PORTFOLIO_TEMPLATE1_SLOTS.map(slot => ({
+      ...slot,
+      candidates: photos.filter(p => p.angle === slot.angle)
+    }));
+    const availableSlots = slotsWithCandidates.filter(s => s.candidates.length);
+
+    if (!availableSlots.length) {
+      toast("None of this model's portfolio photos are tagged with a pose yet (Front/Side/Three-Quarter/Back/Close-up) — tag them in Upload to use the template system.");
+      return;
+    }
+
+    const selectedBySlot = {};
+    availableSlots.forEach(s => { selectedBySlot[s.angle] = s.candidates[0].id; });
+    let role = "model";
+
     const modal = document.createElement("div");
-    modal.id = "portfolioPickerModal";
+    modal.id = "portfolioTemplateModal";
     modal.style = "position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.75); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; padding: 20px;";
-    const angleShort = { "front": "Front", "side": "Side", "back": "Back", "three-quarter": "3/4", "close-up": "Close-up" };
     modal.innerHTML = `
-      <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 14px; width: 100%; max-width: 720px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--shadow);">
-        <div style="padding: 18px 22px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 10px; background: var(--bone); flex-wrap: wrap;">
-          <div>
-            <h3 style="margin: 0; font-family:'Outfit', sans-serif; font-size: 16px; font-weight: 700; color: var(--ink);">Select photos for the PDF</h3>
-            <p style="margin: 4px 0 0; font-size: 11px; color: var(--ink-soft);">${esc(getTalentCleanName(shoot.talent || shoot.title))} — tap photos to include or exclude them.</p>
-          </div>
-          <div style="display: flex; gap: 8px;">
-            <button type="button" id="ppAll" class="btn btn-ghost" style="font-size: 10px; height: auto; padding: 6px 12px;">Select all</button>
-            <button type="button" id="ppNone" class="btn btn-ghost" style="font-size: 10px; height: auto; padding: 6px 12px;">Clear</button>
-          </div>
+      <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 14px; width: 100%; max-width: 760px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--shadow);">
+        <div style="padding: 18px 22px; border-bottom: 1px solid var(--line); background: var(--bone);">
+          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent);">Model Portfolio · The Composite Lookbook</span>
+          <h3 style="margin: 4px 0 0; font-family:'Outfit', sans-serif; font-size: 18px; font-weight: 700; color: var(--ink);">${esc(name)} — build the portfolio PDF</h3>
+          <p style="margin: 4px 0 0; font-size: 11px; color: var(--ink-soft);">Pick a photo for each pose, then export. Cover, Contents &amp; Contact, and one spread page per pose are generated automatically.</p>
         </div>
-        <div style="padding: 18px 22px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px;">
-          ${photos.map((p, i) => `
-            <button type="button" class="pp-item" data-idx="${i}" aria-pressed="true" style="position: relative; aspect-ratio: 4/5; border-radius: 8px; overflow: hidden; border: 2px solid var(--accent); padding: 0; cursor: pointer; background: var(--bone);">
-              <img src="${esc(photoSrc(p))}" style="width: 100%; height: 100%; object-fit: cover; object-position: ${esc(p.objectPosition || "center")}; display: block;" alt="Photo ${i + 1}" loading="lazy" />
-              <span class="pp-check" style="position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center;">✓</span>
-              ${p.angle ? `<span style="position: absolute; bottom: 6px; left: 6px; font-family:'JetBrains Mono', monospace; font-size: 8px; font-weight: 700; background: rgba(0,0,0,0.72); color: #fff; padding: 2px 6px; border-radius: 3px; text-transform: uppercase;">${esc(angleShort[p.angle] || p.angle)}</span>` : ""}
-            </button>
-          `).join("")}
-        </div>
-        <div style="padding: 14px 22px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 12px; background: var(--bone);">
-          <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-            <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--ink-soft);">PDF Orientation:</span>
-            <label style="display: flex; align-items: center; gap: 6px; font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; cursor: pointer; color: var(--ink);">
-              <input type="radio" name="ppOrientation" value="auto" checked style="accent-color: var(--accent); margin: 0;" />
-              Auto (Content-Aware)
-            </label>
-            <label style="display: flex; align-items: center; gap: 6px; font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; cursor: pointer; color: var(--ink);">
-              <input type="radio" name="ppOrientation" value="portrait" style="accent-color: var(--accent); margin: 0;" />
-              Portrait
-            </label>
-            <label style="display: flex; align-items: center; gap: 6px; font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; cursor: pointer; color: var(--ink);">
-              <input type="radio" name="ppOrientation" value="landscape" style="accent-color: var(--accent); margin: 0;" />
-              Landscape
-            </label>
+
+        <div style="padding: 16px 22px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px;">
+
+          <div style="display:flex; flex-wrap:wrap; align-items:center; gap: 12px; background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px;">
+            <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--ink-soft);">Exporting as:</span>
+            <div style="display: inline-flex; background: var(--paper); border: 1px solid var(--line); border-radius: 7px; padding: 3px;">
+              <button type="button" data-role="model" class="pt-role-btn active" style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; text-transform: uppercase; border: none; padding: 6px 14px; border-radius: 5px; cursor: pointer; background: var(--ink); color: var(--paper);">Model</button>
+              <button type="button" data-role="agency" class="pt-role-btn" style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; text-transform: uppercase; border: none; padding: 6px 14px; border-radius: 5px; cursor: pointer; background: transparent; color: var(--ink-soft);">Agency</button>
+            </div>
+            <span style="font-size: 11px; color: var(--ink-soft); flex: 1 1 220px;">Agency exports skip location, phone, and brand credits entirely.</span>
           </div>
-          <div style="display: flex; gap: 20px; flex-wrap: wrap; border-top: 1px dashed var(--line); padding-top: 10px;">
-            <label style="display: flex; align-items: center; gap: 8px; font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; text-transform: uppercase; cursor: pointer; color: var(--ink);">
-              <input type="radio" name="ppMode" value="1" style="accent-color: var(--accent); margin: 0;" />
-              1 page — compact card (1 lead + up to 4 side photos)
-            </label>
-            <label style="display: flex; align-items: center; gap: 8px; font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; text-transform: uppercase; cursor: pointer; color: var(--ink);">
-              <input type="radio" name="ppMode" value="2" checked style="accent-color: var(--accent); margin: 0;" />
-              Multi-page — cover page + photo grids (6 per grid page)
-            </label>
+
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            ${slotsWithCandidates.map((slot, i) => {
+              const num = String(i + 1).padStart(2, "0");
+              if (!slot.candidates.length) {
+                return `
+                  <div style="opacity: 0.5; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--ink-soft);">
+                    <span style="font-family:'JetBrains Mono', monospace; font-weight: 800; color: var(--accent);">${num}</span>
+                    <span>${esc(slot.label)} — no tagged photos yet, this page will be skipped.</span>
+                  </div>
+                `;
+              }
+              return `
+                <div class="pt-slot-row" data-angle="${esc(slot.angle)}">
+                  <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;">
+                    <span style="font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 800; color: var(--accent);">${num}</span>
+                    <span style="font-size: 13px; font-weight: 650; color: var(--ink);">${esc(slot.label)} — pick one</span>
+                  </div>
+                  <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    ${slot.candidates.map((p, ci) => `
+                      <button type="button" class="pt-cand" data-id="${esc(p.id)}" style="position: relative; width: 72px; aspect-ratio: 4/5; border-radius: 6px; overflow: hidden; border: 2px solid ${ci === 0 ? "var(--accent)" : "var(--line)"}; padding: 0; cursor: pointer; background: var(--bone);">
+                        <img src="${esc(photoSrc(p))}" style="width: 100%; height: 100%; object-fit: cover; object-position: ${esc(p.objectPosition || "center")}; display: block;" alt="${esc(slot.label)} option" loading="lazy" />
+                        <span class="pt-check" style="display:${ci === 0 ? "flex" : "none"}; position: absolute; top: 4px; right: 4px; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 10px; font-weight: 800; align-items: center; justify-content: center;">✓</span>
+                      </button>
+                    `).join("")}
+                  </div>
+                </div>
+              `;
+            }).join("")}
           </div>
+
+          <div id="ptOptionalFields" style="display: flex; flex-direction: column; gap: 10px; border-top: 1px dashed var(--line); padding-top: 14px;">
+            <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--ink-soft);">Optional details — typed in by the model, never saved by the studio</span>
+            <input type="text" id="ptLocation" placeholder="Current location (optional, e.g. Based in Mumbai)" style="width: 100%; box-sizing: border-box; padding: 9px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); font-size: 12px;" />
+            <input type="text" id="ptPhone" placeholder="Phone number (optional)" style="width: 100%; box-sizing: border-box; padding: 9px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); font-size: 12px;" />
+            <input type="text" id="ptBrands" placeholder="Top 5 brands worked with, comma-separated (optional)" style="width: 100%; box-sizing: border-box; padding: 9px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); font-size: 12px;" />
+          </div>
+
         </div>
+
         <div style="padding: 16px 22px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; align-items: center; gap: 12px; background: var(--bone);">
-          <span id="ppHint" style="font-size: 10px; color: var(--ink-soft); margin-right: auto; font-family:'JetBrains Mono', monospace;"></span>
-          <button type="button" id="ppCancel" class="btn btn-ghost" style="font-size: 12px; height: auto; padding: 10px 18px;">Cancel</button>
-          <button type="button" id="ppExport" class="btn btn-dark" style="font-size: 12px; height: auto; padding: 10px 18px; font-family:'JetBrains Mono', monospace; font-weight: 700;">Export PDF (${photos.length})</button>
+          <span style="font-size: 10px; color: var(--ink-soft); margin-right: auto; font-family:'JetBrains Mono', monospace;">${availableSlots.length} of ${PORTFOLIO_TEMPLATE1_SLOTS.length} poses included</span>
+          <button type="button" id="ptCancel" class="btn btn-ghost" style="font-size: 12px; height: auto; padding: 10px 18px;">Cancel</button>
+          <button type="button" id="ptExport" class="btn btn-dark" style="font-size: 12px; height: auto; padding: 10px 18px; font-family:'JetBrains Mono', monospace; font-weight: 700;">Export PDF</button>
         </div>
       </div>
     `;
     document.body.appendChild(modal);
 
-    const selected = new Set(photos.map((_, i) => i));
-    const exportBtn = modal.querySelector("#ppExport");
-    const hint = modal.querySelector("#ppHint");
-    const paintItem = (el, on) => {
-      el.style.borderColor = on ? "var(--accent)" : "var(--line)";
-      el.setAttribute("aria-pressed", String(on));
-      el.querySelector(".pp-check").style.display = on ? "flex" : "none";
-      el.querySelector("img").style.opacity = on ? "1" : "0.35";
-    };
-    const pickedMode = () => Number(modal.querySelector('input[name="ppMode"]:checked')?.value || 2);
-    const refresh = () => {
-      exportBtn.textContent = `Export PDF (${selected.size} selected)`;
-      exportBtn.disabled = selected.size === 0;
-      if (!selected.size) { hint.textContent = "Nothing selected"; return; }
-      if (pickedMode() === 1) {
-        const capacity = 5;
-        const used = Math.min(selected.size, capacity);
-        hint.textContent = `Including ${used} of ${selected.size} selected` + (selected.size > capacity ? ` (compact 1-page mode uses first 5 photos)` : "");
-      } else {
-        const pages = Math.ceil(Math.max(0, selected.size - 1) / 6) + 1;
-        hint.textContent = `Including all ${selected.size} selected photo${selected.size > 1 ? "s" : ""} across ${pages} page${pages > 1 ? "s" : ""}`;
-      }
-    };
-    modal.querySelectorAll('input[name="ppMode"]').forEach(r => r.addEventListener("change", refresh));
-    modal.querySelectorAll(".pp-item").forEach(el => {
-      el.addEventListener("click", () => {
-        const i = Number(el.dataset.idx);
-        if (selected.has(i)) selected.delete(i); else selected.add(i);
-        paintItem(el, selected.has(i));
-        refresh();
+    modal.querySelectorAll(".pt-cand").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const row = btn.closest(".pt-slot-row");
+        const angle = row.dataset.angle;
+        selectedBySlot[angle] = btn.dataset.id;
+        row.querySelectorAll(".pt-cand").forEach(b => {
+          const on = b === btn;
+          b.style.borderColor = on ? "var(--accent)" : "var(--line)";
+          b.querySelector(".pt-check").style.display = on ? "flex" : "none";
+        });
       });
     });
-    modal.querySelector("#ppAll").addEventListener("click", () => {
-      photos.forEach((_, i) => selected.add(i));
-      modal.querySelectorAll(".pp-item").forEach(el => paintItem(el, true));
-      refresh();
+
+    modal.querySelectorAll(".pt-role-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        role = btn.dataset.role;
+        modal.querySelectorAll(".pt-role-btn").forEach(b => {
+          const on = b === btn;
+          b.style.background = on ? "var(--ink)" : "transparent";
+          b.style.color = on ? "var(--paper)" : "var(--ink-soft)";
+        });
+        modal.querySelector("#ptOptionalFields").style.display = role === "agency" ? "none" : "flex";
+      });
     });
-    modal.querySelector("#ppNone").addEventListener("click", () => {
-      selected.clear();
-      modal.querySelectorAll(".pp-item").forEach(el => paintItem(el, false));
-      refresh();
-    });
+
     const close = () => modal.remove();
-    modal.querySelector("#ppCancel").addEventListener("click", close);
+    modal.querySelector("#ptCancel").addEventListener("click", close);
     modal.addEventListener("click", (e) => { if (e.target === modal) close(); });
-    exportBtn.addEventListener("click", () => {
-      const chosen = photos.filter((_, i) => selected.has(i));
-      if (!chosen.length) return;
-      const mode = pickedMode();
-      const orientation = modal.querySelector('input[name="ppOrientation"]:checked')?.value || "auto";
+    modal.querySelector("#ptExport").addEventListener("click", () => {
+      const filledSlots = availableSlots.map(slot => {
+        const chosenId = selectedBySlot[slot.angle];
+        const photo = slot.candidates.find(p => p.id === chosenId) || slot.candidates[0];
+        return { angle: slot.angle, label: slot.label, photo };
+      });
+      const manualFields = role === "agency" ? {} : {
+        location: (modal.querySelector("#ptLocation").value || "").trim(),
+        phone: (modal.querySelector("#ptPhone").value || "").trim(),
+        brands: (modal.querySelector("#ptBrands").value || "").split(",").map(b => b.trim()).filter(Boolean).slice(0, 5)
+      };
       close();
-      printPortfolioPhotos(shoot, chosen, mode, orientation);
+      printPortfolioTemplate1(shoot, filledSlots, manualFields);
     });
-    refresh();
   }
 
-  // Full model portfolio export. Admin-only entry point in the Model
-  // Portfolio lightbox sidebar. With more than one portfolio-tagged photo,
-  // a picker lets the admin choose exactly which clicks go into the PDF.
+  // Admin-only entry point in the Model Portfolio lightbox sidebar (per the
+  // studio's existing admin lock — unchanged from before this template
+  // system existed). Opens the template flow above instead of the old flat
+  // "select any photos" picker, which it fully replaces.
   window.printModelPortfolio = (shootId) => {
     const shoot = SHOOTS.find(x => x.id === shootId) || (window.currentCompCardShootObj);
     if (!shoot) return;
@@ -4998,8 +5026,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     // "portfolio" or "both" (untagged legacy photos count as portfolio).
     const photos = (shoot.photos || []).filter(p => p.usage === "portfolio" || p.usage === "both" || p.usage === undefined);
     if (!photos.length) { toast("No portfolio-tagged photos to export."); return; }
-    if (photos.length > 1) openPortfolioPicker(shoot, photos);
-    else printPortfolioPhotos(shoot, photos);
+    openPortfolioTemplateFlow(shoot, photos);
   };
 
   // Keyed by shoot id rather than one global value — a single global meant
