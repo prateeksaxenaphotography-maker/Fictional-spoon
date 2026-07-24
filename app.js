@@ -3995,6 +3995,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     return socialsLine ? `
       <div style="font-family:'JetBrains Mono', monospace; font-size: calc(10px * var(--print-scale, 1)); font-weight: 700; color: #333; padding: calc(6px * var(--print-scale, 1)) calc(12px * var(--print-scale, 1)); text-transform: uppercase; letter-spacing: 0.05em; text-align: center; margin-bottom: calc(20px * var(--print-scale, 1)); border-bottom: 1px solid #ddd; padding-bottom: calc(10px * var(--print-scale, 1)); flex: 0 0 auto;">
         ${socialsLine}
+        <div style="font-family: sans-serif; font-size: calc(8.5px * var(--print-scale, 1)); font-weight: 400; color: #555; text-transform: none; letter-spacing: 0; margin-top: calc(5px * var(--print-scale, 1)); font-style: italic;">
+          To book this talent, connect directly with the model or their representing agency via the social channels above.
+        </div>
       </div>
     ` : "";
   }
@@ -4134,7 +4137,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   // object-fit:cover as a small even all-edge trim; any layout that would
   // need more than JUSTIFY_MAX_TRIM falls back to contain — heads are never
   // cut.
-  const JUSTIFY_MAX_TRIM = 0.12; // grid photos: max even trim before contain fallback
+  const JUSTIFY_MAX_TRIM = 0.16; // grid photos: max even trim before contain fallback
   const COVER_MAX_TRIM = 0.12;   // hero gets the same tolerance — the sweep's
                                  // 0.1×coverTrim bias already keeps it lower
                                  // than this whenever the sheet allows
@@ -4205,8 +4208,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     for (const row of best.rows) {
       const rowEl = document.createElement("div");
       rowEl.style.cssText = `display:flex; gap:${gapPx}px; width:100%; min-height:0; flex:${row.h} 1 0;`;
+      // Normalize grow factors to sum to exactly 1: raw aspect ratios keep
+      // the right proportions between cells, but flexbox only hands out
+      // sum(flex-grow) of the free space when that sum is below 1 — a lone
+      // portrait photo (aspect ~0.7) in a row would fill just 70% of it and
+      // sit flush left instead of spanning the row.
+      const rowSumA = row.rowIdxs.reduce((s, i) => s + aspects[i], 0);
       for (const i of row.rowIdxs) {
-        cells[i].style.setProperty("flex", `${aspects[i]} 1 0%`, "important");
+        cells[i].style.setProperty("flex", `${aspects[i] / rowSumA} 1 0%`, "important");
         cells[i].style.setProperty("height", "100%", "important");
         imgs[i].style.setProperty("object-fit", fit, "important");
         rowEl.appendChild(cells[i]);
@@ -4215,15 +4224,17 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     }
   }
 
-  // One-pager main row: the cover panel's width and the side grid's layout
-  // constrain each other (wider hero = narrower grid), and the ideal split
-  // depends on the shapes drawn this export — e.g. a portrait cover with
-  // portrait side shots on a landscape sheet wants a modest hero plus a
-  // six-photo mosaic, while the same set on a portrait sheet suits a wide
-  // hero with a narrow stacked column. So sweep the cover width AND how many
-  // of the rendered side photos to keep, scoring each combination by its
-  // worst trim — with a small penalty per dropped photo, so shots are only
-  // dropped when doing so genuinely rescues the layout.
+  // One-pager main row: the cover panel's size and the side grid's layout
+  // constrain each other (bigger hero = less grid room), and the ideal split
+  // depends on the shapes drawn this export. Two arrangements are swept:
+  //   "row"    — hero left, grid right: suits a portrait hero.
+  //   "column" — hero as a full-width band on top, grid beneath: a landscape
+  //              hero can never fill a tall side panel, but it can fill a
+  //              full-width band.
+  // For each arrangement, sweep the hero's size AND how many of the rendered
+  // side photos to keep, scoring every combination by its worst trim — with
+  // a small penalty per dropped photo, so shots are only dropped when doing
+  // so genuinely rescues the layout.
   const DROP_PENALTY = 0.02;
   function layoutPrintMainRows(printContainer) {
     printContainer.querySelectorAll(".print-main-row").forEach((row) => {
@@ -4247,22 +4258,38 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
       let best = null;
       for (let frac = 0.26; frac <= 0.661; frac += 0.02) {
-        const w = W * frac;
-        const coverTrim = trimOf((w / H) / coverAspect);
-        for (let n = Math.min(3, gp.cells.length); n <= gp.cells.length; n++) {
-          const split = bestJustifiedSplit(W - w - rowGap, H, gp.aspects.slice(0, n), GRID_GAP);
-          if (!split) continue;
+        for (let n = Math.min(2, gp.cells.length); n <= gp.cells.length; n++) {
+          const aspects = gp.aspects.slice(0, n);
+          const dropped = gp.cells.length - n;
           // The hero carries the card: weight its trim into the score so the
           // sweep lands on a full-bleed hero over a marginally better grid.
-          const score = Math.max(coverTrim, split.trim) + 0.1 * coverTrim + DROP_PENALTY * (gp.cells.length - n);
-          if (!best || score < best.score) {
-            best = { score, w, n, split, coverTrim };
+          const heroW = W * frac;
+          const rowCoverTrim = trimOf((heroW / H) / coverAspect);
+          const rowSplit = bestJustifiedSplit(W - heroW - rowGap, H, aspects, GRID_GAP);
+          if (rowSplit) {
+            const score = Math.max(rowCoverTrim, rowSplit.trim) + 0.1 * rowCoverTrim + DROP_PENALTY * dropped;
+            if (!best || score < best.score) best = { score, mode: "row", size: heroW, n, split: rowSplit, coverTrim: rowCoverTrim };
+          }
+          const heroH = H * frac;
+          const colCoverTrim = trimOf((W / heroH) / coverAspect);
+          const colSplit = bestJustifiedSplit(W, H - heroH - rowGap, aspects, GRID_GAP);
+          if (colSplit) {
+            const score = Math.max(colCoverTrim, colSplit.trim) + 0.1 * colCoverTrim + DROP_PENALTY * dropped;
+            if (!best || score < best.score) best = { score, mode: "column", size: heroH, n, split: colSplit, coverTrim: colCoverTrim };
           }
         }
       }
       if (!best) return;
 
-      panel.style.setProperty("flex", `0 0 ${best.w}px`, "important");
+      if (best.mode === "column") {
+        row.style.setProperty("flex-direction", "column", "important");
+        // The stylesheet pins panel and grid to height:100% for the row
+        // arrangement; in the stacked one their heights come from flex.
+        panel.style.setProperty("height", "auto", "important");
+        panel.style.setProperty("width", "100%", "important");
+        grid.style.setProperty("height", "auto", "important");
+      }
+      panel.style.setProperty("flex", `0 0 ${best.size}px`, "important");
       grid.style.setProperty("flex", "1 1 0", "important");
       coverImg.style.setProperty("object-fit", best.coverTrim <= COVER_MAX_TRIM ? "cover" : "contain", "important");
       for (let i = best.n; i < gp.cells.length; i++) gp.cells[i].remove();
@@ -4420,11 +4447,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const socialsHtml = printSocialsBarHtml(shoot);
     const hasDetails = !!(statsHtml.trim() || socialsHtml.trim());
 
-    // Render up to 8 side photos; the post-load layout pass
-    // (layoutPrintMainRows) decides how many to actually keep based on which
-    // count tiles the sheet best for the shapes drawn this export — portrait
-    // sheets typically settle around 4–5, landscape around 8.
-    const side = photos.slice(1, 9);
+    // Render up to 5 side photos — the card stays at 6 photos max so the
+    // model stays highlighted, per the studio's comp card format. The
+    // post-load layout pass (layoutPrintMainRows) decides how many to
+    // actually keep based on which count tiles the sheet best for the
+    // shapes drawn this export.
+    const side = photos.slice(1, 6);
 
     return `
       <div class="print-page${!hasDetails ? " no-details" : ""}">
@@ -4478,9 +4506,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const remaining = rawPhotos.filter(p => p !== coverPhoto);
     const shuffledSidePhotos = [...remaining].sort(() => Math.random() - 0.5);
 
-    // Up to 8 side candidates; the aspect-aware layout pass keeps however
-    // many of them tile the chosen orientation best.
-    const photos = [coverPhoto, ...shuffledSidePhotos.slice(0, 8)];
+    // Up to 5 side candidates (6 photos max on the card, keeping the model
+    // highlighted); the aspect-aware layout pass keeps however many of them
+    // tile the chosen orientation best.
+    const photos = [coverPhoto, ...shuffledSidePhotos.slice(0, 5)];
     printFromContainer(shoot, printOnePagerHtml(shoot, photos, "MODEL COMP CARD", false), "CompCard", orientation);
   };
 
