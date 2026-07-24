@@ -29,7 +29,10 @@
   /* ============================================================
      §1 · DATA & ENVIRONMENT
      ============================================================ */
-  const { ACTIVITIES: rawAct, TYPES: rawTyp, BRANDS: rawBrs, DEMO_SHOOTS } = window.WPS_DATA;
+  // Falls back to {} rather than throwing if data.js failed to load — a hard
+  // throw here happens before boot()'s try/catch even exists, so the loader
+  // would be left spinning forever with no error page and no 2.5s failsafe.
+  const { ACTIVITIES: rawAct, TYPES: rawTyp, BRANDS: rawBrs, DEMO_SHOOTS } = window.WPS_DATA || {};
   const cfgData = window.STUDIO_CONFIG || {};
   const ACTIVITIES = [...new Set([...(rawAct || []), ...(cfgData.activities || [])])];
   const TYPES = [...new Set([...(rawTyp || []), ...(cfgData.types || [])])];
@@ -46,6 +49,13 @@
      ============================================================ */
   const $ = (s, r = document) => r.querySelector(s);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  // For a value interpolated inside a single-quoted JS string literal that
+  // itself sits inside an HTML on* attribute (e.g. onclick="fn('${id}')").
+  // esc() alone only guards the HTML attribute boundary (") — an apostrophe
+  // in the value (e.g. a model's name flowing into a synthetic album id)
+  // would still break out of the JS string and leave the handler a syntax
+  // error, silently no-op'ing the button for that model.
+  const escJs = (s) => String(s ?? "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   let toastTimer;
   function toast(msg) {
@@ -236,6 +246,7 @@
   // parentheses → handles containing the model's name → first handle.
   function compCardOwnHandles(shoot, handles, isPlatformHandle) {
     if (!shoot.isCompCard) return handles;
+    if (!handles.length) return handles; // nothing to narrow down — avoid falling through to [handles[0]] === [undefined]
     const talentNameLower = getTalentCleanName(shoot.talent).toLowerCase();
     const words = talentNameLower.split(/\s+/).filter(w => w.length > 2);
     const talentMatch = shoot.talent.match(/\(([^)]+)\)/);
@@ -311,6 +322,10 @@
       localStorage.removeItem("wps-admin-authorized");
       localStorage.removeItem("wps-admin");
       localStorage.removeItem("wps-github-pat");
+      // isAdmin() actually reads the session flag below, not localStorage's
+      // "wps-admin" — without clearing it too, ?admin=0 then ?admin=1 in the
+      // same tab silently restored full admin with no passcode re-entry.
+      sessionStorage.removeItem("wps-admin");
     }
   }
 
@@ -328,6 +343,12 @@
   }
 
   function sha256HexFallback(str) {
+    // UTF-8 encode first: the loop below packs 1 char = 1 byte, which is only
+    // correct for code points 0-255. Without this, a passcode with any
+    // non-Latin1 character hashes differently here than via the WebCrypto
+    // path (or Node's crypto on the server), silently locking that passcode
+    // out on non-secure origins where this fallback is the only one used.
+    str = unescape(encodeURIComponent(str));
     function rotr(n, x) { return (x >>> n) | (x << (32 - n)); }
     function s0(x) { return rotr(2, x) ^ rotr(13, x) ^ rotr(22, x); }
     function s1(x) { return rotr(6, x) ^ rotr(11, x) ^ rotr(25, x); }
@@ -476,6 +497,12 @@
   let SHOOTS = [];      // live shoots (real or demo)
   let usingDemo = true;
   let CURRENT_VIEW_SHOOTS = [];
+  // Resolves once boot() has loaded shoots and painted the first render (or
+  // given up trying to) — the magic download link waits on this instead of a
+  // fixed timeout, so it can't fire before SHOOTS is actually populated on a
+  // slow connection, nor need to guess how long that will take.
+  let resolveBootReady;
+  const bootReady = new Promise((res) => { resolveBootReady = res; });
 
   async function loadShoots() {
     let real = [];
@@ -489,7 +516,11 @@
       return isNaN(t) ? (s.createdAt || 0) : t;
     };
     
-    const sorted = (usingDemo ? (window.WPS_DATA.DEMO_SHOOTS || DEMO_SHOOTS) : real).sort((a, b) => parseShootDate(b) - parseShootDate(a));
+    // Sort a copy — sorting window.WPS_DATA.DEMO_SHOOTS in place made
+    // refreshPublishedData's JSON.stringify equality check always see a
+    // "change" (reordered array) on every poll, even when nothing published
+    // had actually changed.
+    const sorted = [...(usingDemo ? ((window.WPS_DATA && window.WPS_DATA.DEMO_SHOOTS) || DEMO_SHOOTS || []) : real)].sort((a, b) => parseShootDate(b) - parseShootDate(a));
     
     if (isAdmin()) {
       SHOOTS = sorted;
@@ -542,12 +573,20 @@
     } catch { return null; }
   }
 
+  // Throws (rather than returning null) on any failure short of a genuine
+  // "file doesn't exist yet" 404 — syncToGitHub's merge treats a null/empty
+  // result as "nothing published remotely" and would otherwise publish a
+  // local-only view of the world on a network hiccup, silently wiping out
+  // shoots that only exist on other devices.
   async function fetchRemoteShoots(pat) {
     const res = await fetch(`${GH_API}/contents/data.js?ref=${GH_BRANCH}`, {
       headers: { "Authorization": `token ${pat}`, "Accept": "application/vnd.github.raw+json" },
     });
-    if (!res.ok) return null;
-    return parseShootsFromDataJs(await res.text());
+    if (res.status === 404) return []; // fresh repo, no data.js published yet — genuinely empty
+    if (!res.ok) throw new Error(`Could not read the published data.js (GitHub ${res.status}) — aborting to avoid overwriting other devices' shoots.`);
+    const parsed = parseShootsFromDataJs(await res.text());
+    if (parsed === null) throw new Error("Could not parse the published data.js — aborting to avoid overwriting other devices' shoots.");
+    return parsed;
   }
 
   const MIME_EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
@@ -569,10 +608,10 @@
 
       // Merge with the published shoots: local wins by id; shoots that only
       // exist remotely (added from another device) survive; deletes propagate.
-      const remote = await fetchRemoteShoots(pat);
+      const remote = await fetchRemoteShoots(pat); // throws -> caught below, sync aborts, nothing published
       const removed = new Set(deletedIds);
       const merged = new Map();
-      (remote || []).forEach((s) => { if (s && s.id && !s.demo && !removed.has(s.id)) merged.set(s.id, s); });
+      remote.forEach((s) => { if (s && s.id && !s.demo && !removed.has(s.id)) merged.set(s.id, s); });
       shootsList.forEach((s) => { if (s && s.id && !s.demo && !removed.has(s.id)) merged.set(s.id, s); });
       const shoots = [...merged.values()];
 
@@ -741,7 +780,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     // Model Stats
     let statsHtml = "";
     const hasStats = shoot.height || shoot.chest || shoot.waist || shoot.hips || shoot.shoes || shoot.modelHair || shoot.modelEyes;
-    if (isCc && hasStats) {
+    const statsAllowedHere = isCurrentlyModelPortfolioView() ? shoot.showStatsOnModelPortfolio !== false : shoot.showStatsOnCompCard !== false;
+    if (isCc && hasStats && statsAllowedHere) {
       statsHtml = `
         <div class="lb-sidebar-section">
           <h4 style="font-family:'Outfit', sans-serif; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); margin:0 0 10px;">Model Stats</h4>
@@ -855,22 +895,29 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     if (isCc && !isCurrentlyModelPortfolioView()) {
       if (!shoot.disableCompCardDownload) {
         window.currentCompCardShootObj = shoot;
+        // Orientation choice is kept per-shoot (not a single global), so
+        // picking Landscape for one model and then opening another — or just
+        // stepping to that model's next photo — doesn't silently carry the
+        // choice over: the toggle shown always matches what Export will
+        // actually produce for THIS model.
+        const currentOrient = (window.compCardOrientationByShoot && window.compCardOrientationByShoot[shoot.id]) || "portrait";
+        const isPortraitActive = currentOrient !== "landscape";
         pdfBtnHtml = `
           <div class="lb-sidebar-section" style="margin-top: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bone); display: flex; flex-direction: column; gap: 10px;">
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
               <span style="font-family:'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--ink-soft);">PDF Orientation</span>
               <div style="display: inline-flex; background: var(--paper); padding: 2px; border-radius: 6px; border: 1px solid var(--line);" id="compCardOrientGroup">
-                <label style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-family:'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; border-radius: 4px; cursor: pointer; transition: all 0.2s ease; background: var(--ink); color: var(--paper);" class="orient-radio-label active">
-                  <input type="radio" name="compCardOrientRadio" value="portrait" checked onchange="window.setCompCardOrientation('portrait', this)" style="display: none;" />
+                <label style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-family:'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; border-radius: 4px; cursor: pointer; transition: all 0.2s ease; background: ${isPortraitActive ? "var(--ink)" : "transparent"}; color: ${isPortraitActive ? "var(--paper)" : "var(--ink-soft)"};" class="orient-radio-label${isPortraitActive ? " active" : ""}">
+                  <input type="radio" name="compCardOrientRadio" value="portrait" ${isPortraitActive ? "checked" : ""} onchange="window.setCompCardOrientation('portrait', this, '${escJs(shoot.id)}')" style="display: none;" />
                   <span>Portrait</span>
                 </label>
-                <label style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-family:'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; border-radius: 4px; cursor: pointer; transition: all 0.2s ease; background: transparent; color: var(--ink-soft);" class="orient-radio-label">
-                  <input type="radio" name="compCardOrientRadio" value="landscape" onchange="window.setCompCardOrientation('landscape', this)" style="display: none;" />
+                <label style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-family:'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; border-radius: 4px; cursor: pointer; transition: all 0.2s ease; background: ${!isPortraitActive ? "var(--ink)" : "transparent"}; color: ${!isPortraitActive ? "var(--paper)" : "var(--ink-soft)"};" class="orient-radio-label${!isPortraitActive ? " active" : ""}">
+                  <input type="radio" name="compCardOrientRadio" value="landscape" ${!isPortraitActive ? "checked" : ""} onchange="window.setCompCardOrientation('landscape', this, '${escJs(shoot.id)}')" style="display: none;" />
                   <span>Landscape</span>
                 </label>
               </div>
             </div>
-            <button class="btn btn-dark btn-block" style="font-size: 11px; height: auto; padding: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;" onclick="window.triggerCompCardDownload('${shoot.id}', window.selectedCompCardOrientation || 'portrait')">
+            <button class="btn btn-dark btn-block" style="font-size: 11px; height: auto; padding: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;" onclick="window.triggerCompCardDownload('${escJs(shoot.id)}')">
               Export PDF Comp Card ↗
             </button>
             <div style="margin-top: 4px; padding: 10px 12px; background: #fdf6f0; border: 1px solid #f2c9b6; border-left: 4px solid var(--accent); border-radius: 6px; display: flex; align-items: flex-start; gap: 8px; text-align: left;">
@@ -895,7 +942,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       window.currentCompCardShootObj = shoot;
       pdfBtnHtml = `
         <div class="lb-sidebar-section" style="margin-top: 10px;">
-          <button class="btn btn-dark btn-block" style="font-size: 11px; height: auto; padding: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;" onclick="window.printModelPortfolio('${shoot.id}')">
+          <button class="btn btn-dark btn-block" style="font-size: 11px; height: auto; padding: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;" onclick="window.printModelPortfolio('${escJs(shoot.id)}')">
             Export Model Portfolio PDF ↗ <span style="font-weight: normal; opacity: 0.7; font-size: 9px;">(🔒 Admin)</span>
           </button>
         </div>
@@ -1076,13 +1123,17 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     });
     document.addEventListener("keydown", (e) => { if (lb.hidden) return; if (e.key === "Escape") closeLb(); else if (e.key === "ArrowLeft") stepLb(-1); else if (e.key === "ArrowRight") stepLb(1); });
 
-    // Touch swipe support for lightbox on mobile
+    // Touch swipe support for lightbox on mobile — scoped to the image/nav
+    // area (.lightbox-main), not the whole overlay: attaching to `lb` meant a
+    // diagonal scroll gesture inside the scrollable credits/stats sidebar
+    // could register as a left/right swipe and jump to the next photo.
     let touchStartX = 0;
     let touchEndX = 0;
-    lb.addEventListener("touchstart", (e) => {
+    const lbMain = $(".lightbox-main") || lb;
+    lbMain.addEventListener("touchstart", (e) => {
       touchStartX = e.changedTouches[0].screenX;
     }, { passive: true });
-    lb.addEventListener("touchend", (e) => {
+    lbMain.addEventListener("touchend", (e) => {
       touchEndX = e.changedTouches[0].screenX;
       const diff = touchEndX - touchStartX;
       if (diff < -50) stepLb(1);      // Swipe left -> Next
@@ -1443,7 +1494,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             `}`;
           })()}
           
-          ${s.isCompCard && (latestShoot.height || latestShoot.chest || latestShoot.waist || latestShoot.hips || latestShoot.shoes || latestShoot.modelHair || latestShoot.modelEyes) ? `
+          ${s.isCompCard && (latestShoot.height || latestShoot.chest || latestShoot.waist || latestShoot.hips || latestShoot.shoes || latestShoot.modelHair || latestShoot.modelEyes) && (isCurrentlyModelPortfolioView() ? s.showStatsOnModelPortfolio !== false : s.showStatsOnCompCard !== false) ? `
             <div style="margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px; width: 100%;">
               <p class="eyebrow" style="font-size: 9px; margin-bottom: 8px; color: var(--ink-soft); letter-spacing: 0.05em; text-align: left;">Model Stats</p>
               <div class="stats-row">
@@ -1751,7 +1802,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             if (isPortView) {
               return p.usage === "portfolio" || p.usage === "both" || p.usage === undefined;
             } else {
-              return p.usage === "comp" || p.usage === "both" || !p.excludeFromCompCard;
+              // `!p.excludeFromCompCard` must be a hard AND, not another OR
+              // branch — as an OR it swallowed the usage check entirely, so
+              // a "Portfolio Only" photo still leaked into the comp card
+              // album unless excludeFromCompCard happened to also be set.
+              return (p.usage === "comp" || p.usage === "both" || p.usage === undefined) && !p.excludeFromCompCard;
             }
           }).map(p => ({ ...p, parent: gs })));
           const coverId = latestShoot.coverPhotoId || (latestShoot.photos[0] && latestShoot.photos[0].id);
@@ -1778,6 +1833,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             shoes: findStat("shoes"),
             modelHair: findStat("modelHair"),
             modelEyes: findStat("modelEyes"),
+            // Carried over so the "Show stats on Comp Cards / Model
+            // Portfolio" checkboxes still apply once shoots are merged into
+            // this synthetic album — without this, every stats display that
+            // reads from the album (not the raw shoot) ignored the toggle.
+            showStatsOnCompCard: latestShoot.showStatsOnCompCard,
+            showStatsOnModelPortfolio: latestShoot.showStatsOnModelPortfolio,
+            mentor: latestShoot.mentor || "",
             season: latestShoot.season || "Comp Card",
             photographer: latestShoot.photographer || "Studio",
             artDirector: latestShoot.artDirector || "",
@@ -3389,7 +3451,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           }
           btn.disabled = false;
           btn.classList.remove("is-loading");
-          btn.textContent = "Submit Booking Request";
+          // Restore the type-appropriate label (updateFields sets this same
+          // pair) rather than always falling back to the non-Test-Shoot text.
+          btn.textContent = (type === "Test Shoot" ? "Request for a Test Shoot" : "Submit Booking Request");
         };
 
         // Deliver the inquiry directly to the studio inbox via FormSubmit
@@ -3587,7 +3651,17 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const s = CURRENT_VIEW_SHOOTS.find((x) => x.id === block.dataset.shoot) || SHOOTS.find((x) => x.id === block.dataset.shoot);
       if (!s) return;
       const isCc = (s.isCompCard || s.type === "Test Shoot") && isCurrentlyCompCardView();
-      const list = s.photos.filter((p) => !(isCc && p.excludeFromCompCard)).map((p) => ({ ...p, shoot: s }));
+      const isPortView = (s.isCompCard || s.type === "Test Shoot") && isCurrentlyModelPortfolioView();
+      // On the Model Portfolio page this used to fall through to "include
+      // everything" (isCc is false there, since isCurrentlyCompCardView()
+      // only matches the Comp Cards view) — so opening the lightbox showed
+      // comp-only photos too, until the angle filter was clicked and rebuilt
+      // the list with this same portfolio-usage rule.
+      const list = s.photos.filter((p) => {
+        if (isCc) return !p.excludeFromCompCard;
+        if (isPortView) return p.usage === "portfolio" || p.usage === "both" || p.usage === undefined;
+        return true;
+      }).map((p) => ({ ...p, shoot: s }));
       const open = () => openLb(list, 0);
       if (s.isCompCard) {
         block.querySelectorAll(".comp-card-thumb").forEach(thumb => {
@@ -4495,6 +4569,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   window.printCompCard = (shootId, orientation = "auto") => {
     const shoot = SHOOTS.find(x => x.id === shootId) || (window.currentCompCardShootObj);
     if (!shoot) return;
+    // The button already hides itself when this is set, but printCompCard is
+    // also reachable directly (magic download link, console) — the lock must
+    // hold everywhere, not just in the UI that normally gates it.
+    if (shoot.disableCompCardDownload) {
+      toast("Comp card PDF download has been disabled for this model by the studio.");
+      return;
+    }
 
     // Gather ALL photos across ALL shoots tagged to this model
     const modelName = getTalentCleanName(shoot.talent || shoot.title).trim();
@@ -4695,9 +4776,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     else printPortfolioPhotos(shoot, photos);
   };
 
-  window.selectedCompCardOrientation = "portrait";
-  window.setCompCardOrientation = (orient, inputEl) => {
-    window.selectedCompCardOrientation = orient;
+  // Keyed by shoot id rather than one global value — a single global meant
+  // picking Landscape for one model leaked into whatever model was opened
+  // next (or even the same model's next photo), with the toggle still
+  // visually showing Portrait while actually exporting landscape.
+  window.compCardOrientationByShoot = window.compCardOrientationByShoot || {};
+  window.setCompCardOrientation = (orient, inputEl, shootId) => {
+    if (shootId) window.compCardOrientationByShoot[shootId] = orient;
     const parent = inputEl ? inputEl.closest("#compCardOrientGroup") : document.getElementById("compCardOrientGroup");
     if (parent) {
       parent.querySelectorAll(".orient-radio-label").forEach(lbl => {
@@ -4714,8 +4799,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     }
   };
 
-  window.triggerCompCardDownload = (shootId, orientation = "portrait") => {
-    const targetOrient = orientation || window.selectedCompCardOrientation || "portrait";
+  window.triggerCompCardDownload = (shootId, orientation) => {
+    const targetOrient = orientation || (window.compCardOrientationByShoot && window.compCardOrientationByShoot[shootId]) || "portrait";
     if (isAdmin()) {
       window.printCompCard(shootId, targetOrient);
       return;
@@ -4818,23 +4903,22 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     });
   };
 
-  // Auto-trigger Comp Card print preview when opening via magic email link
+  // Auto-trigger Comp Card print preview when opening via magic email link.
+  // Waits for boot() to actually finish loading shoots (bootReady) rather
+  // than guessing a fixed delay — on a slow connection/IndexedDB, a blind
+  // 800ms timeout could fire before SHOOTS was populated, silently no-op'ing
+  // printCompCard (shoot lookup fails).
   (function checkMagicDownloadLink() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("downloadCompCard") === "1") {
       const shootId = params.get("shootId");
       const orientation = params.get("orientation") || "portrait";
       if (shootId) {
-        const trigger = () => {
-          setTimeout(() => {
-            window.printCompCard(shootId, orientation);
-          }, 800);
-        };
-        if (document.readyState === "complete" || document.readyState === "interactive") {
-          trigger();
-        } else {
-          window.addEventListener("DOMContentLoaded", trigger);
-        }
+        bootReady.then(() => {
+          // One more frame so the just-painted view/sidebar settle before
+          // the print pipeline measures it.
+          setTimeout(() => window.printCompCard(shootId, orientation), 50);
+        });
       }
     }
   })();
@@ -4844,7 +4928,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     // public source; the log server compares its SHA-256 hash.
     const passcode = prompt("Enter admin passcode to download the logs CSV:");
     if (!passcode) return;
-    window.location.href = `/api/logs/download?passcode=${encodeURIComponent(passcode.trim())}`;
+    // A bare relative path only resolves on the local/Render server that
+    // actually hosts /api/logs — on the live GitHub Pages site (a different
+    // origin) this 404'd. The POST side of this feature already routes
+    // through COMP_CARD_API_BASE; this was the one spot that didn't.
+    window.location.href = `${COMP_CARD_API_BASE}/api/logs/download?passcode=${encodeURIComponent(passcode.trim())}`;
   };
 
   /* ============================================================
@@ -4872,7 +4960,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const link = e.target.closest("[data-link]");
       if (link) {
         const href = link.getAttribute("href");
-        if (href && (href.startsWith("/") || !href.includes("://"))) {
+        // !href.includes("://") alone would also swallow mailto:/tel:/sms:
+        // links (no "://") tagged with data-link, pushState-ing them as an
+        // internal route instead of letting the browser open the mail/phone
+        // app — hence the explicit scheme exclusion.
+        if (href && !/^(mailto|tel|sms):/i.test(href) && (href.startsWith("/") || !href.includes("://"))) {
           e.preventDefault();
           history.pushState(null, "", href);
           render();
@@ -4958,6 +5050,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       else window.addEventListener("load", dismissLoader, { once: true });
       // Hard safety: never let the loader trap the page.
       setTimeout(dismissLoader, 2500);
+      resolveBootReady();
     }
   })();
 })();
