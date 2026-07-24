@@ -151,6 +151,10 @@ window.WPS_DATA = {
       "shoes": "",
       "modelHair": "",
       "modelEyes": "",
+      "showStatsOnCompCard": true,
+      "showStatsOnModelPortfolio": true,
+      "showTestShootCategory": false,
+      "mentor": "",
       "description": "",
       "tags": "",
       "gear": "",
@@ -188,7 +192,9 @@ window.WPS_DATA = {
         {
           "id": "mr4x4wbriov3rt-3",
           "url": "photos/mr4x6kwx3f8rs3/mr4x4wbriov3rt-3.jpg",
-          "objectPosition": "center"
+          "objectPosition": "50.5% 84.0%",
+          "focalX": 50.529650529650525,
+          "focalY": 84.04613404613404
         },
         {
           "id": "mr4x4wiga8328p-4",
@@ -218,17 +224,23 @@ window.WPS_DATA = {
         {
           "id": "mr4xef6bqu7p7h-9",
           "url": "photos/mr4x6kwx3f8rs3/mr4xef6bqu7p7h-9.jpg",
-          "objectPosition": "center"
+          "objectPosition": "36.0% 71.5%",
+          "focalX": 35.95683595683596,
+          "focalY": 71.47312147312147
         },
         {
           "id": "mr4xefdb4f5ggh-10",
           "url": "photos/mr4x6kwx3f8rs3/mr4xefdb4f5ggh-10.jpg",
-          "objectPosition": "center"
+          "objectPosition": "53.5% 52.5%",
+          "focalX": 53.48975348975349,
+          "focalY": 52.46510246510246
         },
         {
           "id": "mr4xefkv1jw0pn-11",
           "url": "photos/mr4x6kwx3f8rs3/mr4xefkv1jw0pn-11.jpg",
-          "objectPosition": "center"
+          "objectPosition": "50.7% 55.6%",
+          "focalX": 50.74745074745075,
+          "focalY": 55.63310563310563
         }
       ],
       "featured": true,
