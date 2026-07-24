@@ -1016,20 +1016,24 @@ main:focus { outline: none; }
 }
 
 /* ---------- Model Stats Row ---------- */
+/* flex-wrap (not nowrap) + a min item width: on a wide container items sit
+   in one line same as before, but once the container is too narrow to fit
+   every column at a legible width, items reflow onto extra rows instead of
+   being squeezed until label/value text overflows its box and bleeds into
+   the next column (the bug behind the "CHEST/BUSTWAIST" overlap). */
 .stats-row {
   display: flex;
   flex-direction: row;
-  flex-wrap: nowrap;
-  justify-content: space-between;
+  flex-wrap: wrap;
   width: 100%;
-  gap: 12px;
+  gap: 12px 16px;
 }
 .stats-item {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 72px;
+  min-width: 72px;
 }
 .stats-item dt {
   font-family: "JetBrains Mono", monospace;
@@ -1038,6 +1042,9 @@ main:focus { outline: none; }
   text-transform: uppercase;
   color: var(--ink-soft);
   margin: 0 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .stats-item dd {
   margin: 0;
@@ -1183,5 +1190,9 @@ main:focus { outline: none; }
   }
   #compCardPrintContainer {
     display: flex !important;
+    visibility: visible !important;
+  }
+  #compCardPrintContainer * {
+    visibility: visible !important;
   }
 }
