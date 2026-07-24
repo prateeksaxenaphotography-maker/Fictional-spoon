@@ -4374,6 +4374,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       // the saved filename (e.g. "..._NerdyPhotographer.in.pdf") — dropped to
       // avoid that, per explicit instruction to prefer the no-dot form.
       document.title = `${cleanModelName}_${docType}_Shot_By_NerdyPhotographerin`;
+      // Flip visible only for the print snapshot itself. The screen never
+      // paints the container: no yield to the event loop happens between
+      // this assignment and window.print() blocking. Doing it here in JS
+      // (not only via the @media print rule in styles.css) means a stale
+      // cached stylesheet can't leave the container hidden during the
+      // snapshot — that skew (new app.js + old styles.css under the same
+      // ?v=) produced blank PDFs on the live site.
+      printContainer.style.setProperty("visibility", "visible", "important");
       window.print();
       document.title = oldTitle;
 
