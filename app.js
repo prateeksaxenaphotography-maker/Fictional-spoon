@@ -812,9 +812,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     };
 
     if (shoot.photographer) credits.push(`<div><dt>Photo</dt><dd>${formatCrew(shoot.photographer)}</dd></div>`);
-    if (shoot.type === "Workshop Attended" && shoot.mentor) {
-      const mentors = shoot.mentor.split(",").map(m => m.trim()).filter(Boolean);
-      credits.push(`<div><dt>${mentors.length > 1 ? "Teachers / Mentors" : "Teacher / Mentor"}</dt><dd>${esc(mentors.join(", "))}</dd></div>`);
+    if (shoot.mentor) {
+      const mentorCount = shoot.mentor.split(",").map(m => m.trim()).filter(Boolean).length;
+      // renderCreditValue understands the site-wide "Name (@ig; kavyar.com/x;
+      // https://site)" convention and renders the socials as links.
+      credits.push(`<div><dt>${mentorCount > 1 ? "Teachers / Mentors" : "Teacher / Mentor"}</dt><dd>${renderCreditValue(shoot.mentor)}</dd></div>`);
     }
     if (shoot.artDirector && shoot.artDirector !== "—") credits.push(`<div><dt>Art Direction</dt><dd>${formatCrew(shoot.artDirector)}</dd></div>`);
     if (shoot.stylist && shoot.stylist !== "—") credits.push(`<div><dt>Stylist</dt><dd>${formatCrew(shoot.stylist)}</dd></div>`);
@@ -1280,8 +1282,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       : [s.activity, typeTag].filter(Boolean).join(" · ");
     const photoCount = s.photos ? s.photos.length : 0;
     const countText = photoCount ? `${photoCount} Photo${photoCount > 1 ? "s" : ""}` : "";
-    const mentorNames = (s.type === "Workshop Attended" && s.mentor)
-      ? s.mentor.split(",").map(m => m.trim()).filter(Boolean) : [];
+    // Meta rows are plain text — strip any "(socials)" part from the names.
+    const mentorNames = s.mentor
+      ? s.mentor.split(",").map(m => getTalentCleanName(m)).filter(Boolean) : [];
     const mentorText = mentorNames.length
       ? `${mentorNames.length > 1 ? "Mentors" : "Mentor"}: ${mentorNames.join(", ")}` : "";
     const meta = [s.brand, s.season, mentorText, countText].filter(v => v && v !== "Personal Project").join(" · ");
@@ -2253,7 +2256,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                 <label class="field"><span>Model / talent (comma-separated)</span><input id="f_talent" type="text" placeholder="e.g. Model A, Model B" /></label>
               </div>
               <div class="field-row" id="f_mentor_row" style="display: none;">
-                <label class="field"><span>Teacher / Mentor (only for Workshops · separate multiple with commas)</span><input id="f_mentor" type="text" placeholder="e.g. Mentor One, Mentor Two" /></label>
+                <label class="field"><span>Teacher / Mentor (comma-separated · socials in parentheses)</span><input id="f_mentor" type="text" placeholder="e.g. Mentor One (@handle; site.com), Mentor Two" /></label>
               </div>
             </fieldset>
 
@@ -2563,7 +2566,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const updateMentorRowState = () => {
       const isTestimonialOnly = !!testimonialOnlyCheckbox?.checked;
       if (mentorRow && typeSelect) {
-        mentorRow.style.display = (!isTestimonialOnly && typeSelect.value === "Workshop Attended") ? "" : "none";
+        // Mentors can be credited on any shoot type, not just workshops.
+        mentorRow.style.display = !isTestimonialOnly ? "" : "none";
       }
     };
     typeSelect?.addEventListener("change", updateMentorRowState);
