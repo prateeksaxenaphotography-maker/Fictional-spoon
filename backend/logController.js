@@ -21,6 +21,44 @@ const COMMON_DOMAIN_TYPOS = {
 
 const PRIVATE_IP_REGEX = /^(::1$|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.|::ffff:127\.)/;
 
+// The request body's originUrl is client-supplied and was previously used
+// as-is to build the "View & Print Comp Card" button link mailed out via the
+// studio's Resend sender — a POST with originUrl: "https://evil.example"
+// would have the studio's own domain send an official-looking email pointing
+// at an attacker's site. Only ever build the link from a known-good origin.
+const ALLOWED_DOWNLOAD_ORIGINS = new Set([
+  "https://www.nerdyphotographer.in",
+  "https://nerdyphotographer.in",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+]);
+function safeBaseUrl(originUrl) {
+  try {
+    const u = new URL(originUrl);
+    const origin = `${u.protocol}//${u.host}`;
+    return ALLOWED_DOWNLOAD_ORIGINS.has(origin) ? origin : "https://nerdyphotographer.in";
+  } catch {
+    return "https://nerdyphotographer.in";
+  }
+}
+
+// Minimal in-memory rate limit: this endpoint sends real email through the
+// studio's Resend account on every accepted request, with no other gate
+// (the client-side form has no CAPTCHA). Without this, the endpoint is a
+// ready-made way to spam arbitrary inboxes "from" the studio's domain.
+// In-memory is fine here — worst case on a restart is a limiter reset, not
+// a functional break, and this is a single small Render instance.
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const RATE_LIMIT_MAX = 5;
+const rateLimitHits = new Map(); // ip -> timestamps[]
+function isRateLimited(ip) {
+  const now = Date.now();
+  const hits = (rateLimitHits.get(ip) || []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+  hits.push(now);
+  rateLimitHits.set(ip, hits);
+  return hits.length > RATE_LIMIT_MAX;
+}
+
 // Best-effort city/region/country lookup for the visitor's IP (free, keyless
 // ip-api.com tier — plain HTTP only on the free tier, fine for a server-to-server
 // call). Never throws — logging analytics must not depend on this.
@@ -191,6 +229,14 @@ async function sendMagicDownloadEmail(email, modelName, downloadUrl) {
 exports.logDownload = async (req, res) => {
   const { email, modelName, shootId, orientation, originUrl } = req.body;
 
+  // Get client IP address accurately (handling reverse proxy forwards)
+  const forwarded = req.headers["x-forwarded-for"];
+  const ip = forwarded ? forwarded.split(",")[0].trim() : req.socket.remoteAddress;
+
+  if (isRateLimited(ip || "unknown")) {
+    return res.status(429).json({ error: "Too many download requests from this connection. Please try again later." });
+  }
+
   const shapeCheck = validateEmailShape(email);
   if (!shapeCheck.valid) {
     return res.status(400).json({ error: shapeCheck.error });
@@ -201,11 +247,7 @@ exports.logDownload = async (req, res) => {
     return res.status(400).json({ error: "Model name is required." });
   }
 
-  // Get client IP address accurately (handling reverse proxy forwards)
-  const forwarded = req.headers["x-forwarded-for"];
-  const ip = forwarded ? forwarded.split(",")[0].trim() : req.socket.remoteAddress;
-
-  const baseUrl = originUrl || "https://nerdyphotographer.in";
+  const baseUrl = safeBaseUrl(originUrl);
   const downloadUrl = `${baseUrl.replace(/\/$/, "")}/?downloadCompCard=1&shootId=${encodeURIComponent(shootId || "")}&orientation=${encodeURIComponent(orientation || "portrait")}`;
 
   const [emailResult, geo] = await Promise.all([
@@ -263,16 +305,27 @@ exports.downloadCSV = (req, res) => {
   const headers = ["Timestamp", "Model Name", "Email Address", "IP Address", "City", "Region", "Country", "Email Sent"];
   const csvRows = [headers.join(",")];
 
+  // Coerces any value to a safely-quoted CSV field: `String(value ?? "")`
+  // means one legacy/partial log entry (a missing field) can no longer throw
+  // and break the entire download for every other entry. A leading
+  // apostrophe defuses CSV formula injection — Excel/Sheets would otherwise
+  // execute a cell starting with =, +, -, or @ as a formula when opened.
+  const csvSafe = (value) => {
+    const str = String(value ?? "");
+    const defused = /^[=+\-@]/.test(str) ? `'${str}` : str;
+    return `"${defused.replace(/"/g, '""')}"`;
+  };
+
   logs.forEach(log => {
     const row = [
-      `"${log.timestamp.replace(/"/g, '""')}"`,
-      `"${log.modelName.replace(/"/g, '""')}"`,
-      `"${log.email.replace(/"/g, '""')}"`,
-      `"${log.ip.replace(/"/g, '""')}"`,
-      `"${(log.city || "").replace(/"/g, '""')}"`,
-      `"${(log.region || "").replace(/"/g, '""')}"`,
-      `"${(log.country || "").replace(/"/g, '""')}"`,
-      `"${log.emailSent === undefined ? "n/a" : log.emailSent}"`
+      csvSafe(log.timestamp),
+      csvSafe(log.modelName),
+      csvSafe(log.email),
+      csvSafe(log.ip),
+      csvSafe(log.city),
+      csvSafe(log.region),
+      csvSafe(log.country),
+      csvSafe(log.emailSent === undefined ? "n/a" : log.emailSent)
     ];
     csvRows.push(row.join(","));
   });

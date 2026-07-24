@@ -35,9 +35,12 @@ app.use(express.static(__dirname));
 
 // Fallback all SPA routing to index.html or directory index files
 app.get("*", (req, res) => {
-  // Check if directory matches a specific subpage index
+  // Check if directory matches a specific subpage index. Exact match or a
+  // following "/" only — plain startsWith would also match "/booking-x" or
+  // "/studios" against "/book"/"/studio" and serve that page's SEO meta
+  // tags for an unrelated route.
   const paths = ["/albums", "/book", "/categories", "/studio", "/upload", "/testimonials"];
-  const matchedPath = paths.find(p => req.path.startsWith(p));
+  const matchedPath = paths.find(p => req.path === p || req.path.startsWith(p + "/"));
   if (matchedPath) {
     return res.sendFile(path.join(__dirname, matchedPath, "index.html"));
   }
