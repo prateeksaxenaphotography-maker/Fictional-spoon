@@ -4511,19 +4511,15 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const rawPhotos = allModelPhotos.length ? allModelPhotos : (shoot.photos || []);
     if (!rawPhotos.length) { toast("No photos to export."); return; }
 
-    const coverPhoto = rawPhotos.find(p => p.isCover)
-      || rawPhotos.find(p => p.id.split("-")[0] === shoot.coverPhotoId)
-      || rawPhotos.find(p => p.angle === "front" || p.angle === "close-up")
-      || rawPhotos[0];
+    // Freshly shuffle the whole pool every time the button is clicked — the
+    // hero is random too (first of the shuffle), not pinned to the album
+    // cover, so every export leads with a different shot of the model.
+    const shuffled = shuffleArray([...rawPhotos]);
 
-    // Freshly shuffle remaining photos across all model clicks every time button is clicked
-    const remaining = rawPhotos.filter(p => p !== coverPhoto);
-    const shuffledSidePhotos = [...remaining].sort(() => Math.random() - 0.5);
-
-    // Up to 5 side candidates (6 photos max on the card, keeping the model
-    // highlighted); the aspect-aware layout pass keeps however many of them
-    // tile the chosen orientation best.
-    const photos = [coverPhoto, ...shuffledSidePhotos.slice(0, 5)];
+    // Hero + up to 5 side candidates (6 photos max on the card, keeping the
+    // model highlighted); the aspect-aware layout pass keeps however many of
+    // them tile the chosen orientation best.
+    const photos = shuffled.slice(0, 6);
     printFromContainer(shoot, printOnePagerHtml(shoot, photos, "MODEL COMP CARD", false), "CompCard", orientation);
   };
 
