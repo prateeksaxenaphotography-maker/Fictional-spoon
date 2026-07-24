@@ -272,7 +272,10 @@ a { color: inherit; text-decoration: none; }
 
 /* ---------- Upload (rich form) ---------- */
 .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
-.dropzone { border: 2px dashed var(--line); border-radius: 12px; background: var(--bone); min-height: 340px; cursor: pointer; transition: border-color .25s, background .25s; outline: none; padding: 24px; position: sticky; top: 100px; }
+/* Capped + scrollable: with no max-height, a shoot with many staged photos
+   just grows the box indefinitely, forcing a scroll of the whole page (past
+   the sticky offset) instead of scrolling within this section alone. */
+.dropzone { border: 2px dashed var(--line); border-radius: 12px; background: var(--bone); min-height: 340px; max-height: calc(100vh - 140px); overflow-y: auto; cursor: pointer; transition: border-color .25s, background .25s; outline: none; padding: 24px; position: sticky; top: 100px; }
 .dropzone:hover, .dropzone:focus-visible { border-color: var(--accent); background: #fbf2ed; }
 .dropzone.is-drag { border-color: var(--accent); background: #fbe9e0; }
 .dropzone-inner { text-align: center; padding: 40px 20px; pointer-events: none; }
@@ -504,7 +507,7 @@ a { color: inherit; text-decoration: none; }
   .work-block, .work-block.flip { grid-template-columns: 1fr; direction: ltr; gap: 22px; }
   .work-media { display: block; aspect-ratio: 4/5; max-width: 580px; margin: 0 auto; width: 100%; }
   .upload-grid { grid-template-columns: 1fr; }
-  .dropzone { position: static; min-height: 240px; }
+  .dropzone { position: static; min-height: 240px; max-height: 70vh; }
   .process { grid-template-columns: 1fr; }
   .footer-lower { grid-template-columns: 1fr 1fr; gap: 32px 24px; }
   .footer-brand { grid-column: 1 / -1; }
