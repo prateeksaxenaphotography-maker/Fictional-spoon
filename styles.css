@@ -193,7 +193,20 @@ a { color: inherit; text-decoration: none; }
 .page-head h1 { font-size: clamp(46px, 8vw, 104px); font-weight: 900; line-height: .95; }
 .page-sub { color: var(--ink-soft); font-size: 17px; margin: 18px 0 0; max-width: 620px; }
 .page-sub a { color: var(--accent); font-weight: 600; }
-.section { padding: 76px 0; }
+/* padding-top/bottom only (not the `padding: 76px 0` shorthand): a shorthand
+   here also sets padding-left/right to 0, which — on any element combining
+   both "section" and "container" (same specificity, this rule later in the
+   file) — silently overrode .container's `padding: 0 32px` and zeroed the
+   side margins it exists to provide. That collision was flattening the
+   Upload/Book forms, the Studio and Testimonials pages, and the Categories
+   index tile grid against the viewport edges. The one place that zeroing
+   was wanted (single-photo-per-row galleries on Albums/Workshops/the
+   filtered model listings) now gets it explicitly via .full-bleed instead
+   of by accident. */
+.section { padding-top: 76px; padding-bottom: 76px; }
+/* Explicit opt-in for sections whose photos are meant to run edge-to-edge
+   regardless of the mix of portrait/landscape shapes — see .section above. */
+.section.full-bleed { padding-left: 0; padding-right: 0; }
 .section-head { margin-bottom: 44px; max-width: 640px; }
 .section-head.row { display: flex; justify-content: space-between; align-items: flex-end; max-width: none; gap: 18px; flex-wrap: wrap; }
 .section-head-center { max-width: none; text-align: center; margin-left: auto; margin-right: auto; margin-bottom: 44px; }

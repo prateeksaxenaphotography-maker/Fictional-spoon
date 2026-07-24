@@ -1730,7 +1730,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <p class="page-sub reveal">${list.length} album${list.length !== 1 ? "s" : ""} in the archive — every photoshoot, newest first.</p>
         </div>
       </section>
-      <section class="section container">
+      <section class="section container full-bleed">
         <div class="noth-work-list">${list.map(nothWorkCard).join("") || emptyCat()}</div>
       </section>
       <section class="cta-band">
@@ -1757,7 +1757,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <p class="page-sub reveal" style="max-width: 600px; line-height: 1.6; opacity: 1 !important; visibility: visible !important; transform: none !important;">A dedicated record of professional photography workshops attended, people trained, and creative techniques learned to build editorial proficiency.</p>
         </div>
       </section>
-      <section class="section container">
+      <section class="section container full-bleed">
         <div class="noth-work-list">${list.map(nothWorkCard).join("") || `<p class="page-sub">No workshop albums published yet. Go to <a href="/upload" data-link style="text-decoration:underline; font-weight:600; color:var(--accent);">Upload</a> to add one with type 'Workshop Attended'.</p>`}</div>
       </section>
     `;
@@ -1818,8 +1818,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <p class="page-sub reveal" style="max-width: 620px; line-height: 1.6; opacity: 1 !important; visibility: visible !important; transform: none !important;">Which photo categories and shoots get looked at most on the site — a signal for what kind of shoot to do more of. Live traffic and referrers are already tracked separately via Cloudflare and Google Analytics; this is just content engagement within the portfolio itself.</p>
         </div>
       </section>
-      <section class="section">
-        <div class="container" id="analyticsContent">
+      <section class="section container">
+        <div id="analyticsContent">
           <button type="button" id="analyticsLoadBtn" class="btn btn-dark" style="font-family:'JetBrains Mono', monospace; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; font-size:12px; height:auto; padding:12px 20px;">Load Analytics →</button>
         </div>
       </section>
@@ -2017,7 +2017,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           </div>
         </section>
         ${alphaFilterHtml}
-        <section class="section container"><div class="work-list">${displayList.map(fullBleedBlock).join("") || emptyCat()}</div></section>`;
+        <section class="section container full-bleed"><div class="work-list">${displayList.map(fullBleedBlock).join("") || emptyCat()}</div></section>`;
     }
     // Index: three lenses
     const grp = (arr, key) => arr.map((v) => {
