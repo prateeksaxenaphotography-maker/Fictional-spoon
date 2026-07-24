@@ -936,14 +936,15 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           </div>
         `;
       }
-    } else if (isCc && isCurrentlyModelPortfolioView() && isAdmin()) {
-      // Admin-only: export every portfolio-tagged photo of this model as a
-      // multi-page PDF (cover + angle-labelled grids of 6 per A4 page).
+    } else if (isCc && isCurrentlyModelPortfolioView()) {
+      // Open to any visitor viewing this model's portfolio (model, agency,
+      // casting director) — the whole point of the template system is that
+      // the model/agency builds and downloads their own PDF, not the studio.
       window.currentCompCardShootObj = shoot;
       pdfBtnHtml = `
         <div class="lb-sidebar-section" style="margin-top: 10px;">
           <button class="btn btn-dark btn-block" style="font-size: 11px; height: auto; padding: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;" onclick="window.printModelPortfolio('${escJs(shoot.id)}')">
-            Export Model Portfolio PDF ↗ <span style="font-weight: normal; opacity: 0.7; font-size: 9px;">(🔒 Admin)</span>
+            Export Model Portfolio PDF ↗
           </button>
         </div>
       `;
@@ -5015,10 +5016,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     });
   }
 
-  // Admin-only entry point in the Model Portfolio lightbox sidebar (per the
-  // studio's existing admin lock — unchanged from before this template
-  // system existed). Opens the template flow above instead of the old flat
-  // "select any photos" picker, which it fully replaces.
+  // Open entry point in the Model Portfolio lightbox sidebar — any visitor
+  // (model, agency, casting director) can build and download their own PDF.
+  // Opens the template flow above instead of the old flat "select any
+  // photos" picker, which it fully replaces.
   window.printModelPortfolio = (shootId) => {
     const shoot = SHOOTS.find(x => x.id === shootId) || (window.currentCompCardShootObj);
     if (!shoot) return;
