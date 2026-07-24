@@ -1393,17 +1393,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     let coverPos = cover.objectPosition || "center";
     
     const latestShoot = s.originalShoots ? s.originalShoots[0] : s;
-    const missingStats = [];
-    if (s.isCompCard) {
-      if (!latestShoot.height) missingStats.push("Height");
-      if (!latestShoot.chest) missingStats.push("Bust/Chest");
-      if (!latestShoot.waist) missingStats.push("Waist");
-      if (!latestShoot.hips) missingStats.push("Hips");
-      if (!latestShoot.shoes) missingStats.push("Shoes");
-      if (!latestShoot.modelHair) missingStats.push("Hair Color");
-      if (!latestShoot.modelEyes) missingStats.push("Eye Color");
-    }
-    
+
     // Parse multiple Instagram accounts/URLs to clickable links
     let igHtml = "";
     if (s.instagram) {
@@ -1538,15 +1528,6 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             </p>
           ` : ""}
 
-          ${s.isCompCard && isAdmin() && missingStats.length > 0 ? `
-            <div class="admin-warning-banner" style="background: rgba(210,78,26,0.06); border: 1px dashed var(--accent); padding: 14px 18px; border-radius: 6px; margin: 18px 0; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent); line-height: 1.5; text-align: left; width: 100%; box-sizing: border-box;">
-              <span style="font-weight: 800; display: block; margin-bottom: 4px;">⚠️ MISSING COMP CARD STATS <span style="font-weight: normal; opacity: 0.7; font-size: 10px; margin-left: 6px;">(🔒 Visible Only to Admins)</span></span>
-              The following details are missing for this model: ${missingStats.join(", ")}.
-              <div style="margin-top: 8px;">
-                <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0; font-size: 11px; height: auto;" data-id="${latestShoot.id}">Add stats now →</button>
-              </div>
-            </div>
-          ` : ""}
           <p class="work-by">${creditsHtml}</p>
           ${testimonialsHtml}
           ${diagramHtml}
