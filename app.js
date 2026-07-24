@@ -414,8 +414,11 @@
 
   const shouldShowWorkshopsToAll = () => {
     const workshops = SHOOTS.filter(s => s.type === "Workshop Attended");
+    // A workshop can have several mentors (comma-separated) — each individual
+    // mentor counts toward the visibility threshold.
     const uniqueMentors = new Set(
-      workshops.map(s => String(s.mentor || "").trim().toLowerCase()).filter(Boolean)
+      workshops.flatMap(s => String(s.mentor || "").split(","))
+        .map(m => m.trim().toLowerCase()).filter(Boolean)
     );
     return uniqueMentors.size >= 3;
   };
@@ -809,7 +812,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     };
 
     if (shoot.photographer) credits.push(`<div><dt>Photo</dt><dd>${formatCrew(shoot.photographer)}</dd></div>`);
-    if (shoot.type === "Workshop Attended" && shoot.mentor) credits.push(`<div><dt>Teacher / Mentor</dt><dd>${esc(shoot.mentor)}</dd></div>`);
+    if (shoot.type === "Workshop Attended" && shoot.mentor) {
+      const mentors = shoot.mentor.split(",").map(m => m.trim()).filter(Boolean);
+      credits.push(`<div><dt>${mentors.length > 1 ? "Teachers / Mentors" : "Teacher / Mentor"}</dt><dd>${esc(mentors.join(", "))}</dd></div>`);
+    }
     if (shoot.artDirector && shoot.artDirector !== "—") credits.push(`<div><dt>Art Direction</dt><dd>${formatCrew(shoot.artDirector)}</dd></div>`);
     if (shoot.stylist && shoot.stylist !== "—") credits.push(`<div><dt>Stylist</dt><dd>${formatCrew(shoot.stylist)}</dd></div>`);
     if (shoot.mua && shoot.mua !== "—") credits.push(`<div><dt>MUA</dt><dd>${formatCrew(shoot.mua)}</dd></div>`);
@@ -1274,7 +1280,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       : [s.activity, typeTag].filter(Boolean).join(" · ");
     const photoCount = s.photos ? s.photos.length : 0;
     const countText = photoCount ? `${photoCount} Photo${photoCount > 1 ? "s" : ""}` : "";
-    const mentorText = (s.type === "Workshop Attended" && s.mentor) ? `Mentor: ${s.mentor}` : "";
+    const mentorNames = (s.type === "Workshop Attended" && s.mentor)
+      ? s.mentor.split(",").map(m => m.trim()).filter(Boolean) : [];
+    const mentorText = mentorNames.length
+      ? `${mentorNames.length > 1 ? "Mentors" : "Mentor"}: ${mentorNames.join(", ")}` : "";
     const meta = [s.brand, s.season, mentorText, countText].filter(v => v && v !== "Personal Project").join(" · ");
     const title = getTalentCleanName(s.isCompCard ? s.talent : (s.title || "Untitled"));
     return `
@@ -2244,7 +2253,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                 <label class="field"><span>Model / talent (comma-separated)</span><input id="f_talent" type="text" placeholder="e.g. Model A, Model B" /></label>
               </div>
               <div class="field-row" id="f_mentor_row" style="display: none;">
-                <label class="field"><span>Teacher / Mentor (only for Workshops)</span><input id="f_mentor" type="text" placeholder="e.g. Mentor Name" /></label>
+                <label class="field"><span>Teacher / Mentor (only for Workshops · separate multiple with commas)</span><input id="f_mentor" type="text" placeholder="e.g. Mentor One, Mentor Two" /></label>
               </div>
             </fieldset>
 
