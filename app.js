@@ -4027,9 +4027,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     `;
   }
 
-  // One grid cell. Images are CONTAINED (padded on a light background),
-  // never cropped — full-length shots keep their heads. Sizing comes from
-  // the print stylesheet (.print-photo-item). Angle badge optional.
+  // One grid cell. Cell shapes are re-derived from each photo's real aspect
+  // ratio at export time (justifyPrintGrid), so photos tile the grid
+  // edge-to-edge with at most a few percent of even all-edge trim — and the
+  // layout falls back to contain (padded, zero-crop) rather than ever
+  // trimming more. Full-length shots keep their heads. Angle badge optional.
   function printGridCellHtml(p, showAngle = true) {
     const labelHtml = showAngle && p.angle
       ? `<span style="position: absolute; bottom: 6px; left: 6px; font-family:'JetBrains Mono', monospace; font-size:8px; font-weight:700; background:rgba(0,0,0,0.72); color:#fff; padding:2px 6px; border-radius:3px; text-transform:uppercase;">${PRINT_ANGLE_LABELS[p.angle] || p.angle}</span>`
@@ -4120,35 +4122,162 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     });
   }
 
-  // The lead photo panel sits at a fixed flex proportion of the row (so the
-  // row lays out before any image has loaded), but that proportion is tuned
-  // for a portrait-ish photo on a portrait-ish page. Cross the two — e.g. a
-  // portrait cover shot exported in landscape — and object-fit:contain (kept
-  // deliberately uncropped) letterboxes hard, wasting up to a third of the
-  // page as empty grey bars either side of the photo. Once the image has
-  // loaded we know its real aspect ratio, so re-derive the panel's width
-  // from that instead of the fixed ratio, and let the side grid reflow into
-  // whatever width is left.
-  function fitCoverPanelToPhoto(printContainer) {
+  // ---- Aspect-aware print layout ------------------------------------------
+  // Supporting photos are randomly selected per export, so their shapes are
+  // unknowable until the images load. Fixed boxes + object-fit:contain kept
+  // photos uncropped but could letterbox away a third of the sheet as grey
+  // padding. Instead, once every image is loaded, the card is laid out from
+  // the photos' real aspect ratios: justified rows (Flickr/Google-Photos
+  // style) — photos in a row share its height, each one's width proportional
+  // to its aspect ratio, tiling the area edge-to-edge. The residual mismatch
+  // between the drawn photo set and the fixed A4 area is absorbed by
+  // object-fit:cover as a small even all-edge trim; any layout that would
+  // need more than JUSTIFY_MAX_TRIM falls back to contain — heads are never
+  // cut.
+  const JUSTIFY_MAX_TRIM = 0.12; // grid photos: max even trim before contain fallback
+  const COVER_MAX_TRIM = 0.12;   // hero gets the same tolerance — the sweep's
+                                 // 0.1×coverTrim bias already keeps it lower
+                                 // than this whenever the sheet allows
+  const GRID_GAP = 10;
+
+  const trimOf = (scale) => 1 - Math.min(scale, 1 / scale);
+
+  // Best packing of `aspects` into 1–3 justified rows of a W×H area: photos
+  // sorted by shape so alike ones share a row, every contiguous grouping
+  // tried, keeping the one whose natural justified height is closest to H.
+  function bestJustifiedSplit(W, H, aspects, gapPx) {
+    if (W <= 0 || H <= 0 || !aspects.length) return null;
+    const order = aspects.map((_, i) => i).sort((a, b) => aspects[a] - aspects[b]);
+    const splits = [];
+    (function compose(remaining, acc) {
+      if (remaining === 0) { splits.push(acc.slice()); return; }
+      if (acc.length >= 3) return;
+      for (let take = 1; take <= remaining; take++) {
+        acc.push(take);
+        compose(remaining - take, acc);
+        acc.pop();
+      }
+    })(aspects.length, []);
+    let best = null;
+    for (const split of splits) {
+      let idx = 0, naturalH = 0;
+      const rows = split.map((count) => {
+        const rowIdxs = order.slice(idx, idx + count);
+        idx += count;
+        const sumA = rowIdxs.reduce((s, i) => s + aspects[i], 0);
+        const h = (W - gapPx * (count - 1)) / sumA;
+        naturalH += h;
+        return { rowIdxs, h };
+      });
+      const scale = (H - gapPx * (split.length - 1)) / naturalH;
+      // Aesthetic guardrails: editorial mosaics keep rows in the same size
+      // family — reject layouts mixing tall rows with postage-stamp strips.
+      const hs = rows.map((r) => r.h * scale);
+      const minH = Math.min(...hs), maxH = Math.max(...hs);
+      if (minH / maxH < 0.45 || minH < 90) continue;
+      const trim = trimOf(scale);
+      if (!best || trim < best.trim) best = { rows, trim };
+    }
+    return best;
+  }
+
+  function collectGridPhotos(grid) {
+    const cells = [], imgs = [], aspects = [];
+    grid.querySelectorAll(".print-photo-item").forEach((cell) => {
+      const img = cell.querySelector("img");
+      if (img && img.naturalWidth && img.naturalHeight) {
+        cells.push(cell);
+        imgs.push(img);
+        aspects.push(img.naturalWidth / img.naturalHeight);
+      } else {
+        cell.remove(); // a failed image would otherwise print as an empty grey box
+      }
+    });
+    return { cells, imgs, aspects };
+  }
+
+  function applyJustifiedLayout(grid, cells, imgs, aspects, best, gapPx) {
+    const fit = best.trim <= JUSTIFY_MAX_TRIM ? "cover" : "contain";
+    grid.style.setProperty("display", "flex", "important");
+    grid.style.setProperty("flex-direction", "column", "important");
+    grid.style.setProperty("gap", `${gapPx}px`, "important");
+    grid.innerHTML = "";
+    for (const row of best.rows) {
+      const rowEl = document.createElement("div");
+      rowEl.style.cssText = `display:flex; gap:${gapPx}px; width:100%; min-height:0; flex:${row.h} 1 0;`;
+      for (const i of row.rowIdxs) {
+        cells[i].style.setProperty("flex", `${aspects[i]} 1 0%`, "important");
+        cells[i].style.setProperty("height", "100%", "important");
+        imgs[i].style.setProperty("object-fit", fit, "important");
+        rowEl.appendChild(cells[i]);
+      }
+      grid.appendChild(rowEl);
+    }
+  }
+
+  // One-pager main row: the cover panel's width and the side grid's layout
+  // constrain each other (wider hero = narrower grid), and the ideal split
+  // depends on the shapes drawn this export — e.g. a portrait cover with
+  // portrait side shots on a landscape sheet wants a modest hero plus a
+  // six-photo mosaic, while the same set on a portrait sheet suits a wide
+  // hero with a narrow stacked column. So sweep the cover width AND how many
+  // of the rendered side photos to keep, scoring each combination by its
+  // worst trim — with a small penalty per dropped photo, so shots are only
+  // dropped when doing so genuinely rescues the layout.
+  const DROP_PENALTY = 0.02;
+  function layoutPrintMainRows(printContainer) {
     printContainer.querySelectorAll(".print-main-row").forEach((row) => {
       const panel = row.querySelector(".print-cover-panel");
       const grid = row.querySelector(".print-side-grid");
-      const img = panel && panel.querySelector("img");
-      if (!panel || !grid || !img || !img.naturalWidth || !img.naturalHeight) return;
+      const coverImg = panel && panel.querySelector("img");
+      if (!panel || !coverImg || !coverImg.naturalWidth || !coverImg.naturalHeight) return;
+      const W = row.clientWidth, H = row.clientHeight;
+      if (!W || !H) return;
+      const coverAspect = coverImg.naturalWidth / coverImg.naturalHeight;
+      const rowGap = parseFloat(getComputedStyle(row).columnGap) || 12;
 
-      const rowRect = row.getBoundingClientRect();
-      const panelRect = panel.getBoundingClientRect();
-      const aspect = img.naturalWidth / img.naturalHeight;
-      const idealWidth = panelRect.height * aspect;
+      const gp = grid ? collectGridPhotos(grid) : { cells: [], imgs: [], aspects: [] };
+      if (gp.cells.length < 2) {
+        // Nothing to justify — just size the hero panel to its photo.
+        const clamped = Math.max(W * 0.28, Math.min(W * 0.62, H * coverAspect));
+        panel.style.setProperty("flex", `0 0 ${clamped}px`, "important");
+        if (grid) grid.style.setProperty("flex", "1 1 0", "important");
+        return;
+      }
 
-      // Clamp so the side grid never gets squeezed to nothing and the panel
-      // never swallows the whole row, even for extreme aspect ratios.
-      const minWidth = rowRect.width * 0.28;
-      const maxWidth = rowRect.width * 0.62;
-      const clamped = Math.max(minWidth, Math.min(maxWidth, idealWidth));
+      let best = null;
+      for (let frac = 0.26; frac <= 0.661; frac += 0.02) {
+        const w = W * frac;
+        const coverTrim = trimOf((w / H) / coverAspect);
+        for (let n = Math.min(3, gp.cells.length); n <= gp.cells.length; n++) {
+          const split = bestJustifiedSplit(W - w - rowGap, H, gp.aspects.slice(0, n), GRID_GAP);
+          if (!split) continue;
+          // The hero carries the card: weight its trim into the score so the
+          // sweep lands on a full-bleed hero over a marginally better grid.
+          const score = Math.max(coverTrim, split.trim) + 0.1 * coverTrim + DROP_PENALTY * (gp.cells.length - n);
+          if (!best || score < best.score) {
+            best = { score, w, n, split, coverTrim };
+          }
+        }
+      }
+      if (!best) return;
 
-      panel.style.setProperty("flex", `0 0 ${clamped}px`, "important");
+      panel.style.setProperty("flex", `0 0 ${best.w}px`, "important");
       grid.style.setProperty("flex", "1 1 0", "important");
+      coverImg.style.setProperty("object-fit", best.coverTrim <= COVER_MAX_TRIM ? "cover" : "contain", "important");
+      for (let i = best.n; i < gp.cells.length; i++) gp.cells[i].remove();
+      applyJustifiedLayout(grid, gp.cells.slice(0, best.n), gp.imgs.slice(0, best.n), gp.aspects.slice(0, best.n), best.split, GRID_GAP);
+    });
+  }
+
+  // Multi-page portfolio grids: the photo count per page is fixed upstream,
+  // so just justify what's there.
+  function justifyPrintGrids(printContainer) {
+    printContainer.querySelectorAll(".print-photo-grid").forEach((grid) => {
+      const { cells, imgs, aspects } = collectGridPhotos(grid);
+      if (cells.length < 2) return;
+      const best = bestJustifiedSplit(grid.clientWidth, grid.clientHeight, aspects, 12);
+      if (best) applyJustifiedLayout(grid, cells, imgs, aspects, best, 12);
     });
   }
 
@@ -4236,7 +4365,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       printContainer.style.setProperty("visibility", "hidden", "important");
 
       fitPrintPagesToA4(printContainer, isLandscape);
-      fitCoverPanelToPhoto(printContainer);
+      layoutPrintMainRows(printContainer);
+      justifyPrintGrids(printContainer);
 
       const oldTitle = document.title;
       const cleanModelName = getTalentCleanName(shoot.talent || shoot.title).trim().replace(/\s+/g, '_');
@@ -4281,10 +4411,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const statsHtml = printStatsBarHtml(shoot, targetType);
     const socialsHtml = printSocialsBarHtml(shoot);
     const hasDetails = !!(statsHtml.trim() || socialsHtml.trim());
-    
-    // Content-Aware: If model stats/socials are missing, include up to 5 side photos (6 photos total) to eliminate white space!
-    const sideCount = hasDetails ? 4 : 5;
-    const side = photos.slice(1, 1 + sideCount);
+
+    // Render up to 8 side photos; the post-load layout pass
+    // (layoutPrintMainRows) decides how many to actually keep based on which
+    // count tiles the sheet best for the shapes drawn this export — portrait
+    // sheets typically settle around 4–5, landscape around 8.
+    const side = photos.slice(1, 9);
 
     return `
       <div class="print-page${!hasDetails ? " no-details" : ""}">
@@ -4334,17 +4466,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       || rawPhotos.find(p => p.angle === "front" || p.angle === "close-up")
       || rawPhotos[0];
 
-    // Location 1 Comp Card feature: Content-aware side photo count based on details availability
-    const statsHtml = printStatsBarHtml(shoot, "comp");
-    const socialsHtml = printSocialsBarHtml(shoot);
-    const hasDetails = !!(statsHtml.trim() || socialsHtml.trim());
-    const sideCount = hasDetails ? 4 : 5;
-
     // Freshly shuffle remaining photos across all model clicks every time button is clicked
     const remaining = rawPhotos.filter(p => p !== coverPhoto);
     const shuffledSidePhotos = [...remaining].sort(() => Math.random() - 0.5);
 
-    const photos = [coverPhoto, ...shuffledSidePhotos.slice(0, sideCount)];
+    // Up to 8 side candidates; the aspect-aware layout pass keeps however
+    // many of them tile the chosen orientation best.
+    const photos = [coverPhoto, ...shuffledSidePhotos.slice(0, 8)];
     printFromContainer(shoot, printOnePagerHtml(shoot, photos, "MODEL COMP CARD", false), "CompCard", orientation);
   };
 
