@@ -804,7 +804,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       if (p.angle) {
         const labels = {
           "front": "Front Portrait",
-          "side": "Side Profile",
+          "full-body": "Full Body Shot",
+          "left-profile": "Left Profile",
+          "right-profile": "Right Profile",
           "back": "Back Angle",
           "three-quarter": "3/4 Angle",
           "close-up": "Close-up / Headshot"
@@ -823,7 +825,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       if (anglesInShoot.length > 0) {
         const labels = {
           "front": "Front",
-          "side": "Side",
+          "full-body": "Full Body",
+          "left-profile": "Left Profile",
+          "right-profile": "Right Profile",
           "back": "Back",
           "three-quarter": "3/4",
           "close-up": "Close-up"
@@ -2369,8 +2373,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             </div>
             <div class="thumb-bulk-toolbar" id="thumbBulkToolbar" style="display:none; align-items:center; flex-wrap:wrap; gap:8px; margin-top:14px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--paper); pointer-events:auto;">
               <span style="font-family:'JetBrains Mono', monospace; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft);">Bulk-tag pose:</span>
+              <button type="button" class="thumb-bulk-angle-btn" data-angle="full-body" style="font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line); background:var(--bone); color:var(--ink); cursor:pointer;">Full Body</button>
               <button type="button" class="thumb-bulk-angle-btn" data-angle="front" style="font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line); background:var(--bone); color:var(--ink); cursor:pointer;">Front</button>
-              <button type="button" class="thumb-bulk-angle-btn" data-angle="side" style="font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line); background:var(--bone); color:var(--ink); cursor:pointer;">Side</button>
+              <button type="button" class="thumb-bulk-angle-btn" data-angle="left-profile" style="font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line); background:var(--bone); color:var(--ink); cursor:pointer;">Left Profile</button>
+              <button type="button" class="thumb-bulk-angle-btn" data-angle="right-profile" style="font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line); background:var(--bone); color:var(--ink); cursor:pointer;">Right Profile</button>
               <button type="button" class="thumb-bulk-angle-btn" data-angle="three-quarter" style="font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line); background:var(--bone); color:var(--ink); cursor:pointer;">3/4</button>
               <button type="button" class="thumb-bulk-angle-btn" data-angle="back" style="font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line); background:var(--bone); color:var(--ink); cursor:pointer;">Back</button>
               <button type="button" class="thumb-bulk-angle-btn" data-angle="close-up" style="font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line); background:var(--bone); color:var(--ink); cursor:pointer;">Close-up</button>
@@ -2733,7 +2739,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     // (never saved), cleared on every re-render of the grid.
     const selectedForBulk = new Set();
     const bulkToolbar = $("#thumbBulkToolbar"), bulkCount = $("#thumbBulkCount");
-    const ANGLE_LABELS = { "front": "Front", "side": "Side", "three-quarter": "Three-Quarter", "back": "Back", "close-up": "Close-up" };
+    const ANGLE_LABELS = { "full-body": "Full Body", "front": "Front", "left-profile": "Left Profile", "right-profile": "Right Profile", "three-quarter": "Three-Quarter", "back": "Back", "close-up": "Close-up" };
     function updateBulkToolbar() {
       if (bulkToolbar) bulkToolbar.style.display = staged.length ? "flex" : "none";
       if (bulkCount) bulkCount.textContent = `${selectedForBulk.size} selected`;
@@ -3026,8 +3032,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                 <span>Angle / Profile</span>
                 <select class="thumb-angle-select" data-id="${f.id}" style="font-size: 9px; padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--paper); color: var(--ink); width: 100%;">
                   <option value="" ${!f.angle ? 'selected' : ''}>Unspecified</option>
+                  <option value="full-body" ${f.angle === 'full-body' ? 'selected' : ''}>Full Body Shot</option>
                   <option value="front" ${f.angle === 'front' ? 'selected' : ''}>Front Portrait</option>
-                  <option value="side" ${f.angle === 'side' ? 'selected' : ''}>Side Profile</option>
+                  <option value="left-profile" ${f.angle === 'left-profile' ? 'selected' : ''}>Left Profile</option>
+                  <option value="right-profile" ${f.angle === 'right-profile' ? 'selected' : ''}>Right Profile</option>
                   <option value="back" ${f.angle === 'back' ? 'selected' : ''}>Back Angle</option>
                   <option value="three-quarter" ${f.angle === 'three-quarter' ? 'selected' : ''}>3/4 Angle</option>
                   <option value="close-up" ${f.angle === 'close-up' ? 'selected' : ''}>Close-up / Headshot</option>
@@ -4705,13 +4713,16 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
   // ---- Model Portfolio template system (Template 1: The Composite Lookbook) ----
   // Replaces the old "select any photos, 1-page or multi-page" flat export.
-  // Every slot here is pinned to an existing angle tag (front/side/three-
-  // quarter/back/close-up) — the customer can only ever put a photo into the
-  // slot it was already tagged for. A slot with zero tagged candidates is
-  // simply skipped (no page for it), rather than forced with a placeholder.
+  // Every slot here is pinned to an existing angle tag (full-body/front/left-
+  // profile/right-profile/three-quarter/back/close-up) — the customer can
+  // only ever put a photo into the slot it was already tagged for. A slot
+  // with zero tagged candidates is simply skipped (no page for it), rather
+  // than forced with a placeholder.
   const PORTFOLIO_TEMPLATE1_SLOTS = [
+    { angle: "full-body", label: "Full Body" },
     { angle: "front", label: "Front" },
-    { angle: "side", label: "Side" },
+    { angle: "left-profile", label: "Left Profile" },
+    { angle: "right-profile", label: "Right Profile" },
     { angle: "three-quarter", label: "Three-Quarter" },
     { angle: "back", label: "Back" },
     { angle: "close-up", label: "Close-Up" }
