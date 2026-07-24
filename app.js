@@ -1470,16 +1470,6 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0;" data-id="${s.id}">Edit details</button>
               <button class="link-arrow work-delete" style="color: #b22222; font-weight: 700; padding: 0;" data-id="${s.id}">Delete</button>
             ` : ""}
-            ${s.isCompCard && isAdmin() ? `
-              <div style="margin-top: 20px; border-top: 1px dashed var(--line); padding-top: 16px; width: 100%; text-align: left;">
-                <p class="eyebrow" style="font-size: 9px; margin-bottom: 8px; color: var(--ink-soft); letter-spacing: 0.05em;">Admin Edit Portfolio Shoots</p>
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                  ${s.originalShoots.map(shootInfo => `
-                    <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0; text-align: left; font-size: 11px; height: auto;" data-id="${shootInfo.id}">Edit: "${esc(shootInfo.title)}" →</button>
-                  `).join("")}
-                </div>
-              </div>
-            ` : ""}
           </div>
         </div>
       </article>`;
