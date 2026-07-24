@@ -1117,8 +1117,11 @@ main:focus { outline: none; }
   page-break-after: avoid !important;
   break-after: avoid !important;
 }
-/* One-pager composite layout: lead photo panel beside a 2x2 grid */
-.print-main-row {
+/* One-pager composite layout: lead photo panel beside a supporting grid.
+   Comp Card and Model Portfolio's "1 page" mode each get their own class
+   namespace (.cc-* / .pf-*) — identical rules today, but editing one no
+   longer risks silently changing the other's PDF output. */
+.cc-main-row, .pf-main-row {
   display: flex !important;
   gap: 12px !important;
   flex: 1 1 0% !important; /* Take all available vertical height on the sheet */
@@ -1126,7 +1129,7 @@ main:focus { outline: none; }
   min-height: 0 !important;
   margin: 0 0 10px !important;
 }
-.print-cover-panel {
+.cc-cover-panel, .pf-cover-panel {
   flex: 1.25 1 0 !important;
   height: 100% !important;
   position: relative !important;
@@ -1136,14 +1139,14 @@ main:focus { outline: none; }
   overflow: hidden !important;
   min-height: 0 !important;
 }
-.print-cover-panel img {
+.cc-cover-panel img, .pf-cover-panel img {
   width: 100% !important;
   height: 100% !important;
   object-fit: contain !important;
   object-position: center !important;
   display: block !important;
 }
-.print-side-grid {
+.cc-side-grid, .pf-side-grid {
   flex: 1 1 0 !important;
   height: 100% !important;
   display: grid !important;
@@ -1152,11 +1155,33 @@ main:focus { outline: none; }
   gap: 10px !important;
   min-height: 0 !important;
 }
-.print-side-grid.grid-5 > .print-photo-item:nth-child(5):last-child {
+.cc-side-grid.grid-5 > .print-photo-item:nth-child(5):last-child,
+.pf-side-grid.grid-5 > .print-photo-item:nth-child(5):last-child {
   grid-column: span 2 !important;
 }
-/* Grid page (2-page portfolio) */
-.print-photo-grid {
+/* Portfolio's dedicated multi-page cover page — a different context again
+   (a standalone full-page panel, not a hero beside a grid) but rendered
+   with the same photo-frame look; kept as its own class since it's already
+   exclusive to Model Portfolio's multi-page export and shouldn't be
+   conflated with the "1 page" hero panel above. */
+.pf-cover-page-photo {
+  flex-grow: 1 !important;
+  position: relative !important;
+  background: #f4f4f2 !important;
+  border: 1px solid #e2e0dc !important;
+  border-radius: 6px !important;
+  overflow: hidden !important;
+  min-height: 0 !important;
+}
+.pf-cover-page-photo img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  display: block !important;
+}
+/* Grid page (2-page portfolio) — Comp Card never produces this markup. */
+.pf-photo-grid {
   display: grid !important;
   grid-template-columns: repeat(3, 1fr) !important;
   grid-auto-rows: 1fr !important;

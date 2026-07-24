@@ -4217,7 +4217,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: #000; text-transform: uppercase;">Clicked by nerdyphotographer.in</span>
         </div>
         
-        <div class="print-cover-panel" style="flex-grow: 1;">
+        <div class="pf-cover-page-photo">
           ${coverPhoto ? `<img src="${photoSrc(coverPhoto)}" alt="Cover photo" />` : ''}
         </div>
         
@@ -4267,10 +4267,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         
         ${extrasHtml}
         
-        <div class="print-photo-grid">
+        <div class="pf-photo-grid">
           ${cellsHtml}
         </div>
-        
+
         ${PRINT_FOOTER_HTML}
       </div>
     `;
@@ -4343,12 +4343,6 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   // object-fit:cover as a small even all-edge trim; any layout that would
   // need more than JUSTIFY_MAX_TRIM falls back to contain — heads are never
   // cut.
-  const JUSTIFY_MAX_TRIM = 0.16; // grid photos: max even trim before contain fallback
-  const COVER_MAX_TRIM = 0.12;   // hero gets the same tolerance — the sweep's
-                                 // 0.1×coverTrim bias already keeps it lower
-                                 // than this whenever the sheet allows
-  const GRID_GAP = 10;
-
   const trimOf = (scale) => 1 - Math.min(scale, 1 / scale);
 
   // Best packing of `aspects` into 1–3 justified rows of a W×H area: photos
@@ -4405,8 +4399,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     return { cells, imgs, aspects };
   }
 
-  function applyJustifiedLayout(grid, cells, imgs, aspects, best, gapPx) {
-    const fit = best.trim <= JUSTIFY_MAX_TRIM ? "cover" : "contain";
+  // maxTrim is a caller-supplied threshold (not a shared module constant) —
+  // Comp Card and Model Portfolio each keep their own tolerance so tuning one
+  // can never silently change the other's output.
+  function applyJustifiedLayout(grid, cells, imgs, aspects, best, gapPx, maxTrim) {
+    const fit = best.trim <= maxTrim ? "cover" : "contain";
     grid.style.setProperty("display", "flex", "important");
     grid.style.setProperty("flex-direction", "column", "important");
     grid.style.setProperty("gap", `${gapPx}px`, "important");
@@ -4430,6 +4427,17 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     }
   }
 
+  // ---- One-pager main-row layout: forked, not shared -----------------------
+  // Comp Card and Model Portfolio's "1 page" mode used to run through the
+  // exact same layoutPrintMainRows()/constants — a tuning change made for one
+  // document type silently changed the other's output too. Below are two
+  // independent copies (own CSS classes, own tunable constants) so each PDF's
+  // generation logic can evolve on its own from here. The shapes of the
+  // functions are identical on purpose (both do the same job): only what's
+  // genuinely generic geometry — bestJustifiedSplit/collectGridPhotos/
+  // applyJustifiedLayout/trimOf above — stays shared, parametrized by each
+  // caller's own thresholds.
+  //
   // One-pager main row: the cover panel's size and the side grid's layout
   // constrain each other (bigger hero = less grid room), and the ideal split
   // depends on the shapes drawn this export. Two arrangements are swept:
@@ -4441,11 +4449,15 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   // side photos to keep, scoring every combination by its worst trim — with
   // a small penalty per dropped photo, so shots are only dropped when doing
   // so genuinely rescues the layout.
-  const DROP_PENALTY = 0.02;
-  function layoutPrintMainRows(printContainer) {
-    printContainer.querySelectorAll(".print-main-row").forEach((row) => {
-      const panel = row.querySelector(".print-cover-panel");
-      const grid = row.querySelector(".print-side-grid");
+  const CC_JUSTIFY_MAX_TRIM = 0.16; // Comp Card: grid photos' max even trim before contain fallback
+  const CC_COVER_MAX_TRIM = 0.12;   // Comp Card: hero's tolerance (the sweep's 0.1×coverTrim bias
+                                    // already keeps it lower than this whenever the sheet allows)
+  const CC_GRID_GAP = 10;
+  const CC_DROP_PENALTY = 0.02;
+  function layoutCompCardMainRow(printContainer) {
+    printContainer.querySelectorAll(".cc-main-row").forEach((row) => {
+      const panel = row.querySelector(".cc-cover-panel");
+      const grid = row.querySelector(".cc-side-grid");
       const coverImg = panel && panel.querySelector("img");
       if (!panel || !coverImg || !coverImg.naturalWidth || !coverImg.naturalHeight) return;
       const W = row.clientWidth, H = row.clientHeight;
@@ -4471,16 +4483,16 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           // sweep lands on a full-bleed hero over a marginally better grid.
           const heroW = W * frac;
           const rowCoverTrim = trimOf((heroW / H) / coverAspect);
-          const rowSplit = bestJustifiedSplit(W - heroW - rowGap, H, aspects, GRID_GAP);
+          const rowSplit = bestJustifiedSplit(W - heroW - rowGap, H, aspects, CC_GRID_GAP);
           if (rowSplit) {
-            const score = Math.max(rowCoverTrim, rowSplit.trim) + 0.1 * rowCoverTrim + DROP_PENALTY * dropped;
+            const score = Math.max(rowCoverTrim, rowSplit.trim) + 0.1 * rowCoverTrim + CC_DROP_PENALTY * dropped;
             if (!best || score < best.score) best = { score, mode: "row", size: heroW, n, split: rowSplit, coverTrim: rowCoverTrim };
           }
           const heroH = H * frac;
           const colCoverTrim = trimOf((W / heroH) / coverAspect);
-          const colSplit = bestJustifiedSplit(W, H - heroH - rowGap, aspects, GRID_GAP);
+          const colSplit = bestJustifiedSplit(W, H - heroH - rowGap, aspects, CC_GRID_GAP);
           if (colSplit) {
-            const score = Math.max(colCoverTrim, colSplit.trim) + 0.1 * colCoverTrim + DROP_PENALTY * dropped;
+            const score = Math.max(colCoverTrim, colSplit.trim) + 0.1 * colCoverTrim + CC_DROP_PENALTY * dropped;
             if (!best || score < best.score) best = { score, mode: "column", size: heroH, n, split: colSplit, coverTrim: colCoverTrim };
           }
         }
@@ -4489,28 +4501,91 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
       if (best.mode === "column") {
         row.style.setProperty("flex-direction", "column", "important");
-        // The stylesheet pins panel and grid to height:100% for the row
-        // arrangement; in the stacked one their heights come from flex.
         panel.style.setProperty("height", "auto", "important");
         panel.style.setProperty("width", "100%", "important");
         grid.style.setProperty("height", "auto", "important");
       }
       panel.style.setProperty("flex", `0 0 ${best.size}px`, "important");
       grid.style.setProperty("flex", "1 1 0", "important");
-      coverImg.style.setProperty("object-fit", best.coverTrim <= COVER_MAX_TRIM ? "cover" : "contain", "important");
+      coverImg.style.setProperty("object-fit", best.coverTrim <= CC_COVER_MAX_TRIM ? "cover" : "contain", "important");
       for (let i = best.n; i < gp.cells.length; i++) gp.cells[i].remove();
-      applyJustifiedLayout(grid, gp.cells.slice(0, best.n), gp.imgs.slice(0, best.n), gp.aspects.slice(0, best.n), best.split, GRID_GAP);
+      applyJustifiedLayout(grid, gp.cells.slice(0, best.n), gp.imgs.slice(0, best.n), gp.aspects.slice(0, best.n), best.split, CC_GRID_GAP, CC_JUSTIFY_MAX_TRIM);
     });
   }
 
-  // Multi-page portfolio grids: the photo count per page is fixed upstream,
-  // so just justify what's there.
-  function justifyPrintGrids(printContainer) {
-    printContainer.querySelectorAll(".print-photo-grid").forEach((grid) => {
+  // Model Portfolio's independent copy of the same layout pass, for its "1
+  // page" export mode. Starts identical to Comp Card's tuning (so today's
+  // output is unchanged) but is free to diverge — e.g. different photo-count
+  // caps or trim tolerances — without touching Comp Card at all.
+  const PF_JUSTIFY_MAX_TRIM = 0.16;
+  const PF_COVER_MAX_TRIM = 0.12;
+  const PF_GRID_GAP = 10;
+  const PF_DROP_PENALTY = 0.02;
+  function layoutPortfolioMainRow(printContainer) {
+    printContainer.querySelectorAll(".pf-main-row").forEach((row) => {
+      const panel = row.querySelector(".pf-cover-panel");
+      const grid = row.querySelector(".pf-side-grid");
+      const coverImg = panel && panel.querySelector("img");
+      if (!panel || !coverImg || !coverImg.naturalWidth || !coverImg.naturalHeight) return;
+      const W = row.clientWidth, H = row.clientHeight;
+      if (!W || !H) return;
+      const coverAspect = coverImg.naturalWidth / coverImg.naturalHeight;
+      const rowGap = parseFloat(getComputedStyle(row).columnGap) || 12;
+
+      const gp = grid ? collectGridPhotos(grid) : { cells: [], imgs: [], aspects: [] };
+      if (gp.cells.length < 2) {
+        const clamped = Math.max(W * 0.28, Math.min(W * 0.62, H * coverAspect));
+        panel.style.setProperty("flex", `0 0 ${clamped}px`, "important");
+        if (grid) grid.style.setProperty("flex", "1 1 0", "important");
+        return;
+      }
+
+      let best = null;
+      for (let frac = 0.26; frac <= 0.661; frac += 0.02) {
+        for (let n = Math.min(2, gp.cells.length); n <= gp.cells.length; n++) {
+          const aspects = gp.aspects.slice(0, n);
+          const dropped = gp.cells.length - n;
+          const heroW = W * frac;
+          const rowCoverTrim = trimOf((heroW / H) / coverAspect);
+          const rowSplit = bestJustifiedSplit(W - heroW - rowGap, H, aspects, PF_GRID_GAP);
+          if (rowSplit) {
+            const score = Math.max(rowCoverTrim, rowSplit.trim) + 0.1 * rowCoverTrim + PF_DROP_PENALTY * dropped;
+            if (!best || score < best.score) best = { score, mode: "row", size: heroW, n, split: rowSplit, coverTrim: rowCoverTrim };
+          }
+          const heroH = H * frac;
+          const colCoverTrim = trimOf((W / heroH) / coverAspect);
+          const colSplit = bestJustifiedSplit(W, H - heroH - rowGap, aspects, PF_GRID_GAP);
+          if (colSplit) {
+            const score = Math.max(colCoverTrim, colSplit.trim) + 0.1 * colCoverTrim + PF_DROP_PENALTY * dropped;
+            if (!best || score < best.score) best = { score, mode: "column", size: heroH, n, split: colSplit, coverTrim: colCoverTrim };
+          }
+        }
+      }
+      if (!best) return;
+
+      if (best.mode === "column") {
+        row.style.setProperty("flex-direction", "column", "important");
+        panel.style.setProperty("height", "auto", "important");
+        panel.style.setProperty("width", "100%", "important");
+        grid.style.setProperty("height", "auto", "important");
+      }
+      panel.style.setProperty("flex", `0 0 ${best.size}px`, "important");
+      grid.style.setProperty("flex", "1 1 0", "important");
+      coverImg.style.setProperty("object-fit", best.coverTrim <= PF_COVER_MAX_TRIM ? "cover" : "contain", "important");
+      for (let i = best.n; i < gp.cells.length; i++) gp.cells[i].remove();
+      applyJustifiedLayout(grid, gp.cells.slice(0, best.n), gp.imgs.slice(0, best.n), gp.aspects.slice(0, best.n), best.split, PF_GRID_GAP, PF_JUSTIFY_MAX_TRIM);
+    });
+  }
+
+  // Multi-page portfolio grids only (.pf-photo-grid — Comp Card never
+  // produces this markup at all): the photo count per page is fixed
+  // upstream, so just justify what's there.
+  function justifyPortfolioGrids(printContainer) {
+    printContainer.querySelectorAll(".pf-photo-grid").forEach((grid) => {
       const { cells, imgs, aspects } = collectGridPhotos(grid);
       if (cells.length < 2) return;
       const best = bestJustifiedSplit(grid.clientWidth, grid.clientHeight, aspects, 12);
-      if (best) applyJustifiedLayout(grid, cells, imgs, aspects, best, 12);
+      if (best) applyJustifiedLayout(grid, cells, imgs, aspects, best, 12, PF_JUSTIFY_MAX_TRIM);
     });
   }
 
@@ -4536,25 +4611,32 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         document.head.appendChild(styleTag);
       }
 
+      // Selectors keyed off docType ("CompCard" vs "Portfolio") rather than
+      // one shared rule set — the last piece of the one-pager pipeline that
+      // was still implicitly shared between the two document types.
+      const rowSel = docType === "CompCard" ? ".cc-main-row" : ".pf-main-row";
+      const coverSel = docType === "CompCard" ? ".cc-cover-panel" : ".pf-cover-panel";
+      const sideSel = docType === "CompCard" ? ".cc-side-grid" : ".pf-side-grid";
+
       if (isLandscape) {
         styleTag.textContent = `
           @media print {
             @page { size: A4 landscape !important; margin: 6mm 8mm !important; }
             .print-page { padding: 12px 16px !important; }
-            .print-main-row {
+            ${rowSel} {
               flex: 1 1 0% !important;
               gap: 14px !important;
               margin: 0 0 10px !important;
             }
-            .print-cover-panel {
+            ${coverSel} {
               flex: 1.5 1 0 !important;
             }
-            .print-side-grid {
+            ${sideSel} {
               flex: 1 1 0 !important;
               grid-template-columns: repeat(2, 1fr) !important;
               gap: 8px !important;
             }
-            .print-photo-grid {
+            .pf-photo-grid {
               grid-template-columns: repeat(3, 1fr) !important;
               gap: 10px !important;
               margin: 8px 0 !important;
@@ -4567,7 +4649,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           @media print {
             @page { size: A4 portrait !important; margin: 6mm 8mm !important; }
             .print-page { padding: 14px 16px !important; }
-            .print-main-row {
+            ${rowSel} {
               flex: 1 1 0% !important;
               gap: 12px !important;
               margin: 0 0 10px !important;
@@ -4598,8 +4680,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       printContainer.style.setProperty("visibility", "hidden", "important");
 
       fitPrintPagesToA4(printContainer, isLandscape);
-      layoutPrintMainRows(printContainer);
-      justifyPrintGrids(printContainer);
+      // Each only matches its own class (.cc-main-row / .pf-main-row /
+      // .pf-photo-grid), so calling all three unconditionally is a safe
+      // no-op for whichever document type didn't produce that markup —
+      // printFromContainer doesn't need to know which caller invoked it.
+      layoutCompCardMainRow(printContainer);
+      layoutPortfolioMainRow(printContainer);
+      justifyPortfolioGrids(printContainer);
 
       const oldTitle = document.title;
       const cleanModelName = getTalentCleanName(shoot.talent || shoot.title).trim().replace(/\s+/g, '_');
@@ -4648,20 +4735,25 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   }
 
   // Single A4 "composite card" page — the standard agency layout: bold name
-  // header, one large lead photo beside a 2×2 supporting grid, then stats
-  // and socials strips when the data exists. The photo row flexes, so the
-  // page absorbs optional strips without ever spilling onto a second sheet.
-  function printOnePagerHtml(shoot, photos, headerLabel, showAngles) {
+  // header, one large lead photo beside a supporting grid, then stats and
+  // socials strips when the data exists. The photo row flexes, so the page
+  // absorbs optional strips without ever spilling onto a second sheet.
+  //
+  // Forked into two independent templates (Comp Card vs Model Portfolio's
+  // "1 page" mode) — they used to be one shared function keyed by a
+  // headerLabel string, which meant a layout tweak made for one document
+  // type silently changed the other's too. Each owns its own CSS classes
+  // (.cc-* / .pf-*) so they can diverge freely from here.
+  function printCompCardPageHtml(shoot, photos) {
     const name = getTalentCleanName(shoot.talent || shoot.title);
     const cover = photos[0];
-    const targetType = (headerLabel === "MODEL PORTFOLIO" ? "portfolio" : "comp");
-    const statsHtml = printStatsBarHtml(shoot, targetType);
+    const statsHtml = printStatsBarHtml(shoot, "comp");
     const socialsHtml = printSocialsBarHtml(shoot);
     const hasDetails = !!(statsHtml.trim() || socialsHtml.trim());
 
     // Render up to 5 side photos — the card stays at 6 photos max so the
     // model stays highlighted, per the studio's comp card format. The
-    // post-load layout pass (layoutPrintMainRows) decides how many to
+    // post-load layout pass (layoutCompCardMainRow) decides how many to
     // actually keep based on which count tiles the sheet best for the
     // shapes drawn this export.
     const side = photos.slice(1, 6);
@@ -4669,15 +4761,47 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     return `
       <div class="print-page${!hasDetails ? " no-details" : ""}">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: calc(8px * var(--print-scale, 1)); margin-bottom: calc(10px * var(--print-scale, 1)); flex: 0 0 auto;">
-          <span style="font-family:'JetBrains Mono', monospace; font-size: calc(10px * var(--print-scale, 1)); font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;">${headerLabel}</span>
+          <span style="font-family:'JetBrains Mono', monospace; font-size: calc(10px * var(--print-scale, 1)); font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;">MODEL COMP CARD</span>
           <span style="font-family:'JetBrains Mono', monospace; font-size: calc(10px * var(--print-scale, 1)); font-weight: 800; color: #000; text-transform: uppercase;">Clicked by nerdyphotographer.in</span>
         </div>
         <h1 style="font-family:'Outfit', sans-serif; font-size: calc(30px * var(--print-scale, 1)); font-weight: 800; margin: 0 0 calc(10px * var(--print-scale, 1)); text-transform: uppercase; color: #000; letter-spacing: -0.02em; flex: 0 0 auto;">${name}</h1>
-        <div class="print-main-row">
-          <div class="print-cover-panel">
+        <div class="cc-main-row">
+          <div class="cc-cover-panel">
             ${cover ? `<img src="${photoSrc(cover)}" alt="Lead photo" />` : ""}
           </div>
-          ${side.length ? `<div class="print-side-grid${side.length === 5 ? " grid-5" : ""}">${side.map(p => printGridCellHtml(p, showAngles)).join("")}</div>` : ""}
+          ${side.length ? `<div class="cc-side-grid${side.length === 5 ? " grid-5" : ""}">${side.map(p => printGridCellHtml(p, false)).join("")}</div>` : ""}
+        </div>
+        ${statsHtml}
+        ${socialsHtml}
+        ${PRINT_FOOTER_HTML}
+      </div>
+    `;
+  }
+
+  // Model Portfolio's independent copy for its "1 page" export mode (see
+  // printCompCardPageHtml above for why these are separate). Starts
+  // pixel-identical to the Comp Card version; free to diverge from here —
+  // e.g. showAngles is already portfolio-only behavior.
+  function printPortfolioOnePagerHtml(shoot, photos) {
+    const name = getTalentCleanName(shoot.talent || shoot.title);
+    const cover = photos[0];
+    const statsHtml = printStatsBarHtml(shoot, "portfolio");
+    const socialsHtml = printSocialsBarHtml(shoot);
+    const hasDetails = !!(statsHtml.trim() || socialsHtml.trim());
+    const side = photos.slice(1, 6);
+
+    return `
+      <div class="print-page${!hasDetails ? " no-details" : ""}">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: calc(8px * var(--print-scale, 1)); margin-bottom: calc(10px * var(--print-scale, 1)); flex: 0 0 auto;">
+          <span style="font-family:'JetBrains Mono', monospace; font-size: calc(10px * var(--print-scale, 1)); font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;">MODEL PORTFOLIO</span>
+          <span style="font-family:'JetBrains Mono', monospace; font-size: calc(10px * var(--print-scale, 1)); font-weight: 800; color: #000; text-transform: uppercase;">Clicked by nerdyphotographer.in</span>
+        </div>
+        <h1 style="font-family:'Outfit', sans-serif; font-size: calc(30px * var(--print-scale, 1)); font-weight: 800; margin: 0 0 calc(10px * var(--print-scale, 1)); text-transform: uppercase; color: #000; letter-spacing: -0.02em; flex: 0 0 auto;">${name}</h1>
+        <div class="pf-main-row">
+          <div class="pf-cover-panel">
+            ${cover ? `<img src="${photoSrc(cover)}" alt="Lead photo" />` : ""}
+          </div>
+          ${side.length ? `<div class="pf-side-grid${side.length === 5 ? " grid-5" : ""}">${side.map(p => printGridCellHtml(p, true)).join("")}</div>` : ""}
         </div>
         ${statsHtml}
         ${socialsHtml}
@@ -4725,7 +4849,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     // model highlighted); the aspect-aware layout pass keeps however many of
     // them tile the chosen orientation best.
     const photos = shuffled.slice(0, 6);
-    printFromContainer(shoot, printOnePagerHtml(shoot, photos, "MODEL COMP CARD", false), "CompCard", orientation);
+    printFromContainer(shoot, printCompCardPageHtml(shoot, photos), "CompCard", orientation);
   };
 
   // Print a model portfolio from an explicit photo list, in the format the
@@ -4735,7 +4859,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const coverPhoto = photos.find(p => p.id.split("-")[0] === shoot.coverPhotoId) || photos[0];
     const ordered = [coverPhoto, ...photos.filter(p => p !== coverPhoto)];
     if (pageMode === 1 || ordered.length === 1) {
-      printFromContainer(shoot, printOnePagerHtml(shoot, ordered.slice(0, 5), "MODEL PORTFOLIO", true), "Portfolio", orientation);
+      printFromContainer(shoot, printPortfolioOnePagerHtml(shoot, ordered.slice(0, 5)), "Portfolio", orientation);
       return;
     }
     
