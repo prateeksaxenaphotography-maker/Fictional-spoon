@@ -946,10 +946,18 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           // and delete must target the REAL underlying shoots, so list one
           // row per original shoot (single-shoot albums get one plain row).
           const targets = (shoot.originalShoots && shoot.originalShoots.length) ? shoot.originalShoots : [shoot];
+          // A model's shoots usually all carry the model's name as title, so
+          // titles alone render as identical-looking duplicate rows. Label
+          // each row with what actually distinguishes the shoots: season (or
+          // date), activity, and photo count.
+          const shootLabel = (t) => {
+            const parts = [t.season || t.date, t.activity, `${(t.photos || []).length} photos`].filter(Boolean);
+            return parts.join(" · ");
+          };
           const rows = targets.map(t => `
               <div style="display: flex; gap: 14px; width: 100%; margin-top: 6px;">
-                <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0; font-size: 11px; height: auto; text-align: left;" data-id="${t.id}">${targets.length > 1 ? `Edit: "${esc(t.title)}"` : "Edit details"} →</button>
-                <button class="link-arrow work-delete" style="color: #b22222; font-weight: 700; padding: 0; font-size: 11px; height: auto;" data-id="${t.id}" data-title="${esc(t.title || t.talent || "")}">Delete →</button>
+                <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0; font-size: 11px; height: auto; text-align: left;" data-id="${t.id}">${targets.length > 1 ? `Edit: ${esc(shootLabel(t))}` : "Edit details"} →</button>
+                <button class="link-arrow work-delete" style="color: #b22222; font-weight: 700; padding: 0; font-size: 11px; height: auto;" data-id="${t.id}" data-title="${esc(t.title || t.talent || "")}${targets.length > 1 ? ` — ${esc(shootLabel(t))}` : ""}">Delete →</button>
               </div>`).join("");
           return `
             <div class="lb-sidebar-section" style="margin-top: 20px; border-top: 1px dashed var(--line); padding-top: 16px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; width: 100%;">
