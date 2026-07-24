@@ -4120,6 +4120,38 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     });
   }
 
+  // The lead photo panel sits at a fixed flex proportion of the row (so the
+  // row lays out before any image has loaded), but that proportion is tuned
+  // for a portrait-ish photo on a portrait-ish page. Cross the two — e.g. a
+  // portrait cover shot exported in landscape — and object-fit:contain (kept
+  // deliberately uncropped) letterboxes hard, wasting up to a third of the
+  // page as empty grey bars either side of the photo. Once the image has
+  // loaded we know its real aspect ratio, so re-derive the panel's width
+  // from that instead of the fixed ratio, and let the side grid reflow into
+  // whatever width is left.
+  function fitCoverPanelToPhoto(printContainer) {
+    printContainer.querySelectorAll(".print-main-row").forEach((row) => {
+      const panel = row.querySelector(".print-cover-panel");
+      const grid = row.querySelector(".print-side-grid");
+      const img = panel && panel.querySelector("img");
+      if (!panel || !grid || !img || !img.naturalWidth || !img.naturalHeight) return;
+
+      const rowRect = row.getBoundingClientRect();
+      const panelRect = panel.getBoundingClientRect();
+      const aspect = img.naturalWidth / img.naturalHeight;
+      const idealWidth = panelRect.height * aspect;
+
+      // Clamp so the side grid never gets squeezed to nothing and the panel
+      // never swallows the whole row, even for extreme aspect ratios.
+      const minWidth = rowRect.width * 0.28;
+      const maxWidth = rowRect.width * 0.62;
+      const clamped = Math.max(minWidth, Math.min(maxWidth, idealWidth));
+
+      panel.style.setProperty("flex", `0 0 ${clamped}px`, "important");
+      grid.style.setProperty("flex", "1 1 0", "important");
+    });
+  }
+
   // Render pages into the hidden print container, wait for every image to
   // finish loading, then open the print dialog with a clean filename
   // (<Model_Name>_<suffix>_nerdyphotographer.pdf when saved as PDF).
@@ -4184,18 +4216,27 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       }
 
       // The container is normally display:none on screen — make it
-      // participate in layout, off-screen, so real heights can be measured
-      // and fitted before the print dialog opens.
+      // participate in layout so real heights can be measured and fitted
+      // before the print dialog opens, while staying invisible via
+      // visibility:hidden (an on-screen -99999px offset was tried before,
+      // but position:fixed is relative to the browser's own viewport, so a
+      // narrow/not-fully-maximized window could push the content outside
+      // whatever region Chrome actually paints — producing a blank PDF.
+      // Keeping it pinned at 0,0, always inside any viewport, and toggling
+      // visibility instead of position sidesteps that entirely).
       const prevDisplay = printContainer.style.display;
       const prevPosition = printContainer.style.position;
       const prevLeft = printContainer.style.left;
       const prevTop = printContainer.style.top;
+      const prevVisibility = printContainer.style.visibility;
       printContainer.style.setProperty("display", "flex", "important");
       printContainer.style.setProperty("position", "fixed", "important");
-      printContainer.style.setProperty("left", "-99999px", "important");
+      printContainer.style.setProperty("left", "0", "important");
       printContainer.style.setProperty("top", "0", "important");
+      printContainer.style.setProperty("visibility", "hidden", "important");
 
       fitPrintPagesToA4(printContainer, isLandscape);
+      fitCoverPanelToPhoto(printContainer);
 
       const oldTitle = document.title;
       const cleanModelName = getTalentCleanName(shoot.talent || shoot.title).trim().replace(/\s+/g, '_');
@@ -4210,6 +4251,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       printContainer.style.position = prevPosition;
       printContainer.style.left = prevLeft;
       printContainer.style.top = prevTop;
+      printContainer.style.visibility = prevVisibility;
     };
     const imgs = printContainer.querySelectorAll("img");
     if (imgs.length === 0) { triggerPrint(); return; }
