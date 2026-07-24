@@ -867,7 +867,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             </button>
             <div style="margin-top: 4px; padding: 10px 12px; background: #fdf6f0; border: 1px solid #f2c9b6; border-left: 4px solid var(--accent); border-radius: 6px; display: flex; align-items: flex-start; gap: 8px; text-align: left;">
               <span style="font-size: 15px; line-height: 1;">🎲</span>
-              <div style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink); line-height: 1.45;">
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: #3b2f27; line-height: 1.45;">
                 <strong style="color: var(--accent); text-transform: uppercase; font-size: 10px; letter-spacing: 0.03em;">Random Selection:</strong><br/>
                 Supporting photos are randomly selected from all photos tagged to this model every time you export.
               </div>
