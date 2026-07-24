@@ -4,6 +4,7 @@ const express = require("express");
 const path = require("path");
 const cors = require("cors");
 const logController = require("./backend/logController");
+const viewController = require("./backend/viewController");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -29,6 +30,8 @@ app.use(express.json());
 // API Routes
 app.post("/api/logs", logController.logDownload);
 app.get("/api/logs/download", logController.downloadCSV);
+app.post("/api/views", viewController.logView);
+app.get("/api/views/summary", viewController.getViewsSummary);
 
 // Serve static project files
 app.use(express.static(__dirname));

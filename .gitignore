@@ -4,3 +4,5 @@ node_modules/
 .env
 # Visitor emails collected by the log server — never publish these
 backend/logs.json
+# Runtime-generated content-engagement counts — no PII, but still local state
+backend/views.json
