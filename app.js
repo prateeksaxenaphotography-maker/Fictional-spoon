@@ -4400,7 +4400,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       // "nerdyphotographer.in" would leave a stray dot right before ".pdf" in
       // the saved filename (e.g. "..._NerdyPhotographer.in.pdf") — dropped to
       // avoid that, per explicit instruction to prefer the no-dot form.
-      document.title = `${cleanModelName}_${docType}_Shot_By_NerdyPhotographerin`;
+      // Timestamp suffix: every export is a unique random draw, and an
+      // identical suggested filename makes the OS save dialog prompt
+      // "replace?" against the previous export instead of saving cleanly.
+      const now = new Date();
+      const pad2 = (n) => String(n).padStart(2, "0");
+      const stamp = `${now.getFullYear()}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}_${pad2(now.getHours())}${pad2(now.getMinutes())}`;
+      document.title = `${cleanModelName}_${docType}_Shot_By_NerdyPhotographerin_${stamp}`;
       // Flip visible only for the print snapshot itself. The screen never
       // paints the container: no yield to the event loop happens between
       // this assignment and window.print() blocking. Doing it here in JS
