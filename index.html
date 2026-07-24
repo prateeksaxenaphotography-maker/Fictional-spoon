@@ -4,7 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- Security: restrict where scripts/styles/requests may load from -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com; connect-src 'self' https://api.github.com https://formsubmit.co https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com; object-src 'none'; base-uri 'self'; form-action 'self' mailto:" />
+  <!-- connect-src includes the Render backend (wolverine-photostudio-api.onrender.com):
+       every /api/logs (comp-card download logging + magic link) and /api/views
+       (analytics) call goes there, and without it in the whitelist the browser
+       silently blocks those fetches as a CSP violation. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com; connect-src 'self' https://api.github.com https://formsubmit.co https://wolverine-photostudio-api.onrender.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com; object-src 'none'; base-uri 'self'; form-action 'self' mailto:" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-S0Q7T5Y2J4"></script>
@@ -33,7 +37,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Fraunces:opsz,ital,wght@9..144,0,300;9..144,1,400;9..144,1,500&family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=68" />
+  <link rel="stylesheet" href="/styles.css?v=69" />
   <script>
     (function() {
       function updateTheme() {
@@ -151,7 +155,8 @@
         <li id="navWorkshopLi" style="display: none;"><a href="/workshop-attended" data-link><span class="nav-idx">07</span> Workshop Attended</a></li>
         <li id="navUploadLi"><a href="/upload" data-link><span class="nav-idx">08</span> Upload</a></li>
         <li id="navBookLi"><a href="/book" data-link><span class="nav-idx">08</span> Book a shoot</a></li>
-        <li id="navLogsLi" style="display: none;"><a href="#" onclick="window.downloadLogsCSV(); return false;"><span class="nav-idx">09</span> Download Logs</a></li>
+        <li id="navAnalyticsLi" style="display: none;"><a href="/analytics" data-link><span class="nav-idx">09</span> Analytics</a></li>
+        <li id="navLogsLi" style="display: none;"><a href="#" onclick="window.downloadLogsCSV(); return false;"><span class="nav-idx">10</span> Download Logs</a></li>
       </ul>
       <div class="nav-meta">
         <div>
@@ -237,9 +242,9 @@
     <div class="lightbox-sidebar" id="lightboxSidebar"></div>
   </div>
 
-  <script src="/config.js?v=68"></script>
-  <script src="/data.js?v=68"></script>
-  <script src="/app.js?v=68"></script>
+  <script src="/config.js?v=69"></script>
+  <script src="/data.js?v=69"></script>
+  <script src="/app.js?v=69"></script>
   <div id="compCardPrintContainer" style="display: none;"></div>
 </body>
 </html>

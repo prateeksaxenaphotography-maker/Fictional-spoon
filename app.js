@@ -1030,6 +1030,28 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     lbReturnFocus = document.activeElement;
     lbList = list; lbIdx = idx; paintLb(); lb.hidden = false;
     document.body.style.overflow = "hidden"; $("#lightboxClose").focus();
+    logShootView(list[idx]);
+  }
+  // Content-engagement signal for the Analytics tab: one record per shoot
+  // opened in the lightbox (not per next/prev step within it), so the admin
+  // can see which categories/shoots get looked at and shoot more of that
+  // kind. No visitor identity is sent. Skips the admin's own browsing (that's
+  // curation, not visitor interest) and demo/placeholder content.
+  function logShootView(photo) {
+    if (!photo || isAdmin()) return;
+    const s = SHOOTS.find(x => x.id === photo.shootId) || photo.shoot;
+    if (!s || s.demo) return;
+    fetch(`${COMP_CARD_API_BASE}/api/views`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        shootId: s.id,
+        activity: s.activity || "",
+        type: s.type || "",
+        talent: s.talent || "",
+        title: s.title || "",
+      }),
+    }).catch(() => {}); // best-effort — never blocks or affects the viewing experience
   }
   function paintLb() {
     const p = lbList[lbIdx]; if (!p) return;
@@ -1212,13 +1234,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       adminSec.style.display = isAdminAuthorized() ? "block" : "none";
     }
 
-    const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi"), compCardsLi = $("#navCompCardsLi"), portfolioLi = $("#navModelPortfolioLi"), workshopLi = $("#navWorkshopLi"), logsLi = $("#navLogsLi");
+    const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi"), compCardsLi = $("#navCompCardsLi"), portfolioLi = $("#navModelPortfolioLi"), workshopLi = $("#navWorkshopLi"), logsLi = $("#navLogsLi"), analyticsLi = $("#navAnalyticsLi");
     if (uploadLi) uploadLi.style.display = active ? "block" : "none";
     if (bookLi) bookLi.style.display = active ? "none" : "block";
     if (compCardsLi) compCardsLi.style.display = "block";
     if (portfolioLi) portfolioLi.style.display = active ? "block" : "none";
     if (workshopLi) workshopLi.style.display = (active || shouldShowWorkshopsToAll()) ? "block" : "none";
     if (logsLi) logsLi.style.display = active ? "block" : "none";
+    if (analyticsLi) analyticsLi.style.display = active ? "block" : "none";
 
     if (themeBtn) {
       themeBtn.style.display = active ? "inline-block" : "none";
@@ -1738,6 +1761,96 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         <div class="noth-work-list">${list.map(nothWorkCard).join("") || `<p class="page-sub">No workshop albums published yet. Go to <a href="/upload" data-link style="text-decoration:underline; font-weight:600; color:var(--accent);">Upload</a> to add one with type 'Workshop Attended'.</p>`}</div>
       </section>
     `;
+  }
+
+  // Ranked horizontal bars: length encodes magnitude (a count), one accent
+  // hue throughout. No categorical color assignment is needed here — each
+  // row already carries its own text label, so identity never depends on
+  // color, only on the label beside it.
+  function rankedBarsHtml(items) {
+    const max = Math.max(1, ...items.map((i) => i.count));
+    return items.map((i) => {
+      const pct = Math.max(2, Math.round((i.count / max) * 100));
+      return `
+        <div style="display:flex; flex-direction:column; gap:5px; margin-bottom:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:12.5px;">
+            <span style="font-weight:600; color:var(--ink);">${esc(i.label)}</span>
+            <span style="font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--ink-soft); font-variant-numeric: tabular-nums; flex:0 0 auto;">${i.count}</span>
+          </div>
+          <div style="height:8px; border-radius:4px; background:var(--line); overflow:hidden;">
+            <div style="height:100%; width:${pct}%; border-radius:4px; background:var(--accent);"></div>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function renderAnalytics(data) {
+    const container = $("#analyticsContent");
+    if (!container) return;
+    const catItems = (data.categories || []).map((c) => ({ label: c.activity, count: c.count }));
+    const shootItems = (data.topShoots || []).map((s) => ({ label: s.label, count: s.count }));
+    const emptyNote = `<p class="page-sub" style="font-size:13px; margin:0;">No views recorded yet.</p>`;
+    container.innerHTML = `
+      <div style="padding:18px 22px; border:1px solid var(--line); border-radius:8px; background:var(--bone); display:inline-flex; flex-direction:column; gap:4px; margin-bottom:36px;">
+        <span style="font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-soft);">Total Views</span>
+        <span style="font-size:30px; font-weight:800; color:var(--ink); font-variant-numeric: tabular-nums;">${data.totalViews ?? 0}</span>
+      </div>
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:40px;">
+        <div>
+          <h3 style="font-family:'Outfit', sans-serif; font-size:16px; font-weight:700; margin:0 0 16px; color:var(--ink);">Views by Category</h3>
+          ${catItems.length ? rankedBarsHtml(catItems) : emptyNote}
+        </div>
+        <div>
+          <h3 style="font-family:'Outfit', sans-serif; font-size:16px; font-weight:700; margin:0 0 16px; color:var(--ink);">Top Shoots</h3>
+          ${shootItems.length ? rankedBarsHtml(shootItems) : emptyNote}
+        </div>
+      </div>
+    `;
+  }
+
+  function viewAnalytics() {
+    return `
+      <section class="page-head">
+        <div class="container">
+          <p class="eyebrow reveal">🔒 Admin View Only</p>
+          ${kineticH1("Analytics", "kinetic-h1-wide")}
+          <p class="page-sub reveal" style="max-width: 620px; line-height: 1.6; opacity: 1 !important; visibility: visible !important; transform: none !important;">Which photo categories and shoots get looked at most on the site — a signal for what kind of shoot to do more of. Live traffic and referrers are already tracked separately via Cloudflare and Google Analytics; this is just content engagement within the portfolio itself.</p>
+        </div>
+      </section>
+      <section class="section">
+        <div class="container" id="analyticsContent">
+          <button type="button" id="analyticsLoadBtn" class="btn btn-dark" style="font-family:'JetBrains Mono', monospace; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; font-size:12px; height:auto; padding:12px 20px;">Load Analytics →</button>
+        </div>
+      </section>
+    `;
+  }
+
+  function wireAnalytics() {
+    const btn = $("#analyticsLoadBtn");
+    if (!btn) return;
+    btn.addEventListener("click", async () => {
+      const passcode = prompt("Enter admin passcode to view analytics:");
+      if (!passcode) return;
+      btn.disabled = true;
+      btn.textContent = "Loading…";
+      try {
+        const res = await fetch(`${COMP_CARD_API_BASE}/api/views/summary?passcode=${encodeURIComponent(passcode.trim())}`);
+        if (res.status === 401) {
+          toast("Incorrect passcode.");
+          btn.disabled = false;
+          btn.textContent = "Load Analytics →";
+          return;
+        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        renderAnalytics(await res.json());
+      } catch (err) {
+        console.error("Analytics load failed:", err);
+        toast("Couldn't load analytics — check the server connection.");
+        btn.disabled = false;
+        btn.textContent = "Load Analytics →";
+      }
+    });
   }
 
 
@@ -3759,6 +3872,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       wireUpload(editId);
     }
     if (key === "book") wireBook();
+    if (key === "analytics") wireAnalytics();
     // animate hero counts
     view.querySelectorAll("[data-count]").forEach((el) => animateCount(el, parseInt(el.textContent, 10) || 0));
   }
@@ -3766,7 +3880,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   /* ============================================================
      §14 · ROUTER
      ============================================================ */
-  const ROUTES = { "": viewHome, "albums": viewAlbums, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload, "book": viewBook, "testimonials": viewTestimonials, "workshop-attended": viewWorkshopAttended };
+  const ROUTES = { "": viewHome, "albums": viewAlbums, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload, "book": viewBook, "testimonials": viewTestimonials, "workshop-attended": viewWorkshopAttended, "analytics": viewAnalytics };
 
   function render() {
     let raw = location.pathname;
@@ -3797,6 +3911,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     
     // Redirect non-admins trying to access upload page
     if (key === "upload" && !isAdmin()) {
+      history.pushState(null, "", "/");
+      render();
+      return;
+    }
+
+    // Redirect non-admins trying to access the analytics page
+    if (key === "analytics" && !isAdmin()) {
       history.pushState(null, "", "/");
       render();
       return;
