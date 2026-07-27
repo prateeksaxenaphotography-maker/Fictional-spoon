@@ -2540,14 +2540,20 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             <fieldset><legend>Credits</legend>
               <div class="field-row">
                 <label class="field"><span>Photographer</span><input id="f_photographer" type="text" value="nerdyphotographer" placeholder="Your name" /></label>
-                <label class="field"><span>Art director</span><input id="f_ad" type="text" placeholder="—" /></label>
+                <label class="field"><span>Art director (add socials in parentheses)</span><input id="f_ad" type="text" placeholder="e.g. Name (@handle; site.com)" /></label>
+                <div id="f_ad_verify" style="margin-top: 5px; font-size: 11px; display: none;"></div>
               </div>
               <div class="field-row">
-                <label class="field"><span>Stylist</span><input id="f_stylist" type="text" placeholder="—" /></label>
-                <label class="field"><span>Hair stylist</span><input id="f_hair" type="text" placeholder="—" /></label>
+                <label class="field"><span>Stylist (add socials in parentheses)</span><input id="f_stylist" type="text" placeholder="e.g. Name (@handle; site.com)" /></label>
+                <div id="f_stylist_verify" style="margin-top: 5px; font-size: 11px; display: none;"></div>
               </div>
               <div class="field-row">
-                <label class="field"><span>Makeup artist (MUA)</span><input id="f_mua" type="text" placeholder="—" /></label>
+                <label class="field"><span>Hair stylist (add socials in parentheses)</span><input id="f_hair" type="text" placeholder="e.g. Name (@handle; site.com)" /></label>
+                <div id="f_hair_verify" style="margin-top: 5px; font-size: 11px; display: none;"></div>
+              </div>
+              <div class="field-row">
+                <label class="field"><span>Makeup artist / MUA (add socials in parentheses)</span><input id="f_mua" type="text" placeholder="e.g. Name (@handle; site.com)" /></label>
+                <div id="f_mua_verify" style="margin-top: 5px; font-size: 11px; display: none;"></div>
                 <label class="field"><span>Videographer(s)</span><input id="f_video" type="text" placeholder="—" /></label>
               </div>
               <div class="field-row">
@@ -3371,6 +3377,71 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     ["dragenter", "dragover"].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.add("is-drag"); }));
     ["dragleave", "dragend", "drop"].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.remove("is-drag"); }));
     dz.addEventListener("drop", (e) => { if (e.dataTransfer?.files?.length) ingest(e.dataTransfer.files); });
+
+    // Generic link verification for fields (stylist, MUA, art director, etc.)
+    function setupLinkVerification(fieldId, verifyId, flagName) {
+      const input = $("#" + fieldId);
+      const verify = $("#" + verifyId);
+      if (!input || !verify) return;
+
+      let clickedFlag = false;
+      verify.addEventListener("click", (e) => {
+        if (e.target.closest("a")) clickedFlag = true;
+      });
+
+      function updateVerify() {
+        const val = input.value.trim();
+        if (!val) {
+          verify.style.display = "none";
+          verify.innerHTML = "";
+          return;
+        }
+        const items = val.split(",").map(item => item.trim()).filter(Boolean);
+        const allLinks = [];
+        items.forEach(item => {
+          const parenRegex = /\(([^)]+)\)/;
+          const match = item.match(parenRegex);
+          if (match) {
+            const socials = match[1].split(";").map(s => s.trim()).filter(Boolean);
+            socials.forEach(s => {
+              if (s.includes("instagram.com") || s.startsWith("@")) {
+                const handle = s.startsWith("@") ? s.replace(/^@/, "") : s.split("/").pop();
+                allLinks.push({ label: `@${handle}`, url: `https://instagram.com/${handle}` });
+              } else if (s.includes("kavyar.com")) {
+                allLinks.push({ label: "Kavyar", url: s.startsWith("http") ? s : "https://" + s });
+              } else if (s.startsWith("http")) {
+                allLinks.push({ label: s.split("//")[1]?.split("/")[0] || "Link", url: s });
+              }
+            });
+          }
+        });
+        if (!allLinks.length) {
+          verify.style.display = "none";
+          verify.innerHTML = "";
+          return;
+        }
+        const linksHtml = allLinks.map(({ label, url }) => `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600; text-decoration:underline; display:inline-flex; align-items:center; gap:2px; margin-right:12px;">${esc(label)} ↗</a>`).join("");
+        verify.innerHTML = `<span style="color:var(--ink-soft); font-family:'JetBrains Mono', monospace; font-size:10px; margin-right:6px; text-transform:uppercase;">Verify links:</span> ${linksHtml}`;
+        verify.style.display = "block";
+      }
+
+      setTimeout(updateVerify, 50);
+      input.addEventListener("input", () => {
+        clickedFlag = false;
+        updateVerify();
+      });
+      input.addEventListener("blur", updateVerify);
+
+      // Store the flag on window for later validation
+      window[flagName] = { flag: clickedFlag, get: () => clickedFlag, set: (v) => { clickedFlag = v; } };
+    }
+
+    // Initialize verification for all fields
+    setupLinkVerification("f_stylist", "f_stylist_verify", "stylistVerifyFlag");
+    setupLinkVerification("f_hair", "f_hair_verify", "hairVerifyFlag");
+    setupLinkVerification("f_mua", "f_mua_verify", "muaVerifyFlag");
+    setupLinkVerification("f_ad", "f_ad_verify", "adVerifyFlag");
+
     const igInput = $("#f_ig");
     const igVerify = $("#f_ig_verify");
     let clickedVerify = false;
@@ -3607,6 +3678,30 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const originalMentor = editingShoot ? (editingShoot.mentor || "") : "";
       if (mentorVal && mentorVal !== originalMentor && !clickedMentorVerify) {
         toast("Please test the mentor links before publishing.");
+        return;
+      }
+      const stylistVal = val("f_stylist");
+      const originalStylist = editingShoot ? (editingShoot.stylist || "") : "";
+      if (stylistVal && stylistVal !== originalStylist && !window.stylistVerifyFlag?.get?.()) {
+        toast("Please test the stylist links before publishing.");
+        return;
+      }
+      const hairVal = val("f_hair");
+      const originalHair = editingShoot ? (editingShoot.hair || "") : "";
+      if (hairVal && hairVal !== originalHair && !window.hairVerifyFlag?.get?.()) {
+        toast("Please test the hair stylist links before publishing.");
+        return;
+      }
+      const muaVal = val("f_mua");
+      const originalMua = editingShoot ? (editingShoot.mua || "") : "";
+      if (muaVal && muaVal !== originalMua && !window.muaVerifyFlag?.get?.()) {
+        toast("Please test the makeup artist links before publishing.");
+        return;
+      }
+      const adVal = val("f_ad");
+      const originalAd = editingShoot ? (editingShoot.artDirector || "") : "";
+      if (adVal && adVal !== originalAd && !window.adVerifyFlag?.get?.()) {
+        toast("Please test the art director links before publishing.");
         return;
       }
       const isTestimonialOnly = !!$("#f_is_testimonial_only")?.checked;
