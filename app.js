@@ -751,7 +751,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     
     // Parse social handle
     let igHtml = "";
-    if (shoot.instagram) {
+    if (shoot.instagram && (isAdmin() || shoot.showInstagram !== false)) {
       const handles = compCardOwnHandles(shoot, shoot.instagram.split(",").map(x => x.trim()).filter(Boolean), isIgHandle);
       if (handles.length) {
         const links = handles.map(h => {
@@ -781,7 +781,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     }
 
     let kavyarHtml = "";
-    if (shoot.kavyar) {
+    if (shoot.kavyar && (isAdmin() || shoot.showKavyar !== false)) {
       const handles = compCardOwnHandles(shoot, shoot.kavyar.split(",").map(x => x.trim()).filter(Boolean), isKavyarHandle);
       if (handles.length) {
         const links = handles.map(h => {
@@ -896,8 +896,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     if (shoot.videographer && shoot.videographer !== "—") credits.push(`<div><dt>Video</dt><dd>${formatCrew(shoot.videographer)}</dd></div>`);
     if (shoot.hair && shoot.hair !== "—") credits.push(`<div><dt>Hair</dt><dd>${formatCrew(shoot.hair)}</dd></div>`);
     if (shoot.talent && shoot.talent !== "—") credits.push(`<div><dt>Model / Talent</dt><dd>${renderCreditValue(shoot.talent)}</dd></div>`);
-    if (shoot.credits) credits.push(`<div><dt>Credits</dt><dd>${renderCreditsValue(shoot.credits)}</dd></div>`);
-    if (shoot.pdfUrl) credits.push(`<div><dt>Material</dt><dd><a href="${esc(shoot.pdfUrl)}" download style="color: var(--accent); text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">📄 Download PDF</a></dd></div>`);
+    if (shoot.credits && (isAdmin() || shoot.showCredits !== false)) credits.push(`<div><dt>Credits</dt><dd>${renderCreditsValue(shoot.credits)}</dd></div>`);
+    if (shoot.pdfUrl && (isAdmin() || shoot.showPdf !== false)) credits.push(`<div><dt>Material</dt><dd><a href="${esc(shoot.pdfUrl)}" download style="color: var(--accent); text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">📄 Download PDF</a></dd></div>`);
     if (igHtml) credits.push(igHtml);
     if (kavyarHtml) credits.push(kavyarHtml);
 
@@ -1411,8 +1411,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           </div>
           <div class="noth-work-meta">
             ${meta ? `<span>${esc(meta)}</span>` : ""}
-            ${s.credits ? `<span style="font-size: 13px; color: var(--ink-soft); margin-top: 4px;">${renderCreditsValue(s.credits)}</span>` : ""}
-            ${s.pdfUrl ? `<span style="font-size: 13px; color: var(--ink-soft); margin-top: 4px;"><a href="${esc(s.pdfUrl)}" download style="color: var(--accent); text-decoration: none; font-weight: 600;">📄 Download Material</a></span>` : ""}
+            ${s.credits && (isAdmin() || s.showCredits !== false) ? `<span style="font-size: 13px; color: var(--ink-soft); margin-top: 4px;">${renderCreditsValue(s.credits)}</span>` : ""}
+            ${s.pdfUrl && (isAdmin() || s.showPdf !== false) ? `<span style="font-size: 13px; color: var(--ink-soft); margin-top: 4px;"><a href="${esc(s.pdfUrl)}" download style="color: var(--accent); text-decoration: none; font-weight: 600;">📄 Download Material</a></span>` : ""}
             <div style="display: flex; align-items: center; gap: 12px;">
               <span class="noth-work-cta">View <svg viewBox="0 0 14 10" width="14" height="10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 5h12M9 1l4 4-4 4"/></svg></span>
               <button class="work-share" data-id="${s.id}" style="background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; color: currentColor; opacity: 0.7; transition: opacity 0.2s;" title="Share album" aria-label="Share album">
@@ -1750,7 +1750,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
   // Full listing of every album — the "All albums" page.
   function viewAlbums() {
-    const list = SHOOTS.filter(s => s.type !== "Workshop Attended");
+    let list = SHOOTS.filter(s => s.type !== "Workshop Attended");
+    if (!isAdmin()) {
+      list = list.filter(s => s.isPublic !== false);
+    }
     CURRENT_VIEW_SHOOTS = list;
     return `
       <section class="page-head">
@@ -2580,6 +2583,48 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               </div>
             </fieldset>
 
+            <fieldset><legend>Visibility & Privacy</legend>
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+                <input id="f_is_public" type="checkbox" checked style="width: 16px; height: 16px; accent-color: var(--accent); margin: 0; cursor: pointer;" />
+                <label for="f_is_public" style="font-weight: 600; cursor: pointer; margin: 0;">Make album public (uncheck to hide entirely)</label>
+              </div>
+              <p style="font-size: 12px; color: var(--ink-soft); margin: 0 0 16px;">Show these fields publicly:</p>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                  <input id="f_show_credits" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
+                  Credits
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                  <input id="f_show_pdf" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
+                  PDF Materials
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                  <input id="f_show_instagram" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
+                  Instagram
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                  <input id="f_show_kavyar" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
+                  Kavyar
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                  <input id="f_show_testimonials" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
+                  Testimonials
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                  <input id="f_show_stats" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
+                  Model Stats
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                  <input id="f_show_gear" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
+                  Gear/Equipment
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                  <input id="f_show_location" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
+                  Location
+                </label>
+              </div>
+            </fieldset>
+
             <fieldset id="extraTestimonialsFs"><legend>Testimonials <span class="legend-opt">optional (up to 3)</span></legend>
               <div class="testimonial-group">
                 <h4>Testimonial 1</h4>
@@ -3020,7 +3065,18 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         if (disableDownloadInput) {
           disableDownloadInput.checked = !!editingShoot.disableCompCardDownload;
         }
-        
+
+        // Load visibility settings
+        if ($("#f_is_public")) $("#f_is_public").checked = (editingShoot.isPublic !== false);
+        if ($("#f_show_credits")) $("#f_show_credits").checked = (editingShoot.showCredits !== false);
+        if ($("#f_show_pdf")) $("#f_show_pdf").checked = (editingShoot.showPdf !== false);
+        if ($("#f_show_instagram")) $("#f_show_instagram").checked = (editingShoot.showInstagram !== false);
+        if ($("#f_show_kavyar")) $("#f_show_kavyar").checked = (editingShoot.showKavyar !== false);
+        if ($("#f_show_testimonials")) $("#f_show_testimonials").checked = (editingShoot.showTestimonials !== false);
+        if ($("#f_show_stats")) $("#f_show_stats").checked = (editingShoot.showStats !== false);
+        if ($("#f_show_gear")) $("#f_show_gear").checked = (editingShoot.showGear !== false);
+        if ($("#f_show_location")) $("#f_show_location").checked = (editingShoot.showLocation !== false);
+
         staged = editingShoot.photos.map(p => {
           const isCover = editingShoot.coverPhotoId ? (p.id.split("-")[0] === editingShoot.coverPhotoId) : false;
           let pos = p.objectPosition || (isCover ? "top" : "center");
@@ -3458,6 +3514,15 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         featured: isTestimonialOnly ? false : ($("#f_featured") ? $("#f_featured").checked : false),
         hideFromCompCard: $("#f_hide_compcard") ? $("#f_hide_compcard").checked : false,
         disableCompCardDownload: $("#f_disable_download") ? $("#f_disable_download").checked : false,
+        isPublic: $("#f_is_public") ? $("#f_is_public").checked : true,
+        showCredits: $("#f_show_credits") ? $("#f_show_credits").checked : true,
+        showPdf: $("#f_show_pdf") ? $("#f_show_pdf").checked : true,
+        showInstagram: $("#f_show_instagram") ? $("#f_show_instagram").checked : true,
+        showKavyar: $("#f_show_kavyar") ? $("#f_show_kavyar").checked : true,
+        showTestimonials: $("#f_show_testimonials") ? $("#f_show_testimonials").checked : true,
+        showStats: $("#f_show_stats") ? $("#f_show_stats").checked : true,
+        showGear: $("#f_show_gear") ? $("#f_show_gear").checked : true,
+        showLocation: $("#f_show_location") ? $("#f_show_location").checked : true,
         coverPhotoId: isTestimonialOnly ? null : (coverItem ? coverItem.id : null),
       };
       pub.disabled = true; pub.textContent = editingShoot ? "Saving changes…" : "Publishing…";
