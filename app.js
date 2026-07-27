@@ -435,13 +435,7 @@
 
   const shouldShowWorkshopsToAll = () => {
     const workshops = SHOOTS.filter(s => s.type === "Workshop Attended");
-    // A workshop can have several mentors (comma-separated) — each individual
-    // mentor counts toward the visibility threshold.
-    const uniqueMentors = new Set(
-      workshops.flatMap(s => String(s.mentor || "").split(","))
-        .map(m => m.trim().toLowerCase()).filter(Boolean)
-    );
-    return uniqueMentors.size >= 3;
+    return workshops.length >= 1;
   };
 
   const isAdminAuthorized = () => localStorage.getItem("wps-admin-authorized") === "1";
@@ -1660,6 +1654,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         ` : ""}
       </section>
 
+      <!-- QUICK LINKS -->
+      <section class="section container">
+        <div class="quick-links-grid reveal" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin: 40px 0;">
+          <a href="/categories?kind=type&amp;val=Comp%20Cards" data-link class="btn btn-dark" style="text-align: center; padding: 16px 24px;">Model Comp Cards →</a>
+          <a href="/workshop-attended" data-link class="btn btn-dark" style="text-align: center; padding: 16px 24px;">Workshop Attended →</a>
+        </div>
+      </section>
 
       ${homeT.length ? `
       <!-- TESTIMONIALS (CLIENT REACTIONS) -->
