@@ -1375,7 +1375,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           </div>
           <div class="noth-work-meta">
             ${meta ? `<span>${esc(meta)}</span>` : ""}
-            <span class="noth-work-cta">View <svg viewBox="0 0 14 10" width="14" height="10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 5h12M9 1l4 4-4 4"/></svg></span>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span class="noth-work-cta">View <svg viewBox="0 0 14 10" width="14" height="10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 5h12M9 1l4 4-4 4"/></svg></span>
+              <button class="work-share" data-id="${s.id}" style="background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; color: currentColor; opacity: 0.7; transition: opacity 0.2s;" title="Share album" aria-label="Share album">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              </button>
+            </div>
           </div>
           ${isAdmin() ? `
             <div class="noth-work-admin" style="margin-top: 12px; display: flex; gap: 14px; width: 100%; border-top: 1px dashed var(--line); padding-top: 12px;">
@@ -1730,6 +1735,34 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             <a href="/book" data-link class="btn btn-dark">Book your photoshoot session →</a>
           `}
         </div>
+      </section>`;
+  }
+
+  // Shared album view — anyone with the link can view
+  function viewSharedAlbum(albumId) {
+    const album = SHOOTS.find(s => s.id === albumId);
+    if (!album) {
+      return `
+        <section class="page-head">
+          <div class="container">
+            <h1 class="kinetic-h1">Album not found</h1>
+            <p class="page-sub reveal">The album you're looking for doesn't exist.</p>
+            <a href="/" data-link class="btn btn-dark">Back home →</a>
+          </div>
+        </section>`;
+    }
+    CURRENT_VIEW_SHOOTS = [album];
+    const title = getTalentCleanName(album.isCompCard ? album.talent : (album.title || "Untitled"));
+    return `
+      <section class="page-head">
+        <div class="container">
+          <p class="eyebrow reveal">Shared Album</p>
+          <h1 class="kinetic-h1">${esc(title)}</h1>
+          ${album.description ? `<p class="page-sub reveal">${esc(album.description)}</p>` : ""}
+        </div>
+      </section>
+      <section class="section container full-bleed">
+        <div class="noth-work-list">${nothWorkCard(album, 0)}</div>
       </section>`;
   }
 
@@ -3762,6 +3795,18 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       media?.addEventListener("click", open);
       cta?.addEventListener("click", open);
 
+      // Wire share button
+      const shareBtn = card.querySelector(".work-share");
+      shareBtn?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const shareUrl = `${window.location.origin}/share/${s.id}`;
+        navigator.clipboard.writeText(shareUrl).then(() => {
+          toast("Link copied to clipboard");
+        }).catch(() => {
+          toast("Failed to copy link");
+        });
+      });
+
       // Wire admin edit & delete buttons
       card.querySelectorAll(".work-edit").forEach(btn => {
         btn.addEventListener("click", (e) => {
@@ -4007,7 +4052,15 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
     view.classList.add("leaving");
     const paint = () => {
-      view.innerHTML = key === "categories" ? viewCategories(kind, val) : fn();
+      let html;
+      if (key === "categories") {
+        html = viewCategories(kind, val);
+      } else if (key === "share") {
+        html = viewSharedAlbum(kind);
+      } else {
+        html = fn();
+      }
+      view.innerHTML = html;
       view.classList.remove("leaving");
       window.scrollTo({ top: 0, behavior: "auto" });
       if (typeof smoothScroll !== "undefined" && smoothScroll.enabled) smoothScroll.reset();
@@ -4197,7 +4250,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         </div>
         <span style="font-weight: 700; color: var(--accent, #d24e1a);">www.nerdyphotographer.in</span>
       </div>
-      <div style="color: #555; font-size: calc(7.5px * var(--print-scale, 1));">All portfolio cards, comp cards, and photography frames are official creative works produced under nerdyphotographer.in studio Noida &amp; Delhi NCR.</div>
+      <div style="color: #555; font-size: calc(7.5px * var(--print-scale, 1));">Where brands and models build their story — Fashion, Fitness, Lifestyle &amp; Sports Photography | Noida. All portfolio cards, comp cards, and photography frames are official creative works produced under nerdyphotographer.in studio.</div>
     </div>
   `;
 
