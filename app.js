@@ -1830,7 +1830,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   // Shared album view — anyone with the link can view
   function viewSharedAlbum(albumId) {
     const album = SHOOTS.find(s => s.id === albumId);
-    if (!album) {
+    if (!album || !album.isPublic) {
       return `
         <section class="page-head">
           <div class="container">
