@@ -175,8 +175,18 @@
         const socialLinks = rawSocials.map(s => {
           let url = s, label = s;
           if (s.includes("instagram.com") || s.startsWith("@")) {
-            url = s.startsWith("http") ? s : (s.startsWith("@") ? "https://instagram.com/" + s.replace(/^@/, "") : "https://" + s);
-            label = "@" + (s.includes("instagram.com") ? url.split("/").pop() : s.replace(/^@/, ""));
+            if (s.startsWith("http")) {
+              // Extract handle from full URL, removing query params
+              const handle = s.split("instagram.com/")[1]?.split("/")[0]?.split("?")[0] || "";
+              url = `https://instagram.com/${handle}`;
+              label = `@${handle}`;
+            } else if (s.startsWith("@")) {
+              label = s;
+              url = "https://instagram.com/" + s.replace(/^@/, "");
+            } else {
+              label = "@" + s;
+              url = "https://instagram.com/" + s;
+            }
           } else if (s.includes("kavyar.com")) {
             url = s.startsWith("http") ? s : "https://" + s;
             label = compact ? "Kavyar" : "Kavyar: " + url.split("/").pop();
@@ -988,7 +998,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         <dl class="work-credits" style="margin: 0; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);">
           ${shoot.activity ? `<div><dt>Activity</dt><dd>${esc(shoot.activity)}</dd></div>` : ""}
           ${shoot.season ? `<div><dt>Season</dt><dd>${esc(shoot.season)}</dd></div>` : ""}
-          ${(shoot.location) ? `<div><dt>Location</dt><dd>${esc(shoot.location)}</dd></div>` : ""}
+          ${(shoot.location) ? `<div><dt>Location</dt><dd>${renderCreditLinks(shoot.location)}</dd></div>` : ""}
         </dl>
         `}
         
@@ -2527,7 +2537,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               <div class="field-row">
                 <label class="field"><span>Type</span><select id="f_type">${opt(TYPES)}</select></label>
                 <label class="field"><span>Season / Year</span><input id="f_season" type="text" placeholder="Spring 2026" /></label>
-                <label class="field"><span>Shoot Location</span><input id="f_location" type="text" placeholder="e.g. Studio, Noida, Outdoor" /></label>
+                <label class="field"><span>Shoot Location (add Instagram in parentheses)</span><input id="f_location" type="text" placeholder="e.g. Studio (@studiohandle), Noida, Outdoor" /></label>
+                <div id="f_location_verify" style="margin-top: 5px; font-size: 11px; display: none;"></div>
               </div>
               <div class="field-row" style="margin-top: 12px; gap: 20px; flex-wrap: wrap;">
                 <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--ink); cursor: pointer; user-select: none;">
@@ -3066,6 +3077,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         // Trigger initial verification updates after loading values (for editing existing albums)
         if ($("#f_mentor")) $("#f_mentor").dispatchEvent(new Event("input"));
         if ($("#f_talent")) $("#f_talent").dispatchEvent(new Event("input"));
+        if ($("#f_location")) $("#f_location").dispatchEvent(new Event("input"));
         if ($("#f_stylist")) $("#f_stylist").dispatchEvent(new Event("input"));
         if ($("#f_hair")) $("#f_hair").dispatchEvent(new Event("input"));
         if ($("#f_mua")) $("#f_mua").dispatchEvent(new Event("input"));
@@ -3442,8 +3454,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             const socials = match[1].split(";").map(s => s.trim()).filter(Boolean);
             socials.forEach(s => {
               if (s.includes("instagram.com") || s.startsWith("@")) {
-                const handle = s.startsWith("@") ? s.replace(/^@/, "") : s.split("/").pop();
-                allLinks.push({ label: `@${handle}`, url: `https://instagram.com/${handle}` });
+                let handle = s.startsWith("@") ? s.replace(/^@/, "") : s;
+                // Extract handle from full URL, removing query params
+                if (handle.includes("instagram.com")) {
+                  handle = handle.split("instagram.com/")[1]?.split("/")[0]?.split("?")[0] || "";
+                }
+                if (handle) {
+                  allLinks.push({ label: `@${handle}`, url: `https://instagram.com/${handle}` });
+                }
               } else if (s.includes("kavyar.com")) {
                 allLinks.push({ label: "Kavyar", url: s.startsWith("http") ? s : "https://" + s });
               } else if (s.startsWith("http")) {
@@ -3469,13 +3487,30 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       };
     }
 
-    // Custom parser for Instagram handles
+    // Custom parser for Instagram handles or URLs
     const parseInstagramLinks = (val) => {
-      const handles = val.split(",").map(h => parseIgHandle(h.trim())).filter(Boolean);
-      return handles.map(handle => ({
-        label: `@${handle}`,
-        url: `https://instagram.com/${encodeURIComponent(handle)}`
-      }));
+      const items = val.split(",").map(item => item.trim()).filter(Boolean);
+      const links = [];
+      items.forEach(item => {
+        let handle = item;
+        // If it's a full URL, extract handle
+        if (handle.includes("instagram.com")) {
+          handle = handle.split("instagram.com/")[1]?.split("/")[0]?.split("?")[0] || "";
+        }
+        // Remove @ prefix if present
+        if (handle.startsWith("@")) {
+          handle = handle.substring(1);
+        }
+        // Use parseIgHandle to clean it up
+        const cleaned = parseIgHandle(handle);
+        if (cleaned) {
+          links.push({
+            label: `@${cleaned}`,
+            url: `https://instagram.com/${encodeURIComponent(cleaned)}`
+          });
+        }
+      });
+      return links;
     };
 
     // Custom parser for Kavyar links
@@ -3489,6 +3524,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
     // Initialize verification for ALL fields using unified generic system
     setupLinkVerification("f_talent", "f_talent_verify", "talentVerifyFlag");
+    setupLinkVerification("f_location", "f_location_verify", "locationVerifyFlag");
     setupLinkVerification("f_stylist", "f_stylist_verify", "stylistVerifyFlag");
     setupLinkVerification("f_hair", "f_hair_verify", "hairVerifyFlag");
     setupLinkVerification("f_mua", "f_mua_verify", "muaVerifyFlag");
@@ -3571,6 +3607,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const originalTalent = editingShoot ? (editingShoot.talent || "") : "";
       if (talentVal && talentVal !== originalTalent && window.talentVerifyFlag?.hasLinks?.() && !window.talentVerifyFlag?.get?.()) {
         toast("Please test the talent/model links before publishing.");
+        return;
+      }
+      const locationVal = val("f_location");
+      const originalLocation = editingShoot ? (editingShoot.location || "") : "";
+      if (locationVal && locationVal !== originalLocation && window.locationVerifyFlag?.hasLinks?.() && !window.locationVerifyFlag?.get?.()) {
+        toast("Please test the location links before publishing.");
         return;
       }
       const isTestimonialOnly = !!$("#f_is_testimonial_only")?.checked;
