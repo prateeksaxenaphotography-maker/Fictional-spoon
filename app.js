@@ -3062,6 +3062,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         $("#f_gear").value = editingShoot.gear || "";
         $("#f_client").value = editingShoot.client || "";
         $("#f_height").value = editingShoot.height || "";
+
+        // Trigger initial verification updates after loading values (for editing existing albums)
+        if ($("#f_mentor")) $("#f_mentor").dispatchEvent(new Event("input"));
+        if ($("#f_talent")) $("#f_talent").dispatchEvent(new Event("input"));
+        if ($("#f_stylist")) $("#f_stylist").dispatchEvent(new Event("input"));
+        if ($("#f_hair")) $("#f_hair").dispatchEvent(new Event("input"));
+        if ($("#f_mua")) $("#f_mua").dispatchEvent(new Event("input"));
+        if ($("#f_ad")) $("#f_ad").dispatchEvent(new Event("input"));
         $("#f_chest").value = editingShoot.chest || "";
         $("#f_waist").value = editingShoot.waist || "";
         $("#f_hips").value = editingShoot.hips || "";
@@ -3387,9 +3395,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
       let clickedFlag = false;
       let hasLinks = false;
+
+      // Use capturing phase to catch clicks on dynamically created links
       verify.addEventListener("click", (e) => {
-        if (e.target.closest("a")) clickedFlag = true;
-      });
+        const link = e.target.closest("a");
+        if (link && link.href) {
+          clickedFlag = true;
+        }
+      }, true);
 
       function updateVerify() {
         const val = input.value.trim();
