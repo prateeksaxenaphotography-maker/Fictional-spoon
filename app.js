@@ -1447,12 +1447,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       : [s.activity, typeTag].filter(Boolean).join(" · ");
     const photoCount = s.photos ? s.photos.length : 0;
     const countText = photoCount ? `${photoCount} Photo${photoCount > 1 ? "s" : ""}` : "";
-    // Meta rows are plain text — strip any "(socials)" part from the names.
-    const mentorNames = s.mentor
-      ? s.mentor.split(",").map(m => getTalentCleanName(m)).filter(Boolean) : [];
-    const mentorText = mentorNames.length
-      ? `${mentorNames.length > 1 ? "Mentors" : "Mentor"}: ${mentorNames.join(", ")}` : "";
-    const meta = [s.brand, s.season, mentorText, countText].filter(v => v && v !== "Personal Project").join(" · ");
+    // Build metadata for card
+    const meta = [s.brand, s.season, countText].filter(v => v && v !== "Personal Project").join(" · ");
     const title = getTalentCleanName(s.isCompCard ? s.talent : (s.title || "Untitled"));
     return `
       <article class="noth-work reveal" data-shoot="${s.id}" data-talent="${esc(s.talent || '')}" style="--d:${(i % 2) * 0.08}s">
@@ -1467,6 +1463,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           </div>
           <div class="noth-work-meta">
             ${meta ? `<span>${esc(meta)}</span>` : ""}
+            ${s.mentor && shouldShowField(s, "Mentor") ? `<span style="font-size: 13px; color: var(--ink-soft); margin-top: 4px;"><strong>Mentors:</strong> ${renderCreditValue(s.mentor)}</span>` : ""}
+            ${s.talent && shouldShowField(s, "Talent") ? `<span style="font-size: 13px; color: var(--ink-soft); margin-top: 4px;">${renderCreditsValue(s.talent)}</span>` : ""}
             ${s.credits && shouldShowField(s, "Credits") ? `<span style="font-size: 13px; color: var(--ink-soft); margin-top: 4px;">${renderCreditsValue(s.credits)}</span>` : ""}
             ${s.pdfUrl && shouldShowField(s, "Pdf") ? `<span style="font-size: 13px; color: var(--ink-soft); margin-top: 4px;"><a href="${esc(s.pdfUrl)}" download style="color: var(--accent); text-decoration: none; font-weight: 600;">📄 Download Material</a></span>` : ""}
             <div style="display: flex; align-items: center; gap: 12px;">
