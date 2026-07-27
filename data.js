@@ -735,7 +735,7 @@ window.WPS_DATA = {
       "isTestimonial": false,
       "title": "Workshop with Sidology and Clickwalaphotographer",
       "brand": "Personal Project",
-      "activity": "Fashion",
+      "activity": "Workshop",
       "type": "Workshop Attended",
       "season": "July 2026",
       "photographer": "nerdyphotographer",
@@ -804,17 +804,12 @@ window.WPS_DATA = {
           "focalY": 17.61426978818283
         },
         {
-          "id": "ms36ygb8zvx3ol-5",
-          "url": "photos/ms36z1wqm2xkrz/ms36ygb8zvx3ol-5.jpg",
-          "objectPosition": "center"
-        },
-        {
-          "id": "ms36ygcbf1sss2-6",
+          "id": "ms36ygcbf1sss2-5",
           "url": "photos/ms36z1wqm2xkrz/ms36ygcbf1sss2-6.jpg",
           "objectPosition": "center"
         },
         {
-          "id": "ms36ygjb7yxmuk-7",
+          "id": "ms36ygjb7yxmuk-6",
           "url": "photos/ms36z1wqm2xkrz/ms36ygjb7yxmuk-7.jpg",
           "objectPosition": "45.6% 45.5%",
           "focalX": 45.591123851993416,
