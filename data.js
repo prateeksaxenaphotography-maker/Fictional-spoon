@@ -9,7 +9,8 @@ window.WPS_DATA = {
     "Fashion",
     "Fitness",
     "Portrait",
-    "Sports"
+    "Sports",
+    "Workshop"
   ],
   "TYPES": [
     "Campaign",
@@ -743,7 +744,7 @@ window.WPS_DATA = {
       "hair": "Bharti Kain",
       "mua": "Suyagya",
       "videographer": "—",
-      "talent": "Paola Arellano,Lorna Perez",
+      "talent": "Paola Arellano, Lorna Perez",
       "location": "Tavish Studio",
       "height": "",
       "chest": "",
@@ -755,81 +756,67 @@ window.WPS_DATA = {
       "showStatsOnCompCard": true,
       "showStatsOnModelPortfolio": true,
       "showTestShootCategory": false,
-      "mentor": "Siddharth Arora, Ankit Kumar Maurya",
+      "mentor": "Siddharth Arora (https://www.instagram.com/siddology/?hl=en), Ankit Kumar Maurya (https://www.instagram.com/clickwalaphotography/?hl=en)",
+      "credits": "Bharti Kain (https://www.instagram.com/bharti_kain.11/?hl=en), Suyagya (https://www.instagram.com/suyagyamakeovers/?hl=en)",
       "description": "",
       "tags": "",
       "gear": "",
       "client": "",
       "date": "2026-07-01",
-      "instagram": "@lornapereza",
+      "instagram": "@arellanopaola._, @lornapereza",
       "kavyar": "",
       "link": "",
+      "pdfUrl": "",
       "rights": "",
       "testimonials": [],
       "lightingDiagram": null,
       "lightingDiagramVisibility": "private",
       "palette": [
-        "#3f3b3d",
+        "#3e3b3d",
         "#1c1b1b"
       ],
       "photos": [
         {
           "id": "ms36yg2d5w5gz4-0",
           "url": "photos/ms36z1wqm2xkrz/ms36yg2d5w5gz4-0.jpg",
-          "objectPosition": "top",
-          "small": "photos/ms36z1wqm2xkrz/ms36yg2d5w5gz4-0@480.jpg",
-          "medium": "photos/ms36z1wqm2xkrz/ms36yg2d5w5gz4-0@960.jpg"
+          "objectPosition": "top"
         },
         {
           "id": "ms36yg9f4x4ir0-1",
           "url": "photos/ms36z1wqm2xkrz/ms36yg9f4x4ir0-1.jpg",
-          "objectPosition": "center",
-          "small": "photos/ms36z1wqm2xkrz/ms36yg9f4x4ir0-1@480.jpg",
-          "medium": "photos/ms36z1wqm2xkrz/ms36yg9f4x4ir0-1@960.jpg"
+          "objectPosition": "center"
         },
         {
           "id": "ms36yga2dmqhj4-2",
           "url": "photos/ms36z1wqm2xkrz/ms36yga2dmqhj4-2.jpg",
-          "objectPosition": "center",
-          "small": "photos/ms36z1wqm2xkrz/ms36yga2dmqhj4-2@480.jpg",
-          "medium": "photos/ms36z1wqm2xkrz/ms36yga2dmqhj4-2@960.jpg"
+          "objectPosition": "center"
         },
         {
           "id": "ms36ygal0j92tq-3",
           "url": "photos/ms36z1wqm2xkrz/ms36ygal0j92tq-3.jpg",
-          "objectPosition": "center",
-          "small": "photos/ms36z1wqm2xkrz/ms36ygal0j92tq-3@480.jpg",
-          "medium": "photos/ms36z1wqm2xkrz/ms36ygal0j92tq-3@960.jpg"
+          "objectPosition": "center"
         },
         {
           "id": "ms36ygaooititi-4",
           "url": "photos/ms36z1wqm2xkrz/ms36ygaooititi-4.jpg",
           "objectPosition": "53.1% 17.6%",
-          "small": "photos/ms36z1wqm2xkrz/ms36ygaooititi-4@480.jpg",
-          "medium": "photos/ms36z1wqm2xkrz/ms36ygaooititi-4@960.jpg",
           "focalX": 53.06577480490524,
           "focalY": 17.61426978818283
         },
         {
           "id": "ms36ygb8zvx3ol-5",
           "url": "photos/ms36z1wqm2xkrz/ms36ygb8zvx3ol-5.jpg",
-          "objectPosition": "center",
-          "small": "photos/ms36z1wqm2xkrz/ms36ygb8zvx3ol-5@480.jpg",
-          "medium": "photos/ms36z1wqm2xkrz/ms36ygb8zvx3ol-5@960.jpg"
+          "objectPosition": "center"
         },
         {
           "id": "ms36ygcbf1sss2-6",
           "url": "photos/ms36z1wqm2xkrz/ms36ygcbf1sss2-6.jpg",
-          "objectPosition": "center",
-          "small": "photos/ms36z1wqm2xkrz/ms36ygcbf1sss2-6@480.jpg",
-          "medium": "photos/ms36z1wqm2xkrz/ms36ygcbf1sss2-6@960.jpg"
+          "objectPosition": "center"
         },
         {
           "id": "ms36ygjb7yxmuk-7",
           "url": "photos/ms36z1wqm2xkrz/ms36ygjb7yxmuk-7.jpg",
           "objectPosition": "45.6% 45.5%",
-          "small": "photos/ms36z1wqm2xkrz/ms36ygjb7yxmuk-7@480.jpg",
-          "medium": "photos/ms36z1wqm2xkrz/ms36ygjb7yxmuk-7@960.jpg",
           "focalX": 45.591123851993416,
           "focalY": 45.52476508998248
         }
@@ -837,6 +824,15 @@ window.WPS_DATA = {
       "featured": true,
       "hideFromCompCard": false,
       "disableCompCardDownload": false,
+      "isPublic": true,
+      "showCredits": true,
+      "showPdf": true,
+      "showInstagram": true,
+      "showKavyar": true,
+      "showTestimonials": true,
+      "showStats": true,
+      "showGear": true,
+      "showLocation": true,
       "coverPhotoId": "ms36ygjb7yxmuk"
     }
   ]
