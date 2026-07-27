@@ -897,6 +897,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     if (shoot.hair && shoot.hair !== "—") credits.push(`<div><dt>Hair</dt><dd>${formatCrew(shoot.hair)}</dd></div>`);
     if (shoot.talent && shoot.talent !== "—") credits.push(`<div><dt>Model / Talent</dt><dd>${renderCreditValue(shoot.talent)}</dd></div>`);
     if (shoot.credits) credits.push(`<div><dt>Credits</dt><dd>${renderCreditsValue(shoot.credits)}</dd></div>`);
+    if (shoot.pdfUrl) credits.push(`<div><dt>Material</dt><dd><a href="${esc(shoot.pdfUrl)}" download style="color: var(--accent); text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">📄 Download PDF</a></dd></div>`);
     if (igHtml) credits.push(igHtml);
     if (kavyarHtml) credits.push(kavyarHtml);
 
@@ -1411,6 +1412,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <div class="noth-work-meta">
             ${meta ? `<span>${esc(meta)}</span>` : ""}
             ${s.credits ? `<span style="font-size: 13px; color: var(--ink-soft); margin-top: 4px;">${renderCreditsValue(s.credits)}</span>` : ""}
+            ${s.pdfUrl ? `<span style="font-size: 13px; color: var(--ink-soft); margin-top: 4px;"><a href="${esc(s.pdfUrl)}" download style="color: var(--accent); text-decoration: none; font-weight: 600;">📄 Download Material</a></span>` : ""}
             <div style="display: flex; align-items: center; gap: 12px;">
               <span class="noth-work-cta">View <svg viewBox="0 0 14 10" width="14" height="10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 5h12M9 1l4 4-4 4"/></svg></span>
               <button class="work-share" data-id="${s.id}" style="background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; color: currentColor; opacity: 0.7; transition: opacity 0.2s;" title="Share album" aria-label="Share album">
@@ -2534,6 +2536,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
             <fieldset><legend>Details</legend>
               <label class="field"><span>Description</span><textarea id="f_desc" rows="3" placeholder="A line or two about the shoot…"></textarea></label>
+              <label class="field"><span>PDF (Course material, curriculum, etc.)</span><input id="f_pdf" type="file" accept=".pdf" /></label>
               <div class="field-row">
                 <label class="field"><span>Tags</span><input id="f_tags" type="text" placeholder="golden hour, motion, coast" /></label>
                 <label class="field"><span>Camera / gear</span><input id="f_gear" type="text" placeholder="Sony A1 · 85mm" /></label>
@@ -2965,6 +2968,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         if ($("#f_show_test_shoot_cat")) $("#f_show_test_shoot_cat").checked = !!editingShoot.showTestShootCategory;
         if ($("#f_mentor")) $("#f_mentor").value = editingShoot.mentor || "";
         if ($("#f_credits")) $("#f_credits").value = editingShoot.credits || "";
+        if (editingShoot.pdfUrl) pdfDataUrl = editingShoot.pdfUrl;
         updateMentorRowState();
         const toIsoDate = (dStr) => {
           if (!dStr) return "";
@@ -3337,6 +3341,24 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       updateKavyarVerify();
     });
 
+    // PDF file upload handler
+    let pdfDataUrl = editingShoot?.pdfUrl || "";
+    const pdfInput = $("#f_pdf");
+    if (pdfInput) {
+      pdfInput.addEventListener("change", (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            pdfDataUrl = evt.target?.result || "";
+            toast(`PDF loaded: ${file.name}`);
+          };
+          reader.onerror = () => toast("Failed to read PDF");
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const val = (id) => $("#" + id)?.value.trim();
@@ -3416,6 +3438,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         instagram: val("f_ig"),
         kavyar: val("f_kavyar"),
         link: val("f_link"),
+        pdfUrl: isTestimonialOnly ? "" : pdfDataUrl,
         rights: isTestimonialOnly ? "" : val("f_rights"),
         testimonials: testimonialsList,
         lightingDiagram: isTestimonialOnly ? null : diagramDataUrl,
