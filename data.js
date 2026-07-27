@@ -524,102 +524,87 @@ window.WPS_DATA = {
         {
           "id": "mrcy189dfa7lp5-0",
           "url": "photos/mr8legmk0o8mqz/mrcy189dfa7lp5-9.jpg",
-          "objectPosition": "top",
-          "angle": "full-body"
+          "objectPosition": "top"
         },
         {
           "id": "mr8ld69w1fq1e5-1",
           "url": "photos/mr8legmk0o8mqz/mr8ld69w1fq1e5-0.jpg",
           "objectPosition": "53.5% 24.5%",
           "focalX": 53.48975348975349,
-          "focalY": 24.462950695561656,
-          "angle": "full-body"
+          "focalY": 24.462950695561656
         },
         {
           "id": "mr8ld6tds7z3f0-2",
           "url": "photos/mr8legmk0o8mqz/mr8ld6tds7z3f0-3.jpg",
           "objectPosition": "49.9% 0.0%",
           "focalX": 49.8960498960499,
-          "focalY": 0,
-          "angle": "three-quarter"
+          "focalY": 0
         },
         {
           "id": "mr8ld764kc9619-3",
           "url": "photos/mr8legmk0o8mqz/mr8ld764kc9619-5.jpg",
           "objectPosition": "47.8% 13.7%",
           "focalX": 47.78734778734779,
-          "focalY": 13.699883284438977,
-          "angle": "front"
+          "focalY": 13.699883284438977
         },
         {
           "id": "mrcy18g8ido45k-4",
           "url": "photos/mr8legmk0o8mqz/mrcy18g8ido45k-10.jpg",
-          "objectPosition": "center",
-          "angle": "left-profile"
+          "objectPosition": "center"
         },
         {
           "id": "mr8ld6fw8o533l-5",
           "url": "photos/mr8legmk0o8mqz/mr8ld6fw8o533l-1.jpg",
           "objectPosition": "55.2% 41.4%",
           "focalX": 55.18265518265518,
-          "focalY": 41.4214062647866,
-          "angle": "full-body"
+          "focalY": 41.4214062647866
         },
         {
           "id": "mrkbt93zfkswtx-6",
           "url": "photos/mr8legmk0o8mqz/mrkbt93zfkswtx-16.jpg",
-          "objectPosition": "center",
-          "angle": "right-profile"
+          "objectPosition": "center"
         },
         {
           "id": "mr8ld720pjapet-7",
           "url": "photos/mr8legmk0o8mqz/mr8ld720pjapet-4.jpg",
           "objectPosition": "51.8% 61.1%",
           "focalX": 51.7968517968518,
-          "focalY": 61.08009211065897,
-          "angle": "front"
+          "focalY": 61.08009211065897
         },
         {
           "id": "mrkbt9jjdgc3jz-8",
           "url": "photos/mr8legmk0o8mqz/mrkbt9jjdgc3jz-18.jpg",
-          "objectPosition": "center",
-          "angle": "full-body"
+          "objectPosition": "center"
         },
         {
           "id": "mrcy17qlnkcgt0-9",
           "url": "photos/mr8legmk0o8mqz/mrcy17qlnkcgt0-7.jpg",
-          "objectPosition": "center",
-          "angle": "front"
+          "objectPosition": "center"
         },
         {
           "id": "mrcy18x0sztqix-10",
           "url": "photos/mr8legmk0o8mqz/mrcy18x0sztqix-12.jpg",
-          "objectPosition": "center",
-          "angle": "front"
+          "objectPosition": "center"
         },
         {
           "id": "mrkbt9ca8j1ym1-11",
           "url": "photos/mr8legmk0o8mqz/mrkbt9ca8j1ym1-17.jpg",
-          "objectPosition": "center",
-          "angle": "right-profile"
+          "objectPosition": "center"
         },
         {
           "id": "mrcy19u4jgcfhu-12",
           "url": "photos/mr8legmk0o8mqz/mrcy19u4jgcfhu-15.jpg",
-          "objectPosition": "center",
-          "angle": "close-up"
+          "objectPosition": "center"
         },
         {
           "id": "mrczrnxxdkew30-13",
           "url": "photos/mr8legmk0o8mqz/mrczrnxxdkew30-15.jpg",
-          "objectPosition": "center",
-          "angle": "full-body"
+          "objectPosition": "center"
         },
         {
           "id": "mrczro58o00quj-14",
           "url": "photos/mr8legmk0o8mqz/mrczro58o00quj-16.jpg",
-          "objectPosition": "center",
-          "angle": "close-up"
+          "objectPosition": "center"
         }
       ],
       "featured": true,
@@ -742,6 +727,117 @@ window.WPS_DATA = {
       "hideFromCompCard": false,
       "disableCompCardDownload": false,
       "coverPhotoId": "mrania1npq2mxa"
+    },
+    {
+      "id": "ms36z1wqm2xkrz",
+      "createdAt": 1785154627178,
+      "isTestimonial": false,
+      "title": "Workshop with Sidology and Clickwalaphotographer",
+      "brand": "Personal Project",
+      "activity": "Fashion",
+      "type": "Workshop Attended",
+      "season": "July 2026",
+      "photographer": "nerdyphotographer",
+      "artDirector": "",
+      "stylist": "—",
+      "hair": "Bharti Kain",
+      "mua": "Suyagya",
+      "videographer": "—",
+      "talent": "Paola Arellano,Lorna Perez",
+      "location": "Tavish Studio",
+      "height": "",
+      "chest": "",
+      "waist": "",
+      "hips": "",
+      "shoes": "",
+      "modelHair": "",
+      "modelEyes": "",
+      "showStatsOnCompCard": true,
+      "showStatsOnModelPortfolio": true,
+      "showTestShootCategory": false,
+      "mentor": "Siddharth Arora, Ankit Kumar Maurya",
+      "description": "",
+      "tags": "",
+      "gear": "",
+      "client": "",
+      "date": "2026-07-01",
+      "instagram": "@lornapereza",
+      "kavyar": "",
+      "link": "",
+      "rights": "",
+      "testimonials": [],
+      "lightingDiagram": null,
+      "lightingDiagramVisibility": "private",
+      "palette": [
+        "#3f3b3d",
+        "#1c1b1b"
+      ],
+      "photos": [
+        {
+          "id": "ms36yg2d5w5gz4-0",
+          "url": "photos/ms36z1wqm2xkrz/ms36yg2d5w5gz4-0.jpg",
+          "objectPosition": "top",
+          "small": "photos/ms36z1wqm2xkrz/ms36yg2d5w5gz4-0@480.jpg",
+          "medium": "photos/ms36z1wqm2xkrz/ms36yg2d5w5gz4-0@960.jpg"
+        },
+        {
+          "id": "ms36yg9f4x4ir0-1",
+          "url": "photos/ms36z1wqm2xkrz/ms36yg9f4x4ir0-1.jpg",
+          "objectPosition": "center",
+          "small": "photos/ms36z1wqm2xkrz/ms36yg9f4x4ir0-1@480.jpg",
+          "medium": "photos/ms36z1wqm2xkrz/ms36yg9f4x4ir0-1@960.jpg"
+        },
+        {
+          "id": "ms36yga2dmqhj4-2",
+          "url": "photos/ms36z1wqm2xkrz/ms36yga2dmqhj4-2.jpg",
+          "objectPosition": "center",
+          "small": "photos/ms36z1wqm2xkrz/ms36yga2dmqhj4-2@480.jpg",
+          "medium": "photos/ms36z1wqm2xkrz/ms36yga2dmqhj4-2@960.jpg"
+        },
+        {
+          "id": "ms36ygal0j92tq-3",
+          "url": "photos/ms36z1wqm2xkrz/ms36ygal0j92tq-3.jpg",
+          "objectPosition": "center",
+          "small": "photos/ms36z1wqm2xkrz/ms36ygal0j92tq-3@480.jpg",
+          "medium": "photos/ms36z1wqm2xkrz/ms36ygal0j92tq-3@960.jpg"
+        },
+        {
+          "id": "ms36ygaooititi-4",
+          "url": "photos/ms36z1wqm2xkrz/ms36ygaooititi-4.jpg",
+          "objectPosition": "53.1% 17.6%",
+          "small": "photos/ms36z1wqm2xkrz/ms36ygaooititi-4@480.jpg",
+          "medium": "photos/ms36z1wqm2xkrz/ms36ygaooititi-4@960.jpg",
+          "focalX": 53.06577480490524,
+          "focalY": 17.61426978818283
+        },
+        {
+          "id": "ms36ygb8zvx3ol-5",
+          "url": "photos/ms36z1wqm2xkrz/ms36ygb8zvx3ol-5.jpg",
+          "objectPosition": "center",
+          "small": "photos/ms36z1wqm2xkrz/ms36ygb8zvx3ol-5@480.jpg",
+          "medium": "photos/ms36z1wqm2xkrz/ms36ygb8zvx3ol-5@960.jpg"
+        },
+        {
+          "id": "ms36ygcbf1sss2-6",
+          "url": "photos/ms36z1wqm2xkrz/ms36ygcbf1sss2-6.jpg",
+          "objectPosition": "center",
+          "small": "photos/ms36z1wqm2xkrz/ms36ygcbf1sss2-6@480.jpg",
+          "medium": "photos/ms36z1wqm2xkrz/ms36ygcbf1sss2-6@960.jpg"
+        },
+        {
+          "id": "ms36ygjb7yxmuk-7",
+          "url": "photos/ms36z1wqm2xkrz/ms36ygjb7yxmuk-7.jpg",
+          "objectPosition": "45.6% 45.5%",
+          "small": "photos/ms36z1wqm2xkrz/ms36ygjb7yxmuk-7@480.jpg",
+          "medium": "photos/ms36z1wqm2xkrz/ms36ygjb7yxmuk-7@960.jpg",
+          "focalX": 45.591123851993416,
+          "focalY": 45.52476508998248
+        }
+      ],
+      "featured": true,
+      "hideFromCompCard": false,
+      "disableCompCardDownload": false,
+      "coverPhotoId": "ms36ygjb7yxmuk"
     }
   ]
 };
