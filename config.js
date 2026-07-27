@@ -22,7 +22,7 @@ const STUDIO_CONFIG = {
 
   // Categories & Taxonomies
   // These drive the navigation, filtering, and upload options
-  activities: ["Beauty", "Editorial", "Fashion", "Fitness", "Portrait", "Sports"],
+  activities: ["Beauty", "Editorial", "Fashion", "Fitness", "Portrait", "Sports", "Workshop"],
   types: ["Campaign", "Commercial", "Documentary", "E-commerce", "Editorial", "Fine Art", "Test Shoot", "Workshop Attended"],
   brands: ["Personal Project", "Vogue", "National Geographic", "Patagonia", "Local Cafe", "Independent Film"],
   // Admin passcode is stored ONLY as a SHA-256 hash (the site is public
