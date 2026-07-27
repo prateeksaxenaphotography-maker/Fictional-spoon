@@ -2557,7 +2557,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                 <label class="field"><span>Videographer(s)</span><input id="f_video" type="text" placeholder="—" /></label>
               </div>
               <div class="field-row">
-                <label class="field"><span>Model / talent (comma-separated)</span><input id="f_talent" type="text" placeholder="e.g. Model A, Model B" /></label>
+                <label class="field"><span>Model / talent (comma-separated · socials in parentheses)</span><input id="f_talent" type="text" placeholder="e.g. Bharti (@handle; site.com), Suyagya" /></label>
+                <div id="f_talent_verify" style="margin-top: 5px; font-size: 11px; display: none;"></div>
               </div>
               <div class="field-row" id="f_mentor_row" style="display: none;">
                 <label class="field"><span>Teacher / Mentor (comma-separated · socials in parentheses)</span><input id="f_mentor" type="text" placeholder="e.g. Mentor One (@handle; site.com), Mentor Two" /></label>
@@ -3445,6 +3446,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     }
 
     // Initialize verification for all fields
+    setupLinkVerification("f_talent", "f_talent_verify", "talentVerifyFlag");
     setupLinkVerification("f_stylist", "f_stylist_verify", "stylistVerifyFlag");
     setupLinkVerification("f_hair", "f_hair_verify", "hairVerifyFlag");
     setupLinkVerification("f_mua", "f_mua_verify", "muaVerifyFlag");
@@ -3592,56 +3594,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     });
     creditsInput?.addEventListener("blur", updateCreditsVerify);
 
-    // Mentor verification handler
-    const mentorInput = $("#f_mentor");
-    const mentorVerify = $("#f_mentor_verify");
-    let clickedMentorVerify = false;
-    mentorVerify?.addEventListener("click", (e) => {
-      if (e.target.closest("a")) clickedMentorVerify = true;
-    });
-    function updateMentorVerify() {
-      if (!mentorInput || !mentorVerify) return;
-      const val = mentorInput.value.trim();
-      if (!val) {
-        mentorVerify.style.display = "none";
-        mentorVerify.innerHTML = "";
-        return;
-      }
-      const items = val.split(",").map(item => item.trim()).filter(Boolean);
-      const allLinks = [];
-      items.forEach(item => {
-        const parenRegex = /\(([^)]+)\)/;
-        const match = item.match(parenRegex);
-        if (match) {
-          const socials = match[1].split(";").map(s => s.trim()).filter(Boolean);
-          socials.forEach(s => {
-            if (s.includes("instagram.com") || s.startsWith("@")) {
-              const handle = s.startsWith("@") ? s.replace(/^@/, "") : s.split("/").pop();
-              allLinks.push({ label: `@${handle}`, url: `https://instagram.com/${handle}` });
-            } else if (s.includes("kavyar.com")) {
-              allLinks.push({ label: "Kavyar", url: s.startsWith("http") ? s : "https://" + s });
-            } else if (s.startsWith("http")) {
-              allLinks.push({ label: s.split("//")[1]?.split("/")[0] || "Link", url: s });
-            }
-          });
-        }
-      });
-      if (!allLinks.length) {
-        mentorVerify.style.display = "none";
-        mentorVerify.innerHTML = "";
-        return;
-      }
-      const linksHtml = allLinks.map(({ label, url }) => `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600; text-decoration:underline; display:inline-flex; align-items:center; gap:2px; margin-right:12px;">${esc(label)} ↗</a>`).join("");
-      mentorVerify.innerHTML = `<span style="color:var(--ink-soft); font-family:'JetBrains Mono', monospace; font-size:10px; margin-right:6px; text-transform:uppercase;">Verify links:</span> ${linksHtml}`;
-      mentorVerify.style.display = "block";
-    }
-
-    setTimeout(updateMentorVerify, 50);
-    mentorInput?.addEventListener("input", () => {
-      clickedMentorVerify = false;
-      updateMentorVerify();
-    });
-    mentorInput?.addEventListener("blur", updateMentorVerify);
+    // Initialize mentor verification using same generic system
+    setupLinkVerification("f_mentor", "f_mentor_verify", "mentorVerifyFlag");
 
     // PDF file upload handler
     let pdfDataUrl = editingShoot?.pdfUrl || "";
@@ -3684,7 +3638,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       }
       const mentorVal = val("f_mentor");
       const originalMentor = editingShoot ? (editingShoot.mentor || "") : "";
-      if (mentorVal && mentorVal !== originalMentor && !clickedMentorVerify) {
+      if (mentorVal && mentorVal !== originalMentor && window.mentorVerifyFlag?.hasLinks?.() && !window.mentorVerifyFlag?.get?.()) {
         toast("Please test the mentor links before publishing.");
         return;
       }
@@ -3710,6 +3664,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const originalAd = editingShoot ? (editingShoot.artDirector || "") : "";
       if (adVal && adVal !== originalAd && window.adVerifyFlag?.hasLinks?.() && !window.adVerifyFlag?.get?.()) {
         toast("Please test the art director links before publishing.");
+        return;
+      }
+      const talentVal = val("f_talent");
+      const originalTalent = editingShoot ? (editingShoot.talent || "") : "";
+      if (talentVal && talentVal !== originalTalent && window.talentVerifyFlag?.hasLinks?.() && !window.talentVerifyFlag?.get?.()) {
+        toast("Please test the talent/model links before publishing.");
         return;
       }
       const isTestimonialOnly = !!$("#f_is_testimonial_only")?.checked;
