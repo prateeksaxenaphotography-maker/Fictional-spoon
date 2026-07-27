@@ -745,7 +745,7 @@ window.WPS_DATA = {
       "mua": "Suyagya (https://www.instagram.com/suyagyamakeovers/?hl=en)",
       "videographer": "—",
       "talent": "Paola Arellano (https://www.instagram.com/arellanopaola._), Lorna Perez(https://www.instagram.com/lornapereza)",
-      "location": "Tavish Studio",
+      "location": "Tavish Studio (https://www.instagram.com/studiotavish/?hl=en)",
       "height": "",
       "chest": "",
       "waist": "",
@@ -772,7 +772,7 @@ window.WPS_DATA = {
       "lightingDiagram": null,
       "lightingDiagramVisibility": "private",
       "palette": [
-        "#3e3b3d",
+        "#3f3b3d",
         "#1c1b1b"
       ],
       "photos": [
