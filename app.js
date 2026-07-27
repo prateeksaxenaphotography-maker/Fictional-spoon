@@ -889,6 +889,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     if (creditsList.length > 0) {
       credits.push(`<div><dd style="display: contents;">${creditsList.join("")}</dd></div>`);
     }
+    if (shoot.location && shoot.location !== "—") {
+      credits.push(`<div><dd style="margin-bottom: 8px;"><span>${renderCreditLinks(shoot.location)}</span> <span style="color: var(--ink-soft); font-size: 11px;">— Location</span></dd></div>`);
+    }
     if (shoot.pdfUrl && shouldShowField(shoot, "Pdf")) credits.push(`<div><dt>Material</dt><dd><a href="${esc(shoot.pdfUrl)}" download style="color: var(--accent); text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">📄 Download PDF</a></dd></div>`);
     if (igHtml) credits.push(igHtml);
     if (kavyarHtml) credits.push(kavyarHtml);
