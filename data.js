@@ -756,7 +756,7 @@ window.WPS_DATA = {
       "showStatsOnCompCard": true,
       "showStatsOnModelPortfolio": true,
       "showTestShootCategory": false,
-      "mentor": "Siddharth Arora (https://www.instagram.com/siddology/?hl=en), Ankit Kumar Maurya (https://www.instagram.com/clickwalaphotography/?hl=en)",
+      "mentor": "Siddharth Arora (https://www.instagram.com/siddology/?hl=en), Ankit Kumar Mourya (https://www.instagram.com/clickwalaphotography/?hl=en)",
       "credits": "Bharti Kain (https://www.instagram.com/bharti_kain.11/?hl=en), Suyagya (https://www.instagram.com/suyagyamakeovers/?hl=en)",
       "description": "",
       "tags": "",
