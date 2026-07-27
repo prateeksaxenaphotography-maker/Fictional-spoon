@@ -872,6 +872,15 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     if (igHtml) credits.push(igHtml);
     if (kavyarHtml) credits.push(kavyarHtml);
 
+    // Studio socials
+    const cfg = window.STUDIO_CONFIG || {};
+    if (cfg.instagram || cfg.kavyar) {
+      const studioLinks = [];
+      if (cfg.instagram) studioLinks.push(`<a href="${esc(cfg.instagram)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none; margin-right: 14px; display: inline-block;">@nerdyphotographer.in</a>`);
+      if (cfg.kavyar) studioLinks.push(`<a href="${esc(cfg.kavyar)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none; margin-right: 14px; display: inline-block;">Kavyar Studio</a>`);
+      if (studioLinks.length) credits.push(`<div><dt>Studio</dt><dd>${studioLinks.join("")}</dd></div>`);
+    }
+
     const creditsHtml = credits.length ? `
       <div class="lb-sidebar-section">
         <h4 style="font-family:'Outfit', sans-serif; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); margin:0 0 10px;">Credits</h4>
@@ -1326,6 +1335,72 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     // Keep the toggle icon/state in sync when the system theme changes in auto mode.
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncHeaderThemeToggle);
     syncHeaderThemeToggle();
+  }
+
+  function initStudioSettingsControls() {
+    const modal = $("#studioSettingsModal");
+    const btn = $("#studioSettingsBtn");
+    const closeBtn = $("#studioSettingsClose");
+    const saveBtn = $("#studioSettingsSave");
+    const instagramInput = $("#studio_instagram_input");
+    const kavyarInput = $("#studio_kavyar_input");
+    const instagramVerify = $("#studio_instagram_verify");
+    const kavyarVerify = $("#studio_kavyar_verify");
+
+    if (!btn) return;
+
+    function updateVerifyLinks() {
+      const inst = instagramInput?.value.trim() || "";
+      const kav = kavyarInput?.value.trim() || "";
+
+      if (inst) {
+        const url = inst.startsWith("http") ? inst : "https://instagram.com/" + inst;
+        instagramVerify.innerHTML = `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600; text-decoration:underline;">Test Instagram ↗</a>`;
+      } else {
+        instagramVerify.innerHTML = "";
+      }
+
+      if (kav) {
+        const url = kav.startsWith("http") ? kav : "https://" + kav;
+        kavyarVerify.innerHTML = `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600; text-decoration:underline;">Test Kavyar ↗</a>`;
+      } else {
+        kavyarVerify.innerHTML = "";
+      }
+    }
+
+    btn.addEventListener("click", () => {
+      instagramInput.value = STUDIO_CONFIG.instagram || "";
+      kavyarInput.value = STUDIO_CONFIG.kavyar || "";
+      updateVerifyLinks();
+      modal.style.display = "flex";
+    });
+
+    closeBtn?.addEventListener("click", () => {
+      modal.style.display = "none";
+    });
+
+    modal?.addEventListener("click", (e) => {
+      if (e.target === modal) modal.style.display = "none";
+    });
+
+    instagramInput?.addEventListener("input", updateVerifyLinks);
+    kavyarInput?.addEventListener("input", updateVerifyLinks);
+
+    saveBtn?.addEventListener("click", async () => {
+      const inst = instagramInput?.value.trim() || "";
+      const kav = kavyarInput?.value.trim() || "";
+
+      if (!inst || !kav) {
+        toast("Both Instagram and Kavyar links are required.");
+        return;
+      }
+
+      STUDIO_CONFIG.instagram = inst;
+      STUDIO_CONFIG.kavyar = kav;
+      toast("Studio links updated.");
+      modal.style.display = "none";
+      render();
+    });
   }
 
   /* ============================================================
@@ -5542,6 +5617,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     initNav();
     initAdminControls();
     initThemeControls();
+    initStudioSettingsControls();
     initHeaderScroll();
     initRouting();
     try {
