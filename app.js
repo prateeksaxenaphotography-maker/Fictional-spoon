@@ -3070,6 +3070,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         if ($("#f_hair")) $("#f_hair").dispatchEvent(new Event("input"));
         if ($("#f_mua")) $("#f_mua").dispatchEvent(new Event("input"));
         if ($("#f_ad")) $("#f_ad").dispatchEvent(new Event("input"));
+        if ($("#f_credits")) $("#f_credits").dispatchEvent(new Event("input"));
+        if ($("#f_ig")) $("#f_ig").dispatchEvent(new Event("input"));
+        if ($("#f_kavyar")) $("#f_kavyar").dispatchEvent(new Event("input"));
         $("#f_chest").value = editingShoot.chest || "";
         $("#f_waist").value = editingShoot.waist || "";
         $("#f_hips").value = editingShoot.hips || "";
@@ -3387,8 +3390,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     ["dragleave", "dragend", "drop"].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.remove("is-drag"); }));
     dz.addEventListener("drop", (e) => { if (e.dataTransfer?.files?.length) ingest(e.dataTransfer.files); });
 
-    // Generic link verification for fields (stylist, MUA, art director, etc.)
-    function setupLinkVerification(fieldId, verifyId, flagName) {
+    // Generic link verification for all fields with custom parsers
+    function setupLinkVerification(fieldId, verifyId, flagName, parseLinks) {
       const input = $("#" + fieldId);
       const verify = $("#" + verifyId);
       if (!input || !verify) return;
@@ -3396,12 +3399,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       let clickedFlag = false;
       let hasLinks = false;
 
-      // Use capturing phase to catch clicks on dynamically created links
+      // Capture clicks on verification links
       verify.addEventListener("click", (e) => {
-        const link = e.target.closest("a");
-        if (link && link.href) {
-          clickedFlag = true;
-        }
+        if (e.target.closest("a")) clickedFlag = true;
       }, true);
 
       function updateVerify() {
@@ -3412,6 +3412,27 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           hasLinks = false;
           return;
         }
+
+        // Use custom parser if provided, otherwise use default
+        const allLinks = parseLinks ? parseLinks(val) : parseDefaultLinks(val);
+
+        if (!allLinks.length) {
+          verify.style.display = "none";
+          verify.innerHTML = "";
+          hasLinks = false;
+          return;
+        }
+
+        hasLinks = true;
+        const linksHtml = allLinks.map(({ label, url }) =>
+          `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600; text-decoration:underline; display:inline-flex; align-items:center; gap:2px; margin-right:12px;">${esc(label)} ↗</a>`
+        ).join("");
+        verify.innerHTML = `<span style="color:var(--ink-soft); font-family:'JetBrains Mono', monospace; font-size:10px; margin-right:6px; text-transform:uppercase;">Verify links:</span> ${linksHtml}`;
+        verify.style.display = "block";
+      }
+
+      function parseDefaultLinks(val) {
+        // Default parser: looks for links in parentheses (Name (@handle; site.com))
         const items = val.split(",").map(item => item.trim()).filter(Boolean);
         const allLinks = [];
         items.forEach(item => {
@@ -3431,16 +3452,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             });
           }
         });
-        if (!allLinks.length) {
-          verify.style.display = "none";
-          verify.innerHTML = "";
-          hasLinks = false;
-          return;
-        }
-        hasLinks = true;
-        const linksHtml = allLinks.map(({ label, url }) => `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600; text-decoration:underline; display:inline-flex; align-items:center; gap:2px; margin-right:12px;">${esc(label)} ↗</a>`).join("");
-        verify.innerHTML = `<span style="color:var(--ink-soft); font-family:'JetBrains Mono', monospace; font-size:10px; margin-right:6px; text-transform:uppercase;">Verify links:</span> ${linksHtml}`;
-        verify.style.display = "block";
+        return allLinks;
       }
 
       setTimeout(updateVerify, 50);
@@ -3450,7 +3462,6 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       });
       input.addEventListener("blur", updateVerify);
 
-      // Store the flag and hasLinks state on window for later validation
       window[flagName] = {
         get: () => clickedFlag,
         hasLinks: () => hasLinks,
@@ -3458,157 +3469,34 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       };
     }
 
-    // Initialize verification for all fields
+    // Custom parser for Instagram handles
+    const parseInstagramLinks = (val) => {
+      const handles = val.split(",").map(h => parseIgHandle(h.trim())).filter(Boolean);
+      return handles.map(handle => ({
+        label: `@${handle}`,
+        url: `https://instagram.com/${encodeURIComponent(handle)}`
+      }));
+    };
+
+    // Custom parser for Kavyar links
+    const parseKavyarLinks = (val) => {
+      const links = val.split(",").map(h => parseKavyarLink(h.trim())).filter(Boolean);
+      return links.map(url => ({
+        label: `Kavyar: ${url.split("/").pop()}`,
+        url: url
+      }));
+    };
+
+    // Initialize verification for ALL fields using unified generic system
     setupLinkVerification("f_talent", "f_talent_verify", "talentVerifyFlag");
     setupLinkVerification("f_stylist", "f_stylist_verify", "stylistVerifyFlag");
     setupLinkVerification("f_hair", "f_hair_verify", "hairVerifyFlag");
     setupLinkVerification("f_mua", "f_mua_verify", "muaVerifyFlag");
     setupLinkVerification("f_ad", "f_ad_verify", "adVerifyFlag");
-
-    const igInput = $("#f_ig");
-    const igVerify = $("#f_ig_verify");
-    let clickedVerify = false;
-    igVerify?.addEventListener("click", (e) => {
-      if (e.target.closest("a")) clickedVerify = true;
-    });
-    function updateIgVerify() {
-      if (!igInput || !igVerify) return;
-      const val = igInput.value.trim();
-      if (!val) {
-        igVerify.style.display = "none";
-        igVerify.innerHTML = "";
-        return;
-      }
-      const handles = val.split(",").map(parseIgHandle).filter(Boolean);
-      if (handles.length === 0) {
-        igVerify.style.display = "none";
-        igVerify.innerHTML = "";
-        return;
-      }
-      const linksHtml = handles.map(username => {
-        return `<a href="https://instagram.com/${encodeURIComponent(username)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600; text-decoration:underline; display:inline-flex; align-items:center; gap:2px; margin-right:12px;">@${esc(username)} ↗</a>`;
-      }).join("");
-      igVerify.innerHTML = `<span style="color:var(--ink-soft); font-family:'JetBrains Mono', monospace; font-size:10px; margin-right:6px; text-transform:uppercase;">Verify links:</span> ${linksHtml}`;
-      igVerify.style.display = "block";
-    }
-
-    setTimeout(updateIgVerify, 50);
-
-    igInput?.addEventListener("input", () => {
-      clickedVerify = false;
-      updateIgVerify();
-    });
-    igInput?.addEventListener("blur", () => {
-      let val = igInput.value.trim();
-      if (val) {
-        const cleaned = val.split(",").map(h => {
-          const parsed = parseIgHandle(h);
-          return parsed ? `@${parsed}` : "";
-        }).filter(Boolean).join(", ");
-        igInput.value = cleaned;
-      }
-      updateIgVerify();
-    });
-
-    const kavyarInput = $("#f_kavyar");
-    const kavyarVerify = $("#f_kavyar_verify");
-    let clickedKavyarVerify = false;
-    kavyarVerify?.addEventListener("click", (e) => {
-      if (e.target.closest("a")) clickedKavyarVerify = true;
-    });
-    function updateKavyarVerify() {
-      if (!kavyarInput || !kavyarVerify) return;
-      const val = kavyarInput.value.trim();
-      if (!val) {
-        kavyarVerify.style.display = "none";
-        kavyarVerify.innerHTML = "";
-        return;
-      }
-      const links = val.split(",").map(parseKavyarLink).filter(Boolean);
-      if (links.length === 0) {
-        kavyarVerify.style.display = "none";
-        kavyarVerify.innerHTML = "";
-        return;
-      }
-      const linksHtml = links.map(url => {
-        const username = url.split("/").pop();
-        return `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600; text-decoration:underline; display:inline-flex; align-items:center; gap:2px; margin-right:12px;">Kavyar: ${esc(username)} ↗</a>`;
-      }).join("");
-      kavyarVerify.innerHTML = `<span style="color:var(--ink-soft); font-family:'JetBrains Mono', monospace; font-size:10px; margin-right:6px; text-transform:uppercase;">Verify links:</span> ${linksHtml}`;
-      kavyarVerify.style.display = "block";
-    }
-
-    setTimeout(updateKavyarVerify, 50);
-
-    kavyarInput?.addEventListener("input", () => {
-      clickedKavyarVerify = false;
-      updateKavyarVerify();
-    });
-    kavyarInput?.addEventListener("blur", () => {
-      let val = kavyarInput.value.trim();
-      if (val) {
-        const cleaned = val.split(",").map(h => {
-          const parsed = parseKavyarLink(h);
-          return parsed;
-        }).filter(Boolean).join(", ");
-        kavyarInput.value = cleaned;
-      }
-      updateKavyarVerify();
-    });
-
-    // Credits verification handler
-    const creditsInput = $("#f_credits");
-    const creditsVerify = $("#f_credits_verify");
-    let clickedCreditsVerify = false;
-    creditsVerify?.addEventListener("click", (e) => {
-      if (e.target.closest("a")) clickedCreditsVerify = true;
-    });
-    function updateCreditsVerify() {
-      if (!creditsInput || !creditsVerify) return;
-      const val = creditsInput.value.trim();
-      if (!val) {
-        creditsVerify.style.display = "none";
-        creditsVerify.innerHTML = "";
-        return;
-      }
-      const items = val.split(",").map(item => item.trim()).filter(Boolean);
-      const allLinks = [];
-      items.forEach(item => {
-        const parenRegex = /\(([^)]+)\)/;
-        const match = item.match(parenRegex);
-        if (match) {
-          const socials = match[1].split(";").map(s => s.trim()).filter(Boolean);
-          socials.forEach(s => {
-            if (s.includes("instagram.com") || s.startsWith("@")) {
-              const handle = s.startsWith("@") ? s.replace(/^@/, "") : s.split("/").pop();
-              allLinks.push({ label: `@${handle}`, url: `https://instagram.com/${handle}` });
-            } else if (s.includes("kavyar.com")) {
-              allLinks.push({ label: "Kavyar", url: s.startsWith("http") ? s : "https://" + s });
-            } else if (s.startsWith("http")) {
-              allLinks.push({ label: s.split("//")[1]?.split("/")[0] || "Link", url: s });
-            }
-          });
-        }
-      });
-      if (!allLinks.length) {
-        creditsVerify.style.display = "none";
-        creditsVerify.innerHTML = "";
-        return;
-      }
-      const linksHtml = allLinks.map(({ label, url }) => `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600; text-decoration:underline; display:inline-flex; align-items:center; gap:2px; margin-right:12px;">${esc(label)} ↗</a>`).join("");
-      creditsVerify.innerHTML = `<span style="color:var(--ink-soft); font-family:'JetBrains Mono', monospace; font-size:10px; margin-right:6px; text-transform:uppercase;">Verify links:</span> ${linksHtml}`;
-      creditsVerify.style.display = "block";
-    }
-
-    setTimeout(updateCreditsVerify, 50);
-    creditsInput?.addEventListener("input", () => {
-      clickedCreditsVerify = false;
-      updateCreditsVerify();
-    });
-    creditsInput?.addEventListener("blur", updateCreditsVerify);
-
-    // Initialize mentor verification using same generic system
     setupLinkVerification("f_mentor", "f_mentor_verify", "mentorVerifyFlag");
+    setupLinkVerification("f_credits", "f_credits_verify", "creditsVerifyFlag");
+    setupLinkVerification("f_ig", "f_ig_verify", "igVerifyFlag", parseInstagramLinks);
+    setupLinkVerification("f_kavyar", "f_kavyar_verify", "kavyarVerifyFlag", parseKavyarLinks);
 
     // PDF file upload handler
     let pdfDataUrl = editingShoot?.pdfUrl || "";
@@ -3633,19 +3521,19 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const val = (id) => $("#" + id)?.value.trim();
       const igVal = val("f_ig");
       const originalIg = editingShoot ? (editingShoot.instagram || "") : "";
-      if (igVal && igVal !== originalIg && !clickedVerify) {
+      if (igVal && igVal !== originalIg && window.igVerifyFlag?.hasLinks?.() && !window.igVerifyFlag?.get?.()) {
         toast("Please test the Instagram links before publishing.");
         return;
       }
       const kavyarVal = val("f_kavyar");
       const originalKavyar = editingShoot ? (editingShoot.kavyar || "") : "";
-      if (kavyarVal && kavyarVal !== originalKavyar && !clickedKavyarVerify) {
+      if (kavyarVal && kavyarVal !== originalKavyar && window.kavyarVerifyFlag?.hasLinks?.() && !window.kavyarVerifyFlag?.get?.()) {
         toast("Please test the Kavyar links before publishing.");
         return;
       }
       const creditsVal = val("f_credits");
       const originalCredits = editingShoot ? (editingShoot.credits || "") : "";
-      if (creditsVal && creditsVal !== originalCredits && !clickedCreditsVerify) {
+      if (creditsVal && creditsVal !== originalCredits && window.creditsVerifyFlag?.hasLinks?.() && !window.creditsVerifyFlag?.get?.()) {
         toast("Please test the credit links before publishing.");
         return;
       }
