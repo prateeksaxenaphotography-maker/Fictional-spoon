@@ -3385,6 +3385,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       if (!input || !verify) return;
 
       let clickedFlag = false;
+      let hasLinks = false;
       verify.addEventListener("click", (e) => {
         if (e.target.closest("a")) clickedFlag = true;
       });
@@ -3394,6 +3395,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         if (!val) {
           verify.style.display = "none";
           verify.innerHTML = "";
+          hasLinks = false;
           return;
         }
         const items = val.split(",").map(item => item.trim()).filter(Boolean);
@@ -3418,8 +3420,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         if (!allLinks.length) {
           verify.style.display = "none";
           verify.innerHTML = "";
+          hasLinks = false;
           return;
         }
+        hasLinks = true;
         const linksHtml = allLinks.map(({ label, url }) => `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600; text-decoration:underline; display:inline-flex; align-items:center; gap:2px; margin-right:12px;">${esc(label)} ↗</a>`).join("");
         verify.innerHTML = `<span style="color:var(--ink-soft); font-family:'JetBrains Mono', monospace; font-size:10px; margin-right:6px; text-transform:uppercase;">Verify links:</span> ${linksHtml}`;
         verify.style.display = "block";
@@ -3432,8 +3436,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       });
       input.addEventListener("blur", updateVerify);
 
-      // Store the flag on window for later validation
-      window[flagName] = { flag: clickedFlag, get: () => clickedFlag, set: (v) => { clickedFlag = v; } };
+      // Store the flag and hasLinks state on window for later validation
+      window[flagName] = {
+        get: () => clickedFlag,
+        hasLinks: () => hasLinks,
+        set: (v) => { clickedFlag = v; }
+      };
     }
 
     // Initialize verification for all fields
@@ -3682,25 +3690,25 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       }
       const stylistVal = val("f_stylist");
       const originalStylist = editingShoot ? (editingShoot.stylist || "") : "";
-      if (stylistVal && stylistVal !== originalStylist && !window.stylistVerifyFlag?.get?.()) {
+      if (stylistVal && stylistVal !== originalStylist && window.stylistVerifyFlag?.hasLinks?.() && !window.stylistVerifyFlag?.get?.()) {
         toast("Please test the stylist links before publishing.");
         return;
       }
       const hairVal = val("f_hair");
       const originalHair = editingShoot ? (editingShoot.hair || "") : "";
-      if (hairVal && hairVal !== originalHair && !window.hairVerifyFlag?.get?.()) {
+      if (hairVal && hairVal !== originalHair && window.hairVerifyFlag?.hasLinks?.() && !window.hairVerifyFlag?.get?.()) {
         toast("Please test the hair stylist links before publishing.");
         return;
       }
       const muaVal = val("f_mua");
       const originalMua = editingShoot ? (editingShoot.mua || "") : "";
-      if (muaVal && muaVal !== originalMua && !window.muaVerifyFlag?.get?.()) {
+      if (muaVal && muaVal !== originalMua && window.muaVerifyFlag?.hasLinks?.() && !window.muaVerifyFlag?.get?.()) {
         toast("Please test the makeup artist links before publishing.");
         return;
       }
       const adVal = val("f_ad");
       const originalAd = editingShoot ? (editingShoot.artDirector || "") : "";
-      if (adVal && adVal !== originalAd && !window.adVerifyFlag?.get?.()) {
+      if (adVal && adVal !== originalAd && window.adVerifyFlag?.hasLinks?.() && !window.adVerifyFlag?.get?.()) {
         toast("Please test the art director links before publishing.");
         return;
       }
