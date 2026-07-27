@@ -741,8 +741,8 @@ window.WPS_DATA = {
       "photographer": "nerdyphotographer",
       "artDirector": "",
       "stylist": "—",
-      "hair": "Bharti Kain",
-      "mua": "Suyagya",
+      "hair": "Bharti Kain (https://www.instagram.com/bharti_kain.11/?hl=en)",
+      "mua": "Suyagya (https://www.instagram.com/suyagyamakeovers/?hl=en)",
       "videographer": "—",
       "talent": "Paola Arellano, Lorna Perez",
       "location": "Tavish Studio",
@@ -757,7 +757,7 @@ window.WPS_DATA = {
       "showStatsOnModelPortfolio": true,
       "showTestShootCategory": false,
       "mentor": "Siddharth Arora (https://www.instagram.com/siddology/?hl=en), Ankit Kumar Mourya (https://www.instagram.com/clickwalaphotography/?hl=en)",
-      "credits": "Bharti Kain (https://www.instagram.com/bharti_kain.11/?hl=en), Suyagya (https://www.instagram.com/suyagyamakeovers/?hl=en)",
+      "credits": "",
       "description": "",
       "tags": "",
       "gear": "",
@@ -772,7 +772,7 @@ window.WPS_DATA = {
       "lightingDiagram": null,
       "lightingDiagramVisibility": "private",
       "palette": [
-        "#3f3b3d",
+        "#3e3b3d",
         "#1c1b1b"
       ],
       "photos": [
@@ -822,8 +822,8 @@ window.WPS_DATA = {
         }
       ],
       "featured": true,
-      "hideFromCompCard": false,
-      "disableCompCardDownload": false,
+      "hideFromCompCard": true,
+      "disableCompCardDownload": true,
       "isPublic": true,
       "showCredits": true,
       "showPdf": true,
