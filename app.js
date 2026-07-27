@@ -3399,7 +3399,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
     setTimeout(updateIgVerify, 50);
 
-    igInput?.addEventListener("input", updateIgVerify);
+    igInput?.addEventListener("input", () => {
+      clickedVerify = false;
+      updateIgVerify();
+    });
     igInput?.addEventListener("blur", () => {
       let val = igInput.value.trim();
       if (val) {
@@ -3442,7 +3445,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
     setTimeout(updateKavyarVerify, 50);
 
-    kavyarInput?.addEventListener("input", updateKavyarVerify);
+    kavyarInput?.addEventListener("input", () => {
+      clickedKavyarVerify = false;
+      updateKavyarVerify();
+    });
     kavyarInput?.addEventListener("blur", () => {
       let val = kavyarInput.value.trim();
       if (val) {
@@ -3500,7 +3506,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     }
 
     setTimeout(updateCreditsVerify, 50);
-    creditsInput?.addEventListener("input", updateCreditsVerify);
+    creditsInput?.addEventListener("input", () => {
+      clickedCreditsVerify = false;
+      updateCreditsVerify();
+    });
     creditsInput?.addEventListener("blur", updateCreditsVerify);
 
     // PDF file upload handler
