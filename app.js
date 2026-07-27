@@ -2555,6 +2555,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               </div>
               <div class="field-row" id="f_mentor_row" style="display: none;">
                 <label class="field"><span>Teacher / Mentor (comma-separated · socials in parentheses)</span><input id="f_mentor" type="text" placeholder="e.g. Mentor One (@handle; site.com), Mentor Two" /></label>
+                <div id="f_mentor_verify" style="margin-top: 5px; font-size: 11px; display: none;"></div>
               </div>
               <label class="field" style="position: relative;">
                 <span>Credits (Name with socials · comma-separated)</span>
@@ -3512,6 +3513,57 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     });
     creditsInput?.addEventListener("blur", updateCreditsVerify);
 
+    // Mentor verification handler
+    const mentorInput = $("#f_mentor");
+    const mentorVerify = $("#f_mentor_verify");
+    let clickedMentorVerify = false;
+    mentorVerify?.addEventListener("click", (e) => {
+      if (e.target.closest("a")) clickedMentorVerify = true;
+    });
+    function updateMentorVerify() {
+      if (!mentorInput || !mentorVerify) return;
+      const val = mentorInput.value.trim();
+      if (!val) {
+        mentorVerify.style.display = "none";
+        mentorVerify.innerHTML = "";
+        return;
+      }
+      const items = val.split(",").map(item => item.trim()).filter(Boolean);
+      const allLinks = [];
+      items.forEach(item => {
+        const parenRegex = /\(([^)]+)\)/;
+        const match = item.match(parenRegex);
+        if (match) {
+          const socials = match[1].split(";").map(s => s.trim()).filter(Boolean);
+          socials.forEach(s => {
+            if (s.includes("instagram.com") || s.startsWith("@")) {
+              const handle = s.startsWith("@") ? s.replace(/^@/, "") : s.split("/").pop();
+              allLinks.push({ label: `@${handle}`, url: `https://instagram.com/${handle}` });
+            } else if (s.includes("kavyar.com")) {
+              allLinks.push({ label: "Kavyar", url: s.startsWith("http") ? s : "https://" + s });
+            } else if (s.startsWith("http")) {
+              allLinks.push({ label: s.split("//")[1]?.split("/")[0] || "Link", url: s });
+            }
+          });
+        }
+      });
+      if (!allLinks.length) {
+        mentorVerify.style.display = "none";
+        mentorVerify.innerHTML = "";
+        return;
+      }
+      const linksHtml = allLinks.map(({ label, url }) => `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600; text-decoration:underline; display:inline-flex; align-items:center; gap:2px; margin-right:12px;">${esc(label)} ↗</a>`).join("");
+      mentorVerify.innerHTML = `<span style="color:var(--ink-soft); font-family:'JetBrains Mono', monospace; font-size:10px; margin-right:6px; text-transform:uppercase;">Verify links:</span> ${linksHtml}`;
+      mentorVerify.style.display = "block";
+    }
+
+    setTimeout(updateMentorVerify, 50);
+    mentorInput?.addEventListener("input", () => {
+      clickedMentorVerify = false;
+      updateMentorVerify();
+    });
+    mentorInput?.addEventListener("blur", updateMentorVerify);
+
     // PDF file upload handler
     let pdfDataUrl = editingShoot?.pdfUrl || "";
     const pdfInput = $("#f_pdf");
@@ -3549,6 +3601,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const originalCredits = editingShoot ? (editingShoot.credits || "") : "";
       if (creditsVal && creditsVal !== originalCredits && !clickedCreditsVerify) {
         toast("Please test the credit links before publishing.");
+        return;
+      }
+      const mentorVal = val("f_mentor");
+      const originalMentor = editingShoot ? (editingShoot.mentor || "") : "";
+      if (mentorVal && mentorVal !== originalMentor && !clickedMentorVerify) {
+        toast("Please test the mentor links before publishing.");
         return;
       }
       const isTestimonialOnly = !!$("#f_is_testimonial_only")?.checked;
