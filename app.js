@@ -1278,7 +1278,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     if (bookLi) bookLi.style.display = active ? "none" : "block";
     if (compCardsLi) compCardsLi.style.display = "block";
     if (portfolioLi) portfolioLi.style.display = active ? "block" : "none";
-    if (workshopLi) workshopLi.style.display = (active || shouldShowWorkshopsToAll()) ? "block" : "none";
+    if (workshopLi) workshopLi.style.display = "block"; // Always show Workshop in nav
     if (logsLi) logsLi.style.display = active ? "block" : "none";
     if (analyticsLi) analyticsLi.style.display = active ? "block" : "none";
 
@@ -2135,6 +2135,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const getCategoryDescription = (val) => {
         if (val === "Model Portfolio") {
           return "This portfolio archive displays curated agency-standard portfolios, filtered and tagged by profile angles (Front, Side, Back, 3/4, Close-up).";
+        }
+        if (val === "Comp Cards" || val === "Test Shoot") {
+          return "This compcard archive includes photos clicked or produced under nerdyphotographer.in studio or its subsidiaries. <span style=\"font-size: 12px; color: var(--ink-soft); display: block; margin-top: 8px;\">Note: Models from workshop projects are featured in the dedicated Workshop section.</span>";
         }
         return "This compcard archive includes photos clicked or produced under nerdyphotographer.in studio or its subsidiaries.";
       };
