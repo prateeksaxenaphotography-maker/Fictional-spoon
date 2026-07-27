@@ -199,6 +199,40 @@
     });
     return renderedItems.join(", ");
   }
+
+  function renderCreditsValue(text) {
+    if (!text || text === "—") return "—";
+    const items = text.split(",").map(item => item.trim()).filter(Boolean);
+    const renderedItems = items.map(item => {
+      const parenRegex = /\(([^)]+)\)/;
+      const match = item.match(parenRegex);
+      if (match) {
+        const rawName = item.replace(parenRegex, "").trim();
+        const rawSocials = match[1].split("|").map(s => s.trim()).filter(Boolean);
+        const socialLinks = rawSocials.map(s => {
+          let url = s;
+          let label = s;
+          if (s.includes("instagram.com") || s.startsWith("@")) {
+            url = s.startsWith("http") ? s : (s.startsWith("@") ? "https://instagram.com/" + s.replace(/^@/, "") : "https://" + s);
+            label = "@" + (s.includes("instagram.com") ? url.split("/").pop() : s.replace(/^@/, ""));
+          } else if (s.includes("kavyar.com")) {
+            url = s.startsWith("http") ? s : "https://" + s;
+            label = "Kavyar";
+          } else if (s.startsWith("http")) {
+            url = s;
+            label = "Link";
+          } else {
+            url = "https://instagram.com/" + s;
+            label = "@" + s;
+          }
+          return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent); font-weight:600; text-decoration:none; margin-left:4px; display:inline;">${esc(label)}</a>`;
+        }).join(" ");
+        return `${esc(rawName)} ${socialLinks}`;
+      }
+      return esc(item);
+    });
+    return renderedItems.join(", ");
+  }
   const parseIgHandle = (h) => {
     let clean = String(h ?? "").trim();
     if (!clean) return "";
@@ -862,6 +896,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     if (shoot.videographer && shoot.videographer !== "—") credits.push(`<div><dt>Video</dt><dd>${formatCrew(shoot.videographer)}</dd></div>`);
     if (shoot.hair && shoot.hair !== "—") credits.push(`<div><dt>Hair</dt><dd>${formatCrew(shoot.hair)}</dd></div>`);
     if (shoot.talent && shoot.talent !== "—") credits.push(`<div><dt>Model / Talent</dt><dd>${renderCreditValue(shoot.talent)}</dd></div>`);
+    if (shoot.credits) credits.push(`<div><dt>Credits</dt><dd>${renderCreditsValue(shoot.credits)}</dd></div>`);
     if (igHtml) credits.push(igHtml);
     if (kavyarHtml) credits.push(kavyarHtml);
 
@@ -1375,6 +1410,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           </div>
           <div class="noth-work-meta">
             ${meta ? `<span>${esc(meta)}</span>` : ""}
+            ${s.credits ? `<span style="font-size: 13px; color: var(--ink-soft); margin-top: 4px;">${renderCreditsValue(s.credits)}</span>` : ""}
             <div style="display: flex; align-items: center; gap: 12px;">
               <span class="noth-work-cta">View <svg viewBox="0 0 14 10" width="14" height="10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 5h12M9 1l4 4-4 4"/></svg></span>
               <button class="work-share" data-id="${s.id}" style="background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; color: currentColor; opacity: 0.7; transition: opacity 0.2s;" title="Share album" aria-label="Share album">
@@ -2467,6 +2503,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               <div class="field-row" id="f_mentor_row" style="display: none;">
                 <label class="field"><span>Teacher / Mentor (comma-separated · socials in parentheses)</span><input id="f_mentor" type="text" placeholder="e.g. Mentor One (@handle; site.com), Mentor Two" /></label>
               </div>
+              <label class="field"><span>Credits (Name with socials · comma-separated)</span><input id="f_credits" type="text" placeholder="e.g. Stylist Name (@instagram | kavyar.com/link), Makeup Artist Name" /></label>
             </fieldset>
 
             <fieldset id="modelStatsFieldset"><legend>Model stats (Comp Cards)</legend>
@@ -2927,6 +2964,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         if ($("#f_show_stats_port")) $("#f_show_stats_port").checked = (editingShoot.showStatsOnModelPortfolio !== false);
         if ($("#f_show_test_shoot_cat")) $("#f_show_test_shoot_cat").checked = !!editingShoot.showTestShootCategory;
         if ($("#f_mentor")) $("#f_mentor").value = editingShoot.mentor || "";
+        if ($("#f_credits")) $("#f_credits").value = editingShoot.credits || "";
         updateMentorRowState();
         const toIsoDate = (dStr) => {
           if (!dStr) return "";
@@ -3369,6 +3407,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         showStatsOnModelPortfolio: isTestimonialOnly ? true : ($("#f_show_stats_port") ? $("#f_show_stats_port").checked : true),
         showTestShootCategory: isTestimonialOnly ? false : ($("#f_show_test_shoot_cat") ? $("#f_show_test_shoot_cat").checked : false),
         mentor: isTestimonialOnly ? "" : val("f_mentor"),
+        credits: isTestimonialOnly ? "" : val("f_credits"),
         description: val("f_desc"),
         tags: isTestimonialOnly ? "" : val("f_tags"),
         gear: isTestimonialOnly ? "" : val("f_gear"),
@@ -4300,6 +4339,33 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     ` : "";
   }
 
+  function printCreditsBarHtml(shoot) {
+    if (!shoot.credits) return "";
+    const creditsItems = shoot.credits.split(",").map(item => {
+      const parenRegex = /\(([^)]+)\)/;
+      const match = item.match(parenRegex);
+      if (match) {
+        const rawName = item.replace(parenRegex, "").trim();
+        const rawSocials = match[1].split("|").map(s => s.trim()).filter(Boolean);
+        const socialStr = rawSocials.map(s => {
+          if (s.includes("instagram.com") || s.startsWith("@")) {
+            return "@" + (s.startsWith("@") ? s.replace(/^@/, "") : s.split("/").pop());
+          } else if (s.includes("kavyar.com")) {
+            return "Kavyar: " + s.split("/").pop();
+          }
+          return s;
+        }).join(" · ");
+        return `${rawName} (${socialStr})`;
+      }
+      return item.trim();
+    }).join("   |   ");
+    return creditsItems ? `
+      <div style="font-family:'JetBrains Mono', monospace; font-size: calc(9px * var(--print-scale, 1)); font-weight: 600; color: #333; padding: calc(6px * var(--print-scale, 1)) calc(12px * var(--print-scale, 1)); text-transform: uppercase; letter-spacing: 0.05em; text-align: center; margin-bottom: calc(20px * var(--print-scale, 1)); flex: 0 0 auto;">
+        Credits: ${creditsItems}
+      </div>
+    ` : "";
+  }
+
   // One grid cell. Cell shapes are re-derived from each photo's real aspect
   // ratio at export time (justifyPrintGrid), so photos tile the grid
   // edge-to-edge with at most a few percent of even all-edge trim — and the
@@ -4694,7 +4760,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const cover = photos[0];
     const statsHtml = printStatsBarHtml(shoot);
     const socialsHtml = printSocialsBarHtml(shoot);
-    const hasDetails = !!(statsHtml.trim() || socialsHtml.trim());
+    const creditsHtml = printCreditsBarHtml(shoot);
+    const hasDetails = !!(statsHtml.trim() || socialsHtml.trim() || creditsHtml.trim());
 
     // Render up to 5 side photos — the card stays at 6 photos max so the
     // model stays highlighted, per the studio's comp card format. The
@@ -4717,6 +4784,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           ${side.length ? `<div class="cc-side-grid${side.length === 5 ? " grid-5" : ""}">${side.map(p => printGridCellHtml(p)).join("")}</div>` : ""}
         </div>
         ${statsHtml}
+        ${creditsHtml}
         ${socialsHtml}
         ${PRINT_FOOTER_HTML}
       </div>
