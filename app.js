@@ -163,7 +163,7 @@
     return (talentStr || "").replace(/\s*\([^)]+\)/g, "").trim();
   }
 
-  function renderCreditValue(text) {
+  function renderCreditLinks(text, delimiter = ";", compact = false) {
     if (!text || text === "—") return "—";
     const items = text.split(",").map(item => item.trim()).filter(Boolean);
     const renderedItems = items.map(item => {
@@ -171,27 +171,26 @@
       const match = item.match(parenRegex);
       if (match) {
         const rawName = item.replace(parenRegex, "").trim();
-        const rawSocials = match[1].split(";").map(s => s.trim()).filter(Boolean);
+        const rawSocials = match[1].split(delimiter).map(s => s.trim()).filter(Boolean);
         const socialLinks = rawSocials.map(s => {
-          let url = s;
-          let label = s;
-          if (s.includes("instagram.com")) {
-            url = s.startsWith("http") ? s : "https://" + s;
-            label = "@" + url.split("/").pop();
+          let url = s, label = s;
+          if (s.includes("instagram.com") || s.startsWith("@")) {
+            url = s.startsWith("http") ? s : (s.startsWith("@") ? "https://instagram.com/" + s.replace(/^@/, "") : "https://" + s);
+            label = "@" + (s.includes("instagram.com") ? url.split("/").pop() : s.replace(/^@/, ""));
           } else if (s.includes("kavyar.com")) {
             url = s.startsWith("http") ? s : "https://" + s;
-            label = "Kavyar: " + url.split("/").pop();
-          } else if (s.startsWith("@")) {
-            url = "https://instagram.com/" + s.replace(/^@/, "");
-            label = s;
+            label = compact ? "Kavyar" : "Kavyar: " + url.split("/").pop();
           } else if (s.startsWith("http")) {
             url = s;
-            label = s.split("//")[1]?.split("/")[0] || "Link";
+            label = compact ? "Link" : s.split("//")[1]?.split("/")[0] || "Link";
           } else {
             url = "https://instagram.com/" + s;
             label = "@" + s;
           }
-          return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent); font-weight:600; text-decoration:none; margin-left:6px; display:inline-flex; align-items:center; gap:2px;">${esc(label)} ↗</a>`;
+          const arrow = compact ? "" : " ↗";
+          const margin = compact ? "4px" : "6px";
+          const display = compact ? "inline" : "inline-flex";
+          return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent); font-weight:600; text-decoration:none; margin-left:${margin}; display:${display}; align-items:center; gap:2px;">${esc(label)}${arrow}</a>`;
         }).join(" ");
         return `${esc(rawName)} ${socialLinks}`;
       }
@@ -200,39 +199,11 @@
     return renderedItems.join(", ");
   }
 
-  function renderCreditsValue(text) {
-    if (!text || text === "—") return "—";
-    const items = text.split(",").map(item => item.trim()).filter(Boolean);
-    const renderedItems = items.map(item => {
-      const parenRegex = /\(([^)]+)\)/;
-      const match = item.match(parenRegex);
-      if (match) {
-        const rawName = item.replace(parenRegex, "").trim();
-        const rawSocials = match[1].split("|").map(s => s.trim()).filter(Boolean);
-        const socialLinks = rawSocials.map(s => {
-          let url = s;
-          let label = s;
-          if (s.includes("instagram.com") || s.startsWith("@")) {
-            url = s.startsWith("http") ? s : (s.startsWith("@") ? "https://instagram.com/" + s.replace(/^@/, "") : "https://" + s);
-            label = "@" + (s.includes("instagram.com") ? url.split("/").pop() : s.replace(/^@/, ""));
-          } else if (s.includes("kavyar.com")) {
-            url = s.startsWith("http") ? s : "https://" + s;
-            label = "Kavyar";
-          } else if (s.startsWith("http")) {
-            url = s;
-            label = "Link";
-          } else {
-            url = "https://instagram.com/" + s;
-            label = "@" + s;
-          }
-          return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent); font-weight:600; text-decoration:none; margin-left:4px; display:inline;">${esc(label)}</a>`;
-        }).join(" ");
-        return `${esc(rawName)} ${socialLinks}`;
-      }
-      return esc(item);
-    });
-    return renderedItems.join(", ");
-  }
+  const renderCreditValue = (text) => renderCreditLinks(text, ";", false);
+  const renderCreditsValue = (text) => renderCreditLinks(text, "|", true);
+
+  const shouldShowField = (shoot, fieldName) => isAdmin() || shoot[`show${fieldName}`] !== false;
+
   const parseIgHandle = (h) => {
     let clean = String(h ?? "").trim();
     if (!clean) return "";
@@ -751,7 +722,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     
     // Parse social handle
     let igHtml = "";
-    if (shoot.instagram && (isAdmin() || shoot.showInstagram !== false)) {
+    if (shoot.instagram && shouldShowField(shoot, "Instagram")) {
       const handles = compCardOwnHandles(shoot, shoot.instagram.split(",").map(x => x.trim()).filter(Boolean), isIgHandle);
       if (handles.length) {
         const links = handles.map(h => {
@@ -781,7 +752,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     }
 
     let kavyarHtml = "";
-    if (shoot.kavyar && (isAdmin() || shoot.showKavyar !== false)) {
+    if (shoot.kavyar && shouldShowField(shoot, "Kavyar")) {
       const handles = compCardOwnHandles(shoot, shoot.kavyar.split(",").map(x => x.trim()).filter(Boolean), isKavyarHandle);
       if (handles.length) {
         const links = handles.map(h => {
@@ -896,8 +867,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     if (shoot.videographer && shoot.videographer !== "—") credits.push(`<div><dt>Video</dt><dd>${formatCrew(shoot.videographer)}</dd></div>`);
     if (shoot.hair && shoot.hair !== "—") credits.push(`<div><dt>Hair</dt><dd>${formatCrew(shoot.hair)}</dd></div>`);
     if (shoot.talent && shoot.talent !== "—") credits.push(`<div><dt>Model / Talent</dt><dd>${renderCreditValue(shoot.talent)}</dd></div>`);
-    if (shoot.credits && (isAdmin() || shoot.showCredits !== false)) credits.push(`<div><dt>Credits</dt><dd>${renderCreditsValue(shoot.credits)}</dd></div>`);
-    if (shoot.pdfUrl && (isAdmin() || shoot.showPdf !== false)) credits.push(`<div><dt>Material</dt><dd><a href="${esc(shoot.pdfUrl)}" download style="color: var(--accent); text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">📄 Download PDF</a></dd></div>`);
+    if (shoot.credits && shouldShowField(shoot, "Credits")) credits.push(`<div><dt>Credits</dt><dd>${renderCreditsValue(shoot.credits)}</dd></div>`);
+    if (shoot.pdfUrl && shouldShowField(shoot, "Pdf")) credits.push(`<div><dt>Material</dt><dd><a href="${esc(shoot.pdfUrl)}" download style="color: var(--accent); text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">📄 Download PDF</a></dd></div>`);
     if (igHtml) credits.push(igHtml);
     if (kavyarHtml) credits.push(kavyarHtml);
 
@@ -1411,8 +1382,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           </div>
           <div class="noth-work-meta">
             ${meta ? `<span>${esc(meta)}</span>` : ""}
-            ${s.credits && (isAdmin() || s.showCredits !== false) ? `<span style="font-size: 13px; color: var(--ink-soft); margin-top: 4px;">${renderCreditsValue(s.credits)}</span>` : ""}
-            ${s.pdfUrl && (isAdmin() || s.showPdf !== false) ? `<span style="font-size: 13px; color: var(--ink-soft); margin-top: 4px;"><a href="${esc(s.pdfUrl)}" download style="color: var(--accent); text-decoration: none; font-weight: 600;">📄 Download Material</a></span>` : ""}
+            ${s.credits && shouldShowField(s, "Credits") ? `<span style="font-size: 13px; color: var(--ink-soft); margin-top: 4px;">${renderCreditsValue(s.credits)}</span>` : ""}
+            ${s.pdfUrl && shouldShowField(s, "Pdf") ? `<span style="font-size: 13px; color: var(--ink-soft); margin-top: 4px;"><a href="${esc(s.pdfUrl)}" download style="color: var(--accent); text-decoration: none; font-weight: 600;">📄 Download Material</a></span>` : ""}
             <div style="display: flex; align-items: center; gap: 12px;">
               <span class="noth-work-cta">View <svg viewBox="0 0 14 10" width="14" height="10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 5h12M9 1l4 4-4 4"/></svg></span>
               <button class="work-share" data-id="${s.id}" style="background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; color: currentColor; opacity: 0.7; transition: opacity 0.2s;" title="Share album" aria-label="Share album">
@@ -1750,10 +1721,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
   // Full listing of every album — the "All albums" page.
   function viewAlbums() {
-    let list = SHOOTS.filter(s => s.type !== "Workshop Attended");
-    if (!isAdmin()) {
-      list = list.filter(s => s.isPublic !== false);
-    }
+    const userIsAdmin = isAdmin();
+    const list = SHOOTS.filter(s => {
+      if (s.type === "Workshop Attended") return false;
+      if (!userIsAdmin && s.isPublic === false) return false;
+      return true;
+    });
     CURRENT_VIEW_SHOOTS = list;
     return `
       <section class="page-head">
@@ -3066,16 +3039,22 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           disableDownloadInput.checked = !!editingShoot.disableCompCardDownload;
         }
 
-        // Load visibility settings
-        if ($("#f_is_public")) $("#f_is_public").checked = (editingShoot.isPublic !== false);
-        if ($("#f_show_credits")) $("#f_show_credits").checked = (editingShoot.showCredits !== false);
-        if ($("#f_show_pdf")) $("#f_show_pdf").checked = (editingShoot.showPdf !== false);
-        if ($("#f_show_instagram")) $("#f_show_instagram").checked = (editingShoot.showInstagram !== false);
-        if ($("#f_show_kavyar")) $("#f_show_kavyar").checked = (editingShoot.showKavyar !== false);
-        if ($("#f_show_testimonials")) $("#f_show_testimonials").checked = (editingShoot.showTestimonials !== false);
-        if ($("#f_show_stats")) $("#f_show_stats").checked = (editingShoot.showStats !== false);
-        if ($("#f_show_gear")) $("#f_show_gear").checked = (editingShoot.showGear !== false);
-        if ($("#f_show_location")) $("#f_show_location").checked = (editingShoot.showLocation !== false);
+        // Load visibility settings (cache DOM refs to avoid repeated queries)
+        const visibilityFields = [
+          { id: "#f_is_public", prop: "isPublic" },
+          { id: "#f_show_credits", prop: "showCredits" },
+          { id: "#f_show_pdf", prop: "showPdf" },
+          { id: "#f_show_instagram", prop: "showInstagram" },
+          { id: "#f_show_kavyar", prop: "showKavyar" },
+          { id: "#f_show_testimonials", prop: "showTestimonials" },
+          { id: "#f_show_stats", prop: "showStats" },
+          { id: "#f_show_gear", prop: "showGear" },
+          { id: "#f_show_location", prop: "showLocation" }
+        ];
+        visibilityFields.forEach(({ id, prop }) => {
+          const el = $(id);
+          if (el) el.checked = editingShoot[prop] !== false;
+        });
 
         staged = editingShoot.photos.map(p => {
           const isCover = editingShoot.coverPhotoId ? (p.id.split("-")[0] === editingShoot.coverPhotoId) : false;
@@ -3511,18 +3490,18 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           ...(typeof f.focalX === "number" ? { focalX: f.focalX, focalY: f.focalY } : {}),
           ...(f.caption && f.caption.trim() ? { caption: f.caption.trim() } : {})
         })),
-        featured: isTestimonialOnly ? false : ($("#f_featured") ? $("#f_featured").checked : false),
-        hideFromCompCard: $("#f_hide_compcard") ? $("#f_hide_compcard").checked : false,
-        disableCompCardDownload: $("#f_disable_download") ? $("#f_disable_download").checked : false,
-        isPublic: $("#f_is_public") ? $("#f_is_public").checked : true,
-        showCredits: $("#f_show_credits") ? $("#f_show_credits").checked : true,
-        showPdf: $("#f_show_pdf") ? $("#f_show_pdf").checked : true,
-        showInstagram: $("#f_show_instagram") ? $("#f_show_instagram").checked : true,
-        showKavyar: $("#f_show_kavyar") ? $("#f_show_kavyar").checked : true,
-        showTestimonials: $("#f_show_testimonials") ? $("#f_show_testimonials").checked : true,
-        showStats: $("#f_show_stats") ? $("#f_show_stats").checked : true,
-        showGear: $("#f_show_gear") ? $("#f_show_gear").checked : true,
-        showLocation: $("#f_show_location") ? $("#f_show_location").checked : true,
+        featured: isTestimonialOnly ? false : ($("#f_featured")?.checked ?? false),
+        hideFromCompCard: $("#f_hide_compcard")?.checked ?? false,
+        disableCompCardDownload: $("#f_disable_download")?.checked ?? false,
+        isPublic: $("#f_is_public")?.checked ?? true,
+        showCredits: $("#f_show_credits")?.checked ?? true,
+        showPdf: $("#f_show_pdf")?.checked ?? true,
+        showInstagram: $("#f_show_instagram")?.checked ?? true,
+        showKavyar: $("#f_show_kavyar")?.checked ?? true,
+        showTestimonials: $("#f_show_testimonials")?.checked ?? true,
+        showStats: $("#f_show_stats")?.checked ?? true,
+        showGear: $("#f_show_gear")?.checked ?? true,
+        showLocation: $("#f_show_location")?.checked ?? true,
         coverPhotoId: isTestimonialOnly ? null : (coverItem ? coverItem.id : null),
       };
       pub.disabled = true; pub.textContent = editingShoot ? "Saving changes…" : "Publishing…";
