@@ -200,7 +200,7 @@
   }
 
   const renderCreditValue = (text) => renderCreditLinks(text, ";", false);
-  const renderCreditsValue = (text) => renderCreditLinks(text, "|", true);
+  const renderCreditsValue = (text) => renderCreditLinks(text, ";", true);
 
   const shouldShowField = (shoot, fieldName) => isAdmin() || shoot[`show${fieldName}`] !== false;
 
@@ -2481,7 +2481,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               <div class="field-row" id="f_mentor_row" style="display: none;">
                 <label class="field"><span>Teacher / Mentor (comma-separated · socials in parentheses)</span><input id="f_mentor" type="text" placeholder="e.g. Mentor One (@handle; site.com), Mentor Two" /></label>
               </div>
-              <label class="field"><span>Credits (Name with socials · comma-separated)</span><input id="f_credits" type="text" placeholder="e.g. Stylist Name (@instagram | kavyar.com/link), Makeup Artist Name" /></label>
+              <label class="field" style="position: relative;">
+                <span>Credits (Name with socials · comma-separated)</span>
+                <input id="f_credits" type="text" placeholder="e.g. Stylist Name (@handle; site.com), Makeup Artist Name" />
+                <div id="f_credits_verify" style="margin-top: 5px; font-size: 11px; display: none;"></div>
+              </label>
             </fieldset>
 
             <fieldset id="modelStatsFieldset"><legend>Model stats (Comp Cards)</legend>
@@ -3376,6 +3380,54 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       updateKavyarVerify();
     });
 
+    // Credits verification handler
+    const creditsInput = $("#f_credits");
+    const creditsVerify = $("#f_credits_verify");
+    let clickedCreditsVerify = false;
+    creditsVerify?.addEventListener("click", (e) => {
+      if (e.target.closest("a")) clickedCreditsVerify = true;
+    });
+    function updateCreditsVerify() {
+      if (!creditsInput || !creditsVerify) return;
+      const val = creditsInput.value.trim();
+      if (!val) {
+        creditsVerify.style.display = "none";
+        creditsVerify.innerHTML = "";
+        return;
+      }
+      const items = val.split(",").map(item => item.trim()).filter(Boolean);
+      const allLinks = [];
+      items.forEach(item => {
+        const parenRegex = /\(([^)]+)\)/;
+        const match = item.match(parenRegex);
+        if (match) {
+          const socials = match[1].split(";").map(s => s.trim()).filter(Boolean);
+          socials.forEach(s => {
+            if (s.includes("instagram.com") || s.startsWith("@")) {
+              const handle = s.startsWith("@") ? s.replace(/^@/, "") : s.split("/").pop();
+              allLinks.push({ label: `@${handle}`, url: `https://instagram.com/${handle}` });
+            } else if (s.includes("kavyar.com")) {
+              allLinks.push({ label: "Kavyar", url: s.startsWith("http") ? s : "https://" + s });
+            } else if (s.startsWith("http")) {
+              allLinks.push({ label: s.split("//")[1]?.split("/")[0] || "Link", url: s });
+            }
+          });
+        }
+      });
+      if (!allLinks.length) {
+        creditsVerify.style.display = "none";
+        creditsVerify.innerHTML = "";
+        return;
+      }
+      const linksHtml = allLinks.map(({ label, url }) => `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600; text-decoration:underline; display:inline-flex; align-items:center; gap:2px; margin-right:12px;">${esc(label)} ↗</a>`).join("");
+      creditsVerify.innerHTML = `<span style="color:var(--ink-soft); font-family:'JetBrains Mono', monospace; font-size:10px; margin-right:6px; text-transform:uppercase;">Verify links:</span> ${linksHtml}`;
+      creditsVerify.style.display = "block";
+    }
+
+    setTimeout(updateCreditsVerify, 50);
+    creditsInput?.addEventListener("input", updateCreditsVerify);
+    creditsInput?.addEventListener("blur", updateCreditsVerify);
+
     // PDF file upload handler
     let pdfDataUrl = editingShoot?.pdfUrl || "";
     const pdfInput = $("#f_pdf");
@@ -3407,6 +3459,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const originalKavyar = editingShoot ? (editingShoot.kavyar || "") : "";
       if (kavyarVal && kavyarVal !== originalKavyar && !clickedKavyarVerify) {
         const proceed = confirm("You haven't tested the new Kavyar links. Would you like to proceed and publish anyway?");
+        if (!proceed) return;
+      }
+      const creditsVal = val("f_credits");
+      const originalCredits = editingShoot ? (editingShoot.credits || "") : "";
+      if (creditsVal && creditsVal !== originalCredits && !clickedCreditsVerify) {
+        const proceed = confirm("You haven't tested the new credit links. Would you like to proceed and publish anyway?");
         if (!proceed) return;
       }
       const isTestimonialOnly = !!$("#f_is_testimonial_only")?.checked;
