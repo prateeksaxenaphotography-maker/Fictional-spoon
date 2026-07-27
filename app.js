@@ -2992,7 +2992,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
       const talentLabel = $("#f_talent")?.closest(".field")?.querySelector("span");
       if (talentLabel) {
-        talentLabel.textContent = isTestimonialOnly ? "Client Name *" : "Model / talent (comma-separated)";
+        talentLabel.textContent = isTestimonialOnly ? "Client Name *" : "Model / talent (comma-separated · socials in parentheses)";
       }
 
       const descLabel = $("#f_desc")?.closest(".field")?.querySelector("span");
