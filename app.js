@@ -856,28 +856,39 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       }
     }
 
-    // Credits
-    const credits = [];
+    // Unified Credits with roles labeled next to names
+    const creditsList = [];
     const isCcPage = !!shoot.isCompCard;
-    const formatCrew = (val) => {
-      if (!val) return "";
-      return isCcPage ? esc(getTalentCleanName(val)) : renderCreditValue(val);
+
+    const addCredit = (val, role) => {
+      if (!val || val === "—") return;
+      const items = val.split(",").map(item => item.trim()).filter(Boolean);
+      items.forEach(item => {
+        const rendered = isCcPage ? esc(getTalentCleanName(item)) : renderCreditValue(item);
+        creditsList.push(`<div style="margin-bottom: 8px;"><span>${rendered}</span> <span style="color: var(--ink-soft); font-size: 11px;">— ${role}</span></div>`);
+      });
     };
 
-    if (shoot.photographer) credits.push(`<div><dt>Photo</dt><dd>${formatCrew(shoot.photographer)}</dd></div>`);
-    if (shoot.mentor) {
-      const mentorCount = shoot.mentor.split(",").map(m => m.trim()).filter(Boolean).length;
-      // renderCreditValue understands the site-wide "Name (@ig; kavyar.com/x;
-      // https://site)" convention and renders the socials as links.
-      credits.push(`<div><dt>${mentorCount > 1 ? "Teachers / Mentors" : "Teacher / Mentor"}</dt><dd>${renderCreditValue(shoot.mentor)}</dd></div>`);
+    if (shoot.photographer) addCredit(shoot.photographer, "Photography");
+    if (shoot.mentor) addCredit(shoot.mentor, "Teacher / Mentor");
+    if (shoot.artDirector) addCredit(shoot.artDirector, "Art Direction");
+    if (shoot.stylist) addCredit(shoot.stylist, "Stylist");
+    if (shoot.hair) addCredit(shoot.hair, "Hair Stylist");
+    if (shoot.mua) addCredit(shoot.mua, "Makeup Artist");
+    if (shoot.videographer) addCredit(shoot.videographer, "Video");
+    if (shoot.talent) addCredit(shoot.talent, "Model / Talent");
+    if (shoot.credits && shouldShowField(shoot, "Credits")) {
+      const items = shoot.credits.split(",").map(item => item.trim()).filter(Boolean);
+      items.forEach(item => {
+        const rendered = isCcPage ? esc(getTalentCleanName(item)) : renderCreditsValue(item);
+        creditsList.push(`<div style="margin-bottom: 8px;"><span>${rendered}</span></div>`);
+      });
     }
-    if (shoot.artDirector && shoot.artDirector !== "—") credits.push(`<div><dt>Art Direction</dt><dd>${formatCrew(shoot.artDirector)}</dd></div>`);
-    if (shoot.stylist && shoot.stylist !== "—") credits.push(`<div><dt>Stylist</dt><dd>${formatCrew(shoot.stylist)}</dd></div>`);
-    if (shoot.mua && shoot.mua !== "—") credits.push(`<div><dt>MUA</dt><dd>${formatCrew(shoot.mua)}</dd></div>`);
-    if (shoot.videographer && shoot.videographer !== "—") credits.push(`<div><dt>Video</dt><dd>${formatCrew(shoot.videographer)}</dd></div>`);
-    if (shoot.hair && shoot.hair !== "—") credits.push(`<div><dt>Hair</dt><dd>${formatCrew(shoot.hair)}</dd></div>`);
-    if (shoot.talent && shoot.talent !== "—") credits.push(`<div><dt>Model / Talent</dt><dd>${renderCreditValue(shoot.talent)}</dd></div>`);
-    if (shoot.credits && shouldShowField(shoot, "Credits")) credits.push(`<div><dt>Credits</dt><dd>${renderCreditsValue(shoot.credits)}</dd></div>`);
+
+    const credits = [];
+    if (creditsList.length > 0) {
+      credits.push(`<div><dd style="display: contents;">${creditsList.join("")}</dd></div>`);
+    }
     if (shoot.pdfUrl && shouldShowField(shoot, "Pdf")) credits.push(`<div><dt>Material</dt><dd><a href="${esc(shoot.pdfUrl)}" download style="color: var(--accent); text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">📄 Download PDF</a></dd></div>`);
     if (igHtml) credits.push(igHtml);
     if (kavyarHtml) credits.push(kavyarHtml);
