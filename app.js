@@ -3536,20 +3536,20 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const igVal = val("f_ig");
       const originalIg = editingShoot ? (editingShoot.instagram || "") : "";
       if (igVal && igVal !== originalIg && !clickedVerify) {
-        const proceed = confirm("You haven't tested the new Instagram links. Would you like to proceed and publish anyway?");
-        if (!proceed) return;
+        toast("Please test the Instagram links before publishing.");
+        return;
       }
       const kavyarVal = val("f_kavyar");
       const originalKavyar = editingShoot ? (editingShoot.kavyar || "") : "";
       if (kavyarVal && kavyarVal !== originalKavyar && !clickedKavyarVerify) {
-        const proceed = confirm("You haven't tested the new Kavyar links. Would you like to proceed and publish anyway?");
-        if (!proceed) return;
+        toast("Please test the Kavyar links before publishing.");
+        return;
       }
       const creditsVal = val("f_credits");
       const originalCredits = editingShoot ? (editingShoot.credits || "") : "";
       if (creditsVal && creditsVal !== originalCredits && !clickedCreditsVerify) {
-        const proceed = confirm("You haven't tested the new credit links. Would you like to proceed and publish anyway?");
-        if (!proceed) return;
+        toast("Please test the credit links before publishing.");
+        return;
       }
       const isTestimonialOnly = !!$("#f_is_testimonial_only")?.checked;
       if (isTestimonialOnly) {
