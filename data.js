@@ -772,7 +772,7 @@ window.WPS_DATA = {
       "lightingDiagram": null,
       "lightingDiagramVisibility": "private",
       "palette": [
-        "#3e3b3d",
+        "#3f3b3d",
         "#1c1b1b"
       ],
       "photos": [
