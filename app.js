@@ -101,10 +101,11 @@
   // Existing single-size photos return "" (plain src is used, unchanged behaviour).
   const srcsetAttr = (p, sizes = "(max-width: 620px) 90vw, (max-width: 1100px) 45vw, 640px") => {
     if (!p || !p.url) return "";                 // base64/local: no srcset
+    const fixPath = (url) => (url && url.startsWith("photos/")) ? "/" + url : url;
     const set = [];
-    if (p.small)  set.push(`${p.small} 480w`);
-    if (p.medium) set.push(`${p.medium} 960w`);
-    if (set.length) set.push(`${p.url} 1600w`);
+    if (p.small)  set.push(`${fixPath(p.small)} 480w`);
+    if (p.medium) set.push(`${fixPath(p.medium)} 960w`);
+    if (set.length) set.push(`${fixPath(p.url)} 1600w`);
     return set.length ? ` srcset="${esc(set.join(", "))}" sizes="${esc(sizes)}"` : "";
   };
   // Descriptive, SEO-friendly alt text for a shoot's photo (Google Images).
@@ -2013,7 +2014,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
       let displayList = list;
       if (kind === "type" && (d === "Test Shoot" || d === "Model Portfolio" || d === "Comp Cards")) {
-        const filteredList = list.filter(s => !s.hideFromCompCard && ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim())));
+        const filteredList = list.filter(s => !s.hideFromCompCard && ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim()) || (s.talent && s.talent.trim())));
         const groupable = [];
         const nonGroupable = [];
         for (const s of filteredList) {
