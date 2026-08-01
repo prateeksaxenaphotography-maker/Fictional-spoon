@@ -1461,7 +1461,15 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       : [s.activity, typeTag].filter(Boolean).join(" · ");
     const photoCount = s.photos ? s.photos.length : 0;
     const countText = photoCount ? `${photoCount} Photo${photoCount > 1 ? "s" : ""}` : "";
-    // Build metadata for card
+    // For the card preview, show only clean mentor names (strip socials — those show in the lightbox)
+    let mentorText = "";
+    if (s.type === "Workshop Attended" && s.mentor) {
+      const cleanNames = s.mentor.split(",").map(item => {
+        const name = item.trim().split(/\s+/).filter(w => !w.startsWith("@") && !w.includes("instagram.com") && !w.includes("kavyar.com") && !w.startsWith("http")).join(" ").trim();
+        return name;
+      }).filter(Boolean);
+      if (cleanNames.length) mentorText = `Mentors: ${cleanNames.join(", ")}`;
+    }
     const meta = [s.brand, s.season, countText].filter(v => v && v !== "Personal Project").join(" · ");
     const title = getTalentCleanName(s.isCompCard ? s.talent : (s.title || "Untitled"));
     return `
@@ -1477,10 +1485,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           </div>
           <div class="noth-work-meta">
             ${meta ? `<span>${esc(meta)}</span>` : ""}
-            ${s.mentor && shouldShowField(s, "Mentor") ? `<span style="font-size: 13px; color: var(--ink-soft); margin-top: 4px;"><strong>Mentors:</strong> ${renderCreditValue(s.mentor)}</span>` : ""}
-            ${s.talent && shouldShowField(s, "Talent") ? `<span style="font-size: 13px; color: var(--ink-soft); margin-top: 4px;">${renderCreditsValue(s.talent)}</span>` : ""}
-            ${s.credits && shouldShowField(s, "Credits") ? `<span style="font-size: 13px; color: var(--ink-soft); margin-top: 4px;">${renderCreditsValue(s.credits)}</span>` : ""}
-            ${s.pdfUrl && shouldShowField(s, "Pdf") ? `<span style="font-size: 13px; color: var(--ink-soft); margin-top: 4px;"><a href="${esc(s.pdfUrl)}" download style="color: var(--accent); text-decoration: none; font-weight: 600;">📄 Download Material</a></span>` : ""}
+            ${mentorText ? `<span style="font-size: 11px; color: var(--ink-soft); margin-top: 4px; width: 100%; white-space: normal;">${esc(mentorText)}</span>` : ""}
             <div style="display: flex; align-items: center; gap: 12px;">
               <span class="noth-work-cta">View <svg viewBox="0 0 14 10" width="14" height="10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 5h12M9 1l4 4-4 4"/></svg></span>
               <button class="work-share" data-id="${s.id}" style="background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; color: currentColor; opacity: 0.7; transition: opacity 0.2s;" title="Share album" aria-label="Share album">
@@ -1632,11 +1637,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             </div>
           ` : ""}
 
-          ${s.isCompCard ? `
-            <p style="font-size: 10px; font-style: italic; color: var(--ink-soft); margin-top: 10px; line-height: 1.4; font-family: sans-serif; text-align: left; width: 100%;">
-              To book this talent, please connect directly via their verified social channels or contact their representing agency.
-            </p>
-          ` : ""}
+          ${""}
 
           <p class="work-by">${creditsHtml}</p>
           ${testimonialsHtml}
@@ -1883,7 +1884,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     return `
       <section class="page-head">
         <div class="container">
-          <p class="eyebrow reveal">🔒 Admin View Only</p>
+          <p class="eyebrow reveal">Workshops</p>
           ${kineticH1("Workshops", "kinetic-h1-wide")}
           <p class="page-sub reveal" style="max-width: 600px; line-height: 1.6; opacity: 1 !important; visibility: visible !important; transform: none !important;">A dedicated record of professional photography workshops attended, people trained, and creative techniques learned to build editorial proficiency.</p>
         </div>
@@ -1944,7 +1945,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     return `
       <section class="page-head">
         <div class="container">
-          <p class="eyebrow reveal">🔒 Admin View Only</p>
+          <p class="eyebrow reveal">Workshops</p>
           ${kineticH1("Analytics", "kinetic-h1-wide")}
           <p class="page-sub reveal" style="max-width: 620px; line-height: 1.6; opacity: 1 !important; visibility: visible !important; transform: none !important;">Which photo categories and shoots get looked at most on the site — a signal for what kind of shoot to do more of. Live traffic and referrers are already tracked separately via Cloudflare and Google Analytics; this is just content engagement within the portfolio itself.</p>
         </div>
@@ -2137,7 +2138,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           return "This portfolio archive displays curated agency-standard portfolios, filtered and tagged by profile angles (Front, Side, Back, 3/4, Close-up).";
         }
         if (val === "Comp Cards" || val === "Test Shoot") {
-          return "This compcard archive includes photos clicked or produced under nerdyphotographer.in studio or its subsidiaries. <span style=\"font-size: 12px; color: var(--ink-soft); display: block; margin-top: 8px;\">Note: Models from workshop projects are featured in the dedicated Workshop section.</span>";
+          return "This compcard archive includes photos clicked or produced under nerdyphotographer.in studio or its subsidiaries.";
         }
         return "This compcard archive includes photos clicked or produced under nerdyphotographer.in studio or its subsidiaries.";
       };
@@ -2147,7 +2148,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <div class="container">
             <p class="eyebrow reveal"><a href="/categories" data-link>Categories</a> / ${esc(kind)}</p>
              <h1 class="reveal">${esc(getCategoryTitle(d))}</h1>
-            ${isTestShoot ? `<p class="page-sub" style="max-width: 600px; line-height: 1.6; opacity: 1 !important; visibility: visible !important; transform: none !important;">${esc(getCategoryDescription(d))}</p>` : `<p class="page-sub reveal">${displayList.length} master album${displayList.length !== 1 ? "s" : ""} in this ${esc(kind)}.</p>`}
+            ${isTestShoot ? `<p class="page-sub" style="max-width: 600px; line-height: 1.6; opacity: 1 !important; visibility: visible !important; transform: none !important;">${esc(getCategoryDescription(d))}<span style="font-size: 12px; color: var(--ink-soft); display: block; margin-top: 8px;">Note: Models from workshop projects are featured in the dedicated Workshop section.</span></p>` : `<p class="page-sub reveal">${displayList.length} master album${displayList.length !== 1 ? "s" : ""} in this ${esc(kind)}.</p>`}
           </div>
         </section>
         ${alphaFilterHtml}
@@ -2829,7 +2830,16 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                      <option value="Other" ${isSelected("Other")}>Other Focus Area</option>
                    </select>
                  </label>
-                 <label class="field"><span>Preferred Date / Timeline *</span><input id="b_date" type="text" required placeholder="e.g. Mid-July 2026" /></label>
+                 <label class="field" id="b_date_field">
+                    <span>Preferred Date / Timeline *</span>
+                    <div class="date-picker-wrap">
+                      <input id="b_date" type="text" required placeholder="e.g. Mid-July 2026, or use the calendar →" autocomplete="off" />
+                      <button type="button" class="date-picker-toggle" id="datePickerToggle" aria-label="Open date picker" title="Pick dates from calendar">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                      </button>
+                      <div class="date-picker-popup" id="datePickerPopup"></div>
+                    </div>
+                  </label>
                </div>
                <div class="field-row">
                  <label class="field"><span>Preferred Location *</span><input id="b_location" type="text" required placeholder="e.g. Noida Studio / Outdoor NCR" /></label>
@@ -3768,6 +3778,231 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     ["b_name", "b_email", "b_date", "b_instagram", "b_location"].forEach((id) => {
       $("#" + id)?.addEventListener("input", () => clearError(id));
     });
+
+    // ── Custom Date Picker Calendar ──
+    (() => {
+      const toggle = $("#datePickerToggle");
+      const popup = $("#datePickerPopup");
+      const dateInput = $("#b_date");
+      if (!toggle || !popup || !dateInput) return;
+
+      let pickerMode = "range"; // "range" or "multi"
+      let viewYear, viewMonth; // currently displayed month
+      let rangeStart = null, rangeEnd = null;
+      let multiDates = []; // array of Date objects
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      viewYear = today.getFullYear();
+      viewMonth = today.getMonth();
+
+      const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+      const DAYS = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+
+      const dateKey = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+      const sameDay = (a, b) => a && b && dateKey(a) === dateKey(b);
+      const isPast = (d) => d < today;
+
+      function formatDate(d) {
+        return `${MONTHS[d.getMonth()].slice(0,3)} ${d.getDate()}, ${d.getFullYear()}`;
+      }
+
+      function updateInput() {
+        if (pickerMode === "range") {
+          if (rangeStart && rangeEnd) {
+            if (rangeStart.getFullYear() === rangeEnd.getFullYear()) {
+              dateInput.value = `${MONTHS[rangeStart.getMonth()].slice(0,3)} ${rangeStart.getDate()} – ${MONTHS[rangeEnd.getMonth()].slice(0,3)} ${rangeEnd.getDate()}, ${rangeEnd.getFullYear()}`;
+            } else {
+              dateInput.value = `${formatDate(rangeStart)} – ${formatDate(rangeEnd)}`;
+            }
+          } else if (rangeStart) {
+            dateInput.value = formatDate(rangeStart);
+          }
+        } else {
+          if (multiDates.length) {
+            const sorted = [...multiDates].sort((a, b) => a - b);
+            dateInput.value = sorted.map(formatDate).join(", ");
+          }
+        }
+        dateInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+
+      function renderCalendar() {
+        const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+        const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+        let html = `
+          <div class="dp-header">
+            <div class="dp-mode-tabs">
+              <button type="button" class="dp-mode-btn ${pickerMode === 'range' ? 'active' : ''}" data-mode="range">Date Range</button>
+              <button type="button" class="dp-mode-btn ${pickerMode === 'multi' ? 'active' : ''}" data-mode="multi">Multiple Dates</button>
+            </div>
+          </div>
+          <div class="dp-nav">
+            <button type="button" class="dp-nav-btn dp-prev" aria-label="Previous month">‹</button>
+            <span class="dp-month-year">${MONTHS[viewMonth]} ${viewYear}</span>
+            <button type="button" class="dp-nav-btn dp-next" aria-label="Next month">›</button>
+          </div>
+          <div class="dp-grid">
+            ${DAYS.map(d => `<span class="dp-day-label">${d}</span>`).join("")}
+        `;
+
+        for (let i = 0; i < firstDay; i++) {
+          html += `<span class="dp-cell dp-empty"></span>`;
+        }
+
+        for (let day = 1; day <= daysInMonth; day++) {
+          const d = new Date(viewYear, viewMonth, day);
+          const past = isPast(d);
+          const classes = ["dp-cell"];
+
+          if (past) {
+            classes.push("dp-past");
+          } else {
+            classes.push("dp-active");
+          }
+
+          if (pickerMode === "range") {
+            if (sameDay(d, rangeStart)) classes.push("dp-selected", "dp-range-start");
+            if (sameDay(d, rangeEnd)) classes.push("dp-selected", "dp-range-end");
+            if (rangeStart && rangeEnd && d > rangeStart && d < rangeEnd) classes.push("dp-in-range");
+          } else {
+            if (multiDates.some(md => sameDay(md, d))) classes.push("dp-selected");
+          }
+
+          if (sameDay(d, today)) classes.push("dp-today");
+
+          html += `<button type="button" class="${classes.join(" ")}" data-day="${day}" ${past ? "disabled" : ""}>${day}</button>`;
+        }
+
+        html += `</div>`;
+
+        // Selection summary
+        let summary = "";
+        if (pickerMode === "range") {
+          if (rangeStart && !rangeEnd) summary = `<span class="dp-hint">Now pick the end date</span>`;
+          else if (rangeStart && rangeEnd) {
+            const diff = Math.round((rangeEnd - rangeStart) / 86400000) + 1;
+            summary = `<span class="dp-summary">${diff} day${diff > 1 ? "s" : ""} selected</span>`;
+          } else {
+            summary = `<span class="dp-hint">Pick a start date</span>`;
+          }
+        } else {
+          if (multiDates.length) {
+            summary = `<span class="dp-summary">${multiDates.length} date${multiDates.length > 1 ? "s" : ""} selected</span>`;
+          } else {
+            summary = `<span class="dp-hint">Click dates to select them</span>`;
+          }
+        }
+
+        html += `
+          <div class="dp-footer">
+            ${summary}
+            <div class="dp-actions">
+              ${(pickerMode === "range" && (rangeStart || rangeEnd)) || (pickerMode === "multi" && multiDates.length) ? `<button type="button" class="dp-clear">Clear</button>` : ""}
+              <button type="button" class="dp-done">Done</button>
+            </div>
+          </div>
+        `;
+
+        popup.innerHTML = html;
+        wireCalendarEvents();
+      }
+
+      function wireCalendarEvents() {
+        popup.querySelector(".dp-prev")?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          viewMonth--;
+          if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+          renderCalendar();
+        });
+        popup.querySelector(".dp-next")?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          viewMonth++;
+          if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+          renderCalendar();
+        });
+
+        popup.querySelectorAll(".dp-mode-btn").forEach(btn => {
+          btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const mode = btn.dataset.mode;
+            if (mode !== pickerMode) {
+              pickerMode = mode;
+              rangeStart = null; rangeEnd = null; multiDates = [];
+              renderCalendar();
+            }
+          });
+        });
+
+        popup.querySelectorAll(".dp-cell.dp-active").forEach(cell => {
+          cell.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const day = parseInt(cell.dataset.day);
+            const clicked = new Date(viewYear, viewMonth, day);
+
+            if (pickerMode === "range") {
+              if (!rangeStart || (rangeStart && rangeEnd)) {
+                rangeStart = clicked;
+                rangeEnd = null;
+              } else {
+                if (clicked < rangeStart) {
+                  rangeEnd = rangeStart;
+                  rangeStart = clicked;
+                } else {
+                  rangeEnd = clicked;
+                }
+              }
+            } else {
+              const idx = multiDates.findIndex(md => sameDay(md, clicked));
+              if (idx >= 0) {
+                multiDates.splice(idx, 1);
+              } else {
+                multiDates.push(clicked);
+              }
+            }
+            renderCalendar();
+          });
+        });
+
+        popup.querySelector(".dp-clear")?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          rangeStart = null; rangeEnd = null; multiDates = [];
+          renderCalendar();
+        });
+
+        popup.querySelector(".dp-done")?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          updateInput();
+          closePopup();
+        });
+      }
+
+      function openPopup() {
+        popup.classList.add("open");
+        renderCalendar();
+      }
+      function closePopup() {
+        popup.classList.remove("open");
+      }
+
+      toggle.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (popup.classList.contains("open")) {
+          closePopup();
+        } else {
+          openPopup();
+        }
+      });
+
+      // Close popup when clicking outside
+      document.addEventListener("click", (e) => {
+        if (popup.classList.contains("open") && !popup.contains(e.target) && e.target !== toggle && !toggle.contains(e.target)) {
+          closePopup();
+        }
+      });
+    })();
 
     // Dynamic field update logic
     const updateFields = () => {
