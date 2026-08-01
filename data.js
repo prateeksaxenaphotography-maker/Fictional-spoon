@@ -873,37 +873,36 @@ window.WPS_DATA = {
       "lightingDiagram": null,
       "lightingDiagramVisibility": "private",
       "palette": [
-        "#d1cfd7",
-        "#5e5d61"
+        "#2d2c2d",
+        "#141414"
       ],
       "photos": [
         {
           "id": "msap0w20rz19xu-0",
           "url": "photos/msap3arwdtg7pb/msap0w20rz19xu-0.jpg",
-          "objectPosition": "top",
-          "small": "photos/msap3arwdtg7pb/msap0w20rz19xu-0@480.jpg",
-          "medium": "photos/msap3arwdtg7pb/msap0w20rz19xu-0@960.jpg"
+          "objectPosition": "top"
         },
         {
           "id": "msap0wb1tv34vl-1",
           "url": "photos/msap3arwdtg7pb/msap0wb1tv34vl-1.jpg",
-          "objectPosition": "center",
-          "small": "photos/msap3arwdtg7pb/msap0wb1tv34vl-1@480.jpg",
-          "medium": "photos/msap3arwdtg7pb/msap0wb1tv34vl-1@960.jpg"
+          "objectPosition": "center"
         },
         {
           "id": "msap0winoz5q9z-2",
           "url": "photos/msap3arwdtg7pb/msap0winoz5q9z-2.jpg",
-          "objectPosition": "center",
-          "small": "photos/msap3arwdtg7pb/msap0winoz5q9z-2@480.jpg",
-          "medium": "photos/msap3arwdtg7pb/msap0winoz5q9z-2@960.jpg"
+          "objectPosition": "top"
         },
         {
           "id": "msap0wovto7ps6-3",
           "url": "photos/msap3arwdtg7pb/msap0wovto7ps6-3.jpg",
+          "objectPosition": "center"
+        },
+        {
+          "id": "msaqdneekgniml-4",
+          "url": "photos/msap3arwdtg7pb/msaqdneekgniml-4.jpg",
           "objectPosition": "center",
-          "small": "photos/msap3arwdtg7pb/msap0wovto7ps6-3@480.jpg",
-          "medium": "photos/msap3arwdtg7pb/msap0wovto7ps6-3@960.jpg"
+          "small": "photos/msap3arwdtg7pb/msaqdneekgniml-4@480.jpg",
+          "medium": "photos/msap3arwdtg7pb/msaqdneekgniml-4@960.jpg"
         }
       ],
       "featured": true,
@@ -918,7 +917,7 @@ window.WPS_DATA = {
       "showStats": true,
       "showGear": true,
       "showLocation": true,
-      "coverPhotoId": "msap0winoz5q9z"
+      "coverPhotoId": "msaqdneekgniml"
     }
   ]
 };
