@@ -829,6 +829,96 @@ window.WPS_DATA = {
       "showGear": true,
       "showLocation": true,
       "coverPhotoId": "ms36ygjb7yxmuk"
+    },
+    {
+      "id": "msap3arwdtg7pb",
+      "createdAt": 1785608321612,
+      "isTestimonial": false,
+      "title": "Neeraj Pannt",
+      "brand": "Personal Project",
+      "activity": "Fitness",
+      "type": "Test Shoot",
+      "season": "August 2026",
+      "photographer": "nerdyphotographer",
+      "artDirector": "",
+      "stylist": "—",
+      "hair": "—",
+      "mua": "—",
+      "videographer": "—",
+      "talent": "Neeraj Pannt (https://www.instagram.com/shapeupwithneeraj/?hl=en)",
+      "location": "",
+      "height": "",
+      "chest": "",
+      "waist": "",
+      "hips": "",
+      "shoes": "",
+      "modelHair": "",
+      "modelEyes": "",
+      "showStatsOnCompCard": true,
+      "showStatsOnModelPortfolio": true,
+      "showTestShootCategory": false,
+      "mentor": "",
+      "credits": "",
+      "description": "",
+      "tags": "",
+      "gear": "",
+      "client": "",
+      "date": "2026-08-01",
+      "instagram": "",
+      "kavyar": "",
+      "link": "",
+      "pdfUrl": "",
+      "rights": "",
+      "testimonials": [],
+      "lightingDiagram": null,
+      "lightingDiagramVisibility": "private",
+      "palette": [
+        "#d1cfd7",
+        "#5e5d61"
+      ],
+      "photos": [
+        {
+          "id": "msap0w20rz19xu-0",
+          "url": "photos/msap3arwdtg7pb/msap0w20rz19xu-0.jpg",
+          "objectPosition": "top",
+          "small": "photos/msap3arwdtg7pb/msap0w20rz19xu-0@480.jpg",
+          "medium": "photos/msap3arwdtg7pb/msap0w20rz19xu-0@960.jpg"
+        },
+        {
+          "id": "msap0wb1tv34vl-1",
+          "url": "photos/msap3arwdtg7pb/msap0wb1tv34vl-1.jpg",
+          "objectPosition": "center",
+          "small": "photos/msap3arwdtg7pb/msap0wb1tv34vl-1@480.jpg",
+          "medium": "photos/msap3arwdtg7pb/msap0wb1tv34vl-1@960.jpg"
+        },
+        {
+          "id": "msap0winoz5q9z-2",
+          "url": "photos/msap3arwdtg7pb/msap0winoz5q9z-2.jpg",
+          "objectPosition": "center",
+          "small": "photos/msap3arwdtg7pb/msap0winoz5q9z-2@480.jpg",
+          "medium": "photos/msap3arwdtg7pb/msap0winoz5q9z-2@960.jpg"
+        },
+        {
+          "id": "msap0wovto7ps6-3",
+          "url": "photos/msap3arwdtg7pb/msap0wovto7ps6-3.jpg",
+          "objectPosition": "center",
+          "small": "photos/msap3arwdtg7pb/msap0wovto7ps6-3@480.jpg",
+          "medium": "photos/msap3arwdtg7pb/msap0wovto7ps6-3@960.jpg"
+        }
+      ],
+      "featured": true,
+      "hideFromCompCard": false,
+      "disableCompCardDownload": false,
+      "isPublic": true,
+      "showCredits": true,
+      "showPdf": true,
+      "showInstagram": true,
+      "showKavyar": true,
+      "showTestimonials": true,
+      "showStats": true,
+      "showGear": true,
+      "showLocation": true,
+      "coverPhotoId": "msap0winoz5q9z"
     }
   ]
 };
