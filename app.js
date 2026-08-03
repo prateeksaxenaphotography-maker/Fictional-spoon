@@ -3922,8 +3922,8 @@ RAW files are not provided.`
                  <label class="field"><span>Preferred Location *</span><input id="b_location" type="text" required placeholder="e.g. Indoor Studio / Outdoor NCR / Client Location" /></label>
                  <label class="field"><span>Dedicated Studio Space Needed? *</span>
                    <select id="b_studio_space">
-                     <option value="No - Outdoor / Client Location (No Studio Rental Fee)">No — Outdoor / Client Location (No Studio Rental Fee)</option>
-                     <option value="Yes - Dedicated Studio Rental Required (+₹2,500 - ₹5,000/shift)">Yes — Dedicated Indoor Studio Space Needed (+₹2,500 – ₹5,000/shift)</option>
+                     <option value="No - Outdoor / Client Location / Client Books Studio Directly">No — Outdoor / Client Location / Client Books Studio Directly</option>
+                     <option value="Yes - Dedicated Studio Rental Required (Billed at Actuals)">Yes — Studio Space Needed (Venue rental billed at actuals / cost)</option>
                    </select>
                  </label>
                </div>
@@ -3937,7 +3937,7 @@ RAW files are not provided.`
                      <option value="₹50,000+ (Full Proof Gallery + 30+ Retouched Master Assets)">₹50,000+ · Full Proof Gallery + 30+ Commercial Master Retouched Assets (High-End Ad / Commercial)</option>
                    </select>
                    <div style="font-size: 11px; color: var(--accent); margin-top: 5px; font-family: var(--mono-font); line-height: 1.4;">
-                     ℹ️ <strong>Studio Rental Clarification:</strong> Package rates cover photography creation, light design &amp; retouching deliverables. If a dedicated indoor studio venue/space is required, studio rental fees apply separately (~₹2,500–₹5,000 based on shift duration).
+                     ℹ️ <strong>Studio Rental Policy:</strong> Package rates cover photography creation, light design &amp; master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are billed <strong>at actuals</strong>, or the client may directly book their preferred studio space for the production.
                    </div>
                  </label>
                </div>
@@ -5394,7 +5394,7 @@ RAW files are not provided.`
             <strong>🔒 Booking &amp; Retainer Terms:</strong> 50% advance retainer reserves studio space &amp; production crew (non-refundable). Cancellations within 48h forfeit advance retainer.<br/>
             <strong>📦 Deliverables &amp; RAW Policy:</strong> Master retouched deliverables are delivered within 10–14 business days after client image selection. Includes 1 round of retouching revisions. RAW unedited camera files remain confidential studio property and are strictly excluded.<br/>
             <strong>📜 Usage Licensing:</strong> Rates cover digital web &amp; social media usage. Extended billboard, TV, print, or commercial advertising rights require separate usage licensing.<br/>
-            <strong>🏢 Studio Rental &amp; Expenses:</strong> Dedicated external studio rentals, location fees, or special prop rentals are billed separately to the client.
+            <strong>🏢 Studio Rental Policy:</strong> Dedicated indoor studio venue rentals are billed <strong>at actuals (at cost)</strong>, or the client may directly book their preferred studio venue for our team to shoot on location.
           `;
         }
       }
