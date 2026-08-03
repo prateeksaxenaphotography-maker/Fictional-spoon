@@ -1263,11 +1263,29 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   }
 
   function updateAdminBtn() {
-    if (!adminBtn) return;
     const active = isAdmin();
-    adminBtn.textContent = `Admin Mode: ${active ? "On" : "Off"}`;
-    adminBtn.style.borderColor = active ? "var(--accent)" : "currentColor";
-    adminBtn.style.color = active ? "var(--accent)" : "#fff";
+    const btnText = active ? "🔓 Admin Mode: On" : "🔒 Admin Mode: Off";
+    const headerText = active ? "🔓 Admin: On" : "🔒 Admin: Off";
+
+    const adminBtn = $("#adminModeBtn");
+    if (adminBtn) {
+      adminBtn.textContent = btnText;
+      adminBtn.style.borderColor = active ? "var(--accent)" : "currentColor";
+      adminBtn.style.color = active ? "var(--accent)" : "#fff";
+    }
+
+    const headerAdminBtn = $("#headerAdminBtn");
+    if (headerAdminBtn) {
+      headerAdminBtn.textContent = headerText;
+      headerAdminBtn.style.borderColor = active ? "var(--accent)" : "currentColor";
+      headerAdminBtn.style.color = active ? "var(--accent)" : "currentColor";
+      headerAdminBtn.style.background = active ? "rgba(224, 73, 56, 0.15)" : "none";
+    }
+
+    const menuAdminBtnText = $("#menuAdminBtnText");
+    if (menuAdminBtnText) {
+      menuAdminBtnText.textContent = btnText;
+    }
 
     const adminSec = $("#navAdminSec");
     if (adminSec) {
@@ -1453,6 +1471,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     };
 
     adminBtn?.addEventListener("click", toggleAdminModeState);
+    $("#headerAdminBtn")?.addEventListener("click", toggleAdminModeState);
+    $("#menuAdminBtn")?.addEventListener("click", toggleAdminModeState);
 
     // Secret trigger: 3 quick taps/clicks on footer copyright or notice unlocks Admin Mode directly!
     let secretClickCount = 0;
