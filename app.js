@@ -1298,6 +1298,139 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         visitorStatsBlock.style.display = "none";
       }
     }
+
+    updateAdminReminders();
+  }
+
+  function getUpcomingBookings() {
+    const settings = window.WPS_DATA?.CALENDAR_SETTINGS || {};
+    const booked = settings.bookedDates || {};
+    const now = new Date();
+    now.setHours(0,0,0,0);
+    const todayKey = getCalDateKey(now);
+
+    const upcoming = [];
+    Object.keys(booked).forEach(dKey => {
+      if (dKey >= todayKey) {
+        const parts = dKey.split("-").map(Number);
+        const dObj = new Date(parts[0], parts[1] - 1, parts[2]);
+        const diffMs = dObj - now;
+        const diffDays = Math.round(diffMs / 86400000);
+        
+        (booked[dKey] || []).forEach(b => {
+          upcoming.push({
+            dateKey: dKey,
+            dateObj: dObj,
+            diffDays: diffDays,
+            dayLabel: diffDays === 0 ? "TODAY" : diffDays === 1 ? "TOMORROW" : `In ${diffDays} days`,
+            ...b
+          });
+        });
+      }
+    });
+
+    upcoming.sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+    return upcoming;
+  }
+
+  function updateAdminReminders() {
+    const active = isAdmin();
+    let banner = $("#adminStickyReminderBar");
+
+    if (!active) {
+      if (banner) banner.style.display = "none";
+      const pillWrap = $("#adminHeaderPillWrap");
+      if (pillWrap) pillWrap.style.display = "none";
+      return;
+    }
+
+    const upcoming = getUpcomingBookings();
+
+    // 1. Sticky Banner
+    if (upcoming.length) {
+      const nextShoot = upcoming[0];
+      if (!banner) {
+        banner = document.createElement("div");
+        banner.id = "adminStickyReminderBar";
+        banner.className = "admin-sticky-reminder";
+        document.body.insertBefore(banner, document.body.firstChild);
+      }
+      banner.style.display = "flex";
+      banner.innerHTML = `
+        <div class="reminder-text">
+          <span class="reminder-badge">${esc(nextShoot.dayLabel)}</span>
+          <span><strong>Next Shoot:</strong> ${esc(nextShoot.dateKey)} — <strong>${esc(nextShoot.name)}</strong> (${esc(nextShoot.type || "Shoot")})</span>
+          ${nextShoot.phone ? `<span style="opacity: 0.8;">· 📞 ${esc(nextShoot.phone)}</span>` : ""}
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button type="button" class="reminder-btn" id="viewNextShootBtn">👁 Details</button>
+          <button type="button" class="reminder-btn" id="dismissReminderBtn" title="Dismiss banner">&times;</button>
+        </div>
+      `;
+
+      banner.querySelector("#viewNextShootBtn")?.addEventListener("click", () => {
+        if (typeof window.openDateAdminModal === "function") {
+          window.openDateAdminModal(nextShoot.dateKey);
+        } else {
+          location.href = "/calendar";
+        }
+      });
+      banner.querySelector("#dismissReminderBtn")?.addEventListener("click", () => {
+        banner.style.display = "none";
+      });
+    } else if (banner) {
+      banner.style.display = "none";
+    }
+
+    // 2. Header Dropdown Widget in navAdminSec
+    const adminSec = $("#navAdminSec");
+    if (adminSec) {
+      let pillWrap = $("#adminHeaderPillWrap");
+      if (!pillWrap) {
+        pillWrap = document.createElement("div");
+        pillWrap.id = "adminHeaderPillWrap";
+        pillWrap.className = "admin-header-pill-wrap";
+        pillWrap.style.marginTop = "8px";
+        adminSec.appendChild(pillWrap);
+      }
+      pillWrap.style.display = "block";
+      pillWrap.innerHTML = `
+        <div class="admin-header-pill" id="adminHeaderPill">
+          <span>📅 Upcoming Shoots</span>
+          <span class="count-badge">${upcoming.length}</span>
+        </div>
+        <div class="admin-shoots-dropdown" id="adminShootsDropdown">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 6px;">
+            <strong style="font-family: 'Outfit', sans-serif; font-size: 13px;">Upcoming Shoots (${upcoming.length})</strong>
+            <a href="/calendar" data-link style="font-family: var(--mono-font); font-size: 10px; color: var(--accent); font-weight: 700; text-decoration: none;">View Full Calendar &rarr;</a>
+          </div>
+          ${upcoming.length ? upcoming.slice(0, 5).map(b => `
+            <div style="padding: 8px; background: var(--bone); border-radius: 6px; border: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-family: var(--mono-font); font-size: 10px; color: var(--accent); font-weight: 700;">📅 ${esc(b.dateKey)} (${esc(b.dayLabel)})</div>
+                <strong style="font-size: 12px; color: var(--ink);">${esc(b.name)}</strong>
+                <div style="font-size: 10px; color: var(--ink-soft);">${esc(b.type)} ${b.phone ? `· 📞 ${esc(b.phone)}` : ""}</div>
+              </div>
+              <button type="button" class="admin-cal-btn" onclick="if (typeof window.openDateAdminModal === 'function') window.openDateAdminModal('${b.dateKey}');" style="font-size: 9px; padding: 3px 6px;">Details</button>
+            </div>
+          `).join("") : `
+            <div style="font-size: 11px; color: var(--ink-soft); text-align: center; padding: 12px;">No upcoming client shoots scheduled.</div>
+          `}
+        </div>
+      `;
+
+      const pill = pillWrap.querySelector("#adminHeaderPill");
+      const dropdown = pillWrap.querySelector("#adminShootsDropdown");
+      if (pill && dropdown) {
+        pill.addEventListener("click", (e) => {
+          e.stopPropagation();
+          dropdown.classList.toggle("open");
+        });
+        document.addEventListener("click", (e) => {
+          if (!pillWrap.contains(e.target)) dropdown.classList.remove("open");
+        });
+      }
+    }
   }
 
   function initAdminControls() {
@@ -4839,6 +4972,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                 });
               }
             });
+            updateAdminReminders();
           }
           if (successPanel) {
             form.hidden = true;
