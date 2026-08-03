@@ -4308,6 +4308,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               <button type="button" class="dp-mode-btn ${pickerMode === 'multi' ? 'active' : ''}" data-mode="multi">Multiple Dates</button>
             </div>
           </div>
+          <div class="dp-legend">
+            <span class="dp-legend-item"><span class="dp-legend-dot dot-available"></span> Open</span>
+            <span class="dp-legend-item"><span class="dp-legend-dot dot-booked"></span> Already Booked</span>
+            <span class="dp-legend-item"><span class="dp-legend-dot dot-blocked"></span> Mon–Fri Blocked</span>
+          </div>
           <div class="dp-nav">
             <button type="button" class="dp-nav-btn dp-prev" aria-label="Previous month">‹</button>
             <span class="dp-month-year">${MONTHS[viewMonth]} ${viewYear}</span>
