@@ -3999,13 +3999,8 @@ RAW files are not provided.`
               <fieldset id="paymentTermsFieldset" style="border: 1px solid var(--line); border-radius: 12px; padding: 24px; background: var(--paper); margin-top: 24px;">
                 <legend style="font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); padding: 0 10px;">💳 Studio Payment Terms &amp; Milestones</legend>
                 
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 18px;">
-                  <p style="font-size: 12px; color: var(--ink-soft); margin: 0; max-width: 500px; line-height: 1.5;">To reserve studio dates and ensure smooth delivery, studio productions follow structured milestone payments. Select your preferred payment schedule below:</p>
-                  
-                  <div style="display: flex; align-items: center; gap: 6px; background: var(--bone); padding: 4px; border-radius: 20px; border: 1px solid var(--line);">
-                    <button type="button" id="paySched2Step" style="padding: 6px 14px; border-radius: 16px; border: none; font-family: var(--mono-font); font-size: 10px; font-weight: 700; cursor: pointer; transition: all 0.2s; background: var(--accent); color: #fff;">Standard 50/50</button>
-                    <button type="button" id="paySched3Step" style="padding: 6px 14px; border-radius: 16px; border: none; font-family: var(--mono-font); font-size: 10px; font-weight: 700; cursor: pointer; transition: all 0.2s; background: transparent; color: var(--ink-soft);">3-Tier Campaign (50/30/20)</button>
-                  </div>
+                <div style="margin-bottom: 18px;">
+                  <p style="font-size: 12px; color: var(--ink-soft); margin: 0; line-height: 1.5;">To reserve studio dates and ensure smooth delivery, studio productions follow structured milestone payments as detailed below:</p>
                 </div>
 
                 <!-- Flowchart 2-Step (Default) -->
@@ -5367,36 +5362,19 @@ RAW files are not provided.`
       });
     })();
 
-    // Payment Terms & Milestone Schedule Toggle
-    const paySched2Btn = $("#paySched2Step");
-    const paySched3Btn = $("#paySched3Step");
+    // Sync Payment Terms & Milestone Schedule with Global Studio Setting
     const flow2 = $("#flowchart2Step");
     const flow3 = $("#flowchart3Step");
+    const globalSched = window.WPS_DATA.CALENDAR_SETTINGS?.paymentScheduleType || "5050";
 
-    if (paySched2Btn && paySched3Btn && flow2 && flow3) {
-      const setSched = (is3Step) => {
-        if (is3Step) {
-          paySched3Btn.style.background = "var(--accent)";
-          paySched3Btn.style.color = "#fff";
-          paySched2Btn.style.background = "transparent";
-          paySched2Btn.style.color = "var(--ink-soft)";
-          flow2.style.display = "none";
-          flow3.style.display = "grid";
-        } else {
-          paySched2Btn.style.background = "var(--accent)";
-          paySched2Btn.style.color = "#fff";
-          paySched3Btn.style.background = "transparent";
-          paySched3Btn.style.color = "var(--ink-soft)";
-          flow2.style.display = "grid";
-          flow3.style.display = "none";
-        }
-      };
-
-      paySched2Btn.addEventListener("click", () => setSched(false));
-      paySched3Btn.addEventListener("click", () => setSched(true));
-
-      const globalSched = window.WPS_DATA.CALENDAR_SETTINGS?.paymentScheduleType || "5050";
-      setSched(globalSched === "503020");
+    if (flow2 && flow3) {
+      if (globalSched === "503020") {
+        flow2.style.display = "none";
+        flow3.style.display = "grid";
+      } else {
+        flow2.style.display = "grid";
+        flow3.style.display = "none";
+      }
     }
 
     // Dynamic field update logic
