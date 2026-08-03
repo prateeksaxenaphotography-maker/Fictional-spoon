@@ -2268,6 +2268,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       links: Array.isArray(bookingObj.links) ? bookingObj.links : (bookingObj.links ? [bookingObj.links] : []),
       attachments: Array.isArray(bookingObj.attachments) ? bookingObj.attachments : [],
       status: bookingObj.status || (bookingObj.isTentative ? "tentative" : "confirmed"),
+      contractVersion: bookingObj.contractVersion || (bookingObj.agreedToTerms ? "V3.2" : "Pending Agreement"),
+      agreedToTerms: bookingObj.agreedToTerms !== undefined ? bookingObj.agreedToTerms : (bookingObj.contractVersion && bookingObj.contractVersion !== "Pending Agreement"),
       createdAt: Date.now()
     };
     settings.bookedDates[dKey].push(booking);
@@ -2293,7 +2295,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           isTentative: updatedObj.isTentative !== undefined ? updatedObj.isTentative : (updatedObj.status === "tentative"),
           status: updatedObj.status || (updatedObj.isTentative ? "tentative" : cur.status || "confirmed"),
           notes: updatedObj.notes !== undefined ? updatedObj.notes : cur.notes,
-          links: updatedObj.links !== undefined ? updatedObj.links : cur.links
+          links: updatedObj.links !== undefined ? updatedObj.links : cur.links,
+          contractVersion: updatedObj.contractVersion !== undefined ? updatedObj.contractVersion : cur.contractVersion,
+          agreedToTerms: updatedObj.agreedToTerms !== undefined ? updatedObj.agreedToTerms : cur.agreedToTerms
         };
 
         const newDateKey = updatedObj.newDateKey || dKey;
