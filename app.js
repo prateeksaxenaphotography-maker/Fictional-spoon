@@ -537,6 +537,7 @@
     } else {
       SHOOTS = sorted.filter(s => !isFutureShoot(s));
     }
+    if (typeof syncCalendarWithShoots === "function") syncCalendarWithShoots();
   }
 
   /* ============================================================
@@ -2213,7 +2214,40 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       saveCalendarSettings();
     }
   }
+
+  function syncCalendarWithShoots() {
+    if (!window.WPS_DATA?.CALENDAR_SETTINGS) return;
+    if (!window.WPS_DATA.CALENDAR_SETTINGS.bookedDates) {
+      window.WPS_DATA.CALENDAR_SETTINGS.bookedDates = {};
+    }
+    const booked = window.WPS_DATA.CALENDAR_SETTINGS.bookedDates;
+    let changed = false;
+    (window.SHOOTS || []).forEach(s => {
+      if (!s.date || !/^\d{4}-\d{2}-\d{2}$/.test(s.date)) return;
+      const dKey = s.date;
+      if (!booked[dKey]) booked[dKey] = [];
+      const exists = booked[dKey].some(b => b.shootId === s.id || b.name === s.title);
+      if (!exists) {
+        booked[dKey].push({
+          id: `shoot-${s.id}`,
+          shootId: s.id,
+          name: s.title || s.client || "Published Production",
+          type: s.type || s.activity || "Shoot",
+          duration: "Full Day",
+          status: s.type === "Workshop Attended" ? "workshop" : "confirmed",
+          isTentative: false,
+          notes: `Published Portfolio Shoot: ${s.title}`
+        });
+        changed = true;
+      }
+    });
+    if (changed) {
+      saveCalendarSettings();
+    }
+  }
+
   sanitizeCalendarBookings();
+  syncCalendarWithShoots();
 
   function getCalDateKey(d) {
     if (!d) return "";
@@ -2946,12 +2980,18 @@ RAW files are not provided.`
               }
             </div>
 
-            <div style="display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap;">
+            <div style="display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap;">
               <button type="button" class="admin-cal-btn primary" id="toggleBlockBtn">
                 ${status.isDefaultBlockedWeekday ? (status.isManuallyOpened ? "🔒 Re-block Weekday" : "🔓 Open Weekday for Clients") : (status.isCustomBlocked ? "🔓 Unblock Weekend Date" : "🔒 Block Weekend Date")}
               </button>
               <button type="button" class="admin-cal-btn" id="quickHoldBtn" style="border-color: #f57c00; color: #f57c00; background: rgba(255,152,0,0.1);">
-                ⏳ Quick Hold (Anticipated Client)
+                ⏳ Hold Date
+              </button>
+              <button type="button" class="admin-cal-btn" id="quickWorkshopBtn" style="border-color: #f9a825; color: #f9a825; background: rgba(249,168,37,0.1);">
+                📚 Workshop (Yellow)
+              </button>
+              <button type="button" class="admin-cal-btn" id="quickAssistingBtn" style="border-color: #00897b; color: #00897b; background: rgba(0,137,123,0.1);">
+                🤝 Assisting (Teal)
               </button>
             </div>
 
@@ -3054,6 +3094,24 @@ RAW files are not provided.`
         const notes = $("#m_clientNotes").value.trim() || "Date held by Admin for anticipated client inquiry.";
         addCalBooking(dKey, { name: clientName, type: shootType, notes: notes, isTentative: true, status: "tentative", contractVersion: "Pending Agreement", agreedToTerms: false });
         toast(`Date ${dKey} held as Anticipated Client! (Appears TAKEN to public)`);
+        modalContainer.innerHTML = "";
+        renderAdminGrid();
+        renderRoster();
+        updateAdminReminders();
+      });
+
+      $("#quickWorkshopBtn")?.addEventListener("click", () => {
+        addCalBooking(dKey, { name: "Workshop Day", type: "Workshop Attended", notes: "Booked for Workshop (Skill-Up Day)", isTentative: false, status: "workshop", contractVersion: "Pending Agreement", agreedToTerms: false });
+        toast(`📚 Workshop day marked for ${dKey}! (Appears as Booked for Workshop in Yellow)`);
+        modalContainer.innerHTML = "";
+        renderAdminGrid();
+        renderRoster();
+        updateAdminReminders();
+      });
+
+      $("#quickAssistingBtn")?.addEventListener("click", () => {
+        addCalBooking(dKey, { name: "Assisting Work", type: "Assisting Photographer", notes: "Booked for Assisting Work", isTentative: false, status: "assisting", contractVersion: "Pending Agreement", agreedToTerms: false });
+        toast(`🤝 Assisting work marked for ${dKey}! (Appears as Assisting Work in Teal)`);
         modalContainer.innerHTML = "";
         renderAdminGrid();
         renderRoster();
@@ -3996,6 +4054,8 @@ RAW files are not provided.`
                      <option value="Sports Action" ${isSelected("Sports Action")}>Sports Action</option>
                      <option value="Commercial Campaign" ${isSelected("Commercial Campaign")}>Commercial Campaign</option>
                      <option value="Test Shoot" ${isSelected("Test Shoot")}>Test Shoot (TFP Collab)</option>
+                     <option value="Workshop Attended" ${isSelected("Workshop Attended")}>📚 Workshop Attended (Skill-Up Day)</option>
+                     <option value="Assisting Work" ${isSelected("Assisting Work")}>🤝 Assisting Work (Assisting Photographer)</option>
                      <option value="Other" ${isSelected("Other")}>Other Focus Area</option>
                    </select>
                    <div id="b_type_notice" style="font-size: 11px; color: var(--accent); margin-top: 5px; font-family: var(--mono-font); display: none;">

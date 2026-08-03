@@ -830,5 +830,10 @@ window.WPS_DATA = {
       "showLocation": true,
       "coverPhotoId": "ms36ygjb7yxmuk"
     }
-  ]
+  ],
+  "CALENDAR_SETTINGS": {
+    "customBlockedDates": {},
+    "customOpenedDates": {},
+    "bookedDates": {}
+  }
 };
