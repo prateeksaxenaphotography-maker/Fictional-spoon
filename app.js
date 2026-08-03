@@ -2633,20 +2633,21 @@ In accordance with standard digital contract practices, physical signatures are 
         effectiveDate: "May 2026 – July 2026",
         status: "Archived",
         summary: "Standard TFP portfolio licensing, model release, basic liability waiver, and mandatory credit block requirement.",
-        fullText: `1. COLLABORATION & SCOPE
-Creative portfolio collaboration between Studio and Model. Time-for-print (TFP) structure with no cash exchange for talent fees.
+        fullText: `1. SCOPE OF COLLABORATION
+This session is conducted under a Time-For-Print (TFP) framework for mutual portfolio creation. The Studio provides photography, lighting, and editing services; the Participant provides modeling services, wardrobe, and styling. No monetary compensation is exchanged for creative time.
 
-2. COPYRIGHT & MODEL RELEASE
-Studio retains exclusive copyright. Participants receive a non-exclusive license for personal portfolio & social media usage. No third-party commercial reselling permitted without written studio consent.
+2. COPYRIGHT OWNERSHIP & USAGE RIGHTS
+Legal copyright remains with the Studio. All participants receive a non-exclusive license to share and publish retouched final files for personal self-promotion, social media, and portfolio usage. Commercial reselling or licensing to third-party brands is prohibited without written authorization.
+No Filters: Secondary filter applications, color adjustments, or cropping modifications are strictly prohibited.
 
-3. LIABILITY RELEASE
-Participants use studio facilities and equipment at their own risk. Studio is indemnified against personal injury or property damage.
+3. INDEMNIFICATION & LIABILITY WAIVER
+The Participant assumes all physical risks associated with entering studio premises, posing on studio props, or participating in physical movements. The Studio is held harmless from any claims regarding injury, accident, or personal property damage.
 
-4. DELIVERABLES
-Delivered retouched files only. No unedited RAW camera files are provided.
+4. DELIVERABLES & RAW FILE POLICY
+Delivered assets consist exclusively of retouched JPEG files selected by the Studio. RAW unedited camera files remain confidential studio property and are not delivered to participants under standard TFP terms.
 
-5. CREDITS
-All published photos on Instagram/social media must tag and credit @nerdyphotographer.in.`
+5. ATTRIBUTION & CREDITING
+All digital publications on social platforms (Instagram, TikTok, LinkedIn, Portfolios) must tag and credit the Studio (@nerdyphotographer.in) in the caption and image tags prior to publishing.`
       },
       "V3.0": {
         version: "V3.0",
@@ -2654,14 +2655,20 @@ All published photos on Instagram/social media must tag and credit @nerdyphotogr
         effectiveDate: "January 2026 – April 2026",
         status: "Archived",
         summary: "Initial Time-For-Print collab structure, non-exclusive social media usage license, and studio rules.",
-        fullText: `1. TFP SESSION TERMS
-Session is organized on mutual agreement. Retouched images provided for Instagram & agency web submission.
+        fullText: `1. CREATIVE SESSION SCOPE
+TFP creative session organized for portfolio development. Studio provides camera equipment, lighting, and post-processing; model provides styling and modeling direction.
 
-2. COPYRIGHT OWNERSHIP
-All images remain copyright of the photographer. Model granted personal use rights.
+2. COPYRIGHT & MODEL RELEASE
+All images are the exclusive intellectual property of the photographer. Model is granted a personal, non-commercial usage license for online portfolio display and social media posting.
 
-3. NO RAW FILES
-Raw images remain studio property and will not be released.`
+3. UNEDITED & RAW FILE RESTRICTIONS
+Unedited RAW files remain studio property and will not be released or distributed under any circumstances. Only retouched final JPEGs are provided.
+
+4. SAFETY & LIABILITY RELEASE
+Model enters studio environment voluntarily and assumes personal responsibility for health and safety on set. Photographer is released from any injury or property liability.
+
+5. CREDITING AGREEMENT
+Model agrees to credit @nerdyphotographer.in on all social media posts and web galleries.`
       },
       "V2.0": {
         version: "V2.0",
@@ -2669,11 +2676,17 @@ Raw images remain studio property and will not be released.`
         effectiveDate: "June 2025 – December 2025",
         status: "Archived",
         summary: "Early model release agreement covering digital distribution, copyright ownership, and promo usage.",
-        fullText: `1. MODEL CONSENT
-Model grants photographer permission to capture and publish photographs for portfolio and promotional display.
+        fullText: `1. MODEL CONSENT & RELEASE
+Model hereby grants photographer permission to take, edit, and publish photographs taken during the shoot for studio self-promotion, website display, and portfolio presentations.
 
-2. LICENSE & USAGE
-Model may post edited files on personal social media with photographer credit.`
+2. INTELLECTUAL PROPERTY
+Photographer retains full copyright ownership of all captured media. Model receives digital copies of edited photos for personal self-promotion.
+
+3. RAW FILE POLICY
+RAW unedited files are not included or delivered in standard shoot packages.
+
+4. LIABILITY WAIVER
+Model waives any claims against photographer for accidental injury or property damage during the shoot session.`
       },
       "V1.0": {
         version: "V1.0",
@@ -2681,8 +2694,14 @@ Model may post edited files on personal social media with photographer credit.`
         effectiveDate: "January 2025 – May 2025",
         status: "Archived",
         summary: "Foundational photo release and copyright acknowledgment for early studio testing.",
-        fullText: `1. BASIC RELEASE
-Participant agrees to photography session and allows photo usage for photographer portfolio.`
+        fullText: `1. BASIC PHOTOGRAPHY RELEASE
+Participant consents to photography session and grants photographer the right to use resulting images for portfolio, web, and promotional display.
+
+2. COPYRIGHT & USAGE
+Photographer owns all legal copyright. Participant receives personal usage license for final edited photos.
+
+3. RAW FILES
+RAW files are not provided.`
       }
     };
 
