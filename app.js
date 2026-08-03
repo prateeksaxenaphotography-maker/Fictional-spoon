@@ -1274,12 +1274,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       adminSec.style.display = isAdminAuthorized() ? "block" : "none";
     }
 
-    const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi"), compCardsLi = $("#navCompCardsLi"), portfolioLi = $("#navModelPortfolioLi"), workshopLi = $("#navWorkshopLi"), logsLi = $("#navLogsLi"), analyticsLi = $("#navAnalyticsLi");
+    const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi"), compCardsLi = $("#navCompCardsLi"), portfolioLi = $("#navModelPortfolioLi"), workshopLi = $("#navWorkshopLi"), logsLi = $("#navLogsLi"), analyticsLi = $("#navAnalyticsLi"), calendarLi = $("#navCalendarLi");
     if (uploadLi) uploadLi.style.display = active ? "block" : "none";
     if (bookLi) bookLi.style.display = active ? "none" : "block";
     if (compCardsLi) compCardsLi.style.display = "block";
     if (portfolioLi) portfolioLi.style.display = active ? "block" : "none";
     if (workshopLi) workshopLi.style.display = "block"; // Always show Workshop in nav
+    if (calendarLi) calendarLi.style.display = active ? "block" : "none";
     if (logsLi) logsLi.style.display = active ? "block" : "none";
     if (analyticsLi) analyticsLi.style.display = active ? "block" : "none";
 
@@ -1984,6 +1985,412 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         btn.textContent = "Load Analytics →";
       }
     });
+  }
+
+  /* ============================================================
+     § CALENDAR AVAILABILITY & BOOKING SYSTEM DATA
+     ============================================================ */
+  if (!window.WPS_DATA) window.WPS_DATA = {};
+  const savedCalSettings = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("wps-calendar-settings") || "{}");
+    } catch (e) {
+      return {};
+    }
+  })();
+
+  window.WPS_DATA.CALENDAR_SETTINGS = Object.assign({
+    customBlockedDates: {},
+    customOpenedDates: {},
+    bookedDates: {}
+  }, window.WPS_DATA.CALENDAR_SETTINGS || {}, savedCalSettings);
+
+  function saveCalendarSettings() {
+    try {
+      localStorage.setItem("wps-calendar-settings", JSON.stringify(window.WPS_DATA.CALENDAR_SETTINGS));
+    } catch (e) {}
+  }
+
+  function getCalDateKey(d) {
+    if (!d) return "";
+    if (typeof d === "string") return d;
+    const yr = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, "0");
+    const da = String(d.getDate()).padStart(2, "0");
+    return `${yr}-${mo}-${da}`;
+  }
+
+  function getCalDateStatus(d) {
+    const key = getCalDateKey(d);
+    const settings = window.WPS_DATA.CALENDAR_SETTINGS || {};
+    const dayOfWeek = d.getDay(); // 0 = Sun, 1 = Mon ... 6 = Sat
+    
+    // Default rule: Monday (1) through Friday (5) are permanently blocked unless custom opened
+    const isDefaultBlockedWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
+    const isManuallyOpened = !!(settings.customOpenedDates && settings.customOpenedDates[key]);
+    const isCustomBlocked = !!(settings.customBlockedDates && settings.customBlockedDates[key]);
+    const bookings = (settings.bookedDates && settings.bookedDates[key]) || [];
+    const isBooked = bookings.length > 0;
+    
+    let isBlocked = false;
+    if (isCustomBlocked) {
+      isBlocked = true;
+    } else if (isDefaultBlockedWeekday && !isManuallyOpened) {
+      isBlocked = true;
+    }
+    
+    return {
+      key,
+      dayOfWeek,
+      isDefaultBlockedWeekday,
+      isManuallyOpened,
+      isCustomBlocked,
+      isBlocked,
+      isBooked,
+      bookings
+    };
+  }
+
+  function toggleCalDateBlock(dKey) {
+    const settings = window.WPS_DATA.CALENDAR_SETTINGS;
+    if (!settings.customOpenedDates) settings.customOpenedDates = {};
+    if (!settings.customBlockedDates) settings.customBlockedDates = {};
+
+    const parts = dKey.split("-").map(Number);
+    const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+    const status = getCalDateStatus(dateObj);
+
+    if (status.isDefaultBlockedWeekday) {
+      if (settings.customOpenedDates[dKey]) {
+        delete settings.customOpenedDates[dKey];
+      } else {
+        settings.customOpenedDates[dKey] = true;
+      }
+    } else {
+      if (settings.customBlockedDates[dKey]) {
+        delete settings.customBlockedDates[dKey];
+      } else {
+        settings.customBlockedDates[dKey] = true;
+      }
+    }
+    saveCalendarSettings();
+  }
+
+  function addCalBooking(dKey, bookingObj) {
+    const settings = window.WPS_DATA.CALENDAR_SETTINGS;
+    if (!settings.bookedDates) settings.bookedDates = {};
+    if (!settings.bookedDates[dKey]) settings.bookedDates[dKey] = [];
+    const booking = {
+      id: "b_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+      name: bookingObj.name || "Client",
+      email: bookingObj.email || "",
+      phone: bookingObj.phone || "",
+      type: bookingObj.type || "Shoot",
+      notes: bookingObj.notes || "",
+      status: bookingObj.status || "confirmed",
+      createdAt: Date.now()
+    };
+    settings.bookedDates[dKey].push(booking);
+    saveCalendarSettings();
+    return booking;
+  }
+
+  function removeCalBooking(dKey, bookingId) {
+    const settings = window.WPS_DATA.CALENDAR_SETTINGS;
+    if (settings.bookedDates && settings.bookedDates[dKey]) {
+      settings.bookedDates[dKey] = settings.bookedDates[dKey].filter(b => b.id !== bookingId);
+      if (!settings.bookedDates[dKey].length) {
+        delete settings.bookedDates[dKey];
+      }
+      saveCalendarSettings();
+    }
+  }
+
+  /* ============================================================
+     § ADMIN CALENDAR & BOOKING MANAGEMENT PAGE (/calendar)
+     ============================================================ */
+  function viewCalendar() {
+    return `
+      <section class="page-head">
+        <div class="container">
+          <p class="eyebrow reveal">🔒 Admin Calendar &amp; Roster</p>
+          ${kineticH1("Studio Availability", "kinetic-h1-wide")}
+          <p class="page-sub reveal" style="max-width: 650px; line-height: 1.6; opacity: 1 !important; visibility: visible !important; transform: none !important;">Manage studio booking dates, block/open specific days, view upcoming client bookings, and handle double-bookings. By default, Monday–Friday are blocked for clients; Saturday–Sunday are open.</p>
+        </div>
+      </section>
+      <section class="section container admin-calendar-wrap">
+        <div class="admin-calendar-header">
+          <div class="admin-cal-nav">
+            <button type="button" class="admin-cal-btn" id="adminCalPrev">‹ Prev</button>
+            <h2 class="admin-cal-title" id="adminCalMonthTitle">Loading...</h2>
+            <button type="button" class="admin-cal-btn" id="adminCalNext">Next ›</button>
+            <button type="button" class="admin-cal-btn" id="adminCalToday">Today</button>
+          </div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button type="button" class="admin-cal-btn primary" id="adminCalNewBookingBtn">+ Add Manual Booking</button>
+            <button type="button" class="admin-cal-btn" id="adminCalResetBtn">Reset Rules</button>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 16px; margin-bottom: 20px; font-family: var(--mono-font); font-size: 11px; flex-wrap: wrap;">
+          <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: #e8f5e9; border: 1px solid #2e7d32;"></span> Open for Booking (Weekend/Opened)</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: #eee; border: 1px dashed #999;"></span> Blocked for Clients (Mon–Fri Default / Custom)</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: var(--accent-soft); border: 1px solid var(--accent);"></span> Already Booked (Client Roster)</span>
+        </div>
+
+        <div id="adminCalGridContainer"></div>
+
+        <div class="booking-roster-sec">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <h2 style="font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 700; margin: 0;">Upcoming Client Bookings Roster</h2>
+            <span id="rosterCountBadge" style="font-family: var(--mono-font); font-size: 11px; font-weight: 700; color: var(--accent);"></span>
+          </div>
+          <div id="bookingRosterGrid" class="booking-roster-grid"></div>
+        </div>
+      </section>
+      <div id="dateAdminModalContainer"></div>
+    `;
+  }
+
+  function wireCalendar() {
+    let calYear = new Date().getFullYear();
+    let calMonth = new Date().getMonth();
+
+    const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+    function renderAdminGrid() {
+      const container = $("#adminCalGridContainer");
+      const title = $("#adminCalMonthTitle");
+      if (!container || !title) return;
+
+      title.textContent = `${MONTHS[calMonth]} ${calYear}`;
+
+      const firstDay = new Date(calYear, calMonth, 1).getDay();
+      const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+      const today = new Date();
+      today.setHours(0,0,0,0);
+
+      let html = `<div class="admin-cal-grid">`;
+      DAYS.forEach(d => {
+        html += `<div class="admin-cal-day-label">${d}</div>`;
+      });
+
+      for (let i = 0; i < firstDay; i++) {
+        html += `<div class="admin-cal-day day-empty"></div>`;
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const d = new Date(calYear, calMonth, day);
+        const status = getCalDateStatus(d);
+        const isPast = d < today;
+
+        const dayClasses = ["admin-cal-day"];
+        if (isPast) dayClasses.push("day-past");
+        if (status.isBooked) dayClasses.push("day-booked");
+        else if (status.isBlocked) dayClasses.push("day-blocked");
+        else dayClasses.push("day-open");
+
+        html += `
+          <div class="${dayClasses.join(" ")}" data-date="${status.key}">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <span class="admin-cal-num">${day}</span>
+              ${status.isBooked ? `<span class="admin-cal-badge badge-booked">${status.bookings.length} Booked</span>` :
+                status.isBlocked ? `<span class="admin-cal-badge badge-blocked">${status.isDefaultBlockedWeekday ? "Weekday Blocked" : "Custom Blocked"}</span>` :
+                `<span class="admin-cal-badge badge-open">Open</span>`
+              }
+            </div>
+            <div>
+              ${status.bookings.map(b => `<div class="admin-cal-client-item" title="${esc(b.name)} - ${esc(b.type)}">👤 ${esc(b.name)}</div>`).join("")}
+            </div>
+          </div>
+        `;
+      }
+
+      html += `</div>`;
+      container.innerHTML = html;
+
+      container.querySelectorAll(".admin-cal-day[data-date]").forEach(cell => {
+        cell.addEventListener("click", () => {
+          openDateAdminModal(cell.dataset.date);
+        });
+      });
+
+      renderRoster();
+    }
+
+    function renderRoster() {
+      const rosterGrid = $("#bookingRosterGrid");
+      const countBadge = $("#rosterCountBadge");
+      if (!rosterGrid) return;
+
+      const settings = window.WPS_DATA.CALENDAR_SETTINGS || {};
+      const allBookings = [];
+
+      Object.keys(settings.bookedDates || {}).forEach(dKey => {
+        const list = settings.bookedDates[dKey] || [];
+        list.forEach(b => {
+          allBookings.push({ dateKey: dKey, ...b });
+        });
+      });
+
+      allBookings.sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+
+      if (countBadge) countBadge.textContent = `${allBookings.length} Total Booking${allBookings.length !== 1 ? "s" : ""}`;
+
+      if (!allBookings.length) {
+        rosterGrid.innerHTML = `
+          <div style="grid-column: 1 / -1; padding: 32px; text-align: center; color: var(--ink-soft); font-family: var(--mono-font); font-size: 13px; background: var(--bone); border-radius: var(--r-sm);">
+            No upcoming client bookings recorded yet. Click any date on the calendar above or use "+ Add Manual Booking".
+          </div>
+        `;
+        return;
+      }
+
+      rosterGrid.innerHTML = allBookings.map(b => `
+        <div class="booking-card">
+          <div class="booking-card-date">📅 ${esc(b.dateKey)}</div>
+          <h3 class="booking-card-name">${esc(b.name)}</h3>
+          <div class="booking-card-detail"><strong>Shoot Type:</strong> ${esc(b.type || "General Shoot")}</div>
+          ${b.email ? `<div class="booking-card-detail"><strong>Email:</strong> ${esc(b.email)}</div>` : ""}
+          ${b.phone ? `<div class="booking-card-detail"><strong>Phone:</strong> ${esc(b.phone)}</div>` : ""}
+          ${b.notes ? `<div class="booking-card-detail" style="margin-top: 8px; font-style: italic; color: var(--ink);">"${esc(b.notes)}"</div>` : ""}
+          <div style="margin-top: 14px; display: flex; gap: 10px;">
+            <button type="button" class="admin-cal-btn" onclick="window.removeBookingFromRoster('${b.dateKey}', '${b.id}')" style="color: #b22222; border-color: rgba(178,34,34,0.3); font-size: 10px; padding: 4px 10px;">Cancel Booking</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    window.removeBookingFromRoster = (dKey, bId) => {
+      if (confirm(`Are you sure you want to remove this booking for ${dKey}?`)) {
+        removeCalBooking(dKey, bId);
+        toast("Booking removed.");
+        renderAdminGrid();
+      }
+    };
+
+    function openDateAdminModal(dKey) {
+      const parts = dKey.split("-").map(Number);
+      const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+      const status = getCalDateStatus(dateObj);
+
+      const modalContainer = $("#dateAdminModalContainer");
+      if (!modalContainer) return;
+
+      modalContainer.innerHTML = `
+        <div class="date-admin-modal-overlay" id="adminModalOverlay">
+          <div class="date-admin-modal">
+            <button type="button" id="closeAdminModal" style="position: absolute; top: 18px; right: 20px; background: none; border: none; font-size: 24px; cursor: pointer; color: var(--ink-soft);">&times;</button>
+            <p class="eyebrow" style="margin-bottom: 6px;">Manage Availability &amp; Bookings</p>
+            <h2 style="font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; margin: 0 0 12px; color: var(--ink);">${dKey} (${DAYS[dateObj.getDay()]})</h2>
+            
+            <div style="padding: 12px; border-radius: 8px; background: var(--bone); font-family: var(--mono-font); font-size: 11px; margin-bottom: 20px;">
+              <strong>Current Status for Clients:</strong> 
+              ${status.isBooked ? `<span style="color: var(--accent); font-weight: 700;">Already Booked (${status.bookings.length} slot${status.bookings.length > 1 ? "s" : ""})</span>` :
+                status.isBlocked ? `<span style="color: #666; font-weight: 700; text-decoration: line-through;">Blocked (${status.isDefaultBlockedWeekday ? "Default Weekday" : "Custom Blocked"})</span>` :
+                `<span style="color: #2e7d32; font-weight: 700;">Open for Booking</span>`
+              }
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap;">
+              <button type="button" class="admin-cal-btn primary" id="toggleBlockBtn">
+                ${status.isDefaultBlockedWeekday ? (status.isManuallyOpened ? "🔒 Re-block Weekday" : "🔓 Open Weekday for Clients") : (status.isCustomBlocked ? "🔓 Unblock Weekend Date" : "🔒 Block Weekend Date")}
+              </button>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid var(--line); margin: 20px 0;" />
+
+            <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 0 0 12px;">Add / Double-Book Client for ${dKey}</h3>
+            <form id="modalAddBookingForm" style="display: flex; flex-direction: column; gap: 12px;">
+              <input type="text" id="m_clientName" placeholder="Client / Model Name *" required style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <input type="email" id="m_clientEmail" placeholder="Email Address" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
+                <input type="text" id="m_clientType" placeholder="Shoot Type (e.g. Fashion, Portfolio)" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
+              </div>
+              <textarea id="m_clientNotes" placeholder="Notes / Details..." rows="2" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; resize: vertical;"></textarea>
+              <button type="submit" class="admin-cal-btn primary" style="align-self: flex-start;">+ Add Booking to ${dKey}</button>
+            </form>
+
+            ${status.bookings.length ? `
+              <hr style="border: none; border-top: 1px solid var(--line); margin: 20px 0;" />
+              <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 0 0 12px;">Existing Bookings on this Date (${status.bookings.length})</h3>
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                ${status.bookings.map(b => `
+                  <div style="padding: 12px; border: 1px solid var(--line); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                      <strong style="font-size: 14px;">${esc(b.name)}</strong>
+                      <div style="font-size: 12px; color: var(--ink-soft);">${esc(b.type)} ${b.email ? `· ${esc(b.email)}` : ""}</div>
+                      ${b.notes ? `<div style="font-size: 11px; font-style: italic; margin-top: 4px;">"${esc(b.notes)}"</div>` : ""}
+                    </div>
+                    <button type="button" class="admin-cal-btn" onclick="window.removeBookingFromRoster('${dKey}', '${b.id}'); document.getElementById('closeAdminModal')?.click();" style="color: #b22222; border-color: rgba(178,34,34,0.3); font-size: 10px;">Remove</button>
+                  </div>
+                `).join("")}
+              </div>
+            ` : ""}
+          </div>
+        </div>
+      `;
+
+      $("#closeAdminModal")?.addEventListener("click", () => modalContainer.innerHTML = "");
+      $("#adminModalOverlay")?.addEventListener("click", (e) => {
+        if (e.target.id === "adminModalOverlay") modalContainer.innerHTML = "";
+      });
+
+      $("#toggleBlockBtn")?.addEventListener("click", () => {
+        toggleCalDateBlock(dKey);
+        toast(`Availability updated for ${dKey}.`);
+        modalContainer.innerHTML = "";
+        renderAdminGrid();
+      });
+
+      $("#modalAddBookingForm")?.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const name = $("#m_clientName").value.trim();
+        const email = $("#m_clientEmail").value.trim();
+        const type = $("#m_clientType").value.trim();
+        const notes = $("#m_clientNotes").value.trim();
+
+        if (!name) return;
+        addCalBooking(dKey, { name, email, type, notes });
+        toast(`Booking added for ${name} on ${dKey}!`);
+        modalContainer.innerHTML = "";
+        renderAdminGrid();
+      });
+    }
+
+    $("#adminCalPrev")?.addEventListener("click", () => {
+      calMonth--;
+      if (calMonth < 0) { calMonth = 11; calYear--; }
+      renderAdminGrid();
+    });
+    $("#adminCalNext")?.addEventListener("click", () => {
+      calMonth++;
+      if (calMonth > 11) { calMonth = 0; calYear++; }
+      renderAdminGrid();
+    });
+    $("#adminCalToday")?.addEventListener("click", () => {
+      calYear = new Date().getFullYear();
+      calMonth = new Date().getMonth();
+      renderAdminGrid();
+    });
+    $("#adminCalNewBookingBtn")?.addEventListener("click", () => {
+      const targetDate = prompt("Enter booking date (YYYY-MM-DD):", getCalDateKey(new Date()));
+      if (targetDate && /^\d{4}-\d{2}-\d{2}$/.test(targetDate.trim())) {
+        openDateAdminModal(targetDate.trim());
+      }
+    });
+    $("#adminCalResetBtn")?.addEventListener("click", () => {
+      if (confirm("Reset custom date overrides? Monday-Friday will be default blocked, Saturdays-Sundays open.")) {
+        window.WPS_DATA.CALENDAR_SETTINGS.customBlockedDates = {};
+        window.WPS_DATA.CALENDAR_SETTINGS.customOpenedDates = {};
+        saveCalendarSettings();
+        toast("Date rules reset to defaults.");
+        renderAdminGrid();
+      }
+    });
+
+    renderAdminGrid();
   }
 
 
@@ -3828,12 +4235,23 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         dateInput.dispatchEvent(new Event("input", { bubbles: true }));
       }
 
+      let adminManageMode = false;
+
       function renderCalendar() {
         const firstDay = new Date(viewYear, viewMonth, 1).getDay();
         const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+        const isUserAdmin = isAdmin();
 
         let html = `
           <div class="dp-header">
+            ${isUserAdmin ? `
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px dashed var(--line);">
+                <span style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: var(--accent);">⚙️ Admin Mode</span>
+                <button type="button" id="dpAdminToggle" style="background: ${adminManageMode ? 'var(--accent)' : 'none'}; color: ${adminManageMode ? '#fff' : 'var(--ink)'}; border: 1px solid var(--line); border-radius: 4px; padding: 3px 8px; font-family: var(--mono-font); font-size: 9px; font-weight: 700; cursor: pointer;">
+                  ${adminManageMode ? "Managing Dates (ON)" : "Manage Availability"}
+                </button>
+              </div>
+            ` : ""}
             <div class="dp-mode-tabs">
               <button type="button" class="dp-mode-btn ${pickerMode === 'range' ? 'active' : ''}" data-mode="range">Date Range</button>
               <button type="button" class="dp-mode-btn ${pickerMode === 'multi' ? 'active' : ''}" data-mode="multi">Multiple Dates</button>
@@ -3855,12 +4273,33 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         for (let day = 1; day <= daysInMonth; day++) {
           const d = new Date(viewYear, viewMonth, day);
           const past = isPast(d);
+          const status = getCalDateStatus(d);
           const classes = ["dp-cell"];
+          let isCellDisabled = past;
+          let titleAttr = "";
+
+          if (sameDay(d, today)) classes.push("dp-today");
 
           if (past) {
             classes.push("dp-past");
           } else {
-            classes.push("dp-active");
+            if (status.isBooked) {
+              classes.push("dp-booked");
+              titleAttr = `Booked (${status.bookings.map(b => b.name).join(", ")})`;
+              if (!isUserAdmin || !adminManageMode) isCellDisabled = true;
+            } else if (status.isBlocked) {
+              classes.push("dp-blocked");
+              titleAttr = status.isDefaultBlockedWeekday ? "Weekday Blocked (Mon–Fri default)" : "Custom Blocked";
+              if (!isUserAdmin || !adminManageMode) isCellDisabled = true;
+            } else {
+              if (status.isDefaultBlockedWeekday && status.isManuallyOpened) classes.push("dp-open-weekday");
+              classes.push("dp-active");
+            }
+          }
+
+          if (isUserAdmin && adminManageMode && !past) {
+            classes.push("dp-admin-manage");
+            isCellDisabled = false;
           }
 
           if (pickerMode === "range") {
@@ -3871,16 +4310,16 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             if (multiDates.some(md => sameDay(md, d))) classes.push("dp-selected");
           }
 
-          if (sameDay(d, today)) classes.push("dp-today");
-
-          html += `<button type="button" class="${classes.join(" ")}" data-day="${day}" ${past ? "disabled" : ""}>${day}</button>`;
+          html += `<button type="button" class="${classes.join(" ")}" data-day="${day}" data-date="${status.key}" title="${esc(titleAttr)}" ${isCellDisabled ? "disabled" : ""}>${day}</button>`;
         }
 
         html += `</div>`;
 
         // Selection summary
         let summary = "";
-        if (pickerMode === "range") {
+        if (adminManageMode) {
+          summary = `<span class="dp-hint" style="color:var(--accent); font-weight:700;">Click dates to Block/Open or Add Bookings</span>`;
+        } else if (pickerMode === "range") {
           if (rangeStart && !rangeEnd) summary = `<span class="dp-hint">Now pick the end date</span>`;
           else if (rangeStart && rangeEnd) {
             const diff = Math.round((rangeEnd - rangeStart) / 86400000) + 1;
@@ -3892,7 +4331,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           if (multiDates.length) {
             summary = `<span class="dp-summary">${multiDates.length} date${multiDates.length > 1 ? "s" : ""} selected</span>`;
           } else {
-            summary = `<span class="dp-hint">Click dates to select them</span>`;
+            summary = `<span class="dp-hint">Click available dates to select</span>`;
           }
         }
 
@@ -3911,6 +4350,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       }
 
       function wireCalendarEvents() {
+        popup.querySelector("#dpAdminToggle")?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          adminManageMode = !adminManageMode;
+          renderCalendar();
+        });
+
         popup.querySelector(".dp-prev")?.addEventListener("click", (e) => {
           e.stopPropagation();
           viewMonth--;
@@ -3936,35 +4381,53 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           });
         });
 
-        popup.querySelectorAll(".dp-cell.dp-active").forEach(cell => {
-          cell.addEventListener("click", (e) => {
-            e.stopPropagation();
-            const day = parseInt(cell.dataset.day);
-            const clicked = new Date(viewYear, viewMonth, day);
-
-            if (pickerMode === "range") {
-              if (!rangeStart || (rangeStart && rangeEnd)) {
-                rangeStart = clicked;
-                rangeEnd = null;
-              } else {
-                if (clicked < rangeStart) {
-                  rangeEnd = rangeStart;
-                  rangeStart = clicked;
+        if (adminManageMode && isAdmin()) {
+          popup.querySelectorAll(".dp-cell.dp-admin-manage").forEach(cell => {
+            cell.addEventListener("click", (e) => {
+              e.stopPropagation();
+              const dKey = cell.dataset.date;
+              if (dKey) {
+                closePopup();
+                if (typeof window.openDateAdminModal === "function") {
+                  window.openDateAdminModal(dKey);
                 } else {
-                  rangeEnd = clicked;
+                  toggleCalDateBlock(dKey);
+                  toast(`Availability updated for ${dKey}.`);
                 }
               }
-            } else {
-              const idx = multiDates.findIndex(md => sameDay(md, clicked));
-              if (idx >= 0) {
-                multiDates.splice(idx, 1);
-              } else {
-                multiDates.push(clicked);
-              }
-            }
-            renderCalendar();
+            });
           });
-        });
+        } else {
+          popup.querySelectorAll(".dp-cell.dp-active").forEach(cell => {
+            cell.addEventListener("click", (e) => {
+              e.stopPropagation();
+              const day = parseInt(cell.dataset.day);
+              const clicked = new Date(viewYear, viewMonth, day);
+
+              if (pickerMode === "range") {
+                if (!rangeStart || (rangeStart && rangeEnd)) {
+                  rangeStart = clicked;
+                  rangeEnd = null;
+                } else {
+                  if (clicked < rangeStart) {
+                    rangeEnd = rangeStart;
+                    rangeStart = clicked;
+                  } else {
+                    rangeEnd = clicked;
+                  }
+                }
+              } else {
+                const idx = multiDates.findIndex(md => sameDay(md, clicked));
+                if (idx >= 0) {
+                  multiDates.splice(idx, 1);
+                } else {
+                  multiDates.push(clicked);
+                }
+              }
+              renderCalendar();
+            });
+          });
+        }
 
         popup.querySelector(".dp-clear")?.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -4188,6 +4651,17 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         // Reveal the in-page success state with the right message for how
         // the inquiry actually went out (direct send vs. visitor's mail app).
         const showSuccess = (sentDirectly) => {
+          // Auto-record booking in studio calendar
+          if (date) {
+            const rawParts = date.split(/[,–]/).map(s => s.trim()).filter(Boolean);
+            rawParts.forEach(pStr => {
+              const dObj = new Date(pStr);
+              if (!isNaN(dObj.getTime())) {
+                const dKey = getCalDateKey(dObj);
+                addCalBooking(dKey, { name, email, phone, type, notes: `Location: ${locationVal} | Budget: ${budget}` });
+              }
+            });
+          }
           if (successPanel) {
             form.hidden = true;
             successPanel.hidden = false;
@@ -4527,6 +5001,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       wireUpload(editId);
     }
     if (key === "book") wireBook();
+    if (key === "calendar") wireCalendar();
     if (key === "analytics") wireAnalytics();
     // animate hero counts
     view.querySelectorAll("[data-count]").forEach((el) => animateCount(el, parseInt(el.textContent, 10) || 0));
@@ -4535,7 +5010,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   /* ============================================================
      §14 · ROUTER
      ============================================================ */
-  const ROUTES = { "": viewHome, "albums": viewAlbums, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload, "book": viewBook, "testimonials": viewTestimonials, "workshop-attended": viewWorkshopAttended, "analytics": viewAnalytics };
+  const ROUTES = { "": viewHome, "albums": viewAlbums, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload, "book": viewBook, "calendar": viewCalendar, "testimonials": viewTestimonials, "workshop-attended": viewWorkshopAttended, "analytics": viewAnalytics };
 
   function render() {
     let raw = location.pathname;
@@ -4566,6 +5041,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     
     // Redirect non-admins trying to access upload page
     if (key === "upload" && !isAdmin()) {
+      history.pushState(null, "", "/");
+      render();
+      return;
+    }
+
+    // Redirect non-admins trying to access the calendar page
+    if (key === "calendar" && !isAdmin()) {
       history.pushState(null, "", "/");
       render();
       return;
