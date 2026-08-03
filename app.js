@@ -2457,7 +2457,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               <input type="text" id="m_clientName" placeholder="Client / Model Name *" required style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <input type="email" id="m_clientEmail" placeholder="Email Address" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
+                <input type="tel" id="m_clientPhone" placeholder="Phone Number (e.g. 9876543210)" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <input type="text" id="m_clientType" placeholder="Shoot Type (e.g. Fashion, Portfolio)" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
+                <input type="url" id="m_clientLinks" placeholder="Reference Link (Drive, Pinterest)" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
               </div>
               <textarea id="m_clientNotes" placeholder="Notes / Details..." rows="2" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; resize: vertical;"></textarea>
               <button type="submit" class="admin-cal-btn primary" style="align-self: flex-start;">+ Add Booking to ${dKey}</button>
@@ -2473,7 +2477,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                       <strong style="font-size: 14px;">${esc(b.name)}</strong>
                       <button type="button" class="admin-cal-btn" onclick="window.removeBookingFromRoster('${dKey}', '${b.id}'); document.getElementById('closeAdminModal')?.click();" style="color: #b22222; border-color: rgba(178,34,34,0.3); font-size: 10px;">Remove</button>
                     </div>
-                    <div style="font-size: 12px; color: var(--ink-soft);">${esc(b.type)} ${b.email ? `· ${esc(b.email)}` : ""}</div>
+                    <div style="font-size: 12px; color: var(--ink-soft);">${esc(b.type)} ${b.phone ? `· 📞 ${esc(b.phone)}` : ""} ${b.email ? `· ✉️ ${esc(b.email)}` : ""}</div>
                     ${b.notes ? `<div style="font-size: 11px; font-style: italic;">"${esc(b.notes)}"</div>` : ""}
                     ${b.links && b.links.length ? `
                       <div style="font-size: 11px; margin-top: 4px;">
@@ -2513,14 +2517,18 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         e.preventDefault();
         const name = $("#m_clientName").value.trim();
         const email = $("#m_clientEmail").value.trim();
+        const phone = $("#m_clientPhone").value.trim();
         const type = $("#m_clientType").value.trim();
+        const rawLink = $("#m_clientLinks").value.trim();
         const notes = $("#m_clientNotes").value.trim();
 
         if (!name) return;
-        addCalBooking(dKey, { name, email, type, notes });
+        const links = rawLink ? [rawLink] : [];
+        addCalBooking(dKey, { name, email, phone, type, links, notes });
         toast(`Booking added for ${name} on ${dKey}!`);
         modalContainer.innerHTML = "";
         renderAdminGrid();
+        updateAdminReminders();
       });
     }
 
