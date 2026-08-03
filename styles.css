@@ -711,7 +711,8 @@ a { color: inherit; text-decoration: none; }
 @media (max-width: 620px) {
   .container { padding: 0 20px; }
   .field-row { grid-template-columns: 1fr; }
-  .header-actions { gap: 10px; }
+  .header-actions { gap: 8px; }
+  #headerAdminBtn { font-size: 9px !important; padding: 4px 8px !important; letter-spacing: 0.04em !important; }
   .theme-toggle { width: 34px; height: 34px; }
   .hero { min-height: auto; padding: 118px 0 64px; }
   .hero h1 { hyphens: auto; }
