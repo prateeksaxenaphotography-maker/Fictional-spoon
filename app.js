@@ -1271,7 +1271,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
     const adminSec = $("#navAdminSec");
     if (adminSec) {
-      adminSec.style.display = isAdminAuthorized() ? "block" : "none";
+      adminSec.style.display = "block";
     }
 
     const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi"), compCardsLi = $("#navCompCardsLi"), portfolioLi = $("#navModelPortfolioLi"), workshopLi = $("#navWorkshopLi"), logsLi = $("#navLogsLi"), analyticsLi = $("#navAnalyticsLi"), calendarLi = $("#navCalendarLi");
