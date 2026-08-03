@@ -2624,9 +2624,9 @@ No Alterations: To preserve the lighting design and capture integrity, no party 
 CRITICAL SAFETY & LIABILITY RELEASE: The Participant enters the studio environment, uses studio blocks, cubes, chairs, furniture, or props, and performs physical poses entirely at their own risk. The Studio shall not be held liable for any physical injury, illness, accident, psychological distress, property damage, or clothing wear-and-tear incurred before, during, or after this production. The Participant explicitly waives any right to seek damages or legal recourse against the Studio or its operating photographers for accidents or injuries occurring on the premises.
 Furthermore, the Participant agrees to indemnify and hold harmless the Studio from any claims, damages, liabilities, or legal expenses arising out of the Participant’s conduct or injuries on set.
 
-4. TECHNICAL PERFORMANCE, DELIVERABLES, TEST SHOOT LIMIT & PAYMENT MILESTONES
-As a creative collaboration, test shoots (TFP collabs) include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. Commercial packages include full proofing gallery + limited retouched master clicks specified in the contracted rate tier. The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered to the Participant, unless otherwise agreed upon in writing for an additional fee.
-Payment Terms: Standard bookings require a 50% advance retainer prior to shoot day start (non-refundable) and 50% final balance after shoot wrap prior to retouched file release (non-refundable). Commercial campaign bookings follow a 50/30/20 milestone structure.
+4. TECHNICAL PERFORMANCE, DELIVERABLES, FULL GALLERY BUYOUT & PAYMENT MILESTONES
+As a creative collaboration or commercial production, test shoots (TFP collabs) include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. Commercial packages include full proofing gallery + limited retouched master clicks specified in the contracted rate tier. Requesting the complete full unedited image gallery (all high-res clicks) or additional retouched master clicks beyond the package limit incurs additional studio gallery buyout charges. The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered to the Participant, unless otherwise agreed upon in writing for an additional fee.
+Payment Terms: Standard bookings require a 50% advance retainer prior to shoot day start (non-refundable) and 50% final balance after shoot wrap prior to receiving any downloadable file (non-refundable). Commercial campaign bookings follow a 50/30/20 milestone structure.
 
 5. MANDATORY ALL-PARTY ATTRIBUTION WORKFLOW
 To ensure creative transparency, all parties agree to execute the following mandatory publishing workflow:
@@ -3967,8 +3967,9 @@ RAW files are not provided.`
                      <option value="₹25,000 - ₹50,000 (100 Unedited + 15-25 Retouched)">₹25,000 - ₹50,000 · 100 Unedited Proof Clicks + 15 to 25 Retouched Clicks (Premium Brand Campaign)</option>
                      <option value="₹50,000+ (Full Proof Gallery + 30+ Retouched Master Assets)">₹50,000+ · Full Proof Gallery + 30+ Commercial Master Retouched Assets (High-End Ad / Commercial)</option>
                    </select>
-                   <div style="font-size: 11px; color: var(--accent); margin-top: 5px; font-family: var(--mono-font); line-height: 1.4;">
-                     ℹ️ <strong>Studio Rental Policy:</strong> Package rates cover photography creation, light design &amp; master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are billed <strong>at actuals</strong>, or the client may directly book their preferred studio space for the production.
+                   <div style="font-size: 11px; color: var(--accent); margin-top: 5px; font-family: var(--mono-font); line-height: 1.4; display: flex; flex-direction: column; gap: 4px;">
+                     <div>ℹ️ <strong>Studio Rental Policy:</strong> Package rates cover photography creation, light design &amp; master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are billed <strong>at actuals</strong>, or the client may directly book their preferred studio space for the production.</div>
+                     <div>📸 <strong>Full Unedited Gallery Buyout:</strong> Packages include a proofing gallery to select contracted retouches. If the client requests the complete full unedited image gallery or additional retouched master clicks beyond the package limit, extra gallery buyout charges apply.</div>
                    </div>
                  </label>
                </div>
@@ -5401,7 +5402,7 @@ RAW files are not provided.`
           policyNotice.innerHTML = `
             <span style="font-family: var(--mono-font); font-size: 9px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Commercial Production &amp; Studio Protection Policy</span>
             <strong>🔒 Booking &amp; Retainer Terms:</strong> 50% advance retainer reserves studio space &amp; production crew (non-refundable). Cancellations within 48h forfeit advance retainer.<br/>
-            <strong>📦 Deliverables &amp; RAW Policy:</strong> Master retouched deliverables are delivered within 10–14 business days after client image selection. Includes 1 round of retouching revisions. RAW unedited camera files remain confidential studio property and are strictly excluded.<br/>
+            <strong>📦 Deliverables &amp; Full Gallery Buyout:</strong> Packages include a proofing gallery to select contracted retouches. If the client requests the complete full unedited image gallery or additional retouched master clicks beyond the package limit, extra buyout charges apply. RAW unedited camera files remain confidential studio property.<br/>
             <strong>📜 Usage Licensing:</strong> Rates cover digital web &amp; social media usage. Extended billboard, TV, print, or commercial advertising rights require separate usage licensing.<br/>
             <strong>🏢 Studio Rental Policy:</strong> Dedicated indoor studio venue rentals are billed <strong>at actuals (at cost)</strong>, or the client may directly book their preferred studio venue for our team to shoot on location.
           `;
@@ -5554,7 +5555,7 @@ RAW files are not provided.`
         const cleanBudget = (budget && budget !== "Not Decided" && budget !== "TBD") ? `Package & Deliverables: ${budget}\n` : "";
         const studioSpaceVal = val("b_studio_space") || 'Not Specified';
         const studioRentalPolicyNote = `Studio Rental Policy: Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio space is required, venue rental fees are billed at actuals (at cost), or the client may book the studio directly.\n`;
-        const deliverablePolicyNote = `RAW Files & Deliverables Policy: Includes full unedited preview proofing gallery + limited retouched master clicks. RAW unedited camera files remain confidential studio property and are strictly excluded.\n`;
+        const deliverablePolicyNote = `RAW Files & Deliverables Policy: Includes proofing gallery + contracted retouched master limit. Requesting the complete full unedited image gallery or extra retouched master clicks beyond the package limit incurs additional gallery buyout fees. RAW unedited camera files remain confidential studio property.\n`;
 
         const compactBody =
           `Shoot Booking Details:\n\n` +
