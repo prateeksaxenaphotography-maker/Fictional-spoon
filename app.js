@@ -4075,7 +4075,7 @@ RAW files are not provided.`
                </div>
              </div>
 
-            <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin-bottom: 24px; font-size: 11px; line-height: 1.5; color: var(--ink-soft); text-align: left;">
+            <div id="bookingPolicyNotice" style="background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin-bottom: 24px; font-size: 11px; line-height: 1.5; color: var(--ink-soft); text-align: left;">
               <span style="font-family: var(--mono-font); font-size: 9px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Booking &amp; Collaboration Policy</span>
               Submission of a booking inquiry or TFP collaboration request does not constitute a confirmed session or a commitment to shoot. All inquiries are subject to schedule availability, creative brief alignment, and final studio review. <strong>Note: If a dedicated studio space is booked for the shoot, applicable studio rental charges will apply.</strong> Collaboration requests (TFP/Test Shoots) are selective and accepted at the sole discretion of the studio. Inquiries that are not explicitly approved by the studio will be considered inactive.
             </div>
@@ -5365,9 +5365,27 @@ RAW files are not provided.`
       const brandOpt = $("#b_role")?.querySelector('option[value="Brand"]');
       const igLabel = $("#b_instagram_label");
       const typeNotice = $("#b_type_notice");
+      const policyNotice = $("#bookingPolicyNotice");
 
       if (typeNotice) {
         typeNotice.style.display = (type === "Test Shoot" ? "block" : "none");
+      }
+
+      if (policyNotice) {
+        if (type === "Test Shoot") {
+          policyNotice.innerHTML = `
+            <span style="font-family: var(--mono-font); font-size: 9px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">TFP Collaboration &amp; Test Shoot Policy</span>
+            Submission of a TFP collaboration request does not constitute a confirmed session or a commitment to shoot. All inquiries are subject to schedule availability, creative alignment, and final studio review. <strong>Note: If a dedicated studio space is booked for the shoot, applicable studio rental charges will apply.</strong> TFP shoots include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW unedited camera files are strictly excluded and remain unreleased.
+          `;
+        } else {
+          policyNotice.innerHTML = `
+            <span style="font-family: var(--mono-font); font-size: 9px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Commercial Production &amp; Studio Protection Policy</span>
+            <strong>🔒 Booking &amp; Retainer Terms:</strong> 50% advance retainer reserves studio space &amp; production crew (non-refundable). Cancellations within 48h forfeit advance retainer.<br/>
+            <strong>📦 Deliverables &amp; RAW Policy:</strong> Master retouched deliverables are delivered within 10–14 business days after client image selection. Includes 1 round of retouching revisions. RAW unedited camera files remain confidential studio property and are strictly excluded.<br/>
+            <strong>📜 Usage Licensing:</strong> Rates cover digital web &amp; social media usage. Extended billboard, TV, print, or commercial advertising rights require separate usage licensing.<br/>
+            <strong>🏢 Studio Rental &amp; Expenses:</strong> Dedicated external studio rentals, location fees, or special prop rentals are billed separately to the client.
+          `;
+        }
       }
 
       if (igLabel) {
