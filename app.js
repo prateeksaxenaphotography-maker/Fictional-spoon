@@ -2310,8 +2310,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         <div style="display: flex; gap: 16px; margin-bottom: 20px; font-family: var(--mono-font); font-size: 11px; flex-wrap: wrap;">
           <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: #e8f5e9; border: 1px solid #2e7d32;"></span> Open for Booking (Weekend/Opened)</span>
           <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: #eee; border: 1px dashed #999;"></span> Blocked for Clients (Mon–Fri Default / Custom)</span>
-          <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: var(--accent-soft); border: 1px solid var(--accent);"></span> Confirmed Client Booking</span>
-          <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: rgba(255, 152, 0, 0.2); border: 1px dashed #f57c00;"></span> ⏳ Anticipated Client Hold (Appears TAKEN to Public)</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: var(--accent-soft); border: 1px solid var(--accent);"></span> Confirmed Booking (Red/Orange)</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: rgba(124, 77, 255, 0.2); border: 1px dashed #7c4dff;"></span> ⏳ Anticipated Hold Only (Royal Purple/Blue)</span>
         </div>
 
         <div id="adminCalGridContainer"></div>
@@ -2363,21 +2363,29 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
         const dayClasses = ["admin-cal-day"];
         if (isPast) dayClasses.push("day-past");
-        if (status.isBooked) dayClasses.push("day-booked");
-        else if (status.isBlocked) dayClasses.push("day-blocked");
-        else dayClasses.push("day-open");
+        
+        if (status.hasConfirmedBooking) {
+          dayClasses.push("day-booked");
+        } else if (status.isTentativeOnly) {
+          dayClasses.push("day-tentative");
+        } else if (status.isBlocked) {
+          dayClasses.push("day-blocked");
+        } else {
+          dayClasses.push("day-open");
+        }
 
         html += `
           <div class="${dayClasses.join(" ")}" data-date="${status.key}">
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
               <span class="admin-cal-num">${day}</span>
-              ${status.isBooked ? `<span class="admin-cal-badge badge-booked">${status.bookings.length} Booked</span>` :
+              ${status.hasConfirmedBooking ? `<span class="admin-cal-badge badge-booked">${status.bookings.length} Booked</span>` :
+                status.isTentativeOnly ? `<span class="admin-cal-badge badge-tentative">⏳ Hold (${status.bookings.length})</span>` :
                 status.isBlocked ? `<span class="admin-cal-badge badge-blocked">${status.isDefaultBlockedWeekday ? "Weekday Blocked" : "Custom Blocked"}</span>` :
                 `<span class="admin-cal-badge badge-open">Open</span>`
               }
             </div>
             <div>
-              ${status.bookings.map(b => `<div class="admin-cal-client-item" title="${esc(b.name)} - ${esc(b.type)}">👤 ${esc(b.name)}</div>`).join("")}
+              ${status.bookings.map(b => `<div class="admin-cal-client-item" title="${esc(b.name)} - ${esc(b.type)}">${(b.isTentative || b.status === "tentative") ? "⏳" : "👤"} ${esc(b.name)}</div>`).join("")}
             </div>
           </div>
         `;
