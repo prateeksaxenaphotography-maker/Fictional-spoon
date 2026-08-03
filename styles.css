@@ -446,6 +446,14 @@ a { color: inherit; text-decoration: none; }
   background: #b22222;
   border: 1px solid #ff4d4d;
 }
+.dp-legend-dot.dot-workshop {
+  background: #f9a825;
+  border: 1px solid #fbc02d;
+}
+.dp-legend-dot.dot-assisting {
+  background: #00897b;
+  border: 1px solid #26a69a;
+}
 .dp-legend-dot.dot-blocked {
   background: rgba(0, 0, 0, 0.06);
   border: 1px dashed var(--line-2);
@@ -474,11 +482,39 @@ a { color: inherit; text-decoration: none; }
   cursor: not-allowed !important;
 }
 .dp-cell.dp-booked::after {
-  content: "TAKEN";
+  content: "BOOKED";
   font-size: 6.5px;
   font-weight: 800;
   letter-spacing: 0.02em;
   color: #ff4d4d;
+  line-height: 1;
+  margin-top: 1px;
+}
+.dp-cell.dp-workshop {
+  color: #f9a825 !important;
+  background: rgba(249, 168, 37, 0.15) !important;
+  border: 1px dashed rgba(249, 168, 37, 0.6) !important;
+}
+.dp-cell.dp-workshop::after {
+  content: "WORKSHOP";
+  font-size: 6px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #f9a825;
+  line-height: 1;
+  margin-top: 1px;
+}
+.dp-cell.dp-assisting {
+  color: #00897b !important;
+  background: rgba(0, 137, 123, 0.15) !important;
+  border: 1px dashed rgba(0, 137, 123, 0.6) !important;
+}
+.dp-cell.dp-assisting::after {
+  content: "ASSISTING";
+  font-size: 6px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #00897b;
   line-height: 1;
   margin-top: 1px;
 }
@@ -1396,6 +1432,10 @@ main:focus { outline: none; }
 .badge-open { background: #e8f5e9; color: #2e7d32; }
 .badge-booked { background: var(--accent-soft); color: var(--accent); }
 .badge-tentative { background: rgba(124, 77, 255, 0.2); color: #7c4dff; border: 1px solid rgba(124, 77, 255, 0.4); }
+.badge-workshop { background: rgba(249, 168, 37, 0.2); color: #f9a825; border: 1px solid rgba(249, 168, 37, 0.4); }
+.badge-assisting { background: rgba(0, 137, 123, 0.2); color: #00897b; border: 1px solid rgba(0, 137, 123, 0.4); }
+.admin-cal-day.day-workshop { background: rgba(249, 168, 37, 0.08) !important; border: 1.5px solid #f9a825 !important; }
+.admin-cal-day.day-assisting { background: rgba(0, 137, 123, 0.08) !important; border: 1.5px solid #00897b !important; }
 .admin-cal-client-item { font-size: 11px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
 
 .booking-roster-sec { margin-top: 48px; border-top: 1px solid var(--line); padding-top: 36px; }
