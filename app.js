@@ -2697,11 +2697,48 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     };
 
     window.WPS_CONTRACT_ARCHIVE = {
+      "V3.3": {
+        version: "V3.3",
+        title: "Studio Release, Liability Waiver, Gear Protection & Payment Terms V3.3",
+        effectiveDate: "August 2026 – Present",
+        status: "Active / Current",
+        summary: "Current studio terms including 50/50 & 50/30/20 non-refundable milestone payments, explicit RAW file exclusion clause, Test Shoot deliverable limit (Full Proofing Gallery + 8 to 12 Retouched Master Clicks), Dedicated Studio Space Rental policy (at actuals / cost), Instagram Co-Author workflow, physical safety liability release, and universal Camera Gear Hands-Off & Data Protection clause.",
+        fullText: `1. SCOPE OF CREATIVE COLLABORATION & STUDIO VENUE RENTAL
+This session is scheduled as a peer-to-peer creative collaboration or commercial production structured for mutual portfolio growth, asset curation, and personal branding advancement. The Studio provides specialized equipment, lighting architecture, workspace, and post-production engineering; the Participant(s) provide technical modeling direction, personal wardrobe, and makeup artistry. Studio Rental Policy: Package rates cover photography creation, light design & master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are billed at actuals (at cost), or the client may directly book their preferred studio venue for the production.
+
+2. INTELLECTUAL PROPERTY, MODEL RELEASE & USAGE LICENSE
+The legal copyright of all visual media remains exclusively with the Studio. To support mutual growth and portfolio building, all participants are granted a full non-exclusive license to publish, share, and use final retouched photos for personal self-promotion, social media grids (Instagram/TikTok), personal websites, and agency portfolios.
+No Alterations: To preserve the lighting design and capture integrity, no party shall apply secondary mobile filters, automated presets, cropping adjustments, or third-party digital modifications to the delivered files.
+
+3. COMPREHENSIVE LIABILITY WAIVER & INDEMNIFICATION
+CRITICAL SAFETY & LIABILITY RELEASE: The Participant enters the studio environment, uses studio blocks, cubes, chairs, furniture, or props, and performs physical poses entirely at their own risk. The Studio shall not be held liable for any physical injury, illness, accident, psychological distress, property damage, or clothing wear-and-tear incurred before, during, or after this production. The Participant explicitly waives any right to seek damages or legal recourse against the Studio or its operating photographers for accidents or injuries occurring on the premises.
+Furthermore, the Participant agrees to indemnify and hold harmless the Studio from any claims, damages, liabilities, or legal expenses arising out of the Participant’s conduct or injuries on set.
+
+4. TECHNICAL PERFORMANCE, DELIVERABLES, FULL GALLERY BUYOUT & PAYMENT MILESTONES
+As a creative collaboration or commercial production, test shoots (TFP collabs) include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. Commercial packages include full proofing gallery + limited retouched master clicks specified in the contracted rate tier. Requesting the complete full unedited image gallery (all high-res clicks) or additional retouched master clicks beyond the package limit incurs additional studio gallery buyout charges. The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered to the Participant, unless otherwise agreed upon in writing for an additional fee.
+Payment Terms: Standard bookings require a 50% advance retainer prior to shoot day start (non-refundable) and 50% final balance after shoot wrap prior to receiving any downloadable file (non-refundable). Commercial campaign bookings follow a 50/30/20 milestone structure.
+
+5. MANDATORY ALL-PARTY ATTRIBUTION WORKFLOW
+To ensure creative transparency, all parties agree to execute the following mandatory publishing workflow:
+- Instagram Collaboration Feature: For all primary feed or grid publications, the publishing party must issue an Instagram Co-Author Collaboration Invite to @nerdyphotographer.in prior to publishing.
+- Full Production Credits Block: Every party publishing an asset must explicitly credit all contributors in the caption:
+  📷 Photography & Light Design: @nerdyphotographer.in
+  👤 Model / Talent: @[Handle]
+  💄 Makeup Artist / MUA: @[Handle]
+  👔 Styling / Wardrobe: @[Handle]
+
+6. UNAUTHORIZED CAMERA OPERATION, GEAR HANDS-OFF & DATA PROTECTION CLAUSE
+All camera bodies, lenses, memory cards, tethering systems, and digital raw captures remain the exclusive physical and intellectual property of the Studio. Under no circumstances is a model, talent, client, or crew participant permitted to operate, touch, view without supervision, or delete media/files from the photographer’s cameras or memory cards.
+The Studio retains sole, unchallengeable authority over image culling, curation, and file deletion. Deleting or attempting to delete media from equipment constitutes a material breach of contract, resulting in immediate termination of the shoot, forfeiture of all retouched deliverables, and full liability for data recovery expenses.
+
+7. DIGITAL CONSENT & BINDING ACCEPTANCE
+In accordance with standard digital contract practices, physical signatures are not required. Legal acceptance is established by replying with confirmation over email/DM or entering the studio workspace following receipt of these terms.`
+      },
       "V3.2": {
         version: "V3.2",
         title: "Studio Release, Liability Waiver & Payment Terms V3.2",
-        effectiveDate: "August 2026 – Present",
-        status: "Active / Current",
+        effectiveDate: "May 2026 – August 2026",
+        status: "Archived",
         summary: "Current studio terms including 50/50 & 50/30/20 non-refundable milestone payments, explicit RAW file exclusion clause, Test Shoot deliverable limit (Full Proofing Gallery + 8 to 12 Retouched Master Clicks), Dedicated Studio Space Rental policy (at actuals / cost), Instagram Co-Author workflow, and physical safety liability release.",
         fullText: `1. SCOPE OF CREATIVE COLLABORATION & STUDIO VENUE RENTAL
 This session is scheduled as a peer-to-peer creative collaboration or commercial production structured for mutual portfolio growth, asset curation, and personal branding advancement. The Studio provides specialized equipment, lighting architecture, workspace, and post-production engineering; the Participant(s) provide technical modeling direction, personal wardrobe, and makeup artistry. Studio Rental Policy: Package rates cover photography creation, light design & master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are billed at actuals (at cost), or the client may directly book their preferred studio venue for the production.
@@ -4094,6 +4131,7 @@ RAW files are not provided.`
                    <div style="font-size: 11px; color: var(--accent); margin-top: 5px; font-family: var(--mono-font); line-height: 1.4; display: flex; flex-direction: column; gap: 4px;">
                      <div>ℹ️ <strong>Studio Rental Policy:</strong> Package rates cover photography creation, light design &amp; master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are billed <strong>at actuals</strong>, or the client may directly book their preferred studio space for the production.</div>
                      <div>📸 <strong>Full Unedited Gallery Buyout:</strong> Packages include a proofing gallery to select contracted retouches. If the client requests the complete full unedited image gallery or additional retouched master clicks beyond the package limit, extra gallery buyout charges apply.</div>
+                      <div>🚫 <strong>Camera &amp; Media Protection Policy:</strong> All camera equipment, memory cards, and raw captures are strictly confidential studio property. Participants may not touch equipment or delete media from cameras. Unauthorized file deletion constitutes a material breach of contract and incurs full data recovery costs.</div>
                    </div>
                  </label>
                </div>
@@ -5638,7 +5676,7 @@ RAW files are not provided.`
           `\n\n==================================================\n` +
           `STUDIO PRODUCTION & LIABILITY RELEASE\n` +
           `TFP COLLABORATION, MODEL RELEASE & DIGITAL CONSENT TERMS\n` +
-          `Document Reference: TFP-LIABILITY-RELEASE-V3.2\n` +
+          `Document Reference: TFP-LIABILITY-RELEASE-V3.3\n` +
           `--------------------------------------------------\n` +
           `Studio/Photographer: nerdyphotographer.in\n` +
           `Creative Partner/Model: ${name}\n` +
@@ -5665,14 +5703,16 @@ RAW files are not provided.`
           `  👤 Model / Talent: @[Handle]\n` +
           `  💄 Makeup Artist / MUA: @[Handle]\n` +
           `  👔 Styling / Wardrobe: @[Handle]\n\n` +
-          `6. DIGITAL CONSENT, EMAIL ACCEPTANCE & BINDING NATURE\n` +
+          `6. UNAUTHORIZED CAMERA OPERATION, GEAR HANDS-OFF & DATA PROTECTION CLAUSE\n` +
+          `All camera bodies, lenses, memory cards, tethering systems, and digital raw captures remain the exclusive physical and intellectual property of the Studio. Under no circumstances is a model, talent, client, or crew participant permitted to operate, touch, view without supervision, or delete media/files from the photographer’s cameras or memory cards. Deleting or attempting to delete media from equipment constitutes a material breach of contract, resulting in immediate termination of the shoot, forfeiture of all retouched deliverables, and full liability for data recovery expenses.\n\n` +
+          `7. DIGITAL CONSENT, EMAIL ACCEPTANCE & BINDING NATURE\n` +
           `In accordance with standard digital contract practices, a physical or handwritten signature is not required to validate these terms. Definitive legal acceptance and a binding obligation to these conditions are established through any of the following actions:\n` +
           `• Sending a reply stating "I agree", "Confirmed", or equivalent confirmation over email or direct digital messaging channels.\n` +
           `• Voluntarily entering the studio workspace environment and participating in the scheduled production session following receipt of these terms.\n\n` +
           `nerdyphotographer.in studios\n` +
           `Digital Operations & Production Management\n` +
           `--------------------------------------------------\n` +
-          `DIGITAL AGREEMENT SIGNED: The Participant (${name}) has read and agreed to the terms of the Studio Production & Liability Release (TFP-LIABILITY-RELEASE-V3.2) by submitting this booking request.\n` +
+          `DIGITAL AGREEMENT SIGNED: The Participant (${name}) has read and agreed to the terms of the Studio Production & Liability Release (TFP-LIABILITY-RELEASE-V3.3) by submitting this booking request.\n` +
           `==================================================`
         ) : "";
 
@@ -5690,6 +5730,7 @@ RAW files are not provided.`
         const studioSpaceVal = val("b_studio_space") || 'Not Specified';
         const studioRentalPolicyNote = `Studio Rental Policy: Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio space is required, venue rental fees are billed at actuals (at cost), or the client may book the studio directly.\n`;
         const deliverablePolicyNote = `RAW Files & Deliverables Policy: Includes proofing gallery + contracted retouched master limit. Requesting the complete full unedited image gallery or extra retouched master clicks beyond the package limit incurs additional gallery buyout fees. RAW unedited camera files remain confidential studio property.\n`;
+        const gearPolicyNote = `Camera & Media Policy: All cameras, memory cards, and raw captures are strictly hands-off. Participants may not touch equipment or delete media from cameras. Deleting files constitutes a material breach of contract and incurs full data recovery costs.\n`;
 
         const compactBody =
           `Shoot Booking Details:\n\n` +
@@ -5706,8 +5747,9 @@ RAW files are not provided.`
           cleanBudget +
           (type !== "Test Shoot" ? `${paymentTermsText}\n` : "") +
           deliverablePolicyNote +
+          gearPolicyNote +
           `Moodboard Link: ${moodboard || '—'}\n` +
-          (agreedToTerms ? `TFP Release terms: Agreed (TFP-LIABILITY-RELEASE-V3.2)\nRead online: https://www.nerdyphotographer.in/book/#tfp-terms\n\n` : `\n`) +
+          (agreedToTerms ? `TFP Release terms: Agreed (TFP-LIABILITY-RELEASE-V3.3)\nRead online: https://www.nerdyphotographer.in/book/#tfp-terms\n\n` : `\n`) +
           `Concept/Vision:\n${concept || '—'}`;
         const inquiryBody = compactBody + tfpReleaseText;
         const plainTextBody = `To: ${studioEmail}\nSubject: Shoot Booking Request — ${name}\n\n` + inquiryBody;
