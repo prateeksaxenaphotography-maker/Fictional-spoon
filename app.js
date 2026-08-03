@@ -3693,6 +3693,56 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
                 <label class="field"><span>Project Concept &amp; Detailed Brief</span><textarea id="b_concept" rows="4" placeholder="Describe the mood, location style, styling ideas, and deliverables you have in mind..."></textarea></label>
               </fieldset>
+
+              <!-- Payment Terms & Milestone Flowchart -->
+              <fieldset style="border: 1px solid var(--line); border-radius: 12px; padding: 24px; background: var(--paper); margin-top: 24px;">
+                <legend style="font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); padding: 0 10px;">💳 Studio Payment Terms &amp; Milestones</legend>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 18px;">
+                  <p style="font-size: 12px; color: var(--ink-soft); margin: 0; max-width: 500px; line-height: 1.5;">To reserve studio dates and ensure smooth delivery, studio productions follow structured milestone payments. Select your preferred payment schedule below:</p>
+                  
+                  <div style="display: flex; align-items: center; gap: 6px; background: var(--bone); padding: 4px; border-radius: 20px; border: 1px solid var(--line);">
+                    <button type="button" id="paySched2Step" style="padding: 6px 14px; border-radius: 16px; border: none; font-family: var(--mono-font); font-size: 10px; font-weight: 700; cursor: pointer; transition: all 0.2s; background: var(--accent); color: #fff;">Standard 50/50</button>
+                    <button type="button" id="paySched3Step" style="padding: 6px 14px; border-radius: 16px; border: none; font-family: var(--mono-font); font-size: 10px; font-weight: 700; cursor: pointer; transition: all 0.2s; background: transparent; color: var(--ink-soft);">3-Tier Campaign (50/30/20)</button>
+                  </div>
+                </div>
+
+                <!-- Flowchart 2-Step (Default) -->
+                <div id="flowchart2Step" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
+                  <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 18px; position: relative;">
+                    <div style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 6px;">STEP 1 · 50% ADVANCE RETAINER</div>
+                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; color: var(--ink);">🔒 Before Shoot Day Start</h4>
+                    <p style="font-size: 12px; color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid prior to shoot day to reserve studio space, schedule team crew, and lock calendar availability. <strong style="color: #b22222;">(Non-refundable)</strong></p>
+                  </div>
+
+                  <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 18px; position: relative;">
+                    <div style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: #2e7d32; text-transform: uppercase; margin-bottom: 6px;">STEP 2 · 50% FINAL BALANCE</div>
+                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; color: var(--ink);">📦 After Shoot · Before File Release</h4>
+                    <p style="font-size: 12px; color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid upon completion of the shoot session, prior to receiving retouched final deliverables. <strong style="color: #b22222;">(Non-refundable)</strong></p>
+                  </div>
+                </div>
+
+                <!-- Flowchart 3-Step (3-Tier Milestone) -->
+                <div id="flowchart3Step" style="display: none; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px;">
+                  <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
+                    <div style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 6px;">STEP 1 · 50% ADVANCE RETAINER</div>
+                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: var(--ink);">🔒 Before Shoot Day Start</h4>
+                    <p style="font-size: 11px; color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid prior to shoot day to lock studio date and reserve production crew. <strong style="color: #b22222;">(Non-refundable)</strong></p>
+                  </div>
+
+                  <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
+                    <div style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: #f57c00; text-transform: uppercase; margin-bottom: 6px;">STEP 2 · 30% REVIEW MILESTONE</div>
+                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: var(--ink);">🔎 After Shoot · Proofing Gallery</h4>
+                    <p style="font-size: 11px; color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid after shoot wrap, before receiving the watermarked proofing gallery to select retouches. <strong style="color: #b22222;">(Non-refundable)</strong></p>
+                  </div>
+
+                  <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
+                    <div style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: #2e7d32; text-transform: uppercase; margin-bottom: 6px;">STEP 3 · 20% FINAL DELIVERABLES</div>
+                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: var(--ink);">📦 Before Final File Release</h4>
+                    <p style="font-size: 11px; color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid upon final approval, before receiving high-resolution retouched master files.</p>
+                  </div>
+                </div>
+              </fieldset>
  
              <!-- TFP Liability Release Terms Modal -->
              <div id="termsModal" class="modal-overlay" style="display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 20px;">
@@ -5015,6 +5065,35 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         }
       });
     })();
+
+    // Payment Terms & Milestone Schedule Toggle
+    const paySched2Btn = $("#paySched2Step");
+    const paySched3Btn = $("#paySched3Step");
+    const flow2 = $("#flowchart2Step");
+    const flow3 = $("#flowchart3Step");
+
+    if (paySched2Btn && paySched3Btn && flow2 && flow3) {
+      const setSched = (is3Step) => {
+        if (is3Step) {
+          paySched3Btn.style.background = "var(--accent)";
+          paySched3Btn.style.color = "#fff";
+          paySched2Btn.style.background = "transparent";
+          paySched2Btn.style.color = "var(--ink-soft)";
+          flow2.style.display = "none";
+          flow3.style.display = "grid";
+        } else {
+          paySched2Btn.style.background = "var(--accent)";
+          paySched2Btn.style.color = "#fff";
+          paySched3Btn.style.background = "transparent";
+          paySched3Btn.style.color = "var(--ink-soft)";
+          flow2.style.display = "grid";
+          flow3.style.display = "none";
+        }
+      };
+
+      paySched2Btn.addEventListener("click", () => setSched(false));
+      paySched3Btn.addEventListener("click", () => setSched(true));
+    }
 
     // Dynamic field update logic
     const updateFields = () => {
