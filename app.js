@@ -3903,6 +3903,9 @@ RAW files are not provided.`
                      <option value="Test Shoot" ${isSelected("Test Shoot")}>Test Shoot (TFP Collab)</option>
                      <option value="Other" ${isSelected("Other")}>Other Focus Area</option>
                    </select>
+                   <div id="b_type_notice" style="font-size: 11px; color: var(--accent); margin-top: 5px; font-family: var(--mono-font); display: none;">
+                     🎁 <strong>Test Shoot Deliverables:</strong> Full Proofing Gallery + 8 to 12 Retouched Master Clicks (No RAW files delivered).
+                   </div>
                  </label>
                  <label class="field" id="b_date_field">
                     <span>Preferred Date / Timeline *</span>
@@ -4037,9 +4040,9 @@ RAW files are not provided.`
                    </div>
  
                    <div>
-                     <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700;">4. TECHNICAL PERFORMANCE &amp; DELIVERY DISCLAIMER</h4>
-                     <p style="margin: 0;">As a creative collaboration, the Studio offers no guarantees regarding the exact number of final images delivered, the specific turnaround time, or the subjective artistic satisfaction of the deliverables. The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered to the Participant, unless otherwise agreed upon in writing for an additional fee.</p>
-                   </div>
+                      <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700;">4. TECHNICAL PERFORMANCE &amp; DELIVERY DISCLAIMER</h4>
+                      <p style="margin: 0;">As a creative collaboration, test shoots (TFP collabs) include a <strong>Full Proofing Gallery + 8 to 12 Retouched Master Clicks</strong>. The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered to the Participant, unless otherwise agreed upon in writing for an additional fee.</p>
+                    </div>
  
                    <div>
                      <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700;">5. MANDATORY ALL-PARTY ATTRIBUTION WORKFLOW</h4>
@@ -5361,6 +5364,11 @@ RAW files are not provided.`
       const budgetField = $("#b_budget_field");
       const brandOpt = $("#b_role")?.querySelector('option[value="Brand"]');
       const igLabel = $("#b_instagram_label");
+      const typeNotice = $("#b_type_notice");
+
+      if (typeNotice) {
+        typeNotice.style.display = (type === "Test Shoot" ? "block" : "none");
+      }
 
       if (igLabel) {
         igLabel.innerHTML = (type === "Test Shoot" ? "Instagram / Website *" : "Instagram / Website");
