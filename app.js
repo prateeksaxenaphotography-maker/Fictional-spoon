@@ -2433,9 +2433,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               </div>
             </div>
           ` : ""}
-          <div style="margin-top: 14px; display: flex; gap: 10px;">
-            <button type="button" class="admin-cal-btn primary" onclick="window.openEditBookingModal('${b.dateKey}', '${b.id}')" style="font-size: 10px; padding: 4px 10px;">✏️ Edit</button>
-            <button type="button" class="admin-cal-btn" onclick="window.removeBookingFromRoster('${b.dateKey}', '${b.id}')" style="color: #b22222; border-color: rgba(178,34,34,0.3); font-size: 10px; padding: 4px 10px;">Cancel Booking</button>
+          <div style="margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <button type="button" class="admin-cal-btn primary" onclick="window.openEditBookingModal('${b.dateKey}', '${b.id}')" style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 14px; background: var(--accent); color: #fff; border: 1px solid var(--accent); border-radius: 4px; cursor: pointer;">✏️ Edit Booking</button>
+            <button type="button" class="admin-cal-btn" onclick="window.removeBookingFromRoster('${b.dateKey}', '${b.id}')" style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 14px; color: #ff4d4d; border: 1px solid rgba(255,77,77,0.4); background: rgba(255,77,77,0.1); border-radius: 4px; cursor: pointer;">Cancel Booking</button>
           </div>
         </div>
       `).join("");
