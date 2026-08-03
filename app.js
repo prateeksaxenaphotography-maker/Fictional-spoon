@@ -2087,6 +2087,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       phone: bookingObj.phone || "",
       type: bookingObj.type || "Shoot",
       notes: bookingObj.notes || "",
+      links: Array.isArray(bookingObj.links) ? bookingObj.links : (bookingObj.links ? [bookingObj.links] : []),
+      attachments: Array.isArray(bookingObj.attachments) ? bookingObj.attachments : [],
       status: bookingObj.status || "confirmed",
       createdAt: Date.now()
     };
@@ -2255,6 +2257,22 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           ${b.email ? `<div class="booking-card-detail"><strong>Email:</strong> ${esc(b.email)}</div>` : ""}
           ${b.phone ? `<div class="booking-card-detail"><strong>Phone:</strong> ${esc(b.phone)}</div>` : ""}
           ${b.notes ? `<div class="booking-card-detail" style="margin-top: 8px; font-style: italic; color: var(--ink);">"${esc(b.notes)}"</div>` : ""}
+          ${b.links && b.links.length ? `
+            <div class="booking-card-detail" style="margin-top:8px;">
+              <strong>Reference Links (${b.links.length}):</strong>
+              <div style="display:flex; flex-direction:column; gap:3px; margin-top:3px;">
+                ${b.links.map(l => `<a href="${esc(l)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent); word-break:break-all; font-family:var(--mono-font); font-size:11px;">🔗 ${esc(l)} ↗</a>`).join("")}
+              </div>
+            </div>
+          ` : ""}
+          ${b.attachments && b.attachments.length ? `
+            <div class="booking-card-detail" style="margin-top:8px;">
+              <strong>Attachments (${b.attachments.length}):</strong>
+              <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:4px;">
+                ${b.attachments.map(att => `<a href="${esc(att.dataUrl)}" download="${esc(att.name)}" target="_blank" style="display:inline-flex; align-items:center; gap:4px; background:var(--bone); border:1px solid var(--line); border-radius:4px; padding:4px 8px; font-family:var(--mono-font); font-size:10px; color:var(--ink); text-decoration:none;">📄 ${esc(att.name)} (${Math.round(att.size/1024)} KB) ⬇</a>`).join("")}
+              </div>
+            </div>
+          ` : ""}
           <div style="margin-top: 14px; display: flex; gap: 10px;">
             <button type="button" class="admin-cal-btn" onclick="window.removeBookingFromRoster('${b.dateKey}', '${b.id}')" style="color: #b22222; border-color: rgba(178,34,34,0.3); font-size: 10px; padding: 4px 10px;">Cancel Booking</button>
           </div>
@@ -2317,13 +2335,27 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 0 0 12px;">Existing Bookings on this Date (${status.bookings.length})</h3>
               <div style="display: flex; flex-direction: column; gap: 10px;">
                 ${status.bookings.map(b => `
-                  <div style="padding: 12px; border: 1px solid var(--line); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
-                    <div>
+                  <div style="padding: 12px; border: 1px solid var(--line); border-radius: 8px; display: flex; flex-direction: column; gap: 6px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
                       <strong style="font-size: 14px;">${esc(b.name)}</strong>
-                      <div style="font-size: 12px; color: var(--ink-soft);">${esc(b.type)} ${b.email ? `· ${esc(b.email)}` : ""}</div>
-                      ${b.notes ? `<div style="font-size: 11px; font-style: italic; margin-top: 4px;">"${esc(b.notes)}"</div>` : ""}
+                      <button type="button" class="admin-cal-btn" onclick="window.removeBookingFromRoster('${dKey}', '${b.id}'); document.getElementById('closeAdminModal')?.click();" style="color: #b22222; border-color: rgba(178,34,34,0.3); font-size: 10px;">Remove</button>
                     </div>
-                    <button type="button" class="admin-cal-btn" onclick="window.removeBookingFromRoster('${dKey}', '${b.id}'); document.getElementById('closeAdminModal')?.click();" style="color: #b22222; border-color: rgba(178,34,34,0.3); font-size: 10px;">Remove</button>
+                    <div style="font-size: 12px; color: var(--ink-soft);">${esc(b.type)} ${b.email ? `· ${esc(b.email)}` : ""}</div>
+                    ${b.notes ? `<div style="font-size: 11px; font-style: italic;">"${esc(b.notes)}"</div>` : ""}
+                    ${b.links && b.links.length ? `
+                      <div style="font-size: 11px; margin-top: 4px;">
+                        <strong>Links:</strong>
+                        ${b.links.map(l => `<div style="margin-top:2px;"><a href="${esc(l)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent); word-break:break-all;">🔗 ${esc(l)} ↗</a></div>`).join("")}
+                      </div>
+                    ` : ""}
+                    ${b.attachments && b.attachments.length ? `
+                      <div style="font-size: 11px; margin-top: 4px;">
+                        <strong>Attachments:</strong>
+                        <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;">
+                          ${b.attachments.map(att => `<a href="${esc(att.dataUrl)}" download="${esc(att.name)}" target="_blank" style="display:inline-flex; align-items:center; gap:4px; background:var(--bone); border:1px solid var(--line); border-radius:4px; padding:3px 6px; font-family:var(--mono-font); font-size:10px; color:var(--ink); text-decoration:none;">📄 ${esc(att.name)} ⬇</a>`).join("")}
+                        </div>
+                      </div>
+                    ` : ""}
                   </div>
                 `).join("")}
               </div>
@@ -3261,9 +3293,28 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                    </select>
                  </label>
                </div>
-               <label class="field"><span>Reference / Mood Board Link</span><input id="b_moodboard" type="url" placeholder="Pinterest board, Dropbox, or Google Drive URL" /></label>
-               <label class="field"><span>Project Concept &amp; Detailed Brief</span><textarea id="b_concept" rows="4" placeholder="Describe the mood, location style, styling ideas, and deliverables you have in mind..."></textarea></label>
-             </fieldset>
+                <div class="field" style="display: flex; flex-direction: column; gap: 4px;">
+                  <span>Reference &amp; Mood Board Links (Multiple allowed)</span>
+                  <div id="b_links_container">
+                    <div class="link-input-row">
+                      <input class="b_moodboard_input" type="url" placeholder="Pinterest board, Dropbox, or Google Drive URL" />
+                    </div>
+                  </div>
+                  <button type="button" id="b_add_link_btn" style="background:none; border:1px dashed var(--line); padding:6px 12px; border-radius:6px; font-family:var(--mono-font); font-size:10px; font-weight:700; cursor:pointer; color:var(--ink-soft); align-self:flex-start; margin-top:4px;">+ Add another reference link</button>
+                </div>
+
+                <div class="field" style="display: flex; flex-direction: column; gap: 4px;">
+                  <span>File Attachments (Multiple PDFs, Images, Brief Documents)</span>
+                  <input id="b_file_input" type="file" multiple accept="image/*,application/pdf,.doc,.docx" style="display: none;" />
+                  <div class="attachments-dropzone" id="b_dropzone">
+                    📎 <strong>Click or drag files here to attach</strong>
+                    <div style="font-size: 10px; margin-top: 4px;">Attach multiple PDFs, moodboard JPEGs, or project documents</div>
+                  </div>
+                  <div class="attachment-list" id="b_file_list"></div>
+                </div>
+
+                <label class="field"><span>Project Concept &amp; Detailed Brief</span><textarea id="b_concept" rows="4" placeholder="Describe the mood, location style, styling ideas, and deliverables you have in mind..."></textarea></label>
+              </fieldset>
  
              <!-- TFP Liability Release Terms Modal -->
              <div id="termsModal" class="modal-overlay" style="display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 20px;">
