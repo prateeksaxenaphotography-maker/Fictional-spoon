@@ -1572,8 +1572,15 @@ main:focus { outline: none; }
   padding: 0 6px;
 }
 
-/* ---------- Mobile Responsive Polish for Booking Form ---------- */
+/* ---------- Mobile Responsive Polish Across All Pages ---------- */
 @media (max-width: 680px) {
+  /* Global Container Padding */
+  .container {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  /* Booking Form */
   .shoot-form fieldset {
     padding: 16px;
     gap: 14px;
@@ -1600,6 +1607,62 @@ main:focus { outline: none; }
   .book-wrap {
     padding: 0 4px;
   }
+
+  /* Date Picker Popup */
+  .date-picker-popup {
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 310px !important;
+    max-width: 90vw !important;
+  }
+
+  /* Admin Calendar Grid */
+  .admin-cal-grid {
+    gap: 3px !important;
+    margin-bottom: 24px !important;
+  }
+  .admin-cal-day-label {
+    font-size: 9px !important;
+    padding: 4px 0 !important;
+  }
+  .admin-cal-day {
+    min-height: 64px !important;
+    padding: 4px !important;
+    border-radius: 4px !important;
+  }
+  .admin-cal-num {
+    font-size: 10px !important;
+  }
+  .admin-cal-badge {
+    font-size: 7.5px !important;
+    padding: 2px 3px !important;
+  }
+  .admin-cal-client-item {
+    font-size: 8.5px !important;
+  }
+
+  /* Roster Cards & Grid */
+  .booking-roster-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .booking-card {
+    padding: 14px !important;
+  }
+
+  /* Categories & Albums Filter Chips */
+  .category-filter-bar, .filter-chip-row {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  /* Modals */
+  .date-admin-modal {
+    padding: 18px !important;
+    max-height: 85vh !important;
+    width: 94vw !important;
+  }
+
+  /* Footer */
   .site-footer {
     padding-bottom: 40px;
   }
