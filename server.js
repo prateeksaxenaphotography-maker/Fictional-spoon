@@ -42,7 +42,7 @@ app.get("*", (req, res) => {
   // following "/" only — plain startsWith would also match "/booking-x" or
   // "/studios" against "/book"/"/studio" and serve that page's SEO meta
   // tags for an unrelated route.
-  const paths = ["/albums", "/book", "/categories", "/studio", "/upload", "/testimonials"];
+  const paths = ["/albums", "/book", "/calendar", "/analytics", "/categories", "/studio", "/upload", "/testimonials"];
   const matchedPath = paths.find(p => req.path === p || req.path.startsWith(p + "/"));
   if (matchedPath) {
     return res.sendFile(path.join(__dirname, matchedPath, "index.html"));
