@@ -2344,7 +2344,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             <button type="button" class="admin-cal-btn" id="adminCalNext">Next ›</button>
             <button type="button" class="admin-cal-btn" id="adminCalToday">Today</button>
           </div>
-          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 6px; background: var(--bone); padding: 4px 8px; border-radius: 20px; border: 1px solid var(--line); font-family: var(--mono-font); font-size: 11px;">
+              <span style="font-weight: 700; color: var(--ink-soft); margin-right: 4px;">💳 Payment Terms:</span>
+              <button type="button" id="adminPay5050Btn" class="admin-cal-btn" style="padding: 4px 10px; border-radius: 12px; font-size: 10px; cursor: pointer;">50/50</button>
+              <button type="button" id="adminPay503020Btn" class="admin-cal-btn" style="padding: 4px 10px; border-radius: 12px; font-size: 10px; cursor: pointer;">50/30/20</button>
+            </div>
             <button type="button" class="admin-cal-btn primary" id="adminCalNewBookingBtn">+ Add Manual Booking</button>
             <button type="button" class="admin-cal-btn" id="adminCalResetBtn">Reset Rules</button>
           </div>
@@ -3017,6 +3022,39 @@ RAW files are not provided.`
         renderAdminGrid();
       }
     });
+
+    const pay5050Btn = $("#adminPay5050Btn");
+    const pay503020Btn = $("#adminPay503020Btn");
+
+    const updateAdminPayBtns = () => {
+      const currentSched = window.WPS_DATA.CALENDAR_SETTINGS?.paymentScheduleType || "5050";
+      if (currentSched === "503020") {
+        if (pay503020Btn) { pay503020Btn.style.background = "var(--accent)"; pay503020Btn.style.color = "#fff"; }
+        if (pay5050Btn) { pay5050Btn.style.background = "transparent"; pay5050Btn.style.color = "var(--ink)"; }
+      } else {
+        if (pay5050Btn) { pay5050Btn.style.background = "var(--accent)"; pay5050Btn.style.color = "#fff"; }
+        if (pay503020Btn) { pay503020Btn.style.background = "transparent"; pay503020Btn.style.color = "var(--ink)"; }
+      }
+    };
+    updateAdminPayBtns();
+
+    if (pay5050Btn) {
+      pay5050Btn.addEventListener("click", () => {
+        window.WPS_DATA.CALENDAR_SETTINGS.paymentScheduleType = "5050";
+        saveCalendarSettings();
+        updateAdminPayBtns();
+        toast("Default Studio Payment Terms set to Standard 50/50.");
+      });
+    }
+
+    if (pay503020Btn) {
+      pay503020Btn.addEventListener("click", () => {
+        window.WPS_DATA.CALENDAR_SETTINGS.paymentScheduleType = "503020";
+        saveCalendarSettings();
+        updateAdminPayBtns();
+        toast("Default Studio Payment Terms set to 3-Tier Campaign (50/30/20).");
+      });
+    }
 
     renderAdminGrid();
   }
@@ -5311,6 +5349,9 @@ RAW files are not provided.`
 
       paySched2Btn.addEventListener("click", () => setSched(false));
       paySched3Btn.addEventListener("click", () => setSched(true));
+
+      const globalSched = window.WPS_DATA.CALENDAR_SETTINGS?.paymentScheduleType || "5050";
+      setSched(globalSched === "503020");
     }
 
     // Dynamic field update logic
