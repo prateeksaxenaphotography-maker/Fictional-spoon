@@ -2578,8 +2578,16 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             </div>
           ` : ""}
           <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--line); font-size: 11px; color: var(--ink-soft); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
-            <span>📜 <strong>Agreed Term:</strong> ${esc(b.contractVersion || "V3.2")}</span>
-            <button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('${b.contractVersion || "V3.2"}')" style="font-size: 9px; padding: 3px 8px;">View Terms Text ↗</button>
+            <span>${(() => {
+              const v = b.contractVersion || (b.agreedToTerms ? "V3.2" : "Pending Agreement");
+              if (v === "Pending Agreement") return `<span style="color: #f57c00; font-weight: 700;">⏳ Agreement Pending (Not Signed Yet)</span>`;
+              if (v === "Custom Contract") return `<span style="color: #7c4dff; font-weight: 700;">📄 Custom Client Contract / Brand MSA</span>`;
+              return `📜 <strong>Agreed Term:</strong> ${esc(v)}`;
+            })()}</span>
+            ${(() => {
+              const v = b.contractVersion || (b.agreedToTerms ? "V3.2" : "Pending Agreement");
+              return (v !== "Pending Agreement" && v !== "Custom Contract") ? `<button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('${esc(v)}')" style="font-size: 9px; padding: 3px 8px;">View Terms Text ↗</button>` : '';
+            })()}
           </div>
           <div style="margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap;">
             <button type="button" class="admin-cal-btn primary" onclick="window.openEditBookingModal('${b.dateKey}', '${b.id}')" style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 14px; background: var(--accent); color: #fff; border: 1px solid var(--accent); border-radius: 4px; cursor: pointer;">✏️ Edit Booking</button>
@@ -2800,6 +2808,15 @@ RAW files are not provided.`
                   <option value="tentative" ${(b.isTentative || b.status === 'tentative') ? 'selected' : ''}>⏳ Anticipated Client Hold (Looks Booked to Public)</option>
                 </select>
               </label>
+              <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Contract Agreement &amp; Version Status
+                <select id="eb_contractVersion" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
+                  <option value="Pending Agreement" ${(b.contractVersion === 'Pending Agreement' || (!b.agreedToTerms && !b.contractVersion)) ? 'selected' : ''}>⏳ Pending Agreement / Not Signed Yet (Admin Manual Booking)</option>
+                  <option value="V3.2" ${(b.contractVersion === 'V3.2' || (b.agreedToTerms && !b.contractVersion)) ? 'selected' : ''}>📜 Agreed Terms V3.2 (Active Studio Terms)</option>
+                  <option value="V3.1" ${b.contractVersion === 'V3.1' ? 'selected' : ''}>📜 Agreed Terms V3.1 (Archived Release)</option>
+                  <option value="V3.0" ${b.contractVersion === 'V3.0' ? 'selected' : ''}>📜 Agreed Terms V3.0 (Archived Release)</option>
+                  <option value="Custom Contract" ${b.contractVersion === 'Custom Contract' ? 'selected' : ''}>📄 Custom Client Contract / Brand Provided MSA</option>
+                </select>
+              </label>
               <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Reference Links (one per line)
                 <textarea id="eb_links" rows="2" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">${esc((b.links || []).join('\n'))}</textarea>
               </label>
@@ -2833,9 +2850,11 @@ RAW files are not provided.`
         const isTentative = (status === "tentative");
         const rawLinks = $("#eb_links").value.split("\n").map(s => s.trim()).filter(Boolean);
         const notes = $("#eb_notes").value.trim();
+        const contractVersion = $("#eb_contractVersion").value;
+        const agreedToTerms = (contractVersion !== "Pending Agreement");
 
         const targetId = b.id || bookingId || name;
-        updateCalBooking(dKey, targetId, { newDateKey, name, email, phone, type, duration, isTentative, status, links: rawLinks, notes });
+        updateCalBooking(dKey, targetId, { newDateKey, name, email, phone, type, duration, isTentative, status, links: rawLinks, notes, contractVersion, agreedToTerms });
         toast("Booking updated successfully!");
         modalContainer.innerHTML = "";
         renderAdminGrid();
@@ -2900,6 +2919,16 @@ RAW files are not provided.`
                   <option value="Half Day (Flexible)">Half Day (Flexible Hours)</option>
                 </select>
               </div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Contract Agreement &amp; Version Status</label>
+                <select id="m_clientContractVersion" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;">
+                  <option value="Pending Agreement">⏳ Pending Agreement / Not Signed Yet (Admin Manual Booking)</option>
+                  <option value="V3.2">📜 Agreed Terms V3.2 (Active Studio Terms)</option>
+                  <option value="V3.1">📜 Agreed Terms V3.1 (Archived Release)</option>
+                  <option value="V3.0">📜 Agreed Terms V3.0 (Archived Release)</option>
+                  <option value="Custom Contract">📄 Custom Client Contract / Brand Provided MSA</option>
+                </select>
+              </div>
               <input type="url" id="m_clientLinks" placeholder="Reference Link (Drive, Pinterest)" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
               <textarea id="m_clientNotes" placeholder="Notes / Details..." rows="2" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; resize: vertical;"></textarea>
               <button type="submit" class="admin-cal-btn primary" style="align-self: flex-start;">+ Add Booking / Hold to ${dKey}</button>
@@ -2961,7 +2990,7 @@ RAW files are not provided.`
         const clientName = $("#m_clientName").value.trim() || "Anticipated Client Hold";
         const shootType = $("#m_clientType").value.trim() || "Tentative Hold";
         const notes = $("#m_clientNotes").value.trim() || "Date held by Admin for anticipated client inquiry.";
-        addCalBooking(dKey, { name: clientName, type: shootType, notes: notes, isTentative: true, status: "tentative" });
+        addCalBooking(dKey, { name: clientName, type: shootType, notes: notes, isTentative: true, status: "tentative", contractVersion: "Pending Agreement", agreedToTerms: false });
         toast(`Date ${dKey} held as Anticipated Client! (Appears TAKEN to public)`);
         modalContainer.innerHTML = "";
         renderAdminGrid();
@@ -2981,9 +3010,11 @@ RAW files are not provided.`
         const name = rawName || (isTentative ? "Anticipated Client Hold" : "Client Booking");
         const rawLink = $("#m_clientLinks").value.trim();
         const notes = $("#m_clientNotes").value.trim();
+        const contractVersion = $("#m_clientContractVersion")?.value || "Pending Agreement";
+        const agreedToTerms = (contractVersion !== "Pending Agreement");
 
         const links = rawLink ? [rawLink] : [];
-        addCalBooking(dKey, { name, email, phone, type, duration, isTentative, status: statusVal, links, notes });
+        addCalBooking(dKey, { name, email, phone, type, duration, isTentative, status: statusVal, links, notes, contractVersion, agreedToTerms });
         toast(isTentative ? `Date ${dKey} held for ${name}! (Appears TAKEN to public)` : `Booking confirmed for ${name} on ${dKey}!`);
         modalContainer.innerHTML = "";
         renderAdminGrid();
