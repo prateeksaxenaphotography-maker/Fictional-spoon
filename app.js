@@ -4214,6 +4214,107 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const val = (id) => $("#" + id)?.value.trim() || "";
     const fieldOf = (id) => $("#" + id)?.closest(".field");
 
+    // ── Multi-Link & Multi-File Attachments Handling ──
+    window.attachedFiles = window.attachedFiles || [];
+    const attachedFiles = window.attachedFiles;
+
+    window.getFormLinks = () => {
+      const inputs = document.querySelectorAll(".b_moodboard_input");
+      const list = [];
+      inputs.forEach(inp => {
+        const v = inp.value.trim();
+        if (v) list.push(v);
+      });
+      return list;
+    };
+
+    const addLinkBtn = $("#b_add_link_btn");
+    const linksContainer = $("#b_links_container");
+    if (addLinkBtn && linksContainer) {
+      addLinkBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const row = document.createElement("div");
+        row.className = "link-input-row";
+        row.innerHTML = `
+          <input class="b_moodboard_input" type="url" placeholder="Additional Pinterest, Drive, or Dropbox URL" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: 13px;" />
+          <button type="button" class="remove-link-btn" title="Remove link">&times;</button>
+        `;
+        row.querySelector(".remove-link-btn").addEventListener("click", () => row.remove());
+        linksContainer.appendChild(row);
+      });
+    }
+
+    const dropzone = $("#b_dropzone");
+    const fileInput = $("#b_file_input");
+    const fileListEl = $("#b_file_list");
+
+    if (dropzone && fileInput) {
+      dropzone.addEventListener("click", (e) => {
+        e.preventDefault();
+        fileInput.click();
+      });
+      dropzone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropzone.style.borderColor = "var(--accent)";
+      });
+      dropzone.addEventListener("dragleave", (e) => {
+        e.preventDefault();
+        dropzone.style.borderColor = "";
+      });
+      dropzone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropzone.style.borderColor = "";
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+          handleSelectedFiles(e.dataTransfer.files);
+        }
+      });
+      fileInput.addEventListener("change", () => {
+        if (fileInput.files && fileInput.files.length) {
+          handleSelectedFiles(fileInput.files);
+        }
+      });
+    }
+
+    function handleSelectedFiles(files) {
+      Array.from(files).forEach((file) => {
+        if (file.size > 15 * 1024 * 1024) {
+          toast(`File ${file.name} exceeds 15MB size limit.`);
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          attachedFiles.push({
+            id: "att_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            dataUrl: e.target.result
+          });
+          renderAttachedFileList();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function renderAttachedFileList() {
+      if (!fileListEl) return;
+      fileListEl.innerHTML = attachedFiles.map((f, idx) => `
+        <div class="attachment-pill">
+          <span>📄 ${esc(f.name)} (${Math.round(f.size / 1024)} KB)</span>
+          <button type="button" class="remove-att" data-idx="${idx}">&times;</button>
+        </div>
+      `).join("");
+
+      fileListEl.querySelectorAll(".remove-att").forEach((b) => {
+        b.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const idx = parseInt(b.dataset.idx, 10);
+          attachedFiles.splice(idx, 1);
+          renderAttachedFileList();
+        });
+      });
+    }
+
     // Inline validation: mark a field invalid + show a message under it.
     function setError(id, msg) {
       const field = fieldOf(id);
