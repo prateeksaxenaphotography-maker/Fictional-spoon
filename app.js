@@ -3917,13 +3917,12 @@ RAW files are not provided.`
                </div>
                <div class="field-row">
                  <label class="field"><span>Preferred Location *</span><input id="b_location" type="text" required placeholder="e.g. Noida Studio / Outdoor NCR" /></label>
-                 <label class="field" id="b_budget_field"><span>Estimated Budget Range *</span>
+                 <label class="field" id="b_budget_field"><span>Studio Package &amp; Rate Tier *</span>
                    <select id="b_budget">
-                     <option value="Under ₹10,000">Under ₹10,000 (Selective Tests)</option>
-                     <option value="₹10,000 - ₹25,000">₹10,000 - ₹25,000 (Standard Portfolio)</option>
-                     <option value="₹25,000 - ₹50,000">₹25,000 - ₹50,000 (Premium Campaign)</option>
-                     <option value="₹50,000+">₹50,000+ (High-End Commercial)</option>
-                     <option value="Not Decided">Not Decided / TBD</option>
+                     <option value="Under ₹10,000 (3-5 Retouched Clicks)">Under ₹10,000 · 3 to 5 Retouched Master Clicks (Mini Test / Comp Card)</option>
+                     <option value="₹10,000 - ₹25,000 (8-12 Retouched Clicks)">₹10,000 - ₹25,000 · 8 to 12 Retouched Master Clicks (Standard Portfolio / Editorial)</option>
+                     <option value="₹25,000 - ₹50,000 (15-25 Retouched Clicks)">₹25,000 - ₹50,000 · 15 to 25 Retouched Master Clicks (Premium Brand Campaign)</option>
+                     <option value="₹50,000+ (30+ Commercial Master Assets)">₹50,000+ · 30+ Commercial Master Retouched Assets (High-End Ad / Commercial)</option>
                    </select>
                  </label>
                </div>
@@ -5502,7 +5501,7 @@ RAW files are not provided.`
           `Payment Terms: 3-Tier Campaign Milestones (50% Advance Retainer before shoot day start [non-refundable]; 30% Review Milestone after shoot before proofing gallery [non-refundable]; 20% Final Release before high-res deliverables)` :
           `Payment Terms: Standard 50/50 Milestones (50% Advance Retainer before shoot day start [non-refundable]; 50% Final Balance after shoot wrap before retouched file release [non-refundable])`;
 
-        const cleanBudget = (budget && budget !== "Not Decided" && budget !== "TBD") ? `Budget Range: ${budget}\n` : "";
+        const cleanBudget = (budget && budget !== "Not Decided" && budget !== "TBD") ? `Package & Deliverables: ${budget}\n` : "";
 
         const compactBody =
           `Shoot Booking Details:\n\n` +
