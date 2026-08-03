@@ -412,7 +412,52 @@ a { color: inherit; text-decoration: none; }
 
 /* Footer */
 .dp-footer { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px 14px; border-top: 1px solid var(--line); margin-top: 4px; }
+
+/* Date Picker Legend */
+.dp-legend {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  gap: 8px;
+  background: var(--bone);
+}
+.dp-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.dp-legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.dp-legend-dot.dot-available {
+  background: var(--paper);
+  border: 1px solid var(--ink);
+}
+.dp-legend-dot.dot-booked {
+  background: #b22222;
+  border: 1px solid #ff4d4d;
+}
+.dp-legend-dot.dot-blocked {
+  background: rgba(0, 0, 0, 0.06);
+  border: 1px dashed var(--line-2);
+}
+
 /* Blocked & Booked Date States */
+.dp-cell {
+  aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-family: "JetBrains Mono", monospace; font-size: 12px; font-weight: 500;
+  border: none; border-radius: 8px; cursor: pointer; transition: all .15s; background: none; color: var(--ink);
+  padding: 0; position: relative;
+}
 .dp-cell.dp-blocked {
   color: var(--line-2) !important;
   text-decoration: line-through;
@@ -421,12 +466,21 @@ a { color: inherit; text-decoration: none; }
   background: rgba(0, 0, 0, 0.03);
 }
 .dp-cell.dp-booked {
-  color: #b22222 !important;
-  font-weight: 700;
-  background: rgba(178, 34, 34, 0.08) !important;
-  border: 1px dashed rgba(178, 34, 34, 0.3);
-  opacity: 0.75;
+  color: #ff4d4d !important;
+  font-weight: 800;
+  background: rgba(178, 34, 34, 0.18) !important;
+  border: 1px dashed rgba(255, 77, 77, 0.6) !important;
+  opacity: 0.9;
   cursor: not-allowed !important;
+}
+.dp-cell.dp-booked::after {
+  content: "BOOKED";
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #ff4d4d;
+  line-height: 1;
+  margin-top: 1px;
 }
 .dp-cell.dp-open-weekday {
   color: #2e7d32;
