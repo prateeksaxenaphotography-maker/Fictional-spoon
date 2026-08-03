@@ -4005,16 +4005,15 @@ RAW files are not provided.`
                 <legend style="font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); padding: 0 10px;">💳 Studio Payment Terms &amp; Milestones</legend>
                 
                 <div style="margin-bottom: 18px;">
-                  <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; color: var(--ink);">🔒 48 Hours Prior to Shoot Start</h4>
-                  <p style="font-size: 12px; color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid at least 48 hours before the shoot day to reserve studio space, schedule the crew, and lock calendar availability (unless explicitly discussed with the team). <strong>Mandatory prior to shoot start.</strong> <strong style="color: #b22222;">(Non-refundable)</strong></p>
+                  <p style="font-size: 12px; color: var(--ink-soft); margin: 0; line-height: 1.5;">To reserve studio dates and ensure smooth delivery, studio productions follow structured milestone payments as detailed below:</p>
                 </div>
 
                 <!-- Flowchart 2-Step (Default) -->
                 <div id="flowchart2Step" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 18px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 6px;">STEP 1 · 50% ADVANCE RETAINER</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; color: var(--ink);">🔒 Before Shoot Day Start</h4>
-                    <p style="font-size: 12px; color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid prior to shoot day to reserve studio space, schedule team crew, and lock calendar availability. <strong style="color: #b22222;">(Non-refundable)</strong></p>
+                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; color: var(--ink);">🔒 48 Hours Prior to Shoot Start</h4>
+                    <p style="font-size: 12px; color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid at least 48 hours before the shoot day to reserve studio space, schedule the crew, and lock calendar availability (unless explicitly discussed with the team). <strong>Mandatory prior to shoot start.</strong> <strong style="color: #b22222;">(Non-refundable)</strong></p>
                   </div>
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 18px; position: relative;">
@@ -4028,8 +4027,8 @@ RAW files are not provided.`
                 <div id="flowchart3Step" style="display: none; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px;">
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 6px;">STEP 1 · 50% ADVANCE RETAINER</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: var(--ink);">🔒 Before Shoot Day Start</h4>
-                    <p style="font-size: 11px; color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid prior to shoot day to lock studio date and reserve production crew. <strong style="color: #b22222;">(Non-refundable)</strong></p>
+                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: var(--ink);">🔒 48 Hours Prior to Shoot Start</h4>
+                    <p style="font-size: 11px; color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid at least 48 hours before the shoot day to lock studio date and reserve production crew (unless explicitly discussed with the team). <strong>Mandatory prior to shoot start.</strong> <strong style="color: #b22222;">(Non-refundable)</strong></p>
                   </div>
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
