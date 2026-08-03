@@ -2144,6 +2144,37 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     } catch (e) {}
   }
 
+  function sanitizeCalendarBookings() {
+    const settings = window.WPS_DATA?.CALENDAR_SETTINGS;
+    if (!settings || !settings.bookedDates) return;
+    let changed = false;
+    Object.keys(settings.bookedDates).forEach(dKey => {
+      const list = settings.bookedDates[dKey];
+      if (Array.isArray(list)) {
+        list.forEach(b => {
+          if (b.name && /anticipated|tentative|hold/i.test(b.name)) {
+            if (!b.isTentative || b.status !== "tentative") {
+              b.isTentative = true;
+              b.status = "tentative";
+              changed = true;
+            }
+          }
+          if (b.type && /anticipated|tentative|hold/i.test(b.type)) {
+            if (!b.isTentative || b.status !== "tentative") {
+              b.isTentative = true;
+              b.status = "tentative";
+              changed = true;
+            }
+          }
+        });
+      }
+    });
+    if (changed) {
+      saveCalendarSettings();
+    }
+  }
+  sanitizeCalendarBookings();
+
   function getCalDateKey(d) {
     if (!d) return "";
     if (typeof d === "string") return d;
