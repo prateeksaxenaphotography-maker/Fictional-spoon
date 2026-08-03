@@ -4013,8 +4013,8 @@ RAW files are not provided.`
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 18px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: #2e7d32; text-transform: uppercase; margin-bottom: 6px;">STEP 2 · 50% FINAL BALANCE</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; color: var(--ink);">📦 After Shoot · Before File Release</h4>
-                    <p style="font-size: 12px; color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid upon completion of the shoot session, prior to receiving retouched final deliverables. <strong style="color: #b22222;">(Non-refundable)</strong></p>
+                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; color: var(--ink);">📦 After Shoot · Prior to Receiving Any Downloadable File</h4>
+                    <p style="font-size: 12px; color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid upon completion of the shoot session, prior to receiving any downloadable preview or retouched final deliverable file. <strong style="color: #b22222;">(Non-refundable)</strong></p>
                   </div>
                 </div>
 
@@ -4034,8 +4034,8 @@ RAW files are not provided.`
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: #2e7d32; text-transform: uppercase; margin-bottom: 6px;">STEP 3 · 20% FINAL DELIVERABLES</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: var(--ink);">📦 Before Final File Release</h4>
-                    <p style="font-size: 11px; color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid upon final approval, before receiving high-resolution retouched master files.</p>
+                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: var(--ink);">📦 Prior to Receiving Any Downloadable File</h4>
+                    <p style="font-size: 11px; color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid upon final approval, prior to receiving any downloadable or high-resolution retouched master file.</p>
                   </div>
                 </div>
               </fieldset>
@@ -5548,8 +5548,8 @@ RAW files are not provided.`
         // app silently refused to open at all.
         const is3StepActive = $("#flowchart3Step") && $("#flowchart3Step").style.display !== "none";
         const paymentTermsText = is3StepActive ?
-          `Payment Terms: 3-Tier Campaign Milestones (50% Advance Retainer before shoot day start [non-refundable]; 30% Review Milestone after shoot before proofing gallery [non-refundable]; 20% Final Release before high-res deliverables)` :
-          `Payment Terms: Standard 50/50 Milestones (50% Advance Retainer before shoot day start [non-refundable]; 50% Final Balance after shoot wrap before retouched file release [non-refundable])`;
+          `Payment Terms: 3-Tier Campaign Milestones (50% Advance Retainer before shoot day start [non-refundable]; 30% Review Milestone after shoot before proofing gallery [non-refundable]; 20% Final Release prior to receiving any downloadable file)` :
+          `Payment Terms: Standard 50/50 Milestones (50% Advance Retainer before shoot day start [non-refundable]; 50% Final Balance after shoot wrap prior to receiving any downloadable file [non-refundable])`;
 
         const cleanBudget = (budget && budget !== "Not Decided" && budget !== "TBD") ? `Package & Deliverables: ${budget}\n` : "";
         const studioSpaceVal = val("b_studio_space") || 'Not Specified';
