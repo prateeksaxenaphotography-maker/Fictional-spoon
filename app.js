@@ -3954,7 +3954,7 @@ RAW files are not provided.`
               </fieldset>
 
               <!-- Payment Terms & Milestone Flowchart -->
-              <fieldset style="border: 1px solid var(--line); border-radius: 12px; padding: 24px; background: var(--paper); margin-top: 24px;">
+              <fieldset id="paymentTermsFieldset" style="border: 1px solid var(--line); border-radius: 12px; padding: 24px; background: var(--paper); margin-top: 24px;">
                 <legend style="font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); padding: 0 10px;">💳 Studio Payment Terms &amp; Milestones</legend>
                 
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 18px;">
@@ -5396,8 +5396,10 @@ RAW files are not provided.`
         btn.textContent = (type === "Test Shoot" ? "Request for a Test Shoot" : "Submit Booking Request");
       }
 
+      const paymentTermsFieldset = $("#paymentTermsFieldset");
       if (type === "Test Shoot") {
         if (budgetField) budgetField.style.display = "none";
+        if (paymentTermsFieldset) paymentTermsFieldset.style.display = "none";
         if (brandOpt) {
           brandOpt.disabled = true;
           if ($("#b_role").value === "Brand") {
@@ -5406,6 +5408,7 @@ RAW files are not provided.`
         }
       } else {
         if (budgetField) budgetField.style.display = "";
+        if (paymentTermsFieldset) paymentTermsFieldset.style.display = "";
         if (brandOpt) brandOpt.disabled = false;
       }
 
