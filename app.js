@@ -1282,7 +1282,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     if (workshopLi) workshopLi.style.display = "block"; // Always show Workshop in nav
     if (calendarLi) calendarLi.style.display = active ? "block" : "none";
     if (logsLi) logsLi.style.display = active ? "block" : "none";
-    if (analyticsLi) analyticsLi.style.display = active ? "block" : "none";
+    if (analyticsLi) analyticsLi.style.display = "none";
 
     if (themeBtn) {
       themeBtn.style.display = active ? "inline-block" : "none";
@@ -5373,8 +5373,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       return;
     }
 
-    // Redirect non-admins trying to access the analytics page
-    if (key === "analytics" && !isAdmin()) {
+    // Redirect all requests to analytics page to home
+    if (key === "analytics") {
       history.pushState(null, "", "/");
       render();
       return;
