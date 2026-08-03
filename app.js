@@ -4208,7 +4208,7 @@ RAW files are not provided.`
                <div class="modal-content" style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; max-width: 680px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.15); overflow: hidden; animation: modalFadeIn 0.3s ease;">
                  <div style="padding: 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; background: var(--bone);">
                    <h3 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink);">Studio Production &amp; Liability Release</h3>
-                   <span style="font-family: var(--mono-font); font-size: 10px; background: var(--line); padding: 4px 8px; border-radius: 4px; color: var(--ink-soft);">TFP-LIABILITY-RELEASE-V3.2</span>
+                   <span style="font-family: var(--mono-font); font-size: 10px; background: var(--accent); padding: 4px 8px; border-radius: 4px; color: #fff; font-weight: 700;">TFP-LIABILITY-RELEASE-V3.3 (CURRENT)</span>
                  </div>
                  <div style="padding: 24px; overflow-y: auto; font-size: 13px; line-height: 1.6; color: var(--ink); display: flex; flex-direction: column; gap: 20px; text-align: left;">
                    <p style="margin: 0; font-family: var(--mono-font); font-size: 10px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em;">TFP Collaboration, Model Release &amp; Digital Consent Terms</p>
@@ -4259,8 +4259,14 @@ RAW files are not provided.`
                      </ul>
                    </div>
  
+                   <div style="border-left: 3px solid #b22222; padding-left: 14px; background: rgba(178,34,34,0.04);">
+                     <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700; color: #b22222;">6. UNAUTHORIZED CAMERA OPERATION, GEAR HANDS-OFF &amp; DATA PROTECTION CLAUSE</h4>
+                     <p style="margin: 0; font-weight: 500;">All raw captures, memory cards, and camera equipment remain the exclusive property and intellectual property of the Studio. Under no circumstances is a model, participant, or client permitted to touch, handle, or delete media from the photographer's camera, cards, or tethering systems.</p>
+                     <p style="margin: 6px 0 0 0; font-weight: 500;">The Studio retains sole artistic authority over image culling, selection, and deletion. Deleting or attempting to delete media from equipment constitutes a material breach of contract, resulting in immediate termination of the shoot, forfeiture of all deliverables, and potential liability for data recovery expenses.</p>
+                   </div>
+
                    <div>
-                     <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700;">6. DIGITAL CONSENT, EMAIL ACCEPTANCE &amp; BINDING NATURE</h4>
+                     <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700;">7. DIGITAL CONSENT, EMAIL ACCEPTANCE &amp; BINDING NATURE</h4>
                      <p style="margin: 0;">In accordance with standard digital contract practices, a physical or handwritten signature is not required to validate these terms. Definitive legal acceptance and a binding obligation to these conditions are established through any of the following actions:</p>
                      <ul style="margin: 6px 0 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px;">
                        <li>Sending a reply stating "I agree", "Confirmed", or equivalent confirmation over email or direct digital messaging channels.</li>
@@ -4275,7 +4281,19 @@ RAW files are not provided.`
                </div>
              </div>
 
-            <div id="bookingPolicyNotice" style="background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin-bottom: 24px; font-size: 11px; line-height: 1.5; color: var(--ink-soft); text-align: left;">
+            <div id="gearProtectionCallout" style="background: rgba(178,34,34,0.05); border: 1px solid rgba(178,34,34,0.3); border-radius: 10px; padding: 18px; margin-bottom: 20px; text-align: left;">
+             <div style="display: flex; align-items: center; gap: 8px; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: #b22222; margin-bottom: 10px;">
+               🔒 Unauthorized Data Deletion &amp; Gear Clause
+             </div>
+             <p style="font-size: 12px; color: var(--ink); margin: 0 0 8px; line-height: 1.5; font-weight: 500;">
+               "All raw captures, memory cards, and camera equipment remain the exclusive property and intellectual property of the Studio. Under no circumstances is a model, participant, or client permitted to touch, handle, or delete media from the photographer's camera, cards, or tethering systems."
+             </p>
+             <p style="font-size: 12px; color: var(--ink); margin: 0; line-height: 1.5; font-weight: 500;">
+               "The Studio retains sole artistic authority over image culling, selection, and deletion. Deleting or attempting to delete media from equipment constitutes a material breach of contract, resulting in immediate termination of the shoot, forfeiture of all deliverables, and potential liability for data recovery expenses."
+             </p>
+           </div>
+
+           <div id="bookingPolicyNotice" style="background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin-bottom: 24px; font-size: 11px; line-height: 1.5; color: var(--ink-soft); text-align: left;">
               <span style="font-family: var(--mono-font); font-size: 9px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Booking &amp; Collaboration Policy</span>
               Submission of a booking inquiry or TFP collaboration request does not constitute a confirmed session or a commitment to shoot. All inquiries are subject to schedule availability, creative brief alignment, and final studio review. <strong>Note: If a dedicated studio space is booked for the shoot, applicable studio rental charges will apply.</strong> Collaboration requests (TFP/Test Shoots) are selective and accepted at the sole discretion of the studio. Inquiries that are not explicitly approved by the studio will be considered inactive.
             </div>
