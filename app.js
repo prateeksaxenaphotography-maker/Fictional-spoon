@@ -2202,9 +2202,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       if (b.type && /anticipated|tentative|hold/i.test(b.type)) return true;
       return false;
     };
+    const isWorkshopBooking = (b) => b.status === "workshop";
+    const isAssistingBooking = (b) => b.status === "assisting";
 
-    const hasConfirmedBooking = bookings.some(b => !isTentativeBooking(b));
-    const isTentativeOnly = isBooked && !hasConfirmedBooking;
+    const hasConfirmedBooking = bookings.some(b => !isTentativeBooking(b) && !isWorkshopBooking(b) && !isAssistingBooking(b));
+    const isTentativeOnly = isBooked && !hasConfirmedBooking && bookings.some(b => isTentativeBooking(b));
+    const hasWorkshop = bookings.some(b => isWorkshopBooking(b));
+    const hasAssisting = bookings.some(b => isAssistingBooking(b));
     
     let isBlocked = false;
     if (isCustomBlocked) {
@@ -2223,6 +2227,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       isBooked,
       hasConfirmedBooking,
       isTentativeOnly,
+      hasWorkshop,
+      hasAssisting,
       bookings
     };
   }
@@ -2484,7 +2490,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         const dayClasses = ["admin-cal-day"];
         if (isPast) dayClasses.push("day-past");
         
-        if (status.hasConfirmedBooking) {
+        if (status.hasWorkshop && !status.hasConfirmedBooking) {
+          dayClasses.push("day-workshop");
+        } else if (status.hasAssisting && !status.hasConfirmedBooking) {
+          dayClasses.push("day-assisting");
+        } else if (status.hasConfirmedBooking) {
           dayClasses.push("day-booked");
         } else if (status.isTentativeOnly) {
           dayClasses.push("day-tentative");
@@ -2498,14 +2508,16 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <div class="${dayClasses.join(" ")}" data-date="${status.key}">
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
               <span class="admin-cal-num">${day}</span>
-              ${status.hasConfirmedBooking ? `<span class="admin-cal-badge badge-booked">${status.bookings.length} Booked</span>` :
+              ${status.hasWorkshop && !status.hasConfirmedBooking ? `<span class="admin-cal-badge badge-workshop">📚 Workshop</span>` :
+                status.hasAssisting && !status.hasConfirmedBooking ? `<span class="admin-cal-badge badge-assisting">🤝 Assisting</span>` :
+                status.hasConfirmedBooking ? `<span class="admin-cal-badge badge-booked">${status.bookings.length} Booked</span>` :
                 status.isTentativeOnly ? `<span class="admin-cal-badge badge-tentative">⏳ Hold (${status.bookings.length})</span>` :
                 status.isBlocked ? `<span class="admin-cal-badge badge-blocked">${status.isDefaultBlockedWeekday ? "Weekday Blocked" : "Custom Blocked"}</span>` :
                 `<span class="admin-cal-badge badge-open">Open</span>`
               }
             </div>
             <div>
-              ${status.bookings.map(b => `<div class="admin-cal-client-item" title="${esc(b.name)} - ${esc(b.type)}">${(b.isTentative || b.status === "tentative") ? "⏳" : "👤"} ${esc(b.name)}</div>`).join("")}
+              ${status.bookings.map(b => `<div class="admin-cal-client-item" title="${esc(b.name)} - ${esc(b.type)}">${b.status === "workshop" ? "📚" : b.status === "assisting" ? "🤝" : (b.isTentative || b.status === "tentative") ? "⏳" : "👤"} ${esc(b.name)}</div>`).join("")}
             </div>
           </div>
         `;
@@ -2556,7 +2568,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
             <div class="booking-card-date">📅 ${esc(b.dateKey)}</div>
             <div style="display:flex; gap:6px; align-items:center;">
-              ${(b.isTentative || b.status === "tentative") ? `<span style="background: rgba(255,152,0,0.15); border: 1px solid rgba(255,152,0,0.5); border-radius: 4px; padding: 2px 7px; font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: #f57c00;">⏳ Anticipated Hold</span>` : `<span style="background: rgba(46,125,50,0.15); border: 1px solid rgba(46,125,50,0.5); border-radius: 4px; padding: 2px 7px; font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: #2e7d32;">✓ Confirmed</span>`}
+              ${b.status === "workshop" ? `<span style="background: rgba(249,168,37,0.15); border: 1px solid rgba(249,168,37,0.5); border-radius: 4px; padding: 2px 7px; font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: #f9a825;">📚 Workshop</span>` : b.status === "assisting" ? `<span style="background: rgba(0,137,123,0.15); border: 1px solid rgba(0,137,123,0.5); border-radius: 4px; padding: 2px 7px; font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: #00897b;">🤝 Assisting</span>` : (b.isTentative || b.status === "tentative") ? `<span style="background: rgba(255,152,0,0.15); border: 1px solid rgba(255,152,0,0.5); border-radius: 4px; padding: 2px 7px; font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: #f57c00;">⏳ Anticipated Hold</span>` : `<span style="background: rgba(46,125,50,0.15); border: 1px solid rgba(46,125,50,0.5); border-radius: 4px; padding: 2px 7px; font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: #2e7d32;">✓ Confirmed</span>`}
               <span style="background:var(--bone); border:1px solid var(--line); border-radius:4px; padding:2px 7px; font-family:var(--mono-font); font-size:10px; font-weight:700; color:var(--accent);">⏱️ ${esc(b.duration || "Full Day")}</span>
             </div>
           </div>
@@ -2808,8 +2820,10 @@ RAW files are not provided.`
               </div>
               <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Booking Status
                 <select id="eb_status" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
-                  <option value="confirmed" ${(!b.isTentative && b.status !== 'tentative') ? 'selected' : ''}>✓ Confirmed Client Booking</option>
+                  <option value="confirmed" ${(!b.isTentative && b.status !== 'tentative' && b.status !== 'workshop' && b.status !== 'assisting') ? 'selected' : ''}>✓ Confirmed Client Booking</option>
                   <option value="tentative" ${(b.isTentative || b.status === 'tentative') ? 'selected' : ''}>⏳ Anticipated Client Hold (Looks Booked to Public)</option>
+                  <option value="workshop" ${b.status === 'workshop' ? 'selected' : ''}>📚 Workshop Attended (Skill-Up Day)</option>
+                  <option value="assisting" ${b.status === 'assisting' ? 'selected' : ''}>🤝 Assisting Work (Assisting Another Photographer)</option>
                 </select>
               </label>
               <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Contract Agreement &amp; Version Status
@@ -2852,6 +2866,8 @@ RAW files are not provided.`
         const duration = $("#eb_duration").value;
         const status = $("#eb_status").value;
         const isTentative = (status === "tentative");
+        const isWorkshop = (status === "workshop");
+        const isAssisting = (status === "assisting");
         const rawLinks = $("#eb_links").value.split("\n").map(s => s.trim()).filter(Boolean);
         const notes = $("#eb_notes").value.trim();
         const contractVersion = $("#eb_contractVersion").value;
@@ -2908,6 +2924,8 @@ RAW files are not provided.`
                 <select id="m_clientStatus" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;">
                   <option value="confirmed">✓ Confirmed Client Booking</option>
                   <option value="tentative">⏳ Anticipated Client Hold (Looks Booked to Public)</option>
+                  <option value="workshop">📚 Workshop Attended (Skill-Up Day)</option>
+                  <option value="assisting">🤝 Assisting Work (Assisting Another Photographer)</option>
                 </select>
               </div>
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -3011,7 +3029,9 @@ RAW files are not provided.`
         const duration = $("#m_clientDuration")?.value || "Full Day";
         const statusVal = $("#m_clientStatus")?.value || "confirmed";
         const isTentative = (statusVal === "tentative");
-        const name = rawName || (isTentative ? "Anticipated Client Hold" : "Client Booking");
+        const isWorkshop = (statusVal === "workshop");
+        const isAssisting = (statusVal === "assisting");
+        const name = rawName || (isWorkshop ? "Workshop Day" : isAssisting ? "Assisting Work" : isTentative ? "Anticipated Client Hold" : "Client Booking");
         const rawLink = $("#m_clientLinks").value.trim();
         const notes = $("#m_clientNotes").value.trim();
         const contractVersion = $("#m_clientContractVersion")?.value || "Pending Agreement";
@@ -3019,7 +3039,7 @@ RAW files are not provided.`
 
         const links = rawLink ? [rawLink] : [];
         addCalBooking(dKey, { name, email, phone, type, duration, isTentative, status: statusVal, links, notes, contractVersion, agreedToTerms });
-        toast(isTentative ? `Date ${dKey} held for ${name}! (Appears TAKEN to public)` : `Booking confirmed for ${name} on ${dKey}!`);
+        toast(isWorkshop ? `📚 Workshop day marked for ${dKey}!` : isAssisting ? `🤝 Assisting work marked for ${dKey}!` : isTentative ? `Date ${dKey} held for ${name}! (Appears TAKEN to public)` : `Booking confirmed for ${name} on ${dKey}!`);
         modalContainer.innerHTML = "";
         renderAdminGrid();
         renderRoster();
@@ -5140,7 +5160,9 @@ RAW files are not provided.`
           </div>
           <div class="dp-legend">
             <span class="dp-legend-item"><span class="dp-legend-dot dot-available"></span> Open</span>
-            <span class="dp-legend-item"><span class="dp-legend-dot dot-booked"></span> Date Taken</span>
+            <span class="dp-legend-item"><span class="dp-legend-dot dot-booked"></span> Date Booked</span>
+            <span class="dp-legend-item"><span class="dp-legend-dot dot-workshop"></span> Workshop</span>
+            <span class="dp-legend-item"><span class="dp-legend-dot dot-assisting"></span> Assisting</span>
             <span class="dp-legend-item"><span class="dp-legend-dot dot-blocked"></span> Mon–Fri Blocked</span>
           </div>
           <div class="dp-nav">
@@ -5169,9 +5191,17 @@ RAW files are not provided.`
           if (past) {
             classes.push("dp-past");
           } else {
-            if (status.isBooked) {
+            if (status.hasWorkshop && !status.hasConfirmedBooking) {
+              classes.push("dp-booked", "dp-workshop");
+              titleAttr = "Unavailable: Booked for Workshop (Skill-Up Day)";
+              isCellDisabled = true;
+            } else if (status.hasAssisting && !status.hasConfirmedBooking) {
+              classes.push("dp-booked", "dp-assisting");
+              titleAttr = "Unavailable: Booked for Assisting Work";
+              isCellDisabled = true;
+            } else if (status.isBooked) {
               classes.push("dp-booked");
-              titleAttr = "Unavailable: This date is taken by another client";
+              titleAttr = "Unavailable: This date is booked by another client";
             } else if (status.isBlocked) {
               classes.push("dp-blocked");
               titleAttr = status.isDefaultBlockedWeekday ? "Weekday Blocked (Mon–Fri default)" : "Custom Blocked";
