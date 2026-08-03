@@ -2366,6 +2366,74 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           </div>
           <div id="bookingRosterGrid" class="booking-roster-grid"></div>
         </div>
+
+        <!-- Studio Contract & Legal Vault Archive -->
+        <div class="contract-archive-sec" style="margin-top: 48px; border-top: 1px solid var(--line); padding-top: 36px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
+            <div>
+              <p class="eyebrow" style="margin-bottom: 4px; color: var(--accent);">Legal Compliance &amp; Version Control</p>
+              <h2 style="font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 700; margin: 0;">📜 Studio Contract &amp; Terms Vault</h2>
+            </div>
+            <span style="font-family: var(--mono-font); font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 4px 10px; border-radius: 4px; border: 1px solid var(--accent);">5 Historical Contract Versions Preserved</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
+            <!-- V3.2 Current -->
+            <div style="background: var(--paper); border: 1px solid var(--accent); border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm);">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-family: var(--mono-font); font-size: 10px; background: var(--accent); color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.2 (ACTIVE CURRENT)</span>
+                <span style="font-size: 11px; color: var(--ink-soft); font-family: var(--mono-font);">Aug 2026 – Present</span>
+              </div>
+              <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 12px 0 6px;">Studio Release &amp; Payment Terms V3.2</h3>
+              <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Includes 50/50 &amp; 50/30/20 non-refundable milestone payments, explicit RAW file delivery exclusion, Instagram Co-Author workflow, and physical liability release.</p>
+              <button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.2')" style="font-size: 11px; width: 100%; font-weight: 700;">👁 Review Full Contract V3.2</button>
+            </div>
+
+            <!-- V3.1 -->
+            <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-family: var(--mono-font); font-size: 10px; background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.1 (ARCHIVED)</span>
+                <span style="font-size: 11px; color: var(--ink-soft); font-family: var(--mono-font);">May 2026 – Jul 2026</span>
+              </div>
+              <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 12px 0 6px;">TFP Production &amp; Portfolio Release V3.1</h3>
+              <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Standard TFP portfolio licensing, model release, basic liability waiver, and mandatory credit block requirement.</p>
+              <button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('V3.1')" style="font-size: 11px; width: 100%; font-weight: 700;">👁 Review Contract V3.1</button>
+            </div>
+
+            <!-- V3.0 -->
+            <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-family: var(--mono-font); font-size: 10px; background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.0 (ARCHIVED)</span>
+                <span style="font-size: 11px; color: var(--ink-soft); font-family: var(--mono-font);">Jan 2026 – Apr 2026</span>
+              </div>
+              <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 12px 0 6px;">Creative Collab &amp; Release V3.0</h3>
+              <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Initial Time-For-Print collab structure, non-exclusive social media usage license, and studio rules.</p>
+              <button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('V3.0')" style="font-size: 11px; width: 100%; font-weight: 700;">👁 Review Contract V3.0</button>
+            </div>
+
+            <!-- V2.0 -->
+            <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-family: var(--mono-font); font-size: 10px; background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V2.0 (ARCHIVED)</span>
+                <span style="font-size: 11px; color: var(--ink-soft); font-family: var(--mono-font);">Jun 2025 – Dec 2025</span>
+              </div>
+              <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 12px 0 6px;">Studio Model Release V2.0</h3>
+              <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Early model release agreement covering digital distribution, copyright ownership, and promo usage.</p>
+              <button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('V2.0')" style="font-size: 11px; width: 100%; font-weight: 700;">👁 Review Contract V2.0</button>
+            </div>
+
+            <!-- V1.0 -->
+            <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-family: var(--mono-font); font-size: 10px; background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V1.0 (ARCHIVED)</span>
+                <span style="font-size: 11px; color: var(--ink-soft); font-family: var(--mono-font);">Jan 2025 – May 2025</span>
+              </div>
+              <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 12px 0 6px;">Basic Photography Release V1.0</h3>
+              <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Foundational photo release and copyright acknowledgment for early studio testing.</p>
+              <button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('V1.0')" style="font-size: 11px; width: 100%; font-weight: 700;">👁 Review Contract V1.0</button>
+            </div>
+          </div>
+        </div>
       </section>
       <div id="dateAdminModalContainer"></div>
     `;
@@ -2504,7 +2572,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               </div>
             </div>
           ` : ""}
-          <div style="margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap;">
+          <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--line); font-size: 11px; color: var(--ink-soft); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
+            <span>📜 <strong>Agreed Term:</strong> ${esc(b.contractVersion || "V3.2")}</span>
+            <button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('${b.contractVersion || "V3.2"}')" style="font-size: 9px; padding: 3px 8px;">View Terms Text ↗</button>
+          </div>
+          <div style="margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap;">
             <button type="button" class="admin-cal-btn primary" onclick="window.openEditBookingModal('${b.dateKey}', '${b.id}')" style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 14px; background: var(--accent); color: #fff; border: 1px solid var(--accent); border-radius: 4px; cursor: pointer;">✏️ Edit Booking</button>
             <button type="button" class="admin-cal-btn" onclick="window.removeBookingFromRoster('${b.dateKey}', '${b.id}')" style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 14px; color: #ff4d4d; border: 1px solid rgba(255,77,77,0.4); background: rgba(255,77,77,0.1); border-radius: 4px; cursor: pointer;">Cancel Booking</button>
           </div>
@@ -2519,6 +2591,133 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         renderAdminGrid();
         updateAdminReminders();
       }
+    };
+
+    window.WPS_CONTRACT_ARCHIVE = {
+      "V3.2": {
+        version: "V3.2",
+        title: "Studio Release, Liability Waiver & Payment Terms V3.2",
+        effectiveDate: "August 2026 – Present",
+        status: "Active / Current",
+        summary: "Current studio terms including 50/50 & 50/30/20 non-refundable milestone payments, explicit RAW file exclusion clause, Instagram Co-Author workflow, and physical safety liability release.",
+        fullText: `1. SCOPE OF CREATIVE COLLABORATION
+This session is scheduled as a peer-to-peer creative collaboration structured for mutual portfolio growth, asset curation, and personal branding advancement. No monetary compensation is required or exchanged for photographer or model services. The Studio provides specialized equipment, lighting architecture, workspace, and post-production engineering; the Participant(s) provide technical modeling direction, personal wardrobe, and makeup artistry. Note: If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges.
+
+2. INTELLECTUAL PROPERTY, MODEL RELEASE & USAGE LICENSE
+The legal copyright of all visual media remains exclusively with the Studio. To support mutual growth and portfolio building, all participants are granted a full non-exclusive license to publish, share, and use final retouched photos for personal self-promotion, social media grids (Instagram/TikTok), personal websites, and agency portfolios.
+No Alterations: To preserve the lighting design and capture integrity, no party shall apply secondary mobile filters, automated presets, cropping adjustments, or third-party digital modifications to the delivered files.
+
+3. COMPREHENSIVE LIABILITY WAIVER & INDEMNIFICATION
+CRITICAL SAFETY & LIABILITY RELEASE: The Participant enters the studio environment, uses studio blocks, cubes, chairs, furniture, or props, and performs physical poses entirely at their own risk. The Studio shall not be held liable for any physical injury, illness, accident, psychological distress, property damage, or clothing wear-and-tear incurred before, during, or after this production. The Participant explicitly waives any right to seek damages or legal recourse against the Studio or its operating photographers for accidents or injuries occurring on the premises.
+Furthermore, the Participant agrees to indemnify and hold harmless the Studio from any claims, damages, liabilities, or legal expenses arising out of the Participant’s conduct or injuries on set.
+
+4. TECHNICAL PERFORMANCE, PAYMENT MILESTONES & DELIVERY DISCLAIMER
+As a creative collaboration, the Studio offers no guarantees regarding the exact number of final images delivered, the specific turnaround time, or the subjective artistic satisfaction of the deliverables. The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered to the Participant, unless otherwise agreed upon in writing for an additional fee.
+Payment Terms: Standard bookings require a 50% advance retainer prior to shoot day start (non-refundable) and 50% final balance after shoot wrap prior to retouched file release (non-refundable). Commercial campaign bookings follow a 50/30/20 milestone structure.
+
+5. MANDATORY ALL-PARTY ATTRIBUTION WORKFLOW
+To ensure creative transparency, all parties agree to execute the following mandatory publishing workflow:
+- Instagram Collaboration Feature: For all primary feed or grid publications, the publishing party must issue an Instagram Co-Author Collaboration Invite to @nerdyphotographer.in prior to publishing.
+- Full Production Credits Block: Every party publishing an asset must explicitly credit all contributors in the caption:
+  📷 Photography & Light Design: @nerdyphotographer.in
+  👤 Model / Talent: @[Handle]
+  💄 Makeup Artist / MUA: @[Handle]
+  👔 Styling / Wardrobe: @[Handle]
+
+6. DIGITAL CONSENT & BINDING ACCEPTANCE
+In accordance with standard digital contract practices, physical signatures are not required. Legal acceptance is established by replying with confirmation over email/DM or entering the studio workspace following receipt of these terms.`
+      },
+      "V3.1": {
+        version: "V3.1",
+        title: "TFP Production & Portfolio Release V3.1",
+        effectiveDate: "May 2026 – July 2026",
+        status: "Archived",
+        summary: "Standard TFP portfolio licensing, model release, basic liability waiver, and mandatory credit block requirement.",
+        fullText: `1. COLLABORATION & SCOPE
+Creative portfolio collaboration between Studio and Model. Time-for-print (TFP) structure with no cash exchange for talent fees.
+
+2. COPYRIGHT & MODEL RELEASE
+Studio retains exclusive copyright. Participants receive a non-exclusive license for personal portfolio & social media usage. No third-party commercial reselling permitted without written studio consent.
+
+3. LIABILITY RELEASE
+Participants use studio facilities and equipment at their own risk. Studio is indemnified against personal injury or property damage.
+
+4. DELIVERABLES
+Delivered retouched files only. No unedited RAW camera files are provided.
+
+5. CREDITS
+All published photos on Instagram/social media must tag and credit @nerdyphotographer.in.`
+      },
+      "V3.0": {
+        version: "V3.0",
+        title: "Creative Collab & Release V3.0",
+        effectiveDate: "January 2026 – April 2026",
+        status: "Archived",
+        summary: "Initial Time-For-Print collab structure, non-exclusive social media usage license, and studio rules.",
+        fullText: `1. TFP SESSION TERMS
+Session is organized on mutual agreement. Retouched images provided for Instagram & agency web submission.
+
+2. COPYRIGHT OWNERSHIP
+All images remain copyright of the photographer. Model granted personal use rights.
+
+3. NO RAW FILES
+Raw images remain studio property and will not be released.`
+      },
+      "V2.0": {
+        version: "V2.0",
+        title: "Studio Model Release V2.0",
+        effectiveDate: "June 2025 – December 2025",
+        status: "Archived",
+        summary: "Early model release agreement covering digital distribution, copyright ownership, and promo usage.",
+        fullText: `1. MODEL CONSENT
+Model grants photographer permission to capture and publish photographs for portfolio and promotional display.
+
+2. LICENSE & USAGE
+Model may post edited files on personal social media with photographer credit.`
+      },
+      "V1.0": {
+        version: "V1.0",
+        title: "Basic Photography Release V1.0",
+        effectiveDate: "January 2025 – May 2025",
+        status: "Archived",
+        summary: "Foundational photo release and copyright acknowledgment for early studio testing.",
+        fullText: `1. BASIC RELEASE
+Participant agrees to photography session and allows photo usage for photographer portfolio.`
+      }
+    };
+
+    window.openContractArchiveModal = function(ver) {
+      const contract = window.WPS_CONTRACT_ARCHIVE[ver] || window.WPS_CONTRACT_ARCHIVE["V3.2"];
+      let modal = document.getElementById("contractArchiveModal");
+      if (!modal) {
+        modal = document.createElement("div");
+        modal.id = "contractArchiveModal";
+        modal.className = "modal-overlay";
+        modal.style.cssText = "position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; padding: 20px;";
+        document.body.appendChild(modal);
+      }
+
+      modal.innerHTML = `
+        <div class="modal-content" style="background: var(--paper); border: 1px solid var(--line); border-radius: 14px; max-width: 720px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: var(--shadow); overflow: hidden; animation: modalFadeIn 0.3s ease;">
+          <div style="padding: 20px 24px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; background: var(--bone);">
+            <div>
+              <h3 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 17px; font-weight: 700; color: var(--ink);">${esc(contract.title)}</h3>
+              <div style="font-size: 11px; color: var(--ink-soft); margin-top: 2px; font-family: var(--mono-font);">Effective: <strong>${esc(contract.effectiveDate)}</strong> · Status: <span style="color: var(--accent); font-weight:700;">${esc(contract.status)}</span></div>
+            </div>
+            <button type="button" onclick="document.getElementById('contractArchiveModal').style.display='none'" style="background:none; border:none; font-size: 20px; color: var(--ink-soft); cursor:pointer;">✕</button>
+          </div>
+          <div style="padding: 24px; overflow-y: auto; font-size: 13px; line-height: 1.6; color: var(--ink); text-align: left;">
+            <div style="background: var(--bone); border: 1px solid var(--line); padding: 12px 16px; border-radius: 8px; font-size: 12px; margin-bottom: 20px; color: var(--ink);">
+              <strong>Vault Archive Summary:</strong> ${esc(contract.summary)}
+            </div>
+            <pre style="white-space: pre-wrap; font-family: inherit; font-size: 13px; line-height: 1.6; margin: 0; color: var(--ink);">${esc(contract.fullText)}</pre>
+          </div>
+          <div style="padding: 16px 24px; border-top: 1px solid var(--line); background: var(--bone); display: flex; justify-content: flex-end;">
+            <button type="button" class="admin-cal-btn primary" onclick="document.getElementById('contractArchiveModal').style.display='none'">Close Vault Viewer</button>
+          </div>
+        </div>
+      `;
+      modal.style.display = "flex";
     };
 
     window.openEditBookingModal = (dKey, bookingId) => {
