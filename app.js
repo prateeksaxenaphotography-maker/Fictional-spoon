@@ -7410,7 +7410,7 @@ RAW files are not provided.`
     // Hide duplicate pre-footer CTA banner on /book and /upload pages
     const footerCta = $(".footer-cta");
     if (footerCta) {
-      if (path === "/book" || path === "/upload") {
+      if (location.pathname === "/book" || location.pathname === "/upload") {
         footerCta.style.display = "none";
       } else {
         footerCta.style.display = "";
