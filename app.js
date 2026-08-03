@@ -2164,6 +2164,16 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     const isCustomBlocked = !!(settings.customBlockedDates && settings.customBlockedDates[key]);
     const bookings = (settings.bookedDates && settings.bookedDates[key]) || [];
     const isBooked = bookings.length > 0;
+
+    const isTentativeBooking = (b) => {
+      if (b.isTentative || b.status === "tentative") return true;
+      if (b.name && /anticipated|tentative|hold/i.test(b.name)) return true;
+      if (b.type && /anticipated|tentative|hold/i.test(b.type)) return true;
+      return false;
+    };
+
+    const hasConfirmedBooking = bookings.some(b => !isTentativeBooking(b));
+    const isTentativeOnly = isBooked && !hasConfirmedBooking;
     
     let isBlocked = false;
     if (isCustomBlocked) {
@@ -2180,6 +2190,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       isCustomBlocked,
       isBlocked,
       isBooked,
+      hasConfirmedBooking,
+      isTentativeOnly,
       bookings
     };
   }
