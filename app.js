@@ -5497,6 +5497,13 @@ RAW files are not provided.`
         // a COMPACT body without the release: embedding the full release used
         // to blow past browser URL length limits, so for test shoots the mail
         // app silently refused to open at all.
+        const is3StepActive = $("#flowchart3Step") && $("#flowchart3Step").style.display !== "none";
+        const paymentTermsText = is3StepActive ?
+          `Payment Terms: 3-Tier Campaign Milestones (50% Advance Retainer before shoot day start [non-refundable]; 30% Review Milestone after shoot before proofing gallery [non-refundable]; 20% Final Release before high-res deliverables)` :
+          `Payment Terms: Standard 50/50 Milestones (50% Advance Retainer before shoot day start [non-refundable]; 50% Final Balance after shoot wrap before retouched file release [non-refundable])`;
+
+        const cleanBudget = (budget && budget !== "Not Decided" && budget !== "TBD") ? `Budget Range: ${budget}\n` : "";
+
         const compactBody =
           `Shoot Booking Details:\n\n` +
           `Name: ${name}\n` +
@@ -5507,7 +5514,8 @@ RAW files are not provided.`
           `Shoot Type: ${type}\n` +
           `Proposed Date: ${date}\n` +
           `Location Pref: ${locationVal}\n` +
-          `Budget Range: ${budget}\n` +
+          cleanBudget +
+          (type !== "Test Shoot" ? `${paymentTermsText}\n` : "") +
           `Moodboard Link: ${moodboard || '—'}\n` +
           (agreedToTerms ? `TFP Release terms: Agreed (TFP-LIABILITY-RELEASE-V3.2)\nRead online: https://www.nerdyphotographer.in/book/#tfp-terms\n\n` : `\n`) +
           `Concept/Vision:\n${concept || '—'}`;
