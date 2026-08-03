@@ -4084,15 +4084,13 @@ RAW files are not provided.`
              <fieldset>
                <legend>Shoot Details</legend>
                <div class="field-row">
-                 <label class="field"><span>Desired Project Type *</span>
+                 <label class="field"><span>Desired Project Type (Includes Test Shoots / TFP) *</span>
                    <select id="b_type">
                      <option value="Fashion Editorial" ${isSelected("Fashion Editorial")}>Fashion Editorial</option>
                      <option value="Fitness &amp; Athletic" ${isSelected("Fitness &amp; Athletic")}>Fitness &amp; Athletic</option>
                      <option value="Sports Action" ${isSelected("Sports Action")}>Sports Action</option>
                      <option value="Commercial Campaign" ${isSelected("Commercial Campaign")}>Commercial Campaign</option>
-                     <option value="Test Shoot" ${isSelected("Test Shoot")}>Test Shoot (TFP Collab)</option>
-                     <option value="Workshop Attended" ${isSelected("Workshop Attended")}>📚 Workshop Attended (Skill-Up Day)</option>
-                     <option value="Assisting Work" ${isSelected("Assisting Work")}>🤝 Assisting Work (Assisting Photographer)</option>
+                     <option value="Test Shoot" ${isSelected("Test Shoot")}>📸 TEST SHOOT / TFP COLLAB (Selective Portfolio Collab)</option>
                      <option value="Other" ${isSelected("Other")}>Other Focus Area</option>
                    </select>
                    <div id="b_type_notice" style="font-size: 11px; color: var(--accent); margin-top: 5px; font-family: var(--mono-font); display: none;">
