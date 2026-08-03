@@ -4727,7 +4727,15 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               const dObj = new Date(pStr);
               if (!isNaN(dObj.getTime())) {
                 const dKey = getCalDateKey(dObj);
-                addCalBooking(dKey, { name, email, phone, type, notes: `Location: ${locationVal} | Budget: ${budget}` });
+                addCalBooking(dKey, {
+                  name,
+                  email,
+                  phone,
+                  type,
+                  links: typeof getFormLinks === "function" ? getFormLinks() : [],
+                  attachments: typeof attachedFiles !== "undefined" ? attachedFiles : [],
+                  notes: `Location: ${locationVal} | Budget: ${budget}`
+                });
               }
             });
           }
