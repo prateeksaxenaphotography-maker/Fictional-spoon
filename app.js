@@ -3321,15 +3321,15 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                <div class="modal-content" style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; max-width: 680px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.15); overflow: hidden; animation: modalFadeIn 0.3s ease;">
                  <div style="padding: 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; background: var(--bone);">
                    <h3 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink);">Studio Production &amp; Liability Release</h3>
-                   <span style="font-family: var(--mono-font); font-size: 10px; background: var(--line); padding: 4px 8px; border-radius: 4px; color: var(--ink-soft);">TFP-LIABILITY-RELEASE-V3</span>
+                   <span style="font-family: var(--mono-font); font-size: 10px; background: var(--line); padding: 4px 8px; border-radius: 4px; color: var(--ink-soft);">TFP-LIABILITY-RELEASE-V3.2</span>
                  </div>
                  <div style="padding: 24px; overflow-y: auto; font-size: 13px; line-height: 1.6; color: var(--ink); display: flex; flex-direction: column; gap: 20px; text-align: left;">
                    <p style="margin: 0; font-family: var(--mono-font); font-size: 10px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em;">TFP Collaboration, Model Release &amp; Digital Consent Terms</p>
                    
                    <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 14px; font-size: 11px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px;">
-                     <div><strong>Studio/Photographer:</strong> nerdyphotographer.in studios</div>
+                     <div><strong>Studio/Photographer:</strong> nerdyphotographer.in</div>
                      <div><strong>Creative Partner/Model:</strong> <span id="terms_partner_name">[Your Name]</span></div>
-                     <div><strong>Business Handle:</strong> @thenerdyphotographer.in</div>
+                     <div><strong>Business Handle:</strong> @nerdyphotographer.in</div>
                      <div><strong>Consent Tracking:</strong> Verified via Email / Digital Acknowledgment</div>
                      <div><strong>Production Status:</strong> Time-For-Print (TFP) Collab</div>
                      <div><strong>Location:</strong> Studio Production Space</div>
@@ -3337,7 +3337,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
  
                    <div>
                      <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700;">1. SCOPE OF CREATIVE COLLABORATION</h4>
-                     <p style="margin: 0;">This session is scheduled as a peer-to-peer creative collaboration structured for mutual portfolio growth, asset curation, and personal branding advancement. No monetary compensation is required or exchanged for photographer or model services. The Studio provides specialized equipment, lighting architecture, workspace, and post-production engineering; the Participant(s) provide technical modeling direction, personal wardrobe, and makeup artistry. <em>Note: If a dedicated studio space is booked for the shoot, applicable studio rental charges will apply.</em></p>
+                     <p style="margin: 0;">This session is scheduled as a peer-to-peer creative collaboration structured for mutual portfolio growth, asset curation, and personal branding advancement. No monetary compensation is required or exchanged for photographer or model services. The Studio provides specialized equipment, lighting architecture, workspace, and post-production engineering; the Participant(s) provide technical modeling direction, personal wardrobe, and makeup artistry. <em>Note: If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges.</em></p>
                    </div>
  
                    <div>
@@ -3354,17 +3354,17 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
  
                    <div>
                      <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700;">4. TECHNICAL PERFORMANCE &amp; DELIVERY DISCLAIMER</h4>
-                     <p style="margin: 0;">As a creative collaboration, the Studio offers no guarantees regarding the exact number of final images delivered, the specific turnaround time, or the subjective artistic satisfaction of the deliverables. The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered to the Participant.</p>
+                     <p style="margin: 0;">As a creative collaboration, the Studio offers no guarantees regarding the exact number of final images delivered, the specific turnaround time, or the subjective artistic satisfaction of the deliverables. The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered to the Participant, unless otherwise agreed upon in writing for an additional fee.</p>
                    </div>
  
                    <div>
                      <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700;">5. MANDATORY ALL-PARTY ATTRIBUTION WORKFLOW</h4>
                      <p style="margin: 0 0 6px 0;">To ensure creative transparency, all parties agree to execute the following mandatory publishing workflow:</p>
                      <ul style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px;">
-                       <li><strong>Instagram Collaboration Feature:</strong> For all primary feed or grid publications, the publishing party must issue an Instagram Co-Author Collaboration Invite to <strong>@thenerdyphotographer.in</strong> prior to publishing.</li>
+                       <li><strong>Instagram Collaboration Feature:</strong> For all primary feed or grid publications, the publishing party must issue an Instagram Co-Author Collaboration Invite to <strong>@nerdyphotographer.in</strong> prior to publishing.</li>
                        <li><strong>Full Production Credits Block:</strong> Every party publishing an asset must explicitly credit all contributors in the caption. In formats where joint collaboration tools are restricted, a comprehensive credit block must be placed within the first three lines of the caption body text as follows:
                          <pre style="margin: 6px 0; background: var(--bone); padding: 8px; border-radius: 4px; font-family: monospace; font-size: 11px; white-space: pre-wrap; line-height: 1.4;">
-📷 Photography &amp; Light Design: @thenerdyphotographer.in
+📷 Photography &amp; Light Design: @nerdyphotographer.in
 👤 Model / Talent: @[Handle]
 💄 Makeup Artist / MUA: @[Handle]
 👔 Styling / Wardrobe: @[Handle]</pre>
@@ -4619,17 +4619,17 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           `\n\n==================================================\n` +
           `STUDIO PRODUCTION & LIABILITY RELEASE\n` +
           `TFP COLLABORATION, MODEL RELEASE & DIGITAL CONSENT TERMS\n` +
-          `Document Reference: TFP-LIABILITY-RELEASE-V3\n` +
+          `Document Reference: TFP-LIABILITY-RELEASE-V3.2\n` +
           `--------------------------------------------------\n` +
-          `Studio/Photographer: nerdyphotographer.in studios\n` +
+          `Studio/Photographer: nerdyphotographer.in\n` +
           `Creative Partner/Model: ${name}\n` +
-          `Business Handle: @thenerdyphotographer.in\n` +
+          `Business Handle: @nerdyphotographer.in\n` +
           `Consent Tracking: Verified via Email / Digital Acknowledgment\n` +
           `Production Status: Time-For-Print (TFP) Collab\n` +
           `Location: Studio Production Space\n` +
           `--------------------------------------------------\n\n` +
           `1. SCOPE OF CREATIVE COLLABORATION\n` +
-          `This session is scheduled as a peer-to-peer creative collaboration structured for mutual portfolio growth, asset curation, and personal branding advancement. No monetary compensation is required or exchanged. The Studio provides specialized equipment, lighting architecture, workspace, and post-production engineering; the Participant(s) provide technical modeling direction, personal wardrobe, and makeup artistry.\n\n` +
+          `This session is scheduled as a peer-to-peer creative collaboration structured for mutual portfolio growth, asset curation, and personal branding advancement. No monetary compensation is required or exchanged for photographer or model services. The Studio provides specialized equipment, lighting architecture, workspace, and post-production engineering; the Participant(s) provide technical modeling direction, personal wardrobe, and makeup artistry. Note: If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges.\n\n` +
           `2. INTELLECTUAL PROPERTY, MODEL RELEASE & INTEGRITY\n` +
           `The legal copyright of all visual media remains exclusively with the Studio. The Participant hereby grants the Studio the absolute, irrevocable right to use, publish, and distribute the images for portfolio, promotional, or web display. All parties are granted a non-exclusive license to use final retouched files for personal self-promotion on social media grids and personal websites.\n` +
           `* No Alterations: To preserve the lighting design and capture integrity, no party shall apply secondary mobile filters, automated presets, cropping adjustments, or third-party digital modifications to the delivered files.\n\n` +
@@ -4637,12 +4637,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           `CRITICAL SAFETY & LIABILITY RELEASE: The Participant enters the studio environment, uses studio blocks, cubes, chairs, furniture, or props, and performs physical poses entirely at their own risk. The Studio shall not be held liable for any physical injury, illness, accident, psychological distress, property damage, or clothing wear-and-tear incurred before, during, or after this production. The Participant explicitly waives any right to seek damages or legal recourse against the Studio or its operating photographers for accidents or injuries occurring on the premises.\n` +
           `Furthermore, the Participant agrees to indemnify and hold harmless the Studio from any claims, damages, liabilities, or legal expenses arising out of the Participant's conduct or injuries on set.\n\n` +
           `4. TECHNICAL PERFORMANCE & DELIVERY DISCLAIMER\n` +
-          `As a creative collaboration, the Studio offers no guarantees regarding the exact number of final images delivered, the specific turnaround time, or the subjective artistic satisfaction of the deliverables. The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered to the Participant.\n\n` +
+          `As a creative collaboration, the Studio offers no guarantees regarding the exact number of final images delivered, the specific turnaround time, or the subjective artistic satisfaction of the deliverables. The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered to the Participant, unless otherwise agreed upon in writing for an additional fee.\n\n` +
           `5. MANDATORY ALL-PARTY ATTRIBUTION WORKFLOW\n` +
           `To ensure creative transparency, all parties agree to execute the following mandatory publishing workflow:\n` +
-          `• Instagram Collaboration Feature: For all primary feed or grid publications, the publishing party must issue an Instagram Co-Author Collaboration Invite to @thenerdyphotographer.in prior to publishing.\n` +
+          `• Instagram Collaboration Feature: For all primary feed or grid publications, the publishing party must issue an Instagram Co-Author Collaboration Invite to @nerdyphotographer.in prior to publishing.\n` +
           `• Full Production Credits Block: Every party publishing an asset must explicitly credit all contributors in the caption:\n` +
-          `  📷 Photography & Light Design: @thenerdyphotographer.in\n` +
+          `  📷 Photography & Light Design: @nerdyphotographer.in\n` +
           `  👤 Model / Talent: @[Handle]\n` +
           `  💄 Makeup Artist / MUA: @[Handle]\n` +
           `  👔 Styling / Wardrobe: @[Handle]\n\n` +
@@ -4653,7 +4653,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           `nerdyphotographer.in studios\n` +
           `Digital Operations & Production Management\n` +
           `--------------------------------------------------\n` +
-          `DIGITAL AGREEMENT SIGNED: The Participant (${name}) has read and agreed to the terms of the Studio Production & Liability Release (TFP-LIABILITY-RELEASE-V3) by submitting this booking request.\n` +
+          `DIGITAL AGREEMENT SIGNED: The Participant (${name}) has read and agreed to the terms of the Studio Production & Liability Release (TFP-LIABILITY-RELEASE-V3.2) by submitting this booking request.\n` +
           `==================================================`
         ) : "";
 
@@ -4674,7 +4674,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           `Location Pref: ${locationVal}\n` +
           `Budget Range: ${budget}\n` +
           `Moodboard Link: ${moodboard || '—'}\n` +
-          (agreedToTerms ? `TFP Release terms: Agreed (TFP-LIABILITY-RELEASE-V3)\nRead online: https://www.nerdyphotographer.in/book/#tfp-terms\n\n` : `\n`) +
+          (agreedToTerms ? `TFP Release terms: Agreed (TFP-LIABILITY-RELEASE-V3.2)\nRead online: https://www.nerdyphotographer.in/book/#tfp-terms\n\n` : `\n`) +
           `Concept/Vision:\n${concept || '—'}`;
         const inquiryBody = compactBody + tfpReleaseText;
         const plainTextBody = `To: ${studioEmail}\nSubject: Shoot Booking Request — ${name}\n\n` + inquiryBody;
@@ -4720,7 +4720,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             if (msgEl) {
               if (sentDirectly) {
                 msgEl.innerHTML = `<strong style="color: var(--accent);">Request sent!</strong> Your booking inquiry has been delivered straight to the studio — no further action needed. We'll reply to <strong>${esc(email)}</strong>.` +
-                  (agreedToTerms ? `<br/><br/><strong style="color: var(--accent);">Release Agreed:</strong> Your acceptance of the <em>Studio Production &amp; Liability Release</em> (TFP-LIABILITY-RELEASE-V3) was recorded with the request.` : "") +
+                  (agreedToTerms ? `<br/><br/><strong style="color: var(--accent);">Release Agreed:</strong> Your acceptance of the <em>Studio Production &amp; Liability Release</em> (TFP-LIABILITY-RELEASE-V3.2) was recorded with the request.` : "") +
                   `<br/><br/><span style="opacity: 0.8;">Want a copy for your own records? The buttons below open the same inquiry in your email app.</span>`;
               } else if (agreedToTerms) {
                 msgEl.innerHTML = `Your booking inquiry is ready in your email app — please hit <strong>Send</strong> in your mail client to complete the request. <br/><br/><strong style="color: var(--accent);">Release Agreed:</strong> Your acceptance of the <em>Studio Production &amp; Liability Release</em> is noted in the email; the full terms text is included in the copy block below for your records.`;
@@ -4756,7 +4756,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           "Budget Range": budget,
           "Moodboard Link": moodboard || "—",
           "Concept / Vision": concept || "—",
-          "TFP Release": agreedToTerms ? "AGREED — TFP-LIABILITY-RELEASE-V3 (full text below)" : "Not applicable",
+          "TFP Release": agreedToTerms ? "AGREED — TFP-LIABILITY-RELEASE-V3.2 (full text below)" : "Not applicable",
         };
         if (agreedToTerms) relayFields["Release Full Text"] = tfpReleaseText.trim();
 
