@@ -1434,20 +1434,40 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   }
 
   function initAdminControls() {
-    adminBtn?.addEventListener("click", async () => {
+    const toggleAdminModeState = async () => {
       const turningOn = !isAdmin();
       if (turningOn) {
         const code = prompt("Enter admin passcode to enable Admin Mode:");
+        if (!code) return;
         if (!(await verifyAdminPasscode(code))) {
           alert("Incorrect passcode.");
           return;
         }
+        localStorage.setItem("wps-admin-authorized", "1");
       }
       sessionStorage.setItem("wps-admin", turningOn ? "1" : "0");
       await loadShoots();
       updateAdminBtn();
       toast(`Admin Mode ${isAdmin() ? "enabled" : "disabled"}.`);
       render();
+    };
+
+    adminBtn?.addEventListener("click", toggleAdminModeState);
+
+    // Secret trigger: 3 quick taps/clicks on footer copyright or notice unlocks Admin Mode directly!
+    let secretClickCount = 0;
+    let secretClickTimer = null;
+    document.addEventListener("click", (e) => {
+      if (e.target.closest("#footerCopyright") || e.target.closest("#footerNotice")) {
+        secretClickCount++;
+        if (secretClickTimer) clearTimeout(secretClickTimer);
+        if (secretClickCount >= 3) {
+          secretClickCount = 0;
+          toggleAdminModeState();
+        } else {
+          secretClickTimer = setTimeout(() => { secretClickCount = 0; }, 800);
+        }
+      }
     });
 
     themeBtn?.addEventListener("click", () => {
