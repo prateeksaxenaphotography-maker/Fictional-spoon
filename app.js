@@ -7376,6 +7376,16 @@ RAW files are not provided.`
       fl.push(`<a href="${cfg.email ? `mailto:${cfg.email}` : '#'}" aria-label="Email">Email</a>`);
       footerSocials.innerHTML = fl.join("");
     }
+
+    // Hide duplicate pre-footer CTA banner on /book and /upload pages
+    const footerCta = $(".footer-cta");
+    if (footerCta) {
+      if (path === "/book" || path === "/upload") {
+        footerCta.style.display = "none";
+      } else {
+        footerCta.style.display = "";
+      }
+    }
   }
 
   (async function boot() {

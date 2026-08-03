@@ -1572,3 +1572,36 @@ main:focus { outline: none; }
   padding: 0 6px;
 }
 
+/* ---------- Mobile Responsive Polish for Booking Form ---------- */
+@media (max-width: 680px) {
+  .shoot-form fieldset {
+    padding: 16px;
+    gap: 14px;
+    border-radius: 10px;
+  }
+  .field-row {
+    grid-template-columns: 1fr !important;
+    gap: 12px;
+  }
+  .field input, .field select, .field textarea {
+    font-size: 13px;
+    padding: 10px 12px;
+    max-width: 100%;
+    text-overflow: ellipsis;
+  }
+  .field select option {
+    font-size: 12px;
+  }
+  #bookingPolicyNotice, #b_type_notice {
+    padding: 12px;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .book-wrap {
+    padding: 0 4px;
+  }
+  .site-footer {
+    padding-bottom: 40px;
+  }
+}
+
