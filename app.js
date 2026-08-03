@@ -1359,7 +1359,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       banner.innerHTML = `
         <div class="reminder-text">
           <span class="reminder-badge">${esc(nextShoot.dayLabel)}</span>
-          <span><strong>Next Shoot:</strong> ${esc(nextShoot.dateKey)} — <strong>${esc(nextShoot.name)}</strong> (${esc(nextShoot.type || "Shoot")})</span>
+          <span><strong>Next Shoot:</strong> ${esc(nextShoot.dateKey)} — <strong>${esc(nextShoot.name)}</strong> (${esc(nextShoot.type || "Shoot")} · ⏱️ ${esc(nextShoot.duration || "Full Day")})</span>
           ${nextShoot.phone ? `<span style="opacity: 0.8;">· 📞 ${esc(nextShoot.phone)}</span>` : ""}
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
@@ -1409,7 +1409,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               <div>
                 <div style="font-family: var(--mono-font); font-size: 10px; color: var(--accent); font-weight: 700;">📅 ${esc(b.dateKey)} (${esc(b.dayLabel)})</div>
                 <strong style="font-size: 12px; color: var(--ink);">${esc(b.name)}</strong>
-                <div style="font-size: 10px; color: var(--ink-soft);">${esc(b.type)} ${b.phone ? `· 📞 ${esc(b.phone)}` : ""}</div>
+                <div style="font-size: 10px; color: var(--ink-soft);">${esc(b.type)} · ⏱️ ${esc(b.duration || "Full Day")} ${b.phone ? `· 📞 ${esc(b.phone)}` : ""}</div>
               </div>
               <button type="button" class="admin-cal-btn" onclick="if (typeof window.openDateAdminModal === 'function') window.openDateAdminModal('${b.dateKey}');" style="font-size: 9px; padding: 3px 6px;">Details</button>
             </div>
@@ -2219,6 +2219,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       email: bookingObj.email || "",
       phone: bookingObj.phone || "",
       type: bookingObj.type || "Shoot",
+      duration: bookingObj.duration || "Full Day",
       notes: bookingObj.notes || "",
       links: Array.isArray(bookingObj.links) ? bookingObj.links : (bookingObj.links ? [bookingObj.links] : []),
       attachments: Array.isArray(bookingObj.attachments) ? bookingObj.attachments : [],
@@ -2228,6 +2229,29 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     settings.bookedDates[dKey].push(booking);
     saveCalendarSettings();
     return booking;
+  }
+
+  function updateCalBooking(dKey, bookingId, updatedObj) {
+    const settings = window.WPS_DATA.CALENDAR_SETTINGS;
+    if (settings.bookedDates && settings.bookedDates[dKey]) {
+      const idx = settings.bookedDates[dKey].findIndex(b => b.id === bookingId);
+      if (idx !== -1) {
+        const cur = settings.bookedDates[dKey][idx];
+        settings.bookedDates[dKey][idx] = {
+          ...cur,
+          name: updatedObj.name || cur.name,
+          email: updatedObj.email !== undefined ? updatedObj.email : cur.email,
+          phone: updatedObj.phone !== undefined ? updatedObj.phone : cur.phone,
+          type: updatedObj.type || cur.type,
+          duration: updatedObj.duration || cur.duration || "Full Day",
+          notes: updatedObj.notes !== undefined ? updatedObj.notes : cur.notes,
+          links: updatedObj.links !== undefined ? updatedObj.links : cur.links
+        };
+        saveCalendarSettings();
+        return settings.bookedDates[dKey][idx];
+      }
+    }
+    return null;
   }
 
   function removeCalBooking(dKey, bookingId) {
@@ -2384,8 +2408,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
       rosterGrid.innerHTML = allBookings.map(b => `
         <div class="booking-card">
-          <div class="booking-card-date">📅 ${esc(b.dateKey)}</div>
-          <h3 class="booking-card-name">${esc(b.name)}</h3>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="booking-card-date">📅 ${esc(b.dateKey)}</div>
+            <span style="background:var(--bone); border:1px solid var(--line); border-radius:4px; padding:2px 7px; font-family:var(--mono-font); font-size:10px; font-weight:700; color:var(--accent);">⏱️ ${esc(b.duration || "Full Day")}</span>
+          </div>
+          <h3 class="booking-card-name" style="margin-top:6px;">${esc(b.name)}</h3>
           <div class="booking-card-detail"><strong>Shoot Type:</strong> ${esc(b.type || "General Shoot")}</div>
           ${b.email ? `<div class="booking-card-detail"><strong>Email:</strong> ${esc(b.email)}</div>` : ""}
           ${b.phone ? `<div class="booking-card-detail"><strong>Phone:</strong> ${esc(b.phone)}</div>` : ""}
@@ -2407,6 +2434,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             </div>
           ` : ""}
           <div style="margin-top: 14px; display: flex; gap: 10px;">
+            <button type="button" class="admin-cal-btn primary" onclick="window.openEditBookingModal('${b.dateKey}', '${b.id}')" style="font-size: 10px; padding: 4px 10px;">✏️ Edit</button>
             <button type="button" class="admin-cal-btn" onclick="window.removeBookingFromRoster('${b.dateKey}', '${b.id}')" style="color: #b22222; border-color: rgba(178,34,34,0.3); font-size: 10px; padding: 4px 10px;">Cancel Booking</button>
           </div>
         </div>
@@ -2418,7 +2446,88 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         removeCalBooking(dKey, bId);
         toast("Booking removed.");
         renderAdminGrid();
+        updateAdminReminders();
       }
+    };
+
+    window.openEditBookingModal = (dKey, bookingId) => {
+      const settings = window.WPS_DATA.CALENDAR_SETTINGS || {};
+      const list = settings.bookedDates?.[dKey] || [];
+      const b = list.find(x => x.id === bookingId);
+      if (!b) return;
+
+      const modalContainer = $("#dateAdminModalContainer");
+      if (!modalContainer) return;
+
+      modalContainer.innerHTML = `
+        <div class="date-admin-modal-overlay" id="editBookingOverlay">
+          <div class="date-admin-modal">
+            <button type="button" id="closeEditModal" style="position: absolute; top: 18px; right: 20px; background: none; border: none; font-size: 24px; cursor: pointer; color: var(--ink-soft);">&times;</button>
+            <p class="eyebrow" style="margin-bottom: 6px;">Edit Client Booking</p>
+            <h2 style="font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 800; margin: 0 0 16px; color: var(--ink);">Edit Booking for ${dKey}</h2>
+            
+            <form id="editBookingForm" style="display: flex; flex-direction: column; gap: 12px;">
+              <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Client / Model Name *
+                <input type="text" id="eb_name" value="${esc(b.name)}" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+              </label>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Email Address
+                  <input type="email" id="eb_email" value="${esc(b.email || '')}" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+                </label>
+                <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Phone Number
+                  <input type="tel" id="eb_phone" value="${esc(b.phone || '')}" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+                </label>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Shoot Type
+                  <input type="text" id="eb_type" value="${esc(b.type || 'Shoot')}" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+                </label>
+                <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Shoot Duration
+                  <select id="eb_duration" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
+                    <option value="Full Day" ${(b.duration || 'Full Day') === 'Full Day' ? 'selected' : ''}>Full Day Shoot</option>
+                    <option value="Half Day (Morning)" ${b.duration === 'Half Day (Morning)' ? 'selected' : ''}>Half Day (Morning 9AM - 1PM)</option>
+                    <option value="Half Day (Afternoon)" ${b.duration === 'Half Day (Afternoon)' ? 'selected' : ''}>Half Day (Afternoon 2PM - 6PM)</option>
+                    <option value="Half Day (Flexible)" ${b.duration === 'Half Day (Flexible)' ? 'selected' : ''}>Half Day (Flexible Hours)</option>
+                  </select>
+                </label>
+              </div>
+              <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Reference Links (one per line)
+                <textarea id="eb_links" rows="2" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">${esc((b.links || []).join('\n'))}</textarea>
+              </label>
+              <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Notes / Concepts
+                <textarea id="eb_notes" rows="2" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">${esc(b.notes || '')}</textarea>
+              </label>
+              <div style="display: flex; gap: 10px; margin-top: 8px;">
+                <button type="submit" class="admin-cal-btn primary">Save Changes</button>
+                <button type="button" id="cancelEditBtn" class="admin-cal-btn">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+
+      $("#closeEditModal")?.addEventListener("click", () => modalContainer.innerHTML = "");
+      $("#cancelEditBtn")?.addEventListener("click", () => modalContainer.innerHTML = "");
+      $("#editBookingOverlay")?.addEventListener("click", (e) => {
+        if (e.target.id === "editBookingOverlay") modalContainer.innerHTML = "";
+      });
+
+      $("#editBookingForm")?.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const name = $("#eb_name").value.trim();
+        const email = $("#eb_email").value.trim();
+        const phone = $("#eb_phone").value.trim();
+        const type = $("#eb_type").value.trim();
+        const duration = $("#eb_duration").value;
+        const rawLinks = $("#eb_links").value.split("\n").map(s => s.trim()).filter(Boolean);
+        const notes = $("#eb_notes").value.trim();
+
+        updateCalBooking(dKey, bookingId, { name, email, phone, type, duration, links: rawLinks, notes });
+        toast("Booking updated successfully!");
+        modalContainer.innerHTML = "";
+        renderAdminGrid();
+        updateAdminReminders();
+      });
     };
 
     function openDateAdminModal(dKey) {
@@ -2461,8 +2570,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               </div>
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <input type="text" id="m_clientType" placeholder="Shoot Type (e.g. Fashion, Portfolio)" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
-                <input type="url" id="m_clientLinks" placeholder="Reference Link (Drive, Pinterest)" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
+                <select id="m_clientDuration" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;">
+                  <option value="Full Day">Full Day Shoot</option>
+                  <option value="Half Day (Morning)">Half Day (Morning 9AM - 1PM)</option>
+                  <option value="Half Day (Afternoon)">Half Day (Afternoon 2PM - 6PM)</option>
+                  <option value="Half Day (Flexible)">Half Day (Flexible Hours)</option>
+                </select>
               </div>
+              <input type="url" id="m_clientLinks" placeholder="Reference Link (Drive, Pinterest)" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
               <textarea id="m_clientNotes" placeholder="Notes / Details..." rows="2" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; resize: vertical;"></textarea>
               <button type="submit" class="admin-cal-btn primary" style="align-self: flex-start;">+ Add Booking to ${dKey}</button>
             </form>
@@ -2474,8 +2589,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                 ${status.bookings.map(b => `
                   <div style="padding: 12px; border: 1px solid var(--line); border-radius: 8px; display: flex; flex-direction: column; gap: 6px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                      <strong style="font-size: 14px;">${esc(b.name)}</strong>
-                      <button type="button" class="admin-cal-btn" onclick="window.removeBookingFromRoster('${dKey}', '${b.id}'); document.getElementById('closeAdminModal')?.click();" style="color: #b22222; border-color: rgba(178,34,34,0.3); font-size: 10px;">Remove</button>
+                      <div>
+                        <strong style="font-size: 14px;">${esc(b.name)}</strong>
+                        <span style="display:inline-block; margin-left:6px; background:var(--bone); border:1px solid var(--line); border-radius:4px; padding:1px 6px; font-family:var(--mono-font); font-size:10px; font-weight:700; color:var(--accent);">⏱️ ${esc(b.duration || "Full Day")}</span>
+                      </div>
+                      <div style="display:flex; gap:6px;">
+                        <button type="button" class="admin-cal-btn primary" onclick="window.openEditBookingModal('${dKey}', '${b.id}')" style="font-size: 10px; padding:3px 8px;">✏️ Edit</button>
+                        <button type="button" class="admin-cal-btn" onclick="window.removeBookingFromRoster('${dKey}', '${b.id}'); document.getElementById('closeAdminModal')?.click();" style="color: #b22222; border-color: rgba(178,34,34,0.3); font-size: 10px; padding:3px 8px;">Remove</button>
+                      </div>
                     </div>
                     <div style="font-size: 12px; color: var(--ink-soft);">${esc(b.type)} ${b.phone ? `· 📞 ${esc(b.phone)}` : ""} ${b.email ? `· ✉️ ${esc(b.email)}` : ""}</div>
                     ${b.notes ? `<div style="font-size: 11px; font-style: italic;">"${esc(b.notes)}"</div>` : ""}
@@ -2517,14 +2638,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         e.preventDefault();
         const name = $("#m_clientName").value.trim();
         const email = $("#m_clientEmail").value.trim();
-        const phone = $("#m_clientPhone").value.trim();
         const type = $("#m_clientType").value.trim();
+        const duration = $("#m_clientDuration")?.value || "Full Day";
         const rawLink = $("#m_clientLinks").value.trim();
         const notes = $("#m_clientNotes").value.trim();
 
         if (!name) return;
         const links = rawLink ? [rawLink] : [];
-        addCalBooking(dKey, { name, email, phone, type, links, notes });
+        addCalBooking(dKey, { name, email, phone, type, duration, links, notes });
         toast(`Booking added for ${name} on ${dKey}!`);
         modalContainer.innerHTML = "";
         renderAdminGrid();
