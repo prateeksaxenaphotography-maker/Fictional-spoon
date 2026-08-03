@@ -1388,7 +1388,7 @@ main:focus { outline: none; }
 .admin-cal-day.day-blocked { background: rgba(0,0,0,0.03); border-style: dashed; }
 .admin-cal-day.day-open { border-color: #2e7d32; }
 .admin-cal-day.day-booked { background: rgba(210, 78, 26, 0.04); border-color: var(--accent); }
-.admin-cal-day.day-tentative { background: rgba(124, 77, 255, 0.08); border: 1px dashed #7c4dff; }
+.admin-cal-day.day-tentative { background: rgba(124, 77, 255, 0.08) !important; border: 1.5px dashed #7c4dff !important; }
 
 .admin-cal-num { font-family: var(--mono-font); font-size: 13px; font-weight: 700; color: var(--ink); }
 .admin-cal-badge { font-family: var(--mono-font); font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 3px 6px; border-radius: 4px; display: inline-block; letter-spacing: .02em; margin-top: 4px; }
