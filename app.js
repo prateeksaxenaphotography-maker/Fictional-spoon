@@ -2390,7 +2390,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                 <span style="font-size: 11px; color: var(--ink-soft); font-family: var(--mono-font);">Aug 2026 – Present</span>
               </div>
               <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 12px 0 6px;">Studio Release &amp; Payment Terms V3.2</h3>
-              <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Includes 50/50 &amp; 50/30/20 non-refundable milestone payments, explicit RAW file delivery exclusion, Instagram Co-Author workflow, and physical liability release.</p>
+              <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Includes 50/50 &amp; 50/30/20 milestones, RAW file delivery exclusion, Test Shoot specs (Full Proofing + 8-12 Retouched), Studio Space Rental policy (at actuals), Instagram Co-Authoring &amp; liability release.</p>
               <button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.2')" style="font-size: 11px; width: 100%; font-weight: 700;">👁 Review Full Contract V3.2</button>
             </div>
 
@@ -2604,9 +2604,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         title: "Studio Release, Liability Waiver & Payment Terms V3.2",
         effectiveDate: "August 2026 – Present",
         status: "Active / Current",
-        summary: "Current studio terms including 50/50 & 50/30/20 non-refundable milestone payments, explicit RAW file exclusion clause, Instagram Co-Author workflow, and physical safety liability release.",
-        fullText: `1. SCOPE OF CREATIVE COLLABORATION
-This session is scheduled as a peer-to-peer creative collaboration structured for mutual portfolio growth, asset curation, and personal branding advancement. No monetary compensation is required or exchanged for photographer or model services. The Studio provides specialized equipment, lighting architecture, workspace, and post-production engineering; the Participant(s) provide technical modeling direction, personal wardrobe, and makeup artistry. Note: If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges.
+        summary: "Current studio terms including 50/50 & 50/30/20 non-refundable milestone payments, explicit RAW file exclusion clause, Test Shoot deliverable limit (Full Proofing Gallery + 8 to 12 Retouched Master Clicks), Dedicated Studio Space Rental policy (at actuals / cost), Instagram Co-Author workflow, and physical safety liability release.",
+        fullText: `1. SCOPE OF CREATIVE COLLABORATION & STUDIO VENUE RENTAL
+This session is scheduled as a peer-to-peer creative collaboration or commercial production structured for mutual portfolio growth, asset curation, and personal branding advancement. The Studio provides specialized equipment, lighting architecture, workspace, and post-production engineering; the Participant(s) provide technical modeling direction, personal wardrobe, and makeup artistry. Studio Rental Policy: Package rates cover photography creation, light design & master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are billed at actuals (at cost), or the client may directly book their preferred studio venue for the production.
 
 2. INTELLECTUAL PROPERTY, MODEL RELEASE & USAGE LICENSE
 The legal copyright of all visual media remains exclusively with the Studio. To support mutual growth and portfolio building, all participants are granted a full non-exclusive license to publish, share, and use final retouched photos for personal self-promotion, social media grids (Instagram/TikTok), personal websites, and agency portfolios.
@@ -2616,8 +2616,8 @@ No Alterations: To preserve the lighting design and capture integrity, no party 
 CRITICAL SAFETY & LIABILITY RELEASE: The Participant enters the studio environment, uses studio blocks, cubes, chairs, furniture, or props, and performs physical poses entirely at their own risk. The Studio shall not be held liable for any physical injury, illness, accident, psychological distress, property damage, or clothing wear-and-tear incurred before, during, or after this production. The Participant explicitly waives any right to seek damages or legal recourse against the Studio or its operating photographers for accidents or injuries occurring on the premises.
 Furthermore, the Participant agrees to indemnify and hold harmless the Studio from any claims, damages, liabilities, or legal expenses arising out of the Participant’s conduct or injuries on set.
 
-4. TECHNICAL PERFORMANCE, PAYMENT MILESTONES & DELIVERY DISCLAIMER
-As a creative collaboration, the Studio offers no guarantees regarding the exact number of final images delivered, the specific turnaround time, or the subjective artistic satisfaction of the deliverables. The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered to the Participant, unless otherwise agreed upon in writing for an additional fee.
+4. TECHNICAL PERFORMANCE, DELIVERABLES, TEST SHOOT LIMIT & PAYMENT MILESTONES
+As a creative collaboration, test shoots (TFP collabs) include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. Commercial packages include full proofing gallery + limited retouched master clicks specified in the contracted rate tier. The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered to the Participant, unless otherwise agreed upon in writing for an additional fee.
 Payment Terms: Standard bookings require a 50% advance retainer prior to shoot day start (non-refundable) and 50% final balance after shoot wrap prior to retouched file release (non-refundable). Commercial campaign bookings follow a 50/30/20 milestone structure.
 
 5. MANDATORY ALL-PARTY ATTRIBUTION WORKFLOW
