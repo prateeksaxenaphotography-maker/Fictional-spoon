@@ -4310,7 +4310,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           </div>
           <div class="dp-legend">
             <span class="dp-legend-item"><span class="dp-legend-dot dot-available"></span> Open</span>
-            <span class="dp-legend-item"><span class="dp-legend-dot dot-booked"></span> Already Booked</span>
+            <span class="dp-legend-item"><span class="dp-legend-dot dot-booked"></span> Date Taken</span>
             <span class="dp-legend-item"><span class="dp-legend-dot dot-blocked"></span> Mon–Fri Blocked</span>
           </div>
           <div class="dp-nav">
@@ -4341,12 +4341,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           } else {
             if (status.isBooked) {
               classes.push("dp-booked");
-              titleAttr = `Booked (${status.bookings.map(b => b.name).join(", ")})`;
-              if (!isUserAdmin || !adminManageMode) isCellDisabled = true;
+              titleAttr = "Unavailable: This date is taken by another client";
             } else if (status.isBlocked) {
               classes.push("dp-blocked");
               titleAttr = status.isDefaultBlockedWeekday ? "Weekday Blocked (Mon–Fri default)" : "Custom Blocked";
-              if (!isUserAdmin || !adminManageMode) isCellDisabled = true;
             } else {
               if (status.isDefaultBlockedWeekday && status.isManuallyOpened) classes.push("dp-open-weekday");
               classes.push("dp-active");
@@ -4454,6 +4452,21 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             });
           });
         } else {
+          popup.querySelectorAll(".dp-cell.dp-booked").forEach(cell => {
+            cell.addEventListener("click", (e) => {
+              e.stopPropagation();
+              const day = cell.dataset.day;
+              toast(`Unable to select ${MONTHS[viewMonth]} ${day} — this date is already taken by another client.`);
+            });
+          });
+
+          popup.querySelectorAll(".dp-cell.dp-blocked").forEach(cell => {
+            cell.addEventListener("click", (e) => {
+              e.stopPropagation();
+              const day = cell.dataset.day;
+              toast(`Unable to select ${MONTHS[viewMonth]} ${day} — Mon–Fri dates are blocked.`);
+            });
+          });
           popup.querySelectorAll(".dp-cell.dp-active").forEach(cell => {
             cell.addEventListener("click", (e) => {
               e.stopPropagation();
