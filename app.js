@@ -2234,11 +2234,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   function updateCalBooking(dKey, bookingId, updatedObj) {
     const settings = window.WPS_DATA.CALENDAR_SETTINGS;
     if (settings.bookedDates && settings.bookedDates[dKey]) {
-      const idx = settings.bookedDates[dKey].findIndex(b => b.id === bookingId);
+      let idx = settings.bookedDates[dKey].findIndex(b => (b.id && b.id === bookingId) || (!b.id && b.name === bookingId));
+      if (idx === -1 && settings.bookedDates[dKey].length === 1) idx = 0;
       if (idx !== -1) {
         const cur = settings.bookedDates[dKey][idx];
-        settings.bookedDates[dKey][idx] = {
+        const updated = {
           ...cur,
+          id: cur.id || ("b_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6)),
           name: updatedObj.name || cur.name,
           email: updatedObj.email !== undefined ? updatedObj.email : cur.email,
           phone: updatedObj.phone !== undefined ? updatedObj.phone : cur.phone,
@@ -2247,8 +2249,19 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           notes: updatedObj.notes !== undefined ? updatedObj.notes : cur.notes,
           links: updatedObj.links !== undefined ? updatedObj.links : cur.links
         };
+
+        const newDateKey = updatedObj.newDateKey || dKey;
+        if (newDateKey !== dKey) {
+          settings.bookedDates[dKey].splice(idx, 1);
+          if (!settings.bookedDates[dKey].length) delete settings.bookedDates[dKey];
+          if (!settings.bookedDates[newDateKey]) settings.bookedDates[newDateKey] = [];
+          settings.bookedDates[newDateKey].push(updated);
+        } else {
+          settings.bookedDates[dKey][idx] = updated;
+        }
+
         saveCalendarSettings();
-        return settings.bookedDates[dKey][idx];
+        return updated;
       }
     }
     return null;
@@ -2257,7 +2270,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   function removeCalBooking(dKey, bookingId) {
     const settings = window.WPS_DATA.CALENDAR_SETTINGS;
     if (settings.bookedDates && settings.bookedDates[dKey]) {
-      settings.bookedDates[dKey] = settings.bookedDates[dKey].filter(b => b.id !== bookingId);
+      settings.bookedDates[dKey] = settings.bookedDates[dKey].filter(b => b.id !== bookingId && b.name !== bookingId);
       if (!settings.bookedDates[dKey].length) {
         delete settings.bookedDates[dKey];
       }
@@ -2453,8 +2466,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     window.openEditBookingModal = (dKey, bookingId) => {
       const settings = window.WPS_DATA.CALENDAR_SETTINGS || {};
       const list = settings.bookedDates?.[dKey] || [];
-      const b = list.find(x => x.id === bookingId);
-      if (!b) return;
+      let b = list.find(x => (x.id && x.id === bookingId) || (!x.id && x.name === bookingId));
+      if (!b && list.length === 1) b = list[0];
+      if (!b) {
+        toast("Unable to find target booking to edit.");
+        return;
+      }
 
       const modalContainer = $("#dateAdminModalContainer");
       if (!modalContainer) return;
@@ -2467,9 +2484,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             <h2 style="font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 800; margin: 0 0 16px; color: var(--ink);">Edit Booking for ${dKey}</h2>
             
             <form id="editBookingForm" style="display: flex; flex-direction: column; gap: 12px;">
-              <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Client / Model Name *
-                <input type="text" id="eb_name" value="${esc(b.name)}" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
-              </label>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Client / Model Name *
+                  <input type="text" id="eb_name" value="${esc(b.name)}" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+                </label>
+                <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Shoot Date (YYYY-MM-DD) *
+                  <input type="text" id="eb_date" value="${esc(dKey)}" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+                </label>
+              </div>
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Email Address
                   <input type="email" id="eb_email" value="${esc(b.email || '')}" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
@@ -2515,6 +2537,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       $("#editBookingForm")?.addEventListener("submit", (e) => {
         e.preventDefault();
         const name = $("#eb_name").value.trim();
+        const newDateKey = $("#eb_date").value.trim();
         const email = $("#eb_email").value.trim();
         const phone = $("#eb_phone").value.trim();
         const type = $("#eb_type").value.trim();
@@ -2522,10 +2545,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         const rawLinks = $("#eb_links").value.split("\n").map(s => s.trim()).filter(Boolean);
         const notes = $("#eb_notes").value.trim();
 
-        updateCalBooking(dKey, bookingId, { name, email, phone, type, duration, links: rawLinks, notes });
+        const targetId = b.id || bookingId || name;
+        updateCalBooking(dKey, targetId, { newDateKey, name, email, phone, type, duration, links: rawLinks, notes });
         toast("Booking updated successfully!");
         modalContainer.innerHTML = "";
         renderAdminGrid();
+        renderRoster();
         updateAdminReminders();
       });
     };
