@@ -5544,6 +5544,8 @@ RAW files are not provided.`
 
         const cleanBudget = (budget && budget !== "Not Decided" && budget !== "TBD") ? `Package & Deliverables: ${budget}\n` : "";
         const studioSpaceVal = val("b_studio_space") || 'Not Specified';
+        const studioRentalPolicyNote = `Studio Rental Policy: Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio space is required, venue rental fees are billed at actuals (at cost), or the client may book the studio directly.\n`;
+        const deliverablePolicyNote = `RAW Files & Deliverables Policy: Includes full unedited preview proofing gallery + limited retouched master clicks. RAW unedited camera files remain confidential studio property and are strictly excluded.\n`;
 
         const compactBody =
           `Shoot Booking Details:\n\n` +
@@ -5556,8 +5558,10 @@ RAW files are not provided.`
           `Proposed Date: ${date}\n` +
           `Location Pref: ${locationVal}\n` +
           `Studio Space Rental: ${studioSpaceVal}\n` +
+          studioRentalPolicyNote +
           cleanBudget +
           (type !== "Test Shoot" ? `${paymentTermsText}\n` : "") +
+          deliverablePolicyNote +
           `Moodboard Link: ${moodboard || '—'}\n` +
           (agreedToTerms ? `TFP Release terms: Agreed (TFP-LIABILITY-RELEASE-V3.2)\nRead online: https://www.nerdyphotographer.in/book/#tfp-terms\n\n` : `\n`) +
           `Concept/Vision:\n${concept || '—'}`;
