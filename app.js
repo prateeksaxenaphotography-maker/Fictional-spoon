@@ -3919,8 +3919,16 @@ RAW files are not provided.`
                   </label>
                </div>
                <div class="field-row">
-                 <label class="field"><span>Preferred Location *</span><input id="b_location" type="text" required placeholder="e.g. Noida Studio / Outdoor NCR" /></label>
-                 <label class="field" id="b_budget_field"><span>Studio Package &amp; Rate Tier *</span>
+                 <label class="field"><span>Preferred Location *</span><input id="b_location" type="text" required placeholder="e.g. Indoor Studio / Outdoor NCR / Client Location" /></label>
+                 <label class="field"><span>Dedicated Studio Space Needed? *</span>
+                   <select id="b_studio_space">
+                     <option value="No - Outdoor / Client Location (No Studio Rental Fee)">No — Outdoor / Client Location (No Studio Rental Fee)</option>
+                     <option value="Yes - Dedicated Studio Rental Required (+₹2,500 - ₹5,000/shift)">Yes — Dedicated Indoor Studio Space Needed (+₹2,500 – ₹5,000/shift)</option>
+                   </select>
+                 </label>
+               </div>
+               <div class="field-row">
+                 <label class="field" id="b_budget_field" style="grid-column: 1 / -1;"><span>Studio Package &amp; Rate Tier *</span>
                    <select id="b_budget">
                      <option value="Under ₹7,000 (20 Unedited Clicks · 0 Retouched)">Under ₹7,000 · 20 Unedited Clicks + 0 Retouched (Basic Test / Comp Card)</option>
                      <option value="₹7,000 - ₹10,000 (25 Unedited + 3-5 Retouched)">₹7,000 - ₹10,000 · 25 Unedited Clicks + 3 to 5 Retouched Clicks (Mini Portfolio / Selective Test)</option>
@@ -3928,6 +3936,9 @@ RAW files are not provided.`
                      <option value="₹25,000 - ₹50,000 (100 Unedited + 15-25 Retouched)">₹25,000 - ₹50,000 · 100 Unedited Proof Clicks + 15 to 25 Retouched Clicks (Premium Brand Campaign)</option>
                      <option value="₹50,000+ (Full Proof Gallery + 30+ Retouched Master Assets)">₹50,000+ · Full Proof Gallery + 30+ Commercial Master Retouched Assets (High-End Ad / Commercial)</option>
                    </select>
+                   <div style="font-size: 11px; color: var(--accent); margin-top: 5px; font-family: var(--mono-font); line-height: 1.4;">
+                     ℹ️ <strong>Studio Rental Clarification:</strong> Package rates cover photography creation, light design &amp; retouching deliverables. If a dedicated indoor studio venue/space is required, studio rental fees apply separately (~₹2,500–₹5,000 based on shift duration).
+                   </div>
                  </label>
                </div>
                 <div class="field" style="display: flex; flex-direction: column; gap: 4px;">
@@ -5532,6 +5543,7 @@ RAW files are not provided.`
           `Payment Terms: Standard 50/50 Milestones (50% Advance Retainer before shoot day start [non-refundable]; 50% Final Balance after shoot wrap before retouched file release [non-refundable])`;
 
         const cleanBudget = (budget && budget !== "Not Decided" && budget !== "TBD") ? `Package & Deliverables: ${budget}\n` : "";
+        const studioSpaceVal = val("b_studio_space") || 'Not Specified';
 
         const compactBody =
           `Shoot Booking Details:\n\n` +
@@ -5543,6 +5555,7 @@ RAW files are not provided.`
           `Shoot Type: ${type}\n` +
           `Proposed Date: ${date}\n` +
           `Location Pref: ${locationVal}\n` +
+          `Studio Space Rental: ${studioSpaceVal}\n` +
           cleanBudget +
           (type !== "Test Shoot" ? `${paymentTermsText}\n` : "") +
           `Moodboard Link: ${moodboard || '—'}\n` +
