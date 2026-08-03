@@ -2215,15 +2215,16 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     if (!settings.bookedDates[dKey]) settings.bookedDates[dKey] = [];
     const booking = {
       id: "b_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
-      name: bookingObj.name || "Client",
+      name: bookingObj.name || "Anticipated Client Hold",
       email: bookingObj.email || "",
       phone: bookingObj.phone || "",
       type: bookingObj.type || "Shoot",
       duration: bookingObj.duration || "Full Day",
+      isTentative: bookingObj.isTentative || bookingObj.status === "tentative" || false,
       notes: bookingObj.notes || "",
       links: Array.isArray(bookingObj.links) ? bookingObj.links : (bookingObj.links ? [bookingObj.links] : []),
       attachments: Array.isArray(bookingObj.attachments) ? bookingObj.attachments : [],
-      status: bookingObj.status || "confirmed",
+      status: bookingObj.status || (bookingObj.isTentative ? "tentative" : "confirmed"),
       createdAt: Date.now()
     };
     settings.bookedDates[dKey].push(booking);
@@ -2246,6 +2247,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           phone: updatedObj.phone !== undefined ? updatedObj.phone : cur.phone,
           type: updatedObj.type || cur.type,
           duration: updatedObj.duration || cur.duration || "Full Day",
+          isTentative: updatedObj.isTentative !== undefined ? updatedObj.isTentative : (updatedObj.status === "tentative"),
+          status: updatedObj.status || (updatedObj.isTentative ? "tentative" : cur.status || "confirmed"),
           notes: updatedObj.notes !== undefined ? updatedObj.notes : cur.notes,
           links: updatedObj.links !== undefined ? updatedObj.links : cur.links
         };
@@ -2421,9 +2424,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
       rosterGrid.innerHTML = allBookings.map(b => `
         <div class="booking-card">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
             <div class="booking-card-date">📅 ${esc(b.dateKey)}</div>
-            <span style="background:var(--bone); border:1px solid var(--line); border-radius:4px; padding:2px 7px; font-family:var(--mono-font); font-size:10px; font-weight:700; color:var(--accent);">⏱️ ${esc(b.duration || "Full Day")}</span>
+            <div style="display:flex; gap:6px; align-items:center;">
+              ${(b.isTentative || b.status === "tentative") ? `<span style="background: rgba(255,152,0,0.15); border: 1px solid rgba(255,152,0,0.5); border-radius: 4px; padding: 2px 7px; font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: #f57c00;">⏳ Anticipated Hold</span>` : `<span style="background: rgba(46,125,50,0.15); border: 1px solid rgba(46,125,50,0.5); border-radius: 4px; padding: 2px 7px; font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: #2e7d32;">✓ Confirmed</span>`}
+              <span style="background:var(--bone); border:1px solid var(--line); border-radius:4px; padding:2px 7px; font-family:var(--mono-font); font-size:10px; font-weight:700; color:var(--accent);">⏱️ ${esc(b.duration || "Full Day")}</span>
+            </div>
           </div>
           <h3 class="booking-card-name" style="margin-top:6px;">${esc(b.name)}</h3>
           <div class="booking-card-detail"><strong>Shoot Type:</strong> ${esc(b.type || "General Shoot")}</div>
@@ -2513,6 +2519,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                   </select>
                 </label>
               </div>
+              <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Booking Status
+                <select id="eb_status" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
+                  <option value="confirmed" ${(!b.isTentative && b.status !== 'tentative') ? 'selected' : ''}>✓ Confirmed Client Booking</option>
+                  <option value="tentative" ${(b.isTentative || b.status === 'tentative') ? 'selected' : ''}>⏳ Anticipated Client Hold (Looks Booked to Public)</option>
+                </select>
+              </label>
               <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Reference Links (one per line)
                 <textarea id="eb_links" rows="2" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">${esc((b.links || []).join('\n'))}</textarea>
               </label>
@@ -2542,11 +2554,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         const phone = $("#eb_phone").value.trim();
         const type = $("#eb_type").value.trim();
         const duration = $("#eb_duration").value;
+        const status = $("#eb_status").value;
+        const isTentative = (status === "tentative");
         const rawLinks = $("#eb_links").value.split("\n").map(s => s.trim()).filter(Boolean);
         const notes = $("#eb_notes").value.trim();
 
         const targetId = b.id || bookingId || name;
-        updateCalBooking(dKey, targetId, { newDateKey, name, email, phone, type, duration, links: rawLinks, notes });
+        updateCalBooking(dKey, targetId, { newDateKey, name, email, phone, type, duration, isTentative, status, links: rawLinks, notes });
         toast("Booking updated successfully!");
         modalContainer.innerHTML = "";
         renderAdminGrid();
@@ -2582,13 +2596,22 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               <button type="button" class="admin-cal-btn primary" id="toggleBlockBtn">
                 ${status.isDefaultBlockedWeekday ? (status.isManuallyOpened ? "🔒 Re-block Weekday" : "🔓 Open Weekday for Clients") : (status.isCustomBlocked ? "🔓 Unblock Weekend Date" : "🔒 Block Weekend Date")}
               </button>
+              <button type="button" class="admin-cal-btn" id="quickHoldBtn" style="border-color: #f57c00; color: #f57c00; background: rgba(255,152,0,0.1);">
+                ⏳ Quick Hold (Anticipated Client)
+              </button>
             </div>
 
             <hr style="border: none; border-top: 1px solid var(--line); margin: 20px 0;" />
 
             <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 0 0 12px;">Add / Double-Book Client for ${dKey}</h3>
             <form id="modalAddBookingForm" style="display: flex; flex-direction: column; gap: 12px;">
-              <input type="text" id="m_clientName" placeholder="Client / Model Name *" required style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <input type="text" id="m_clientName" placeholder="Client / Model Name (or leave blank for Hold)" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
+                <select id="m_clientStatus" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;">
+                  <option value="confirmed">✓ Confirmed Client Booking</option>
+                  <option value="tentative">⏳ Anticipated Client Hold (Looks Booked to Public)</option>
+                </select>
+              </div>
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <input type="email" id="m_clientEmail" placeholder="Email Address" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
                 <input type="tel" id="m_clientPhone" placeholder="Phone Number (e.g. 9876543210)" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
@@ -2604,7 +2627,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               </div>
               <input type="url" id="m_clientLinks" placeholder="Reference Link (Drive, Pinterest)" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
               <textarea id="m_clientNotes" placeholder="Notes / Details..." rows="2" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; resize: vertical;"></textarea>
-              <button type="submit" class="admin-cal-btn primary" style="align-self: flex-start;">+ Add Booking to ${dKey}</button>
+              <button type="submit" class="admin-cal-btn primary" style="align-self: flex-start;">+ Add Booking / Hold to ${dKey}</button>
             </form>
 
             ${status.bookings.length ? `
@@ -2659,21 +2682,37 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         renderAdminGrid();
       });
 
+      $("#quickHoldBtn")?.addEventListener("click", () => {
+        const clientName = $("#m_clientName").value.trim() || "Anticipated Client Hold";
+        const shootType = $("#m_clientType").value.trim() || "Tentative Hold";
+        const notes = $("#m_clientNotes").value.trim() || "Date held by Admin for anticipated client inquiry.";
+        addCalBooking(dKey, { name: clientName, type: shootType, notes: notes, isTentative: true, status: "tentative" });
+        toast(`Date ${dKey} held as Anticipated Client! (Appears TAKEN to public)`);
+        modalContainer.innerHTML = "";
+        renderAdminGrid();
+        renderRoster();
+        updateAdminReminders();
+      });
+
       $("#modalAddBookingForm")?.addEventListener("submit", (e) => {
         e.preventDefault();
-        const name = $("#m_clientName").value.trim();
+        const rawName = $("#m_clientName").value.trim();
         const email = $("#m_clientEmail").value.trim();
-        const type = $("#m_clientType").value.trim();
+        const phone = $("#m_clientPhone")?.value.trim() || "";
+        const type = $("#m_clientType").value.trim() || "General Shoot";
         const duration = $("#m_clientDuration")?.value || "Full Day";
+        const statusVal = $("#m_clientStatus")?.value || "confirmed";
+        const isTentative = (statusVal === "tentative");
+        const name = rawName || (isTentative ? "Anticipated Client Hold" : "Client Booking");
         const rawLink = $("#m_clientLinks").value.trim();
         const notes = $("#m_clientNotes").value.trim();
 
-        if (!name) return;
         const links = rawLink ? [rawLink] : [];
-        addCalBooking(dKey, { name, email, phone, type, duration, links, notes });
-        toast(`Booking added for ${name} on ${dKey}!`);
+        addCalBooking(dKey, { name, email, phone, type, duration, isTentative, status: statusVal, links, notes });
+        toast(isTentative ? `Date ${dKey} held for ${name}! (Appears TAKEN to public)` : `Booking confirmed for ${name} on ${dKey}!`);
         modalContainer.innerHTML = "";
         renderAdminGrid();
+        renderRoster();
         updateAdminReminders();
       });
     }
