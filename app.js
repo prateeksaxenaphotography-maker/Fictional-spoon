@@ -3919,7 +3919,8 @@ RAW files are not provided.`
                  <label class="field"><span>Preferred Location *</span><input id="b_location" type="text" required placeholder="e.g. Noida Studio / Outdoor NCR" /></label>
                  <label class="field" id="b_budget_field"><span>Studio Package &amp; Rate Tier *</span>
                    <select id="b_budget">
-                     <option value="Under ₹10,000 (3-5 Retouched Clicks)">Under ₹10,000 · 3 to 5 Retouched Master Clicks (Mini Test / Comp Card)</option>
+                     <option value="Under ₹7,000 (20 Unedited Clicks)">Under ₹7,000 · 20 Unedited Clicks (Basic Test / Comp Card)</option>
+                     <option value="₹7,000 - ₹10,000 (3-5 Retouched Clicks)">₹7,000 - ₹10,000 · 3 to 5 Retouched Master Clicks (Selective Test / Portfolio)</option>
                      <option value="₹10,000 - ₹25,000 (8-12 Retouched Clicks)">₹10,000 - ₹25,000 · 8 to 12 Retouched Master Clicks (Standard Portfolio / Editorial)</option>
                      <option value="₹25,000 - ₹50,000 (15-25 Retouched Clicks)">₹25,000 - ₹50,000 · 15 to 25 Retouched Master Clicks (Premium Brand Campaign)</option>
                      <option value="₹50,000+ (30+ Commercial Master Assets)">₹50,000+ · 30+ Commercial Master Retouched Assets (High-End Ad / Commercial)</option>
