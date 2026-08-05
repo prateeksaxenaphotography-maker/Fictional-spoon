@@ -3009,7 +3009,11 @@ RAW files are not provided.`
                   <option value="6 Months Cloud Retention (Standard Paid Commercial Shoot)" selected>6 Months Cloud Retention (Paid Commercial Shoots)</option>
                   <option value="12 Months Extended Archival (1 Year)">12 Months Extended Archival (1 Year)</option>
                   <option value="1 Month Cloud Retention (30 Days Express)">1 Month Cloud Retention (30 Days)</option>
+                  <option value="custom">✏️ Custom Retention Expiry Date / Months (Specify Below)</option>
                 </select>
+                <div id="pdf_customCloudRetentionWrap" style="display: none; margin-top: 6px;">
+                  <input type="text" id="pdf_customCloudRetentionInput" value="2 Months (Expiry: Oct 15, 2026)" placeholder="e.g. 2 Months / Expiry: Oct 15, 2026" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
+                </div>
               </label>
             </div>
           </div>
@@ -3043,6 +3047,12 @@ RAW files are not provided.`
       if (wrap) wrap.style.display = isCustom ? "flex" : "none";
     });
 
+    $("#pdf_customCloudRetention")?.addEventListener("change", () => {
+      const isCustomRet = $("#pdf_customCloudRetention").value === "custom";
+      const wrapRet = $("#pdf_customCloudRetentionWrap");
+      if (wrapRet) wrapRet.style.display = isCustomRet ? "block" : "none";
+    });
+
     $("#closePdfGenModal")?.addEventListener("click", () => modal.style.display = "none");
     $("#cancelPdfGenBtn")?.addEventListener("click", () => modal.style.display = "none");
 
@@ -3069,7 +3079,7 @@ RAW files are not provided.`
         location: $("#pdf_location").value.trim(),
         contractVersion: $("#pdf_contractVersion").value,
         package: $("#pdf_packageSelect").value === "custom" 
-          ? `${$("#pdf_customPkgName").value.trim()} — ${$("#pdf_customRetouchedCount").value.trim()} (${$("#pdf_customDownloadPermission").value}; ${$("#pdf_customRevisions").value}; ${$("#pdf_customCloudRetention").value})`
+          ? `${$("#pdf_customCloudRetention").value === "custom" ? $("#pdf_customCloudRetentionInput").value.trim() : $("#pdf_customCloudRetention").value}"#pdf_customPkgName").value.trim()} — ${$("#pdf_customCloudRetention").value === "custom" ? $("#pdf_customCloudRetentionInput").value.trim() : $("#pdf_customCloudRetention").value}"#pdf_customRetouchedCount").value.trim()} (${$("#pdf_customCloudRetention").value === "custom" ? $("#pdf_customCloudRetentionInput").value.trim() : $("#pdf_customCloudRetention").value}"#pdf_customDownloadPermission").value}; ${$("#pdf_customCloudRetention").value === "custom" ? $("#pdf_customCloudRetentionInput").value.trim() : $("#pdf_customCloudRetention").value}"#pdf_customRevisions").value}; ${$("#pdf_customCloudRetention").value === "custom" ? $("#pdf_customCloudRetentionInput").value.trim() : $("#pdf_customCloudRetention").value}"#pdf_customCloudRetention").value})`
           : $("#pdf_packageSelect").value,
         paymentMilestones: $("#pdf_paymentMilestones").value,
         notes: $("#pdf_notes").value.trim()
