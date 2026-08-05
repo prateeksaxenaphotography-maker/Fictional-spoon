@@ -6245,14 +6245,16 @@ RAW files are not provided.`
       return firstBad;
     }
 
-    form.addEventListener("submit", (e) => {
-      e.preventDefault();
+    const handleBookingSubmit = (e) => {
+      if (e) e.preventDefault();
 
       const firstBad = validate();
       if (firstBad) {
         const el = $("#" + firstBad);
-        el?.focus();
-        el?.scrollIntoView({ behavior: prefersReduced ? "auto" : "smooth", block: "center" });
+        if (el) {
+          el.focus();
+          el.scrollIntoView({ behavior: prefersReduced ? "auto" : "smooth", block: "center" });
+        }
         return;
       }
 
@@ -6435,7 +6437,10 @@ RAW files are not provided.`
       } else {
         openTermsModal(name, "Commercial", (agreed, isCustom, notes) => proceedSubmit(agreed, "Commercial", isCustom, notes));
       }
-    });
+    };
+
+    if (form) form.addEventListener("submit", handleBookingSubmit);
+    if (btn) btn.addEventListener("click", handleBookingSubmit);
 
     // Open the terms modal for `partnerName` and `shootCategory` ("TFP" vs "Commercial").
     function openTermsModal(partnerName, shootCategory, onAccept) {
