@@ -6286,9 +6286,59 @@ RAW files are not provided.`
           testShootOpt.disabled = false;
         }
       }
+
+      // Real-Time Final Amount Calculator Engine
+      const pkgSelect = $("#b_budget");
+      const summaryOriginalPrice = $("#summaryOriginalPrice");
+      const summaryDiscountWrap = $("#summaryDiscountWrap");
+      const summaryDiscountLabel = $("#summaryDiscountLabel");
+      const summarySavingsAmount = $("#summarySavingsAmount");
+      const summaryFinalAmount = $("#summaryFinalAmount");
+      const calcDiscountTag = $("#calcDiscountTag");
+
+      let rawPkgVal = pkgSelect?.value || "";
+      let basePrice = 25000;
+
+      if (rawPkgVal.includes("₹7,000")) basePrice = 7000;
+      else if (rawPkgVal.includes("₹10,000")) basePrice = 10000;
+      else if (rawPkgVal.includes("₹25,000")) basePrice = 25000;
+      else if (rawPkgVal.includes("₹50,000")) basePrice = 50000;
+      else if (rawPkgVal.includes("₹75,000")) basePrice = 75000;
+
+      let discountPct = 0;
+      let discountName = "";
+
+      if (matchedDiscount) {
+        discountPct = matchedDiscount.pct;
+        discountName = matchedDiscount.label;
+      }
+
+      let savings = Math.round((basePrice * discountPct) / 100);
+      let finalPayable = basePrice - savings;
+
+      if (type === "Selective Collaboration (TFP)") {
+        if (summaryOriginalPrice) summaryOriginalPrice.textContent = "Selective Collab / TFP (₹0)";
+        if (summaryDiscountWrap) summaryDiscountWrap.style.display = "none";
+        if (calcDiscountTag) calcDiscountTag.style.display = "none";
+        if (summaryFinalAmount) summaryFinalAmount.textContent = "₹0 INR (TFP Session)";
+      } else {
+        if (summaryOriginalPrice) summaryOriginalPrice.textContent = `₹${basePrice.toLocaleString("en-IN")}`;
+        if (discountPct > 0) {
+          if (summaryDiscountWrap) summaryDiscountWrap.style.display = "block";
+          if (summaryDiscountLabel) summaryDiscountLabel.textContent = `Promo Discount (${discountPct}% OFF):`;
+          if (summarySavingsAmount) summarySavingsAmount.textContent = `-₹${savings.toLocaleString("en-IN")}`;
+          if (calcDiscountTag) {
+            calcDiscountTag.style.display = "inline-block";
+            calcDiscountTag.textContent = `PROMO APPLIED: ${discountPct}% OFF`;
+          }
+        } else {
+          if (summaryDiscountWrap) summaryDiscountWrap.style.display = "none";
+          if (calcDiscountTag) calcDiscountTag.style.display = "none";
+        }
+        if (summaryFinalAmount) summaryFinalAmount.textContent = `₹${finalPayable.toLocaleString("en-IN")} INR`;
+      }
     };
 
-    
     const updateCustomTimeBadge = () => {
       const startVal = $("#b_time_start")?.value || "10:30";
       const endVal = $("#b_time_end")?.value || "17:30";
@@ -6325,6 +6375,7 @@ RAW files are not provided.`
     $("#b_role")?.addEventListener("change", updateFields);
     $("#b_invite_code")?.addEventListener("input", updateFields);
     $("#b_discount_code")?.addEventListener("input", updateFields);
+    $("#b_budget")?.addEventListener("change", updateFields);
     updateFields();
 
     function validate() {
