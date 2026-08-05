@@ -6452,12 +6452,18 @@ RAW files are not provided.`
       }
       let finalPayable = Math.max(0, basePrice - savings);
 
+      const finalPriceSummaryBox = $("#finalPriceSummaryBox");
+      const promoCodeRow = $("#b_discount_code")?.closest(".field-row");
+
       if (type === "Selective Collaboration (TFP)") {
-        if (summaryOriginalPrice) summaryOriginalPrice.textContent = "Selective Collab / TFP (₹0)";
-        if (summaryDiscountWrap) summaryDiscountWrap.style.display = "none";
-        if (calcDiscountTag) calcDiscountTag.style.display = "none";
-        if (summaryFinalAmount) summaryFinalAmount.textContent = "₹0 INR (TFP Session)";
+        if (finalPriceSummaryBox) finalPriceSummaryBox.style.display = "none";
+        if (promoCodeRow) promoCodeRow.style.display = "none";
+        if (budgetField) budgetField.style.display = "none";
       } else {
+        if (finalPriceSummaryBox) finalPriceSummaryBox.style.display = "block";
+        if (promoCodeRow) promoCodeRow.style.display = "";
+        if (budgetField) budgetField.style.display = "";
+
         if (summaryOriginalPrice) summaryOriginalPrice.textContent = `₹${basePrice.toLocaleString("en-IN")}`;
         if (savings > 0) {
           if (summaryDiscountWrap) summaryDiscountWrap.style.display = "block";
