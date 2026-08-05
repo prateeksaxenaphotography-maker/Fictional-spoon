@@ -4452,9 +4452,7 @@ RAW files are not provided.`
           <p class="eyebrow reveal">Book a session</p>
           ${kineticH1("Book", "kinetic-h1-wide")}
           <p class="page-sub reveal">Fill out the details below to inquire about booking a session. Whether you are booking a commercial campaign, e-commerce production, editorial work, or scheduling a selective test shoot, please submit your brief and project specs below.</p>
-          <div style="margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap;">
-            <button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator()" style="background: var(--paper); border: 1px solid var(--accent); color: var(--accent); font-weight: 700; padding: 8px 16px; border-radius: 6px; font-family: var(--mono-font); font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">📄 Generate PDF Contract (For Off-Site DM / Email Inquiry)</button>
-          </div>
+
         </div>
       </section>
       <section class="section container">
