@@ -4721,9 +4721,20 @@ RAW files are not provided.`
                      </ul>
                    </div>
                  </div>
-                 <div style="padding: 20px; border-top: 1px solid var(--line); display: flex; gap: 12px; justify-content: flex-end; background: var(--bone);">
-                   <button type="button" class="btn btn-ghost" id="termsDeclineBtn" style="font-size: 12px; height: auto; padding: 10px 20px;">Decline</button>
-                   <button type="button" class="btn btn-dark" id="termsAcceptBtn" style="font-size: 12px; height: auto; padding: 10px 20px;">Agree &amp; Continue</button>
+                  <div style="padding: 16px 20px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; background: var(--bone);">
+                    <div id="customContractOptionWrap" style="display: none; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 12px; text-align: left;">
+                      <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft); display: block;">Specify Your Custom Contract / Agency MSA Details (Optional):
+                        <input type="text" id="customContractNotesInput" placeholder="e.g. Client Agency MSA provided via Email / Custom Brand Terms" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+                      </label>
+                    </div>
+                    <div style="display: flex; gap: 8px; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                      <button type="button" class="btn btn-ghost" id="termsDeclineBtn" style="font-size: 11px; height: auto; padding: 9px 14px;">✕ Decline</button>
+                      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-ghost" id="termsCustomBtn" style="font-size: 11px; height: auto; padding: 9px 14px; border: 1px solid var(--accent); color: var(--accent); font-weight: 700;">📝 Request Custom Contract</button>
+                        <button type="button" class="btn btn-dark" id="termsAcceptBtn" style="font-size: 12px; height: auto; padding: 9px 18px;">✅ Agree &amp; Continue</button>
+                      </div>
+                    </div>
+                  </div>
                  </div>
                </div>
              </div>
