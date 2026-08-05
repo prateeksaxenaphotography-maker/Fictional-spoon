@@ -4687,11 +4687,7 @@ RAW files are not provided.`
                <div class="field-row">
                  <label class="field" id="b_budget_field" style="grid-column: 1 / -1;"><span>Studio Package &amp; Rate Tier *</span>
                    <select id="b_budget">
-                      <option value="₹7,000 (20 Proof Clicks · 0 Retouched)">₹7,000 · Basic Test / Comp Card (20 Proof Clicks + 0 Retouched)</option>
-                      <option value="₹10,000 (25 Proof Clicks + 3-5 Retouched)">₹10,000 · Mini Portfolio (25 Proof Clicks + 3-5 Retouched Clicks)</option>
-                     <option value="₹25,000 (50 Unedited + 8-12 Retouched)">₹25,000 · Standard Editorial Portfolio (50 Unedited + 8 to 12 Retouched Clicks)</option>
-                     <option value="₹50,000 (100 Unedited + 15-25 Retouched)">₹50,000 · Premium Brand Campaign (100 Unedited + 15 to 25 Retouched Clicks)</option>
-                     <option value="₹75,000 (Full Proof Gallery + 30+ Retouched Master Assets)">₹75,000 · High-End Full Day Production (Full Gallery + 30+ Retouched Master Assets)</option>
+                     ${getAdminPackages().map((p, i) => `<option value="₹${p.price.toLocaleString('en-IN')} (${p.name})"${i===0?' selected':''}>₹${p.price.toLocaleString('en-IN')} · ${p.name} (${p.specs})</option>`).join("")}
                    </select>
                  </label>
                </div>
@@ -4702,7 +4698,10 @@ RAW files are not provided.`
                      <span style="font-weight: 700; color: var(--ink);">🎟️ Promotional Discount Code (Optional)</span>
                      <span id="discountCodeStatus" style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; display: none;"></span>
                    </div>
-                   <input id="b_discount_code" type="text" placeholder="Enter Promo Code" style="text-transform: uppercase; font-family: var(--mono-font); font-weight: 700;" />
+                   <div style="display: flex; gap: 8px;">
+                     <input id="b_discount_code" type="text" placeholder="Enter Promo Code" style="text-transform: uppercase; font-family: var(--mono-font); font-weight: 700; flex: 1;" />
+                     <button type="button" id="btnApplyDiscountCode" style="background: var(--accent); color: #ffffff; border: none; padding: 0 16px; border-radius: 6px; font-family: var(--mono-font); font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap;">Apply Code</button>
+                   </div>
                  </label>
 
                  <label class="field">
@@ -4710,7 +4709,10 @@ RAW files are not provided.`
                      <span style="font-weight: 700; color: var(--ink);">🔑 Photographer Direct Invite Code (Optional)</span>
                      <span id="inviteCodeStatus" style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; display: none;"></span>
                    </div>
-                   <input id="b_invite_code" type="text" placeholder="Enter Direct Invite Code" style="text-transform: uppercase; font-family: var(--mono-font);" />
+                   <div style="display: flex; gap: 8px;">
+                     <input id="b_invite_code" type="text" placeholder="Enter Direct Invite Code" style="text-transform: uppercase; font-family: var(--mono-font); flex: 1;" />
+                     <button type="button" id="btnApplyInviteCode" style="background: var(--ink); color: #ffffff; border: none; padding: 0 16px; border-radius: 6px; font-family: var(--mono-font); font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap;">Verify Code</button>
+                   </div>
                  </label>
                </div>
                <div id="discountSavingsBadge" style="display: none; margin-top: 6px; font-family: var(--mono-font); font-size: 11px; color: #059669; font-weight: 700;"></div>
@@ -4723,7 +4725,7 @@ RAW files are not provided.`
                  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-family: var(--mono-font); font-size: 13px;">
                    <div>
                      <span style="color: rgba(255,255,255,0.7);">Selected Package:</span>
-                     <span id="summaryOriginalPrice" style="font-weight: 700; color: #ffffff; margin-left: 6px;">₹25,000</span>
+                     <span id="summaryOriginalPrice" style="font-weight: 700; color: #ffffff; margin-left: 6px;">₹${getAdminPackages()[0].price.toLocaleString('en-IN')}</span>
                    </div>
                    <div id="summaryDiscountWrap" style="display: none;">
                      <span style="color: #059669; font-weight: 700;" id="summaryDiscountLabel">Discount Savings:</span>
