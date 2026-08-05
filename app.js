@@ -6424,18 +6424,9 @@ RAW files are not provided.`
       let rawPkgVal = pkgSelect?.value || "";
       let basePrice = 25000;
 
-      if (rawPkgVal.includes("₹7,000")) basePrice = 7000;
-      else if (rawPkgVal.includes("₹10,000")) basePrice = 10000;
-      else if (rawPkgVal.includes("₹25,000")) basePrice = 25000;
-      else if (rawPkgVal.includes("₹50,000")) basePrice = 50000;
-      else if (rawPkgVal.includes("₹75,000")) basePrice = 75000;
-
-      let discountPct = 0;
-      let discountName = "";
-
-      if (matchedDiscount) {
-        discountPct = matchedDiscount.pct;
-        discountName = matchedDiscount.label;
+      const priceMatch = rawPkgVal.match(/₹\s*([\d,]+)/);
+      if (priceMatch && priceMatch[1]) {
+        basePrice = parseInt(priceMatch[1].replace(/,/g, ""), 10) || 25000;
       }
 
       let savings = 0;
@@ -6444,10 +6435,10 @@ RAW files are not provided.`
       if (matchedDiscount) {
         if (matchedDiscount.flat) {
           savings = matchedDiscount.flat;
-          discountTagText = `FLAT ₹${matchedDiscount.flat.toLocaleString("en-IN")} OFF APPLIED`;
+          discountTagText = `FLAT ₹${matchedDiscount.flat.toLocaleString("en-IN")} OFF`;
         } else if (matchedDiscount.pct) {
           savings = Math.round((basePrice * matchedDiscount.pct) / 100);
-          discountTagText = `${matchedDiscount.pct}% OFF APPLIED`;
+          discountTagText = `${matchedDiscount.pct}% OFF`;
         }
       }
       let finalPayable = Math.max(0, basePrice - savings);
@@ -6459,13 +6450,13 @@ RAW files are not provided.`
         if (summaryFinalAmount) summaryFinalAmount.textContent = "₹0 INR (TFP Session)";
       } else {
         if (summaryOriginalPrice) summaryOriginalPrice.textContent = `₹${basePrice.toLocaleString("en-IN")}`;
-        if (discountPct > 0) {
+        if (savings > 0) {
           if (summaryDiscountWrap) summaryDiscountWrap.style.display = "block";
-          if (summaryDiscountLabel) summaryDiscountLabel.textContent = `Promo Discount (${discountPct}% OFF):`;
+          if (summaryDiscountLabel) summaryDiscountLabel.textContent = `Promo Discount (${discountTagText}):`;
           if (summarySavingsAmount) summarySavingsAmount.textContent = `-₹${savings.toLocaleString("en-IN")}`;
           if (calcDiscountTag) {
             calcDiscountTag.style.display = "inline-block";
-            calcDiscountTag.textContent = `PROMO APPLIED: ${discountPct}% OFF`;
+            calcDiscountTag.textContent = `PROMO APPLIED: ${discountTagText}`;
           }
         } else {
           if (summaryDiscountWrap) summaryDiscountWrap.style.display = "none";
