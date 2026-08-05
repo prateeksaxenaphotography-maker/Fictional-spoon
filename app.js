@@ -2478,14 +2478,6 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               <button type="button" id="adminPay5050Btn" class="admin-cal-btn" style="padding: 4px 10px; border-radius: 12px; font-size: 10px; cursor: pointer;">50/50</button>
               <button type="button" id="adminPay503020Btn" class="admin-cal-btn" style="padding: 4px 10px; border-radius: 12px; font-size: 10px; cursor: pointer;">50/30/20</button>
             </div>
-            <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(255, 69, 0, 0.1); border: 1px solid var(--accent); padding: 4px 12px; border-radius: 20px; font-family: var(--mono-font); font-size: 11px; font-weight: 700; color: var(--accent);">
-              <span>🔑 Studio Invite Code: <strong style="text-decoration: underline;">NERDY-INVITE</strong></span>
-              <button type="button" onclick="navigator.clipboard.writeText('NERDY-INVITE'); alert('Invite Code NERDY-INVITE copied to clipboard!');" style="background: var(--accent); color: #ffffff; border: none; padding: 2px 8px; border-radius: 10px; font-size: 10px; cursor: pointer; font-weight: 700;">📋 Copy</button>
-            </div>
-            <div style="display: inline-flex; align-items: center; gap: 6px; background: #ecfdf5; border: 1px solid #059669; padding: 4px 12px; border-radius: 20px; font-family: var(--mono-font); font-size: 11px; font-weight: 700; color: #059669;">
-              <span>🎟️ Promo Codes: <strong>NERDY10 (10%)</strong> · <strong>NERDY15 (15%)</strong> · <strong>NERDY20 (20%)</strong> · <strong>NERDYVIP (25%)</strong></span>
-              <button type="button" onclick="navigator.clipboard.writeText('NERDY10'); alert('Promo Code NERDY10 copied to clipboard!');" style="background: #059669; color: #ffffff; border: none; padding: 2px 8px; border-radius: 10px; font-size: 10px; cursor: pointer; font-weight: 700;">📋 Copy NERDY10</button>
-            </div>
             <button type="button" class="admin-cal-btn primary" id="adminCalNewBookingBtn">+ Add Manual Booking</button>
             <button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator()" style="border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Generate PDF Contract</button>
             <button type="button" class="admin-cal-btn" id="adminCalResetBtn">Reset Rules</button>
