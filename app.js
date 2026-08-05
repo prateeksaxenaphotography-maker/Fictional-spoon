@@ -6182,7 +6182,29 @@ RAW files are not provided.`
       }
 
       const testShootOpt = $("#b_type")?.querySelector('option[value="Selective Collaboration (TFP)"]');
-      if (role === "Brand") {
+      const inviteCodeInput = $("#b_invite_code");
+      const inviteStatus = $("#inviteCodeStatus");
+      const validCodes = ["NERDY-INVITE", "INVITE2026", "NERDYVIP", "STUDIOINVITE", "VIP2026"];
+      
+      const enteredCode = (inviteCodeInput?.value || "").trim().toUpperCase();
+      const isValidInvite = validCodes.includes(enteredCode);
+
+      if (inviteStatus) {
+        if (enteredCode) {
+          inviteStatus.style.display = "inline-block";
+          if (isValidInvite) {
+            inviteStatus.style.color = "#059669";
+            inviteStatus.textContent = "🟢 INVITE VERIFIED";
+          } else {
+            inviteStatus.style.color = "#dc2626";
+            inviteStatus.textContent = "🔴 INVALID CODE";
+          }
+        } else {
+          inviteStatus.style.display = "none";
+        }
+      }
+
+      if (role === "Brand" && !isValidInvite) {
         if (testShootOpt) {
           testShootOpt.hidden = true;
           testShootOpt.style.display = "none";
@@ -6235,6 +6257,7 @@ RAW files are not provided.`
 
     $("#b_type")?.addEventListener("change", updateFields);
     $("#b_role")?.addEventListener("change", updateFields);
+    $("#b_invite_code")?.addEventListener("input", updateFields);
     updateFields();
 
     function validate() {
