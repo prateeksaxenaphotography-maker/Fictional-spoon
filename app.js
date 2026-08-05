@@ -3096,7 +3096,19 @@ RAW files are not provided.`
     }
 
     const cVer = data.contractVersion || "V3.3";
-    const archiveObj = window.WPS_CONTRACT_ARCHIVE[cVer] || window.WPS_CONTRACT_ARCHIVE["V3.3"];
+    let archiveObj = window.WPS_CONTRACT_ARCHIVE[cVer];
+    if (!archiveObj) {
+      if (cVer === "V3.3-TFP") {
+        archiveObj = window.WPS_CONTRACT_ARCHIVE["V3.3"];
+      } else if (cVer === "Custom Contract") {
+        archiveObj = {
+          title: "Custom Client Contract / Master Services Agreement (MSA)",
+          fullText: `1. MASTER SERVICES AGREEMENT (MSA) SCOPE\nThis production session is executed under the Client / Brand Provided Master Services Agreement (MSA) or custom contract agreed upon between the Studio and the Client.\n\n2. PRODUCTION BRIEF & DELIVERABLE SPECIFICATIONS\nSpecific shoot dates, locations, deliverable asset counts, retouched image limits, and payment milestone terms are governed by the Production Brief summary table above.\n\n3. UNAUTHORIZED CAMERA OPERATION & DATA PROTECTION\nAll studio camera bodies, memory cards, tethering systems, and raw captures remain confidential studio property. Participants are strictly prohibited from handling equipment or deleting media from studio cards.`
+        };
+      } else {
+        archiveObj = window.WPS_CONTRACT_ARCHIVE["V3.3"];
+      }
+    }
     const contractText = archiveObj ? archiveObj.fullText : "";
     const isTfp = (data.paymentMilestones === "tfp" || cVer === "V3.3-TFP");
 
@@ -3184,7 +3196,13 @@ RAW files are not provided.`
       </div>
     `;
 
-    window.print();
+    document.body.classList.add("is-printing");
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        document.body.classList.remove("is-printing");
+      }, 1000);
+    }, 150);
   };
 
 
@@ -7309,7 +7327,13 @@ RAW files are not provided.`
       // snapshot — that skew (new app.js + old styles.css under the same
       // ?v=) produced blank PDFs on the live site.
       printContainer.style.setProperty("visibility", "visible", "important");
+      document.body.classList.add("is-printing");
+    setTimeout(() => {
       window.print();
+      setTimeout(() => {
+        document.body.classList.remove("is-printing");
+      }, 1000);
+    }, 150);
       document.title = oldTitle;
 
       printContainer.style.display = prevDisplay;
