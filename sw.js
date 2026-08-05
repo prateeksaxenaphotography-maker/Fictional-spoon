@@ -1,4 +1,4 @@
-const CACHE_NAME = "wps-v175";
+const CACHE_NAME = "wps-v176";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
