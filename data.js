@@ -834,6 +834,79 @@ window.WPS_DATA = {
   "CALENDAR_SETTINGS": {
     "customBlockedDates": {},
     "customOpenedDates": {},
-    "bookedDates": {}
+    "bookedDates": {
+      "2026-03-14": [
+        {
+          "id": "shoot-ms36z1wqlj20k1",
+          "shootId": "ms36z1wqlj20k1",
+          "name": "Luxury Jewelry & Accessories Campaign",
+          "type": "Commercial Campaign",
+          "duration": "Full Day (10:30 AM – 5:30 PM)",
+          "status": "confirmed",
+          "isTentative": false,
+          "notes": "Published Portfolio Shoot: Luxury Jewelry & Accessories Campaign"
+        }
+      ],
+      "2026-05-15": [
+        {
+          "id": "shoot-ms36z1wqm2xkrz",
+          "shootId": "ms36z1wqm2xkrz",
+          "name": "Cinematic Lookbook & Apparel Production",
+          "type": "Lookbook",
+          "duration": "Full Day (10:30 AM – 5:30 PM)",
+          "status": "confirmed",
+          "isTentative": false,
+          "notes": "Published Portfolio Shoot: Cinematic Lookbook & Apparel Production"
+        }
+      ],
+      "2026-06-13": [
+        {
+          "id": "shoot-ms36z1wq1g1x0j",
+          "shootId": "ms36z1wq1g1x0j",
+          "name": "Fitness & Athletic Power Shoot",
+          "type": "Fitness & Commercial",
+          "duration": "Full Day (10:30 AM – 5:30 PM)",
+          "status": "confirmed",
+          "isTentative": false,
+          "notes": "Published Portfolio Shoot: Fitness & Athletic Power Shoot"
+        }
+      ],
+      "2026-06-14": [
+        {
+          "id": "shoot-ms36z1wqlp9812",
+          "shootId": "ms36z1wqlp9812",
+          "name": "Urban High-Fashion Editorial",
+          "type": "Fashion Editorial",
+          "duration": "Full Day (10:30 AM – 5:30 PM)",
+          "status": "confirmed",
+          "isTentative": false,
+          "notes": "Published Portfolio Shoot: Urban High-Fashion Editorial"
+        }
+      ],
+      "2026-07-05": [
+        {
+          "id": "shoot-ms36z1wqkx21s1",
+          "shootId": "ms36z1wqkx21s1",
+          "name": "Commercial Beauty & Skin Campaign",
+          "type": "Beauty & Commercial",
+          "duration": "Full Day (10:30 AM – 5:30 PM)",
+          "status": "confirmed",
+          "isTentative": false,
+          "notes": "Published Portfolio Shoot: Commercial Beauty & Skin Campaign"
+        }
+      ],
+      "2026-07-24": [
+        {
+          "id": "shoot-ms36z1wqg2y4a2",
+          "shootId": "ms36z1wqg2y4a2",
+          "name": "Creative Studio Workshop & Lighting Masterclass",
+          "type": "Workshop Attended",
+          "duration": "Full Day (10:30 AM – 5:30 PM)",
+          "status": "workshop",
+          "isTentative": false,
+          "notes": "Published Portfolio Shoot: Creative Studio Workshop & Lighting Masterclass"
+        }
+      ]
+    }
   }
 };
