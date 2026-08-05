@@ -2929,7 +2929,11 @@ RAW files are not provided.`
               <select id="pdf_contractVersion" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
                 <option value="V3.3" ${(!b.contractVersion || b.contractVersion === 'V3.3') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.3 Active (50/50 + Gear Protection)</option>
                 <option value="V3.3-TFP" ${(isTest || b.contractVersion === 'V3.3-TFP') ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.3 Active (8-12 Retouched + Gear Protection)</option>
-                <option value="V3.2" ${b.contractVersion === 'V3.2' ? 'selected' : ''}>📜 Archived Terms V3.2</option>
+                <option value="V3.2" ${b.contractVersion === 'V3.2' ? 'selected' : ''}>📜 Archived Terms V3.2 (May 2026 – Aug 2026)</option>
+                <option value="V3.1" ${b.contractVersion === 'V3.1' ? 'selected' : ''}>📜 Archived Terms V3.1 (May 2026 – Jul 2026)</option>
+                <option value="V3.0" ${b.contractVersion === 'V3.0' ? 'selected' : ''}>📜 Archived Terms V3.0 (Jan 2026 – Apr 2026)</option>
+                <option value="V2.0" ${b.contractVersion === 'V2.0' ? 'selected' : ''}>📜 Archived Terms V2.0 (Jun 2025 – Dec 2025)</option>
+                <option value="V1.0" ${b.contractVersion === 'V1.0' ? 'selected' : ''}>📜 Archived Terms V1.0 (Jan 2025 – May 2025)</option>
                 <option value="Custom Contract" ${b.contractVersion === 'Custom Contract' ? 'selected' : ''}>📄 Custom Client Contract / Brand MSA</option>
               </select>
             </label>
