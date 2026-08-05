@@ -2845,7 +2845,257 @@ RAW files are not provided.`
       }
     };
 
-    window.openContractArchiveModal = function(ver) {
+    
+  window.openPdfContractGenerator = function(dKey, bookingId) {
+    const settings = window.WPS_DATA?.CALENDAR_SETTINGS || {};
+    const bookings = (settings.bookedDates && settings.bookedDates[dKey]) || [];
+    const b = bookings.find(x => x.id === bookingId || x.name === bookingId) || {
+      name: "",
+      email: "",
+      phone: "",
+      type: "Fashion Editorial",
+      duration: "Full Day",
+      status: "confirmed",
+      location: "Studio Space, Noida Sector 62 / Outdoor NCR",
+      package: "₹10,000 Package — 50 Proof Clicks + 8 Retouched Master Clicks",
+      notes: "Call time 9:00 AM. 3 wardrobe changes.",
+      contractVersion: "V3.3"
+    };
+
+    let modal = document.getElementById("pdfContractGeneratorModal");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "pdfContractGeneratorModal";
+      modal.className = "modal-overlay";
+      modal.style.cssText = "position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.65); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; padding: 20px;";
+      document.body.appendChild(modal);
+    }
+
+    const dVal = dKey || (new Date()).toISOString().split("T")[0];
+    const isTest = b.type && /test|tfp/i.test(b.type);
+
+    modal.innerHTML = `
+      <div class="modal-content" style="background: var(--paper); border: 1px solid var(--line); border-radius: 14px; max-width: 720px; width: 100%; max-height: 90vh; display: flex; flex-direction: column; box-shadow: var(--shadow); overflow: hidden; animation: modalFadeIn 0.3s ease;">
+        <div style="padding: 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; background: var(--bone);">
+          <div>
+            <h3 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink);">📄 Generate PDF Contract &amp; Agreement</h3>
+            <div style="font-size: 11px; color: var(--ink-soft); margin-top: 2px;">Prepare A4 PDF Contract for Off-Site &amp; DM/Email Bookings</div>
+          </div>
+          <button type="button" id="closePdfGenModal" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--ink-soft); padding: 4px;">✕</button>
+        </div>
+
+        <div style="padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px;">
+          <div style="background: rgba(var(--accent-rgb), 0.05); border: 1px solid var(--accent); border-radius: 8px; padding: 12px; font-size: 11px; color: var(--ink); line-height: 1.5;">
+            💡 <strong>Off-Site / DM Inquiry Workflow:</strong> Fill or edit the booking details below. Click <strong>🖨️ Print / Save as A4 PDF</strong> to download your official contract, then copy the <strong>Approval Message</strong> to paste into IG DM or Gmail!
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Client Name *
+              <input type="text" id="pdf_clientName" value="${esc(b.name || '')}" placeholder="e.g. Rahul Sharma / Model Name" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+            </label>
+            <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Instagram / Handle / Website
+              <input type="text" id="pdf_instagram" value="${esc(b.instagram || b.handle || '')}" placeholder="e.g. @handle or website.com" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+            </label>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Client Email Address
+              <input type="email" id="pdf_email" value="${esc(b.email || '')}" placeholder="client@example.com" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+            </label>
+            <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Phone Number
+              <input type="tel" id="pdf_phone" value="${esc(b.phone || '')}" placeholder="+91 98765-43210" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+            </label>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Shoot Date / Timeline *
+              <input type="text" id="pdf_date" value="${esc(dVal)}" placeholder="YYYY-MM-DD or Mid-August" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+            </label>
+            <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Shoot Duration
+              <select id="pdf_duration" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
+                <option value="Full Day" ${(b.duration === 'Full Day' || !b.duration) ? 'selected' : ''}>Full Day Shoot (up to 8 Hours)</option>
+                <option value="Half Day (Morning)" ${b.duration === 'Half Day (Morning)' ? 'selected' : ''}>Half Day Morning (9 AM - 1 PM)</option>
+                <option value="Half Day (Afternoon)" ${b.duration === 'Half Day (Afternoon)' ? 'selected' : ''}>Half Day Afternoon (2 PM - 6 PM)</option>
+                <option value="Flexible Hours" ${b.duration === 'Flexible Hours' ? 'selected' : ''}>Flexible Hours</option>
+              </select>
+            </label>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Shoot Location Address *
+              <input type="text" id="pdf_location" value="${esc(b.location || 'Studio Space, Noida / Outdoor NCR')}" placeholder="e.g. Sector 62 Studio, Noida / Client Venue" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+            </label>
+            <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Contract Document Version *
+              <select id="pdf_contractVersion" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
+                <option value="V3.3" ${(!b.contractVersion || b.contractVersion === 'V3.3') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.3 Active (50/50 + Gear Protection)</option>
+                <option value="V3.3-TFP" ${(isTest || b.contractVersion === 'V3.3-TFP') ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.3 Active (8-12 Retouched + Gear Protection)</option>
+                <option value="V3.2" ${b.contractVersion === 'V3.2' ? 'selected' : ''}>📜 Archived Terms V3.2</option>
+                <option value="Custom Contract" ${b.contractVersion === 'Custom Contract' ? 'selected' : ''}>📄 Custom Client Contract / Brand MSA</option>
+              </select>
+            </label>
+          </div>
+
+          <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Package Tier &amp; Deliverables Specs
+            <input type="text" id="pdf_package" value="${esc(b.package || b.type || (isTest ? 'Test Shoot (Full Proofing Gallery + 8 to 12 Retouched Master Clicks)' : '₹10,000 Package (50 Proof Clicks + 8 Retouched Master Clicks)'))}" placeholder="e.g. ₹10,000 Package — 50 Proofs + 8 Retouched Master Clicks" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+          </label>
+
+          <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Payment Milestone Terms
+            <select id="pdf_paymentMilestones" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
+              <option value="5050">Standard 50/50 Milestones (50% Advance Retainer / 50% Final Balance prior to file download)</option>
+              <option value="503020">3-Tier Campaign Milestones (50% Advance / 30% Proofing / 20% Final Deliverables)</option>
+              <option value="tfp">TFP / Test Shoot Collab (0 Fee, Full Proofing Gallery + 8-12 Retouched Clicks)</option>
+            </select>
+          </label>
+
+          <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Production Notes &amp; Call Time
+            <textarea id="pdf_notes" rows="2" placeholder="e.g. Call time 9:00 AM, 3 wardrobe changes, client brings own outfits." style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">${esc(b.notes || '')}</textarea>
+          </label>
+        </div>
+
+        <div style="padding: 16px 24px; border-top: 1px solid var(--line); display: flex; gap: 10px; justify-content: space-between; background: var(--bone); flex-wrap: wrap;">
+          <button type="button" class="admin-cal-btn" id="copyApprovalMsgBtn" style="border-color: var(--accent); color: var(--accent); font-weight: 700;">📋 Copy Approval Message for DM/Gmail</button>
+          <div style="display: flex; gap: 10px;">
+            <button type="button" class="admin-cal-btn" id="cancelPdfGenBtn">Cancel</button>
+            <button type="button" class="admin-cal-btn primary" id="triggerPrintPdfBtn" style="font-weight: 700;">🖨️ Print / Save as A4 PDF</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    $("#closePdfGenModal")?.addEventListener("click", () => modal.style.display = "none");
+    $("#cancelPdfGenBtn")?.addEventListener("click", () => modal.style.display = "none");
+
+    $("#copyApprovalMsgBtn")?.addEventListener("click", () => {
+      const name = $("#pdf_clientName").value.trim() || "Client";
+      const date = $("#pdf_date").value.trim() || "scheduled date";
+      const ver = $("#pdf_contractVersion").value;
+      const msg = `Hi ${name}! Please find attached your Studio Booking Contract & Production Agreement for ${date}.\n\nPlease review the PDF document and reply to this email / DM with: "I approve and agree to Studio Contract Terms ${ver} for ${date}" to confirm your session.\n\nStudio Operations · nerdyphotographer.in`;
+      navigator.clipboard.writeText(msg).then(() => {
+        toast("📋 Approval message copied to clipboard! Paste it into IG DM or Gmail when sending the PDF.");
+      }).catch(() => {
+        toast("Copy failed, please copy manually.");
+      });
+    });
+
+    $("#triggerPrintPdfBtn")?.addEventListener("click", () => {
+      window.printContractPdf({
+        clientName: $("#pdf_clientName").value.trim(),
+        instagram: $("#pdf_instagram").value.trim(),
+        email: $("#pdf_email").value.trim(),
+        phone: $("#pdf_phone").value.trim(),
+        date: $("#pdf_date").value.trim(),
+        duration: $("#pdf_duration").value,
+        location: $("#pdf_location").value.trim(),
+        contractVersion: $("#pdf_contractVersion").value,
+        package: $("#pdf_package").value.trim(),
+        paymentMilestones: $("#pdf_paymentMilestones").value,
+        notes: $("#pdf_notes").value.trim()
+      });
+    });
+  };
+
+  window.printContractPdf = function(data) {
+    let printContainer = document.getElementById("printableContractContainer");
+    if (!printContainer) {
+      printContainer = document.createElement("div");
+      printContainer.id = "printableContractContainer";
+      document.body.appendChild(printContainer);
+    }
+
+    const cVer = data.contractVersion || "V3.3";
+    const archiveObj = window.WPS_CONTRACT_ARCHIVE[cVer] || window.WPS_CONTRACT_ARCHIVE["V3.3"];
+    const contractText = archiveObj ? archiveObj.fullText : "";
+    const isTfp = (data.paymentMilestones === "tfp" || cVer === "V3.3-TFP");
+
+    printContainer.innerHTML = `
+      <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #111; padding: 30px 40px; max-width: 800px; margin: 0 auto; background: #fff; line-height: 1.5;">
+        <!-- Header -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #111; padding-bottom: 16px; margin-bottom: 20px;">
+          <div>
+            <div style="font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #000;">NERDYPHOTOGRAPHER.IN</div>
+            <div style="font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px;">Fashion, Fitness &amp; Commercial Photography Studio</div>
+            <div style="font-size: 11px; color: #555; margin-top: 2px;">Web: www.nerdyphotographer.in · Email: prateeksaxenaphotography@gmail.com</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-family: monospace; font-size: 11px; font-weight: 700; background: #f0f0f0; border: 1px solid #ccc; padding: 4px 10px; border-radius: 4px;">REF: WPS-CONTRACT-${esc(cVer)}-${esc(data.date)}</div>
+            <div style="font-size: 10px; color: #666; margin-top: 4px;">Issued: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+          </div>
+        </div>
+
+        <h2 style="font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 800; text-transform: uppercase; margin: 0 0 16px; text-align: center; letter-spacing: 0.05em;">
+          ${isTfp ? 'Time-For-Print (TFP) Production &amp; Model Release Agreement' : 'Studio Shoot Booking Contract &amp; Production Agreement'}
+        </h2>
+
+        <!-- Production Brief Table -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; border: 1px solid #ddd;">
+          <tbody>
+            <tr style="background: #f9f9f9;">
+              <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd; width: 25%;">Client / Participant:</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd; width: 25%;">${esc(data.clientName || 'Valued Client')}</td>
+              <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd; width: 25%;">Instagram / Contact:</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd; width: 25%;">${esc(data.instagram || data.email || 'Provided')}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Scheduled Date:</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd;">${esc(data.date || 'TBD')}</td>
+              <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Session Duration:</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd;">${esc(data.duration || 'Full Day')}</td>
+            </tr>
+            <tr style="background: #f9f9f9;">
+              <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Shoot Location:</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd;" colspan="3">${esc(data.location || 'Studio Space / Outdoor NCR')}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Package &amp; Deliverables:</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd;" colspan="3">${esc(data.package || 'Standard Deliverables')}</td>
+            </tr>
+            ${data.notes ? `
+              <tr style="background: #f9f9f9;">
+                <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Production Notes:</td>
+                <td style="padding: 8px 12px; border: 1px solid #ddd;" colspan="3">${esc(data.notes)}</td>
+              </tr>
+            ` : ''}
+          </tbody>
+        </table>
+
+        <!-- Payment & Rental Policy Box -->
+        <div style="background: #fafafa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 12px 16px; margin-bottom: 20px; font-size: 11px; line-height: 1.5;">
+          ${isTfp ? `
+            <strong>📸 TFP Test Shoot Terms:</strong> This session is structured for mutual portfolio growth. Deliverables include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW format files are strictly confidential studio property and are excluded. If a dedicated indoor studio venue space is requested, venue rental fees are billed at actuals (at cost).
+          ` : `
+            <strong>💳 Payment Milestones:</strong> ${data.paymentMilestones === '503020' ? '3-Tier Milestones (50% Advance Retainer / 30% Proofing / 20% Final Deliverables).' : 'Standard 50/50 Milestones (50% Advance Retainer prior to shoot start [non-refundable]; 50% Final Balance prior to file download [non-refundable]).'}<br/>
+            <strong>🏢 Studio Venue Rental Policy:</strong> Dedicated indoor studio venue rentals are billed <strong>at actuals (at cost)</strong>, or the client may directly book their preferred studio space for the session.
+          `}
+        </div>
+
+        <!-- Contract Terms Text -->
+        <div style="margin-bottom: 24px;">
+          <h3 style="font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 800; text-transform: uppercase; border-bottom: 1px solid #111; padding-bottom: 4px; margin: 0 0 10px;">
+            Terms &amp; Conditions (Contract Version ${esc(cVer)})
+          </h3>
+          <div style="font-size: 10px; line-height: 1.5; color: #222; text-align: justify; white-space: pre-wrap;">${esc(contractText)}</div>
+        </div>
+
+        <!-- Digital Approval Block -->
+        <div style="border: 2px dashed #111; border-radius: 8px; padding: 16px; text-align: center; background: #fff; page-break-inside: avoid;">
+          <div style="font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 800; text-transform: uppercase; color: #000; margin-bottom: 6px;">
+            ✍️ Digital Approval &amp; Acceptance Block
+          </div>
+          <p style="font-size: 11px; color: #333; margin: 0 0 8px; line-height: 1.4;">
+            Physical signatures are not required. Legal acceptance of these terms is established by sending a reply to <strong>prateeksaxenaphotography@gmail.com</strong> or DM <strong>@nerdyphotographer.in</strong> stating:
+          </p>
+          <div style="font-family: monospace; font-size: 11px; font-weight: 700; background: #f0f0f0; border: 1px solid #ccc; padding: 8px; border-radius: 4px; display: inline-block;">
+            "I approve and agree to Studio Contract Terms ${esc(cVer)} for ${esc(data.date)}"
+          </div>
+        </div>
+      </div>
+    `;
+
+    window.print();
+  };
+
+
+  window.openContractArchiveModal = function(ver) {
       const contract = window.WPS_CONTRACT_ARCHIVE[ver] || window.WPS_CONTRACT_ARCHIVE["V3.2"];
       let modal = document.getElementById("contractArchiveModal");
       if (!modal) {
@@ -3085,6 +3335,7 @@ RAW files are not provided.`
                         <span style="display:inline-block; margin-left:6px; background:var(--bone); border:1px solid var(--line); border-radius:4px; padding:1px 6px; font-family:var(--mono-font); font-size:10px; font-weight:700; color:var(--accent);">⏱️ ${esc(b.duration || "Full Day")}</span>
                       </div>
                       <div style="display:flex; gap:6px;">
+                        <button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('${dKey}', '${b.id}')" style="border-color: var(--accent); color: var(--accent); font-size: 10px; padding:3px 8px; font-weight:700;">📄 Generate PDF Contract</button>
                         <button type="button" class="admin-cal-btn primary" onclick="window.openEditBookingModal('${dKey}', '${b.id}')" style="font-size: 10px; padding:3px 8px;">✏️ Edit</button>
                         <button type="button" class="admin-cal-btn" onclick="window.removeBookingFromRoster('${dKey}', '${b.id}'); document.getElementById('closeAdminModal')?.click();" style="color: #b22222; border-color: rgba(178,34,34,0.3); font-size: 10px; padding:3px 8px;">Remove</button>
                       </div>
