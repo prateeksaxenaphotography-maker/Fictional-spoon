@@ -3131,35 +3131,33 @@ RAW files are not provided.`
           ${isTfp ? 'Time-For-Print (TFP) Production &amp; Model Release Agreement' : 'Studio Shoot Booking Contract &amp; Production Agreement'}
         </h2>
 
-        <!-- Production Brief Table -->
+        <!-- Production Brief Table with Blank Pen-Fill Line Support -->
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; border: 1px solid #ddd;">
           <tbody>
             <tr style="background: #f9f9f9;">
               <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd; width: 25%;">Client / Participant:</td>
-              <td style="padding: 8px 12px; border: 1px solid #ddd; width: 25%;">${esc(data.clientName || 'Valued Client')}</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd; width: 25%;">${data.clientName ? esc(data.clientName) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 90%; min-height: 16px;">&nbsp;</span>'}</td>
               <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd; width: 25%;">Instagram / Contact:</td>
-              <td style="padding: 8px 12px; border: 1px solid #ddd; width: 25%;">${esc(data.instagram || data.email || 'Provided')}</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd; width: 25%;">${(data.instagram || data.email) ? esc(data.instagram || data.email) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 90%; min-height: 16px;">&nbsp;</span>'}</td>
             </tr>
             <tr>
               <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Scheduled Date:</td>
-              <td style="padding: 8px 12px; border: 1px solid #ddd;">${esc(data.date || 'TBD')}</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd;">${data.date ? esc(data.date) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 90%; min-height: 16px;">&nbsp;</span>'}</td>
               <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Session Duration:</td>
-              <td style="padding: 8px 12px; border: 1px solid #ddd;">${esc(data.duration || 'Full Day')}</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd;">${data.duration ? esc(data.duration) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 90%; min-height: 16px;">&nbsp;</span>'}</td>
             </tr>
             <tr style="background: #f9f9f9;">
               <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Shoot Location:</td>
-              <td style="padding: 8px 12px; border: 1px solid #ddd;" colspan="3">${esc(data.location || 'Studio Space / Outdoor NCR')}</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd;" colspan="3">${data.location ? esc(data.location) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 95%; min-height: 16px;">&nbsp;</span>'}</td>
             </tr>
             <tr>
               <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Package &amp; Deliverables:</td>
-              <td style="padding: 8px 12px; border: 1px solid #ddd;" colspan="3">${esc(data.package || 'Standard Deliverables')}</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd;" colspan="3">${data.package ? esc(data.package) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 95%; min-height: 16px;">&nbsp;</span>'}</td>
             </tr>
-            ${data.notes ? `
-              <tr style="background: #f9f9f9;">
-                <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Production Notes:</td>
-                <td style="padding: 8px 12px; border: 1px solid #ddd;" colspan="3">${esc(data.notes)}</td>
-              </tr>
-            ` : ''}
+            <tr style="background: #f9f9f9;">
+              <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Production Notes:</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd;" colspan="3">${data.notes ? esc(data.notes) : '<span style="border-bottom: 1.5px dashed #999; display: block; width: 98%; min-height: 18px;">&nbsp;</span>'}</td>
+            </tr>
           </tbody>
         </table>
 
@@ -3181,16 +3179,22 @@ RAW files are not provided.`
           <div style="font-size: 10px; line-height: 1.5; color: #222; text-align: justify; white-space: pre-wrap;">${esc(contractText)}</div>
         </div>
 
-        <!-- Digital Approval Block -->
-        <div style="border: 2px dashed #111; border-radius: 8px; padding: 16px; text-align: center; background: #fff; page-break-inside: avoid;">
-          <div style="font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 800; text-transform: uppercase; color: #000; margin-bottom: 6px;">
-            ✍️ Digital Approval &amp; Acceptance Block
+        <!-- Digital & Physical Pen Signature Acceptance Block -->
+        <div style="border: 2px dashed #111; border-radius: 8px; padding: 14px; background: #fff; page-break-inside: avoid; margin-top: 16px;">
+          <div style="font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 800; text-transform: uppercase; color: #000; margin-bottom: 6px; text-align: center;">
+            ✍️ Digital Approval Code OR Physical Pen Signature
           </div>
-          <p style="font-size: 11px; color: #333; margin: 0 0 8px; line-height: 1.4;">
-            Physical signatures are not required. Legal acceptance of these terms is established by sending a reply to <strong>prateeksaxenaphotography@gmail.com</strong> or DM <strong>@nerdyphotographer.in</strong> stating:
-          </p>
-          <div style="font-family: monospace; font-size: 11px; font-weight: 700; background: #f0f0f0; border: 1px solid #ccc; padding: 8px; border-radius: 4px; display: inline-block;">
-            "I approve and agree to Studio Contract Terms ${esc(cVer)} for ${esc(data.date)}"
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px; font-size: 11px; align-items: start;">
+            <div>
+              <strong>Method A — Digital Approval (DM / Email):</strong><br/>
+              Reply to <strong>prateeksaxenaphotography@gmail.com</strong> or DM <strong>@nerdyphotographer.in</strong>:<br/>
+              <div style="font-family: monospace; font-size: 10px; font-weight: 700; background: #f4f4f4; border: 1px solid #ccc; padding: 6px; border-radius: 4px; margin-top: 6px;">"I approve Studio Contract Terms ${esc(cVer)}"</div>
+            </div>
+            <div style="border-left: 1px solid #ddd; padding-left: 14px;">
+              <strong>Method B — Physical Pen Signature:</strong><br/>
+              <div style="margin-top: 14px;">Client Sign: <span style="border-bottom: 1.5px solid #000; display: inline-block; width: 140px; height: 14px;">&nbsp;</span></div>
+              <div style="margin-top: 8px;">Date: <span style="border-bottom: 1.5px solid #000; display: inline-block; width: 140px; height: 14px;">&nbsp;</span></div>
+            </div>
           </div>
         </div>
       </div>
