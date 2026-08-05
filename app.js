@@ -1,4 +1,48 @@
 /* ============================================================
+   § ADMIN NO-CODE DYNAMIC PACKAGE & PRICING MANAGEMENT ENGINE
+   ============================================================ */
+const DEFAULT_PACKAGES = [
+  { id: "pkg1", name: "Basic Test / Comp Card", price: 7000, specs: "20 Proof Clicks + 0 Retouched" },
+  { id: "pkg2", name: "Mini Portfolio", price: 10000, specs: "25 Proof Clicks + 3-5 Retouched Clicks" },
+  { id: "pkg3", name: "Standard Editorial Portfolio", price: 25000, specs: "50 Unedited + 8-12 Retouched Clicks" },
+  { id: "pkg4", name: "Premium Brand Campaign", price: 50000, specs: "100 Unedited + 15-25 Retouched Clicks" },
+  { id: "pkg5", name: "High-End Full Day Production", price: 75000, specs: "Full Gallery + 30+ Retouched Master Assets" }
+];
+
+function getAdminPackages() {
+  try {
+    const saved = localStorage.getItem("wps_custom_packages");
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return DEFAULT_PACKAGES;
+}
+
+window.getAdminPackages = getAdminPackages;
+
+window.saveAdminCustomPackages = function() {
+  const rows = document.querySelectorAll(".admin-pkg-editor-row");
+  if (!rows.length) return;
+  const updated = [];
+  rows.forEach((row, i) => {
+    const name = row.querySelector(".pkg-edit-name")?.value || `Package ${i+1}`;
+    const price = parseInt(row.querySelector(".pkg-edit-price")?.value, 10) || 10000;
+    const specs = row.querySelector(".pkg-edit-specs")?.value || "Standard Deliverables";
+    updated.push({ id: `pkg_${i+1}`, name, price, specs });
+  });
+  localStorage.setItem("wps_custom_packages", JSON.stringify(updated));
+  alert("✅ Studio Package Rates & Deliverables saved successfully! All booking forms updated.");
+  if (typeof render === "function") render();
+};
+
+window.resetAdminCustomPackages = function() {
+  if (confirm("Reset studio package rates to default values?")) {
+    localStorage.removeItem("wps_custom_packages");
+    alert("Reset to default package rates!");
+    if (typeof render === "function") render();
+  }
+};
+
+/* ============================================================
    nerdyphotographer.in — app (multi-view studio)
    Hash-free router · 7 views · overlay nav · rich upload form ·
    IndexedDB persistence · GitHub publishing · lightbox.
@@ -2592,18 +2636,18 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       if (!pkgsGrid) return;
       const pkgs = getAdminPackages();
       pkgsGrid.innerHTML = pkgs.map((p, idx) => `
-        <div class="admin-pkg-editor-row" style="background: #ffffff; border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; display: grid; grid-template-columns: 1.5fr 1fr 2.5fr; gap: 10px; align-items: center;">
+        <div class="admin-pkg-editor-row" style="background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: grid; grid-template-columns: 1.5fr 1fr 2.5fr; gap: 12px; align-items: center;">
           <div>
-            <span style="font-size: 10px; font-weight: 700; color: var(--ink-soft); display: block; margin-bottom: 2px;">Package Name #${idx+1}</span>
-            <input type="text" class="pkg-edit-name" value="${esc(p.name)}" style="width: 100%; padding: 6px; border: 1px solid var(--line); border-radius: 4px; font-family: inherit; font-size: 11px; font-weight: 700;" />
+            <span style="font-size: 10px; font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase;">Package Name #${idx+1}</span>
+            <input type="text" class="pkg-edit-name" value="${esc(p.name)}" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: 12px; font-weight: 700; background: var(--bone); color: var(--ink);" />
           </div>
           <div>
-            <span style="font-size: 10px; font-weight: 700; color: var(--ink-soft); display: block; margin-bottom: 2px;">Max Rate (INR ₹)</span>
-            <input type="number" class="pkg-edit-price" value="${p.price}" style="width: 100%; padding: 6px; border: 1px solid var(--line); border-radius: 4px; font-family: inherit; font-size: 11px; font-weight: 700; color: var(--accent);" />
+            <span style="font-size: 10px; font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase;">Max Rate (INR ₹)</span>
+            <input type="number" class="pkg-edit-price" value="${p.price}" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: 12px; font-weight: 800; color: #059669; background: var(--bone);" />
           </div>
           <div>
-            <span style="font-size: 10px; font-weight: 700; color: var(--ink-soft); display: block; margin-bottom: 2px;">Deliverable Specs</span>
-            <input type="text" class="pkg-edit-specs" value="${esc(p.specs)}" style="width: 100%; padding: 6px; border: 1px solid var(--line); border-radius: 4px; font-family: inherit; font-size: 11px;" />
+            <span style="font-size: 10px; font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase;">Deliverable Specs</span>
+            <input type="text" class="pkg-edit-specs" value="${esc(p.specs)}" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: 12px; background: var(--bone); color: var(--ink);" />
           </div>
         </div>
       `).join("");
