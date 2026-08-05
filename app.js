@@ -2507,37 +2507,15 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <div id="adminPackagesEditorGrid" style="display: flex; flex-direction: column; gap: 8px;"></div>
         </div>
 
-        <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-family: var(--mono-font); font-size: 11px;">
-          <div style="font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 700; color: var(--ink); margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
-            <span>🎟️ Active Studio Promotional Discount &amp; Invite Codes Reference</span>
-            <span style="font-size: 11px; color: var(--accent); font-weight: 700; background: rgba(255,69,0,0.1); padding: 2px 8px; border-radius: 12px; border: 1px solid var(--accent);">🔑 Invite Code: <strong>NERDY-INVITE</strong></span>
-          </div>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px;">
-            <div style="background: #ffffff; border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; gap: 6px;">
-              <div><strong style="color: #059669;">NERDY500</strong>: Flat ₹500 Off Instant Savings</div>
-              <button type="button" onclick="navigator.clipboard.writeText('NERDY500'); alert('Promo Code NERDY500 copied!');" style="background: #059669; color: #ffffff; border: none; padding: 3px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700;">Copy</button>
-            </div>
-            <div style="background: #ffffff; border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; gap: 6px;">
-              <div><strong style="color: #059669;">NERDY1000</strong>: Flat ₹1,000 Off Instant Savings</div>
-              <button type="button" onclick="navigator.clipboard.writeText('NERDY1000'); alert('Promo Code NERDY1000 copied!');" style="background: #059669; color: #ffffff; border: none; padding: 3px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700;">Copy</button>
-            </div>
-            <div style="background: #ffffff; border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; gap: 6px;">
-              <div><strong style="color: #059669;">NERDY10</strong>: 10% Off First Commercial Booking</div>
-              <button type="button" onclick="navigator.clipboard.writeText('NERDY10'); alert('Promo Code NERDY10 copied!');" style="background: #059669; color: #ffffff; border: none; padding: 3px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700;">Copy</button>
-            </div>
-            <div style="background: #ffffff; border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; gap: 6px;">
-              <div><strong style="color: #059669;">NERDY15</strong>: 15% Off Noida / Delhi NCR Shoots</div>
-              <button type="button" onclick="navigator.clipboard.writeText('NERDY15'); alert('Promo Code NERDY15 copied!');" style="background: #059669; color: #ffffff; border: none; padding: 3px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700;">Copy</button>
-            </div>
-            <div style="background: #ffffff; border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; gap: 6px;">
-              <div><strong style="color: #059669;">NERDY20</strong>: 20% Off Studio Production Campaigns</div>
-              <button type="button" onclick="navigator.clipboard.writeText('NERDY20'); alert('Promo Code NERDY20 copied!');" style="background: #059669; color: #ffffff; border: none; padding: 3px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700;">Copy</button>
-            </div>
-            <div style="background: #ffffff; border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; gap: 6px;">
-              <div><strong style="color: #059669;">NERDYVIP</strong>: 25% VIP Partner Discount</div>
-              <button type="button" onclick="navigator.clipboard.writeText('NERDYVIP'); alert('Promo Code NERDYVIP copied!');" style="background: #059669; color: #ffffff; border: none; padding: 3px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700;">Copy</button>
+        <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-family: var(--mono-font); font-size: 11px;">
+          <div style="font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <span style="display: flex; align-items: center; gap: 8px;">🎟️ Studio Promotional Discount &amp; Invite Codes Manager (No-Code Admin Control)</span>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <span style="font-size: 11px; color: var(--accent); font-weight: 700; background: rgba(255,69,0,0.1); padding: 3px 10px; border-radius: 12px; border: 1px solid var(--accent);">🔑 Invite Code: <strong>NERDY-INVITE</strong></span>
+              <button type="button" class="admin-cal-btn primary" onclick="window.addNewAdminPromoCode()" style="font-size: 11px; padding: 4px 12px; font-weight: 700;">+ Add New Promo Code</button>
             </div>
           </div>
+          <div id="adminPromoCodesGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px;"></div>
         </div>
 
         <div id="adminCalGridContainer"></div>
@@ -2624,6 +2602,25 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
   function wireCalendar() {
     function renderAdminPackagesEditor() {
+      const promoGrid = $("#adminPromoCodesGrid");
+      if (promoGrid) {
+        const codes = getAdminPromoCodes();
+        promoGrid.innerHTML = Object.keys(codes).map(codeKey => {
+          const item = codes[codeKey];
+          return `
+            <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+              <div>
+                <strong style="color: #059669; font-size: 12px;">${esc(codeKey)}</strong>: ${esc(item.label)}
+              </div>
+              <div style="display: flex; gap: 4px;">
+                <button type="button" onclick="navigator.clipboard.writeText('${esc(codeKey)}'); alert('Promo Code ${esc(codeKey)} copied!');" style="background: #059669; color: #ffffff; border: none; padding: 4px 10px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700;">Copy</button>
+                ${item.isCustom ? `<button type="button" onclick="window.deleteAdminPromoCode('${esc(codeKey)}')" style="background: rgba(255,77,77,0.15); color: #ff4d4d; border: 1px solid rgba(255,77,77,0.4); padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700;">❌ Delete</button>` : ''}
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+
       const pkgsGrid = $("#adminPackagesEditorGrid");
       if (!pkgsGrid) return;
       const pkgs = getAdminPackages();
@@ -6355,14 +6352,7 @@ RAW files are not provided.`
       const isValidInvite = validCodes.includes(enteredCode);
 
       // Promo Discount Codes Map
-      const discountCodesMap = {
-        "NERDY500":  { flat: 500,  label: "Flat ₹500 Off Instant Savings (NERDY500)" },
-        "NERDY1000": { flat: 1000, label: "Flat ₹1,000 Off Instant Savings (NERDY1000)" },
-        "NERDY10":   { pct: 10,    label: "10% Off First Commercial Shoot (NERDY10)" },
-        "NERDY15":   { pct: 15,    label: "15% Off NCR Regional Shoots (NERDY15)" },
-        "NERDY20":   { pct: 20,    label: "20% Off Studio Production (NERDY20)" },
-        "NERDYVIP":  { pct: 25,    label: "25% VIP Partner Discount (NERDYVIP)" }
-      };
+      const discountCodesMap = getAdminPromoCodes();
 
       const discountInput = $("#b_discount_code");
       const discountStatus = $("#discountCodeStatus");
