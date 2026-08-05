@@ -6191,41 +6191,30 @@ RAW files are not provided.`
       const date = val("b_date"), locationVal = val("b_location"), budget = (type === "Test Shoot" ? "Collab / TFP (No Budget)" : val("b_budget"));
       const moodboard = val("b_moodboard"), concept = val("b_concept");
 
-      const proceedSubmit = (agreedToTerms = false, shootCategory = "Commercial") => {
+      const proceedSubmit = (agreedToTerms = false, shootCategory = "Commercial", isCustomContract = false, customContractNotes = "") => {
         btn.disabled = true;
         btn.classList.add("is-loading");
         btn.textContent = "Sending your request…";
 
         const isTfpCat = shootCategory === "TFP";
-        const contractRefDoc = isTfpCat ? "TFP-LIABILITY-RELEASE-V3.3" : "COMMERCIAL-CONTRACT-V3.3";
+        const contractRefDoc = isCustomContract ? "CUSTOM-CLIENT-CONTRACT-MSA" : (isTfpCat ? "TFP-LIABILITY-RELEASE-V3.3" : "COMMERCIAL-CONTRACT-V3.3");
         const tfpReleaseText = agreedToTerms ? (
           `\n\n==================================================\n` +
           `STUDIO PRODUCTION CONTRACT & LEGAL TERMS\n` +
-          `${isTfpCat ? 'TFP COLLABORATION & MODEL RELEASE' : 'COMMERCIAL SHOOT PRODUCTION AGREEMENT'}\n` +
+          `${isCustomContract ? 'CUSTOM CLIENT CONTRACT / AGENCY MSA REQUESTED' : (isTfpCat ? 'TFP COLLABORATION & MODEL RELEASE' : 'COMMERCIAL SHOOT PRODUCTION AGREEMENT')}\n` +
           `Document Reference: ${contractRefDoc}\n` +
           `--------------------------------------------------\n` +
           `Studio/Photographer: nerdyphotographer.in\n` +
           `Client/Participant: ${name}\n` +
           `Contact Email: ${email}\n` +
-          `Digital Consent Tracking: Verified via Website Form Submission\n` +
+          `Contract Status: ${isCustomContract ? 'Custom Contract / Agency MSA Requested (Pending Studio Review)' : 'Agreed to Studio Contract V3.3'}\n` +
+          (isCustomContract ? `Custom Contract Notes: ${customContractNotes || 'Client requested custom agency MSA'}\n` : '') +
           `--------------------------------------------------\n\n` +
-          `1. SCOPE OF PRODUCTION & VENUE RENTAL POLICY\n` +
-          `This session is scheduled for studio/location photography production. The Studio provides specialized camera gear, lighting architecture, workspace, and post-production engineering. Studio Space Rental Policy: Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio venue space is required, applicable studio rental fees are billed at actuals (at cost), or the client may directly book their preferred studio venue.\n\n` +
-          `2. INTELLECTUAL PROPERTY & USAGE LICENSING\n` +
-          `The legal copyright of all visual media remains exclusively with the Studio. Clients receive personal, social media, and web self-promotion usage rights. Extended commercial billboard, TV, print, or advertising rights require separate usage licensing. No secondary mobile filters or third-party digital alterations may be applied to delivered files.\n\n` +
-          `3. COMPREHENSIVE LIABILITY WAIVER\n` +
-          `Participant(s) enter the studio workspace and perform physical poses entirely at their own risk. The Studio is not liable for physical injury, accident, or property wear-and-tear incurred on set.\n\n` +
-          `4. DELIVERABLES, REVISIONS & CLOUD ARCHIVAL\n` +
-          `Proofing & Download Rights: All packages include web gallery access for online proofing. High-res downloads are restricted to contracted retouched master clicks. RAW unedited camera files are strictly excluded.\n` +
-          `Editing Revision Policy: Deliverables include One (1) Round of Minor Revisions (within 7 days of delivery). Additional revision rounds or structural edits are billed at ₹1,500/image.\n` +
-          `Cloud Archival Retention: Delivered galleries remain active on cloud servers for ${isTfpCat ? '3 Months (90 days)' : '6 Months (180 days)'}. Clients are responsible for downloading local backups within this window.\n\n` +
-          `5. UNAUTHORIZED CAMERA OPERATION & GEAR PROTECTION\n` +
-          `All camera bodies, memory cards, and raw captures are strictly hands-off. Participants may not touch equipment or delete media from cameras. File deletion constitutes a material breach of contract and incurs full data recovery costs.\n\n` +
-          `6. DIGITAL CONSENT & EMAIL ACCEPTANCE\n` +
-          `In accordance with digital contract standards, physical signatures are not required. Legal acceptance is established by submitting this request or confirming over email/DM.\n\n` +
-          `nerdyphotographer.in studios\n` +
-          `--------------------------------------------------\n` +
-          `DIGITAL AGREEMENT SIGNED: ${name} has read and agreed to Studio Terms (${contractRefDoc}) upon request submission.\n` +
+          (isCustomContract ? 
+            `1. CUSTOM CONTRACT / AGENCY MSA REQUEST\nThis shoot request is submitted under a Custom Client Contract / Agency Master Services Agreement (MSA). Studio V3.3 default terms remain subject to custom contract review and mutual alignment prior to shoot day confirmation.\n\n2. CAMERA GEAR & DATA PROTECTION CLAUSE\nAll camera bodies, memory cards, and raw captures remain confidential studio property. Participants may not touch equipment or delete media from cameras.\n` :
+            `1. SCOPE OF PRODUCTION & VENUE RENTAL POLICY\nThis session is scheduled for studio/location photography production. Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio venue space is required, applicable studio rental fees are billed at actuals (at cost).\n\n2. INTELLECTUAL PROPERTY & USAGE LICENSING\nThe legal copyright of all visual media remains exclusively with the Studio. Clients receive personal, social media, and web self-promotion usage rights.\n\n3. COMPREHENSIVE LIABILITY WAIVER\nParticipant(s) enter the studio workspace and perform physical poses entirely at their own risk.\n\n4. DELIVERABLES, REVISIONS & CLOUD ARCHIVAL\nDeliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for ${isTfpCat ? '3 Months' : '6 Months'}. RAW files are strictly excluded.\n\n5. UNAUTHORIZED CAMERA OPERATION & GEAR PROTECTION\nAll camera gear and memory cards are strictly hands-off.\n\n6. DIGITAL CONSENT & EMAIL ACCEPTANCE\nLegal acceptance is established by submitting this request.`
+          ) +
+          `\n\nnerdyphotographer.in studios\n` +
           `==================================================`
         ) : "";
 
@@ -6377,9 +6366,9 @@ RAW files are not provided.`
       };
 
       if (type === "Test Shoot") {
-        openTermsModal(name, "TFP", () => proceedSubmit(true, "TFP"));
+        openTermsModal(name, "TFP", (agreed, isCustom, notes) => proceedSubmit(agreed, "TFP", isCustom, notes));
       } else {
-        openTermsModal(name, "Commercial", () => proceedSubmit(true, "Commercial"));
+        openTermsModal(name, "Commercial", (agreed, isCustom, notes) => proceedSubmit(agreed, "Commercial", isCustom, notes));
       }
     });
 
@@ -6390,6 +6379,13 @@ RAW files are not provided.`
       const modalTag = $("#termsModalTag");
       const partnerNameEl = $("#terms_partner_name");
       const sec4Text = $("#termsSec4Text");
+      const customWrap = $("#customContractOptionWrap");
+      const customBtn = $("#termsCustomBtn");
+      const customInput = $("#customContractNotesInput");
+
+      if (customWrap) customWrap.style.display = "none";
+      if (customInput) customInput.value = "";
+      if (customBtn) customBtn.textContent = "📝 Request Custom Contract / Agency MSA";
 
       if (modalTitle) modalTitle.textContent = isTfp ? "Studio Production & Liability Release" : "Commercial Shoot Contract & Production Agreement";
       if (modalTag) modalTag.textContent = isTfp ? "TFP-LIABILITY-RELEASE-V3.3 (ACTIVE)" : "COMMERCIAL-CONTRACT-V3.3 (ACTIVE)";
@@ -6403,16 +6399,32 @@ RAW files are not provided.`
 
       $("#termsModal").style.display = "flex";
       const acceptBtn = $("#termsAcceptBtn");
-      const declineBtn = $("#termsDeclineBtn");
+
       const close = () => {
         $("#termsModal").style.display = "none";
         acceptBtn.removeEventListener("click", onAcceptClick);
-        declineBtn.removeEventListener("click", onDeclineClick);
+        if (customBtn) customBtn.removeEventListener("click", onCustomClick);
       };
-      const onAcceptClick = () => { close(); if (onAccept) onAccept(); };
-      const onDeclineClick = () => close();
+
+      const onAcceptClick = () => {
+        close();
+        if (onAccept) onAccept(true, false, "");
+      };
+
+      const onCustomClick = () => {
+        if (customWrap.style.display === "none") {
+          customWrap.style.display = "block";
+          customInput?.focus();
+          customBtn.textContent = "Submit with Custom Contract Request ✓";
+        } else {
+          const notes = customInput?.value.trim() || "Client requested custom contract / agency MSA";
+          close();
+          if (onAccept) onAccept(true, true, notes);
+        }
+      };
+
       acceptBtn.addEventListener("click", onAcceptClick);
-      declineBtn.addEventListener("click", onDeclineClick);
+      if (customBtn) customBtn.addEventListener("click", onCustomClick);
     }
 
     // Wire copy button
