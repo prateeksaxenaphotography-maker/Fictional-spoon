@@ -6191,52 +6191,41 @@ RAW files are not provided.`
       const date = val("b_date"), locationVal = val("b_location"), budget = (type === "Test Shoot" ? "Collab / TFP (No Budget)" : val("b_budget"));
       const moodboard = val("b_moodboard"), concept = val("b_concept");
 
-      const proceedSubmit = (agreedToTerms = false) => {
+      const proceedSubmit = (agreedToTerms = false, shootCategory = "Commercial") => {
         btn.disabled = true;
         btn.classList.add("is-loading");
         btn.textContent = "Sending your request…";
 
+        const isTfpCat = shootCategory === "TFP";
+        const contractRefDoc = isTfpCat ? "TFP-LIABILITY-RELEASE-V3.3" : "COMMERCIAL-CONTRACT-V3.3";
         const tfpReleaseText = agreedToTerms ? (
           `\n\n==================================================\n` +
-          `STUDIO PRODUCTION & LIABILITY RELEASE\n` +
-          `TFP COLLABORATION, MODEL RELEASE & DIGITAL CONSENT TERMS\n` +
-          `Document Reference: TFP-LIABILITY-RELEASE-V3.3\n` +
+          `STUDIO PRODUCTION CONTRACT & LEGAL TERMS\n` +
+          `${isTfpCat ? 'TFP COLLABORATION & MODEL RELEASE' : 'COMMERCIAL SHOOT PRODUCTION AGREEMENT'}\n` +
+          `Document Reference: ${contractRefDoc}\n` +
           `--------------------------------------------------\n` +
           `Studio/Photographer: nerdyphotographer.in\n` +
-          `Creative Partner/Model: ${name}\n` +
-          `Business Handle: @nerdyphotographer.in\n` +
-          `Consent Tracking: Verified via Email / Digital Acknowledgment\n` +
-          `Production Status: Time-For-Print (TFP) Collab\n` +
-          `Location: Studio Production Space\n` +
+          `Client/Participant: ${name}\n` +
+          `Contact Email: ${email}\n` +
+          `Digital Consent Tracking: Verified via Website Form Submission\n` +
           `--------------------------------------------------\n\n` +
-          `1. SCOPE OF CREATIVE COLLABORATION\n` +
-          `This session is scheduled as a peer-to-peer creative collaboration structured for mutual portfolio growth, asset curation, and personal branding advancement. No monetary compensation is required or exchanged for photographer or model services. The Studio provides specialized equipment, lighting architecture, workspace, and post-production engineering; the Participant(s) provide technical modeling direction, personal wardrobe, and makeup artistry. Note: If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges.\n\n` +
-          `2. INTELLECTUAL PROPERTY, MODEL RELEASE & USAGE LICENSE\n` +
-          `The legal copyright of all visual media remains exclusively with the Studio. To support mutual growth and portfolio building, all participants are granted a full non-exclusive license to publish, share, and use final retouched photos for personal self-promotion, social media grids (Instagram/TikTok), personal websites, and agency portfolios.\n` +
-          `* No Alterations: To preserve the lighting design and capture integrity, no party shall apply secondary mobile filters, automated presets, cropping adjustments, or third-party digital modifications to the delivered files.\n\n` +
-          `3. COMPREHENSIVE LIABILITY WAIVER & INDEMNIFICATION\n` +
-          `CRITICAL SAFETY & LIABILITY RELEASE: The Participant enters the studio environment, uses studio blocks, cubes, chairs, furniture, or props, and performs physical poses entirely at their own risk. The Studio shall not be held liable for any physical injury, illness, accident, psychological distress, property damage, or clothing wear-and-tear incurred before, during, or after this production. The Participant explicitly waives any right to seek damages or legal recourse against the Studio or its operating photographers for accidents or injuries occurring on the premises.\n` +
-          `Furthermore, the Participant agrees to indemnify and hold harmless the Studio from any claims, damages, liabilities, or legal expenses arising out of the Participant's conduct or injuries on set.\n\n` +
-          `4. TECHNICAL PERFORMANCE & DELIVERY DISCLAIMER\n` +
-          `As a creative collaboration, the Studio offers no guarantees regarding the exact number of final images delivered, the specific turnaround time, or the subjective artistic satisfaction of the deliverables. The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered to the Participant, unless otherwise agreed upon in writing for an additional fee.\n\n` +
-          `5. MANDATORY ALL-PARTY ATTRIBUTION WORKFLOW\n` +
-          `To ensure creative transparency, all parties agree to execute the following mandatory publishing workflow:\n` +
-          `• Instagram Collaboration Feature: For all primary feed or grid publications, the publishing party must issue an Instagram Co-Author Collaboration Invite to @nerdyphotographer.in prior to publishing.\n` +
-          `• Full Production Credits Block: Every party publishing an asset must explicitly credit all contributors in the caption:\n` +
-          `  📷 Photography & Light Design: @nerdyphotographer.in\n` +
-          `  👤 Model / Talent: @[Handle]\n` +
-          `  💄 Makeup Artist / MUA: @[Handle]\n` +
-          `  👔 Styling / Wardrobe: @[Handle]\n\n` +
-          `6. UNAUTHORIZED CAMERA OPERATION, GEAR HANDS-OFF & DATA PROTECTION CLAUSE\n` +
-          `All camera bodies, lenses, memory cards, tethering systems, and digital raw captures remain the exclusive physical and intellectual property of the Studio. Under no circumstances is a model, talent, client, or crew participant permitted to operate, touch, view without supervision, or delete media/files from the photographer’s cameras or memory cards. Deleting or attempting to delete media from equipment constitutes a material breach of contract, resulting in immediate termination of the shoot, forfeiture of all retouched deliverables, and full liability for data recovery expenses.\n\n` +
-          `7. DIGITAL CONSENT, EMAIL ACCEPTANCE & BINDING NATURE\n` +
-          `In accordance with standard digital contract practices, a physical or handwritten signature is not required to validate these terms. Definitive legal acceptance and a binding obligation to these conditions are established through any of the following actions:\n` +
-          `• Sending a reply stating "I agree", "Confirmed", or equivalent confirmation over email or direct digital messaging channels.\n` +
-          `• Voluntarily entering the studio workspace environment and participating in the scheduled production session following receipt of these terms.\n\n` +
+          `1. SCOPE OF PRODUCTION & VENUE RENTAL POLICY\n` +
+          `This session is scheduled for studio/location photography production. The Studio provides specialized camera gear, lighting architecture, workspace, and post-production engineering. Studio Space Rental Policy: Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio venue space is required, applicable studio rental fees are billed at actuals (at cost), or the client may directly book their preferred studio venue.\n\n` +
+          `2. INTELLECTUAL PROPERTY & USAGE LICENSING\n` +
+          `The legal copyright of all visual media remains exclusively with the Studio. Clients receive personal, social media, and web self-promotion usage rights. Extended commercial billboard, TV, print, or advertising rights require separate usage licensing. No secondary mobile filters or third-party digital alterations may be applied to delivered files.\n\n` +
+          `3. COMPREHENSIVE LIABILITY WAIVER\n` +
+          `Participant(s) enter the studio workspace and perform physical poses entirely at their own risk. The Studio is not liable for physical injury, accident, or property wear-and-tear incurred on set.\n\n` +
+          `4. DELIVERABLES, REVISIONS & CLOUD ARCHIVAL\n` +
+          `Proofing & Download Rights: All packages include web gallery access for online proofing. High-res downloads are restricted to contracted retouched master clicks. RAW unedited camera files are strictly excluded.\n` +
+          `Editing Revision Policy: Deliverables include One (1) Round of Minor Revisions (within 7 days of delivery). Additional revision rounds or structural edits are billed at ₹1,500/image.\n` +
+          `Cloud Archival Retention: Delivered galleries remain active on cloud servers for ${isTfpCat ? '3 Months (90 days)' : '6 Months (180 days)'}. Clients are responsible for downloading local backups within this window.\n\n` +
+          `5. UNAUTHORIZED CAMERA OPERATION & GEAR PROTECTION\n` +
+          `All camera bodies, memory cards, and raw captures are strictly hands-off. Participants may not touch equipment or delete media from cameras. File deletion constitutes a material breach of contract and incurs full data recovery costs.\n\n` +
+          `6. DIGITAL CONSENT & EMAIL ACCEPTANCE\n` +
+          `In accordance with digital contract standards, physical signatures are not required. Legal acceptance is established by submitting this request or confirming over email/DM.\n\n` +
           `nerdyphotographer.in studios\n` +
-          `Digital Operations & Production Management\n` +
           `--------------------------------------------------\n` +
-          `DIGITAL AGREEMENT SIGNED: The Participant (${name}) has read and agreed to the terms of the Studio Production & Liability Release (TFP-LIABILITY-RELEASE-V3.3) by submitting this booking request.\n` +
+          `DIGITAL AGREEMENT SIGNED: ${name} has read and agreed to Studio Terms (${contractRefDoc}) upon request submission.\n` +
           `==================================================`
         ) : "";
 
@@ -6388,17 +6377,30 @@ RAW files are not provided.`
       };
 
       if (type === "Test Shoot") {
-        openTermsModal(name, () => proceedSubmit(true));
+        openTermsModal(name, "TFP", () => proceedSubmit(true, "TFP"));
       } else {
-        proceedSubmit(false);
+        openTermsModal(name, "Commercial", () => proceedSubmit(true, "Commercial"));
       }
     });
 
-    // Open the TFP terms modal for `partnerName`. Listeners are added per
-    // opening and removed on close, so repeat openings never double-bind.
-    // `onAccept` (optional) runs after the modal closes via "Agree".
-    function openTermsModal(partnerName, onAccept) {
-      $("#terms_partner_name").textContent = partnerName;
+    // Open the terms modal for `partnerName` and `shootCategory` ("TFP" vs "Commercial").
+    function openTermsModal(partnerName, shootCategory, onAccept) {
+      const isTfp = shootCategory === "TFP";
+      const modalTitle = $("#termsModalTitle");
+      const modalTag = $("#termsModalTag");
+      const partnerNameEl = $("#terms_partner_name");
+      const sec4Text = $("#termsSec4Text");
+
+      if (modalTitle) modalTitle.textContent = isTfp ? "Studio Production & Liability Release" : "Commercial Shoot Contract & Production Agreement";
+      if (modalTag) modalTag.textContent = isTfp ? "TFP-LIABILITY-RELEASE-V3.3 (ACTIVE)" : "COMMERCIAL-CONTRACT-V3.3 (ACTIVE)";
+      if (partnerNameEl) partnerNameEl.textContent = partnerName || "Valued Client";
+      
+      if (sec4Text) {
+        sec4Text.innerHTML = isTfp ? 
+          `As a creative collaboration, test shoots (TFP collabs) include a <strong>Full Proofing Gallery + 8 to 12 Retouched Master Clicks</strong>. Deliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for 3 Months (90 days). The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered.` :
+          `Commercial productions include a <strong>Full Proofing Gallery + contracted retouched master deliverables</strong> specified in the rate tier. Deliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for 6 Months (180 days). Extended usage licensing or RAW file access requires separate buyout agreements. Dedicated indoor studio venue rentals are billed <strong>at actuals (at cost)</strong>. Payment terms follow 50/50 non-refundable milestone payments.`;
+      }
+
       $("#termsModal").style.display = "flex";
       const acceptBtn = $("#termsAcceptBtn");
       const declineBtn = $("#termsDeclineBtn");
