@@ -6256,7 +6256,7 @@ RAW files are not provided.`
         const inquiryBody = compactBody + tfpReleaseText;
         const plainTextBody = `To: ${studioEmail}\nSubject: Shoot Booking Request — ${name}\n\n` + inquiryBody;
 
-        const subject = encodeURIComponent(`Shoot Booking Request — ${name}`);
+        const subject = encodeURIComponent(isCustomContract ? `Shoot Booking Request (CUSTOM CONTRACT REQUESTED) — ${name}` : `Shoot Booking Request — ${name}`);
         const body = encodeURIComponent(compactBody);
 
         const mailtoUrl = `mailto:${studioEmail}?subject=${subject}&body=${body}`;
@@ -6382,10 +6382,11 @@ RAW files are not provided.`
       const customWrap = $("#customContractOptionWrap");
       const customBtn = $("#termsCustomBtn");
       const customInput = $("#customContractNotesInput");
+      const declineBtn = $("#termsDeclineBtn");
 
       if (customWrap) customWrap.style.display = "none";
       if (customInput) customInput.value = "";
-      if (customBtn) customBtn.textContent = "📝 Request Custom Contract / Agency MSA";
+      if (customBtn) customBtn.textContent = "📝 Request Custom Contract";
 
       if (modalTitle) modalTitle.textContent = isTfp ? "Studio Production & Liability Release" : "Commercial Shoot Contract & Production Agreement";
       if (modalTag) modalTag.textContent = isTfp ? "TFP-LIABILITY-RELEASE-V3.3 (ACTIVE)" : "COMMERCIAL-CONTRACT-V3.3 (ACTIVE)";
@@ -6402,8 +6403,9 @@ RAW files are not provided.`
 
       const close = () => {
         $("#termsModal").style.display = "none";
-        acceptBtn.removeEventListener("click", onAcceptClick);
+        if (acceptBtn) acceptBtn.removeEventListener("click", onAcceptClick);
         if (customBtn) customBtn.removeEventListener("click", onCustomClick);
+        if (declineBtn) declineBtn.removeEventListener("click", onDeclineClick);
       };
 
       const onAcceptClick = () => {
@@ -6411,8 +6413,12 @@ RAW files are not provided.`
         if (onAccept) onAccept(true, false, "");
       };
 
+      const onDeclineClick = () => {
+        close();
+      };
+
       const onCustomClick = () => {
-        if (customWrap.style.display === "none") {
+        if (customWrap && customWrap.style.display === "none") {
           customWrap.style.display = "block";
           customInput?.focus();
           customBtn.textContent = "Submit with Custom Contract Request ✓";
@@ -6423,7 +6429,8 @@ RAW files are not provided.`
         }
       };
 
-      acceptBtn.addEventListener("click", onAcceptClick);
+      if (acceptBtn) acceptBtn.addEventListener("click", onAcceptClick);
+      if (declineBtn) declineBtn.addEventListener("click", onDeclineClick);
       if (customBtn) customBtn.addEventListener("click", onCustomClick);
     }
 
