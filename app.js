@@ -6511,6 +6511,8 @@ RAW files are not provided.`
     $("#b_role")?.addEventListener("change", updateFields);
     $("#b_invite_code")?.addEventListener("input", updateFields);
     $("#b_discount_code")?.addEventListener("input", updateFields);
+    $("#btnApplyDiscountCode")?.addEventListener("click", () => { updateFields(); const val = $("#b_discount_code")?.value.trim(); if (!val) alert("Please enter a promo code first!"); });
+    $("#btnApplyInviteCode")?.addEventListener("click", () => { updateFields(); const val = $("#b_invite_code")?.value.trim(); if (!val) alert("Please enter an invite code first!"); });
     $("#b_budget")?.addEventListener("change", updateFields);
     $("#b_gallery_access")?.addEventListener("change", updateFields);
     $("#b_retouched_count")?.addEventListener("change", updateFields);
