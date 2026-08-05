@@ -4711,7 +4711,7 @@ RAW files are not provided.`
                    </div>
                    <div style="display: flex; gap: 8px;">
                      <input id="b_invite_code" type="text" placeholder="Enter Direct Invite Code" style="text-transform: uppercase; font-family: var(--mono-font); flex: 1;" />
-                     <button type="button" id="btnApplyInviteCode" style="background: var(--ink); color: #ffffff; border: none; padding: 0 16px; border-radius: 6px; font-family: var(--mono-font); font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap;">Verify Code</button>
+                     <button type="button" id="btnApplyInviteCode" style="background: var(--accent); color: #ffffff; border: none; padding: 0 16px; border-radius: 6px; font-family: var(--mono-font); font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap;">Verify Code</button>
                    </div>
                  </label>
                </div>
