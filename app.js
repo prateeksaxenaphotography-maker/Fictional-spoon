@@ -5721,6 +5721,14 @@ RAW files are not provided.`
             });
           });
         } else {
+          popup.querySelectorAll(".dp-cell.dp-past").forEach(cell => {
+            cell.addEventListener("click", (e) => {
+              e.stopPropagation();
+              const day = cell.dataset.day;
+              toast(`Unable to select ${MONTHS[viewMonth]} ${day} — dates in the past cannot be booked.`);
+            });
+          });
+
           popup.querySelectorAll(".dp-cell.dp-booked").forEach(cell => {
             cell.addEventListener("click", (e) => {
               e.stopPropagation();
@@ -5905,6 +5913,22 @@ RAW files are not provided.`
       require("b_name", "Please add your name or brand.");
       require("b_date", "Let us know a rough date or timeline.");
       require("b_location", "Please let us know your preferred location.");
+
+      const rawDateStr = val("b_date");
+      if (rawDateStr) {
+        const parsedT = Date.parse(rawDateStr);
+        if (!isNaN(parsedT)) {
+          const parsedD = new Date(parsedT);
+          parsedD.setHours(23, 59, 59, 999);
+          const todayFloor = new Date();
+          todayFloor.setHours(0, 0, 0, 0);
+          if (parsedD < todayFloor) {
+            setError("b_date", "Dates in the past cannot be booked. Please select today or a future date.");
+            firstBad = firstBad || "b_date";
+          }
+        }
+      }
+
       const email = val("b_email");
       if (!email) { setError("b_email", "We need an email to reply to."); firstBad = firstBad || "b_email"; }
       else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("b_email", "That email doesn't look right."); firstBad = firstBad || "b_email"; }
