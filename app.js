@@ -4365,12 +4365,12 @@ RAW files are not provided.`
                   </label>
                </div>
                 <div class="field-row">
-                  <label class="field"><span>Preferred Session Duration *</span>
+                  <label class="field"><span>Preferred Session Duration (Optional)</span>
                     <select id="b_duration">
+                      <option value="Flexible / Photographer Choice" selected>🤔 Flexible / Photographer Choice (Photographer Recommends Best Time)</option>
                       <option value="Full Day (10:30 AM – 5:30 PM)">☀️ Full Day Shoot (10:30 AM – 5:30 PM · 7 Hours)</option>
                       <option value="Half Day Morning (10:30 AM – 2:30 PM)">🌅 Half Day Morning (10:30 AM – 2:30 PM · 4 Hours)</option>
                       <option value="Half Day Afternoon (1:30 PM – 5:30 PM)">🌇 Half Day Afternoon (1:30 PM – 5:30 PM · 4 Hours)</option>
-                      <option value="Flexible / Photographer Choice">🤔 Flexible / Photographer Choice (Photographer Recommends Best Time)</option>
                       <option value="Custom Timings">⏰ Custom Timings (Pick Call &amp; Wrap Time)</option>
                     </select>
                   </label>
