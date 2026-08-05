@@ -2769,12 +2769,18 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           ` : ""}
           <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--line); font-size: 11px; color: var(--ink-soft); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
             <span>${(() => {
+              const isNonContract = (b.type === "Assisting Photographer" || b.type === "Workshop Attended" || (b.title && (b.title.includes("Assisting") || b.title.includes("Workshop"))));
+              if (isNonContract) {
+                return `<span style="color: var(--ink-soft); font-weight: 600;">🛠️ Internal Activity (No Contract Required)</span>`;
+              }
               const v = b.contractVersion || (b.agreedToTerms ? "V3.2" : "Pending Agreement");
               if (v === "Pending Agreement") return `<span style="color: #f57c00; font-weight: 700;">⏳ Agreement Pending (Not Signed Yet)</span>`;
               if (v === "Custom Contract") return `<span style="color: #7c4dff; font-weight: 700;">📄 Custom Client Contract / Brand MSA</span>`;
               return `📜 <strong>Agreed Term:</strong> ${esc(v)}`;
             })()}</span>
             ${(() => {
+              const isNonContract = (b.type === "Assisting Photographer" || b.type === "Workshop Attended" || (b.title && (b.title.includes("Assisting") || b.title.includes("Workshop"))));
+              if (isNonContract) return '';
               const v = b.contractVersion || (b.agreedToTerms ? "V3.2" : "Pending Agreement");
               return (v !== "Pending Agreement" && v !== "Custom Contract") ? `<button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('${esc(v)}')" style="font-size: 9px; padding: 3px 8px;">View Terms Text ↗</button>` : '';
             })()}
