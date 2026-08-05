@@ -4669,7 +4669,7 @@ RAW files are not provided.`
                      <span style="font-weight: 700; color: var(--ink);">🎟️ Promotional Discount Code (Optional)</span>
                      <span id="discountCodeStatus" style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; display: none;"></span>
                    </div>
-                   <input id="b_discount_code" type="text" placeholder="e.g. NERDY500, NERDY1000, NERDY10, NERDY20" style="text-transform: uppercase; font-family: var(--mono-font); font-weight: 700;" />
+                   <input id="b_discount_code" type="text" placeholder="Enter Promo Code" style="text-transform: uppercase; font-family: var(--mono-font); font-weight: 700;" />
                  </label>
 
                  <label class="field">
@@ -4677,7 +4677,7 @@ RAW files are not provided.`
                      <span style="font-weight: 700; color: var(--ink);">🔑 Photographer Direct Invite Code (Optional)</span>
                      <span id="inviteCodeStatus" style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; display: none;"></span>
                    </div>
-                   <input id="b_invite_code" type="text" placeholder="e.g. NERDY-INVITE (Unlocks Collab Option for Brands)" style="text-transform: uppercase; font-family: var(--mono-font);" />
+                   <input id="b_invite_code" type="text" placeholder="Enter Direct Invite Code" style="text-transform: uppercase; font-family: var(--mono-font);" />
                  </label>
                </div>
                <div id="discountSavingsBadge" style="display: none; margin-top: 6px; font-family: var(--mono-font); font-size: 11px; color: #059669; font-weight: 700;"></div>
