@@ -1,11 +1,11 @@
-const CACHE_NAME = "wps-v181";
+const CACHE_NAME = "wps-v182";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
-  "/styles.css?v=155",
-  "/app.js?v=155",
-  "/data.js?v=155",
-  "/config.js?v=155",
+  "/styles.css?v=182",
+  "/app.js?v=182",
+  "/data.js?v=182",
+  "/config.js?v=182",
   "/logo.svg",
   "/favicon.svg",
   "/og-image.svg"
@@ -21,41 +21,40 @@ self.addEventListener("install", (e) => {
   self.skipWaiting();
 });
 
-// Activate Event - Clean Old Caches
+// Activate Event - Clean Old Caches Immediately
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
+        keys.map((key) => caches.delete(key))
       );
     })
   );
   self.clients.claim();
 });
 
-// Fetch Event - Stale While Revalidate Strategy
+// Fetch Event - Network First Strategy for JS/CSS to Guarantee Fresh Code
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET" || !e.request.url.startsWith("http")) return;
 
-  e.respondWith(
-    caches.match(e.request).then((cachedResponse) => {
-      const fetchPromise = fetch(e.request)
+  if (e.request.url.includes(".js") || e.request.url.includes(".css") || e.request.url.includes("book")) {
+    e.respondWith(
+      fetch(e.request)
         .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === "basic") {
+          if (networkResponse && networkResponse.status === 200) {
             const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(e.request, responseToCache);
-            });
+            caches.open(CACHE_NAME).then((cache) => cache.put(e.request, responseToCache));
           }
           return networkResponse;
         })
-        .catch(() => cachedResponse);
+        .catch(() => caches.match(e.request))
+    );
+    return;
+  }
 
-      return cachedResponse || fetchPromise;
+  e.respondWith(
+    caches.match(e.request).then((cachedResponse) => {
+      return cachedResponse || fetch(e.request);
     })
   );
 });

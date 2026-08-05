@@ -1819,3 +1819,36 @@ main:focus { outline: none; }
   animation: modalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
+
+
+/* ---------- Book Form Alignment & Symmetry Improvements ---------- */
+.book-wrap { max-width: 780px; margin: 0 auto; padding: 0 16px; box-sizing: border-box; }
+.shoot-form { display: flex; flex-direction: column; gap: 24px; width: 100%; box-sizing: border-box; }
+.shoot-form fieldset { 
+  border: 1px solid var(--line); 
+  border-radius: 12px; 
+  padding: 24px 24px 28px; 
+  margin: 0; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 18px; 
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+  box-sizing: border-box;
+  width: 100%;
+}
+.theme-dark .shoot-form fieldset { background: var(--paper); }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; box-sizing: border-box; }
+.field { display: flex; flex-direction: column; gap: 6px; width: 100%; box-sizing: border-box; }
+.field input, .field select, .field textarea { 
+  width: 100%; 
+  box-sizing: border-box; 
+  font-family: inherit; 
+  font-size: 14px; 
+  padding: 12px 14px; 
+  border: 1px solid var(--line); 
+  border-radius: 8px; 
+  background: var(--paper); 
+  color: var(--ink); 
+  transition: border-color .15s, box-shadow .15s; 
+}
