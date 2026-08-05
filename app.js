@@ -3038,10 +3038,10 @@ RAW files are not provided.`
           <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Package Tier &amp; Deliverables Specs *
             <select id="pdf_packageSelect" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
               <option value="custom" selected>✏️ Custom Package / Bespoke Deliverables (Specify Below)</option>
-              <option value="₹6,000 - ₹7,000 (20 Proof Clicks · 0 Retouched)">₹6,000 - ₹7,000 · 20 Proof Clicks + 0 Retouched (Basic Test / Comp Card)</option>
-              <option value="₹7,000 - ₹10,000 (25 Proof Clicks + 3-5 Retouched)">₹7,000 - ₹10,000 · 25 Proof Clicks + 3 to 5 Retouched Clicks (Mini Portfolio / Selective Test)</option>
-              <option value="₹10,000 - ₹25,000 (50 Proof Clicks + 8-12 Retouched)">₹10,000 - ₹25,000 · 50 Proof Clicks + 8 to 12 Retouched Clicks (Standard Portfolio / Editorial)</option>
-              <option value="₹25,000 - ₹50,000 (100 Proof Clicks + 15-25 Retouched)">₹25,000 - ₹50,000 · 100 Proof Clicks + 15 to 25 Retouched Clicks (Premium Brand Campaign)</option>
+              <option value="₹7,000 (20 Proof Clicks · 0 Retouched)">₹7,000 · Basic Test / Comp Card (20 Proof Clicks + 0 Retouched)</option>
+              <option value="₹10,000 (25 Proof Clicks + 3-5 Retouched)">₹10,000 · Mini Portfolio (25 Proof Clicks + 3-5 Retouched Clicks)</option>
+              <option value="₹25,000 (50 Proof Clicks + 8-12 Retouched)">₹25,000 · Standard Editorial Portfolio (50 Proof Clicks + 8-12 Retouched)</option>
+              <option value="₹50,000 (100 Proof Clicks + 15-25 Retouched)">₹50,000 · Premium Brand Campaign (100 Proof Clicks + 15-25 Retouched)</option>
               <option value="₹50,000+ (Full Proof Gallery + 30+ Commercial Retouched)">₹50,000+ · Full Proof Gallery + 30+ Commercial Master Retouched Assets</option>
               <option value="Test Shoot / TFP (Full Proof Gallery + 8-12 Retouched)">Test Shoot / TFP · Full Proofing Gallery + 8 to 12 Retouched Clicks</option>
             </select>
@@ -4637,8 +4637,8 @@ RAW files are not provided.`
                <div class="field-row">
                  <label class="field" id="b_budget_field" style="grid-column: 1 / -1;"><span>Studio Package &amp; Rate Tier *</span>
                    <select id="b_budget">
-                      <option value="₹6,000 - ₹7,000 (20 Proof Clicks · 0 Retouched)">₹6,000 - ₹7,000 · 20 Proof Clicks + 0 Retouched (Basic Test / Comp Card)</option>
-                      <option value="₹7,000 - ₹10,000 (25 Proof Clicks + 3-5 Retouched)">₹7,000 - ₹10,000 · 25 Proof Clicks + 3 to 5 Retouched Clicks (Mini Portfolio / Selective Test)</option>
+                      <option value="₹7,000 (20 Proof Clicks · 0 Retouched)">₹7,000 · Basic Test / Comp Card (20 Proof Clicks + 0 Retouched)</option>
+                      <option value="₹10,000 (25 Proof Clicks + 3-5 Retouched)">₹10,000 · Mini Portfolio (25 Proof Clicks + 3-5 Retouched Clicks)</option>
                      <option value="₹10,000 - ₹25,000 (50 Unedited + 8-12 Retouched)">₹10,000 - ₹25,000 · 50 Unedited Proof Clicks + 8 to 12 Retouched Clicks (Standard Portfolio / Editorial)</option>
                      <option value="₹25,000 - ₹50,000 (100 Unedited + 15-25 Retouched)">₹25,000 - ₹50,000 · 100 Unedited Proof Clicks + 15 to 25 Retouched Clicks (Premium Brand Campaign)</option>
                      <option value="₹50,000+ (Full Proof Gallery + 30+ Retouched Master Assets)">₹50,000+ · Full Proof Gallery + 30+ Commercial Master Retouched Assets (High-End Ad / Commercial)</option>
@@ -6235,9 +6235,9 @@ RAW files are not provided.`
               <label class="field" style="margin: 0;">
                 <span style="font-size: 11px; font-weight: 700; color: var(--ink);">If your collaboration request is not approved, which Paid Package would you like to proceed with? *</span>
                 <select id="b_collab_fallback" style="margin-top: 4px;">
-                  <option value="₹6,000 – ₹7,000 Starter Package (Paid Fallback)">₹6,000 – ₹7,000 Starter Package</option>
-                  <option value="₹10,000 – ₹25,000 Editorial / Campaign (Paid Fallback)">₹10,000 – ₹25,000 Editorial / Campaign</option>
-                  <option value="₹25,000 – ₹50,000 Commercial Production (Paid Fallback)">₹25,000 – ₹50,000 Commercial Production</option>
+                  <option value="₹7,000 Starter Package (Paid Fallback)">₹7,000 Basic Test Package</option>
+                  <option value="₹25,000 Editorial Campaign (Paid Fallback)">₹25,000 Editorial Campaign</option>
+                  <option value="₹50,000 Commercial Production (Paid Fallback)">₹50,000 Commercial Production</option>
                   <option value="Custom Bespoke Package (Paid Fallback)">Custom Bespoke Package</option>
                   <option value="Cancel Inquiry if Collaboration is Declined">Cancel Inquiry if Collaboration is Declined</option>
                 </select>
