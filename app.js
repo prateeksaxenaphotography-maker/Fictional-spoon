@@ -6416,23 +6416,18 @@ RAW files are not provided.`
         };
         if (agreedToTerms) relayFields["Release Full Text"] = tfpReleaseText.trim();
 
+        // Show success panel instantly and launch mail app without waiting
+        showSuccess(true);
+        try {
+          if (mailtoUrl) window.location.href = mailtoUrl;
+        } catch(e) {}
+
+        // Send FormSubmit background relay asynchronously
         fetch(`https://formsubmit.co/ajax/${encodeURIComponent(studioEmail)}`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "Accept": "application/json" },
-          body: JSON.stringify(relayFields),
-          signal: (typeof AbortSignal !== "undefined" && AbortSignal.timeout) ? AbortSignal.timeout(12000) : undefined,
-        })
-          .then((res) => { if (!res.ok) throw new Error(`relay ${res.status}`); return res.json(); })
-          .then((j) => {
-            if (String(j.success) !== "true") throw new Error(j.message || "relay rejected");
-            showSuccess(true);
-          })
-          .catch(() => {
-            // Fallback: open the visitor's mail client with everything
-            // pre-filled (compact body, so it opens reliably).
-            window.location.href = mailtoUrl;
-            showSuccess(false);
-          });
+          body: JSON.stringify(relayFields)
+        }).catch(() => {});
       };
 
       if (type === "Test Shoot") {
