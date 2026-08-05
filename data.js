@@ -834,6 +834,61 @@ window.WPS_DATA = {
   "CALENDAR_SETTINGS": {
     "customBlockedDates": {},
     "customOpenedDates": {},
-    "bookedDates": {}
+    "bookedDates": {
+      "2026-03-14": [
+        {
+          "id": "shoot-ms36z1wqlj20k1",
+          "shootId": "ms36z1wqlj20k1",
+          "type": "Commercial Campaign",
+          "status": "confirmed",
+          "isTentative": false
+        }
+      ],
+      "2026-05-15": [
+        {
+          "id": "shoot-ms36z1wqm2xkrz",
+          "shootId": "ms36z1wqm2xkrz",
+          "type": "Lookbook",
+          "status": "confirmed",
+          "isTentative": false
+        }
+      ],
+      "2026-06-13": [
+        {
+          "id": "shoot-ms36z1wq1g1x0j",
+          "shootId": "ms36z1wq1g1x0j",
+          "type": "Fitness & Commercial",
+          "status": "confirmed",
+          "isTentative": false
+        }
+      ],
+      "2026-06-14": [
+        {
+          "id": "shoot-ms36z1wqlp9812",
+          "shootId": "ms36z1wqlp9812",
+          "type": "Fashion Editorial",
+          "status": "confirmed",
+          "isTentative": false
+        }
+      ],
+      "2026-07-05": [
+        {
+          "id": "shoot-ms36z1wqkx21s1",
+          "shootId": "ms36z1wqkx21s1",
+          "type": "Beauty & Commercial",
+          "status": "confirmed",
+          "isTentative": false
+        }
+      ],
+      "2026-07-24": [
+        {
+          "id": "shoot-ms36z1wqg2y4a2",
+          "shootId": "ms36z1wqg2y4a2",
+          "type": "Workshop Attended",
+          "status": "workshop",
+          "isTentative": false
+        }
+      ]
+    }
   }
 };

@@ -2543,6 +2543,26 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
       title.textContent = `${MONTHS[calMonth]} ${calYear}`;
 
+      window.jumpToCalMonth = function(yr, mo) {
+        calYear = yr;
+        calMonth = mo;
+        renderAdminGrid();
+      };
+
+      const jumpBar = $("#adminCalMonthJumpBar");
+      if (jumpBar) {
+        const activeMonths = [
+          { yr: 2026, mo: 2, label: "Mar 2026" },
+          { yr: 2026, mo: 4, label: "May 2026" },
+          { yr: 2026, mo: 5, label: "Jun 2026" },
+          { yr: 2026, mo: 6, label: "Jul 2026" },
+          { yr: 2026, mo: 7, label: "Aug 2026" }
+        ];
+        jumpBar.innerHTML = activeMonths.map(m => `
+          <button type="button" class="admin-cal-btn" style="padding: 3px 8px; font-size: 10px; font-family: var(--mono-font); ${calYear === m.yr && calMonth === m.mo ? 'background: var(--accent); color: #fff; font-weight: 700; border-color: var(--accent);' : ''}" onclick="window.jumpToCalMonth(${m.yr}, ${m.mo})">${m.label}</button>
+        `).join("");
+      }
+
       const firstDay = new Date(calYear, calMonth, 1).getDay();
       const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
       const today = new Date();
