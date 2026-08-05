@@ -6350,15 +6350,8 @@ RAW files are not provided.`
         discountName = matchedDiscount.label;
       }
 
-      const galleryAccessVal = $("#b_gallery_access")?.value || "";
-      let galleryBuyoutFee = 0;
-      if (galleryAccessVal.includes("+₹5,000 Gallery Buyout")) {
-        galleryBuyoutFee = 5000;
-      }
-
-      let subtotalPrice = basePrice + galleryBuyoutFee;
-      let savings = Math.round((subtotalPrice * discountPct) / 100);
-      let finalPayable = subtotalPrice - savings;
+      let savings = Math.round((basePrice * discountPct) / 100);
+      let finalPayable = basePrice - savings;
 
       if (type === "Selective Collaboration (TFP)") {
         if (summaryOriginalPrice) summaryOriginalPrice.textContent = "Selective Collab / TFP (₹0)";
