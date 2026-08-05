@@ -5748,7 +5748,68 @@ RAW files are not provided.`
           }
         }
         dateInput.dispatchEvent(new Event("input", { bubbles: true }));
+        checkAvailabilityBadge();
       }
+
+      function checkAvailabilityBadge() {
+        const badge = $("#b_date_availability_badge");
+        if (!badge) return;
+        const valStr = dateInput.value.trim();
+        if (!valStr) {
+          badge.style.display = "none";
+          return;
+        }
+
+        let targetDate = rangeStart || (multiDates.length ? multiDates[0] : null);
+        if (!targetDate) {
+          const parsed = new Date(valStr);
+          if (!isNaN(parsed.getTime())) targetDate = parsed;
+        }
+
+        if (!targetDate) {
+          badge.style.display = "none";
+          return;
+        }
+
+        const todayObj = new Date();
+        todayObj.setHours(0,0,0,0);
+
+        if (targetDate < todayObj) {
+          badge.style.display = "inline-flex";
+          badge.style.background = "rgba(128,128,128,0.12)";
+          badge.style.border = "1px solid rgba(128,128,128,0.3)";
+          badge.style.color = "#888";
+          badge.innerHTML = "⚪ PAST DATE";
+          return;
+        }
+
+        const st = getCalDateStatus(targetDate);
+        badge.style.display = "inline-flex";
+
+        if (st.isBooked) {
+          badge.style.background = "rgba(220,38,38,0.12)";
+          badge.style.border = "1px solid rgba(220,38,38,0.3)";
+          badge.style.color = "#dc2626";
+          badge.innerHTML = "🔴 BOOKED";
+        } else if (st.hasWorkshop || st.hasAssisting) {
+          badge.style.background = "rgba(217,119,6,0.12)";
+          badge.style.border = "1px solid rgba(217,119,6,0.3)";
+          badge.style.color = "#d97706";
+          badge.innerHTML = "🟡 STUDIO RESERVED";
+        } else if (st.isBlocked) {
+          badge.style.background = "rgba(156,163,175,0.12)";
+          badge.style.border = "1px solid rgba(156,163,175,0.3)";
+          badge.style.color = "#6b7280";
+          badge.innerHTML = "🔒 WEEKDAY BLOCKED";
+        } else {
+          badge.style.background = "rgba(16,185,129,0.12)";
+          badge.style.border = "1px solid rgba(16,185,129,0.3)";
+          badge.style.color = "#059669";
+          badge.innerHTML = "🟢 AVAILABLE";
+        }
+      }
+
+      dateInput.addEventListener("input", checkAvailabilityBadge);
 
       let adminManageMode = false;
 
