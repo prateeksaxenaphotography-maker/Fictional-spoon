@@ -2478,6 +2478,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           </div>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px;">
             <div style="background: #ffffff; border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; gap: 6px;">
+              <div><strong style="color: #059669;">NERDY500</strong>: Flat ₹500 Off Instant Savings</div>
+              <button type="button" onclick="navigator.clipboard.writeText('NERDY500'); alert('Promo Code NERDY500 copied!');" style="background: #059669; color: #ffffff; border: none; padding: 3px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700;">Copy</button>
+            </div>
+            <div style="background: #ffffff; border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; gap: 6px;">
+              <div><strong style="color: #059669;">NERDY1000</strong>: Flat ₹1,000 Off Instant Savings</div>
+              <button type="button" onclick="navigator.clipboard.writeText('NERDY1000'); alert('Promo Code NERDY1000 copied!');" style="background: #059669; color: #ffffff; border: none; padding: 3px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700;">Copy</button>
+            </div>
+            <div style="background: #ffffff; border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; gap: 6px;">
               <div><strong style="color: #059669;">NERDY10</strong>: 10% Off First Commercial Booking</div>
               <button type="button" onclick="navigator.clipboard.writeText('NERDY10'); alert('Promo Code NERDY10 copied!');" style="background: #059669; color: #ffffff; border: none; padding: 3px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700;">Copy</button>
             </div>
@@ -6264,10 +6272,12 @@ RAW files are not provided.`
 
       // Promo Discount Codes Map
       const discountCodesMap = {
-        "NERDY10":  { pct: 10, label: "10% Off First Commercial Shoot (NERDY10)" },
-        "NERDY15":  { pct: 15, label: "15% Off NCR Regional Shoots (NERDY15)" },
-        "NERDY20":  { pct: 20, label: "20% Off Studio Production (NERDY20)" },
-        "NERDYVIP": { pct: 25, label: "25% VIP Partner Discount (NERDYVIP)" }
+        "NERDY500":  { flat: 500,  label: "Flat ₹500 Off Instant Savings (NERDY500)" },
+        "NERDY1000": { flat: 1000, label: "Flat ₹1,000 Off Instant Savings (NERDY1000)" },
+        "NERDY10":   { pct: 10,    label: "10% Off First Commercial Shoot (NERDY10)" },
+        "NERDY15":   { pct: 15,    label: "15% Off NCR Regional Shoots (NERDY15)" },
+        "NERDY20":   { pct: 20,    label: "20% Off Studio Production (NERDY20)" },
+        "NERDYVIP":  { pct: 25,    label: "25% VIP Partner Discount (NERDYVIP)" }
       };
 
       const discountInput = $("#b_discount_code");
@@ -6281,9 +6291,10 @@ RAW files are not provided.`
           discountStatus.style.display = "inline-block";
           if (matchedDiscount) {
             discountStatus.style.color = "#059669";
-            discountStatus.textContent = `🟢 ${matchedDiscount.pct}% OFF APPLIED`;
+            const tagMsg = matchedDiscount.flat ? `FLAT ₹${matchedDiscount.flat.toLocaleString("en-IN")} OFF` : `${matchedDiscount.pct}% OFF`;
+            discountStatus.textContent = `🟢 ${tagMsg} APPLIED`;
             savingsBadge.style.display = "block";
-            savingsBadge.textContent = `🎉 Promo Offer Applied: You save ${matchedDiscount.pct}% on your selected package total!`;
+            savingsBadge.textContent = `🎉 Promo Offer Applied: You save ${tagMsg} on your selected package total!`;
           } else {
             discountStatus.style.color = "#dc2626";
             discountStatus.textContent = "🔴 INVALID PROMO CODE";
@@ -6353,8 +6364,19 @@ RAW files are not provided.`
         discountName = matchedDiscount.label;
       }
 
-      let savings = Math.round((basePrice * discountPct) / 100);
-      let finalPayable = basePrice - savings;
+      let savings = 0;
+      let discountTagText = "";
+
+      if (matchedDiscount) {
+        if (matchedDiscount.flat) {
+          savings = matchedDiscount.flat;
+          discountTagText = `FLAT ₹${matchedDiscount.flat.toLocaleString("en-IN")} OFF APPLIED`;
+        } else if (matchedDiscount.pct) {
+          savings = Math.round((basePrice * matchedDiscount.pct) / 100);
+          discountTagText = `${matchedDiscount.pct}% OFF APPLIED`;
+        }
+      }
+      let finalPayable = Math.max(0, basePrice - savings);
 
       if (type === "Selective Collaboration (TFP)") {
         if (summaryOriginalPrice) summaryOriginalPrice.textContent = "Selective Collab / TFP (₹0)";
