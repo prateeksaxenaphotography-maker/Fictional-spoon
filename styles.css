@@ -1746,3 +1746,20 @@ main:focus { outline: none; }
     opacity: 1 !important;
   }
 }
+
+/* Modal Entrance Animation & UI Enhancements */
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-content {
+  animation: modalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
