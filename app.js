@@ -113,7 +113,7 @@
     if (!s) return "Photograph by nerdyphotographer.in";
     if (s.caption) return s.caption;
     const who = (s.talent && s.talent.trim()) || (s.title && s.title.trim()) || "";
-    const typeTag = (s.type === "Test Shoot" && !s.showTestShootCategory) ? "" : s.type;
+    const typeTag = (s.type === "Selective Collaboration (TFP)" && !s.showTestShootCategory) ? "" : s.type;
     const what = [s.activity, typeTag].filter(Boolean).join(" ");
     const parts = [
       what ? `${what} photography` : "Photography",
@@ -462,7 +462,7 @@
     const decoded = decodeURIComponent(search).replace(/\+/g, " ");
     return search.includes("categories") && (
       search.includes("Comp%20Cards") || decoded.includes("Comp Cards") ||
-      search.includes("Test%20Shoot") || decoded.includes("Test Shoot") || search.includes("Test+Shoot")
+      search.includes("Test%20Shoot") || decoded.includes("Selective Collaboration (TFP)") || search.includes("Test+Shoot")
     );
   }
 
@@ -730,7 +730,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   function renderLbSidebar(p) {
     const shoot = SHOOTS.find(x => x.id === p.shootId) || p.shoot;
     if (!shoot) return "";
-    const isCc = shoot.type === "Test Shoot" && (isCurrentlyCompCardView() || isCurrentlyModelPortfolioView());
+    const isCc = shoot.type === "Selective Collaboration (TFP)" && (isCurrentlyCompCardView() || isCurrentlyModelPortfolioView());
     
     // Parse social handle
     let igHtml = "";
@@ -1631,7 +1631,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   function nothWorkCard(s, i) {
     const cover = s.photos.find(p => p.id.split("-")[0] === s.coverPhotoId) || s.photos[0] || { objectPosition: "center" };
     const coverPos = cover.objectPosition || "center";
-    const typeTag = (s.type === "Test Shoot" && !s.showTestShootCategory) ? "" : s.type;
+    const typeTag = (s.type === "Selective Collaboration (TFP)" && !s.showTestShootCategory) ? "" : s.type;
     const tagline = s.description
       ? s.description
       : [s.activity, typeTag].filter(Boolean).join(" · ");
@@ -1734,7 +1734,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       </div>
     ` : "";
 
-    const mediaHtml = (s.isCompCard || s.type === "Test Shoot") ? (() => {
+    const mediaHtml = (s.isCompCard || s.type === "Selective Collaboration (TFP)") ? (() => {
       const activePhotos = s.photos || [];
       const shownPhotos = activePhotos.slice(0, 3);
       const remainingCount = activePhotos.length - 3;
@@ -1781,7 +1781,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             const ed = (field, extra = "") => canInline
               ? ` class="inline-edit ${extra}" contenteditable="true" spellcheck="false" data-shoot="${s.id}" data-field="${field}" title="Click to edit"`
               : (extra ? ` class="${extra}"` : "");
-            const typeTag = (s.type === "Test Shoot" && !s.showTestShootCategory) ? "" : s.type;
+            const typeTag = (s.type === "Selective Collaboration (TFP)" && !s.showTestShootCategory) ? "" : s.type;
             const brandAndType = [s.brand, typeTag].filter(Boolean).join(" · ");
             return `
             ${s.isCompCard ? "" : `
@@ -3689,14 +3689,14 @@ RAW files are not provided.`
       const d = decodeURIComponent(val);
       const list = SHOOTS.filter((s) => {
         if (kind === "brand" && (!s.client || !s.client.trim())) return false;
-        if (kind === "type" && (d === "Model Portfolio" || d === "Comp Cards" || d === "Test Shoot")) {
-          return s.type === "Test Shoot";
+        if (kind === "type" && (d === "Model Portfolio" || d === "Comp Cards" || d === "Selective Collaboration (TFP)")) {
+          return s.type === "Selective Collaboration (TFP)";
         }
         return (kind === "activity" ? s.activity : kind === "brand" ? s.brand : s.type) === d;
       });
 
       let displayList = list;
-      if (kind === "type" && (d === "Test Shoot" || d === "Model Portfolio" || d === "Comp Cards")) {
+      if (kind === "type" && (d === "Selective Collaboration (TFP)" || d === "Model Portfolio" || d === "Comp Cards")) {
         const filteredList = list.filter(s => !s.hideFromCompCard && ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim()) || (s.talent && s.talent.trim())));
         const groupable = [];
         const nonGroupable = [];
@@ -3754,7 +3754,7 @@ RAW files are not provided.`
             title: isPort ? `${modelName} — Portfolio` : `${modelName} — Comp Card`,
             brand: "Personal Project",
             activity: latestShoot.activity,
-            type: "Test Shoot",
+            type: "Selective Collaboration (TFP)",
             height: findStat("height"),
             chest: findStat("chest"),
             waist: findStat("waist"),
@@ -3800,7 +3800,7 @@ RAW files are not provided.`
 
       CURRENT_VIEW_SHOOTS = displayList;
 
-      const isTestShoot = (kind === "type" && (d === "Test Shoot" || d === "Comp Cards" || d === "Model Portfolio"));
+      const isTestShoot = (kind === "type" && (d === "Selective Collaboration (TFP)" || d === "Comp Cards" || d === "Model Portfolio"));
       const alphaFilterHtml = isTestShoot ? `
         <div class="alpha-filter-bar container reveal">
           <button class="alpha-btn active" data-alpha="ALL">ALL</button>
@@ -3812,7 +3812,7 @@ RAW files are not provided.`
       ` : "";
 
       const getCategoryTitle = (val) => {
-        if (val === "Test Shoot" || val === "Comp Cards") return "Model Comp Cards";
+        if (val === "Selective Collaboration (TFP)" || val === "Comp Cards") return "Model Comp Cards";
         if (val === "Model Portfolio") return "Model Portfolio";
         return val;
       };
@@ -3821,7 +3821,7 @@ RAW files are not provided.`
         if (val === "Model Portfolio") {
           return "This portfolio archive displays curated agency-standard portfolios, filtered and tagged by profile angles (Front, Side, Back, 3/4, Close-up).";
         }
-        if (val === "Comp Cards" || val === "Test Shoot") {
+        if (val === "Comp Cards" || val === "Selective Collaboration (TFP)") {
           return "This compcard archive includes photos clicked or produced under nerdyphotographer.in studio or its subsidiaries.";
         }
         return "This compcard archive includes photos clicked or produced under nerdyphotographer.in studio or its subsidiaries.";
@@ -3856,7 +3856,7 @@ RAW files are not provided.`
     }).filter((x) => x.count > 0);
     const typFilter = TYPES.filter(t => {
       if (t === "Workshop Attended") return false;
-      if (t === "Test Shoot") return SHOOTS.some(s => s.type === "Test Shoot" && s.showTestShootCategory);
+      if (t === "Selective Collaboration (TFP)") return SHOOTS.some(s => s.type === "Selective Collaboration (TFP)" && s.showTestShootCategory);
       return true;
     });
     const act = grp(ACTIVITIES, "activity"), brs = grp(BRANDS, "brand"), typ = grp(typFilter, "type");
@@ -3873,8 +3873,8 @@ RAW files are not provided.`
     }
 
     const getSamples = (key, val, limit = 3) => {
-      const targetVal = (key === "type" && (val === "Comp Cards" || val === "Model Portfolio" || val === "Test Shoot")) ? "Test Shoot" : val;
-      let shoots = SHOOTS.filter(s => (s[key] === targetVal || (targetVal === "Test Shoot" && (s.isCompCard || s.type === "Test Shoot"))) && ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim())));
+      const targetVal = (key === "type" && (val === "Comp Cards" || val === "Model Portfolio" || val === "Selective Collaboration (TFP)")) ? "Selective Collaboration (TFP)" : val;
+      let shoots = SHOOTS.filter(s => (s[key] === targetVal || (targetVal === "Selective Collaboration (TFP)" && (s.isCompCard || s.type === "Selective Collaboration (TFP)"))) && ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim())));
       if (!shoots.length) return [];
       
       // Group shoots by UNIQUE model/talent name to ensure distinct models in thumbnails!
@@ -3949,7 +3949,7 @@ RAW files are not provided.`
     const portraitSamples = getSamples("activity", "Portrait");
     const fitnessSamples = getSamples("activity", "Fitness");
     const sportsSamples = getSamples("activity", "Sports");
-    const testShootSamples = getSamples("type", "Test Shoot");
+    const testShootSamples = getSamples("type", "Selective Collaboration (TFP)");
 
     return `
       <section class="page-head">
@@ -4242,7 +4242,7 @@ RAW files are not provided.`
               <div class="field-row" style="margin-top: 12px; gap: 20px; flex-wrap: wrap;">
                 <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--ink); cursor: pointer; user-select: none;">
                   <input id="f_show_test_shoot_cat" type="checkbox" style="width: 16px; height: 16px; accent-color: var(--accent);" />
-                  Display "Test Shoot" category tag publicly
+                  Display "Selective Collaboration (TFP)" category tag publicly
                 </label>
               </div>
             </fieldset>
@@ -4510,7 +4510,7 @@ RAW files are not provided.`
                      <option value="Fitness &amp; Athletic" ${isSelected("Fitness &amp; Athletic")}>Fitness &amp; Athletic</option>
                      <option value="Sports Action" ${isSelected("Sports Action")}>Sports Action</option>
                      <option value="Commercial Campaign" ${isSelected("Commercial Campaign")}>Commercial Campaign</option>
-                     <option value="Test Shoot" ${isSelected("Test Shoot")}>📸 TEST SHOOT / TFP COLLAB (Selective Portfolio Collab)</option>
+                     <option value="Selective Collaboration (TFP)" ${isSelected("Selective Collaboration (TFP)")}>📸 TEST SHOOT / TFP COLLAB (Selective Portfolio Collab)</option>
                      <option value="Other" ${isSelected("Other")}>Other Focus Area</option>
                    </select>
                    <div id="b_type_notice" style="font-size: 11px; color: var(--accent); margin-top: 5px; font-family: var(--mono-font); display: none;">
@@ -6104,11 +6104,11 @@ RAW files are not provided.`
       const policyNotice = $("#bookingPolicyNotice");
 
       if (typeNotice) {
-        typeNotice.style.display = (type === "Test Shoot" ? "block" : "none");
+        typeNotice.style.display = (type === "Selective Collaboration (TFP)" ? "block" : "none");
       }
 
       if (policyNotice) {
-        if (type === "Test Shoot") {
+        if (type === "Selective Collaboration (TFP)") {
           policyNotice.innerHTML = `
             <span style="font-family: var(--mono-font); font-size: 9px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">TFP Collaboration &amp; Test Shoot Policy</span>
             Submission of a TFP collaboration request does not constitute a confirmed session or a commitment to shoot. All inquiries are subject to schedule availability, creative alignment, and final studio review. <strong>Note: If a dedicated studio space is booked for the shoot, applicable studio rental charges will apply.</strong> TFP shoots include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW unedited camera files are strictly excluded and remain unreleased.
@@ -6125,16 +6125,18 @@ RAW files are not provided.`
       }
 
       if (igLabel) {
-        igLabel.innerHTML = (type === "Test Shoot" ? "Instagram / Website *" : "Instagram / Website");
+        igLabel.innerHTML = (type === "Selective Collaboration (TFP)" ? "Instagram / Website *" : "Instagram / Website");
       }
 
       if (btn) {
-        btn.textContent = (type === "Test Shoot" ? "Request for a Test Shoot" : "Submit Booking Request");
+        btn.textContent = (type === "Selective Collaboration (TFP)" ? "Request for a Test Shoot" : "Submit Booking Request");
       }
 
       const paymentTermsFieldset = $("#paymentTermsFieldset");
-      if (type === "Test Shoot") {
+      const collabFallbackWrap = $("#collabFallbackWrap");
+      if (type === "Selective Collaboration (TFP)") {
         if (budgetField) budgetField.style.display = "none";
+        if (collabFallbackWrap) collabFallbackWrap.style.display = "block";
         if (paymentTermsFieldset) paymentTermsFieldset.style.display = "none";
         if (brandOpt) {
           brandOpt.disabled = true;
@@ -6144,20 +6146,21 @@ RAW files are not provided.`
         }
       } else {
         if (budgetField) budgetField.style.display = "";
+        if (collabFallbackWrap) collabFallbackWrap.style.display = "none";
         if (paymentTermsFieldset) paymentTermsFieldset.style.display = "";
         if (brandOpt) brandOpt.disabled = false;
       }
 
       if (role === "Brand") {
-        const testShootOpt = $("#b_type")?.querySelector('option[value="Test Shoot"]');
+        const testShootOpt = $("#b_type")?.querySelector('option[value="Selective Collaboration (TFP)"]');
         if (testShootOpt) {
           testShootOpt.disabled = true;
-          if ($("#b_type").value === "Test Shoot") {
+          if ($("#b_type").value === "Selective Collaboration (TFP)") {
             $("#b_type").value = "Fashion Editorial";
           }
         }
       } else {
-        const testShootOpt = $("#b_type")?.querySelector('option[value="Test Shoot"]');
+        const testShootOpt = $("#b_type")?.querySelector('option[value="Selective Collaboration (TFP)"]');
         if (testShootOpt) testShootOpt.disabled = false;
       }
     };
@@ -6230,7 +6233,7 @@ RAW files are not provided.`
       else clearError("b_email");
 
       const type = $("#b_type")?.value;
-      if (type === "Test Shoot") {
+      if (type === "Selective Collaboration (TFP)") {
         if (!val("b_instagram")) {
           setError("b_instagram", "Instagram / Website is mandatory for test shoots.");
           firstBad = firstBad || "b_instagram";
@@ -6256,7 +6259,7 @@ RAW files are not provided.`
 
       const name = val("b_name"), role = val("b_role"), email = val("b_email");
       const phone = val("b_phone"), instagram = val("b_instagram"), type = val("b_type");
-      const date = val("b_date"), locationVal = val("b_location"), budget = (type === "Test Shoot" ? "Collab / TFP (No Budget)" : val("b_budget"));
+      const date = val("b_date"), locationVal = val("b_location"), budget = (type === "Selective Collaboration (TFP)" ? "Collab / TFP (No Budget)" : val("b_budget"));
       const moodboard = val("b_moodboard"), concept = val("b_concept");
 
       const proceedSubmit = (agreedToTerms = false, shootCategory = "Commercial", isCustomContract = false, customContractNotes = "") => {
@@ -6315,7 +6318,7 @@ RAW files are not provided.`
           `Studio Space Rental: ${studioSpaceVal}\n` +
           studioRentalPolicyNote +
           cleanBudget +
-          (type !== "Test Shoot" ? `${paymentTermsText}\n` : "") +
+          (type !== "Selective Collaboration (TFP)" ? `${paymentTermsText}\n` : "") +
           deliverablePolicyNote +
           gearPolicyNote +
           `Moodboard Link: ${moodboard || '—'}\n` +
@@ -6388,7 +6391,7 @@ RAW files are not provided.`
           btn.classList.remove("is-loading");
           // Restore the type-appropriate label (updateFields sets this same
           // pair) rather than always falling back to the non-Test-Shoot text.
-          btn.textContent = (type === "Test Shoot" ? "Request for a Test Shoot" : "Submit Booking Request");
+          btn.textContent = (type === "Selective Collaboration (TFP)" ? "Request for a Test Shoot" : "Submit Booking Request");
         };
 
         // Deliver the inquiry directly to the studio inbox via FormSubmit
@@ -6428,7 +6431,7 @@ RAW files are not provided.`
         }).catch(() => {});
       };
 
-      if (type === "Test Shoot") {
+      if (type === "Selective Collaboration (TFP)") {
         openTermsModal(name, "TFP", (agreed, isCustom, notes) => proceedSubmit(agreed, "TFP", isCustom, notes));
       } else {
         openTermsModal(name, "Commercial", (agreed, isCustom, notes) => proceedSubmit(agreed, "Commercial", isCustom, notes));
@@ -6452,7 +6455,10 @@ RAW files are not provided.`
 
       if (customWrap) customWrap.style.display = "none";
       if (customInput) customInput.value = "";
-      if (customBtn) customBtn.textContent = "📝 Request Custom Contract";
+      if (customBtn) {
+        customBtn.textContent = "📝 Request Custom Contract";
+        customBtn.style.display = isTfp ? "none" : "inline-flex"; // Hide custom contract for fixed TFP collaborations
+      }
 
       if (modalTitle) modalTitle.textContent = isTfp ? "Studio Production & Liability Release" : "Commercial Shoot Contract & Production Agreement";
       if (modalTag) modalTag.textContent = isTfp ? "TFP-LIABILITY-RELEASE-V3.3 (ACTIVE)" : "COMMERCIAL-CONTRACT-V3.3 (ACTIVE)";
@@ -6627,7 +6633,7 @@ RAW files are not provided.`
     view.querySelectorAll(".noth-work").forEach((card) => {
       const s = CURRENT_VIEW_SHOOTS.find((x) => x.id === card.dataset.shoot) || SHOOTS.find((x) => x.id === card.dataset.shoot);
       if (!s) return;
-      const isCc = (s.isCompCard || s.type === "Test Shoot") && isCurrentlyCompCardView();
+      const isCc = (s.isCompCard || s.type === "Selective Collaboration (TFP)") && isCurrentlyCompCardView();
       const list = s.photos.filter((p) => !(isCc && p.excludeFromCompCard)).map((p) => ({ ...p, shoot: s }));
       const media = card.querySelector(".noth-work-media");
       const cta = card.querySelector(".noth-work-cta");
@@ -6695,8 +6701,8 @@ RAW files are not provided.`
     view.querySelectorAll(".work-block").forEach((block) => {
       const s = CURRENT_VIEW_SHOOTS.find((x) => x.id === block.dataset.shoot) || SHOOTS.find((x) => x.id === block.dataset.shoot);
       if (!s) return;
-      const isCc = (s.isCompCard || s.type === "Test Shoot") && isCurrentlyCompCardView();
-      const isPortView = (s.isCompCard || s.type === "Test Shoot") && isCurrentlyModelPortfolioView();
+      const isCc = (s.isCompCard || s.type === "Selective Collaboration (TFP)") && isCurrentlyCompCardView();
+      const isPortView = (s.isCompCard || s.type === "Selective Collaboration (TFP)") && isCurrentlyModelPortfolioView();
       // On the Model Portfolio page this used to fall through to "include
       // everything" (isCc is false there, since isCurrentlyCompCardView()
       // only matches the Comp Cards view) — so opening the lightbox showed
@@ -6765,11 +6771,11 @@ RAW files are not provided.`
         const clickedSrc = btn.dataset.src;
         
         let shoots = SHOOTS.filter(s => s[kind] === val);
-        if (val === "Test Shoot" || val === "Comp Cards" || val === "Model Portfolio") {
+        if (val === "Selective Collaboration (TFP)" || val === "Comp Cards" || val === "Model Portfolio") {
           shoots = shoots.filter(s => (s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim()));
         }
         
-        const isCc = val === "Test Shoot" && isCurrentlyCompCardView();
+        const isCc = val === "Selective Collaboration (TFP)" && isCurrentlyCompCardView();
         const list = shoots.flatMap(s => (s.photos || []).filter(p => !(isCc && p.excludeFromCompCard)).map(p => ({ ...p, shoot: s })));
         const idx = list.findIndex(p => photoSrc(p) === clickedSrc);
         openLb(list, idx >= 0 ? idx : 0);
@@ -6927,7 +6933,7 @@ RAW files are not provided.`
       } else if (key === "categories") {
         if (parts[1] && parts[2]) {
           const rawCatName = decodeURIComponent(parts[2]);
-          const catName = rawCatName === "Test Shoot" ? "Model Portfolio (Comp Cards)" : rawCatName;
+          const catName = rawCatName === "Selective Collaboration (TFP)" ? "Model Portfolio (Comp Cards)" : rawCatName;
           pageTitle = `${catName} (${parts[1]}) — ${cfg.studioName}`;
           pageDesc = `Photoshoots filed under the ${parts[1]} category "${catName}" in the photography archive.`;
         } else {
