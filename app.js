@@ -3092,8 +3092,8 @@ RAW files are not provided.`
     if (!printContainer) {
       printContainer = document.createElement("div");
       printContainer.id = "printableContractContainer";
-      document.body.appendChild(printContainer);
     }
+    document.body.appendChild(printContainer);
 
     const cVer = data.contractVersion || "V3.3";
     let archiveObj = window.WPS_CONTRACT_ARCHIVE[cVer];
@@ -3232,7 +3232,8 @@ RAW files are not provided.`
             </div>
             <pre style="white-space: pre-wrap; font-family: inherit; font-size: 13px; line-height: 1.6; margin: 0; color: var(--ink);">${esc(contract.fullText)}</pre>
           </div>
-          <div style="padding: 16px 24px; border-top: 1px solid var(--line); background: var(--bone); display: flex; justify-content: flex-end;">
+          <div style="padding: 16px 24px; border-top: 1px solid var(--line); background: var(--bone); display: flex; justify-content: space-between; align-items: center;">
+            <button type="button" class="admin-cal-btn" onclick="document.getElementById('contractArchiveModal').style.display='none'; window.openPdfContractGenerator('', '', '${esc(contract.version)}');" style="border-color: var(--accent); color: var(--accent); font-weight: 700;">🖨️ Print PDF of ${esc(contract.version)}</button>
             <button type="button" class="admin-cal-btn primary" onclick="document.getElementById('contractArchiveModal').style.display='none'">Close Vault Viewer</button>
           </div>
         </div>
