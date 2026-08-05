@@ -4427,8 +4427,8 @@ RAW files are not provided.`
                <div class="field-row">
                  <label class="field" id="b_budget_field" style="grid-column: 1 / -1;"><span>Studio Package &amp; Rate Tier *</span>
                    <select id="b_budget">
-                      <option value="₹6,000 Package (20 Proof Clicks · 0 Retouched)">₹6,000 Starter Package · 20 Proof Clicks + 0 Retouched (Basic Test / Comp Card)</option>
-                      <option value="₹6,000 - ₹10,000 (25 Proof Clicks + 3-5 Retouched)">₹6,000 - ₹10,000 · 25 Proof Clicks + 3 to 5 Retouched Clicks (Mini Portfolio / Selective Test)</option>
+                      <option value="₹6,000 - ₹7,000 (20 Proof Clicks · 0 Retouched)">₹6,000 - ₹7,000 · 20 Proof Clicks + 0 Retouched (Basic Test / Comp Card)</option>
+                      <option value="₹7,000 - ₹10,000 (25 Proof Clicks + 3-5 Retouched)">₹7,000 - ₹10,000 · 25 Proof Clicks + 3 to 5 Retouched Clicks (Mini Portfolio / Selective Test)</option>
                      <option value="₹10,000 - ₹25,000 (50 Unedited + 8-12 Retouched)">₹10,000 - ₹25,000 · 50 Unedited Proof Clicks + 8 to 12 Retouched Clicks (Standard Portfolio / Editorial)</option>
                      <option value="₹25,000 - ₹50,000 (100 Unedited + 15-25 Retouched)">₹25,000 - ₹50,000 · 100 Unedited Proof Clicks + 15 to 25 Retouched Clicks (Premium Brand Campaign)</option>
                      <option value="₹50,000+ (Full Proof Gallery + 30+ Retouched Master Assets)">₹50,000+ · Full Proof Gallery + 30+ Commercial Master Retouched Assets (High-End Ad / Commercial)</option>
