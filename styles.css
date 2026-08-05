@@ -544,8 +544,66 @@ a { color: inherit; text-decoration: none; }
 .footer-headline em { font-family: "Fraunces", serif; font-style: italic; font-weight: 400; color: var(--band-text); }
 .footer-headline:hover { opacity: .7; }
 .footer-cta-actions { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; margin-top: 40px; }
-.footer-email-link { font-family: var(--mono-font); font-size: 14px; color: rgba(255,255,255,.7); text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid rgba(255,255,255,.3); padding-bottom: 3px; transition: color .3s, border-color .3s; }
-.footer-email-link:hover { color: var(--paper); border-color: var(--paper); }
+.footer-email-link {
+  position: relative;
+  font-family: var(--mono-font);
+  font-size: 14px;
+  color: rgba(255,255,255,.7);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  border-bottom: 1px solid rgba(255,255,255,.3);
+  padding-bottom: 3px;
+  transition: color .3s, border-color .3s;
+}
+.footer-email-link:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.footer-email-link::after {
+  content: attr(data-email);
+  position: absolute;
+  bottom: 140%;
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: #ffffff;
+  color: #111111;
+  border: 1px solid var(--accent);
+  padding: 6px 14px;
+  border-radius: 100px;
+  font-family: var(--mono-font);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.3s var(--ease), transform 0.3s var(--ease), visibility 0.3s;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  z-index: 1000;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.footer-email-link::before {
+  content: "";
+  position: absolute;
+  bottom: 115%;
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  border-width: 5px 5px 0 5px;
+  border-style: solid;
+  border-color: var(--accent) transparent transparent transparent;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.3s var(--ease), transform 0.3s var(--ease), visibility 0.3s;
+  z-index: 1001;
+}
+.footer-email-link:hover::after,
+.footer-email-link:hover::before {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
 
 .footer-lower { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1.3fr; gap: 30px; align-items: start; }
 .footer-col-label { font-family: var(--mono-font); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.6); margin: 0 0 12px; }

@@ -8212,6 +8212,8 @@ RAW files are not provided.`
     const footerEmail = $("#footerEmail");
     if (footerEmail && cfg.email) {
       footerEmail.href = `mailto:${cfg.email}`;
+      footerEmail.dataset.email = cfg.email;
+      footerEmail.title = cfg.email;
     }
     // Footer social icons — reuse the same set as the nav.
     const footerSocials = $("#footerSocials");
