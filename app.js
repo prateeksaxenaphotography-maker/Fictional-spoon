@@ -3209,15 +3209,41 @@ RAW files are not provided.`
       <html>
       <head>
         <title>WPS Contract ${cVer}</title>
+        <meta name="color-scheme" content="light">
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
         <style>
+          :root { color-scheme: light !important; }
           @page { size: A4 portrait; margin: 12mm 15mm; }
-          body { font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #111; margin: 0; padding: 0; background: #fff; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          h1, h2, h3, h4 { font-family: 'Outfit', sans-serif; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 12px; border: 1px solid #ddd; }
-          td, th { padding: 8px 12px; border: 1px solid #ddd; }
+          @media print {
+            :root, html, body {
+              color-scheme: light !important;
+              background-color: #ffffff !important;
+              background: #ffffff !important;
+              color: #000000 !important;
+            }
+          }
+          html, body {
+            color-scheme: light !important;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: #111111 !important;
+            margin: 0;
+            padding: 0;
+            background-color: #ffffff !important;
+            background: #ffffff !important;
+            line-height: 1.5;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          * {
+            color-scheme: light !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          h1, h2, h3, h4 { font-family: 'Outfit', sans-serif; color: #000000 !important; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 12px; border: 1px solid #dddddd; background: #ffffff !important; color: #111111 !important; }
+          td, th { padding: 8px 12px; border: 1px solid #dddddd; color: #111111 !important; }
         </style>
       </head>
       <body>
