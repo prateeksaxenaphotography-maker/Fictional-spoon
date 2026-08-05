@@ -2916,7 +2916,8 @@ RAW files are not provided.`
                 <option value="Full Day (10:30 AM – 5:30 PM)" ${(b.duration && b.duration.includes('Full Day')) || !b.duration ? 'selected' : ''}>Full Day Shoot (10:30 AM – 5:30 PM · 7 Hours)</option>
                 <option value="Half Day Morning (10:30 AM – 2:30 PM)" ${b.duration && b.duration.includes('Morning') ? 'selected' : ''}>Half Day Morning (10:30 AM – 2:30 PM · 4 Hours)</option>
                 <option value="Half Day Afternoon (1:30 PM – 5:30 PM)" ${b.duration && b.duration.includes('Afternoon') ? 'selected' : ''}>Half Day Afternoon (1:30 PM – 5:30 PM · 4 Hours)</option>
-                <option value="Custom Timings (11:00 AM – 4:00 PM)" ${b.duration && b.duration.includes('Custom') ? 'selected' : ''}>Custom Timings (Specify Call &amp; Wrap Time)</option>
+                <option value="Flexible / Photographer Choice" ${b.duration && b.duration.includes('Flexible') ? 'selected' : ''}>Flexible / Photographer Choice (Photographer Recommends Best Time)</option>
+                <option value="Custom Timings (Specify Call & Wrap Time)" ${b.duration && b.duration.includes('Custom') ? 'selected' : ''}>Custom Timings (Specify Call &amp; Wrap Time)</option>
               </select>
             </label>
           </div>
@@ -4369,6 +4370,7 @@ RAW files are not provided.`
                       <option value="Full Day (10:30 AM – 5:30 PM)">☀️ Full Day Shoot (10:30 AM – 5:30 PM · 7 Hours)</option>
                       <option value="Half Day Morning (10:30 AM – 2:30 PM)">🌅 Half Day Morning (10:30 AM – 2:30 PM · 4 Hours)</option>
                       <option value="Half Day Afternoon (1:30 PM – 5:30 PM)">🌇 Half Day Afternoon (1:30 PM – 5:30 PM · 4 Hours)</option>
+                      <option value="Flexible / Photographer Choice">🤔 Flexible / Photographer Choice (Photographer Recommends Best Time)</option>
                       <option value="Custom Timings">⏰ Custom Timings (Pick Call &amp; Wrap Time)</option>
                     </select>
                   </label>
