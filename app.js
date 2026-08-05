@@ -2438,6 +2438,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               <span>🔑 Studio Invite Code: <strong style="text-decoration: underline;">NERDY-INVITE</strong></span>
               <button type="button" onclick="navigator.clipboard.writeText('NERDY-INVITE'); alert('Invite Code NERDY-INVITE copied to clipboard!');" style="background: var(--accent); color: #ffffff; border: none; padding: 2px 8px; border-radius: 10px; font-size: 10px; cursor: pointer; font-weight: 700;">📋 Copy</button>
             </div>
+            <div style="display: inline-flex; align-items: center; gap: 6px; background: #ecfdf5; border: 1px solid #059669; padding: 4px 12px; border-radius: 20px; font-family: var(--mono-font); font-size: 11px; font-weight: 700; color: #059669;">
+              <span>🎟️ Promo Codes: <strong>LAUNCH10 (10%)</strong> · <strong>STUDIO20 (20%)</strong> · <strong>NOIDA15 (15%)</strong></span>
+              <button type="button" onclick="navigator.clipboard.writeText('LAUNCH10'); alert('Promo Code LAUNCH10 copied to clipboard!');" style="background: #059669; color: #ffffff; border: none; padding: 2px 8px; border-radius: 10px; font-size: 10px; cursor: pointer; font-weight: 700;">📋 Copy LAUNCH10</button>
+            </div>
             <button type="button" class="admin-cal-btn primary" id="adminCalNewBookingBtn">+ Add Manual Booking</button>
             <button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator()" style="border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Generate PDF Contract</button>
             <button type="button" class="admin-cal-btn" id="adminCalResetBtn">Reset Rules</button>
@@ -6193,6 +6197,39 @@ RAW files are not provided.`
       const enteredCode = (inviteCodeInput?.value || "").trim().toUpperCase();
       const isValidInvite = validCodes.includes(enteredCode);
 
+      // Promo Discount Codes Map
+      const discountCodesMap = {
+        "LAUNCH10": { pct: 10, label: "10% Off First Commercial Shoot (LAUNCH10)" },
+        "STUDIO20": { pct: 20, label: "20% Off Studio Production (STUDIO20)" },
+        "NOIDA15":  { pct: 15, label: "15% Off NCR Regional Shoots (NOIDA15)" },
+        "NERDYVIP": { pct: 25, label: "25% VIP Partner Discount (NERDYVIP)" }
+      };
+
+      const discountInput = $("#b_discount_code");
+      const discountStatus = $("#discountCodeStatus");
+      const savingsBadge = $("#discountSavingsBadge");
+      const enteredDiscount = (discountInput?.value || "").trim().toUpperCase();
+      const matchedDiscount = discountCodesMap[enteredDiscount];
+
+      if (discountStatus && savingsBadge) {
+        if (enteredDiscount) {
+          discountStatus.style.display = "inline-block";
+          if (matchedDiscount) {
+            discountStatus.style.color = "#059669";
+            discountStatus.textContent = `🟢 ${matchedDiscount.pct}% OFF APPLIED`;
+            savingsBadge.style.display = "block";
+            savingsBadge.textContent = `🎉 Promo Offer Applied: You save ${matchedDiscount.pct}% on your selected package total!`;
+          } else {
+            discountStatus.style.color = "#dc2626";
+            discountStatus.textContent = "🔴 INVALID PROMO CODE";
+            savingsBadge.style.display = "none";
+          }
+        } else {
+          discountStatus.style.display = "none";
+          savingsBadge.style.display = "none";
+        }
+      }
+
       if (inviteStatus) {
         if (enteredCode) {
           inviteStatus.style.display = "inline-block";
@@ -6262,6 +6299,7 @@ RAW files are not provided.`
     $("#b_type")?.addEventListener("change", updateFields);
     $("#b_role")?.addEventListener("change", updateFields);
     $("#b_invite_code")?.addEventListener("input", updateFields);
+    $("#b_discount_code")?.addEventListener("input", updateFields);
     updateFields();
 
     function validate() {
