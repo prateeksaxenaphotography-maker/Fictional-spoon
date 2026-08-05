@@ -4734,7 +4734,7 @@ RAW files are not provided.`
                  </div>
                  <div style="border-top: 1px solid rgba(255,255,255,0.15); margin-top: 10px; padding-top: 10px; display: flex; justify-content: space-between; align-items: center;">
                    <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.04em;">FINAL AMOUNT PAYABLE:</span>
-                   <span id="summaryFinalAmount" style="font-size: 22px; font-weight: 800; color: var(--accent); font-family: var(--mono-font);">₹25,000 INR</span>
+                   <span id="summaryFinalAmount" style="font-size: 22px; font-weight: 800; color: var(--accent); font-family: var(--mono-font);">₹${getAdminPackages()[0].price.toLocaleString('en-IN')} INR</span>
                  </div>
                </div>
 
