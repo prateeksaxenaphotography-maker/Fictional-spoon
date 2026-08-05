@@ -2435,6 +2435,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               <button type="button" id="adminPay503020Btn" class="admin-cal-btn" style="padding: 4px 10px; border-radius: 12px; font-size: 10px; cursor: pointer;">50/30/20</button>
             </div>
             <button type="button" class="admin-cal-btn primary" id="adminCalNewBookingBtn">+ Add Manual Booking</button>
+            <button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator()" style="border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Generate PDF Contract</button>
             <button type="button" class="admin-cal-btn" id="adminCalResetBtn">Reset Rules</button>
           </div>
         </div>
@@ -2475,7 +2476,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               </div>
               <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 12px 0 6px;">Studio Release &amp; Payment Terms V3.2</h3>
               <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Includes 50/50 &amp; 50/30/20 milestones, RAW file delivery exclusion, Test Shoot specs (Full Proofing + 8-12 Retouched), Studio Space Rental policy (at actuals), Instagram Co-Authoring &amp; liability release.</p>
-              <button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.2')" style="font-size: 11px; width: 100%; font-weight: 700;">👁 Review Full Contract V3.2</button>
+              <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.2')" style="font-size: 11px; flex: 1; font-weight: 700;">👁 Review V3.2</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '')" style="font-size: 11px; border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
             </div>
 
             <!-- V3.1 -->
@@ -4287,6 +4288,9 @@ RAW files are not provided.`
           <p class="eyebrow reveal">Book a session</p>
           ${kineticH1("Book", "kinetic-h1-wide")}
           <p class="page-sub reveal">Fill out the details below to inquire about booking a session. Whether you are booking a commercial campaign, e-commerce production, editorial work, or scheduling a selective test shoot, please submit your brief and project specs below.</p>
+          <div style="margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator()" style="background: var(--paper); border: 1px solid var(--accent); color: var(--accent); font-weight: 700; padding: 8px 16px; border-radius: 6px; font-family: var(--mono-font); font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">📄 Generate PDF Contract (For Off-Site DM / Email Inquiry)</button>
+          </div>
         </div>
       </section>
       <section class="section container">
