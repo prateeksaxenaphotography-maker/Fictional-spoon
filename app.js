@@ -2735,8 +2735,9 @@ No Alterations: To preserve the lighting design and capture integrity, no party 
 CRITICAL SAFETY & LIABILITY RELEASE: The Participant enters the studio environment, uses studio blocks, cubes, chairs, furniture, or props, and performs physical poses entirely at their own risk. The Studio shall not be held liable for any physical injury, illness, accident, psychological distress, property damage, or clothing wear-and-tear incurred before, during, or after this production. The Participant explicitly waives any right to seek damages or legal recourse against the Studio or its operating photographers for accidents or injuries occurring on the premises.
 Furthermore, the Participant agrees to indemnify and hold harmless the Studio from any claims, damages, liabilities, or legal expenses arising out of the Participant’s conduct or injuries on set.
 
-4. TECHNICAL PERFORMANCE, DELIVERABLES, FULL GALLERY BUYOUT & PAYMENT MILESTONES
-As a creative collaboration or commercial production, test shoots (TFP collabs) include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. Commercial packages include full proofing gallery + limited retouched master clicks specified in the contracted rate tier. Requesting the complete full unedited image gallery (all high-res clicks) or additional retouched master clicks beyond the package limit incurs additional studio gallery buyout charges. The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered to the Participant, unless otherwise agreed upon in writing for an additional fee.
+4. TECHNICAL PERFORMANCE, DELIVERABLES, PROOFING GALLERY, REVISIONS & PAYMENT MILESTONES
+Proofing & Download Rights: All packages include web gallery access for online proofing, viewing, and image selection. High-resolution file downloading is strictly restricted to contracted retouched master clicks, unless full gallery download permission/buyout is explicitly purchased. Under no circumstances are RAW unedited files delivered.
+Editing Revision Policy: Delivered retouched master assets include One (1) Round of Minor Revisions (minor skin adjustments, color grading tweaks, or crop adjustments). Revisions must be submitted in writing within 7 days of delivery. Additional revision rounds or major structural edits (body warping, outfit color changes, background alterations) are billed at ₹1,500 per image.
 Payment Terms: Standard bookings require a 50% advance retainer prior to shoot day start (non-refundable) and 50% final balance after shoot wrap prior to receiving any downloadable file (non-refundable). Commercial campaign bookings follow a 50/30/20 milestone structure.
 
 5. MANDATORY ALL-PARTY ATTRIBUTION WORKFLOW
@@ -2772,8 +2773,9 @@ No Alterations: To preserve the lighting design and capture integrity, no party 
 CRITICAL SAFETY & LIABILITY RELEASE: The Participant enters the studio environment, uses studio blocks, cubes, chairs, furniture, or props, and performs physical poses entirely at their own risk. The Studio shall not be held liable for any physical injury, illness, accident, psychological distress, property damage, or clothing wear-and-tear incurred before, during, or after this production. The Participant explicitly waives any right to seek damages or legal recourse against the Studio or its operating photographers for accidents or injuries occurring on the premises.
 Furthermore, the Participant agrees to indemnify and hold harmless the Studio from any claims, damages, liabilities, or legal expenses arising out of the Participant’s conduct or injuries on set.
 
-4. TECHNICAL PERFORMANCE, DELIVERABLES, FULL GALLERY BUYOUT & PAYMENT MILESTONES
-As a creative collaboration or commercial production, test shoots (TFP collabs) include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. Commercial packages include full proofing gallery + limited retouched master clicks specified in the contracted rate tier. Requesting the complete full unedited image gallery (all high-res clicks) or additional retouched master clicks beyond the package limit incurs additional studio gallery buyout charges. The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered to the Participant, unless otherwise agreed upon in writing for an additional fee.
+4. TECHNICAL PERFORMANCE, DELIVERABLES, PROOFING GALLERY, REVISIONS & PAYMENT MILESTONES
+Proofing & Download Rights: All packages include web gallery access for online proofing, viewing, and image selection. High-resolution file downloading is strictly restricted to contracted retouched master clicks, unless full gallery download permission/buyout is explicitly purchased. Under no circumstances are RAW unedited files delivered.
+Editing Revision Policy: Delivered retouched master assets include One (1) Round of Minor Revisions (minor skin adjustments, color grading tweaks, or crop adjustments). Revisions must be submitted in writing within 7 days of delivery. Additional revision rounds or major structural edits (body warping, outfit color changes, background alterations) are billed at ₹1,500 per image.
 Payment Terms: Standard bookings require a 50% advance retainer prior to shoot day start (non-refundable) and 50% final balance after shoot wrap prior to receiving any downloadable file (non-refundable). Commercial campaign bookings follow a 50/30/20 milestone structure.
 
 5. MANDATORY ALL-PARTY ATTRIBUTION WORKFLOW
@@ -2961,9 +2963,44 @@ RAW files are not provided.`
             </label>
           </div>
 
-          <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Package Tier &amp; Deliverables Specs
-            <input type="text" id="pdf_package" value="${esc(b.package || b.type || (isTest ? 'Test Shoot (Full Proofing Gallery + 8 to 12 Retouched Master Clicks)' : '₹10,000 Package (50 Proof Clicks + 8 Retouched Master Clicks)'))}" placeholder="e.g. ₹10,000 Package — 50 Proofs + 8 Retouched Master Clicks" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+          <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Package Tier &amp; Deliverables Specs *
+            <select id="pdf_packageSelect" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
+              <option value="custom" selected>✏️ Custom Package / Bespoke Deliverables (Specify Below)</option>
+              <option value="₹6,000 - ₹7,000 (20 Proof Clicks · 0 Retouched)">₹6,000 - ₹7,000 · 20 Proof Clicks + 0 Retouched (Basic Test / Comp Card)</option>
+              <option value="₹7,000 - ₹10,000 (25 Proof Clicks + 3-5 Retouched)">₹7,000 - ₹10,000 · 25 Proof Clicks + 3 to 5 Retouched Clicks (Mini Portfolio / Selective Test)</option>
+              <option value="₹10,000 - ₹25,000 (50 Proof Clicks + 8-12 Retouched)">₹10,000 - ₹25,000 · 50 Proof Clicks + 8 to 12 Retouched Clicks (Standard Portfolio / Editorial)</option>
+              <option value="₹25,000 - ₹50,000 (100 Proof Clicks + 15-25 Retouched)">₹25,000 - ₹50,000 · 100 Proof Clicks + 15 to 25 Retouched Clicks (Premium Brand Campaign)</option>
+              <option value="₹50,000+ (Full Proof Gallery + 30+ Commercial Retouched)">₹50,000+ · Full Proof Gallery + 30+ Commercial Master Retouched Assets</option>
+              <option value="Test Shoot / TFP (Full Proof Gallery + 8-12 Retouched)">Test Shoot / TFP · Full Proofing Gallery + 8 to 12 Retouched Clicks</option>
+            </select>
           </label>
+
+          <div id="pdf_customPackage_wrap" style="background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+            <div style="font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em;">🛠️ Bespoke Package Details &amp; Download Permissions</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Custom Package Name &amp; Price
+                <input type="text" id="pdf_customPkgName" value="₹15,000 Commercial Retainer" placeholder="e.g. ₹15,000 Custom Brand Retainer" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+              </label>
+              <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Retouched Master Clicks Included
+                <input type="text" id="pdf_customRetouchedCount" value="8 Master Retouched Clicks" placeholder="e.g. 10 Retouched Master Clicks" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+              </label>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Unedited Gallery Download Permission
+                <select id="pdf_customDownloadPermission" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
+                  <option value="Proofing View Only (Download Restricted to Billed Retouched Clicks)" selected>Proofing View Only (Download Restricted to Contracted Retouched Clicks)</option>
+                  <option value="Full Unedited Gallery Download Included">Full Unedited High-Res Gallery Download Included</option>
+                </select>
+              </label>
+              <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Editing Revision Limit
+                <select id="pdf_customRevisions" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
+                  <option value="1 Round of Minor Revisions (Within 7 Days)" selected>1 Round of Minor Revisions (Within 7 Days)</option>
+                  <option value="2 Rounds of Minor Revisions (Within 14 Days)">2 Rounds of Minor Revisions (Within 14 Days)</option>
+                  <option value="No Revisions Included (Extra Revisions Billed at ₹1,500/image)">No Revisions Included (Billed at ₹1,500/image)</option>
+                </select>
+              </label>
+            </div>
+          </div>
 
           <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Payment Milestone Terms
             <select id="pdf_paymentMilestones" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
@@ -2987,6 +3024,12 @@ RAW files are not provided.`
         </div>
       </div>
     `;
+
+    $("#pdf_packageSelect")?.addEventListener("change", () => {
+      const isCustom = $("#pdf_packageSelect").value === "custom";
+      const wrap = $("#pdf_customPackage_wrap");
+      if (wrap) wrap.style.display = isCustom ? "flex" : "none";
+    });
 
     $("#closePdfGenModal")?.addEventListener("click", () => modal.style.display = "none");
     $("#cancelPdfGenBtn")?.addEventListener("click", () => modal.style.display = "none");
@@ -3013,7 +3056,9 @@ RAW files are not provided.`
         duration: $("#pdf_duration").value,
         location: $("#pdf_location").value.trim(),
         contractVersion: $("#pdf_contractVersion").value,
-        package: $("#pdf_package").value.trim(),
+        package: $("#pdf_packageSelect").value === "custom" 
+          ? `${$("#pdf_customPkgName").value.trim()} — ${$("#pdf_customRetouchedCount").value.trim()} (${$("#pdf_customDownloadPermission").value}; ${$("#pdf_customRevisions").value})`
+          : $("#pdf_packageSelect").value,
         paymentMilestones: $("#pdf_paymentMilestones").value,
         notes: $("#pdf_notes").value.trim()
       });
