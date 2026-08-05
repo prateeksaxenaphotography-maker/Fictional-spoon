@@ -2455,7 +2455,23 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: rgba(124, 77, 255, 0.2); border: 1px dashed #7c4dff;"></span> ⏳ Anticipated Hold Only (Royal Purple/Blue)</span>
         </div>
 
-                <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-family: var(--mono-font); font-size: 11px;">
+                <div style="background: var(--bone); border: 1px solid var(--accent); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-family: var(--mono-font);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+            <h3 style="font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: var(--ink); margin: 0; display: flex; align-items: center; gap: 8px;">
+              ⚙️ Studio Package Rates &amp; Deliverables Editor (No-Code Admin Control)
+            </h3>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="admin-cal-btn primary" onclick="window.saveAdminCustomPackages()" style="font-size: 11px; padding: 4px 12px; font-weight: 700;">💾 Save Pricing Changes</button>
+              <button type="button" class="admin-cal-btn" onclick="window.resetAdminCustomPackages()" style="font-size: 11px; padding: 4px 12px; font-weight: 700;">🔄 Reset Defaults</button>
+            </div>
+          </div>
+          <p style="font-size: 11px; color: var(--ink-soft); margin: 0 0 12px 0;">
+            Edit max package rates (INR), package names, or deliverable descriptions below without coding. Click <strong>Save Pricing Changes</strong> to update live across all booking forms!
+          </p>
+          <div id="adminPackagesEditorGrid" style="display: flex; flex-direction: column; gap: 8px;"></div>
+        </div>
+
+        <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-family: var(--mono-font); font-size: 11px;">
           <div style="font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 700; color: var(--ink); margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
             <span>🎟️ Active Studio Promotional Discount &amp; Invite Codes Reference</span>
             <span style="font-size: 11px; color: var(--accent); font-weight: 700; background: rgba(255,69,0,0.1); padding: 2px 8px; border-radius: 12px; border: 1px solid var(--accent);">🔑 Invite Code: <strong>NERDY-INVITE</strong></span>
@@ -2563,6 +2579,27 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   }
 
   function wireCalendar() {
+      const pkgsGrid = $("#adminPackagesEditorGrid");
+      if (pkgsGrid) {
+        const pkgs = getAdminPackages();
+        pkgsGrid.innerHTML = pkgs.map((p, idx) => `
+          <div class="admin-pkg-editor-row" style="background: #ffffff; border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; display: grid; grid-template-columns: 1.5fr 1fr 2.5fr; gap: 10px; align-items: center;">
+            <div>
+              <span style="font-size: 10px; font-weight: 700; color: var(--ink-soft); display: block; margin-bottom: 2px;">Package Name #${idx+1}</span>
+              <input type="text" class="pkg-edit-name" value="${esc(p.name)}" style="width: 100%; padding: 6px; border: 1px solid var(--line); border-radius: 4px; font-family: inherit; font-size: 11px; font-weight: 700;" />
+            </div>
+            <div>
+              <span style="font-size: 10px; font-weight: 700; color: var(--ink-soft); display: block; margin-bottom: 2px;">Max Rate (INR ₹)</span>
+              <input type="number" class="pkg-edit-price" value="${p.price}" style="width: 100%; padding: 6px; border: 1px solid var(--line); border-radius: 4px; font-family: inherit; font-size: 11px; font-weight: 700; color: var(--accent);" />
+            </div>
+            <div>
+              <span style="font-size: 10px; font-weight: 700; color: var(--ink-soft); display: block; margin-bottom: 2px;">Deliverable Specs</span>
+              <input type="text" class="pkg-edit-specs" value="${esc(p.specs)}" style="width: 100%; padding: 6px; border: 1px solid var(--line); border-radius: 4px; font-family: inherit; font-size: 11px;" />
+            </div>
+          </div>
+        `).join("");
+      }
+
     let calYear = new Date().getFullYear();
     let calMonth = new Date().getMonth();
 
