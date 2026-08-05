@@ -2738,6 +2738,7 @@ Furthermore, the Participant agrees to indemnify and hold harmless the Studio fr
 4. TECHNICAL PERFORMANCE, DELIVERABLES, PROOFING GALLERY, REVISIONS & PAYMENT MILESTONES
 Proofing & Download Rights: All packages include web gallery access for online proofing, viewing, and image selection. High-resolution file downloading is strictly restricted to contracted retouched master clicks, unless full gallery download permission/buyout is explicitly purchased. Under no circumstances are RAW unedited files delivered.
 Editing Revision Policy: Delivered retouched master assets include One (1) Round of Minor Revisions (minor skin adjustments, color grading tweaks, or crop adjustments). Revisions must be submitted in writing within 7 days of delivery. Additional revision rounds or major structural edits (body warping, outfit color changes, background alterations) are billed at ₹1,500 per image.
+Cloud Storage Archival & Expiration Policy: Delivered online galleries and download links remain active on cloud servers for 3 Months (Test Shoots / TFP) or 6 Months (Paid Commercial Shoots) from the date of initial gallery delivery. The Client/Participant is solely responsible for downloading, archiving, and saving local copies of all delivered files within this retention window. After the retention window expires, cloud files are automatically purged from studio servers. Extended cloud archival beyond the retention window is available upon request for an additional fee (₹3,000 / year).
 Payment Terms: Standard bookings require a 50% advance retainer prior to shoot day start (non-refundable) and 50% final balance after shoot wrap prior to receiving any downloadable file (non-refundable). Commercial campaign bookings follow a 50/30/20 milestone structure.
 
 5. MANDATORY ALL-PARTY ATTRIBUTION WORKFLOW
@@ -2776,6 +2777,7 @@ Furthermore, the Participant agrees to indemnify and hold harmless the Studio fr
 4. TECHNICAL PERFORMANCE, DELIVERABLES, PROOFING GALLERY, REVISIONS & PAYMENT MILESTONES
 Proofing & Download Rights: All packages include web gallery access for online proofing, viewing, and image selection. High-resolution file downloading is strictly restricted to contracted retouched master clicks, unless full gallery download permission/buyout is explicitly purchased. Under no circumstances are RAW unedited files delivered.
 Editing Revision Policy: Delivered retouched master assets include One (1) Round of Minor Revisions (minor skin adjustments, color grading tweaks, or crop adjustments). Revisions must be submitted in writing within 7 days of delivery. Additional revision rounds or major structural edits (body warping, outfit color changes, background alterations) are billed at ₹1,500 per image.
+Cloud Storage Archival & Expiration Policy: Delivered online galleries and download links remain active on cloud servers for 3 Months (Test Shoots / TFP) or 6 Months (Paid Commercial Shoots) from the date of initial gallery delivery. The Client/Participant is solely responsible for downloading, archiving, and saving local copies of all delivered files within this retention window. After the retention window expires, cloud files are automatically purged from studio servers. Extended cloud archival beyond the retention window is available upon request for an additional fee (₹3,000 / year).
 Payment Terms: Standard bookings require a 50% advance retainer prior to shoot day start (non-refundable) and 50% final balance after shoot wrap prior to receiving any downloadable file (non-refundable). Commercial campaign bookings follow a 50/30/20 milestone structure.
 
 5. MANDATORY ALL-PARTY ATTRIBUTION WORKFLOW
@@ -3000,6 +3002,16 @@ RAW files are not provided.`
                 </select>
               </label>
             </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Cloud Storage Archival Window *
+                <select id="pdf_customCloudRetention" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
+                  <option value="3 Months Cloud Retention (Standard Test Shoot / TFP)">3 Months Cloud Retention (Test Shoots / TFP)</option>
+                  <option value="6 Months Cloud Retention (Standard Paid Commercial Shoot)" selected>6 Months Cloud Retention (Paid Commercial Shoots)</option>
+                  <option value="12 Months Extended Archival (1 Year)">12 Months Extended Archival (1 Year)</option>
+                  <option value="1 Month Cloud Retention (30 Days Express)">1 Month Cloud Retention (30 Days)</option>
+                </select>
+              </label>
+            </div>
           </div>
 
           <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Payment Milestone Terms
@@ -3057,7 +3069,7 @@ RAW files are not provided.`
         location: $("#pdf_location").value.trim(),
         contractVersion: $("#pdf_contractVersion").value,
         package: $("#pdf_packageSelect").value === "custom" 
-          ? `${$("#pdf_customPkgName").value.trim()} — ${$("#pdf_customRetouchedCount").value.trim()} (${$("#pdf_customDownloadPermission").value}; ${$("#pdf_customRevisions").value})`
+          ? `${$("#pdf_customPkgName").value.trim()} — ${$("#pdf_customRetouchedCount").value.trim()} (${$("#pdf_customDownloadPermission").value}; ${$("#pdf_customRevisions").value}; ${$("#pdf_customCloudRetention").value})`
           : $("#pdf_packageSelect").value,
         paymentMilestones: $("#pdf_paymentMilestones").value,
         notes: $("#pdf_notes").value.trim()
