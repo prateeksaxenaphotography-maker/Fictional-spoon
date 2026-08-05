@@ -2487,7 +2487,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               </div>
               <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 12px 0 6px;">TFP Production &amp; Portfolio Release V3.1</h3>
               <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Standard TFP portfolio licensing, model release, basic liability waiver, and mandatory credit block requirement.</p>
-              <button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('V3.1')" style="font-size: 11px; width: 100%; font-weight: 700;">👁 Review Contract V3.1</button>
+              <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.1')" style="font-size: 11px; flex: 1; font-weight: 700;">👁 Review V3.1</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.1')" style="font-size: 11px; border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
             </div>
 
             <!-- V3.0 -->
@@ -2498,7 +2498,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               </div>
               <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 12px 0 6px;">Creative Collab &amp; Release V3.0</h3>
               <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Initial Time-For-Print collab structure, non-exclusive social media usage license, and studio rules.</p>
-              <button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('V3.0')" style="font-size: 11px; width: 100%; font-weight: 700;">👁 Review Contract V3.0</button>
+              <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.0')" style="font-size: 11px; flex: 1; font-weight: 700;">👁 Review V3.0</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.0')" style="font-size: 11px; border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
             </div>
 
             <!-- V2.0 -->
@@ -2509,7 +2509,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               </div>
               <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 12px 0 6px;">Studio Model Release V2.0</h3>
               <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Early model release agreement covering digital distribution, copyright ownership, and promo usage.</p>
-              <button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('V2.0')" style="font-size: 11px; width: 100%; font-weight: 700;">👁 Review Contract V2.0</button>
+              <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V2.0')" style="font-size: 11px; flex: 1; font-weight: 700;">👁 Review V2.0</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V2.0')" style="font-size: 11px; border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
             </div>
 
             <!-- V1.0 -->
@@ -2520,7 +2520,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               </div>
               <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 12px 0 6px;">Basic Photography Release V1.0</h3>
               <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Foundational photo release and copyright acknowledgment for early studio testing.</p>
-              <button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('V1.0')" style="font-size: 11px; width: 100%; font-weight: 700;">👁 Review Contract V1.0</button>
+              <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V1.0')" style="font-size: 11px; flex: 1; font-weight: 700;">👁 Review V1.0</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V1.0')" style="font-size: 11px; border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
             </div>
           </div>
         </div>
@@ -2869,7 +2869,7 @@ RAW files are not provided.`
     };
 
     
-  window.openPdfContractGenerator = function(dKey, bookingId) {
+  window.openPdfContractGenerator = function(dKey, bookingId, preselectedVersion) {
     const settings = window.WPS_DATA?.CALENDAR_SETTINGS || {};
     const bookings = (settings.bookedDates && settings.bookedDates[dKey]) || [];
     const b = bookings.find(x => x.id === bookingId || x.name === bookingId) || {
@@ -2882,7 +2882,7 @@ RAW files are not provided.`
       location: "Studio Space, Noida Sector 62 / Outdoor NCR",
       package: "₹10,000 Package — 50 Proof Clicks + 8 Retouched Master Clicks",
       notes: "Call time 9:00 AM. 3 wardrobe changes.",
-      contractVersion: "V3.3"
+      contractVersion: preselectedVersion || "V3.3"
     };
 
     let modal = document.getElementById("pdfContractGeneratorModal");
@@ -2951,8 +2951,8 @@ RAW files are not provided.`
             </label>
             <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Contract Document Version *
               <select id="pdf_contractVersion" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
-                <option value="V3.3" ${(!b.contractVersion || b.contractVersion === 'V3.3') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.3 Active (50/50 + Gear Protection)</option>
-                <option value="V3.3-TFP" ${(isTest || b.contractVersion === 'V3.3-TFP') ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.3 Active (8-12 Retouched + Gear Protection)</option>
+                <option value="V3.3" ${(b.contractVersion === 'V3.3' || (!b.contractVersion && !isTest)) ? 'selected' : ''}>📜 Commercial Shoot Contract V3.3 Active (50/50 + Gear Protection)</option>
+                <option value="V3.3-TFP" ${(b.contractVersion === 'V3.3-TFP' || (isTest && !b.contractVersion)) ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.3 Active (8-12 Retouched + Gear Protection)</option>
                 <option value="V3.2" ${b.contractVersion === 'V3.2' ? 'selected' : ''}>📜 Archived Terms V3.2 (May 2026 – Aug 2026)</option>
                 <option value="V3.1" ${b.contractVersion === 'V3.1' ? 'selected' : ''}>📜 Archived Terms V3.1 (May 2026 – Jul 2026)</option>
                 <option value="V3.0" ${b.contractVersion === 'V3.0' ? 'selected' : ''}>📜 Archived Terms V3.0 (Jan 2026 – Apr 2026)</option>
