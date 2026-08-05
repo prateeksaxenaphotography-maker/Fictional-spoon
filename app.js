@@ -6181,17 +6181,22 @@ RAW files are not provided.`
         if (paymentTermsFieldset) paymentTermsFieldset.style.display = "";
       }
 
+      const testShootOpt = $("#b_type")?.querySelector('option[value="Selective Collaboration (TFP)"]');
       if (role === "Brand") {
-        const testShootOpt = $("#b_type")?.querySelector('option[value="Selective Collaboration (TFP)"]');
         if (testShootOpt) {
+          testShootOpt.hidden = true;
+          testShootOpt.style.display = "none";
           testShootOpt.disabled = true;
           if ($("#b_type").value === "Selective Collaboration (TFP)") {
             $("#b_type").value = "Fashion Editorial";
           }
         }
       } else {
-        const testShootOpt = $("#b_type")?.querySelector('option[value="Selective Collaboration (TFP)"]');
-        if (testShootOpt) testShootOpt.disabled = false;
+        if (testShootOpt) {
+          testShootOpt.hidden = false;
+          testShootOpt.style.display = "";
+          testShootOpt.disabled = false;
+        }
       }
     };
 
