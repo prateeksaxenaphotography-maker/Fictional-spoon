@@ -2579,26 +2579,27 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   }
 
   function wireCalendar() {
+    function renderAdminPackagesEditor() {
       const pkgsGrid = $("#adminPackagesEditorGrid");
-      if (pkgsGrid) {
-        const pkgs = getAdminPackages();
-        pkgsGrid.innerHTML = pkgs.map((p, idx) => `
-          <div class="admin-pkg-editor-row" style="background: #ffffff; border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; display: grid; grid-template-columns: 1.5fr 1fr 2.5fr; gap: 10px; align-items: center;">
-            <div>
-              <span style="font-size: 10px; font-weight: 700; color: var(--ink-soft); display: block; margin-bottom: 2px;">Package Name #${idx+1}</span>
-              <input type="text" class="pkg-edit-name" value="${esc(p.name)}" style="width: 100%; padding: 6px; border: 1px solid var(--line); border-radius: 4px; font-family: inherit; font-size: 11px; font-weight: 700;" />
-            </div>
-            <div>
-              <span style="font-size: 10px; font-weight: 700; color: var(--ink-soft); display: block; margin-bottom: 2px;">Max Rate (INR ₹)</span>
-              <input type="number" class="pkg-edit-price" value="${p.price}" style="width: 100%; padding: 6px; border: 1px solid var(--line); border-radius: 4px; font-family: inherit; font-size: 11px; font-weight: 700; color: var(--accent);" />
-            </div>
-            <div>
-              <span style="font-size: 10px; font-weight: 700; color: var(--ink-soft); display: block; margin-bottom: 2px;">Deliverable Specs</span>
-              <input type="text" class="pkg-edit-specs" value="${esc(p.specs)}" style="width: 100%; padding: 6px; border: 1px solid var(--line); border-radius: 4px; font-family: inherit; font-size: 11px;" />
-            </div>
+      if (!pkgsGrid) return;
+      const pkgs = getAdminPackages();
+      pkgsGrid.innerHTML = pkgs.map((p, idx) => `
+        <div class="admin-pkg-editor-row" style="background: #ffffff; border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; display: grid; grid-template-columns: 1.5fr 1fr 2.5fr; gap: 10px; align-items: center;">
+          <div>
+            <span style="font-size: 10px; font-weight: 700; color: var(--ink-soft); display: block; margin-bottom: 2px;">Package Name #${idx+1}</span>
+            <input type="text" class="pkg-edit-name" value="${esc(p.name)}" style="width: 100%; padding: 6px; border: 1px solid var(--line); border-radius: 4px; font-family: inherit; font-size: 11px; font-weight: 700;" />
           </div>
-        `).join("");
-      }
+          <div>
+            <span style="font-size: 10px; font-weight: 700; color: var(--ink-soft); display: block; margin-bottom: 2px;">Max Rate (INR ₹)</span>
+            <input type="number" class="pkg-edit-price" value="${p.price}" style="width: 100%; padding: 6px; border: 1px solid var(--line); border-radius: 4px; font-family: inherit; font-size: 11px; font-weight: 700; color: var(--accent);" />
+          </div>
+          <div>
+            <span style="font-size: 10px; font-weight: 700; color: var(--ink-soft); display: block; margin-bottom: 2px;">Deliverable Specs</span>
+            <input type="text" class="pkg-edit-specs" value="${esc(p.specs)}" style="width: 100%; padding: 6px; border: 1px solid var(--line); border-radius: 4px; font-family: inherit; font-size: 11px;" />
+          </div>
+        </div>
+      `).join("");
+    }
 
     let calYear = new Date().getFullYear();
     let calMonth = new Date().getMonth();
@@ -3737,7 +3738,9 @@ RAW files are not provided.`
       });
     }
 
+    renderAdminPackagesEditor();
     renderAdminGrid();
+    renderRoster();
   }
 
   function catCard(label, kind, val, count, sample, cover) {
