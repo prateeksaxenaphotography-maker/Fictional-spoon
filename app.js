@@ -4650,17 +4650,59 @@ RAW files are not provided.`
                    <select id="b_budget">
                       <option value="₹7,000 (20 Proof Clicks · 0 Retouched)">₹7,000 · Basic Test / Comp Card (20 Proof Clicks + 0 Retouched)</option>
                       <option value="₹10,000 (25 Proof Clicks + 3-5 Retouched)">₹10,000 · Mini Portfolio (25 Proof Clicks + 3-5 Retouched Clicks)</option>
-                     <option value="₹10,000 - ₹25,000 (50 Unedited + 8-12 Retouched)">₹10,000 - ₹25,000 · 50 Unedited Proof Clicks + 8 to 12 Retouched Clicks (Standard Portfolio / Editorial)</option>
-                     <option value="₹25,000 - ₹50,000 (100 Unedited + 15-25 Retouched)">₹25,000 - ₹50,000 · 100 Unedited Proof Clicks + 15 to 25 Retouched Clicks (Premium Brand Campaign)</option>
-                     <option value="₹50,000+ (Full Proof Gallery + 30+ Retouched Master Assets)">₹50,000+ · Full Proof Gallery + 30+ Commercial Master Retouched Assets (High-End Ad / Commercial)</option>
+                     <option value="₹25,000 (50 Unedited + 8-12 Retouched)">₹25,000 · Standard Editorial Portfolio (50 Unedited + 8 to 12 Retouched Clicks)</option>
+                     <option value="₹50,000 (100 Unedited + 15-25 Retouched)">₹50,000 · Premium Brand Campaign (100 Unedited + 15 to 25 Retouched Clicks)</option>
+                     <option value="₹75,000 (Full Proof Gallery + 30+ Retouched Master Assets)">₹75,000 · High-End Full Day Production (Full Gallery + 30+ Retouched Master Assets)</option>
                    </select>
-                   <div style="font-size: 11px; color: var(--accent); margin-top: 5px; font-family: var(--mono-font); line-height: 1.4; display: flex; flex-direction: column; gap: 4px;">
-                     <div>ℹ️ <strong>Studio Rental Policy:</strong> Package rates cover photography creation, light design &amp; master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are billed <strong>at actuals</strong>, or the client may directly book their preferred studio space for the production.</div>
-                     <div>📸 <strong>Full Unedited Gallery Buyout:</strong> Packages include a proofing gallery to select contracted retouches. If the client requests the complete full unedited image gallery or additional retouched master clicks beyond the package limit, extra gallery buyout charges apply.</div>
-                      <div>🚫 <strong>Camera &amp; Media Protection Policy:</strong> All camera equipment, memory cards, and raw captures are strictly confidential studio property. Participants may not touch equipment or delete media from cameras. Unauthorized file deletion constitutes a material breach of contract and incurs full data recovery costs.</div>
-                   </div>
                  </label>
                </div>
+
+               <div class="field-row" style="margin-top: 10px;">
+                 <label class="field">
+                   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                     <span style="font-weight: 700; color: var(--ink);">🎟️ Promotional Discount Code (Optional)</span>
+                     <span id="discountCodeStatus" style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; display: none;"></span>
+                   </div>
+                   <input id="b_discount_code" type="text" placeholder="e.g. NERDY500, NERDY1000, NERDY10, NERDY20" style="text-transform: uppercase; font-family: var(--mono-font); font-weight: 700;" />
+                 </label>
+
+                 <label class="field">
+                   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                     <span style="font-weight: 700; color: var(--ink);">🔑 Photographer Direct Invite Code (Optional)</span>
+                     <span id="inviteCodeStatus" style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; display: none;"></span>
+                   </div>
+                   <input id="b_invite_code" type="text" placeholder="e.g. NERDY-INVITE (Unlocks Collab Option for Brands)" style="text-transform: uppercase; font-family: var(--mono-font);" />
+                 </label>
+               </div>
+               <div id="discountSavingsBadge" style="display: none; margin-top: 6px; font-family: var(--mono-font); font-size: 11px; color: #059669; font-weight: 700;"></div>
+
+               <div id="finalPriceSummaryBox" style="background: #111111; color: #ffffff; border: 1px solid var(--accent); border-radius: 8px; padding: 14px 18px; margin-top: 10px; margin-bottom: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);">
+                 <div style="font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                   <span>💰 Booking Rate &amp; Final Payable Calculator</span>
+                   <span id="calcDiscountTag" style="font-size: 10px; color: #059669; background: rgba(5,150,105,0.15); padding: 2px 8px; border-radius: 12px; font-weight: 700; display: none;"></span>
+                 </div>
+                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-family: var(--mono-font); font-size: 13px;">
+                   <div>
+                     <span style="color: rgba(255,255,255,0.7);">Selected Package:</span>
+                     <span id="summaryOriginalPrice" style="font-weight: 700; color: #ffffff; margin-left: 6px;">₹25,000</span>
+                   </div>
+                   <div id="summaryDiscountWrap" style="display: none;">
+                     <span style="color: #059669; font-weight: 700;" id="summaryDiscountLabel">Discount Savings:</span>
+                     <span id="summarySavingsAmount" style="font-weight: 700; color: #059669; margin-left: 6px;">-₹0</span>
+                   </div>
+                 </div>
+                 <div style="border-top: 1px solid rgba(255,255,255,0.15); margin-top: 10px; padding-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                   <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.04em;">FINAL AMOUNT PAYABLE:</span>
+                   <span id="summaryFinalAmount" style="font-size: 22px; font-weight: 800; color: var(--accent); font-family: var(--mono-font);">₹25,000 INR</span>
+                 </div>
+               </div>
+
+               <div style="font-size: 11px; color: var(--accent); margin-bottom: 20px; font-family: var(--mono-font); line-height: 1.4; display: flex; flex-direction: column; gap: 4px;">
+                 <div>ℹ️ <strong>Studio Rental Policy:</strong> Package rates cover photography creation, light design &amp; master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are billed <strong>at actuals</strong>, or the client may directly book their preferred studio space for the production.</div>
+                 <div>📸 <strong>Full Unedited Gallery Buyout:</strong> Packages include a proofing gallery to select contracted retouches. If the client requests the complete full unedited image gallery or additional retouched master clicks beyond the package limit, extra gallery buyout charges apply.</div>
+                 <div>🚫 <strong>Camera &amp; Media Protection Policy:</strong> All camera equipment, memory cards, and raw captures are strictly confidential studio property. Participants may not touch equipment or delete media from cameras. Unauthorized file deletion constitutes a material breach of contract and incurs full data recovery costs.</div>
+               </div>
+
                 <div class="field" style="display: flex; flex-direction: column; gap: 4px;">
                   <span>Reference &amp; Mood Board Links (Multiple allowed)</span>
                   <div id="b_links_container">
