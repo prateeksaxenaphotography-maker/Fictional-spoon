@@ -4510,7 +4510,7 @@ RAW files are not provided.`
                      <option value="Fitness &amp; Athletic" ${isSelected("Fitness &amp; Athletic")}>Fitness &amp; Athletic</option>
                      <option value="Sports Action" ${isSelected("Sports Action")}>Sports Action</option>
                      <option value="Commercial Campaign" ${isSelected("Commercial Campaign")}>Commercial Campaign</option>
-                     <option value="Selective Collaboration (TFP)" ${isSelected("Selective Collaboration (TFP)")}>📸 TEST SHOOT / TFP COLLAB (Selective Portfolio Collab)</option>
+                     <option value="Selective Collaboration (TFP)" ${isSelected("Selective Collaboration (TFP)")}>📸 SELECTIVE COLLABORATION / TFP (Portfolio Collab)</option>
                      <option value="Other" ${isSelected("Other")}>Other Focus Area</option>
                    </select>
                    <div id="b_type_notice" style="font-size: 11px; color: var(--accent); margin-top: 5px; font-family: var(--mono-font); display: none;">
@@ -6134,21 +6134,51 @@ RAW files are not provided.`
 
       const paymentTermsFieldset = $("#paymentTermsFieldset");
       const collabFallbackWrap = $("#collabFallbackWrap");
+      const isTalentRole = (role === "Model" || role === "MUA" || role === "Stylist");
+
       if (type === "Selective Collaboration (TFP)") {
         if (budgetField) budgetField.style.display = "none";
-        if (collabFallbackWrap) collabFallbackWrap.style.display = "block";
         if (paymentTermsFieldset) paymentTermsFieldset.style.display = "none";
-        if (brandOpt) {
-          brandOpt.disabled = true;
-          if ($("#b_role").value === "Brand") {
-            $("#b_role").value = "Model";
+
+        if (collabFallbackWrap) {
+          if (isTalentRole) {
+            // Models, MUAs & Stylists get pure TFP collaboration without being forced to pick a paid package
+            collabFallbackWrap.style.display = "block";
+            collabFallbackWrap.innerHTML = `
+              <div style="font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 700; color: var(--accent); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                📸 Creative Talent TFP Collaboration Policy
+              </div>
+              <p style="font-size: 11px; color: var(--ink-soft); margin: 0; line-height: 1.5;">
+                Peer-to-peer collaboration session for portfolio growth &amp; creative curation. Submissions are reviewed at studio discretion based on creative brief alignment and schedule availability.
+              </p>
+            `;
+          } else {
+            // Brands & Agencies require a mandatory Paid Fallback Package
+            collabFallbackWrap.style.display = "block";
+            collabFallbackWrap.innerHTML = `
+              <div style="font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 700; color: var(--accent); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                📌 Studio Discretion Policy &amp; Paid Fallback Package *
+              </div>
+              <p style="font-size: 11px; color: var(--ink-soft); margin: 0 0 10px 0; line-height: 1.5;">
+                Brand &amp; Commercial TFP collaborations are accepted at the sole discretion of the studio based on creative brief alignment and portfolio synergy. Unapproved collaboration requests do not reserve shoot dates.
+              </p>
+              <label class="field" style="margin: 0;">
+                <span style="font-size: 11px; font-weight: 700; color: var(--ink);">If your collaboration request is not approved, which Paid Package would you like to proceed with? *</span>
+                <select id="b_collab_fallback" style="margin-top: 4px;">
+                  <option value="₹6,000 – ₹7,000 Starter Package (Paid Fallback)">₹6,000 – ₹7,000 Starter Package</option>
+                  <option value="₹10,000 – ₹25,000 Editorial / Campaign (Paid Fallback)">₹10,000 – ₹25,000 Editorial / Campaign</option>
+                  <option value="₹25,000 – ₹50,000 Commercial Production (Paid Fallback)">₹25,000 – ₹50,000 Commercial Production</option>
+                  <option value="Custom Bespoke Package (Paid Fallback)">Custom Bespoke Package</option>
+                  <option value="Cancel Inquiry if Collaboration is Declined">Cancel Inquiry if Collaboration is Declined</option>
+                </select>
+              </label>
+            `;
           }
         }
       } else {
         if (budgetField) budgetField.style.display = "";
         if (collabFallbackWrap) collabFallbackWrap.style.display = "none";
         if (paymentTermsFieldset) paymentTermsFieldset.style.display = "";
-        if (brandOpt) brandOpt.disabled = false;
       }
 
       if (role === "Brand") {
