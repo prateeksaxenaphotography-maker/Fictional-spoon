@@ -1,0 +1,18 @@
+{
+  "name": "Nerdy Photographer Studio",
+  "short_name": "PhotoStudio",
+  "description": "Fashion, Beauty, Editorial, Sports, Fitness & Model Photography Studio in Noida & Delhi NCR",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e0e0e",
+  "theme_color": "#0e0e0e",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
