@@ -2913,10 +2913,10 @@ RAW files are not provided.`
             </label>
             <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Shoot Duration
               <select id="pdf_duration" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
-                <option value="Full Day" ${(b.duration === 'Full Day' || !b.duration) ? 'selected' : ''}>Full Day Shoot (up to 8 Hours)</option>
-                <option value="Half Day (Morning)" ${b.duration === 'Half Day (Morning)' ? 'selected' : ''}>Half Day Morning (9 AM - 1 PM)</option>
-                <option value="Half Day (Afternoon)" ${b.duration === 'Half Day (Afternoon)' ? 'selected' : ''}>Half Day Afternoon (2 PM - 6 PM)</option>
-                <option value="Flexible Hours" ${b.duration === 'Flexible Hours' ? 'selected' : ''}>Flexible Hours</option>
+                <option value="Full Day (10:30 AM – 5:30 PM)" ${(b.duration && b.duration.includes('Full Day')) || !b.duration ? 'selected' : ''}>Full Day Shoot (10:30 AM – 5:30 PM · 7 Hours)</option>
+                <option value="Half Day Morning (10:30 AM – 2:30 PM)" ${b.duration && b.duration.includes('Morning') ? 'selected' : ''}>Half Day Morning (10:30 AM – 2:30 PM · 4 Hours)</option>
+                <option value="Half Day Afternoon (1:30 PM – 5:30 PM)" ${b.duration && b.duration.includes('Afternoon') ? 'selected' : ''}>Half Day Afternoon (1:30 PM – 5:30 PM · 4 Hours)</option>
+                <option value="Custom Timings (11:00 AM – 4:00 PM)" ${b.duration && b.duration.includes('Custom') ? 'selected' : ''}>Custom Timings (Specify Call &amp; Wrap Time)</option>
               </select>
             </label>
           </div>
@@ -4363,15 +4363,41 @@ RAW files are not provided.`
                     </div>
                   </label>
                </div>
-               <div class="field-row">
-                 <label class="field"><span>Preferred Location *</span><input id="b_location" type="text" required placeholder="e.g. Indoor Studio / Outdoor NCR / Client Location" /></label>
-                 <label class="field"><span>Dedicated Studio Space Needed? *</span>
-                   <select id="b_studio_space">
-                     <option value="No - Outdoor / Client Location / Client Books Studio Directly">No — Outdoor / Client Location / Client Books Studio Directly</option>
-                     <option value="Yes - Dedicated Studio Rental Required (Billed at Actuals)">Yes — Studio Space Needed (Venue rental billed at actuals / cost)</option>
-                   </select>
-                 </label>
-               </div>
+                <div class="field-row">
+                  <label class="field"><span>Preferred Session Duration *</span>
+                    <select id="b_duration">
+                      <option value="Full Day (10:30 AM – 5:30 PM)">☀️ Full Day Shoot (10:30 AM – 5:30 PM · 7 Hours)</option>
+                      <option value="Half Day Morning (10:30 AM – 2:30 PM)">🌅 Half Day Morning (10:30 AM – 2:30 PM · 4 Hours)</option>
+                      <option value="Half Day Afternoon (1:30 PM – 5:30 PM)">🌇 Half Day Afternoon (1:30 PM – 5:30 PM · 4 Hours)</option>
+                      <option value="Custom Timings">⏰ Custom Timings (Pick Call &amp; Wrap Time)</option>
+                    </select>
+                  </label>
+                  <label class="field"><span>Preferred Location *</span><input id="b_location" type="text" required placeholder="e.g. Indoor Studio / Outdoor NCR / Client Location" /></label>
+                </div>
+
+                <div id="b_custom_time_wrap" style="display: none; background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+                  <div style="font-size: 11px; font-weight: 700; color: var(--accent); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">⏰ Custom Call &amp; Wrap Timings</div>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">Start / Call Time *
+                      <input type="time" id="b_time_start" value="10:30" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+                    </label>
+                    <label style="font-size: 11px; font-weight: 700; color: var(--ink-soft);">End / Wrap Time *
+                      <input type="time" id="b_time_end" value="17:30" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+                    </label>
+                  </div>
+                  <div id="b_custom_time_badge" style="margin-top: 8px; font-family: var(--mono-font); font-size: 11px; font-weight: 700; color: var(--accent);">
+                    ⏱️ 7 Hours Session (10:30 AM – 5:30 PM)
+                  </div>
+                </div>
+
+                <div class="field-row">
+                  <label class="field" style="grid-column: 1 / -1;"><span>Dedicated Studio Space Needed? *</span>
+                    <select id="b_studio_space">
+                      <option value="No - Outdoor / Client Location / Client Books Studio Directly">No — Outdoor / Client Location / Client Books Studio Directly</option>
+                      <option value="Yes - Dedicated Studio Rental Required (Billed at Actuals)">Yes — Studio Space Needed (Venue rental billed at actuals / cost)</option>
+                    </select>
+                  </label>
+                </div>
                <div class="field-row">
                  <label class="field" id="b_budget_field" style="grid-column: 1 / -1;"><span>Studio Package &amp; Rate Tier *</span>
                    <select id="b_budget">
@@ -5897,6 +5923,39 @@ RAW files are not provided.`
         if (testShootOpt) testShootOpt.disabled = false;
       }
     };
+
+    
+    const updateCustomTimeBadge = () => {
+      const startVal = $("#b_time_start")?.value || "10:30";
+      const endVal = $("#b_time_end")?.value || "17:30";
+      const format12 = (timeStr) => {
+        if (!timeStr) return "";
+        const [h, m] = timeStr.split(":").map(Number);
+        const period = h >= 12 ? "PM" : "AM";
+        const h12 = h % 12 || 12;
+        return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+      };
+      
+      const [sh, sm] = startVal.split(":").map(Number);
+      const [eh, em] = endVal.split(":").map(Number);
+      let diffMins = (eh * 60 + em) - (sh * 60 + sm);
+      if (diffMins < 0) diffMins += 24 * 60;
+      const hrs = (diffMins / 60).toFixed(1).replace(".0", "");
+      const badge = $("#b_custom_time_badge");
+      if (badge) {
+        badge.innerHTML = `⏱️ ${hrs} Hours Session (${format12(startVal)} – ${format12(endVal)})`;
+      }
+    };
+
+    $("#b_duration")?.addEventListener("change", () => {
+      const isCustom = $("#b_duration")?.value === "Custom Timings";
+      const wrap = $("#b_custom_time_wrap");
+      if (wrap) wrap.style.display = isCustom ? "block" : "none";
+      if (isCustom) updateCustomTimeBadge();
+    });
+
+    $("#b_time_start")?.addEventListener("input", updateCustomTimeBadge);
+    $("#b_time_end")?.addEventListener("input", updateCustomTimeBadge);
 
     $("#b_type")?.addEventListener("change", updateFields);
     $("#b_role")?.addEventListener("change", updateFields);
