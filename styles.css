@@ -1709,8 +1709,6 @@ main:focus { outline: none; }
   }
 }
 
-
-
 /* Printable Contract PDF Media Query - 100% Chrome/Safari/Firefox Bulletproof */
 @media print {
   html, body {

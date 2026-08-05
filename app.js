@@ -3670,7 +3670,6 @@ RAW files are not provided.`
     renderAdminGrid();
   }
 
-
   function catCard(label, kind, val, count, sample, cover) {
     const coverSrc = cover ? photoSrc(cover) : "";
     const swatch = coverSrc
@@ -3972,7 +3971,6 @@ RAW files are not provided.`
         <div class="cat-grid">${brs.map((x) => catCard(x.v, "brand", x.v, x.count, x.sample, x.cover)).join("")}</div>
       </section>
       ` : ""}
-
 
       <!-- SPECIALTIES DIRECTORY -->
       ${(fashionSamples.length || portraitSamples.length || fitnessSamples.length || sportsSamples.length || testShootSamples.length) ? `
@@ -6200,8 +6198,6 @@ RAW files are not provided.`
     $("#b_type")?.addEventListener("change", updateFields);
     $("#b_role")?.addEventListener("change", updateFields);
     updateFields();
-
-
 
     function validate() {
       let firstBad = null;
