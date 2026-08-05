@@ -6410,6 +6410,63 @@ RAW files are not provided.`
       $("#termsModal").style.display = "flex";
       const acceptBtn = $("#termsAcceptBtn");
 
+      // Setup HTML5 Signature Canvas
+      const canvas = $("#termsSigCanvas");
+      const sigHint = $("#termsSigHint");
+      const clearBtn = $("#clearTermsSigBtn");
+      let isDrawing = false;
+      let hasSigned = false;
+      let ctx = null;
+
+      if (canvas) {
+        ctx = canvas.getContext("2d");
+        ctx.strokeStyle = "#111111";
+        ctx.lineWidth = 2.2;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+
+        const getPos = (e) => {
+          const rect = canvas.getBoundingClientRect();
+          const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+          const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+          return { x: clientX - rect.left, y: clientY - rect.top };
+        };
+
+        const startDraw = (e) => {
+          isDrawing = true;
+          hasSigned = true;
+          if (sigHint) sigHint.style.display = "none";
+          const pos = getPos(e);
+          ctx.beginPath();
+          ctx.moveTo(pos.x, pos.y);
+        };
+
+        const draw = (e) => {
+          if (!isDrawing) return;
+          e.preventDefault();
+          const pos = getPos(e);
+          ctx.lineTo(pos.x, pos.y);
+          ctx.stroke();
+        };
+
+        const stopDraw = () => { isDrawing = false; };
+
+        canvas.onmousedown = startDraw;
+        canvas.onmousemove = draw;
+        canvas.onmouseup = stopDraw;
+        canvas.ontouchstart = startDraw;
+        canvas.ontouchmove = draw;
+        canvas.ontouchend = stopDraw;
+
+        if (clearBtn) {
+          clearBtn.onclick = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            hasSigned = false;
+            if (sigHint) sigHint.style.display = "flex";
+          };
+        }
+      }
+
       const close = () => {
         $("#termsModal").style.display = "none";
         if (acceptBtn) acceptBtn.removeEventListener("click", onAcceptClick);
@@ -8153,3 +8210,10 @@ RAW files are not provided.`
     }
   })();
 })();
+
+// Register Service Worker for PWA Offline Caching
+if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js?v=155').catch(() => {});
+  });
+}
