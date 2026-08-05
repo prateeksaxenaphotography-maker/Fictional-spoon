@@ -6423,12 +6423,19 @@ RAW files are not provided.`
       const summaryFinalAmount = $("#summaryFinalAmount");
       const calcDiscountTag = $("#calcDiscountTag");
 
-      let rawPkgVal = pkgSelect?.value || "";
-      let basePrice = 25000;
+      let rawPkgVal = "";
+      if (pkgSelect) {
+        if (pkgSelect.selectedIndex >= 0 && pkgSelect.options[pkgSelect.selectedIndex]) {
+          rawPkgVal = pkgSelect.options[pkgSelect.selectedIndex].text + " " + pkgSelect.options[pkgSelect.selectedIndex].value;
+        } else {
+          rawPkgVal = pkgSelect.value || "";
+        }
+      }
 
+      let basePrice = 7000;
       const priceMatch = rawPkgVal.match(/₹\s*([\d,]+)/);
       if (priceMatch && priceMatch[1]) {
-        basePrice = parseInt(priceMatch[1].replace(/,/g, ""), 10) || 25000;
+        basePrice = parseInt(priceMatch[1].replace(/,/g, ""), 10) || 7000;
       }
 
       let savings = 0;
@@ -6500,15 +6507,18 @@ RAW files are not provided.`
     $("#b_time_start")?.addEventListener("input", updateCustomTimeBadge);
     $("#b_time_end")?.addEventListener("input", updateCustomTimeBadge);
 
-    $("#b_type")?.addEventListener("change", updateFields);
-    $("#b_role")?.addEventListener("change", updateFields);
-    $("#b_invite_code")?.addEventListener("input", updateFields);
-    $("#b_discount_code")?.addEventListener("input", updateFields);
+    ["change", "input", "blur", "click"].forEach(evtName => {
+      $("#b_type")?.addEventListener(evtName, updateFields);
+      $("#b_role")?.addEventListener(evtName, updateFields);
+      $("#b_budget")?.addEventListener(evtName, updateFields);
+      $("#b_invite_code")?.addEventListener(evtName, updateFields);
+      $("#b_discount_code")?.addEventListener(evtName, updateFields);
+      $("#b_gallery_access")?.addEventListener(evtName, updateFields);
+      $("#b_retouched_count")?.addEventListener(evtName, updateFields);
+    });
+
     $("#btnApplyDiscountCode")?.addEventListener("click", () => { updateFields(); const val = $("#b_discount_code")?.value.trim(); if (!val) alert("Please enter a promo code first!"); });
     $("#btnApplyInviteCode")?.addEventListener("click", () => { updateFields(); const val = $("#b_invite_code")?.value.trim(); if (!val) alert("Please enter an invite code first!"); });
-    $("#b_budget")?.addEventListener("change", updateFields);
-    $("#b_gallery_access")?.addEventListener("change", updateFields);
-    $("#b_retouched_count")?.addEventListener("change", updateFields);
     updateFields();
 
     function validate() {
