@@ -4540,7 +4540,7 @@ RAW files are not provided.`
                       <option value="Custom Timings">⏰ Custom Timings (Pick Call &amp; Wrap Time)</option>
                     </select>
                   </label>
-                  <label class="field"><span>Preferred Location *</span><input id="b_location" type="text" required placeholder="e.g. Indoor Studio / Outdoor NCR / Client Location" /></label>
+                  <label class="field"><span>Preferred Location *</span><input id="b_location" type="text" required placeholder="e.g. Noida, Delhi NCR, Studio Space / Outdoor Venue" /></label>
                 </div>
 
                 <div id="b_custom_time_wrap" style="display: none; background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
