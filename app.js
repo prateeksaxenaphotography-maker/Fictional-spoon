@@ -6350,8 +6350,15 @@ RAW files are not provided.`
         discountName = matchedDiscount.label;
       }
 
-      let savings = Math.round((basePrice * discountPct) / 100);
-      let finalPayable = basePrice - savings;
+      const galleryAccessVal = $("#b_gallery_access")?.value || "";
+      let galleryBuyoutFee = 0;
+      if (galleryAccessVal.includes("+₹5,000 Gallery Buyout")) {
+        galleryBuyoutFee = 5000;
+      }
+
+      let subtotalPrice = basePrice + galleryBuyoutFee;
+      let savings = Math.round((subtotalPrice * discountPct) / 100);
+      let finalPayable = subtotalPrice - savings;
 
       if (type === "Selective Collaboration (TFP)") {
         if (summaryOriginalPrice) summaryOriginalPrice.textContent = "Selective Collab / TFP (₹0)";
@@ -6413,6 +6420,8 @@ RAW files are not provided.`
     $("#b_invite_code")?.addEventListener("input", updateFields);
     $("#b_discount_code")?.addEventListener("input", updateFields);
     $("#b_budget")?.addEventListener("change", updateFields);
+    $("#b_gallery_access")?.addEventListener("change", updateFields);
+    $("#b_retouched_count")?.addEventListener("change", updateFields);
     updateFields();
 
     function validate() {
