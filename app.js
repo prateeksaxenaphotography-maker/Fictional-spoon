@@ -3088,13 +3088,6 @@ RAW files are not provided.`
   };
 
   window.printContractPdf = function(data) {
-    let printContainer = document.getElementById("printableContractContainer");
-    if (!printContainer) {
-      printContainer = document.createElement("div");
-      printContainer.id = "printableContractContainer";
-    }
-    document.body.appendChild(printContainer);
-
     const cVer = data.contractVersion || "V3.3";
     let archiveObj = window.WPS_CONTRACT_ARCHIVE[cVer];
     if (!archiveObj) {
@@ -3112,57 +3105,57 @@ RAW files are not provided.`
     const contractText = archiveObj ? archiveObj.fullText : "";
     const isTfp = (data.paymentMilestones === "tfp" || cVer === "V3.3-TFP");
 
-    printContainer.innerHTML = `
-      <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #111; padding: 30px 40px; max-width: 800px; margin: 0 auto; background: #fff; line-height: 1.5;">
+    const innerHtml = `
+      <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #111; padding: 20px; max-width: 800px; margin: 0 auto; background: #fff; line-height: 1.5;">
         <!-- Header -->
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #111; padding-bottom: 16px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #111; padding-bottom: 14px; margin-bottom: 18px;">
           <div>
             <div style="font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #000;">NERDYPHOTOGRAPHER.IN</div>
             <div style="font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px;">Fashion, Fitness &amp; Commercial Photography Studio</div>
             <div style="font-size: 11px; color: #555; margin-top: 2px;">Web: www.nerdyphotographer.in · Email: prateeksaxenaphotography@gmail.com</div>
           </div>
           <div style="text-align: right;">
-            <div style="font-family: monospace; font-size: 11px; font-weight: 700; background: #f0f0f0; border: 1px solid #ccc; padding: 4px 10px; border-radius: 4px;">REF: WPS-CONTRACT-${esc(cVer)}-${esc(data.date)}</div>
+            <div style="font-family: monospace; font-size: 11px; font-weight: 700; background: #f0f0f0; border: 1px solid #ccc; padding: 4px 10px; border-radius: 4px;">REF: WPS-CONTRACT-${esc(cVer)}-${esc(data.date || 'BLANK')}</div>
             <div style="font-size: 10px; color: #666; margin-top: 4px;">Issued: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
           </div>
         </div>
 
-        <h2 style="font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 800; text-transform: uppercase; margin: 0 0 16px; text-align: center; letter-spacing: 0.05em;">
+        <h2 style="font-family: 'Outfit', sans-serif; font-size: 17px; font-weight: 800; text-transform: uppercase; margin: 0 0 14px; text-align: center; letter-spacing: 0.05em;">
           ${isTfp ? 'Time-For-Print (TFP) Production &amp; Model Release Agreement' : 'Studio Shoot Booking Contract &amp; Production Agreement'}
         </h2>
 
         <!-- Production Brief Table with Blank Pen-Fill Line Support -->
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; border: 1px solid #ddd;">
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 12px; border: 1px solid #ddd;">
           <tbody>
             <tr style="background: #f9f9f9;">
               <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd; width: 25%;">Client / Participant:</td>
-              <td style="padding: 8px 12px; border: 1px solid #ddd; width: 25%;">${data.clientName ? esc(data.clientName) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 90%; min-height: 16px;">&nbsp;</span>'}</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd; width: 25%;">${data.clientName ? esc(data.clientName) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 90%; height: 14px;">&nbsp;</span>'}</td>
               <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd; width: 25%;">Instagram / Contact:</td>
-              <td style="padding: 8px 12px; border: 1px solid #ddd; width: 25%;">${(data.instagram || data.email) ? esc(data.instagram || data.email) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 90%; min-height: 16px;">&nbsp;</span>'}</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd; width: 25%;">${(data.instagram || data.email) ? esc(data.instagram || data.email) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 90%; height: 14px;">&nbsp;</span>'}</td>
             </tr>
             <tr>
               <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Scheduled Date:</td>
-              <td style="padding: 8px 12px; border: 1px solid #ddd;">${data.date ? esc(data.date) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 90%; min-height: 16px;">&nbsp;</span>'}</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd;">${data.date ? esc(data.date) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 90%; height: 14px;">&nbsp;</span>'}</td>
               <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Session Duration:</td>
-              <td style="padding: 8px 12px; border: 1px solid #ddd;">${data.duration ? esc(data.duration) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 90%; min-height: 16px;">&nbsp;</span>'}</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd;">${data.duration ? esc(data.duration) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 90%; height: 14px;">&nbsp;</span>'}</td>
             </tr>
             <tr style="background: #f9f9f9;">
               <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Shoot Location:</td>
-              <td style="padding: 8px 12px; border: 1px solid #ddd;" colspan="3">${data.location ? esc(data.location) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 95%; min-height: 16px;">&nbsp;</span>'}</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd;" colspan="3">${data.location ? esc(data.location) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 95%; height: 14px;">&nbsp;</span>'}</td>
             </tr>
             <tr>
               <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Package &amp; Deliverables:</td>
-              <td style="padding: 8px 12px; border: 1px solid #ddd;" colspan="3">${data.package ? esc(data.package) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 95%; min-height: 16px;">&nbsp;</span>'}</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd;" colspan="3">${data.package ? esc(data.package) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 95%; height: 14px;">&nbsp;</span>'}</td>
             </tr>
             <tr style="background: #f9f9f9;">
               <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Production Notes:</td>
-              <td style="padding: 8px 12px; border: 1px solid #ddd;" colspan="3">${data.notes ? esc(data.notes) : '<span style="border-bottom: 1.5px dashed #999; display: block; width: 98%; min-height: 18px;">&nbsp;</span>'}</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd;" colspan="3">${data.notes ? esc(data.notes) : '<span style="border-bottom: 1.5px dashed #999; display: block; width: 98%; height: 16px;">&nbsp;</span>'}</td>
             </tr>
           </tbody>
         </table>
 
         <!-- Payment & Rental Policy Box -->
-        <div style="background: #fafafa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 12px 16px; margin-bottom: 20px; font-size: 11px; line-height: 1.5;">
+        <div style="background: #fafafa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px 14px; margin-bottom: 18px; font-size: 11px; line-height: 1.4;">
           ${isTfp ? `
             <strong>📸 TFP Test Shoot Terms:</strong> This session is structured for mutual portfolio growth. Deliverables include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW format files are strictly confidential studio property and are excluded. If a dedicated indoor studio venue space is requested, venue rental fees are billed at actuals (at cost).
           ` : `
@@ -3172,43 +3165,78 @@ RAW files are not provided.`
         </div>
 
         <!-- Contract Terms Text -->
-        <div style="margin-bottom: 24px;">
-          <h3 style="font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 800; text-transform: uppercase; border-bottom: 1px solid #111; padding-bottom: 4px; margin: 0 0 10px;">
+        <div style="margin-bottom: 20px;">
+          <h3 style="font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 800; text-transform: uppercase; border-bottom: 1px solid #111; padding-bottom: 4px; margin: 0 0 8px;">
             Terms &amp; Conditions (Contract Version ${esc(cVer)})
           </h3>
           <div style="font-size: 10px; line-height: 1.5; color: #222; text-align: justify; white-space: pre-wrap;">${esc(contractText)}</div>
         </div>
 
         <!-- Digital & Physical Pen Signature Acceptance Block -->
-        <div style="border: 2px dashed #111; border-radius: 8px; padding: 14px; background: #fff; page-break-inside: avoid; margin-top: 16px;">
-          <div style="font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 800; text-transform: uppercase; color: #000; margin-bottom: 6px; text-align: center;">
+        <div style="border: 2px dashed #111; border-radius: 8px; padding: 12px; background: #fff; page-break-inside: avoid;">
+          <div style="font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 800; text-transform: uppercase; color: #000; margin-bottom: 4px; text-align: center;">
             ✍️ Digital Approval Code OR Physical Pen Signature
           </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px; font-size: 11px; align-items: start;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 8px; font-size: 10px; align-items: start;">
             <div>
               <strong>Method A — Digital Approval (DM / Email):</strong><br/>
               Reply to <strong>prateeksaxenaphotography@gmail.com</strong> or DM <strong>@nerdyphotographer.in</strong>:<br/>
-              <div style="font-family: monospace; font-size: 10px; font-weight: 700; background: #f4f4f4; border: 1px solid #ccc; padding: 6px; border-radius: 4px; margin-top: 6px;">"I approve Studio Contract Terms ${esc(cVer)}"</div>
+              <div style="font-family: monospace; font-size: 9px; font-weight: 700; background: #f4f4f4; border: 1px solid #ccc; padding: 5px; border-radius: 4px; margin-top: 4px;">"I approve Studio Contract Terms ${esc(cVer)}"</div>
             </div>
-            <div style="border-left: 1px solid #ddd; padding-left: 14px;">
+            <div style="border-left: 1px solid #ddd; padding-left: 12px;">
               <strong>Method B — Physical Pen Signature:</strong><br/>
-              <div style="margin-top: 14px;">Client Sign: <span style="border-bottom: 1.5px solid #000; display: inline-block; width: 140px; height: 14px;">&nbsp;</span></div>
-              <div style="margin-top: 8px;">Date: <span style="border-bottom: 1.5px solid #000; display: inline-block; width: 140px; height: 14px;">&nbsp;</span></div>
+              <div style="margin-top: 10px;">Client Sign: <span style="border-bottom: 1.5px solid #000; display: inline-block; width: 130px; height: 12px;">&nbsp;</span></div>
+              <div style="margin-top: 6px;">Date: <span style="border-bottom: 1.5px solid #000; display: inline-block; width: 130px; height: 12px;">&nbsp;</span></div>
             </div>
           </div>
         </div>
       </div>
     `;
 
-    document.body.classList.add("is-printing");
-    setTimeout(() => {
-      window.print();
-      setTimeout(() => {
-        document.body.classList.remove("is-printing");
-      }, 1000);
-    }, 150);
-  };
+    // Create isolated printing iframe
+    let printIframe = document.getElementById("wpsPrintIframe");
+    if (printIframe) printIframe.remove();
 
+    printIframe = document.createElement("iframe");
+    printIframe.id = "wpsPrintIframe";
+    printIframe.style.cssText = "position: fixed; right: 0; bottom: 0; width: 0; height: 0; border: 0; opacity: 0; pointer-events: none;";
+    document.body.appendChild(printIframe);
+
+    const doc = printIframe.contentWindow.document;
+    doc.open();
+    doc.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>WPS Contract ${cVer}</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+        <style>
+          @page { size: A4 portrait; margin: 12mm 15mm; }
+          body { font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #111; margin: 0; padding: 0; background: #fff; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          h1, h2, h3, h4 { font-family: 'Outfit', sans-serif; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 12px; border: 1px solid #ddd; }
+          td, th { padding: 8px 12px; border: 1px solid #ddd; }
+        </style>
+      </head>
+      <body>
+        ${innerHtml}
+      </body>
+      </html>
+    `);
+    doc.close();
+
+    setTimeout(() => {
+      printIframe.contentWindow.focus();
+      printIframe.contentWindow.print();
+      setTimeout(() => {
+        if (printIframe && printIframe.parentNode) {
+          printIframe.parentNode.removeChild(printIframe);
+        }
+      }, 3000);
+    }, 400);
+  };
 
   window.openContractArchiveModal = function(ver) {
       const contract = window.WPS_CONTRACT_ARCHIVE[ver] || window.WPS_CONTRACT_ARCHIVE["V3.2"];
