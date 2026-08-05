@@ -2439,8 +2439,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               <button type="button" onclick="navigator.clipboard.writeText('NERDY-INVITE'); alert('Invite Code NERDY-INVITE copied to clipboard!');" style="background: var(--accent); color: #ffffff; border: none; padding: 2px 8px; border-radius: 10px; font-size: 10px; cursor: pointer; font-weight: 700;">📋 Copy</button>
             </div>
             <div style="display: inline-flex; align-items: center; gap: 6px; background: #ecfdf5; border: 1px solid #059669; padding: 4px 12px; border-radius: 20px; font-family: var(--mono-font); font-size: 11px; font-weight: 700; color: #059669;">
-              <span>🎟️ Promo Codes: <strong>LAUNCH10 (10%)</strong> · <strong>STUDIO20 (20%)</strong> · <strong>NOIDA15 (15%)</strong></span>
-              <button type="button" onclick="navigator.clipboard.writeText('LAUNCH10'); alert('Promo Code LAUNCH10 copied to clipboard!');" style="background: #059669; color: #ffffff; border: none; padding: 2px 8px; border-radius: 10px; font-size: 10px; cursor: pointer; font-weight: 700;">📋 Copy LAUNCH10</button>
+              <span>🎟️ Promo Codes: <strong>NERDY10 (10%)</strong> · <strong>NERDY15 (15%)</strong> · <strong>NERDY20 (20%)</strong> · <strong>NERDYVIP (25%)</strong></span>
+              <button type="button" onclick="navigator.clipboard.writeText('NERDY10'); alert('Promo Code NERDY10 copied to clipboard!');" style="background: #059669; color: #ffffff; border: none; padding: 2px 8px; border-radius: 10px; font-size: 10px; cursor: pointer; font-weight: 700;">📋 Copy NERDY10</button>
             </div>
             <button type="button" class="admin-cal-btn primary" id="adminCalNewBookingBtn">+ Add Manual Booking</button>
             <button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator()" style="border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Generate PDF Contract</button>
@@ -6199,9 +6199,9 @@ RAW files are not provided.`
 
       // Promo Discount Codes Map
       const discountCodesMap = {
-        "LAUNCH10": { pct: 10, label: "10% Off First Commercial Shoot (LAUNCH10)" },
-        "STUDIO20": { pct: 20, label: "20% Off Studio Production (STUDIO20)" },
-        "NOIDA15":  { pct: 15, label: "15% Off NCR Regional Shoots (NOIDA15)" },
+        "NERDY10":  { pct: 10, label: "10% Off First Commercial Shoot (NERDY10)" },
+        "NERDY15":  { pct: 15, label: "15% Off NCR Regional Shoots (NERDY15)" },
+        "NERDY20":  { pct: 20, label: "20% Off Studio Production (NERDY20)" },
         "NERDYVIP": { pct: 25, label: "25% VIP Partner Discount (NERDYVIP)" }
       };
 
