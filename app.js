@@ -4823,10 +4823,26 @@ RAW files are not provided.`
                  </div>
                </div>
 
-               <div style="font-size: 11px; color: var(--accent); margin-bottom: 20px; font-family: var(--mono-font); line-height: 1.4; display: flex; flex-direction: column; gap: 4px;">
-                 <div>ℹ️ <strong>Studio Rental Policy:</strong> Package rates cover photography creation, light design &amp; master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are billed <strong>at actuals</strong>, or the client may directly book their preferred studio space for the production.</div>
-                 <div>📸 <strong>Full Unedited Gallery Buyout:</strong> Packages include a proofing gallery to select contracted retouches. If the client requests the complete full unedited image gallery or additional retouched master clicks beyond the package limit, extra gallery buyout charges apply.</div>
-                 <div>🚫 <strong>Camera &amp; Media Protection Policy:</strong> All camera equipment, memory cards, and raw captures are strictly confidential studio property. Participants may not touch equipment or delete media from cameras. Unauthorized file deletion constitutes a material breach of contract and incurs full data recovery costs.</div>
+               <div class="book-policies" style="background: var(--bone); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 10px; padding: 16px 18px; margin-bottom: 20px;">
+                 <div style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px;">Studio Policies &amp; Terms · Please Read</div>
+                 <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px;">
+                   <li style="display: flex; gap: 10px; align-items: flex-start; font-size: 12.5px; line-height: 1.55; color: var(--ink-soft);">
+                     <span aria-hidden="true" style="flex: 0 0 20px; font-size: 15px; line-height: 1.4;">🏢</span>
+                     <span><strong style="color: var(--ink);">Studio Rental:</strong> Package rates cover photography creation, light design &amp; master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are billed <strong style="color: var(--ink);">at actuals (at cost)</strong>, or the client may directly book their preferred studio space for the production.</span>
+                   </li>
+                   <li style="display: flex; gap: 10px; align-items: flex-start; font-size: 12.5px; line-height: 1.55; color: var(--ink-soft);">
+                     <span aria-hidden="true" style="flex: 0 0 20px; font-size: 15px; line-height: 1.4;">🚗</span>
+                     <span><strong style="color: var(--ink);">Travel &amp; Accommodation:</strong> Shoots requiring travel beyond <strong style="color: var(--ink);">25 km</strong> from the studio base incur paid travel and, where an overnight stay is needed, accommodation — billed <strong style="color: var(--ink);">at actuals (at cost)</strong>.</span>
+                   </li>
+                   <li style="display: flex; gap: 10px; align-items: flex-start; font-size: 12.5px; line-height: 1.55; color: var(--ink-soft);">
+                     <span aria-hidden="true" style="flex: 0 0 20px; font-size: 15px; line-height: 1.4;">📸</span>
+                     <span><strong style="color: var(--ink);">Full Unedited Gallery Buyout:</strong> Packages include a proofing gallery to select contracted retouches. If the client requests the complete full unedited image gallery or additional retouched master clicks beyond the package limit, extra gallery buyout charges apply.</span>
+                   </li>
+                   <li style="display: flex; gap: 10px; align-items: flex-start; font-size: 12.5px; line-height: 1.55; color: var(--ink-soft);">
+                     <span aria-hidden="true" style="flex: 0 0 20px; font-size: 15px; line-height: 1.4;">🔒</span>
+                     <span><strong style="color: var(--ink);">Camera &amp; Media Protection:</strong> All camera equipment, memory cards, and raw captures are strictly confidential studio property. Participants may not touch equipment or delete media from cameras. Unauthorized file deletion constitutes a material breach of contract and incurs full data recovery costs.</span>
+                   </li>
+                 </ul>
                </div>
 
                 <div class="field" style="display: flex; flex-direction: column; gap: 4px;">
@@ -6737,6 +6753,7 @@ RAW files are not provided.`
         const cleanBudget = (budget && budget !== "Not Decided" && budget !== "TBD") ? `Package & Deliverables: ${budget}\n` : "";
         const studioSpaceVal = val("b_studio_space") || 'Not Specified';
         const studioRentalPolicyNote = `Studio Rental Policy: Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio space is required, venue rental fees are billed at actuals (at cost), or the client may book the studio directly.\n`;
+        const travelPolicyNote = `Travel & Accommodation Policy: Shoots requiring travel beyond 25 km from the studio base incur paid travel and, where an overnight stay is needed, accommodation - billed at actuals (at cost).\n`;
         const deliverablePolicyNote = `RAW Files & Deliverables Policy: Includes proofing gallery + contracted retouched master limit. Requesting the complete full unedited image gallery or extra retouched master clicks beyond the package limit incurs additional gallery buyout fees. RAW unedited camera files remain confidential studio property.\n`;
         const gearPolicyNote = `Camera & Media Policy: All cameras, memory cards, and raw captures are strictly hands-off. Participants may not touch equipment or delete media from cameras. Deleting files constitutes a material breach of contract and incurs full data recovery costs.\n`;
 
@@ -6752,6 +6769,7 @@ RAW files are not provided.`
           `Location Pref: ${locationVal}\n` +
           `Studio Space Rental: ${studioSpaceVal}\n` +
           studioRentalPolicyNote +
+          travelPolicyNote +
           cleanBudget +
           (type !== "Selective Collaboration (TFP)" ? `${paymentTermsText}\n` : "") +
           deliverablePolicyNote +
