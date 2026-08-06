@@ -190,6 +190,9 @@ a { color: inherit; text-decoration: none; }
 
 /* ---------- Page head + sections ---------- */
 .page-head { padding: 150px 0 40px; background: var(--bone); border-bottom: 1px solid var(--line); }
+.page-back-link { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono-font); font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; margin-bottom: 18px; transition: color 0.25s var(--ease), gap 0.25s var(--ease); }
+.page-back-link:hover { color: var(--accent); gap: 10px; }
+.page-back-link span { font-size: 15px; line-height: 1; }
 .page-head h1 { font-size: clamp(46px, 8vw, 104px); font-weight: 900; line-height: .95; }
 .page-sub { color: var(--ink-soft); font-size: 17px; margin: 18px 0 0; max-width: 620px; }
 .page-sub a { color: var(--accent); font-weight: 600; }
