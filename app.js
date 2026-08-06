@@ -1,4 +1,76 @@
 /* ============================================================
+   § SECURE UTILITIES & HASHING ENGINE
+   ============================================================ */
+function hashFNV1a(str) {
+  let hval = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    hval = Math.imul(hval ^ str.charCodeAt(i), 0x01000193) >>> 0;
+  }
+  return hval.toString(16).padStart(8, "0");
+}
+window.hashFNV1a = hashFNV1a;
+
+/* ============================================================
+   § ADMIN NO-CODE PROMO CODE MANAGEMENT ENGINE
+   ============================================================ */
+const DEFAULT_PROMO_CODES = {
+  "NERDY500":  { flat: 500,  label: "Flat ₹500 Off Instant Savings (NERDY500)" },
+  "NERDY1000": { flat: 1000, label: "Flat ₹1,000 Off Instant Savings (NERDY1000)" },
+  "NERDY10":   { pct: 10,    label: "10% Off First Commercial Booking (NERDY10)" },
+  "NERDY15":   { pct: 15,    label: "15% Off Noida / Delhi NCR Shoots (NERDY15)" },
+  "NERDY20":   { pct: 20,    label: "20% Off Studio Production Campaigns (NERDY20)" },
+  "NERDYVIP":  { pct: 25,    label: "25% VIP Partner Discount (NERDYVIP)" }
+};
+
+function getAdminPromoCodes() {
+  try {
+    const saved = localStorage.getItem("wps_custom_promo_codes");
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return DEFAULT_PROMO_CODES;
+}
+window.getAdminPromoCodes = getAdminPromoCodes;
+
+window.addNewAdminPromoCode = function() {
+  const codeName = prompt("Enter New Promo Code (e.g. NERDY50):")?.trim().toUpperCase();
+  if (!codeName) return;
+  if (codeName.length < 3) { alert("Promo code must be at least 3 characters!"); return; }
+
+  const typeChoice = prompt("Select Discount Type:\nType '1' for Percentage (%)\nType '2' for Flat Amount (INR ₹):", "1");
+  if (!typeChoice) return;
+
+  let pct = 0, flat = 0;
+  if (typeChoice.trim() === "1") {
+    const valStr = prompt("Enter Percentage Discount (1 to 90%):", "30");
+    pct = parseInt(valStr, 10);
+    if (isNaN(pct) || pct <= 0 || pct > 90) { alert("Invalid percentage!"); return; }
+  } else {
+    const valStr = prompt("Enter Flat Discount Amount in INR ₹ (e.g. 2000):", "2000");
+    flat = parseInt(valStr, 10);
+    if (isNaN(flat) || flat <= 0) { alert("Invalid amount!"); return; }
+  }
+
+  const labelDesc = prompt("Enter Short Description (e.g. 30% Off Special Shoot Offer):", pct ? `${pct}% Off Special Offer` : `Flat ₹${flat.toLocaleString('en-IN')} Off Special Offer`) || "Special Promo Discount";
+
+  const currentCodes = getAdminPromoCodes();
+  currentCodes[codeName] = pct ? { pct, label: labelDesc, isCustom: true } : { flat, label: labelDesc, isCustom: true };
+  localStorage.setItem("wps_custom_promo_codes", JSON.stringify(currentCodes));
+
+  alert(`🎉 Promo Code '${codeName}' created successfully! Clients can now use it on /book.`);
+  if (typeof render === "function") render();
+};
+
+window.deleteAdminPromoCode = function(codeName) {
+  if (confirm(`Are you sure you want to delete promo code '${codeName}'?`)) {
+    const currentCodes = getAdminPromoCodes();
+    delete currentCodes[codeName];
+    localStorage.setItem("wps_custom_promo_codes", JSON.stringify(currentCodes));
+    alert(`Promo code '${codeName}' removed.`);
+    if (typeof render === "function") render();
+  }
+};
+
+/* ============================================================
    § ADMIN NO-CODE DYNAMIC PACKAGE & PRICING MANAGEMENT ENGINE
    ============================================================ */
 const DEFAULT_PACKAGES = [
@@ -6377,7 +6449,7 @@ RAW files are not provided.`
       const validCodes = ["NERDY-INVITE", "INVITE2026", "NERDYVIP", "STUDIOINVITE", "VIP2026"];
       
       const enteredCode = (inviteCodeInput?.value || "").trim().toUpperCase();
-      const isValidInvite = validCodes.includes(enteredCode);
+      const isValidInvite = ["a0488e15", "107a6c92", "f8043214", "4fe5835e", "326d5752"].includes(hashFNV1a(enteredCode));
 
       // Promo Discount Codes Map
       const discountCodesMap = getAdminPromoCodes();
@@ -6423,13 +6495,27 @@ RAW files are not provided.`
         }
       }
 
-      if (role === "Brand" && !isValidInvite) {
-        if (testShootOpt) {
-          testShootOpt.hidden = true;
-          testShootOpt.style.display = "none";
-          testShootOpt.disabled = true;
-          if ($("#b_type").value === "Selective Collaboration (TFP)") {
+      if (!isTalentRole) {
+        if (!isValidInvite) {
+          if (testShootOpt) {
+            testShootOpt.hidden = true;
+            testShootOpt.style.display = "none";
+            testShootOpt.disabled = true;
+          }
+          if ($("#b_type") && $("#b_type").value === "Selective Collaboration (TFP)") {
             $("#b_type").value = "Fashion Editorial";
+            $("#b_type").dispatchEvent(new Event("change", { bubbles: true }));
+          }
+        } else {
+          if (testShootOpt) {
+            testShootOpt.hidden = false;
+            testShootOpt.style.display = "";
+            testShootOpt.disabled = false;
+          }
+          const typeSelect = $("#b_type");
+          if (typeSelect && typeSelect.value !== "Selective Collaboration (TFP)") {
+            typeSelect.value = "Selective Collaboration (TFP)";
+            typeSelect.dispatchEvent(new Event("change", { bubbles: true }));
           }
         }
       } else {
