@@ -1342,6 +1342,47 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       menuBtn.focus();
     }
   }
+  // Global safety net for images that fail to load (a stale cache, a photo
+  // that didn't publish, or a transient GitHub Pages hiccup). Rather than
+  // leaving a browser "broken image" icon, retry once with a cache-bust and,
+  // if it still fails, swap in a subtle inline placeholder so the layout holds.
+  function initImageErrorHandling() {
+    const PLACEHOLDER =
+      "data:image/svg+xml;charset=utf-8," +
+      encodeURIComponent(
+        `<svg xmlns='http://www.w3.org/2000/svg' width='400' height='500'>` +
+        `<rect width='100%' height='100%' fill='#1a1917'/>` +
+        `<g fill='none' stroke='#4a473f' stroke-width='6' stroke-linecap='round'>` +
+        `<circle cx='200' cy='215' r='52'/><path d='M200 178v-16M200 268v16M163 215h-16M363-148'/>` +
+        `<path d='M120 330h160'/></g>` +
+        `<text x='50%' y='400' fill='#6b665c' font-family='monospace' font-size='18' text-anchor='middle'>image unavailable</text></svg>`
+      );
+    document.addEventListener(
+      "error",
+      (e) => {
+        const img = e.target;
+        if (!(img instanceof HTMLImageElement)) return;
+        if (img.dataset.imgFallback) return; // already handled
+        const original = img.currentSrc || img.src || "";
+        // Don't retry the placeholder itself or non-http(s)/data sources.
+        if (!original || original.startsWith("data:")) return;
+        if (!img.dataset.imgRetried) {
+          img.dataset.imgRetried = "1";
+          const bust = (original.includes("?") ? "&" : "?") + "retry=" + Date.now();
+          img.removeAttribute("srcset"); // force it to use the single retried src
+          img.src = original.split("#")[0] + bust;
+          return;
+        }
+        // Second failure — show the placeholder and stop.
+        img.dataset.imgFallback = "1";
+        img.removeAttribute("srcset");
+        img.src = PLACEHOLDER;
+        img.style.objectFit = "cover";
+      },
+      true // capture phase: img error events don't bubble
+    );
+  }
+
   function initNav() {
     menuBtn.addEventListener("click", () => toggleMenu());
     // Trap Tab within the open menu overlay.
@@ -2551,7 +2592,6 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               <button type="button" id="adminPay503020Btn" class="admin-cal-btn" style="padding: 4px 10px; border-radius: 12px; font-size: 10px; cursor: pointer;">50/30/20</button>
             </div>
             <button type="button" class="admin-cal-btn primary" id="adminCalNewBookingBtn">+ Add Manual Booking</button>
-            <button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator()" style="border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Generate PDF Contract</button>
             <button type="button" class="admin-cal-btn" id="adminCalResetBtn">Reset Rules</button>
           </div>
         </div>
@@ -7382,6 +7422,20 @@ RAW files are not provided.`
         html = fn();
       }
       view.innerHTML = html;
+      // Inject a lightweight "back" link at the top of every inner page's
+      // header so visitors can return home without opening the Menu overlay.
+      // Skipped on the home hero (key === "") and the 404 (no .page-head).
+      if (key) {
+        const phContainer = view.querySelector(".page-head .container");
+        if (phContainer && !phContainer.querySelector(".page-back-link")) {
+          const back = document.createElement("a");
+          back.href = "/";
+          back.setAttribute("data-link", "");
+          back.className = "page-back-link reveal";
+          back.innerHTML = `<span aria-hidden="true">←</span> Back to home`;
+          phContainer.insertBefore(back, phContainer.firstChild);
+        }
+      }
       view.classList.remove("leaving");
       window.scrollTo({ top: 0, behavior: "auto" });
       if (typeof smoothScroll !== "undefined" && smoothScroll.enabled) smoothScroll.reset();
@@ -8598,6 +8652,29 @@ RAW files are not provided.`
     }
   })();
 
+  // User-facing "hard refresh" — clears the service-worker caches and
+  // unregisters the worker, then reloads with a cache-busting query so the
+  // browser fetches the freshest bundle. Fixes "I'm seeing an old version"
+  // without asking visitors to dig through DevTools.
+  window.clearSiteCacheAndReload = async () => {
+    try {
+      if ("serviceWorker" in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+      if (window.caches && caches.keys) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+    } catch (e) {
+      /* best-effort — reload regardless */
+    }
+    // Cache-bust the document itself so the shell HTML is refetched too.
+    const url = new URL(location.href);
+    url.searchParams.set("fresh", Date.now().toString());
+    location.replace(url.toString());
+  };
+
   window.downloadLogsCSV = () => {
     // The passcode is asked for on demand and never stored in the page's
     // public source; the log server compares its SHA-256 hash.
@@ -8681,6 +8758,27 @@ RAW files are not provided.`
       navSocials.innerHTML = links.join("");
     }
 
+    // "Load fresh" utility — injected once into the nav-meta so it appears on
+    // every route without touching each per-route index.html shell. Lets any
+    // visitor clear a stale cached bundle without opening DevTools.
+    const navMeta = document.querySelector(".nav-meta");
+    if (navMeta && !document.getElementById("clearCacheBlock")) {
+      const block = document.createElement("div");
+      block.id = "clearCacheBlock";
+      block.innerHTML = `
+        <p class="nav-meta-label">Trouble loading?</p>
+        <button id="clearCacheBtn" type="button" title="Clear cached files and reload the latest version" style="background:none; border:1px solid currentColor; color:inherit; font-family:inherit; font-size:10px; font-weight:700; padding:6px 12px; border-radius:100px; cursor:pointer; text-transform:uppercase; letter-spacing:0.1em; transition:all 0.3s; outline:none;">↻ Load Fresh Version</button>`;
+      navMeta.appendChild(block);
+      const ccBtn = document.getElementById("clearCacheBtn");
+      if (ccBtn) {
+        ccBtn.addEventListener("click", () => {
+          ccBtn.textContent = "↻ Refreshing…";
+          ccBtn.disabled = true;
+          window.clearSiteCacheAndReload();
+        });
+      }
+    }
+
     // Footer email link (mailto) — mirrors nav email.
     const footerEmail = $("#footerEmail");
     if (footerEmail && cfg.email) {
@@ -8696,6 +8794,19 @@ RAW files are not provided.`
       if (cfg.kavyar) fl.push(`<a href="${cfg.kavyar}" target="_blank" rel="noopener" aria-label="Kavyar">Kavyar</a>`);
       fl.push(`<a href="${cfg.email ? `mailto:${cfg.email}` : '#'}" aria-label="Email">Email</a>`);
       footerSocials.innerHTML = fl.join("");
+    }
+
+    // Always-visible "Load fresh version" link in the footer (the nav-meta copy
+    // is only reachable with the menu open). Clears cache + hard reload.
+    const footerMeta = document.querySelector(".footer-meta");
+    if (footerMeta && !document.getElementById("footerClearCache")) {
+      const p = document.createElement("p");
+      p.innerHTML = `<a href="#" id="footerClearCache" title="Clear cached files and reload the latest version" style="font-size: 11px; opacity: 0.75;">↻ Load fresh version</a>`;
+      footerMeta.appendChild(p);
+      document.getElementById("footerClearCache")?.addEventListener("click", (e) => {
+        e.preventDefault();
+        window.clearSiteCacheAndReload();
+      });
     }
 
     // Hide duplicate pre-footer CTA banner on /book and /upload pages
@@ -8714,6 +8825,7 @@ RAW files are not provided.`
     // isAdmin() or loadShoots(); chrome wiring must precede first render.
     applyAdminUrlParams();
     initLightbox();
+    initImageErrorHandling();
     initNav();
     initAdminControls();
     initThemeControls();
@@ -8746,6 +8858,6 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=202').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=203').catch(() => {});
   });
 }
