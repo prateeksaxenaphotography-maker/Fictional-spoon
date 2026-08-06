@@ -2535,19 +2535,30 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               <p class="eyebrow" style="margin-bottom: 4px; color: var(--accent);">Legal Compliance &amp; Version Control</p>
               <h2 style="font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 700; margin: 0;">📜 Studio Contract &amp; Terms Vault</h2>
             </div>
-            <span style="font-family: var(--mono-font); font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 4px 10px; border-radius: 4px; border: 1px solid var(--accent);">5 Historical Contract Versions Preserved</span>
+            <span style="font-family: var(--mono-font); font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 4px 10px; border-radius: 4px; border: 1px solid var(--accent);">6 Historical Contract Versions Preserved</span>
           </div>
 
           <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
-            <!-- V3.2 Current -->
+            <!-- V3.3 Current -->
             <div style="background: var(--paper); border: 1px solid var(--accent); border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm);">
               <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-family: var(--mono-font); font-size: 10px; background: var(--accent); color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.2 (ACTIVE CURRENT)</span>
+                <span style="font-family: var(--mono-font); font-size: 10px; background: var(--accent); color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.3 (ACTIVE CURRENT)</span>
                 <span style="font-size: 11px; color: var(--ink-soft); font-family: var(--mono-font);">Aug 2026 – Present</span>
               </div>
+              <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 12px 0 6px;">Studio Release &amp; Payment Terms V3.3</h3>
+              <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Current studio terms including 50/50 &amp; 50/30/20 non-refundable payments, RAW file exclusion, Test Shoot specs, Studio Space Rental policy (at actuals), Instagram Co-Author workflow, physical liability waiver, and universal Camera Gear Protection.</p>
+              <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.3')" style="font-size: 11px; flex: 1; font-weight: 700;">👁 Review V3.3</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '')" style="font-size: 11px; border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
+            </div>
+
+            <!-- V3.2 -->
+            <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-family: var(--mono-font); font-size: 10px; background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.2 (ARCHIVED)</span>
+                <span style="font-size: 11px; color: var(--ink-soft); font-family: var(--mono-font);">May 2026 – August 2026</span>
+              </div>
               <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 12px 0 6px;">Studio Release &amp; Payment Terms V3.2</h3>
-              <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Includes 50/50 &amp; 50/30/20 milestones, RAW file delivery exclusion, Test Shoot specs (Full Proofing + 8-12 Retouched), Studio Space Rental policy (at actuals), Instagram Co-Authoring &amp; liability release.</p>
-              <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.2')" style="font-size: 11px; flex: 1; font-weight: 700;">👁 Review V3.2</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '')" style="font-size: 11px; border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
+              <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Archived terms including 50/50 &amp; 50/30/20 milestones, RAW file delivery exclusion, Test Shoot specs (Full Proofing + 8-12 Retouched), Studio Space Rental policy, and social media attribution workflow.</p>
+              <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.2')" style="font-size: 11px; flex: 1; font-weight: 700;">👁 Review V3.2</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.2')" style="font-size: 11px; border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
             </div>
 
             <!-- V3.1 -->
@@ -3230,7 +3241,7 @@ RAW files are not provided.`
           <div>
             <div style="font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #000;">NERDYPHOTOGRAPHER.IN</div>
             <div style="font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px;">Fashion, Fitness &amp; Commercial Photography Studio</div>
-            <div style="font-size: 11px; color: #555; margin-top: 2px;">Web: www.nerdyphotographer.in · Email: prateeksaxenaphotography@gmail.com</div>
+            <div style="font-size: 11px; color: #555; margin-top: 2px;">Web: www.nerdyphotographer.in · Email: ${window.STUDIO_CONFIG?.email || "prateeksaxenaphotography@gmail.com"}</div>
           </div>
           <div style="text-align: right;">
             <div style="font-family: monospace; font-size: 11px; font-weight: 700; background: #f0f0f0; border: 1px solid #ccc; padding: 4px 10px; border-radius: 4px;">REF: WPS-CONTRACT-${esc(cVer)}-${esc(data.date || 'BLANK')}</div>
@@ -3298,7 +3309,7 @@ RAW files are not provided.`
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 8px; font-size: 10px; align-items: start;">
             <div>
               <strong>Method A — Digital Approval (DM / Email):</strong><br/>
-              Reply to <strong>prateeksaxenaphotography@gmail.com</strong> or DM <strong>@nerdyphotographer.in</strong>:<br/>
+              Reply to <strong>${window.STUDIO_CONFIG?.email || "prateeksaxenaphotography@gmail.com"}</strong> or DM <strong>@nerdyphotographer.in</strong>:<br/>
               <div style="font-family: monospace; font-size: 9px; font-weight: 700; background: #f4f4f4; border: 1px solid #ccc; padding: 5px; border-radius: 4px; margin-top: 4px;">"I approve Studio Contract Terms ${esc(cVer)}"</div>
             </div>
             <div style="border-left: 1px solid #ddd; padding-left: 12px;">
@@ -4556,6 +4567,7 @@ RAW files are not provided.`
   }
 
   function viewBook() {
+    const studioEmail = window.STUDIO_CONFIG?.email || "prateeksaxenaphotography@gmail.com";
     const params = new URLSearchParams(location.search);
     const prefilledType = params.get("type") || "";
     const isSelected = (val) => {
@@ -4593,7 +4605,7 @@ RAW files are not provided.`
             </div>
 
             <div style="margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 20px; width: 100%; display: flex; flex-direction: column; gap: 10px; align-items: center;">
-              <p style="font-size: 12px; color: var(--ink-soft); margin: 0; line-height: 1.5;">Mail app didn't open? Copy the inquiry details below and email them to <strong style="color: var(--ink); font-family: monospace;">prateeksaxenaphotography@gmail.com</strong>:</p>
+              <p style="font-size: 12px; color: var(--ink-soft); margin: 0; line-height: 1.5;">Mail app didn't open? Copy the inquiry details below and email them to <strong style="color: var(--ink); font-family: monospace;">${studioEmail}</strong>:</p>
               <button type="button" class="btn btn-ghost" id="copyInquiryBtn" style="font-size: 11px; padding: 8px 16px; height: auto;">Copy Inquiry Text</button>
               <pre id="inquiryTextPreview" style="width: 100%; box-sizing: border-box; background: var(--bone); padding: 14px; border-radius: 6px; font-size: 11px; font-family: monospace; white-space: pre-wrap; text-align: left; max-height: 200px; overflow-y: auto; border: 1px solid var(--line); color: var(--ink); margin: 0;"></pre>
             </div>
@@ -4638,7 +4650,7 @@ RAW files are not provided.`
                    </div>
                  </label>
                  <label class="field" id="b_date_field">
-                    <span>Preferred Date / Timeline *</span>
+                    <span>Preferred Date / Timeline * <span id="b_date_availability_badge" style="display: none; font-family: var(--mono-font); font-size: 9px; font-weight: 700; padding: 2.5px 7px; border-radius: 4px; margin-left: 8px; vertical-align: middle; text-transform: uppercase; letter-spacing: 0.05em;"></span></span>
                     <div class="date-picker-wrap">
                       <input id="b_date" type="text" required placeholder="e.g. Mid-July 2026, or use the calendar →" autocomplete="off" />
                       <button type="button" class="date-picker-toggle" id="datePickerToggle" aria-label="Open date picker" title="Pick dates from calendar">
@@ -4691,6 +4703,7 @@ RAW files are not provided.`
                    </select>
                  </label>
                </div>
+               <div id="collabFallbackWrap" style="display: none; background: var(--bone); border: 1px dashed var(--line); border-radius: 8px; padding: 14px; margin-bottom: 16px; text-align: left; grid-column: 1 / -1;"></div>
 
                <div class="field-row" style="margin-top: 10px;">
                  <label class="field">
@@ -4816,8 +4829,8 @@ RAW files are not provided.`
              <div id="termsModal" class="modal-overlay" style="display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 20px;">
                <div class="modal-content" style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; max-width: 680px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.15); overflow: hidden; animation: modalFadeIn 0.3s ease;">
                  <div style="padding: 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; background: var(--bone);">
-                   <h3 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink);">Studio Production &amp; Liability Release</h3>
-                   <span style="font-family: var(--mono-font); font-size: 10px; background: var(--accent); padding: 4px 8px; border-radius: 4px; color: #fff; font-weight: 700;">TFP-LIABILITY-RELEASE-V3.3 (CURRENT)</span>
+                   <h3 id="termsModalTitle" style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink);">Studio Production &amp; Liability Release</h3>
+                   <span id="termsModalTag" style="font-family: var(--mono-font); font-size: 10px; background: var(--accent); padding: 4px 8px; border-radius: 4px; color: #fff; font-weight: 700;">TFP-LIABILITY-RELEASE-V3.3 (CURRENT)</span>
                  </div>
                  <div style="padding: 24px; overflow-y: auto; font-size: 13px; line-height: 1.6; color: var(--ink); display: flex; flex-direction: column; gap: 20px; text-align: left;">
                    <p style="margin: 0; font-family: var(--mono-font); font-size: 10px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em;">TFP Collaboration, Model Release &amp; Digital Consent Terms</p>
@@ -4881,6 +4894,21 @@ RAW files are not provided.`
                        <li>Sending a reply stating "I agree", "Confirmed", or equivalent confirmation over email or direct digital messaging channels.</li>
                        <li>Voluntarily entering the studio workspace environment and participating in the scheduled production session following receipt of these terms.</li>
                      </ul>
+                   </div>
+                   
+                   <!-- Signature Block -->
+                   <div style="margin-top: 15px; border-top: 1px dashed var(--line); padding-top: 15px;">
+                     <label style="font-size: 12px; font-weight: 700; color: var(--ink); display: block; margin-bottom: 6px;">Draw Your Signature Below to Confirm Agreement *</label>
+                     <div style="position: relative; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; height: 120px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                       <canvas id="termsSigCanvas" width="600" height="120" style="position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; touch-action: none; z-index: 2;"></canvas>
+                       <div id="termsSigHint" style="position: absolute; color: var(--ink-soft); font-size: 11px; font-style: italic; z-index: 1; pointer-events: none; display: flex; align-items: center; gap: 6px;">
+                         ✍️ Draw signature here with finger or mouse
+                       </div>
+                     </div>
+                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                       <span style="font-size: 10px; color: var(--ink-soft);">This digital consent is legally binding.</span>
+                       <button type="button" id="clearTermsSigBtn" style="background: none; border: none; font-size: 11px; color: var(--accent); font-weight: 700; cursor: pointer; text-decoration: underline; padding: 0;">Clear Signature</button>
+                     </div>
                    </div>
                  </div>
                   <div style="padding: 16px 20px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; background: var(--bone);">
@@ -6329,9 +6357,7 @@ RAW files are not provided.`
               <label class="field" style="margin: 0;">
                 <span style="font-size: 11px; font-weight: 700; color: var(--ink);">If your collaboration request is not approved, which Paid Package would you like to proceed with? *</span>
                 <select id="b_collab_fallback" style="margin-top: 4px;">
-                  <option value="₹7,000 Starter Package (Paid Fallback)">₹7,000 Basic Test Package</option>
-                  <option value="₹25,000 Editorial Campaign (Paid Fallback)">₹25,000 Editorial Campaign</option>
-                  <option value="₹50,000 Commercial Production (Paid Fallback)">₹50,000 Commercial Production</option>
+                  ${getAdminPackages().map(p => `<option value="₹${p.price.toLocaleString('en-IN')} ${p.name} (Paid Fallback)">₹${p.price.toLocaleString('en-IN')} · ${p.name} (${p.specs})</option>`).join("")}
                   <option value="Custom Bespoke Package (Paid Fallback)">Custom Bespoke Package</option>
                   <option value="Cancel Inquiry if Collaboration is Declined">Cancel Inquiry if Collaboration is Declined</option>
                 </select>
@@ -6519,8 +6545,6 @@ RAW files are not provided.`
       $("#b_budget")?.addEventListener(evtName, updateFields);
       $("#b_invite_code")?.addEventListener(evtName, updateFields);
       $("#b_discount_code")?.addEventListener(evtName, updateFields);
-      $("#b_gallery_access")?.addEventListener(evtName, updateFields);
-      $("#b_retouched_count")?.addEventListener(evtName, updateFields);
     });
 
     $("#btnApplyDiscountCode")?.addEventListener("click", () => { updateFields(); const val = $("#b_discount_code")?.value.trim(); if (!val) alert("Please enter a promo code first!"); });
@@ -6585,7 +6609,7 @@ RAW files are not provided.`
       const name = val("b_name"), role = val("b_role"), email = val("b_email");
       const phone = val("b_phone"), instagram = val("b_instagram"), type = val("b_type");
       const date = val("b_date"), locationVal = val("b_location"), budget = (type === "Selective Collaboration (TFP)" ? "Collab / TFP (No Budget)" : val("b_budget"));
-      const moodboard = val("b_moodboard"), concept = val("b_concept");
+      const moodboard = getFormLinks().join(", "), concept = val("b_concept");
 
       const proceedSubmit = (agreedToTerms = false, shootCategory = "Commercial", isCustomContract = false, customContractNotes = "") => {
         btn.disabled = true;
@@ -6702,7 +6726,7 @@ RAW files are not provided.`
             if (msgEl) {
               if (sentDirectly) {
                 msgEl.innerHTML = `<strong style="color: var(--accent);">Request sent!</strong> Your booking inquiry has been delivered straight to the studio — no further action needed. We'll reply to <strong>${esc(email)}</strong>.` +
-                  (agreedToTerms ? `<br/><br/><strong style="color: var(--accent);">Release Agreed:</strong> Your acceptance of the <em>Studio Production &amp; Liability Release</em> (TFP-LIABILITY-RELEASE-V3.2) was recorded with the request.` : "") +
+                  (agreedToTerms ? `<br/><br/><strong style="color: var(--accent);">Release Agreed:</strong> Your acceptance of the <em>Studio Production &amp; Liability Release</em> (TFP-LIABILITY-RELEASE-V3.3) was recorded with the request.` : "") +
                   `<br/><br/><span style="opacity: 0.8;">Want a copy for your own records? The buttons below open the same inquiry in your email app.</span>`;
               } else if (agreedToTerms) {
                 msgEl.innerHTML = `Your booking inquiry is ready in your email app — please hit <strong>Send</strong> in your mail client to complete the request. <br/><br/><strong style="color: var(--accent);">Release Agreed:</strong> Your acceptance of the <em>Studio Production &amp; Liability Release</em> is noted in the email; the full terms text is included in the copy block below for your records.`;
@@ -6738,22 +6762,32 @@ RAW files are not provided.`
           "Budget Range": budget,
           "Moodboard Link": moodboard || "—",
           "Concept / Vision": concept || "—",
-          "TFP Release": agreedToTerms ? "AGREED — TFP-LIABILITY-RELEASE-V3.2 (full text below)" : "Not applicable",
+          "TFP Release": agreedToTerms ? "AGREED — TFP-LIABILITY-RELEASE-V3.3 (full text below)" : "Not applicable",
         };
         if (agreedToTerms) relayFields["Release Full Text"] = tfpReleaseText.trim();
-
-        // Show success panel instantly and launch mail app without waiting
-        showSuccess(true);
-        try {
-          if (mailtoUrl) window.location.href = mailtoUrl;
-        } catch(e) {}
 
         // Send FormSubmit background relay asynchronously
         fetch(`https://formsubmit.co/ajax/${encodeURIComponent(studioEmail)}`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "Accept": "application/json" },
           body: JSON.stringify(relayFields)
-        }).catch(() => {});
+        })
+        .then(res => {
+          if (res.ok) {
+            showSuccess(true);
+          } else {
+            showSuccess(false);
+            try {
+              if (mailtoUrl) window.location.href = mailtoUrl;
+            } catch(e) {}
+          }
+        })
+        .catch(() => {
+          showSuccess(false);
+          try {
+            if (mailtoUrl) window.location.href = mailtoUrl;
+          } catch(e) {}
+        });
       };
 
       if (type === "Selective Collaboration (TFP)") {
@@ -6863,6 +6897,10 @@ RAW files are not provided.`
       };
 
       const onAcceptClick = () => {
+        if (!hasSigned) {
+          alert("Please draw your signature to agree and continue!");
+          return;
+        }
         close();
         if (onAccept) onAccept(true, false, "");
       };
@@ -6903,12 +6941,12 @@ RAW files are not provided.`
     // Wire the terms trigger link
     $("#tfpTermsTrigger")?.addEventListener("click", (e) => {
       e.preventDefault();
-      openTermsModal($("#b_name")?.value || "Creative Partner");
+      openTermsModal($("#b_name")?.value || "Creative Partner", "TFP");
     });
 
     // Check if loaded with Hash link
     if (location.hash === "#tfp-terms") {
-      openTermsModal("Creative Partner");
+      openTermsModal("Creative Partner", "TFP");
     }
 
     // "Send another request" — reset back to a clean form.
