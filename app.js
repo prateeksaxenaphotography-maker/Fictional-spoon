@@ -1977,9 +1977,12 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           ${diagramHtml}
           <div style="margin-top: 22px; display: flex; align-items: center; flex-wrap: wrap; gap: 14px; width: 100%;">
             <button class="link-arrow work-open" style="padding: 0;">${s.isCompCard ? "View model details" : "View project"} →</button>
-            ${(!s.demo && !s.isCompCard && isAdmin()) ? `
-              <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0;" data-id="${s.id}">Edit details</button>
-              <button class="link-arrow work-delete" style="color: #b22222; font-weight: 700; padding: 0;" data-id="${s.id}">Delete</button>
+            ${(!s.demo && isAdmin()) ? `
+              <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0;" data-id="${s.originalShoots ? s.originalShoots[0].id : s.id}">Edit details</button>
+              ${s.isCompCard ? `
+                <button class="link-arrow work-toggle-hide" style="color: var(--accent); font-weight: 700; padding: 0;" data-talent="${esc(s.talent)}">${s.originalShoots && s.originalShoots.some(x => x.hideFromCompCard) ? "👁️ Unhide Card" : "🔒 Hide Card"}</button>
+              ` : ""}
+              <button class="link-arrow work-delete" style="color: #b22222; font-weight: 700; padding: 0;" data-id="${s.originalShoots ? s.originalShoots[0].id : s.id}">Delete</button>
             ` : ""}
           </div>
         </div>
@@ -7242,6 +7245,29 @@ RAW files are not provided.`
           render();
         });
       });
+
+      block.querySelectorAll(".work-toggle-hide").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const tName = btn.dataset.talent;
+          if (!tName) return;
+          
+          const matchingShoots = SHOOTS.filter(s => (s.talent || "").trim().toLowerCase() === tName.trim().toLowerCase());
+          if (matchingShoots.length === 0) return;
+          
+          const currentlyHidden = matchingShoots.some(s => s.hideFromCompCard);
+          const newHiddenState = !currentlyHidden;
+          
+          matchingShoots.forEach(s => { s.hideFromCompCard = newHiddenState; });
+          
+          try {
+            localStorage.setItem("wps_custom_shoots", JSON.stringify(SHOOTS));
+          } catch(err) {}
+          
+          alert(newHiddenState ? `🔒 Model card for '${tName}' is now HIDDEN from the public Comp Cards page.` : `👁️ Model card for '${tName}' is now VISIBLE on the public Comp Cards page.`);
+          if (typeof render === "function") render();
+        });
+      });
       
       // delete button click handler
       block.querySelector(".work-delete")?.addEventListener("click", async (e) => {
@@ -8858,6 +8884,6 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=203').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=204').catch(() => {});
   });
 }
