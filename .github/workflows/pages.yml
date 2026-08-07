@@ -1,0 +1,45 @@
+# Deploy the static site to GitHub Pages via GitHub Actions.
+#
+# This repo is a no-build static SPA. The legacy Jekyll Pages builder kept
+# failing ("Page build failed."), freezing the live site on an old deploy.
+# This workflow uploads the repository as-is (Jekyll is bypassed; .nojekyll is
+# present) and publishes it, giving real build logs when something goes wrong.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Allow the workflow to publish Pages and use OIDC for deploy-pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one Pages deploy at a time; let an in-flight run finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site artifact (repository root, as-is)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
