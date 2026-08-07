@@ -846,7 +846,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   function renderLbSidebar(p) {
     const shoot = SHOOTS.find(x => x.id === p.shootId) || p.shoot;
     if (!shoot) return "";
-    const isCc = shoot.type === "Selective Collaboration (TFP)" && (isCurrentlyCompCardView() || isCurrentlyModelPortfolioView());
+    const isCc = (shoot.type === "Selective Collaboration (TFP)" || shoot.type === "Test Shoot" || shoot.isCompCard) && (isCurrentlyCompCardView() || isCurrentlyModelPortfolioView());
     
     // Parse social handle
     let igHtml = "";
@@ -3932,8 +3932,8 @@ RAW files are not provided.`
       const d = decodeURIComponent(val);
       const list = SHOOTS.filter((s) => {
         if (kind === "brand" && (!s.client || !s.client.trim())) return false;
-        if (kind === "type" && (d === "Model Portfolio" || d === "Comp Cards" || d === "Selective Collaboration (TFP)")) {
-          return s.type === "Selective Collaboration (TFP)";
+        if (kind === "type" && (d === "Model Portfolio" || d === "Comp Cards" || d === "Selective Collaboration (TFP)" || d === "Test Shoot")) {
+          return s.type === "Selective Collaboration (TFP)" || s.type === "Test Shoot" || s.isCompCard;
         }
         return (kind === "activity" ? s.activity : kind === "brand" ? s.brand : s.type) === d;
       });
@@ -4117,7 +4117,7 @@ RAW files are not provided.`
 
     const getSamples = (key, val, limit = 3) => {
       const targetVal = (key === "type" && (val === "Comp Cards" || val === "Model Portfolio" || val === "Selective Collaboration (TFP)")) ? "Selective Collaboration (TFP)" : val;
-      let shoots = SHOOTS.filter(s => (s[key] === targetVal || (targetVal === "Selective Collaboration (TFP)" && (s.isCompCard || s.type === "Selective Collaboration (TFP)"))) && ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim())));
+      let shoots = SHOOTS.filter(s => (s[key] === targetVal || (targetVal === "Selective Collaboration (TFP)" && (s.isCompCard || s.type === "Selective Collaboration (TFP)" || s.type === "Test Shoot"))) && ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim()) || (s.talent && s.talent.trim())));
       if (!shoots.length) return [];
       
       // Group shoots by UNIQUE model/talent name to ensure distinct models in thumbnails!
@@ -7208,8 +7208,8 @@ RAW files are not provided.`
     view.querySelectorAll(".work-block").forEach((block) => {
       const s = CURRENT_VIEW_SHOOTS.find((x) => x.id === block.dataset.shoot) || SHOOTS.find((x) => x.id === block.dataset.shoot);
       if (!s) return;
-      const isCc = (s.isCompCard || s.type === "Selective Collaboration (TFP)") && isCurrentlyCompCardView();
-      const isPortView = (s.isCompCard || s.type === "Selective Collaboration (TFP)") && isCurrentlyModelPortfolioView();
+      const isCc = (s.isCompCard || s.type === "Selective Collaboration (TFP)" || s.type === "Test Shoot") && isCurrentlyCompCardView();
+      const isPortView = (s.isCompCard || s.type === "Selective Collaboration (TFP)" || s.type === "Test Shoot") && isCurrentlyModelPortfolioView();
       // On the Model Portfolio page this used to fall through to "include
       // everything" (isCc is false there, since isCurrentlyCompCardView()
       // only matches the Comp Cards view) — so opening the lightbox showed
