@@ -2851,15 +2851,26 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           </div>
 
           <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
-            <!-- V3.3 Current -->
-            <div style="background: var(--paper); border: 1px solid var(--accent); border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm);">
+            <!-- V3.3 Commercial Current -->
+            <div style="background: var(--paper); border: 1.5px solid var(--accent); border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm);">
               <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-family: var(--mono-font); font-size: 10px; background: var(--accent); color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.3 (ACTIVE CURRENT)</span>
+                <span style="font-family: var(--mono-font); font-size: 10px; background: var(--accent); color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.3 COMMERCIAL (ACTIVE)</span>
                 <span style="font-size: 11px; color: var(--ink-soft); font-family: var(--mono-font);">Aug 2026 – Present</span>
               </div>
-              <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 12px 0 6px;">Studio Release &amp; Payment Terms V3.3</h3>
-              <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Current studio terms including 50/50 &amp; 50/30/20 non-refundable payments, RAW file exclusion, Test Shoot specs, Studio Space Rental policy (at actuals), Instagram Co-Author workflow, physical liability waiver, and universal Camera Gear Protection.</p>
-              <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.3')" style="font-size: 11px; flex: 1; font-weight: 700;">👁 Review V3.3</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '')" style="font-size: 11px; border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
+              <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 12px 0 6px;">💼 Commercial Shoot Agreement V3.3</h3>
+              <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Dedicated contract for Paid Commercial, Editorial, Fashion &amp; Brand productions. Covers 50/50 &amp; 50/30/20 non-refundable retainer milestones, commercial licensing, outstation travel (>20km), camera gear &amp; media protection, and photography specialization.</p>
+              <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.3-COMMERCIAL')" style="font-size: 11px; flex: 1; font-weight: 700;">👁 Review Commercial</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '')" style="font-size: 11px; border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
+            </div>
+
+            <!-- V3.3 TFP Current -->
+            <div style="background: var(--paper); border: 1.5px solid #059669; border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm);">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-family: var(--mono-font); font-size: 10px; background: #059669; color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.3 TFP / TEST SHOOT (ACTIVE)</span>
+                <span style="font-size: 11px; color: var(--ink-soft); font-family: var(--mono-font);">Aug 2026 – Present</span>
+              </div>
+              <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 12px 0 6px;">📸 Test Shoot &amp; TFP Release V3.3</h3>
+              <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Dedicated agreement for Selective Collaborations &amp; Test Shoots unlocked via Photographer Invite Codes. Covers non-commercial portfolio licensing, 8-12 retouched deliverable caps, mandatory Instagram tag credits (@nerdyphotographer.in), studio rental at actuals, physical liability waiver, and gear protection.</p>
+              <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.3-TFP')" style="font-size: 11px; flex: 1; font-weight: 700; background: #059669; border-color: #059669;">👁 Review TFP Release</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.3-TFP')" style="font-size: 11px; border-color: #059669; color: #059669; font-weight: 700;">📄 Print PDF</button></div>
             </div>
 
             <!-- V3.2 -->
@@ -3244,48 +3255,22 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       }
     };
 
-    window.WPS_CONTRACT_ARCHIVE = {
-      "V3.3": {
-        version: "V3.3",
-        title: "Studio Release, Liability Waiver, Gear Protection & Payment Terms V3.3",
+        window.WPS_CONTRACT_ARCHIVE = {
+      "V3.3-COMMERCIAL": {
+        version: "V3.3-COMMERCIAL",
+        title: "Commercial Shoot & Release Agreement V3.3 (Paid Shoots)",
         effectiveDate: "August 2026 – Present",
-        status: "Active / Current",
-        summary: "Current studio terms including 50/50 & 50/30/20 non-refundable milestone payments, explicit RAW file exclusion clause, Test Shoot deliverable limit (Full Proofing Gallery + 8 to 12 Retouched Master Clicks), Dedicated Studio Space Rental policy (at actuals / cost), Instagram Co-Author workflow, physical safety liability release, and universal Camera Gear Hands-Off & Data Protection clause.",
-        fullText: `1. SCOPE OF CREATIVE COLLABORATION & STUDIO VENUE RENTAL
-This session is scheduled as a peer-to-peer creative collaboration or commercial production structured for mutual portfolio growth, asset curation, and personal branding advancement. The Studio provides specialized equipment, lighting architecture, workspace, and post-production engineering; the Participant(s) provide technical modeling direction, personal wardrobe, and makeup artistry. Studio Rental Policy: Package rates cover photography creation, light design & master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are billed at actuals (at cost), or the client may directly book their preferred studio venue for the production.
-
-2. INTELLECTUAL PROPERTY, MODEL RELEASE & USAGE LICENSE
-The legal copyright of all visual media remains exclusively with the Studio. To support mutual growth and portfolio building, all participants are granted a full non-exclusive license to publish, share, and use final retouched photos for personal self-promotion, social media grids (Instagram/TikTok), personal websites, and agency portfolios.
-No Alterations: To preserve the lighting design and capture integrity, no party shall apply secondary mobile filters, automated presets, cropping adjustments, or third-party digital modifications to the delivered files.
-
-3. COMPREHENSIVE LIABILITY WAIVER & INDEMNIFICATION
-CRITICAL SAFETY & LIABILITY RELEASE: The Participant enters the studio environment, uses studio blocks, cubes, chairs, furniture, or props, and performs physical poses entirely at their own risk. The Studio shall not be held liable for any physical injury, illness, accident, psychological distress, property damage, or clothing wear-and-tear incurred before, during, or after this production. The Participant explicitly waives any right to seek damages or legal recourse against the Studio or its operating photographers for accidents or injuries occurring on the premises.
-Furthermore, the Participant agrees to indemnify and hold harmless the Studio from any claims, damages, liabilities, or legal expenses arising out of the Participant’s conduct or injuries on set.
-
-4. TECHNICAL PERFORMANCE, DELIVERABLES, PROOFING GALLERY, REVISIONS & PAYMENT MILESTONES
-Proofing & Download Rights: All packages include web gallery access for online proofing, viewing, and image selection. High-resolution file downloading is strictly restricted to contracted retouched master clicks, unless full gallery download permission/buyout is explicitly purchased. Under no circumstances are RAW unedited files delivered.
-Editing Revision Policy: Delivered retouched master assets include One (1) Round of Minor Revisions (minor skin adjustments, color grading tweaks, or crop adjustments). Revisions must be submitted in writing within 7 days of delivery. Additional revision rounds or major structural edits (body warping, outfit color changes, background alterations) are billed at ₹1,500 per image.
-Cloud Storage Archival & Expiration Policy: Delivered online galleries and download links remain active on cloud servers for 3 Months (Test Shoots / TFP) or 6 Months (Paid Commercial Shoots) from the date of initial gallery delivery. The Client/Participant is solely responsible for downloading, archiving, and saving local copies of all delivered files within this retention window. After the retention window expires, cloud files are automatically purged from studio servers. Extended cloud archival beyond the retention window is available upon request for an additional fee (₹3,000 / year).
-Payment Terms: Standard bookings require a 50% advance retainer prior to shoot day start (non-refundable) and 50% final balance after shoot wrap prior to receiving any downloadable file (non-refundable). Commercial campaign bookings follow a 50/30/20 milestone structure.
-
-5. MANDATORY ALL-PARTY ATTRIBUTION WORKFLOW
-To ensure creative transparency, all parties agree to execute the following mandatory publishing workflow:
-- Instagram Collaboration Feature: For all primary feed or grid publications, the publishing party must issue an Instagram Co-Author Collaboration Invite to @nerdyphotographer.in prior to publishing.
-- Full Production Credits Block: Every party publishing an asset must explicitly credit all contributors in the caption:
-  📷 Photography & Light Design: @nerdyphotographer.in
-  👤 Model / Talent: @[Handle]
-  💄 Makeup Artist / MUA: @[Handle]
-  👔 Styling / Wardrobe: @[Handle]
-
-6. UNAUTHORIZED CAMERA OPERATION, GEAR HANDS-OFF & DATA PROTECTION CLAUSE
-All camera bodies, lenses, memory cards, tethering systems, and digital raw captures remain the exclusive physical and intellectual property of the Studio. Under no circumstances is a model, talent, client, or crew participant permitted to operate, touch, view without supervision, or delete media/files from the photographer’s cameras or memory cards.
-The Studio retains sole, unchallengeable authority over image culling, curation, and file deletion. Deleting or attempting to delete media from equipment constitutes a material breach of contract, resulting in immediate termination of the shoot, forfeiture of all retouched deliverables, and full liability for data recovery expenses.
-
-7. DIGITAL CONSENT & BINDING ACCEPTANCE
-In accordance with standard digital contract practices, physical signatures are not required. Legal acceptance is established by replying with confirmation over email/DM or entering the studio workspace following receipt of these terms.
-
-8. OUTSTATION LOCATION, TRAVEL & ACCOMMODATION EXPENSE POLICY (>20 KM FROM NOIDA)
-If the shoot location is located beyond a 20 km radius from Noida (Delhi NCR), all travel expenses, local conveyance, outstation transport, tolls, and accommodation expenses incurred for the photographer (and core production team) shall be fully borne, arranged, or reimbursed by the client / party requesting the shoot. This condition applies to both Paid Commercial Shoots and Test Shoot Collaborations (TFP).`
+        status: "Active / Current (Paid Commercial)",
+        summary: "Dedicated contract for Paid Commercial, Editorial, Fashion & Brand productions. Covers 50/50 & 50/30/20 non-refundable retainer milestones, commercial licensing, outstation travel (>20km), camera gear & media protection, and photography specialization.",
+        fullText: "1. SCOPE OF COMMERCIAL PRODUCTION & PAYMENT MILESTONES\nThis session is scheduled as a paid commercial production. Package rates cover photography creation, light design & master retouched deliverables. Standard bookings require a 50% advance retainer prior to shoot day start (non-refundable) and 50% final balance after shoot wrap prior to receiving downloadable master files (non-refundable). Commercial campaign bookings follow a 50/30/20 milestone structure.\n\n2. COMMERCIAL USAGE RIGHTS & INTELLECTUAL PROPERTY\nThe legal copyright of all visual media remains exclusively with the Studio. The Client is granted full commercial usage rights for digital advertising, website grids, social media campaigns, print catalogs, and brand marketing as specified in the agreed project scope. Under no circumstances are RAW unedited files delivered.\n\n3. STILL PHOTOGRAPHY SPECIALIZATION & VIDEO COVERAGE POLICY\nStudio packages and rate tiers are strictly dedicated to Still Photography creation (Commercial, Fashion, Editorial & Portfolio). Video / Reels coverage is not included in standard packages. Clients may bring their own videographer or request studio assistance to source a freelance videographer for the session.\n\n4. OUTSTATION LOCATION, TRAVEL & ACCOMMODATION (>20 KM FROM NOIDA)\nIf the shoot location is located beyond a 20 km radius from Noida (Delhi NCR), all travel expenses, local conveyance, outstation transport, tolls, and accommodation expenses incurred for the photographer (and core production team) shall be fully borne, arranged, or reimbursed by the client.\n\n5. CAMERA GEAR HANDS-OFF & DATA PROTECTION CLAUSE\nAll camera bodies, lenses, memory cards, tethering systems, and digital raw captures remain the exclusive physical and intellectual property of the Studio. Under no circumstances is a client or crew participant permitted to operate, touch, or delete media from the photographer's cameras or memory cards."
+      },
+      "V3.3-TFP": {
+        version: "V3.3-TFP",
+        title: "Test Shoot & TFP Liability Release V3.3 (Test Shoots)",
+        effectiveDate: "August 2026 – Present",
+        status: "Active / Current (Test Shoot / TFP)",
+        summary: "Dedicated agreement for Selective Collaborations & Test Shoots unlocked via Photographer Invite Codes. Covers non-commercial portfolio licensing, 8-12 retouched deliverable caps, mandatory Instagram tag credits (@nerdyphotographer.in), studio rental at actuals, physical liability waiver, and gear protection.",
+        fullText: "1. SCOPE OF COLLABORATION & DELIVERABLE LIMITS\nThis session is scheduled as a peer-to-peer Selective Collaboration (TFP Test Shoot) structured for mutual portfolio growth. Standard packages include web gallery access for online proofing and 8 to 12 Retouched Master Clicks. Strictly no RAW unedited files are delivered.\n\n2. NON-COMMERCIAL PORTFOLIO USAGE LICENSE\nParticipants are granted a non-exclusive license to use final retouched photos for personal self-promotion, social media grids (Instagram/TikTok), personal websites, and agency portfolios. Commercial licensing or selling assets to third parties is strictly prohibited.\n\n3. MANDATORY ATTRIBUTION & INSTAGRAM CO-AUTHOR WORKFLOW\nAll primary feed or grid publications must issue an Instagram Co-Author Collaboration Invite to @nerdyphotographer.in prior to publishing, and include full production credits in the caption:\n  📷 Photography & Light Design: @nerdyphotographer.in\n  👤 Model / Talent: @[Handle]\n\n4. STUDIO RENTAL AT ACTUALS & TRAVEL EQUATION\nPackage rates cover photography creation & master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are billed at actuals (at cost). Shoots requiring travel beyond 20 km incur travel expenses at actuals.\n\n5. PHYSICAL SAFETY LIABILITY WAIVER & GEAR PROTECTION\nThe Participant enters the studio environment and performs physical poses entirely at their own risk. The Studio is not liable for injuries or clothing damage. Participants may not touch equipment or delete media from cameras."
       },
       "V3.2": {
         version: "V3.2",
@@ -9335,6 +9320,6 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=222').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=223').catch(() => {});
   });
 }
