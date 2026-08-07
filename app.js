@@ -5467,8 +5467,8 @@ RAW files are not provided.`
                   </div>
                 </div>
 
-<div style="margin-bottom: 12px; text-align: right;">
-                  <a id="toggleInviteCodeLink" href="javascript:void(0)" style="font-size: var(--font-xs); color: var(--ink-soft); text-decoration: underline; font-family: var(--mono-font); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">🔑 Have a direct photographer invite code? (Test Shoot)</a>
+<div style="margin-bottom: 14px; text-align: left;">
+                  <a id="toggleInviteCodeLink" href="javascript:void(0)" style="font-size: var(--font-xs); color: var(--accent); font-weight: 700; text-decoration: underline; font-family: var(--mono-font); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">🔑 Have a direct photographer invite code? (Test Shoot)</a>
                 </div>
 
                 <!-- Photographer Direct Invite Code (Hidden by default, expandable via discreet link) -->
@@ -5522,7 +5522,7 @@ RAW files are not provided.`
                 <div class="field-row">
                   <label class="field"><span>Preferred Session Duration (Optional)</span>
                     <select id="b_duration">
-                      <option value="Flexible / Photographer Choice" selected>🤔 Flexible / Photographer Choice (Photographer Recommends Best Time)</option>
+                      <option value="Flexible / Photographer Choice" selected>🤔 Flexible / Photographer Choice (Recommended)</option>
                       <option value="Full Day (10:30 AM – 5:30 PM)">☀️ Full Day Shoot (10:30 AM – 5:30 PM · 7 Hours)</option>
                       <option value="Half Day Morning (10:30 AM – 2:30 PM)">🌅 Half Day Morning (10:30 AM – 2:30 PM · 4 Hours)</option>
                       <option value="Half Day Afternoon (1:30 PM – 5:30 PM)">🌇 Half Day Afternoon (1:30 PM – 5:30 PM · 4 Hours)</option>
