@@ -11,7 +11,7 @@ function hashFNV1a(str) {
 window.hashFNV1a = hashFNV1a;
 
 /* ============================================================
-   § ADMIN NO-CODE PROMO CODE MANAGEMENT ENGINE
+   § UNIFIED MASTER ADMIN PROMO & INVITE CODES ENGINE
    ============================================================ */
 const DEFAULT_PROMO_CODES = {
   "NERDY500":  { flat: 500,  label: "Flat ₹500 Off Instant Savings (NERDY500)" },
@@ -22,7 +22,11 @@ const DEFAULT_PROMO_CODES = {
   "NERDYVIP":  { pct: 25,    label: "25% VIP Partner Discount (NERDYVIP)" }
 };
 
-function getAdminPromoCodes() {
+window.adminDraftPromoCodes = null;
+window.adminDraftInviteCodes = null;
+
+// --- PROMO CODE HANDLERS ---
+window.getAdminPromoCodes = function() {
   if (window.adminDraftPromoCodes && typeof window.adminDraftPromoCodes === "object") {
     return window.adminDraftPromoCodes;
   }
@@ -35,264 +39,39 @@ function getAdminPromoCodes() {
   } catch(e) {}
   window.adminDraftPromoCodes = { ...DEFAULT_PROMO_CODES };
   return window.adminDraftPromoCodes;
-}
-window.getAdminPromoCodes = getAdminPromoCodes;
+};
 
 window.addNewAdminPromoCode = function() {
-  const codeName = prompt("Enter New Promo Code (e.g. NERDY50):")?.trim().toUpperCase();
-  if (!codeName) return;
-  if (codeName.length < 3) { alert("Promo code must be at least 3 characters!"); return; }
-
-  const typeChoice = prompt("Select Discount Type:\nType '1' for Percentage (%)\nType '2' for Flat Amount (INR ₹):", "1");
-  if (!typeChoice) return;
-
-  let pct = 0, flat = 0;
-  if (typeChoice.trim() === "1") {
-    const valStr = prompt("Enter Percentage Discount (1 to 90%):", "30");
-    pct = parseInt(valStr, 10);
-    if (isNaN(pct) || pct <= 0 || pct > 90) { alert("Invalid percentage!"); return; }
-  } else {
-    const valStr = prompt("Enter Flat Discount Amount in INR ₹ (e.g. 2000):", "2000");
-    flat = parseInt(valStr, 10);
-    if (isNaN(flat) || flat <= 0) { alert("Invalid amount!"); return; }
-  }
-
-  const labelDesc = prompt("Enter Short Description (e.g. 30% Off Special Shoot Offer):", pct ? `${pct}% Off Special Offer` : `Flat ₹${flat.toLocaleString('en-IN')} Off Special Offer`) || "Special Promo Discount";
-
-  const currentCodes = getAdminPromoCodes();
-  currentCodes[codeName] = pct ? { pct, label: labelDesc, isCustom: true } : { flat, label: labelDesc, isCustom: true };
-  localStorage.setItem("wps_custom_promo_codes", JSON.stringify(currentCodes));
-
-  alert(`🎉 Promo Code '${codeName}' created successfully! Clients can now use it on /book.`);
-  if (typeof render === "function") render();
+  window.openPromoCodeModal();
 };
 
-// Global Draft States for Manual Save Mode
-window.adminDraftInviteCodes = null;
-window.adminDraftPromoCodes = null;
-
-/* ============================================================
-   § CUSTOM STUDIO CODE MODAL ENGINE (NO NATIVE BROWSER PROMPTS)
-   ============================================================ */
-
-window.closeCodeAdminModal = function() {
-  const container = document.getElementById("codeAdminModalContainer") || document.getElementById("dateAdminModalContainer");
-  if (container) container.innerHTML = "";
+window.editAdminPromoCode = function(codeKey) {
+  window.openPromoCodeModal(codeKey);
 };
 
-window.openInviteCodeModal = function(targetCodeStr) {
-  const container = document.getElementById("codeAdminModalContainer") || document.getElementById("dateAdminModalContainer");
-  if (!container) return;
-
-  const currentCodes = window.getAdminInviteCodes();
-  const existing = targetCodeStr ? (currentCodes.find(x => x.code === targetCodeStr) || { code: targetCodeStr, desc: "" }) : { code: "", desc: "" };
-  const isEditing = !!targetCodeStr;
-
-  container.innerHTML = `
-    <div id="codeModalOverlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); z-index: 9999; display: flex; align-items: center; justify-content: center; animation: modalFadeIn 0.25s ease;">
-      <div style="background: var(--paper); border: 1.5px solid var(--accent); border-radius: 12px; padding: 24px; max-width: 440px; width: 90%; box-shadow: var(--shadow-lg); position: relative;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--line); padding-bottom: 12px;">
-          <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; color: var(--ink); margin: 0; display: flex; align-items: center; gap: 8px;">
-            <span>🔑 ${isEditing ? 'Edit' : 'Create'} Photographer Invite Code</span>
-          </h3>
-          <button type="button" onclick="window.closeCodeAdminModal()" style="background: none; border: none; font-size: 18px; color: var(--ink-soft); cursor: pointer; padding: 4px;">✕</button>
-        </div>
-
-        <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px;">
-          <div>
-            <label style="font-size: 10px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Invite Code String *</label>
-            <input type="text" id="m_invite_code" value="${esc(existing.code)}" placeholder="e.g. MODELVIP" style="width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; font-weight: 700; font-family: var(--mono-font); text-transform: uppercase; background: var(--bone); color: var(--ink); box-sizing: border-box;" />
-          </div>
-          <div>
-            <label style="font-size: 10px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Admin-Only Description / Note</label>
-            <input type="text" id="m_invite_desc" value="${esc(existing.desc)}" placeholder="e.g. VIP invite for Lakme Fashion Week models" style="width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; background: var(--bone); color: var(--ink); box-sizing: border-box;" />
-          </div>
-        </div>
-
-        <div style="display: flex; gap: 10px;">
-          <button type="button" onclick="window.saveInviteCodeFromModal('${esc(targetCodeStr || '')}')" class="admin-cal-btn primary" style="flex: 1; font-weight: 700; padding: 10px;">💾 Save Invite Code</button>
-          <button type="button" onclick="window.closeCodeAdminModal()" class="admin-cal-btn" style="flex: 1; font-weight: 700; padding: 10px;">Cancel</button>
-        </div>
-      </div>
-    </div>
-  `;
-  setTimeout(() => document.getElementById("m_invite_code")?.focus(), 100);
+window.deleteAdminPromoCode = function(codeName) {
+  if (confirm(`Remove promo code '${codeName}' from draft?`)) {
+    const currentCodes = window.getAdminPromoCodes();
+    delete currentCodes[codeName];
+    window.adminDraftPromoCodes = { ...currentCodes };
+    markUnsavedChanges();
+    if (typeof toast === "function") toast(`🗑️ Promo code '${codeName}' removed from draft.`);
+    if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
+  }
 };
 
-window.saveInviteCodeFromModal = function(oldCodeStr) {
-  const codeVal = (document.getElementById("m_invite_code")?.value || "").trim().toUpperCase();
-  const descVal = (document.getElementById("m_invite_desc")?.value || "").trim() || "Admin VIP Code";
-
-  if (!codeVal || codeVal.length < 3) {
-    alert("Invite code must be at least 3 characters!");
-    return;
-  }
-
-  const current = window.getAdminInviteCodes();
-  let updated = [];
-  if (oldCodeStr) {
-    updated = current.map(x => x.code === oldCodeStr ? { code: codeVal, desc: descVal } : x);
-  } else {
-    updated = [{ code: codeVal, desc: descVal }, ...current];
-  }
-
-  window.adminDraftInviteCodes = updated;
-  markUnsavedChanges();
-  window.closeCodeAdminModal();
-
-  if (typeof toast === "function") toast(`🔑 Invite Code '${codeVal}' saved in draft! (Click "Save All Changes" to push live)`);
-  if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
-};
-
-window.openPromoCodeModal = function(targetPromoKey) {
-  const container = document.getElementById("codeAdminModalContainer") || document.getElementById("dateAdminModalContainer");
-  if (!container) return;
-
-  const currentCodes = getAdminPromoCodes();
-  const item = targetPromoKey ? (currentCodes[targetPromoKey] || {}) : {};
-  const isEditing = !!targetPromoKey;
-
-  const currentType = item.flat ? "flat" : "pct";
-  const currentVal = item.flat || item.pct || "";
-  const currentDesc = item.label || "";
-
-  container.innerHTML = `
-    <div id="codeModalOverlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); z-index: 9999; display: flex; align-items: center; justify-content: center; animation: modalFadeIn 0.25s ease;">
-      <div style="background: var(--paper); border: 1.5px solid var(--accent); border-radius: 12px; padding: 24px; max-width: 460px; width: 90%; box-shadow: var(--shadow-lg); position: relative;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--line); padding-bottom: 12px;">
-          <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; color: var(--ink); margin: 0; display: flex; align-items: center; gap: 8px;">
-            <span>🎟️ ${isEditing ? 'Edit' : 'Create'} Promotional Discount Code</span>
-          </h3>
-          <button type="button" onclick="window.closeCodeAdminModal()" style="background: none; border: none; font-size: 18px; color: var(--ink-soft); cursor: pointer; padding: 4px;">✕</button>
-        </div>
-
-        <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px;">
-          <div>
-            <label style="font-size: 10px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Promo Code String *</label>
-            <input type="text" id="m_promo_code" value="${esc(targetPromoKey || '')}" placeholder="e.g. SUMMER30" style="width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; font-weight: 700; font-family: var(--mono-font); text-transform: uppercase; background: var(--bone); color: var(--ink); box-sizing: border-box;" />
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-            <div>
-              <label style="font-size: 10px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Discount Type *</label>
-              <select id="m_promo_type" style="width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; font-weight: 700; background: var(--bone); color: var(--ink); box-sizing: border-box;">
-                <option value="pct" ${currentType === 'pct' ? 'selected' : ''}>Percentage Off (%)</option>
-                <option value="flat" ${currentType === 'flat' ? 'selected' : ''}>Flat Amount (INR ₹)</option>
-              </select>
-            </div>
-            <div>
-              <label style="font-size: 10px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Value Amount *</label>
-              <input type="number" id="m_promo_val" value="${esc(currentVal)}" placeholder="e.g. 30 or 1500" style="width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; font-weight: 700; color: #059669; background: var(--bone); box-sizing: border-box;" />
-            </div>
-          </div>
-
-          <div>
-            <label style="font-size: 10px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Short Description Label</label>
-            <input type="text" id="m_promo_desc" value="${esc(currentDesc)}" placeholder="e.g. 30% Off Summer Shoots" style="width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; background: var(--bone); color: var(--ink); box-sizing: border-box;" />
-          </div>
-        </div>
-
-        <div style="display: flex; gap: 10px;">
-          <button type="button" onclick="window.savePromoCodeFromModal('${esc(targetPromoKey || '')}')" class="admin-cal-btn primary" style="flex: 1; font-weight: 700; padding: 10px;">💾 Save Promo Code</button>
-          <button type="button" onclick="window.closeCodeAdminModal()" class="admin-cal-btn" style="flex: 1; font-weight: 700; padding: 10px;">Cancel</button>
-        </div>
-      </div>
-    </div>
-  `;
-  setTimeout(() => document.getElementById("m_promo_code")?.focus(), 100);
-};
-
-window.savePromoCodeFromModal = function(oldPromoKey) {
-  const codeName = (document.getElementById("m_promo_code")?.value || "").trim().toUpperCase();
-  const typeVal = document.getElementById("m_promo_type")?.value || "pct";
-  const numVal = parseInt(document.getElementById("m_promo_val")?.value, 10);
-  const descVal = (document.getElementById("m_promo_desc")?.value || "").trim();
-
-  if (!codeName || codeName.length < 3) {
-    alert("Promo code must be at least 3 characters!");
-    return;
-  }
-
-  if (isNaN(numVal) || numVal <= 0) {
-    alert("Please enter a valid discount amount!");
-    return;
-  }
-
-  const isPct = typeVal === "pct";
-  if (isPct && numVal > 90) {
-    alert("Percentage discount cannot exceed 90%!");
-    return;
-  }
-
-  const defaultDesc = isPct ? `${numVal}% Off Special Discount` : `Flat ₹${numVal.toLocaleString('en-IN')} Off Instant Savings`;
-  const labelDesc = descVal || defaultDesc;
-
-  const currentCodes = getAdminPromoCodes();
-  if (oldPromoKey && oldPromoKey !== codeName) {
-    delete currentCodes[oldPromoKey];
-  }
-
-  currentCodes[codeName] = isPct ? { pct: numVal, label: labelDesc, isCustom: true } : { flat: numVal, label: labelDesc, isCustom: true };
-
-  window.adminDraftPromoCodes = currentCodes;
-  markUnsavedChanges();
-  window.closeCodeAdminModal();
-
-  if (typeof toast === "function") toast(`🎟️ Promo Code '${codeName}' saved in draft! (Click "Save All Changes" to push live)`);
-  if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
-};
-
-
-window.getAdminInviteCodes = function() {
-  if (window.adminDraftInviteCodes && Array.isArray(window.adminDraftInviteCodes)) {
-    return window.adminDraftInviteCodes;
-  }
-  try {
-    const saved = localStorage.getItem("wps_custom_invite_codes");
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        window.adminDraftInviteCodes = [...parsed];
-        return window.adminDraftInviteCodes;
-      }
-    }
-  } catch(e) {}
-  try {
-    const legacy = localStorage.getItem("wps_custom_invite_code");
-    if (legacy) {
-      window.adminDraftInviteCodes = [legacy, "NERDY-INVITE", "INVITE2026", "NERDYVIP"];
-      return window.adminDraftInviteCodes;
-    }
-  } catch(e) {}
-  window.adminDraftInviteCodes = ["NERDY-INVITE", "INVITE2026", "NERDYVIP", "STUDIOINVITE", "VIP2026"];
-  return window.adminDraftInviteCodes;
-};
-
-window.getAdminInviteCode = function() {
-  const list = window.getAdminInviteCodes();
-  return list[0] || "NERDY-INVITE";
-};
-
-function markUnsavedChanges() {
-  const statusBadge = document.getElementById("adminPricingSaveStatus");
-  if (statusBadge) {
-    statusBadge.style.color = "#d97706";
-    statusBadge.style.background = "rgba(217,119,6,0.15)";
-    statusBadge.style.borderColor = "#d97706";
-    statusBadge.innerHTML = '⚠️ UNSAVED CHANGES — Click "Save All Changes & Push Live"';
-  }
-}
-
+// --- INVITE CODE HANDLERS ---
 window.getAdminInviteCodes = function() {
   const normalize = (arr) => {
     const seen = new Set();
     const result = [];
-    arr.forEach(item => {
+    (arr || []).forEach(item => {
       let codeStr = typeof item === 'object' ? item.code : item;
       let descStr = typeof item === 'object' ? (item.desc || '') : 'Default Photographer Unlock Code';
-      if (codeStr && !seen.has(codeStr.toUpperCase())) {
-        seen.add(codeStr.toUpperCase());
-        result.push({ code: codeStr.toUpperCase(), desc: descStr });
+      if (codeStr && typeof codeStr === 'string' && !seen.has(codeStr.trim().toUpperCase())) {
+        const cleanStr = codeStr.trim().toUpperCase();
+        seen.add(cleanStr);
+        result.push({ code: cleanStr, desc: descStr });
       }
     });
     return result;
@@ -325,6 +104,11 @@ window.getAdminInviteCodes = function() {
   return window.adminDraftInviteCodes;
 };
 
+window.getAdminInviteCode = function() {
+  const list = window.getAdminInviteCodes();
+  return (list[0] && list[0].code) || "NERDYBRAND";
+};
+
 window.addNewAdminInviteCode = function() {
   window.openInviteCodeModal();
 };
@@ -352,129 +136,13 @@ window.deleteAdminInviteCode = function(codeToDelete) {
   
   if (confirm(`Remove invite code '${targetUpper}' from draft?`)) {
     const updated = current.filter(x => getItemCodeStr(x) !== targetUpper);
-    window.adminDraftInviteCodes = updated;
+    window.adminDraftInviteCodes = [...updated];
     markUnsavedChanges();
     if (typeof toast === "function") toast(`🗑️ Invite code '${targetUpper}' removed from draft.`);
     if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
   }
 };
 
-window.editAdminInviteCode = function(oldCode) {
-  const currentCodes = window.getAdminInviteCodes();
-  const targetCode = oldCode || currentCodes[0] || "NERDY-INVITE";
-  const updated = prompt("Edit Photographer Direct Invite Code String:", targetCode)?.trim().toUpperCase();
-  if (!updated) return;
-  if (updated.length < 3) { alert("Invite code must be at least 3 characters!"); return; }
-  
-  const idx = currentCodes.indexOf(targetCode);
-  if (idx !== -1) {
-    currentCodes[idx] = updated;
-  } else {
-    currentCodes.unshift(updated);
-  }
-  localStorage.setItem("wps_custom_invite_codes", JSON.stringify(currentCodes));
-  localStorage.setItem("wps_custom_invite_code", updated);
-  if (typeof toast === "function") toast(`🔑 Invite Code updated to '${updated}'!`);
-  if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
-  if (typeof render === "function") render();
-};
-
-window.generateRandomAdminInviteCode = function() {
-  const prefixes = ["VIP", "NERDY", "MODEL", "STUDIO", "TALENT", "SHOOT"];
-  const randomPrefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-  const randomNum = Math.floor(1000 + Math.random() * 9000);
-  const generated = `${randomPrefix}-${randomNum}`;
-  
-  const current = window.getAdminInviteCodes();
-  current.unshift(generated);
-  localStorage.setItem("wps_custom_invite_codes", JSON.stringify(current));
-  localStorage.setItem("wps_custom_invite_code", generated);
-  if (typeof toast === "function") toast(`🎲 Auto-generated new VIP Invite Code '${generated}'!`);
-  if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
-  if (typeof render === "function") render();
-};
-
-window.copyInviteCodeToClipboard = function() {
-  const inviteCode = window.getAdminInviteCode();
-  navigator.clipboard.writeText(inviteCode).then(() => {
-    if (typeof toast === "function") toast(`📋 Invite Code '${inviteCode}' copied to clipboard!`);
-    else alert(`📋 Invite Code '${inviteCode}' copied to clipboard!`);
-  }).catch(() => {
-    alert(`Photographer Invite Code: ${inviteCode}`);
-  });
-};
-
-window.saveNewPromoCodeFromForm = function() {
-  const codeInput = document.getElementById("newPromoName");
-  const typeSelect = document.getElementById("newPromoType");
-  const valInput = document.getElementById("newPromoVal");
-  const descInput = document.getElementById("newPromoDesc");
-
-  const codeName = (codeInput?.value || "").trim().toUpperCase();
-  if (!codeName || codeName.length < 3) {
-    alert("Promo code must be at least 3 characters!");
-    return;
-  }
-
-  const isPct = (typeSelect?.value || "pct") === "pct";
-  const numVal = parseInt(valInput?.value || "0", 10);
-  if (isNaN(numVal) || numVal <= 0) {
-    alert("Please enter a valid discount value!");
-    return;
-  }
-  if (isPct && numVal > 90) {
-    alert("Percentage discount cannot exceed 90%!");
-    return;
-  }
-
-  const defaultDesc = isPct ? `${numVal}% Off Special Offer` : `Flat ₹${numVal.toLocaleString('en-IN')} Off Instant Savings`;
-  const labelDesc = (descInput?.value || "").trim() || defaultDesc;
-
-  const currentCodes = getAdminPromoCodes();
-  currentCodes[codeName] = isPct ? { pct: numVal, label: labelDesc, isCustom: true } : { flat: numVal, label: labelDesc, isCustom: true };
-
-  if (codeInput) codeInput.value = "";
-  if (valInput) valInput.value = "";
-  if (descInput) descInput.value = "";
-
-  markUnsavedChanges();
-  if (typeof toast === "function") toast(`🎉 Promo Code '${codeName}' added to draft (Click "Save All Changes" to push live)`);
-  if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
-};
-
-window.addNewAdminPromoCode = function() {
-  const form = document.getElementById("promoCreatorForm");
-  if (form) {
-    form.style.display = "block";
-    form.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  } else {
-    // Fallback prompt if form not in DOM
-    const codeName = prompt("Enter New Promo Code String (e.g. SUMMER30):")?.trim().toUpperCase();
-    if (!codeName) return;
-    const currentCodes = getAdminPromoCodes();
-    currentCodes[codeName] = { pct: 20, label: "20% Off Special Offer", isCustom: true };
-    localStorage.setItem("wps_custom_promo_codes", JSON.stringify(currentCodes));
-    if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
-  }
-};
-
-window.addNewAdminPromoCode = function() {
-  window.openPromoCodeModal();
-};
-
-window.editAdminPromoCode = function(codeKey) {
-  window.openPromoCodeModal(codeKey);
-};
-
-window.deleteAdminPromoCode = function(codeName) {
-  if (confirm(`Remove promo code '${codeName}' from draft?`)) {
-    const currentCodes = getAdminPromoCodes();
-    delete currentCodes[codeName];
-    markUnsavedChanges();
-    if (typeof toast === "function") toast(`🗑️ Promo code '${codeName}' removed from draft.`);
-    if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
-  }
-};
 
 /* ============================================================
    § ADMIN NO-CODE DYNAMIC PACKAGE & PRICING MANAGEMENT ENGINE
@@ -9787,7 +9455,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=240').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=241').catch(() => {});
   });
 }
 
