@@ -4122,9 +4122,15 @@ RAW files are not provided.`
               <div style="font-family: monospace; font-size: 9px; font-weight: 700; background: #f4f4f4; border: 1px solid #ccc; padding: 5px; border-radius: 4px; margin-top: 4px;">"I approve Studio Contract Terms ${esc(cVer)}"</div>
             </div>
             <div style="border-left: 1px solid #ddd; padding-left: 12px;">
-              <strong>Method B — Physical Pen Signature:</strong><br/>
-              <div style="margin-top: 10px;">Client Sign: <span style="border-bottom: 1.5px solid #000; display: inline-block; width: 130px; height: 12px;">&nbsp;</span></div>
-              <div style="margin-top: 6px;">Date: <span style="border-bottom: 1.5px solid #000; display: inline-block; width: 130px; height: 12px;">&nbsp;</span></div>
+              ${b.sigDataUrl ? `
+                <strong>Client Digital Signature (Drawn at Booking):</strong><br/>
+                <img src="${b.sigDataUrl}" style="max-width: 200px; max-height: 56px; display: block; margin-top: 8px; border-bottom: 1.5px solid #000;" alt="Client Signature" />
+                <div style="margin-top: 4px; font-size: 9px; color: #444;">${esc(b.name || "")} · Agreed ${new Date().toLocaleDateString("en-IN")} · ${esc(b.agreedContract || cVer)}</div>
+              ` : `
+                <strong>Method B — Physical Pen Signature:</strong><br/>
+                <div style="margin-top: 10px;">Client Sign: <span style="border-bottom: 1.5px solid #000; display: inline-block; width: 130px; height: 12px;">&nbsp;</span></div>
+                <div style="margin-top: 6px;">Date: <span style="border-bottom: 1.5px solid #000; display: inline-block; width: 130px; height: 12px;">&nbsp;</span></div>
+              `}
             </div>
           </div>
         </div>
@@ -7639,7 +7645,7 @@ RAW files are not provided.`
       const date = val("b_date"), locationVal = val("b_location"), budget = (type === "Selective Collaboration (TFP)" ? "Collab / TFP (No Budget)" : val("b_budget"));
       const moodboard = getFormLinks().join(", "), concept = val("b_concept");
 
-      const proceedSubmit = (agreedToTerms = false, shootCategory = "Commercial", isCustomContract = false, customContractNotes = "") => {
+      const proceedSubmit = (agreedToTerms = false, shootCategory = "Commercial", isCustomContract = false, customContractNotes = "", sigDataUrl = "") => {
         btn.disabled = true;
         btn.classList.add("is-loading");
         btn.textContent = "Sending your request…";
@@ -7701,7 +7707,7 @@ RAW files are not provided.`
           deliverablePolicyNote +
           gearPolicyNote +
           `Moodboard Link: ${moodboard || '—'}\n` +
-          (agreedToTerms ? `TFP Release terms: Agreed (TFP-LIABILITY-RELEASE-V3.3)\nRead online: https://www.nerdyphotographer.in/book/#tfp-terms\n\n` : `\n`) +
+          (agreedToTerms ? `Contract Agreement: ${name} has agreed to ${contractRefDoc} in full, without modifications. By sending this email the client confirms acceptance of all studio terms and conditions.\nRead terms online: https://www.nerdyphotographer.in/book/${isTfpCat ? '#tfp-terms' : '#terms'}\n\n` : `\n`) +
           `Concept/Vision:\n${concept || '—'}`;
         const inquiryBody = compactBody + tfpReleaseText;
         const plainTextBody = `To: ${studioEmail}\nSubject: Shoot Booking Request — ${name}\n\n` + inquiryBody;
@@ -7743,6 +7749,8 @@ RAW files are not provided.`
                   type,
                   links: typeof getFormLinks === "function" ? getFormLinks() : [],
                   attachments: typeof attachedFiles !== "undefined" ? attachedFiles : [],
+                  sigDataUrl: sigDataUrl || "",
+                  agreedContract: agreedToTerms ? contractRefDoc : "",
                   notes: `Location: ${locationVal} | Budget: ${budget}`
                 });
               }
@@ -7821,9 +7829,9 @@ RAW files are not provided.`
       };
 
       if (type === "Selective Collaboration (TFP)") {
-        openTermsModal(name, "TFP", (agreed, isCustom, notes) => proceedSubmit(agreed, "TFP", isCustom, notes));
+        openTermsModal(name, "TFP", (agreed, isCustom, notes, sigUrl) => proceedSubmit(agreed, "TFP", isCustom, notes, sigUrl));
       } else {
-        openTermsModal(name, "Commercial", (agreed, isCustom, notes) => proceedSubmit(agreed, "Commercial", isCustom, notes));
+        openTermsModal(name, "Commercial", (agreed, isCustom, notes, sigUrl) => proceedSubmit(agreed, "Commercial", isCustom, notes, sigUrl));
       }
     };
 
@@ -7931,8 +7939,9 @@ RAW files are not provided.`
           alert("Please draw your signature to agree and continue!");
           return;
         }
+        const sigDataUrl = (canvas && hasSigned) ? canvas.toDataURL("image/png") : "";
         close();
-        if (onAccept) onAccept(true, false, "");
+        if (onAccept) onAccept(true, false, "", sigDataUrl);
       };
 
       const onDeclineClick = () => {
@@ -7947,7 +7956,7 @@ RAW files are not provided.`
         } else {
           const notes = customInput?.value.trim() || "Client requested custom contract / agency MSA";
           close();
-          if (onAccept) onAccept(true, true, notes);
+          if (onAccept) onAccept(true, true, notes, "");
         }
       };
 
