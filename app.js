@@ -4753,6 +4753,19 @@ RAW files are not provided.`
  
              <fieldset>
                <legend>Shoot Details</legend>
+
+                <!-- Photographer Direct Invite Code (Positioned at TOP of Shoot Details) -->
+                <div style="background: rgba(var(--accent-rgb), 0.04); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 18px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <span style="font-weight: 700; color: var(--ink); font-size: 13px;">🔑 Photographer Direct Invite Code (Optional)</span>
+                    <span id="inviteCodeStatus" style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; display: none;"></span>
+                  </div>
+                  <div style="font-size: 11px; color: var(--ink-soft); margin-bottom: 10px; line-height: 1.4;">Received a direct invite code from the photographer? Enter it here to unlock Test Shoot / TFP collaboration options.</div>
+                  <div style="display: flex; gap: 8px;">
+                    <input id="b_invite_code" type="text" placeholder="Enter Direct Invite Code (e.g. NERDY-INVITE)" style="text-transform: uppercase; font-family: var(--mono-font); font-weight: 700; flex: 1; padding: 10px; border: 1px solid var(--line); border-radius: 6px;" />
+                    <button type="button" id="btnApplyInviteCode" style="background: var(--accent); color: #ffffff; border: none; padding: 0 18px; border-radius: 6px; font-family: var(--mono-font); font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap;">Verify Code</button>
+                  </div>
+                </div>
                <div class="field-row">
                  <label class="field"><span>Desired Project Type (Includes Test Shoots / TFP) *</span>
                    <select id="b_type">
@@ -4824,25 +4837,14 @@ RAW files are not provided.`
                <div id="collabFallbackWrap" style="display: none; background: var(--bone); border: 1px dashed var(--line); border-radius: 8px; padding: 14px; margin-bottom: 16px; text-align: left; grid-column: 1 / -1;"></div>
 
                <div class="field-row" style="margin-top: 10px;">
-                 <label class="field">
+                 <label class="field" style="grid-column: 1 / -1;">
                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                      <span style="font-weight: 700; color: var(--ink);">🎟️ Promotional Discount Code (Optional)</span>
                      <span id="discountCodeStatus" style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; display: none;"></span>
                    </div>
                    <div style="display: flex; gap: 8px;">
-                     <input id="b_discount_code" type="text" placeholder="Enter Promo Code" style="text-transform: uppercase; font-family: var(--mono-font); font-weight: 700; flex: 1;" />
-                     <button type="button" id="btnApplyDiscountCode" style="background: var(--accent); color: #ffffff; border: none; padding: 0 16px; border-radius: 6px; font-family: var(--mono-font); font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap;">Apply Code</button>
-                   </div>
-                 </label>
-
-                 <label class="field">
-                   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                     <span style="font-weight: 700; color: var(--ink);">🔑 Photographer Direct Invite Code (Optional)</span>
-                     <span id="inviteCodeStatus" style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; display: none;"></span>
-                   </div>
-                   <div style="display: flex; gap: 8px;">
-                     <input id="b_invite_code" type="text" placeholder="Enter Direct Invite Code" style="text-transform: uppercase; font-family: var(--mono-font); flex: 1;" />
-                     <button type="button" id="btnApplyInviteCode" style="background: var(--accent); color: #ffffff; border: none; padding: 0 16px; border-radius: 6px; font-family: var(--mono-font); font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap;">Verify Code</button>
+                     <input id="b_discount_code" type="text" placeholder="Enter Promo Code (e.g. NERDY500)" style="text-transform: uppercase; font-family: var(--mono-font); font-weight: 700; flex: 1; padding: 10px; border: 1px solid var(--line); border-radius: 6px;" />
+                     <button type="button" id="btnApplyDiscountCode" style="background: var(--accent); color: #ffffff; border: none; padding: 0 18px; border-radius: 6px; font-family: var(--mono-font); font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap;">Apply Code</button>
                    </div>
                  </label>
                </div>
@@ -8938,6 +8940,6 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=209').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=210').catch(() => {});
   });
 }
