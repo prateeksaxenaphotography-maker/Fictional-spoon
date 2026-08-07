@@ -23,11 +23,18 @@ const DEFAULT_PROMO_CODES = {
 };
 
 function getAdminPromoCodes() {
+  if (window.adminDraftPromoCodes && typeof window.adminDraftPromoCodes === "object") {
+    return window.adminDraftPromoCodes;
+  }
   try {
     const saved = localStorage.getItem("wps_custom_promo_codes");
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      window.adminDraftPromoCodes = JSON.parse(saved);
+      return window.adminDraftPromoCodes;
+    }
   } catch(e) {}
-  return DEFAULT_PROMO_CODES;
+  window.adminDraftPromoCodes = { ...DEFAULT_PROMO_CODES };
+  return window.adminDraftPromoCodes;
 }
 window.getAdminPromoCodes = getAdminPromoCodes;
 
@@ -60,20 +67,33 @@ window.addNewAdminPromoCode = function() {
   if (typeof render === "function") render();
 };
 
+// Global Draft States for Manual Save Mode
+window.adminDraftInviteCodes = null;
+window.adminDraftPromoCodes = null;
+
 window.getAdminInviteCodes = function() {
+  if (window.adminDraftInviteCodes && Array.isArray(window.adminDraftInviteCodes)) {
+    return window.adminDraftInviteCodes;
+  }
   try {
     const saved = localStorage.getItem("wps_custom_invite_codes");
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        window.adminDraftInviteCodes = [...parsed];
+        return window.adminDraftInviteCodes;
+      }
     }
   } catch(e) {}
-  // Also check legacy single custom invite code
   try {
     const legacy = localStorage.getItem("wps_custom_invite_code");
-    if (legacy) return [legacy, "NERDY-INVITE", "INVITE2026", "NERDYVIP"];
+    if (legacy) {
+      window.adminDraftInviteCodes = [legacy, "NERDY-INVITE", "INVITE2026", "NERDYVIP"];
+      return window.adminDraftInviteCodes;
+    }
   } catch(e) {}
-  return ["NERDY-INVITE", "INVITE2026", "NERDYVIP", "STUDIOINVITE", "VIP2026"];
+  window.adminDraftInviteCodes = ["NERDY-INVITE", "INVITE2026", "NERDYVIP", "STUDIOINVITE", "VIP2026"];
+  return window.adminDraftInviteCodes;
 };
 
 window.getAdminInviteCode = function() {
@@ -81,17 +101,56 @@ window.getAdminInviteCode = function() {
   return list[0] || "NERDY-INVITE";
 };
 
+function markUnsavedChanges() {
+  const statusBadge = document.getElementById("adminPricingSaveStatus");
+  if (statusBadge) {
+    statusBadge.style.color = "#d97706";
+    statusBadge.style.background = "rgba(217,119,6,0.15)";
+    statusBadge.style.borderColor = "#d97706";
+    statusBadge.innerHTML = '⚠️ UNSAVED CHANGES — Click "Save All Changes & Push Live"';
+  }
+}
+
 window.addNewAdminInviteCode = function() {
   const newCode = prompt("Enter New Photographer Direct Invite Code (e.g. MODELVIP):")?.trim().toUpperCase();
   if (!newCode) return;
   if (newCode.length < 3) { alert("Invite code must be at least 3 characters!"); return; }
   const current = window.getAdminInviteCodes();
   if (!current.includes(newCode)) current.unshift(newCode);
-  localStorage.setItem("wps_custom_invite_codes", JSON.stringify(current));
-  localStorage.setItem("wps_custom_invite_code", newCode);
-  if (typeof toast === "function") toast(`🔑 New Invite Code '${newCode}' created & saved!`);
+  markUnsavedChanges();
+  if (typeof toast === "function") toast(`🔑 Invite Code '${newCode}' added to draft (Click "Save All Changes" to push live)`);
   if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
-  if (typeof render === "function") render();
+};
+
+window.editAdminInviteCode = function(oldCode) {
+  const currentCodes = window.getAdminInviteCodes();
+  const targetCode = oldCode || currentCodes[0] || "NERDY-INVITE";
+  const updated = prompt("Edit Photographer Direct Invite Code String:", targetCode)?.trim().toUpperCase();
+  if (!updated) return;
+  if (updated.length < 3) { alert("Invite code must be at least 3 characters!"); return; }
+  
+  const idx = currentCodes.indexOf(targetCode);
+  if (idx !== -1) {
+    currentCodes[idx] = updated;
+  } else {
+    currentCodes.unshift(updated);
+  }
+  markUnsavedChanges();
+  if (typeof toast === "function") toast(`🔑 Invite Code updated to '${updated}' in draft (Click "Save All Changes" to push live)`);
+  if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
+};
+
+window.generateRandomAdminInviteCode = function() {
+  const prefixes = ["VIP", "NERDY", "MODEL", "STUDIO", "TALENT", "SHOOT"];
+  const randomPrefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+  const randomNum = Math.floor(1000 + Math.random() * 9000);
+  const generated = `${randomPrefix}-${randomNum}`;
+  
+  const current = window.getAdminInviteCodes();
+  current.unshift(generated);
+  markUnsavedChanges();
+  if (typeof toast === "function") toast(`🎲 Auto-generated VIP Code '${generated}' in draft (Click "Save All Changes" to push live)`);
+  if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
 };
 
 window.deleteAdminInviteCode = function(codeToDelete) {
@@ -100,13 +159,12 @@ window.deleteAdminInviteCode = function(codeToDelete) {
     alert("You must keep at least 1 active invite code!");
     return;
   }
-  if (confirm(`Delete invite code '${codeToDelete}'?`)) {
-    const updated = current.filter(c => c !== codeToDelete);
-    localStorage.setItem("wps_custom_invite_codes", JSON.stringify(updated));
-    if (updated[0]) localStorage.setItem("wps_custom_invite_code", updated[0]);
-    if (typeof toast === "function") toast(`🗑️ Invite code '${codeToDelete}' removed.`);
+  if (confirm(`Remove invite code '${codeToDelete}' from draft?`)) {
+    const idx = current.indexOf(codeToDelete);
+    if (idx !== -1) current.splice(idx, 1);
+    markUnsavedChanges();
+    if (typeof toast === "function") toast(`🗑️ Invite code '${codeToDelete}' removed from draft.`);
     if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
-    if (typeof render === "function") render();
   }
 };
 
@@ -183,15 +241,14 @@ window.saveNewPromoCodeFromForm = function() {
 
   const currentCodes = getAdminPromoCodes();
   currentCodes[codeName] = isPct ? { pct: numVal, label: labelDesc, isCustom: true } : { flat: numVal, label: labelDesc, isCustom: true };
-  localStorage.setItem("wps_custom_promo_codes", JSON.stringify(currentCodes));
 
   if (codeInput) codeInput.value = "";
   if (valInput) valInput.value = "";
   if (descInput) descInput.value = "";
 
-  if (typeof toast === "function") toast(`🎉 Promo Code '${codeName}' created & saved successfully!`);
+  markUnsavedChanges();
+  if (typeof toast === "function") toast(`🎉 Promo Code '${codeName}' added to draft (Click "Save All Changes" to push live)`);
   if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
-  if (typeof render === "function") render();
 };
 
 window.addNewAdminPromoCode = function() {
@@ -240,21 +297,19 @@ window.editAdminPromoCode = function(codeKey) {
     delete currentCodes[codeKey];
   }
   currentCodes[newCodeName] = pct ? { pct, label: labelDesc, isCustom: true } : { flat, label: labelDesc, isCustom: true };
-  localStorage.setItem("wps_custom_promo_codes", JSON.stringify(currentCodes));
 
-  if (typeof toast === "function") toast(`✏️ Promo Code '${newCodeName}' updated!`);
+  markUnsavedChanges();
+  if (typeof toast === "function") toast(`✏️ Promo Code '${newCodeName}' updated in draft (Click "Save All Changes" to push live)`);
   if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
-  if (typeof render === "function") render();
 };
 
 window.deleteAdminPromoCode = function(codeName) {
-  if (confirm(`Are you sure you want to delete promo code '${codeName}'?`)) {
+  if (confirm(`Remove promo code '${codeName}' from draft?`)) {
     const currentCodes = getAdminPromoCodes();
     delete currentCodes[codeName];
-    localStorage.setItem("wps_custom_promo_codes", JSON.stringify(currentCodes));
-    if (typeof toast === "function") toast(`🗑️ Promo code '${codeName}' deleted.`);
+    markUnsavedChanges();
+    if (typeof toast === "function") toast(`🗑️ Promo code '${codeName}' removed from draft.`);
     if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
-    if (typeof render === "function") render();
   }
 };
 
@@ -281,15 +336,29 @@ window.getAdminPackages = getAdminPackages;
 
 window.saveAdminCustomPackages = function() {
   const rows = document.querySelectorAll(".admin-pkg-editor-row");
-  if (!rows.length) return;
-  const updated = [];
-  rows.forEach((row, i) => {
-    const name = row.querySelector(".pkg-edit-name")?.value || `Package ${i+1}`;
-    const price = parseInt(row.querySelector(".pkg-edit-price")?.value, 10) || 10000;
-    const specs = row.querySelector(".pkg-edit-specs")?.value || "Standard Deliverables";
-    updated.push({ id: `pkg_${i+1}`, name, price, specs });
-  });
-  localStorage.setItem("wps_custom_packages", JSON.stringify(updated));
+  if (rows.length) {
+    const updated = [];
+    rows.forEach((row, i) => {
+      const name = row.querySelector(".pkg-edit-name")?.value || `Package ${i+1}`;
+      const price = parseInt(row.querySelector(".pkg-edit-price")?.value, 10) || 10000;
+      const specs = row.querySelector(".pkg-edit-specs")?.value || "Standard Deliverables";
+      updated.push({ id: `pkg_${i+1}`, name, price, specs });
+    });
+    localStorage.setItem("wps_custom_packages", JSON.stringify(updated));
+  }
+
+  // Commit Draft Invite Codes
+  if (window.adminDraftInviteCodes && Array.isArray(window.adminDraftInviteCodes)) {
+    localStorage.setItem("wps_custom_invite_codes", JSON.stringify(window.adminDraftInviteCodes));
+    if (window.adminDraftInviteCodes[0]) {
+      localStorage.setItem("wps_custom_invite_code", window.adminDraftInviteCodes[0]);
+    }
+  }
+
+  // Commit Draft Promo Codes
+  if (window.adminDraftPromoCodes && typeof window.adminDraftPromoCodes === "object") {
+    localStorage.setItem("wps_custom_promo_codes", JSON.stringify(window.adminDraftPromoCodes));
+  }
 
   const statusBadge = document.getElementById("adminPricingSaveStatus");
   if (statusBadge) {
@@ -300,8 +369,8 @@ window.saveAdminCustomPackages = function() {
     statusBadge.innerHTML = `🟢 ALL CHANGES SAVED TO LIVE SITE (${nowStr})`;
   }
 
-  if (typeof toast === "function") toast("✅ Studio Package Rates & Deliverables saved to live site! All booking forms updated.");
-  else alert("✅ Studio Package Rates & Deliverables saved successfully! All booking forms updated.");
+  if (typeof toast === "function") toast("✅ Package Rates, Promo Codes & Invite Codes saved to live site! All booking forms updated.");
+  else alert("✅ Package Rates, Promo Codes & Invite Codes saved to live site!");
   
   if (typeof render === "function") render();
 };
@@ -2875,7 +2944,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             </h3>
             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
               <span id="adminPricingSaveStatus" style="font-size: 11px; font-weight: 700; color: #059669; background: rgba(5,150,105,0.12); padding: 4px 10px; border-radius: 12px; border: 1px solid #059669; font-family: var(--mono-font); transition: all 0.3s ease;">🟢 ALL CHANGES SAVED TO LIVE SITE</span>
-              <button type="button" class="admin-cal-btn primary" onclick="window.saveAdminCustomPackages()" style="font-size: 11px; padding: 4px 12px; font-weight: 700;">💾 Save Pricing Changes</button>
+              <button type="button" class="admin-cal-btn primary" onclick="window.saveAdminCustomPackages()" style="font-size: 11px; padding: 4px 12px; font-weight: 700;">💾 Save All Changes &amp; Push Live</button>
               <button type="button" class="admin-cal-btn" onclick="window.resetAdminCustomPackages()" style="font-size: 11px; padding: 4px 12px; font-weight: 700;">🔄 Reset Defaults</button>
             </div>
           </div>
@@ -9403,6 +9472,6 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=227').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=228').catch(() => {});
   });
 }
