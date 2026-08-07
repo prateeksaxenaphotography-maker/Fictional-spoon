@@ -89,6 +89,61 @@ window.copyInviteCodeToClipboard = function() {
   });
 };
 
+window.saveNewPromoCodeFromForm = function() {
+  const codeInput = document.getElementById("newPromoName");
+  const typeSelect = document.getElementById("newPromoType");
+  const valInput = document.getElementById("newPromoVal");
+  const descInput = document.getElementById("newPromoDesc");
+
+  const codeName = (codeInput?.value || "").trim().toUpperCase();
+  if (!codeName || codeName.length < 3) {
+    alert("Promo code must be at least 3 characters!");
+    return;
+  }
+
+  const isPct = (typeSelect?.value || "pct") === "pct";
+  const numVal = parseInt(valInput?.value || "0", 10);
+  if (isNaN(numVal) || numVal <= 0) {
+    alert("Please enter a valid discount value!");
+    return;
+  }
+  if (isPct && numVal > 90) {
+    alert("Percentage discount cannot exceed 90%!");
+    return;
+  }
+
+  const defaultDesc = isPct ? `${numVal}% Off Special Offer` : `Flat ₹${numVal.toLocaleString('en-IN')} Off Instant Savings`;
+  const labelDesc = (descInput?.value || "").trim() || defaultDesc;
+
+  const currentCodes = getAdminPromoCodes();
+  currentCodes[codeName] = isPct ? { pct: numVal, label: labelDesc, isCustom: true } : { flat: numVal, label: labelDesc, isCustom: true };
+  localStorage.setItem("wps_custom_promo_codes", JSON.stringify(currentCodes));
+
+  if (codeInput) codeInput.value = "";
+  if (valInput) valInput.value = "";
+  if (descInput) descInput.value = "";
+
+  if (typeof toast === "function") toast(`🎉 Promo Code '${codeName}' created & saved successfully!`);
+  if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
+  if (typeof render === "function") render();
+};
+
+window.addNewAdminPromoCode = function() {
+  const form = document.getElementById("promoCreatorForm");
+  if (form) {
+    form.style.display = "block";
+    form.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } else {
+    // Fallback prompt if form not in DOM
+    const codeName = prompt("Enter New Promo Code String (e.g. SUMMER30):")?.trim().toUpperCase();
+    if (!codeName) return;
+    const currentCodes = getAdminPromoCodes();
+    currentCodes[codeName] = { pct: 20, label: "20% Off Special Offer", isCustom: true };
+    localStorage.setItem("wps_custom_promo_codes", JSON.stringify(currentCodes));
+    if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
+  }
+};
+
 window.editAdminPromoCode = function(codeKey) {
   const currentCodes = getAdminPromoCodes();
   const item = currentCodes[codeKey] || {};
@@ -2862,6 +2917,39 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         const codes = getAdminPromoCodes();
         const activeInviteCode = typeof window.getAdminInviteCode === "function" ? window.getAdminInviteCode() : "NERDY-INVITE";
 
+        const creatorFormHtml = `
+          <div id="promoCreatorForm" style="grid-column: 1 / -1; display: none; background: var(--paper); border: 1.5px solid var(--accent); border-radius: 8px; padding: 16px 18px; margin-bottom: 8px; box-shadow: var(--shadow-sm); animation: modalFadeIn 0.3s ease;">
+            <div style="font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+              <span>🎟️ Create New Custom Promotional Discount Code</span>
+              <button type="button" onclick="document.getElementById('promoCreatorForm').style.display='none'" style="background:none; border:none; color:var(--ink-soft); font-size:16px; cursor:pointer;">✕</button>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; align-items: flex-end;">
+              <div>
+                <label style="font-size: 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">Promo Code String *</label>
+                <input type="text" id="newPromoName" placeholder="e.g. SUMMER30" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-weight: 700; font-family: var(--mono-font); text-transform: uppercase; background: var(--bone); color: var(--ink);" />
+              </div>
+              <div>
+                <label style="font-size: 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">Discount Type *</label>
+                <select id="newPromoType" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; font-weight: 700; background: var(--bone); color: var(--ink);">
+                  <option value="pct">Percentage Off (%)</option>
+                  <option value="flat">Flat Amount (INR ₹)</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size: 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">Value Amount *</label>
+                <input type="number" id="newPromoVal" placeholder="e.g. 30 or 1500" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-weight: 700; color: #059669; background: var(--bone);" />
+              </div>
+              <div style="grid-column: span 2;">
+                <label style="font-size: 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">Description Label</label>
+                <input type="text" id="newPromoDesc" placeholder="e.g. 30% Off Summer Shoots" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; background: var(--bone); color: var(--ink);" />
+              </div>
+              <div>
+                <button type="button" class="admin-cal-btn primary" onclick="window.saveNewPromoCodeFromForm()" style="width: 100%; font-weight: 700; padding: 8px 12px;">💾 Save Promo Code</button>
+              </div>
+            </div>
+          </div>
+        `;
+
         const inviteCardHtml = `
           <div style="grid-column: 1 / -1; background: rgba(255, 69, 0, 0.08); border: 1.5px solid var(--accent); border-radius: 8px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
             <div>
@@ -2899,7 +2987,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           `;
         }).join("");
 
-        promoGrid.innerHTML = inviteCardHtml + codeCardsHtml;
+        promoGrid.innerHTML = inviteCardHtml + creatorFormHtml + codeCardsHtml;
       }
 
       const pkgsGrid = $("#adminPackagesEditorGrid");
@@ -9199,6 +9287,6 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=218').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=219').catch(() => {});
   });
 }
