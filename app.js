@@ -8135,8 +8135,16 @@ RAW files are not provided.`
   function initReveal() {
     const items = view.querySelectorAll(".reveal, .reveal-stagger, .kinetic-word, .kinetic-h1");
     if (prefersReduced || !("IntersectionObserver" in window)) { items.forEach((el) => el.classList.add("in")); return; }
-    const io = new IntersectionObserver((ents) => ents.forEach((en) => { if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); } }), { threshold: 0.1, rootMargin: "0px 0px -8% 0px" });
+    const io = new IntersectionObserver((ents) => ents.forEach((en) => { if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); } }), { threshold: 0, rootMargin: "100px 0px 100px 0px" });
     items.forEach((el) => io.observe(el));
+
+    const sweep = () => items.forEach((el) => {
+      const r = el.getBoundingClientRect();
+      if (r.top < window.innerHeight + 300) el.classList.add("in");
+    });
+    sweep();
+    setTimeout(sweep, 300);
+    setTimeout(sweep, 1000);
   }
 
   // The footer lives outside the SPA view mount, so it needs its own persistent
@@ -9456,7 +9464,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=243').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=244').catch(() => {});
   });
 }
 
