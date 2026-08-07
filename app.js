@@ -920,7 +920,28 @@ window.moveAdminPackageRow = function(index, dir) {
   }
   async function allShoots() { const d = await db(); return new Promise((res, rej) => { const q = d.transaction(STORE, "readonly").objectStore(STORE).getAll(); q.onsuccess = () => res(q.result || []); q.onerror = () => rej(q.error); }); }
   async function putShoot(rec) { const d = await db(); return new Promise((res, rej) => { const tx = d.transaction(STORE, "readwrite"); tx.objectStore(STORE).put(rec); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); }
+  // Persistent local deletion tombstones. Removing the album from IndexedDB
+  // and the in-memory list only covers this session: on the next load a stale
+  // data.js (GitHub Pages caches it ~10 min) merges the album straight back,
+  // and it stays until that cache turns over. The tombstone survives reloads,
+  // filters the album out of every merge, and rides along on the next sync
+  // into the published DELETED_IDS list so other devices retire it too.
+  const LOCAL_TOMBSTONES_KEY = "wps-deleted-shoot-ids";
+  function localTombstones() {
+    try {
+      const a = JSON.parse(localStorage.getItem(LOCAL_TOMBSTONES_KEY) || "[]");
+      return Array.isArray(a) ? a.filter((x) => typeof x === "string") : [];
+    } catch { return []; }
+  }
+  function rememberDeletedShoot(id) {
+    try {
+      const set = new Set(localTombstones());
+      set.add(id);
+      localStorage.setItem(LOCAL_TOMBSTONES_KEY, JSON.stringify([...set]));
+    } catch { /* private mode / quota — the in-memory + sync paths still cover it */ }
+  }
   async function delShoot(id) {
+    rememberDeletedShoot(id);
     // Also drop it from the in-memory published list — loadShoots() merges
     // published shoots back in, so without this a just-deleted album would
     // resurrect on the very next render until the deletion syncs to GitHub.
@@ -968,6 +989,12 @@ window.moveAdminPackageRow = function(index, dir) {
     const mergedById = new Map();
     demoList.forEach(s => { if (s && s.id && (usingDemo || !s.demo)) mergedById.set(s.id, s); });
     validReal.forEach(s => { if (s && s.id) mergedById.set(s.id, s); });
+    // Deleted albums stay deleted: drop every id tombstoned either in the
+    // published data.js (DELETED_IDS) or locally on this device — otherwise
+    // the merge above would resurrect a deleted album from whichever side
+    // still has a stale copy (cached data.js, another device's IndexedDB).
+    const gone = new Set([...((window.WPS_DATA && window.WPS_DATA.DELETED_IDS) || []), ...localTombstones()]);
+    gone.forEach(id => mergedById.delete(id));
     const shootsSource = [...mergedById.values()];
 
     const sorted = [...shootsSource].sort((a, b) => parseShootDate(b) - parseShootDate(a));
@@ -1010,15 +1037,15 @@ window.moveAdminPackageRow = function(index, dir) {
     return res.json();
   }
 
-  // Pull the DEMO_SHOOTS array out of a data.js source string. Anchors on the
-  // quoted "DEMO_SHOOTS" JSON key inside WPS_DATA — never the bare identifier
-  // used by the trailing window.* alias lines (whose `|| []` literal is what a
-  // lastIndexOf-based parse used to pick up, reading a full portfolio as
-  // empty) — and finds the array's end by string-aware bracket matching
-  // instead of trusting whatever "]" happens to be last in the file.
-  function parseShootsFromDataJs(text) {
+  // Pull a JSON array out of a data.js source string. Anchors on the quoted
+  // JSON key inside WPS_DATA — never a bare identifier like the trailing
+  // window.* alias lines (whose `|| []` literal is what a lastIndexOf-based
+  // parse used to pick up, reading a full portfolio as empty) — and finds
+  // the array's end by string-aware bracket matching instead of trusting
+  // whatever "]" happens to be last in the file.
+  function parseArrayAfterKey(text, quotedKey) {
     try {
-      const key = text.indexOf('"DEMO_SHOOTS"');
+      const key = text.indexOf(quotedKey);
       if (key === -1) return null;
       const start = text.indexOf("[", key);
       if (start === -1) return null;
@@ -1038,21 +1065,32 @@ window.moveAdminPackageRow = function(index, dir) {
       return null;
     } catch { return null; }
   }
+  function parseShootsFromDataJs(text) {
+    return parseArrayAfterKey(text, '"DEMO_SHOOTS"');
+  }
+  // Published deletion tombstones. A data.js from before tombstones existed
+  // has no DELETED_IDS key — that is a valid empty list, not a parse failure.
+  function parseDeletedIdsFromDataJs(text) {
+    if (text.indexOf('"DELETED_IDS"') === -1) return [];
+    const arr = parseArrayAfterKey(text, '"DELETED_IDS"');
+    return Array.isArray(arr) ? arr.filter((x) => typeof x === "string") : [];
+  }
 
   // Throws (rather than returning null) on any failure short of a genuine
   // "file doesn't exist yet" 404 — syncToGitHub's merge treats a null/empty
   // result as "nothing published remotely" and would otherwise publish a
   // local-only view of the world on a network hiccup, silently wiping out
   // shoots that only exist on other devices.
-  async function fetchRemoteShoots(pat) {
+  async function fetchRemoteData(pat) {
     const res = await fetch(`${GH_API}/contents/data.js?ref=${GH_BRANCH}`, {
       headers: { "Authorization": `token ${pat}`, "Accept": "application/vnd.github.raw+json" },
     });
-    if (res.status === 404) return []; // fresh repo, no data.js published yet — genuinely empty
+    if (res.status === 404) return { shoots: [], deletedIds: [] }; // fresh repo, no data.js published yet — genuinely empty
     if (!res.ok) throw new Error(`Could not read the published data.js (GitHub ${res.status}) — aborting to avoid overwriting other devices' shoots.`);
-    const parsed = parseShootsFromDataJs(await res.text());
+    const text = await res.text();
+    const parsed = parseShootsFromDataJs(text);
     if (parsed === null) throw new Error("Could not parse the published data.js — aborting to avoid overwriting other devices' shoots.");
-    return parsed;
+    return { shoots: parsed, deletedIds: parseDeletedIdsFromDataJs(text) };
   }
 
   const MIME_EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
@@ -1074,10 +1112,15 @@ window.moveAdminPackageRow = function(index, dir) {
 
       // Merge with the published shoots: local wins by id; shoots that only
       // exist remotely (added from another device) survive; deletes propagate.
-      const remote = await fetchRemoteShoots(pat); // throws -> caught below, sync aborts, nothing published
-      const removed = new Set(deletedIds);
+      const remote = await fetchRemoteData(pat); // throws -> caught below, sync aborts, nothing published
+      // Deletions are permanent across devices: union this call's deletions
+      // with this device's stored tombstones and the ones already published
+      // in data.js. Without the published set, a deletion only held for the
+      // one sync that carried it — any other device whose IndexedDB still
+      // had the album would innocently publish it right back.
+      const removed = new Set([...deletedIds, ...localTombstones(), ...remote.deletedIds]);
       const merged = new Map();
-      remote.forEach((s) => { if (s && s.id && !s.demo && !removed.has(s.id)) merged.set(s.id, s); });
+      remote.shoots.forEach((s) => { if (s && s.id && !s.demo && !removed.has(s.id)) merged.set(s.id, s); });
       shootsList.forEach((s) => { if (s && s.id && !s.demo && !removed.has(s.id)) merged.set(s.id, s); });
       const shoots = [...merged.values()];
 
@@ -1140,7 +1183,7 @@ window.moveAdminPackageRow = function(index, dir) {
    nerdyphotographer.in — published portfolio data
    Auto-synced by the Admin Panel. Photo files live under photos/.
    ============================================================ */
-window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: published, CALENDAR_SETTINGS: (window.WPS_DATA && window.WPS_DATA.CALENDAR_SETTINGS) || {} }, null, 2)};
+window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: published, DELETED_IDS: [...removed].sort(), CALENDAR_SETTINGS: (window.WPS_DATA && window.WPS_DATA.CALENDAR_SETTINGS) || {} }, null, 2)};
 
 // Explicit Global Aliases for Data Safety
 window.ACTIVITIES = window.WPS_DATA.ACTIVITIES || [];
@@ -1161,7 +1204,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       }
       // Independent shrink check: never publish fewer albums than are live
       // unless each missing one was explicitly deleted this session.
-      const keptRemote = remote.filter(s => s && s.id && !s.demo && !removed.has(s.id)).length;
+      const keptRemote = remote.shoots.filter(s => s && s.id && !s.demo && !removed.has(s.id)).length;
       if (published.length < keptRemote) {
         throw new Error(`Sync aborted: it would silently remove ${keptRemote - published.length} published album(s) that were not explicitly deleted. Nothing was changed.`);
       }
@@ -1182,9 +1225,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       });
       await ghApi(pat, `/git/refs/heads/${GH_BRANCH}`, { method: "PATCH", body: JSON.stringify({ sha: commit.sha }) });
 
-      // Bring this browser up to date with the merged result (photo URLs and
-      // any shoots that only existed on the other device).
+      // Bring this browser up to date with the merged result (photo URLs,
+      // shoots that only existed on the other device, and the full published
+      // tombstone list so this session's merges retire remotely-deleted
+      // albums immediately).
       try {
+        if (window.WPS_DATA) window.WPS_DATA.DELETED_IDS = [...removed].sort();
         for (const s of shoots) await putShoot(s);
         await loadShoots();
         render();
@@ -9561,14 +9607,18 @@ RAW files are not provided.`
     try {
       const res = await fetch(`data.js?fresh=${Date.now()}`, { cache: "no-store" });
       if (!res.ok) return;
-      const fresh = parseShootsFromDataJs(await res.text());
+      const text = await res.text();
+      const fresh = parseShootsFromDataJs(text);
       // A background refresh must never blank a page that is already showing
       // albums — an empty parse here is far more likely a parser/network
       // regression than a portfolio someone intentionally emptied, and the
       // genuinely-empty case corrects itself on the next full page load.
       if (!fresh || !fresh.length || !usingDemo) return;
-      if (JSON.stringify(fresh) === JSON.stringify(window.WPS_DATA.DEMO_SHOOTS)) return;
+      const freshDeleted = parseDeletedIdsFromDataJs(text);
+      if (JSON.stringify(fresh) === JSON.stringify(window.WPS_DATA.DEMO_SHOOTS) &&
+          JSON.stringify(freshDeleted) === JSON.stringify(window.WPS_DATA.DELETED_IDS || [])) return;
       window.WPS_DATA.DEMO_SHOOTS = fresh;
+      window.WPS_DATA.DELETED_IDS = freshDeleted;
       await loadShoots();
       render();
     } catch { /* offline or unparsable — keep what we have */ }
@@ -9726,7 +9776,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=251').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=252').catch(() => {});
   });
 }
 

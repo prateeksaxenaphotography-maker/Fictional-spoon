@@ -41,13 +41,12 @@ for (const s of shoots) {
 }
 
 // ── 3. parser parity: the app's real parser must read the real data.js ─────
-// Extract parseShootsFromDataJs from app.js verbatim (string/comment-aware
-// brace matching) and run it, so what CI tests is what browsers execute.
+// Extract the parser functions from app.js verbatim (string/comment-aware
+// brace matching) and run them, so what CI tests is what browsers execute.
 const appText = readFileSync("app.js", "utf8");
-const fnStart = appText.indexOf("function parseShootsFromDataJs");
-if (fnStart === -1) {
-  fail("parseShootsFromDataJs not found in app.js");
-} else {
+function extractFunction(name) {
+  const fnStart = appText.indexOf("function " + name);
+  if (fnStart === -1) throw new Error(name + " not found in app.js");
   const braceStart = appText.indexOf("{", fnStart);
   let depth = 0, i = braceStart, mode = null; // mode: ', ", `, //, /*
   for (; i < appText.length; i++) {
@@ -65,15 +64,22 @@ if (fnStart === -1) {
     if (c === "{") depth++;
     else if (c === "}" && --depth === 0) break;
   }
-  try {
-    const parser = new Function("return " + appText.slice(fnStart, i + 1))();
-    const parsed = parser(dataText);
-    if (!parsed) fail("app.js parser returned null for the current data.js — visitors would see no albums");
-    else if (parsed.length !== shoots.length) fail(`parser/data drift: app.js parser sees ${parsed.length} album(s) but data.js holds ${shoots.length}`);
-    else console.log(`parser parity OK (${parsed.length} albums)`);
-  } catch (e) {
-    fail("could not run app.js parser: " + e.message);
+  return appText.slice(fnStart, i + 1);
+}
+try {
+  const src = ["parseArrayAfterKey", "parseShootsFromDataJs", "parseDeletedIdsFromDataJs"].map(extractFunction).join("\n");
+  const api = new Function(src + "\nreturn { parseShootsFromDataJs, parseDeletedIdsFromDataJs };")();
+  const parsed = api.parseShootsFromDataJs(dataText);
+  if (!parsed) fail("app.js parser returned null for the current data.js — visitors would see no albums");
+  else if (parsed.length !== shoots.length) fail(`parser/data drift: app.js parser sees ${parsed.length} album(s) but data.js holds ${shoots.length}`);
+  else console.log(`parser parity OK (${parsed.length} albums)`);
+  const parsedDeleted = api.parseDeletedIdsFromDataJs(dataText);
+  const declaredDeleted = Array.isArray(win.WPS_DATA.DELETED_IDS) ? win.WPS_DATA.DELETED_IDS : [];
+  if (parsedDeleted.length !== declaredDeleted.length) {
+    fail(`tombstone drift: app.js parser sees ${parsedDeleted.length} deleted id(s) but data.js declares ${declaredDeleted.length}`);
   }
+} catch (e) {
+  fail("could not run app.js parsers: " + e.message);
 }
 
 // ── 4. album count must not silently collapse vs the previous commit ───────
@@ -92,6 +98,18 @@ try {
 // ── 5. format contract both the parser and the sync generator rely on ──────
 if (!dataText.includes('"DEMO_SHOOTS"')) fail('data.js is missing the quoted "DEMO_SHOOTS" key the app parser anchors on');
 if (!dataText.includes("window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS")) fail("data.js is missing the trailing window.* alias lines");
+
+// ── 6. deletion tombstones: valid shape, and never contradicting the albums ─
+const deleted = win.WPS_DATA.DELETED_IDS;
+if (deleted !== undefined) {
+  if (!Array.isArray(deleted) || deleted.some((x) => typeof x !== "string")) {
+    fail("WPS_DATA.DELETED_IDS must be an array of shoot-id strings");
+  } else {
+    for (const id of deleted) {
+      if (ids.has(id)) fail(`album ${id} is published AND tombstoned in DELETED_IDS — a deleted album must not ship in DEMO_SHOOTS`);
+    }
+  }
+}
 
 if (failed) process.exit(1);
 console.log(`OK: ${shoots.length} albums, ids unique, all photo files present, format contract intact.`);
