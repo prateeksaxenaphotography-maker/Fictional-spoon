@@ -5092,7 +5092,7 @@ RAW files are not provided.`
                       <option value="Custom Timings">⏰ Custom Timings (Pick Call &amp; Wrap Time)</option>
                     </select>
                   </label>
-                  <label class="field"><span>Shoot Location / Venue Address *</span><input id="b_location" type="text" required placeholder="e.g. Studio Space, Noida Sector 46 (home studio) / Outdoor Delhi NCR" /></label>
+                  <label class="field"><span>Shoot Location / Venue Address *</span><input id="b_location" type="text" required placeholder="" /></label>
                 </div>
 
                 <div id="b_custom_time_wrap" style="display: none; background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
@@ -9320,6 +9320,6 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=225').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=226').catch(() => {});
   });
 }
