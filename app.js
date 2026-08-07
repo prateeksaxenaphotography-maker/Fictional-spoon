@@ -111,12 +111,40 @@ function markUnsavedChanges() {
   }
 }
 
+window.getAdminInviteCodes = function() {
+  if (window.adminDraftInviteCodes && Array.isArray(window.adminDraftInviteCodes)) {
+    // Return deduplicated array
+    window.adminDraftInviteCodes = Array.from(new Set(window.adminDraftInviteCodes));
+    return window.adminDraftInviteCodes;
+  }
+  try {
+    const saved = localStorage.getItem("wps_custom_invite_codes");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        window.adminDraftInviteCodes = Array.from(new Set(parsed));
+        return window.adminDraftInviteCodes;
+      }
+    }
+  } catch(e) {}
+  try {
+    const legacy = localStorage.getItem("wps_custom_invite_code");
+    if (legacy) {
+      window.adminDraftInviteCodes = Array.from(new Set([legacy, "NERDY-INVITE", "INVITE2026", "NERDYVIP"]));
+      return window.adminDraftInviteCodes;
+    }
+  } catch(e) {}
+  window.adminDraftInviteCodes = ["NERDY-INVITE", "INVITE2026", "NERDYVIP", "STUDIOINVITE", "VIP2026"];
+  return window.adminDraftInviteCodes;
+};
+
 window.addNewAdminInviteCode = function() {
   const newCode = prompt("Enter New Photographer Direct Invite Code (e.g. MODELVIP):")?.trim().toUpperCase();
   if (!newCode) return;
   if (newCode.length < 3) { alert("Invite code must be at least 3 characters!"); return; }
   const current = window.getAdminInviteCodes();
-  if (!current.includes(newCode)) current.unshift(newCode);
+  const updated = Array.from(new Set([newCode, ...current]));
+  window.adminDraftInviteCodes = updated;
   markUnsavedChanges();
   if (typeof toast === "function") toast(`🔑 Invite Code '${newCode}' added to draft (Click "Save All Changes" to push live)`);
   if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
@@ -125,18 +153,14 @@ window.addNewAdminInviteCode = function() {
 window.editAdminInviteCode = function(oldCode) {
   const currentCodes = window.getAdminInviteCodes();
   const targetCode = oldCode || currentCodes[0] || "NERDY-INVITE";
-  const updated = prompt("Edit Photographer Direct Invite Code String:", targetCode)?.trim().toUpperCase();
-  if (!updated) return;
-  if (updated.length < 3) { alert("Invite code must be at least 3 characters!"); return; }
+  const updatedName = prompt("Edit Photographer Direct Invite Code String:", targetCode)?.trim().toUpperCase();
+  if (!updatedName) return;
+  if (updatedName.length < 3) { alert("Invite code must be at least 3 characters!"); return; }
   
-  const idx = currentCodes.indexOf(targetCode);
-  if (idx !== -1) {
-    currentCodes[idx] = updated;
-  } else {
-    currentCodes.unshift(updated);
-  }
+  const updated = currentCodes.map(c => c === targetCode ? updatedName : c);
+  window.adminDraftInviteCodes = Array.from(new Set(updated));
   markUnsavedChanges();
-  if (typeof toast === "function") toast(`🔑 Invite Code updated to '${updated}' in draft (Click "Save All Changes" to push live)`);
+  if (typeof toast === "function") toast(`🔑 Invite Code updated to '${updatedName}' in draft (Click "Save All Changes" to push live)`);
   if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
 };
 
@@ -147,7 +171,7 @@ window.generateRandomAdminInviteCode = function() {
   const generated = `${randomPrefix}-${randomNum}`;
   
   const current = window.getAdminInviteCodes();
-  current.unshift(generated);
+  window.adminDraftInviteCodes = Array.from(new Set([generated, ...current]));
   markUnsavedChanges();
   if (typeof toast === "function") toast(`🎲 Auto-generated VIP Code '${generated}' in draft (Click "Save All Changes" to push live)`);
   if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
@@ -160,8 +184,8 @@ window.deleteAdminInviteCode = function(codeToDelete) {
     return;
   }
   if (confirm(`Remove invite code '${codeToDelete}' from draft?`)) {
-    const idx = current.indexOf(codeToDelete);
-    if (idx !== -1) current.splice(idx, 1);
+    const updated = current.filter(c => c !== codeToDelete);
+    window.adminDraftInviteCodes = Array.from(new Set(updated));
     markUnsavedChanges();
     if (typeof toast === "function") toast(`🗑️ Invite code '${codeToDelete}' removed from draft.`);
     if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
@@ -9619,7 +9643,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=236').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=237').catch(() => {});
   });
 }
 
