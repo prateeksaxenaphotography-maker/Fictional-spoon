@@ -3452,26 +3452,28 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         });
       });
 
-      allBookings.sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+      // Calculate today's YYYY-MM-DD
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const todayKey = `${yyyy}-${mm}-${dd}`;
 
-      if (countBadge) countBadge.textContent = `${allBookings.length} Total Booking${allBookings.length !== 1 ? "s" : ""}`;
+      // Separate into Upcoming (today onwards) vs Past (before today)
+      const upcomingBookings = allBookings.filter(b => b.dateKey >= todayKey).sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+      const pastBookings = allBookings.filter(b => b.dateKey < todayKey).sort((a, b) => b.dateKey.localeCompare(a.dateKey));
 
-      if (!allBookings.length) {
-        rosterGrid.innerHTML = `
-          <div style="grid-column: 1 / -1; padding: 32px; text-align: center; color: var(--ink-soft); font-family: var(--mono-font); font-size: var(--font-sm); background: var(--bone); border-radius: var(--r-sm);">
-            No upcoming client bookings recorded yet. Click any date on the calendar above or use "+ Add Manual Booking".
-          </div>
-        `;
-        return;
+      if (countBadge) {
+        countBadge.textContent = `${upcomingBookings.length} Active Upcoming · ${pastBookings.length} Past Completed`;
       }
 
-      rosterGrid.innerHTML = allBookings.map(b => `
-        <div class="booking-card">
+      const renderBookingCardHtml = (b, isPast = false) => `
+        <div class="booking-card"${isPast ? ' style="opacity: 0.78; background: rgba(0,0,0,0.02);"' : ''}>
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
-            <div class="booking-card-date">📅 ${esc(b.dateKey)}</div>
+            <div class="booking-card-date">📅 ${esc(b.dateKey)} ${isPast ? '<span style="font-size:9px; background:var(--bone); border:1px solid var(--line); color:var(--ink-soft); padding:1px 5px; border-radius:4px; margin-left:4px;">PAST COMPLETED</span>' : ''}</div>
             <div style="display:flex; gap:6px; align-items:center;">
-              ${b.status === "workshop" ? `<span style="background: rgba(249,168,37,0.15); border: 1px solid rgba(249,168,37,0.5); border-radius: 4px; padding: 2px 7px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #f9a825;">📚 Workshop</span>` : b.status === "assisting" ? `<span style="background: rgba(0,137,123,0.15); border: 1px solid rgba(0,137,123,0.5); border-radius: 4px; padding: 2px 7px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #00897b;">🤝 Assisting</span>` : (b.isTentative || b.status === "tentative") ? `<span style="background: rgba(255,152,0,0.15); border: 1px solid rgba(255,152,0,0.5); border-radius: 4px; padding: 2px 7px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #f57c00;">⏳ Anticipated Hold</span>` : `<span style="background: rgba(46,125,50,0.15); border: 1px solid rgba(46,125,50,0.5); border-radius: 4px; padding: 2px 7px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #2e7d32;">✓ Confirmed</span>`}
-              <span style="background:var(--bone); border:1px solid var(--line); border-radius:4px; padding:2px 7px; font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; color:var(--accent);">⏱️ ${esc(b.duration || "Full Day")}</span>
+              ${b.status === "workshop" ? `<span style="background: rgba(249,168,37,0.15); border: 1px solid rgba(249,168,37,0.5); border-radius: 4px; padding: 2px 7px; font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: #f9a825;">📚 Workshop</span>` : b.status === "assisting" ? `<span style="background: rgba(0,137,123,0.15); border: 1px solid rgba(0,137,123,0.5); border-radius: 4px; padding: 2px 7px; font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: #00897b;">🤝 Assisting</span>` : (b.isTentative || b.status === "tentative") ? `<span style="background: rgba(255,152,0,0.15); border: 1px solid rgba(255,152,0,0.5); border-radius: 4px; padding: 2px 7px; font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: #f57c00;">⏳ Anticipated Hold</span>` : `<span style="background: rgba(46,125,50,0.15); border: 1px solid rgba(46,125,50,0.5); border-radius: 4px; padding: 2px 7px; font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: #2e7d32;">✓ Confirmed</span>`}
+              <span style="background:var(--bone); border:1px solid var(--line); border-radius:4px; padding:2px 7px; font-family:var(--mono-font); font-size:10px; font-weight:700; color:var(--accent);">⏱️ ${esc(b.duration || "Full Day")}</span>
             </div>
           </div>
           <h3 class="booking-card-name" style="margin-top:6px;">${esc(b.name)}</h3>
@@ -3483,7 +3485,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             <div class="booking-card-detail" style="margin-top:8px;">
               <strong>Reference Links (${b.links.length}):</strong>
               <div style="display:flex; flex-direction:column; gap:3px; margin-top:3px;">
-                ${b.links.map(l => `<a href="${esc(l)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent); word-break:break-all; font-family:var(--mono-font); font-size: var(--font-xs);">🔗 ${esc(l)} ↗</a>`).join("")}
+                ${b.links.map(l => `<a href="${esc(l)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent); word-break:break-all; font-family:var(--mono-font); font-size:11px;">🔗 ${esc(l)} ↗</a>`).join("")}
               </div>
             </div>
           ` : ""}
@@ -3491,11 +3493,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             <div class="booking-card-detail" style="margin-top:8px;">
               <strong>Attachments (${b.attachments.length}):</strong>
               <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:4px;">
-                ${b.attachments.map(att => `<a href="${esc(att.dataUrl)}" download="${esc(att.name)}" target="_blank" style="display:inline-flex; align-items:center; gap:4px; background:var(--bone); border:1px solid var(--line); border-radius:4px; padding:4px 8px; font-family:var(--mono-font); font-size: var(--font-xs); color:var(--ink); text-decoration:none;">📄 ${esc(att.name)} (${Math.round(att.size/1024)} KB) ⬇</a>`).join("")}
+                ${b.attachments.map(att => `<a href="${esc(att.dataUrl)}" download="${esc(att.name)}" target="_blank" style="display:inline-flex; align-items:center; gap:4px; background:var(--bone); border:1px solid var(--line); border-radius:4px; padding:4px 8px; font-family:var(--mono-font); font-size:10px; color:var(--ink); text-decoration:none;">📄 ${esc(att.name)} (${Math.round(att.size/1024)} KB) ⬇</a>`).join("")}
               </div>
             </div>
           ` : ""}
-          <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--line); font-size: var(--font-xs); color: var(--ink-soft); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
+          <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--line); font-size: 11px; color: var(--ink-soft); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
             <span>${(() => {
               const isNonContract = (b.type === "Assisting Photographer" || b.type === "Workshop Attended" || (b.title && (b.title.includes("Assisting") || b.title.includes("Workshop"))));
               if (isNonContract) {
@@ -3510,17 +3512,50 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
               const isNonContract = (b.type === "Assisting Photographer" || b.type === "Workshop Attended" || (b.title && (b.title.includes("Assisting") || b.title.includes("Workshop"))));
               if (isNonContract) return '';
               const v = b.contractVersion || (b.agreedToTerms ? "V3.2" : "Pending Agreement");
-              return (v !== "Pending Agreement" && v !== "Custom Contract") ? `<button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('${esc(v)}')" style="font-size: var(--font-xs); padding: 3px 8px;">View Terms Text ↗</button>` : '';
+              return (v !== "Pending Agreement" && v !== "Custom Contract") ? `<button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('${esc(v)}')" style="font-size: 9px; padding: 3px 8px;">View Terms Text ↗</button>` : '';
             })()}
           </div>
           <div style="margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap;">
-            <button type="button" class="admin-cal-btn primary" onclick="window.openEditBookingModal('${b.dateKey}', '${b.id}')" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 14px; background: var(--accent); color: #fff; border: 1px solid var(--accent); border-radius: 4px; cursor: pointer;">✏️ Edit Booking</button>
-            <button type="button" class="admin-cal-btn" onclick="window.removeBookingFromRoster('${b.dateKey}', '${b.id}')" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 14px; color: #ff4d4d; border: 1px solid rgba(255,77,77,0.4); background: rgba(255,77,77,0.1); border-radius: 4px; cursor: pointer;">Cancel Booking</button>
+            <button type="button" class="admin-cal-btn primary" onclick="window.openEditBookingModal('${b.dateKey}', '${b.id}')" style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 14px; background: var(--accent); color: #fff; border: 1px solid var(--accent); border-radius: 4px; cursor: pointer;">✏️ Edit Booking</button>
+            <button type="button" class="admin-cal-btn" onclick="window.removeBookingFromRoster('${b.dateKey}', '${b.id}')" style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 14px; color: #ff4d4d; border: 1px solid rgba(255,77,77,0.4); background: rgba(255,77,77,0.1); border-radius: 4px; cursor: pointer;">Cancel Booking</button>
           </div>
         </div>
-      `).join("");
-    }
+      `;
 
+      if (!upcomingBookings.length) {
+        rosterGrid.innerHTML = `
+          <div style="grid-column: 1 / -1; padding: 24px; text-align: center; color: var(--ink-soft); font-family: var(--mono-font); font-size: 12px; background: var(--bone); border-radius: var(--r-sm); border: 1px dashed var(--line);">
+            ✅ No upcoming client bookings recorded from today onwards (${todayKey}). All past bookings are listed in the Past Completed Archive below.
+          </div>
+        `;
+      } else {
+        rosterGrid.innerHTML = upcomingBookings.map(b => renderBookingCardHtml(b, false)).join("");
+      }
+
+      // Render Past Completed Bookings Archive if any exist
+      let pastArchiveSection = document.getElementById("pastBookingsArchiveSec");
+      if (!pastArchiveSection) {
+        pastArchiveSection = document.createElement("div");
+        pastArchiveSection.id = "pastBookingsArchiveSec";
+        pastArchiveSection.style.cssText = "margin-top: 36px; border-top: 1px solid var(--line); padding-top: 24px;";
+        rosterGrid.parentNode.appendChild(pastArchiveSection);
+      }
+
+      if (pastBookings.length) {
+        pastArchiveSection.innerHTML = `
+          <details style="width: 100%;">
+            <summary style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; color: var(--ink-soft); cursor: pointer; padding: 8px 0; user-select: none;">
+              📜 Past Completed Shoots &amp; Bookings Archive (${pastBookings.length} Completed)
+            </summary>
+            <div class="booking-roster-grid" style="margin-top: 16px;">
+              ${pastBookings.map(b => renderBookingCardHtml(b, true)).join("")}
+            </div>
+          </details>
+        `;
+      } else {
+        pastArchiveSection.innerHTML = "";
+      }
+    }
     window.removeBookingFromRoster = (dKey, bId) => {
       if (confirm(`Are you sure you want to remove this booking for ${dKey}?`)) {
         removeCalBooking(dKey, bId);
