@@ -347,11 +347,14 @@ window.deleteAdminInviteCode = function(codeToDelete) {
     alert("You must keep at least 1 active invite code!");
     return;
   }
-  if (confirm(`Remove invite code '${codeToDelete}' from draft?`)) {
-    const updated = current.filter(x => x.code !== codeToDelete);
+  const getItemCodeStr = (item) => (typeof item === "object" ? (item.code || "") : String(item)).trim().toUpperCase();
+  const targetUpper = (codeToDelete || "").trim().toUpperCase();
+  
+  if (confirm(`Remove invite code '${targetUpper}' from draft?`)) {
+    const updated = current.filter(x => getItemCodeStr(x) !== targetUpper);
     window.adminDraftInviteCodes = updated;
     markUnsavedChanges();
-    if (typeof toast === "function") toast(`🗑️ Invite code '${codeToDelete}' removed from draft.`);
+    if (typeof toast === "function") toast(`🗑️ Invite code '${targetUpper}' removed from draft.`);
     if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
   }
 };
@@ -3233,7 +3236,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
                 <div style="background: var(--bone); border: 1px solid var(--accent); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-family: var(--mono-font);">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
             <h3 style="font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: var(--ink); margin: 0; display: flex; align-items: center; gap: 8px;">
-              ⚙️ Studio Package Rates &amp; Deliverables Editor (No-Code Admin Control)
+              ⚙️ Studio Package Rates &amp; Deliverables Editor
             </h3>
             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
               <span id="adminPricingSaveStatus" style="font-size: 11px; font-weight: 700; color: #059669; background: rgba(5,150,105,0.12); padding: 4px 10px; border-radius: 12px; border: 1px solid #059669; font-family: var(--mono-font); transition: all 0.3s ease;">🟢 ALL CHANGES SAVED TO LIVE SITE</span>
@@ -3249,9 +3252,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
         <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-family: var(--mono-font); font-size: 11px;">
           <div style="font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-            <span style="display: flex; align-items: center; gap: 8px;">🎟️ Studio Promotional Discount &amp; Invite Codes Manager (No-Code Admin Control)</span>
+            <span style="display: flex; align-items: center; gap: 8px;">🎟️ Studio Promotional Discount &amp; Invite Codes Manager</span>
             <div style="display: flex; gap: 8px; align-items: center;">
-              <button type="button" onclick="window.copyInviteCodeToClipboard()" style="font-size: 11px; color: var(--accent); font-weight: 700; background: rgba(255,69,0,0.1); padding: 4px 12px; border-radius: 12px; border: 1px solid var(--accent); cursor: pointer; font-family: var(--mono-font);" title="Click to copy invite code">🔑 Copy Invite Code</button>
               <button type="button" class="admin-cal-btn primary" onclick="window.addNewAdminPromoCode()" style="font-size: 11px; padding: 4px 12px; font-weight: 700;">+ Add New Promo Code</button>
             </div>
           </div>
@@ -9785,7 +9787,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=239').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=240').catch(() => {});
   });
 }
 
