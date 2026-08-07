@@ -4920,7 +4920,15 @@ RAW files are not provided.`
              <fieldset>
                <legend>Shoot Details</legend>
 
-                <div style="margin-bottom: 12px; text-align: right;">
+                <!-- Dedicated Still Photography Specialization & Video Coverage Policy Notice -->
+                <div style="background: rgba(var(--accent-rgb), 0.04); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
+                  <div style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">📷 Still Photography Specialization &amp; Video Policy</div>
+                  <div style="font-size: 11px; color: var(--ink-soft); line-height: 1.5;">
+                    Studio packages &amp; rates are <strong>strictly dedicated to Still Photography creation</strong> (Commercial, Fashion, Editorial &amp; Portfolio). Video / Reels coverage is not included in standard packages. Clients may bring their own videographer or request studio assistance to source a freelance videographer for the session.
+                  </div>
+                </div>
+
+<div style="margin-bottom: 12px; text-align: right;">
                   <a id="toggleInviteCodeLink" href="javascript:void(0)" style="font-size: 11px; color: var(--ink-soft); text-decoration: underline; font-family: var(--mono-font); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">🔑 Have a direct photographer invite code? (Test Shoot)</a>
                 </div>
 
@@ -5061,6 +5069,10 @@ RAW files are not provided.`
                  <div style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px;">Studio Policies &amp; Terms · Please Read</div>
                  <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px;">
                    <li style="display: flex; gap: 10px; align-items: flex-start; font-size: 12.5px; line-height: 1.55; color: var(--ink-soft);">
+                      <span aria-hidden="true" style="flex: 0 0 20px; font-size: 15px; line-height: 1.4;">📷</span>
+                      <span><strong style="color: var(--ink);">Still Photography Specialization:</strong> Rates &amp; studio packages are <strong style="color: var(--ink);">strictly dedicated to Still Photography creation</strong>. Video / Reels coverage is excluded from standard packages. Clients may hire an external videographer or request studio assistance to source a freelance videographer for the session.</span>
+                    </li>
+<li style="display: flex; gap: 10px; align-items: flex-start; font-size: 12.5px; line-height: 1.55; color: var(--ink-soft);">
                      <span aria-hidden="true" style="flex: 0 0 20px; font-size: 15px; line-height: 1.4;">🏢</span>
                      <span><strong style="color: var(--ink);">Studio Rental:</strong> Package rates cover photography creation, light design &amp; master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are billed <strong style="color: var(--ink);">at actuals (at cost)</strong>, or the client may directly book their preferred studio space for the production.</span>
                    </li>
@@ -9191,6 +9203,6 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=216').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=217').catch(() => {});
   });
 }
