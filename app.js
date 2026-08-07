@@ -6527,6 +6527,7 @@ RAW files are not provided.`
       const enteredDiscount = (discountInput?.value || "").trim().toUpperCase();
       const matchedDiscount = discountCodesMap[enteredDiscount];
 
+      const btnDiscount = $("#btnApplyDiscountCode");
       if (discountStatus && savingsBadge) {
         if (enteredDiscount) {
           discountStatus.style.display = "inline-block";
@@ -6536,29 +6537,66 @@ RAW files are not provided.`
             discountStatus.textContent = `🟢 ${tagMsg} APPLIED`;
             savingsBadge.style.display = "block";
             savingsBadge.textContent = `🎉 Promo Offer Applied: You save ${tagMsg} on your selected package total!`;
+            if (btnDiscount) {
+              btnDiscount.textContent = "✕ Remove Code";
+              btnDiscount.style.background = "transparent";
+              btnDiscount.style.color = "var(--accent)";
+              btnDiscount.style.border = "1px solid var(--accent)";
+            }
           } else {
             discountStatus.style.color = "#dc2626";
             discountStatus.textContent = "🔴 INVALID PROMO CODE";
             savingsBadge.style.display = "none";
+            if (btnDiscount) {
+              btnDiscount.textContent = "Apply Code";
+              btnDiscount.style.background = "var(--accent)";
+              btnDiscount.style.color = "#ffffff";
+              btnDiscount.style.border = "none";
+            }
           }
         } else {
           discountStatus.style.display = "none";
           savingsBadge.style.display = "none";
+          if (btnDiscount) {
+            btnDiscount.textContent = "Apply Code";
+            btnDiscount.style.background = "var(--accent)";
+            btnDiscount.style.color = "#ffffff";
+            btnDiscount.style.border = "none";
+          }
         }
       }
 
+      const btnInvite = $("#btnApplyInviteCode");
       if (inviteStatus) {
         if (enteredCode) {
           inviteStatus.style.display = "inline-block";
           if (isValidInvite) {
             inviteStatus.style.color = "#059669";
             inviteStatus.textContent = "🟢 INVITE VERIFIED";
+            if (btnInvite) {
+              btnInvite.textContent = "✕ Remove Code";
+              btnInvite.style.background = "transparent";
+              btnInvite.style.color = "var(--accent)";
+              btnInvite.style.border = "1px solid var(--accent)";
+            }
           } else {
             inviteStatus.style.color = "#dc2626";
             inviteStatus.textContent = "🔴 INVALID CODE";
+            if (btnInvite) {
+              btnInvite.textContent = "Verify Code";
+              btnInvite.style.background = "var(--accent)";
+              btnInvite.style.color = "#ffffff";
+              btnInvite.style.border = "none";
+            }
           }
         } else {
           inviteStatus.style.display = "none";
+          if (btnInvite) {
+            btnInvite.textContent = "Verify Code";
+            btnInvite.style.background = "var(--accent)";
+            btnInvite.style.color = "#ffffff";
+            btnInvite.style.border = "none";
+          }
         }
       }
 
@@ -6625,15 +6663,15 @@ RAW files are not provided.`
       let finalPayable = Math.max(0, basePrice - savings);
 
       const finalPriceSummaryBox = $("#finalPriceSummaryBox");
-      const promoCodeRow = $("#b_discount_code")?.closest(".field-row");
+      const promoCodeWrap = $("#b_discount_code")?.closest(".field");
 
       if (type === "Selective Collaboration (TFP)") {
         if (finalPriceSummaryBox) finalPriceSummaryBox.style.display = "none";
-        if (promoCodeRow) promoCodeRow.style.display = "none";
+        if (promoCodeWrap) promoCodeWrap.style.display = "none";
         if (budgetField) budgetField.style.display = "none";
       } else {
         if (finalPriceSummaryBox) finalPriceSummaryBox.style.display = "block";
-        if (promoCodeRow) promoCodeRow.style.display = "";
+        if (promoCodeWrap) promoCodeWrap.style.display = "";
         if (budgetField) budgetField.style.display = "";
 
         if (summaryOriginalPrice) summaryOriginalPrice.textContent = `₹${basePrice.toLocaleString("en-IN")}`;
@@ -6693,8 +6731,23 @@ RAW files are not provided.`
       $("#b_discount_code")?.addEventListener(evtName, updateFields);
     });
 
-    $("#btnApplyDiscountCode")?.addEventListener("click", () => { updateFields(); const val = $("#b_discount_code")?.value.trim(); if (!val) alert("Please enter a promo code first!"); });
-    $("#btnApplyInviteCode")?.addEventListener("click", () => { updateFields(); const val = $("#b_invite_code")?.value.trim(); if (!val) alert("Please enter an invite code first!"); });
+    $("#btnApplyDiscountCode")?.addEventListener("click", () => {
+      const input = $("#b_discount_code");
+      const val = (input?.value || "").trim();
+      if (val) {
+        input.value = "";
+      }
+      updateFields();
+    });
+
+    $("#btnApplyInviteCode")?.addEventListener("click", () => {
+      const input = $("#b_invite_code");
+      const val = (input?.value || "").trim();
+      if (val) {
+        input.value = "";
+      }
+      updateFields();
+    });
     updateFields();
 
     function validate() {
@@ -8885,6 +8938,6 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=208').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=209').catch(() => {});
   });
 }
