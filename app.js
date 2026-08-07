@@ -60,21 +60,87 @@ window.addNewAdminPromoCode = function() {
   if (typeof render === "function") render();
 };
 
-window.getAdminInviteCode = function() {
+window.getAdminInviteCodes = function() {
   try {
-    const saved = localStorage.getItem("wps_custom_invite_code");
-    if (saved) return saved;
+    const saved = localStorage.getItem("wps_custom_invite_codes");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
   } catch(e) {}
-  return "NERDY-INVITE";
+  // Also check legacy single custom invite code
+  try {
+    const legacy = localStorage.getItem("wps_custom_invite_code");
+    if (legacy) return [legacy, "NERDY-INVITE", "INVITE2026", "NERDYVIP"];
+  } catch(e) {}
+  return ["NERDY-INVITE", "INVITE2026", "NERDYVIP", "STUDIOINVITE", "VIP2026"];
 };
 
-window.editAdminInviteCode = function() {
-  const current = window.getAdminInviteCode();
-  const updated = prompt("Enter new Photographer Direct Invite Code:", current)?.trim().toUpperCase();
+window.getAdminInviteCode = function() {
+  const list = window.getAdminInviteCodes();
+  return list[0] || "NERDY-INVITE";
+};
+
+window.addNewAdminInviteCode = function() {
+  const newCode = prompt("Enter New Photographer Direct Invite Code (e.g. MODELVIP):")?.trim().toUpperCase();
+  if (!newCode) return;
+  if (newCode.length < 3) { alert("Invite code must be at least 3 characters!"); return; }
+  const current = window.getAdminInviteCodes();
+  if (!current.includes(newCode)) current.unshift(newCode);
+  localStorage.setItem("wps_custom_invite_codes", JSON.stringify(current));
+  localStorage.setItem("wps_custom_invite_code", newCode);
+  if (typeof toast === "function") toast(`🔑 New Invite Code '${newCode}' created & saved!`);
+  if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
+  if (typeof render === "function") render();
+};
+
+window.deleteAdminInviteCode = function(codeToDelete) {
+  const current = window.getAdminInviteCodes();
+  if (current.length <= 1) {
+    alert("You must keep at least 1 active invite code!");
+    return;
+  }
+  if (confirm(`Delete invite code '${codeToDelete}'?`)) {
+    const updated = current.filter(c => c !== codeToDelete);
+    localStorage.setItem("wps_custom_invite_codes", JSON.stringify(updated));
+    if (updated[0]) localStorage.setItem("wps_custom_invite_code", updated[0]);
+    if (typeof toast === "function") toast(`🗑️ Invite code '${codeToDelete}' removed.`);
+    if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
+    if (typeof render === "function") render();
+  }
+};
+
+window.editAdminInviteCode = function(oldCode) {
+  const currentCodes = window.getAdminInviteCodes();
+  const targetCode = oldCode || currentCodes[0] || "NERDY-INVITE";
+  const updated = prompt("Edit Photographer Direct Invite Code String:", targetCode)?.trim().toUpperCase();
   if (!updated) return;
   if (updated.length < 3) { alert("Invite code must be at least 3 characters!"); return; }
+  
+  const idx = currentCodes.indexOf(targetCode);
+  if (idx !== -1) {
+    currentCodes[idx] = updated;
+  } else {
+    currentCodes.unshift(updated);
+  }
+  localStorage.setItem("wps_custom_invite_codes", JSON.stringify(currentCodes));
   localStorage.setItem("wps_custom_invite_code", updated);
-  if (typeof toast === "function") toast(`🔑 Photographer Invite Code updated to '${updated}'!`);
+  if (typeof toast === "function") toast(`🔑 Invite Code updated to '${updated}'!`);
+  if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
+  if (typeof render === "function") render();
+};
+
+window.generateRandomAdminInviteCode = function() {
+  const prefixes = ["VIP", "NERDY", "MODEL", "STUDIO", "TALENT", "SHOOT"];
+  const randomPrefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+  const randomNum = Math.floor(1000 + Math.random() * 9000);
+  const generated = `${randomPrefix}-${randomNum}`;
+  
+  const current = window.getAdminInviteCodes();
+  current.unshift(generated);
+  localStorage.setItem("wps_custom_invite_codes", JSON.stringify(current));
+  localStorage.setItem("wps_custom_invite_code", generated);
+  if (typeof toast === "function") toast(`🎲 Auto-generated new VIP Invite Code '${generated}'!`);
   if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
   if (typeof render === "function") render();
 };
@@ -2974,18 +3040,35 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           </div>
         `;
 
-        const inviteCardHtml = `
-          <div style="grid-column: 1 / -1; background: rgba(255, 69, 0, 0.08); border: 1.5px solid var(--accent); border-radius: 8px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        const allInviteCodes = typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : [activeInviteCode];
+        const inviteItemsHtml = allInviteCodes.map((codeStr, idx) => `
+          <div style="background: var(--paper); border: 1px solid var(--accent); border-radius: 6px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; box-shadow: var(--shadow-sm);">
             <div>
-              <div style="font-size: 10px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px;">🔑 Photographer Direct Invite Code (VIP / TFP Unlock)</div>
-              <div style="font-size: 14px; font-weight: 800; font-family: var(--mono-font); color: var(--ink);">
-                Active Code: <strong style="color: var(--accent); font-size: 16px; letter-spacing: 0.05em;">${esc(activeInviteCode)}</strong>
-                <span style="font-size: 11px; font-weight: 500; color: var(--ink-soft); font-family: inherit; margin-left: 8px;">(Unlocks direct Test Shoot / TFP option for invited talent on /book)</span>
+              <span style="font-size: 9px; font-weight: 800; color: var(--accent); text-transform: uppercase; font-family: var(--mono-font); display: block;">${idx === 0 ? '⭐ Primary Code' : '🔑 VIP Invite'}</span>
+              <strong style="font-size: 13px; font-family: var(--mono-font); color: var(--ink); letter-spacing: 0.04em;">${esc(codeStr)}</strong>
+            </div>
+            <div style="display: flex; gap: 4px; align-items: center;">
+              <button type="button" onclick="navigator.clipboard.writeText('${esc(codeStr)}'); if(typeof toast==='function') toast('📋 Invite Code ${esc(codeStr)} copied!'); else alert('Copied!');" style="background: var(--accent); color: #ffffff; border: none; padding: 4px 8px; border-radius: 4px; font-size: 9.5px; cursor: pointer; font-weight: 700; font-family: var(--mono-font);" title="Copy Invite Code">📋 Copy</button>
+              <button type="button" onclick="window.editAdminInviteCode('${esc(codeStr)}')" style="background: var(--bone); color: var(--ink); border: 1px solid var(--line); padding: 4px 6px; border-radius: 4px; font-size: 9.5px; cursor: pointer; font-weight: 700;" title="Edit Code">✏️ Edit</button>
+              <button type="button" onclick="window.deleteAdminInviteCode('${esc(codeStr)}')" style="background: rgba(255,77,77,0.1); color: #ff4d4d; border: 1px solid rgba(255,77,77,0.3); padding: 4px 6px; border-radius: 4px; font-size: 9.5px; cursor: pointer; font-weight: 700;" title="Delete Code">🗑️</button>
+            </div>
+          </div>
+        `).join("");
+
+        const inviteCardHtml = `
+          <div style="grid-column: 1 / -1; background: rgba(255, 69, 0, 0.06); border: 1.5px solid var(--accent); border-radius: 10px; padding: 16px 18px; margin-bottom: 6px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+              <div>
+                <div style="font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em;">🔑 Photographer Direct Invite Codes (VIP / TFP Unlock Manager)</div>
+                <div style="font-size: 11px; color: var(--ink-soft); margin-top: 2px;">Create, edit, auto-generate, or delete multiple active invite codes. Invited talent entering ANY active code on /book unlocks a Test Shoot / TFP session.</div>
+              </div>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button type="button" onclick="window.addNewAdminInviteCode()" class="admin-cal-btn primary" style="font-size: 11px; padding: 5px 12px; font-weight: 700;">➕ Add Custom Code</button>
+                <button type="button" onclick="window.generateRandomAdminInviteCode()" class="admin-cal-btn" style="font-size: 11px; padding: 5px 12px; font-weight: 700; border-color: var(--accent); color: var(--accent);">🎲 Auto-Generate Random VIP Code</button>
               </div>
             </div>
-            <div style="display: flex; gap: 8px; align-items: center;">
-              <button type="button" onclick="window.copyInviteCodeToClipboard()" style="background: var(--accent); color: #ffffff; border: none; padding: 7px 16px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: var(--mono-font); box-shadow: var(--shadow-sm);">📋 Copy Invite Code</button>
-              <button type="button" onclick="window.editAdminInviteCode()" style="background: var(--bone); color: var(--ink); border: 1px solid var(--line); padding: 7px 14px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;">✏️ Edit Invite Code</button>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px;">
+              ${inviteItemsHtml}
             </div>
           </div>
         `;
@@ -6822,11 +6905,11 @@ RAW files are not provided.`
       const testShootOpt = $("#b_type")?.querySelector('option[value="Selective Collaboration (TFP)"]');
       const inviteCodeInput = $("#b_invite_code");
       const inviteStatus = $("#inviteCodeStatus");
-      const activeAdminInvite = (typeof window.getAdminInviteCode === "function" ? window.getAdminInviteCode() : "NERDY-INVITE").toUpperCase();
+      const allAdminInvites = (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : ["NERDY-INVITE"]).map(c => c.toUpperCase());
       const enteredCode = (inviteCodeInput?.value || "").trim().toUpperCase();
       
-      // Verify against active admin invite code (e.g. NERDYTEST) or backup codes
-      const validInviteCodes = [activeAdminInvite, "NERDY-INVITE", "INVITE2026", "NERDYVIP", "STUDIOINVITE", "VIP2026"];
+      // Verify against ALL active admin invite codes (e.g. NERDYTEST, MODELVIP, etc.) or backup codes
+      const validInviteCodes = Array.from(new Set([...allAdminInvites, "NERDY-INVITE", "INVITE2026", "NERDYVIP", "STUDIOINVITE", "VIP2026"]));
       const isValidInvite = enteredCode ? (validInviteCodes.includes(enteredCode) || ["a0488e15", "107a6c92", "f8043214", "4fe5835e", "326d5752"].includes(hashFNV1a(enteredCode))) : false;
 
       // Promo Discount Codes Map
@@ -9320,6 +9403,6 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=226').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=227').catch(() => {});
   });
 }
