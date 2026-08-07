@@ -1219,7 +1219,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           }
           return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none; margin-right: 14px; display: inline-block;">${esc(label)}</a>`;
         }).join("");
-        igHtml = `<div><dt>Instagram</dt><dd>${links}</dd></div>`;
+        igHtml = links;
       }
     }
 
@@ -1244,7 +1244,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           }
           return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none; margin-right: 14px; display: inline-block;">${esc(label)}</a>`;
         }).join("");
-        kavyarHtml = `<div><dt>Kavyar</dt><dd>${links}</dd></div>`;
+        kavyarHtml = links;
       }
     }
 
@@ -1347,10 +1347,14 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     if (shoot.talent && shoot.talent !== "—") {
       const items = shoot.talent.split(",").map(item => item.trim()).filter(Boolean);
       items.forEach(item => {
-        const rendered = isCcPage ? esc(getTalentCleanName(item)) : renderCreditValue(item);
+        let rendered = isCcPage ? esc(getTalentCleanName(item)) : renderCreditValue(item);
+        // If talent string doesn't contain a link but shoot.instagram exists, attach igHtml right beside the name!
+        if (igHtml && !rendered.includes("href=") && !rendered.includes("@")) {
+          rendered += ` <span style="margin-left: 6px;">${igHtml}</span>`;
+        }
         talentList.push(`
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; padding: 4px 0; border-bottom: 1px dashed var(--line);">
-            <div style="font-size: 12.5px; font-weight: 700; color: var(--ink);">${rendered}</div>
+            <div style="font-size: 12.5px; font-weight: 700; color: var(--ink); display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">${rendered}</div>
             <span style="font-family: var(--mono-font); font-size: 9px; font-weight: 800; background: rgba(5, 150, 105, 0.12); color: #059669; border: 1px solid rgba(5, 150, 105, 0.25); padding: 2px 6px; border-radius: 4px; text-transform: uppercase; white-space: nowrap;">MODEL</span>
           </div>
         `);
@@ -1427,15 +1431,15 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     }
 
     // Direct Social Handles Tag Credits Card (Instagram & Kavyar)
-    if (igHtml || kavyarHtml) {
+    if ((igHtml || kavyarHtml) && (!talentList.length || !talentList[0].includes("href="))) {
       creditsSections.push(`
         <div>
           <div style="font-family: var(--mono-font); font-size: 10px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
-            <span>📱 Production Social Tags</span>
+            <span>📱 Social Handle Tags</span>
           </div>
-          <div style="display: flex; flex-direction: column; gap: 6px; font-size: 11.5px;">
-            ${igHtml ? `<div style="display: flex; gap: 6px; align-items: center;"><strong style="color: var(--ink-soft); font-size: 10px;">INSTAGRAM:</strong> ${igHtml}</div>` : ""}
-            ${kavyarHtml ? `<div style="display: flex; gap: 6px; align-items: center;"><strong style="color: var(--ink-soft); font-size: 10px;">KAVYAR:</strong> ${kavyarHtml}</div>` : ""}
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; font-size: 11.5px; align-items: center;">
+            ${igHtml ? `<div>${igHtml}</div>` : ""}
+            ${kavyarHtml ? `<div>${kavyarHtml}</div>` : ""}
           </div>
         </div>
       `);
@@ -9615,7 +9619,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=234').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=235').catch(() => {});
   });
 }
 
