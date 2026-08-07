@@ -47,6 +47,14 @@ function isRateLimited(ip) {
   rateLimitHits.set(ip, hits);
   return hits.length > RATE_LIMIT_MAX;
 }
+// Same leak fix as logController: per-key pruning alone never removes an
+// IP's entry, so the map grew unbounded (one key per unique visitor IP).
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, hits] of rateLimitHits) {
+    if (!hits.some((t) => now - t < RATE_LIMIT_WINDOW_MS)) rateLimitHits.delete(ip);
+  }
+}, RATE_LIMIT_WINDOW_MS).unref();
 
 const MAX_FIELD_LEN = 200;
 const clean = (v) => String(v || "").trim().slice(0, MAX_FIELD_LEN);
