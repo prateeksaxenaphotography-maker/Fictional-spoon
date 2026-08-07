@@ -60,12 +60,79 @@ window.addNewAdminPromoCode = function() {
   if (typeof render === "function") render();
 };
 
+window.getAdminInviteCode = function() {
+  try {
+    const saved = localStorage.getItem("wps_custom_invite_code");
+    if (saved) return saved;
+  } catch(e) {}
+  return "NERDY-INVITE";
+};
+
+window.editAdminInviteCode = function() {
+  const current = window.getAdminInviteCode();
+  const updated = prompt("Enter new Photographer Direct Invite Code:", current)?.trim().toUpperCase();
+  if (!updated) return;
+  if (updated.length < 3) { alert("Invite code must be at least 3 characters!"); return; }
+  localStorage.setItem("wps_custom_invite_code", updated);
+  if (typeof toast === "function") toast(`🔑 Photographer Invite Code updated to '${updated}'!`);
+  if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
+  if (typeof render === "function") render();
+};
+
+window.copyInviteCodeToClipboard = function() {
+  const inviteCode = window.getAdminInviteCode();
+  navigator.clipboard.writeText(inviteCode).then(() => {
+    if (typeof toast === "function") toast(`📋 Invite Code '${inviteCode}' copied to clipboard!`);
+    else alert(`📋 Invite Code '${inviteCode}' copied to clipboard!`);
+  }).catch(() => {
+    alert(`Photographer Invite Code: ${inviteCode}`);
+  });
+};
+
+window.editAdminPromoCode = function(codeKey) {
+  const currentCodes = getAdminPromoCodes();
+  const item = currentCodes[codeKey] || {};
+
+  const newCodeName = prompt("Edit Promo Code String (e.g. SUMMER30):", codeKey)?.trim().toUpperCase();
+  if (!newCodeName) return;
+  if (newCodeName.length < 3) { alert("Promo code must be at least 3 characters!"); return; }
+
+  const currentType = item.flat ? "2" : "1";
+  const typeChoice = prompt("Select Discount Type:\nType '1' for Percentage (%)\nType '2' for Flat Amount (INR ₹):", currentType);
+  if (!typeChoice) return;
+
+  let pct = 0, flat = 0;
+  if (typeChoice.trim() === "1") {
+    const valStr = prompt("Enter Percentage Discount (1 to 90%):", item.pct || "20");
+    pct = parseInt(valStr, 10);
+    if (isNaN(pct) || pct <= 0 || pct > 90) { alert("Invalid percentage!"); return; }
+  } else {
+    const valStr = prompt("Enter Flat Discount Amount in INR ₹ (e.g. 1000):", item.flat || "1000");
+    flat = parseInt(valStr, 10);
+    if (isNaN(flat) || flat <= 0) { alert("Invalid amount!"); return; }
+  }
+
+  const defaultDesc = pct ? `${pct}% Off Special Discount` : `Flat ₹${flat.toLocaleString('en-IN')} Off Instant Savings`;
+  const labelDesc = prompt("Enter Short Description:", item.label || defaultDesc) || defaultDesc;
+
+  if (newCodeName !== codeKey) {
+    delete currentCodes[codeKey];
+  }
+  currentCodes[newCodeName] = pct ? { pct, label: labelDesc, isCustom: true } : { flat, label: labelDesc, isCustom: true };
+  localStorage.setItem("wps_custom_promo_codes", JSON.stringify(currentCodes));
+
+  if (typeof toast === "function") toast(`✏️ Promo Code '${newCodeName}' updated!`);
+  if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
+  if (typeof render === "function") render();
+};
+
 window.deleteAdminPromoCode = function(codeName) {
   if (confirm(`Are you sure you want to delete promo code '${codeName}'?`)) {
     const currentCodes = getAdminPromoCodes();
     delete currentCodes[codeName];
     localStorage.setItem("wps_custom_promo_codes", JSON.stringify(currentCodes));
-    alert(`Promo code '${codeName}' removed.`);
+    if (typeof toast === "function") toast(`🗑️ Promo code '${codeName}' deleted.`);
+    if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
     if (typeof render === "function") render();
   }
 };
@@ -2678,7 +2745,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <div style="font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
             <span style="display: flex; align-items: center; gap: 8px;">🎟️ Studio Promotional Discount &amp; Invite Codes Manager (No-Code Admin Control)</span>
             <div style="display: flex; gap: 8px; align-items: center;">
-              <span style="font-size: 11px; color: var(--accent); font-weight: 700; background: rgba(255,69,0,0.1); padding: 3px 10px; border-radius: 12px; border: 1px solid var(--accent);">🔑 Invite Code: <strong>NERDY-INVITE</strong></span>
+              <button type="button" onclick="window.copyInviteCodeToClipboard()" style="font-size: 11px; color: var(--accent); font-weight: 700; background: rgba(255,69,0,0.1); padding: 4px 12px; border-radius: 12px; border: 1px solid var(--accent); cursor: pointer; font-family: var(--mono-font);" title="Click to copy invite code">🔑 Copy Invite Code</button>
               <button type="button" class="admin-cal-btn primary" onclick="window.addNewAdminPromoCode()" style="font-size: 11px; padding: 4px 12px; font-weight: 700;">+ Add New Promo Code</button>
             </div>
           </div>
@@ -2783,20 +2850,46 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       const promoGrid = $("#adminPromoCodesGrid");
       if (promoGrid) {
         const codes = getAdminPromoCodes();
-        promoGrid.innerHTML = Object.keys(codes).map(codeKey => {
-          const item = codes[codeKey];
-          return `
-            <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
-              <div>
-                <strong style="color: #059669; font-size: 12px;">${esc(codeKey)}</strong>: ${esc(item.label)}
+        const activeInviteCode = typeof window.getAdminInviteCode === "function" ? window.getAdminInviteCode() : "NERDY-INVITE";
+
+        const inviteCardHtml = `
+          <div style="grid-column: 1 / -1; background: rgba(255, 69, 0, 0.08); border: 1.5px solid var(--accent); border-radius: 8px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <div style="font-size: 10px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px;">🔑 Photographer Direct Invite Code (VIP / TFP Unlock)</div>
+              <div style="font-size: 14px; font-weight: 800; font-family: var(--mono-font); color: var(--ink);">
+                Active Code: <strong style="color: var(--accent); font-size: 16px; letter-spacing: 0.05em;">${esc(activeInviteCode)}</strong>
+                <span style="font-size: 11px; font-weight: 500; color: var(--ink-soft); font-family: inherit; margin-left: 8px;">(Unlocks direct Test Shoot / TFP option for invited talent on /book)</span>
               </div>
-              <div style="display: flex; gap: 4px;">
-                <button type="button" onclick="navigator.clipboard.writeText('${esc(codeKey)}'); alert('Promo Code ${esc(codeKey)} copied!');" style="background: #059669; color: #ffffff; border: none; padding: 4px 10px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700;">Copy</button>
-                ${item.isCustom ? `<button type="button" onclick="window.deleteAdminPromoCode('${esc(codeKey)}')" style="background: rgba(255,77,77,0.15); color: #ff4d4d; border: 1px solid rgba(255,77,77,0.4); padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700;">❌ Delete</button>` : ''}
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button type="button" onclick="window.copyInviteCodeToClipboard()" style="background: var(--accent); color: #ffffff; border: none; padding: 7px 16px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: var(--mono-font); box-shadow: var(--shadow-sm);">📋 Copy Invite Code</button>
+              <button type="button" onclick="window.editAdminInviteCode()" style="background: var(--bone); color: var(--ink); border: 1px solid var(--line); padding: 7px 14px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;">✏️ Edit Invite Code</button>
+            </div>
+          </div>
+        `;
+
+        const codeCardsHtml = Object.keys(codes).map(codeKey => {
+          const item = codes[codeKey];
+          const tagDesc = item.flat ? `Flat ₹${item.flat.toLocaleString('en-IN')} Off` : `${item.pct}% Off`;
+          return `
+            <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px; box-shadow: var(--shadow-sm);">
+              <div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <strong style="color: #059669; font-size: 13px; font-family: var(--mono-font); letter-spacing: 0.04em;">${esc(codeKey)}</strong>
+                  <span style="font-size: 9px; font-weight: 700; background: rgba(5,150,105,0.12); color: #059669; padding: 2px 6px; border-radius: 4px;">${esc(tagDesc)}</span>
+                </div>
+                <div style="font-size: 11px; color: var(--ink-soft); margin-top: 2px;">${esc(item.label)}</div>
+              </div>
+              <div style="display: flex; gap: 4px; align-items: center;">
+                <button type="button" onclick="navigator.clipboard.writeText('${esc(codeKey)}'); if(typeof toast==='function') toast('📋 Promo Code ${esc(codeKey)} copied!'); else alert('Copied!');" style="background: #059669; color: #ffffff; border: none; padding: 5px 10px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700; font-family: var(--mono-font);" title="Copy Code">📋 Copy</button>
+                <button type="button" onclick="window.editAdminPromoCode('${esc(codeKey)}')" style="background: var(--bone); color: var(--ink); border: 1px solid var(--line); padding: 5px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700;" title="Edit Code">✏️ Edit</button>
+                <button type="button" onclick="window.deleteAdminPromoCode('${esc(codeKey)}')" style="background: rgba(255,77,77,0.1); color: #ff4d4d; border: 1px solid rgba(255,77,77,0.3); padding: 5px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700;" title="Delete Code">🗑️</button>
               </div>
             </div>
           `;
         }).join("");
+
+        promoGrid.innerHTML = inviteCardHtml + codeCardsHtml;
       }
 
       const pkgsGrid = $("#adminPackagesEditorGrid");
@@ -6581,7 +6674,8 @@ RAW files are not provided.`
       const testShootOpt = $("#b_type")?.querySelector('option[value="Selective Collaboration (TFP)"]');
       const inviteCodeInput = $("#b_invite_code");
       const inviteStatus = $("#inviteCodeStatus");
-      const validCodes = ["NERDY-INVITE", "INVITE2026", "NERDYVIP", "STUDIOINVITE", "VIP2026"];
+      const dynamicInviteCode = (typeof window.getAdminInviteCode === "function" ? window.getAdminInviteCode() : "NERDY-INVITE").toUpperCase();
+      const validCodes = [dynamicInviteCode, "NERDY-INVITE", "INVITE2026", "NERDYVIP", "STUDIOINVITE", "VIP2026"];
       
       const enteredCode = (inviteCodeInput?.value || "").trim().toUpperCase();
       const isValidInvite = ["a0488e15", "107a6c92", "f8043214", "4fe5835e", "326d5752"].includes(hashFNV1a(enteredCode));
@@ -9024,6 +9118,6 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=213').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=214').catch(() => {});
   });
 }
