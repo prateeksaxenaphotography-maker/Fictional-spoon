@@ -6554,34 +6554,27 @@ RAW files are not provided.`
         }
       }
 
-      if (!isTalentRole) {
-        if (!isValidInvite) {
-          if (testShootOpt) {
-            testShootOpt.hidden = true;
-            testShootOpt.style.display = "none";
-            testShootOpt.disabled = true;
-          }
-          if ($("#b_type") && $("#b_type").value === "Selective Collaboration (TFP)") {
-            $("#b_type").value = "Fashion Editorial";
-            $("#b_type").dispatchEvent(new Event("change", { bubbles: true }));
-          }
-        } else {
-          if (testShootOpt) {
-            testShootOpt.hidden = false;
-            testShootOpt.style.display = "";
-            testShootOpt.disabled = false;
-          }
-          const typeSelect = $("#b_type");
-          if (typeSelect && typeSelect.value !== "Selective Collaboration (TFP)") {
-            typeSelect.value = "Selective Collaboration (TFP)";
-            typeSelect.dispatchEvent(new Event("change", { bubbles: true }));
-          }
+      // Universal Photographer Invite Code Enforcement for ALL Roles
+      if (!isValidInvite) {
+        if (testShootOpt) {
+          testShootOpt.hidden = true;
+          testShootOpt.style.display = "none";
+          testShootOpt.disabled = true;
+        }
+        if ($("#b_type") && $("#b_type").value === "Selective Collaboration (TFP)") {
+          $("#b_type").value = "Fashion Editorial";
+          $("#b_type").dispatchEvent(new Event("change", { bubbles: true }));
         }
       } else {
         if (testShootOpt) {
           testShootOpt.hidden = false;
           testShootOpt.style.display = "";
           testShootOpt.disabled = false;
+        }
+        const typeSelect = $("#b_type");
+        if (typeSelect && typeSelect.value !== "Selective Collaboration (TFP)") {
+          typeSelect.value = "Selective Collaboration (TFP)";
+          typeSelect.dispatchEvent(new Event("change", { bubbles: true }));
         }
       }
 
@@ -8884,6 +8877,6 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=205').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=206').catch(() => {});
   });
 }
