@@ -1,8 +1,8 @@
-const fs = require("fs");
-const path = require("path");
-const { verifyPasscode } = require("./adminAuth");
-
-const LOGS_FILE = path.join(__dirname, "logs.json");
+// NOTE: this controller used to also persist every request to logs.json and
+// expose an admin CSV export of it. That functionality was removed by owner
+// decision (2026-08): Render's free-tier disk is wiped on every restart, so
+// the log was silently lossy anyway. This endpoint now only validates the
+// email and sends the magic download link.
 
 // Known disposable / temporary email domains list
 const DISPOSABLE_DOMAINS = new Set([
@@ -18,8 +18,6 @@ const COMMON_DOMAIN_TYPOS = {
   "gmai.com": "gmail.com", "gamil.com": "gmail.com", "hotmial.com": "hotmail.com",
   "outlok.com": "outlook.com", "yaho.com": "yahoo.com"
 };
-
-const PRIVATE_IP_REGEX = /^(::1$|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.|::ffff:127\.)/;
 
 // The request body's originUrl is client-supplied and was previously used
 // as-is to build the "View & Print Comp Card" button link mailed out via the
@@ -58,34 +56,17 @@ function isRateLimited(ip) {
   rateLimitHits.set(ip, hits);
   return hits.length > RATE_LIMIT_MAX;
 }
-
-// Best-effort city/region/country lookup for the visitor's IP (free, keyless
-// ip-api.com tier — plain HTTP only on the free tier, fine for a server-to-server
-// call). Never throws — logging analytics must not depend on this.
-async function getGeoLocation(ip) {
-  const empty = { city: "", region: "", country: "" };
-  if (!ip || PRIVATE_IP_REGEX.test(ip)) return empty;
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
-    const res = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,city,regionName,country`, { signal: controller.signal });
-    clearTimeout(timeoutId);
-
-    if (!res.ok) return empty;
-    const data = await res.json();
-    if (data.status !== "success") return empty;
-
-    return {
-      city: data.city || "",
-      region: data.regionName || "",
-      country: data.country || ""
-    };
-  } catch (err) {
-    console.warn(`Geo-IP lookup failed for ${ip}:`, err.message);
-    return empty;
+// Sweep dead IPs out of the map periodically. isRateLimited prunes old
+// timestamps *within* a key but never removes the key itself, so on a
+// long-lived process the map grew by one entry per unique visitor IP
+// forever — a slow memory leak that eventually OOM-restarts a small
+// instance. unref() keeps this timer from holding the process open.
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, hits] of rateLimitHits) {
+    if (!hits.some((t) => now - t < RATE_LIMIT_WINDOW_MS)) rateLimitHits.delete(ip);
   }
-}
+}, RATE_LIMIT_WINDOW_MS).unref();
 
 // Format + disposable/typo checks only. Real proof of ownership comes from the
 // magic link click-through (checkMagicDownloadLink in app.js), not from this —
@@ -110,29 +91,6 @@ function validateEmailShape(email) {
   }
 
   return { valid: true, cleanEmail };
-}
-
-// Helper to read logs safely
-function readLogs() {
-  try {
-    if (!fs.existsSync(LOGS_FILE)) {
-      fs.writeFileSync(LOGS_FILE, JSON.stringify([]));
-    }
-    const data = fs.readFileSync(LOGS_FILE, "utf8");
-    return JSON.parse(data || "[]");
-  } catch (err) {
-    console.error("Error reading logs file:", err);
-    return [];
-  }
-}
-
-// Helper to write logs safely
-function writeLogs(logs) {
-  try {
-    fs.writeFileSync(LOGS_FILE, JSON.stringify(logs, null, 2), "utf8");
-  } catch (err) {
-    console.error("Error writing logs file:", err);
-  }
 }
 
 // Send magic download link copy to user's verified inbox (Inviting Marketing Email)
@@ -223,9 +181,11 @@ async function sendMagicDownloadEmail(email, modelName, downloadUrl) {
   }
 }
 
-// POST /api/logs - validates the email shape, logs the download attempt for
-// analytics, and emails a magic download link. Real proof the address is
-// reachable comes from the visitor clicking that link, not from validation here.
+// POST /api/logs - validates the email shape and emails a magic download
+// link. Real proof the address is reachable comes from the visitor clicking
+// that link, not from validation here. (The route path keeps its historic
+// /api/logs name so already-deployed frontends keep working, but nothing is
+// logged anymore.)
 exports.logDownload = async (req, res) => {
   const { email, modelName, shootId, orientation, originUrl } = req.body;
 
@@ -250,28 +210,7 @@ exports.logDownload = async (req, res) => {
   const baseUrl = safeBaseUrl(originUrl);
   const downloadUrl = `${baseUrl.replace(/\/$/, "")}/?downloadCompCard=1&shootId=${encodeURIComponent(shootId || "")}&orientation=${encodeURIComponent(orientation || "portrait")}`;
 
-  const [emailResult, geo] = await Promise.all([
-    sendMagicDownloadEmail(cleanEmail, modelName.trim(), downloadUrl),
-    getGeoLocation(ip)
-  ]);
-
-  // Log the attempt regardless of send outcome — the id/email/ip/location is
-  // what powers analytics, and we still want it even if Resend rejects the send.
-  const logs = readLogs();
-  const entry = {
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
-    modelName: modelName.trim(),
-    email: cleanEmail,
-    shootId: shootId || "",
-    ip: ip || "unknown",
-    city: geo.city,
-    region: geo.region,
-    country: geo.country,
-    emailSent: emailResult.success,
-    timestamp: new Date().toISOString()
-  };
-  logs.push(entry);
-  writeLogs(logs);
+  const emailResult = await sendMagicDownloadEmail(cleanEmail, modelName.trim(), downloadUrl);
 
   if (!emailResult.success) {
     return res.status(502).json({
@@ -283,50 +222,4 @@ exports.logDownload = async (req, res) => {
     success: true,
     message: "Magic download link sent."
   });
-};
-
-// GET /api/logs/download - Export download logs to CSV (Admin Only)
-exports.downloadCSV = (req, res) => {
-  const { passcode } = req.query;
-
-  if (!verifyPasscode(passcode)) {
-    return res.status(401).send("Unauthorized access - invalid passcode.");
-  }
-
-  const logs = readLogs();
-
-  // Excel-compatible CSV header and rows
-  const headers = ["Timestamp", "Model Name", "Email Address", "IP Address", "City", "Region", "Country", "Email Sent"];
-  const csvRows = [headers.join(",")];
-
-  // Coerces any value to a safely-quoted CSV field: `String(value ?? "")`
-  // means one legacy/partial log entry (a missing field) can no longer throw
-  // and break the entire download for every other entry. A leading
-  // apostrophe defuses CSV formula injection — Excel/Sheets would otherwise
-  // execute a cell starting with =, +, -, or @ as a formula when opened.
-  const csvSafe = (value) => {
-    const str = String(value ?? "");
-    const defused = /^[=+\-@]/.test(str) ? `'${str}` : str;
-    return `"${defused.replace(/"/g, '""')}"`;
-  };
-
-  logs.forEach(log => {
-    const row = [
-      csvSafe(log.timestamp),
-      csvSafe(log.modelName),
-      csvSafe(log.email),
-      csvSafe(log.ip),
-      csvSafe(log.city),
-      csvSafe(log.region),
-      csvSafe(log.country),
-      csvSafe(log.emailSent === undefined ? "n/a" : log.emailSent)
-    ];
-    csvRows.push(row.join(","));
-  });
-
-  const csvContent = csvRows.join("\r\n");
-
-  res.setHeader("Content-Type", "text/csv");
-  res.setHeader("Content-Disposition", 'attachment; filename="compcard_download_logs.csv"');
-  return res.status(200).send(csvContent);
 };
