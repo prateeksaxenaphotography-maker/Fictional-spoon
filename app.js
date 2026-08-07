@@ -4910,7 +4910,7 @@ RAW files are not provided.`
                <legend>Shoot Details</legend>
 
                 <div style="margin-bottom: 12px; text-align: right;">
-                  <a id="toggleInviteCodeLink" href="javascript:void(0)" style="font-size: 11px; color: var(--ink-soft); text-decoration: underline; font-family: var(--mono-font); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">🔑 Have a direct photographer invite code?</a>
+                  <a id="toggleInviteCodeLink" href="javascript:void(0)" style="font-size: 11px; color: var(--ink-soft); text-decoration: underline; font-family: var(--mono-font); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">🔑 Have a direct photographer invite code? (Test Shoot)</a>
                 </div>
 
                 <!-- Photographer Direct Invite Code (Hidden by default, expandable via discreet link) -->
@@ -6911,7 +6911,7 @@ RAW files are not provided.`
         const isHidden = container.style.display === "none" || !container.style.display;
         container.style.display = isHidden ? "block" : "none";
         if (link) {
-          link.textContent = isHidden ? "✕ Hide invite code field" : "🔑 Have a direct photographer invite code?";
+          link.textContent = isHidden ? "✕ Hide invite code field" : "🔑 Have a direct photographer invite code? (Test Shoot)";
         }
       }
     });
@@ -6924,7 +6924,7 @@ RAW files are not provided.`
       if (val) {
         input.value = "";
         if (container) container.style.display = "none";
-        if (link) link.textContent = "🔑 Have a direct photographer invite code?";
+        if (link) link.textContent = "🔑 Have a direct photographer invite code? (Test Shoot)";
       }
       updateFields();
     });
@@ -9118,6 +9118,6 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=214').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=215').catch(() => {});
   });
 }
