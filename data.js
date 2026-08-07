@@ -32,6 +32,95 @@ window.WPS_DATA = {
   ],
   "DEMO_SHOOTS": [
     {
+      "id": "msap3arwdtg7pb",
+      "createdAt": 1785608321612,
+      "isTestimonial": false,
+      "title": "Neeraj Pannt",
+      "brand": "Personal Project",
+      "activity": "Fitness",
+      "type": "Test Shoot",
+      "season": "August 2026",
+      "photographer": "nerdyphotographer",
+      "artDirector": "",
+      "stylist": "—",
+      "hair": "—",
+      "mua": "—",
+      "videographer": "—",
+      "talent": "Neeraj Pannt (https://www.instagram.com/shapeupwithneeraj/?hl=en)",
+      "location": "",
+      "height": "",
+      "chest": "",
+      "waist": "",
+      "hips": "",
+      "shoes": "",
+      "modelHair": "",
+      "modelEyes": "",
+      "showStatsOnCompCard": true,
+      "showStatsOnModelPortfolio": true,
+      "showTestShootCategory": false,
+      "mentor": "",
+      "credits": "",
+      "description": "",
+      "tags": "",
+      "gear": "",
+      "client": "",
+      "date": "2026-08-01",
+      "instagram": "",
+      "kavyar": "",
+      "link": "",
+      "pdfUrl": "",
+      "rights": "",
+      "testimonials": [],
+      "lightingDiagram": null,
+      "lightingDiagramVisibility": "private",
+      "palette": [
+        "#2d2c2d",
+        "#141414"
+      ],
+      "photos": [
+        {
+          "id": "msap0w20rz19xu-0",
+          "url": "photos/msap3arwdtg7pb/msap0w20rz19xu-0.jpg",
+          "objectPosition": "top"
+        },
+        {
+          "id": "msap0wb1tv34vl-1",
+          "url": "photos/msap3arwdtg7pb/msap0wb1tv34vl-1.jpg",
+          "objectPosition": "center"
+        },
+        {
+          "id": "msap0winoz5q9z-2",
+          "url": "photos/msap3arwdtg7pb/msap0winoz5q9z-2.jpg",
+          "objectPosition": "top"
+        },
+        {
+          "id": "msap0wovto7ps6-3",
+          "url": "photos/msap3arwdtg7pb/msap0wovto7ps6-3.jpg",
+          "objectPosition": "center"
+        },
+        {
+          "id": "msaqdneekgniml-4",
+          "url": "photos/msap3arwdtg7pb/msaqdneekgniml-4.jpg",
+          "objectPosition": "center",
+          "small": "photos/msap3arwdtg7pb/msaqdneekgniml-4@480.jpg",
+          "medium": "photos/msap3arwdtg7pb/msaqdneekgniml-4@960.jpg"
+        }
+      ],
+      "featured": true,
+      "hideFromCompCard": false,
+      "disableCompCardDownload": false,
+      "isPublic": true,
+      "showCredits": true,
+      "showPdf": true,
+      "showInstagram": true,
+      "showKavyar": true,
+      "showTestimonials": true,
+      "showStats": true,
+      "showGear": true,
+      "showLocation": true,
+      "coverPhotoId": "msaqdneekgniml"
+    },
+    {
       "id": "mr4x3r7e4l5g4m",
       "createdAt": 1783082200442,
       "title": "Rhythm Vohra",
