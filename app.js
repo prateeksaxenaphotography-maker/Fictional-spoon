@@ -939,25 +939,24 @@ window.moveAdminPackageRow = function(index, dir) {
     let real = [];
     try { real = await allShoots(); }
     catch { real = []; }
-    usingDemo = real.length === 0;
     
     const parseShootDate = (s) => {
-      if (!s.date) return s.createdAt || 0;
+      if (!s || !s.date) return (s && s.createdAt) || 0;
       const t = Date.parse(s.date);
-      return isNaN(t) ? (s.createdAt || 0) : t;
+      return isNaN(t) ? ((s && s.createdAt) || 0) : t;
     };
     
-    // Sort a copy — sorting window.WPS_DATA.DEMO_SHOOTS in place made
-    // refreshPublishedData's JSON.stringify equality check always see a
-    // "change" (reordered array) on every poll, even when nothing published
-    // had actually changed.
     const demoList = (window.WPS_DATA && window.WPS_DATA.DEMO_SHOOTS) || window.DEMO_SHOOTS || [];
-    const sorted = [...(usingDemo ? demoList : real)].sort((a, b) => parseShootDate(b) - parseShootDate(a));
+    const validReal = real.filter(s => s && Array.isArray(s.photos) && s.photos.length > 0);
+    const shootsSource = validReal.length > 0 ? validReal : demoList;
+    usingDemo = validReal.length === 0;
+
+    const sorted = [...shootsSource].sort((a, b) => parseShootDate(b) - parseShootDate(a));
     
     if (isAdmin()) {
       SHOOTS = sorted;
     } else {
-      SHOOTS = sorted.filter(s => !isFutureShoot(s));
+      SHOOTS = sorted.filter(s => s && !isFutureShoot(s) && s.isPublic !== false);
     }
     if (typeof syncCalendarWithShoots === "function") syncCalendarWithShoots();
   }
@@ -9646,7 +9645,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=246').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=247').catch(() => {});
   });
 }
 
