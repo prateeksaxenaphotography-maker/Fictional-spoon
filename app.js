@@ -3170,16 +3170,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <p class="page-sub reveal" style="max-width: 600px; line-height: 1.6; opacity: 1 !important; visibility: visible !important; transform: none !important;">All bookings where a client has digitally agreed to studio contract terms. Signature images, contract references, and PDF generation are available per record.</p>
         </div>
       </section>
-      <section class="section container" style="max-width: 900px; margin: 0 auto;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
-          <span style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--ink-soft); font-weight: 700;">${allSigned.length} SIGNED RECORD${allSigned.length !== 1 ? 'S' : ''}</span>
-          <a href="/calendar" data-link class="admin-cal-btn" style="font-size: var(--font-xs); font-weight: 700;">← Back to Calendar</a>
-        </div>
-        <div style="display: flex; flex-direction: column; gap: 12px;">
-          ${rows}
-        </div>
-      </section>
-      <section class="section container" style="max-width: 900px; margin: 0 auto; border-top: 1px solid var(--line); padding-top: 36px;">
+      <section class="section container" style="max-width: 900px; margin: 0 auto; border-bottom: 1px solid var(--line); padding-bottom: 36px;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
           <div>
             <p class="eyebrow" style="margin-bottom: 4px; color: var(--accent);">Legal Compliance &amp; Version Control</p>
@@ -3251,6 +3242,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Foundational photo release and copyright acknowledgment for early studio testing.</p>
             <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V1.0')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review V1.0</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V1.0')" style="font-size: var(--font-xs); border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
           </div>
+        </div>
+      </section>
+      <section class="section container" style="max-width: 900px; margin: 0 auto; padding-top: 36px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+          <span style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--ink-soft); font-weight: 700;">${allSigned.length} SIGNED RECORD${allSigned.length !== 1 ? 'S' : ''}</span>
+          <a href="/calendar" data-link class="admin-cal-btn" style="font-size: var(--font-xs); font-weight: 700;">← Back to Calendar</a>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          ${rows}
         </div>
       </section>
     `;
@@ -9862,7 +9862,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=253').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=254').catch(() => {});
   });
 }
 
