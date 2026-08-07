@@ -224,7 +224,19 @@ window.saveAdminCustomPackages = function() {
     updated.push({ id: `pkg_${i+1}`, name, price, specs });
   });
   localStorage.setItem("wps_custom_packages", JSON.stringify(updated));
-  alert("✅ Studio Package Rates & Deliverables saved successfully! All booking forms updated.");
+
+  const statusBadge = document.getElementById("adminPricingSaveStatus");
+  if (statusBadge) {
+    const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    statusBadge.style.color = "#059669";
+    statusBadge.style.background = "rgba(5,150,105,0.15)";
+    statusBadge.style.borderColor = "#059669";
+    statusBadge.innerHTML = `🟢 ALL CHANGES SAVED TO LIVE SITE (${nowStr})`;
+  }
+
+  if (typeof toast === "function") toast("✅ Studio Package Rates & Deliverables saved to live site! All booking forms updated.");
+  else alert("✅ Studio Package Rates & Deliverables saved successfully! All booking forms updated.");
+  
   if (typeof render === "function") render();
 };
 
@@ -2795,7 +2807,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             <h3 style="font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: var(--ink); margin: 0; display: flex; align-items: center; gap: 8px;">
               ⚙️ Studio Package Rates &amp; Deliverables Editor (No-Code Admin Control)
             </h3>
-            <div style="display: flex; gap: 8px;">
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <span id="adminPricingSaveStatus" style="font-size: 11px; font-weight: 700; color: #059669; background: rgba(5,150,105,0.12); padding: 4px 10px; border-radius: 12px; border: 1px solid #059669; font-family: var(--mono-font); transition: all 0.3s ease;">🟢 ALL CHANGES SAVED TO LIVE SITE</span>
               <button type="button" class="admin-cal-btn primary" onclick="window.saveAdminCustomPackages()" style="font-size: 11px; padding: 4px 12px; font-weight: 700;">💾 Save Pricing Changes</button>
               <button type="button" class="admin-cal-btn" onclick="window.resetAdminCustomPackages()" style="font-size: 11px; padding: 4px 12px; font-weight: 700;">🔄 Reset Defaults</button>
             </div>
@@ -2989,6 +3002,22 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
 
         promoGrid.innerHTML = inviteCardHtml + creatorFormHtml + codeCardsHtml;
       }
+
+      // Attach input change listener to flip status badge to UNSAVED CHANGES
+      setTimeout(() => {
+        const editorInputs = document.querySelectorAll(".pkg-edit-name, .pkg-edit-price, .pkg-edit-specs");
+        editorInputs.forEach(input => {
+          input.addEventListener("input", () => {
+            const statusBadge = document.getElementById("adminPricingSaveStatus");
+            if (statusBadge && !statusBadge.textContent.includes("UNSAVED")) {
+              statusBadge.style.color = "#d97706";
+              statusBadge.style.background = "rgba(217,119,6,0.15)";
+              statusBadge.style.borderColor = "#d97706";
+              statusBadge.innerHTML = '⚠️ UNSAVED CHANGES — Click "Save Pricing Changes"';
+            }
+          });
+        });
+      }, 50);
 
       const pkgsGrid = $("#adminPackagesEditorGrid");
       if (!pkgsGrid) return;
@@ -9287,6 +9316,6 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=219').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=220').catch(() => {});
   });
 }
