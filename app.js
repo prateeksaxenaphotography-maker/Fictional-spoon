@@ -5062,7 +5062,7 @@ RAW files are not provided.`
                   </div>
                 </div>
                <div class="field-row">
-                 <label class="field"><span>Desired Project Type (Includes Test Shoots / TFP) *</span>
+                 <label class="field" id="b_type_field_wrap"><span>Desired Project Type (Includes Test Shoots / TFP) *</span>
                    <select id="b_type">
                      <option value="Fashion Editorial" ${isSelected("Fashion Editorial")}>Fashion Editorial</option>
                      <option value="Fitness &amp; Athletic" ${isSelected("Fitness &amp; Athletic")}>Fitness &amp; Athletic</option>
@@ -5075,6 +5075,17 @@ RAW files are not provided.`
                      🎁 <strong>Test Shoot Deliverables:</strong> Full Proofing Gallery + 8 to 12 Retouched Master Clicks (No RAW files delivered).
                    </div>
                  </label>
+
+                 <!-- Option B: Locked TFP Card displayed when Photographer Invite Code is verified -->
+                 <div id="lockedTfpCard" style="display: none; background: rgba(5,150,105,0.06); border: 1.5px solid #059669; border-radius: 8px; padding: 14px 16px; margin-bottom: 6px; box-shadow: var(--shadow-sm); width: 100%; box-sizing: border-box;">
+                   <div style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: #059669; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;">
+                     <span>🔑 PROJECT TYPE: SELECTIVE COLLABORATION (TFP / TEST SHOOT)</span>
+                     <span style="background: #059669; color: #ffffff; padding: 2.5px 8px; border-radius: 4px; font-size: 9px; font-weight: 700;">LOCKED BY INVITE CODE</span>
+                   </div>
+                   <div style="font-size: 12px; color: var(--ink); line-height: 1.5; font-weight: 600;">
+                     Session is locked to a <strong>Selective Collaboration / TFP Test Shoot</strong> via your verified Photographer Direct Invite Code.
+                   </div>
+                 </div>
                  <label class="field" id="b_date_field">
                     <span>Preferred Date / Timeline * <span id="b_date_availability_badge" style="display: none; font-family: var(--mono-font); font-size: 9px; font-weight: 700; padding: 2.5px 7px; border-radius: 4px; margin-left: 8px; vertical-align: middle; text-transform: uppercase; letter-spacing: 0.05em;"></span></span>
                     <div class="date-picker-wrap">
@@ -6917,6 +6928,9 @@ RAW files are not provided.`
         }
       }
 
+      const typeFieldWrap = $("#b_type_field_wrap");
+      const lockedTfpCard = $("#lockedTfpCard");
+
       // Universal Photographer Invite Code Enforcement for ALL Roles
       if (!isValidInvite) {
         if (testShootOpt) {
@@ -6928,6 +6942,8 @@ RAW files are not provided.`
           $("#b_type").value = "Fashion Editorial";
           $("#b_type").dispatchEvent(new Event("change", { bubbles: true }));
         }
+        if (typeFieldWrap) typeFieldWrap.style.display = "";
+        if (lockedTfpCard) lockedTfpCard.style.display = "none";
       } else {
         if (testShootOpt) {
           testShootOpt.hidden = false;
@@ -6939,6 +6955,8 @@ RAW files are not provided.`
           typeSelect.value = "Selective Collaboration (TFP)";
           typeSelect.dispatchEvent(new Event("change", { bubbles: true }));
         }
+        if (typeFieldWrap) typeFieldWrap.style.display = "none";
+        if (lockedTfpCard) lockedTfpCard.style.display = "block";
       }
 
       // Real-Time Final Amount Calculator Engine
@@ -9317,6 +9335,6 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=221').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=222').catch(() => {});
   });
 }
