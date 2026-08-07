@@ -110,8 +110,60 @@ window.resetAdminCustomPackages = function() {
   if (confirm("Reset studio package rates to default values?")) {
     localStorage.removeItem("wps_custom_packages");
     alert("Reset to default package rates!");
+    if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
     if (typeof render === "function") render();
   }
+};
+
+window.addNewAdminPackageRow = function() {
+  const pkgs = getAdminPackages();
+  if (pkgs.length >= 15) {
+    alert("Maximum 15 package tiers allowed!");
+    return;
+  }
+  const nextNum = pkgs.length + 1;
+  const lastPrice = pkgs.length ? pkgs[pkgs.length - 1].price : 10000;
+  pkgs.push({
+    id: `pkg_${nextNum}`,
+    name: `Custom Package Tier #${nextNum}`,
+    price: lastPrice + 10000,
+    specs: "Custom Proofing & Master Retouched Deliverables"
+  });
+  localStorage.setItem("wps_custom_packages", JSON.stringify(pkgs));
+  if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
+  if (typeof toast === "function") toast(`➕ Package Tier #${nextNum} added! Adjust rates & click Save.`);
+  if (typeof render === "function") render();
+};
+
+window.deleteAdminPackageRow = function(index) {
+  const pkgs = getAdminPackages();
+  if (pkgs.length <= 1) {
+    alert("Minimum 1 package tier must remain!");
+    return;
+  }
+  const pkgName = pkgs[index]?.name || `Tier #${index + 1}`;
+  if (confirm(`Delete Package Tier #${index + 1} (${pkgName})?`)) {
+    pkgs.splice(index, 1);
+    localStorage.setItem("wps_custom_packages", JSON.stringify(pkgs));
+    if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
+    if (typeof toast === "function") toast("🗑️ Package tier removed!");
+    if (typeof render === "function") render();
+  }
+};
+
+window.moveAdminPackageRow = function(index, dir) {
+  const pkgs = getAdminPackages();
+  const targetIndex = index + dir;
+  if (targetIndex < 0 || targetIndex >= pkgs.length) return;
+  
+  const temp = pkgs[index];
+  pkgs[index] = pkgs[targetIndex];
+  pkgs[targetIndex] = temp;
+  
+  localStorage.setItem("wps_custom_packages", JSON.stringify(pkgs));
+  if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
+  if (typeof toast === "function") toast(`↕️ Reordered Package #${index + 1}!`);
+  if (typeof render === "function") render();
 };
 
 /* ============================================================
@@ -2751,7 +2803,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       if (!pkgsGrid) return;
       const pkgs = getAdminPackages();
       pkgsGrid.innerHTML = pkgs.map((p, idx) => `
-        <div class="admin-pkg-editor-row" style="background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: grid; grid-template-columns: 1.5fr 1fr 2.5fr; gap: 12px; align-items: center;">
+        <div class="admin-pkg-editor-row" style="background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: grid; grid-template-columns: 1.4fr 0.9fr 2.2fr 110px; gap: 10px; align-items: center;">
           <div>
             <span style="font-size: 10px; font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase;">Package Name #${idx+1}</span>
             <input type="text" class="pkg-edit-name" value="${esc(p.name)}" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: 12px; font-weight: 700; background: var(--bone); color: var(--ink);" />
@@ -2764,8 +2816,18 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             <span style="font-size: 10px; font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase;">Deliverable Specs</span>
             <input type="text" class="pkg-edit-specs" value="${esc(p.specs)}" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: 12px; background: var(--bone); color: var(--ink);" />
           </div>
+          <div style="display: flex; gap: 4px; justify-content: flex-end; padding-top: 14px;">
+            <button type="button" class="admin-cal-btn" onclick="window.moveAdminPackageRow(${idx}, -1)" title="Move Up" ${idx === 0 ? 'disabled style="opacity:0.3; cursor:not-allowed; padding:6px 8px; font-size:11px;"' : 'style="padding:6px 8px; font-size:11px;"'}>▲</button>
+            <button type="button" class="admin-cal-btn" onclick="window.moveAdminPackageRow(${idx}, 1)" title="Move Down" ${idx === pkgs.length - 1 ? 'disabled style="opacity:0.3; cursor:not-allowed; padding:6px 8px; font-size:11px;"' : 'style="padding:6px 8px; font-size:11px;"'}>▼</button>
+            <button type="button" class="admin-cal-btn" onclick="window.deleteAdminPackageRow(${idx})" title="Delete Package Tier" style="color: #b22222; border-color: rgba(178,34,34,0.3); padding: 6px 8px; font-size: 11px;">🗑️</button>
+          </div>
         </div>
-      `).join("");
+      `).join("") + `
+        <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <button type="button" class="admin-cal-btn primary" onclick="window.addNewAdminPackageRow()" style="font-size: 11px; padding: 6px 14px; font-weight: 700;">➕ Add New Package Tier (Currently ${pkgs.length} Tiers)</button>
+          <span style="font-size: 11px; color: var(--ink-soft); font-family: var(--mono-font);">Supports 1 to 10+ dynamic package tiers with sequence controls (▲ Move Up / ▼ Move Down / 🗑️ Delete).</span>
+        </div>
+      `;
     }
 
     let calYear = new Date().getFullYear();
@@ -8962,6 +9024,6 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=212').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=213').catch(() => {});
   });
 }

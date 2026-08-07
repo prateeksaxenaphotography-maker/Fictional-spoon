@@ -1,11 +1,11 @@
-const CACHE_NAME = "wps-v212";
+const CACHE_NAME = "wps-v213";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
-  "/styles.css?v=212",
-  "/app.js?v=212",
-  "/data.js?v=212",
-  "/config.js?v=212"
+  "/styles.css?v=213",
+  "/app.js?v=213",
+  "/data.js?v=213",
+  "/config.js?v=213"
 ];
 
 self.addEventListener("install", (e) => {
