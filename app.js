@@ -611,47 +611,60 @@ window.moveAdminPackageRow = function(index, dir) {
     return (talentStr || "").replace(/\s*\([^)]+\)/g, "").trim();
   }
 
+  function buildSocialLinkHtml(s, compact = false) {
+    let url = s, label = s;
+    if (s.includes("instagram.com") || s.startsWith("@")) {
+      if (s.startsWith("http")) {
+        const handle = s.split("instagram.com/")[1]?.split("/")[0]?.split("?")[0] || "";
+        url = `https://instagram.com/${handle}`;
+        label = `@${handle}`;
+      } else if (s.startsWith("@")) {
+        label = s;
+        url = "https://instagram.com/" + s.replace(/^@/, "");
+      } else {
+        label = "@" + s;
+        url = "https://instagram.com/" + s;
+      }
+    } else if (s.includes("kavyar.com")) {
+      url = s.startsWith("http") ? s : "https://" + s;
+      label = compact ? "Kavyar" : "Kavyar: " + url.split("/").pop();
+    } else if (s.startsWith("http")) {
+      url = s;
+      label = compact ? "Link" : s.split("//")[1]?.split("/")[0] || "Link";
+    } else {
+      url = "https://instagram.com/" + s;
+      label = "@" + s;
+    }
+    const arrow = compact ? "" : " ↗";
+    const margin = compact ? "4px" : "6px";
+    return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent); font-weight:700; text-decoration:none; margin-left:${margin}; display:inline-flex; align-items:center; gap:2px;">${esc(label)}${arrow}</a>`;
+  }
+
   function renderCreditLinks(text, delimiter = ";", compact = false) {
     if (!text || text === "—") return "—";
     const items = text.split(",").map(item => item.trim()).filter(Boolean);
     const renderedItems = items.map(item => {
+      // 1. Parentheses format: Name (@handle)
       const parenRegex = /\(([^)]+)\)/;
       const match = item.match(parenRegex);
       if (match) {
         const rawName = item.replace(parenRegex, "").trim();
         const rawSocials = match[1].split(delimiter).map(s => s.trim()).filter(Boolean);
-        const socialLinks = rawSocials.map(s => {
-          let url = s, label = s;
-          if (s.includes("instagram.com") || s.startsWith("@")) {
-            if (s.startsWith("http")) {
-              // Extract handle from full URL, removing query params
-              const handle = s.split("instagram.com/")[1]?.split("/")[0]?.split("?")[0] || "";
-              url = `https://instagram.com/${handle}`;
-              label = `@${handle}`;
-            } else if (s.startsWith("@")) {
-              label = s;
-              url = "https://instagram.com/" + s.replace(/^@/, "");
-            } else {
-              label = "@" + s;
-              url = "https://instagram.com/" + s;
-            }
-          } else if (s.includes("kavyar.com")) {
-            url = s.startsWith("http") ? s : "https://" + s;
-            label = compact ? "Kavyar" : "Kavyar: " + url.split("/").pop();
-          } else if (s.startsWith("http")) {
-            url = s;
-            label = compact ? "Link" : s.split("//")[1]?.split("/")[0] || "Link";
-          } else {
-            url = "https://instagram.com/" + s;
-            label = "@" + s;
-          }
-          const arrow = compact ? "" : " ↗";
-          const margin = compact ? "4px" : "6px";
-          const display = compact ? "inline" : "inline-flex";
-          return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent); font-weight:600; text-decoration:none; margin-left:${margin}; display:${display}; align-items:center; gap:2px;">${esc(label)}${arrow}</a>`;
-        }).join(" ");
+        const socialLinks = rawSocials.map(s => buildSocialLinkHtml(s, compact)).join(" ");
         return `${esc(rawName)} ${socialLinks}`;
       }
+      
+      // 2. Inline format: Name @handle or Name instagram.com/handle
+      const handleRegex = /(https?:\/\/[^\s]+|@[\w._-]+|instagram\.com\/[^\s]+|kavyar\.com\/[^\s]+)/gi;
+      const handles = item.match(handleRegex);
+      if (handles && handles.length > 0) {
+        let cleanName = item;
+        handles.forEach(h => { cleanName = cleanName.replace(h, ""); });
+        cleanName = cleanName.replace(/—|-/g, "").trim();
+        const socialLinks = handles.map(h => buildSocialLinkHtml(h, compact)).join(" ");
+        return `${esc(cleanName)} ${socialLinks}`;
+      }
+
       return esc(item);
     });
     return renderedItems.join(", ");
@@ -1404,11 +1417,26 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
     // Location & Studio Section
     if (locationContent) {
       creditsSections.push(`
-        <div>
+        <div style="margin-bottom: 14px;">
           <div style="font-family: var(--mono-font); font-size: 10px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
             <span>📍 Location &amp; Studio</span>
           </div>
           ${locationContent}
+        </div>
+      `);
+    }
+
+    // Direct Social Handles Tag Credits Card (Instagram & Kavyar)
+    if (igHtml || kavyarHtml) {
+      creditsSections.push(`
+        <div>
+          <div style="font-family: var(--mono-font); font-size: 10px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
+            <span>📱 Production Social Tags</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px; font-size: 11.5px;">
+            ${igHtml ? `<div style="display: flex; gap: 6px; align-items: center;"><strong style="color: var(--ink-soft); font-size: 10px;">INSTAGRAM:</strong> ${igHtml}</div>` : ""}
+            ${kavyarHtml ? `<div style="display: flex; gap: 6px; align-items: center;"><strong style="color: var(--ink-soft); font-size: 10px;">KAVYAR:</strong> ${kavyarHtml}</div>` : ""}
+          </div>
         </div>
       `);
     }
@@ -9587,7 +9615,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=233').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=234').catch(() => {});
   });
 }
 
