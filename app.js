@@ -4456,6 +4456,8 @@ RAW files are not provided.`
                     </div>
                     <div style="font-size: var(--font-xs); color: var(--ink-soft);">${esc(b.type)} ${b.phone ? `· 📞 ${esc(b.phone)}` : ""} ${b.email ? `· ✉️ ${esc(b.email)}` : ""}</div>
                     ${b.notes ? `<div style="font-size: var(--font-xs); font-style: italic;">"${esc(b.notes)}"</div>` : ""}
+                    ${b.agreedContract ? `<div style="font-size: var(--font-xs); color: #059669; font-family: var(--mono-font); font-weight: 700; margin-top: 2px;">✅ Contract Agreed: ${esc(b.agreedContract)}</div>` : ""}
+                    ${b.sigDataUrl ? `<div style="margin-top: 4px;"><img src="${b.sigDataUrl}" style="max-height: 36px; max-width: 160px; border-bottom: 1px solid var(--line); display: block;" title="Client digital signature captured at booking" /></div>` : ""}
                     ${b.links && b.links.length ? `
                       <div style="font-size: var(--font-xs); margin-top: 4px;">
                         <strong>Links:</strong>
