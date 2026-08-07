@@ -2999,7 +2999,10 @@ All camera bodies, lenses, memory cards, tethering systems, and digital raw capt
 The Studio retains sole, unchallengeable authority over image culling, curation, and file deletion. Deleting or attempting to delete media from equipment constitutes a material breach of contract, resulting in immediate termination of the shoot, forfeiture of all retouched deliverables, and full liability for data recovery expenses.
 
 7. DIGITAL CONSENT & BINDING ACCEPTANCE
-In accordance with standard digital contract practices, physical signatures are not required. Legal acceptance is established by replying with confirmation over email/DM or entering the studio workspace following receipt of these terms.`
+In accordance with standard digital contract practices, physical signatures are not required. Legal acceptance is established by replying with confirmation over email/DM or entering the studio workspace following receipt of these terms.
+
+8. OUTSTATION LOCATION, TRAVEL & ACCOMMODATION EXPENSE POLICY (>20 KM FROM NOIDA)
+If the shoot location is located beyond a 20 km radius from Noida (Delhi NCR), all travel expenses, local conveyance, outstation transport, tolls, and accommodation expenses incurred for the photographer (and core production team) shall be fully borne, arranged, or reimbursed by the client / party requesting the shoot. This condition applies to both Paid Commercial Shoots and Test Shoot Collaborations (TFP).`
       },
       "V3.2": {
         version: "V3.2",
@@ -5026,6 +5029,11 @@ RAW files are not provided.`
                        <li>Voluntarily entering the studio workspace environment and participating in the scheduled production session following receipt of these terms.</li>
                      </ul>
                    </div>
+
+                    <div style="border-left: 3px solid var(--accent); padding-left: 14px; background: rgba(var(--accent-rgb), 0.04);">
+                      <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700; color: var(--accent);">8. OUTSTATION LOCATION, TRAVEL &amp; ACCOMMODATION EXPENSE POLICY (&gt;20 KM FROM NOIDA)</h4>
+                      <p style="margin: 0; font-weight: 500;">If the shoot location is located beyond a 20 km radius from Noida (Delhi NCR), all travel expenses, local conveyance, outstation transport, tolls, and accommodation expenses incurred for the photographer (and core production team) shall be fully borne, arranged, or reimbursed by the client / party requesting the shoot session. This condition applies to both Paid Commercial Shoots and Test Shoot Collaborations (TFP).</p>
+                    </div>
                    
                    <!-- Signature Block -->
                    <div style="margin-top: 15px; border-top: 1px dashed var(--line); padding-top: 15px;">
@@ -6965,7 +6973,7 @@ RAW files are not provided.`
       
       if (sec4Text) {
         sec4Text.innerHTML = isTfp ? 
-          `As a creative collaboration, test shoots (TFP collabs) include a <strong>Full Proofing Gallery + 8 to 12 Retouched Master Clicks</strong>. Deliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for 3 Months (90 days). The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered.` :
+          `As a creative collaboration, test shoots (TFP collabs) include a <strong>Full Proofing Gallery + 8 to 12 Retouched Master Clicks</strong>. Deliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for 3 Months (90 days). The Studio retains final artistic authority over image selection and editing styles. Locations &gt;20 km from Noida require client-funded travel, conveyance &amp; accommodation. Under no circumstances will raw unedited files (RAW format) be delivered.` :
           `Commercial productions include a <strong>Full Proofing Gallery + contracted retouched master deliverables</strong> specified in the rate tier. Deliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for 6 Months (180 days). Extended usage licensing or RAW file access requires separate buyout agreements. Dedicated indoor studio venue rentals are billed <strong>at actuals (at cost)</strong>. Payment terms follow 50/50 non-refundable milestone payments.`;
       }
 
@@ -8877,6 +8885,6 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=206').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=207').catch(() => {});
   });
 }
