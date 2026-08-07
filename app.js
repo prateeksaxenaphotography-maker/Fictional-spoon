@@ -821,7 +821,8 @@ window.moveAdminPackageRow = function(index, dir) {
     // refreshPublishedData's JSON.stringify equality check always see a
     // "change" (reordered array) on every poll, even when nothing published
     // had actually changed.
-    const sorted = [...(usingDemo ? ((window.WPS_DATA && window.WPS_DATA.DEMO_SHOOTS) || DEMO_SHOOTS || []) : real)].sort((a, b) => parseShootDate(b) - parseShootDate(a));
+    const demoList = (window.WPS_DATA && window.WPS_DATA.DEMO_SHOOTS) || window.DEMO_SHOOTS || [];
+    const sorted = [...(usingDemo ? demoList : real)].sort((a, b) => parseShootDate(b) - parseShootDate(a));
     
     if (isAdmin()) {
       SHOOTS = sorted;
@@ -9455,7 +9456,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=242').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=243').catch(() => {});
   });
 }
 
