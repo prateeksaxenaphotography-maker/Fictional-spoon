@@ -112,29 +112,44 @@ function markUnsavedChanges() {
 }
 
 window.getAdminInviteCodes = function() {
+  const normalize = (arr) => {
+    const seen = new Set();
+    const result = [];
+    arr.forEach(item => {
+      let codeStr = typeof item === 'object' ? item.code : item;
+      let descStr = typeof item === 'object' ? (item.desc || '') : 'Default Photographer Unlock Code';
+      if (codeStr && !seen.has(codeStr.toUpperCase())) {
+        seen.add(codeStr.toUpperCase());
+        result.push({ code: codeStr.toUpperCase(), desc: descStr });
+      }
+    });
+    return result;
+  };
+
   if (window.adminDraftInviteCodes && Array.isArray(window.adminDraftInviteCodes)) {
-    // Return deduplicated array
-    window.adminDraftInviteCodes = Array.from(new Set(window.adminDraftInviteCodes));
+    window.adminDraftInviteCodes = normalize(window.adminDraftInviteCodes);
     return window.adminDraftInviteCodes;
   }
+
   try {
     const saved = localStorage.getItem("wps_custom_invite_codes");
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        window.adminDraftInviteCodes = Array.from(new Set(parsed));
+        window.adminDraftInviteCodes = normalize(parsed);
         return window.adminDraftInviteCodes;
       }
     }
   } catch(e) {}
-  try {
-    const legacy = localStorage.getItem("wps_custom_invite_code");
-    if (legacy) {
-      window.adminDraftInviteCodes = Array.from(new Set([legacy, "NERDY-INVITE", "INVITE2026", "NERDYVIP"]));
-      return window.adminDraftInviteCodes;
-    }
-  } catch(e) {}
-  window.adminDraftInviteCodes = ["NERDY-INVITE", "INVITE2026", "NERDYVIP", "STUDIOINVITE", "VIP2026"];
+
+  const defaultList = [
+    { code: "NERDYBRAND", desc: "Default photographer unlock code for Instagram DMs" },
+    { code: "NERDYTEST", desc: "Test shoot unlock pass for agency models" },
+    { code: "INVITE2026", desc: "General 2026 TFP collaboration pass" },
+    { code: "NERDYVIP", desc: "VIP partner unlock code" }
+  ];
+
+  window.adminDraftInviteCodes = normalize(defaultList);
   return window.adminDraftInviteCodes;
 };
 
@@ -142,25 +157,29 @@ window.addNewAdminInviteCode = function() {
   const newCode = prompt("Enter New Photographer Direct Invite Code (e.g. MODELVIP):")?.trim().toUpperCase();
   if (!newCode) return;
   if (newCode.length < 3) { alert("Invite code must be at least 3 characters!"); return; }
+  const newDesc = prompt("Enter Admin-Only Note / Description (Admin Eyes Only):", "VIP invite for agency talent")?.trim() || "Admin VIP Code";
+  
   const current = window.getAdminInviteCodes();
-  const updated = Array.from(new Set([newCode, ...current]));
-  window.adminDraftInviteCodes = updated;
+  window.adminDraftInviteCodes = [{ code: newCode, desc: newDesc }, ...current];
   markUnsavedChanges();
   if (typeof toast === "function") toast(`🔑 Invite Code '${newCode}' added to draft (Click "Save All Changes" to push live)`);
   if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
 };
 
-window.editAdminInviteCode = function(oldCode) {
+window.editAdminInviteCode = function(targetCodeStr) {
   const currentCodes = window.getAdminInviteCodes();
-  const targetCode = oldCode || currentCodes[0] || "NERDY-INVITE";
-  const updatedName = prompt("Edit Photographer Direct Invite Code String:", targetCode)?.trim().toUpperCase();
-  if (!updatedName) return;
-  if (updatedName.length < 3) { alert("Invite code must be at least 3 characters!"); return; }
+  const item = currentCodes.find(x => x.code === targetCodeStr) || currentCodes[0] || { code: "NERDYBRAND", desc: "" };
   
-  const updated = currentCodes.map(c => c === targetCode ? updatedName : c);
-  window.adminDraftInviteCodes = Array.from(new Set(updated));
+  const updatedCode = prompt("Edit Photographer Direct Invite Code String:", item.code)?.trim().toUpperCase();
+  if (!updatedCode) return;
+  if (updatedCode.length < 3) { alert("Invite code must be at least 3 characters!"); return; }
+  
+  const updatedDesc = prompt("Edit Admin-Only Note / Description (Admin Eyes Only):", item.desc || "")?.trim() || "Admin VIP Code";
+  
+  const updated = currentCodes.map(x => x.code === targetCodeStr ? { code: updatedCode, desc: updatedDesc } : x);
+  window.adminDraftInviteCodes = updated;
   markUnsavedChanges();
-  if (typeof toast === "function") toast(`🔑 Invite Code updated to '${updatedName}' in draft (Click "Save All Changes" to push live)`);
+  if (typeof toast === "function") toast(`🔑 Invite Code '${updatedCode}' updated in draft (Click "Save All Changes" to push live)`);
   if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
 };
 
@@ -169,9 +188,10 @@ window.generateRandomAdminInviteCode = function() {
   const randomPrefix = prefixes[Math.floor(Math.random() * prefixes.length)];
   const randomNum = Math.floor(1000 + Math.random() * 9000);
   const generated = `${randomPrefix}-${randomNum}`;
+  const randomDesc = prompt("Enter Admin-Only Note for this random code:", "Auto-generated random VIP code")?.trim() || "Auto-generated random VIP code";
   
   const current = window.getAdminInviteCodes();
-  window.adminDraftInviteCodes = Array.from(new Set([generated, ...current]));
+  window.adminDraftInviteCodes = [{ code: generated, desc: randomDesc }, ...current];
   markUnsavedChanges();
   if (typeof toast === "function") toast(`🎲 Auto-generated VIP Code '${generated}' in draft (Click "Save All Changes" to push live)`);
   if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
@@ -184,8 +204,8 @@ window.deleteAdminInviteCode = function(codeToDelete) {
     return;
   }
   if (confirm(`Remove invite code '${codeToDelete}' from draft?`)) {
-    const updated = current.filter(c => c !== codeToDelete);
-    window.adminDraftInviteCodes = Array.from(new Set(updated));
+    const updated = current.filter(x => x.code !== codeToDelete);
+    window.adminDraftInviteCodes = updated;
     markUnsavedChanges();
     if (typeof toast === "function") toast(`🗑️ Invite code '${codeToDelete}' removed from draft.`);
     if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
@@ -3266,20 +3286,25 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           </div>
         `;
 
-        const allInviteCodes = typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : [activeInviteCode];
-        const inviteItemsHtml = allInviteCodes.map((codeStr, idx) => `
-          <div style="background: var(--paper); border: 1px solid var(--accent); border-radius: 6px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; box-shadow: var(--shadow-sm);">
-            <div>
-              <span style="font-size: 9px; font-weight: 800; color: var(--accent); text-transform: uppercase; font-family: var(--mono-font); display: block;">${idx === 0 ? '⭐ Primary Code' : '🔑 VIP Invite'}</span>
-              <strong style="font-size: 13px; font-family: var(--mono-font); color: var(--ink); letter-spacing: 0.04em;">${esc(codeStr)}</strong>
+        const allInviteCodes = typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : [{ code: activeInviteCode, desc: 'Default Code' }];
+        const inviteItemsHtml = allInviteCodes.map((itemObj, idx) => {
+          const codeStr = typeof itemObj === 'object' ? itemObj.code : itemObj;
+          const descStr = typeof itemObj === 'object' ? (itemObj.desc || 'Admin VIP Code') : 'Admin VIP Code';
+          return `
+            <div style="background: var(--paper); border: 1px solid var(--accent); border-radius: 6px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; box-shadow: var(--shadow-sm);">
+              <div>
+                <span style="font-size: 9px; font-weight: 800; color: var(--accent); text-transform: uppercase; font-family: var(--mono-font); display: block;">${idx === 0 ? '⭐ Primary Code' : '🔑 VIP Invite'}</span>
+                <strong style="font-size: 13.5px; font-family: var(--mono-font); color: var(--ink); letter-spacing: 0.04em; display: block; margin-top: 1px;">${esc(codeStr)}</strong>
+                <div style="font-size: 11px; color: var(--ink-soft); margin-top: 4px; line-height: 1.3;">📝 ${esc(descStr)}</div>
+              </div>
+              <div style="display: flex; gap: 4px; align-items: center; flex-shrink: 0;">
+                <button type="button" onclick="navigator.clipboard.writeText('${esc(codeStr)}'); if(typeof toast==='function') toast('📋 Invite Code ${esc(codeStr)} copied!'); else alert('Copied!');" style="background: var(--accent); color: #ffffff; border: none; padding: 4px 8px; border-radius: 4px; font-size: 9.5px; cursor: pointer; font-weight: 700; font-family: var(--mono-font);" title="Copy Invite Code">📋 Copy</button>
+                <button type="button" onclick="window.editAdminInviteCode('${esc(codeStr)}')" style="background: var(--bone); color: var(--ink); border: 1px solid var(--line); padding: 4px 6px; border-radius: 4px; font-size: 9.5px; cursor: pointer; font-weight: 700;" title="Edit Code">✏️ Edit</button>
+                <button type="button" onclick="window.deleteAdminInviteCode('${esc(codeStr)}')" style="background: rgba(255,77,77,0.1); color: #ff4d4d; border: 1px solid rgba(255,77,77,0.3); padding: 4px 6px; border-radius: 4px; font-size: 9.5px; cursor: pointer; font-weight: 700;" title="Delete Code">🗑️</button>
+              </div>
             </div>
-            <div style="display: flex; gap: 4px; align-items: center;">
-              <button type="button" onclick="navigator.clipboard.writeText('${esc(codeStr)}'); if(typeof toast==='function') toast('📋 Invite Code ${esc(codeStr)} copied!'); else alert('Copied!');" style="background: var(--accent); color: #ffffff; border: none; padding: 4px 8px; border-radius: 4px; font-size: 9.5px; cursor: pointer; font-weight: 700; font-family: var(--mono-font);" title="Copy Invite Code">📋 Copy</button>
-              <button type="button" onclick="window.editAdminInviteCode('${esc(codeStr)}')" style="background: var(--bone); color: var(--ink); border: 1px solid var(--line); padding: 4px 6px; border-radius: 4px; font-size: 9.5px; cursor: pointer; font-weight: 700;" title="Edit Code">✏️ Edit</button>
-              <button type="button" onclick="window.deleteAdminInviteCode('${esc(codeStr)}')" style="background: rgba(255,77,77,0.1); color: #ff4d4d; border: 1px solid rgba(255,77,77,0.3); padding: 4px 6px; border-radius: 4px; font-size: 9.5px; cursor: pointer; font-weight: 700;" title="Delete Code">🗑️</button>
-            </div>
-          </div>
-        `).join("");
+          `;
+        }).join("");
 
         const inviteCardHtml = `
           <div style="grid-column: 1 / -1; background: rgba(255, 69, 0, 0.06); border: 1.5px solid var(--accent); border-radius: 10px; padding: 16px 18px; margin-bottom: 6px;">
@@ -7145,7 +7170,7 @@ RAW files are not provided.`
       const testShootOpt = $("#b_type")?.querySelector('option[value="Selective Collaboration (TFP)"]');
       const inviteCodeInput = $("#b_invite_code");
       const inviteStatus = $("#inviteCodeStatus");
-      const allAdminInvites = (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : ["NERDY-INVITE"]).map(c => c.toUpperCase());
+      const allAdminInvites = (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : [{ code: "NERDYBRAND" }]).map(c => (typeof c === 'object' ? c.code : c).toUpperCase());
       const enteredCode = (inviteCodeInput?.value || "").trim().toUpperCase();
       
       // Verify against ALL active admin invite codes (e.g. NERDYTEST, MODELVIP, etc.) or backup codes
@@ -9643,7 +9668,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=237').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=238').catch(() => {});
   });
 }
 
