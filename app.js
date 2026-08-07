@@ -5028,7 +5028,7 @@ RAW files are not provided.`
                </div>
                <div id="discountSavingsBadge" style="display: none; margin-top: 6px; font-family: var(--mono-font); font-size: 11px; color: #059669; font-weight: 700;"></div>
 
-               <div id="finalPriceSummaryBox" style="background: #111111; color: #ffffff; border: 1.5px solid var(--accent); border-radius: 10px; padding: 16px 20px; margin-top: 10px; margin-bottom: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.35);">
+               <div id="finalPriceSummaryBox" style="background: #111111; color: #ffffff; border: 1.5px solid var(--accent); border-radius: 10px; padding: 16px 20px; margin-top: 18px; margin-bottom: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.35);">
                   <div style="font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
                     <span>💎 Itemized Production Quote &amp; Milestone Payable HUD</span>
                     <span id="calcDiscountTag" style="font-size: 10px; color: #059669; background: rgba(5,150,105,0.2); padding: 3px 10px; border-radius: 12px; font-weight: 700; display: none;"></span>
@@ -5059,10 +5059,6 @@ RAW files are not provided.`
                     </div>
                   </div>
                 </div>
-                 <div style="border-top: 1px solid rgba(255,255,255,0.15); margin-top: 10px; padding-top: 10px; display: flex; justify-content: space-between; align-items: center;">
-                   <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.04em;">FINAL AMOUNT PAYABLE:</span>
-                   <span id="summaryFinalAmount" style="font-size: 22px; font-weight: 800; color: var(--accent); font-family: var(--mono-font);">₹${getAdminPackages()[0].price.toLocaleString('en-IN')} INR</span>
-                 </div>
                </div>
 
                <div class="book-policies" style="background: var(--bone); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 10px; padding: 16px 18px; margin-bottom: 20px;">
@@ -9203,6 +9199,6 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=217').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=218').catch(() => {});
   });
 }
