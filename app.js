@@ -1150,6 +1150,22 @@ window.DEMO_SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 `;
 
+      // Round-trip self-test before anything is committed: the very parser
+      // this app (and every visitor's background refresh) uses to read
+      // data.js must get back exactly the albums being published. If it
+      // can't, the file format has drifted — abort rather than publish a
+      // portfolio the site itself would read as empty.
+      const roundTrip = parseShootsFromDataJs(fileContent);
+      if (!roundTrip || roundTrip.length !== published.length) {
+        throw new Error(`Sync aborted before publishing: regenerated data.js failed its own read-back check (parsed ${roundTrip ? roundTrip.length : "nothing"}, expected ${published.length} albums). Nothing was changed.`);
+      }
+      // Independent shrink check: never publish fewer albums than are live
+      // unless each missing one was explicitly deleted this session.
+      const keptRemote = remote.filter(s => s && s.id && !s.demo && !removed.has(s.id)).length;
+      if (published.length < keptRemote) {
+        throw new Error(`Sync aborted: it would silently remove ${keptRemote - published.length} published album(s) that were not explicitly deleted. Nothing was changed.`);
+      }
+
       // One atomic commit: photo blobs + regenerated data.js.
       const ref = await ghApi(pat, `/git/ref/heads/${GH_BRANCH}`);
       const baseCommit = await ghApi(pat, `/git/commits/${ref.object.sha}`);
@@ -1177,7 +1193,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       toast("Sync complete! Changes go live for everyone within a few minutes.");
     } catch (e) {
       console.error(e);
-      toast(e.message && e.message.includes("401") ? e.message : "GitHub sync failed — changes are saved locally. Check the token and connection, then publish again.");
+      // Abort-guard messages ("Sync aborted…", "…aborting to avoid
+      // overwriting…") explain exactly why nothing was published — show them
+      // verbatim instead of the generic connection hint.
+      toast(e.message && /401|abort/i.test(e.message) ? e.message : "GitHub sync failed — changes are saved locally. Check the token and connection, then publish again.");
     }
   }
 
@@ -9696,7 +9715,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=248').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=249').catch(() => {});
   });
 }
 
