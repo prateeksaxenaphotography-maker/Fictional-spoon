@@ -8913,29 +8913,29 @@ RAW files are not provided.`
       const now = new Date();
       const pad2 = (n) => String(n).padStart(2, "0");
       const stamp = `${now.getFullYear()}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}_${pad2(now.getHours())}${pad2(now.getMinutes())}`;
-      document.title = `${cleanModelName}_${docType}_Shot_By_NerdyPhotographerin_${stamp}`;
-      // Flip visible only for the print snapshot itself. The screen never
-      // paints the container: no yield to the event loop happens between
-      // this assignment and window.print() blocking. Doing it here in JS
-      // (not only via the @media print rule in styles.css) means a stale
-      // cached stylesheet can't leave the container hidden during the
-      // snapshot — that skew (new app.js + old styles.css under the same
-      // ?v=) produced blank PDFs on the live site.
-      printContainer.style.setProperty("visibility", "visible", "important");
-      document.body.classList.add("is-printing");
-    setTimeout(() => {
-      window.print();
+      const exportTitle = `${cleanModelName}_${docType}_Shot_By_NerdyPhotographerin_${stamp}`;
+      // Everything the print dialog snapshots — container visibility and the
+      // document title that becomes the PDF filename — is set inside the SAME
+      // task that calls window.print(), with the restore strictly AFTER
+      // print() returns. A previous change deferred the print call by 150ms
+      // but left the restore synchronous (and the title set before the
+      // deferral, where a queued render() could clobber it): every export
+      // came out as a blank PDF with the wrong filename.
       setTimeout(() => {
-        document.body.classList.remove("is-printing");
-      }, 1000);
-    }, 150);
-      document.title = oldTitle;
-
-      printContainer.style.display = prevDisplay;
-      printContainer.style.position = prevPosition;
-      printContainer.style.left = prevLeft;
-      printContainer.style.top = prevTop;
-      printContainer.style.visibility = prevVisibility;
+        document.title = exportTitle;
+        printContainer.style.setProperty("visibility", "visible", "important");
+        document.body.classList.add("is-printing");
+        window.print();
+        // window.print() blocks while the dialog is open; in browsers where
+        // it returns early this still matches the pre-regression ordering.
+        document.title = oldTitle;
+        printContainer.style.display = prevDisplay;
+        printContainer.style.position = prevPosition;
+        printContainer.style.left = prevLeft;
+        printContainer.style.top = prevTop;
+        printContainer.style.visibility = prevVisibility;
+        setTimeout(() => document.body.classList.remove("is-printing"), 1000);
+      }, 150);
     };
     const imgs = printContainer.querySelectorAll("img");
     if (imgs.length === 0) { triggerPrint(); return; }
@@ -9715,7 +9715,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=249').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=250').catch(() => {});
   });
 }
 
