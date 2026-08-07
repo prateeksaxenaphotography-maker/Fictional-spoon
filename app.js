@@ -1235,22 +1235,29 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       }
     }
 
-    // Model Stats
+    // Agency Model Stats HUD Card (Album Space #4 Redesign with Smart Fallback)
     let statsHtml = "";
     const hasStats = shoot.height || shoot.chest || shoot.waist || shoot.hips || shoot.shoes || shoot.modelHair || shoot.modelEyes;
     const statsAllowedHere = isCurrentlyModelPortfolioView() ? shoot.showStatsOnModelPortfolio !== false : shoot.showStatsOnCompCard !== false;
     if (isCc && hasStats && statsAllowedHere) {
+      const statItems = [
+        shoot.height ? `<span>📏 <strong>Height:</strong> ${esc(shoot.height)}</span>` : "",
+        shoot.chest ? `<span>👚 <strong>Bust/Chest:</strong> ${esc(shoot.chest)}</span>` : "",
+        shoot.waist ? `<span>👗 <strong>Waist:</strong> ${esc(shoot.waist)}</span>` : "",
+        shoot.hips ? `<span>👠 <strong>Hips:</strong> ${esc(shoot.hips)}</span>` : "",
+        shoot.shoes ? `<span>👟 <strong>Shoes:</strong> ${esc(shoot.shoes)}</span>` : "",
+        shoot.modelHair ? `<span>💇 <strong>Hair:</strong> ${esc(shoot.modelHair)}</span>` : "",
+        shoot.modelEyes ? `<span>👁️ <strong>Eyes:</strong> ${esc(shoot.modelEyes)}</span>` : ""
+      ].filter(Boolean);
+
       statsHtml = `
-        <div class="lb-sidebar-section">
-          <h4 style="font-family:'Outfit', sans-serif; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); margin:0 0 10px;">Model Stats</h4>
-          <div class="stats-row">
-            ${shoot.height ? `<div class="stats-item"><dt>Height</dt><dd>${esc(shoot.height)}</dd></div>` : ""}
-            ${shoot.chest ? `<div class="stats-item"><dt>Chest/Bust</dt><dd>${esc(shoot.chest)}</dd></div>` : ""}
-            ${shoot.waist ? `<div class="stats-item"><dt>Waist</dt><dd>${esc(shoot.waist)}</dd></div>` : ""}
-            ${shoot.hips ? `<div class="stats-item"><dt>Hips</dt><dd>${esc(shoot.hips)}</dd></div>` : ""}
-            ${shoot.shoes ? `<div class="stats-item"><dt>Shoes</dt><dd>${esc(shoot.shoes)}</dd></div>` : ""}
-            ${shoot.modelHair ? `<div class="stats-item"><dt>Hair</dt><dd>${esc(shoot.modelHair)}</dd></div>` : ""}
-            ${shoot.modelEyes ? `<div class="stats-item"><dt>Eyes</dt><dd>${esc(shoot.modelEyes)}</dd></div>` : ""}
+        <div class="lb-sidebar-section" style="background: var(--paper); border: 1.5px solid var(--accent); border-radius: 10px; padding: 14px; margin-bottom: 14px; box-shadow: var(--shadow-sm);">
+          <div style="font-family: var(--mono-font); font-size: 10px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+            <span>📏 Agency Model Measurements</span>
+            <span style="font-size: 9px; background: rgba(255,69,0,0.15); padding: 2px 6px; border-radius: 4px;">VERIFIED</span>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px 12px; font-size: 11.5px; color: var(--ink); line-height: 1.5;">
+            ${statItems.join("")}
           </div>
         </div>
       `;
@@ -9580,7 +9587,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=232').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=233').catch(() => {});
   });
 }
 
