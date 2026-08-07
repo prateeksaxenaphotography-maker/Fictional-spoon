@@ -4435,14 +4435,28 @@ RAW files are not provided.`
 
   function catCard(label, kind, val, count, sample, cover) {
     const coverSrc = cover ? photoSrc(cover) : "";
-    const swatch = coverSrc
-      ? `<span class="cat-cover"><img src="${esc(coverSrc)}" alt="${esc(label)}" loading="lazy" /></span>`
-      : `<span class="cat-swatch" style="background:linear-gradient(150deg,${esc(sample[0])},${esc(sample[1])})"></span>`;
+    const coverImg = coverSrc
+      ? `<img src="${esc(coverSrc)}" alt="${esc(label)}" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease;" loading="lazy" />`
+      : `<div style="width:100%; height:100%; background:linear-gradient(150deg,${esc(sample[0])},${esc(sample[1])});"></div>`;
+    
     return `
-      <a href="/categories?kind=${kind}&amp;val=${encodeURIComponent(val)}" data-link class="cat-card reveal">
-        ${swatch}
-        <div class="cat-body"><span class="cat-kind">${kind}</span><h3>${esc(label)}</h3><span class="cat-count">${count} shoot${count !== 1 ? "s" : ""}</span></div>
-        <span class="cat-arrow">→</span>
+      <a href="/categories?kind=${kind}&amp;val=${encodeURIComponent(val)}" data-link class="cat-card reveal" style="display: flex; flex-direction: column; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; padding: 0; text-decoration: none; color: inherit; box-shadow: var(--shadow-sm); transition: transform 0.3s ease, box-shadow 0.3s ease;">
+        <div style="position: relative; height: 180px; overflow: hidden; background: var(--bone);">
+          ${coverImg}
+          <div style="position: absolute; top: 10px; left: 10px; z-index: 2;">
+            <span style="font-family: var(--mono-font); font-size: 9px; font-weight: 800; background: rgba(10,10,10,0.75); backdrop-filter: blur(8px); color: #fff; padding: 4px 8px; border-radius: 20px; text-transform: uppercase;">${esc(kind)}</span>
+          </div>
+          <div style="position: absolute; top: 10px; right: 10px; z-index: 2;">
+            <span style="font-family: var(--mono-font); font-size: 9.5px; font-weight: 800; background: var(--accent); color: #fff; padding: 4px 9px; border-radius: 20px;">${count} Album${count !== 1 ? "s" : ""}</span>
+          </div>
+        </div>
+        <div style="padding: 16px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 0 0 2px; color: var(--ink);">${esc(label)}</h3>
+            <span style="font-size: 11px; color: var(--ink-soft); font-family: var(--mono-font);">Browse Category Collection</span>
+          </div>
+          <span style="font-size: 12px; font-weight: 700; color: var(--accent); display: inline-flex; align-items: center; gap: 4px;">Explore →</span>
+        </div>
       </a>`;
   }
 
@@ -9566,7 +9580,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=231').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=232').catch(() => {});
   });
 }
 
