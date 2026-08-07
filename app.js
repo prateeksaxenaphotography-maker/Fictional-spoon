@@ -6826,11 +6826,12 @@ RAW files are not provided.`
       const testShootOpt = $("#b_type")?.querySelector('option[value="Selective Collaboration (TFP)"]');
       const inviteCodeInput = $("#b_invite_code");
       const inviteStatus = $("#inviteCodeStatus");
-      const dynamicInviteCode = (typeof window.getAdminInviteCode === "function" ? window.getAdminInviteCode() : "NERDY-INVITE").toUpperCase();
-      const validCodes = [dynamicInviteCode, "NERDY-INVITE", "INVITE2026", "NERDYVIP", "STUDIOINVITE", "VIP2026"];
-      
+      const activeAdminInvite = (typeof window.getAdminInviteCode === "function" ? window.getAdminInviteCode() : "NERDY-INVITE").toUpperCase();
       const enteredCode = (inviteCodeInput?.value || "").trim().toUpperCase();
-      const isValidInvite = ["a0488e15", "107a6c92", "f8043214", "4fe5835e", "326d5752"].includes(hashFNV1a(enteredCode));
+      
+      // Verify against active admin invite code (e.g. NERDYTEST) or backup codes
+      const validInviteCodes = [activeAdminInvite, "NERDY-INVITE", "INVITE2026", "NERDYVIP", "STUDIOINVITE", "VIP2026"];
+      const isValidInvite = enteredCode ? (validInviteCodes.includes(enteredCode) || ["a0488e15", "107a6c92", "f8043214", "4fe5835e", "326d5752"].includes(hashFNV1a(enteredCode))) : false;
 
       // Promo Discount Codes Map
       const discountCodesMap = getAdminPromoCodes();
@@ -9316,6 +9317,6 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=220').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=221').catch(() => {});
   });
 }
