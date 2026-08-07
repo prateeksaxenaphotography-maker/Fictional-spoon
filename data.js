@@ -911,3 +911,10 @@ window.WPS_DATA = {
     }
   }
 };
+
+// Explicit Global Aliases for Data Safety
+window.ACTIVITIES = window.WPS_DATA.ACTIVITIES || [];
+window.TYPES = window.WPS_DATA.TYPES || [];
+window.BRANDS = window.WPS_DATA.BRANDS || [];
+window.DEMO_SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
+window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
