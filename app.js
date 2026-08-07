@@ -5493,21 +5493,24 @@ RAW files are not provided.`
                      <option value="Selective Collaboration (TFP)" ${isSelected("Selective Collaboration (TFP)")}>📸 SELECTIVE COLLABORATION / TFP (Portfolio Collab)</option>
                      <option value="Other" ${isSelected("Other")}>Other Focus Area</option>
                    </select>
-                   <div id="b_type_notice" style="font-size: var(--font-xs); color: var(--accent); margin-top: 5px; font-family: var(--mono-font); display: none;">
-                     🎁 <strong>Test Shoot Deliverables:</strong> Full Proofing Gallery + 8 to 12 Retouched Master Clicks (No RAW files delivered).
-                   </div>
-                 </label>
+                    <div id="b_type_notice" style="font-size: var(--font-xs); color: #059669; margin-top: 6px; font-family: var(--mono-font); background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.25); border-radius: 6px; padding: 8px 12px; display: none;">
+                      🎁 <strong>Test Shoot Deliverables Included:</strong> Full Online Proofing Gallery + 8 to 12 Retouched Master Clicks (No RAW files delivered · Mandatory Instagram credit @nerdyphotographer.in).
+                    </div>
+                  </label>
 
-                 <!-- Option B: Locked TFP Card displayed when Photographer Invite Code is verified -->
-                 <div id="lockedTfpCard" style="display: none; background: rgba(5,150,105,0.06); border: 1.5px solid #059669; border-radius: 8px; padding: 14px 16px; margin-bottom: 6px; box-shadow: var(--shadow-sm); width: 100%; box-sizing: border-box;">
-                   <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #059669; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;">
-                     <span>🔑 PROJECT TYPE: SELECTIVE COLLABORATION (TFP / TEST SHOOT)</span>
-                     <span style="background: #059669; color: #ffffff; padding: 2.5px 8px; border-radius: 4px; font-size: var(--font-xs); font-weight: 700;">LOCKED BY INVITE CODE</span>
-                   </div>
-                   <div style="font-size: var(--font-xs); color: var(--ink); line-height: 1.5; font-weight: 600;">
-                     Session is locked to a <strong>Selective Collaboration / TFP Test Shoot</strong> via your verified Photographer Direct Invite Code.
-                   </div>
-                 </div>
+                  <!-- Option B: Locked TFP Card displayed when Photographer Invite Code is verified -->
+                  <div id="lockedTfpCard" style="display: none; background: rgba(5,150,105,0.06); border: 1.5px solid #059669; border-radius: 8px; padding: 14px 16px; margin-bottom: 6px; box-shadow: var(--shadow-sm); width: 100%; box-sizing: border-box;">
+                    <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #059669; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px;">
+                      <span>🔑 PROJECT TYPE: SELECTIVE COLLABORATION (TFP / TEST SHOOT)</span>
+                      <span style="background: #059669; color: #ffffff; padding: 2.5px 8px; border-radius: 4px; font-size: var(--font-xs); font-weight: 700;">LOCKED BY INVITE CODE</span>
+                    </div>
+                    <div style="font-size: var(--font-xs); color: var(--ink); line-height: 1.5; font-weight: 600; margin-top: 4px;">
+                      Session is locked to a <strong>Selective Collaboration / TFP Test Shoot</strong> via your verified Photographer Direct Invite Code.
+                    </div>
+                    <div style="background: rgba(5,150,105,0.1); border: 1px solid rgba(5,150,105,0.3); border-radius: 6px; padding: 8px 12px; margin-top: 8px; font-family: var(--mono-font); font-size: var(--font-xs); color: #047857; font-weight: 700;">
+                      🎁 <strong>Test Shoot Deliverables Included:</strong> Full Proofing Gallery + 8 to 12 Retouched Master Clicks (No RAW files delivered · Mandatory credit @nerdyphotographer.in).
+                    </div>
+                  </div>
                  <label class="field" id="b_date_field">
                     <span>Preferred Date / Timeline * <span id="b_date_availability_badge" style="display: none; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 2.5px 7px; border-radius: 4px; margin-left: 8px; vertical-align: middle; text-transform: uppercase; letter-spacing: 0.05em;"></span></span>
                     <div class="date-picker-wrap">
@@ -7223,11 +7226,14 @@ RAW files are not provided.`
             collabFallbackWrap.style.display = "block";
             collabFallbackWrap.innerHTML = `
               <div style="font-family: 'Outfit', sans-serif; font-size: var(--font-xs); font-weight: 700; color: var(--accent); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-                📸 Creative Talent TFP Collaboration Policy
+                📸 Creative Talent TFP Collaboration Policy &amp; Deliverables
               </div>
-              <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">
+              <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 6px 0; line-height: 1.5;">
                 Peer-to-peer collaboration session for portfolio growth &amp; creative curation. Submissions are reviewed at studio discretion based on creative brief alignment and schedule availability.
               </p>
+              <div style="font-family: var(--mono-font); font-size: var(--font-xs); color: #059669; font-weight: 700; background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.2); border-radius: 6px; padding: 6px 10px; margin-top: 6px;">
+                🎁 <strong>Contracted Deliverables:</strong> Full Proofing Gallery + 8 to 12 Retouched Master Clicks (No RAW files delivered).
+              </div>
             `;
           } else {
             // Brands & Agencies require a mandatory Paid Fallback Package
