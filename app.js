@@ -202,6 +202,16 @@ window.addNewAdminPackageRow = function() {
   if (typeof render === "function") render();
 };
 
+window.copyPackageBookingLink = function(price) {
+  const url = `https://www.nerdyphotographer.in/book?package=${price}`;
+  navigator.clipboard.writeText(url).then(() => {
+    if (typeof toast === "function") toast(`🔗 Shareable Booking Link copied: ${url}`);
+    else alert(`Shareable Link: ${url}`);
+  }).catch(() => {
+    alert(`Shareable Link: ${url}`);
+  });
+};
+
 window.deleteAdminPackageRow = function(index) {
   const pkgs = getAdminPackages();
   if (pkgs.length <= 1) {
@@ -2910,6 +2920,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             <input type="text" class="pkg-edit-specs" value="${esc(p.specs)}" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: 12px; background: var(--bone); color: var(--ink);" />
           </div>
           <div style="display: flex; gap: 4px; justify-content: flex-end; padding-top: 14px;">
+            <button type="button" class="admin-cal-btn" onclick="window.copyPackageBookingLink(${p.price})" title="Copy Shareable Booking Link" style="font-size: 11px; padding: 6px 8px; border-color: var(--accent); color: var(--accent); font-weight: 700;">🔗 Share Link</button>
             <button type="button" class="admin-cal-btn" onclick="window.moveAdminPackageRow(${idx}, -1)" title="Move Up" ${idx === 0 ? 'disabled style="opacity:0.3; cursor:not-allowed; padding:6px 8px; font-size:11px;"' : 'style="padding:6px 8px; font-size:11px;"'}>▲</button>
             <button type="button" class="admin-cal-btn" onclick="window.moveAdminPackageRow(${idx}, 1)" title="Move Down" ${idx === pkgs.length - 1 ? 'disabled style="opacity:0.3; cursor:not-allowed; padding:6px 8px; font-size:11px;"' : 'style="padding:6px 8px; font-size:11px;"'}>▼</button>
             <button type="button" class="admin-cal-btn" onclick="window.deleteAdminPackageRow(${idx})" title="Delete Package Tier" style="color: #b22222; border-color: rgba(178,34,34,0.3); padding: 6px 8px; font-size: 11px;">🗑️</button>
@@ -5009,21 +5020,37 @@ RAW files are not provided.`
                </div>
                <div id="discountSavingsBadge" style="display: none; margin-top: 6px; font-family: var(--mono-font); font-size: 11px; color: #059669; font-weight: 700;"></div>
 
-               <div id="finalPriceSummaryBox" style="background: #111111; color: #ffffff; border: 1px solid var(--accent); border-radius: 8px; padding: 14px 18px; margin-top: 10px; margin-bottom: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);">
-                 <div style="font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
-                   <span>💰 Booking Rate &amp; Final Payable Calculator</span>
-                   <span id="calcDiscountTag" style="font-size: 10px; color: #059669; background: rgba(5,150,105,0.15); padding: 2px 8px; border-radius: 12px; font-weight: 700; display: none;"></span>
-                 </div>
-                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-family: var(--mono-font); font-size: 13px;">
-                   <div>
-                     <span style="color: rgba(255,255,255,0.7);">Selected Package:</span>
-                     <span id="summaryOriginalPrice" style="font-weight: 700; color: #ffffff; margin-left: 6px;">₹${getAdminPackages()[0].price.toLocaleString('en-IN')}</span>
-                   </div>
-                   <div id="summaryDiscountWrap" style="display: none;">
-                     <span style="color: #059669; font-weight: 700;" id="summaryDiscountLabel">Discount Savings:</span>
-                     <span id="summarySavingsAmount" style="font-weight: 700; color: #059669; margin-left: 6px;">-₹0</span>
-                   </div>
-                 </div>
+               <div id="finalPriceSummaryBox" style="background: #111111; color: #ffffff; border: 1.5px solid var(--accent); border-radius: 10px; padding: 16px 20px; margin-top: 10px; margin-bottom: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.35);">
+                  <div style="font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <span>💎 Itemized Production Quote &amp; Milestone Payable HUD</span>
+                    <span id="calcDiscountTag" style="font-size: 10px; color: #059669; background: rgba(5,150,105,0.2); padding: 3px 10px; border-radius: 12px; font-weight: 700; display: none;"></span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; font-family: var(--mono-font); font-size: 13px; border-bottom: 1px dashed rgba(255,255,255,0.15); padding-bottom: 12px; margin-bottom: 12px;">
+                    <div>
+                      <span style="color: rgba(255,255,255,0.6);">Package Base Rate:</span>
+                      <span id="summaryOriginalPrice" style="font-weight: 700; color: #ffffff; margin-left: 6px;">₹${getAdminPackages()[0].price.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div id="summaryDiscountWrap" style="display: none;">
+                      <span id="summaryDiscountLabel" style="color: #059669; font-weight: 700;">Promo Savings:</span>
+                      <span id="summarySavingsAmount" style="font-weight: 700; color: #059669; margin-left: 6px;">-₹0</span>
+                    </div>
+                    <div>
+                      <span style="color: rgba(255,255,255,0.6);">Total Payable:</span>
+                      <span id="summaryFinalAmount" style="font-size: 22px; font-weight: 800; color: var(--accent); font-family: var(--mono-font);">₹${getAdminPackages()[0].price.toLocaleString('en-IN')} INR</span>
+                    </div>
+                  </div>
+                  <!-- 50/50 Milestone Itemized Breakdown -->
+                  <div id="summaryMilestoneBreakdown" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; font-size: 11px;">
+                    <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 12px;">
+                      <span style="color: rgba(255,255,255,0.6); display: block; font-size: 9px; text-transform: uppercase;">Step 1 · 50% Advance Retainer (Due Now)</span>
+                      <strong id="summaryAdvanceAmount" style="color: var(--accent); font-size: 13px; font-family: var(--mono-font);">₹${Math.round(getAdminPackages()[0].price / 2).toLocaleString('en-IN')} INR</strong>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 12px;">
+                      <span style="color: rgba(255,255,255,0.6); display: block; font-size: 9px; text-transform: uppercase;">Step 2 · 50% Wrap Balance (Prior to Deliverables)</span>
+                      <strong id="summaryBalanceAmount" style="color: #059669; font-size: 13px; font-family: var(--mono-font);">₹${(getAdminPackages()[0].price - Math.round(getAdminPackages()[0].price / 2)).toLocaleString('en-IN')} INR</strong>
+                    </div>
+                  </div>
+                </div>
                  <div style="border-top: 1px solid rgba(255,255,255,0.15); margin-top: 10px; padding-top: 10px; display: flex; justify-content: space-between; align-items: center;">
                    <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.04em;">FINAL AMOUNT PAYABLE:</span>
                    <span id="summaryFinalAmount" style="font-size: 22px; font-weight: 800; color: var(--accent); font-family: var(--mono-font);">₹${getAdminPackages()[0].price.toLocaleString('en-IN')} INR</span>
@@ -6841,7 +6868,7 @@ RAW files are not provided.`
         if (summaryOriginalPrice) summaryOriginalPrice.textContent = `₹${basePrice.toLocaleString("en-IN")}`;
         if (savings > 0) {
           if (summaryDiscountWrap) summaryDiscountWrap.style.display = "block";
-          if (summaryDiscountLabel) summaryDiscountLabel.textContent = `Promo Discount (${discountTagText}):`;
+          if (summaryDiscountLabel) summaryDiscountLabel.textContent = `Promo Savings (${discountTagText}):`;
           if (summarySavingsAmount) summarySavingsAmount.textContent = `-₹${savings.toLocaleString("en-IN")}`;
           if (calcDiscountTag) {
             calcDiscountTag.style.display = "inline-block";
@@ -6852,6 +6879,18 @@ RAW files are not provided.`
           if (calcDiscountTag) calcDiscountTag.style.display = "none";
         }
         if (summaryFinalAmount) summaryFinalAmount.textContent = `₹${finalPayable.toLocaleString("en-IN")} INR`;
+
+        // 50/50 Itemized Retainer & Balance Update
+        const advanceRetainer = Math.round(finalPayable / 2);
+        const wrapBalance = finalPayable - advanceRetainer;
+        const summaryAdvanceAmount = $("#summaryAdvanceAmount");
+        const summaryBalanceAmount = $("#summaryBalanceAmount");
+        if (summaryAdvanceAmount) summaryAdvanceAmount.textContent = `₹${advanceRetainer.toLocaleString("en-IN")} INR`;
+        if (summaryBalanceAmount) summaryBalanceAmount.textContent = `₹${wrapBalance.toLocaleString("en-IN")} INR`;
+
+        // Update Mobile Sticky Floating Action Bar (FAB)
+        const fabPrice = $("#mobileFabPrice");
+        if (fabPrice) fabPrice.textContent = `Payable: ₹${finalPayable.toLocaleString("en-IN")} INR`;
       }
     };
 
@@ -6915,6 +6954,40 @@ RAW files are not provided.`
         }
       }
     });
+
+    // URL Query Parameter Pre-filling Engine (?package=...&date=...&invite=...)
+    (function parseUrlQueryParams() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const pkgParam = params.get("package") || params.get("pkg");
+        const dateParam = params.get("date");
+        const inviteParam = params.get("invite") || params.get("code");
+        const roleParam = params.get("role");
+
+        if (roleParam && $("#b_role")) {
+          $("#b_role").value = roleParam;
+        }
+
+        if (dateParam && $("#b_date")) {
+          $("#b_date").value = dateParam;
+        }
+
+        if (pkgParam && $("#b_budget")) {
+          const sel = $("#b_budget");
+          const targetOpt = Array.from(sel.options).find(o => o.value.includes(pkgParam) || o.text.includes(pkgParam));
+          if (targetOpt) sel.value = targetOpt.value;
+        }
+
+        if (inviteParam && $("#b_invite_code")) {
+          const inviteInput = $("#b_invite_code");
+          const inviteContainer = $("#inviteCodeContainer");
+          const inviteLink = $("#toggleInviteCodeLink");
+          inviteInput.value = inviteParam;
+          if (inviteContainer) inviteContainer.style.display = "block";
+          if (inviteLink) inviteLink.textContent = "✕ Hide invite code field";
+        }
+      } catch(e) {}
+    })();
 
     $("#btnApplyInviteCode")?.addEventListener("click", () => {
       const input = $("#b_invite_code");
@@ -9118,6 +9191,6 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=215').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=216').catch(() => {});
   });
 }
