@@ -1,0 +1,26 @@
+# Validates the published portfolio on every push — including the Admin
+# Panel's auto-sync commits. Catches the failure class that used to blank
+# the live site (data.js/app.js format drift, wiped albums, missing photo
+# files) the moment it lands, instead of days later as a broken website.
+# A red run emails the repo owner.
+name: Validate portfolio data
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # HEAD~1 is needed for the album-count-collapse check
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node .github/scripts/validate-data.mjs
