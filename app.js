@@ -920,7 +920,18 @@ window.moveAdminPackageRow = function(index, dir) {
   }
   async function allShoots() { const d = await db(); return new Promise((res, rej) => { const q = d.transaction(STORE, "readonly").objectStore(STORE).getAll(); q.onsuccess = () => res(q.result || []); q.onerror = () => rej(q.error); }); }
   async function putShoot(rec) { const d = await db(); return new Promise((res, rej) => { const tx = d.transaction(STORE, "readwrite"); tx.objectStore(STORE).put(rec); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); }
-  async function delShoot(id) { const d = await db(); return new Promise((res, rej) => { const tx = d.transaction(STORE, "readwrite"); tx.objectStore(STORE).delete(id); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); }
+  async function delShoot(id) {
+    // Also drop it from the in-memory published list — loadShoots() merges
+    // published shoots back in, so without this a just-deleted album would
+    // resurrect on the very next render until the deletion syncs to GitHub.
+    const pub = window.WPS_DATA && window.WPS_DATA.DEMO_SHOOTS;
+    if (Array.isArray(pub)) {
+      const i = pub.findIndex(s => s && s.id === id);
+      if (i !== -1) pub.splice(i, 1);
+    }
+    const d = await db();
+    return new Promise((res, rej) => { const tx = d.transaction(STORE, "readwrite"); tx.objectStore(STORE).delete(id); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+  }
 
   /* ============================================================
      §8 · APP STATE
@@ -948,8 +959,16 @@ window.moveAdminPackageRow = function(index, dir) {
     
     const demoList = (window.WPS_DATA && window.WPS_DATA.DEMO_SHOOTS) || window.DEMO_SHOOTS || [];
     const validReal = real.filter(s => s && Array.isArray(s.photos) && s.photos.length > 0);
-    const shootsSource = validReal.length > 0 ? validReal : demoList;
     usingDemo = validReal.length === 0;
+    // Merge published (data.js) and local (IndexedDB) shoots by id, local
+    // winning, instead of showing one list XOR the other: a browser holding a
+    // stale subset locally must never hide albums that are published for
+    // everyone else. True demo placeholders (s.demo) still vanish as soon as
+    // any real shoot exists.
+    const mergedById = new Map();
+    demoList.forEach(s => { if (s && s.id && (usingDemo || !s.demo)) mergedById.set(s.id, s); });
+    validReal.forEach(s => { if (s && s.id) mergedById.set(s.id, s); });
+    const shootsSource = [...mergedById.values()];
 
     const sorted = [...shootsSource].sort((a, b) => parseShootDate(b) - parseShootDate(a));
     
@@ -991,17 +1010,32 @@ window.moveAdminPackageRow = function(index, dir) {
     return res.json();
   }
 
-  // Pull the DEMO_SHOOTS array out of a data.js source string. The array is
-  // always the last JSON value in the file, in every format we've published.
+  // Pull the DEMO_SHOOTS array out of a data.js source string. Anchors on the
+  // quoted "DEMO_SHOOTS" JSON key inside WPS_DATA — never the bare identifier
+  // used by the trailing window.* alias lines (whose `|| []` literal is what a
+  // lastIndexOf-based parse used to pick up, reading a full portfolio as
+  // empty) — and finds the array's end by string-aware bracket matching
+  // instead of trusting whatever "]" happens to be last in the file.
   function parseShootsFromDataJs(text) {
     try {
-      const key = text.lastIndexOf("DEMO_SHOOTS");
+      const key = text.indexOf('"DEMO_SHOOTS"');
       if (key === -1) return null;
       const start = text.indexOf("[", key);
-      const end = text.lastIndexOf("]");
-      if (start === -1 || end <= start) return null;
-      const arr = JSON.parse(text.slice(start, end + 1));
-      return Array.isArray(arr) ? arr : null;
+      if (start === -1) return null;
+      let depth = 0, inString = false, escaped = false;
+      for (let i = start; i < text.length; i++) {
+        const c = text[i];
+        if (escaped) { escaped = false; continue; }
+        if (c === "\\") { escaped = true; continue; }
+        if (c === '"') { inString = !inString; continue; }
+        if (inString) continue;
+        if (c === "[") depth++;
+        else if (c === "]" && --depth === 0) {
+          const arr = JSON.parse(text.slice(start, i + 1));
+          return Array.isArray(arr) ? arr : null;
+        }
+      }
+      return null;
     } catch { return null; }
   }
 
@@ -1096,11 +1130,24 @@ window.moveAdminPackageRow = function(index, dir) {
             }
           : p),
       }));
+      // Regenerate data.js in EXACTLY the committed format — same keys
+      // (CALENDAR_SETTINGS included) and same trailing alias lines. The
+      // parser and this generator must always agree on the file shape:
+      // format drift between hand commits and auto-syncs is what previously
+      // made parseShootsFromDataJs read a full portfolio as empty and let a
+      // sync wipe albums published from other devices.
       const fileContent = `/* ============================================================
    nerdyphotographer.in — published portfolio data
    Auto-synced by the Admin Panel. Photo files live under photos/.
    ============================================================ */
-window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: published }, null, 2)};
+window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: published, CALENDAR_SETTINGS: (window.WPS_DATA && window.WPS_DATA.CALENDAR_SETTINGS) || {} }, null, 2)};
+
+// Explicit Global Aliases for Data Safety
+window.ACTIVITIES = window.WPS_DATA.ACTIVITIES || [];
+window.TYPES = window.WPS_DATA.TYPES || [];
+window.BRANDS = window.WPS_DATA.BRANDS || [];
+window.DEMO_SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
+window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 `;
 
       // One atomic commit: photo blobs + regenerated data.js.
@@ -9485,7 +9532,11 @@ RAW files are not provided.`
       const res = await fetch(`data.js?fresh=${Date.now()}`, { cache: "no-store" });
       if (!res.ok) return;
       const fresh = parseShootsFromDataJs(await res.text());
-      if (!fresh || !usingDemo) return;
+      // A background refresh must never blank a page that is already showing
+      // albums — an empty parse here is far more likely a parser/network
+      // regression than a portfolio someone intentionally emptied, and the
+      // genuinely-empty case corrects itself on the next full page load.
+      if (!fresh || !fresh.length || !usingDemo) return;
       if (JSON.stringify(fresh) === JSON.stringify(window.WPS_DATA.DEMO_SHOOTS)) return;
       window.WPS_DATA.DEMO_SHOOTS = fresh;
       await loadShoots();
@@ -9645,7 +9696,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=247').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=248').catch(() => {});
   });
 }
 
