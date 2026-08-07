@@ -4754,13 +4754,17 @@ RAW files are not provided.`
              <fieldset>
                <legend>Shoot Details</legend>
 
-                <!-- Photographer Direct Invite Code (Positioned at TOP of Shoot Details) -->
-                <div style="background: rgba(var(--accent-rgb), 0.04); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 18px;">
+                <div style="margin-bottom: 12px; text-align: right;">
+                  <a id="toggleInviteCodeLink" href="javascript:void(0)" style="font-size: 11px; color: var(--ink-soft); text-decoration: underline; font-family: var(--mono-font); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">🔑 Have a direct photographer invite code?</a>
+                </div>
+
+                <!-- Photographer Direct Invite Code (Hidden by default, expandable via discreet link) -->
+                <div id="inviteCodeContainer" style="display: none; background: rgba(var(--accent-rgb), 0.04); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 18px;">
                   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                    <span style="font-weight: 700; color: var(--ink); font-size: 13px;">🔑 Photographer Direct Invite Code (Optional)</span>
+                    <span style="font-weight: 700; color: var(--ink); font-size: 13px;">🔑 Photographer Direct Invite Code</span>
                     <span id="inviteCodeStatus" style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; display: none;"></span>
                   </div>
-                  <div style="font-size: 11px; color: var(--ink-soft); margin-bottom: 10px; line-height: 1.4;">Received a direct invite code from the photographer? Enter it here to unlock Test Shoot / TFP collaboration options.</div>
+                  <div style="font-size: 11px; color: var(--ink-soft); margin-bottom: 10px; line-height: 1.4;">Enter your photographer invite code to unlock direct Test Shoot / TFP options.</div>
                   <div style="display: flex; gap: 8px;">
                     <input id="b_invite_code" type="text" placeholder="Enter Direct Invite Code" style="text-transform: uppercase; font-family: var(--mono-font); font-weight: 700; flex: 1; padding: 10px; border: 1px solid var(--line); border-radius: 6px;" />
                     <button type="button" id="btnApplyInviteCode" style="background: var(--accent); color: #ffffff; border: none; padding: 0 18px; border-radius: 6px; font-family: var(--mono-font); font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap;">Verify Code</button>
@@ -6569,6 +6573,8 @@ RAW files are not provided.`
       }
 
       const btnInvite = $("#btnApplyInviteCode");
+      const inviteContainer = $("#inviteCodeContainer");
+      const inviteLink = $("#toggleInviteCodeLink");
       if (inviteStatus) {
         if (enteredCode) {
           inviteStatus.style.display = "inline-block";
@@ -6742,11 +6748,27 @@ RAW files are not provided.`
       updateFields();
     });
 
+    $("#toggleInviteCodeLink")?.addEventListener("click", () => {
+      const container = $("#inviteCodeContainer");
+      const link = $("#toggleInviteCodeLink");
+      if (container) {
+        const isHidden = container.style.display === "none" || !container.style.display;
+        container.style.display = isHidden ? "block" : "none";
+        if (link) {
+          link.textContent = isHidden ? "✕ Hide invite code field" : "🔑 Have a direct photographer invite code?";
+        }
+      }
+    });
+
     $("#btnApplyInviteCode")?.addEventListener("click", () => {
       const input = $("#b_invite_code");
+      const container = $("#inviteCodeContainer");
+      const link = $("#toggleInviteCodeLink");
       const val = (input?.value || "").trim();
       if (val) {
         input.value = "";
+        if (container) container.style.display = "none";
+        if (link) link.textContent = "🔑 Have a direct photographer invite code?";
       }
       updateFields();
     });
@@ -8940,6 +8962,6 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=211').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=212').catch(() => {});
   });
 }
