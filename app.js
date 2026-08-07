@@ -2176,13 +2176,13 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
   function nothWorkCard(s, i) {
     const cover = s.photos.find(p => p.id.split("-")[0] === s.coverPhotoId) || s.photos[0] || { objectPosition: "center" };
     const coverPos = cover.objectPosition || "center";
-    const typeTag = (s.type === "Selective Collaboration (TFP)" && !s.showTestShootCategory) ? "" : s.type;
+    const typeTag = (s.type === "Selective Collaboration (TFP)" && !s.showTestShootCategory) ? "Selective Collab" : (s.type || "Editorial");
     const tagline = s.description
       ? s.description
       : [s.activity, typeTag].filter(Boolean).join(" · ");
     const photoCount = s.photos ? s.photos.length : 0;
-    const countText = photoCount ? `${photoCount} Photo${photoCount > 1 ? "s" : ""}` : "";
-    // For the card preview, show only clean mentor names (strip socials — those show in the lightbox)
+    const countBadgeText = photoCount ? `📸 ${photoCount} Photo${photoCount > 1 ? "s" : ""}` : "";
+    
     let mentorText = "";
     if (s.type === "Workshop Attended" && s.mentor) {
       const cleanNames = s.mentor.split(",").map(item => {
@@ -2191,31 +2191,45 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       }).filter(Boolean);
       if (cleanNames.length) mentorText = `Mentors: ${cleanNames.join(", ")}`;
     }
-    const meta = [s.brand, s.season, countText].filter(v => v && v !== "Personal Project").join(" · ");
+    const meta = [s.brand, s.season, s.location].filter(v => v && v !== "Personal Project" && v !== "—").join(" · ");
     const title = getTalentCleanName(s.isCompCard ? s.talent : (s.title || "Untitled"));
+
     return `
-      <article class="noth-work reveal" data-shoot="${s.id}" data-talent="${esc(s.talent || '')}" style="--d:${(i % 2) * 0.08}s">
-        <button class="noth-work-media" aria-label="View ${esc(title)}">
-          <span class="noth-work-backdrop" style="background-image: url('${esc(photoSrc(cover))}');" aria-hidden="true"></span>
-          <img src="${esc(photoSrc(cover))}"${srcsetAttr(cover, "(max-width: 620px) 100vw, 100vw")} style="object-position: ${esc(coverPos)};" alt="${esc(altFor(s))}" loading="lazy" />
-        </button>
-        <div class="noth-work-row">
-          <div class="noth-work-titles">
-            <h3 class="noth-work-title">${esc(title)}</h3>
-            <p class="noth-work-tagline">${esc(tagline)}</p>
+      <article class="noth-work reveal" data-shoot="${s.id}" data-category="${esc(s.type || '')}" data-talent="${esc(s.talent || '')}" style="--d:${(i % 2) * 0.08}s; position: relative; border-radius: 12px; overflow: hidden; background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow-sm); transition: transform 0.3s ease, box-shadow 0.3s ease;">
+        <button class="noth-work-media" aria-label="View ${esc(title)}" style="position: relative; overflow: hidden; border-radius: 12px 12px 0 0;">
+          <!-- Top Floating Micro-Badges -->
+          <div style="position: absolute; top: 12px; left: 12px; z-index: 4; display: flex; gap: 6px; align-items: center;">
+            <span style="font-family: var(--mono-font); font-size: 9.5px; font-weight: 800; background: rgba(10, 10, 10, 0.75); backdrop-filter: blur(8px); color: #ffffff; padding: 4px 9px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); text-transform: uppercase; letter-spacing: 0.05em;">${esc(typeTag)}</span>
           </div>
-          <div class="noth-work-meta">
-            ${meta ? `<span>${esc(meta)}</span>` : ""}
-            ${mentorText ? `<span style="font-size: 11px; color: var(--ink-soft); margin-top: 4px; width: 100%; white-space: normal;">${esc(mentorText)}</span>` : ""}
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <span class="noth-work-cta">View <svg viewBox="0 0 14 10" width="14" height="10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 5h12M9 1l4 4-4 4"/></svg></span>
-              <button class="work-share" data-id="${s.id}" style="background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; color: currentColor; opacity: 0.7; transition: opacity 0.2s;" title="Share album" aria-label="Share album">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          ${countBadgeText ? `
+            <div style="position: absolute; top: 12px; right: 12px; z-index: 4;">
+              <span style="font-family: var(--mono-font); font-size: 9.5px; font-weight: 800; background: rgba(10, 10, 10, 0.75); backdrop-filter: blur(8px); color: #ffffff; padding: 4px 9px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2);">${esc(countBadgeText)}</span>
+            </div>
+          ` : ''}
+
+          <span class="noth-work-backdrop" style="background-image: url('${esc(photoSrc(cover))}');" aria-hidden="true"></span>
+          <img src="${esc(photoSrc(cover))}"${srcsetAttr(cover, "(max-width: 620px) 100vw, 100vw")} style="object-position: ${esc(coverPos)}; transition: transform 0.5s ease;" alt="${esc(altFor(s))}" loading="lazy" />
+        </button>
+
+        <div class="noth-work-row" style="padding: 16px;">
+          <div class="noth-work-titles">
+            <h3 class="noth-work-title" style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 4px;">${esc(title)}</h3>
+            <p class="noth-work-tagline" style="font-size: 12px; color: var(--ink-soft); line-height: 1.4;">${esc(tagline)}</p>
+          </div>
+          <div class="noth-work-meta" style="margin-top: 10px; border-top: 1px solid var(--line); padding-top: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div style="font-family: var(--mono-font); font-size: 11px; color: var(--ink-soft);">
+              ${meta ? `<span>${esc(meta)}</span>` : ""}
+              ${mentorText ? `<div style="font-size: 11px; color: var(--accent); margin-top: 2px; font-weight: 600;">${esc(mentorText)}</div>` : ""}
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="noth-work-cta" style="font-size: 11px; font-weight: 700; color: var(--accent);">View Album →</span>
+              <button class="work-share" data-id="${s.id}" style="background: var(--bone); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; padding: 4px 8px; display: flex; align-items: center; justify-content: center; color: var(--ink); font-size: 11px;" title="Share album" aria-label="Share album">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
               </button>
             </div>
           </div>
           ${isAdmin() ? `
-            <div class="noth-work-admin" style="margin-top: 12px; display: flex; gap: 14px; width: 100%; border-top: 1px dashed var(--line); padding-top: 12px;">
+            <div class="noth-work-admin" style="margin-top: 10px; display: flex; gap: 12px; width: 100%; border-top: 1px dashed var(--line); padding-top: 10px;">
               <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0; font-size: 11px; height: auto;" data-id="${s.id}">Edit details →</button>
               <button class="link-arrow work-delete" style="color: #b22222; font-weight: 700; padding: 0; font-size: 11px; height: auto;" data-id="${s.id}">Delete →</button>
             </div>
@@ -2550,6 +2564,28 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       return true;
     });
     CURRENT_VIEW_SHOOTS = list;
+
+    // Calculate Category Counts
+    const counts = {
+      all: list.length,
+      fashion: list.filter(s => (s.type || "").toLowerCase().includes("fashion")).length,
+      commercial: list.filter(s => (s.type || "").toLowerCase().includes("commercial")).length,
+      tfp: list.filter(s => (s.type || "").toLowerCase().includes("tfp") || (s.type || "").toLowerCase().includes("selective")).length,
+      test: list.filter(s => (s.type || "").toLowerCase().includes("test")).length
+    };
+
+    const filterPillHtml = `
+      <div style="position: sticky; top: 70px; z-index: 30; background: rgba(250,250,250,0.85); backdrop-filter: blur(12px); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 12px 0; margin-bottom: 24px;">
+        <div class="container" style="display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px;">
+          <button type="button" class="album-filter-pill active" data-filter="all" onclick="window.filterAlbumGrid('all', this)" style="font-family: var(--mono-font); font-size: 11px; font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; white-space: nowrap;">🌐 All Albums (${counts.all})</button>
+          ${counts.fashion ? `<button type="button" class="album-filter-pill" data-filter="fashion" onclick="window.filterAlbumGrid('fashion', this)" style="font-family: var(--mono-font); font-size: 11px; font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; white-space: nowrap;">👗 Fashion (${counts.fashion})</button>` : ''}
+          ${counts.commercial ? `<button type="button" class="album-filter-pill" data-filter="commercial" onclick="window.filterAlbumGrid('commercial', this)" style="font-family: var(--mono-font); font-size: 11px; font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; white-space: nowrap;">💼 Commercial (${counts.commercial})</button>` : ''}
+          ${counts.tfp ? `<button type="button" class="album-filter-pill" data-filter="tfp" onclick="window.filterAlbumGrid('tfp', this)" style="font-family: var(--mono-font); font-size: 11px; font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; white-space: nowrap;">🤝 Selective Collab (${counts.tfp})</button>` : ''}
+          ${counts.test ? `<button type="button" class="album-filter-pill" data-filter="test" onclick="window.filterAlbumGrid('test', this)" style="font-family: var(--mono-font); font-size: 11px; font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; white-space: nowrap;">📸 Test Shoots (${counts.test})</button>` : ''}
+        </div>
+      </div>
+    `;
+
     return `
       <section class="page-head">
         <div class="container">
@@ -2558,8 +2594,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           <p class="page-sub reveal">${list.length} album${list.length !== 1 ? "s" : ""} in the archive — every photoshoot, newest first.</p>
         </div>
       </section>
-      <section class="section container full-bleed">
-        <div class="noth-work-list">${list.map(nothWorkCard).join("") || emptyCat()}</div>
+      ${filterPillHtml}
+      <section class="section container full-bleed" style="padding-top: 0;">
+        <div class="noth-work-list" id="albumsMainGrid">${list.map(nothWorkCard).join("") || emptyCat()}</div>
       </section>
       <section class="cta-band">
         <div class="container reveal">
@@ -9529,6 +9566,31 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=229').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=230').catch(() => {});
   });
 }
+
+
+window.filterAlbumGrid = function(filterKey, btnEl) {
+  document.querySelectorAll('.album-filter-pill').forEach(btn => {
+    btn.style.background = 'var(--paper)';
+    btn.style.color = 'var(--ink)';
+    btn.style.borderColor = 'var(--line)';
+  });
+  if (btnEl) {
+    btnEl.style.background = 'var(--accent)';
+    btnEl.style.color = '#ffffff';
+    btnEl.style.borderColor = 'var(--accent)';
+  }
+  const cards = document.querySelectorAll('#albumsMainGrid .noth-work');
+  cards.forEach(card => {
+    const cat = (card.getAttribute('data-category') || '').toLowerCase();
+    if (filterKey === 'all') {
+      card.style.display = 'block';
+    } else if (cat.includes(filterKey)) {
+      card.style.display = 'block';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+};
