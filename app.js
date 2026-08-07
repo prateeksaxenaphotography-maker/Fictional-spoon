@@ -1305,61 +1305,118 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
       }
     }
 
-    // Unified Credits with roles labeled next to names
-    const creditsList = [];
+    // Categorized UI/UX Credits Engine with Micro-Badges & Deduplicated Venue Cards
     const isCcPage = !!shoot.isCompCard;
+    const talentList = [];
+    const creativeList = [];
 
-    const addCredit = (val, role) => {
+    const addCreativeItem = (val, roleTag) => {
       if (!val || val === "—") return;
       const items = val.split(",").map(item => item.trim()).filter(Boolean);
       items.forEach(item => {
         const rendered = isCcPage ? esc(getTalentCleanName(item)) : renderCreditValue(item);
-        creditsList.push(`<div style="margin-bottom: 8px;"><span>${rendered}</span> <span style="color: var(--ink-soft); font-size: 11px;">— ${role}</span></div>`);
+        creativeList.push(`
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; padding: 4px 0; border-bottom: 1px dashed var(--line);">
+            <div style="font-size: 12px; font-weight: 600; color: var(--ink);">${rendered}</div>
+            <span style="font-family: var(--mono-font); font-size: 9px; font-weight: 800; background: rgba(255, 69, 0, 0.1); color: var(--accent); border: 1px solid rgba(255, 69, 0, 0.25); padding: 2px 6px; border-radius: 4px; text-transform: uppercase; white-space: nowrap;">${roleTag}</span>
+          </div>
+        `);
       });
     };
 
-    if (shoot.photographer) addCredit(shoot.photographer, "Photography");
-    if (shoot.mentor) addCredit(shoot.mentor, "Teacher / Mentor");
-    if (shoot.artDirector) addCredit(shoot.artDirector, "Art Direction");
-    if (shoot.stylist) addCredit(shoot.stylist, "Stylist");
-    if (shoot.hair) addCredit(shoot.hair, "Hair Stylist");
-    if (shoot.mua) addCredit(shoot.mua, "Makeup Artist");
-    if (shoot.videographer) addCredit(shoot.videographer, "Video");
-    if (shoot.talent) addCredit(shoot.talent, "Model / Talent");
+    if (shoot.talent && shoot.talent !== "—") {
+      const items = shoot.talent.split(",").map(item => item.trim()).filter(Boolean);
+      items.forEach(item => {
+        const rendered = isCcPage ? esc(getTalentCleanName(item)) : renderCreditValue(item);
+        talentList.push(`
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; padding: 4px 0; border-bottom: 1px dashed var(--line);">
+            <div style="font-size: 12.5px; font-weight: 700; color: var(--ink);">${rendered}</div>
+            <span style="font-family: var(--mono-font); font-size: 9px; font-weight: 800; background: rgba(5, 150, 105, 0.12); color: #059669; border: 1px solid rgba(5, 150, 105, 0.25); padding: 2px 6px; border-radius: 4px; text-transform: uppercase; white-space: nowrap;">MODEL</span>
+          </div>
+        `);
+      });
+    }
+
+    if (shoot.photographer) addCreativeItem(shoot.photographer, "PHOTOGRAPHY");
+    if (shoot.mentor) addCreativeItem(shoot.mentor, "MENTOR");
+    if (shoot.artDirector) addCreativeItem(shoot.artDirector, "ART DIRECTOR");
+    if (shoot.stylist) addCreativeItem(shoot.stylist, "STYLING");
+    if (shoot.hair) addCreativeItem(shoot.hair, "HAIR STYLIST");
+    if (shoot.mua) addCreativeItem(shoot.mua, "MUA");
+    if (shoot.videographer) addCreativeItem(shoot.videographer, "VIDEO");
+
     if (shoot.credits && shouldShowField(shoot, "Credits")) {
       const items = shoot.credits.split(",").map(item => item.trim()).filter(Boolean);
       items.forEach(item => {
         const rendered = isCcPage ? esc(getTalentCleanName(item)) : renderCreditsValue(item);
-        creditsList.push(`<div style="margin-bottom: 8px;"><span>${rendered}</span></div>`);
+        creativeList.push(`
+          <div style="font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; padding: 3px 0;">${rendered}</div>
+        `);
       });
     }
 
-    const credits = [];
-    if (creditsList.length > 0) {
-      credits.push(`<div><dd style="display: contents;">${creditsList.join("")}</dd></div>`);
-    }
-    if (shoot.location && shoot.location !== "—") {
-      credits.push(`<div><dd style="margin-bottom: 8px;"><span>${renderCreditLinks(shoot.location)}</span> <span style="color: var(--ink-soft); font-size: 11px;">— Location</span></dd></div>`);
-    }
-    if (shoot.pdfUrl && shouldShowField(shoot, "Pdf")) credits.push(`<div><dt>Material</dt><dd><a href="${esc(shoot.pdfUrl)}" download style="color: var(--accent); text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">📄 Download PDF</a></dd></div>`);
-    if (igHtml) credits.push(igHtml);
-    if (kavyarHtml) credits.push(kavyarHtml);
-
-    // Studio socials
+    // Build Venue & Studio links block
     const cfg = window.STUDIO_CONFIG || {};
-    if (cfg.instagram || cfg.kavyar) {
-      const studioLinks = [];
-      if (cfg.instagram) studioLinks.push(`<a href="${esc(cfg.instagram)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none; margin-right: 14px; display: inline-block;">@nerdyphotographer.in</a>`);
-      if (cfg.kavyar) studioLinks.push(`<a href="${esc(cfg.kavyar)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none; margin-right: 14px; display: inline-block;">Kavyar Studio</a>`);
-      if (studioLinks.length) credits.push(`<div><dt>Studio</dt><dd>${studioLinks.join("")}</dd></div>`);
+    let locationContent = "";
+    if (shoot.location && shoot.location !== "—") {
+      locationContent += `<div style="font-size: 12px; font-weight: 600; color: var(--ink); margin-bottom: 4px;">${renderCreditLinks(shoot.location)}</div>`;
+    }
+    const studioLinks = [];
+    if (cfg.instagram) studioLinks.push(`<a href="${esc(cfg.instagram)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); font-weight: 700; text-decoration: none; margin-right: 12px; font-size: 11.5px;">@nerdyphotographer.in ↗</a>`);
+    if (cfg.kavyar) studioLinks.push(`<a href="${esc(cfg.kavyar)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); font-weight: 700; text-decoration: none; font-size: 11.5px;">Kavyar Studio ↗</a>`);
+    if (studioLinks.length) {
+      locationContent += `<div style="display: flex; gap: 8px; margin-top: 4px;">${studioLinks.join("")}</div>`;
     }
 
-    const creditsHtml = credits.length ? `
-      <div class="lb-sidebar-section">
-        <h4 style="font-family:'Outfit', sans-serif; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); margin:0 0 10px;">Credits</h4>
-        <dl class="work-credits" style="margin: 0;">
-          ${credits.join("")}
-        </dl>
+    const creditsSections = [];
+
+    // Talent Section
+    if (talentList.length > 0) {
+      creditsSections.push(`
+        <div style="margin-bottom: 16px;">
+          <div style="font-family: var(--mono-font); font-size: 10px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
+            <span>👥 Models &amp; Talent</span>
+          </div>
+          ${talentList.join("")}
+        </div>
+      `);
+    }
+
+    // Creative Team Section
+    if (creativeList.length > 0) {
+      creditsSections.push(`
+        <div style="margin-bottom: 16px;">
+          <div style="font-family: var(--mono-font); font-size: 10px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
+            <span>🎨 Creative &amp; Production Team</span>
+          </div>
+          ${creativeList.join("")}
+        </div>
+      `);
+    }
+
+    // Location & Studio Section
+    if (locationContent) {
+      creditsSections.push(`
+        <div>
+          <div style="font-family: var(--mono-font); font-size: 10px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
+            <span>📍 Location &amp; Studio</span>
+          </div>
+          ${locationContent}
+        </div>
+      `);
+    }
+
+    if (shoot.pdfUrl && shouldShowField(shoot, "Pdf")) {
+      creditsSections.push(`
+        <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line);">
+          <a href="${esc(shoot.pdfUrl)}" download style="color: var(--accent); text-decoration: none; font-weight: 700; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;">📄 Download Publication PDF</a>
+        </div>
+      `);
+    }
+
+    const creditsHtml = creditsSections.length ? `
+      <div class="lb-sidebar-section" style="background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-top: 14px; box-shadow: var(--shadow-sm);">
+        ${creditsSections.join("")}
       </div>
     ` : "";
 
@@ -9472,6 +9529,6 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=228').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=229').catch(() => {});
   });
 }
