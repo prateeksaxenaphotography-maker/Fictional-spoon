@@ -8921,8 +8921,18 @@ RAW files are not provided.`
       // but left the restore synchronous (and the title set before the
       // deferral, where a queued render() could clobber it): every export
       // came out as a blank PDF with the wrong filename.
+      const prevWidth = printContainer.style.width;
       setTimeout(() => {
         document.title = exportTitle;
+        // For the snapshot itself, leave the fixed-at-0,0 measurement
+        // position and join normal flow at full printable width: a fixed box
+        // shrink-wraps to the card's width, so when the dialog's printable
+        // area is wider than the card (Margins: None/custom, or a browser
+        // ignoring @page size) the card would pin to the left edge with all
+        // the slack on the right. In flow, the container spans the printable
+        // width and its align-items:center keeps every page centered.
+        printContainer.style.setProperty("position", "static", "important");
+        printContainer.style.setProperty("width", "100%", "important");
         printContainer.style.setProperty("visibility", "visible", "important");
         document.body.classList.add("is-printing");
         window.print();
@@ -8933,6 +8943,7 @@ RAW files are not provided.`
         printContainer.style.position = prevPosition;
         printContainer.style.left = prevLeft;
         printContainer.style.top = prevTop;
+        printContainer.style.width = prevWidth;
         printContainer.style.visibility = prevVisibility;
         setTimeout(() => document.body.classList.remove("is-printing"), 1000);
       }, 150);
@@ -9715,7 +9726,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=250').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=251').catch(() => {});
   });
 }
 

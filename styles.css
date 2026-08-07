@@ -1371,6 +1371,12 @@ main:focus { outline: none; }
 #compCardPrintContainer {
   display: none !important;
   flex-direction: column !important;
+  /* Center each page in whatever printable width the dialog provides. The
+     pages are sized to exactly fill A4 minus the default 6/8mm margins, but
+     a "Margins: None"/custom dialog setting (or a browser that ignores
+     @page size) hands us a wider box — without centering, all the slack
+     lands on the right edge and the card prints visibly off-center. */
+  align-items: center !important;
   background: #fff !important;
   color: #000 !important;
   padding: 0 !important;
@@ -1388,6 +1394,10 @@ main:focus { outline: none; }
   flex-direction: column !important;
   justify-content: space-between !important;
   flex: 1 1 auto !important;
+  /* Belt-and-braces horizontal centering: auto side margins absorb any free
+     space even if the parent's flex alignment is ever overridden. */
+  margin-left: auto !important;
+  margin-right: auto !important;
   page-break-after: always !important;
   break-after: page !important;
   box-sizing: border-box !important;
