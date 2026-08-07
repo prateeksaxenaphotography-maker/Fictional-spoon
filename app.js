@@ -9455,7 +9455,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=241').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=242').catch(() => {});
   });
 }
 
