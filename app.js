@@ -7459,19 +7459,9 @@ RAW files are not provided.`
       const typeFieldWrap = $("#b_type_field_wrap");
       const lockedTfpCard = $("#lockedTfpCard");
 
-      // TFP option is always visible — invite code only gates pricing/locked card
-      if (isValidInvite) {
-        const typeSelect = $("#b_type");
-        if (typeSelect && typeSelect.value !== "Selective Collaboration (TFP)") {
-          typeSelect.value = "Selective Collaboration (TFP)";
-          typeSelect.dispatchEvent(new Event("change", { bubbles: true }));
-        }
-        if (typeFieldWrap) typeFieldWrap.style.display = "none";
-        if (lockedTfpCard) lockedTfpCard.style.display = "block";
-      } else {
-        if (typeFieldWrap) typeFieldWrap.style.display = "";
-        if (lockedTfpCard) lockedTfpCard.style.display = "none";
-      }
+      // Invite code only handles discount — type dropdown is always free to choose
+      if (typeFieldWrap) typeFieldWrap.style.display = "";
+      if (lockedTfpCard) lockedTfpCard.style.display = "none";
 
       // Real-Time Final Amount Calculator Engine
       const pkgSelect = $("#b_budget");
@@ -9874,7 +9864,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=260').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=261').catch(() => {});
   });
 }
 
