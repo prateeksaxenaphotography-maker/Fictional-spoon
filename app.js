@@ -5572,7 +5572,7 @@ RAW files are not provided.`
                   </div>
                 </div>
                <div class="field-row">
-                 <label class="field" id="b_type_field_wrap"><span>Desired Project Type (Includes Test Shoots / TFP) *</span>
+                 <label class="field" id="b_type_field_wrap"><span>Desired Project Type *</span>
                    <select id="b_type">
                      <option value="Fashion Editorial" ${isSelected("Fashion Editorial")}>Fashion Editorial</option>
                      <option value="Fitness &amp; Athletic" ${isSelected("Fitness &amp; Athletic")}>Fitness &amp; Athletic</option>
@@ -9880,7 +9880,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=258').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=259').catch(() => {});
   });
 }
 
