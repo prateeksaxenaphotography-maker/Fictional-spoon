@@ -3031,54 +3031,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     saveCalendarSettings();
   }
 
-  function getLocalContractAudits() {
-    try {
-      const raw = localStorage.getItem("wps-contract-audit");
-      return raw ? JSON.parse(raw) : [];
-    } catch (e) {
-      return [];
-    }
-  }
-
-  function saveLocalContractAudit(entry) {
-    try {
-      const audits = getLocalContractAudits();
-      audits.push(entry);
-      localStorage.setItem("wps-contract-audit", JSON.stringify(audits));
-      return entry;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  function generateContractNumber() {
-    const now = new Date();
-    const pad = (value) => String(value).padStart(2, "0");
-    const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-    return `WPS-${timestamp}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-  }
-
-  // Delivery outcome of the signed-contract PDF email, keyed by contract
-  // number. Kept in its own store (not on the booking) because the email
-  // send resolves asynchronously and may finish before or after the booking
-  // record is created.
-  function getContractEmailStatuses() {
-    try {
-      return JSON.parse(localStorage.getItem("wps-contract-email-status") || "{}");
-    } catch (e) {
-      return {};
-    }
-  }
-
-  function setContractEmailStatus(contractNumber, status) {
-    if (!contractNumber) return;
-    try {
-      const statuses = getContractEmailStatuses();
-      statuses[contractNumber] = { status, at: new Date().toISOString() };
-      localStorage.setItem("wps-contract-email-status", JSON.stringify(statuses));
-    } catch (e) {}
-  }
-
   function addCalBooking(dKey, bookingObj) {
     const settings = window.WPS_DATA.CALENDAR_SETTINGS;
     if (!settings.bookedDates) settings.bookedDates = {};
@@ -3097,9 +3049,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       status: bookingObj.status || (bookingObj.isTentative ? "tentative" : "confirmed"),
       contractVersion: bookingObj.contractVersion || (bookingObj.agreedToTerms ? "V3.2" : "Pending Agreement"),
       agreedToTerms: bookingObj.agreedToTerms !== undefined ? bookingObj.agreedToTerms : (bookingObj.contractVersion && bookingObj.contractVersion !== "Pending Agreement"),
-      contractNumber: bookingObj.contractNumber || "",
-      sigDataUrl: bookingObj.sigDataUrl || "",
-      agreedContract: bookingObj.agreedContract || "",
       createdAt: Date.now()
     };
     settings.bookedDates[dKey].push(booking);
@@ -3127,8 +3076,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           notes: updatedObj.notes !== undefined ? updatedObj.notes : cur.notes,
           links: updatedObj.links !== undefined ? updatedObj.links : cur.links,
           contractVersion: updatedObj.contractVersion !== undefined ? updatedObj.contractVersion : cur.contractVersion,
-          agreedToTerms: updatedObj.agreedToTerms !== undefined ? updatedObj.agreedToTerms : cur.agreedToTerms,
-          contractNumber: updatedObj.contractNumber !== undefined ? updatedObj.contractNumber : cur.contractNumber
+          agreedToTerms: updatedObj.agreedToTerms !== undefined ? updatedObj.agreedToTerms : cur.agreedToTerms
         };
 
         const newDateKey = updatedObj.newDateKey || dKey;
@@ -3167,31 +3115,24 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
      § ADMIN CONTRACT VAULT PAGE (/contracts)
      ============================================================ */
   function viewContracts() {
-    // Gather all bookings that have an agreed contract. Read the live
-    // calendar store (persisted as "wps-calendar-settings") — a previous
-    // version read a "wps-cal-bookings" localStorage key that nothing ever
-    // wrote, so the vault always showed empty.
+    // Gather all bookings that have an agreed contract from localStorage
     let allSigned = [];
     try {
-      const allBookings = window.WPS_DATA?.CALENDAR_SETTINGS?.bookedDates || {}; // { dateKey: [booking, ...] }
-      Object.entries(allBookings).forEach(([dateKey, bookings]) => {
-        (bookings || []).forEach(b => {
-          if (b.agreedContract || b.sigDataUrl) {
-            allSigned.push({ ...b, dateKey });
-          }
+      const raw = localStorage.getItem("wps-calendar-settings");
+      if (raw) {
+        const parsedSettings = JSON.parse(raw);
+        const allBookings = parsedSettings.bookedDates || {}; // { dateKey: [booking, ...] }
+        Object.entries(allBookings).forEach(([dateKey, bookings]) => {
+          (bookings || []).forEach(b => {
+            if (b.agreedToTerms || (b.contractVersion && b.contractVersion !== "Pending Agreement")) {
+              allSigned.push({ ...b, dateKey });
+            }
+          });
         });
-      });
-      // newest first
-      allSigned.sort((a, b) => (b.dateKey || "").localeCompare(a.dateKey || ""));
+        // newest first
+        allSigned.sort((a, b) => (b.dateKey || "").localeCompare(a.dateKey || ""));
+      }
     } catch (e) { /* ignore */ }
-
-    const emailStatuses = getContractEmailStatuses();
-    const emailBadge = (contractNumber) => {
-      const st = contractNumber && emailStatuses[contractNumber] && emailStatuses[contractNumber].status;
-      if (st === "sent") return `<div style="font-family: var(--mono-font); font-size: var(--font-xs); color: #059669; font-weight: 700;">📧 Contract PDF emailed (studio + client copy)</div>`;
-      if (st === "failed") return `<div style="font-family: var(--mono-font); font-size: var(--font-xs); color: #dc2626; font-weight: 700;">⚠️ Contract email FAILED — no PDF copy was delivered</div>`;
-      return "";
-    };
 
     const rows = allSigned.length ? allSigned.map(b => `
       <div style="background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
@@ -3203,12 +3144,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               ${b.email ? `&nbsp;·&nbsp; ✉️ ${esc(b.email)}` : ''}
               ${b.phone ? `&nbsp;·&nbsp; 📞 ${esc(b.phone)}` : ''}
             </div>
-            ${b.contractNumber ? `<div style="margin-top: 6px; font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent); font-weight: 700;">Contract #: ${esc(b.contractNumber)}</div>` : ''}
           </div>
           <button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('${esc(b.dateKey)}', '${esc(b.id || '')}')" style="border-color: var(--accent); color: var(--accent); font-size: var(--font-xs); padding: 4px 10px; font-weight: 700; white-space: nowrap;">📄 Generate PDF</button>
         </div>
         ${b.agreedContract ? `<div style="font-family: var(--mono-font); font-size: var(--font-xs); color: #059669; font-weight: 700;">✅ ${esc(b.agreedContract)}</div>` : ''}
-        ${emailBadge(b.contractNumber)}
         ${b.sigDataUrl ? `
           <div>
             <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-bottom: 4px; font-weight: 600;">Digital Signature:</div>
@@ -3315,88 +3254,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           ${rows}
         </div>
       </section>
-      <section class="section container" style="max-width: 900px; margin: 0 auto; padding-top: 20px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 10px;">
-          <div>
-            <p class="eyebrow" style="margin: 0 0 6px; color: var(--accent);">Contract Audit Trail</p>
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 0;">Audit Records — Server (permanent) + Local (this browser)</h3>
-          </div>
-          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <span id="serverAuditMeta" style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--ink-soft);"></span>
-            <button type="button" class="admin-cal-btn primary" onclick="window.loadServerContractRecords(this)" style="font-size: var(--font-xs); font-weight: 700;">☁️ Load Server Records</button>
-          </div>
-        </div>
-        <div id="serverAuditGrid" style="display: none; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-bottom: 18px;"></div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
-          ${getLocalContractAudits().length ? getLocalContractAudits().map(a => `
-            <div style="background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
-              <div style="display:flex; justify-content: space-between; align-items:flex-start; gap: 8px; flex-wrap: wrap;">
-                <div>
-                  <div style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">${esc(a.clientName || 'Unknown')}</div>
-                  <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">${esc(a.contractVersion || '—')} · ${esc(a.date || '—')}</div>
-                </div>
-                ${a.contractNumber ? `<span style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent); font-weight: 700;">${esc(a.contractNumber)}</span>` : ''}
-              </div>
-              <div style="font-size: var(--font-xs); color: var(--ink-soft);">${a.clientEmail ? `✉️ ${esc(a.clientEmail)}` : ''} ${a.phone ? `· 📞 ${esc(a.phone)}` : ''}</div>
-              <div style="font-size: var(--font-xs); color: var(--ink-soft);">Signed: ${a.sigCaptured ? 'Yes' : 'No'} · Recorded: ${new Date(a.timestamp || '').toLocaleString() || 'Unknown'}</div>
-              ${emailBadge(a.contractNumber)}
-              <div style="font-size: var(--font-xs); color: var(--ink-soft);">Notes: ${esc(a.notes || 'No notes')}</div>
-            </div>
-          `).join('') : `
-            <div style="text-align: center; padding: 28px 18px; color: var(--ink-soft); font-size: var(--font-sm); background: var(--bone); border: 1px dashed var(--line); border-radius: 10px;">
-              <div style="font-size: 2rem; margin-bottom: 12px;">🧾</div>
-              <div style="font-weight: 700; margin-bottom: 6px;">No local audit records yet</div>
-              <div style="font-size: var(--font-xs);">Signed contract acceptances are stored locally after record creation. They remain visible here once a client completes the booking request.</div>
-            </div>
-          `}
-        </div>
-      </section>
     `;
   }
-
-  // Fetches the passcode-gated server audit trail (durable GitHub store,
-  // merged with any Render-local fallback entries) into the vault page.
-  window.loadServerContractRecords = async (btn) => {
-    const passcode = prompt("Enter admin passcode to load server contract records:");
-    if (!passcode) return;
-    if (btn) { btn.disabled = true; btn.textContent = "Loading…"; }
-    try {
-      const res = await fetch(`${COMP_CARD_API_BASE}/api/contracts/audit?passcode=${encodeURIComponent(passcode.trim())}`);
-      if (res.status === 401) { toast("Incorrect passcode."); return; }
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const grid = $("#serverAuditGrid");
-      if (!grid) return;
-      const entries = data.entries || [];
-      const meta = $("#serverAuditMeta");
-      if (meta) meta.textContent = `${entries.length} server record${entries.length !== 1 ? "s" : ""} · ${data.storage || ""}`;
-      grid.style.display = "grid";
-      grid.innerHTML = entries.length ? entries.map(a => `
-        <div style="background: var(--surface); border: 1.5px solid var(--accent); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
-          <div style="display:flex; justify-content: space-between; align-items:flex-start; gap: 8px; flex-wrap: wrap;">
-            <div>
-              <div style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">☁️ ${esc(a.clientName || 'Unknown')}</div>
-              <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">${esc(a.contractVersion || '—')} · ${esc(a.date || '—')}</div>
-            </div>
-            ${a.contractNumber ? `<span style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent); font-weight: 700;">${esc(a.contractNumber)}</span>` : ''}
-          </div>
-          <div style="font-size: var(--font-xs); color: var(--ink-soft);">${a.clientEmail ? `✉️ ${esc(a.clientEmail)}` : ''} ${a.phone ? `· 📞 ${esc(a.phone)}` : ''}</div>
-          <div style="font-size: var(--font-xs); color: var(--ink-soft);">Signed: ${a.sigCaptured ? 'Yes' : 'No'} · Recorded: ${a.timestamp ? new Date(a.timestamp).toLocaleString() : 'Unknown'}</div>
-          <div style="font-size: var(--font-xs); color: var(--ink-soft);">Notes: ${esc(a.notes || 'No notes')}</div>
-        </div>
-      `).join('') : `
-        <div style="text-align: center; padding: 28px 18px; color: var(--ink-soft); font-size: var(--font-sm); background: var(--bone); border: 1px dashed var(--line); border-radius: 10px;">
-          <div style="font-weight: 700;">No server records yet</div>
-          <div style="font-size: var(--font-xs); margin-top: 6px;">Records land here permanently once clients sign — from any device.</div>
-        </div>
-      `;
-    } catch (err) {
-      console.warn("Server contract records load failed:", err);
-      toast("Couldn't load server records — check the server connection.");
-    } finally {
-      if (btn) { btn.disabled = false; btn.textContent = "☁️ Load Server Records"; }
-    }
-  };
 
   /* ============================================================
      § ADMIN CALENDAR & BOOKING MANAGEMENT PAGE (/calendar)
@@ -3436,41 +3295,39 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: rgba(124, 77, 255, 0.2); border: 1px dashed #7c4dff;"></span> ⏳ Anticipated Hold Only (Royal Purple/Blue)</span>
         </div>
 
-                <div style="background: var(--bone); border: 1px solid var(--accent); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-family: var(--mono-font);">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink); margin: 0; display: flex; align-items: center; gap: 8px;">
-              ⚙️ Studio Package Rates &amp; Deliverables Editor
-            </h3>
+        <div style="background: var(--bone); border: 1px solid var(--accent); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-family: var(--mono-font);">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; cursor: pointer; user-select: none;" onclick="const b=document.getElementById('adminPkgBody');const a=document.getElementById('adminPkgArrow');const open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▼':'▲';">
+            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink); margin: 0; display: flex; align-items: center; gap: 8px;">⚙️ Studio Package Rates &amp; Deliverables Editor</h3>
             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-              <span id="adminPricingSaveStatus" style="font-size: var(--font-xs); font-weight: 700; color: #059669; background: rgba(5,150,105,0.12); padding: 4px 10px; border-radius: 12px; border: 1px solid #059669; font-family: var(--mono-font); transition: all 0.3s ease;">🟢 ALL CHANGES SAVED TO LIVE SITE</span>
-              <button type="button" class="admin-cal-btn primary" onclick="window.saveAdminCustomPackages()" style="font-size: var(--font-xs); padding: 4px 12px; font-weight: 700;">💾 Save All Changes &amp; Push Live</button>
-              <button type="button" class="admin-cal-btn" onclick="window.resetAdminCustomPackages()" style="font-size: var(--font-xs); padding: 4px 12px; font-weight: 700;">🔄 Reset Defaults</button>
+              <button type="button" class="admin-cal-btn primary" onclick="event.stopPropagation();window.saveAdminCustomPackages()" style="font-size: var(--font-xs); padding: 4px 12px; font-weight: 700;">💾 Save &amp; Push Live</button>
+              <button type="button" class="admin-cal-btn" onclick="event.stopPropagation();window.resetAdminCustomPackages()" style="font-size: var(--font-xs); padding: 4px 8px; font-weight: 700;">🔄</button>
+              <span id="adminPkgArrow" style="font-size: var(--font-xs); color: var(--ink-soft); font-weight: 700;">▼</span>
             </div>
           </div>
-          <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 12px 0;">
-            Edit max package rates (INR), package names, or deliverable descriptions below without coding. Click <strong>Save Pricing Changes</strong> to update live across all booking forms!
-          </p>
-          <div id="adminPackagesEditorGrid" style="display: flex; flex-direction: column; gap: 8px;"></div>
+          <div id="adminPkgBody" style="display: none; margin-top: 12px;">
+            <span id="adminPricingSaveStatus" style="font-size: var(--font-xs); font-weight: 700; color: #059669; background: rgba(5,150,105,0.12); padding: 4px 10px; border-radius: 12px; border: 1px solid #059669; font-family: var(--mono-font); display: inline-block; margin-bottom: 8px;">🟢 ALL CHANGES SAVED TO LIVE SITE</span>
+            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 12px 0;">Edit max package rates (INR), package names, or deliverable descriptions. Click <strong>Save &amp; Push Live</strong> to update booking forms.</p>
+            <div id="adminPackagesEditorGrid" style="display: flex; flex-direction: column; gap: 8px;"></div>
+          </div>
         </div>
 
         <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-family: var(--mono-font); font-size: var(--font-xs);">
-          <div style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink); margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-            <span style="display: flex; align-items: center; gap: 8px;">🎟️ Studio Promotional Discount &amp; Invite Codes Manager</span>
+          <div style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; cursor: pointer; user-select: none;" onclick="const b=document.getElementById('adminPromoBody');const a=document.getElementById('adminPromoArrow');const open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▼':'▲';">
+            <span style="display: flex; align-items: center; gap: 8px;">🎟️ Promotional Discount &amp; Invite Codes Manager</span>
             <div style="display: flex; gap: 8px; align-items: center;">
-              <button type="button" class="admin-cal-btn primary" onclick="window.addNewAdminPromoCode()" style="font-size: var(--font-xs); padding: 4px 12px; font-weight: 700;">+ Add New Promo Code</button>
+              <button type="button" class="admin-cal-btn primary" onclick="event.stopPropagation();window.addNewAdminPromoCode()" style="font-size: var(--font-xs); padding: 4px 12px; font-weight: 700;">+ Add Code</button>
+              <span id="adminPromoArrow" style="font-size: var(--font-xs); color: var(--ink-soft); font-weight: 700;">▼</span>
             </div>
           </div>
-          <div id="adminPromoCodesGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;"></div>
+          <div id="adminPromoBody" style="display: none; margin-top: 12px;">
+            <div id="adminPromoCodesGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;"></div>
+          </div>
         </div>
 
         <div id="adminCalGridContainer"></div>
 
-                <div style="margin-top: 32px; border-top: 1px solid var(--line); padding-top: 20px; text-align: center;">
+        <div style="margin-top: 32px; border-top: 1px solid var(--line); padding-top: 20px; text-align: center;">
           <a href="/contracts" data-link class="admin-cal-btn" style="font-size: var(--font-xs); font-weight: 700; border-color: var(--accent); color: var(--accent);">📜 View Contract Version Vault &rarr;</a>
-        </div>n-bottom: 16px;">Foundational photo release and copyright acknowledgment for early studio testing.</p>
-              <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V1.0')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review V1.0</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V1.0')" style="font-size: var(--font-xs); border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
-            </div>
-          </div>
         </div>
       </section>
       <div id="dateAdminModalContainer"></div>
@@ -7833,71 +7690,6 @@ RAW files are not provided.`
       return firstBad;
     }
 
-    // No-server delivery: the signed contract goes to the studio inbox (with
-    // a copy to the client via _cc) through the same free FormSubmit relay
-    // the booking form uses — the studio Gmail is the permanent record.
-    // FormSubmit reports soft failures (e.g. pending form activation) as
-    // HTTP 200 with success:"false", so the body flag is the real result.
-    function sigDataUrlToBlob(dataUrl) {
-      try {
-        const match = String(dataUrl).match(/^data:(image\/(?:png|jpeg));base64,(.+)$/);
-        if (!match) return null;
-        const bytes = atob(match[2]);
-        const arr = new Uint8Array(bytes.length);
-        for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-        return new Blob([arr], { type: match[1] });
-      } catch (e) {
-        return null;
-      }
-    }
-
-    async function sendSignedContractEmail(payload) {
-      const sigBlob = payload.sigDataUrl ? sigDataUrlToBlob(payload.sigDataUrl) : null;
-
-      const postForm = async (withSig) => {
-        const fd = new FormData();
-        fd.append("_subject", `Signed Contract — ${payload.clientName || "Client"} (${payload.contractNumber || payload.contractVersion || "Contract"})`);
-        fd.append("_template", "box");
-        if (payload.clientEmail) {
-          fd.append("_replyto", payload.clientEmail);
-          fd.append("_cc", payload.clientEmail);
-        }
-        fd.append("Record Type", "SIGNED CONTRACT — keep this email as the studio's permanent record");
-        fd.append("Contract Number", payload.contractNumber || "—");
-        fd.append("Contract Version", payload.contractVersion || "—");
-        fd.append("Client Name", payload.clientName || "—");
-        fd.append("Client Email", payload.clientEmail || "—");
-        fd.append("Phone", payload.phone || "—");
-        fd.append("Instagram / Website", payload.instagram || "—");
-        fd.append("Shoot Type", payload.shootType || "—");
-        fd.append("Scheduled Date", payload.date || "—");
-        fd.append("Location", payload.location || "—");
-        fd.append("Notes", payload.notes || "—");
-        fd.append("Signature Captured", sigBlob ? (withSig ? "Yes — drawn signature attached as PNG" : "Yes — drawn at booking (attachment unavailable; image kept in booking record)") : "No (email/DM consent)");
-        fd.append("Contract Terms (full text)", payload.contractText || "—");
-        if (withSig) fd.append("attachment", sigBlob, `signature-${payload.contractNumber || "contract"}.png`);
-        const res = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(studioEmail)}`, {
-          method: "POST",
-          headers: { "Accept": "application/json" },
-          body: fd
-        });
-        const body = await res.json().catch(() => null);
-        return { ok: res.ok && !!body && (body.success === true || body.success === "true"), message: (body && body.message) || res.statusText };
-      };
-
-      try {
-        let result = await postForm(!!sigBlob);
-        // If the attachment is what made the relay reject, resend without it —
-        // a delivered record without the image beats no record at all.
-        if (!result.ok && sigBlob) result = await postForm(false);
-        if (!result.ok) console.warn("Signed contract email failed:", result.message);
-        return result.ok;
-      } catch (err) {
-        console.warn("Signed contract email error:", err);
-        return false;
-      }
-    }
-
     const handleBookingSubmit = (e) => {
       if (e) e.preventDefault();
 
@@ -7978,7 +7770,7 @@ RAW files are not provided.`
           deliverablePolicyNote +
           gearPolicyNote +
           `Moodboard Link: ${moodboard || '—'}\n` +
-          (agreedToTerms ? `Contract Agreement: ${name} has agreed to ${contractRefDoc} in full, without modifications. By sending this email the client confirms acceptance of all studio terms and conditions.\nContract Reference: ${contractRefDoc}\nSignature Captured: ${sigDataUrl ? 'Yes' : 'No'}\nRead terms online: https://www.nerdyphotographer.in/book/${isTfpCat ? '#tfp-terms' : '#terms'}\n\n` : `\n`) +
+          (agreedToTerms ? `Contract Agreement: ${name} has agreed to ${contractRefDoc} in full, without modifications. By sending this email the client confirms acceptance of all studio terms and conditions.\nRead terms online: https://www.nerdyphotographer.in/book/${isTfpCat ? '#tfp-terms' : '#terms'}\n\n` : `\n`) +
           `Concept/Vision:\n${concept || '—'}`;
         const inquiryBody = compactBody + tfpReleaseText;
         const plainTextBody = `To: ${studioEmail}\nSubject: Shoot Booking Request — ${name}\n\n` + inquiryBody;
@@ -7989,51 +7781,6 @@ RAW files are not provided.`
         const mailtoUrl = `mailto:${studioEmail}?subject=${subject}&body=${body}`;
         const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(studioEmail)}&su=${subject}&body=${body}`;
         const outlookUrl = `https://outlook.live.com/default.aspx?rru=compose&to=${encodeURIComponent(studioEmail)}&subject=${subject}&body=${body}`;
-
-        const contractNumber = agreedToTerms ? generateContractNumber() : "";
-
-        async function recordContractAudit(payload) {
-          saveLocalContractAudit({
-            contractNumber: payload.contractNumber,
-            clientName: payload.clientName,
-            clientEmail: payload.clientEmail,
-            contractVersion: payload.contractVersion,
-            date: payload.date,
-            shootType: payload.shootType,
-            timestamp: new Date().toISOString(),
-            sigCaptured: !!payload.sigDataUrl,
-            notes: payload.notes
-          });
-
-          try {
-            await fetch(`${COMP_CARD_API_BASE}/api/contracts/audit`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload)
-            });
-          } catch (err) {
-            console.warn("Contract audit sync failed:", err);
-          }
-        }
-
-        // Record the acceptance the moment the client has agreed & signed —
-        // before the inquiry relay even runs, so the signing is on record
-        // even if the client abandons the email step afterwards.
-        if (contractNumber) {
-          recordContractAudit({
-            contractNumber,
-            clientName: name,
-            clientEmail: email,
-            phone,
-            instagram,
-            date,
-            location: locationVal,
-            shootType: type,
-            contractVersion: contractRefDoc,
-            sigDataUrl: sigDataUrl || "",
-            notes: `Location: ${locationVal} | Budget: ${budget}`
-          });
-        }
 
         // Populate manual link and copy block
         const mailtoLink = $("#bookMailtoLink");
@@ -8067,14 +7814,12 @@ RAW files are not provided.`
                   attachments: typeof attachedFiles !== "undefined" ? attachedFiles : [],
                   sigDataUrl: sigDataUrl || "",
                   agreedContract: agreedToTerms ? contractRefDoc : "",
-                  notes: `Location: ${locationVal} | Budget: ${budget}`,
-                  contractNumber
+                  notes: `Location: ${locationVal} | Budget: ${budget}`
                 });
               }
             });
             updateAdminReminders();
           }
-
           if (successPanel) {
             form.hidden = true;
             successPanel.hidden = false;
@@ -8122,41 +7867,14 @@ RAW files are not provided.`
         };
         if (agreedToTerms) relayFields["Release Full Text"] = tfpReleaseText.trim();
 
-        // The signed-contract PDF email is an independent channel from the
-        // inquiry relay — send it regardless of how the inquiry itself goes
-        // out (FormSubmit or mailto fallback), and record the outcome so the
-        // contract vault can flag failed deliveries instead of losing them
-        // to a console.warn.
-        if (agreedToTerms) {
-          sendSignedContractEmail({
-            clientName: name,
-            clientEmail: email,
-            phone,
-            instagram,
-            date,
-            location: locationVal,
-            shootType: type,
-            contractVersion: contractRefDoc,
-            contractNumber,
-            contractText: tfpReleaseText.trim(),
-            sigDataUrl: sigDataUrl || "",
-            notes: `Location: ${locationVal} | Budget: ${budget}`
-          }).then((sent) => setContractEmailStatus(contractNumber, sent ? "sent" : "failed"));
-        }
-
         // Send FormSubmit background relay asynchronously
         fetch(`https://formsubmit.co/ajax/${encodeURIComponent(studioEmail)}`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "Accept": "application/json" },
           body: JSON.stringify(relayFields)
         })
-        .then(async (res) => {
-          // FormSubmit reports soft failures (e.g. the form not yet being
-          // activated) as HTTP 200 with success:"false" — checking res.ok
-          // alone shows a false "Request sent!" while nothing arrives.
-          const body = await res.json().catch(() => null);
-          const relayOk = res.ok && !!body && (body.success === true || body.success === "true");
-          if (relayOk) {
+        .then(res => {
+          if (res.ok) {
             showSuccess(true);
           } else {
             showSuccess(false);
@@ -10143,7 +9861,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=254').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=255').catch(() => {});
   });
 }
 
