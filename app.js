@@ -3031,6 +3031,33 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     saveCalendarSettings();
   }
 
+  function getLocalContractAudits() {
+    try {
+      const raw = localStorage.getItem("wps-contract-audit");
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveLocalContractAudit(entry) {
+    try {
+      const audits = getLocalContractAudits();
+      audits.push(entry);
+      localStorage.setItem("wps-contract-audit", JSON.stringify(audits));
+      return entry;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function generateContractNumber() {
+    const now = new Date();
+    const pad = (value) => String(value).padStart(2, "0");
+    const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    return `WPS-${timestamp}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+  }
+
   function addCalBooking(dKey, bookingObj) {
     const settings = window.WPS_DATA.CALENDAR_SETTINGS;
     if (!settings.bookedDates) settings.bookedDates = {};
@@ -3049,6 +3076,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       status: bookingObj.status || (bookingObj.isTentative ? "tentative" : "confirmed"),
       contractVersion: bookingObj.contractVersion || (bookingObj.agreedToTerms ? "V3.2" : "Pending Agreement"),
       agreedToTerms: bookingObj.agreedToTerms !== undefined ? bookingObj.agreedToTerms : (bookingObj.contractVersion && bookingObj.contractVersion !== "Pending Agreement"),
+      contractNumber: bookingObj.contractNumber || "",
       createdAt: Date.now()
     };
     settings.bookedDates[dKey].push(booking);
@@ -3076,7 +3104,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           notes: updatedObj.notes !== undefined ? updatedObj.notes : cur.notes,
           links: updatedObj.links !== undefined ? updatedObj.links : cur.links,
           contractVersion: updatedObj.contractVersion !== undefined ? updatedObj.contractVersion : cur.contractVersion,
-          agreedToTerms: updatedObj.agreedToTerms !== undefined ? updatedObj.agreedToTerms : cur.agreedToTerms
+          agreedToTerms: updatedObj.agreedToTerms !== undefined ? updatedObj.agreedToTerms : cur.agreedToTerms,
+          contractNumber: updatedObj.contractNumber !== undefined ? updatedObj.contractNumber : cur.contractNumber
         };
 
         const newDateKey = updatedObj.newDateKey || dKey;
@@ -3143,6 +3172,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               ${b.email ? `&nbsp;·&nbsp; ✉️ ${esc(b.email)}` : ''}
               ${b.phone ? `&nbsp;·&nbsp; 📞 ${esc(b.phone)}` : ''}
             </div>
+            ${b.contractNumber ? `<div style="margin-top: 6px; font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent); font-weight: 700;">Contract #: ${esc(b.contractNumber)}</div>` : ''}
           </div>
           <button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('${esc(b.dateKey)}', '${esc(b.id || '')}')" style="border-color: var(--accent); color: var(--accent); font-size: var(--font-xs); padding: 4px 10px; font-weight: 700; white-space: nowrap;">📄 Generate PDF</button>
         </div>
@@ -3251,6 +3281,37 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         </div>
         <div style="display: flex; flex-direction: column; gap: 12px;">
           ${rows}
+        </div>
+      </section>
+      <section class="section container" style="max-width: 900px; margin: 0 auto; padding-top: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <p class="eyebrow" style="margin: 0 0 6px; color: var(--accent);">Contract Audit Trail</p>
+            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 0;">Local Audit Records</h3>
+          </div>
+          <span style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--ink-soft);">Stored in browser localStorage for quick review and later server sync.</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
+          ${getLocalContractAudits().length ? getLocalContractAudits().map(a => `
+            <div style="background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+              <div style="display:flex; justify-content: space-between; align-items:flex-start; gap: 8px; flex-wrap: wrap;">
+                <div>
+                  <div style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">${esc(a.clientName || 'Unknown')}</div>
+                  <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">${esc(a.contractVersion || '—')} · ${esc(a.date || '—')}</div>
+                </div>
+                ${a.contractNumber ? `<span style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent); font-weight: 700;">${esc(a.contractNumber)}</span>` : ''}
+              </div>
+              <div style="font-size: var(--font-xs); color: var(--ink-soft);">${a.clientEmail ? `✉️ ${esc(a.clientEmail)}` : ''} ${a.phone ? `· 📞 ${esc(a.phone)}` : ''}</div>
+              <div style="font-size: var(--font-xs); color: var(--ink-soft);">Signed: ${a.sigCaptured ? 'Yes' : 'No'} · Recorded: ${new Date(a.timestamp || '').toLocaleString() || 'Unknown'}</div>
+              <div style="font-size: var(--font-xs); color: var(--ink-soft);">Notes: ${esc(a.notes || 'No notes')}</div>
+            </div>
+          `).join('') : `
+            <div style="text-align: center; padding: 28px 18px; color: var(--ink-soft); font-size: var(--font-sm); background: var(--bone); border: 1px dashed var(--line); border-radius: 10px;">
+              <div style="font-size: 2rem; margin-bottom: 12px;">🧾</div>
+              <div style="font-weight: 700; margin-bottom: 6px;">No local audit records yet</div>
+              <div style="font-size: var(--font-xs);">Signed contract acceptances are stored locally after record creation. They remain visible here once a client completes the booking request.</div>
+            </div>
+          `}
         </div>
       </section>
     `;
@@ -7691,6 +7752,25 @@ RAW files are not provided.`
       return firstBad;
     }
 
+    async function sendSignedContractEmail(payload) {
+      try {
+        const res = await fetch("/api/contracts/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => null);
+          console.warn("Signed contract email failed:", body?.error || res.statusText);
+          return false;
+        }
+        return true;
+      } catch (err) {
+        console.warn("Signed contract email error:", err);
+        return false;
+      }
+    }
+
     const handleBookingSubmit = (e) => {
       if (e) e.preventDefault();
 
@@ -7771,7 +7851,7 @@ RAW files are not provided.`
           deliverablePolicyNote +
           gearPolicyNote +
           `Moodboard Link: ${moodboard || '—'}\n` +
-          (agreedToTerms ? `Contract Agreement: ${name} has agreed to ${contractRefDoc} in full, without modifications. By sending this email the client confirms acceptance of all studio terms and conditions.\nRead terms online: https://www.nerdyphotographer.in/book/${isTfpCat ? '#tfp-terms' : '#terms'}\n\n` : `\n`) +
+          (agreedToTerms ? `Contract Agreement: ${name} has agreed to ${contractRefDoc} in full, without modifications. By sending this email the client confirms acceptance of all studio terms and conditions.\nContract Reference: ${contractRefDoc}\nSignature Captured: ${sigDataUrl ? 'Yes' : 'No'}\nRead terms online: https://www.nerdyphotographer.in/book/${isTfpCat ? '#tfp-terms' : '#terms'}\n\n` : `\n`) +
           `Concept/Vision:\n${concept || '—'}`;
         const inquiryBody = compactBody + tfpReleaseText;
         const plainTextBody = `To: ${studioEmail}\nSubject: Shoot Booking Request — ${name}\n\n` + inquiryBody;
@@ -7782,6 +7862,32 @@ RAW files are not provided.`
         const mailtoUrl = `mailto:${studioEmail}?subject=${subject}&body=${body}`;
         const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(studioEmail)}&su=${subject}&body=${body}`;
         const outlookUrl = `https://outlook.live.com/default.aspx?rru=compose&to=${encodeURIComponent(studioEmail)}&subject=${subject}&body=${body}`;
+
+        const contractNumber = agreedToTerms ? generateContractNumber() : "";
+
+        async function recordContractAudit(payload) {
+          saveLocalContractAudit({
+            contractNumber: payload.contractNumber,
+            clientName: payload.clientName,
+            clientEmail: payload.clientEmail,
+            contractVersion: payload.contractVersion,
+            date: payload.date,
+            shootType: payload.shootType,
+            timestamp: new Date().toISOString(),
+            sigCaptured: !!payload.sigDataUrl,
+            notes: payload.notes
+          });
+
+          try {
+            await fetch("/api/contracts/audit", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload)
+            });
+          } catch (err) {
+            console.warn("Contract audit sync failed:", err);
+          }
+        }
 
         // Populate manual link and copy block
         const mailtoLink = $("#bookMailtoLink");
@@ -7815,11 +7921,28 @@ RAW files are not provided.`
                   attachments: typeof attachedFiles !== "undefined" ? attachedFiles : [],
                   sigDataUrl: sigDataUrl || "",
                   agreedContract: agreedToTerms ? contractRefDoc : "",
-                  notes: `Location: ${locationVal} | Budget: ${budget}`
+                  notes: `Location: ${locationVal} | Budget: ${budget}`,
+                  contractNumber
                 });
               }
             });
             updateAdminReminders();
+          }
+
+          if (contractNumber) {
+            recordContractAudit({
+              contractNumber,
+              clientName: name,
+              clientEmail: email,
+              phone,
+              instagram,
+              date,
+              location: locationVal,
+              shootType: type,
+              contractVersion: contractRefDoc,
+              sigDataUrl: sigDataUrl || "",
+              notes: `Location: ${locationVal} | Budget: ${budget}`
+            });
           }
           if (successPanel) {
             form.hidden = true;
@@ -7874,9 +7997,25 @@ RAW files are not provided.`
           headers: { "Content-Type": "application/json", "Accept": "application/json" },
           body: JSON.stringify(relayFields)
         })
-        .then(res => {
+        .then(async (res) => {
           if (res.ok) {
             showSuccess(true);
+            if (agreedToTerms) {
+              sendSignedContractEmail({
+                clientName: name,
+                clientEmail: email,
+                phone,
+                instagram,
+                date,
+                location: locationVal,
+                shootType: type,
+                contractVersion: contractRefDoc,
+                contractNumber,
+                contractText: tfpReleaseText.trim(),
+                sigDataUrl: sigDataUrl || "",
+                notes: `Location: ${locationVal} | Budget: ${budget}`
+              });
+            }
           } else {
             showSuccess(false);
             try {
