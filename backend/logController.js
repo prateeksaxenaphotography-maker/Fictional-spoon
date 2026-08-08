@@ -25,6 +25,86 @@ const COMMON_DOMAIN_TYPOS = {
 
 const AUDIT_FILE_PATH = path.join(__dirname, "contractAudit.json");
 
+/* ============================================================
+   GitHub-backed durable contract store.
+   Render's free-tier disk is wiped on every restart, so the local
+   contractAudit.json is only a fallback. The real record lives in a
+   PRIVATE GitHub repo (contract records hold client PII — they must
+   never go in the public site repo the way albums do):
+     - records/<contractNumber>.json — full record incl. signature image
+     - index.json                    — compact list for the admin vault
+   Configured via GITHUB_TOKEN (fine-grained PAT, contents read/write
+   on that one repo) and CONTRACTS_REPO ("owner/repo-name").
+   ============================================================ */
+const GITHUB_API = "https://api.github.com";
+
+function githubStoreConfig() {
+  const token = process.env.GITHUB_TOKEN;
+  const repo = process.env.CONTRACTS_REPO;
+  if (!token || !repo || !/^[\w.-]+\/[\w.-]+$/.test(repo)) return null;
+  return { token, repo };
+}
+
+async function githubRequest(cfg, method, apiPath, body) {
+  return fetch(`${GITHUB_API}${apiPath}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${cfg.token}`,
+      Accept: "application/vnd.github+json",
+      "User-Agent": "wps-contract-store",
+      ...(body ? { "Content-Type": "application/json" } : {})
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+}
+
+async function githubReadJson(cfg, filePath) {
+  const res = await githubRequest(cfg, "GET", `/repos/${cfg.repo}/contents/${filePath}`);
+  if (res.status === 404) return { sha: null, data: null };
+  if (!res.ok) throw new Error(`GitHub read ${filePath} failed: ${res.status}`);
+  const body = await res.json();
+  const content = Buffer.from(body.content || "", "base64").toString("utf8");
+  return { sha: body.sha, data: content ? JSON.parse(content) : null };
+}
+
+async function githubWriteJson(cfg, filePath, data, sha, message) {
+  const res = await githubRequest(cfg, "PUT", `/repos/${cfg.repo}/contents/${filePath}`, {
+    message,
+    content: Buffer.from(JSON.stringify(data, null, 2), "utf8").toString("base64"),
+    ...(sha ? { sha } : {})
+  });
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => "");
+    throw new Error(`GitHub write ${filePath} failed: ${res.status} ${errBody}`);
+  }
+}
+
+async function githubStoreAudit(entry, fullRecord) {
+  const cfg = githubStoreConfig();
+  if (!cfg) return false;
+  await githubWriteJson(
+    cfg,
+    `records/${entry.contractNumber}.json`,
+    fullRecord,
+    null,
+    `Contract record ${entry.contractNumber} — ${entry.clientName}`
+  );
+  // Compact index append. Read-modify-write on a shared file: retry once in
+  // case another signing bumped the sha between our read and write.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const { sha, data } = await githubReadJson(cfg, "index.json");
+      const list = Array.isArray(data) ? data : [];
+      list.push(entry);
+      await githubWriteJson(cfg, "index.json", list, sha, `Index contract ${entry.contractNumber}`);
+      return true;
+    } catch (err) {
+      if (attempt === 1) throw err;
+    }
+  }
+  return true;
+}
+
 function readAuditStore() {
   try {
     if (!fs.existsSync(AUDIT_FILE_PATH)) return [];
@@ -205,13 +285,23 @@ exports.recordContractAudit = async (req, res) => {
   const { clientName, clientEmail, phone, instagram, date, location, shootType, contractVersion, sigDataUrl, notes, contractNumber } = req.body;
   const ip = getClientIp(req) || "unknown";
 
+  if (isRateLimited(`audit:${ip}`)) {
+    return res.status(429).json({ error: "Too many contract records from this connection. Please try again later." });
+  }
+
   const shapeCheck = validateEmailShape(clientEmail);
   if (!shapeCheck.valid) {
     return res.status(400).json({ error: shapeCheck.error });
   }
 
+  // The contract number becomes a filename in the GitHub store — never trust
+  // the client-supplied one beyond a strict slug shape (path traversal).
+  const safeContractNumber = /^[A-Za-z0-9][A-Za-z0-9-]{4,60}$/.test(String(contractNumber || ""))
+    ? contractNumber
+    : generateContractNumber();
+
   const entry = {
-    contractNumber: contractNumber || generateContractNumber(),
+    contractNumber: safeContractNumber,
     clientName: clientName || "Unknown Client",
     clientEmail: shapeCheck.cleanEmail,
     phone: phone || "",
@@ -226,23 +316,60 @@ exports.recordContractAudit = async (req, res) => {
     ip
   };
 
-  const allEntries = readAuditStore();
-  allEntries.push(entry);
-  if (!writeAuditStore(allEntries)) {
-    return res.status(500).json({ error: "Unable to persist contract audit record." });
+  // Full record keeps the drawn signature image itself (capped — a real
+  // canvas signature is ~5-30KB; anything huge is not a signature).
+  const sigOk = typeof sigDataUrl === "string" && /^data:image\/(png|jpeg);base64,/.test(sigDataUrl) && sigDataUrl.length < 300000;
+  const fullRecord = { ...entry, sigDataUrl: sigOk ? sigDataUrl : "" };
+
+  // Durable GitHub store first; local file only as fallback (Render's disk
+  // is wiped on restart, so a local-only write is best-effort).
+  let storage = "local";
+  try {
+    if (await githubStoreAudit(entry, fullRecord)) storage = "github";
+  } catch (err) {
+    console.error("GitHub contract store failed, falling back to local file:", err.message);
   }
 
-  return res.status(200).json({ success: true, entry });
+  if (storage !== "github") {
+    const allEntries = readAuditStore();
+    allEntries.push(entry);
+    if (!writeAuditStore(allEntries)) {
+      return res.status(500).json({ error: "Unable to persist contract audit record." });
+    }
+  }
+
+  return res.status(200).json({ success: true, storage, entry });
 };
 
 // GET /api/contracts/audit?passcode=... — Admin only. The entries hold
 // client PII (names, emails, phones, IPs), so this must never be open.
+// Merges the durable GitHub index with any local-fallback entries.
 exports.getContractAudits = async (req, res) => {
   if (!verifyPasscode(req.query.passcode)) {
     return res.status(401).json({ error: "Unauthorized access - invalid passcode." });
   }
-  const entries = readAuditStore();
-  return res.status(200).json({ success: true, entries });
+
+  let githubEntries = [];
+  let githubOk = false;
+  const cfg = githubStoreConfig();
+  if (cfg) {
+    try {
+      githubEntries = (await githubReadJson(cfg, "index.json")).data || [];
+      githubOk = true;
+    } catch (err) {
+      console.error("GitHub contract index read failed:", err.message);
+    }
+  }
+
+  const seen = new Set();
+  const entries = [...githubEntries, ...readAuditStore()].filter((e) => {
+    const key = e.contractNumber || JSON.stringify(e);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort((a, b) => String(b.timestamp || "").localeCompare(String(a.timestamp || "")));
+
+  return res.status(200).json({ success: true, entries, storage: githubOk ? "github" : (cfg ? "local (github unreachable)" : "local only — GITHUB_TOKEN/CONTRACTS_REPO not configured") });
 };
 
 // Minimal in-memory rate limit: this endpoint sends real email through the

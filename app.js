@@ -3319,10 +3319,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 10px;">
           <div>
             <p class="eyebrow" style="margin: 0 0 6px; color: var(--accent);">Contract Audit Trail</p>
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 0;">Local Audit Records</h3>
+            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 0;">Audit Records — Server (permanent) + Local (this browser)</h3>
           </div>
-          <span style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--ink-soft);">Stored in browser localStorage for quick review and later server sync.</span>
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span id="serverAuditMeta" style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--ink-soft);"></span>
+            <button type="button" class="admin-cal-btn primary" onclick="window.loadServerContractRecords(this)" style="font-size: var(--font-xs); font-weight: 700;">☁️ Load Server Records</button>
+          </div>
         </div>
+        <div id="serverAuditGrid" style="display: none; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-bottom: 18px;"></div>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
           ${getLocalContractAudits().length ? getLocalContractAudits().map(a => `
             <div style="background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
@@ -3349,6 +3353,50 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       </section>
     `;
   }
+
+  // Fetches the passcode-gated server audit trail (durable GitHub store,
+  // merged with any Render-local fallback entries) into the vault page.
+  window.loadServerContractRecords = async (btn) => {
+    const passcode = prompt("Enter admin passcode to load server contract records:");
+    if (!passcode) return;
+    if (btn) { btn.disabled = true; btn.textContent = "Loading…"; }
+    try {
+      const res = await fetch(`${COMP_CARD_API_BASE}/api/contracts/audit?passcode=${encodeURIComponent(passcode.trim())}`);
+      if (res.status === 401) { toast("Incorrect passcode."); return; }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const grid = $("#serverAuditGrid");
+      if (!grid) return;
+      const entries = data.entries || [];
+      const meta = $("#serverAuditMeta");
+      if (meta) meta.textContent = `${entries.length} server record${entries.length !== 1 ? "s" : ""} · ${data.storage || ""}`;
+      grid.style.display = "grid";
+      grid.innerHTML = entries.length ? entries.map(a => `
+        <div style="background: var(--surface); border: 1.5px solid var(--accent); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="display:flex; justify-content: space-between; align-items:flex-start; gap: 8px; flex-wrap: wrap;">
+            <div>
+              <div style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">☁️ ${esc(a.clientName || 'Unknown')}</div>
+              <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">${esc(a.contractVersion || '—')} · ${esc(a.date || '—')}</div>
+            </div>
+            ${a.contractNumber ? `<span style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent); font-weight: 700;">${esc(a.contractNumber)}</span>` : ''}
+          </div>
+          <div style="font-size: var(--font-xs); color: var(--ink-soft);">${a.clientEmail ? `✉️ ${esc(a.clientEmail)}` : ''} ${a.phone ? `· 📞 ${esc(a.phone)}` : ''}</div>
+          <div style="font-size: var(--font-xs); color: var(--ink-soft);">Signed: ${a.sigCaptured ? 'Yes' : 'No'} · Recorded: ${a.timestamp ? new Date(a.timestamp).toLocaleString() : 'Unknown'}</div>
+          <div style="font-size: var(--font-xs); color: var(--ink-soft);">Notes: ${esc(a.notes || 'No notes')}</div>
+        </div>
+      `).join('') : `
+        <div style="text-align: center; padding: 28px 18px; color: var(--ink-soft); font-size: var(--font-sm); background: var(--bone); border: 1px dashed var(--line); border-radius: 10px;">
+          <div style="font-weight: 700;">No server records yet</div>
+          <div style="font-size: var(--font-xs); margin-top: 6px;">Records land here permanently once clients sign — from any device.</div>
+        </div>
+      `;
+    } catch (err) {
+      console.warn("Server contract records load failed:", err);
+      toast("Couldn't load server records — check the server connection.");
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = "☁️ Load Server Records"; }
+    }
+  };
 
   /* ============================================================
      § ADMIN CALENDAR & BOOKING MANAGEMENT PAGE (/calendar)
@@ -7922,6 +7970,25 @@ RAW files are not provided.`
           }
         }
 
+        // Record the acceptance the moment the client has agreed & signed —
+        // before the inquiry relay even runs, so the signing is on record
+        // even if the client abandons the email step afterwards.
+        if (contractNumber) {
+          recordContractAudit({
+            contractNumber,
+            clientName: name,
+            clientEmail: email,
+            phone,
+            instagram,
+            date,
+            location: locationVal,
+            shootType: type,
+            contractVersion: contractRefDoc,
+            sigDataUrl: sigDataUrl || "",
+            notes: `Location: ${locationVal} | Budget: ${budget}`
+          });
+        }
+
         // Populate manual link and copy block
         const mailtoLink = $("#bookMailtoLink");
         if (mailtoLink) mailtoLink.href = mailtoUrl;
@@ -7962,21 +8029,6 @@ RAW files are not provided.`
             updateAdminReminders();
           }
 
-          if (contractNumber) {
-            recordContractAudit({
-              contractNumber,
-              clientName: name,
-              clientEmail: email,
-              phone,
-              instagram,
-              date,
-              location: locationVal,
-              shootType: type,
-              contractVersion: contractRefDoc,
-              sigDataUrl: sigDataUrl || "",
-              notes: `Location: ${locationVal} | Budget: ${budget}`
-            });
-          }
           if (successPanel) {
             form.hidden = true;
             successPanel.hidden = false;
