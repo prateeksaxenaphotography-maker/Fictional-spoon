@@ -16,6 +16,7 @@ const DISPOSABLE_DOMAINS = new Set([
 
 const fs = require("fs");
 const path = require("path");
+const { verifyPasscode } = require("./adminAuth");
 
 const COMMON_DOMAIN_TYPOS = {
   "gmai.com": "gmail.com", "gamil.com": "gmail.com", "hotmial.com": "hotmail.com",
@@ -172,7 +173,7 @@ async function sendSignedContractEmail(payload) {
     attachments: [
       {
         type: "application/pdf",
-        name: "signed-contract.pdf",
+        name: `${payload.contractNumber || "signed-contract"}.pdf`,
         data: pdfBuffer.toString("base64")
       }
     ]
@@ -234,7 +235,12 @@ exports.recordContractAudit = async (req, res) => {
   return res.status(200).json({ success: true, entry });
 };
 
-exports.getContractAudits = async (_req, res) => {
+// GET /api/contracts/audit?passcode=... — Admin only. The entries hold
+// client PII (names, emails, phones, IPs), so this must never be open.
+exports.getContractAudits = async (req, res) => {
+  if (!verifyPasscode(req.query.passcode)) {
+    return res.status(401).json({ error: "Unauthorized access - invalid passcode." });
+  }
   const entries = readAuditStore();
   return res.status(200).json({ success: true, entries });
 };
@@ -424,7 +430,7 @@ exports.logDownload = async (req, res) => {
 };
 
 exports.sendContractEmail = async (req, res) => {
-  const { clientName, clientEmail, phone, instagram, date, location, shootType, contractVersion, contractText, sigDataUrl, notes } = req.body;
+  const { clientName, clientEmail, phone, instagram, date, location, shootType, contractVersion, contractNumber, contractText, sigDataUrl, notes } = req.body;
 
   const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket.remoteAddress;
   if (isRateLimited(ip || "unknown")) {
@@ -445,6 +451,7 @@ exports.sendContractEmail = async (req, res) => {
     location: location || "",
     shootType: shootType || "",
     contractVersion: contractVersion || "",
+    contractNumber: contractNumber || "",
     contractText: contractText || "",
     sigDataUrl: sigDataUrl || "",
     notes: notes || ""

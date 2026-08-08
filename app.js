@@ -3058,6 +3058,27 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     return `WPS-${timestamp}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
   }
 
+  // Delivery outcome of the signed-contract PDF email, keyed by contract
+  // number. Kept in its own store (not on the booking) because the email
+  // send resolves asynchronously and may finish before or after the booking
+  // record is created.
+  function getContractEmailStatuses() {
+    try {
+      return JSON.parse(localStorage.getItem("wps-contract-email-status") || "{}");
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function setContractEmailStatus(contractNumber, status) {
+    if (!contractNumber) return;
+    try {
+      const statuses = getContractEmailStatuses();
+      statuses[contractNumber] = { status, at: new Date().toISOString() };
+      localStorage.setItem("wps-contract-email-status", JSON.stringify(statuses));
+    } catch (e) {}
+  }
+
   function addCalBooking(dKey, bookingObj) {
     const settings = window.WPS_DATA.CALENDAR_SETTINGS;
     if (!settings.bookedDates) settings.bookedDates = {};
@@ -3077,6 +3098,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       contractVersion: bookingObj.contractVersion || (bookingObj.agreedToTerms ? "V3.2" : "Pending Agreement"),
       agreedToTerms: bookingObj.agreedToTerms !== undefined ? bookingObj.agreedToTerms : (bookingObj.contractVersion && bookingObj.contractVersion !== "Pending Agreement"),
       contractNumber: bookingObj.contractNumber || "",
+      sigDataUrl: bookingObj.sigDataUrl || "",
+      agreedContract: bookingObj.agreedContract || "",
       createdAt: Date.now()
     };
     settings.bookedDates[dKey].push(booking);
@@ -3144,23 +3167,31 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
      § ADMIN CONTRACT VAULT PAGE (/contracts)
      ============================================================ */
   function viewContracts() {
-    // Gather all bookings that have an agreed contract from localStorage
+    // Gather all bookings that have an agreed contract. Read the live
+    // calendar store (persisted as "wps-calendar-settings") — a previous
+    // version read a "wps-cal-bookings" localStorage key that nothing ever
+    // wrote, so the vault always showed empty.
     let allSigned = [];
     try {
-      const raw = localStorage.getItem("wps-cal-bookings");
-      if (raw) {
-        const allBookings = JSON.parse(raw); // { dateKey: [booking, ...] }
-        Object.entries(allBookings).forEach(([dateKey, bookings]) => {
-          (bookings || []).forEach(b => {
-            if (b.agreedContract || b.sigDataUrl) {
-              allSigned.push({ ...b, dateKey });
-            }
-          });
+      const allBookings = window.WPS_DATA?.CALENDAR_SETTINGS?.bookedDates || {}; // { dateKey: [booking, ...] }
+      Object.entries(allBookings).forEach(([dateKey, bookings]) => {
+        (bookings || []).forEach(b => {
+          if (b.agreedContract || b.sigDataUrl) {
+            allSigned.push({ ...b, dateKey });
+          }
         });
-        // newest first
-        allSigned.sort((a, b) => (b.dateKey || "").localeCompare(a.dateKey || ""));
-      }
+      });
+      // newest first
+      allSigned.sort((a, b) => (b.dateKey || "").localeCompare(a.dateKey || ""));
     } catch (e) { /* ignore */ }
+
+    const emailStatuses = getContractEmailStatuses();
+    const emailBadge = (contractNumber) => {
+      const st = contractNumber && emailStatuses[contractNumber] && emailStatuses[contractNumber].status;
+      if (st === "sent") return `<div style="font-family: var(--mono-font); font-size: var(--font-xs); color: #059669; font-weight: 700;">📧 Contract PDF emailed (studio + client copy)</div>`;
+      if (st === "failed") return `<div style="font-family: var(--mono-font); font-size: var(--font-xs); color: #dc2626; font-weight: 700;">⚠️ Contract email FAILED — no PDF copy was delivered</div>`;
+      return "";
+    };
 
     const rows = allSigned.length ? allSigned.map(b => `
       <div style="background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
@@ -3177,6 +3208,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('${esc(b.dateKey)}', '${esc(b.id || '')}')" style="border-color: var(--accent); color: var(--accent); font-size: var(--font-xs); padding: 4px 10px; font-weight: 700; white-space: nowrap;">📄 Generate PDF</button>
         </div>
         ${b.agreedContract ? `<div style="font-family: var(--mono-font); font-size: var(--font-xs); color: #059669; font-weight: 700;">✅ ${esc(b.agreedContract)}</div>` : ''}
+        ${emailBadge(b.contractNumber)}
         ${b.sigDataUrl ? `
           <div>
             <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-bottom: 4px; font-weight: 600;">Digital Signature:</div>
@@ -3303,6 +3335,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               </div>
               <div style="font-size: var(--font-xs); color: var(--ink-soft);">${a.clientEmail ? `✉️ ${esc(a.clientEmail)}` : ''} ${a.phone ? `· 📞 ${esc(a.phone)}` : ''}</div>
               <div style="font-size: var(--font-xs); color: var(--ink-soft);">Signed: ${a.sigCaptured ? 'Yes' : 'No'} · Recorded: ${new Date(a.timestamp || '').toLocaleString() || 'Unknown'}</div>
+              ${emailBadge(a.contractNumber)}
               <div style="font-size: var(--font-xs); color: var(--ink-soft);">Notes: ${esc(a.notes || 'No notes')}</div>
             </div>
           `).join('') : `
@@ -7754,7 +7787,7 @@ RAW files are not provided.`
 
     async function sendSignedContractEmail(payload) {
       try {
-        const res = await fetch("/api/contracts/send", {
+        const res = await fetch(`${COMP_CARD_API_BASE}/api/contracts/send`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
@@ -7879,7 +7912,7 @@ RAW files are not provided.`
           });
 
           try {
-            await fetch("/api/contracts/audit", {
+            await fetch(`${COMP_CARD_API_BASE}/api/contracts/audit`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(payload)
@@ -7991,6 +8024,28 @@ RAW files are not provided.`
         };
         if (agreedToTerms) relayFields["Release Full Text"] = tfpReleaseText.trim();
 
+        // The signed-contract PDF email is an independent channel from the
+        // inquiry relay — send it regardless of how the inquiry itself goes
+        // out (FormSubmit or mailto fallback), and record the outcome so the
+        // contract vault can flag failed deliveries instead of losing them
+        // to a console.warn.
+        if (agreedToTerms) {
+          sendSignedContractEmail({
+            clientName: name,
+            clientEmail: email,
+            phone,
+            instagram,
+            date,
+            location: locationVal,
+            shootType: type,
+            contractVersion: contractRefDoc,
+            contractNumber,
+            contractText: tfpReleaseText.trim(),
+            sigDataUrl: sigDataUrl || "",
+            notes: `Location: ${locationVal} | Budget: ${budget}`
+          }).then((sent) => setContractEmailStatus(contractNumber, sent ? "sent" : "failed"));
+        }
+
         // Send FormSubmit background relay asynchronously
         fetch(`https://formsubmit.co/ajax/${encodeURIComponent(studioEmail)}`, {
           method: "POST",
@@ -8000,22 +8055,6 @@ RAW files are not provided.`
         .then(async (res) => {
           if (res.ok) {
             showSuccess(true);
-            if (agreedToTerms) {
-              sendSignedContractEmail({
-                clientName: name,
-                clientEmail: email,
-                phone,
-                instagram,
-                date,
-                location: locationVal,
-                shootType: type,
-                contractVersion: contractRefDoc,
-                contractNumber,
-                contractText: tfpReleaseText.trim(),
-                sigDataUrl: sigDataUrl || "",
-                notes: `Location: ${locationVal} | Budget: ${budget}`
-              });
-            }
           } else {
             showSuccess(false);
             try {
