@@ -25,7 +25,9 @@ app.use(cors({
     callback(new Error("Not allowed by CORS"));
   }
 }));
-app.use(express.json());
+// 1mb (default is 100kb): contract payloads carry a drawn-signature data URL
+// plus the full contract text in one JSON body.
+app.use(express.json({ limit: "1mb" }));
 
 // Health check — for uptime monitors and Render health checks. Pinging this
 // every few minutes also keeps the free-tier instance from spinning down.
