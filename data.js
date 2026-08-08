@@ -32,95 +32,6 @@ window.WPS_DATA = {
   ],
   "DEMO_SHOOTS": [
     {
-      "id": "msap3arwdtg7pb",
-      "createdAt": 1785608321612,
-      "isTestimonial": false,
-      "title": "Neeraj Pannt",
-      "brand": "Personal Project",
-      "activity": "Fitness",
-      "type": "Test Shoot",
-      "season": "August 2026",
-      "photographer": "nerdyphotographer",
-      "artDirector": "",
-      "stylist": "—",
-      "hair": "—",
-      "mua": "—",
-      "videographer": "—",
-      "talent": "Neeraj Pannt (https://www.instagram.com/shapeupwithneeraj/?hl=en)",
-      "location": "",
-      "height": "",
-      "chest": "",
-      "waist": "",
-      "hips": "",
-      "shoes": "",
-      "modelHair": "",
-      "modelEyes": "",
-      "showStatsOnCompCard": true,
-      "showStatsOnModelPortfolio": true,
-      "showTestShootCategory": false,
-      "mentor": "",
-      "credits": "",
-      "description": "",
-      "tags": "",
-      "gear": "",
-      "client": "",
-      "date": "2026-08-01",
-      "instagram": "",
-      "kavyar": "",
-      "link": "",
-      "pdfUrl": "",
-      "rights": "",
-      "testimonials": [],
-      "lightingDiagram": null,
-      "lightingDiagramVisibility": "private",
-      "palette": [
-        "#2d2c2d",
-        "#141414"
-      ],
-      "photos": [
-        {
-          "id": "msap0w20rz19xu-0",
-          "url": "photos/msap3arwdtg7pb/msap0w20rz19xu-0.jpg",
-          "objectPosition": "top"
-        },
-        {
-          "id": "msap0wb1tv34vl-1",
-          "url": "photos/msap3arwdtg7pb/msap0wb1tv34vl-1.jpg",
-          "objectPosition": "center"
-        },
-        {
-          "id": "msap0winoz5q9z-2",
-          "url": "photos/msap3arwdtg7pb/msap0winoz5q9z-2.jpg",
-          "objectPosition": "top"
-        },
-        {
-          "id": "msap0wovto7ps6-3",
-          "url": "photos/msap3arwdtg7pb/msap0wovto7ps6-3.jpg",
-          "objectPosition": "center"
-        },
-        {
-          "id": "msaqdneekgniml-4",
-          "url": "photos/msap3arwdtg7pb/msaqdneekgniml-4.jpg",
-          "objectPosition": "center",
-          "small": "photos/msap3arwdtg7pb/msaqdneekgniml-4@480.jpg",
-          "medium": "photos/msap3arwdtg7pb/msaqdneekgniml-4@960.jpg"
-        }
-      ],
-      "featured": true,
-      "hideFromCompCard": false,
-      "disableCompCardDownload": false,
-      "isPublic": true,
-      "showCredits": true,
-      "showPdf": true,
-      "showInstagram": true,
-      "showKavyar": true,
-      "showTestimonials": true,
-      "showStats": true,
-      "showGear": true,
-      "showLocation": true,
-      "coverPhotoId": "msaqdneekgniml"
-    },
-    {
       "id": "mr4x3r7e4l5g4m",
       "createdAt": 1783082200442,
       "title": "Rhythm Vohra",
@@ -130,9 +41,9 @@ window.WPS_DATA = {
       "season": "June 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "\u2014",
-      "hair": "\u2014",
-      "mua": "\u2014",
+      "stylist": "—",
+      "hair": "—",
+      "mua": "—",
       "talent": "Rhythm Vohra",
       "location": "Noida",
       "height": "",
@@ -229,10 +140,10 @@ window.WPS_DATA = {
       "season": "June 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "\u2014",
-      "hair": "\u2014",
+      "stylist": "—",
+      "hair": "—",
       "mua": "Rashi Sehgal",
-      "videographer": "\u2014",
+      "videographer": "—",
       "talent": "Prachi Choudhary",
       "location": "Noida",
       "height": "",
@@ -349,8 +260,8 @@ window.WPS_DATA = {
       "season": "June 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "\u2014",
-      "hair": "\u2014",
+      "stylist": "—",
+      "hair": "—",
       "mua": "Rashi Seghal",
       "talent": "Prachi Choudhary",
       "location": "Noida",
@@ -404,8 +315,8 @@ window.WPS_DATA = {
       "season": "June 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "\u2014",
-      "hair": "\u2014",
+      "stylist": "—",
+      "hair": "—",
       "mua": "Rashi Seghal",
       "talent": "Prachi Choudhary",
       "location": "Noida",
@@ -457,10 +368,10 @@ window.WPS_DATA = {
       "season": "March 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "\u2014",
-      "hair": "\u2014",
-      "mua": "\u2014",
-      "videographer": "\u2014",
+      "stylist": "—",
+      "hair": "—",
+      "mua": "—",
+      "videographer": "—",
       "talent": "Kunaal Raghav",
       "location": "Noida",
       "height": "",
@@ -578,10 +489,10 @@ window.WPS_DATA = {
       "season": "July 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "\u2014",
-      "hair": "\u2014",
-      "mua": "\u2014",
-      "videographer": "\u2014",
+      "stylist": "—",
+      "hair": "—",
+      "mua": "—",
+      "videographer": "—",
       "talent": "Abhishek Yadav",
       "location": "Noida",
       "height": "",
@@ -714,10 +625,10 @@ window.WPS_DATA = {
       "season": "May 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "\u2014",
-      "hair": "\u2014",
-      "mua": "\u2014",
-      "videographer": "\u2014",
+      "stylist": "—",
+      "hair": "—",
+      "mua": "—",
+      "videographer": "—",
       "talent": "Harshit Maindola",
       "location": "Jaipur",
       "height": "6'3",
@@ -830,10 +741,10 @@ window.WPS_DATA = {
       "season": "July 2026",
       "photographer": "nerdyphotographer",
       "artDirector": "",
-      "stylist": "\u2014",
+      "stylist": "—",
       "hair": "Bharti Kain (https://www.instagram.com/bharti_kain.11/?hl=en)",
       "mua": "Suyagya (https://www.instagram.com/suyagyamakeovers/?hl=en)",
-      "videographer": "\u2014",
+      "videographer": "—",
       "talent": "Paola Arellano (https://www.instagram.com/arellanopaola._), Lorna Perez(https://www.instagram.com/lornapereza)",
       "location": "Tavish Studio (https://www.instagram.com/studiotavish/?hl=en)",
       "height": "",
@@ -921,6 +832,9 @@ window.WPS_DATA = {
       "coverPhotoId": "ms36ygjb7yxmuk"
     }
   ],
+  "DELETED_IDS": [
+    "msap3arwdtg7pb"
+  ],
   "CALENDAR_SETTINGS": {
     "customBlockedDates": {},
     "customOpenedDates": {},
@@ -931,10 +845,20 @@ window.WPS_DATA = {
           "shootId": "ms36z1wqlj20k1",
           "name": "Luxury Jewelry & Accessories Campaign",
           "type": "Commercial Campaign",
-          "duration": "Full Day (10:30 AM \u2013 5:30 PM)",
+          "duration": "Full Day (10:30 AM – 5:30 PM)",
           "status": "confirmed",
           "isTentative": false,
           "notes": "Published Portfolio Shoot: Luxury Jewelry & Accessories Campaign"
+        },
+        {
+          "id": "shoot-mr55364rvor33m",
+          "shootId": "mr55364rvor33m",
+          "name": "Kunaal Raghav",
+          "type": "Test Shoot",
+          "duration": "Full Day",
+          "status": "confirmed",
+          "isTentative": false,
+          "notes": "Published Portfolio Shoot: Kunaal Raghav"
         }
       ],
       "2026-05-15": [
@@ -943,10 +867,20 @@ window.WPS_DATA = {
           "shootId": "ms36z1wqm2xkrz",
           "name": "Cinematic Lookbook & Apparel Production",
           "type": "Lookbook",
-          "duration": "Full Day (10:30 AM \u2013 5:30 PM)",
+          "duration": "Full Day (10:30 AM – 5:30 PM)",
           "status": "confirmed",
           "isTentative": false,
           "notes": "Published Portfolio Shoot: Cinematic Lookbook & Apparel Production"
+        },
+        {
+          "id": "shoot-mranmpzmfblohv",
+          "shootId": "mranmpzmfblohv",
+          "name": "Harshit Maindola",
+          "type": "Test Shoot",
+          "duration": "Full Day",
+          "status": "confirmed",
+          "isTentative": false,
+          "notes": "Published Portfolio Shoot: Harshit Maindola"
         }
       ],
       "2026-06-13": [
@@ -955,10 +889,20 @@ window.WPS_DATA = {
           "shootId": "ms36z1wq1g1x0j",
           "name": "Fitness & Athletic Power Shoot",
           "type": "Fitness & Commercial",
-          "duration": "Full Day (10:30 AM \u2013 5:30 PM)",
+          "duration": "Full Day (10:30 AM – 5:30 PM)",
           "status": "confirmed",
           "isTentative": false,
           "notes": "Published Portfolio Shoot: Fitness & Athletic Power Shoot"
+        },
+        {
+          "id": "shoot-mr4x6kwx3f8rs3",
+          "shootId": "mr4x6kwx3f8rs3",
+          "name": "Prachi Choudhary",
+          "type": "Test Shoot",
+          "duration": "Full Day",
+          "status": "confirmed",
+          "isTentative": false,
+          "notes": "Published Portfolio Shoot: Prachi Choudhary"
         }
       ],
       "2026-06-14": [
@@ -967,10 +911,20 @@ window.WPS_DATA = {
           "shootId": "ms36z1wqlp9812",
           "name": "Urban High-Fashion Editorial",
           "type": "Fashion Editorial",
-          "duration": "Full Day (10:30 AM \u2013 5:30 PM)",
+          "duration": "Full Day (10:30 AM – 5:30 PM)",
           "status": "confirmed",
           "isTentative": false,
           "notes": "Published Portfolio Shoot: Urban High-Fashion Editorial"
+        },
+        {
+          "id": "shoot-mr4x3r7e4l5g4m",
+          "shootId": "mr4x3r7e4l5g4m",
+          "name": "Rhythm Vohra",
+          "type": "Test Shoot",
+          "duration": "Full Day",
+          "status": "confirmed",
+          "isTentative": false,
+          "notes": "Published Portfolio Shoot: Rhythm Vohra"
         }
       ],
       "2026-07-05": [
@@ -979,10 +933,20 @@ window.WPS_DATA = {
           "shootId": "ms36z1wqkx21s1",
           "name": "Commercial Beauty & Skin Campaign",
           "type": "Beauty & Commercial",
-          "duration": "Full Day (10:30 AM \u2013 5:30 PM)",
+          "duration": "Full Day (10:30 AM – 5:30 PM)",
           "status": "confirmed",
           "isTentative": false,
           "notes": "Published Portfolio Shoot: Commercial Beauty & Skin Campaign"
+        },
+        {
+          "id": "shoot-mr8legmk0o8mqz",
+          "shootId": "mr8legmk0o8mqz",
+          "name": "Abhishek Yadav",
+          "type": "Test Shoot",
+          "duration": "Full Day",
+          "status": "confirmed",
+          "isTentative": false,
+          "notes": "Published Portfolio Shoot: Abhishek Yadav"
         }
       ],
       "2026-07-24": [
@@ -991,10 +955,32 @@ window.WPS_DATA = {
           "shootId": "ms36z1wqg2y4a2",
           "name": "Creative Studio Workshop & Lighting Masterclass",
           "type": "Workshop Attended",
-          "duration": "Full Day (10:30 AM \u2013 5:30 PM)",
+          "duration": "Full Day (10:30 AM – 5:30 PM)",
           "status": "workshop",
           "isTentative": false,
           "notes": "Published Portfolio Shoot: Creative Studio Workshop & Lighting Masterclass"
+        },
+        {
+          "id": "shoot-ms36z1wqm2xkrz",
+          "shootId": "ms36z1wqm2xkrz",
+          "name": "Workshop with Sidology and Clickwalaphotographer",
+          "type": "Workshop Attended",
+          "duration": "Full Day",
+          "status": "workshop",
+          "isTentative": false,
+          "notes": "Published Portfolio Shoot: Workshop with Sidology and Clickwalaphotographer"
+        }
+      ],
+      "2026-08-01": [
+        {
+          "id": "shoot-msap3arwdtg7pb",
+          "shootId": "msap3arwdtg7pb",
+          "name": "Neeraj Pannt",
+          "type": "Test Shoot",
+          "duration": "Full Day",
+          "status": "confirmed",
+          "isTentative": false,
+          "notes": "Published Portfolio Shoot: Neeraj Pannt"
         }
       ]
     }
