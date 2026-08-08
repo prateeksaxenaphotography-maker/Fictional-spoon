@@ -3337,6 +3337,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
         <div id="adminCalGridContainer"></div>
 
+        <div id="adminRosterWrap" style="margin-top: 32px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 0;">📋 Studio Booking Roster</h3>
+            <span id="rosterCountBadge" style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--ink-soft); font-weight: 700;"></span>
+          </div>
+          <div id="bookingRosterGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px;"></div>
+        </div>
+
         <div style="margin-top: 32px; border-top: 1px solid var(--line); padding-top: 20px; text-align: center;">
           <a href="/contracts" data-link class="admin-cal-btn" style="font-size: var(--font-xs); font-weight: 700; border-color: var(--accent); color: var(--accent);">📜 View Contract Version Vault &rarr;</a>
         </div>
@@ -9872,7 +9880,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=257').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=258').catch(() => {});
   });
 }
 
