@@ -4494,7 +4494,15 @@ RAW files are not provided.`
                 <input type="tel" id="m_clientPhone" placeholder="Phone Number (e.g. 9876543210)" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
               </div>
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <input type="text" id="m_clientType" placeholder="Shoot Type (e.g. Fashion, Portfolio)" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
+                <select id="m_clientType" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;">
+                  <option value="Fashion Editorial">Fashion Editorial</option>
+                  <option value="Fitness &amp; Athletic">Fitness &amp; Athletic</option>
+                  <option value="Sports Action">Sports Action</option>
+                  <option value="Commercial Campaign">Commercial Campaign</option>
+                  <option value="Portfolio">Portfolio</option>
+                  <option value="Selective Collaboration (TFP)">📸 Selective Collaboration / TFP</option>
+                  <option value="Other">Other</option>
+                </select>
                 <select id="m_clientDuration" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;">
                   <option value="Full Day">Full Day Shoot</option>
                   <option value="Half Day (Morning)">Half Day (Morning 9AM - 1PM)</option>
@@ -7451,25 +7459,8 @@ RAW files are not provided.`
       const typeFieldWrap = $("#b_type_field_wrap");
       const lockedTfpCard = $("#lockedTfpCard");
 
-      // Universal Photographer Invite Code Enforcement for ALL Roles
-      if (!isValidInvite) {
-        if (testShootOpt) {
-          testShootOpt.hidden = true;
-          testShootOpt.style.display = "none";
-          testShootOpt.disabled = true;
-        }
-        if ($("#b_type") && $("#b_type").value === "Selective Collaboration (TFP)") {
-          $("#b_type").value = "Fashion Editorial";
-          $("#b_type").dispatchEvent(new Event("change", { bubbles: true }));
-        }
-        if (typeFieldWrap) typeFieldWrap.style.display = "";
-        if (lockedTfpCard) lockedTfpCard.style.display = "none";
-      } else {
-        if (testShootOpt) {
-          testShootOpt.hidden = false;
-          testShootOpt.style.display = "";
-          testShootOpt.disabled = false;
-        }
+      // TFP option is always visible — invite code only gates pricing/locked card
+      if (isValidInvite) {
         const typeSelect = $("#b_type");
         if (typeSelect && typeSelect.value !== "Selective Collaboration (TFP)") {
           typeSelect.value = "Selective Collaboration (TFP)";
@@ -7477,6 +7468,9 @@ RAW files are not provided.`
         }
         if (typeFieldWrap) typeFieldWrap.style.display = "none";
         if (lockedTfpCard) lockedTfpCard.style.display = "block";
+      } else {
+        if (typeFieldWrap) typeFieldWrap.style.display = "";
+        if (lockedTfpCard) lockedTfpCard.style.display = "none";
       }
 
       // Real-Time Final Amount Calculator Engine
@@ -9880,7 +9874,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=259').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=260').catch(() => {});
   });
 }
 

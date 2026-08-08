@@ -1,11 +1,11 @@
-const CACHE_NAME = "wps-v259";
+const CACHE_NAME = "wps-v260";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
-  "/styles.css?v=259",
-  "/app.js?v=259",
-  "/data.js?v=259",
-  "/config.js?v=259"
+  "/styles.css?v=260",
+  "/app.js?v=260",
+  "/data.js?v=260",
+  "/config.js?v=260"
 ];
 
 // Precache the app shell. The previous worker declared this list but never
