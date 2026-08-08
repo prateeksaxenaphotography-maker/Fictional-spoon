@@ -10,12 +10,5 @@ services:
         sync: false
       - key: RESEND_FROM_EMAIL
         value: noreply@nerdyphotographer.in
-      # Durable contract store: fine-grained PAT with contents read/write on
-      # the PRIVATE contract-records repo (never the public site repo).
-      - key: GITHUB_TOKEN
-        sync: false
-      # "owner/repo-name" of the private contract-records repo
-      - key: CONTRACTS_REPO
-        sync: false
       - key: NODE_ENV
         value: production

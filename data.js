@@ -32,6 +32,95 @@ window.WPS_DATA = {
   ],
   "DEMO_SHOOTS": [
     {
+      "id": "msap3arwdtg7pb",
+      "createdAt": 1785608321612,
+      "isTestimonial": false,
+      "title": "Neeraj Pannt",
+      "brand": "Personal Project",
+      "activity": "Fitness",
+      "type": "Test Shoot",
+      "season": "August 2026",
+      "photographer": "nerdyphotographer",
+      "artDirector": "",
+      "stylist": "—",
+      "hair": "—",
+      "mua": "—",
+      "videographer": "—",
+      "talent": "Neeraj Pannt (https://www.instagram.com/shapeupwithneeraj/?hl=en)",
+      "location": "",
+      "height": "",
+      "chest": "",
+      "waist": "",
+      "hips": "",
+      "shoes": "",
+      "modelHair": "",
+      "modelEyes": "",
+      "showStatsOnCompCard": true,
+      "showStatsOnModelPortfolio": true,
+      "showTestShootCategory": false,
+      "mentor": "",
+      "credits": "",
+      "description": "",
+      "tags": "",
+      "gear": "",
+      "client": "",
+      "date": "2026-08-01",
+      "instagram": "",
+      "kavyar": "",
+      "link": "",
+      "pdfUrl": "",
+      "rights": "",
+      "testimonials": [],
+      "lightingDiagram": null,
+      "lightingDiagramVisibility": "private",
+      "palette": [
+        "#2d2c2d",
+        "#141414"
+      ],
+      "photos": [
+        {
+          "id": "msap0w20rz19xu-0",
+          "url": "photos/msap3arwdtg7pb/msap0w20rz19xu-0.jpg",
+          "objectPosition": "top"
+        },
+        {
+          "id": "msap0wb1tv34vl-1",
+          "url": "photos/msap3arwdtg7pb/msap0wb1tv34vl-1.jpg",
+          "objectPosition": "center"
+        },
+        {
+          "id": "msap0winoz5q9z-2",
+          "url": "photos/msap3arwdtg7pb/msap0winoz5q9z-2.jpg",
+          "objectPosition": "top"
+        },
+        {
+          "id": "msap0wovto7ps6-3",
+          "url": "photos/msap3arwdtg7pb/msap0wovto7ps6-3.jpg",
+          "objectPosition": "center"
+        },
+        {
+          "id": "msaqdneekgniml-4",
+          "url": "photos/msap3arwdtg7pb/msaqdneekgniml-4.jpg",
+          "objectPosition": "center",
+          "small": "photos/msap3arwdtg7pb/msaqdneekgniml-4@480.jpg",
+          "medium": "photos/msap3arwdtg7pb/msaqdneekgniml-4@960.jpg"
+        }
+      ],
+      "featured": true,
+      "hideFromCompCard": false,
+      "disableCompCardDownload": false,
+      "isPublic": true,
+      "showCredits": true,
+      "showPdf": true,
+      "showInstagram": true,
+      "showKavyar": true,
+      "showTestimonials": true,
+      "showStats": true,
+      "showGear": true,
+      "showLocation": true,
+      "coverPhotoId": "msaqdneekgniml"
+    },
+    {
       "id": "mr4x3r7e4l5g4m",
       "createdAt": 1783082200442,
       "title": "Rhythm Vohra",
@@ -41,9 +130,9 @@ window.WPS_DATA = {
       "season": "June 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "—",
-      "hair": "—",
-      "mua": "—",
+      "stylist": "\u2014",
+      "hair": "\u2014",
+      "mua": "\u2014",
       "talent": "Rhythm Vohra",
       "location": "Noida",
       "height": "",
@@ -140,10 +229,10 @@ window.WPS_DATA = {
       "season": "June 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "—",
-      "hair": "—",
+      "stylist": "\u2014",
+      "hair": "\u2014",
       "mua": "Rashi Sehgal",
-      "videographer": "—",
+      "videographer": "\u2014",
       "talent": "Prachi Choudhary",
       "location": "Noida",
       "height": "",
@@ -260,8 +349,8 @@ window.WPS_DATA = {
       "season": "June 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "—",
-      "hair": "—",
+      "stylist": "\u2014",
+      "hair": "\u2014",
       "mua": "Rashi Seghal",
       "talent": "Prachi Choudhary",
       "location": "Noida",
@@ -315,8 +404,8 @@ window.WPS_DATA = {
       "season": "June 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "—",
-      "hair": "—",
+      "stylist": "\u2014",
+      "hair": "\u2014",
       "mua": "Rashi Seghal",
       "talent": "Prachi Choudhary",
       "location": "Noida",
@@ -368,10 +457,10 @@ window.WPS_DATA = {
       "season": "March 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "—",
-      "hair": "—",
-      "mua": "—",
-      "videographer": "—",
+      "stylist": "\u2014",
+      "hair": "\u2014",
+      "mua": "\u2014",
+      "videographer": "\u2014",
       "talent": "Kunaal Raghav",
       "location": "Noida",
       "height": "",
@@ -489,10 +578,10 @@ window.WPS_DATA = {
       "season": "July 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "—",
-      "hair": "—",
-      "mua": "—",
-      "videographer": "—",
+      "stylist": "\u2014",
+      "hair": "\u2014",
+      "mua": "\u2014",
+      "videographer": "\u2014",
       "talent": "Abhishek Yadav",
       "location": "Noida",
       "height": "",
@@ -625,10 +714,10 @@ window.WPS_DATA = {
       "season": "May 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "—",
-      "hair": "—",
-      "mua": "—",
-      "videographer": "—",
+      "stylist": "\u2014",
+      "hair": "\u2014",
+      "mua": "\u2014",
+      "videographer": "\u2014",
       "talent": "Harshit Maindola",
       "location": "Jaipur",
       "height": "6'3",
@@ -741,10 +830,10 @@ window.WPS_DATA = {
       "season": "July 2026",
       "photographer": "nerdyphotographer",
       "artDirector": "",
-      "stylist": "—",
+      "stylist": "\u2014",
       "hair": "Bharti Kain (https://www.instagram.com/bharti_kain.11/?hl=en)",
       "mua": "Suyagya (https://www.instagram.com/suyagyamakeovers/?hl=en)",
-      "videographer": "—",
+      "videographer": "\u2014",
       "talent": "Paola Arellano (https://www.instagram.com/arellanopaola._), Lorna Perez(https://www.instagram.com/lornapereza)",
       "location": "Tavish Studio (https://www.instagram.com/studiotavish/?hl=en)",
       "height": "",
@@ -832,9 +921,6 @@ window.WPS_DATA = {
       "coverPhotoId": "ms36ygjb7yxmuk"
     }
   ],
-  "DELETED_IDS": [
-    "msap3arwdtg7pb"
-  ],
   "CALENDAR_SETTINGS": {
     "customBlockedDates": {},
     "customOpenedDates": {},
@@ -846,13 +932,6 @@ window.WPS_DATA = {
           "type": "Commercial Campaign",
           "status": "confirmed",
           "isTentative": false
-        },
-        {
-          "id": "shoot-mr55364rvor33m",
-          "shootId": "mr55364rvor33m",
-          "type": "Test Shoot",
-          "status": "confirmed",
-          "isTentative": false
         }
       ],
       "2026-05-15": [
@@ -860,13 +939,6 @@ window.WPS_DATA = {
           "id": "shoot-ms36z1wqm2xkrz",
           "shootId": "ms36z1wqm2xkrz",
           "type": "Lookbook",
-          "status": "confirmed",
-          "isTentative": false
-        },
-        {
-          "id": "shoot-mranmpzmfblohv",
-          "shootId": "mranmpzmfblohv",
-          "type": "Test Shoot",
           "status": "confirmed",
           "isTentative": false
         }
@@ -878,13 +950,6 @@ window.WPS_DATA = {
           "type": "Fitness & Commercial",
           "status": "confirmed",
           "isTentative": false
-        },
-        {
-          "id": "shoot-mr4x6kwx3f8rs3",
-          "shootId": "mr4x6kwx3f8rs3",
-          "type": "Test Shoot",
-          "status": "confirmed",
-          "isTentative": false
         }
       ],
       "2026-06-14": [
@@ -892,13 +957,6 @@ window.WPS_DATA = {
           "id": "shoot-ms36z1wqlp9812",
           "shootId": "ms36z1wqlp9812",
           "type": "Fashion Editorial",
-          "status": "confirmed",
-          "isTentative": false
-        },
-        {
-          "id": "shoot-mr4x3r7e4l5g4m",
-          "shootId": "mr4x3r7e4l5g4m",
-          "type": "Test Shoot",
           "status": "confirmed",
           "isTentative": false
         }
@@ -910,13 +968,6 @@ window.WPS_DATA = {
           "type": "Beauty & Commercial",
           "status": "confirmed",
           "isTentative": false
-        },
-        {
-          "id": "shoot-mr8legmk0o8mqz",
-          "shootId": "mr8legmk0o8mqz",
-          "type": "Test Shoot",
-          "status": "confirmed",
-          "isTentative": false
         }
       ],
       "2026-07-24": [
@@ -925,22 +976,6 @@ window.WPS_DATA = {
           "shootId": "ms36z1wqg2y4a2",
           "type": "Workshop Attended",
           "status": "workshop",
-          "isTentative": false
-        },
-        {
-          "id": "shoot-ms36z1wqm2xkrz",
-          "shootId": "ms36z1wqm2xkrz",
-          "type": "Workshop Attended",
-          "status": "workshop",
-          "isTentative": false
-        }
-      ],
-      "2026-08-01": [
-        {
-          "id": "shoot-msap3arwdtg7pb",
-          "shootId": "msap3arwdtg7pb",
-          "type": "Test Shoot",
-          "status": "confirmed",
           "isTentative": false
         }
       ]

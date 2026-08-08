@@ -25,9 +25,7 @@ app.use(cors({
     callback(new Error("Not allowed by CORS"));
   }
 }));
-// 1mb (default is 100kb): contract payloads carry a drawn-signature data URL
-// plus the full contract text in one JSON body.
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json());
 
 // Health check — for uptime monitors and Render health checks. Pinging this
 // every few minutes also keeps the free-tier instance from spinning down.
@@ -39,9 +37,6 @@ app.get("/healthz", (req, res) => {
 // compatibility, but it only sends the magic download email now — the
 // download-log store and its CSV export were removed by owner decision.)
 app.post("/api/logs", logController.logDownload);
-app.post("/api/contracts/send", logController.sendContractEmail);
-app.post("/api/contracts/audit", logController.recordContractAudit);
-app.get("/api/contracts/audit", logController.getContractAudits);
 app.post("/api/views", viewController.logView);
 app.get("/api/views/summary", viewController.getViewsSummary);
 
