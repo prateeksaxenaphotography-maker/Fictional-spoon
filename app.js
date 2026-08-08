@@ -7833,19 +7833,65 @@ RAW files are not provided.`
       return firstBad;
     }
 
-    async function sendSignedContractEmail(payload) {
+    // No-server delivery: the signed contract goes to the studio inbox (with
+    // a copy to the client via _cc) through the same free FormSubmit relay
+    // the booking form uses — the studio Gmail is the permanent record.
+    // FormSubmit reports soft failures (e.g. pending form activation) as
+    // HTTP 200 with success:"false", so the body flag is the real result.
+    function sigDataUrlToBlob(dataUrl) {
       try {
-        const res = await fetch(`${COMP_CARD_API_BASE}/api/contracts/send`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) {
-          const body = await res.json().catch(() => null);
-          console.warn("Signed contract email failed:", body?.error || res.statusText);
-          return false;
+        const match = String(dataUrl).match(/^data:(image\/(?:png|jpeg));base64,(.+)$/);
+        if (!match) return null;
+        const bytes = atob(match[2]);
+        const arr = new Uint8Array(bytes.length);
+        for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+        return new Blob([arr], { type: match[1] });
+      } catch (e) {
+        return null;
+      }
+    }
+
+    async function sendSignedContractEmail(payload) {
+      const sigBlob = payload.sigDataUrl ? sigDataUrlToBlob(payload.sigDataUrl) : null;
+
+      const postForm = async (withSig) => {
+        const fd = new FormData();
+        fd.append("_subject", `Signed Contract — ${payload.clientName || "Client"} (${payload.contractNumber || payload.contractVersion || "Contract"})`);
+        fd.append("_template", "box");
+        if (payload.clientEmail) {
+          fd.append("_replyto", payload.clientEmail);
+          fd.append("_cc", payload.clientEmail);
         }
-        return true;
+        fd.append("Record Type", "SIGNED CONTRACT — keep this email as the studio's permanent record");
+        fd.append("Contract Number", payload.contractNumber || "—");
+        fd.append("Contract Version", payload.contractVersion || "—");
+        fd.append("Client Name", payload.clientName || "—");
+        fd.append("Client Email", payload.clientEmail || "—");
+        fd.append("Phone", payload.phone || "—");
+        fd.append("Instagram / Website", payload.instagram || "—");
+        fd.append("Shoot Type", payload.shootType || "—");
+        fd.append("Scheduled Date", payload.date || "—");
+        fd.append("Location", payload.location || "—");
+        fd.append("Notes", payload.notes || "—");
+        fd.append("Signature Captured", sigBlob ? (withSig ? "Yes — drawn signature attached as PNG" : "Yes — drawn at booking (attachment unavailable; image kept in booking record)") : "No (email/DM consent)");
+        fd.append("Contract Terms (full text)", payload.contractText || "—");
+        if (withSig) fd.append("attachment", sigBlob, `signature-${payload.contractNumber || "contract"}.png`);
+        const res = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(studioEmail)}`, {
+          method: "POST",
+          headers: { "Accept": "application/json" },
+          body: fd
+        });
+        const body = await res.json().catch(() => null);
+        return { ok: res.ok && !!body && (body.success === true || body.success === "true"), message: (body && body.message) || res.statusText };
+      };
+
+      try {
+        let result = await postForm(!!sigBlob);
+        // If the attachment is what made the relay reject, resend without it —
+        // a delivered record without the image beats no record at all.
+        if (!result.ok && sigBlob) result = await postForm(false);
+        if (!result.ok) console.warn("Signed contract email failed:", result.message);
+        return result.ok;
       } catch (err) {
         console.warn("Signed contract email error:", err);
         return false;
@@ -8105,7 +8151,12 @@ RAW files are not provided.`
           body: JSON.stringify(relayFields)
         })
         .then(async (res) => {
-          if (res.ok) {
+          // FormSubmit reports soft failures (e.g. the form not yet being
+          // activated) as HTTP 200 with success:"false" — checking res.ok
+          // alone shows a false "Request sent!" while nothing arrives.
+          const body = await res.json().catch(() => null);
+          const relayOk = res.ok && !!body && (body.success === true || body.success === "true");
+          if (relayOk) {
             showSuccess(true);
           } else {
             showSuccess(false);
