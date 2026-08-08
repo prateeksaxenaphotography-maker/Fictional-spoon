@@ -3295,9 +3295,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: rgba(124, 77, 255, 0.2); border: 1px dashed #7c4dff;"></span> ⏳ Anticipated Hold Only (Royal Purple/Blue)</span>
         </div>
 
-        <div style="background: var(--bone); border: 1px solid var(--accent); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-family: var(--mono-font);">
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; cursor: pointer; user-select: none;" onclick="const b=document.getElementById('adminPkgBody');const a=document.getElementById('adminPkgArrow');const open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▼':'▲';">
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink); margin: 0; display: flex; align-items: center; gap: 8px;">⚙️ Studio Package Rates &amp; Deliverables Editor</h3>
+        <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-family: var(--mono-font); font-size: var(--font-xs);">
+          <div style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; cursor: pointer; user-select: none;" onclick="const b=document.getElementById('adminPkgBody');const a=document.getElementById('adminPkgArrow');const open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▼':'▲';">
+            <span style="display: flex; align-items: center; gap: 8px;">⚙️ Studio Package Rates &amp; Deliverables Editor</span>
             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
               <button type="button" class="admin-cal-btn primary" onclick="event.stopPropagation();window.saveAdminCustomPackages()" style="font-size: var(--font-xs); padding: 4px 12px; font-weight: 700;">💾 Save &amp; Push Live</button>
               <button type="button" class="admin-cal-btn" onclick="event.stopPropagation();window.resetAdminCustomPackages()" style="font-size: var(--font-xs); padding: 4px 8px; font-weight: 700;">🔄</button>
@@ -9861,7 +9861,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=255').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=256').catch(() => {});
   });
 }
 
