@@ -2043,6 +2043,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         </div>
       `;
 
+      // Push site-header below the banner so it doesn't block the nav
+      requestAnimationFrame(() => {
+        const h = banner.offsetHeight;
+        const hdr = document.querySelector(".site-header");
+        if (hdr) hdr.style.top = h + "px";
+      });
+
       banner.querySelector("#viewNextShootBtn")?.addEventListener("click", () => {
         if (typeof window.openDateAdminModal === "function") {
           window.openDateAdminModal(nextShoot.dateKey);
@@ -2052,9 +2059,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       });
       banner.querySelector("#dismissReminderBtn")?.addEventListener("click", () => {
         banner.style.display = "none";
+        const hdr = document.querySelector(".site-header");
+        if (hdr) hdr.style.top = "";
       });
     } else if (banner) {
       banner.style.display = "none";
+      const hdr = document.querySelector(".site-header");
+      if (hdr) hdr.style.top = "";
     }
 
     // 2. Header Dropdown Widget in navAdminSec
@@ -9861,7 +9872,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=256').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=257').catch(() => {});
   });
 }
 
