@@ -7459,9 +7459,25 @@ RAW files are not provided.`
       const typeFieldWrap = $("#b_type_field_wrap");
       const lockedTfpCard = $("#lockedTfpCard");
 
-      // Invite code only handles discount — type dropdown is always free to choose
-      if (typeFieldWrap) typeFieldWrap.style.display = "";
-      if (lockedTfpCard) lockedTfpCard.style.display = "none";
+      // TFP gated behind invite code on public booking form
+      if (!isValidInvite) {
+        if (testShootOpt) { testShootOpt.hidden = true; testShootOpt.style.display = "none"; testShootOpt.disabled = true; }
+        if ($("#b_type") && $("#b_type").value === "Selective Collaboration (TFP)") {
+          $("#b_type").value = "Fashion Editorial";
+          $("#b_type").dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        if (typeFieldWrap) typeFieldWrap.style.display = "";
+        if (lockedTfpCard) lockedTfpCard.style.display = "none";
+      } else {
+        if (testShootOpt) { testShootOpt.hidden = false; testShootOpt.style.display = ""; testShootOpt.disabled = false; }
+        const typeSelect = $("#b_type");
+        if (typeSelect && typeSelect.value !== "Selective Collaboration (TFP)") {
+          typeSelect.value = "Selective Collaboration (TFP)";
+          typeSelect.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        if (typeFieldWrap) typeFieldWrap.style.display = "none";
+        if (lockedTfpCard) lockedTfpCard.style.display = "block";
+      }
 
       // Real-Time Final Amount Calculator Engine
       const pkgSelect = $("#b_budget");
@@ -9864,7 +9880,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=261').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=262').catch(() => {});
   });
 }
 
