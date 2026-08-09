@@ -111,5 +111,26 @@ if (deleted !== undefined) {
   }
 }
 
+// ── 7. cache-buster: every page's ?v= must match sw.js's ASSET_VERSION ─────
+// These silently drifted apart for five weeks — the HTML asked for ?v=253 from
+// 2026-07-03 while sw.js climbed to 262. Pages get `max-age=14400` from GitHub
+// Pages, so a URL that never changes means browsers keep serving a four-hour-
+// old app.js, and editing from that stale copy is how a feature got wiped on
+// 2026-08-08. Drift is now a build failure rather than something to discover
+// on someone else's phone.
+const swText = readFileSync("sw.js", "utf8");
+const swVersion = (swText.match(/ASSET_VERSION\s*=\s*["'](\d+)["']/) || [])[1];
+if (!swVersion) {
+  fail("sw.js no longer declares ASSET_VERSION = \"<number>\" — the cache-buster check cannot run");
+} else {
+  const htmlFiles = execSync("git ls-files '*.html'", { encoding: "utf8" }).split("\n").filter(Boolean);
+  for (const file of htmlFiles) {
+    const found = new Set([...readFileSync(file, "utf8").matchAll(/\?v=(\d+)/g)].map((m) => m[1]));
+    for (const v of found) {
+      if (v !== swVersion) fail(`${file} requests ?v=${v} but sw.js declares ASSET_VERSION=${swVersion} — bump every page and sw.js together`);
+    }
+  }
+}
+
 if (failed) process.exit(1);
-console.log(`OK: ${shoots.length} albums, ids unique, all photo files present, format contract intact.`);
+console.log(`OK: ${shoots.length} albums, ids unique, all photo files present, format contract intact, cache-buster in sync.`);
