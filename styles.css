@@ -68,7 +68,13 @@ a { color: inherit; text-decoration: none; }
 ::selection { background: var(--accent); color: #fff; }
 
 /* reveal — richer, directional, noth.in-style */
-.reveal { opacity: 0; transform: translateY(32px); transition: opacity 1s var(--ease-out) var(--d,0s), transform 1.1s var(--ease-out) var(--d,0s); will-change: opacity, transform; }
+/* No `will-change` here on purpose. It used to sit on the base rule, which
+   pinned EVERY revealed element — every photo card on an album page — to its
+   own compositor layer permanently, and nothing ever released them. That GPU
+   memory pressure is what made scrolling a long photo page stutter on phones.
+   Opacity and transform transitions are composited without the hint anyway;
+   the hint only pre-promotes the layer, and here the cost far outweighs it. */
+.reveal { opacity: 0; transform: translateY(32px); transition: opacity 1s var(--ease-out) var(--d,0s), transform 1.1s var(--ease-out) var(--d,0s); }
 .reveal.in { opacity: 1; transform: none; }
 /* Directional + scale variants (opt-in via class) */
 .reveal-up { transform: translateY(48px); }
@@ -247,7 +253,11 @@ a { color: inherit; text-decoration: none; }
 .work-media:hover::after { opacity: 1; }
 .work-media img { width: 100%; height: 100%; object-fit: cover; object-position: center; transition: transform .8s var(--ease); }
 .work-media:hover img { transform: scale(1.045); }
-.work-count { position: absolute; left: 16px; bottom: 16px; z-index: 1; font-family: "JetBrains Mono", monospace; font-size: var(--font-xs); letter-spacing: .12em; color: #fff; background: rgba(0,0,0,.42); backdrop-filter: blur(6px); padding: 7px 12px; border-radius: var(--r-pill); }
+/* `backdrop-filter` here was the single most expensive thing on a scrolling
+   photo page: unlike a normal filter it re-samples whatever is behind it on
+   every frame, once per card. A slightly more opaque flat fill reads the same
+   over a photograph and costs nothing to scroll past. */
+.work-count { position: absolute; left: 16px; bottom: 16px; z-index: 1; font-family: "JetBrains Mono", monospace; font-size: var(--font-xs); letter-spacing: .12em; color: #fff; background: rgba(0,0,0,.55); padding: 7px 12px; border-radius: var(--r-pill); }
 .work-info h3 { font-size: clamp(26px, 3.4vw, 42px); font-weight: 800; line-height: 1.02; margin: 4px 0 14px; }
 .work-desc { color: var(--ink-soft); font-size: var(--font-sm); margin: 0 0 22px; max-width: 44ch; }
 .work-credits { display: flex; gap: 34px; margin: 0 0 18px; padding: 0; flex-wrap: wrap; }
@@ -682,6 +692,11 @@ a { color: inherit; text-decoration: none; }
   gap: 24px;
   border-left: 1px solid var(--line);
 }
+
+/* Shown only when the next photo takes longer than ~140ms to decode — the
+   current photo stays on screen and dims slightly rather than blanking out. */
+.lightbox.lb-loading .lightbox-figure { opacity: .5; }
+.lightbox-figure { transition: opacity .25s var(--ease); }
 
 .lightbox-figure {
   margin: 0;
@@ -1270,7 +1285,13 @@ main:focus { outline: none; }
 .noth-work-media { position: relative; display: block; width: 100%; aspect-ratio: 16/9; overflow: hidden; border: 0; padding: 0; background: var(--bone); cursor: pointer; border-radius: var(--r-sm); }
 .noth-work-media img { position: relative; z-index: 1; width: 100%; height: 100%; object-fit: cover; transition: transform .9s var(--ease), filter .6s var(--ease); transform: scale(1.02); }
 /* Blurred fill shown behind contained (mismatched-orientation) covers */
-.noth-work-backdrop { position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center; filter: blur(34px) saturate(1.05); transform: scale(1.18); opacity: 0; transition: opacity .5s var(--ease); }
+/* Only the mismatched-orientation covers (.fit-contain) ever show this blurred
+   fill, but it used to be rendered — and its 34px blur rasterised — behind
+   EVERY card at opacity 0. `display: none` by default takes that cost off the
+   cards that never reveal it, and the radius is trimmed to a value that is far
+   cheaper to rasterise while looking the same behind a contained photo. */
+.noth-work-backdrop { display: none; position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center; filter: blur(22px) saturate(1.05); transform: scale(1.18); opacity: 0; transition: opacity .5s var(--ease); }
+.noth-work-media.fit-contain .noth-work-backdrop { display: block; }
 .noth-work-media.fit-contain img { object-fit: contain; transform: none; box-sizing: border-box; width: 100%; height: 100%; }
 .noth-work-media.fit-portrait img { padding: 0 clamp(12px, 3vw, 40px); }
 .noth-work-media.fit-landscape img { padding: clamp(12px, 3vw, 40px) 0; }
