@@ -1,11 +1,26 @@
-const CACHE_NAME = "wps-v262";
+// ONE version for the whole site. It must match the ?v= on every <script> and
+// <link> in the HTML — CI (.github/scripts/validate-data.mjs) fails the build
+// if they drift.
+//
+// They had drifted badly: the HTML sat on ?v=253 from 2026-07-03 while this
+// file was bumped to 262. Nothing here was ever requested by a page, so the
+// precache below was dead weight, and — worse — every page kept asking for the
+// same ?v=253 URL while app.js changed underneath it. GitHub Pages serves
+// these with `max-age=14400`, so browsers held a four-hour-old copy of the app
+// and kept re-serving it because the address never changed. Working from a
+// stale app.js is how a whole feature got silently overwritten on 2026-08-08.
+//
+// Bump ASSET_VERSION on every release that touches app.js, styles.css,
+// data.js or config.js.
+const ASSET_VERSION = "263";
+const CACHE_NAME = `wps-v${ASSET_VERSION}`;
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
-  "/styles.css?v=262",
-  "/app.js?v=262",
-  "/data.js?v=262",
-  "/config.js?v=262"
+  `/styles.css?v=${ASSET_VERSION}`,
+  `/app.js?v=${ASSET_VERSION}`,
+  `/data.js?v=${ASSET_VERSION}`,
+  `/config.js?v=${ASSET_VERSION}`
 ];
 
 // Precache the app shell. The previous worker declared this list but never
