@@ -3282,7 +3282,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       links: Array.isArray(bookingObj.links) ? bookingObj.links : (bookingObj.links ? [bookingObj.links] : []),
       attachments: Array.isArray(bookingObj.attachments) ? bookingObj.attachments : [],
       status: bookingObj.status || (bookingObj.isTentative ? "tentative" : "confirmed"),
-      contractVersion: bookingObj.contractVersion || (bookingObj.agreedToTerms ? "V3.2" : "Pending Agreement"),
+      // A new booking marked as agreed but with no version named should carry
+      // the ACTIVE terms, not V3.2 — which stopped being active when V3.3
+      // shipped. Display fallbacks for older stored records are left alone on
+      // purpose: relabelling them would misstate what was actually signed.
+      contractVersion: bookingObj.contractVersion || (bookingObj.agreedToTerms ? "V3.3" : "Pending Agreement"),
       agreedToTerms: bookingObj.agreedToTerms !== undefined ? bookingObj.agreedToTerms : (bookingObj.contractVersion && bookingObj.contractVersion !== "Pending Agreement"),
       contractNumber: bookingObj.contractNumber || "",
       sigDataUrl: bookingObj.sigDataUrl || "",
@@ -4722,11 +4726,18 @@ RAW files are not provided.`
               </label>
               <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Contract Agreement &amp; Version Status
                 <select id="eb_contractVersion" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
+                  <!-- Values match the PDF generator and the archive vault
+                       (V3.3 / V3.3-TFP). This list had been left behind at V3.2
+                       with no test-shoot entry at all, so a TFP booking added by
+                       hand could not be marked as signed under the release the
+                       public form actually uses. -->
                   <option value="Pending Agreement" ${(b.contractVersion === 'Pending Agreement' || (!b.agreedToTerms && !b.contractVersion)) ? 'selected' : ''}>⏳ Pending Agreement / Not Signed Yet (Admin Manual Booking)</option>
-                  <option value="V3.2" ${(b.contractVersion === 'V3.2' || (b.agreedToTerms && !b.contractVersion)) ? 'selected' : ''}>📜 Agreed Terms V3.2 (Active Studio Terms)</option>
+                  <option value="V3.3-TFP" ${(b.contractVersion === 'V3.3-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.3') ? 'selected' : ''}>📸 Test Shoot / TFP Liability Release V3.3 (Active)</option>
+                  <option value="V3.3" ${(b.contractVersion === 'V3.3' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.3' || (b.agreedToTerms && !b.contractVersion)) ? 'selected' : ''}>📜 Commercial Shoot Contract V3.3 (Active)</option>
+                  <option value="V3.2" ${b.contractVersion === 'V3.2' ? 'selected' : ''}>📜 Agreed Terms V3.2 (Archived Release)</option>
                   <option value="V3.1" ${b.contractVersion === 'V3.1' ? 'selected' : ''}>📜 Agreed Terms V3.1 (Archived Release)</option>
                   <option value="V3.0" ${b.contractVersion === 'V3.0' ? 'selected' : ''}>📜 Agreed Terms V3.0 (Archived Release)</option>
-                  <option value="Custom Contract" ${b.contractVersion === 'Custom Contract' ? 'selected' : ''}>📄 Custom Client Contract / Brand Provided MSA</option>
+                  <option value="Custom Contract" ${(b.contractVersion === 'Custom Contract' || b.contractVersion === 'CUSTOM-CLIENT-CONTRACT-MSA') ? 'selected' : ''}>📄 Custom Client Contract / Brand Provided MSA</option>
                 </select>
               </label>
               <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Reference Links (one per line)
@@ -4853,7 +4864,9 @@ RAW files are not provided.`
                 <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Contract Agreement &amp; Version Status</label>
                 <select id="m_clientContractVersion" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;">
                   <option value="Pending Agreement">⏳ Pending Agreement / Not Signed Yet (Admin Manual Booking)</option>
-                  <option value="V3.2">📜 Agreed Terms V3.2 (Active Studio Terms)</option>
+                  <option value="V3.3-TFP">📸 Test Shoot / TFP Liability Release V3.3 (Active)</option>
+                  <option value="V3.3">📜 Commercial Shoot Contract V3.3 (Active)</option>
+                  <option value="V3.2">📜 Agreed Terms V3.2 (Archived Release)</option>
                   <option value="V3.1">📜 Agreed Terms V3.1 (Archived Release)</option>
                   <option value="V3.0">📜 Agreed Terms V3.0 (Archived Release)</option>
                   <option value="Custom Contract">📄 Custom Client Contract / Brand Provided MSA</option>
@@ -10495,7 +10508,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=263').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=264').catch(() => {});
   });
 }
 
