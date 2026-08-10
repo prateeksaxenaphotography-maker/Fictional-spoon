@@ -8067,7 +8067,13 @@ RAW files are not provided.`
       // by an invite code was quoting a package price and 50/50 milestones.
       const effectiveType = $("#b_type")?.value || type;
 
-      if (effectiveType === "Selective Collaboration (TFP)") {
+      // Hide the quote on a verified invite as well as on TFP, rather than
+      // trusting that an invite always forces the type. That coupling has been
+      // removed and restored before (a43b076 / 0a422fc); if it is ever undone
+      // again, a package price and payment milestones must not reappear on an
+      // invited collaborator's screen just because the type check stopped
+      // matching. Either condition is enough to mean "nothing is payable here".
+      if (effectiveType === "Selective Collaboration (TFP)" || isValidInvite) {
         if (finalPriceSummaryBox) finalPriceSummaryBox.style.display = "none";
         if (promoCodeWrap) promoCodeWrap.style.display = "none";
         if (budgetField) budgetField.style.display = "none";
