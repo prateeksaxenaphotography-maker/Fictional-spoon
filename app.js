@@ -6091,7 +6091,7 @@ RAW files are not provided.`
                <div id="collabFallbackWrap" style="display: none; background: var(--bone); border: 1px dashed var(--line); border-radius: 8px; padding: 14px; margin-bottom: 16px; text-align: left; grid-column: 1 / -1;"></div>
 
                <div class="field-row" style="margin-top: 10px;">
-                 <label class="field" style="grid-column: 1 / -1;">
+                 <label class="field" id="b_discount_field" style="grid-column: 1 / -1;">
                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                      <span style="font-weight: 700; color: var(--ink);">🎟️ Promotional Discount Code (Optional)</span>
                      <span id="discountCodeStatus" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; display: none;"></span>
@@ -7750,6 +7750,10 @@ RAW files are not provided.`
       if (type === "Selective Collaboration (TFP)") {
         if (budgetField) budgetField.style.display = "none";
         if (paymentTermsFieldset) paymentTermsFieldset.style.display = "none";
+        // Your screenshot proves this branch runs — the package dropdown was
+        // gone from the form. So the money UI is switched off from here too,
+        // not only from the pricing section that was somehow not taking effect.
+        document.body.classList.add("wps-no-pricing");
 
         if (collabFallbackWrap) {
           if (isTalentRole) {
@@ -7902,6 +7906,13 @@ RAW files are not provided.`
         }
         if (typeFieldWrap) typeFieldWrap.style.display = "";
         if (lockedTfpCard) lockedTfpCard.style.display = "none";
+        // No verified invite — a paying enquiry, so let the pricing section
+        // decide as normal. Guarded on the type because this runs AFTER the TFP
+        // branch above sets the class: an unconditional remove here would undo
+        // it for a test shoot within the same pass.
+        if ($("#b_type")?.value !== "Selective Collaboration (TFP)") {
+          document.body.classList.remove("wps-no-pricing");
+        }
       } else {
         if (testShootOpt) { testShootOpt.hidden = false; testShootOpt.style.display = ""; testShootOpt.disabled = false; }
         const typeSelect = $("#b_type");
@@ -7911,6 +7922,15 @@ RAW files are not provided.`
         }
         if (typeFieldWrap) typeFieldWrap.style.display = "none";
         if (lockedTfpCard) lockedTfpCard.style.display = "block";
+        // Hide the money UI HERE, at the point that provably runs — the lock
+        // card above renders on screen, so this line is reached. The pricing
+        // section further down sets the same elements with inline styles and,
+        // for reasons the source alone has not explained, was still leaving the
+        // quote and promo field on screen for a verified invite. A body class
+        // backed by `!important` beats any inline display the later section
+        // writes, so a collaborator invited to shoot for free cannot be shown a
+        // package rate no matter which branch runs afterwards.
+        document.body.classList.add("wps-no-pricing");
       }
 
       // Location lock: if invite code has a location, pre-fill + lock the field
