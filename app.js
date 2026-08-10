@@ -178,6 +178,23 @@ window.getAdminInviteCode = function() {
   return (list[0] && list[0].code) || "NERDYBRAND";
 };
 
+// Write the invite-code list straight to storage. A button labelled "Save
+// Invite Code" that only updates an in-memory draft, and needs a second,
+// separate "Save & Push Live" click elsewhere on the page to actually persist,
+// loses the code on any reload or navigation — which read as "new invites don't
+// save". Adding and deleting now persist on the spot. Returns false when
+// storage refuses (private browsing, quota), so callers can say so honestly
+// instead of claiming a save that did not happen.
+window.persistAdminInviteCodes = function() {
+  try {
+    if (!Array.isArray(window.adminDraftInviteCodes)) return false;
+    localStorage.setItem("wps_custom_invite_codes", JSON.stringify(window.adminDraftInviteCodes));
+    return true;
+  } catch (e) {
+    return false;
+  }
+};
+
 window.addNewAdminInviteCode = function() {
   window.openInviteCodeModal();
 };
@@ -206,8 +223,13 @@ window.deleteAdminInviteCode = function(codeToDelete) {
   if (confirm(`Remove invite code '${targetUpper}' from draft?`)) {
     const updated = current.filter(x => getItemCodeStr(x) !== targetUpper);
     window.adminDraftInviteCodes = [...updated];
-    markUnsavedChanges();
-    if (typeof toast === "function") toast(`🗑️ Invite code '${targetUpper}' removed from draft.`);
+    const persisted = window.persistAdminInviteCodes();
+    if (!persisted) markUnsavedChanges();
+    if (typeof toast === "function") {
+      toast(persisted
+        ? `🗑️ Invite code '${targetUpper}' deleted.`
+        : `⚠️ '${targetUpper}' removed but not stored on this device — click "Save & Push Live".`);
+    }
     if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
   }
 };
@@ -264,8 +286,13 @@ window.saveInviteCodeFromForm = function() {
   window.adminDraftInviteCodes = [...list];
   window._editingInviteCode = null;
 
-  markUnsavedChanges();
-  if (typeof toast === "function") toast(`🔑 Invite code '${code}' ${editing ? "updated" : "added"} to draft. Click Save to push live.`);
+  const persisted = window.persistAdminInviteCodes();
+  if (!persisted) markUnsavedChanges();
+  if (typeof toast === "function") {
+    toast(persisted
+      ? `🔑 Invite code '${code}' ${editing ? "updated" : "saved"}.`
+      : `⚠️ '${code}' ${editing ? "updated" : "added"} but could not be stored on this device — click "Save & Push Live".`);
+  }
   if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
 };
 
@@ -8349,6 +8376,18 @@ RAW files are not provided.`
           ? `1. SCOPE OF PRODUCTION & VENUE (PROVIDED BY STUDIO)\nThis session is scheduled for studio/location photography production at a venue arranged and paid for by the Studio: ${venueByStudioAddress || "as confirmed with the Studio"}. No studio rental, venue hire or space fee is billed to the Participant for this session. A change of venue requested by the Participant is subject to Studio approval and may reintroduce venue costs at actuals.${homeStudioRider}`
           : `1. SCOPE OF PRODUCTION & VENUE RENTAL POLICY\nThis session is scheduled for studio/location photography production. Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio venue space is required, applicable studio rental fees are billed at actuals (at cost).`;
         const contractRefDoc = isCustomContract ? "CUSTOM-CLIENT-CONTRACT-MSA" : (isTfpCat ? "TFP-LIABILITY-RELEASE-V3.3" : "COMMERCIAL-CONTRACT-V3.3");
+        // Resolved before the release text below, which now states the fee and
+        // the milestones. They previously appeared only in the inquiry email as
+        // booking details — so the document the client actually signed said
+        // nothing at all about money, the package, or the non-refundable split.
+        const is3StepActive = $("#flowchart3Step") && $("#flowchart3Step").style.display !== "none";
+        const paymentTermsText = is3StepActive ?
+          `Payment Terms: 3-Tier Campaign Milestones (50% Advance Retainer before shoot day start [non-refundable]; 30% Review Milestone after shoot before proofing gallery [non-refundable]; 20% Final Release prior to receiving any downloadable file)` :
+          `Payment Terms: Standard 50/50 Milestones (50% Advance Retainer before shoot day start [non-refundable]; 50% Final Balance after shoot wrap prior to receiving any downloadable file [non-refundable])`;
+        const engagementFeeClause = isTfpCat
+          ? ""
+          : `\n\n7. ENGAGEMENT FEE, SELECTED PACKAGE & PAYMENT MILESTONES\nSelected package and contracted deliverables: ${budget || "as quoted by the Studio"}.\n${paymentTermsText.replace(/^Payment Terms: /, "Payment terms: ")}\nMilestone payments marked non-refundable are non-refundable once paid, including where the Participant cancels or reschedules. Deliverables are released only after the final milestone is cleared. Any work beyond the contracted package (additional retouched masters, extended usage, gallery buyout) is quoted and invoiced separately.`;
+
         const tfpReleaseText = agreedToTerms ? (
           `\n\n==================================================\n` +
           `STUDIO PRODUCTION CONTRACT & LEGAL TERMS\n` +
@@ -8363,7 +8402,7 @@ RAW files are not provided.`
           `--------------------------------------------------\n\n` +
           (isCustomContract ? 
             `1. CUSTOM CONTRACT / AGENCY MSA REQUEST\nThis shoot request is submitted under a Custom Client Contract / Agency Master Services Agreement (MSA). Studio V3.3 default terms remain subject to custom contract review and mutual alignment prior to shoot day confirmation.\n\n2. CAMERA GEAR & DATA PROTECTION CLAUSE\nAll camera bodies, memory cards, and raw captures remain confidential studio property. Participants may not touch equipment or delete media from cameras.\n` :
-            `${venueClause}\n\n2. INTELLECTUAL PROPERTY & USAGE LICENSING\nThe legal copyright of all visual media remains exclusively with the Studio. Clients receive personal, social media, and web self-promotion usage rights.\n\n3. COMPREHENSIVE LIABILITY WAIVER\nParticipant(s) enter the studio workspace and perform physical poses entirely at their own risk.\n\n4. DELIVERABLES, REVISIONS & CLOUD ARCHIVAL\nDeliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for ${isTfpCat ? '3 Months' : '6 Months'}. RAW files are strictly excluded.\n\n5. UNAUTHORIZED CAMERA OPERATION & GEAR PROTECTION\nAll camera gear and memory cards are strictly hands-off.\n\n6. DIGITAL CONSENT & EMAIL ACCEPTANCE\nLegal acceptance is established by submitting this request.`
+            `${venueClause}\n\n2. INTELLECTUAL PROPERTY & USAGE LICENSING\nThe legal copyright of all visual media remains exclusively with the Studio. Clients receive personal, social media, and web self-promotion usage rights.\n\n3. COMPREHENSIVE LIABILITY WAIVER\nParticipant(s) enter the studio workspace and perform physical poses entirely at their own risk.\n\n4. DELIVERABLES, REVISIONS & CLOUD ARCHIVAL\nDeliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for ${isTfpCat ? '3 Months' : '6 Months'}. RAW files are strictly excluded.\n\n5. UNAUTHORIZED CAMERA OPERATION & GEAR PROTECTION\nAll camera gear and memory cards are strictly hands-off.\n\n6. DIGITAL CONSENT & EMAIL ACCEPTANCE\nLegal acceptance is established by submitting this request.${engagementFeeClause}`
           ) +
           `\n\nnerdyphotographer.in studios\n` +
           `==================================================`
@@ -8374,11 +8413,8 @@ RAW files are not provided.`
         // a COMPACT body without the release: embedding the full release used
         // to blow past browser URL length limits, so for test shoots the mail
         // app silently refused to open at all.
-        const is3StepActive = $("#flowchart3Step") && $("#flowchart3Step").style.display !== "none";
-        const paymentTermsText = is3StepActive ?
-          `Payment Terms: 3-Tier Campaign Milestones (50% Advance Retainer before shoot day start [non-refundable]; 30% Review Milestone after shoot before proofing gallery [non-refundable]; 20% Final Release prior to receiving any downloadable file)` :
-          `Payment Terms: Standard 50/50 Milestones (50% Advance Retainer before shoot day start [non-refundable]; 50% Final Balance after shoot wrap prior to receiving any downloadable file [non-refundable])`;
-
+        // (is3StepActive / paymentTermsText are resolved above, alongside the
+        // release text, so the contract and the email quote identical terms.)
         const cleanBudget = (budget && budget !== "Not Decided" && budget !== "TBD") ? `Package & Deliverables: ${budget}\n` : "";
 
         // The studio-space select is hidden on these bookings but keeps its
