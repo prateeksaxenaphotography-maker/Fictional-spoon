@@ -10861,9 +10861,57 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=268').catch(() => {});
+    // No ?v= here on purpose. It was hardcoded to 267 and silently missed
+    // eight version bumps, because a pinned literal is exactly the drift this
+    // whole cache-buster scheme exists to prevent. Browsers revalidate the
+    // service-worker script on their own; the version lives inside sw.js.
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
   });
 }
+
+/* One-time auto-update for returning visitors.
+   Friends kept landing on an old build: their browser still held a cached HTML
+   document that asked for an older app.js?v=, so bumping the version could
+   never reach them — the stale page never requested the new file.
+   The page knows which build it came from (the ?v= on its own <script>). sw.js
+   is fetched with cache:"no-store" to find out which build is actually live. On
+   a mismatch the visitor is sent to the same URL with a cache-busting
+   parameter, which forces a genuinely fresh document rather than the cached one
+   a plain reload would return. The parameter is stripped from the address bar
+   on arrival, and the sessionStorage guard is keyed to the live version, so
+   this can never loop. */
+(function autoUpdateStaleVisitors() {
+  try {
+    const params = new URLSearchParams(location.search);
+    if (params.has("_v")) {
+      const clean = new URL(location.href);
+      clean.searchParams.delete("_v");
+      history.replaceState(null, "", clean.pathname + clean.search + clean.hash);
+    }
+    const tag = document.querySelector('script[src*="app.js"]');
+    const loaded = tag && (String(tag.getAttribute("src")).match(/[?&]v=(\d+)/) || [])[1];
+    if (!loaded) return;
+    fetch("/sw.js", { cache: "no-store" })
+      .then((r) => (r.ok ? r.text() : ""))
+      .then((txt) => {
+        const live = (String(txt).match(/ASSET_VERSION\s*=\s*"(\d+)"/) || [])[1];
+        if (!live || live === loaded) return;
+        if (sessionStorage.getItem("wps-updated-to") === live) return;
+        sessionStorage.setItem("wps-updated-to", live);
+        // Drop the service worker's precache too, so its offline fallback
+        // cannot hand back the build we are trying to leave behind.
+        const dropCaches = (window.caches && caches.keys)
+          ? caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))).catch(() => {})
+          : Promise.resolve();
+        dropCaches.then(() => {
+          const next = new URL(location.href);
+          next.searchParams.set("_v", live);
+          location.replace(next.toString());
+        });
+      })
+      .catch(() => {});
+  } catch (e) {}
+})();
 
 
 window.filterAlbumGrid = function(filterKey, btnEl) {

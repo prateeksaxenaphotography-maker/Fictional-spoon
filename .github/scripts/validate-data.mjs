@@ -130,6 +130,18 @@ if (!swVersion) {
       if (v !== swVersion) fail(`${file} requests ?v=${v} but sw.js declares ASSET_VERSION=${swVersion} — bump every page and sw.js together`);
     }
   }
+
+  // The HTML sweep above cannot see version literals pinned inside app.js. One
+  // was: the service-worker registration sat on '/sw.js?v=267' and silently
+  // missed eight bumps, because search-and-replace for the current version
+  // never matches a literal left behind at an older one. Any ?v=<n> in app.js
+  // must track ASSET_VERSION, or carry no version at all.
+  const appText = readFileSync("app.js", "utf8");
+  for (const m of appText.matchAll(/['"`][^'"`\s]*\?v=(\d+)/g)) {
+    if (m[1] !== swVersion) {
+      fail(`app.js pins ?v=${m[1]} ("${m[0].slice(1, 60)}") but sw.js declares ASSET_VERSION=${swVersion} — a pinned literal drifts silently; bump it or drop the ?v=`);
+    }
+  }
 }
 
 if (failed) process.exit(1);
