@@ -4493,8 +4493,14 @@ RAW files are not provided.`
     // The flag now comes from the booking record being printed, or the operator.
     const studioByPhotographer = !!data.studioProvidedByPhotographer;
     const studioLocation = data.location || "";
+    // A home-studio booking carries the residence rider wherever the venue is
+    // described, so the printed contract says the same as the screen the client
+    // signed on rather than only the money half of it.
+    const homeStudioRiderHtml = (studioByPhotographer && /home studio/i.test(studioLocation))
+      ? ` Attendance is limited to a maximum of 3 people in total including the Participant; the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`
+      : ``;
     const studioClauseTfp = studioByPhotographer
-      ? `Studio venue for this session is provided by the photographer${studioLocation ? ` at <strong>${esc(studioLocation)}</strong>` : ""} at no additional rental charge to the talent.`
+      ? `Studio venue for this session is provided by the photographer${studioLocation ? ` at <strong>${esc(studioLocation)}</strong>` : ""} at no additional rental charge to the talent.${homeStudioRiderHtml}`
       : `If a dedicated indoor studio venue/space is required, applicable venue rental fees are billed at actuals (at cost).`;
 
     const innerHtml = `
@@ -4553,7 +4559,7 @@ RAW files are not provided.`
           ` : `
             <strong>💳 Payment Milestones:</strong> ${data.paymentMilestones === '503020' ? '3-Tier Milestones (50% Advance Retainer / 30% Proofing / 20% Final Deliverables).' : 'Standard 50/50 Milestones (50% Advance Retainer prior to shoot start [non-refundable]; 50% Final Balance prior to file download [non-refundable]).'}<br/>
             <strong>🏢 Studio Venue Rental Policy:</strong> ${studioByPhotographer
-              ? `The venue for this session${studioLocation ? ` (<strong>${esc(studioLocation)}</strong>)` : ''} is arranged and paid for by the Studio — <strong>no venue rental is billed to the client</strong>.`
+              ? `The venue for this session${studioLocation ? ` (<strong>${esc(studioLocation)}</strong>)` : ''} is arranged and paid for by the Studio — <strong>no venue rental is billed to the client</strong>.${homeStudioRiderHtml}`
               : `Dedicated indoor studio venue rentals are billed <strong>at actuals (at cost)</strong>, or the client may directly book their preferred studio space for the session.`}
           `}
         </div>
@@ -6033,9 +6039,18 @@ RAW files are not provided.`
 
                 <div class="field-row">
                   <label class="field" style="grid-column: 1 / -1;"><span>Dedicated Studio Space Needed? *</span>
+                    <!-- A choice of venue rather than a yes/no: the home studio
+                         carries no rental, so a yes/no framing on cost no longer
+                         fits. No price is stated on the first line on purpose —
+                         only the commercial option mentions billing, and that
+                         contrast reads as "included" without the discount-sounding
+                         wording. Outdoor stays selected by default so an inquiry
+                         can never silently claim the home studio; the client has
+                         to pick it deliberately. -->
                     <select id="b_studio_space">
-                      <option value="No - Outdoor / Client Location / Client Books Studio Directly">No — Outdoor / Client Location / Client Books Studio Directly</option>
-                      <option value="Yes - Dedicated Studio Rental Required (Billed at Actuals)">Yes — Studio Space Needed (Venue rental billed at actuals / cost)</option>
+                      <option value="Home Studio - Noida (Provided by Studio)" id="b_studio_space_home">🏠 Home Studio, Noida — intimate setup, best for portraits, comp cards &amp; solo talent</option>
+                      <option value="Dedicated Commercial Studio Rental (Billed at Actuals)">🏢 Dedicated commercial studio — rental billed at actuals</option>
+                      <option value="Outdoor / On-Location (No Studio Required)" selected>🌳 Outdoor / on-location — no studio required</option>
                     </select>
                   </label>
                 </div>
@@ -7902,11 +7917,65 @@ RAW files are not provided.`
       }
       window._prevLockedLocation = lockedLocation;
 
+      // ── Home studio (paid shoots only) ──────────────────────────────────
+      // The home studio is offered on paid bookings; TFP venues are handled by
+      // the invite code instead, so the option is removed for a test shoot
+      // rather than silently offering the photographer's home for free work.
+      const HOME_STUDIO_VALUE = "Home Studio - Noida (Provided by Studio)";
+      const OUTDOOR_VALUE = "Outdoor / On-Location (No Studio Required)";
+      const HOME_STUDIO_LABEL = "Home Studio, Noida";
+      const studioSpaceSel = $("#b_studio_space");
+      const homeStudioOpt = $("#b_studio_space_home");
+      const isTfpType = $("#b_type")?.value === "Selective Collaboration (TFP)";
+
+      if (homeStudioOpt) {
+        homeStudioOpt.hidden = isTfpType;
+        homeStudioOpt.disabled = isTfpType;
+        if (isTfpType && studioSpaceSel && studioSpaceSel.value === HOME_STUDIO_VALUE) {
+          studioSpaceSel.value = OUTDOOR_VALUE;
+        }
+      }
+
+      // Picking the home studio fills the address in as a starting point. Only
+      // the area is used — the exact address of a private residence is shared
+      // on confirmation, never published on a form anyone can open. The field
+      // stays editable, so the flip below is what keeps the two answers honest.
+      if (studioSpaceSel && locationField && !locationField.dataset.inviteLocked) {
+        // One handler serves both fields, so it has to work out which one the
+        // visitor just touched: picking the venue should overwrite the address,
+        // but editing the address must NOT be overwritten back.
+        const venueJustPicked = studioSpaceSel.dataset.prevVenue !== undefined
+          && studioSpaceSel.dataset.prevVenue !== studioSpaceSel.value;
+        studioSpaceSel.dataset.prevVenue = studioSpaceSel.value;
+
+        if (studioSpaceSel.value === HOME_STUDIO_VALUE) {
+          const typed = locationField.value.trim();
+          if (venueJustPicked || !typed) {
+            locationField.value = HOME_STUDIO_LABEL;
+            locationField.dataset.homePrefill = "1";
+          } else if (typed !== HOME_STUDIO_LABEL) {
+            // They typed a venue of their own while Home Studio was selected.
+            // Left alone the contract would promise a studio-provided venue at
+            // an address that is not the photographer's, so the venue answer
+            // follows what they actually typed instead of contradicting it.
+            studioSpaceSel.value = OUTDOOR_VALUE;
+            studioSpaceSel.dataset.prevVenue = OUTDOOR_VALUE;
+            delete locationField.dataset.homePrefill;
+          } else {
+            locationField.dataset.homePrefill = "1";
+          }
+        } else if (locationField.dataset.homePrefill === "1") {
+          // Moved off the home studio — take the prefill back out again.
+          if (locationField.value.trim() === HOME_STUDIO_LABEL) locationField.value = "";
+          delete locationField.dataset.homePrefill;
+        }
+      }
+
       // Update inline contract studio clause dynamically
       const contractStudioClause = $("#bookingContractStudioClause");
       if (contractStudioClause) {
         contractStudioClause.innerHTML = (isValidInvite && lockedLocation)
-          ? `Studio for this session is provided by the photographer at <strong>${lockedLocation}</strong> at no additional rental charge to the talent.`
+          ? `Studio for this session is provided by the photographer at <strong>${lockedLocation}</strong> at no additional rental charge to the talent.${homeStudioRiderHtml}`
           : `If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges.`;
       }
 
@@ -8039,6 +8108,16 @@ RAW files are not provided.`
       $("#b_budget")?.addEventListener(evtName, updateFields);
       $("#b_invite_code")?.addEventListener(evtName, updateFields);
       $("#b_discount_code")?.addEventListener(evtName, updateFields);
+      // The venue choice and the address have to re-run updateFields too, or
+      // the home-studio prefill never appears and the flip that keeps the two
+      // answers agreeing never fires.
+      $("#b_studio_space")?.addEventListener(evtName, updateFields);
+    });
+    // Address changes are checked on change/blur rather than on every
+    // keystroke: flipping the dropdown mid-word would yank the selection out
+    // from under someone who is still typing "Home Studio, Noida" by hand.
+    ["change", "blur"].forEach(evtName => {
+      $("#b_location")?.addEventListener(evtName, updateFields);
     });
 
     $("#btnApplyDiscountCode")?.addEventListener("click", () => {
@@ -8247,10 +8326,19 @@ RAW files are not provided.`
         // can only ever describe the booking actually being submitted. Resolved
         // here because the signed release below and the inquiry policy lines
         // further down must not be able to disagree about who pays for the venue.
-        const venueByStudio = $("#b_location")?.dataset.inviteLocked === "1";
+        // Two ways the studio ends up supplying the venue: an invite code that
+        // carries one, or the client choosing the home studio on a paid shoot.
+        // For the money question they are the same answer — no rental billed —
+        // so they share this clause. The home studio then adds a rider, because
+        // a private residence is not the same as a hired commercial space.
+        const isHomeStudio = $("#b_studio_space")?.value === "Home Studio - Noida (Provided by Studio)";
+        const venueByStudio = $("#b_location")?.dataset.inviteLocked === "1" || isHomeStudio;
         const venueByStudioAddress = venueByStudio ? ($("#b_location")?.value || "") : "";
+        const homeStudioRider = isHomeStudio
+          ? `\n\nHOME STUDIO SESSIONS\nThis session takes place at the photographer's private residence. Attendance is limited to a maximum of 3 people in total, including the Participant. Sessions run within booked daylight hours and conclude by 7:00 PM. The full address is shared on booking confirmation. Guests may not attend unaccompanied.`
+          : "";
         const venueClause = venueByStudio
-          ? `1. SCOPE OF PRODUCTION & VENUE (PROVIDED BY STUDIO)\nThis session is scheduled for studio/location photography production at a venue arranged and paid for by the Studio: ${venueByStudioAddress || "as confirmed with the Studio"}. No studio rental, venue hire or space fee is billed to the Participant for this session. A change of venue requested by the Participant is subject to Studio approval and may reintroduce venue costs at actuals.`
+          ? `1. SCOPE OF PRODUCTION & VENUE (PROVIDED BY STUDIO)\nThis session is scheduled for studio/location photography production at a venue arranged and paid for by the Studio: ${venueByStudioAddress || "as confirmed with the Studio"}. No studio rental, venue hire or space fee is billed to the Participant for this session. A change of venue requested by the Participant is subject to Studio approval and may reintroduce venue costs at actuals.${homeStudioRider}`
           : `1. SCOPE OF PRODUCTION & VENUE RENTAL POLICY\nThis session is scheduled for studio/location photography production. Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio venue space is required, applicable studio rental fees are billed at actuals (at cost).`;
         const contractRefDoc = isCustomContract ? "CUSTOM-CLIENT-CONTRACT-MSA" : (isTfpCat ? "TFP-LIABILITY-RELEASE-V3.3" : "COMMERCIAL-CONTRACT-V3.3");
         const tfpReleaseText = agreedToTerms ? (
@@ -8288,11 +8376,16 @@ RAW files are not provided.`
         // The studio-space select is hidden on these bookings but keeps its
         // default answer, so reading it verbatim told the studio "client books
         // studio directly" on a shoot where the studio supplies the space.
-        const studioSpaceVal = venueByStudio
-          ? `Not required — venue provided by the studio (photographer's invite)`
-          : (val("b_studio_space") || 'Not Specified');
+        const studioSpaceVal = isHomeStudio
+          ? `Home Studio, Noida — provided by the studio, no rental billed`
+          : (venueByStudio
+              ? `Not required — venue provided by the studio (photographer's invite)`
+              : (val("b_studio_space") || 'Not Specified'));
         const studioRentalPolicyNote = venueByStudio
-          ? `Studio Rental Policy: The venue for this session is arranged and paid for by the studio. No venue rental or studio space fee is billed to you for this shoot.\n`
+          ? `Studio Rental Policy: The venue for this session is arranged and paid for by the studio. No venue rental or studio space fee is billed to you for this shoot.\n` +
+            (isHomeStudio
+              ? `Home Studio Policy: This session takes place at the photographer's private residence. Attendance is capped at 3 people in total including yourself, sessions run within booked daylight hours and finish by 7:00 PM, and the full address is shared once the booking is confirmed. Guests may not attend unaccompanied.\n`
+              : ``)
           : `Studio Rental Policy: Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio space is required, venue rental fees are billed at actuals (at cost), or the client may book the studio directly.\n`;
         const travelPolicyNote = venueByStudio
           ? `Travel & Accommodation Policy: Travel to the studio-provided venue above is covered by the studio for this invite. If you later request a different location, standard terms apply again (travel beyond 20 km from the studio base in Noida, and accommodation where an overnight stay is needed, billed at actuals).\n`
@@ -8645,10 +8738,14 @@ RAW files are not provided.`
       // supplies the venue, the stock "locations >20 km require client-funded
       // travel" / "venue rentals billed at actuals" lines are the opposite of
       // what the visitor was just shown.
-      const modalVenueByStudio = $("#b_location")?.dataset.inviteLocked === "1";
+      const modalIsHomeStudio = $("#b_studio_space")?.value === "Home Studio - Noida (Provided by Studio)";
+      const modalVenueByStudio = $("#b_location")?.dataset.inviteLocked === "1" || modalIsHomeStudio;
       const modalVenueAddress = modalVenueByStudio ? ($("#b_location")?.value || "") : "";
+      const modalHomeRider = modalIsHomeStudio
+        ? ` <strong>Home studio sessions</strong> take place at the photographer's private residence: attendance is capped at 3 people in total including you, the session runs within booked daylight hours and finishes by <strong>7:00 PM</strong>, and the full address is shared once your booking is confirmed. Guests may not attend unaccompanied.`
+        : "";
       const venueSentence = modalVenueByStudio
-        ? ` The shoot venue${modalVenueAddress ? ` (<strong>${esc(modalVenueAddress)}</strong>)` : ""} is arranged and paid for by the Studio for this invite — no studio rental, venue hire or travel cost is billed to you for it. Requesting a different location later re-applies the standard venue and travel terms.`
+        ? ` The shoot venue${modalVenueAddress ? ` (<strong>${esc(modalVenueAddress)}</strong>)` : ""} is arranged and paid for by the Studio — no studio rental, venue hire or travel cost is billed to you for it. Requesting a different location later re-applies the standard venue and travel terms.${modalHomeRider}`
         : (isTfp
             ? ` Locations &gt;20 km from Noida require client-funded travel, conveyance &amp; accommodation.`
             : ` Dedicated indoor studio venue rentals are billed <strong>at actuals (at cost)</strong>.`);
