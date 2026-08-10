@@ -136,10 +136,11 @@ window.getAdminInviteCodes = function() {
     (arr || []).forEach(item => {
       let codeStr = typeof item === 'object' ? item.code : item;
       let descStr = typeof item === 'object' ? (item.desc || '') : 'Default Photographer Unlock Code';
+      let locationStr = typeof item === 'object' ? (item.location || '') : '';
       if (codeStr && typeof codeStr === 'string' && !seen.has(codeStr.trim().toUpperCase())) {
         const cleanStr = codeStr.trim().toUpperCase();
         seen.add(cleanStr);
-        result.push({ code: cleanStr, desc: descStr });
+        result.push({ code: cleanStr, desc: descStr, location: locationStr });
       }
     });
     return result;
@@ -3751,6 +3752,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   <span style="font-size: var(--font-xs); font-weight: 800; color: var(--accent); text-transform: uppercase; font-family: var(--mono-font); display: block;">${idx === 0 ? '⭐ Primary Code' : '🔑 VIP Invite'}</span>
                   <strong style="font-size: var(--font-md); font-family: var(--mono-font); color: var(--ink); letter-spacing: 0.04em; display: block; margin-top: 2px; word-break: break-all;">${esc(codeStr)}</strong>
                   <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 4px; line-height: 1.3;">📝 ${esc(descStr)}</div>
+                  ${itemObj && typeof itemObj === 'object' && itemObj.location ? `<div style="font-size: var(--font-xs); color: #059669; font-weight: 700; margin-top: 4px;">🏠 Location Locked: ${esc(itemObj.location)}</div>` : ''}
                 </div>
                 <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap; flex-shrink: 0; margin-top: 2px;">
                   <button type="button" onclick="navigator.clipboard.writeText('${escJs(codeStr)}'); if(typeof toast==='function') toast('📋 Invite Code ${escJs(codeStr)} copied!'); else alert('Copied!');" style="background: var(--accent); color: #ffffff; border: none; padding: 5px 9px; border-radius: 4px; font-size: var(--font-xs); cursor: pointer; font-weight: 700; font-family: var(--mono-font);" title="Copy Invite Code">📋 Copy</button>
@@ -10565,7 +10567,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=266').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=267').catch(() => {});
   });
 }
 
