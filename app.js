@@ -225,9 +225,11 @@ window.openInviteCodeModal = function(codeStr) {
   const title = document.getElementById("inviteCreatorFormTitle");
   const codeEl = document.getElementById("newInviteCode");
   const descEl = document.getElementById("newInviteDesc");
+  const locationEl = document.getElementById("newInviteLocation");
   if (title) title.textContent = existing ? `✏️ Edit Invite Code — ${existing.code}` : "🔑 Add New Invite Code";
   if (codeEl) codeEl.value = existing ? existing.code : target;
   if (descEl) descEl.value = existing ? (existing.desc || "") : "";
+  if (locationEl) locationEl.value = existing ? (existing.location || "") : "";
 
   form.style.display = "block";
   form.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -237,6 +239,7 @@ window.openInviteCodeModal = function(codeStr) {
 window.saveInviteCodeFromForm = function() {
   const code = (document.getElementById("newInviteCode")?.value || "").trim().toUpperCase();
   const desc = (document.getElementById("newInviteDesc")?.value || "").trim() || "Photographer direct unlock code";
+  const location = (document.getElementById("newInviteLocation")?.value || "").trim();
 
   if (!/^[A-Z0-9][A-Z0-9_-]{1,23}$/.test(code)) {
     alert("Enter an invite code of 2–24 letters, numbers, dashes or underscores (e.g. VIP-2431).");
@@ -252,10 +255,10 @@ window.saveInviteCodeFromForm = function() {
 
   if (editing) {
     const idx = list.findIndex(x => x.code === editing);
-    if (idx !== -1) list[idx] = { code, desc };
-    else list.push({ code, desc });
+    if (idx !== -1) list[idx] = { code, desc, location };
+    else list.push({ code, desc, location });
   } else {
-    list.push({ code, desc });
+    list.push({ code, desc, location });
   }
   window.adminDraftInviteCodes = [...list];
   window._editingInviteCode = null;
@@ -3785,6 +3788,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">Description Label</label>
                   <input type="text" id="newInviteDesc" placeholder="e.g. Agency model unlock pass" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
                 </div>
+                <div style="grid-column: span 3;">
+                  <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">🏠 Lock Location for Client <span style="font-weight:400;text-transform:none;color:var(--ink-soft);">(optional — leave blank to let client fill)</span></label>
+                  <input type="text" id="newInviteLocation" placeholder="e.g. Home Studio, Sector 15, Noida — or leave blank" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
+                </div>
                 <div>
                   <button type="button" class="admin-cal-btn primary" onclick="window.saveInviteCodeFromForm()" style="width: 100%; font-weight: 700; padding: 8px 12px;">💾 Save Invite Code</button>
                 </div>
@@ -4465,6 +4472,12 @@ RAW files are not provided.`
     }
     const contractText = archiveObj ? archiveObj.fullText : "";
     const isTfp = (data.paymentMilestones === "tfp" || cVer === "V3.3-TFP");
+    // Studio clause: photographer-provided (locked invite) vs rental at actuals (client pays)
+    const studioByPhotographer = data.studioProvidedByPhotographer || (isTfp && !!(window._lockedLocationFromInvite && window._lockedLocationFromInvite.trim()));
+    const studioLocation = data.location || window._lockedLocationFromInvite || "";
+    const studioClauseTfp = studioByPhotographer
+      ? `Studio venue for this session is provided by the photographer${studioLocation ? ` at <strong>${esc(studioLocation)}</strong>` : ""} at no additional rental charge to the talent.`
+      : `If a dedicated indoor studio venue/space is required, applicable venue rental fees are billed at actuals (at cost).`;
 
     const innerHtml = `
       <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #111; padding: 20px; max-width: 800px; margin: 0 auto; background: #fff; line-height: 1.5;">
@@ -4518,7 +4531,7 @@ RAW files are not provided.`
         <!-- Payment & Rental Policy Box -->
         <div style="background: #fafafa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px 14px; margin-bottom: 18px; font-size: 11px; line-height: 1.4;">
           ${isTfp ? `
-            <strong>📸 TFP Test Shoot Terms:</strong> This session is structured for mutual portfolio growth. Deliverables include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW format files are strictly confidential studio property and are excluded. If a dedicated indoor studio venue space is requested, venue rental fees are billed at actuals (at cost).
+            <strong>📸 TFP Test Shoot Terms:</strong> This session is structured for mutual portfolio growth. Deliverables include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW format files are strictly confidential studio property and are excluded. ${studioClauseTfp}
           ` : `
             <strong>💳 Payment Milestones:</strong> ${data.paymentMilestones === '503020' ? '3-Tier Milestones (50% Advance Retainer / 30% Proofing / 20% Final Deliverables).' : 'Standard 50/50 Milestones (50% Advance Retainer prior to shoot start [non-refundable]; 50% Final Balance prior to file download [non-refundable]).'}<br/>
             <strong>🏢 Studio Venue Rental Policy:</strong> Dedicated indoor studio venue rentals are billed <strong>at actuals (at cost)</strong>, or the client may directly book their preferred studio space for the session.
@@ -6177,7 +6190,7 @@ RAW files are not provided.`
  
                    <div>
                      <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700;">1. SCOPE OF CREATIVE COLLABORATION</h4>
-                     <p style="margin: 0;">This session is scheduled as a peer-to-peer creative collaboration structured for mutual portfolio growth, asset curation, and personal branding advancement. No monetary compensation is required or exchanged for photographer or model services. The Studio provides specialized equipment, lighting architecture, workspace, and post-production engineering; the Participant(s) provide technical modeling direction, personal wardrobe, and makeup artistry. <em>Note: If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges.</em></p>
+                     <p style="margin: 0;">This session is scheduled as a peer-to-peer creative collaboration structured for mutual portfolio growth, asset curation, and personal branding advancement. No monetary compensation is required or exchanged for photographer or model services. The Studio provides specialized equipment, lighting architecture, workspace, and post-production engineering; the Participant(s) provide technical modeling direction, personal wardrobe, and makeup artistry. <em id="bookingContractStudioClause">If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges.</em></p>
                    </div>
  
                    <div>
@@ -7713,16 +7726,15 @@ RAW files are not provided.`
       const testShootOpt = $("#b_type")?.querySelector('option[value="Selective Collaboration (TFP)"]');
       const inviteCodeInput = $("#b_invite_code");
       const inviteStatus = $("#inviteCodeStatus");
-      const allAdminInvites = (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : [{ code: "NERDYBRAND" }]).map(c => (typeof c === 'object' ? c.code : c).toUpperCase());
+      const allAdminCodes = (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : [{ code: "NERDYBRAND" }]);
       const enteredCode = (inviteCodeInput?.value || "").trim().toUpperCase();
-      
-      // Verify against ALL active admin invite codes (e.g. NERDYTEST, MODELVIP, etc.) or backup codes
-      // Only codes on the admin-managed list are valid. A previous version
-      // also accepted 5 extra hardcoded codes plus 5 FNV-1a-hashed ones —
-      // permanent backdoors that kept working no matter what the admin
-      // deleted (and FNV-1a is not a cryptographic hash, so the hashed set
-      // was trivially brute-forceable). All removed.
-      const isValidInvite = enteredCode ? allAdminInvites.includes(enteredCode) : false;
+
+      // Verify against ALL active admin invite codes. Only codes on the admin-managed list are valid.
+      const matchedInvite = enteredCode ? allAdminCodes.find(c => (typeof c === 'object' ? c.code : c).toUpperCase() === enteredCode) : null;
+      const isValidInvite = !!matchedInvite;
+      // Extract location locked by photographer when creating this invite code (empty = client fills it)
+      const lockedLocation = (isValidInvite && matchedInvite && typeof matchedInvite === 'object' ? (matchedInvite.location || "") : "").trim();
+      window._lockedLocationFromInvite = isValidInvite ? lockedLocation : "";
 
       // Promo Discount Codes Map
       const discountCodesMap = getAdminPromoCodes();
@@ -7829,6 +7841,51 @@ RAW files are not provided.`
         }
         if (typeFieldWrap) typeFieldWrap.style.display = "none";
         if (lockedTfpCard) lockedTfpCard.style.display = "block";
+      }
+
+      // Location lock: if invite code has a location, pre-fill + lock the field
+      const locationField = $("#b_location");
+      const studioSpaceRow = $("#b_studio_space") ? $("#b_studio_space").closest(".field-row") : null;
+      if (isValidInvite && lockedLocation) {
+        if (locationField) {
+          locationField.value = lockedLocation;
+          locationField.readOnly = true;
+          locationField.style.opacity = "0.7";
+          locationField.style.cursor = "not-allowed";
+          locationField.title = "Location set by photographer\u2019s invite code";
+        }
+        if (studioSpaceRow) studioSpaceRow.style.display = "none";
+      } else {
+        if (locationField) {
+          locationField.readOnly = false;
+          locationField.style.opacity = "";
+          locationField.style.cursor = "";
+          locationField.title = "";
+          // Clear any previously locked value when code is removed
+          if (!isValidInvite && locationField.value === (window._prevLockedLocation || "")) locationField.value = "";
+        }
+        if (studioSpaceRow) studioSpaceRow.style.display = "";
+      }
+      window._prevLockedLocation = lockedLocation;
+
+      // Update inline contract studio clause dynamically
+      const contractStudioClause = $("#bookingContractStudioClause");
+      if (contractStudioClause) {
+        contractStudioClause.innerHTML = (isValidInvite && lockedLocation)
+          ? `Studio for this session is provided by the photographer at <strong>${lockedLocation}</strong> at no additional rental charge to the talent.`
+          : `If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges.`;
+      }
+
+      // Update TFP policy notice studio line if TFP is selected
+      const policyNoticeEl = $("#bookingPolicyNotice");
+      if (policyNoticeEl && $("#b_type") && $("#b_type").value === "Selective Collaboration (TFP)") {
+        const studioLine = (isValidInvite && lockedLocation)
+          ? `<strong>🏠 Studio provided by photographer at ${lockedLocation} — no rental charge to talent.</strong>`
+          : `<strong>Note: If a dedicated studio space is booked for the shoot, applicable studio rental charges will apply.</strong>`;
+        policyNoticeEl.innerHTML = `
+          <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">TFP Collaboration &amp; Test Shoot Policy</span>
+          Submission of a TFP collaboration request does not constitute a confirmed session or a commitment to shoot. All inquiries are subject to schedule availability, creative alignment, and final studio review. ${studioLine} TFP shoots include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW unedited camera files are strictly excluded and remain unreleased.
+        `;
       }
 
       // Real-Time Final Amount Calculator Engine
@@ -10508,7 +10565,7 @@ RAW files are not provided.`
 // Register Service Worker for PWA Offline Caching
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=265').catch(() => {});
+    navigator.serviceWorker.register('/sw.js?v=266').catch(() => {});
   });
 }
 
