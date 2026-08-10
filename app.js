@@ -6104,7 +6104,15 @@ RAW files are not provided.`
                </div>
                <div id="discountSavingsBadge" style="display: none; margin-top: 6px; font-family: var(--mono-font); font-size: var(--font-xs); color: #059669; font-weight: 700;"></div>
 
-               <div id="finalPriceSummaryBox" style="background: #111111; color: #ffffff; border: 1.5px solid var(--accent); border-radius: 10px; padding: 16px 20px; margin-top: 18px; margin-bottom: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.35);">
+               <!-- Starts HIDDEN and is shown only once updateFields has
+                    confirmed a price actually applies (it runs unconditionally
+                    when the form is wired, so a paying client still sees it).
+                    Defaulting to visible meant every failure mode — a throw
+                    earlier in updateFields, a lookup returning null, a
+                    re-render — showed a package rate and payment milestones to
+                    someone invited to shoot for free. Wrong in the expensive
+                    direction; hidden-by-default fails the safe way. -->
+               <div id="finalPriceSummaryBox" style="display: none; background: #111111; color: #ffffff; border: 1.5px solid var(--accent); border-radius: 10px; padding: 16px 20px; margin-top: 18px; margin-bottom: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.35);">
                   <div style="font-size: var(--font-xs); font-weight: 700; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
                     <span>💎 Itemized Production Quote &amp; Milestone Payable HUD</span>
                     <span id="calcDiscountTag" style="font-size: var(--font-xs); color: #059669; background: rgba(5,150,105,0.2); padding: 3px 10px; border-radius: 12px; font-weight: 700; display: none;"></span>
@@ -8073,6 +8081,31 @@ RAW files are not provided.`
       // again, a package price and payment milestones must not reappear on an
       // invited collaborator's screen just because the type check stopped
       // matching. Either condition is enough to mean "nothing is payable here".
+      // Temporary diagnostic, only on /book/?debug=1 — invisible to clients.
+      // The quote box is provably hidden by the branch below whenever an invite
+      // verifies, yet it was still rendering on the live site, so this reports
+      // what the browser actually evaluates rather than what the source says.
+      if (new URLSearchParams(location.search).get("debug") === "1") {
+        let dbg = document.getElementById("__wpsDebug");
+        if (!dbg) {
+          dbg = document.createElement("div");
+          dbg.id = "__wpsDebug";
+          dbg.style.cssText = "position:fixed;left:8px;bottom:8px;z-index:99999;background:#000;color:#0f0;font:11px/1.5 monospace;padding:10px 12px;border:1px solid #0f0;border-radius:6px;max-width:min(92vw,460px);white-space:pre-wrap;";
+          document.body.appendChild(dbg);
+        }
+        const box = document.querySelectorAll("#finalPriceSummaryBox");
+        dbg.textContent = [
+          `enteredCode      ${JSON.stringify(enteredCode)}`,
+          `isValidInvite    ${isValidInvite}`,
+          `effectiveType    ${JSON.stringify(effectiveType)}`,
+          `will hide        ${effectiveType === "Selective Collaboration (TFP)" || isValidInvite}`,
+          `#quoteBox found  ${box.length}`,
+          `  its display    ${box[0] ? JSON.stringify(box[0].style.display) : "n/a"}`,
+          `#promoWrap found ${promoCodeWrap ? "yes" : "NO"}`,
+          `updateFields run ${(window.__wpsRuns = (window.__wpsRuns || 0) + 1)}`,
+        ].join("\n");
+      }
+
       if (effectiveType === "Selective Collaboration (TFP)" || isValidInvite) {
         if (finalPriceSummaryBox) finalPriceSummaryBox.style.display = "none";
         if (promoCodeWrap) promoCodeWrap.style.display = "none";
