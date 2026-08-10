@@ -8032,7 +8032,15 @@ RAW files are not provided.`
       const finalPriceSummaryBox = $("#finalPriceSummaryBox");
       const promoCodeWrap = $("#b_discount_code")?.closest(".field");
 
-      if (type === "Selective Collaboration (TFP)") {
+      // Read the type FRESH rather than using the `type` captured at the top of
+      // updateFields. The invite-code lock above switches #b_type to TFP and
+      // dispatches a change event, which re-enters updateFields; that nested
+      // run correctly hid this box, and then this outer run — still holding the
+      // pre-lock value — put it straight back. That is why a test shoot locked
+      // by an invite code was quoting a package price and 50/50 milestones.
+      const effectiveType = $("#b_type")?.value || type;
+
+      if (effectiveType === "Selective Collaboration (TFP)") {
         if (finalPriceSummaryBox) finalPriceSummaryBox.style.display = "none";
         if (promoCodeWrap) promoCodeWrap.style.display = "none";
         if (budgetField) budgetField.style.display = "none";
