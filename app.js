@@ -3283,6 +3283,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       duration: bookingObj.duration || "Full Day",
       isTentative: bookingObj.isTentative || bookingObj.status === "tentative" || false,
       notes: bookingObj.notes || "",
+      location: bookingObj.location || "",
+      // True when the shoot venue is supplied by the studio (an invite code
+      // carrying a location). Stored on the booking so the PDF contract reads
+      // it from the record it is generating, not from page state.
+      venueByStudio: !!bookingObj.venueByStudio,
       links: Array.isArray(bookingObj.links) ? bookingObj.links : (bookingObj.links ? [bookingObj.links] : []),
       attachments: Array.isArray(bookingObj.attachments) ? bookingObj.attachments : [],
       status: bookingObj.status || (bookingObj.isTentative ? "tentative" : "confirmed"),
@@ -4320,6 +4325,10 @@ RAW files are not provided.`
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Shoot Location Address *
               <input type="text" id="pdf_location" value="${esc(b.location || 'Studio Space, Noida / Outdoor NCR')}" placeholder="e.g. Sector 62 Studio, Noida / Client Venue" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+              <span style="display: flex; align-items: flex-start; gap: 7px; margin-top: 7px; font-weight: 400; line-height: 1.4;">
+                <input type="checkbox" id="pdf_venueByStudio" ${b.venueByStudio ? 'checked' : ''} style="margin-top: 2px; flex-shrink: 0;" />
+                <span>Venue provided by the studio — no rental billed to the client. Ticked automatically for bookings that came in on an invite code carrying a location; tick it by hand for shoots you are supplying the space for.</span>
+              </span>
             </label>
             <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Contract Document Version *
               <select id="pdf_contractVersion" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
@@ -4447,6 +4456,7 @@ RAW files are not provided.`
         date: $("#pdf_date").value.trim(),
         duration: $("#pdf_duration").value,
         location: $("#pdf_location").value.trim(),
+        studioProvidedByPhotographer: !!$("#pdf_venueByStudio")?.checked,
         contractVersion: $("#pdf_contractVersion").value,
         package: $("#pdf_packageSelect").value === "custom" 
           ? `${$("#pdf_customCloudRetention").value === "custom" ? $("#pdf_customCloudRetentionInput").value.trim() : $("#pdf_customCloudRetention").value}"#pdf_customPkgName").value.trim()} — ${$("#pdf_customCloudRetention").value === "custom" ? $("#pdf_customCloudRetentionInput").value.trim() : $("#pdf_customCloudRetention").value}"#pdf_customRetouchedCount").value.trim()} (${$("#pdf_customCloudRetention").value === "custom" ? $("#pdf_customCloudRetentionInput").value.trim() : $("#pdf_customCloudRetention").value}"#pdf_customDownloadPermission").value}; ${$("#pdf_customCloudRetention").value === "custom" ? $("#pdf_customCloudRetentionInput").value.trim() : $("#pdf_customCloudRetention").value}"#pdf_customRevisions").value}; ${$("#pdf_customCloudRetention").value === "custom" ? $("#pdf_customCloudRetentionInput").value.trim() : $("#pdf_customCloudRetention").value}"#pdf_customCloudRetention").value})`
@@ -4474,9 +4484,15 @@ RAW files are not provided.`
     }
     const contractText = archiveObj ? archiveObj.fullText : "";
     const isTfp = (data.paymentMilestones === "tfp" || cVer === "V3.3-TFP");
-    // Studio clause: photographer-provided (locked invite) vs rental at actuals (client pays)
-    const studioByPhotographer = data.studioProvidedByPhotographer || (isTfp && !!(window._lockedLocationFromInvite && window._lockedLocationFromInvite.trim()));
-    const studioLocation = data.location || window._lockedLocationFromInvite || "";
+    // Studio clause: photographer-provided (locked invite) vs rental at actuals
+    // (client pays). This used to fall back to `window._lockedLocationFromInvite`,
+    // which is set by the PUBLIC booking form and then persists for the whole
+    // session — so opening /book, typing a venue-carrying code, and later
+    // generating a PDF for an unrelated booking produced a contract promising a
+    // free venue (at that other address) for a shoot nobody agreed it for.
+    // The flag now comes from the booking record being printed, or the operator.
+    const studioByPhotographer = !!data.studioProvidedByPhotographer;
+    const studioLocation = data.location || "";
     const studioClauseTfp = studioByPhotographer
       ? `Studio venue for this session is provided by the photographer${studioLocation ? ` at <strong>${esc(studioLocation)}</strong>` : ""} at no additional rental charge to the talent.`
       : `If a dedicated indoor studio venue/space is required, applicable venue rental fees are billed at actuals (at cost).`;
@@ -4536,7 +4552,9 @@ RAW files are not provided.`
             <strong>📸 TFP Test Shoot Terms:</strong> This session is structured for mutual portfolio growth. Deliverables include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW format files are strictly confidential studio property and are excluded. ${studioClauseTfp}
           ` : `
             <strong>💳 Payment Milestones:</strong> ${data.paymentMilestones === '503020' ? '3-Tier Milestones (50% Advance Retainer / 30% Proofing / 20% Final Deliverables).' : 'Standard 50/50 Milestones (50% Advance Retainer prior to shoot start [non-refundable]; 50% Final Balance prior to file download [non-refundable]).'}<br/>
-            <strong>🏢 Studio Venue Rental Policy:</strong> Dedicated indoor studio venue rentals are billed <strong>at actuals (at cost)</strong>, or the client may directly book their preferred studio space for the session.
+            <strong>🏢 Studio Venue Rental Policy:</strong> ${studioByPhotographer
+              ? `The venue for this session${studioLocation ? ` (<strong>${esc(studioLocation)}</strong>)` : ''} is arranged and paid for by the Studio — <strong>no venue rental is billed to the client</strong>.`
+              : `Dedicated indoor studio venue rentals are billed <strong>at actuals (at cost)</strong>, or the client may directly book their preferred studio space for the session.`}
           `}
         </div>
 
@@ -7850,8 +7868,14 @@ RAW files are not provided.`
       const studioSpaceRow = $("#b_studio_space") ? $("#b_studio_space").closest(".field-row") : null;
       if (isValidInvite && lockedLocation) {
         if (locationField) {
+          // Stash whatever the visitor had typed before the lock so removing
+          // the code hands their own answer back instead of eating it.
+          if (locationField.dataset.inviteLocked !== "1") {
+            locationField.dataset.prevLocation = locationField.value || "";
+          }
           locationField.value = lockedLocation;
           locationField.readOnly = true;
+          locationField.dataset.inviteLocked = "1";
           locationField.style.opacity = "0.7";
           locationField.style.cursor = "not-allowed";
           locationField.title = "Location set by photographer\u2019s invite code";
@@ -7859,12 +7883,20 @@ RAW files are not provided.`
         if (studioSpaceRow) studioSpaceRow.style.display = "none";
       } else {
         if (locationField) {
+          // Release the lock whenever this code no longer supplies a venue \u2014
+          // including a swap to a DIFFERENT valid code that has none. Keying
+          // the clear off `!isValidInvite` missed that case, so the previous
+          // code's address stayed in the box, now editable and with the studio
+          // -space question back, and got submitted as if it were provided.
+          if (locationField.dataset.inviteLocked === "1") {
+            locationField.value = locationField.dataset.prevLocation || "";
+            delete locationField.dataset.prevLocation;
+            delete locationField.dataset.inviteLocked;
+          }
           locationField.readOnly = false;
           locationField.style.opacity = "";
           locationField.style.cursor = "";
           locationField.title = "";
-          // Clear any previously locked value when code is removed
-          if (!isValidInvite && locationField.value === (window._prevLockedLocation || "")) locationField.value = "";
         }
         if (studioSpaceRow) studioSpaceRow.style.display = "";
       }
@@ -8209,6 +8241,17 @@ RAW files are not provided.`
         btn.textContent = "Sending your request…";
 
         const isTfpCat = shootCategory === "TFP";
+
+        // Did this booking come in on an invite that supplies the venue? Read
+        // from the field's own lock marker rather than a window global, so it
+        // can only ever describe the booking actually being submitted. Resolved
+        // here because the signed release below and the inquiry policy lines
+        // further down must not be able to disagree about who pays for the venue.
+        const venueByStudio = $("#b_location")?.dataset.inviteLocked === "1";
+        const venueByStudioAddress = venueByStudio ? ($("#b_location")?.value || "") : "";
+        const venueClause = venueByStudio
+          ? `1. SCOPE OF PRODUCTION & VENUE (PROVIDED BY STUDIO)\nThis session is scheduled for studio/location photography production at a venue arranged and paid for by the Studio: ${venueByStudioAddress || "as confirmed with the Studio"}. No studio rental, venue hire or space fee is billed to the Participant for this session. A change of venue requested by the Participant is subject to Studio approval and may reintroduce venue costs at actuals.`
+          : `1. SCOPE OF PRODUCTION & VENUE RENTAL POLICY\nThis session is scheduled for studio/location photography production. Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio venue space is required, applicable studio rental fees are billed at actuals (at cost).`;
         const contractRefDoc = isCustomContract ? "CUSTOM-CLIENT-CONTRACT-MSA" : (isTfpCat ? "TFP-LIABILITY-RELEASE-V3.3" : "COMMERCIAL-CONTRACT-V3.3");
         const tfpReleaseText = agreedToTerms ? (
           `\n\n==================================================\n` +
@@ -8224,7 +8267,7 @@ RAW files are not provided.`
           `--------------------------------------------------\n\n` +
           (isCustomContract ? 
             `1. CUSTOM CONTRACT / AGENCY MSA REQUEST\nThis shoot request is submitted under a Custom Client Contract / Agency Master Services Agreement (MSA). Studio V3.3 default terms remain subject to custom contract review and mutual alignment prior to shoot day confirmation.\n\n2. CAMERA GEAR & DATA PROTECTION CLAUSE\nAll camera bodies, memory cards, and raw captures remain confidential studio property. Participants may not touch equipment or delete media from cameras.\n` :
-            `1. SCOPE OF PRODUCTION & VENUE RENTAL POLICY\nThis session is scheduled for studio/location photography production. Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio venue space is required, applicable studio rental fees are billed at actuals (at cost).\n\n2. INTELLECTUAL PROPERTY & USAGE LICENSING\nThe legal copyright of all visual media remains exclusively with the Studio. Clients receive personal, social media, and web self-promotion usage rights.\n\n3. COMPREHENSIVE LIABILITY WAIVER\nParticipant(s) enter the studio workspace and perform physical poses entirely at their own risk.\n\n4. DELIVERABLES, REVISIONS & CLOUD ARCHIVAL\nDeliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for ${isTfpCat ? '3 Months' : '6 Months'}. RAW files are strictly excluded.\n\n5. UNAUTHORIZED CAMERA OPERATION & GEAR PROTECTION\nAll camera gear and memory cards are strictly hands-off.\n\n6. DIGITAL CONSENT & EMAIL ACCEPTANCE\nLegal acceptance is established by submitting this request.`
+            `${venueClause}\n\n2. INTELLECTUAL PROPERTY & USAGE LICENSING\nThe legal copyright of all visual media remains exclusively with the Studio. Clients receive personal, social media, and web self-promotion usage rights.\n\n3. COMPREHENSIVE LIABILITY WAIVER\nParticipant(s) enter the studio workspace and perform physical poses entirely at their own risk.\n\n4. DELIVERABLES, REVISIONS & CLOUD ARCHIVAL\nDeliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for ${isTfpCat ? '3 Months' : '6 Months'}. RAW files are strictly excluded.\n\n5. UNAUTHORIZED CAMERA OPERATION & GEAR PROTECTION\nAll camera gear and memory cards are strictly hands-off.\n\n6. DIGITAL CONSENT & EMAIL ACCEPTANCE\nLegal acceptance is established by submitting this request.`
           ) +
           `\n\nnerdyphotographer.in studios\n` +
           `==================================================`
@@ -8241,9 +8284,19 @@ RAW files are not provided.`
           `Payment Terms: Standard 50/50 Milestones (50% Advance Retainer before shoot day start [non-refundable]; 50% Final Balance after shoot wrap prior to receiving any downloadable file [non-refundable])`;
 
         const cleanBudget = (budget && budget !== "Not Decided" && budget !== "TBD") ? `Package & Deliverables: ${budget}\n` : "";
-        const studioSpaceVal = val("b_studio_space") || 'Not Specified';
-        const studioRentalPolicyNote = `Studio Rental Policy: Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio space is required, venue rental fees are billed at actuals (at cost), or the client may book the studio directly.\n`;
-        const travelPolicyNote = `Travel & Accommodation Policy: Shoots requiring travel beyond 20 km from the studio base (Noida) incur paid travel and, where an overnight stay is needed, accommodation - billed at actuals (at cost).\n`;
+
+        // The studio-space select is hidden on these bookings but keeps its
+        // default answer, so reading it verbatim told the studio "client books
+        // studio directly" on a shoot where the studio supplies the space.
+        const studioSpaceVal = venueByStudio
+          ? `Not required — venue provided by the studio (photographer's invite)`
+          : (val("b_studio_space") || 'Not Specified');
+        const studioRentalPolicyNote = venueByStudio
+          ? `Studio Rental Policy: The venue for this session is arranged and paid for by the studio. No venue rental or studio space fee is billed to you for this shoot.\n`
+          : `Studio Rental Policy: Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio space is required, venue rental fees are billed at actuals (at cost), or the client may book the studio directly.\n`;
+        const travelPolicyNote = venueByStudio
+          ? `Travel & Accommodation Policy: Travel to the studio-provided venue above is covered by the studio for this invite. If you later request a different location, standard terms apply again (travel beyond 20 km from the studio base in Noida, and accommodation where an overnight stay is needed, billed at actuals).\n`
+          : `Travel & Accommodation Policy: Shoots requiring travel beyond 20 km from the studio base (Noida) incur paid travel and, where an overnight stay is needed, accommodation - billed at actuals (at cost).\n`;
         const deliverablePolicyNote = `RAW Files & Deliverables Policy: Includes proofing gallery + contracted retouched master limit. Requesting the complete full unedited image gallery or extra retouched master clicks beyond the package limit incurs additional gallery buyout fees. RAW unedited camera files remain confidential studio property.\n`;
         const gearPolicyNote = `Camera & Media Policy: All cameras, memory cards, and raw captures are strictly hands-off. Participants may not touch equipment or delete media from cameras. Deleting files constitutes a material breach of contract and incurs full data recovery costs.\n`;
 
@@ -8390,6 +8443,11 @@ RAW files are not provided.`
                   attachments: typeof attachedFiles !== "undefined" ? attachedFiles : [],
                   sigDataUrl: sigDataUrl || "",
                   agreedContract: agreedToTerms ? contractRefDoc : "",
+                  // Recorded per booking so the PDF contract can tell whether
+                  // the studio is supplying the venue for THIS shoot, instead
+                  // of guessing from a page-level global.
+                  venueByStudio,
+                  location: locationVal,
                   notes: `Location: ${locationVal} | Budget: ${budget}`,
                   contractNumber
                 });
@@ -8582,10 +8640,23 @@ RAW files are not provided.`
       if (modalTag) modalTag.textContent = isTfp ? "TFP-LIABILITY-RELEASE-V3.3 (ACTIVE)" : "COMMERCIAL-CONTRACT-V3.3 (ACTIVE)";
       if (partnerNameEl) partnerNameEl.textContent = partnerName || "Valued Client";
       
+      // This is the screen the signature is actually captured on, so it is the
+      // last place that can be left contradicting the form. On an invite that
+      // supplies the venue, the stock "locations >20 km require client-funded
+      // travel" / "venue rentals billed at actuals" lines are the opposite of
+      // what the visitor was just shown.
+      const modalVenueByStudio = $("#b_location")?.dataset.inviteLocked === "1";
+      const modalVenueAddress = modalVenueByStudio ? ($("#b_location")?.value || "") : "";
+      const venueSentence = modalVenueByStudio
+        ? ` The shoot venue${modalVenueAddress ? ` (<strong>${esc(modalVenueAddress)}</strong>)` : ""} is arranged and paid for by the Studio for this invite — no studio rental, venue hire or travel cost is billed to you for it. Requesting a different location later re-applies the standard venue and travel terms.`
+        : (isTfp
+            ? ` Locations &gt;20 km from Noida require client-funded travel, conveyance &amp; accommodation.`
+            : ` Dedicated indoor studio venue rentals are billed <strong>at actuals (at cost)</strong>.`);
+
       if (sec4Text) {
-        sec4Text.innerHTML = isTfp ? 
-          `As a creative collaboration, test shoots (TFP collabs) include a <strong>Full Proofing Gallery + 8 to 12 Retouched Master Clicks</strong>. Deliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for 3 Months (90 days). The Studio retains final artistic authority over image selection and editing styles. Locations &gt;20 km from Noida require client-funded travel, conveyance &amp; accommodation. Under no circumstances will raw unedited files (RAW format) be delivered.` :
-          `Commercial productions include a <strong>Full Proofing Gallery + contracted retouched master deliverables</strong> specified in the rate tier. Deliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for 6 Months (180 days). Extended usage licensing or RAW file access requires separate buyout agreements. Dedicated indoor studio venue rentals are billed <strong>at actuals (at cost)</strong>. Payment terms follow 50/50 non-refundable milestone payments.`;
+        sec4Text.innerHTML = isTfp
+          ? `As a creative collaboration, test shoots (TFP collabs) include a <strong>Full Proofing Gallery + 8 to 12 Retouched Master Clicks</strong>. Deliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for 3 Months (90 days). The Studio retains final artistic authority over image selection and editing styles.${venueSentence} Under no circumstances will raw unedited files (RAW format) be delivered.`
+          : `Commercial productions include a <strong>Full Proofing Gallery + contracted retouched master deliverables</strong> specified in the rate tier. Deliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for 6 Months (180 days). Extended usage licensing or RAW file access requires separate buyout agreements.${venueSentence} Payment terms follow 50/50 non-refundable milestone payments.`;
       }
 
       $("#termsModal").style.display = "flex";
