@@ -1915,3 +1915,18 @@ h2, .section-head h2 { font-size: var(--font-lg) !important; line-height: 1.25 !
 h3, .cat-card h3, .work-card-title { font-size: var(--font-md) !important; line-height: 1.35 !important; }
 p.page-sub, p.eyebrow { font-size: var(--font-sm) !important; }
 .eyebrow { font-size: var(--font-xs) !important; letter-spacing: 0.08em !important; }
+
+/* ---------- Test shoot / verified invite: no money on screen ----------
+   Set by updateFields at the invite lock and the TFP branch — both points
+   proven to run (the lock card renders, the package dropdown disappears).
+   `!important` is deliberate: the pricing section writes inline styles to
+   these same elements, and on a verified invite it was still leaving the
+   quote and promo field visible. A stylesheet rule marked !important beats
+   any inline display value, so someone invited to shoot for free cannot be
+   shown a package rate, a promo field or payment milestones regardless of
+   which branch of that later code runs. */
+body.wps-no-pricing #finalPriceSummaryBox,
+body.wps-no-pricing #b_discount_field,
+body.wps-no-pricing #b_budget_field,
+body.wps-no-pricing #discountSavingsBadge,
+body.wps-no-pricing #paymentTermsFieldset { display: none !important; }
