@@ -6154,11 +6154,11 @@ RAW files are not provided.`
                     </li>
 <li style="display: flex; gap: 10px; align-items: flex-start; font-size: var(--font-xs); line-height: 1.55; color: var(--ink-soft);">
                      <span aria-hidden="true" style="flex: 0 0 20px; font-size: var(--font-sm); line-height: 1.4;">🏢</span>
-                     <span><strong style="color: var(--ink);">Studio Rental:</strong> Package rates cover photography creation, light design &amp; master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are billed <strong style="color: var(--ink);">at actuals (at cost)</strong>, or the client may directly book their preferred studio space for the production.</span>
+                     <span id="policyStudioRental"><strong style="color: var(--ink);">Studio Rental:</strong> Package rates cover photography creation, light design &amp; master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are billed <strong style="color: var(--ink);">at actuals (at cost)</strong>, or the client may directly book their preferred studio space for the production.</span>
                    </li>
                    <li style="display: flex; gap: 10px; align-items: flex-start; font-size: var(--font-xs); line-height: 1.55; color: var(--ink-soft);">
                      <span aria-hidden="true" style="flex: 0 0 20px; font-size: var(--font-sm); line-height: 1.4;">🚗</span>
-                     <span><strong style="color: var(--ink);">Travel &amp; Accommodation:</strong> Shoots requiring travel beyond <strong style="color: var(--ink);">20 km</strong> from the studio base (Noida) incur paid travel and, where an overnight stay is needed, accommodation — billed <strong style="color: var(--ink);">at actuals (at cost)</strong>.</span>
+                     <span id="policyTravel"><strong style="color: var(--ink);">Travel &amp; Accommodation:</strong> Shoots requiring travel beyond <strong style="color: var(--ink);">20 km</strong> from the studio base (Noida) incur paid travel and, where an overnight stay is needed, accommodation — billed <strong style="color: var(--ink);">at actuals (at cost)</strong>.</span>
                    </li>
                    <li style="display: flex; gap: 10px; align-items: flex-start; font-size: var(--font-xs); line-height: 1.55; color: var(--ink-soft);">
                      <span aria-hidden="true" style="flex: 0 0 20px; font-size: var(--font-sm); line-height: 1.4;">📸</span>
@@ -7971,6 +7971,29 @@ RAW files are not provided.`
         if (studioSpaceRow) studioSpaceRow.style.display = "";
       }
       window._prevLockedLocation = lockedLocation;
+
+      // ── Studio Policies & Terms block ───────────────────────────────────
+      // The Studio Rental and Travel lines in the policies panel are written
+      // for a client who sources and pays for the venue. When the studio is
+      // supplying it — an invite carrying a location, or the home studio on a
+      // paid shoot — they state the opposite of everything else on the page and
+      // of the contract the client signs. Same correction as the release text
+      // in v268/v269, applied to the last surface still reading the old way.
+      const venueSuppliedByStudio = !!lockedLocation
+        || $("#b_studio_space")?.value === "Home Studio - Noida (Provided by Studio)";
+      const venueAddressShown = ($("#b_location")?.value || "").trim();
+      const policyRental = $("#policyStudioRental");
+      const policyTravel = $("#policyTravel");
+      if (policyRental) {
+        policyRental.innerHTML = venueSuppliedByStudio
+          ? `<strong style="color: var(--ink);">Studio Rental:</strong> The venue for this session${venueAddressShown ? ` (<strong style="color: var(--ink);">${esc(venueAddressShown)}</strong>)` : ""} is arranged and paid for by the studio. <strong style="color: var(--ink);">No studio rental or venue fee is billed to you.</strong> If you later ask to shoot somewhere else, standard venue terms apply again.`
+          : `<strong style="color: var(--ink);">Studio Rental:</strong> Package rates cover photography creation, light design &amp; master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are billed <strong style="color: var(--ink);">at actuals (at cost)</strong>, or the client may directly book their preferred studio space for the production.`;
+      }
+      if (policyTravel) {
+        policyTravel.innerHTML = venueSuppliedByStudio
+          ? `<strong style="color: var(--ink);">Travel &amp; Accommodation:</strong> Travel to the studio-provided venue above is covered by the studio for this session. Standard terms (travel beyond <strong style="color: var(--ink);">20 km</strong> from the studio base in Noida, and accommodation where an overnight stay is needed, billed at actuals) apply only if you request a different location.`
+          : `<strong style="color: var(--ink);">Travel &amp; Accommodation:</strong> Shoots requiring travel beyond <strong style="color: var(--ink);">20 km</strong> from the studio base (Noida) incur paid travel and, where an overnight stay is needed, accommodation — billed <strong style="color: var(--ink);">at actuals (at cost)</strong>.`;
+      }
 
       // ── Home studio (paid shoots only) ──────────────────────────────────
       // The home studio is offered on paid bookings; TFP venues are handled by
