@@ -12,7 +12,7 @@
 //
 // Bump ASSET_VERSION on every release that touches app.js, styles.css,
 // data.js or config.js.
-const ASSET_VERSION = "279";
+const ASSET_VERSION = "280";
 const CACHE_NAME = `wps-v${ASSET_VERSION}`;
 const ASSETS_TO_CACHE = [
   "/",

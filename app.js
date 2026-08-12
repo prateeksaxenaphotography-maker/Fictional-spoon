@@ -164,7 +164,6 @@ window.getAdminInviteCodes = function() {
 
   const defaultList = [
     { code: "NERDYBRAND", desc: "Default photographer unlock code for Instagram DMs" },
-    { code: "NERDYHOME", desc: "Home Studio TFP Collaboration Unlock (Location Locked)", location: "Home Studio - Sector 15, Noida (Provided by Studio)" },
     { code: "NERDYTEST", desc: "Test shoot unlock pass for agency models" },
     { code: "INVITE2026", desc: "General 2026 TFP collaboration pass" },
     { code: "NERDYVIP", desc: "VIP partner unlock code" }
