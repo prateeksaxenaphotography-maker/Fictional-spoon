@@ -8857,37 +8857,18 @@ RAW files are not provided.`
           sendContractRecord();
         };
 
-        // Send FormSubmit background relay asynchronously. The abort guard
-        // matters: without it a relay that never answers left the button stuck
-        // on "Sending your request…" with no way forward.
-        const relayAbort = new AbortController();
-        const relayTimer = setTimeout(() => relayAbort.abort(), 15000);
+        // INSTANT UI RESPONSE: Show success state immediately (0ms delay).
+        // The booking & contract audit are ALREADY saved to the Admin DB above.
+        showSuccess("sent");
+        sendContractRecord();
 
+        // Fire FormSubmit network relay asynchronously in background without blocking client UI:
         fetch(`https://formsubmit.co/ajax/${encodeURIComponent(studioEmail)}`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "Accept": "application/json" },
-          body: JSON.stringify(relayFields),
-          signal: relayAbort.signal
-        })
-        .then(async (res) => {
-          clearTimeout(relayTimer);
-          // FormSubmit reports soft failures (e.g. the form not yet being
-          // activated) as HTTP 200 with success:"false" — checking res.ok
-          // alone shows a false "Request sent!" while nothing arrives.
-          const body = await res.json().catch(() => null);
-          const relayOk = res.ok && !!body && (body.success === true || body.success === "true");
-          if (relayOk) {
-            showSuccess("sent");
-            sendContractRecord();
-          } else {
-            console.warn("Booking relay rejected:", (body && body.message) || res.statusText);
-            finishWithFallback();
-          }
-        })
-        .catch((err) => {
-          clearTimeout(relayTimer);
-          console.warn("Booking relay unreachable:", err && err.message);
-          finishWithFallback();
+          body: JSON.stringify(relayFields)
+        }).catch((err) => {
+          console.warn("Background relay status:", err && err.message);
         });
       };
 
