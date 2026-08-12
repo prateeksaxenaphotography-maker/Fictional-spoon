@@ -6315,19 +6315,14 @@ RAW files are not provided.`
                       <p style="margin: 0; font-weight: 500;">If the shoot location is located beyond a 20 km radius from Noida (Delhi NCR), all travel expenses, local conveyance, outstation transport, tolls, and accommodation expenses incurred for the photographer (and core production team) shall be fully borne, arranged, or reimbursed by the client / party requesting the shoot session. This condition applies to both Paid Commercial Shoots and Test Shoot Collaborations (TFP).</p>
                     </div>
                    
-                   <!-- Signature Block -->
+                   <!-- Checkbox Agreement Block -->
                    <div style="margin-top: 15px; border-top: 1px dashed var(--line); padding-top: 15px;">
-                     <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink); display: block; margin-bottom: 6px;">Draw Your Signature Below to Confirm Agreement *</label>
-                     <div style="position: relative; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; height: 120px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
-                       <canvas id="termsSigCanvas" width="600" height="120" style="position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; touch-action: none; z-index: 2;"></canvas>
-                       <div id="termsSigHint" style="position: absolute; color: var(--ink-soft); font-size: var(--font-xs); font-style: italic; z-index: 1; pointer-events: none; display: flex; align-items: center; gap: 6px;">
-                         ✍️ Draw signature here with finger or mouse
-                       </div>
-                     </div>
-                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
-                       <span style="font-size: var(--font-xs); color: var(--ink-soft);">This digital consent is legally binding.</span>
-                       <button type="button" id="clearTermsSigBtn" style="background: none; border: none; font-size: var(--font-xs); color: var(--accent); font-weight: 700; cursor: pointer; text-decoration: underline; padding: 0;">Clear Signature</button>
-                     </div>
+                     <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; background: var(--bone); border: 1.5px solid var(--accent); border-radius: 8px; padding: 14px;">
+                       <input type="checkbox" id="termsAgreeCheckbox" style="width: 20px; height: 20px; margin-top: 2px; accent-color: var(--accent); cursor: pointer;" />
+                       <span style="font-size: var(--font-xs); color: var(--ink); line-height: 1.5; font-weight: 600;">
+                         I have read, understood, and agree to the <strong>Studio Terms &amp; Conditions (Version V3.3)</strong> and <strong>Model Release Agreement</strong>.
+                       </span>
+                     </label>
                    </div>
                  </div>
                   <div style="padding: 16px 20px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; background: var(--bone);">
@@ -8578,18 +8573,44 @@ RAW files are not provided.`
         const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(studioEmail)}&su=${subject}&body=${body}`;
         const outlookUrl = `https://outlook.live.com/default.aspx?rru=compose&to=${encodeURIComponent(studioEmail)}&subject=${subject}&body=${body}`;
 
-        const contractNumber = agreedToTerms ? generateContractNumber() : "";
+        // Gather complete metadata for Admin DB & Audit Vault:
+        const inviteMeta = (isValidInvite && matchedInvite && typeof matchedInvite === "object") ? {
+          code: matchedInvite.code,
+          desc: matchedInvite.desc || "Photographer Direct Unlock",
+          lockedLocation: lockedLocation || ""
+        } : (enteredCode ? { code: enteredCode, desc: "Direct Invite", lockedLocation: "" } : null);
+
+        const promoMeta = (matchedDiscount) ? {
+          code: enteredDiscount,
+          tag: discountTagText,
+          savings: savings
+        } : null;
+
+        const financialSummary = (type !== "Selective Collaboration (TFP)" && !isValidInvite) ? {
+          basePrice: basePrice,
+          savings: savings,
+          finalPayable: finalPayable,
+          advanceRetainer: Math.round(finalPayable / 2),
+          wrapBalance: finalPayable - Math.round(finalPayable / 2)
+        } : { basePrice: 0, savings: 0, finalPayable: 0, advanceRetainer: 0, wrapBalance: 0 };
 
         async function recordContractAudit(payload) {
           saveLocalContractAudit({
             contractNumber: payload.contractNumber,
             clientName: payload.clientName,
             clientEmail: payload.clientEmail,
+            clientPhone: payload.phone || "",
+            instagram: payload.instagram || "",
             contractVersion: payload.contractVersion,
             date: payload.date,
             shootType: payload.shootType,
             timestamp: new Date().toISOString(),
-            sigCaptured: !!payload.sigDataUrl,
+            sigCaptured: true,
+            isCustomContract: payload.isCustomContract || false,
+            customContractNotes: payload.customContractNotes || "",
+            inviteMeta: payload.inviteMeta || null,
+            promoMeta: payload.promoMeta || null,
+            financials: payload.financials || null,
             notes: payload.notes
           });
 
@@ -8604,12 +8625,20 @@ RAW files are not provided.`
           }
         }
 
-        // Record the acceptance the moment the client has agreed & signed —
-        // before the inquiry relay even runs, so the signing is on record
-        // even if the client abandons the email step afterwards.
-        if (contractNumber) {
+        // GUARANTEED INSTANT SAVE: Record the booking and contract acceptance
+        // into local storage / DB immediately when the client confirms, BEFORE
+        // running email relays or opening mail app links.
+        if (contractNumber || agreedToTerms) {
+          const auditNotesStr = [
+            `Location: ${locationVal || "Not Specified"}`,
+            `Budget: ${budget || "TBD"}`,
+            inviteMeta ? `Invite Code: ${inviteMeta.code} (${inviteMeta.desc})` : null,
+            promoMeta ? `Promo Code: ${promoMeta.code} (${promoMeta.tag})` : null,
+            financialSummary.finalPayable > 0 ? `Payable: ₹${financialSummary.finalPayable.toLocaleString('en-IN')} (Retainer: ₹${financialSummary.advanceRetainer.toLocaleString('en-IN')}, Balance: ₹${financialSummary.wrapBalance.toLocaleString('en-IN')})` : `Category: TFP / Collab ($0)`
+          ].filter(Boolean).join(" | ");
+
           recordContractAudit({
-            contractNumber,
+            contractNumber: contractNumber || generateContractNumber(),
             clientName: name,
             clientEmail: email,
             phone,
@@ -8618,9 +8647,45 @@ RAW files are not provided.`
             location: locationVal,
             shootType: type,
             contractVersion: contractRefDoc,
-            sigDataUrl: sigDataUrl || "",
-            notes: `Location: ${locationVal} | Budget: ${budget}`
+            sigDataUrl: sigDataUrl || "DIGITALLY_ACCEPTED_VIA_CHECKBOX",
+            isCustomContract: isCustomContract,
+            customContractNotes: customContractNotes,
+            inviteMeta: inviteMeta,
+            promoMeta: promoMeta,
+            financials: financialSummary,
+            notes: auditNotesStr
           });
+
+          // Auto-save booking into Studio Calendar DB immediately
+          if (date) {
+            const rawParts = date.split(/[,–]/).map(s => s.trim()).filter(Boolean);
+            rawParts.forEach(pStr => {
+              const dObj = new Date(pStr);
+              if (!isNaN(dObj.getTime())) {
+                const dKey = getCalDateKey(dObj);
+                addCalBooking(dKey, {
+                  name,
+                  email,
+                  phone,
+                  type,
+                  location: locationVal,
+                  notes: concept,
+                  budget,
+                  finalPayable: financialSummary.finalPayable,
+                  contractVersion: contractRefDoc,
+                  agreedToTerms: true,
+                  isCustomContract,
+                  customContractNotes,
+                  contractNumber: contractNumber || "",
+                  inviteMeta,
+                  promoMeta,
+                  financials: financialSummary,
+                  isTentative: false,
+                  status: "confirmed"
+                });
+              }
+            });
+          }
         }
 
         // Populate manual link and copy block
@@ -8950,13 +9015,13 @@ RAW files are not provided.`
       };
 
       const onAcceptClick = () => {
-        if (!hasSigned) {
-          alert("Please draw your signature to agree and continue!");
+        const checkbox = $("#termsAgreeCheckbox");
+        if (checkbox && !checkbox.checked) {
+          alert("Please check the box to agree to the terms and continue!");
           return;
         }
-        const sigDataUrl = (canvas && hasSigned) ? canvas.toDataURL("image/png") : "";
         close();
-        if (onAccept) onAccept(true, false, "", sigDataUrl);
+        if (onAccept) onAccept(true, false, "", "DIGITALLY_ACCEPTED_VIA_CHECKBOX");
       };
 
       const onDeclineClick = () => {
