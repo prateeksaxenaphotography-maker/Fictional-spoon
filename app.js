@@ -6069,7 +6069,7 @@ RAW files are not provided.`
                 </div>
 
 <div style="margin-bottom: 14px; text-align: left;">
-                  <a id="toggleInviteCodeLink" href="javascript:void(0)" style="font-size: var(--font-xs); color: var(--accent); font-weight: 700; text-decoration: underline; font-family: var(--mono-font); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">🔑 Have a direct photographer invite code?</a>
+                  <a id="toggleInviteCodeLink" href="javascript:void(0)" style="font-size: var(--font-xs); color: var(--accent); font-weight: 700; text-decoration: underline; font-family: var(--mono-font); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">🔑 Have a direct photographer invite code? (test shoot invite)</a>
                 </div>
 
                 <!-- Photographer Direct Invite Code (Hidden by default, expandable via discreet link) -->
@@ -8335,7 +8335,7 @@ RAW files are not provided.`
         const isHidden = container.style.display === "none" || !container.style.display;
         container.style.display = isHidden ? "block" : "none";
         if (link) {
-          link.textContent = isHidden ? "✕ Hide invite code field" : "🔑 Have a direct photographer invite code?";
+          link.textContent = isHidden ? "✕ Hide invite code field" : "🔑 Have a direct photographer invite code? (test shoot invite)";
         }
       }
     });
@@ -8382,7 +8382,7 @@ RAW files are not provided.`
       if (val) {
         input.value = "";
         if (container) container.style.display = "none";
-        if (link) link.textContent = "🔑 Have a direct photographer invite code?";
+        if (link) link.textContent = "🔑 Have a direct photographer invite code? (test shoot invite)";
       }
       updateFields();
     });
