@@ -3163,8 +3163,60 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     }
   }
 
+  function syncCalendarWithAudits() {
+    if (!window.WPS_DATA?.CALENDAR_SETTINGS) return;
+    if (!window.WPS_DATA.CALENDAR_SETTINGS.bookedDates) {
+      window.WPS_DATA.CALENDAR_SETTINGS.bookedDates = {};
+    }
+    const booked = window.WPS_DATA.CALENDAR_SETTINGS.bookedDates;
+    const audits = getLocalContractAudits();
+    if (!Array.isArray(audits) || audits.length === 0) return;
+
+    let changed = false;
+    audits.forEach(audit => {
+      if (!audit || !audit.date) return;
+      const rawParts = String(audit.date).split(/[,–]/).map(s => s.trim()).filter(Boolean);
+      rawParts.forEach(pStr => {
+        const dObj = new Date(pStr);
+        if (isNaN(dObj.getTime())) return;
+        const dKey = getCalDateKey(dObj);
+        if (!booked[dKey]) booked[dKey] = [];
+        const exists = booked[dKey].some(b => 
+          (b.contractNumber && audit.contractNumber && b.contractNumber === audit.contractNumber) ||
+          (b.name === audit.clientName && b.email === audit.clientEmail)
+        );
+        if (!exists) {
+          booked[dKey].push({
+            id: "b_audit_" + (audit.contractNumber || (Date.now() + "_" + Math.random().toString(36).slice(2, 6))),
+            name: audit.clientName || "Client Booking",
+            email: audit.clientEmail || "",
+            phone: audit.clientPhone || audit.phone || "",
+            type: audit.shootType || "Shoot",
+            duration: "Full Day",
+            isTentative: false,
+            status: "confirmed",
+            notes: audit.notes || "",
+            location: audit.location || "",
+            contractVersion: audit.contractVersion || "V3.3",
+            agreedToTerms: true,
+            contractNumber: audit.contractNumber || "",
+            inviteMeta: audit.inviteMeta || null,
+            promoMeta: audit.promoMeta || null,
+            financials: audit.financials || null,
+            createdAt: audit.timestamp ? new Date(audit.timestamp).getTime() : Date.now()
+          });
+          changed = true;
+        }
+      });
+    });
+    if (changed) {
+      saveCalendarSettings();
+    }
+  }
+
   sanitizeCalendarBookings();
   syncCalendarWithShoots();
+  syncCalendarWithAudits();
 
   function getCalDateKey(d) {
     if (!d) return "";
@@ -3627,6 +3679,23 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const grid = $("#serverAuditGrid");
       if (!grid) return;
       const entries = data.entries || [];
+      // Reconcile server audits into local storage and calendar
+      if (Array.isArray(entries) && entries.length > 0) {
+        const localAudits = getLocalContractAudits();
+        let auditAdded = false;
+        entries.forEach(srvEntry => {
+          if (!srvEntry) return;
+          const match = localAudits.find(l => (l.contractNumber && srvEntry.contractNumber && l.contractNumber === srvEntry.contractNumber) || (l.clientName === srvEntry.clientName && l.date === srvEntry.date));
+          if (!match) {
+            localAudits.push(srvEntry);
+            auditAdded = true;
+          }
+        });
+        if (auditAdded) {
+          localStorage.setItem("wps-contract-audit", JSON.stringify(localAudits));
+          syncCalendarWithAudits();
+        }
+      }
       const meta = $("#serverAuditMeta");
       if (meta) meta.textContent = `${entries.length} server record${entries.length !== 1 ? "s" : ""} · ${data.storage || ""}`;
       grid.style.display = "grid";
