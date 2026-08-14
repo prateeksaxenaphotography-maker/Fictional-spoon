@@ -3163,6 +3163,25 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     }
   }
 
+  function parseToCalKey(str) {
+    if (!str) return null;
+    const trimmed = String(str).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+    const dmyMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (dmyMatch) {
+      const da = String(dmyMatch[1]).padStart(2, "0");
+      const mo = String(dmyMatch[2]).padStart(2, "0");
+      const yr = dmyMatch[3];
+      return `${yr}-${mo}-${da}`;
+    }
+    const dObj = new Date(trimmed);
+    if (isNaN(dObj.getTime())) return null;
+    const yr = dObj.getFullYear();
+    const mo = String(dObj.getMonth() + 1).padStart(2, "0");
+    const da = String(dObj.getDate()).padStart(2, "0");
+    return `${yr}-${mo}-${da}`;
+  }
+
   function syncCalendarWithAudits() {
     if (!window.WPS_DATA?.CALENDAR_SETTINGS) return;
     if (!window.WPS_DATA.CALENDAR_SETTINGS.bookedDates) {
@@ -3177,9 +3196,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       if (!audit || !audit.date) return;
       const rawParts = String(audit.date).split(/[,–]/).map(s => s.trim()).filter(Boolean);
       rawParts.forEach(pStr => {
-        const dObj = new Date(pStr);
-        if (isNaN(dObj.getTime())) return;
-        const dKey = getCalDateKey(dObj);
+        const dKey = parseToCalKey(pStr);
+        if (!dKey) return;
         if (!booked[dKey]) booked[dKey] = [];
         const exists = booked[dKey].some(b => 
           (b.contractNumber && audit.contractNumber && b.contractNumber === audit.contractNumber) ||
@@ -4004,6 +4022,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
     function renderAdminGrid() {
+      syncCalendarWithAudits();
       const container = $("#adminCalGridContainer");
       const title = $("#adminCalMonthTitle");
       if (!container || !title) return;
@@ -4016,15 +4035,24 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         renderAdminGrid();
       };
 
+      const settings = window.WPS_DATA.CALENDAR_SETTINGS || {};
       const jumpBar = $("#adminCalMonthJumpBar");
       if (jumpBar) {
-        const activeMonths = [
-          { yr: 2026, mo: 2, label: "Mar 2026" },
-          { yr: 2026, mo: 4, label: "May 2026" },
-          { yr: 2026, mo: 5, label: "Jun 2026" },
-          { yr: 2026, mo: 6, label: "Jul 2026" },
-          { yr: 2026, mo: 7, label: "Aug 2026" }
-        ];
+        const bookedKeys = Object.keys(settings.bookedDates || {});
+        const monthSet = new Set();
+        const now = new Date();
+        monthSet.add(`${now.getFullYear()}-${now.getMonth()}`);
+        bookedKeys.forEach(k => {
+          const parts = k.split("-").map(Number);
+          if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+            monthSet.add(`${parts[0]}-${parts[1] - 1}`);
+          }
+        });
+        const activeMonths = Array.from(monthSet).map(str => {
+          const [yr, mo] = str.split("-").map(Number);
+          return { yr, mo, label: `${MONTHS[mo].slice(0,3)} ${yr}` };
+        }).sort((a, b) => (a.yr * 12 + a.mo) - (b.yr * 12 + b.mo));
+
         jumpBar.innerHTML = activeMonths.map(m => `
           <button type="button" class="admin-cal-btn" style="padding: 3px 8px; font-size: var(--font-xs); font-family: var(--mono-font); ${calYear === m.yr && calMonth === m.mo ? 'background: var(--accent); color: #fff; font-weight: 700; border-color: var(--accent);' : ''}" onclick="window.jumpToCalMonth(${m.yr}, ${m.mo})">${m.label}</button>
         `).join("");
