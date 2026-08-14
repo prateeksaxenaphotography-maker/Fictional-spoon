@@ -155,10 +155,17 @@ window.getAdminInviteCodes = function() {
       let codeStr = typeof item === 'object' ? item.code : item;
       let descStr = typeof item === 'object' ? (item.desc || '') : 'Default Photographer Unlock Code';
       let locationStr = typeof item === 'object' ? (item.location || '') : '';
+      // Whether this invite covers the home studio rental. Absent means waived:
+      // every code that existed before the rental was introduced was free, and
+      // defaulting the other way would hand an unexpected bill to talent who
+      // already hold a code. Only an explicit false makes a code chargeable.
+      let waiveStr = (typeof item === 'object' && item.waiveHomeStudio !== undefined)
+        ? !!item.waiveHomeStudio
+        : true;
       if (codeStr && typeof codeStr === 'string' && !seen.has(codeStr.trim().toUpperCase())) {
         const cleanStr = codeStr.trim().toUpperCase();
         seen.add(cleanStr);
-        result.push({ code: cleanStr, desc: descStr, location: locationStr });
+        result.push({ code: cleanStr, desc: descStr, location: locationStr, waiveHomeStudio: waiveStr });
       }
     });
     return result;
@@ -196,7 +203,9 @@ window.getAdminInviteCodes = function() {
     // Built into the defaults on purpose: invite codes added through the Admin
     // Panel live in this device's localStorage and are never published, so a
     // code that only exists there is invalid for every client who types it.
-    { code: "NERDYHOME", desc: "Home Studio TFP Collaboration Unlock (Location Locked)", location: "Home Studio - Sector 46, Noida (Provided by Studio)" },
+    // waiveHomeStudio: this code has always granted the home studio free, so it
+    // stays free now that the rental exists.
+    { code: "NERDYHOME", desc: "Home Studio TFP Collaboration Unlock (Location Locked)", location: "Home Studio - Sector 46, Noida (Provided by Studio)", waiveHomeStudio: true },
     { code: "NERDYTEST", desc: "Test shoot unlock pass for agency models" },
     { code: "INVITE2026", desc: "General 2026 TFP collaboration pass" },
     { code: "NERDYVIP", desc: "VIP partner unlock code" }
@@ -286,6 +295,8 @@ window.openInviteCodeModal = function(codeStr) {
   if (codeEl) codeEl.value = existing ? existing.code : target;
   if (descEl) descEl.value = existing ? (existing.desc || "") : "";
   if (locationEl) locationEl.value = existing ? (existing.location || "") : "";
+  const waiveEl = document.getElementById("newInviteWaiveHome");
+  if (waiveEl) waiveEl.checked = existing ? (existing.waiveHomeStudio !== false) : true;
 
   form.style.display = "block";
   form.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -296,6 +307,9 @@ window.saveInviteCodeFromForm = function() {
   const code = (document.getElementById("newInviteCode")?.value || "").trim().toUpperCase();
   const desc = (document.getElementById("newInviteDesc")?.value || "").trim() || "Photographer direct unlock code";
   const location = (document.getElementById("newInviteLocation")?.value || "").trim();
+  const waiveEl = document.getElementById("newInviteWaiveHome");
+  // Absent checkbox means the old form is on screen; keep the safe default.
+  const waiveHomeStudio = waiveEl ? !!waiveEl.checked : true;
 
   if (!/^[A-Z0-9][A-Z0-9_-]{1,23}$/.test(code)) {
     alert("Enter an invite code of 2–24 letters, numbers, dashes or underscores (e.g. VIP-2431).");
@@ -311,10 +325,10 @@ window.saveInviteCodeFromForm = function() {
 
   if (editing) {
     const idx = list.findIndex(x => x.code === editing);
-    if (idx !== -1) list[idx] = { code, desc, location };
-    else list.push({ code, desc, location });
+    if (idx !== -1) list[idx] = { code, desc, location, waiveHomeStudio };
+    else list.push({ code, desc, location, waiveHomeStudio });
   } else {
-    list.push({ code, desc, location });
+    list.push({ code, desc, location, waiveHomeStudio });
   }
   window.adminDraftInviteCodes = [...list];
   window._editingInviteCode = null;
@@ -4060,6 +4074,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">🏠 Lock Location for Client <span style="font-weight:400;text-transform:none;color:var(--ink-soft);">(optional — leave blank to let client fill)</span></label>
                   <input type="text" id="newInviteLocation" placeholder="e.g. Home Studio, Sector 15, Noida — or leave blank" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
                 </div>
+                <div style="grid-column: span 3;">
+                  <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: var(--font-xs); line-height: 1.5; color: var(--ink-soft);">
+                    <input type="checkbox" id="newInviteWaiveHome" checked style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent); cursor: pointer; flex: 0 0 auto;" />
+                    <span><strong style="color: var(--ink);">Waive the home studio rental for this code</strong> — the talent shoots at the home studio free of charge. Untick to bill them the standard home studio rental (currently ₹${(typeof getHomeStudioRate === "function" ? getHomeStudioRate() : 3000).toLocaleString('en-IN')}).</span>
+                  </label>
+                </div>
                 <div>
                   <button type="button" class="admin-cal-btn primary" onclick="window.saveInviteCodeFromForm()" style="width: 100%; font-weight: 700; padding: 8px 12px;">💾 Save Invite Code</button>
                 </div>
@@ -6400,7 +6420,7 @@ RAW files are not provided.`
                        when they apply. -->
                   <div style="font-family: var(--mono-font); font-size: var(--font-sm); border-bottom: 1px dashed rgba(255,255,255,0.15); padding-bottom: 12px; margin-bottom: 12px;">
                     <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 5px 0;">
-                      <span style="color: rgba(255,255,255,0.6);">Package Base Rate</span>
+                      <span id="summaryPackageLabel" style="color: rgba(255,255,255,0.6);">Package Base Rate</span>
                       <span id="summaryOriginalPrice" style="font-weight: 700; color: #ffffff; white-space: nowrap;">₹${getAdminPackages()[0].price.toLocaleString('en-IN')}</span>
                     </div>
                     <div id="summaryHomeStudioWrap" style="display: none; justify-content: space-between; align-items: baseline; gap: 12px; padding: 5px 0;">
@@ -6426,6 +6446,15 @@ RAW files are not provided.`
                       <span style="color: rgba(255,255,255,0.6); display: block; font-size: var(--font-xs); text-transform: uppercase;">Step 2 · 50% Wrap Balance (Prior to Deliverables)</span>
                       <strong id="summaryBalanceAmount" style="color: #059669; font-size: var(--font-sm); font-family: var(--mono-font);">₹${(getAdminPackages()[0].price - Math.round(getAdminPackages()[0].price / 2)).toLocaleString('en-IN')} INR</strong>
                     </div>
+                  </div>
+                  <!-- Collaboration bookings carry no package fee, so the only
+                       amount owed is the studio rental. It reserves the space,
+                       so it is due in full up front rather than split in two —
+                       the 50/50 grid above is hidden for these. -->
+                  <div id="summaryReservationCard" style="display: none; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 12px; font-size: var(--font-xs);">
+                    <span style="color: rgba(255,255,255,0.6); display: block; font-size: var(--font-xs); text-transform: uppercase;">🔒 Home Studio Rental · Full Payment Up Front</span>
+                    <strong id="summaryReservationAmount" style="color: var(--accent); font-size: var(--font-sm); font-family: var(--mono-font);">₹0 INR</strong>
+                    <span style="color: rgba(255,255,255,0.5); display: block; margin-top: 4px; line-height: 1.5;">Payable <strong style="color: rgba(255,255,255,0.75);">in full</strong> at least 48 hours before the shoot day to reserve the home studio. <strong style="color: #e07a5f;">Non-refundable.</strong></span>
                   </div>
                 </div>
                </div>
@@ -8000,6 +8029,9 @@ RAW files are not provided.`
       matchedDiscount: null,
       discountTagText: "",
       basePrice: 0,
+      packageCharge: 0,
+      isCollabBooking: false,
+      homeStudioFee: 0,
       savings: 0,
       finalPayable: 0
     };
@@ -8306,12 +8338,13 @@ RAW files are not provided.`
       const homeStudioOpt = $("#b_studio_space_home");
       const isTfpType = $("#b_type")?.value === "Selective Collaboration (TFP)";
 
+      // The home studio used to be withheld from test shoots so the
+      // photographer's residence was not silently given away for free work.
+      // It is now an itemised rental that a test shoot pays like anyone else
+      // (waivable per invite code), so the option is offered to everyone.
       if (homeStudioOpt) {
-        homeStudioOpt.hidden = isTfpType;
-        homeStudioOpt.disabled = isTfpType;
-        if (isTfpType && studioSpaceSel && studioSpaceSel.value === HOME_STUDIO_VALUE) {
-          studioSpaceSel.value = OUTDOOR_VALUE;
-        }
+        homeStudioOpt.hidden = false;
+        homeStudioOpt.disabled = false;
       }
 
       // Picking the home studio fills the address in as a starting point. Only
@@ -8350,16 +8383,25 @@ RAW files are not provided.`
       }
 
       // Update inline contract studio clause dynamically
-      // Home studio rental. Only ever charged on a paid booking the client
-      // chose the home studio for: TFP and invite bookings hide pricing
-      // entirely and are supplied the venue free, so they must never be billed
-      // for it. Computed here rather than beside the rest of the pricing
-      // because the contract clause just below quotes it, and that clause is
-      // the text the client actually ticks agreement to.
-      const homeStudioSelected = $("#b_studio_space")?.value === HOME_STUDIO_VALUE;
-      const homeStudioFee = (homeStudioSelected && !isTfpType && !isValidInvite)
-        ? getHomeStudioRate()
-        : 0;
+      // Home studio rental. The home studio is a bookable venue for test shoots
+      // too, so the charge no longer turns on shoot type — it turns on whether
+      // the invite waives it. Computed here rather than beside the rest of the
+      // pricing because the contract clause just below quotes it, and that
+      // clause is the text the client actually ticks agreement to.
+      // An invite carrying a home-studio venue counts as having chosen it: the
+      // studio-space dropdown is hidden on those bookings.
+      const inviteSuppliesHomeStudio = isValidInvite && /home studio/i.test(lockedLocation || "");
+      const homeStudioSelected = studioSpaceSel?.value === HOME_STUDIO_VALUE || inviteSuppliesHomeStudio;
+      // Waived unless the studio explicitly unticked the waiver on that code.
+      // Codes made before the waiver existed carry no flag and stay free, so no
+      // one already holding one is billed for what they were promised free.
+      const inviteWaivesHomeStudio = !!(isValidInvite && matchedInvite && typeof matchedInvite === "object"
+        && matchedInvite.waiveHomeStudio !== false);
+      const homeStudioFee = (homeStudioSelected && !inviteWaivesHomeStudio) ? getHomeStudioRate() : 0;
+
+      // A collaboration buys no package, so the rental is the only charge it
+      // can ever carry — a package rate must never leak into a TFP quote.
+      const isCollabBooking = isTfpType || isValidInvite;
 
       const contractStudioClause = $("#bookingContractStudioClause");
       if (contractStudioClause) {
@@ -8374,21 +8416,25 @@ RAW files are not provided.`
         // House rules for the residence, quoted wherever the home studio is
         // the venue — a paid booking is capped exactly like an invited one.
         const paidHomeRiderHtml = ` Attendance is limited to a maximum of 3 people in total including the Participant and any crew they bring (hair &amp; makeup, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`;
-        contractStudioClause.innerHTML = (isValidInvite && lockedLocation)
-          ? `Studio for this session is provided by the photographer at <strong>${lockedLocation}</strong> at no additional rental charge to the talent.${lockedHomeRiderHtml}`
+        contractStudioClause.innerHTML = (isValidInvite && lockedLocation && homeStudioFee === 0)
+          ? `Studio for this session is provided by the photographer at <strong>${lockedLocation}</strong> at no additional rental charge to the talent.${lockedHomeRiderHtml} Hair &amp; makeup artists, stylists, set designers and any other third-party crew are not included — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`
           : homeStudioFee > 0
             // The client is looking at a quote with this rental on it, so the
             // clause they tick has to name the same number.
-            ? `This session takes place at the Studio's home studio in Noida. A fixed home studio rental of <strong>₹${homeStudioFee.toLocaleString("en-IN")}</strong> applies and is itemised in the production quote; no further venue rental is billed at actuals for it.${paidHomeRiderHtml} Hair &amp; makeup artists, stylists, set designers and any other third-party crew are not included in the package rate — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`
-            : `If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges. Hair &amp; makeup artists, stylists, set designers and any other third-party crew are not included in the package rate — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`;
+            ? `This session takes place at the Studio's home studio in Noida. A fixed home studio rental of <strong>₹${homeStudioFee.toLocaleString("en-IN")}</strong> applies and is itemised in the production quote; no further venue rental is billed at actuals for it.${paidHomeRiderHtml} Hair &amp; makeup artists, stylists, set designers and any other third-party crew are not included in this booking — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`
+            : `If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges. Hair &amp; makeup artists, stylists, set designers and any other third-party crew are not included in this booking — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`;
       }
 
       // Update TFP policy notice studio line if TFP is selected
       const policyNoticeEl = $("#bookingPolicyNotice");
       if (policyNoticeEl && $("#b_type") && $("#b_type").value === "Selective Collaboration (TFP)") {
-        const studioLine = (isValidInvite && lockedLocation)
-          ? `<strong>🏠 Studio provided by photographer at ${lockedLocation} — no rental charge to talent.</strong>`
-          : `<strong>Note: If a dedicated studio space is booked for the shoot, applicable studio rental charges will apply.</strong>`;
+        // Must agree with the quote box: a test shoot at the home studio now
+        // carries a rental unless the invite waives it.
+        const studioLine = homeStudioFee > 0
+          ? `<strong>🏠 Home studio session: a fixed rental of ₹${homeStudioFee.toLocaleString("en-IN")} applies, itemised in your quote and payable in full before the shoot day.</strong>`
+          : (isValidInvite && lockedLocation)
+            ? `<strong>🏠 Studio provided by photographer at ${lockedLocation} — no rental charge to talent.</strong>`
+            : `<strong>Note: If a dedicated studio space is booked for the shoot, applicable studio rental charges will apply.</strong>`;
         policyNoticeEl.innerHTML = `
           <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">TFP Collaboration &amp; Test Shoot Policy</span>
           Submission of a TFP collaboration request does not constitute a confirmed session or a commitment to shoot. All inquiries are subject to schedule availability, creative alignment, and final studio review. ${studioLine} TFP shoots include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW unedited camera files are strictly excluded and remain unreleased.
@@ -8423,11 +8469,14 @@ RAW files are not provided.`
       let discountTagText = "";
       // Each promo code decides whether it discounts add-ons too, or the
       // package rate alone.
+      const packageCharge = isCollabBooking ? 0 : basePrice;
       const discountableTotal = (matchedDiscount && matchedDiscount.includeAddons)
-        ? basePrice + homeStudioFee
-        : basePrice;
+        ? packageCharge + homeStudioFee
+        : packageCharge;
 
-      if (matchedDiscount) {
+      // Promo codes are a paid-booking mechanism and the field is hidden on
+      // collaborations, so a code left in the box must not discount a rental.
+      if (matchedDiscount && !isCollabBooking) {
         if (matchedDiscount.flat) {
           savings = matchedDiscount.flat;
           discountTagText = `FLAT ₹${matchedDiscount.flat.toLocaleString("en-IN")} OFF`;
@@ -8440,7 +8489,7 @@ RAW files are not provided.`
       // code caps at the package, so a large flat code cannot quietly eat the
       // studio rental it was never meant to cover.
       savings = Math.min(savings, discountableTotal);
-      let finalPayable = Math.max(0, basePrice + homeStudioFee - savings);
+      let finalPayable = Math.max(0, packageCharge + homeStudioFee - savings);
 
       // Publish the current invite/promo/pricing state for the submit handler.
       bookingCalc = {
@@ -8452,6 +8501,11 @@ RAW files are not provided.`
         matchedDiscount,
         discountTagText,
         basePrice,
+        // What the package actually contributes: zero on a collaboration, so
+        // the submit handler bills the rental alone rather than a package rate
+        // the client was never quoted.
+        packageCharge,
+        isCollabBooking,
         homeStudioFee,
         savings,
         finalPayable
@@ -8499,16 +8553,36 @@ RAW files are not provided.`
         ].join("\n");
       }
 
-      if (effectiveType === "Selective Collaboration (TFP)" || isValidInvite) {
-        if (finalPriceSummaryBox) finalPriceSummaryBox.style.display = "none";
+      // A collaboration owes nothing unless it is using the home studio without
+      // a waiver. When it does, the quote has to appear — charging a rental the
+      // client was never shown is exactly the failure this box exists to stop.
+      const collabOwesRental = isCollabBooking && homeStudioFee > 0;
+
+      // `wps-no-pricing` hides the quote with !important, which is right for a
+      // free collaboration and wrong the moment one owes a rental. This is the
+      // switch that lets the itemised quote back through.
+      document.body.classList.toggle("wps-rental-quote", homeStudioFee > 0);
+
+      if (isCollabBooking) {
+        if (finalPriceSummaryBox) finalPriceSummaryBox.style.display = collabOwesRental ? "block" : "none";
         if (promoCodeWrap) promoCodeWrap.style.display = "none";
         if (budgetField) budgetField.style.display = "none";
       } else {
         if (finalPriceSummaryBox) finalPriceSummaryBox.style.display = "block";
         if (promoCodeWrap) promoCodeWrap.style.display = "";
         if (budgetField) budgetField.style.display = "";
+      }
 
-        if (summaryOriginalPrice) summaryOriginalPrice.textContent = `₹${basePrice.toLocaleString("en-IN")}`;
+      if (!isCollabBooking || collabOwesRental) {
+        // On a collaboration the first line names the arrangement rather than a
+        // package, and reads ₹0 — there is no package rate to quote.
+        const summaryPackageLabel = $("#summaryPackageLabel");
+        if (summaryPackageLabel) {
+          summaryPackageLabel.textContent = isCollabBooking
+            ? "Test Shoot Collaboration (TFP)"
+            : "Package Base Rate";
+        }
+        if (summaryOriginalPrice) summaryOriginalPrice.textContent = `₹${packageCharge.toLocaleString("en-IN")}`;
 
         // Home studio rental line — present only when it is actually charged.
         const summaryHomeStudioWrap = $("#summaryHomeStudioWrap");
@@ -8534,13 +8608,26 @@ RAW files are not provided.`
         }
         if (summaryFinalAmount) summaryFinalAmount.textContent = `₹${finalPayable.toLocaleString("en-IN")} INR`;
 
-        // 50/50 Itemized Retainer & Balance Update
-        const advanceRetainer = Math.round(finalPayable / 2);
-        const wrapBalance = finalPayable - advanceRetainer;
-        const summaryAdvanceAmount = $("#summaryAdvanceAmount");
-        const summaryBalanceAmount = $("#summaryBalanceAmount");
-        if (summaryAdvanceAmount) summaryAdvanceAmount.textContent = `₹${advanceRetainer.toLocaleString("en-IN")} INR`;
-        if (summaryBalanceAmount) summaryBalanceAmount.textContent = `₹${wrapBalance.toLocaleString("en-IN")} INR`;
+        // Payment terms. A collaboration owes only the rental, which reserves
+        // the space, so it is due in full up front — splitting a small rental
+        // into two milestones just creates a second amount to chase.
+        const milestoneGrid = $("#summaryMilestoneBreakdown");
+        const reservationCard = $("#summaryReservationCard");
+        if (milestoneGrid) milestoneGrid.style.display = collabOwesRental ? "none" : "grid";
+        if (reservationCard) reservationCard.style.display = collabOwesRental ? "block" : "none";
+
+        if (collabOwesRental) {
+          const reservationAmount = $("#summaryReservationAmount");
+          if (reservationAmount) reservationAmount.textContent = `₹${finalPayable.toLocaleString("en-IN")} INR`;
+        } else {
+          // 50/50 Itemized Retainer & Balance Update
+          const advanceRetainer = Math.round(finalPayable / 2);
+          const wrapBalance = finalPayable - advanceRetainer;
+          const summaryAdvanceAmount = $("#summaryAdvanceAmount");
+          const summaryBalanceAmount = $("#summaryBalanceAmount");
+          if (summaryAdvanceAmount) summaryAdvanceAmount.textContent = `₹${advanceRetainer.toLocaleString("en-IN")} INR`;
+          if (summaryBalanceAmount) summaryBalanceAmount.textContent = `₹${wrapBalance.toLocaleString("en-IN")} INR`;
+        }
 
         // Update Mobile Sticky Floating Action Bar (FAB)
         const fabPrice = $("#mobileFabPrice");
@@ -8830,12 +8917,21 @@ RAW files are not provided.`
         // the milestones. They previously appeared only in the inquiry email as
         // booking details — so the document the client actually signed said
         // nothing at all about money, the package, or the non-refundable split.
+        // Declared before the contract text rather than beside the other venue
+        // details further down: the clauses below quote this number, and a
+        // const read before its declaration is a crash, not a zero.
+        const homeStudioRentalFee = (bookingCalc && bookingCalc.homeStudioFee) || 0;
         const is3StepActive = $("#flowchart3Step") && $("#flowchart3Step").style.display !== "none";
         const paymentTermsText = is3StepActive ?
           `Payment Terms: 3-Tier Campaign Milestones (50% Advance Retainer before shoot day start [non-refundable]; 30% Review Milestone after shoot before proofing gallery [non-refundable]; 20% Final Release prior to receiving any downloadable file)` :
           `Payment Terms: Standard 50/50 Milestones (50% Advance Retainer before shoot day start [non-refundable]; 50% Final Balance after shoot wrap prior to receiving any downloadable file [non-refundable])`;
+        // A collaboration carries no shoot fee, but it can still owe the home
+        // studio rental — and the document the participant agrees to has to say
+        // so, in the same terms the quote showed them.
         const engagementFeeClause = isTfpCat
-          ? ""
+          ? (homeStudioRentalFee > 0
+              ? `\n\n7. HOME STUDIO RENTAL & PAYMENT\nThis collaboration carries no shoot fee. A fixed home studio rental of ₹${homeStudioRentalFee.toLocaleString('en-IN')} applies for use of the photographer's home studio in Noida, and is payable IN FULL at least 48 hours before the shoot day to reserve the space. This rental is non-refundable once paid, including where the Participant cancels or reschedules. No other fee is payable to the Studio for this session.`
+              : "")
           : `\n\n7. ENGAGEMENT FEE, SELECTED PACKAGE & PAYMENT MILESTONES\nSelected package and contracted deliverables: ${budget || "as quoted by the Studio"}.\n${paymentTermsText.replace(/^Payment Terms: /, "Payment terms: ")}\nMilestone payments marked non-refundable are non-refundable once paid, including where the Participant cancels or reschedules. Deliverables are released only after the final milestone is cleared. Any work beyond the contracted package (additional retouched masters, extended usage, gallery buyout) is quoted and invoiced separately.`;
 
         const tfpReleaseText = agreedToTerms ? (
@@ -8873,19 +8969,21 @@ RAW files are not provided.`
         // Read from the pricing snapshot rather than the destructure further
         // down: that runs after this block, so naming it here would be a
         // use-before-declaration crash on every submit.
-        const homeStudioRentalFee = (bookingCalc && bookingCalc.homeStudioFee) || 0;
         // House rules for shooting at the photographer's residence apply
         // whether or not a rental is charged for it.
         const homeStudioHouseRules = `Home Studio Policy: This session takes place at the photographer's private residence. Attendance is capped at 3 people in total including yourself and any crew you bring (hair & makeup, stylist, assistants and guests all count towards this cap), sessions run within booked daylight hours and finish by 7:00 PM, and the full address is shared once the booking is confirmed. Guests may not attend unaccompanied.\n`;
 
-        const studioSpaceVal = isHomeStudio
+        // A rental above zero means the home studio IS the venue, whatever the
+        // dropdown says — it is hidden entirely on invite bookings, so keying
+        // off it alone described an invited-but-chargeable session as free.
+        const studioSpaceVal = (isHomeStudio || homeStudioRentalFee > 0)
           ? (homeStudioRentalFee > 0
               ? `Home Studio, Noida — provided by the studio, fixed rental ₹${homeStudioRentalFee.toLocaleString('en-IN')} (itemised in the quote)`
               : `Home Studio, Noida — provided by the studio, no rental billed`)
           : (venueByStudio
               ? `Not required — venue provided by the studio (photographer's invite)`
               : (val("b_studio_space") || 'Not Specified'));
-        const studioRentalPolicyNote = (isHomeStudio && homeStudioRentalFee > 0)
+        const studioRentalPolicyNote = (homeStudioRentalFee > 0)
           // A paid home-studio booking is the one case where the studio does
           // charge for its own venue, so the stock "no fee is billed to you"
           // and "billed at actuals" lines would both misstate the quote.
@@ -8901,9 +8999,12 @@ RAW files are not provided.`
         // Paid shoots only: the package buys the photographer, not the crew.
         // Nothing anywhere said so, which left every HMUA/styling/set cost an
         // argument waiting to happen on shoot day.
+        // Test shoots need this every bit as much as paid ones: a collaboration
+        // covers the photographer's time, never an HMUA or stylist the talent
+        // assumed was included.
         const crewCostPolicyNote = (type !== "Selective Collaboration (TFP)")
           ? `Creative Crew & Third-Party Costs: The package rate covers the photographer's creative fee, light design, direction and retouched master deliverables only. If the shoot requires a hair & makeup artist (HMUA), wardrobe stylist, set designer, props / set construction, art direction or any other third-party creative, their charges apply AT ACTUALS (at cost) over and above the package rate. You are free to bring your own crew, or the studio can source them for you — either way the cost is quoted for your approval before the shoot day and nothing is incurred without your confirmation.\n`
-          : ``;
+          : `Creative Crew & Third-Party Costs: This collaboration covers the photographer's creative fee, light design, direction and the agreed retouched master deliverables only. If the shoot requires a hair & makeup artist (HMUA), wardrobe stylist, set designer, props / set construction, art direction or any other third-party creative, those charges apply AT ACTUALS (at cost) and are borne by the participant. You are free to bring your own crew, or the studio can source them for you — either way the cost is quoted for your approval before the shoot day and nothing is incurred without your confirmation.\n`;
         const deliverablePolicyNote = `RAW Files & Deliverables Policy: Includes proofing gallery + contracted retouched master limit. Requesting the complete full unedited image gallery or extra retouched master clicks beyond the package limit incurs additional gallery buyout fees. RAW unedited camera files remain confidential studio property.\n`;
         const gearPolicyNote = `Camera & Media Policy: All cameras, memory cards, and raw captures are strictly hands-off. Participants may not touch equipment or delete media from cameras. Deleting files constitutes a material breach of contract and incurs full data recovery costs.\n`;
 
@@ -8922,7 +9023,11 @@ RAW files are not provided.`
           travelPolicyNote +
           cleanBudget +
           (homeStudioRentalFee > 0 ? `Home Studio Rental (add-on): ₹${homeStudioRentalFee.toLocaleString('en-IN')}\n` : "") +
-          (type !== "Selective Collaboration (TFP)" ? `${paymentTermsText}\n` : "") +
+          (type !== "Selective Collaboration (TFP)"
+            ? `${paymentTermsText}\n`
+            : (homeStudioRentalFee > 0
+                ? `Payment Terms: No shoot fee applies to this collaboration. The home studio rental of ₹${homeStudioRentalFee.toLocaleString('en-IN')} is payable IN FULL at least 48 hours before the shoot day to reserve the space (non-refundable once paid). Nothing else is payable to the studio.\n`
+                : "")) +
           crewCostPolicyNote +
           deliverablePolicyNote +
           gearPolicyNote +
@@ -8991,6 +9096,10 @@ RAW files are not provided.`
           savings: savings
         } : null;
 
+        // A collaboration can still owe the home studio rental, so it no longer
+        // records a flat zero. The rental reserves the space and is due in full
+        // before the shoot, so it is booked as the retainer with no wrap
+        // balance — a 50/50 split on a rental is not what the client agreed to.
         const financialSummary = (type !== "Selective Collaboration (TFP)" && !isValidInvite) ? {
           basePrice: basePrice,
           homeStudioFee: homeStudioFee || 0,
@@ -8998,7 +9107,14 @@ RAW files are not provided.`
           finalPayable: finalPayable,
           advanceRetainer: Math.round(finalPayable / 2),
           wrapBalance: finalPayable - Math.round(finalPayable / 2)
-        } : { basePrice: 0, homeStudioFee: 0, savings: 0, finalPayable: 0, advanceRetainer: 0, wrapBalance: 0 };
+        } : {
+          basePrice: 0,
+          homeStudioFee: homeStudioRentalFee,
+          savings: 0,
+          finalPayable: homeStudioRentalFee,
+          advanceRetainer: homeStudioRentalFee,
+          wrapBalance: 0
+        };
 
         async function recordContractAudit(payload) {
           saveLocalContractAudit({
