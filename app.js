@@ -8598,6 +8598,8 @@ RAW files are not provided.`
         const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(studioEmail)}&su=${subject}&body=${body}`;
         const outlookUrl = `https://outlook.live.com/default.aspx?rru=compose&to=${encodeURIComponent(studioEmail)}&subject=${subject}&body=${body}`;
 
+        const contractNumber = agreedToTerms ? generateContractNumber() : "";
+
         // Gather complete metadata for Admin DB & Audit Vault:
         const inviteMeta = (isValidInvite && matchedInvite && typeof matchedInvite === "object") ? {
           code: matchedInvite.code,
@@ -8630,10 +8632,6 @@ RAW files are not provided.`
             date: payload.date,
             shootType: payload.shootType,
             timestamp: new Date().toISOString(),
-            // Record what was actually captured. Hardcoding this to true made
-            // the vault report "Signed: Yes" for every booking, including the
-            // checkbox ones where no signature exists — the studio's own record
-            // claiming a signature it does not hold.
             sigCaptured: !!payload.sigDataUrl,
             agreementMethod: payload.agreementMethod || (payload.sigDataUrl ? "signature" : ""),
             isCustomContract: payload.isCustomContract || false,
@@ -8963,6 +8961,8 @@ RAW files are not provided.`
 
       if (customWrap) customWrap.style.display = "none";
       if (customInput) customInput.value = "";
+      const agreeCheckbox = $("#termsAgreeCheckbox");
+      if (agreeCheckbox) agreeCheckbox.checked = false;
       if (customBtn) {
         customBtn.textContent = "📝 Request Custom Contract";
         customBtn.style.display = isTfp ? "none" : "inline-flex"; // Hide custom contract for fixed TFP collaborations
