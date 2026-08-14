@@ -155,19 +155,22 @@ window.getAdminInviteCodes = function() {
       let codeStr = typeof item === 'object' ? item.code : item;
       let descStr = typeof item === 'object' ? (item.desc || '') : 'Default Photographer Unlock Code';
       let locationStr = typeof item === 'object' ? (item.location || '') : '';
-      // Whether this invite covers the home studio rental. With no flag stored,
-      // the code's own venue decides: one that hands the talent the home studio
-      // (NERDYHOME) is offering it, so it is covered; a plain unlock code only
-      // opens up test shoots and leaves the rental payable. Waiving everything
-      // by default meant the charge could never appear on a test shoot at all,
-      // since test shoots are invite-gated.
-      let waiveStr = (typeof item === 'object' && item.waiveHomeStudio !== undefined)
-        ? !!item.waiveHomeStudio
-        : /home studio/i.test(locationStr || "");
+      // What the talent pays for the venue this code supplies. Only meaningful
+      // alongside a locked location: the studio has chosen where the shoot
+      // happens, so it also says what that costs. Blank means complimentary —
+      // the common case — and a number bills exactly that, which covers a
+      // rented space with a real cost as well as the home studio.
+      // Codes with no locked venue leave the choice to the talent, so the
+      // standard home studio rate governs there instead of this field.
+      let venueCostVal = null;
+      if (typeof item === 'object' && item.venueCost !== undefined && item.venueCost !== null && item.venueCost !== "") {
+        const n = parseInt(item.venueCost, 10);
+        if (!isNaN(n) && n >= 0) venueCostVal = n;
+      }
       if (codeStr && typeof codeStr === 'string' && !seen.has(codeStr.trim().toUpperCase())) {
         const cleanStr = codeStr.trim().toUpperCase();
         seen.add(cleanStr);
-        result.push({ code: cleanStr, desc: descStr, location: locationStr, waiveHomeStudio: waiveStr });
+        result.push({ code: cleanStr, desc: descStr, location: locationStr, venueCost: venueCostVal });
       }
     });
     return result;
@@ -205,9 +208,9 @@ window.getAdminInviteCodes = function() {
     // Built into the defaults on purpose: invite codes added through the Admin
     // Panel live in this device's localStorage and are never published, so a
     // code that only exists there is invalid for every client who types it.
-    // waiveHomeStudio: this code has always granted the home studio free, so it
-    // stays free now that the rental exists.
-    { code: "NERDYHOME", desc: "Home Studio TFP Collaboration Unlock (Location Locked)", location: "Home Studio - Sector 46, Noida (Provided by Studio)", waiveHomeStudio: true },
+    // No venueCost: this code has always granted the home studio free, and a
+    // blank venue cost is exactly that.
+    { code: "NERDYHOME", desc: "Home Studio TFP Collaboration Unlock (Location Locked)", location: "Home Studio - Sector 46, Noida (Provided by Studio)" },
     { code: "NERDYTEST", desc: "Test shoot unlock pass for agency models" },
     { code: "INVITE2026", desc: "General 2026 TFP collaboration pass" },
     { code: "NERDYVIP", desc: "VIP partner unlock code" }
@@ -297,22 +300,43 @@ window.openInviteCodeModal = function(codeStr) {
   if (codeEl) codeEl.value = existing ? existing.code : target;
   if (descEl) descEl.value = existing ? (existing.desc || "") : "";
   if (locationEl) locationEl.value = existing ? (existing.location || "") : "";
-  const waiveEl = document.getElementById("newInviteWaiveHome");
-  // New codes charge the rental; editing shows whatever that code actually has.
-  if (waiveEl) waiveEl.checked = existing ? (existing.waiveHomeStudio === true) : false;
+  // Blank cost box means complimentary, which is what most invites are.
+  const costEl = document.getElementById("newInviteVenueCost");
+  if (costEl) costEl.value = (existing && existing.venueCost !== null && existing.venueCost !== undefined) ? String(existing.venueCost) : "";
+  if (typeof window.syncInviteWaiveVisibility === "function") window.syncInviteWaiveVisibility();
 
   form.style.display = "block";
   form.scrollIntoView({ behavior: "smooth", block: "center" });
   if (codeEl) codeEl.focus();
 };
 
+// The cost box only applies to a code that supplies its own venue. With no
+// address the talent picks, and the studio's standard home studio rate governs
+// instead — so the box is swapped for a line saying exactly that.
+window.syncInviteWaiveVisibility = function() {
+  const hasVenue = !!(document.getElementById("newInviteLocation")?.value || "").trim();
+  const row = document.getElementById("newInviteWaiveRow");
+  const note = document.getElementById("newInviteVenueNote");
+  if (row) row.style.display = hasVenue ? "" : "none";
+  if (note) note.style.display = hasVenue ? "none" : "block";
+};
+
 window.saveInviteCodeFromForm = function() {
   const code = (document.getElementById("newInviteCode")?.value || "").trim().toUpperCase();
   const desc = (document.getElementById("newInviteDesc")?.value || "").trim() || "Photographer direct unlock code";
   const location = (document.getElementById("newInviteLocation")?.value || "").trim();
-  const waiveEl = document.getElementById("newInviteWaiveHome");
-  // Absent checkbox means the old form is on screen; keep the safe default.
-  const waiveHomeStudio = waiveEl ? !!waiveEl.checked : true;
+  // Only a code that supplies a venue carries a venue cost; without one the
+  // standard home studio rate applies and this field is not even shown.
+  const costRaw = (document.getElementById("newInviteVenueCost")?.value || "").trim();
+  let venueCost = null;
+  if (location && costRaw !== "") {
+    const n = parseInt(costRaw, 10);
+    if (isNaN(n) || n < 0) {
+      alert("Venue cost must be a whole number in ₹ (or leave it blank if the venue is free).");
+      return;
+    }
+    venueCost = n;
+  }
 
   if (!/^[A-Z0-9][A-Z0-9_-]{1,23}$/.test(code)) {
     alert("Enter an invite code of 2–24 letters, numbers, dashes or underscores (e.g. VIP-2431).");
@@ -328,10 +352,10 @@ window.saveInviteCodeFromForm = function() {
 
   if (editing) {
     const idx = list.findIndex(x => x.code === editing);
-    if (idx !== -1) list[idx] = { code, desc, location, waiveHomeStudio };
-    else list.push({ code, desc, location, waiveHomeStudio });
+    if (idx !== -1) list[idx] = { code, desc, location, venueCost };
+    else list.push({ code, desc, location, venueCost });
   } else {
-    list.push({ code, desc, location, waiveHomeStudio });
+    list.push({ code, desc, location, venueCost });
   }
   window.adminDraftInviteCodes = [...list];
   window._editingInviteCode = null;
@@ -4085,13 +4109,19 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 </div>
                 <div style="grid-column: span 3;">
                   <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">🏠 Lock Location for Client <span style="font-weight:400;text-transform:none;color:var(--ink-soft);">(optional — leave blank to let client fill)</span></label>
-                  <input type="text" id="newInviteLocation" placeholder="e.g. Home Studio, Sector 15, Noida — or leave blank" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
+                  <input type="text" id="newInviteLocation" placeholder="e.g. Home Studio, Sector 15, Noida — or leave blank" oninput="window.syncInviteWaiveVisibility && window.syncInviteWaiveVisibility()" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
                 </div>
-                <div style="grid-column: span 3;">
-                  <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: var(--font-xs); line-height: 1.5; color: var(--ink-soft);">
-                    <input type="checkbox" id="newInviteWaiveHome" style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent); cursor: pointer; flex: 0 0 auto;" />
-                    <span><strong style="color: var(--ink);">Waive the home studio rental for this code</strong> — the talent shoots at the home studio free of charge. Leave unticked to bill the standard home studio rental (currently ₹${(typeof getHomeStudioRate === "function" ? getHomeStudioRate() : 3000).toLocaleString('en-IN')}) when they pick it.</span>
-                  </label>
+                <!-- Only shown when the code leaves the venue to the talent. A
+                     code that names a venue has already had it chosen for them
+                     by the studio, so the rental is waived and there is nothing
+                     here to decide. -->
+                <div id="newInviteWaiveRow" style="grid-column: span 3; display: none;">
+                  <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">💰 Venue cost for this code <span style="font-weight:400;text-transform:none;color:var(--ink-soft);">(optional — leave blank if it is free)</span></label>
+                  <input type="number" min="0" id="newInviteVenueCost" placeholder="Blank = complimentary" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); font-weight: 700; color: #059669; background: var(--bone);" />
+                  <span style="display: block; margin-top: 5px; font-size: var(--font-xs); line-height: 1.5; color: var(--ink-soft);">You picked the venue above, so you decide what it costs. Leave this blank and the shoot is complimentary. Enter an amount and the talent is billed exactly that, shown as its own line in their quote and payable in full before the shoot.</span>
+                </div>
+                <div id="newInviteVenueNote" style="grid-column: span 3; font-size: var(--font-xs); line-height: 1.5; color: var(--ink-soft); background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;">
+                  🏠 <strong style="color: var(--ink);">No venue locked, so the talent chooses.</strong> If they pick your home studio they are billed your standard home studio rate (currently ₹${(typeof getHomeStudioRate === "function" ? getHomeStudioRate() : 3000).toLocaleString('en-IN')}). Fill in an address above to choose the venue for them and set its cost.
                 </div>
                 <div>
                   <button type="button" class="admin-cal-btn primary" onclick="window.saveInviteCodeFromForm()" style="width: 100%; font-weight: 700; padding: 8px 12px;">💾 Save Invite Code</button>
@@ -8403,14 +8433,22 @@ RAW files are not provided.`
       // clause is the text the client actually ticks agreement to.
       // An invite carrying a home-studio venue counts as having chosen it: the
       // studio-space dropdown is hidden on those bookings.
-      const inviteSuppliesHomeStudio = isValidInvite && /home studio/i.test(lockedLocation || "");
-      const homeStudioSelected = studioSpaceSel?.value === HOME_STUDIO_VALUE || inviteSuppliesHomeStudio;
-      // Waived unless the studio explicitly unticked the waiver on that code.
-      // Codes made before the waiver existed carry no flag and stay free, so no
-      // one already holding one is billed for what they were promised free.
-      const inviteWaivesHomeStudio = !!(isValidInvite && matchedInvite && typeof matchedInvite === "object"
-        && matchedInvite.waiveHomeStudio !== false);
-      const homeStudioFee = (homeStudioSelected && !inviteWaivesHomeStudio) ? getHomeStudioRate() : 0;
+      // Two different situations, so two different sources for the charge:
+      //   · the code locks a venue — the studio picked the place, so the code
+      //     also says what it costs (blank = complimentary, which is the usual
+      //     case, and a figure covers a rented space with a real cost);
+      //   · no locked venue — the talent picks, so choosing the home studio
+      //     costs the studio's standard published rate.
+      const inviteLocksVenue = !!(isValidInvite && lockedLocation);
+      const dropdownHomeStudio = studioSpaceSel?.value === HOME_STUDIO_VALUE;
+      let homeStudioFee = 0;
+      if (inviteLocksVenue) {
+        const c = matchedInvite && typeof matchedInvite === "object" ? Number(matchedInvite.venueCost) : 0;
+        homeStudioFee = (!isNaN(c) && c > 0) ? c : 0;
+      } else if (dropdownHomeStudio) {
+        homeStudioFee = getHomeStudioRate();
+      }
+      const homeStudioSelected = dropdownHomeStudio || inviteLocksVenue;
 
       // A collaboration buys no package, so the rental is the only charge it
       // can ever carry — a package rate must never leak into a TFP quote.
@@ -8605,6 +8643,15 @@ RAW files are not provided.`
         }
         if (summaryHomeStudioAmount && homeStudioFee > 0) {
           summaryHomeStudioAmount.textContent = `+₹${homeStudioFee.toLocaleString("en-IN")}`;
+        }
+        // Name the actual venue when the invite supplies one — billing a client
+        // for "Home Studio Rental" when the code sent them to a rented space is
+        // a line item they cannot reconcile.
+        const summaryHomeStudioLabel = $("#summaryHomeStudioLabel");
+        if (summaryHomeStudioLabel && homeStudioFee > 0) {
+          summaryHomeStudioLabel.textContent = inviteLocksVenue
+            ? `Studio Venue (${lockedLocation})`
+            : "Home Studio Rental (Noida)";
         }
 
         if (savings > 0) {
@@ -8989,10 +9036,16 @@ RAW files are not provided.`
         // A rental above zero means the home studio IS the venue, whatever the
         // dropdown says — it is hidden entirely on invite bookings, so keying
         // off it alone described an invited-but-chargeable session as free.
+        // An invite can supply a venue that is not the home studio at all, so
+        // the venue is named from the booking rather than assumed — billing a
+        // rented space as "Home Studio, Noida" leaves the studio's own record
+        // describing a shoot that never happened there.
+        const inviteVenueName = (bookingCalc && bookingCalc.isValidInvite && bookingCalc.lockedLocation) || "";
+        const venueLabel = inviteVenueName || "Home Studio, Noida";
         const studioSpaceVal = (isHomeStudio || homeStudioRentalFee > 0)
           ? (homeStudioRentalFee > 0
-              ? `Home Studio, Noida — provided by the studio, fixed rental ₹${homeStudioRentalFee.toLocaleString('en-IN')} (itemised in the quote)`
-              : `Home Studio, Noida — provided by the studio, no rental billed`)
+              ? `${venueLabel} — provided by the studio, fixed rental ₹${homeStudioRentalFee.toLocaleString('en-IN')} (itemised in the quote)`
+              : `${venueLabel} — provided by the studio, no rental billed`)
           : (venueByStudio
               ? `Not required — venue provided by the studio (photographer's invite)`
               : (val("b_studio_space") || 'Not Specified'));
@@ -9329,8 +9382,8 @@ RAW files are not provided.`
           // The rental and the resulting total are what the client just agreed
           // to pay. Without them the studio's own copy of the booking gave no
           // hint a rental was owed, so there was nothing to invoice against.
-          "Home Studio Rental": homeStudioRentalFee > 0
-            ? `₹${homeStudioRentalFee.toLocaleString('en-IN')} (payable in full before the shoot)`
+          "Studio / Venue Charge": homeStudioRentalFee > 0
+            ? `₹${homeStudioRentalFee.toLocaleString('en-IN')} — ${venueLabel} (payable in full before the shoot)`
             : "Not applicable",
           "Total Payable": financialSummary.finalPayable > 0
             ? `₹${financialSummary.finalPayable.toLocaleString('en-IN')}`
