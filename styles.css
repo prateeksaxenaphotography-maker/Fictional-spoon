@@ -1930,3 +1930,10 @@ body.wps-no-pricing #b_discount_field,
 body.wps-no-pricing #b_budget_field,
 body.wps-no-pricing #discountSavingsBadge,
 body.wps-no-pricing #paymentTermsFieldset { display: none !important; }
+
+/* One exception, and only one: a collaboration held at the home studio without
+   a waiver genuinely owes the studio rental. Suppressing the quote there would
+   bill a client an amount they were never shown — the opposite failure to the
+   one the rule above prevents. The package rate, promo field and payment
+   milestones stay hidden; just the itemised quote comes back. */
+body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !important; }
