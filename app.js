@@ -155,13 +155,15 @@ window.getAdminInviteCodes = function() {
       let codeStr = typeof item === 'object' ? item.code : item;
       let descStr = typeof item === 'object' ? (item.desc || '') : 'Default Photographer Unlock Code';
       let locationStr = typeof item === 'object' ? (item.location || '') : '';
-      // Whether this invite covers the home studio rental. Absent means waived:
-      // every code that existed before the rental was introduced was free, and
-      // defaulting the other way would hand an unexpected bill to talent who
-      // already hold a code. Only an explicit false makes a code chargeable.
+      // Whether this invite covers the home studio rental. With no flag stored,
+      // the code's own venue decides: one that hands the talent the home studio
+      // (NERDYHOME) is offering it, so it is covered; a plain unlock code only
+      // opens up test shoots and leaves the rental payable. Waiving everything
+      // by default meant the charge could never appear on a test shoot at all,
+      // since test shoots are invite-gated.
       let waiveStr = (typeof item === 'object' && item.waiveHomeStudio !== undefined)
         ? !!item.waiveHomeStudio
-        : true;
+        : /home studio/i.test(locationStr || "");
       if (codeStr && typeof codeStr === 'string' && !seen.has(codeStr.trim().toUpperCase())) {
         const cleanStr = codeStr.trim().toUpperCase();
         seen.add(cleanStr);
@@ -296,7 +298,8 @@ window.openInviteCodeModal = function(codeStr) {
   if (descEl) descEl.value = existing ? (existing.desc || "") : "";
   if (locationEl) locationEl.value = existing ? (existing.location || "") : "";
   const waiveEl = document.getElementById("newInviteWaiveHome");
-  if (waiveEl) waiveEl.checked = existing ? (existing.waiveHomeStudio !== false) : true;
+  // New codes charge the rental; editing shows whatever that code actually has.
+  if (waiveEl) waiveEl.checked = existing ? (existing.waiveHomeStudio === true) : false;
 
   form.style.display = "block";
   form.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -3534,6 +3537,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       contractNumber: bookingObj.contractNumber || "",
       sigDataUrl: bookingObj.sigDataUrl || "",
       agreedContract: bookingObj.agreedContract || "",
+      // What the client was quoted. These were passed in by the booking form
+      // but never listed here, and the whitelist above drops anything unlisted
+      // — so every booking was stored with no money on it at all, including
+      // the home studio rental the client had just agreed to pay.
+      budget: bookingObj.budget || "",
+      homeStudioFee: Number(bookingObj.homeStudioFee) || 0,
+      finalPayable: Number(bookingObj.finalPayable) || 0,
+      financials: bookingObj.financials || null,
+      inviteMeta: bookingObj.inviteMeta || null,
+      promoMeta: bookingObj.promoMeta || null,
       createdAt: Date.now()
     };
     settings.bookedDates[dKey].push(booking);
@@ -4076,8 +4089,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 </div>
                 <div style="grid-column: span 3;">
                   <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: var(--font-xs); line-height: 1.5; color: var(--ink-soft);">
-                    <input type="checkbox" id="newInviteWaiveHome" checked style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent); cursor: pointer; flex: 0 0 auto;" />
-                    <span><strong style="color: var(--ink);">Waive the home studio rental for this code</strong> — the talent shoots at the home studio free of charge. Untick to bill them the standard home studio rental (currently ₹${(typeof getHomeStudioRate === "function" ? getHomeStudioRate() : 3000).toLocaleString('en-IN')}).</span>
+                    <input type="checkbox" id="newInviteWaiveHome" style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent); cursor: pointer; flex: 0 0 auto;" />
+                    <span><strong style="color: var(--ink);">Waive the home studio rental for this code</strong> — the talent shoots at the home studio free of charge. Leave unticked to bill the standard home studio rental (currently ₹${(typeof getHomeStudioRate === "function" ? getHomeStudioRate() : 3000).toLocaleString('en-IN')}) when they pick it.</span>
                   </label>
                 </div>
                 <div>
@@ -9202,6 +9215,7 @@ RAW files are not provided.`
                   location: locationVal,
                   notes: concept,
                   budget,
+                  homeStudioFee: financialSummary.homeStudioFee,
                   finalPayable: financialSummary.finalPayable,
                   contractVersion: contractRefDoc,
                   agreedToTerms: true,
@@ -9310,7 +9324,17 @@ RAW files are not provided.`
           "Shoot Type": type,
           "Proposed Date": date,
           "Location Pref": locationVal,
+          "Studio Space": studioSpaceVal || "—",
           "Budget Range": budget,
+          // The rental and the resulting total are what the client just agreed
+          // to pay. Without them the studio's own copy of the booking gave no
+          // hint a rental was owed, so there was nothing to invoice against.
+          "Home Studio Rental": homeStudioRentalFee > 0
+            ? `₹${homeStudioRentalFee.toLocaleString('en-IN')} (payable in full before the shoot)`
+            : "Not applicable",
+          "Total Payable": financialSummary.finalPayable > 0
+            ? `₹${financialSummary.finalPayable.toLocaleString('en-IN')}`
+            : (type === "Selective Collaboration (TFP)" ? "₹0 — TFP collaboration" : "—"),
           "Moodboard Link": moodboard || "—",
           "Concept / Vision": concept || "—",
           "TFP Release": agreedToTerms ? "AGREED — TFP-LIABILITY-RELEASE-V3.3 (full text below)" : "Not applicable",
