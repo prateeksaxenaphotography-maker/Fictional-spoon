@@ -6538,6 +6538,15 @@ RAW files are not provided.`
                       <span id="summaryDiscountLabel" style="color: #059669; font-weight: 700;">Promo Savings:</span>
                       <span id="summarySavingsAmount" style="font-weight: 700; color: #059669; white-space: nowrap;">-₹0</span>
                     </div>
+                    <!-- Only when more than one saving stacks up. A waived
+                         rental is worth more than the discount that carried it,
+                         and adding them up is the only place the client (and
+                         the studio's own record) sees what the booking was
+                         really worth. -->
+                    <div id="summaryTotalSavingsWrap" style="display: none; justify-content: space-between; align-items: baseline; gap: 12px; padding: 8px 0 2px; margin-top: 6px; border-top: 1px dashed rgba(5,150,105,0.35);">
+                      <span style="color: #059669; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-size: var(--font-xs);">💰 Total Savings</span>
+                      <span id="summaryTotalSavingsAmount" style="font-weight: 800; color: #059669; white-space: nowrap; font-family: var(--mono-font);">₹0</span>
+                    </div>
                     <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0 2px; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.18);">
                       <span style="color: #ffffff; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-size: var(--font-xs);">Total Payable</span>
                       <span id="summaryFinalAmount" style="font-size: var(--font-md); font-weight: 800; color: var(--accent); font-family: var(--mono-font); white-space: nowrap;">₹${getAdminPackages()[0].price.toLocaleString('en-IN')} INR</span>
@@ -6558,6 +6567,9 @@ RAW files are not provided.`
                        amount owed is the studio rental. It reserves the space,
                        so it is due in full up front rather than split in two —
                        the 50/50 grid above is hidden for these. -->
+                  <div id="summaryNothingToPay" style="display: none; background: rgba(5,150,105,0.12); border: 1px solid rgba(5,150,105,0.35); border-radius: 6px; padding: 8px 12px; font-size: var(--font-xs); color: #34d399; line-height: 1.5;">
+                    ✅ <strong>Nothing to pay for this collaboration.</strong> The studio is covering the venue for this session — the figure above is what it would otherwise have cost.
+                  </div>
                   <div id="summaryReservationCard" style="display: none; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 12px; font-size: var(--font-xs);">
                     <span style="color: rgba(255,255,255,0.6); display: block; font-size: var(--font-xs); text-transform: uppercase;">🔒 Home Studio Rental · Full Payment Up Front</span>
                     <strong id="summaryReservationAmount" style="color: var(--accent); font-size: var(--font-sm); font-family: var(--mono-font);">₹0 INR</strong>
@@ -8267,7 +8279,12 @@ RAW files are not provided.`
             const tagMsg = matchedDiscount.flat ? `FLAT ₹${matchedDiscount.flat.toLocaleString("en-IN")} OFF` : `${matchedDiscount.pct}% OFF`;
             discountStatus.textContent = `🟢 ${tagMsg} APPLIED`;
             savingsBadge.style.display = "block";
-            savingsBadge.textContent = `🎉 Promo Offer Applied: You save ${tagMsg} on your selected package total!`;
+            // Name the free venue here too. This banner sits above the quote
+            // and used to advertise only the discount, which on a code that
+            // also hands over the studio is the smaller half of the offer.
+            savingsBadge.textContent = matchedDiscount.freeHomeStudio
+              ? `🎉 Promo Offer Applied: ${tagMsg} on your package — plus the home studio free if you shoot there!`
+              : `🎉 Promo Offer Applied: You save ${tagMsg} on your selected package total!`;
             if (btnDiscount) {
               btnDiscount.textContent = "✕ Remove Code";
               btnDiscount.style.background = "transparent";
@@ -8519,8 +8536,23 @@ RAW files are not provided.`
       // charge outright — unlike includeAddons, which only widens what the
       // percentage is taken off and leaves the rental payable.
       const promoFreesHomeStudio = !!(matchedDiscount && matchedDiscount.freeHomeStudio && homeStudioFee > 0);
-      const homeStudioListPrice = homeStudioFee;
+      // What the venue is worth, kept separately from what is charged so a
+      // waiver can show the talent the size of what they were given instead of
+      // a bare zero.
+      let homeStudioListPrice = homeStudioFee;
       if (promoFreesHomeStudio) homeStudioFee = 0;
+
+      // An invite that supplies the venue and names no price is handing it over
+      // free. Nothing was shown for this at all, so a collaborator given a
+      // studio worth thousands saw an empty quote and never learned of it.
+      // Its worth is the studio's own rate for that kind of booking.
+      const inviteVenueComplimentary = inviteLocksVenue && homeStudioFee === 0 && !promoFreesHomeStudio;
+      if (inviteVenueComplimentary) {
+        homeStudioListPrice = getHomeStudioRate(isTfpType || isValidInvite);
+      }
+      const venueComplimentary = promoFreesHomeStudio || inviteVenueComplimentary;
+      // Which code earned it, for the line the talent reads.
+      const venueFreeWithCode = promoFreesHomeStudio ? enteredDiscount : (inviteVenueComplimentary ? enteredCode : "");
 
       // A collaboration buys no package, so the rental is the only charge it
       // can ever carry — a package rate must never leak into a TFP quote.
@@ -8685,14 +8717,17 @@ RAW files are not provided.`
       // a waiver. When it does, the quote has to appear — charging a rental the
       // client was never shown is exactly the failure this box exists to stop.
       const collabOwesRental = isCollabBooking && homeStudioFee > 0;
+      // A collaboration also gets a quote when the venue is complimentary:
+      // nothing is payable, but there IS something worth telling them.
+      const collabShowsQuote = isCollabBooking && (collabOwesRental || venueComplimentary);
 
       // `wps-no-pricing` hides the quote with !important, which is right for a
       // free collaboration and wrong the moment one owes a rental. This is the
       // switch that lets the itemised quote back through.
-      document.body.classList.toggle("wps-rental-quote", homeStudioFee > 0);
+      document.body.classList.toggle("wps-rental-quote", homeStudioFee > 0 || collabShowsQuote);
 
       if (isCollabBooking) {
-        if (finalPriceSummaryBox) finalPriceSummaryBox.style.display = collabOwesRental ? "block" : "none";
+        if (finalPriceSummaryBox) finalPriceSummaryBox.style.display = collabShowsQuote ? "block" : "none";
         if (promoCodeWrap) promoCodeWrap.style.display = "none";
         if (budgetField) budgetField.style.display = "none";
       } else {
@@ -8701,7 +8736,7 @@ RAW files are not provided.`
         if (budgetField) budgetField.style.display = "";
       }
 
-      if (!isCollabBooking || collabOwesRental) {
+      if (!isCollabBooking || collabShowsQuote) {
         // On a collaboration the first line names the arrangement rather than a
         // package, and reads ₹0 — there is no package rate to quote.
         const summaryPackageLabel = $("#summaryPackageLabel");
@@ -8718,15 +8753,18 @@ RAW files are not provided.`
         // discount. It is dropped only when no rental was ever in play.
         const summaryHomeStudioWrap = $("#summaryHomeStudioWrap");
         const summaryHomeStudioAmount = $("#summaryHomeStudioAmount");
-        const showHomeStudioLine = homeStudioFee > 0 || promoFreesHomeStudio;
+        const showHomeStudioLine = homeStudioFee > 0 || venueComplimentary;
         if (summaryHomeStudioWrap) {
           summaryHomeStudioWrap.style.display = showHomeStudioLine ? "flex" : "none";
         }
         if (summaryHomeStudioAmount && showHomeStudioLine) {
-          summaryHomeStudioAmount.textContent = promoFreesHomeStudio
-            ? "₹0"
-            : `+₹${homeStudioFee.toLocaleString("en-IN")}`;
-          summaryHomeStudioAmount.style.color = promoFreesHomeStudio ? "#059669" : "#ffffff";
+          // Show what the venue costs before showing that it is free. "₹0" on
+          // its own hides the size of the gift — the studio is handing over a
+          // ₹2,000 room, and the client should see that, not a zero.
+          summaryHomeStudioAmount.innerHTML = (venueComplimentary && homeStudioListPrice > 0)
+            ? `<span style="text-decoration: line-through; color: rgba(255,255,255,0.45); font-weight: 500; margin-right: 8px;">₹${homeStudioListPrice.toLocaleString("en-IN")}</span><span style="color: #059669;">₹0</span>`
+            : (venueComplimentary ? "₹0" : `+₹${homeStudioFee.toLocaleString("en-IN")}`);
+          summaryHomeStudioAmount.style.color = venueComplimentary ? "#059669" : "#ffffff";
         }
         // Name the actual venue when the invite supplies one — billing a client
         // for "Home Studio Rental" when the code sent them to a rented space is
@@ -8736,8 +8774,8 @@ RAW files are not provided.`
           const venueName = inviteLocksVenue
             ? `Studio Venue (${lockedLocation})`
             : "Home Studio Rental (Noida)";
-          summaryHomeStudioLabel.innerHTML = promoFreesHomeStudio
-            ? `${esc(venueName)} <span style="color:#059669;font-weight:700;">— complimentary with ${esc(enteredDiscount)}</span>`
+          summaryHomeStudioLabel.innerHTML = venueComplimentary
+            ? `${esc(venueName)} <span style="color:#059669;font-weight:700;">— complimentary${venueFreeWithCode ? ` with ${esc(venueFreeWithCode)}` : ""}</span>`
             : esc(venueName);
         }
 
@@ -8753,6 +8791,21 @@ RAW files are not provided.`
           if (summaryDiscountWrap) summaryDiscountWrap.style.display = "none";
           if (calcDiscountTag) calcDiscountTag.style.display = "none";
         }
+
+        // Everything the booking saved, added up: the discount plus the value
+        // of any venue handed over free. Shown only when the two stack, since
+        // on an ordinary discount it would just repeat the line above it.
+        const waivedVenueValue = venueComplimentary ? homeStudioListPrice : 0;
+        const totalSavings = savings + waivedVenueValue;
+        const summaryTotalSavingsWrap = $("#summaryTotalSavingsWrap");
+        const summaryTotalSavingsAmount = $("#summaryTotalSavingsAmount");
+        if (summaryTotalSavingsWrap) {
+          summaryTotalSavingsWrap.style.display = (waivedVenueValue > 0 && totalSavings > 0) ? "flex" : "none";
+        }
+        if (summaryTotalSavingsAmount && waivedVenueValue > 0) {
+          summaryTotalSavingsAmount.textContent = `₹${totalSavings.toLocaleString("en-IN")}`;
+        }
+
         if (summaryFinalAmount) summaryFinalAmount.textContent = `₹${finalPayable.toLocaleString("en-IN")} INR`;
 
         // Payment terms. A collaboration owes only the rental, which reserves
@@ -8760,8 +8813,14 @@ RAW files are not provided.`
         // into two milestones just creates a second amount to chase.
         const milestoneGrid = $("#summaryMilestoneBreakdown");
         const reservationCard = $("#summaryReservationCard");
-        if (milestoneGrid) milestoneGrid.style.display = collabOwesRental ? "none" : "grid";
+        // A complimentary collaboration owes nothing at all, so neither the
+        // 50/50 milestones nor the reservation card belong on it — a pair of
+        // ₹0 payment steps reads as a broken quote.
+        const nothingToPay = isCollabBooking && finalPayable === 0;
+        const nothingToPayNote = $("#summaryNothingToPay");
+        if (milestoneGrid) milestoneGrid.style.display = (collabOwesRental || nothingToPay) ? "none" : "grid";
         if (reservationCard) reservationCard.style.display = collabOwesRental ? "block" : "none";
+        if (nothingToPayNote) nothingToPayNote.style.display = nothingToPay ? "block" : "none";
 
         if (collabOwesRental) {
           const reservationAmount = $("#summaryReservationAmount");
@@ -9187,7 +9246,8 @@ RAW files are not provided.`
           (homeStudioRentalFee > 0
             ? `Home Studio Rental (add-on): ₹${homeStudioRentalFee.toLocaleString('en-IN')}\n`
             : (homeStudioWaivedByPromo
-                ? `Home Studio Rental (add-on): ₹0 — complimentary with promo code ${promoCodeUsed} (normally ₹${homeStudioListPriceVal.toLocaleString('en-IN')})\n`
+                ? `Home Studio Rental (add-on): ₹0 — complimentary with promo code ${promoCodeUsed} (normally ₹${homeStudioListPriceVal.toLocaleString('en-IN')})\n` +
+                  `Total Savings: ₹${(((bookingCalc && bookingCalc.savings) || 0) + homeStudioListPriceVal).toLocaleString('en-IN')} (promo discount + complimentary home studio)\n`
                 : "")) +
           (type !== "Selective Collaboration (TFP)"
             ? `${paymentTermsText}\n`
