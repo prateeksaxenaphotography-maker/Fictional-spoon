@@ -103,6 +103,8 @@ window.openPromoCodeModal = function(codeKey) {
   // to fix a typo would quietly demote it to package-only.
   const addonsEl = document.getElementById("newPromoIncludeAddons");
   if (addonsEl) addonsEl.checked = !!(entry && entry.includeAddons);
+  const freeHomeEl = document.getElementById("newPromoFreeHomeStudio");
+  if (freeHomeEl) freeHomeEl.checked = !!(entry && entry.freeHomeStudio);
 
   form.style.display = "block";
   form.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -135,9 +137,12 @@ window.saveNewPromoCodeFromForm = function() {
   // rental), or only the package rate? Off by default, so a rental the studio
   // actually pays for is never discounted unless that is the intent.
   const includeAddons = !!document.getElementById("newPromoIncludeAddons")?.checked;
+  // Waives the home studio rental outright, as opposed to includeAddons which
+  // only widens what the percentage is taken off.
+  const freeHomeStudio = !!document.getElementById("newPromoFreeHomeStudio")?.checked;
   codes[name] = type === "flat"
-    ? { flat: val, label, includeAddons }
-    : { pct: val, label, includeAddons };
+    ? { flat: val, label, includeAddons, freeHomeStudio }
+    : { pct: val, label, includeAddons, freeHomeStudio };
   window.adminDraftPromoCodes = { ...codes };
   window._editingPromoKey = null;
 
@@ -4043,11 +4048,18 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <input type="text" id="newPromoDesc" placeholder="e.g. 30% Off Summer Shoots" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
               </div>
               <div style="grid-column: span 2;">
+                <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px;">
+                  <input type="checkbox" id="newPromoFreeHomeStudio" style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent); cursor: pointer;" />
+                  <span style="font-size: var(--font-xs); color: var(--ink); font-family: 'Outfit', sans-serif; line-height: 1.4;">
+                    <strong>🏠 Home studio FREE with this code</strong><br/>
+                    <span style="color: var(--ink-soft);">The rental drops to ₹0 and the client's quote shows it as complimentary. This is the one that actually removes the charge.</span>
+                  </span>
+                </label>
                 <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;">
                   <input type="checkbox" id="newPromoIncludeAddons" style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent); cursor: pointer;" />
                   <span style="font-size: var(--font-xs); color: var(--ink); font-family: 'Outfit', sans-serif; line-height: 1.4;">
-                    <strong>Also discount add-ons</strong> (home studio rental).<br/>
-                    <span style="color: var(--ink-soft);">Leave unticked and the discount comes off the package rate only — the rental is charged in full.</span>
+                    <strong>Also discount the rental</strong> — the % also comes off the home studio rental, instead of the package rate alone.<br/>
+                    <span style="color: var(--ink-soft);">Only changes anything on a <strong>% code</strong>. On a flat ₹ code the saving is the same either way, so leave it unticked.</span>
                   </span>
                 </label>
               </div>
@@ -8450,6 +8462,13 @@ RAW files are not provided.`
       }
       const homeStudioSelected = dropdownHomeStudio || inviteLocksVenue;
 
+      // A promo code can hand the venue over complimentary. This zeroes the
+      // charge outright — unlike includeAddons, which only widens what the
+      // percentage is taken off and leaves the rental payable.
+      const promoFreesHomeStudio = !!(matchedDiscount && matchedDiscount.freeHomeStudio && homeStudioFee > 0);
+      const homeStudioListPrice = homeStudioFee;
+      if (promoFreesHomeStudio) homeStudioFee = 0;
+
       // A collaboration buys no package, so the rental is the only charge it
       // can ever carry — a package rate must never leak into a TFP quote.
       const isCollabBooking = isTfpType || isValidInvite;
@@ -8558,6 +8577,11 @@ RAW files are not provided.`
         packageCharge,
         isCollabBooking,
         homeStudioFee,
+        // What the venue would have cost, and whether the promo code covered
+        // it — so the client's email and the studio's record both show the
+        // waiver rather than a rental that silently never existed.
+        homeStudioListPrice,
+        promoFreesHomeStudio,
         savings,
         finalPayable
       };
@@ -8635,23 +8659,33 @@ RAW files are not provided.`
         }
         if (summaryOriginalPrice) summaryOriginalPrice.textContent = `₹${packageCharge.toLocaleString("en-IN")}`;
 
-        // Home studio rental line — present only when it is actually charged.
+        // Home studio rental line. Kept visible at ₹0 when a promo code hands
+        // the venue over free: a line that simply disappears reads as a bug and
+        // hides the fact that the code is worth the rental on top of its
+        // discount. It is dropped only when no rental was ever in play.
         const summaryHomeStudioWrap = $("#summaryHomeStudioWrap");
         const summaryHomeStudioAmount = $("#summaryHomeStudioAmount");
+        const showHomeStudioLine = homeStudioFee > 0 || promoFreesHomeStudio;
         if (summaryHomeStudioWrap) {
-          summaryHomeStudioWrap.style.display = homeStudioFee > 0 ? "flex" : "none";
+          summaryHomeStudioWrap.style.display = showHomeStudioLine ? "flex" : "none";
         }
-        if (summaryHomeStudioAmount && homeStudioFee > 0) {
-          summaryHomeStudioAmount.textContent = `+₹${homeStudioFee.toLocaleString("en-IN")}`;
+        if (summaryHomeStudioAmount && showHomeStudioLine) {
+          summaryHomeStudioAmount.textContent = promoFreesHomeStudio
+            ? "₹0"
+            : `+₹${homeStudioFee.toLocaleString("en-IN")}`;
+          summaryHomeStudioAmount.style.color = promoFreesHomeStudio ? "#059669" : "#ffffff";
         }
         // Name the actual venue when the invite supplies one — billing a client
         // for "Home Studio Rental" when the code sent them to a rented space is
         // a line item they cannot reconcile.
         const summaryHomeStudioLabel = $("#summaryHomeStudioLabel");
-        if (summaryHomeStudioLabel && homeStudioFee > 0) {
-          summaryHomeStudioLabel.textContent = inviteLocksVenue
+        if (summaryHomeStudioLabel && showHomeStudioLine) {
+          const venueName = inviteLocksVenue
             ? `Studio Venue (${lockedLocation})`
             : "Home Studio Rental (Noida)";
+          summaryHomeStudioLabel.innerHTML = promoFreesHomeStudio
+            ? `${esc(venueName)} <span style="color:#059669;font-weight:700;">— complimentary with ${esc(enteredDiscount)}</span>`
+            : esc(venueName);
         }
 
         if (savings > 0) {
@@ -8981,6 +9015,15 @@ RAW files are not provided.`
         // details further down: the clauses below quote this number, and a
         // const read before its declaration is a crash, not a zero.
         const homeStudioRentalFee = (bookingCalc && bookingCalc.homeStudioFee) || 0;
+        // A promo code can hand the venue over free. The waiver is stated
+        // explicitly rather than left as a missing line, so the client's record
+        // shows what the code was worth and the studio's does too.
+        const homeStudioWaivedByPromo = !!(bookingCalc && bookingCalc.promoFreesHomeStudio);
+        const homeStudioListPriceVal = (bookingCalc && bookingCalc.homeStudioListPrice) || 0;
+        // Read off bookingCalc, never off updateFields' own locals: those live
+        // in a different function, and reaching for one here is the exact
+        // ReferenceError that silently killed every booking submit before.
+        const promoCodeUsed = (bookingCalc && bookingCalc.enteredDiscount) || "";
         const is3StepActive = $("#flowchart3Step") && $("#flowchart3Step").style.display !== "none";
         const paymentTermsText = is3StepActive ?
           `Payment Terms: 3-Tier Campaign Milestones (50% Advance Retainer before shoot day start [non-refundable]; 30% Review Milestone after shoot before proofing gallery [non-refundable]; 20% Final Release prior to receiving any downloadable file)` :
@@ -9088,7 +9131,11 @@ RAW files are not provided.`
           studioRentalPolicyNote +
           travelPolicyNote +
           cleanBudget +
-          (homeStudioRentalFee > 0 ? `Home Studio Rental (add-on): ₹${homeStudioRentalFee.toLocaleString('en-IN')}\n` : "") +
+          (homeStudioRentalFee > 0
+            ? `Home Studio Rental (add-on): ₹${homeStudioRentalFee.toLocaleString('en-IN')}\n`
+            : (homeStudioWaivedByPromo
+                ? `Home Studio Rental (add-on): ₹0 — complimentary with promo code ${promoCodeUsed} (normally ₹${homeStudioListPriceVal.toLocaleString('en-IN')})\n`
+                : "")) +
           (type !== "Selective Collaboration (TFP)"
             ? `${paymentTermsText}\n`
             : (homeStudioRentalFee > 0
