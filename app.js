@@ -3258,6 +3258,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     }
   }
 
+  // Only an actual image data URL may reach an <img>. Anything else (a legacy
+  // sentinel string, an empty value) resolves as a relative path, 404s, and the
+  // global image-error handler swaps in the "image unavailable" placeholder —
+  // so a checkbox agreement rendered as a broken image in the admin views.
+  const isSigImage = (v) => typeof v === "string" && v.startsWith("data:image/");
+  const agreedBadge = (b) =>
+    `<span style="display:inline-block; font-size: var(--font-xs); font-weight:700; color: var(--accent); border:1px solid var(--accent); border-radius:4px; padding:2px 7px;">\u2713 Agreed via checkbox</span>`;
+
   function saveLocalContractAudit(entry) {
     try {
       const audits = getLocalContractAudits();
@@ -3315,6 +3323,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // carrying a location). Stored on the booking so the PDF contract reads
       // it from the record it is generating, not from page state.
       venueByStudio: !!bookingObj.venueByStudio,
+      // How the client agreed: "signature" (drawn) or "checkbox". This object
+      // is an explicit whitelist rather than a spread, so a field that is not
+      // listed here is silently dropped on save.
+      agreementMethod: bookingObj.agreementMethod || (bookingObj.sigDataUrl ? "signature" : ""),
       links: Array.isArray(bookingObj.links) ? bookingObj.links : (bookingObj.links ? [bookingObj.links] : []),
       attachments: Array.isArray(bookingObj.attachments) ? bookingObj.attachments : [],
       status: bookingObj.status || (bookingObj.isTentative ? "tentative" : "confirmed"),
@@ -3454,12 +3466,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         </div>
         ${b.agreedContract ? `<div style="font-family: var(--mono-font); font-size: var(--font-xs); color: #059669; font-weight: 700;">✅ ${esc(b.agreedContract)}</div>` : ''}
         ${emailBadge(b.contractNumber)}
-        ${b.sigDataUrl ? `
+        ${isSigImage(b.sigDataUrl) ? `
           <div>
             <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-bottom: 4px; font-weight: 600;">Digital Signature:</div>
             <img src="${b.sigDataUrl}" style="max-height: 48px; max-width: 220px; border-bottom: 1.5px solid var(--line); display: block; background: var(--bone); padding: 4px;" alt="Client signature" />
           </div>
-        ` : '<div style="font-size: var(--font-xs); color: var(--ink-soft); font-style: italic;">No digital signature captured (email/DM consent)</div>'}
+        ` : (b.agreementMethod === "checkbox"
+            ? '<div style="font-size: var(--font-xs); color: var(--accent); font-weight: 700;">\u2713 Agreed via checkbox \u2014 Studio Terms V3.3 accepted</div>'
+            : '<div style="font-size: var(--font-xs); color: var(--ink-soft); font-style: italic;">No digital signature captured (email/DM consent)</div>')}
       </div>
     `).join('') : `
       <div style="text-align: center; padding: 48px 20px; color: var(--ink-soft); font-size: var(--font-sm);">
@@ -4611,10 +4625,14 @@ RAW files are not provided.`
               <div style="font-family: monospace; font-size: 9px; font-weight: 700; background: #f4f4f4; border: 1px solid #ccc; padding: 5px; border-radius: 4px; margin-top: 4px;">"I approve Studio Contract Terms ${esc(cVer)}"</div>
             </div>
             <div style="border-left: 1px solid #ddd; padding-left: 12px;">
-              ${b.sigDataUrl ? `
+              ${isSigImage(b.sigDataUrl) ? `
                 <strong>Client Digital Signature (Drawn at Booking):</strong><br/>
                 <img src="${b.sigDataUrl}" style="max-width: 200px; max-height: 56px; display: block; margin-top: 8px; border-bottom: 1.5px solid #000;" alt="Client Signature" />
                 <div style="margin-top: 4px; font-size: 9px; color: #444;">${esc(b.name || "")} · Agreed ${new Date().toLocaleDateString("en-IN")} · ${esc(b.agreedContract || cVer)}</div>
+              ` : b.agreementMethod === "checkbox" ? `
+                <strong>Digital Acceptance (Checkbox Confirmation):</strong><br/>
+                <div style="margin-top: 8px;">${esc(b.name || "")} confirmed acceptance of the Studio Terms &amp; Conditions (V3.3) and Model Release by ticking the agreement box on the booking form.</div>
+                <div style="margin-top: 4px; font-size: 9px; color: #444;">Recorded electronically at the time of booking \u00b7 no handwritten signature was requested.</div>
               ` : `
                 <strong>Method B — Physical Pen Signature:</strong><br/>
                 <div style="margin-top: 10px;">Client Sign: <span style="border-bottom: 1.5px solid #000; display: inline-block; width: 130px; height: 12px;">&nbsp;</span></div>
@@ -4963,7 +4981,7 @@ RAW files are not provided.`
                     <div style="font-size: var(--font-xs); color: var(--ink-soft);">${esc(b.type)} ${b.phone ? `· 📞 ${esc(b.phone)}` : ""} ${b.email ? `· ✉️ ${esc(b.email)}` : ""}</div>
                     ${b.notes ? `<div style="font-size: var(--font-xs); font-style: italic;">"${esc(b.notes)}"</div>` : ""}
                     ${b.agreedContract ? `<div style="font-size: var(--font-xs); color: #059669; font-family: var(--mono-font); font-weight: 700; margin-top: 2px;">✅ Contract Agreed: ${esc(b.agreedContract)}</div>` : ""}
-                    ${b.sigDataUrl ? `<div style="margin-top: 4px;"><img src="${b.sigDataUrl}" style="max-height: 36px; max-width: 160px; border-bottom: 1px solid var(--line); display: block;" title="Client digital signature captured at booking" /></div>` : ""}
+                    ${isSigImage(b.sigDataUrl) ? `<div style="margin-top: 4px;"><img src="${b.sigDataUrl}" style="max-height: 36px; max-width: 160px; border-bottom: 1px solid var(--line); display: block;" title="Client digital signature captured at booking" /></div>` : (b.agreementMethod === "checkbox" ? `<div style="margin-top: 4px; font-size: var(--font-xs); color: var(--accent); font-weight: 700;">\u2713 Agreed via checkbox</div>` : "")}
                     ${b.links && b.links.length ? `
                       <div style="font-size: var(--font-xs); margin-top: 4px;">
                         <strong>Links:</strong>
@@ -8383,7 +8401,14 @@ RAW files are not provided.`
         fd.append("Scheduled Date", payload.date || "—");
         fd.append("Location", payload.location || "—");
         fd.append("Notes", payload.notes || "—");
-        fd.append("Signature Captured", sigBlob ? (withSig ? "Yes — drawn signature attached as PNG" : "Yes — drawn at booking (attachment unavailable; image kept in booking record)") : "No (email/DM consent)");
+        // Three distinct cases, not two. Falling through to "No (email/DM
+        // consent)" for anything without an image understated a checkbox
+        // acceptance — the client HAD agreed, on the form, to V3.3.
+        fd.append("Signature Captured", sigBlob
+          ? (withSig ? "Yes — drawn signature attached as PNG" : "Yes — drawn at booking (attachment unavailable; image kept in booking record)")
+          : (payload.agreementMethod === "checkbox"
+              ? "Yes — accepted via checkbox confirmation on the booking form (Studio Terms V3.3)"
+              : "No (email/DM consent)"));
         fd.append("Contract Terms (full text)", payload.contractText || "—");
         if (withSig) fd.append("attachment", sigBlob, `signature-${payload.contractNumber || "contract"}.png`);
         const res = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(studioEmail)}`, {
@@ -8426,7 +8451,7 @@ RAW files are not provided.`
       const date = val("b_date"), locationVal = val("b_location"), budget = (type === "Selective Collaboration (TFP)" ? "Collab / TFP (No Budget)" : val("b_budget"));
       const moodboard = getFormLinks().join(", "), concept = val("b_concept");
 
-      const proceedSubmit = (agreedToTerms = false, shootCategory = "Commercial", isCustomContract = false, customContractNotes = "", sigDataUrl = "") => {
+      const proceedSubmit = (agreedToTerms = false, shootCategory = "Commercial", isCustomContract = false, customContractNotes = "", sigDataUrl = "", agreementMethod = "") => {
         btn.disabled = true;
         btn.classList.add("is-loading");
         btn.textContent = "Sending your request…";
@@ -8605,7 +8630,12 @@ RAW files are not provided.`
             date: payload.date,
             shootType: payload.shootType,
             timestamp: new Date().toISOString(),
-            sigCaptured: true,
+            // Record what was actually captured. Hardcoding this to true made
+            // the vault report "Signed: Yes" for every booking, including the
+            // checkbox ones where no signature exists — the studio's own record
+            // claiming a signature it does not hold.
+            sigCaptured: !!payload.sigDataUrl,
+            agreementMethod: payload.agreementMethod || (payload.sigDataUrl ? "signature" : ""),
             isCustomContract: payload.isCustomContract || false,
             customContractNotes: payload.customContractNotes || "",
             inviteMeta: payload.inviteMeta || null,
@@ -8647,7 +8677,8 @@ RAW files are not provided.`
             location: locationVal,
             shootType: type,
             contractVersion: contractRefDoc,
-            sigDataUrl: sigDataUrl || "DIGITALLY_ACCEPTED_VIA_CHECKBOX",
+            sigDataUrl: sigDataUrl || "",
+            agreementMethod: agreementMethod || (sigDataUrl ? "signature" : ""),
             isCustomContract: isCustomContract,
             customContractNotes: customContractNotes,
             inviteMeta: inviteMeta,
@@ -8726,6 +8757,7 @@ RAW files are not provided.`
                   links: typeof getFormLinks === "function" ? getFormLinks() : [],
                   attachments: typeof attachedFiles !== "undefined" ? attachedFiles : [],
                   sigDataUrl: sigDataUrl || "",
+                  agreementMethod: agreementMethod || (sigDataUrl ? "signature" : ""),
                   agreedContract: agreedToTerms ? contractRefDoc : "",
                   // Recorded per booking so the PDF contract can tell whether
                   // the studio is supplying the venue for THIS shoot, instead
@@ -8815,8 +8847,14 @@ RAW files are not provided.`
         // but it is queued to run AFTER the relay settles rather than beside
         // it: FormSubmit rate-limits per IP, so firing both (plus the
         // attachment retry) at once made them knock each other out.
+        let contractRecordSent = false;
         const sendContractRecord = () => {
           if (!agreedToTerms) return;
+          // Fires from the optimistic path AND from the fallback, so it has to
+          // be idempotent — otherwise a failed relay mails the studio and the
+          // client a duplicate copy of the same signed contract.
+          if (contractRecordSent) return;
+          contractRecordSent = true;
           sendSignedContractEmail({
             clientName: name,
             clientEmail: email,
@@ -8829,6 +8867,7 @@ RAW files are not provided.`
             contractNumber,
             contractText: tfpReleaseText.trim(),
             sigDataUrl: sigDataUrl || "",
+            agreementMethod: agreementMethod || (sigDataUrl ? "signature" : ""),
             notes: `Location: ${locationVal} | Budget: ${budget}`
           }).then((sent) => setContractEmailStatus(contractNumber, sent ? "sent" : "failed"));
         };
@@ -8857,25 +8896,53 @@ RAW files are not provided.`
           sendContractRecord();
         };
 
-        // INSTANT UI RESPONSE: Show success state immediately (0ms delay).
-        // The booking & contract audit are ALREADY saved to the Admin DB above.
+        // INSTANT UI RESPONSE: show the success state immediately (0ms delay).
+        // The booking and contract audit are ALREADY saved to the Admin DB
+        // above, so the request is genuinely captured at this point and the
+        // client does not have to wait on the network to be told so.
         showSuccess("sent");
         sendContractRecord();
 
-        // Fire FormSubmit network relay asynchronously in background without blocking client UI:
+        // ...but the relay still has to be checked. FormSubmit reports soft
+        // failures (an unactivated form, rate limiting) as HTTP 200 with
+        // success:"false", so neither res.ok nor "the fetch didn't throw" means
+        // delivered. Announcing success unconditionally told clients "delivered
+        // straight to the studio — no further action needed" on bookings that
+        // never arrived, with the recovery path left unreachable.
+        //
+        // So: stay optimistic, then correct course if the relay disagrees. The
+        // client keeps the instant response; a failure quietly turns it into
+        // "one more step" with the Gmail / mail-app buttons, instead of a
+        // cheerful message about an email nobody received.
+        const relayAbort = new AbortController();
+        const relayTimer = setTimeout(() => relayAbort.abort(), 15000);
+
         fetch(`https://formsubmit.co/ajax/${encodeURIComponent(studioEmail)}`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "Accept": "application/json" },
-          body: JSON.stringify(relayFields)
-        }).catch((err) => {
-          console.warn("Background relay status:", err && err.message);
+          body: JSON.stringify(relayFields),
+          signal: relayAbort.signal
+        })
+        .then(async (res) => {
+          clearTimeout(relayTimer);
+          const body = await res.json().catch(() => null);
+          const relayOk = res.ok && !!body && (body.success === true || body.success === "true");
+          if (relayOk) return;                       // optimistic message was right
+          console.warn("Booking relay rejected:", (body && body.message) || res.statusText);
+          finishWithFallback();                      // downgrade to "one more step"
+        })
+        .catch((err) => {
+          clearTimeout(relayTimer);
+          if (err && err.name === "AbortError") console.warn("Booking relay timed out");
+          else console.warn("Booking relay unreachable:", err && err.message);
+          finishWithFallback();
         });
       };
 
       if (type === "Selective Collaboration (TFP)") {
-        openTermsModal(name, "TFP", (agreed, isCustom, notes, sigUrl) => proceedSubmit(agreed, "TFP", isCustom, notes, sigUrl));
+        openTermsModal(name, "TFP", (agreed, isCustom, notes, sigUrl, method) => proceedSubmit(agreed, "TFP", isCustom, notes, sigUrl, method));
       } else {
-        openTermsModal(name, "Commercial", (agreed, isCustom, notes, sigUrl) => proceedSubmit(agreed, "Commercial", isCustom, notes, sigUrl));
+        openTermsModal(name, "Commercial", (agreed, isCustom, notes, sigUrl, method) => proceedSubmit(agreed, "Commercial", isCustom, notes, sigUrl, method));
       }
     };
 
@@ -8931,62 +8998,11 @@ RAW files are not provided.`
       $("#termsModal").style.display = "flex";
       const acceptBtn = $("#termsAcceptBtn");
 
-      // Setup HTML5 Signature Canvas
-      const canvas = $("#termsSigCanvas");
-      const sigHint = $("#termsSigHint");
-      const clearBtn = $("#clearTermsSigBtn");
-      let isDrawing = false;
-      let hasSigned = false;
-      let ctx = null;
-
-      if (canvas) {
-        ctx = canvas.getContext("2d");
-        ctx.strokeStyle = "#111111";
-        ctx.lineWidth = 2.2;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-
-        const getPos = (e) => {
-          const rect = canvas.getBoundingClientRect();
-          const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-          const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-          return { x: clientX - rect.left, y: clientY - rect.top };
-        };
-
-        const startDraw = (e) => {
-          isDrawing = true;
-          hasSigned = true;
-          if (sigHint) sigHint.style.display = "none";
-          const pos = getPos(e);
-          ctx.beginPath();
-          ctx.moveTo(pos.x, pos.y);
-        };
-
-        const draw = (e) => {
-          if (!isDrawing) return;
-          e.preventDefault();
-          const pos = getPos(e);
-          ctx.lineTo(pos.x, pos.y);
-          ctx.stroke();
-        };
-
-        const stopDraw = () => { isDrawing = false; };
-
-        canvas.onmousedown = startDraw;
-        canvas.onmousemove = draw;
-        canvas.onmouseup = stopDraw;
-        canvas.ontouchstart = startDraw;
-        canvas.ontouchmove = draw;
-        canvas.ontouchend = stopDraw;
-
-        if (clearBtn) {
-          clearBtn.onclick = () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            hasSigned = false;
-            if (sigHint) sigHint.style.display = "flex";
-          };
-        }
-      }
+      // Agreement is captured by the checkbox above. The drawn-signature
+      // canvas that used to live here was removed by request: signing with a
+      // finger or stylus is fiddly for many clients, and the tick-box is now
+      // the studio's permanent mechanism. Bookings recorded before the change
+      // still hold a real signature image and are still rendered as one.
 
       const close = () => {
         $("#termsModal").style.display = "none";
@@ -9002,7 +9018,13 @@ RAW files are not provided.`
           return;
         }
         close();
-        if (onAccept) onAccept(true, false, "", "DIGITALLY_ACCEPTED_VIA_CHECKBOX");
+        // The signature slot carries an image data URL or nothing at all. It
+        // used to receive the string "DIGITALLY_ACCEPTED_VIA_CHECKBOX", which
+        // three admin views then fed straight into <img src>; the browser
+        // resolved it as a relative path, 404'd, and the global image-error
+        // handler replaced it with the "image unavailable" placeholder. How the
+        // client agreed now travels in its own argument instead.
+        if (onAccept) onAccept(true, false, "", "", "checkbox");
       };
 
       const onDeclineClick = () => {
@@ -9017,7 +9039,7 @@ RAW files are not provided.`
         } else {
           const notes = customInput?.value.trim() || "Client requested custom contract / agency MSA";
           close();
-          if (onAccept) onAccept(true, true, notes, "");
+          if (onAccept) onAccept(true, true, notes, "", "checkbox");
         }
       };
 
