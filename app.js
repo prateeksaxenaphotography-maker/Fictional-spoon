@@ -99,6 +99,10 @@ window.openPromoCodeModal = function(codeKey) {
   if (typeEl) typeEl.value = entry && entry.flat ? "flat" : "pct";
   if (valEl) valEl.value = entry ? (entry.flat || entry.pct || "") : "";
   if (descEl) descEl.value = entry ? (entry.label || "") : "";
+  // Carry the existing add-on rule into the form; without this, editing a code
+  // to fix a typo would quietly demote it to package-only.
+  const addonsEl = document.getElementById("newPromoIncludeAddons");
+  if (addonsEl) addonsEl.checked = !!(entry && entry.includeAddons);
 
   form.style.display = "block";
   form.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -127,7 +131,13 @@ window.saveNewPromoCodeFromForm = function() {
 
   const label = desc ||
     (type === "flat" ? `Flat ₹${val.toLocaleString("en-IN")} Off (${name})` : `${val}% Off (${name})`);
-  codes[name] = type === "flat" ? { flat: val, label } : { pct: val, label };
+  // Per-code choice: does this discount also come off add-ons (the home studio
+  // rental), or only the package rate? Off by default, so a rental the studio
+  // actually pays for is never discounted unless that is the intent.
+  const includeAddons = !!document.getElementById("newPromoIncludeAddons")?.checked;
+  codes[name] = type === "flat"
+    ? { flat: val, label, includeAddons }
+    : { pct: val, label, includeAddons };
   window.adminDraftPromoCodes = { ...codes };
   window._editingPromoKey = null;
 
@@ -331,6 +341,30 @@ const DEFAULT_PACKAGES = [
   { id: "pkg5", name: "High-End Full Day Production", price: 75000, specs: "Full Gallery + 30+ Retouched Master Assets" }
 ];
 
+// Fixed rental added to a PAID booking when the client picks the home studio.
+// Editable in the pricing panel and published with the rest of the rates, so
+// the number a client is quoted is the number the studio set — the whole point
+// of publishing PACKAGES rather than keeping rates on one device.
+const DEFAULT_HOME_STUDIO_RATE = 3000;
+
+function getHomeStudioRate() {
+  try {
+    const saved = localStorage.getItem("wps_home_studio_rate");
+    if (saved !== null && saved !== "") {
+      const n = parseInt(saved, 10);
+      // 0 is a real value — it switches the charge off — so only a genuinely
+      // unparseable or negative entry falls through to the published rate.
+      if (!isNaN(n) && n >= 0) return n;
+    }
+  } catch(e) {}
+  try {
+    const pub = window.WPS_DATA && window.WPS_DATA.HOME_STUDIO_RATE;
+    if (typeof pub === "number" && !isNaN(pub) && pub >= 0) return pub;
+  } catch(e) {}
+  return DEFAULT_HOME_STUDIO_RATE;
+}
+window.getHomeStudioRate = getHomeStudioRate;
+
 function getAdminPackages() {
   try {
     const saved = localStorage.getItem("wps_custom_packages");
@@ -347,7 +381,7 @@ function getAdminPackages() {
 
 window.getAdminPackages = getAdminPackages;
 
-window.saveAdminCustomPackages = function() {
+window.saveAdminCustomPackages = async function() {
   const rows = document.querySelectorAll(".admin-pkg-editor-row");
   if (rows.length) {
     const updated = [];
@@ -358,6 +392,14 @@ window.saveAdminCustomPackages = function() {
       updated.push({ id: `pkg_${i+1}`, name, price, specs });
     });
     localStorage.setItem("wps_custom_packages", JSON.stringify(updated));
+  }
+
+  // Home studio rental. Blank is "leave it as it was", not zero — clearing the
+  // box by accident must not silently make the studio free.
+  const homeRateEl = document.getElementById("homeStudioRateInput");
+  if (homeRateEl && homeRateEl.value !== "") {
+    const rate = parseInt(homeRateEl.value, 10);
+    if (!isNaN(rate) && rate >= 0) localStorage.setItem("wps_home_studio_rate", String(rate));
   }
 
   // Commit Draft Invite Codes. (A legacy singular "wps_custom_invite_code"
@@ -373,18 +415,40 @@ window.saveAdminCustomPackages = function() {
   }
 
   const statusBadge = document.getElementById("adminPricingSaveStatus");
-  if (statusBadge) {
-    const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    statusBadge.style.color = "#059669";
-    statusBadge.style.background = "rgba(5,150,105,0.15)";
-    statusBadge.style.borderColor = "#059669";
-    statusBadge.innerHTML = `🟢 ALL CHANGES SAVED TO LIVE SITE (${nowStr})`;
+  const setBadge = (color, bg, text) => {
+    if (!statusBadge) return;
+    statusBadge.style.color = color;
+    statusBadge.style.background = bg;
+    statusBadge.style.borderColor = color;
+    statusBadge.innerHTML = text;
+  };
+
+  if (typeof render === "function") render();
+
+  // Saving used to stop here and still announce "saved to live site". It was
+  // not: rates, promo and invite codes only reached visitors when some album
+  // was published later, so a price edit read as live to the studio while
+  // every client was still quoted the old one. Publish for real, and say so
+  // only once GitHub has actually taken it.
+  setBadge("#d97706", "rgba(217,119,6,0.15)", "⏳ PUBLISHING TO LIVE SITE…");
+  if (typeof toast === "function") toast("Publishing rates & codes to the live site…");
+
+  const publish = window.publishStudioDataToLiveSite;
+  if (typeof publish !== "function") {
+    setBadge("#d97706", "rgba(217,119,6,0.15)", "⚠️ SAVED ON THIS DEVICE ONLY — NOT LIVE YET");
+    if (typeof toast === "function") toast("Saved on this device, but publishing is unavailable here. Open the site as admin and try again.");
+    return;
   }
 
-  if (typeof toast === "function") toast("✅ Package Rates, Promo Codes & Invite Codes saved to live site! All booking forms updated.");
-  else alert("✅ Package Rates, Promo Codes & Invite Codes saved to live site!");
-  
-  if (typeof render === "function") render();
+  const ok = await publish();
+  const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (ok) {
+    setBadge("#059669", "rgba(5,150,105,0.15)", `🟢 PUBLISHED TO LIVE SITE (${nowStr})`);
+    if (typeof toast === "function") toast("✅ Rates, promo & invite codes are live for every client within a few minutes.");
+  } else {
+    // syncToGitHub has already explained the specific failure in its own toast.
+    setBadge("#d97706", "rgba(217,119,6,0.15)", "⚠️ SAVED ON THIS DEVICE ONLY — PUBLISH FAILED, TRY AGAIN");
+  }
 };
 
 window.resetAdminCustomPackages = function() {
@@ -1258,7 +1322,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         // form. Publishing them here is what makes them real for everyone.
         INVITE_CODES: (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : []),
         PROMO_CODES: (typeof window.getAdminPromoCodes === "function" ? window.getAdminPromoCodes() : {}),
-        PACKAGES: (typeof window.getAdminPackages === "function" ? window.getAdminPackages() : []) }, null, 2)};
+        PACKAGES: (typeof window.getAdminPackages === "function" ? window.getAdminPackages() : []),
+        HOME_STUDIO_RATE: (typeof window.getHomeStudioRate === "function" ? window.getHomeStudioRate() : 3000) }, null, 2)};
 
 // Explicit Global Aliases for Data Safety
 window.ACTIVITIES = window.WPS_DATA.ACTIVITIES || [];
@@ -1312,14 +1377,23 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       } catch {}
 
       toast("Sync complete! Changes go live for everyone within a few minutes.");
+      return true;
     } catch (e) {
       console.error(e);
       // Abort-guard messages ("Sync aborted…", "…aborting to avoid
       // overwriting…") explain exactly why nothing was published — show them
       // verbatim instead of the generic connection hint.
       toast(e.message && /401|abort/i.test(e.message) ? e.message : "GitHub sync failed — changes are saved locally. Check the token and connection, then publish again.");
+      return false;
     }
   }
+
+  // The pricing/codes panel lives outside this scope, so without an exposed
+  // handle its Save button could only ever write to this device — which is how
+  // a rate edit came to announce "saved to live site" while every client kept
+  // being quoted the old price. Returns whether the publish actually landed so
+  // the caller can tell the truth about it.
+  window.publishStudioDataToLiveSite = () => syncToGitHub(SHOOTS);
 
   /* ============================================================
      §10 · LIGHTBOX
@@ -3836,6 +3910,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <div id="adminPkgBody" style="display: none; margin-top: 12px;">
             <span id="adminPricingSaveStatus" style="font-size: var(--font-xs); font-weight: 700; color: #059669; background: rgba(5,150,105,0.12); padding: 4px 10px; border-radius: 12px; border: 1px solid #059669; font-family: var(--mono-font); display: inline-block; margin-bottom: 8px;">🟢 ALL CHANGES SAVED TO LIVE SITE</span>
             <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 12px 0;">Edit max package rates (INR), package names, or deliverable descriptions. Click <strong>Save &amp; Push Live</strong> to update booking forms.</p>
+            <div style="background: var(--paper); border: 1px solid var(--accent); border-radius: 8px; padding: 12px 16px; margin-bottom: 12px;">
+              <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase;">🏠 Home Studio Rental (Noida)</span>
+              <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 8px 0; font-family: 'Outfit', sans-serif;">Added to a <strong>paid</strong> booking when the client picks the home studio, and shown as its own line in their quote. Test shoots and invite-code bookings are never charged this. Set <strong>0</strong> to switch it off.</p>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-weight: 800; color: #059669; font-size: var(--font-sm);">₹</span>
+                <input type="number" id="homeStudioRateInput" min="0" step="500" value="${getHomeStudioRate()}" oninput="window.markUnsavedChanges && window.markUnsavedChanges()" style="width: 140px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); font-weight: 800; color: #059669; background: var(--bone);" />
+              </div>
+            </div>
             <div id="adminPackagesEditorGrid" style="display: flex; flex-direction: column; gap: 8px;"></div>
           </div>
         </div>
@@ -3908,6 +3990,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <div style="grid-column: span 2;">
                 <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">Description Label</label>
                 <input type="text" id="newPromoDesc" placeholder="e.g. 30% Off Summer Shoots" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
+              </div>
+              <div style="grid-column: span 2;">
+                <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;">
+                  <input type="checkbox" id="newPromoIncludeAddons" style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent); cursor: pointer;" />
+                  <span style="font-size: var(--font-xs); color: var(--ink); font-family: 'Outfit', sans-serif; line-height: 1.4;">
+                    <strong>Also discount add-ons</strong> (home studio rental).<br/>
+                    <span style="color: var(--ink-soft);">Leave unticked and the discount comes off the package rate only — the rental is charged in full.</span>
+                  </span>
+                </label>
               </div>
               <div>
                 <button type="button" class="admin-cal-btn primary" onclick="window.saveNewPromoCodeFromForm()" style="width: 100%; font-weight: 700; padding: 8px 12px;">💾 Save Promo Code</button>
@@ -3989,6 +4080,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                   <strong style="color: #059669; font-size: var(--font-sm); font-family: var(--mono-font); letter-spacing: 0.04em;">${esc(codeKey)}</strong>
                   <span style="font-size: var(--font-xs); font-weight: 700; background: rgba(5,150,105,0.12); color: #059669; padding: 2px 6px; border-radius: 4px;">${esc(tagDesc)}</span>
+                  ${item.includeAddons
+                    ? `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(217,119,6,0.14); color: #d97706; padding: 2px 6px; border-radius: 4px;" title="This discount also comes off the home studio rental">+ ADD-ONS</span>`
+                    : `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(120,120,120,0.14); color: var(--ink-soft); padding: 2px 6px; border-radius: 4px;" title="Discount applies to the package rate only">PACKAGE ONLY</span>`}
                 </div>
                 <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">${esc(item.label)}</div>
               </div>
@@ -4296,11 +4390,19 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     };
 
         window.WPS_CONTRACT_ARCHIVE = {
+      "V3.4-COMMERCIAL": {
+        version: "V3.4-COMMERCIAL",
+        title: "Commercial Shoot & Release Agreement V3.4 (Paid Shoots)",
+        effectiveDate: "August 2026 – Present",
+        status: "Active / Current (Paid Commercial)",
+        summary: "Dedicated contract for Paid Commercial, Editorial, Fashion & Brand productions. Covers 50/50 & 50/30/20 non-refundable retainer milestones, commercial licensing, outstation travel (>20km), camera gear & media protection, and photography specialization. Package rates cover the photographer only — HMUA, styling, set design & other third-party crew are billed separately at actuals.",
+        fullText: "1. SCOPE OF COMMERCIAL PRODUCTION & PAYMENT MILESTONES\nThis session is scheduled as a paid commercial production. Package rates cover photography creation, light design & master retouched deliverables. Standard bookings require a 50% advance retainer prior to shoot day start (non-refundable) and 50% final balance after shoot wrap prior to receiving downloadable master files (non-refundable). Commercial campaign bookings follow a 50/30/20 milestone structure.\n\n2. COMMERCIAL USAGE RIGHTS & INTELLECTUAL PROPERTY\nThe legal copyright of all visual media remains exclusively with the Studio. The Client is granted full commercial usage rights for digital advertising, website grids, social media campaigns, print catalogs, and brand marketing as specified in the agreed project scope. Under no circumstances are RAW unedited files delivered.\n\n3. STILL PHOTOGRAPHY SPECIALIZATION & VIDEO COVERAGE POLICY\nStudio packages and rate tiers are strictly dedicated to Still Photography creation (Commercial, Fashion, Editorial & Portfolio). Video / Reels coverage is not included in standard packages. Clients may bring their own videographer or request studio assistance to source a freelance videographer for the session.\n\n4. OUTSTATION LOCATION, TRAVEL & ACCOMMODATION (>20 KM FROM NOIDA)\nIf the shoot location is located beyond a 20 km radius from Noida (Delhi NCR), all travel expenses, local conveyance, outstation transport, tolls, and accommodation expenses incurred for the photographer (and core production team) shall be fully borne, arranged, or reimbursed by the client.\n\n5. CAMERA GEAR HANDS-OFF & DATA PROTECTION CLAUSE\nAll camera bodies, lenses, memory cards, tethering systems, and digital raw captures remain the exclusive physical and intellectual property of the Studio. Under no circumstances is a client or crew participant permitted to operate, touch, or delete media from the photographer's cameras or memory cards.\n\n6. THIRD-PARTY CREATIVE CREW, HMUA, STYLING & SET COSTS\nStudio package rates cover the photographer’s creative fee, light design, direction and master retouched deliverables ONLY. Hair & makeup artists (HMUA), wardrobe stylists, set designers, prop and set construction, art direction, assistants sourced on request, models or talent casting, and any other third-party creative professional are NOT included in the package rate. The Client is free to engage their own crew of choice, or may ask the Studio to source them on the Client’s behalf; in either case such crew are billed AT ACTUALS (at cost) in addition to the package rate. Any quotation for such crew is shared for approval before the shoot date, and no third-party cost is incurred without the Client’s written confirmation. Where the session takes place at the Studio’s home studio in Noida, total attendance including the Client and all such crew is capped at 3 people."
+      },
       "V3.3-COMMERCIAL": {
         version: "V3.3-COMMERCIAL",
         title: "Commercial Shoot & Release Agreement V3.3 (Paid Shoots)",
-        effectiveDate: "August 2026 – Present",
-        status: "Active / Current (Paid Commercial)",
+        effectiveDate: "August 2026 (superseded by V3.4)",
+        status: "Archived — superseded by V3.4 (added third-party crew cost clause)",
         summary: "Dedicated contract for Paid Commercial, Editorial, Fashion & Brand productions. Covers 50/50 & 50/30/20 non-refundable retainer milestones, commercial licensing, outstation travel (>20km), camera gear & media protection, and photography specialization.",
         fullText: "1. SCOPE OF COMMERCIAL PRODUCTION & PAYMENT MILESTONES\nThis session is scheduled as a paid commercial production. Package rates cover photography creation, light design & master retouched deliverables. Standard bookings require a 50% advance retainer prior to shoot day start (non-refundable) and 50% final balance after shoot wrap prior to receiving downloadable master files (non-refundable). Commercial campaign bookings follow a 50/30/20 milestone structure.\n\n2. COMMERCIAL USAGE RIGHTS & INTELLECTUAL PROPERTY\nThe legal copyright of all visual media remains exclusively with the Studio. The Client is granted full commercial usage rights for digital advertising, website grids, social media campaigns, print catalogs, and brand marketing as specified in the agreed project scope. Under no circumstances are RAW unedited files delivered.\n\n3. STILL PHOTOGRAPHY SPECIALIZATION & VIDEO COVERAGE POLICY\nStudio packages and rate tiers are strictly dedicated to Still Photography creation (Commercial, Fashion, Editorial & Portfolio). Video / Reels coverage is not included in standard packages. Clients may bring their own videographer or request studio assistance to source a freelance videographer for the session.\n\n4. OUTSTATION LOCATION, TRAVEL & ACCOMMODATION (>20 KM FROM NOIDA)\nIf the shoot location is located beyond a 20 km radius from Noida (Delhi NCR), all travel expenses, local conveyance, outstation transport, tolls, and accommodation expenses incurred for the photographer (and core production team) shall be fully borne, arranged, or reimbursed by the client.\n\n5. CAMERA GEAR HANDS-OFF & DATA PROTECTION CLAUSE\nAll camera bodies, lenses, memory cards, tethering systems, and digital raw captures remain the exclusive physical and intellectual property of the Studio. Under no circumstances is a client or crew participant permitted to operate, touch, or delete media from the photographer's cameras or memory cards."
       },
@@ -4677,7 +4779,7 @@ RAW files are not provided.`
     // described, so the printed contract says the same as the screen the client
     // signed on rather than only the money half of it.
     const homeStudioRiderHtml = (studioByPhotographer && /home studio/i.test(studioLocation))
-      ? ` Attendance is limited to a maximum of 3 people in total including the Participant; the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`
+      ? ` Attendance is limited to a maximum of 3 people in total including the Participant and any crew they bring (hair &amp; makeup, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`
       : ``;
     const studioClauseTfp = studioByPhotographer
       ? `Studio venue for this session is provided by the photographer${studioLocation ? ` at <strong>${esc(studioLocation)}</strong>` : ""} at no additional rental charge to the talent.${homeStudioRiderHtml}`
@@ -6292,18 +6394,26 @@ RAW files are not provided.`
                     <span>💎 Itemized Production Quote &amp; Milestone Payable HUD</span>
                     <span id="calcDiscountTag" style="font-size: var(--font-xs); color: #059669; background: rgba(5,150,105,0.2); padding: 3px 10px; border-radius: 12px; font-weight: 700; display: none;"></span>
                   </div>
-                  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; font-family: var(--mono-font); font-size: var(--font-sm); border-bottom: 1px dashed rgba(255,255,255,0.15); padding-bottom: 12px; margin-bottom: 12px;">
-                    <div>
-                      <span style="color: rgba(255,255,255,0.6);">Package Base Rate:</span>
-                      <span id="summaryOriginalPrice" style="font-weight: 700; color: #ffffff; margin-left: 6px;">₹${getAdminPackages()[0].price.toLocaleString('en-IN')}</span>
+                  <!-- Itemised as a stacked list rather than one wrapping row:
+                       every charge gets its own line, and the total sits at the
+                       foot where a quote is read from. Add-on lines appear only
+                       when they apply. -->
+                  <div style="font-family: var(--mono-font); font-size: var(--font-sm); border-bottom: 1px dashed rgba(255,255,255,0.15); padding-bottom: 12px; margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 5px 0;">
+                      <span style="color: rgba(255,255,255,0.6);">Package Base Rate</span>
+                      <span id="summaryOriginalPrice" style="font-weight: 700; color: #ffffff; white-space: nowrap;">₹${getAdminPackages()[0].price.toLocaleString('en-IN')}</span>
                     </div>
-                    <div id="summaryDiscountWrap" style="display: none;">
+                    <div id="summaryHomeStudioWrap" style="display: none; justify-content: space-between; align-items: baseline; gap: 12px; padding: 5px 0;">
+                      <span style="color: rgba(255,255,255,0.6);">🏠 <span id="summaryHomeStudioLabel">Home Studio Rental (Noida)</span></span>
+                      <span id="summaryHomeStudioAmount" style="font-weight: 700; color: #ffffff; white-space: nowrap;">+₹0</span>
+                    </div>
+                    <div id="summaryDiscountWrap" style="display: none; justify-content: space-between; align-items: baseline; gap: 12px; padding: 5px 0;">
                       <span id="summaryDiscountLabel" style="color: #059669; font-weight: 700;">Promo Savings:</span>
-                      <span id="summarySavingsAmount" style="font-weight: 700; color: #059669; margin-left: 6px;">-₹0</span>
+                      <span id="summarySavingsAmount" style="font-weight: 700; color: #059669; white-space: nowrap;">-₹0</span>
                     </div>
-                    <div>
-                      <span style="color: rgba(255,255,255,0.6);">Total Payable:</span>
-                      <span id="summaryFinalAmount" style="font-size: var(--font-md); font-weight: 800; color: var(--accent); font-family: var(--mono-font);">₹${getAdminPackages()[0].price.toLocaleString('en-IN')} INR</span>
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0 2px; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.18);">
+                      <span style="color: #ffffff; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-size: var(--font-xs);">Total Payable</span>
+                      <span id="summaryFinalAmount" style="font-size: var(--font-md); font-weight: 800; color: var(--accent); font-family: var(--mono-font); white-space: nowrap;">₹${getAdminPackages()[0].price.toLocaleString('en-IN')} INR</span>
                     </div>
                   </div>
                   <!-- 50/50 Milestone Itemized Breakdown -->
@@ -8240,6 +8350,17 @@ RAW files are not provided.`
       }
 
       // Update inline contract studio clause dynamically
+      // Home studio rental. Only ever charged on a paid booking the client
+      // chose the home studio for: TFP and invite bookings hide pricing
+      // entirely and are supplied the venue free, so they must never be billed
+      // for it. Computed here rather than beside the rest of the pricing
+      // because the contract clause just below quotes it, and that clause is
+      // the text the client actually ticks agreement to.
+      const homeStudioSelected = $("#b_studio_space")?.value === HOME_STUDIO_VALUE;
+      const homeStudioFee = (homeStudioSelected && !isTfpType && !isValidInvite)
+        ? getHomeStudioRate()
+        : 0;
+
       const contractStudioClause = $("#bookingContractStudioClause");
       if (contractStudioClause) {
         // The residence rider is rebuilt here rather than borrowed from the
@@ -8248,11 +8369,18 @@ RAW files are not provided.`
         // visitor typed an invite code carrying a venue — the whole field
         // refresh died mid-update, leaving pricing and policy text stale.
         const lockedHomeRiderHtml = /home studio/i.test(lockedLocation || "")
-          ? ` Attendance is limited to a maximum of 3 people in total including the Participant; the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`
+          ? ` Attendance is limited to a maximum of 3 people in total including the Participant and any crew they bring (hair &amp; makeup, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`
           : ``;
+        // House rules for the residence, quoted wherever the home studio is
+        // the venue — a paid booking is capped exactly like an invited one.
+        const paidHomeRiderHtml = ` Attendance is limited to a maximum of 3 people in total including the Participant and any crew they bring (hair &amp; makeup, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`;
         contractStudioClause.innerHTML = (isValidInvite && lockedLocation)
           ? `Studio for this session is provided by the photographer at <strong>${lockedLocation}</strong> at no additional rental charge to the talent.${lockedHomeRiderHtml}`
-          : `If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges.`;
+          : homeStudioFee > 0
+            // The client is looking at a quote with this rental on it, so the
+            // clause they tick has to name the same number.
+            ? `This session takes place at the Studio's home studio in Noida. A fixed home studio rental of <strong>₹${homeStudioFee.toLocaleString("en-IN")}</strong> applies and is itemised in the production quote; no further venue rental is billed at actuals for it.${paidHomeRiderHtml} Hair &amp; makeup artists, stylists, set designers and any other third-party crew are not included in the package rate — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`
+            : `If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges. Hair &amp; makeup artists, stylists, set designers and any other third-party crew are not included in the package rate — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`;
       }
 
       // Update TFP policy notice studio line if TFP is selected
@@ -8293,17 +8421,26 @@ RAW files are not provided.`
 
       let savings = 0;
       let discountTagText = "";
+      // Each promo code decides whether it discounts add-ons too, or the
+      // package rate alone.
+      const discountableTotal = (matchedDiscount && matchedDiscount.includeAddons)
+        ? basePrice + homeStudioFee
+        : basePrice;
 
       if (matchedDiscount) {
         if (matchedDiscount.flat) {
           savings = matchedDiscount.flat;
           discountTagText = `FLAT ₹${matchedDiscount.flat.toLocaleString("en-IN")} OFF`;
         } else if (matchedDiscount.pct) {
-          savings = Math.round((basePrice * matchedDiscount.pct) / 100);
+          savings = Math.round((discountableTotal * matchedDiscount.pct) / 100);
           discountTagText = `${matchedDiscount.pct}% OFF`;
         }
       }
-      let finalPayable = Math.max(0, basePrice - savings);
+      // Never discount more than the code is entitled to touch: a package-only
+      // code caps at the package, so a large flat code cannot quietly eat the
+      // studio rental it was never meant to cover.
+      savings = Math.min(savings, discountableTotal);
+      let finalPayable = Math.max(0, basePrice + homeStudioFee - savings);
 
       // Publish the current invite/promo/pricing state for the submit handler.
       bookingCalc = {
@@ -8315,6 +8452,7 @@ RAW files are not provided.`
         matchedDiscount,
         discountTagText,
         basePrice,
+        homeStudioFee,
         savings,
         finalPayable
       };
@@ -8371,8 +8509,19 @@ RAW files are not provided.`
         if (budgetField) budgetField.style.display = "";
 
         if (summaryOriginalPrice) summaryOriginalPrice.textContent = `₹${basePrice.toLocaleString("en-IN")}`;
+
+        // Home studio rental line — present only when it is actually charged.
+        const summaryHomeStudioWrap = $("#summaryHomeStudioWrap");
+        const summaryHomeStudioAmount = $("#summaryHomeStudioAmount");
+        if (summaryHomeStudioWrap) {
+          summaryHomeStudioWrap.style.display = homeStudioFee > 0 ? "flex" : "none";
+        }
+        if (summaryHomeStudioAmount && homeStudioFee > 0) {
+          summaryHomeStudioAmount.textContent = `+₹${homeStudioFee.toLocaleString("en-IN")}`;
+        }
+
         if (savings > 0) {
-          if (summaryDiscountWrap) summaryDiscountWrap.style.display = "block";
+          if (summaryDiscountWrap) summaryDiscountWrap.style.display = "flex";
           if (summaryDiscountLabel) summaryDiscountLabel.textContent = `Promo Savings (${discountTagText}):`;
           if (summarySavingsAmount) summarySavingsAmount.textContent = `-₹${savings.toLocaleString("en-IN")}`;
           if (calcDiscountTag) {
@@ -8671,12 +8820,12 @@ RAW files are not provided.`
         const venueByStudio = $("#b_location")?.dataset.inviteLocked === "1" || isHomeStudio;
         const venueByStudioAddress = venueByStudio ? ($("#b_location")?.value || "") : "";
         const homeStudioRider = isHomeStudio
-          ? `\n\nHOME STUDIO SESSIONS\nThis session takes place at the photographer's private residence. Attendance is limited to a maximum of 3 people in total, including the Participant. Sessions run within booked daylight hours and conclude by 7:00 PM. The full address is shared on booking confirmation. Guests may not attend unaccompanied.`
+          ? `\n\nHOME STUDIO SESSIONS\nThis session takes place at the photographer's private residence. Attendance is limited to a maximum of 3 people in total, including the Participant and any crew they bring — hair & makeup artists, stylists, assistants and guests all count towards this limit. Sessions run within booked daylight hours and conclude by 7:00 PM. The full address is shared on booking confirmation. Guests may not attend unaccompanied.`
           : "";
         const venueClause = venueByStudio
           ? `1. SCOPE OF PRODUCTION & VENUE (PROVIDED BY STUDIO)\nThis session is scheduled for studio/location photography production at a venue arranged and paid for by the Studio: ${venueByStudioAddress || "as confirmed with the Studio"}. No studio rental, venue hire or space fee is billed to the Participant for this session. A change of venue requested by the Participant is subject to Studio approval and may reintroduce venue costs at actuals.${homeStudioRider}`
           : `1. SCOPE OF PRODUCTION & VENUE RENTAL POLICY\nThis session is scheduled for studio/location photography production. Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio venue space is required, applicable studio rental fees are billed at actuals (at cost).`;
-        const contractRefDoc = isCustomContract ? "CUSTOM-CLIENT-CONTRACT-MSA" : (isTfpCat ? "TFP-LIABILITY-RELEASE-V3.3" : "COMMERCIAL-CONTRACT-V3.3");
+        const contractRefDoc = isCustomContract ? "CUSTOM-CLIENT-CONTRACT-MSA" : (isTfpCat ? "TFP-LIABILITY-RELEASE-V3.3" : "COMMERCIAL-CONTRACT-V3.4");
         // Resolved before the release text below, which now states the fee and
         // the milestones. They previously appeared only in the inquiry email as
         // booking details — so the document the client actually signed said
@@ -8721,20 +8870,40 @@ RAW files are not provided.`
         // The studio-space select is hidden on these bookings but keeps its
         // default answer, so reading it verbatim told the studio "client books
         // studio directly" on a shoot where the studio supplies the space.
+        // Read from the pricing snapshot rather than the destructure further
+        // down: that runs after this block, so naming it here would be a
+        // use-before-declaration crash on every submit.
+        const homeStudioRentalFee = (bookingCalc && bookingCalc.homeStudioFee) || 0;
+        // House rules for shooting at the photographer's residence apply
+        // whether or not a rental is charged for it.
+        const homeStudioHouseRules = `Home Studio Policy: This session takes place at the photographer's private residence. Attendance is capped at 3 people in total including yourself and any crew you bring (hair & makeup, stylist, assistants and guests all count towards this cap), sessions run within booked daylight hours and finish by 7:00 PM, and the full address is shared once the booking is confirmed. Guests may not attend unaccompanied.\n`;
+
         const studioSpaceVal = isHomeStudio
-          ? `Home Studio, Noida — provided by the studio, no rental billed`
+          ? (homeStudioRentalFee > 0
+              ? `Home Studio, Noida — provided by the studio, fixed rental ₹${homeStudioRentalFee.toLocaleString('en-IN')} (itemised in the quote)`
+              : `Home Studio, Noida — provided by the studio, no rental billed`)
           : (venueByStudio
               ? `Not required — venue provided by the studio (photographer's invite)`
               : (val("b_studio_space") || 'Not Specified'));
-        const studioRentalPolicyNote = venueByStudio
-          ? `Studio Rental Policy: The venue for this session is arranged and paid for by the studio. No venue rental or studio space fee is billed to you for this shoot.\n` +
-            (isHomeStudio
-              ? `Home Studio Policy: This session takes place at the photographer's private residence. Attendance is capped at 3 people in total including yourself, sessions run within booked daylight hours and finish by 7:00 PM, and the full address is shared once the booking is confirmed. Guests may not attend unaccompanied.\n`
-              : ``)
-          : `Studio Rental Policy: Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio space is required, venue rental fees are billed at actuals (at cost), or the client may book the studio directly.\n`;
+        const studioRentalPolicyNote = (isHomeStudio && homeStudioRentalFee > 0)
+          // A paid home-studio booking is the one case where the studio does
+          // charge for its own venue, so the stock "no fee is billed to you"
+          // and "billed at actuals" lines would both misstate the quote.
+          ? `Studio Rental Policy: This session takes place at the studio's home studio in Noida. A fixed home studio rental of ₹${homeStudioRentalFee.toLocaleString('en-IN')} applies and is itemised in your production quote — nothing further is billed at actuals for the venue.\n` +
+            homeStudioHouseRules
+          : venueByStudio
+            ? `Studio Rental Policy: The venue for this session is arranged and paid for by the studio. No venue rental or studio space fee is billed to you for this shoot.\n` +
+              (isHomeStudio ? homeStudioHouseRules : ``)
+            : `Studio Rental Policy: Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio space is required, venue rental fees are billed at actuals (at cost), or the client may book the studio directly.\n`;
         const travelPolicyNote = venueByStudio
           ? `Travel & Accommodation Policy: Travel to the studio-provided venue above is covered by the studio for this invite. If you later request a different location, standard terms apply again (travel beyond 20 km from the studio base in Noida, and accommodation where an overnight stay is needed, billed at actuals).\n`
           : `Travel & Accommodation Policy: Shoots requiring travel beyond 20 km from the studio base (Noida) incur paid travel and, where an overnight stay is needed, accommodation - billed at actuals (at cost).\n`;
+        // Paid shoots only: the package buys the photographer, not the crew.
+        // Nothing anywhere said so, which left every HMUA/styling/set cost an
+        // argument waiting to happen on shoot day.
+        const crewCostPolicyNote = (type !== "Selective Collaboration (TFP)")
+          ? `Creative Crew & Third-Party Costs: The package rate covers the photographer's creative fee, light design, direction and retouched master deliverables only. If the shoot requires a hair & makeup artist (HMUA), wardrobe stylist, set designer, props / set construction, art direction or any other third-party creative, their charges apply AT ACTUALS (at cost) over and above the package rate. You are free to bring your own crew, or the studio can source them for you — either way the cost is quoted for your approval before the shoot day and nothing is incurred without your confirmation.\n`
+          : ``;
         const deliverablePolicyNote = `RAW Files & Deliverables Policy: Includes proofing gallery + contracted retouched master limit. Requesting the complete full unedited image gallery or extra retouched master clicks beyond the package limit incurs additional gallery buyout fees. RAW unedited camera files remain confidential studio property.\n`;
         const gearPolicyNote = `Camera & Media Policy: All cameras, memory cards, and raw captures are strictly hands-off. Participants may not touch equipment or delete media from cameras. Deleting files constitutes a material breach of contract and incurs full data recovery costs.\n`;
 
@@ -8752,7 +8921,9 @@ RAW files are not provided.`
           studioRentalPolicyNote +
           travelPolicyNote +
           cleanBudget +
+          (homeStudioRentalFee > 0 ? `Home Studio Rental (add-on): ₹${homeStudioRentalFee.toLocaleString('en-IN')}\n` : "") +
           (type !== "Selective Collaboration (TFP)" ? `${paymentTermsText}\n` : "") +
+          crewCostPolicyNote +
           deliverablePolicyNote +
           gearPolicyNote +
           `Moodboard Link: ${moodboard || '—'}\n` +
@@ -8805,7 +8976,7 @@ RAW files are not provided.`
         const {
           enteredCode, matchedInvite, isValidInvite, lockedLocation,
           enteredDiscount, matchedDiscount, discountTagText,
-          basePrice, savings, finalPayable
+          basePrice, homeStudioFee, savings, finalPayable
         } = bookingCalc;
 
         const inviteMeta = (isValidInvite && matchedInvite && typeof matchedInvite === "object") ? {
@@ -8822,11 +8993,12 @@ RAW files are not provided.`
 
         const financialSummary = (type !== "Selective Collaboration (TFP)" && !isValidInvite) ? {
           basePrice: basePrice,
+          homeStudioFee: homeStudioFee || 0,
           savings: savings,
           finalPayable: finalPayable,
           advanceRetainer: Math.round(finalPayable / 2),
           wrapBalance: finalPayable - Math.round(finalPayable / 2)
-        } : { basePrice: 0, savings: 0, finalPayable: 0, advanceRetainer: 0, wrapBalance: 0 };
+        } : { basePrice: 0, homeStudioFee: 0, savings: 0, finalPayable: 0, advanceRetainer: 0, wrapBalance: 0 };
 
         async function recordContractAudit(payload) {
           saveLocalContractAudit({
@@ -8869,6 +9041,7 @@ RAW files are not provided.`
             `Budget: ${budget || "TBD"}`,
             inviteMeta ? `Invite Code: ${inviteMeta.code} (${inviteMeta.desc})` : null,
             promoMeta ? `Promo Code: ${promoMeta.code} (${promoMeta.tag})` : null,
+            financialSummary.homeStudioFee > 0 ? `Home Studio Rental: ₹${financialSummary.homeStudioFee.toLocaleString('en-IN')}` : null,
             financialSummary.finalPayable > 0 ? `Payable: ₹${financialSummary.finalPayable.toLocaleString('en-IN')} (Retainer: ₹${financialSummary.advanceRetainer.toLocaleString('en-IN')}, Balance: ₹${financialSummary.wrapBalance.toLocaleString('en-IN')})` : `Category: TFP / Collab ($0)`
           ].filter(Boolean).join(" | ");
 
@@ -9157,7 +9330,7 @@ RAW files are not provided.`
       }
 
       if (modalTitle) modalTitle.textContent = isTfp ? "Studio Production & Liability Release" : "Commercial Shoot Contract & Production Agreement";
-      if (modalTag) modalTag.textContent = isTfp ? "TFP-LIABILITY-RELEASE-V3.3 (ACTIVE)" : "COMMERCIAL-CONTRACT-V3.3 (ACTIVE)";
+      if (modalTag) modalTag.textContent = isTfp ? "TFP-LIABILITY-RELEASE-V3.3 (ACTIVE)" : "COMMERCIAL-CONTRACT-V3.4 (ACTIVE)";
       if (partnerNameEl) partnerNameEl.textContent = partnerName || "Valued Client";
       
       // This is the screen the signature is actually captured on, so it is the
@@ -9169,9 +9342,15 @@ RAW files are not provided.`
       const modalVenueByStudio = $("#b_location")?.dataset.inviteLocked === "1" || modalIsHomeStudio;
       const modalVenueAddress = modalVenueByStudio ? ($("#b_location")?.value || "") : "";
       const modalHomeRider = modalIsHomeStudio
-        ? ` <strong>Home studio sessions</strong> take place at the photographer's private residence: attendance is capped at 3 people in total including you, the session runs within booked daylight hours and finishes by <strong>7:00 PM</strong>, and the full address is shared once your booking is confirmed. Guests may not attend unaccompanied.`
+        ? ` <strong>Home studio sessions</strong> take place at the photographer's private residence: attendance is capped at 3 people in total including you and any crew you bring — hair &amp; makeup, stylist, assistants and guests all count towards this cap, the session runs within booked daylight hours and finishes by <strong>7:00 PM</strong>, and the full address is shared once your booking is confirmed. Guests may not attend unaccompanied.`
         : "";
-      const venueSentence = modalVenueByStudio
+      // A paid home-studio booking now carries a fixed rental, so the blanket
+      // "no studio rental is billed to you" would contradict the quote the
+      // client is looking at while they tick this box.
+      const modalHomeStudioFee = (modalIsHomeStudio && bookingCalc && bookingCalc.homeStudioFee) || 0;
+      const venueSentence = modalHomeStudioFee > 0
+        ? ` This session takes place at the Studio's home studio in Noida${modalVenueAddress ? ` (<strong>${esc(modalVenueAddress)}</strong>)` : ""}. A fixed home studio rental of <strong>₹${modalHomeStudioFee.toLocaleString("en-IN")}</strong> applies and is itemised in your quote — nothing further is billed at actuals for the venue, and no travel cost is charged for it.${modalHomeRider}`
+        : modalVenueByStudio
         ? ` The shoot venue${modalVenueAddress ? ` (<strong>${esc(modalVenueAddress)}</strong>)` : ""} is arranged and paid for by the Studio — no studio rental, venue hire or travel cost is billed to you for it. Requesting a different location later re-applies the standard venue and travel terms.${modalHomeRider}`
         : (isTfp
             ? ` Locations &gt;20 km from Noida require client-funded travel, conveyance &amp; accommodation.`
