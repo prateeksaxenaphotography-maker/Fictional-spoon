@@ -393,21 +393,35 @@ const DEFAULT_PACKAGES = [
 // of publishing PACKAGES rather than keeping rates on one device.
 const DEFAULT_HOME_STUDIO_RATE = 3000;
 
-function getHomeStudioRate() {
-  try {
-    const saved = localStorage.getItem("wps_home_studio_rate");
-    if (saved !== null && saved !== "") {
-      const n = parseInt(saved, 10);
-      // 0 is a real value — it switches the charge off — so only a genuinely
-      // unparseable or negative entry falls through to the published rate.
-      if (!isNaN(n) && n >= 0) return n;
-    }
-  } catch(e) {}
-  try {
-    const pub = window.WPS_DATA && window.WPS_DATA.HOME_STUDIO_RATE;
-    if (typeof pub === "number" && !isNaN(pub) && pub >= 0) return pub;
-  } catch(e) {}
-  return DEFAULT_HOME_STUDIO_RATE;
+// forTestShoot picks the collaboration rate. A test shoot brings no shoot fee
+// with it, so the studio may want to hand the space over cheaper than a paid
+// client pays for the same room. Left blank it simply follows the paid rate,
+// which is what every booking did before the two rates were split.
+function getHomeStudioRate(forTestShoot) {
+  const readRate = (localKey, publishedKey) => {
+    try {
+      const saved = localStorage.getItem(localKey);
+      if (saved !== null && saved !== "") {
+        const n = parseInt(saved, 10);
+        // 0 is a real value — it switches the charge off — so only a genuinely
+        // unparseable or negative entry falls through to the published rate.
+        if (!isNaN(n) && n >= 0) return n;
+      }
+    } catch(e) {}
+    try {
+      const pub = window.WPS_DATA && window.WPS_DATA[publishedKey];
+      if (typeof pub === "number" && !isNaN(pub) && pub >= 0) return pub;
+    } catch(e) {}
+    return null;
+  };
+
+  if (forTestShoot) {
+    const tfpRate = readRate("wps_home_studio_rate_tfp", "HOME_STUDIO_RATE_TFP");
+    if (tfpRate !== null) return tfpRate;
+    // No separate collaboration rate set — fall through to the paid one.
+  }
+  const paidRate = readRate("wps_home_studio_rate", "HOME_STUDIO_RATE");
+  return paidRate !== null ? paidRate : DEFAULT_HOME_STUDIO_RATE;
 }
 window.getHomeStudioRate = getHomeStudioRate;
 
@@ -446,6 +460,18 @@ window.saveAdminCustomPackages = async function() {
   if (homeRateEl && homeRateEl.value !== "") {
     const rate = parseInt(homeRateEl.value, 10);
     if (!isNaN(rate) && rate >= 0) localStorage.setItem("wps_home_studio_rate", String(rate));
+  }
+  // The test-shoot rate is genuinely optional: emptying the box means "charge
+  // collaborations the same as paid shoots", so a blank clears the override
+  // rather than being ignored the way a blank paid rate is.
+  const homeRateTfpEl = document.getElementById("homeStudioRateTfpInput");
+  if (homeRateTfpEl) {
+    if (homeRateTfpEl.value === "") {
+      localStorage.removeItem("wps_home_studio_rate_tfp");
+    } else {
+      const tfpRate = parseInt(homeRateTfpEl.value, 10);
+      if (!isNaN(tfpRate) && tfpRate >= 0) localStorage.setItem("wps_home_studio_rate_tfp", String(tfpRate));
+    }
   }
 
   // Commit Draft Invite Codes. (A legacy singular "wps_custom_invite_code"
@@ -1369,7 +1395,20 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         INVITE_CODES: (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : []),
         PROMO_CODES: (typeof window.getAdminPromoCodes === "function" ? window.getAdminPromoCodes() : {}),
         PACKAGES: (typeof window.getAdminPackages === "function" ? window.getAdminPackages() : []),
-        HOME_STUDIO_RATE: (typeof window.getHomeStudioRate === "function" ? window.getHomeStudioRate() : 3000) }, null, 2)};
+        HOME_STUDIO_RATE: (typeof window.getHomeStudioRate === "function" ? window.getHomeStudioRate() : 3000),
+        // Only published when the studio actually set a separate collaboration
+        // rate; null keeps test shoots on the paid rate for every visitor.
+        HOME_STUDIO_RATE_TFP: (function() {
+          try {
+            const v = localStorage.getItem("wps_home_studio_rate_tfp");
+            if (v !== null && v !== "") {
+              const n = parseInt(v, 10);
+              if (!isNaN(n) && n >= 0) return n;
+            }
+            const pub = window.WPS_DATA && window.WPS_DATA.HOME_STUDIO_RATE_TFP;
+            return (typeof pub === "number" && pub >= 0) ? pub : null;
+          } catch(e) { return null; }
+        })() }, null, 2)};
 
 // Explicit Global Aliases for Data Safety
 window.ACTIVITIES = window.WPS_DATA.ACTIVITIES || [];
@@ -3968,11 +4007,24 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 12px 0;">Edit max package rates (INR), package names, or deliverable descriptions. Click <strong>Save &amp; Push Live</strong> to update booking forms.</p>
             <div style="background: var(--paper); border: 1px solid var(--accent); border-radius: 8px; padding: 12px 16px; margin-bottom: 12px;">
               <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase;">🏠 Home Studio Rental (Noida)</span>
-              <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 8px 0; font-family: 'Outfit', sans-serif;">Added to a <strong>paid</strong> booking when the client picks the home studio, and shown as its own line in their quote. Test shoots and invite-code bookings are never charged this. Set <strong>0</strong> to switch it off.</p>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-weight: 800; color: #059669; font-size: var(--font-sm);">₹</span>
-                <input type="number" id="homeStudioRateInput" min="0" step="500" value="${getHomeStudioRate()}" oninput="window.markUnsavedChanges && window.markUnsavedChanges()" style="width: 140px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); font-weight: 800; color: #059669; background: var(--bone);" />
+              <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 8px 0; font-family: 'Outfit', sans-serif;">Charged when someone picks the home studio, and shown as its own line in their quote. Set <strong>0</strong> to switch it off. An invite code that locks a venue carries its own price and ignores both of these.</p>
+              <div style="display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap;">
+                <div>
+                  <span style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft); display: block; margin-bottom: 4px; text-transform: uppercase;">Paid shoots</span>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-weight: 800; color: #059669; font-size: var(--font-sm);">₹</span>
+                    <input type="number" id="homeStudioRateInput" min="0" step="500" value="${getHomeStudioRate()}" oninput="window.markUnsavedChanges && window.markUnsavedChanges()" style="width: 140px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); font-weight: 800; color: #059669; background: var(--bone);" />
+                  </div>
+                </div>
+                <div>
+                  <span style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft); display: block; margin-bottom: 4px; text-transform: uppercase;">Test shoots (TFP)</span>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-weight: 800; color: #059669; font-size: var(--font-sm);">₹</span>
+                    <input type="number" id="homeStudioRateTfpInput" min="0" step="500" placeholder="same as paid" value="${(function(){ try { const v = localStorage.getItem("wps_home_studio_rate_tfp"); if (v !== null && v !== "") return v; const p = window.WPS_DATA && window.WPS_DATA.HOME_STUDIO_RATE_TFP; return (typeof p === "number") ? p : ""; } catch(e) { return ""; } })()}" oninput="window.markUnsavedChanges && window.markUnsavedChanges()" style="width: 140px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); font-weight: 800; color: #059669; background: var(--bone);" />
+                  </div>
+                </div>
               </div>
+              <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 8px 0 0 0; font-family: 'Outfit', sans-serif;">Leave the test-shoot box <strong>empty</strong> and collaborations pay the same as paid shoots.</p>
             </div>
             <div id="adminPackagesEditorGrid" style="display: flex; flex-direction: column; gap: 8px;"></div>
           </div>
@@ -8458,7 +8510,8 @@ RAW files are not provided.`
         const c = matchedInvite && typeof matchedInvite === "object" ? Number(matchedInvite.venueCost) : 0;
         homeStudioFee = (!isNaN(c) && c > 0) ? c : 0;
       } else if (dropdownHomeStudio) {
-        homeStudioFee = getHomeStudioRate();
+        // Collaborations can carry their own rate for the same room.
+        homeStudioFee = getHomeStudioRate(isTfpType || isValidInvite);
       }
       const homeStudioSelected = dropdownHomeStudio || inviteLocksVenue;
 
