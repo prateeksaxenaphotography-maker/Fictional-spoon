@@ -45,6 +45,14 @@ window.getAdminPromoCodes = function() {
       return window.adminDraftPromoCodes;
     }
   } catch(e) {}
+  // Published promo codes — see the note on INVITE_CODES in getAdminInviteCodes.
+  try {
+    const pub = window.WPS_DATA && window.WPS_DATA.PROMO_CODES;
+    if (pub && typeof pub === "object" && Object.keys(pub).length > 0) {
+      window.adminDraftPromoCodes = { ...pub };
+      return window.adminDraftPromoCodes;
+    }
+  } catch(e) {}
   window.adminDraftPromoCodes = { ...DEFAULT_PROMO_CODES };
   return window.adminDraftPromoCodes;
 };
@@ -159,6 +167,17 @@ window.getAdminInviteCodes = function() {
         window.adminDraftInviteCodes = normalize(parsed);
         return window.adminDraftInviteCodes;
       }
+    }
+  } catch(e) {}
+
+  // Published codes: what a visitor's browser sees. Checked after this
+  // device's own list so the studio's unsaved edits still win locally, and
+  // before the built-ins so a code retired in the panel does not come back.
+  try {
+    const pub = window.WPS_DATA && window.WPS_DATA.INVITE_CODES;
+    if (Array.isArray(pub) && pub.length > 0) {
+      window.adminDraftInviteCodes = normalize(pub);
+      return window.adminDraftInviteCodes;
     }
   } catch(e) {}
 
@@ -316,6 +335,12 @@ function getAdminPackages() {
   try {
     const saved = localStorage.getItem("wps_custom_packages");
     if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  // Published rates — without this a price edit in the panel changed what the
+  // studio saw and nothing a client was ever quoted.
+  try {
+    const pub = window.WPS_DATA && window.WPS_DATA.PACKAGES;
+    if (Array.isArray(pub) && pub.length > 0) return pub;
   } catch(e) {}
   return DEFAULT_PACKAGES;
 }
@@ -1225,7 +1250,15 @@ window.moveAdminPackageRow = function(index, dir) {
    nerdyphotographer.in — published portfolio data
    Auto-synced by the Admin Panel. Photo files live under photos/.
    ============================================================ */
-window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: published, DELETED_IDS: [...removed].sort(), CALENDAR_SETTINGS: (window.WPS_DATA && window.WPS_DATA.CALENDAR_SETTINGS) || {} }, null, 2)};
+window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: published, DELETED_IDS: [...removed].sort(), CALENDAR_SETTINGS: (window.WPS_DATA && window.WPS_DATA.CALENDAR_SETTINGS) || {},
+        // Invite codes, promo codes and package rates used to live only in the
+        // admin device's localStorage, which no visitor can read: a code
+        // created in the panel worked for the studio and was rejected as
+        // invalid for every client, and price edits never reached the booking
+        // form. Publishing them here is what makes them real for everyone.
+        INVITE_CODES: (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : []),
+        PROMO_CODES: (typeof window.getAdminPromoCodes === "function" ? window.getAdminPromoCodes() : {}),
+        PACKAGES: (typeof window.getAdminPackages === "function" ? window.getAdminPackages() : []) }, null, 2)};
 
 // Explicit Global Aliases for Data Safety
 window.ACTIVITIES = window.WPS_DATA.ACTIVITIES || [];
@@ -8209,8 +8242,16 @@ RAW files are not provided.`
       // Update inline contract studio clause dynamically
       const contractStudioClause = $("#bookingContractStudioClause");
       if (contractStudioClause) {
+        // The residence rider is rebuilt here rather than borrowed from the
+        // contract-text builder: that `homeStudioRiderHtml` is scoped to its
+        // own function, so reaching for it threw a ReferenceError the moment a
+        // visitor typed an invite code carrying a venue — the whole field
+        // refresh died mid-update, leaving pricing and policy text stale.
+        const lockedHomeRiderHtml = /home studio/i.test(lockedLocation || "")
+          ? ` Attendance is limited to a maximum of 3 people in total including the Participant; the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`
+          : ``;
         contractStudioClause.innerHTML = (isValidInvite && lockedLocation)
-          ? `Studio for this session is provided by the photographer at <strong>${lockedLocation}</strong> at no additional rental charge to the talent.${homeStudioRiderHtml}`
+          ? `Studio for this session is provided by the photographer at <strong>${lockedLocation}</strong> at no additional rental charge to the talent.${lockedHomeRiderHtml}`
           : `If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges.`;
       }
 
