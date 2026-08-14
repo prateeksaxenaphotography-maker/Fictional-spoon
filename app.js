@@ -7814,6 +7814,26 @@ RAW files are not provided.`
       }
     }
 
+    // Invite/promo/pricing state, computed inside updateFields but needed again
+    // when the form is submitted. These used to be read straight out of
+    // updateFields' local scope by the submit handler, where they do not
+    // exist — every submission threw "isValidInvite is not defined" before
+    // anything was saved or sent, so the client saw a dead button and the
+    // studio received nothing. updateFields refreshes this snapshot on init
+    // and on every field change, so it always reflects what is on screen.
+    let bookingCalc = {
+      enteredCode: "",
+      matchedInvite: null,
+      isValidInvite: false,
+      lockedLocation: "",
+      enteredDiscount: "",
+      matchedDiscount: null,
+      discountTagText: "",
+      basePrice: 0,
+      savings: 0,
+      finalPayable: 0
+    };
+
     // Dynamic field update logic
     const updateFields = () => {
       const type = $("#b_type")?.value;
@@ -8216,6 +8236,20 @@ RAW files are not provided.`
         }
       }
       let finalPayable = Math.max(0, basePrice - savings);
+
+      // Publish the current invite/promo/pricing state for the submit handler.
+      bookingCalc = {
+        enteredCode,
+        matchedInvite,
+        isValidInvite,
+        lockedLocation,
+        enteredDiscount,
+        matchedDiscount,
+        discountTagText,
+        basePrice,
+        savings,
+        finalPayable
+      };
 
       const finalPriceSummaryBox = $("#finalPriceSummaryBox");
       const promoCodeWrap = $("#b_discount_code")?.closest(".field");
@@ -8697,7 +8731,15 @@ RAW files are not provided.`
 
         const contractNumber = agreedToTerms ? generateContractNumber() : "";
 
-        // Gather complete metadata for Admin DB & Audit Vault:
+        // Gather complete metadata for Admin DB & Audit Vault. The invite,
+        // promo and pricing values come from the snapshot updateFields keeps
+        // current — they are not in this function's scope.
+        const {
+          enteredCode, matchedInvite, isValidInvite, lockedLocation,
+          enteredDiscount, matchedDiscount, discountTagText,
+          basePrice, savings, finalPayable
+        } = bookingCalc;
+
         const inviteMeta = (isValidInvite && matchedInvite && typeof matchedInvite === "object") ? {
           code: matchedInvite.code,
           desc: matchedInvite.desc || "Photographer Direct Unlock",
