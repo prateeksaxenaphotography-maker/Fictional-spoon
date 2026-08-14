@@ -10959,10 +10959,19 @@ if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || wi
     const tag = document.querySelector('script[src*="app.js"]');
     const loaded = tag && (String(tag.getAttribute("src")).match(/[?&]v=(\d+)/) || [])[1];
     if (!loaded) return;
-    fetch("/sw.js", { cache: "no-store" })
+
+    // The beacon URL is made unique per check. cache:"no-store" only bypasses
+    // the BROWSER cache; sw.js is served with max-age=14400, and Cloudflare
+    // does not honour a client's no-cache header, so the plain URL could hand
+    // back a version number up to four hours old — the check would then report
+    // "you are current" to a visitor who was not. A URL nothing has seen before
+    // cannot be served from any cache, browser or edge.
+    const beacon = () => fetch(`/sw.js?cb=${Date.now()}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.text() : ""))
-      .then((txt) => {
-        const live = (String(txt).match(/ASSET_VERSION\s*=\s*"(\d+)"/) || [])[1];
+      .then((txt) => (String(txt).match(/ASSET_VERSION\s*=\s*"(\d+)"/) || [])[1] || "");
+
+    const checkOnce = () => beacon()
+      .then((live) => {
         if (!live || live === loaded) return;
         if (sessionStorage.getItem("wps-updated-to") === live) return;
         sessionStorage.setItem("wps-updated-to", live);
@@ -10978,6 +10987,19 @@ if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || wi
         });
       })
       .catch(() => {});
+
+    checkOnce();
+
+    // A tab left open for hours never reloads, so it would sit on whatever
+    // build it started with. Re-check when the visitor comes back to it,
+    // throttled to once a minute so switching tabs is not a stream of requests.
+    let lastCheck = Date.now();
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastCheck < 60000) return;
+      lastCheck = Date.now();
+      checkOnce();
+    });
   } catch (e) {}
 })();
 
