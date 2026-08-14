@@ -164,6 +164,10 @@ window.getAdminInviteCodes = function() {
 
   const defaultList = [
     { code: "NERDYBRAND", desc: "Default photographer unlock code for Instagram DMs" },
+    // Built into the defaults on purpose: invite codes added through the Admin
+    // Panel live in this device's localStorage and are never published, so a
+    // code that only exists there is invalid for every client who types it.
+    { code: "NERDYHOME", desc: "Home Studio TFP Collaboration Unlock (Location Locked)", location: "Home Studio - Sector 46, Noida (Provided by Studio)" },
     { code: "NERDYTEST", desc: "Test shoot unlock pass for agency models" },
     { code: "INVITE2026", desc: "General 2026 TFP collaboration pass" },
     { code: "NERDYVIP", desc: "VIP partner unlock code" }
@@ -3771,6 +3775,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <button type="button" id="adminPay503020Btn" class="admin-cal-btn" style="padding: 4px 10px; border-radius: 12px; font-size: var(--font-xs); cursor: pointer;">50/30/20</button>
             </div>
             <button type="button" class="admin-cal-btn primary" id="adminCalNewBookingBtn">+ Add Manual Booking</button>
+            <!-- Until this existed, calendar edits were saved to this device
+                 only: syncToGitHub had no caller anywhere in the calendar UI,
+                 so bookings never reached data.js and every visitor kept
+                 seeing the studio as fully open. -->
+            <button type="button" class="admin-cal-btn primary" id="adminCalPublishBtn" title="Push this calendar to the live site so visitors see booked dates">🚀 Publish Calendar to Live Site</button>
             <button type="button" class="admin-cal-btn" id="adminCalResetBtn">Reset Rules</button>
           </div>
         </div>
@@ -5198,6 +5207,24 @@ RAW files are not provided.`
         saveCalendarSettings();
         toast("Date rules reset to defaults.");
         renderAdminGrid();
+      }
+    });
+
+    // Publishing the calendar is the only way a booking taken on this device
+    // becomes visible to visitors: data.js is what every browser reads, and
+    // saveCalendarSettings() only writes this device's localStorage.
+    $("#adminCalPublishBtn")?.addEventListener("click", async (e) => {
+      const btnEl = e.currentTarget;
+      const dates = Object.keys(window.WPS_DATA?.CALENDAR_SETTINGS?.bookedDates || {}).length;
+      if (!confirm(`Publish this device's calendar (${dates} booked date${dates === 1 ? "" : "s"}) to the live site so visitors see them?\n\nPublish only from the device whose calendar is correct.`)) return;
+      const orig = btnEl.textContent;
+      btnEl.disabled = true;
+      btnEl.textContent = "Publishing…";
+      try {
+        await syncToGitHub(SHOOTS);
+      } finally {
+        btnEl.disabled = false;
+        btnEl.textContent = orig;
       }
     });
 
