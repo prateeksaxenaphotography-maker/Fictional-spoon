@@ -8794,6 +8794,12 @@ RAW files are not provided.`
                   email,
                   phone,
                   type,
+                  links: typeof getFormLinks === "function" ? getFormLinks() : [],
+                  attachments: typeof attachedFiles !== "undefined" ? attachedFiles : [],
+                  sigDataUrl: sigDataUrl || "",
+                  agreementMethod: agreementMethod || (sigDataUrl ? "signature" : ""),
+                  agreedContract: contractRefDoc,
+                  venueByStudio,
                   location: locationVal,
                   notes: concept,
                   budget,
@@ -8837,35 +8843,10 @@ RAW files are not provided.`
         // thinking they had booked when the studio had received nothing.
         const showSuccess = (mode) => {
           const sentDirectly = mode === "sent";
-          // Auto-record booking in studio calendar
-          if (date) {
-            const rawParts = date.split(/[,–]/).map(s => s.trim()).filter(Boolean);
-            rawParts.forEach(pStr => {
-              const dObj = new Date(pStr);
-              if (!isNaN(dObj.getTime())) {
-                const dKey = getCalDateKey(dObj);
-                addCalBooking(dKey, {
-                  name,
-                  email,
-                  phone,
-                  type,
-                  links: typeof getFormLinks === "function" ? getFormLinks() : [],
-                  attachments: typeof attachedFiles !== "undefined" ? attachedFiles : [],
-                  sigDataUrl: sigDataUrl || "",
-                  agreementMethod: agreementMethod || (sigDataUrl ? "signature" : ""),
-                  agreedContract: agreedToTerms ? contractRefDoc : "",
-                  // Recorded per booking so the PDF contract can tell whether
-                  // the studio is supplying the venue for THIS shoot, instead
-                  // of guessing from a page-level global.
-                  venueByStudio,
-                  location: locationVal,
-                  notes: `Location: ${locationVal} | Budget: ${budget}`,
-                  contractNumber
-                });
-              }
-            });
-            updateAdminReminders();
-          }
+          // The booking itself was already written to the calendar store by
+          // the instant-save block above — recording it again here doubled
+          // every agreed booking on the device (two slots per date).
+          if (date) updateAdminReminders();
 
           if (successPanel) {
             form.hidden = true;
