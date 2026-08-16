@@ -41,9 +41,9 @@ window.WPS_DATA = {
       "season": "June 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "\u2014",
-      "hair": "\u2014",
-      "mua": "\u2014",
+      "stylist": "—",
+      "hair": "—",
+      "mua": "—",
       "talent": "Rhythm Vohra",
       "location": "Noida",
       "height": "",
@@ -140,10 +140,10 @@ window.WPS_DATA = {
       "season": "June 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "\u2014",
-      "hair": "\u2014",
+      "stylist": "—",
+      "hair": "—",
       "mua": "Rashi Sehgal",
-      "videographer": "\u2014",
+      "videographer": "—",
       "talent": "Prachi Choudhary",
       "location": "Noida",
       "height": "",
@@ -260,8 +260,8 @@ window.WPS_DATA = {
       "season": "June 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "\u2014",
-      "hair": "\u2014",
+      "stylist": "—",
+      "hair": "—",
       "mua": "Rashi Seghal",
       "talent": "Prachi Choudhary",
       "location": "Noida",
@@ -315,8 +315,8 @@ window.WPS_DATA = {
       "season": "June 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "\u2014",
-      "hair": "\u2014",
+      "stylist": "—",
+      "hair": "—",
       "mua": "Rashi Seghal",
       "talent": "Prachi Choudhary",
       "location": "Noida",
@@ -368,10 +368,10 @@ window.WPS_DATA = {
       "season": "March 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "\u2014",
-      "hair": "\u2014",
-      "mua": "\u2014",
-      "videographer": "\u2014",
+      "stylist": "—",
+      "hair": "—",
+      "mua": "—",
+      "videographer": "—",
       "talent": "Kunaal Raghav",
       "location": "Noida",
       "height": "",
@@ -489,10 +489,10 @@ window.WPS_DATA = {
       "season": "July 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "\u2014",
-      "hair": "\u2014",
-      "mua": "\u2014",
-      "videographer": "\u2014",
+      "stylist": "—",
+      "hair": "—",
+      "mua": "—",
+      "videographer": "—",
       "talent": "Abhishek Yadav",
       "location": "Noida",
       "height": "",
@@ -625,10 +625,10 @@ window.WPS_DATA = {
       "season": "May 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "\u2014",
-      "hair": "\u2014",
-      "mua": "\u2014",
-      "videographer": "\u2014",
+      "stylist": "—",
+      "hair": "—",
+      "mua": "—",
+      "videographer": "—",
       "talent": "Harshit Maindola",
       "location": "Jaipur",
       "height": "6'3",
@@ -741,10 +741,10 @@ window.WPS_DATA = {
       "season": "July 2026",
       "photographer": "nerdyphotographer",
       "artDirector": "",
-      "stylist": "\u2014",
+      "stylist": "—",
       "hair": "Bharti Kain (https://www.instagram.com/bharti_kain.11/?hl=en)",
       "mua": "Suyagya (https://www.instagram.com/suyagyamakeovers/?hl=en)",
-      "videographer": "\u2014",
+      "videographer": "—",
       "talent": "Paola Arellano (https://www.instagram.com/arellanopaola._), Lorna Perez(https://www.instagram.com/lornapereza)",
       "location": "Tavish Studio (https://www.instagram.com/studiotavish/?hl=en)",
       "height": "",
@@ -832,84 +832,457 @@ window.WPS_DATA = {
       "coverPhotoId": "ms36ygjb7yxmuk"
     }
   ],
+  "DELETED_IDS": [],
   "CALENDAR_SETTINGS": {
     "customBlockedDates": {},
     "customOpenedDates": {},
     "bookedDates": {
       "2026-03-14": [
         {
-          "id": "shoot-ms36z1wqlj20k1",
-          "shootId": "ms36z1wqlj20k1",
-          "name": "Luxury Jewelry & Accessories Campaign",
-          "type": "Commercial Campaign",
-          "duration": "Full Day (10:30 AM \u2013 5:30 PM)",
+          "id": "shoot-mr55364rvor33m",
+          "shootId": "mr55364rvor33m",
+          "name": "Kunaal Raghav",
+          "type": "Test Shoot",
+          "duration": "Full Day",
           "status": "confirmed",
           "isTentative": false,
-          "notes": "Published Portfolio Shoot: Luxury Jewelry & Accessories Campaign"
+          "notes": "Published Portfolio Shoot: Kunaal Raghav"
         }
       ],
       "2026-05-15": [
         {
-          "id": "shoot-ms36z1wqm2xkrz",
-          "shootId": "ms36z1wqm2xkrz",
-          "name": "Cinematic Lookbook & Apparel Production",
-          "type": "Lookbook",
-          "duration": "Full Day (10:30 AM \u2013 5:30 PM)",
+          "id": "shoot-mranmpzmfblohv",
+          "shootId": "mranmpzmfblohv",
+          "name": "Harshit Maindola",
+          "type": "Test Shoot",
+          "duration": "Full Day",
           "status": "confirmed",
           "isTentative": false,
-          "notes": "Published Portfolio Shoot: Cinematic Lookbook & Apparel Production"
+          "notes": "Published Portfolio Shoot: Harshit Maindola"
         }
       ],
       "2026-06-13": [
         {
-          "id": "shoot-ms36z1wq1g1x0j",
-          "shootId": "ms36z1wq1g1x0j",
-          "name": "Fitness & Athletic Power Shoot",
-          "type": "Fitness & Commercial",
-          "duration": "Full Day (10:30 AM \u2013 5:30 PM)",
+          "id": "shoot-mr4x6kwx3f8rs3",
+          "shootId": "mr4x6kwx3f8rs3",
+          "name": "Prachi Choudhary",
+          "type": "Test Shoot",
+          "duration": "Full Day",
           "status": "confirmed",
           "isTentative": false,
-          "notes": "Published Portfolio Shoot: Fitness & Athletic Power Shoot"
+          "notes": "Published Portfolio Shoot: Prachi Choudhary"
         }
       ],
       "2026-06-14": [
         {
-          "id": "shoot-ms36z1wqlp9812",
-          "shootId": "ms36z1wqlp9812",
-          "name": "Urban High-Fashion Editorial",
-          "type": "Fashion Editorial",
-          "duration": "Full Day (10:30 AM \u2013 5:30 PM)",
+          "id": "shoot-mr4x3r7e4l5g4m",
+          "shootId": "mr4x3r7e4l5g4m",
+          "name": "Rhythm Vohra",
+          "type": "Test Shoot",
+          "duration": "Full Day",
           "status": "confirmed",
           "isTentative": false,
-          "notes": "Published Portfolio Shoot: Urban High-Fashion Editorial"
+          "notes": "Published Portfolio Shoot: Rhythm Vohra"
         }
       ],
       "2026-07-05": [
         {
-          "id": "shoot-ms36z1wqkx21s1",
-          "shootId": "ms36z1wqkx21s1",
-          "name": "Commercial Beauty & Skin Campaign",
-          "type": "Beauty & Commercial",
-          "duration": "Full Day (10:30 AM \u2013 5:30 PM)",
+          "id": "shoot-mr8legmk0o8mqz",
+          "shootId": "mr8legmk0o8mqz",
+          "name": "Abhishek Yadav",
+          "type": "Test Shoot",
+          "duration": "Full Day",
           "status": "confirmed",
           "isTentative": false,
-          "notes": "Published Portfolio Shoot: Commercial Beauty & Skin Campaign"
+          "notes": "Published Portfolio Shoot: Abhishek Yadav"
         }
       ],
       "2026-07-24": [
         {
-          "id": "shoot-ms36z1wqg2y4a2",
-          "shootId": "ms36z1wqg2y4a2",
-          "name": "Creative Studio Workshop & Lighting Masterclass",
+          "id": "shoot-ms36z1wqm2xkrz",
+          "shootId": "ms36z1wqm2xkrz",
+          "name": "Workshop with Sidology and Clickwalaphotographer",
           "type": "Workshop Attended",
-          "duration": "Full Day (10:30 AM \u2013 5:30 PM)",
+          "duration": "Full Day",
           "status": "workshop",
           "isTentative": false,
-          "notes": "Published Portfolio Shoot: Creative Studio Workshop & Lighting Masterclass"
+          "notes": "Published Portfolio Shoot: Workshop with Sidology and Clickwalaphotographer"
+        }
+      ],
+      "2001-08-15": [
+        {
+          "id": "b_1786709109940_konc",
+          "name": "Prateek",
+          "email": "prateeksxn@gmail.com",
+          "phone": "",
+          "type": "Fashion Editorial",
+          "duration": "Full Day",
+          "isTentative": false,
+          "notes": "",
+          "location": "Noida",
+          "venueByStudio": false,
+          "agreementMethod": "checkbox",
+          "links": [],
+          "attachments": [],
+          "status": "confirmed",
+          "contractVersion": "COMMERCIAL-CONTRACT-V3.3",
+          "agreedToTerms": true,
+          "contractNumber": "WPS-20260814-173509-WMCY",
+          "sigDataUrl": "",
+          "agreedContract": "COMMERCIAL-CONTRACT-V3.3",
+          "createdAt": 1786709109940
+        }
+      ],
+      "2026-01-01": [
+        {
+          "id": "b_1786709109940_5jr5",
+          "name": "Prateek",
+          "email": "prateeksxn@gmail.com",
+          "phone": "",
+          "type": "Fashion Editorial",
+          "duration": "Full Day",
+          "isTentative": false,
+          "notes": "",
+          "location": "Noida",
+          "venueByStudio": false,
+          "agreementMethod": "checkbox",
+          "links": [],
+          "attachments": [],
+          "status": "confirmed",
+          "contractVersion": "COMMERCIAL-CONTRACT-V3.3",
+          "agreedToTerms": true,
+          "contractNumber": "WPS-20260814-173509-WMCY",
+          "sigDataUrl": "",
+          "agreedContract": "COMMERCIAL-CONTRACT-V3.3",
+          "createdAt": 1786709109940
+        }
+      ],
+      "2026-08-15": [
+        {
+          "id": "b_1786709194164_gq8l",
+          "name": "Gaurav Rao Yadav",
+          "email": "",
+          "phone": "",
+          "type": "Other",
+          "duration": "Half Day (Afternoon)",
+          "isTentative": false,
+          "notes": "",
+          "location": "",
+          "venueByStudio": false,
+          "agreementMethod": "",
+          "links": [],
+          "attachments": [],
+          "status": "confirmed",
+          "contractVersion": "V3.3-TFP",
+          "agreedToTerms": true,
+          "contractNumber": "",
+          "sigDataUrl": "",
+          "agreedContract": "",
+          "createdAt": 1786709194164
+        }
+      ],
+      "2026-08-16": [
+        {
+          "id": "b_1786709219783_vbyq",
+          "name": "Sumit verma",
+          "email": "",
+          "phone": "",
+          "type": "Fashion Editorial",
+          "duration": "Full Day",
+          "isTentative": false,
+          "notes": "",
+          "location": "",
+          "venueByStudio": false,
+          "agreementMethod": "",
+          "links": [],
+          "attachments": [],
+          "status": "confirmed",
+          "contractVersion": "V3.0",
+          "agreedToTerms": true,
+          "contractNumber": "",
+          "sigDataUrl": "",
+          "agreedContract": "",
+          "createdAt": 1786709219783
+        }
+      ],
+      "2026-08-22": [
+        {
+          "id": "b_1786709227844_f9xi",
+          "name": "Anticipated Client Hold",
+          "email": "",
+          "phone": "",
+          "type": "Fashion Editorial",
+          "duration": "Full Day",
+          "isTentative": true,
+          "notes": "Date held by Admin for anticipated client inquiry.",
+          "location": "",
+          "venueByStudio": false,
+          "agreementMethod": "",
+          "links": [],
+          "attachments": [],
+          "status": "tentative",
+          "contractVersion": "Pending Agreement",
+          "agreedToTerms": false,
+          "contractNumber": "",
+          "sigDataUrl": "",
+          "agreedContract": "",
+          "createdAt": 1786709227844
+        }
+      ],
+      "2026-08-23": [
+        {
+          "id": "b_1786709231256_wu6z",
+          "name": "Anticipated Client Hold",
+          "email": "",
+          "phone": "",
+          "type": "Fashion Editorial",
+          "duration": "Full Day",
+          "isTentative": true,
+          "notes": "Date held by Admin for anticipated client inquiry.",
+          "location": "",
+          "venueByStudio": false,
+          "agreementMethod": "",
+          "links": [],
+          "attachments": [],
+          "status": "tentative",
+          "contractVersion": "Pending Agreement",
+          "agreedToTerms": false,
+          "contractNumber": "",
+          "sigDataUrl": "",
+          "agreedContract": "",
+          "createdAt": 1786709231256
+        }
+      ],
+      "2026-08-29": [
+        {
+          "id": "b_1786709233749_esjr",
+          "name": "Assisting Work",
+          "email": "",
+          "phone": "",
+          "type": "Assisting Photographer",
+          "duration": "Full Day",
+          "isTentative": false,
+          "notes": "Booked for Assisting Work",
+          "location": "",
+          "venueByStudio": false,
+          "agreementMethod": "",
+          "links": [],
+          "attachments": [],
+          "status": "assisting",
+          "contractVersion": "Pending Agreement",
+          "agreedToTerms": false,
+          "contractNumber": "",
+          "sigDataUrl": "",
+          "agreedContract": "",
+          "createdAt": 1786709233749
+        }
+      ],
+      "2026-08-30": [
+        {
+          "id": "b_1786714654176_bh0f",
+          "name": "Workshop Day",
+          "email": "",
+          "phone": "",
+          "type": "Workshop Attended",
+          "duration": "Full Day",
+          "isTentative": false,
+          "notes": "Booked for Workshop (Skill-Up Day)",
+          "location": "",
+          "venueByStudio": false,
+          "agreementMethod": "",
+          "links": [],
+          "attachments": [],
+          "status": "workshop",
+          "contractVersion": "Pending Agreement",
+          "agreedToTerms": false,
+          "contractNumber": "",
+          "sigDataUrl": "",
+          "agreedContract": "",
+          "createdAt": 1786714654176
+        },
+        {
+          "id": "b_1786903849525_fif0",
+          "name": "Assisting Work",
+          "email": "",
+          "phone": "",
+          "type": "Assisting Photographer",
+          "duration": "Full Day",
+          "isTentative": false,
+          "notes": "Booked for Assisting Work",
+          "location": "",
+          "venueByStudio": false,
+          "agreementMethod": "",
+          "links": [],
+          "attachments": [],
+          "status": "assisting",
+          "contractVersion": "Pending Agreement",
+          "agreedToTerms": false,
+          "contractNumber": "",
+          "sigDataUrl": "",
+          "agreedContract": "",
+          "budget": "",
+          "homeStudioFee": 0,
+          "finalPayable": 0,
+          "financials": null,
+          "inviteMeta": null,
+          "promoMeta": null,
+          "createdAt": 1786903849525
+        }
+      ],
+      "2026-09-05": [
+        {
+          "id": "b_1786904559871_notl",
+          "name": "Anticipated Client Hold",
+          "email": "",
+          "phone": "",
+          "type": "Fashion Editorial",
+          "duration": "Full Day",
+          "isTentative": true,
+          "notes": "Date held by Admin for anticipated client inquiry.",
+          "location": "",
+          "venueByStudio": false,
+          "agreementMethod": "",
+          "links": [],
+          "attachments": [],
+          "status": "tentative",
+          "contractVersion": "Pending Agreement",
+          "agreedToTerms": false,
+          "contractNumber": "",
+          "sigDataUrl": "",
+          "agreedContract": "",
+          "budget": "",
+          "homeStudioFee": 0,
+          "finalPayable": 0,
+          "financials": null,
+          "inviteMeta": null,
+          "promoMeta": null,
+          "createdAt": 1786904559872
+        }
+      ],
+      "2026-09-06": [
+        {
+          "id": "b_1786904562601_73b6",
+          "name": "Anticipated Client Hold",
+          "email": "",
+          "phone": "",
+          "type": "Fashion Editorial",
+          "duration": "Full Day",
+          "isTentative": true,
+          "notes": "Date held by Admin for anticipated client inquiry.",
+          "location": "",
+          "venueByStudio": false,
+          "agreementMethod": "",
+          "links": [],
+          "attachments": [],
+          "status": "tentative",
+          "contractVersion": "Pending Agreement",
+          "agreedToTerms": false,
+          "contractNumber": "",
+          "sigDataUrl": "",
+          "agreedContract": "",
+          "budget": "",
+          "homeStudioFee": 0,
+          "finalPayable": 0,
+          "financials": null,
+          "inviteMeta": null,
+          "promoMeta": null,
+          "createdAt": 1786904562601
         }
       ]
+    },
+    "removedBookingIds": [
+      "2026-03-14::shoot-ms36z1wqlj20k1",
+      "2026-05-15::shoot-ms36z1wqm2xkrz",
+      "2026-06-13::shoot-ms36z1wq1g1x0j",
+      "2026-06-14::shoot-ms36z1wqlp9812",
+      "2026-07-05::shoot-ms36z1wqkx21s1",
+      "2026-07-24::shoot-ms36z1wqg2y4a2",
+      "2026-08-30::b_1786709236156_7lzv"
+    ],
+    "paymentScheduleType": "5050",
+    "updatedAt": 0,
+    "syncedAt": 0
+  },
+  "INVITE_CODES": [
+    {
+      "code": "NERDYBRAND",
+      "desc": "Default photographer unlock code for Instagram DMs",
+      "location": "",
+      "venueCost": null
+    },
+    {
+      "code": "NERDYTEST",
+      "desc": "Test shoot unlock pass for agency models",
+      "location": "",
+      "venueCost": null
+    },
+    {
+      "code": "NERDYHOME",
+      "desc": "Photographer direct unlock code",
+      "location": "Home Studio, Sector 46, Noida",
+      "venueCost": null
     }
-  }
+  ],
+  "PROMO_CODES": {
+    "NERDY500": {
+      "flat": 500,
+      "label": "Flat ₹500 Off Instant Savings (NERDY500)"
+    },
+    "NERDY1000": {
+      "flat": 1000,
+      "label": "Flat ₹1,000 Off Instant Savings (NERDY1000)"
+    },
+    "NERDY10": {
+      "pct": 10,
+      "label": "10% Off First Commercial Booking (NERDY10)"
+    },
+    "NERDY15": {
+      "pct": 15,
+      "label": "15% Off Noida / Delhi NCR Shoots (NERDY15)"
+    },
+    "NERDY20": {
+      "pct": 20,
+      "label": "20% Off Studio Production Campaigns (NERDY20)"
+    },
+    "NERDYVIP": {
+      "pct": 25,
+      "label": "25% VIP Partner Discount (NERDYVIP)"
+    }
+  },
+  "PACKAGES": [
+    {
+      "id": "pkg_1",
+      "name": "Basic Test / Comp Card",
+      "price": 7000,
+      "specs": "20 Proof Clicks + 0 Retouched"
+    },
+    {
+      "id": "pkg_2",
+      "name": "Mini Portfolio",
+      "price": 10000,
+      "specs": "25 Proof Clicks + 3-5 Retouched Clicks"
+    },
+    {
+      "id": "pkg_3",
+      "name": "Standard Editorial Portfolio",
+      "price": 25000,
+      "specs": "50 Unedited + 8-12 Retouched Clicks"
+    },
+    {
+      "id": "pkg_4",
+      "name": "Premium Brand Campaign",
+      "price": 50000,
+      "specs": "100 Unedited + 15-25 Retouched Clicks"
+    },
+    {
+      "id": "pkg_5",
+      "name": "High-End Full Day Production",
+      "price": 75000,
+      "specs": "Full Gallery + 30+ Retouched Master Assets"
+    }
+  ],
+  "HOME_STUDIO_RATE": 2000,
+  "HOME_STUDIO_RATE_TFP": 3000
 };
 
 // Explicit Global Aliases for Data Safety
