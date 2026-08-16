@@ -41,9 +41,9 @@ window.WPS_DATA = {
       "season": "June 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "\u2014",
-      "hair": "\u2014",
-      "mua": "\u2014",
+      "stylist": "—",
+      "hair": "—",
+      "mua": "—",
       "talent": "Rhythm Vohra",
       "location": "Noida",
       "height": "",
@@ -140,10 +140,10 @@ window.WPS_DATA = {
       "season": "June 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "\u2014",
-      "hair": "\u2014",
+      "stylist": "—",
+      "hair": "—",
       "mua": "Rashi Sehgal",
-      "videographer": "\u2014",
+      "videographer": "—",
       "talent": "Prachi Choudhary",
       "location": "Noida",
       "height": "",
@@ -260,8 +260,8 @@ window.WPS_DATA = {
       "season": "June 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "\u2014",
-      "hair": "\u2014",
+      "stylist": "—",
+      "hair": "—",
       "mua": "Rashi Seghal",
       "talent": "Prachi Choudhary",
       "location": "Noida",
@@ -315,8 +315,8 @@ window.WPS_DATA = {
       "season": "June 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "\u2014",
-      "hair": "\u2014",
+      "stylist": "—",
+      "hair": "—",
       "mua": "Rashi Seghal",
       "talent": "Prachi Choudhary",
       "location": "Noida",
@@ -368,10 +368,10 @@ window.WPS_DATA = {
       "season": "March 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "\u2014",
-      "hair": "\u2014",
-      "mua": "\u2014",
-      "videographer": "\u2014",
+      "stylist": "—",
+      "hair": "—",
+      "mua": "—",
+      "videographer": "—",
       "talent": "Kunaal Raghav",
       "location": "Noida",
       "height": "",
@@ -489,10 +489,10 @@ window.WPS_DATA = {
       "season": "July 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "\u2014",
-      "hair": "\u2014",
-      "mua": "\u2014",
-      "videographer": "\u2014",
+      "stylist": "—",
+      "hair": "—",
+      "mua": "—",
+      "videographer": "—",
       "talent": "Abhishek Yadav",
       "location": "Noida",
       "height": "",
@@ -625,10 +625,10 @@ window.WPS_DATA = {
       "season": "May 2026",
       "photographer": "Studio",
       "artDirector": "",
-      "stylist": "\u2014",
-      "hair": "\u2014",
-      "mua": "\u2014",
-      "videographer": "\u2014",
+      "stylist": "—",
+      "hair": "—",
+      "mua": "—",
+      "videographer": "—",
       "talent": "Harshit Maindola",
       "location": "Jaipur",
       "height": "6'3",
@@ -741,10 +741,10 @@ window.WPS_DATA = {
       "season": "July 2026",
       "photographer": "nerdyphotographer",
       "artDirector": "",
-      "stylist": "\u2014",
+      "stylist": "—",
       "hair": "Bharti Kain (https://www.instagram.com/bharti_kain.11/?hl=en)",
       "mua": "Suyagya (https://www.instagram.com/suyagyamakeovers/?hl=en)",
-      "videographer": "\u2014",
+      "videographer": "—",
       "talent": "Paola Arellano (https://www.instagram.com/arellanopaola._), Lorna Perez(https://www.instagram.com/lornapereza)",
       "location": "Tavish Studio (https://www.instagram.com/studiotavish/?hl=en)",
       "height": "",
@@ -832,66 +832,256 @@ window.WPS_DATA = {
       "coverPhotoId": "ms36ygjb7yxmuk"
     }
   ],
+  "DELETED_IDS": [],
   "CALENDAR_SETTINGS": {
     "customBlockedDates": {},
     "customOpenedDates": {},
     "bookedDates": {
       "2026-03-14": [
         {
-          "id": "shoot-ms36z1wqlj20k1",
-          "shootId": "ms36z1wqlj20k1",
-          "type": "Commercial Campaign",
+          "id": "shoot-mr55364rvor33m",
+          "shootId": "mr55364rvor33m",
+          "type": "Test Shoot",
           "status": "confirmed",
           "isTentative": false
         }
       ],
       "2026-05-15": [
         {
-          "id": "shoot-ms36z1wqm2xkrz",
-          "shootId": "ms36z1wqm2xkrz",
-          "type": "Lookbook",
+          "id": "shoot-mranmpzmfblohv",
+          "shootId": "mranmpzmfblohv",
+          "type": "Test Shoot",
           "status": "confirmed",
           "isTentative": false
         }
       ],
       "2026-06-13": [
         {
-          "id": "shoot-ms36z1wq1g1x0j",
-          "shootId": "ms36z1wq1g1x0j",
-          "type": "Fitness & Commercial",
+          "id": "shoot-mr4x6kwx3f8rs3",
+          "shootId": "mr4x6kwx3f8rs3",
+          "type": "Test Shoot",
           "status": "confirmed",
           "isTentative": false
         }
       ],
       "2026-06-14": [
         {
-          "id": "shoot-ms36z1wqlp9812",
-          "shootId": "ms36z1wqlp9812",
-          "type": "Fashion Editorial",
+          "id": "shoot-mr4x3r7e4l5g4m",
+          "shootId": "mr4x3r7e4l5g4m",
+          "type": "Test Shoot",
           "status": "confirmed",
           "isTentative": false
         }
       ],
       "2026-07-05": [
         {
-          "id": "shoot-ms36z1wqkx21s1",
-          "shootId": "ms36z1wqkx21s1",
-          "type": "Beauty & Commercial",
+          "id": "shoot-mr8legmk0o8mqz",
+          "shootId": "mr8legmk0o8mqz",
+          "type": "Test Shoot",
           "status": "confirmed",
           "isTentative": false
         }
       ],
       "2026-07-24": [
         {
-          "id": "shoot-ms36z1wqg2y4a2",
-          "shootId": "ms36z1wqg2y4a2",
+          "id": "shoot-ms36z1wqm2xkrz",
+          "shootId": "ms36z1wqm2xkrz",
           "type": "Workshop Attended",
           "status": "workshop",
           "isTentative": false
         }
+      ],
+      "2001-08-15": [
+        {
+          "id": "b_1786709109940_konc",
+          "type": "Fashion Editorial",
+          "isTentative": false,
+          "status": "confirmed",
+          "contractVersion": "COMMERCIAL-CONTRACT-V3.3"
+        }
+      ],
+      "2026-01-01": [
+        {
+          "id": "b_1786709109940_5jr5",
+          "type": "Fashion Editorial",
+          "isTentative": false,
+          "status": "confirmed",
+          "contractVersion": "COMMERCIAL-CONTRACT-V3.3"
+        }
+      ],
+      "2026-08-15": [
+        {
+          "id": "b_1786709194164_gq8l",
+          "type": "Other",
+          "isTentative": false,
+          "status": "confirmed",
+          "contractVersion": "V3.3-TFP"
+        }
+      ],
+      "2026-08-16": [
+        {
+          "id": "b_1786709219783_vbyq",
+          "type": "Fashion Editorial",
+          "isTentative": false,
+          "status": "confirmed",
+          "contractVersion": "V3.0"
+        }
+      ],
+      "2026-08-22": [
+        {
+          "id": "b_1786709227844_f9xi",
+          "type": "Fashion Editorial",
+          "isTentative": true,
+          "status": "tentative",
+          "contractVersion": "Pending Agreement"
+        }
+      ],
+      "2026-08-23": [
+        {
+          "id": "b_1786709231256_wu6z",
+          "type": "Fashion Editorial",
+          "isTentative": true,
+          "status": "tentative",
+          "contractVersion": "Pending Agreement"
+        }
+      ],
+      "2026-08-29": [
+        {
+          "id": "b_1786709233749_esjr",
+          "type": "Assisting Photographer",
+          "isTentative": false,
+          "status": "assisting",
+          "contractVersion": "Pending Agreement"
+        }
+      ],
+      "2026-08-30": [
+        {
+          "id": "b_1786714654176_bh0f",
+          "type": "Workshop Attended",
+          "isTentative": false,
+          "status": "workshop",
+          "contractVersion": "Pending Agreement"
+        },
+        {
+          "id": "b_1786903849525_fif0",
+          "type": "Assisting Photographer",
+          "isTentative": false,
+          "status": "assisting",
+          "contractVersion": "Pending Agreement"
+        }
+      ],
+      "2026-09-05": [
+        {
+          "id": "b_1786904559871_notl",
+          "type": "Fashion Editorial",
+          "isTentative": true,
+          "status": "tentative",
+          "contractVersion": "Pending Agreement"
+        }
+      ],
+      "2026-09-06": [
+        {
+          "id": "b_1786904562601_73b6",
+          "type": "Fashion Editorial",
+          "isTentative": true,
+          "status": "tentative",
+          "contractVersion": "Pending Agreement"
+        }
       ]
+    },
+    "removedBookingIds": [
+      "2026-03-14::shoot-ms36z1wqlj20k1",
+      "2026-05-15::shoot-ms36z1wqm2xkrz",
+      "2026-06-13::shoot-ms36z1wq1g1x0j",
+      "2026-06-14::shoot-ms36z1wqlp9812",
+      "2026-07-05::shoot-ms36z1wqkx21s1",
+      "2026-07-24::shoot-ms36z1wqg2y4a2",
+      "2026-08-30::b_1786709236156_7lzv"
+    ],
+    "paymentScheduleType": "5050",
+    "updatedAt": 0,
+    "syncedAt": 0
+  },
+  "INVITE_CODES": [
+    {
+      "code": "NERDYBRAND",
+      "desc": "Default photographer unlock code for Instagram DMs",
+      "location": "",
+      "venueCost": null
+    },
+    {
+      "code": "NERDYTEST",
+      "desc": "Test shoot unlock pass for agency models",
+      "location": "",
+      "venueCost": null
+    },
+    {
+      "code": "NERDYHOME",
+      "desc": "Photographer direct unlock code",
+      "location": "Home Studio, Sector 46, Noida",
+      "venueCost": null
     }
-  }
+  ],
+  "PROMO_CODES": {
+    "NERDY500": {
+      "flat": 500,
+      "label": "Flat ₹500 Off Instant Savings (NERDY500)"
+    },
+    "NERDY1000": {
+      "flat": 1000,
+      "label": "Flat ₹1,000 Off Instant Savings (NERDY1000)"
+    },
+    "NERDY10": {
+      "pct": 10,
+      "label": "10% Off First Commercial Booking (NERDY10)"
+    },
+    "NERDY15": {
+      "pct": 15,
+      "label": "15% Off Noida / Delhi NCR Shoots (NERDY15)"
+    },
+    "NERDY20": {
+      "pct": 20,
+      "label": "20% Off Studio Production Campaigns (NERDY20)"
+    },
+    "NERDYVIP": {
+      "pct": 25,
+      "label": "25% VIP Partner Discount (NERDYVIP)"
+    }
+  },
+  "PACKAGES": [
+    {
+      "id": "pkg_1",
+      "name": "Basic Test / Comp Card",
+      "price": 7000,
+      "specs": "20 Proof Clicks + 0 Retouched"
+    },
+    {
+      "id": "pkg_2",
+      "name": "Mini Portfolio",
+      "price": 10000,
+      "specs": "25 Proof Clicks + 3-5 Retouched Clicks"
+    },
+    {
+      "id": "pkg_3",
+      "name": "Standard Editorial Portfolio",
+      "price": 25000,
+      "specs": "50 Unedited + 8-12 Retouched Clicks"
+    },
+    {
+      "id": "pkg_4",
+      "name": "Premium Brand Campaign",
+      "price": 50000,
+      "specs": "100 Unedited + 15-25 Retouched Clicks"
+    },
+    {
+      "id": "pkg_5",
+      "name": "High-End Full Day Production",
+      "price": 75000,
+      "specs": "Full Gallery + 30+ Retouched Master Assets"
+    }
+  ],
+  "HOME_STUDIO_RATE": 2000,
+  "HOME_STUDIO_RATE_TFP": 3000
 };
 
 // Explicit Global Aliases for Data Safety
