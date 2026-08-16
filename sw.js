@@ -56,8 +56,24 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(request.url);
   const cacheable = url.origin === self.location.origin && !url.pathname.startsWith("/api/");
 
+  // data.js is the one asset the Admin Panel rewrites between releases: a
+  // calendar or album publish changes its contents while its ?v= address stays
+  // put. "Network-first" is not enough for that, because this fetch still goes
+  // through the HTTP cache, and GitHub Pages serves the file with
+  // max-age=14400 — so every visitor who had opened the site in the last four
+  // hours kept being handed the pre-publish copy, and a newly blocked date or
+  // a new album trailed behind for exactly as long.
+  //
+  // "no-cache" revalidates rather than refetches: the browser sends the ETag
+  // it already holds and gets back an empty 304 whenever nothing was
+  // published, so the common case costs a few hundred bytes and the file is
+  // still served from disk. Only an actual publish transfers anything, and it
+  // lands on the very next page load.
+  const revalidate = cacheable && url.pathname === "/data.js";
+  const networkReq = revalidate ? new Request(request, { cache: "no-cache" }) : request;
+
   e.respondWith(
-    fetch(request)
+    fetch(networkReq)
       .then((res) => {
         if (cacheable && res.ok) {
           const copy = res.clone();
