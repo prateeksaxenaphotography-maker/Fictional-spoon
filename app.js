@@ -6449,6 +6449,9 @@ RAW files are not provided.`
                       <option value="Half Day Afternoon (1:30 PM – 5:30 PM)">🌇 Half Day Afternoon (1:30 PM – 5:30 PM · 4 Hours)</option>
                       <option value="Custom Timings">⏰ Custom Timings (Pick Call &amp; Wrap Time)</option>
                     </select>
+                    <div id="b_duration_note" style="font-size: var(--font-xs); color: #059669; margin-top: 6px; font-family: var(--mono-font); background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.25); border-radius: 6px; padding: 8px 12px; display: none;">
+                      ⏱️ <strong>Test shoots run to a half day (4 hours).</strong> A custom call &amp; wrap window can stretch to 5 hours at most.
+                    </div>
                   </label>
                   <label class="field"><span>Shoot Location / Venue Address *</span><input id="b_location" type="text" required placeholder="" /></label>
                 </div>
@@ -8671,6 +8674,11 @@ RAW files are not provided.`
         finalPayable
       };
 
+      // Deliberately after the snapshot above: the duration limits are read
+      // back off bookingCalc by the badge and the submit-time check, so setting
+      // them any earlier would apply this pass's limits to last pass's status.
+      syncDurationLimits(isCollabBooking);
+
       const finalPriceSummaryBox = $("#finalPriceSummaryBox");
       const promoCodeWrap = $("#b_discount_code")?.closest(".field");
 
@@ -8841,37 +8849,116 @@ RAW files are not provided.`
       }
     };
 
-    const updateCustomTimeBadge = () => {
+    // A collaboration brings no shoot fee with it, so it does not take a whole
+    // production day the way a paid booking can: the full-day preset is
+    // withdrawn, leaving the two 4-hour half days, and a custom call/wrap
+    // window is allowed a single hour of headroom over that. Paid shoots keep
+    // the full range — none of this applies to them.
+    const TFP_MAX_SESSION_MINS = 5 * 60;
+    const DEFAULT_DURATION = "Flexible / Photographer Choice";
+    // Matched on the "Full Day" prefix rather than the option's exact label,
+    // which carries an en dash and the hours in it — rewording those should not
+    // silently switch the cap off.
+    const isFullDayOption = (opt) => (opt.value || "").startsWith("Full Day");
+
+    const format12 = (timeStr) => {
+      if (!timeStr) return "";
+      const [h, m] = timeStr.split(":").map(Number);
+      const period = h >= 12 ? "PM" : "AM";
+      const h12 = h % 12 || 12;
+      return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+    };
+
+    // One source of truth for the length of a custom window: the badge, the
+    // submit-time check and the inquiry text all read it, and a cap enforced by
+    // two separate calculations is a cap that eventually disagrees with itself.
+    const customSessionMinutes = () => {
       const startVal = $("#b_time_start")?.value || "10:30";
       const endVal = $("#b_time_end")?.value || "17:30";
-      const format12 = (timeStr) => {
-        if (!timeStr) return "";
-        const [h, m] = timeStr.split(":").map(Number);
-        const period = h >= 12 ? "PM" : "AM";
-        const h12 = h % 12 || 12;
-        return `${h12}:${String(m).padStart(2, "0")} ${period}`;
-      };
-      
       const [sh, sm] = startVal.split(":").map(Number);
       const [eh, em] = endVal.split(":").map(Number);
       let diffMins = (eh * 60 + em) - (sh * 60 + sm);
       if (diffMins < 0) diffMins += 24 * 60;
-      const hrs = (diffMins / 60).toFixed(1).replace(".0", "");
+      return diffMins;
+    };
+
+    const isCollabSession = () => !!(bookingCalc && bookingCalc.isCollabBooking);
+
+    const formatHours = (mins) => (mins / 60).toFixed(1).replace(".0", "");
+
+    const updateCustomTimeBadge = () => {
+      const startVal = $("#b_time_start")?.value || "10:30";
+      const endVal = $("#b_time_end")?.value || "17:30";
+      const diffMins = customSessionMinutes();
+      const hrs = formatHours(diffMins);
+      const overCap = isCollabSession() && diffMins > TFP_MAX_SESSION_MINS;
       const badge = $("#b_custom_time_badge");
       if (badge) {
-        badge.innerHTML = `⏱️ ${hrs} Hours Session (${format12(startVal)} – ${format12(endVal)})`;
+        badge.innerHTML = overCap
+          ? `⚠️ ${hrs} Hours — a test shoot runs to 5 hours at most. Please shorten the window before submitting.`
+          : `⏱️ ${hrs} Hours Session (${format12(startVal)} – ${format12(endVal)})`;
+        badge.style.color = overCap ? "#dc2626" : "var(--accent)";
       }
+    };
+
+    // Applies the collaboration limits to the duration field. Called from
+    // updateFields once the booking's collaboration status is settled, so a
+    // verified invite code takes the full day away in the same pass that locks
+    // the shoot type.
+    const syncDurationLimits = (isCollab) => {
+      const durSel = $("#b_duration");
+      if (!durSel) return;
+      const fullDayOpt = Array.from(durSel.options).find(isFullDayOption);
+      if (fullDayOpt) {
+        fullDayOpt.hidden = isCollab;
+        fullDayOpt.disabled = isCollab;
+        // Someone who picked the full day before entering an invite code is
+        // left holding a selection that is no longer on offer. Fall back to the
+        // recommended default rather than quietly picking a half day for them:
+        // the photographer sets the hours on a collaboration anyway.
+        if (isCollab && isFullDayOption(durSel)) durSel.value = DEFAULT_DURATION;
+      }
+      const note = $("#b_duration_note");
+      if (note) note.style.display = isCollab ? "block" : "none";
+      updateCustomTimeBadge();
+    };
+
+    // What the visitor actually agreed to run, resolved for the studio's records.
+    // "Custom Timings" on its own says nothing, so the call and wrap times travel
+    // with it.
+    const sessionDurationLabel = () => {
+      const durSel = $("#b_duration");
+      if (!durSel) return "";
+      if (durSel.value !== "Custom Timings") return durSel.value;
+      const startVal = $("#b_time_start")?.value || "";
+      const endVal = $("#b_time_end")?.value || "";
+      return `Custom — ${format12(startVal)} to ${format12(endVal)} (${formatHours(customSessionMinutes())} hours)`;
     };
 
     $("#b_duration")?.addEventListener("change", () => {
       const isCustom = $("#b_duration")?.value === "Custom Timings";
       const wrap = $("#b_custom_time_wrap");
       if (wrap) wrap.style.display = isCustom ? "block" : "none";
-      if (isCustom) updateCustomTimeBadge();
+      if (isCustom) {
+        // The panel opens on the full-day window it was built for, which on a
+        // collaboration is already past the cap — so picking "Custom" would
+        // greet a test shoot with a red warning it did nothing to earn. Open it
+        // on the half day instead, leaving the hour of headroom to stretch into.
+        // Only an over-cap window is moved; a legal one the visitor set is left
+        // exactly as they left it.
+        if (isCollabSession() && customSessionMinutes() > TFP_MAX_SESSION_MINS) {
+          const startEl = $("#b_time_start"), endEl = $("#b_time_end");
+          if (startEl && endEl) { startEl.value = "10:30"; endEl.value = "14:30"; }
+        }
+        updateCustomTimeBadge();
+      }
     });
 
-    $("#b_time_start")?.addEventListener("input", updateCustomTimeBadge);
-    $("#b_time_end")?.addEventListener("input", updateCustomTimeBadge);
+    // Wrapped rather than passed by reference: these fire with an Event as the
+    // first argument, and a bare handler here would hand it to any parameter
+    // this function later grows.
+    $("#b_time_start")?.addEventListener("input", () => updateCustomTimeBadge());
+    $("#b_time_end")?.addEventListener("input", () => updateCustomTimeBadge());
 
     ["change", "input", "blur", "click"].forEach(evtName => {
       $("#b_type")?.addEventListener(evtName, updateFields);
@@ -8999,6 +9086,18 @@ RAW files are not provided.`
           clearError("b_instagram");
         }
       }
+
+      // The badge only warns; this is what actually stops a test shoot being
+      // agreed to for longer than the cap. Attached to the duration field
+      // because that is the choice being rejected — the time inputs sit outside
+      // a .field wrapper and cannot carry an inline error.
+      if (isCollabSession() && $("#b_duration")?.value === "Custom Timings"
+          && customSessionMinutes() > TFP_MAX_SESSION_MINS) {
+        setError("b_duration", `Test shoots run to a maximum of ${TFP_MAX_SESSION_MINS / 60} hours. Please shorten the call and wrap window.`);
+        firstBad = firstBad || "b_duration";
+      } else {
+        clearError("b_duration");
+      }
       return firstBad;
     }
 
@@ -9091,6 +9190,11 @@ RAW files are not provided.`
       const phone = val("b_phone"), instagram = val("b_instagram"), type = val("b_type");
       const date = val("b_date"), locationVal = val("b_location"), budget = (type === "Selective Collaboration (TFP)" ? "Collab / TFP (No Budget)" : val("b_budget"));
       const moodboard = getFormLinks().join(", "), concept = val("b_concept");
+      // The session length was collected and then dropped on the floor: it
+      // reached neither the studio's inbox nor the calendar, which recorded
+      // every booking as a full day. A cap nobody can see is not a cap, so it
+      // now travels with the rest of the booking.
+      const sessionDuration = sessionDurationLabel();
 
       const proceedSubmit = (agreedToTerms = false, shootCategory = "Commercial", isCustomContract = false, customContractNotes = "", sigDataUrl = "", agreementMethod = "") => {
         btn.disabled = true;
@@ -9238,6 +9342,7 @@ RAW files are not provided.`
           `Instagram / Website: ${instagram || '—'}\n` +
           `Shoot Type: ${type}\n` +
           `Proposed Date: ${date}\n` +
+          `Session Duration: ${sessionDuration || '—'}\n` +
           `Location Pref: ${locationVal}\n` +
           `Studio Space Rental: ${studioSpaceVal}\n` +
           studioRentalPolicyNote +
@@ -9284,6 +9389,7 @@ RAW files are not provided.`
           `Instagram / Website: ${instagram || '—'}\n` +
           `Shoot Type: ${type}\n` +
           `Proposed Date: ${date}\n` +
+          `Session Duration: ${sessionDuration || '—'}\n` +
           `Location Pref: ${locationVal}\n` +
           `Studio Space Rental: ${studioSpaceVal}\n` +
           cleanBudget +
@@ -9419,6 +9525,7 @@ RAW files are not provided.`
                   email,
                   phone,
                   type,
+                  duration: sessionDuration,
                   links: typeof getFormLinks === "function" ? getFormLinks() : [],
                   attachments: typeof attachedFiles !== "undefined" ? attachedFiles : [],
                   sigDataUrl: sigDataUrl || "",
@@ -9536,6 +9643,7 @@ RAW files are not provided.`
           "Instagram / Website": instagram || "—",
           "Shoot Type": type,
           "Proposed Date": date,
+          "Session Duration": sessionDuration || "—",
           "Location Pref": locationVal,
           "Studio Space": studioSpaceVal || "—",
           "Budget Range": budget,
