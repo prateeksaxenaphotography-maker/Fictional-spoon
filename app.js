@@ -1223,6 +1223,28 @@ window.moveAdminPackageRow = function(index, dir) {
   const GH_BRANCH = "main";
   const GH_API = `https://api.github.com/repos/${GH_REPO}`;
 
+  // A credential GitHub has rejected is cleared wherever it is discovered, not
+  // only in ghApi. fetchRemoteData runs before any ghApi call and used to throw
+  // on 401 while leaving the dead token in storage: the sync then aborted, the
+  // prompt never reappeared (it only shows when nothing is stored), and every
+  // subsequent publish dead-ended on the same error with no way to enter a new
+  // token short of clearing localStorage by hand.
+  function clearRejectedToken() {
+    localStorage.removeItem("wps-github-pat");
+    return explains(new Error("GitHub rejected the token (401). It was cleared — you'll be asked for a new one on the next publish."));
+  }
+
+  // Marks an error whose message already tells the studio exactly what went
+  // wrong and what to do about it, so the catch below shows it verbatim rather
+  // than burying it under the generic "check the token and connection" hint.
+  // A flag rather than a regex over the message text: the previous /401|abort/
+  // match silently downgraded any new message that happened not to contain
+  // those words.
+  function explains(err) {
+    err.userFacing = true;
+    return err;
+  }
+
   async function ghApi(pat, path, opts = {}) {
     const res = await fetch(`${GH_API}${path}`, {
       ...opts,
@@ -1232,10 +1254,7 @@ window.moveAdminPackageRow = function(index, dir) {
         ...(opts.body ? { "Content-Type": "application/json" } : {}),
       },
     });
-    if (res.status === 401) {
-      localStorage.removeItem("wps-github-pat");
-      throw new Error("GitHub rejected the token (401). It was cleared — you'll be asked for it again on the next sync.");
-    }
+    if (res.status === 401) throw clearRejectedToken();
     if (!res.ok) throw new Error(`GitHub ${opts.method || "GET"} ${path} failed (${res.status})`);
     return res.json();
   }
@@ -1288,7 +1307,26 @@ window.moveAdminPackageRow = function(index, dir) {
     const res = await fetch(`${GH_API}/contents/data.js?ref=${GH_BRANCH}`, {
       headers: { "Authorization": `token ${pat}`, "Accept": "application/vnd.github.raw+json" },
     });
-    if (res.status === 404) return { shoots: [], deletedIds: [] }; // fresh repo, no data.js published yet — genuinely empty
+    if (res.status === 401) throw clearRejectedToken();
+    // 404 is ambiguous, and reading it as "nothing published yet" is only safe
+    // for one of the two things it can mean. A repo with no data.js answers
+    // 404 — but so does a repo this token cannot see, because GitHub hides a
+    // private repo's existence rather than admitting a permission failure. A
+    // token scoped to the wrong repository therefore looked exactly like a
+    // fresh one, and the empty list it returned would let the merge below
+    // publish this device's view over the top of every other device's shoots.
+    // So the repo itself is checked, and only a demonstrably reachable one is
+    // allowed to be genuinely empty.
+    if (res.status === 404) {
+      const repoRes = await fetch(GH_API, {
+        headers: { "Authorization": `token ${pat}`, "Accept": "application/vnd.github+json" },
+      });
+      if (repoRes.status === 401) throw clearRejectedToken();
+      if (!repoRes.ok) {
+        throw explains(new Error(`This token cannot reach ${GH_REPO} (GitHub ${repoRes.status}) — check it grants Contents read & write on that repository. Nothing was published.`));
+      }
+      return { shoots: [], deletedIds: [] }; // repo reachable, data.js genuinely not published yet
+    }
     if (!res.ok) throw new Error(`Could not read the published data.js (GitHub ${res.status}) — aborting to avoid overwriting other devices' shoots.`);
     const text = await res.text();
     const parsed = parseShootsFromDataJs(text);
@@ -1468,7 +1506,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // Abort-guard messages ("Sync aborted…", "…aborting to avoid
       // overwriting…") explain exactly why nothing was published — show them
       // verbatim instead of the generic connection hint.
-      toast(e.message && /401|abort/i.test(e.message) ? e.message : "GitHub sync failed — changes are saved locally. Check the token and connection, then publish again.");
+      toast(e.message && (e.userFacing || /401|abort/i.test(e.message)) ? e.message : "GitHub sync failed — changes are saved locally. Check the token and connection, then publish again.");
       return false;
     }
   }
