@@ -3825,12 +3825,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           </div>
           <div style="background: var(--paper); border: 1.5px solid #059669; border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm);">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: #059669; color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.3 TFP / TEST SHOOT (ACTIVE)</span>
+              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: #059669; color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.4 TFP / TEST SHOOT (ACTIVE)</span>
               <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Aug 2026 – Present</span>
             </div>
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">📸 Test Shoot &amp; TFP Release V3.3</h3>
+            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">📸 Test Shoot &amp; TFP Release V3.4</h3>
             <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Selective Collaborations via Invite Codes. Non-commercial portfolio licensing, 8-12 retouched caps, Instagram credit, studio rental at actuals, liability waiver, gear protection.</p>
-            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.3-TFP')" style="font-size: var(--font-xs); flex: 1; font-weight: 700; background: #059669; border-color: #059669;">👁 Review TFP Release</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.3-TFP')" style="font-size: var(--font-xs); border-color: #059669; color: #059669; font-weight: 700;">📄 Print PDF</button></div>
+            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.4-TFP')" style="font-size: var(--font-xs); flex: 1; font-weight: 700; background: #059669; border-color: #059669;">👁 Review TFP Release</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.4-TFP')" style="font-size: var(--font-xs); border-color: #059669; color: #059669; font-weight: 700;">📄 Print PDF</button></div>
           </div>
           <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -4571,11 +4571,19 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         summary: "Dedicated contract for Paid Commercial, Editorial, Fashion & Brand productions. Covers 50/50 & 50/30/20 non-refundable retainer milestones, commercial licensing, outstation travel (>20km), camera gear & media protection, and photography specialization.",
         fullText: "1. SCOPE OF COMMERCIAL PRODUCTION & PAYMENT MILESTONES\nThis session is scheduled as a paid commercial production. Package rates cover photography creation, light design & master retouched deliverables. Standard bookings require a 50% advance retainer prior to shoot day start (non-refundable) and 50% final balance after shoot wrap prior to receiving downloadable master files (non-refundable). Commercial campaign bookings follow a 50/30/20 milestone structure.\n\n2. COMMERCIAL USAGE RIGHTS & INTELLECTUAL PROPERTY\nThe legal copyright of all visual media remains exclusively with the Studio. The Client is granted full commercial usage rights for digital advertising, website grids, social media campaigns, print catalogs, and brand marketing as specified in the agreed project scope. Under no circumstances are RAW unedited files delivered.\n\n3. STILL PHOTOGRAPHY SPECIALIZATION & VIDEO COVERAGE POLICY\nStudio packages and rate tiers are strictly dedicated to Still Photography creation (Commercial, Fashion, Editorial & Portfolio). Video / Reels coverage is not included in standard packages. Clients may bring their own videographer or request studio assistance to source a freelance videographer for the session.\n\n4. OUTSTATION LOCATION, TRAVEL & ACCOMMODATION (>20 KM FROM NOIDA)\nIf the shoot location is located beyond a 20 km radius from Noida (Delhi NCR), all travel expenses, local conveyance, outstation transport, tolls, and accommodation expenses incurred for the photographer (and core production team) shall be fully borne, arranged, or reimbursed by the client.\n\n5. CAMERA GEAR HANDS-OFF & DATA PROTECTION CLAUSE\nAll camera bodies, lenses, memory cards, tethering systems, and digital raw captures remain the exclusive physical and intellectual property of the Studio. Under no circumstances is a client or crew participant permitted to operate, touch, or delete media from the photographer's cameras or memory cards."
       },
+      "V3.4-TFP": {
+        version: "V3.4-TFP",
+        title: "Test Shoot & TFP Liability Release V3.4 (Test Shoots)",
+        effectiveDate: "August 2026 – Present",
+        status: "Active / Current (Test Shoot / TFP)",
+        summary: "Dedicated agreement for Selective Collaborations & Test Shoots unlocked via Photographer Invite Codes. Covers non-commercial portfolio licensing, 8-12 retouched deliverable caps, mandatory Instagram tag credits (@nerdyphotographer.in), studio rental at actuals, physical liability waiver, gear protection, and a 60-minute call-time grace period with no-show cancellation.",
+        fullText: "1. SCOPE OF COLLABORATION & DELIVERABLE LIMITS\nThis session is scheduled as a peer-to-peer Selective Collaboration (TFP Test Shoot) structured for mutual portfolio growth. Standard packages include web gallery access for online proofing and 8 to 12 Retouched Master Clicks. Strictly no RAW unedited files are delivered.\n\n2. NON-COMMERCIAL PORTFOLIO USAGE LICENSE\nParticipants are granted a non-exclusive license to use final retouched photos for personal self-promotion, social media grids (Instagram/TikTok), personal websites, and agency portfolios. Commercial licensing or selling assets to third parties is strictly prohibited.\n\n3. MANDATORY ATTRIBUTION & INSTAGRAM CO-AUTHOR WORKFLOW\nAll primary feed or grid publications must issue an Instagram Co-Author Collaboration Invite to @nerdyphotographer.in prior to publishing, and include full production credits in the caption:\n  📷 Photography & Light Design: @nerdyphotographer.in\n  👤 Model / Talent: @[Handle]\n\n4. STUDIO RENTAL AT ACTUALS & TRAVEL EQUATION\nPackage rates cover photography creation & master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are billed at actuals (at cost). Shoots requiring travel beyond 20 km incur travel expenses at actuals.\n\n5. PHYSICAL SAFETY LIABILITY WAIVER & GEAR PROTECTION\nThe Participant enters the studio environment and performs physical poses entirely at their own risk. The Studio is not liable for injuries or clothing damage. Participants may not touch equipment or delete media from cameras.\n\n6. CALL TIME, GRACE PERIOD, LATE ARRIVAL & NO-SHOW\nThe call time confirmed by the Studio is the time the Participant is expected on set and ready to begin, not the time they set out. The Studio holds the set for 60 minutes past that call time. Arriving within that window does not extend the session: the booked wrap time stands, and time lost to a late arrival comes out of the shoot. If the Participant has not arrived within those 60 minutes and has not agreed a later start with the Studio, the Studio may cancel the session at its sole discretion; a session cancelled on this basis is not rescheduled as of right, any home studio rental or other amount already paid is forfeited and non-refundable, and the photographer invite code under which the session was booked may be withdrawn. A delay or cancellation notified at least 24 hours before the call time is treated as a reschedule rather than a no-show and nothing is forfeited, up to a maximum of two reschedules; beyond that the invite lapses. A delay notified on the shoot day may be accommodated where the set is still free and the session can still finish within booked daylight hours, and by 7:00 PM at the home studio — notifying a delay is a courtesy and not an entitlement, it does not by itself extend the grace period or move the wrap time, and acceptance remains at the Studio's discretion. If the Studio is not ready to begin within 60 minutes of the confirmed call time, the Participant may reschedule at no cost, or proceed with the wrap time extended by the length of the delay where the venue allows."
+      },
       "V3.3-TFP": {
         version: "V3.3-TFP",
         title: "Test Shoot & TFP Liability Release V3.3 (Test Shoots)",
-        effectiveDate: "August 2026 – Present",
-        status: "Active / Current (Test Shoot / TFP)",
+        effectiveDate: "August 2026 (superseded by V3.4)",
+        status: "Archived — superseded by V3.4 (added call-time grace period & no-show clause)",
         summary: "Dedicated agreement for Selective Collaborations & Test Shoots unlocked via Photographer Invite Codes. Covers non-commercial portfolio licensing, 8-12 retouched deliverable caps, mandatory Instagram tag credits (@nerdyphotographer.in), studio rental at actuals, physical liability waiver, and gear protection.",
         fullText: "1. SCOPE OF COLLABORATION & DELIVERABLE LIMITS\nThis session is scheduled as a peer-to-peer Selective Collaboration (TFP Test Shoot) structured for mutual portfolio growth. Standard packages include web gallery access for online proofing and 8 to 12 Retouched Master Clicks. Strictly no RAW unedited files are delivered.\n\n2. NON-COMMERCIAL PORTFOLIO USAGE LICENSE\nParticipants are granted a non-exclusive license to use final retouched photos for personal self-promotion, social media grids (Instagram/TikTok), personal websites, and agency portfolios. Commercial licensing or selling assets to third parties is strictly prohibited.\n\n3. MANDATORY ATTRIBUTION & INSTAGRAM CO-AUTHOR WORKFLOW\nAll primary feed or grid publications must issue an Instagram Co-Author Collaboration Invite to @nerdyphotographer.in prior to publishing, and include full production credits in the caption:\n  📷 Photography & Light Design: @nerdyphotographer.in\n  👤 Model / Talent: @[Handle]\n\n4. STUDIO RENTAL AT ACTUALS & TRAVEL EQUATION\nPackage rates cover photography creation & master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are billed at actuals (at cost). Shoots requiring travel beyond 20 km incur travel expenses at actuals.\n\n5. PHYSICAL SAFETY LIABILITY WAIVER & GEAR PROTECTION\nThe Participant enters the studio environment and performs physical poses entirely at their own risk. The Studio is not liable for injuries or clothing damage. Participants may not touch equipment or delete media from cameras."
       },
@@ -4780,7 +4788,8 @@ RAW files are not provided.`
             <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Contract Document Version *
               <select id="pdf_contractVersion" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
                 <option value="V3.3" ${(b.contractVersion === 'V3.3' || (!b.contractVersion && !isTest)) ? 'selected' : ''}>📜 Commercial Shoot Contract V3.3 Active (50/50 + Gear Protection)</option>
-                <option value="V3.3-TFP" ${(b.contractVersion === 'V3.3-TFP' || (isTest && !b.contractVersion)) ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.3 Active (8-12 Retouched + Gear Protection)</option>
+                <option value="V3.4-TFP" ${(b.contractVersion === 'V3.4-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.4' || (isTest && !b.contractVersion)) ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.4 Active (adds call-time grace &amp; no-show)</option>
+                <option value="V3.3-TFP" ${b.contractVersion === 'V3.3-TFP' ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.3 (Archived)</option>
                 <option value="V3.2" ${b.contractVersion === 'V3.2' ? 'selected' : ''}>📜 Archived Terms V3.2 (May 2026 – Aug 2026)</option>
                 <option value="V3.1" ${b.contractVersion === 'V3.1' ? 'selected' : ''}>📜 Archived Terms V3.1 (May 2026 – Jul 2026)</option>
                 <option value="V3.0" ${b.contractVersion === 'V3.0' ? 'selected' : ''}>📜 Archived Terms V3.0 (Jan 2026 – Apr 2026)</option>
@@ -4930,7 +4939,7 @@ RAW files are not provided.`
       }
     }
     const contractText = archiveObj ? archiveObj.fullText : "";
-    const isTfp = (data.paymentMilestones === "tfp" || cVer === "V3.3-TFP");
+    const isTfp = (data.paymentMilestones === "tfp" || cVer === "V3.4-TFP" || cVer === "V3.3-TFP");
     // Studio clause: photographer-provided (locked invite) vs rental at actuals
     // (client pays). This used to fall back to `window._lockedLocationFromInvite`,
     // which is set by the PUBLIC booking form and then persists for the whole
@@ -5222,7 +5231,8 @@ RAW files are not provided.`
                        hand could not be marked as signed under the release the
                        public form actually uses. -->
                   <option value="Pending Agreement" ${(b.contractVersion === 'Pending Agreement' || (!b.agreedToTerms && !b.contractVersion)) ? 'selected' : ''}>⏳ Pending Agreement / Not Signed Yet (Admin Manual Booking)</option>
-                  <option value="V3.3-TFP" ${(b.contractVersion === 'V3.3-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.3') ? 'selected' : ''}>📸 Test Shoot / TFP Liability Release V3.3 (Active)</option>
+                  <option value="V3.4-TFP" ${(b.contractVersion === 'V3.4-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.4') ? 'selected' : ''}>📸 Test Shoot / TFP Liability Release V3.4 (Active)</option>
+                  <option value="V3.3-TFP" ${(b.contractVersion === 'V3.3-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.3') ? 'selected' : ''}>📸 Test Shoot / TFP Liability Release V3.3 (Archived)</option>
                   <option value="V3.3" ${(b.contractVersion === 'V3.3' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.3' || (b.agreedToTerms && !b.contractVersion)) ? 'selected' : ''}>📜 Commercial Shoot Contract V3.3 (Active)</option>
                   <option value="V3.2" ${b.contractVersion === 'V3.2' ? 'selected' : ''}>📜 Agreed Terms V3.2 (Archived Release)</option>
                   <option value="V3.1" ${b.contractVersion === 'V3.1' ? 'selected' : ''}>📜 Agreed Terms V3.1 (Archived Release)</option>
@@ -5354,7 +5364,8 @@ RAW files are not provided.`
                 <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Contract Agreement &amp; Version Status</label>
                 <select id="m_clientContractVersion" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;">
                   <option value="Pending Agreement">⏳ Pending Agreement / Not Signed Yet (Admin Manual Booking)</option>
-                  <option value="V3.3-TFP">📸 Test Shoot / TFP Liability Release V3.3 (Active)</option>
+                  <option value="V3.4-TFP">📸 Test Shoot / TFP Liability Release V3.4 (Active)</option>
+                  <option value="V3.3-TFP">📸 Test Shoot / TFP Liability Release V3.3 (Archived)</option>
                   <option value="V3.3">📜 Commercial Shoot Contract V3.3 (Active)</option>
                   <option value="V3.2">📜 Agreed Terms V3.2 (Archived Release)</option>
                   <option value="V3.1">📜 Agreed Terms V3.1 (Archived Release)</option>
@@ -6638,6 +6649,10 @@ RAW files are not provided.`
                      <span aria-hidden="true" style="flex: 0 0 20px; font-size: var(--font-sm); line-height: 1.4;">📸</span>
                      <span><strong style="color: var(--ink);">Full Unedited Gallery Buyout:</strong> Packages include a proofing gallery to select contracted retouches. If the client requests the complete full unedited image gallery or additional retouched master clicks beyond the package limit, extra gallery buyout charges apply.</span>
                    </li>
+                   <li id="policyLateArrival" style="display: none; gap: 10px; align-items: flex-start; font-size: var(--font-xs); line-height: 1.55; color: var(--ink-soft);">
+                     <span aria-hidden="true" style="flex: 0 0 20px; font-size: var(--font-sm); line-height: 1.4;">⏰</span>
+                     <span><strong style="color: var(--ink);">Call Time, Grace Period &amp; No-Show:</strong> The set is held for <strong style="color: var(--ink);">60 minutes</strong> past your confirmed call time. Arriving inside that window does not extend the session — the booked wrap time stands. Past it, the studio may cancel the session at its sole discretion, any rental paid is forfeited, and the invite code may be withdrawn. A delay told to us <strong style="color: var(--ink);">24 hours ahead</strong> is a reschedule instead, up to two. If the studio runs more than 60 minutes late, you may reschedule at no cost.</span>
+                   </li>
                    <li style="display: flex; gap: 10px; align-items: flex-start; font-size: var(--font-xs); line-height: 1.55; color: var(--ink-soft);">
                      <span aria-hidden="true" style="flex: 0 0 20px; font-size: var(--font-sm); line-height: 1.4;">🔒</span>
                      <span><strong style="color: var(--ink);">Camera &amp; Media Protection:</strong> All camera equipment, memory cards, and raw captures are strictly confidential studio property. Participants may not touch equipment or delete media from cameras. Unauthorized file deletion constitutes a material breach of contract and incurs full data recovery costs.</span>
@@ -6718,7 +6733,7 @@ RAW files are not provided.`
                <div class="modal-content" style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; max-width: 680px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.15); overflow: hidden; animation: modalFadeIn 0.3s ease;">
                  <div style="padding: 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; background: var(--bone);">
                    <h3 id="termsModalTitle" style="margin: 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink);">Studio Production &amp; Liability Release</h3>
-                   <span id="termsModalTag" style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--accent); padding: 4px 8px; border-radius: 4px; color: #fff; font-weight: 700;">TFP-LIABILITY-RELEASE-V3.3 (CURRENT)</span>
+                   <span id="termsModalTag" style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--accent); padding: 4px 8px; border-radius: 4px; color: #fff; font-weight: 700;">TFP-LIABILITY-RELEASE-V3.4 (CURRENT)</span>
                  </div>
                  <div style="padding: 24px; overflow-y: auto; font-size: var(--font-sm); line-height: 1.6; color: var(--ink); display: flex; flex-direction: column; gap: 20px; text-align: left;">
                    <p style="margin: 0; font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em;">TFP Collaboration, Model Release &amp; Digital Consent Terms</p>
@@ -6789,12 +6804,26 @@ RAW files are not provided.`
                       <p style="margin: 0; font-weight: 500;">If the shoot location is located beyond a 20 km radius from Noida (Delhi NCR), all travel expenses, local conveyance, outstation transport, tolls, and accommodation expenses incurred for the photographer (and core production team) shall be fully borne, arranged, or reimbursed by the client / party requesting the shoot session. This condition applies to both Paid Commercial Shoots and Test Shoot Collaborations (TFP).</p>
                     </div>
                    
+                   <!-- Test shoots only: a collaboration brings no retainer with
+                        it, so a no-show costs the studio a held weekend and
+                        nothing else. Hidden for commercial bookings by
+                        openTermsModal, where the non-refundable retainer
+                        already carries that risk. -->
+                   <div id="termsLateArrivalSection" style="border-left: 3px solid #b22222; padding-left: 14px; background: rgba(178,34,34,0.04); display: none;">
+                     <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: #b22222;">9. CALL TIME, GRACE PERIOD, LATE ARRIVAL &amp; NO-SHOW</h4>
+                     <p style="margin: 0; font-weight: 500;">The call time confirmed by the Studio is the time the Participant is expected on set and ready to begin — not the time they set out. The Studio holds the set for <strong>60 minutes</strong> past that call time. Arriving within that window does not extend the session: the booked wrap time stands, and time lost to a late arrival comes out of the shoot.</p>
+                     <p style="margin: 6px 0 0 0; font-weight: 500;">If the Participant has not arrived within those 60 minutes and has not agreed a later start with the Studio, the Studio may <strong>cancel the session at its sole discretion</strong>. A session cancelled on this basis is not rescheduled as of right; any home studio rental or other amount already paid is forfeited and non-refundable; and the photographer invite code under which the session was booked may be withdrawn.</p>
+                     <p style="margin: 6px 0 0 0;">A delay or cancellation notified <strong>at least 24 hours</strong> before the call time is treated as a reschedule rather than a no-show, and nothing is forfeited — up to a maximum of <strong>two reschedules</strong>, beyond which the invite lapses.</p>
+                     <p style="margin: 6px 0 0 0;">A delay notified on the shoot day may be accommodated where the set is still free and the session can still finish within booked daylight hours, and by <strong>7:00 PM</strong> at the home studio. Notifying a delay is a courtesy and not an entitlement: it does not by itself extend the grace period or move the wrap time, and acceptance remains at the Studio's discretion.</p>
+                     <p style="margin: 6px 0 0 0;">If the <strong>Studio</strong> is not ready to begin within 60 minutes of the confirmed call time, the Participant may reschedule at no cost, or proceed with the wrap time extended by the length of the delay where the venue allows.</p>
+                   </div>
+
                    <!-- Checkbox Agreement Block -->
                    <div style="margin-top: 15px; border-top: 1px dashed var(--line); padding-top: 15px;">
                      <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; background: var(--bone); border: 1.5px solid var(--accent); border-radius: 8px; padding: 14px;">
                        <input type="checkbox" id="termsAgreeCheckbox" style="width: 20px; height: 20px; margin-top: 2px; accent-color: var(--accent); cursor: pointer;" />
                        <span style="font-size: var(--font-xs); color: var(--ink); line-height: 1.5; font-weight: 600;">
-                         I have read, understood, and agree to the <strong>Studio Terms &amp; Conditions (Version V3.3)</strong> and <strong>Model Release Agreement</strong>.
+                         I have read, understood, and agree to the <strong>Studio Terms &amp; Conditions (Version V3.4)</strong> and <strong>Model Release Agreement</strong>.
                        </span>
                      </label>
                    </div>
@@ -8214,7 +8243,7 @@ RAW files are not provided.`
         if (type === "Selective Collaboration (TFP)") {
           policyNotice.innerHTML = `
             <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">TFP Collaboration &amp; Test Shoot Policy</span>
-            Submission of a TFP collaboration request does not constitute a confirmed session or a commitment to shoot. All inquiries are subject to schedule availability, creative alignment, and final studio review. <strong>Note: If a dedicated studio space is booked for the shoot, applicable studio rental charges will apply.</strong> TFP shoots include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW unedited camera files are strictly excluded and remain unreleased.
+            Submission of a TFP collaboration request does not constitute a confirmed session or a commitment to shoot. All inquiries are subject to schedule availability, creative alignment, and final studio review. <strong>Note: If a dedicated studio space is booked for the shoot, applicable studio rental charges will apply.</strong> TFP shoots include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW unedited camera files are strictly excluded and remain unreleased. <strong>⏰ Call time &amp; no-show:</strong> the set is held for <strong>60 minutes</strong> past your confirmed call time; arriving late does not extend the session. Beyond that, the studio may cancel the shoot at its discretion and the invite code may be withdrawn. Tell us at least 24 hours ahead and it is a reschedule instead (max 2).
           `;
         } else {
           policyNotice.innerHTML = `
@@ -8633,7 +8662,7 @@ RAW files are not provided.`
             : `<strong>Note: If a dedicated studio space is booked for the shoot, applicable studio rental charges will apply.</strong>`;
         policyNoticeEl.innerHTML = `
           <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">TFP Collaboration &amp; Test Shoot Policy</span>
-          Submission of a TFP collaboration request does not constitute a confirmed session or a commitment to shoot. All inquiries are subject to schedule availability, creative alignment, and final studio review. ${studioLine} TFP shoots include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW unedited camera files are strictly excluded and remain unreleased.
+          Submission of a TFP collaboration request does not constitute a confirmed session or a commitment to shoot. All inquiries are subject to schedule availability, creative alignment, and final studio review. ${studioLine} TFP shoots include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW unedited camera files are strictly excluded and remain unreleased. <strong>⏰ Call time &amp; no-show:</strong> the set is held for <strong>60 minutes</strong> past your confirmed call time; arriving late does not extend the session. Beyond that, the studio may cancel the shoot at its discretion and the invite code may be withdrawn. Tell us at least 24 hours ahead and it is a reschedule instead (max 2).
         `;
       }
 
@@ -8716,6 +8745,14 @@ RAW files are not provided.`
       // back off bookingCalc by the badge and the submit-time check, so setting
       // them any earlier would apply this pass's limits to last pass's status.
       syncDurationLimits(isCollabBooking);
+
+      // The grace-period bullet is a test-shoot term, so it follows the same
+      // signal the rest of the collaboration UI does rather than the raw type —
+      // an invite-locked booking is a test shoot whatever the (hidden) type
+      // select happens to say. Set to "flex" and not "" because the list item
+      // is a flex row; "" would restore the stylesheet default of list-item.
+      const policyLateArrival = $("#policyLateArrival");
+      if (policyLateArrival) policyLateArrival.style.display = isCollabBooking ? "flex" : "none";
 
       const finalPriceSummaryBox = $("#finalPriceSummaryBox");
       const promoCodeWrap = $("#b_discount_code")?.closest(".field");
@@ -9181,11 +9218,15 @@ RAW files are not provided.`
         fd.append("Notes", payload.notes || "—");
         // Three distinct cases, not two. Falling through to "No (email/DM
         // consent)" for anything without an image understated a checkbox
-        // acceptance — the client HAD agreed, on the form, to V3.3.
+        // acceptance — the client HAD agreed, on the form, to the terms.
+        // The version is read off the booking rather than written in: hardcoding
+        // it meant this line kept naming V3.3 while the reference and full text
+        // in the same email had moved on, so the studio's own record disagreed
+        // with itself about which document was accepted.
         fd.append("Signature Captured", sigBlob
           ? (withSig ? "Yes — drawn signature attached as PNG" : "Yes — drawn at booking (attachment unavailable; image kept in booking record)")
           : (payload.agreementMethod === "checkbox"
-              ? "Yes — accepted via checkbox confirmation on the booking form (Studio Terms V3.3)"
+              ? `Yes — accepted via checkbox confirmation on the booking form (${payload.contractVersion || "Studio Terms"})`
               : "No (email/DM consent)"));
         fd.append("Contract Terms (full text)", payload.contractText || "—");
         if (withSig) fd.append("attachment", sigBlob, `signature-${payload.contractNumber || "contract"}.png`);
@@ -9260,7 +9301,7 @@ RAW files are not provided.`
         const venueClause = venueByStudio
           ? `1. SCOPE OF PRODUCTION & VENUE (PROVIDED BY STUDIO)\nThis session is scheduled for studio/location photography production at a venue arranged and paid for by the Studio: ${venueByStudioAddress || "as confirmed with the Studio"}. No studio rental, venue hire or space fee is billed to the Participant for this session. A change of venue requested by the Participant is subject to Studio approval and may reintroduce venue costs at actuals.${homeStudioRider}`
           : `1. SCOPE OF PRODUCTION & VENUE RENTAL POLICY\nThis session is scheduled for studio/location photography production. Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio venue space is required, applicable studio rental fees are billed at actuals (at cost).`;
-        const contractRefDoc = isCustomContract ? "CUSTOM-CLIENT-CONTRACT-MSA" : (isTfpCat ? "TFP-LIABILITY-RELEASE-V3.3" : "COMMERCIAL-CONTRACT-V3.4");
+        const contractRefDoc = isCustomContract ? "CUSTOM-CLIENT-CONTRACT-MSA" : (isTfpCat ? "TFP-LIABILITY-RELEASE-V3.4" : "COMMERCIAL-CONTRACT-V3.4");
         // Resolved before the release text below, which now states the fee and
         // the milestones. They previously appeared only in the inquiry email as
         // booking details — so the document the client actually signed said
@@ -9291,6 +9332,17 @@ RAW files are not provided.`
               : "")
           : `\n\n7. ENGAGEMENT FEE, SELECTED PACKAGE & PAYMENT MILESTONES\nSelected package and contracted deliverables: ${budget || "as quoted by the Studio"}.\n${paymentTermsText.replace(/^Payment Terms: /, "Payment terms: ")}\nMilestone payments marked non-refundable are non-refundable once paid, including where the Participant cancels or reschedules. Deliverables are released only after the final milestone is cleared. Any work beyond the contracted package (additional retouched masters, extended usage, gallery buyout) is quoted and invoiced separately.`;
 
+        // Test shoots only. A paid booking already carries this risk through its
+        // non-refundable retainer; a collaboration pays nothing, so without this
+        // a no-show costs the studio a held weekend and nothing else.
+        // Numbered off whether the rental clause above is present, since it is
+        // omitted on a collaboration with no rental — hardcoding "8" would
+        // print a document that jumps from 6 to 8.
+        const lateArrivalClause = !isTfpCat ? "" : (() => {
+          const n = engagementFeeClause ? 8 : 7;
+          return `\n\n${n}. CALL TIME, GRACE PERIOD, LATE ARRIVAL & NO-SHOW\nThe call time confirmed by the Studio is the time the Participant is expected on set and ready to begin, not the time they set out. The Studio holds the set for 60 minutes past that call time. Arriving within that window does not extend the session: the booked wrap time stands, and time lost to a late arrival comes out of the shoot.\nIf the Participant has not arrived within those 60 minutes and has not agreed a later start with the Studio, the Studio may cancel the session at its sole discretion. A session cancelled on this basis is not rescheduled as of right; any home studio rental or other amount already paid is forfeited and non-refundable; and the photographer invite code under which the session was booked may be withdrawn.\nA delay or cancellation notified at least 24 hours before the call time is treated as a reschedule rather than a no-show, and nothing is forfeited — up to a maximum of two reschedules, beyond which the invite lapses.\nA delay notified on the shoot day may be accommodated where the set is still free and the session can still finish within booked daylight hours, and by 7:00 PM at the home studio. Notifying a delay is a courtesy and not an entitlement: it does not by itself extend the grace period or move the wrap time, and acceptance remains at the Studio's discretion.\nIf the Studio is not ready to begin within 60 minutes of the confirmed call time, the Participant may reschedule at no cost, or proceed with the wrap time extended by the length of the delay where the venue allows.`;
+        })();
+
         const tfpReleaseText = agreedToTerms ? (
           `\n\n==================================================\n` +
           `STUDIO PRODUCTION CONTRACT & LEGAL TERMS\n` +
@@ -9300,12 +9352,12 @@ RAW files are not provided.`
           `Studio/Photographer: nerdyphotographer.in\n` +
           `Client/Participant: ${name}\n` +
           `Contact Email: ${email}\n` +
-          `Contract Status: ${isCustomContract ? 'Custom Contract / Agency MSA Requested (Pending Studio Review)' : 'Agreed to Studio Contract V3.3'}\n` +
+          `Contract Status: ${isCustomContract ? 'Custom Contract / Agency MSA Requested (Pending Studio Review)' : `Agreed to Studio Contract ${contractRefDoc}`}\n` +
           (isCustomContract ? `Custom Contract Notes: ${customContractNotes || 'Client requested custom agency MSA'}\n` : '') +
           `--------------------------------------------------\n\n` +
           (isCustomContract ? 
             `1. CUSTOM CONTRACT / AGENCY MSA REQUEST\nThis shoot request is submitted under a Custom Client Contract / Agency Master Services Agreement (MSA). Studio V3.3 default terms remain subject to custom contract review and mutual alignment prior to shoot day confirmation.\n\n2. CAMERA GEAR & DATA PROTECTION CLAUSE\nAll camera bodies, memory cards, and raw captures remain confidential studio property. Participants may not touch equipment or delete media from cameras.\n` :
-            `${venueClause}\n\n2. INTELLECTUAL PROPERTY & USAGE LICENSING\nThe legal copyright of all visual media remains exclusively with the Studio. Clients receive personal, social media, and web self-promotion usage rights.\n\n3. COMPREHENSIVE LIABILITY WAIVER\nParticipant(s) enter the studio workspace and perform physical poses entirely at their own risk.\n\n4. DELIVERABLES, REVISIONS & CLOUD ARCHIVAL\nDeliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for ${isTfpCat ? '3 Months' : '6 Months'}. RAW files are strictly excluded.\n\n5. UNAUTHORIZED CAMERA OPERATION & GEAR PROTECTION\nAll camera gear and memory cards are strictly hands-off.\n\n6. DIGITAL CONSENT & EMAIL ACCEPTANCE\nLegal acceptance is established by submitting this request.${engagementFeeClause}`
+            `${venueClause}\n\n2. INTELLECTUAL PROPERTY & USAGE LICENSING\nThe legal copyright of all visual media remains exclusively with the Studio. Clients receive personal, social media, and web self-promotion usage rights.\n\n3. COMPREHENSIVE LIABILITY WAIVER\nParticipant(s) enter the studio workspace and perform physical poses entirely at their own risk.\n\n4. DELIVERABLES, REVISIONS & CLOUD ARCHIVAL\nDeliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for ${isTfpCat ? '3 Months' : '6 Months'}. RAW files are strictly excluded.\n\n5. UNAUTHORIZED CAMERA OPERATION & GEAR PROTECTION\nAll camera gear and memory cards are strictly hands-off.\n\n6. DIGITAL CONSENT & EMAIL ACCEPTANCE\nLegal acceptance is established by submitting this request.${engagementFeeClause}${lateArrivalClause}`
           ) +
           `\n\nnerdyphotographer.in studios\n` +
           `==================================================`
@@ -9696,7 +9748,7 @@ RAW files are not provided.`
             : (type === "Selective Collaboration (TFP)" ? "₹0 — TFP collaboration" : "—"),
           "Moodboard Link": moodboard || "—",
           "Concept / Vision": concept || "—",
-          "TFP Release": agreedToTerms ? "AGREED — TFP-LIABILITY-RELEASE-V3.3 (full text below)" : "Not applicable",
+          "TFP Release": agreedToTerms ? `AGREED — ${contractRefDoc} (full text below)` : "Not applicable",
         };
         if (agreedToTerms) relayFields["Release Full Text"] = tfpReleaseText.trim();
 
@@ -9829,7 +9881,13 @@ RAW files are not provided.`
       }
 
       if (modalTitle) modalTitle.textContent = isTfp ? "Studio Production & Liability Release" : "Commercial Shoot Contract & Production Agreement";
-      if (modalTag) modalTag.textContent = isTfp ? "TFP-LIABILITY-RELEASE-V3.3 (ACTIVE)" : "COMMERCIAL-CONTRACT-V3.4 (ACTIVE)";
+      if (modalTag) modalTag.textContent = isTfp ? "TFP-LIABILITY-RELEASE-V3.4 (ACTIVE)" : "COMMERCIAL-CONTRACT-V3.4 (ACTIVE)";
+      // The grace-period clause is a test-shoot term only. It has to be toggled
+      // on every open, not just hidden by default: the modal element persists
+      // across bookings, so a commercial enquiry opened after a TFP one would
+      // otherwise still be showing it.
+      const lateArrivalSection = $("#termsLateArrivalSection");
+      if (lateArrivalSection) lateArrivalSection.style.display = isTfp ? "block" : "none";
       if (partnerNameEl) partnerNameEl.textContent = partnerName || "Valued Client";
       
       // This is the screen the signature is actually captured on, so it is the
