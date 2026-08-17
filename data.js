@@ -506,6 +506,7 @@ window.WPS_DATA = {
       "showStatsOnModelPortfolio": true,
       "showTestShootCategory": false,
       "mentor": "",
+      "credits": "",
       "description": "",
       "tags": "",
       "gear": "",
@@ -514,13 +515,14 @@ window.WPS_DATA = {
       "instagram": "@_abhishek.yadavv",
       "kavyar": "",
       "link": "",
+      "pdfUrl": "",
       "rights": "",
       "testimonials": [],
       "lightingDiagram": null,
       "lightingDiagramVisibility": "private",
       "palette": [
-        "#d4cdc5",
-        "#5f5c59"
+        "#b1b2b6",
+        "#505052"
       ],
       "photos": [
         {
@@ -612,7 +614,16 @@ window.WPS_DATA = {
       "featured": true,
       "hideFromCompCard": false,
       "disableCompCardDownload": false,
-      "coverPhotoId": "mrcy189dfa7lp5"
+      "isPublic": true,
+      "showCredits": true,
+      "showPdf": true,
+      "showInstagram": true,
+      "showKavyar": true,
+      "showTestimonials": true,
+      "showStats": true,
+      "showGear": true,
+      "showLocation": true,
+      "coverPhotoId": "mr8ld69w1fq1e5"
     },
     {
       "id": "mranmpzmfblohv",
@@ -830,6 +841,127 @@ window.WPS_DATA = {
       "showGear": true,
       "showLocation": true,
       "coverPhotoId": "ms36ygjb7yxmuk"
+    },
+    {
+      "id": "msxag4ydolz34d",
+      "createdAt": 1786974448405,
+      "isTestimonial": false,
+      "title": "Sumitt Verma",
+      "brand": "Personal Project",
+      "activity": "Portrait",
+      "type": "Test Shoot",
+      "season": "August 2026",
+      "photographer": "nerdyphotographer",
+      "artDirector": "",
+      "stylist": "—",
+      "hair": "—",
+      "mua": "—",
+      "videographer": "—",
+      "talent": "Sumitt Verma (https://www.instagram.com/sumitt.verma03/?hl=en)",
+      "location": "",
+      "height": "",
+      "chest": "",
+      "waist": "",
+      "hips": "",
+      "shoes": "",
+      "modelHair": "",
+      "modelEyes": "",
+      "showStatsOnCompCard": true,
+      "showStatsOnModelPortfolio": true,
+      "showTestShootCategory": false,
+      "mentor": "",
+      "credits": "",
+      "description": "",
+      "tags": "",
+      "gear": "",
+      "client": "",
+      "date": "2026-08-16",
+      "instagram": "",
+      "kavyar": "",
+      "link": "",
+      "pdfUrl": "",
+      "rights": "",
+      "testimonials": [],
+      "lightingDiagram": null,
+      "lightingDiagramVisibility": "private",
+      "palette": [
+        "#c3c4cb",
+        "#58585b"
+      ],
+      "photos": [
+        {
+          "id": "msxa3xwlebulb5-0",
+          "url": "photos/msxag4ydolz34d/msxa3xwlebulb5-0.jpg",
+          "objectPosition": "top"
+        },
+        {
+          "id": "msxa3z2y975iu5-1",
+          "url": "photos/msxag4ydolz34d/msxa3z2y975iu5-1.jpg",
+          "objectPosition": "top"
+        },
+        {
+          "id": "msxa3y7lho6f05-2",
+          "url": "photos/msxag4ydolz34d/msxa3y7lho6f05-2.jpg",
+          "objectPosition": "center"
+        },
+        {
+          "id": "msxa3zgxgdoaib-3",
+          "url": "photos/msxag4ydolz34d/msxa3zgxgdoaib-3.jpg",
+          "objectPosition": "center",
+          "small": "photos/msxag4ydolz34d/msxa3zgxgdoaib-3@480.jpg",
+          "medium": "photos/msxag4ydolz34d/msxa3zgxgdoaib-3@960.jpg"
+        },
+        {
+          "id": "msxa3yi9op0xn1-4",
+          "url": "photos/msxag4ydolz34d/msxa3yi9op0xn1-4.jpg",
+          "objectPosition": "center",
+          "small": "photos/msxag4ydolz34d/msxa3yi9op0xn1-4@480.jpg",
+          "medium": "photos/msxag4ydolz34d/msxa3yi9op0xn1-4@960.jpg"
+        },
+        {
+          "id": "msxa3zvw0rdjvh-5",
+          "url": "photos/msxag4ydolz34d/msxa3zvw0rdjvh-5.jpg",
+          "objectPosition": "center",
+          "small": "photos/msxag4ydolz34d/msxa3zvw0rdjvh-5@480.jpg",
+          "medium": "photos/msxag4ydolz34d/msxa3zvw0rdjvh-5@960.jpg"
+        },
+        {
+          "id": "msxa3zomk2wnu6-6",
+          "url": "photos/msxag4ydolz34d/msxa3zomk2wnu6-6.jpg",
+          "objectPosition": "center",
+          "small": "photos/msxag4ydolz34d/msxa3zomk2wnu6-6@480.jpg",
+          "medium": "photos/msxag4ydolz34d/msxa3zomk2wnu6-6@960.jpg"
+        },
+        {
+          "id": "msxa3yozm8qs8j-7",
+          "url": "photos/msxag4ydolz34d/msxa3yozm8qs8j-7.jpg",
+          "objectPosition": "center",
+          "small": "photos/msxag4ydolz34d/msxa3yozm8qs8j-7@480.jpg",
+          "medium": "photos/msxag4ydolz34d/msxa3yozm8qs8j-7@960.jpg"
+        },
+        {
+          "id": "msxa3zagd9u9yv-8",
+          "url": "photos/msxag4ydolz34d/msxa3zagd9u9yv-8.jpg",
+          "objectPosition": "49.2% 83.7%",
+          "small": "photos/msxag4ydolz34d/msxa3zagd9u9yv-8@480.jpg",
+          "medium": "photos/msxag4ydolz34d/msxa3zagd9u9yv-8@960.jpg",
+          "focalX": 49.21696660827096,
+          "focalY": 83.6571640919467
+        }
+      ],
+      "featured": true,
+      "hideFromCompCard": false,
+      "disableCompCardDownload": false,
+      "isPublic": true,
+      "showCredits": true,
+      "showPdf": true,
+      "showInstagram": true,
+      "showKavyar": true,
+      "showTestimonials": true,
+      "showStats": true,
+      "showGear": true,
+      "showLocation": false,
+      "coverPhotoId": "msxa3zagd9u9yv"
     }
   ],
   "DELETED_IDS": [],
