@@ -1005,7 +1005,10 @@ window.moveAdminPackageRow = function(index, dir) {
   const altFor = (s, frame) => {
     if (!s) return "Photograph by nerdyphotographer.in";
     if (s.caption) return s.caption;
-    const who = (s.talent && s.talent.trim()) || (s.title && s.title.trim()) || "";
+    // Cleaned: alt text is read aloud by screen readers, indexed by Google
+    // Images, and shown verbatim when a photo fails to load — a raw
+    // "Name (https://instagram.com/…)" spelled the whole URL out in all three.
+    const who = getTalentCleanName(s.talent) || (s.title && s.title.trim()) || "";
     const what = [s.activity, publicShootType(s)].filter(Boolean).join(" ");
     const parts = [
       what ? `${what} photography` : "Photography",
@@ -1202,7 +1205,7 @@ window.moveAdminPackageRow = function(index, dir) {
       if (s.isTestimonial) {
         list.push({
           quote: s.description || "",
-          by: s.talent || "Anonymous",
+          by: getTalentCleanName(s.talent) || "Anonymous",
           meta: s.brand || "",
           season: s.season || "",
           shootId: s.id,
@@ -3021,7 +3024,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       if (s.stylist && s.stylist !== "—") creditsList.push(`Style <strong>${esc(s.stylist)}</strong>`);
       if (s.hair && s.hair !== "—") creditsList.push(`Hair <strong>${esc(s.hair)}</strong>`);
       if (s.mua && s.mua !== "—") creditsList.push(`Makeup <strong>${esc(s.mua)}</strong>`);
-      if (s.talent && s.talent !== "—") creditsList.push(`Talent <strong>${esc(s.talent)}</strong>`);
+      // renderCreditValue (not getTalentCleanName) on this branch: a regular
+      // album can list several models, each with their own handle inlined,
+      // and s.instagram won't necessarily carry them. This strips the
+      // parentheses AND renders each handle as a link, so no link is lost.
+      if (s.talent && s.talent !== "—") creditsList.push(`Talent <strong>${renderCreditValue(s.talent)}</strong>`);
       if (igHtml) creditsList.push(`Socials ${igHtml}`);
     }
     const creditsHtml = creditsList.join("  ·  ");
@@ -5853,7 +5860,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           const isPort = d === "Model Portfolio";
           return {
             id: isPort ? `portfolio-${encodeURIComponent(modelName)}` : `comp-card-${encodeURIComponent(modelName)}`,
-            title: isPort ? `${modelName} — Portfolio` : `${modelName} — Comp Card`,
+            // Display title is cleaned; `talent` below stays raw on purpose,
+            // because compCardOwnHandles parses its parentheses to pick the
+            // model's own social. Same reason `id` is left alone — changing
+            // it would break links already shared for this album.
+            title: isPort ? `${getTalentCleanName(modelName)} — Portfolio` : `${getTalentCleanName(modelName)} — Comp Card`,
             brand: "Personal Project",
             activity: latestShoot.activity,
             type: "Selective Collaboration (TFP)",
@@ -10662,7 +10673,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         images.push({
           "@type": "ImageObject",
           "contentUrl": url,
-          "name": s.title || s.talent || "Photoshoot",
+          "name": s.title || getTalentCleanName(s.talent) || "Photoshoot",
           "caption": p.caption || altFor(s),
           "creditText": "nerdyphotographer.in",
           "creator": { "@type": "Organization", "name": "Nerdy Photographer" }
