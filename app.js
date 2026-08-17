@@ -2170,7 +2170,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       <div style="display:flex; flex-direction:column; gap: 24px; width: 100%;">
         <div>
           <span class="eyebrow" style="color:var(--accent); font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); letter-spacing:0.05em; text-transform:uppercase;">
-            ${isCc ? "Model Portfolio" : `${esc(shoot.brand)} · ${esc(shoot.type)}`}
+            ${isCc ? "Model Portfolio" : esc([shoot.brand, publicShootType(shoot)].filter(Boolean).join(" · "))}
           </span>
           <h2 style="font-family:'Outfit', sans-serif; font-size: var(--font-md); font-weight:700; margin: 6px 0 0; color:var(--ink); line-height: 1.2;">
             ${esc(getTalentCleanName(shoot.talent || shoot.title))}

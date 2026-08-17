@@ -703,7 +703,14 @@ a { color: inherit; text-decoration: none; }
 @keyframes lbf { from { opacity: 0; } }
 
 .lightbox-main {
-  flex: 3;
+  /* flex: 3 alone was not enough: a flex item defaults to min-width auto, so a
+     wide landscape frame refused to shrink below its own width and squeezed
+     the sidebar into whatever was left — the credits wrapped a word per line
+     and the role badge was clipped off the edge. A portrait frame is narrow,
+     so the same sidebar came out twice as wide. min-width: 0 lets the image
+     pane give way, and the sidebar below claims a fixed share instead. */
+  flex: 1 1 0;
+  min-width: 0;
   position: relative;
   display: flex;
   align-items: center;
@@ -715,7 +722,8 @@ a { color: inherit; text-decoration: none; }
 }
 
 .lightbox-sidebar {
-  flex: 1;
+  /* A constant, readable column whatever shape the photograph is. */
+  flex: 0 0 clamp(320px, 26vw, 440px);
   height: 100%;
   background: var(--paper);
   color: var(--ink);
