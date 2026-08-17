@@ -17,7 +17,13 @@ const STUDIO_CONFIG = {
   // heroFocus is the object-position: it decides which part survives when the
   // screen is a different shape to the photo. "50% 35%" keeps faces in frame
   // on tall phone screens, where the crop is most aggressive.
-  heroImage: "photos/mr8legmk0o8mqz/mrcy189dfa7lp5-9.jpg",
+  // Blank on purpose: nothing in the library is composed as a cover frame.
+  // Portfolio work fills the frame by design, which leaves the wordmark no
+  // clear ground to sit on. Leave this empty until a frame is shot for it —
+  // horizontal, subject pushed to one third, ~40% clean space on the other
+  // side, 2400px+ wide. Filling it in switches the hero over; nothing else
+  // needs changing.
+  heroImage: "",
   heroFocus: "50% 22%",
   heroAlt: "Editorial studio portrait — model reclining, shot on white seamless in Noida",
 
