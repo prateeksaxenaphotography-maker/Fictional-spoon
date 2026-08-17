@@ -849,7 +849,7 @@ window.WPS_DATA = {
       "title": "Sumitt Verma",
       "brand": "Personal Project",
       "activity": "Beauty",
-      "type": "Campaign",
+      "type": "Test Shoot",
       "season": "August 2026",
       "photographer": "nerdyphotographer",
       "artDirector": "",
@@ -885,38 +885,31 @@ window.WPS_DATA = {
       "lightingDiagram": null,
       "lightingDiagramVisibility": "private",
       "palette": [
-        "#cecbd1",
-        "#5d5b5e"
+        "#3a3a3a",
+        "#0d0d0d"
       ],
       "photos": [
         {
           "id": "msxi7sgpk9aa8g-0",
           "url": "photos/msxhrjrtl997mq/msxi7sgpk9aa8g-0.jpg",
           "objectPosition": "50.8% 18.2%",
-          "small": "photos/msxhrjrtl997mq/msxi7sgpk9aa8g-0@480.jpg",
-          "medium": "photos/msxhrjrtl997mq/msxi7sgpk9aa8g-0@960.jpg",
           "focalX": 50.79895949461167,
           "focalY": 18.206189945320382
         },
         {
           "id": "msxi7tk56p9b1a-1",
           "url": "photos/msxhrjrtl997mq/msxi7tk56p9b1a-1.jpg",
-          "objectPosition": "center",
-          "small": "photos/msxhrjrtl997mq/msxi7tk56p9b1a-1@480.jpg",
-          "medium": "photos/msxhrjrtl997mq/msxi7tk56p9b1a-1@960.jpg"
+          "objectPosition": "center"
         },
         {
           "id": "msxi7srzy2ctpm-2",
           "url": "photos/msxhrjrtl997mq/msxi7srzy2ctpm-2.jpg",
-          "objectPosition": "center",
-          "small": "photos/msxhrjrtl997mq/msxi7srzy2ctpm-2@480.jpg",
-          "medium": "photos/msxhrjrtl997mq/msxi7srzy2ctpm-2@960.jpg"
+          "objectPosition": "center"
         },
         {
           "id": "msxi7t0ua3f9wh-3",
           "url": "photos/msxhrjrtl997mq/msxi7t0ua3f9wh-3.jpg",
-          "objectPosition": "center",
-          "small": "photos/msxhrjrtl997mq/msxi7t0ua3f9wh-3@480.jpg"
+          "objectPosition": "center"
         },
         {
           "id": "msxi7trlr69fmd-4",
@@ -926,27 +919,22 @@ window.WPS_DATA = {
         {
           "id": "msxi7t6urwrvjd-5",
           "url": "photos/msxhrjrtl997mq/msxi7t6urwrvjd-5.jpg",
-          "objectPosition": "center",
-          "small": "photos/msxhrjrtl997mq/msxi7t6urwrvjd-5@480.jpg",
-          "medium": "photos/msxhrjrtl997mq/msxi7t6urwrvjd-5@960.jpg"
+          "objectPosition": "center"
         },
         {
           "id": "msxi7txgnthszg-6",
           "url": "photos/msxhrjrtl997mq/msxi7txgnthszg-6.jpg",
-          "objectPosition": "center",
-          "small": "photos/msxhrjrtl997mq/msxi7txgnthszg-6@480.jpg"
+          "objectPosition": "center"
         },
         {
           "id": "msxi7u509ftp4v-7",
           "url": "photos/msxhrjrtl997mq/msxi7u509ftp4v-7.jpg",
-          "objectPosition": "top",
-          "small": "photos/msxhrjrtl997mq/msxi7u509ftp4v-7@480.jpg"
+          "objectPosition": "top"
         },
         {
           "id": "msxi7ubza7bc5s-8",
           "url": "photos/msxhrjrtl997mq/msxi7ubza7bc5s-8.jpg",
-          "objectPosition": "center",
-          "small": "photos/msxhrjrtl997mq/msxi7ubza7bc5s-8@480.jpg"
+          "objectPosition": "center"
         }
       ],
       "featured": true,
