@@ -10,6 +10,23 @@ const STUDIO_CONFIG = {
   tagline: "Cinematic photography, visual stories, and fine art prints.",
   introQuote: "“The best photography doesn't just record a moment. It captures the light, the mood, and the silent story within the frame.”",
 
+  // Homepage hero — hand-picked, not automatic. The first screen is the one
+  // image that deserves to be chosen rather than whatever sorts to the top.
+  // Pick a LANDSCAPE frame: this fills the full width of the screen, and a
+  // portrait would have to be cropped to fit it.
+  // heroFocus is the object-position: it decides which part survives when the
+  // screen is a different shape to the photo. "50% 35%" keeps faces in frame
+  // on tall phone screens, where the crop is most aggressive.
+  // Blank on purpose: nothing in the library is composed as a cover frame.
+  // Portfolio work fills the frame by design, which leaves the wordmark no
+  // clear ground to sit on. Leave this empty until a frame is shot for it —
+  // horizontal, subject pushed to one third, ~40% clean space on the other
+  // side, 2400px+ wide. Filling it in switches the hero over; nothing else
+  // needs changing.
+  heroImage: "",
+  heroFocus: "50% 22%",
+  heroAlt: "Editorial studio portrait — model reclining, shot on white seamless in Noida",
+
   // Contact & Socials
   email: "prateeksaxenaphotography@gmail.com",
   instagram: "https://www.instagram.com/nerdyphotographer.in/",

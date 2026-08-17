@@ -987,12 +987,26 @@ window.moveAdminPackageRow = function(index, dir) {
     return value ? ` srcset="${esc(value)}" sizes="${esc(sizes)}"` : "";
   };
   // Descriptive, SEO-friendly alt text for a shoot's photo (Google Images).
+  // How a shoot's type should read to a visitor. "Test Shoot" and "Selective
+  // Collaboration (TFP)" are how the studio classifies a booking, not something
+  // the work itself gains from announcing — on a portfolio it reads as "unpaid",
+  // which devalues the frames beside it. Both are suppressed publicly unless a
+  // shoot opts in with showTestShootCategory. The studio still sees them in
+  // admin mode, where the classification is the point.
+  // Returns "" when there is nothing to show, so callers must drop the label
+  // rather than render an empty badge.
+  const publicShootType = (s) => {
+    const t = ((s && s.type) || "").trim();
+    const isTestish = t === "Test Shoot" || t === "Selective Collaboration (TFP)";
+    if (isTestish && !s.showTestShootCategory && !isAdmin()) return "";
+    return t === "Selective Collaboration (TFP)" ? "Selective Collab" : t;
+  };
+
   const altFor = (s, frame) => {
     if (!s) return "Photograph by nerdyphotographer.in";
     if (s.caption) return s.caption;
     const who = (s.talent && s.talent.trim()) || (s.title && s.title.trim()) || "";
-    const typeTag = (s.type === "Selective Collaboration (TFP)" && !s.showTestShootCategory) ? "" : s.type;
-    const what = [s.activity, typeTag].filter(Boolean).join(" ");
+    const what = [s.activity, publicShootType(s)].filter(Boolean).join(" ");
     const parts = [
       what ? `${what} photography` : "Photography",
       who ? `featuring ${who}` : "",
@@ -2156,7 +2170,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       <div style="display:flex; flex-direction:column; gap: 24px; width: 100%;">
         <div>
           <span class="eyebrow" style="color:var(--accent); font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); letter-spacing:0.05em; text-transform:uppercase;">
-            ${isCc ? "Model Portfolio" : `${esc(shoot.brand)} · ${esc(shoot.type)}`}
+            ${isCc ? "Model Portfolio" : esc([shoot.brand, publicShootType(shoot)].filter(Boolean).join(" · "))}
           </span>
           <h2 style="font-family:'Outfit', sans-serif; font-size: var(--font-md); font-weight:700; margin: 6px 0 0; color:var(--ink); line-height: 1.2;">
             ${esc(getTalentCleanName(shoot.talent || shoot.title))}
@@ -2909,7 +2923,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   function nothWorkCard(s, i) {
     const cover = s.photos.find(p => p.id.split("-")[0] === s.coverPhotoId) || s.photos[0] || { objectPosition: "center" };
     const coverPos = cover.objectPosition || "center";
-    const typeTag = (s.type === "Selective Collaboration (TFP)" && !s.showTestShootCategory) ? "Selective Collab" : (s.type || "Editorial");
+    const typeTag = publicShootType(s);
     const tagline = s.description
       ? s.description
       : [s.activity, typeTag].filter(Boolean).join(" · ");
@@ -2931,9 +2945,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       <article class="noth-work reveal" data-shoot="${s.id}" data-category="${esc(s.type || '')}" data-talent="${esc(s.talent || '')}" style="--d:${(i % 2) * 0.08}s; position: relative; border-radius: 12px; overflow: hidden; background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow-sm); transition: transform 0.3s ease, box-shadow 0.3s ease;">
         <button class="noth-work-media" aria-label="View ${esc(title)}" style="position: relative; overflow: hidden; border-radius: 12px 12px 0 0;">
           <!-- Top Floating Micro-Badges -->
+          ${typeTag ? `
           <div style="position: absolute; top: 12px; left: 12px; z-index: 4; display: flex; gap: 6px; align-items: center;">
             <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 800; background: rgba(10, 10, 10, 0.75); backdrop-filter: blur(8px); color: #ffffff; padding: 4px 9px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); text-transform: uppercase; letter-spacing: 0.05em;">${esc(typeTag)}</span>
-          </div>
+          </div>` : ""}
           ${countBadgeText ? `
             <div style="position: absolute; top: 12px; right: 12px; z-index: 4;">
               <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 800; background: rgba(10, 10, 10, 0.75); backdrop-filter: blur(8px); color: #ffffff; padding: 4px 9px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2);">${esc(countBadgeText)}</span>
@@ -3073,8 +3088,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             const ed = (field, extra = "") => canInline
               ? ` class="inline-edit ${extra}" contenteditable="true" spellcheck="false" data-shoot="${s.id}" data-field="${field}" title="Click to edit"`
               : (extra ? ` class="${extra}"` : "");
-            const typeTag = (s.type === "Selective Collaboration (TFP)" && !s.showTestShootCategory) ? "" : s.type;
-            const brandAndType = [s.brand, typeTag].filter(Boolean).join(" · ");
+            const brandAndType = [s.brand, publicShootType(s)].filter(Boolean).join(" · ");
             return `
             ${s.isCompCard ? "" : `
               <p class="eyebrow">${esc(brandAndType)}</p>
@@ -3143,7 +3157,28 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   }
 
   function viewHome() {
-    const feat = SHOOTS.filter(s => !s.isTestimonial && s.type !== "Workshop Attended").slice(0, 7);
+    // Nine is a cap for a very large archive, not a curation: with the albums
+    // published today every one of them appears. Trimming to six to make the
+    // rows come out even had quietly cost two albums — one cut here and one
+    // hidden by the grid — which is a far worse outcome than a last row that
+    // is not completely full.
+    // The album the hero was taken from is dropped: it is already the largest
+    // image on the page, and showing it again as the first tile read as a
+    // mistake. Dropping it also happens to leave six portraits, which fill the
+    // grid exactly — the hero frame is the landscape one, and a wide tile in
+    // this grid is shorter than the portraits beside it, so it left a dead gap
+    // in its row and stranded the last album alone on a third row.
+    const heroPhoto = (window.STUDIO_CONFIG?.heroImage || "").trim();
+    const usesHeroPhoto = (s) => heroPhoto && (s.photos || []).some(p => (p.url || "") === heroPhoto);
+    const feat = SHOOTS
+      .filter(s => !s.isTestimonial && s.type !== "Workshop Attended" && !usesHeroPhoto(s))
+      .slice(0, 9);
+    // Hand-picked in config.js. Falls back to the old typographic hero if it is
+    // blank or points at a file that no longer exists, so a mistyped path
+    // degrades to the previous design rather than a broken image.
+    const heroSrc = (window.STUDIO_CONFIG?.heroImage || "").trim();
+    const heroFocus = (window.STUDIO_CONFIG?.heroFocus || "50% 35%").trim();
+    const heroAlt = (window.STUDIO_CONFIG?.heroAlt || "Studio photography by nerdyphotographer.in").trim();
     CURRENT_VIEW_SHOOTS = feat;
     const brandCount = new Set(SHOOTS.filter(s => s.client && s.client.trim() && s.type !== "Workshop Attended").map(s => s.brand)).size;
     const activeBrands = BRANDS.filter(b => SHOOTS.some(s => s.brand === b && s.client && s.client.trim() && s.type !== "Workshop Attended"));
@@ -3160,9 +3195,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const shuffledT = shuffleArray(allT);
     const homeT = shuffledT.slice(0, 5);
     return `
-      <section class="hero hero-mono hero-brand">
-        <div class="hero-bg" aria-hidden="true"></div>
-        ${cameraSvg()}
+      <section class="hero ${heroSrc ? "hero-shot" : "hero-mono hero-brand"}">
+        ${heroSrc ? `
+          <img class="hero-shot-img" src="${esc(heroSrc)}"${srcsetAttr({ url: heroSrc }, "100vw")} style="object-position: ${esc(heroFocus)};" alt="${esc(heroAlt)}" fetchpriority="high" decoding="async" />
+          <div class="hero-shot-scrim" aria-hidden="true"></div>
+        ` : `<div class="hero-bg" aria-hidden="true"></div>${cameraSvg()}`}
         <div class="container hero-inner">
           <div class="hero-topline reveal">
             <span class="hero-topline-l">The Creative Studio</span>
@@ -3194,6 +3231,32 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       </div>
       ` : ''}
 
+      <!-- FEATURED PHOTOSHOOTS -->
+      <section class="section container section-divider">
+        ${kineticWord("WORKS")}
+        <div class="section-head row reveal" style="margin-top: 8px;">
+          <div><p class="eyebrow">01 — Selected work</p><h2>Featured photoshoots</h2></div>
+          <a href="/albums" data-link class="link-arrow">All albums →</a>
+        </div>
+        <div class="noth-work-list">${feat.map(nothWorkCard).join("")}</div>
+        ${(() => {
+          // The way into the archive, and it must not depend on the front page
+          // holding something back. This used to render only when there were
+          // MORE albums than the grid showed, so the moment the grid started
+          // showing all of them the button silently disappeared — taking the
+          // only route to /albums from this section with it. Wording shifts
+          // instead: a count when there is genuinely more to see, an invitation
+          // when there is not.
+          const total = SHOOTS.filter(s => s.type !== "Workshop Attended").length;
+          if (!total) return "";
+          const more = total > feat.length;
+          return `
+        <div class="works-all-cta reveal">
+          <a href="/albums" data-link class="btn btn-dark">${more ? `View all ${total} albums →` : "Browse the full archive →"}</a>
+        </div>`;
+        })()}
+      </section>
+
       <!-- SERVICES (WHO I SHOOT FOR) -->
       <section class="section container section-divider">
         <div class="section-head section-head-center reveal">
@@ -3220,21 +3283,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <span class="link-arrow" style="margin-top: 12px; display: inline-block; font-size: var(--font-xs); font-weight: 700;">See fitness work →</span>
           </a>
         </div>
-      </section>
-
-      <!-- FEATURED PHOTOSHOOTS -->
-      <section class="section container section-divider">
-        ${kineticWord("WORKS")}
-        <div class="section-head row reveal" style="margin-top: 8px;">
-          <div><p class="eyebrow">01 — Selected work</p><h2>Featured photoshoots</h2></div>
-          <a href="/albums" data-link class="link-arrow">All albums →</a>
-        </div>
-        <div class="noth-work-list">${feat.map(nothWorkCard).join("")}</div>
-        ${SHOOTS.filter(s => s.type !== "Workshop Attended").length > feat.length ? `
-        <div class="works-all-cta reveal">
-          <a href="/albums" data-link class="btn btn-dark">View all ${SHOOTS.filter(s => s.type !== "Workshop Attended").length} albums →</a>
-        </div>
-        ` : ""}
       </section>
 
       <!-- QUICK LINKS -->
@@ -3313,8 +3361,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <button type="button" class="album-filter-pill active" data-filter="all" onclick="window.filterAlbumGrid('all', this)" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; white-space: nowrap;">🌐 All Albums (${counts.all})</button>
           ${counts.fashion ? `<button type="button" class="album-filter-pill" data-filter="fashion" onclick="window.filterAlbumGrid('fashion', this)" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; white-space: nowrap;">👗 Fashion (${counts.fashion})</button>` : ''}
           ${counts.commercial ? `<button type="button" class="album-filter-pill" data-filter="commercial" onclick="window.filterAlbumGrid('commercial', this)" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; white-space: nowrap;">💼 Commercial (${counts.commercial})</button>` : ''}
-          ${counts.tfp ? `<button type="button" class="album-filter-pill" data-filter="tfp" onclick="window.filterAlbumGrid('tfp', this)" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; white-space: nowrap;">🤝 Selective Collab (${counts.tfp})</button>` : ''}
-          ${counts.test ? `<button type="button" class="album-filter-pill" data-filter="test" onclick="window.filterAlbumGrid('test', this)" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; white-space: nowrap;">📸 Test Shoots (${counts.test})</button>` : ''}
+          ${(counts.tfp && isAdmin()) ? `<button type="button" class="album-filter-pill" data-filter="tfp" onclick="window.filterAlbumGrid('tfp', this)" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; white-space: nowrap;">🤝 Selective Collab (${counts.tfp})</button>` : ''}
+          ${(counts.test && isAdmin()) ? `<button type="button" class="album-filter-pill" data-filter="test" onclick="window.filterAlbumGrid('test', this)" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; white-space: nowrap;">📸 Test Shoots (${counts.test})</button>` : ''}
         </div>
       </div>
     `;
@@ -10249,9 +10297,23 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           const nw = img.naturalWidth, nh = img.naturalHeight;
           if (!nw || !nh) return;
           const imgRatio = nw / nh;
-          const frameRatio = media.clientWidth / media.clientHeight || (16 / 9);
-          // Portrait covers, or ratios that differ a lot, get contained + padded.
-          const mismatch = imgRatio < 1 || Math.abs(imgRatio - frameRatio) / frameRatio > 0.35;
+          // A landscape cover claims two columns and a 3:2 frame; everything
+          // else keeps the portrait cell. Set before measuring the frame below,
+          // since it changes the frame's own shape.
+          // Nothing is known about a photo until it has loaded — data.js stores
+          // no dimensions — so the tile starts portrait, which is right for 94%
+          // of this library, and only the rare wide cover reflows.
+          const card = media.closest(".noth-work");
+          if (card) card.classList.toggle("is-landscape", imgRatio > 1.05);
+          // A tile that is not laid out yet measures zero, and a 16/9 guess
+          // off the back of that reads as a mismatch against every portrait,
+          // switching the blurred fill on for no reason.
+          if (!media.clientWidth || !media.clientHeight) return;
+          const frameRatio = media.clientWidth / media.clientHeight;
+          // Whatever is left over after the frame has adapted: a cover whose
+          // shape still cannot be matched is contained over the blurred fill
+          // rather than cropped.
+          const mismatch = Math.abs(imgRatio - frameRatio) / frameRatio > 0.35;
           media.classList.toggle("fit-contain", mismatch);
           if (mismatch) {
             const isPortrait = imgRatio < 1;
