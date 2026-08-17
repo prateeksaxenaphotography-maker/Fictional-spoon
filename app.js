@@ -3008,7 +3008,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
     const creditsList = [];
     if (s.isCompCard) {
-      if (s.talent && s.talent !== "—") creditsList.push(`Talent <strong>${esc(s.talent)}</strong>`);
+      // Name only — the handle lives in the talent field's parentheses (see
+      // compCardOwnHandles) purely so the right social can be picked out, and
+      // it is already rendered as the "Socials" credit right below. Printing
+      // the raw field here spelled the whole instagram.com URL out in the
+      // credits line.
+      if (s.talent && s.talent !== "—") creditsList.push(`Talent <strong>${esc(getTalentCleanName(s.talent))}</strong>`);
       if (igHtml) creditsList.push(`Socials ${igHtml}`);
     } else {
       if (s.photographer) creditsList.push(`Photo <strong>${esc(s.photographer)}</strong>`);
@@ -3072,7 +3077,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       <article class="work-block ${i % 2 ? "flip" : ""} reveal" data-shoot="${s.id}" data-talent="${esc(s.talent)}">
         ${s.isCompCard ? `
           <div class="comp-card-header">
-            <h2>${esc(s.talent)}</h2>
+            <h2>${esc(getTalentCleanName(s.talent))}</h2>
             <p class="comp-card-eyebrow">Comp Card</p>
           </div>
         ` : ""}
@@ -5892,7 +5897,18 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           };
         });
         
-        displayList = [...unifiedAlbums, ...nonGroupable];
+        // Order by model name. unifiedAlbums came out of Object.keys(groups),
+        // i.e. the order the shoots happened to sit in — so the list read as
+        // date-ish/random while the A–Z filter bar right below promised an
+        // alphabet. Sort on the cleaned name so "Sumitt Verma (instagram…)"
+        // files under S, not under whatever its raw string starts with, and
+        // so it matches the letter its alpha-filter button assigns it.
+        const sortName = (s) => getTalentCleanName(s.talent || s.title || "").trim();
+        displayList = [...unifiedAlbums, ...nonGroupable].sort((a, b) => {
+          const an = sortName(a), bn = sortName(b);
+          if (!an !== !bn) return an ? -1 : 1; // unnamed albums sink to the bottom
+          return an.localeCompare(bn, undefined, { sensitivity: "base", numeric: true });
+        });
       }
 
       CURRENT_VIEW_SHOOTS = displayList;
