@@ -1130,10 +1130,10 @@ window.WPS_DATA = {
       ],
       "2026-09-06": [
         {
-          "id": "b_1786904562601_73b6",
-          "type": "Fashion Editorial",
-          "isTentative": true,
-          "status": "tentative",
+          "id": "b_1786993090931_rqop",
+          "type": "Assisting Photographer",
+          "isTentative": false,
+          "status": "assisting",
           "contractVersion": "Pending Agreement"
         }
       ]
@@ -1146,7 +1146,8 @@ window.WPS_DATA = {
       "2026-07-05::shoot-ms36z1wqkx21s1",
       "2026-07-24::shoot-ms36z1wqg2y4a2",
       "2026-08-30::b_1786709236156_7lzv",
-      "2026-08-16::shoot-msxag4ydolz34d"
+      "2026-08-16::shoot-msxag4ydolz34d",
+      "2026-09-06::b_1786904562601_73b6"
     ],
     "paymentScheduleType": "5050",
     "updatedAt": 0,
