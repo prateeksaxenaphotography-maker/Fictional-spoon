@@ -890,21 +890,6 @@ window.WPS_DATA = {
       ],
       "photos": [
         {
-          "id": "msxa3xwlebulb5-0",
-          "url": "photos/msxag4ydolz34d/msxa3xwlebulb5-0.jpg",
-          "objectPosition": "top"
-        },
-        {
-          "id": "msxa3z2y975iu5-1",
-          "url": "photos/msxag4ydolz34d/msxa3z2y975iu5-1.jpg",
-          "objectPosition": "top"
-        },
-        {
-          "id": "msxa3y7lho6f05-2",
-          "url": "photos/msxag4ydolz34d/msxa3y7lho6f05-2.jpg",
-          "objectPosition": "center"
-        },
-        {
           "id": "msxa3zgxgdoaib-3",
           "url": "photos/msxag4ydolz34d/msxa3zgxgdoaib-3.jpg",
           "objectPosition": "center",
