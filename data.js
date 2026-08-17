@@ -848,7 +848,7 @@ window.WPS_DATA = {
       "isTestimonial": false,
       "title": "Sumitt Verma",
       "brand": "Personal Project",
-      "activity": "Beauty",
+      "activity": "Portrait",
       "type": "Test Shoot",
       "season": "August 2026",
       "photographer": "nerdyphotographer",
