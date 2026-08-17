@@ -1123,6 +1123,26 @@ window.moveAdminPackageRow = function(index, dir) {
 
   const shouldShowField = (shoot, fieldName) => isAdmin() || shoot[`show${fieldName}`] !== false;
 
+  // Does this album belong on the Comp Cards / Model Portfolio pages?
+  //
+  // "Show as Comp Card" is the real switch. Type used to be the only way in,
+  // which forced an album to be relabelled Test Shoot purely to appear here —
+  // but a shoot's type describes what it was, not where it should be shown.
+  // Test Shoot / TFP still qualify on their own so every album published
+  // before the checkbox existed keeps working untouched.
+  //
+  // Workshop albums stay out either way, checkbox or not: the page states
+  // outright that models from workshop projects are not included, and that
+  // promise used to be kept only as a side effect of the type test.
+  //
+  // Defined once because three separate places gated on this and would
+  // otherwise drift apart: the listing, the category tile samples, and the
+  // lightbox's comp-card mode.
+  const qualifiesAsCompCard = (s) => {
+    if (!s || s.type === "Workshop Attended") return false;
+    return !!(s.showAsCompCard || s.isCompCard || s.type === "Selective Collaboration (TFP)" || s.type === "Test Shoot");
+  };
+
   const parseIgHandle = (h) => {
     let clean = String(h ?? "").trim();
     if (!clean) return "";
@@ -5828,7 +5848,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const list = SHOOTS.filter((s) => {
         if (kind === "brand" && (!s.client || !s.client.trim())) return false;
         if (kind === "type" && (d === "Model Portfolio" || d === "Comp Cards" || d === "Selective Collaboration (TFP)" || d === "Test Shoot")) {
-          return s.type === "Selective Collaboration (TFP)" || s.type === "Test Shoot" || s.isCompCard;
+          return qualifiesAsCompCard(s);
         }
         return (kind === "activity" ? s.activity : kind === "brand" ? s.brand : s.type) === d;
       });
@@ -6027,7 +6047,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
     const getSamples = (key, val, limit = 3) => {
       const targetVal = (key === "type" && (val === "Comp Cards" || val === "Model Portfolio" || val === "Selective Collaboration (TFP)")) ? "Selective Collaboration (TFP)" : val;
-      let shoots = SHOOTS.filter(s => (s[key] === targetVal || (targetVal === "Selective Collaboration (TFP)" && (s.isCompCard || s.type === "Selective Collaboration (TFP)" || s.type === "Test Shoot"))) && ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim()) || (s.talent && s.talent.trim())));
+      let shoots = SHOOTS.filter(s => (s[key] === targetVal || (targetVal === "Selective Collaboration (TFP)" && qualifiesAsCompCard(s))) && ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim()) || (s.talent && s.talent.trim())));
       if (!shoots.length) return [];
       
       // Group shoots by UNIQUE model/talent name to ensure distinct models in thumbnails!
@@ -6494,6 +6514,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <label style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: var(--font-xs); text-transform: uppercase; font-weight: 700; cursor: pointer; color: #fff;">
                   <input id="f_featured" type="checkbox" checked style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
                   Feature on homepage
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: var(--font-xs); text-transform: uppercase; font-weight: 700; cursor: pointer; color: #fff;">
+                  <input id="f_show_compcard" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
+                  Show as Comp Card
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: var(--font-xs); text-transform: uppercase; font-weight: 700; cursor: pointer; color: #fff;">
                   <input id="f_hide_compcard" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
@@ -7316,6 +7340,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         if (featInput) {
           featInput.checked = !!editingShoot.featured;
         }
+        const showCompcardInput = $("#f_show_compcard");
+        if (showCompcardInput) {
+          showCompcardInput.checked = !!editingShoot.showAsCompCard;
+        }
         const hideCompcardInput = $("#f_hide_compcard");
         if (hideCompcardInput) {
           hideCompcardInput.checked = !!editingShoot.hideFromCompCard;
@@ -7873,6 +7901,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           ...(f.caption && f.caption.trim() ? { caption: f.caption.trim() } : {})
         })),
         featured: isTestimonialOnly ? false : ($("#f_featured")?.checked ?? false),
+        showAsCompCard: $("#f_show_compcard")?.checked ?? false,
         hideFromCompCard: $("#f_hide_compcard")?.checked ?? false,
         disableCompCardDownload: $("#f_disable_download")?.checked ?? false,
         isPublic: $("#f_is_public")?.checked ?? true,
@@ -10306,7 +10335,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     view.querySelectorAll(".noth-work").forEach((card) => {
       const s = CURRENT_VIEW_SHOOTS.find((x) => x.id === card.dataset.shoot) || SHOOTS.find((x) => x.id === card.dataset.shoot);
       if (!s) return;
-      const isCc = (s.isCompCard || s.type === "Selective Collaboration (TFP)") && isCurrentlyCompCardView();
+      const isCc = qualifiesAsCompCard(s) && isCurrentlyCompCardView();
       const list = s.photos.filter((p) => !(isCc && p.excludeFromCompCard)).map((p) => ({ ...p, shoot: s }));
       const media = card.querySelector(".noth-work-media");
       const cta = card.querySelector(".noth-work-cta");
@@ -10388,7 +10417,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     view.querySelectorAll(".work-block").forEach((block) => {
       const s = CURRENT_VIEW_SHOOTS.find((x) => x.id === block.dataset.shoot) || SHOOTS.find((x) => x.id === block.dataset.shoot);
       if (!s) return;
-      const isCc = (s.isCompCard || s.type === "Selective Collaboration (TFP)" || s.type === "Test Shoot") && isCurrentlyCompCardView();
+      const isCc = qualifiesAsCompCard(s) && isCurrentlyCompCardView();
       const isPortView = (s.isCompCard || s.type === "Selective Collaboration (TFP)" || s.type === "Test Shoot") && isCurrentlyModelPortfolioView();
       // On the Model Portfolio page this used to fall through to "include
       // everything" (isCc is false there, since isCurrentlyCompCardView()
