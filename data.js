@@ -1313,20 +1313,20 @@ window.WPS_DATA = {
       ],
       "2026-09-06": [
         {
-          "id": "b_1786904562601_73b6",
-          "name": "Anticipated Client Hold",
+          "id": "b_1786993090931_rqop",
+          "name": "Assisting Work",
           "email": "",
           "phone": "",
-          "type": "Fashion Editorial",
+          "type": "Assisting Photographer",
           "duration": "Full Day",
-          "isTentative": true,
-          "notes": "Date held by Admin for anticipated client inquiry.",
+          "isTentative": false,
+          "notes": "Booked for Assisting Work",
           "location": "",
           "venueByStudio": false,
           "agreementMethod": "",
           "links": [],
           "attachments": [],
-          "status": "tentative",
+          "status": "assisting",
           "contractVersion": "Pending Agreement",
           "agreedToTerms": false,
           "contractNumber": "",
@@ -1338,7 +1338,7 @@ window.WPS_DATA = {
           "financials": null,
           "inviteMeta": null,
           "promoMeta": null,
-          "createdAt": 1786904562601
+          "createdAt": 1786993090931
         }
       ]
     },
@@ -1350,7 +1350,8 @@ window.WPS_DATA = {
       "2026-07-05::shoot-ms36z1wqkx21s1",
       "2026-07-24::shoot-ms36z1wqg2y4a2",
       "2026-08-30::b_1786709236156_7lzv",
-      "2026-08-16::shoot-msxag4ydolz34d"
+      "2026-08-16::shoot-msxag4ydolz34d",
+      "2026-09-06::b_1786904562601_73b6"
     ],
     "paymentScheduleType": "5050",
     "updatedAt": 0,
