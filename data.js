@@ -843,13 +843,13 @@ window.WPS_DATA = {
       "coverPhotoId": "ms36ygjb7yxmuk"
     },
     {
-      "id": "msxag4ydolz34d",
-      "createdAt": 1786974448405,
+      "id": "msxhrjrtl997mq",
+      "createdAt": 1786986738137,
       "isTestimonial": false,
       "title": "Sumitt Verma",
       "brand": "Personal Project",
-      "activity": "Portrait",
-      "type": "Test Shoot",
+      "activity": "Beauty",
+      "type": "Campaign",
       "season": "August 2026",
       "photographer": "nerdyphotographer",
       "artDirector": "",
@@ -858,8 +858,8 @@ window.WPS_DATA = {
       "mua": "—",
       "videographer": "—",
       "talent": "Sumitt Verma (https://www.instagram.com/sumitt.verma03/?hl=en)",
-      "location": "",
-      "height": "",
+      "location": "Noida",
+      "height": "5'10",
       "chest": "",
       "waist": "",
       "hips": "",
@@ -885,53 +885,68 @@ window.WPS_DATA = {
       "lightingDiagram": null,
       "lightingDiagramVisibility": "private",
       "palette": [
-        "#c3c4cb",
-        "#58585b"
+        "#cecbd1",
+        "#5d5b5e"
       ],
       "photos": [
         {
-          "id": "msxa3zgxgdoaib-3",
-          "url": "photos/msxag4ydolz34d/msxa3zgxgdoaib-3.jpg",
-          "objectPosition": "center",
-          "small": "photos/msxag4ydolz34d/msxa3zgxgdoaib-3@480.jpg",
-          "medium": "photos/msxag4ydolz34d/msxa3zgxgdoaib-3@960.jpg"
+          "id": "msxi7sgpk9aa8g-0",
+          "url": "photos/msxhrjrtl997mq/msxi7sgpk9aa8g-0.jpg",
+          "objectPosition": "50.8% 18.2%",
+          "small": "photos/msxhrjrtl997mq/msxi7sgpk9aa8g-0@480.jpg",
+          "medium": "photos/msxhrjrtl997mq/msxi7sgpk9aa8g-0@960.jpg",
+          "focalX": 50.79895949461167,
+          "focalY": 18.206189945320382
         },
         {
-          "id": "msxa3yi9op0xn1-4",
-          "url": "photos/msxag4ydolz34d/msxa3yi9op0xn1-4.jpg",
+          "id": "msxi7tk56p9b1a-1",
+          "url": "photos/msxhrjrtl997mq/msxi7tk56p9b1a-1.jpg",
           "objectPosition": "center",
-          "small": "photos/msxag4ydolz34d/msxa3yi9op0xn1-4@480.jpg",
-          "medium": "photos/msxag4ydolz34d/msxa3yi9op0xn1-4@960.jpg"
+          "small": "photos/msxhrjrtl997mq/msxi7tk56p9b1a-1@480.jpg",
+          "medium": "photos/msxhrjrtl997mq/msxi7tk56p9b1a-1@960.jpg"
         },
         {
-          "id": "msxa3zvw0rdjvh-5",
-          "url": "photos/msxag4ydolz34d/msxa3zvw0rdjvh-5.jpg",
+          "id": "msxi7srzy2ctpm-2",
+          "url": "photos/msxhrjrtl997mq/msxi7srzy2ctpm-2.jpg",
           "objectPosition": "center",
-          "small": "photos/msxag4ydolz34d/msxa3zvw0rdjvh-5@480.jpg",
-          "medium": "photos/msxag4ydolz34d/msxa3zvw0rdjvh-5@960.jpg"
+          "small": "photos/msxhrjrtl997mq/msxi7srzy2ctpm-2@480.jpg",
+          "medium": "photos/msxhrjrtl997mq/msxi7srzy2ctpm-2@960.jpg"
         },
         {
-          "id": "msxa3zomk2wnu6-6",
-          "url": "photos/msxag4ydolz34d/msxa3zomk2wnu6-6.jpg",
+          "id": "msxi7t0ua3f9wh-3",
+          "url": "photos/msxhrjrtl997mq/msxi7t0ua3f9wh-3.jpg",
           "objectPosition": "center",
-          "small": "photos/msxag4ydolz34d/msxa3zomk2wnu6-6@480.jpg",
-          "medium": "photos/msxag4ydolz34d/msxa3zomk2wnu6-6@960.jpg"
+          "small": "photos/msxhrjrtl997mq/msxi7t0ua3f9wh-3@480.jpg"
         },
         {
-          "id": "msxa3yozm8qs8j-7",
-          "url": "photos/msxag4ydolz34d/msxa3yozm8qs8j-7.jpg",
-          "objectPosition": "center",
-          "small": "photos/msxag4ydolz34d/msxa3yozm8qs8j-7@480.jpg",
-          "medium": "photos/msxag4ydolz34d/msxa3yozm8qs8j-7@960.jpg"
+          "id": "msxi7trlr69fmd-4",
+          "url": "photos/msxhrjrtl997mq/msxi7trlr69fmd-4.jpg",
+          "objectPosition": "center"
         },
         {
-          "id": "msxa3zagd9u9yv-8",
-          "url": "photos/msxag4ydolz34d/msxa3zagd9u9yv-8.jpg",
-          "objectPosition": "49.2% 83.7%",
-          "small": "photos/msxag4ydolz34d/msxa3zagd9u9yv-8@480.jpg",
-          "medium": "photos/msxag4ydolz34d/msxa3zagd9u9yv-8@960.jpg",
-          "focalX": 49.21696660827096,
-          "focalY": 83.6571640919467
+          "id": "msxi7t6urwrvjd-5",
+          "url": "photos/msxhrjrtl997mq/msxi7t6urwrvjd-5.jpg",
+          "objectPosition": "center",
+          "small": "photos/msxhrjrtl997mq/msxi7t6urwrvjd-5@480.jpg",
+          "medium": "photos/msxhrjrtl997mq/msxi7t6urwrvjd-5@960.jpg"
+        },
+        {
+          "id": "msxi7txgnthszg-6",
+          "url": "photos/msxhrjrtl997mq/msxi7txgnthszg-6.jpg",
+          "objectPosition": "center",
+          "small": "photos/msxhrjrtl997mq/msxi7txgnthszg-6@480.jpg"
+        },
+        {
+          "id": "msxi7u509ftp4v-7",
+          "url": "photos/msxhrjrtl997mq/msxi7u509ftp4v-7.jpg",
+          "objectPosition": "top",
+          "small": "photos/msxhrjrtl997mq/msxi7u509ftp4v-7@480.jpg"
+        },
+        {
+          "id": "msxi7ubza7bc5s-8",
+          "url": "photos/msxhrjrtl997mq/msxi7ubza7bc5s-8.jpg",
+          "objectPosition": "center",
+          "small": "photos/msxhrjrtl997mq/msxi7ubza7bc5s-8@480.jpg"
         }
       ],
       "featured": true,
@@ -945,11 +960,13 @@ window.WPS_DATA = {
       "showTestimonials": true,
       "showStats": true,
       "showGear": true,
-      "showLocation": false,
-      "coverPhotoId": "msxa3zagd9u9yv"
+      "showLocation": true,
+      "coverPhotoId": "msxi7u509ftp4v"
     }
   ],
-  "DELETED_IDS": [],
+  "DELETED_IDS": [
+    "msxag4ydolz34d"
+  ],
   "CALENDAR_SETTINGS": {
     "customBlockedDates": {},
     "customOpenedDates": {},
@@ -1120,6 +1137,16 @@ window.WPS_DATA = {
           "sigDataUrl": "",
           "agreedContract": "",
           "createdAt": 1786709219783
+        },
+        {
+          "id": "shoot-msxag4ydolz34d",
+          "shootId": "msxag4ydolz34d",
+          "name": "Sumitt Verma",
+          "type": "Test Shoot",
+          "duration": "Full Day",
+          "status": "confirmed",
+          "isTentative": false,
+          "notes": "Published Portfolio Shoot: Sumitt Verma"
         }
       ],
       "2026-08-22": [
@@ -1314,7 +1341,8 @@ window.WPS_DATA = {
       "2026-06-14::shoot-ms36z1wqlp9812",
       "2026-07-05::shoot-ms36z1wqkx21s1",
       "2026-07-24::shoot-ms36z1wqg2y4a2",
-      "2026-08-30::b_1786709236156_7lzv"
+      "2026-08-30::b_1786709236156_7lzv",
+      "2026-08-16::shoot-msxag4ydolz34d"
     ],
     "paymentScheduleType": "5050",
     "updatedAt": 0,
