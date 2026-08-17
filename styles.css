@@ -173,6 +173,41 @@ a { color: inherit; text-decoration: none; }
 
 /* ---------- Hero ---------- */
 .hero { position: relative; background: var(--paper); color: var(--ink); min-height: min(92vh, 860px); display: flex; align-items: center; padding: 168px 0 96px; overflow: hidden; }
+.hero-shot { padding: 0; align-items: stretch; overflow: hidden; }
+/* Type sits low rather than centred. Centred, the wordmark ran straight across
+   the model's face — in these frames the subject occupies the middle band, and
+   the clean ground is along the bottom. Anchoring low puts the words on empty
+   floor and leaves the face uncovered, which is the point of leading with a
+   photograph at all. */
+.hero-shot .hero-inner { align-self: flex-end; width: 100%; padding-top: 132px; padding-bottom: 7vh; }
+.hero-shot-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+.hero-shot-scrim {
+  position: absolute; inset: 0; z-index: 1;
+  background:
+    linear-gradient(0deg, var(--paper) 4%, rgba(0,0,0,0) 46%),
+    linear-gradient(100deg, var(--paper) 0%, rgba(0,0,0,0) 48%);
+}
+.hero-shot .hero-inner { position: relative; z-index: 2; }
+.hero-shot .hero-wordmark, .hero-shot .hero-subword { mix-blend-mode: normal; }
+/* The type column is held to the left half so it never rides over the subject.
+   On a phone the image is behind everything, so the scrim goes near-solid. */
+.hero-shot .hero-brandmark, .hero-shot .hero-mono-foot { max-width: min(680px, 58vw); }
+/* The location line used to run the full width and ended up over the model's
+   dark trousers, where it was unreadable. It belongs to the type column. */
+.hero-shot .hero-topline { max-width: min(680px, 58vw); }
+/* In these frames the subject fills the width, so some overlap between the
+   wordmark and the photograph is unavoidable. A halo in the page colour keeps
+   every letter legible over whatever it lands on — dark hair, skin or shirt —
+   without a heavy panel covering the image. Built from the paper token so it
+   works in both themes. */
+.hero-shot .hero-wordmark,
+.hero-shot .hero-subword,
+.hero-shot .hero-mono-tagline,
+.hero-shot .hero-topline {
+  text-shadow: 0 0 18px var(--paper), 0 0 44px var(--paper), 0 0 80px var(--paper);
+}
+/* The type now occupies the lower band where this used to sit. */
+.hero-shot .hero-scroll { display: none; }
 .hero-bg { position: absolute; inset: 0; background: radial-gradient(58% 80% at 74% 34%, rgba(210,78,26,.14), transparent 60%), radial-gradient(50% 60% at 8% 92%, rgba(47,107,79,.08), transparent 60%); }
 .hero-bg::after { content: ""; position: absolute; inset: 0; background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 52px 52px; opacity: 0.18; mask-image: radial-gradient(120% 100% at 50% 0, #000, transparent 76%); }
 .hero-inner { position: relative; }
@@ -1279,10 +1314,82 @@ main:focus { outline: none; }
 @media (prefers-reduced-motion: reduce) { .kw-letter { transform: none; transition: none; } }
 
 /* ---------- noth.in full-bleed work cards ---------- */
-.noth-work-list { display: flex; flex-direction: column; gap: 8px; }
+/* Portrait-first work grid.
+   94% of this library is 2:3 straight off the camera (85 portrait frames to 5
+   landscape), so the cell is portrait and the rare landscape spans two columns
+   instead of being letterboxed. Previously every cover was forced into a
+   full-width 16:9 frame: a 2:3 portrait fills only 37% of that width, so
+   roughly two-thirds of every card was blurred fill. Dense packing lets the
+   portraits close the gap a wide tile leaves beside it. */
+.noth-work-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-flow: dense;
+  gap: 18px;
+  /* Cards size to their own content instead of stretching to the tallest in
+     the row. A wide 3:2 tile is shorter than the 2:3 portraits beside it, and
+     stretching it just padded the card with empty white. */
+  align-items: start;
+}
+.noth-work-list > .noth-work { border-top: 0; padding-top: 0; }
+/* Set from the image's real dimensions once known — see evaluateFit. */
+.noth-work.is-landscape { grid-column: span 2; }
+.noth-work.is-landscape .noth-work-media { aspect-ratio: 3/2; }
+
+@media (max-width: 1024px) {
+  .noth-work-list { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+}
+@media (max-width: 700px) {
+  /* One column, and a wide frame stops spanning — there is nothing to span. */
+  .noth-work-list { grid-template-columns: 1fr; gap: 16px; }
+  .noth-work.is-landscape { grid-column: span 1; }
+  /* A 2:3 cover at full phone width is nearly a screen and a half tall, which
+     turns six albums into an endless scroll. 4:5 keeps them browsable; the
+     album itself still shows every frame uncropped. */
+  .noth-work-media { aspect-ratio: 4/5; }
+}
+
+@media (max-width: 900px) {
+  .hero-shot .hero-brandmark, .hero-shot .hero-mono-foot, .hero-shot .hero-topline { max-width: 100%; }
+  .hero-shot-scrim {
+    background:
+      linear-gradient(0deg, var(--paper) 10%, rgba(0,0,0,0) 62%),
+      linear-gradient(100deg, var(--paper) 0%, rgba(0,0,0,0) 72%);
+  }
+}
+
+/* On a phone the hero stops being an overlay and becomes a stack: photograph
+   on top, words beneath on clean paper.
+   Overlaying failed here for two reasons that no amount of tuning fixes. A
+   390px-wide window onto a landscape frame is a narrow vertical slice, so the
+   crop landed on the model's arm rather than his face; and the wash needed to
+   make a full type block readable over it had faded the photograph to a ghost.
+   Stacked, the image is seen whole and the type is fully legible — and the
+   photograph still comes first, which was the point. */
+@media (max-width: 700px) {
+  .hero-shot { display: block; min-height: 0; }
+  .hero-shot-img {
+    position: relative;
+    width: 100%;
+    height: auto;
+    /* Close to the 1.36 of a camera landscape frame, so barely anything is
+       lost off the sides. */
+    aspect-ratio: 4/3;
+    object-position: center !important;
+  }
+  .hero-shot-scrim { display: none; }
+  .hero-shot .hero-inner { padding-top: 26px; padding-bottom: 44px; }
+  /* No image behind the words now, so the halo would only muddy them. */
+  .hero-shot .hero-wordmark,
+  .hero-shot .hero-subword,
+  .hero-shot .hero-mono-tagline,
+  .hero-shot .hero-topline { text-shadow: none; }
+  /* The justified sub-wordmark overflowed the viewport at this width. */
+  .hero-shot .hero-subword { font-size: var(--font-xs); letter-spacing: 0.24em; }
+}
 .noth-work { border-top: 1px solid var(--line); padding-top: 8px; }
 .noth-work:first-child { border-top: 0; padding-top: 0; }
-.noth-work-media { position: relative; display: block; width: 100%; aspect-ratio: 16/9; overflow: hidden; border: 0; padding: 0; background: var(--bone); cursor: pointer; border-radius: var(--r-sm); }
+.noth-work-media { position: relative; display: block; width: 100%; aspect-ratio: 2/3; overflow: hidden; border: 0; padding: 0; background: var(--bone); cursor: pointer; border-radius: var(--r-sm); }
 .noth-work-media img { position: relative; z-index: 1; width: 100%; height: 100%; object-fit: cover; transition: transform .9s var(--ease), filter .6s var(--ease); transform: scale(1.02); }
 /* Blurred fill shown behind contained (mismatched-orientation) covers */
 /* Only the mismatched-orientation covers (.fit-contain) ever show this blurred

@@ -3143,7 +3143,26 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   }
 
   function viewHome() {
-    const feat = SHOOTS.filter(s => !s.isTestimonial && s.type !== "Workshop Attended").slice(0, 7);
+    // Six, not seven: three columns fill two clean rows, and a curated
+    // selection with a "view all" beneath reads more confident than emptying
+    // the archive onto the front page.
+    // The album the hero was taken from is dropped: it is already the largest
+    // image on the page, and showing it again as the first tile read as a
+    // mistake. Dropping it also happens to leave six portraits, which fill the
+    // grid exactly — the hero frame is the landscape one, and a wide tile in
+    // this grid is shorter than the portraits beside it, so it left a dead gap
+    // in its row and stranded the last album alone on a third row.
+    const heroPhoto = (window.STUDIO_CONFIG?.heroImage || "").trim();
+    const usesHeroPhoto = (s) => heroPhoto && (s.photos || []).some(p => (p.url || "") === heroPhoto);
+    const feat = SHOOTS
+      .filter(s => !s.isTestimonial && s.type !== "Workshop Attended" && !usesHeroPhoto(s))
+      .slice(0, 6);
+    // Hand-picked in config.js. Falls back to the old typographic hero if it is
+    // blank or points at a file that no longer exists, so a mistyped path
+    // degrades to the previous design rather than a broken image.
+    const heroSrc = (window.STUDIO_CONFIG?.heroImage || "").trim();
+    const heroFocus = (window.STUDIO_CONFIG?.heroFocus || "50% 35%").trim();
+    const heroAlt = (window.STUDIO_CONFIG?.heroAlt || "Studio photography by nerdyphotographer.in").trim();
     CURRENT_VIEW_SHOOTS = feat;
     const brandCount = new Set(SHOOTS.filter(s => s.client && s.client.trim() && s.type !== "Workshop Attended").map(s => s.brand)).size;
     const activeBrands = BRANDS.filter(b => SHOOTS.some(s => s.brand === b && s.client && s.client.trim() && s.type !== "Workshop Attended"));
@@ -3160,9 +3179,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const shuffledT = shuffleArray(allT);
     const homeT = shuffledT.slice(0, 5);
     return `
-      <section class="hero hero-mono hero-brand">
-        <div class="hero-bg" aria-hidden="true"></div>
-        ${cameraSvg()}
+      <section class="hero hero-shot${heroSrc ? "" : " hero-mono hero-brand"}">
+        ${heroSrc ? `
+          <img class="hero-shot-img" src="${esc(heroSrc)}"${srcsetAttr({ url: heroSrc }, "100vw")} style="object-position: ${esc(heroFocus)};" alt="${esc(heroAlt)}" fetchpriority="high" decoding="async" />
+          <div class="hero-shot-scrim" aria-hidden="true"></div>
+        ` : `<div class="hero-bg" aria-hidden="true"></div>${cameraSvg()}`}
         <div class="container hero-inner">
           <div class="hero-topline reveal">
             <span class="hero-topline-l">The Creative Studio</span>
@@ -3194,6 +3215,21 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       </div>
       ` : ''}
 
+      <!-- FEATURED PHOTOSHOOTS -->
+      <section class="section container section-divider">
+        ${kineticWord("WORKS")}
+        <div class="section-head row reveal" style="margin-top: 8px;">
+          <div><p class="eyebrow">01 — Selected work</p><h2>Featured photoshoots</h2></div>
+          <a href="/albums" data-link class="link-arrow">All albums →</a>
+        </div>
+        <div class="noth-work-list">${feat.map(nothWorkCard).join("")}</div>
+        ${SHOOTS.filter(s => s.type !== "Workshop Attended").length > feat.length ? `
+        <div class="works-all-cta reveal">
+          <a href="/albums" data-link class="btn btn-dark">View all ${SHOOTS.filter(s => s.type !== "Workshop Attended").length} albums →</a>
+        </div>
+        ` : ""}
+      </section>
+
       <!-- SERVICES (WHO I SHOOT FOR) -->
       <section class="section container section-divider">
         <div class="section-head section-head-center reveal">
@@ -3220,21 +3256,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <span class="link-arrow" style="margin-top: 12px; display: inline-block; font-size: var(--font-xs); font-weight: 700;">See fitness work →</span>
           </a>
         </div>
-      </section>
-
-      <!-- FEATURED PHOTOSHOOTS -->
-      <section class="section container section-divider">
-        ${kineticWord("WORKS")}
-        <div class="section-head row reveal" style="margin-top: 8px;">
-          <div><p class="eyebrow">01 — Selected work</p><h2>Featured photoshoots</h2></div>
-          <a href="/albums" data-link class="link-arrow">All albums →</a>
-        </div>
-        <div class="noth-work-list">${feat.map(nothWorkCard).join("")}</div>
-        ${SHOOTS.filter(s => s.type !== "Workshop Attended").length > feat.length ? `
-        <div class="works-all-cta reveal">
-          <a href="/albums" data-link class="btn btn-dark">View all ${SHOOTS.filter(s => s.type !== "Workshop Attended").length} albums →</a>
-        </div>
-        ` : ""}
       </section>
 
       <!-- QUICK LINKS -->
@@ -10249,9 +10270,19 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           const nw = img.naturalWidth, nh = img.naturalHeight;
           if (!nw || !nh) return;
           const imgRatio = nw / nh;
+          // A landscape cover claims two columns and a 3:2 frame; everything
+          // else keeps the portrait cell. Set before measuring the frame below,
+          // since it changes the frame's own shape.
+          // Nothing is known about a photo until it has loaded — data.js stores
+          // no dimensions — so the tile starts portrait, which is right for 94%
+          // of this library, and only the rare wide cover reflows.
+          const card = media.closest(".noth-work");
+          if (card) card.classList.toggle("is-landscape", imgRatio > 1.05);
           const frameRatio = media.clientWidth / media.clientHeight || (16 / 9);
-          // Portrait covers, or ratios that differ a lot, get contained + padded.
-          const mismatch = imgRatio < 1 || Math.abs(imgRatio - frameRatio) / frameRatio > 0.35;
+          // Whatever is left over after the frame has adapted: a cover whose
+          // shape still cannot be matched is contained over the blurred fill
+          // rather than cropped.
+          const mismatch = Math.abs(imgRatio - frameRatio) / frameRatio > 0.35;
           media.classList.toggle("fit-contain", mismatch);
           if (mismatch) {
             const isPortrait = imgRatio < 1;
