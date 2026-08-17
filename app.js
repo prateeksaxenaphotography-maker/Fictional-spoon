@@ -1669,6 +1669,26 @@ window.moveAdminPackageRow = function(index, dir) {
       shootsList.forEach((s) => { if (s && s.id && !s.demo && !removed.has(s.id)) merged.set(s.id, s); });
       const shoots = [...merged.values()];
 
+      // Local wins wholesale above, which is right for everything a device can
+      // actually edit — but the 480/960px variant paths are not edited, they
+      // are generated at upload. A device whose local copy has lost them (an
+      // older build dropped them through the edit form) would therefore
+      // republish the album without them and unpublish working files for
+      // everyone. Backfill from the published copy: additive only, never
+      // overwriting a path the local record already has.
+      const remoteById = new Map(remote.shoots.map((s) => [s && s.id, s]));
+      for (const s of shoots) {
+        const r = remoteById.get(s.id);
+        if (!r || !Array.isArray(r.photos)) continue;
+        const rPhotos = new Map(r.photos.map((p) => [p && p.id, p]));
+        for (const p of s.photos || []) {
+          const rp = rPhotos.get(p.id);
+          if (!rp || rp.url !== p.url) continue; // different file — its variants aren't ours
+          if (!p.small && rp.small) p.small = rp.small;
+          if (!p.medium && rp.medium) p.medium = rp.medium;
+        }
+      }
+
       // Upload any photo still stored as base64 to photos/<shoot>/<photo>.<ext>.
       // Also generate 480px + 960px variants for responsive srcset (mobile perf).
       const photoEntries = [];
@@ -7386,6 +7406,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             excludeFromCompCard: !!p.excludeFromCompCard,
             usage: p.usage || (p.excludeFromCompCard ? "portfolio" : "both"),
             angle: p.angle || "",
+            // The 480/960px variants have to ride along through the edit form.
+            // This mapping is an explicit field list, so anything missing from
+            // it is silently dropped on save — which is how editing an album
+            // (even just to change its type) stripped every responsive path it
+            // had, orphaning the generated files and sending phone visitors
+            // back to downloading full-size images.
+            ...(p.small ? { small: p.small } : {}),
+            ...(p.medium ? { medium: p.medium } : {}),
             ...(typeof p.focalX === "number" ? { focalX: p.focalX, focalY: p.focalY } : {})
           };
         });
@@ -7897,6 +7925,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           excludeFromCompCard: !!f.excludeFromCompCard,
           usage: f.usage || (f.excludeFromCompCard ? "portfolio" : "both"),
           angle: f.angle || "",
+          // Carried back out of the staging list — see the note where staged
+          // is built. Kept by value: a photo's id is re-derived from its
+          // position here, but these paths point at the file that was actually
+          // uploaded, so they must survive a reorder unchanged.
+          ...(f.small ? { small: f.small } : {}),
+          ...(f.medium ? { medium: f.medium } : {}),
           ...(typeof f.focalX === "number" ? { focalX: f.focalX, focalY: f.focalY } : {}),
           ...(f.caption && f.caption.trim() ? { caption: f.caption.trim() } : {})
         })),
