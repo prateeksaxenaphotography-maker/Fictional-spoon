@@ -448,7 +448,78 @@ window.getAdminPackages = getAdminPackages;
    opening the Calendar view. Defined inside a view function, the archive
    simply did not exist on those paths.
    ============================================================ */
-window.ACTIVE_CONTRACTS = { commercial: "V3.4-COMMERCIAL", tfp: "V3.4-TFP" };
+window.ACTIVE_CONTRACTS = { commercial: "V3.5-COMMERCIAL", tfp: "V3.4-TFP" };
+
+/* ============================================================
+   § CALL TIME, GRACE PERIOD & NO-SHOW
+   One wording, built in both plain text and HTML, because this clause has to
+   appear identically in five places: the terms modal, the emailed contract
+   record, the on-page policy notice, the studio policy list and the archived
+   PDF. Written out five times by hand they drift, and a contract that
+   contradicts the page it was agreed on is worse than no clause at all.
+   ============================================================ */
+// How long the set is held past the confirmed call time before the Studio may
+// cancel. A paid booking gets three hours against a collaboration's one: the
+// client has already paid a non-refundable retainer, so they carry a real loss
+// of their own if the day collapses, and a commercial crew is far more likely
+// to have a legitimate reason for a long delay.
+window.GRACE_MINUTES = { tfp: 60, paid: 180 };
+// The Studio holds itself to one hour either way. Making a paying client wait
+// three hours for the photographer because that is their own grace period
+// would be reciprocity in name only.
+window.STUDIO_GRACE_MINUTES = 60;
+
+window.graceMinutesFor = (isTfp) => (isTfp ? window.GRACE_MINUTES.tfp : window.GRACE_MINUTES.paid);
+window.graceLabelFor = (isTfp) => {
+  const m = window.graceMinutesFor(isTfp);
+  return m >= 120 ? `${m} minutes (${m / 60} hours)` : `${m} minutes`;
+};
+
+// Plain text, for the emailed contract record and the archived PDF.
+window.buildLateArrivalText = function (isTfp, sectionNumber) {
+  const label = window.graceLabelFor(isTfp);
+  const mins = window.graceMinutesFor(isTfp);
+  const consequence = isTfp
+    ? "A session cancelled on this basis is not rescheduled as of right; any home studio rental or other amount already paid is forfeited and non-refundable; and the photographer invite code under which the session was booked may be withdrawn."
+    : "A session cancelled on this basis is not rescheduled as of right, and the advance retainer is forfeited under the non-refundable milestone terms set out above. The shoot day is released and any further session must be booked afresh.";
+  const reschedule = isTfp
+    ? "A delay or cancellation notified at least 24 hours before the call time is treated as a reschedule rather than a no-show, and nothing is forfeited — up to a maximum of two reschedules, beyond which the invite lapses."
+    : "A delay or cancellation notified at least 24 hours before the call time is treated as a reschedule rather than a no-show, and the advance retainer carries over to the rescheduled date — up to a maximum of two reschedules.";
+  return `${sectionNumber}. CALL TIME, GRACE PERIOD, LATE ARRIVAL & NO-SHOW
+The call time confirmed by the Studio is the time the Participant is expected on set and ready to begin, not the time they set out. The Studio holds the set for ${label} past that call time. Arriving within that window does not extend the session: the booked wrap time stands, and time lost to a late arrival comes out of the shoot.
+If the Participant has not arrived within those ${mins} minutes and has not agreed a later start with the Studio, the Studio may cancel the session at its sole discretion. ${consequence}
+${reschedule}
+A delay notified on the shoot day may be accommodated where the set is still free and the session can still finish within booked daylight hours, and by 7:00 PM at the home studio. Notifying a delay is a courtesy and not an entitlement: it does not by itself extend the grace period or move the wrap time, and acceptance remains at the Studio's discretion.
+If the Studio is not ready to begin within ${window.STUDIO_GRACE_MINUTES} minutes of the confirmed call time, the Participant may reschedule at no cost, or proceed with the wrap time extended by the length of the delay where the venue allows.`;
+};
+
+// The same clause as modal HTML.
+window.buildLateArrivalHtml = function (isTfp, sectionNumber) {
+  const label = window.graceLabelFor(isTfp);
+  const mins = window.graceMinutesFor(isTfp);
+  const consequence = isTfp
+    ? "A session cancelled on this basis is not rescheduled as of right; any home studio rental or other amount already paid is forfeited and non-refundable; and the photographer invite code under which the session was booked may be withdrawn."
+    : "A session cancelled on this basis is not rescheduled as of right, and the advance retainer is forfeited under the non-refundable milestone terms set out above. The shoot day is released and any further session must be booked afresh.";
+  const reschedule = isTfp
+    ? "and nothing is forfeited — up to a maximum of <strong>two reschedules</strong>, beyond which the invite lapses."
+    : "and the advance retainer carries over to the rescheduled date — up to a maximum of <strong>two reschedules</strong>.";
+  return `
+    <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: #b22222;">${sectionNumber}. CALL TIME, GRACE PERIOD, LATE ARRIVAL &amp; NO-SHOW</h4>
+    <p style="margin: 0; font-weight: 500;">The call time confirmed by the Studio is the time the Participant is expected on set and ready to begin — not the time they set out. The Studio holds the set for <strong>${label}</strong> past that call time. Arriving within that window does not extend the session: the booked wrap time stands, and time lost to a late arrival comes out of the shoot.</p>
+    <p style="margin: 6px 0 0 0; font-weight: 500;">If the Participant has not arrived within those ${mins} minutes and has not agreed a later start with the Studio, the Studio may <strong>cancel the session at its sole discretion</strong>. ${consequence}</p>
+    <p style="margin: 6px 0 0 0;">A delay or cancellation notified <strong>at least 24 hours</strong> before the call time is treated as a reschedule rather than a no-show, ${reschedule}</p>
+    <p style="margin: 6px 0 0 0;">A delay notified on the shoot day may be accommodated where the set is still free and the session can still finish within booked daylight hours, and by <strong>7:00 PM</strong> at the home studio. Notifying a delay is a courtesy and not an entitlement: it does not by itself extend the grace period or move the wrap time, and acceptance remains at the Studio's discretion.</p>
+    <p style="margin: 6px 0 0 0;">If the <strong>Studio</strong> is not ready to begin within ${window.STUDIO_GRACE_MINUTES} minutes of the confirmed call time, the Participant may reschedule at no cost, or proceed with the wrap time extended by the length of the delay where the venue allows.</p>`;
+};
+
+// The one-line version for the on-page policy notice and policy list.
+window.buildLateArrivalSummary = function (isTfp) {
+  const label = window.graceLabelFor(isTfp);
+  const tail = isTfp
+    ? "the studio may cancel the shoot at its discretion, any rental paid is forfeited, and the invite code may be withdrawn"
+    : "the studio may cancel the shoot at its discretion and the advance retainer is forfeited";
+  return `the set is held for <strong>${label}</strong> past your confirmed call time; arriving late does not extend the session — the booked wrap time stands. Beyond that, ${tail}. Tell us at least 24 hours ahead and it is a reschedule instead (max 2). If the studio runs more than ${window.STUDIO_GRACE_MINUTES} minutes late, you may reschedule at no cost.`;
+};
 
 // Bookings carry a version in whichever form the UI of the day wrote: a
 // bare "V3.3", a document reference like "COMMERCIAL-CONTRACT-V3.4", or a
@@ -620,6 +691,22 @@ Photographer owns all legal copyright. Participant receives personal usage licen
 RAW files are not provided.`
   }
 };
+
+// V3.5 is V3.4 plus the call-time clause, composed rather than copied so the
+// two cannot drift — the whole of the commercial agreement is otherwise
+// unchanged, and retyping 6 clauses to add a 7th is how they diverge.
+window.WPS_CONTRACT_ARCHIVE["V3.5-COMMERCIAL"] = {
+  version: "V3.5-COMMERCIAL",
+  title: "Commercial Shoot & Release Agreement V3.5 (Paid Shoots)",
+  effectiveDate: "August 2026 – Present",
+  status: "Active / Current (Paid Commercial)",
+  summary: window.WPS_CONTRACT_ARCHIVE["V3.4-COMMERCIAL"].summary + " Adds a 180-minute call-time grace period, after which the studio may cancel and the advance retainer is forfeited.",
+  fullText: window.WPS_CONTRACT_ARCHIVE["V3.4-COMMERCIAL"].fullText + "\n\n" + window.buildLateArrivalText(false, 7)
+};
+// The document it replaces stays readable, because bookings already agreed
+// under it must still print the terms those clients actually accepted.
+window.WPS_CONTRACT_ARCHIVE["V3.4-COMMERCIAL"].effectiveDate = "August 2026 (superseded by V3.5)";
+window.WPS_CONTRACT_ARCHIVE["V3.4-COMMERCIAL"].status = "Archived — superseded by V3.5 (added call-time grace period & no-show clause)";
 
 window.saveAdminCustomPackages = async function() {
   const rows = document.querySelectorAll(".admin-pkg-editor-row");
@@ -3996,12 +4083,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
           <div style="background: var(--paper); border: 1.5px solid var(--accent); border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm);">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--accent); color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.4 COMMERCIAL (ACTIVE)</span>
+              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--accent); color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.5 COMMERCIAL (ACTIVE)</span>
               <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Aug 2026 – Present</span>
             </div>
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">💼 Commercial Shoot Agreement V3.4</h3>
+            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">💼 Commercial Shoot Agreement V3.5</h3>
             <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Paid Commercial, Editorial, Fashion &amp; Brand. 50/50 &amp; 50/30/20 retainer milestones, commercial licensing, travel &gt;20km, gear &amp; media protection.</p>
-            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.4-COMMERCIAL')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review Commercial</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '')" style="font-size: var(--font-xs); border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
+            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.5-COMMERCIAL')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review Commercial</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '')" style="font-size: var(--font-xs); border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
           </div>
           <div style="background: var(--paper); border: 1.5px solid #059669; border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm);">
             <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -4825,7 +4912,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             </label>
             <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Contract Document Version *
               <select id="pdf_contractVersion" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
-                <option value="V3.4-COMMERCIAL" ${(b.contractVersion === 'V3.4-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.4' || (!b.contractVersion && !isTest)) ? 'selected' : ''}>📜 Commercial Shoot Contract V3.4 Active (adds third-party crew costs)</option>
+                <option value="V3.5-COMMERCIAL" ${(b.contractVersion === 'V3.5-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.5' || (!b.contractVersion && !isTest)) ? 'selected' : ''}>📜 Commercial Shoot Contract V3.5 Active (adds call-time grace period)</option>
+                <option value="V3.4-COMMERCIAL" ${(b.contractVersion === 'V3.4-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.4') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.4 (Archived)</option>
                 <option value="V3.3-COMMERCIAL" ${(b.contractVersion === 'V3.3-COMMERCIAL' || b.contractVersion === 'V3.3') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.3 (Archived)</option>
                 <option value="V3.4-TFP" ${(b.contractVersion === 'V3.4-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.4' || (isTest && !b.contractVersion)) ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.4 Active (adds call-time grace &amp; no-show)</option>
                 <option value="V3.3-TFP" ${b.contractVersion === 'V3.3-TFP' ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.3 (Archived)</option>
@@ -5269,7 +5357,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   <option value="Pending Agreement" ${(b.contractVersion === 'Pending Agreement' || (!b.agreedToTerms && !b.contractVersion)) ? 'selected' : ''}>⏳ Pending Agreement / Not Signed Yet (Admin Manual Booking)</option>
                   <option value="V3.4-TFP" ${(b.contractVersion === 'V3.4-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.4') ? 'selected' : ''}>📸 Test Shoot / TFP Liability Release V3.4 (Active)</option>
                   <option value="V3.3-TFP" ${(b.contractVersion === 'V3.3-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.3') ? 'selected' : ''}>📸 Test Shoot / TFP Liability Release V3.3 (Archived)</option>
-                  <option value="V3.4-COMMERCIAL" ${(b.contractVersion === 'V3.4-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.4' || (b.agreedToTerms && !b.contractVersion)) ? 'selected' : ''}>📜 Commercial Shoot Contract V3.4 (Active)</option>
+                  <option value="V3.5-COMMERCIAL" ${(b.contractVersion === 'V3.5-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.5' || (b.agreedToTerms && !b.contractVersion)) ? 'selected' : ''}>📜 Commercial Shoot Contract V3.5 (Active)</option>
+                  <option value="V3.4-COMMERCIAL" ${(b.contractVersion === 'V3.4-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.4') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.4 (Archived)</option>
                   <option value="V3.3-COMMERCIAL" ${(b.contractVersion === 'V3.3-COMMERCIAL' || b.contractVersion === 'V3.3' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.3') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.3 (Archived)</option>
                   <option value="V3.2" ${b.contractVersion === 'V3.2' ? 'selected' : ''}>📜 Agreed Terms V3.2 (Archived Release)</option>
                   <option value="V3.1" ${b.contractVersion === 'V3.1' ? 'selected' : ''}>📜 Agreed Terms V3.1 (Archived Release)</option>
@@ -5403,7 +5492,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   <option value="Pending Agreement">⏳ Pending Agreement / Not Signed Yet (Admin Manual Booking)</option>
                   <option value="V3.4-TFP">📸 Test Shoot / TFP Liability Release V3.4 (Active)</option>
                   <option value="V3.3-TFP">📸 Test Shoot / TFP Liability Release V3.3 (Archived)</option>
-                  <option value="V3.4-COMMERCIAL">📜 Commercial Shoot Contract V3.4 (Active)</option>
+                  <option value="V3.5-COMMERCIAL">📜 Commercial Shoot Contract V3.5 (Active)</option>
+                  <option value="V3.4-COMMERCIAL">📜 Commercial Shoot Contract V3.4 (Archived)</option>
                   <option value="V3.3-COMMERCIAL">📜 Commercial Shoot Contract V3.3 (Archived)</option>
                   <option value="V3.2">📜 Agreed Terms V3.2 (Archived Release)</option>
                   <option value="V3.1">📜 Agreed Terms V3.1 (Archived Release)</option>
@@ -6687,10 +6777,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                      <span aria-hidden="true" style="flex: 0 0 20px; font-size: var(--font-sm); line-height: 1.4;">📸</span>
                      <span><strong style="color: var(--ink);">Full Unedited Gallery Buyout:</strong> Packages include a proofing gallery to select contracted retouches. If the client requests the complete full unedited image gallery or additional retouched master clicks beyond the package limit, extra gallery buyout charges apply.</span>
                    </li>
-                   <li id="policyLateArrival" style="display: none; gap: 10px; align-items: flex-start; font-size: var(--font-xs); line-height: 1.55; color: var(--ink-soft);">
-                     <span aria-hidden="true" style="flex: 0 0 20px; font-size: var(--font-sm); line-height: 1.4;">⏰</span>
-                     <span><strong style="color: var(--ink);">Call Time, Grace Period &amp; No-Show:</strong> The set is held for <strong style="color: var(--ink);">60 minutes</strong> past your confirmed call time. Arriving inside that window does not extend the session — the booked wrap time stands. Past it, the studio may cancel the session at its sole discretion, any rental paid is forfeited, and the invite code may be withdrawn. A delay told to us <strong style="color: var(--ink);">24 hours ahead</strong> is a reschedule instead, up to two. If the studio runs more than 60 minutes late, you may reschedule at no cost.</span>
-                   </li>
+                   <li id="policyLateArrival" style="display: none; gap: 10px; align-items: flex-start; font-size: var(--font-xs); line-height: 1.55; color: var(--ink-soft);"><span aria-hidden="true" style="flex: 0 0 20px; font-size: var(--font-sm); line-height: 1.4;">⏰</span><span id="policyLateArrivalText"></span></li>
                    <li style="display: flex; gap: 10px; align-items: flex-start; font-size: var(--font-xs); line-height: 1.55; color: var(--ink-soft);">
                      <span aria-hidden="true" style="flex: 0 0 20px; font-size: var(--font-sm); line-height: 1.4;">🔒</span>
                      <span><strong style="color: var(--ink);">Camera &amp; Media Protection:</strong> All camera equipment, memory cards, and raw captures are strictly confidential studio property. Participants may not touch equipment or delete media from cameras. Unauthorized file deletion constitutes a material breach of contract and incurs full data recovery costs.</span>
@@ -6847,21 +6934,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                         nothing else. Hidden for commercial bookings by
                         openTermsModal, where the non-refundable retainer
                         already carries that risk. -->
-                   <div id="termsLateArrivalSection" style="border-left: 3px solid #b22222; padding-left: 14px; background: rgba(178,34,34,0.04); display: none;">
-                     <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: #b22222;">9. CALL TIME, GRACE PERIOD, LATE ARRIVAL &amp; NO-SHOW</h4>
-                     <p style="margin: 0; font-weight: 500;">The call time confirmed by the Studio is the time the Participant is expected on set and ready to begin — not the time they set out. The Studio holds the set for <strong>60 minutes</strong> past that call time. Arriving within that window does not extend the session: the booked wrap time stands, and time lost to a late arrival comes out of the shoot.</p>
-                     <p style="margin: 6px 0 0 0; font-weight: 500;">If the Participant has not arrived within those 60 minutes and has not agreed a later start with the Studio, the Studio may <strong>cancel the session at its sole discretion</strong>. A session cancelled on this basis is not rescheduled as of right; any home studio rental or other amount already paid is forfeited and non-refundable; and the photographer invite code under which the session was booked may be withdrawn.</p>
-                     <p style="margin: 6px 0 0 0;">A delay or cancellation notified <strong>at least 24 hours</strong> before the call time is treated as a reschedule rather than a no-show, and nothing is forfeited — up to a maximum of <strong>two reschedules</strong>, beyond which the invite lapses.</p>
-                     <p style="margin: 6px 0 0 0;">A delay notified on the shoot day may be accommodated where the set is still free and the session can still finish within booked daylight hours, and by <strong>7:00 PM</strong> at the home studio. Notifying a delay is a courtesy and not an entitlement: it does not by itself extend the grace period or move the wrap time, and acceptance remains at the Studio's discretion.</p>
-                     <p style="margin: 6px 0 0 0;">If the <strong>Studio</strong> is not ready to begin within 60 minutes of the confirmed call time, the Participant may reschedule at no cost, or proceed with the wrap time extended by the length of the delay where the venue allows.</p>
-                   </div>
+                   <div id="termsLateArrivalSection" style="border-left: 3px solid #b22222; padding-left: 14px; background: rgba(178,34,34,0.04); display: none;"></div>
 
                    <!-- Checkbox Agreement Block -->
                    <div style="margin-top: 15px; border-top: 1px dashed var(--line); padding-top: 15px;">
                      <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; background: var(--bone); border: 1.5px solid var(--accent); border-radius: 8px; padding: 14px;">
                        <input type="checkbox" id="termsAgreeCheckbox" style="width: 20px; height: 20px; margin-top: 2px; accent-color: var(--accent); cursor: pointer;" />
                        <span style="font-size: var(--font-xs); color: var(--ink); line-height: 1.5; font-weight: 600;">
-                         I have read, understood, and agree to the <strong>Studio Terms &amp; Conditions (Version V3.4)</strong> and <strong>Model Release Agreement</strong>.
+                         I have read, understood, and agree to the <strong id="termsAgreeVersionLabel">Studio Terms &amp; Conditions</strong> and <strong>Model Release Agreement</strong>.
                        </span>
                      </label>
                    </div>
@@ -8281,7 +8361,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         if (type === "Selective Collaboration (TFP)") {
           policyNotice.innerHTML = `
             <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">TFP Collaboration &amp; Test Shoot Policy</span>
-            Submission of a TFP collaboration request does not constitute a confirmed session or a commitment to shoot. All inquiries are subject to schedule availability, creative alignment, and final studio review. <strong>Note: If a dedicated studio space is booked for the shoot, applicable studio rental charges will apply.</strong> TFP shoots include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW unedited camera files are strictly excluded and remain unreleased. <strong>⏰ Call time &amp; no-show:</strong> the set is held for <strong>60 minutes</strong> past your confirmed call time; arriving late does not extend the session. Beyond that, the studio may cancel the shoot at its discretion and the invite code may be withdrawn. Tell us at least 24 hours ahead and it is a reschedule instead (max 2).
+            Submission of a TFP collaboration request does not constitute a confirmed session or a commitment to shoot. All inquiries are subject to schedule availability, creative alignment, and final studio review. <strong>Note: If a dedicated studio space is booked for the shoot, applicable studio rental charges will apply.</strong> TFP shoots include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW unedited camera files are strictly excluded and remain unreleased. <strong>⏰ Call time &amp; no-show:</strong> ${window.buildLateArrivalSummary(true)}
           `;
         } else {
           policyNotice.innerHTML = `
@@ -8289,7 +8369,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <strong>🔒 Booking &amp; Retainer Terms:</strong> 50% advance retainer reserves studio space &amp; production crew (non-refundable). Cancellations within 48h forfeit advance retainer.<br/>
             <strong>📦 Deliverables &amp; Full Gallery Buyout:</strong> Packages include a proofing gallery to select contracted retouches. If the client requests the complete full unedited image gallery or additional retouched master clicks beyond the package limit, extra buyout charges apply. RAW unedited camera files remain confidential studio property.<br/>
             <strong>📜 Usage Licensing:</strong> Rates cover digital web &amp; social media usage. Extended billboard, TV, print, or commercial advertising rights require separate usage licensing.<br/>
-            <strong>🏢 Studio Rental Policy:</strong> Dedicated indoor studio venue rentals are billed <strong>at actuals (at cost)</strong>, or the client may directly book their preferred studio venue for our team to shoot on location.
+            <strong>🏢 Studio Rental Policy:</strong> Dedicated indoor studio venue rentals are billed <strong>at actuals (at cost)</strong>, or the client may directly book their preferred studio venue for our team to shoot on location.<br/>
+            <strong>⏰ Call Time &amp; No-Show:</strong> ${window.buildLateArrivalSummary(false)}
           `;
         }
       }
@@ -8700,7 +8781,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             : `<strong>Note: If a dedicated studio space is booked for the shoot, applicable studio rental charges will apply.</strong>`;
         policyNoticeEl.innerHTML = `
           <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">TFP Collaboration &amp; Test Shoot Policy</span>
-          Submission of a TFP collaboration request does not constitute a confirmed session or a commitment to shoot. All inquiries are subject to schedule availability, creative alignment, and final studio review. ${studioLine} TFP shoots include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW unedited camera files are strictly excluded and remain unreleased. <strong>⏰ Call time &amp; no-show:</strong> the set is held for <strong>60 minutes</strong> past your confirmed call time; arriving late does not extend the session. Beyond that, the studio may cancel the shoot at its discretion and the invite code may be withdrawn. Tell us at least 24 hours ahead and it is a reschedule instead (max 2).
+          Submission of a TFP collaboration request does not constitute a confirmed session or a commitment to shoot. All inquiries are subject to schedule availability, creative alignment, and final studio review. ${studioLine} TFP shoots include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW unedited camera files are strictly excluded and remain unreleased. <strong>⏰ Call time &amp; no-show:</strong> ${window.buildLateArrivalSummary(true)}
         `;
       }
 
@@ -8789,8 +8870,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // an invite-locked booking is a test shoot whatever the (hidden) type
       // select happens to say. Set to "flex" and not "" because the list item
       // is a flex row; "" would restore the stylesheet default of list-item.
+      // Shown on every booking now, worded for whichever kind this is.
       const policyLateArrival = $("#policyLateArrival");
-      if (policyLateArrival) policyLateArrival.style.display = isCollabBooking ? "flex" : "none";
+      const policyLateArrivalText = $("#policyLateArrivalText");
+      if (policyLateArrivalText) {
+        policyLateArrivalText.innerHTML = `<strong style="color: var(--ink);">Call Time, Grace Period &amp; No-Show:</strong> ${window.buildLateArrivalSummary(isCollabBooking)}`;
+      }
+      if (policyLateArrival) policyLateArrival.style.display = "flex";
 
       const finalPriceSummaryBox = $("#finalPriceSummaryBox");
       const promoCodeWrap = $("#b_discount_code")?.closest(".field");
@@ -9339,7 +9425,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const venueClause = venueByStudio
           ? `1. SCOPE OF PRODUCTION & VENUE (PROVIDED BY STUDIO)\nThis session is scheduled for studio/location photography production at a venue arranged and paid for by the Studio: ${venueByStudioAddress || "as confirmed with the Studio"}. No studio rental, venue hire or space fee is billed to the Participant for this session. A change of venue requested by the Participant is subject to Studio approval and may reintroduce venue costs at actuals.${homeStudioRider}`
           : `1. SCOPE OF PRODUCTION & VENUE RENTAL POLICY\nThis session is scheduled for studio/location photography production. Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio venue space is required, applicable studio rental fees are billed at actuals (at cost).`;
-        const contractRefDoc = isCustomContract ? "CUSTOM-CLIENT-CONTRACT-MSA" : (isTfpCat ? "TFP-LIABILITY-RELEASE-V3.4" : "COMMERCIAL-CONTRACT-V3.4");
+        const contractRefDoc = isCustomContract ? "CUSTOM-CLIENT-CONTRACT-MSA" : (isTfpCat ? "TFP-LIABILITY-RELEASE-V3.4" : "COMMERCIAL-CONTRACT-V3.5");
         // Resolved before the release text below, which now states the fee and
         // the milestones. They previously appeared only in the inquiry email as
         // booking details — so the document the client actually signed said
@@ -9376,10 +9462,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // Numbered off whether the rental clause above is present, since it is
         // omitted on a collaboration with no rental — hardcoding "8" would
         // print a document that jumps from 6 to 8.
-        const lateArrivalClause = !isTfpCat ? "" : (() => {
-          const n = engagementFeeClause ? 8 : 7;
-          return `\n\n${n}. CALL TIME, GRACE PERIOD, LATE ARRIVAL & NO-SHOW\nThe call time confirmed by the Studio is the time the Participant is expected on set and ready to begin, not the time they set out. The Studio holds the set for 60 minutes past that call time. Arriving within that window does not extend the session: the booked wrap time stands, and time lost to a late arrival comes out of the shoot.\nIf the Participant has not arrived within those 60 minutes and has not agreed a later start with the Studio, the Studio may cancel the session at its sole discretion. A session cancelled on this basis is not rescheduled as of right; any home studio rental or other amount already paid is forfeited and non-refundable; and the photographer invite code under which the session was booked may be withdrawn.\nA delay or cancellation notified at least 24 hours before the call time is treated as a reschedule rather than a no-show, and nothing is forfeited — up to a maximum of two reschedules, beyond which the invite lapses.\nA delay notified on the shoot day may be accommodated where the set is still free and the session can still finish within booked daylight hours, and by 7:00 PM at the home studio. Notifying a delay is a courtesy and not an entitlement: it does not by itself extend the grace period or move the wrap time, and acceptance remains at the Studio's discretion.\nIf the Studio is not ready to begin within 60 minutes of the confirmed call time, the Participant may reschedule at no cost, or proceed with the wrap time extended by the length of the delay where the venue allows.`;
-        })();
+        const lateArrivalClause = "\n\n" + window.buildLateArrivalText(isTfpCat, engagementFeeClause ? 8 : 7);
 
         const tfpReleaseText = agreedToTerms ? (
           `\n\n==================================================\n` +
@@ -9919,13 +10002,21 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       }
 
       if (modalTitle) modalTitle.textContent = isTfp ? "Studio Production & Liability Release" : "Commercial Shoot Contract & Production Agreement";
-      if (modalTag) modalTag.textContent = isTfp ? "TFP-LIABILITY-RELEASE-V3.4 (ACTIVE)" : "COMMERCIAL-CONTRACT-V3.4 (ACTIVE)";
+      if (modalTag) modalTag.textContent = isTfp ? "TFP-LIABILITY-RELEASE-V3.4 (ACTIVE)" : "COMMERCIAL-CONTRACT-V3.5 (ACTIVE)";
       // The grace-period clause is a test-shoot term only. It has to be toggled
       // on every open, not just hidden by default: the modal element persists
       // across bookings, so a commercial enquiry opened after a TFP one would
       // otherwise still be showing it.
+      const versionLabel = $("#termsAgreeVersionLabel");
+      if (versionLabel) versionLabel.textContent = `Studio Terms & Conditions (${isTfp ? "Version V3.4" : "Version V3.5"})`;
       const lateArrivalSection = $("#termsLateArrivalSection");
-      if (lateArrivalSection) lateArrivalSection.style.display = isTfp ? "block" : "none";
+      if (lateArrivalSection) {
+        // Applies to both kinds now, on different terms — a paid client gets
+        // three hours against a collaboration's one. Rebuilt on every open
+        // because the modal element outlives the booking that filled it.
+        lateArrivalSection.innerHTML = window.buildLateArrivalHtml(isTfp, 9);
+        lateArrivalSection.style.display = "block";
+      }
       if (partnerNameEl) partnerNameEl.textContent = partnerName || "Valued Client";
       
       // This is the screen the signature is actually captured on, so it is the
