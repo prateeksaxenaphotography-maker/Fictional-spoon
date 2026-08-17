@@ -2509,6 +2509,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // could register as a left/right swipe and jump to the next photo.
     let touchStartX = 0;
     let touchEndX = 0;
+    let lastSwipeAt = 0;
     const lbMain = $(".lightbox-main") || lb;
     lbMain.addEventListener("touchstart", (e) => {
       touchStartX = e.changedTouches[0].screenX;
@@ -2516,9 +2517,35 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     lbMain.addEventListener("touchend", (e) => {
       touchEndX = e.changedTouches[0].screenX;
       const diff = touchEndX - touchStartX;
-      if (diff < -50) stepLb(1);      // Swipe left -> Next
-      else if (diff > 50) stepLb(-1); // Swipe right -> Prev
+      if (diff < -50) { lastSwipeAt = Date.now(); stepLb(1); }       // Swipe left -> Next
+      else if (diff > 50) { lastSwipeAt = Date.now(); stepLb(-1); }  // Swipe right -> Prev
     }, { passive: true });
+
+    // Tapping the photo itself steps it: right half forward, left half back.
+    //
+    // Until now the only ways forward on a phone were a >50px swipe or one of
+    // two 44px arrows pinned to the screen edges — which is where iOS and
+    // Android put their own back/forward edge gestures, so taps aimed at
+    // "next" routinely hit nothing at all. Tapping the picture did nothing
+    // either, so the photo appeared frozen and the tap got repeated. That is
+    // the part a loading spinner could never fix: those taps were not slow,
+    // they were never reaching a handler.
+    //
+    // The figure fills the viewport between the header and the caption, so
+    // this turns nearly the whole screen into the control.
+    const lbFigure = $(".lightbox-figure");
+    if (lbFigure) {
+      lbFigure.addEventListener("click", (e) => {
+        // Never hijack a real control that happens to sit over the photo.
+        if (e.target.closest("button, a, input, select, textarea")) return;
+        // A swipe can still emit a click on touchend; without this the two
+        // handlers would both fire and skip two photos per gesture.
+        if (Date.now() - lastSwipeAt < 500) return;
+        const r = lbFigure.getBoundingClientRect();
+        if (!r.width) return;
+        stepLb(e.clientX - r.left > r.width / 2 ? 1 : -1);
+      });
+    }
   }
 
   /* ============================================================
