@@ -3157,9 +3157,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   }
 
   function viewHome() {
-    // Six, not seven: three columns fill two clean rows, and a curated
-    // selection with a "view all" beneath reads more confident than emptying
-    // the archive onto the front page.
+    // Nine is a cap for a very large archive, not a curation: with the albums
+    // published today every one of them appears. Trimming to six to make the
+    // rows come out even had quietly cost two albums — one cut here and one
+    // hidden by the grid — which is a far worse outcome than a last row that
+    // is not completely full.
     // The album the hero was taken from is dropped: it is already the largest
     // image on the page, and showing it again as the first tile read as a
     // mistake. Dropping it also happens to leave six portraits, which fill the
@@ -3170,7 +3172,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const usesHeroPhoto = (s) => heroPhoto && (s.photos || []).some(p => (p.url || "") === heroPhoto);
     const feat = SHOOTS
       .filter(s => !s.isTestimonial && s.type !== "Workshop Attended" && !usesHeroPhoto(s))
-      .slice(0, 6);
+      .slice(0, 9);
     // Hand-picked in config.js. Falls back to the old typographic hero if it is
     // blank or points at a file that no longer exists, so a mistyped path
     // degrades to the previous design rather than a broken image.
@@ -10278,8 +10280,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
       // Dynamic padding: if the cover's orientation clashes with the 16:9 frame,
       // contain the image (show it whole) over a blurred fill instead of cropping.
-      // (balanceWorkGrid is declared below and hoisted — it runs on load, by
-      // which point every cover's orientation is finally known.)
       const img = media?.querySelector("img");
       if (img) {
         const evaluateFit = () => {
@@ -10294,9 +10294,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           // of this library, and only the rare wide cover reflows.
           const card = media.closest(".noth-work");
           if (card) card.classList.toggle("is-landscape", imgRatio > 1.05);
-          // A tile trimmed by balanceWorkGrid measures zero, and the 16/9
-          // fallback below then read as a mismatch against every portrait —
-          // switching the blurred fill back on for covers nobody can see.
+          // A tile that is not laid out yet measures zero, and a 16/9 guess
+          // off the back of that reads as a mismatch against every portrait,
+          // switching the blurred fill on for no reason.
           if (!media.clientWidth || !media.clientHeight) return;
           const frameRatio = media.clientWidth / media.clientHeight;
           // Whatever is left over after the frame has adapted: a cover whose
@@ -10313,36 +10313,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           }
         };
         if (img.complete) evaluateFit();
-        img.addEventListener("load", () => { evaluateFit(); balanceWorkGrid(); }, { once: true });
+        img.addEventListener("load", evaluateFit, { once: true });
       }
-    });
-
-    // A wide cover occupies two cells, so a set that would have filled the grid
-    // exactly can end up one item over a row boundary — which left a single
-    // album stranded on a row of its own with two empty columns beside it.
-    // Trailing covers are dropped until the remaining cells fill whole rows.
-    // Nothing becomes unreachable: the "view all albums" button sits directly
-    // beneath, and this only ever trims the tail of an already-curated six.
-    // Recomputed rather than remembered, because the column count changes with
-    // the breakpoint and a wide cover stops spanning on a phone.
-    function balanceWorkGrid() {
-      const list = document.querySelector(".noth-work-list");
-      if (!list) return;
-      const cols = getComputedStyle(list).gridTemplateColumns.split(" ").filter(Boolean).length;
-      const cards = [...list.querySelectorAll(".noth-work")];
-      cards.forEach((c) => c.style.removeProperty("display"));
-      if (cols < 2) return;                       // single column always fills
-      const cells = (c) => (c.classList.contains("is-landscape") ? 2 : 1);
-      let total = cards.reduce((n, c) => n + cells(c), 0);
-      for (let i = cards.length - 1; i >= 0 && total % cols; i--) {
-        cards[i].style.display = "none";
-        total -= cells(cards[i]);
-      }
-    }
-    let balanceTimer;
-    window.addEventListener("resize", () => {
-      clearTimeout(balanceTimer);
-      balanceTimer = setTimeout(balanceWorkGrid, 150);
     });
 
     // work-block interactions (open lightbox on media or "View project")
