@@ -3239,11 +3239,22 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <a href="/albums" data-link class="link-arrow">All albums →</a>
         </div>
         <div class="noth-work-list">${feat.map(nothWorkCard).join("")}</div>
-        ${SHOOTS.filter(s => s.type !== "Workshop Attended").length > feat.length ? `
+        ${(() => {
+          // The way into the archive, and it must not depend on the front page
+          // holding something back. This used to render only when there were
+          // MORE albums than the grid showed, so the moment the grid started
+          // showing all of them the button silently disappeared — taking the
+          // only route to /albums from this section with it. Wording shifts
+          // instead: a count when there is genuinely more to see, an invitation
+          // when there is not.
+          const total = SHOOTS.filter(s => s.type !== "Workshop Attended").length;
+          if (!total) return "";
+          const more = total > feat.length;
+          return `
         <div class="works-all-cta reveal">
-          <a href="/albums" data-link class="btn btn-dark">View all ${SHOOTS.filter(s => s.type !== "Workshop Attended").length} albums →</a>
-        </div>
-        ` : ""}
+          <a href="/albums" data-link class="btn btn-dark">${more ? `View all ${total} albums →` : "Browse the full archive →"}</a>
+        </div>`;
+        })()}
       </section>
 
       <!-- SERVICES (WHO I SHOOT FOR) -->
