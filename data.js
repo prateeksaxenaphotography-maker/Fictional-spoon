@@ -947,9 +947,17 @@ window.WPS_DATA = {
           "url": "photos/msxhrjrtl997mq/msxi7ubza7bc5s-8.jpg",
           "objectPosition": "center",
           "small": "photos/msxhrjrtl997mq/msxi7ubza7bc5s-8@480.jpg"
+        },
+        {
+          "id": "msxlhnx1occt0s-9",
+          "url": "photos/msxhrjrtl997mq/msxlhnx1occt0s-9.jpg",
+          "objectPosition": "center",
+          "small": "photos/msxhrjrtl997mq/msxlhnx1occt0s-9@480.jpg",
+          "medium": "photos/msxhrjrtl997mq/msxlhnx1occt0s-9@960.jpg"
         }
       ],
       "featured": true,
+      "showAsCompCard": false,
       "hideFromCompCard": false,
       "disableCompCardDownload": false,
       "isPublic": true,
@@ -1139,10 +1147,10 @@ window.WPS_DATA = {
           "createdAt": 1786709219783
         },
         {
-          "id": "shoot-msxag4ydolz34d",
-          "shootId": "msxag4ydolz34d",
+          "id": "shoot-msxhrjrtl997mq",
+          "shootId": "msxhrjrtl997mq",
           "name": "Sumitt Verma",
-          "type": "Test Shoot",
+          "type": "Campaign",
           "duration": "Full Day",
           "status": "confirmed",
           "isTentative": false,
