@@ -1659,6 +1659,18 @@ window.moveAdminPackageRow = function(index, dir) {
         });
         photoEntries.push({ path, mode: "100644", type: "blob", sha: blob.sha });
       };
+      // Uploaded paths are staged here, keyed by the photo object itself, and
+      // are NOT written onto that object until the commit is actually on the
+      // branch. p.url doubles as the "already uploaded, skip it" marker, so
+      // stamping it the moment a blob was created meant an interrupted publish
+      // (an expired token, a dropped connection) left photos permanently
+      // marked as uploaded — while their blobs, never referenced by any
+      // commit, were garbage-collected by GitHub. Every later publish then
+      // skipped them and wrote dangling paths into data.js, which is how
+      // Sumitt Verma's album came to reference three images that did not
+      // exist. Nothing here mutates local state; see the apply step after the
+      // ref update below.
+      const pendingPaths = new Map(); // photo object -> { url, small?, medium? }
       for (const s of shoots) {
         for (const p of s.photos || []) {
           if (p.url || !p.dataUrl) continue;
@@ -1667,7 +1679,7 @@ window.moveAdminPackageRow = function(index, dir) {
           const dir = `photos/${s.id}`;
           const fullPath = `${dir}/${p.id}.${MIME_EXT[m[1]] || "jpg"}`;
           await commitBlob(fullPath, p.dataUrl.slice(m[0].length));
-          p.url = fullPath;
+          const paths = { url: fullPath };
           // Responsive variants (JPEG). Skip a variant if it doesn't shrink.
           try {
             for (const [w, key] of [[480, "small"], [960, "medium"]]) {
@@ -1676,27 +1688,36 @@ window.moveAdminPackageRow = function(index, dir) {
               if (variant !== p.dataUrl && vm) {
                 const vPath = `${dir}/${p.id}@${w}.jpg`;
                 await commitBlob(vPath, variant.slice(vm[0].length));
-                p[key] = vPath;
+                paths[key] = vPath;
               }
             }
           } catch (err) { console.warn("variant gen failed for", p.id, err); }
+          pendingPaths.set(p, paths);
           toast(`Uploading photos… (${photoEntries.length})`);
         }
       }
 
-      // Published copy references photo files instead of inline base64.
+      // Published copy references photo files instead of inline base64. Paths
+      // come from pendingPaths for anything uploaded in this run, and from
+      // p.url for anything already published in an earlier one.
       const published = shoots.map((s) => ({
         ...s,
-        photos: (s.photos || []).map((p) => p.url
+        photos: (s.photos || []).map((p) => {
+          const fresh = pendingPaths.get(p) || {};
+          const url = fresh.url || p.url;
+          const small = fresh.small || p.small;
+          const medium = fresh.medium || p.medium;
+          return url
           ? {
-              id: p.id, url: p.url, objectPosition: p.objectPosition || "center",
+              id: p.id, url, objectPosition: p.objectPosition || "center",
               ...(p.excludeFromCompCard ? { excludeFromCompCard: true } : {}),
-              ...(p.small ? { small: p.small } : {}),
-              ...(p.medium ? { medium: p.medium } : {}),
+              ...(small ? { small } : {}),
+              ...(medium ? { medium } : {}),
               ...(p.caption ? { caption: p.caption } : {}),
               ...(typeof p.focalX === "number" ? { focalX: p.focalX, focalY: p.focalY } : {})
             }
-          : p),
+          : p;
+        }),
       }));
       // Regenerate data.js in EXACTLY the committed format — same keys
       // (CALENDAR_SETTINGS included) and same trailing alias lines. The
@@ -1771,6 +1792,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         body: JSON.stringify({ message: "Auto-sync portfolio data from Admin Panel", tree: tree.sha, parents: [ref.object.sha] }),
       });
       await ghApi(pat, `/git/refs/heads/${GH_BRANCH}`, { method: "PATCH", body: JSON.stringify({ sha: commit.sha }) });
+
+      // The branch now points at a commit that contains these blobs, so the
+      // paths are finally real — only now is it safe to mark these photos as
+      // uploaded. Everything above this line is side-effect free with respect
+      // to local state: if any step threw, the catch runs, these assignments
+      // never happen, the photos keep their base64 and simply upload again on
+      // the next publish.
+      for (const [photo, paths] of pendingPaths) Object.assign(photo, paths);
 
       // Bring this browser up to date with the merged result (photo URLs,
       // shoots that only existed on the other device, and the full published
