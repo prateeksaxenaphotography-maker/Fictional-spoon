@@ -987,12 +987,26 @@ window.moveAdminPackageRow = function(index, dir) {
     return value ? ` srcset="${esc(value)}" sizes="${esc(sizes)}"` : "";
   };
   // Descriptive, SEO-friendly alt text for a shoot's photo (Google Images).
+  // How a shoot's type should read to a visitor. "Test Shoot" and "Selective
+  // Collaboration (TFP)" are how the studio classifies a booking, not something
+  // the work itself gains from announcing — on a portfolio it reads as "unpaid",
+  // which devalues the frames beside it. Both are suppressed publicly unless a
+  // shoot opts in with showTestShootCategory. The studio still sees them in
+  // admin mode, where the classification is the point.
+  // Returns "" when there is nothing to show, so callers must drop the label
+  // rather than render an empty badge.
+  const publicShootType = (s) => {
+    const t = ((s && s.type) || "").trim();
+    const isTestish = t === "Test Shoot" || t === "Selective Collaboration (TFP)";
+    if (isTestish && !s.showTestShootCategory && !isAdmin()) return "";
+    return t === "Selective Collaboration (TFP)" ? "Selective Collab" : t;
+  };
+
   const altFor = (s, frame) => {
     if (!s) return "Photograph by nerdyphotographer.in";
     if (s.caption) return s.caption;
     const who = (s.talent && s.talent.trim()) || (s.title && s.title.trim()) || "";
-    const typeTag = (s.type === "Selective Collaboration (TFP)" && !s.showTestShootCategory) ? "" : s.type;
-    const what = [s.activity, typeTag].filter(Boolean).join(" ");
+    const what = [s.activity, publicShootType(s)].filter(Boolean).join(" ");
     const parts = [
       what ? `${what} photography` : "Photography",
       who ? `featuring ${who}` : "",
@@ -2909,7 +2923,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   function nothWorkCard(s, i) {
     const cover = s.photos.find(p => p.id.split("-")[0] === s.coverPhotoId) || s.photos[0] || { objectPosition: "center" };
     const coverPos = cover.objectPosition || "center";
-    const typeTag = (s.type === "Selective Collaboration (TFP)" && !s.showTestShootCategory) ? "Selective Collab" : (s.type || "Editorial");
+    const typeTag = publicShootType(s);
     const tagline = s.description
       ? s.description
       : [s.activity, typeTag].filter(Boolean).join(" · ");
@@ -2931,9 +2945,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       <article class="noth-work reveal" data-shoot="${s.id}" data-category="${esc(s.type || '')}" data-talent="${esc(s.talent || '')}" style="--d:${(i % 2) * 0.08}s; position: relative; border-radius: 12px; overflow: hidden; background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow-sm); transition: transform 0.3s ease, box-shadow 0.3s ease;">
         <button class="noth-work-media" aria-label="View ${esc(title)}" style="position: relative; overflow: hidden; border-radius: 12px 12px 0 0;">
           <!-- Top Floating Micro-Badges -->
+          ${typeTag ? `
           <div style="position: absolute; top: 12px; left: 12px; z-index: 4; display: flex; gap: 6px; align-items: center;">
             <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 800; background: rgba(10, 10, 10, 0.75); backdrop-filter: blur(8px); color: #ffffff; padding: 4px 9px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); text-transform: uppercase; letter-spacing: 0.05em;">${esc(typeTag)}</span>
-          </div>
+          </div>` : ""}
           ${countBadgeText ? `
             <div style="position: absolute; top: 12px; right: 12px; z-index: 4;">
               <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 800; background: rgba(10, 10, 10, 0.75); backdrop-filter: blur(8px); color: #ffffff; padding: 4px 9px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2);">${esc(countBadgeText)}</span>
@@ -3073,8 +3088,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             const ed = (field, extra = "") => canInline
               ? ` class="inline-edit ${extra}" contenteditable="true" spellcheck="false" data-shoot="${s.id}" data-field="${field}" title="Click to edit"`
               : (extra ? ` class="${extra}"` : "");
-            const typeTag = (s.type === "Selective Collaboration (TFP)" && !s.showTestShootCategory) ? "" : s.type;
-            const brandAndType = [s.brand, typeTag].filter(Boolean).join(" · ");
+            const brandAndType = [s.brand, publicShootType(s)].filter(Boolean).join(" · ");
             return `
             ${s.isCompCard ? "" : `
               <p class="eyebrow">${esc(brandAndType)}</p>
@@ -3334,8 +3348,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <button type="button" class="album-filter-pill active" data-filter="all" onclick="window.filterAlbumGrid('all', this)" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; white-space: nowrap;">🌐 All Albums (${counts.all})</button>
           ${counts.fashion ? `<button type="button" class="album-filter-pill" data-filter="fashion" onclick="window.filterAlbumGrid('fashion', this)" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; white-space: nowrap;">👗 Fashion (${counts.fashion})</button>` : ''}
           ${counts.commercial ? `<button type="button" class="album-filter-pill" data-filter="commercial" onclick="window.filterAlbumGrid('commercial', this)" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; white-space: nowrap;">💼 Commercial (${counts.commercial})</button>` : ''}
-          ${counts.tfp ? `<button type="button" class="album-filter-pill" data-filter="tfp" onclick="window.filterAlbumGrid('tfp', this)" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; white-space: nowrap;">🤝 Selective Collab (${counts.tfp})</button>` : ''}
-          ${counts.test ? `<button type="button" class="album-filter-pill" data-filter="test" onclick="window.filterAlbumGrid('test', this)" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; white-space: nowrap;">📸 Test Shoots (${counts.test})</button>` : ''}
+          ${(counts.tfp && isAdmin()) ? `<button type="button" class="album-filter-pill" data-filter="tfp" onclick="window.filterAlbumGrid('tfp', this)" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; white-space: nowrap;">🤝 Selective Collab (${counts.tfp})</button>` : ''}
+          ${(counts.test && isAdmin()) ? `<button type="button" class="album-filter-pill" data-filter="test" onclick="window.filterAlbumGrid('test', this)" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; white-space: nowrap;">📸 Test Shoots (${counts.test})</button>` : ''}
         </div>
       </div>
     `;
