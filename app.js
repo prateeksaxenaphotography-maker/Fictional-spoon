@@ -3179,7 +3179,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const shuffledT = shuffleArray(allT);
     const homeT = shuffledT.slice(0, 5);
     return `
-      <section class="hero hero-shot${heroSrc ? "" : " hero-mono hero-brand"}">
+      <section class="hero ${heroSrc ? "hero-shot" : "hero-mono hero-brand"}">
         ${heroSrc ? `
           <img class="hero-shot-img" src="${esc(heroSrc)}"${srcsetAttr({ url: heroSrc }, "100vw")} style="object-position: ${esc(heroFocus)};" alt="${esc(heroAlt)}" fetchpriority="high" decoding="async" />
           <div class="hero-shot-scrim" aria-hidden="true"></div>
@@ -10264,6 +10264,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
       // Dynamic padding: if the cover's orientation clashes with the 16:9 frame,
       // contain the image (show it whole) over a blurred fill instead of cropping.
+      // (balanceWorkGrid is declared below and hoisted — it runs on load, by
+      // which point every cover's orientation is finally known.)
       const img = media?.querySelector("img");
       if (img) {
         const evaluateFit = () => {
@@ -10278,7 +10280,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           // of this library, and only the rare wide cover reflows.
           const card = media.closest(".noth-work");
           if (card) card.classList.toggle("is-landscape", imgRatio > 1.05);
-          const frameRatio = media.clientWidth / media.clientHeight || (16 / 9);
+          // A tile trimmed by balanceWorkGrid measures zero, and the 16/9
+          // fallback below then read as a mismatch against every portrait —
+          // switching the blurred fill back on for covers nobody can see.
+          if (!media.clientWidth || !media.clientHeight) return;
+          const frameRatio = media.clientWidth / media.clientHeight;
           // Whatever is left over after the frame has adapted: a cover whose
           // shape still cannot be matched is contained over the blurred fill
           // rather than cropped.
@@ -10293,8 +10299,36 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           }
         };
         if (img.complete) evaluateFit();
-        img.addEventListener("load", evaluateFit, { once: true });
+        img.addEventListener("load", () => { evaluateFit(); balanceWorkGrid(); }, { once: true });
       }
+    });
+
+    // A wide cover occupies two cells, so a set that would have filled the grid
+    // exactly can end up one item over a row boundary — which left a single
+    // album stranded on a row of its own with two empty columns beside it.
+    // Trailing covers are dropped until the remaining cells fill whole rows.
+    // Nothing becomes unreachable: the "view all albums" button sits directly
+    // beneath, and this only ever trims the tail of an already-curated six.
+    // Recomputed rather than remembered, because the column count changes with
+    // the breakpoint and a wide cover stops spanning on a phone.
+    function balanceWorkGrid() {
+      const list = document.querySelector(".noth-work-list");
+      if (!list) return;
+      const cols = getComputedStyle(list).gridTemplateColumns.split(" ").filter(Boolean).length;
+      const cards = [...list.querySelectorAll(".noth-work")];
+      cards.forEach((c) => c.style.removeProperty("display"));
+      if (cols < 2) return;                       // single column always fills
+      const cells = (c) => (c.classList.contains("is-landscape") ? 2 : 1);
+      let total = cards.reduce((n, c) => n + cells(c), 0);
+      for (let i = cards.length - 1; i >= 0 && total % cols; i--) {
+        cards[i].style.display = "none";
+        total -= cells(cards[i]);
+      }
+    }
+    let balanceTimer;
+    window.addEventListener("resize", () => {
+      clearTimeout(balanceTimer);
+      balanceTimer = setTimeout(balanceWorkGrid, 150);
     });
 
     // work-block interactions (open lightbox on media or "View project")
