@@ -2386,11 +2386,18 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // no waiting and no loading state to flicker.
     if (next.complete) { apply(); preloadLbNeighbours(); return; }
 
-    // Only show the dimmed loading state if the wait is long enough to notice —
-    // flashing it on every cached step would be its own kind of jitter.
+    // Only show the loading state if the wait is long enough to notice —
+    // flashing it on every cached step would be its own kind of jitter. An
+    // already-decoded photo returns above and never reaches this timer.
+    //
+    // 140ms was too patient on a phone: a tap that lands mid-download gets no
+    // acknowledgement at all for a seventh of a second, on top of however long
+    // the photo itself takes, so the tap reads as ignored and gets repeated —
+    // which skips a photo, because the first tap did register. 60ms is still
+    // above the threshold where a cached-but-not-instant step would flicker.
     const slowTimer = setTimeout(() => {
       if (token === lbPaintToken) lb.classList.add("lb-loading");
-    }, 140);
+    }, 60);
 
     try {
       if (next.decode) await next.decode();
