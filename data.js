@@ -1094,15 +1094,6 @@ window.WPS_DATA = {
           "contractVersion": "Pending Agreement"
         }
       ],
-      "2026-08-29": [
-        {
-          "id": "b_1786709233749_esjr",
-          "type": "Assisting Photographer",
-          "isTentative": false,
-          "status": "assisting",
-          "contractVersion": "Pending Agreement"
-        }
-      ],
       "2026-08-30": [
         {
           "id": "b_1786714654176_bh0f",
@@ -1147,7 +1138,8 @@ window.WPS_DATA = {
       "2026-07-24::shoot-ms36z1wqg2y4a2",
       "2026-08-30::b_1786709236156_7lzv",
       "2026-08-16::shoot-msxag4ydolz34d",
-      "2026-09-06::b_1786904562601_73b6"
+      "2026-09-06::b_1786904562601_73b6",
+      "2026-08-29::b_1786709233749_esjr"
     ],
     "paymentScheduleType": "5050",
     "updatedAt": 0,
