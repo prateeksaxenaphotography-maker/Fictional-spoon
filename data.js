@@ -651,6 +651,7 @@ window.WPS_DATA = {
       "location": "Jaipur",
       "height": "6'3",
       "chest": "38-40 cm",
+      "chestLabel": "Chest",
       "waist": "30 cm",
       "hips": "",
       "shoes": "UK11",
