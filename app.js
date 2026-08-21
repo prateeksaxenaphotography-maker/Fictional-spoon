@@ -1143,6 +1143,50 @@ window.moveAdminPackageRow = function(index, dir) {
     return !!(s.showAsCompCard || s.isCompCard || s.type === "Selective Collaboration (TFP)" || s.type === "Test Shoot");
   };
 
+  // Which book is this model cast from? Agencies file talent by the kind of
+  // work they get booked for, not only by measurements, and a model can
+  // genuinely straddle two books (fashion who also shoots fitness) — so this
+  // is a list, not one value. It is capped at two: a comp card claiming four
+  // specialities reads as claiming none, and the printed card only has room
+  // for two badges beside the name.
+  const MODEL_TYPES = ["Fashion", "Fitness", "Sports", "Lifestyle"];
+  const MODEL_TYPES_MAX = 2;
+
+  // Accepts whatever a record happens to carry — a real array, a legacy
+  // comma-separated string, or nothing at all — and always answers with a
+  // deduped list of known values, at most MODEL_TYPES_MAX long. Everything
+  // that reads model types goes through here so no surface has to re-guess
+  // the shape or re-apply the cap.
+  function modelTypesOf(shoot) {
+    if (!shoot) return [];
+    const raw = shoot.modelTypes ?? shoot.modelType;
+    const list = Array.isArray(raw) ? raw : String(raw ?? "").split(",");
+    const seen = new Set();
+    const out = [];
+    for (const item of list) {
+      // Tolerates "Fashion", "fashion", and "Fashion Model" alike, so a value
+      // typed by hand into data.js still matches.
+      const name = String(item ?? "").trim().replace(/\s*models?$/i, "");
+      const match = MODEL_TYPES.find((t) => t.toLowerCase() === name.toLowerCase());
+      if (!match || seen.has(match)) continue;
+      seen.add(match);
+      out.push(match);
+      if (out.length === MODEL_TYPES_MAX) break;
+    }
+    return out;
+  }
+  // Stored bare ("Fashion") so each surface can label it its own way; this is
+  // the one the public sees.
+  const modelTypeLabel = (t) => `${t} Model`;
+  // On-screen chips. Shared by the album card and the lightbox so the two
+  // never drift; the print surfaces have their own inline-styled version
+  // because the PDF window carries none of this stylesheet.
+  const modelTypeBadgesHtml = (shoot, style = "") => {
+    const types = modelTypesOf(shoot);
+    if (!types.length) return "";
+    return `<div class="model-type-badges" style="${style}">${types.map((t) => `<span class="model-type-badge">${esc(modelTypeLabel(t))}</span>`).join("")}</div>`;
+  };
+
   const parseIgHandle = (h) => {
     let clean = String(h ?? "").trim();
     if (!clean) return "";
@@ -1385,9 +1429,21 @@ window.moveAdminPackageRow = function(index, dir) {
   const isAdminAuthorized = () => localStorage.getItem("wps-admin-authorized") === "1";
   const isAdmin = () => isAdminAuthorized() && sessionStorage.getItem("wps-admin") === "1";
   
+  // Both detectors also answer for /share/… links, because a shared comp card
+  // is the same album seen through a different URL: without this it rendered
+  // stripped of the stats, socials and model-type badges that are the whole
+  // point of sending someone a comp card.
+  const sharedAlbumSegment = () => {
+    const path = location.pathname.replace(/\/index\.html$/, "");
+    if (!/^\/share(\/|$)/.test(path)) return "";
+    const raw = new URLSearchParams(location.search).get("a") || (path.match(/^\/share\/([^/]+)/) || [])[1] || "";
+    try { return decodeURIComponent(raw); } catch { return raw; }
+  };
+
   function isCurrentlyCompCardView() {
     const search = location.pathname + location.search;
     const decoded = decodeURIComponent(search).replace(/\+/g, " ");
+    if (sharedAlbumSegment().startsWith("comp-card-")) return true;
     return search.includes("categories") && (
       search.includes("Comp%20Cards") || decoded.includes("Comp Cards") ||
       search.includes("Test%20Shoot") || decoded.includes("Selective Collaboration (TFP)") || search.includes("Test+Shoot")
@@ -1397,6 +1453,7 @@ window.moveAdminPackageRow = function(index, dir) {
   function isCurrentlyModelPortfolioView() {
     const search = location.pathname + location.search;
     const decoded = decodeURIComponent(search).replace(/\+/g, " ");
+    if (sharedAlbumSegment().startsWith("portfolio-")) return true;
     return search.includes("categories") && (
       search.includes("Model%20Portfolio") || decoded.includes("Model Portfolio")
     );
@@ -1679,7 +1736,13 @@ window.moveAdminPackageRow = function(index, dir) {
       const remoteById = new Map(remote.shoots.map((s) => [s && s.id, s]));
       for (const s of shoots) {
         const r = remoteById.get(s.id);
-        if (!r || !Array.isArray(r.photos)) continue;
+        if (!r) continue;
+        // Model type follows the same additive rule, for the same reason: a
+        // device still running a build from before the field existed holds a
+        // local record without one, and publishing from it would clear the
+        // model's type for every visitor. A type set locally always wins.
+        if (!modelTypesOf(s).length && modelTypesOf(r).length) s.modelTypes = modelTypesOf(r);
+        if (!Array.isArray(r.photos)) continue;
         const rPhotos = new Map(r.photos.map((p) => [p && p.id, p]));
         for (const p of s.photos || []) {
           const rp = rPhotos.get(p.id);
@@ -1945,6 +2008,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         kavyarHtml = links;
       }
     }
+
+    // Which book the model is cast from. Deliberately outside the stats HUD
+    // below and outside its "Show stats" toggle: hiding a model's
+    // measurements is a privacy choice, but the kind of work they model for
+    // is the headline of the card and stays visible either way.
+    const modelTypeHtml = isCc ? modelTypeBadgesHtml(shoot, "margin-bottom: 14px;") : "";
 
     // Agency Model Stats HUD Card (Album Space #4 Redesign with Smart Fallback)
     let statsHtml = "";
@@ -2259,6 +2328,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         </dl>
         `}
         
+        ${modelTypeHtml}
         ${statsHtml}
         ${filterBarHtml}
         
@@ -3033,9 +3103,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const tagline = s.description
       ? s.description
       : [s.activity, typeTag].filter(Boolean).join(" · ");
-    const photoCount = s.photos ? s.photos.length : 0;
-    const countBadgeText = photoCount ? `📸 ${photoCount} Photo${photoCount > 1 ? "s" : ""}` : "";
-    
     let mentorText = "";
     if (s.type === "Workshop Attended" && s.mentor) {
       const cleanNames = s.mentor.split(",").map(item => {
@@ -3050,16 +3117,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     return `
       <article class="noth-work reveal" data-shoot="${s.id}" data-category="${esc(s.type || '')}" data-talent="${esc(s.talent || '')}" style="--d:${(i % 2) * 0.08}s; position: relative; border-radius: 12px; overflow: hidden; background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow-sm); transition: transform 0.3s ease, box-shadow 0.3s ease;">
         <button class="noth-work-media" aria-label="View ${esc(title)}" style="position: relative; overflow: hidden; border-radius: 12px 12px 0 0;">
-          <!-- Top Floating Micro-Badges -->
+          <!-- Floating micro-badge: shoot type. A photo-count badge used to sit
+               opposite it, but a frame count is inventory, not something a
+               visitor picks an album by, and it competed with the cover. -->
           ${typeTag ? `
           <div style="position: absolute; top: 12px; left: 12px; z-index: 4; display: flex; gap: 6px; align-items: center;">
             <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 800; background: rgba(10, 10, 10, 0.75); backdrop-filter: blur(8px); color: #ffffff; padding: 4px 9px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); text-transform: uppercase; letter-spacing: 0.05em;">${esc(typeTag)}</span>
           </div>` : ""}
-          ${countBadgeText ? `
-            <div style="position: absolute; top: 12px; right: 12px; z-index: 4;">
-              <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 800; background: rgba(10, 10, 10, 0.75); backdrop-filter: blur(8px); color: #ffffff; padding: 4px 9px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2);">${esc(countBadgeText)}</span>
-            </div>
-          ` : ''}
 
           <span class="noth-work-backdrop" style="background-image: url('${esc(photoSrc(cover))}');" aria-hidden="true"></span>
           <img src="${esc(photoSrc(cover))}"${srcsetAttr(cover, "(max-width: 620px) 100vw, 100vw")} style="object-position: ${esc(coverPos)}; transition: transform 0.5s ease;" alt="${esc(altFor(s))}" loading="lazy" />
@@ -3189,6 +3253,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <div class="comp-card-header">
             <h2>${esc(getTalentCleanName(s.talent))}</h2>
             <p class="comp-card-eyebrow">Comp Card</p>
+            ${modelTypeBadgesHtml(s, "margin-top: 10px;")}
           </div>
         ` : ""}
         ${mediaHtml}
@@ -3241,6 +3306,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           ${diagramHtml}
           <div style="margin-top: 22px; display: flex; align-items: center; flex-wrap: wrap; gap: 14px; width: 100%;">
             <button class="link-arrow work-open" style="padding: 0;">${s.isCompCard ? "View model details" : "View project"} →</button>
+            <button class="link-arrow work-share" style="padding: 0; display: inline-flex; align-items: center; gap: 6px;" title="Share this album" aria-label="Share this album">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              Share link
+            </button>
             ${(!s.demo && isAdmin()) ? `
               <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0;" data-id="${s.originalShoots ? s.originalShoots[0].id : s.id}">Edit details</button>
               ${s.isCompCard ? `
@@ -3509,14 +3578,22 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
   // Shared album view — anyone with the link can view
   function viewSharedAlbum(albumId) {
-    const album = SHOOTS.find(s => s.id === albumId);
-    if (!album || !album.isPublic) {
+    const album = resolveShareId(albumId, SHOOTS);
+    // `isPublic !== false`, not `isPublic` — every other gate in the app
+    // treats a missing flag as public (see loadShoots and viewAlbums), and
+    // the flag only exists on albums saved since the checkbox was added.
+    // Testing it as truthy meant every album published before that — six of
+    // the nine live ones — answered "Album not found" to its own share link.
+    if (!album || album.isPublic === false) {
       return `
         <section class="page-head">
           <div class="container">
             <h1 class="kinetic-h1">Album not found</h1>
-            <p class="page-sub reveal">The album you're looking for doesn't exist.</p>
-            <a href="/" data-link class="btn btn-dark">Back home →</a>
+            <p class="page-sub reveal">This link doesn't match any published album. It may have been shared before the album was renamed, or the album may since have been unpublished.</p>
+            <div class="hero-actions" style="margin-top: 18px;">
+              <a href="/" data-link class="btn btn-dark">Back home →</a>
+              <a href="/categories?kind=type&amp;val=Comp%20Cards" data-link class="btn btn-ghost">Model comp cards</a>
+            </div>
           </div>
         </section>`;
     }
@@ -3525,13 +3602,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     return `
       <section class="page-head">
         <div class="container">
-          <p class="eyebrow reveal">Shared Album</p>
+          <p class="eyebrow reveal">Shared ${album.isCompCard ? "Comp Card" : "Album"}</p>
           <h1 class="kinetic-h1">${esc(title)}</h1>
           ${album.description ? `<p class="page-sub reveal">${esc(album.description)}</p>` : ""}
         </div>
       </section>
       <section class="section container full-bleed">
-        <div class="noth-work-list">${nothWorkCard(album, 0)}</div>
+        ${album.isCompCard
+          ? `<div class="work-list">${fullBleedBlock(album, 0)}</div>`
+          : `<div class="noth-work-list">${nothWorkCard(album, 0)}</div>`}
       </section>`;
   }
 
@@ -5895,6 +5974,218 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       </a>`;
   }
 
+  // The Comp Cards and Model Portfolio pages don't list raw shoots: several
+  // shoots of the same model collapse into one unified album per model. That
+  // grouping lived inline in viewCategories, which meant a shared link to one
+  // of those albums had nothing to resolve against — the album only existed
+  // while the category page was being rendered. It is a function now so
+  // viewSharedAlbum can rebuild the exact same album from an id alone.
+  //   `kind`/`d` are the category axis and its decoded value: kind "type"
+  //   with "Comp Cards" / "Selective Collaboration (TFP)" for the comp-card
+  //   page, or "Model Portfolio" for the portfolio page. Any other category
+  //   returns the list untouched.
+  function buildCompCardDisplayList(list, kind, d) {
+    let displayList = list;
+    if (kind === "type" && (d === "Selective Collaboration (TFP)" || d === "Model Portfolio" || d === "Comp Cards")) {
+      const filteredList = list.filter(s => !s.hideFromCompCard && ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim()) || (s.talent && s.talent.trim())));
+      const groupable = [];
+      const nonGroupable = [];
+      for (const s of filteredList) {
+        const talentClean = (s.talent || "").trim();
+        const hasExactlyOneModel = talentClean && !talentClean.includes(",") && !talentClean.toLowerCase().includes(" and ") && !talentClean.toLowerCase().includes("&");
+        const hasNoBrandOrClient = (!s.client || !s.client.trim()) && (!s.brand || s.brand === "Personal Project" || !s.brand.trim());
+        
+        if (hasExactlyOneModel && hasNoBrandOrClient) {
+          groupable.push(s);
+        } else {
+          nonGroupable.push(s);
+        }
+      }
+      
+      const groups = {};
+      for (const s of groupable) {
+        const modelName = s.talent.trim();
+        if (!groups[modelName]) groups[modelName] = [];
+        groups[modelName].push(s);
+      }
+      
+      const unifiedAlbums = Object.keys(groups).map(modelName => {
+        const shootsInGroup = groups[modelName];
+        shootsInGroup.sort((a, b) => {
+          const parseDate = (x) => x.date ? Date.parse(x.date) : (x.createdAt || 0);
+          return parseDate(b) - parseDate(a);
+        });
+        const latestShoot = shootsInGroup[0];
+        const isPortView = (d === "Model Portfolio");
+        const allGroupPhotos = shootsInGroup.flatMap(gs => (gs.photos || []).filter(p => {
+          if (isPortView) {
+            return p.usage === "portfolio" || p.usage === "both" || p.usage === undefined;
+          } else {
+            // `!p.excludeFromCompCard` must be a hard AND, not another OR
+            // branch — as an OR it swallowed the usage check entirely, so
+            // a "Portfolio Only" photo still leaked into the comp card
+            // album unless excludeFromCompCard happened to also be set.
+            return (p.usage === "comp" || p.usage === "both" || p.usage === undefined) && !p.excludeFromCompCard;
+          }
+        }).map(p => ({ ...p, parent: gs })));
+        const coverId = latestShoot.coverPhotoId || (latestShoot.photos[0] && latestShoot.photos[0].id);
+        const coverPhotoObj = allGroupPhotos.find(p => p.id.split("-")[0] === coverId);
+        const remainingPhotos = allGroupPhotos.filter(p => p.id.split("-")[0] !== coverId);
+        const finalPhotos = coverPhotoObj ? [coverPhotoObj, ...shuffleArray(remainingPhotos)] : shuffleArray(allGroupPhotos);
+        
+        const findStat = (key) => {
+           const found = shootsInGroup.find(s => s[key] && String(s[key]).trim());
+           return found ? String(found[key]).trim() : "";
+        };
+
+        // Model type merges across the group instead of taking the latest
+        // shoot's value: a model tagged Fashion on one shoot and Fitness on
+        // another is both, and the unified card is the only place that can
+        // say so. modelTypesOf re-applies the two-type cap on the union.
+        const groupModelTypes = modelTypesOf({
+          modelTypes: shootsInGroup.flatMap(gs => modelTypesOf(gs))
+        });
+        
+        const isPort = d === "Model Portfolio";
+        return {
+          id: isPort ? `portfolio-${encodeURIComponent(modelName)}` : `comp-card-${encodeURIComponent(modelName)}`,
+          // Display title is cleaned; `talent` below stays raw on purpose,
+          // because compCardOwnHandles parses its parentheses to pick the
+          // model's own social. Same reason `id` is left alone — changing
+          // it would break links already shared for this album.
+          title: isPort ? `${getTalentCleanName(modelName)} — Portfolio` : `${getTalentCleanName(modelName)} — Comp Card`,
+          brand: "Personal Project",
+          activity: latestShoot.activity,
+          type: "Selective Collaboration (TFP)",
+          height: findStat("height"),
+          chest: findStat("chest"),
+          waist: findStat("waist"),
+          hips: findStat("hips"),
+          shoes: findStat("shoes"),
+          modelHair: findStat("modelHair"),
+          modelEyes: findStat("modelEyes"),
+          modelTypes: groupModelTypes,
+          // Carried over so the "Show stats on Comp Cards / Model
+          // Portfolio" checkboxes still apply once shoots are merged into
+          // this synthetic album — without this, every stats display that
+          // reads from the album (not the raw shoot) ignored the toggle.
+          showStatsOnCompCard: latestShoot.showStatsOnCompCard,
+          showStatsOnModelPortfolio: latestShoot.showStatsOnModelPortfolio,
+          mentor: latestShoot.mentor || "",
+          season: latestShoot.season || "Comp Card",
+          photographer: latestShoot.photographer || "Studio",
+          artDirector: latestShoot.artDirector || "",
+          stylist: latestShoot.stylist || "",
+          hair: latestShoot.hair || "",
+          mua: latestShoot.mua || "",
+          videographer: latestShoot.videographer || "",
+          talent: modelName,
+          location: latestShoot.location || "Studio",
+          description: latestShoot.description || "",
+          tags: latestShoot.tags || "",
+          gear: latestShoot.gear || "",
+          client: "",
+          date: latestShoot.date,
+          instagram: latestShoot.instagram,
+          kavyar: latestShoot.kavyar,
+          link: latestShoot.link,
+          rights: latestShoot.rights,
+          palette: latestShoot.palette || ["#3a3a3a", "#0d0d0d"],
+          photos: finalPhotos,
+          coverPhotoId: latestShoot.coverPhotoId || (latestShoot.photos[0] && latestShoot.photos[0].id),
+          isCompCard: true,
+          originalShoots: shootsInGroup
+        };
+      });
+      
+      // Order by model name. unifiedAlbums came out of Object.keys(groups),
+      // i.e. the order the shoots happened to sit in — so the list read as
+      // date-ish/random while the A–Z filter bar right below promised an
+      // alphabet. Sort on the cleaned name so "Sumitt Verma (instagram…)"
+      // files under S, not under whatever its raw string starts with, and
+      // so it matches the letter its alpha-filter button assigns it.
+      const sortName = (s) => getTalentCleanName(s.talent || s.title || "").trim();
+      displayList = [...unifiedAlbums, ...nonGroupable].sort((a, b) => {
+        const an = sortName(a), bn = sortName(b);
+        if (!an !== !bn) return an ? -1 : 1; // unnamed albums sink to the bottom
+        return an.localeCompare(bn, undefined, { sensitivity: "base", numeric: true });
+      });
+    }
+    return displayList;
+  }
+
+  /* ---- Album share links ---------------------------------------------------
+     A shared link has to survive being pasted into WhatsApp and clicked days
+     later, which ruled out the id these albums render under. A unified
+     comp-card album's id is built from the raw `talent` field, and that field
+     inlines the model's Instagram URL in parentheses — so the link came out
+     as /share/comp-card-Sumitt%20Verma%20(https%3A%2F%2F…%3Fhl%3Den): it
+     broke on any client that stops linkifying at a bracket, and even intact
+     it resolved to nothing, because that id exists only for as long as the
+     Comp Cards page is on screen.
+
+     Links are built from a slug of the model's clean name instead, and
+     resolved by slug — with the old raw and percent-encoded forms still
+     accepted, so links already sent out keep working. */
+  const slugify = (s) => String(s ?? "")
+    .normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  // The path segment that identifies an album in a /share/… link. Real albums
+  // keep their own id (short, stable, already URL-safe); unified comp-card and
+  // portfolio albums get the readable slug form.
+  function shareIdFor(album) {
+    if (!album) return "";
+    const id = String(album.id || "");
+    const prefix = id.startsWith("portfolio-") ? "portfolio-" : id.startsWith("comp-card-") ? "comp-card-" : "";
+    if (!prefix) return id;
+    const slug = slugify(getTalentCleanName(album.talent || album.title));
+    return slug ? prefix + slug : id;
+  }
+  // /share/?a=… and not /share/…: GitHub Pages has no file at the second path,
+  // so it answered every shared link with 404.html — a real HTTP 404, titled
+  // "Page not found" and marked noindex, whatever the app then rendered
+  // underneath. /share/ is a real directory, so this form is a 200 with the
+  // right metadata behind it.
+  const shareUrlFor = (album) => `${window.location.origin}/share/?a=${encodeURIComponent(shareIdFor(album))}`;
+
+  // Reverse of shareIdFor, and deliberately forgiving — it has to keep every
+  // link that has ever been sent out resolvable. Accepts a real album id, the
+  // slug form, the legacy percent-encoded synthetic id, and the raw talent
+  // string. Returns the album object, or null when nothing matches.
+  function resolveShareId(rawId, shoots) {
+    const list = Array.isArray(shoots) ? shoots : [];
+    let id = String(rawId ?? "");
+    if (!id) return null;
+    // A link pasted into a chat app can arrive still-encoded or already
+    // decoded; try the decode, and fall back to the literal text if it is not
+    // valid percent-encoding rather than throwing the whole lookup away.
+    try { id = decodeURIComponent(id); } catch { /* not valid %-encoding — match on the literal */ }
+
+    const direct = list.find((s) => s && s.id === id);
+    if (direct) return direct;
+
+    const nameSlug = (x) => slugify(getTalentCleanName((x && (x.talent || x.title)) || ""));
+    const m = id.match(/^(comp-card|portfolio)-([\s\S]*)$/);
+    if (m) {
+      // getTalentCleanName on the tail as well: a legacy id carries the raw
+      // talent string, parenthesised Instagram URL and all, which would
+      // otherwise slugify into something no album's clean name can match.
+      const wanted = new Set([slugify(m[2]), slugify(getTalentCleanName(m[2]))].filter(Boolean));
+      const category = m[1] === "portfolio" ? "Model Portfolio" : "Comp Cards";
+      const unified = buildCompCardDisplayList(list.filter(qualifiesAsCompCard), "type", category);
+      const hit = unified.find((a) => wanted.has(nameSlug(a)));
+      if (hit) return hit;
+    }
+
+    // Last resort: any album whose model/title slugifies to what was asked
+    // for. Covers a link typed or trimmed by hand.
+    const wanted = slugify(id);
+    return wanted ? (list.find((s) => nameSlug(s) === wanted) || null) : null;
+  }
+
   function viewCategories(kind, val) {
     // Detail: a filtered work list
     if (kind && val) {
@@ -5907,123 +6198,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         return (kind === "activity" ? s.activity : kind === "brand" ? s.brand : s.type) === d;
       });
 
-      let displayList = list;
-      if (kind === "type" && (d === "Selective Collaboration (TFP)" || d === "Model Portfolio" || d === "Comp Cards")) {
-        const filteredList = list.filter(s => !s.hideFromCompCard && ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim()) || (s.talent && s.talent.trim())));
-        const groupable = [];
-        const nonGroupable = [];
-        for (const s of filteredList) {
-          const talentClean = (s.talent || "").trim();
-          const hasExactlyOneModel = talentClean && !talentClean.includes(",") && !talentClean.toLowerCase().includes(" and ") && !talentClean.toLowerCase().includes("&");
-          const hasNoBrandOrClient = (!s.client || !s.client.trim()) && (!s.brand || s.brand === "Personal Project" || !s.brand.trim());
-          
-          if (hasExactlyOneModel && hasNoBrandOrClient) {
-            groupable.push(s);
-          } else {
-            nonGroupable.push(s);
-          }
-        }
-        
-        const groups = {};
-        for (const s of groupable) {
-          const modelName = s.talent.trim();
-          if (!groups[modelName]) groups[modelName] = [];
-          groups[modelName].push(s);
-        }
-        
-        const unifiedAlbums = Object.keys(groups).map(modelName => {
-          const shootsInGroup = groups[modelName];
-          shootsInGroup.sort((a, b) => {
-            const parseDate = (x) => x.date ? Date.parse(x.date) : (x.createdAt || 0);
-            return parseDate(b) - parseDate(a);
-          });
-          const latestShoot = shootsInGroup[0];
-          const isPortView = (d === "Model Portfolio");
-          const allGroupPhotos = shootsInGroup.flatMap(gs => (gs.photos || []).filter(p => {
-            if (isPortView) {
-              return p.usage === "portfolio" || p.usage === "both" || p.usage === undefined;
-            } else {
-              // `!p.excludeFromCompCard` must be a hard AND, not another OR
-              // branch — as an OR it swallowed the usage check entirely, so
-              // a "Portfolio Only" photo still leaked into the comp card
-              // album unless excludeFromCompCard happened to also be set.
-              return (p.usage === "comp" || p.usage === "both" || p.usage === undefined) && !p.excludeFromCompCard;
-            }
-          }).map(p => ({ ...p, parent: gs })));
-          const coverId = latestShoot.coverPhotoId || (latestShoot.photos[0] && latestShoot.photos[0].id);
-          const coverPhotoObj = allGroupPhotos.find(p => p.id.split("-")[0] === coverId);
-          const remainingPhotos = allGroupPhotos.filter(p => p.id.split("-")[0] !== coverId);
-          const finalPhotos = coverPhotoObj ? [coverPhotoObj, ...shuffleArray(remainingPhotos)] : shuffleArray(allGroupPhotos);
-          
-          const findStat = (key) => {
-             const found = shootsInGroup.find(s => s[key] && String(s[key]).trim());
-             return found ? String(found[key]).trim() : "";
-          };
-          
-          const isPort = d === "Model Portfolio";
-          return {
-            id: isPort ? `portfolio-${encodeURIComponent(modelName)}` : `comp-card-${encodeURIComponent(modelName)}`,
-            // Display title is cleaned; `talent` below stays raw on purpose,
-            // because compCardOwnHandles parses its parentheses to pick the
-            // model's own social. Same reason `id` is left alone — changing
-            // it would break links already shared for this album.
-            title: isPort ? `${getTalentCleanName(modelName)} — Portfolio` : `${getTalentCleanName(modelName)} — Comp Card`,
-            brand: "Personal Project",
-            activity: latestShoot.activity,
-            type: "Selective Collaboration (TFP)",
-            height: findStat("height"),
-            chest: findStat("chest"),
-            waist: findStat("waist"),
-            hips: findStat("hips"),
-            shoes: findStat("shoes"),
-            modelHair: findStat("modelHair"),
-            modelEyes: findStat("modelEyes"),
-            // Carried over so the "Show stats on Comp Cards / Model
-            // Portfolio" checkboxes still apply once shoots are merged into
-            // this synthetic album — without this, every stats display that
-            // reads from the album (not the raw shoot) ignored the toggle.
-            showStatsOnCompCard: latestShoot.showStatsOnCompCard,
-            showStatsOnModelPortfolio: latestShoot.showStatsOnModelPortfolio,
-            mentor: latestShoot.mentor || "",
-            season: latestShoot.season || "Comp Card",
-            photographer: latestShoot.photographer || "Studio",
-            artDirector: latestShoot.artDirector || "",
-            stylist: latestShoot.stylist || "",
-            hair: latestShoot.hair || "",
-            mua: latestShoot.mua || "",
-            videographer: latestShoot.videographer || "",
-            talent: modelName,
-            location: latestShoot.location || "Studio",
-            description: latestShoot.description || "",
-            tags: latestShoot.tags || "",
-            gear: latestShoot.gear || "",
-            client: "",
-            date: latestShoot.date,
-            instagram: latestShoot.instagram,
-            kavyar: latestShoot.kavyar,
-            link: latestShoot.link,
-            rights: latestShoot.rights,
-            palette: latestShoot.palette || ["#3a3a3a", "#0d0d0d"],
-            photos: finalPhotos,
-            coverPhotoId: latestShoot.coverPhotoId || (latestShoot.photos[0] && latestShoot.photos[0].id),
-            isCompCard: true,
-            originalShoots: shootsInGroup
-          };
-        });
-        
-        // Order by model name. unifiedAlbums came out of Object.keys(groups),
-        // i.e. the order the shoots happened to sit in — so the list read as
-        // date-ish/random while the A–Z filter bar right below promised an
-        // alphabet. Sort on the cleaned name so "Sumitt Verma (instagram…)"
-        // files under S, not under whatever its raw string starts with, and
-        // so it matches the letter its alpha-filter button assigns it.
-        const sortName = (s) => getTalentCleanName(s.talent || s.title || "").trim();
-        displayList = [...unifiedAlbums, ...nonGroupable].sort((a, b) => {
-          const an = sortName(a), bn = sortName(b);
-          if (!an !== !bn) return an ? -1 : 1; // unnamed albums sink to the bottom
-          return an.localeCompare(bn, undefined, { sensitivity: "base", numeric: true });
-        });
-      }
+      let displayList = buildCompCardDisplayList(list, kind, d);
 
       CURRENT_VIEW_SHOOTS = displayList;
 
@@ -6509,6 +6684,18 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             </fieldset>
 
             <fieldset id="modelStatsFieldset"><legend>Model stats (Comp Cards)</legend>
+              <div class="field" style="margin-bottom: 6px;">
+                <span>Model type <span style="font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-soft);">— pick up to ${MODEL_TYPES_MAX}</span></span>
+                <div id="f_model_types" style="display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 8px;">
+                  ${MODEL_TYPES.map((t) => `
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); font-weight: 500; color: var(--ink); cursor: pointer; user-select: none;">
+                      <input type="checkbox" class="model-type-cb" value="${esc(t)}" style="width: 16px; height: 16px; accent-color: var(--accent);" />
+                      ${esc(modelTypeLabel(t))}
+                    </label>
+                  `).join("")}
+                </div>
+                <p id="f_model_types_hint" style="margin: 6px 0 0; font-size: var(--font-xs); color: var(--ink-soft);">Shown beside the model's name on the comp card album, in the lightbox, and on the exported PDF.</p>
+              </div>
               <div class="field-row">
                 <label class="field"><span>Height</span><input id="f_height" type="text" placeholder="e.g. 5'11&quot; / 180 cm" /></label>
                 <label class="field"><span>Bust / Chest</span><input id="f_chest" type="text" placeholder="e.g. 34&quot; / 86 cm" /></label>
@@ -7207,6 +7394,37 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       selectedForBulk.clear();
       renderStaged();
     });
+    // Model type: at most MODEL_TYPES_MAX. Enforced by greying out the boxes
+    // that are still unticked once the cap is reached, rather than rejecting
+    // the pick on submit — the limit is then visible while choosing instead
+    // of being discovered after filling in the whole form.
+    const modelTypeBoxes = () => Array.from(document.querySelectorAll("#f_model_types .model-type-cb"));
+    const readModelTypes = () => modelTypeBoxes().filter((b) => b.checked).map((b) => b.value);
+    const syncModelTypeCap = () => {
+      const boxes = modelTypeBoxes();
+      if (!boxes.length) return;
+      const chosen = boxes.filter((b) => b.checked).length;
+      const atCap = chosen >= MODEL_TYPES_MAX;
+      boxes.forEach((b) => {
+        b.disabled = atCap && !b.checked;
+        const label = b.closest("label");
+        if (label) label.style.opacity = b.disabled ? "0.45" : "1";
+      });
+      const hint = $("#f_model_types_hint");
+      if (hint) {
+        hint.textContent = atCap
+          ? `Maximum of ${MODEL_TYPES_MAX} reached — untick one to choose a different type.`
+          : "Shown beside the model's name on the comp card album, in the lightbox, and on the exported PDF.";
+      }
+    };
+    const writeModelTypes = (types) => {
+      const wanted = new Set(modelTypesOf({ modelTypes: types }));
+      modelTypeBoxes().forEach((b) => { b.checked = wanted.has(b.value); });
+      syncModelTypeCap();
+    };
+    modelTypeBoxes().forEach((b) => b.addEventListener("change", syncModelTypeCap));
+    syncModelTypeCap();
+
     const diagInput = $("#f_diagram_file"), diagPreview = $("#diagramPreview"), diagImg = $("#f_diagram_img"), diagVisibility = $("#f_diagram_visibility"), clearDiagBtn = $("#clearDiagramBtn");
     const testimonialOnlyCheckbox = $("#f_is_testimonial_only");
     
@@ -7345,6 +7563,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         $("#f_shoes").value = editingShoot.shoes || "";
         $("#f_model_hair").value = editingShoot.modelHair || "";
         $("#f_model_eyes").value = editingShoot.modelEyes || "";
+        writeModelTypes(editingShoot.modelTypes);
         if ($("#f_show_stats_comp")) $("#f_show_stats_comp").checked = (editingShoot.showStatsOnCompCard !== false);
         if ($("#f_show_stats_port")) $("#f_show_stats_port").checked = (editingShoot.showStatsOnModelPortfolio !== false);
         if ($("#f_show_test_shoot_cat")) $("#f_show_test_shoot_cat").checked = !!editingShoot.showTestShootCategory;
@@ -7932,6 +8151,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         shoes: isTestimonialOnly ? "" : val("f_shoes"),
         modelHair: isTestimonialOnly ? "" : val("f_model_hair"),
         modelEyes: isTestimonialOnly ? "" : val("f_model_eyes"),
+        modelTypes: isTestimonialOnly ? [] : modelTypesOf({ modelTypes: readModelTypes() }),
         showStatsOnCompCard: isTestimonialOnly ? true : ($("#f_show_stats_comp") ? $("#f_show_stats_comp").checked : true),
         showStatsOnModelPortfolio: isTestimonialOnly ? true : ($("#f_show_stats_port") ? $("#f_show_stats_port").checked : true),
         showTestShootCategory: isTestimonialOnly ? false : ($("#f_show_test_shoot_cat") ? $("#f_show_test_shoot_cat").checked : false),
@@ -10399,6 +10619,36 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       });
     });
 
+    // One share affordance for both card layouts. Prefers the OS share sheet,
+    // because this is mostly pressed on a phone to send a model their own
+    // card over WhatsApp, and falls back to the clipboard and then to a
+    // prompt — clipboard access needs a secure context and can be refused,
+    // and the old handler's only answer to that was "Failed to copy link".
+    function wireShareButton(btn, album) {
+      if (!btn || !album) return;
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const url = shareUrlFor(album);
+        const title = getTalentCleanName(album.isCompCard ? album.talent : (album.title || "Album"));
+        if (navigator.share) {
+          try {
+            await navigator.share({ title, url });
+            return;
+          } catch (err) {
+            // AbortError means the sheet opened and was dismissed on purpose;
+            // anything else means it never opened, so fall through.
+            if (err && err.name === "AbortError") return;
+          }
+        }
+        try {
+          await navigator.clipboard.writeText(url);
+          toast("Link copied to clipboard");
+        } catch {
+          prompt("Copy this album link:", url);
+        }
+      });
+    }
+
     // noth.in full-bleed work cards → open the shoot in the lightbox.
     view.querySelectorAll(".noth-work").forEach((card) => {
       const s = CURRENT_VIEW_SHOOTS.find((x) => x.id === card.dataset.shoot) || SHOOTS.find((x) => x.id === card.dataset.shoot);
@@ -10411,17 +10661,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       media?.addEventListener("click", open);
       cta?.addEventListener("click", open);
 
-      // Wire share button
-      const shareBtn = card.querySelector(".work-share");
-      shareBtn?.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const shareUrl = `${window.location.origin}/share/${s.id}`;
-        navigator.clipboard.writeText(shareUrl).then(() => {
-          toast("Link copied to clipboard");
-        }).catch(() => {
-          toast("Failed to copy link");
-        });
-      });
+      wireShareButton(card.querySelector(".work-share"), s);
 
       // Wire admin edit & delete buttons
       card.querySelectorAll(".work-edit").forEach(btn => {
@@ -10509,6 +10749,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         block.querySelector(".work-media")?.addEventListener("click", open);
       }
       block.querySelector(".work-open")?.addEventListener("click", open);
+      wireShareButton(block.querySelector(".work-share"), s);
       
       // edit buttons click handler
       block.querySelectorAll(".work-edit").forEach(btn => {
@@ -10724,7 +10965,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       if (key === "categories") {
         html = viewCategories(kind, val);
       } else if (key === "share") {
-        html = viewSharedAlbum(kind);
+        // ?a= is what share links carry now; parts[1] is the older
+        // /share/<album> path form, still handed out in links already sent.
+        html = viewSharedAlbum(params.get("a") || parts[1] || "");
       } else {
         html = fn();
       }
@@ -10767,6 +11010,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         } else {
           pageTitle = `Browse by Category — ${cfg.studioName}`;
           pageDesc = `Explore creative photoshoots categorized by activity (genre), brand, or production type.`;
+        }
+      } else if (key === "share") {
+        const shared = CURRENT_VIEW_SHOOTS[0];
+        if (shared) {
+          const sharedName = getTalentCleanName(shared.isCompCard ? shared.talent : (shared.title || "Album"));
+          pageTitle = `${sharedName}${shared.isCompCard ? " — Comp Card" : ""} — ${cfg.studioName}`;
+          pageDesc = shared.description || `${sharedName} — photographed by ${cfg.studioName}, Noida & Delhi NCR.`;
         }
       } else if (key === "studio") {
         pageTitle = `The Creative Studio — ${cfg.studioName}`;
@@ -10960,6 +11210,20 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       <div style="color: #555; font-size: calc(7.5px * var(--print-scale, 1));">Where brands and models build their story — Fashion, Fitness, Lifestyle &amp; Sports Photography | Noida. All portfolio cards, comp cards, and photography frames are official creative works produced under nerdyphotographer.in studio.</div>
     </div>
   `;
+
+  // Print twin of modelTypeBadgesHtml. The export renders into a bare print
+  // container that styles.css classes don't reach, so every rule is inline
+  // and sized off --print-scale like the rest of the sheet. Pure black on
+  // near-white: these have to survive a cheap agency photocopy.
+  function printModelTypeBadgesHtml(shoot) {
+    const types = modelTypesOf(shoot);
+    if (!types.length) return "";
+    return `
+      <div style="display: flex; flex-wrap: wrap; gap: calc(6px * var(--print-scale, 1)); margin: 0; flex: 0 0 auto;">
+        ${types.map((t) => `<span style="font-family:'JetBrains Mono', monospace; font-size: calc(9px * var(--print-scale, 1)); font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #000; background: #f4f4f2; border: 1px solid #000; border-radius: 999px; padding: calc(3px * var(--print-scale, 1)) calc(10px * var(--print-scale, 1)); white-space: nowrap;">${esc(modelTypeLabel(t))}</span>`).join("")}
+      </div>
+    `;
+  }
 
   function printStatsBarHtml(shoot) {
     if (shoot.showStatsOnCompCard === false) return "";
@@ -11461,7 +11725,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <span style="font-family:'JetBrains Mono', monospace; font-size: calc(10px * var(--print-scale, 1)); font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;">MODEL COMP CARD</span>
           <span style="font-family:'JetBrains Mono', monospace; font-size: calc(10px * var(--print-scale, 1)); font-weight: 800; color: #000; text-transform: uppercase;">Clicked by nerdyphotographer.in</span>
         </div>
-        <h1 style="font-family:'Outfit', sans-serif; font-size: calc(30px * var(--print-scale, 1)); font-weight: 800; margin: 0 0 calc(10px * var(--print-scale, 1)); text-transform: uppercase; color: #000; letter-spacing: -0.02em; flex: 0 0 auto;">${name}</h1>
+        <div style="display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: calc(12px * var(--print-scale, 1)); margin: 0 0 calc(10px * var(--print-scale, 1)); flex: 0 0 auto;">
+          <h1 style="font-family:'Outfit', sans-serif; font-size: calc(30px * var(--print-scale, 1)); font-weight: 800; margin: 0; text-transform: uppercase; color: #000; letter-spacing: -0.02em;">${name}</h1>
+          ${printModelTypeBadgesHtml(shoot)}
+        </div>
         <div class="cc-main-row">
           <div class="cc-cover-panel">
             ${cover ? `<img src="${photoSrc(cover)}" alt="Lead photo" />` : ""}
@@ -11593,6 +11860,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px;">
             <p style="font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--accent, #d24e1a); text-transform: uppercase; letter-spacing: 0.15em; margin: 0;">The Composite Lookbook</p>
             <h1 style="font-family:'Outfit', sans-serif; font-size: 34px; font-weight: 800; margin: 0; text-transform: uppercase; color: #000; letter-spacing: -0.03em; line-height: 1.05;">${esc(name)}</h1>
+            ${printModelTypeBadgesHtml(shoot)}
             <p style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #555; letter-spacing: 0.05em; margin: 0;">SEASON ${new Date().getFullYear()}${locationLine}</p>
           </div>
           <div style="flex: 1.3; position: relative; background: #f4f4f2; border: 1px solid #e2e0dc; border-radius: 6px; overflow: hidden; min-height: 0;">

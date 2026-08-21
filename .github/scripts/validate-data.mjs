@@ -66,6 +66,31 @@ function extractFunction(name) {
   }
   return appText.slice(fnStart, i + 1);
 }
+// Same brace-matching walk, for the `const NAME = …;` form (arrow functions
+// and const literals), which extractFunction's "function NAME" anchor misses.
+function extractConst(name) {
+  const start = appText.indexOf("\n  const " + name + " ");
+  if (start === -1) throw new Error("const " + name + " not found in app.js");
+  let depth = 0, i = start + 1, mode = null;
+  for (; i < appText.length; i++) {
+    const c = appText[i], n = appText[i + 1];
+    if (mode === "//") { if (c === "\n") mode = null; continue; }
+    if (mode === "/*") { if (c === "*" && n === "/") { mode = null; i++; } continue; }
+    if (mode) {
+      if (c === "\\") { i++; continue; }
+      if (c === mode) mode = null;
+      continue;
+    }
+    if (c === "'" || c === '"' || c === "`") { mode = c; continue; }
+    if (c === "/" && n === "/") { mode = "//"; i++; continue; }
+    if (c === "/" && n === "*") { mode = "/*"; i++; continue; }
+    if (c === "{" || c === "(" || c === "[") depth++;
+    else if (c === "}" || c === ")" || c === "]") depth--;
+    else if (c === ";" && depth === 0) break;
+  }
+  return appText.slice(start + 1, i + 1);
+}
+
 try {
   const src = ["parseArrayAfterKey", "parseShootsFromDataJs", "parseDeletedIdsFromDataJs"].map(extractFunction).join("\n");
   const api = new Function(src + "\nreturn { parseShootsFromDataJs, parseDeletedIdsFromDataJs };")();
@@ -142,6 +167,70 @@ if (!swVersion) {
       fail(`app.js pins ?v=${m[1]} ("${m[0].slice(1, 60)}") but sw.js declares ASSET_VERSION=${swVersion} — a pinned literal drifts silently; bump it or drop the ?v=`);
     }
   }
+}
+
+// ── 8. share links: every album's link must resolve back to that album ─────
+// Album share links silently rotted: the /share/… handler looked albums up by
+// exact id and required isPublic to be truthy, so it answered "Album not
+// found" for every album published before that flag existed — and for every
+// comp card, whose album is assembled on the fly and has no stored id at all.
+// Nothing tested it, so it stayed broken for as long as it took someone to
+// click a link they had sent. This runs the app's real link builder and
+// resolver over the real published data on every push.
+try {
+  const decls = [
+    extractFunction("getTalentCleanName"),
+    extractFunction("shuffleArray"),
+    extractFunction("modelTypesOf"),
+    extractFunction("buildCompCardDisplayList"),
+    extractFunction("shareIdFor"),
+    extractFunction("resolveShareId"),
+    extractConst("MODEL_TYPES"),
+    extractConst("MODEL_TYPES_MAX"),
+    extractConst("qualifiesAsCompCard"),
+    extractConst("slugify"),
+  ].join("\n");
+  const api = new Function(decls + "\nreturn { shareIdFor, resolveShareId, buildCompCardDisplayList, qualifiesAsCompCard };")();
+
+  // Public albums, as a visitor's SHOOTS list would hold them.
+  const visible = shoots.filter((s) => s && s.isPublic !== false);
+  // Plus the unified albums the Comp Cards and Model Portfolio pages build.
+  const unified = [
+    ...api.buildCompCardDisplayList(visible.filter(api.qualifiesAsCompCard), "type", "Comp Cards"),
+    ...api.buildCompCardDisplayList(visible.filter(api.qualifiesAsCompCard), "type", "Model Portfolio"),
+  ].filter((a) => a && a.isCompCard);
+
+  let checked = 0;
+  const seenLinks = new Map();
+  for (const album of [...visible, ...unified]) {
+    const shareId = api.shareIdFor(album);
+    if (!shareId) { fail(`album "${album.title || album.id}" produces an empty share link`); continue; }
+    if (/[\s?#/]/.test(shareId)) {
+      fail(`share link for "${album.title || album.id}" is not URL-safe: /share/${shareId}`);
+      continue;
+    }
+    // Two different albums answering to one link would make the link
+    // ambiguous — whichever resolved first would win, silently.
+    const prev = seenLinks.get(shareId);
+    if (prev && prev !== (album.talent || album.title)) {
+      fail(`two albums share the link /share/${shareId}: "${prev}" and "${album.talent || album.title}"`);
+    }
+    seenLinks.set(shareId, album.talent || album.title);
+
+    for (const form of [shareId, encodeURIComponent(shareId)]) {
+      const back = api.resolveShareId(form, visible);
+      if (!back) { fail(`share link /share/${form} resolves to nothing (album "${album.talent || album.title}")`); continue; }
+      const wantName = (album.talent || album.title || "").trim();
+      const gotName = (back.talent || back.title || "").trim();
+      if (back.id !== album.id && gotName !== wantName) {
+        fail(`share link /share/${form} resolves to "${gotName}" but was built for "${wantName}"`);
+      }
+    }
+    checked++;
+  }
+  console.log(`share links OK (${checked} albums, real + unified comp cards)`);
+} catch (e) {
+  fail("could not run app.js share-link builder/resolver: " + e.message);
 }
 
 if (failed) process.exit(1);
