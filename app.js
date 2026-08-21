@@ -1149,14 +1149,37 @@ window.moveAdminPackageRow = function(index, dir) {
   // is a list, not one value. It is capped at two: a comp card claiming four
   // specialities reads as claiming none, and the printed card only has room
   // for two badges beside the name.
+  // The four the studio started with. Not a closed list — the panel can add
+  // its own (Commercial, Editorial, Runway, whatever a casting calls for);
+  // these are just the ones that are always offered, so a fresh album never
+  // opens on an empty picker.
   const MODEL_TYPES = ["Fashion", "Fitness", "Sports", "Lifestyle"];
   const MODEL_TYPES_MAX = 2;
+  // Long enough for "Commercial Print", short enough that a typed-in essay
+  // can't push the printed comp card's name off its own line.
+  const MODEL_TYPE_MAXLEN = 24;
+
+  // Canonical spelling for one type. Case and a trailing "Model"/"Models" are
+  // noise — "fashion", "Fashion" and "Fashion Model" are the same book — so
+  // they are normalised away here, and a value matching a built-in adopts the
+  // built-in's exact casing. Without this, a type typed slightly differently
+  // on two albums would show up as two separate options in the picker.
+  function normalizeModelType(value) {
+    const name = String(value ?? "").replace(/\s+/g, " ").trim().replace(/\s*models?$/i, "").trim();
+    if (!name) return "";
+    const known = MODEL_TYPES.find((t) => t.toLowerCase() === name.toLowerCase());
+    if (known) return known;
+    return name.slice(0, MODEL_TYPE_MAXLEN)
+      .split(" ")
+      .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+      .join(" ");
+  }
 
   // Accepts whatever a record happens to carry — a real array, a legacy
   // comma-separated string, or nothing at all — and always answers with a
-  // deduped list of known values, at most MODEL_TYPES_MAX long. Everything
-  // that reads model types goes through here so no surface has to re-guess
-  // the shape or re-apply the cap.
+  // normalised, deduped list at most MODEL_TYPES_MAX long. Everything that
+  // reads model types goes through here so no surface has to re-guess the
+  // shape or re-apply the cap.
   function modelTypesOf(shoot) {
     if (!shoot) return [];
     const raw = shoot.modelTypes ?? shoot.modelType;
@@ -1164,20 +1187,63 @@ window.moveAdminPackageRow = function(index, dir) {
     const seen = new Set();
     const out = [];
     for (const item of list) {
-      // Tolerates "Fashion", "fashion", and "Fashion Model" alike, so a value
-      // typed by hand into data.js still matches.
-      const name = String(item ?? "").trim().replace(/\s*models?$/i, "");
-      const match = MODEL_TYPES.find((t) => t.toLowerCase() === name.toLowerCase());
-      if (!match || seen.has(match)) continue;
-      seen.add(match);
-      out.push(match);
+      const name = normalizeModelType(item);
+      if (!name || seen.has(name.toLowerCase())) continue;
+      seen.add(name.toLowerCase());
+      out.push(name);
       if (out.length === MODEL_TYPES_MAX) break;
     }
     return out;
   }
+
+  // Everything the picker offers: the built-ins, then whatever the studio has
+  // added, in use order. A custom type is an option because some album
+  // carries it — there is no separate list to keep in sync, and nothing extra
+  // to publish, so a type added on one album is offered on every album as
+  // soon as that one is saved.
+  function modelTypeOptions(extra = []) {
+    const seen = new Map();
+    const add = (t) => {
+      const name = normalizeModelType(t);
+      if (name && !seen.has(name.toLowerCase())) seen.set(name.toLowerCase(), name);
+    };
+    MODEL_TYPES.forEach(add);
+    (Array.isArray(SHOOTS) ? SHOOTS : []).forEach((s) => modelTypesOf(s).forEach(add));
+    (Array.isArray(extra) ? extra : [extra]).forEach(add);
+    return [...seen.values()];
+  }
   // Stored bare ("Fashion") so each surface can label it its own way; this is
   // the one the public sees.
   const modelTypeLabel = (t) => `${t} Model`;
+
+  // Every card used to print "Chest/Bust" for everyone, which is a label no
+  // real model has: a person has one or the other, whatever their gender, and
+  // a comp card hedging between the two reads as a form, not a card. The
+  // studio picks the word per model; "Chest" only stands in until they do.
+  const CHEST_LABELS = ["Chest", "Bust"];
+  const chestLabelOf = (shoot) => {
+    const raw = String((shoot && shoot.chestLabel) || "").trim().toLowerCase();
+    return CHEST_LABELS.find((l) => l.toLowerCase() === raw) || CHEST_LABELS[0];
+  };
+
+  // Fields that can exist only in the published copy, because they were
+  // written into data.js directly rather than through the panel. "Local wins
+  // by id" treats a device's copy of an album as the whole truth, which for
+  // these means two silent failures at once: the field is invisible on the
+  // one device that has a local copy — the studio's own — and the next
+  // publish from that device removes it for everyone else too. Model type hit
+  // exactly this. Both merges call this, and it is strictly additive: a value
+  // actually set on a device always wins.
+  function backfillPublishedOnlyFields(local, published) {
+    if (!local || !published || local === published) return local;
+    if (!modelTypesOf(local).length && modelTypesOf(published).length) {
+      local.modelTypes = modelTypesOf(published);
+    }
+    if (!String(local.chestLabel || "").trim() && String(published.chestLabel || "").trim()) {
+      local.chestLabel = published.chestLabel;
+    }
+    return local;
+  }
   // On-screen chips. Shared by the album card and the lightbox so the two
   // never drift; the print surfaces have their own inline-styled version
   // because the PDF window carries none of this stylesheet.
@@ -1553,6 +1619,12 @@ window.moveAdminPackageRow = function(index, dir) {
     const mergedById = new Map();
     demoList.forEach(s => { if (s && s.id && (usingDemo || !s.demo)) mergedById.set(s.id, s); });
     validReal.forEach(s => { if (s && s.id) mergedById.set(s.id, s); });
+    // Published-only fields survive a device's local copy of the album — see
+    // backfillPublishedOnlyFields. Without this the studio's own browser is
+    // the one place they never appear.
+    demoList.forEach((pub) => {
+      if (pub && pub.id) backfillPublishedOnlyFields(mergedById.get(pub.id), pub);
+    });
     // Deleted albums stay deleted: drop every id tombstoned either in the
     // published data.js (DELETED_IDS) or locally on this device — otherwise
     // the merge above would resurrect a deleted album from whichever side
@@ -1737,11 +1809,10 @@ window.moveAdminPackageRow = function(index, dir) {
       for (const s of shoots) {
         const r = remoteById.get(s.id);
         if (!r) continue;
-        // Model type follows the same additive rule, for the same reason: a
-        // device still running a build from before the field existed holds a
-        // local record without one, and publishing from it would clear the
-        // model's type for every visitor. A type set locally always wins.
-        if (!modelTypesOf(s).length && modelTypesOf(r).length) s.modelTypes = modelTypesOf(r);
+        // ...and the same additive rule for fields that may only exist in the
+        // published copy, so publishing from a device whose record predates
+        // them cannot clear them for every visitor.
+        backfillPublishedOnlyFields(s, r);
         if (!Array.isArray(r.photos)) continue;
         const rPhotos = new Map(r.photos.map((p) => [p && p.id, p]));
         for (const p of s.photos || []) {
@@ -2022,7 +2093,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (isCc && hasStats && statsAllowedHere) {
       const statItems = [
         shoot.height ? `<span>📏 <strong>Height:</strong> ${esc(shoot.height)}</span>` : "",
-        shoot.chest ? `<span>👚 <strong>Bust/Chest:</strong> ${esc(shoot.chest)}</span>` : "",
+        shoot.chest ? `<span>👚 <strong>${esc(chestLabelOf(shoot))}:</strong> ${esc(shoot.chest)}</span>` : "",
         shoot.waist ? `<span>👗 <strong>Waist:</strong> ${esc(shoot.waist)}</span>` : "",
         shoot.hips ? `<span>👠 <strong>Hips:</strong> ${esc(shoot.hips)}</span>` : "",
         shoot.shoes ? `<span>👟 <strong>Shoes:</strong> ${esc(shoot.shoes)}</span>` : "",
@@ -3289,7 +3360,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <p class="eyebrow" style="font-size: var(--font-xs); margin-bottom: 8px; color: var(--ink-soft); letter-spacing: 0.05em; text-align: left;">Model Stats</p>
               <div class="stats-row">
                 ${latestShoot.height ? `<div class="stats-item"><dt>Height</dt><dd>${esc(latestShoot.height)}</dd></div>` : ""}
-                ${latestShoot.chest ? `<div class="stats-item"><dt>Chest/Bust</dt><dd>${esc(latestShoot.chest)}</dd></div>` : ""}
+                ${latestShoot.chest ? `<div class="stats-item"><dt>${esc(chestLabelOf(latestShoot))}</dt><dd>${esc(latestShoot.chest)}</dd></div>` : ""}
                 ${latestShoot.waist ? `<div class="stats-item"><dt>Waist</dt><dd>${esc(latestShoot.waist)}</dd></div>` : ""}
                 ${latestShoot.hips ? `<div class="stats-item"><dt>Hips</dt><dd>${esc(latestShoot.hips)}</dd></div>` : ""}
                 ${latestShoot.shoes ? `<div class="stats-item"><dt>Shoes</dt><dd>${esc(latestShoot.shoes)}</dd></div>` : ""}
@@ -6059,6 +6130,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           type: "Selective Collaboration (TFP)",
           height: findStat("height"),
           chest: findStat("chest"),
+          chestLabel: findStat("chestLabel"),
           waist: findStat("waist"),
           hips: findStat("hips"),
           shoes: findStat("shoes"),
@@ -6687,18 +6759,28 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <div class="field" style="margin-bottom: 6px;">
                 <span>Model type <span style="font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-soft);">— pick up to ${MODEL_TYPES_MAX}</span></span>
                 <div id="f_model_types" style="display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 8px;">
-                  ${MODEL_TYPES.map((t) => `
+                  ${modelTypeOptions().map((t) => `
                     <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); font-weight: 500; color: var(--ink); cursor: pointer; user-select: none;">
                       <input type="checkbox" class="model-type-cb" value="${esc(t)}" style="width: 16px; height: 16px; accent-color: var(--accent);" />
                       ${esc(modelTypeLabel(t))}
                     </label>
                   `).join("")}
                 </div>
+                <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center;">
+                  <input id="f_model_type_new" type="text" maxlength="${MODEL_TYPE_MAXLEN}" placeholder="Add another type, e.g. Commercial" style="flex: 1 1 220px; min-width: 0; height: 38px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 6px; padding: 0 12px; box-sizing: border-box; font-size: var(--font-sm); outline: none;" />
+                  <button type="button" id="f_model_type_add" class="btn btn-ghost" style="height: 38px; padding: 0 16px; font-size: var(--font-xs); font-family: 'JetBrains Mono', monospace; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">+ Add</button>
+                </div>
                 <p id="f_model_types_hint" style="margin: 6px 0 0; font-size: var(--font-xs); color: var(--ink-soft);">Shown beside the model's name on the comp card album, in the lightbox, and on the exported PDF.</p>
               </div>
               <div class="field-row">
                 <label class="field"><span>Height</span><input id="f_height" type="text" placeholder="e.g. 5'11&quot; / 180 cm" /></label>
-                <label class="field"><span>Bust / Chest</span><input id="f_chest" type="text" placeholder="e.g. 34&quot; / 86 cm" /></label>
+                <div class="field">
+                  <span>Chest or bust <span style="font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-soft);">— pick the word this model's card should use</span></span>
+                  <div style="display: flex; gap: 8px; margin-top: 6px;">
+                    <select id="f_chest_label" style="flex: 0 0 110px;">${opt(CHEST_LABELS)}</select>
+                    <input id="f_chest" type="text" placeholder="e.g. 38-40 cm" style="flex: 1 1 auto; min-width: 0;" />
+                  </div>
+                </div>
               </div>
               <div class="field-row">
                 <label class="field"><span>Waist</span><input id="f_waist" type="text" placeholder="e.g. 26&quot; / 66 cm" /></label>
@@ -7417,11 +7499,70 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           : "Shown beside the model's name on the comp card album, in the lightbox, and on the exported PDF.";
       }
     };
+    // Adds a tickbox for a type the picker isn't offering yet, and hands back
+    // the box either way. Needed twice over: for a type the studio types in
+    // here, and for one an album already carries that no other album does
+    // (edited on another device, or hand-written into data.js).
+    const ensureModelTypeBox = (name) => {
+      const clean = normalizeModelType(name);
+      if (!clean) return null;
+      const existing = modelTypeBoxes().find((b) => b.value.toLowerCase() === clean.toLowerCase());
+      if (existing) return existing;
+      const wrap = $("#f_model_types");
+      if (!wrap) return null;
+      const label = document.createElement("label");
+      label.style.cssText = "display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); font-weight: 500; color: var(--ink); cursor: pointer; user-select: none;";
+      const box = document.createElement("input");
+      box.type = "checkbox";
+      box.className = "model-type-cb";
+      box.value = clean;
+      box.style.cssText = "width: 16px; height: 16px; accent-color: var(--accent);";
+      box.addEventListener("change", syncModelTypeCap);
+      label.appendChild(box);
+      label.appendChild(document.createTextNode(" " + modelTypeLabel(clean)));
+      wrap.appendChild(label);
+      return box;
+    };
+
     const writeModelTypes = (types) => {
-      const wanted = new Set(modelTypesOf({ modelTypes: types }));
-      modelTypeBoxes().forEach((b) => { b.checked = wanted.has(b.value); });
+      const wanted = modelTypesOf({ modelTypes: types });
+      wanted.forEach(ensureModelTypeBox);
+      const set = new Set(wanted.map((t) => t.toLowerCase()));
+      modelTypeBoxes().forEach((b) => { b.checked = set.has(b.value.toLowerCase()); });
       syncModelTypeCap();
     };
+
+    // "+ Add" is only ever adding an option to this picker — the type becomes
+    // a permanent choice for every other album by virtue of this album being
+    // saved with it, so there is no separate list to edit and nothing extra
+    // to publish.
+    const addTypedModelType = () => {
+      const input = $("#f_model_type_new");
+      if (!input) return;
+      const clean = normalizeModelType(input.value);
+      if (!clean) { toast("Type a model type first, e.g. Commercial."); return; }
+      const existed = modelTypeBoxes().some((b) => b.value.toLowerCase() === clean.toLowerCase());
+      const box = ensureModelTypeBox(clean);
+      if (!box) return;
+      input.value = "";
+      if (box.checked) { toast(`${modelTypeLabel(clean)} is already selected.`); return; }
+      // At the cap the option is still added — it just isn't ticked, rather
+      // than silently doing nothing or quietly dropping an existing pick.
+      if (readModelTypes().length >= MODEL_TYPES_MAX) {
+        syncModelTypeCap();
+        toast(`Added ${modelTypeLabel(clean)} to the list. Untick one to select it.`);
+        return;
+      }
+      box.checked = true;
+      syncModelTypeCap();
+      toast(existed ? `Selected ${modelTypeLabel(clean)}.` : `Added ${modelTypeLabel(clean)}.`);
+    };
+    $("#f_model_type_add")?.addEventListener("click", addTypedModelType);
+    $("#f_model_type_new")?.addEventListener("keydown", (e) => {
+      // Enter in a text field would otherwise submit the whole album form.
+      if (e.key === "Enter") { e.preventDefault(); addTypedModelType(); }
+    });
+
     modelTypeBoxes().forEach((b) => b.addEventListener("change", syncModelTypeCap));
     syncModelTypeCap();
 
@@ -7558,6 +7699,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         if ($("#f_ig")) $("#f_ig").dispatchEvent(new Event("input"));
         if ($("#f_kavyar")) $("#f_kavyar").dispatchEvent(new Event("input"));
         $("#f_chest").value = editingShoot.chest || "";
+        if ($("#f_chest_label")) $("#f_chest_label").value = chestLabelOf(editingShoot);
         $("#f_waist").value = editingShoot.waist || "";
         $("#f_hips").value = editingShoot.hips || "";
         $("#f_shoes").value = editingShoot.shoes || "";
@@ -8146,6 +8288,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         location: isTestimonialOnly ? "" : val("f_location"),
         height: isTestimonialOnly ? "" : val("f_height"),
         chest: isTestimonialOnly ? "" : val("f_chest"),
+        chestLabel: isTestimonialOnly ? "" : chestLabelOf({ chestLabel: val("f_chest_label") }),
         waist: isTestimonialOnly ? "" : val("f_waist"),
         hips: isTestimonialOnly ? "" : val("f_hips"),
         shoes: isTestimonialOnly ? "" : val("f_shoes"),
@@ -11215,11 +11358,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // container that styles.css classes don't reach, so every rule is inline
   // and sized off --print-scale like the rest of the sheet. Pure black on
   // near-white: these have to survive a cheap agency photocopy.
-  function printModelTypeBadgesHtml(shoot) {
+  function printModelTypeBadgesHtml(shoot, extraStyle = "") {
     const types = modelTypesOf(shoot);
     if (!types.length) return "";
     return `
-      <div style="display: flex; flex-wrap: wrap; gap: calc(6px * var(--print-scale, 1)); margin: 0; flex: 0 0 auto;">
+      <div style="display: flex; flex-wrap: wrap; gap: calc(6px * var(--print-scale, 1)); margin: 0; flex: 0 0 auto; ${extraStyle}">
         ${types.map((t) => `<span style="font-family:'JetBrains Mono', monospace; font-size: calc(9px * var(--print-scale, 1)); font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #000; background: #f4f4f2; border: 1px solid #000; border-radius: 999px; padding: calc(3px * var(--print-scale, 1)) calc(10px * var(--print-scale, 1)); white-space: nowrap;">${esc(modelTypeLabel(t))}</span>`).join("")}
       </div>
     `;
@@ -11230,7 +11373,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
     const statsArr = [];
     if (shoot.height) statsArr.push(`Height: ${shoot.height}`);
-    if (shoot.chest) statsArr.push(`Chest/Bust: ${shoot.chest}`);
+    if (shoot.chest) statsArr.push(`${chestLabelOf(shoot)}: ${shoot.chest}`);
     if (shoot.waist) statsArr.push(`Waist: ${shoot.waist}`);
     if (shoot.hips) statsArr.push(`Hips: ${shoot.hips}`);
     if (shoot.shoes) statsArr.push(`Shoes: ${shoot.shoes}`);
@@ -11725,10 +11868,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <span style="font-family:'JetBrains Mono', monospace; font-size: calc(10px * var(--print-scale, 1)); font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;">MODEL COMP CARD</span>
           <span style="font-family:'JetBrains Mono', monospace; font-size: calc(10px * var(--print-scale, 1)); font-weight: 800; color: #000; text-transform: uppercase;">Clicked by nerdyphotographer.in</span>
         </div>
-        <div style="display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: calc(12px * var(--print-scale, 1)); margin: 0 0 calc(10px * var(--print-scale, 1)); flex: 0 0 auto;">
-          <h1 style="font-family:'Outfit', sans-serif; font-size: calc(30px * var(--print-scale, 1)); font-weight: 800; margin: 0; text-transform: uppercase; color: #000; letter-spacing: -0.02em;">${name}</h1>
-          ${printModelTypeBadgesHtml(shoot)}
-        </div>
+        <h1 style="font-family:'Outfit', sans-serif; font-size: calc(30px * var(--print-scale, 1)); font-weight: 800; margin: 0 0 calc(8px * var(--print-scale, 1)); text-transform: uppercase; color: #000; letter-spacing: -0.02em; flex: 0 0 auto;">${name}</h1>
+        ${printModelTypeBadgesHtml(shoot, "margin: 0 0 calc(10px * var(--print-scale, 1));")}
         <div class="cc-main-row">
           <div class="cc-cover-panel">
             ${cover ? `<img src="${photoSrc(cover)}" alt="Lead photo" />` : ""}
@@ -11806,7 +11947,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (shoot.showStatsOnModelPortfolio === false) return "";
     const rows = [];
     if (shoot.height) rows.push(["Height", shoot.height]);
-    if (shoot.chest) rows.push(["Chest/Bust", shoot.chest]);
+    if (shoot.chest) rows.push([chestLabelOf(shoot), shoot.chest]);
     if (shoot.waist) rows.push(["Waist", shoot.waist]);
     if (shoot.hips) rows.push(["Hips", shoot.hips]);
     if (shoot.shoes) rows.push(["Shoes", shoot.shoes]);

@@ -181,16 +181,32 @@ try {
   const decls = [
     extractFunction("getTalentCleanName"),
     extractFunction("shuffleArray"),
+    extractFunction("normalizeModelType"),
     extractFunction("modelTypesOf"),
     extractFunction("buildCompCardDisplayList"),
     extractFunction("shareIdFor"),
     extractFunction("resolveShareId"),
     extractConst("MODEL_TYPES"),
     extractConst("MODEL_TYPES_MAX"),
+    extractConst("MODEL_TYPE_MAXLEN"),
     extractConst("qualifiesAsCompCard"),
     extractConst("slugify"),
   ].join("\n");
-  const api = new Function(decls + "\nreturn { shareIdFor, resolveShareId, buildCompCardDisplayList, qualifiesAsCompCard };")();
+  const api = new Function(decls + "\nreturn { shareIdFor, resolveShareId, buildCompCardDisplayList, qualifiesAsCompCard, modelTypesOf };")();
+
+  // Model types are free text now — the studio can add its own from the panel
+  // — so the published values are worth a look. modelTypesOf silently drops
+  // anything blank and truncates past the cap; that is right at render time
+  // but wrong to discover only there, because a dropped type is a type the
+  // studio thought it had set.
+  for (const s of shoots) {
+    if (s.modelTypes === undefined) continue;
+    if (!Array.isArray(s.modelTypes)) { fail(`album "${s.title || s.id}" has modelTypes that is not an array: ${JSON.stringify(s.modelTypes)}`); continue; }
+    const kept = api.modelTypesOf(s);
+    if (kept.length < s.modelTypes.length) {
+      fail(`album "${s.title || s.id}" stores ${s.modelTypes.length} model type(s) ${JSON.stringify(s.modelTypes)} but only ${kept.length} survive normalisation ${JSON.stringify(kept)} — the rest are blank, duplicates, or past the cap and would never show`);
+    }
+  }
 
   // Public albums, as a visitor's SHOOTS list would hold them.
   const visible = shoots.filter((s) => s && s.isPublic !== false);
