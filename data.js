@@ -1012,7 +1012,7 @@ window.WPS_DATA = {
       "hair": "—",
       "mua": "—",
       "videographer": "—",
-      "talent": "Arushi Sharma",
+      "talent": "Arushi Sharma (https://www.instagram.com/arushi_sharma0011/?hl=en)",
       "location": "Delhi",
       "height": "",
       "chest": "",
@@ -1034,7 +1034,7 @@ window.WPS_DATA = {
       "tags": "",
       "gear": "",
       "client": "",
-      "date": "2026-08-01",
+      "date": "2026-08-22",
       "instagram": "",
       "kavyar": "",
       "link": "",
@@ -1044,8 +1044,8 @@ window.WPS_DATA = {
       "lightingDiagram": null,
       "lightingDiagramVisibility": "private",
       "palette": [
-        "#5b554e",
-        "#292623"
+        "#a29891",
+        "#494441"
       ],
       "photos": [
         {
@@ -1099,7 +1099,7 @@ window.WPS_DATA = {
       "showStats": true,
       "showGear": true,
       "showLocation": true,
-      "coverPhotoId": "mt46vb5kc2ke3j"
+      "coverPhotoId": "mt46vbif8bnruy"
     }
   ],
   "DELETED_IDS": [
