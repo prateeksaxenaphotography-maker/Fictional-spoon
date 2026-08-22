@@ -45,7 +45,6 @@ window.WPS_DATA = {
       "hair": "—",
       "mua": "—",
       "talent": "Rhythm Vohra",
-      "modelTypes": ["Fashion"],
       "location": "Noida",
       "height": "",
       "chest": "",
@@ -128,7 +127,10 @@ window.WPS_DATA = {
       ],
       "featured": false,
       "coverPhotoId": "mr4x1ect353v87",
-      "hideFromCompCard": true
+      "hideFromCompCard": true,
+      "modelTypes": [
+        "Fashion"
+      ]
     },
     {
       "id": "mr4x6kwx3f8rs3",
@@ -146,7 +148,6 @@ window.WPS_DATA = {
       "mua": "Rashi Sehgal",
       "videographer": "—",
       "talent": "Prachi Choudhary",
-      "modelTypes": ["Fashion"],
       "location": "Noida",
       "height": "",
       "chest": "",
@@ -250,7 +251,10 @@ window.WPS_DATA = {
       "featured": true,
       "hideFromCompCard": false,
       "disableCompCardDownload": false,
-      "coverPhotoId": "mr4xef6bqu7p7h"
+      "coverPhotoId": "mr4xef6bqu7p7h",
+      "modelTypes": [
+        "Fashion"
+      ]
     },
     {
       "id": "mr4x8hlwftbzar",
@@ -266,7 +270,6 @@ window.WPS_DATA = {
       "hair": "—",
       "mua": "Rashi Seghal",
       "talent": "Prachi Choudhary",
-      "modelTypes": ["Fashion"],
       "location": "Noida",
       "description": "",
       "tags": "",
@@ -306,7 +309,10 @@ window.WPS_DATA = {
         }
       ],
       "featured": true,
-      "coverPhotoId": "mr4x6zsiyu6yb2"
+      "coverPhotoId": "mr4x6zsiyu6yb2",
+      "modelTypes": [
+        "Fashion"
+      ]
     },
     {
       "id": "mr4xcy9982fs2s",
@@ -322,7 +328,6 @@ window.WPS_DATA = {
       "hair": "—",
       "mua": "Rashi Seghal",
       "talent": "Prachi Choudhary",
-      "modelTypes": ["Fashion"],
       "location": "Noida",
       "height": "",
       "chest": "",
@@ -359,7 +364,10 @@ window.WPS_DATA = {
         }
       ],
       "featured": true,
-      "coverPhotoId": "mr4x9djm45srat"
+      "coverPhotoId": "mr4x9djm45srat",
+      "modelTypes": [
+        "Fashion"
+      ]
     },
     {
       "id": "mr55364rvor33m",
@@ -377,7 +385,6 @@ window.WPS_DATA = {
       "mua": "—",
       "videographer": "—",
       "talent": "Kunaal Raghav",
-      "modelTypes": ["Fashion"],
       "location": "Noida",
       "height": "",
       "chest": "",
@@ -481,7 +488,10 @@ window.WPS_DATA = {
       "featured": true,
       "hideFromCompCard": false,
       "disableCompCardDownload": false,
-      "coverPhotoId": "mr5525erdhzei6"
+      "coverPhotoId": "mr5525erdhzei6",
+      "modelTypes": [
+        "Fashion"
+      ]
     },
     {
       "id": "mr8legmk0o8mqz",
@@ -499,7 +509,6 @@ window.WPS_DATA = {
       "mua": "—",
       "videographer": "—",
       "talent": "Abhishek Yadav",
-      "modelTypes": ["Fashion"],
       "location": "Noida",
       "height": "",
       "chest": "",
@@ -629,7 +638,10 @@ window.WPS_DATA = {
       "showStats": true,
       "showGear": true,
       "showLocation": true,
-      "coverPhotoId": "mr8ld69w1fq1e5"
+      "coverPhotoId": "mr8ld69w1fq1e5",
+      "modelTypes": [
+        "Fashion"
+      ]
     },
     {
       "id": "mranmpzmfblohv",
@@ -647,11 +659,9 @@ window.WPS_DATA = {
       "mua": "—",
       "videographer": "—",
       "talent": "Harshit Maindola",
-      "modelTypes": ["Fashion", "Lifestyle"],
       "location": "Jaipur",
       "height": "6'3",
       "chest": "38-40 cm",
-      "chestLabel": "Chest",
       "waist": "30 cm",
       "hips": "",
       "shoes": "UK11",
@@ -747,7 +757,12 @@ window.WPS_DATA = {
       "featured": false,
       "hideFromCompCard": false,
       "disableCompCardDownload": false,
-      "coverPhotoId": "mrania1npq2mxa"
+      "coverPhotoId": "mrania1npq2mxa",
+      "modelTypes": [
+        "Fashion",
+        "Lifestyle"
+      ],
+      "chestLabel": "Chest"
     },
     {
       "id": "ms36z1wqm2xkrz",
@@ -866,7 +881,6 @@ window.WPS_DATA = {
       "mua": "—",
       "videographer": "—",
       "talent": "Sumitt Verma (https://www.instagram.com/sumitt.verma03/?hl=en)",
-      "modelTypes": ["Fashion"],
       "location": "Noida",
       "height": "5'10",
       "chest": "",
@@ -978,7 +992,114 @@ window.WPS_DATA = {
       "showStats": true,
       "showGear": true,
       "showLocation": true,
-      "coverPhotoId": "msxi7u509ftp4v"
+      "coverPhotoId": "msxi7u509ftp4v",
+      "modelTypes": [
+        "Fashion"
+      ]
+    },
+    {
+      "id": "mt46wftacuy0w7",
+      "createdAt": 1787391753742,
+      "isTestimonial": false,
+      "title": "Arushi Sharma",
+      "brand": "Personal Project",
+      "activity": "Fashion",
+      "type": "Test Shoot",
+      "season": "August 2026",
+      "photographer": "nerdyphotographer",
+      "artDirector": "",
+      "stylist": "—",
+      "hair": "—",
+      "mua": "—",
+      "videographer": "—",
+      "talent": "Arushi Sharma",
+      "location": "Delhi",
+      "height": "",
+      "chest": "",
+      "chestLabel": "Chest",
+      "waist": "",
+      "hips": "",
+      "shoes": "",
+      "modelHair": "",
+      "modelEyes": "",
+      "modelTypes": [
+        "Fashion"
+      ],
+      "showStatsOnCompCard": true,
+      "showStatsOnModelPortfolio": true,
+      "showTestShootCategory": false,
+      "mentor": "",
+      "credits": "",
+      "description": "",
+      "tags": "",
+      "gear": "",
+      "client": "",
+      "date": "2026-08-01",
+      "instagram": "",
+      "kavyar": "",
+      "link": "",
+      "pdfUrl": "",
+      "rights": "",
+      "testimonials": [],
+      "lightingDiagram": null,
+      "lightingDiagramVisibility": "private",
+      "palette": [
+        "#5b554e",
+        "#292623"
+      ],
+      "photos": [
+        {
+          "id": "mt46vb5kc2ke3j-0",
+          "url": "photos/mt46wftacuy0w7/mt46vb5kc2ke3j-0.jpg",
+          "objectPosition": "60.3% 45.1%",
+          "small": "photos/mt46wftacuy0w7/mt46vb5kc2ke3j-0@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt46vb5kc2ke3j-0@960.jpg",
+          "focalX": 60.31215161649944,
+          "focalY": 45.07087115782768
+        },
+        {
+          "id": "mt46vbif8bnruy-1",
+          "url": "photos/mt46wftacuy0w7/mt46vbif8bnruy-1.jpg",
+          "objectPosition": "center",
+          "small": "photos/mt46wftacuy0w7/mt46vbif8bnruy-1@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt46vbif8bnruy-1@960.jpg"
+        },
+        {
+          "id": "mt46vc02133r8d-2",
+          "url": "photos/mt46wftacuy0w7/mt46vc02133r8d-2.jpg",
+          "objectPosition": "center",
+          "small": "photos/mt46wftacuy0w7/mt46vc02133r8d-2@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt46vc02133r8d-2@960.jpg"
+        },
+        {
+          "id": "mt46vc8shjn4k6-3",
+          "url": "photos/mt46wftacuy0w7/mt46vc8shjn4k6-3.jpg",
+          "objectPosition": "center",
+          "small": "photos/mt46wftacuy0w7/mt46vc8shjn4k6-3@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt46vc8shjn4k6-3@960.jpg"
+        },
+        {
+          "id": "mt46vcnd2h8irm-4",
+          "url": "photos/mt46wftacuy0w7/mt46vcnd2h8irm-4.jpg",
+          "objectPosition": "center",
+          "small": "photos/mt46wftacuy0w7/mt46vcnd2h8irm-4@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt46vcnd2h8irm-4@960.jpg"
+        }
+      ],
+      "featured": true,
+      "showAsCompCard": false,
+      "hideFromCompCard": false,
+      "disableCompCardDownload": false,
+      "isPublic": true,
+      "showCredits": true,
+      "showPdf": true,
+      "showInstagram": true,
+      "showKavyar": true,
+      "showTestimonials": true,
+      "showStats": true,
+      "showGear": true,
+      "showLocation": true,
+      "coverPhotoId": "mt46vb5kc2ke3j"
     }
   ],
   "DELETED_IDS": [
@@ -1216,28 +1337,6 @@ window.WPS_DATA = {
       ],
       "2026-08-30": [
         {
-          "id": "b_1786714654176_bh0f",
-          "name": "Workshop Day",
-          "email": "",
-          "phone": "",
-          "type": "Workshop Attended",
-          "duration": "Full Day",
-          "isTentative": false,
-          "notes": "Booked for Workshop (Skill-Up Day)",
-          "location": "",
-          "venueByStudio": false,
-          "agreementMethod": "",
-          "links": [],
-          "attachments": [],
-          "status": "workshop",
-          "contractVersion": "Pending Agreement",
-          "agreedToTerms": false,
-          "contractNumber": "",
-          "sigDataUrl": "",
-          "agreedContract": "",
-          "createdAt": 1786714654176
-        },
-        {
           "id": "b_1786903849525_fif0",
           "name": "Assisting Work",
           "email": "",
@@ -1264,36 +1363,6 @@ window.WPS_DATA = {
           "inviteMeta": null,
           "promoMeta": null,
           "createdAt": 1786903849525
-        }
-      ],
-      "2026-09-05": [
-        {
-          "id": "b_1786904559871_notl",
-          "name": "Anticipated Client Hold",
-          "email": "",
-          "phone": "",
-          "type": "Fashion Editorial",
-          "duration": "Full Day",
-          "isTentative": true,
-          "notes": "Date held by Admin for anticipated client inquiry.",
-          "location": "",
-          "venueByStudio": false,
-          "agreementMethod": "",
-          "links": [],
-          "attachments": [],
-          "status": "tentative",
-          "contractVersion": "Pending Agreement",
-          "agreedToTerms": false,
-          "contractNumber": "",
-          "sigDataUrl": "",
-          "agreedContract": "",
-          "budget": "",
-          "homeStudioFee": 0,
-          "finalPayable": 0,
-          "financials": null,
-          "inviteMeta": null,
-          "promoMeta": null,
-          "createdAt": 1786904559872
         }
       ],
       "2026-09-06": [
@@ -1325,6 +1394,36 @@ window.WPS_DATA = {
           "promoMeta": null,
           "createdAt": 1786993090931
         }
+      ],
+      "2026-09-05": [
+        {
+          "id": "b_1787029810883_r7mr",
+          "name": "Workshop Day",
+          "email": "",
+          "phone": "",
+          "type": "Workshop Attended",
+          "duration": "Full Day",
+          "isTentative": false,
+          "notes": "Booked for Workshop (Skill-Up Day)",
+          "location": "",
+          "venueByStudio": false,
+          "agreementMethod": "",
+          "links": [],
+          "attachments": [],
+          "status": "workshop",
+          "contractVersion": "Pending Agreement",
+          "agreedToTerms": false,
+          "contractNumber": "",
+          "sigDataUrl": "",
+          "agreedContract": "",
+          "budget": "",
+          "homeStudioFee": 0,
+          "finalPayable": 0,
+          "financials": null,
+          "inviteMeta": null,
+          "promoMeta": null,
+          "createdAt": 1787029810883
+        }
       ]
     },
     "removedBookingIds": [
@@ -1337,7 +1436,9 @@ window.WPS_DATA = {
       "2026-08-30::b_1786709236156_7lzv",
       "2026-08-16::shoot-msxag4ydolz34d",
       "2026-09-06::b_1786904562601_73b6",
-      "2026-08-29::b_1786709233749_esjr"
+      "2026-08-29::b_1786709233749_esjr",
+      "2026-09-05::b_1786904559871_notl",
+      "2026-08-30::b_1786714654176_bh0f"
     ],
     "paymentScheduleType": "5050",
     "updatedAt": 0,
