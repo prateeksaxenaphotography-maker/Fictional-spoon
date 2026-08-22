@@ -1213,6 +1213,13 @@ window.WPS_DATA = {
           "isTentative": true,
           "status": "tentative",
           "contractVersion": "Pending Agreement"
+        },
+        {
+          "id": "shoot-mt46wftacuy0w7",
+          "shootId": "mt46wftacuy0w7",
+          "type": "Test Shoot",
+          "status": "confirmed",
+          "isTentative": false
         }
       ],
       "2026-08-23": [
@@ -1248,6 +1255,51 @@ window.WPS_DATA = {
           "type": "Workshop Attended",
           "isTentative": false,
           "status": "workshop",
+          "contractVersion": "Pending Agreement"
+        }
+      ],
+      "2026-08-29": [
+        {
+          "id": "b_1787411813179_7dli",
+          "type": "Fashion Editorial",
+          "isTentative": true,
+          "status": "tentative",
+          "contractVersion": "Pending Agreement"
+        }
+      ],
+      "2026-09-12": [
+        {
+          "id": "b_1787411823267_sq23",
+          "type": "Fashion Editorial",
+          "isTentative": true,
+          "status": "tentative",
+          "contractVersion": "Pending Agreement"
+        }
+      ],
+      "2026-09-13": [
+        {
+          "id": "b_1787411828392_udyl",
+          "type": "Fashion Editorial",
+          "isTentative": true,
+          "status": "tentative",
+          "contractVersion": "Pending Agreement"
+        }
+      ],
+      "2026-09-19": [
+        {
+          "id": "b_1787411831533_6jql",
+          "type": "Assisting Photographer",
+          "isTentative": false,
+          "status": "assisting",
+          "contractVersion": "Pending Agreement"
+        }
+      ],
+      "2026-09-20": [
+        {
+          "id": "b_1787411835191_nz3r",
+          "type": "Assisting Photographer",
+          "isTentative": false,
+          "status": "assisting",
           "contractVersion": "Pending Agreement"
         }
       ]
