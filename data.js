@@ -1049,41 +1049,151 @@ window.WPS_DATA = {
       ],
       "photos": [
         {
-          "id": "mt46vb5kc2ke3j-0",
-          "url": "photos/mt46wftacuy0w7/mt46vb5kc2ke3j-0.jpg",
-          "objectPosition": "60.3% 45.1%",
-          "small": "photos/mt46wftacuy0w7/mt46vb5kc2ke3j-0@480.jpg",
-          "medium": "photos/mt46wftacuy0w7/mt46vb5kc2ke3j-0@960.jpg",
-          "focalX": 60.31215161649944,
-          "focalY": 45.07087115782768
+          "id": "mt6418q4h5pp6e-0",
+          "url": "photos/mt46wftacuy0w7/mt6418q4h5pp6e-0.jpg",
+          "objectPosition": "top",
+          "small": "photos/mt46wftacuy0w7/mt6418q4h5pp6e-0@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt6418q4h5pp6e-0@960.jpg"
         },
         {
-          "id": "mt46vbif8bnruy-1",
-          "url": "photos/mt46wftacuy0w7/mt46vbif8bnruy-1.jpg",
+          "id": "mt6419358l2g01-1",
+          "url": "photos/mt46wftacuy0w7/mt6419358l2g01-1.jpg",
           "objectPosition": "center",
-          "small": "photos/mt46wftacuy0w7/mt46vbif8bnruy-1@480.jpg",
-          "medium": "photos/mt46wftacuy0w7/mt46vbif8bnruy-1@960.jpg"
+          "small": "photos/mt46wftacuy0w7/mt6419358l2g01-1@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt6419358l2g01-1@960.jpg"
         },
         {
-          "id": "mt46vc02133r8d-2",
-          "url": "photos/mt46wftacuy0w7/mt46vc02133r8d-2.jpg",
+          "id": "mt6419b008xse6-2",
+          "url": "photos/mt46wftacuy0w7/mt6419b008xse6-2.jpg",
           "objectPosition": "center",
-          "small": "photos/mt46wftacuy0w7/mt46vc02133r8d-2@480.jpg",
-          "medium": "photos/mt46wftacuy0w7/mt46vc02133r8d-2@960.jpg"
+          "small": "photos/mt46wftacuy0w7/mt6419b008xse6-2@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt6419b008xse6-2@960.jpg"
         },
         {
-          "id": "mt46vc8shjn4k6-3",
-          "url": "photos/mt46wftacuy0w7/mt46vc8shjn4k6-3.jpg",
+          "id": "mt6419ullj4k6h-3",
+          "url": "photos/mt46wftacuy0w7/mt6419ullj4k6h-3.jpg",
           "objectPosition": "center",
-          "small": "photos/mt46wftacuy0w7/mt46vc8shjn4k6-3@480.jpg",
-          "medium": "photos/mt46wftacuy0w7/mt46vc8shjn4k6-3@960.jpg"
+          "small": "photos/mt46wftacuy0w7/mt6419ullj4k6h-3@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt6419ullj4k6h-3@960.jpg"
         },
         {
-          "id": "mt46vcnd2h8irm-4",
-          "url": "photos/mt46wftacuy0w7/mt46vcnd2h8irm-4.jpg",
+          "id": "mt641a0h8c0pe3-4",
+          "url": "photos/mt46wftacuy0w7/mt641a0h8c0pe3-4.jpg",
           "objectPosition": "center",
-          "small": "photos/mt46wftacuy0w7/mt46vcnd2h8irm-4@480.jpg",
-          "medium": "photos/mt46wftacuy0w7/mt46vcnd2h8irm-4@960.jpg"
+          "small": "photos/mt46wftacuy0w7/mt641a0h8c0pe3-4@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt641a0h8c0pe3-4@960.jpg"
+        },
+        {
+          "id": "mt641aaodxo70f-5",
+          "url": "photos/mt46wftacuy0w7/mt641aaodxo70f-5.jpg",
+          "objectPosition": "center",
+          "small": "photos/mt46wftacuy0w7/mt641aaodxo70f-5@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt641aaodxo70f-5@960.jpg"
+        },
+        {
+          "id": "mt641aiwfhuio8-6",
+          "url": "photos/mt46wftacuy0w7/mt641aiwfhuio8-6.jpg",
+          "objectPosition": "center",
+          "small": "photos/mt46wftacuy0w7/mt641aiwfhuio8-6@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt641aiwfhuio8-6@960.jpg"
+        },
+        {
+          "id": "mt641ar8nin1m9-7",
+          "url": "photos/mt46wftacuy0w7/mt641ar8nin1m9-7.jpg",
+          "objectPosition": "center",
+          "small": "photos/mt46wftacuy0w7/mt641ar8nin1m9-7@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt641ar8nin1m9-7@960.jpg"
+        },
+        {
+          "id": "mt641aywyo8l9l-8",
+          "url": "photos/mt46wftacuy0w7/mt641aywyo8l9l-8.jpg",
+          "objectPosition": "center",
+          "small": "photos/mt46wftacuy0w7/mt641aywyo8l9l-8@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt641aywyo8l9l-8@960.jpg"
+        },
+        {
+          "id": "mt641b4230brj2-9",
+          "url": "photos/mt46wftacuy0w7/mt641b4230brj2-9.jpg",
+          "objectPosition": "center",
+          "small": "photos/mt46wftacuy0w7/mt641b4230brj2-9@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt641b4230brj2-9@960.jpg"
+        },
+        {
+          "id": "mt641bbyi6v540-10",
+          "url": "photos/mt46wftacuy0w7/mt641bbyi6v540-10.jpg",
+          "objectPosition": "center",
+          "small": "photos/mt46wftacuy0w7/mt641bbyi6v540-10@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt641bbyi6v540-10@960.jpg"
+        },
+        {
+          "id": "mt641bpqi2e75b-11",
+          "url": "photos/mt46wftacuy0w7/mt641bpqi2e75b-11.jpg",
+          "objectPosition": "center",
+          "small": "photos/mt46wftacuy0w7/mt641bpqi2e75b-11@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt641bpqi2e75b-11@960.jpg"
+        },
+        {
+          "id": "mt641bybm5u85k-12",
+          "url": "photos/mt46wftacuy0w7/mt641bybm5u85k-12.jpg",
+          "objectPosition": "center",
+          "small": "photos/mt46wftacuy0w7/mt641bybm5u85k-12@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt641bybm5u85k-12@960.jpg"
+        },
+        {
+          "id": "mt641c5oeqy33e-13",
+          "url": "photos/mt46wftacuy0w7/mt641c5oeqy33e-13.jpg",
+          "objectPosition": "center",
+          "small": "photos/mt46wftacuy0w7/mt641c5oeqy33e-13@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt641c5oeqy33e-13@960.jpg"
+        },
+        {
+          "id": "mt641cecwqxspe-14",
+          "url": "photos/mt46wftacuy0w7/mt641cecwqxspe-14.jpg",
+          "objectPosition": "center",
+          "small": "photos/mt46wftacuy0w7/mt641cecwqxspe-14@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt641cecwqxspe-14@960.jpg"
+        },
+        {
+          "id": "mt641cm9h0lm42-15",
+          "url": "photos/mt46wftacuy0w7/mt641cm9h0lm42-15.jpg",
+          "objectPosition": "center",
+          "small": "photos/mt46wftacuy0w7/mt641cm9h0lm42-15@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt641cm9h0lm42-15@960.jpg"
+        },
+        {
+          "id": "mt641cu2f90exd-16",
+          "url": "photos/mt46wftacuy0w7/mt641cu2f90exd-16.jpg",
+          "objectPosition": "center",
+          "small": "photos/mt46wftacuy0w7/mt641cu2f90exd-16@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt641cu2f90exd-16@960.jpg"
+        },
+        {
+          "id": "mt641d05qis3wn-17",
+          "url": "photos/mt46wftacuy0w7/mt641d05qis3wn-17.jpg",
+          "objectPosition": "center",
+          "small": "photos/mt46wftacuy0w7/mt641d05qis3wn-17@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt641d05qis3wn-17@960.jpg"
+        },
+        {
+          "id": "mt641d6jo42iu0-18",
+          "url": "photos/mt46wftacuy0w7/mt641d6jo42iu0-18.jpg",
+          "objectPosition": "center",
+          "small": "photos/mt46wftacuy0w7/mt641d6jo42iu0-18@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt641d6jo42iu0-18@960.jpg"
+        },
+        {
+          "id": "mt641dd8beakwd-19",
+          "url": "photos/mt46wftacuy0w7/mt641dd8beakwd-19.jpg",
+          "objectPosition": "center",
+          "small": "photos/mt46wftacuy0w7/mt641dd8beakwd-19@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt641dd8beakwd-19@960.jpg"
+        },
+        {
+          "id": "mt641djrenae5j-20",
+          "url": "photos/mt46wftacuy0w7/mt641djrenae5j-20.jpg",
+          "objectPosition": "center",
+          "small": "photos/mt46wftacuy0w7/mt641djrenae5j-20@480.jpg",
+          "medium": "photos/mt46wftacuy0w7/mt641djrenae5j-20@960.jpg"
         }
       ],
       "featured": true,
@@ -1099,7 +1209,7 @@ window.WPS_DATA = {
       "showStats": true,
       "showGear": true,
       "showLocation": true,
-      "coverPhotoId": "mt46vbif8bnruy"
+      "coverPhotoId": "mt6419b008xse6"
     }
   ],
   "DELETED_IDS": [
@@ -1227,6 +1337,41 @@ window.WPS_DATA = {
           "sigDataUrl": "",
           "agreedContract": "COMMERCIAL-CONTRACT-V3.3",
           "createdAt": 1786709109940
+        },
+        {
+          "id": "b_1787428837182_k801",
+          "name": "Prateek Saxena",
+          "email": "prateeksxn@gmail.com",
+          "phone": "9911402506",
+          "type": "Fashion Editorial",
+          "duration": "Flexible / Photographer Choice",
+          "isTentative": false,
+          "notes": "",
+          "location": "Noida",
+          "venueByStudio": false,
+          "agreementMethod": "checkbox",
+          "links": [],
+          "attachments": [],
+          "status": "confirmed",
+          "contractVersion": "COMMERCIAL-CONTRACT-V3.5",
+          "agreedToTerms": true,
+          "contractNumber": "WPS-20260823-013037-SRE9",
+          "sigDataUrl": "",
+          "agreedContract": "COMMERCIAL-CONTRACT-V3.5",
+          "budget": "₹7,000 (Basic Test / Comp Card)",
+          "homeStudioFee": 0,
+          "finalPayable": 7000,
+          "financials": {
+            "basePrice": 7000,
+            "homeStudioFee": 0,
+            "savings": 0,
+            "finalPayable": 7000,
+            "advanceRetainer": 3500,
+            "wrapBalance": 3500
+          },
+          "inviteMeta": null,
+          "promoMeta": null,
+          "createdAt": 1787428837182
         }
       ],
       "2026-08-15": [
@@ -1583,6 +1728,43 @@ window.WPS_DATA = {
           "inviteMeta": null,
           "promoMeta": null,
           "createdAt": 1787411835191
+        }
+      ],
+      "2001-10-17": [
+        {
+          "id": "b_1787428837182_i8mi",
+          "name": "Prateek Saxena",
+          "email": "prateeksxn@gmail.com",
+          "phone": "9911402506",
+          "type": "Fashion Editorial",
+          "duration": "Flexible / Photographer Choice",
+          "isTentative": false,
+          "notes": "",
+          "location": "Noida",
+          "venueByStudio": false,
+          "agreementMethod": "checkbox",
+          "links": [],
+          "attachments": [],
+          "status": "confirmed",
+          "contractVersion": "COMMERCIAL-CONTRACT-V3.5",
+          "agreedToTerms": true,
+          "contractNumber": "WPS-20260823-013037-SRE9",
+          "sigDataUrl": "",
+          "agreedContract": "COMMERCIAL-CONTRACT-V3.5",
+          "budget": "₹7,000 (Basic Test / Comp Card)",
+          "homeStudioFee": 0,
+          "finalPayable": 7000,
+          "financials": {
+            "basePrice": 7000,
+            "homeStudioFee": 0,
+            "savings": 0,
+            "finalPayable": 7000,
+            "advanceRetainer": 3500,
+            "wrapBalance": 3500
+          },
+          "inviteMeta": null,
+          "promoMeta": null,
+          "createdAt": 1787428837182
         }
       ]
     },
