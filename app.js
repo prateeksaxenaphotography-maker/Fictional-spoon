@@ -2223,11 +2223,23 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (shoot.location && shoot.location !== "—") {
       locationContent += `<div style="font-size: var(--font-xs); font-weight: 600; color: var(--ink); margin-bottom: 4px;">${renderCreditLinks(shoot.location)}</div>`;
     }
+    // Both studio links are named by their platform, not by their handle.
+    // They used to be hand-written in two different styles — one as the
+    // handle "@nerdyphotographer.in", one as "Kavyar Studio" — which read as
+    // two unrelated kinds of thing sitting side by side. Naming the platform
+    // is the form that works for both: the Kavyar URL ends in a random id
+    // (kavyar.com/uucurn46ib8f), so there is no handle worth showing there.
+    // The account each one opens is in the tooltip and the accessible name.
+    const studioLinkHtml = (href, platform) =>
+      `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer" title="${esc(cfg.studioName || "the studio")} on ${platform}" aria-label="${esc(cfg.studioName || "the studio")} on ${platform} (opens in a new tab)" style="color: var(--accent); font-weight: 700; text-decoration: none; font-size: var(--font-xs); white-space: nowrap;">${platform} ↗</a>`;
     const studioLinks = [];
-    if (cfg.instagram) studioLinks.push(`<a href="${esc(cfg.instagram)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); font-weight: 700; text-decoration: none; margin-right: 12px; font-size: var(--font-xs);">@nerdyphotographer.in ↗</a>`);
-    if (cfg.kavyar) studioLinks.push(`<a href="${esc(cfg.kavyar)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); font-weight: 700; text-decoration: none; font-size: var(--font-xs);">Kavyar Studio ↗</a>`);
+    if (cfg.instagram) studioLinks.push(studioLinkHtml(cfg.instagram, "Instagram"));
+    if (cfg.kavyar) studioLinks.push(studioLinkHtml(cfg.kavyar, "Kavyar"));
     if (studioLinks.length) {
-      locationContent += `<div style="display: flex; gap: 8px; margin-top: 4px;">${studioLinks.join("")}</div>`;
+      // nowrap above plus wrap here: the row breaks between the two links if
+      // the sidebar is narrow, never through the middle of a label — which is
+      // how "Kavyar Studio ↗" came to sit on two lines with the arrow orphaned.
+      locationContent += `<div style="display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 4px;">${studioLinks.join("")}</div>`;
     }
 
     const creditsSections = [];
