@@ -12372,22 +12372,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       errorText.style.display = "none";
       emailInput.style.borderColor = "var(--line)";
 
-      const shoot = SHOOTS.find(x => x.id === shootId) || (window.currentCompCardShootObj);
-      const modelName = shoot ? getTalentCleanName(shoot.talent || shoot.title) : "Unknown Model";
-
-      // Best-effort analytics log — never blocks or fails the download itself,
-      // since the visitor has no way to fix a backend outage on their end.
-      fetch(`${COMP_CARD_API_BASE}/api/logs`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          modelName,
-          shootId,
-          orientation: targetOrient,
-          originUrl: window.location.origin
-        })
-      }).catch((err) => console.warn("Comp card download logging failed (non-blocking):", err));
+      // No download log is sent from here any more. This used to POST the
+      // email, model and shoot to /api/logs on the Render backend — an
+      // endpoint that answers 404 on every path, because that service was
+      // never deployed. The POST was wrapped in a .catch(), so it failed
+      // silently on every single download and the studio had a logging
+      // feature that had never once recorded anything. Code that only
+      // pretends to work is worse than no code: it stops anyone asking why
+      // the log is empty. See backend/logController.js for the Aug 2026
+      // decision that stranded it, and restore this deliberately alongside a
+      // backend that exists if download analytics is wanted again.
 
       modal.style.opacity = "0";
       setTimeout(() => { modal.style.display = "none"; }, 300);
