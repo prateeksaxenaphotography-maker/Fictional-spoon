@@ -4689,10 +4689,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
         <div style="margin-top: 32px; border-top: 1px solid var(--line); padding-top: 20px; text-align: center;">
           <a href="/contracts" data-link class="admin-cal-btn" style="font-size: var(--font-xs); font-weight: 700; border-color: var(--accent); color: var(--accent);">📜 View Contract Version Vault &rarr;</a>
-        </div>n-bottom: 16px;">Foundational photo release and copyright acknowledgment for early studio testing.</p>
-              <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V1.0')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review V1.0</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V1.0')" style="font-size: var(--font-xs); border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
-            </div>
-          </div>
         </div>
       </section>
       <div id="dateAdminModalContainer"></div>
@@ -5373,11 +5369,19 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         location: $("#pdf_location").value.trim(),
         studioProvidedByPhotographer: !!$("#pdf_venueByStudio")?.checked,
         contractVersion: $("#pdf_contractVersion").value,
-        package: $("#pdf_packageSelect").value === "custom" 
-          ? `${$("#pdf_customCloudRetention").value === "custom" ? $("#pdf_customCloudRetentionInput").value.trim() : $("#pdf_customCloudRetention").value}"#pdf_customPkgName").value.trim()} — ${$("#pdf_customCloudRetention").value === "custom" ? $("#pdf_customCloudRetentionInput").value.trim() : $("#pdf_customCloudRetention").value}"#pdf_customRetouchedCount").value.trim()} (${$("#pdf_customCloudRetention").value === "custom" ? $("#pdf_customCloudRetentionInput").value.trim() : $("#pdf_customCloudRetention").value}"#pdf_customDownloadPermission").value}; ${$("#pdf_customCloudRetention").value === "custom" ? $("#pdf_customCloudRetentionInput").value.trim() : $("#pdf_customCloudRetention").value}"#pdf_customRevisions").value}; ${$("#pdf_customCloudRetention").value === "custom" ? $("#pdf_customCloudRetentionInput").value.trim() : $("#pdf_customCloudRetention").value}"#pdf_customCloudRetention").value})`
+        package: $("#pdf_packageSelect").value === "custom"
+          ? (() => {
+              const cloudRetention = $("#pdf_customCloudRetention").value === "custom"
+                ? $("#pdf_customCloudRetentionInput").value.trim()
+                : $("#pdf_customCloudRetention").value;
+              return `${$("#pdf_customPkgName").value.trim()} — ${$("#pdf_customRetouchedCount").value.trim()} (${$("#pdf_customDownloadPermission").value}; ${$("#pdf_customRevisions").value}; ${cloudRetention})`;
+            })()
           : $("#pdf_packageSelect").value,
         paymentMilestones: $("#pdf_paymentMilestones").value,
-        notes: $("#pdf_notes").value.trim()
+        notes: $("#pdf_notes").value.trim(),
+        sigDataUrl: b.sigDataUrl || "",
+        agreementMethod: b.agreementMethod || "",
+        agreedContract: b.agreedContract || ""
       });
     });
   };
@@ -5496,13 +5500,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <div style="font-family: monospace; font-size: 9px; font-weight: 700; background: #f4f4f4; border: 1px solid #ccc; padding: 5px; border-radius: 4px; margin-top: 4px;">"I approve Studio Contract Terms ${esc(cVer)}"</div>
             </div>
             <div style="border-left: 1px solid #ddd; padding-left: 12px;">
-              ${isSigImage(b.sigDataUrl) ? `
+              ${isSigImage(data.sigDataUrl) ? `
                 <strong>Client Digital Signature (Drawn at Booking):</strong><br/>
-                <img src="${b.sigDataUrl}" style="max-width: 200px; max-height: 56px; display: block; margin-top: 8px; border-bottom: 1.5px solid #000;" alt="Client Signature" />
-                <div style="margin-top: 4px; font-size: 9px; color: #444;">${esc(b.name || "")} · Agreed ${new Date().toLocaleDateString("en-IN")} · ${esc(b.agreedContract || cVer)}</div>
-              ` : b.agreementMethod === "checkbox" ? `
+                <img src="${data.sigDataUrl}" style="max-width: 200px; max-height: 56px; display: block; margin-top: 8px; border-bottom: 1.5px solid #000;" alt="Client Signature" />
+                <div style="margin-top: 4px; font-size: 9px; color: #444;">${esc(data.clientName || "")} · Agreed ${new Date().toLocaleDateString("en-IN")} · ${esc(data.agreedContract || cVer)}</div>
+              ` : data.agreementMethod === "checkbox" ? `
                 <strong>Digital Acceptance (Checkbox Confirmation):</strong><br/>
-                <div style="margin-top: 8px;">${esc(b.name || "")} confirmed acceptance of the Studio Terms &amp; Conditions (V3.3) and Model Release by ticking the agreement box on the booking form.</div>
+                <div style="margin-top: 8px;">${esc(data.clientName || "")} confirmed acceptance of the Studio Terms &amp; Conditions (V3.3) and Model Release by ticking the agreement box on the booking form.</div>
                 <div style="margin-top: 4px; font-size: 9px; color: #444;">Recorded electronically at the time of booking \u00b7 no handwritten signature was requested.</div>
               ` : `
                 <strong>Method B — Physical Pen Signature:</strong><br/>
