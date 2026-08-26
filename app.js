@@ -5782,6 +5782,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <button type="button" class="admin-cal-btn" id="quickAssistingBtn" style="border-color: #00897b; color: #00897b; background: rgba(0,137,123,0.1);">
                 🤝 Assisting (Teal)
               </button>
+              <button type="button" class="admin-cal-btn" id="quickTestShootBtn" style="border-color: #1e88e5; color: #1e88e5; background: rgba(30,136,229,0.1);">
+                📸 Test Shoot (Blue)
+              </button>
             </div>
 
             <hr style="border: none; border-top: 1px solid var(--line); margin: 20px 0;" />
@@ -5917,6 +5920,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       $("#quickAssistingBtn")?.addEventListener("click", () => {
         addCalBooking(dKey, { name: "Assisting Work", type: "Assisting Photographer", notes: "Booked for Assisting Work", isTentative: false, status: "assisting", contractVersion: "Pending Agreement", agreedToTerms: false });
         toast(`🤝 Assisting work marked for ${dKey}! (Appears as Assisting Work in Teal)`);
+        modalContainer.innerHTML = "";
+        renderAdminGrid();
+        renderRoster();
+        updateAdminReminders();
+      });
+
+      $("#quickTestShootBtn")?.addEventListener("click", () => {
+        const clientName = $("#m_clientName").value.trim() || "Test Shoot Client";
+        const notes = $("#m_clientNotes").value.trim() || "Booked for Test Shoot / TFP Collaboration.";
+        addCalBooking(dKey, { name: clientName, type: "Selective Collaboration (TFP)", notes: notes, isTentative: false, status: "confirmed", contractVersion: "V3.4-TFP", agreedToTerms: false });
+        toast(`📸 Test Shoot marked for ${dKey}! (Appears as Test Shoot in Blue)`);
         modalContainer.innerHTML = "";
         renderAdminGrid();
         renderRoster();
