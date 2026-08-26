@@ -1358,15 +1358,6 @@ window.WPS_DATA = {
           "contractVersion": "Pending Agreement"
         }
       ],
-      "2026-08-29": [
-        {
-          "id": "b_1787411813179_7dli",
-          "type": "Fashion Editorial",
-          "isTentative": true,
-          "status": "tentative",
-          "contractVersion": "Pending Agreement"
-        }
-      ],
       "2026-09-12": [
         {
           "id": "b_1787411823267_sq23",
@@ -1425,7 +1416,8 @@ window.WPS_DATA = {
       "2026-09-06::b_1786904562601_73b6",
       "2026-08-29::b_1786709233749_esjr",
       "2026-09-05::b_1786904559871_notl",
-      "2026-08-30::b_1786714654176_bh0f"
+      "2026-08-30::b_1786714654176_bh0f",
+      "2026-08-29::b_1787411813179_7dli"
     ],
     "paymentScheduleType": "5050",
     "updatedAt": 0,
