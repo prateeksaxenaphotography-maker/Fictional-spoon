@@ -4091,11 +4091,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     };
     const isWorkshopBooking = (b) => b.status === "workshop";
     const isAssistingBooking = (b) => b.status === "assisting";
+    const isTestShootBooking = (b) => /TFP|Selective Collaboration/i.test(`${b.type || ""} ${b.contractVersion || ""} ${b.budget || ""}`);
 
     const hasConfirmedBooking = bookings.some(b => !isTentativeBooking(b) && !isWorkshopBooking(b) && !isAssistingBooking(b));
     const isTentativeOnly = isBooked && !hasConfirmedBooking && bookings.some(b => isTentativeBooking(b));
     const hasWorkshop = bookings.some(b => isWorkshopBooking(b));
     const hasAssisting = bookings.some(b => isAssistingBooking(b));
+    const hasTestShoot = bookings.some(b => isTestShootBooking(b) && !isWorkshopBooking(b) && !isAssistingBooking(b));
     
     let isBlocked = false;
     if (isCustomBlocked) {
@@ -4116,6 +4118,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       isTentativeOnly,
       hasWorkshop,
       hasAssisting,
+      hasTestShoot,
       bookings
     };
   }
@@ -4620,7 +4623,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: #e8f5e9; border: 1px solid #2e7d32;"></span> Open for Booking (Weekend/Opened)</span>
           <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: #eee; border: 1px dashed #999;"></span> Blocked for Clients (Mon–Fri Default / Custom)</span>
           <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: var(--accent-soft); border: 1px solid var(--accent);"></span> Confirmed Booking (Red/Orange)</span>
-          <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: rgba(124, 77, 255, 0.2); border: 1px dashed #7c4dff;"></span> ⏳ Anticipated Hold Only (Royal Purple/Blue)</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: rgba(30, 136, 229, 0.2); border: 1px solid #1e88e5;"></span> 📸 Test Shoot / TFP Booking (Blue)</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: rgba(124, 77, 255, 0.2); border: 1px dashed #7c4dff;"></span> ⏳ Anticipated Hold Only (Royal Purple)</span>
         </div>
 
         <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-family: var(--mono-font); font-size: var(--font-xs);">
@@ -4977,6 +4981,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           dayClasses.push("day-workshop");
         } else if (status.hasAssisting && !status.hasConfirmedBooking) {
           dayClasses.push("day-assisting");
+        } else if (status.hasTestShoot && status.hasConfirmedBooking) {
+          dayClasses.push("day-testshoot");
         } else if (status.hasConfirmedBooking) {
           dayClasses.push("day-booked");
         } else if (status.isTentativeOnly) {
@@ -4993,6 +4999,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <span class="admin-cal-num">${day}</span>
               ${status.hasWorkshop && !status.hasConfirmedBooking ? `<span class="admin-cal-badge badge-workshop">📚 Workshop</span>` :
                 status.hasAssisting && !status.hasConfirmedBooking ? `<span class="admin-cal-badge badge-assisting">🤝 Assisting</span>` :
+                status.hasTestShoot && status.hasConfirmedBooking ? `<span class="admin-cal-badge badge-testshoot">📸 Test Shoot (${status.bookings.length})</span>` :
                 status.hasConfirmedBooking ? `<span class="admin-cal-badge badge-booked">${status.bookings.length} Booked</span>` :
                 status.isTentativeOnly ? `<span class="admin-cal-badge badge-tentative">⏳ Hold (${status.bookings.length})</span>` :
                 status.isBlocked ? `<span class="admin-cal-badge badge-blocked">${status.isDefaultBlockedWeekday ? "Weekday Blocked" : "Custom Blocked"}</span>` :
@@ -7078,6 +7085,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                       </button>
                       <div class="date-picker-popup" id="datePickerPopup"></div>
                     </div>
+                    <div id="b_date_booked_note" style="display: none; font-size: var(--font-xs); color: #dc2626; margin-top: 6px; line-height: 1.4;">This date already has a booking — you're welcome to send a request anyway. I'll confirm it or suggest an alternative date.</div>
                   </label>
                </div>
                 <div class="field-row">
@@ -8554,10 +8562,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
       function checkAvailabilityBadge() {
         const badge = $("#b_date_availability_badge");
+        const bookedNote = $("#b_date_booked_note");
         if (!badge) return;
         const valStr = dateInput.value.trim();
         if (!valStr) {
           badge.style.display = "none";
+          if (bookedNote) bookedNote.style.display = "none";
           return;
         }
 
@@ -8569,6 +8579,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
         if (!targetDate) {
           badge.style.display = "none";
+          if (bookedNote) bookedNote.style.display = "none";
           return;
         }
 
@@ -8581,17 +8592,19 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           badge.style.border = "1px solid rgba(128,128,128,0.3)";
           badge.style.color = "#888";
           badge.innerHTML = "⚪ PAST DATE";
+          if (bookedNote) bookedNote.style.display = "none";
           return;
         }
 
         const st = getCalDateStatus(targetDate);
         badge.style.display = "inline-flex";
+        if (bookedNote) bookedNote.style.display = st.isBooked ? "block" : "none";
 
         if (st.isBooked) {
           badge.style.background = "rgba(220,38,38,0.12)";
           badge.style.border = "1px solid rgba(220,38,38,0.3)";
           badge.style.color = "#dc2626";
-          badge.innerHTML = "🔴 BOOKED";
+          badge.innerHTML = "🔴 ALREADY BOOKED";
         } else if (st.hasWorkshop || st.hasAssisting) {
           badge.style.background = "rgba(217,119,6,0.12)";
           badge.style.border = "1px solid rgba(217,119,6,0.3)";
@@ -8637,6 +8650,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <div class="dp-legend">
             <span class="dp-legend-item"><span class="dp-legend-dot dot-available"></span> Open</span>
             <span class="dp-legend-item"><span class="dp-legend-dot dot-booked"></span> Date Booked</span>
+            <span class="dp-legend-item"><span class="dp-legend-dot dot-testshoot"></span> Test Shoot Booked</span>
             <span class="dp-legend-item"><span class="dp-legend-dot dot-workshop"></span> Workshop</span>
             <span class="dp-legend-item"><span class="dp-legend-dot dot-assisting"></span> Assisting</span>
             <span class="dp-legend-item"><span class="dp-legend-dot dot-blocked"></span> Mon–Fri Blocked</span>
@@ -8677,7 +8691,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               isCellDisabled = true;
             } else if (status.isBooked) {
               classes.push("dp-booked");
-              titleAttr = "Unavailable: This date is booked by another client";
+              if (status.hasTestShoot) classes.push("dp-testshoot");
+              titleAttr = "This date already has a booking — you can still send a request, and I'll confirm or suggest an alternative";
             } else if (status.isBlocked) {
               classes.push("dp-blocked");
               titleAttr = status.isDefaultBlockedWeekday ? "Weekday Blocked (Mon–Fri default)" : "Custom Blocked";
@@ -8737,6 +8752,30 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
         popup.innerHTML = html;
         wireCalendarEvents();
+      }
+
+      function selectDate(clicked) {
+        if (pickerMode === "range") {
+          if (!rangeStart || (rangeStart && rangeEnd)) {
+            rangeStart = clicked;
+            rangeEnd = null;
+          } else {
+            if (clicked < rangeStart) {
+              rangeEnd = rangeStart;
+              rangeStart = clicked;
+            } else {
+              rangeEnd = clicked;
+            }
+          }
+        } else {
+          const idx = multiDates.findIndex(md => sameDay(md, clicked));
+          if (idx >= 0) {
+            multiDates.splice(idx, 1);
+          } else {
+            multiDates.push(clicked);
+          }
+        }
+        renderCalendar();
       }
 
       function wireCalendarEvents() {
@@ -8799,8 +8838,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           popup.querySelectorAll(".dp-cell.dp-booked").forEach(cell => {
             cell.addEventListener("click", (e) => {
               e.stopPropagation();
-              const day = cell.dataset.day;
-              toast(`Unable to select ${MONTHS[viewMonth]} ${day} — this date is already taken by another client.`);
+              const day = parseInt(cell.dataset.day);
+              const clicked = new Date(viewYear, viewMonth, day);
+              selectDate(clicked);
+              toast(`Heads up — ${MONTHS[viewMonth]} ${day} already has a booking. You're welcome to send a request anyway; I'll confirm or suggest another date.`);
             });
           });
 
@@ -8815,29 +8856,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             cell.addEventListener("click", (e) => {
               e.stopPropagation();
               const day = parseInt(cell.dataset.day);
-              const clicked = new Date(viewYear, viewMonth, day);
-
-              if (pickerMode === "range") {
-                if (!rangeStart || (rangeStart && rangeEnd)) {
-                  rangeStart = clicked;
-                  rangeEnd = null;
-                } else {
-                  if (clicked < rangeStart) {
-                    rangeEnd = rangeStart;
-                    rangeStart = clicked;
-                  } else {
-                    rangeEnd = clicked;
-                  }
-                }
-              } else {
-                const idx = multiDates.findIndex(md => sameDay(md, clicked));
-                if (idx >= 0) {
-                  multiDates.splice(idx, 1);
-                } else {
-                  multiDates.push(clicked);
-                }
-              }
-              renderCalendar();
+              selectDate(new Date(viewYear, viewMonth, day));
             });
           });
         }
@@ -9969,6 +9988,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const phone = val("b_phone"), instagram = val("b_instagram"), type = val("b_type");
       const date = val("b_date"), locationVal = val("b_location"), budget = (type === "Selective Collaboration (TFP)" ? "Collab / TFP (No Budget)" : val("b_budget"));
       const moodboard = getFormLinks().join(", "), concept = val("b_concept");
+      // Flag an already-booked date for the studio's attention rather than
+      // blocking submission — the client may still want to send the request
+      // so the studio can decide (confirm anyway, or offer an alternative).
+      const dateStatusTarget = rangeStart || (multiDates.length ? multiDates[0] : (() => { const p = new Date(date); return isNaN(p.getTime()) ? null : p; })());
+      const dateAlreadyBooked = dateStatusTarget ? getCalDateStatus(dateStatusTarget).isBooked : false;
       // The session length was collected and then dropped on the floor: it
       // reached neither the studio's inbox nor the calendar, which recorded
       // every booking as a full day. A cap nobody can see is not a cap, so it
@@ -10129,6 +10153,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           `Instagram / Website: ${instagram || '—'}\n` +
           `Shoot Type: ${type}\n` +
           `Proposed Date: ${date}\n` +
+          (dateAlreadyBooked ? `⚠️ Date Status: This date already has a booking on the calendar — decide whether to confirm anyway or suggest an alternative.\n` : "") +
           `Session Duration: ${sessionDuration || '—'}\n` +
           `Location Pref: ${locationVal}\n` +
           `Studio Space Rental: ${studioSpaceVal}\n` +
@@ -10176,6 +10201,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           `Instagram / Website: ${instagram || '—'}\n` +
           `Shoot Type: ${type}\n` +
           `Proposed Date: ${date}\n` +
+          (dateAlreadyBooked ? `⚠️ Date Status: This date already has a booking on the calendar — decide whether to confirm anyway or suggest an alternative.\n` : "") +
           `Session Duration: ${sessionDuration || '—'}\n` +
           `Location Pref: ${locationVal}\n` +
           `Studio Space Rental: ${studioSpaceVal}\n` +
