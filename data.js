@@ -1402,6 +1402,15 @@ window.WPS_DATA = {
           "status": "confirmed",
           "contractVersion": "COMMERCIAL-CONTRACT-V3.5"
         }
+      ],
+      "2026-08-29": [
+        {
+          "id": "b_1787749004048_b1bh",
+          "type": "Selective Collaboration (TFP)",
+          "isTentative": false,
+          "status": "confirmed",
+          "contractVersion": "V3.4-TFP"
+        }
       ]
     },
     "removedBookingIds": [
