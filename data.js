@@ -1719,6 +1719,36 @@ window.WPS_DATA = {
           "promoMeta": null,
           "createdAt": 1787428837182
         }
+      ],
+      "2026-08-29": [
+        {
+          "id": "b_1787749004048_b1bh",
+          "name": "Rohit",
+          "email": "rohitchintu2601@gmail.com",
+          "phone": "8755218751",
+          "type": "Selective Collaboration (TFP)",
+          "duration": "Half Day (Flexible)",
+          "isTentative": false,
+          "notes": "",
+          "location": "",
+          "venueByStudio": false,
+          "agreementMethod": "",
+          "links": [],
+          "attachments": [],
+          "status": "confirmed",
+          "contractVersion": "V3.4-TFP",
+          "agreedToTerms": true,
+          "contractNumber": "",
+          "sigDataUrl": "",
+          "agreedContract": "",
+          "budget": "",
+          "homeStudioFee": 0,
+          "finalPayable": 0,
+          "financials": null,
+          "inviteMeta": null,
+          "promoMeta": null,
+          "createdAt": 1787749004048
+        }
       ]
     },
     "removedBookingIds": [
