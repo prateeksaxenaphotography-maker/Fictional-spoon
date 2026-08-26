@@ -1563,36 +1563,6 @@ window.WPS_DATA = {
           "createdAt": 1787029810883
         }
       ],
-      "2026-08-29": [
-        {
-          "id": "b_1787411813179_7dli",
-          "name": "Anticipated Client Hold",
-          "email": "",
-          "phone": "",
-          "type": "Fashion Editorial",
-          "duration": "Full Day",
-          "isTentative": true,
-          "notes": "Date held by Admin for anticipated client inquiry.",
-          "location": "",
-          "venueByStudio": false,
-          "agreementMethod": "",
-          "links": [],
-          "attachments": [],
-          "status": "tentative",
-          "contractVersion": "Pending Agreement",
-          "agreedToTerms": false,
-          "contractNumber": "",
-          "sigDataUrl": "",
-          "agreedContract": "",
-          "budget": "",
-          "homeStudioFee": 0,
-          "finalPayable": 0,
-          "financials": null,
-          "inviteMeta": null,
-          "promoMeta": null,
-          "createdAt": 1787411813180
-        }
-      ],
       "2026-09-12": [
         {
           "id": "b_1787411823267_sq23",
@@ -1763,7 +1733,8 @@ window.WPS_DATA = {
       "2026-09-06::b_1786904562601_73b6",
       "2026-08-29::b_1786709233749_esjr",
       "2026-09-05::b_1786904559871_notl",
-      "2026-08-30::b_1786714654176_bh0f"
+      "2026-08-30::b_1786714654176_bh0f",
+      "2026-08-29::b_1787411813179_7dli"
     ],
     "paymentScheduleType": "5050",
     "updatedAt": 0,
