@@ -524,6 +524,10 @@ a { color: inherit; text-decoration: none; }
   background: #00897b;
   border: 1px solid #26a69a;
 }
+.dp-legend-dot.dot-testshoot {
+  background: #1e88e5;
+  border: 1px solid #64b5f6;
+}
 .dp-legend-dot.dot-blocked {
   background: rgba(0, 0, 0, 0.06);
   border: 1px dashed var(--line-2);
@@ -559,6 +563,14 @@ a { color: inherit; text-decoration: none; }
   color: #ff4d4d;
   line-height: 1;
   margin-top: 1px;
+}
+.dp-cell.dp-booked.dp-testshoot {
+  color: #64b5f6 !important;
+  background: rgba(30, 136, 229, 0.18) !important;
+  border: 1px dashed rgba(100, 181, 246, 0.6) !important;
+}
+.dp-cell.dp-booked.dp-testshoot::after {
+  color: #64b5f6;
 }
 .dp-cell.dp-workshop {
   color: #f9a825 !important;
@@ -1686,6 +1698,7 @@ main:focus { outline: none; }
 .admin-cal-day.day-open { border-color: #2e7d32; }
 .admin-cal-day.day-booked { background: rgba(210, 78, 26, 0.04); border-color: var(--accent); }
 .admin-cal-day.day-tentative { background: rgba(124, 77, 255, 0.08) !important; border: 1.5px dashed #7c4dff !important; }
+.admin-cal-day.day-testshoot { background: rgba(30, 136, 229, 0.08) !important; border: 1.5px solid #1e88e5 !important; }
 
 .admin-cal-num { font-family: var(--mono-font); font-size: var(--font-sm); font-weight: 700; color: var(--ink); }
 .admin-cal-badge { font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; text-transform: uppercase; padding: 3px 6px; border-radius: 4px; display: inline-block; letter-spacing: .02em; margin-top: 4px; }
@@ -1695,6 +1708,7 @@ main:focus { outline: none; }
 .badge-tentative { background: rgba(124, 77, 255, 0.2); color: #7c4dff; border: 1px solid rgba(124, 77, 255, 0.4); }
 .badge-workshop { background: rgba(249, 168, 37, 0.2); color: #f9a825; border: 1px solid rgba(249, 168, 37, 0.4); }
 .badge-assisting { background: rgba(0, 137, 123, 0.2); color: #00897b; border: 1px solid rgba(0, 137, 123, 0.4); }
+.badge-testshoot { background: rgba(30, 136, 229, 0.2); color: #1e88e5; border: 1px solid rgba(30, 136, 229, 0.4); }
 .admin-cal-day.day-workshop { background: rgba(249, 168, 37, 0.08) !important; border: 1.5px solid #f9a825 !important; }
 .admin-cal-day.day-assisting { background: rgba(0, 137, 123, 0.08) !important; border: 1.5px solid #00897b !important; }
 .admin-cal-client-item { font-size: var(--font-xs); font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
