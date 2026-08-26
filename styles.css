@@ -486,6 +486,7 @@ a { color: inherit; text-decoration: none; }
 /* Date Picker Legend */
 .dp-legend {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-around;
   padding: 8px 12px;
@@ -494,7 +495,7 @@ a { color: inherit; text-decoration: none; }
   font-size: var(--font-xs);
   font-weight: 600;
   color: var(--ink-soft);
-  gap: 8px;
+  gap: 6px 8px;
   background: var(--bone);
 }
 .dp-legend-item {
