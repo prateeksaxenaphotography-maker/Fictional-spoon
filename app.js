@@ -57,6 +57,41 @@ window.getAdminPromoCodes = function() {
   return window.adminDraftPromoCodes;
 };
 
+// A promo code's discount on the home studio rental, kept separate from its
+// package discount so a code can (say) take 20% off the package and only a
+// flat ₹500 off the room, or knock the rental to ₹0 outright. Codes saved
+// before this existed only ever carried the boolean freeHomeStudio — read
+// here as {type:'free'} so an old code keeps behaving exactly as it did.
+window.getPromoHomeStudioDiscount = function(entry) {
+  if (!entry) return { type: "none" };
+  if (entry.homeStudioDiscount && entry.homeStudioDiscount.type && entry.homeStudioDiscount.type !== "none") {
+    return entry.homeStudioDiscount;
+  }
+  if (entry.freeHomeStudio) return { type: "free" };
+  return { type: "none" };
+};
+
+// Applies that discount to one specific rental fee. The amount is capped at
+// the fee itself so a flat ₹ code larger than the rental can never turn into
+// a negative charge, and isFree covers both an explicit "free" type and a
+// flat/pct value that happens to equal or exceed the fee.
+window.applyPromoHomeStudioDiscount = function(entry, fee) {
+  const hs = window.getPromoHomeStudioDiscount(entry);
+  if (!(fee > 0) || hs.type === "none") return { amount: 0, isFree: false, label: "" };
+  if (hs.type === "free") return { amount: fee, isFree: true, label: "FREE" };
+  const rawVal = Number(hs.value) || 0;
+  if (hs.type === "flat") {
+    const amount = Math.max(0, Math.min(fee, Math.round(rawVal)));
+    return { amount, isFree: amount >= fee, label: `FLAT ₹${rawVal.toLocaleString("en-IN")} OFF` };
+  }
+  if (hs.type === "pct") {
+    const pct = Math.max(0, Math.min(100, rawVal));
+    const amount = Math.round((fee * pct) / 100);
+    return { amount, isFree: amount >= fee, label: `${pct}% OFF` };
+  }
+  return { amount: 0, isFree: false, label: "" };
+};
+
 window.addNewAdminPromoCode = function() {
   window.openPromoCodeModal();
 };
@@ -103,8 +138,12 @@ window.openPromoCodeModal = function(codeKey) {
   // to fix a typo would quietly demote it to package-only.
   const addonsEl = document.getElementById("newPromoIncludeAddons");
   if (addonsEl) addonsEl.checked = !!(entry && entry.includeAddons);
-  const freeHomeEl = document.getElementById("newPromoFreeHomeStudio");
-  if (freeHomeEl) freeHomeEl.checked = !!(entry && entry.freeHomeStudio);
+  const hsTypeEl = document.getElementById("newPromoHomeStudioType");
+  const hsValEl = document.getElementById("newPromoHomeStudioVal");
+  const hsDiscount = window.getPromoHomeStudioDiscount(entry);
+  if (hsTypeEl) hsTypeEl.value = hsDiscount.type;
+  if (hsValEl) hsValEl.value = (hsDiscount.type === "flat" || hsDiscount.type === "pct") ? (hsDiscount.value || "") : "";
+  if (typeof window.togglePromoHomeStudioValField === "function") window.togglePromoHomeStudioValField();
 
   form.style.display = "block";
   form.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -137,18 +176,41 @@ window.saveNewPromoCodeFromForm = function() {
   // rental), or only the package rate? Off by default, so a rental the studio
   // actually pays for is never discounted unless that is the intent.
   const includeAddons = !!document.getElementById("newPromoIncludeAddons")?.checked;
-  // Waives the home studio rental outright, as opposed to includeAddons which
-  // only widens what the percentage is taken off.
-  const freeHomeStudio = !!document.getElementById("newPromoFreeHomeStudio")?.checked;
+  // Independent of includeAddons above: this is a dedicated discount on the
+  // home studio rental itself (free / flat ₹ / %), separate from whatever the
+  // code takes off the package rate.
+  const hsType = document.getElementById("newPromoHomeStudioType")?.value || "none";
+  let homeStudioDiscount = { type: "none" };
+  if (hsType === "free") {
+    homeStudioDiscount = { type: "free" };
+  } else if (hsType === "flat" || hsType === "pct") {
+    const hsVal = Math.round(Number(document.getElementById("newPromoHomeStudioVal")?.value));
+    if (!Number.isFinite(hsVal) || hsVal <= 0 || (hsType === "pct" && hsVal > 100)) {
+      alert(hsType === "pct" ? "Home studio % off must be between 1 and 100." : "Home studio flat discount must be a positive amount in ₹.");
+      return;
+    }
+    homeStudioDiscount = { type: hsType, value: hsVal };
+  }
   codes[name] = type === "flat"
-    ? { flat: val, label, includeAddons, freeHomeStudio }
-    : { pct: val, label, includeAddons, freeHomeStudio };
+    ? { flat: val, label, includeAddons, homeStudioDiscount }
+    : { pct: val, label, includeAddons, homeStudioDiscount };
   window.adminDraftPromoCodes = { ...codes };
   window._editingPromoKey = null;
 
   markUnsavedChanges();
   if (typeof toast === "function") toast(`🎟️ Promo code '${name}' ${editing ? "updated" : "added"} to draft. Click Save to push live.`);
   if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
+};
+
+// Shows the value input only for the two discount types that need a number —
+// "free" and "none" have nothing to type in.
+window.togglePromoHomeStudioValField = function() {
+  const typeEl = document.getElementById("newPromoHomeStudioType");
+  const valEl = document.getElementById("newPromoHomeStudioVal");
+  if (!typeEl || !valEl) return;
+  const needsVal = typeEl.value === "flat" || typeEl.value === "pct";
+  valEl.style.display = needsVal ? "" : "none";
+  valEl.placeholder = typeEl.value === "pct" ? "e.g. 10" : "e.g. 500";
 };
 
 // --- INVITE CODE HANDLERS ---
@@ -4745,14 +4807,20 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">Description Label</label>
                 <input type="text" id="newPromoDesc" placeholder="e.g. 30% Off Summer Shoots" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
               </div>
+              <div style="grid-column: span 2; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px;">
+                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">🏠 Home Studio Rental Discount</label>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                  <select id="newPromoHomeStudioType" onchange="window.togglePromoHomeStudioValField()" style="flex: 1; min-width: 150px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); font-weight: 700; background: var(--paper); color: var(--ink);">
+                    <option value="none">No discount on the rental</option>
+                    <option value="free">Free — 100% off</option>
+                    <option value="flat">Flat ₹ off</option>
+                    <option value="pct">% off</option>
+                  </select>
+                  <input type="number" id="newPromoHomeStudioVal" placeholder="e.g. 500" style="flex: 1; min-width: 100px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-weight: 700; color: #059669; background: var(--paper); display: none;" />
+                </div>
+                <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 4px; line-height: 1.4;">Only applies when the booking actually carries a home studio rental (dropdown pick, or a locked invite venue with a cost).</div>
+              </div>
               <div style="grid-column: span 2;">
-                <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px;">
-                  <input type="checkbox" id="newPromoFreeHomeStudio" style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent); cursor: pointer;" />
-                  <span style="font-size: var(--font-xs); color: var(--ink); font-family: 'Outfit', sans-serif; line-height: 1.4;">
-                    <strong>🏠 Home studio FREE with this code</strong><br/>
-                    <span style="color: var(--ink-soft);">The rental drops to ₹0 and the client's quote shows it as complimentary. This is the one that actually removes the charge.</span>
-                  </span>
-                </label>
                 <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;">
                   <input type="checkbox" id="newPromoIncludeAddons" style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent); cursor: pointer;" />
                   <span style="font-size: var(--font-xs); color: var(--ink); font-family: 'Outfit', sans-serif; line-height: 1.4;">
@@ -4847,6 +4915,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const codeCardsHtml = Object.keys(codes).map(codeKey => {
           const item = codes[codeKey];
           const tagDesc = item.flat ? `Flat ₹${item.flat.toLocaleString('en-IN')} Off` : `${item.pct}% Off`;
+          const hsDiscount = window.getPromoHomeStudioDiscount(item);
+          const hsBadge = hsDiscount.type === "free"
+            ? `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(5,150,105,0.12); color: #059669; padding: 2px 6px; border-radius: 4px;" title="Home studio rental is free with this code">🏠 FREE</span>`
+            : hsDiscount.type === "flat"
+              ? `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(5,150,105,0.12); color: #059669; padding: 2px 6px; border-radius: 4px;" title="Home studio rental discount">🏠 ₹${Number(hsDiscount.value || 0).toLocaleString('en-IN')} OFF</span>`
+              : hsDiscount.type === "pct"
+                ? `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(5,150,105,0.12); color: #059669; padding: 2px 6px; border-radius: 4px;" title="Home studio rental discount">🏠 ${hsDiscount.value}% OFF</span>`
+                : "";
           return `
             <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px; box-shadow: var(--shadow-sm); overflow: hidden; flex-wrap: wrap;">
               <div style="min-width: 0; flex: 1;">
@@ -4856,6 +4932,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   ${item.includeAddons
                     ? `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(217,119,6,0.14); color: #d97706; padding: 2px 6px; border-radius: 4px;" title="This discount also comes off the home studio rental">+ ADD-ONS</span>`
                     : `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(120,120,120,0.14); color: var(--ink-soft); padding: 2px 6px; border-radius: 4px;" title="Discount applies to the package rate only">PACKAGE ONLY</span>`}
+                  ${hsBadge}
                 </div>
                 <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">${esc(item.label)}</div>
               </div>
@@ -7165,9 +7242,30 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                          to pick it deliberately. -->
                     <select id="b_studio_space">
                       <option value="Home Studio - Noida (Provided by Studio)" id="b_studio_space_home">🏠 Home Studio, Noida — intimate setup, best for portraits, comp cards &amp; solo talent</option>
-                      <option value="Dedicated Commercial Studio Rental (Billed at Actuals)">🏢 Dedicated commercial studio — rental billed at actuals</option>
+                      <option value="Dedicated Commercial Studio Rental (Billed at Actuals)">🏢 Dedicated Commercial Studio</option>
                       <option value="Outdoor / On-Location (No Studio Required)" selected>🌳 Outdoor / on-location — no studio required</option>
                     </select>
+                  </label>
+                </div>
+                <!-- Shown only for the rented commercial studio: that space
+                     does not come with the photographer's own lighting kit
+                     built in the way the home studio does, so the client has
+                     to say whether lighting equipment is part of the booking
+                     or left to the photographer to arrange. Neither radio is
+                     pre-checked, so submitting without an explicit pick is
+                     not possible while the row is visible. -->
+                <div class="field-row" id="b_studio_lighting_wrap" style="display: none;">
+                  <label class="field" style="grid-column: 1 / -1;"><span>Lighting for the Rented Studio *</span>
+                    <div style="display: flex; flex-wrap: wrap; gap: 16px; margin-top: 8px;">
+                      <label style="display: flex; align-items: center; gap: 6px; font-weight: 400; cursor: pointer;">
+                        <input type="radio" name="b_studio_lighting" id="b_studio_lighting_include" value="Include Studio Lighting Equipment (Billed at Actuals)" />
+                        Include lighting equipment with the booking (billed at actuals)
+                      </label>
+                      <label style="display: flex; align-items: center; gap: 6px; font-weight: 400; cursor: pointer;">
+                        <input type="radio" name="b_studio_lighting" id="b_studio_lighting_photog" value="Photographer to Select Lighting" />
+                        Let the photographer select the lighting
+                      </label>
+                    </div>
                   </label>
                 </div>
                <div class="field-row">
@@ -8544,6 +8642,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     ["b_name", "b_email", "b_date", "b_instagram", "b_location"].forEach((id) => {
       $("#" + id)?.addEventListener("input", () => clearError(id));
     });
+    document.querySelectorAll('input[name="b_studio_lighting"]').forEach((r) => {
+      r.addEventListener("change", () => clearError("b_studio_lighting_include"));
+    });
 
     // ── Custom Date Picker Calendar ──
     (() => {
@@ -9097,12 +9198,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             const tagMsg = matchedDiscount.flat ? `FLAT ₹${matchedDiscount.flat.toLocaleString("en-IN")} OFF` : `${matchedDiscount.pct}% OFF`;
             discountStatus.textContent = `🟢 ${tagMsg} APPLIED`;
             savingsBadge.style.display = "block";
-            // Name the free venue here too. This banner sits above the quote
-            // and used to advertise only the discount, which on a code that
-            // also hands over the studio is the smaller half of the offer.
-            savingsBadge.textContent = matchedDiscount.freeHomeStudio
+            // Name the home studio discount here too. This banner sits above
+            // the quote and used to advertise only the package discount,
+            // which on a code that also touches the studio is the smaller
+            // half of the offer. Shown as "if you shoot there" since the
+            // venue pick itself may not be made yet.
+            const bannerHsDiscount = getPromoHomeStudioDiscount(matchedDiscount);
+            savingsBadge.textContent = bannerHsDiscount.type === "free"
               ? `🎉 Promo Offer Applied: ${tagMsg} on your package — plus the home studio free if you shoot there!`
-              : `🎉 Promo Offer Applied: You save ${tagMsg} on your selected package total!`;
+              : (bannerHsDiscount.type === "flat" || bannerHsDiscount.type === "pct")
+                ? `🎉 Promo Offer Applied: ${tagMsg} on your package — plus ${bannerHsDiscount.type === "flat" ? `₹${Number(bannerHsDiscount.value || 0).toLocaleString("en-IN")}` : `${bannerHsDiscount.value}%`} off the home studio rental if you shoot there!`
+                : `🎉 Promo Offer Applied: You save ${tagMsg} on your selected package total!`;
             if (btnDiscount) {
               btnDiscount.textContent = "✕ Remove Code";
               btnDiscount.style.background = "transparent";
@@ -9275,10 +9381,36 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // rather than silently offering the photographer's home for free work.
       const HOME_STUDIO_VALUE = "Home Studio - Noida (Provided by Studio)";
       const OUTDOOR_VALUE = "Outdoor / On-Location (No Studio Required)";
+      const COMMERCIAL_STUDIO_VALUE = "Dedicated Commercial Studio Rental (Billed at Actuals)";
       const HOME_STUDIO_LABEL = "Home Studio, Noida";
       const studioSpaceSel = $("#b_studio_space");
       const homeStudioOpt = $("#b_studio_space_home");
       const isTfpType = $("#b_type")?.value === "Selective Collaboration (TFP)";
+
+      // Lighting question only makes sense once a commercial studio is
+      // actually being rented — the home studio already comes with the
+      // photographer's own kit, and there is no venue at all on an outdoor
+      // shoot. Hidden (and therefore not required) the moment the client
+      // picks anything else, so a stale answer from an earlier selection
+      // never rides along on a shoot it no longer applies to.
+      const studioLightingWrap = $("#b_studio_lighting_wrap");
+      const isCommercialStudioSelected = studioSpaceSel?.value === COMMERCIAL_STUDIO_VALUE;
+      if (studioLightingWrap) {
+        studioLightingWrap.style.display = isCommercialStudioSelected ? "" : "none";
+        if (!isCommercialStudioSelected) {
+          document.querySelectorAll('input[name="b_studio_lighting"]').forEach((r) => { r.checked = false; });
+        }
+      }
+      // Read once here so the live contract clause below and the submitted
+      // booking (further down, off the same select/radio pair) always agree.
+      const studioLightingChoice = isCommercialStudioSelected
+        ? ($("input[name='b_studio_lighting']:checked")?.value || "")
+        : "";
+      const studioLightingClauseHtml = studioLightingChoice
+        ? (studioLightingChoice === "Include Studio Lighting Equipment (Billed at Actuals)"
+            ? ` Lighting equipment for that studio is to be included with the booking and is billed at actuals (at cost), in addition to the rental itself.`
+            : ` Lighting for that studio is left to the photographer to select and arrange as part of the production.`)
+        : "";
 
       // The home studio used to be withheld from test shoots so the
       // photographer's residence was not silently given away for free work.
@@ -9350,15 +9482,19 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       }
       const homeStudioSelected = dropdownHomeStudio || inviteLocksVenue;
 
-      // A promo code can hand the venue over complimentary. This zeroes the
-      // charge outright — unlike includeAddons, which only widens what the
-      // percentage is taken off and leaves the rental payable.
-      const promoFreesHomeStudio = !!(matchedDiscount && matchedDiscount.freeHomeStudio && homeStudioFee > 0);
       // What the venue is worth, kept separately from what is charged so a
       // waiver can show the talent the size of what they were given instead of
       // a bare zero.
       let homeStudioListPrice = homeStudioFee;
-      if (promoFreesHomeStudio) homeStudioFee = 0;
+      // A promo code's own discount on the rental — free, flat ₹, or % —
+      // unlike includeAddons, which only widens what the package's discount
+      // is taken off and never zeroes the rental on its own.
+      const promoHomeStudioResult = applyPromoHomeStudioDiscount(matchedDiscount, homeStudioFee);
+      homeStudioFee = Math.max(0, homeStudioFee - promoHomeStudioResult.amount);
+      const promoFreesHomeStudio = promoHomeStudioResult.isFree;
+      // A discount that knocks something off without zeroing it out — shown
+      // differently from the fully-free case, which reads as "complimentary".
+      const promoDiscountsHomeStudio = promoHomeStudioResult.amount > 0 && !promoHomeStudioResult.isFree;
 
       // An invite that supplies the venue and names no price is handing it over
       // free. Nothing was shown for this at all, so a collaborator given a
@@ -9371,6 +9507,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const venueComplimentary = promoFreesHomeStudio || inviteVenueComplimentary;
       // Which code earned it, for the line the talent reads.
       const venueFreeWithCode = promoFreesHomeStudio ? enteredDiscount : (inviteVenueComplimentary ? enteredCode : "");
+      // Same idea for a partial discount — kept apart from the line above
+      // since "complimentary" would misstate a rental that still costs
+      // something.
+      const venueDiscountWithCode = promoDiscountsHomeStudio ? enteredDiscount : "";
 
       // A collaboration buys no package, so the rental is the only charge it
       // can ever carry — a package rate must never leak into a TFP quote.
@@ -9395,7 +9535,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             // The client is looking at a quote with this rental on it, so the
             // clause they tick has to name the same number.
             ? `This session takes place at the Studio's home studio in Noida. A fixed home studio rental of <strong>₹${homeStudioFee.toLocaleString("en-IN")}</strong> applies and is itemised in the production quote; no further venue rental is billed at actuals for it.${paidHomeRiderHtml} Hair &amp; makeup artists, stylists, set designers and any other third-party crew are not included in this booking — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`
-            : `If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges. Hair &amp; makeup artists, stylists, set designers and any other third-party crew are not included in this booking — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`;
+            : `If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges.${studioLightingClauseHtml} Hair &amp; makeup artists, stylists, set designers and any other third-party crew are not included in this booking — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`;
       }
 
       // Update TFP policy notice studio line if TFP is selected
@@ -9485,6 +9625,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // waiver rather than a rental that silently never existed.
         homeStudioListPrice,
         promoFreesHomeStudio,
+        promoDiscountsHomeStudio,
+        promoHomeStudioAmount: promoHomeStudioResult.amount,
+        promoHomeStudioLabel: promoHomeStudioResult.label,
         savings,
         finalPayable
       };
@@ -9593,12 +9736,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         if (summaryHomeStudioWrap) {
           summaryHomeStudioWrap.style.display = showHomeStudioLine ? "flex" : "none";
         }
+        // Any promo discount on the rental (full or partial) shows the
+        // struck-through original beside the reduced number — not just the
+        // fully-free case, so a flat-₹ or % code off the room is visible too.
+        const homeStudioPromoApplied = homeStudioListPrice > homeStudioFee;
         if (summaryHomeStudioAmount && showHomeStudioLine) {
-          // Show what the venue costs before showing that it is free. "₹0" on
+          // Show what the venue costs before showing the discount. "₹0" on
           // its own hides the size of the gift — the studio is handing over a
           // ₹2,000 room, and the client should see that, not a zero.
-          summaryHomeStudioAmount.innerHTML = (venueComplimentary && homeStudioListPrice > 0)
-            ? `<span style="text-decoration: line-through; color: rgba(255,255,255,0.45); font-weight: 500; margin-right: 8px;">₹${homeStudioListPrice.toLocaleString("en-IN")}</span><span style="color: #059669;">₹0</span>`
+          summaryHomeStudioAmount.innerHTML = homeStudioPromoApplied
+            ? `<span style="text-decoration: line-through; color: rgba(255,255,255,0.45); font-weight: 500; margin-right: 8px;">₹${homeStudioListPrice.toLocaleString("en-IN")}</span><span style="color: #059669;">₹${homeStudioFee.toLocaleString("en-IN")}</span>`
             : (venueComplimentary ? "₹0" : `+₹${homeStudioFee.toLocaleString("en-IN")}`);
           summaryHomeStudioAmount.style.color = venueComplimentary ? "#059669" : "#ffffff";
         }
@@ -9612,7 +9759,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             : "Home Studio Rental (Noida)";
           summaryHomeStudioLabel.innerHTML = venueComplimentary
             ? `${esc(venueName)} <span style="color:#059669;font-weight:700;">— complimentary${venueFreeWithCode ? ` with ${esc(venueFreeWithCode)}` : ""}</span>`
-            : esc(venueName);
+            : promoDiscountsHomeStudio
+              ? `${esc(venueName)} <span style="color:#059669;font-weight:700;">— ${esc(promoHomeStudioResult.label)}${venueDiscountWithCode ? ` with ${esc(venueDiscountWithCode)}` : ""}</span>`
+              : esc(venueName);
         }
 
         if (savings > 0) {
@@ -9628,10 +9777,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           if (calcDiscountTag) calcDiscountTag.style.display = "none";
         }
 
-        // Everything the booking saved, added up: the discount plus the value
-        // of any venue handed over free. Shown only when the two stack, since
-        // on an ordinary discount it would just repeat the line above it.
-        const waivedVenueValue = venueComplimentary ? homeStudioListPrice : 0;
+        // Everything the booking saved, added up: the package discount plus
+        // whatever the promo code took off the rental — free or partial.
+        // Shown only when the two stack, since on an ordinary discount it
+        // would just repeat the line above it.
+        const waivedVenueValue = Math.max(0, homeStudioListPrice - homeStudioFee);
         const totalSavings = savings + waivedVenueValue;
         const summaryTotalSavingsWrap = $("#summaryTotalSavingsWrap");
         const summaryTotalSavingsAmount = $("#summaryTotalSavingsAmount");
@@ -9799,6 +9949,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // answers agreeing never fires.
       $("#b_studio_space")?.addEventListener(evtName, updateFields);
     });
+    // Picking a lighting option has to re-run updateFields too, or the live
+    // contract clause the client reads keeps showing the pre-pick text until
+    // some other field happens to change.
+    document.querySelectorAll('input[name="b_studio_lighting"]').forEach((r) => {
+      r.addEventListener("change", updateFields);
+    });
     // Address changes are checked on change/blur rather than on every
     // keystroke: flipping the dropdown mid-word would yank the selection out
     // from under someone who is still typing "Home Studio, Noida" by hand.
@@ -9884,6 +10040,18 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       require("b_name", "Please add your name or brand.");
       require("b_date", "Let us know a rough date or timeline.");
       require("b_location", "Please let us know your preferred location.");
+
+      // Only asked (and therefore only enforced) once a dedicated commercial
+      // studio is actually being rented — see the show/hide note beside
+      // b_studio_lighting_wrap in updateFields.
+      if ($("#b_studio_space")?.value === "Dedicated Commercial Studio Rental (Billed at Actuals)") {
+        if (!document.querySelector('input[name="b_studio_lighting"]:checked')) {
+          setError("b_studio_lighting_include", "Please choose whether lighting equipment is included or left to the photographer.");
+          firstBad = firstBad || "b_studio_lighting_include";
+        } else {
+          clearError("b_studio_lighting_include");
+        }
+      }
 
       const rawDateStr = val("b_date");
       if (rawDateStr) {
@@ -10056,9 +10224,20 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const homeStudioRider = isHomeStudio
           ? `\n\nHOME STUDIO SESSIONS\nThis session takes place at the photographer's private residence. Attendance is limited to a maximum of 3 people in total, including the Participant and any crew they bring — hair & makeup artists, stylists, assistants and guests all count towards this limit. Sessions run within booked daylight hours and conclude by 7:00 PM. The full address is shared on booking confirmation. Guests may not attend unaccompanied.`
           : "";
+        // Same lighting choice the live contract clause reads during
+        // updateFields, re-read here off the same select/radio pair so the
+        // document the client actually signs never disagrees with what they
+        // saw on screen a moment before submitting.
+        const isCommercialStudioBooked = $("#b_studio_space")?.value === "Dedicated Commercial Studio Rental (Billed at Actuals)";
+        const studioLightingPick = isCommercialStudioBooked ? ($("input[name='b_studio_lighting']:checked")?.value || "") : "";
+        const studioLightingSubmitClause = studioLightingPick
+          ? (studioLightingPick === "Include Studio Lighting Equipment (Billed at Actuals)"
+              ? ` Lighting equipment for that studio is to be included with the booking and is billed at actuals (at cost), in addition to the rental itself.`
+              : ` Lighting for that studio is left to the photographer to select and arrange as part of the production.`)
+          : "";
         const venueClause = venueByStudio
           ? `1. SCOPE OF PRODUCTION & VENUE (PROVIDED BY STUDIO)\nThis session is scheduled for studio/location photography production at a venue arranged and paid for by the Studio: ${venueByStudioAddress || "as confirmed with the Studio"}. No studio rental, venue hire or space fee is billed to the Participant for this session. A change of venue requested by the Participant is subject to Studio approval and may reintroduce venue costs at actuals.${homeStudioRider}`
-          : `1. SCOPE OF PRODUCTION & VENUE RENTAL POLICY\nThis session is scheduled for studio/location photography production. Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio venue space is required, applicable studio rental fees are billed at actuals (at cost).`;
+          : `1. SCOPE OF PRODUCTION & VENUE RENTAL POLICY\nThis session is scheduled for studio/location photography production. Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio venue space is required, applicable studio rental fees are billed at actuals (at cost).${studioLightingSubmitClause}`;
         const contractRefDoc = isCustomContract ? "CUSTOM-CLIENT-CONTRACT-MSA" : (isTfpCat ? "TFP-LIABILITY-RELEASE-V3.4" : "COMMERCIAL-CONTRACT-V3.5");
         // Resolved before the release text below, which now states the fee and
         // the milestones. They previously appeared only in the inquiry email as
@@ -10073,6 +10252,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // shows what the code was worth and the studio's does too.
         const homeStudioWaivedByPromo = !!(bookingCalc && bookingCalc.promoFreesHomeStudio);
         const homeStudioListPriceVal = (bookingCalc && bookingCalc.homeStudioListPrice) || 0;
+        // Same promo code, applied only partially — the rental still costs
+        // something, so this reads differently from the fully-waived case above.
+        const homeStudioDiscountedByPromo = !!(bookingCalc && bookingCalc.promoDiscountsHomeStudio);
+        const homeStudioPromoDiscountAmount = (bookingCalc && bookingCalc.promoHomeStudioAmount) || 0;
+        const homeStudioPromoDiscountLabel = (bookingCalc && bookingCalc.promoHomeStudioLabel) || "";
         // Read off bookingCalc, never off updateFields' own locals: those live
         // in a different function, and reaching for one here is the exact
         // ReferenceError that silently killed every booking submit before.
@@ -10152,7 +10336,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               : `${venueLabel} — provided by the studio, no rental billed`)
           : (venueByStudio
               ? `Not required — venue provided by the studio (photographer's invite)`
-              : (val("b_studio_space") || 'Not Specified'));
+              : (val("b_studio_space") || 'Not Specified') + (studioLightingPick
+                  ? ` — Lighting: ${studioLightingPick === "Include Studio Lighting Equipment (Billed at Actuals)" ? "include equipment (billed at actuals)" : "photographer to select"}`
+                  : ""));
         const studioRentalPolicyNote = (homeStudioRentalFee > 0)
           // A paid home-studio booking is the one case where the studio does
           // charge for its own venue, so the stock "no fee is billed to you"
@@ -10162,7 +10348,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           : venueByStudio
             ? `Studio Rental Policy: The venue for this session is arranged and paid for by the studio. No venue rental or studio space fee is billed to you for this shoot.\n` +
               (isHomeStudio ? homeStudioHouseRules : ``)
-            : `Studio Rental Policy: Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio space is required, venue rental fees are billed at actuals (at cost), or the client may book the studio directly.\n`;
+            : `Studio Rental Policy: Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio space is required, venue rental fees are billed at actuals (at cost), or the client may book the studio directly.\n` +
+              (studioLightingSubmitClause ? `Studio Lighting:${studioLightingSubmitClause}\n` : ``);
         const travelPolicyNote = venueByStudio
           ? `Travel & Accommodation Policy: Travel to the studio-provided venue above is covered by the studio for this invite. If you later request a different location, standard terms apply again (travel beyond 20 km from the studio base in Noida, and accommodation where an overnight stay is needed, billed at actuals).\n`
           : `Travel & Accommodation Policy: Shoots requiring travel beyond 20 km from the studio base (Noida) incur paid travel and, where an overnight stay is needed, accommodation - billed at actuals (at cost).\n`;
@@ -10195,7 +10382,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           travelPolicyNote +
           cleanBudget +
           (homeStudioRentalFee > 0
-            ? `Home Studio Rental (add-on): ₹${homeStudioRentalFee.toLocaleString('en-IN')}\n`
+            ? (homeStudioDiscountedByPromo
+                ? `Home Studio Rental (add-on): ₹${homeStudioRentalFee.toLocaleString('en-IN')} — ${homeStudioPromoDiscountLabel} with promo code ${promoCodeUsed} applied (normally ₹${homeStudioListPriceVal.toLocaleString('en-IN')})\n` +
+                  `Total Savings: ₹${(((bookingCalc && bookingCalc.savings) || 0) + homeStudioPromoDiscountAmount).toLocaleString('en-IN')} (promo discount + home studio discount)\n`
+                : `Home Studio Rental (add-on): ₹${homeStudioRentalFee.toLocaleString('en-IN')}\n`)
             : (homeStudioWaivedByPromo
                 ? `Home Studio Rental (add-on): ₹0 — complimentary with promo code ${promoCodeUsed} (normally ₹${homeStudioListPriceVal.toLocaleString('en-IN')})\n` +
                   `Total Savings: ₹${(((bookingCalc && bookingCalc.savings) || 0) + homeStudioListPriceVal).toLocaleString('en-IN')} (promo discount + complimentary home studio)\n`
