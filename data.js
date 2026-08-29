@@ -1862,7 +1862,7 @@ window.WPS_DATA = {
     }
   ],
   "HOME_STUDIO_RATE": 2000,
-  "HOME_STUDIO_RATE_TFP": 3000
+  "HOME_STUDIO_RATE_TFP": 4000
 };
 
 // Explicit Global Aliases for Data Safety
