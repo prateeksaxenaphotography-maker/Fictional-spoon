@@ -1206,6 +1206,148 @@ window.WPS_DATA = {
       "showGear": true,
       "showLocation": true,
       "coverPhotoId": "mt6419b008xse6"
+    },
+    {
+      "id": "mte8dutdkqor3f",
+      "createdAt": 1787998907713,
+      "isTestimonial": false,
+      "title": "Rohit Pal",
+      "brand": "Personal Project",
+      "activity": "Portrait",
+      "type": "Test Shoot",
+      "season": "August 2026",
+      "photographer": "nerdyphotographer",
+      "artDirector": "",
+      "stylist": "—",
+      "hair": "—",
+      "mua": "—",
+      "videographer": "—",
+      "talent": "Rohit Pal (https://www.instagram.com/browneymodel/?hl=en",
+      "location": "Noida",
+      "height": "",
+      "chest": "",
+      "chestLabel": "Chest",
+      "waist": "",
+      "hips": "",
+      "shoes": "",
+      "modelHair": "",
+      "modelEyes": "",
+      "modelTypes": [],
+      "showStatsOnCompCard": true,
+      "showStatsOnModelPortfolio": true,
+      "showTestShootCategory": false,
+      "mentor": "",
+      "credits": "",
+      "description": "",
+      "tags": "",
+      "gear": "",
+      "client": "",
+      "date": "2026-08-01",
+      "instagram": "",
+      "kavyar": "",
+      "link": "",
+      "pdfUrl": "",
+      "rights": "",
+      "testimonials": [],
+      "lightingDiagram": null,
+      "lightingDiagramVisibility": "private",
+      "palette": [
+        "#b8aa9c",
+        "#534d46"
+      ],
+      "photos": [
+        {
+          "id": "mte8bxci1pwjht-0",
+          "url": "photos/mte8dutdkqor3f/mte8bxci1pwjht-0.jpg",
+          "objectPosition": "top",
+          "small": "photos/mte8dutdkqor3f/mte8bxci1pwjht-0@480.jpg",
+          "medium": "photos/mte8dutdkqor3f/mte8bxci1pwjht-0@960.jpg"
+        },
+        {
+          "id": "mte8bxdfwxtc6u-1",
+          "url": "photos/mte8dutdkqor3f/mte8bxdfwxtc6u-1.jpg",
+          "objectPosition": "center",
+          "small": "photos/mte8dutdkqor3f/mte8bxdfwxtc6u-1@480.jpg",
+          "medium": "photos/mte8dutdkqor3f/mte8bxdfwxtc6u-1@960.jpg"
+        },
+        {
+          "id": "mte8bxe0wnznc4-2",
+          "url": "photos/mte8dutdkqor3f/mte8bxe0wnznc4-2.jpg",
+          "objectPosition": "center",
+          "small": "photos/mte8dutdkqor3f/mte8bxe0wnznc4-2@480.jpg",
+          "medium": "photos/mte8dutdkqor3f/mte8bxe0wnznc4-2@960.jpg"
+        },
+        {
+          "id": "mte8bxenqpa33c-3",
+          "url": "photos/mte8dutdkqor3f/mte8bxenqpa33c-3.jpg",
+          "objectPosition": "center",
+          "small": "photos/mte8dutdkqor3f/mte8bxenqpa33c-3@480.jpg",
+          "medium": "photos/mte8dutdkqor3f/mte8bxenqpa33c-3@960.jpg"
+        },
+        {
+          "id": "mte8bxf6kajec5-4",
+          "url": "photos/mte8dutdkqor3f/mte8bxf6kajec5-4.jpg",
+          "objectPosition": "center",
+          "small": "photos/mte8dutdkqor3f/mte8bxf6kajec5-4@480.jpg",
+          "medium": "photos/mte8dutdkqor3f/mte8bxf6kajec5-4@960.jpg"
+        },
+        {
+          "id": "mte8bxfpvxno70-5",
+          "url": "photos/mte8dutdkqor3f/mte8bxfpvxno70-5.jpg",
+          "objectPosition": "center",
+          "small": "photos/mte8dutdkqor3f/mte8bxfpvxno70-5@480.jpg",
+          "medium": "photos/mte8dutdkqor3f/mte8bxfpvxno70-5@960.jpg"
+        },
+        {
+          "id": "mte8bxg9wa91nq-6",
+          "url": "photos/mte8dutdkqor3f/mte8bxg9wa91nq-6.jpg",
+          "objectPosition": "center",
+          "small": "photos/mte8dutdkqor3f/mte8bxg9wa91nq-6@480.jpg",
+          "medium": "photos/mte8dutdkqor3f/mte8bxg9wa91nq-6@960.jpg"
+        },
+        {
+          "id": "mte8bxgv815ni6-7",
+          "url": "photos/mte8dutdkqor3f/mte8bxgv815ni6-7.jpg",
+          "objectPosition": "center",
+          "small": "photos/mte8dutdkqor3f/mte8bxgv815ni6-7@480.jpg",
+          "medium": "photos/mte8dutdkqor3f/mte8bxgv815ni6-7@960.jpg"
+        },
+        {
+          "id": "mte8bxho4pddlx-8",
+          "url": "photos/mte8dutdkqor3f/mte8bxho4pddlx-8.jpg",
+          "objectPosition": "center",
+          "small": "photos/mte8dutdkqor3f/mte8bxho4pddlx-8@480.jpg",
+          "medium": "photos/mte8dutdkqor3f/mte8bxho4pddlx-8@960.jpg"
+        },
+        {
+          "id": "mte8bxii37l4vd-9",
+          "url": "photos/mte8dutdkqor3f/mte8bxii37l4vd-9.jpg",
+          "objectPosition": "center",
+          "small": "photos/mte8dutdkqor3f/mte8bxii37l4vd-9@480.jpg",
+          "medium": "photos/mte8dutdkqor3f/mte8bxii37l4vd-9@960.jpg"
+        },
+        {
+          "id": "mte8bxj640nrl2-10",
+          "url": "photos/mte8dutdkqor3f/mte8bxj640nrl2-10.jpg",
+          "objectPosition": "center",
+          "small": "photos/mte8dutdkqor3f/mte8bxj640nrl2-10@480.jpg",
+          "medium": "photos/mte8dutdkqor3f/mte8bxj640nrl2-10@960.jpg"
+        }
+      ],
+      "featured": true,
+      "showAsCompCard": false,
+      "hideFromCompCard": false,
+      "disableCompCardDownload": false,
+      "isPublic": true,
+      "showCredits": true,
+      "showPdf": true,
+      "showInstagram": true,
+      "showKavyar": true,
+      "showTestimonials": true,
+      "showStats": true,
+      "showGear": true,
+      "showLocation": true,
+      "coverPhotoId": "mte8bxci1pwjht"
     }
   ],
   "DELETED_IDS": [
