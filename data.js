@@ -1222,7 +1222,7 @@ window.WPS_DATA = {
       "hair": "—",
       "mua": "—",
       "videographer": "—",
-      "talent": "Rohit Pal (https://www.instagram.com/browneymodel/?hl=en",
+      "talent": "Rohit Pal (https://www.instagram.com/browneymodel/?hl=en)",
       "location": "Noida",
       "height": "",
       "chest": "",
@@ -1252,8 +1252,8 @@ window.WPS_DATA = {
       "lightingDiagram": null,
       "lightingDiagramVisibility": "private",
       "palette": [
-        "#b8aa9c",
-        "#534d46"
+        "#3a3a3a",
+        "#0d0d0d"
       ],
       "photos": [
         {
@@ -1347,7 +1347,7 @@ window.WPS_DATA = {
       "showStats": true,
       "showGear": true,
       "showLocation": true,
-      "coverPhotoId": "mte8bxci1pwjht"
+      "coverPhotoId": "mte8bxg9wa91nq"
     }
   ],
   "DELETED_IDS": [
