@@ -510,7 +510,7 @@ window.getAdminPackages = getAdminPackages;
    opening the Calendar view. Defined inside a view function, the archive
    simply did not exist on those paths.
    ============================================================ */
-window.ACTIVE_CONTRACTS = { commercial: "V3.5-COMMERCIAL", tfp: "V3.4-TFP" };
+window.ACTIVE_CONTRACTS = { commercial: "V3.6-COMMERCIAL", tfp: "V3.5-TFP" };
 
 /* ============================================================
    § CALL TIME, GRACE PERIOD & NO-SHOW
@@ -769,6 +769,42 @@ window.WPS_CONTRACT_ARCHIVE["V3.5-COMMERCIAL"] = {
 // under it must still print the terms those clients actually accepted.
 window.WPS_CONTRACT_ARCHIVE["V3.4-COMMERCIAL"].effectiveDate = "August 2026 (superseded by V3.5)";
 window.WPS_CONTRACT_ARCHIVE["V3.4-COMMERCIAL"].status = "Archived — superseded by V3.5 (added call-time grace period & no-show clause)";
+
+// V3.6 is V3.5 plus the Client's choice of who arranges a rented external
+// studio (Client or photographer, billed at actuals), and confirms any
+// studio rental is paid in full as part of the advance retainer rather than
+// split across milestones — composed via .replace() on the shared clause 1
+// sentence so the five unrelated clauses cannot drift out of sync.
+window.WPS_CONTRACT_ARCHIVE["V3.6-COMMERCIAL"] = {
+  version: "V3.6-COMMERCIAL",
+  title: "Commercial Shoot & Release Agreement V3.6 (Paid Shoots)",
+  effectiveDate: "August 2026 – Present",
+  status: "Active / Current (Paid Commercial)",
+  summary: window.WPS_CONTRACT_ARCHIVE["V3.5-COMMERCIAL"].summary + " Adds the Client's choice of who arranges a rented external studio (Client or photographer, billed at actuals), and confirms any studio rental is paid in full as part of the advance retainer.",
+  fullText: window.WPS_CONTRACT_ARCHIVE["V3.5-COMMERCIAL"].fullText.replace(
+    "Commercial campaign bookings follow a 50/30/20 milestone structure.",
+    "Commercial campaign bookings follow a 50/30/20 milestone structure. Any studio rental applicable to the session (home studio or a dedicated external studio) is payable in full as part of the advance retainer, in addition to the package advance. Where a dedicated external or commercial studio space is booked for the shoot, the Client chooses who arranges it: the Client may book the studio space and any lighting equipment directly, or ask the photographer to do so on the Client's behalf, with the actual cost billed at actuals."
+  )
+};
+window.WPS_CONTRACT_ARCHIVE["V3.5-COMMERCIAL"].effectiveDate = "August 2026 (superseded by V3.6)";
+window.WPS_CONTRACT_ARCHIVE["V3.5-COMMERCIAL"].status = "Archived — superseded by V3.6 (added studio-arranger choice & rental-due-upfront rule)";
+
+// V3.5-TFP is V3.4-TFP plus the same studio-arranger choice, adapted for a
+// collaboration — composed the same way, off the existing studio-rental
+// sentence in clause 4.
+window.WPS_CONTRACT_ARCHIVE["V3.5-TFP"] = {
+  version: "V3.5-TFP",
+  title: "Test Shoot & TFP Liability Release V3.5 (Test Shoots)",
+  effectiveDate: "August 2026 – Present",
+  status: "Active / Current (Test Shoot / TFP)",
+  summary: window.WPS_CONTRACT_ARCHIVE["V3.4-TFP"].summary + " Adds the Participant's choice of who arranges a rented external studio (Participant or photographer, billed at actuals).",
+  fullText: window.WPS_CONTRACT_ARCHIVE["V3.4-TFP"].fullText.replace(
+    "If a dedicated indoor studio venue/space is required, applicable studio rental fees are billed at actuals (at cost).",
+    "If a dedicated indoor studio venue/space is required, applicable studio rental fees are billed at actuals (at cost) and are payable in full before the shoot day. Where a dedicated external or commercial studio space is booked, the Participant chooses who arranges it: they may book the studio space and lighting equipment directly themselves, or ask the photographer to do so on their behalf, with the actual cost billed at actuals."
+  )
+};
+window.WPS_CONTRACT_ARCHIVE["V3.4-TFP"].effectiveDate = "August 2026 (superseded by V3.5-TFP)";
+window.WPS_CONTRACT_ARCHIVE["V3.4-TFP"].status = "Archived — superseded by V3.5-TFP (added studio-arranger choice)";
 
 window.saveAdminCustomPackages = async function() {
   const rows = document.querySelectorAll(".admin-pkg-editor-row");
@@ -4484,26 +4520,26 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <p class="eyebrow" style="margin-bottom: 4px; color: var(--accent);">Legal Compliance &amp; Version Control</p>
             <h2 style="font-family: 'Outfit', sans-serif; font-size: var(--font-md); font-weight: 700; margin: 0;">📜 Studio Contract &amp; Terms Vault</h2>
           </div>
-          <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 4px 10px; border-radius: 4px; border: 1px solid var(--accent);">6 Historical Contract Versions Preserved</span>
+          <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 4px 10px; border-radius: 4px; border: 1px solid var(--accent);">8 Historical Contract Versions Preserved</span>
         </div>
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
           <div style="background: var(--paper); border: 1.5px solid var(--accent); border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm);">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--accent); color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.5 COMMERCIAL (ACTIVE)</span>
+              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--accent); color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.6 COMMERCIAL (ACTIVE)</span>
               <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Aug 2026 – Present</span>
             </div>
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">💼 Commercial Shoot Agreement V3.5</h3>
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Paid Commercial, Editorial, Fashion &amp; Brand. 50/50 &amp; 50/30/20 retainer milestones, commercial licensing, travel &gt;20km, gear &amp; media protection.</p>
-            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.5-COMMERCIAL')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review Commercial</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '')" style="font-size: var(--font-xs); border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
+            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">💼 Commercial Shoot Agreement V3.6</h3>
+            <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Paid Commercial, Editorial, Fashion &amp; Brand. 50/50 &amp; 50/30/20 retainer milestones (studio rental due in full with the advance), Client/photographer studio-arranger choice, commercial licensing, travel &gt;20km, gear &amp; media protection.</p>
+            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.6-COMMERCIAL')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review Commercial</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '')" style="font-size: var(--font-xs); border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
           </div>
           <div style="background: var(--paper); border: 1.5px solid #059669; border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm);">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: #059669; color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.4 TFP / TEST SHOOT (ACTIVE)</span>
+              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: #059669; color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.5 TFP / TEST SHOOT (ACTIVE)</span>
               <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Aug 2026 – Present</span>
             </div>
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">📸 Test Shoot &amp; TFP Release V3.4</h3>
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Selective Collaborations via Invite Codes. Non-commercial portfolio licensing, 8-12 retouched caps, Instagram credit, studio rental at actuals, liability waiver, gear protection.</p>
-            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.4-TFP')" style="font-size: var(--font-xs); flex: 1; font-weight: 700; background: #059669; border-color: #059669;">👁 Review TFP Release</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.4-TFP')" style="font-size: var(--font-xs); border-color: #059669; color: #059669; font-weight: 700;">📄 Print PDF</button></div>
+            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">📸 Test Shoot &amp; TFP Release V3.5</h3>
+            <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Selective Collaborations via Invite Codes. Non-commercial portfolio licensing, 8-12 retouched caps, Instagram credit, Participant/photographer studio-arranger choice, studio rental at actuals, liability waiver, gear protection.</p>
+            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.5-TFP')" style="font-size: var(--font-xs); flex: 1; font-weight: 700; background: #059669; border-color: #059669;">👁 Review TFP Release</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.5-TFP')" style="font-size: var(--font-xs); border-color: #059669; color: #059669; font-weight: 700;">📄 Print PDF</button></div>
           </div>
           <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -5333,10 +5369,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             </label>
             <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Contract Document Version *
               <select id="pdf_contractVersion" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
-                <option value="V3.5-COMMERCIAL" ${(b.contractVersion === 'V3.5-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.5' || (!b.contractVersion && !isTest)) ? 'selected' : ''}>📜 Commercial Shoot Contract V3.5 Active (adds call-time grace period)</option>
+                <option value="V3.6-COMMERCIAL" ${(b.contractVersion === 'V3.6-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.6' || (!b.contractVersion && !isTest)) ? 'selected' : ''}>📜 Commercial Shoot Contract V3.6 Active (studio-arranger choice + rental due with advance)</option>
+                <option value="V3.5-COMMERCIAL" ${(b.contractVersion === 'V3.5-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.5') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.5 (Archived)</option>
                 <option value="V3.4-COMMERCIAL" ${(b.contractVersion === 'V3.4-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.4') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.4 (Archived)</option>
                 <option value="V3.3-COMMERCIAL" ${(b.contractVersion === 'V3.3-COMMERCIAL' || b.contractVersion === 'V3.3') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.3 (Archived)</option>
-                <option value="V3.4-TFP" ${(b.contractVersion === 'V3.4-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.4' || (isTest && !b.contractVersion)) ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.4 Active (adds call-time grace &amp; no-show)</option>
+                <option value="V3.5-TFP" ${(b.contractVersion === 'V3.5-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.5' || (isTest && !b.contractVersion)) ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.5 Active (studio-arranger choice)</option>
+                <option value="V3.4-TFP" ${(b.contractVersion === 'V3.4-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.4') ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.4 (Archived)</option>
                 <option value="V3.3-TFP" ${b.contractVersion === 'V3.3-TFP' ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.3 (Archived)</option>
                 <option value="V3.2" ${b.contractVersion === 'V3.2' ? 'selected' : ''}>📜 Archived Terms V3.2 (May 2026 – Aug 2026)</option>
                 <option value="V3.1" ${b.contractVersion === 'V3.1' ? 'selected' : ''}>📜 Archived Terms V3.1 (May 2026 – Jul 2026)</option>
@@ -5784,9 +5822,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                        hand could not be marked as signed under the release the
                        public form actually uses. -->
                   <option value="Pending Agreement" ${(b.contractVersion === 'Pending Agreement' || (!b.agreedToTerms && !b.contractVersion)) ? 'selected' : ''}>⏳ Pending Agreement / Not Signed Yet (Admin Manual Booking)</option>
-                  <option value="V3.4-TFP" ${(b.contractVersion === 'V3.4-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.4') ? 'selected' : ''}>📸 Test Shoot / TFP Liability Release V3.4 (Active)</option>
+                  <option value="V3.5-TFP" ${(b.contractVersion === 'V3.5-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.5') ? 'selected' : ''}>📸 Test Shoot / TFP Liability Release V3.5 (Active)</option>
+                  <option value="V3.4-TFP" ${(b.contractVersion === 'V3.4-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.4') ? 'selected' : ''}>📸 Test Shoot / TFP Liability Release V3.4 (Archived)</option>
                   <option value="V3.3-TFP" ${(b.contractVersion === 'V3.3-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.3') ? 'selected' : ''}>📸 Test Shoot / TFP Liability Release V3.3 (Archived)</option>
-                  <option value="V3.5-COMMERCIAL" ${(b.contractVersion === 'V3.5-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.5' || (b.agreedToTerms && !b.contractVersion)) ? 'selected' : ''}>📜 Commercial Shoot Contract V3.5 (Active)</option>
+                  <option value="V3.6-COMMERCIAL" ${(b.contractVersion === 'V3.6-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.6' || (b.agreedToTerms && !b.contractVersion)) ? 'selected' : ''}>📜 Commercial Shoot Contract V3.6 (Active)</option>
+                  <option value="V3.5-COMMERCIAL" ${(b.contractVersion === 'V3.5-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.5') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.5 (Archived)</option>
                   <option value="V3.4-COMMERCIAL" ${(b.contractVersion === 'V3.4-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.4') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.4 (Archived)</option>
                   <option value="V3.3-COMMERCIAL" ${(b.contractVersion === 'V3.3-COMMERCIAL' || b.contractVersion === 'V3.3' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.3') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.3 (Archived)</option>
                   <option value="V3.2" ${b.contractVersion === 'V3.2' ? 'selected' : ''}>📜 Agreed Terms V3.2 (Archived Release)</option>
@@ -5922,9 +5962,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Contract Agreement &amp; Version Status</label>
                 <select id="m_clientContractVersion" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;">
                   <option value="Pending Agreement">⏳ Pending Agreement / Not Signed Yet (Admin Manual Booking)</option>
-                  <option value="V3.4-TFP">📸 Test Shoot / TFP Liability Release V3.4 (Active)</option>
+                  <option value="V3.5-TFP">📸 Test Shoot / TFP Liability Release V3.5 (Active)</option>
+                  <option value="V3.4-TFP">📸 Test Shoot / TFP Liability Release V3.4 (Archived)</option>
                   <option value="V3.3-TFP">📸 Test Shoot / TFP Liability Release V3.3 (Archived)</option>
-                  <option value="V3.5-COMMERCIAL">📜 Commercial Shoot Contract V3.5 (Active)</option>
+                  <option value="V3.6-COMMERCIAL">📜 Commercial Shoot Contract V3.6 (Active)</option>
+                  <option value="V3.5-COMMERCIAL">📜 Commercial Shoot Contract V3.5 (Archived)</option>
                   <option value="V3.4-COMMERCIAL">📜 Commercial Shoot Contract V3.4 (Archived)</option>
                   <option value="V3.3-COMMERCIAL">📜 Commercial Shoot Contract V3.3 (Archived)</option>
                   <option value="V3.2">📜 Agreed Terms V3.2 (Archived Release)</option>
@@ -6026,7 +6068,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       $("#quickTestShootBtn")?.addEventListener("click", () => {
         const clientName = $("#m_clientName").value.trim() || "Test Shoot Client";
         const notes = $("#m_clientNotes").value.trim() || "Booked for Test Shoot / TFP Collaboration.";
-        addCalBooking(dKey, { name: clientName, type: "Selective Collaboration (TFP)", notes: notes, isTentative: false, status: "confirmed", contractVersion: "V3.4-TFP", agreedToTerms: false });
+        addCalBooking(dKey, { name: clientName, type: "Selective Collaboration (TFP)", notes: notes, isTentative: false, status: "confirmed", contractVersion: "V3.5-TFP", agreedToTerms: false });
         toast(`📸 Test Shoot marked for ${dKey}! (Appears as Test Shoot in Blue)`);
         modalContainer.innerHTML = "";
         renderAdminGrid();
@@ -7250,20 +7292,22 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <!-- Shown only for the rented commercial studio: that space
                      does not come with the photographer's own lighting kit
                      built in the way the home studio does, so the client has
-                     to say whether lighting equipment is part of the booking
-                     or left to the photographer to arrange. Neither radio is
-                     pre-checked, so submitting without an explicit pick is
-                     not possible while the row is visible. -->
-                <div class="field-row" id="b_studio_lighting_wrap" style="display: none;">
-                  <label class="field" style="grid-column: 1 / -1;"><span>Lighting for the Rented Studio *</span>
+                     to say who is actually booking the space and lighting —
+                     themselves, or the photographer on their behalf, billed
+                     at actuals. Neither radio is pre-checked, so submitting
+                     without an explicit pick is not possible while the row
+                     is visible. -->
+                <div class="field-row" id="b_studio_arranger_wrap" style="display: none;">
+                  <label class="field" style="grid-column: 1 / -1;"><span>Who Will Arrange the Rented Studio? *</span>
+                    <div style="font-weight: 400; font-size: 0.85em; opacity: 0.75; margin-top: 4px;">This studio does not include lighting equipment — please choose one:</div>
                     <div style="display: flex; flex-wrap: wrap; gap: 16px; margin-top: 8px;">
-                      <label style="display: flex; align-items: center; gap: 6px; font-weight: 400; cursor: pointer;">
-                        <input type="radio" name="b_studio_lighting" id="b_studio_lighting_include" value="Include Studio Lighting Equipment (Billed at Actuals)" />
-                        Include lighting equipment with the booking (billed at actuals)
+                      <label style="display: flex; align-items: flex-start; gap: 6px; font-weight: 400; cursor: pointer; flex: 1 1 220px;">
+                        <input type="radio" name="b_studio_arranger" id="b_studio_arranger_client" value="Client Arranges Studio & Lighting Independently" style="width: 15px; height: 15px; padding: 0; border: none; background: transparent; border-radius: 0; margin: 0; margin-top: 3px; flex-shrink: 0;" />
+                        I'll rent the studio and lighting on my own and share the details with the photographer
                       </label>
-                      <label style="display: flex; align-items: center; gap: 6px; font-weight: 400; cursor: pointer;">
-                        <input type="radio" name="b_studio_lighting" id="b_studio_lighting_photog" value="Photographer to Select Lighting" />
-                        Let the photographer select the lighting
+                      <label style="display: flex; align-items: flex-start; gap: 6px; font-weight: 400; cursor: pointer; flex: 1 1 220px;">
+                        <input type="radio" name="b_studio_arranger" id="b_studio_arranger_photog" value="Photographer Arranges Studio & Lighting (Billed at Actuals)" style="width: 15px; height: 15px; padding: 0; border: none; background: transparent; border-radius: 0; margin: 0; margin-top: 3px; flex-shrink: 0;" />
+                        The photographer should rent the studio and lighting, and bill me at actuals
                       </label>
                     </div>
                   </label>
@@ -7334,16 +7378,31 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                       <span style="color: #ffffff; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-size: var(--font-xs);">Total Payable</span>
                       <span id="summaryFinalAmount" style="font-size: var(--font-md); font-weight: 800; color: var(--accent); font-family: var(--mono-font); white-space: nowrap;">₹${getAdminPackages()[0].price.toLocaleString('en-IN')} INR</span>
                     </div>
+                    <!-- Only when the client has handed studio+lighting booking
+                         over to the photographer: the actual venue and lighting
+                         cost is not known yet, so the total above will change
+                         once those are booked and billed at actuals. Hidden the
+                         rest of the time so it never implies a change that
+                         isn't coming. -->
+                    <div id="summaryArrangerNote" style="display: none; margin-top: 8px; padding: 8px 10px; background: rgba(217,119,6,0.12); border: 1px dashed rgba(217,119,6,0.4); border-radius: 6px; font-size: var(--font-xs); color: #d97706; font-family: inherit;">⚠️ Since the photographer is arranging the studio &amp; lighting, this total does not yet include their actual cost — it will be billed at actuals and added once the venue is booked.</div>
                   </div>
-                  <!-- 50/50 Milestone Itemized Breakdown -->
+                  <!-- Milestone Itemized Breakdown. Reads the studio's global
+                       2-step (50/50) or 3-step (50/30/20) setting — the same
+                       switch that drives the flowchart below — so the live
+                       numbers the client sees always match the milestones the
+                       contract they are about to sign describes. -->
                   <div id="summaryMilestoneBreakdown" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; font-size: var(--font-xs);">
                     <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 12px;">
-                      <span style="color: rgba(255,255,255,0.6); display: block; font-size: var(--font-xs); text-transform: uppercase;">Step 1 · 50% Advance Retainer (Due Now)</span>
+                      <span id="summaryAdvanceLabel" style="color: rgba(255,255,255,0.6); display: block; font-size: var(--font-xs); text-transform: uppercase;">Step 1 · 50% Advance Retainer (Due Now)</span>
                       <strong id="summaryAdvanceAmount" style="color: var(--accent); font-size: var(--font-sm); font-family: var(--mono-font);">₹${Math.round(getAdminPackages()[0].price / 2).toLocaleString('en-IN')} INR</strong>
                     </div>
                     <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 12px;">
-                      <span style="color: rgba(255,255,255,0.6); display: block; font-size: var(--font-xs); text-transform: uppercase;">Step 2 · 50% Wrap Balance (Prior to Deliverables)</span>
+                      <span id="summaryStep2Label" style="color: rgba(255,255,255,0.6); display: block; font-size: var(--font-xs); text-transform: uppercase;">Step 2 · 50% Wrap Balance (Prior to Deliverables)</span>
                       <strong id="summaryBalanceAmount" style="color: #059669; font-size: var(--font-sm); font-family: var(--mono-font);">₹${(getAdminPackages()[0].price - Math.round(getAdminPackages()[0].price / 2)).toLocaleString('en-IN')} INR</strong>
+                    </div>
+                    <div id="summaryStep3Wrap" style="display: none; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 12px;">
+                      <span style="color: rgba(255,255,255,0.6); display: block; font-size: var(--font-xs); text-transform: uppercase;">Step 3 · 20% Final Deliverables</span>
+                      <strong id="summaryStep3Amount" style="color: #f57c00; font-size: var(--font-sm); font-family: var(--mono-font);">₹0 INR</strong>
                     </div>
                   </div>
                   <!-- Collaboration bookings carry no package fee, so the only
@@ -7461,7 +7520,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                <div class="modal-content" style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; max-width: 680px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.15); overflow: hidden; animation: modalFadeIn 0.3s ease;">
                  <div style="padding: 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; background: var(--bone);">
                    <h3 id="termsModalTitle" style="margin: 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink);">Studio Production &amp; Liability Release</h3>
-                   <span id="termsModalTag" style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--accent); padding: 4px 8px; border-radius: 4px; color: #fff; font-weight: 700;">TFP-LIABILITY-RELEASE-V3.4 (CURRENT)</span>
+                   <span id="termsModalTag" style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--accent); padding: 4px 8px; border-radius: 4px; color: #fff; font-weight: 700;">TFP-LIABILITY-RELEASE-V3.5 (CURRENT)</span>
                  </div>
                  <div style="padding: 24px; overflow-y: auto; font-size: var(--font-sm); line-height: 1.6; color: var(--ink); display: flex; flex-direction: column; gap: 20px; text-align: left;">
                    <p style="margin: 0; font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em;">TFP Collaboration, Model Release &amp; Digital Consent Terms</p>
@@ -8642,8 +8701,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     ["b_name", "b_email", "b_date", "b_instagram", "b_location"].forEach((id) => {
       $("#" + id)?.addEventListener("input", () => clearError(id));
     });
-    document.querySelectorAll('input[name="b_studio_lighting"]').forEach((r) => {
-      r.addEventListener("change", () => clearError("b_studio_lighting_include"));
+    document.querySelectorAll('input[name="b_studio_arranger"]').forEach((r) => {
+      r.addEventListener("change", () => clearError("b_studio_arranger_client"));
     });
 
     // ── Custom Date Picker Calendar ──
@@ -9387,29 +9446,30 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const homeStudioOpt = $("#b_studio_space_home");
       const isTfpType = $("#b_type")?.value === "Selective Collaboration (TFP)";
 
-      // Lighting question only makes sense once a commercial studio is
-      // actually being rented — the home studio already comes with the
-      // photographer's own kit, and there is no venue at all on an outdoor
-      // shoot. Hidden (and therefore not required) the moment the client
-      // picks anything else, so a stale answer from an earlier selection
-      // never rides along on a shoot it no longer applies to.
-      const studioLightingWrap = $("#b_studio_lighting_wrap");
+      // This question only makes sense once a commercial studio is actually
+      // being rented — the home studio already comes with the photographer's
+      // own kit and is booked by the studio either way, and there is no
+      // venue at all on an outdoor shoot. Hidden (and therefore not
+      // required) the moment the client picks anything else, so a stale
+      // answer from an earlier selection never rides along on a shoot it no
+      // longer applies to.
+      const studioArrangerWrap = $("#b_studio_arranger_wrap");
       const isCommercialStudioSelected = studioSpaceSel?.value === COMMERCIAL_STUDIO_VALUE;
-      if (studioLightingWrap) {
-        studioLightingWrap.style.display = isCommercialStudioSelected ? "" : "none";
+      if (studioArrangerWrap) {
+        studioArrangerWrap.style.display = isCommercialStudioSelected ? "" : "none";
         if (!isCommercialStudioSelected) {
-          document.querySelectorAll('input[name="b_studio_lighting"]').forEach((r) => { r.checked = false; });
+          document.querySelectorAll('input[name="b_studio_arranger"]').forEach((r) => { r.checked = false; });
         }
       }
       // Read once here so the live contract clause below and the submitted
       // booking (further down, off the same select/radio pair) always agree.
-      const studioLightingChoice = isCommercialStudioSelected
-        ? ($("input[name='b_studio_lighting']:checked")?.value || "")
+      const studioArrangerChoice = isCommercialStudioSelected
+        ? ($("input[name='b_studio_arranger']:checked")?.value || "")
         : "";
-      const studioLightingClauseHtml = studioLightingChoice
-        ? (studioLightingChoice === "Include Studio Lighting Equipment (Billed at Actuals)"
-            ? ` Lighting equipment for that studio is to be included with the booking and is billed at actuals (at cost), in addition to the rental itself.`
-            : ` Lighting for that studio is left to the photographer to select and arrange as part of the production.`)
+      const studioArrangerClauseHtml = studioArrangerChoice
+        ? (studioArrangerChoice === "Photographer Arranges Studio & Lighting (Billed at Actuals)"
+            ? ` Where requested, the photographer will instead source and book the studio space and lighting equipment on the Participant's behalf, with the actual costs billed to the Participant at cost (at actuals).`
+            : ` The Participant will source and book the studio space and any lighting equipment directly, and will share the confirmed venue details with the photographer ahead of the shoot.`)
         : "";
 
       // The home studio used to be withheld from test shoots so the
@@ -9535,7 +9595,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             // The client is looking at a quote with this rental on it, so the
             // clause they tick has to name the same number.
             ? `This session takes place at the Studio's home studio in Noida. A fixed home studio rental of <strong>₹${homeStudioFee.toLocaleString("en-IN")}</strong> applies and is itemised in the production quote; no further venue rental is billed at actuals for it.${paidHomeRiderHtml} Hair &amp; makeup artists, stylists, set designers and any other third-party crew are not included in this booking — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`
-            : `If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges.${studioLightingClauseHtml} Hair &amp; makeup artists, stylists, set designers and any other third-party crew are not included in this booking — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`;
+            : `If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges.${studioArrangerClauseHtml} Hair &amp; makeup artists, stylists, set designers and any other third-party crew are not included in this booking — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`;
       }
 
       // Update TFP policy notice studio line if TFP is selected
@@ -9794,6 +9854,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
         if (summaryFinalAmount) summaryFinalAmount.textContent = `₹${finalPayable.toLocaleString("en-IN")} INR`;
 
+        // The photographer arranging the studio means its real cost is not
+        // known yet — it is billed at actuals once booked — so the total
+        // above is provisional and the client should not read it as final.
+        const summaryArrangerNote = $("#summaryArrangerNote");
+        if (summaryArrangerNote) {
+          summaryArrangerNote.style.display = (studioArrangerChoice === "Photographer Arranges Studio & Lighting (Billed at Actuals)") ? "block" : "none";
+        }
+
         // Payment terms. A collaboration owes only the rental, which reserves
         // the space, so it is due in full up front — splitting a small rental
         // into two milestones just creates a second amount to chase.
@@ -9812,13 +9880,48 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           const reservationAmount = $("#summaryReservationAmount");
           if (reservationAmount) reservationAmount.textContent = `₹${finalPayable.toLocaleString("en-IN")} INR`;
         } else {
-          // 50/50 Itemized Retainer & Balance Update
-          const advanceRetainer = Math.round(finalPayable / 2);
-          const wrapBalance = finalPayable - advanceRetainer;
+          // Itemized Retainer & remaining milestones. The studio rental
+          // reserves the venue, so — like a collaboration's rental — it is
+          // due in full up front rather than split across milestones; only
+          // the package rate itself is divided per the studio's milestone
+          // schedule (50/50, or 50/30/20 when that global setting is on).
+          const packageNet = Math.max(0, finalPayable - homeStudioFee);
+          const is3Step = globalSched === "503020";
           const summaryAdvanceAmount = $("#summaryAdvanceAmount");
           const summaryBalanceAmount = $("#summaryBalanceAmount");
+          const summaryAdvanceLabel = $("#summaryAdvanceLabel");
+          const summaryStep2Label = $("#summaryStep2Label");
+          const summaryStep3Wrap = $("#summaryStep3Wrap");
+          const summaryStep3Amount = $("#summaryStep3Amount");
+
+          let advanceRetainer, wrapBalance, step3Amount = 0;
+          if (is3Step) {
+            // 30% off the package portion goes to step 2; step 3 takes
+            // whatever rounding left over so the three legs always add
+            // back up to finalPayable exactly.
+            const step2 = Math.round(packageNet * 0.3);
+            advanceRetainer = Math.round(packageNet * 0.5) + homeStudioFee;
+            step3Amount = Math.max(0, packageNet - Math.round(packageNet * 0.5) - step2);
+            wrapBalance = step2;
+          } else {
+            advanceRetainer = Math.round(packageNet / 2) + homeStudioFee;
+            wrapBalance = finalPayable - advanceRetainer;
+          }
+
           if (summaryAdvanceAmount) summaryAdvanceAmount.textContent = `₹${advanceRetainer.toLocaleString("en-IN")} INR`;
           if (summaryBalanceAmount) summaryBalanceAmount.textContent = `₹${wrapBalance.toLocaleString("en-IN")} INR`;
+          if (summaryStep3Wrap) summaryStep3Wrap.style.display = is3Step ? "block" : "none";
+          if (summaryStep3Amount) summaryStep3Amount.textContent = `₹${step3Amount.toLocaleString("en-IN")} INR`;
+          if (summaryAdvanceLabel) {
+            summaryAdvanceLabel.textContent = homeStudioFee > 0
+              ? "Step 1 · 50% Advance Retainer + Studio Rental (Due Now)"
+              : "Step 1 · 50% Advance Retainer (Due Now)";
+          }
+          if (summaryStep2Label) {
+            summaryStep2Label.textContent = is3Step
+              ? "Step 2 · 30% Review Milestone (After Shoot)"
+              : "Step 2 · 50% Wrap Balance (Prior to Deliverables)";
+          }
         }
 
         // Update Mobile Sticky Floating Action Bar (FAB)
@@ -9949,10 +10052,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // answers agreeing never fires.
       $("#b_studio_space")?.addEventListener(evtName, updateFields);
     });
-    // Picking a lighting option has to re-run updateFields too, or the live
-    // contract clause the client reads keeps showing the pre-pick text until
-    // some other field happens to change.
-    document.querySelectorAll('input[name="b_studio_lighting"]').forEach((r) => {
+    // Picking who arranges the studio has to re-run updateFields too, or the
+    // live contract clause the client reads keeps showing the pre-pick text
+    // until some other field happens to change.
+    document.querySelectorAll('input[name="b_studio_arranger"]').forEach((r) => {
       r.addEventListener("change", updateFields);
     });
     // Address changes are checked on change/blur rather than on every
@@ -10043,13 +10146,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
       // Only asked (and therefore only enforced) once a dedicated commercial
       // studio is actually being rented — see the show/hide note beside
-      // b_studio_lighting_wrap in updateFields.
+      // b_studio_arranger_wrap in updateFields.
       if ($("#b_studio_space")?.value === "Dedicated Commercial Studio Rental (Billed at Actuals)") {
-        if (!document.querySelector('input[name="b_studio_lighting"]:checked')) {
-          setError("b_studio_lighting_include", "Please choose whether lighting equipment is included or left to the photographer.");
-          firstBad = firstBad || "b_studio_lighting_include";
+        if (!document.querySelector('input[name="b_studio_arranger"]:checked')) {
+          setError("b_studio_arranger_client", "Please choose who will arrange the studio and lighting — you, or the photographer.");
+          firstBad = firstBad || "b_studio_arranger_client";
         } else {
-          clearError("b_studio_lighting_include");
+          clearError("b_studio_arranger_client");
         }
       }
 
@@ -10224,21 +10327,21 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const homeStudioRider = isHomeStudio
           ? `\n\nHOME STUDIO SESSIONS\nThis session takes place at the photographer's private residence. Attendance is limited to a maximum of 3 people in total, including the Participant and any crew they bring — hair & makeup artists, stylists, assistants and guests all count towards this limit. Sessions run within booked daylight hours and conclude by 7:00 PM. The full address is shared on booking confirmation. Guests may not attend unaccompanied.`
           : "";
-        // Same lighting choice the live contract clause reads during
+        // Same arranger choice the live contract clause reads during
         // updateFields, re-read here off the same select/radio pair so the
         // document the client actually signs never disagrees with what they
         // saw on screen a moment before submitting.
         const isCommercialStudioBooked = $("#b_studio_space")?.value === "Dedicated Commercial Studio Rental (Billed at Actuals)";
-        const studioLightingPick = isCommercialStudioBooked ? ($("input[name='b_studio_lighting']:checked")?.value || "") : "";
-        const studioLightingSubmitClause = studioLightingPick
-          ? (studioLightingPick === "Include Studio Lighting Equipment (Billed at Actuals)"
-              ? ` Lighting equipment for that studio is to be included with the booking and is billed at actuals (at cost), in addition to the rental itself.`
-              : ` Lighting for that studio is left to the photographer to select and arrange as part of the production.`)
+        const studioArrangerPick = isCommercialStudioBooked ? ($("input[name='b_studio_arranger']:checked")?.value || "") : "";
+        const studioArrangerSubmitClause = studioArrangerPick
+          ? (studioArrangerPick === "Photographer Arranges Studio & Lighting (Billed at Actuals)"
+              ? ` Where requested, the photographer will instead source and book the studio space and lighting equipment on the Participant's behalf, with the actual costs billed to the Participant at cost (at actuals).`
+              : ` The Participant will source and book the studio space and any lighting equipment directly, and will share the confirmed venue details with the photographer ahead of the shoot.`)
           : "";
         const venueClause = venueByStudio
           ? `1. SCOPE OF PRODUCTION & VENUE (PROVIDED BY STUDIO)\nThis session is scheduled for studio/location photography production at a venue arranged and paid for by the Studio: ${venueByStudioAddress || "as confirmed with the Studio"}. No studio rental, venue hire or space fee is billed to the Participant for this session. A change of venue requested by the Participant is subject to Studio approval and may reintroduce venue costs at actuals.${homeStudioRider}`
-          : `1. SCOPE OF PRODUCTION & VENUE RENTAL POLICY\nThis session is scheduled for studio/location photography production. Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio venue space is required, applicable studio rental fees are billed at actuals (at cost).${studioLightingSubmitClause}`;
-        const contractRefDoc = isCustomContract ? "CUSTOM-CLIENT-CONTRACT-MSA" : (isTfpCat ? "TFP-LIABILITY-RELEASE-V3.4" : "COMMERCIAL-CONTRACT-V3.5");
+          : `1. SCOPE OF PRODUCTION & VENUE RENTAL POLICY\nThis session is scheduled for studio/location photography production. Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio venue space is required, applicable studio rental fees are billed at actuals (at cost).${studioArrangerSubmitClause}`;
+        const contractRefDoc = isCustomContract ? "CUSTOM-CLIENT-CONTRACT-MSA" : (isTfpCat ? "TFP-LIABILITY-RELEASE-V3.5" : "COMMERCIAL-CONTRACT-V3.6");
         // Resolved before the release text below, which now states the fee and
         // the milestones. They previously appeared only in the inquiry email as
         // booking details — so the document the client actually signed said
@@ -10262,9 +10365,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // ReferenceError that silently killed every booking submit before.
         const promoCodeUsed = (bookingCalc && bookingCalc.enteredDiscount) || "";
         const is3StepActive = $("#flowchart3Step") && $("#flowchart3Step").style.display !== "none";
+        // The studio rental (home or commercial) reserves the venue, so it is
+        // due in full alongside the advance retainer rather than split across
+        // milestones like the package rate — the document has to say this
+        // explicitly, or the total charged on shoot day will not match what
+        // was agreed here.
+        const rentalUpfrontNote = homeStudioRentalFee > 0
+          ? ` The studio rental of ₹${homeStudioRentalFee.toLocaleString('en-IN')} is payable in full as part of the advance retainer, in addition to the package advance above.`
+          : "";
         const paymentTermsText = is3StepActive ?
-          `Payment Terms: 3-Tier Campaign Milestones (50% Advance Retainer before shoot day start [non-refundable]; 30% Review Milestone after shoot before proofing gallery [non-refundable]; 20% Final Release prior to receiving any downloadable file)` :
-          `Payment Terms: Standard 50/50 Milestones (50% Advance Retainer before shoot day start [non-refundable]; 50% Final Balance after shoot wrap prior to receiving any downloadable file [non-refundable])`;
+          `Payment Terms: 3-Tier Campaign Milestones (50% Advance Retainer before shoot day start [non-refundable]; 30% Review Milestone after shoot before proofing gallery [non-refundable]; 20% Final Release prior to receiving any downloadable file).${rentalUpfrontNote}` :
+          `Payment Terms: Standard 50/50 Milestones (50% Advance Retainer before shoot day start [non-refundable]; 50% Final Balance after shoot wrap prior to receiving any downloadable file [non-refundable]).${rentalUpfrontNote}`;
         // A collaboration carries no shoot fee, but it can still owe the home
         // studio rental — and the document the participant agrees to has to say
         // so, in the same terms the quote showed them.
@@ -10336,8 +10447,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               : `${venueLabel} — provided by the studio, no rental billed`)
           : (venueByStudio
               ? `Not required — venue provided by the studio (photographer's invite)`
-              : (val("b_studio_space") || 'Not Specified') + (studioLightingPick
-                  ? ` — Lighting: ${studioLightingPick === "Include Studio Lighting Equipment (Billed at Actuals)" ? "include equipment (billed at actuals)" : "photographer to select"}`
+              : (val("b_studio_space") || 'Not Specified') + (studioArrangerPick
+                  ? ` — Arranged by: ${studioArrangerPick === "Photographer Arranges Studio & Lighting (Billed at Actuals)" ? "photographer (studio & lighting billed at actuals)" : "client (client books studio & lighting independently)"}`
                   : ""));
         const studioRentalPolicyNote = (homeStudioRentalFee > 0)
           // A paid home-studio booking is the one case where the studio does
@@ -10349,7 +10460,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             ? `Studio Rental Policy: The venue for this session is arranged and paid for by the studio. No venue rental or studio space fee is billed to you for this shoot.\n` +
               (isHomeStudio ? homeStudioHouseRules : ``)
             : `Studio Rental Policy: Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio space is required, venue rental fees are billed at actuals (at cost), or the client may book the studio directly.\n` +
-              (studioLightingSubmitClause ? `Studio Lighting:${studioLightingSubmitClause}\n` : ``);
+              (studioArrangerSubmitClause ? `Studio Arranger:${studioArrangerSubmitClause}\n` : ``);
         const travelPolicyNote = venueByStudio
           ? `Travel & Accommodation Policy: Travel to the studio-provided venue above is covered by the studio for this invite. If you later request a different location, standard terms apply again (travel beyond 20 km from the studio base in Noida, and accommodation where an overnight stay is needed, billed at actuals).\n`
           : `Travel & Accommodation Policy: Shoots requiring travel beyond 20 km from the studio base (Noida) incur paid travel and, where an overnight stay is needed, accommodation - billed at actuals (at cost).\n`;
@@ -10469,14 +10580,21 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // records a flat zero. The rental reserves the space and is due in full
         // before the shoot, so it is booked as the retainer with no wrap
         // balance — a 50/50 split on a rental is not what the client agreed to.
-        const financialSummary = (type !== "Selective Collaboration (TFP)" && !isValidInvite) ? {
-          basePrice: basePrice,
-          homeStudioFee: homeStudioFee || 0,
-          savings: savings,
-          finalPayable: finalPayable,
-          advanceRetainer: Math.round(finalPayable / 2),
-          wrapBalance: finalPayable - Math.round(finalPayable / 2)
-        } : {
+        const financialSummary = (type !== "Selective Collaboration (TFP)" && !isValidInvite) ? (() => {
+          // The studio rental reserves the venue, so — like a collaboration's
+          // rental — it is due in full up front rather than split across
+          // both milestones; only the package rate itself is divided 50/50.
+          const packageNet = Math.max(0, finalPayable - (homeStudioFee || 0));
+          const advance = Math.round(packageNet / 2) + (homeStudioFee || 0);
+          return {
+            basePrice: basePrice,
+            homeStudioFee: homeStudioFee || 0,
+            savings: savings,
+            finalPayable: finalPayable,
+            advanceRetainer: advance,
+            wrapBalance: finalPayable - advance
+          };
+        })() : {
           basePrice: 0,
           homeStudioFee: homeStudioRentalFee,
           savings: 0,
@@ -10828,13 +10946,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       }
 
       if (modalTitle) modalTitle.textContent = isTfp ? "Studio Production & Liability Release" : "Commercial Shoot Contract & Production Agreement";
-      if (modalTag) modalTag.textContent = isTfp ? "TFP-LIABILITY-RELEASE-V3.4 (ACTIVE)" : "COMMERCIAL-CONTRACT-V3.5 (ACTIVE)";
+      if (modalTag) modalTag.textContent = isTfp ? "TFP-LIABILITY-RELEASE-V3.5 (ACTIVE)" : "COMMERCIAL-CONTRACT-V3.6 (ACTIVE)";
       // The grace-period clause is a test-shoot term only. It has to be toggled
       // on every open, not just hidden by default: the modal element persists
       // across bookings, so a commercial enquiry opened after a TFP one would
       // otherwise still be showing it.
       const versionLabel = $("#termsAgreeVersionLabel");
-      if (versionLabel) versionLabel.textContent = `Studio Terms & Conditions (${isTfp ? "Version V3.4" : "Version V3.5"})`;
+      if (versionLabel) versionLabel.textContent = `Studio Terms & Conditions (${isTfp ? "Version V3.5" : "Version V3.6"})`;
       const lateArrivalSection = $("#termsLateArrivalSection");
       if (lateArrivalSection) {
         // Applies to both kinds now, on different terms — a paid client gets
