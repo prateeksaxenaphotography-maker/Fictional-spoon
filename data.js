@@ -1242,7 +1242,7 @@ window.WPS_DATA = {
       "tags": "",
       "gear": "",
       "client": "",
-      "date": "2026-08-01",
+      "date": "2026-08-29",
       "instagram": "",
       "kavyar": "",
       "link": "",
@@ -1301,7 +1301,7 @@ window.WPS_DATA = {
         {
           "id": "mte8bxg9wa91nq-6",
           "url": "photos/mte8dutdkqor3f/mte8bxg9wa91nq-6.jpg",
-          "objectPosition": "center",
+          "objectPosition": "top",
           "small": "photos/mte8dutdkqor3f/mte8bxg9wa91nq-6@480.jpg",
           "medium": "photos/mte8dutdkqor3f/mte8bxg9wa91nq-6@960.jpg"
         },
