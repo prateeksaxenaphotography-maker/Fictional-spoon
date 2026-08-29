@@ -1278,60 +1278,60 @@ window.WPS_DATA = {
           "medium": "photos/mte8dutdkqor3f/mte8bxe0wnznc4-2@960.jpg"
         },
         {
-          "id": "mte8bxenqpa33c-3",
-          "url": "photos/mte8dutdkqor3f/mte8bxenqpa33c-3.jpg",
-          "objectPosition": "center",
-          "small": "photos/mte8dutdkqor3f/mte8bxenqpa33c-3@480.jpg",
-          "medium": "photos/mte8dutdkqor3f/mte8bxenqpa33c-3@960.jpg"
-        },
-        {
-          "id": "mte8bxf6kajec5-4",
+          "id": "mte8bxf6kajec5-3",
           "url": "photos/mte8dutdkqor3f/mte8bxf6kajec5-4.jpg",
           "objectPosition": "center",
           "small": "photos/mte8dutdkqor3f/mte8bxf6kajec5-4@480.jpg",
           "medium": "photos/mte8dutdkqor3f/mte8bxf6kajec5-4@960.jpg"
         },
         {
-          "id": "mte8bxfpvxno70-5",
+          "id": "mte8bxfpvxno70-4",
           "url": "photos/mte8dutdkqor3f/mte8bxfpvxno70-5.jpg",
           "objectPosition": "center",
           "small": "photos/mte8dutdkqor3f/mte8bxfpvxno70-5@480.jpg",
           "medium": "photos/mte8dutdkqor3f/mte8bxfpvxno70-5@960.jpg"
         },
         {
-          "id": "mte8bxg9wa91nq-6",
+          "id": "mte8bxg9wa91nq-5",
           "url": "photos/mte8dutdkqor3f/mte8bxg9wa91nq-6.jpg",
           "objectPosition": "top",
           "small": "photos/mte8dutdkqor3f/mte8bxg9wa91nq-6@480.jpg",
           "medium": "photos/mte8dutdkqor3f/mte8bxg9wa91nq-6@960.jpg"
         },
         {
-          "id": "mte8bxgv815ni6-7",
+          "id": "mte8bxgv815ni6-6",
           "url": "photos/mte8dutdkqor3f/mte8bxgv815ni6-7.jpg",
           "objectPosition": "center",
           "small": "photos/mte8dutdkqor3f/mte8bxgv815ni6-7@480.jpg",
           "medium": "photos/mte8dutdkqor3f/mte8bxgv815ni6-7@960.jpg"
         },
         {
-          "id": "mte8bxho4pddlx-8",
+          "id": "mte8bxho4pddlx-7",
           "url": "photos/mte8dutdkqor3f/mte8bxho4pddlx-8.jpg",
           "objectPosition": "center",
           "small": "photos/mte8dutdkqor3f/mte8bxho4pddlx-8@480.jpg",
           "medium": "photos/mte8dutdkqor3f/mte8bxho4pddlx-8@960.jpg"
         },
         {
-          "id": "mte8bxii37l4vd-9",
+          "id": "mte8bxii37l4vd-8",
           "url": "photos/mte8dutdkqor3f/mte8bxii37l4vd-9.jpg",
           "objectPosition": "center",
           "small": "photos/mte8dutdkqor3f/mte8bxii37l4vd-9@480.jpg",
           "medium": "photos/mte8dutdkqor3f/mte8bxii37l4vd-9@960.jpg"
         },
         {
-          "id": "mte8bxj640nrl2-10",
+          "id": "mte8bxj640nrl2-9",
           "url": "photos/mte8dutdkqor3f/mte8bxj640nrl2-10.jpg",
           "objectPosition": "center",
           "small": "photos/mte8dutdkqor3f/mte8bxj640nrl2-10@480.jpg",
           "medium": "photos/mte8dutdkqor3f/mte8bxj640nrl2-10@960.jpg"
+        },
+        {
+          "id": "mtebep126rzwgy-10",
+          "url": "photos/mte8dutdkqor3f/mtebep126rzwgy-10.jpg",
+          "objectPosition": "center",
+          "small": "photos/mte8dutdkqor3f/mtebep126rzwgy-10@480.jpg",
+          "medium": "photos/mte8dutdkqor3f/mtebep126rzwgy-10@960.jpg"
         }
       ],
       "featured": true,
@@ -1903,6 +1903,16 @@ window.WPS_DATA = {
           "inviteMeta": null,
           "promoMeta": null,
           "createdAt": 1787749004048
+        },
+        {
+          "id": "shoot-mte8dutdkqor3f",
+          "shootId": "mte8dutdkqor3f",
+          "name": "Rohit Pal",
+          "type": "Test Shoot",
+          "duration": "Full Day",
+          "status": "confirmed",
+          "isTentative": false,
+          "notes": "Published Portfolio Shoot: Rohit Pal"
         }
       ]
     },
@@ -1919,7 +1929,8 @@ window.WPS_DATA = {
       "2026-08-29::b_1786709233749_esjr",
       "2026-09-05::b_1786904559871_notl",
       "2026-08-30::b_1786714654176_bh0f",
-      "2026-08-29::b_1787411813179_7dli"
+      "2026-08-29::b_1787411813179_7dli",
+      "2026-08-01::shoot-mte8dutdkqor3f"
     ],
     "paymentScheduleType": "5050",
     "updatedAt": 0,
