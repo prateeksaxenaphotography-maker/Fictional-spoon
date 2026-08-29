@@ -1662,9 +1662,25 @@ window.moveAdminPackageRow = function(index, dir) {
   // prompt never reappeared (it only shows when nothing is stored), and every
   // subsequent publish dead-ended on the same error with no way to enter a new
   // token short of clearing localStorage by hand.
-  function clearRejectedToken() {
+  function clearRejectedToken(reason = "401") {
     localStorage.removeItem("wps-github-pat");
-    return explains(new Error("GitHub rejected the token (401). It was cleared — you'll be asked for a new one on the next publish."));
+    return explains(new Error(`GitHub rejected the token (${reason}). It was cleared — you'll be asked for a new one on the next publish.`));
+  }
+
+  // GitHub answers a token that CAN'T touch this repo (wrong scope, a
+  // fine-grained token never given access, SSO not authorized for the
+  // token's org) with 403 rather than 401 -- but 403 also covers rate
+  // limiting, which says nothing about the token's validity and must not
+  // clear it. GitHub sets X-RateLimit-Remaining on every response, success
+  // or not, so remaining === "0" is what tells the two apart. Any 403 that
+  // isn't a rate limit is treated exactly like a 401: cleared and reprompted,
+  // otherwise a bad token just gets silently retried forever with no way
+  // back to the prompt short of clearing localStorage by hand.
+  function checkAuthFailure(res) {
+    if (res.status === 401) throw clearRejectedToken("401");
+    if (res.status === 403 && res.headers.get("X-RateLimit-Remaining") !== "0") {
+      throw clearRejectedToken("403 — insufficient permissions or SSO not authorized");
+    }
   }
 
   // Marks an error whose message already tells the studio exactly what went
@@ -1687,7 +1703,7 @@ window.moveAdminPackageRow = function(index, dir) {
         ...(opts.body ? { "Content-Type": "application/json" } : {}),
       },
     });
-    if (res.status === 401) throw clearRejectedToken();
+    checkAuthFailure(res);
     if (!res.ok) throw new Error(`GitHub ${opts.method || "GET"} ${path} failed (${res.status})`);
     return res.json();
   }
@@ -1740,7 +1756,7 @@ window.moveAdminPackageRow = function(index, dir) {
     const res = await fetch(`${GH_API}/contents/data.js?ref=${GH_BRANCH}`, {
       headers: { "Authorization": `token ${pat}`, "Accept": "application/vnd.github.raw+json" },
     });
-    if (res.status === 401) throw clearRejectedToken();
+    checkAuthFailure(res);
     // 404 is ambiguous, and reading it as "nothing published yet" is only safe
     // for one of the two things it can mean. A repo with no data.js answers
     // 404 — but so does a repo this token cannot see, because GitHub hides a
@@ -1754,7 +1770,7 @@ window.moveAdminPackageRow = function(index, dir) {
       const repoRes = await fetch(GH_API, {
         headers: { "Authorization": `token ${pat}`, "Accept": "application/vnd.github+json" },
       });
-      if (repoRes.status === 401) throw clearRejectedToken();
+      checkAuthFailure(repoRes);
       if (!repoRes.ok) {
         throw explains(new Error(`This token cannot reach ${GH_REPO} (GitHub ${repoRes.status}) — check it grants Contents read & write on that repository. Nothing was published.`));
       }
