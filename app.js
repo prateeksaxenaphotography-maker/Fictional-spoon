@@ -213,6 +213,17 @@ window.togglePromoHomeStudioValField = function() {
   valEl.placeholder = typeEl.value === "pct" ? "e.g. 10" : "e.g. 500";
 };
 
+// Same idea as togglePromoHomeStudioValField, for the invite code form's
+// own home studio discount widget.
+window.toggleInviteHomeStudioValField = function() {
+  const typeEl = document.getElementById("newInviteHomeStudioType");
+  const valEl = document.getElementById("newInviteHomeStudioVal");
+  if (!typeEl || !valEl) return;
+  const needsVal = typeEl.value === "flat" || typeEl.value === "pct";
+  valEl.style.display = needsVal ? "" : "none";
+  valEl.placeholder = typeEl.value === "pct" ? "e.g. 10" : "e.g. 500";
+};
+
 // --- INVITE CODE HANDLERS ---
 window.getAdminInviteCodes = function() {
   const normalize = (arr) => {
@@ -234,10 +245,16 @@ window.getAdminInviteCodes = function() {
         const n = parseInt(item.venueCost, 10);
         if (!isNaN(n) && n >= 0) venueCostVal = n;
       }
+      // Same shape as a promo code's home studio discount (none/flat/pct/free)
+      // — carried through here so it survives a reload instead of being
+      // silently dropped like any other field this normalizer does not know.
+      const hsDiscount = (typeof item === 'object' && item.homeStudioDiscount && item.homeStudioDiscount.type && item.homeStudioDiscount.type !== "none")
+        ? item.homeStudioDiscount
+        : null;
       if (codeStr && typeof codeStr === 'string' && !seen.has(codeStr.trim().toUpperCase())) {
         const cleanStr = codeStr.trim().toUpperCase();
         seen.add(cleanStr);
-        result.push({ code: cleanStr, desc: descStr, location: locationStr, venueCost: venueCostVal });
+        result.push({ code: cleanStr, desc: descStr, location: locationStr, venueCost: venueCostVal, ...(hsDiscount ? { homeStudioDiscount: hsDiscount } : {}) });
       }
     });
     return result;
@@ -370,6 +387,12 @@ window.openInviteCodeModal = function(codeStr) {
   // Blank cost box means complimentary, which is what most invites are.
   const costEl = document.getElementById("newInviteVenueCost");
   if (costEl) costEl.value = (existing && existing.venueCost !== null && existing.venueCost !== undefined) ? String(existing.venueCost) : "";
+  const hsTypeEl = document.getElementById("newInviteHomeStudioType");
+  const hsValEl = document.getElementById("newInviteHomeStudioVal");
+  const hsDiscount = window.getPromoHomeStudioDiscount(existing);
+  if (hsTypeEl) hsTypeEl.value = hsDiscount.type;
+  if (hsValEl) hsValEl.value = (hsDiscount.type === "flat" || hsDiscount.type === "pct") ? (hsDiscount.value || "") : "";
+  if (typeof window.toggleInviteHomeStudioValField === "function") window.toggleInviteHomeStudioValField();
   if (typeof window.syncInviteWaiveVisibility === "function") window.syncInviteWaiveVisibility();
 
   form.style.display = "block";
@@ -410,6 +433,22 @@ window.saveInviteCodeFromForm = function() {
     return;
   }
 
+  // Same shape as a promo code's home studio discount, and validated the
+  // same way — a code that can never resolve to a real deduction is refused
+  // up front rather than silently saved as a no-op.
+  const hsType = document.getElementById("newInviteHomeStudioType")?.value || "none";
+  let homeStudioDiscount = { type: "none" };
+  if (hsType === "free") {
+    homeStudioDiscount = { type: "free" };
+  } else if (hsType === "flat" || hsType === "pct") {
+    const hsVal = Math.round(Number(document.getElementById("newInviteHomeStudioVal")?.value));
+    if (!Number.isFinite(hsVal) || hsVal <= 0 || (hsType === "pct" && hsVal > 100)) {
+      alert(hsType === "pct" ? "Home studio % off must be between 1 and 100." : "Home studio flat discount must be a positive amount in ₹.");
+      return;
+    }
+    homeStudioDiscount = { type: hsType, value: hsVal };
+  }
+
   const list = window.getAdminInviteCodes();
   const editing = window._editingInviteCode;
   if (list.some(x => x.code === code && x.code !== editing)) {
@@ -419,10 +458,10 @@ window.saveInviteCodeFromForm = function() {
 
   if (editing) {
     const idx = list.findIndex(x => x.code === editing);
-    if (idx !== -1) list[idx] = { code, desc, location, venueCost };
-    else list.push({ code, desc, location, venueCost });
+    if (idx !== -1) list[idx] = { code, desc, location, venueCost, homeStudioDiscount };
+    else list.push({ code, desc, location, venueCost, homeStudioDiscount });
   } else {
-    list.push({ code, desc, location, venueCost });
+    list.push({ code, desc, location, venueCost, homeStudioDiscount });
   }
   window.adminDraftInviteCodes = [...list];
   window._editingInviteCode = null;
@@ -4936,6 +4975,25 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 </div>
                 <div id="newInviteVenueNote" style="grid-column: span 3; font-size: var(--font-xs); line-height: 1.5; color: var(--ink-soft); background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;">
                   🏠 <strong style="color: var(--ink);">No venue locked, so the talent chooses.</strong> If they pick your home studio they are billed your standard home studio rate (currently ₹${(typeof getHomeStudioRate === "function" ? getHomeStudioRate() : 3000).toLocaleString('en-IN')}). Fill in an address above to choose the venue for them and set its cost.
+                </div>
+                <!-- Same discount shape as a promo code's (none/flat/pct/free),
+                     so a VIP invite can waive or reduce the home studio rate on
+                     its own, without needing a separate promo code entered too.
+                     Applies to whatever fee the code carries above — the
+                     standard rate when no venue is locked, or the locked
+                     venue's own cost when one is. -->
+                <div style="grid-column: span 3; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;">
+                  <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">🏠 Home Studio Rental Discount</label>
+                  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <select id="newInviteHomeStudioType" onchange="window.toggleInviteHomeStudioValField()" style="flex: 1; min-width: 150px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); font-weight: 700; background: var(--paper); color: var(--ink);">
+                      <option value="none">No discount on the rental</option>
+                      <option value="free">Free — 100% off</option>
+                      <option value="flat">Flat ₹ off</option>
+                      <option value="pct">% off</option>
+                    </select>
+                    <input type="number" id="newInviteHomeStudioVal" placeholder="e.g. 500" style="flex: 1; min-width: 100px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-weight: 700; color: #059669; background: var(--paper); display: none;" />
+                  </div>
+                  <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 4px; line-height: 1.4;">Only applies when the booking actually carries a home studio rental (standard rate, or this code's own locked venue cost above).</div>
                 </div>
                 <div>
                   <button type="button" class="admin-cal-btn primary" onclick="window.saveInviteCodeFromForm()" style="width: 100%; font-weight: 700; padding: 8px 12px;">💾 Save Invite Code</button>
@@ -9546,6 +9604,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // waiver can show the talent the size of what they were given instead of
       // a bare zero.
       let homeStudioListPrice = homeStudioFee;
+      // The invite code's own discount on the rental — free, flat ₹, or % —
+      // same shape as a promo code's, so a VIP invite can waive or reduce the
+      // standard home studio rate without also requiring a separate promo
+      // code. Applied before the promo code below so the two can stack.
+      const inviteHomeStudioResult = applyPromoHomeStudioDiscount(matchedInvite, homeStudioFee);
+      homeStudioFee = Math.max(0, homeStudioFee - inviteHomeStudioResult.amount);
+      const inviteFreesHomeStudio = inviteHomeStudioResult.isFree;
+      const inviteDiscountsHomeStudio = inviteHomeStudioResult.amount > 0 && !inviteHomeStudioResult.isFree;
       // A promo code's own discount on the rental — free, flat ₹, or % —
       // unlike includeAddons, which only widens what the package's discount
       // is taken off and never zeroes the rental on its own.
@@ -9560,17 +9626,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // free. Nothing was shown for this at all, so a collaborator given a
       // studio worth thousands saw an empty quote and never learned of it.
       // Its worth is the studio's own rate for that kind of booking.
-      const inviteVenueComplimentary = inviteLocksVenue && homeStudioFee === 0 && !promoFreesHomeStudio;
+      const inviteVenueComplimentary = inviteLocksVenue && homeStudioFee === 0 && !promoFreesHomeStudio && !inviteFreesHomeStudio;
       if (inviteVenueComplimentary) {
         homeStudioListPrice = getHomeStudioRate(isTfpType || isValidInvite);
       }
-      const venueComplimentary = promoFreesHomeStudio || inviteVenueComplimentary;
+      const venueComplimentary = promoFreesHomeStudio || inviteFreesHomeStudio || inviteVenueComplimentary;
       // Which code earned it, for the line the talent reads.
-      const venueFreeWithCode = promoFreesHomeStudio ? enteredDiscount : (inviteVenueComplimentary ? enteredCode : "");
+      const venueFreeWithCode = promoFreesHomeStudio ? enteredDiscount : ((inviteFreesHomeStudio || inviteVenueComplimentary) ? enteredCode : "");
       // Same idea for a partial discount — kept apart from the line above
       // since "complimentary" would misstate a rental that still costs
       // something.
-      const venueDiscountWithCode = promoDiscountsHomeStudio ? enteredDiscount : "";
+      const venueDiscountWithCode = promoDiscountsHomeStudio ? enteredDiscount : (inviteDiscountsHomeStudio ? enteredCode : "");
 
       // A collaboration buys no package, so the rental is the only charge it
       // can ever carry — a package rate must never leak into a TFP quote.
@@ -9684,6 +9750,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // it — so the client's email and the studio's record both show the
         // waiver rather than a rental that silently never existed.
         homeStudioListPrice,
+        inviteFreesHomeStudio,
+        inviteDiscountsHomeStudio,
+        inviteHomeStudioAmount: inviteHomeStudioResult.amount,
+        inviteHomeStudioLabel: inviteHomeStudioResult.label,
         promoFreesHomeStudio,
         promoDiscountsHomeStudio,
         promoHomeStudioAmount: promoHomeStudioResult.amount,
@@ -9821,7 +9891,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             ? `${esc(venueName)} <span style="color:#059669;font-weight:700;">— complimentary${venueFreeWithCode ? ` with ${esc(venueFreeWithCode)}` : ""}</span>`
             : promoDiscountsHomeStudio
               ? `${esc(venueName)} <span style="color:#059669;font-weight:700;">— ${esc(promoHomeStudioResult.label)}${venueDiscountWithCode ? ` with ${esc(venueDiscountWithCode)}` : ""}</span>`
-              : esc(venueName);
+              : inviteDiscountsHomeStudio
+                ? `${esc(venueName)} <span style="color:#059669;font-weight:700;">— ${esc(inviteHomeStudioResult.label)}${venueDiscountWithCode ? ` with ${esc(venueDiscountWithCode)}` : ""}</span>`
+                : esc(venueName);
         }
 
         if (savings > 0) {
@@ -10360,10 +10432,19 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const homeStudioDiscountedByPromo = !!(bookingCalc && bookingCalc.promoDiscountsHomeStudio);
         const homeStudioPromoDiscountAmount = (bookingCalc && bookingCalc.promoHomeStudioAmount) || 0;
         const homeStudioPromoDiscountLabel = (bookingCalc && bookingCalc.promoHomeStudioLabel) || "";
+        // An invite code can carry the same kind of rental discount as a promo
+        // code — checked separately so the record credits whichever code
+        // actually earned it, instead of defaulting to "promo code" wording
+        // for a discount an invite gave.
+        const homeStudioWaivedByInvite = !!(bookingCalc && bookingCalc.inviteFreesHomeStudio);
+        const homeStudioDiscountedByInvite = !!(bookingCalc && bookingCalc.inviteDiscountsHomeStudio);
+        const homeStudioInviteDiscountAmount = (bookingCalc && bookingCalc.inviteHomeStudioAmount) || 0;
+        const homeStudioInviteDiscountLabel = (bookingCalc && bookingCalc.inviteHomeStudioLabel) || "";
         // Read off bookingCalc, never off updateFields' own locals: those live
         // in a different function, and reaching for one here is the exact
         // ReferenceError that silently killed every booking submit before.
         const promoCodeUsed = (bookingCalc && bookingCalc.enteredDiscount) || "";
+        const inviteCodeUsed = (bookingCalc && bookingCalc.enteredCode) || "";
         const is3StepActive = $("#flowchart3Step") && $("#flowchart3Step").style.display !== "none";
         // The studio rental (home or commercial) reserves the venue, so it is
         // due in full alongside the advance retainer rather than split across
@@ -10496,11 +10577,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             ? (homeStudioDiscountedByPromo
                 ? `Home Studio Rental (add-on): ₹${homeStudioRentalFee.toLocaleString('en-IN')} — ${homeStudioPromoDiscountLabel} with promo code ${promoCodeUsed} applied (normally ₹${homeStudioListPriceVal.toLocaleString('en-IN')})\n` +
                   `Total Savings: ₹${(((bookingCalc && bookingCalc.savings) || 0) + homeStudioPromoDiscountAmount).toLocaleString('en-IN')} (promo discount + home studio discount)\n`
-                : `Home Studio Rental (add-on): ₹${homeStudioRentalFee.toLocaleString('en-IN')}\n`)
+                : homeStudioDiscountedByInvite
+                  ? `Home Studio Rental (add-on): ₹${homeStudioRentalFee.toLocaleString('en-IN')} — ${homeStudioInviteDiscountLabel} with invite code ${inviteCodeUsed} applied (normally ₹${homeStudioListPriceVal.toLocaleString('en-IN')})\n` +
+                    `Total Savings: ₹${homeStudioInviteDiscountAmount.toLocaleString('en-IN')} (home studio discount via invite code)\n`
+                  : `Home Studio Rental (add-on): ₹${homeStudioRentalFee.toLocaleString('en-IN')}\n`)
             : (homeStudioWaivedByPromo
                 ? `Home Studio Rental (add-on): ₹0 — complimentary with promo code ${promoCodeUsed} (normally ₹${homeStudioListPriceVal.toLocaleString('en-IN')})\n` +
                   `Total Savings: ₹${(((bookingCalc && bookingCalc.savings) || 0) + homeStudioListPriceVal).toLocaleString('en-IN')} (promo discount + complimentary home studio)\n`
-                : "")) +
+                : homeStudioWaivedByInvite
+                  ? `Home Studio Rental (add-on): ₹0 — complimentary with invite code ${inviteCodeUsed} (normally ₹${homeStudioListPriceVal.toLocaleString('en-IN')})\n` +
+                    `Total Savings: ₹${homeStudioListPriceVal.toLocaleString('en-IN')} (complimentary home studio via invite code)\n`
+                  : "")) +
           (type !== "Selective Collaboration (TFP)"
             ? `${paymentTermsText}\n`
             : (homeStudioRentalFee > 0
