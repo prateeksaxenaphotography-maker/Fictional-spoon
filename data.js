@@ -1954,6 +1954,16 @@ window.WPS_DATA = {
       "desc": "Photographer direct unlock code",
       "location": "Home Studio, Sector 46, Noida",
       "venueCost": null
+    },
+    {
+      "code": "NERDYHOMED",
+      "desc": "Photographer direct unlock code",
+      "location": "Noida, Sector-46",
+      "venueCost": 4000,
+      "homeStudioDiscount": {
+        "type": "flat",
+        "value": 500
+      }
     }
   ],
   "PROMO_CODES": {
