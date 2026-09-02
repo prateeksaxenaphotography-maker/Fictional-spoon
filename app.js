@@ -131,8 +131,11 @@ window.openPromoCodeModal = function(codeKey) {
   if (title) title.textContent = editing ? `✏️ Edit Promo Code — ${editing}` : "🎟️ Create New Custom Promotional Discount Code";
   const entry = editing ? codes[editing] : null;
   if (nameEl) nameEl.value = editing || "";
-  if (typeEl) typeEl.value = entry && entry.flat ? "flat" : "pct";
-  if (valEl) valEl.value = entry ? (entry.flat || entry.pct || "") : "";
+  // 'in' rather than truthiness: a home-studio-only code can legitimately
+  // store a package value of 0, which || would treat the same as "absent"
+  // and blank out on reopen — then reject the next save as not-a-number.
+  if (typeEl) typeEl.value = entry && ('flat' in entry) ? "flat" : "pct";
+  if (valEl) valEl.value = entry ? String((('flat' in entry) ? entry.flat : entry.pct) ?? "") : "";
   if (descEl) descEl.value = entry ? (entry.label || "") : "";
   // Carry the existing add-on rule into the form; without this, editing a code
   // to fix a typo would quietly demote it to package-only.
@@ -155,13 +158,22 @@ window.saveNewPromoCodeFromForm = function() {
   const type = document.getElementById("newPromoType")?.value === "flat" ? "flat" : "pct";
   const val = Math.round(Number(document.getElementById("newPromoVal")?.value));
   const desc = (document.getElementById("newPromoDesc")?.value || "").trim();
+  const hsType = document.getElementById("newPromoHomeStudioType")?.value || "none";
 
   if (!/^[A-Z0-9][A-Z0-9_-]{1,23}$/.test(name)) {
     alert("Enter a promo code of 2–24 letters, numbers, dashes or underscores (e.g. SUMMER30).");
     return;
   }
-  if (!Number.isFinite(val) || val <= 0 || (type === "pct" && val > 100)) {
-    alert(type === "pct" ? "Percentage must be between 1 and 100." : "Flat discount must be a positive amount in ₹.");
+  // A code that exists only to compensate the home studio rental has nothing
+  // to say here, so a package value of 0 is allowed — but only when the home
+  // studio discount below actually does something, or the code would be a
+  // pure no-op that saves the client nothing at all.
+  if (!Number.isFinite(val) || val < 0 || (type === "pct" && val > 100)) {
+    alert(type === "pct" ? "Percentage must be between 0 and 100." : "Flat discount must be ₹0 or more.");
+    return;
+  }
+  if (val === 0 && hsType === "none") {
+    alert("This code would do nothing — enter a package discount above 0, or set a Home Studio Rental Discount below.");
     return;
   }
 
@@ -171,7 +183,9 @@ window.saveNewPromoCodeFromForm = function() {
   if (editing && editing !== name) delete codes[editing]; // renamed while editing
 
   const label = desc ||
-    (type === "flat" ? `Flat ₹${val.toLocaleString("en-IN")} Off (${name})` : `${val}% Off (${name})`);
+    (val === 0
+      ? `Home Studio Discount Only (${name})`
+      : (type === "flat" ? `Flat ₹${val.toLocaleString("en-IN")} Off (${name})` : `${val}% Off (${name})`));
   // Per-code choice: does this discount also come off add-ons (the home studio
   // rental), or only the package rate? Off by default, so a rental the studio
   // actually pays for is never discounted unless that is the intent.
@@ -179,7 +193,6 @@ window.saveNewPromoCodeFromForm = function() {
   // Independent of includeAddons above: this is a dedicated discount on the
   // home studio rental itself (free / flat ₹ / %), separate from whatever the
   // code takes off the package rate.
-  const hsType = document.getElementById("newPromoHomeStudioType")?.value || "none";
   let homeStudioDiscount = { type: "none" };
   if (hsType === "free") {
     homeStudioDiscount = { type: "free" };
@@ -4876,7 +4889,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               </div>
               <div>
                 <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">Value Amount *</label>
-                <input type="number" id="newPromoVal" placeholder="e.g. 30 or 1500" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-weight: 700; color: #059669; background: var(--bone);" />
+                <input type="number" id="newPromoVal" placeholder="e.g. 30 or 1500, or 0 for home studio only" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-weight: 700; color: #059669; background: var(--bone);" />
               </div>
               <div style="grid-column: span 2;">
                 <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">Description Label</label>
@@ -5008,7 +5021,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
         const codeCardsHtml = Object.keys(codes).map(codeKey => {
           const item = codes[codeKey];
-          const tagDesc = item.flat ? `Flat ₹${item.flat.toLocaleString('en-IN')} Off` : `${item.pct}% Off`;
+          // A package value of 0 means this code exists only to compensate
+          // the home studio rental — "0% Off" would misstate that as a
+          // discount the code does not actually give.
+          const hasPackageDiscount = !!(item.flat || item.pct);
+          const tagDesc = !hasPackageDiscount
+            ? "Home Studio Only"
+            : (item.flat ? `Flat ₹${item.flat.toLocaleString('en-IN')} Off` : `${item.pct}% Off`);
           const hsDiscount = window.getPromoHomeStudioDiscount(item);
           const hsBadge = hsDiscount.type === "free"
             ? `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(5,150,105,0.12); color: #059669; padding: 2px 6px; border-radius: 4px;" title="Home studio rental is free with this code">🏠 FREE</span>`
@@ -5023,9 +5042,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                   <strong style="color: #059669; font-size: var(--font-sm); font-family: var(--mono-font); letter-spacing: 0.04em;">${esc(codeKey)}</strong>
                   <span style="font-size: var(--font-xs); font-weight: 700; background: rgba(5,150,105,0.12); color: #059669; padding: 2px 6px; border-radius: 4px;">${esc(tagDesc)}</span>
-                  ${item.includeAddons
-                    ? `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(217,119,6,0.14); color: #d97706; padding: 2px 6px; border-radius: 4px;" title="This discount also comes off the home studio rental">+ ADD-ONS</span>`
-                    : `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(120,120,120,0.14); color: var(--ink-soft); padding: 2px 6px; border-radius: 4px;" title="Discount applies to the package rate only">PACKAGE ONLY</span>`}
+                  ${!hasPackageDiscount
+                    ? ""
+                    : item.includeAddons
+                      ? `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(217,119,6,0.14); color: #d97706; padding: 2px 6px; border-radius: 4px;" title="This discount also comes off the home studio rental">+ ADD-ONS</span>`
+                      : `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(120,120,120,0.14); color: var(--ink-soft); padding: 2px 6px; border-radius: 4px;" title="Discount applies to the package rate only">PACKAGE ONLY</span>`}
                   ${hsBadge}
                 </div>
                 <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">${esc(item.label)}</div>
@@ -9312,8 +9333,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           discountStatus.style.display = "inline-block";
           if (matchedDiscount) {
             discountStatus.style.color = "#059669";
-            const tagMsg = matchedDiscount.flat ? `FLAT ₹${matchedDiscount.flat.toLocaleString("en-IN")} OFF` : `${matchedDiscount.pct}% OFF`;
-            discountStatus.textContent = `🟢 ${tagMsg} APPLIED`;
+            // A package value of 0 means this code exists only to compensate
+            // the home studio rental — there is no package-side "X% OFF" to
+            // report, so tagMsg stays blank rather than showing a false 0%.
+            const hasPackageDiscount = !!(matchedDiscount.flat || matchedDiscount.pct);
+            const tagMsg = !hasPackageDiscount
+              ? ""
+              : (matchedDiscount.flat ? `FLAT ₹${matchedDiscount.flat.toLocaleString("en-IN")} OFF` : `${matchedDiscount.pct}% OFF`);
+            discountStatus.textContent = hasPackageDiscount ? `🟢 ${tagMsg} APPLIED` : `🟢 CODE APPLIED`;
             savingsBadge.style.display = "block";
             // Name the home studio discount here too. This banner sits above
             // the quote and used to advertise only the package discount,
@@ -9321,11 +9348,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             // half of the offer. Shown as "if you shoot there" since the
             // venue pick itself may not be made yet.
             const bannerHsDiscount = getPromoHomeStudioDiscount(matchedDiscount);
-            savingsBadge.textContent = bannerHsDiscount.type === "free"
-              ? `🎉 Promo Offer Applied: ${tagMsg} on your package — plus the home studio free if you shoot there!`
-              : (bannerHsDiscount.type === "flat" || bannerHsDiscount.type === "pct")
-                ? `🎉 Promo Offer Applied: ${tagMsg} on your package — plus ${bannerHsDiscount.type === "flat" ? `₹${Number(bannerHsDiscount.value || 0).toLocaleString("en-IN")}` : `${bannerHsDiscount.value}%`} off the home studio rental if you shoot there!`
-                : `🎉 Promo Offer Applied: You save ${tagMsg} on your selected package total!`;
+            savingsBadge.textContent = !hasPackageDiscount
+              ? (bannerHsDiscount.type === "free"
+                  ? `🎉 Promo Offer Applied: Home studio free if you shoot there!`
+                  : (bannerHsDiscount.type === "flat" || bannerHsDiscount.type === "pct")
+                    ? `🎉 Promo Offer Applied: ${bannerHsDiscount.type === "flat" ? `₹${Number(bannerHsDiscount.value || 0).toLocaleString("en-IN")}` : `${bannerHsDiscount.value}%`} off the home studio rental if you shoot there!`
+                    : `🎉 Promo Offer Applied!`)
+              : bannerHsDiscount.type === "free"
+                ? `🎉 Promo Offer Applied: ${tagMsg} on your package — plus the home studio free if you shoot there!`
+                : (bannerHsDiscount.type === "flat" || bannerHsDiscount.type === "pct")
+                  ? `🎉 Promo Offer Applied: ${tagMsg} on your package — plus ${bannerHsDiscount.type === "flat" ? `₹${Number(bannerHsDiscount.value || 0).toLocaleString("en-IN")}` : `${bannerHsDiscount.value}%`} off the home studio rental if you shoot there!`
+                  : `🎉 Promo Offer Applied: You save ${tagMsg} on your selected package total!`;
             if (btnDiscount) {
               btnDiscount.textContent = "✕ Remove Code";
               btnDiscount.style.background = "transparent";
