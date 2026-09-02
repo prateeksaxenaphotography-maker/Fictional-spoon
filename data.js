@@ -1988,8 +1988,12 @@ window.WPS_DATA = {
       "label": "20% Off Studio Production Campaigns (NERDY20)"
     },
     "NERDYVIP": {
-      "pct": 25,
-      "label": "25% VIP Partner Discount (NERDYVIP)"
+      "pct": 0,
+      "label": "Home comp",
+      "includeAddons": false,
+      "homeStudioDiscount": {
+        "type": "free"
+      }
     }
   },
   "PACKAGES": [
