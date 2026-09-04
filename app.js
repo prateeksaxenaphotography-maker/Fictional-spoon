@@ -1334,9 +1334,10 @@ window.moveAdminPackageRow = function(index, dir) {
     if (!shoot) return false;
     const v = shoot[`show${what}On${surface}`];
     if (v !== undefined) return v === true;
-    if (what === "Agency") return shoot.showAgency !== false;
+    // Only the model's Instagram is shown unless a switch says otherwise.
+    if (what === "Agency") return shoot.showAgency === true;
     if (what === "Email") return shoot.showModelEmail === true;
-    return true;
+    return what === "ModelInstagram";
   };
   // The agency is typed like every other credit — "Name (@handle; site.com)" —
   // and stored split, because comp cards and PDFs print the name and link
@@ -2639,8 +2640,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // Comp card panel: every social we have for the model, from the album
     // fields and the model credit alike (same list the PDF prints).
     const socialsHtml = (() => {
-      if (!showRep(shoot, "ModelSocials", "CompCard")) return "";
-      const links = printModelLinks(shoot);
+      const links = visibleModelLinks(shoot, "CompCard");
       if (!links.length) return "";
       return creditRows([{ label: "Socials", rendered: links.map(l => `<span class="lb-person"><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label)}${l.kind === "email" ? "" : " ↗"}</a></span>`) }]);
     })();
@@ -3526,7 +3526,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // panel and the PDF.
       if (s.agency && showRep(s, "Agency", repSurface)) creditsList.push(`Agency <strong>${esc(s.agency)}</strong>`);
       if (s.modelEmail && showRep(s, "Email", repSurface)) creditsList.push(`Email <a href="mailto:${esc(s.modelEmail)}" style="color:var(--accent); font-weight:600;">${esc(s.modelEmail)}</a>`);
-      if (igHtml && showRep(s, "ModelSocials", repSurface)) creditsList.push(`Socials ${igHtml}`);
+      if (igHtml && showRep(s, "ModelInstagram", repSurface)) creditsList.push(`Socials ${igHtml}`);
     } else {
       if (s.photographer || s.secondaryPhotographers) {
         const extra = (s.secondaryPhotographers || "").split(",").map(x => getTalentCleanName(x.trim())).filter(Boolean);
@@ -3541,7 +3541,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // and s.instagram won't necessarily carry them. This strips the
       // parentheses AND renders each handle as a link, so no link is lost.
       if (s.talent && s.talent !== "—") creditsList.push(`Talent <strong>${renderCreditValue(s.talent)}</strong>`);
-      if (igHtml && showRep(s, "ModelSocials", repSurface)) creditsList.push(`Socials ${igHtml}`);
+      if (igHtml && showRep(s, "ModelInstagram", repSurface)) creditsList.push(`Socials ${igHtml}`);
     }
     const creditsHtml = creditsList.join("  ·  ");
 
@@ -6546,7 +6546,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const agencySrc = shootsInGroup.find(x => x.agency && String(x.agency).trim());
         const emailSrc = shootsInGroup.find(x => x.modelEmail && String(x.modelEmail).trim());
         const repFlags = {};
-        ["CompCard", "Home", "Pdf"].forEach(sf => { repFlags[`showAgencyOn${sf}`] = showRep(agencySrc, "Agency", sf); repFlags[`showEmailOn${sf}`] = showRep(emailSrc, "Email", sf); repFlags[`showModelSocialsOn${sf}`] = showRep(shootsInGroup[0], "ModelSocials", sf); });
+        ["CompCard", "Home", "Pdf"].forEach(sf => { repFlags[`showAgencyOn${sf}`] = showRep(agencySrc, "Agency", sf); repFlags[`showEmailOn${sf}`] = showRep(emailSrc, "Email", sf); repFlags[`showModelSocialsOn${sf}`] = showRep(shootsInGroup[0], "ModelSocials", sf); repFlags[`showModelInstagramOn${sf}`] = showRep(shootsInGroup[0], "ModelInstagram", sf); });
 
         // Model type merges across the group instead of taking the latest
         // shoot's value: a model tagged Fashion on one shoot and Fitness on
@@ -7337,12 +7337,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               </div>
               <div class="vis-matrix" id="repVisibility">
                 <p class="vis-matrix-title">Agency &amp; contact</p>
-                <p class="vis-matrix-sub">Where the model's socials, the agency (name and its socials) and the model's email may appear. The email stays hidden everywhere until you switch it on.</p>
+                <p class="vis-matrix-sub">Where each detail may appear. Only the model's Instagram is shown by default — switch on anything else where you want it.</p>
                 <table class="vis-table">
                   <thead><tr><th></th><th>Comp cards</th><th>Homepage</th><th>PDF</th></tr></thead>
                   <tbody>
-                    <tr><th>Model's socials <small>Instagram, Kavyar, LinkedIn, Behance, website</small></th><td><input id="f_show_socials_cc" type="checkbox" checked aria-label="Model socials on comp cards" /></td><td><input id="f_show_socials_home" type="checkbox" checked aria-label="Model socials on homepage" /></td><td><input id="f_show_socials_pdf" type="checkbox" checked aria-label="Model socials on PDF" /></td></tr>
-                    <tr><th>Agency name &amp; agency socials</th><td><input id="f_show_agency_cc" type="checkbox" checked aria-label="Agency on comp cards" /></td><td><input id="f_show_agency_home" type="checkbox" checked aria-label="Agency on homepage" /></td><td><input id="f_show_agency_pdf" type="checkbox" checked aria-label="Agency on PDF" /></td></tr>
+                    <tr><th>Model's Instagram</th><td><input id="f_show_ig_cc" type="checkbox" checked aria-label="Model Instagram on comp cards" /></td><td><input id="f_show_ig_home" type="checkbox" checked aria-label="Model Instagram on homepage" /></td><td><input id="f_show_ig_pdf" type="checkbox" checked aria-label="Model Instagram on PDF" /></td></tr>
+                    <tr><th>Model's other socials <small>Kavyar, LinkedIn, Behance, website</small></th><td><input id="f_show_socials_cc" type="checkbox" aria-label="Model socials on comp cards" /></td><td><input id="f_show_socials_home" type="checkbox" aria-label="Model socials on homepage" /></td><td><input id="f_show_socials_pdf" type="checkbox" aria-label="Model socials on PDF" /></td></tr>
+                    <tr><th>Agency name &amp; agency socials</th><td><input id="f_show_agency_cc" type="checkbox" aria-label="Agency on comp cards" /></td><td><input id="f_show_agency_home" type="checkbox" aria-label="Agency on homepage" /></td><td><input id="f_show_agency_pdf" type="checkbox" aria-label="Agency on PDF" /></td></tr>
                     <tr><th>Model's email</th><td><input id="f_show_email_cc" type="checkbox" aria-label="Email on comp cards" /></td><td><input id="f_show_email_home" type="checkbox" aria-label="Email on homepage" /></td><td><input id="f_show_email_pdf" type="checkbox" aria-label="Email on PDF" /></td></tr>
                   </tbody>
                 </table>
@@ -8404,6 +8405,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         [["cc", "CompCard"], ["home", "Home"], ["pdf", "Pdf"]].forEach(([suffix, surface]) => {
           const a = $("#f_show_agency_" + suffix); if (a) a.checked = showRep(editingShoot, "Agency", surface);
           const m = $("#f_show_socials_" + suffix); if (m) m.checked = showRep(editingShoot, "ModelSocials", surface);
+          const ig = $("#f_show_ig_" + suffix); if (ig) ig.checked = showRep(editingShoot, "ModelInstagram", surface);
           const e = $("#f_show_email_" + suffix); if (e) e.checked = showRep(editingShoot, "Email", surface);
         });
 
@@ -9104,12 +9106,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         showStats: $("#f_show_stats")?.checked ?? true,
         showGear: $("#f_show_gear")?.checked ?? true,
         showLocation: $("#f_show_location")?.checked ?? true,
-        showModelSocialsOnCompCard: $("#f_show_socials_cc")?.checked ?? true,
-        showModelSocialsOnHome: $("#f_show_socials_home")?.checked ?? true,
-        showModelSocialsOnPdf: $("#f_show_socials_pdf")?.checked ?? true,
-        showAgencyOnCompCard: $("#f_show_agency_cc")?.checked ?? true,
-        showAgencyOnHome: $("#f_show_agency_home")?.checked ?? true,
-        showAgencyOnPdf: $("#f_show_agency_pdf")?.checked ?? true,
+        showModelInstagramOnCompCard: $("#f_show_ig_cc")?.checked ?? true,
+        showModelInstagramOnHome: $("#f_show_ig_home")?.checked ?? true,
+        showModelInstagramOnPdf: $("#f_show_ig_pdf")?.checked ?? true,
+        showModelSocialsOnCompCard: $("#f_show_socials_cc")?.checked ?? false,
+        showModelSocialsOnHome: $("#f_show_socials_home")?.checked ?? false,
+        showModelSocialsOnPdf: $("#f_show_socials_pdf")?.checked ?? false,
+        showAgencyOnCompCard: $("#f_show_agency_cc")?.checked ?? false,
+        showAgencyOnHome: $("#f_show_agency_home")?.checked ?? false,
+        showAgencyOnPdf: $("#f_show_agency_pdf")?.checked ?? false,
         showEmailOnCompCard: $("#f_show_email_cc")?.checked ?? false,
         showEmailOnHome: $("#f_show_email_home")?.checked ?? false,
         showEmailOnPdf: $("#f_show_email_pdf")?.checked ?? false,
@@ -12486,11 +12491,18 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     socialsFromCredit(shoot.talent).forEach(add);
     return links.sort((a, b) => SOCIAL_ORDER.indexOf(a.kind) - SOCIAL_ORDER.indexOf(b.kind));
   }
+  // The model's links a surface may show: Instagram, other socials and an
+  // email in the credit each answer to their own switch.
+  function visibleModelLinks(shoot, surface) {
+    return printModelLinks(shoot).filter(l => l.kind === "instagram" ? showRep(shoot, "ModelInstagram", surface)
+      : l.kind === "email" ? showRep(shoot, "Email", surface)
+      : showRep(shoot, "ModelSocials", surface));
+  }
   function printSocialsBarHtml(shoot) {
     // Contact line: one item per social, then the agency with its own
     // links on a smaller second line.
     const noCase = (t) => `<span style="text-transform: none;">${t}</span>`;
-    const items = (showRep(shoot, "ModelSocials", "Pdf") ? printModelLinks(shoot) : []).map(l => ({ main: `${SOCIAL_LABEL[l.kind]}: ${l.kind === "instagram" ? esc(l.label) : noCase(esc(socialPrintText(l)))}` }));
+    const items = visibleModelLinks(shoot, "Pdf").map(l => ({ main: `${SOCIAL_LABEL[l.kind]}: ${l.kind === "instagram" ? esc(l.label) : noCase(esc(socialPrintText(l)))}` }));
     if (shoot.agency && showRep(shoot, "Agency", "Pdf")) {
       items.push({ main: `Agency: ${esc(shoot.agency)}`, sub: agencyLinksOf(shoot).map(socialPrintText).join("  ·  ") });
     }
@@ -13060,7 +13072,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // back onto the shoot object, never persisted, never sent to the backend.
   function printTemplate1ContactRowsHtml(shoot, manualFields) {
     const rows = [];
-    if (showRep(shoot, "ModelSocials", "Pdf")) printModelLinks(shoot).forEach(l => rows.push([SOCIAL_LABEL[l.kind], socialPrintText(l), false]));
+    visibleModelLinks(shoot, "Pdf").forEach(l => rows.push([SOCIAL_LABEL[l.kind], socialPrintText(l), false]));
     if (shoot.agency && showRep(shoot, "Agency", "Pdf")) {
       rows.push(["Agency", shoot.agency, false, agencyLinksOf(shoot).map(socialPrintText).join("  ·  ")]);
     }
