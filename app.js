@@ -1359,6 +1359,43 @@ window.moveAdminPackageRow = function(index, dir) {
   // The agency is typed like every other credit — "Name (@handle; site.com)" —
   // and stored split, because comp cards and PDFs print the name and link
   // the handle separately.
+  // Contract version <select>s used to hard-code every version, so each new
+  // release meant editing three lists that only grew. They are built from the
+  // archive instead: the two active versions up front (plus the one an older
+  // booking already carries), everything else behind "Older versions…".
+  const contractVersionLabel = (key) => {
+    const num = (key.match(/V(\d+\.\d+)/) || [])[1] || key;
+    if (/COMMERCIAL/.test(key)) return `Commercial contract V${num}`;
+    if (/TFP/.test(key)) return `Test shoot / TFP release V${num}`;
+    return `Studio terms V${num}`;
+  };
+  const contractVersionKeys = () => Object.keys(window.WPS_CONTRACT_ARCHIVE || {}).sort((a, b) => {
+    const kind = (k) => /COMMERCIAL/.test(k) ? 0 : /TFP/.test(k) ? 1 : 2;
+    const num = (k) => parseFloat((k.match(/V(\d+\.\d+)/) || [])[1] || 0);
+    return kind(a) - kind(b) || num(b) - num(a);
+  });
+  const contractVersionOptionsHtml = ({ selected = "", pending = false, custom = true, expanded = false } = {}) => {
+    const active = [window.ACTIVE_CONTRACTS.commercial, window.ACTIVE_CONTRACTS.tfp];
+    const all = contractVersionKeys();
+    const keys = expanded ? all : all.filter(k => active.includes(k) || k === selected);
+    const opt = (v, label) => `<option value="${esc(v)}"${v === selected ? " selected" : ""}>${esc(label)}</option>`;
+    let html = "";
+    if (pending) html += opt("Pending Agreement", "Pending agreement · not signed yet");
+    html += keys.map(k => opt(k, `${contractVersionLabel(k)} ${active.includes(k) ? "(active)" : "(archived)"}`)).join("");
+    if (custom) html += opt("Custom Contract", "Custom contract / MSA");
+    if (!expanded && keys.length < all.length) html += `<option value="__older__">Older versions…</option>`;
+    return html;
+  };
+  // Picking "Older versions…" swaps the full list in and restores the value
+  // that was selected before, so the pick itself never becomes the answer.
+  document.addEventListener("change", (e) => {
+    const sel = e.target;
+    if (!(sel instanceof HTMLSelectElement) || !sel.dataset.contractSelect) return;
+    if (sel.value !== "__older__") { sel.dataset.prevValue = sel.value; return; }
+    const prev = sel.dataset.prevValue || "";
+    sel.innerHTML = contractVersionOptionsHtml({ selected: prev, pending: sel.dataset.pending === "1", custom: sel.dataset.custom !== "0", expanded: true });
+    sel.value = prev && Array.from(sel.options).some(o => o.value === prev) ? prev : sel.options[0].value;
+  }, true);
   const igHandleFromCredit = (text) => {
     const m = (text || "").match(/\(([^)]+)\)/);
     const parts = m ? m[1].split(/[;,]/).map(x => x.trim()).filter(Boolean) : ((text || "").match(/@[\w._-]+|instagram\.com\/[^\s)]+/gi) || []);
@@ -4993,6 +5030,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
     const dVal = dKey || (new Date()).toISOString().split("T")[0];
     const isTest = b.type && /test|tfp/i.test(b.type);
+    const genSelected = (() => {
+      const raw = String(b.contractVersion || "").trim();
+      if (raw === "Custom Contract") return raw;
+      const fallback = isTest ? window.ACTIVE_CONTRACTS.tfp : window.ACTIVE_CONTRACTS.commercial;
+      if (!raw || raw === "Pending Agreement") return fallback;
+      const r = window.resolveContractArchive(raw);
+      return r ? r.version : fallback;
+    })();
 
     modal.innerHTML = `
       <div class="modal-content" style="background: var(--paper); border: 1px solid var(--line); border-radius: 14px; max-width: 720px; width: 100%; max-height: 90vh; display: flex; flex-direction: column; box-shadow: var(--shadow); overflow: hidden; animation: modalFadeIn 0.3s ease;">
@@ -5051,23 +5096,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               </span>
             </label>
             <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Contract Document Version *
-              <select id="pdf_contractVersion" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
-                <option value="V3.7-COMMERCIAL" ${(b.contractVersion === 'V3.7-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.7' || (!b.contractVersion && !isTest)) ? 'selected' : ''}>📜 Commercial Shoot Contract V3.7 Active (studio quoted in advance)</option>
-                <option value="V3.6-COMMERCIAL" ${(b.contractVersion === 'V3.6-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.6') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.6 (Archived)</option>
-                <option value="V3.5-COMMERCIAL" ${(b.contractVersion === 'V3.5-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.5') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.5 (Archived)</option>
-                <option value="V3.4-COMMERCIAL" ${(b.contractVersion === 'V3.4-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.4') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.4 (Archived)</option>
-                <option value="V3.3-COMMERCIAL" ${(b.contractVersion === 'V3.3-COMMERCIAL' || b.contractVersion === 'V3.3') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.3 (Archived)</option>
-                <option value="V3.6-TFP" ${(b.contractVersion === 'V3.6-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.6' || (isTest && !b.contractVersion)) ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.6 Active (studio quoted in advance)</option>
-                <option value="V3.5-TFP" ${(b.contractVersion === 'V3.5-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.5') ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.5 (Archived)</option>
-                <option value="V3.4-TFP" ${(b.contractVersion === 'V3.4-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.4') ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.4 (Archived)</option>
-                <option value="V3.3-TFP" ${b.contractVersion === 'V3.3-TFP' ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.3 (Archived)</option>
-                <option value="V3.2" ${b.contractVersion === 'V3.2' ? 'selected' : ''}>📜 Archived Terms V3.2 (May 2026 – Aug 2026)</option>
-                <option value="V3.1" ${b.contractVersion === 'V3.1' ? 'selected' : ''}>📜 Archived Terms V3.1 (May 2026 – Jul 2026)</option>
-                <option value="V3.0" ${b.contractVersion === 'V3.0' ? 'selected' : ''}>📜 Archived Terms V3.0 (Jan 2026 – Apr 2026)</option>
-                <option value="V2.0" ${b.contractVersion === 'V2.0' ? 'selected' : ''}>📜 Archived Terms V2.0 (Jun 2025 – Dec 2025)</option>
-                <option value="V1.0" ${b.contractVersion === 'V1.0' ? 'selected' : ''}>📜 Archived Terms V1.0 (Jan 2025 – May 2025)</option>
-                <option value="Custom Contract" ${b.contractVersion === 'Custom Contract' ? 'selected' : ''}>Custom contract / MSA</option>
-              </select>
+              <select id="pdf_contractVersion" data-contract-select="1" data-custom="1" data-prev-value="${esc(genSelected)}" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">${contractVersionOptionsHtml({ selected: genSelected })}</select>
             </label>
           </div>
 
@@ -5958,6 +5987,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const modalContainer = $("#dateAdminModalContainer");
       if (!modalContainer) return;
 
+      const ebSelected = (() => {
+        const raw = String(b.contractVersion || "").trim();
+        if (raw === "Custom Contract") return raw;
+        if (raw === "Pending Agreement" || (!raw && !b.agreedToTerms)) return "Pending Agreement";
+        if (!raw) return window.ACTIVE_CONTRACTS.commercial;
+        const r = window.resolveContractArchive(raw);
+        return r ? r.version : "Pending Agreement";
+      })();
       modalContainer.innerHTML = `
         <div class="date-admin-modal-overlay" id="editBookingOverlay">
           <div class="date-admin-modal">
@@ -6004,27 +6041,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 </select>
               </label>
               <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Contract Agreement &amp; Version Status
-                <select id="eb_contractVersion" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
-                  <!-- Values match the PDF generator and the archive vault
-                       (V3.3 / V3.3-TFP). This list had been left behind at V3.2
-                       with no test-shoot entry at all, so a TFP booking added by
-                       hand could not be marked as signed under the release the
-                       public form actually uses. -->
-                  <option value="Pending Agreement" ${(b.contractVersion === 'Pending Agreement' || (!b.agreedToTerms && !b.contractVersion)) ? 'selected' : ''}>⏳ Pending Agreement / Not Signed Yet (Admin Manual Booking)</option>
-                  <option value="V3.6-TFP" ${(b.contractVersion === 'V3.6-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.6') ? 'selected' : ''}>📸 Test Shoot / TFP Liability Release V3.6 (Active)</option>
-                  <option value="V3.5-TFP" ${(b.contractVersion === 'V3.5-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.5') ? 'selected' : ''}>📸 Test Shoot / TFP Liability Release V3.5 (Archived)</option>
-                  <option value="V3.4-TFP" ${(b.contractVersion === 'V3.4-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.4') ? 'selected' : ''}>📸 Test Shoot / TFP Liability Release V3.4 (Archived)</option>
-                  <option value="V3.3-TFP" ${(b.contractVersion === 'V3.3-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.3') ? 'selected' : ''}>📸 Test Shoot / TFP Liability Release V3.3 (Archived)</option>
-                  <option value="V3.7-COMMERCIAL" ${(b.contractVersion === 'V3.7-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.7' || (b.agreedToTerms && !b.contractVersion)) ? 'selected' : ''}>📜 Commercial Shoot Contract V3.7 (Active)</option>
-                  <option value="V3.6-COMMERCIAL" ${(b.contractVersion === 'V3.6-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.6') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.6 (Archived)</option>
-                  <option value="V3.5-COMMERCIAL" ${(b.contractVersion === 'V3.5-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.5') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.5 (Archived)</option>
-                  <option value="V3.4-COMMERCIAL" ${(b.contractVersion === 'V3.4-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.4') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.4 (Archived)</option>
-                  <option value="V3.3-COMMERCIAL" ${(b.contractVersion === 'V3.3-COMMERCIAL' || b.contractVersion === 'V3.3' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.3') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.3 (Archived)</option>
-                  <option value="V3.2" ${b.contractVersion === 'V3.2' ? 'selected' : ''}>📜 Agreed Terms V3.2 (Archived Release)</option>
-                  <option value="V3.1" ${b.contractVersion === 'V3.1' ? 'selected' : ''}>📜 Agreed Terms V3.1 (Archived Release)</option>
-                  <option value="V3.0" ${b.contractVersion === 'V3.0' ? 'selected' : ''}>📜 Agreed Terms V3.0 (Archived Release)</option>
-                  <option value="Custom Contract" ${(b.contractVersion === 'Custom Contract' || b.contractVersion === 'CUSTOM-CLIENT-CONTRACT-MSA') ? 'selected' : ''}>📄 Custom Client Contract / Brand Provided MSA</option>
-                </select>
+                <select id="eb_contractVersion" data-contract-select="1" data-pending="1" data-custom="1" data-prev-value="${esc(ebSelected)}" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">${contractVersionOptionsHtml({ selected: ebSelected, pending: true })}</select>
               </label>
               <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Reference Links (one per line)
                 <textarea id="eb_links" rows="2" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">${esc((b.links || []).join('\n'))}</textarea>
@@ -6180,22 +6197,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   </label>
                 </div>
                 <label class="dam-field"><span>Contract</span>
-                  <select id="m_clientContractVersion">
-                    <option value="Pending Agreement">Pending agreement · not signed yet</option>
-                    <option value="V3.6-TFP">Test shoot / TFP liability release V3.6 (active)</option>
-                    <option value="V3.5-TFP">Test shoot / TFP liability release V3.5 (archived)</option>
-                    <option value="V3.4-TFP">Test shoot / TFP liability release V3.4 (archived)</option>
-                    <option value="V3.3-TFP">Test shoot / TFP liability release V3.3 (archived)</option>
-                    <option value="V3.7-COMMERCIAL">Commercial shoot contract V3.7 (active)</option>
-                    <option value="V3.6-COMMERCIAL">Commercial shoot contract V3.6 (archived)</option>
-                    <option value="V3.5-COMMERCIAL">Commercial shoot contract V3.5 (archived)</option>
-                    <option value="V3.4-COMMERCIAL">Commercial shoot contract V3.4 (archived)</option>
-                    <option value="V3.3-COMMERCIAL">Commercial shoot contract V3.3 (archived)</option>
-                    <option value="V3.2">Agreed terms V3.2 (archived)</option>
-                    <option value="V3.1">Agreed terms V3.1 (archived)</option>
-                    <option value="V3.0">Agreed terms V3.0 (archived)</option>
-                    <option value="Custom Contract">Custom client contract / brand MSA</option>
-                  </select>
+                  <select id="m_clientContractVersion" data-contract-select="1" data-pending="1" data-custom="1" data-prev-value="Pending Agreement">${contractVersionOptionsHtml({ selected: "Pending Agreement", pending: true })}</select>
                 </label>
                 <label class="dam-field"><span>Reference link</span><input type="url" id="m_clientLinks" placeholder="Drive, Pinterest, moodboard…" /></label>
                 <label class="dam-field"><span>Notes</span><textarea id="m_clientNotes" rows="2" placeholder="Call time, wardrobe, anything to remember"></textarea></label>
