@@ -1939,33 +1939,37 @@ window.WPS_DATA = {
       "id": "pkg_1",
       "name": "Basic Test / Comp Card",
       "price": 7000,
-      "specs": "20 Proof Clicks + 0 Retouched"
+      "specs": "20 Proof Clicks + 0 Retouched (No RAW files delivered)"
     },
     {
       "id": "pkg_2",
       "name": "Mini Portfolio",
       "price": 10000,
-      "specs": "25 Proof Clicks + 3-5 Retouched Clicks"
+      "specs": "25 Proof Clicks + 3-5 Retouched Clicks (No RAW files delivered)"
     },
     {
       "id": "pkg_3",
       "name": "Standard Editorial Portfolio",
       "price": 25000,
-      "specs": "50 Unedited + 8-12 Retouched Clicks"
+      "specs": "50 Unedited + 8-12 Retouched Clicks (No RAW files delivered)"
     },
     {
       "id": "pkg_4",
       "name": "Premium Brand Campaign",
       "price": 50000,
-      "specs": "100 Unedited + 15-25 Retouched Clicks"
+      "specs": "100 Unedited + 15-25 Retouched Clicks (No RAW files delivered)"
     },
     {
       "id": "pkg_5",
       "name": "High-End Full Day Production",
       "price": 75000,
-      "specs": "Full Gallery + 30+ Retouched Master Assets"
+      "specs": "Full Gallery + 30+ Retouched Master Assets (No RAW files delivered)"
     }
   ],
+  "TFP_PACKAGE": {
+    "name": "Test Shoot / TFP Collaboration",
+    "specs": "Full Proofing Gallery + 8 Retouched Master Clicks (No RAW files delivered)"
+  },
   "HOME_STUDIO_RATE": 2000,
   "HOME_STUDIO_RATE_TFP": 4000
 };
