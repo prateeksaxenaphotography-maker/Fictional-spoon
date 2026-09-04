@@ -353,6 +353,33 @@ a { color: inherit; text-decoration: none; }
 .dropzone-title { font-family: "Archivo", sans-serif; font-weight: 700; font-size: var(--font-md); margin: 0 0 6px; }
 .dropzone-hint { color: var(--ink-soft); font-size: var(--font-sm); margin: 0; }
 .dropzone-hint .link { color: var(--accent); font-weight: 600; text-decoration: underline; }
+
+/* Publish / Save used to live only at the very bottom of a ~5,600px form,
+   so after staging photos at the top the admin scrolled the whole thing to
+   find the button (and the "N photos ready" line next to it). This bar
+   pins both to the bottom of the viewport once the form is on screen; the
+   real #publishBtn stays where it was and the bar's button just clicks it,
+   so submit validation and edit-mode behaviour are untouched. */
+/* Fixed, not sticky: body carries `overflow: hidden auto` and html
+   `overflow-x: hidden`, which makes body the sticky scroll container and
+   quietly disables position: sticky for every descendant. The bar is
+   shown by wireUpload only while the form is on screen and the real
+   #publishBtn is not, so it never sits on top of the button it proxies. */
+.upload-sticky-bar { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); width: min(calc(100% - 64px), var(--maxw)); z-index: 60; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 14px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.14); }
+.upload-sticky-bar.is-hidden { display: none; }
+.upload-sticky-bar .sticky-note { font-family: var(--mono-font); font-size: var(--font-xs); color: var(--ink-soft); min-width: 0; flex: 1 1 200px; }
+.upload-sticky-bar .sticky-note.ready { color: var(--ink); font-weight: 700; }
+.upload-sticky-bar .sticky-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.upload-sticky-bar .sticky-jump { background: none; border: 1px solid var(--line); border-radius: var(--r-sm); padding: 8px 12px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink); cursor: pointer; }
+.upload-sticky-bar .sticky-jump:hover { border-color: var(--accent); color: var(--accent); }
+.upload-sticky-bar .sticky-publish { height: auto; padding: 10px 18px; font-size: var(--font-xs); }
+.upload-sticky-bar .sticky-publish:disabled { opacity: .45; cursor: not-allowed; }
+@media (max-width: 620px) {
+  .upload-sticky-bar { bottom: 0; left: 0; transform: none; width: 100%; border-radius: 10px 10px 0 0; border-left: none; border-right: none; border-bottom: none; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); }
+  .upload-sticky-bar .sticky-note { flex-basis: 100%; }
+  .upload-sticky-bar .sticky-actions { width: 100%; }
+  .upload-sticky-bar .sticky-publish { flex: 1; text-align: center; }
+}
 .thumb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-top: 18px; }
 .thumb-grid:empty { display: none; }
 .thumb { position: relative; border-radius: 8px; overflow: hidden; background: var(--paper); border: 1px solid var(--line); animation: pop .4s var(--ease) both; }
@@ -1494,6 +1521,8 @@ main:focus { outline: none; }
 /* Page-head H1 as a kinetic per-letter headline */
 .kinetic-h1 { opacity: 1; transform: none; margin: 0; }
 .kinetic-word-inner { display: flex; flex-wrap: wrap; overflow: hidden; padding-bottom: .04em; }
+/* Words are unbreakable units; the row wraps only at .kw-space. */
+.kinetic-h1 .kw-word { display: inline-flex; flex: 0 0 auto; }
 .kinetic-h1 .kw-letter { transform: translateY(115%); transition: transform .8s var(--ease); transition-delay: calc(var(--i) * .045s); }
 .kinetic-h1.in .kw-letter { transform: none; }
 @media (prefers-reduced-motion: reduce) { .kinetic-h1 .kw-letter { transform: none; transition: none; } }
@@ -1692,16 +1721,21 @@ main:focus { outline: none; }
 /* ---------- Admin Calendar Dashboard & Roster Page ---------- */
 .admin-calendar-wrap { margin-top: 32px; }
 .admin-calendar-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap; margin-bottom: 24px; }
-.admin-cal-nav { display: flex; align-items: center; gap: 14px; }
+.admin-cal-nav { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .admin-cal-title { font-family: "Outfit", "Archivo", sans-serif; font-size: var(--font-md); font-weight: 800; margin: 0; color: var(--ink); }
 .admin-cal-btn { background: none; border: 1px solid var(--line); border-radius: var(--r-sm); padding: 8px 14px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ink); cursor: pointer; transition: all .2s; }
 .admin-cal-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 .admin-cal-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
 .admin-cal-btn.primary:hover { background: var(--accent-hover); }
 
-.admin-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 40px; }
+/* minmax(0, 1fr), not 1fr: a grid track's default minimum is the cell's
+   min-content, so on a phone the "WEEKDAY BLOCKED" badge widened every
+   column until the grid ran off the right edge and Fri/Sat — the days that
+   actually get booked — were scrolled out of view. */
+.admin-cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin-bottom: 40px; }
 .admin-cal-day-label { text-align: center; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft); text-transform: uppercase; padding: 8px 0; border-bottom: 1px solid var(--line); }
-.admin-cal-day { min-height: 96px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 8px; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; transition: all .2s var(--ease); position: relative; }
+.admin-cal-day { min-width: 0; overflow: hidden; min-height: 96px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 8px; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; transition: all .2s var(--ease); position: relative; }
+.admin-cal-day > div:first-child { flex-wrap: wrap; gap: 2px 4px; }
 .admin-cal-day:hover { border-color: var(--accent); box-shadow: var(--shadow-sm); }
 .admin-cal-day.day-empty { background: none; border-color: transparent; cursor: default; }
 .admin-cal-day.day-past { opacity: 0.5; }
@@ -1733,7 +1767,10 @@ main:focus { outline: none; }
 .booking-card-detail { font-size: var(--font-sm); color: var(--ink-soft); margin: 2px 0; }
 
 /* Date Admin Modal Overlay */
-.date-admin-modal-overlay { position: fixed; inset: 0; z-index: 250; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn .2s var(--ease); }
+/* Above .admin-sticky-reminder (z-index 99999): with 250 the fixed
+   "Next Shoot" banner painted over the modal's header and close button
+   on a phone. */
+.date-admin-modal-overlay { position: fixed; inset: 0; z-index: 100000; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn .2s var(--ease); }
 .date-admin-modal { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; max-width: 540px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 28px; box-shadow: var(--shadow); position: relative; }
 
 /* Admin Sticky Reminder Banner */
@@ -1963,6 +2000,14 @@ main:focus { outline: none; }
     font-size: 7.5px !important;
     padding: 2px 3px !important;
   }
+  /* A phone cell is ~45px wide: "WEEKDAY BLOCKED" / "OPEN" in twenty-odd
+     cells is noise the tint and the legend already carry. Bookings, holds,
+     workshops and assisting days keep their badge — those are the ones the
+     admin is scanning for. */
+  .admin-cal-badge.badge-blocked,
+  .admin-cal-badge.badge-open {
+    display: none !important;
+  }
   .admin-cal-client-item {
     font-size: 8.5px !important;
   }
@@ -1986,6 +2031,22 @@ main:focus { outline: none; }
     padding: 18px !important;
     max-height: 85vh !important;
     width: 94vw !important;
+  }
+  /* The day modal's add-booking form lays its inputs out in inline
+     two-column grids; in a 94vw modal on a phone that is ~150px per input,
+     so placeholders like "Client / Model Name (or leave blank for Hold)"
+     were cut to three words. Stack them. */
+  .date-admin-modal [style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  /* Same min-content trap as the calendar grid: a long placeholder made the
+     input wider than the modal, so the modal scrolled sideways. */
+  .date-admin-modal input,
+  .date-admin-modal select,
+  .date-admin-modal textarea {
+    min-width: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   /* Footer */
