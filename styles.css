@@ -2575,3 +2575,4 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 .credits-note code { font-family: var(--mono-font); font-size: 11.5px; padding: 1px 6px; border: 1px solid var(--line); border-radius: 5px; background: var(--paper); color: var(--ink); }
 .field-verify { margin-top: 5px; font-size: var(--font-xs); }
 .label-hint { font-family: var(--mono-font); font-style: normal; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); margin-left: 6px; }
+.upload-grid #fs_credits .field-row { align-items: start; }
