@@ -400,6 +400,7 @@ window.WPS_DATA = {
       "type": "Test Shoot",
       "season": "March 2026",
       "photographer": "Studio",
+      "secondaryPhotographers": "",
       "artDirector": "",
       "stylist": "—",
       "hair": "—",
@@ -414,7 +415,9 @@ window.WPS_DATA = {
       "hips": "39 inch",
       "shoes": "10.5 US",
       "modelHair": "Black",
-      "modelEyes": "Daek Brown",
+      "modelEyes": "Dark Brown",
+      "agency": "",
+      "agencyHandle": "",
       "modelTypes": [
         "Fashion"
       ],
@@ -1378,7 +1381,11 @@ window.WPS_DATA = {
   ],
   "CALENDAR_SETTINGS": {
     "customBlockedDates": {},
-    "customOpenedDates": {},
+    "customOpenedDates": {
+      "2026-09-07": true,
+      "2026-09-09": true,
+      "2026-09-11": true
+    },
     "bookedDates": {
       "2026-03-14": [
         {
@@ -1741,36 +1748,6 @@ window.WPS_DATA = {
           "createdAt": 1787411831533
         }
       ],
-      "2026-09-20": [
-        {
-          "id": "b_1788502533406_u7q8",
-          "name": "Anticipated Client Hold",
-          "email": "",
-          "phone": "",
-          "type": "Fashion Editorial",
-          "duration": "Full Day",
-          "isTentative": true,
-          "notes": "Date held by Admin for anticipated client inquiry.",
-          "location": "",
-          "venueByStudio": false,
-          "agreementMethod": "",
-          "links": [],
-          "attachments": [],
-          "status": "tentative",
-          "contractVersion": "Pending Agreement",
-          "agreedToTerms": false,
-          "contractNumber": "",
-          "sigDataUrl": "",
-          "agreedContract": "",
-          "budget": "",
-          "homeStudioFee": 0,
-          "finalPayable": 0,
-          "financials": null,
-          "inviteMeta": null,
-          "promoMeta": null,
-          "createdAt": 1788502533406
-        }
-      ],
       "2001-10-17": [
         {
           "id": "b_1787428837182_i8mi",
@@ -1847,6 +1824,36 @@ window.WPS_DATA = {
           "isTentative": false,
           "notes": "Published Portfolio Shoot: Rohit Pal"
         }
+      ],
+      "2026-09-20": [
+        {
+          "id": "b_1788522924947_ls3x",
+          "name": "Workshop Day",
+          "email": "",
+          "phone": "",
+          "type": "Workshop Attended",
+          "duration": "Full Day",
+          "isTentative": false,
+          "notes": "Booked for Workshop (Skill-Up Day)",
+          "location": "",
+          "venueByStudio": false,
+          "agreementMethod": "",
+          "links": [],
+          "attachments": [],
+          "status": "workshop",
+          "contractVersion": "Pending Agreement",
+          "agreedToTerms": false,
+          "contractNumber": "",
+          "sigDataUrl": "",
+          "agreedContract": "",
+          "budget": "",
+          "homeStudioFee": 0,
+          "finalPayable": 0,
+          "financials": null,
+          "inviteMeta": null,
+          "promoMeta": null,
+          "createdAt": 1788522924947
+        }
       ]
     },
     "removedBookingIds": [
@@ -1868,7 +1875,8 @@ window.WPS_DATA = {
       "2026-09-06::b_1786993090931_rqop",
       "2026-09-12::b_1787411823267_sq23",
       "2026-09-13::b_1787411828392_udyl",
-      "2026-09-20::b_1787411835191_nz3r"
+      "2026-09-20::b_1787411835191_nz3r",
+      "2026-09-20::b_1788502533406_u7q8"
     ],
     "paymentScheduleType": "5050",
     "updatedAt": 0,
