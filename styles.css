@@ -2687,3 +2687,22 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 .credit-visibility > span { font-size: 12px; color: var(--ink-soft); }
 .mini-check { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 500; color: var(--ink); cursor: pointer; margin: 0; }
 .mini-check input { width: 15px; height: 15px; accent-color: var(--accent); margin: 0; }
+
+/* Publish settings: agency / email visibility grid */
+.vis-matrix { margin-top: 14px; padding: 14px 16px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.vis-matrix-title { margin: 0 0 4px; font-family: "Inter", system-ui, sans-serif; font-size: 14px; font-weight: 600; color: var(--ink); }
+.vis-matrix-sub { margin: 0 0 10px; font-size: 12.5px; color: var(--ink-soft); line-height: 1.45; }
+.vis-table { width: 100%; border-collapse: collapse; }
+.vis-table th, .vis-table td { padding: 8px 6px; border-top: 1px solid var(--line); text-align: center; font-size: 13.5px; color: var(--ink); }
+.vis-table thead th { border-top: 0; padding-top: 0; font-family: var(--mono-font); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; color: var(--ink-soft); }
+.vis-table tbody th { text-align: left; font-weight: 500; padding-left: 0; }
+.vis-table input { width: 16px; height: 16px; accent-color: var(--accent); margin: 0; cursor: pointer; }
+
+/* Credits: the credit syntax, shown once at the top of the section */
+.credits-format { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: center; margin: -2px 0 16px; padding: 12px 14px; border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 10px; background: var(--paper); }
+.credits-format-k { font-family: var(--mono-font); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; font-weight: 600; color: var(--accent); }
+.credits-format > code { justify-self: start; font-family: var(--mono-font); font-size: 13px; font-weight: 600; padding: 4px 10px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--surface); color: var(--ink); }
+.credits-format-sub { grid-column: 1 / -1; font-size: 12.5px; color: var(--ink-soft); line-height: 1.5; }
+.credits-format-sub code { font-family: var(--mono-font); font-size: 11.5px; padding: 0 5px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); }
+.credits-format-sub em { font-style: normal; color: var(--ink); }
+@media (max-width: 720px) { .credits-format { grid-template-columns: 1fr; } }
