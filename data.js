@@ -34,6 +34,7 @@ window.WPS_DATA = {
     {
       "id": "mr4x3r7e4l5g4m",
       "createdAt": 1783082200442,
+      "isTestimonial": false,
       "title": "Rhythm Vohra",
       "brand": "Personal Project",
       "activity": "Portrait",
@@ -44,28 +45,40 @@ window.WPS_DATA = {
       "stylist": "—",
       "hair": "—",
       "mua": "—",
+      "videographer": "—",
       "talent": "Rhythm Vohra",
       "location": "Noida",
       "height": "",
       "chest": "",
+      "chestLabel": "Chest",
       "waist": "",
       "hips": "",
       "shoes": "",
       "modelHair": "",
       "modelEyes": "",
+      "modelTypes": [
+        "Fashion"
+      ],
+      "showStatsOnCompCard": false,
+      "showStatsOnModelPortfolio": false,
+      "showTestShootCategory": false,
+      "mentor": "",
+      "credits": "",
       "description": "",
       "tags": "",
       "gear": "",
       "client": "",
       "date": "2026-06-14",
       "instagram": "",
+      "kavyar": "",
       "link": "",
+      "pdfUrl": "",
       "rights": "",
       "testimonials": [],
       "lightingDiagram": null,
       "lightingDiagramVisibility": "private",
       "palette": [
-        "#381410",
+        "#381510",
         "#190a0a"
       ],
       "photos": [
@@ -126,11 +139,19 @@ window.WPS_DATA = {
         }
       ],
       "featured": false,
-      "coverPhotoId": "mr4x1ect353v87",
+      "showAsCompCard": false,
       "hideFromCompCard": true,
-      "modelTypes": [
-        "Fashion"
-      ]
+      "disableCompCardDownload": true,
+      "isPublic": true,
+      "showCredits": true,
+      "showPdf": true,
+      "showInstagram": true,
+      "showKavyar": true,
+      "showTestimonials": true,
+      "showStats": true,
+      "showGear": true,
+      "showLocation": true,
+      "coverPhotoId": "mr4x1ect353v87"
     },
     {
       "id": "mr4x6kwx3f8rs3",
@@ -1232,7 +1253,9 @@ window.WPS_DATA = {
       "shoes": "",
       "modelHair": "",
       "modelEyes": "",
-      "modelTypes": [],
+      "modelTypes": [
+        "Fashion"
+      ],
       "showStatsOnCompCard": true,
       "showStatsOnModelPortfolio": true,
       "showTestShootCategory": false,
@@ -1252,8 +1275,8 @@ window.WPS_DATA = {
       "lightingDiagram": null,
       "lightingDiagramVisibility": "private",
       "palette": [
-        "#3a3a3a",
-        "#0d0d0d"
+        "#3e4145",
+        "#1c1d1f"
       ],
       "photos": [
         {
