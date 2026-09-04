@@ -2718,3 +2718,6 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 .lb-admin-album-actions .linkish { font-family: "Archivo", sans-serif; font-weight: 700; font-size: 13px; color: var(--ink); white-space: nowrap; }
 .lb-admin-album-actions .linkish.muted { color: var(--ink-soft); }
 .lb-admin-album-actions .linkish:hover { color: var(--accent); }
+
+.vis-table tr.vis-group th { text-align: left; padding: 14px 0 4px; font-family: var(--mono-font); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; font-weight: 600; color: var(--accent); border-top: 0; }
+.vis-table tr.vis-group + tr th, .vis-table tr.vis-group + tr td { border-top: 0; }
