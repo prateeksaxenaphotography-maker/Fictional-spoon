@@ -7346,31 +7346,31 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <fieldset id="fs_publish"><legend>Publish settings</legend>
               <div style="display: flex; align-items: center; gap: 8px;">
                 <input id="f_is_public" type="checkbox" checked style="width: 16px; height: 16px; accent-color: var(--accent); margin: 0; cursor: pointer;" />
-                <label for="f_is_public" style="font-weight: 600; cursor: pointer; margin: 0;">Make album public (uncheck to hide entirely)</label>
+                <label for="f_is_public" style="font-weight: 600; cursor: pointer; margin: 0;">Show this album on the site <span class="label-hint" style="font-weight: 400; text-transform: none; letter-spacing: 0; font-family: inherit; font-size: 12.5px;">— untick to keep it saved but hidden everywhere</span></label>
               </div>
               <div class="publish-toggles">
                 <label>
-                  <input id="f_featured" type="checkbox" checked style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
-                  Feature on homepage
+                  <input id="f_featured" type="checkbox" checked style="width: 15px; height: 15px; accent-color: var(--accent); margin: 3px 0 0;" />
+                  <span class="tog-text"><strong>Show on the homepage</strong><small>Appears in Featured photoshoots.</small></span>
                 </label>
                 <label>
-                  <input id="f_show_compcard" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
-                  Show as comp card
+                  <input id="f_show_compcard" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 3px 0 0;" />
+                  <span class="tog-text"><strong>Also make a comp card from this album</strong><small>Test shoots get a comp card automatically. Tick this for any other kind of shoot.</small></span>
                 </label>
                 <label>
-                  <input id="f_hide_compcard" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
-                  Hide from comp cards page
+                  <input id="f_hide_compcard" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 3px 0 0;" />
+                  <span class="tog-text"><strong>Keep it off the Comp cards page</strong><small>For a test shoot you don't want listed there. The album itself stays in the archive.</small></span>
                 </label>
                 <label>
-                  <input id="f_disable_download" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
-                  Disable comp card PDF download
+                  <input id="f_disable_download" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 3px 0 0;" />
+                  <span class="tog-text"><strong>No comp card PDF download</strong><small>Visitors can view the comp card but not download it.</small></span>
                 </label>
                 <label>
-                  <input id="f_show_test_shoot_cat" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
-                  Show "Selective Collaboration (TFP)" tag publicly
+                  <input id="f_show_test_shoot_cat" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 3px 0 0;" />
+                  <span class="tog-text"><strong>Show the &quot;Test shoot / TFP&quot; label on the album</strong><small>Otherwise visitors see a normal album, not that it was a collaboration.</small></span>
                 </label>
               </div>
-              <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 4px 0 0;">Show these fields publicly:</p>
+              <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 4px 0 0;">Show on the album page:</p>
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
                 <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
                   <input id="f_show_credits" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
@@ -7378,7 +7378,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
                   <input id="f_show_pdf" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
-                  PDF Materials
+                  PDF materials
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
                   <input id="f_show_instagram" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />

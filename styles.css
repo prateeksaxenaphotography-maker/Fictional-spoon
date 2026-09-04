@@ -2576,3 +2576,10 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 .field-verify { margin-top: 5px; font-size: var(--font-xs); }
 .label-hint { font-family: var(--mono-font); font-style: normal; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); margin-left: 6px; }
 .upload-grid #fs_credits .field-row { align-items: start; }
+
+/* Publish toggles: plain label plus a one-line explanation under it. */
+.upload-grid .publish-toggles { grid-template-columns: 1fr; gap: 12px; }
+.upload-grid .publish-toggles label { align-items: flex-start; }
+.tog-text { display: flex; flex-direction: column; gap: 2px; }
+.tog-text strong { font-weight: 600; color: var(--ink); font-size: 14px; }
+.tog-text small { font-size: 12.5px; color: var(--ink-soft); line-height: 1.45; }
