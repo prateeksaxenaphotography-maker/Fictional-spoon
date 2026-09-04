@@ -1330,6 +1330,14 @@ window.moveAdminPackageRow = function(index, dir) {
   // Pdf). Older albums saved a single switch (showAgency / showModelEmail);
   // that is honoured when no per-surface value exists. Agency defaults to
   // shown, the email to hidden: it is personal data.
+  // Every visibility switch: [input id stem, what, default]. Only the
+  // model's Instagram is on unless switched on.
+  const REP_SWITCHES = [
+    ["ig", "ModelInstagram", true], ["kavyar", "ModelKavyar", false], ["linkedin", "ModelLinkedin", false], ["behance", "ModelBehance", false], ["website", "ModelWebsite", false], ["email", "Email", false],
+    ["agency", "Agency", false], ["agency_ig", "AgencyInstagram", false], ["agency_kavyar", "AgencyKavyar", false], ["agency_linkedin", "AgencyLinkedin", false], ["agency_behance", "AgencyBehance", false], ["agency_website", "AgencyWebsite", false], ["agency_email", "AgencyEmail", false]
+  ];
+  const REP_SURFACES = [["cc", "CompCard"], ["home", "Home"], ["pdf", "Pdf"]];
+  const repSwitchValues = () => { const o = {}; REP_SWITCHES.forEach(([id, what, def]) => REP_SURFACES.forEach(([sfx, sf]) => { o[`show${what}On${sf}`] = $(`#f_show_${id}_${sfx}`)?.checked ?? def; })); return o; };
   const showRep = (shoot, what, surface) => {
     if (!shoot) return false;
     const v = shoot[`show${what}On${surface}`];
@@ -2440,7 +2448,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // model who moved agencies between shoots shows where they are now.
     const repRows = [];
     if (isCc && shoot.agency && showRep(shoot, "Agency", "CompCard")) {
-      const agSub = agencyLinksOf(shoot).map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label)}${l.kind === "email" ? "" : " ↗"}</a>`).join("");
+      const agSub = visibleAgencyLinks(shoot, "CompCard").map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label)}${l.kind === "email" ? "" : " ↗"}</a>`).join("");
       repRows.push(`<div class="lb-credit"><dt>Agency</dt><dd><span class="lb-person">${esc(shoot.agency)}</span>${agSub ? `<span class="lb-person lb-person-sub">${agSub}</span>` : ""}</dd></div>`);
     }
     // Strictly opt-in, even for admins: it is the model's personal email.
@@ -6562,7 +6570,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const agencySrc = shootsInGroup.find(x => x.agency && String(x.agency).trim());
         const emailSrc = shootsInGroup.find(x => x.modelEmail && String(x.modelEmail).trim());
         const repFlags = {};
-        ["CompCard", "Home", "Pdf"].forEach(sf => { repFlags[`showAgencyOn${sf}`] = showRep(agencySrc, "Agency", sf); repFlags[`showEmailOn${sf}`] = showRep(emailSrc, "Email", sf); ["ModelInstagram", "ModelKavyar", "ModelLinkedin", "ModelBehance", "ModelWebsite"].forEach(w => { repFlags[`show${w}On${sf}`] = showRep(shootsInGroup[0], w, sf); }); });
+        REP_SWITCHES.forEach(([, what]) => REP_SURFACES.forEach(([, sf]) => { const src = what.startsWith("Agency") ? agencySrc : what === "Email" ? emailSrc : shootsInGroup[0]; repFlags[`show${what}On${sf}`] = showRep(src, what, sf); }));
 
         // Model type merges across the group instead of taking the latest
         // shoot's value: a model tagged Fashion on one shoot and Fitness on
@@ -7353,17 +7361,25 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               </div>
               <div class="vis-matrix" id="repVisibility">
                 <p class="vis-matrix-title">Agency &amp; contact</p>
-                <p class="vis-matrix-sub">Where each detail may appear. Only the model's Instagram is shown by default — switch on anything else where you want it.</p>
+                <p class="vis-matrix-sub">Where each detail may appear, for the model and for the agency. Only the model's Instagram is shown by default — switch on anything else where you want it. Agency socials show only where the agency name does.</p>
                 <table class="vis-table">
                   <thead><tr><th></th><th>Comp cards</th><th>Homepage</th><th>PDF</th></tr></thead>
                   <tbody>
-                    <tr><th>Model's Instagram</th><td><input id="f_show_ig_cc" type="checkbox" checked aria-label="Model Instagram on comp cards" /></td><td><input id="f_show_ig_home" type="checkbox" checked aria-label="Model Instagram on homepage" /></td><td><input id="f_show_ig_pdf" type="checkbox" checked aria-label="Model Instagram on PDF" /></td></tr>
-                    <tr><th>Model's Kavyar</th><td><input id="f_show_kavyar_cc" type="checkbox" aria-label="Model Kavyar on comp cards" /></td><td><input id="f_show_kavyar_home" type="checkbox" aria-label="Model Kavyar on homepage" /></td><td><input id="f_show_kavyar_pdf" type="checkbox" aria-label="Model Kavyar on PDF" /></td></tr>
-                    <tr><th>Model's LinkedIn</th><td><input id="f_show_linkedin_cc" type="checkbox" aria-label="Model LinkedIn on comp cards" /></td><td><input id="f_show_linkedin_home" type="checkbox" aria-label="Model LinkedIn on homepage" /></td><td><input id="f_show_linkedin_pdf" type="checkbox" aria-label="Model LinkedIn on PDF" /></td></tr>
-                    <tr><th>Model's Behance</th><td><input id="f_show_behance_cc" type="checkbox" aria-label="Model Behance on comp cards" /></td><td><input id="f_show_behance_home" type="checkbox" aria-label="Model Behance on homepage" /></td><td><input id="f_show_behance_pdf" type="checkbox" aria-label="Model Behance on PDF" /></td></tr>
-                    <tr><th>Model's website</th><td><input id="f_show_website_cc" type="checkbox" aria-label="Model Website on comp cards" /></td><td><input id="f_show_website_home" type="checkbox" aria-label="Model Website on homepage" /></td><td><input id="f_show_website_pdf" type="checkbox" aria-label="Model Website on PDF" /></td></tr>
-                    <tr><th>Agency name &amp; agency socials</th><td><input id="f_show_agency_cc" type="checkbox" aria-label="Agency on comp cards" /></td><td><input id="f_show_agency_home" type="checkbox" aria-label="Agency on homepage" /></td><td><input id="f_show_agency_pdf" type="checkbox" aria-label="Agency on PDF" /></td></tr>
-                    <tr><th>Model's email</th><td><input id="f_show_email_cc" type="checkbox" aria-label="Email on comp cards" /></td><td><input id="f_show_email_home" type="checkbox" aria-label="Email on homepage" /></td><td><input id="f_show_email_pdf" type="checkbox" aria-label="Email on PDF" /></td></tr>
+                    <tr class="vis-group"><th colspan="4">Model</th></tr>
+                    <tr><th>Instagram</th><td><input id="f_show_ig_cc" type="checkbox" checked aria-label="Model Instagram on comp cards" /></td><td><input id="f_show_ig_home" type="checkbox" checked aria-label="Model Instagram on homepage" /></td><td><input id="f_show_ig_pdf" type="checkbox" checked aria-label="Model Instagram on PDF" /></td></tr>
+                    <tr><th>Kavyar</th><td><input id="f_show_kavyar_cc" type="checkbox" aria-label="Model Kavyar on comp cards" /></td><td><input id="f_show_kavyar_home" type="checkbox" aria-label="Model Kavyar on homepage" /></td><td><input id="f_show_kavyar_pdf" type="checkbox" aria-label="Model Kavyar on PDF" /></td></tr>
+                    <tr><th>LinkedIn</th><td><input id="f_show_linkedin_cc" type="checkbox" aria-label="Model LinkedIn on comp cards" /></td><td><input id="f_show_linkedin_home" type="checkbox" aria-label="Model LinkedIn on homepage" /></td><td><input id="f_show_linkedin_pdf" type="checkbox" aria-label="Model LinkedIn on PDF" /></td></tr>
+                    <tr><th>Behance</th><td><input id="f_show_behance_cc" type="checkbox" aria-label="Model Behance on comp cards" /></td><td><input id="f_show_behance_home" type="checkbox" aria-label="Model Behance on homepage" /></td><td><input id="f_show_behance_pdf" type="checkbox" aria-label="Model Behance on PDF" /></td></tr>
+                    <tr><th>Website</th><td><input id="f_show_website_cc" type="checkbox" aria-label="Model website on comp cards" /></td><td><input id="f_show_website_home" type="checkbox" aria-label="Model website on homepage" /></td><td><input id="f_show_website_pdf" type="checkbox" aria-label="Model website on PDF" /></td></tr>
+                    <tr><th>Email</th><td><input id="f_show_email_cc" type="checkbox" aria-label="Model email on comp cards" /></td><td><input id="f_show_email_home" type="checkbox" aria-label="Model email on homepage" /></td><td><input id="f_show_email_pdf" type="checkbox" aria-label="Model email on PDF" /></td></tr>
+                    <tr class="vis-group"><th colspan="4">Agency</th></tr>
+                    <tr><th>Agency name</th><td><input id="f_show_agency_cc" type="checkbox" aria-label="Agency name on comp cards" /></td><td><input id="f_show_agency_home" type="checkbox" aria-label="Agency name on homepage" /></td><td><input id="f_show_agency_pdf" type="checkbox" aria-label="Agency name on PDF" /></td></tr>
+                    <tr><th>Instagram</th><td><input id="f_show_agency_ig_cc" type="checkbox" aria-label="Agency Instagram on comp cards" /></td><td><input id="f_show_agency_ig_home" type="checkbox" aria-label="Agency Instagram on homepage" /></td><td><input id="f_show_agency_ig_pdf" type="checkbox" aria-label="Agency Instagram on PDF" /></td></tr>
+                    <tr><th>Kavyar</th><td><input id="f_show_agency_kavyar_cc" type="checkbox" aria-label="Agency Kavyar on comp cards" /></td><td><input id="f_show_agency_kavyar_home" type="checkbox" aria-label="Agency Kavyar on homepage" /></td><td><input id="f_show_agency_kavyar_pdf" type="checkbox" aria-label="Agency Kavyar on PDF" /></td></tr>
+                    <tr><th>LinkedIn</th><td><input id="f_show_agency_linkedin_cc" type="checkbox" aria-label="Agency LinkedIn on comp cards" /></td><td><input id="f_show_agency_linkedin_home" type="checkbox" aria-label="Agency LinkedIn on homepage" /></td><td><input id="f_show_agency_linkedin_pdf" type="checkbox" aria-label="Agency LinkedIn on PDF" /></td></tr>
+                    <tr><th>Behance</th><td><input id="f_show_agency_behance_cc" type="checkbox" aria-label="Agency Behance on comp cards" /></td><td><input id="f_show_agency_behance_home" type="checkbox" aria-label="Agency Behance on homepage" /></td><td><input id="f_show_agency_behance_pdf" type="checkbox" aria-label="Agency Behance on PDF" /></td></tr>
+                    <tr><th>Website</th><td><input id="f_show_agency_website_cc" type="checkbox" aria-label="Agency website on comp cards" /></td><td><input id="f_show_agency_website_home" type="checkbox" aria-label="Agency website on homepage" /></td><td><input id="f_show_agency_website_pdf" type="checkbox" aria-label="Agency website on PDF" /></td></tr>
+                    <tr><th>Email</th><td><input id="f_show_agency_email_cc" type="checkbox" aria-label="Agency email on comp cards" /></td><td><input id="f_show_agency_email_home" type="checkbox" aria-label="Agency email on homepage" /></td><td><input id="f_show_agency_email_pdf" type="checkbox" aria-label="Agency email on PDF" /></td></tr>
                   </tbody>
                 </table>
               </div>
@@ -8421,12 +8437,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           if (el) el.checked = editingShoot[prop] !== false;
         });
         // Agency defaults to shown, the email to hidden: it is personal data.
-        [["cc", "CompCard"], ["home", "Home"], ["pdf", "Pdf"]].forEach(([suffix, surface]) => {
-          const a = $("#f_show_agency_" + suffix); if (a) a.checked = showRep(editingShoot, "Agency", surface);
-          ["Kavyar", "Linkedin", "Behance", "Website"].forEach(k => { const el = $("#f_show_" + k.toLowerCase() + "_" + suffix); if (el) el.checked = showRep(editingShoot, "Model" + k, surface); });
-          const ig = $("#f_show_ig_" + suffix); if (ig) ig.checked = showRep(editingShoot, "ModelInstagram", surface);
-          const e = $("#f_show_email_" + suffix); if (e) e.checked = showRep(editingShoot, "Email", surface);
-        });
+        REP_SWITCHES.forEach(([id, what]) => REP_SURFACES.forEach(([sfx, sf]) => { const el = $(`#f_show_${id}_${sfx}`); if (el) el.checked = showRep(editingShoot, what, sf); }));
 
         staged = editingShoot.photos.map(p => {
           const isCover = editingShoot.coverPhotoId ? (p.id.split("-")[0] === editingShoot.coverPhotoId) : false;
@@ -9125,27 +9136,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         showStats: $("#f_show_stats")?.checked ?? true,
         showGear: $("#f_show_gear")?.checked ?? true,
         showLocation: $("#f_show_location")?.checked ?? true,
-        showModelInstagramOnCompCard: $("#f_show_ig_cc")?.checked ?? true,
-        showModelInstagramOnHome: $("#f_show_ig_home")?.checked ?? true,
-        showModelInstagramOnPdf: $("#f_show_ig_pdf")?.checked ?? true,
-        showModelKavyarOnCompCard: $("#f_show_kavyar_cc")?.checked ?? false,
-        showModelKavyarOnHome: $("#f_show_kavyar_home")?.checked ?? false,
-        showModelKavyarOnPdf: $("#f_show_kavyar_pdf")?.checked ?? false,
-        showModelLinkedinOnCompCard: $("#f_show_linkedin_cc")?.checked ?? false,
-        showModelLinkedinOnHome: $("#f_show_linkedin_home")?.checked ?? false,
-        showModelLinkedinOnPdf: $("#f_show_linkedin_pdf")?.checked ?? false,
-        showModelBehanceOnCompCard: $("#f_show_behance_cc")?.checked ?? false,
-        showModelBehanceOnHome: $("#f_show_behance_home")?.checked ?? false,
-        showModelBehanceOnPdf: $("#f_show_behance_pdf")?.checked ?? false,
-        showModelWebsiteOnCompCard: $("#f_show_website_cc")?.checked ?? false,
-        showModelWebsiteOnHome: $("#f_show_website_home")?.checked ?? false,
-        showModelWebsiteOnPdf: $("#f_show_website_pdf")?.checked ?? false,
-        showAgencyOnCompCard: $("#f_show_agency_cc")?.checked ?? false,
-        showAgencyOnHome: $("#f_show_agency_home")?.checked ?? false,
-        showAgencyOnPdf: $("#f_show_agency_pdf")?.checked ?? false,
-        showEmailOnCompCard: $("#f_show_email_cc")?.checked ?? false,
-        showEmailOnHome: $("#f_show_email_home")?.checked ?? false,
-        showEmailOnPdf: $("#f_show_email_pdf")?.checked ?? false,
+        ...repSwitchValues(),
         coverPhotoId: isTestimonialOnly ? null : (coverItem ? coverItem.id : null),
       };
       pub.disabled = true; pub.textContent = editingShoot ? "Saving changes…" : "Publishing…";
@@ -12521,6 +12512,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   }
   // The model's links a surface may show: Instagram, other socials and an
   // email in the credit each answer to their own switch.
+  function visibleAgencyLinks(shoot, surface) {
+    const what = { instagram: "AgencyInstagram", kavyar: "AgencyKavyar", linkedin: "AgencyLinkedin", behance: "AgencyBehance", website: "AgencyWebsite", email: "AgencyEmail" };
+    return agencyLinksOf(shoot).filter(l => showRep(shoot, what[l.kind] || "AgencyWebsite", surface));
+  }
   function visibleModelLinks(shoot, surface) {
     const what = { instagram: "ModelInstagram", kavyar: "ModelKavyar", linkedin: "ModelLinkedin", behance: "ModelBehance", website: "ModelWebsite", email: "Email" };
     return printModelLinks(shoot).filter(l => showRep(shoot, what[l.kind] || "ModelWebsite", surface));
@@ -12531,7 +12526,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const noCase = (t) => `<span style="text-transform: none;">${t}</span>`;
     const items = visibleModelLinks(shoot, "Pdf").map(l => ({ main: `${SOCIAL_LABEL[l.kind]}: ${l.kind === "instagram" ? esc(l.label) : noCase(esc(socialPrintText(l)))}` }));
     if (shoot.agency && showRep(shoot, "Agency", "Pdf")) {
-      items.push({ main: `Agency: ${esc(shoot.agency)}`, sub: agencyLinksOf(shoot).map(socialPrintText).join("  ·  ") });
+      items.push({ main: `Agency: ${esc(shoot.agency)}`, sub: visibleAgencyLinks(shoot, "Pdf").map(socialPrintText).join("  ·  ") });
     }
     if (shoot.modelEmail && showRep(shoot, "Email", "Pdf") && !items.some(it => it.main.includes(esc(shoot.modelEmail)))) items.push({ main: `Email: ${noCase(esc(shoot.modelEmail))}` });
     if (!items.length) return "";
@@ -13101,7 +13096,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const rows = [];
     visibleModelLinks(shoot, "Pdf").forEach(l => rows.push([SOCIAL_LABEL[l.kind], socialPrintText(l), false]));
     if (shoot.agency && showRep(shoot, "Agency", "Pdf")) {
-      rows.push(["Agency", shoot.agency, false, agencyLinksOf(shoot).map(socialPrintText).join("  ·  ")]);
+      rows.push(["Agency", shoot.agency, false, visibleAgencyLinks(shoot, "Pdf").map(socialPrintText).join("  ·  ")]);
     }
     if (shoot.modelEmail && showRep(shoot, "Email", "Pdf") && !rows.some(r => r[1] === shoot.modelEmail)) rows.push(["Email", shoot.modelEmail, false]);
     if (manualFields.phone) rows.push(["Phone", manualFields.phone, true]);
@@ -13829,3 +13824,6 @@ window.filterAlbumGrid = function(filterKey, btnEl) {
     }
   });
 };
+// The menu index spans were removed from index.html; a cached copy of the
+// page can still carry them, so strip any that arrive.
+document.querySelectorAll(".nav-idx").forEach(el => el.remove());
