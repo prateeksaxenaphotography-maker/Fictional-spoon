@@ -1495,39 +1495,12 @@ window.WPS_DATA = {
           "contractVersion": "Pending Agreement"
         }
       ],
-      "2026-09-06": [
+      "2026-09-12": [
         {
-          "id": "b_1786993090931_rqop",
+          "id": "b_1788502499439_es7g",
           "type": "Assisting Photographer",
           "isTentative": false,
           "status": "assisting",
-          "contractVersion": "Pending Agreement"
-        }
-      ],
-      "2026-09-05": [
-        {
-          "id": "b_1787029810883_r7mr",
-          "type": "Workshop Attended",
-          "isTentative": false,
-          "status": "workshop",
-          "contractVersion": "Pending Agreement"
-        }
-      ],
-      "2026-09-12": [
-        {
-          "id": "b_1787411823267_sq23",
-          "type": "Fashion Editorial",
-          "isTentative": true,
-          "status": "tentative",
-          "contractVersion": "Pending Agreement"
-        }
-      ],
-      "2026-09-13": [
-        {
-          "id": "b_1787411828392_udyl",
-          "type": "Fashion Editorial",
-          "isTentative": true,
-          "status": "tentative",
           "contractVersion": "Pending Agreement"
         }
       ],
@@ -1542,10 +1515,10 @@ window.WPS_DATA = {
       ],
       "2026-09-20": [
         {
-          "id": "b_1787411835191_nz3r",
-          "type": "Assisting Photographer",
-          "isTentative": false,
-          "status": "assisting",
+          "id": "b_1788502533406_u7q8",
+          "type": "Fashion Editorial",
+          "isTentative": true,
+          "status": "tentative",
           "contractVersion": "Pending Agreement"
         }
       ],
@@ -1589,7 +1562,12 @@ window.WPS_DATA = {
       "2026-09-05::b_1786904559871_notl",
       "2026-08-30::b_1786714654176_bh0f",
       "2026-08-29::b_1787411813179_7dli",
-      "2026-08-01::shoot-mte8dutdkqor3f"
+      "2026-08-01::shoot-mte8dutdkqor3f",
+      "2026-09-05::b_1787029810883_r7mr",
+      "2026-09-06::b_1786993090931_rqop",
+      "2026-09-12::b_1787411823267_sq23",
+      "2026-09-13::b_1787411828392_udyl",
+      "2026-09-20::b_1787411835191_nz3r"
     ],
     "paymentScheduleType": "5050",
     "updatedAt": 0,
