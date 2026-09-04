@@ -420,7 +420,7 @@ window.WPS_DATA = {
       "agency": "Wilderbeetalents",
       "agencyHandle": "https://www.instagram.com/wilderbeetalents/?hl=en",
       "agencySite": "",
-      "modelEmail": "Kunnal@gmail.com",
+      "modelEmail": "",
       "modelTypes": [
         "Fashion"
       ],
