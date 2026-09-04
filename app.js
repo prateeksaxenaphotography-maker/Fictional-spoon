@@ -575,7 +575,7 @@ window.getAdminTfpPackage = getAdminTfpPackage;
    opening the Calendar view. Defined inside a view function, the archive
    simply did not exist on those paths.
    ============================================================ */
-window.ACTIVE_CONTRACTS = { commercial: "V3.6-COMMERCIAL", tfp: "V3.5-TFP" };
+window.ACTIVE_CONTRACTS = { commercial: "V3.7-COMMERCIAL", tfp: "V3.6-TFP" };
 
 /* ============================================================
    § CALL TIME, GRACE PERIOD & NO-SHOW
@@ -870,6 +870,39 @@ window.WPS_CONTRACT_ARCHIVE["V3.5-TFP"] = {
 };
 window.WPS_CONTRACT_ARCHIVE["V3.4-TFP"].effectiveDate = "August 2026 (superseded by V3.5-TFP)";
 window.WPS_CONTRACT_ARCHIVE["V3.4-TFP"].status = "Archived — superseded by V3.5-TFP (added studio-arranger choice)";
+
+// V3.7 / V3.6-TFP drop the at-cost pass-through for a rented studio: an
+// external studio (and, when the photographer arranges it, the equipment)
+// is quoted in advance and added to the invoice, so the studio can price its
+// own coordination instead of promising cost price. Composed off the active
+// sentences with .replace(), like the versions before them.
+window.WPS_CONTRACT_ARCHIVE["V3.7-COMMERCIAL"] = {
+  version: "V3.7-COMMERCIAL",
+  title: "Commercial Shoot & Release Agreement V3.7 (Paid Shoots)",
+  effectiveDate: "September 2026 – Present",
+  status: "Active / Current (Paid Commercial)",
+  summary: window.WPS_CONTRACT_ARCHIVE["V3.6-COMMERCIAL"].summary.replace("(Client or photographer, billed at actuals)", "(Client or photographer)") + " A photographer-arranged studio and its equipment are quoted in advance and added to the invoice rather than passed through at cost.",
+  fullText: window.WPS_CONTRACT_ARCHIVE["V3.6-COMMERCIAL"].fullText.replace(
+    "or ask the photographer to do so on the Client's behalf, with the actual cost billed at actuals.",
+    "or ask the photographer to do so on the Client's behalf, in which case the studio space and equipment charges are quoted to the Client in advance and added to the invoice."
+  )
+};
+window.WPS_CONTRACT_ARCHIVE["V3.6-COMMERCIAL"].effectiveDate = "August 2026 (superseded by V3.7)";
+window.WPS_CONTRACT_ARCHIVE["V3.6-COMMERCIAL"].status = "Archived — superseded by V3.7 (photographer-arranged studio quoted in advance, not at cost)";
+
+window.WPS_CONTRACT_ARCHIVE["V3.6-TFP"] = {
+  version: "V3.6-TFP",
+  title: "Test Shoot & TFP Liability Release V3.6 (Test Shoots)",
+  effectiveDate: "September 2026 – Present",
+  status: "Active / Current (Test Shoot / TFP)",
+  summary: window.WPS_CONTRACT_ARCHIVE["V3.5-TFP"].summary.replace("studio rental at actuals", "studio rental quoted in advance").replace("(Participant or photographer, billed at actuals)", "(Participant or photographer)") + " Studio rental and a photographer-arranged studio are quoted in advance rather than passed through at cost.",
+  fullText: window.WPS_CONTRACT_ARCHIVE["V3.5-TFP"].fullText
+    .replace("4. STUDIO RENTAL AT ACTUALS & TRAVEL EQUATION", "4. STUDIO RENTAL & TRAVEL EQUATION")
+    .replace("applicable studio rental fees are billed at actuals (at cost) and are payable in full before the shoot day.", "applicable studio rental fees are quoted to the Participant in advance and are payable in full before the shoot day.")
+    .replace("or ask the photographer to do so on their behalf, with the actual cost billed at actuals.", "or ask the photographer to do so on their behalf, in which case the studio space and equipment charges are quoted in advance and added to the Participant's invoice.")
+};
+window.WPS_CONTRACT_ARCHIVE["V3.5-TFP"].effectiveDate = "August 2026 (superseded by V3.6-TFP)";
+window.WPS_CONTRACT_ARCHIVE["V3.5-TFP"].status = "Archived — superseded by V3.6-TFP (studio rental quoted in advance, not at cost)";
 
 window.saveAdminCustomPackages = async function() {
   // The test-shoot row shares the class for layout but is not a paid tier.
@@ -4684,21 +4717,39 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
           <div style="background: var(--paper); border: 1.5px solid var(--accent); border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm);">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--accent); color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.6 COMMERCIAL (ACTIVE)</span>
+              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--accent); color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.7 COMMERCIAL (ACTIVE)</span>
               <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Aug 2026 – Present</span>
             </div>
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">💼 Commercial Shoot Agreement V3.6</h3>
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Paid Commercial, Editorial, Fashion &amp; Brand. 50/50 &amp; 50/30/20 retainer milestones (studio rental due in full with the advance), Client/photographer studio-arranger choice, commercial licensing, travel &gt;20km, gear &amp; media protection.</p>
-            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.6-COMMERCIAL')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review Commercial</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '')" style="font-size: var(--font-xs); border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
+            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">💼 Commercial Shoot Agreement V3.7</h3>
+            <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Paid Commercial, Editorial, Fashion &amp; Brand. 50/50 &amp; 50/30/20 retainer milestones (studio rental due in full with the advance), Client/photographer studio-arranger choice with a photographer-arranged studio quoted in advance, commercial licensing, travel &gt;20km, gear &amp; media protection.</p>
+            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.7-COMMERCIAL')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review Commercial</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '')" style="font-size: var(--font-xs); border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
           </div>
           <div style="background: var(--paper); border: 1.5px solid #059669; border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm);">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: #059669; color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.5 TFP / TEST SHOOT (ACTIVE)</span>
+              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: #059669; color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.6 TFP / TEST SHOOT (ACTIVE)</span>
               <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Aug 2026 – Present</span>
             </div>
+            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">📸 Test Shoot &amp; TFP Release V3.6</h3>
+            <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Selective Collaborations via Invite Codes. Non-commercial portfolio licensing, 8-12 retouched caps, Instagram credit, Participant/photographer studio-arranger choice, studio rental quoted in advance, liability waiver, gear protection.</p>
+            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.6-TFP')" style="font-size: var(--font-xs); flex: 1; font-weight: 700; background: #059669; border-color: #059669;">👁 Review TFP Release</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.6-TFP')" style="font-size: var(--font-xs); border-color: #059669; color: #059669; font-weight: 700;">📄 Print PDF</button></div>
+          </div>
+          <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.6 COMMERCIAL (ARCHIVED)</span>
+              <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Aug 2026 – Sep 2026</span>
+            </div>
+            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">💼 Commercial Shoot Agreement V3.6</h3>
+            <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Superseded by V3.7. Same terms, but a photographer-arranged external studio was passed through at cost (billed at actuals). Bookings agreed under it print these terms.</p>
+            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('V3.6-COMMERCIAL')" style="font-size: var(--font-xs); flex: 1;">👁 Review</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.6-COMMERCIAL')" style="font-size: var(--font-xs);">📄 Print PDF</button></div>
+          </div>
+          <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.5 TFP / TEST SHOOT (ARCHIVED)</span>
+              <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Aug 2026 – Sep 2026</span>
+            </div>
             <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">📸 Test Shoot &amp; TFP Release V3.5</h3>
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Selective Collaborations via Invite Codes. Non-commercial portfolio licensing, 8-12 retouched caps, Instagram credit, Participant/photographer studio-arranger choice, studio rental at actuals, liability waiver, gear protection.</p>
-            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.5-TFP')" style="font-size: var(--font-xs); flex: 1; font-weight: 700; background: #059669; border-color: #059669;">👁 Review TFP Release</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.5-TFP')" style="font-size: var(--font-xs); border-color: #059669; color: #059669; font-weight: 700;">📄 Print PDF</button></div>
+            <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Superseded by V3.6-TFP. Same release, but studio rental and a photographer-arranged studio were billed at actuals. Bookings agreed under it print these terms.</p>
+            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('V3.5-TFP')" style="font-size: var(--font-xs); flex: 1;">👁 Review</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.5-TFP')" style="font-size: var(--font-xs);">📄 Print PDF</button></div>
           </div>
           <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -4998,6 +5049,496 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       <div id="codeAdminModalContainer"></div>
     `;
   }
+
+  // The contract PDF generator, printer and archive viewer are used by the
+  // contract vault page as well as the calendar, so they live at module
+  // scope: defined inside wireCalendar they did not exist on a direct load of
+  // /contracts and every Review / Print button there was dead.
+  window.openPdfContractGenerator = function(dKey, bookingId, preselectedVersion) {
+    const settings = window.WPS_DATA?.CALENDAR_SETTINGS || {};
+    const bookings = (settings.bookedDates && settings.bookedDates[dKey]) || [];
+    const defaults = {
+      name: "",
+      email: "",
+      phone: "",
+      type: "Fashion Editorial",
+      duration: "Full Day",
+      status: "confirmed",
+      location: "Studio Space, Noida Sector 62 / Outdoor NCR",
+      package: "₹10,000 Package — 50 Proof Clicks + 8 Retouched Master Clicks",
+      notes: "",
+      contractVersion: preselectedVersion || window.ACTIVE_CONTRACTS.commercial
+    };
+    // bookingId may be a plain object of typed details (day modal's "Draft
+    // contract PDF"): no calendar entry exists, so seed the form from it. A
+    // test-shoot type with no explicit version lets the TFP release preselect.
+    let b;
+    if (bookingId && typeof bookingId === "object") {
+      b = Object.assign({}, defaults, bookingId);
+      if (!bookingId.contractVersion && /test|tfp/i.test(b.type || "")) b.contractVersion = "";
+    } else {
+      b = bookings.find(x => x.id === bookingId || x.name === bookingId) || defaults;
+    }
+
+    let modal = document.getElementById("pdfContractGeneratorModal");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "pdfContractGeneratorModal";
+      modal.className = "modal-overlay";
+      modal.style.cssText = "position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.65); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; padding: 20px;";
+      document.body.appendChild(modal);
+    }
+
+    const dVal = dKey || (new Date()).toISOString().split("T")[0];
+    const isTest = b.type && /test|tfp/i.test(b.type);
+
+    modal.innerHTML = `
+      <div class="modal-content" style="background: var(--paper); border: 1px solid var(--line); border-radius: 14px; max-width: 720px; width: 100%; max-height: 90vh; display: flex; flex-direction: column; box-shadow: var(--shadow); overflow: hidden; animation: modalFadeIn 0.3s ease;">
+        <div style="padding: 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; background: var(--bone);">
+          <div>
+            <h3 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink);">📄 Generate PDF Contract &amp; Agreement</h3>
+            <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">Prepare A4 PDF Contract for Off-Site &amp; DM/Email Bookings</div>
+          </div>
+          <button type="button" id="closePdfGenModal" style="background: none; border: none; font-size: var(--font-md); cursor: pointer; color: var(--ink-soft); padding: 4px;">✕</button>
+        </div>
+
+        <div style="padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px;">
+          <div style="background: rgba(var(--accent-rgb), 0.05); border: 1px solid var(--accent); border-radius: 8px; padding: 12px; font-size: var(--font-xs); color: var(--ink); line-height: 1.5;">
+            💡 <strong>Off-Site / DM Inquiry Workflow:</strong> Fill or edit the booking details below. Click <strong>🖨️ Print / Save as A4 PDF</strong> to download your official contract, then copy the <strong>Approval Message</strong> to paste into IG DM or Gmail!
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Client Name *
+              <input type="text" id="pdf_clientName" value="${esc(b.name || '')}" placeholder="e.g. Rahul Sharma / Model Name" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+            </label>
+            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Instagram / Handle / Website
+              <input type="text" id="pdf_instagram" value="${esc(b.instagram || b.handle || '')}" placeholder="e.g. @handle or website.com" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+            </label>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Client Email Address
+              <input type="email" id="pdf_email" value="${esc(b.email || '')}" placeholder="client@example.com" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+            </label>
+            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Phone Number
+              <input type="tel" id="pdf_phone" value="${esc(b.phone || '')}" placeholder="+91 98765-43210" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+            </label>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Shoot Date / Timeline *
+              <input type="text" id="pdf_date" value="${esc(dVal)}" placeholder="YYYY-MM-DD or Mid-August" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+            </label>
+            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Shoot Duration
+              <select id="pdf_duration" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
+                <option value="Full Day (10:30 AM – 5:30 PM)" ${(b.duration && b.duration.includes('Full Day')) || !b.duration ? 'selected' : ''}>Full Day Shoot (10:30 AM – 5:30 PM · 7 Hours)</option>
+                <option value="Half Day Morning (10:30 AM – 2:30 PM)" ${b.duration && b.duration.includes('Morning') ? 'selected' : ''}>Half Day Morning (10:30 AM – 2:30 PM · 4 Hours)</option>
+                <option value="Half Day Afternoon (1:30 PM – 5:30 PM)" ${b.duration && b.duration.includes('Afternoon') ? 'selected' : ''}>Half Day Afternoon (1:30 PM – 5:30 PM · 4 Hours)</option>
+                <option value="Flexible / Photographer Choice" ${b.duration && b.duration.includes('Flexible') ? 'selected' : ''}>Flexible / Photographer Choice (Photographer Recommends Best Time)</option>
+                <option value="Custom Timings (Specify Call & Wrap Time)" ${b.duration && b.duration.includes('Custom') ? 'selected' : ''}>Custom Timings (Specify Call &amp; Wrap Time)</option>
+              </select>
+            </label>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Shoot Location Address *
+              <input type="text" id="pdf_location" value="${esc(b.location || 'Studio Space, Noida / Outdoor NCR')}" placeholder="e.g. Sector 62 Studio, Noida / Client Venue" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+              <span style="display: flex; align-items: flex-start; gap: 7px; margin-top: 7px; font-weight: 400; line-height: 1.4;">
+                <input type="checkbox" id="pdf_venueByStudio" ${b.venueByStudio ? 'checked' : ''} style="margin-top: 2px; flex-shrink: 0;" />
+                <span>Venue provided by the studio — no rental billed to the client. Ticked automatically for bookings that came in on an invite code carrying a location; tick it by hand for shoots you are supplying the space for.</span>
+              </span>
+            </label>
+            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Contract Document Version *
+              <select id="pdf_contractVersion" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
+                <option value="V3.7-COMMERCIAL" ${(b.contractVersion === 'V3.7-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.7' || (!b.contractVersion && !isTest)) ? 'selected' : ''}>📜 Commercial Shoot Contract V3.7 Active (studio quoted in advance)</option>
+                <option value="V3.6-COMMERCIAL" ${(b.contractVersion === 'V3.6-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.6') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.6 (Archived)</option>
+                <option value="V3.5-COMMERCIAL" ${(b.contractVersion === 'V3.5-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.5') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.5 (Archived)</option>
+                <option value="V3.4-COMMERCIAL" ${(b.contractVersion === 'V3.4-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.4') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.4 (Archived)</option>
+                <option value="V3.3-COMMERCIAL" ${(b.contractVersion === 'V3.3-COMMERCIAL' || b.contractVersion === 'V3.3') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.3 (Archived)</option>
+                <option value="V3.6-TFP" ${(b.contractVersion === 'V3.6-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.6' || (isTest && !b.contractVersion)) ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.6 Active (studio quoted in advance)</option>
+                <option value="V3.5-TFP" ${(b.contractVersion === 'V3.5-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.5') ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.5 (Archived)</option>
+                <option value="V3.4-TFP" ${(b.contractVersion === 'V3.4-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.4') ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.4 (Archived)</option>
+                <option value="V3.3-TFP" ${b.contractVersion === 'V3.3-TFP' ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.3 (Archived)</option>
+                <option value="V3.2" ${b.contractVersion === 'V3.2' ? 'selected' : ''}>📜 Archived Terms V3.2 (May 2026 – Aug 2026)</option>
+                <option value="V3.1" ${b.contractVersion === 'V3.1' ? 'selected' : ''}>📜 Archived Terms V3.1 (May 2026 – Jul 2026)</option>
+                <option value="V3.0" ${b.contractVersion === 'V3.0' ? 'selected' : ''}>📜 Archived Terms V3.0 (Jan 2026 – Apr 2026)</option>
+                <option value="V2.0" ${b.contractVersion === 'V2.0' ? 'selected' : ''}>📜 Archived Terms V2.0 (Jun 2025 – Dec 2025)</option>
+                <option value="V1.0" ${b.contractVersion === 'V1.0' ? 'selected' : ''}>📜 Archived Terms V1.0 (Jan 2025 – May 2025)</option>
+                <option value="Custom Contract" ${b.contractVersion === 'Custom Contract' ? 'selected' : ''}>Custom contract / MSA</option>
+              </select>
+            </label>
+          </div>
+
+          <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Package Tier &amp; Deliverables Specs *
+            <select id="pdf_packageSelect" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
+              <option value="custom" selected>✏️ Custom Package / Bespoke Deliverables (Specify Below)</option>
+              <option value="₹7,000 (20 Proof Clicks · 0 Retouched)">₹7,000 · Basic Test / Comp Card (20 Proof Clicks + 0 Retouched)</option>
+              <option value="₹10,000 (25 Proof Clicks + 3-5 Retouched)">₹10,000 · Mini Portfolio (25 Proof Clicks + 3-5 Retouched Clicks)</option>
+              <option value="₹25,000 (50 Proof Clicks + 8-12 Retouched)">₹25,000 · Standard Editorial Portfolio (50 Proof Clicks + 8-12 Retouched)</option>
+              <option value="₹50,000 (100 Proof Clicks + 15-25 Retouched)">₹50,000 · Premium Brand Campaign (100 Proof Clicks + 15-25 Retouched)</option>
+              <option value="₹50,000+ (Full Proof Gallery + 30+ Commercial Retouched)">₹50,000+ · Full Proof Gallery + 30+ Commercial Master Retouched Assets</option>
+              <option value="Test Shoot / TFP (Full Proof Gallery + 8-12 Retouched)">Test Shoot / TFP · Full Proofing Gallery + 8 to 12 Retouched Clicks</option>
+            </select>
+          </label>
+
+          <div id="pdf_customPackage_wrap" style="background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+            <div style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em;">🛠️ Bespoke Package Details &amp; Download Permissions</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Custom Package Name &amp; Price
+                <input type="text" id="pdf_customPkgName" value="₹15,000 Commercial Retainer" placeholder="e.g. ₹15,000 Custom Brand Retainer" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+              </label>
+              <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Retouched Master Clicks Included
+                <input type="text" id="pdf_customRetouchedCount" value="8 Master Retouched Clicks" placeholder="e.g. 10 Retouched Master Clicks" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+              </label>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Unedited Gallery Download Permission
+                <select id="pdf_customDownloadPermission" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
+                  <option value="Proofing View Only (Download Restricted to Billed Retouched Clicks)" selected>Proofing View Only (Download Restricted to Contracted Retouched Clicks)</option>
+                  <option value="Full Unedited Gallery Download Included">Full Unedited High-Res Gallery Download Included</option>
+                </select>
+              </label>
+              <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Editing Revision Limit
+                <select id="pdf_customRevisions" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
+                  <option value="1 Round of Minor Revisions (Within 7 Days)" selected>1 Round of Minor Revisions (Within 7 Days)</option>
+                  <option value="2 Rounds of Minor Revisions (Within 14 Days)">2 Rounds of Minor Revisions (Within 14 Days)</option>
+                  <option value="No Revisions Included (Extra Revisions Billed at ₹1,500/image)">No Revisions Included (Billed at ₹1,500/image)</option>
+                </select>
+              </label>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Cloud Storage Archival Window *
+                <select id="pdf_customCloudRetention" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
+                  <option value="3 Months Cloud Retention (Standard Test Shoot / TFP)">3 Months Cloud Retention (Test Shoots / TFP)</option>
+                  <option value="6 Months Cloud Retention (Standard Paid Commercial Shoot)" selected>6 Months Cloud Retention (Paid Commercial Shoots)</option>
+                  <option value="12 Months Extended Archival (1 Year)">12 Months Extended Archival (1 Year)</option>
+                  <option value="1 Month Cloud Retention (30 Days Express)">1 Month Cloud Retention (30 Days)</option>
+                  <option value="custom">✏️ Custom Retention Expiry Date / Months (Specify Below)</option>
+                </select>
+                <div id="pdf_customCloudRetentionWrap" style="display: none; margin-top: 6px;">
+                  <input type="text" id="pdf_customCloudRetentionInput" value="2 Months (Expiry: Oct 15, 2026)" placeholder="e.g. 2 Months / Expiry: Oct 15, 2026" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Payment Milestone Terms
+            <select id="pdf_paymentMilestones" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
+              <option value="5050">Standard 50/50 Milestones (50% Advance Retainer / 50% Final Balance prior to file download)</option>
+              <option value="503020">3-Tier Campaign Milestones (50% Advance / 30% Proofing / 20% Final Deliverables)</option>
+              <option value="tfp">TFP / Test Shoot Collab (0 Fee, Full Proofing Gallery + 8-12 Retouched Clicks)</option>
+            </select>
+          </label>
+
+          <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Production Notes &amp; Call Time
+            <textarea id="pdf_notes" rows="2" placeholder="e.g. Call time 9:00 AM, 3 wardrobe changes, client brings own outfits." style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">${esc(b.notes || '')}</textarea>
+          </label>
+        </div>
+
+        <div style="padding: 16px 24px; border-top: 1px solid var(--line); display: flex; gap: 10px; justify-content: space-between; background: var(--bone); flex-wrap: wrap;">
+          <button type="button" class="admin-cal-btn" id="copyApprovalMsgBtn" style="border-color: var(--accent); color: var(--accent); font-weight: 700;">📋 Copy Approval Message for DM/Gmail</button>
+          <div style="display: flex; gap: 10px;">
+            <button type="button" class="admin-cal-btn" id="cancelPdfGenBtn">Cancel</button>
+            <button type="button" class="admin-cal-btn primary" id="triggerPrintPdfBtn" style="font-weight: 700;">🖨️ Print / Save as A4 PDF</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    $("#pdf_packageSelect")?.addEventListener("change", () => {
+      const isCustom = $("#pdf_packageSelect").value === "custom";
+      const wrap = $("#pdf_customPackage_wrap");
+      if (wrap) wrap.style.display = isCustom ? "flex" : "none";
+    });
+
+    $("#pdf_customCloudRetention")?.addEventListener("change", () => {
+      const isCustomRet = $("#pdf_customCloudRetention").value === "custom";
+      const wrapRet = $("#pdf_customCloudRetentionWrap");
+      if (wrapRet) wrapRet.style.display = isCustomRet ? "block" : "none";
+    });
+
+    $("#closePdfGenModal")?.addEventListener("click", () => modal.style.display = "none");
+    $("#cancelPdfGenBtn")?.addEventListener("click", () => modal.style.display = "none");
+
+    $("#copyApprovalMsgBtn")?.addEventListener("click", () => {
+      const name = $("#pdf_clientName").value.trim() || "Client";
+      const date = $("#pdf_date").value.trim() || "scheduled date";
+      const ver = $("#pdf_contractVersion").value;
+      const msg = `Hi ${name}! Please find attached your Studio Booking Contract & Production Agreement for ${date}.\n\nPlease review the PDF document and reply to this email / DM with: "I approve and agree to Studio Contract Terms ${ver} for ${date}" to confirm your session.\n\nStudio Operations · nerdyphotographer.in`;
+      navigator.clipboard.writeText(msg).then(() => {
+        toast("📋 Approval message copied to clipboard! Paste it into IG DM or Gmail when sending the PDF.");
+      }).catch(() => {
+        toast("Copy failed, please copy manually.");
+      });
+    });
+
+    $("#triggerPrintPdfBtn")?.addEventListener("click", () => {
+      window.printContractPdf({
+        clientName: $("#pdf_clientName").value.trim(),
+        instagram: $("#pdf_instagram").value.trim(),
+        email: $("#pdf_email").value.trim(),
+        phone: $("#pdf_phone").value.trim(),
+        date: $("#pdf_date").value.trim(),
+        duration: $("#pdf_duration").value,
+        location: $("#pdf_location").value.trim(),
+        studioProvidedByPhotographer: !!$("#pdf_venueByStudio")?.checked,
+        contractVersion: $("#pdf_contractVersion").value,
+        package: $("#pdf_packageSelect").value === "custom"
+          ? (() => {
+              const cloudRetention = $("#pdf_customCloudRetention").value === "custom"
+                ? $("#pdf_customCloudRetentionInput").value.trim()
+                : $("#pdf_customCloudRetention").value;
+              return `${$("#pdf_customPkgName").value.trim()} — ${$("#pdf_customRetouchedCount").value.trim()} (${$("#pdf_customDownloadPermission").value}; ${$("#pdf_customRevisions").value}; ${cloudRetention})`;
+            })()
+          : $("#pdf_packageSelect").value,
+        paymentMilestones: $("#pdf_paymentMilestones").value,
+        notes: $("#pdf_notes").value.trim(),
+        sigDataUrl: b.sigDataUrl || "",
+        agreementMethod: b.agreementMethod || "",
+        agreedContract: b.agreedContract || ""
+      });
+    });
+  };
+
+  window.printContractPdf = function(data) {
+    const cVer = data.contractVersion || "";
+    const archiveObj = String(cVer).trim() === "Custom Contract"
+      ? {
+          version: "Custom Contract",
+          title: "Custom Client Contract / Master Services Agreement (MSA)",
+          fullText: `1. MASTER SERVICES AGREEMENT (MSA) SCOPE\nThis production session is executed under the Client / Brand Provided Master Services Agreement (MSA) or custom contract agreed upon between the Studio and the Client.\n\n2. PRODUCTION BRIEF & DELIVERABLE SPECIFICATIONS\nSpecific shoot dates, locations, deliverable asset counts, retouched image limits, and payment milestone terms are governed by the Production Brief summary table above.\n\n3. UNAUTHORIZED CAMERA OPERATION & DATA PROTECTION\nAll studio camera bodies, memory cards, tethering systems, and raw captures remain confidential studio property. Participants are strictly prohibited from handling equipment or deleting media from studio cards.`
+        }
+      : window.resolveContractArchive(cVer);
+    const contractText = archiveObj ? archiveObj.fullText : "";
+    // Read off the document that was actually resolved rather than the raw
+    // string, so a booking stored as "TFP-LIABILITY-RELEASE-V3.4" still prints
+    // with test-shoot milestones instead of a paid client's 50/50 split.
+    const isTfp = (data.paymentMilestones === "tfp" || /-TFP$/.test(String(archiveObj && archiveObj.version || "")));
+    // Studio clause: photographer-provided (locked invite) vs rental at actuals
+    // (client pays). This used to fall back to `window._lockedLocationFromInvite`,
+    // which is set by the PUBLIC booking form and then persists for the whole
+    // session — so opening /book, typing a venue-carrying code, and later
+    // generating a PDF for an unrelated booking produced a contract promising a
+    // free venue (at that other address) for a shoot nobody agreed it for.
+    // The flag now comes from the booking record being printed, or the operator.
+    const studioByPhotographer = !!data.studioProvidedByPhotographer;
+    const studioLocation = data.location || "";
+    // A home-studio booking carries the residence rider wherever the venue is
+    // described, so the printed contract says the same as the screen the client
+    // signed on rather than only the money half of it.
+    const homeStudioRiderHtml = (studioByPhotographer && /home studio/i.test(studioLocation))
+      ? ` Attendance is limited to a maximum of 3 people in total including the Participant and any crew they bring (hair &amp; makeup, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`
+      : ``;
+    const studioClauseTfp = studioByPhotographer
+      ? `Studio venue for this session is provided by the photographer${studioLocation ? ` at <strong>${esc(studioLocation)}</strong>` : ""} at no additional rental charge to the talent.${homeStudioRiderHtml}`
+      : `If a dedicated indoor studio venue/space is required, applicable venue rental fees are quoted separately in advance.`;
+
+    const innerHtml = `
+      <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #111; padding: 20px; max-width: 800px; margin: 0 auto; background: #fff; line-height: 1.5;">
+        <!-- Header -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #111; padding-bottom: 14px; margin-bottom: 18px;">
+          <div>
+            <div style="font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #000;">NERDYPHOTOGRAPHER.IN</div>
+            <div style="font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px;">Fashion, Fitness &amp; Commercial Photography Studio</div>
+            <div style="font-size: 11px; color: #555; margin-top: 2px;">Web: www.nerdyphotographer.in · Email: ${window.STUDIO_CONFIG?.email || "prateeksaxenaphotography@gmail.com"}</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-family: monospace; font-size: 11px; font-weight: 700; background: #f0f0f0; border: 1px solid #ccc; padding: 4px 10px; border-radius: 4px;">REF: WPS-CONTRACT-${esc(cVer)}-${esc(data.date || 'BLANK')}</div>
+            <div style="font-size: 10px; color: #666; margin-top: 4px;">Issued: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+          </div>
+        </div>
+
+        <h2 style="font-family: 'Outfit', sans-serif; font-size: 17px; font-weight: 800; text-transform: uppercase; margin: 0 0 14px; text-align: center; letter-spacing: 0.05em;">
+          ${isTfp ? 'Time-For-Print (TFP) Production &amp; Model Release Agreement' : 'Studio Shoot Booking Contract &amp; Production Agreement'}
+        </h2>
+
+        <!-- Production Brief Table with Blank Pen-Fill Line Support -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 12px; border: 1px solid #ddd;">
+          <tbody>
+            <tr style="background: #f9f9f9;">
+              <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd; width: 25%;">Client / Participant:</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd; width: 25%;">${data.clientName ? esc(data.clientName) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 90%; height: 14px;">&nbsp;</span>'}</td>
+              <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd; width: 25%;">Instagram / Contact:</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd; width: 25%;">${(data.instagram || data.email) ? esc(data.instagram || data.email) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 90%; height: 14px;">&nbsp;</span>'}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Scheduled Date:</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd;">${data.date ? esc(data.date) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 90%; height: 14px;">&nbsp;</span>'}</td>
+              <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Session Duration:</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd;">${data.duration ? esc(data.duration) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 90%; height: 14px;">&nbsp;</span>'}</td>
+            </tr>
+            <tr style="background: #f9f9f9;">
+              <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Shoot Location:</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd;" colspan="3">${data.location ? esc(data.location) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 95%; height: 14px;">&nbsp;</span>'}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Package &amp; Deliverables:</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd;" colspan="3">${data.package ? esc(data.package) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 95%; height: 14px;">&nbsp;</span>'}</td>
+            </tr>
+            <tr style="background: #f9f9f9;">
+              <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Production Notes:</td>
+              <td style="padding: 8px 12px; border: 1px solid #ddd;" colspan="3">${data.notes ? esc(data.notes) : '<span style="border-bottom: 1.5px dashed #999; display: block; width: 98%; height: 16px;">&nbsp;</span>'}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Payment & Rental Policy Box -->
+        <div style="background: #fafafa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px 14px; margin-bottom: 18px; font-size: 11px; line-height: 1.4;">
+          ${isTfp ? `
+            <strong>📸 TFP Test Shoot Terms:</strong> This session is structured for mutual portfolio growth. Deliverables include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW format files are strictly confidential studio property and are excluded. ${studioClauseTfp}
+          ` : `
+            <strong>💳 Payment Milestones:</strong> ${data.paymentMilestones === '503020' ? '3-Tier Milestones (50% Advance Retainer / 30% Proofing / 20% Final Deliverables).' : 'Standard 50/50 Milestones (50% Advance Retainer prior to shoot start [non-refundable]; 50% Final Balance prior to file download [non-refundable]).'}<br/>
+            <strong>🏢 Studio Venue Rental Policy:</strong> ${studioByPhotographer
+              ? `The venue for this session${studioLocation ? ` (<strong>${esc(studioLocation)}</strong>)` : ''} is arranged and paid for by the Studio — <strong>no venue rental is billed to the client</strong>.${homeStudioRiderHtml}`
+              : `Dedicated indoor studio venue rentals are <strong>quoted separately in advance</strong>, or the client may directly book their preferred studio space for the session.`}
+          `}
+        </div>
+
+        <!-- Contract Terms Text -->
+        <div style="margin-bottom: 20px;">
+          <h3 style="font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 800; text-transform: uppercase; border-bottom: 1px solid #111; padding-bottom: 4px; margin: 0 0 8px;">
+            Terms &amp; Conditions (Contract Version ${esc(cVer)})
+          </h3>
+          <div style="font-size: 10px; line-height: 1.5; color: #222; text-align: justify; white-space: pre-wrap;">${esc(contractText)}</div>
+        </div>
+
+        <!-- Digital & Physical Pen Signature Acceptance Block -->
+        <div style="border: 2px dashed #111; border-radius: 8px; padding: 12px; background: #fff; page-break-inside: avoid;">
+          <div style="font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 800; text-transform: uppercase; color: #000; margin-bottom: 4px; text-align: center;">
+            ✍️ Digital Approval Code OR Physical Pen Signature
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 8px; font-size: 10px; align-items: start;">
+            <div>
+              <strong>Method A — Digital Approval (DM / Email):</strong><br/>
+              Reply to <strong>${window.STUDIO_CONFIG?.email || "prateeksaxenaphotography@gmail.com"}</strong> or DM <strong>@nerdyphotographer.in</strong>:<br/>
+              <div style="font-family: monospace; font-size: 9px; font-weight: 700; background: #f4f4f4; border: 1px solid #ccc; padding: 5px; border-radius: 4px; margin-top: 4px;">"I approve Studio Contract Terms ${esc(cVer)}"</div>
+            </div>
+            <div style="border-left: 1px solid #ddd; padding-left: 12px;">
+              ${isSigImage(data.sigDataUrl) ? `
+                <strong>Client Digital Signature (Drawn at Booking):</strong><br/>
+                <img src="${data.sigDataUrl}" style="max-width: 200px; max-height: 56px; display: block; margin-top: 8px; border-bottom: 1.5px solid #000;" alt="Client Signature" />
+                <div style="margin-top: 4px; font-size: 9px; color: #444;">${esc(data.clientName || "")} · Agreed ${new Date().toLocaleDateString("en-IN")} · ${esc(data.agreedContract || cVer)}</div>
+              ` : data.agreementMethod === "checkbox" ? `
+                <strong>Digital Acceptance (Checkbox Confirmation):</strong><br/>
+                <div style="margin-top: 8px;">${esc(data.clientName || "")} confirmed acceptance of the Studio Terms &amp; Conditions (V3.3) and Model Release by ticking the agreement box on the booking form.</div>
+                <div style="margin-top: 4px; font-size: 9px; color: #444;">Recorded electronically at the time of booking \u00b7 no handwritten signature was requested.</div>
+              ` : `
+                <strong>Method B — Physical Pen Signature:</strong><br/>
+                <div style="margin-top: 10px;">Client Sign: <span style="border-bottom: 1.5px solid #000; display: inline-block; width: 130px; height: 12px;">&nbsp;</span></div>
+                <div style="margin-top: 6px;">Date: <span style="border-bottom: 1.5px solid #000; display: inline-block; width: 130px; height: 12px;">&nbsp;</span></div>
+              `}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Create isolated printing iframe
+    let printIframe = document.getElementById("wpsPrintIframe");
+    if (printIframe) printIframe.remove();
+
+    printIframe = document.createElement("iframe");
+    printIframe.id = "wpsPrintIframe";
+    printIframe.style.cssText = "position: fixed; right: 0; bottom: 0; width: 0; height: 0; border: 0; opacity: 0; pointer-events: none;";
+    document.body.appendChild(printIframe);
+
+    const doc = printIframe.contentWindow.document;
+    doc.open();
+    doc.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>WPS Contract ${cVer}</title>
+        <meta name="color-scheme" content="light">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+        <style>
+          :root { color-scheme: light !important; }
+          @page { size: A4 portrait; margin: 12mm 15mm; }
+          @media print {
+            :root, html, body {
+              color-scheme: light !important;
+              background-color: #ffffff !important;
+              background: #ffffff !important;
+              color: #000000 !important;
+            }
+          }
+          html, body {
+            color-scheme: light !important;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: #111111 !important;
+            margin: 0;
+            padding: 0;
+            background-color: #ffffff !important;
+            background: #ffffff !important;
+            line-height: 1.5;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          * {
+            color-scheme: light !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          h1, h2, h3, h4 { font-family: 'Outfit', sans-serif; color: #000000 !important; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 12px; border: 1px solid #dddddd; background: #ffffff !important; color: #111111 !important; }
+          td, th { padding: 8px 12px; border: 1px solid #dddddd; color: #111111 !important; }
+        </style>
+      </head>
+      <body>
+        ${innerHtml}
+      </body>
+      </html>
+    `);
+    doc.close();
+
+    setTimeout(() => {
+      printIframe.contentWindow.focus();
+      printIframe.contentWindow.print();
+      setTimeout(() => {
+        if (printIframe && printIframe.parentNode) {
+          printIframe.parentNode.removeChild(printIframe);
+        }
+      }, 3000);
+    }, 400);
+  };
+
+  window.openContractArchiveModal = function(ver) {
+      const contract = window.WPS_CONTRACT_ARCHIVE[ver] || window.WPS_CONTRACT_ARCHIVE["V3.2"];
+      let modal = document.getElementById("contractArchiveModal");
+      if (!modal) {
+        modal = document.createElement("div");
+        modal.id = "contractArchiveModal";
+        modal.className = "modal-overlay";
+        modal.style.cssText = "position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; padding: 20px;";
+        document.body.appendChild(modal);
+      }
+
+      modal.innerHTML = `
+        <div class="modal-content" style="background: var(--paper); border: 1px solid var(--line); border-radius: 14px; max-width: 720px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: var(--shadow); overflow: hidden; animation: modalFadeIn 0.3s ease;">
+          <div style="padding: 20px 24px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; background: var(--bone);">
+            <div>
+              <h3 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: var(--font-md); font-weight: 700; color: var(--ink);">${esc(contract.title)}</h3>
+              <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px; font-family: var(--mono-font);">Effective: <strong>${esc(contract.effectiveDate)}</strong> · Status: <span style="color: var(--accent); font-weight:700;">${esc(contract.status)}</span></div>
+            </div>
+            <button type="button" onclick="document.getElementById('contractArchiveModal').style.display='none'" style="background:none; border:none; font-size: var(--font-md); color: var(--ink-soft); cursor:pointer;">✕</button>
+          </div>
+          <div style="padding: 24px; overflow-y: auto; font-size: var(--font-sm); line-height: 1.6; color: var(--ink); text-align: left;">
+            <div style="background: var(--bone); border: 1px solid var(--line); padding: 12px 16px; border-radius: 8px; font-size: var(--font-xs); margin-bottom: 20px; color: var(--ink);">
+              <strong>Vault Archive Summary:</strong> ${esc(contract.summary)}
+            </div>
+            <pre style="white-space: pre-wrap; font-family: inherit; font-size: var(--font-sm); line-height: 1.6; margin: 0; color: var(--ink);">${esc(contract.fullText)}</pre>
+          </div>
+          <div style="padding: 16px 24px; border-top: 1px solid var(--line); background: var(--bone); display: flex; justify-content: space-between; align-items: center;">
+            <button type="button" class="admin-cal-btn" onclick="document.getElementById('contractArchiveModal').style.display='none'; window.openPdfContractGenerator('', '', '${esc(contract.version)}');" style="border-color: var(--accent); color: var(--accent); font-weight: 700;">🖨️ Print PDF of ${esc(contract.version)}</button>
+            <button type="button" class="admin-cal-btn primary" onclick="document.getElementById('contractArchiveModal').style.display='none'">Close Vault Viewer</button>
+          </div>
+        </div>
+      `;
+      modal.style.display = "flex";
+    };
+
 
   function wireCalendar() {
     function renderAdminPackagesEditor() {
@@ -5502,489 +6043,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     
 
 
-  window.openPdfContractGenerator = function(dKey, bookingId, preselectedVersion) {
-    const settings = window.WPS_DATA?.CALENDAR_SETTINGS || {};
-    const bookings = (settings.bookedDates && settings.bookedDates[dKey]) || [];
-    const defaults = {
-      name: "",
-      email: "",
-      phone: "",
-      type: "Fashion Editorial",
-      duration: "Full Day",
-      status: "confirmed",
-      location: "Studio Space, Noida Sector 62 / Outdoor NCR",
-      package: "₹10,000 Package — 50 Proof Clicks + 8 Retouched Master Clicks",
-      notes: "",
-      contractVersion: preselectedVersion || window.ACTIVE_CONTRACTS.commercial
-    };
-    // bookingId may be a plain object of typed details (day modal's "Draft
-    // contract PDF"): no calendar entry exists, so seed the form from it. A
-    // test-shoot type with no explicit version lets the TFP release preselect.
-    let b;
-    if (bookingId && typeof bookingId === "object") {
-      b = Object.assign({}, defaults, bookingId);
-      if (!bookingId.contractVersion && /test|tfp/i.test(b.type || "")) b.contractVersion = "";
-    } else {
-      b = bookings.find(x => x.id === bookingId || x.name === bookingId) || defaults;
-    }
-
-    let modal = document.getElementById("pdfContractGeneratorModal");
-    if (!modal) {
-      modal = document.createElement("div");
-      modal.id = "pdfContractGeneratorModal";
-      modal.className = "modal-overlay";
-      modal.style.cssText = "position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.65); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; padding: 20px;";
-      document.body.appendChild(modal);
-    }
-
-    const dVal = dKey || (new Date()).toISOString().split("T")[0];
-    const isTest = b.type && /test|tfp/i.test(b.type);
-
-    modal.innerHTML = `
-      <div class="modal-content" style="background: var(--paper); border: 1px solid var(--line); border-radius: 14px; max-width: 720px; width: 100%; max-height: 90vh; display: flex; flex-direction: column; box-shadow: var(--shadow); overflow: hidden; animation: modalFadeIn 0.3s ease;">
-        <div style="padding: 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; background: var(--bone);">
-          <div>
-            <h3 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink);">📄 Generate PDF Contract &amp; Agreement</h3>
-            <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">Prepare A4 PDF Contract for Off-Site &amp; DM/Email Bookings</div>
-          </div>
-          <button type="button" id="closePdfGenModal" style="background: none; border: none; font-size: var(--font-md); cursor: pointer; color: var(--ink-soft); padding: 4px;">✕</button>
-        </div>
-
-        <div style="padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px;">
-          <div style="background: rgba(var(--accent-rgb), 0.05); border: 1px solid var(--accent); border-radius: 8px; padding: 12px; font-size: var(--font-xs); color: var(--ink); line-height: 1.5;">
-            💡 <strong>Off-Site / DM Inquiry Workflow:</strong> Fill or edit the booking details below. Click <strong>🖨️ Print / Save as A4 PDF</strong> to download your official contract, then copy the <strong>Approval Message</strong> to paste into IG DM or Gmail!
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Client Name *
-              <input type="text" id="pdf_clientName" value="${esc(b.name || '')}" placeholder="e.g. Rahul Sharma / Model Name" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
-            </label>
-            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Instagram / Handle / Website
-              <input type="text" id="pdf_instagram" value="${esc(b.instagram || b.handle || '')}" placeholder="e.g. @handle or website.com" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
-            </label>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Client Email Address
-              <input type="email" id="pdf_email" value="${esc(b.email || '')}" placeholder="client@example.com" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
-            </label>
-            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Phone Number
-              <input type="tel" id="pdf_phone" value="${esc(b.phone || '')}" placeholder="+91 98765-43210" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
-            </label>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Shoot Date / Timeline *
-              <input type="text" id="pdf_date" value="${esc(dVal)}" placeholder="YYYY-MM-DD or Mid-August" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
-            </label>
-            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Shoot Duration
-              <select id="pdf_duration" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
-                <option value="Full Day (10:30 AM – 5:30 PM)" ${(b.duration && b.duration.includes('Full Day')) || !b.duration ? 'selected' : ''}>Full Day Shoot (10:30 AM – 5:30 PM · 7 Hours)</option>
-                <option value="Half Day Morning (10:30 AM – 2:30 PM)" ${b.duration && b.duration.includes('Morning') ? 'selected' : ''}>Half Day Morning (10:30 AM – 2:30 PM · 4 Hours)</option>
-                <option value="Half Day Afternoon (1:30 PM – 5:30 PM)" ${b.duration && b.duration.includes('Afternoon') ? 'selected' : ''}>Half Day Afternoon (1:30 PM – 5:30 PM · 4 Hours)</option>
-                <option value="Flexible / Photographer Choice" ${b.duration && b.duration.includes('Flexible') ? 'selected' : ''}>Flexible / Photographer Choice (Photographer Recommends Best Time)</option>
-                <option value="Custom Timings (Specify Call & Wrap Time)" ${b.duration && b.duration.includes('Custom') ? 'selected' : ''}>Custom Timings (Specify Call &amp; Wrap Time)</option>
-              </select>
-            </label>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Shoot Location Address *
-              <input type="text" id="pdf_location" value="${esc(b.location || 'Studio Space, Noida / Outdoor NCR')}" placeholder="e.g. Sector 62 Studio, Noida / Client Venue" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
-              <span style="display: flex; align-items: flex-start; gap: 7px; margin-top: 7px; font-weight: 400; line-height: 1.4;">
-                <input type="checkbox" id="pdf_venueByStudio" ${b.venueByStudio ? 'checked' : ''} style="margin-top: 2px; flex-shrink: 0;" />
-                <span>Venue provided by the studio — no rental billed to the client. Ticked automatically for bookings that came in on an invite code carrying a location; tick it by hand for shoots you are supplying the space for.</span>
-              </span>
-            </label>
-            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Contract Document Version *
-              <select id="pdf_contractVersion" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
-                <option value="V3.6-COMMERCIAL" ${(b.contractVersion === 'V3.6-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.6' || (!b.contractVersion && !isTest)) ? 'selected' : ''}>📜 Commercial Shoot Contract V3.6 Active (studio-arranger choice + rental due with advance)</option>
-                <option value="V3.5-COMMERCIAL" ${(b.contractVersion === 'V3.5-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.5') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.5 (Archived)</option>
-                <option value="V3.4-COMMERCIAL" ${(b.contractVersion === 'V3.4-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.4') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.4 (Archived)</option>
-                <option value="V3.3-COMMERCIAL" ${(b.contractVersion === 'V3.3-COMMERCIAL' || b.contractVersion === 'V3.3') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.3 (Archived)</option>
-                <option value="V3.5-TFP" ${(b.contractVersion === 'V3.5-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.5' || (isTest && !b.contractVersion)) ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.5 Active (studio-arranger choice)</option>
-                <option value="V3.4-TFP" ${(b.contractVersion === 'V3.4-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.4') ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.4 (Archived)</option>
-                <option value="V3.3-TFP" ${b.contractVersion === 'V3.3-TFP' ? 'selected' : ''}>📸 Test Shoot / TFP Release V3.3 (Archived)</option>
-                <option value="V3.2" ${b.contractVersion === 'V3.2' ? 'selected' : ''}>📜 Archived Terms V3.2 (May 2026 – Aug 2026)</option>
-                <option value="V3.1" ${b.contractVersion === 'V3.1' ? 'selected' : ''}>📜 Archived Terms V3.1 (May 2026 – Jul 2026)</option>
-                <option value="V3.0" ${b.contractVersion === 'V3.0' ? 'selected' : ''}>📜 Archived Terms V3.0 (Jan 2026 – Apr 2026)</option>
-                <option value="V2.0" ${b.contractVersion === 'V2.0' ? 'selected' : ''}>📜 Archived Terms V2.0 (Jun 2025 – Dec 2025)</option>
-                <option value="V1.0" ${b.contractVersion === 'V1.0' ? 'selected' : ''}>📜 Archived Terms V1.0 (Jan 2025 – May 2025)</option>
-                <option value="Custom Contract" ${b.contractVersion === 'Custom Contract' ? 'selected' : ''}>Custom contract / MSA</option>
-              </select>
-            </label>
-          </div>
-
-          <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Package Tier &amp; Deliverables Specs *
-            <select id="pdf_packageSelect" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
-              <option value="custom" selected>✏️ Custom Package / Bespoke Deliverables (Specify Below)</option>
-              <option value="₹7,000 (20 Proof Clicks · 0 Retouched)">₹7,000 · Basic Test / Comp Card (20 Proof Clicks + 0 Retouched)</option>
-              <option value="₹10,000 (25 Proof Clicks + 3-5 Retouched)">₹10,000 · Mini Portfolio (25 Proof Clicks + 3-5 Retouched Clicks)</option>
-              <option value="₹25,000 (50 Proof Clicks + 8-12 Retouched)">₹25,000 · Standard Editorial Portfolio (50 Proof Clicks + 8-12 Retouched)</option>
-              <option value="₹50,000 (100 Proof Clicks + 15-25 Retouched)">₹50,000 · Premium Brand Campaign (100 Proof Clicks + 15-25 Retouched)</option>
-              <option value="₹50,000+ (Full Proof Gallery + 30+ Commercial Retouched)">₹50,000+ · Full Proof Gallery + 30+ Commercial Master Retouched Assets</option>
-              <option value="Test Shoot / TFP (Full Proof Gallery + 8-12 Retouched)">Test Shoot / TFP · Full Proofing Gallery + 8 to 12 Retouched Clicks</option>
-            </select>
-          </label>
-
-          <div id="pdf_customPackage_wrap" style="background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
-            <div style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em;">🛠️ Bespoke Package Details &amp; Download Permissions</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-              <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Custom Package Name &amp; Price
-                <input type="text" id="pdf_customPkgName" value="₹15,000 Commercial Retainer" placeholder="e.g. ₹15,000 Custom Brand Retainer" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
-              </label>
-              <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Retouched Master Clicks Included
-                <input type="text" id="pdf_customRetouchedCount" value="8 Master Retouched Clicks" placeholder="e.g. 10 Retouched Master Clicks" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
-              </label>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-              <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Unedited Gallery Download Permission
-                <select id="pdf_customDownloadPermission" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
-                  <option value="Proofing View Only (Download Restricted to Billed Retouched Clicks)" selected>Proofing View Only (Download Restricted to Contracted Retouched Clicks)</option>
-                  <option value="Full Unedited Gallery Download Included">Full Unedited High-Res Gallery Download Included</option>
-                </select>
-              </label>
-              <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Editing Revision Limit
-                <select id="pdf_customRevisions" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
-                  <option value="1 Round of Minor Revisions (Within 7 Days)" selected>1 Round of Minor Revisions (Within 7 Days)</option>
-                  <option value="2 Rounds of Minor Revisions (Within 14 Days)">2 Rounds of Minor Revisions (Within 14 Days)</option>
-                  <option value="No Revisions Included (Extra Revisions Billed at ₹1,500/image)">No Revisions Included (Billed at ₹1,500/image)</option>
-                </select>
-              </label>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-              <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Cloud Storage Archival Window *
-                <select id="pdf_customCloudRetention" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
-                  <option value="3 Months Cloud Retention (Standard Test Shoot / TFP)">3 Months Cloud Retention (Test Shoots / TFP)</option>
-                  <option value="6 Months Cloud Retention (Standard Paid Commercial Shoot)" selected>6 Months Cloud Retention (Paid Commercial Shoots)</option>
-                  <option value="12 Months Extended Archival (1 Year)">12 Months Extended Archival (1 Year)</option>
-                  <option value="1 Month Cloud Retention (30 Days Express)">1 Month Cloud Retention (30 Days)</option>
-                  <option value="custom">✏️ Custom Retention Expiry Date / Months (Specify Below)</option>
-                </select>
-                <div id="pdf_customCloudRetentionWrap" style="display: none; margin-top: 6px;">
-                  <input type="text" id="pdf_customCloudRetentionInput" value="2 Months (Expiry: Oct 15, 2026)" placeholder="e.g. 2 Months / Expiry: Oct 15, 2026" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
-                </div>
-              </label>
-            </div>
-          </div>
-
-          <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Payment Milestone Terms
-            <select id="pdf_paymentMilestones" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
-              <option value="5050">Standard 50/50 Milestones (50% Advance Retainer / 50% Final Balance prior to file download)</option>
-              <option value="503020">3-Tier Campaign Milestones (50% Advance / 30% Proofing / 20% Final Deliverables)</option>
-              <option value="tfp">TFP / Test Shoot Collab (0 Fee, Full Proofing Gallery + 8-12 Retouched Clicks)</option>
-            </select>
-          </label>
-
-          <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Production Notes &amp; Call Time
-            <textarea id="pdf_notes" rows="2" placeholder="e.g. Call time 9:00 AM, 3 wardrobe changes, client brings own outfits." style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">${esc(b.notes || '')}</textarea>
-          </label>
-        </div>
-
-        <div style="padding: 16px 24px; border-top: 1px solid var(--line); display: flex; gap: 10px; justify-content: space-between; background: var(--bone); flex-wrap: wrap;">
-          <button type="button" class="admin-cal-btn" id="copyApprovalMsgBtn" style="border-color: var(--accent); color: var(--accent); font-weight: 700;">📋 Copy Approval Message for DM/Gmail</button>
-          <div style="display: flex; gap: 10px;">
-            <button type="button" class="admin-cal-btn" id="cancelPdfGenBtn">Cancel</button>
-            <button type="button" class="admin-cal-btn primary" id="triggerPrintPdfBtn" style="font-weight: 700;">🖨️ Print / Save as A4 PDF</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    $("#pdf_packageSelect")?.addEventListener("change", () => {
-      const isCustom = $("#pdf_packageSelect").value === "custom";
-      const wrap = $("#pdf_customPackage_wrap");
-      if (wrap) wrap.style.display = isCustom ? "flex" : "none";
-    });
-
-    $("#pdf_customCloudRetention")?.addEventListener("change", () => {
-      const isCustomRet = $("#pdf_customCloudRetention").value === "custom";
-      const wrapRet = $("#pdf_customCloudRetentionWrap");
-      if (wrapRet) wrapRet.style.display = isCustomRet ? "block" : "none";
-    });
-
-    $("#closePdfGenModal")?.addEventListener("click", () => modal.style.display = "none");
-    $("#cancelPdfGenBtn")?.addEventListener("click", () => modal.style.display = "none");
-
-    $("#copyApprovalMsgBtn")?.addEventListener("click", () => {
-      const name = $("#pdf_clientName").value.trim() || "Client";
-      const date = $("#pdf_date").value.trim() || "scheduled date";
-      const ver = $("#pdf_contractVersion").value;
-      const msg = `Hi ${name}! Please find attached your Studio Booking Contract & Production Agreement for ${date}.\n\nPlease review the PDF document and reply to this email / DM with: "I approve and agree to Studio Contract Terms ${ver} for ${date}" to confirm your session.\n\nStudio Operations · nerdyphotographer.in`;
-      navigator.clipboard.writeText(msg).then(() => {
-        toast("📋 Approval message copied to clipboard! Paste it into IG DM or Gmail when sending the PDF.");
-      }).catch(() => {
-        toast("Copy failed, please copy manually.");
-      });
-    });
-
-    $("#triggerPrintPdfBtn")?.addEventListener("click", () => {
-      window.printContractPdf({
-        clientName: $("#pdf_clientName").value.trim(),
-        instagram: $("#pdf_instagram").value.trim(),
-        email: $("#pdf_email").value.trim(),
-        phone: $("#pdf_phone").value.trim(),
-        date: $("#pdf_date").value.trim(),
-        duration: $("#pdf_duration").value,
-        location: $("#pdf_location").value.trim(),
-        studioProvidedByPhotographer: !!$("#pdf_venueByStudio")?.checked,
-        contractVersion: $("#pdf_contractVersion").value,
-        package: $("#pdf_packageSelect").value === "custom"
-          ? (() => {
-              const cloudRetention = $("#pdf_customCloudRetention").value === "custom"
-                ? $("#pdf_customCloudRetentionInput").value.trim()
-                : $("#pdf_customCloudRetention").value;
-              return `${$("#pdf_customPkgName").value.trim()} — ${$("#pdf_customRetouchedCount").value.trim()} (${$("#pdf_customDownloadPermission").value}; ${$("#pdf_customRevisions").value}; ${cloudRetention})`;
-            })()
-          : $("#pdf_packageSelect").value,
-        paymentMilestones: $("#pdf_paymentMilestones").value,
-        notes: $("#pdf_notes").value.trim(),
-        sigDataUrl: b.sigDataUrl || "",
-        agreementMethod: b.agreementMethod || "",
-        agreedContract: b.agreedContract || ""
-      });
-    });
-  };
-
-  window.printContractPdf = function(data) {
-    const cVer = data.contractVersion || "";
-    const archiveObj = String(cVer).trim() === "Custom Contract"
-      ? {
-          version: "Custom Contract",
-          title: "Custom Client Contract / Master Services Agreement (MSA)",
-          fullText: `1. MASTER SERVICES AGREEMENT (MSA) SCOPE\nThis production session is executed under the Client / Brand Provided Master Services Agreement (MSA) or custom contract agreed upon between the Studio and the Client.\n\n2. PRODUCTION BRIEF & DELIVERABLE SPECIFICATIONS\nSpecific shoot dates, locations, deliverable asset counts, retouched image limits, and payment milestone terms are governed by the Production Brief summary table above.\n\n3. UNAUTHORIZED CAMERA OPERATION & DATA PROTECTION\nAll studio camera bodies, memory cards, tethering systems, and raw captures remain confidential studio property. Participants are strictly prohibited from handling equipment or deleting media from studio cards.`
-        }
-      : window.resolveContractArchive(cVer);
-    const contractText = archiveObj ? archiveObj.fullText : "";
-    // Read off the document that was actually resolved rather than the raw
-    // string, so a booking stored as "TFP-LIABILITY-RELEASE-V3.4" still prints
-    // with test-shoot milestones instead of a paid client's 50/50 split.
-    const isTfp = (data.paymentMilestones === "tfp" || /-TFP$/.test(String(archiveObj && archiveObj.version || "")));
-    // Studio clause: photographer-provided (locked invite) vs rental at actuals
-    // (client pays). This used to fall back to `window._lockedLocationFromInvite`,
-    // which is set by the PUBLIC booking form and then persists for the whole
-    // session — so opening /book, typing a venue-carrying code, and later
-    // generating a PDF for an unrelated booking produced a contract promising a
-    // free venue (at that other address) for a shoot nobody agreed it for.
-    // The flag now comes from the booking record being printed, or the operator.
-    const studioByPhotographer = !!data.studioProvidedByPhotographer;
-    const studioLocation = data.location || "";
-    // A home-studio booking carries the residence rider wherever the venue is
-    // described, so the printed contract says the same as the screen the client
-    // signed on rather than only the money half of it.
-    const homeStudioRiderHtml = (studioByPhotographer && /home studio/i.test(studioLocation))
-      ? ` Attendance is limited to a maximum of 3 people in total including the Participant and any crew they bring (hair &amp; makeup, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`
-      : ``;
-    const studioClauseTfp = studioByPhotographer
-      ? `Studio venue for this session is provided by the photographer${studioLocation ? ` at <strong>${esc(studioLocation)}</strong>` : ""} at no additional rental charge to the talent.${homeStudioRiderHtml}`
-      : `If a dedicated indoor studio venue/space is required, applicable venue rental fees are billed at actuals (at cost).`;
-
-    const innerHtml = `
-      <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #111; padding: 20px; max-width: 800px; margin: 0 auto; background: #fff; line-height: 1.5;">
-        <!-- Header -->
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #111; padding-bottom: 14px; margin-bottom: 18px;">
-          <div>
-            <div style="font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #000;">NERDYPHOTOGRAPHER.IN</div>
-            <div style="font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px;">Fashion, Fitness &amp; Commercial Photography Studio</div>
-            <div style="font-size: 11px; color: #555; margin-top: 2px;">Web: www.nerdyphotographer.in · Email: ${window.STUDIO_CONFIG?.email || "prateeksaxenaphotography@gmail.com"}</div>
-          </div>
-          <div style="text-align: right;">
-            <div style="font-family: monospace; font-size: 11px; font-weight: 700; background: #f0f0f0; border: 1px solid #ccc; padding: 4px 10px; border-radius: 4px;">REF: WPS-CONTRACT-${esc(cVer)}-${esc(data.date || 'BLANK')}</div>
-            <div style="font-size: 10px; color: #666; margin-top: 4px;">Issued: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-          </div>
-        </div>
-
-        <h2 style="font-family: 'Outfit', sans-serif; font-size: 17px; font-weight: 800; text-transform: uppercase; margin: 0 0 14px; text-align: center; letter-spacing: 0.05em;">
-          ${isTfp ? 'Time-For-Print (TFP) Production &amp; Model Release Agreement' : 'Studio Shoot Booking Contract &amp; Production Agreement'}
-        </h2>
-
-        <!-- Production Brief Table with Blank Pen-Fill Line Support -->
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 12px; border: 1px solid #ddd;">
-          <tbody>
-            <tr style="background: #f9f9f9;">
-              <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd; width: 25%;">Client / Participant:</td>
-              <td style="padding: 8px 12px; border: 1px solid #ddd; width: 25%;">${data.clientName ? esc(data.clientName) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 90%; height: 14px;">&nbsp;</span>'}</td>
-              <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd; width: 25%;">Instagram / Contact:</td>
-              <td style="padding: 8px 12px; border: 1px solid #ddd; width: 25%;">${(data.instagram || data.email) ? esc(data.instagram || data.email) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 90%; height: 14px;">&nbsp;</span>'}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Scheduled Date:</td>
-              <td style="padding: 8px 12px; border: 1px solid #ddd;">${data.date ? esc(data.date) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 90%; height: 14px;">&nbsp;</span>'}</td>
-              <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Session Duration:</td>
-              <td style="padding: 8px 12px; border: 1px solid #ddd;">${data.duration ? esc(data.duration) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 90%; height: 14px;">&nbsp;</span>'}</td>
-            </tr>
-            <tr style="background: #f9f9f9;">
-              <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Shoot Location:</td>
-              <td style="padding: 8px 12px; border: 1px solid #ddd;" colspan="3">${data.location ? esc(data.location) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 95%; height: 14px;">&nbsp;</span>'}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Package &amp; Deliverables:</td>
-              <td style="padding: 8px 12px; border: 1px solid #ddd;" colspan="3">${data.package ? esc(data.package) : '<span style="border-bottom: 1.5px solid #000; display: inline-block; width: 95%; height: 14px;">&nbsp;</span>'}</td>
-            </tr>
-            <tr style="background: #f9f9f9;">
-              <td style="padding: 8px 12px; font-weight: 700; border: 1px solid #ddd;">Production Notes:</td>
-              <td style="padding: 8px 12px; border: 1px solid #ddd;" colspan="3">${data.notes ? esc(data.notes) : '<span style="border-bottom: 1.5px dashed #999; display: block; width: 98%; height: 16px;">&nbsp;</span>'}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <!-- Payment & Rental Policy Box -->
-        <div style="background: #fafafa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px 14px; margin-bottom: 18px; font-size: 11px; line-height: 1.4;">
-          ${isTfp ? `
-            <strong>📸 TFP Test Shoot Terms:</strong> This session is structured for mutual portfolio growth. Deliverables include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW format files are strictly confidential studio property and are excluded. ${studioClauseTfp}
-          ` : `
-            <strong>💳 Payment Milestones:</strong> ${data.paymentMilestones === '503020' ? '3-Tier Milestones (50% Advance Retainer / 30% Proofing / 20% Final Deliverables).' : 'Standard 50/50 Milestones (50% Advance Retainer prior to shoot start [non-refundable]; 50% Final Balance prior to file download [non-refundable]).'}<br/>
-            <strong>🏢 Studio Venue Rental Policy:</strong> ${studioByPhotographer
-              ? `The venue for this session${studioLocation ? ` (<strong>${esc(studioLocation)}</strong>)` : ''} is arranged and paid for by the Studio — <strong>no venue rental is billed to the client</strong>.${homeStudioRiderHtml}`
-              : `Dedicated indoor studio venue rentals are billed <strong>at actuals (at cost)</strong>, or the client may directly book their preferred studio space for the session.`}
-          `}
-        </div>
-
-        <!-- Contract Terms Text -->
-        <div style="margin-bottom: 20px;">
-          <h3 style="font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 800; text-transform: uppercase; border-bottom: 1px solid #111; padding-bottom: 4px; margin: 0 0 8px;">
-            Terms &amp; Conditions (Contract Version ${esc(cVer)})
-          </h3>
-          <div style="font-size: 10px; line-height: 1.5; color: #222; text-align: justify; white-space: pre-wrap;">${esc(contractText)}</div>
-        </div>
-
-        <!-- Digital & Physical Pen Signature Acceptance Block -->
-        <div style="border: 2px dashed #111; border-radius: 8px; padding: 12px; background: #fff; page-break-inside: avoid;">
-          <div style="font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 800; text-transform: uppercase; color: #000; margin-bottom: 4px; text-align: center;">
-            ✍️ Digital Approval Code OR Physical Pen Signature
-          </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 8px; font-size: 10px; align-items: start;">
-            <div>
-              <strong>Method A — Digital Approval (DM / Email):</strong><br/>
-              Reply to <strong>${window.STUDIO_CONFIG?.email || "prateeksaxenaphotography@gmail.com"}</strong> or DM <strong>@nerdyphotographer.in</strong>:<br/>
-              <div style="font-family: monospace; font-size: 9px; font-weight: 700; background: #f4f4f4; border: 1px solid #ccc; padding: 5px; border-radius: 4px; margin-top: 4px;">"I approve Studio Contract Terms ${esc(cVer)}"</div>
-            </div>
-            <div style="border-left: 1px solid #ddd; padding-left: 12px;">
-              ${isSigImage(data.sigDataUrl) ? `
-                <strong>Client Digital Signature (Drawn at Booking):</strong><br/>
-                <img src="${data.sigDataUrl}" style="max-width: 200px; max-height: 56px; display: block; margin-top: 8px; border-bottom: 1.5px solid #000;" alt="Client Signature" />
-                <div style="margin-top: 4px; font-size: 9px; color: #444;">${esc(data.clientName || "")} · Agreed ${new Date().toLocaleDateString("en-IN")} · ${esc(data.agreedContract || cVer)}</div>
-              ` : data.agreementMethod === "checkbox" ? `
-                <strong>Digital Acceptance (Checkbox Confirmation):</strong><br/>
-                <div style="margin-top: 8px;">${esc(data.clientName || "")} confirmed acceptance of the Studio Terms &amp; Conditions (V3.3) and Model Release by ticking the agreement box on the booking form.</div>
-                <div style="margin-top: 4px; font-size: 9px; color: #444;">Recorded electronically at the time of booking \u00b7 no handwritten signature was requested.</div>
-              ` : `
-                <strong>Method B — Physical Pen Signature:</strong><br/>
-                <div style="margin-top: 10px;">Client Sign: <span style="border-bottom: 1.5px solid #000; display: inline-block; width: 130px; height: 12px;">&nbsp;</span></div>
-                <div style="margin-top: 6px;">Date: <span style="border-bottom: 1.5px solid #000; display: inline-block; width: 130px; height: 12px;">&nbsp;</span></div>
-              `}
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-
-    // Create isolated printing iframe
-    let printIframe = document.getElementById("wpsPrintIframe");
-    if (printIframe) printIframe.remove();
-
-    printIframe = document.createElement("iframe");
-    printIframe.id = "wpsPrintIframe";
-    printIframe.style.cssText = "position: fixed; right: 0; bottom: 0; width: 0; height: 0; border: 0; opacity: 0; pointer-events: none;";
-    document.body.appendChild(printIframe);
-
-    const doc = printIframe.contentWindow.document;
-    doc.open();
-    doc.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>WPS Contract ${cVer}</title>
-        <meta name="color-scheme" content="light">
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
-        <style>
-          :root { color-scheme: light !important; }
-          @page { size: A4 portrait; margin: 12mm 15mm; }
-          @media print {
-            :root, html, body {
-              color-scheme: light !important;
-              background-color: #ffffff !important;
-              background: #ffffff !important;
-              color: #000000 !important;
-            }
-          }
-          html, body {
-            color-scheme: light !important;
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            color: #111111 !important;
-            margin: 0;
-            padding: 0;
-            background-color: #ffffff !important;
-            background: #ffffff !important;
-            line-height: 1.5;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          * {
-            color-scheme: light !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          h1, h2, h3, h4 { font-family: 'Outfit', sans-serif; color: #000000 !important; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 12px; border: 1px solid #dddddd; background: #ffffff !important; color: #111111 !important; }
-          td, th { padding: 8px 12px; border: 1px solid #dddddd; color: #111111 !important; }
-        </style>
-      </head>
-      <body>
-        ${innerHtml}
-      </body>
-      </html>
-    `);
-    doc.close();
-
-    setTimeout(() => {
-      printIframe.contentWindow.focus();
-      printIframe.contentWindow.print();
-      setTimeout(() => {
-        if (printIframe && printIframe.parentNode) {
-          printIframe.parentNode.removeChild(printIframe);
-        }
-      }, 3000);
-    }, 400);
-  };
-
-  window.openContractArchiveModal = function(ver) {
-      const contract = window.WPS_CONTRACT_ARCHIVE[ver] || window.WPS_CONTRACT_ARCHIVE["V3.2"];
-      let modal = document.getElementById("contractArchiveModal");
-      if (!modal) {
-        modal = document.createElement("div");
-        modal.id = "contractArchiveModal";
-        modal.className = "modal-overlay";
-        modal.style.cssText = "position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; padding: 20px;";
-        document.body.appendChild(modal);
-      }
-
-      modal.innerHTML = `
-        <div class="modal-content" style="background: var(--paper); border: 1px solid var(--line); border-radius: 14px; max-width: 720px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: var(--shadow); overflow: hidden; animation: modalFadeIn 0.3s ease;">
-          <div style="padding: 20px 24px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; background: var(--bone);">
-            <div>
-              <h3 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: var(--font-md); font-weight: 700; color: var(--ink);">${esc(contract.title)}</h3>
-              <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px; font-family: var(--mono-font);">Effective: <strong>${esc(contract.effectiveDate)}</strong> · Status: <span style="color: var(--accent); font-weight:700;">${esc(contract.status)}</span></div>
-            </div>
-            <button type="button" onclick="document.getElementById('contractArchiveModal').style.display='none'" style="background:none; border:none; font-size: var(--font-md); color: var(--ink-soft); cursor:pointer;">✕</button>
-          </div>
-          <div style="padding: 24px; overflow-y: auto; font-size: var(--font-sm); line-height: 1.6; color: var(--ink); text-align: left;">
-            <div style="background: var(--bone); border: 1px solid var(--line); padding: 12px 16px; border-radius: 8px; font-size: var(--font-xs); margin-bottom: 20px; color: var(--ink);">
-              <strong>Vault Archive Summary:</strong> ${esc(contract.summary)}
-            </div>
-            <pre style="white-space: pre-wrap; font-family: inherit; font-size: var(--font-sm); line-height: 1.6; margin: 0; color: var(--ink);">${esc(contract.fullText)}</pre>
-          </div>
-          <div style="padding: 16px 24px; border-top: 1px solid var(--line); background: var(--bone); display: flex; justify-content: space-between; align-items: center;">
-            <button type="button" class="admin-cal-btn" onclick="document.getElementById('contractArchiveModal').style.display='none'; window.openPdfContractGenerator('', '', '${esc(contract.version)}');" style="border-color: var(--accent); color: var(--accent); font-weight: 700;">🖨️ Print PDF of ${esc(contract.version)}</button>
-            <button type="button" class="admin-cal-btn primary" onclick="document.getElementById('contractArchiveModal').style.display='none'">Close Vault Viewer</button>
-          </div>
-        </div>
-      `;
-      modal.style.display = "flex";
-    };
-
     window.openEditBookingModal = (dKey, bookingId) => {
       const settings = window.WPS_DATA.CALENDAR_SETTINGS || {};
       const list = settings.bookedDates?.[dKey] || [];
@@ -6051,10 +6109,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                        hand could not be marked as signed under the release the
                        public form actually uses. -->
                   <option value="Pending Agreement" ${(b.contractVersion === 'Pending Agreement' || (!b.agreedToTerms && !b.contractVersion)) ? 'selected' : ''}>⏳ Pending Agreement / Not Signed Yet (Admin Manual Booking)</option>
-                  <option value="V3.5-TFP" ${(b.contractVersion === 'V3.5-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.5') ? 'selected' : ''}>📸 Test Shoot / TFP Liability Release V3.5 (Active)</option>
+                  <option value="V3.6-TFP" ${(b.contractVersion === 'V3.6-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.6') ? 'selected' : ''}>📸 Test Shoot / TFP Liability Release V3.6 (Active)</option>
+                  <option value="V3.5-TFP" ${(b.contractVersion === 'V3.5-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.5') ? 'selected' : ''}>📸 Test Shoot / TFP Liability Release V3.5 (Archived)</option>
                   <option value="V3.4-TFP" ${(b.contractVersion === 'V3.4-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.4') ? 'selected' : ''}>📸 Test Shoot / TFP Liability Release V3.4 (Archived)</option>
                   <option value="V3.3-TFP" ${(b.contractVersion === 'V3.3-TFP' || b.contractVersion === 'TFP-LIABILITY-RELEASE-V3.3') ? 'selected' : ''}>📸 Test Shoot / TFP Liability Release V3.3 (Archived)</option>
-                  <option value="V3.6-COMMERCIAL" ${(b.contractVersion === 'V3.6-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.6' || (b.agreedToTerms && !b.contractVersion)) ? 'selected' : ''}>📜 Commercial Shoot Contract V3.6 (Active)</option>
+                  <option value="V3.7-COMMERCIAL" ${(b.contractVersion === 'V3.7-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.7' || (b.agreedToTerms && !b.contractVersion)) ? 'selected' : ''}>📜 Commercial Shoot Contract V3.7 (Active)</option>
+                  <option value="V3.6-COMMERCIAL" ${(b.contractVersion === 'V3.6-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.6') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.6 (Archived)</option>
                   <option value="V3.5-COMMERCIAL" ${(b.contractVersion === 'V3.5-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.5') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.5 (Archived)</option>
                   <option value="V3.4-COMMERCIAL" ${(b.contractVersion === 'V3.4-COMMERCIAL' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.4') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.4 (Archived)</option>
                   <option value="V3.3-COMMERCIAL" ${(b.contractVersion === 'V3.3-COMMERCIAL' || b.contractVersion === 'V3.3' || b.contractVersion === 'COMMERCIAL-CONTRACT-V3.3') ? 'selected' : ''}>📜 Commercial Shoot Contract V3.3 (Archived)</option>
@@ -6220,10 +6280,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <label class="dam-field"><span>Contract</span>
                   <select id="m_clientContractVersion">
                     <option value="Pending Agreement">Pending agreement · not signed yet</option>
-                    <option value="V3.5-TFP">Test shoot / TFP liability release V3.5 (active)</option>
+                    <option value="V3.6-TFP">Test shoot / TFP liability release V3.6 (active)</option>
+                    <option value="V3.5-TFP">Test shoot / TFP liability release V3.5 (archived)</option>
                     <option value="V3.4-TFP">Test shoot / TFP liability release V3.4 (archived)</option>
                     <option value="V3.3-TFP">Test shoot / TFP liability release V3.3 (archived)</option>
-                    <option value="V3.6-COMMERCIAL">Commercial shoot contract V3.6 (active)</option>
+                    <option value="V3.7-COMMERCIAL">Commercial shoot contract V3.7 (active)</option>
+                    <option value="V3.6-COMMERCIAL">Commercial shoot contract V3.6 (archived)</option>
                     <option value="V3.5-COMMERCIAL">Commercial shoot contract V3.5 (archived)</option>
                     <option value="V3.4-COMMERCIAL">Commercial shoot contract V3.4 (archived)</option>
                     <option value="V3.3-COMMERCIAL">Commercial shoot contract V3.3 (archived)</option>
@@ -6314,7 +6376,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       $("#quickTestShootBtn")?.addEventListener("click", () => {
         const clientName = $("#m_clientName").value.trim() || "Test Shoot Client";
         const notes = $("#m_clientNotes").value.trim() || "Booked for Test Shoot / TFP Collaboration.";
-        addCalBooking(dKey, { name: clientName, type: "Selective Collaboration (TFP)", notes: notes, isTentative: false, status: "confirmed", contractVersion: "V3.5-TFP", agreedToTerms: false });
+        addCalBooking(dKey, { name: clientName, type: "Selective Collaboration (TFP)", notes: notes, isTentative: false, status: "confirmed", contractVersion: "V3.6-TFP", agreedToTerms: false });
         toast(`📸 Test Shoot marked for ${dKey}! (Appears as Test Shoot in Blue)`);
         modalContainer.innerHTML = "";
         renderAdminGrid();
@@ -7738,7 +7800,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                    <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em;">Studio policies &amp; terms</span>
                    <span id="bookPoliciesToggleIcon" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); white-space: nowrap;">+ Read full policies</span>
                  </button>
-                 <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 6px; line-height: 1.4;">Still photography only · studio rental &amp; travel &gt;20km billed at actuals · full gallery buyout available</div>
+                 <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 6px; line-height: 1.4;">Still photography only · studio rental quoted separately · travel &gt;20km at actuals · full gallery buyout available</div>
                  <div id="bookPoliciesDetail" style="display: none; margin-top: 12px;">
                  <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px;">
                    <li style="display: flex; gap: 10px; align-items: flex-start; font-size: var(--font-xs); line-height: 1.55; color: var(--ink-soft);">
@@ -7747,7 +7809,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                     </li>
 <li style="display: flex; gap: 10px; align-items: flex-start; font-size: var(--font-xs); line-height: 1.55; color: var(--ink-soft);">
                      <span aria-hidden="true" style="flex: 0 0 20px; font-size: var(--font-sm); line-height: 1.4;">🏢</span>
-                     <span id="policyStudioRental"><strong style="color: var(--ink);">Studio Rental:</strong> Package rates cover photography creation, light design &amp; master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are billed <strong style="color: var(--ink);">at actuals (at cost)</strong>, or the client may directly book their preferred studio space for the production.</span>
+                     <span id="policyStudioRental"><strong style="color: var(--ink);">Studio Rental:</strong> Package rates cover photography creation, light design &amp; master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are <strong style="color: var(--ink);">quoted separately in advance</strong>, or the client may directly book their preferred studio space for the production.</span>
                    </li>
                    <li style="display: flex; gap: 10px; align-items: flex-start; font-size: var(--font-xs); line-height: 1.55; color: var(--ink-soft);">
                      <span aria-hidden="true" style="flex: 0 0 20px; font-size: var(--font-sm); line-height: 1.4;">🚗</span>
@@ -7843,7 +7905,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                <div class="modal-content" style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; max-width: 680px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.15); overflow: hidden; animation: modalFadeIn 0.3s ease;">
                  <div style="padding: 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; background: var(--bone);">
                    <h3 id="termsModalTitle" style="margin: 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink);">Studio Production &amp; Liability Release</h3>
-                   <span id="termsModalTag" style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--accent); padding: 4px 8px; border-radius: 4px; color: #fff; font-weight: 700;">TFP-LIABILITY-RELEASE-V3.5 (CURRENT)</span>
+                   <span id="termsModalTag" style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--accent); padding: 4px 8px; border-radius: 4px; color: #fff; font-weight: 700;">TFP-LIABILITY-RELEASE-V3.6 (ACTIVE)</span>
                  </div>
                  <div style="padding: 24px; overflow-y: auto; font-size: var(--font-sm); line-height: 1.6; color: var(--ink); display: flex; flex-direction: column; gap: 20px; text-align: left;">
                    <p style="margin: 0; font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em;">TFP Collaboration, Model Release &amp; Digital Consent Terms</p>
@@ -9933,7 +9995,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       if (policyRental) {
         policyRental.innerHTML = venueSuppliedByStudio
           ? `<strong style="color: var(--ink);">Studio Rental:</strong> The venue for this session${venueAddressShown ? ` (<strong style="color: var(--ink);">${esc(venueAddressShown)}</strong>)` : ""} is arranged and paid for by the studio. <strong style="color: var(--ink);">No studio rental or venue fee is billed to you.</strong> If you later ask to shoot somewhere else, standard venue terms apply again.`
-          : `<strong style="color: var(--ink);">Studio Rental:</strong> Package rates cover photography creation, light design &amp; master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are billed <strong style="color: var(--ink);">at actuals (at cost)</strong>, or the client may directly book their preferred studio space for the production.`;
+          : `<strong style="color: var(--ink);">Studio Rental:</strong> Package rates cover photography creation, light design &amp; master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are <strong style="color: var(--ink);">quoted separately in advance</strong>, or the client may directly book their preferred studio space for the production.`;
       }
       if (policyTravel) {
         policyTravel.innerHTML = venueSuppliedByStudio
@@ -9980,7 +10042,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         : "";
       const studioArrangerClauseHtml = studioArrangerChoice
         ? (studioArrangerChoice === "Photographer Arranges Studio & Lighting (Billed at Actuals)"
-            ? ` Where requested, the photographer will instead source and book the studio space and lighting equipment on the Participant's behalf, with the actual costs billed to the Participant at cost (at actuals).`
+            ? ` Where requested, the photographer will instead source and book the studio space and lighting equipment on the Participant's behalf, with the studio space and equipment charges quoted to the Participant in advance and added to the invoice.`
             : ` The Participant will source and book the studio space and any lighting equipment directly, and will share the confirmed venue details with the photographer ahead of the shoot.`)
         : "";
 
@@ -10114,7 +10176,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           : homeStudioFee > 0
             // The client is looking at a quote with this rental on it, so the
             // clause they tick has to name the same number.
-            ? `This session takes place at the Studio's home studio in Noida. A fixed home studio rental of <strong>₹${homeStudioFee.toLocaleString("en-IN")}</strong> applies and is itemised in the production quote; no further venue rental is billed at actuals for it.${paidHomeRiderHtml} Hair &amp; makeup artists, stylists, set designers and any other third-party crew are not included in this booking — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`
+            ? `This session takes place at the Studio's home studio in Noida. A fixed home studio rental of <strong>₹${homeStudioFee.toLocaleString("en-IN")}</strong> applies and is itemised in the production quote; no further venue rental applies to it.${paidHomeRiderHtml} Hair &amp; makeup artists, stylists, set designers and any other third-party crew are not included in this booking — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`
             : `If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges.${studioArrangerClauseHtml} Hair &amp; makeup artists, stylists, set designers and any other third-party crew are not included in this booking — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`;
       }
 
@@ -10956,13 +11018,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const studioArrangerPick = isCommercialStudioBooked ? ($("input[name='b_studio_arranger']:checked")?.value || "") : "";
         const studioArrangerSubmitClause = studioArrangerPick
           ? (studioArrangerPick === "Photographer Arranges Studio & Lighting (Billed at Actuals)"
-              ? ` Where requested, the photographer will instead source and book the studio space and lighting equipment on the Participant's behalf, with the actual costs billed to the Participant at cost (at actuals).`
+              ? ` Where requested, the photographer will instead source and book the studio space and lighting equipment on the Participant's behalf, with the studio space and equipment charges quoted to the Participant in advance and added to the invoice.`
               : ` The Participant will source and book the studio space and any lighting equipment directly, and will share the confirmed venue details with the photographer ahead of the shoot.`)
           : "";
         const venueClause = venueByStudio
-          ? `1. SCOPE OF PRODUCTION & VENUE (PROVIDED BY STUDIO)\nThis session is scheduled for studio/location photography production at a venue arranged and paid for by the Studio: ${venueByStudioAddress || "as confirmed with the Studio"}. No studio rental, venue hire or space fee is billed to the Participant for this session. A change of venue requested by the Participant is subject to Studio approval and may reintroduce venue costs at actuals.${homeStudioRider}`
-          : `1. SCOPE OF PRODUCTION & VENUE RENTAL POLICY\nThis session is scheduled for studio/location photography production. Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio venue space is required, applicable studio rental fees are billed at actuals (at cost).${studioArrangerSubmitClause}`;
-        const contractRefDoc = isCustomContract ? "CUSTOM-CLIENT-CONTRACT-MSA" : (isTfpCat ? "TFP-LIABILITY-RELEASE-V3.5" : "COMMERCIAL-CONTRACT-V3.6");
+          ? `1. SCOPE OF PRODUCTION & VENUE (PROVIDED BY STUDIO)\nThis session is scheduled for studio/location photography production at a venue arranged and paid for by the Studio: ${venueByStudioAddress || "as confirmed with the Studio"}. No studio rental, venue hire or space fee is billed to the Participant for this session. A change of venue requested by the Participant is subject to Studio approval and may reintroduce venue costs, quoted in advance.${homeStudioRider}`
+          : `1. SCOPE OF PRODUCTION & VENUE RENTAL POLICY\nThis session is scheduled for studio/location photography production. Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio venue space is required, applicable studio rental fees are quoted separately in advance.${studioArrangerSubmitClause}`;
+        const contractRefDoc = isCustomContract ? "CUSTOM-CLIENT-CONTRACT-MSA" : (isTfpCat ? "TFP-LIABILITY-RELEASE-V3.6" : "COMMERCIAL-CONTRACT-V3.7");
         // Resolved before the release text below, which now states the fee and
         // the milestones. They previously appeared only in the inquiry email as
         // booking details — so the document the client actually signed said
@@ -11078,18 +11140,18 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           : (venueByStudio
               ? `Not required — venue provided by the studio (photographer's invite)`
               : (val("b_studio_space") || 'Not Specified') + (studioArrangerPick
-                  ? ` — Arranged by: ${studioArrangerPick === "Photographer Arranges Studio & Lighting (Billed at Actuals)" ? "photographer (studio & lighting billed at actuals)" : "client (client books studio & lighting independently)"}`
+                  ? ` — Arranged by: ${studioArrangerPick === "Photographer Arranges Studio & Lighting (Billed at Actuals)" ? "photographer (studio & lighting quoted in advance)" : "client (client books studio & lighting independently)"}`
                   : ""));
         const studioRentalPolicyNote = (homeStudioRentalFee > 0)
           // A paid home-studio booking is the one case where the studio does
           // charge for its own venue, so the stock "no fee is billed to you"
           // and "billed at actuals" lines would both misstate the quote.
-          ? `Studio Rental Policy: This session takes place at the studio's home studio in Noida. A fixed home studio rental of ₹${homeStudioRentalFee.toLocaleString('en-IN')} applies and is itemised in your production quote — nothing further is billed at actuals for the venue.\n` +
+          ? `Studio Rental Policy: This session takes place at the studio's home studio in Noida. A fixed home studio rental of ₹${homeStudioRentalFee.toLocaleString('en-IN')} applies and is itemised in your production quote — nothing further is charged for the venue.\n` +
             homeStudioHouseRules
           : venueByStudio
             ? `Studio Rental Policy: The venue for this session is arranged and paid for by the studio. No venue rental or studio space fee is billed to you for this shoot.\n` +
               (isHomeStudio ? homeStudioHouseRules : ``)
-            : `Studio Rental Policy: Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio space is required, venue rental fees are billed at actuals (at cost), or the client may book the studio directly.\n` +
+            : `Studio Rental Policy: Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio space is required, venue rental fees are quoted separately in advance, or the client may book the studio directly.\n` +
               (studioArrangerSubmitClause ? `Studio Arranger:${studioArrangerSubmitClause}\n` : ``);
         const travelPolicyNote = venueByStudio
           ? `Travel & Accommodation Policy: Travel to the studio-provided venue above is covered by the studio for this invite. If you later request a different location, standard terms apply again (travel beyond 20 km from the studio base in Noida, and accommodation where an overnight stay is needed, billed at actuals).\n`
@@ -11582,13 +11644,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       }
 
       if (modalTitle) modalTitle.textContent = isTfp ? "Studio Production & Liability Release" : "Commercial Shoot Contract & Production Agreement";
-      if (modalTag) modalTag.textContent = isTfp ? "TFP-LIABILITY-RELEASE-V3.5 (ACTIVE)" : "COMMERCIAL-CONTRACT-V3.6 (ACTIVE)";
+      if (modalTag) modalTag.textContent = isTfp ? "TFP-LIABILITY-RELEASE-V3.6 (ACTIVE)" : "COMMERCIAL-CONTRACT-V3.7 (ACTIVE)";
       // The grace-period clause is a test-shoot term only. It has to be toggled
       // on every open, not just hidden by default: the modal element persists
       // across bookings, so a commercial enquiry opened after a TFP one would
       // otherwise still be showing it.
       const versionLabel = $("#termsAgreeVersionLabel");
-      if (versionLabel) versionLabel.textContent = `Studio Terms & Conditions (${isTfp ? "Version V3.5" : "Version V3.6"})`;
+      if (versionLabel) versionLabel.textContent = `Studio Terms & Conditions (${isTfp ? "Version V3.6" : "Version V3.7"})`;
       const lateArrivalSection = $("#termsLateArrivalSection");
       if (lateArrivalSection) {
         // Applies to both kinds now, on different terms — a paid client gets
@@ -11615,12 +11677,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // client is looking at while they tick this box.
       const modalHomeStudioFee = (modalIsHomeStudio && bookingCalc && bookingCalc.homeStudioFee) || 0;
       const venueSentence = modalHomeStudioFee > 0
-        ? ` This session takes place at the Studio's home studio in Noida${modalVenueAddress ? ` (<strong>${esc(modalVenueAddress)}</strong>)` : ""}. A fixed home studio rental of <strong>₹${modalHomeStudioFee.toLocaleString("en-IN")}</strong> applies and is itemised in your quote — nothing further is billed at actuals for the venue, and no travel cost is charged for it.${modalHomeRider}`
+        ? ` This session takes place at the Studio's home studio in Noida${modalVenueAddress ? ` (<strong>${esc(modalVenueAddress)}</strong>)` : ""}. A fixed home studio rental of <strong>₹${modalHomeStudioFee.toLocaleString("en-IN")}</strong> applies and is itemised in your quote — nothing further is charged for the venue, and no travel cost is charged for it.${modalHomeRider}`
         : modalVenueByStudio
         ? ` The shoot venue${modalVenueAddress ? ` (<strong>${esc(modalVenueAddress)}</strong>)` : ""} is arranged and paid for by the Studio — no studio rental, venue hire or travel cost is billed to you for it. Requesting a different location later re-applies the standard venue and travel terms.${modalHomeRider}`
         : (isTfp
             ? ` Locations &gt;20 km from Noida require client-funded travel, conveyance &amp; accommodation.`
-            : ` Dedicated indoor studio venue rentals are billed <strong>at actuals (at cost)</strong>.`);
+            : ` Dedicated indoor studio venue rentals are <strong>quoted separately in advance</strong>.`);
 
       if (sec4Text) {
         sec4Text.innerHTML = isTfp
