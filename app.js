@@ -4869,7 +4869,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <span><i style="background: #2C6BB5;"></i>Test shoot</span>
           <span><i style="background: #6B5BD2;"></i>Hold</span>
           <span><i style="background: #B7791F;"></i>Workshop</span>
-          <span><i style="background: #1F8A7A;"></i>Assisting</span>
+          <span><i style="background: #B23A5A;"></i>Assisting</span>
         </div>
 
         <div class="admin-panel">
