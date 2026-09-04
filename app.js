@@ -1396,6 +1396,21 @@ window.moveAdminPackageRow = function(index, dir) {
     sel.innerHTML = contractVersionOptionsHtml({ selected: prev, pending: sel.dataset.pending === "1", custom: sel.dataset.custom !== "0", expanded: true });
     sel.value = prev && Array.from(sel.options).some(o => o.value === prev) ? prev : sel.options[0].value;
   }, true);
+  const cleanIgHandle = (h) => {
+    const v = String(h || "").trim();
+    if (!v) return "";
+    const m = v.match(/instagram\.com\/([\w._-]+)/i);
+    if (m) return m[1];
+    return v.replace(/^@/, "").replace(/[\/?#].*$/, "");
+  };
+  const siteFromCredit = (text) => {
+    const m = (text || "").match(/\(([^)]+)\)/);
+    if (!m) return "";
+    const site = m[1].split(/[;,]/).map(x => x.trim()).filter(Boolean).find(p => !p.startsWith("@") && !/instagram\.com/i.test(p));
+    return site ? site.replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/$/, "") : "";
+  };
+  const siteHref = (site) => /^https?:\/\//i.test(site) ? site : `https://${site}`;
+  const cleanSite = (v) => String(v || "").trim().replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/$/, "");
   const igHandleFromCredit = (text) => {
     const m = (text || "").match(/\(([^)]+)\)/);
     const parts = m ? m[1].split(/[;,]/).map(x => x.trim()).filter(Boolean) : ((text || "").match(/@[\w._-]+|instagram\.com\/[^\s)]+/gi) || []);
@@ -2391,7 +2406,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // model who moved agencies between shoots shows where they are now.
     const repRows = [];
     if (isCc && shoot.agency && showRep(shoot, "Agency", "CompCard")) {
-      repRows.push(`<div class="lb-credit"><dt>Agency</dt><dd><span class="lb-person">${esc(shoot.agency)}${shoot.agencyHandle ? ` <a href="https://instagram.com/${encodeURIComponent(shoot.agencyHandle)}" target="_blank" rel="noopener noreferrer">@${esc(shoot.agencyHandle)} ↗</a>` : ""}</span></dd></div>`);
+      const agHandle = cleanIgHandle(shoot.agencyHandle), agSite = cleanSite(shoot.agencySite);
+      const agSub = [
+        agHandle ? `<a href="https://instagram.com/${encodeURIComponent(agHandle)}" target="_blank" rel="noopener noreferrer">@${esc(agHandle)} ↗</a>` : "",
+        agSite ? `<a href="${esc(siteHref(agSite))}" target="_blank" rel="noopener noreferrer">${esc(agSite)} ↗</a>` : ""
+      ].filter(Boolean).join("");
+      repRows.push(`<div class="lb-credit"><dt>Agency</dt><dd><span class="lb-person">${esc(shoot.agency)}</span>${agSub ? `<span class="lb-person lb-person-sub">${agSub}</span>` : ""}</dd></div>`);
     }
     // Strictly opt-in, even for admins: it is the model's personal email.
     if (isCc && shoot.modelEmail && showRep(shoot, "Email", "CompCard")) {
@@ -3470,12 +3490,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // Cards render on the homepage and on the comp card pages; each has
       // its own switch for the agency and the email.
       const repSurface = (isCurrentlyCompCardView() || isCurrentlyModelPortfolioView()) ? "CompCard" : "Home";
-      if (s.agency && showRep(s, "Agency", repSurface)) {
-        const agencyLink = s.agencyHandle
-          ? ` <a href="https://instagram.com/${encodeURIComponent(s.agencyHandle)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600;">@${esc(s.agencyHandle)}</a>`
-          : "";
-        creditsList.push(`Agency <strong>${esc(s.agency)}</strong>${agencyLink}`);
-      }
+      // Name only on a card: the handle and website live on the comp card
+      // panel and the PDF.
+      if (s.agency && showRep(s, "Agency", repSurface)) creditsList.push(`Agency <strong>${esc(s.agency)}</strong>`);
       if (s.modelEmail && showRep(s, "Email", repSurface)) creditsList.push(`Email <a href="mailto:${esc(s.modelEmail)}" style="color:var(--accent); font-weight:600;">${esc(s.modelEmail)}</a>`);
       if (igHtml) creditsList.push(`Socials ${igHtml}`);
     } else {
@@ -6529,7 +6546,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           // Newest album first, so this is the model's current agency even
           // when older shoots were booked through a different one.
           agency: findStat("agency"),
-          agencyHandle: findStat("agencyHandle"),
+          agencyHandle: cleanIgHandle(agencySrc ? agencySrc.agencyHandle : ""),
+          agencySite: agencySrc ? (agencySrc.agencySite || "") : "",
           modelEmail: findStat("modelEmail"),
           // Each flag travels with the album that supplied its value, so the
           // newest album's choice decides what visitors and the PDF may see.
@@ -8264,7 +8282,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         $("#f_shoes").value = editingShoot.shoes || "";
         $("#f_model_hair").value = editingShoot.modelHair || "";
         $("#f_model_eyes").value = editingShoot.modelEyes || "";
-        if ($("#f_agency")) $("#f_agency").value = editingShoot.agencyCredit || (editingShoot.agency ? editingShoot.agency + (editingShoot.agencyHandle ? ` (@${editingShoot.agencyHandle})` : "") : "");
+        if ($("#f_agency")) {
+          const socials = [cleanIgHandle(editingShoot.agencyHandle) ? "@" + cleanIgHandle(editingShoot.agencyHandle) : "", editingShoot.agencySite || ""].filter(Boolean);
+          $("#f_agency").value = editingShoot.agencyCredit || (editingShoot.agency ? editingShoot.agency + (socials.length ? ` (${socials.join("; ")})` : "") : "");
+        }
         if ($("#f_model_email")) $("#f_model_email").value = editingShoot.modelEmail || "";
         writeModelTypes(editingShoot.modelTypes);
         if ($("#f_show_stats_comp")) $("#f_show_stats_comp").checked = (editingShoot.showStatsOnCompCard !== false);
@@ -9007,6 +9028,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         agencyCredit: isTestimonialOnly ? "" : val("f_agency"),
         agency: isTestimonialOnly ? "" : getTalentCleanName(val("f_agency")),
         agencyHandle: isTestimonialOnly ? "" : igHandleFromCredit(val("f_agency")),
+        agencySite: isTestimonialOnly ? "" : siteFromCredit(val("f_agency")),
         modelEmail: isTestimonialOnly ? "" : val("f_model_email"),
         modelTypes: isTestimonialOnly ? [] : modelTypesOf({ modelTypes: readModelTypes() }),
         showStatsOnCompCard: isTestimonialOnly ? true : ($("#f_show_stats_comp") ? $("#f_show_stats_comp").checked : true),
@@ -12423,34 +12445,38 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   }
 
   function printSocialsBarHtml(shoot) {
-    const printSocials = [];
+    // Contact line: each item is a label + value, and the agency carries its
+    // handle and/or website on a smaller second line.
+    const items = [];
     if (shoot.instagram) {
       const filteredHandles = compCardOwnHandles(shoot, shoot.instagram.split(",").map(x => x.trim()).filter(Boolean), isIgHandle);
       if (filteredHandles.length) {
         const cleaned = filteredHandles.map(h => h.startsWith("@") ? h : `@${h.split("/").pop()}`);
-        printSocials.push(`Instagram: ${cleaned.join(", ")}`);
+        items.push({ main: `Instagram: ${esc(cleaned.join(", "))}` });
       }
     }
     if (shoot.kavyar) {
       const filteredHandles = compCardOwnHandles(shoot, shoot.kavyar.split(",").map(x => x.trim()).filter(Boolean), isKavyarHandle);
       if (filteredHandles.length) {
         const cleaned = filteredHandles.map(h => h.split("/").pop());
-        printSocials.push(`Kavyar: ${cleaned.join(", ")}`);
+        items.push({ main: `Kavyar: ${esc(cleaned.join(", "))}` });
       }
     }
-    // Representation and contact ride with the socials, not the measurement
-    // bar: hiding a model's stats must not hide who represents them.
-    if (shoot.agency && showRep(shoot, "Agency", "Pdf")) printSocials.push(`Agency: ${esc(shoot.agency)}${shoot.agencyHandle ? ` (@${esc(shoot.agencyHandle)})` : ""}`);
-    if (shoot.modelEmail && showRep(shoot, "Email", "Pdf")) printSocials.push(`Email: <span style="text-transform: none;">${esc(shoot.modelEmail)}</span>`);
-    const socialsLine = printSocials.join("   |   ");
-    return socialsLine ? `
+    if (shoot.agency && showRep(shoot, "Agency", "Pdf")) {
+      const h = cleanIgHandle(shoot.agencyHandle);
+      items.push({ main: `Agency: ${esc(shoot.agency)}`, sub: [h ? "@" + h : "", cleanSite(shoot.agencySite)].filter(Boolean).join("  ·  ") });
+    }
+    if (shoot.modelEmail && showRep(shoot, "Email", "Pdf")) items.push({ main: `Email: <span style="text-transform: none;">${esc(shoot.modelEmail)}</span>` });
+    if (!items.length) return "";
+    const socialsLine = items.map(it => `<span style="display: inline-block; vertical-align: top; padding: 0 calc(10px * var(--print-scale, 1));">${it.main}${it.sub ? `<span style="display: block; font-size: calc(8.5px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.03em; color: #666; text-transform: none; margin-top: calc(2px * var(--print-scale, 1));">${esc(it.sub)}</span>` : ""}</span>`).join(`<span style="color: #bbb;">|</span>`);
+    return `
       <div style="font-family:'JetBrains Mono', monospace; font-size: calc(10px * var(--print-scale, 1)); font-weight: 700; color: #333; padding: calc(6px * var(--print-scale, 1)) calc(12px * var(--print-scale, 1)); text-transform: uppercase; letter-spacing: 0.05em; text-align: center; margin-bottom: calc(20px * var(--print-scale, 1)); border-bottom: 1px solid #ddd; padding-bottom: calc(10px * var(--print-scale, 1)); flex: 0 0 auto;">
         ${socialsLine}
-        <div style="font-family: sans-serif; font-size: calc(8.5px * var(--print-scale, 1)); font-weight: 400; color: #555; text-transform: none; letter-spacing: 0; margin-top: calc(5px * var(--print-scale, 1)); font-style: italic;">
+        <div style="font-family: sans-serif; font-size: calc(8.5px * var(--print-scale, 1)); font-weight: 400; color: #555; text-transform: none; letter-spacing: 0; margin-top: calc(6px * var(--print-scale, 1)); font-style: italic;">
           To book this talent, connect directly with the model or their representing agency via the social channels above.
         </div>
       </div>
-    ` : "";
+    `;
   }
 
   function printCreditsBarHtml(shoot) {
@@ -13013,15 +13039,19 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         rows.push(["Instagram", cleaned.join(", "), false]);
       }
     }
-    if (shoot.agency && showRep(shoot, "Agency", "Pdf")) rows.push(["Agency", `${shoot.agency}${shoot.agencyHandle ? ` · @${shoot.agencyHandle}` : ""}`, false]);
+    if (shoot.agency && showRep(shoot, "Agency", "Pdf")) {
+      const h = cleanIgHandle(shoot.agencyHandle);
+      rows.push(["Agency", shoot.agency, false, [h ? "@" + h : "", cleanSite(shoot.agencySite)].filter(Boolean).join("  ·  ")]);
+    }
     if (shoot.modelEmail && showRep(shoot, "Email", "Pdf")) rows.push(["Email", shoot.modelEmail, false]);
     if (manualFields.phone) rows.push(["Phone", manualFields.phone, true]);
     if (manualFields.brands && manualFields.brands.length) rows.push(["Worked With", manualFields.brands.join(" · "), true]);
     if (!rows.length) return "";
-    return rows.map(([label, val, isManual]) => `
+    return rows.map(([label, val, isManual, sub]) => `
       <div>
         <p style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); letter-spacing: 0.1em; text-transform: uppercase; color: #999; margin: 0 0 2px;">${esc(label)}${isManual ? ` <span style="font-weight:400; text-transform:none; letter-spacing:0;">(optional, provided by model)</span>` : ""}</p>
         <p style="font-size: calc(11px * var(--print-scale, 1)); font-weight: 700; color: ${label === "Instagram" ? "var(--accent, #d24e1a)" : "#000"}; margin: 0;">${esc(val)}</p>
+        ${sub ? `<p style="font-size: calc(9px * var(--print-scale, 1)); font-weight: 600; color: #666; margin: 2px 0 0;">${esc(sub)}</p>` : ""}
       </div>
     `).join("");
   }

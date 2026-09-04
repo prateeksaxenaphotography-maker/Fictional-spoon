@@ -2706,3 +2706,7 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 .credits-format-sub code { font-family: var(--mono-font); font-size: 11.5px; padding: 0 5px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); }
 .credits-format-sub em { font-style: normal; color: var(--ink); }
 @media (max-width: 720px) { .credits-format { grid-template-columns: 1fr; } }
+
+/* Agency sub-line (handle / website) under the agency name */
+.lb-person-sub { font-size: 12.5px; gap: 2px 12px; }
+.lb-person-sub a { font-size: 12.5px; font-weight: 600; }
