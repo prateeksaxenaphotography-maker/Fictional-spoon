@@ -1337,6 +1337,8 @@ window.moveAdminPackageRow = function(index, dir) {
     // Only the model's Instagram is shown unless a switch says otherwise.
     if (what === "Agency") return shoot.showAgency === true;
     if (what === "Email") return shoot.showModelEmail === true;
+    // Kavyar / LinkedIn / Behance / website briefly shared one switch.
+    if (["ModelKavyar", "ModelLinkedin", "ModelBehance", "ModelWebsite"].includes(what)) return shoot[`showModelSocialsOn${surface}`] === true;
     return what === "ModelInstagram";
   };
   // The agency is typed like every other credit — "Name (@handle; site.com)" —
@@ -2673,18 +2675,24 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           // titles alone render as identical-looking duplicate rows. Label
           // each row with what actually distinguishes the shoots: season (or
           // date), activity, and photo count.
-          const shootLabel = (t) => {
-            const parts = [t.season || t.date, t.activity, `${(t.photos || []).length} photos`].filter(Boolean);
-            return parts.join(" · ");
-          };
-          const rows = targets.map(t => `
-              <div class="lb-admin-row">
-                <button class="linkish work-edit" data-id="${t.id}">${targets.length > 1 ? `Edit: ${esc(shootLabel(t))}` : "Edit details"} →</button>
-                <button class="linkish muted work-delete" data-id="${t.id}" data-title="${esc(t.title || t.talent || "")}${targets.length > 1 ? ` — ${esc(shootLabel(t))}` : ""}">Delete →</button>
+          const fmtDate = (t) => { const d = new Date(t.date); return isNaN(d) ? (t.season || t.date || "") : d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }); };
+          const many = targets.length > 1;
+          // Newest first, as the card itself orders them: the first row is the
+          // album the agency, stats and socials are read from.
+          const rows = targets.map((t, i) => `
+              <div class="lb-admin-album">
+                <div class="lb-admin-album-main">
+                  <span class="lb-admin-album-name">${esc(t.title || t.talent || "Untitled")}</span>
+                  <span class="lb-admin-album-meta">${esc(fmtDate(t))}${t.activity ? " · " + esc(t.activity) : ""} · ${(t.photos || []).length} photo${(t.photos || []).length === 1 ? "" : "s"}${many && i === 0 ? ' · <em>newest, supplies the details</em>' : ""}</span>
+                </div>
+                <div class="lb-admin-album-actions">
+                  <button class="linkish work-edit" data-id="${t.id}">Edit details →</button>
+                  <button class="linkish muted work-delete" data-id="${t.id}" data-title="${esc(t.title || t.talent || "")}${many ? ` — ${esc(fmtDate(t))}` : ""}">Delete →</button>
+                </div>
               </div>`).join("");
           return `
             <div class="lb-sidebar-section lb-admin">
-              <h4 class="lb-h"><span>Admin</span><small>only you see this</small></h4>
+              <h4 class="lb-h"><span>Admin</span><small>${many ? `${targets.length} albums feed this card · ` : ""}only you see this</small></h4>
               ${rows}
             </div>
           `;
@@ -6535,7 +6543,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const coverId = latestShoot.coverPhotoId || (latestShoot.photos[0] && latestShoot.photos[0].id);
         const coverPhotoObj = allGroupPhotos.find(p => p.id.split("-")[0] === coverId);
         const remainingPhotos = allGroupPhotos.filter(p => p.id.split("-")[0] !== coverId);
-        const finalPhotos = coverPhotoObj ? [coverPhotoObj, ...shuffleArray(remainingPhotos)] : shuffleArray(allGroupPhotos);
+        // Supporting photos come from each album in turn — a shuffled lane per
+        // album, dealt round-robin — so every shoot is represented instead of
+        // the largest one crowding the rest out.
+        const lanesByAlbum = new Map();
+        (coverPhotoObj ? remainingPhotos : allGroupPhotos).forEach(p => { const k = p.parent ? p.parent.id : "?"; if (!lanesByAlbum.has(k)) lanesByAlbum.set(k, []); lanesByAlbum.get(k).push(p); });
+        const lanes = shuffleArray(Array.from(lanesByAlbum.values()).map(list => shuffleArray(list.slice())));
+        const dealt = [];
+        for (let i = 0; lanes.some(l => i < l.length); i++) lanes.forEach(l => { if (i < l.length) dealt.push(l[i]); });
+        const finalPhotos = coverPhotoObj ? [coverPhotoObj, ...dealt] : dealt;
         
         const findStat = (key) => {
            const found = shootsInGroup.find(s => s[key] && String(s[key]).trim());
@@ -6546,7 +6562,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const agencySrc = shootsInGroup.find(x => x.agency && String(x.agency).trim());
         const emailSrc = shootsInGroup.find(x => x.modelEmail && String(x.modelEmail).trim());
         const repFlags = {};
-        ["CompCard", "Home", "Pdf"].forEach(sf => { repFlags[`showAgencyOn${sf}`] = showRep(agencySrc, "Agency", sf); repFlags[`showEmailOn${sf}`] = showRep(emailSrc, "Email", sf); repFlags[`showModelSocialsOn${sf}`] = showRep(shootsInGroup[0], "ModelSocials", sf); repFlags[`showModelInstagramOn${sf}`] = showRep(shootsInGroup[0], "ModelInstagram", sf); });
+        ["CompCard", "Home", "Pdf"].forEach(sf => { repFlags[`showAgencyOn${sf}`] = showRep(agencySrc, "Agency", sf); repFlags[`showEmailOn${sf}`] = showRep(emailSrc, "Email", sf); ["ModelInstagram", "ModelKavyar", "ModelLinkedin", "ModelBehance", "ModelWebsite"].forEach(w => { repFlags[`show${w}On${sf}`] = showRep(shootsInGroup[0], w, sf); }); });
 
         // Model type merges across the group instead of taking the latest
         // shoot's value: a model tagged Fashion on one shoot and Fitness on
@@ -7342,7 +7358,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   <thead><tr><th></th><th>Comp cards</th><th>Homepage</th><th>PDF</th></tr></thead>
                   <tbody>
                     <tr><th>Model's Instagram</th><td><input id="f_show_ig_cc" type="checkbox" checked aria-label="Model Instagram on comp cards" /></td><td><input id="f_show_ig_home" type="checkbox" checked aria-label="Model Instagram on homepage" /></td><td><input id="f_show_ig_pdf" type="checkbox" checked aria-label="Model Instagram on PDF" /></td></tr>
-                    <tr><th>Model's other socials <small>Kavyar, LinkedIn, Behance, website</small></th><td><input id="f_show_socials_cc" type="checkbox" aria-label="Model socials on comp cards" /></td><td><input id="f_show_socials_home" type="checkbox" aria-label="Model socials on homepage" /></td><td><input id="f_show_socials_pdf" type="checkbox" aria-label="Model socials on PDF" /></td></tr>
+                    <tr><th>Model's Kavyar</th><td><input id="f_show_kavyar_cc" type="checkbox" aria-label="Model Kavyar on comp cards" /></td><td><input id="f_show_kavyar_home" type="checkbox" aria-label="Model Kavyar on homepage" /></td><td><input id="f_show_kavyar_pdf" type="checkbox" aria-label="Model Kavyar on PDF" /></td></tr>
+                    <tr><th>Model's LinkedIn</th><td><input id="f_show_linkedin_cc" type="checkbox" aria-label="Model LinkedIn on comp cards" /></td><td><input id="f_show_linkedin_home" type="checkbox" aria-label="Model LinkedIn on homepage" /></td><td><input id="f_show_linkedin_pdf" type="checkbox" aria-label="Model LinkedIn on PDF" /></td></tr>
+                    <tr><th>Model's Behance</th><td><input id="f_show_behance_cc" type="checkbox" aria-label="Model Behance on comp cards" /></td><td><input id="f_show_behance_home" type="checkbox" aria-label="Model Behance on homepage" /></td><td><input id="f_show_behance_pdf" type="checkbox" aria-label="Model Behance on PDF" /></td></tr>
+                    <tr><th>Model's website</th><td><input id="f_show_website_cc" type="checkbox" aria-label="Model Website on comp cards" /></td><td><input id="f_show_website_home" type="checkbox" aria-label="Model Website on homepage" /></td><td><input id="f_show_website_pdf" type="checkbox" aria-label="Model Website on PDF" /></td></tr>
                     <tr><th>Agency name &amp; agency socials</th><td><input id="f_show_agency_cc" type="checkbox" aria-label="Agency on comp cards" /></td><td><input id="f_show_agency_home" type="checkbox" aria-label="Agency on homepage" /></td><td><input id="f_show_agency_pdf" type="checkbox" aria-label="Agency on PDF" /></td></tr>
                     <tr><th>Model's email</th><td><input id="f_show_email_cc" type="checkbox" aria-label="Email on comp cards" /></td><td><input id="f_show_email_home" type="checkbox" aria-label="Email on homepage" /></td><td><input id="f_show_email_pdf" type="checkbox" aria-label="Email on PDF" /></td></tr>
                   </tbody>
@@ -8404,7 +8423,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // Agency defaults to shown, the email to hidden: it is personal data.
         [["cc", "CompCard"], ["home", "Home"], ["pdf", "Pdf"]].forEach(([suffix, surface]) => {
           const a = $("#f_show_agency_" + suffix); if (a) a.checked = showRep(editingShoot, "Agency", surface);
-          const m = $("#f_show_socials_" + suffix); if (m) m.checked = showRep(editingShoot, "ModelSocials", surface);
+          ["Kavyar", "Linkedin", "Behance", "Website"].forEach(k => { const el = $("#f_show_" + k.toLowerCase() + "_" + suffix); if (el) el.checked = showRep(editingShoot, "Model" + k, surface); });
           const ig = $("#f_show_ig_" + suffix); if (ig) ig.checked = showRep(editingShoot, "ModelInstagram", surface);
           const e = $("#f_show_email_" + suffix); if (e) e.checked = showRep(editingShoot, "Email", surface);
         });
@@ -9109,9 +9128,18 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         showModelInstagramOnCompCard: $("#f_show_ig_cc")?.checked ?? true,
         showModelInstagramOnHome: $("#f_show_ig_home")?.checked ?? true,
         showModelInstagramOnPdf: $("#f_show_ig_pdf")?.checked ?? true,
-        showModelSocialsOnCompCard: $("#f_show_socials_cc")?.checked ?? false,
-        showModelSocialsOnHome: $("#f_show_socials_home")?.checked ?? false,
-        showModelSocialsOnPdf: $("#f_show_socials_pdf")?.checked ?? false,
+        showModelKavyarOnCompCard: $("#f_show_kavyar_cc")?.checked ?? false,
+        showModelKavyarOnHome: $("#f_show_kavyar_home")?.checked ?? false,
+        showModelKavyarOnPdf: $("#f_show_kavyar_pdf")?.checked ?? false,
+        showModelLinkedinOnCompCard: $("#f_show_linkedin_cc")?.checked ?? false,
+        showModelLinkedinOnHome: $("#f_show_linkedin_home")?.checked ?? false,
+        showModelLinkedinOnPdf: $("#f_show_linkedin_pdf")?.checked ?? false,
+        showModelBehanceOnCompCard: $("#f_show_behance_cc")?.checked ?? false,
+        showModelBehanceOnHome: $("#f_show_behance_home")?.checked ?? false,
+        showModelBehanceOnPdf: $("#f_show_behance_pdf")?.checked ?? false,
+        showModelWebsiteOnCompCard: $("#f_show_website_cc")?.checked ?? false,
+        showModelWebsiteOnHome: $("#f_show_website_home")?.checked ?? false,
+        showModelWebsiteOnPdf: $("#f_show_website_pdf")?.checked ?? false,
         showAgencyOnCompCard: $("#f_show_agency_cc")?.checked ?? false,
         showAgencyOnHome: $("#f_show_agency_home")?.checked ?? false,
         showAgencyOnPdf: $("#f_show_agency_pdf")?.checked ?? false,
@@ -12494,9 +12522,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // The model's links a surface may show: Instagram, other socials and an
   // email in the credit each answer to their own switch.
   function visibleModelLinks(shoot, surface) {
-    return printModelLinks(shoot).filter(l => l.kind === "instagram" ? showRep(shoot, "ModelInstagram", surface)
-      : l.kind === "email" ? showRep(shoot, "Email", surface)
-      : showRep(shoot, "ModelSocials", surface));
+    const what = { instagram: "ModelInstagram", kavyar: "ModelKavyar", linkedin: "ModelLinkedin", behance: "ModelBehance", website: "ModelWebsite", email: "Email" };
+    return printModelLinks(shoot).filter(l => showRep(shoot, what[l.kind] || "ModelWebsite", surface));
   }
   function printSocialsBarHtml(shoot) {
     // Contact line: one item per social, then the agency with its own
