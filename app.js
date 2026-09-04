@@ -2251,6 +2251,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // measurements is a privacy choice, but the kind of work they model for
     // is the headline of the card and stays visible either way.
     const modelTypeHtml = isCc ? modelTypeBadgesHtml(shoot, "margin-bottom: 14px;") : "";
+    // Current representation — on a unified comp card this is the newest
+    // album's agency (buildCompCardDisplayList picks it newest-first), so a
+    // model who moved agencies between shoots shows where they are now.
+    const agencyHtml = (isCc && shoot.agency) ? `
+        <div class="lb-sidebar-section" style="margin-bottom: 14px; display: flex; flex-direction: column; gap: 3px;">
+          <span style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft);">Represented by</span>
+          <span style="font-size: var(--font-sm); font-weight: 600; color: var(--ink);">${esc(shoot.agency)}${shoot.agencyHandle ? ` <a href="https://instagram.com/${encodeURIComponent(shoot.agencyHandle)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); font-weight: 600; text-decoration: none; margin-left: 6px;">@${esc(shoot.agencyHandle)}</a>` : ""}</span>
+        </div>` : "";
 
     // Agency Model Stats HUD Card (Album Space #4 Redesign with Smart Fallback)
     let statsHtml = "";
@@ -2578,6 +2586,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         `}
         
         ${modelTypeHtml}
+        ${agencyHtml}
         ${statsHtml}
         ${filterBarHtml}
         
@@ -3451,6 +3460,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // the raw field here spelled the whole instagram.com URL out in the
       // credits line.
       if (s.talent && s.talent !== "—") creditsList.push(`Talent <strong>${esc(getTalentCleanName(s.talent))}</strong>`);
+      // Current agency: the unified card carries the newest album's value.
+      if (s.agency) {
+        const agencyLink = s.agencyHandle
+          ? ` <a href="https://instagram.com/${encodeURIComponent(s.agencyHandle)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600;">@${esc(s.agencyHandle)}</a>`
+          : "";
+        creditsList.push(`Agency <strong>${esc(s.agency)}</strong>${agencyLink}`);
+      }
       if (igHtml) creditsList.push(`Socials ${igHtml}`);
     } else {
       if (s.photographer) creditsList.push(`Photo <strong>${esc(s.photographer)}</strong>`);
@@ -6405,6 +6421,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           shoes: findStat("shoes"),
           modelHair: findStat("modelHair"),
           modelEyes: findStat("modelEyes"),
+          // Newest album first, so this is the model's current agency even
+          // when older shoots were booked through a different one.
+          agency: findStat("agency"),
+          agencyHandle: findStat("agencyHandle"),
           modelTypes: groupModelTypes,
           // Carried over so the "Show stats on Comp Cards / Model
           // Portfolio" checkboxes still apply once shoots are merged into
@@ -7053,6 +7073,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 </div>
                 <p id="f_model_types_hint" style="margin: 6px 0 0; font-size: var(--font-xs); color: var(--ink-soft);">Shown beside the model's name on the comp card album, in the lightbox, and on the exported PDF.</p>
               </div>
+              <div class="field-row">
+                <label class="field"><span>Modeling agency <span style="font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-soft);">— as of this shoot</span></span><input id="f_agency" type="text" placeholder="e.g. Inega Model Management" /></label>
+                <label class="field"><span>Agency Instagram</span><input id="f_agency_ig" type="text" placeholder="e.g. @inegamodels" /></label>
+              </div>
+              <p style="margin: -6px 0 0; font-size: var(--font-xs); color: var(--ink-soft);">Models move between agencies — the comp card shows the agency from their most recent album, so just record who represented them at the time of this shoot.</p>
               <div class="field-row">
                 <label class="field"><span>Height</span><input id="f_height" type="text" placeholder="e.g. 5'11&quot; / 180 cm" /></label>
                 <div class="field">
@@ -8080,6 +8105,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         $("#f_shoes").value = editingShoot.shoes || "";
         $("#f_model_hair").value = editingShoot.modelHair || "";
         $("#f_model_eyes").value = editingShoot.modelEyes || "";
+        if ($("#f_agency")) $("#f_agency").value = editingShoot.agency || "";
+        if ($("#f_agency_ig")) $("#f_agency_ig").value = editingShoot.agencyHandle ? `@${editingShoot.agencyHandle}` : "";
         writeModelTypes(editingShoot.modelTypes);
         if ($("#f_show_stats_comp")) $("#f_show_stats_comp").checked = (editingShoot.showStatsOnCompCard !== false);
         if ($("#f_show_stats_port")) $("#f_show_stats_port").checked = (editingShoot.showStatsOnModelPortfolio !== false);
@@ -8772,6 +8799,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         shoes: isTestimonialOnly ? "" : val("f_shoes"),
         modelHair: isTestimonialOnly ? "" : val("f_model_hair"),
         modelEyes: isTestimonialOnly ? "" : val("f_model_eyes"),
+        // Per album, because a model changes agencies between shoots; the
+        // unified comp card reads the most recent album that names one.
+        agency: isTestimonialOnly ? "" : val("f_agency"),
+        agencyHandle: isTestimonialOnly ? "" : val("f_agency_ig").replace(/^@/, ""),
         modelTypes: isTestimonialOnly ? [] : modelTypesOf({ modelTypes: readModelTypes() }),
         showStatsOnCompCard: isTestimonialOnly ? true : ($("#f_show_stats_comp") ? $("#f_show_stats_comp").checked : true),
         showStatsOnModelPortfolio: isTestimonialOnly ? true : ($("#f_show_stats_port") ? $("#f_show_stats_port").checked : true),
@@ -12099,6 +12130,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (shoot.shoes) statsArr.push(`Shoes: ${shoot.shoes}`);
     if (shoot.modelHair) statsArr.push(`Hair: ${shoot.modelHair}`);
     if (shoot.modelEyes) statsArr.push(`Eyes: ${shoot.modelEyes}`);
+    if (shoot.agency) statsArr.push(`Agency: ${shoot.agency}${shoot.agencyHandle ? ` (@${shoot.agencyHandle})` : ""}`);
     const statsLine = statsArr.join("  ·  ");
     return statsLine ? `
       <div style="font-family:'JetBrains Mono', monospace; font-size: calc(11px * var(--print-scale, 1)); font-weight: 700; background: #f5f5f5; color: #000; padding: calc(10px * var(--print-scale, 1)) calc(14px * var(--print-scale, 1)); text-transform: uppercase; letter-spacing: 0.05em; text-align: center; border-radius: 6px; margin-bottom: calc(20px * var(--print-scale, 1)); border: 1px solid #e0e0e0; flex: 0 0 auto;">
@@ -12673,6 +12705,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (shoot.shoes) rows.push(["Shoes", shoot.shoes]);
     if (shoot.modelHair) rows.push(["Hair", shoot.modelHair]);
     if (shoot.modelEyes) rows.push(["Eyes", shoot.modelEyes]);
+    if (shoot.agency) rows.push(["Agency", `${shoot.agency}${shoot.agencyHandle ? ` · @${shoot.agencyHandle}` : ""}`]);
     if (!rows.length) return "";
     return rows.map(([label, val]) => `
       <div>
