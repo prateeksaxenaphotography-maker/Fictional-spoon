@@ -555,6 +555,19 @@ function getAdminPackages() {
 
 window.getAdminPackages = getAdminPackages;
 
+// The test-shoot "package": no fee (the TFP home-studio rental is its own
+// setting), but a name and a deliverables line the studio can edit in the
+// same panel as the paid tiers. Same resolution order as the tiers —
+// this device's draft, then what is published, then the default.
+const DEFAULT_TFP_PACKAGE = { name: "Test Shoot / TFP Collaboration", specs: "Full Proofing Gallery + 8 to 12 Retouched Master Clicks (No RAW files delivered)" };
+function getAdminTfpPackage() {
+  const clean = (o) => (o && typeof o === "object") ? { name: String(o.name || "").trim() || DEFAULT_TFP_PACKAGE.name, specs: String(o.specs || "").trim() || DEFAULT_TFP_PACKAGE.specs } : null;
+  try { const saved = localStorage.getItem("wps_tfp_package"); if (saved) { const c = clean(JSON.parse(saved)); if (c) return c; } } catch(e) {}
+  try { const c = clean(window.WPS_DATA && window.WPS_DATA.TFP_PACKAGE); if (c) return c; } catch(e) {}
+  return { ...DEFAULT_TFP_PACKAGE };
+}
+window.getAdminTfpPackage = getAdminTfpPackage;
+
 /* ============================================================
    § STUDIO CONTRACT ARCHIVE & VERSION RESOLUTION
    Kept at top level, beside the other published-data helpers, because the
@@ -859,7 +872,8 @@ window.WPS_CONTRACT_ARCHIVE["V3.4-TFP"].effectiveDate = "August 2026 (superseded
 window.WPS_CONTRACT_ARCHIVE["V3.4-TFP"].status = "Archived — superseded by V3.5-TFP (added studio-arranger choice)";
 
 window.saveAdminCustomPackages = async function() {
-  const rows = document.querySelectorAll(".admin-pkg-editor-row");
+  // The test-shoot row shares the class for layout but is not a paid tier.
+  const rows = document.querySelectorAll(".admin-pkg-editor-row:not(.admin-pkg-editor-row--tfp)");
   if (rows.length) {
     const updated = [];
     rows.forEach((row, i) => {
@@ -869,6 +883,17 @@ window.saveAdminCustomPackages = async function() {
       updated.push({ id: `pkg_${i+1}`, name, price, specs });
     });
     localStorage.setItem("wps_custom_packages", JSON.stringify(updated));
+  }
+  // Test-shoot row (no fee): name + deliverables line.
+  const tfpNameEl = document.getElementById("tfpPkgName");
+  const tfpSpecsEl = document.getElementById("tfpPkgSpecs");
+  if (tfpNameEl || tfpSpecsEl) {
+    const current = getAdminTfpPackage();
+    const tfp = {
+      name: (tfpNameEl?.value || "").trim() || current.name,
+      specs: (tfpSpecsEl?.value || "").trim() || current.specs
+    };
+    localStorage.setItem("wps_tfp_package", JSON.stringify(tfp));
   }
 
   // Home studio rental. Blank is "leave it as it was", not zero — clearing the
@@ -943,6 +968,7 @@ window.saveAdminCustomPackages = async function() {
 window.resetAdminCustomPackages = function() {
   if (confirm("Reset studio package rates to default values?")) {
     localStorage.removeItem("wps_custom_packages");
+    localStorage.removeItem("wps_tfp_package");
     alert("Reset to default package rates!");
     if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
     if (typeof render === "function") render();
@@ -967,6 +993,20 @@ window.addNewAdminPackageRow = function() {
   if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
   if (typeof toast === "function") toast(`➕ Package Tier #${nextNum} added! Adjust rates & click Save.`);
   if (typeof render === "function") render();
+};
+
+// Test shoots are gated behind an invite code, so the shareable link
+// carries the primary code: the form verifies it on load and switches
+// itself to the collaboration type.
+window.copyTfpBookingLink = function() {
+  const code = (typeof window.getAdminInviteCode === "function" ? window.getAdminInviteCode() : "NERDYBRAND");
+  const url = `https://www.nerdyphotographer.in/book?invite=${encodeURIComponent(code)}`;
+  navigator.clipboard.writeText(url).then(() => {
+    if (typeof toast === "function") toast(`Test shoot link copied: ${url}`);
+    else alert(`Test shoot link: ${url}`);
+  }).catch(() => {
+    alert(`Test shoot link: ${url}`);
+  });
 };
 
 window.copyPackageBookingLink = function(price) {
@@ -2078,6 +2118,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         INVITE_CODES: (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : []),
         PROMO_CODES: (typeof window.getAdminPromoCodes === "function" ? window.getAdminPromoCodes() : {}),
         PACKAGES: (typeof window.getAdminPackages === "function" ? window.getAdminPackages() : []),
+        TFP_PACKAGE: (typeof window.getAdminTfpPackage === "function" ? window.getAdminTfpPackage() : null),
         HOME_STUDIO_RATE: (typeof window.getHomeStudioRate === "function" ? window.getHomeStudioRate() : 3000),
         // Only published when the studio actually set a separate collaboration
         // rate; null keeps test shoots on the paid rate for every visitor.
@@ -4870,14 +4911,30 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
         <div class="admin-panel">
           <div class="admin-panel-head" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; cursor: pointer; user-select: none;" onclick="const b=document.getElementById('adminPromoBody');const a=document.getElementById('adminPromoArrow');const open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▼':'▲';">
-            <span style="display: flex; align-items: center; gap: 8px;">Promo &amp; invite codes</span>
+            <span style="display: flex; align-items: center; gap: 8px;">Promo codes</span>
             <div style="display: flex; gap: 8px; align-items: center;">
-              <button type="button" class="admin-cal-btn primary" onclick="event.stopPropagation();window.addNewAdminPromoCode()">Add promo code</button>
+              <button type="button" class="admin-cal-btn primary" onclick="event.stopPropagation();document.getElementById('adminPromoBody').style.display='block';document.getElementById('adminPromoArrow').textContent='▲';window.addNewAdminPromoCode()">Add promo code</button>
               <span id="adminPromoArrow" style="font-size: var(--font-xs); color: var(--ink-soft); font-weight: 700;">▼</span>
             </div>
           </div>
           <div id="adminPromoBody" style="display: none; margin-top: 12px;">
             <div id="adminPromoCodesGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;"></div>
+          </div>
+        </div>
+
+        <!-- Invite codes are a different tool from promo codes — they unlock
+             the test-shoot form rather than discount a package — so they get
+             their own panel instead of sharing the promo one. -->
+        <div class="admin-panel">
+          <div class="admin-panel-head" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; cursor: pointer; user-select: none;" onclick="const b=document.getElementById('adminInviteBody');const a=document.getElementById('adminInviteArrow');const open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▼':'▲';">
+            <span style="display: flex; align-items: center; gap: 8px;">Invite codes <span style="font-weight: 400; color: var(--ink-soft); font-size: 12.5px;">— test shoot / TFP unlocks</span></span>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button type="button" class="admin-cal-btn primary" onclick="event.stopPropagation();document.getElementById('adminInviteBody').style.display='block';document.getElementById('adminInviteArrow').textContent='▲';window.addNewAdminInviteCode()">Add invite code</button>
+              <span id="adminInviteArrow" style="font-size: var(--font-xs); color: var(--ink-soft); font-weight: 700;">▼</span>
+            </div>
+          </div>
+          <div id="adminInviteBody" style="display: none; margin-top: 12px;">
+            <div id="adminInviteCodesGrid" style="display: grid; grid-template-columns: 1fr; gap: 12px;"></div>
           </div>
         </div>
 
@@ -5098,7 +5155,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           `;
         }).join("");
 
-        promoGrid.innerHTML = inviteCardHtml + creatorFormHtml + codeCardsHtml;
+        promoGrid.innerHTML = creatorFormHtml + codeCardsHtml;
+        const inviteGrid = $("#adminInviteCodesGrid");
+        if (inviteGrid) inviteGrid.innerHTML = inviteCardHtml;
       }
 
       // Attach input change listener to flip status badge to UNSAVED CHANGES
@@ -5141,10 +5200,34 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <button type="button" class="admin-cal-btn" onclick="window.deleteAdminPackageRow(${idx})" title="Delete Package Tier" style="color: #b22222; border-color: rgba(178,34,34,0.3); padding: 6px 8px; font-size: var(--font-xs);">🗑️</button>
           </div>
         </div>
-      `).join("") + `
+      `).join("") + (() => {
+        // Test-shoot row: same shape as a tier, but no fee (the TFP home
+        // studio rental is set above) and no reorder/delete — there is
+        // exactly one. Its deliverables line feeds the booking form's
+        // test-shoot notices, the terms modal and the quote.
+        const tfp = getAdminTfpPackage();
+        return `
+        <div class="admin-pkg-editor-row admin-pkg-editor-row--tfp" style="background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: grid; grid-template-columns: 1.4fr 0.9fr 2.2fr 110px; gap: 10px; align-items: center;">
+          <div>
+            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase;">Test shoot / TFP</span>
+            <input type="text" id="tfpPkgName" value="${esc(tfp.name)}" oninput="window.markUnsavedChanges && window.markUnsavedChanges()" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); font-weight: 700; background: var(--bone); color: var(--ink);" />
+          </div>
+          <div>
+            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase;">Fee</span>
+            <div style="padding: 8px 10px; border: 1px dashed var(--line); border-radius: 6px; font-size: var(--font-xs); color: var(--ink-soft); background: transparent;">No fee · rental set above</div>
+          </div>
+          <div>
+            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase;">Deliverable Specs</span>
+            <input type="text" id="tfpPkgSpecs" value="${esc(tfp.specs)}" oninput="window.markUnsavedChanges && window.markUnsavedChanges()" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
+          </div>
+          <div style="display: flex; gap: 4px; justify-content: flex-end; padding-top: 14px;">
+            <button type="button" class="admin-cal-btn" onclick="window.copyTfpBookingLink()" title="Copy a booking link that opens the test-shoot form with your primary invite code" style="font-size: var(--font-xs); padding: 6px 8px; border-color: var(--accent); color: var(--accent); font-weight: 700;">Share link</button>
+          </div>
+        </div>`;
+      })() + `
         <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-          <button type="button" class="admin-cal-btn primary" onclick="window.addNewAdminPackageRow()" style="font-size: var(--font-xs); padding: 6px 14px; font-weight: 700;">➕ Add New Package Tier (Currently ${pkgs.length} Tiers)</button>
-          <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Supports 1 to 10+ dynamic package tiers with sequence controls (▲ Move Up / ▼ Move Down / 🗑️ Delete).</span>
+          <button type="button" class="admin-cal-btn primary" onclick="window.addNewAdminPackageRow()" style="font-size: var(--font-xs); padding: 6px 14px; font-weight: 700;">Add package tier (${pkgs.length} now)</button>
+          <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Reorder with ▲ ▼ · the test-shoot row is fixed and carries no fee.</span>
         </div>
       `;
     }
@@ -7384,7 +7467,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                      <option value="Other" ${isSelected("Other")}>Other Focus Area</option>
                    </select>
                     <div id="b_type_notice" style="font-size: var(--font-xs); color: #059669; margin-top: 6px; font-family: var(--mono-font); background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.25); border-radius: 6px; padding: 8px 12px; display: none;">
-                      🎁 <strong>Test Shoot Deliverables Included:</strong> Full Online Proofing Gallery + 8 to 12 Retouched Master Clicks (No RAW files delivered · Mandatory Instagram credit @nerdyphotographer.in).
+                      <strong>Test shoot deliverables:</strong> ${esc(getAdminTfpPackage().specs)} · Mandatory Instagram credit @nerdyphotographer.in.
                     </div>
                   </label>
 
@@ -7398,7 +7481,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                       Session is locked to a <strong>Selective Collaboration / TFP Test Shoot</strong> via your verified Photographer Direct Invite Code.
                     </div>
                     <div style="background: rgba(5,150,105,0.1); border: 1px solid rgba(5,150,105,0.3); border-radius: 6px; padding: 8px 12px; margin-top: 8px; font-family: var(--mono-font); font-size: var(--font-xs); color: #047857; font-weight: 700;">
-                      🎁 <strong>Test Shoot Deliverables Included:</strong> Full Proofing Gallery + 8 to 12 Retouched Master Clicks (No RAW files delivered · Mandatory credit @nerdyphotographer.in).
+                      <strong>Test shoot deliverables:</strong> ${esc(getAdminTfpPackage().specs)} · Mandatory credit @nerdyphotographer.in.
                     </div>
                   </div>
                  <label class="field" id="b_date_field">
@@ -7730,7 +7813,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
  
                    <div>
                       <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700;">4. TECHNICAL PERFORMANCE &amp; DELIVERY DISCLAIMER</h4>
-                      <p style="margin: 0;">As a creative collaboration, test shoots (TFP collabs) include a <strong>Full Proofing Gallery + 8 to 12 Retouched Master Clicks</strong>. The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered to the Participant, unless otherwise agreed upon in writing for an additional fee.</p>
+                      <p style="margin: 0;">As a creative collaboration, test shoots (TFP collabs) include <strong>${esc(getAdminTfpPackage().specs)}</strong>. The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered to the Participant, unless otherwise agreed upon in writing for an additional fee.</p>
                     </div>
  
                    <div>
@@ -10132,7 +10215,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const summaryPackageLabel = $("#summaryPackageLabel");
         if (summaryPackageLabel) {
           summaryPackageLabel.textContent = isCollabBooking
-            ? "Test Shoot Collaboration (TFP)"
+            ? getAdminTfpPackage().name
             : "Package Base Rate";
         }
         if (summaryOriginalPrice) summaryOriginalPrice.textContent = `₹${packageCharge.toLocaleString("en-IN")}`;
@@ -11417,7 +11500,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
       if (sec4Text) {
         sec4Text.innerHTML = isTfp
-          ? `As a creative collaboration, test shoots (TFP collabs) include a <strong>Full Proofing Gallery + 8 to 12 Retouched Master Clicks</strong>. Deliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for 3 Months (90 days). The Studio retains final artistic authority over image selection and editing styles.${venueSentence} Under no circumstances will raw unedited files (RAW format) be delivered.`
+          ? `As a creative collaboration, test shoots (TFP collabs) include <strong>${esc(getAdminTfpPackage().specs)}</strong>. Deliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for 3 Months (90 days). The Studio retains final artistic authority over image selection and editing styles.${venueSentence} Under no circumstances will raw unedited files (RAW format) be delivered.`
           : `Commercial productions include a <strong>Full Proofing Gallery + contracted retouched master deliverables</strong> specified in the rate tier. Deliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for 6 Months (180 days). Extended usage licensing or RAW file access requires separate buyout agreements.${venueSentence} Payment terms follow 50/50 non-refundable milestone payments.`;
       }
 
