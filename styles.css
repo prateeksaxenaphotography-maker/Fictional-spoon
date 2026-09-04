@@ -1221,6 +1221,10 @@ main:focus { outline: none; }
   --paper: #f6f5f3;
   --bone: #eceae7;
   --bone-2: #e2dfdb;
+  /* Raised card surface for the refreshed admin/booking screens: white on
+     the paper base, so cards read as one lifted layer instead of grey
+     boxes on grey. */
+  --surface: #ffffff;
   --line: #dedbd6;
   --line-2: #cbc7c0;
   --line-dk: rgba(0,0,0,.08);
@@ -1238,6 +1242,7 @@ main:focus { outline: none; }
   --paper: #0a0a0a;
   --bone: #141413;
   --bone-2: #1d1c1a;
+  --surface: #141413;
   --line: #262523;
   --line-2: #35332f;
   --line-dk: rgba(255,255,255,.07);
@@ -1784,6 +1789,92 @@ main:focus { outline: none; }
 .admin-cal-day.day-workshop { background: rgba(249, 168, 37, 0.08) !important; border: 1.5px solid #f9a825 !important; }
 .admin-cal-day.day-assisting { background: rgba(0, 137, 123, 0.08) !important; border: 1.5px solid #00897b !important; }
 .admin-cal-client-item { font-size: var(--font-xs); font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+
+/* ============================================================
+   § ADMIN CALENDAR REFRESH — lighter, airier: hairlines instead of
+   thick coloured borders, tinted status pills with a dot, pill buttons,
+   one card level. The status classes above carry !important, so the
+   overrides here do too; they come later in the file, so they win.
+   ============================================================ */
+.admin-calendar-wrap .admin-cal-btn { border-radius: var(--r-pill); border-color: var(--line-2); font-family: "Inter", system-ui, sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; padding: 9px 16px; background: var(--surface); }
+.admin-calendar-wrap .admin-cal-btn:hover { background: var(--bone-2); border-color: var(--ink); color: var(--ink); }
+.admin-calendar-wrap .admin-cal-btn.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.admin-calendar-wrap .admin-cal-btn.primary:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+.admin-calendar-wrap .admin-cal-title { font-family: "Archivo", sans-serif; font-weight: 800; font-size: 22px; letter-spacing: -.01em; min-width: 190px; text-align: center; }
+.admin-calendar-wrap .admin-calendar-header { align-items: center; margin-bottom: 18px; }
+.admin-cal-terms { display: inline-flex; align-items: center; gap: 10px; }
+.admin-cal-terms > span { font-family: "Inter", system-ui, sans-serif; font-size: 12px; color: var(--ink-soft); font-weight: 500; }
+.admin-cal-terms .admin-cal-seg { display: inline-flex; padding: 3px; border-radius: var(--r-pill); background: var(--bone-2); }
+.admin-cal-terms .admin-cal-seg .admin-cal-btn { border: none; background: transparent; color: var(--ink-soft); padding: 6px 12px; font-size: 12px; }
+.admin-cal-terms .admin-cal-seg .admin-cal-btn.is-on { background: var(--ink) !important; color: var(--paper) !important; }
+.admin-cal-legend { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; font-family: "Inter", system-ui, sans-serif; font-size: 12.5px; color: var(--ink-soft); }
+.admin-cal-legend span { display: inline-flex; align-items: center; gap: 7px; }
+.admin-cal-legend i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+/* Collapsible settings panels (package rates, promo codes) */
+.admin-panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 4px 20px; margin-bottom: 12px; font-family: "Inter", system-ui, sans-serif; font-size: var(--font-sm); }
+.admin-panel-head { font-family: "Inter", system-ui, sans-serif !important; font-size: 14.5px !important; font-weight: 600 !important; padding: 14px 0; }
+.admin-panel-head .admin-cal-btn { font-size: 12px !important; padding: 7px 12px !important; }
+/* Month grid: one hairline lattice inside a card, weekend columns tinted */
+.admin-calendar-wrap .admin-cal-grid { gap: 0; border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; background: var(--surface); box-shadow: var(--shadow-sm); margin-bottom: 32px; }
+.admin-calendar-wrap .admin-cal-day-label { font-family: var(--mono-font); font-size: 11px; letter-spacing: .14em; color: var(--ink-soft); padding: 12px 0; border-bottom: 1px solid var(--line-2); }
+.admin-calendar-wrap .admin-cal-day { border: none; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); border-radius: 0; background: var(--surface) !important; min-height: 112px; padding: 10px 12px; gap: 8px; justify-content: flex-start; transition: background .15s; }
+.admin-calendar-wrap .admin-cal-day:nth-child(7n) { border-right: none; }
+.admin-calendar-wrap .admin-cal-day:hover { background: var(--bone-2) !important; box-shadow: none; border-color: var(--line); }
+.admin-calendar-wrap .admin-cal-day.day-empty { background: var(--paper) !important; cursor: default; }
+.admin-calendar-wrap .admin-cal-day.day-blocked { background: var(--surface) !important; border-width: 0 1px 1px 0; border-style: solid; border-color: var(--line); }
+.admin-calendar-wrap .admin-cal-day.day-blocked .admin-cal-num { color: #A9AAB1; }
+.admin-calendar-wrap .admin-cal-day.day-open,
+.admin-calendar-wrap .admin-cal-day.day-booked,
+.admin-calendar-wrap .admin-cal-day.day-tentative,
+.admin-calendar-wrap .admin-cal-day.day-testshoot,
+.admin-calendar-wrap .admin-cal-day.day-workshop,
+.admin-calendar-wrap .admin-cal-day.day-assisting { border: none !important; border-right: 1px solid var(--line) !important; border-bottom: 1px solid var(--line) !important; background: var(--surface) !important; }
+.admin-calendar-wrap .admin-cal-day:nth-child(7n+1),
+.admin-calendar-wrap .admin-cal-day:nth-child(7n) { background: var(--paper) !important; }
+.admin-calendar-wrap .admin-cal-day.day-today { box-shadow: inset 0 0 0 1.5px var(--accent); }
+.admin-calendar-wrap .admin-cal-day.day-today .admin-cal-num { color: var(--accent); }
+.admin-calendar-wrap .admin-cal-day > div:first-child { flex-direction: column; align-items: flex-start; gap: 8px; }
+.admin-calendar-wrap .admin-cal-num { font-size: 12px; }
+/* Status pills: tint + dot, sentence case */
+.admin-calendar-wrap .admin-cal-badge { display: inline-flex; align-items: flex-start; gap: 6px; font-family: "Inter", system-ui, sans-serif; font-size: 11.5px; font-weight: 600; letter-spacing: 0; text-transform: none; text-decoration: none; padding: 4px 8px; border-radius: 10px; line-height: 1.25; margin: 0; max-width: 100%; border: none; }
+.admin-calendar-wrap .admin-cal-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; flex: 0 0 6px; margin-top: 4px; background: currentColor; }
+.admin-calendar-wrap .badge-blocked { display: none !important; }
+.admin-calendar-wrap .badge-open { background: rgba(47,107,79,0.10); color: #2F6B4F; }
+.admin-calendar-wrap .badge-booked { background: rgba(210,78,26,0.10); color: #B23F12; }
+.admin-calendar-wrap .badge-tentative { background: rgba(107,91,210,0.08); color: #4E42A8; box-shadow: inset 0 0 0 1px rgba(107,91,210,0.45); }
+.admin-calendar-wrap .badge-workshop { background: rgba(183,121,31,0.12); color: #7A5010; }
+.admin-calendar-wrap .badge-assisting { background: rgba(31,138,122,0.12); color: #145E53; }
+.admin-calendar-wrap .badge-testshoot { background: rgba(44,107,181,0.12); color: #1F4E86; }
+.admin-calendar-wrap .admin-cal-client-item { font-family: "Inter", system-ui, sans-serif; font-size: 12px; font-weight: 500; color: var(--ink-soft); }
+/* Roster: card tone matches the grid card */
+.admin-calendar-wrap .booking-card { background: var(--surface); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 18px 20px; }
+.admin-calendar-wrap .booking-card:hover { border-color: var(--line-2); }
+.admin-calendar-wrap .booking-card-date { font-family: var(--mono-font); font-size: 12px; font-weight: 600; color: var(--ink); text-transform: none; letter-spacing: 0; }
+.admin-calendar-wrap .booking-card-name { font-family: "Archivo", sans-serif; font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+.admin-calendar-wrap .booking-card-detail { font-size: 13px; }
+.admin-calendar-wrap .booking-card .admin-cal-btn { font-family: "Inter", system-ui, sans-serif !important; font-size: 12px !important; text-transform: none !important; letter-spacing: 0 !important; padding: 7px 12px !important; }
+.admin-roster-title { font-family: "Archivo", sans-serif; font-weight: 800; font-size: 18px; letter-spacing: -.01em; margin: 0; }
+/* Roster status / duration pills — same language as the grid pills */
+.roster-pill { display: inline-flex; align-items: center; gap: 6px; font-family: "Inter", system-ui, sans-serif; font-size: 11.5px; font-weight: 600; padding: 4px 9px; border-radius: 10px; line-height: 1.25; white-space: nowrap; }
+.roster-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: 0 0 6px; }
+.roster-pill-neutral { background: var(--bone-2); color: var(--ink-soft); }
+.roster-pill-neutral::before { display: none; }
+.roster-pill-confirmed { background: rgba(210,78,26,0.10); color: #B23F12; }
+.roster-pill-hold { background: rgba(107,91,210,0.08); color: #4E42A8; box-shadow: inset 0 0 0 1px rgba(107,91,210,0.45); }
+.roster-pill-workshop { background: rgba(183,121,31,0.12); color: #7A5010; }
+.roster-pill-assisting { background: rgba(31,138,122,0.12); color: #145E53; }
+.admin-calendar-wrap .admin-cal-btn.roster-danger { color: #B23F12; }
+.admin-calendar-wrap .admin-cal-btn.roster-danger:hover { border-color: #B23F12; background: rgba(210,78,26,0.06); }
+.admin-calendar-wrap details summary { font-family: "Inter", system-ui, sans-serif; font-size: 14px; font-weight: 600; }
+.theme-dark .admin-calendar-wrap .admin-cal-day:nth-child(7n+1),
+.theme-dark .admin-calendar-wrap .admin-cal-day:nth-child(7n) { background: var(--bone-2) !important; }
+@media (max-width: 680px) {
+  .admin-calendar-wrap .admin-cal-grid { border-radius: 10px; }
+  .admin-calendar-wrap .admin-cal-badge { font-size: 9.5px !important; padding: 3px 6px !important; border-radius: 8px; white-space: normal; word-break: break-word; }
+  .admin-calendar-wrap .admin-cal-badge::before { display: none; }
+  .admin-calendar-wrap .admin-cal-btn { padding: 8px 12px; font-size: 12px; }
+  .admin-calendar-wrap .admin-cal-title { min-width: 0; font-size: 19px; }
+}
 
 .booking-roster-sec { margin-top: 48px; border-top: 1px solid var(--line); padding-top: 36px; }
 .booking-roster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 20px; }
