@@ -417,6 +417,29 @@ a { color: inherit; text-decoration: none; }
 .shoot-form h4 { font-family: "Archivo", sans-serif; font-size: var(--font-xs); font-weight: 700; text-transform: uppercase; color: var(--accent); margin: 0 0 4px; letter-spacing: 0.05em; }
 .shoot-form legend { font-family: "JetBrains Mono", monospace; font-size: var(--font-xs); letter-spacing: .16em; text-transform: uppercase; color: var(--accent); padding: 0 8px; }
 .legend-opt { color: var(--ink-soft); text-transform: none; letter-spacing: 0; }
+
+/* Upload form: section strip + collapsible optional sections */
+.upload-sections { position: sticky; top: calc(70px + var(--admin-banner-h, 0px)); z-index: 20; display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; margin: -4px 0 4px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; }
+.upload-sections button { background: var(--bone); border: 1px solid var(--line); border-radius: 100px; padding: 6px 12px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-soft); cursor: pointer; transition: color .2s, background .2s, border-color .2s; }
+.upload-sections button:hover { color: var(--ink); border-color: var(--accent); }
+.upload-sections button.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+/* Header + strip, so a chip jump lands the legend below both. */
+.shoot-form fieldset { scroll-margin-top: calc(130px + var(--admin-banner-h, 0px)); }
+.fs-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.fs-summary { font-family: var(--mono-font); font-size: var(--font-xs); color: var(--ink-soft); }
+.fs-toggle { background: none; border: 1px solid var(--line); border-radius: var(--r-sm); padding: 6px 10px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink); cursor: pointer; white-space: nowrap; }
+.fs-toggle:hover { border-color: var(--accent); color: var(--accent); }
+/* display: contents keeps the fieldset's own column gap between the fields
+   inside the wrapper, exactly as before it existed. */
+.fs-collapsible .fs-body { display: contents; }
+.fs-collapsible.is-collapsed .fs-body { display: none; }
+.fs-divider { border-top: 1px dashed var(--line); margin: 2px 0; }
+.publish-toggles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 20px; padding: 12px 14px; background: var(--bone); border: 1px solid var(--line); border-radius: 8px; }
+.publish-toggles label { display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); font-weight: 500; color: var(--ink); cursor: pointer; user-select: none; }
+@media (max-width: 620px) {
+  .upload-sections { top: calc(60px + var(--admin-banner-h, 0px)); gap: 5px; padding: 6px; }
+  .upload-sections button { padding: 5px 9px; }
+}
 .field { display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; }
 .field > span { font-size: var(--font-sm); font-weight: 600; min-height: 2.2em; display: flex; align-items: flex-end; margin-bottom: 2px; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: end; }
