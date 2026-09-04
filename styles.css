@@ -2710,3 +2710,5 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 /* Agency sub-line (handle / website) under the agency name */
 .lb-person-sub { font-size: 12.5px; gap: 2px 12px; }
 .lb-person-sub a { font-size: 12.5px; font-weight: 600; }
+
+.vis-table tbody th small { display: block; font-size: 11.5px; font-weight: 400; color: var(--ink-soft); margin-top: 2px; }
