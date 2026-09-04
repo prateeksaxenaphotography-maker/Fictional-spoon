@@ -1346,6 +1346,30 @@ window.moveAdminPackageRow = function(index, dir) {
 
   const shouldShowField = (shoot, fieldName) => isAdmin() || shoot[`show${fieldName}`] !== false;
 
+  // Where a model's agency / email may appear, per surface (CompCard, Home,
+  // Pdf). Older albums saved a single switch (showAgency / showModelEmail);
+  // that is honoured when no per-surface value exists. Agency defaults to
+  // shown, the email to hidden: it is personal data.
+  const showRep = (shoot, what, surface) => {
+    if (!shoot) return false;
+    const v = shoot[`show${what}On${surface}`];
+    if (v !== undefined) return v === true;
+    return what === "Agency" ? shoot.showAgency !== false : shoot.showModelEmail === true;
+  };
+  // The agency is typed like every other credit — "Name (@handle; site.com)" —
+  // and stored split, because comp cards and PDFs print the name and link
+  // the handle separately.
+  const igHandleFromCredit = (text) => {
+    const m = (text || "").match(/\(([^)]+)\)/);
+    const parts = m ? m[1].split(/[;,]/).map(x => x.trim()).filter(Boolean) : ((text || "").match(/@[\w._-]+|instagram\.com\/[^\s)]+/gi) || []);
+    for (const p of parts) {
+      if (p.startsWith("@")) return p.slice(1);
+      const ig = p.match(/instagram\.com\/([\w._-]+)/i);
+      if (ig) return ig[1];
+    }
+    return "";
+  };
+
   // Does this album belong on the Comp Cards / Model Portfolio pages?
   //
   // "Show as Comp Card" is the real switch. Type used to be the only way in,
@@ -2329,11 +2353,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // album's agency (buildCompCardDisplayList picks it newest-first), so a
     // model who moved agencies between shoots shows where they are now.
     const repRows = [];
-    if (isCc && shoot.agency && shouldShowField(shoot, "Agency")) {
+    if (isCc && shoot.agency && showRep(shoot, "Agency", "CompCard")) {
       repRows.push(`<div class="lb-credit"><dt>Agency</dt><dd><span class="lb-person">${esc(shoot.agency)}${shoot.agencyHandle ? ` <a href="https://instagram.com/${encodeURIComponent(shoot.agencyHandle)}" target="_blank" rel="noopener noreferrer">@${esc(shoot.agencyHandle)} ↗</a>` : ""}</span></dd></div>`);
     }
     // Strictly opt-in, even for admins: it is the model's personal email.
-    if (isCc && shoot.modelEmail && shoot.showModelEmail === true) {
+    if (isCc && shoot.modelEmail && showRep(shoot, "Email", "CompCard")) {
       repRows.push(`<div class="lb-credit"><dt>Email</dt><dd><span class="lb-person"><a href="mailto:${esc(shoot.modelEmail)}">${esc(shoot.modelEmail)}</a></span></dd></div>`);
     }
     const agencyHtml = repRows.length ? `<dl class="lb-credits lb-credits-top">${repRows.join("")}</dl>` : "";
@@ -3406,13 +3430,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // credits line.
       if (s.talent && s.talent !== "—") creditsList.push(`Talent <strong>${esc(getTalentCleanName(s.talent))}</strong>`);
       // Current agency: the unified card carries the newest album's value.
-      if (s.agency && shouldShowField(s, "Agency")) {
+      // Cards render on the homepage and on the comp card pages; each has
+      // its own switch for the agency and the email.
+      const repSurface = (isCurrentlyCompCardView() || isCurrentlyModelPortfolioView()) ? "CompCard" : "Home";
+      if (s.agency && showRep(s, "Agency", repSurface)) {
         const agencyLink = s.agencyHandle
           ? ` <a href="https://instagram.com/${encodeURIComponent(s.agencyHandle)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600;">@${esc(s.agencyHandle)}</a>`
           : "";
         creditsList.push(`Agency <strong>${esc(s.agency)}</strong>${agencyLink}`);
       }
-      if (s.modelEmail && s.showModelEmail === true) creditsList.push(`Email <a href="mailto:${esc(s.modelEmail)}" style="color:var(--accent); font-weight:600;">${esc(s.modelEmail)}</a>`);
+      if (s.modelEmail && showRep(s, "Email", repSurface)) creditsList.push(`Email <a href="mailto:${esc(s.modelEmail)}" style="color:var(--accent); font-weight:600;">${esc(s.modelEmail)}</a>`);
       if (igHtml) creditsList.push(`Socials ${igHtml}`);
     } else {
       if (s.photographer || s.secondaryPhotographers) {
@@ -6463,6 +6490,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
            const found = shootsInGroup.find(s => s[key] && String(s[key]).trim());
            return found ? String(found[key]).trim() : "";
         };
+        // Each visibility switch travels with the album that supplied the
+        // value, so the newest album's choice decides per surface.
+        const agencySrc = shootsInGroup.find(x => x.agency && String(x.agency).trim());
+        const emailSrc = shootsInGroup.find(x => x.modelEmail && String(x.modelEmail).trim());
+        const repFlags = {};
+        ["CompCard", "Home", "Pdf"].forEach(sf => { repFlags[`showAgencyOn${sf}`] = showRep(agencySrc, "Agency", sf); repFlags[`showEmailOn${sf}`] = showRep(emailSrc, "Email", sf); });
 
         // Model type merges across the group instead of taking the latest
         // shoot's value: a model tagged Fashion on one shoot and Fitness on
@@ -6498,8 +6531,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           modelEmail: findStat("modelEmail"),
           // Each flag travels with the album that supplied its value, so the
           // newest album's choice decides what visitors and the PDF may see.
-          showAgency: (shootsInGroup.find(x => x.agency && String(x.agency).trim()) || {}).showAgency !== false,
-          showModelEmail: (shootsInGroup.find(x => x.modelEmail && String(x.modelEmail).trim()) || {}).showModelEmail === true,
+          ...repFlags,
           modelTypes: groupModelTypes,
           // Carried over so the "Show stats on Comp Cards / Model
           // Portfolio" checkboxes still apply once shoots are merged into
@@ -7100,7 +7132,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             </fieldset>
 
             <fieldset id="fs_credits"><legend>Credits</legend>
-              <p class="field-note credits-note">Add socials in parentheses after a name — <code>Name (@handle; site.com)</code>. Separate several people with commas.</p>
+              <div class="credits-format" role="note">
+                <span class="credits-format-k">How to write a credit</span>
+                <code>Name (@handle; site.com)</code>
+                <span class="credits-format-sub">Socials go in parentheses after the name, separated by <code>;</code>. Several people: separate with commas. Example — <em>Aisha Khan (@aisha.k; aishakhan.com), Rohan (@rohan.shoots)</em>. The same pattern works for the agency.</span>
+              </div>
               <div class="field-row">
                 <label class="field"><span>Photographer <em class="label-hint">primary</em></span><input id="f_photographer" type="text" value="nerdyphotographer" placeholder="Your name" /></label>
                 <label class="field"><span>Secondary photographer(s)</span><input id="f_photographer2" type="text" placeholder="e.g. Name (@handle; site.com), Name Two" /><span class="field-verify" id="f_photographer2_verify" style="display: none;"></span></label>
@@ -7118,18 +7154,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <label class="field"><span>Model / talent</span><input id="f_talent" type="text" placeholder="e.g. Bharti (@handle; site.com), Suyagya" /><span class="field-verify" id="f_talent_verify" style="display: none;"></span></label>
               </div>
               <div class="field-row" id="f_agency_row">
-                <label class="field"><span>Model's agency <em class="label-hint">as of this shoot</em></span><input id="f_agency" type="text" placeholder="e.g. Inega Model Management" /></label>
-                <label class="field"><span>Agency Instagram</span><input id="f_agency_ig" type="text" placeholder="e.g. @inegamodels" /></label>
-              </div>
-              <div class="field-row" id="f_model_email_row">
+                <label class="field"><span>Model's agency <em class="label-hint">as of this shoot</em></span><input id="f_agency" type="text" placeholder="e.g. Inega Model Management (@inegamodels; inega.com)" /><span class="field-verify" id="f_agency_verify" style="display: none;"></span></label>
                 <label class="field"><span>Model's email <em class="label-hint">optional</em></span><input id="f_model_email" type="email" placeholder="name@example.com" autocomplete="off" /></label>
-                <div class="field credit-visibility">
-                  <span>Show publicly — comp card, homepage &amp; PDF</span>
-                  <label class="mini-check"><input id="f_show_agency" type="checkbox" checked /> Agency name &amp; Instagram</label>
-                  <label class="mini-check"><input id="f_show_model_email" type="checkbox" /> Model's email</label>
-                </div>
               </div>
-              <p class="field-note credits-note" style="margin-top: -2px;">Models move between agencies — the comp card and PDF use the agency from the model's most recent album, so record who represented them at the time of this shoot.</p>
+              <p class="field-note credits-note" style="margin-top: -2px;">Models move between agencies — the comp card and PDF use the agency from the model's most recent album. Where the agency and email may appear is set under Publish settings.</p>
               <div class="field-row" id="f_mentor_row" style="display: none;">
                 <label class="field" style="grid-column: 1 / -1;"><span>Teacher / Mentor</span><input id="f_mentor" type="text" placeholder="e.g. Mentor One (@handle; site.com), Mentor Two" /><span class="field-verify" id="f_mentor_verify" style="display: none;"></span></label>
               </div>
@@ -7253,6 +7281,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   <input id="f_show_test_shoot_cat" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 3px 0 0;" />
                   <span class="tog-text"><strong>Show the &quot;Test shoot / TFP&quot; label on the album</strong><small>Otherwise visitors see a normal album, not that it was a collaboration.</small></span>
                 </label>
+              </div>
+              <div class="vis-matrix" id="repVisibility">
+                <p class="vis-matrix-title">Agency &amp; contact</p>
+                <p class="vis-matrix-sub">Where the model's agency (name and Instagram) and email may appear. The email stays hidden everywhere until you switch it on.</p>
+                <table class="vis-table">
+                  <thead><tr><th></th><th>Comp cards</th><th>Homepage</th><th>PDF</th></tr></thead>
+                  <tbody>
+                    <tr><th>Agency name &amp; Instagram</th><td><input id="f_show_agency_cc" type="checkbox" checked aria-label="Agency on comp cards" /></td><td><input id="f_show_agency_home" type="checkbox" checked aria-label="Agency on homepage" /></td><td><input id="f_show_agency_pdf" type="checkbox" checked aria-label="Agency on PDF" /></td></tr>
+                    <tr><th>Model's email</th><td><input id="f_show_email_cc" type="checkbox" aria-label="Email on comp cards" /></td><td><input id="f_show_email_home" type="checkbox" aria-label="Email on homepage" /></td><td><input id="f_show_email_pdf" type="checkbox" aria-label="Email on PDF" /></td></tr>
+                  </tbody>
+                </table>
               </div>
               <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 4px 0 0;">Show on the album page:</p>
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
@@ -8107,7 +8146,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
       const activityField = $("#f_activity_field");
       if (activityField) activityField.style.display = isTestimonialOnly ? "none" : "";
-      ["#f_agency_row", "#f_model_email_row"].forEach(sel => { const row = $(sel); if (row) row.style.display = isTestimonialOnly ? "none" : ""; });
+      { const row = $("#f_agency_row"); if (row) row.style.display = isTestimonialOnly ? "none" : ""; }
 
       // Change labels and descriptions
       const titleLabel = $("#f_title")?.closest(".field")?.querySelector("span");
@@ -8223,9 +8262,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         $("#f_shoes").value = editingShoot.shoes || "";
         $("#f_model_hair").value = editingShoot.modelHair || "";
         $("#f_model_eyes").value = editingShoot.modelEyes || "";
-        if ($("#f_agency")) $("#f_agency").value = editingShoot.agency || "";
+        if ($("#f_agency")) $("#f_agency").value = editingShoot.agencyCredit || (editingShoot.agency ? editingShoot.agency + (editingShoot.agencyHandle ? ` (@${editingShoot.agencyHandle})` : "") : "");
         if ($("#f_model_email")) $("#f_model_email").value = editingShoot.modelEmail || "";
-        if ($("#f_agency_ig")) $("#f_agency_ig").value = editingShoot.agencyHandle ? `@${editingShoot.agencyHandle}` : "";
         writeModelTypes(editingShoot.modelTypes);
         if ($("#f_show_stats_comp")) $("#f_show_stats_comp").checked = (editingShoot.showStatsOnCompCard !== false);
         if ($("#f_show_stats_port")) $("#f_show_stats_port").checked = (editingShoot.showStatsOnModelPortfolio !== false);
@@ -8306,8 +8344,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           if (el) el.checked = editingShoot[prop] !== false;
         });
         // Agency defaults to shown, the email to hidden: it is personal data.
-        if ($("#f_show_agency")) $("#f_show_agency").checked = editingShoot.showAgency !== false;
-        if ($("#f_show_model_email")) $("#f_show_model_email").checked = editingShoot.showModelEmail === true;
+        [["cc", "CompCard"], ["home", "Home"], ["pdf", "Pdf"]].forEach(([suffix, surface]) => {
+          const a = $("#f_show_agency_" + suffix); if (a) a.checked = showRep(editingShoot, "Agency", surface);
+          const e = $("#f_show_email_" + suffix); if (e) e.checked = showRep(editingShoot, "Email", surface);
+        });
 
         staged = editingShoot.photos.map(p => {
           const isCover = editingShoot.coverPhotoId ? (p.id.split("-")[0] === editingShoot.coverPhotoId) : false;
@@ -8802,6 +8842,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     setupLinkVerification("f_ad", "f_ad_verify", "adVerifyFlag");
     setupLinkVerification("f_photographer2", "f_photographer2_verify", "photographer2VerifyFlag");
     setupLinkVerification("f_video", "f_video_verify", "videoVerifyFlag");
+    setupLinkVerification("f_agency", "f_agency_verify", "agencyVerifyFlag");
     setupLinkVerification("f_mentor", "f_mentor_verify", "mentorVerifyFlag");
     setupLinkVerification("f_credits", "f_credits_verify", "creditsVerifyFlag");
     setupLinkVerification("f_ig", "f_ig_verify", "igVerifyFlag", parseInstagramLinks);
@@ -8882,6 +8923,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         toast("Please test the secondary photographer links before publishing.");
         return;
       }
+      const agencyVal = val("f_agency");
+      const originalAgency = editingShoot ? (editingShoot.agencyCredit || "") : "";
+      if (agencyVal && agencyVal !== originalAgency && window.agencyVerifyFlag?.hasLinks?.() && !window.agencyVerifyFlag?.get?.()) {
+        toast("Please test the agency links before publishing.");
+        return;
+      }
       const videoVal = val("f_video");
       const originalVideo = editingShoot ? (editingShoot.videographer || "") : "";
       if (videoVal && videoVal !== originalVideo && window.videoVerifyFlag?.hasLinks?.() && !window.videoVerifyFlag?.get?.()) {
@@ -8955,8 +9002,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         modelEyes: isTestimonialOnly ? "" : val("f_model_eyes"),
         // Per album, because a model changes agencies between shoots; the
         // unified comp card reads the most recent album that names one.
-        agency: isTestimonialOnly ? "" : val("f_agency"),
-        agencyHandle: isTestimonialOnly ? "" : val("f_agency_ig").replace(/^@/, ""),
+        agencyCredit: isTestimonialOnly ? "" : val("f_agency"),
+        agency: isTestimonialOnly ? "" : getTalentCleanName(val("f_agency")),
+        agencyHandle: isTestimonialOnly ? "" : igHandleFromCredit(val("f_agency")),
         modelEmail: isTestimonialOnly ? "" : val("f_model_email"),
         modelTypes: isTestimonialOnly ? [] : modelTypesOf({ modelTypes: readModelTypes() }),
         showStatsOnCompCard: isTestimonialOnly ? true : ($("#f_show_stats_comp") ? $("#f_show_stats_comp").checked : true),
@@ -9008,8 +9056,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         showStats: $("#f_show_stats")?.checked ?? true,
         showGear: $("#f_show_gear")?.checked ?? true,
         showLocation: $("#f_show_location")?.checked ?? true,
-        showAgency: $("#f_show_agency")?.checked ?? true,
-        showModelEmail: $("#f_show_model_email")?.checked ?? false,
+        showAgencyOnCompCard: $("#f_show_agency_cc")?.checked ?? true,
+        showAgencyOnHome: $("#f_show_agency_home")?.checked ?? true,
+        showAgencyOnPdf: $("#f_show_agency_pdf")?.checked ?? true,
+        showEmailOnCompCard: $("#f_show_email_cc")?.checked ?? false,
+        showEmailOnHome: $("#f_show_email_home")?.checked ?? false,
+        showEmailOnPdf: $("#f_show_email_pdf")?.checked ?? false,
         coverPhotoId: isTestimonialOnly ? null : (coverItem ? coverItem.id : null),
       };
       pub.disabled = true; pub.textContent = editingShoot ? "Saving changes…" : "Publishing…";
@@ -12360,8 +12412,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (shoot.shoes) statsArr.push(`Shoes: ${shoot.shoes}`);
     if (shoot.modelHair) statsArr.push(`Hair: ${shoot.modelHair}`);
     if (shoot.modelEyes) statsArr.push(`Eyes: ${shoot.modelEyes}`);
-    if (shoot.agency && shoot.showAgency !== false) statsArr.push(`Agency: ${esc(shoot.agency)}${shoot.agencyHandle ? ` (@${esc(shoot.agencyHandle)})` : ""}`);
-    if (shoot.modelEmail && shoot.showModelEmail === true) statsArr.push(`Email: ${esc(shoot.modelEmail)}`);
     const statsLine = statsArr.join("  ·  ");
     return statsLine ? `
       <div style="font-family:'JetBrains Mono', monospace; font-size: calc(11px * var(--print-scale, 1)); font-weight: 700; background: #f5f5f5; color: #000; padding: calc(10px * var(--print-scale, 1)) calc(14px * var(--print-scale, 1)); text-transform: uppercase; letter-spacing: 0.05em; text-align: center; border-radius: 6px; margin-bottom: calc(20px * var(--print-scale, 1)); border: 1px solid #e0e0e0; flex: 0 0 auto;">
@@ -12386,6 +12436,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         printSocials.push(`Kavyar: ${cleaned.join(", ")}`);
       }
     }
+    // Representation and contact ride with the socials, not the measurement
+    // bar: hiding a model's stats must not hide who represents them.
+    if (shoot.agency && showRep(shoot, "Agency", "Pdf")) printSocials.push(`Agency: ${esc(shoot.agency)}${shoot.agencyHandle ? ` (@${esc(shoot.agencyHandle)})` : ""}`);
+    if (shoot.modelEmail && showRep(shoot, "Email", "Pdf")) printSocials.push(`Email: <span style="text-transform: none;">${esc(shoot.modelEmail)}</span>`);
     const socialsLine = printSocials.join("   |   ");
     return socialsLine ? `
       <div style="font-family:'JetBrains Mono', monospace; font-size: calc(10px * var(--print-scale, 1)); font-weight: 700; color: #333; padding: calc(6px * var(--print-scale, 1)) calc(12px * var(--print-scale, 1)); text-transform: uppercase; letter-spacing: 0.05em; text-align: center; margin-bottom: calc(20px * var(--print-scale, 1)); border-bottom: 1px solid #ddd; padding-bottom: calc(10px * var(--print-scale, 1)); flex: 0 0 auto;">
@@ -12936,8 +12990,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (shoot.shoes) rows.push(["Shoes", shoot.shoes]);
     if (shoot.modelHair) rows.push(["Hair", shoot.modelHair]);
     if (shoot.modelEyes) rows.push(["Eyes", shoot.modelEyes]);
-    if (shoot.agency && shoot.showAgency !== false) rows.push(["Agency", `${shoot.agency}${shoot.agencyHandle ? ` · @${shoot.agencyHandle}` : ""}`]);
-    if (shoot.modelEmail && shoot.showModelEmail === true) rows.push(["Email", shoot.modelEmail]);
     if (!rows.length) return "";
     return rows.map(([label, val]) => `
       <div>
@@ -12959,6 +13011,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         rows.push(["Instagram", cleaned.join(", "), false]);
       }
     }
+    if (shoot.agency && showRep(shoot, "Agency", "Pdf")) rows.push(["Agency", `${shoot.agency}${shoot.agencyHandle ? ` · @${shoot.agencyHandle}` : ""}`, false]);
+    if (shoot.modelEmail && showRep(shoot, "Email", "Pdf")) rows.push(["Email", shoot.modelEmail, false]);
     if (manualFields.phone) rows.push(["Phone", manualFields.phone, true]);
     if (manualFields.brands && manualFields.brands.length) rows.push(["Worked With", manualFields.brands.join(" · "), true]);
     if (!rows.length) return "";
