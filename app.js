@@ -1283,30 +1283,10 @@ window.moveAdminPackageRow = function(index, dir) {
   }
 
   function buildSocialLinkHtml(s, compact = false) {
-    let url = s, label = s;
-    if (s.includes("instagram.com") || s.startsWith("@")) {
-      if (s.startsWith("http")) {
-        const handle = s.split("instagram.com/")[1]?.split("/")[0]?.split("?")[0] || "";
-        url = `https://instagram.com/${handle}`;
-        label = `@${handle}`;
-      } else if (s.startsWith("@")) {
-        label = s;
-        url = "https://instagram.com/" + s.replace(/^@/, "");
-      } else {
-        label = "@" + s;
-        url = "https://instagram.com/" + s;
-      }
-    } else if (s.includes("kavyar.com")) {
-      url = s.startsWith("http") ? s : "https://" + s;
-      label = compact ? "Kavyar" : "Kavyar: " + url.split("/").pop();
-    } else if (s.startsWith("http")) {
-      url = s;
-      label = compact ? "Link" : s.split("//")[1]?.split("/")[0] || "Link";
-    } else {
-      url = "https://instagram.com/" + s;
-      label = "@" + s;
-    }
-    const arrow = compact ? "" : " ↗";
+    const c = classifySocial(s);
+    if (!c) return "";
+    const url = c.url, label = c.label;
+    const arrow = (compact || c.kind === "email") ? "" : " ↗";
     const margin = compact ? "4px" : "6px";
     return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent); font-weight:700; text-decoration:none; margin-left:${margin}; display:inline-flex; align-items:center; gap:2px;">${esc(label)}${arrow}</a>`;
   }
@@ -1411,6 +1391,55 @@ window.moveAdminPackageRow = function(index, dir) {
   };
   const siteHref = (site) => /^https?:\/\//i.test(site) ? site : `https://${site}`;
   const cleanSite = (v) => String(v || "").trim().replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/$/, "");
+  // Everything that can follow a name in a credit, told apart by shape so
+  // the order never matters and any part can be left out:
+  //   @handle · instagram.com/x · ig:x          Instagram
+  //   kavyar.com/x · kv:x                       Kavyar
+  //   linkedin.com/in/x · li:x                  LinkedIn
+  //   behance.net/x · be:x                      Behance
+  //   name@domain.tld · mail:x                  email
+  //   anything else with a dot · web:x          website
+  // The short prefixes exist for the one case shape cannot settle: a bare
+  // LinkedIn or Behance name typed without its domain.
+  function classifySocial(raw) {
+    let v = String(raw || "").trim();
+    if (!v) return null;
+    let forced = "";
+    const pre = v.match(/^(ig|instagram|kv|kavyar|li|linkedin|be|behance|mail|email|web|site):\s*(.+)$/i);
+    if (pre) {
+      forced = { ig: "instagram", instagram: "instagram", kv: "kavyar", kavyar: "kavyar", li: "linkedin", linkedin: "linkedin", be: "behance", behance: "behance", mail: "email", email: "email", web: "website", site: "website" }[pre[1].toLowerCase()];
+      v = pre[2].trim();
+    }
+    const pathAfter = (host) => { const m = v.match(new RegExp(host.replace(".", "\\.") + "\\/([^\\s?#]+)", "i")); return m ? m[1].replace(/\/+$/, "") : ""; };
+    const has = (host) => new RegExp(host.replace(".", "\\."), "i").test(v);
+    if (forced === "email" || (!forced && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v))) return { kind: "email", label: v, url: `mailto:${v}` };
+    if (forced === "instagram" || (!forced && (v.startsWith("@") || has("instagram.com")))) {
+      const h = has("instagram.com") ? (pathAfter("instagram.com").split("/")[0] || "") : v.replace(/^@/, "");
+      return h ? { kind: "instagram", label: `@${h}`, url: `https://instagram.com/${h}` } : null;
+    }
+    if (forced === "kavyar" || (!forced && has("kavyar.com"))) { const p = has("kavyar.com") ? pathAfter("kavyar.com") : v.replace(/^@/, ""); return { kind: "kavyar", label: "Kavyar", url: `https://kavyar.com/${p}` }; }
+    if (forced === "linkedin" || (!forced && has("linkedin.com"))) { const p = has("linkedin.com") ? pathAfter("linkedin.com") : `in/${v.replace(/^@/, "")}`; return { kind: "linkedin", label: "LinkedIn", url: `https://www.linkedin.com/${p}` }; }
+    if (forced === "behance" || (!forced && has("behance.net"))) { const p = has("behance.net") ? pathAfter("behance.net") : v.replace(/^@/, ""); return { kind: "behance", label: "Behance", url: `https://www.behance.net/${p}` }; }
+    if (forced === "website" || /\./.test(v)) { const clean = cleanSite(v); return { kind: "website", label: clean, url: /^https?:\/\//i.test(v) ? v : `https://${clean}` }; }
+    // A bare word has always meant an Instagram handle.
+    return { kind: "instagram", label: `@${v}`, url: `https://instagram.com/${v}` };
+  }
+  const SOCIAL_ORDER = ["instagram", "kavyar", "linkedin", "behance", "website", "email"];
+  const SOCIAL_LABEL = { instagram: "Instagram", kavyar: "Kavyar", linkedin: "LinkedIn", behance: "Behance", website: "Website", email: "Email" };
+  const socialsFromCredit = (text) => {
+    const m = String(text || "").match(/\(([^)]+)\)/);
+    if (!m) return [];
+    return m[1].split(";").map(x => x.trim()).filter(Boolean).map(classifySocial).filter(Boolean);
+  };
+  // Printed form of a link: the handle, the address, or the bare site/path.
+  const socialPrintText = (l) => l.kind === "instagram" || l.kind === "email" ? l.label : cleanSite(l.url);
+  const agencyLinksOf = (shoot) => {
+    if (Array.isArray(shoot.agencyLinks) && shoot.agencyLinks.length) return shoot.agencyLinks;
+    const out = [];
+    const h = cleanIgHandle(shoot.agencyHandle); if (h) out.push({ kind: "instagram", label: `@${h}`, url: `https://instagram.com/${h}` });
+    const site = cleanSite(shoot.agencySite); if (site) out.push({ kind: "website", label: site, url: siteHref(site) });
+    return out;
+  };
   const igHandleFromCredit = (text) => {
     const m = (text || "").match(/\(([^)]+)\)/);
     const parts = m ? m[1].split(/[;,]/).map(x => x.trim()).filter(Boolean) : ((text || "").match(/@[\w._-]+|instagram\.com\/[^\s)]+/gi) || []);
@@ -2406,11 +2435,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // model who moved agencies between shoots shows where they are now.
     const repRows = [];
     if (isCc && shoot.agency && showRep(shoot, "Agency", "CompCard")) {
-      const agHandle = cleanIgHandle(shoot.agencyHandle), agSite = cleanSite(shoot.agencySite);
-      const agSub = [
-        agHandle ? `<a href="https://instagram.com/${encodeURIComponent(agHandle)}" target="_blank" rel="noopener noreferrer">@${esc(agHandle)} ↗</a>` : "",
-        agSite ? `<a href="${esc(siteHref(agSite))}" target="_blank" rel="noopener noreferrer">${esc(agSite)} ↗</a>` : ""
-      ].filter(Boolean).join("");
+      const agSub = agencyLinksOf(shoot).map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label)}${l.kind === "email" ? "" : " ↗"}</a>`).join("");
       repRows.push(`<div class="lb-credit"><dt>Agency</dt><dd><span class="lb-person">${esc(shoot.agency)}</span>${agSub ? `<span class="lb-person lb-person-sub">${agSub}</span>` : ""}</dd></div>`);
     }
     // Strictly opt-in, even for admins: it is the model's personal email.
@@ -2609,9 +2634,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       shoot.activity ? `<div><dt>Activity</dt><dd>${esc(shoot.activity)}</dd></div>` : "",
       shoot.season ? `<div><dt>Season</dt><dd>${esc(shoot.season)}</dd></div>` : ""
     ].filter(Boolean);
-    const socialsHtml = (igHtml || kavyarHtml)
-      ? creditRows([{ label: "Socials", rendered: [igHtml, kavyarHtml].filter(Boolean).map(h => `<span class="lb-person">${h}</span>`) }])
-      : "";
+    // Comp card panel: every social we have for the model, from the album
+    // fields and the model credit alike (same list the PDF prints).
+    const socialsHtml = (() => {
+      const links = printModelLinks(shoot);
+      if (!links.length) return "";
+      return creditRows([{ label: "Socials", rendered: links.map(l => `<span class="lb-person"><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label)}${l.kind === "email" ? "" : " ↗"}</a></span>`) }]);
+    })();
     return `
       <div class="lb-panel">
         <header class="lb-head">
@@ -6548,6 +6577,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           agency: findStat("agency"),
           agencyHandle: cleanIgHandle(agencySrc ? agencySrc.agencyHandle : ""),
           agencySite: agencySrc ? (agencySrc.agencySite || "") : "",
+          agencyLinks: agencySrc ? (agencySrc.agencyLinks || []) : [],
           modelEmail: findStat("modelEmail"),
           // Each flag travels with the album that supplied its value, so the
           // newest album's choice decides what visitors and the PDF may see.
@@ -7154,8 +7184,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <fieldset id="fs_credits"><legend>Credits</legend>
               <div class="credits-format" role="note">
                 <span class="credits-format-k">How to write a credit</span>
-                <code>Name (@handle; site.com)</code>
-                <span class="credits-format-sub">Socials go in parentheses after the name, separated by <code>;</code>. Several people: separate with commas. Example — <em>Aisha Khan (@aisha.k; aishakhan.com), Rohan (@rohan.shoots)</em>. The same pattern works for the agency.</span>
+                <code>Name (@handle; site.com; …)</code>
+                <span class="credits-format-sub">Socials go in parentheses after the name, separated by <code>;</code> — Instagram <code>@handle</code>, <code>kavyar.com/…</code>, <code>linkedin.com/in/…</code>, <code>behance.net/…</code>, a website, an email. Any of them, in any order: the app tells them apart by their shape. Several people: separate with commas. Example — <em>Aisha Khan (@aisha.k; linkedin.com/in/aishak; aishakhan.com; aisha@mail.com)</em>. Instagram, Kavyar, LinkedIn, Behance and websites get a verify link; email cannot be tested. The same pattern works for the agency.</span>
               </div>
               <div class="field-row">
                 <label class="field"><span>Photographer <em class="label-hint">primary</em></span><input id="f_photographer" type="text" value="nerdyphotographer" placeholder="Your name" /></label>
@@ -8787,20 +8817,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           if (match) {
             const socials = match[1].split(";").map(s => s.trim()).filter(Boolean);
             socials.forEach(s => {
-              if (s.includes("instagram.com") || s.startsWith("@")) {
-                let handle = s.startsWith("@") ? s.replace(/^@/, "") : s;
-                // Extract handle from full URL, removing query params
-                if (handle.includes("instagram.com")) {
-                  handle = handle.split("instagram.com/")[1]?.split("/")[0]?.split("?")[0] || "";
-                }
-                if (handle) {
-                  allLinks.push({ label: `@${handle}`, url: `https://instagram.com/${handle}` });
-                }
-              } else if (s.includes("kavyar.com")) {
-                allLinks.push({ label: "Kavyar", url: s.startsWith("http") ? s : "https://" + s });
-              } else if (s.startsWith("http")) {
-                allLinks.push({ label: s.split("//")[1]?.split("/")[0] || "Link", url: s });
-              }
+              const c = classifySocial(s);
+              if (c && c.kind !== "email") allLinks.push({ label: c.label, url: c.url });
             });
           }
         });
@@ -9029,6 +9047,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         agency: isTestimonialOnly ? "" : getTalentCleanName(val("f_agency")),
         agencyHandle: isTestimonialOnly ? "" : igHandleFromCredit(val("f_agency")),
         agencySite: isTestimonialOnly ? "" : siteFromCredit(val("f_agency")),
+        agencyLinks: isTestimonialOnly ? [] : socialsFromCredit(val("f_agency")),
         modelEmail: isTestimonialOnly ? "" : val("f_model_email"),
         modelTypes: isTestimonialOnly ? [] : modelTypesOf({ modelTypes: readModelTypes() }),
         showStatsOnCompCard: isTestimonialOnly ? true : ($("#f_show_stats_comp") ? $("#f_show_stats_comp").checked : true),
@@ -12444,37 +12463,32 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     ` : "";
   }
 
-  function printSocialsBarHtml(shoot) {
-    // Contact line: each item is a label + value, and the agency carries its
-    // handle and/or website on a smaller second line.
-    const items = [];
+  // Every social we have for the model: the album's Instagram / Kavyar
+  // fields first, then whatever sits in the model's own credit, in a fixed
+  // order and without repeats.
+  function printModelLinks(shoot) {
+    const links = [];
+    const add = (l) => { if (l && !links.some(x => x.url.toLowerCase() === l.url.toLowerCase())) links.push(l); };
     if (shoot.instagram) {
-      const filteredHandles = compCardOwnHandles(shoot, shoot.instagram.split(",").map(x => x.trim()).filter(Boolean), isIgHandle);
-      if (filteredHandles.length) {
-        const cleaned = filteredHandles.map(h => h.startsWith("@") ? h : `@${h.split("/").pop()}`);
-        items.push({ main: `Instagram: ${esc(cleaned.join(", "))}` });
-      }
-    }
-    // No Instagram field on the album: fall back to the handle written in
-    // the model credit, e.g. "Kunaal (@kunaal_raghav07)".
-    if (!items.length && shoot.talent) {
-      const h = igHandleFromCredit(shoot.talent);
-      if (h) items.push({ main: `Instagram: @${esc(cleanIgHandle(h))}` });
+      compCardOwnHandles(shoot, shoot.instagram.split(",").map(x => x.trim()).filter(Boolean), isIgHandle).forEach(h => add(classifySocial(h)));
     }
     if (shoot.kavyar) {
-      const filteredHandles = compCardOwnHandles(shoot, shoot.kavyar.split(",").map(x => x.trim()).filter(Boolean), isKavyarHandle);
-      if (filteredHandles.length) {
-        const cleaned = filteredHandles.map(h => h.split("/").pop());
-        items.push({ main: `Kavyar: ${esc(cleaned.join(", "))}` });
-      }
+      compCardOwnHandles(shoot, shoot.kavyar.split(",").map(x => x.trim()).filter(Boolean), isKavyarHandle).forEach(h => add(classifySocial(h)));
     }
+    socialsFromCredit(shoot.talent).forEach(add);
+    return links.sort((a, b) => SOCIAL_ORDER.indexOf(a.kind) - SOCIAL_ORDER.indexOf(b.kind));
+  }
+  function printSocialsBarHtml(shoot) {
+    // Contact line: one item per social, then the agency with its own
+    // links on a smaller second line.
+    const noCase = (t) => `<span style="text-transform: none;">${t}</span>`;
+    const items = printModelLinks(shoot).map(l => ({ main: `${SOCIAL_LABEL[l.kind]}: ${l.kind === "instagram" ? esc(l.label) : noCase(esc(socialPrintText(l)))}` }));
     if (shoot.agency && showRep(shoot, "Agency", "Pdf")) {
-      const h = cleanIgHandle(shoot.agencyHandle);
-      items.push({ main: `Agency: ${esc(shoot.agency)}`, sub: [h ? "@" + h : "", cleanSite(shoot.agencySite)].filter(Boolean).join("  ·  ") });
+      items.push({ main: `Agency: ${esc(shoot.agency)}`, sub: agencyLinksOf(shoot).map(socialPrintText).join("  ·  ") });
     }
-    if (shoot.modelEmail && showRep(shoot, "Email", "Pdf")) items.push({ main: `Email: <span style="text-transform: none;">${esc(shoot.modelEmail)}</span>` });
+    if (shoot.modelEmail && showRep(shoot, "Email", "Pdf") && !items.some(it => it.main.includes(esc(shoot.modelEmail)))) items.push({ main: `Email: ${noCase(esc(shoot.modelEmail))}` });
     if (!items.length) return "";
-    const socialsLine = items.map(it => `<span style="display: inline-block; vertical-align: top; padding: 0 calc(10px * var(--print-scale, 1));">${it.main}${it.sub ? `<span style="display: block; font-size: calc(8.5px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.03em; color: #666; text-transform: none; margin-top: calc(2px * var(--print-scale, 1));">${esc(it.sub)}</span>` : ""}</span>`).join(`<span style="color: #bbb;">|</span>`);
+    const socialsLine = items.map(it => `<span style="display: inline-block; vertical-align: top; padding: 0 calc(10px * var(--print-scale, 1)); margin-bottom: calc(3px * var(--print-scale, 1));">${it.main}${it.sub ? `<span style="display: block; font-size: calc(8.5px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.03em; color: #666; text-transform: none; margin-top: calc(2px * var(--print-scale, 1));">${esc(it.sub)}</span>` : ""}</span>`).join(`<span style="color: #bbb;">|</span>`);
     return `
       <div style="font-family:'JetBrains Mono', monospace; font-size: calc(10px * var(--print-scale, 1)); font-weight: 700; color: #333; padding: calc(6px * var(--print-scale, 1)) calc(12px * var(--print-scale, 1)); text-transform: uppercase; letter-spacing: 0.05em; text-align: center; margin-bottom: calc(20px * var(--print-scale, 1)); border-bottom: 1px solid #ddd; padding-bottom: calc(10px * var(--print-scale, 1)); flex: 0 0 auto;">
         ${socialsLine}
@@ -13038,18 +13052,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // back onto the shoot object, never persisted, never sent to the backend.
   function printTemplate1ContactRowsHtml(shoot, manualFields) {
     const rows = [];
-    if (shoot.instagram) {
-      const handles = compCardOwnHandles(shoot, shoot.instagram.split(",").map(x => x.trim()).filter(Boolean), isIgHandle);
-      if (handles.length) {
-        const cleaned = handles.map(h => h.startsWith("@") ? h : `@${h.split("/").pop()}`);
-        rows.push(["Instagram", cleaned.join(", "), false]);
-      }
-    }
+    printModelLinks(shoot).forEach(l => rows.push([SOCIAL_LABEL[l.kind], socialPrintText(l), false]));
     if (shoot.agency && showRep(shoot, "Agency", "Pdf")) {
-      const h = cleanIgHandle(shoot.agencyHandle);
-      rows.push(["Agency", shoot.agency, false, [h ? "@" + h : "", cleanSite(shoot.agencySite)].filter(Boolean).join("  ·  ")]);
+      rows.push(["Agency", shoot.agency, false, agencyLinksOf(shoot).map(socialPrintText).join("  ·  ")]);
     }
-    if (shoot.modelEmail && showRep(shoot, "Email", "Pdf")) rows.push(["Email", shoot.modelEmail, false]);
+    if (shoot.modelEmail && showRep(shoot, "Email", "Pdf") && !rows.some(r => r[1] === shoot.modelEmail)) rows.push(["Email", shoot.modelEmail, false]);
     if (manualFields.phone) rows.push(["Phone", manualFields.phone, true]);
     if (manualFields.brands && manualFields.brands.length) rows.push(["Worked With", manualFields.brands.join(" · "), true]);
     if (!rows.length) return "";
