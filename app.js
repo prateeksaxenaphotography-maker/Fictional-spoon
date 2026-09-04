@@ -9226,6 +9226,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       basePrice: 0,
       packageCharge: 0,
       isCollabBooking: false,
+      isCommercialStudioSelected: false,
       homeStudioFee: 0,
       savings: 0,
       finalPayable: 0
@@ -9564,7 +9565,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // answer from an earlier selection never rides along on a shoot it no
       // longer applies to.
       const studioArrangerWrap = $("#b_studio_arranger_wrap");
-      const isCommercialStudioSelected = studioSpaceSel?.value === COMMERCIAL_STUDIO_VALUE;
+      // An invite that supplies the venue hides the studio-space row but
+      // leaves the <select>'s value alone (so removing the code hands the
+      // visitor's earlier pick back). That stale value must not keep asking
+      // who will rent a studio the photographer is already providing.
+      const inviteSuppliesVenue = !!(isValidInvite && lockedLocation);
+      const isCommercialStudioSelected = studioSpaceSel?.value === COMMERCIAL_STUDIO_VALUE && !inviteSuppliesVenue;
       if (studioArrangerWrap) {
         studioArrangerWrap.style.display = isCommercialStudioSelected ? "" : "none";
         if (!isCommercialStudioSelected) {
@@ -9797,6 +9803,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // the client was never quoted.
         packageCharge,
         isCollabBooking,
+        // Whether the studio-arranger question is actually in play — false
+        // whenever an invite supplies the venue, even if a stale "commercial
+        // studio" pick is still sitting in the hidden <select>.
+        isCommercialStudioSelected,
         homeStudioFee,
         // What the venue would have cost, and whether the promo code covered
         // it — so the client's email and the studio's record both show the
@@ -10291,7 +10301,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // Only asked (and therefore only enforced) once a dedicated commercial
       // studio is actually being rented — see the show/hide note beside
       // b_studio_arranger_wrap in updateFields.
-      if ($("#b_studio_space")?.value === "Dedicated Commercial Studio Rental (Billed at Actuals)") {
+      // Read off bookingCalc rather than the raw <select>: an invite that
+      // supplies the venue hides the row but leaves the value, and a hidden
+      // required radio would block submit with an error nobody can see.
+      if (bookingCalc && bookingCalc.isCommercialStudioSelected) {
         if (!document.querySelector('input[name="b_studio_arranger"]:checked')) {
           setError("b_studio_arranger_client", "Please choose who will arrange the studio and lighting — you, or the photographer.");
           firstBad = firstBad || "b_studio_arranger_client";
@@ -10475,7 +10488,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // updateFields, re-read here off the same select/radio pair so the
         // document the client actually signs never disagrees with what they
         // saw on screen a moment before submitting.
-        const isCommercialStudioBooked = $("#b_studio_space")?.value === "Dedicated Commercial Studio Rental (Billed at Actuals)";
+        const isCommercialStudioBooked = !!(bookingCalc && bookingCalc.isCommercialStudioSelected);
         const studioArrangerPick = isCommercialStudioBooked ? ($("input[name='b_studio_arranger']:checked")?.value || "") : "";
         const studioArrangerSubmitClause = studioArrangerPick
           ? (studioArrangerPick === "Photographer Arranges Studio & Lighting (Billed at Actuals)"
