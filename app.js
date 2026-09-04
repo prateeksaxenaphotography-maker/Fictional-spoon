@@ -2329,8 +2329,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // album's agency (buildCompCardDisplayList picks it newest-first), so a
     // model who moved agencies between shoots shows where they are now.
     const agencyHtml = (isCc && shoot.agency) ? `
-        <div class="lb-sidebar-section" style="margin-bottom: 14px; display: flex; flex-direction: column; gap: 3px;">
-          <span style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft);">Represented by</span>
+        <div class="lb-sidebar-section lb-agency">
+          <span class="lb-h"><span>Represented by</span></span>
           <span style="font-size: var(--font-sm); font-weight: 600; color: var(--ink);">${esc(shoot.agency)}${shoot.agencyHandle ? ` <a href="https://instagram.com/${encodeURIComponent(shoot.agencyHandle)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); font-weight: 600; text-decoration: none; margin-left: 6px;">@${esc(shoot.agencyHandle)}</a>` : ""}</span>
         </div>` : "";
 
@@ -2340,24 +2340,18 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const statsAllowedHere = isCurrentlyModelPortfolioView() ? shoot.showStatsOnModelPortfolio !== false : shoot.showStatsOnCompCard !== false;
     if (isCc && hasStats && statsAllowedHere) {
       const statItems = [
-        shoot.height ? `<span>📏 <strong>Height:</strong> ${esc(shoot.height)}</span>` : "",
-        shoot.chest ? `<span>👚 <strong>${esc(chestLabelOf(shoot))}:</strong> ${esc(shoot.chest)}</span>` : "",
-        shoot.waist ? `<span>👗 <strong>Waist:</strong> ${esc(shoot.waist)}</span>` : "",
-        shoot.hips ? `<span>🩳 <strong>Hips:</strong> ${esc(shoot.hips)}</span>` : "",
-        shoot.shoes ? `<span>👟 <strong>Shoes:</strong> ${esc(shoot.shoes)}</span>` : "",
-        shoot.modelHair ? `<span>💇 <strong>Hair:</strong> ${esc(shoot.modelHair)}</span>` : "",
-        shoot.modelEyes ? `<span>👁️ <strong>Eyes:</strong> ${esc(shoot.modelEyes)}</span>` : ""
-      ].filter(Boolean);
-
+        ["Height", shoot.height],
+        [chestLabelOf(shoot), shoot.chest],
+        ["Waist", shoot.waist],
+        ["Hips", shoot.hips],
+        ["Shoes", shoot.shoes],
+        ["Hair", shoot.modelHair],
+        ["Eyes", shoot.modelEyes]
+      ].filter(([, v]) => v).map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`);
       statsHtml = `
-        <div class="lb-sidebar-section" style="background: var(--paper); border: 1.5px solid var(--accent); border-radius: 10px; padding: 14px; margin-bottom: 14px; box-shadow: var(--shadow-sm);">
-          <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
-            <span>📏 Agency Model Measurements</span>
-            <span style="font-size: var(--font-xs); background: rgba(255,69,0,0.15); padding: 2px 6px; border-radius: 4px;">VERIFIED</span>
-          </div>
-          <div style="display: flex; flex-wrap: wrap; gap: 8px 12px; font-size: var(--font-xs); color: var(--ink); line-height: 1.5;">
-            ${statItems.join("")}
-          </div>
+        <div class="lb-sidebar-section lb-card lb-stats-card">
+          <div class="lb-h"><span>Measurements</span></div>
+          <dl class="lb-stats">${statItems.join("")}</dl>
         </div>
       `;
     }
@@ -2422,9 +2416,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       items.forEach(item => {
         const rendered = isCcPage ? esc(getTalentCleanName(item)) : renderCreditValue(item);
         creativeList.push(`
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; padding: 4px 0; border-bottom: 1px dashed var(--line);">
-            <div style="font-size: var(--font-xs); font-weight: 600; color: var(--ink);">${rendered}</div>
-            <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 800; background: rgba(255, 69, 0, 0.1); color: var(--accent); border: 1px solid rgba(255, 69, 0, 0.25); padding: 2px 6px; border-radius: 4px; text-transform: uppercase; white-space: nowrap;">${roleTag}</span>
+          <div class="lb-row">
+            <div class="lb-name">${rendered}</div>
+            <span class="lb-role">${roleTag}</span>
           </div>
         `);
       });
@@ -2439,9 +2433,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           rendered += ` <span style="margin-left: 6px;">${igHtml}</span>`;
         }
         talentList.push(`
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; padding: 4px 0; border-bottom: 1px dashed var(--line);">
-            <div style="font-size: var(--font-xs); font-weight: 700; color: var(--ink); display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">${rendered}</div>
-            <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 800; background: rgba(5, 150, 105, 0.12); color: #059669; border: 1px solid rgba(5, 150, 105, 0.25); padding: 2px 6px; border-radius: 4px; text-transform: uppercase; white-space: nowrap;">MODEL</span>
+          <div class="lb-row">
+            <div class="lb-name">${rendered}</div>
+            <span class="lb-role lb-role-talent">MODEL</span>
           </div>
         `);
       });
@@ -2497,8 +2491,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (talentList.length > 0) {
       creditsSections.push(`
         <div style="margin-bottom: 16px;">
-          <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
-            <span>👥 Models &amp; Talent</span>
+          <div class="lb-h">
+            <span>Models &amp; talent</span>
           </div>
           ${talentList.join("")}
         </div>
@@ -2509,8 +2503,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (creativeList.length > 0) {
       creditsSections.push(`
         <div style="margin-bottom: 16px;">
-          <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
-            <span>🎨 Creative &amp; Production Team</span>
+          <div class="lb-h">
+            <span>Creative &amp; production</span>
           </div>
           ${creativeList.join("")}
         </div>
@@ -2521,8 +2515,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (locationContent) {
       creditsSections.push(`
         <div style="margin-bottom: 14px;">
-          <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
-            <span>📍 Location &amp; Studio</span>
+          <div class="lb-h">
+            <span>Location &amp; studio</span>
           </div>
           ${locationContent}
         </div>
@@ -2533,8 +2527,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if ((igHtml || kavyarHtml) && (!talentList.length || !talentList[0].includes("href="))) {
       creditsSections.push(`
         <div>
-          <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
-            <span>📱 Social Handle Tags</span>
+          <div class="lb-h">
+            <span>Social handles</span>
           </div>
           <div style="display: flex; flex-wrap: wrap; gap: 8px; font-size: var(--font-xs); align-items: center;">
             ${igHtml ? `<div>${igHtml}</div>` : ""}
@@ -2547,13 +2541,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (shoot.pdfUrl && shouldShowField(shoot, "Pdf")) {
       creditsSections.push(`
         <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line);">
-          <a href="${esc(shoot.pdfUrl)}" download style="color: var(--accent); text-decoration: none; font-weight: 700; font-size: var(--font-xs); display: inline-flex; align-items: center; gap: 6px;">📄 Download Publication PDF</a>
+          <a href="${esc(shoot.pdfUrl)}" download style="color: var(--accent); text-decoration: none; font-weight: 700; font-size: var(--font-xs); display: inline-flex; align-items: center; gap: 6px;">Download publication PDF</a>
         </div>
       `);
     }
 
     const creditsHtml = creditsSections.length ? `
-      <div class="lb-sidebar-section" style="background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-top: 14px; box-shadow: var(--shadow-sm);">
+      <div class="lb-sidebar-section lb-card">
         ${creditsSections.join("")}
       </div>
     ` : "";
@@ -2585,36 +2579,27 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const currentOrient = (window.compCardOrientationByShoot && window.compCardOrientationByShoot[shoot.id]) || "portrait";
         const isPortraitActive = currentOrient !== "landscape";
         pdfBtnHtml = `
-          <div class="lb-sidebar-section" style="margin-top: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bone); display: flex; flex-direction: column; gap: 10px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-              <span style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight: 700; text-transform: uppercase; color: var(--ink-soft);">PDF Orientation</span>
-              <div style="display: inline-flex; background: var(--paper); padding: 2px; border-radius: 6px; border: 1px solid var(--line);" id="compCardOrientGroup">
-                <label style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight: 700; border-radius: 4px; cursor: pointer; transition: all 0.2s ease; background: ${isPortraitActive ? "var(--ink)" : "transparent"}; color: ${isPortraitActive ? "var(--paper)" : "var(--ink-soft)"};" class="orient-radio-label${isPortraitActive ? " active" : ""}">
-                  <input type="radio" name="compCardOrientRadio" value="portrait" ${isPortraitActive ? "checked" : ""} onchange="window.setCompCardOrientation('portrait', this, '${escJs(shoot.id)}')" style="display: none;" />
+          <div class="lb-sidebar-section lb-card lb-export">
+            <div class="lb-export-head">
+              <span class="lb-h" style="margin: 0;"><span>Comp card PDF</span></span>
+              <div class="lb-seg" id="compCardOrientGroup" role="radiogroup" aria-label="PDF orientation">
+                <label class="orient-radio-label${isPortraitActive ? " active" : ""}">
+                  <input type="radio" name="compCardOrientRadio" value="portrait" ${isPortraitActive ? "checked" : ""} onchange="window.setCompCardOrientation('portrait', this, '${escJs(shoot.id)}')" />
                   <span>Portrait</span>
                 </label>
-                <label style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight: 700; border-radius: 4px; cursor: pointer; transition: all 0.2s ease; background: ${!isPortraitActive ? "var(--ink)" : "transparent"}; color: ${!isPortraitActive ? "var(--paper)" : "var(--ink-soft)"};" class="orient-radio-label${!isPortraitActive ? " active" : ""}">
-                  <input type="radio" name="compCardOrientRadio" value="landscape" ${!isPortraitActive ? "checked" : ""} onchange="window.setCompCardOrientation('landscape', this, '${escJs(shoot.id)}')" style="display: none;" />
+                <label class="orient-radio-label${!isPortraitActive ? " active" : ""}">
+                  <input type="radio" name="compCardOrientRadio" value="landscape" ${!isPortraitActive ? "checked" : ""} onchange="window.setCompCardOrientation('landscape', this, '${escJs(shoot.id)}')" />
                   <span>Landscape</span>
                 </label>
               </div>
             </div>
-            <button class="btn btn-dark btn-block" style="font-size: var(--font-xs); height: auto; padding: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;" onclick="window.triggerCompCardDownload('${escJs(shoot.id)}')">
-              Export PDF Comp Card ↗
-            </button>
-            <div style="margin-top: 4px; padding: 10px 12px; background: #fdf6f0; border: 1px solid #f2c9b6; border-left: 4px solid var(--accent); border-radius: 6px; display: flex; align-items: flex-start; gap: 8px; text-align: left;">
-              <span style="font-size: var(--font-sm); line-height: 1;">🎲</span>
-              <div style="font-family: 'JetBrains Mono', monospace; font-size: var(--font-xs); color: #3b2f27; line-height: 1.45;">
-                <strong style="color: var(--accent); text-transform: uppercase; font-size: var(--font-xs); letter-spacing: 0.03em;">Random Selection:</strong><br/>
-                Supporting photos are randomly selected from all photos tagged to this model every time you export.
-              </div>
-            </div>
+            <button class="btn btn-dark btn-block lb-export-btn" onclick="window.triggerCompCardDownload('${escJs(shoot.id)}')">Export comp card PDF</button>
+            <p class="lb-note">Supporting photos are picked at random from every photo tagged to this model, so each export is a little different.</p>
           </div>
         `;
       } else if (isAdmin()) {
         pdfBtnHtml = `
-          <div class="lb-sidebar-section" style="margin-top: 10px; font-family: 'JetBrains Mono', monospace; font-size: var(--font-xs); color: var(--accent); border: 1px dashed var(--accent); padding: 8px 12px; text-transform: uppercase; text-align: center; border-radius: 4px;">
-            🔒 Comp card PDF download disabled by agency override
+          <div class="lb-sidebar-section lb-note lb-note-admin">Comp card PDF download is switched off for this model (admin only sees this)
           </div>
         `;
       }
@@ -2625,14 +2610,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       window.currentCompCardShootObj = shoot;
       pdfBtnHtml = `
         <div class="lb-sidebar-section" style="margin-top: 10px;">
-          <button class="btn btn-dark btn-block" style="font-size: var(--font-xs); height: auto; padding: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;" onclick="window.printModelPortfolio('${escJs(shoot.id)}')">
-            Export Model Portfolio PDF ↗
-          </button>
+          <button class="btn btn-dark btn-block lb-export-btn" onclick="window.printModelPortfolio('${escJs(shoot.id)}')">Export model portfolio PDF</button>
         </div>
       `;
     }
     const disclaimerHtml = isCc ? `
-      <p class="lb-disclaimer" style="font-size: var(--font-xs); font-style: italic; color: var(--ink-soft); margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; line-height: 1.5; font-family: sans-serif;">
+      <p class="lb-disclaimer">
         To book this talent, please connect directly via their verified social channels or contact their representing agency.
         <br/><br/>
         This compcard includes photos clicked or produced under nerdyphotographer.in studio or its subsidiaries.
@@ -2642,14 +2625,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     return `
       <div style="display:flex; flex-direction:column; gap: 24px; width: 100%;">
         <div>
-          <span class="eyebrow" style="color:var(--accent); font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); letter-spacing:0.05em; text-transform:uppercase;">
+          <span class="eyebrow lb-eyebrow">
             ${isCc ? "Model Portfolio" : esc([shoot.brand, publicShootType(shoot)].filter(Boolean).join(" · "))}
           </span>
-          <h2 style="font-family:'Outfit', sans-serif; font-size: var(--font-md); font-weight:700; margin: 6px 0 0; color:var(--ink); line-height: 1.2;">
+          <h2 class="lb-title">
             ${esc(getTalentCleanName(shoot.talent || shoot.title))}
           </h2>
           ${angleHtml}
-          ${shoot.description ? `<p style="font-size: var(--font-sm); color:var(--ink-soft); line-height:1.5; margin:14px 0 0;">${esc(shoot.description)}</p>` : ""}
+          ${shoot.description ? `<p class="lb-desc">${esc(shoot.description)}</p>` : ""}
         </div>
         
         ${isCc ? "" : `
@@ -2695,13 +2678,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             return parts.join(" · ");
           };
           const rows = targets.map(t => `
-              <div style="display: flex; gap: 14px; width: 100%; margin-top: 6px;">
-                <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0; font-size: var(--font-xs); height: auto; text-align: left;" data-id="${t.id}">${targets.length > 1 ? `Edit: ${esc(shootLabel(t))}` : "Edit details"} →</button>
-                <button class="link-arrow work-delete" style="color: #b22222; font-weight: 700; padding: 0; font-size: var(--font-xs); height: auto;" data-id="${t.id}" data-title="${esc(t.title || t.talent || "")}${targets.length > 1 ? ` — ${esc(shootLabel(t))}` : ""}">Delete →</button>
+              <div class="lb-admin-row">
+                <button class="linkish work-edit" data-id="${t.id}">${targets.length > 1 ? `Edit: ${esc(shootLabel(t))}` : "Edit details"} →</button>
+                <button class="linkish muted work-delete" data-id="${t.id}" data-title="${esc(t.title || t.talent || "")}${targets.length > 1 ? ` — ${esc(shootLabel(t))}` : ""}">Delete →</button>
               </div>`).join("");
           return `
-            <div class="lb-sidebar-section" style="margin-top: 20px; border-top: 1px dashed var(--line); padding-top: 16px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; width: 100%;">
-              <h4 style="font-family:'Outfit', sans-serif; font-size: var(--font-xs); font-weight:800; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-soft); margin:0;">Admin Controls <span style="font-weight: normal; opacity: 0.7; font-size: 8px; margin-left: 4px;">(🔒 Visible Only to Admins)</span></h4>
+            <div class="lb-sidebar-section lb-admin">
+              <h4 class="lb-h"><span>Admin</span><small>only you see this</small></h4>
               ${rows}
             </div>
           `;
