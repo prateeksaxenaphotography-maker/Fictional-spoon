@@ -7500,7 +7500,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                </div>
 
                <div class="book-policies" style="background: var(--bone); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 10px; padding: 16px 18px; margin-bottom: 20px;">
-                 <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px;">Studio Policies &amp; Terms · Please Read</div>
+                 <button type="button" id="bookPoliciesToggle" aria-expanded="false" aria-controls="bookPoliciesDetail" style="all: unset; box-sizing: border-box; cursor: pointer; display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 10px;">
+                   <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em;">📋 Studio Policies &amp; Terms</span>
+                   <span id="bookPoliciesToggleIcon" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); white-space: nowrap;">+ Read full policies</span>
+                 </button>
+                 <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 6px; line-height: 1.4;">Still photography only · studio rental &amp; travel &gt;20km billed at actuals · full gallery buyout available</div>
+                 <div id="bookPoliciesDetail" style="display: none; margin-top: 12px;">
                  <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px;">
                    <li style="display: flex; gap: 10px; align-items: flex-start; font-size: var(--font-xs); line-height: 1.55; color: var(--ink-soft);">
                       <span aria-hidden="true" style="flex: 0 0 20px; font-size: var(--font-sm); line-height: 1.4;">📷</span>
@@ -7524,6 +7529,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                      <span><strong style="color: var(--ink);">Camera &amp; Media Protection:</strong> All camera equipment, memory cards, and raw captures are strictly confidential studio property. Participants may not touch equipment or delete media from cameras. Unauthorized file deletion constitutes a material breach of contract and incurs full data recovery costs.</span>
                    </li>
                  </ul>
+                 </div>
                </div>
 
                 <div class="field" style="display: flex; flex-direction: column; gap: 4px;">
@@ -7717,10 +7723,24 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
              </p>
            </div>
 
-           <div id="bookingPolicyNotice" style="background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin-bottom: 24px; font-size: var(--font-xs); line-height: 1.5; color: var(--ink-soft); text-align: left;">
-              <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Booking &amp; Collaboration Policy</span>
-              Submission of a booking inquiry or TFP collaboration request does not constitute a confirmed session or a commitment to shoot. All inquiries are subject to schedule availability, creative brief alignment, and final studio review. <strong>Note: If a dedicated studio space is booked for the shoot, applicable studio rental charges will apply.</strong> Collaboration requests (TFP/Test Shoots) are selective and accepted at the sole discretion of the studio. Inquiries that are not explicitly approved by the studio will be considered inactive.
-            </div>
+           <div id="bookingPolicyOuter" style="background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin-bottom: 24px; text-align: left;">
+             <!-- #bookingPolicyNotice's innerHTML is fully replaced by
+                  updateFields() on load and on every shoot-type change (see
+                  the TFP / Commercial branch there) — so the toggle and its
+                  state live on this outer wrapper instead, which JS never
+                  touches, rather than inside the div JS overwrites. -->
+             <button type="button" id="bookingPolicyToggle" aria-expanded="false" aria-controls="bookingPolicyNoticeWrap" style="all: unset; box-sizing: border-box; cursor: pointer; display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 10px;">
+               <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em;">📜 Booking &amp; Production Terms</span>
+               <span id="bookingPolicyToggleIcon" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); white-space: nowrap;">+ Read full terms</span>
+             </button>
+             <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 6px; line-height: 1.4;">Retainer &amp; cancellation terms, usage licensing, and call-time policy for this booking.</div>
+             <div id="bookingPolicyNoticeWrap" style="display: none; margin-top: 10px;">
+               <div id="bookingPolicyNotice" style="font-size: var(--font-xs); line-height: 1.5; color: var(--ink-soft);">
+                  <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Booking &amp; Collaboration Policy</span>
+                  Submission of a booking inquiry or TFP collaboration request does not constitute a confirmed session or a commitment to shoot. All inquiries are subject to schedule availability, creative brief alignment, and final studio review. <strong>Note: If a dedicated studio space is booked for the shoot, applicable studio rental charges will apply.</strong> Collaboration requests (TFP/Test Shoots) are selective and accepted at the sole discretion of the studio. Inquiries that are not explicitly approved by the studio will be considered inactive.
+               </div>
+             </div>
+           </div>
 
             <button type="submit" class="btn btn-dark btn-block" id="bookSubmitBtn">Submit Booking Request</button>
             <p style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 15px; text-align: center; line-height: 1.4;">By submitting a booking request, you agree to our standard terms. For test shoots, read our online <a href="#tfp-terms" id="tfpTermsTrigger" style="text-decoration: underline; color: var(--accent); font-weight: 600;">Studio Production &amp; Liability Release</a>.</p>
@@ -9237,7 +9257,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <strong>🔒 Booking &amp; Retainer Terms:</strong> 50% advance retainer reserves studio space &amp; production crew (non-refundable). Cancellations within 48h forfeit advance retainer.<br/>
             <strong>📦 Deliverables &amp; Full Gallery Buyout:</strong> Packages include a proofing gallery to select contracted retouches. If the client requests the complete full unedited image gallery or additional retouched master clicks beyond the package limit, extra buyout charges apply. RAW unedited camera files remain confidential studio property.<br/>
             <strong>📜 Usage Licensing:</strong> Rates cover digital web &amp; social media usage. Extended billboard, TV, print, or commercial advertising rights require separate usage licensing.<br/>
-            <strong>🏢 Studio Rental Policy:</strong> Dedicated indoor studio venue rentals are billed <strong>at actuals (at cost)</strong>, or the client may directly book their preferred studio venue for our team to shoot on location.<br/>
             <strong>⏰ Call Time &amp; No-Show:</strong> ${window.buildLateArrivalSummary(false)}
           `;
         }
@@ -10190,6 +10209,26 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         }
       }
     });
+
+    // Collapses the two long policy blocks behind a one-line summary — the
+    // full form used to always show ~40 lines of dense legal text twice over,
+    // which made the page feel far longer than the handful of fields a
+    // client actually has to fill in. Same toggle pattern as the invite code
+    // link above; both start collapsed.
+    const makePolicyToggle = (toggleId, detailId, iconId, openLabel, closedLabel) => {
+      const toggleBtn = $(toggleId);
+      const detail = $(detailId);
+      const icon = $(iconId);
+      if (!toggleBtn || !detail) return;
+      toggleBtn.addEventListener("click", () => {
+        const isOpen = detail.style.display !== "none";
+        detail.style.display = isOpen ? "none" : "block";
+        toggleBtn.setAttribute("aria-expanded", String(!isOpen));
+        if (icon) icon.textContent = isOpen ? openLabel : closedLabel;
+      });
+    };
+    makePolicyToggle("#bookPoliciesToggle", "#bookPoliciesDetail", "#bookPoliciesToggleIcon", "+ Read full policies", "− Hide policies");
+    makePolicyToggle("#bookingPolicyToggle", "#bookingPolicyNoticeWrap", "#bookingPolicyToggleIcon", "+ Read full terms", "− Hide terms");
 
     // URL Query Parameter Pre-filling Engine (?package=...&date=...&invite=...)
     (function parseUrlQueryParams() {

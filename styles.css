@@ -827,6 +827,11 @@ a { color: inherit; text-decoration: none; }
   display: grid;
   place-items: center;
   transition: background .2s, border-color .2s;
+  /* Without this, a tap on the button can get eaten by the 300ms
+     double-tap-to-zoom delay some mobile browsers still apply to
+     plain touch targets, landing as "nothing happened" and getting
+     retapped. */
+  touch-action: manipulation;
   z-index: 10;
 }
 .lightbox-nav:hover { background: var(--accent); border-color: var(--accent); }
@@ -917,7 +922,12 @@ a { color: inherit; text-decoration: none; }
   .lightbox img { max-height: 72vh; }
   .lightbox-close { top: 16px; right: 20px; font-size: var(--font-lg); }
   .lightbox-caption { font-size: var(--font-sm); margin-top: 14px; }
-  .lightbox-nav { width: 44px; height: 44px; font-size: var(--font-md); } .lb-prev { left: 10px; } .lb-next { right: 10px; }
+  /* 10px used to sit these right inside the strip iOS/Android reserve for
+     their own edge-swipe back/forward gesture, so a tap routinely lost to
+     the OS gesture recognizer instead of reaching the button — read as
+     "nothing happened" and re-tapped. 20px clears most devices' zone while
+     the buttons stay reachable near the screen edge. */
+  .lightbox-nav { width: 44px; height: 44px; font-size: var(--font-md); } .lb-prev { left: 20px; } .lb-next { right: 20px; }
   .nav-overlay-inner { padding: 120px 20px 40px; }
   .site-header { padding: 18px 20px; }
   .site-header.scrolled { padding: 12px 20px; }
