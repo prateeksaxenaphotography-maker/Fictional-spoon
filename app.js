@@ -7016,6 +7016,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               </div>
               <div class="field-row">
                 <label class="field"><span>Type</span><select id="f_type">${opt(TYPES)}</select></label>
+                <label class="field"><span>Date shot</span><input id="f_date" type="date" /></label>
                 <label class="field"><span>Season / Year</span><input id="f_season" type="text" placeholder="Spring 2026" /></label>
                 <label class="field"><span>Shoot Location (add Instagram in parentheses)</span><input id="f_location" type="text" placeholder="e.g. Studio (@studiohandle), Noida, Outdoor" /></label>
                 <div id="f_location_verify" style="margin-top: 5px; font-size: var(--font-xs); display: none;"></div>
@@ -7129,7 +7130,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <div class="fs-divider" aria-hidden="true"></div>
               <div class="field-row">
                 <label class="field"><span>Client</span><input id="f_client" type="text" placeholder="Brand name" /></label>
-                <label class="field"><span>Date shot</span><input id="f_date" type="date" /></label>
               </div>
               <div class="field-row">
                 <label class="field" style="position: relative;">
@@ -7351,20 +7351,20 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
                 <!-- Dedicated Still Photography Specialization & Video Coverage Policy Notice -->
                 <div style="background: rgba(var(--accent-rgb), 0.04); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
-                  <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">📷 Still Photography Specialization &amp; Video Policy</div>
+                  <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">Still photography only</div>
                   <div style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5;">
                     Studio packages &amp; rates are <strong>strictly dedicated to Still Photography creation</strong> (Commercial, Fashion, Editorial &amp; Portfolio). Video / Reels coverage is not included in standard packages. Clients may bring their own videographer or request studio assistance to source a freelance videographer for the session.
                   </div>
                 </div>
 
 <div style="margin-bottom: 14px; text-align: left;">
-                  <a id="toggleInviteCodeLink" href="javascript:void(0)" style="font-size: var(--font-xs); color: var(--accent); font-weight: 700; text-decoration: underline; font-family: var(--mono-font); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">🔑 Have a direct photographer invite code? (test shoot invite)</a>
+                  <a id="toggleInviteCodeLink" href="javascript:void(0)" style="font-size: var(--font-xs); color: var(--accent); font-weight: 700; text-decoration: underline; font-family: var(--mono-font); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">Have a photographer invite code? (test shoot)</a>
                 </div>
 
                 <!-- Photographer Direct Invite Code (Hidden by default, expandable via discreet link) -->
                 <div id="inviteCodeContainer" style="display: none; background: rgba(var(--accent-rgb), 0.04); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 18px;">
                   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                    <span style="font-weight: 700; color: var(--ink); font-size: var(--font-sm);">🔑 Photographer Direct Invite Code</span>
+                    <span style="font-weight: 700; color: var(--ink); font-size: var(--font-sm);">Photographer invite code</span>
                     <span id="inviteCodeStatus" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; display: none;"></span>
                   </div>
                   <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-bottom: 10px; line-height: 1.4;">Enter your photographer invite code to unlock direct Test Shoot / TFP options.</div>
@@ -7380,7 +7380,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                      <option value="Fitness &amp; Athletic" ${isSelected("Fitness &amp; Athletic")}>Fitness &amp; Athletic</option>
                      <option value="Sports Action" ${isSelected("Sports Action")}>Sports Action</option>
                      <option value="Commercial Campaign" ${isSelected("Commercial Campaign")}>Commercial Campaign</option>
-                     <option value="Selective Collaboration (TFP)" ${isSelected("Selective Collaboration (TFP)")}>📸 SELECTIVE COLLABORATION / TFP (Portfolio Collab)</option>
+                     <option value="Selective Collaboration (TFP)" ${isSelected("Selective Collaboration (TFP)")}>SELECTIVE COLLABORATION / TFP (Portfolio Collab)</option>
                      <option value="Other" ${isSelected("Other")}>Other Focus Area</option>
                    </select>
                     <div id="b_type_notice" style="font-size: var(--font-xs); color: #059669; margin-top: 6px; font-family: var(--mono-font); background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.25); border-radius: 6px; padding: 8px 12px; display: none;">
@@ -7391,7 +7391,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   <!-- Option B: Locked TFP Card displayed when Photographer Invite Code is verified -->
                   <div id="lockedTfpCard" style="display: none; background: rgba(5,150,105,0.06); border: 1.5px solid #059669; border-radius: 8px; padding: 14px 16px; margin-bottom: 6px; box-shadow: var(--shadow-sm); width: 100%; box-sizing: border-box;">
                     <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #059669; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px;">
-                      <span>🔑 PROJECT TYPE: SELECTIVE COLLABORATION (TFP / TEST SHOOT)</span>
+                      <span>PROJECT TYPE: SELECTIVE COLLABORATION (TFP / TEST SHOOT)</span>
                       <span style="background: #059669; color: #ffffff; padding: 2.5px 8px; border-radius: 4px; font-size: var(--font-xs); font-weight: 700;">LOCKED BY INVITE CODE</span>
                     </div>
                     <div style="font-size: var(--font-xs); color: var(--ink); line-height: 1.5; font-weight: 600; margin-top: 4px;">
@@ -7424,9 +7424,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                          can never silently claim the home studio; the client has
                          to pick it deliberately. -->
                     <select id="b_studio_space">
-                      <option value="Home Studio - Noida (Provided by Studio)" id="b_studio_space_home">🏠 Home Studio, Noida — intimate setup, best for portraits, comp cards &amp; solo talent</option>
-                      <option value="Dedicated Commercial Studio Rental (Billed at Actuals)">🏢 Dedicated Commercial Studio</option>
-                      <option value="Outdoor / On-Location (No Studio Required)" selected>🌳 Outdoor / on-location — no studio required</option>
+                      <option value="Home Studio - Noida (Provided by Studio)" id="b_studio_space_home">Home Studio, Noida — intimate setup, best for portraits, comp cards &amp; solo talent</option>
+                      <option value="Dedicated Commercial Studio Rental (Billed at Actuals)">Dedicated Commercial Studio</option>
+                      <option value="Outdoor / On-Location (No Studio Required)" selected>Outdoor / on-location — no studio required</option>
                     </select>
                   </label>
                 </div>
@@ -7456,14 +7456,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <div class="field-row">
                   <label class="field"><span>Preferred Session Duration (Optional)</span>
                     <select id="b_duration">
-                      <option value="Flexible / Photographer Choice" selected>🤔 Flexible / Photographer Choice (Recommended)</option>
-                      <option value="Full Day (10:30 AM – 5:30 PM)">☀️ Full Day Shoot (10:30 AM – 5:30 PM · 7 Hours)</option>
-                      <option value="Half Day Morning (10:30 AM – 2:30 PM)">🌅 Half Day Morning (10:30 AM – 2:30 PM · 4 Hours)</option>
-                      <option value="Half Day Afternoon (1:30 PM – 5:30 PM)">🌇 Half Day Afternoon (1:30 PM – 5:30 PM · 4 Hours)</option>
-                      <option value="Custom Timings">⏰ Custom Timings (Pick Call &amp; Wrap Time)</option>
+                      <option value="Flexible / Photographer Choice" selected>Flexible / Photographer Choice (Recommended)</option>
+                      <option value="Full Day (10:30 AM – 5:30 PM)">Full Day Shoot (10:30 AM – 5:30 PM · 7 Hours)</option>
+                      <option value="Half Day Morning (10:30 AM – 2:30 PM)">Half Day Morning (10:30 AM – 2:30 PM · 4 Hours)</option>
+                      <option value="Half Day Afternoon (1:30 PM – 5:30 PM)">Half Day Afternoon (1:30 PM – 5:30 PM · 4 Hours)</option>
+                      <option value="Custom Timings">Custom Timings (Pick Call &amp; Wrap Time)</option>
                     </select>
                     <div id="b_duration_note" style="font-size: var(--font-xs); color: #059669; margin-top: 6px; font-family: var(--mono-font); background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.25); border-radius: 6px; padding: 8px 12px; display: none;">
-                      ⏱️ <strong>Test shoots run to a half day (4 hours).</strong> A custom call &amp; wrap window can stretch to 5 hours at most.
+                      <strong>Test shoots run to a half day (4 hours).</strong> A custom call &amp; wrap window can stretch to 5 hours at most.
                     </div>
                   </label>
                   <label class="field"><span>Shoot Location / Venue Address *</span><input id="b_location" type="text" required placeholder="" /></label>
@@ -7496,7 +7496,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                <div class="field-row" style="margin-top: 10px;">
                  <label class="field" id="b_discount_field" style="grid-column: 1 / -1;">
                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                     <span style="font-weight: 700; color: var(--ink);">🎟️ Promotional Discount Code (Optional)</span>
+                     <span style="font-weight: 700; color: var(--ink);">Promo code (optional)</span>
                      <span id="discountCodeStatus" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; display: none;"></span>
                    </div>
                    <div style="display: flex; gap: 8px;">
@@ -7515,23 +7515,23 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                     re-render — showed a package rate and payment milestones to
                     someone invited to shoot for free. Wrong in the expensive
                     direction; hidden-by-default fails the safe way. -->
-               <div id="finalPriceSummaryBox" style="display: none; background: #111111; color: #ffffff; border: 1.5px solid var(--accent); border-radius: 10px; padding: 16px 20px; margin-top: 18px; margin-bottom: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.35);">
-                  <div style="font-size: var(--font-xs); font-weight: 700; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-                    <span>💎 Itemized Production Quote &amp; Milestone Payable HUD</span>
+               <div id="finalPriceSummaryBox" style="display: none; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; margin-top: 18px; margin-bottom: 28px; box-shadow: var(--shadow-sm);">
+                  <div style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <span>Your quote</span>
                     <span id="calcDiscountTag" style="font-size: var(--font-xs); color: #059669; background: rgba(5,150,105,0.2); padding: 3px 10px; border-radius: 12px; font-weight: 700; display: none;"></span>
                   </div>
                   <!-- Itemised as a stacked list rather than one wrapping row:
                        every charge gets its own line, and the total sits at the
                        foot where a quote is read from. Add-on lines appear only
                        when they apply. -->
-                  <div style="font-family: var(--mono-font); font-size: var(--font-sm); border-bottom: 1px dashed rgba(255,255,255,0.15); padding-bottom: 12px; margin-bottom: 12px;">
+                  <div style="font-family: var(--mono-font); font-size: var(--font-sm); border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 12px;">
                     <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 5px 0;">
-                      <span id="summaryPackageLabel" style="color: rgba(255,255,255,0.6);">Package Base Rate</span>
-                      <span id="summaryOriginalPrice" style="font-weight: 700; color: #ffffff; white-space: nowrap;">₹${getAdminPackages()[0].price.toLocaleString('en-IN')}</span>
+                      <span id="summaryPackageLabel" style="color: var(--ink-soft);">Package Base Rate</span>
+                      <span id="summaryOriginalPrice" style="font-weight: 700; color: var(--ink); white-space: nowrap;">₹${getAdminPackages()[0].price.toLocaleString('en-IN')}</span>
                     </div>
                     <div id="summaryHomeStudioWrap" style="display: none; justify-content: space-between; align-items: baseline; gap: 12px; padding: 5px 0;">
-                      <span style="color: rgba(255,255,255,0.6);">🏠 <span id="summaryHomeStudioLabel">Home Studio Rental (Noida)</span></span>
-                      <span id="summaryHomeStudioAmount" style="font-weight: 700; color: #ffffff; white-space: nowrap;">+₹0</span>
+                      <span style="color: var(--ink-soft);"><span id="summaryHomeStudioLabel">Home Studio Rental (Noida)</span></span>
+                      <span id="summaryHomeStudioAmount" style="font-weight: 700; color: var(--ink); white-space: nowrap;">+₹0</span>
                     </div>
                     <div id="summaryDiscountWrap" style="display: none; justify-content: space-between; align-items: baseline; gap: 12px; padding: 5px 0;">
                       <span id="summaryDiscountLabel" style="color: #059669; font-weight: 700;">Promo Savings:</span>
@@ -7542,12 +7542,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                          and adding them up is the only place the client (and
                          the studio's own record) sees what the booking was
                          really worth. -->
-                    <div id="summaryTotalSavingsWrap" style="display: none; justify-content: space-between; align-items: baseline; gap: 12px; padding: 8px 0 2px; margin-top: 6px; border-top: 1px dashed rgba(5,150,105,0.35);">
-                      <span style="color: #059669; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-size: var(--font-xs);">💰 Total Savings</span>
+                    <div id="summaryTotalSavingsWrap" style="display: none; justify-content: space-between; align-items: baseline; gap: 12px; padding: 8px 0 2px; margin-top: 6px; border-top: 1px solid rgba(5,150,105,0.3);">
+                      <span style="color: #059669; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-size: var(--font-xs);">Total savings</span>
                       <span id="summaryTotalSavingsAmount" style="font-weight: 800; color: #059669; white-space: nowrap; font-family: var(--mono-font);">₹0</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0 2px; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.18);">
-                      <span style="color: #ffffff; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-size: var(--font-xs);">Total Payable</span>
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0 2px; margin-top: 8px; border-top: 1px solid var(--line-2);">
+                      <span style="color: var(--ink); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-size: var(--font-xs);">Total payable</span>
                       <span id="summaryFinalAmount" style="font-size: var(--font-md); font-weight: 800; color: var(--accent); font-family: var(--mono-font); white-space: nowrap;">₹${getAdminPackages()[0].price.toLocaleString('en-IN')} INR</span>
                     </div>
                     <!-- Only when the client has handed studio+lighting booking
@@ -7556,7 +7556,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                          once those are booked and billed at actuals. Hidden the
                          rest of the time so it never implies a change that
                          isn't coming. -->
-                    <div id="summaryArrangerNote" style="display: none; margin-top: 8px; padding: 8px 10px; background: rgba(217,119,6,0.12); border: 1px dashed rgba(217,119,6,0.4); border-radius: 6px; font-size: var(--font-xs); color: #d97706; font-family: inherit;">⚠️ Since the photographer is arranging the studio &amp; lighting, this total does not yet include their actual cost — it will be billed at actuals and added once the venue is booked.</div>
+                    <div id="summaryArrangerNote" style="display: none; margin-top: 8px; padding: 8px 10px; background: rgba(217,119,6,0.12); border: 1px solid rgba(217,119,6,0.35); border-radius: 6px; font-size: var(--font-xs); color: #d97706; font-family: inherit;">⚠️ Since the photographer is arranging the studio &amp; lighting, this total does not yet include their actual cost — it will be billed at actuals and added once the venue is booked.</div>
                   </div>
                   <!-- Milestone Itemized Breakdown. Reads the studio's global
                        2-step (50/50) or 3-step (50/30/20) setting — the same
@@ -7564,16 +7564,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                        numbers the client sees always match the milestones the
                        contract they are about to sign describes. -->
                   <div id="summaryMilestoneBreakdown" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; font-size: var(--font-xs);">
-                    <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 12px;">
-                      <span id="summaryAdvanceLabel" style="color: rgba(255,255,255,0.6); display: block; font-size: var(--font-xs); text-transform: uppercase;">Step 1 · 50% Advance Retainer (Due Now)</span>
+                    <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px;">
+                      <span id="summaryAdvanceLabel" style="color: var(--ink-soft); display: block; font-size: var(--font-xs); text-transform: uppercase;">Step 1 · 50% Advance Retainer (Due Now)</span>
                       <strong id="summaryAdvanceAmount" style="color: var(--accent); font-size: var(--font-sm); font-family: var(--mono-font);">₹${Math.round(getAdminPackages()[0].price / 2).toLocaleString('en-IN')} INR</strong>
                     </div>
-                    <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 12px;">
-                      <span id="summaryStep2Label" style="color: rgba(255,255,255,0.6); display: block; font-size: var(--font-xs); text-transform: uppercase;">Step 2 · 50% Wrap Balance (Prior to Deliverables)</span>
+                    <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px;">
+                      <span id="summaryStep2Label" style="color: var(--ink-soft); display: block; font-size: var(--font-xs); text-transform: uppercase;">Step 2 · 50% Wrap Balance (Prior to Deliverables)</span>
                       <strong id="summaryBalanceAmount" style="color: #059669; font-size: var(--font-sm); font-family: var(--mono-font);">₹${(getAdminPackages()[0].price - Math.round(getAdminPackages()[0].price / 2)).toLocaleString('en-IN')} INR</strong>
                     </div>
-                    <div id="summaryStep3Wrap" style="display: none; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 12px;">
-                      <span style="color: rgba(255,255,255,0.6); display: block; font-size: var(--font-xs); text-transform: uppercase;">Step 3 · 20% Final Deliverables</span>
+                    <div id="summaryStep3Wrap" style="display: none; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px;">
+                      <span style="color: var(--ink-soft); display: block; font-size: var(--font-xs); text-transform: uppercase;">Step 3 · 20% Final Deliverables</span>
                       <strong id="summaryStep3Amount" style="color: #f57c00; font-size: var(--font-sm); font-family: var(--mono-font);">₹0 INR</strong>
                     </div>
                   </div>
@@ -7581,20 +7581,19 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                        amount owed is the studio rental. It reserves the space,
                        so it is due in full up front rather than split in two —
                        the 50/50 grid above is hidden for these. -->
-                  <div id="summaryNothingToPay" style="display: none; background: rgba(5,150,105,0.12); border: 1px solid rgba(5,150,105,0.35); border-radius: 6px; padding: 8px 12px; font-size: var(--font-xs); color: #34d399; line-height: 1.5;">
-                    ✅ <strong>Nothing to pay for this collaboration.</strong> The studio is covering the venue for this session — the figure above is what it would otherwise have cost.
+                  <div id="summaryNothingToPay" style="display: none; background: rgba(5,150,105,0.12); border: 1px solid rgba(5,150,105,0.35); border-radius: 6px; padding: 8px 12px; font-size: var(--font-xs); color: #2F6B4F; line-height: 1.5;">
+                    <strong>Nothing to pay for this collaboration.</strong> The studio is covering the venue for this session — the figure above is what it would otherwise have cost.
                   </div>
-                  <div id="summaryReservationCard" style="display: none; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 12px; font-size: var(--font-xs);">
-                    <span style="color: rgba(255,255,255,0.6); display: block; font-size: var(--font-xs); text-transform: uppercase;">🔒 Home Studio Rental · Full Payment Up Front</span>
+                  <div id="summaryReservationCard" style="display: none; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: var(--font-xs);">
+                    <span style="color: var(--ink-soft); display: block; font-size: var(--font-xs); text-transform: uppercase;">Home studio rental · paid in full up front</span>
                     <strong id="summaryReservationAmount" style="color: var(--accent); font-size: var(--font-sm); font-family: var(--mono-font);">₹0 INR</strong>
-                    <span style="color: rgba(255,255,255,0.5); display: block; margin-top: 4px; line-height: 1.5;">Payable <strong style="color: rgba(255,255,255,0.75);">in full</strong> at least 48 hours before the shoot day to reserve the home studio. <strong style="color: #e07a5f;">Non-refundable.</strong></span>
+                    <span style="color: var(--ink-soft); display: block; margin-top: 4px; line-height: 1.5;">Payable <strong style="color: var(--ink);">in full</strong> at least 48 hours before the shoot day to reserve the home studio. <strong style="color: #e07a5f;">Non-refundable.</strong></span>
                   </div>
                 </div>
-               </div>
 
                <div class="book-policies" style="background: var(--bone); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 10px; padding: 16px 18px; margin-bottom: 20px;">
                  <button type="button" id="bookPoliciesToggle" aria-expanded="false" aria-controls="bookPoliciesDetail" style="all: unset; box-sizing: border-box; cursor: pointer; display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 10px;">
-                   <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em;">📋 Studio Policies &amp; Terms</span>
+                   <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em;">Studio policies &amp; terms</span>
                    <span id="bookPoliciesToggleIcon" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); white-space: nowrap;">+ Read full policies</span>
                  </button>
                  <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 6px; line-height: 1.4;">Still photography only · studio rental &amp; travel &gt;20km billed at actuals · full gallery buyout available</div>
@@ -7650,7 +7649,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
               <!-- Payment Terms & Milestone Flowchart -->
               <fieldset id="paymentTermsFieldset" style="border: 1px solid var(--line); border-radius: 12px; padding: 24px; background: var(--paper); margin-top: 24px;">
-                <legend style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); padding: 0 10px;">💳 Studio Payment Terms &amp; Milestones</legend>
+                <legend style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); padding: 0 10px;">Payment terms &amp; milestones</legend>
                 
                 <div style="margin-bottom: 18px;">
                   <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">To reserve studio dates and ensure smooth delivery, studio productions follow structured milestone payments as detailed below:</p>
@@ -7660,13 +7659,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <div id="flowchart2Step" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 18px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 6px;">STEP 1 · 50% ADVANCE RETAINER</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">🔒 48 Hours Prior to Shoot Start</h4>
+                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">48 hours before shoot start</h4>
                     <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid at least 48 hours before the shoot day to reserve studio space, schedule the crew, and lock calendar availability (unless explicitly discussed with the team). <strong>Mandatory prior to shoot start.</strong> <strong style="color: #b22222;">(Non-refundable)</strong></p>
                   </div>
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 18px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #2e7d32; text-transform: uppercase; margin-bottom: 6px;">STEP 2 · 50% FINAL BALANCE</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">📦 After Shoot · Prior to Receiving Any Downloadable File</h4>
+                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">After the shoot · before any file is delivered</h4>
                     <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid upon completion of the shoot session, prior to receiving any downloadable preview or retouched final deliverable file. <strong style="color: #b22222;">(Non-refundable)</strong></p>
                   </div>
                 </div>
@@ -7675,19 +7674,19 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <div id="flowchart3Step" style="display: none; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px;">
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 6px;">STEP 1 · 50% ADVANCE RETAINER</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">🔒 48 Hours Prior to Shoot Start</h4>
+                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">48 hours before shoot start</h4>
                     <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid at least 48 hours before the shoot day to lock studio date and reserve production crew (unless explicitly discussed with the team). <strong>Mandatory prior to shoot start.</strong> <strong style="color: #b22222;">(Non-refundable)</strong></p>
                   </div>
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #f57c00; text-transform: uppercase; margin-bottom: 6px;">STEP 2 · 30% REVIEW MILESTONE</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">🔎 After Shoot · Proofing Gallery</h4>
+                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">After the shoot · proofing gallery</h4>
                     <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid after shoot wrap, before receiving the watermarked proofing gallery to select retouches. <strong style="color: #b22222;">(Non-refundable)</strong></p>
                   </div>
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #2e7d32; text-transform: uppercase; margin-bottom: 6px;">STEP 3 · 20% FINAL DELIVERABLES</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">📦 Prior to Receiving Any Downloadable File</h4>
+                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">Before any file is delivered</h4>
                     <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid upon final approval, prior to receiving any downloadable or high-resolution retouched master file.</p>
                   </div>
                 </div>
@@ -7802,11 +7801,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   </div>
                  </div>
                </div>
-             </div>
 
             <div id="gearProtectionCallout" style="background: rgba(178,34,34,0.05); border: 1px solid rgba(178,34,34,0.3); border-radius: 10px; padding: 18px; margin-bottom: 20px; text-align: left;">
              <div style="display: flex; align-items: center; gap: 8px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: #b22222; margin-bottom: 10px;">
-               🔒 Unauthorized Data Deletion &amp; Gear Clause
+               Unauthorised data deletion &amp; gear clause
              </div>
              <p style="font-size: var(--font-xs); color: var(--ink); margin: 0 0 8px; line-height: 1.5; font-weight: 500;">
                "All raw captures, memory cards, and camera equipment remain the exclusive property and intellectual property of the Studio. Under no circumstances is a model, participant, or client permitted to touch, handle, or delete media from the photographer's camera, cards, or tethering systems."
@@ -7823,7 +7821,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   state live on this outer wrapper instead, which JS never
                   touches, rather than inside the div JS overwrites. -->
              <button type="button" id="bookingPolicyToggle" aria-expanded="false" aria-controls="bookingPolicyNoticeWrap" style="all: unset; box-sizing: border-box; cursor: pointer; display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 10px;">
-               <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em;">📜 Booking &amp; Production Terms</span>
+               <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em;">Booking &amp; production terms</span>
                <span id="bookingPolicyToggleIcon" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); white-space: nowrap;">+ Read full terms</span>
              </button>
              <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 6px; line-height: 1.4;">Retainer &amp; cancellation terms, usage licensing, and call-time policy for this booking.</div>
@@ -7836,6 +7834,18 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
            </div>
 
             <button type="submit" class="btn btn-dark btn-block" id="bookSubmitBtn">Submit Booking Request</button>
+            <!-- Pinned total + submit while the form is on screen; mirrors
+                 #summaryFinalAmount / #bookSubmitBtn and just clicks the real
+                 button, so validation and the terms flow stay untouched.
+                 Shown/hidden by wireBook (fixed, not sticky — see the note on
+                 .upload-sticky-bar). -->
+            <div class="upload-sticky-bar book-sticky-bar is-hidden" id="bookStickyBar" aria-live="polite">
+              <div class="sticky-total" id="bookStickyTotal" style="display: none;"><small>Total payable</small><strong id="bookStickyAmount">—</strong></div>
+              <span class="sticky-note" id="bookStickyNote">Ready when you are</span>
+              <div class="sticky-actions">
+                <button type="button" class="btn btn-dark sticky-publish" id="bookStickySubmit">Submit booking request</button>
+              </div>
+            </div>
             <p style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 15px; text-align: center; line-height: 1.4;">By submitting a booking request, you agree to our standard terms. For test shoots, read our online <a href="#tfp-terms" id="tfpTermsTrigger" style="text-decoration: underline; color: var(--accent); font-weight: 600;">Studio Production &amp; Liability Release</a>.</p>
           </form>
         </div>
@@ -9008,6 +9018,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       r.addEventListener("change", () => clearError("b_studio_arranger_client"));
     });
 
+    // Picker selection lives at wireBook scope, not inside the picker's own
+    // closure: handleBookingSubmit reads it to flag an already-booked date,
+    // and as an inner `let` that read was a ReferenceError — every submit
+    // died there, before the terms modal, with nothing shown to the client.
+    let rangeStart = null, rangeEnd = null;
+    let multiDates = []; // array of Date objects
+
     // ── Custom Date Picker Calendar ──
     (() => {
       const toggle = $("#datePickerToggle");
@@ -9017,8 +9034,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
       let pickerMode = "range"; // "range" or "multi"
       let viewYear, viewMonth; // currently displayed month
-      let rangeStart = null, rangeEnd = null;
-      let multiDates = []; // array of Date objects
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -10143,7 +10158,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           summaryHomeStudioAmount.innerHTML = homeStudioPromoApplied
             ? `<span style="text-decoration: line-through; color: rgba(255,255,255,0.45); font-weight: 500; margin-right: 8px;">₹${homeStudioListPrice.toLocaleString("en-IN")}</span><span style="color: #059669;">₹${homeStudioFee.toLocaleString("en-IN")}</span>`
             : (venueComplimentary ? "₹0" : `+₹${homeStudioFee.toLocaleString("en-IN")}`);
-          summaryHomeStudioAmount.style.color = venueComplimentary ? "#059669" : "#ffffff";
+          summaryHomeStudioAmount.style.color = venueComplimentary ? "#2F6B4F" : "var(--ink)";
         }
         // Name the actual venue when the invite supplies one — billing a client
         // for "Home Studio Rental" when the code sent them to a rented space is
@@ -10443,6 +10458,44 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     };
     makePolicyToggle("#bookPoliciesToggle", "#bookPoliciesDetail", "#bookPoliciesToggleIcon", "+ Read full policies", "− Hide policies");
     makePolicyToggle("#bookingPolicyToggle", "#bookingPolicyNoticeWrap", "#bookingPolicyToggleIcon", "+ Read full terms", "− Hide terms");
+
+    // Pinned total + submit. The quote and the Submit button used to sit
+    // ~2,000px apart with nothing on screen in between; this fixed bar
+    // mirrors the live total and the real button's label (which flips to
+    // "Request for a Test Shoot" for collaborations) and hides whenever the
+    // real button is on screen. Clicking it clicks the real button, so
+    // validation and the terms modal are untouched.
+    (() => {
+      const bar = $("#bookStickyBar"), realBtn = $("#bookSubmitBtn");
+      // The submit button renders outside the <form> element, so closest()
+      // comes back null — fall back to the form by id, then to the button's
+      // own container, for both the "form on screen" observer and the
+      // input/change listeners that keep the total in sync.
+      const formEl = (realBtn && realBtn.closest("form")) || $("#bookingForm") || (realBtn && realBtn.parentElement);
+      if (!bar || !realBtn || !formEl) return;
+      const totalWrap = $("#bookStickyTotal"), amount = $("#bookStickyAmount"), note = $("#bookStickyNote"), proxy = $("#bookStickySubmit");
+      proxy?.addEventListener("click", () => realBtn.click());
+      const sync = () => {
+        const hud = $("#finalPriceSummaryBox");
+        const hudVisible = !!hud && getComputedStyle(hud).display !== "none";
+        const amt = ($("#summaryFinalAmount")?.textContent || "").trim();
+        const showTotal = hudVisible && !!amt;
+        if (totalWrap) totalWrap.style.display = showTotal ? "" : "none";
+        if (amount) amount.textContent = amt.replace(/\s*INR$/i, "");
+        if (note) note.style.display = showTotal ? "none" : "";
+        if (proxy) proxy.textContent = realBtn.textContent.trim() || "Submit booking request";
+      };
+      formEl.addEventListener("input", sync);
+      formEl.addEventListener("change", sync);
+      sync();
+      setTimeout(sync, 0);
+      if ("IntersectionObserver" in window) {
+        let formOn = false, btnOn = false;
+        const apply = () => bar.classList.toggle("is-hidden", !formOn || btnOn);
+        new IntersectionObserver(([e]) => { formOn = e.isIntersecting; apply(); }, { threshold: 0 }).observe(formEl);
+        new IntersectionObserver(([e]) => { btnOn = e.isIntersecting; apply(); }, { threshold: 0, rootMargin: "0px 0px 40px 0px" }).observe(realBtn);
+      }
+    })();
 
     // URL Query Parameter Pre-filling Engine (?package=...&date=...&invite=...)
     (function parseUrlQueryParams() {
