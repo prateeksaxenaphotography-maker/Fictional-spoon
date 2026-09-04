@@ -1915,8 +1915,18 @@ main:focus { outline: none; }
 .admin-calendar-wrap .badge-booked { background: rgba(210,78,26,0.10); color: #B23F12; }
 .admin-calendar-wrap .badge-tentative { background: rgba(107,91,210,0.08); color: #4E42A8; box-shadow: inset 0 0 0 1px rgba(107,91,210,0.45); }
 .admin-calendar-wrap .badge-workshop { background: rgba(183,121,31,0.12); color: #7A5010; }
-.admin-calendar-wrap .badge-assisting { background: rgba(31,138,122,0.12); color: #145E53; }
+/* Rose, not teal: teal sat next to the green "Open" pill and the two read
+   as one colour, especially in dark mode. */
+.admin-calendar-wrap .badge-assisting { background: rgba(178,58,90,0.12); color: #8F2A4A; }
 .admin-calendar-wrap .badge-testshoot { background: rgba(44,107,181,0.12); color: #1F4E86; }
+/* Dark theme: the light-mode text colours are too dark to read on a dark
+   tint, so each status gets a brighter ink on the same hue. */
+.theme-dark .admin-calendar-wrap .badge-open { background: rgba(125,211,163,0.14); color: #7DD3A3; }
+.theme-dark .admin-calendar-wrap .badge-booked, .theme-dark .roster-pill-confirmed { background: rgba(240,120,80,0.16); color: #F0A184; }
+.theme-dark .admin-calendar-wrap .badge-tentative, .theme-dark .roster-pill-hold { background: rgba(160,146,255,0.14); color: #B9AEFF; box-shadow: inset 0 0 0 1px rgba(160,146,255,0.45); }
+.theme-dark .admin-calendar-wrap .badge-workshop, .theme-dark .roster-pill-workshop { background: rgba(240,180,70,0.14); color: #F2C46B; }
+.theme-dark .admin-calendar-wrap .badge-assisting, .theme-dark .roster-pill-assisting { background: rgba(240,120,150,0.14); color: #F29AB6; }
+.theme-dark .admin-calendar-wrap .badge-testshoot { background: rgba(110,170,240,0.14); color: #8FBDF2; }
 .admin-calendar-wrap .admin-cal-client-item { font-family: "Inter", system-ui, sans-serif; font-size: 12px; font-weight: 500; color: var(--ink-soft); }
 /* Roster: card tone matches the grid card */
 .admin-calendar-wrap .booking-card { background: var(--surface); border-radius: var(--r-md); box-shadow: var(--shadow-sm); padding: 18px 20px; }
@@ -1934,12 +1944,16 @@ main:focus { outline: none; }
 .roster-pill-confirmed { background: rgba(210,78,26,0.10); color: #B23F12; }
 .roster-pill-hold { background: rgba(107,91,210,0.08); color: #4E42A8; box-shadow: inset 0 0 0 1px rgba(107,91,210,0.45); }
 .roster-pill-workshop { background: rgba(183,121,31,0.12); color: #7A5010; }
-.roster-pill-assisting { background: rgba(31,138,122,0.12); color: #145E53; }
+.roster-pill-assisting { background: rgba(178,58,90,0.12); color: #8F2A4A; }
 .admin-calendar-wrap .admin-cal-btn.roster-danger { color: #B23F12; }
 .admin-calendar-wrap .admin-cal-btn.roster-danger:hover { border-color: #B23F12; background: rgba(210,78,26,0.06); }
 .admin-calendar-wrap details summary { font-family: "Inter", system-ui, sans-serif; font-size: 14px; font-weight: 600; }
 .theme-dark .admin-calendar-wrap .admin-cal-day:nth-child(7n+1),
 .theme-dark .admin-calendar-wrap .admin-cal-day:nth-child(7n) { background: var(--bone-2) !important; }
+/* Empty leading/trailing cells: in dark mode the page background is
+   near-black, which read as a hole in the grid next to the tinted
+   weekend cell — use the panel shade instead. */
+.theme-dark .admin-calendar-wrap .admin-cal-day.day-empty { background: var(--bone-2) !important; }
 @media (max-width: 680px) {
   .admin-calendar-wrap .admin-cal-grid { border-radius: 10px; }
   .admin-calendar-wrap .admin-cal-badge { font-size: 9.5px !important; padding: 3px 6px !important; border-radius: 8px; white-space: normal; word-break: break-word; }
