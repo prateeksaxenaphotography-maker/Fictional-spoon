@@ -419,7 +419,8 @@ window.WPS_DATA = {
       "agencyCredit": "Wilderbeetalents (@https://www.instagram.com/wilderbeetalents/?hl=en)",
       "agency": "Wilderbeetalents",
       "agencyHandle": "https://www.instagram.com/wilderbeetalents/?hl=en",
-      "modelEmail": "",
+      "agencySite": "",
+      "modelEmail": "Kunnal@gmail.com",
       "modelTypes": [
         "Fashion"
       ],
@@ -535,7 +536,7 @@ window.WPS_DATA = {
       "showAgencyOnPdf": true,
       "showEmailOnCompCard": false,
       "showEmailOnHome": false,
-      "showEmailOnPdf": false,
+      "showEmailOnPdf": true,
       "coverPhotoId": "mr5525erdhzei6"
     },
     {
