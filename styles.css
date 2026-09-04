@@ -378,6 +378,47 @@ a { color: inherit; text-decoration: none; }
 .upload-sticky-bar .sticky-jump:hover { border-color: var(--accent); color: var(--accent); }
 .upload-sticky-bar .sticky-publish { height: auto; padding: 10px 18px; font-size: var(--font-xs); }
 .upload-sticky-bar .sticky-publish:disabled { opacity: .45; cursor: not-allowed; }
+/* ============================================================
+   § BOOKING FORM REFRESH — white section cards on hairlines, calm
+   inputs, pill buttons; the quote box is a light card (its inline
+   palette was rewritten in the template). Scoped to #bookingForm.
+   ============================================================ */
+.book-wrap fieldset { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 22px 22px 24px; box-shadow: var(--shadow-sm); }
+.book-wrap legend { font-family: var(--mono-font) !important; font-size: 11px !important; letter-spacing: .18em !important; text-transform: uppercase !important; color: var(--accent) !important; font-weight: 600 !important; padding: 0 8px !important; }
+.book-wrap .field > span { font-size: 13.5px; font-weight: 600; }
+.book-wrap .field input, .book-wrap .field select, .book-wrap .field textarea { background: var(--surface); border: 1px solid var(--line-2); border-radius: 8px; min-height: 46px; padding: 11px 14px; font-size: 15px; }
+.book-wrap .field select { padding-right: 36px; }
+/* Inline-styled notices and callouts: one quiet card style */
+.book-wrap .book-policies, .book-wrap #bookingPolicyOuter { background: var(--surface) !important; border: 1px solid var(--line) !important; border-radius: 12px !important; }
+.book-wrap .book-policies li > span[aria-hidden="true"] { display: none; }
+.book-wrap fieldset > div[style*="border-left: 3px solid var(--accent)"] { background: var(--paper) !important; border: 1px solid var(--line) !important; border-radius: 10px !important; }
+.book-wrap #inviteCodeContainer, .book-wrap #b_type_notice, .book-wrap #b_custom_time_wrap, .book-wrap #collabFallbackWrap { background: var(--paper) !important; border: 1px solid var(--line) !important; border-radius: 12px !important; }
+.book-wrap #gearProtectionCallout { background: var(--surface) !important; border: 1px solid var(--line) !important; border-radius: 12px !important; }
+.book-wrap #paymentTermsFieldset > div > div, .book-wrap #flowchart2Step > div, .book-wrap #flowchart3Step > div { background: var(--paper) !important; border: 1px solid var(--line) !important; border-radius: 12px !important; }
+.book-wrap #flowchart2Step h4, .book-wrap #flowchart3Step h4 { font-family: "Archivo", sans-serif !important; font-size: 15px !important; }
+/* Apply / Verify buttons: ink pills, no shouting */
+.book-wrap #btnApplyDiscountCode, .book-wrap #btnApplyInviteCode { background: var(--ink) !important; color: var(--paper) !important; border-radius: var(--r-pill) !important; font-family: "Inter", system-ui, sans-serif !important; font-size: 13px !important; font-weight: 600 !important; text-transform: none !important; letter-spacing: 0 !important; padding: 0 18px !important; }
+.book-wrap #b_discount_code, .book-wrap #b_invite_code { border-radius: 8px !important; border: 1px solid var(--line-2) !important; background: var(--surface) !important; }
+.book-wrap .fs-toggle, .book-wrap #bookPoliciesToggleIcon, .book-wrap #bookingPolicyToggleIcon { font-family: "Inter", system-ui, sans-serif !important; text-transform: none !important; letter-spacing: 0 !important; font-size: 13px !important; }
+/* Quote card typography */
+#finalPriceSummaryBox #summaryFinalAmount { font-family: "Archivo", sans-serif !important; font-size: 26px !important; letter-spacing: -.01em; color: var(--ink) !important; }
+#finalPriceSummaryBox > div:first-child > span:first-child { font-family: var(--mono-font); font-size: 11px; letter-spacing: .18em; }
+#finalPriceSummaryBox #summaryMilestoneBreakdown span { text-transform: none !important; font-family: "Inter", system-ui, sans-serif; letter-spacing: 0; }
+#finalPriceSummaryBox #summaryMilestoneBreakdown strong { color: var(--ink) !important; font-size: 15px !important; }
+#bookSubmitBtn { font-size: 15px; }
+/* Pinned total + submit while the form is on screen (see wireBook) */
+.book-sticky-bar .sticky-total { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.book-sticky-bar .sticky-total small { font-family: var(--mono-font); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); }
+.book-sticky-bar .sticky-total strong { font-family: "Archivo", sans-serif; font-size: 20px; letter-spacing: -.01em; color: var(--ink); }
+.book-sticky-bar { width: min(calc(100% - 64px), 780px); }
+@media (max-width: 620px) {
+  .book-wrap fieldset { padding: 18px 16px 20px; border-radius: 12px; }
+  .book-sticky-bar { width: 100%; }
+  .book-sticky-bar .sticky-actions { width: auto; flex: 1; }
+  .book-sticky-bar .sticky-total { flex: 0 0 auto; }
+  .book-sticky-bar .sticky-note { flex-basis: auto; }
+}
+
 @media (max-width: 620px) {
   .upload-sticky-bar { bottom: 0; left: 0; transform: none; width: 100%; border-radius: 10px 10px 0 0; border-left: none; border-right: none; border-bottom: none; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); }
   .upload-sticky-bar .sticky-note { flex-basis: 100%; }
