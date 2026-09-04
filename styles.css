@@ -2627,3 +2627,57 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 .lb-row { flex-wrap: wrap; }
 .lb-name { flex: 1 1 150px; overflow-wrap: anywhere; }
 .lb-name a { white-space: nowrap; }
+
+
+/* Lightbox sidebar, minimal pass: no boxes, one list, hairlines only. */
+.lb-panel { display: flex; flex-direction: column; gap: 0; width: 100%; }
+.lb-head { padding-bottom: 16px; }
+.lb-eyebrow { color: var(--ink-soft); font-size: 10.5px; letter-spacing: .18em; }
+.lb-title { font-size: 28px !important; margin-top: 8px; }
+.lb-desc { margin-top: 10px; }
+.lb-meta { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 0; padding: 14px 0; border-top: 1px solid var(--line); }
+.lb-meta dt { font-family: var(--mono-font); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); margin: 0 0 3px; }
+.lb-meta dd { margin: 0; font-size: 14px; font-weight: 600; color: var(--ink); }
+.lb-credits { margin: 0; display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.lb-credits-top { margin-top: 0; }
+.lb-credit { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 4px 14px; padding: 11px 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+.lb-credit dt { font-family: var(--mono-font); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); padding-top: 3px; }
+.lb-credit dd { margin: 0; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.lb-person { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; font-size: 14px; font-weight: 500; color: var(--ink); overflow-wrap: anywhere; }
+.lb-person a, .lb-person .lb-ig a { color: var(--accent) !important; text-decoration: none; font-weight: 500; white-space: nowrap; margin: 0 !important; display: inline !important; }
+.lb-person a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.lb-studio-links { gap: 2px 14px; }
+.lb-studio-links a { color: var(--ink-soft) !important; }
+.lb-stats-card { background: transparent; border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: 14px 0 12px; box-shadow: none; margin: 0; }
+.lb-stats-card .lb-h { color: var(--ink-soft); }
+.lb-stats dd { font-size: 14px; }
+.lb-export { background: transparent; border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: 16px 0 0; box-shadow: none; margin-top: 0; gap: 12px; }
+.lb-export .lb-h { color: var(--ink-soft); }
+.lb-export-btn { border-radius: 100px !important; }
+.lb-disclaimer { font-size: 12px !important; margin-top: 14px; padding-top: 12px; }
+.lb-admin { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; gap: 4px; }
+.lb-admin .lb-h { font-size: 10.5px; }
+.lb-panel .lb-sidebar-section[style*="border-top"] { border-top-color: var(--line) !important; }
+@media (max-width: 720px) { .lb-credit { grid-template-columns: 82px minmax(0, 1fr); } .lb-title { font-size: 26px !important; } }
+
+/* Lightbox sidebar, homepage vocabulary: the hero's mono micro-labels with
+   wide tracking, Archivo-bold links in ink (accent on hover only), the
+   primary action as the same pill as "Explore work". */
+.lb-eyebrow { font-family: "JetBrains Mono", "Archivo", monospace; font-size: 11px; letter-spacing: .2em; color: var(--ink-soft); }
+.lb-title { font-family: "Archivo", sans-serif; font-size: 30px !important; font-weight: 800; letter-spacing: -0.015em !important; margin-top: 10px; }
+.lb-meta dt, .lb-credit dt, .lb-stats dt, .lb-h, .lb-admin .lb-h { font-family: "JetBrains Mono", "Archivo", monospace; font-size: 10.5px; letter-spacing: .2em; font-weight: 600; color: var(--ink-soft); }
+.lb-h { display: flex; }
+.lb-person { font-family: "Inter", system-ui, sans-serif; font-size: 14.5px; font-weight: 500; }
+.lb-person a, .lb-person .lb-ig a { font-family: "Archivo", sans-serif; font-weight: 700; font-size: 14px; color: var(--ink) !important; }
+.lb-person a:hover { color: var(--accent) !important; text-decoration: none; }
+.lb-studio-links a { color: var(--ink-soft) !important; font-weight: 600; }
+.lb-studio-links a:hover { color: var(--ink) !important; }
+.lb-meta dd, .lb-stats dd { font-family: "Inter", system-ui, sans-serif; font-weight: 600; }
+.lb-export-btn { background: var(--ink) !important; color: var(--paper) !important; border: 1px solid var(--ink) !important; font-family: "Archivo", sans-serif !important; font-weight: 700 !important; font-size: 14px !important; padding: 13px 18px !important; }
+.lb-export-btn:hover { background: transparent !important; color: var(--ink) !important; }
+.lb-seg { background: transparent; }
+.lb-seg .orient-radio-label { font-family: "Archivo", sans-serif; font-weight: 700; font-size: 12.5px; }
+.lb-admin .linkish { font-family: "Archivo", sans-serif; font-weight: 700; font-size: 14px; color: var(--ink); }
+.lb-admin .linkish.muted { color: var(--ink-soft); }
+.lb-admin .linkish:hover { color: var(--accent); }
+.lb-note, .lb-disclaimer { font-family: "Inter", system-ui, sans-serif; }

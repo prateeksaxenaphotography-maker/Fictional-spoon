@@ -2329,10 +2329,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // album's agency (buildCompCardDisplayList picks it newest-first), so a
     // model who moved agencies between shoots shows where they are now.
     const agencyHtml = (isCc && shoot.agency) ? `
-        <div class="lb-sidebar-section lb-agency">
-          <span class="lb-h"><span>Represented by</span></span>
-          <span style="font-size: var(--font-sm); font-weight: 600; color: var(--ink);">${esc(shoot.agency)}${shoot.agencyHandle ? ` <a href="https://instagram.com/${encodeURIComponent(shoot.agencyHandle)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); font-weight: 600; text-decoration: none; margin-left: 6px;">@${esc(shoot.agencyHandle)}</a>` : ""}</span>
-        </div>` : "";
+        <dl class="lb-credits lb-credits-top"><div class="lb-credit"><dt>Agency</dt><dd><span class="lb-person">${esc(shoot.agency)}${shoot.agencyHandle ? ` <a href="https://instagram.com/${encodeURIComponent(shoot.agencyHandle)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); font-weight: 600; text-decoration: none; margin-left: 6px;">@${esc(shoot.agencyHandle)}</a>` : ""}</span></dd></div></dl>` : "";
 
     // Agency Model Stats HUD Card (Album Space #4 Redesign with Smart Fallback)
     let statsHtml = "";
@@ -2405,153 +2402,55 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       }
     }
 
-    // Categorized UI/UX Credits Engine with Micro-Badges & Deduplicated Venue Cards
+    // Credits as one definition list: the role on the left, the people on the
+    // right. Models first, then the crew, then where it was shot.
     const isCcPage = !!shoot.isCompCard;
-    const talentList = [];
-    const creativeList = [];
-
-    const addCreativeItem = (val, roleTag) => {
+    const groups = [];
+    const addGroup = (label, val, opts = {}) => {
       if (!val || val === "—") return;
-      const items = val.split(",").map(item => item.trim()).filter(Boolean);
-      items.forEach(item => {
-        const rendered = isCcPage ? esc(getTalentCleanName(item)) : renderCreditValue(item);
-        creativeList.push(`
-          <div class="lb-row">
-            <div class="lb-name">${rendered}</div>
-            <span class="lb-role">${roleTag}</span>
-          </div>
-        `);
+      const items = String(val).split(",").map(x => x.trim()).filter(Boolean);
+      if (!items.length) return;
+      const rendered = items.map(item => {
+        let html = isCcPage ? esc(getTalentCleanName(item)) : (opts.plain ? renderCreditsValue(item) : renderCreditValue(item));
+        // A model line with no link of its own borrows the album's handle.
+        if (opts.attachIg && igHtml && !html.includes("href=") && !html.includes("@")) html += ` <span class="lb-ig">${igHtml}</span>`;
+        return `<span class="lb-person">${html}</span>`;
       });
+      groups.push({ label: (items.length > 1 && opts.plural) ? opts.plural : label, rendered });
     };
-
-    if (shoot.talent && shoot.talent !== "—") {
-      const items = shoot.talent.split(",").map(item => item.trim()).filter(Boolean);
-      items.forEach(item => {
-        let rendered = isCcPage ? esc(getTalentCleanName(item)) : renderCreditValue(item);
-        // If talent string doesn't contain a link but shoot.instagram exists, attach igHtml right beside the name!
-        if (igHtml && !rendered.includes("href=") && !rendered.includes("@")) {
-          rendered += ` <span style="margin-left: 6px;">${igHtml}</span>`;
-        }
-        talentList.push(`
-          <div class="lb-row">
-            <div class="lb-name">${rendered}</div>
-            <span class="lb-role lb-role-talent">MODEL</span>
-          </div>
-        `);
-      });
-    }
-
-    if (shoot.photographer) addCreativeItem(shoot.photographer, "PHOTOGRAPHY");
-    if (shoot.secondaryPhotographers) addCreativeItem(shoot.secondaryPhotographers, "PHOTOGRAPHY");
-    if (shoot.mentor) addCreativeItem(shoot.mentor, "MENTOR");
-    if (shoot.artDirector) addCreativeItem(shoot.artDirector, "ART DIRECTOR");
-    if (shoot.stylist) addCreativeItem(shoot.stylist, "STYLING");
-    if (shoot.hair) addCreativeItem(shoot.hair, "HAIR STYLIST");
-    if (shoot.mua) addCreativeItem(shoot.mua, "MUA");
-    if (shoot.videographer) addCreativeItem(shoot.videographer, "VIDEO");
-
-    if (shoot.credits && shouldShowField(shoot, "Credits")) {
-      const items = shoot.credits.split(",").map(item => item.trim()).filter(Boolean);
-      items.forEach(item => {
-        const rendered = isCcPage ? esc(getTalentCleanName(item)) : renderCreditsValue(item);
-        creativeList.push(`
-          <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-bottom: 6px; padding: 3px 0;">${rendered}</div>
-        `);
-      });
-    }
-
-    // Build Venue & Studio links block
+    const hasTalent = !!(shoot.talent && shoot.talent !== "—");
+    if (hasTalent) addGroup("Model", shoot.talent, { plural: "Models", attachIg: true });
+    if (shoot.photographer || shoot.secondaryPhotographers) addGroup("Photography", [shoot.photographer, shoot.secondaryPhotographers].filter(Boolean).join(", "));
+    if (shoot.mentor) addGroup("Mentor", shoot.mentor, { plural: "Mentors" });
+    if (shoot.artDirector) addGroup("Art direction", shoot.artDirector);
+    if (shoot.stylist) addGroup("Styling", shoot.stylist);
+    if (shoot.hair) addGroup("Hair", shoot.hair);
+    if (shoot.mua) addGroup("Makeup", shoot.mua);
+    if (shoot.videographer) addGroup("Video", shoot.videographer);
+    if (shoot.credits && shouldShowField(shoot, "Credits")) addGroup("Also", shoot.credits, { plain: true });
+    // Where it was shot, with the studio's own profiles on the same row. The
+    // links are named by platform: the Kavyar URL ends in a random id, so
+    // there is no handle worth showing there.
     const cfg = window.STUDIO_CONFIG || {};
-    let locationContent = "";
-    if (shoot.location && shoot.location !== "—") {
-      locationContent += `<div style="font-size: var(--font-xs); font-weight: 600; color: var(--ink); margin-bottom: 4px;">${renderCreditLinks(shoot.location)}</div>`;
-    }
-    // Both studio links are named by their platform, not by their handle.
-    // They used to be hand-written in two different styles — one as the
-    // handle "@nerdyphotographer.in", one as "Kavyar Studio" — which read as
-    // two unrelated kinds of thing sitting side by side. Naming the platform
-    // is the form that works for both: the Kavyar URL ends in a random id
-    // (kavyar.com/uucurn46ib8f), so there is no handle worth showing there.
-    // The account each one opens is in the tooltip and the accessible name.
     const studioLinkHtml = (href, platform) =>
-      `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer" title="${esc(cfg.studioName || "the studio")} on ${platform}" aria-label="${esc(cfg.studioName || "the studio")} on ${platform} (opens in a new tab)" style="color: var(--accent); font-weight: 700; text-decoration: none; font-size: var(--font-xs); white-space: nowrap;">${platform} ↗</a>`;
+      `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer" title="${esc(cfg.studioName || "the studio")} on ${platform}" aria-label="${esc(cfg.studioName || "the studio")} on ${platform} (opens in a new tab)">${platform} ↗</a>`;
+    const locBits = [];
+    if (shoot.location && shoot.location !== "—") locBits.push(`<span class="lb-person">${renderCreditLinks(shoot.location)}</span>`);
     const studioLinks = [];
     if (cfg.instagram) studioLinks.push(studioLinkHtml(cfg.instagram, "Instagram"));
     if (cfg.kavyar) studioLinks.push(studioLinkHtml(cfg.kavyar, "Kavyar"));
-    if (studioLinks.length) {
-      // nowrap above plus wrap here: the row breaks between the two links if
-      // the sidebar is narrow, never through the middle of a label — which is
-      // how "Kavyar Studio ↗" came to sit on two lines with the arrow orphaned.
-      locationContent += `<div style="display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 4px;">${studioLinks.join("")}</div>`;
+    if (studioLinks.length) locBits.push(`<span class="lb-person lb-studio-links">${studioLinks.join("")}</span>`);
+    if (locBits.length) groups.push({ label: "Location", rendered: locBits });
+    // The model's own handles, unless the model line already links out.
+    const modelLinked = hasTalent && groups[0] && groups[0].rendered.some(r => r.includes("href="));
+    if ((igHtml || kavyarHtml) && !modelLinked) {
+      groups.push({ label: "Socials", rendered: [igHtml, kavyarHtml].filter(Boolean).map(h => `<span class="lb-person">${h}</span>`) });
     }
-
-    const creditsSections = [];
-
-    // Talent Section
-    if (talentList.length > 0) {
-      creditsSections.push(`
-        <div style="margin-bottom: 16px;">
-          <div class="lb-h">
-            <span>Models &amp; talent</span>
-          </div>
-          ${talentList.join("")}
-        </div>
-      `);
-    }
-
-    // Creative Team Section
-    if (creativeList.length > 0) {
-      creditsSections.push(`
-        <div style="margin-bottom: 16px;">
-          <div class="lb-h">
-            <span>Creative &amp; production</span>
-          </div>
-          ${creativeList.join("")}
-        </div>
-      `);
-    }
-
-    // Location & Studio Section
-    if (locationContent) {
-      creditsSections.push(`
-        <div style="margin-bottom: 14px;">
-          <div class="lb-h">
-            <span>Location &amp; studio</span>
-          </div>
-          ${locationContent}
-        </div>
-      `);
-    }
-
-    // Direct Social Handles Tag Credits Card (Instagram & Kavyar)
-    if ((igHtml || kavyarHtml) && (!talentList.length || !talentList[0].includes("href="))) {
-      creditsSections.push(`
-        <div>
-          <div class="lb-h">
-            <span>Social handles</span>
-          </div>
-          <div style="display: flex; flex-wrap: wrap; gap: 8px; font-size: var(--font-xs); align-items: center;">
-            ${igHtml ? `<div>${igHtml}</div>` : ""}
-            ${kavyarHtml ? `<div>${kavyarHtml}</div>` : ""}
-          </div>
-        </div>
-      `);
-    }
-
     if (shoot.pdfUrl && shouldShowField(shoot, "Pdf")) {
-      creditsSections.push(`
-        <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line);">
-          <a href="${esc(shoot.pdfUrl)}" download style="color: var(--accent); text-decoration: none; font-weight: 700; font-size: var(--font-xs); display: inline-flex; align-items: center; gap: 6px;">Download publication PDF</a>
-        </div>
-      `);
+      groups.push({ label: "Publication", rendered: [`<span class="lb-person"><a href="${esc(shoot.pdfUrl)}" download>Download PDF ↗</a></span>`] });
     }
-
-    const creditsHtml = creditsSections.length ? `
-      <div class="lb-sidebar-section lb-card">
-        ${creditsSections.join("")}
-      </div>
-    ` : "";
-
+    const creditRows = (list) => `<dl class="lb-credits">${list.map(g => `<div class="lb-credit"><dt>${esc(g.label)}</dt><dd>${g.rendered.join("")}</dd></div>`).join("")}</dl>`;
+    const creditsHtml = groups.length ? creditRows(groups) : "";
     // Lighting diagram
     let diagHtml = "";
     if (shoot.lightingDiagram && (shoot.lightingDiagramVisibility === "public" || isAdmin())) {
@@ -2615,50 +2514,31 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       `;
     }
     const disclaimerHtml = isCc ? `
-      <p class="lb-disclaimer">
-        To book this talent, please connect directly via their verified social channels or contact their representing agency.
-        <br/><br/>
-        This compcard includes photos clicked or produced under nerdyphotographer.in studio or its subsidiaries.
-      </p>
+      <p class="lb-disclaimer">To book this talent, connect through their social channels or their representing agency. The photos on this comp card were made by nerdyphotographer.in or its affiliates.</p>
     ` : "";
 
+    const metaBits = isCc ? [] : [
+      shoot.activity ? `<div><dt>Activity</dt><dd>${esc(shoot.activity)}</dd></div>` : "",
+      shoot.season ? `<div><dt>Season</dt><dd>${esc(shoot.season)}</dd></div>` : ""
+    ].filter(Boolean);
+    const socialsHtml = (igHtml || kavyarHtml)
+      ? creditRows([{ label: "Socials", rendered: [igHtml, kavyarHtml].filter(Boolean).map(h => `<span class="lb-person">${h}</span>`) }])
+      : "";
     return `
-      <div style="display:flex; flex-direction:column; gap: 24px; width: 100%;">
-        <div>
-          <span class="eyebrow lb-eyebrow">
-            ${isCc ? "Model Portfolio" : esc([shoot.brand, publicShootType(shoot)].filter(Boolean).join(" · "))}
-          </span>
-          <h2 class="lb-title">
-            ${esc(getTalentCleanName(shoot.talent || shoot.title))}
-          </h2>
+      <div class="lb-panel">
+        <header class="lb-head">
+          <span class="eyebrow lb-eyebrow">${isCc ? "Model portfolio" : esc([shoot.brand, publicShootType(shoot)].filter(Boolean).join(" · "))}</span>
+          <h2 class="lb-title">${esc(getTalentCleanName(shoot.talent || shoot.title))}</h2>
           ${angleHtml}
+          ${modelTypeHtml}
           ${shoot.description ? `<p class="lb-desc">${esc(shoot.description)}</p>` : ""}
-        </div>
-        
-        ${isCc ? "" : `
-        <dl class="work-credits" style="margin: 0; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);">
-          ${shoot.activity ? `<div><dt>Activity</dt><dd>${esc(shoot.activity)}</dd></div>` : ""}
-          ${shoot.season ? `<div><dt>Season</dt><dd>${esc(shoot.season)}</dd></div>` : ""}
-          ${(shoot.location) ? `<div><dt>Location</dt><dd>${renderCreditLinks(shoot.location)}</dd></div>` : ""}
-        </dl>
-        `}
-        
-        ${modelTypeHtml}
+        </header>
+        ${metaBits.length ? `<dl class="lb-meta">${metaBits.join("")}</dl>` : ""}
+        ${isCc ? socialsHtml : ""}
         ${agencyHtml}
         ${statsHtml}
         ${filterBarHtml}
-        
-        ${isCc ? `
-          <div class="lb-sidebar-section" style="border-top: 1px solid var(--line); padding-top: 16px;">
-            <dl class="work-credits" style="margin: 0;">
-              ${igHtml}
-              ${kavyarHtml}
-            </dl>
-          </div>
-        ` : `
-          ${creditsHtml}
-        `}
-        
+        ${isCc ? "" : creditsHtml}
         ${diagHtml}
         ${pdfBtnHtml}
         ${disclaimerHtml}
