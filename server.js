@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const path = require("path");
+const fs = require("fs");
 const cors = require("cors");
 const logController = require("./backend/logController");
 const viewController = require("./backend/viewController");
@@ -51,7 +52,11 @@ app.get("*", (req, res) => {
   // tags for an unrelated route.
   const paths = ["/albums", "/book", "/calendar", "/analytics", "/categories", "/studio", "/upload", "/testimonials"];
   const matchedPath = paths.find(p => req.path === p || req.path.startsWith(p + "/"));
-  if (matchedPath) {
+  // Only routes that ship their own index.html (SEO meta per page) get it;
+  // the rest — /calendar and /analytics have no directory — fall back to the
+  // SPA shell like static hosting does via 404.html, instead of sendFile
+  // throwing on the missing file and the route answering 500.
+  if (matchedPath && fs.existsSync(path.join(__dirname, matchedPath, "index.html"))) {
     return res.sendFile(path.join(__dirname, matchedPath, "index.html"));
   }
   return res.sendFile(path.join(__dirname, "index.html"));

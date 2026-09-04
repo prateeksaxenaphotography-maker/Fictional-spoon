@@ -3335,13 +3335,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     return `<div class="kinetic-word reveal" aria-hidden="true">${letters}</div>`;
   };
   // Turn a page-head <h1> into a per-letter kinetic headline (stays semantic for SEO).
+  // Letters are grouped per word: the inner row is flex-wrap, and with bare
+  // letter spans it wrapped between ANY two letters — "Studio Availability"
+  // rendered as "Studio Availa / bility" on a phone. --i keeps counting
+  // across words so the rise-in stagger is unchanged.
   const kineticH1 = (word, extraClass = "") => {
-    const letters = String(word).split("").map((ch, i) =>
-      ch === " "
-        ? `<span class="kw-space">&nbsp;</span>`
-        : `<span class="kw-letter" style="--i:${i}">${esc(ch)}</span>`
-    ).join("");
-    return `<h1 class="reveal kinetic-h1 ${extraClass}"><span class="kinetic-word-inner">${letters}</span></h1>`;
+    let i = 0;
+    const words = String(word).split(" ").map(w =>
+      `<span class="kw-word">${w.split("").map(ch => `<span class="kw-letter" style="--i:${i++}">${esc(ch)}</span>`).join("")}</span>`
+    );
+    return `<h1 class="reveal kinetic-h1 ${extraClass}"><span class="kinetic-word-inner">${words.join(`<span class="kw-space">&nbsp;</span>`)}</span></h1>`;
   };
   // noth.in-style full-bleed work card: big image, title + tagline overlay,
   // image reveal on hover. Opens the shoot in the lightbox via .noth-work wiring.
@@ -7085,19 +7088,19 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <label class="field"><span>Usage rights</span><input id="f_rights" type="text" placeholder="e.g. Web + social, 1 year" /></label>
               </div>
               <div class="field-row" style="align-items: center; margin-top: 10px; gap: 20px; flex-wrap: wrap;">
-                <label style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: var(--font-xs); text-transform: uppercase; font-weight: 700; cursor: pointer; color: #fff;">
+                <label style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: var(--font-xs); text-transform: uppercase; font-weight: 700; cursor: pointer; color: var(--ink);">
                   <input id="f_featured" type="checkbox" checked style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
                   Feature on homepage
                 </label>
-                <label style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: var(--font-xs); text-transform: uppercase; font-weight: 700; cursor: pointer; color: #fff;">
+                <label style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: var(--font-xs); text-transform: uppercase; font-weight: 700; cursor: pointer; color: var(--ink);">
                   <input id="f_show_compcard" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
                   Show as Comp Card
                 </label>
-                <label style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: var(--font-xs); text-transform: uppercase; font-weight: 700; cursor: pointer; color: #fff;">
+                <label style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: var(--font-xs); text-transform: uppercase; font-weight: 700; cursor: pointer; color: var(--ink);">
                   <input id="f_hide_compcard" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
                   Hide from Comp Cards Page
                 </label>
-                <label style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: var(--font-xs); text-transform: uppercase; font-weight: 700; cursor: pointer; color: #fff;">
+                <label style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: var(--font-xs); text-transform: uppercase; font-weight: 700; cursor: pointer; color: var(--ink);">
                   <input id="f_disable_download" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
                   Disable Comp Card PDF Download
                 </label>
@@ -7181,6 +7184,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
             <p class="field-note" id="queueNote">No photos staged yet.</p>
             <button type="submit" class="btn btn-dark btn-block" id="publishBtn" disabled>Publish to the archive</button>
+            <!-- Mirrors #queueNote / #publishBtn (see renderStaged) and just
+                 clicks the real button, so the form's own submit path stays
+                 the single source of truth. -->
+            <div class="upload-sticky-bar" id="uploadStickyBar" aria-live="polite">
+              <span class="sticky-note" id="stickyQueueNote">No photos staged yet.</span>
+              <div class="sticky-actions">
+                <button type="button" class="sticky-jump" id="stickyJumpPhotos" title="Scroll to the photo dropzone">↑ Photos</button>
+                <button type="button" class="btn btn-dark sticky-publish" id="stickyPublishBtn" disabled>Publish to the archive</button>
+              </div>
+            </div>
           </form>
         </div>
       </section>`;
@@ -7969,6 +7982,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const pageSub = $(".page-head .page-sub");
         if (pageSub) pageSub.textContent = `Editing: ${editingShoot.title}`;
         pub.textContent = "Save changes";
+        const stickyPubLabel = $("#stickyPublishBtn");
+        if (stickyPubLabel) stickyPubLabel.textContent = "Save changes";
         
         if (editingShoot.isTestimonial) {
           if (testimonialOnlyCheckbox) testimonialOnlyCheckbox.checked = true;
@@ -8148,10 +8163,33 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       }
       renderStaged();
     }
+    const stickyNote = $("#stickyQueueNote");
+    const stickyPub = $("#stickyPublishBtn");
+    const stickyBar = $("#uploadStickyBar");
+    $("#stickyPublishBtn")?.addEventListener("click", () => pub.click());
+    $("#stickyJumpPhotos")?.addEventListener("click", () => {
+      ($("#dropzone") || $(".dropzone"))?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    // The bar is position: fixed (see styles.css), so it decides its own
+    // visibility: shown only while the form is on screen and the real
+    // Publish/Save button is not — at the bottom of the page the button
+    // itself is right there and a second copy over it just gets in the way.
+    if (stickyBar && form && "IntersectionObserver" in window) {
+      let formOnScreen = false, realBtnOnScreen = false;
+      const syncBar = () => stickyBar.classList.toggle("is-hidden", !formOnScreen || realBtnOnScreen);
+      stickyBar.classList.add("is-hidden");
+      new IntersectionObserver(([e]) => { formOnScreen = e.isIntersecting; syncBar(); }, { threshold: 0 }).observe(form);
+      new IntersectionObserver(([e]) => { realBtnOnScreen = e.isIntersecting; syncBar(); }, { threshold: 0, rootMargin: "0px 0px 40px 0px" }).observe(pub);
+    }
     function renderStaged() {
       const n = staged.length; pub.disabled = n === 0;
       note.textContent = n ? `${n} photo${n > 1 ? "s" : ""} ready — drag to reorder, drag the dot to set focus.` : "No photos staged yet.";
       note.classList.toggle("ready", n > 0);
+      if (stickyPub) stickyPub.disabled = pub.disabled;
+      if (stickyNote) {
+        stickyNote.textContent = n ? `${n} photo${n > 1 ? "s" : ""} ready` : "No photos staged yet";
+        stickyNote.classList.toggle("ready", n > 0);
+      }
       grid.innerHTML = staged.map((f, index) => {
         const pos = f.objectPosition && f.objectPosition !== "center" ? f.objectPosition : "center center";
         const fp = focalPercent(f);
