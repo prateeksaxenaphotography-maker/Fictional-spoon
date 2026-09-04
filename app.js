@@ -3043,7 +3043,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (adminBtn) {
       adminBtn.textContent = btnText;
       adminBtn.style.borderColor = active ? "var(--accent)" : "currentColor";
-      adminBtn.style.color = active ? "var(--accent)" : "#fff";
+      adminBtn.style.color = active ? "var(--accent)" : "inherit";
     }
 
     const headerAdminBtn = $("#headerAdminBtn");

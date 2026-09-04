@@ -1234,9 +1234,6 @@ main:focus { outline: none; }
   border-color: var(--accent) !important;
 }
 
-.theme-dark #navAdminSec {
-  background: rgba(18, 18, 17, 0.95) !important;
-}
 
 /* ---------- Specialties directory ---------- */
 .specialties-list { display: flex; flex-direction: column; gap: 50px; }
