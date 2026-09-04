@@ -4829,14 +4829,25 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
      ============================================================ */
   function viewCalendar() {
     return `
-      <section class="page-head">
-        <div class="container">
-          <p class="eyebrow reveal">🔒 Admin Calendar &amp; Roster</p>
-          ${kineticH1("Studio Availability", "kinetic-h1-wide")}
-          <p class="page-sub reveal" style="max-width: 650px; line-height: 1.6; opacity: 1 !important; visibility: visible !important; transform: none !important;">Manage studio booking dates, block/open specific days, view upcoming client bookings, and handle double-bookings. By default, Monday–Friday are blocked for clients; Saturday–Sunday are open.</p>
+      <section class="page-head admin-page-head">
+        <div class="container admin-title-row">
+          <div>
+            <p class="eyebrow">Admin · Calendar</p>
+            <h1 class="admin-h1">Studio availability</h1>
+            <p class="admin-sub">Weekdays are closed to clients by default and weekends are open. Tap a day to block it, hold it, or add a booking.</p>
+          </div>
+          <div class="admin-title-actions">
+            <button type="button" class="admin-cal-btn" id="adminCalNewBookingBtn">Add booking</button>
+            <!-- Until this existed, calendar edits were saved to this device
+                 only: syncToGitHub had no caller anywhere in the calendar UI,
+                 so bookings never reached data.js and every visitor kept
+                 seeing the studio as fully open. -->
+            <button type="button" class="admin-cal-btn primary" id="adminCalPublishBtn" title="Push this calendar to the live site so visitors see booked dates">Publish to live site</button>
+          </div>
         </div>
       </section>
       <section class="section container admin-calendar-wrap">
+        <div class="admin-cal-card">
         <div class="admin-calendar-header">
           <div class="admin-cal-nav">
             <button type="button" class="admin-cal-btn" id="adminCalPrev">‹ Prev</button>
@@ -4852,12 +4863,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <button type="button" id="adminPay503020Btn" class="admin-cal-btn" style="cursor: pointer;">50 / 30 / 20</button>
               </div>
             </div>
-            <button type="button" class="admin-cal-btn" id="adminCalNewBookingBtn">Add booking</button>
-            <!-- Until this existed, calendar edits were saved to this device
-                 only: syncToGitHub had no caller anywhere in the calendar UI,
-                 so bookings never reached data.js and every visitor kept
-                 seeing the studio as fully open. -->
-            <button type="button" class="admin-cal-btn primary" id="adminCalPublishBtn" title="Push this calendar to the live site so visitors see booked dates">Publish to live site</button>
             <button type="button" class="admin-cal-btn" id="adminCalResetBtn">Reset rules</button>
           </div>
         </div>
@@ -4872,6 +4877,19 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <span><i style="background: #B23A5A;"></i>Assisting</span>
         </div>
 
+        <div id="adminCalGridContainer"></div>
+        </div>
+
+        <div id="adminRosterWrap">
+          <div class="admin-roster-head">
+            <h3 class="admin-roster-title">Upcoming</h3>
+            <span id="rosterCountBadge" style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--ink-soft); font-weight: 700;"></span>
+          </div>
+          <div id="bookingRosterGrid" class="booking-list"></div>
+        </div>
+
+        <div class="admin-settings">
+          <h3 class="admin-roster-title" style="margin-bottom: 12px;">Settings</h3>
         <div class="admin-panel">
           <div class="admin-panel-head" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; cursor: pointer; user-select: none;" onclick="const b=document.getElementById('adminPkgBody');const a=document.getElementById('adminPkgArrow');const open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▼':'▲';">
             <span style="display: flex; align-items: center; gap: 8px;">Package rates &amp; deliverables</span>
@@ -4938,14 +4956,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           </div>
         </div>
 
-        <div id="adminCalGridContainer"></div>
-
-        <div id="adminRosterWrap" style="margin-top: 32px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
-            <h3 class="admin-roster-title">Upcoming</h3>
-            <span id="rosterCountBadge" style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--ink-soft); font-weight: 700;"></span>
-          </div>
-          <div id="bookingRosterGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px;"></div>
         </div>
 
         <div style="margin-top: 32px; border-top: 1px solid var(--line); padding-top: 20px; text-align: center;">
@@ -5381,60 +5391,36 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         countBadge.textContent = `${upcomingBookings.length} Active Upcoming · ${pastBookings.length} Past Completed`;
       }
 
-      const renderBookingCardHtml = (b, isPast = false) => `
-        <div class="booking-card"${isPast ? ' style="opacity: 0.78; background: rgba(0,0,0,0.02);"' : ''}>
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
-            <div class="booking-card-date">${esc(b.dateKey)} ${isPast ? '<span style="font-size:9px; background:var(--bone); border:1px solid var(--line); color:var(--ink-soft); padding:1px 5px; border-radius:4px; margin-left:4px;">PAST COMPLETED</span>' : ''}</div>
-            <div style="display:flex; gap:6px; align-items:center;">
-              ${b.status === "workshop" ? `<span class="roster-pill roster-pill-workshop">Workshop</span>` : b.status === "assisting" ? `<span class="roster-pill roster-pill-assisting">Assisting</span>` : (b.isTentative || b.status === "tentative") ? `<span class="roster-pill roster-pill-hold">Hold</span>` : `<span class="roster-pill roster-pill-confirmed">Confirmed</span>`}
-              <span class="roster-pill roster-pill-neutral">${esc(b.duration || "Full Day")}</span>
-            </div>
+      const renderBookingCardHtml = (b, isPast = false) => {
+        const isNonContract = (b.type === "Assisting Photographer" || b.type === "Workshop Attended" || (b.title && (b.title.includes("Assisting") || b.title.includes("Workshop"))));
+        const v = b.contractVersion || (b.agreedToTerms ? "V3.2" : "Pending Agreement");
+        const contractLine = isNonContract
+          ? `<span>Internal activity · no contract</span>`
+          : v === "Pending Agreement" ? `<span style="color: #B7791F; font-weight: 600;">Agreement pending</span>`
+          : v === "Custom Contract" ? `<span>Custom contract / MSA</span>`
+          : `<span><strong>Agreed:</strong> ${esc(v)}</span>${(v !== "Pending Agreement" && v !== "Custom Contract") ? ` <button type="button" class="linkish" onclick="window.openContractArchiveModal('${esc(v)}')">View terms ↗</button>` : ""}`;
+        const statusPill = b.status === "workshop" ? `<span class="roster-pill roster-pill-workshop">Workshop</span>` : b.status === "assisting" ? `<span class="roster-pill roster-pill-assisting">Assisting</span>` : (b.isTentative || b.status === "tentative") ? `<span class="roster-pill roster-pill-hold">Hold</span>` : `<span class="roster-pill roster-pill-confirmed">Confirmed</span>`;
+        const links = (b.links && b.links.length) ? `<div><strong>Reference links:</strong> ${b.links.map(l => `<a href="${esc(l)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); word-break: break-all;">${esc(l)} ↗</a>`).join(" · ")}</div>` : "";
+        const atts = (b.attachments && b.attachments.length) ? `<div><strong>Attachments:</strong> ${b.attachments.map(att => `<a href="${esc(att.dataUrl)}" download="${esc(att.name)}" target="_blank" style="color: var(--accent);">${esc(att.name)} (${Math.round(att.size/1024)} KB)</a>`).join(" · ")}</div>` : "";
+        const hasMore = !!(b.email || b.phone || links || atts);
+        return `
+        <div class="booking-row${isPast ? " is-past" : ""}">
+          <span class="br-date">${esc(b.dateKey)}</span>
+          <div class="br-main">
+            <div class="br-name">${esc(b.name)}</div>
+            <div class="br-sub">${esc(b.type || "General Shoot")}${b.notes ? ` · <em>${esc(b.notes)}</em>` : ""}</div>
+            <div class="br-sub br-contract">${contractLine}</div>
           </div>
-          <h3 class="booking-card-name" style="margin-top:6px;">${esc(b.name)}</h3>
-          <div class="booking-card-detail"><strong>Shoot Type:</strong> ${esc(b.type || "General Shoot")}</div>
-          ${b.email ? `<div class="booking-card-detail"><strong>Email:</strong> ${esc(b.email)}</div>` : ""}
-          ${b.phone ? `<div class="booking-card-detail"><strong>Phone:</strong> ${esc(b.phone)}</div>` : ""}
-          ${b.notes ? `<div class="booking-card-detail" style="margin-top: 8px; font-style: italic; color: var(--ink);">"${esc(b.notes)}"</div>` : ""}
-          ${b.links && b.links.length ? `
-            <div class="booking-card-detail" style="margin-top:8px;">
-              <strong>Reference Links (${b.links.length}):</strong>
-              <div style="display:flex; flex-direction:column; gap:3px; margin-top:3px;">
-                ${b.links.map(l => `<a href="${esc(l)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent); word-break:break-all; font-family:var(--mono-font); font-size:11px;">🔗 ${esc(l)} ↗</a>`).join("")}
-              </div>
-            </div>
-          ` : ""}
-          ${b.attachments && b.attachments.length ? `
-            <div class="booking-card-detail" style="margin-top:8px;">
-              <strong>Attachments (${b.attachments.length}):</strong>
-              <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:4px;">
-                ${b.attachments.map(att => `<a href="${esc(att.dataUrl)}" download="${esc(att.name)}" target="_blank" style="display:inline-flex; align-items:center; gap:4px; background:var(--bone); border:1px solid var(--line); border-radius:4px; padding:4px 8px; font-family:var(--mono-font); font-size:10px; color:var(--ink); text-decoration:none;">📄 ${esc(att.name)} (${Math.round(att.size/1024)} KB) ⬇</a>`).join("")}
-              </div>
-            </div>
-          ` : ""}
-          <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--line); font-size: 11px; color: var(--ink-soft); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
-            <span>${(() => {
-              const isNonContract = (b.type === "Assisting Photographer" || b.type === "Workshop Attended" || (b.title && (b.title.includes("Assisting") || b.title.includes("Workshop"))));
-              if (isNonContract) {
-                return `<span style="color: var(--ink-soft); font-weight: 600;">Internal activity · no contract</span>`;
-              }
-              const v = b.contractVersion || (b.agreedToTerms ? "V3.2" : "Pending Agreement");
-              if (v === "Pending Agreement") return `<span style="color: #f57c00; font-weight: 700;">Agreement pending</span>`;
-              if (v === "Custom Contract") return `<span style="color: #7c4dff; font-weight: 700;">Custom contract / MSA</span>`;
-              return `<strong>Agreed:</strong> ${esc(v)}`;
-            })()}</span>
-            ${(() => {
-              const isNonContract = (b.type === "Assisting Photographer" || b.type === "Workshop Attended" || (b.title && (b.title.includes("Assisting") || b.title.includes("Workshop"))));
-              if (isNonContract) return '';
-              const v = b.contractVersion || (b.agreedToTerms ? "V3.2" : "Pending Agreement");
-              return (v !== "Pending Agreement" && v !== "Custom Contract") ? `<button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('${esc(v)}')" style="font-size: 9px; padding: 3px 8px;">View Terms Text ↗</button>` : '';
-            })()}
+          <span>${statusPill}</span>
+          <span class="br-sub">${esc(b.duration || "Full Day")}</span>
+          <div class="br-actions">
+            <button type="button" class="linkish" onclick="window.openEditBookingModal('${b.dateKey}', '${b.id}')">Edit</button>
+            <button type="button" class="linkish muted" onclick="window.removeBookingFromRoster('${b.dateKey}', '${b.id}')">Cancel</button>
+            ${hasMore ? `<button type="button" class="linkish muted" onclick="this.closest('.booking-row').classList.toggle('is-open')">Details</button>` : ""}
           </div>
-          <div style="margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap;">
-            <button type="button" class="admin-cal-btn primary" onclick="window.openEditBookingModal('${b.dateKey}', '${b.id}')">Edit booking</button>
-            <button type="button" class="admin-cal-btn roster-danger" onclick="window.removeBookingFromRoster('${b.dateKey}', '${b.id}')">Cancel</button>
-          </div>
-        </div>
-      `;
+          ${hasMore ? `<div class="br-more">${b.email ? `<div><strong>Email:</strong> ${esc(b.email)}</div>` : ""}${b.phone ? `<div><strong>Phone:</strong> ${esc(b.phone)}</div>` : ""}${links}${atts}</div>` : ""}
+        </div>`;
+      };
 
       if (!upcomingBookings.length) {
         rosterGrid.innerHTML = `
@@ -7038,21 +7024,26 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const dropTitle = isTouch ? "Tap to upload photos" : "Drag your photoshoot here";
     const dropHint = isTouch ? "Select images from files or photo library" : "or <span class=\"link\">browse files</span> — JPG, PNG, WEBP";
     return `
-      <section class="page-head">
-        <div class="container">
-          <p class="eyebrow reveal">05 — Contribute</p>
-          <h1 class="reveal">Publish a photoshoot</h1>
-          <p class="page-sub reveal">Drop your images, fill in the studio credits, and your shoot joins the archive — browsable by activity, brand and type. Saved locally to this browser.</p>
+      <section class="page-head admin-page-head upload-page-head">
+        <div class="container admin-title-row">
+          <div>
+            <p class="eyebrow reveal">Admin · Archive</p>
+            <h1 class="admin-h1 reveal">Publish a photoshoot</h1>
+            <p class="page-sub admin-sub reveal">Drop your images, fill in the credits, and the shoot joins the archive — browsable by activity, brand and type. Saved to this browser until you publish.</p>
+          </div>
+          <div class="admin-title-actions"><span class="upload-status-pill" id="uploadStatusPill">Draft · not published</span></div>
         </div>
       </section>
       <section class="section container">
         <div class="upload-grid">
           <div class="dropzone reveal" id="dropzone" tabindex="0" role="button" aria-label="Upload images">
             <input type="file" id="fileInput" accept="image/*" multiple hidden />
+            <div class="dz-head"><span class="dz-kicker">Photos <b id="dzCount">· 0</b></span><span class="dz-meta">Drag to reorder · dot sets focus</span></div>
             <div class="dropzone-inner">
               <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 16V4m0 0L7 9m5-5l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
               <p class="dropzone-title">${dropTitle}</p>
               <p class="dropzone-hint">${dropHint}</p>
+              <p class="dropzone-ratio">Cover image works best at 2:3 portrait (e.g. 2000 × 3000 px) or 3:2 landscape (e.g. 3000 × 2000 px).</p>
             </div>
             <div class="thumb-bulk-toolbar" id="thumbBulkToolbar" style="display:none; align-items:center; flex-wrap:wrap; gap:8px; margin-top:14px; padding:10px 12px; border:1px solid var(--line-2); border-radius:8px; background:var(--bone-2); pointer-events:auto;">
               <span style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft);">Bulk-tag pose:</span>
@@ -7373,12 +7364,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     };
 
     return `
-      <section class="page-head">
+      <section class="page-head admin-page-head book-page-head">
         <div class="container">
           <p class="eyebrow reveal">Book a session</p>
-          ${kineticH1("Book", "kinetic-h1-wide")}
-          <p class="page-sub reveal">Fill out the details below to inquire about booking a session. Whether you are booking a commercial campaign, e-commerce production, editorial work, or scheduling a selective test shoot, please submit your brief and project specs below.</p>
-
+          <h1 class="admin-h1 reveal">Tell us about the shoot.</h1>
+          <p class="page-sub admin-sub reveal">Whether it is a campaign, an editorial or a selective test shoot: who you are, what we are shooting, and the brief. Your quote updates as you go, and nothing is sent until you submit.</p>
+          <ol class="book-steps reveal" id="bookSteps" aria-label="Form sections">
+            <li data-step="contact" class="is-active">Contact</li>
+            <li data-step="shoot">The shoot</li>
+            <li data-step="brief">Brief</li>
+          </ol>
         </div>
       </section>
       <section class="section container">
@@ -7407,8 +7402,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             </div>
           </div>
           <form class="shoot-form" id="bookingForm" novalidate>
-            <fieldset>
-              <legend>Contact Information</legend>
+            <fieldset id="bookContactFs">
+              <legend>Contact</legend>
                <div class="field-row">
                  <label class="field"><span>Your Name / Brand *</span><input id="b_name" type="text" required placeholder="e.g. John Doe / Brand Name" /></label>
                  <label class="field"><span>Role *</span>
@@ -7429,8 +7424,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                <label class="field"><span id="b_instagram_label">Instagram / Website</span><input id="b_instagram" type="text" placeholder="e.g. @handle or website.com" /></label>
              </fieldset>
  
-             <fieldset>
-               <legend>Shoot Details</legend>
+             <fieldset id="bookShootFs">
+               <legend>The shoot</legend>
 
                 <!-- Dedicated Still Photography Specialization & Video Coverage Policy Notice -->
                 <div style="background: rgba(var(--accent-rgb), 0.04); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
@@ -7497,7 +7492,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   </label>
                </div>
                 <div class="field-row">
-                  <label class="field" style="grid-column: 1 / -1;"><span>Dedicated Studio Space Needed? *</span>
+                  <label class="field venue-native" style="grid-column: 1 / -1;"><span>Where are we shooting? *</span>
                     <!-- A choice of venue rather than a yes/no: the home studio
                          carries no rental, so a yes/no framing on cost no longer
                          fits. No price is stated on the first line on purpose —
@@ -7512,6 +7507,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                       <option value="Outdoor / On-Location (No Studio Required)" selected>Outdoor / on-location — no studio required</option>
                     </select>
                   </label>
+                  <!-- Visible face of the <select> above: a pick writes the select
+                       and fires change, so every consumer of #b_studio_space
+                       (updateFields, the submit payload, the contract clause)
+                       is untouched. Kept inside this .field-row so the invite
+                       code's venue lock hides both together. -->
+                  <div class="venue-cards" id="venueCards" style="grid-column: 1 / -1;" role="radiogroup" aria-label="Where are we shooting?">
+                    <label class="venue-card"><input type="radio" name="venue_pick" value="Home Studio - Noida (Provided by Studio)" /><span class="vc-main"><strong>Home studio, Noida</strong><small>Intimate setup · portraits, comp cards, solo talent</small></span><span class="vc-tag">Rental itemised in your quote</span></label>
+                    <label class="venue-card"><input type="radio" name="venue_pick" value="Dedicated Commercial Studio Rental (Billed at Actuals)" /><span class="vc-main"><strong>Commercial studio</strong><small>Rented space, booked by you or by us</small></span><span class="vc-tag">Billed at actuals</span></label>
+                    <label class="venue-card"><input type="radio" name="venue_pick" value="Outdoor / On-Location (No Studio Required)" checked /><span class="vc-main"><strong>Outdoor / on location</strong><small>Your venue, or the outdoors</small></span><span class="vc-tag">No studio needed</span></label>
+                  </div>
                 </div>
                 <!-- Shown only for the rented commercial studio: that space
                      does not come with the photographer's own lighting kit
@@ -7707,6 +7712,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                  </div>
                </div>
 
+             </fieldset>
+
+             <fieldset id="bookBriefFs">
+               <legend>Brief</legend>
                 <div class="field" style="display: flex; flex-direction: column; gap: 4px;">
                   <span>Reference &amp; Mood Board Links (Multiple allowed)</span>
                   <div id="b_links_container">
@@ -8151,9 +8160,23 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       editingShoot = SHOOTS.find(x => x.id === editId);
       if (editingShoot) {
         const pageTitle = $(".page-head h1");
-        if (pageTitle) pageTitle.textContent = "Edit photoshoot details";
+        if (pageTitle) pageTitle.textContent = `Edit album · ${editingShoot.title || "Untitled"}`;
         const pageSub = $(".page-head .page-sub");
-        if (pageSub) pageSub.textContent = `Editing: ${editingShoot.title}`;
+        if (pageSub) {
+          const d = new Date(editingShoot.date);
+          const when = isNaN(d) ? (editingShoot.date || "") : d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+          const count = Array.isArray(editingShoot.photos) ? editingShoot.photos.length : 0;
+          pageSub.textContent = [editingShoot.type, when, count ? `${count} photo${count === 1 ? "" : "s"}` : ""].filter(Boolean).join(" · ") || `Editing: ${editingShoot.title}`;
+        }
+        // Status pill mirrors the "Make album public" toggle once the prefill
+        // below has set it (same tick, so a 0ms defer is enough).
+        setTimeout(() => {
+          const pill = $("#uploadStatusPill"), pubCb = $("#f_is_public");
+          if (!pill) return;
+          const paint = () => { const live = !!pubCb?.checked; pill.textContent = live ? "Published · public" : "Hidden from site"; pill.classList.toggle("is-live", live); };
+          pubCb?.addEventListener("change", paint);
+          paint();
+        }, 0);
         pub.textContent = "Save changes";
         const stickyPubLabel = $("#stickyPublishBtn");
         if (stickyPubLabel) stickyPubLabel.textContent = "Save changes";
@@ -8413,33 +8436,50 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const strip = $("#uploadSections");
     if (strip) {
       const chips = Array.from(strip.querySelectorAll("button[data-target]"));
-      chips.forEach(ch => ch.addEventListener("click", () => {
-        const target = document.getElementById(ch.dataset.target);
-        if (!target) return;
-        if (target.classList.contains("is-collapsed")) { target.dataset.userToggled = "1"; setCollapsed(target, false); }
-        // Where the strip will sit once stuck (its sticky top + height), not
-        // where it is now: from the top of the page it is still in normal
-        // flow, and its live bottom would put the target 450px too low. The
-        // height is measured because the chips wrap to two rows in the
-        // narrow form column.
-        const stuckBottom = (parseFloat(getComputedStyle(strip).top) || 0) + strip.offsetHeight;
-        window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY - stuckBottom - 12, behavior: "smooth" });
-      }));
-      if ("IntersectionObserver" in window) {
-        const ratios = new Map();
-        const io = new IntersectionObserver((entries) => {
-          entries.forEach(e => ratios.set(e.target.id, e.isIntersecting ? e.intersectionRatio : 0));
-          let best = null, bestRatio = 0;
-          chips.forEach(ch => { const r = ratios.get(ch.dataset.target) || 0; if (r > bestRatio) { bestRatio = r; best = ch.dataset.target; } });
-          chips.forEach(ch => ch.classList.toggle("active", ch.dataset.target === best));
-        }, { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1], rootMargin: "-120px 0px -40% 0px" });
-        chips.forEach(ch => { const t = document.getElementById(ch.dataset.target); if (t) io.observe(t); });
+      // Tabs: one section on screen at a time. "Extras" owns two fieldsets
+      // (testimonials + lighting). A fieldset that testimonial-only mode has
+      // hidden inline (style.display, see updateTestimonialFormState) stays
+      // hidden whichever tab is on, and a chip whose every fieldset is hidden
+      // that way disappears with it.
+      const groups = { extraTestimonialsFs: ["extraTestimonialsFs", "fieldsetLighting"] };
+      const fsOf = (key) => (groups[key] || [key]).map(id => document.getElementById(id)).filter(Boolean);
+      const tabbed = new Set(chips.flatMap(ch => fsOf(ch.dataset.target)));
+      const chipUsable = (ch) => fsOf(ch.dataset.target).some(f => f.style.display !== "none");
+      let current = null;
+      const activate = (key) => {
+        current = key;
+        const show = new Set(fsOf(key));
+        tabbed.forEach(f => f.classList.toggle("tab-hidden", !show.has(f)));
+        show.forEach(f => { if (f.classList.contains("is-collapsed")) { f.dataset.userToggled = "1"; setCollapsed(f, false); } });
+        chips.forEach(ch => ch.classList.toggle("active", ch.dataset.target === key));
+        form.dataset.tab = key;
+      };
+      const syncChips = () => {
+        chips.forEach(ch => { ch.hidden = !chipUsable(ch); });
+        const cur = chips.find(ch => ch.dataset.target === current);
+        if (!cur || cur.hidden) { const first = chips.find(ch => !ch.hidden); if (first) activate(first.dataset.target); }
+      };
+      chips.forEach(ch => ch.addEventListener("click", () => activate(ch.dataset.target)));
+      // Browser validation cannot focus a control inside a hidden tab, so a
+      // required field left empty on another tab would fail silently.
+      form.addEventListener("invalid", (e) => {
+        const f = e.target.closest("fieldset");
+        if (!f || !f.classList.contains("tab-hidden")) return;
+        const owner = chips.find(ch => fsOf(ch.dataset.target).includes(f));
+        if (owner) activate(owner.dataset.target);
+      }, true);
+      if ("MutationObserver" in window) {
+        const mo = new MutationObserver(syncChips);
+        tabbed.forEach(f => mo.observe(f, { attributes: true, attributeFilter: ["style"] }));
       }
+      activate(chips[0].dataset.target);
+      syncChips();
     }
     function renderStaged() {
       const n = staged.length; pub.disabled = n === 0;
       note.textContent = n ? `${n} photo${n > 1 ? "s" : ""} ready — drag to reorder, drag the dot to set focus.` : "No photos staged yet.";
       note.classList.toggle("ready", n > 0);
+      const dzCount = $("#dzCount"); if (dzCount) dzCount.textContent = "· " + n;
       if (stickyPub) stickyPub.disabled = pub.disabled;
       if (stickyNote) {
         stickyNote.textContent = n ? `${n} photo${n > 1 ? "s" : ""} ready` : "No photos staged yet";
@@ -10488,6 +10528,55 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // answers agreeing never fires.
       $("#b_studio_space")?.addEventListener(evtName, updateFields);
     });
+    // Venue cards ⇄ #b_studio_space. A card pick writes the select and fires
+    // change (updateFields runs as before); after every form event the cards
+    // are re-read from the select, because updateFields itself flips the
+    // value when a typed address contradicts the home-studio pick.
+    (() => {
+      const sel = $("#b_studio_space"), wrap = $("#venueCards");
+      if (!sel || !wrap) return;
+      const radios = Array.from(wrap.querySelectorAll('input[type="radio"]'));
+      const sync = () => {
+        radios.forEach(r => {
+          const opt = Array.from(sel.options).find(o => o.value === r.value);
+          const card = r.closest(".venue-card");
+          r.checked = sel.value === r.value;
+          r.disabled = !opt || opt.disabled || sel.disabled;
+          card.hidden = !opt || opt.hidden;
+          card.classList.toggle("is-on", r.checked);
+          card.classList.toggle("is-off", r.disabled);
+        });
+      };
+      radios.forEach(r => r.addEventListener("change", () => {
+        if (r.checked && sel.value !== r.value) {
+          sel.value = r.value;
+          sel.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        sync();
+      }));
+      const formEl = $("#bookingForm");
+      ["change", "input", "click"].forEach(ev => formEl?.addEventListener(ev, () => setTimeout(sync, 0)));
+      sync();
+    })();
+    // Progress steps in the page head: click to jump, highlight follows scroll.
+    (() => {
+      const steps = Array.from(document.querySelectorAll("#bookSteps li"));
+      if (!steps.length) return;
+      const map = { contact: "bookContactFs", shoot: "bookShootFs", brief: "bookBriefFs" };
+      steps.forEach(li => li.addEventListener("click", () => {
+        const t = document.getElementById(map[li.dataset.step]);
+        if (t) window.scrollTo({ top: t.getBoundingClientRect().top + window.scrollY - 96, behavior: "smooth" });
+      }));
+      if (!("IntersectionObserver" in window)) return;
+      const ratios = new Map();
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach(e => ratios.set(e.target.id, e.isIntersecting ? e.intersectionRatio : 0));
+        let best = null, bestRatio = 0;
+        steps.forEach(li => { const r = ratios.get(map[li.dataset.step]) || 0; if (r > bestRatio) { bestRatio = r; best = li.dataset.step; } });
+        if (best) steps.forEach(li => li.classList.toggle("is-active", li.dataset.step === best));
+      }, { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1], rootMargin: "-100px 0px -45% 0px" });
+      steps.forEach(li => { const t = document.getElementById(map[li.dataset.step]); if (t) io.observe(t); });
+    })();
     // Picking who arranges the studio has to re-run updateFields too, or the
     // live contract clause the client reads keeps showing the pre-pick text
     // until some other field happens to change.
