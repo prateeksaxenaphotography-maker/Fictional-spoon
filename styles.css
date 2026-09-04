@@ -153,21 +153,20 @@ a { color: inherit; text-decoration: none; }
 .menu-btn[aria-expanded="true"] i::after { transform: translateY(-4px) rotate(-45deg); }
 
 /* ---------- Overlay nav ---------- */
-.nav-overlay { position: fixed; inset: 0; z-index: 55; background: #121211; color: #e8e6e1; clip-path: circle(0% at calc(100% - 60px) 40px); transition: clip-path .7s var(--ease), visibility 0s linear .7s; pointer-events: none; visibility: hidden; overflow-y: auto; }
+.nav-overlay { position: fixed; inset: 0; z-index: 55; background: var(--paper); color: var(--ink); clip-path: circle(0% at calc(100% - 60px) 40px); transition: clip-path .7s var(--ease), visibility 0s linear .7s; pointer-events: none; visibility: hidden; overflow-y: auto; }
 .nav-overlay.open { clip-path: circle(150% at calc(100% - 60px) 40px); pointer-events: auto; visibility: visible; transition: clip-path .7s var(--ease), visibility 0s; }
 .nav-overlay-inner { max-width: var(--maxw); margin: 0 auto; padding: 140px 32px 60px; min-height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
 .nav-links { list-style: none; margin: 0; padding: 0; }
 .nav-links li { overflow: hidden; }
-.nav-links a { display: inline-flex; align-items: baseline; gap: 20px; font-family: "Archivo", sans-serif; font-weight: 800; font-size: clamp(38px, 7vw, 84px); line-height: 1.08; letter-spacing: -.02em; color: rgba(245,243,239,.5); transition: color .3s, transform .3s var(--ease); }
-.nav-links a:hover, .nav-links a.active { color: #fff; }
+.nav-links a { display: inline-flex; align-items: baseline; gap: 20px; font-family: "Archivo", sans-serif; font-weight: 800; font-size: clamp(38px, 7vw, 84px); line-height: 1.08; letter-spacing: -.02em; color: var(--ink-soft); transition: color .3s, transform .3s var(--ease); }
+.nav-links a:hover, .nav-links a.active { color: var(--ink); }
 .nav-links a:hover { transform: translateX(14px); }
-.nav-idx { font-family: "JetBrains Mono", monospace; font-size: var(--font-sm); font-weight: 500; color: var(--accent); letter-spacing: 0; }
-.nav-meta { display: flex; gap: 60px; flex-wrap: wrap; font-size: var(--font-sm); color: rgba(245,243,239,.7); }
+.nav-meta { display: flex; gap: 60px; flex-wrap: wrap; font-size: var(--font-sm); color: var(--ink-soft); }
 .nav-meta-label { font-family: "JetBrains Mono", monospace; font-size: var(--font-xs); letter-spacing: .2em; text-transform: uppercase; color: var(--accent); margin: 0 0 8px; }
 .nav-meta p { margin: 0 0 4px; }
 .nav-meta a:hover { color: var(--accent); }
 .nav-social { margin-top: 10px; display: flex; gap: 18px; align-items: center; }
-.nav-social a { color: rgba(245,243,239,.7); transition: color .3s var(--ease), transform .2s var(--ease); display: inline-flex; align-items: center; justify-content: center; }
+.nav-social a { color: var(--ink-soft); transition: color .3s var(--ease), transform .2s var(--ease); display: inline-flex; align-items: center; justify-content: center; }
 .nav-social a:hover { color: var(--accent); transform: translateY(-2px); }
 .nav-social svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin="round"; }
 
@@ -1085,12 +1084,12 @@ a { color: inherit; text-decoration: none; }
   --logo-bg: #f5f3ef;
 }
 .site-header.menu-open {
-  --logo-bg: #0e0e0e !important;
+  --logo-bg: var(--paper) !important;
 }
 .site-header.menu-open .brand,
 .site-header.menu-open .menu-btn,
 .site-header.menu-open .theme-toggle {
-  color: #fff !important;
+  color: var(--ink) !important;
 }
 
 /* ---------- Reduced motion ---------- */
@@ -1323,7 +1322,6 @@ main:focus { outline: none; }
 /* Technical/mono treatment for all micro-labels and UI chrome */
 .eyebrow,
 .menu-btn,
-.nav-idx,
 .nav-meta-label,
 .hero-scroll,
 .work-count,
@@ -1383,7 +1381,6 @@ main:focus { outline: none; }
 .brand:hover .brand-text { opacity: .62; }
 
 /* Nav overlay: index turns accent + link slides, letters brighten */
-.nav-links a:hover .nav-idx { color: var(--accent); }
 
 /* Buttons: crisp invert on hover with accent edge */
 .btn-dark:hover { background: transparent; color: var(--ink); border-color: var(--accent); }
