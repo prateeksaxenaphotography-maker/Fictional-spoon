@@ -2681,3 +2681,9 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 .lb-admin .linkish.muted { color: var(--ink-soft); }
 .lb-admin .linkish:hover { color: var(--accent); }
 .lb-note, .lb-disclaimer { font-family: "Inter", system-ui, sans-serif; }
+
+/* Credits: agency + email visibility switches */
+.credit-visibility { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 11px; border: 1px dashed var(--line-2); border-radius: 10px; }
+.credit-visibility > span { font-size: 12px; color: var(--ink-soft); }
+.mini-check { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 500; color: var(--ink); cursor: pointer; margin: 0; }
+.mini-check input { width: 15px; height: 15px; accent-color: var(--accent); margin: 0; }
