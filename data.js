@@ -1658,9 +1658,9 @@ window.WPS_DATA = {
           "createdAt": 1786903849525
         }
       ],
-      "2026-09-06": [
+      "2026-09-12": [
         {
-          "id": "b_1786993090931_rqop",
+          "id": "b_1788502499439_es7g",
           "name": "Assisting Work",
           "email": "",
           "phone": "",
@@ -1685,97 +1685,7 @@ window.WPS_DATA = {
           "financials": null,
           "inviteMeta": null,
           "promoMeta": null,
-          "createdAt": 1786993090931
-        }
-      ],
-      "2026-09-05": [
-        {
-          "id": "b_1787029810883_r7mr",
-          "name": "Workshop Day",
-          "email": "",
-          "phone": "",
-          "type": "Workshop Attended",
-          "duration": "Full Day",
-          "isTentative": false,
-          "notes": "Booked for Workshop (Skill-Up Day)",
-          "location": "",
-          "venueByStudio": false,
-          "agreementMethod": "",
-          "links": [],
-          "attachments": [],
-          "status": "workshop",
-          "contractVersion": "Pending Agreement",
-          "agreedToTerms": false,
-          "contractNumber": "",
-          "sigDataUrl": "",
-          "agreedContract": "",
-          "budget": "",
-          "homeStudioFee": 0,
-          "finalPayable": 0,
-          "financials": null,
-          "inviteMeta": null,
-          "promoMeta": null,
-          "createdAt": 1787029810883
-        }
-      ],
-      "2026-09-12": [
-        {
-          "id": "b_1787411823267_sq23",
-          "name": "Anticipated Client Hold",
-          "email": "",
-          "phone": "",
-          "type": "Fashion Editorial",
-          "duration": "Full Day",
-          "isTentative": true,
-          "notes": "Date held by Admin for anticipated client inquiry.",
-          "location": "",
-          "venueByStudio": false,
-          "agreementMethod": "",
-          "links": [],
-          "attachments": [],
-          "status": "tentative",
-          "contractVersion": "Pending Agreement",
-          "agreedToTerms": false,
-          "contractNumber": "",
-          "sigDataUrl": "",
-          "agreedContract": "",
-          "budget": "",
-          "homeStudioFee": 0,
-          "finalPayable": 0,
-          "financials": null,
-          "inviteMeta": null,
-          "promoMeta": null,
-          "createdAt": 1787411823267
-        }
-      ],
-      "2026-09-13": [
-        {
-          "id": "b_1787411828392_udyl",
-          "name": "Anticipated Client Hold",
-          "email": "",
-          "phone": "",
-          "type": "Fashion Editorial",
-          "duration": "Full Day",
-          "isTentative": true,
-          "notes": "Date held by Admin for anticipated client inquiry.",
-          "location": "",
-          "venueByStudio": false,
-          "agreementMethod": "",
-          "links": [],
-          "attachments": [],
-          "status": "tentative",
-          "contractVersion": "Pending Agreement",
-          "agreedToTerms": false,
-          "contractNumber": "",
-          "sigDataUrl": "",
-          "agreedContract": "",
-          "budget": "",
-          "homeStudioFee": 0,
-          "finalPayable": 0,
-          "financials": null,
-          "inviteMeta": null,
-          "promoMeta": null,
-          "createdAt": 1787411828392
+          "createdAt": 1788502499439
         }
       ],
       "2026-09-19": [
@@ -1810,20 +1720,20 @@ window.WPS_DATA = {
       ],
       "2026-09-20": [
         {
-          "id": "b_1787411835191_nz3r",
-          "name": "Assisting Work",
+          "id": "b_1788502533406_u7q8",
+          "name": "Anticipated Client Hold",
           "email": "",
           "phone": "",
-          "type": "Assisting Photographer",
+          "type": "Fashion Editorial",
           "duration": "Full Day",
-          "isTentative": false,
-          "notes": "Booked for Assisting Work",
+          "isTentative": true,
+          "notes": "Date held by Admin for anticipated client inquiry.",
           "location": "",
           "venueByStudio": false,
           "agreementMethod": "",
           "links": [],
           "attachments": [],
-          "status": "assisting",
+          "status": "tentative",
           "contractVersion": "Pending Agreement",
           "agreedToTerms": false,
           "contractNumber": "",
@@ -1835,7 +1745,7 @@ window.WPS_DATA = {
           "financials": null,
           "inviteMeta": null,
           "promoMeta": null,
-          "createdAt": 1787411835191
+          "createdAt": 1788502533406
         }
       ],
       "2001-10-17": [
@@ -1930,7 +1840,12 @@ window.WPS_DATA = {
       "2026-09-05::b_1786904559871_notl",
       "2026-08-30::b_1786714654176_bh0f",
       "2026-08-29::b_1787411813179_7dli",
-      "2026-08-01::shoot-mte8dutdkqor3f"
+      "2026-08-01::shoot-mte8dutdkqor3f",
+      "2026-09-05::b_1787029810883_r7mr",
+      "2026-09-06::b_1786993090931_rqop",
+      "2026-09-12::b_1787411823267_sq23",
+      "2026-09-13::b_1787411828392_udyl",
+      "2026-09-20::b_1787411835191_nz3r"
     ],
     "paymentScheduleType": "5050",
     "updatedAt": 0,
