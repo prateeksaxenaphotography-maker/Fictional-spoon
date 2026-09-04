@@ -12455,6 +12455,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         items.push({ main: `Instagram: ${esc(cleaned.join(", "))}` });
       }
     }
+    // No Instagram field on the album: fall back to the handle written in
+    // the model credit, e.g. "Kunaal (@kunaal_raghav07)".
+    if (!items.length && shoot.talent) {
+      const h = igHandleFromCredit(shoot.talent);
+      if (h) items.push({ main: `Instagram: @${esc(cleanIgHandle(h))}` });
+    }
     if (shoot.kavyar) {
       const filteredHandles = compCardOwnHandles(shoot, shoot.kavyar.split(",").map(x => x.trim()).filter(Boolean), isKavyarHandle);
       if (filteredHandles.length) {
