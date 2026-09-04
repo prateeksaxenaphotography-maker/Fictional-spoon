@@ -3692,6 +3692,37 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const activeBrands = BRANDS.filter(b => SHOOTS.some(s => s.brand === b && s.client && s.client.trim() && s.type !== "Workshop Attended"));
     const displayBrands = activeBrands.length ? activeBrands : BRANDS;
     const clientNames = [...new Set(SHOOTS.filter(s => s.type !== "Workshop Attended").map(s => s.client).filter(c => c && c.trim()))];
+    // Partners strip: every distinct brand on a published album, minus the
+    // placeholders. Two rows drifting opposite ways; a brand shows as its
+    // logo when STUDIO_CONFIG.partnerLogos names one, otherwise as a wordmark.
+    // Appears once there are brands to show; until then the client band stays.
+    const partnerNames = [...new Set(SHOOTS
+      .filter(s => !s.isTestimonial && s.type !== "Workshop Attended")
+      .map(s => (s.brand || "").trim())
+      .filter(b => b && !/^(personal project|other|none|n\/a|self|-)$/i.test(b)))];
+    const partnerLogos = (window.STUDIO_CONFIG && window.STUDIO_CONFIG.partnerLogos) || {};
+    const partnerItem = (name) => partnerLogos[name]
+      ? `<span class="partner"><img src="${esc(partnerLogos[name])}" alt="${esc(name)}" loading="lazy" /></span>`
+      : `<span class="partner">${esc(name)}</span>`;
+    const partnerRow = (names, dir) => {
+      // Pad short rows so the loop never shows a gap, then repeat the set
+      // twice: the animation slides exactly one set width.
+      let list = names.slice();
+      while (list.length && list.length < 6) list = list.concat(names);
+      const set = `<div class="partners-set">${list.map(partnerItem).join("")}</div>`;
+      return `<div class="partners-row" data-dir="${dir}"><div class="partners-track">${set}${set}</div></div>`;
+    };
+    const rowA = partnerNames.filter((_, i) => i % 2 === 0);
+    const rowB = partnerNames.filter((_, i) => i % 2 === 1);
+    const partnersHtml = partnerNames.length >= 2 ? `
+      <section class="partners" aria-label="Our partners">
+        <div class="container partners-head reveal">
+          <p class="eyebrow">Our partners</p>
+          <h2>Trusted by brands &amp; publications</h2>
+        </div>
+        ${partnerRow(rowA.length ? rowA : partnerNames, "ltr")}
+        ${partnerRow(rowB.length ? rowB : partnerNames, "rtl")}
+      </section>` : "";
     const nerdyLetters = "NERDY".split("").map((ch, i) =>
       `<span class="wm-letter" style="--i:${i}">${esc(ch)}</span>`
     ).join("");
@@ -3731,7 +3762,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       </section>
       <h2 class="visually-hidden">Fashion, Fitness &amp; Sports Photography in Noida &amp; Delhi NCR — editorial-grade portfolios for models &amp; brands</h2>
 
-      ${clientNames.length ? `
+      ${partnersHtml}
+      ${clientNames.length && !partnersHtml ? `
       <div class="marquee" aria-hidden="true">
         <div class="marquee-track">
           ${(clientNames.concat(clientNames)).map((c) => `<span>${esc(c)}</span><span>·</span>`).join("")}
@@ -5473,7 +5505,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   window.openPdfContractGenerator = function(dKey, bookingId, preselectedVersion) {
     const settings = window.WPS_DATA?.CALENDAR_SETTINGS || {};
     const bookings = (settings.bookedDates && settings.bookedDates[dKey]) || [];
-    const b = bookings.find(x => x.id === bookingId || x.name === bookingId) || {
+    const defaults = {
       name: "",
       email: "",
       phone: "",
@@ -5482,9 +5514,19 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       status: "confirmed",
       location: "Studio Space, Noida Sector 62 / Outdoor NCR",
       package: "₹10,000 Package — 50 Proof Clicks + 8 Retouched Master Clicks",
-      notes: "Call time 9:00 AM. 3 wardrobe changes.",
+      notes: "",
       contractVersion: preselectedVersion || window.ACTIVE_CONTRACTS.commercial
     };
+    // bookingId may be a plain object of typed details (day modal's "Draft
+    // contract PDF"): no calendar entry exists, so seed the form from it. A
+    // test-shoot type with no explicit version lets the TFP release preselect.
+    let b;
+    if (bookingId && typeof bookingId === "object") {
+      b = Object.assign({}, defaults, bookingId);
+      if (!bookingId.contractVersion && /test|tfp/i.test(b.type || "")) b.contractVersion = "";
+    } else {
+      b = bookings.find(x => x.id === bookingId || x.name === bookingId) || defaults;
+    }
 
     let modal = document.getElementById("pdfContractGeneratorModal");
     if (!modal) {
@@ -6078,139 +6120,156 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const modalContainer = $("#dateAdminModalContainer");
       if (!modalContainer) return;
 
+      const dateLabel = dateObj.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "long", year: "numeric" });
+      const statusPill = status.isBooked
+        ? `<span class="roster-pill roster-pill-confirmed">Booked · ${status.bookings.length} slot${status.bookings.length > 1 ? "s" : ""}</span>`
+        : status.isBlocked
+          ? `<span class="roster-pill roster-pill-neutral">Blocked · ${status.isDefaultBlockedWeekday ? "weekday default" : "custom"}</span>`
+          : `<span class="roster-pill roster-pill-open">Open for booking</span>`;
+      const blockLabel = status.isDefaultBlockedWeekday
+        ? (status.isManuallyOpened ? "Re-block weekday" : "Open weekday for clients")
+        : (status.isCustomBlocked ? "Unblock weekend date" : "Block weekend date");
+      const pillFor = (b) => {
+        const st = b.status || (b.isTentative ? "tentative" : "confirmed");
+        if (st === "tentative") return '<span class="roster-pill roster-pill-hold">Hold</span>';
+        if (st === "workshop") return '<span class="roster-pill roster-pill-workshop">Workshop</span>';
+        if (st === "assisting") return '<span class="roster-pill roster-pill-assisting">Assisting</span>';
+        if (/test|tfp/i.test(b.type || "")) return '<span class="roster-pill roster-pill-test">Test shoot</span>';
+        return '<span class="roster-pill roster-pill-confirmed">Booked</span>';
+      };
+      const bookingRow = (b) => `
+        <div class="dam-booking">
+          <div class="dam-booking-main">
+            <div class="dam-booking-name">${esc(b.name)} ${pillFor(b)}</div>
+            <div class="dam-booking-sub">${esc(b.type || "")}${b.duration ? " · " + esc(b.duration) : ""}${b.phone ? " · " + esc(b.phone) : ""}${b.email ? " · " + esc(b.email) : ""}</div>
+            ${b.notes ? `<div class="dam-booking-sub"><em>${esc(b.notes)}</em></div>` : ""}
+            ${b.agreedContract
+              ? `<div class="dam-booking-ok">Contract agreed · ${esc(b.agreedContract)}</div>`
+              : `<div class="dam-booking-sub">Contract · ${esc(b.contractVersion || "Pending agreement")}</div>`}
+            ${isSigImage(b.sigDataUrl) ? `<img class="dam-booking-sig" src="${b.sigDataUrl}" alt="" title="Client digital signature captured at booking" />` : ""}
+            ${b.links && b.links.length ? b.links.map(l => `<a class="dam-booking-link" href="${esc(l)}" target="_blank" rel="noopener noreferrer">${esc(l)} ↗</a>`).join("") : ""}
+            ${b.attachments && b.attachments.length ? `<div>${b.attachments.map(att => `<a class="dam-att" href="${esc(att.dataUrl)}" download="${esc(att.name)}" target="_blank">${esc(att.name)}</a>`).join("")}</div>` : ""}
+          </div>
+          <div class="dam-booking-actions">
+            <button type="button" class="linkish" onclick="document.getElementById('closeAdminModal')?.click(); window.openPdfContractGenerator('${dKey}', '${b.id}')">Contract PDF</button>
+            <button type="button" class="linkish" onclick="window.openEditBookingModal('${dKey}', '${b.id}')">Edit</button>
+            <button type="button" class="linkish muted" onclick="window.removeBookingFromRoster('${dKey}', '${b.id}'); document.getElementById('closeAdminModal')?.click();">Remove</button>
+          </div>
+        </div>`;
+
       modalContainer.innerHTML = `
         <div class="date-admin-modal-overlay" id="adminModalOverlay">
-          <div class="date-admin-modal">
-            <button type="button" id="closeAdminModal" style="position: absolute; top: 18px; right: 20px; background: none; border: none; font-size: var(--font-md); cursor: pointer; color: var(--ink-soft);">&times;</button>
-            <p class="eyebrow" style="margin-bottom: 6px;">Manage Availability &amp; Bookings</p>
-            <h2 style="font-family: 'Outfit', sans-serif; font-size: var(--font-md); font-weight: 800; margin: 0 0 12px; color: var(--ink);">${dKey} (${DAYS[dateObj.getDay()]})</h2>
-            
-            <div style="padding: 12px; border-radius: 8px; background: var(--bone); font-family: var(--mono-font); font-size: var(--font-xs); margin-bottom: 20px;">
-              <strong>Current Status for Clients:</strong> 
-              ${status.isBooked ? `<span style="color: var(--accent); font-weight: 700;">Already Booked (${status.bookings.length} slot${status.bookings.length > 1 ? "s" : ""})</span>` :
-                status.isBlocked ? `<span style="color: #666; font-weight: 700; text-decoration: line-through;">Blocked (${status.isDefaultBlockedWeekday ? "Default Weekday" : "Custom Blocked"})</span>` :
-                `<span style="color: #2e7d32; font-weight: 700;">Open for Booking</span>`
-              }
-            </div>
+          <div class="date-admin-modal dam" role="dialog" aria-modal="true" aria-labelledby="damTitle">
+            <button type="button" id="closeAdminModal" class="dam-close" aria-label="Close">&times;</button>
+            <header class="dam-head">
+              <p class="eyebrow">Manage day</p>
+              <h2 class="dam-title" id="damTitle">${dateLabel}</h2>
+              <div class="dam-status">${statusPill}</div>
+            </header>
 
-            <div style="display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap;">
-              <button type="button" class="admin-cal-btn primary" id="toggleBlockBtn">
-                ${status.isDefaultBlockedWeekday ? (status.isManuallyOpened ? "🔒 Re-block Weekday" : "🔓 Open Weekday for Clients") : (status.isCustomBlocked ? "🔓 Unblock Weekend Date" : "🔒 Block Weekend Date")}
-              </button>
-              <button type="button" class="admin-cal-btn" id="quickHoldBtn" style="border-color: #f57c00; color: #f57c00; background: rgba(255,152,0,0.1);">
-                ⏳ Hold Date
-              </button>
-              <button type="button" class="admin-cal-btn" id="quickWorkshopBtn" style="border-color: #f9a825; color: #f9a825; background: rgba(249,168,37,0.1);">
-                📚 Workshop (Yellow)
-              </button>
-              <button type="button" class="admin-cal-btn" id="quickAssistingBtn" style="border-color: #00897b; color: #00897b; background: rgba(0,137,123,0.1);">
-                🤝 Assisting (Teal)
-              </button>
-              <button type="button" class="admin-cal-btn" id="quickTestShootBtn" style="border-color: #1e88e5; color: #1e88e5; background: rgba(30,136,229,0.1);">
-                📸 Test Shoot (Blue)
-              </button>
-            </div>
+            <section class="dam-section">
+              <div class="dam-section-head"><h3>Mark this day</h3><span class="dam-hint">One tap. Hold and Test shoot use the name and notes below if you have typed them.</span></div>
+              <div class="dam-chips">
+                <button type="button" class="dam-chip chip-block" id="toggleBlockBtn">${blockLabel}</button>
+                <button type="button" class="dam-chip chip-hold" id="quickHoldBtn">Hold</button>
+                <button type="button" class="dam-chip chip-test" id="quickTestShootBtn">Test shoot</button>
+                <button type="button" class="dam-chip chip-workshop" id="quickWorkshopBtn">Workshop</button>
+                <button type="button" class="dam-chip chip-assisting" id="quickAssistingBtn">Assisting</button>
+              </div>
+            </section>
 
-            <hr style="border: none; border-top: 1px solid var(--line); margin: 20px 0;" />
-
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 0 0 12px;">Add / Double-Book Client for ${dKey}</h3>
-            <form id="modalAddBookingForm" style="display: flex; flex-direction: column; gap: 12px;">
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <input type="text" id="m_clientName" placeholder="Client / Model Name (or leave blank for Hold)" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
-                <select id="m_clientStatus" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;">
-                  <option value="confirmed">✓ Confirmed Client Booking</option>
-                  <option value="tentative">⏳ Anticipated Client Hold (Looks Booked to Public)</option>
-                  <option value="workshop">📚 Workshop Attended (Skill-Up Day)</option>
-                  <option value="assisting">🤝 Assisting Work (Assisting Another Photographer)</option>
-                </select>
-              </div>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <input type="email" id="m_clientEmail" placeholder="Email Address" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
-                <input type="tel" id="m_clientPhone" placeholder="Phone Number (e.g. 9876543210)" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
-              </div>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <select id="m_clientType" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;">
-                  <option value="Fashion Editorial">Fashion Editorial</option>
-                  <option value="Fitness &amp; Athletic">Fitness &amp; Athletic</option>
-                  <option value="Sports Action">Sports Action</option>
-                  <option value="Commercial Campaign">Commercial Campaign</option>
-                  <option value="Portfolio">Portfolio</option>
-                  <option value="Selective Collaboration (TFP)">📸 Selective Collaboration / TFP</option>
-                  <option value="Other">Other</option>
-                </select>
-                <select id="m_clientDuration" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;">
-                  <option value="Full Day">Full Day Shoot</option>
-                  <option value="Half Day (Morning)">Half Day (Morning 9AM - 1PM)</option>
-                  <option value="Half Day (Afternoon)">Half Day (Afternoon 2PM - 6PM)</option>
-                  <option value="Half Day (Flexible)">Half Day (Flexible Hours)</option>
-                </select>
-              </div>
-              <div style="display: flex; flex-direction: column; gap: 4px;">
-                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Contract Agreement &amp; Version Status</label>
-                <select id="m_clientContractVersion" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;">
-                  <option value="Pending Agreement">⏳ Pending Agreement / Not Signed Yet (Admin Manual Booking)</option>
-                  <option value="V3.5-TFP">📸 Test Shoot / TFP Liability Release V3.5 (Active)</option>
-                  <option value="V3.4-TFP">📸 Test Shoot / TFP Liability Release V3.4 (Archived)</option>
-                  <option value="V3.3-TFP">📸 Test Shoot / TFP Liability Release V3.3 (Archived)</option>
-                  <option value="V3.6-COMMERCIAL">📜 Commercial Shoot Contract V3.6 (Active)</option>
-                  <option value="V3.5-COMMERCIAL">📜 Commercial Shoot Contract V3.5 (Archived)</option>
-                  <option value="V3.4-COMMERCIAL">📜 Commercial Shoot Contract V3.4 (Archived)</option>
-                  <option value="V3.3-COMMERCIAL">📜 Commercial Shoot Contract V3.3 (Archived)</option>
-                  <option value="V3.2">📜 Agreed Terms V3.2 (Archived Release)</option>
-                  <option value="V3.1">📜 Agreed Terms V3.1 (Archived Release)</option>
-                  <option value="V3.0">📜 Agreed Terms V3.0 (Archived Release)</option>
-                  <option value="Custom Contract">📄 Custom Client Contract / Brand Provided MSA</option>
-                </select>
-              </div>
-              <input type="url" id="m_clientLinks" placeholder="Reference Link (Drive, Pinterest)" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
-              <textarea id="m_clientNotes" placeholder="Notes / Details..." rows="2" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; resize: vertical;"></textarea>
-              <button type="submit" class="admin-cal-btn primary" style="align-self: flex-start;">+ Add Booking / Hold to ${dKey}</button>
-            </form>
+            <section class="dam-section">
+              <div class="dam-section-head"><h3>Add a booking</h3><span class="dam-hint">Leave the name blank to hold the date.</span></div>
+              <form id="modalAddBookingForm" class="dam-form">
+                <div class="dam-row">
+                  <label class="dam-field"><span>Client / model</span><input type="text" id="m_clientName" placeholder="Name or brand" /></label>
+                  <label class="dam-field"><span>Status</span>
+                    <select id="m_clientStatus">
+                      <option value="confirmed">Confirmed booking</option>
+                      <option value="tentative">Anticipated hold (shows as taken)</option>
+                      <option value="workshop">Workshop attended</option>
+                      <option value="assisting">Assisting another photographer</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="dam-row">
+                  <label class="dam-field"><span>Email</span><input type="email" id="m_clientEmail" placeholder="name@example.com" /></label>
+                  <label class="dam-field"><span>Phone</span><input type="tel" id="m_clientPhone" placeholder="98765 43210" /></label>
+                </div>
+                <div class="dam-row">
+                  <label class="dam-field"><span>Project type</span>
+                    <select id="m_clientType">
+                      <option value="Fashion Editorial">Fashion Editorial</option>
+                      <option value="Fitness &amp; Athletic">Fitness &amp; Athletic</option>
+                      <option value="Sports Action">Sports Action</option>
+                      <option value="Commercial Campaign">Commercial Campaign</option>
+                      <option value="Portfolio">Portfolio</option>
+                      <option value="Selective Collaboration (TFP)">Test shoot / TFP</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </label>
+                  <label class="dam-field"><span>Duration</span>
+                    <select id="m_clientDuration">
+                      <option value="Full Day">Full day</option>
+                      <option value="Half Day (Morning)">Half day · morning (9 AM – 1 PM)</option>
+                      <option value="Half Day (Afternoon)">Half day · afternoon (2 PM – 6 PM)</option>
+                      <option value="Half Day (Flexible)">Half day · flexible hours</option>
+                    </select>
+                  </label>
+                </div>
+                <label class="dam-field"><span>Contract</span>
+                  <select id="m_clientContractVersion">
+                    <option value="Pending Agreement">Pending agreement · not signed yet</option>
+                    <option value="V3.5-TFP">Test shoot / TFP liability release V3.5 (active)</option>
+                    <option value="V3.4-TFP">Test shoot / TFP liability release V3.4 (archived)</option>
+                    <option value="V3.3-TFP">Test shoot / TFP liability release V3.3 (archived)</option>
+                    <option value="V3.6-COMMERCIAL">Commercial shoot contract V3.6 (active)</option>
+                    <option value="V3.5-COMMERCIAL">Commercial shoot contract V3.5 (archived)</option>
+                    <option value="V3.4-COMMERCIAL">Commercial shoot contract V3.4 (archived)</option>
+                    <option value="V3.3-COMMERCIAL">Commercial shoot contract V3.3 (archived)</option>
+                    <option value="V3.2">Agreed terms V3.2 (archived)</option>
+                    <option value="V3.1">Agreed terms V3.1 (archived)</option>
+                    <option value="V3.0">Agreed terms V3.0 (archived)</option>
+                    <option value="Custom Contract">Custom client contract / brand MSA</option>
+                  </select>
+                </label>
+                <label class="dam-field"><span>Reference link</span><input type="url" id="m_clientLinks" placeholder="Drive, Pinterest, moodboard…" /></label>
+                <label class="dam-field"><span>Notes</span><textarea id="m_clientNotes" rows="2" placeholder="Call time, wardrobe, anything to remember"></textarea></label>
+                <div class="dam-actions">
+                  <button type="submit" class="admin-cal-btn primary">Add booking</button>
+                  <button type="button" class="admin-cal-btn" id="draftContractBtn" title="Prepare an A4 contract PDF from the details above, without adding a booking">Draft contract PDF</button>
+                </div>
+              </form>
+            </section>
 
             ${status.bookings.length ? `
-              <hr style="border: none; border-top: 1px solid var(--line); margin: 20px 0;" />
-              <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 0 0 12px;">Existing Bookings on this Date (${status.bookings.length})</h3>
-              <div style="display: flex; flex-direction: column; gap: 10px;">
-                ${status.bookings.map(b => `
-                  <div style="padding: 12px; border: 1px solid var(--line); border-radius: 8px; display: flex; flex-direction: column; gap: 6px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                      <div>
-                        <strong style="font-size: var(--font-sm);">${esc(b.name)}</strong>
-                        <span style="display:inline-block; margin-left:6px; background:var(--bone); border:1px solid var(--line); border-radius:4px; padding:1px 6px; font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; color:var(--accent);">${esc(b.duration || "Full Day")}</span>
-                      </div>
-                      <div style="display:flex; gap:6px;">
-                        <button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('${dKey}', '${b.id}')" style="border-color: var(--accent); color: var(--accent); font-size: var(--font-xs); padding:3px 8px; font-weight:700;">📄 Generate PDF Contract</button>
-                        <button type="button" class="admin-cal-btn primary" onclick="window.openEditBookingModal('${dKey}', '${b.id}')" style="font-size: var(--font-xs); padding:3px 8px;">✏️ Edit</button>
-                        <button type="button" class="admin-cal-btn" onclick="window.removeBookingFromRoster('${dKey}', '${b.id}'); document.getElementById('closeAdminModal')?.click();" style="color: #b22222; border-color: rgba(178,34,34,0.3); font-size: var(--font-xs); padding:3px 8px;">Remove</button>
-                      </div>
-                    </div>
-                    <div style="font-size: var(--font-xs); color: var(--ink-soft);">${esc(b.type)} ${b.phone ? `· 📞 ${esc(b.phone)}` : ""} ${b.email ? `· ✉️ ${esc(b.email)}` : ""}</div>
-                    ${b.notes ? `<div style="font-size: var(--font-xs); font-style: italic;">"${esc(b.notes)}"</div>` : ""}
-                    ${b.agreedContract ? `<div style="font-size: var(--font-xs); color: #059669; font-family: var(--mono-font); font-weight: 700; margin-top: 2px;">✅ Contract Agreed: ${esc(b.agreedContract)}</div>` : ""}
-                    ${isSigImage(b.sigDataUrl) ? `<div style="margin-top: 4px;"><img src="${b.sigDataUrl}" style="max-height: 36px; max-width: 160px; border-bottom: 1px solid var(--line); display: block;" title="Client digital signature captured at booking" /></div>` : (b.agreementMethod === "checkbox" ? `<div style="margin-top: 4px; font-size: var(--font-xs); color: var(--accent); font-weight: 700;">\u2713 Agreed via checkbox</div>` : "")}
-                    ${b.links && b.links.length ? `
-                      <div style="font-size: var(--font-xs); margin-top: 4px;">
-                        <strong>Links:</strong>
-                        ${b.links.map(l => `<div style="margin-top:2px;"><a href="${esc(l)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent); word-break:break-all;">🔗 ${esc(l)} ↗</a></div>`).join("")}
-                      </div>
-                    ` : ""}
-                    ${b.attachments && b.attachments.length ? `
-                      <div style="font-size: var(--font-xs); margin-top: 4px;">
-                        <strong>Attachments:</strong>
-                        <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;">
-                          ${b.attachments.map(att => `<a href="${esc(att.dataUrl)}" download="${esc(att.name)}" target="_blank" style="display:inline-flex; align-items:center; gap:4px; background:var(--bone); border:1px solid var(--line); border-radius:4px; padding:3px 6px; font-family:var(--mono-font); font-size: var(--font-xs); color:var(--ink); text-decoration:none;">📄 ${esc(att.name)} ⬇</a>`).join("")}
-                        </div>
-                      </div>
-                    ` : ""}
-                  </div>
-                `).join("")}
-              </div>
+              <section class="dam-section">
+                <div class="dam-section-head"><h3>On this day</h3><span class="dam-hint">${status.bookings.length} booking${status.bookings.length > 1 ? "s" : ""}</span></div>
+                <div class="dam-list">${status.bookings.map(bookingRow).join("")}</div>
+              </section>
             ` : ""}
           </div>
         </div>
       `;
 
       $("#closeAdminModal")?.addEventListener("click", () => modalContainer.innerHTML = "");
+      // A contract for someone who never booked online: whatever is typed in
+      // the form seeds the PDF generator, nothing is added to the calendar.
+      $("#draftContractBtn")?.addEventListener("click", () => {
+        const typed = {
+          name: $("#m_clientName").value.trim(),
+          email: $("#m_clientEmail").value.trim(),
+          phone: $("#m_clientPhone")?.value.trim() || "",
+          type: $("#m_clientType").value,
+          duration: $("#m_clientDuration")?.value || "Full Day",
+          status: $("#m_clientStatus")?.value || "confirmed",
+          notes: $("#m_clientNotes").value.trim()
+        };
+        const ver = $("#m_clientContractVersion")?.value;
+        if (ver && ver !== "Pending Agreement" && ver !== "Custom Contract") typed.contractVersion = ver;
+        modalContainer.innerHTML = "";
+        window.openPdfContractGenerator(dKey, typed);
+      });
       $("#adminModalOverlay")?.addEventListener("click", (e) => {
         if (e.target.id === "adminModalOverlay") modalContainer.innerHTML = "";
       });
@@ -7369,11 +7428,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <p class="eyebrow reveal">Book a session</p>
           <h1 class="admin-h1 reveal">Tell us about the shoot.</h1>
           <p class="page-sub admin-sub reveal">Whether it is a campaign, an editorial or a selective test shoot: who you are, what we are shooting, and the brief. Your quote updates as you go, and nothing is sent until you submit.</p>
-          <ol class="book-steps reveal" id="bookSteps" aria-label="Form sections">
-            <li data-step="contact" class="is-active">Contact</li>
-            <li data-step="shoot">The shoot</li>
-            <li data-step="brief">Brief</li>
-          </ol>
         </div>
       </section>
       <section class="section container">
@@ -7514,7 +7568,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                        code's venue lock hides both together. -->
                   <div class="venue-cards" id="venueCards" style="grid-column: 1 / -1;" role="radiogroup" aria-label="Where are we shooting?">
                     <label class="venue-card"><input type="radio" name="venue_pick" value="Home Studio - Noida (Provided by Studio)" /><span class="vc-main"><strong>Home studio, Noida</strong><small>Intimate setup · portraits, comp cards, solo talent</small></span><span class="vc-tag">Rental itemised in your quote</span></label>
-                    <label class="venue-card"><input type="radio" name="venue_pick" value="Dedicated Commercial Studio Rental (Billed at Actuals)" /><span class="vc-main"><strong>Commercial studio</strong><small>Rented space, booked by you or by us</small></span><span class="vc-tag">Billed at actuals</span></label>
+                    <label class="venue-card"><input type="radio" name="venue_pick" value="Dedicated Commercial Studio Rental (Billed at Actuals)" /><span class="vc-main"><strong>Commercial studio</strong><small>Rented space, booked by you or by us</small></span><span class="vc-tag">Rental quoted separately</span></label>
                     <label class="venue-card"><input type="radio" name="venue_pick" value="Outdoor / On-Location (No Studio Required)" checked /><span class="vc-main"><strong>Outdoor / on location</strong><small>Your venue, or the outdoors</small></span><span class="vc-tag">No studio needed</span></label>
                   </div>
                 </div>
@@ -7536,7 +7590,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                       </label>
                       <label style="display: flex; align-items: flex-start; gap: 6px; font-weight: 400; cursor: pointer; flex: 1 1 220px;">
                         <input type="radio" name="b_studio_arranger" id="b_studio_arranger_photog" value="Photographer Arranges Studio & Lighting (Billed at Actuals)" style="width: 15px; height: 15px; padding: 0; border: none; background: transparent; border-radius: 0; margin: 0; margin-top: 3px; flex-shrink: 0;" />
-                        The photographer should rent the studio and lighting, and bill me at actuals
+                        The photographer should arrange the studio and lighting for me
                       </label>
                     </div>
                   </label>
@@ -7644,7 +7698,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                          once those are booked and billed at actuals. Hidden the
                          rest of the time so it never implies a change that
                          isn't coming. -->
-                    <div id="summaryArrangerNote" style="display: none; margin-top: 8px; padding: 8px 10px; background: rgba(217,119,6,0.12); border: 1px solid rgba(217,119,6,0.35); border-radius: 6px; font-size: var(--font-xs); color: #d97706; font-family: inherit;">⚠️ Since the photographer is arranging the studio &amp; lighting, this total does not yet include their actual cost — it will be billed at actuals and added once the venue is booked.</div>
+                    <div id="summaryArrangerNote" style="display: none; margin-top: 8px; padding: 8px 10px; background: rgba(217,119,6,0.12); border: 1px solid rgba(217,119,6,0.35); border-radius: 6px; font-size: var(--font-xs); color: #d97706; font-family: inherit;">⚠️ Since the photographer is arranging the studio &amp; lighting, this total does not yet include the venue and equipment — that is quoted separately and added once the venue is booked.</div>
                   </div>
                   <!-- Milestone Itemized Breakdown. Reads the studio's global
                        2-step (50/50) or 3-step (50/30/20) setting — the same
@@ -10557,25 +10611,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const formEl = $("#bookingForm");
       ["change", "input", "click"].forEach(ev => formEl?.addEventListener(ev, () => setTimeout(sync, 0)));
       sync();
-    })();
-    // Progress steps in the page head: click to jump, highlight follows scroll.
-    (() => {
-      const steps = Array.from(document.querySelectorAll("#bookSteps li"));
-      if (!steps.length) return;
-      const map = { contact: "bookContactFs", shoot: "bookShootFs", brief: "bookBriefFs" };
-      steps.forEach(li => li.addEventListener("click", () => {
-        const t = document.getElementById(map[li.dataset.step]);
-        if (t) window.scrollTo({ top: t.getBoundingClientRect().top + window.scrollY - 96, behavior: "smooth" });
-      }));
-      if (!("IntersectionObserver" in window)) return;
-      const ratios = new Map();
-      const io = new IntersectionObserver((entries) => {
-        entries.forEach(e => ratios.set(e.target.id, e.isIntersecting ? e.intersectionRatio : 0));
-        let best = null, bestRatio = 0;
-        steps.forEach(li => { const r = ratios.get(map[li.dataset.step]) || 0; if (r > bestRatio) { bestRatio = r; best = li.dataset.step; } });
-        if (best) steps.forEach(li => li.classList.toggle("is-active", li.dataset.step === best));
-      }, { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1], rootMargin: "-100px 0px -45% 0px" });
-      steps.forEach(li => { const t = document.getElementById(map[li.dataset.step]); if (t) io.observe(t); });
     })();
     // Picking who arranges the studio has to re-run updateFields too, or the
     // live contract clause the client reads keeps showing the pre-pick text
