@@ -6969,7 +6969,20 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <label for="f_is_testimonial_only" style="font-family: 'JetBrains Mono', monospace; font-size: var(--font-xs); text-transform: uppercase; font-weight: 700; cursor: pointer; color: var(--ink);">Testimonial Only (No Photoshoot Album)</label>
             </div>
 
-            <fieldset><legend>The shoot</legend>
+            <!-- Section strip: the form is ~5,000px tall, and without this the
+                 only way to know where you were was the legend that happened
+                 to be on screen. Chips light up as their section scrolls into
+                 view (see wireUpload) and click to jump. -->
+            <nav class="upload-sections" id="uploadSections" aria-label="Form sections">
+              <button type="button" data-target="fs_shoot">The shoot</button>
+              <button type="button" data-target="fs_credits">Credits</button>
+              <button type="button" data-target="modelStatsFieldset">Model stats</button>
+              <button type="button" data-target="fs_details">Details &amp; links</button>
+              <button type="button" data-target="fs_publish">Publish settings</button>
+              <button type="button" data-target="extraTestimonialsFs">Extras</button>
+            </nav>
+
+            <fieldset id="fs_shoot"><legend>The shoot</legend>
               <label class="field"><span>Shoot title *</span><input id="f_title" type="text" placeholder="e.g. Merrell Trail — Spring '26" required /></label>
               <div class="field-row">
                 <label class="field" id="f_brand_select_field"><span>Brand</span><select id="f_brand">${opt(BRANDS)}<option>Other</option></select></label>
@@ -6982,15 +6995,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <label class="field"><span>Shoot Location (add Instagram in parentheses)</span><input id="f_location" type="text" placeholder="e.g. Studio (@studiohandle), Noida, Outdoor" /></label>
                 <div id="f_location_verify" style="margin-top: 5px; font-size: var(--font-xs); display: none;"></div>
               </div>
-              <div class="field-row" style="margin-top: 12px; gap: 20px; flex-wrap: wrap;">
-                <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); font-weight: 500; color: var(--ink); cursor: pointer; user-select: none;">
-                  <input id="f_show_test_shoot_cat" type="checkbox" style="width: 16px; height: 16px; accent-color: var(--accent);" />
-                  Display "Selective Collaboration (TFP)" category tag publicly
-                </label>
-              </div>
             </fieldset>
 
-            <fieldset><legend>Credits</legend>
+            <fieldset id="fs_credits"><legend>Credits</legend>
               <div class="field-row">
                 <label class="field"><span>Photographer</span><input id="f_photographer" type="text" value="nerdyphotographer" placeholder="Your name" /></label>
                 <label class="field"><span>Art director (add socials in parentheses)</span><input id="f_ad" type="text" placeholder="e.g. Name (@handle; site.com)" /></label>
@@ -7024,7 +7031,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               </label>
             </fieldset>
 
-            <fieldset id="modelStatsFieldset"><legend>Model stats (Comp Cards)</legend>
+            <fieldset id="modelStatsFieldset" class="fs-collapsible is-collapsed"><legend>Model stats <span class="legend-opt">comp cards</span></legend>
+              <div class="fs-head">
+                <span class="fs-summary" id="fsSummaryStats">Only for comp cards — measurements, model type</span>
+                <button type="button" class="fs-toggle" aria-expanded="false" aria-controls="fsBodyStats">+ Expand</button>
+              </div>
+              <div class="fs-body" id="fsBodyStats">
               <div class="field" style="margin-bottom: 6px;">
                 <span>Model type <span style="font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-soft);">— pick up to ${MODEL_TYPES_MAX}</span></span>
                 <div id="f_model_types" style="display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 8px;">
@@ -7070,18 +7082,21 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   Show stats on Model Portfolio
                 </label>
               </div>
+              </div>
             </fieldset>
 
-            <fieldset><legend>Details</legend>
+            <fieldset id="fs_details"><legend>Details &amp; links</legend>
               <label class="field"><span>Description</span><textarea id="f_desc" rows="3" placeholder="A line or two about the shoot…"></textarea></label>
               <label class="field"><span>PDF (Course material, curriculum, etc.)</span><input id="f_pdf" type="file" accept=".pdf" /></label>
               <div class="field-row">
                 <label class="field"><span>Tags</span><input id="f_tags" type="text" placeholder="golden hour, motion, coast" /></label>
                 <label class="field"><span>Camera / gear</span><input id="f_gear" type="text" placeholder="Sony A1 · 85mm" /></label>
               </div>
-            </fieldset>
-
-            <fieldset><legend>Links & meta</legend>
+              <!-- Formerly its own "Links & meta" fieldset; the client / date /
+                   socials belong with the description, and the publish
+                   toggles that used to sit down here now live in Publish
+                   settings with the rest of them. -->
+              <div class="fs-divider" aria-hidden="true"></div>
               <div class="field-row">
                 <label class="field"><span>Client</span><input id="f_client" type="text" placeholder="Brand name" /></label>
                 <label class="field"><span>Date shot</span><input id="f_date" type="date" /></label>
@@ -7102,32 +7117,40 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <label class="field"><span>Portfolio link / Website</span><input id="f_link" type="url" placeholder="https://…" /></label>
                 <label class="field"><span>Usage rights</span><input id="f_rights" type="text" placeholder="e.g. Web + social, 1 year" /></label>
               </div>
-              <div class="field-row" style="align-items: center; margin-top: 10px; gap: 20px; flex-wrap: wrap;">
-                <label style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: var(--font-xs); text-transform: uppercase; font-weight: 700; cursor: pointer; color: var(--ink);">
-                  <input id="f_featured" type="checkbox" checked style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
-                  Feature on homepage
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: var(--font-xs); text-transform: uppercase; font-weight: 700; cursor: pointer; color: var(--ink);">
-                  <input id="f_show_compcard" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
-                  Show as Comp Card
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: var(--font-xs); text-transform: uppercase; font-weight: 700; cursor: pointer; color: var(--ink);">
-                  <input id="f_hide_compcard" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
-                  Hide from Comp Cards Page
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: var(--font-xs); text-transform: uppercase; font-weight: 700; cursor: pointer; color: var(--ink);">
-                  <input id="f_disable_download" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
-                  Disable Comp Card PDF Download
-                </label>
-              </div>
             </fieldset>
 
-            <fieldset><legend>Visibility & Privacy</legend>
-              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+            <!-- Everything that decides WHERE the album shows up, in one place.
+                 These toggles used to be split between "Links & meta" (homepage
+                 / comp card / PDF) and "Visibility & Privacy" (public + field
+                 visibility), with the TFP category tag off in "The shoot". -->
+            <fieldset id="fs_publish"><legend>Publish settings</legend>
+              <div style="display: flex; align-items: center; gap: 8px;">
                 <input id="f_is_public" type="checkbox" checked style="width: 16px; height: 16px; accent-color: var(--accent); margin: 0; cursor: pointer;" />
                 <label for="f_is_public" style="font-weight: 600; cursor: pointer; margin: 0;">Make album public (uncheck to hide entirely)</label>
               </div>
-              <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 16px;">Show these fields publicly:</p>
+              <div class="publish-toggles">
+                <label>
+                  <input id="f_featured" type="checkbox" checked style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
+                  Feature on homepage
+                </label>
+                <label>
+                  <input id="f_show_compcard" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
+                  Show as comp card
+                </label>
+                <label>
+                  <input id="f_hide_compcard" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
+                  Hide from comp cards page
+                </label>
+                <label>
+                  <input id="f_disable_download" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
+                  Disable comp card PDF download
+                </label>
+                <label>
+                  <input id="f_show_test_shoot_cat" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 0;" />
+                  Show "Selective Collaboration (TFP)" tag publicly
+                </label>
+              </div>
+              <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 4px 0 0;">Show these fields publicly:</p>
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
                 <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
                   <input id="f_show_credits" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
@@ -7164,7 +7187,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               </div>
             </fieldset>
 
-            <fieldset id="extraTestimonialsFs"><legend>Testimonials <span class="legend-opt">optional (up to 3)</span></legend>
+            <fieldset id="extraTestimonialsFs" class="fs-collapsible is-collapsed"><legend>Testimonials <span class="legend-opt">optional (up to 3)</span></legend>
+              <div class="fs-head">
+                <span class="fs-summary" id="fsSummaryTestimonials">No testimonials yet</span>
+                <button type="button" class="fs-toggle" aria-expanded="false" aria-controls="fsBodyTestimonials">+ Expand</button>
+              </div>
+              <div class="fs-body" id="fsBodyTestimonials">
               <div class="testimonial-group">
                 <h4>Testimonial 1</h4>
                 <label class="field"><span>Quote</span><textarea id="f_quote_1" rows="2" placeholder="“First quote…”"></textarea></label>
@@ -7180,9 +7208,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <label class="field"><span>Quote</span><textarea id="f_quote_3" rows="2" placeholder="“Third quote…”"></textarea></label>
                 <label class="field"><span>Attribution</span><input id="f_quoteby_3" type="text" placeholder="Attribution 3" /></label>
               </div>
+              </div>
             </fieldset>
 
-            <fieldset id="fieldsetLighting"><legend>Lighting Diagram <span class="legend-opt">optional</span></legend>
+            <fieldset id="fieldsetLighting" class="fs-collapsible is-collapsed"><legend>Lighting diagram <span class="legend-opt">optional</span></legend>
+              <div class="fs-head">
+                <span class="fs-summary" id="fsSummaryLighting">No diagram attached</span>
+                <button type="button" class="fs-toggle" aria-expanded="false" aria-controls="fsBodyLighting">+ Expand</button>
+              </div>
+              <div class="fs-body" id="fsBodyLighting">
               <label class="field"><span>Diagram image</span><input type="file" id="f_diagram_file" accept="image/*" /></label>
               <div id="diagramPreview" style="margin-top: 10px; display: none;">
                 <img id="f_diagram_img" style="max-height: 180px; width: auto; object-fit: contain; border-radius: 6px; border: 1px solid var(--line);" alt="Diagram Preview" />
@@ -7195,6 +7229,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   <option value="disabled">Disabled (Do not show at all)</option>
                 </select>
               </label>
+              </div>
             </fieldset>
 
             <p class="field-note" id="queueNote">No photos staged yet.</p>
@@ -8195,6 +8230,86 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       stickyBar.classList.add("is-hidden");
       new IntersectionObserver(([e]) => { formOnScreen = e.isIntersecting; syncBar(); }, { threshold: 0 }).observe(form);
       new IntersectionObserver(([e]) => { realBtnOnScreen = e.isIntersecting; syncBar(); }, { threshold: 0, rootMargin: "0px 0px 40px 0px" }).observe(pub);
+    }
+
+    // Collapsible optional sections (model stats, testimonials, lighting) and
+    // the section strip. Collapse is a class on the fieldset that hides its
+    // .fs-body — deliberately not style.display on the fieldset itself, which
+    // updateTestimonialFormState already owns for testimonial-only mode.
+    const setCollapsed = (fs, collapsed) => {
+      fs.classList.toggle("is-collapsed", collapsed);
+      const btn = fs.querySelector(".fs-toggle");
+      if (btn) { btn.setAttribute("aria-expanded", String(!collapsed)); btn.textContent = collapsed ? "+ Expand" : "− Collapse"; }
+    };
+    form.querySelectorAll(".fs-collapsible").forEach(fs => {
+      fs.querySelector(".fs-toggle")?.addEventListener("click", () => {
+        fs.dataset.userToggled = "1";
+        setCollapsed(fs, !fs.classList.contains("is-collapsed"));
+      });
+    });
+    const fieldVal = (id) => ($("#" + id)?.value || "").trim();
+    const refreshSectionSummaries = () => {
+      const filledQuotes = [1, 2, 3].filter(n => fieldVal("f_quote_" + n) || fieldVal("f_quoteby_" + n)).length;
+      const sumT = $("#fsSummaryTestimonials");
+      if (sumT) sumT.textContent = filledQuotes ? `${filledQuotes} of 3 filled` : "No testimonials yet";
+
+      const hasDiagram = ($("#diagramPreview") && $("#diagramPreview").style.display !== "none") || !!($("#f_diagram_file")?.files?.length);
+      const sumL = $("#fsSummaryLighting");
+      if (sumL) sumL.textContent = hasDiagram ? `Diagram attached · ${$("#f_diagram_visibility")?.selectedOptions?.[0]?.textContent || ""}` : "No diagram attached";
+
+      const statsFilled = ["f_height", "f_chest", "f_waist", "f_hips", "f_shoes", "f_model_hair", "f_model_eyes"].filter(id => fieldVal(id)).length;
+      const types = form.querySelectorAll(".model-type-cb:checked").length;
+      const isCompish = /Test Shoot|Selective Collaboration/.test(fieldVal("f_type")) || !!$("#f_show_compcard")?.checked;
+      const sumS = $("#fsSummaryStats");
+      if (sumS) {
+        const parts = [];
+        if (types) parts.push(`${types} model type${types > 1 ? "s" : ""}`);
+        if (statsFilled) parts.push(`${statsFilled} of 7 measurements`);
+        sumS.textContent = parts.length ? parts.join(" · ") : (isCompish ? "Comp card — add model type & measurements" : "Only for comp cards — measurements, model type");
+      }
+
+      // Sections open themselves when they have content (edit mode) or are
+      // relevant to the shoot type, unless the admin has toggled them by hand.
+      const auto = (fs, open) => { if (fs && !fs.dataset.userToggled) setCollapsed(fs, !open); };
+      auto($("#extraTestimonialsFs"), filledQuotes > 0);
+      auto($("#fieldsetLighting"), hasDiagram);
+      auto($("#modelStatsFieldset"), isCompish || statsFilled > 0 || types > 0);
+    };
+    form.addEventListener("input", refreshSectionSummaries);
+    form.addEventListener("change", refreshSectionSummaries);
+    // The diagram preview appears after an async FileReader, not on the change
+    // event itself; the same goes for clearing it.
+    $("#f_diagram_file")?.addEventListener("change", () => setTimeout(refreshSectionSummaries, 300));
+    $("#clearDiagramBtn")?.addEventListener("click", () => setTimeout(refreshSectionSummaries, 0));
+    refreshSectionSummaries();
+    // Edit-mode prefill runs later in this function; a deferred pass reads it.
+    setTimeout(refreshSectionSummaries, 0);
+
+    const strip = $("#uploadSections");
+    if (strip) {
+      const chips = Array.from(strip.querySelectorAll("button[data-target]"));
+      chips.forEach(ch => ch.addEventListener("click", () => {
+        const target = document.getElementById(ch.dataset.target);
+        if (!target) return;
+        if (target.classList.contains("is-collapsed")) { target.dataset.userToggled = "1"; setCollapsed(target, false); }
+        // Where the strip will sit once stuck (its sticky top + height), not
+        // where it is now: from the top of the page it is still in normal
+        // flow, and its live bottom would put the target 450px too low. The
+        // height is measured because the chips wrap to two rows in the
+        // narrow form column.
+        const stuckBottom = (parseFloat(getComputedStyle(strip).top) || 0) + strip.offsetHeight;
+        window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY - stuckBottom - 12, behavior: "smooth" });
+      }));
+      if ("IntersectionObserver" in window) {
+        const ratios = new Map();
+        const io = new IntersectionObserver((entries) => {
+          entries.forEach(e => ratios.set(e.target.id, e.isIntersecting ? e.intersectionRatio : 0));
+          let best = null, bestRatio = 0;
+          chips.forEach(ch => { const r = ratios.get(ch.dataset.target) || 0; if (r > bestRatio) { bestRatio = r; best = ch.dataset.target; } });
+          chips.forEach(ch => ch.classList.toggle("active", ch.dataset.target === best));
+        }, { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1], rootMargin: "-120px 0px -40% 0px" });
+        chips.forEach(ch => { const t = document.getElementById(ch.dataset.target); if (t) io.observe(t); });
+      }
     }
     function renderStaged() {
       const n = staged.length; pub.disabled = n === 0;
