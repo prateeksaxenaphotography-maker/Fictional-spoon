@@ -2448,6 +2448,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     }
 
     if (shoot.photographer) addCreativeItem(shoot.photographer, "PHOTOGRAPHY");
+    if (shoot.secondaryPhotographers) addCreativeItem(shoot.secondaryPhotographers, "PHOTOGRAPHY");
     if (shoot.mentor) addCreativeItem(shoot.mentor, "MENTOR");
     if (shoot.artDirector) addCreativeItem(shoot.artDirector, "ART DIRECTOR");
     if (shoot.stylist) addCreativeItem(shoot.stylist, "STYLING");
@@ -3543,7 +3544,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       }
       if (igHtml) creditsList.push(`Socials ${igHtml}`);
     } else {
-      if (s.photographer) creditsList.push(`Photo <strong>${esc(s.photographer)}</strong>`);
+      if (s.photographer || s.secondaryPhotographers) {
+        const extra = (s.secondaryPhotographers || "").split(",").map(x => getTalentCleanName(x.trim())).filter(Boolean);
+        creditsList.push(`Photo <strong>${esc([s.photographer, ...extra].filter(Boolean).join(", "))}</strong>`);
+      }
       if (s.artDirector) creditsList.push(`AD <strong>${esc(s.artDirector)}</strong>`);
       if (s.stylist && s.stylist !== "—") creditsList.push(`Style <strong>${esc(s.stylist)}</strong>`);
       if (s.hair && s.hair !== "—") creditsList.push(`Hair <strong>${esc(s.hair)}</strong>`);
@@ -6630,6 +6634,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           mentor: latestShoot.mentor || "",
           season: latestShoot.season || "Comp Card",
           photographer: latestShoot.photographer || "Studio",
+          secondaryPhotographers: latestShoot.secondaryPhotographers || "",
           artDirector: latestShoot.artDirector || "",
           stylist: latestShoot.stylist || "",
           hair: latestShoot.hair || "",
@@ -7219,37 +7224,27 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             </fieldset>
 
             <fieldset id="fs_credits"><legend>Credits</legend>
+              <p class="field-note credits-note">Add socials in parentheses after a name — <code>Name (@handle; site.com)</code>. Separate several people with commas.</p>
               <div class="field-row">
-                <label class="field"><span>Photographer</span><input id="f_photographer" type="text" value="nerdyphotographer" placeholder="Your name" /></label>
-                <label class="field"><span>Art director (add socials in parentheses)</span><input id="f_ad" type="text" placeholder="e.g. Name (@handle; site.com)" /></label>
-                <div id="f_ad_verify" style="margin-top: 5px; font-size: var(--font-xs); display: none;"></div>
+                <label class="field"><span>Photographer <em class="label-hint">primary</em></span><input id="f_photographer" type="text" value="nerdyphotographer" placeholder="Your name" /></label>
+                <label class="field"><span>Secondary photographer(s)</span><input id="f_photographer2" type="text" placeholder="e.g. Name (@handle; site.com), Name Two" /><span class="field-verify" id="f_photographer2_verify" style="display: none;"></span></label>
               </div>
               <div class="field-row">
-                <label class="field"><span>Stylist (add socials in parentheses)</span><input id="f_stylist" type="text" placeholder="e.g. Name (@handle; site.com)" /></label>
-                <div id="f_stylist_verify" style="margin-top: 5px; font-size: var(--font-xs); display: none;"></div>
+                <label class="field"><span>Videographer(s)</span><input id="f_video" type="text" placeholder="e.g. Name (@handle; site.com)" /><span class="field-verify" id="f_video_verify" style="display: none;"></span></label>
+                <label class="field"><span>Art director</span><input id="f_ad" type="text" placeholder="e.g. Name (@handle; site.com)" /><span class="field-verify" id="f_ad_verify" style="display: none;"></span></label>
               </div>
               <div class="field-row">
-                <label class="field"><span>Hair stylist (add socials in parentheses)</span><input id="f_hair" type="text" placeholder="e.g. Name (@handle; site.com)" /></label>
-                <div id="f_hair_verify" style="margin-top: 5px; font-size: var(--font-xs); display: none;"></div>
+                <label class="field"><span>Stylist</span><input id="f_stylist" type="text" placeholder="e.g. Name (@handle; site.com)" /><span class="field-verify" id="f_stylist_verify" style="display: none;"></span></label>
+                <label class="field"><span>Hair stylist</span><input id="f_hair" type="text" placeholder="e.g. Name (@handle; site.com)" /><span class="field-verify" id="f_hair_verify" style="display: none;"></span></label>
               </div>
               <div class="field-row">
-                <label class="field"><span>Makeup artist / MUA (add socials in parentheses)</span><input id="f_mua" type="text" placeholder="e.g. Name (@handle; site.com)" /></label>
-                <div id="f_mua_verify" style="margin-top: 5px; font-size: var(--font-xs); display: none;"></div>
-                <label class="field"><span>Videographer(s)</span><input id="f_video" type="text" placeholder="—" /></label>
-              </div>
-              <div class="field-row">
-                <label class="field"><span>Model / talent (comma-separated · socials in parentheses)</span><input id="f_talent" type="text" placeholder="e.g. Bharti (@handle; site.com), Suyagya" /></label>
-                <div id="f_talent_verify" style="margin-top: 5px; font-size: var(--font-xs); display: none;"></div>
+                <label class="field"><span>Makeup artist / MUA</span><input id="f_mua" type="text" placeholder="e.g. Name (@handle; site.com)" /><span class="field-verify" id="f_mua_verify" style="display: none;"></span></label>
+                <label class="field"><span>Model / talent</span><input id="f_talent" type="text" placeholder="e.g. Bharti (@handle; site.com), Suyagya" /><span class="field-verify" id="f_talent_verify" style="display: none;"></span></label>
               </div>
               <div class="field-row" id="f_mentor_row" style="display: none;">
-                <label class="field"><span>Teacher / Mentor (comma-separated · socials in parentheses)</span><input id="f_mentor" type="text" placeholder="e.g. Mentor One (@handle; site.com), Mentor Two" /></label>
-                <div id="f_mentor_verify" style="margin-top: 5px; font-size: var(--font-xs); display: none;"></div>
+                <label class="field" style="grid-column: 1 / -1;"><span>Teacher / Mentor</span><input id="f_mentor" type="text" placeholder="e.g. Mentor One (@handle; site.com), Mentor Two" /><span class="field-verify" id="f_mentor_verify" style="display: none;"></span></label>
               </div>
-              <label class="field" style="position: relative;">
-                <span>Credits (Name with socials · comma-separated)</span>
-                <input id="f_credits" type="text" placeholder="e.g. Stylist Name (@handle; site.com), Makeup Artist Name" />
-                <div id="f_credits_verify" style="margin-top: 5px; font-size: var(--font-xs); display: none;"></div>
-              </label>
+              <label class="field"><span>Other credits</span><input id="f_credits" type="text" placeholder="e.g. Set designer Name (@handle; site.com), Assistant Name" /><span class="field-verify" id="f_credits_verify" style="display: none;"></span></label>
             </fieldset>
 
             <fieldset id="modelStatsFieldset" class="fs-collapsible is-collapsed"><legend>Model stats <span class="legend-opt">comp cards</span></legend>
@@ -8237,7 +8232,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
       const talentLabel = $("#f_talent")?.closest(".field")?.querySelector("span");
       if (talentLabel) {
-        talentLabel.textContent = isTestimonialOnly ? "Client Name *" : "Model / talent (comma-separated · socials in parentheses)";
+        talentLabel.textContent = isTestimonialOnly ? "Client Name *" : "Model / talent";
       }
 
       const descLabel = $("#f_desc")?.closest(".field")?.querySelector("span");
@@ -8311,11 +8306,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         $("#f_type").value = editingShoot.type || "";
         $("#f_season").value = editingShoot.season || "";
         $("#f_photographer").value = editingShoot.photographer || "nerdyphotographer";
+        if ($("#f_photographer2")) $("#f_photographer2").value = editingShoot.secondaryPhotographers || "";
         $("#f_ad").value = editingShoot.artDirector || "";
         $("#f_stylist").value = editingShoot.stylist || "";
         $("#f_hair").value = editingShoot.hair || "";
         $("#f_mua").value = editingShoot.mua || "";
-        if ($("#f_video")) $("#f_video").value = editingShoot.videographer || "";
+        if ($("#f_video")) $("#f_video").value = (editingShoot.videographer && editingShoot.videographer !== "—") ? editingShoot.videographer : "";
         $("#f_talent").value = editingShoot.talent || "";
         $("#f_location").value = editingShoot.location || "";
         $("#f_desc").value = editingShoot.description || "";
@@ -8915,6 +8911,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     setupLinkVerification("f_hair", "f_hair_verify", "hairVerifyFlag");
     setupLinkVerification("f_mua", "f_mua_verify", "muaVerifyFlag");
     setupLinkVerification("f_ad", "f_ad_verify", "adVerifyFlag");
+    setupLinkVerification("f_photographer2", "f_photographer2_verify", "photographer2VerifyFlag");
+    setupLinkVerification("f_video", "f_video_verify", "videoVerifyFlag");
     setupLinkVerification("f_mentor", "f_mentor_verify", "mentorVerifyFlag");
     setupLinkVerification("f_credits", "f_credits_verify", "creditsVerifyFlag");
     setupLinkVerification("f_ig", "f_ig_verify", "igVerifyFlag", parseInstagramLinks);
@@ -8989,6 +8987,18 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         toast("Please test the art director links before publishing.");
         return;
       }
+      const photographer2Val = val("f_photographer2");
+      const originalPhotographer2 = editingShoot ? (editingShoot.secondaryPhotographers || "") : "";
+      if (photographer2Val && photographer2Val !== originalPhotographer2 && window.photographer2VerifyFlag?.hasLinks?.() && !window.photographer2VerifyFlag?.get?.()) {
+        toast("Please test the secondary photographer links before publishing.");
+        return;
+      }
+      const videoVal = val("f_video");
+      const originalVideo = editingShoot ? (editingShoot.videographer || "") : "";
+      if (videoVal && videoVal !== originalVideo && window.videoVerifyFlag?.hasLinks?.() && !window.videoVerifyFlag?.get?.()) {
+        toast("Please test the videographer links before publishing.");
+        return;
+      }
       const talentVal = val("f_talent");
       const originalTalent = editingShoot ? (editingShoot.talent || "") : "";
       if (talentVal && talentVal !== originalTalent && window.talentVerifyFlag?.hasLinks?.() && !window.talentVerifyFlag?.get?.()) {
@@ -9038,6 +9048,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         type: isTestimonialOnly ? "Testimonial" : $("#f_type").value,
         season: val("f_season"),
         photographer: isTestimonialOnly ? "" : (val("f_photographer") || "Studio"),
+        secondaryPhotographers: isTestimonialOnly ? "" : val("f_photographer2"),
         artDirector: isTestimonialOnly ? "" : val("f_ad"),
         stylist: isTestimonialOnly ? "" : (val("f_stylist") || "—"),
         hair: isTestimonialOnly ? "" : (val("f_hair") || "—"),
