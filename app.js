@@ -7185,7 +7185,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <div class="credits-format" role="note">
                 <span class="credits-format-k">How to write a credit</span>
                 <code>Name (@handle; site.com; …)</code>
-                <span class="credits-format-sub">Socials go in parentheses after the name, separated by <code>;</code> — Instagram <code>@handle</code>, <code>kavyar.com/…</code>, <code>linkedin.com/in/…</code>, <code>behance.net/…</code>, a website, an email. Any of them, in any order: the app tells them apart by their shape. Several people: separate with commas. Example — <em>Aisha Khan (@aisha.k; linkedin.com/in/aishak; aishakhan.com; aisha@mail.com)</em>. Instagram, Kavyar, LinkedIn, Behance and websites get a verify link; email cannot be tested. The same pattern works for the agency.</span>
+                <span class="credits-format-sub">Socials go in parentheses after the name, separated by <code>;</code> — Instagram <code>@handle</code>, <code>kavyar.com/…</code>, <code>linkedin.com/in/…</code>, <code>behance.net/…</code>, a website, an email. Any of them, in any order: the app tells them apart by their shape. Several people: separate with commas. Example — <em>nerdyphotographer (@nerdyphotographer.in; nerdyphotographer.in; prateeksaxenaphotography@gmail.com)</em>. Instagram, Kavyar, LinkedIn, Behance and websites get a verify link; email cannot be tested. The same pattern works for the agency.</span>
               </div>
               <div class="field-row">
                 <label class="field"><span>Photographer <em class="label-hint">primary</em></span><input id="f_photographer" type="text" value="nerdyphotographer" placeholder="Your name" /></label>
@@ -7201,7 +7201,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               </div>
               <div class="field-row">
                 <label class="field"><span>Makeup artist / MUA</span><input id="f_mua" type="text" placeholder="e.g. Name (@handle; site.com)" /><span class="field-verify" id="f_mua_verify" style="display: none;"></span></label>
-                <label class="field"><span>Model / talent</span><input id="f_talent" type="text" placeholder="e.g. Bharti (@handle; site.com), Suyagya" /><span class="field-verify" id="f_talent_verify" style="display: none;"></span></label>
+                <label class="field"><span>Model / talent</span><input id="f_talent" type="text" placeholder="e.g. Model Name (@handle; site.com), Second Model" /><span class="field-verify" id="f_talent_verify" style="display: none;"></span></label>
               </div>
               <div class="field-row" id="f_agency_row">
                 <label class="field"><span>Model's agency <em class="label-hint">as of this shoot</em></span><input id="f_agency" type="text" placeholder="e.g. Inega Model Management (@inegamodels; inega.com)" /><span class="field-verify" id="f_agency_verify" style="display: none;"></span></label>
