@@ -4804,35 +4804,39 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <button type="button" class="admin-cal-btn" id="adminCalToday">Today</button>
           </div>
           <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <div style="display: flex; align-items: center; gap: 6px; background: var(--bone); padding: 4px 8px; border-radius: 20px; border: 1px solid var(--line); font-family: var(--mono-font); font-size: var(--font-xs);">
-              <span style="font-weight: 700; color: var(--ink-soft); margin-right: 4px;">💳 Payment Terms:</span>
-              <button type="button" id="adminPay5050Btn" class="admin-cal-btn" style="padding: 4px 10px; border-radius: 12px; font-size: var(--font-xs); cursor: pointer;">50/50</button>
-              <button type="button" id="adminPay503020Btn" class="admin-cal-btn" style="padding: 4px 10px; border-radius: 12px; font-size: var(--font-xs); cursor: pointer;">50/30/20</button>
+            <div class="admin-cal-terms">
+              <span>Payment terms</span>
+              <div class="admin-cal-seg">
+                <button type="button" id="adminPay5050Btn" class="admin-cal-btn" style="cursor: pointer;">50 / 50</button>
+                <button type="button" id="adminPay503020Btn" class="admin-cal-btn" style="cursor: pointer;">50 / 30 / 20</button>
+              </div>
             </div>
-            <button type="button" class="admin-cal-btn primary" id="adminCalNewBookingBtn">+ Add Manual Booking</button>
+            <button type="button" class="admin-cal-btn" id="adminCalNewBookingBtn">Add booking</button>
             <!-- Until this existed, calendar edits were saved to this device
                  only: syncToGitHub had no caller anywhere in the calendar UI,
                  so bookings never reached data.js and every visitor kept
                  seeing the studio as fully open. -->
-            <button type="button" class="admin-cal-btn primary" id="adminCalPublishBtn" title="Push this calendar to the live site so visitors see booked dates">🚀 Publish Calendar to Live Site</button>
-            <button type="button" class="admin-cal-btn" id="adminCalResetBtn">Reset Rules</button>
+            <button type="button" class="admin-cal-btn primary" id="adminCalPublishBtn" title="Push this calendar to the live site so visitors see booked dates">Publish to live site</button>
+            <button type="button" class="admin-cal-btn" id="adminCalResetBtn">Reset rules</button>
           </div>
         </div>
 
-        <div style="display: flex; gap: 16px; margin-bottom: 20px; font-family: var(--mono-font); font-size: var(--font-xs); flex-wrap: wrap;">
-          <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: #e8f5e9; border: 1px solid #2e7d32;"></span> Open for Booking (Weekend/Opened)</span>
-          <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: #eee; border: 1px dashed #999;"></span> Blocked for Clients (Mon–Fri Default / Custom)</span>
-          <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: var(--accent-soft); border: 1px solid var(--accent);"></span> Confirmed Booking (Red/Orange)</span>
-          <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: rgba(30, 136, 229, 0.2); border: 1px solid #1e88e5;"></span> 📸 Test Shoot / TFP Booking (Blue)</span>
-          <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 2px; background: rgba(124, 77, 255, 0.2); border: 1px dashed #7c4dff;"></span> ⏳ Anticipated Hold Only (Royal Purple)</span>
+        <div class="admin-cal-legend">
+          <span><i style="background: #2F6B4F;"></i>Open</span>
+          <span><i style="background: #A9AAB1;"></i>Blocked (weekdays by default)</span>
+          <span><i style="background: #D24E1A;"></i>Booked</span>
+          <span><i style="background: #2C6BB5;"></i>Test shoot</span>
+          <span><i style="background: #6B5BD2;"></i>Hold</span>
+          <span><i style="background: #B7791F;"></i>Workshop</span>
+          <span><i style="background: #1F8A7A;"></i>Assisting</span>
         </div>
 
-        <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-family: var(--mono-font); font-size: var(--font-xs);">
-          <div style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; cursor: pointer; user-select: none;" onclick="const b=document.getElementById('adminPkgBody');const a=document.getElementById('adminPkgArrow');const open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▼':'▲';">
-            <span style="display: flex; align-items: center; gap: 8px;">⚙️ Studio Package Rates &amp; Deliverables Editor</span>
+        <div class="admin-panel">
+          <div class="admin-panel-head" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; cursor: pointer; user-select: none;" onclick="const b=document.getElementById('adminPkgBody');const a=document.getElementById('adminPkgArrow');const open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▼':'▲';">
+            <span style="display: flex; align-items: center; gap: 8px;">Package rates &amp; deliverables</span>
             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-              <button type="button" class="admin-cal-btn primary" onclick="event.stopPropagation();window.saveAdminCustomPackages()" style="font-size: var(--font-xs); padding: 4px 12px; font-weight: 700;">💾 Save &amp; Push Live</button>
-              <button type="button" class="admin-cal-btn" onclick="event.stopPropagation();window.resetAdminCustomPackages()" style="font-size: var(--font-xs); padding: 4px 8px; font-weight: 700;">🔄</button>
+              <button type="button" class="admin-cal-btn primary" onclick="event.stopPropagation();window.saveAdminCustomPackages()">Save &amp; push live</button>
+              <button type="button" class="admin-cal-btn" onclick="event.stopPropagation();window.resetAdminCustomPackages()" title="Reset to defaults">Reset</button>
               <span id="adminPkgArrow" style="font-size: var(--font-xs); color: var(--ink-soft); font-weight: 700;">▼</span>
             </div>
           </div>
@@ -4864,11 +4868,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           </div>
         </div>
 
-        <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-family: var(--mono-font); font-size: var(--font-xs);">
-          <div style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; cursor: pointer; user-select: none;" onclick="const b=document.getElementById('adminPromoBody');const a=document.getElementById('adminPromoArrow');const open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▼':'▲';">
-            <span style="display: flex; align-items: center; gap: 8px;">🎟️ Promotional Discount &amp; Invite Codes Manager</span>
+        <div class="admin-panel">
+          <div class="admin-panel-head" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; cursor: pointer; user-select: none;" onclick="const b=document.getElementById('adminPromoBody');const a=document.getElementById('adminPromoArrow');const open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▼':'▲';">
+            <span style="display: flex; align-items: center; gap: 8px;">Promo &amp; invite codes</span>
             <div style="display: flex; gap: 8px; align-items: center;">
-              <button type="button" class="admin-cal-btn primary" onclick="event.stopPropagation();window.addNewAdminPromoCode()" style="font-size: var(--font-xs); padding: 4px 12px; font-weight: 700;">+ Add Code</button>
+              <button type="button" class="admin-cal-btn primary" onclick="event.stopPropagation();window.addNewAdminPromoCode()">Add promo code</button>
               <span id="adminPromoArrow" style="font-size: var(--font-xs); color: var(--ink-soft); font-weight: 700;">▼</span>
             </div>
           </div>
@@ -4881,14 +4885,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
         <div id="adminRosterWrap" style="margin-top: 32px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 0;">📋 Studio Booking Roster</h3>
+            <h3 class="admin-roster-title">Upcoming</h3>
             <span id="rosterCountBadge" style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--ink-soft); font-weight: 700;"></span>
           </div>
           <div id="bookingRosterGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px;"></div>
         </div>
 
         <div style="margin-top: 32px; border-top: 1px solid var(--line); padding-top: 20px; text-align: center;">
-          <a href="/contracts" data-link class="admin-cal-btn" style="font-size: var(--font-xs); font-weight: 700; border-color: var(--accent); color: var(--accent);">📜 View Contract Version Vault &rarr;</a>
+          <a href="/contracts" data-link class="admin-cal-btn">Contract vault &rarr;</a>
         </div>
       </section>
       <div id="dateAdminModalContainer"></div>
@@ -5214,6 +5218,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
         const dayClasses = ["admin-cal-day"];
         if (isPast) dayClasses.push("day-past");
+        if (d.getTime() === today.getTime()) dayClasses.push("day-today");
         
         if (status.hasWorkshop && !status.hasConfirmedBooking) {
           dayClasses.push("day-workshop");
@@ -5235,17 +5240,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <div class="${dayClasses.join(" ")}" data-date="${status.key}">
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
               <span class="admin-cal-num">${day}</span>
-              ${status.hasWorkshop && !status.hasConfirmedBooking ? `<span class="admin-cal-badge badge-workshop">📚 Workshop</span>` :
-                status.hasAssisting && !status.hasConfirmedBooking ? `<span class="admin-cal-badge badge-assisting">🤝 Assisting</span>` :
-                status.hasTestShoot && status.hasConfirmedBooking ? `<span class="admin-cal-badge badge-testshoot">📸 Test Shoot (${status.bookings.length})</span>` :
-                status.hasConfirmedBooking ? `<span class="admin-cal-badge badge-booked">${status.bookings.length} Booked</span>` :
-                status.isTentativeOnly ? `<span class="admin-cal-badge badge-tentative">⏳ Hold (${status.bookings.length})</span>` :
+              ${status.hasWorkshop && !status.hasConfirmedBooking ? `<span class="admin-cal-badge badge-workshop">Workshop</span>` :
+                status.hasAssisting && !status.hasConfirmedBooking ? `<span class="admin-cal-badge badge-assisting">Assisting</span>` :
+                status.hasTestShoot && status.hasConfirmedBooking ? `<span class="admin-cal-badge badge-testshoot">Test shoot${status.bookings.length > 1 ? ` · ${status.bookings.length}` : ""}</span>` :
+                status.hasConfirmedBooking ? `<span class="admin-cal-badge badge-booked">Booked${status.bookings.length > 1 ? ` · ${status.bookings.length}` : ""}</span>` :
+                status.isTentativeOnly ? `<span class="admin-cal-badge badge-tentative">Hold${status.bookings.length > 1 ? ` · ${status.bookings.length}` : ""}</span>` :
                 status.isBlocked ? `<span class="admin-cal-badge badge-blocked">${status.isDefaultBlockedWeekday ? "Weekday Blocked" : "Custom Blocked"}</span>` :
                 `<span class="admin-cal-badge badge-open">Open</span>`
               }
             </div>
             <div>
-              ${status.bookings.map(b => `<div class="admin-cal-client-item" title="${esc(b.name)} - ${esc(b.type)}">${b.status === "workshop" ? "📚" : b.status === "assisting" ? "🤝" : (b.isTentative || b.status === "tentative") ? "⏳" : "👤"} ${esc(b.name)}</div>`).join("")}
+              ${status.bookings.map(b => `<div class="admin-cal-client-item" title="${esc(b.name)} - ${esc(b.type)}">${esc(b.name)}</div>`).join("")}
             </div>
           </div>
         `;
@@ -5296,10 +5301,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const renderBookingCardHtml = (b, isPast = false) => `
         <div class="booking-card"${isPast ? ' style="opacity: 0.78; background: rgba(0,0,0,0.02);"' : ''}>
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
-            <div class="booking-card-date">📅 ${esc(b.dateKey)} ${isPast ? '<span style="font-size:9px; background:var(--bone); border:1px solid var(--line); color:var(--ink-soft); padding:1px 5px; border-radius:4px; margin-left:4px;">PAST COMPLETED</span>' : ''}</div>
+            <div class="booking-card-date">${esc(b.dateKey)} ${isPast ? '<span style="font-size:9px; background:var(--bone); border:1px solid var(--line); color:var(--ink-soft); padding:1px 5px; border-radius:4px; margin-left:4px;">PAST COMPLETED</span>' : ''}</div>
             <div style="display:flex; gap:6px; align-items:center;">
-              ${b.status === "workshop" ? `<span style="background: rgba(249,168,37,0.15); border: 1px solid rgba(249,168,37,0.5); border-radius: 4px; padding: 2px 7px; font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: #f9a825;">📚 Workshop</span>` : b.status === "assisting" ? `<span style="background: rgba(0,137,123,0.15); border: 1px solid rgba(0,137,123,0.5); border-radius: 4px; padding: 2px 7px; font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: #00897b;">🤝 Assisting</span>` : (b.isTentative || b.status === "tentative") ? `<span style="background: rgba(255,152,0,0.15); border: 1px solid rgba(255,152,0,0.5); border-radius: 4px; padding: 2px 7px; font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: #f57c00;">⏳ Anticipated Hold</span>` : `<span style="background: rgba(46,125,50,0.15); border: 1px solid rgba(46,125,50,0.5); border-radius: 4px; padding: 2px 7px; font-family: var(--mono-font); font-size: 10px; font-weight: 700; color: #2e7d32;">✓ Confirmed</span>`}
-              <span style="background:var(--bone); border:1px solid var(--line); border-radius:4px; padding:2px 7px; font-family:var(--mono-font); font-size:10px; font-weight:700; color:var(--accent);">⏱️ ${esc(b.duration || "Full Day")}</span>
+              ${b.status === "workshop" ? `<span class="roster-pill roster-pill-workshop">Workshop</span>` : b.status === "assisting" ? `<span class="roster-pill roster-pill-assisting">Assisting</span>` : (b.isTentative || b.status === "tentative") ? `<span class="roster-pill roster-pill-hold">Hold</span>` : `<span class="roster-pill roster-pill-confirmed">Confirmed</span>`}
+              <span class="roster-pill roster-pill-neutral">${esc(b.duration || "Full Day")}</span>
             </div>
           </div>
           <h3 class="booking-card-name" style="margin-top:6px;">${esc(b.name)}</h3>
@@ -5327,12 +5332,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <span>${(() => {
               const isNonContract = (b.type === "Assisting Photographer" || b.type === "Workshop Attended" || (b.title && (b.title.includes("Assisting") || b.title.includes("Workshop"))));
               if (isNonContract) {
-                return `<span style="color: var(--ink-soft); font-weight: 600;">🛠️ Internal Activity (No Contract Required)</span>`;
+                return `<span style="color: var(--ink-soft); font-weight: 600;">Internal activity · no contract</span>`;
               }
               const v = b.contractVersion || (b.agreedToTerms ? "V3.2" : "Pending Agreement");
-              if (v === "Pending Agreement") return `<span style="color: #f57c00; font-weight: 700;">⏳ Agreement Pending (Not Signed Yet)</span>`;
-              if (v === "Custom Contract") return `<span style="color: #7c4dff; font-weight: 700;">📄 Custom Client Contract / Brand MSA</span>`;
-              return `📜 <strong>Agreed Term:</strong> ${esc(v)}`;
+              if (v === "Pending Agreement") return `<span style="color: #f57c00; font-weight: 700;">Agreement pending</span>`;
+              if (v === "Custom Contract") return `<span style="color: #7c4dff; font-weight: 700;">Custom contract / MSA</span>`;
+              return `<strong>Agreed:</strong> ${esc(v)}`;
             })()}</span>
             ${(() => {
               const isNonContract = (b.type === "Assisting Photographer" || b.type === "Workshop Attended" || (b.title && (b.title.includes("Assisting") || b.title.includes("Workshop"))));
@@ -5342,8 +5347,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             })()}
           </div>
           <div style="margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap;">
-            <button type="button" class="admin-cal-btn primary" onclick="window.openEditBookingModal('${b.dateKey}', '${b.id}')" style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 14px; background: var(--accent); color: #fff; border: 1px solid var(--accent); border-radius: 4px; cursor: pointer;">✏️ Edit Booking</button>
-            <button type="button" class="admin-cal-btn" onclick="window.removeBookingFromRoster('${b.dateKey}', '${b.id}')" style="font-family: var(--mono-font); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 14px; color: #ff4d4d; border: 1px solid rgba(255,77,77,0.4); background: rgba(255,77,77,0.1); border-radius: 4px; cursor: pointer;">Cancel Booking</button>
+            <button type="button" class="admin-cal-btn primary" onclick="window.openEditBookingModal('${b.dateKey}', '${b.id}')">Edit booking</button>
+            <button type="button" class="admin-cal-btn roster-danger" onclick="window.removeBookingFromRoster('${b.dateKey}', '${b.id}')">Cancel</button>
           </div>
         </div>
       `;
@@ -5371,7 +5376,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         pastArchiveSection.innerHTML = `
           <details style="width: 100%;">
             <summary style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; color: var(--ink-soft); cursor: pointer; padding: 8px 0; user-select: none;">
-              📜 Past Completed Shoots &amp; Bookings Archive (${pastBookings.length} Completed)
+              Past shoots &amp; archive (${pastBookings.length})
             </summary>
             <div class="booking-roster-grid" style="margin-top: 16px;">
               ${pastBookings.map(b => renderBookingCardHtml(b, true)).join("")}
@@ -5494,7 +5499,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <option value="V3.0" ${b.contractVersion === 'V3.0' ? 'selected' : ''}>📜 Archived Terms V3.0 (Jan 2026 – Apr 2026)</option>
                 <option value="V2.0" ${b.contractVersion === 'V2.0' ? 'selected' : ''}>📜 Archived Terms V2.0 (Jun 2025 – Dec 2025)</option>
                 <option value="V1.0" ${b.contractVersion === 'V1.0' ? 'selected' : ''}>📜 Archived Terms V1.0 (Jan 2025 – May 2025)</option>
-                <option value="Custom Contract" ${b.contractVersion === 'Custom Contract' ? 'selected' : ''}>📄 Custom Client Contract / Brand MSA</option>
+                <option value="Custom Contract" ${b.contractVersion === 'Custom Contract' ? 'selected' : ''}>Custom contract / MSA</option>
               </select>
             </label>
           </div>
@@ -6102,7 +6107,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                       <div>
                         <strong style="font-size: var(--font-sm);">${esc(b.name)}</strong>
-                        <span style="display:inline-block; margin-left:6px; background:var(--bone); border:1px solid var(--line); border-radius:4px; padding:1px 6px; font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; color:var(--accent);">⏱️ ${esc(b.duration || "Full Day")}</span>
+                        <span style="display:inline-block; margin-left:6px; background:var(--bone); border:1px solid var(--line); border-radius:4px; padding:1px 6px; font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; color:var(--accent);">${esc(b.duration || "Full Day")}</span>
                       </div>
                       <div style="display:flex; gap:6px;">
                         <button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('${dKey}', '${b.id}')" style="border-color: var(--accent); color: var(--accent); font-size: var(--font-xs); padding:3px 8px; font-weight:700;">📄 Generate PDF Contract</button>
