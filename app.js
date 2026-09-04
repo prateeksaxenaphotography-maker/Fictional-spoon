@@ -2261,7 +2261,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         shoot.height ? `<span>📏 <strong>Height:</strong> ${esc(shoot.height)}</span>` : "",
         shoot.chest ? `<span>👚 <strong>${esc(chestLabelOf(shoot))}:</strong> ${esc(shoot.chest)}</span>` : "",
         shoot.waist ? `<span>👗 <strong>Waist:</strong> ${esc(shoot.waist)}</span>` : "",
-        shoot.hips ? `<span>👠 <strong>Hips:</strong> ${esc(shoot.hips)}</span>` : "",
+        shoot.hips ? `<span>🩳 <strong>Hips:</strong> ${esc(shoot.hips)}</span>` : "",
         shoot.shoes ? `<span>👟 <strong>Shoes:</strong> ${esc(shoot.shoes)}</span>` : "",
         shoot.modelHair ? `<span>💇 <strong>Hair:</strong> ${esc(shoot.modelHair)}</span>` : "",
         shoot.modelEyes ? `<span>👁️ <strong>Eyes:</strong> ${esc(shoot.modelEyes)}</span>` : ""
@@ -3081,8 +3081,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       banner.innerHTML = `
         <div class="reminder-text">
           <span class="reminder-badge">${esc(nextShoot.dayLabel)}</span>
-          <span><strong>Next Shoot:</strong> ${esc(nextShoot.dateKey)} — <strong>${esc(nextShoot.name)}</strong> (${esc(nextShoot.type || "Shoot")} · ⏱️ ${esc(nextShoot.duration || "Full Day")})</span>
-          ${nextShoot.phone ? `<span style="opacity: 0.8;">· 📞 ${esc(nextShoot.phone)}</span>` : ""}
+          <!-- Split so the phone layout can keep just the badge + name on one
+               line and drop the rest (it is one tap away behind Details);
+               at full width the banner wrapped to three lines and took a
+               fifth of every admin screen. -->
+          <span class="reminder-main"><strong>${esc(nextShoot.name)}</strong></span>
+          <span class="reminder-detail">· ${esc(nextShoot.dateKey)} · ${esc(nextShoot.type || "Shoot")} · ⏱️ ${esc(nextShoot.duration || "Full Day")}${nextShoot.phone ? ` · 📞 ${esc(nextShoot.phone)}` : ""}</span>
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
           <button type="button" class="reminder-btn" id="viewNextShootBtn">👁 Details</button>
@@ -3095,6 +3099,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const h = banner.offsetHeight;
         const hdr = document.querySelector(".site-header");
         if (hdr) hdr.style.top = h + "px";
+        // Anything that sticks below the header (upload dropzone, albums
+        // filter bar) reads this so it clears the banner too.
+        document.documentElement.style.setProperty("--admin-banner-h", h + "px");
       });
 
       banner.querySelector("#viewNextShootBtn")?.addEventListener("click", () => {
@@ -3108,11 +3115,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         banner.style.display = "none";
         const hdr = document.querySelector(".site-header");
         if (hdr) hdr.style.top = "";
+        document.documentElement.style.removeProperty("--admin-banner-h");
       });
     } else if (banner) {
       banner.style.display = "none";
       const hdr = document.querySelector(".site-header");
       if (hdr) hdr.style.top = "";
+      document.documentElement.style.removeProperty("--admin-banner-h");
     }
 
     // 2. Header Dropdown Widget in navAdminSec
@@ -3351,7 +3360,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   function nothWorkCard(s, i) {
     const cover = s.photos.find(p => p.id.split("-")[0] === s.coverPhotoId) || s.photos[0] || { objectPosition: "center" };
     const coverPos = cover.objectPosition || "center";
-    const typeTag = publicShootType(s);
+    // The homepage grid is a showcase, not the archive: a "Test Shoot" /
+    // "Selective Collab" badge there reads as a disclaimer on the work.
+    // The albums and category pages keep it, since there it is a filter.
+    const onHome = location.pathname.replace(/\/index\.html$/, "").replace(/\/$/, "") === "";
+    const rawType = ((s && s.type) || "").trim();
+    const isTestish = rawType === "Test Shoot" || rawType === "Selective Collaboration (TFP)";
+    const typeTag = (onHome && isTestish) ? "" : publicShootType(s);
     const tagline = s.description
       ? s.description
       : [s.activity, typeTag].filter(Boolean).join(" · ");
@@ -3792,7 +3807,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     };
 
     const filterPillHtml = `
-      <div style="position: sticky; top: 70px; z-index: 30; background: rgba(250,250,250,0.85); backdrop-filter: blur(12px); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 12px 0; margin-bottom: 24px;">
+      <div style="position: sticky; top: calc(70px + var(--admin-banner-h, 0px)); z-index: 30; background: rgba(250,250,250,0.85); backdrop-filter: blur(12px); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 12px 0; margin-bottom: 24px;">
         <div class="container" style="display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px;">
           <button type="button" class="album-filter-pill active" data-filter="all" onclick="window.filterAlbumGrid('all', this)" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; white-space: nowrap;">🌐 All Albums (${counts.all})</button>
           ${counts.fashion ? `<button type="button" class="album-filter-pill" data-filter="fashion" onclick="window.filterAlbumGrid('fashion', this)" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; white-space: nowrap;">👗 Fashion (${counts.fashion})</button>` : ''}
@@ -7334,37 +7349,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   </label>
                </div>
                 <div class="field-row">
-                  <label class="field"><span>Preferred Session Duration (Optional)</span>
-                    <select id="b_duration">
-                      <option value="Flexible / Photographer Choice" selected>🤔 Flexible / Photographer Choice (Recommended)</option>
-                      <option value="Full Day (10:30 AM – 5:30 PM)">☀️ Full Day Shoot (10:30 AM – 5:30 PM · 7 Hours)</option>
-                      <option value="Half Day Morning (10:30 AM – 2:30 PM)">🌅 Half Day Morning (10:30 AM – 2:30 PM · 4 Hours)</option>
-                      <option value="Half Day Afternoon (1:30 PM – 5:30 PM)">🌇 Half Day Afternoon (1:30 PM – 5:30 PM · 4 Hours)</option>
-                      <option value="Custom Timings">⏰ Custom Timings (Pick Call &amp; Wrap Time)</option>
-                    </select>
-                    <div id="b_duration_note" style="font-size: var(--font-xs); color: #059669; margin-top: 6px; font-family: var(--mono-font); background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.25); border-radius: 6px; padding: 8px 12px; display: none;">
-                      ⏱️ <strong>Test shoots run to a half day (4 hours).</strong> A custom call &amp; wrap window can stretch to 5 hours at most.
-                    </div>
-                  </label>
-                  <label class="field"><span>Shoot Location / Venue Address *</span><input id="b_location" type="text" required placeholder="" /></label>
-                </div>
-
-                <div id="b_custom_time_wrap" style="display: none; background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
-                  <div style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">⏰ Custom Call &amp; Wrap Timings</div>
-                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Start / Call Time *
-                      <input type="time" id="b_time_start" value="10:30" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
-                    </label>
-                    <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">End / Wrap Time *
-                      <input type="time" id="b_time_end" value="17:30" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
-                    </label>
-                  </div>
-                  <div id="b_custom_time_badge" style="margin-top: 8px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent);">
-                    ⏱️ 7 Hours Session (10:30 AM – 5:30 PM)
-                  </div>
-                </div>
-
-                <div class="field-row">
                   <label class="field" style="grid-column: 1 / -1;"><span>Dedicated Studio Space Needed? *</span>
                     <!-- A choice of venue rather than a yes/no: the home studio
                          carries no rental, so a yes/no framing on cost no longer
@@ -7404,6 +7388,37 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                     </div>
                   </label>
                 </div>
+                <div class="field-row">
+                  <label class="field"><span>Preferred Session Duration (Optional)</span>
+                    <select id="b_duration">
+                      <option value="Flexible / Photographer Choice" selected>🤔 Flexible / Photographer Choice (Recommended)</option>
+                      <option value="Full Day (10:30 AM – 5:30 PM)">☀️ Full Day Shoot (10:30 AM – 5:30 PM · 7 Hours)</option>
+                      <option value="Half Day Morning (10:30 AM – 2:30 PM)">🌅 Half Day Morning (10:30 AM – 2:30 PM · 4 Hours)</option>
+                      <option value="Half Day Afternoon (1:30 PM – 5:30 PM)">🌇 Half Day Afternoon (1:30 PM – 5:30 PM · 4 Hours)</option>
+                      <option value="Custom Timings">⏰ Custom Timings (Pick Call &amp; Wrap Time)</option>
+                    </select>
+                    <div id="b_duration_note" style="font-size: var(--font-xs); color: #059669; margin-top: 6px; font-family: var(--mono-font); background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.25); border-radius: 6px; padding: 8px 12px; display: none;">
+                      ⏱️ <strong>Test shoots run to a half day (4 hours).</strong> A custom call &amp; wrap window can stretch to 5 hours at most.
+                    </div>
+                  </label>
+                  <label class="field"><span>Shoot Location / Venue Address *</span><input id="b_location" type="text" required placeholder="" /></label>
+                </div>
+
+                <div id="b_custom_time_wrap" style="display: none; background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+                  <div style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">⏰ Custom Call &amp; Wrap Timings</div>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Start / Call Time *
+                      <input type="time" id="b_time_start" value="10:30" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+                    </label>
+                    <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">End / Wrap Time *
+                      <input type="time" id="b_time_end" value="17:30" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+                    </label>
+                  </div>
+                  <div id="b_custom_time_badge" style="margin-top: 8px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent);">
+                    ⏱️ 7 Hours Session (10:30 AM – 5:30 PM)
+                  </div>
+                </div>
+
                <div class="field-row">
                  <label class="field" id="b_budget_field" style="grid-column: 1 / -1;"><span>Studio Package &amp; Rate Tier *</span>
                    <select id="b_budget">

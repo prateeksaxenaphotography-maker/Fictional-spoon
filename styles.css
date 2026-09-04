@@ -59,7 +59,11 @@
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; overflow-x: hidden; }
-body { margin: 0; font-family: "Inter", system-ui, sans-serif; color: var(--ink); background: var(--paper); -webkit-font-smoothing: antialiased; line-height: 1.55; overflow-x: hidden; }
+/* No overflow-x on body: html already clips sideways overflow, and a
+   non-visible overflow on body makes body its own scroll container, which
+   silently disables position: sticky for every descendant (the upload
+   dropzone, the albums filter bar). */
+body { margin: 0; font-family: "Inter", system-ui, sans-serif; color: var(--ink); background: var(--paper); -webkit-font-smoothing: antialiased; line-height: 1.55; }
 h1, h2, h3, .brand-text { font-family: "Archivo", sans-serif; letter-spacing: -.02em; margin: 0; }
 img { display: block; max-width: 100%; }
 a { color: inherit; text-decoration: none; }
@@ -345,7 +349,7 @@ a { color: inherit; text-decoration: none; }
 /* Capped + scrollable: with no max-height, a shoot with many staged photos
    just grows the box indefinitely, forcing a scroll of the whole page (past
    the sticky offset) instead of scrolling within this section alone. */
-.dropzone { border: 2px dashed var(--line); border-radius: 12px; background: var(--bone); min-height: 340px; max-height: calc(100vh - 140px); overflow-y: auto; cursor: pointer; transition: border-color .25s, background .25s; outline: none; padding: 24px; position: sticky; top: 100px; }
+.dropzone { border: 2px dashed var(--line); border-radius: 12px; background: var(--bone); min-height: 340px; max-height: calc(100vh - 140px); overflow-y: auto; cursor: pointer; transition: border-color .25s, background .25s; outline: none; padding: 24px; position: sticky; top: calc(100px + var(--admin-banner-h, 0px)); }
 .dropzone:hover, .dropzone:focus-visible { border-color: var(--accent); background: #fbf2ed; }
 .dropzone.is-drag { border-color: var(--accent); background: #fbe9e0; }
 .dropzone-inner { text-align: center; padding: 40px 20px; pointer-events: none; }
@@ -1822,6 +1826,16 @@ main:focus { outline: none; }
 .admin-sticky-reminder .reminder-btn:hover {
   background: var(--accent);
   border-color: var(--accent);
+}
+@media (max-width: 620px) {
+  /* One line on a phone: badge + name, details behind the Details button.
+     Fully expanded it wrapped to three lines and took ~85px of every
+     admin screen. */
+  .admin-sticky-reminder { padding: 6px 12px; gap: 8px; }
+  .admin-sticky-reminder .reminder-text { flex-wrap: nowrap; min-width: 0; flex: 1 1 auto; }
+  .admin-sticky-reminder .reminder-main { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .admin-sticky-reminder .reminder-detail { display: none; }
+  .admin-sticky-reminder .reminder-btn { padding: 3px 7px; white-space: nowrap; }
 }
 
 /* Header Dropdown Widget */
