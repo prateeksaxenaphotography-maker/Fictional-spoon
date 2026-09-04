@@ -406,7 +406,7 @@ window.WPS_DATA = {
       "hair": "—",
       "mua": "—",
       "videographer": "—",
-      "talent": "Kunaal Raghav",
+      "talent": "Kunaal Raghav (https://www.instagram.com/kunaal_raghav07/?hl=en)",
       "location": "Noida",
       "height": "6'1",
       "chest": "39 inch",
@@ -416,8 +416,9 @@ window.WPS_DATA = {
       "shoes": "10.5 US",
       "modelHair": "Black",
       "modelEyes": "Dark Brown",
-      "agency": "",
-      "agencyHandle": "",
+      "agency": "Wilderbeetalents",
+      "agencyHandle": "https://www.instagram.com/wilderbeetalents/?hl=en",
+      "modelEmail": "",
       "modelTypes": [
         "Fashion"
       ],
@@ -431,7 +432,7 @@ window.WPS_DATA = {
       "gear": "",
       "client": "",
       "date": "2026-03-14",
-      "instagram": "https://www.instagram.com/kunaal_raghav07",
+      "instagram": "",
       "kavyar": "",
       "link": "",
       "pdfUrl": "",
@@ -528,6 +529,8 @@ window.WPS_DATA = {
       "showStats": true,
       "showGear": true,
       "showLocation": true,
+      "showAgency": true,
+      "showModelEmail": false,
       "coverPhotoId": "mr5525erdhzei6"
     },
     {
