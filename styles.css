@@ -2583,3 +2583,47 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 .tog-text { display: flex; flex-direction: column; gap: 2px; }
 .tog-text strong { font-weight: 600; color: var(--ink); font-size: 14px; }
 .tog-text small { font-size: 12.5px; color: var(--ink-soft); line-height: 1.45; }
+
+
+/* ───────────────────────────────────────────────────────────────────────
+   § LIGHTBOX SIDEBAR — album / comp card details panel. Quiet cards on
+   hairlines, mono micro-headings, no emoji, roles as neutral tags.
+   ─────────────────────────────────────────────────────────────────────── */
+.lb-eyebrow { color: var(--accent); font-family: var(--mono-font); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; }
+.lb-title { font-family: "Archivo", sans-serif; font-size: 26px !important; font-weight: 800; letter-spacing: -0.02em !important; line-height: 1.1 !important; margin: 8px 0 0; color: var(--ink); }
+.lb-desc { font-size: 14px; color: var(--ink-soft); line-height: 1.55; margin: 12px 0 0; }
+.lb-h { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 0 0 10px; font-family: var(--mono-font); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; font-weight: 600; color: var(--accent); }
+.lb-h small { font-family: "Inter", system-ui, sans-serif; font-size: 12px; letter-spacing: 0; text-transform: none; font-weight: 400; color: var(--ink-soft); }
+.lb-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; box-shadow: var(--shadow-sm); }
+.lb-card > div:last-child { margin-bottom: 0 !important; }
+.lb-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.lb-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.lb-name { font-size: 13.5px; font-weight: 600; color: var(--ink); display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; min-width: 0; }
+.lb-name a { color: var(--accent); text-decoration: none; font-weight: 500; }
+.lb-role { flex: 0 0 auto; font-family: var(--mono-font); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; color: var(--ink-soft); padding: 4px 8px; border: 1px solid var(--line); border-radius: 100px; background: var(--paper); white-space: nowrap; }
+.lb-role-talent { color: #2F6B4F; border-color: rgba(47,107,79,.35); }
+.theme-dark .lb-role-talent { color: #7FCBA4; border-color: rgba(127,203,164,.35); }
+.lb-stats-card { margin-bottom: 14px; }
+.lb-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; margin: 0; }
+.lb-stats dt { font-family: var(--mono-font); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); margin: 0 0 2px; }
+.lb-stats dd { margin: 0; font-size: 14px; font-weight: 600; color: var(--ink); }
+.lb-agency { margin-bottom: 14px; display: flex; flex-direction: column; gap: 2px; }
+.lb-agency .lb-h { margin-bottom: 4px; }
+.lb-export { margin-top: 12px; display: flex; flex-direction: column; gap: 12px; }
+.lb-export-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.lb-seg { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 100px; background: var(--paper); }
+.lb-seg .orient-radio-label { display: inline-flex; align-items: center; padding: 5px 12px; border-radius: 100px; font-family: "Inter", system-ui, sans-serif; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); cursor: pointer; transition: background .2s, color .2s; }
+.lb-seg .orient-radio-label input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.lb-seg .orient-radio-label.active { background: var(--ink); color: var(--paper); }
+.lb-export-btn { font-family: "Inter", system-ui, sans-serif !important; font-size: 13.5px !important; font-weight: 600 !important; letter-spacing: 0 !important; text-transform: none !important; height: auto !important; padding: 11px 14px !important; border-radius: 100px !important; }
+.lb-note { margin: 0; font-size: 12.5px; color: var(--ink-soft); line-height: 1.5; }
+.lb-note-admin { margin-top: 12px; padding: 10px 12px; border: 1px dashed var(--line-2); border-radius: 10px; }
+.lb-disclaimer { font-size: 12.5px !important; font-style: normal !important; color: var(--ink-soft); margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; line-height: 1.55; }
+.lb-admin { margin-top: 18px; border-top: 1px dashed var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; width: 100%; }
+.lb-admin .lb-h { color: var(--ink-soft); margin-bottom: 2px; }
+.lb-admin-row { display: flex; gap: 16px; width: 100%; flex-wrap: wrap; }
+.lb-admin-row .linkish { font-size: 13px; }
+/* Narrow desktop panel: let a row wrap under its tag instead of clipping the name, and keep "@handle ↗" on one line. */
+.lb-row { flex-wrap: wrap; }
+.lb-name { flex: 1 1 150px; overflow-wrap: anywhere; }
+.lb-name a { white-space: nowrap; }
