@@ -575,7 +575,7 @@ window.getAdminTfpPackage = getAdminTfpPackage;
    opening the Calendar view. Defined inside a view function, the archive
    simply did not exist on those paths.
    ============================================================ */
-window.ACTIVE_CONTRACTS = { commercial: "V3.7-COMMERCIAL", tfp: "V3.6-TFP" };
+window.ACTIVE_CONTRACTS = { commercial: "V3.7-COMMERCIAL", tfp: "V3.7-TFP" };
 
 /* ============================================================
    § CALL TIME, GRACE PERIOD & NO-SHOW
@@ -903,6 +903,22 @@ window.WPS_CONTRACT_ARCHIVE["V3.6-TFP"] = {
 };
 window.WPS_CONTRACT_ARCHIVE["V3.5-TFP"].effectiveDate = "August 2026 (superseded by V3.6-TFP)";
 window.WPS_CONTRACT_ARCHIVE["V3.5-TFP"].status = "Archived — superseded by V3.6-TFP (studio rental quoted in advance, not at cost)";
+
+// V3.7-TFP: the travel radius for a test shoot is 10 km from Noida (paid
+// shoots keep 20 km under the commercial contract). Composed off V3.6-TFP.
+window.WPS_CONTRACT_ARCHIVE["V3.7-TFP"] = {
+  version: "V3.7-TFP",
+  title: "Test Shoot & TFP Liability Release V3.7 (Test Shoots)",
+  effectiveDate: "September 2026 – Present",
+  status: "Active / Current (Test Shoot / TFP)",
+  summary: window.WPS_CONTRACT_ARCHIVE["V3.6-TFP"].summary + " Travel radius for a test shoot is 10 km from Noida; beyond it, travel is at actuals.",
+  fullText: window.WPS_CONTRACT_ARCHIVE["V3.6-TFP"].fullText.replace(
+    "Shoots requiring travel beyond 20 km incur travel expenses at actuals.",
+    "Shoots requiring travel beyond 10 km from Noida incur travel expenses at actuals."
+  )
+};
+window.WPS_CONTRACT_ARCHIVE["V3.6-TFP"].effectiveDate = "September 2026 (superseded by V3.7-TFP)";
+window.WPS_CONTRACT_ARCHIVE["V3.6-TFP"].status = "Archived — superseded by V3.7-TFP (test-shoot travel radius 10 km)";
 
 window.saveAdminCustomPackages = async function() {
   // The test-shoot row shares the class for layout but is not a paid tier.
@@ -4725,12 +4741,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           </div>
           <div style="background: var(--paper); border: 1.5px solid #059669; border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm);">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: #059669; color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.6 TFP / TEST SHOOT (ACTIVE)</span>
+              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: #059669; color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.7 TFP / TEST SHOOT (ACTIVE)</span>
               <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Aug 2026 – Present</span>
             </div>
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">📸 Test Shoot &amp; TFP Release V3.6</h3>
+            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">📸 Test Shoot &amp; TFP Release V3.7</h3>
             <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Selective Collaborations via Invite Codes. Non-commercial portfolio licensing, 8-12 retouched caps, Instagram credit, Participant/photographer studio-arranger choice, studio rental quoted in advance, liability waiver, gear protection.</p>
-            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.6-TFP')" style="font-size: var(--font-xs); flex: 1; font-weight: 700; background: #059669; border-color: #059669;">👁 Review TFP Release</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.6-TFP')" style="font-size: var(--font-xs); border-color: #059669; color: #059669; font-weight: 700;">📄 Print PDF</button></div>
+            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.7-TFP')" style="font-size: var(--font-xs); flex: 1; font-weight: 700; background: #059669; border-color: #059669;">👁 Review TFP Release</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.7-TFP')" style="font-size: var(--font-xs); border-color: #059669; color: #059669; font-weight: 700;">📄 Print PDF</button></div>
           </div>
           <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -4740,6 +4756,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">💼 Commercial Shoot Agreement V3.6</h3>
             <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Superseded by V3.7. Same terms, but a photographer-arranged external studio was passed through at cost (billed at actuals). Bookings agreed under it print these terms.</p>
             <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('V3.6-COMMERCIAL')" style="font-size: var(--font-xs); flex: 1;">👁 Review</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.6-COMMERCIAL')" style="font-size: var(--font-xs);">📄 Print PDF</button></div>
+          </div>
+          <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.6 TFP / TEST SHOOT (ARCHIVED)</span>
+              <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Sep 2026</span>
+            </div>
+            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">📸 Test Shoot &amp; TFP Release V3.6</h3>
+            <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Superseded by V3.7-TFP. Same release with a 20 km travel radius. Bookings agreed under it print these terms.</p>
+            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('V3.6-TFP')" style="font-size: var(--font-xs); flex: 1;">👁 Review</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.6-TFP')" style="font-size: var(--font-xs);">📄 Print PDF</button></div>
           </div>
           <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -6348,7 +6373,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       $("#quickTestShootBtn")?.addEventListener("click", () => {
         const clientName = $("#m_clientName").value.trim() || "Test Shoot Client";
         const notes = $("#m_clientNotes").value.trim() || "Booked for Test Shoot / TFP Collaboration.";
-        addCalBooking(dKey, { name: clientName, type: "Selective Collaboration (TFP)", notes: notes, isTentative: false, status: "confirmed", contractVersion: "V3.6-TFP", agreedToTerms: false });
+        addCalBooking(dKey, { name: clientName, type: "Selective Collaboration (TFP)", notes: notes, isTentative: false, status: "confirmed", contractVersion: "V3.7-TFP", agreedToTerms: false });
         toast(`📸 Test Shoot marked for ${dKey}! (Appears as Test Shoot in Blue)`);
         modalContainer.innerHTML = "";
         renderAdminGrid();
@@ -7880,7 +7905,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                    <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em;">Studio policies &amp; terms</span>
                    <span id="bookPoliciesToggleIcon" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); white-space: nowrap;">+ Read full policies</span>
                  </button>
-                 <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 6px; line-height: 1.4;">Still photography only · studio rental quoted separately · travel &gt;20km at actuals · full gallery buyout available</div>
+                 <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 6px; line-height: 1.4;">Still photography only · studio rental quoted separately · travel beyond 20 km (10 km for test shoots) at actuals · full gallery buyout available</div>
                  <div id="bookPoliciesDetail" style="display: none; margin-top: 12px;">
                  <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px;">
                    <li style="display: flex; gap: 10px; align-items: flex-start; font-size: var(--font-xs); line-height: 1.55; color: var(--ink-soft);">
@@ -7985,7 +8010,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                <div class="modal-content" style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; max-width: 680px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.15); overflow: hidden; animation: modalFadeIn 0.3s ease;">
                  <div style="padding: 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; background: var(--bone);">
                    <h3 id="termsModalTitle" style="margin: 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink);">Studio Production &amp; Liability Release</h3>
-                   <span id="termsModalTag" style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--accent); padding: 4px 8px; border-radius: 4px; color: #fff; font-weight: 700;">TFP-LIABILITY-RELEASE-V3.6 (ACTIVE)</span>
+                   <span id="termsModalTag" style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--accent); padding: 4px 8px; border-radius: 4px; color: #fff; font-weight: 700;">TFP-LIABILITY-RELEASE-V3.7 (ACTIVE)</span>
                  </div>
                  <div style="padding: 24px; overflow-y: auto; font-size: var(--font-sm); line-height: 1.6; color: var(--ink); display: flex; flex-direction: column; gap: 20px; text-align: left;">
                    <p style="margin: 0; font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em;">TFP Collaboration, Model Release &amp; Digital Consent Terms</p>
@@ -8052,8 +8077,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                    </div>
 
                     <div style="border-left: 3px solid var(--accent); padding-left: 14px; background: rgba(var(--accent-rgb), 0.04);">
-                      <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--accent);">8. OUTSTATION LOCATION, TRAVEL &amp; ACCOMMODATION EXPENSE POLICY (&gt;20 KM FROM NOIDA)</h4>
-                      <p style="margin: 0; font-weight: 500;">If the shoot location is located beyond a 20 km radius from Noida (Delhi NCR), all travel expenses, local conveyance, outstation transport, tolls, and accommodation expenses incurred for the photographer (and core production team) shall be fully borne, arranged, or reimbursed by the client / party requesting the shoot session. This condition applies to both Paid Commercial Shoots and Test Shoot Collaborations (TFP).</p>
+                      <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--accent);">8. OUTSTATION LOCATION, TRAVEL &amp; ACCOMMODATION EXPENSE POLICY (&gt;<span class="policy-km">20</span> KM FROM NOIDA)</h4>
+                      <p style="margin: 0; font-weight: 500;">If the shoot location is located beyond a <span class="policy-km">20</span> km radius from Noida (Delhi NCR), all travel expenses, local conveyance, outstation transport, tolls, and accommodation expenses incurred for the photographer (and core production team) shall be fully borne, arranged, or reimbursed by the client / party requesting the shoot session. This condition applies to both Paid Commercial Shoots and Test Shoot Collaborations (TFP).</p>
                     </div>
                    
                    <!-- Test shoots only: a collaboration brings no retainer with
@@ -10100,9 +10125,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           : `<strong style="color: var(--ink);">Studio Rental:</strong> Package rates cover photography creation, light design &amp; master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are <strong style="color: var(--ink);">quoted separately in advance</strong>, or the client may directly book their preferred studio space for the production.`;
       }
       if (policyTravel) {
+        const travelKm = $("#b_type")?.value === "Selective Collaboration (TFP)" ? 10 : 20;
         policyTravel.innerHTML = venueSuppliedByStudio
-          ? `<strong style="color: var(--ink);">Travel &amp; Accommodation:</strong> Travel to the studio-provided venue above is covered by the studio for this session. Standard terms (travel beyond <strong style="color: var(--ink);">20 km</strong> from the studio base in Noida, and accommodation where an overnight stay is needed, billed at actuals) apply only if you request a different location.`
-          : `<strong style="color: var(--ink);">Travel &amp; Accommodation:</strong> Shoots requiring travel beyond <strong style="color: var(--ink);">20 km</strong> from the studio base (Noida) incur paid travel and, where an overnight stay is needed, accommodation — billed <strong style="color: var(--ink);">at actuals (at cost)</strong>.`;
+          ? `<strong style="color: var(--ink);">Travel &amp; Accommodation:</strong> Travel to the studio-provided venue above is covered by the studio for this session. Standard terms (travel beyond <strong style="color: var(--ink);">${travelKm} km</strong> from the studio base in Noida, and accommodation where an overnight stay is needed, billed at actuals) apply only if you request a different location.`
+          : `<strong style="color: var(--ink);">Travel &amp; Accommodation:</strong> Shoots requiring travel beyond <strong style="color: var(--ink);">${travelKm} km</strong> from the studio base (Noida) incur paid travel and, where an overnight stay is needed, accommodation — billed <strong style="color: var(--ink);">at actuals (at cost)</strong>.`;
       }
 
       // ── Home studio (paid shoots only) ──────────────────────────────────
@@ -11262,7 +11288,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const venueClause = venueByStudio
           ? `1. SCOPE OF PRODUCTION & VENUE (PROVIDED BY STUDIO)\nThis session is scheduled for studio/location photography production at a venue arranged and paid for by the Studio: ${venueByStudioAddress || "as confirmed with the Studio"}. No studio rental, venue hire or space fee is billed to the Participant for this session. A change of venue requested by the Participant is subject to Studio approval and may reintroduce venue costs, quoted in advance.${homeStudioRider}`
           : `1. SCOPE OF PRODUCTION & VENUE RENTAL POLICY\nThis session is scheduled for studio/location photography production. Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio venue space is required, applicable studio rental fees are quoted separately in advance.${studioArrangerSubmitClause}`;
-        const contractRefDoc = isCustomContract ? "CUSTOM-CLIENT-CONTRACT-MSA" : (isTfpCat ? "TFP-LIABILITY-RELEASE-V3.6" : "COMMERCIAL-CONTRACT-V3.7");
+        const contractRefDoc = isCustomContract ? "CUSTOM-CLIENT-CONTRACT-MSA" : (isTfpCat ? "TFP-LIABILITY-RELEASE-V3.7" : "COMMERCIAL-CONTRACT-V3.7");
         // Resolved before the release text below, which now states the fee and
         // the milestones. They previously appeared only in the inquiry email as
         // booking details — so the document the client actually signed said
@@ -11392,8 +11418,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             : `Studio Rental Policy: Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio space is required, venue rental fees are quoted separately in advance, or the client may book the studio directly.\n` +
               (studioArrangerSubmitClause ? `Studio Arranger:${studioArrangerSubmitClause}\n` : ``);
         const travelPolicyNote = venueByStudio
-          ? `Travel & Accommodation Policy: Travel to the studio-provided venue above is covered by the studio for this invite. If you later request a different location, standard terms apply again (travel beyond 20 km from the studio base in Noida, and accommodation where an overnight stay is needed, billed at actuals).\n`
-          : `Travel & Accommodation Policy: Shoots requiring travel beyond 20 km from the studio base (Noida) incur paid travel and, where an overnight stay is needed, accommodation - billed at actuals (at cost).\n`;
+          ? `Travel & Accommodation Policy: Travel to the studio-provided venue above is covered by the studio for this invite. If you later request a different location, standard terms apply again (travel beyond ${isTfpCat ? 10 : 20} km from the studio base in Noida, and accommodation where an overnight stay is needed, billed at actuals).\n`
+          : `Travel & Accommodation Policy: Shoots requiring travel beyond ${isTfpCat ? 10 : 20} km from the studio base (Noida) incur paid travel and, where an overnight stay is needed, accommodation - billed at actuals (at cost).\n`;
         // Paid shoots only: the package buys the photographer, not the crew.
         // Nothing anywhere said so, which left every HMUA/styling/set cost an
         // argument waiting to happen on shoot day.
@@ -11896,13 +11922,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       }
 
       if (modalTitle) modalTitle.textContent = isTfp ? "Studio Production & Liability Release" : "Commercial Shoot Contract & Production Agreement";
-      if (modalTag) modalTag.textContent = isTfp ? "TFP-LIABILITY-RELEASE-V3.6 (ACTIVE)" : "COMMERCIAL-CONTRACT-V3.7 (ACTIVE)";
+      if (modalTag) modalTag.textContent = isTfp ? "TFP-LIABILITY-RELEASE-V3.7 (ACTIVE)" : "COMMERCIAL-CONTRACT-V3.7 (ACTIVE)";
+      // Travel radius in the policy text: 10 km on a test shoot, 20 km otherwise.
+      document.querySelectorAll("#termsModal .policy-km").forEach(el => { el.textContent = isTfp ? "10" : "20"; });
       // The grace-period clause is a test-shoot term only. It has to be toggled
       // on every open, not just hidden by default: the modal element persists
       // across bookings, so a commercial enquiry opened after a TFP one would
       // otherwise still be showing it.
       const versionLabel = $("#termsAgreeVersionLabel");
-      if (versionLabel) versionLabel.textContent = `Studio Terms & Conditions (${isTfp ? "Version V3.6" : "Version V3.7"})`;
+      if (versionLabel) versionLabel.textContent = `Studio Terms & Conditions (${isTfp ? "Version V3.7" : "Version V3.7"})`;
       const lateArrivalSection = $("#termsLateArrivalSection");
       if (lateArrivalSection) {
         // Applies to both kinds now, on different terms — a paid client gets
@@ -11933,7 +11961,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         : modalVenueByStudio
         ? ` The shoot venue${modalVenueAddress ? ` (<strong>${esc(modalVenueAddress)}</strong>)` : ""} is arranged and paid for by the Studio — no studio rental, venue hire or travel cost is billed to you for it. Requesting a different location later re-applies the standard venue and travel terms.${modalHomeRider}`
         : (isTfp
-            ? ` Locations &gt;20 km from Noida require client-funded travel, conveyance &amp; accommodation.`
+            ? ` Locations &gt;${isTfp ? 10 : 20} km from Noida require client-funded travel, conveyance &amp; accommodation.`
             : ` Dedicated indoor studio venue rentals are <strong>quoted separately in advance</strong>.`);
 
       if (sec4Text) {
