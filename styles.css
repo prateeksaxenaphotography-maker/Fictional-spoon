@@ -2804,3 +2804,6 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 .production-terms-list span { font-size: 13.5px; font-weight: 600; color: var(--ink); line-height: 1.35; }
 .production-terms-sub { display: block; margin-top: 10px; font-size: 12.5px; color: var(--ink-soft); line-height: 1.45; }
 @media (max-width: 720px) { .production-terms-list { grid-template-columns: 1fr; } }
+
+.arranger-terms-note { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-soft); line-height: 1.5; }
+.arranger-terms-note[hidden] { display: none; }

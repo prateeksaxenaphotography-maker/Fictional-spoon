@@ -7731,6 +7731,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                         The photographer should arrange the studio and lighting for me
                       </label>
                     </div>
+                    <p id="arrangerTermsNote" class="arranger-terms-note" hidden></p>
                   </label>
                 </div>
                 <div class="field-row">
@@ -10113,6 +10114,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const studioSpaceSel = $("#b_studio_space");
       const homeStudioOpt = $("#b_studio_space_home");
       const isTfpType = $("#b_type")?.value === "Selective Collaboration (TFP)";
+      { const n = $("#summaryArrangerNote"); if (n) n.textContent = isTfpType
+          ? "Since the photographer is arranging the studio & lighting, they are quoted in advance once the venue is confirmed and are payable in full before shoot day."
+          : "Since the photographer is arranging the studio & lighting, this total does not yet include the venue and equipment. They are quoted in advance once the venue is confirmed and are payable in full together with your 50% advance."; }
 
       // This question only makes sense once a commercial studio is actually
       // being rented — the home studio already comes with the photographer's
@@ -10136,12 +10140,25 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       }
       // Read once here so the live contract clause below and the submitted
       // booking (further down, off the same select/radio pair) always agree.
+      // When the photographer books the studio, say when it is paid — with
+      // the advance on a paid shoot, before shoot day on a test shoot — right
+      // under the choice, where both kinds of booking can see it.
+      {
+        const arrangerNote = $("#arrangerTermsNote");
+        if (arrangerNote) {
+          const picked = isCommercialStudioSelected && $("input[name='b_studio_arranger']:checked")?.value === "Photographer Arranges Studio & Lighting (Billed at Actuals)";
+          arrangerNote.hidden = !picked;
+          arrangerNote.textContent = isTfpType
+            ? "Studio and lighting are quoted in advance once the venue is confirmed and payable in full before shoot day."
+            : "Studio and lighting are quoted in advance once the venue is confirmed and payable in full together with your 50% advance.";
+        }
+      }
       const studioArrangerChoice = isCommercialStudioSelected
         ? ($("input[name='b_studio_arranger']:checked")?.value || "")
         : "";
       const studioArrangerClauseHtml = studioArrangerChoice
         ? (studioArrangerChoice === "Photographer Arranges Studio & Lighting (Billed at Actuals)"
-            ? ` Where requested, the photographer will instead source and book the studio space and lighting equipment on the Participant's behalf, with the studio space and equipment charges quoted to the Participant in advance, payable in full together with the advance retainer, and added to the invoice.`
+            ? ` Where requested, the photographer will instead source and book the studio space and lighting equipment on the Participant's behalf, with the studio space and equipment charges quoted to the Participant in advance, ${isTfpType ? "payable in full before shoot day" : "payable in full together with the advance retainer"}, and added to the invoice.`
             : ` The Participant will source and book the studio space and any lighting equipment directly, and will share the confirmed venue details with the photographer ahead of the shoot.`)
         : "";
 
@@ -11237,7 +11254,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const studioArrangerPick = isCommercialStudioBooked ? ($("input[name='b_studio_arranger']:checked")?.value || "") : "";
         const studioArrangerSubmitClause = studioArrangerPick
           ? (studioArrangerPick === "Photographer Arranges Studio & Lighting (Billed at Actuals)"
-              ? ` Where requested, the photographer will instead source and book the studio space and lighting equipment on the Participant's behalf, with the studio space and equipment charges quoted to the Participant in advance, payable in full together with the advance retainer, and added to the invoice.`
+              ? ` Where requested, the photographer will instead source and book the studio space and lighting equipment on the Participant's behalf, with the studio space and equipment charges quoted to the Participant in advance, ${isTfpCat ? "payable in full before shoot day" : "payable in full together with the advance retainer"}, and added to the invoice.`
               : ` The Participant will source and book the studio space and any lighting equipment directly, and will share the confirmed venue details with the photographer ahead of the shoot.`)
           : "";
         const venueClause = venueByStudio
@@ -11359,7 +11376,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           : (venueByStudio
               ? `Not required — venue provided by the studio (photographer's invite)`
               : (val("b_studio_space") || 'Not Specified') + (studioArrangerPick
-                  ? ` — Arranged by: ${studioArrangerPick === "Photographer Arranges Studio & Lighting (Billed at Actuals)" ? "photographer (studio & lighting quoted in advance, payable in full with the 50% advance)" : "client (client books studio & lighting independently)"}`
+                  ? ` — Arranged by: ${studioArrangerPick === "Photographer Arranges Studio & Lighting (Billed at Actuals)" ? `photographer (studio & lighting quoted in advance, ${isTfpCat ? "payable in full before shoot day" : "payable in full with the 50% advance"})` : "client (client books studio & lighting independently)"}`
                   : ""));
         const studioRentalPolicyNote = (homeStudioRentalFee > 0)
           // A paid home-studio booking is the one case where the studio does
@@ -11731,7 +11748,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           "Studio / Venue Charge": homeStudioRentalFee > 0
             ? `₹${homeStudioRentalFee.toLocaleString('en-IN')} — ${venueLabel} (payable in full before the shoot)`
             : (studioArrangerPick === "Photographer Arranges Studio & Lighting (Billed at Actuals)"
-                ? "Commercial studio & lighting arranged by the photographer — quoted in advance, payable in full with the 50% advance"
+                ? `Commercial studio & lighting arranged by the photographer — quoted in advance, ${isTfpCat ? "payable in full before shoot day" : "payable in full with the 50% advance"}`
                 : "Not applicable"),
           "Total Payable": isProduction ? "Quoted on the brief" : financialSummary.finalPayable > 0
             ? `₹${financialSummary.finalPayable.toLocaleString('en-IN')}`
