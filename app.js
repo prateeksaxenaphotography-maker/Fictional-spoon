@@ -3164,12 +3164,32 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     return upcoming;
   }
 
+  // The fixed header sits below the fixed admin banner by exactly the
+  // banner's height. That height changes when the banner wraps (narrower
+  // window, fonts arriving, zoom), so it is tracked live rather than
+  // measured once; otherwise a strip of page shows between the two.
+  let adminBannerObserver = null;
+  function syncAdminBannerOffset() {
+    const banner = document.getElementById("adminStickyReminderBar");
+    const h = banner && banner.style.display !== "none" ? banner.offsetHeight : 0;
+    const hdr = document.querySelector(".site-header");
+    if (hdr) hdr.style.top = h ? h + "px" : "";
+    if (h) document.documentElement.style.setProperty("--admin-banner-h", h + "px");
+    else document.documentElement.style.removeProperty("--admin-banner-h");
+  }
+  function watchAdminBanner(banner) {
+    if (adminBannerObserver || !("ResizeObserver" in window)) return;
+    adminBannerObserver = new ResizeObserver(() => syncAdminBannerOffset());
+    adminBannerObserver.observe(banner);
+    window.addEventListener("resize", syncAdminBannerOffset);
+  }
   function updateAdminReminders() {
     const active = isAdmin();
     let banner = $("#adminStickyReminderBar");
 
     if (!active) {
       if (banner) banner.style.display = "none";
+      syncAdminBannerOffset();
       const pillWrap = $("#adminHeaderPillWrap");
       if (pillWrap) pillWrap.style.display = "none";
       return;
@@ -3204,14 +3224,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       `;
 
       // Push site-header below the banner so it doesn't block the nav
-      requestAnimationFrame(() => {
-        const h = banner.offsetHeight;
-        const hdr = document.querySelector(".site-header");
-        if (hdr) hdr.style.top = h + "px";
-        // Anything that sticks below the header (upload dropzone, albums
-        // filter bar) reads this so it clears the banner too.
-        document.documentElement.style.setProperty("--admin-banner-h", h + "px");
-      });
+      requestAnimationFrame(syncAdminBannerOffset);
+      watchAdminBanner(banner);
 
       banner.querySelector("#viewNextShootBtn")?.addEventListener("click", () => {
         if (typeof window.openDateAdminModal === "function") {
@@ -3222,15 +3236,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       });
       banner.querySelector("#dismissReminderBtn")?.addEventListener("click", () => {
         banner.style.display = "none";
-        const hdr = document.querySelector(".site-header");
-        if (hdr) hdr.style.top = "";
-        document.documentElement.style.removeProperty("--admin-banner-h");
+        syncAdminBannerOffset();
       });
     } else if (banner) {
       banner.style.display = "none";
-      const hdr = document.querySelector(".site-header");
-      if (hdr) hdr.style.top = "";
-      document.documentElement.style.removeProperty("--admin-banner-h");
+      syncAdminBannerOffset();
     }
 
     // 2. Header Dropdown Widget in navAdminSec
