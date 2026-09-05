@@ -2819,3 +2819,9 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 .policy-lines dd { margin: 0; font-size: 13px; line-height: 1.55; color: var(--ink-soft); }
 .policy-lines dd strong { color: var(--ink); }
 @media (max-width: 600px) { .policy-lines > div { grid-template-columns: 1fr; } }
+
+/* Hero top line ("The creative studio" · "Noida · Delhi NCR"): readable at
+   a glance, not a whisper. Left stays soft, right is the ink. */
+.hero-topline { font-size: clamp(14px, 1.2vw, 16px); font-weight: 600; letter-spacing: .14em; color: var(--ink-soft); padding-bottom: 12px; }
+.hero-topline-r { color: var(--ink); font-weight: 700; }
+@media (max-width: 720px) { .hero-topline { font-size: 12.5px; letter-spacing: .1em; } }
