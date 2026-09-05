@@ -5767,6 +5767,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase;">Deliverable Specs</span>
             <input type="text" class="pkg-edit-specs" value="${esc(p.specs)}" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
           </div>
+          <div>
+            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em;">Delivery time <span style="font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-soft);">(optional, shown on the quote)</span></span>
+            <input type="text" class="pkg-edit-delivery" value="${esc(p.delivery || "")}" placeholder="e.g. 10 working days" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
+          </div>
           <div style="display: flex; gap: 4px; justify-content: flex-end; padding-top: 14px;">
             <button type="button" class="admin-cal-btn" onclick="window.copyPackageBookingLink(${p.price})" title="Copy Shareable Booking Link" style="font-size: var(--font-xs); padding: 6px 8px; border-color: var(--accent); color: var(--accent); font-weight: 700;">🔗 Share Link</button>
             <button type="button" class="admin-cal-btn" onclick="window.moveAdminPackageRow(${idx}, -1)" title="Move Up" ${idx === 0 ? 'disabled style="opacity:0.3; cursor:not-allowed; padding:6px 8px; font-size: var(--font-xs);"' : 'style="padding:6px 8px; font-size: var(--font-xs);"'}>▲</button>
@@ -5793,6 +5797,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <div>
             <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase;">Deliverable Specs</span>
             <input type="text" id="tfpPkgSpecs" value="${esc(tfp.specs)}" oninput="window.markUnsavedChanges && window.markUnsavedChanges()" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
+          </div>
+          <div>
+            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em;">Delivery time <span style="font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-soft);">(optional, shown on the quote)</span></span>
+            <input type="text" id="tfpPkgDelivery" value="${esc(tfp.delivery || "")}" oninput="window.markUnsavedChanges && window.markUnsavedChanges()" placeholder="e.g. 14 working days" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
           </div>
           <div style="display: flex; gap: 4px; justify-content: flex-end; padding-top: 14px;">
             <button type="button" class="admin-cal-btn" onclick="window.copyTfpBookingLink()" title="Copy a booking link that opens the test-shoot form with your primary invite code" style="font-size: var(--font-xs); padding: 6px 8px; border-color: var(--accent); color: var(--accent); font-weight: 700;">Share link</button>
@@ -6067,12 +6075,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Client / Model Name *
                   <input type="text" id="eb_name" value="${esc(b.name)}" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
                 </label>
-          <label style="display: block; margin-top: 8px; font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Delivery time <span style="font-weight: 400;">(optional, shown on the quote)</span>
-            <input type="text" id="tfpPkgDelivery" value="${esc(tfp.delivery || "")}" oninput="window.markUnsavedChanges && window.markUnsavedChanges()" placeholder="e.g. 14 working days" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); background: var(--bone); color: var(--ink); margin-top: 4px;" />
-          </label>
-          <label style="display: block; margin-top: 8px; font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Delivery time <span style="font-weight: 400;">(optional, shown on the quote)</span>
-            <input type="text" class="pkg-edit-delivery" value="${esc(p.delivery || "")}" placeholder="e.g. 10 working days" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); background: var(--bone); color: var(--ink); margin-top: 4px;" />
-          </label>
                 <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Shoot Date (YYYY-MM-DD) *
                   <input type="text" id="eb_date" value="${esc(dKey)}" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
                 </label>
