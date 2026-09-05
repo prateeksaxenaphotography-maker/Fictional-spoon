@@ -2734,3 +2734,5 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 .pager .pager-arrow { padding: 0 16px; }
 @media (max-width: 720px) { .pager { margin-top: 28px; padding-top: 24px; } .pager button { min-width: 36px; height: 36px; } }
 .lb-person-note a { font-family: "Archivo", sans-serif; font-weight: 700; font-size: 12px; color: var(--ink) !important; }
+/* Long link labels (e.g. "View <name>’s comp card") wrap instead of running past the panel edge; handles stay unbroken unless they would overflow. */
+.lb-credit .lb-person a { white-space: normal; overflow-wrap: anywhere; }
