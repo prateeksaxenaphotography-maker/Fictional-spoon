@@ -1469,9 +1469,9 @@ window.WPS_DATA = {
         }
       ],
       "featured": true,
-      "showAsCompCard": false,
-      "hideFromCompCard": false,
-      "disableCompCardDownload": false,
+      "showAsCompCard": true,
+      "hideFromCompCard": true,
+      "disableCompCardDownload": true,
       "isPublic": true,
       "showCredits": true,
       "showPdf": true,
