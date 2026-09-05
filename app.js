@@ -12522,18 +12522,24 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     return printModelLinks(shoot).filter(l => showRep(shoot, what[l.kind] || "ModelWebsite", surface));
   }
   function printSocialsBarHtml(shoot) {
-    // Contact row: one label / value pair per social, then the agency with its
-    // own links on a smaller line under the name.
-    const items = visibleModelLinks(shoot, "Pdf").map(l => ({ label: SOCIAL_LABEL[l.kind], main: esc(socialPrintText(l)) }));
+    // Contact block: one line for the model (every social and the email),
+    // one line for the agency (its name, then its socials). Each detail is
+    // a small label over its value.
+    const cell = (label, value) => `<div style="min-width: 0;"><div style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8a8782; margin-bottom: calc(2px * var(--print-scale, 1));">${label}</div><div style="font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: calc(11px * var(--print-scale, 1)); font-weight: 700; color: #000;">${value}</div></div>`;
+    const modelCells = visibleModelLinks(shoot, "Pdf").map(l => cell(SOCIAL_LABEL[l.kind], esc(socialPrintText(l))));
+    if (shoot.modelEmail && showRep(shoot, "Email", "Pdf") && !modelCells.some(c => c.includes(esc(shoot.modelEmail)))) modelCells.push(cell("Email", esc(shoot.modelEmail)));
+    const agencyCells = [];
     if (shoot.agency && showRep(shoot, "Agency", "Pdf")) {
-      items.push({ label: "Agency", main: esc(shoot.agency), sub: visibleAgencyLinks(shoot, "Pdf").map(socialPrintText).join("  ·  ") });
+      agencyCells.push(cell("Agency", esc(shoot.agency)));
+      visibleAgencyLinks(shoot, "Pdf").forEach(l => agencyCells.push(cell(`Agency ${SOCIAL_LABEL[l.kind]}`, esc(socialPrintText(l)))));
     }
-    if (shoot.modelEmail && showRep(shoot, "Email", "Pdf") && !items.some(it => it.main === esc(shoot.modelEmail))) items.push({ label: "Email", main: esc(shoot.modelEmail) });
-    if (!items.length) return "";
-    const cells = items.map(it => `<div style="min-width: 0;"><div style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8a8782; margin-bottom: calc(2px * var(--print-scale, 1));">${it.label}</div><div style="font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: calc(11px * var(--print-scale, 1)); font-weight: 700; color: #000;">${it.main}</div>${it.sub ? `<div style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); font-weight: 500; color: #6b6864; margin-top: calc(2px * var(--print-scale, 1));">${esc(it.sub)}</div>` : ""}</div>`).join("");
+    if (!modelCells.length && !agencyCells.length) return "";
+    const line = (cells) => `<div style="display: flex; flex-wrap: wrap; gap: calc(6px * var(--print-scale, 1)) calc(28px * var(--print-scale, 1)); align-items: flex-start;">${cells.join("")}</div>`;
     return `
       <div style="padding: calc(9px * var(--print-scale, 1)) 0 calc(8px * var(--print-scale, 1)); border-bottom: 1px solid #d9d6d0; margin-bottom: calc(12px * var(--print-scale, 1)); flex: 0 0 auto;">
-        <div style="display: flex; flex-wrap: wrap; gap: calc(6px * var(--print-scale, 1)) calc(28px * var(--print-scale, 1));">${cells}</div>
+        ${modelCells.length ? line(modelCells) : ""}
+        ${modelCells.length && agencyCells.length ? `<div style="height: 1px; background: #ecebe7; margin: calc(7px * var(--print-scale, 1)) 0;"></div>` : ""}
+        ${agencyCells.length ? line(agencyCells) : ""}
         <div style="font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: calc(8px * var(--print-scale, 1)); color: #8a8782; margin-top: calc(6px * var(--print-scale, 1));">To book this talent, contact the model or their representing agency through the channels above.</div>
       </div>
     `;
