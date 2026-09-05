@@ -13853,7 +13853,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // if the published shoots changed. Local (IndexedDB) shoots take precedence.
   async function refreshPublishedData() {
     try {
-      const res = await fetch(`data.js?fresh=${Date.now()}`, { cache: "no-store" });
+      // Absolute path: from a nested route such as /book a relative "data.js"
+      // resolved to /book/data.js, which the SPA fallback answered with the
+      // index page, so the refresh silently never found any albums.
+      const res = await fetch(`/data.js?fresh=${Date.now()}`, { cache: "no-store" });
       if (!res.ok) return;
       const text = await res.text();
       const fresh = parseShootsFromDataJs(text);
