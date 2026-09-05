@@ -2575,6 +2575,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (shoot.pdfUrl && shouldShowField(shoot, "Pdf")) {
       groups.push({ label: "Publication", rendered: [`<span class="lb-person"><a href="${esc(shoot.pdfUrl)}" download>Download PDF ↗</a></span>`] });
     }
+    // One model on the album and a comp card exists for them: point at it.
+    // The share link is the same slug form the Share button hands out.
+    const soloModel = hasTalent && shoot.talent.split(",").map(x => x.trim()).filter(Boolean).length === 1;
+    if (soloModel && !isCcPage && qualifiesAsCompCard(shoot) && !shoot.hideFromCompCard) {
+      const modelName = getTalentCleanName(shoot.talent);
+      const slug = slugify(modelName);
+      if (slug) groups.push({ label: "Comp card", rendered: [`<span class="lb-person"><a href="/share/?a=comp-card-${encodeURIComponent(slug)}">View ${esc(modelName)}’s comp card ↗</a><small class="lb-person-note">Free to view and download as a PDF.</small></span>`] });
+    }
     const creditRows = (list) => `<dl class="lb-credits">${list.map(g => `<div class="lb-credit"><dt>${esc(g.label)}</dt><dd>${g.rendered.join("")}</dd></div>`).join("")}</dl>`;
     const creditsHtml = groups.length ? creditRows(groups) : "";
     // Lighting diagram
@@ -12446,19 +12454,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // Branding footer — this doubles as a marketing touchpoint, so it's always
   // included and only ever shrinks (via --print-scale), never gets dropped.
   const PRINT_FOOTER_HTML = `
-    <div style="border-top: 2px solid #000; padding-top: calc(10px * var(--print-scale, 1)); margin-top: auto; font-family: sans-serif; font-size: calc(8.5px * var(--print-scale, 1)); color: #000; line-height: 1.5; display: flex; flex-direction: column; gap: calc(4px * var(--print-scale, 1)); text-align: left; width: 100%; flex: 0 0 auto;">
-      <div style="font-family:'JetBrains Mono', monospace; font-size: calc(10px * var(--print-scale, 1)); font-weight: 800; color: #000; text-transform: uppercase; letter-spacing: 0.05em; background: #f4f4f2; padding: calc(6px * var(--print-scale, 1)) calc(10px * var(--print-scale, 1)); border-radius: 4px; border: 1px solid #dcdad5; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span>📸 Photographed by nerdyphotographer.in</span>
-          <span>·</span>
-          <span style="display: inline-flex; align-items: center; gap: 4px;">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
-            @nerdyphotographer.in
-          </span>
-        </div>
-        <span style="font-weight: 700; color: var(--accent, #d24e1a);">www.nerdyphotographer.in</span>
+    <div style="border-top: 1px solid #d9d6d0; padding-top: calc(8px * var(--print-scale, 1)); margin-top: auto; width: 100%; flex: 0 0 auto;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline; gap: calc(10px * var(--print-scale, 1)); flex-wrap: wrap;">
+        <span style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8a8782; ">Photographed by nerdyphotographer.in &nbsp;·&nbsp; @nerdyphotographer.in</span>
+        <span style="font-family:'JetBrains Mono', monospace; font-size: calc(8.5px * var(--print-scale, 1)); font-weight: 700; color: #000; letter-spacing: 0.04em;">www.nerdyphotographer.in</span>
       </div>
-      <div style="color: #555; font-size: calc(7.5px * var(--print-scale, 1));">Where brands and models build their story — Fashion, Fitness, Lifestyle &amp; Sports Photography | Noida. All portfolio cards, comp cards, and photography frames are official creative works produced under nerdyphotographer.in studio.</div>
+      <div style="font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: calc(7px * var(--print-scale, 1)); color: #9a9791; margin-top: calc(4px * var(--print-scale, 1)); line-height: 1.4;">Fashion, fitness, lifestyle and sports photography, Noida. Comp cards, portfolio cards and frames are creative works produced under nerdyphotographer.in.</div>
     </div>
   `;
 
@@ -12471,28 +12472,28 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (!types.length) return "";
     return `
       <div style="display: flex; flex-wrap: wrap; gap: calc(6px * var(--print-scale, 1)); margin: 0; flex: 0 0 auto; ${extraStyle}">
-        ${types.map((t) => `<span style="font-family:'JetBrains Mono', monospace; font-size: calc(9px * var(--print-scale, 1)); font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #000; background: #f4f4f2; border: 1px solid #000; border-radius: 999px; padding: calc(3px * var(--print-scale, 1)) calc(10px * var(--print-scale, 1)); white-space: nowrap;">${esc(modelTypeLabel(t))}</span>`).join("")}
+        ${types.map((t) => `<span style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #333; background: #fff; border: 1px solid #cfccc6; border-radius: 999px; padding: calc(3px * var(--print-scale, 1)) calc(10px * var(--print-scale, 1)); white-space: nowrap;">${esc(modelTypeLabel(t))}</span>`).join("")}
       </div>
     `;
   }
 
   function printStatsBarHtml(shoot) {
     if (shoot.showStatsOnCompCard === false) return "";
-
-    const statsArr = [];
-    if (shoot.height) statsArr.push(`Height: ${shoot.height}`);
-    if (shoot.chest) statsArr.push(`${chestLabelOf(shoot)}: ${shoot.chest}`);
-    if (shoot.waist) statsArr.push(`Waist: ${shoot.waist}`);
-    if (shoot.hips) statsArr.push(`Hips: ${shoot.hips}`);
-    if (shoot.shoes) statsArr.push(`Shoes: ${shoot.shoes}`);
-    if (shoot.modelHair) statsArr.push(`Hair: ${shoot.modelHair}`);
-    if (shoot.modelEyes) statsArr.push(`Eyes: ${shoot.modelEyes}`);
-    const statsLine = statsArr.join("  ·  ");
-    return statsLine ? `
-      <div style="font-family:'JetBrains Mono', monospace; font-size: calc(11px * var(--print-scale, 1)); font-weight: 700; background: #f5f5f5; color: #000; padding: calc(10px * var(--print-scale, 1)) calc(14px * var(--print-scale, 1)); text-transform: uppercase; letter-spacing: 0.05em; text-align: center; border-radius: 6px; margin-bottom: calc(20px * var(--print-scale, 1)); border: 1px solid #e0e0e0; flex: 0 0 auto;">
-        ${statsLine}
+    const pairs = [
+      ["Height", shoot.height],
+      [chestLabelOf(shoot), shoot.chest],
+      ["Waist", shoot.waist],
+      ["Hips", shoot.hips],
+      ["Shoes", shoot.shoes],
+      ["Hair", shoot.modelHair],
+      ["Eyes", shoot.modelEyes]
+    ].filter(([, v]) => v);
+    if (!pairs.length) return "";
+    return `
+      <div style="display: flex; flex-wrap: wrap; gap: calc(6px * var(--print-scale, 1)) calc(24px * var(--print-scale, 1)); padding: calc(9px * var(--print-scale, 1)) 0; border-top: 1px solid #d9d6d0; border-bottom: 1px solid #d9d6d0; margin-bottom: calc(12px * var(--print-scale, 1)); flex: 0 0 auto;">
+        ${pairs.map(([k, v]) => `<div><div style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8a8782; margin-bottom: calc(2px * var(--print-scale, 1));">${esc(k)}</div><div style="font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: calc(12px * var(--print-scale, 1)); font-weight: 700; color: #000; letter-spacing: -0.01em;">${esc(v)}</div></div>`).join("")}
       </div>
-    ` : "";
+    `;
   }
 
   // Every social we have for the model: the album's Instagram / Kavyar
@@ -12521,22 +12522,19 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     return printModelLinks(shoot).filter(l => showRep(shoot, what[l.kind] || "ModelWebsite", surface));
   }
   function printSocialsBarHtml(shoot) {
-    // Contact line: one item per social, then the agency with its own
-    // links on a smaller second line.
-    const noCase = (t) => `<span style="text-transform: none;">${t}</span>`;
-    const items = visibleModelLinks(shoot, "Pdf").map(l => ({ main: `${SOCIAL_LABEL[l.kind]}: ${l.kind === "instagram" ? esc(l.label) : noCase(esc(socialPrintText(l)))}` }));
+    // Contact row: one label / value pair per social, then the agency with its
+    // own links on a smaller line under the name.
+    const items = visibleModelLinks(shoot, "Pdf").map(l => ({ label: SOCIAL_LABEL[l.kind], main: esc(socialPrintText(l)) }));
     if (shoot.agency && showRep(shoot, "Agency", "Pdf")) {
-      items.push({ main: `Agency: ${esc(shoot.agency)}`, sub: visibleAgencyLinks(shoot, "Pdf").map(socialPrintText).join("  ·  ") });
+      items.push({ label: "Agency", main: esc(shoot.agency), sub: visibleAgencyLinks(shoot, "Pdf").map(socialPrintText).join("  ·  ") });
     }
-    if (shoot.modelEmail && showRep(shoot, "Email", "Pdf") && !items.some(it => it.main.includes(esc(shoot.modelEmail)))) items.push({ main: `Email: ${noCase(esc(shoot.modelEmail))}` });
+    if (shoot.modelEmail && showRep(shoot, "Email", "Pdf") && !items.some(it => it.main === esc(shoot.modelEmail))) items.push({ label: "Email", main: esc(shoot.modelEmail) });
     if (!items.length) return "";
-    const socialsLine = items.map(it => `<span style="display: inline-block; vertical-align: top; padding: 0 calc(10px * var(--print-scale, 1)); margin-bottom: calc(3px * var(--print-scale, 1));">${it.main}${it.sub ? `<span style="display: block; font-size: calc(8.5px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.03em; color: #666; text-transform: none; margin-top: calc(2px * var(--print-scale, 1));">${esc(it.sub)}</span>` : ""}</span>`).join(`<span style="color: #bbb;">|</span>`);
+    const cells = items.map(it => `<div style="min-width: 0;"><div style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8a8782; margin-bottom: calc(2px * var(--print-scale, 1));">${it.label}</div><div style="font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: calc(11px * var(--print-scale, 1)); font-weight: 700; color: #000;">${it.main}</div>${it.sub ? `<div style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); font-weight: 500; color: #6b6864; margin-top: calc(2px * var(--print-scale, 1));">${esc(it.sub)}</div>` : ""}</div>`).join("");
     return `
-      <div style="font-family:'JetBrains Mono', monospace; font-size: calc(10px * var(--print-scale, 1)); font-weight: 700; color: #333; padding: calc(6px * var(--print-scale, 1)) calc(12px * var(--print-scale, 1)); text-transform: uppercase; letter-spacing: 0.05em; text-align: center; margin-bottom: calc(20px * var(--print-scale, 1)); border-bottom: 1px solid #ddd; padding-bottom: calc(10px * var(--print-scale, 1)); flex: 0 0 auto;">
-        ${socialsLine}
-        <div style="font-family: sans-serif; font-size: calc(8.5px * var(--print-scale, 1)); font-weight: 400; color: #555; text-transform: none; letter-spacing: 0; margin-top: calc(6px * var(--print-scale, 1)); font-style: italic;">
-          To book this talent, connect directly with the model or their representing agency via the social channels above.
-        </div>
+      <div style="padding: calc(9px * var(--print-scale, 1)) 0 calc(8px * var(--print-scale, 1)); border-bottom: 1px solid #d9d6d0; margin-bottom: calc(12px * var(--print-scale, 1)); flex: 0 0 auto;">
+        <div style="display: flex; flex-wrap: wrap; gap: calc(6px * var(--print-scale, 1)) calc(28px * var(--print-scale, 1));">${cells}</div>
+        <div style="font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: calc(8px * var(--print-scale, 1)); color: #8a8782; margin-top: calc(6px * var(--print-scale, 1));">To book this talent, contact the model or their representing agency through the channels above.</div>
       </div>
     `;
   }
@@ -12562,8 +12560,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       return item.trim();
     }).join("   |   ");
     return creditsItems ? `
-      <div style="font-family:'JetBrains Mono', monospace; font-size: calc(9px * var(--print-scale, 1)); font-weight: 600; color: #333; padding: calc(6px * var(--print-scale, 1)) calc(12px * var(--print-scale, 1)); text-transform: uppercase; letter-spacing: 0.05em; text-align: center; margin-bottom: calc(20px * var(--print-scale, 1)); flex: 0 0 auto;">
-        Credits: ${creditsItems}
+      <div style="font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: calc(9px * var(--print-scale, 1)); color: #555; margin-bottom: calc(12px * var(--print-scale, 1)); flex: 0 0 auto;">
+        <span style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8a8782; ">Credits</span> &nbsp;${creditsItems}
       </div>
     ` : "";
   }
@@ -12991,11 +12989,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
     return `
       <div class="print-page${!hasDetails ? " no-details" : ""}">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: calc(8px * var(--print-scale, 1)); margin-bottom: calc(10px * var(--print-scale, 1)); flex: 0 0 auto;">
-          <span style="font-family:'JetBrains Mono', monospace; font-size: calc(10px * var(--print-scale, 1)); font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;">MODEL COMP CARD</span>
-          <span style="font-family:'JetBrains Mono', monospace; font-size: calc(10px * var(--print-scale, 1)); font-weight: 800; color: #000; text-transform: uppercase;">Clicked by nerdyphotographer.in</span>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #d9d6d0; padding-bottom: calc(8px * var(--print-scale, 1)); margin-bottom: calc(12px * var(--print-scale, 1)); flex: 0 0 auto;">
+          <span style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8a8782; ">Comp card</span>
+          <span style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8a8782; color: #000;">nerdyphotographer.in</span>
         </div>
-        <h1 style="font-family:'Outfit', sans-serif; font-size: calc(30px * var(--print-scale, 1)); font-weight: 800; margin: 0 0 calc(8px * var(--print-scale, 1)); text-transform: uppercase; color: #000; letter-spacing: -0.02em; flex: 0 0 auto;">${name}</h1>
+        <h1 style="font-family: 'Archivo', 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: calc(34px * var(--print-scale, 1)); font-weight: 800; margin: 0 0 calc(8px * var(--print-scale, 1)); text-transform: uppercase; color: #000; letter-spacing: -0.025em; line-height: 1; flex: 0 0 auto;">${name}</h1>
         ${printModelTypeBadgesHtml(shoot, "margin: 0 0 calc(10px * var(--print-scale, 1));")}
         <div class="cc-main-row">
           <div class="cc-cover-panel">
@@ -13119,7 +13117,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const locationLine = manualFields.location ? ` &nbsp;·&nbsp; ${esc(manualFields.location)}` : "";
     return `
       <div class="print-page">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px; flex: 0 0 auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #d9d6d0; padding-bottom: 12px; margin-bottom: 16px; flex: 0 0 auto;">
           <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;">MODEL PORTFOLIO</span>
           <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: #000; text-transform: uppercase;">Clicked by nerdyphotographer.in</span>
         </div>
@@ -13171,7 +13169,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
     return `
       <div class="print-page">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px; flex: 0 0 auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #d9d6d0; padding-bottom: 12px; margin-bottom: 16px; flex: 0 0 auto;">
           <h2 style="font-family:'Outfit', sans-serif; font-size: 22px; font-weight: 800; margin: 0; text-transform: uppercase; color: #000; letter-spacing: -0.02em;">${esc(name)} — Contents</h2>
           <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: #000; text-transform: uppercase;">Clicked by nerdyphotographer.in</span>
         </div>
@@ -13198,7 +13196,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const num = String(index + 1).padStart(2, "0");
     return `
       <div class="print-page">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 14px; flex: 0 0 auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #d9d6d0; padding-bottom: 10px; margin-bottom: 14px; flex: 0 0 auto;">
           <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;">${num} / ${String(totalCount).padStart(2, "0")} — ${esc(slot.label.toUpperCase())}</span>
           <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: #000; text-transform: uppercase;">Clicked by nerdyphotographer.in</span>
         </div>

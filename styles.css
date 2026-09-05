@@ -1719,7 +1719,7 @@ main:focus { outline: none; }
   break-after: page !important;
   box-sizing: border-box !important;
   padding: 14px 16px !important;
-  border: 2px solid #000 !important;
+  border: 1px solid #cfccc6 !important;
   overflow: hidden !important; /* hard safety net: a page may never spill into a second sheet */
   background: #fff !important;
   color: #000 !important;
@@ -1746,7 +1746,7 @@ main:focus { outline: none; }
   position: relative !important;
   background: #f4f4f2 !important;
   border: 1px solid #e2e0dc !important;
-  border-radius: 6px !important;
+  border-radius: 4px !important;
   overflow: hidden !important;
   min-height: 0 !important;
 }
@@ -1777,7 +1777,7 @@ main:focus { outline: none; }
   page-break-inside: avoid !important;
   background: #f4f4f2 !important;
   border: 1px solid #e2e0dc !important;
-  border-radius: 6px !important;
+  border-radius: 4px !important;
   position: relative !important;
   align-items: center !important;
   justify-content: center !important;
@@ -2721,3 +2721,4 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 
 .vis-table tr.vis-group th { text-align: left; padding: 14px 0 4px; font-family: var(--mono-font); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; font-weight: 600; color: var(--accent); border-top: 0; }
 .vis-table tr.vis-group + tr th, .vis-table tr.vis-group + tr td { border-top: 0; }
+.lb-person-note { flex-basis: 100%; font-size: 12px; color: var(--ink-soft); font-weight: 400; }
