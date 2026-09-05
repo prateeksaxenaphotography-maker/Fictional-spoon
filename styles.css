@@ -2794,3 +2794,13 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 .book-success.is-production .ns-std, .book-success.is-production .ns-paid, .book-success.is-production .ns-tfp { display: none; }
 .book-success:not(.is-production) .ns-prod { display: none; }
 @media (max-width: 720px) { .scale-cards { grid-template-columns: 1fr; } }
+
+/* Campaign / production: payment terms, for information */
+.production-terms { margin: 4px 0 12px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.production-terms-k { display: block; font-family: var(--mono-font); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; font-weight: 600; color: var(--accent); margin-bottom: 8px; }
+.production-terms-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 16px; }
+.production-terms-list li { display: flex; flex-direction: column; gap: 2px; padding-left: 10px; border-left: 2px solid var(--line-2); }
+.production-terms-list b { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+.production-terms-list span { font-size: 13.5px; font-weight: 600; color: var(--ink); line-height: 1.35; }
+.production-terms-sub { display: block; margin-top: 10px; font-size: 12.5px; color: var(--ink-soft); line-height: 1.45; }
+@media (max-width: 720px) { .production-terms-list { grid-template-columns: 1fr; } }
