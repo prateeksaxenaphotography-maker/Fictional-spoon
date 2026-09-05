@@ -726,9 +726,11 @@ a { color: inherit; text-decoration: none; }
   line-height: 1;
   margin-top: 1px;
 }
+/* A weekday the admin opened is simply open: it reads like any other
+   available day, not as a special colour the legend never explains. */
 .dp-cell.dp-open-weekday {
-  color: #2e7d32;
-  font-weight: 700;
+  color: var(--ink);
+  font-weight: 500;
 }
 /* Admin Manage Mode in Date Picker Popup */
 .dp-cell.dp-admin-manage {
