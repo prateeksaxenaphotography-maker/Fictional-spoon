@@ -2581,7 +2581,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (soloModel && !isCcPage && qualifiesAsCompCard(shoot) && !shoot.hideFromCompCard) {
       const modelName = getTalentCleanName(shoot.talent);
       const slug = slugify(modelName);
-      if (slug) groups.push({ label: "Comp card", rendered: [`<span class="lb-person"><a href="/share/?a=comp-card-${encodeURIComponent(slug)}">View ${esc(modelName)}’s comp card ↗</a><small class="lb-person-note">Free to view and download as a PDF.</small></span>`] });
+      if (slug) groups.push({ label: "Comp card", rendered: [`<span class="lb-person"><a href="/share/?a=comp-card-${encodeURIComponent(slug)}">View ${esc(modelName)}’s comp card ↗</a><small class="lb-person-note">Every model on the site has one, free to view and download as a PDF. <a href="/categories?kind=type&amp;val=Comp%20Cards">See all models’ comp cards ↗</a></small></span>`] });
     }
     const creditRows = (list) => `<dl class="lb-credits">${list.map(g => `<div class="lb-credit"><dt>${esc(g.label)}</dt><dd>${g.rendered.join("")}</dd></div>`).join("")}</dl>`;
     const creditsHtml = groups.length ? creditRows(groups) : "";
