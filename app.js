@@ -12457,7 +12457,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     <div style="border-top: 1px solid #d9d6d0; padding-top: calc(8px * var(--print-scale, 1)); margin-top: auto; width: 100%; flex: 0 0 auto;">
       <div style="display: flex; justify-content: space-between; align-items: baseline; gap: calc(10px * var(--print-scale, 1)); flex-wrap: wrap;">
         <span style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8a8782; ">Photographed by nerdyphotographer.in &nbsp;·&nbsp; @nerdyphotographer.in</span>
-        <span style="font-family:'JetBrains Mono', monospace; font-size: calc(8.5px * var(--print-scale, 1)); font-weight: 700; color: #000; letter-spacing: 0.04em;">www.nerdyphotographer.in</span>
+        <span style="font-family:'JetBrains Mono', monospace; font-size: calc(8.5px * var(--print-scale, 1)); font-weight: 700; color: #000; letter-spacing: 0.04em;">Book a shoot &nbsp;·&nbsp; nerdyphotographer.in/book</span>
       </div>
       <div style="font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: calc(7px * var(--print-scale, 1)); color: #9a9791; margin-top: calc(4px * var(--print-scale, 1)); line-height: 1.4;">Fashion, fitness, lifestyle and sports photography, Noida. Comp cards, portfolio cards and frames are creative works produced under nerdyphotographer.in.</div>
     </div>
@@ -12979,6 +12979,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const socialsHtml = printSocialsBarHtml(shoot);
     const creditsHtml = printCreditsBarHtml(shoot);
     const hasDetails = !!(statsHtml.trim() || socialsHtml.trim() || creditsHtml.trim());
+    // "Updated" = the newest album's shoot date, so an agency can see how
+    // current the card is.
+    const updatedStamp = (() => {
+      const src = (shoot.originalShoots && shoot.originalShoots[0]) || shoot;
+      const d = new Date(src.date || "");
+      return isNaN(d) ? "" : d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+    })();
 
     // Render up to 5 side photos — the card stays at 6 photos max so the
     // model stays highlighted, per the studio's comp card format. The
@@ -12990,8 +12997,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     return `
       <div class="print-page${!hasDetails ? " no-details" : ""}">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #d9d6d0; padding-bottom: calc(8px * var(--print-scale, 1)); margin-bottom: calc(12px * var(--print-scale, 1)); flex: 0 0 auto;">
-          <span style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8a8782; ">Comp card</span>
-          <span style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8a8782; color: #000;">nerdyphotographer.in</span>
+          <span style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8a8782;">Comp card${updatedStamp ? ` &nbsp;·&nbsp; Updated ${esc(updatedStamp)}` : ""}</span>
+          <span style="display: inline-flex; align-items: center; gap: calc(6px * var(--print-scale, 1));"><svg viewBox="0 0 100 100" fill="none" aria-hidden="true" style="width: calc(13px * var(--print-scale, 1)); height: calc(13px * var(--print-scale, 1)); color: #000; flex: 0 0 auto;"><circle cx="50" cy="52" r="39" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M 26 22 C 26 22 28 32 37 40 C 45 44 48 40 50 38 C 52 40 55 44 63 40 C 72 32 74 22 74 22 C 74 22 70 34 50 44 C 30 34 26 22 26 22 Z" fill="#0e0e0e" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="36" cy="48" r="13" stroke="currentColor" stroke-width="3"/><circle cx="64" cy="48" r="13" stroke="currentColor" stroke-width="3"/><path d="M 49 48 L 51 48" stroke="currentColor" stroke-width="3"/><path d="M 23 48 L 16 48 L 16 40" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M 77 48 L 84 48 L 84 40" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M 36 38 L 41 45 M 42.5 44 L 38 52 M 39 53 L 30 51 M 31 50 L 29 42 M 30 41 L 38 41" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M 64 38 L 69 45 M 70.5 44 L 66 52 M 67 53 L 58 51 M 59 50 L 57 42 M 58 41 L 66 41" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><polygon points="50,49 46,55 54,55" fill="#d24e1a"/><path d="M 20 58 C 24 72 35 78 50 86 C 65 78 76 72 80 58" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M 27 68 C 32 78 40 82 50 90 C 60 82 68 78 73 68" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><span style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #000;">nerdyphotographer.in</span></span>
         </div>
         <h1 style="font-family: 'Archivo', 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: calc(34px * var(--print-scale, 1)); font-weight: 800; margin: 0 0 calc(8px * var(--print-scale, 1)); text-transform: uppercase; color: #000; letter-spacing: -0.025em; line-height: 1; flex: 0 0 auto;">${name}</h1>
         ${printModelTypeBadgesHtml(shoot, "margin: 0 0 calc(10px * var(--print-scale, 1));")}
