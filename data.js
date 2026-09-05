@@ -1477,6 +1477,7 @@ window.WPS_DATA = {
     }
   ],
   "DELETED_IDS": [
+    "msap3arwdtg7pb",
     "msxag4ydolz34d"
   ],
   "CALENDAR_SETTINGS": {
@@ -1976,7 +1977,8 @@ window.WPS_DATA = {
       "2026-09-12::b_1787411823267_sq23",
       "2026-09-13::b_1787411828392_udyl",
       "2026-09-20::b_1787411835191_nz3r",
-      "2026-09-20::b_1788502533406_u7q8"
+      "2026-09-20::b_1788502533406_u7q8",
+      "2026-08-01::shoot-msap3arwdtg7pb"
     ],
     "paymentScheduleType": "5050",
     "updatedAt": 0,
@@ -1999,7 +2001,10 @@ window.WPS_DATA = {
       "code": "NERDYHOMECOMP",
       "desc": "Photographer direct unlock code",
       "location": "Home Studio, Sector 46, Noida",
-      "venueCost": null
+      "venueCost": null,
+      "homeStudioDiscount": {
+        "type": "free"
+      }
     },
     {
       "code": "NERDYHOMED",
