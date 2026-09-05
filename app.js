@@ -3828,6 +3828,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <p class="hero-mono-tagline reveal">Not just photos, a perspective. <span class="hero-accent">Editorial-grade portfolios</span> for models &amp; brands.</p>
             <div class="hero-actions reveal">
               <a href="/categories" data-link class="btn btn-dark">Explore work →</a>
+              <a href="/categories?kind=type&amp;val=Comp%20Cards" data-link class="btn btn-ghost">Comp cards</a>
               ${isAdmin() ? `<a href="/upload" data-link class="btn btn-ghost">Publish a shoot</a>` : `<a href="/book" data-link class="btn btn-ghost">Book a shoot</a>`}
             </div>
           </div>
