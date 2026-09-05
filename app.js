@@ -10329,14 +10329,23 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       if (policyNoticeEl && $("#b_type") && $("#b_type").value === "Selective Collaboration (TFP)") {
         // Must agree with the quote box: a test shoot at the home studio now
         // carries a rental unless the invite waives it.
+        // Labelled lines, like the paid-shoot block. Deliverables come from the
+        // test-shoot package setting so the two never disagree.
         const studioLine = homeStudioFee > 0
-          ? `<strong>🏠 Home studio session: a fixed rental of ₹${homeStudioFee.toLocaleString("en-IN")} applies, itemised in your quote and payable in full before the shoot day.</strong>`
+          ? `Home studio session: a fixed rental of ₹${homeStudioFee.toLocaleString("en-IN")} applies, itemised in your quote and payable in full before shoot day.`
           : (isValidInvite && lockedLocation)
-            ? `<strong>🏠 Studio provided by photographer at ${lockedLocation} — no rental charge to talent.</strong>`
-            : `<strong>Note: If a dedicated studio space is booked for the shoot, applicable studio rental charges will apply.</strong>`;
+            ? `Provided by the photographer at ${esc(lockedLocation)}. No rental charge to you.`
+            : `If a dedicated studio is booked, the rental is quoted in advance once the venue is confirmed and payable in full before shoot day.`;
+        const tfpSpecs = ((typeof getAdminTfpPackage === "function" && getAdminTfpPackage().specs) || "Full Proofing Gallery + 8 to 12 Retouched Master Clicks").replace(/\s*\(No RAW files delivered\)\s*$/i, "");
         policyNoticeEl.innerHTML = `
-          <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">TFP Collaboration &amp; Test Shoot Policy</span>
-          Submission of a TFP collaboration request does not constitute a confirmed session or a commitment to shoot. All inquiries are subject to schedule availability, creative alignment, and final studio review. ${studioLine} TFP shoots include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW unedited camera files are strictly excluded and remain unreleased. <strong>⏰ Call time &amp; no-show:</strong> ${window.buildLateArrivalSummary(true)}
+          <span class="policy-k">TFP Collaboration &amp; Test Shoot Policy</span>
+          <dl class="policy-lines">
+            <div><dt>Status</dt><dd>A request is not a confirmed session or a commitment to shoot. Every enquiry is subject to schedule availability, creative fit and final studio review.</dd></div>
+            <div><dt>Studio</dt><dd>${studioLine}</dd></div>
+            <div><dt>Deliverables</dt><dd>${esc(tfpSpecs)}. RAW unedited camera files are not released.</dd></div>
+            <div><dt>Travel</dt><dd>Beyond 10 km from Noida, travel is at actuals.</dd></div>
+            <div><dt>Call time &amp; no-show</dt><dd>${window.buildLateArrivalSummary(true)}</dd></div>
+          </dl>
         `;
       }
 
