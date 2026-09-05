@@ -9531,7 +9531,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <span class="dp-legend-item"><span class="dp-legend-dot dot-testshoot"></span> Test Shoot Booked</span>
             <span class="dp-legend-item"><span class="dp-legend-dot dot-workshop"></span> Workshop</span>
             <span class="dp-legend-item"><span class="dp-legend-dot dot-assisting"></span> Assisting</span>
-            <span class="dp-legend-item"><span class="dp-legend-dot dot-blocked"></span> Mon–Fri Blocked</span>
+            <span class="dp-legend-item"><span class="dp-legend-dot dot-blocked"></span> Weekdays closed</span>
           </div>
           <div class="dp-nav">
             <button type="button" class="dp-nav-btn dp-prev" aria-label="Previous month">‹</button>
@@ -9573,7 +9573,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               titleAttr = "This date already has a booking — you can still send a request, and I'll confirm or suggest an alternative";
             } else if (status.isBlocked) {
               classes.push("dp-blocked");
-              titleAttr = status.isDefaultBlockedWeekday ? "Weekday Blocked (Mon–Fri default)" : "Custom Blocked";
+              titleAttr = status.isDefaultBlockedWeekday ? "Weekdays are closed for bookings" : "Not available";
             } else {
               if (status.isDefaultBlockedWeekday && status.isManuallyOpened) classes.push("dp-open-weekday");
               classes.push("dp-active");
