@@ -2722,3 +2722,14 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 .vis-table tr.vis-group th { text-align: left; padding: 14px 0 4px; font-family: var(--mono-font); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; font-weight: 600; color: var(--accent); border-top: 0; }
 .vis-table tr.vis-group + tr th, .vis-table tr.vis-group + tr td { border-top: 0; }
 .lb-person-note { flex-basis: 100%; font-size: 12px; color: var(--ink-soft); font-weight: 400; }
+
+
+/* Page numbers under card lists (home photoshoots, albums archive) */
+.noth-work[hidden] { display: none !important; }
+.pager { display: flex; justify-content: center; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 40px; padding-top: 32px; border-top: 1px solid var(--line); }
+.pager button { min-width: 40px; height: 40px; padding: 0 12px; border-radius: 100px; border: 1px solid var(--line); background: var(--surface); font-family: "Inter", system-ui, sans-serif; font-size: 14px; font-weight: 600; color: var(--ink-soft); cursor: pointer; transition: color .2s, border-color .2s, background .2s; }
+.pager button:hover:not(:disabled) { color: var(--ink); border-color: var(--ink); }
+.pager button[aria-current="page"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.pager button:disabled { opacity: .35; cursor: default; }
+.pager .pager-arrow { padding: 0 16px; }
+@media (max-width: 720px) { .pager { margin-top: 28px; padding-top: 24px; } .pager button { min-width: 36px; height: 36px; } }

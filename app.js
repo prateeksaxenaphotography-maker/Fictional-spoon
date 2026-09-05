@@ -3723,9 +3723,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // in its row and stranded the last album alone on a third row.
     const heroPhoto = (window.STUDIO_CONFIG?.heroImage || "").trim();
     const usesHeroPhoto = (s) => heroPhoto && (s.photos || []).some(p => (p.url || "") === heroPhoto);
+    // Every album, newest first; the grid pages through them six at a time
+    // (see wirePagers), so nothing is held back behind a "view all" button.
     const feat = SHOOTS
-      .filter(s => !s.isTestimonial && s.type !== "Workshop Attended" && !usesHeroPhoto(s))
-      .slice(0, 9);
+      .filter(s => !s.isTestimonial && s.type !== "Workshop Attended" && !usesHeroPhoto(s));
     // Hand-picked in config.js. Falls back to the old typographic hero if it is
     // blank or points at a file that no longer exists, so a mistyped path
     // degrades to the previous design rather than a broken image.
@@ -3820,26 +3821,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       <section class="section container section-divider">
         ${kineticWord("WORKS")}
         <div class="section-head row reveal" style="margin-top: 8px;">
-          <div><p class="eyebrow">01 — Selected work</p><h2>Featured photoshoots</h2></div>
+          <div><p class="eyebrow">01 — The work</p><h2>Photoshoots</h2></div>
           <a href="/albums" data-link class="link-arrow">All albums →</a>
         </div>
-        <div class="noth-work-list">${feat.map(nothWorkCard).join("")}</div>
-        ${(() => {
-          // The way into the archive, and it must not depend on the front page
-          // holding something back. This used to render only when there were
-          // MORE albums than the grid showed, so the moment the grid started
-          // showing all of them the button silently disappeared — taking the
-          // only route to /albums from this section with it. Wording shifts
-          // instead: a count when there is genuinely more to see, an invitation
-          // when there is not.
-          const total = SHOOTS.filter(s => s.type !== "Workshop Attended").length;
-          if (!total) return "";
-          const more = total > feat.length;
-          return `
-        <div class="works-all-cta reveal">
-          <a href="/albums" data-link class="btn btn-dark">${more ? `View all ${total} albums →` : "Browse the full archive →"}</a>
-        </div>`;
-        })()}
+        <div class="noth-work-list" data-paginate="6" aria-label="Photoshoots">${feat.map(nothWorkCard).join("")}</div>
       </section>
 
       <!-- SERVICES (WHO I SHOOT FOR) -->
@@ -3962,7 +3947,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       </section>
       ${filterPillHtml}
       <section class="section container full-bleed" style="padding-top: 0;">
-        <div class="noth-work-list" id="albumsMainGrid">${list.map(nothWorkCard).join("") || emptyCat()}</div>
+        <div class="noth-work-list" id="albumsMainGrid" data-paginate="9" aria-label="Albums">${list.map(nothWorkCard).join("") || emptyCat()}</div>
       </section>
       <section class="cta-band">
         <div class="container reveal">
@@ -11909,6 +11894,42 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     }
 
     // noth.in full-bleed work cards → open the shoot in the lightbox.
+    // Page numbers under any card list that asks for them (data-paginate="N").
+    // Cards stay in the DOM — only the current page is visible — so the card
+    // wiring below binds every one of them once.
+    view.querySelectorAll("[data-paginate]").forEach((list) => {
+      const per = Math.max(1, parseInt(list.dataset.paginate, 10) || 6);
+      const cards = Array.from(list.children).filter(el => el.classList.contains("noth-work"));
+      const pages = Math.ceil(cards.length / per);
+      if (pages < 2) return;
+      const nav = document.createElement("nav");
+      nav.className = "pager";
+      nav.setAttribute("aria-label", "Pages");
+      list.insertAdjacentElement("afterend", nav);
+      let current = 1;
+      const show = (n, scroll) => {
+        current = Math.min(Math.max(1, n), pages);
+        cards.forEach((el, i) => {
+          const on = Math.floor(i / per) + 1 === current;
+          el.hidden = !on;
+          if (on) el.classList.add("in");
+        });
+        nav.innerHTML = `
+          <button type="button" class="pager-arrow" data-go="${current - 1}" ${current === 1 ? "disabled" : ""} aria-label="Previous page">←</button>
+          ${Array.from({ length: pages }, (_, i) => `<button type="button" data-go="${i + 1}" ${i + 1 === current ? 'aria-current="page"' : ""}>${i + 1}</button>`).join("")}
+          <button type="button" class="pager-arrow" data-go="${current + 1}" ${current === pages ? "disabled" : ""} aria-label="Next page">→</button>`;
+        if (scroll) {
+          const top = list.getBoundingClientRect().top + window.scrollY - 110;
+          window.scrollTo({ top, behavior: "smooth" });
+        }
+      };
+      nav.addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-go]");
+        if (!btn || btn.disabled) return;
+        show(parseInt(btn.dataset.go, 10), true);
+      });
+      show(1, false);
+    });
     view.querySelectorAll(".noth-work").forEach((card) => {
       const s = CURRENT_VIEW_SHOOTS.find((x) => x.id === card.dataset.shoot) || SHOOTS.find((x) => x.id === card.dataset.shoot);
       if (!s) return;
