@@ -913,7 +913,8 @@ window.saveAdminCustomPackages = async function() {
       const name = row.querySelector(".pkg-edit-name")?.value || `Package ${i+1}`;
       const price = parseInt(row.querySelector(".pkg-edit-price")?.value, 10) || 10000;
       const specs = row.querySelector(".pkg-edit-specs")?.value || "Standard Deliverables";
-      updated.push({ id: `pkg_${i+1}`, name, price, specs });
+      const delivery = (row.querySelector(".pkg-edit-delivery")?.value || "").trim();
+      updated.push({ id: `pkg_${i+1}`, name, price, specs, ...(delivery ? { delivery } : {}) });
     });
     localStorage.setItem("wps_custom_packages", JSON.stringify(updated));
   }
@@ -924,7 +925,8 @@ window.saveAdminCustomPackages = async function() {
     const current = getAdminTfpPackage();
     const tfp = {
       name: (tfpNameEl?.value || "").trim() || current.name,
-      specs: (tfpSpecsEl?.value || "").trim() || current.specs
+      specs: (tfpSpecsEl?.value || "").trim() || current.specs,
+      delivery: (document.getElementById("tfpPkgDelivery")?.value || "").trim()
     };
     localStorage.setItem("wps_tfp_package", JSON.stringify(tfp));
   }
@@ -6065,6 +6067,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Client / Model Name *
                   <input type="text" id="eb_name" value="${esc(b.name)}" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
                 </label>
+          <label style="display: block; margin-top: 8px; font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Delivery time <span style="font-weight: 400;">(optional, shown on the quote)</span>
+            <input type="text" id="tfpPkgDelivery" value="${esc(tfp.delivery || "")}" oninput="window.markUnsavedChanges && window.markUnsavedChanges()" placeholder="e.g. 14 working days" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); background: var(--bone); color: var(--ink); margin-top: 4px;" />
+          </label>
+          <label style="display: block; margin-top: 8px; font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Delivery time <span style="font-weight: 400;">(optional, shown on the quote)</span>
+            <input type="text" class="pkg-edit-delivery" value="${esc(p.delivery || "")}" placeholder="e.g. 10 working days" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); background: var(--bone); color: var(--ink); margin-top: 4px;" />
+          </label>
                 <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Shoot Date (YYYY-MM-DD) *
                   <input type="text" id="eb_date" value="${esc(dKey)}" required style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
                 </label>
@@ -7501,6 +7509,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             </div>
             <h2 id="bookSuccessHeading">Request prepared.</h2>
             <p id="bookSuccessMsg" style="margin: 0; line-height: 1.6;">Your booking inquiry is ready in your email app — please hit <strong>Send</strong> in your mail client to complete the request.</p>
+            <ol class="next-steps" aria-label="What happens next">
+              <li><strong>We reply within 24 hours</strong><span>At the email you gave, with answers to your questions and the confirmed quote.</span></li>
+              <li><strong>Your date is confirmed</strong><span class="ns-paid">Once the advance retainer is paid, the date is held for you. Payment details come with that reply.</span><span class="ns-tfp">Once you confirm the plan by reply, the date is held for you.</span></li>
+              <li><strong>Shoot day</strong><span>Call time, venue and wardrobe notes arrive the day before. Proofs follow after the shoot.</span></li>
+            </ol>
 
             <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; width: 100%;">
               <a href="" id="bookGmailLink" target="_blank" rel="noopener noreferrer" class="btn btn-dark" style="font-size: var(--font-xs); height: auto; padding: 10px 18px; text-decoration: none; background: #ea4335; border-color: #ea4335; color: #fff;">Send via Gmail (Web)</a>
@@ -7608,6 +7621,21 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                     <div id="b_date_booked_note" style="display: none; font-size: var(--font-xs); color: #dc2626; margin-top: 6px; line-height: 1.4;">This date already has a booking — you're welcome to send a request anyway. I'll confirm it or suggest an alternative date.</div>
                   </label>
                </div>
+                <!-- One box for both kinds of code. The old invite and promo
+                     fields stay in the DOM (hidden) because updateFields, the
+                     quote and the contract clauses all read them; this box just
+                     writes the right one and shows the outcome. -->
+                <div class="code-box" id="codeBox">
+                  <div class="code-box-head">
+                    <span class="code-box-title">Have a code?</span>
+                    <span class="code-box-sub">An invite code from the photographer unlocks a test shoot. A promo code discounts a package or the studio rental.</span>
+                  </div>
+                  <div class="code-box-row">
+                    <input id="b_any_code" type="text" placeholder="Enter invite or promo code" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+                    <button type="button" class="btn btn-dark" id="btnApplyAnyCode">Apply</button>
+                  </div>
+                  <div class="code-box-chips" id="codeChips" aria-live="polite" hidden></div>
+                </div>
                 <div class="field-row">
                   <label class="field venue-native" style="grid-column: 1 / -1;"><span>Where are we shooting? *</span>
                     <!-- A choice of venue rather than a yes/no: the home studio
@@ -7754,6 +7782,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                     <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0 2px; margin-top: 8px; border-top: 1px solid var(--line-2);">
                       <span style="color: var(--ink); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-size: var(--font-xs);">Total payable</span>
                       <span id="summaryFinalAmount" style="font-size: var(--font-md); font-weight: 800; color: var(--accent); font-family: var(--mono-font); white-space: nowrap;">₹${getAdminPackages()[0].price.toLocaleString('en-IN')} INR</span>
+                    <div id="summaryIncluded" class="quote-included" hidden></div>
                     </div>
                     <!-- Only when the client has handed studio+lighting booking
                          over to the photographer: the actual venue and lighting
@@ -10697,6 +10726,88 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       ["change", "input", "click"].forEach(ev => formEl?.addEventListener(ev, () => setTimeout(sync, 0)));
       sync();
     })();
+    // "Have a code?": one box, the app decides whether it is an invite or a
+    // promo code (invite list first, then promo), writes the hidden field the
+    // rest of the form reads, and shows the result as a chip.
+    (() => {
+      const input = $("#b_any_code"), btn = $("#btnApplyAnyCode"), chips = $("#codeChips");
+      const inviteEl = $("#b_invite_code"), promoEl = $("#b_discount_code");
+      if (!input || !btn || !chips || !inviteEl || !promoEl) return;
+      const fire = (el) => { el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); };
+      const inviteCodes = () => (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : []).map(c => String(typeof c === "object" ? c.code : c).toUpperCase());
+      const isPromo = (code) => Object.keys(typeof window.getAdminPromoCodes === "function" ? window.getAdminPromoCodes() : {}).some(k => k.toUpperCase() === code);
+      let lastError = "";
+      const paint = () => {
+        const out = [];
+        const inv = (inviteEl.value || "").trim().toUpperCase();
+        if (inv) {
+          const ok = ($("#inviteCodeStatus")?.textContent || "").includes("VERIFIED");
+          out.push(`<span class="code-chip ${ok ? "is-ok" : "is-bad"}"><b>${esc(inv)}</b><span>${ok ? "Invite verified · test shoot unlocked" : "Invite code not recognised"}</span><button type="button" data-clear="invite" aria-label="Remove invite code">×</button></span>`);
+        }
+        const pr = (promoEl.value || "").trim().toUpperCase();
+        if (pr) {
+          const st = $("#discountCodeStatus")?.textContent || "";
+          const ok = st.includes("APPLIED");
+          const savings = ($("#discountSavingsBadge")?.textContent || "").replace(/^[^:]*:\s*/, "").replace(/[\u{1F300}-\u{1FAFF}]/gu, "").trim();
+          out.push(`<span class="code-chip ${ok ? "is-ok" : "is-bad"}"><b>${esc(pr)}</b><span>${ok ? ("Promo applied" + (savings ? " · " + esc(savings) : "")) : "Promo code not valid for this booking"}</span><button type="button" data-clear="promo" aria-label="Remove promo code">×</button></span>`);
+        }
+        if (lastError) out.push(`<span class="code-chip is-bad"><span>${esc(lastError)}</span></span>`);
+        chips.innerHTML = out.join("");
+        chips.hidden = !out.length;
+      };
+      const apply = () => {
+        const code = (input.value || "").trim().toUpperCase();
+        lastError = "";
+        if (!code) { paint(); return; }
+        if (inviteCodes().includes(code)) { inviteEl.value = code; fire(inviteEl); input.value = ""; }
+        else if (isPromo(code)) { promoEl.value = code; fire(promoEl); input.value = ""; }
+        else lastError = `"${code}" is not an invite or promo code we recognise.`;
+        setTimeout(paint, 0);
+      };
+      btn.addEventListener("click", apply);
+      input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); apply(); } });
+      chips.addEventListener("click", (e) => {
+        const b = e.target.closest("button[data-clear]");
+        if (!b) return;
+        const el = b.dataset.clear === "invite" ? inviteEl : promoEl;
+        el.value = ""; fire(el); lastError = ""; setTimeout(paint, 0);
+      });
+      // A code arriving by link (?invite= / ?code=) shows up as a chip too.
+      $("#bookingForm")?.addEventListener("change", () => setTimeout(paint, 0));
+      setTimeout(paint, 80);
+    })();
+    // "What's included" under the total: the package's deliverables, the
+    // delivery time when the admin has set one, and the payment split the
+    // quote is actually showing. Read after updateFields has run.
+    (() => {
+      const line = $("#summaryIncluded");
+      if (!line) return;
+      const sync = () => {
+        const type = $("#b_type")?.value || "";
+        const isCollab = type === "Selective Collaboration (TFP)";
+        let pkg = null;
+        if (isCollab) pkg = (typeof getAdminTfpPackage === "function") ? getAdminTfpPackage() : null;
+        else {
+          const v = $("#b_budget")?.value || "";
+          pkg = (typeof getAdminPackages === "function" ? getAdminPackages() : []).find(p => v.includes(p.name)) || null;
+        }
+        const bits = [];
+        if (pkg && pkg.specs) bits.push(pkg.specs);
+        if (pkg && pkg.delivery) bits.push(`delivered in ${pkg.delivery}`);
+        const nothing = $("#summaryNothingToPay"), reserve = $("#summaryReservationCard"), steps = $("#summaryMilestoneBreakdown");
+        const visible = (el) => !!el && el.offsetParent !== null;
+        if (visible(nothing)) bits.push("nothing to pay");
+        else if (visible(reserve)) bits.push("studio rental paid in full up front");
+        else if (visible(steps)) {
+          const n = new Set((steps.innerText.match(/Step (\d)/g) || [])).size;
+          bits.push(n >= 3 ? "pay 50% now · 30% at wrap · 20% on delivery" : "pay 50% now · 50% before delivery");
+        }
+        line.textContent = bits.join(" · ");
+        line.hidden = !bits.length;
+      };
+      ["change", "input", "click"].forEach(ev => $("#bookingForm")?.addEventListener(ev, () => setTimeout(sync, 0)));
+      setTimeout(sync, 100);
+    })();
     // Picking who arranges the studio has to re-run updateFields too, or the
     // live contract clause the client reads keeps showing the pre-pick text
     // until some other field happens to change.
@@ -11452,6 +11563,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // thinking they had booked when the studio had received nothing.
         const showSuccess = (mode) => {
           const sentDirectly = mode === "sent";
+          if (successPanel) successPanel.classList.toggle("is-tfp", type === "Selective Collaboration (TFP)");
           // The booking itself was already written to the calendar store by
           // the instant-save block above — recording it again here doubled
           // every agreed booking on the device (two slots per date).
