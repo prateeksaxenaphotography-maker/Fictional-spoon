@@ -10344,7 +10344,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <div><dt>Studio</dt><dd>${studioLine}</dd></div>
             <div><dt>Deliverables</dt><dd>${esc(tfpSpecs)}. RAW unedited camera files are not released.</dd></div>
             <div><dt>Travel</dt><dd>Beyond 10 km from Noida, travel is at actuals.</dd></div>
-            <div><dt>Call time &amp; no-show</dt><dd>${window.buildLateArrivalSummary(true)}</dd></div>
+            <div><dt>Call time &amp; no-show</dt><dd>${(t => t.charAt(0).toUpperCase() + t.slice(1))(window.buildLateArrivalSummary(true))}</dd></div>
           </dl>
         `;
       }
