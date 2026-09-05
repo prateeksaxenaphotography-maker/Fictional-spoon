@@ -7512,9 +7512,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <h2 id="bookSuccessHeading">Request prepared.</h2>
             <p id="bookSuccessMsg" style="margin: 0; line-height: 1.6;">Your booking inquiry is ready in your email app — please hit <strong>Send</strong> in your mail client to complete the request.</p>
             <ol class="next-steps" aria-label="What happens next">
-              <li><strong>We reply within 24 hours</strong><span>At the email you gave, with answers to your questions and the confirmed quote.</span></li>
-              <li><strong>Your date is confirmed</strong><span class="ns-paid">Once the advance retainer is paid, the date is held for you. Payment details come with that reply.</span><span class="ns-tfp">Once you confirm the plan by reply, the date is held for you.</span></li>
-              <li><strong>Shoot day</strong><span>Call time, venue and wardrobe notes arrive the day before. Proofs follow after the shoot.</span></li>
+              <li><strong>We reply within 24 hours</strong><span class="ns-std">At the email you gave, with answers to your questions and the confirmed quote.</span><span class="ns-prod">At the email you gave, to set up a call at a time that suits you.</span></li>
+              <li><strong class="ns-std">Your date is confirmed</strong><strong class="ns-prod">We discuss the production in detail</strong><span class="ns-paid">Once the advance retainer is paid, the date is held for you. Payment details come with that reply.</span><span class="ns-tfp">Once you confirm the plan by reply, the date is held for you.</span><span class="ns-prod">Scope, team, locations, dates and usage, on the call.</span></li>
+              <li><strong class="ns-std">Shoot day</strong><strong class="ns-prod">Proposal and agreement follow the call</strong><span class="ns-std">Call time, venue and wardrobe notes arrive the day before. Proofs follow after the shoot.</span><span class="ns-prod">A written proposal with the quote, then the agreement. The date is held once it is signed.</span></li>
             </ol>
 
             <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; width: 100%;">
@@ -7558,6 +7558,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
  
              <fieldset id="bookShootFs">
                <legend>The shoot</legend>
+                <!-- Two doors. Portfolio / small-brand shoots take the priced
+                     path below; a campaign or production sends a brief only —
+                     no packages, no quote, no contract at this step — and the
+                     studio quotes after a call. -->
+                <div class="scale-cards" id="scaleCards" role="radiogroup" aria-label="What are we planning?">
+                  <label class="scale-card is-on"><input type="radio" name="shoot_scale" value="standard" checked /><strong>Portfolio or small-brand shoot</strong><small>Packages, an instant quote and standard terms. Models, makeup artists, designers, small brands.</small></label>
+                  <label class="scale-card"><input type="radio" name="shoot_scale" value="production" /><strong>Campaign or production</strong><small>No packages or prices here. Send the brief, we set up a call and quote on it.</small></label>
+                </div>
 
                 <!-- Dedicated Still Photography Specialization & Video Coverage Policy Notice -->
                 <div style="background: rgba(var(--accent-rgb), 0.04); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
@@ -7623,6 +7631,34 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                     <div id="b_date_booked_note" style="display: none; font-size: var(--font-xs); color: #dc2626; margin-top: 6px; line-height: 1.4;">This date already has a booking — you're welcome to send a request anyway. I'll confirm it or suggest an alternative date.</div>
                   </label>
                </div>
+                <div class="production-brief" id="productionBrief" hidden>
+                  <div class="field-row">
+                    <label class="field"><span>What are we shooting, and for whom?</span><input id="p_subject" type="text" placeholder="e.g. Autumn campaign for a footwear brand" /></label>
+                    <label class="field"><span>Where will the images be used?</span>
+                      <select id="p_usage">
+                        <option value="">Choose…</option>
+                        <option>Web &amp; social</option>
+                        <option>E-commerce</option>
+                        <option>Print &amp; outdoor</option>
+                        <option>Web, print &amp; outdoor campaign</option>
+                        <option>Not sure yet</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div class="field-row">
+                    <label class="field"><span>Budget band <em class="label-hint">optional</em></span>
+                      <select id="p_budget">
+                        <option value="">Prefer to discuss</option>
+                        <option>Under ₹2 lakh</option>
+                        <option>₹2–5 lakh</option>
+                        <option>₹5–10 lakh</option>
+                        <option>₹10 lakh and above</option>
+                      </select>
+                    </label>
+                    <label class="field"><span>Rough scale <em class="label-hint">optional</em></span><input id="p_scale" type="text" placeholder="e.g. 2 days, 4 looks, 6 models, video crew on set" /></label>
+                  </div>
+                  <p class="production-note">We reply within 24 hours to set up a call, then send a proposal and agreement after it.</p>
+                </div>
                 <!-- One box for both kinds of code. The old invite and promo
                      fields stay in the DOM (hidden) because updateFields, the
                      quote and the contract clauses all read them; this box just
@@ -7720,7 +7756,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 </div>
 
                <div class="field-row">
-                 <label class="field" id="b_budget_field" style="grid-column: 1 / -1;"><span>Studio Package &amp; Rate Tier *</span>
+                 <label class="field" id="b_budget_field" style="grid-column: 1 / -1;"><span>Package · portfolio &amp; small-brand tiers *</span><span class="field-hint">Campaigns and productions are quoted on the brief — choose "Campaign or production" at the top of this section.</span>
                    <select id="b_budget">
                      ${getAdminPackages().map((p, i) => `<option value="₹${p.price.toLocaleString('en-IN')} (${p.name})"${i===0?' selected':''}>₹${p.price.toLocaleString('en-IN')} · ${p.name} (${p.specs})</option>`).join("")}
                    </select>
@@ -10728,6 +10764,34 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       ["change", "input", "click"].forEach(ev => formEl?.addEventListener(ev, () => setTimeout(sync, 0)));
       sync();
     })();
+    // Portfolio shoot vs campaign / production. Production mode hides every
+    // priced element (packages, codes, quote, payment terms, policies) and
+    // shows the brief fields; the submit becomes "Send the brief".
+    (() => {
+      const cards = $("#scaleCards"), brief = $("#productionBrief"), form = $("#bookingForm");
+      if (!cards || !form) return;
+      const radios = Array.from(cards.querySelectorAll('input[name="shoot_scale"]'));
+      const isProd = () => radios.some(r => r.checked && r.value === "production");
+      window.isProductionBrief = isProd;
+      const notice = Array.from(form.querySelectorAll("div")).find(d => /Still Photography creation/.test(d.textContent) && d.querySelectorAll("div").length <= 2);
+      const apply = () => {
+        const on = isProd();
+        form.classList.toggle("is-production", on);
+        radios.forEach(r => r.closest(".scale-card").classList.toggle("is-on", r.checked));
+        if (brief) brief.hidden = !on;
+        if (notice) notice.hidden = on;
+        const btn = $("#bookSubmitBtn");
+        if (btn && !btn.classList.contains("is-loading")) {
+          if (on) { if (!btn.dataset.defaultLabel) btn.dataset.defaultLabel = btn.textContent; btn.textContent = "Send the brief"; }
+          else if (btn.dataset.defaultLabel) { btn.textContent = btn.dataset.defaultLabel; delete btn.dataset.defaultLabel; }
+        }
+        const stickyBtn = $("#bookStickySubmit");
+        if (stickyBtn && btn) stickyBtn.textContent = btn.textContent;
+      };
+      radios.forEach(r => r.addEventListener("change", apply));
+      ["change", "input", "click"].forEach(ev => form.addEventListener(ev, () => setTimeout(apply, 0)));
+      apply();
+    })();
     // "Have a code?": one box, the app decides whether it is an invite or a
     // promo code (invite list first, then promo), writes the hidden field the
     // rest of the form reads, and shows the result as a chip.
@@ -11129,6 +11193,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         btn.textContent = "Sending your request…";
 
         const isTfpCat = shootCategory === "TFP";
+        const isProduction = !!(window.isProductionBrief && window.isProductionBrief());
+        const productionLines = isProduction
+          ? `What we're shooting: ${val("p_subject") || "—"}\nUsage: ${val("p_usage") || "—"}\nBudget band: ${val("p_budget") || "Prefer to discuss"}\nRough scale: ${val("p_scale") || "—"}\n`
+          : "";
 
         // Did this booking come in on an invite that supplies the venue? Read
         // from the field's own lock marker rather than a window global, so it
@@ -11305,7 +11373,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const gearPolicyNote = `Camera & Media Policy: All cameras, memory cards, and raw captures are strictly hands-off. Participants may not touch equipment or delete media from cameras. Deleting files constitutes a material breach of contract and incurs full data recovery costs.\n`;
 
         const compactBody =
-          `Shoot Booking Details:\n\n` +
+          `${isProduction ? "Campaign / Production Brief" : "Shoot Booking Details"}:\n\n` +
           `Name: ${name}\n` +
           `Role: ${role}\n` +
           `Email: ${email}\n` +
@@ -11319,7 +11387,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           `Studio Space Rental: ${studioSpaceVal}\n` +
           studioRentalPolicyNote +
           travelPolicyNote +
-          cleanBudget +
+          (isProduction ? `Budget / Package: Quoted on the brief after a call\n` + productionLines : cleanBudget) +
           (homeStudioRentalFee > 0
             ? (homeStudioDiscountedByPromo
                 ? `Home Studio Rental (add-on): ₹${homeStudioRentalFee.toLocaleString('en-IN')} — ${homeStudioPromoDiscountLabel} with promo code ${promoCodeUsed} applied (normally ₹${homeStudioListPriceVal.toLocaleString('en-IN')})\n` +
@@ -11347,9 +11415,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           (agreedToTerms ? `Contract Agreement: ${name} has agreed to ${contractRefDoc} in full, without modifications. By sending this email the client confirms acceptance of all studio terms and conditions.\nContract Reference: ${contractRefDoc}\nSignature Captured: ${sigDataUrl ? 'Yes' : 'No'}\nRead terms online: https://www.nerdyphotographer.in/book/${isTfpCat ? '#tfp-terms' : '#terms'}\n\n` : `\n`) +
           `Concept/Vision:\n${concept || '—'}`;
         const inquiryBody = compactBody + tfpReleaseText;
-        const plainTextBody = `To: ${studioEmail}\nSubject: Shoot Booking Request — ${name}\n\n` + inquiryBody;
+        const plainTextBody = `To: ${studioEmail}\nSubject: ${isProduction ? "Production Brief" : "Shoot Booking Request"} — ${name}\n\n` + inquiryBody;
 
-        const subject = encodeURIComponent(isCustomContract ? `Shoot Booking Request (CUSTOM CONTRACT REQUESTED) — ${name}` : `Shoot Booking Request — ${name}`);
+        const subject = encodeURIComponent(isProduction ? `Production Brief — ${name}` : isCustomContract ? `Shoot Booking Request (CUSTOM CONTRACT REQUESTED) — ${name}` : `Shoot Booking Request — ${name}`);
         const body = encodeURIComponent(compactBody);
 
         // A mailto: URL is handed to the operating system, not to the browser,
@@ -11362,7 +11430,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const MAILTO_SAFE_LEN = 1900;
         const buildMailto = (b) => `mailto:${studioEmail}?subject=${subject}&body=${encodeURIComponent(b)}`;
         const mailtoShortBody =
-          `Shoot Booking Details:\n\n` +
+          `${isProduction ? "Campaign / Production Brief" : "Shoot Booking Details"}:\n\n` +
           `Name: ${name}\n` +
           `Role: ${role}\n` +
           `Email: ${email}\n` +
@@ -11374,12 +11442,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           `Session Duration: ${sessionDuration || '—'}\n` +
           `Location Pref: ${locationVal}\n` +
           `Studio Space Rental: ${studioSpaceVal}\n` +
-          cleanBudget +
+          (isProduction ? `Budget / Package: Quoted on the brief after a call\n` + productionLines : cleanBudget) +
           `Moodboard Link: ${moodboard || '—'}\n` +
           (agreedToTerms
             ? `Contract Agreement: ${name} has agreed to ${contractRefDoc} in full, without modifications. By sending this email the client confirms acceptance of all studio terms and conditions.\nContract Reference: ${contractRefDoc}\nSignature Captured: ${sigDataUrl ? 'Yes' : 'No'}\n`
             : ``) +
-          `Studio Policies (studio rental, travel & accommodation, deliverables & RAW files, camera & media, payment terms): read and accepted in full — https://www.nerdyphotographer.in/book/${isTfpCat ? '#tfp-terms' : '#terms'}\n\n` +
+          (isProduction ? `` :           `Studio Policies (studio rental, travel & accommodation, deliverables & RAW files, camera & media, payment terms): read and accepted in full — https://www.nerdyphotographer.in/book/${isTfpCat ? '#tfp-terms' : '#terms'}\n\n`) +
           `Concept/Vision:\n${concept || '—'}`;
 
         let mailtoUrl = buildMailto(compactBody);
@@ -11566,6 +11634,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const showSuccess = (mode) => {
           const sentDirectly = mode === "sent";
           if (successPanel) successPanel.classList.toggle("is-tfp", type === "Selective Collaboration (TFP)");
+          if (successPanel) successPanel.classList.toggle("is-production", isProduction);
           // The booking itself was already written to the calendar store by
           // the instant-save block above — recording it again here doubled
           // every agreed booking on the device (two slots per date).
@@ -11585,7 +11654,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             const headingEl = $("#bookSuccessHeading");
             if (headingEl) {
               headingEl.textContent = sentDirectly
-                ? "Request sent."
+                ? (isProduction ? "Brief received." : "Request sent.")
                 : (mode === "gmail" ? "One last step — press Send." : "One last step — pick how to send.");
             }
 
@@ -11595,7 +11664,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
             const msgEl = $("#bookSuccessMsg");
             if (msgEl) {
-              if (sentDirectly) {
+              if (sentDirectly && isProduction) {
+                msgEl.innerHTML = `<strong style="color: var(--accent);">Brief received.</strong> It's with the studio. We'll reply within 24 hours to set up a call; the proposal and agreement follow the call.`;
+              } else if (sentDirectly) {
                 msgEl.innerHTML = `<strong style="color: var(--accent);">Request sent!</strong> Your booking inquiry has been delivered straight to the studio — no further action needed. We'll reply to <strong>${esc(email)}</strong>.` +
                   releaseNote +
                   `<br/><br/><span style="opacity: 0.8;">Want a copy for your own records? The buttons below open the same inquiry in your email app.</span>`;
@@ -11623,7 +11694,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // email the first time it's used). If the relay is unreachable or
         // rejects, fall back to opening the visitor's mail app pre-filled.
         const relayFields = {
-          _subject: `Shoot Booking Request — ${name}`,
+          _subject: isProduction ? `Production Brief — ${name}` : `Shoot Booking Request — ${name}`,
+          "Enquiry": isProduction ? "Campaign / production brief — quote on the brief after a call" : "Booking request",
           _replyto: email,
           _template: "box",
           "Name": name,
@@ -11636,14 +11708,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           "Session Duration": sessionDuration || "—",
           "Location Pref": locationVal,
           "Studio Space": studioSpaceVal || "—",
-          "Budget Range": budget,
+          "Budget Range": isProduction ? "Quoted on the brief" : budget,
+          ...(isProduction ? { "What we're shooting": val("p_subject") || "—", "Usage": val("p_usage") || "—", "Budget band": val("p_budget") || "Prefer to discuss", "Rough scale": val("p_scale") || "—" } : {}),
           // The rental and the resulting total are what the client just agreed
           // to pay. Without them the studio's own copy of the booking gave no
           // hint a rental was owed, so there was nothing to invoice against.
           "Studio / Venue Charge": homeStudioRentalFee > 0
             ? `₹${homeStudioRentalFee.toLocaleString('en-IN')} — ${venueLabel} (payable in full before the shoot)`
             : "Not applicable",
-          "Total Payable": financialSummary.finalPayable > 0
+          "Total Payable": isProduction ? "Quoted on the brief" : financialSummary.finalPayable > 0
             ? `₹${financialSummary.finalPayable.toLocaleString('en-IN')}`
             : (type === "Selective Collaboration (TFP)" ? "₹0 — TFP collaboration" : "—"),
           "Moodboard Link": moodboard || "—",
@@ -11749,6 +11822,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         });
       };
 
+      if (window.isProductionBrief && window.isProductionBrief()) {
+        // No package, no quote, no contract at this step: the brief goes to the
+        // studio and the proposal and agreement follow the call.
+        proceedSubmit(false, "Commercial", true, "Campaign / production brief — scope, team, dates and terms to be discussed on a call; proposal and agreement to follow.", "", "none");
+        return;
+      }
       if (type === "Selective Collaboration (TFP)") {
         openTermsModal(name, "TFP", (agreed, isCustom, notes, sigUrl, method) => proceedSubmit(agreed, "TFP", isCustom, notes, sigUrl, method));
       } else {
