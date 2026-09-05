@@ -7514,7 +7514,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <ol class="next-steps" aria-label="What happens next">
               <li><strong>We reply within 24 hours</strong><span class="ns-std">At the email you gave, with answers to your questions and the confirmed quote.</span><span class="ns-prod">At the email you gave, to set up a call at a time that suits you.</span></li>
               <li><strong class="ns-std">Your date is confirmed</strong><strong class="ns-prod">We discuss the production in detail</strong><span class="ns-paid">Once the advance retainer is paid, the date is held for you. Payment details come with that reply.</span><span class="ns-tfp">Once you confirm the plan by reply, the date is held for you.</span><span class="ns-prod">Scope, team, locations, dates and usage, on the call.</span></li>
-              <li><strong class="ns-std">Shoot day</strong><strong class="ns-prod">Proposal and agreement follow the call</strong><span class="ns-std">Call time, venue and wardrobe notes arrive the day before. Proofs follow after the shoot.</span><span class="ns-prod">A written proposal with the quote, then the agreement. The date is held once it is signed.</span></li>
+              <li><strong class="ns-std">Shoot day</strong><strong class="ns-prod">Proposal and agreement follow the call</strong><span class="ns-std">Call time, venue and wardrobe notes arrive the day before. Proofs follow after the shoot.</span><span class="ns-prod">A written proposal with the quote and the 50 / 30 / 20 schedule, then the agreement. The date is held once it is signed.</span></li>
             </ol>
 
             <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; width: 100%;">
@@ -7656,6 +7656,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                       </select>
                     </label>
                     <label class="field"><span>Rough scale <em class="label-hint">optional</em></span><input id="p_scale" type="text" placeholder="e.g. 2 days, 4 looks, 6 models, video crew on set" /></label>
+                  </div>
+                  <div class="production-terms" role="note">
+                    <span class="production-terms-k">How payment works</span>
+                    <ol class="production-terms-list">
+                      <li><b>At booking</b><span>50% advance retainer, plus the studio and lighting cost in full</span></li>
+                      <li><b>At wrap</b><span>30%</span></li>
+                      <li><b>Before final delivery</b><span>20%</span></li>
+                    </ol>
+                    <span class="production-terms-sub">For information now. The exact figures, and the agreement, come with the written proposal after the call. Nothing is due for sending the brief.</span>
                   </div>
                   <p class="production-note">We reply within 24 hours to set up a call, then send a proposal and agreement after it.</p>
                 </div>
@@ -11195,7 +11204,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const isTfpCat = shootCategory === "TFP";
         const isProduction = !!(window.isProductionBrief && window.isProductionBrief());
         const productionLines = isProduction
-          ? `What we're shooting: ${val("p_subject") || "—"}\nUsage: ${val("p_usage") || "—"}\nBudget band: ${val("p_budget") || "Prefer to discuss"}\nRough scale: ${val("p_scale") || "—"}\n`
+          ? `What we're shooting: ${val("p_subject") || "—"}\nUsage: ${val("p_usage") || "—"}\nBudget band: ${val("p_budget") || "Prefer to discuss"}\nRough scale: ${val("p_scale") || "—"}\nPayment terms (shown for information): 50% advance + studio & lighting cost at booking · 30% at wrap · 20% before final delivery — figures to be confirmed in the proposal.\n`
           : "";
 
         // Did this booking come in on an invite that supplies the venue? Read
@@ -11709,7 +11718,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           "Location Pref": locationVal,
           "Studio Space": studioSpaceVal || "—",
           "Budget Range": isProduction ? "Quoted on the brief" : budget,
-          ...(isProduction ? { "What we're shooting": val("p_subject") || "—", "Usage": val("p_usage") || "—", "Budget band": val("p_budget") || "Prefer to discuss", "Rough scale": val("p_scale") || "—" } : {}),
+          ...(isProduction ? { "What we're shooting": val("p_subject") || "—", "Usage": val("p_usage") || "—", "Budget band": val("p_budget") || "Prefer to discuss", "Rough scale": val("p_scale") || "—", "Payment terms (shown)": "50% advance + studio & lighting at booking · 30% at wrap · 20% before final delivery" } : {}),
           // The rental and the resulting total are what the client just agreed
           // to pay. Without them the studio's own copy of the booking gave no
           // hint a rental was owed, so there was nothing to invoice against.
