@@ -416,15 +416,20 @@ window.WPS_DATA = {
       "shoes": "10.5 US",
       "modelHair": "Black",
       "modelEyes": "Dark Brown",
-      "agencyCredit": "Wilderbeetalents (@https://www.instagram.com/wilderbeetalents/?hl=en)",
+      "agencyCredit": "Wilderbeetalents (@https://www.instagram.com/wilderbeetalents/?hl=en; https://www.wilderbeetalentcamp.com/)",
       "agency": "Wilderbeetalents",
       "agencyHandle": "https://www.instagram.com/wilderbeetalents/?hl=en",
-      "agencySite": "",
+      "agencySite": "wilderbeetalentcamp.com",
       "agencyLinks": [
         {
           "kind": "instagram",
           "label": "@wilderbeetalents",
           "url": "https://instagram.com/wilderbeetalents"
+        },
+        {
+          "kind": "website",
+          "label": "wilderbeetalentcamp.com",
+          "url": "https://www.wilderbeetalentcamp.com/"
         }
       ],
       "modelEmail": "",
