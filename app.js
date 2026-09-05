@@ -7591,6 +7591,23 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                     <button type="button" id="btnApplyInviteCode" style="background: var(--accent); color: #ffffff; border: none; padding: 0 18px; border-radius: 6px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; cursor: pointer; white-space: nowrap;">Verify Code</button>
                   </div>
                 </div>
+                <!-- Codes come before the project type: a verified invite locks the type
+                     to a test shoot, so the box has to be reachable first.
+                     One box for both kinds of code. The old invite and promo
+                     fields stay in the DOM (hidden) because updateFields, the
+                     quote and the contract clauses all read them; this box just
+                     writes the right one and shows the outcome. -->
+                <div class="code-box" id="codeBox">
+                  <div class="code-box-head">
+                    <span class="code-box-title">Have a code?</span>
+                    <span class="code-box-sub">An invite code from the photographer unlocks a test shoot. A promo code discounts a package or the studio rental.</span>
+                  </div>
+                  <div class="code-box-row">
+                    <input id="b_any_code" type="text" placeholder="Enter invite or promo code" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+                    <button type="button" class="btn btn-dark" id="btnApplyAnyCode">Apply</button>
+                  </div>
+                  <div class="code-box-chips" id="codeChips" aria-live="polite" hidden></div>
+                </div>
                <div class="field-row">
                  <label class="field" id="b_type_field_wrap"><span>Desired Project Type *</span>
                    <select id="b_type">
@@ -7667,21 +7684,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                     <span class="production-terms-sub">For information now. The exact figures, and the agreement, come with the written proposal after the call. Nothing is due for sending the brief.</span>
                   </div>
                   <p class="production-note">We reply within 24 hours to set up a call, then send a proposal and agreement after it.</p>
-                </div>
-                <!-- One box for both kinds of code. The old invite and promo
-                     fields stay in the DOM (hidden) because updateFields, the
-                     quote and the contract clauses all read them; this box just
-                     writes the right one and shows the outcome. -->
-                <div class="code-box" id="codeBox">
-                  <div class="code-box-head">
-                    <span class="code-box-title">Have a code?</span>
-                    <span class="code-box-sub">An invite code from the photographer unlocks a test shoot. A promo code discounts a package or the studio rental.</span>
-                  </div>
-                  <div class="code-box-row">
-                    <input id="b_any_code" type="text" placeholder="Enter invite or promo code" autocomplete="off" autocapitalize="characters" spellcheck="false" />
-                    <button type="button" class="btn btn-dark" id="btnApplyAnyCode">Apply</button>
-                  </div>
-                  <div class="code-box-chips" id="codeChips" aria-live="polite" hidden></div>
                 </div>
                 <div class="field-row">
                   <label class="field venue-native" style="grid-column: 1 / -1;"><span>Where are we shooting? *</span>
