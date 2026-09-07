@@ -85,8 +85,8 @@ window.WPS_DATA = {
       "lightingDiagram": null,
       "lightingDiagramVisibility": "private",
       "palette": [
-        "#381410",
-        "#190a0a"
+        "#473e3b",
+        "#201c1b"
       ],
       "photos": [
         {
@@ -122,7 +122,9 @@ window.WPS_DATA = {
         {
           "id": "mr4x3k1a7k7iwo-6",
           "url": "photos/mr4x3r7e4l5g4m/mr4x3k1a7k7iwo-6.jpg",
-          "objectPosition": "center"
+          "objectPosition": "53.1% 10.9%",
+          "focalX": 53.082985628187295,
+          "focalY": 10.853551743676917
         },
         {
           "id": "mr4x3k8ol3rsf0-7",
@@ -197,7 +199,7 @@ window.WPS_DATA = {
       "showAgencyEmailOnCompCard": false,
       "showAgencyEmailOnHome": false,
       "showAgencyEmailOnPdf": false,
-      "coverPhotoId": "mr4x1ect353v87"
+      "coverPhotoId": "mr4x3k1a7k7iwo"
     },
     {
       "id": "mr4x6kwx3f8rs3",
