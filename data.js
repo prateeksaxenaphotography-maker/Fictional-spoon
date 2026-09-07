@@ -253,23 +253,27 @@ window.WPS_DATA = {
       "lightingDiagram": null,
       "lightingDiagramVisibility": "private",
       "palette": [
-        "#c8c5c4",
-        "#5a5958"
+        "#a55a5d",
+        "#4a292a"
       ],
       "photos": [
         {
           "id": "mtrcns4f0f48p4-0",
           "url": "photos/mr4x6kwx3f8rs3/mtrcns4f0f48p4-0.jpg",
-          "objectPosition": "top",
+          "objectPosition": "51.1% 2.1%",
           "small": "photos/mr4x6kwx3f8rs3/mtrcns4f0f48p4-0@480.jpg",
-          "medium": "photos/mr4x6kwx3f8rs3/mtrcns4f0f48p4-0@960.jpg"
+          "medium": "photos/mr4x6kwx3f8rs3/mtrcns4f0f48p4-0@960.jpg",
+          "focalX": 51.104929686292685,
+          "focalY": 2.0682017204965746
         },
         {
           "id": "mtrcnsbj428ce3-1",
           "url": "photos/mr4x6kwx3f8rs3/mtrcnsbj428ce3-1.jpg",
-          "objectPosition": "center",
+          "objectPosition": "49.0% 2.1%",
           "small": "photos/mr4x6kwx3f8rs3/mtrcnsbj428ce3-1@480.jpg",
-          "medium": "photos/mr4x6kwx3f8rs3/mtrcnsbj428ce3-1@960.jpg"
+          "medium": "photos/mr4x6kwx3f8rs3/mtrcnsbj428ce3-1@960.jpg",
+          "focalX": 49.01869881007572,
+          "focalY": 2.0682017204965746
         },
         {
           "id": "mtrcnsj03wdoss-2",
@@ -405,120 +409,7 @@ window.WPS_DATA = {
       "showAgencyEmailOnCompCard": false,
       "showAgencyEmailOnHome": false,
       "showAgencyEmailOnPdf": false,
-      "coverPhotoId": "mtrcowl48wk2he"
-    },
-    {
-      "id": "mr4x8hlwftbzar",
-      "createdAt": 1783082421284,
-      "title": "Prachi Choudhary",
-      "brand": "Personal Project",
-      "activity": "Fashion",
-      "type": "Test Shoot",
-      "season": "June 2026",
-      "photographer": "Studio",
-      "artDirector": "",
-      "stylist": "—",
-      "hair": "—",
-      "mua": "Rashi Seghal",
-      "talent": "Prachi Choudhary",
-      "location": "Noida",
-      "description": "",
-      "tags": "",
-      "gear": "",
-      "client": "",
-      "date": "2026-06-13",
-      "instagram": "https://www.instagram.com/prachichoudharyyy, https://www.instagram.com/glamnationbyrashi",
-      "link": "",
-      "rights": "",
-      "testimonials": [],
-      "lightingDiagram": null,
-      "lightingDiagramVisibility": "private",
-      "palette": [
-        "#bebebe",
-        "#565656"
-      ],
-      "photos": [
-        {
-          "id": "mr4x6zkuyrndhm-0",
-          "url": "photos/mr4x8hlwftbzar/mr4x6zkuyrndhm-0.jpg",
-          "objectPosition": "center"
-        },
-        {
-          "id": "mr4x6zsiyu6yb2-1",
-          "url": "photos/mr4x8hlwftbzar/mr4x6zsiyu6yb2-1.jpg",
-          "objectPosition": "top"
-        },
-        {
-          "id": "mr4x774w45270h-2",
-          "url": "photos/mr4x8hlwftbzar/mr4x774w45270h-2.jpg",
-          "objectPosition": "center"
-        },
-        {
-          "id": "mr4x77c2zz40mu-3",
-          "url": "photos/mr4x8hlwftbzar/mr4x77c2zz40mu-3.jpg",
-          "objectPosition": "center"
-        }
-      ],
-      "featured": true,
-      "coverPhotoId": "mr4x6zsiyu6yb2",
-      "modelTypes": [
-        "Fashion"
-      ]
-    },
-    {
-      "id": "mr4xcy9982fs2s",
-      "createdAt": 1783082629485,
-      "title": "Prachi Choudhary",
-      "brand": "Personal Project",
-      "activity": "Beauty",
-      "type": "Test Shoot",
-      "season": "June 2026",
-      "photographer": "Studio",
-      "artDirector": "",
-      "stylist": "—",
-      "hair": "—",
-      "mua": "Rashi Seghal",
-      "talent": "Prachi Choudhary",
-      "location": "Noida",
-      "height": "",
-      "chest": "",
-      "waist": "",
-      "hips": "",
-      "shoes": "",
-      "modelHair": "",
-      "modelEyes": "",
-      "description": "",
-      "tags": "",
-      "gear": "",
-      "client": "",
-      "date": "2026-06-13",
-      "instagram": "https://www.instagram.com/prachichoudharyyy, https://www.instagram.com/glamnationbyrashi",
-      "link": "",
-      "rights": "",
-      "testimonials": [],
-      "lightingDiagram": null,
-      "lightingDiagramVisibility": "private",
-      "palette": [
-        "#b29589",
-        "#50433e"
-      ],
-      "photos": [
-        {
-          "id": "mr4x9djm45srat-0",
-          "url": "photos/mr4xcy9982fs2s/mr4x9djm45srat-0.jpg",
-          "objectPosition": "top"
-        },
-        {
-          "id": "mr4x9drizk83h8-1",
-          "url": "photos/mr4xcy9982fs2s/mr4x9drizk83h8-1.jpg",
-          "objectPosition": "center"
-        }
-      ],
-      "featured": true,
-      "coverPhotoId": "mr4x9djm45srat",
-      "modelTypes": [
-        "Fashion"
-      ]
+      "coverPhotoId": "mtrcnsbj428ce3"
     },
     {
       "id": "mr55364rvor33m",
@@ -1748,6 +1639,8 @@ window.WPS_DATA = {
     }
   ],
   "DELETED_IDS": [
+    "mr4x8hlwftbzar",
+    "mr4xcy9982fs2s",
     "msap3arwdtg7pb",
     "msxag4ydolz34d"
   ],
