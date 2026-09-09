@@ -1647,7 +1647,9 @@ window.WPS_DATA = {
     "msxag4ydolz34d"
   ],
   "CALENDAR_SETTINGS": {
-    "customBlockedDates": {},
+    "customBlockedDates": {
+      "2026-09-12": true
+    },
     "customOpenedDates": {
       "2026-09-07": true,
       "2026-09-09": true,
@@ -1792,15 +1794,6 @@ window.WPS_DATA = {
           "contractVersion": "Pending Agreement"
         }
       ],
-      "2026-09-12": [
-        {
-          "id": "b_1788502499439_es7g",
-          "type": "Assisting Photographer",
-          "isTentative": false,
-          "status": "assisting",
-          "contractVersion": "Pending Agreement"
-        }
-      ],
       "2026-09-19": [
         {
           "id": "b_1787411831533_6jql",
@@ -1843,6 +1836,15 @@ window.WPS_DATA = {
           "status": "workshop",
           "contractVersion": "Pending Agreement"
         }
+      ],
+      "2026-09-13": [
+        {
+          "id": "b_1788962756110_ixb1",
+          "type": "Fashion Editorial",
+          "isTentative": false,
+          "status": "confirmed",
+          "contractVersion": "V3.7-TFP"
+        }
       ]
     },
     "removedBookingIds": [
@@ -1866,7 +1868,8 @@ window.WPS_DATA = {
       "2026-09-13::b_1787411828392_udyl",
       "2026-09-20::b_1787411835191_nz3r",
       "2026-09-20::b_1788502533406_u7q8",
-      "2026-08-01::shoot-msap3arwdtg7pb"
+      "2026-08-01::shoot-msap3arwdtg7pb",
+      "2026-09-12::b_1788502499439_es7g"
     ],
     "paymentScheduleType": "5050",
     "updatedAt": 0,
