@@ -2572,19 +2572,21 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (shoot.mua) addGroup("Makeup", shoot.mua);
     if (shoot.videographer) addGroup("Video", shoot.videographer);
     if (shoot.credits && shouldShowField(shoot, "Credits")) addGroup("Also", shoot.credits, { plain: true });
-    // Where it was shot, with the studio's own profiles on the same row. The
-    // links are named by platform: the Kavyar URL ends in a random id, so
-    // there is no handle worth showing there.
+    // Where it was shot. The studio's own profiles used to ride along on this
+    // row, and unlabelled under a location — two rows below the model's name,
+    // where the model has handles of their own — they read as the model's or
+    // the venue's. They get a row of their own at the foot of the list now,
+    // with the studio named. The links are named by platform: the Kavyar URL
+    // ends in a random id, so there is no handle worth showing there.
     const cfg = window.STUDIO_CONFIG || {};
     const studioLinkHtml = (href, platform) =>
       `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer" title="${esc(cfg.studioName || "the studio")} on ${platform}" aria-label="${esc(cfg.studioName || "the studio")} on ${platform} (opens in a new tab)">${platform} ↗</a>`;
     const locBits = [];
     if (shoot.location && shoot.location !== "—") locBits.push(`<span class="lb-person">${renderCreditLinks(shoot.location)}</span>`);
+    if (locBits.length) groups.push({ label: "Location", rendered: locBits });
     const studioLinks = [];
     if (cfg.instagram) studioLinks.push(studioLinkHtml(cfg.instagram, "Instagram"));
     if (cfg.kavyar) studioLinks.push(studioLinkHtml(cfg.kavyar, "Kavyar"));
-    if (studioLinks.length) locBits.push(`<span class="lb-person lb-studio-links">${studioLinks.join("")}</span>`);
-    if (locBits.length) groups.push({ label: "Location", rendered: locBits });
     // The model's own handles, unless the model line already links out.
     const modelLinked = hasTalent && groups[0] && groups[0].rendered.some(r => r.includes("href="));
     if ((igHtml || kavyarHtml) && !modelLinked) {
@@ -2600,6 +2602,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const modelName = getTalentCleanName(shoot.talent);
       const slug = slugify(modelName);
       if (slug) groups.push({ label: "Comp card", rendered: [`<span class="lb-person"><a href="/share/?a=comp-card-${encodeURIComponent(slug)}">View ${esc(modelName)}’s comp card ↗</a><small class="lb-person-note">Every model on the site has one, free to view and download as a PDF. <a href="/categories?kind=type&amp;val=Comp%20Cards">See all models’ comp cards ↗</a></small></span>`] });
+    }
+    // Last row, below every credit that belongs to the shoot: these links are
+    // the studio's own, not a credit for the work, and naming the studio on
+    // the row is what tells a visitor whose profiles they are.
+    if (studioLinks.length) {
+      groups.push({
+        label: "Follow",
+        rendered: [`<span class="lb-person">${esc(cfg.studioName || "The studio")}</span><span class="lb-person lb-person-sub lb-studio-links">${studioLinks.join("")}</span>`]
+      });
     }
     const creditRows = (list) => `<dl class="lb-credits">${list.map(g => `<div class="lb-credit"><dt>${esc(g.label)}</dt><dd>${g.rendered.join("")}</dd></div>`).join("")}</dl>`;
     const creditsHtml = groups.length ? creditRows(groups) : "";
