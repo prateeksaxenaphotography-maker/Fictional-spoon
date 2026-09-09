@@ -1647,7 +1647,9 @@ window.WPS_DATA = {
     "msxag4ydolz34d"
   ],
   "CALENDAR_SETTINGS": {
-    "customBlockedDates": {},
+    "customBlockedDates": {
+      "2026-09-12": true
+    },
     "customOpenedDates": {
       "2026-09-07": true,
       "2026-09-09": true,
@@ -1955,36 +1957,6 @@ window.WPS_DATA = {
           "createdAt": 1786903849525
         }
       ],
-      "2026-09-12": [
-        {
-          "id": "b_1788502499439_es7g",
-          "name": "Assisting Work",
-          "email": "",
-          "phone": "",
-          "type": "Assisting Photographer",
-          "duration": "Full Day",
-          "isTentative": false,
-          "notes": "Booked for Assisting Work",
-          "location": "",
-          "venueByStudio": false,
-          "agreementMethod": "",
-          "links": [],
-          "attachments": [],
-          "status": "assisting",
-          "contractVersion": "Pending Agreement",
-          "agreedToTerms": false,
-          "contractNumber": "",
-          "sigDataUrl": "",
-          "agreedContract": "",
-          "budget": "",
-          "homeStudioFee": 0,
-          "finalPayable": 0,
-          "financials": null,
-          "inviteMeta": null,
-          "promoMeta": null,
-          "createdAt": 1788502499439
-        }
-      ],
       "2026-09-19": [
         {
           "id": "b_1787411831533_6jql",
@@ -2121,6 +2093,37 @@ window.WPS_DATA = {
           "promoMeta": null,
           "createdAt": 1788522924947
         }
+      ],
+      "2026-09-13": [
+        {
+          "id": "b_1788962756110_ixb1",
+          "name": "Devesh Biasoya",
+          "email": "",
+          "phone": "",
+          "type": "Fashion Editorial",
+          "duration": "Full Day",
+          "isTentative": false,
+          "notes": "Date held by Admin for anticipated client inquiry.",
+          "location": "",
+          "venueByStudio": false,
+          "agreementMethod": "",
+          "links": [],
+          "attachments": [],
+          "status": "confirmed",
+          "contractVersion": "V3.7-TFP",
+          "agreedToTerms": true,
+          "contractNumber": "",
+          "contractSentAt": 0,
+          "sigDataUrl": "",
+          "agreedContract": "",
+          "budget": "",
+          "homeStudioFee": 0,
+          "finalPayable": 0,
+          "financials": null,
+          "inviteMeta": null,
+          "promoMeta": null,
+          "createdAt": 1788962756110
+        }
       ]
     },
     "removedBookingIds": [
@@ -2144,7 +2147,8 @@ window.WPS_DATA = {
       "2026-09-13::b_1787411828392_udyl",
       "2026-09-20::b_1787411835191_nz3r",
       "2026-09-20::b_1788502533406_u7q8",
-      "2026-08-01::shoot-msap3arwdtg7pb"
+      "2026-08-01::shoot-msap3arwdtg7pb",
+      "2026-09-12::b_1788502499439_es7g"
     ],
     "paymentScheduleType": "5050",
     "updatedAt": 0,
