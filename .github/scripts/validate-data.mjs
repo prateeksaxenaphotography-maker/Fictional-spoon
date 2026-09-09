@@ -191,6 +191,16 @@ try {
     extractConst("MODEL_TYPE_MAXLEN"),
     extractConst("qualifiesAsCompCard"),
     extractConst("slugify"),
+    // buildCompCardDisplayList reads the per-surface credit switches and the
+    // handle cleaner when it assembles a unified album. Lifting the function
+    // without them left the whole share-link check dead on "REP_SWITCHES is
+    // not defined" — a silent hole in the exact test that exists to stop
+    // broken links reaching a client. A dependency this check picks up later
+    // will fail the same way, and the fix is to lift it here too.
+    extractConst("REP_SWITCHES"),
+    extractConst("REP_SURFACES"),
+    extractConst("showRep"),
+    extractConst("cleanIgHandle"),
   ].join("\n");
   const api = new Function(decls + "\nreturn { shareIdFor, resolveShareId, buildCompCardDisplayList, qualifiesAsCompCard, modelTypesOf };")();
 
