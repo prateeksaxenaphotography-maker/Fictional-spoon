@@ -4568,6 +4568,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       contractVersion: bookingObj.contractVersion || (bookingObj.agreedToTerms ? "V3.3" : "Pending Agreement"),
       agreedToTerms: bookingObj.agreedToTerms !== undefined ? bookingObj.agreedToTerms : (bookingObj.contractVersion && bookingObj.contractVersion !== "Pending Agreement"),
       contractNumber: bookingObj.contractNumber || "",
+      // When a PDF contract was generated for this date. Set on the hold that
+      // printing a contract places, so the roster can say the terms are out
+      // and waiting rather than claiming the client already agreed to them.
+      contractSentAt: Number(bookingObj.contractSentAt) || 0,
       sigDataUrl: bookingObj.sigDataUrl || "",
       agreedContract: bookingObj.agreedContract || "",
       // What the client was quoted. These were passed in by the booking form
@@ -4647,6 +4651,60 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       });
       saveCalendarSettings();
     }
+  }
+
+  // A hold that is waiting on an answer: the date is penciled in for a named
+  // client and terms have gone out, but nobody has signed. These are the only
+  // holds the roster offers Accept / Reject on \u2014 a bare "Anticipated Client
+  // Hold" you placed to keep a weekend free has nothing to accept.
+  function isDecidableHold(b) {
+    if (!b) return false;
+    if (!(b.isTentative || b.status === "tentative")) return false;
+    const name = String(b.name || "").trim();
+    if (!name || /^anticipated client hold$/i.test(name)) return false;
+    const ver = String(b.contractVersion || "").trim();
+    return !!ver && ver !== "Pending Agreement";
+  }
+
+  // Printing a contract for an off-site / DM inquiry also pencils the date in,
+  // so a day you have already sent terms for stops being offered to anyone
+  // else. It lands as a Hold \u2014 visitors see the day as taken \u2014 and stays a
+  // hold until you Accept it (it becomes the confirmed shoot) or Reject it
+  // (the day goes back on sale). Nothing here confirms anything by itself.
+  function createHoldFromContract(details) {
+    const dKey = String(details.date || "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dKey)) {
+      toast("Contract printed. The shoot date is not a plain YYYY-MM-DD, so no calendar hold was placed \u2014 add it by hand from the calendar.");
+      return null;
+    }
+    const name = String(details.clientName || "").trim() || "Anticipated Client Hold";
+    const settings = window.WPS_DATA?.CALENDAR_SETTINGS || {};
+    const already = ((settings.bookedDates && settings.bookedDates[dKey]) || [])
+      .find(x => String(x.name || "").trim().toLowerCase() === name.toLowerCase());
+    if (already) {
+      toast(`\u{1F4C5} ${dKey} is already on your calendar for ${name} \u2014 no second hold added.`);
+      return already;
+    }
+    const version = String(details.contractVersion || "").trim();
+    const booking = addCalBooking(dKey, {
+      name: name,
+      email: details.email || "",
+      phone: details.phone || "",
+      type: details.type || (/tfp|test/i.test(version) ? "Selective Collaboration (TFP)" : "Client Shoot"),
+      duration: details.duration || "Full Day",
+      location: details.location || "",
+      venueByStudio: !!details.venueByStudio,
+      isTentative: true,
+      status: "tentative",
+      notes: details.notes || "",
+      contractVersion: version || "Pending Agreement",
+      // The contract has been sent, not signed. Accept is what marks it agreed.
+      agreedToTerms: false,
+      contractSentAt: Date.now()
+    });
+    if (typeof window.refreshAdminCalendarViews === "function") window.refreshAdminCalendarViews();
+    toast(`\u{1F4C5} ${dKey} held for ${name}. Accept or Reject the hold once they reply, then Publish the calendar.`);
+    return booking;
   }
 
   /* ============================================================
@@ -5108,11 +5166,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // contract PDF"): no calendar entry exists, so seed the form from it. A
     // test-shoot type with no explicit version lets the TFP release preselect.
     let b;
+    // Set only when this contract is being printed for an entry that is
+    // already on the calendar: that date is spoken for, so the generator does
+    // not offer to hold it a second time.
+    let existingBooking = null;
     if (bookingId && typeof bookingId === "object") {
       b = Object.assign({}, defaults, bookingId);
       if (!bookingId.contractVersion && /test|tfp/i.test(b.type || "")) b.contractVersion = "";
     } else {
-      b = bookings.find(x => x.id === bookingId || x.name === bookingId) || defaults;
+      existingBooking = bookings.find(x => x.id === bookingId || x.name === bookingId) || null;
+      b = existingBooking || defaults;
     }
 
     let modal = document.getElementById("pdfContractGeneratorModal");
@@ -5123,6 +5186,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       modal.style.cssText = "position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.65); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; padding: 20px;";
       document.body.appendChild(modal);
     }
+    // Cancel and × hide the overlay rather than removing it, so a second open
+    // has to unhide it — without this the generator came up invisible every
+    // time after the first, and the click looked like it did nothing.
+    modal.style.display = "flex";
 
     const dVal = dKey || (new Date()).toISOString().split("T")[0];
     const isTest = b.type && /test|tfp/i.test(b.type);
@@ -5182,6 +5249,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               </select>
             </label>
           </div>
+
+          ${existingBooking ? "" : `
+          <label style="display: flex; align-items: flex-start; gap: 9px; padding: 11px 13px; border: 1px solid rgba(107,91,210,0.45); background: rgba(107,91,210,0.07); border-radius: 8px; font-size: var(--font-xs); line-height: 1.45; color: var(--ink); cursor: pointer;">
+            <input type="checkbox" id="pdf_holdDate" checked style="margin-top: 2px; flex-shrink: 0;" />
+            <span><strong>\u{1F4C5} Hold this date on the calendar when I print.</strong> It goes in as a <strong>Hold</strong> \u2014 the public sees the day as taken, nothing is confirmed \u2014 with <strong>Accept</strong> and <strong>Reject</strong> waiting on it in the calendar and roster for when the client replies. Needs the shoot date above to be a plain YYYY-MM-DD.</span>
+          </label>`}
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Shoot Location Address *
@@ -5300,6 +5373,22 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     });
 
     $("#triggerPrintPdfBtn")?.addEventListener("click", () => {
+      // Hold the date before printing: printContractPdf hands the browser off
+      // to a print window, and anything queued after that is easy to miss.
+      if ($("#pdf_holdDate")?.checked) {
+        createHoldFromContract({
+          date: $("#pdf_date").value.trim(),
+          clientName: $("#pdf_clientName").value.trim(),
+          email: $("#pdf_email").value.trim(),
+          phone: $("#pdf_phone").value.trim(),
+          type: b.type,
+          duration: $("#pdf_duration").value,
+          location: $("#pdf_location").value.trim(),
+          venueByStudio: !!$("#pdf_venueByStudio")?.checked,
+          notes: $("#pdf_notes").value.trim(),
+          contractVersion: $("#pdf_contractVersion").value
+        });
+      }
       window.printContractPdf({
         clientName: $("#pdf_clientName").value.trim(),
         instagram: $("#pdf_instagram").value.trim(),
@@ -6002,11 +6091,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const renderBookingCardHtml = (b, isPast = false) => {
         const isNonContract = (b.type === "Assisting Photographer" || b.type === "Workshop Attended" || (b.title && (b.title.includes("Assisting") || b.title.includes("Workshop"))));
         const v = b.contractVersion || (b.agreedToTerms ? "V3.2" : "Pending Agreement");
+        const viewTermsBtn = ` <button type="button" class="linkish" onclick="window.openContractArchiveModal('${esc(v)}')">View terms ↗</button>`;
+        // agreedToTerms is only explicitly false on a record that was created
+        // with terms sent but unsigned — a contract-generated hold. Older
+        // records simply don't carry the field, and keep the "Agreed" wording.
+        const awaitingApproval = b.agreedToTerms === false && v !== "Pending Agreement" && v !== "Custom Contract";
         const contractLine = isNonContract
           ? `<span>Internal activity · no contract</span>`
           : v === "Pending Agreement" ? `<span style="color: #B7791F; font-weight: 600;">Agreement pending</span>`
           : v === "Custom Contract" ? `<span>Custom contract / MSA</span>`
-          : `<span><strong>Agreed:</strong> ${esc(v)}</span>${(v !== "Pending Agreement" && v !== "Custom Contract") ? ` <button type="button" class="linkish" onclick="window.openContractArchiveModal('${esc(v)}')">View terms ↗</button>` : ""}`;
+          : awaitingApproval ? `<span class="contract-sent-note">Contract sent · ${esc(v)} · awaiting client approval</span>${viewTermsBtn}`
+          : `<span><strong>Agreed:</strong> ${esc(v)}</span>${viewTermsBtn}`;
         const statusPill = b.status === "workshop" ? `<span class="roster-pill roster-pill-workshop">Workshop</span>` : b.status === "assisting" ? `<span class="roster-pill roster-pill-assisting">Assisting</span>` : (b.isTentative || b.status === "tentative") ? `<span class="roster-pill roster-pill-hold">Hold</span>` : `<span class="roster-pill roster-pill-confirmed">Confirmed</span>`;
         const links = (b.links && b.links.length) ? `<div><strong>Reference links:</strong> ${b.links.map(l => `<a href="${esc(l)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); word-break: break-all;">${esc(l)} ↗</a>`).join(" · ")}</div>` : "";
         const atts = (b.attachments && b.attachments.length) ? `<div><strong>Attachments:</strong> ${b.attachments.map(att => `<a href="${esc(att.dataUrl)}" download="${esc(att.name)}" target="_blank" style="color: var(--accent);">${esc(att.name)} (${Math.round(att.size/1024)} KB)</a>`).join(" · ")}</div>` : "";
@@ -6022,6 +6117,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <span>${statusPill}</span>
           <span class="br-sub">${esc(b.duration || "Full Day")}</span>
           <div class="br-actions">
+            ${isDecidableHold(b) && !isPast ? `<button type="button" class="linkish hold-accept" onclick="window.acceptHoldBooking('${b.dateKey}', '${b.id}')">✓ Accept</button><button type="button" class="linkish hold-reject" onclick="window.rejectHoldBooking('${b.dateKey}', '${b.id}')">✕ Reject</button>` : ""}
             <button type="button" class="linkish" onclick="window.openEditBookingModal('${b.dateKey}', '${b.id}')">Edit</button>
             <button type="button" class="linkish muted" onclick="window.removeBookingFromRoster('${b.dateKey}', '${b.id}')">Cancel</button>
             ${hasMore ? `<button type="button" class="linkish muted" onclick="this.closest('.booking-row').classList.toggle('is-open')">Details</button>` : ""}
@@ -6071,6 +6167,50 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         renderAdminGrid();
         updateAdminReminders();
       }
+    };
+
+    // Redraw every admin view of the calendar at once. Exposed on window
+    // because the contract generator lives at module scope, outside this
+    // closure, and its hold has to show up without a page reload.
+    window.refreshAdminCalendarViews = () => {
+      renderAdminGrid();
+      renderRoster();
+      updateAdminReminders();
+    };
+
+    const findBooking = (dKey, bId) => {
+      const settings = window.WPS_DATA?.CALENDAR_SETTINGS || {};
+      return ((settings.bookedDates && settings.bookedDates[dKey]) || [])
+        .find(x => x.id === bId || x.name === bId) || null;
+    };
+    const closeDayModal = () => {
+      const mc = document.getElementById("dateAdminModalContainer");
+      if (mc) mc.innerHTML = "";
+    };
+
+    // A hold placed when a contract went out is a question, not a booking.
+    // Accept answers yes: it becomes the confirmed shoot on that date, on the
+    // contract version that was sent. Reject answers no and hands the day back
+    // to the public. Either way the change is device-local until you publish.
+    window.acceptHoldBooking = (dKey, bId) => {
+      const b = findBooking(dKey, bId);
+      if (!b) return;
+      const ver = b.contractVersion && b.contractVersion !== "Pending Agreement" ? b.contractVersion : "";
+      if (!confirm(`Accept ${b.name} for ${dKey}?\n\nThe hold becomes a confirmed shoot${ver ? `, agreed on ${ver}` : ""}.`)) return;
+      updateCalBooking(dKey, bId, { status: "confirmed", isTentative: false, agreedToTerms: true });
+      toast(`\u2713 ${b.name} confirmed for ${dKey}. Publish the calendar to show it live.`);
+      closeDayModal();
+      window.refreshAdminCalendarViews();
+    };
+
+    window.rejectHoldBooking = (dKey, bId) => {
+      const b = findBooking(dKey, bId);
+      if (!b) return;
+      if (!confirm(`Reject the hold for ${b.name} on ${dKey}?\n\nThe hold is removed and ${dKey} goes back to being open for anyone to book. The contract PDF you already sent is not affected.`)) return;
+      removeCalBooking(dKey, bId);
+      toast(`Hold for ${b.name} on ${dKey} rejected \u2014 the date is open again. Publish the calendar to release it live.`);
+      closeDayModal();
+      window.refreshAdminCalendarViews();
     };
 
 
@@ -6228,12 +6368,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             ${b.notes ? `<div class="dam-booking-sub"><em>${esc(b.notes)}</em></div>` : ""}
             ${b.agreedContract
               ? `<div class="dam-booking-ok">Contract agreed · ${esc(b.agreedContract)}</div>`
-              : `<div class="dam-booking-sub">Contract · ${esc(b.contractVersion || "Pending agreement")}</div>`}
+              : isDecidableHold(b)
+                ? `<div class="dam-booking-sub contract-sent-note">Contract sent · ${esc(b.contractVersion)} · awaiting approval</div>`
+                : `<div class="dam-booking-sub">Contract · ${esc(b.contractVersion || "Pending agreement")}</div>`}
             ${isSigImage(b.sigDataUrl) ? `<img class="dam-booking-sig" src="${b.sigDataUrl}" alt="" title="Client digital signature captured at booking" />` : ""}
             ${b.links && b.links.length ? b.links.map(l => `<a class="dam-booking-link" href="${esc(l)}" target="_blank" rel="noopener noreferrer">${esc(l)} ↗</a>`).join("") : ""}
             ${b.attachments && b.attachments.length ? `<div>${b.attachments.map(att => `<a class="dam-att" href="${esc(att.dataUrl)}" download="${esc(att.name)}" target="_blank">${esc(att.name)}</a>`).join("")}</div>` : ""}
           </div>
           <div class="dam-booking-actions">
+            ${isDecidableHold(b) ? `<button type="button" class="linkish hold-accept" onclick="window.acceptHoldBooking('${dKey}', '${b.id}')">✓ Accept</button><button type="button" class="linkish hold-reject" onclick="window.rejectHoldBooking('${dKey}', '${b.id}')">✕ Reject</button>` : ""}
             <button type="button" class="linkish" onclick="document.getElementById('closeAdminModal')?.click(); window.openPdfContractGenerator('${dKey}', '${b.id}')">Contract PDF</button>
             <button type="button" class="linkish" onclick="window.openEditBookingModal('${dKey}', '${b.id}')">Edit</button>
             <button type="button" class="linkish muted" onclick="window.removeBookingFromRoster('${dKey}', '${b.id}'); document.getElementById('closeAdminModal')?.click();">Remove</button>
