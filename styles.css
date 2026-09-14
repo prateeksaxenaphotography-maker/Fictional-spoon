@@ -2643,6 +2643,8 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 .pp-seg { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 100px; background: var(--paper); }
 .pp-seg button { border: 0; background: transparent; color: var(--ink-soft); font: 600 12.5px/1.2 "Inter", system-ui, sans-serif; padding: 8px 14px; border-radius: 100px; cursor: pointer; }
 .pp-seg button[aria-checked="true"] { background: var(--ink); color: var(--paper); }
+.pp-seg button[disabled] { opacity: .4; cursor: not-allowed; }
+.pp-seg [data-count] { min-width: 44px; }
 .pp-hint { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-soft); }
 .pp-hint strong { color: var(--ink); }
 .pp-hint.is-warn { color: var(--accent); }
@@ -2657,6 +2659,11 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 .pp-cand[aria-pressed="true"] { border-color: var(--accent); }
 .pp-check { display: none; position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; align-items: center; justify-content: center; border-radius: 50%; background: var(--accent); color: #fff; font-size: 11px; font-weight: 800; }
 .pp-cand[aria-pressed="true"] .pp-check { display: flex; }
+/* The cover photo lives on its own page, so in the pose rows it's marked and set aside. */
+.pp-cover-tag { display: none; position: absolute; left: 4px; bottom: 4px; padding: 1px 5px; border-radius: 4px; background: var(--ink); color: var(--paper); font-family: var(--mono-font); font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.pp-cand.is-cover { cursor: not-allowed; }
+.pp-cand.is-cover img { opacity: .45; }
+.pp-cand.is-cover .pp-cover-tag { display: block; }
 .pp-field { display: flex; flex-direction: column; gap: 6px; }
 .pp-field[hidden] { display: none; }
 .pp-field input, .pp-field select { width: 100%; box-sizing: border-box; height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font-size: 16px; }
