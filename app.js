@@ -13989,7 +13989,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const style = { weight: 600, size: 2.0, family: PDF_MONO, spacing: 0.3, upper: true, color: tone.text };
     const { ctx, u } = page;
     const h = 4.6;
-    let x = PDF_PAGE.margin;
+    let x = tone.x ?? PDF_PAGE.margin;
     types.forEach((t) => {
       const label = modelTypeLabel(t);
       const w = page.measure(label, style) + 5.6;
@@ -14163,6 +14163,35 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     return { cells, width: W * best.s, height: photosH * stretch + gaps };
   }
 
+  // Every photo the same size: the column count that gives the biggest cells
+  // in W x H. Cells take the photos' typical shape (the median aspect), give
+  // up to a tenth of a frame to fill more of the box, and a short last row
+  // is centred. Five portraits come out three on top and two below.
+  function pdfEqualGrid(aspects, W, H, gap) {
+    const n = aspects.length;
+    const sorted = [...aspects].sort((a, b) => a - b);
+    const aspect = sorted[Math.floor((n - 1) / 2)] || 2 / 3;
+    let best = null;
+    for (let cols = 1; cols <= Math.min(n, 5); cols++) {
+      const rows = Math.ceil(n / cols);
+      const colW = (W - (cols - 1) * gap) / cols;
+      const rowH = (H - (rows - 1) * gap) / rows;
+      const w = Math.min(colW, rowH * aspect * 1.12);
+      const h = Math.min(rowH, (w / aspect) * 1.12);
+      if (w > 0 && h > 0 && (!best || w * h > best.w * best.h + 1e-6)) best = { cols, rows, w, h };
+    }
+    const { cols, rows, w, h } = best;
+    const gridW = cols * w + (cols - 1) * gap;
+    const cells = [];
+    for (let i = 0; i < n; i++) {
+      const r = Math.floor(i / cols);
+      const inRow = Math.min(cols, n - r * cols);
+      const rowW = inRow * w + (inRow - 1) * gap;
+      cells.push({ x: (gridW - rowW) / 2 + (i - r * cols) * (w + gap), y: r * (h + gap), w, h });
+    }
+    return { cells, width: gridW, height: rows * h + (rows - 1) * gap };
+  }
+
   // How unevenly sized the supporting photos are: 0 when all match, towards 1
   // when one is a sliver beside another. Two tiny photos tucked into a corner
   // of an otherwise tidy page are what this keeps out.
@@ -14235,6 +14264,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const y = drawPdfTitleBlock(page, spec, mark);
     const detailsH = pdfDetailsBlock(page, spec, 0, false);
     const photoMaxH = PH - M - PDF_FOOTER_H - 5 - (detailsH ? detailsH + 5 : 0) - y;
+    if (spec.layout === "equal") {
+      const all = [spec.lead, ...spec.others];
+      const grid = pdfEqualGrid(imgs.map(pdfAspect), CW, photoMaxH, gap);
+      const gridTop = y + Math.max(0, (photoMaxH - grid.height) / 2);
+      const x0 = M + (CW - grid.width) / 2;
+      grid.cells.forEach((c, i) => drawPdfSlot(page, imgs[i], all[i], x0 + c.x, gridTop + c.y, c.w, c.h));
+      pdfDetailsBlock(page, spec, gridTop + grid.height + 5, true);
+      drawPdfFooter(page);
+      return;
+    }
     const layout = pdfLeadLayout(pdfAspect(imgs[0]), imgs.slice(1).map(pdfAspect), CW, photoMaxH, gap);
     // A crop-free grid can come up shorter than the page allows. Share the
     // spare height above and below, rather than leaving a blank strip at the foot.
@@ -14248,7 +14287,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // The optional front cover: one photo across the whole sheet, with the
   // name over a dark fade at its foot so it reads on any background, white
   // seamless included. Contact details stay on the pages after it.
-  function composeFrontCoverPdf(page, spec, img) {
+  function composeFrontCoverPdf(page, spec, img, mark) {
+    if (spec.coverStyle === "framed") return composeFramedCoverPdf(page, spec, img, mark);
+    if (spec.coverStyle === "split") return composeSplitCoverPdf(page, spec, img, mark);
     const { w: PW, h: PH, margin: M } = PDF_PAGE;
     const CW = PW - M * 2;
     const { ctx, u } = page;
@@ -14282,6 +14323,81 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     page.text(pdfHeaderLabel(spec, 0), M, baseline - size * 0.74 - 4, { ...PDF_LABEL, size: 2.5, color: soft });
   }
 
+  // Cover, framed: the photo on white with the name centred beneath it, in
+  // the same quiet style as the pages after it. Prints cleanly, and a photo
+  // on white seamless keeps its edge.
+  function composeFramedCoverPdf(page, spec, img, mark) {
+    const { w: PW, h: PH, margin: M } = PDF_PAGE;
+    const CW = PW - M * 2;
+    const top = drawPdfHeader(page, mark, pdfHeaderLabel(spec, 0)) + 7;
+    drawPdfFooter(page);
+    const footerTop = PH - M - PDF_FOOTER_H;
+    const nameStyle = (size) => ({ weight: 800, size, family: PDF_DISPLAY, spacing: -0.025 * size, upper: true, color: "#000", align: "center" });
+    let size = 20;
+    while (size > 6 && page.measure(spec.name, nameStyle(size)) > CW) size -= 0.25;
+    const types = modelTypesOf(spec.shoot);
+    const badgesTop = footerTop - 8 - 4.6;
+    const nameBase = types.length ? badgesTop - 4.5 : footerTop - 8;
+    const room = nameBase - size * 0.74 - 8 - top;
+    const aspect = pdfAspect(img);
+    const w = Math.min(CW, room * aspect * 1.1);
+    const h = Math.min(room, (w / aspect) * 1.1);
+    drawPdfPhoto(page, img, spec.cover.photo, M + (CW - w) / 2, top, w, h);
+    page.text(page.fit(spec.name, CW, nameStyle(size)), PW / 2, nameBase, nameStyle(size));
+    if (types.length) {
+      const pill = { weight: 600, size: 2.0, family: PDF_MONO, spacing: 0.3, upper: true };
+      const total = types.reduce((sum, t) => sum + page.measure(modelTypeLabel(t), pill) + 5.6, 0) + (types.length - 1) * 2;
+      drawPdfBadges(page, spec.shoot, badgesTop, { text: "#333", stroke: "#cfccc6", x: (PW - total) / 2 });
+    }
+  }
+
+  // Cover, split: the photo runs down the right of the page edge to edge;
+  // the name, stacked large, and the model's measurements sit on white beside it.
+  function composeSplitCoverPdf(page, spec, img, mark) {
+    const { w: PW, h: PH, margin: M } = PDF_PAGE;
+    const photoX = 80;
+    drawPdfPhoto(page, img, spec.cover.photo, photoX, 0, PW - photoX, PH, false);
+    // A hairline where photo meets paper, for photos shot on white.
+    page.ctx.fillStyle = "#e2e0dc";
+    page.ctx.fillRect(page.u(photoX), 0, Math.max(1, page.u(0.25)), page.u(PH));
+    const x = M, colW = photoX - M - 8;
+    const label = { ...PDF_LABEL, size: 2.3 };
+    pdfHeaderLabel(spec, 0).split(" · ").forEach((line, i) => page.text(line, x, M + 3.4 + i * 3.6, label));
+
+    const words = String(spec.name).split(/\s+/).filter(Boolean);
+    const nameStyle = (size) => ({ weight: 800, size, family: PDF_DISPLAY, spacing: -0.025 * size, upper: true, color: "#000" });
+    let size = 17;
+    while (size > 6 && Math.max(...words.map((wd) => page.measure(wd, nameStyle(size)))) > colW) size -= 0.25;
+    let y = M + 28 + size * 0.74;
+    words.forEach((wd, i) => page.text(wd, x, y + i * size * 0.92, nameStyle(size)));
+    y += (words.length - 1) * size * 0.92 + 7;
+
+    // Model types one to a line, so a long pair still fits the column.
+    const pill = { weight: 600, size: 2.0, family: PDF_MONO, spacing: 0.3, upper: true, color: "#333" };
+    modelTypesOf(spec.shoot).forEach((t) => {
+      const text = modelTypeLabel(t);
+      const w = page.measure(text, pill) + 5.6;
+      page.ctx.strokeStyle = "#cfccc6";
+      page.ctx.lineWidth = Math.max(1, page.u(0.25));
+      page.ctx.beginPath();
+      if (page.ctx.roundRect) page.ctx.roundRect(page.u(x), page.u(y), page.u(w), page.u(4.6), page.u(2.3)); else page.ctx.rect(page.u(x), page.u(y), page.u(w), page.u(4.6));
+      page.ctx.stroke();
+      page.text(text, x + 2.8, y + 3.02, pill);
+      y += 6.6;
+    });
+
+    // Measurements, two to a row, sitting on the studio line at the foot.
+    const brandBase = PH - M;
+    const stats = portfolioPdfStatCells(spec.shoot);
+    const half = (colW - 4) / 2;
+    const statsTop = brandBase - 10 - Math.ceil(stats.length / 2) * (PDF_CELL_H + 3.2);
+    stats.forEach((cell, i) => drawPdfCell(page, cell, x + (i % 2) * (half + 4), statsTop + Math.floor(i / 2) * (PDF_CELL_H + 3.2), half));
+    page.rule(x, brandBase - 6, x + colW);
+    if (mark) page.ctx.drawImage(mark, page.u(x), page.u(brandBase - 3.7), page.u(4.2), page.u(4.2));
+    page.text("nerdyphotographer.in", x + 5.8, brandBase, { weight: 700, size: 2.2, family: PDF_MONO, spacing: 0.3, upper: true, color: "#000" });
+    page.link(x, brandBase - 4.5, colW, 5.5, "https://www.nerdyphotographer.in/");
+  }
+
   // Page one of two: the lead photo as large as the page allows, with every
   // detail beneath it, like the front of a comp card.
   function composeLeadPagePdf(page, spec, img, mark) {
@@ -14313,7 +14429,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     page.text(name, M, y + 4.4, nameStyle);
     page.text("Poses", M + page.measure(name, nameStyle) + 3, y + 4.4, PDF_LABEL);
     y += 9;
-    const grid = pdfContainRows(imgs.map(pdfAspect), CW, PH - M - PDF_FOOTER_H - 5 - y, gap, 4, 1.12);
+    const gridH = PH - M - PDF_FOOTER_H - 5 - y;
+    const grid = spec.layout === "equal"
+      ? pdfEqualGrid(imgs.map(pdfAspect), CW, gridH, gap)
+      : pdfContainRows(imgs.map(pdfAspect), CW, gridH, gap, 4, 1.12);
     const x0 = M + (CW - grid.width) / 2;
     grid.cells.forEach((c, i) => drawPdfSlot(page, imgs[i], spec.others[i], x0 + c.x, y + c.y, c.w, c.h));
     drawPdfFooter(page);
@@ -14379,8 +14498,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     ]);
     const pages = [];
     const addPage = () => { const p = newPdfPage(dpi); pages.push(p); return p; };
-    if (spec.cover) composeFrontCoverPdf(addPage(), spec, coverImg);
-    if (spec.pages === 2) {
+    if (spec.cover) composeFrontCoverPdf(addPage(), spec, coverImg, mark);
+    if (spec.pages === 2 && spec.layout === "equal") {
+      // All equal: the photos split between the two pages, the first page,
+      // which also carries the details, taking the smaller half.
+      const k = Math.floor(slots.length / 2);
+      composeOnePagePdf(addPage(), { ...spec, lead: slots[0], others: slots.slice(1, k) }, imgs.slice(0, k), mark);
+      composePosesPdf(addPage(), { ...spec, others: slots.slice(k) }, imgs.slice(k), mark);
+    } else if (spec.pages === 2) {
       composeLeadPagePdf(addPage(), spec, imgs[0], mark);
       composePosesPdf(addPage(), spec, imgs.slice(1), mark);
     } else {
@@ -14485,6 +14610,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       lead: "",            // id of the big photo
       cover: false,        // add a front cover page
       coverId: "",         // id of the cover photo
+      coverStyle: "full",  // the cover's look: full photo, framed or split
+      layout: "lead",      // one big photo with the rest around it, or all equal
       location: "", phone: "", email: "", utr: "",
       paid: price === 0,
       // Goes in the UPI payment note, so the studio can match a payment to
@@ -14570,13 +14697,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
     function buildSpec() {
       const chosen = picked();
-      const lead = chosen.find((s) => s.id === state.lead) || chosen[0];
+      // All equal has no big photo, so the pages keep pose order.
+      const lead = state.layout === "equal" ? chosen[0] : (chosen.find((s) => s.id === state.lead) || chosen[0]);
       const slot = (s) => ({ photo: s.photo, label: s.label });
       return {
         shoot, name, pages: state.pages,
         lead: slot(lead),
         others: chosen.filter((s) => s !== lead).map(slot),
         cover: state.cover ? slot(slots.find((s) => s.id === state.coverId) || lead) : null,
+        coverStyle: state.coverStyle,
+        layout: state.layout,
         location: state.location.trim(),
         phone: state.phone.trim()
       };
@@ -14597,13 +14727,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <div class="pp-seg" role="radiogroup" aria-labelledby="ppCountLabel" id="ppCountSeg"></div>
         </div>
         <div class="pp-row">
-          <span class="pp-label" id="ppCoverLabel">Cover page</span>
-          <label class="pp-switch"><input type="checkbox" id="ppCover" aria-labelledby="ppCoverLabel" /><span class="pp-switch-track" aria-hidden="true"></span><span id="ppCoverState">Off</span></label>
-        </div>
-        <div class="pp-cover-pick" id="ppCoverPick" hidden>
-          <p class="pp-hint">A front page with one photo across the whole page and the name over it. The cover photo is extra: your pages still hold up to 5 (or 7) other photos. Tap the photo you want on it.</p>
-          <div class="pp-cands">
-            ${slots.map((s) => `<button type="button" class="pp-cand pp-cover-cand" data-id="${esc(s.id)}" aria-pressed="false" aria-label="Cover photo: ${esc(s.name)}"><img src="${esc(photoSrc(s.photo.small ? { url: s.photo.small } : s.photo))}" alt="" loading="lazy" style="object-position: ${esc(s.photo.objectPosition || "center")};" /><span class="pp-check" aria-hidden="true">✓</span></button>`).join("")}
+          <span class="pp-label" id="ppLayoutLabel">Layout</span>
+          <div class="pp-seg" role="radiogroup" aria-labelledby="ppLayoutLabel" id="ppLayoutSeg">
+            <button type="button" role="radio" data-layout="lead" aria-checked="true">Big photo</button>
+            <button type="button" role="radio" data-layout="equal" aria-checked="false">All equal</button>
           </div>
         </div>
         <p class="pp-hint" id="ppCount" aria-live="polite"></p>
@@ -14617,6 +14744,37 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           </div>
         `).join("")}
         <label class="pp-field" id="ppLeadField"><span class="pp-label">Big photo</span><select id="ppLead"></select></label>
+        <section class="pp-cover" aria-labelledby="ppCoverLabel">
+          <div class="pp-row">
+            <div>
+              <span class="pp-label" id="ppCoverLabel">Cover page</span>
+              <p class="pp-hint">An extra front page with one photo and the name. It doesn't use up any of your photos.</p>
+            </div>
+            <label class="pp-switch"><input type="checkbox" id="ppCover" aria-labelledby="ppCoverLabel" /><span class="pp-switch-track" aria-hidden="true"></span><span id="ppCoverState">Off</span></label>
+          </div>
+          <div class="pp-cover-pick" id="ppCoverPick" hidden>
+            <div class="pp-cover-chosen">
+              <img id="ppCoverImg" alt="The cover photo" />
+              <div class="pp-cover-meta">
+                <span class="pp-label">Cover photo</span>
+                <strong id="ppCoverName"></strong>
+                <button type="button" class="btn btn-ghost pp-cover-change" id="ppCoverChange" aria-expanded="false" aria-controls="ppCoverGrid">Change photo</button>
+              </div>
+            </div>
+            <div class="pp-cover-grid" id="ppCoverGrid" hidden>
+              ${slots.map((s) => `<button type="button" class="pp-cand pp-cover-cand" data-id="${esc(s.id)}" aria-pressed="false" aria-label="Cover photo: ${esc(s.name)}"><img src="${esc(photoSrc(s.photo.small ? { url: s.photo.small } : s.photo))}" alt="" loading="lazy" style="object-position: ${esc(s.photo.objectPosition || "center")};" /><span class="pp-check" aria-hidden="true">✓</span><span class="pp-cand-note"></span></button>`).join("")}
+            </div>
+            <div class="pp-row">
+              <span class="pp-label" id="ppCoverStyleLabel">Cover look</span>
+              <div class="pp-seg" role="radiogroup" aria-labelledby="ppCoverStyleLabel" id="ppCoverStyleSeg">
+                <button type="button" role="radio" data-cover-style="full" aria-checked="true">Full photo</button>
+                <button type="button" role="radio" data-cover-style="framed" aria-checked="false">Framed</button>
+                <button type="button" role="radio" data-cover-style="split" aria-checked="false">Split</button>
+              </div>
+            </div>
+            <p class="pp-pose-msg" id="ppCoverMsg" role="status"></p>
+          </div>
+        </section>
         <div class="pp-extras">
           <span class="pp-label">Optional: printed on your PDF, never saved</span>
           <label class="pp-field"><span class="pp-sr">Based in</span><input type="text" id="ppLocation" maxlength="40" placeholder="Based in (e.g. Mumbai)" value="${esc(state.location)}" /></label>
@@ -14633,14 +14791,28 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const b = e.target.closest("[data-count]");
         if (b && !b.disabled) setCount(Number(b.dataset.count));
       });
+      body.querySelectorAll("#ppLayoutSeg [data-layout]").forEach((btn) => btn.addEventListener("click", () => { state.layout = btn.dataset.layout; syncPick(); }));
       body.querySelectorAll(".pp-pose .pp-cand").forEach((btn) => btn.addEventListener("click", () => togglePick(btn.dataset.id)));
       body.querySelector("#ppCover").addEventListener("change", (e) => {
         state.cover = e.target.checked;
         // Keep an earlier cover choice if it's still free; otherwise pick one.
         const keep = slots.some((s) => s.id === state.coverId) && !state.picks.has(state.coverId);
-        syncPick(fitCountToPhotos(state.cover ? setCoverPhoto(keep ? state.coverId : defaultCover()) : ""));
+        syncPick(fitCountToPhotos(state.cover ? setCoverPhoto(keep ? state.coverId : defaultCover()) : ""), "cover");
       });
-      body.querySelectorAll(".pp-cover-cand").forEach((btn) => btn.addEventListener("click", () => syncPick(fitCountToPhotos(setCoverPhoto(btn.dataset.id)))));
+      const coverGrid = body.querySelector("#ppCoverGrid");
+      const coverChange = body.querySelector("#ppCoverChange");
+      const showCoverGrid = (open) => {
+        coverGrid.hidden = !open;
+        coverChange.setAttribute("aria-expanded", String(open));
+        coverChange.textContent = open ? "Done" : "Change photo";
+      };
+      coverChange.addEventListener("click", () => showCoverGrid(coverGrid.hidden));
+      body.querySelectorAll("#ppCoverStyleSeg [data-cover-style]").forEach((btn) => btn.addEventListener("click", () => { state.coverStyle = btn.dataset.coverStyle; syncPick(); }));
+      body.querySelectorAll(".pp-cover-cand").forEach((btn) => btn.addEventListener("click", () => {
+        const note = setCoverPhoto(btn.dataset.id);
+        showCoverGrid(false);
+        syncPick(fitCountToPhotos(note), "cover");
+      }));
       body.querySelector("#ppLead").addEventListener("change", (e) => { state.lead = e.target.value; });
       body.querySelector("#ppLocation").addEventListener("input", (e) => { state.location = e.target.value; });
       body.querySelector("#ppPhone").addEventListener("input", (e) => { state.phone = e.target.value; });
@@ -14666,7 +14838,21 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       body.querySelector("#ppCover").checked = state.cover;
       body.querySelector("#ppCoverState").textContent = state.cover ? "On" : "Off";
       body.querySelector("#ppCoverPick").hidden = !state.cover;
-      body.querySelectorAll(".pp-cover-cand").forEach((b) => b.setAttribute("aria-pressed", String(state.cover && b.dataset.id === state.coverId)));
+      const coverSlot = slots.find((x) => x.id === state.coverId);
+      if (state.cover && coverSlot) {
+        const coverImg = body.querySelector("#ppCoverImg");
+        const coverSrc = photoSrc(coverSlot.photo.medium ? { url: coverSlot.photo.medium } : coverSlot.photo);
+        if (coverImg.getAttribute("src") !== coverSrc) coverImg.setAttribute("src", coverSrc);
+        coverImg.style.objectPosition = coverSlot.photo.objectPosition || "center";
+        body.querySelector("#ppCoverName").textContent = coverSlot.name;
+      }
+      body.querySelectorAll(".pp-cover-cand").forEach((b) => {
+        b.setAttribute("aria-pressed", String(state.cover && b.dataset.id === state.coverId));
+        b.querySelector(".pp-cand-note").textContent = state.picks.has(b.dataset.id) ? "On pages" : "";
+      });
+      body.querySelectorAll("#ppCoverStyleSeg [data-cover-style]").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.coverStyle === state.coverStyle)));
+      // Cover messages show in the cover section, where the tap happened.
+      body.querySelector("#ppCoverMsg").textContent = warning && angle === "cover" ? warning : "";
       body.querySelectorAll(".pp-pose").forEach((row) => {
         const n = pickedIn(row.dataset.angle);
         row.classList.toggle("is-out", !n);
@@ -14675,7 +14861,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         row.querySelector(".pp-pose-msg").textContent = warning && row.dataset.angle === angle ? warning : "";
       });
       body.querySelector("#ppLead").innerHTML = chosen.map((s) => `<option value="${esc(s.id)}"${s.id === state.lead ? " selected" : ""}>${esc(s.name)}</option>`).join("");
-      body.querySelector("#ppLeadField").hidden = chosen.length < 2;
+      body.querySelectorAll("#ppLayoutSeg [data-layout]").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.layout === state.layout)));
+      body.querySelector("#ppLeadField").hidden = chosen.length < 2 || state.layout === "equal";
       const count = body.querySelector("#ppCount");
       count.classList.toggle("is-warn", !!warning);
       const short = state.count - chosen.length;
