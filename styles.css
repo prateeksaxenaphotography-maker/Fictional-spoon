@@ -2675,8 +2675,23 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 .pp-extras .pp-label { grid-column: 1 / -1; }
 .pp-preview { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
 .pp-preview.three canvas { width: min(220px, calc(33.333% - 8px)); }
-.pp-cover-pick { display: flex; flex-direction: column; gap: 8px; }
+/* Cover page: its own section after the photo picks, showing the chosen cover
+   large, with a grid to change it. */
+.pp-cover { display: flex; flex-direction: column; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--bone); }
+.pp-cover > .pp-row { align-items: flex-start; flex-wrap: nowrap; }
+.pp-cover > .pp-row .pp-hint { margin-top: 4px; }
+.pp-cover-pick { display: flex; flex-direction: column; gap: 12px; }
 .pp-cover-pick[hidden] { display: none; }
+.pp-cover-chosen { display: flex; gap: 14px; align-items: center; }
+.pp-cover-chosen img { flex: 0 0 auto; width: 96px; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 6px; border: 2px solid var(--accent); background: var(--paper); }
+.pp-cover-meta { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; min-width: 0; }
+.pp-cover-meta strong { font-size: 14px; color: var(--ink); }
+.pp-cover-change { font-family: "Inter", system-ui, sans-serif; font-size: 13px; font-weight: 600; padding: 8px 14px; }
+.pp-cover-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 8px; }
+.pp-cover-grid[hidden] { display: none; }
+.pp-cover-grid .pp-cand { width: auto; }
+.pp-cand-note { position: absolute; left: 4px; bottom: 4px; padding: 1px 5px; border-radius: 4px; background: rgba(255,255,255,.92); color: #111; font-family: var(--mono-font); font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.pp-cand-note:empty { display: none; }
 .pp-preview canvas { width: min(300px, 100%); height: auto; background: #fff; border: 1px solid var(--line); border-radius: 4px; box-shadow: var(--shadow-sm); }
 .pp-preview.two canvas { width: min(300px, calc(50% - 6px)); }
 .pp-rendering { margin: 0; padding: 48px 0; font-family: var(--mono-font); font-size: 12px; color: var(--ink-soft); text-align: center; }
