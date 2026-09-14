@@ -14319,14 +14319,29 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     drawPdfFooter(page);
   }
 
+  function loadImageOnce(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.decoding = "async";
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error(`Couldn't load ${src.startsWith("data:") ? "an embedded image" : src}`));
+      img.src = src;
+    });
+  }
+
   function loadPdfImage(src, cache) {
     if (!cache.has(src)) {
-      const load = new Promise((resolve, reject) => {
-        const img = new Image();
-        img.decoding = "async";
-        img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error(`Couldn't load ${src}`));
-        img.src = src;
+      // A photo asked for moments after upload, before GitHub Pages had
+      // deployed it, comes back 404, and the site's max-age=14400 can keep
+      // that answer for hours: every later load of the address fails without
+      // asking the server. That is how one of Devesh Baisoya's photos broke
+      // the studio's PDF (2026-09-14) while loading fine everywhere else. So a
+      // failed photo is asked for again at an address no cache has seen, and
+      // the plain address is refetched to heal it for the rest of the site.
+      const load = loadImageOnce(src).catch((err) => {
+        if (src.startsWith("data:")) throw err;
+        fetch(src, { cache: "reload" }).catch(() => {});
+        return loadImageOnce(`${src}${src.includes("?") ? "&" : "?"}fresh=${Date.now()}`);
       });
       // A failed load mustn't stay cached, or retrying could never work.
       load.catch(() => cache.delete(src));
@@ -14348,10 +14363,18 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const slots = [spec.lead, ...spec.others];
     // The preview is small, so it draws from the 960px copies when they exist.
     const srcFor = (photo) => photoSrc(dpi < 100 && photo.medium ? { url: photo.medium } : photo);
+    // If a full-size photo still won't load, the 960px copy the preview drew
+    // from makes that photo a little softer, rather than failing the PDF.
+    const loadPhoto = (photo) => loadPdfImage(srcFor(photo), cache).catch((err) => {
+      const fallback = photo.medium ? photoSrc({ url: photo.medium }) : "";
+      if (!fallback || fallback === srcFor(photo)) throw err;
+      console.warn("Portfolio PDF: using the 960px copy,", err.message);
+      return loadPdfImage(fallback, cache);
+    });
     const [imgs, mark, coverImg] = await Promise.all([
-      Promise.all(slots.map((s) => loadPdfImage(srcFor(s.photo), cache))),
+      Promise.all(slots.map((s) => loadPhoto(s.photo))),
       loadPdfImage(PDF_STUDIO_MARK, cache).catch(() => null),
-      spec.cover ? loadPdfImage(srcFor(spec.cover.photo), cache) : null,
+      spec.cover ? loadPhoto(spec.cover.photo) : null,
       ensurePdfFonts(spec)
     ]);
     const pages = [];
