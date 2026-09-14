@@ -14347,9 +14347,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       .filter((pose) => pose.candidates.length);
     const state = {
       pages: 1,
-      picks: {},           // pose -> chosen photo id
-      cleared: new Set(),  // poses the client deliberately left out
-      lead: "",
+      picks: new Set(),    // chosen photo ids, any number from one pose
+      cleared: new Set(),  // poses the client deliberately emptied
+      lead: "",            // id of the big photo
       location: "", phone: "", email: "", utr: "",
       paid: price === 0,
       // Goes in the UPI payment note, so the studio can match a payment to
@@ -14360,13 +14360,19 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     let renderToken = 0;
     let fileUrl = "";
 
+    // Every photo on offer, in pose order, which is also their order in the PDF.
+    const slots = poses.flatMap((pose) => pose.candidates.map((photo, i) => ({
+      id: photo.id, photo, angle: pose.angle, label: pose.label,
+      // Two Full Body shots need telling apart in the Big photo list.
+      name: pose.candidates.length > 1 ? `${pose.label} · photo ${i + 1}` : pose.label
+    })));
     const capacity = () => PORTFOLIO_PDF_CAPACITY[state.pages];
-    const picked = () => poses.filter((p) => state.picks[p.angle]).map((p) => p.angle);
-    const poseOf = (angle) => poses.find((p) => p.angle === angle);
+    const picked = () => slots.filter((s) => state.picks.has(s.id));
+    const pickedIn = (angle) => picked().filter((s) => s.angle === angle).length;
     const minPhotos = () => (state.pages === 2 ? 2 : 1);
-    // A headshot is the classic lead; otherwise the first pose picked.
-    const defaultLead = () => { const a = picked(); return a.includes("close-up") ? "close-up" : (a[0] || ""); };
-    poses.slice(0, capacity()).forEach((p) => { state.picks[p.angle] = p.candidates[0].id; });
+    // A headshot is the classic lead; otherwise the first photo picked.
+    const defaultLead = () => { const p = picked(); return (p.find((s) => s.angle === "close-up") || p[0] || {}).id || ""; };
+    poses.slice(0, capacity()).forEach((p) => state.picks.add(p.candidates[0].id));
     state.lead = defaultLead();
 
     const modal = document.createElement("div");
@@ -14408,19 +14414,19 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     window.addEventListener("keydown", onKey, true);
 
     function buildSpec() {
-      const angles = picked();
-      const lead = state.picks[state.lead] ? state.lead : angles[0];
-      const slot = (angle) => ({ photo: poseOf(angle).candidates.find((c) => c.id === state.picks[angle]), label: poseOf(angle).label });
+      const chosen = picked();
+      const lead = chosen.find((s) => s.id === state.lead) || chosen[0];
+      const slot = (s) => ({ photo: s.photo, label: s.label });
       return {
         shoot, name, pages: state.pages,
         lead: slot(lead),
-        others: angles.filter((a) => a !== lead).map(slot),
+        others: chosen.filter((s) => s !== lead).map(slot),
         location: state.location.trim(),
         phone: state.phone.trim()
       };
     }
 
-    /* Step 1: pick a photo for each pose. */
+    /* Step 1: pick photos, as many from one pose as the pages hold. */
     function showPick() {
       renderToken++;
       body.innerHTML = `
@@ -14452,7 +14458,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         <button type="button" class="btn btn-dark" id="ppNext">Preview</button>
       `;
       body.querySelectorAll(".pp-seg [data-pages]").forEach((btn) => btn.addEventListener("click", () => setPages(Number(btn.dataset.pages))));
-      body.querySelectorAll(".pp-cand").forEach((btn) => btn.addEventListener("click", () => togglePick(btn.dataset.angle, btn.dataset.id)));
+      body.querySelectorAll(".pp-cand").forEach((btn) => btn.addEventListener("click", () => togglePick(btn.dataset.id)));
       body.querySelector("#ppLead").addEventListener("change", (e) => { state.lead = e.target.value; });
       body.querySelector("#ppLocation").addEventListener("input", (e) => { state.location = e.target.value; });
       body.querySelector("#ppPhone").addEventListener("input", (e) => { state.phone = e.target.value; });
@@ -14463,35 +14469,37 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
     function syncPick(warning) {
       const chosen = picked();
-      if (!state.picks[state.lead]) state.lead = defaultLead();
+      if (!state.picks.has(state.lead)) state.lead = defaultLead();
       body.querySelectorAll(".pp-seg [data-pages]").forEach((b) => b.setAttribute("aria-checked", String(Number(b.dataset.pages) === state.pages)));
-      body.querySelectorAll(".pp-cand").forEach((b) => b.setAttribute("aria-pressed", String(state.picks[b.dataset.angle] === b.dataset.id)));
+      body.querySelectorAll(".pp-cand").forEach((b) => b.setAttribute("aria-pressed", String(state.picks.has(b.dataset.id))));
       body.querySelectorAll(".pp-pose").forEach((row) => {
-        const inPdf = !!state.picks[row.dataset.angle];
-        row.classList.toggle("is-out", !inPdf);
-        row.querySelector(".pp-pose-state").textContent = inPdf ? "In your PDF" : "Left out";
+        const n = pickedIn(row.dataset.angle);
+        row.classList.toggle("is-out", !n);
+        row.querySelector(".pp-pose-state").textContent = n > 1 ? `${n} in your PDF` : n ? "In your PDF" : "Left out";
       });
-      body.querySelector("#ppLead").innerHTML = chosen.map((a) => `<option value="${esc(a)}"${a === state.lead ? " selected" : ""}>${esc(poseOf(a).label)}</option>`).join("");
+      body.querySelector("#ppLead").innerHTML = chosen.map((s) => `<option value="${esc(s.id)}"${s.id === state.lead ? " selected" : ""}>${esc(s.name)}</option>`).join("");
       body.querySelector("#ppLeadField").hidden = chosen.length < 2;
       const count = body.querySelector("#ppCount");
       count.classList.toggle("is-warn", !!warning);
       count.textContent = warning || (chosen.length < minPhotos()
         ? (state.pages === 2 ? "Pick at least 2 photos for 2 pages." : "Pick at least one photo.")
-        : `${chosen.length} of ${capacity()} photos picked. Tap a photo to use it for that pose, or tap it again to leave the pose out.`);
+        : `${chosen.length} of ${capacity()} photos picked. Tap photos to add them (more than one from a pose is fine), and tap again to take one out.`);
       foot.querySelector("#ppNext").disabled = chosen.length < minPhotos();
     }
 
-    function togglePick(angle, id) {
-      if (state.picks[angle] === id) {
-        delete state.picks[angle];
-        state.cleared.add(angle);
-      } else if (state.picks[angle] || picked().length < capacity()) {
-        state.picks[angle] = id;
-        state.cleared.delete(angle);
+    function togglePick(id) {
+      const slot = slots.find((s) => s.id === id);
+      if (!slot) return;
+      if (state.picks.has(id)) {
+        state.picks.delete(id);
+        if (!pickedIn(slot.angle)) state.cleared.add(slot.angle);
+      } else if (picked().length < capacity()) {
+        state.picks.add(id);
+        state.cleared.delete(slot.angle);
       } else {
         syncPick(state.pages === 1
-          ? `1 page fits ${capacity()} photos. Leave out another pose first, or switch to 2 pages.`
-          : `2 pages fit ${capacity()} photos. Leave out another pose first.`);
+          ? `1 page fits ${capacity()} photos. Take one out first, or switch to 2 pages.`
+          : `2 pages fit ${capacity()} photos. Take one out first.`);
         return;
       }
       syncPick();
@@ -14502,18 +14510,18 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       state.pages = n;
       let warning = "";
       if (n === 2) {
-        // More room: bring back the poses the client didn't take out themselves.
+        // More room: bring back a photo for each pose the client didn't empty themselves.
         poses.forEach((p) => {
-          if (!state.picks[p.angle] && !state.cleared.has(p.angle) && picked().length < capacity()) state.picks[p.angle] = p.candidates[0].id;
+          if (!pickedIn(p.angle) && !state.cleared.has(p.angle) && picked().length < capacity()) state.picks.add(p.candidates[0].id);
         });
       } else {
         const dropped = [];
         while (picked().length > capacity()) {
-          const drop = picked().filter((a) => a !== state.lead).pop();
-          delete state.picks[drop];
-          dropped.unshift(poseOf(drop).label);
+          const drop = picked().filter((s) => s.id !== state.lead).pop();
+          state.picks.delete(drop.id);
+          dropped.unshift(drop.label);
         }
-        if (dropped.length) warning = `1 page fits ${capacity()} photos, so ${dropped.join(" and ")} ${dropped.length > 1 ? "were" : "was"} left out.`;
+        if (dropped.length) warning = `1 page fits ${capacity()} photos, so ${dropped.length} ${dropped.length > 1 ? "were" : "was"} taken out (${dropped.join(", ")}).`;
       }
       syncPick(warning);
     }
