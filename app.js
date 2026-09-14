@@ -2172,6 +2172,22 @@ window.moveAdminPackageRow = function(index, dir) {
 
   const MIME_EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
 
+  // Which build this page runs (the ?v= on its own app.js) against the build
+  // that's live (sw.js's ASSET_VERSION, fetched past every cache). Returns
+  // null when current, or when the live build can't be read: a failed check
+  // must not stop the studio publishing.
+  async function staleBuildCheck() {
+    try {
+      const tag = document.querySelector('script[src*="app.js"]');
+      const loaded = Number((String(tag && tag.getAttribute("src")).match(/[?&]v=(\d+)/) || [])[1]);
+      const res = await fetch(`/sw.js?cb=${Date.now()}`, { cache: "no-store" });
+      const live = Number((String(res.ok ? await res.text() : "").match(/ASSET_VERSION\s*=\s*"(\d+)"/) || [])[1]);
+      return loaded && live && live > loaded ? { loaded, live } : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   async function syncToGitHub(shootsList, { deletedIds = [] } = {}) {
     let pat = localStorage.getItem("wps-github-pat");
     if (!pat) {
@@ -2185,6 +2201,21 @@ window.moveAdminPackageRow = function(index, dir) {
       }
     }
     try {
+      // A tab left open across a release keeps running the old code, and an
+      // old publish step drops fields the new one writes. On 2026-09-14 a tab
+      // from before v370 wiped every pose tag and the portfolio PDF settings,
+      // twice in four minutes. So only the live build may publish.
+      const stale = await staleBuildCheck();
+      if (stale) {
+        toast("This page is out of date, so nothing was published.");
+        if (confirm(`A newer version of the site is live (v${stale.live}; this page is v${stale.loaded}).\n\nYour changes are saved on this device, but publishing from an out-of-date page can undo parts of the live site, so nothing was published.\n\nReload now, then publish again?`)) {
+          const next = new URL(location.href);
+          next.searchParams.set("_v", String(stale.live));
+          location.replace(next.toString());
+        }
+        return false;
+      }
+
       toast("Syncing portfolio to GitHub…");
 
       // Merge with the published shoots: local wins by id; shoots that only
@@ -2223,6 +2254,11 @@ window.moveAdminPackageRow = function(index, dir) {
           if (!rp || rp.url !== p.url) continue; // different file — its variants aren't ours
           if (!p.small && rp.small) p.small = rp.small;
           if (!p.medium && rp.medium) p.medium = rp.medium;
+          // Pose and usage by the same additive rule, but only where this
+          // device never had the field at all. An empty angle is a deliberate
+          // "Unspecified" from the edit form, and that must still publish.
+          if (p.angle === undefined && rp.angle) p.angle = rp.angle;
+          if (p.usage === undefined && rp.usage) p.usage = rp.usage;
         }
       }
 
