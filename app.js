@@ -539,6 +539,34 @@ function getHomeStudioRate(forTestShoot) {
 }
 window.getHomeStudioRate = getHomeStudioRate;
 
+// Model portfolio PDF: whether clients can buy the one- or two-page PDF they
+// build from a model's pose-tagged photos, what it costs, and the UPI ID that
+// receives it. Published with the other rates, because visitors can only read
+// data.js. Off until the studio switches it on: no client sees the buy button
+// and Model Portfolio stays out of the menu. A price of 0 makes it free.
+const DEFAULT_PORTFOLIO_PDF = { enabled: false, price: 50, upiId: "" };
+// name@handle, as UPI apps take it. CI holds the published value to the same
+// pattern (.github/scripts/validate-data.mjs).
+const UPI_ID_RE = /^[a-zA-Z0-9._-]{2,256}@[a-zA-Z][a-zA-Z0-9.-]{1,64}$/;
+function getPortfolioPdfSettings() {
+  const clean = (o) => {
+    if (!o || typeof o !== "object") return null;
+    const price = Number(o.price);
+    const upiId = typeof o.upiId === "string" ? o.upiId.trim() : "";
+    return {
+      enabled: o.enabled === true,
+      price: Number.isInteger(price) && price >= 0 ? price : DEFAULT_PORTFOLIO_PDF.price,
+      upiId: UPI_ID_RE.test(upiId) ? upiId : ""
+    };
+  };
+  try {
+    const saved = clean(JSON.parse(localStorage.getItem("wps_portfolio_pdf") || "null"));
+    if (saved) return saved;
+  } catch(e) {}
+  return clean(window.WPS_DATA && window.WPS_DATA.PORTFOLIO_PDF) || { ...DEFAULT_PORTFOLIO_PDF };
+}
+window.getPortfolioPdfSettings = getPortfolioPdfSettings;
+
 function getAdminPackages() {
   try {
     const saved = localStorage.getItem("wps_custom_packages");
@@ -2260,6 +2288,12 @@ window.moveAdminPackageRow = function(index, dir) {
           ? {
               id: p.id, url, objectPosition: p.objectPosition || "center",
               ...(p.excludeFromCompCard ? { excludeFromCompCard: true } : {}),
+              // Pose and usage decide which photos the Model Portfolio page and
+              // its PDF may use. They were missing from this field list, so a
+              // pose tagged in Upload stayed on the studio's device and no
+              // visitor ever saw one: the portfolio PDF had nothing to offer.
+              ...(p.angle ? { angle: p.angle } : {}),
+              ...(p.usage ? { usage: p.usage } : {}),
               ...(small ? { small } : {}),
               ...(medium ? { medium } : {}),
               ...(p.caption ? { caption: p.caption } : {}),
@@ -2287,6 +2321,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         INVITE_CODES: (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : []),
         PROMO_CODES: (typeof window.getAdminPromoCodes === "function" ? window.getAdminPromoCodes() : {}),
         PACKAGES: (typeof window.getAdminPackages === "function" ? window.getAdminPackages() : []),
+        // The portfolio PDF's price and the UPI ID it's paid to.
+        PORTFOLIO_PDF: (typeof window.getPortfolioPdfSettings === "function" ? window.getPortfolioPdfSettings() : null),
         TFP_PACKAGE: (typeof window.getAdminTfpPackage === "function" ? window.getAdminTfpPackage() : null),
         HOME_STUDIO_RATE: (typeof window.getHomeStudioRate === "function" ? window.getHomeStudioRate() : 3000),
         // Only published when the studio actually set a separate collaboration
@@ -2666,15 +2702,36 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         `;
       }
     } else if (isCc && isCurrentlyModelPortfolioView()) {
-      // Open to any visitor viewing this model's portfolio (model, agency,
-      // casting director) — the whole point of the template system is that
-      // the model/agency builds and downloads their own PDF, not the studio.
+      // Clients build a one- or two-page PDF from this model's pose-tagged
+      // photos and pay the studio by UPI to download it; the studio exports
+      // free. With no pose tags, or sales still closed, visitors get nothing
+      // here: a button that can only answer "not available" is worse than none.
       window.currentCompCardShootObj = shoot;
-      pdfBtnHtml = `
-        <div class="lb-sidebar-section" style="margin-top: 10px;">
-          <button class="btn btn-dark btn-block lb-export-btn" onclick="window.printModelPortfolio('${escJs(shoot.id)}')">Export model portfolio PDF</button>
-        </div>
-      `;
+      const posedCount = portfolioPosedPhotos(shoot).length;
+      const pdfPrice = getPortfolioPdfSettings().price;
+      const exportBtn = `<button class="btn btn-dark btn-block lb-export-btn" onclick="window.printModelPortfolio('${escJs(shoot.id)}')">Make portfolio PDF</button>`;
+      if (isAdmin()) {
+        const salesNote = !getPortfolioPdfSettings().enabled ? "Off for clients. Switch it on in Calendar → Settings."
+          : !portfolioPdfSalesOpen() ? "Clients can't buy it yet: add your UPI ID in Calendar → Settings."
+          : pdfPrice ? `On for clients: they pay ₹${pdfPrice}.` : "On for clients, free.";
+        pdfBtnHtml = posedCount ? `
+          <div class="lb-sidebar-section lb-card lb-export">
+            <span class="lb-h" style="margin: 0;"><span>Portfolio PDF</span><small>Free for you</small></span>
+            ${exportBtn}
+            <p class="lb-note">${esc(salesNote)}</p>
+          </div>
+        ` : `
+          <div class="lb-sidebar-section lb-note lb-note-admin">No photo of this model has a pose tag, so there's no portfolio PDF to build. Tag poses in Upload, then publish (admin only sees this)</div>
+        `;
+      } else if (posedCount && portfolioPdfSalesOpen()) {
+        pdfBtnHtml = `
+          <div class="lb-sidebar-section lb-card lb-export">
+            <span class="lb-h" style="margin: 0;"><span>Portfolio PDF</span>${pdfPrice ? `<small>₹${pdfPrice}</small>` : ""}</span>
+            ${exportBtn}
+            <p class="lb-note">Pick photos by pose (front, side, back) and download a 1 or 2 page PDF to send to casting directors and designers.</p>
+          </div>
+        `;
+      }
     }
     const disclaimerHtml = isCc ? `
       <p class="lb-disclaimer">To book this talent, connect through their social channels or their representing agency. The photos on this comp card were made by nerdyphotographer.in or its affiliates.</p>
@@ -3121,7 +3178,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (uploadLi) uploadLi.style.display = active ? "block" : "none";
     if (bookLi) bookLi.style.display = active ? "none" : "block";
     if (compCardsLi) compCardsLi.style.display = "block";
-    if (portfolioLi) portfolioLi.style.display = active ? "block" : "none";
+    // Public once clients can buy the portfolio PDF; until then the page is
+    // the studio's preview.
+    if (portfolioLi) portfolioLi.style.display = (active || portfolioPdfSalesOpen()) ? "block" : "none";
     if (workshopLi) workshopLi.style.display = "block"; // Always show Workshop in nav
     if (calendarLi) calendarLi.style.display = active ? "block" : "none";
     if (analyticsLi) analyticsLi.style.display = "none";
@@ -5111,6 +5170,43 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 8px 0 0 0; font-family: 'Outfit', sans-serif;">Leave the test-shoot box <strong>empty</strong> and collaborations pay the same as paid shoots.</p>
             </div>
             <div id="adminPackagesEditorGrid" style="display: flex; flex-direction: column; gap: 8px;"></div>
+          </div>
+        </div>
+
+        <!-- What a client pays to download the portfolio PDF they build on the
+             Model Portfolio page, and the UPI ID it's paid to. Published with
+             the rates, since visitors can only read data.js. -->
+        <div class="admin-panel">
+          <div class="admin-panel-head" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; cursor: pointer; user-select: none;" onclick="const b=document.getElementById('adminPdfBody');const a=document.getElementById('adminPdfArrow');const open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▼':'▲';">
+            <span style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">Portfolio PDF <span class="admin-pdf-head-state" id="portfolioPdfHeadState" data-on="${getPortfolioPdfSettings().enabled}">${getPortfolioPdfSettings().enabled ? "On" : "Off"}</span> <span style="font-weight: 400; color: var(--ink-soft); font-size: 12.5px;">— clients pick poses, pay by UPI, download</span></span>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button type="button" class="admin-cal-btn primary" onclick="event.stopPropagation();window.saveAdminPortfolioPdfSettings()">Save &amp; push live</button>
+              <span id="adminPdfArrow" style="font-size: var(--font-xs); color: var(--ink-soft); font-weight: 700;">▼</span>
+            </div>
+          </div>
+          <div id="adminPdfBody" style="display: none; margin-top: 12px;">
+            <!-- One switch for every model's portfolio at once. Flipping it
+                 saves and publishes straight away, like any other toggle. -->
+            <div class="admin-pdf-switch">
+              <span class="admin-pdf-switch-text"><strong>Portfolio PDF for clients</strong><span>Shows or hides the Make portfolio PDF button on every model's portfolio, and Model Portfolio in the menu. You can always make PDFs yourself.</span></span>
+              <label class="pp-switch"><input type="checkbox" id="portfolioPdfEnabledInput" aria-label="Portfolio PDF for clients" ${getPortfolioPdfSettings().enabled ? "checked" : ""} onchange="window.saveAdminPortfolioPdfSettings()" /><span class="pp-switch-track" aria-hidden="true"></span><span id="portfolioPdfEnabledLabel">${getPortfolioPdfSettings().enabled ? "On" : "Off"}</span></label>
+            </div>
+            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 12px 0;">Clients pick a model's photos by pose, pay this amount to your UPI ID, then download a 1 or 2 page PDF. You always download free. Set the price to <strong>0</strong> to make it free for everyone.</p>
+            <div style="display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap;">
+              <div>
+                <span style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft); display: block; margin-bottom: 4px; text-transform: uppercase;">Price per PDF</span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-weight: 800; color: #059669; font-size: var(--font-sm);">₹</span>
+                  <input type="number" id="portfolioPdfPriceInput" min="0" step="10" value="${getPortfolioPdfSettings().price}" style="width: 140px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); font-weight: 800; color: #059669; background: var(--bone);" />
+                </div>
+              </div>
+              <div style="flex: 1 1 220px;">
+                <span style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft); display: block; margin-bottom: 4px; text-transform: uppercase;">Your UPI ID</span>
+                <input type="text" id="portfolioPdfUpiInput" value="${esc(getPortfolioPdfSettings().upiId)}" placeholder="yourname@okaxis" autocomplete="off" autocapitalize="none" spellcheck="false" style="width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--ink); background: var(--bone);" />
+              </div>
+            </div>
+            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 10px 0 0 0;">Every client who buys sees this UPI ID, and it's public in the site's code, so use one that isn't your phone number. Each sale emails you the client's UPI reference number: check the money reached your bank.</p>
+            <span id="portfolioPdfSaveStatus" class="admin-pdf-status" aria-live="polite"></span>
           </div>
         </div>
 
@@ -13516,334 +13612,1053 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     printFromContainer(shoot, printCompCardPageHtml(shoot, photos), "CompCard", orientation);
   };
 
-  // ---- Model Portfolio template system (Template 1: The Composite Lookbook) ----
-  // Replaces the old "select any photos, 1-page or multi-page" flat export.
-  // Every slot here is pinned to an existing angle tag (full-body/front/left-
-  // profile/right-profile/three-quarter/back/close-up) — the customer can
-  // only ever put a photo into the slot it was already tagged for. A slot
-  // with zero tagged candidates is simply skipped (no page for it), rather
-  // than forced with a placeholder.
-  const PORTFOLIO_TEMPLATE1_SLOTS = [
-    { angle: "full-body", label: "Full Body" },
-    { angle: "front", label: "Front" },
-    { angle: "left-profile", label: "Left Profile" },
-    { angle: "right-profile", label: "Right Profile" },
-    { angle: "three-quarter", label: "Three-Quarter" },
-    { angle: "back", label: "Back" },
-    { angle: "close-up", label: "Close-Up" }
-  ];
+  // ---- Model Portfolio PDF: pose-picked, one or two pages, paid by UPI ----
+  // Replaces the Composite Lookbook (a cover, a contents page and a page per
+  // pose, sent through the print dialog). Clients want a one- or two-page PDF
+  // to send casting directors and designers, and a phone's print dialog can't
+  // save one. So every page is drawn onto a canvas and packed into a real PDF
+  // file here: it looks the same in every browser and downloads straight to
+  // the phone.
+  //
+  // Paying is on trust. With no server there is nothing to confirm a UPI
+  // payment, so a client unlocks the download by entering the 12-digit
+  // reference from their receipt, and every sale emails the studio that
+  // number to check against the bank. The studio (admin) always exports free.
 
-  function printTemplate1StatBlocksHtml(shoot) {
-    if (shoot.showStatsOnModelPortfolio === false) return "";
-    const rows = [];
-    if (shoot.height) rows.push(["Height", shoot.height]);
-    if (shoot.chest) rows.push([chestLabelOf(shoot), shoot.chest]);
-    if (shoot.waist) rows.push(["Waist", shoot.waist]);
-    if (shoot.hips) rows.push(["Hips", shoot.hips]);
-    if (shoot.shoes) rows.push(["Shoes", shoot.shoes]);
-    if (shoot.modelHair) rows.push(["Hair", shoot.modelHair]);
-    if (shoot.modelEyes) rows.push(["Eyes", shoot.modelEyes]);
-    if (!rows.length) return "";
-    return rows.map(([label, val]) => `
-      <div>
-        <p style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); letter-spacing: 0.1em; text-transform: uppercase; color: #999; margin: 0 0 2px;">${esc(label)}</p>
-        <p style="font-size: calc(12px * var(--print-scale, 1)); font-weight: 700; color: #000; margin: 0;">${esc(val)}</p>
-      </div>
-    `).join("");
+  function portfolioPoses() {
+    return [
+      { angle: "full-body", label: "Full Body" },
+      { angle: "front", label: "Front" },
+      { angle: "left-profile", label: "Left Profile" },
+      { angle: "right-profile", label: "Right Profile" },
+      { angle: "three-quarter", label: "Three-Quarter" },
+      { angle: "back", label: "Back" },
+      { angle: "close-up", label: "Close-Up" }
+    ];
   }
 
-  // manualFields (location/phone/brands) are typed in by the customer at
-  // export time and only ever flow into this generated HTML — never written
-  // back onto the shoot object, never persisted, never sent to the backend.
-  function printTemplate1ContactRowsHtml(shoot, manualFields) {
-    const rows = [];
-    visibleModelLinks(shoot, "Pdf").forEach(l => rows.push([SOCIAL_LABEL[l.kind], socialPrintText(l), false]));
-    if (shoot.agency && showRep(shoot, "Agency", "Pdf")) {
-      rows.push(["Agency", shoot.agency, false, visibleAgencyLinks(shoot, "Pdf").map(socialPrintText).join("  ·  ")]);
-    }
-    if (shoot.modelEmail && showRep(shoot, "Email", "Pdf") && !rows.some(r => r[1] === shoot.modelEmail)) rows.push(["Email", shoot.modelEmail, false]);
-    if (manualFields.phone) rows.push(["Phone", manualFields.phone, true]);
-    if (manualFields.brands && manualFields.brands.length) rows.push(["Worked With", manualFields.brands.join(" · "), true]);
-    if (!rows.length) return "";
-    return rows.map(([label, val, isManual, sub]) => `
-      <div>
-        <p style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); letter-spacing: 0.1em; text-transform: uppercase; color: #999; margin: 0 0 2px;">${esc(label)}${isManual ? ` <span style="font-weight:400; text-transform:none; letter-spacing:0;">(optional, provided by model)</span>` : ""}</p>
-        <p style="font-size: calc(11px * var(--print-scale, 1)); font-weight: 700; color: ${label === "Instagram" ? "var(--accent, #d24e1a)" : "#000"}; margin: 0;">${esc(val)}</p>
-        ${sub ? `<p style="font-size: calc(9px * var(--print-scale, 1)); font-weight: 600; color: #666; margin: 2px 0 0;">${esc(sub)}</p>` : ""}
-      </div>
-    `).join("");
+  // What a client may put in the PDF: the photos the Model Portfolio page
+  // shows (tagged "portfolio" or "both", or untagged legacy) that carry a pose.
+  function portfolioPosedPhotos(shoot) {
+    const angles = new Set(portfolioPoses().map((p) => p.angle));
+    return (shoot.photos || []).filter((p) => (p.usage === "portfolio" || p.usage === "both" || p.usage === undefined) && angles.has(p.angle));
   }
 
-  // Page 1 — full-bleed-feeling cover: name + template label + optional
-  // manual location beside the lead pose, in the same bordered-page look as
-  // every other export on this site (Outfit heading, JetBrains Mono labels,
-  // accent-orange eyebrow) so it reads as one product family, not a one-off.
-  function printTemplate1CoverHtml(shoot, name, heroSlot, manualFields) {
-    const locationLine = manualFields.location ? ` &nbsp;·&nbsp; ${esc(manualFields.location)}` : "";
-    return `
-      <div class="print-page">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #d9d6d0; padding-bottom: 12px; margin-bottom: 16px; flex: 0 0 auto;">
-          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;">MODEL PORTFOLIO</span>
-          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: #000; text-transform: uppercase;">Clicked by nerdyphotographer.in</span>
-        </div>
-        <div style="display: flex; gap: 16px; flex: 1 1 auto; min-height: 0;">
-          <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px;">
-            <p style="font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--accent, #d24e1a); text-transform: uppercase; letter-spacing: 0.15em; margin: 0;">The Composite Lookbook</p>
-            <h1 style="font-family:'Outfit', sans-serif; font-size: 34px; font-weight: 800; margin: 0; text-transform: uppercase; color: #000; letter-spacing: -0.03em; line-height: 1.05;">${esc(name)}</h1>
-            ${printModelTypeBadgesHtml(shoot)}
-            <p style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #555; letter-spacing: 0.05em; margin: 0;">SEASON ${new Date().getFullYear()}${locationLine}</p>
-          </div>
-          <div style="flex: 1.3; position: relative; background: #f4f4f2; border: 1px solid #e2e0dc; border-radius: 6px; overflow: hidden; min-height: 0;">
-            ${heroSlot ? `<img src="${photoSrc(heroSlot.photo)}" alt="Cover" style="width:100%; height:100%; object-fit:cover; object-position: top center; display:block;" />` : ""}
-          </div>
-        </div>
-        <div style="text-align: center; padding-top: 16px; margin-top: 16px; border-top: 1px solid #eee; flex: 0 0 auto;">
-          <p style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: #000; text-transform: uppercase; letter-spacing: 0.1em; margin: 0;">
-            Photographed &amp; Produced by nerdyphotographer.in studio
-          </p>
-        </div>
-      </div>
-    `;
+  // Clients can buy only once the studio has switched it on, and only with
+  // somewhere for the money to go (or nothing to pay).
+  function portfolioPdfSalesOpen() {
+    const s = getPortfolioPdfSettings();
+    return s.enabled && (s.price === 0 || !!s.upiId);
   }
 
-  // Page 2 — stats/contact on the left, a numbered contents list of every
-  // template slot on the right (unfilled slots stay listed but dimmed, so
-  // the document is honest about which poses this export actually has).
-  function printTemplate1ContentsHtml(shoot, name, filledSlots, manualFields) {
-    const statBlocks = printTemplate1StatBlocksHtml(shoot);
-    const contactRows = printTemplate1ContactRowsHtml(shoot, manualFields);
-    const contentsItems = PORTFOLIO_TEMPLATE1_SLOTS.map((slot, i) => {
-      const num = String(i + 1).padStart(2, "0");
-      const filled = filledSlots.find(f => f.angle === slot.angle);
-      if (!filled) {
-        return `
-          <div style="display:flex; align-items:center; gap:10px; opacity:0.4;">
-            <span style="font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:800; color:var(--accent, #d24e1a); width:18px;">${num}</span>
-            <span style="font-size:11px; font-weight:650; flex:1;">${esc(slot.label)}</span>
-          </div>
-        `;
-      }
-      return `
-        <div style="display:flex; align-items:center; gap:10px;">
-          <span style="font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:800; color:var(--accent, #d24e1a); width:18px;">${num}</span>
-          <span style="font-size:11px; font-weight:650; flex:1;">${esc(slot.label)}</span>
-          <img src="${photoSrc(filled.photo)}" style="width:28px; height:34px; object-fit:cover; border-radius:2px;" alt="" />
-        </div>
-      `;
-    }).join("");
+  // One page holds a lead photo and four more; two pages hold every pose.
+  const PORTFOLIO_PDF_CAPACITY = { 1: 5, 2: 7 };
 
-    return `
-      <div class="print-page">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #d9d6d0; padding-bottom: 12px; margin-bottom: 16px; flex: 0 0 auto;">
-          <h2 style="font-family:'Outfit', sans-serif; font-size: 22px; font-weight: 800; margin: 0; text-transform: uppercase; color: #000; letter-spacing: -0.02em;">${esc(name)} — Contents</h2>
-          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: #000; text-transform: uppercase;">Clicked by nerdyphotographer.in</span>
-        </div>
-        <div style="display: flex; gap: 24px; flex: 1 1 auto; min-height: 0;">
-          <div style="flex: 1; display: flex; flex-direction: column; gap: 16px; justify-content: center;">
-            ${statBlocks}
-            ${contactRows}
-          </div>
-          <div style="flex: 1.1; display: flex; flex-direction: column; gap: 10px; justify-content: center; border-left: 1px solid #eee; padding-left: 24px;">
-            <p style="font-family:'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: #999; margin: 0 0 4px;">Contents</p>
-            ${contentsItems}
-          </div>
-        </div>
-        ${PRINT_FOOTER_HTML}
-      </div>
-    `;
-  }
-
-  // Pages 3+ — one spread per filled slot: full-bleed pose photo beside a
-  // simple caption panel. Deliberately doesn't fabricate shoot-specific copy
-  // (no invented location/story) — the only facts printed are the pose name,
-  // the model's name, and studio credit.
-  function printTemplate1SpreadHtml(shoot, name, slot, index, totalCount) {
-    const num = String(index + 1).padStart(2, "0");
-    return `
-      <div class="print-page">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #d9d6d0; padding-bottom: 10px; margin-bottom: 14px; flex: 0 0 auto;">
-          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: 0.1em;">${num} / ${String(totalCount).padStart(2, "0")} — ${esc(slot.label.toUpperCase())}</span>
-          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: #000; text-transform: uppercase;">Clicked by nerdyphotographer.in</span>
-        </div>
-        <div style="display: flex; gap: 16px; flex: 1 1 auto; min-height: 0;">
-          <div style="flex: 1.6; position: relative; background: #f4f4f2; border: 1px solid #e2e0dc; border-radius: 6px; overflow: hidden; min-height: 0;">
-            <img src="${photoSrc(slot.photo)}" alt="${esc(slot.label)}" style="width:100%; height:100%; object-fit:cover; display:block;" />
-          </div>
-          <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 8px;">
-            <p style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; color: var(--accent, #d24e1a); letter-spacing: 0.08em; margin: 0;">${num} — ${esc(slot.label.toUpperCase())}</p>
-            <p style="font-family:'Outfit', sans-serif; font-size: 19px; font-weight: 750; margin: 0; color: #000;">${esc(name)}</p>
-            <p style="font-size: 11px; color: #666; line-height: 1.5; margin: 0;">Selected by ${esc(name)} from their own ${esc(slot.label.toLowerCase())}-tagged photographs.</p>
-          </div>
-        </div>
-        ${PRINT_FOOTER_HTML}
-      </div>
-    `;
-  }
-
-  // Assembles cover + contents + one spread per filled slot, then hands off
-  // to the shared print pipeline. Template 1 is a fixed landscape format —
-  // not user-choosable, since the template itself defines its own shape.
-  function printPortfolioTemplate1(shoot, filledSlots, manualFields) {
-    const name = getTalentCleanName(shoot.talent || shoot.title);
-    const heroSlot = filledSlots[0];
-    let pagesHtml = printTemplate1CoverHtml(shoot, name, heroSlot, manualFields);
-    pagesHtml += printTemplate1ContentsHtml(shoot, name, filledSlots, manualFields);
-    filledSlots.forEach((slot, i) => {
-      pagesHtml += printTemplate1SpreadHtml(shoot, name, slot, i, filledSlots.length);
-    });
-    printFromContainer(shoot, pagesHtml, "Portfolio", "landscape");
-  }
-
-  // The customer-facing flow: role fork (Model vs Agency) up top, then one
-  // pick-a-photo row per available pose, then — Model only — optional
-  // location/phone/brand fields that are typed in here and nowhere else;
-  // Agency exports skip those three fields entirely since an agency rep
-  // wouldn't have (and shouldn't be asked for) that talent's personal info.
-  function openPortfolioTemplateFlow(shoot, photos) {
-    document.getElementById("portfolioTemplateModal")?.remove();
-    const name = getTalentCleanName(shoot.talent || shoot.title);
-
-    const slotsWithCandidates = PORTFOLIO_TEMPLATE1_SLOTS.map(slot => ({
-      ...slot,
-      candidates: photos.filter(p => p.angle === slot.angle)
-    }));
-    const availableSlots = slotsWithCandidates.filter(s => s.candidates.length);
-
-    if (!availableSlots.length) {
-      toast("None of this model's portfolio photos are tagged with a pose yet (Front/Side/Three-Quarter/Back/Close-up) — tag them in Upload to use the template system.");
+  window.saveAdminPortfolioPdfSettings = async () => {
+    const priceEl = document.getElementById("portfolioPdfPriceInput");
+    const upiEl = document.getElementById("portfolioPdfUpiInput");
+    const status = document.getElementById("portfolioPdfSaveStatus");
+    const say = (text, tone) => { if (status) { status.textContent = text; status.dataset.tone = tone; } };
+    const current = getPortfolioPdfSettings();
+    // A blank price box means "leave it as it was", as with the rental rates:
+    // clearing it by accident must not make the PDF free.
+    const price = priceEl && priceEl.value.trim() !== "" ? Number(priceEl.value) : current.price;
+    if (!Number.isInteger(price) || price < 0) { toast("Enter the price in whole rupees: 0 or more."); if (priceEl) priceEl.focus(); return; }
+    const upiId = upiEl ? upiEl.value.trim() : current.upiId;
+    if (upiId && !UPI_ID_RE.test(upiId)) { toast("That isn't a UPI ID. It should look like yourname@okaxis."); if (upiEl) upiEl.focus(); return; }
+    const enabledEl = document.getElementById("portfolioPdfEnabledInput");
+    const showSwitch = (on) => {
+      if (enabledEl) enabledEl.checked = on;
+      const label = document.getElementById("portfolioPdfEnabledLabel");
+      if (label) label.textContent = on ? "On" : "Off";
+      const head = document.getElementById("portfolioPdfHeadState");
+      if (head) { head.textContent = on ? "On" : "Off"; head.dataset.on = String(on); }
+    };
+    const enabled = enabledEl ? enabledEl.checked : current.enabled;
+    // Switched on with a price and nowhere to pay, clients would get a button
+    // that leads nowhere. Refuse the whole save and put the switch back.
+    if (enabled && price > 0 && !upiId) {
+      showSwitch(current.enabled);
+      toast("A paid PDF needs your UPI ID. Add it, or set the price to 0, then switch it on.");
+      if (upiEl) upiEl.focus();
       return;
     }
+    localStorage.setItem("wps_portfolio_pdf", JSON.stringify({ enabled, price, upiId }));
+    showSwitch(enabled);
+    updateAdminBtn();
+    say("Publishing to the live site…", "busy");
+    const ok = await window.publishStudioDataToLiveSite();
+    const at = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const salesLine = !enabled ? "Off: clients don't see it." : price === 0 ? "On: free for everyone." : `On: clients pay ₹${price}.`;
+    say(ok ? `Live on the site (${at}). ${salesLine}` : `Saved on this device only (${salesLine.split(":")[0]}). Publishing failed, so try again.`, ok ? "ok" : "warn");
+  };
 
-    const selectedBySlot = {};
-    availableSlots.forEach(s => { selectedBySlot[s.angle] = s.candidates[0].id; });
-    let role = "model";
+  // The studio's record of a sale. It can't prove the money arrived (only the
+  // bank can), so it carries everything needed to check: the amount, the
+  // client's UPI reference and the note their payment was sent with.
+  async function sendPortfolioPdfSaleEmail(sale) {
+    const to = (window.STUDIO_CONFIG && window.STUDIO_CONFIG.email) || "";
+    if (!to) return false;
+    try {
+      const fd = new FormData();
+      fd.append("_subject", `Portfolio PDF sale: ${sale.model} (₹${sale.price}, ${sale.ref})`);
+      fd.append("_template", "box");
+      fd.append("_replyto", sale.email);
+      fd.append("Record Type", "PORTFOLIO PDF SALE: check this UPI payment reached your bank");
+      fd.append("Model", sale.model);
+      fd.append("Amount", `₹${sale.price}`);
+      fd.append("UPI reference (UTR)", sale.utr);
+      fd.append("Payment note", `Portfolio PDF ${sale.ref}`);
+      fd.append("Paid to", sale.upiId);
+      fd.append("Client email", sale.email);
+      fd.append("PDF", `${sale.pages} page${sale.pages > 1 ? "s" : ""}: ${sale.poses}`);
+      fd.append("Page", location.href);
+      const res = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(to)}`, {
+        method: "POST",
+        headers: { "Accept": "application/json" },
+        body: fd
+      });
+      // FormSubmit answers 200 with success:"false" when it refuses, so the
+      // body's flag is the only honest signal.
+      const body = await res.json().catch(() => null);
+      const ok = res.ok && !!body && (body.success === true || body.success === "true");
+      if (!ok) console.warn("Portfolio PDF sale email failed:", (body && body.message) || res.statusText);
+      return ok;
+    } catch (err) {
+      console.warn("Portfolio PDF sale email error:", err);
+      return false;
+    }
+  }
+
+  // The QR library is only needed at the payment step, so it loads then
+  // rather than weighing down every page of the site.
+  let qrLibraryLoad = null;
+  function loadQrLibrary() {
+    if (typeof window.qrcode === "function") return Promise.resolve(window.qrcode);
+    if (!qrLibraryLoad) {
+      qrLibraryLoad = new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "/vendor/qrcode.js";
+        s.onload = () => (typeof window.qrcode === "function" ? resolve(window.qrcode) : reject(new Error("QR library loaded without qrcode()")));
+        s.onerror = () => { qrLibraryLoad = null; reject(new Error("QR library failed to load")); };
+        document.head.appendChild(s);
+      });
+    }
+    return qrLibraryLoad;
+  }
+
+  async function drawUpiQr(canvas, text) {
+    const makeQr = await loadQrLibrary();
+    const qr = makeQr(0, "M");
+    qr.addData(text);
+    qr.make();
+    const count = qr.getModuleCount(), quiet = 4;
+    const scale = Math.max(4, Math.ceil(352 / (count + quiet * 2)));
+    canvas.width = canvas.height = (count + quiet * 2) * scale;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#000";
+    for (let r = 0; r < count; r++) {
+      for (let c = 0; c < count; c++) {
+        if (qr.isDark(r, c)) ctx.fillRect((c + quiet) * scale, (r + quiet) * scale, scale, scale);
+      }
+    }
+  }
+
+  // UPI's own link format: scanning it (or tapping it on a phone) opens the
+  // payment with the amount and note already filled in.
+  function portfolioUpiLink(upiId, price, ref) {
+    const payee = (window.STUDIO_CONFIG && window.STUDIO_CONFIG.studioName) || "nerdyphotographer.in";
+    return `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payee)}&am=${price}.00&cu=INR&tn=${encodeURIComponent(`Portfolio PDF ${ref}`)}`;
+  }
+
+  /* ---- PDF page drawing (all measurements in millimetres on A4) ---- */
+  const PDF_PAGE = { w: 210, h: 297, margin: 12, gap: 2.5 };
+  const PDF_FOOTER_H = 8.5;
+  const PDF_MONO = "'JetBrains Mono', ui-monospace, monospace";
+  const PDF_SANS = "Inter, 'Helvetica Neue', Arial, sans-serif";
+  const PDF_DISPLAY = "Archivo, Inter, 'Helvetica Neue', Arial, sans-serif";
+  const PDF_LABEL = { weight: 600, size: 2.0, family: PDF_MONO, spacing: 0.35, upper: true, color: "#8a8782" };
+  const PDF_VALUE = { weight: 600, size: 3.3, family: PDF_SANS, color: "#000" };
+  const PDF_CELL_H = 6.6;
+  const PDF_NOTE_H = 4.8;
+  const PDF_BOOKING_NOTE = "To book this talent, contact the model or their representing agency through the channels above.";
+  // The studio mark from the comp card header, in black for paper.
+  const PDF_STUDIO_MARK = "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="200" height="200" fill="none"><circle cx="50" cy="52" r="39" stroke="#000" stroke-width="3" stroke-linecap="round"/><path d="M 26 22 C 26 22 28 32 37 40 C 45 44 48 40 50 38 C 52 40 55 44 63 40 C 72 32 74 22 74 22 C 74 22 70 34 50 44 C 30 34 26 22 26 22 Z" fill="#0e0e0e" stroke="#000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="36" cy="48" r="13" stroke="#000" stroke-width="3"/><circle cx="64" cy="48" r="13" stroke="#000" stroke-width="3"/><path d="M 49 48 L 51 48" stroke="#000" stroke-width="3"/><path d="M 23 48 L 16 48 L 16 40" stroke="#000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M 77 48 L 84 48 L 84 40" stroke="#000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M 36 38 L 41 45 M 42.5 44 L 38 52 M 39 53 L 30 51 M 31 50 L 29 42 M 30 41 L 38 41" stroke="#000" stroke-width="2.2" stroke-linecap="round"/><path d="M 64 38 L 69 45 M 70.5 44 L 66 52 M 67 53 L 58 51 M 59 50 L 57 42 M 58 41 L 66 41" stroke="#000" stroke-width="2.2" stroke-linecap="round"/><polygon points="50,49 46,55 54,55" fill="#d24e1a"/><path d="M 20 58 C 24 72 35 78 50 86 C 65 78 76 72 80 58" stroke="#000" stroke-width="3" stroke-linecap="round"/><path d="M 27 68 C 32 78 40 82 50 90 C 60 82 68 78 73 68" stroke="#000" stroke-width="3" stroke-linecap="round"/></svg>');
+
+  // A blank A4 canvas with millimetre drawing helpers. Sizes are converted to
+  // pixels on every call instead of scaling the context, because some
+  // browsers render small text badly under a scale transform.
+  function newPdfPage(dpi) {
+    const k = dpi / 25.4;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(PDF_PAGE.w * k);
+    canvas.height = Math.round(PDF_PAGE.h * k);
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.textBaseline = "alphabetic";
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    const u = (mm) => mm * k;
+    const setFont = (style) => {
+      ctx.font = `${style.weight || 400} ${u(style.size || 3)}px ${style.family || PDF_SANS}`;
+      if ("letterSpacing" in ctx) ctx.letterSpacing = `${u(style.spacing || 0)}px`;
+    };
+    const cased = (str, style) => (style.upper ? String(str).toUpperCase() : String(str));
+    const page = {
+      canvas, ctx, u, links: [],
+      measure(str, style) {
+        setFont(style);
+        return ctx.measureText(cased(str, style)).width / k;
+      },
+      text(str, x, y, style) {
+        setFont(style);
+        ctx.fillStyle = style.color || "#000";
+        ctx.textAlign = style.align || "left";
+        ctx.fillText(cased(str, style), u(x), u(y));
+      },
+      // Shorten to a width, ending in an ellipsis.
+      fit(str, maxW, style) {
+        let s = String(str);
+        if (page.measure(s, style) <= maxW) return s;
+        while (s.length > 1 && page.measure(s + "…", style) > maxW) s = s.slice(0, -1);
+        return s.trimEnd() + "…";
+      },
+      wrap(str, maxW, style) {
+        const lines = [];
+        let line = "";
+        String(str).split(/\s+/).forEach((word) => {
+          const next = line ? `${line} ${word}` : word;
+          if (line && page.measure(next, style) > maxW) { lines.push(line); line = word; } else { line = next; }
+        });
+        if (line) lines.push(line);
+        return lines;
+      },
+      rule(x1, y, x2) {
+        ctx.strokeStyle = "#d9d6d0";
+        ctx.lineWidth = Math.max(1, u(0.25));
+        ctx.beginPath();
+        ctx.moveTo(u(x1), u(y));
+        ctx.lineTo(u(x2), u(y));
+        ctx.stroke();
+      },
+      // A clickable area in the finished PDF (an Instagram handle, an email).
+      link(x, y, w, h, url) {
+        if (/^(https?:|mailto:|tel:)/i.test(String(url || ""))) page.links.push({ x, y, w, h, url: String(url) });
+      }
+    };
+    return page;
+  }
+
+  // Where to anchor a crop, as fractions of the photo: the same point the
+  // site's object-position uses, so the PDF crops the way the album does.
+  // "center" is what publishing writes for a photo nobody positioned, so it
+  // leans up a little: in a portrait crop the face is nearly always above
+  // the middle.
+  function photoFocus(p) {
+    const clamp = (v) => Math.min(1, Math.max(0, v));
+    if (typeof p.focalX === "number" && typeof p.focalY === "number") return { x: clamp(p.focalX / 100), y: clamp(p.focalY / 100) };
+    const parts = String(p.objectPosition || "center").trim().toLowerCase().split(/\s+/);
+    const pcts = parts.filter((t) => /%$/.test(t)).map((t) => parseFloat(t) / 100);
+    if (pcts.length === 2 && pcts.every((v) => !isNaN(v))) return { x: clamp(pcts[0]), y: clamp(pcts[1]) };
+    let x = 0.5, y = 0.35;
+    parts.forEach((t) => {
+      if (t === "left") x = 0; else if (t === "right") x = 1;
+      else if (t === "top") y = 0; else if (t === "bottom") y = 1;
+    });
+    return { x, y };
+  }
+
+  function drawPdfPhoto(page, img, photo, x, y, w, h) {
+    const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    const scale = Math.max(w / iw, h / ih);
+    const sw = Math.min(iw, w / scale), sh = Math.min(ih, h / scale);
+    const f = photoFocus(photo);
+    page.ctx.drawImage(img, (iw - sw) * f.x, (ih - sh) * f.y, sw, sh, page.u(x), page.u(y), page.u(w), page.u(h));
+    // A hairline frame, so a photo shot on white seamless still has an edge
+    // against the paper.
+    page.ctx.strokeStyle = "#e2e0dc";
+    page.ctx.lineWidth = Math.max(1, page.u(0.2));
+    page.ctx.strokeRect(page.u(x), page.u(y), page.u(w), page.u(h));
+  }
+
+  // A photo with its pose named in a small white tag in the corner, so a
+  // casting director can see which angle is which at a glance.
+  function drawPdfSlot(page, img, slot, x, y, w, h) {
+    drawPdfPhoto(page, img, slot.photo, x, y, w, h);
+    const style = { weight: 700, size: 1.9, family: PDF_MONO, spacing: 0.25, upper: true, color: "#111" };
+    const tw = page.measure(slot.label, style);
+    const padX = 1.4, tagH = 3.9;
+    if (tw + padX * 2 > w - 3.2) return;
+    const tx = x + 1.6, ty = y + h - tagH - 1.6;
+    page.ctx.fillStyle = "rgba(255,255,255,0.9)";
+    page.ctx.fillRect(page.u(tx), page.u(ty), page.u(tw + padX * 2), page.u(tagH));
+    page.text(slot.label, tx + padX, ty + tagH / 2 + 0.68, style);
+  }
+
+  function pdfHeaderLabel(spec, pageNo) {
+    const src = (spec.shoot.originalShoots && spec.shoot.originalShoots[0]) || spec.shoot;
+    const d = new Date(src.date || "");
+    const updated = isNaN(d) ? "" : ` · Updated ${d.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}`;
+    return `Model portfolio${updated}${spec.pages > 1 ? ` · ${pageNo}/${spec.pages}` : ""}`;
+  }
+
+  function drawPdfHeader(page, mark, label) {
+    const { w, margin: M } = PDF_PAGE;
+    const base = M + 3.4;
+    page.text(label, M, base, { ...PDF_LABEL, size: 2.3 });
+    const brand = "nerdyphotographer.in";
+    const brandStyle = { weight: 700, size: 2.3, family: PDF_MONO, spacing: 0.3, upper: true, color: "#000", align: "right" };
+    const bw = page.measure(brand, brandStyle);
+    page.text(brand, w - M, base, brandStyle);
+    if (mark) page.ctx.drawImage(mark, page.u(w - M - bw - 5.6), page.u(M + 0.35), page.u(4.4), page.u(4.4));
+    page.link(w - M - bw - 5.8, M - 0.5, bw + 5.8, 5.5, "https://www.nerdyphotographer.in/");
+    page.rule(M, M + 6, w - M);
+    return M + 6;
+  }
+
+  // The model's name as large as the width allows; returns its baseline.
+  function drawPdfName(page, name, top, maxSize) {
+    const width = PDF_PAGE.w - PDF_PAGE.margin * 2;
+    const style = (size) => ({ weight: 800, size, family: PDF_DISPLAY, spacing: -0.025 * size, upper: true, color: "#000" });
+    let size = maxSize;
+    while (size > 5 && page.measure(name, style(size)) > width) size -= 0.25;
+    page.text(page.fit(name, width, style(size)), PDF_PAGE.margin, top + size * 0.74, style(size));
+    return top + size * 0.74;
+  }
+
+  function drawPdfBadges(page, shoot, top) {
+    const types = modelTypesOf(shoot);
+    if (!types.length) return top;
+    const style = { weight: 600, size: 2.0, family: PDF_MONO, spacing: 0.3, upper: true, color: "#333" };
+    const { ctx, u } = page;
+    const h = 4.6;
+    let x = PDF_PAGE.margin;
+    types.forEach((t) => {
+      const label = modelTypeLabel(t);
+      const w = page.measure(label, style) + 5.6;
+      ctx.strokeStyle = "#cfccc6";
+      ctx.lineWidth = Math.max(1, u(0.25));
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(u(x), u(top), u(w), u(h), u(h / 2)); else ctx.rect(u(x), u(top), u(w), u(h));
+      ctx.stroke();
+      page.text(label, x + 2.8, top + h / 2 + 0.72, style);
+      x += w + 2;
+    });
+    return top + h;
+  }
+
+  function portfolioPdfStatCells(shoot) {
+    if (shoot.showStatsOnModelPortfolio === false) return [];
+    return [
+      ["Height", shoot.height], [chestLabelOf(shoot), shoot.chest], ["Waist", shoot.waist], ["Hips", shoot.hips],
+      ["Shoes", shoot.shoes], ["Hair", shoot.modelHair], ["Eyes", shoot.modelEyes]
+    ].filter(([, v]) => v && String(v).trim()).map(([label, v]) => ({ label, value: String(v).trim() }));
+  }
+
+  // The same contact details, under the same per-surface switches, as the
+  // comp card PDF, plus the two a client may type in for this PDF alone.
+  function portfolioPdfContactCells(shoot, extra) {
+    const cells = [];
+    visibleModelLinks(shoot, "Pdf").forEach((l) => cells.push({ label: SOCIAL_LABEL[l.kind] || "Link", value: socialPrintText(l), url: l.url }));
+    if (shoot.modelEmail && showRep(shoot, "Email", "Pdf") && !cells.some((c) => c.value === shoot.modelEmail)) {
+      cells.push({ label: "Email", value: shoot.modelEmail, url: `mailto:${shoot.modelEmail}` });
+    }
+    if (shoot.agency && showRep(shoot, "Agency", "Pdf")) {
+      cells.push({ label: "Agency", value: shoot.agency });
+      visibleAgencyLinks(shoot, "Pdf").forEach((l) => cells.push({ label: `Agency ${SOCIAL_LABEL[l.kind] || "link"}`, value: socialPrintText(l), url: l.url }));
+    }
+    if (extra.location) cells.push({ label: "Based in", value: extra.location });
+    if (extra.phone) cells.push({ label: "Phone", value: extra.phone, url: `tel:${extra.phone.replace(/[^\d+]/g, "")}` });
+    return cells;
+  }
+
+  // A small label over its value; returns the width used.
+  function drawPdfCell(page, cell, x, top, maxW) {
+    const label = page.fit(cell.label, maxW, PDF_LABEL);
+    const value = page.fit(cell.value, maxW, PDF_VALUE);
+    page.text(label, x, top + 1.6, PDF_LABEL);
+    page.text(value, x, top + 5.8, PDF_VALUE);
+    const w = Math.min(maxW, Math.max(page.measure(label, PDF_LABEL), page.measure(value, PDF_VALUE)));
+    if (cell.url) page.link(x, top, w, PDF_CELL_H, cell.url);
+    return w;
+  }
+
+  // Cells in wrapping rows across maxW; returns the height. With draw false
+  // it only measures, so a page can reserve the room before placing photos.
+  function flowPdfCells(page, cells, x, top, maxW, draw) {
+    const gapX = 7, gapY = 2.6;
+    let cx = x, cy = top;
+    cells.forEach((cell) => {
+      const w = Math.min(maxW, Math.max(page.measure(cell.label, PDF_LABEL), page.measure(cell.value, PDF_VALUE)));
+      if (cx > x && cx + w > x + maxW) { cx = x; cy += PDF_CELL_H + gapY; }
+      if (draw) drawPdfCell(page, cell, cx, cy, x + maxW - cx);
+      cx += w + gapX;
+    });
+    return cells.length ? cy + PDF_CELL_H - top : 0;
+  }
+
+  function drawPdfBookingNote(page, x, baseline, maxW) {
+    const style = { weight: 400, size: 2.1, family: PDF_SANS, color: "#8a8782" };
+    page.wrap(PDF_BOOKING_NOTE, maxW, style).forEach((line, i) => page.text(line, x, baseline + i * 3.1, style));
+  }
+
+  // Branding: the credit, the booking link and one line on the studio. It
+  // doubles as the studio's marketing, so every page carries it.
+  function drawPdfFooter(page) {
+    const { w, h, margin: M } = PDF_PAGE;
+    const top = h - M - PDF_FOOTER_H;
+    page.rule(M, top, w - M);
+    page.text("Photographed by nerdyphotographer.in  ·  @nerdyphotographer.in", M, top + 3.8, PDF_LABEL);
+    const book = "Book a shoot  ·  nerdyphotographer.in/book";
+    const bookStyle = { weight: 700, size: 2.2, family: PDF_MONO, spacing: 0.1, color: "#000", align: "right" };
+    const bw = page.measure(book, bookStyle);
+    page.text(book, w - M, top + 3.8, bookStyle);
+    page.link(w - M - bw, top + 0.8, bw, 4, "https://www.nerdyphotographer.in/book");
+    page.text("Fashion, fitness, lifestyle and sports photography, Noida. Comp cards, portfolio cards and frames are creative works produced under nerdyphotographer.in.", M, top + 7.6, { weight: 400, size: 1.9, family: PDF_SANS, color: "#9a9791" });
+  }
+
+  // Only on the preview a client sees before paying.
+  function drawPdfPreviewMark(page) {
+    const { ctx, u } = page;
+    const style = { weight: 800, size: 8, family: PDF_DISPLAY, spacing: 0.8, upper: true, color: "rgba(210, 78, 26, 0.38)", align: "center" };
+    ctx.save();
+    ctx.translate(u(PDF_PAGE.w / 2), u(PDF_PAGE.h / 2));
+    ctx.rotate(-Math.PI / 6);
+    for (let row = -6; row <= 6; row++) {
+      for (let col = -2; col <= 2; col++) page.text("Preview", col * 72 + (row % 2 ? 36 : 0), row * 30, style);
+    }
+    ctx.restore();
+  }
+
+  /* ---- Layout: where each photo sits, chosen to crop as little as possible ---- */
+  const pdfAspect = (img) => ((img.naturalWidth || img.width) / (img.naturalHeight || img.height)) || 2 / 3;
+  // How much of a photo a cell throws away: 0 when the shapes match.
+  const pdfCropLoss = (cellAspect, photoAspect) => 1 - Math.min(cellAspect / photoAspect, photoAspect / cellAspect);
+
+  // Every way to split photos, kept in order, into rows of at most maxPerRow.
+  function pdfRowSplits(n, maxPerRow) {
+    const out = [];
+    for (let mask = 0; mask < (1 << Math.max(0, n - 1)); mask++) {
+      const rows = [];
+      let row = [0];
+      for (let i = 1; i < n; i++) {
+        if (mask & (1 << (i - 1))) { rows.push(row); row = [i]; } else row.push(i);
+      }
+      rows.push(row);
+      if (rows.every((r) => r.length <= maxPerRow)) out.push(rows);
+    }
+    return out;
+  }
+
+  // Each row as tall as it must be for its photos to span width W uncropped.
+  const pdfRowHeights = (rows, aspects, W, gap) => rows.map((r) => (W - (r.length - 1) * gap) / r.reduce((s, i) => s + aspects[i], 0));
+
+  // Fill a W x H box exactly: take the row split whose natural height is
+  // closest to H, then share the difference out as an even crop on every cell.
+  function pdfFillRows(aspects, W, H, gap, maxPerRow) {
+    if (!aspects.length || W <= gap * aspects.length || H <= 0) return null;
+    let best = null;
+    pdfRowSplits(aspects.length, maxPerRow).forEach((rows) => {
+      const heights = pdfRowHeights(rows, aspects, W, gap);
+      const stretch = (H - (rows.length - 1) * gap) / heights.reduce((s, x) => s + x, 0);
+      if (!(stretch > 0)) return;
+      const loss = pdfCropLoss(1 / stretch, 1);
+      if (!best || loss < best.loss) best = { rows, heights, stretch, loss };
+    });
+    if (!best) return null;
+    const cells = [];
+    let y = 0;
+    best.rows.forEach((r, ri) => {
+      const rh = best.heights[ri] * best.stretch;
+      let x = 0;
+      r.forEach((i) => { const cw = best.heights[ri] * aspects[i]; cells[i] = { x, y, w: cw, h: rh }; x += cw + gap; });
+      y += rh + gap;
+    });
+    return { cells, loss: best.loss };
+  }
+
+  // Fit photos inside W x H: the row split that shows them largest, shrunk
+  // to fit if it runs too tall. If it comes up short, rows may grow up to
+  // maxStretch taller, trimming a little off each photo's sides rather than
+  // leaving the bottom of the page blank.
+  function pdfContainRows(aspects, W, H, gap, maxPerRow, maxStretch = 1) {
+    let best = null;
+    pdfRowSplits(aspects.length, maxPerRow).forEach((rows) => {
+      const heights = pdfRowHeights(rows, aspects, W, gap);
+      const total = heights.reduce((s, x) => s + x, 0) + (rows.length - 1) * gap;
+      const s = Math.min(1, H / total);
+      const area = s * s * W * total;
+      if (!best || area > best.area + 1e-6) best = { rows, heights, s, total, area };
+    });
+    const gaps = (best.rows.length - 1) * gap * best.s;
+    const photosH = best.total * best.s - gaps;
+    const stretch = best.s < 1 ? 1 : Math.min(maxStretch, Math.max(1, (H - gaps) / photosH));
+    const cells = [];
+    let y = 0;
+    best.rows.forEach((r, ri) => {
+      const rh = best.heights[ri] * best.s * stretch;
+      let x = 0;
+      r.forEach((i) => { const cw = best.heights[ri] * aspects[i] * best.s; cells[i] = { x, y, w: cw, h: rh }; x += cw + gap * best.s; });
+      y += rh + gap * best.s;
+    });
+    return { cells, width: W * best.s, height: photosH * stretch + gaps };
+  }
+
+  // One page: the lead photo large, the rest beside or beneath it. Tries both
+  // arrangements at every lead size and block height, and keeps the one that
+  // crops least. A shorter block costs a little, since it leaves paper blank,
+  // but a clean shorter grid beats a tall one that slices faces.
+  function pdfLeadLayout(leadAspect, aspects, W, maxH, gap) {
+    let best = null;
+    const consider = (c) => { if (c && (!best || c.score < best.score)) best = c; };
+    for (let H = maxH; H >= maxH * 0.55; H -= 2) {
+      const unused = (1 - H / maxH) * 0.6;
+      if (!aspects.length) {
+        const w = Math.min(W, H * leadAspect);
+        consider({ score: pdfCropLoss(w / H, leadAspect) + unused + (1 - w / W) * 0.3, height: H, lead: { x: (W - w) / 2, y: 0, w, h: H }, cells: [] });
+        continue;
+      }
+      for (let f = 0.38; f <= 0.721; f += 0.02) {
+        const lw = W * f;
+        const side = pdfFillRows(aspects, W - lw - gap, H, gap, 2);
+        if (side) consider({ score: pdfCropLoss(lw / H, leadAspect) * 1.5 + side.loss + unused, height: H, lead: { x: 0, y: 0, w: lw, h: H }, cells: side.cells.map((c) => ({ ...c, x: c.x + lw + gap })) });
+      }
+      for (let f = 0.4; f <= 0.701; f += 0.02) {
+        const lh = H * f;
+        const below = pdfFillRows(aspects, W, H - lh - gap, gap, 4);
+        if (below) consider({ score: pdfCropLoss(W / lh, leadAspect) * 1.5 + below.loss + unused, height: H, lead: { x: 0, y: 0, w: W, h: lh }, cells: below.cells.map((c) => ({ ...c, y: c.y + lh + gap })) });
+      }
+    }
+    return best;
+  }
+
+  /* ---- Page compositions ---- */
+  // The header, name and model-type badges a first page opens with; returns
+  // where the content below them starts.
+  function drawPdfTitleBlock(page, spec, mark) {
+    const nameBase = drawPdfName(page, spec.name, drawPdfHeader(page, mark, pdfHeaderLabel(spec, 1)) + 5, 12);
+    return drawPdfBadges(page, spec.shoot, nameBase + 3) + 5;
+  }
+
+  // Measurements between hairlines, then contact details and the booking
+  // note. With draw false it only measures, so a page can reserve the room
+  // before placing photos. Returns the height used.
+  function pdfDetailsBlock(page, spec, top, draw) {
+    const { w: PW, margin: M } = PDF_PAGE;
+    const CW = PW - M * 2;
+    const stats = portfolioPdfStatCells(spec.shoot);
+    const contact = portfolioPdfContactCells(spec.shoot, spec);
+    let y = top;
+    if (stats.length) {
+      if (draw) page.rule(M, y, PW - M);
+      y += flowPdfCells(page, stats, M, y + 3, CW, draw) + 6;
+      if (draw) page.rule(M, y, PW - M);
+    }
+    if (contact.length) {
+      y += flowPdfCells(page, contact, M, y + 3, CW, draw) + 3 + PDF_NOTE_H;
+      if (draw) drawPdfBookingNote(page, M, y - 1.2, CW);
+    }
+    return y - top;
+  }
+
+  function composeOnePagePdf(page, spec, imgs, mark) {
+    const { w: PW, h: PH, margin: M, gap } = PDF_PAGE;
+    const CW = PW - M * 2;
+    const y = drawPdfTitleBlock(page, spec, mark);
+    const detailsH = pdfDetailsBlock(page, spec, 0, false);
+    const photoMaxH = PH - M - PDF_FOOTER_H - 5 - (detailsH ? detailsH + 5 : 0) - y;
+    const layout = pdfLeadLayout(pdfAspect(imgs[0]), imgs.slice(1).map(pdfAspect), CW, photoMaxH, gap);
+    drawPdfSlot(page, imgs[0], spec.lead, M + layout.lead.x, y + layout.lead.y, layout.lead.w, layout.lead.h);
+    layout.cells.forEach((c, i) => drawPdfSlot(page, imgs[i + 1], spec.others[i], M + c.x, y + c.y, c.w, c.h));
+    pdfDetailsBlock(page, spec, y + layout.height + 5, true);
+    drawPdfFooter(page);
+  }
+
+  // Page one of two: the lead photo as large as the page allows, with every
+  // detail beneath it, like the front of a comp card.
+  function composeCoverPdf(page, spec, img, mark) {
+    const { w: PW, h: PH, margin: M } = PDF_PAGE;
+    const CW = PW - M * 2;
+    const y = drawPdfTitleBlock(page, spec, mark);
+    const detailsH = pdfDetailsBlock(page, spec, 0, false);
+    const roomH = PH - M - PDF_FOOTER_H - 5 - (detailsH ? detailsH + 5 : 0) - y;
+    // As large as the room allows. The photo may give up a tenth of its frame
+    // to fill more of the page: a portrait off its sides, a landscape off its
+    // top and bottom.
+    const aspect = pdfAspect(img);
+    const lw = Math.min(CW, roomH * aspect * 1.1);
+    const lh = Math.min(roomH, (lw / aspect) * 1.1);
+    drawPdfSlot(page, img, spec.lead, M + (CW - lw) / 2, y, lw, lh);
+    pdfDetailsBlock(page, spec, y + lh + 5, true);
+    drawPdfFooter(page);
+  }
+
+  // Page two of two: every other pose, trimmed by no more than a sliver.
+  function composePosesPdf(page, spec, imgs, mark) {
+    const { w: PW, h: PH, margin: M, gap } = PDF_PAGE;
+    const CW = PW - M * 2;
+    let y = drawPdfHeader(page, mark, pdfHeaderLabel(spec, 2)) + 4.5;
+    const nameStyle = { weight: 800, size: 6, family: PDF_DISPLAY, spacing: -0.12, upper: true, color: "#000" };
+    const name = page.fit(spec.name, CW - 30, nameStyle);
+    page.text(name, M, y + 4.4, nameStyle);
+    page.text("Poses", M + page.measure(name, nameStyle) + 3, y + 4.4, PDF_LABEL);
+    y += 9;
+    const grid = pdfContainRows(imgs.map(pdfAspect), CW, PH - M - PDF_FOOTER_H - 5 - y, gap, 3, 1.12);
+    const x0 = M + (CW - grid.width) / 2;
+    grid.cells.forEach((c, i) => drawPdfSlot(page, imgs[i], spec.others[i], x0 + c.x, y + c.y, c.w, c.h));
+    drawPdfFooter(page);
+  }
+
+  function loadPdfImage(src, cache) {
+    if (!cache.has(src)) {
+      const load = new Promise((resolve, reject) => {
+        const img = new Image();
+        img.decoding = "async";
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error(`Couldn't load ${src}`));
+        img.src = src;
+      });
+      // A failed load mustn't stay cached, or retrying could never work.
+      load.catch(() => cache.delete(src));
+      cache.set(src, load);
+    }
+    return cache.get(src);
+  }
+
+  // Canvas text draws in whatever font is loaded at that instant, so wait for
+  // the site's fonts (and the glyphs this model's name needs) first.
+  function ensurePdfFonts(spec) {
+    if (!document.fonts || !document.fonts.load) return Promise.resolve();
+    const sample = `${spec.name} ${spec.location || ""} ${spec.phone || ""} ABCXYZ abcxyz 0123456789 @·…`;
+    return Promise.all(["800 32px Archivo", "600 16px Inter", "400 16px Inter", "600 16px 'JetBrains Mono'", "700 16px 'JetBrains Mono'"]
+      .map((f) => document.fonts.load(f, sample).catch(() => null)));
+  }
+
+  async function renderPortfolioPdfPages(spec, { dpi, watermark, cache }) {
+    const slots = [spec.lead, ...spec.others];
+    // The preview is small, so it draws from the 960px copies when they exist.
+    const srcFor = (photo) => photoSrc(dpi < 100 && photo.medium ? { url: photo.medium } : photo);
+    const [imgs, mark] = await Promise.all([
+      Promise.all(slots.map((s) => loadPdfImage(srcFor(s.photo), cache))),
+      loadPdfImage(PDF_STUDIO_MARK, cache).catch(() => null),
+      ensurePdfFonts(spec)
+    ]);
+    const pages = [newPdfPage(dpi)];
+    if (spec.pages === 2) {
+      composeCoverPdf(pages[0], spec, imgs[0], mark);
+      pages.push(newPdfPage(dpi));
+      composePosesPdf(pages[1], spec, imgs.slice(1), mark);
+    } else {
+      composeOnePagePdf(pages[0], spec, imgs, mark);
+    }
+    if (watermark) pages.forEach(drawPdfPreviewMark);
+    return pages;
+  }
+
+  function pdfCanvasJpeg(canvas, quality) {
+    return new Promise((resolve, reject) => canvas.toBlob((blob) => {
+      if (!blob) { reject(new Error("A page could not be encoded")); return; }
+      blob.arrayBuffer().then((buf) => resolve(new Uint8Array(buf)), reject);
+    }, "image/jpeg", quality));
+  }
+
+  // A minimal PDF: one full-page JPEG per A4 page, plus link areas over the
+  // printed handles and addresses so they can be tapped. JPEG goes into a PDF
+  // as-is (DCTDecode), so no PDF library is needed.
+  async function buildPortfolioPdf(pages, title) {
+    const enc = new TextEncoder();
+    const jpegs = [];
+    for (const p of pages) jpegs.push(await pdfCanvasJpeg(p.canvas, 0.9));
+    const PT_W = 595.28, PT_H = 841.89, PT = 72 / 25.4;
+    const chunks = [];
+    const offsets = [];
+    let length = 0;
+    const write = (part) => { const bytes = typeof part === "string" ? enc.encode(part) : part; chunks.push(bytes); length += bytes.length; };
+    const num = (n) => String(Math.round(n * 100) / 100);
+    const literal = (s) => `(${String(s).replace(/[\\()]/g, (c) => `\\${c}`)})`;
+    // Titles may hold any script, so they go in as UTF-16 with a byte-order mark.
+    const unicodeText = (s) => `<FEFF${Array.from(String(s)).map((ch) => {
+      const c = ch.codePointAt(0);
+      if (c <= 0xffff) return c.toString(16).padStart(4, "0");
+      const v = c - 0x10000;
+      return (0xd800 + (v >> 10)).toString(16) + (0xdc00 + (v & 0x3ff)).toString(16);
+    }).join("").toUpperCase()}>`;
+
+    let nextId = 3;
+    const ids = pages.map((p) => ({ page: nextId++, content: nextId++, image: nextId++, annots: p.links.map(() => nextId++) }));
+    const infoId = nextId++;
+    const begin = (id) => { offsets[id] = length; write(`${id} 0 obj\n`); };
+    const end = () => write("\nendobj\n");
+
+    write("%PDF-1.4\n");
+    write(new Uint8Array([0x25, 0xe2, 0xe3, 0xcf, 0xd3, 0x0a]));
+    begin(1); write("<< /Type /Catalog /Pages 2 0 R >>"); end();
+    begin(2); write(`<< /Type /Pages /Kids [${ids.map((x) => `${x.page} 0 R`).join(" ")}] /Count ${pages.length} >>`); end();
+    pages.forEach((p, i) => {
+      const id = ids[i], jpeg = jpegs[i];
+      begin(id.page);
+      write(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PT_W} ${PT_H}] /Resources << /XObject << /Im0 ${id.image} 0 R >> >> /Contents ${id.content} 0 R${id.annots.length ? ` /Annots [${id.annots.map((a) => `${a} 0 R`).join(" ")}]` : ""} >>`);
+      end();
+      const content = `q\n${PT_W} 0 0 ${PT_H} 0 0 cm\n/Im0 Do\nQ\n`;
+      begin(id.content); write(`<< /Length ${content.length} >>\nstream\n${content}endstream`); end();
+      begin(id.image);
+      write(`<< /Type /XObject /Subtype /Image /Width ${p.canvas.width} /Height ${p.canvas.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`);
+      write(jpeg);
+      write("\nendstream");
+      end();
+      p.links.forEach((l, li) => {
+        const url = l.url.replace(/[^\x21-\x7e]/g, (c) => encodeURIComponent(c));
+        begin(id.annots[li]);
+        write(`<< /Type /Annot /Subtype /Link /Rect [${num(l.x * PT)} ${num(PT_H - (l.y + l.h) * PT)} ${num((l.x + l.w) * PT)} ${num(PT_H - l.y * PT)}] /Border [0 0 0] /A << /S /URI /URI ${literal(url)} >> >>`);
+        end();
+      });
+    });
+    begin(infoId);
+    write(`<< /Title ${unicodeText(title)} /Author (nerdyphotographer.in) /Creator (nerdyphotographer.in) /CreationDate (D:${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}Z) >>`);
+    end();
+
+    const xrefAt = length;
+    let xref = `xref\n0 ${nextId}\n0000000000 65535 f \n`;
+    for (let id = 1; id < nextId; id++) xref += `${String(offsets[id]).padStart(10, "0")} 00000 n \n`;
+    write(xref);
+    write(`trailer\n<< /Size ${nextId} /Root 1 0 R /Info ${infoId} 0 R >>\nstartxref\n${xrefAt}\n%%EOF\n`);
+
+    const out = new Uint8Array(length);
+    let at = 0;
+    chunks.forEach((c) => { out.set(c, at); at += c.length; });
+    return out;
+  }
+
+  /* ---- The builder a client (or the studio) works through ---- */
+  function openPortfolioPdfBuilder(shoot, photos) {
+    const open = document.getElementById("portfolioPdfModal");
+    if (open && open._close) open._close();
+
+    const admin = isAdmin();
+    const sale = getPortfolioPdfSettings();
+    const price = admin ? 0 : sale.price;
+    const name = getTalentCleanName(shoot.talent || shoot.title);
+    const coarse = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+    const poses = portfolioPoses()
+      .map((pose) => ({ ...pose, candidates: photos.filter((p) => p.angle === pose.angle) }))
+      .filter((pose) => pose.candidates.length);
+    const state = {
+      pages: 1,
+      picks: {},           // pose -> chosen photo id
+      cleared: new Set(),  // poses the client deliberately left out
+      lead: "",
+      location: "", phone: "", email: "", utr: "",
+      paid: price === 0,
+      // Goes in the UPI payment note, so the studio can match a payment to
+      // the sale email even before looking at the reference number.
+      ref: `NP-${Date.now().toString(36).slice(-3).toUpperCase()}${Math.random().toString(36).slice(2, 5).toUpperCase()}`
+    };
+    const cache = new Map();
+    let renderToken = 0;
+    let fileUrl = "";
+
+    const capacity = () => PORTFOLIO_PDF_CAPACITY[state.pages];
+    const picked = () => poses.filter((p) => state.picks[p.angle]).map((p) => p.angle);
+    const poseOf = (angle) => poses.find((p) => p.angle === angle);
+    const minPhotos = () => (state.pages === 2 ? 2 : 1);
+    // A headshot is the classic lead; otherwise the first pose picked.
+    const defaultLead = () => { const a = picked(); return a.includes("close-up") ? "close-up" : (a[0] || ""); };
+    poses.slice(0, capacity()).forEach((p) => { state.picks[p.angle] = p.candidates[0].id; });
+    state.lead = defaultLead();
 
     const modal = document.createElement("div");
-    modal.id = "portfolioTemplateModal";
-    modal.style = "position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.75); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; padding: 20px;";
+    modal.id = "portfolioPdfModal";
+    modal.className = "pp-backdrop";
     modal.innerHTML = `
-      <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 14px; width: 100%; max-width: 760px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--shadow);">
-        <div style="padding: 18px 22px; border-bottom: 1px solid var(--line); background: var(--bone);">
-          <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent);">Model Portfolio · The Composite Lookbook</span>
-          <h3 style="margin: 4px 0 0; font-family:'Outfit', sans-serif; font-size: 18px; font-weight: 700; color: var(--ink);">${esc(name)} — build the portfolio PDF</h3>
-          <p style="margin: 4px 0 0; font-size: 11px; color: var(--ink-soft);">Pick a photo for each pose, then export. Cover, Contents &amp; Contact, and one spread page per pose are generated automatically.</p>
+      <div class="pp-sheet" role="dialog" aria-modal="true" aria-labelledby="ppTitle">
+        <div class="pp-head">
+          <span class="pp-eyebrow">Model portfolio PDF</span>
+          <h3 id="ppTitle">${esc(name)}</h3>
+          <button type="button" class="pp-close" aria-label="Close">×</button>
         </div>
-
-        <div style="padding: 16px 22px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px;">
-
-          <div style="display:flex; flex-wrap:wrap; align-items:center; gap: 12px; background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px;">
-            <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--ink-soft);">Exporting as:</span>
-            <div style="display: inline-flex; background: var(--paper); border: 1px solid var(--line); border-radius: 7px; padding: 3px;">
-              <button type="button" data-role="model" class="pt-role-btn active" style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; text-transform: uppercase; border: none; padding: 6px 14px; border-radius: 5px; cursor: pointer; background: var(--ink); color: var(--paper);">Model</button>
-              <button type="button" data-role="agency" class="pt-role-btn" style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; text-transform: uppercase; border: none; padding: 6px 14px; border-radius: 5px; cursor: pointer; background: transparent; color: var(--ink-soft);">Agency</button>
-            </div>
-            <span style="font-size: 11px; color: var(--ink-soft); flex: 1 1 220px;">Agency exports skip location, phone, and brand credits entirely.</span>
-          </div>
-
-          <div style="display: flex; flex-direction: column; gap: 14px;">
-            ${slotsWithCandidates.map((slot, i) => {
-              const num = String(i + 1).padStart(2, "0");
-              if (!slot.candidates.length) {
-                return `
-                  <div style="opacity: 0.5; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--ink-soft);">
-                    <span style="font-family:'JetBrains Mono', monospace; font-weight: 800; color: var(--accent);">${num}</span>
-                    <span>${esc(slot.label)} — no tagged photos yet, this page will be skipped.</span>
-                  </div>
-                `;
-              }
-              return `
-                <div class="pt-slot-row" data-angle="${esc(slot.angle)}">
-                  <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;">
-                    <span style="font-family:'JetBrains Mono', monospace; font-size: 11px; font-weight: 800; color: var(--accent);">${num}</span>
-                    <span style="font-size: 13px; font-weight: 650; color: var(--ink);">${esc(slot.label)} — pick one</span>
-                  </div>
-                  <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    ${slot.candidates.map((p, ci) => `
-                      <button type="button" class="pt-cand" data-id="${esc(p.id)}" style="position: relative; width: 72px; aspect-ratio: 4/5; border-radius: 6px; overflow: hidden; border: 2px solid ${ci === 0 ? "var(--accent)" : "var(--line)"}; padding: 0; cursor: pointer; background: var(--bone);">
-                        <img src="${esc(photoSrc(p))}" style="width: 100%; height: 100%; object-fit: cover; object-position: ${esc(p.objectPosition || "center")}; display: block;" alt="${esc(slot.label)} option" loading="lazy" />
-                        <span class="pt-check" style="display:${ci === 0 ? "flex" : "none"}; position: absolute; top: 4px; right: 4px; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 10px; font-weight: 800; align-items: center; justify-content: center;">✓</span>
-                      </button>
-                    `).join("")}
-                  </div>
-                </div>
-              `;
-            }).join("")}
-          </div>
-
-          <div id="ptOptionalFields" style="display: flex; flex-direction: column; gap: 10px; border-top: 1px dashed var(--line); padding-top: 14px;">
-            <span style="font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--ink-soft);">Optional details — typed in by the model, never saved by the studio</span>
-            <input type="text" id="ptLocation" placeholder="Current location (optional, e.g. Based in Mumbai)" style="width: 100%; box-sizing: border-box; padding: 9px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); font-size: 12px;" />
-            <input type="text" id="ptPhone" placeholder="Phone number (optional)" style="width: 100%; box-sizing: border-box; padding: 9px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); font-size: 12px;" />
-            <input type="text" id="ptBrands" placeholder="Top 5 brands worked with, comma-separated (optional)" style="width: 100%; box-sizing: border-box; padding: 9px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); font-size: 12px;" />
-          </div>
-
-        </div>
-
-        <div style="padding: 16px 22px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; align-items: center; gap: 12px; background: var(--bone);">
-          <span style="font-size: 10px; color: var(--ink-soft); margin-right: auto; font-family:'JetBrains Mono', monospace;">${availableSlots.length} of ${PORTFOLIO_TEMPLATE1_SLOTS.length} poses included</span>
-          <button type="button" id="ptCancel" class="btn btn-ghost" style="font-size: 12px; height: auto; padding: 10px 18px;">Cancel</button>
-          <button type="button" id="ptExport" class="btn btn-dark" style="font-size: 12px; height: auto; padding: 10px 18px; font-family:'JetBrains Mono', monospace; font-weight: 700;">Export PDF</button>
-        </div>
+        <div class="pp-body"></div>
+        <div class="pp-foot"></div>
       </div>
     `;
     document.body.appendChild(modal);
+    const body = modal.querySelector(".pp-body");
+    const foot = modal.querySelector(".pp-foot");
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
 
-    modal.querySelectorAll(".pt-cand").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const row = btn.closest(".pt-slot-row");
-        const angle = row.dataset.angle;
-        selectedBySlot[angle] = btn.dataset.id;
-        row.querySelectorAll(".pt-cand").forEach(b => {
-          const on = b === btn;
-          b.style.borderColor = on ? "var(--accent)" : "var(--line)";
-          b.querySelector(".pt-check").style.display = on ? "flex" : "none";
-        });
-      });
-    });
-
-    modal.querySelectorAll(".pt-role-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        role = btn.dataset.role;
-        modal.querySelectorAll(".pt-role-btn").forEach(b => {
-          const on = b === btn;
-          b.style.background = on ? "var(--ink)" : "transparent";
-          b.style.color = on ? "var(--paper)" : "var(--ink-soft)";
-        });
-        modal.querySelector("#ptOptionalFields").style.display = role === "agency" ? "none" : "flex";
-      });
-    });
-
-    const close = () => modal.remove();
-    modal.querySelector("#ptCancel").addEventListener("click", close);
+    // Captured at the window and stopped there, so typing in this sheet
+    // doesn't also page the lightbox behind it with the arrow keys.
+    const onKey = (e) => {
+      e.stopPropagation();
+      if (e.key === "Escape") close();
+    };
+    function close() {
+      renderToken++;
+      window.removeEventListener("keydown", onKey, true);
+      if (fileUrl) URL.revokeObjectURL(fileUrl);
+      document.body.style.overflow = prevOverflow;
+      modal.remove();
+    }
+    modal._close = close;
+    modal.querySelector(".pp-close").addEventListener("click", close);
     modal.addEventListener("click", (e) => { if (e.target === modal) close(); });
-    modal.querySelector("#ptExport").addEventListener("click", () => {
-      const filledSlots = availableSlots.map(slot => {
-        const chosenId = selectedBySlot[slot.angle];
-        const photo = slot.candidates.find(p => p.id === chosenId) || slot.candidates[0];
-        return { angle: slot.angle, label: slot.label, photo };
-      });
-      const manualFields = role === "agency" ? {} : {
-        location: (modal.querySelector("#ptLocation").value || "").trim(),
-        phone: (modal.querySelector("#ptPhone").value || "").trim(),
-        brands: (modal.querySelector("#ptBrands").value || "").split(",").map(b => b.trim()).filter(Boolean).slice(0, 5)
+    window.addEventListener("keydown", onKey, true);
+
+    function buildSpec() {
+      const angles = picked();
+      const lead = state.picks[state.lead] ? state.lead : angles[0];
+      const slot = (angle) => ({ photo: poseOf(angle).candidates.find((c) => c.id === state.picks[angle]), label: poseOf(angle).label });
+      return {
+        shoot, name, pages: state.pages,
+        lead: slot(lead),
+        others: angles.filter((a) => a !== lead).map(slot),
+        location: state.location.trim(),
+        phone: state.phone.trim()
       };
-      close();
-      printPortfolioTemplate1(shoot, filledSlots, manualFields);
-    });
+    }
+
+    /* Step 1: pick a photo for each pose. */
+    function showPick() {
+      renderToken++;
+      body.innerHTML = `
+        <div class="pp-row">
+          <span class="pp-label" id="ppPagesLabel">Pages</span>
+          <div class="pp-seg" role="radiogroup" aria-labelledby="ppPagesLabel">
+            ${[1, 2].map((n) => `<button type="button" role="radio" data-pages="${n}" aria-checked="false">${n} page${n > 1 ? "s" : ""} · up to ${PORTFOLIO_PDF_CAPACITY[n]} photos</button>`).join("")}
+          </div>
+        </div>
+        <p class="pp-hint" id="ppCount" aria-live="polite"></p>
+        ${poses.map((pose) => `
+          <div class="pp-pose" data-angle="${esc(pose.angle)}">
+            <div class="pp-pose-head"><span class="pp-pose-name">${esc(pose.label)}</span><span class="pp-pose-state"></span></div>
+            <div class="pp-cands">
+              ${pose.candidates.map((p, i) => `<button type="button" class="pp-cand" data-angle="${esc(pose.angle)}" data-id="${esc(p.id)}" aria-pressed="false" aria-label="${esc(pose.label)}, photo ${i + 1}"><img src="${esc(photoSrc(p.small ? { url: p.small } : p))}" alt="" loading="lazy" style="object-position: ${esc(p.objectPosition || "center")};" /><span class="pp-check" aria-hidden="true">✓</span></button>`).join("")}
+            </div>
+          </div>
+        `).join("")}
+        <label class="pp-field" id="ppLeadField"><span class="pp-label">Big photo</span><select id="ppLead"></select></label>
+        <div class="pp-extras">
+          <span class="pp-label">Optional: printed on your PDF, never saved</span>
+          <label class="pp-field"><span class="pp-sr">Based in</span><input type="text" id="ppLocation" maxlength="40" placeholder="Based in (e.g. Mumbai)" value="${esc(state.location)}" /></label>
+          <label class="pp-field"><span class="pp-sr">Phone</span><input type="tel" id="ppPhone" maxlength="20" placeholder="Phone number" value="${esc(state.phone)}" /></label>
+        </div>
+      `;
+      foot.innerHTML = `
+        <span class="pp-foot-note">${admin ? "Free for you" : price ? `₹${price} to download` : "Free download"}</span>
+        <button type="button" class="btn btn-ghost" id="ppCancel">Cancel</button>
+        <button type="button" class="btn btn-dark" id="ppNext">Preview</button>
+      `;
+      body.querySelectorAll(".pp-seg [data-pages]").forEach((btn) => btn.addEventListener("click", () => setPages(Number(btn.dataset.pages))));
+      body.querySelectorAll(".pp-cand").forEach((btn) => btn.addEventListener("click", () => togglePick(btn.dataset.angle, btn.dataset.id)));
+      body.querySelector("#ppLead").addEventListener("change", (e) => { state.lead = e.target.value; });
+      body.querySelector("#ppLocation").addEventListener("input", (e) => { state.location = e.target.value; });
+      body.querySelector("#ppPhone").addEventListener("input", (e) => { state.phone = e.target.value; });
+      foot.querySelector("#ppCancel").addEventListener("click", close);
+      foot.querySelector("#ppNext").addEventListener("click", showPreview);
+      syncPick();
+    }
+
+    function syncPick(warning) {
+      const chosen = picked();
+      if (!state.picks[state.lead]) state.lead = defaultLead();
+      body.querySelectorAll(".pp-seg [data-pages]").forEach((b) => b.setAttribute("aria-checked", String(Number(b.dataset.pages) === state.pages)));
+      body.querySelectorAll(".pp-cand").forEach((b) => b.setAttribute("aria-pressed", String(state.picks[b.dataset.angle] === b.dataset.id)));
+      body.querySelectorAll(".pp-pose").forEach((row) => {
+        const inPdf = !!state.picks[row.dataset.angle];
+        row.classList.toggle("is-out", !inPdf);
+        row.querySelector(".pp-pose-state").textContent = inPdf ? "In your PDF" : "Left out";
+      });
+      body.querySelector("#ppLead").innerHTML = chosen.map((a) => `<option value="${esc(a)}"${a === state.lead ? " selected" : ""}>${esc(poseOf(a).label)}</option>`).join("");
+      body.querySelector("#ppLeadField").hidden = chosen.length < 2;
+      const count = body.querySelector("#ppCount");
+      count.classList.toggle("is-warn", !!warning);
+      count.textContent = warning || (chosen.length < minPhotos()
+        ? (state.pages === 2 ? "Pick at least 2 photos for 2 pages." : "Pick at least one photo.")
+        : `${chosen.length} of ${capacity()} photos picked. Tap a photo to use it for that pose, or tap it again to leave the pose out.`);
+      foot.querySelector("#ppNext").disabled = chosen.length < minPhotos();
+    }
+
+    function togglePick(angle, id) {
+      if (state.picks[angle] === id) {
+        delete state.picks[angle];
+        state.cleared.add(angle);
+      } else if (state.picks[angle] || picked().length < capacity()) {
+        state.picks[angle] = id;
+        state.cleared.delete(angle);
+      } else {
+        syncPick(state.pages === 1
+          ? `1 page fits ${capacity()} photos. Leave out another pose first, or switch to 2 pages.`
+          : `2 pages fit ${capacity()} photos. Leave out another pose first.`);
+        return;
+      }
+      syncPick();
+    }
+
+    function setPages(n) {
+      if (n === state.pages) return;
+      state.pages = n;
+      let warning = "";
+      if (n === 2) {
+        // More room: bring back the poses the client didn't take out themselves.
+        poses.forEach((p) => {
+          if (!state.picks[p.angle] && !state.cleared.has(p.angle) && picked().length < capacity()) state.picks[p.angle] = p.candidates[0].id;
+        });
+      } else {
+        const dropped = [];
+        while (picked().length > capacity()) {
+          const drop = picked().filter((a) => a !== state.lead).pop();
+          delete state.picks[drop];
+          dropped.unshift(poseOf(drop).label);
+        }
+        if (dropped.length) warning = `1 page fits ${capacity()} photos, so ${dropped.join(" and ")} ${dropped.length > 1 ? "were" : "was"} left out.`;
+      }
+      syncPick(warning);
+    }
+
+    /* Step 2: preview, then pay (clients) or download (studio, or once paid). */
+    function showPreview() {
+      const token = ++renderToken;
+      const payable = !state.paid;
+      const upiLink = portfolioUpiLink(sale.upiId, price, state.ref);
+      body.innerHTML = `
+        <div class="pp-preview" aria-live="polite"><p class="pp-rendering">Drawing your ${state.pages === 2 ? "pages" : "page"}…</p></div>
+        ${payable ? `
+          <div class="pp-pay">
+            <div>
+              <p class="pp-pay-title">Pay ₹${price} to download</p>
+              <p class="pp-hint">The preview is watermarked. The PDF you download isn't.</p>
+            </div>
+            ${coarse ? `<a class="btn btn-dark btn-block pp-upi-open" href="${esc(upiLink)}">Pay ₹${price} in your UPI app</a>` : ""}
+            <div class="pp-pay-grid">
+              <canvas class="pp-qr" id="ppQr" width="1" height="1" role="img" aria-label="UPI QR code for ₹${price}"></canvas>
+              <ol class="pp-steps">
+                <li>${coarse ? "Tap the button above, or scan the code from another phone." : "Scan the code with any UPI app on your phone."} It pays ₹${price} to <span class="pp-upi">${esc(sale.upiId)}</span>.</li>
+                <li>Once paid, find the 12-digit UPI reference number on your receipt. Apps call it UTR or UPI Ref No.</li>
+                <li>Enter it below with your email to unlock the download.</li>
+              </ol>
+            </div>
+            <div class="pp-pay-fields">
+              <label class="pp-field"><span class="pp-label">Your email</span><input type="email" id="ppEmail" autocomplete="email" inputmode="email" placeholder="name@example.com" value="${esc(state.email)}" /></label>
+              <label class="pp-field"><span class="pp-label">UPI reference number</span><input type="text" id="ppUtr" inputmode="numeric" autocomplete="off" maxlength="16" placeholder="12 digits" value="${esc(state.utr)}" /></label>
+            </div>
+            <p class="pp-error" id="ppPayError" role="alert" hidden></p>
+            <button type="button" class="btn btn-dark btn-block" id="ppUnlock">I've paid: unlock the download</button>
+            <p class="pp-fine">Your payment goes straight to the studio, which matches every reference number against its bank.</p>
+          </div>
+        ` : `
+          <p class="pp-hint">${admin ? "Free for you as admin." : price ? "Payment noted, thank you. The PDF you download has no watermark." : "Free to download."}</p>
+          <div id="ppReady" class="pp-ready"></div>
+        `}
+      `;
+      foot.innerHTML = `
+        <button type="button" class="btn btn-ghost" id="ppBack">← Change photos</button>
+        ${payable ? "" : `<button type="button" class="btn btn-dark" id="ppDownload">Download PDF</button>`}
+      `;
+      foot.querySelector("#ppBack").addEventListener("click", showPick);
+      const dl = foot.querySelector("#ppDownload");
+      if (dl) dl.addEventListener("click", () => download(dl));
+      if (payable) {
+        body.querySelector("#ppEmail").addEventListener("input", (e) => { state.email = e.target.value; });
+        body.querySelector("#ppUtr").addEventListener("input", (e) => { state.utr = e.target.value; });
+        body.querySelector("#ppUnlock").addEventListener("click", unlock);
+        const qr = body.querySelector("#ppQr");
+        drawUpiQr(qr, upiLink).catch((err) => { console.warn("UPI QR failed:", err); qr.hidden = true; });
+      }
+
+      renderPortfolioPdfPages(buildSpec(), { dpi: 72, watermark: payable, cache }).then((pages) => {
+        if (token !== renderToken) return;
+        const box = body.querySelector(".pp-preview");
+        box.replaceChildren(...pages.map((p, i) => {
+          p.canvas.setAttribute("role", "img");
+          p.canvas.setAttribute("aria-label", `Preview of page ${i + 1}`);
+          return p.canvas;
+        }));
+        box.classList.toggle("two", pages.length > 1);
+      }).catch((err) => {
+        console.warn("Portfolio preview failed:", err);
+        if (token === renderToken) body.querySelector(".pp-preview").innerHTML = `<p class="pp-rendering">Couldn't draw the preview. Check your connection and try again.</p>`;
+      });
+    }
+
+    function unlock() {
+      const email = state.email.trim();
+      const utr = state.utr.replace(/\s+/g, "");
+      const error = body.querySelector("#ppPayError");
+      const fail = (message, field) => { error.textContent = message; error.hidden = false; body.querySelector(field).focus(); };
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { fail("Enter your email, so the studio can reach you if the payment doesn't show up.", "#ppEmail"); return; }
+      if (!/^\d{12}$/.test(utr)) { fail("The UPI reference number is the 12-digit number on your payment receipt.", "#ppUtr"); return; }
+      state.paid = true;
+      const spec = buildSpec();
+      sendPortfolioPdfSaleEmail({
+        model: name, price, upiId: sale.upiId, utr, ref: state.ref, email,
+        pages: spec.pages, poses: [spec.lead, ...spec.others].map((s) => s.label).join(", ")
+      });
+      showPreview();
+    }
+
+    async function download(btn) {
+      const token = renderToken;
+      const label = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "Making your PDF…";
+      const ready = body.querySelector("#ppReady");
+      try {
+        const spec = buildSpec();
+        const pages = await renderPortfolioPdfPages(spec, { dpi: 200, watermark: false, cache });
+        const bytes = await buildPortfolioPdf(pages, `${spec.name} — Model Portfolio`);
+        // Full-resolution canvases are large; let the phone have the memory back.
+        pages.forEach((p) => { p.canvas.width = 0; p.canvas.height = 0; });
+        if (token !== renderToken) return;
+        offerPdf(bytes, `${slugify(spec.name) || "model"}-portfolio.pdf`, `${spec.name} — Model Portfolio`);
+      } catch (err) {
+        console.warn("Portfolio PDF failed:", err);
+        if (ready) ready.innerHTML = `<p class="pp-error">Couldn't make the PDF. Check your connection and try again.</p>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = label;
+      }
+    }
+
+    function offerPdf(bytes, fileName, title) {
+      const ready = body.querySelector("#ppReady");
+      if (!ready) return;
+      if (fileUrl) URL.revokeObjectURL(fileUrl);
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      fileUrl = URL.createObjectURL(blob);
+      const file = typeof File === "function" ? new File([blob], fileName, { type: "application/pdf" }) : null;
+      const canShare = !!(file && navigator.canShare && navigator.canShare({ files: [file] }));
+      ready.innerHTML = `
+        <p class="pp-hint"><strong>Your PDF is ready</strong> (${(blob.size / 1048576).toFixed(1)} MB).</p>
+        <div class="pp-ready-actions">
+          <a class="btn btn-dark" id="ppSave" href="${fileUrl}" download="${esc(fileName)}">Save PDF</a>
+          ${canShare ? `<button type="button" class="btn btn-ghost" id="ppShare">Share</button>` : ""}
+        </div>
+      `;
+      const share = ready.querySelector("#ppShare");
+      if (share) share.addEventListener("click", () => navigator.share({ files: [file], title }).catch(() => {}));
+      // On a computer the file just downloads; a phone gets the Save and
+      // Share buttons, which work from a fresh tap.
+      if (!coarse) ready.querySelector("#ppSave").click();
+    }
+
+    showPick();
+    modal.querySelector(".pp-close").focus();
   }
 
-  // Open entry point in the Model Portfolio lightbox sidebar — any visitor
-  // (model, agency, casting director) can build and download their own PDF.
-  // Opens the template flow above instead of the old flat "select any
-  // photos" picker, which it fully replaces.
+  // Entry point from the Model Portfolio lightbox. A unified album (one per
+  // model, merged from all their shoots) has no id in SHOOTS, so the album the
+  // lightbox is showing is used first.
   window.printModelPortfolio = (shootId) => {
-    const shoot = SHOOTS.find(x => x.id === shootId) || (window.currentCompCardShootObj);
+    const held = window.currentCompCardShootObj;
+    const shoot = (held && held.id === shootId) ? held : (SHOOTS.find((x) => x.id === shootId) || held);
     if (!shoot) return;
-    // Same selection rule as the Model Portfolio view: photos tagged
-    // "portfolio" or "both" (untagged legacy photos count as portfolio).
-    const photos = (shoot.photos || []).filter(p => p.usage === "portfolio" || p.usage === "both" || p.usage === undefined);
-    if (!photos.length) { toast("No portfolio-tagged photos to export."); return; }
-    openPortfolioTemplateFlow(shoot, photos);
+    const photos = portfolioPosedPhotos(shoot);
+    if (!photos.length) { toast("None of this model's photos are tagged with a pose yet. Tag them in Upload, then publish."); return; }
+    if (!isAdmin() && !portfolioPdfSalesOpen()) { toast("Portfolio PDFs aren't available yet."); return; }
+    openPortfolioPdfBuilder(shoot, photos);
   };
 
   // Keyed by shoot id rather than one global value — a single global meant
