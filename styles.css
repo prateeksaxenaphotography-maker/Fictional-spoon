@@ -2655,7 +2655,10 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 .pp-cands { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; }
 .pp-cand { position: relative; flex: 0 0 auto; width: 78px; aspect-ratio: 4 / 5; padding: 0; overflow: hidden; border: 2px solid var(--line); border-radius: 6px; background: var(--bone); cursor: pointer; }
 .pp-cand img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.pp-pose.is-out .pp-cand img { opacity: .55; }
+/* A tap that can't go through says why right under the photos tapped: at the
+   top of the sheet it was out of view, and the tap looked ignored. */
+.pp-pose-msg { margin: 4px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--accent); }
+.pp-pose-msg:empty { display: none; }
 .pp-cand[aria-pressed="true"] { border-color: var(--accent); }
 .pp-check { display: none; position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; align-items: center; justify-content: center; border-radius: 50%; background: var(--accent); color: #fff; font-size: 11px; font-weight: 800; }
 .pp-cand[aria-pressed="true"] .pp-check { display: flex; }

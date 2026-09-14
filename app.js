@@ -14590,6 +14590,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <div class="pp-cands">
               ${pose.candidates.map((p, i) => `<button type="button" class="pp-cand" data-angle="${esc(pose.angle)}" data-id="${esc(p.id)}" aria-pressed="false" aria-label="${esc(pose.label)}, photo ${i + 1}"><img src="${esc(photoSrc(p.small ? { url: p.small } : p))}" alt="" loading="lazy" style="object-position: ${esc(p.objectPosition || "center")};" /><span class="pp-check" aria-hidden="true">✓</span><span class="pp-cover-tag" aria-hidden="true">Cover</span></button>`).join("")}
             </div>
+            <p class="pp-pose-msg" role="status"></p>
           </div>
         `).join("")}
         <label class="pp-field" id="ppLeadField"><span class="pp-label">Big photo</span><select id="ppLead"></select></label>
@@ -14625,7 +14626,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       syncPick();
     }
 
-    function syncPick(warning) {
+    function syncPick(warning, angle) {
       const chosen = picked();
       if (!state.picks.has(state.lead)) state.lead = defaultLead();
       body.querySelectorAll(".pp-seg [data-pages]").forEach((b) => {
@@ -14647,6 +14648,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const n = pickedIn(row.dataset.angle);
         row.classList.toggle("is-out", !n);
         row.querySelector(".pp-pose-state").textContent = n > 1 ? `${n} in your PDF` : n ? "In your PDF" : "Left out";
+        // Repeat the warning in the row that was tapped, where the client is looking.
+        row.querySelector(".pp-pose-msg").textContent = warning && row.dataset.angle === angle ? warning : "";
       });
       body.querySelector("#ppLead").innerHTML = chosen.map((s) => `<option value="${esc(s.id)}"${s.id === state.lead ? " selected" : ""}>${esc(s.name)}</option>`).join("");
       body.querySelector("#ppLeadField").hidden = chosen.length < 2;
@@ -14661,7 +14664,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const slot = slots.find((s) => s.id === id);
       if (!slot) return;
       if (state.cover && id === state.coverId) {
-        syncPick("This photo is your cover. Pick a different cover photo first to use it on the pages.");
+        syncPick("This photo is your cover, so it can't also go on the pages. Pick a different cover photo first.", slot.angle);
         return;
       }
       if (state.picks.has(id)) {
@@ -14671,7 +14674,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         state.picks.add(id);
         state.cleared.delete(slot.angle);
       } else {
-        syncPick(`You've picked all ${state.count}. Take one out first${state.count < Math.max(...countOptions(state.pages === 1 ? 2 : state.pages)) ? ", or choose more photos above" : ""}.`);
+        syncPick(`All ${state.count} places are taken. Tap a ticked photo to take it out, then tap this one again${state.count < Math.max(...countOptions(state.pages === 1 ? 2 : state.pages)) ? ", or choose more photos at the top" : ""}.`, slot.angle);
         return;
       }
       syncPick();
