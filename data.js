@@ -1803,6 +1803,27 @@ window.WPS_DATA = {
           "objectPosition": "center",
           "small": "photos/mu07kqljf8iyar/mu17dbef5s3n7p-14@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17dbef5s3n7p-14@960.jpg"
+        },
+        {
+          "id": "mu1bk493tm3duj-15",
+          "url": "photos/mu07kqljf8iyar/mu1bk493tm3duj-15.jpg",
+          "objectPosition": "center",
+          "small": "photos/mu07kqljf8iyar/mu1bk493tm3duj-15@480.jpg",
+          "medium": "photos/mu07kqljf8iyar/mu1bk493tm3duj-15@960.jpg"
+        },
+        {
+          "id": "mu1bk4gu5u2fbo-16",
+          "url": "photos/mu07kqljf8iyar/mu1bk4gu5u2fbo-16.jpg",
+          "objectPosition": "center",
+          "small": "photos/mu07kqljf8iyar/mu1bk4gu5u2fbo-16@480.jpg",
+          "medium": "photos/mu07kqljf8iyar/mu1bk4gu5u2fbo-16@960.jpg"
+        },
+        {
+          "id": "mu1bk4lhuxdl5n-17",
+          "url": "photos/mu07kqljf8iyar/mu1bk4lhuxdl5n-17.jpg",
+          "objectPosition": "center",
+          "small": "photos/mu07kqljf8iyar/mu1bk4lhuxdl5n-17@480.jpg",
+          "medium": "photos/mu07kqljf8iyar/mu1bk4lhuxdl5n-17@960.jpg"
         }
       ],
       "featured": true,
