@@ -13698,8 +13698,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     return s.enabled && (s.price === 0 || !!s.upiId);
   }
 
-  // One page holds a lead photo and four more; two pages hold every pose.
-  const PORTFOLIO_PDF_CAPACITY = { 1: 5, 2: 7 };
+  // The photo counts a client can choose for each page count. The cover is
+  // not included: it has a page of its own.
+  const PORTFOLIO_PDF_COUNTS = { 1: [4, 5], 2: [8, 9, 10] };
 
   window.saveAdminPortfolioPdfSettings = async () => {
     const priceEl = document.getElementById("portfolioPdfPriceInput");
@@ -14143,7 +14144,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const heights = pdfRowHeights(rows, aspects, W, gap);
       const total = heights.reduce((s, x) => s + x, 0) + (rows.length - 1) * gap;
       const s = Math.min(1, H / total);
-      const area = s * s * W * total;
+      // Biggest photos win, discounted when rows differ in height, so a grid
+      // doesn't end in one oversized row or a strip of small ones.
+      const area = s * s * W * total * (Math.min(...heights) / Math.max(...heights));
       if (!best || area > best.area + 1e-6) best = { rows, heights, s, total, area };
     });
     const gaps = (best.rows.length - 1) * gap * best.s;
@@ -14159,6 +14162,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     });
     return { cells, width: W * best.s, height: photosH * stretch + gaps };
   }
+
+  // How unevenly sized the supporting photos are: 0 when all match, towards 1
+  // when one is a sliver beside another. Two tiny photos tucked into a corner
+  // of an otherwise tidy page are what this keeps out.
+  const pdfImbalance = (cells) => {
+    if (cells.length < 2) return 0;
+    const areas = cells.map((c) => c.w * c.h);
+    return 1 - Math.min(...areas) / Math.max(...areas);
+  };
 
   // One page: the lead photo large, the rest beside or beneath it. Tries both
   // arrangements at every lead size and block height, and keeps the one that
@@ -14177,12 +14189,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       for (let f = 0.38; f <= 0.721; f += 0.02) {
         const lw = W * f;
         const side = pdfFillRows(aspects, W - lw - gap, H, gap, 2);
-        if (side) consider({ score: pdfCropLoss(lw / H, leadAspect) * 1.5 + side.loss + unused, height: H, lead: { x: 0, y: 0, w: lw, h: H }, cells: side.cells.map((c) => ({ ...c, x: c.x + lw + gap })) });
+        if (side) consider({ score: pdfCropLoss(lw / H, leadAspect) * 1.5 + side.loss + pdfImbalance(side.cells) * 0.8 + unused, height: H, lead: { x: 0, y: 0, w: lw, h: H }, cells: side.cells.map((c) => ({ ...c, x: c.x + lw + gap })) });
       }
       for (let f = 0.4; f <= 0.701; f += 0.02) {
         const lh = H * f;
         const below = pdfFillRows(aspects, W, H - lh - gap, gap, 4);
-        if (below) consider({ score: pdfCropLoss(W / lh, leadAspect) * 1.5 + below.loss + unused, height: H, lead: { x: 0, y: 0, w: W, h: lh }, cells: below.cells.map((c) => ({ ...c, y: c.y + lh + gap })) });
+        if (below) consider({ score: pdfCropLoss(W / lh, leadAspect) * 1.5 + below.loss + pdfImbalance(below.cells) * 0.8 + unused, height: H, lead: { x: 0, y: 0, w: W, h: lh }, cells: below.cells.map((c) => ({ ...c, y: c.y + lh + gap })) });
       }
     }
     return best;
@@ -14224,9 +14236,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const detailsH = pdfDetailsBlock(page, spec, 0, false);
     const photoMaxH = PH - M - PDF_FOOTER_H - 5 - (detailsH ? detailsH + 5 : 0) - y;
     const layout = pdfLeadLayout(pdfAspect(imgs[0]), imgs.slice(1).map(pdfAspect), CW, photoMaxH, gap);
-    drawPdfSlot(page, imgs[0], spec.lead, M + layout.lead.x, y + layout.lead.y, layout.lead.w, layout.lead.h);
-    layout.cells.forEach((c, i) => drawPdfSlot(page, imgs[i + 1], spec.others[i], M + c.x, y + c.y, c.w, c.h));
-    pdfDetailsBlock(page, spec, y + layout.height + 5, true);
+    // A crop-free grid can come up shorter than the page allows. Share the
+    // spare height above and below, rather than leaving a blank strip at the foot.
+    const top = y + Math.max(0, (photoMaxH - layout.height) / 2);
+    drawPdfSlot(page, imgs[0], spec.lead, M + layout.lead.x, top + layout.lead.y, layout.lead.w, layout.lead.h);
+    layout.cells.forEach((c, i) => drawPdfSlot(page, imgs[i + 1], spec.others[i], M + c.x, top + c.y, c.w, c.h));
+    pdfDetailsBlock(page, spec, top + layout.height + 5, true);
     drawPdfFooter(page);
   }
 
@@ -14281,8 +14296,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const aspect = pdfAspect(img);
     const lw = Math.min(CW, roomH * aspect * 1.1);
     const lh = Math.min(roomH, (lw / aspect) * 1.1);
-    drawPdfSlot(page, img, spec.lead, M + (CW - lw) / 2, y, lw, lh);
-    pdfDetailsBlock(page, spec, y + lh + 5, true);
+    // Same for a lead photo that can't fill the room (a wide one, say).
+    const top = y + Math.max(0, (roomH - lh) / 2);
+    drawPdfSlot(page, img, spec.lead, M + (CW - lw) / 2, top, lw, lh);
+    pdfDetailsBlock(page, spec, top + lh + 5, true);
     drawPdfFooter(page);
   }
 
@@ -14296,7 +14313,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     page.text(name, M, y + 4.4, nameStyle);
     page.text("Poses", M + page.measure(name, nameStyle) + 3, y + 4.4, PDF_LABEL);
     y += 9;
-    const grid = pdfContainRows(imgs.map(pdfAspect), CW, PH - M - PDF_FOOTER_H - 5 - y, gap, 3, 1.12);
+    const grid = pdfContainRows(imgs.map(pdfAspect), CW, PH - M - PDF_FOOTER_H - 5 - y, gap, 4, 1.12);
     const x0 = M + (CW - grid.width) / 2;
     grid.cells.forEach((c, i) => drawPdfSlot(page, imgs[i], spec.others[i], x0 + c.x, y + c.y, c.w, c.h));
     drawPdfFooter(page);
@@ -14439,6 +14456,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       .filter((pose) => pose.candidates.length);
     const state = {
       pages: 1,
+      count: 5,            // photos on the pages; the cover isn't counted
       picks: new Set(),    // chosen photo ids, any number from one pose
       cleared: new Set(),  // poses the client deliberately emptied
       lead: "",            // id of the big photo
@@ -14460,15 +14478,33 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // Two Full Body shots need telling apart in the Big photo list.
       name: pose.candidates.length > 1 ? `${pose.label} · photo ${i + 1}` : pose.label
     })));
-    const capacity = () => PORTFOLIO_PDF_CAPACITY[state.pages];
     const picked = () => slots.filter((s) => state.picks.has(s.id));
     const pickedIn = (angle) => picked().filter((s) => s.angle === angle).length;
-    const minPhotos = () => (state.pages === 2 ? 2 : 1);
+    // Photos free for the pages: every posed photo except the cover's.
+    const available = () => slots.length - (state.cover && slots.some((s) => s.id === state.coverId) ? 1 : 0);
+    // The counts on offer for a page count, trimmed to the photos this model
+    // has. A model with too few keeps a single choice: all of them.
+    const countOptions = (pages) => {
+      const fits = PORTFOLIO_PDF_COUNTS[pages].filter((n) => n <= available());
+      return fits.length ? fits : [Math.min(available(), PORTFOLIO_PDF_COUNTS[pages][0])];
+    };
     // A headshot is the classic lead; otherwise the first photo picked.
     const defaultLead = () => { const p = picked(); return (p.find((s) => s.angle === "close-up") || p[0] || {}).id || ""; };
-    // A different photo from the big one, so the cover and the page after it don't repeat.
-    const defaultCover = () => { const p = picked(); return (p.find((s) => s.id !== state.lead) || p[0] || slots[0]).id; };
-    poses.slice(0, capacity()).forEach((p) => state.picks.add(p.candidates[0].id));
+    // The cover photo is extra. It has a page of its own, so it is never also
+    // on the pages and never uses up any of the 5 or 7. By default it's a
+    // photo not already picked, preferring a headshot.
+    const defaultCover = () => {
+      const free = slots.filter((s) => !state.picks.has(s.id));
+      return (free.find((s) => s.angle === "close-up") || free.find((s) => s.angle === "front") || free[0] || slots[0]).id;
+    };
+    // Puts a photo on the cover, taking it off the pages if it was there, and
+    // returns the note to show when that freed a place.
+    const setCoverPhoto = (id) => {
+      state.coverId = id;
+      return state.picks.delete(id) ? "That photo is on the cover now, so it's off the pages. Pick another photo in its place." : "";
+    };
+    state.count = Math.max(...countOptions(1));
+    fillPicks();
     state.lead = defaultLead();
 
     const modal = document.createElement("div");
@@ -14530,15 +14566,19 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         <div class="pp-row">
           <span class="pp-label" id="ppPagesLabel">Pages</span>
           <div class="pp-seg" role="radiogroup" aria-labelledby="ppPagesLabel">
-            ${[1, 2].map((n) => `<button type="button" role="radio" data-pages="${n}" aria-checked="false">${n} page${n > 1 ? "s" : ""} · up to ${PORTFOLIO_PDF_CAPACITY[n]} photos</button>`).join("")}
+            ${[1, 2].map((n) => `<button type="button" role="radio" data-pages="${n}" aria-checked="false">${n} page${n > 1 ? "s" : ""}</button>`).join("")}
           </div>
+        </div>
+        <div class="pp-row">
+          <span class="pp-label" id="ppCountLabel">Photos</span>
+          <div class="pp-seg" role="radiogroup" aria-labelledby="ppCountLabel" id="ppCountSeg"></div>
         </div>
         <div class="pp-row">
           <span class="pp-label" id="ppCoverLabel">Cover page</span>
           <label class="pp-switch"><input type="checkbox" id="ppCover" aria-labelledby="ppCoverLabel" /><span class="pp-switch-track" aria-hidden="true"></span><span id="ppCoverState">Off</span></label>
         </div>
         <div class="pp-cover-pick" id="ppCoverPick" hidden>
-          <p class="pp-hint">A front page with one photo across the whole page and the name over it. It doesn't use up any of the photo limit. Tap the photo you want on it.</p>
+          <p class="pp-hint">A front page with one photo across the whole page and the name over it. The cover photo is extra: your pages still hold up to 5 (or 7) other photos. Tap the photo you want on it.</p>
           <div class="pp-cands">
             ${slots.map((s) => `<button type="button" class="pp-cand pp-cover-cand" data-id="${esc(s.id)}" aria-pressed="false" aria-label="Cover photo: ${esc(s.name)}"><img src="${esc(photoSrc(s.photo.small ? { url: s.photo.small } : s.photo))}" alt="" loading="lazy" style="object-position: ${esc(s.photo.objectPosition || "center")};" /><span class="pp-check" aria-hidden="true">✓</span></button>`).join("")}
           </div>
@@ -14548,7 +14588,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <div class="pp-pose" data-angle="${esc(pose.angle)}">
             <div class="pp-pose-head"><span class="pp-pose-name">${esc(pose.label)}</span><span class="pp-pose-state"></span></div>
             <div class="pp-cands">
-              ${pose.candidates.map((p, i) => `<button type="button" class="pp-cand" data-angle="${esc(pose.angle)}" data-id="${esc(p.id)}" aria-pressed="false" aria-label="${esc(pose.label)}, photo ${i + 1}"><img src="${esc(photoSrc(p.small ? { url: p.small } : p))}" alt="" loading="lazy" style="object-position: ${esc(p.objectPosition || "center")};" /><span class="pp-check" aria-hidden="true">✓</span></button>`).join("")}
+              ${pose.candidates.map((p, i) => `<button type="button" class="pp-cand" data-angle="${esc(pose.angle)}" data-id="${esc(p.id)}" aria-pressed="false" aria-label="${esc(pose.label)}, photo ${i + 1}"><img src="${esc(photoSrc(p.small ? { url: p.small } : p))}" alt="" loading="lazy" style="object-position: ${esc(p.objectPosition || "center")};" /><span class="pp-check" aria-hidden="true">✓</span><span class="pp-cover-tag" aria-hidden="true">Cover</span></button>`).join("")}
             </div>
           </div>
         `).join("")}
@@ -14565,13 +14605,18 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         <button type="button" class="btn btn-dark" id="ppNext">Preview</button>
       `;
       body.querySelectorAll(".pp-seg [data-pages]").forEach((btn) => btn.addEventListener("click", () => setPages(Number(btn.dataset.pages))));
+      body.querySelector("#ppCountSeg").addEventListener("click", (e) => {
+        const b = e.target.closest("[data-count]");
+        if (b && !b.disabled) setCount(Number(b.dataset.count));
+      });
       body.querySelectorAll(".pp-pose .pp-cand").forEach((btn) => btn.addEventListener("click", () => togglePick(btn.dataset.id)));
       body.querySelector("#ppCover").addEventListener("change", (e) => {
         state.cover = e.target.checked;
-        if (state.cover && !slots.some((s) => s.id === state.coverId)) state.coverId = defaultCover();
-        syncPick();
+        // Keep an earlier cover choice if it's still free; otherwise pick one.
+        const keep = slots.some((s) => s.id === state.coverId) && !state.picks.has(state.coverId);
+        syncPick(fitCountToPhotos(state.cover ? setCoverPhoto(keep ? state.coverId : defaultCover()) : ""));
       });
-      body.querySelectorAll(".pp-cover-cand").forEach((btn) => btn.addEventListener("click", () => { state.coverId = btn.dataset.id; syncPick(); }));
+      body.querySelectorAll(".pp-cover-cand").forEach((btn) => btn.addEventListener("click", () => syncPick(fitCountToPhotos(setCoverPhoto(btn.dataset.id)))));
       body.querySelector("#ppLead").addEventListener("change", (e) => { state.lead = e.target.value; });
       body.querySelector("#ppLocation").addEventListener("input", (e) => { state.location = e.target.value; });
       body.querySelector("#ppPhone").addEventListener("input", (e) => { state.phone = e.target.value; });
@@ -14583,8 +14628,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     function syncPick(warning) {
       const chosen = picked();
       if (!state.picks.has(state.lead)) state.lead = defaultLead();
-      body.querySelectorAll(".pp-seg [data-pages]").forEach((b) => b.setAttribute("aria-checked", String(Number(b.dataset.pages) === state.pages)));
-      body.querySelectorAll(".pp-pose .pp-cand").forEach((b) => b.setAttribute("aria-pressed", String(state.picks.has(b.dataset.id))));
+      body.querySelectorAll(".pp-seg [data-pages]").forEach((b) => {
+        b.setAttribute("aria-checked", String(Number(b.dataset.pages) === state.pages));
+        b.disabled = Number(b.dataset.pages) === 2 && available() < 2;
+      });
+      body.querySelector("#ppCountSeg").innerHTML = countOptions(state.pages).map((n) => `<button type="button" role="radio" data-count="${n}" aria-checked="${n === state.count}">${n}</button>`).join("");
+      body.querySelectorAll(".pp-pose .pp-cand").forEach((b) => {
+        const onCover = state.cover && b.dataset.id === state.coverId;
+        b.setAttribute("aria-pressed", String(state.picks.has(b.dataset.id)));
+        b.classList.toggle("is-cover", onCover);
+        b.setAttribute("aria-disabled", String(onCover));
+      });
       body.querySelector("#ppCover").checked = state.cover;
       body.querySelector("#ppCoverState").textContent = state.cover ? "On" : "Off";
       body.querySelector("#ppCoverPick").hidden = !state.cover;
@@ -14598,25 +14652,26 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       body.querySelector("#ppLeadField").hidden = chosen.length < 2;
       const count = body.querySelector("#ppCount");
       count.classList.toggle("is-warn", !!warning);
-      count.textContent = warning || (chosen.length < minPhotos()
-        ? (state.pages === 2 ? "Pick at least 2 photos for 2 pages." : "Pick at least one photo.")
-        : `${chosen.length} of ${capacity()} photos picked. Tap photos to add them (more than one from a pose is fine), and tap again to take one out.`);
-      foot.querySelector("#ppNext").disabled = chosen.length < minPhotos();
+      const short = state.count - chosen.length;
+      count.textContent = warning || `${chosen.length} of ${state.count} photos picked for your pages${state.cover ? ", plus the cover" : ""}. ${short > 0 ? `Pick ${short} more. ` : ""}Tap photos to add them (more than one from a pose is fine), and tap again to take one out.`;
+      foot.querySelector("#ppNext").disabled = short !== 0;
     }
 
     function togglePick(id) {
       const slot = slots.find((s) => s.id === id);
       if (!slot) return;
+      if (state.cover && id === state.coverId) {
+        syncPick("This photo is your cover. Pick a different cover photo first to use it on the pages.");
+        return;
+      }
       if (state.picks.has(id)) {
         state.picks.delete(id);
         if (!pickedIn(slot.angle)) state.cleared.add(slot.angle);
-      } else if (picked().length < capacity()) {
+      } else if (picked().length < state.count) {
         state.picks.add(id);
         state.cleared.delete(slot.angle);
       } else {
-        syncPick(state.pages === 1
-          ? `1 page fits ${capacity()} photos. Take one out first, or switch to 2 pages.`
-          : `2 pages fit ${capacity()} photos. Take one out first.`);
+        syncPick(`You've picked all ${state.count}. Take one out first${state.count < Math.max(...countOptions(state.pages === 1 ? 2 : state.pages)) ? ", or choose more photos above" : ""}.`);
         return;
       }
       syncPick();
@@ -14625,22 +14680,62 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     function setPages(n) {
       if (n === state.pages) return;
       state.pages = n;
-      let warning = "";
-      if (n === 2) {
-        // More room: bring back a photo for each pose the client didn't empty themselves.
-        poses.forEach((p) => {
-          if (!pickedIn(p.angle) && !state.cleared.has(p.angle) && picked().length < capacity()) state.picks.add(p.candidates[0].id);
-        });
-      } else {
-        const dropped = [];
-        while (picked().length > capacity()) {
-          const drop = picked().filter((s) => s.id !== state.lead).pop();
-          state.picks.delete(drop.id);
-          dropped.unshift(drop.label);
+      // Each page count starts on the largest count this model's photos allow.
+      setCount(Math.max(...countOptions(n)));
+    }
+
+    function setCount(n) {
+      state.count = n;
+      const dropped = trimPicks();
+      // A bigger count is topped up at once, so the preview isn't stuck until
+      // the client finds several more photos; any of them can be swapped.
+      fillPicks();
+      syncPick(dropped.length ? `${n} photos fit, so ${dropped.length} ${dropped.length > 1 ? "were" : "was"} taken out (${dropped.join(", ")}).` : "");
+    }
+
+    // Tops the pages up to the count, one photo per pose each round, skipping
+    // poses the client emptied on purpose unless that's the only way to get
+    // there. The cover photo is never used.
+    function fillPicks() {
+      const take = (skipCleared) => {
+        let added = true;
+        while (picked().length < state.count && added) {
+          added = false;
+          for (const p of poses) {
+            if (picked().length >= state.count) break;
+            if (skipCleared && state.cleared.has(p.angle)) continue;
+            const next = p.candidates.find((c) => !state.picks.has(c.id) && !(state.cover && c.id === state.coverId));
+            if (next) { state.picks.add(next.id); added = true; }
+          }
         }
-        if (dropped.length) warning = `1 page fits ${capacity()} photos, so ${dropped.length} ${dropped.length > 1 ? "were" : "was"} taken out (${dropped.join(", ")}).`;
+      };
+      take(true);
+      take(false);
+    }
+
+    // Takes photos off the end until the pages hold the count, never the big
+    // photo. Returns their pose names.
+    function trimPicks() {
+      const dropped = [];
+      while (picked().length > state.count) {
+        const drop = picked().filter((s) => s.id !== state.lead).pop();
+        if (!drop) break;
+        state.picks.delete(drop.id);
+        dropped.unshift(drop.label);
       }
-      syncPick(warning);
+      return dropped;
+    }
+
+    // After the cover takes a photo, the chosen count may no longer be
+    // possible; step it down and trim. A freed place is left for the client
+    // to fill, so the note about it still holds.
+    function fitCountToPhotos(note) {
+      const options = countOptions(state.pages);
+      if (!options.includes(state.count)) {
+        state.count = Math.max(...options);
+        trimPicks();
+      }
+      return note;
     }
 
     /* Step 2: preview, then pay (clients) or download (studio, or once paid). */
