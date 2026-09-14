@@ -284,5 +284,33 @@ for (const s of shoots) {
   }
 }
 
+// ── 10. a publish must not strip what the previous one carried ─────────────
+// A browser tab left open across a release keeps running the old publish
+// code, which drops fields newer code writes. On 2026-09-14 one such tab
+// wiped every pose tag, 107 usage settings and PORTFOLIO_PDF (074a44f), and
+// did it again three minutes later (1003e9b), while changing nothing else.
+// Deploys don't wait for this check, but its failure emails the owner, which
+// beats hearing it from a client whose PDF button vanished.
+try {
+  const prevText = execSync("git show HEAD~1:data.js", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  const prevWin = {};
+  new Function("window", prevText)(prevWin);
+  const prevData = prevWin.WPS_DATA || {};
+  const stale = " This is the signature of a publish from an out-of-date browser tab: restore data.js from the previous commit, and reload every open tab of the site before publishing again.";
+  if (prevData.PORTFOLIO_PDF && win.WPS_DATA.PORTFOLIO_PDF === undefined) fail(`PORTFOLIO_PDF vanished from data.js.${stale}`);
+  const photosById = (data) => new Map((data.DEMO_SHOOTS || []).flatMap((s) => (s.photos || []).map((p) => [p.id, p])));
+  const before = photosById(prevData);
+  let lostPose = 0, lostUsage = 0;
+  for (const [id, p] of photosById(win.WPS_DATA)) {
+    const q = before.get(id);
+    if (!q) continue;
+    if (q.angle && !p.angle) lostPose++;
+    if (q.usage && !p.usage) lostUsage++;
+  }
+  // One photo un-tagged on purpose is normal; a batch vanishing at once isn't.
+  if (lostPose >= 5) fail(`${lostPose} photos lost their pose tag in one publish.${stale}`);
+  if (lostUsage >= 10) fail(`${lostUsage} photos lost their usage setting in one publish.${stale}`);
+} catch { /* first commit, shallow clone, or no prior data.js */ }
+
 if (failed) process.exit(1);
 console.log(`OK: ${shoots.length} albums, ids unique, all photo files present, format contract intact, cache-buster in sync.`);
