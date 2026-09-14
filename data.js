@@ -1797,15 +1797,16 @@ window.WPS_DATA = {
       "lightingDiagram": null,
       "lightingDiagramVisibility": "private",
       "palette": [
-        "#69636d",
-        "#2f2d31"
+        "#3a3a3a",
+        "#0d0d0d"
       ],
       "photos": [
         {
           "id": "mu07jx6vxffzbj-0",
           "url": "photos/mu07kqljf8iyar/mu07jx6vxffzbj-0.jpg",
           "objectPosition": "top",
-          "usage": "comp",
+          "angle": "close-up",
+          "usage": "both",
           "small": "photos/mu07kqljf8iyar/mu07jx6vxffzbj-0@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu07jx6vxffzbj-0@960.jpg"
         },
@@ -1813,7 +1814,7 @@ window.WPS_DATA = {
           "id": "mu07k1m1euvwbk-1",
           "url": "photos/mu07kqljf8iyar/mu07k1m1euvwbk-1.jpg",
           "objectPosition": "center",
-          "usage": "comp",
+          "usage": "both",
           "small": "photos/mu07kqljf8iyar/mu07k1m1euvwbk-1@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu07k1m1euvwbk-1@960.jpg"
         },
@@ -1821,7 +1822,8 @@ window.WPS_DATA = {
           "id": "mu17d8nwh9cw1v-2",
           "url": "photos/mu07kqljf8iyar/mu17d8nwh9cw1v-2.jpg",
           "objectPosition": "center",
-          "usage": "comp",
+          "angle": "three-quarter",
+          "usage": "both",
           "small": "photos/mu07kqljf8iyar/mu17d8nwh9cw1v-2@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17d8nwh9cw1v-2@960.jpg"
         },
@@ -1829,7 +1831,8 @@ window.WPS_DATA = {
           "id": "mu17d8ywdyh0a6-3",
           "url": "photos/mu07kqljf8iyar/mu17d8ywdyh0a6-3.jpg",
           "objectPosition": "center",
-          "usage": "comp",
+          "angle": "three-quarter",
+          "usage": "both",
           "small": "photos/mu07kqljf8iyar/mu17d8ywdyh0a6-3@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17d8ywdyh0a6-3@960.jpg"
         },
@@ -1837,7 +1840,8 @@ window.WPS_DATA = {
           "id": "mu17d96ivu3mvw-4",
           "url": "photos/mu07kqljf8iyar/mu17d96ivu3mvw-4.jpg",
           "objectPosition": "center",
-          "usage": "comp",
+          "angle": "three-quarter",
+          "usage": "both",
           "small": "photos/mu07kqljf8iyar/mu17d96ivu3mvw-4@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17d96ivu3mvw-4@960.jpg"
         },
@@ -1845,7 +1849,8 @@ window.WPS_DATA = {
           "id": "mu17d9e2ir9qgr-5",
           "url": "photos/mu07kqljf8iyar/mu17d9e2ir9qgr-5.jpg",
           "objectPosition": "center",
-          "usage": "comp",
+          "angle": "three-quarter",
+          "usage": "both",
           "small": "photos/mu07kqljf8iyar/mu17d9e2ir9qgr-5@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17d9e2ir9qgr-5@960.jpg"
         },
@@ -1853,7 +1858,8 @@ window.WPS_DATA = {
           "id": "mu17d9o9ldqpkw-6",
           "url": "photos/mu07kqljf8iyar/mu17d9o9ldqpkw-6.jpg",
           "objectPosition": "center",
-          "usage": "comp",
+          "angle": "three-quarter",
+          "usage": "both",
           "small": "photos/mu07kqljf8iyar/mu17d9o9ldqpkw-6@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17d9o9ldqpkw-6@960.jpg"
         },
@@ -1861,7 +1867,8 @@ window.WPS_DATA = {
           "id": "mu17d9wu1wa44y-7",
           "url": "photos/mu07kqljf8iyar/mu17d9wu1wa44y-7.jpg",
           "objectPosition": "center",
-          "usage": "comp",
+          "angle": "three-quarter",
+          "usage": "both",
           "small": "photos/mu07kqljf8iyar/mu17d9wu1wa44y-7@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17d9wu1wa44y-7@960.jpg"
         },
@@ -1869,7 +1876,8 @@ window.WPS_DATA = {
           "id": "mu17da4tl99dof-8",
           "url": "photos/mu07kqljf8iyar/mu17da4tl99dof-8.jpg",
           "objectPosition": "center",
-          "usage": "comp",
+          "angle": "close-up",
+          "usage": "both",
           "small": "photos/mu07kqljf8iyar/mu17da4tl99dof-8@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17da4tl99dof-8@960.jpg"
         },
@@ -1877,7 +1885,8 @@ window.WPS_DATA = {
           "id": "mu17daf0p7enrr-9",
           "url": "photos/mu07kqljf8iyar/mu17daf0p7enrr-9.jpg",
           "objectPosition": "49.8% 16.6%",
-          "usage": "comp",
+          "angle": "close-up",
+          "usage": "both",
           "small": "photos/mu07kqljf8iyar/mu17daf0p7enrr-9@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17daf0p7enrr-9@960.jpg",
           "focalX": 49.786225725029624,
@@ -1887,7 +1896,8 @@ window.WPS_DATA = {
           "id": "mu17dap5q9plyz-10",
           "url": "photos/mu07kqljf8iyar/mu17dap5q9plyz-10.jpg",
           "objectPosition": "center",
-          "usage": "comp",
+          "angle": "front",
+          "usage": "both",
           "small": "photos/mu07kqljf8iyar/mu17dap5q9plyz-10@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17dap5q9plyz-10@960.jpg"
         },
@@ -1895,7 +1905,8 @@ window.WPS_DATA = {
           "id": "mu17davk3g975o-11",
           "url": "photos/mu07kqljf8iyar/mu17davk3g975o-11.jpg",
           "objectPosition": "center",
-          "usage": "comp",
+          "angle": "right-profile",
+          "usage": "both",
           "small": "photos/mu07kqljf8iyar/mu17davk3g975o-11@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17davk3g975o-11@960.jpg"
         },
@@ -1903,7 +1914,8 @@ window.WPS_DATA = {
           "id": "mu17db20d8wno2-12",
           "url": "photos/mu07kqljf8iyar/mu17db20d8wno2-12.jpg",
           "objectPosition": "center",
-          "usage": "comp",
+          "angle": "right-profile",
+          "usage": "both",
           "small": "photos/mu07kqljf8iyar/mu17db20d8wno2-12@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17db20d8wno2-12@960.jpg"
         },
@@ -1911,7 +1923,8 @@ window.WPS_DATA = {
           "id": "mu17db89upn08q-13",
           "url": "photos/mu07kqljf8iyar/mu17db89upn08q-13.jpg",
           "objectPosition": "center",
-          "usage": "comp",
+          "angle": "left-profile",
+          "usage": "both",
           "small": "photos/mu07kqljf8iyar/mu17db89upn08q-13@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17db89upn08q-13@960.jpg"
         },
@@ -1919,7 +1932,8 @@ window.WPS_DATA = {
           "id": "mu17dbef5s3n7p-14",
           "url": "photos/mu07kqljf8iyar/mu17dbef5s3n7p-14.jpg",
           "objectPosition": "center",
-          "usage": "comp",
+          "angle": "left-profile",
+          "usage": "both",
           "small": "photos/mu07kqljf8iyar/mu17dbef5s3n7p-14@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17dbef5s3n7p-14@960.jpg"
         }
