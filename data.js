@@ -1797,8 +1797,8 @@ window.WPS_DATA = {
       "lightingDiagram": null,
       "lightingDiagramVisibility": "private",
       "palette": [
-        "#3a3a3a",
-        "#0d0d0d"
+        "#69636d",
+        "#2f2d31"
       ],
       "photos": [
         {
@@ -1969,8 +1969,9 @@ window.WPS_DATA = {
       "featured": true,
       "showAsCompCard": true,
       "hideFromCompCard": false,
+      "showOnModelPortfolio": true,
       "disableCompCardDownload": false,
-      "isPublic": true,
+      "isPublic": false,
       "showCredits": true,
       "showPdf": true,
       "showInstagram": true,
