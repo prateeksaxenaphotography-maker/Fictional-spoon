@@ -2048,15 +2048,6 @@ window.WPS_DATA = {
           "isTentative": false
         }
       ],
-      "2026-09-20": [
-        {
-          "id": "b_1788522924947_ls3x",
-          "type": "Workshop Attended",
-          "isTentative": false,
-          "status": "workshop",
-          "contractVersion": "Pending Agreement"
-        }
-      ],
       "2026-09-13": [
         {
           "id": "b_1788962756110_ixb1",
@@ -2089,7 +2080,8 @@ window.WPS_DATA = {
       "2026-09-20::b_1787411835191_nz3r",
       "2026-09-20::b_1788502533406_u7q8",
       "2026-08-01::shoot-msap3arwdtg7pb",
-      "2026-09-12::b_1788502499439_es7g"
+      "2026-09-12::b_1788502499439_es7g",
+      "2026-09-20::b_1788522924947_ls3x"
     ],
     "paymentScheduleType": "5050",
     "updatedAt": 0,
