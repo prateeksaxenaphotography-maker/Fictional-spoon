@@ -511,84 +511,98 @@ window.WPS_DATA = {
           "id": "mr55252orlz86s-0",
           "url": "photos/mr55364rvor33m/mr55252orlz86s-0.jpg",
           "objectPosition": "center",
+          "angle": "close-up",
           "usage": "both"
         },
         {
           "id": "mr55255t1of0wb-1",
           "url": "photos/mr55364rvor33m/mr55255t1of0wb-1.jpg",
           "objectPosition": "center",
+          "angle": "close-up",
           "usage": "both"
         },
         {
           "id": "mr55258hn2cz2z-2",
           "url": "photos/mr55364rvor33m/mr55258hn2cz2z-2.jpg",
           "objectPosition": "center",
+          "angle": "three-quarter",
           "usage": "both"
         },
         {
           "id": "mr5525bfwhlcov-3",
           "url": "photos/mr55364rvor33m/mr5525bfwhlcov-3.jpg",
           "objectPosition": "center",
+          "angle": "close-up",
           "usage": "both"
         },
         {
           "id": "mr5525erdhzei6-4",
           "url": "photos/mr55364rvor33m/mr5525erdhzei6-4.jpg",
           "objectPosition": "top",
+          "angle": "close-up",
           "usage": "both"
         },
         {
           "id": "mr5525kbficskl-5",
           "url": "photos/mr55364rvor33m/mr5525kbficskl-5.jpg",
           "objectPosition": "center",
+          "angle": "front",
           "usage": "both"
         },
         {
           "id": "mr5525nwfdhs6k-6",
           "url": "photos/mr55364rvor33m/mr5525nwfdhs6k-6.jpg",
           "objectPosition": "center",
+          "angle": "front",
           "usage": "both"
         },
         {
           "id": "mr5525z3emtds3-7",
           "url": "photos/mr55364rvor33m/mr5525z3emtds3-7.jpg",
           "objectPosition": "center",
+          "angle": "front",
           "usage": "both"
         },
         {
           "id": "mr55268fnt3bp6-8",
           "url": "photos/mr55364rvor33m/mr55268fnt3bp6-8.jpg",
           "objectPosition": "center",
+          "angle": "front",
           "usage": "both"
         },
         {
           "id": "mr5526c2t4w6c4-9",
           "url": "photos/mr55364rvor33m/mr5526c2t4w6c4-9.jpg",
           "objectPosition": "center",
+          "angle": "front",
           "usage": "both"
         },
         {
           "id": "mr5526o3uyc3aa-10",
           "url": "photos/mr55364rvor33m/mr5526o3uyc3aa-10.jpg",
           "objectPosition": "center",
+          "angle": "full-body",
           "usage": "both"
         },
         {
           "id": "mr5526qyua40ad-11",
           "url": "photos/mr55364rvor33m/mr5526qyua40ad-11.jpg",
           "objectPosition": "center",
+          "angle": "front",
           "usage": "both"
         },
         {
           "id": "mr5526tu5qjzd9-12",
           "url": "photos/mr55364rvor33m/mr5526tu5qjzd9-12.jpg",
           "objectPosition": "center",
+          "angle": "full-body",
           "usage": "both"
         },
         {
           "id": "mr5526vctb1zpd-13",
           "url": "photos/mr55364rvor33m/mr5526vctb1zpd-13.jpg",
           "objectPosition": "center",
+          "angle": "front",
           "usage": "both"
         }
       ],
