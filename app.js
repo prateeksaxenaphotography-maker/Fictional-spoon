@@ -1530,6 +1530,16 @@ window.moveAdminPackageRow = function(index, dir) {
     return !!(s.showAsCompCard || s.isCompCard || s.type === "Selective Collaboration (TFP)" || s.type === "Test Shoot");
   };
 
+  // Is this album on the Comp Cards page, or on the Model Portfolio page? Each
+  // page has its own switch. They used to share one pair of flags, so an album
+  // saved before the split has no showOnModelPortfolio and follows its comp
+  // card setting: nothing moved on either page when they were separated.
+  const showsOnModelPage = (s, page) => {
+    if (!s || s.type === "Workshop Attended") return false;
+    if (page === "Model Portfolio" && typeof s.showOnModelPortfolio === "boolean") return s.showOnModelPortfolio;
+    return qualifiesAsCompCard(s) && !s.hideFromCompCard;
+  };
+
   // Which book is this model cast from? Agencies file talent by the kind of
   // work they get booked for, not only by measurements, and a model can
   // genuinely straddle two books (fashion who also shoots fitness) — so this
@@ -2670,7 +2680,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // One model on the album and a comp card exists for them: point at it.
     // The share link is the same slug form the Share button hands out.
     const soloModel = hasTalent && shoot.talent.split(",").map(x => x.trim()).filter(Boolean).length === 1;
-    if (soloModel && !isCcPage && qualifiesAsCompCard(shoot) && !shoot.hideFromCompCard) {
+    if (soloModel && !isCcPage && showsOnModelPage(shoot, "Comp Cards")) {
       const modelName = getTalentCleanName(shoot.talent);
       const slug = slugify(modelName);
       if (slug) groups.push({ label: "Comp card", rendered: [`<span class="lb-person"><a href="/share/?a=comp-card-${encodeURIComponent(slug)}">View ${esc(modelName)}’s comp card ↗</a><small class="lb-person-note">Every model on the site has one, free to view and download as a PDF. <a href="/categories?kind=type&amp;val=Comp%20Cards">See all models’ comp cards ↗</a></small></span>`] });
@@ -3819,7 +3829,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             ${(!s.demo && isAdmin()) ? `
               <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0;" data-id="${s.originalShoots ? s.originalShoots[0].id : s.id}">Edit details</button>
               ${s.isCompCard ? `
-                <button class="link-arrow work-toggle-hide" style="color: var(--accent); font-weight: 700; padding: 0;" data-talent="${esc(s.talent)}">${s.originalShoots && s.originalShoots.some(x => x.hideFromCompCard) ? "👁️ Unhide Card" : "🔒 Hide Card"}</button>
+                <button class="link-arrow work-toggle-hide" style="color: var(--accent); font-weight: 700; padding: 0;" data-talent="${esc(s.talent)}" data-page="${isCurrentlyModelPortfolioView() ? "portfolio" : "compcards"}">${isCurrentlyModelPortfolioView() ? "🔒 Hide from Model portfolio" : s.originalShoots && s.originalShoots.some(x => x.hideFromCompCard) ? "👁️ Unhide Card" : "🔒 Hide Card"}</button>
               ` : ""}
               <button class="link-arrow work-delete" style="color: #b22222; font-weight: 700; padding: 0;" data-id="${s.originalShoots ? s.originalShoots[0].id : s.id}">Delete</button>
             ` : ""}
@@ -6843,7 +6853,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   function buildCompCardDisplayList(list, kind, d) {
     let displayList = list;
     if (kind === "type" && (d === "Selective Collaboration (TFP)" || d === "Model Portfolio" || d === "Comp Cards")) {
-      const filteredList = list.filter(s => !s.hideFromCompCard && ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim()) || (s.talent && s.talent.trim())));
+      const filteredList = list.filter(s => showsOnModelPage(s, d === "Model Portfolio" ? "Model Portfolio" : "Comp Cards") && ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim()) || (s.talent && s.talent.trim())));
       const groupable = [];
       const nonGroupable = [];
       for (const s of filteredList) {
@@ -7061,7 +7071,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // otherwise slugify into something no album's clean name can match.
       const wanted = new Set([slugify(m[2]), slugify(getTalentCleanName(m[2]))].filter(Boolean));
       const category = m[1] === "portfolio" ? "Model Portfolio" : "Comp Cards";
-      const unified = buildCompCardDisplayList(list.filter(qualifiesAsCompCard), "type", category);
+      const unified = buildCompCardDisplayList(list.filter((s) => showsOnModelPage(s, category)), "type", category);
       const hit = unified.find((a) => wanted.has(nameSlug(a)));
       if (hit) return hit;
     }
@@ -7079,7 +7089,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const list = SHOOTS.filter((s) => {
         if (kind === "brand" && (!s.client || !s.client.trim())) return false;
         if (kind === "type" && (d === "Model Portfolio" || d === "Comp Cards" || d === "Selective Collaboration (TFP)" || d === "Test Shoot")) {
-          return qualifiesAsCompCard(s);
+          return d === "Model Portfolio" ? showsOnModelPage(s, "Model Portfolio") : qualifiesAsCompCard(s);
         }
         return (kind === "activity" ? s.activity : kind === "brand" ? s.brand : s.type) === d;
       });
@@ -7162,7 +7172,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
     const getSamples = (key, val, limit = 3) => {
       const targetVal = (key === "type" && (val === "Comp Cards" || val === "Model Portfolio" || val === "Selective Collaboration (TFP)")) ? "Selective Collaboration (TFP)" : val;
-      let shoots = SHOOTS.filter(s => (s[key] === targetVal || (targetVal === "Selective Collaboration (TFP)" && qualifiesAsCompCard(s))) && ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim()) || (s.talent && s.talent.trim())));
+      let shoots = SHOOTS.filter(s => (s[key] === targetVal || (targetVal === "Selective Collaboration (TFP)" && (val === "Model Portfolio" ? showsOnModelPage(s, "Model Portfolio") : qualifiesAsCompCard(s)))) && ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim()) || (s.talent && s.talent.trim())));
       if (!shoots.length) return [];
       
       // Group shoots by UNIQUE model/talent name to ensure distinct models in thumbnails!
@@ -7683,12 +7693,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   <span class="tog-text"><strong>Show on the homepage</strong><small>In the Featured section.</small></span>
                 </label>
                 <label>
-                  <input id="f_show_compcard" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 3px 0 0;" />
-                  <span class="tog-text"><strong>Add to Comp cards and Model portfolio</strong><small>Test shoots are added automatically. Tick this for any other shoot.</small></span>
+                  <input id="f_on_compcards" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 3px 0 0;" />
+                  <span class="tog-text"><strong>Show on Comp cards</strong><small>On for test shoots unless you untick it. The album itself stays on the site either way.</small></span>
                 </label>
                 <label>
-                  <input id="f_hide_compcard" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 3px 0 0;" />
-                  <span class="tog-text"><strong>Hide from Comp cards and Model portfolio</strong><small>Its photos won't show on those pages or go into portfolio PDFs. The album itself stays on the site.</small></span>
+                  <input id="f_on_portfolio" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 3px 0 0;" />
+                  <span class="tog-text"><strong>Show on Model portfolio</strong><small>On for test shoots unless you untick it. Its photos can go into portfolio PDFs.</small></span>
                 </label>
                 <label>
                   <input id="f_disable_download" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 3px 0 0;" />
@@ -8489,6 +8499,19 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // shoots with a dozen-plus frames. selectedForBulk is transient UI state
     // (never saved), cleared on every re-render of the grid.
     const selectedForBulk = new Set();
+    // "Show on Comp cards" and "Show on Model portfolio" start ticked for a
+    // test shoot. On a new album they follow the Type until either is touched;
+    // an album being edited keeps what it has.
+    const pageSwitches = ["#f_on_compcards", "#f_on_portfolio"].map((sel) => $(sel)).filter(Boolean);
+    pageSwitches.forEach((sw) => sw.addEventListener("change", () => { sw.dataset.touched = "1"; }));
+    if (!editId) {
+      const followType = () => {
+        const testShoot = /Test Shoot|Selective Collaboration/.test($("#f_type")?.value || "");
+        pageSwitches.forEach((sw) => { if (!sw.dataset.touched) sw.checked = testShoot; });
+      };
+      $("#f_type")?.addEventListener("change", followType);
+      followType();
+    }
     const bulkToolbar = $("#thumbBulkToolbar"), bulkCount = $("#thumbBulkCount");
     const ANGLE_LABELS = { "full-body": "Full Body", "front": "Front", "left-profile": "Left Profile", "right-profile": "Right Profile", "three-quarter": "Three-Quarter", "back": "Back", "close-up": "Close-up" };
     function updateBulkToolbar() {
@@ -8816,14 +8839,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         if (featInput) {
           featInput.checked = !!editingShoot.featured;
         }
-        const showCompcardInput = $("#f_show_compcard");
-        if (showCompcardInput) {
-          showCompcardInput.checked = !!editingShoot.showAsCompCard;
-        }
-        const hideCompcardInput = $("#f_hide_compcard");
-        if (hideCompcardInput) {
-          hideCompcardInput.checked = !!editingShoot.hideFromCompCard;
-        }
+        // One box per page, ticked where the album appears today.
+        const onCompcardsInput = $("#f_on_compcards");
+        if (onCompcardsInput) onCompcardsInput.checked = showsOnModelPage(editingShoot, "Comp Cards");
+        const onPortfolioInput = $("#f_on_portfolio");
+        if (onPortfolioInput) onPortfolioInput.checked = showsOnModelPage(editingShoot, "Model Portfolio");
         const disableDownloadInput = $("#f_disable_download");
         if (disableDownloadInput) {
           disableDownloadInput.checked = !!editingShoot.disableCompCardDownload;
@@ -8947,7 +8967,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
       const statsFilled = ["f_height", "f_chest", "f_waist", "f_hips", "f_shoes", "f_model_hair", "f_model_eyes"].filter(id => fieldVal(id)).length;
       const types = form.querySelectorAll(".model-type-cb:checked").length;
-      const isCompish = /Test Shoot|Selective Collaboration/.test(fieldVal("f_type")) || !!$("#f_show_compcard")?.checked;
+      const isCompish = /Test Shoot|Selective Collaboration/.test(fieldVal("f_type")) || !!($("#f_on_compcards")?.checked || $("#f_on_portfolio")?.checked);
       const sumS = $("#fsSummaryStats");
       if (sumS) {
         const parts = [];
@@ -9533,8 +9553,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           ...(f.caption && f.caption.trim() ? { caption: f.caption.trim() } : {})
         })),
         featured: isTestimonialOnly ? false : ($("#f_featured")?.checked ?? false),
-        showAsCompCard: $("#f_show_compcard")?.checked ?? false,
-        hideFromCompCard: $("#f_hide_compcard")?.checked ?? false,
+        // Comp cards keep their original pair of flags; the portfolio page has its own.
+        showAsCompCard: $("#f_on_compcards")?.checked ?? false,
+        hideFromCompCard: !($("#f_on_compcards")?.checked ?? false),
+        showOnModelPortfolio: $("#f_on_portfolio")?.checked ?? false,
         disableCompCardDownload: $("#f_disable_download")?.checked ?? false,
         isPublic: $("#f_is_public")?.checked ?? true,
         showCredits: $("#f_show_credits")?.checked ?? true,
@@ -12628,6 +12650,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           const matchingShoots = SHOOTS.filter(s => (s.talent || "").trim().toLowerCase() === tName.trim().toLowerCase());
           if (matchingShoots.length === 0) return;
           
+          if (btn.dataset.page === "portfolio") {
+            matchingShoots.forEach(s => { s.showOnModelPortfolio = false; });
+            try {
+              localStorage.setItem("wps_custom_shoots", JSON.stringify(SHOOTS));
+            } catch(err) {}
+            alert(`🔒 '${tName}' is now hidden from the public Model portfolio page. Comp cards are unchanged.`);
+            if (typeof render === "function") render();
+            return;
+          }
           const currentlyHidden = matchingShoots.some(s => s.hideFromCompCard);
           const newHiddenState = !currentlyHidden;
           

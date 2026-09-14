@@ -190,6 +190,7 @@ try {
     extractConst("MODEL_TYPES_MAX"),
     extractConst("MODEL_TYPE_MAXLEN"),
     extractConst("qualifiesAsCompCard"),
+    extractConst("showsOnModelPage"),
     extractConst("slugify"),
     // buildCompCardDisplayList reads the per-surface credit switches and the
     // handle cleaner when it assembles a unified album. Lifting the function
@@ -202,7 +203,7 @@ try {
     extractConst("showRep"),
     extractConst("cleanIgHandle"),
   ].join("\n");
-  const api = new Function(decls + "\nreturn { shareIdFor, resolveShareId, buildCompCardDisplayList, qualifiesAsCompCard, modelTypesOf };")();
+  const api = new Function(decls + "\nreturn { shareIdFor, resolveShareId, buildCompCardDisplayList, qualifiesAsCompCard, showsOnModelPage, modelTypesOf };")();
 
   // Model types are free text now — the studio can add its own from the panel
   // — so the published values are worth a look. modelTypesOf silently drops
@@ -222,8 +223,8 @@ try {
   const visible = shoots.filter((s) => s && s.isPublic !== false);
   // Plus the unified albums the Comp Cards and Model Portfolio pages build.
   const unified = [
-    ...api.buildCompCardDisplayList(visible.filter(api.qualifiesAsCompCard), "type", "Comp Cards"),
-    ...api.buildCompCardDisplayList(visible.filter(api.qualifiesAsCompCard), "type", "Model Portfolio"),
+    ...api.buildCompCardDisplayList(visible.filter((s) => api.showsOnModelPage(s, "Comp Cards")), "type", "Comp Cards"),
+    ...api.buildCompCardDisplayList(visible.filter((s) => api.showsOnModelPage(s, "Model Portfolio")), "type", "Model Portfolio"),
   ].filter((a) => a && a.isCompCard);
 
   let checked = 0;
@@ -273,6 +274,13 @@ if (pdfSale !== undefined && pdfSale !== null) {
     if (typeof pdfSale.upiId !== "string" || (pdfSale.upiId && !/^[a-zA-Z0-9._-]{2,256}@[a-zA-Z][a-zA-Z0-9.-]{1,64}$/.test(pdfSale.upiId))) {
       fail(`WPS_DATA.PORTFOLIO_PDF.upiId is not a UPI ID: ${JSON.stringify(pdfSale.upiId)}`);
     }
+  }
+}
+// The Model Portfolio page's own switch: true, false, or absent (an album saved
+// before it existed, which follows its comp card setting).
+for (const s of shoots) {
+  if (s.showOnModelPortfolio !== undefined && typeof s.showOnModelPortfolio !== "boolean") {
+    fail(`album "${s.title || s.id}" has showOnModelPortfolio that is not true/false: ${JSON.stringify(s.showOnModelPortfolio)}`);
   }
 }
 // Pose tags decide which photos a client can put in the PDF; a value the app
