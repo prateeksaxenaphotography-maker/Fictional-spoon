@@ -2624,6 +2624,93 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 .lb-export-btn { font-family: "Inter", system-ui, sans-serif !important; font-size: 13.5px !important; font-weight: 600 !important; letter-spacing: 0 !important; text-transform: none !important; height: auto !important; padding: 11px 14px !important; border-radius: 100px !important; }
 .lb-note { margin: 0; font-size: 12.5px; color: var(--ink-soft); line-height: 1.5; }
 .lb-note-admin { margin-top: 12px; padding: 10px 12px; border: 1px dashed var(--line-2); border-radius: 10px; }
+
+/* ── Model portfolio PDF builder ─────────────────────────────────────────
+   A client picks a photo per pose, previews the pages, pays by UPI and
+   downloads. A full-screen sheet on phones, where most clients build it. */
+.pp-backdrop { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,.72); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.pp-sheet { width: 100%; max-width: 760px; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; overflow: hidden; background: var(--paper); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+.pp-head { position: relative; padding: 16px 64px 14px 20px; border-bottom: 1px solid var(--line); background: var(--bone); }
+.pp-eyebrow { font-family: var(--mono-font); font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+.pp-head h3 { margin: 4px 0 0; font-family: "Archivo", sans-serif; font-size: 20px; font-weight: 800; letter-spacing: -0.01em; color: var(--ink); }
+.pp-close { position: absolute; top: 12px; right: 14px; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-size: 22px; line-height: 1; cursor: pointer; }
+.pp-body { padding: 18px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; -webkit-overflow-scrolling: touch; }
+.pp-foot { padding: 12px 20px; border-top: 1px solid var(--line); background: var(--bone); color: var(--ink); display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+.pp-foot .btn { font-family: "Inter", system-ui, sans-serif; font-size: 13.5px; font-weight: 600; padding: 11px 18px; }
+.pp-foot-note { margin-right: auto; font-family: var(--mono-font); font-size: 11px; color: var(--ink-soft); }
+.pp-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.pp-label { font-family: var(--mono-font); font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.pp-seg { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 100px; background: var(--paper); }
+.pp-seg button { border: 0; background: transparent; color: var(--ink-soft); font: 600 12.5px/1.2 "Inter", system-ui, sans-serif; padding: 8px 14px; border-radius: 100px; cursor: pointer; }
+.pp-seg button[aria-checked="true"] { background: var(--ink); color: var(--paper); }
+.pp-hint { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-soft); }
+.pp-hint strong { color: var(--ink); }
+.pp-hint.is-warn { color: var(--accent); }
+.pp-pose-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.pp-pose-name { font-size: 14px; font-weight: 650; color: var(--ink); }
+.pp-pose-state { font-family: var(--mono-font); font-size: 10.5px; color: var(--accent); }
+.pp-pose.is-out .pp-pose-name, .pp-pose.is-out .pp-pose-state { color: var(--ink-soft); }
+.pp-cands { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; }
+.pp-cand { position: relative; flex: 0 0 auto; width: 78px; aspect-ratio: 4 / 5; padding: 0; overflow: hidden; border: 2px solid var(--line); border-radius: 6px; background: var(--bone); cursor: pointer; }
+.pp-cand img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pp-pose.is-out .pp-cand img { opacity: .55; }
+.pp-cand[aria-pressed="true"] { border-color: var(--accent); }
+.pp-check { display: none; position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; align-items: center; justify-content: center; border-radius: 50%; background: var(--accent); color: #fff; font-size: 11px; font-weight: 800; }
+.pp-cand[aria-pressed="true"] .pp-check { display: flex; }
+.pp-field { display: flex; flex-direction: column; gap: 6px; }
+.pp-field[hidden] { display: none; }
+.pp-field input, .pp-field select { width: 100%; box-sizing: border-box; height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font-size: 16px; }
+.pp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.pp-extras { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 14px; border-top: 1px dashed var(--line); }
+.pp-extras .pp-label { grid-column: 1 / -1; }
+.pp-preview { display: flex; justify-content: center; gap: 12px; }
+.pp-preview canvas { width: min(300px, 100%); height: auto; background: #fff; border: 1px solid var(--line); border-radius: 4px; box-shadow: var(--shadow-sm); }
+.pp-preview.two canvas { width: min(300px, calc(50% - 6px)); }
+.pp-rendering { margin: 0; padding: 48px 0; font-family: var(--mono-font); font-size: 12px; color: var(--ink-soft); text-align: center; }
+.pp-pay { display: flex; flex-direction: column; gap: 14px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--bone); }
+.pp-pay-title { margin: 0 0 2px; font-family: "Archivo", sans-serif; font-size: 18px; font-weight: 800; color: var(--ink); }
+.pp-pay-grid { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: start; }
+.pp-qr { width: 176px; height: 176px; border-radius: 8px; background: #fff; image-rendering: pixelated; }
+.pp-qr[hidden] { display: none; }
+.pp-steps { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; line-height: 1.5; color: var(--ink); }
+.pp-upi { font-family: var(--mono-font); font-weight: 700; overflow-wrap: anywhere; }
+.pp-pay .pp-upi-open { text-decoration: none; }
+/* On a phone the app button is the way to pay; the code is for paying from another phone. */
+.pp-upi-open + .pp-pay-grid .pp-qr { width: 132px; height: 132px; }
+.pp-ready .btn { text-decoration: none; }
+.pp-pay-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pp-error { margin: 0; font-size: 13px; color: var(--accent); }
+.pp-error[hidden] { display: none; }
+.pp-fine { margin: 0; font-size: 12px; color: var(--ink-soft); line-height: 1.5; }
+.pp-pay .btn-block, .pp-ready .btn { font-family: "Inter", system-ui, sans-serif; font-size: 14px; font-weight: 600; padding: 12px 18px; justify-content: center; }
+.pp-ready { display: flex; flex-direction: column; gap: 10px; }
+.pp-ready:empty { display: none; }
+.pp-ready-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.admin-pdf-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px 18px; flex-wrap: wrap; margin-bottom: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+.admin-pdf-switch-text { display: flex; flex-direction: column; gap: 2px; flex: 1 1 260px; font-size: var(--font-xs); line-height: 1.45; color: var(--ink-soft); }
+.admin-pdf-switch-text strong { font-size: var(--font-sm); color: var(--ink); }
+.pp-switch { position: relative; display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--ink); }
+.pp-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.pp-switch-track { position: relative; width: 44px; height: 24px; border-radius: 999px; background: var(--line-2, #bdbab4); transition: background .2s; }
+.pp-switch-track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .2s; }
+.pp-switch input:checked + .pp-switch-track { background: #059669; }
+.pp-switch input:checked + .pp-switch-track::after { transform: translateX(20px); }
+.pp-switch input:focus-visible + .pp-switch-track { outline: 2px solid var(--accent); outline-offset: 2px; }
+.admin-pdf-head-state { font-family: var(--mono-font); font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-soft); }
+.admin-pdf-head-state[data-on="true"] { color: #059669; border-color: #059669; }
+.admin-pdf-status { display: inline-block; margin-top: 10px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft); }
+.admin-pdf-status[data-tone="ok"] { color: #059669; }
+.admin-pdf-status[data-tone="warn"] { color: #d97706; }
+@media (max-width: 600px) {
+  .pp-backdrop { padding: 0; align-items: stretch; }
+  .pp-sheet { max-width: none; max-height: none; height: 100vh; height: 100dvh; border: 0; border-radius: 0; }
+  .pp-head { padding: 14px 64px 12px 16px; }
+  .pp-body { padding: 16px; }
+  .pp-foot { padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
+  .pp-extras, .pp-pay-fields { grid-template-columns: 1fr; }
+  .pp-pay-grid { grid-template-columns: 1fr; justify-items: center; }
+  .pp-seg button { padding: 8px 10px; font-size: 12px; }
+}
 .lb-disclaimer { font-size: 12.5px !important; font-style: normal !important; color: var(--ink-soft); margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; line-height: 1.55; }
 .lb-admin { margin-top: 18px; border-top: 1px dashed var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; width: 100%; }
 .lb-admin .lb-h { color: var(--ink-soft); margin-bottom: 2px; }

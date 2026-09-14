@@ -259,5 +259,30 @@ try {
   fail("could not run app.js share-link builder/resolver: " + e.message);
 }
 
+// ── 9. portfolio PDF sales: the price and UPI ID every client is shown ─────
+// The Model Portfolio PDF asks clients to pay PORTFOLIO_PDF.price to
+// PORTFOLIO_PDF.upiId. A mangled price quotes nonsense and a malformed UPI ID
+// sends money nowhere, so both are held to the pattern app.js's UPI_ID_RE uses.
+const pdfSale = win.WPS_DATA.PORTFOLIO_PDF;
+if (pdfSale !== undefined && pdfSale !== null) {
+  if (typeof pdfSale !== "object" || Array.isArray(pdfSale)) {
+    fail("WPS_DATA.PORTFOLIO_PDF must be an object { enabled, price, upiId }");
+  } else {
+    if (pdfSale.enabled !== undefined && typeof pdfSale.enabled !== "boolean") fail(`WPS_DATA.PORTFOLIO_PDF.enabled must be true or false — got ${JSON.stringify(pdfSale.enabled)}`);
+    if (!Number.isInteger(pdfSale.price) || pdfSale.price < 0) fail(`WPS_DATA.PORTFOLIO_PDF.price must be whole rupees, 0 or more — got ${JSON.stringify(pdfSale.price)}`);
+    if (typeof pdfSale.upiId !== "string" || (pdfSale.upiId && !/^[a-zA-Z0-9._-]{2,256}@[a-zA-Z][a-zA-Z0-9.-]{1,64}$/.test(pdfSale.upiId))) {
+      fail(`WPS_DATA.PORTFOLIO_PDF.upiId is not a UPI ID: ${JSON.stringify(pdfSale.upiId)}`);
+    }
+  }
+}
+// Pose tags decide which photos a client can put in the PDF; a value the app
+// doesn't know would silently leave that photo out of every one.
+const POSES = new Set(["full-body", "front", "left-profile", "right-profile", "three-quarter", "back", "close-up"]);
+for (const s of shoots) {
+  for (const p of s.photos || []) {
+    if (p.angle !== undefined && !POSES.has(p.angle)) fail(`album "${s.title || s.id}" photo ${p.id} has an unknown pose tag ${JSON.stringify(p.angle)}`);
+  }
+}
+
 if (failed) process.exit(1);
 console.log(`OK: ${shoots.length} albums, ids unique, all photo files present, format contract intact, cache-buster in sync.`);
