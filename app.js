@@ -6952,6 +6952,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           // reads from the album (not the raw shoot) ignored the toggle.
           showStatsOnCompCard: latestShoot.showStatsOnCompCard,
           showStatsOnModelPortfolio: latestShoot.showStatsOnModelPortfolio,
+          // "Turn off the comp card download" on any of this model's albums
+          // holds for the merged card too. It was never copied here, so on the
+          // Comp cards page (which shows only merged cards) the switch did nothing.
+          disableCompCardDownload: shootsInGroup.some((s) => s.disableCompCardDownload),
           mentor: latestShoot.mentor || "",
           season: latestShoot.season || "Comp Card",
           photographer: latestShoot.photographer || "Studio",
@@ -7671,55 +7675,55 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <fieldset id="fs_publish"><legend>Publish settings</legend>
               <div style="display: flex; align-items: center; gap: 8px;">
                 <input id="f_is_public" type="checkbox" checked style="width: 16px; height: 16px; accent-color: var(--accent); margin: 0; cursor: pointer;" />
-                <label for="f_is_public" style="font-weight: 600; cursor: pointer; margin: 0;">Show this album on the site <span class="label-hint" style="font-weight: 400; text-transform: none; letter-spacing: 0; font-family: inherit; font-size: 12.5px;">— untick to keep it saved but hidden everywhere</span></label>
+                <label for="f_is_public" style="font-weight: 600; cursor: pointer; margin: 0;">Show this album on the site <span class="label-hint" style="font-weight: 400; text-transform: none; letter-spacing: 0; font-family: inherit; font-size: 12.5px;">— untick to hide it everywhere. It stays saved.</span></label>
               </div>
               <div class="publish-toggles">
                 <label>
                   <input id="f_featured" type="checkbox" checked style="width: 15px; height: 15px; accent-color: var(--accent); margin: 3px 0 0;" />
-                  <span class="tog-text"><strong>Show on the homepage</strong><small>Appears in Featured photoshoots.</small></span>
+                  <span class="tog-text"><strong>Show on the homepage</strong><small>In the Featured section.</small></span>
                 </label>
                 <label>
                   <input id="f_show_compcard" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 3px 0 0;" />
-                  <span class="tog-text"><strong>Also make a comp card from this album</strong><small>Test shoots get a comp card automatically. Tick this for any other kind of shoot.</small></span>
+                  <span class="tog-text"><strong>Add to Comp cards and Model portfolio</strong><small>Test shoots are added automatically. Tick this for any other shoot.</small></span>
                 </label>
                 <label>
                   <input id="f_hide_compcard" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 3px 0 0;" />
-                  <span class="tog-text"><strong>Keep it off the Comp cards page</strong><small>For a test shoot you don't want listed there. The album itself stays in the archive.</small></span>
+                  <span class="tog-text"><strong>Hide from Comp cards and Model portfolio</strong><small>Its photos won't show on those pages or go into portfolio PDFs. The album itself stays on the site.</small></span>
                 </label>
                 <label>
                   <input id="f_disable_download" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 3px 0 0;" />
-                  <span class="tog-text"><strong>No comp card PDF download</strong><small>Visitors can view the comp card but not download it.</small></span>
+                  <span class="tog-text"><strong>Turn off the comp card download</strong><small>People can still see the comp card, just not download it. The paid portfolio PDF isn't affected.</small></span>
                 </label>
                 <label>
                   <input id="f_show_test_shoot_cat" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 3px 0 0;" />
-                  <span class="tog-text"><strong>Show the &quot;Test shoot / TFP&quot; label on the album</strong><small>Otherwise visitors see a normal album, not that it was a collaboration.</small></span>
+                  <span class="tog-text"><strong>Show that it was a test shoot</strong><small>Adds a "Test shoot" or "Collab" label. Left off, it looks like any other album.</small></span>
                 </label>
               </div>
               <div class="vis-matrix" id="repVisibility">
-                <p class="vis-matrix-title">Agency &amp; contact</p>
-                <p class="vis-matrix-sub">Where each detail may appear, for the model and for the agency. Only the model's Instagram is shown by default — switch on anything else where you want it. Agency socials show only where the agency name does.</p>
+                <p class="vis-matrix-title">Contact details</p>
+                <p class="vis-matrix-sub">Tick where each detail should appear. Only the model's Instagram is on by default. Agency links only appear where the agency name does.</p>
                 <table class="vis-table">
-                  <thead><tr><th></th><th>Comp cards</th><th>Homepage</th><th>PDF</th></tr></thead>
+                  <thead><tr><th></th><th>Comp cards &amp; portfolio</th><th>Homepage</th><th>PDFs</th></tr></thead>
                   <tbody>
                     <tr class="vis-group"><th colspan="4">Model</th></tr>
-                    <tr><th>Instagram</th><td><input id="f_show_ig_cc" type="checkbox" checked aria-label="Model Instagram on comp cards" /></td><td><input id="f_show_ig_home" type="checkbox" checked aria-label="Model Instagram on homepage" /></td><td><input id="f_show_ig_pdf" type="checkbox" checked aria-label="Model Instagram on PDF" /></td></tr>
-                    <tr><th>Kavyar</th><td><input id="f_show_kavyar_cc" type="checkbox" aria-label="Model Kavyar on comp cards" /></td><td><input id="f_show_kavyar_home" type="checkbox" aria-label="Model Kavyar on homepage" /></td><td><input id="f_show_kavyar_pdf" type="checkbox" aria-label="Model Kavyar on PDF" /></td></tr>
-                    <tr><th>LinkedIn</th><td><input id="f_show_linkedin_cc" type="checkbox" aria-label="Model LinkedIn on comp cards" /></td><td><input id="f_show_linkedin_home" type="checkbox" aria-label="Model LinkedIn on homepage" /></td><td><input id="f_show_linkedin_pdf" type="checkbox" aria-label="Model LinkedIn on PDF" /></td></tr>
-                    <tr><th>Behance</th><td><input id="f_show_behance_cc" type="checkbox" aria-label="Model Behance on comp cards" /></td><td><input id="f_show_behance_home" type="checkbox" aria-label="Model Behance on homepage" /></td><td><input id="f_show_behance_pdf" type="checkbox" aria-label="Model Behance on PDF" /></td></tr>
-                    <tr><th>Website</th><td><input id="f_show_website_cc" type="checkbox" aria-label="Model website on comp cards" /></td><td><input id="f_show_website_home" type="checkbox" aria-label="Model website on homepage" /></td><td><input id="f_show_website_pdf" type="checkbox" aria-label="Model website on PDF" /></td></tr>
-                    <tr><th>Email</th><td><input id="f_show_email_cc" type="checkbox" aria-label="Model email on comp cards" /></td><td><input id="f_show_email_home" type="checkbox" aria-label="Model email on homepage" /></td><td><input id="f_show_email_pdf" type="checkbox" aria-label="Model email on PDF" /></td></tr>
+                    <tr><th>Instagram</th><td><input id="f_show_ig_cc" type="checkbox" checked aria-label="Model Instagram on comp cards and portfolio" /></td><td><input id="f_show_ig_home" type="checkbox" checked aria-label="Model Instagram on homepage" /></td><td><input id="f_show_ig_pdf" type="checkbox" checked aria-label="Model Instagram on PDFs" /></td></tr>
+                    <tr><th>Kavyar</th><td><input id="f_show_kavyar_cc" type="checkbox" aria-label="Model Kavyar on comp cards and portfolio" /></td><td><input id="f_show_kavyar_home" type="checkbox" aria-label="Model Kavyar on homepage" /></td><td><input id="f_show_kavyar_pdf" type="checkbox" aria-label="Model Kavyar on PDFs" /></td></tr>
+                    <tr><th>LinkedIn</th><td><input id="f_show_linkedin_cc" type="checkbox" aria-label="Model LinkedIn on comp cards and portfolio" /></td><td><input id="f_show_linkedin_home" type="checkbox" aria-label="Model LinkedIn on homepage" /></td><td><input id="f_show_linkedin_pdf" type="checkbox" aria-label="Model LinkedIn on PDFs" /></td></tr>
+                    <tr><th>Behance</th><td><input id="f_show_behance_cc" type="checkbox" aria-label="Model Behance on comp cards and portfolio" /></td><td><input id="f_show_behance_home" type="checkbox" aria-label="Model Behance on homepage" /></td><td><input id="f_show_behance_pdf" type="checkbox" aria-label="Model Behance on PDFs" /></td></tr>
+                    <tr><th>Website</th><td><input id="f_show_website_cc" type="checkbox" aria-label="Model website on comp cards and portfolio" /></td><td><input id="f_show_website_home" type="checkbox" aria-label="Model website on homepage" /></td><td><input id="f_show_website_pdf" type="checkbox" aria-label="Model website on PDFs" /></td></tr>
+                    <tr><th>Email</th><td><input id="f_show_email_cc" type="checkbox" aria-label="Model email on comp cards and portfolio" /></td><td><input id="f_show_email_home" type="checkbox" aria-label="Model email on homepage" /></td><td><input id="f_show_email_pdf" type="checkbox" aria-label="Model email on PDFs" /></td></tr>
                     <tr class="vis-group"><th colspan="4">Agency</th></tr>
-                    <tr><th>Agency name</th><td><input id="f_show_agency_cc" type="checkbox" aria-label="Agency name on comp cards" /></td><td><input id="f_show_agency_home" type="checkbox" aria-label="Agency name on homepage" /></td><td><input id="f_show_agency_pdf" type="checkbox" aria-label="Agency name on PDF" /></td></tr>
-                    <tr><th>Instagram</th><td><input id="f_show_agency_ig_cc" type="checkbox" aria-label="Agency Instagram on comp cards" /></td><td><input id="f_show_agency_ig_home" type="checkbox" aria-label="Agency Instagram on homepage" /></td><td><input id="f_show_agency_ig_pdf" type="checkbox" aria-label="Agency Instagram on PDF" /></td></tr>
-                    <tr><th>Kavyar</th><td><input id="f_show_agency_kavyar_cc" type="checkbox" aria-label="Agency Kavyar on comp cards" /></td><td><input id="f_show_agency_kavyar_home" type="checkbox" aria-label="Agency Kavyar on homepage" /></td><td><input id="f_show_agency_kavyar_pdf" type="checkbox" aria-label="Agency Kavyar on PDF" /></td></tr>
-                    <tr><th>LinkedIn</th><td><input id="f_show_agency_linkedin_cc" type="checkbox" aria-label="Agency LinkedIn on comp cards" /></td><td><input id="f_show_agency_linkedin_home" type="checkbox" aria-label="Agency LinkedIn on homepage" /></td><td><input id="f_show_agency_linkedin_pdf" type="checkbox" aria-label="Agency LinkedIn on PDF" /></td></tr>
-                    <tr><th>Behance</th><td><input id="f_show_agency_behance_cc" type="checkbox" aria-label="Agency Behance on comp cards" /></td><td><input id="f_show_agency_behance_home" type="checkbox" aria-label="Agency Behance on homepage" /></td><td><input id="f_show_agency_behance_pdf" type="checkbox" aria-label="Agency Behance on PDF" /></td></tr>
-                    <tr><th>Website</th><td><input id="f_show_agency_website_cc" type="checkbox" aria-label="Agency website on comp cards" /></td><td><input id="f_show_agency_website_home" type="checkbox" aria-label="Agency website on homepage" /></td><td><input id="f_show_agency_website_pdf" type="checkbox" aria-label="Agency website on PDF" /></td></tr>
-                    <tr><th>Email</th><td><input id="f_show_agency_email_cc" type="checkbox" aria-label="Agency email on comp cards" /></td><td><input id="f_show_agency_email_home" type="checkbox" aria-label="Agency email on homepage" /></td><td><input id="f_show_agency_email_pdf" type="checkbox" aria-label="Agency email on PDF" /></td></tr>
+                    <tr><th>Agency name</th><td><input id="f_show_agency_cc" type="checkbox" aria-label="Agency name on comp cards and portfolio" /></td><td><input id="f_show_agency_home" type="checkbox" aria-label="Agency name on homepage" /></td><td><input id="f_show_agency_pdf" type="checkbox" aria-label="Agency name on PDFs" /></td></tr>
+                    <tr><th>Instagram</th><td><input id="f_show_agency_ig_cc" type="checkbox" aria-label="Agency Instagram on comp cards and portfolio" /></td><td><input id="f_show_agency_ig_home" type="checkbox" aria-label="Agency Instagram on homepage" /></td><td><input id="f_show_agency_ig_pdf" type="checkbox" aria-label="Agency Instagram on PDFs" /></td></tr>
+                    <tr><th>Kavyar</th><td><input id="f_show_agency_kavyar_cc" type="checkbox" aria-label="Agency Kavyar on comp cards and portfolio" /></td><td><input id="f_show_agency_kavyar_home" type="checkbox" aria-label="Agency Kavyar on homepage" /></td><td><input id="f_show_agency_kavyar_pdf" type="checkbox" aria-label="Agency Kavyar on PDFs" /></td></tr>
+                    <tr><th>LinkedIn</th><td><input id="f_show_agency_linkedin_cc" type="checkbox" aria-label="Agency LinkedIn on comp cards and portfolio" /></td><td><input id="f_show_agency_linkedin_home" type="checkbox" aria-label="Agency LinkedIn on homepage" /></td><td><input id="f_show_agency_linkedin_pdf" type="checkbox" aria-label="Agency LinkedIn on PDFs" /></td></tr>
+                    <tr><th>Behance</th><td><input id="f_show_agency_behance_cc" type="checkbox" aria-label="Agency Behance on comp cards and portfolio" /></td><td><input id="f_show_agency_behance_home" type="checkbox" aria-label="Agency Behance on homepage" /></td><td><input id="f_show_agency_behance_pdf" type="checkbox" aria-label="Agency Behance on PDFs" /></td></tr>
+                    <tr><th>Website</th><td><input id="f_show_agency_website_cc" type="checkbox" aria-label="Agency website on comp cards and portfolio" /></td><td><input id="f_show_agency_website_home" type="checkbox" aria-label="Agency website on homepage" /></td><td><input id="f_show_agency_website_pdf" type="checkbox" aria-label="Agency website on PDFs" /></td></tr>
+                    <tr><th>Email</th><td><input id="f_show_agency_email_cc" type="checkbox" aria-label="Agency email on comp cards and portfolio" /></td><td><input id="f_show_agency_email_home" type="checkbox" aria-label="Agency email on homepage" /></td><td><input id="f_show_agency_email_pdf" type="checkbox" aria-label="Agency email on PDFs" /></td></tr>
                   </tbody>
                 </table>
               </div>
-              <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 4px 0 0;">Show on the album page:</p>
+              <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 4px 0 0;">On the album page, show:</p>
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
                 <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
                   <input id="f_show_credits" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
@@ -7727,7 +7731,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
                   <input id="f_show_pdf" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
-                  PDF materials
+                  Attached PDF
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
                   <input id="f_show_instagram" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
@@ -7743,11 +7747,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
                   <input id="f_show_stats" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
-                  Model Stats
+                  Measurements
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
                   <input id="f_show_gear" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
-                  Gear/Equipment
+                  Gear
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
                   <input id="f_show_location" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
