@@ -1971,7 +1971,7 @@ window.WPS_DATA = {
       "hideFromCompCard": false,
       "showOnModelPortfolio": true,
       "disableCompCardDownload": false,
-      "isPublic": false,
+      "isPublic": true,
       "showCredits": true,
       "showPdf": true,
       "showInstagram": true,
