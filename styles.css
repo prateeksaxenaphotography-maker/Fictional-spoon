@@ -2689,9 +2689,6 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 .pp-ready { display: flex; flex-direction: column; gap: 10px; }
 .pp-ready:empty { display: none; }
 .pp-ready-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-.admin-pdf-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px 18px; flex-wrap: wrap; margin-bottom: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
-.admin-pdf-switch-text { display: flex; flex-direction: column; gap: 2px; flex: 1 1 260px; font-size: var(--font-xs); line-height: 1.45; color: var(--ink-soft); }
-.admin-pdf-switch-text strong { font-size: var(--font-sm); color: var(--ink); }
 .pp-switch { position: relative; display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--ink); }
 .pp-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .pp-switch-track { position: relative; width: 44px; height: 24px; border-radius: 999px; background: var(--line-2, #bdbab4); transition: background .2s; }
@@ -2699,8 +2696,6 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 .pp-switch input:checked + .pp-switch-track { background: #059669; }
 .pp-switch input:checked + .pp-switch-track::after { transform: translateX(20px); }
 .pp-switch input:focus-visible + .pp-switch-track { outline: 2px solid var(--accent); outline-offset: 2px; }
-.admin-pdf-head-state { font-family: var(--mono-font); font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-soft); }
-.admin-pdf-head-state[data-on="true"] { color: #059669; border-color: #059669; }
 .admin-pdf-status { display: inline-block; margin-top: 10px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft); }
 .admin-pdf-status[data-tone="ok"] { color: #059669; }
 .admin-pdf-status[data-tone="warn"] { color: #d97706; }

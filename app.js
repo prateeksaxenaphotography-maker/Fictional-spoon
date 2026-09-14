@@ -2711,14 +2711,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const pdfPrice = getPortfolioPdfSettings().price;
       const exportBtn = `<button class="btn btn-dark btn-block lb-export-btn" onclick="window.printModelPortfolio('${escJs(shoot.id)}')">Make portfolio PDF</button>`;
       if (isAdmin()) {
-        const salesNote = !getPortfolioPdfSettings().enabled ? "Off for clients. Switch it on in Calendar → Settings."
-          : !portfolioPdfSalesOpen() ? "Clients can't buy it yet: add your UPI ID in Calendar → Settings."
+        const salesNote = !getPortfolioPdfSettings().enabled ? "Off for clients."
+          : !portfolioPdfSalesOpen() ? "Clients can't buy it yet: add your UPI ID."
           : pdfPrice ? `On for clients: they pay ₹${pdfPrice}.` : "On for clients, free.";
+        // A full page load rather than an in-app link, so the lightbox closes;
+        // the calendar opens the Portfolio PDF panel when it sees #portfolio-pdf.
+        const settingsLink = `<a href="/calendar#portfolio-pdf">Portfolio PDF settings →</a>`;
         pdfBtnHtml = posedCount ? `
           <div class="lb-sidebar-section lb-card lb-export">
             <span class="lb-h" style="margin: 0;"><span>Portfolio PDF</span><small>Free for you</small></span>
             ${exportBtn}
-            <p class="lb-note">${esc(salesNote)}</p>
+            <p class="lb-note">${esc(salesNote)} ${settingsLink}</p>
           </div>
         ` : `
           <div class="lb-sidebar-section lb-note lb-note-admin">No photo of this model has a pose tag, so there's no portfolio PDF to build. Tag poses in Upload, then publish (admin only sees this)</div>
@@ -5175,23 +5178,21 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
         <!-- What a client pays to download the portfolio PDF they build on the
              Model Portfolio page, and the UPI ID it's paid to. Published with
-             the rates, since visitors can only read data.js. -->
-        <div class="admin-panel">
+             the rates, since visitors can only read data.js. The on/off switch
+             is on the header line, so it shows while the panel is folded: tucked
+             inside the body, the studio couldn't find it. -->
+        <div class="admin-panel" id="portfolio-pdf">
           <div class="admin-panel-head" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; cursor: pointer; user-select: none;" onclick="const b=document.getElementById('adminPdfBody');const a=document.getElementById('adminPdfArrow');const open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▼':'▲';">
-            <span style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">Portfolio PDF <span class="admin-pdf-head-state" id="portfolioPdfHeadState" data-on="${getPortfolioPdfSettings().enabled}">${getPortfolioPdfSettings().enabled ? "On" : "Off"}</span> <span style="font-weight: 400; color: var(--ink-soft); font-size: 12.5px;">— clients pick poses, pay by UPI, download</span></span>
+            <span style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">Portfolio PDF for clients
+              <label class="pp-switch" onclick="event.stopPropagation()"><input type="checkbox" id="portfolioPdfEnabledInput" aria-label="Portfolio PDF for clients" ${getPortfolioPdfSettings().enabled ? "checked" : ""} onchange="window.saveAdminPortfolioPdfSettings()" /><span class="pp-switch-track" aria-hidden="true"></span><span id="portfolioPdfEnabledLabel">${getPortfolioPdfSettings().enabled ? "On" : "Off"}</span></label>
+            </span>
             <div style="display: flex; gap: 8px; align-items: center;">
               <button type="button" class="admin-cal-btn primary" onclick="event.stopPropagation();window.saveAdminPortfolioPdfSettings()">Save &amp; push live</button>
               <span id="adminPdfArrow" style="font-size: var(--font-xs); color: var(--ink-soft); font-weight: 700;">▼</span>
             </div>
           </div>
           <div id="adminPdfBody" style="display: none; margin-top: 12px;">
-            <!-- One switch for every model's portfolio at once. Flipping it
-                 saves and publishes straight away, like any other toggle. -->
-            <div class="admin-pdf-switch">
-              <span class="admin-pdf-switch-text"><strong>Portfolio PDF for clients</strong><span>Shows or hides the Make portfolio PDF button on every model's portfolio, and Model Portfolio in the menu. You can always make PDFs yourself.</span></span>
-              <label class="pp-switch"><input type="checkbox" id="portfolioPdfEnabledInput" aria-label="Portfolio PDF for clients" ${getPortfolioPdfSettings().enabled ? "checked" : ""} onchange="window.saveAdminPortfolioPdfSettings()" /><span class="pp-switch-track" aria-hidden="true"></span><span id="portfolioPdfEnabledLabel">${getPortfolioPdfSettings().enabled ? "On" : "Off"}</span></label>
-            </div>
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 12px 0;">Clients pick a model's photos by pose, pay this amount to your UPI ID, then download a 1 or 2 page PDF. You always download free. Set the price to <strong>0</strong> to make it free for everyone.</p>
+            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 12px 0;">The switch shows or hides the Make portfolio PDF button on every model's portfolio, and Model Portfolio in the menu. You can always make PDFs yourself. Clients pick a model's photos by pose, pay this amount to your UPI ID, then download a 1 or 2 page PDF. Set the price to <strong>0</strong> to make it free for everyone.</p>
             <div style="display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap;">
               <div>
                 <span style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft); display: block; margin-bottom: 4px; text-transform: uppercase;">Price per PDF</span>
@@ -6754,6 +6755,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     renderAdminPackagesEditor();
     renderAdminGrid();
     renderRoster();
+
+    // Arriving from the link in a Model Portfolio lightbox: unfold the
+    // Portfolio PDF panel and bring it into view.
+    if (location.hash === "#portfolio-pdf") {
+      const pdfBody = document.getElementById("adminPdfBody");
+      const pdfArrow = document.getElementById("adminPdfArrow");
+      if (pdfBody) pdfBody.style.display = "block";
+      if (pdfArrow) pdfArrow.textContent = "▲";
+      document.getElementById("portfolio-pdf")?.scrollIntoView({ block: "start" });
+    }
   }
 
   function catCard(label, kind, val, count, sample, cover) {
@@ -13671,8 +13682,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       if (enabledEl) enabledEl.checked = on;
       const label = document.getElementById("portfolioPdfEnabledLabel");
       if (label) label.textContent = on ? "On" : "Off";
-      const head = document.getElementById("portfolioPdfHeadState");
-      if (head) { head.textContent = on ? "On" : "Off"; head.dataset.on = String(on); }
     };
     const enabled = enabledEl ? enabledEl.checked : current.enabled;
     // Switched on with a price and nowhere to pay, clients would get a button
@@ -13680,6 +13689,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (enabled && price > 0 && !upiId) {
       showSwitch(current.enabled);
       toast("A paid PDF needs your UPI ID. Add it, or set the price to 0, then switch it on.");
+      const pdfBody = document.getElementById("adminPdfBody");
+      if (pdfBody) pdfBody.style.display = "block";
       if (upiEl) upiEl.focus();
       return;
     }
@@ -14686,15 +14697,36 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const ready = body.querySelector("#ppReady");
       try {
         const spec = buildSpec();
-        const pages = await renderPortfolioPdfPages(spec, { dpi: 200, watermark: false, cache });
-        const bytes = await buildPortfolioPdf(pages, `${spec.name} — Model Portfolio`);
-        // Full-resolution canvases are large; let the phone have the memory back.
-        pages.forEach((p) => { p.canvas.width = 0; p.canvas.height = 0; });
+        // Full quality first. A browser short on memory (a phone after a long
+        // browse, say) can refuse pages that size, so step down before giving
+        // up: a slightly softer PDF beats none. A failed photo load also gets
+        // retried this way, since failed loads aren't cached.
+        let bytes = null, lastErr = null;
+        for (const dpi of [200, 150, 110]) {
+          try {
+            const pages = await renderPortfolioPdfPages(spec, { dpi, watermark: false, cache });
+            try {
+              bytes = await buildPortfolioPdf(pages, `${spec.name} — Model Portfolio`);
+            } finally {
+              // Full-resolution canvases are large; give the memory back.
+              pages.forEach((p) => { p.canvas.width = 0; p.canvas.height = 0; });
+            }
+            break;
+          } catch (err) {
+            lastErr = err;
+            console.warn(`Portfolio PDF failed at ${dpi} dpi:`, err);
+          }
+          if (token !== renderToken) return;
+        }
+        if (!bytes) throw lastErr || new Error("unknown error");
         if (token !== renderToken) return;
         offerPdf(bytes, `${slugify(spec.name) || "model"}-portfolio.pdf`, `${spec.name} — Model Portfolio`);
       } catch (err) {
         console.warn("Portfolio PDF failed:", err);
-        if (ready) ready.innerHTML = `<p class="pp-error">Couldn't make the PDF. Check your connection and try again.</p>`;
+        // Name the cause on screen: a client who can't open the console can
+        // still send a screenshot that says what went wrong.
+        const reason = (err && (err.message || err.name)) || "unknown error";
+        if (ready) ready.innerHTML = `<p class="pp-error">Couldn't make the PDF (${esc(reason)}). Try again, or try another browser.</p>`;
       } finally {
         btn.disabled = false;
         btn.textContent = label;
