@@ -13700,7 +13700,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
   // The photo counts a client can choose for each page count. The cover is
   // not included: it has a page of its own.
-  const PORTFOLIO_PDF_COUNTS = { 1: [4, 5], 2: [8, 9, 10] };
+  const PORTFOLIO_PDF_COUNTS = { 1: [2, 3, 4, 5], 2: [8, 9, 10] };
 
   window.saveAdminPortfolioPdfSettings = async () => {
     const priceEl = document.getElementById("portfolioPdfPriceInput");
@@ -14207,7 +14207,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // but a clean shorter grid beats a tall one that slices faces.
   function pdfLeadLayout(leadAspect, aspects, W, maxH, gap) {
     let best = null;
-    const consider = (c) => { if (c && (!best || c.score < best.score)) best = c; };
+    const consider = (c) => {
+      if (!c) return;
+      // "Big photo" has to mean it. With only two photos the least-cropped answer
+      // is two equal halves, which reads exactly like All equal.
+      const biggest = Math.max(0, ...c.cells.map((x) => x.w * x.h));
+      if (biggest && c.lead.w * c.lead.h < biggest * 1.8) c.score += 0.6;
+      if (!best || c.score < best.score) best = c;
+    };
     for (let H = maxH; H >= maxH * 0.55; H -= 2) {
       const unused = (1 - H / maxH) * 0.6;
       if (!aspects.length) {
