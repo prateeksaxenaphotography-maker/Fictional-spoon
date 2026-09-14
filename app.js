@@ -14289,7 +14289,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // seamless included. Contact details stay on the pages after it.
   function composeFrontCoverPdf(page, spec, img, mark) {
     if (spec.coverStyle === "framed") return composeFramedCoverPdf(page, spec, img, mark);
-    if (spec.coverStyle === "split") return composeSplitCoverPdf(page, spec, img, mark);
+    if (spec.coverStyle === "split") return composeSplitCoverPdf(page, spec, img, mark, 0.5);
+    if (spec.coverStyle === "split-wide") return composeSplitCoverPdf(page, spec, img, mark, 0.75);
     const { w: PW, h: PH, margin: M } = PDF_PAGE;
     const CW = PW - M * 2;
     const { ctx, u } = page;
@@ -14351,18 +14352,24 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     }
   }
 
-  // Cover, split: the photo runs down the right of the page edge to edge;
-  // the name, stacked large, and the model's measurements sit on white beside it.
-  function composeSplitCoverPdf(page, spec, img, mark) {
+  // Cover, split: the photo runs down the right of the page edge to edge,
+  // over half or three quarters of its width (the client's choice); the name,
+  // stacked large, and the model's measurements sit on white beside it.
+  function composeSplitCoverPdf(page, spec, img, mark, photoShare) {
     const { w: PW, h: PH, margin: M } = PDF_PAGE;
-    const photoX = 80;
+    const photoX = PW * (1 - photoShare);
     drawPdfPhoto(page, img, spec.cover.photo, photoX, 0, PW - photoX, PH, false);
     // A hairline where photo meets paper, for photos shot on white.
     page.ctx.fillStyle = "#e2e0dc";
     page.ctx.fillRect(page.u(photoX), 0, Math.max(1, page.u(0.25)), page.u(PH));
     const x = M, colW = photoX - M - 8;
     const label = { ...PDF_LABEL, size: 2.3 };
-    pdfHeaderLabel(spec, 0).split(" · ").forEach((line, i) => page.text(line, x, M + 3.4 + i * 3.6, label));
+    // One piece per line, wrapped again when the column is narrow (the ¾ split).
+    pdfHeaderLabel(spec, 0).split(" · ")
+      .flatMap((part) => page.measure(part, label) <= colW ? [part]
+        // Break after "Updated" so the month and year stay together.
+        : part.startsWith("Updated ") ? ["Updated", part.slice(8)] : page.wrap(part, colW, label))
+      .forEach((line, i) => page.text(line, x, M + 3.4 + i * 3.6, label));
 
     const words = String(spec.name).split(/\s+/).filter(Boolean);
     const nameStyle = (size) => ({ weight: 800, size, family: PDF_DISPLAY, spacing: -0.025 * size, upper: true, color: "#000" });
@@ -14386,15 +14393,21 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       y += 6.6;
     });
 
-    // Measurements, two to a row, sitting on the studio line at the foot.
+    // Measurements sitting on the studio line at the foot: two to a row, or
+    // one when the column is too narrow to hold "Dark Brown" beside "38-40".
     const brandBase = PH - M;
     const stats = portfolioPdfStatCells(spec.shoot);
-    const half = (colW - 4) / 2;
-    const statsTop = brandBase - 10 - Math.ceil(stats.length / 2) * (PDF_CELL_H + 3.2);
-    stats.forEach((cell, i) => drawPdfCell(page, cell, x + (i % 2) * (half + 4), statsTop + Math.floor(i / 2) * (PDF_CELL_H + 3.2), half));
+    const perRow = colW >= 50 ? 2 : 1;
+    const cellW = (colW - (perRow - 1) * 4) / perRow;
+    const statsTop = brandBase - 10 - Math.ceil(stats.length / perRow) * (PDF_CELL_H + 3.2);
+    stats.forEach((cell, i) => drawPdfCell(page, cell, x + (i % perRow) * (cellW + 4), statsTop + Math.floor(i / perRow) * (PDF_CELL_H + 3.2), cellW));
     page.rule(x, brandBase - 6, x + colW);
     if (mark) page.ctx.drawImage(mark, page.u(x), page.u(brandBase - 3.7), page.u(4.2), page.u(4.2));
-    page.text("nerdyphotographer.in", x + 5.8, brandBase, { weight: 700, size: 2.2, family: PDF_MONO, spacing: 0.3, upper: true, color: "#000" });
+    // The studio name shrinks, never overflows, when the column is narrow.
+    const brandStyle = (size) => ({ weight: 700, size, family: PDF_MONO, spacing: (0.3 * size) / 2.2, upper: true, color: "#000" });
+    let brandSize = 2.2;
+    while (brandSize > 1.4 && page.measure("nerdyphotographer.in", brandStyle(brandSize)) > colW - 5.8) brandSize -= 0.1;
+    page.text("nerdyphotographer.in", x + 5.8, brandBase, brandStyle(brandSize));
     page.link(x, brandBase - 4.5, colW, 5.5, "https://www.nerdyphotographer.in/");
   }
 
@@ -14759,7 +14772,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <div class="pp-seg" role="radiogroup" aria-label="Cover look" id="ppCoverStyleSeg">
               <button type="button" role="radio" data-cover-style="full" aria-checked="true">Full</button>
               <button type="button" role="radio" data-cover-style="framed" aria-checked="false">Framed</button>
-              <button type="button" role="radio" data-cover-style="split" aria-checked="false">Split</button>
+              <button type="button" role="radio" data-cover-style="split" aria-checked="false">Split ½</button>
+              <button type="button" role="radio" data-cover-style="split-wide" aria-checked="false">Split ¾</button>
             </div>
           </div>
         </div>
