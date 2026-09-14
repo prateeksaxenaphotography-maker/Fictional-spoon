@@ -14612,6 +14612,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       coverId: "",         // id of the cover photo
       coverStyle: "full",  // the cover's look: full photo, framed or split
       layout: "lead",      // one big photo with the rest around it, or all equal
+      filter: "all",       // which pose the grid shows
+      choosingCover: false, // the grid is picking the cover photo
       location: "", phone: "", email: "", utr: "",
       paid: price === 0,
       // Goes in the UPI payment note, so the studio can match a payment to
@@ -14625,7 +14627,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // Every photo on offer, in pose order, which is also their order in the PDF.
     const slots = poses.flatMap((pose) => pose.candidates.map((photo, i) => ({
       id: photo.id, photo, angle: pose.angle, label: pose.label,
-      // Two Full Body shots need telling apart in the Big photo list.
+      // A name per photo for screen readers: two Full Body shots need telling apart.
       name: pose.candidates.length > 1 ? `${pose.label} · photo ${i + 1}` : pose.label
     })));
     const picked = () => slots.filter((s) => state.picks.has(s.id));
@@ -14651,7 +14653,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // returns the note to show when that freed a place.
     const setCoverPhoto = (id) => {
       state.coverId = id;
-      return state.picks.delete(id) ? "That photo is on the cover now, so it's off the pages. Pick another photo in its place." : "";
+      return state.picks.delete(id) ? "Moved to the cover. Pick one more for the pages." : "";
     };
     state.count = Math.max(...countOptions(1));
     fillPicks();
@@ -14712,108 +14714,102 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       };
     }
 
-    /* Step 1: pick photos, as many from one pose as the pages hold. */
+    /* Step 1: pick photos. One contact sheet of every posed photo, filters
+       by pose, and a footer that always says where things stand, so a
+       message is never scrolled out of sight. */
+    const SHORT_POSE = { "full-body": "Full body", front: "Front", "left-profile": "Left", "right-profile": "Right", "three-quarter": "¾ view", back: "Back", "close-up": "Close-up" };
     function showPick() {
       renderToken++;
+      state.choosingCover = false;
       body.innerHTML = `
-        <div class="pp-row">
-          <span class="pp-label" id="ppPagesLabel">Pages</span>
-          <div class="pp-seg" role="radiogroup" aria-labelledby="ppPagesLabel">
+        <div class="pp-controls">
+          <div class="pp-seg" role="radiogroup" aria-label="Pages">
             ${[1, 2].map((n) => `<button type="button" role="radio" data-pages="${n}" aria-checked="false">${n} page${n > 1 ? "s" : ""}</button>`).join("")}
           </div>
-        </div>
-        <div class="pp-row">
-          <span class="pp-label" id="ppCountLabel">Photos</span>
-          <div class="pp-seg" role="radiogroup" aria-labelledby="ppCountLabel" id="ppCountSeg"></div>
-        </div>
-        <div class="pp-row">
-          <span class="pp-label" id="ppLayoutLabel">Layout</span>
-          <div class="pp-seg" role="radiogroup" aria-labelledby="ppLayoutLabel" id="ppLayoutSeg">
+          <div class="pp-seg" role="radiogroup" aria-label="Photos on the pages" id="ppCountSeg"></div>
+          <div class="pp-seg" role="radiogroup" aria-label="Layout" id="ppLayoutSeg">
             <button type="button" role="radio" data-layout="lead" aria-checked="true">Big photo</button>
             <button type="button" role="radio" data-layout="equal" aria-checked="false">All equal</button>
           </div>
         </div>
-        <p class="pp-hint" id="ppCount" aria-live="polite"></p>
-        ${poses.map((pose) => `
-          <div class="pp-pose" data-angle="${esc(pose.angle)}">
-            <div class="pp-pose-head"><span class="pp-pose-name">${esc(pose.label)}</span><span class="pp-pose-state"></span></div>
-            <div class="pp-cands">
-              ${pose.candidates.map((p, i) => `<button type="button" class="pp-cand" data-angle="${esc(pose.angle)}" data-id="${esc(p.id)}" aria-pressed="false" aria-label="${esc(pose.label)}, photo ${i + 1}"><img src="${esc(photoSrc(p.small ? { url: p.small } : p))}" alt="" loading="lazy" style="object-position: ${esc(p.objectPosition || "center")};" /><span class="pp-check" aria-hidden="true">✓</span><span class="pp-cover-tag" aria-hidden="true">Cover</span></button>`).join("")}
-            </div>
-            <p class="pp-pose-msg" role="status"></p>
-          </div>
-        `).join("")}
-        <label class="pp-field" id="ppLeadField"><span class="pp-label">Big photo</span><select id="ppLead"></select></label>
-        <section class="pp-cover" aria-labelledby="ppCoverLabel">
-          <div class="pp-row">
-            <div>
-              <span class="pp-label" id="ppCoverLabel">Cover page</span>
-              <p class="pp-hint">An extra front page with one photo and the name. It doesn't use up any of your photos.</p>
-            </div>
-            <label class="pp-switch"><input type="checkbox" id="ppCover" aria-labelledby="ppCoverLabel" /><span class="pp-switch-track" aria-hidden="true"></span><span id="ppCoverState">Off</span></label>
-          </div>
-          <div class="pp-cover-pick" id="ppCoverPick" hidden>
-            <div class="pp-cover-chosen">
-              <img id="ppCoverImg" alt="The cover photo" />
-              <div class="pp-cover-meta">
-                <span class="pp-label">Cover photo</span>
-                <strong id="ppCoverName"></strong>
-                <button type="button" class="btn btn-ghost pp-cover-change" id="ppCoverChange" aria-expanded="false" aria-controls="ppCoverGrid">Change photo</button>
-              </div>
-            </div>
-            <div class="pp-cover-grid" id="ppCoverGrid" hidden>
-              ${slots.map((s) => `<button type="button" class="pp-cand pp-cover-cand" data-id="${esc(s.id)}" aria-pressed="false" aria-label="Cover photo: ${esc(s.name)}"><img src="${esc(photoSrc(s.photo.small ? { url: s.photo.small } : s.photo))}" alt="" loading="lazy" style="object-position: ${esc(s.photo.objectPosition || "center")};" /><span class="pp-check" aria-hidden="true">✓</span><span class="pp-cand-note"></span></button>`).join("")}
-            </div>
-            <div class="pp-row">
-              <span class="pp-label" id="ppCoverStyleLabel">Cover look</span>
-              <div class="pp-seg" role="radiogroup" aria-labelledby="ppCoverStyleLabel" id="ppCoverStyleSeg">
-                <button type="button" role="radio" data-cover-style="full" aria-checked="true">Full photo</button>
-                <button type="button" role="radio" data-cover-style="framed" aria-checked="false">Framed</button>
-                <button type="button" role="radio" data-cover-style="split" aria-checked="false">Split</button>
-              </div>
-            </div>
-            <p class="pp-pose-msg" id="ppCoverMsg" role="status"></p>
-          </div>
-        </section>
-        <div class="pp-extras">
-          <span class="pp-label">Optional: printed on your PDF, never saved</span>
-          <label class="pp-field"><span class="pp-sr">Based in</span><input type="text" id="ppLocation" maxlength="40" placeholder="Based in (e.g. Mumbai)" value="${esc(state.location)}" /></label>
-          <label class="pp-field"><span class="pp-sr">Phone</span><input type="tel" id="ppPhone" maxlength="20" placeholder="Phone number" value="${esc(state.phone)}" /></label>
+        <div class="pp-filters" role="toolbar" aria-label="Show one pose">
+          <button type="button" data-filter="all" aria-pressed="true">All</button>
+          ${poses.map((p) => `<button type="button" data-filter="${esc(p.angle)}" aria-pressed="false">${esc(SHORT_POSE[p.angle] || p.label)}<span class="pp-filter-n"></span></button>`).join("")}
         </div>
+        <div class="pp-mode" id="ppCoverMode" hidden>
+          <span>Tap the photo for your cover</span>
+          <button type="button" class="pp-link" id="ppCoverModeCancel">Cancel</button>
+        </div>
+        <div class="pp-grid" id="ppGrid">
+          ${slots.map((x) => `
+            <div class="pp-tile" data-id="${esc(x.id)}" data-angle="${esc(x.angle)}">
+              <button type="button" class="pp-tile-pick" aria-pressed="false" aria-label="${esc(x.name)}">
+                <img src="${esc(photoSrc(x.photo.small ? { url: x.photo.small } : x.photo))}" alt="" loading="lazy" style="object-position: ${esc(x.photo.objectPosition || "center")};" />
+                <span class="pp-tile-pose">${esc(SHORT_POSE[x.angle] || x.label)}</span>
+                <span class="pp-tile-check" aria-hidden="true"></span>
+                <span class="pp-tile-cover" aria-hidden="true">Cover</span>
+              </button>
+              <button type="button" class="pp-tile-star" aria-pressed="false" aria-label="Make ${esc(x.name)} the big photo" title="Big photo"></button>
+            </div>`).join("")}
+        </div>
+        <div class="pp-cover-line">
+          <label class="pp-switch"><input type="checkbox" id="ppCover" /><span class="pp-switch-track" aria-hidden="true"></span><span>Cover page</span></label>
+          <div class="pp-cover-set" id="ppCoverSet" hidden>
+            <button type="button" class="pp-cover-thumb" id="ppCoverChange"><img id="ppCoverImg" alt="" /><span>Change</span></button>
+            <div class="pp-seg" role="radiogroup" aria-label="Cover look" id="ppCoverStyleSeg">
+              <button type="button" role="radio" data-cover-style="full" aria-checked="true">Full</button>
+              <button type="button" role="radio" data-cover-style="framed" aria-checked="false">Framed</button>
+              <button type="button" role="radio" data-cover-style="split" aria-checked="false">Split</button>
+            </div>
+          </div>
+        </div>
+        <details class="pp-more"${state.location || state.phone ? " open" : ""}>
+          <summary>Add location and phone</summary>
+          <div class="pp-more-fields">
+            <label><span class="pp-sr">Based in</span><input type="text" id="ppLocation" maxlength="40" placeholder="Based in (e.g. Mumbai)" value="${esc(state.location)}" /></label>
+            <label><span class="pp-sr">Phone</span><input type="tel" id="ppPhone" maxlength="20" placeholder="Phone" value="${esc(state.phone)}" /></label>
+          </div>
+          <p class="pp-hint">Printed on your PDF only, never saved.</p>
+        </details>
       `;
       foot.innerHTML = `
-        <span class="pp-foot-note">${admin ? "Free for you" : price ? `₹${price} to download` : "Free download"}</span>
+        <p class="pp-status" aria-live="polite"><strong id="ppTally"></strong> <span id="ppMsg"></span></p>
         <button type="button" class="btn btn-ghost" id="ppCancel">Cancel</button>
         <button type="button" class="btn btn-dark" id="ppNext">Preview</button>
       `;
-      body.querySelectorAll(".pp-seg [data-pages]").forEach((btn) => btn.addEventListener("click", () => setPages(Number(btn.dataset.pages))));
+      body.querySelectorAll("[data-pages]").forEach((btn) => btn.addEventListener("click", () => setPages(Number(btn.dataset.pages))));
       body.querySelector("#ppCountSeg").addEventListener("click", (e) => {
-        const b = e.target.closest("[data-count]");
-        if (b && !b.disabled) setCount(Number(b.dataset.count));
+        const btn = e.target.closest("[data-count]");
+        if (btn && !btn.disabled) setCount(Number(btn.dataset.count));
       });
       body.querySelectorAll("#ppLayoutSeg [data-layout]").forEach((btn) => btn.addEventListener("click", () => { state.layout = btn.dataset.layout; syncPick(); }));
-      body.querySelectorAll(".pp-pose .pp-cand").forEach((btn) => btn.addEventListener("click", () => togglePick(btn.dataset.id)));
+      body.querySelectorAll(".pp-filters [data-filter]").forEach((btn) => btn.addEventListener("click", () => { state.filter = btn.dataset.filter; syncPick(); }));
+      body.querySelectorAll(".pp-tile").forEach((tile) => {
+        tile.querySelector(".pp-tile-pick").addEventListener("click", () => {
+          if (state.choosingCover) {
+            state.choosingCover = false;
+            syncPick(fitCountToPhotos(setCoverPhoto(tile.dataset.id)));
+          } else {
+            togglePick(tile.dataset.id);
+          }
+        });
+        tile.querySelector(".pp-tile-star").addEventListener("click", () => { state.lead = tile.dataset.id; syncPick(); });
+      });
       body.querySelector("#ppCover").addEventListener("change", (e) => {
         state.cover = e.target.checked;
         // Keep an earlier cover choice if it's still free; otherwise pick one.
-        const keep = slots.some((s) => s.id === state.coverId) && !state.picks.has(state.coverId);
-        syncPick(fitCountToPhotos(state.cover ? setCoverPhoto(keep ? state.coverId : defaultCover()) : ""), "cover");
+        const keep = slots.some((x) => x.id === state.coverId) && !state.picks.has(state.coverId);
+        state.choosingCover = false;
+        syncPick(fitCountToPhotos(state.cover ? setCoverPhoto(keep ? state.coverId : defaultCover()) : ""));
       });
-      const coverGrid = body.querySelector("#ppCoverGrid");
-      const coverChange = body.querySelector("#ppCoverChange");
-      const showCoverGrid = (open) => {
-        coverGrid.hidden = !open;
-        coverChange.setAttribute("aria-expanded", String(open));
-        coverChange.textContent = open ? "Done" : "Change photo";
-      };
-      coverChange.addEventListener("click", () => showCoverGrid(coverGrid.hidden));
+      body.querySelector("#ppCoverChange").addEventListener("click", () => {
+        state.choosingCover = true;
+        state.filter = "all";
+        syncPick();
+        body.querySelector("#ppCoverMode").scrollIntoView({ block: "nearest", behavior: "smooth" });
+      });
+      body.querySelector("#ppCoverModeCancel").addEventListener("click", () => { state.choosingCover = false; syncPick(); });
       body.querySelectorAll("#ppCoverStyleSeg [data-cover-style]").forEach((btn) => btn.addEventListener("click", () => { state.coverStyle = btn.dataset.coverStyle; syncPick(); }));
-      body.querySelectorAll(".pp-cover-cand").forEach((btn) => btn.addEventListener("click", () => {
-        const note = setCoverPhoto(btn.dataset.id);
-        showCoverGrid(false);
-        syncPick(fitCountToPhotos(note), "cover");
-      }));
-      body.querySelector("#ppLead").addEventListener("change", (e) => { state.lead = e.target.value; });
       body.querySelector("#ppLocation").addEventListener("input", (e) => { state.location = e.target.value; });
       body.querySelector("#ppPhone").addEventListener("input", (e) => { state.phone = e.target.value; });
       foot.querySelector("#ppCancel").addEventListener("click", close);
@@ -14821,60 +14817,60 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       syncPick();
     }
 
-    function syncPick(warning, angle) {
+    function syncPick(warning) {
       const chosen = picked();
       if (!state.picks.has(state.lead)) state.lead = defaultLead();
-      body.querySelectorAll(".pp-seg [data-pages]").forEach((b) => {
-        b.setAttribute("aria-checked", String(Number(b.dataset.pages) === state.pages));
-        b.disabled = Number(b.dataset.pages) === 2 && available() < 2;
+      body.querySelectorAll("[data-pages]").forEach((btn) => {
+        btn.setAttribute("aria-checked", String(Number(btn.dataset.pages) === state.pages));
+        btn.disabled = Number(btn.dataset.pages) === 2 && available() < 2;
       });
-      body.querySelector("#ppCountSeg").innerHTML = countOptions(state.pages).map((n) => `<button type="button" role="radio" data-count="${n}" aria-checked="${n === state.count}">${n}</button>`).join("");
-      body.querySelectorAll(".pp-pose .pp-cand").forEach((b) => {
-        const onCover = state.cover && b.dataset.id === state.coverId;
-        b.setAttribute("aria-pressed", String(state.picks.has(b.dataset.id)));
-        b.classList.toggle("is-cover", onCover);
-        b.setAttribute("aria-disabled", String(onCover));
+      body.querySelector("#ppCountSeg").innerHTML = `<span class="pp-seg-cap" aria-hidden="true">Photos</span>` + countOptions(state.pages).map((n) => `<button type="button" role="radio" data-count="${n}" aria-checked="${n === state.count}">${n}</button>`).join("");
+      body.querySelectorAll("#ppLayoutSeg [data-layout]").forEach((btn) => btn.setAttribute("aria-checked", String(btn.dataset.layout === state.layout)));
+      body.querySelectorAll("#ppCoverStyleSeg [data-cover-style]").forEach((btn) => btn.setAttribute("aria-checked", String(btn.dataset.coverStyle === state.coverStyle)));
+      body.querySelectorAll(".pp-filters [data-filter]").forEach((btn) => {
+        btn.setAttribute("aria-pressed", String(btn.dataset.filter === state.filter));
+        const n = btn.querySelector(".pp-filter-n");
+        if (n) n.textContent = pickedIn(btn.dataset.filter) || "";
       });
+
+      const grid = body.querySelector("#ppGrid");
+      grid.classList.toggle("is-equal", state.layout === "equal");
+      grid.classList.toggle("is-choosing-cover", state.choosingCover);
+      body.querySelector("#ppCoverMode").hidden = !state.choosingCover;
+      body.querySelectorAll(".pp-tile").forEach((tile) => {
+        const id = tile.dataset.id;
+        tile.hidden = state.filter !== "all" && tile.dataset.angle !== state.filter;
+        tile.classList.toggle("is-cover", state.cover && id === state.coverId);
+        tile.querySelector(".pp-tile-pick").setAttribute("aria-pressed", String(state.picks.has(id)));
+        tile.querySelector(".pp-tile-star").setAttribute("aria-pressed", String(id === state.lead));
+      });
+
       body.querySelector("#ppCover").checked = state.cover;
-      body.querySelector("#ppCoverState").textContent = state.cover ? "On" : "Off";
-      body.querySelector("#ppCoverPick").hidden = !state.cover;
+      body.querySelector("#ppCoverSet").hidden = !state.cover;
       const coverSlot = slots.find((x) => x.id === state.coverId);
       if (state.cover && coverSlot) {
         const coverImg = body.querySelector("#ppCoverImg");
-        const coverSrc = photoSrc(coverSlot.photo.medium ? { url: coverSlot.photo.medium } : coverSlot.photo);
+        const coverSrc = photoSrc(coverSlot.photo.small ? { url: coverSlot.photo.small } : coverSlot.photo);
         if (coverImg.getAttribute("src") !== coverSrc) coverImg.setAttribute("src", coverSrc);
         coverImg.style.objectPosition = coverSlot.photo.objectPosition || "center";
-        body.querySelector("#ppCoverName").textContent = coverSlot.name;
       }
-      body.querySelectorAll(".pp-cover-cand").forEach((b) => {
-        b.setAttribute("aria-pressed", String(state.cover && b.dataset.id === state.coverId));
-        b.querySelector(".pp-cand-note").textContent = state.picks.has(b.dataset.id) ? "On pages" : "";
-      });
-      body.querySelectorAll("#ppCoverStyleSeg [data-cover-style]").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.coverStyle === state.coverStyle)));
-      // Cover messages show in the cover section, where the tap happened.
-      body.querySelector("#ppCoverMsg").textContent = warning && angle === "cover" ? warning : "";
-      body.querySelectorAll(".pp-pose").forEach((row) => {
-        const n = pickedIn(row.dataset.angle);
-        row.classList.toggle("is-out", !n);
-        row.querySelector(".pp-pose-state").textContent = n > 1 ? `${n} in your PDF` : n ? "In your PDF" : "Left out";
-        // Repeat the warning in the row that was tapped, where the client is looking.
-        row.querySelector(".pp-pose-msg").textContent = warning && row.dataset.angle === angle ? warning : "";
-      });
-      body.querySelector("#ppLead").innerHTML = chosen.map((s) => `<option value="${esc(s.id)}"${s.id === state.lead ? " selected" : ""}>${esc(s.name)}</option>`).join("");
-      body.querySelectorAll("#ppLayoutSeg [data-layout]").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.layout === state.layout)));
-      body.querySelector("#ppLeadField").hidden = chosen.length < 2 || state.layout === "equal";
-      const count = body.querySelector("#ppCount");
-      count.classList.toggle("is-warn", !!warning);
+
       const short = state.count - chosen.length;
-      count.textContent = warning || `${chosen.length} of ${state.count} photos picked for your pages${state.cover ? ", plus the cover" : ""}. ${short > 0 ? `Pick ${short} more. ` : ""}Tap photos to add them (more than one from a pose is fine), and tap again to take one out.`;
-      foot.querySelector("#ppNext").disabled = short !== 0;
+      const msg = foot.querySelector("#ppMsg");
+      foot.querySelector("#ppTally").textContent = `${chosen.length}/${state.count}`;
+      msg.classList.toggle("is-warn", !!warning);
+      msg.textContent = warning
+        || (state.choosingCover ? "Tap a photo for the cover"
+        : short > 0 ? `Pick ${short} more`
+        : `photos${state.cover ? " + cover" : ""} · ${admin ? "free for you" : price ? `₹${price}` : "free"}`);
+      foot.querySelector("#ppNext").disabled = short !== 0 || state.choosingCover;
     }
 
     function togglePick(id) {
       const slot = slots.find((s) => s.id === id);
       if (!slot) return;
       if (state.cover && id === state.coverId) {
-        syncPick("This photo is your cover, so it can't also go on the pages. Pick a different cover photo first.", slot.angle);
+        syncPick("That's your cover photo. Change the cover to use it on the pages.");
         return;
       }
       if (state.picks.has(id)) {
@@ -14884,7 +14880,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         state.picks.add(id);
         state.cleared.delete(slot.angle);
       } else {
-        syncPick(`All ${state.count} places are taken. Tap a ticked photo to take it out, then tap this one again${state.count < Math.max(...countOptions(state.pages === 1 ? 2 : state.pages)) ? ", or choose more photos at the top" : ""}.`, slot.angle);
+        syncPick(`All ${state.count} are picked. Untick one to swap it for this.`);
         return;
       }
       syncPick();
@@ -14903,7 +14899,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // A bigger count is topped up at once, so the preview isn't stuck until
       // the client finds several more photos; any of them can be swapped.
       fillPicks();
-      syncPick(dropped.length ? `${n} photos fit, so ${dropped.length} ${dropped.length > 1 ? "were" : "was"} taken out (${dropped.join(", ")}).` : "");
+      syncPick(dropped.length ? `Took ${dropped.length} out to fit ${n}.` : "");
     }
 
     // Tops the pages up to the count, one photo per pose each round, skipping
