@@ -13892,6 +13892,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const cased = (str, style) => (style.upper ? String(str).toUpperCase() : String(str));
     const page = {
       canvas, ctx, u, links: [],
+      // An All equal grid with a short row records its split here ({ short, full }).
+      equalRows: null,
       measure(str, style) {
         setFont(style);
         return ctx.measureText(cased(str, style)).width / k;
@@ -14200,9 +14202,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
   // Every photo the same size: the column count that gives the biggest cells
   // in W x H. Cells take the photos' typical shape (the median aspect), give
-  // up to a tenth of a frame to fill more of the box, and a short last row
-  // is centred. Five portraits come out three on top and two below.
-  function pdfEqualGrid(aspects, W, H, gap) {
+  // up to a tenth of a frame to fill more of the box, and a short row is
+  // centred. Five portraits come out three on top and two below, or two on
+  // top and three below with fewerOnTop: the client's choice. `rows` reports
+  // the split when a row is short, so the builder knows to offer that choice.
+  function pdfEqualGrid(aspects, W, H, gap, fewerOnTop = false) {
     const n = aspects.length;
     const sorted = [...aspects].sort((a, b) => a - b);
     const aspect = sorted[Math.floor((n - 1) / 2)] || 2 / 3;
@@ -14217,14 +14221,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     }
     const { cols, rows, w, h } = best;
     const gridW = cols * w + (cols - 1) * gap;
+    // Photos fill the rows in order, whichever end the short row is at.
+    const short = n % cols;
+    const sizes = Array.from({ length: rows }, () => cols);
+    if (short) sizes[fewerOnTop ? 0 : rows - 1] = short;
     const cells = [];
-    for (let i = 0; i < n; i++) {
-      const r = Math.floor(i / cols);
-      const inRow = Math.min(cols, n - r * cols);
+    sizes.forEach((inRow, r) => {
       const rowW = inRow * w + (inRow - 1) * gap;
-      cells.push({ x: (gridW - rowW) / 2 + (i - r * cols) * (w + gap), y: r * (h + gap), w, h });
-    }
-    return { cells, width: gridW, height: rows * h + (rows - 1) * gap };
+      for (let c = 0; c < inRow; c++) cells.push({ x: (gridW - rowW) / 2 + c * (w + gap), y: r * (h + gap), w, h });
+    });
+    return { cells, width: gridW, height: rows * h + (rows - 1) * gap, rows: short ? { short, full: cols } : null };
   }
 
   // How unevenly sized the supporting photos are: 0 when all match, towards 1
@@ -14308,7 +14314,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const photoMaxH = PH - M - PDF_FOOTER_H - 5 - (detailsH ? detailsH + 5 : 0) - y;
     if (spec.layout === "equal") {
       const all = [spec.lead, ...spec.others];
-      const grid = pdfEqualGrid(imgs.map(pdfAspect), CW, photoMaxH, gap);
+      const grid = pdfEqualGrid(imgs.map(pdfAspect), CW, photoMaxH, gap, spec.fewerOnTop);
+      page.equalRows = grid.rows;
       const gridTop = y + Math.max(0, (photoMaxH - grid.height) / 2);
       const x0 = M + (CW - grid.width) / 2;
       grid.cells.forEach((c, i) => drawPdfSlot(page, imgs[i], all[i], x0 + c.x, gridTop + c.y, c.w, c.h));
@@ -14486,8 +14493,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     y += 9;
     const gridH = PH - M - PDF_FOOTER_H - 5 - y;
     const grid = spec.layout === "equal"
-      ? pdfEqualGrid(imgs.map(pdfAspect), CW, gridH, gap)
+      ? pdfEqualGrid(imgs.map(pdfAspect), CW, gridH, gap, spec.fewerOnTop)
       : pdfContainRows(imgs.map(pdfAspect), CW, gridH, gap, 4, 1.12);
+    page.equalRows = grid.rows || null;
     const x0 = M + (CW - grid.width) / 2;
     grid.cells.forEach((c, i) => drawPdfSlot(page, imgs[i], spec.others[i], x0 + c.x, y + c.y, c.w, c.h));
     drawPdfFooter(page);
@@ -14667,6 +14675,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       coverId: "",         // id of the cover photo
       coverStyle: "full",  // the cover's look: full photo, framed or split
       layout: "lead",      // one big photo with the rest around it, or all equal
+      order: [],           // photo ids in the order the client arranged them
+      fewerOnTop: false,   // All equal: the short row at the top, not the foot
       filter: "all",       // which pose the grid shows
       choosingCover: false, // the grid is picking the cover photo
       location: "", phone: "", email: "", utr: "",
@@ -14678,14 +14688,20 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const cache = new Map();
     let renderToken = 0;
     let fileUrl = "";
+    let lastSplits = [];   // the short-row splits the last preview drew
 
-    // Every photo on offer, in pose order, which is also their order in the PDF.
+    // Every photo on offer, in pose order.
     const slots = poses.flatMap((pose) => pose.candidates.map((photo, i) => ({
       id: photo.id, photo, angle: pose.angle, label: pose.label,
       // A name per photo for screen readers: two Full Body shots need telling apart.
       name: pose.candidates.length > 1 ? `${pose.label} · photo ${i + 1}` : pose.label
     })));
-    const picked = () => slots.filter((s) => state.picks.has(s.id));
+    // The picked photos in print order: as the client arranged them, with any
+    // they haven't placed after, in pose order. Nothing arranged is pose order.
+    const picked = () => {
+      const rank = (s) => { const i = state.order.indexOf(s.id); return i < 0 ? state.order.length : i; };
+      return slots.filter((s) => state.picks.has(s.id)).sort((a, b) => rank(a) - rank(b));
+    };
     const pickedIn = (angle) => picked().filter((s) => s.angle === angle).length;
     // Photos free for the pages: every posed photo except the cover's.
     const available = () => slots.length - (state.cover && slots.some((s) => s.id === state.coverId) ? 1 : 0);
@@ -14752,18 +14768,26 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     modal.addEventListener("click", (e) => { if (e.target === modal) close(); });
     window.addEventListener("keydown", onKey, true);
 
-    function buildSpec() {
+    // The pages' photos exactly as they print. All equal has no big photo, so
+    // it is the client's order as it stands; Big photo puts the big one first.
+    function printOrder() {
       const chosen = picked();
-      // All equal has no big photo, so the pages keep pose order.
-      const lead = state.layout === "equal" ? chosen[0] : (chosen.find((s) => s.id === state.lead) || chosen[0]);
+      if (state.layout === "equal") return chosen;
+      const lead = chosen.find((s) => s.id === state.lead) || chosen[0];
+      return lead ? [lead, ...chosen.filter((s) => s !== lead)] : chosen;
+    }
+
+    function buildSpec() {
+      const [lead, ...rest] = printOrder();
       const slot = (s) => ({ photo: s.photo, label: s.label });
       return {
         shoot, name, pages: state.pages,
         lead: slot(lead),
-        others: chosen.filter((s) => s !== lead).map(slot),
+        others: rest.map(slot),
         cover: state.cover ? slot(slots.find((s) => s.id === state.coverId) || lead) : null,
         coverStyle: state.coverStyle,
         layout: state.layout,
+        fewerOnTop: state.fewerOnTop,
         location: state.location.trim(),
         phone: state.phone.trim()
       };
@@ -15005,10 +15029,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
     /* Step 2: preview, then pay (clients) or download (studio, or once paid). */
     function showPreview() {
-      const token = ++renderToken;
       const payable = !state.paid;
       const upiLink = portfolioUpiLink(sale.upiId, price, state.ref);
       body.innerHTML = `
+        <div class="pp-arrange" id="ppArrange">
+          <div class="pp-arrange-head">
+            <span class="pp-label" id="ppOrderLabel">Photo order</span>
+            <div class="pp-seg" role="radiogroup" aria-label="Rows" id="ppRowsSeg" hidden></div>
+          </div>
+          <ol class="pp-order" id="ppOrder" aria-labelledby="ppOrderLabel"></ol>
+        </div>
         <div class="pp-preview" aria-live="polite"><p class="pp-rendering">Drawing your ${state.pages === 2 || state.cover ? "pages" : "page"}…</p></div>
         ${payable ? `
           <div class="pp-pay">
@@ -15053,9 +15083,39 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         drawUpiQr(qr, upiLink).catch((err) => { console.warn("UPI QR failed:", err); qr.hidden = true; });
       }
 
-      renderPortfolioPdfPages(buildSpec(), { dpi: 72, watermark: payable, cache }).then((pages) => {
+      body.querySelector("#ppOrder").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-move]");
+        if (!btn || btn.disabled) return;
+        const id = btn.closest("[data-id]").dataset.id;
+        const step = Number(btn.dataset.move);
+        if (!movePhoto(id, step)) return;
+        syncOrder({ id, step });
+        drawPreview();
+      });
+      body.querySelector("#ppRowsSeg").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-fewer-on-top]");
+        if (!btn || (btn.dataset.fewerOnTop === "true") === state.fewerOnTop) return;
+        state.fewerOnTop = btn.dataset.fewerOnTop === "true";
+        syncRows(lastSplits);
+        drawPreview();
+      });
+      syncOrder();
+      drawPreview();
+    }
+
+    // Draws the preview, and again after every change to the arrangement. A
+    // PDF already made from the old arrangement is withdrawn, so what
+    // downloads always matches what's on screen.
+    function drawPreview() {
+      const token = ++renderToken;
+      const box = body.querySelector(".pp-preview");
+      box.classList.add("is-busy");
+      const ready = body.querySelector("#ppReady");
+      if (ready) ready.replaceChildren();
+      if (fileUrl) { URL.revokeObjectURL(fileUrl); fileUrl = ""; }
+      renderPortfolioPdfPages(buildSpec(), { dpi: 72, watermark: !state.paid, cache }).then((pages) => {
         if (token !== renderToken) return;
-        const box = body.querySelector(".pp-preview");
+        box.classList.remove("is-busy");
         box.replaceChildren(...pages.map((p, i) => {
           p.canvas.setAttribute("role", "img");
           p.canvas.setAttribute("aria-label", `Preview of page ${i + 1}`);
@@ -15063,10 +15123,74 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         }));
         box.classList.toggle("two", pages.length === 2);
         box.classList.toggle("three", pages.length > 2);
+        lastSplits = pages.map((p) => p.equalRows).filter(Boolean);
+        syncRows(lastSplits);
       }).catch((err) => {
         console.warn("Portfolio preview failed:", err);
-        if (token === renderToken) body.querySelector(".pp-preview").innerHTML = `<p class="pp-rendering">Couldn't draw the preview. Check your connection and try again.</p>`;
+        if (token !== renderToken) return;
+        box.classList.remove("is-busy");
+        box.innerHTML = `<p class="pp-rendering">Couldn't draw the preview. Check your connection and try again.</p>`;
       });
+    }
+
+    /* Arranging the pages: the print order as a strip of thumbnails, each
+       moved a place at a time with arrows (dragging is fiddly on a phone),
+       and, when All equal leaves a row short, whether it sits top or bottom. */
+    function movePhoto(id, step) {
+      const ids = printOrder().map((s) => s.id);
+      const from = ids.indexOf(id), to = from + step;
+      // The big photo keeps first place.
+      if (from < 0 || to < (state.layout === "equal" ? 0 : 1) || to >= ids.length) return false;
+      [ids[from], ids[to]] = [ids[to], ids[from]];
+      state.order = ids;
+      return true;
+    }
+
+    function syncOrder(focus) {
+      const list = printOrder();
+      const fixed = state.layout === "equal" ? 0 : 1;
+      const strip = body.querySelector("#ppOrder");
+      strip.hidden = list.length - fixed < 2;
+      strip.innerHTML = list.map((s, i) => `
+        <li class="pp-order-item" data-id="${esc(s.id)}">
+          <span class="pp-order-photo">
+            <img src="${esc(photoSrc(s.photo.small ? { url: s.photo.small } : s.photo))}" alt="" style="object-position: ${esc(s.photo.objectPosition || "center")};" />
+            <span class="pp-order-n">${i < fixed ? "Big" : i + 1}</span>
+          </span>
+          ${i < fixed ? "" : `<span class="pp-order-move">
+            <button type="button" data-move="-1" aria-label="Move ${esc(s.name)} earlier"${i === fixed ? " disabled" : ""}>‹</button>
+            <button type="button" data-move="1" aria-label="Move ${esc(s.name)} later"${i === list.length - 1 ? " disabled" : ""}>›</button>
+          </span>`}
+        </li>`).join("");
+      // Keep the keyboard on the photo that moved, even once it reaches an end.
+      if (focus) {
+        const item = [...strip.children].find((li) => li.dataset.id === focus.id);
+        const btn = item && (item.querySelector(`[data-move="${focus.step}"]:not([disabled])`) || item.querySelector("[data-move]:not([disabled])"));
+        if (btn) btn.focus();
+      }
+      syncArrange();
+    }
+
+    // Real counts when every page splits the same way ("3 on top"), words when
+    // they differ.
+    function syncRows(splits) {
+      const seg = body.querySelector("#ppRowsSeg");
+      seg.hidden = !splits.length;
+      if (splits.length) {
+        const same = splits.every((x) => x.short === splits[0].short && x.full === splits[0].full);
+        const label = (fewer) => same ? `${fewer ? splits[0].short : splits[0].full} on top` : (fewer ? "Fewer on top" : "More on top");
+        if (!seg.children.length) seg.innerHTML = ["false", "true"].map((v) => `<button type="button" role="radio" data-fewer-on-top="${v}"></button>`).join("");
+        seg.querySelectorAll("[data-fewer-on-top]").forEach((btn) => {
+          const fewer = btn.dataset.fewerOnTop === "true";
+          btn.textContent = label(fewer);
+          btn.setAttribute("aria-checked", String(fewer === state.fewerOnTop));
+        });
+      }
+      syncArrange();
+    }
+
+    function syncArrange() {
+      body.querySelector("#ppArrange").hidden = body.querySelector("#ppOrder").hidden && body.querySelector("#ppRowsSeg").hidden;
     }
 
     function unlock() {
