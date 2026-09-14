@@ -1814,6 +1814,7 @@ window.WPS_DATA = {
           "id": "mu07k1m1euvwbk-1",
           "url": "photos/mu07kqljf8iyar/mu07k1m1euvwbk-1.jpg",
           "objectPosition": "center",
+          "angle": "full-body",
           "usage": "both",
           "small": "photos/mu07kqljf8iyar/mu07k1m1euvwbk-1@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu07k1m1euvwbk-1@960.jpg"
@@ -1941,6 +1942,8 @@ window.WPS_DATA = {
           "id": "mu1bk493tm3duj-15",
           "url": "photos/mu07kqljf8iyar/mu1bk493tm3duj-15.jpg",
           "objectPosition": "center",
+          "angle": "three-quarter",
+          "usage": "both",
           "small": "photos/mu07kqljf8iyar/mu1bk493tm3duj-15@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu1bk493tm3duj-15@960.jpg"
         },
@@ -1948,6 +1951,8 @@ window.WPS_DATA = {
           "id": "mu1bk4gu5u2fbo-16",
           "url": "photos/mu07kqljf8iyar/mu1bk4gu5u2fbo-16.jpg",
           "objectPosition": "center",
+          "angle": "left-profile",
+          "usage": "both",
           "small": "photos/mu07kqljf8iyar/mu1bk4gu5u2fbo-16@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu1bk4gu5u2fbo-16@960.jpg"
         },
@@ -1955,6 +1960,8 @@ window.WPS_DATA = {
           "id": "mu1bk4lhuxdl5n-17",
           "url": "photos/mu07kqljf8iyar/mu1bk4lhuxdl5n-17.jpg",
           "objectPosition": "center",
+          "angle": "three-quarter",
+          "usage": "both",
           "small": "photos/mu07kqljf8iyar/mu1bk4lhuxdl5n-17@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu1bk4lhuxdl5n-17@960.jpg"
         }
