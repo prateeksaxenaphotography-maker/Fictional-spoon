@@ -2748,12 +2748,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         `;
       }
     } else if (isCc && isCurrentlyModelPortfolioView()) {
-      // Anyone can build a one- or two-page PDF from this model's pose-tagged
+      // Anyone can build a one- or two-page PDF from this model's portfolio
       // photos and preview it. The studio downloads free; clients download
-      // only once sales are open, paying by UPI. With no pose tags there is
-      // nothing to build, so visitors get nothing here.
+      // only once sales are open, paying by UPI. With no portfolio photos
+      // there is nothing to build, so visitors get nothing here.
       window.currentCompCardShootObj = shoot;
-      const posedCount = portfolioPosedPhotos(shoot).length;
+      const photoCount = portfolioPdfPhotos(shoot).length;
       const pdfPrice = getPortfolioPdfSettings().price;
       const exportBtn = `<button class="btn btn-dark btn-block lb-export-btn" onclick="window.printModelPortfolio('${escJs(shoot.id)}')">Make portfolio PDF</button>`;
       if (isAdmin()) {
@@ -2763,16 +2763,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // A full page load rather than an in-app link, so the lightbox closes;
         // the calendar opens the Portfolio PDF panel when it sees #portfolio-pdf.
         const settingsLink = `<a href="/calendar#portfolio-pdf">Portfolio PDF settings →</a>`;
-        pdfBtnHtml = posedCount ? `
+        pdfBtnHtml = photoCount ? `
           <div class="lb-sidebar-section lb-card lb-export">
             <span class="lb-h" style="margin: 0;"><span>Portfolio PDF</span><small>Free for you</small></span>
             ${exportBtn}
             <p class="lb-note">${esc(salesNote)} ${settingsLink}</p>
           </div>
         ` : `
-          <div class="lb-sidebar-section lb-note lb-note-admin">No photo of this model has a pose tag, so there's no portfolio PDF to build. Tag poses in Upload, then publish (admin only sees this)</div>
+          <div class="lb-sidebar-section lb-note lb-note-admin">Every photo of this model is set to Comp Card Only, so there's no portfolio PDF to build. Change their Usage in Upload, then publish (admin only sees this)</div>
         `;
-      } else if (posedCount) {
+      } else if (photoCount) {
         const selling = portfolioPdfSalesOpen();
         pdfBtnHtml = `
           <div class="lb-sidebar-section lb-card lb-export">
@@ -13720,10 +13720,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   }
 
   // What a client may put in the PDF: the photos the Model Portfolio page
-  // shows (tagged "portfolio" or "both", or untagged legacy) that carry a pose.
-  function portfolioPosedPhotos(shoot) {
-    const angles = new Set(portfolioPoses().map((p) => p.angle));
-    return (shoot.photos || []).filter((p) => (p.usage === "portfolio" || p.usage === "both" || p.usage === undefined) && angles.has(p.angle));
+  // shows (usage "portfolio" or "both", or unset on legacy photos), with or
+  // without a pose tag. A photo with no pose prints without its tag.
+  function portfolioPdfPhotos(shoot) {
+    return (shoot.photos || []).filter((p) => p.usage === "portfolio" || p.usage === "both" || p.usage === undefined);
   }
 
   // Clients can buy only once the studio has switched it on, and only with
@@ -13995,9 +13995,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   }
 
   // A photo with its pose named in a small white tag in the corner, so a
-  // casting director can see which angle is which at a glance.
+  // casting director can see which angle is which at a glance. No label, no
+  // tag.
   function drawPdfSlot(page, img, slot, x, y, w, h) {
     drawPdfPhoto(page, img, slot.photo, x, y, w, h);
+    if (!slot.label) return;
     const style = { weight: 700, size: 1.9, family: PDF_MONO, spacing: 0.25, upper: true, color: "#111" };
     const tw = page.measure(slot.label, style);
     const padX = 1.4, tagH = 3.9;
@@ -14689,8 +14691,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const lookOnly = !admin && !portfolioPdfSalesOpen();
     const name = getTalentCleanName(shoot.talent || shoot.title);
     const coarse = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
-    const poses = portfolioPoses()
-      .map((pose) => ({ ...pose, candidates: photos.filter((p) => p.angle === pose.angle) }))
+    const known = portfolioPoses();
+    // Photos with no pose tag come last, as a group with no name to print.
+    const poses = [...known, { angle: "", label: "" }]
+      .map((pose) => ({ ...pose, candidates: photos.filter((p) => pose.angle ? p.angle === pose.angle : !known.some((k) => k.angle === p.angle)) }))
       .filter((pose) => pose.candidates.length);
     const newSaleRef = () => `NP-${Date.now().toString(36).slice(-3).toUpperCase()}${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
     const state = {
@@ -14724,7 +14728,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const slots = poses.flatMap((pose) => pose.candidates.map((photo, i) => ({
       id: photo.id, photo, angle: pose.angle, label: pose.label,
       // A name per photo for screen readers: two Full Body shots need telling apart.
-      name: pose.candidates.length > 1 ? `${pose.label} · photo ${i + 1}` : pose.label
+      name: !pose.label ? `Untagged photo ${i + 1}` : pose.candidates.length > 1 ? `${pose.label} · photo ${i + 1}` : pose.label
     })));
     // The picked photos in print order: as the client arranged them, with any
     // they haven't placed after, in pose order. Nothing arranged is pose order.
@@ -14808,8 +14812,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     }
 
     function buildSpec() {
-      const [lead, ...rest] = printOrder();
-      const slot = (s) => ({ photo: s.photo, label: s.label });
+      const onPages = printOrder();
+      const [lead, ...rest] = onPages;
+      // A pose tag on some photos and not others looks like a mistake, so
+      // one photo without a pose leaves every photo on the pages untagged.
+      const tagged = onPages.every((s) => s.label);
+      const slot = (s) => ({ photo: s.photo, label: tagged ? s.label : "" });
       return {
         shoot, name, pages: state.pages,
         lead: slot(lead),
@@ -14853,7 +14861,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         </div>
         <div class="pp-filters" role="toolbar" aria-label="Show one pose">
           <button type="button" data-filter="all" aria-pressed="true">All</button>
-          ${poses.map((p) => `<button type="button" data-filter="${esc(p.angle)}" aria-pressed="false">${esc(SHORT_POSE[p.angle] || p.label)}<span class="pp-filter-n"></span></button>`).join("")}
+          ${poses.map((p) => `<button type="button" data-filter="${esc(p.angle)}" aria-pressed="false">${esc(p.angle ? SHORT_POSE[p.angle] || p.label : "Other")}<span class="pp-filter-n"></span></button>`).join("")}
         </div>
         <div class="pp-mode" id="ppCoverMode" hidden>
           <span>Tap the photo for your cover</span>
@@ -14864,7 +14872,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <div class="pp-tile" data-id="${esc(x.id)}" data-angle="${esc(x.angle)}">
               <button type="button" class="pp-tile-pick" aria-pressed="false" aria-label="${esc(x.name)}">
                 <img src="${esc(photoSrc(x.photo.small ? { url: x.photo.small } : x.photo))}" alt="" loading="lazy" style="object-position: ${esc(x.photo.objectPosition || "center")};" />
-                <span class="pp-tile-pose">${esc(SHORT_POSE[x.angle] || x.label)}</span>
+                ${x.angle ? `<span class="pp-tile-pose">${esc(SHORT_POSE[x.angle] || x.label)}</span>` : ""}
                 <span class="pp-tile-check" aria-hidden="true"></span>
                 <span class="pp-tile-cover" aria-hidden="true">Cover</span>
               </button>
@@ -15026,11 +15034,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // poses the client emptied on purpose unless that's the only way to get
     // there. The cover photo is never used.
     function fillPicks() {
-      const take = (skipCleared) => {
+      const take = (skipCleared, groups) => {
         let added = true;
         while (picked().length < state.count && added) {
           added = false;
-          for (const p of poses) {
+          for (const p of groups) {
             if (picked().length >= state.count) break;
             if (skipCleared && state.cleared.has(p.angle)) continue;
             const next = p.candidates.find((c) => !state.picks.has(c.id) && !(state.cover && c.id === state.coverId));
@@ -15038,8 +15046,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           }
         }
       };
-      take(true);
-      take(false);
+      // Tagged photos first, so the tags print whenever there are enough.
+      take(true, poses.filter((p) => p.angle));
+      take(true, poses);
+      take(false, poses);
     }
 
     // Takes photos off the end until the pages hold the count, never the big
@@ -15258,7 +15268,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const spec = buildSpec();
         sendPortfolioPdfSaleEmail({
           model: name, price, upiId: sale.upiId, utr, ref: state.ref, email,
-          pages: spec.pages, cover: !!spec.cover, poses: [spec.lead, ...spec.others].map((s) => s.label).join(", ")
+          pages: spec.pages, cover: !!spec.cover, poses: printOrder().map((s) => s.label || "no pose").join(", ")
         }).then((ok) => { if (ok) markPdfUtr(utr, "sent"); });
       }
       showPreview();
@@ -15351,8 +15361,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const held = window.currentCompCardShootObj;
     const shoot = (held && held.id === shootId) ? held : (SHOOTS.find((x) => x.id === shootId) || held);
     if (!shoot) return;
-    const photos = portfolioPosedPhotos(shoot);
-    if (!photos.length) { toast("None of this model's photos are tagged with a pose yet. Tag them in Upload, then publish."); return; }
+    const photos = portfolioPdfPhotos(shoot);
+    if (!photos.length) { toast("None of this model's photos can go in a portfolio PDF."); return; }
     openPortfolioPdfBuilder(shoot, photos);
   };
 
