@@ -2748,17 +2748,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         `;
       }
     } else if (isCc && isCurrentlyModelPortfolioView()) {
-      // Clients build a one- or two-page PDF from this model's pose-tagged
-      // photos and pay the studio by UPI to download it; the studio exports
-      // free. With no pose tags, or sales still closed, visitors get nothing
-      // here: a button that can only answer "not available" is worse than none.
+      // Anyone can build a one- or two-page PDF from this model's pose-tagged
+      // photos and preview it. The studio downloads free; clients download
+      // only once sales are open, paying by UPI. With no pose tags there is
+      // nothing to build, so visitors get nothing here.
       window.currentCompCardShootObj = shoot;
       const posedCount = portfolioPosedPhotos(shoot).length;
       const pdfPrice = getPortfolioPdfSettings().price;
       const exportBtn = `<button class="btn btn-dark btn-block lb-export-btn" onclick="window.printModelPortfolio('${escJs(shoot.id)}')">Make portfolio PDF</button>`;
       if (isAdmin()) {
-        const salesNote = !getPortfolioPdfSettings().enabled ? "Off for clients."
-          : !portfolioPdfSalesOpen() ? "Clients can't buy it yet: add your UPI ID."
+        const salesNote = !getPortfolioPdfSettings().enabled ? "Clients can preview it, not download."
+          : !portfolioPdfSalesOpen() ? "Clients can only preview it: add your UPI ID to sell it."
           : pdfPrice ? `On for clients: they pay ₹${pdfPrice}.` : "On for clients, free.";
         // A full page load rather than an in-app link, so the lightbox closes;
         // the calendar opens the Portfolio PDF panel when it sees #portfolio-pdf.
@@ -2772,12 +2772,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         ` : `
           <div class="lb-sidebar-section lb-note lb-note-admin">No photo of this model has a pose tag, so there's no portfolio PDF to build. Tag poses in Upload, then publish (admin only sees this)</div>
         `;
-      } else if (posedCount && portfolioPdfSalesOpen()) {
+      } else if (posedCount) {
+        const selling = portfolioPdfSalesOpen();
         pdfBtnHtml = `
           <div class="lb-sidebar-section lb-card lb-export">
-            <span class="lb-h" style="margin: 0;"><span>Portfolio PDF</span>${pdfPrice ? `<small>₹${pdfPrice}</small>` : ""}</span>
+            <span class="lb-h" style="margin: 0;"><span>Portfolio PDF</span>${selling && pdfPrice ? `<small>₹${pdfPrice}</small>` : ""}</span>
             ${exportBtn}
-            <p class="lb-note">Pick photos by pose (front, side, back) and download a 1 or 2 page PDF to send to casting directors and designers.</p>
+            <p class="lb-note">${selling ? "Pick photos by pose (front, side, back) and download a 1 or 2 page PDF to send to casting directors and designers." : "Pick photos by pose (front, side, back) and preview a 1 or 2 page PDF. Downloads aren't open yet."}</p>
           </div>
         `;
       }
@@ -3227,9 +3228,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (uploadLi) uploadLi.style.display = active ? "block" : "none";
     if (bookLi) bookLi.style.display = active ? "none" : "block";
     if (compCardsLi) compCardsLi.style.display = "block";
-    // Public once clients can buy the portfolio PDF; until then the page is
-    // the studio's preview.
-    if (portfolioLi) portfolioLi.style.display = (active || portfolioPdfSalesOpen()) ? "block" : "none";
+    // Public for everyone. The PDF switch decides only who can download.
+    if (portfolioLi) portfolioLi.style.display = "block";
     if (workshopLi) workshopLi.style.display = "block"; // Always show Workshop in nav
     if (calendarLi) calendarLi.style.display = active ? "block" : "none";
     if (analyticsLi) analyticsLi.style.display = "none";
@@ -5238,7 +5238,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             </div>
           </div>
           <div id="adminPdfBody" style="display: none; margin-top: 12px;">
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 12px 0;">The switch shows or hides the Make portfolio PDF button on every model's portfolio, and Model Portfolio in the menu. You can always make PDFs yourself. Clients pick a model's photos by pose, pay this amount to your UPI ID, then download a 1 or 2 page PDF. Set the price to <strong>0</strong> to make it free for everyone.</p>
+            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 12px 0;">Everyone can open Model Portfolio, pick a model's photos by pose and preview a 1 or 2 page PDF. <strong>Off:</strong> only you can download it. <strong>On:</strong> clients pay this amount to your UPI ID to download, and each payment unlocks one PDF. Set the price to <strong>0</strong> to make downloads free.</p>
             <div style="display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap;">
               <div>
                 <span style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft); display: block; margin-bottom: 4px; text-transform: uppercase;">Price per PDF</span>
@@ -5252,7 +5252,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <input type="text" id="portfolioPdfUpiInput" value="${esc(getPortfolioPdfSettings().upiId)}" placeholder="yourname@okaxis" autocomplete="off" autocapitalize="none" spellcheck="false" style="width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--ink); background: var(--bone);" />
               </div>
             </div>
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 10px 0 0 0;">Every client who buys sees this UPI ID, and it's public in the site's code, so use one that isn't your phone number. Each sale emails you the client's UPI reference number: check the money reached your bank.</p>
+            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 10px 0 0 0;">Every client who buys sees this UPI ID, and it's public in the site's code, so use one that isn't your phone number. Each sale emails you the client's UPI reference number: check the money reached your bank. Two emails with the same number are one payment entered twice.</p>
             <span id="portfolioPdfSaveStatus" class="admin-pdf-status" aria-live="polite"></span>
           </div>
         </div>
@@ -13772,9 +13772,33 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     say("Publishing to the live site…", "busy");
     const ok = await window.publishStudioDataToLiveSite();
     const at = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const salesLine = !enabled ? "Off: clients don't see it." : price === 0 ? "On: free for everyone." : `On: clients pay ₹${price}.`;
+    const salesLine = !enabled ? "Off: clients can preview PDFs, not download them." : price === 0 ? "On: free for everyone." : `On: clients pay ₹${price}.`;
     say(ok ? `Live on the site (${at}). ${salesLine}` : `Saved on this device only (${salesLine.split(":")[0]}). Publishing failed, so try again.`, ok ? "ok" : "warn");
   };
+
+  // Reference numbers this browser has taken for portfolio PDFs: "sent" once
+  // the studio has the sale email, "used" once a PDF was made with it. With
+  // no server, the same number on another device can't be stopped; it shows
+  // up as a second sale email carrying the same reference number.
+  const PDF_UTRS_KEY = "wps_portfolio_pdf_utrs";
+  function readPdfUtrs() {
+    try {
+      const all = JSON.parse(localStorage.getItem(PDF_UTRS_KEY) || "{}");
+      return all && typeof all === "object" && !Array.isArray(all) ? all : {};
+    } catch (e) {
+      return {};
+    }
+  }
+  function markPdfUtr(utr, status) {
+    if (!utr) return;
+    const all = readPdfUtrs();
+    if (all[utr] === "used") return;
+    all[utr] = status;
+    // Twelve-digit keys keep the order they were added in; keep the newest 100.
+    const keys = Object.keys(all);
+    keys.slice(0, Math.max(0, keys.length - 100)).forEach((k) => delete all[k]);
+    try { localStorage.setItem(PDF_UTRS_KEY, JSON.stringify(all)); } catch (e) { /* storage blocked or full */ }
+  }
 
   // The studio's record of a sale. It can't prove the money arrived (only the
   // bank can), so it carries everything needed to check: the amount, the
@@ -14660,11 +14684,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const admin = isAdmin();
     const sale = getPortfolioPdfSettings();
     const price = admin ? 0 : sale.price;
+    // Until the studio opens sales, clients build and preview, and only the
+    // studio downloads.
+    const lookOnly = !admin && !portfolioPdfSalesOpen();
     const name = getTalentCleanName(shoot.talent || shoot.title);
     const coarse = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
     const poses = portfolioPoses()
       .map((pose) => ({ ...pose, candidates: photos.filter((p) => p.angle === pose.angle) }))
       .filter((pose) => pose.candidates.length);
+    const newSaleRef = () => `NP-${Date.now().toString(36).slice(-3).toUpperCase()}${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
     const state = {
       pages: 1,
       count: 5,            // photos on the pages; the cover isn't counted
@@ -14681,9 +14709,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       choosingCover: false, // the grid is picking the cover photo
       location: "", phone: "", email: "", utr: "",
       paid: price === 0,
+      paidUtr: "",         // the reference number of the payment in hand
+      madeKey: "",         // the PDF that payment was spent on (see specKey)
       // Goes in the UPI payment note, so the studio can match a payment to
       // the sale email even before looking at the reference number.
-      ref: `NP-${Date.now().toString(36).slice(-3).toUpperCase()}${Math.random().toString(36).slice(2, 5).toUpperCase()}`
+      ref: newSaleRef()
     };
     const cache = new Map();
     let renderToken = 0;
@@ -14793,6 +14823,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       };
     }
 
+    // What tells one PDF from another: the photos and how they're laid out.
+    // Location and phone are left out, so fixing a typo in them is free.
+    function specKey() {
+      return JSON.stringify([state.pages, printOrder().map((s) => s.id), state.layout, state.fewerOnTop,
+        state.cover ? [state.coverId, state.coverStyle] : null]);
+    }
+    // One payment buys one PDF. Until it's downloaded the client can change
+    // anything; after that only that same PDF stays unlocked.
+    const covered = () => !lookOnly && (price === 0 || (state.paid && (!state.madeKey || state.madeKey === specKey())));
+
     /* Step 1: pick photos. One contact sheet of every posed photo, filters
        by pose, and a footer that always says where things stand, so a
        message is never scrolled out of sight. */
@@ -14893,7 +14933,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       body.querySelector("#ppLocation").addEventListener("input", (e) => { state.location = e.target.value; });
       body.querySelector("#ppPhone").addEventListener("input", (e) => { state.phone = e.target.value; });
       foot.querySelector("#ppCancel").addEventListener("click", close);
-      foot.querySelector("#ppNext").addEventListener("click", showPreview);
+      foot.querySelector("#ppNext").addEventListener("click", () => showPreview());
       syncPick();
     }
 
@@ -14942,7 +14982,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       msg.textContent = warning
         || (state.choosingCover ? "Tap a photo for the cover"
         : short > 0 ? `Pick ${short} more`
-        : `photos${state.cover ? " + cover" : ""} · ${admin ? "free for you" : price ? `₹${price}` : "free"}`);
+        : `photos${state.cover ? " + cover" : ""} · ${admin ? "free for you" : lookOnly ? "preview only" : !price ? "free" : state.madeKey ? `₹${price} for a new PDF` : state.paid ? "paid" : `₹${price}`}`);
       foot.querySelector("#ppNext").disabled = short !== 0 || state.choosingCover;
     }
 
@@ -15028,8 +15068,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     }
 
     /* Step 2: preview, then pay (clients) or download (studio, or once paid). */
-    function showPreview() {
-      const payable = !state.paid;
+    function showPreview(focus) {
+      const canDownload = covered();
+      const payable = !canDownload && !lookOnly;
       const upiLink = portfolioUpiLink(sale.upiId, price, state.ref);
       body.innerHTML = `
         <div class="pp-arrange" id="ppArrange">
@@ -15043,8 +15084,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         ${payable ? `
           <div class="pp-pay">
             <div>
-              <p class="pp-pay-title">Pay ₹${price} to download</p>
-              <p class="pp-hint">The preview is watermarked. The PDF you download isn't.</p>
+              <p class="pp-pay-title">${state.madeKey ? `This is a new PDF. Pay ₹${price} to download it` : `Pay ₹${price} to download`}</p>
+              <p class="pp-hint">${state.madeKey ? "Your payment went on the PDF you downloaded. Undo your change to download that one again." : "The preview is watermarked. The PDF you download isn't."}</p>
             </div>
             ${coarse ? `<a class="btn btn-dark btn-block pp-upi-open" href="${esc(upiLink)}">Pay ₹${price} in your UPI app</a>` : ""}
             <div class="pp-pay-grid">
@@ -15061,16 +15102,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             </div>
             <p class="pp-error" id="ppPayError" role="alert" hidden></p>
             <button type="button" class="btn btn-dark btn-block" id="ppUnlock">I've paid: unlock the download</button>
-            <p class="pp-fine">Your payment goes straight to the studio, which matches every reference number against its bank.</p>
+            <p class="pp-fine">One payment unlocks one PDF. Your payment goes straight to the studio, which matches every reference number against its bank.</p>
           </div>
         ` : `
-          <p class="pp-hint">${admin ? "Free for you as admin." : price ? "Payment noted, thank you. The PDF you download has no watermark." : "Free to download."}</p>
+          <p class="pp-hint">${admin ? "Free for you as admin." : lookOnly ? "Preview only. Downloads aren't open yet." : price ? "Payment noted, thank you. It pays for one PDF with no watermark: once you've downloaded it, changing the photos or layout means paying again." : "Free to download."}</p>
           <div id="ppReady" class="pp-ready"></div>
         `}
       `;
       foot.innerHTML = `
         <button type="button" class="btn btn-ghost" id="ppBack">← Change photos</button>
-        ${payable ? "" : `<button type="button" class="btn btn-dark" id="ppDownload">Download PDF</button>`}
+        ${canDownload ? `<button type="button" class="btn btn-dark" id="ppDownload">Download PDF</button>` : ""}
       `;
       foot.querySelector("#ppBack").addEventListener("click", showPick);
       const dl = foot.querySelector("#ppDownload");
@@ -15088,18 +15129,24 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         if (!btn || btn.disabled) return;
         const id = btn.closest("[data-id]").dataset.id;
         const step = Number(btn.dataset.move);
+        const wasCovered = covered();
         if (!movePhoto(id, step)) return;
+        // Moving off the PDF already paid for (or back onto it) swaps the
+        // download for the payment step, or back.
+        if (covered() !== wasCovered) { showPreview({ id, step }); return; }
         syncOrder({ id, step });
         drawPreview();
       });
       body.querySelector("#ppRowsSeg").addEventListener("click", (e) => {
         const btn = e.target.closest("[data-fewer-on-top]");
         if (!btn || (btn.dataset.fewerOnTop === "true") === state.fewerOnTop) return;
+        const wasCovered = covered();
         state.fewerOnTop = btn.dataset.fewerOnTop === "true";
+        if (covered() !== wasCovered) { showPreview(); return; }
         syncRows(lastSplits);
         drawPreview();
       });
-      syncOrder();
+      syncOrder(focus);
       drawPreview();
     }
 
@@ -15113,7 +15160,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const ready = body.querySelector("#ppReady");
       if (ready) ready.replaceChildren();
       if (fileUrl) { URL.revokeObjectURL(fileUrl); fileUrl = ""; }
-      renderPortfolioPdfPages(buildSpec(), { dpi: 72, watermark: !state.paid, cache }).then((pages) => {
+      renderPortfolioPdfPages(buildSpec(), { dpi: 72, watermark: !covered(), cache }).then((pages) => {
         if (token !== renderToken) return;
         box.classList.remove("is-busy");
         box.replaceChildren(...pages.map((p, i) => {
@@ -15200,17 +15247,26 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const fail = (message, field) => { error.textContent = message; error.hidden = false; body.querySelector(field).focus(); };
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { fail("Enter your email, so the studio can reach you if the payment doesn't show up.", "#ppEmail"); return; }
       if (!/^\d{12}$/.test(utr)) { fail("The UPI reference number is the 12-digit number on your payment receipt.", "#ppUtr"); return; }
+      const seen = readPdfUtrs()[utr];
+      if (seen === "used") { fail("That reference number has already paid for a PDF. Each payment unlocks one PDF.", "#ppUtr"); return; }
       state.paid = true;
-      const spec = buildSpec();
-      sendPortfolioPdfSaleEmail({
-        model: name, price, upiId: sale.upiId, utr, ref: state.ref, email,
-        pages: spec.pages, cover: !!spec.cover, poses: [spec.lead, ...spec.others].map((s) => s.label).join(", ")
-      });
+      state.paidUtr = utr;
+      state.madeKey = "";
+      // Entered again before any PDF was made (after a reload, say), the
+      // studio already has this sale's email.
+      if (seen !== "sent") {
+        const spec = buildSpec();
+        sendPortfolioPdfSaleEmail({
+          model: name, price, upiId: sale.upiId, utr, ref: state.ref, email,
+          pages: spec.pages, cover: !!spec.cover, poses: [spec.lead, ...spec.others].map((s) => s.label).join(", ")
+        }).then((ok) => { if (ok) markPdfUtr(utr, "sent"); });
+      }
       showPreview();
     }
 
     async function download(btn) {
       const token = renderToken;
+      const key = specKey();
       const label = btn.textContent;
       btn.disabled = true;
       btn.textContent = "Making your PDF…";
@@ -15241,6 +15297,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         if (!bytes) throw lastErr || new Error("unknown error");
         if (token !== renderToken) return;
         offerPdf(bytes, `${slugify(spec.name) || "model"}-portfolio.pdf`, `${spec.name} — Model Portfolio`);
+        if (price) {
+          // The payment is spent on this PDF. It downloads again for free, but
+          // a different PDF needs a new payment with a new note, and this
+          // reference number won't unlock anything in this browser again.
+          state.madeKey = key;
+          markPdfUtr(state.paidUtr, "used");
+          state.utr = "";
+          state.ref = newSaleRef();
+        }
       } catch (err) {
         console.warn("Portfolio PDF failed:", err);
         // Name the cause on screen: a client who can't open the console can
@@ -15288,7 +15353,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (!shoot) return;
     const photos = portfolioPosedPhotos(shoot);
     if (!photos.length) { toast("None of this model's photos are tagged with a pose yet. Tag them in Upload, then publish."); return; }
-    if (!isAdmin() && !portfolioPdfSalesOpen()) { toast("Portfolio PDFs aren't available yet."); return; }
     openPortfolioPdfBuilder(shoot, photos);
   };
 
