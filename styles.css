@@ -2717,6 +2717,15 @@ html.theme-dark { color-scheme: dark; }
 .pp-preview.two canvas { width: min(300px, calc(50% - 6px)); }
 .pp-preview canvas { transition: opacity .15s; }
 .pp-preview.is-busy canvas { opacity: .55; }
+.pp-preview canvas { cursor: pointer; }
+/* Adjust photo: drag moves the photo, so the canvas takes the touch instead of scrolling. */
+.pp-adjust { display: flex; flex-direction: column; gap: 12px; }
+.pp-adjust-stage { display: flex; justify-content: center; }
+.pp-adjust-canvas { display: block; max-width: 100%; background: #fff; border: 1px solid var(--line); border-radius: 4px; box-shadow: var(--shadow-sm); touch-action: none; cursor: grab; }
+.pp-adjust-canvas:active { cursor: grabbing; }
+.pp-adjust-zoom { display: flex; align-items: center; gap: 10px; }
+.pp-adjust-zoom input { flex: 1; min-width: 0; accent-color: var(--accent); }
+.pp-adjust-zoom output { min-width: 3.5em; text-align: right; font-family: var(--mono-font); font-size: 12px; color: var(--ink-soft); }
 /* Arranging the pages: the print order as numbered thumbnails with arrows, and the rows switch beside its heading. */
 .pp-arrange { display: flex; flex-direction: column; gap: 8px; }
 .pp-arrange[hidden], .pp-seg[hidden], .pp-order[hidden] { display: none; }
