@@ -307,7 +307,7 @@ window.getAdminInviteCodes = function() {
     // code that only exists there is invalid for every client who types it.
     // No venueCost: this code has always granted the home studio free, and a
     // blank venue cost is exactly that.
-    { code: "NERDYHOME", desc: "Home Studio TFP Collaboration Unlock (Location Locked)", location: "Home Studio - Sector 46, Noida (Provided by Studio)" },
+    { code: "NERDYHOME", desc: "Home Studio TFP Collaboration Unlock (Location Locked)", location: "Home studio, Sector 46, Noida" },
     { code: "NERDYTEST", desc: "Test shoot unlock pass for agency models" },
     { code: "INVITE2026", desc: "General 2026 TFP collaboration pass" },
     { code: "NERDYVIP", desc: "VIP partner unlock code" }
@@ -506,6 +506,12 @@ const DEFAULT_PACKAGES = [
 // the number a client is quoted is the number the studio set — the whole point
 // of publishing PACKAGES rather than keeping rates on one device.
 const DEFAULT_HOME_STUDIO_RATE = 3000;
+
+// Where the home studio is, as contracts, quotes and the booking form name it.
+// Only the area: the exact address of a private residence is shared on
+// confirmation, never published.
+const HOME_STUDIO_AREA = "Sector 46, Noida";
+const HOME_STUDIO_NAME = `Home studio, ${HOME_STUDIO_AREA}`;
 
 // forTestShoot picks the collaboration rate. A test shoot brings no shoot fee
 // with it, so the studio may want to hand the space over cheaper than a paid
@@ -913,7 +919,9 @@ window.WPS_CONTRACT_ARCHIVE["V3.7-COMMERCIAL"] = {
   fullText: window.WPS_CONTRACT_ARCHIVE["V3.6-COMMERCIAL"].fullText.replace(
     "or ask the photographer to do so on the Client's behalf, with the actual cost billed at actuals.",
     "or ask the photographer to do so on the Client's behalf, in which case the studio space and equipment charges are quoted to the Client in advance and added to the invoice."
-  )
+  // The home studio's area, named in place (September 2026) without a new
+  // version: the terms are unchanged, only where the studio is is stated.
+  ).replace("the Studio’s home studio in Noida,", `the Studio’s home studio in ${HOME_STUDIO_AREA},`)
 };
 window.WPS_CONTRACT_ARCHIVE["V3.6-COMMERCIAL"].effectiveDate = "August 2026 (superseded by V3.7)";
 window.WPS_CONTRACT_ARCHIVE["V3.6-COMMERCIAL"].status = "Archived — superseded by V3.7 (photographer-arranged studio quoted in advance, not at cost)";
@@ -5201,7 +5209,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <span id="adminPricingSaveStatus" style="font-size: var(--font-xs); font-weight: 700; color: #059669; background: rgba(5,150,105,0.12); padding: 4px 10px; border-radius: 12px; border: 1px solid #059669; font-family: var(--mono-font); display: inline-block; margin-bottom: 8px;">🟢 ALL CHANGES SAVED TO LIVE SITE</span>
             <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 12px 0;">Edit max package rates (INR), package names, or deliverable descriptions. Click <strong>Save &amp; Push Live</strong> to update booking forms.</p>
             <div style="background: var(--paper); border: 1px solid var(--accent); border-radius: 8px; padding: 12px 16px; margin-bottom: 12px;">
-              <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase;">🏠 Home Studio Rental (Noida)</span>
+              <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase;">🏠 Home Studio Rental (Sector 46, Noida)</span>
               <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 8px 0; font-family: 'Outfit', sans-serif;">Charged when someone picks the home studio, and shown as its own line in their quote. Set <strong>0</strong> to switch it off. An invite code that locks a venue carries its own price and ignores both of these.</p>
               <div style="display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap;">
                 <div>
@@ -5926,7 +5934,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 </div>
                 <div style="grid-column: span 3;">
                   <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">🏠 Lock Location for Client <span style="font-weight:400;text-transform:none;color:var(--ink-soft);">(optional — leave blank to let client fill)</span></label>
-                  <input type="text" id="newInviteLocation" placeholder="e.g. Home Studio, Sector 15, Noida — or leave blank" oninput="window.syncInviteWaiveVisibility && window.syncInviteWaiveVisibility()" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
+                  <input type="text" id="newInviteLocation" placeholder="e.g. Home studio, Sector 46, Noida — or leave blank" oninput="window.syncInviteWaiveVisibility && window.syncInviteWaiveVisibility()" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
                 </div>
                 <!-- Only shown when the code leaves the venue to the talent. A
                      code that names a venue has already had it chosen for them
@@ -8046,7 +8054,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                          can never silently claim the home studio; the client has
                          to pick it deliberately. -->
                     <select id="b_studio_space">
-                      <option value="Home Studio - Noida (Provided by Studio)" id="b_studio_space_home">Home Studio, Noida — intimate setup, best for portraits, comp cards &amp; solo talent</option>
+                      <option value="Home Studio - Noida (Provided by Studio)" id="b_studio_space_home">Home studio, Sector 46, Noida — intimate setup, best for portraits, comp cards &amp; solo talent</option>
                       <option value="Dedicated Commercial Studio Rental (Billed at Actuals)">Dedicated Commercial Studio</option>
                       <option value="Outdoor / On-Location (No Studio Required)" selected>Outdoor / on-location — no studio required</option>
                     </select>
@@ -8057,7 +8065,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                        is untouched. Kept inside this .field-row so the invite
                        code's venue lock hides both together. -->
                   <div class="venue-cards" id="venueCards" style="grid-column: 1 / -1;" role="radiogroup" aria-label="Where are we shooting?">
-                    <label class="venue-card"><input type="radio" name="venue_pick" value="Home Studio - Noida (Provided by Studio)" /><span class="vc-main"><strong>Home studio, Noida</strong><small>Intimate setup · portraits, comp cards, solo talent</small></span><span class="vc-tag">Rental itemised in your quote</span></label>
+                    <label class="venue-card"><input type="radio" name="venue_pick" value="Home Studio - Noida (Provided by Studio)" /><span class="vc-main"><strong>Home studio, Sector 46, Noida</strong><small>Intimate setup · portraits, comp cards, solo talent</small></span><span class="vc-tag">Rental itemised in your quote</span></label>
                     <label class="venue-card"><input type="radio" name="venue_pick" value="Dedicated Commercial Studio Rental (Billed at Actuals)" /><span class="vc-main"><strong>Commercial studio</strong><small>Rented space, booked by you or by us</small></span><span class="vc-tag">Rental quoted separately</span></label>
                     <label class="venue-card"><input type="radio" name="venue_pick" value="Outdoor / On-Location (No Studio Required)" checked /><span class="vc-main"><strong>Outdoor / on location</strong><small>Your venue, or the outdoors</small></span><span class="vc-tag">No studio needed</span></label>
                   </div>
@@ -8163,7 +8171,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                       <span id="summaryOriginalPrice" style="font-weight: 700; color: var(--ink); white-space: nowrap;">₹${getAdminPackages()[0].price.toLocaleString('en-IN')}</span>
                     </div>
                     <div id="summaryHomeStudioWrap" style="display: none; justify-content: space-between; align-items: baseline; gap: 12px; padding: 5px 0;">
-                      <span style="color: var(--ink-soft);"><span id="summaryHomeStudioLabel">Home Studio Rental (Noida)</span></span>
+                      <span style="color: var(--ink-soft);"><span id="summaryHomeStudioLabel">Home Studio Rental (Sector 46, Noida)</span></span>
                       <span id="summaryHomeStudioAmount" style="font-weight: 700; color: var(--ink); white-space: nowrap;">+₹0</span>
                     </div>
                     <div id="summaryDiscountWrap" style="display: none; justify-content: space-between; align-items: baseline; gap: 12px; padding: 5px 0;">
@@ -10475,7 +10483,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const HOME_STUDIO_VALUE = "Home Studio - Noida (Provided by Studio)";
       const OUTDOOR_VALUE = "Outdoor / On-Location (No Studio Required)";
       const COMMERCIAL_STUDIO_VALUE = "Dedicated Commercial Studio Rental (Billed at Actuals)";
-      const HOME_STUDIO_LABEL = "Home Studio, Noida";
+      const HOME_STUDIO_LABEL = HOME_STUDIO_NAME;
       const studioSpaceSel = $("#b_studio_space");
       const homeStudioOpt = $("#b_studio_space_home");
       const isTfpType = $("#b_type")?.value === "Selective Collaboration (TFP)";
@@ -10657,7 +10665,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           : homeStudioFee > 0
             // The client is looking at a quote with this rental on it, so the
             // clause they tick has to name the same number.
-            ? `This session takes place at the Studio's home studio in Noida. A fixed home studio rental of <strong>₹${homeStudioFee.toLocaleString("en-IN")}</strong> applies and is itemised in the production quote; no further venue rental applies to it.${paidHomeRiderHtml} Hair &amp; makeup artists, stylists, set designers and any other third-party crew are not included in this booking — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`
+            ? `This session takes place at the Studio's home studio in ${HOME_STUDIO_AREA}. A fixed home studio rental of <strong>₹${homeStudioFee.toLocaleString("en-IN")}</strong> applies and is itemised in the production quote; no further venue rental applies to it.${paidHomeRiderHtml} Hair &amp; makeup artists, stylists, set designers and any other third-party crew are not included in this booking — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`
             : `If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges.${studioArrangerClauseHtml} Hair &amp; makeup artists, stylists, set designers and any other third-party crew are not included in this booking — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`;
       }
 
@@ -10896,7 +10904,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         if (summaryHomeStudioLabel && showHomeStudioLine) {
           const venueName = inviteLocksVenue
             ? `Studio Venue (${lockedLocation})`
-            : "Home Studio Rental (Noida)";
+            : `Home Studio Rental (${HOME_STUDIO_AREA})`;
           summaryHomeStudioLabel.innerHTML = venueComplimentary
             ? `${esc(venueName)} <span style="color:#059669;font-weight:700;">— complimentary${venueFreeWithCode ? ` with ${esc(venueFreeWithCode)}` : ""}</span>`
             : promoDiscountsHomeStudio
@@ -11288,7 +11296,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     });
     // Address changes are checked on change/blur rather than on every
     // keystroke: flipping the dropdown mid-word would yank the selection out
-    // from under someone who is still typing "Home Studio, Noida" by hand.
+    // from under someone who is still typing "Home studio, Sector 46, Noida" by hand.
     ["change", "blur"].forEach(evtName => {
       $("#b_location")?.addEventListener(evtName, updateFields);
     });
@@ -11683,7 +11691,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // so, in the same terms the quote showed them.
         const engagementFeeClause = isTfpCat
           ? (homeStudioRentalFee > 0
-              ? `\n\n7. HOME STUDIO RENTAL & PAYMENT\nThis collaboration carries no shoot fee. A fixed home studio rental of ₹${homeStudioRentalFee.toLocaleString('en-IN')} applies for use of the photographer's home studio in Noida, and is payable IN FULL at least 48 hours before the shoot day to reserve the space. This rental is non-refundable once paid, including where the Participant cancels or reschedules. No other fee is payable to the Studio for this session.`
+              ? `\n\n7. HOME STUDIO RENTAL & PAYMENT\nThis collaboration carries no shoot fee. A fixed home studio rental of ₹${homeStudioRentalFee.toLocaleString('en-IN')} applies for use of the photographer's home studio in ${HOME_STUDIO_AREA}, and is payable IN FULL at least 48 hours before the shoot day to reserve the space. This rental is non-refundable once paid, including where the Participant cancels or reschedules. No other fee is payable to the Studio for this session.`
               : "")
           : `\n\n7. ENGAGEMENT FEE, SELECTED PACKAGE & PAYMENT MILESTONES\nSelected package and contracted deliverables: ${budget || "as quoted by the Studio"}.\n${paymentTermsText.replace(/^Payment Terms: /, "Payment terms: ")}\nMilestone payments marked non-refundable are non-refundable once paid, including where the Participant cancels or reschedules. Deliverables are released only after the final milestone is cleared. Any work beyond the contracted package (additional retouched masters, extended usage, gallery buyout) is quoted and invoiced separately.`;
 
@@ -11739,10 +11747,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // off it alone described an invited-but-chargeable session as free.
         // An invite can supply a venue that is not the home studio at all, so
         // the venue is named from the booking rather than assumed — billing a
-        // rented space as "Home Studio, Noida" leaves the studio's own record
+        // rented space as the home studio leaves the studio's own record
         // describing a shoot that never happened there.
         const inviteVenueName = (bookingCalc && bookingCalc.isValidInvite && bookingCalc.lockedLocation) || "";
-        const venueLabel = inviteVenueName || "Home Studio, Noida";
+        const venueLabel = inviteVenueName || HOME_STUDIO_NAME;
         const studioSpaceVal = (isHomeStudio || homeStudioRentalFee > 0)
           ? (homeStudioRentalFee > 0
               ? `${venueLabel} — provided by the studio, fixed rental ₹${homeStudioRentalFee.toLocaleString('en-IN')} (itemised in the quote)`
@@ -11756,7 +11764,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           // A paid home-studio booking is the one case where the studio does
           // charge for its own venue, so the stock "no fee is billed to you"
           // and "billed at actuals" lines would both misstate the quote.
-          ? `Studio Rental Policy: This session takes place at the studio's home studio in Noida. A fixed home studio rental of ₹${homeStudioRentalFee.toLocaleString('en-IN')} applies and is itemised in your production quote — nothing further is charged for the venue.\n` +
+          ? `Studio Rental Policy: This session takes place at the studio's home studio in ${HOME_STUDIO_AREA}. A fixed home studio rental of ₹${homeStudioRentalFee.toLocaleString('en-IN')} applies and is itemised in your production quote — nothing further is charged for the venue.\n` +
             homeStudioHouseRules
           : venueByStudio
             ? `Studio Rental Policy: The venue for this session is arranged and paid for by the studio. No venue rental or studio space fee is billed to you for this shoot.\n` +
@@ -12303,7 +12311,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // client is looking at while they tick this box.
       const modalHomeStudioFee = (modalIsHomeStudio && bookingCalc && bookingCalc.homeStudioFee) || 0;
       const venueSentence = modalHomeStudioFee > 0
-        ? ` This session takes place at the Studio's home studio in Noida${modalVenueAddress ? ` (<strong>${esc(modalVenueAddress)}</strong>)` : ""}. A fixed home studio rental of <strong>₹${modalHomeStudioFee.toLocaleString("en-IN")}</strong> applies and is itemised in your quote — nothing further is charged for the venue, and no travel cost is charged for it.${modalHomeRider}`
+        ? ` This session takes place at the Studio's home studio in ${HOME_STUDIO_AREA}${modalVenueAddress && modalVenueAddress !== HOME_STUDIO_NAME ? ` (<strong>${esc(modalVenueAddress)}</strong>)` : ""}. A fixed home studio rental of <strong>₹${modalHomeStudioFee.toLocaleString("en-IN")}</strong> applies and is itemised in your quote — nothing further is charged for the venue, and no travel cost is charged for it.${modalHomeRider}`
         : modalVenueByStudio
         ? ` The shoot venue${modalVenueAddress ? ` (<strong>${esc(modalVenueAddress)}</strong>)` : ""} is arranged and paid for by the Studio — no studio rental, venue hire or travel cost is billed to you for it. Requesting a different location later re-applies the standard venue and travel terms.${modalHomeRider}`
         : (isTfp
