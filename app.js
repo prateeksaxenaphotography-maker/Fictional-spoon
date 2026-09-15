@@ -13916,6 +13916,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const cased = (str, style) => (style.upper ? String(str).toUpperCase() : String(str));
     const page = {
       canvas, ctx, u, links: [],
+      // Every photo drawn and its frame in mm, so a tap on the preview can
+      // tell which photo it landed on.
+      photos: [],
       // An All equal grid with a short row records its split here ({ short, full }).
       equalRows: null,
       measure(str, style) {
@@ -13980,12 +13983,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     return { x, y };
   }
 
+  // How far a client zoomed a photo in Adjust photo: 1 just fills the frame.
+  const PDF_MAX_ZOOM = 3;
+  const pdfZoom = (photo) => Math.min(PDF_MAX_ZOOM, Math.max(1, Number(photo.pdfZoom) || 1));
+
   function drawPdfPhoto(page, img, photo, x, y, w, h, frame = true) {
     const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
-    const scale = Math.max(w / iw, h / ih);
+    const scale = Math.max(w / iw, h / ih) * pdfZoom(photo);
     const sw = Math.min(iw, w / scale), sh = Math.min(ih, h / scale);
     const f = photoFocus(photo);
     page.ctx.drawImage(img, (iw - sw) * f.x, (ih - sh) * f.y, sw, sh, page.u(x), page.u(y), page.u(w), page.u(h));
+    page.photos.push({ id: photo.id, x, y, w, h });
     // A hairline frame, so a photo shot on white seamless still has an edge
     // against the paper. A full-bleed cover has no paper around it.
     if (!frame) return;
@@ -14720,6 +14728,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       paid: price === 0,
       paidUtr: "",         // the reference number of the payment in hand
       madeKey: "",         // the PDF that payment was spent on (see specKey)
+      adjust: {},          // photo id → { x, y, zoom } from Adjust photo, this PDF only
       // Goes in the UPI payment note, so the studio can match a payment to
       // the sale email even before looking at the reference number.
       ref: newSaleRef()
@@ -14816,13 +14825,20 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       return lead ? [lead, ...chosen.filter((s) => s !== lead)] : chosen;
     }
 
+    // A photo as this PDF crops it: the client's own position and zoom, when
+    // they set one, in place of the focus point saved in Upload.
+    function adjusted(photo) {
+      const a = state.adjust[photo.id];
+      return a ? { ...photo, focalX: a.x * 100, focalY: a.y * 100, pdfZoom: a.zoom } : photo;
+    }
+
     function buildSpec() {
       const onPages = printOrder();
       const [lead, ...rest] = onPages;
       // A pose tag on some photos and not others looks like a mistake, so
       // one photo without a pose leaves every photo on the pages untagged.
       const tagged = onPages.every((s) => s.label);
-      const slot = (s) => ({ photo: s.photo, label: tagged ? s.label : "" });
+      const slot = (s) => ({ photo: adjusted(s.photo), label: tagged ? s.label : "" });
       return {
         shoot, name, pages: state.pages,
         lead: slot(lead),
@@ -14836,11 +14852,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       };
     }
 
-    // What tells one PDF from another: the photos and how they're laid out.
-    // Location and phone are left out, so fixing a typo in them is free.
+    // What tells one PDF from another: the photos, how they're laid out and
+    // how each is cropped. Location and phone are left out, so fixing a typo
+    // in them is free.
     function specKey() {
-      return JSON.stringify([state.pages, printOrder().map((s) => s.id), state.layout, state.fewerOnTop,
-        state.cover ? [state.coverId, state.coverStyle] : null]);
+      const ids = printOrder().map((s) => s.id);
+      const crops = (state.cover ? [...ids, state.coverId] : ids).map((id) => {
+        const a = state.adjust[id];
+        return a ? [a.x, a.y, a.zoom].map((v) => Math.round(v * 1000)) : 0;
+      });
+      return JSON.stringify([state.pages, ids, state.layout, state.fewerOnTop,
+        state.cover ? [state.coverId, state.coverStyle] : null, crops]);
     }
     // One payment buys one PDF. Until it's downloaded the client can change
     // anything; after that only that same PDF stays unlocked.
@@ -15095,6 +15117,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           </div>
           <ol class="pp-order" id="ppOrder" aria-labelledby="ppOrderLabel"></ol>
         </div>
+        <p class="pp-hint pp-tap-hint">Tap a photo to move or zoom it.</p>
         <div class="pp-preview" aria-live="polite"><p class="pp-rendering">Drawing your ${state.pages === 2 || state.cover ? "pages" : "page"}…</p></div>
         ${payable ? `
           <div class="pp-pay">
@@ -15161,6 +15184,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         syncRows(lastSplits);
         drawPreview();
       });
+      // A tap on a photo in the preview opens it in Adjust photo.
+      body.querySelector(".pp-preview").addEventListener("click", (e) => {
+        const canvas = e.target.closest("canvas");
+        if (!canvas || !canvas._photos) return;
+        const r = canvas.getBoundingClientRect();
+        const x = (e.clientX - r.left) / r.width * PDF_PAGE.w;
+        const y = (e.clientY - r.top) / r.height * PDF_PAGE.h;
+        const hit = canvas._photos.find((p) => x >= p.x && x <= p.x + p.w && y >= p.y && y <= p.y + p.h);
+        if (hit) showAdjust(hit);
+      });
       syncOrder(focus);
       drawPreview();
     }
@@ -15179,6 +15212,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         if (token !== renderToken) return;
         box.classList.remove("is-busy");
         box.replaceChildren(...pages.map((p, i) => {
+          p.canvas._photos = p.photos;
           p.canvas.setAttribute("role", "img");
           p.canvas.setAttribute("aria-label", `Preview of page ${i + 1}`);
           return p.canvas;
@@ -15192,6 +15226,111 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         if (token !== renderToken) return;
         box.classList.remove("is-busy");
         box.innerHTML = `<p class="pp-rendering">Couldn't draw the preview. Check your connection and try again.</p>`;
+      });
+    }
+
+    /* Adjust photo: one photo large, in the exact shape of its frame. Dragging
+       moves it and zoom crops closer. It changes this PDF only; every photo
+       starts from the focus point saved in Upload. */
+    function showAdjust(frame) {
+      const slot = slots.find((s) => s.id === frame.id);
+      if (!slot) return;
+      const token = ++renderToken;
+      const saved = () => ({ ...photoFocus(slot.photo), zoom: 1 });
+      const a = { ...(state.adjust[slot.id] || saved()) };
+      const clamp01 = (v) => Math.min(1, Math.max(0, v));
+      body.innerHTML = `
+        <div class="pp-adjust">
+          <p class="pp-hint">Drag the photo to move it in its frame. Zoom in to crop closer.</p>
+          <div class="pp-adjust-stage"><canvas class="pp-adjust-canvas" role="img" aria-label="${esc(slot.name)}, as the PDF crops it"></canvas></div>
+          <label class="pp-adjust-zoom"><span class="pp-label">Zoom</span><input type="range" id="ppZoom" min="1" max="${PDF_MAX_ZOOM}" step="0.05" value="${a.zoom}" /><output id="ppZoomVal"></output></label>
+        </div>
+      `;
+      foot.innerHTML = `
+        <button type="button" class="btn btn-ghost" id="ppAdjustReset">Reset</button>
+        <button type="button" class="btn btn-dark" id="ppAdjustDone">Done</button>
+      `;
+      const stage = body.querySelector(".pp-adjust-stage");
+      const canvas = body.querySelector(".pp-adjust-canvas");
+      const zoom = body.querySelector("#ppZoom");
+      const zoomVal = body.querySelector("#ppZoomVal");
+      let img = null, queued = false, drag = null;
+
+      // The frame's shape, as large as the sheet allows.
+      let cw = Math.min(stage.clientWidth || 320, 520), ch = cw * frame.h / frame.w;
+      const maxH = Math.max(240, window.innerHeight * 0.5);
+      if (ch > maxH) { ch = maxH; cw = ch * frame.w / frame.h; }
+      const dpr = window.devicePixelRatio || 1;
+      canvas.style.width = `${cw}px`;
+      canvas.style.height = `${ch}px`;
+      canvas.width = Math.round(cw * dpr);
+      canvas.height = Math.round(ch * dpr);
+
+      // The crop drawPdfPhoto makes: cover the frame, times the zoom, anchored
+      // at the focus point. Worked out in screen pixels.
+      const crop = () => {
+        const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+        const scale = Math.max(cw / iw, ch / ih) * a.zoom;
+        return { iw, ih, scale, sw: Math.min(iw, cw / scale), sh: Math.min(ih, ch / scale) };
+      };
+      const draw = () => {
+        queued = false;
+        zoomVal.textContent = `${a.zoom.toFixed(1)}×`;
+        if (!img) return;
+        const c = crop();
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, (c.iw - c.sw) * a.x, (c.ih - c.sh) * a.y, c.sw, c.sh, 0, 0, canvas.width, canvas.height);
+      };
+      const redraw = () => { if (!queued) { queued = true; requestAnimationFrame(draw); } };
+      // Moves the photo by screen pixels: dragging it right shows more of its left.
+      const nudge = (from, dx, dy) => {
+        const c = crop();
+        if (c.iw - c.sw > 0.5) a.x = clamp01(from.x - dx / c.scale / (c.iw - c.sw));
+        if (c.ih - c.sh > 0.5) a.y = clamp01(from.y - dy / c.scale / (c.ih - c.sh));
+        redraw();
+      };
+      const setZoom = (z) => {
+        a.zoom = Math.min(PDF_MAX_ZOOM, Math.max(1, z));
+        zoom.value = String(a.zoom);
+        redraw();
+      };
+
+      canvas.addEventListener("pointerdown", (e) => {
+        if (!img) return;
+        canvas.setPointerCapture(e.pointerId);
+        drag = { px: e.clientX, py: e.clientY, x: a.x, y: a.y };
+      });
+      canvas.addEventListener("pointermove", (e) => { if (drag) nudge(drag, e.clientX - drag.px, e.clientY - drag.py); });
+      const stop = () => { drag = null; };
+      canvas.addEventListener("pointerup", stop);
+      canvas.addEventListener("pointercancel", stop);
+      canvas.addEventListener("wheel", (e) => {
+        if (!img) return;
+        e.preventDefault();
+        setZoom(a.zoom * (e.deltaY < 0 ? 1.08 : 1 / 1.08));
+      }, { passive: false });
+      zoom.addEventListener("input", () => setZoom(Number(zoom.value)));
+      foot.querySelector("#ppAdjustReset").addEventListener("click", () => {
+        Object.assign(a, saved());
+        setZoom(1);
+      });
+      foot.querySelector("#ppAdjustDone").addEventListener("click", () => {
+        const s = saved();
+        const changed = Math.abs(a.x - s.x) > 0.001 || Math.abs(a.y - s.y) > 0.001 || a.zoom > 1.001;
+        if (changed) state.adjust[slot.id] = { x: a.x, y: a.y, zoom: a.zoom };
+        else delete state.adjust[slot.id];
+        showPreview();
+      });
+
+      draw();
+      loadPdfImage(photoSrc(slot.photo.medium ? { url: slot.photo.medium } : slot.photo), cache).then((loaded) => {
+        if (token !== renderToken) return;
+        img = loaded;
+        draw();
+      }).catch(() => {
+        if (token !== renderToken) return;
+        stage.innerHTML = `<p class="pp-rendering">Couldn't load this photo. Check your connection and try again.</p>`;
       });
     }
 
