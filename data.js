@@ -1728,7 +1728,7 @@ window.WPS_DATA = {
       "featured": true,
       "showAsCompCard": true,
       "hideFromCompCard": false,
-      "showOnModelPortfolio": false,
+      "showOnModelPortfolio": true,
       "disableCompCardDownload": false,
       "isPublic": true,
       "showCredits": true,
