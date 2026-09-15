@@ -5322,7 +5322,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       type: "Fashion Editorial",
       duration: "Full Day",
       status: "confirmed",
-      location: "Studio Space, Noida Sector 62 / Outdoor NCR",
+      location: HOME_STUDIO_NAME,
       package: "₹10,000 Package — 50 Proof Clicks + 8 Retouched Master Clicks",
       notes: "",
       contractVersion: preselectedVersion || window.ACTIVE_CONTRACTS.commercial
@@ -5423,7 +5423,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Shoot Location Address *
-              <input type="text" id="pdf_location" value="${esc(b.location || 'Studio Space, Noida / Outdoor NCR')}" placeholder="e.g. Sector 62 Studio, Noida / Client Venue" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+              <input type="text" id="pdf_location" value="${esc(b.location || HOME_STUDIO_NAME)}" placeholder="e.g. ${esc(HOME_STUDIO_NAME)} / client venue" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
               <span style="display: flex; align-items: flex-start; gap: 7px; margin-top: 7px; font-weight: 400; line-height: 1.4;">
                 <input type="checkbox" id="pdf_venueByStudio" ${b.venueByStudio ? 'checked' : ''} style="margin-top: 2px; flex-shrink: 0;" />
                 <span>Venue provided by the studio — no rental billed to the client. Ticked automatically for bookings that came in on an invite code carrying a location; tick it by hand for shoots you are supplying the space for.</span>
