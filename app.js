@@ -14140,12 +14140,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // Only on the preview a client sees before paying.
   function drawPdfPreviewMark(page) {
     const { ctx, u } = page;
-    const style = { weight: 800, size: 8, family: PDF_DISPLAY, spacing: 0.8, upper: true, color: "rgba(210, 78, 26, 0.38)", align: "center" };
+    // The studio's name, faint enough to look past but on every photo.
+    const mark = "nerdyphotographer.in";
+    const style = { weight: 700, size: 6, family: PDF_DISPLAY, spacing: 0.3, color: "rgba(210, 78, 26, 0.2)", align: "center" };
+    // Spaced by the name's own width, across the page's diagonal (364 mm).
+    const step = page.measure(mark, style) + 24;
+    const cols = Math.ceil(182 / step) + 1;
     ctx.save();
     ctx.translate(u(PDF_PAGE.w / 2), u(PDF_PAGE.h / 2));
     ctx.rotate(-Math.PI / 6);
-    for (let row = -6; row <= 6; row++) {
-      for (let col = -2; col <= 2; col++) page.text("Preview", col * 72 + (row % 2 ? 36 : 0), row * 30, style);
+    for (let row = -7; row <= 7; row++) {
+      for (let col = -cols; col <= cols; col++) page.text(mark, col * step + (row % 2 ? step / 2 : 0), row * 26, style);
     }
     ctx.restore();
   }
