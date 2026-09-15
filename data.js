@@ -2651,7 +2651,7 @@ window.WPS_DATA = {
   ],
   "PORTFOLIO_PDF": {
     "enabled": false,
-    "price": 50,
+    "price": 300,
     "upiId": ""
   },
   "TFP_PACKAGE": {
