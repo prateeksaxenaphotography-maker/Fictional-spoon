@@ -5526,6 +5526,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // booking itself states should pin the select, so a test-shoot draft can
     // open on the half day the cap allows.
     const dur = (bookingId && typeof bookingId === "object") ? String(bookingId.duration || "") : String((existingBooking && existingBooking.duration) || "");
+    // Custom call & wrap times, in the same shape the booking page records
+    // ("Custom — 11:00 AM to 3:00 PM (4 hours)"), so a booking made on the
+    // site and a contract drafted here describe a window the same way.
+    const format12 = (t) => { if (!t) return ""; const [h, m] = t.split(":").map(Number); return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`; };
+    const parse12 = (t) => { const m = String(t || "").match(/(\d{1,2}):(\d{2})\s*([AP]M)/i); if (!m) return ""; let h = Number(m[1]) % 12; if (/PM/i.test(m[3])) h += 12; return `${String(h).padStart(2, "0")}:${m[2]}`; };
+    const storedCustom = dur.match(/Custom — (\d{1,2}:\d{2} [AP]M) to (\d{1,2}:\d{2} [AP]M)/i);
+    const initialStart = storedCustom ? parse12(storedCustom[1]) : "10:30";
+    const initialEnd = storedCustom ? parse12(storedCustom[2]) : (initialKind === "tfp" ? "14:30" : "17:30");
 
     modal.innerHTML = `
       <div class="modal-content pdfgen" style="background: var(--paper); border: 1px solid var(--line); border-radius: 14px; max-width: 760px; width: 100%; max-height: 92vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,.35); overflow: hidden; color: var(--ink);">
@@ -5559,6 +5567,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 ${durationOpt("Flexible / Photographer Choice", "Flexible / Photographer Choice (Photographer Recommends Best Time)", dur.includes("Flexible"))}
                 ${durationOpt("Custom Timings (Specify Call & Wrap Time)", "Custom Timings (Specify Call &amp; Wrap Time)", dur.includes("Custom"))}
               </select></label>
+            </div>
+            <div class="pdfgen-grid" id="pdf_customTimeWrap" style="display: none;">
+              <label class="pdfgen-field">Call time<input type="time" id="pdf_timeStart" value="${esc(initialStart)}" /></label>
+              <label class="pdfgen-field">Wrap time<input type="time" id="pdf_timeEnd" value="${esc(initialEnd)}" /><span class="pdfgen-hint" id="pdf_customTimeBadge"></span></label>
             </div>
             <div class="pdfgen-field">Venue
               <div class="pdfgen-seg" role="radiogroup" aria-label="Venue">
@@ -5668,6 +5680,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     let rentalTouched = initialRental !== null;
     q("pdf_rental").value = initialRental !== null ? initialRental : rateFor(initialKind);
 
+    const customMinutes = () => { const [sh, sm] = (q("pdf_timeStart").value || "10:30").split(":").map(Number); const [eh, em] = (q("pdf_timeEnd").value || "17:30").split(":").map(Number); let d = (eh * 60 + em) - (sh * 60 + sm); if (d < 0) d += 24 * 60; return d; };
+    const isCustomSession = () => /^Custom/.test(q("pdf_duration").value);
+    const sessionLabel = () => isCustomSession()
+      ? `Custom — ${format12(q("pdf_timeStart").value || "10:30")} to ${format12(q("pdf_timeEnd").value || "17:30")} (${(customMinutes() / 60).toFixed(1).replace(".0", "")} hours)`
+      : q("pdf_duration").value;
     const currentRental = () => (venueOf() === "home" && !q("pdf_venueByStudio").checked) ? Math.max(0, Number(q("pdf_rental").value) || 0) : 0;
     const currentPackagePrice = () => { const sel = q("pdf_packageSelect"); return sel.value === "custom" ? parsePrice(q("pdf_customPkgName").value) : parsePrice(sel.value); };
     const currentPackageLabel = () => {
@@ -5747,6 +5764,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       q("pdf_scheduleWrap").style.display = kind === "paid" ? "" : "none";
       q("pdf_customPackage_wrap").style.display = (kind === "paid" && q("pdf_packageSelect").value === "custom") ? "" : "none";
       q("pdf_customCloudRetentionWrap").style.display = q("pdf_customCloudRetention").value === "custom" ? "" : "none";
+      q("pdf_customTimeWrap").style.display = isCustomSession() ? "" : "none";
+      if (isCustomSession()) {
+        const mins = customMinutes(), hrs = (mins / 60).toFixed(1).replace(".0", "");
+        q("pdf_customTimeBadge").textContent = (kind === "tfp" && mins > 5 * 60)
+          ? `⚠️ ${hrs} hours — test shoots run to 5 hours at most.`
+          : `⏱️ ${hrs} hours · ${format12(q("pdf_timeStart").value || "10:30")} – ${format12(q("pdf_timeEnd").value || "17:30")}`;
+      }
       q("pdf_rentalWrap").style.display = (venue === "home" && !free) ? "" : "none";
       q("pdf_rentalHint").textContent = `Studio rate for ${kind === "tfp" ? "test shoots" : "paid shoots"}: ${inr(rateFor(kind))}. Change it for a special rate, or use a discount below.`;
       // A test shoot with nothing to pay has nothing to discount.
@@ -5788,6 +5812,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       if (!rentalTouched) q("pdf_rental").value = rateFor(kind);
       const durSel = q("pdf_duration");
       if (kind === "tfp" && durSel && /^Full Day/.test(durSel.value)) durSel.value = "Half Day Morning (10:30 AM – 2:30 PM)";
+      if (kind === "tfp" && isCustomSession() && customMinutes() > 5 * 60) { q("pdf_timeStart").value = "10:30"; q("pdf_timeEnd").value = "14:30"; }
       render();
     };
     const onVenueChange = () => {
@@ -5804,8 +5829,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     document.querySelectorAll('input[name="pdf_venue"]').forEach((r) => r.addEventListener("change", onVenueChange));
     locEl.addEventListener("input", () => { locEl.dataset.auto = ""; });
     q("pdf_rental").addEventListener("input", () => { rentalTouched = true; render(); });
-    ["pdf_venueByStudio", "pdf_packageSelect", "pdf_paymentMilestones", "pdf_customCloudRetention", "pdf_discount", "pdf_discountType"].forEach((id) => q(id)?.addEventListener("change", render));
-    ["pdf_customPkgName", "pdf_customRetouchedCount", "pdf_customCloudRetentionInput", "pdf_discountValue", "pdf_discountReason"].forEach((id) => q(id)?.addEventListener("input", render));
+    ["pdf_venueByStudio", "pdf_packageSelect", "pdf_paymentMilestones", "pdf_customCloudRetention", "pdf_discount", "pdf_discountType", "pdf_duration"].forEach((id) => q(id)?.addEventListener("change", render));
+    ["pdf_customPkgName", "pdf_customRetouchedCount", "pdf_customCloudRetentionInput", "pdf_discountValue", "pdf_discountReason", "pdf_timeStart", "pdf_timeEnd"].forEach((id) => q(id)?.addEventListener("input", render));
     render();
 
     $("#closePdfGenModal")?.addEventListener("click", () => modal.style.display = "none");
@@ -5835,7 +5860,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           email: $("#pdf_email").value.trim(),
           phone: $("#pdf_phone").value.trim(),
           type: kind === "tfp" ? "Selective Collaboration (TFP)" : ((b.type && !/test|tfp/i.test(b.type)) ? b.type : "Client Shoot"),
-          duration: $("#pdf_duration").value,
+          duration: sessionLabel(),
           location: $("#pdf_location").value.trim(),
           venueByStudio: !!$("#pdf_venueByStudio")?.checked,
           notes: $("#pdf_notes").value.trim(),
@@ -5853,7 +5878,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         email: $("#pdf_email").value.trim(),
         phone: $("#pdf_phone").value.trim(),
         date: $("#pdf_date").value.trim(),
-        duration: $("#pdf_duration").value,
+        duration: sessionLabel(),
         location: $("#pdf_location").value.trim(),
         studioProvidedByPhotographer: !!$("#pdf_venueByStudio")?.checked,
         contractVersion: $("#pdf_contractVersion").value,
