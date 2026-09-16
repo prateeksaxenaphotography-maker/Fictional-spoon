@@ -4939,6 +4939,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       budget: details.budget || "",
       homeStudioFee: Number(details.homeStudioFee) || 0,
       finalPayable: Number(details.finalPayable) || 0,
+      promoMeta: details.promoMeta || null,
+      financials: details.financials || null,
       contractVersion: version || "Pending Agreement",
       // The contract has been sent, not signed. Accept is what marks it agreed.
       agreedToTerms: false,
@@ -5483,6 +5485,20 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const tfpPkg = (typeof getAdminTfpPackage === "function" && getAdminTfpPackage()) || {};
     const tfpSpecs = String(tfpPkg.specs || "").replace(/\s*\(No RAW files delivered\)\s*$/i, "").trim() || "Full Proofing Gallery + 8 to 12 Retouched Master Clicks";
     const pkgValue = (p) => `₹${Number(p.price).toLocaleString("en-IN")} (${p.name})`;
+    const promoCodes = (typeof window.getAdminPromoCodes === "function" && window.getAdminPromoCodes()) || {};
+    const describePromo = (e) => {
+      const hs = window.getPromoHomeStudioDiscount(e), parts = [];
+      if (Number(e.flat) > 0) parts.push(`flat ${inr(e.flat)} off ${e.includeAddons ? "package + rental" : "the package"}`);
+      else if (Number(e.pct) > 0) parts.push(`${e.pct}% off ${e.includeAddons ? "package + rental" : "the package"}`);
+      if (hs.type === "free") parts.push("home studio rental waived");
+      else if (hs.type === "flat") parts.push(`${inr(hs.value)} off the rental`);
+      else if (hs.type === "pct") parts.push(`${hs.value}% off the rental`);
+      return parts.join(" · ") || "no discount";
+    };
+    // A booking that arrived with a promo code reopens with it; one with a
+    // recorded saving but no live code reopens as a custom discount.
+    const initialPromo = (b.promoMeta && b.promoMeta.code && promoCodes[String(b.promoMeta.code).toUpperCase()]) ? String(b.promoMeta.code).toUpperCase() : "";
+    const initialCustomDiscount = (!initialPromo && b.promoMeta && Number(b.promoMeta.savings) > 0) ? { value: Number(b.promoMeta.savings), reason: String(b.promoMeta.tag || b.promoMeta.code || "Discount") } : null;
 
     // What the form opens on. The booking kind drives the contract document,
     // the payment terms and the deliverables, so the three can no longer be
@@ -5581,6 +5597,21 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               </select></label>
             </div>
 
+            <div class="pdfgen-grid" id="pdf_discountRow">
+              <label class="pdfgen-field">Discount<select id="pdf_discount">
+                <option value="">None</option>
+                ${Object.keys(promoCodes).map((code) => `<option value="${esc(code)}"${initialPromo === code ? " selected" : ""}>${esc(code)} · ${esc(describePromo(promoCodes[code]))}</option>`).join("")}
+                <option value="custom"${initialCustomDiscount ? " selected" : ""}>✏️ Custom discount…</option>
+              </select></label>
+              <div class="pdfgen-field" id="pdf_customDiscountWrap" style="display: none;">Custom discount
+                <div style="display: flex; gap: 8px;">
+                  <input type="number" id="pdf_discountValue" min="0" inputmode="numeric" placeholder="Amount" value="${initialCustomDiscount ? esc(String(initialCustomDiscount.value)) : ""}" />
+                  <select id="pdf_discountType" style="width: auto; flex: 0 0 auto;"><option value="flat">₹ off</option><option value="pct">% off</option></select>
+                </div>
+                <input type="text" id="pdf_discountReason" placeholder="Reason, printed on the contract — e.g. Returning client" value="${initialCustomDiscount ? esc(initialCustomDiscount.reason) : ""}" />
+              </div>
+            </div>
+
             <div id="pdf_customPackage_wrap" class="pdfgen-card" style="background: var(--bone); display: none;">
               <h4>Custom package</h4>
               <div class="pdfgen-grid">
@@ -5646,26 +5677,68 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const cloud = q("pdf_customCloudRetention").value === "custom" ? q("pdf_customCloudRetentionInput").value.trim() : q("pdf_customCloudRetention").value;
       return `${q("pdf_customPkgName").value.trim()} — ${q("pdf_customRetouchedCount").value.trim()} (${q("pdf_customDownloadPermission").value}; ${q("pdf_customRevisions").value}; ${cloud})`;
     };
+    // The discount in play: one of the studio's promo codes (applied exactly
+    // as the booking page applies it) or a custom amount with a reason that
+    // is printed on the contract.
+    const currentDiscount = () => {
+      const pick = q("pdf_discount").value;
+      if (!pick) return { source: "none" };
+      if (pick === "custom") {
+        const value = Math.max(0, Number(q("pdf_discountValue").value) || 0);
+        const type = q("pdf_discountType").value === "pct" ? "pct" : "flat";
+        const reason = q("pdf_discountReason").value.trim();
+        if (!value) return { source: "none" };
+        return { source: "custom", value: type === "pct" ? Math.min(100, value) : value, type, reason, label: `${reason || "Discount"} · ${type === "pct" ? `${Math.min(100, value)}% off` : `${inr(value)} off`}` };
+      }
+      const entry = promoCodes[pick];
+      if (!entry) return { source: "none" };
+      return { source: "promo", code: pick, entry, label: `${pick} · ${describePromo(entry)}` };
+    };
     // Same arithmetic as the booking page's quote card, so a contract printed
     // here and a booking made on the site never disagree about the split.
     const computeMoney = () => {
-      const kind = kindOf(), rental = currentRental(), key = q("pdf_paymentMilestones").value;
-      if (kind === "tfp") return { kind, rental, price: 0, total: rental, key: "tfp", legs: rental > 0 ? [rental] : [] };
+      const kind = kindOf(), listRental = currentRental(), key = q("pdf_paymentMilestones").value, disc = currentDiscount();
+      let rental = listRental, rentalOff = 0;
+      if (disc.source === "promo") { const r = window.applyPromoHomeStudioDiscount(disc.entry, listRental); rentalOff = r.amount; rental = Math.max(0, listRental - r.amount); }
+      if (kind === "tfp") {
+        // A collaboration has no package, so a custom discount can only be
+        // taken off the rental; a promo code's package part does nothing here.
+        if (disc.source === "custom") { rentalOff = Math.min(listRental, disc.type === "pct" ? Math.round(listRental * disc.value / 100) : disc.value); rental = listRental - rentalOff; }
+        const label = disc.source === "none" ? "" : (rentalOff > 0 ? disc.label : `${disc.label} (no effect on a test shoot)`);
+        return { kind, listRental, rental, rentalOff, price: 0, savings: 0, total: rental, key: "tfp", legs: rental > 0 ? [rental] : [], discountLabel: label, discount: disc };
+      }
       const price = currentPackagePrice();
-      if (price === null) return { kind, rental, price: null, total: null, key, legs: [] };
-      return { kind, rental, price, total: price + rental, key, legs: splitPackageMilestones(price, rental, key) };
+      if (price === null) return { kind, listRental, rental, rentalOff, price: null, savings: 0, total: null, key, legs: [], discountLabel: disc.source === "none" ? "" : disc.label, discount: disc };
+      let savings = 0;
+      if (disc.source === "promo") {
+        const e = disc.entry, base = e.includeAddons ? price + rental : price;
+        savings = e.flat ? Number(e.flat) : (e.pct ? Math.round(base * Number(e.pct) / 100) : 0);
+        savings = Math.min(savings, base);
+      } else if (disc.source === "custom") {
+        savings = Math.min(price, disc.type === "pct" ? Math.round(price * disc.value / 100) : disc.value);
+      }
+      const total = Math.max(0, price + rental - savings);
+      const legs = splitPackageMilestones(Math.max(0, total - rental), rental, key);
+      const label = disc.source === "none" ? "" : ((savings > 0 || rentalOff > 0) ? disc.label : `${disc.label} (no effect)`);
+      return { kind, listRental, rental, rentalOff, price, savings, total, key, legs, discountLabel: label, discount: disc };
     };
     const legLabels = (key, rental) => [`Advance retainer${rental > 0 ? " + studio rental" : ""}`].concat(PACKAGE_SCHEDULES[key].quoteSteps.map((s) => s.replace(/^Step \d · /, "")));
+    const rentalPhrase = (m) => m.rental > 0
+      ? `home studio rental ${inr(m.rental)}${m.rentalOff > 0 ? ` (${inr(m.listRental)} less ${inr(m.rentalOff)})` : ""}`
+      : (m.rentalOff > 0 && m.listRental > 0 ? `home studio rental waived (normally ${inr(m.listRental)})` : "");
     const paySummaryText = () => {
       const m = computeMoney(), free = q("pdf_venueByStudio").checked;
+      const discNote = m.discountLabel ? ` Discount: ${m.discountLabel}.` : "";
       if (m.kind === "tfp") {
         if (free) return "Payment: nothing is payable — the venue is provided by the studio and a test shoot carries no shoot fee.";
-        if (m.rental > 0) return `Payment: no shoot fee. Home studio rental ${inr(m.rental)} is payable in full at least 48 hours before the shoot (non-refundable once paid).`;
+        if (m.rental > 0) return `Payment: no shoot fee. Home studio rental ${inr(m.rental)}${m.rentalOff > 0 ? ` (${inr(m.listRental)} less ${inr(m.rentalOff)})` : ""} is payable in full at least 48 hours before the shoot (non-refundable once paid).${discNote}`;
+        if (m.rentalOff > 0 && m.listRental > 0) return `Payment: nothing is payable — no shoot fee on a test shoot, and the home studio rental (normally ${inr(m.listRental)}) is waived.${discNote}`;
         return "Payment: nothing is payable to the studio — no shoot fee on a test shoot.";
       }
       if (m.price === null) return `Payment terms: ${PACKAGE_SCHEDULES[m.key].contract}.`;
       const labels = legLabels(m.key, m.rental).map((l) => l.toLowerCase());
-      return `Payment: total ${inr(m.total)} (package ${inr(m.price)}${m.rental > 0 ? ` + home studio rental ${inr(m.rental)}` : ""}) — ` + m.legs.map((a, i) => `${inr(a)} ${labels[i] || "milestone " + (i + 1)}`).join(" · ") + ".";
+      const rp = rentalPhrase(m);
+      return `Payment: total ${inr(m.total)} (package ${inr(m.price)}${m.savings > 0 ? ` less ${inr(m.savings)} discount` : ""}${rp ? ` + ${rp}` : ""}) — ` + m.legs.map((a, i) => `${inr(a)} ${labels[i] || "milestone " + (i + 1)}`).join(" · ") + `.${discNote}`;
     };
     const render = () => {
       const kind = kindOf(), venue = venueOf(), free = q("pdf_venueByStudio").checked;
@@ -5675,25 +5748,31 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       q("pdf_customPackage_wrap").style.display = (kind === "paid" && q("pdf_packageSelect").value === "custom") ? "" : "none";
       q("pdf_customCloudRetentionWrap").style.display = q("pdf_customCloudRetention").value === "custom" ? "" : "none";
       q("pdf_rentalWrap").style.display = (venue === "home" && !free) ? "" : "none";
-      q("pdf_rentalHint").textContent = `Studio rate for ${kind === "tfp" ? "test shoots" : "paid shoots"}: ${inr(rateFor(kind))}. Change it for a discount or a waiver.`;
+      q("pdf_rentalHint").textContent = `Studio rate for ${kind === "tfp" ? "test shoots" : "paid shoots"}: ${inr(rateFor(kind))}. Change it for a special rate, or use a discount below.`;
+      // A test shoot with nothing to pay has nothing to discount.
+      q("pdf_discountRow").style.display = (kind === "paid" || (venue === "home" && !free)) ? "" : "none";
+      q("pdf_customDiscountWrap").style.display = q("pdf_discount").value === "custom" ? "" : "none";
       q("pdf_kindHint").textContent = kind === "tfp"
         ? "No shoot fee. The test shoot release is selected and the only amount is the home studio rental, if any."
         : "Package rate plus any home studio rental, split on the studio's milestone schedule.";
       const m = computeMoney(), box = q("pdf_paySummary");
+      const discLine = m.discountLabel ? `<div>Discount: <strong>${esc(m.discountLabel)}</strong></div>` : "";
       if (kind === "tfp") {
         box.innerHTML = free
           ? `<div><strong>Nothing payable.</strong> Venue provided by the studio; a test shoot carries no shoot fee.</div>`
           : m.rental > 0
-            ? `<div class="pdfgen-total">${inr(m.rental)}</div><div>Home studio rental, <strong>payable in full at least 48 hours before the shoot</strong> and non-refundable once paid. No shoot fee.</div>`
-            : venue === "commercial"
-              ? `<div><strong>No shoot fee.</strong> Studio rental, if any, is quoted separately in advance and payable before shoot day.</div>`
-              : `<div><strong>Nothing payable.</strong> No shoot fee on a test shoot, and no studio rental at this venue.</div>`;
+            ? `<div class="pdfgen-total">${inr(m.rental)}</div><div>Home studio rental${m.rentalOff > 0 ? ` (${inr(m.listRental)} less ${inr(m.rentalOff)})` : ""}, <strong>payable in full at least 48 hours before the shoot</strong> and non-refundable once paid. No shoot fee.</div>${discLine}`
+            : (m.rentalOff > 0 && m.listRental > 0)
+              ? `<div><strong>Nothing payable.</strong> No shoot fee, and the home studio rental (normally ${inr(m.listRental)}) is waived.</div>${discLine}`
+              : venue === "commercial"
+                ? `<div><strong>No shoot fee.</strong> Studio rental, if any, is quoted separately in advance and payable before shoot day.</div>`
+                : `<div><strong>Nothing payable.</strong> No shoot fee on a test shoot, and no studio rental at this venue.</div>`;
       } else if (m.price === null) {
         box.innerHTML = `<div><strong>No ₹ amount in the package name</strong>, so the split cannot be shown. Terms: ${esc(PACKAGE_SCHEDULES[m.key].contract)}.</div>`;
       } else {
-        const labels = legLabels(m.key, m.rental);
+        const labels = legLabels(m.key, m.rental), rp = rentalPhrase(m);
         box.innerHTML = `<div class="pdfgen-total">${inr(m.total)}</div>` +
-          `<div>Package ${inr(m.price)}${m.rental > 0 ? ` + home studio rental ${inr(m.rental)} (paid in full with the advance)` : ""} · ${esc(PACKAGE_SCHEDULES[m.key].label)}</div>` +
+          `<div>Package ${inr(m.price)}${m.savings > 0 ? ` − ${inr(m.savings)} discount` : ""}${rp ? ` + ${rp}${m.rental > 0 ? " (paid in full with the advance)" : ""}` : ""} · ${esc(PACKAGE_SCHEDULES[m.key].label)}</div>` + discLine +
           `<div class="pdfgen-legs">${m.legs.map((a, i) => `<div class="pdfgen-leg"><b>${esc(labels[i] || "Milestone " + (i + 1))}</b><strong>${inr(a)}</strong></div>`).join("")}</div>`;
       }
     };
@@ -5725,8 +5804,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     document.querySelectorAll('input[name="pdf_venue"]').forEach((r) => r.addEventListener("change", onVenueChange));
     locEl.addEventListener("input", () => { locEl.dataset.auto = ""; });
     q("pdf_rental").addEventListener("input", () => { rentalTouched = true; render(); });
-    ["pdf_venueByStudio", "pdf_packageSelect", "pdf_paymentMilestones", "pdf_customCloudRetention"].forEach((id) => q(id)?.addEventListener("change", render));
-    ["pdf_customPkgName", "pdf_customRetouchedCount", "pdf_customCloudRetentionInput"].forEach((id) => q(id)?.addEventListener("input", render));
+    ["pdf_venueByStudio", "pdf_packageSelect", "pdf_paymentMilestones", "pdf_customCloudRetention", "pdf_discount", "pdf_discountType"].forEach((id) => q(id)?.addEventListener("change", render));
+    ["pdf_customPkgName", "pdf_customRetouchedCount", "pdf_customCloudRetentionInput", "pdf_discountValue", "pdf_discountReason"].forEach((id) => q(id)?.addEventListener("input", render));
     render();
 
     $("#closePdfGenModal")?.addEventListener("click", () => modal.style.display = "none");
@@ -5763,6 +5842,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           budget: kind === "tfp" ? "Collab / TFP (No Budget)" : pkgLabel,
           homeStudioFee: m.rental,
           finalPayable: m.total === null ? 0 : m.total,
+          promoMeta: (m.savings > 0 || m.rentalOff > 0) ? { code: m.discount.source === "promo" ? m.discount.code : "CUSTOM", tag: m.discountLabel, savings: m.savings + m.rentalOff } : null,
+          financials: m.total === null ? null : { basePrice: m.price, homeStudioFee: m.rental, homeStudioListPrice: m.listRental, savings: m.savings, finalPayable: m.total, advanceRetainer: m.legs[0] || 0, wrapBalance: Math.max(0, m.total - (m.legs[0] || 0)), scheduleKey: m.key },
           contractVersion: $("#pdf_contractVersion").value
         });
       }
@@ -5780,7 +5861,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         tfpSpecs,
         paymentMilestones: kind === "tfp" ? "tfp" : $("#pdf_paymentMilestones").value,
         homeStudioFee: m.rental,
+        homeStudioListPrice: m.listRental,
+        rentalDiscountAmount: m.rentalOff,
         packagePrice: m.price,
+        discountAmount: m.savings,
+        discountLabel: m.discountLabel,
         notes: $("#pdf_notes").value.trim(),
         sigDataUrl: b.sigDataUrl || "",
         agreementMethod: b.agreementMethod || "",
@@ -5821,30 +5906,44 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // separately", so a test shoot at the home studio printed without the
     // one amount the talent actually owes.
     const rentalFee = Math.max(0, Number(data.homeStudioFee) || 0);
+    const rentalList = Math.max(rentalFee, Number(data.homeStudioListPrice) || 0);
+    const rentalOff = Math.max(0, Number(data.rentalDiscountAmount) || 0);
+    const rentalWaived = rentalFee === 0 && rentalOff > 0 && rentalList > 0;
+    const discountAmt = Math.max(0, Number(data.discountAmount) || 0);
+    const discountLabel = String(data.discountLabel || "").trim();
+    const discountNote = discountLabel ? ` (${esc(discountLabel)})` : "";
     const tfpSpecs = String(data.tfpSpecs || (typeof getAdminTfpPackage === "function" && getAdminTfpPackage().specs) || "Full Proofing Gallery + 8 to 12 Retouched Master Clicks").replace(/\s*\(No RAW files delivered\)\s*$/i, "");
     const tfpPaymentHtml = studioByPhotographer
       ? `No shoot fee applies to this collaboration. The venue is provided by the Studio — <strong>nothing is payable</strong> for this session.`
       : rentalFee > 0
-        ? `No shoot fee applies to this collaboration. A fixed home studio rental of <strong>${inr(rentalFee)}</strong> applies for use of the photographer's home studio in ${esc(HOME_STUDIO_AREA)}, <strong>payable in full at least 48 hours before the shoot day</strong> to reserve the space, and non-refundable once paid. No other fee is payable to the Studio.`
-        : `No shoot fee applies to this collaboration. Any dedicated studio rental is quoted separately in advance and payable in full before shoot day; otherwise nothing is payable to the Studio.`;
+        ? `No shoot fee applies to this collaboration. A fixed home studio rental of <strong>${inr(rentalFee)}</strong>${rentalOff > 0 ? ` (${inr(rentalList)} less a ${inr(rentalOff)} discount${discountNote})` : ""} applies for use of the photographer's home studio in ${esc(HOME_STUDIO_AREA)}, <strong>payable in full at least 48 hours before the shoot day</strong> to reserve the space, and non-refundable once paid. No other fee is payable to the Studio.`
+        : rentalWaived
+          ? `No shoot fee applies to this collaboration. The home studio rental (normally ${inr(rentalList)}) is waived${discountNote} — <strong>nothing is payable</strong> for this session.`
+          : `No shoot fee applies to this collaboration. Any dedicated studio rental is quoted separately in advance and payable in full before shoot day; otherwise nothing is payable to the Studio.`;
     const paidSchedule = PACKAGE_SCHEDULES[data.paymentMilestones] || PACKAGE_SCHEDULES["5050"];
     const paidScheduleKey = PACKAGE_SCHEDULES[data.paymentMilestones] ? data.paymentMilestones : "5050";
     const pkgPrice = Number(data.packagePrice) || 0;
     const paidAmountsHtml = pkgPrice > 0
       ? (() => {
-          const legs = splitPackageMilestones(pkgPrice, rentalFee, paidScheduleKey);
+          const net = Math.max(0, pkgPrice - discountAmt);
+          const legs = splitPackageMilestones(net, rentalFee, paidScheduleKey);
           const labels = [`Advance retainer${rentalFee > 0 ? " (incl. studio rental)" : ""}`].concat(paidSchedule.quoteSteps.map((s) => s.replace(/^Step \d · /, "")));
-          return `<br/><strong>💰 Amounts:</strong> Package ${inr(pkgPrice)}${rentalFee > 0 ? ` + home studio rental ${inr(rentalFee)}` : ""} = <strong>${inr(pkgPrice + rentalFee)}</strong> · ` + legs.map((a, i) => `${esc(labels[i] || "Milestone " + (i + 1))} ${inr(a)}`).join(" · ");
+          const rentalPart = rentalFee > 0
+            ? ` + home studio rental ${inr(rentalFee)}${rentalOff > 0 ? ` (${inr(rentalList)} less ${inr(rentalOff)})` : ""}`
+            : (rentalWaived ? ` + home studio rental waived (normally ${inr(rentalList)})` : "");
+          return `<br/><strong>💰 Amounts:</strong> Package ${inr(pkgPrice)}${discountAmt > 0 ? ` − discount ${inr(discountAmt)}${discountNote} = ${inr(net)}` : ""}${rentalPart} = <strong>${inr(net + rentalFee)}</strong> · ` + legs.map((a, i) => `${esc(labels[i] || "Milestone " + (i + 1))} ${inr(a)}`).join(" · ");
         })()
       : "";
-    const homeStudioRiderHtml = ((studioByPhotographer || rentalFee > 0) && /home studio/i.test(studioLocation))
+    const homeStudioRiderHtml = ((studioByPhotographer || rentalFee > 0 || rentalWaived) && /home studio/i.test(studioLocation))
       ? ` Attendance is limited to a maximum of 3 people in total including the Participant and any crew they bring (hair &amp; makeup, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`
       : ``;
     const studioClauseTfp = studioByPhotographer
       ? `Studio venue for this session is provided by the photographer${studioLocation ? ` at <strong>${esc(studioLocation)}</strong>` : ""} at no additional rental charge to the talent.${homeStudioRiderHtml}`
       : rentalFee > 0
         ? `This session takes place at the photographer's home studio${studioLocation ? ` at <strong>${esc(studioLocation)}</strong>` : ` in ${esc(HOME_STUDIO_AREA)}`}; the fixed home studio rental under Payment is the only venue charge.${homeStudioRiderHtml}`
-        : `If a dedicated indoor studio venue/space is required, applicable venue rental fees are quoted separately in advance.`;
+        : rentalWaived
+          ? `This session takes place at the photographer's home studio${studioLocation ? ` at <strong>${esc(studioLocation)}</strong>` : ` in ${esc(HOME_STUDIO_AREA)}`}; the rental is waived (see Payment).${homeStudioRiderHtml}`
+          : `If a dedicated indoor studio venue/space is required, applicable venue rental fees are quoted separately in advance.`;
 
     const innerHtml = `
       <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #111; padding: 20px; max-width: 800px; margin: 0 auto; background: #fff; line-height: 1.5;">
@@ -5905,8 +6004,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <strong>🏢 Studio Venue Rental Policy:</strong> ${studioByPhotographer
               ? `The venue for this session${studioLocation ? ` (<strong>${esc(studioLocation)}</strong>)` : ''} is arranged and paid for by the Studio — <strong>no venue rental is billed to the client</strong>.${homeStudioRiderHtml}`
               : rentalFee > 0
-                ? `This session takes place at the Studio's home studio in ${esc(HOME_STUDIO_AREA)}. A fixed home studio rental of <strong>${inr(rentalFee)}</strong> applies, is itemised above and is payable in full together with the advance retainer; nothing further is charged for the venue.${homeStudioRiderHtml}`
-                : `Dedicated indoor studio venue rentals are <strong>quoted separately in advance</strong>, or the client may directly book their preferred studio space for the session.`}
+                ? `This session takes place at the Studio's home studio in ${esc(HOME_STUDIO_AREA)}. A fixed home studio rental of <strong>${inr(rentalFee)}</strong>${rentalOff > 0 ? ` (${inr(rentalList)} less a ${inr(rentalOff)} discount${discountNote})` : ""} applies, is itemised above and is payable in full together with the advance retainer; nothing further is charged for the venue.${homeStudioRiderHtml}`
+                : rentalWaived
+                  ? `This session takes place at the Studio's home studio in ${esc(HOME_STUDIO_AREA)}. The home studio rental (normally ${inr(rentalList)}) is waived${discountNote}; nothing is charged for the venue.${homeStudioRiderHtml}`
+                  : `Dedicated indoor studio venue rentals are <strong>quoted separately in advance</strong>, or the client may directly book their preferred studio space for the session.`}
           `}
         </div>
 
