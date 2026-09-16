@@ -8512,7 +8512,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                      <div><strong>Business Handle:</strong> @nerdyphotographer.in</div>
                      <div><strong>Consent Tracking:</strong> Verified via Email / Digital Acknowledgment</div>
                      <div><strong>Production Status:</strong> <span id="termsProductionStatus">Time-For-Print (TFP) Collab</span></div>
-                     <div><strong>Location:</strong> Studio Production Space</div>
+                     <div><strong>Location:</strong> <span id="termsLocation">Studio Production Space</span></div>
                    </div>
  
                    <div>
@@ -11728,6 +11728,29 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       }
     }
 
+    // The terms sheet exactly as the client saw it, captured by openTermsModal
+    // at the moment they agree, while the sheet is still on screen so
+    // innerText keeps the rendered line breaks. The emailed contract is
+    // built from this, so the studio's record can never say less than the
+    // sheet did.
+    let agreedSheetText = "";
+    function serializeTermsSheet() {
+      try {
+        const content = $("#termsModal .modal-content");
+        const body = content && content.children[1];
+        if (!body) return "";
+        const parts = [];
+        Array.from(body.children).forEach((el) => {
+          if (el.querySelector("#termsAgreeCheckbox")) return;
+          const t = (el.innerText || "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+          if (t) parts.push(t);
+        });
+        return parts.join("\n\n");
+      } catch (e) {
+        return "";
+      }
+    }
+
     const handleBookingSubmit = (e) => {
       if (e) e.preventDefault();
 
@@ -11778,7 +11801,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // For the money question they are the same answer — no rental billed —
         // so they share this clause. The home studio then adds a rider, because
         // a private residence is not the same as a hired commercial space.
-        const isHomeStudio = $("#b_studio_space")?.value === "Home Studio - Noida (Provided by Studio)";
+        // The home studio is the venue whether the client picked it from the
+        // venue cards or an invite code supplied it: the house rules and the
+        // "no rental billed" wording used to be skipped on invited bookings
+        // because only the dropdown was consulted.
+        const inviteLockedHome = $("#b_location")?.dataset.inviteLocked === "1" && /home studio/i.test($("#b_location")?.value || "");
+        const isHomeStudio = $("#b_studio_space")?.value === "Home Studio - Noida (Provided by Studio)" || inviteLockedHome;
         const venueByStudio = $("#b_location")?.dataset.inviteLocked === "1" || isHomeStudio;
         const venueByStudioAddress = venueByStudio ? ($("#b_location")?.value || "") : "";
         const homeStudioRider = isHomeStudio
@@ -11858,6 +11886,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // print a document that jumps from 6 to 8.
         const lateArrivalClause = "\n\n" + window.buildLateArrivalText(isTfpCat, engagementFeeClause ? 8 : 7);
 
+        // What goes on the record is the sheet the client ticked (see
+        // serializeTermsSheet). The clauses below are the old hand-written
+        // summary, kept only as a fallback for an empty capture: the record
+        // used to be built from them alone, and said far less than the sheet
+        // — no house rules on an invited home-studio shoot, no credit
+        // workflow, no travel clause, one-line waivers.
+        const legacyStandardClauses = `${venueClause}\n\n2. INTELLECTUAL PROPERTY & USAGE LICENSING\nThe legal copyright of all visual media remains exclusively with the Studio. Clients receive personal, social media, and web self-promotion usage rights.\n\n3. COMPREHENSIVE LIABILITY WAIVER\nParticipant(s) enter the studio workspace and perform physical poses entirely at their own risk.\n\n4. DELIVERABLES, REVISIONS & CLOUD ARCHIVAL\nDeliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for ${isTfpCat ? '3 Months' : '6 Months'}. RAW files are strictly excluded.\n\n5. UNAUTHORIZED CAMERA OPERATION & GEAR PROTECTION\nAll camera gear and memory cards are strictly hands-off.\n\n6. DIGITAL CONSENT & EMAIL ACCEPTANCE\nLegal acceptance is established by submitting this request.${engagementFeeClause}${lateArrivalClause}`;
+        const sheetText = (agreedSheetText || "").trim();
+        const standardTermsText = sheetText || legacyStandardClauses;
         const tfpReleaseText = agreedToTerms ? (
           `\n\n==================================================\n` +
           `STUDIO PRODUCTION CONTRACT & LEGAL TERMS\n` +
@@ -11870,9 +11907,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           `Contract Status: ${isCustomContract ? 'Custom Contract / Agency MSA Requested (Pending Studio Review)' : `Agreed to Studio Contract ${contractRefDoc}`}\n` +
           (isCustomContract ? `Custom Contract Notes: ${customContractNotes || 'Client requested custom agency MSA'}\n` : '') +
           `--------------------------------------------------\n\n` +
-          (isCustomContract ? 
-            `1. CUSTOM CONTRACT / AGENCY MSA REQUEST\nThis shoot request is submitted under a Custom Client Contract / Agency Master Services Agreement (MSA). Studio V3.7 default terms remain subject to custom contract review and mutual alignment prior to shoot day confirmation.\n\n2. CAMERA GEAR & DATA PROTECTION CLAUSE\nAll camera bodies, memory cards, and raw captures remain confidential studio property. Participants may not touch equipment or delete media from cameras.\n` :
-            `${venueClause}\n\n2. INTELLECTUAL PROPERTY & USAGE LICENSING\nThe legal copyright of all visual media remains exclusively with the Studio. Clients receive personal, social media, and web self-promotion usage rights.\n\n3. COMPREHENSIVE LIABILITY WAIVER\nParticipant(s) enter the studio workspace and perform physical poses entirely at their own risk.\n\n4. DELIVERABLES, REVISIONS & CLOUD ARCHIVAL\nDeliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for ${isTfpCat ? '3 Months' : '6 Months'}. RAW files are strictly excluded.\n\n5. UNAUTHORIZED CAMERA OPERATION & GEAR PROTECTION\nAll camera gear and memory cards are strictly hands-off.\n\n6. DIGITAL CONSENT & EMAIL ACCEPTANCE\nLegal acceptance is established by submitting this request.${engagementFeeClause}${lateArrivalClause}`
+          (isCustomContract ?
+            `1. CUSTOM CONTRACT / AGENCY MSA REQUEST\nThis shoot request is submitted under a Custom Client Contract / Agency Master Services Agreement (MSA). Studio V3.7 default terms remain subject to custom contract review and mutual alignment prior to shoot day confirmation.\n\n2. CAMERA GEAR & DATA PROTECTION CLAUSE\nAll camera bodies, memory cards, and raw captures remain confidential studio property. Participants may not touch equipment or delete media from cameras.\n` +
+            `\n\nSTANDARD TERMS SHOWN AT BOOKING (subject to the custom contract review above)\n--------------------------------------------------\n${standardTermsText}` :
+            standardTermsText
           ) +
           `\n\nnerdyphotographer.in\n` +
           `==================================================`
@@ -12501,6 +12539,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       if (customInput) customInput.value = "";
       const agreeCheckbox = $("#termsAgreeCheckbox");
       if (agreeCheckbox) agreeCheckbox.checked = false;
+      agreedSheetText = "";
       if (customBtn) {
         customBtn.textContent = "📝 Request Custom Contract";
         customBtn.style.display = isTfp ? "none" : "inline-flex"; // Hide custom contract for fixed TFP collaborations
@@ -12525,6 +12564,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         lateArrivalSection.style.display = "block";
       }
       if (partnerNameEl) partnerNameEl.textContent = partnerName || "Valued Client";
+      const termsLocationEl = $("#termsLocation");
+      if (termsLocationEl) termsLocationEl.textContent = ($("#b_location")?.value || "").trim() || "As per the booking form";
       
       // This is the screen the signature is actually captured on, so it is the
       // last place that can be left contradicting the form. On an invite that
@@ -12601,6 +12642,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           alert("Please check the box to agree to the terms and continue!");
           return;
         }
+        agreedSheetText = serializeTermsSheet();
         close();
         // The signature slot carries an image data URL or nothing at all. It
         // used to receive the string "DIGITALLY_ACCEPTED_VIA_CHECKBOX", which
@@ -12622,6 +12664,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           customBtn.textContent = "Submit with Custom Contract Request ✓";
         } else {
           const notes = customInput?.value.trim() || "Client requested custom contract / agency MSA";
+          agreedSheetText = serializeTermsSheet();
           close();
           if (onAccept) onAccept(true, true, notes, "", "checkbox");
         }
