@@ -4936,6 +4936,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       isTentative: true,
       status: "tentative",
       notes: details.notes || "",
+      budget: details.budget || "",
+      homeStudioFee: Number(details.homeStudioFee) || 0,
+      finalPayable: Number(details.finalPayable) || 0,
       contractVersion: version || "Pending Agreement",
       // The contract has been sent, not signed. Accept is what marks it agreed.
       agreedToTerms: false,
@@ -5474,175 +5477,257 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     modal.style.display = "flex";
 
     const dVal = dKey || (new Date()).toISOString().split("T")[0];
-    const isTest = b.type && /test|tfp/i.test(b.type);
-    // The milestone terms open on the studio's current package schedule (the
-    // Calendar page toggle) instead of always 50/50, and on the collaboration
-    // terms for a test shoot.
-    const genMilestones = isTest ? "tfp" : getPackageScheduleKey();
+    const inr = (n) => `₹${Math.round(Number(n) || 0).toLocaleString("en-IN")}`;
+    const parsePrice = (s) => { const m = String(s || "").replace(/,/g, "").match(/₹\s*(\d+)/); return m ? Number(m[1]) : null; };
+    const packages = ((typeof getAdminPackages === "function" && getAdminPackages()) || []).filter((p) => p && p.name);
+    const tfpPkg = (typeof getAdminTfpPackage === "function" && getAdminTfpPackage()) || {};
+    const tfpSpecs = String(tfpPkg.specs || "").replace(/\s*\(No RAW files delivered\)\s*$/i, "").trim() || "Full Proofing Gallery + 8 to 12 Retouched Master Clicks";
+    const pkgValue = (p) => `₹${Number(p.price).toLocaleString("en-IN")} (${p.name})`;
+
+    // What the form opens on. The booking kind drives the contract document,
+    // the payment terms and the deliverables, so the three can no longer be
+    // left contradicting each other (a test shoot printed with 3-tier paid
+    // milestones and the commercial contract).
+    const bookingBudget = String(b.budget || "").trim();
+    const initialKind = ((b.type && /test|tfp/i.test(b.type)) || /tfp|test/i.test(String(b.contractVersion || "")) || /Collab \/ TFP/i.test(bookingBudget)) ? "tfp" : "paid";
+    const initialLocation = String(b.location || "").trim();
+    const initialVenue = (/home studio/i.test(initialLocation) || Number(b.homeStudioFee) > 0) ? "home" : (initialLocation ? "outdoor" : "home");
+    const budgetPrice = parsePrice(bookingBudget);
+    const initialPkg = packages.find((p) => pkgValue(p) === bookingBudget) || packages.find((p) => budgetPrice !== null && Number(p.price) === budgetPrice) || packages[0] || null;
+    const initialCustomName = (!initialPkg && bookingBudget && !/Collab \/ TFP/i.test(bookingBudget)) ? bookingBudget : "₹15,000 Commercial Retainer";
+    const initialRental = (b.homeStudioFee !== undefined && b.homeStudioFee !== null && b.homeStudioFee !== "") ? Math.max(0, Number(b.homeStudioFee) || 0) : null;
+    const initialSchedule = (b.financials && PACKAGE_SCHEDULES[b.financials.scheduleKey]) ? b.financials.scheduleKey : getPackageScheduleKey();
     const genSelected = (() => {
       const raw = String(b.contractVersion || "").trim();
       if (raw === "Custom Contract") return raw;
-      const fallback = isTest ? window.ACTIVE_CONTRACTS.tfp : window.ACTIVE_CONTRACTS.commercial;
+      const fallback = initialKind === "tfp" ? window.ACTIVE_CONTRACTS.tfp : window.ACTIVE_CONTRACTS.commercial;
       if (!raw || raw === "Pending Agreement") return fallback;
       const r = window.resolveContractArchive(raw);
       return r ? r.version : fallback;
     })();
+    const durationOpt = (value, label, on) => `<option value="${esc(value)}"${on ? " selected" : ""}>${label}</option>`;
+    // The draft defaults carry a generic "Full Day"; only a duration the
+    // booking itself states should pin the select, so a test-shoot draft can
+    // open on the half day the cap allows.
+    const dur = (bookingId && typeof bookingId === "object") ? String(bookingId.duration || "") : String((existingBooking && existingBooking.duration) || "");
 
     modal.innerHTML = `
-      <div class="modal-content" style="background: var(--paper); border: 1px solid var(--line); border-radius: 14px; max-width: 720px; width: 100%; max-height: 90vh; display: flex; flex-direction: column; box-shadow: var(--shadow); overflow: hidden; animation: modalFadeIn 0.3s ease;">
-        <div style="padding: 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; background: var(--bone);">
+      <div class="modal-content pdfgen" style="background: var(--paper); border: 1px solid var(--line); border-radius: 14px; max-width: 760px; width: 100%; max-height: 92vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,.35); overflow: hidden; color: var(--ink);">
+        <div class="pdfgen-head">
           <div>
-            <h3 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink);">📄 Generate PDF Contract &amp; Agreement</h3>
-            <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">Prepare A4 PDF Contract for Off-Site &amp; DM/Email Bookings</div>
+            <h3>📄 Contract &amp; agreement PDF</h3>
+            <div class="pdfgen-hint">For bookings that arrive by DM, email or phone. Print the A4 PDF, send it with the approval message, and the client's reply is the signature.</div>
           </div>
-          <button type="button" id="closePdfGenModal" style="background: none; border: none; font-size: var(--font-md); cursor: pointer; color: var(--ink-soft); padding: 4px;">✕</button>
+          <button type="button" id="closePdfGenModal" aria-label="Close">✕</button>
         </div>
 
-        <div style="padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px;">
-          <div style="background: rgba(var(--accent-rgb), 0.05); border: 1px solid var(--accent); border-radius: 8px; padding: 12px; font-size: var(--font-xs); color: var(--ink); line-height: 1.5;">
-            💡 <strong>Off-Site / DM Inquiry Workflow:</strong> Fill or edit the booking details below. Click <strong>🖨️ Print / Save as A4 PDF</strong> to download your official contract, then copy the <strong>Approval Message</strong> to paste into IG DM or Gmail!
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Client Name *
-              <input type="text" id="pdf_clientName" value="${esc(b.name || '')}" placeholder="e.g. Rahul Sharma / Model Name" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
-            </label>
-            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Instagram / Handle / Website
-              <input type="text" id="pdf_instagram" value="${esc(b.instagram || b.handle || '')}" placeholder="e.g. @handle or website.com" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
-            </label>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Client Email Address
-              <input type="email" id="pdf_email" value="${esc(b.email || '')}" placeholder="client@example.com" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
-            </label>
-            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Phone Number
-              <input type="tel" id="pdf_phone" value="${esc(b.phone || '')}" placeholder="+91 98765-43210" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
-            </label>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Shoot Date / Timeline *
-              <input type="text" id="pdf_date" value="${esc(dVal)}" placeholder="YYYY-MM-DD or Mid-August" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
-            </label>
-            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Shoot Duration
-              <select id="pdf_duration" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
-                <option value="Full Day (10:30 AM – 5:30 PM)" ${(b.duration && b.duration.includes('Full Day')) || !b.duration ? 'selected' : ''}>Full Day Shoot (10:30 AM – 5:30 PM · 7 Hours)</option>
-                <option value="Half Day Morning (10:30 AM – 2:30 PM)" ${b.duration && b.duration.includes('Morning') ? 'selected' : ''}>Half Day Morning (10:30 AM – 2:30 PM · 4 Hours)</option>
-                <option value="Half Day Afternoon (1:30 PM – 5:30 PM)" ${b.duration && b.duration.includes('Afternoon') ? 'selected' : ''}>Half Day Afternoon (1:30 PM – 5:30 PM · 4 Hours)</option>
-                <option value="Flexible / Photographer Choice" ${b.duration && b.duration.includes('Flexible') ? 'selected' : ''}>Flexible / Photographer Choice (Photographer Recommends Best Time)</option>
-                <option value="Custom Timings (Specify Call & Wrap Time)" ${b.duration && b.duration.includes('Custom') ? 'selected' : ''}>Custom Timings (Specify Call &amp; Wrap Time)</option>
-              </select>
-            </label>
-          </div>
-
-          ${existingBooking ? "" : `
-          <label style="display: flex; align-items: flex-start; gap: 9px; padding: 11px 13px; border: 1px solid rgba(107,91,210,0.45); background: rgba(107,91,210,0.07); border-radius: 8px; font-size: var(--font-xs); line-height: 1.45; color: var(--ink); cursor: pointer;">
-            <input type="checkbox" id="pdf_holdDate" checked style="margin-top: 2px; flex-shrink: 0;" />
-            <span><strong>\u{1F4C5} Hold this date on the calendar when I print.</strong> It goes in as a <strong>Hold</strong> \u2014 the public sees the day as taken, nothing is confirmed \u2014 with <strong>Accept</strong> and <strong>Reject</strong> waiting on it in the calendar and roster for when the client replies. Needs the shoot date above to be a plain YYYY-MM-DD.</span>
-          </label>`}
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Shoot Location Address *
-              <input type="text" id="pdf_location" value="${esc(b.location || HOME_STUDIO_NAME)}" placeholder="e.g. ${esc(HOME_STUDIO_NAME)} / client venue" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
-              <span style="display: flex; align-items: flex-start; gap: 7px; margin-top: 7px; font-weight: 400; line-height: 1.4;">
-                <input type="checkbox" id="pdf_venueByStudio" ${b.venueByStudio ? 'checked' : ''} style="margin-top: 2px; flex-shrink: 0;" />
-                <span>Venue provided by the studio — no rental billed to the client. Ticked automatically for bookings that came in on an invite code carrying a location; tick it by hand for shoots you are supplying the space for.</span>
-              </span>
-            </label>
-            <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Contract Document Version *
-              <select id="pdf_contractVersion" data-contract-select="1" data-custom="1" data-prev-value="${esc(genSelected)}" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">${contractVersionOptionsHtml({ selected: genSelected })}</select>
-            </label>
-          </div>
-
-          <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Package Tier &amp; Deliverables Specs *
-            <select id="pdf_packageSelect" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
-              <option value="custom" selected>✏️ Custom Package / Bespoke Deliverables (Specify Below)</option>
-              <option value="₹7,000 (20 Proof Clicks · 0 Retouched)">₹7,000 · Basic Test / Comp Card (20 Proof Clicks + 0 Retouched)</option>
-              <option value="₹10,000 (25 Proof Clicks + 3-5 Retouched)">₹10,000 · Mini Portfolio (25 Proof Clicks + 3-5 Retouched Clicks)</option>
-              <option value="₹25,000 (50 Proof Clicks + 8-12 Retouched)">₹25,000 · Standard Editorial Portfolio (50 Proof Clicks + 8-12 Retouched)</option>
-              <option value="₹50,000 (100 Proof Clicks + 15-25 Retouched)">₹50,000 · Premium Brand Campaign (100 Proof Clicks + 15-25 Retouched)</option>
-              <option value="₹50,000+ (Full Proof Gallery + 30+ Commercial Retouched)">₹50,000+ · Full Proof Gallery + 30+ Commercial Master Retouched Assets</option>
-              <option value="Test Shoot / TFP (Full Proof Gallery + 8-12 Retouched)">Test Shoot / TFP · Full Proofing Gallery + 8 to 12 Retouched Clicks</option>
-            </select>
-          </label>
-
-          <div id="pdf_customPackage_wrap" style="background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
-            <div style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em;">🛠️ Bespoke Package Details &amp; Download Permissions</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-              <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Custom Package Name &amp; Price
-                <input type="text" id="pdf_customPkgName" value="₹15,000 Commercial Retainer" placeholder="e.g. ₹15,000 Custom Brand Retainer" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
-              </label>
-              <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Retouched Master Clicks Included
-                <input type="text" id="pdf_customRetouchedCount" value="8 Master Retouched Clicks" placeholder="e.g. 10 Retouched Master Clicks" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
-              </label>
+        <div class="pdfgen-body">
+          <section class="pdfgen-card">
+            <h4>Client</h4>
+            <div class="pdfgen-grid">
+              <label class="pdfgen-field">Client name *<input type="text" id="pdf_clientName" value="${esc(b.name || '')}" placeholder="e.g. Rahul Sharma / Model Name" /></label>
+              <label class="pdfgen-field">Instagram / handle / website<input type="text" id="pdf_instagram" value="${esc(b.instagram || b.handle || '')}" placeholder="e.g. @handle or website.com" /></label>
+              <label class="pdfgen-field">Email<input type="email" id="pdf_email" value="${esc(b.email || '')}" placeholder="client@example.com" /></label>
+              <label class="pdfgen-field">Phone<input type="tel" id="pdf_phone" value="${esc(b.phone || '')}" placeholder="+91 98765-43210" /></label>
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-              <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Unedited Gallery Download Permission
-                <select id="pdf_customDownloadPermission" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
-                  <option value="Proofing View Only (Download Restricted to Billed Retouched Clicks)" selected>Proofing View Only (Download Restricted to Contracted Retouched Clicks)</option>
-                  <option value="Full Unedited Gallery Download Included">Full Unedited High-Res Gallery Download Included</option>
-                </select>
-              </label>
-              <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Editing Revision Limit
-                <select id="pdf_customRevisions" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
-                  <option value="1 Round of Minor Revisions (Within 7 Days)" selected>1 Round of Minor Revisions (Within 7 Days)</option>
-                  <option value="2 Rounds of Minor Revisions (Within 14 Days)">2 Rounds of Minor Revisions (Within 14 Days)</option>
-                  <option value="No Revisions Included (Extra Revisions Billed at ₹1,500/image)">No Revisions Included (Billed at ₹1,500/image)</option>
-                </select>
-              </label>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-              <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Cloud Storage Archival Window *
-                <select id="pdf_customCloudRetention" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
-                  <option value="3 Months Cloud Retention (Standard Test Shoot / TFP)">3 Months Cloud Retention (Test Shoots / TFP)</option>
-                  <option value="6 Months Cloud Retention (Standard Paid Commercial Shoot)" selected>6 Months Cloud Retention (Paid Commercial Shoots)</option>
-                  <option value="12 Months Extended Archival (1 Year)">12 Months Extended Archival (1 Year)</option>
-                  <option value="1 Month Cloud Retention (30 Days Express)">1 Month Cloud Retention (30 Days)</option>
-                  <option value="custom">✏️ Custom Retention Expiry Date / Months (Specify Below)</option>
-                </select>
-                <div id="pdf_customCloudRetentionWrap" style="display: none; margin-top: 6px;">
-                  <input type="text" id="pdf_customCloudRetentionInput" value="2 Months (Expiry: Oct 15, 2026)" placeholder="e.g. 2 Months / Expiry: Oct 15, 2026" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit;" />
-                </div>
-              </label>
-            </div>
-          </div>
+          </section>
 
-          <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Payment Milestone Terms
-            <select id="pdf_paymentMilestones" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
-              <option value="5050"${genMilestones === "5050" ? " selected" : ""}>Standard 50/50 Milestones (50% Advance Retainer / 50% Final Balance prior to file download)</option>
-              <option value="503020"${genMilestones === "503020" ? " selected" : ""}>3-Tier Campaign Milestones (50% Advance / 30% Proofing / 20% Final Deliverables)</option>
-              <option value="50301010"${genMilestones === "50301010" ? " selected" : ""}>4-Tier Campaign Milestones (50% Advance / 30% Proofing / 10% Clicks Finalised / 10% After Delivery)</option>
-              <option value="tfp"${genMilestones === "tfp" ? " selected" : ""}>TFP / Test Shoot Collab (0 Fee, Full Proofing Gallery + 8-12 Retouched Clicks)</option>
-            </select>
-          </label>
+          <section class="pdfgen-card">
+            <h4>Shoot</h4>
+            <div class="pdfgen-grid">
+              <label class="pdfgen-field">Shoot date / timeline *<input type="text" id="pdf_date" value="${esc(dVal)}" placeholder="YYYY-MM-DD or Mid-August" /></label>
+              <label class="pdfgen-field">Session<select id="pdf_duration">
+                ${durationOpt("Full Day (10:30 AM – 5:30 PM)", "Full Day Shoot (10:30 AM – 5:30 PM · 7 Hours)", dur.includes("Full Day") || (!dur && initialKind !== "tfp"))}
+                ${durationOpt("Half Day Morning (10:30 AM – 2:30 PM)", "Half Day Morning (10:30 AM – 2:30 PM · 4 Hours)", dur.includes("Morning") || (!dur && initialKind === "tfp"))}
+                ${durationOpt("Half Day Afternoon (1:30 PM – 5:30 PM)", "Half Day Afternoon (1:30 PM – 5:30 PM · 4 Hours)", dur.includes("Afternoon"))}
+                ${durationOpt("Flexible / Photographer Choice", "Flexible / Photographer Choice (Photographer Recommends Best Time)", dur.includes("Flexible"))}
+                ${durationOpt("Custom Timings (Specify Call & Wrap Time)", "Custom Timings (Specify Call &amp; Wrap Time)", dur.includes("Custom"))}
+              </select></label>
+            </div>
+            <div class="pdfgen-field">Venue
+              <div class="pdfgen-seg" role="radiogroup" aria-label="Venue">
+                <label><input type="radio" name="pdf_venue" value="home" /><span>Home studio</span></label>
+                <label><input type="radio" name="pdf_venue" value="commercial" /><span>Commercial studio</span></label>
+                <label><input type="radio" name="pdf_venue" value="outdoor" /><span>Outdoor / client venue</span></label>
+              </div>
+            </div>
+            <div class="pdfgen-grid">
+              <label class="pdfgen-field">Location address *<input type="text" id="pdf_location" value="${esc(initialLocation || HOME_STUDIO_NAME)}" placeholder="Venue name and address" /></label>
+              <label class="pdfgen-field" id="pdf_rentalWrap">Home studio rental (₹)<input type="number" id="pdf_rental" min="0" step="100" inputmode="numeric" /><span class="pdfgen-hint" id="pdf_rentalHint"></span></label>
+            </div>
+            <label class="pdfgen-check"><input type="checkbox" id="pdf_venueByStudio" ${b.venueByStudio ? 'checked' : ''} /><span><strong>Venue provided by the studio — no rental billed.</strong> Ticked automatically for bookings that came in on an invite code carrying a location; tick it by hand when you are supplying the space for free.</span></label>
+            ${existingBooking ? "" : `
+            <label class="pdfgen-check"><input type="checkbox" id="pdf_holdDate" checked /><span><strong>\u{1F4C5} Hold this date on the calendar when I print.</strong> It goes in as a <strong>Hold</strong> — the public sees the day as taken, nothing is confirmed — with <strong>Accept</strong> and <strong>Reject</strong> waiting on it in the calendar and roster for when the client replies. Needs the shoot date above to be a plain YYYY-MM-DD.</span></label>`}
+          </section>
 
-          <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Production Notes &amp; Call Time
-            <textarea id="pdf_notes" rows="2" placeholder="e.g. Call time 9:00 AM, 3 wardrobe changes, client brings own outfits." style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">${esc(b.notes || '')}</textarea>
-          </label>
+          <section class="pdfgen-card">
+            <h4>Agreement</h4>
+            <div class="pdfgen-field">Booking kind
+              <div class="pdfgen-seg" role="radiogroup" aria-label="Booking kind">
+                <label><input type="radio" name="pdf_kind" value="paid" /><span>Paid shoot</span></label>
+                <label><input type="radio" name="pdf_kind" value="tfp" /><span>Test shoot / TFP</span></label>
+              </div>
+              <span class="pdfgen-hint" id="pdf_kindHint"></span>
+            </div>
+            <div class="pdfgen-grid">
+              <label class="pdfgen-field" id="pdf_packageWrap">Package &amp; deliverables *<select id="pdf_packageSelect">
+                ${packages.map((p) => `<option value="${esc(pkgValue(p))}"${initialPkg === p ? " selected" : ""}>₹${Number(p.price).toLocaleString("en-IN")} · ${esc(p.name)}${p.specs ? ` (${esc(p.specs)})` : ""}</option>`).join("")}
+                <option value="custom"${!initialPkg ? " selected" : ""}>✏️ Custom package / bespoke deliverables</option>
+              </select></label>
+              <div class="pdfgen-field" id="pdf_tfpPackageWrap">Deliverables<div class="pdfgen-static">Test shoot / TFP · ${esc(tfpSpecs)}. No shoot fee.</div></div>
+              <label class="pdfgen-field">Contract document *<select id="pdf_contractVersion" data-contract-select="1" data-custom="1" data-prev-value="${esc(genSelected)}">${contractVersionOptionsHtml({ selected: genSelected })}</select></label>
+              <label class="pdfgen-field" id="pdf_scheduleWrap">Payment milestones<select id="pdf_paymentMilestones">
+                ${["5050", "503020", "50301010"].map((k) => `<option value="${k}"${initialSchedule === k ? " selected" : ""}>${esc(PACKAGE_SCHEDULES[k].label)} · ${esc(PACKAGE_SCHEDULES[k].contract.replace(/ \(.*$/, ""))}</option>`).join("")}
+              </select></label>
+            </div>
+
+            <div id="pdf_customPackage_wrap" class="pdfgen-card" style="background: var(--bone); display: none;">
+              <h4>Custom package</h4>
+              <div class="pdfgen-grid">
+                <label class="pdfgen-field">Package name &amp; price (₹ figure drives the split)<input type="text" id="pdf_customPkgName" value="${esc(initialCustomName)}" placeholder="e.g. ₹15,000 Custom Brand Retainer" /></label>
+                <label class="pdfgen-field">Retouched master clicks included<input type="text" id="pdf_customRetouchedCount" value="8 Master Retouched Clicks" placeholder="e.g. 10 Retouched Master Clicks" /></label>
+                <label class="pdfgen-field">Unedited gallery download<select id="pdf_customDownloadPermission">
+                  <option value="Proofing View Only (Download Restricted to Billed Retouched Clicks)" selected>Proofing view only (download restricted to contracted retouched clicks)</option>
+                  <option value="Full Unedited Gallery Download Included">Full unedited high-res gallery download included</option>
+                </select></label>
+                <label class="pdfgen-field">Revisions<select id="pdf_customRevisions">
+                  <option value="1 Round of Minor Revisions (Within 7 Days)" selected>1 round of minor revisions (within 7 days)</option>
+                  <option value="2 Rounds of Minor Revisions (Within 14 Days)">2 rounds of minor revisions (within 14 days)</option>
+                  <option value="No Revisions Included (Extra Revisions Billed at ₹1,500/image)">No revisions included (billed at ₹1,500/image)</option>
+                </select></label>
+                <label class="pdfgen-field">Cloud archival window<select id="pdf_customCloudRetention">
+                  <option value="3 Months Cloud Retention (Standard Test Shoot / TFP)">3 months (test shoots / TFP)</option>
+                  <option value="6 Months Cloud Retention (Standard Paid Commercial Shoot)" selected>6 months (paid commercial shoots)</option>
+                  <option value="12 Months Extended Archival (1 Year)">12 months extended archival</option>
+                  <option value="1 Month Cloud Retention (30 Days Express)">1 month (30 days)</option>
+                  <option value="custom">✏️ Custom expiry / months</option>
+                </select></label>
+                <label class="pdfgen-field" id="pdf_customCloudRetentionWrap" style="display: none;">Custom retention<input type="text" id="pdf_customCloudRetentionInput" value="2 Months (Expiry: Oct 15, 2026)" placeholder="e.g. 2 Months / Expiry: Oct 15, 2026" /></label>
+              </div>
+            </div>
+
+            <div class="pdfgen-summary" id="pdf_paySummary" aria-live="polite"></div>
+          </section>
+
+          <section class="pdfgen-card">
+            <h4>Notes</h4>
+            <label class="pdfgen-field">Production notes &amp; call time<textarea id="pdf_notes" rows="2" placeholder="e.g. Call time 9:00 AM, 3 wardrobe changes, client brings own outfits.">${esc(b.notes || '')}</textarea></label>
+          </section>
         </div>
 
-        <div style="padding: 16px 24px; border-top: 1px solid var(--line); display: flex; gap: 10px; justify-content: space-between; background: var(--bone); flex-wrap: wrap;">
-          <button type="button" class="admin-cal-btn" id="copyApprovalMsgBtn" style="border-color: var(--accent); color: var(--accent); font-weight: 700;">📋 Copy Approval Message for DM/Gmail</button>
-          <div style="display: flex; gap: 10px;">
+        <div class="pdfgen-foot">
+          <button type="button" class="admin-cal-btn" id="copyApprovalMsgBtn">📋 Copy approval message</button>
+          <div>
             <button type="button" class="admin-cal-btn" id="cancelPdfGenBtn">Cancel</button>
-            <button type="button" class="admin-cal-btn primary" id="triggerPrintPdfBtn" style="font-weight: 700;">🖨️ Print / Save as A4 PDF</button>
+            <button type="button" class="admin-cal-btn primary" id="triggerPrintPdfBtn">🖨️ Print / save as A4 PDF</button>
           </div>
         </div>
       </div>
     `;
 
-    $("#pdf_packageSelect")?.addEventListener("change", () => {
-      const isCustom = $("#pdf_packageSelect").value === "custom";
-      const wrap = $("#pdf_customPackage_wrap");
-      if (wrap) wrap.style.display = isCustom ? "flex" : "none";
-    });
+    const q = (id) => document.getElementById(id);
+    const kindOf = () => (document.querySelector('input[name="pdf_kind"]:checked') || {}).value || "paid";
+    const venueOf = () => (document.querySelector('input[name="pdf_venue"]:checked') || {}).value || "home";
+    const setRadio = (name, v) => { const r = document.querySelector(`input[name="${name}"][value="${v}"]`); if (r) r.checked = true; };
+    setRadio("pdf_kind", initialKind);
+    setRadio("pdf_venue", initialVenue);
+    const locEl = q("pdf_location");
+    if (initialVenue === "home" && (!initialLocation || initialLocation === HOME_STUDIO_NAME)) locEl.dataset.auto = "1";
+    const rateFor = (kind) => getHomeStudioRate(kind === "tfp");
+    let rentalTouched = initialRental !== null;
+    q("pdf_rental").value = initialRental !== null ? initialRental : rateFor(initialKind);
 
-    $("#pdf_customCloudRetention")?.addEventListener("change", () => {
-      const isCustomRet = $("#pdf_customCloudRetention").value === "custom";
-      const wrapRet = $("#pdf_customCloudRetentionWrap");
-      if (wrapRet) wrapRet.style.display = isCustomRet ? "block" : "none";
-    });
+    const currentRental = () => (venueOf() === "home" && !q("pdf_venueByStudio").checked) ? Math.max(0, Number(q("pdf_rental").value) || 0) : 0;
+    const currentPackagePrice = () => { const sel = q("pdf_packageSelect"); return sel.value === "custom" ? parsePrice(q("pdf_customPkgName").value) : parsePrice(sel.value); };
+    const currentPackageLabel = () => {
+      if (kindOf() === "tfp") return `Test Shoot / TFP · ${tfpSpecs}`;
+      const sel = q("pdf_packageSelect");
+      if (sel.value !== "custom") return sel.value;
+      const cloud = q("pdf_customCloudRetention").value === "custom" ? q("pdf_customCloudRetentionInput").value.trim() : q("pdf_customCloudRetention").value;
+      return `${q("pdf_customPkgName").value.trim()} — ${q("pdf_customRetouchedCount").value.trim()} (${q("pdf_customDownloadPermission").value}; ${q("pdf_customRevisions").value}; ${cloud})`;
+    };
+    // Same arithmetic as the booking page's quote card, so a contract printed
+    // here and a booking made on the site never disagree about the split.
+    const computeMoney = () => {
+      const kind = kindOf(), rental = currentRental(), key = q("pdf_paymentMilestones").value;
+      if (kind === "tfp") return { kind, rental, price: 0, total: rental, key: "tfp", legs: rental > 0 ? [rental] : [] };
+      const price = currentPackagePrice();
+      if (price === null) return { kind, rental, price: null, total: null, key, legs: [] };
+      return { kind, rental, price, total: price + rental, key, legs: splitPackageMilestones(price, rental, key) };
+    };
+    const legLabels = (key, rental) => [`Advance retainer${rental > 0 ? " + studio rental" : ""}`].concat(PACKAGE_SCHEDULES[key].quoteSteps.map((s) => s.replace(/^Step \d · /, "")));
+    const paySummaryText = () => {
+      const m = computeMoney(), free = q("pdf_venueByStudio").checked;
+      if (m.kind === "tfp") {
+        if (free) return "Payment: nothing is payable — the venue is provided by the studio and a test shoot carries no shoot fee.";
+        if (m.rental > 0) return `Payment: no shoot fee. Home studio rental ${inr(m.rental)} is payable in full at least 48 hours before the shoot (non-refundable once paid).`;
+        return "Payment: nothing is payable to the studio — no shoot fee on a test shoot.";
+      }
+      if (m.price === null) return `Payment terms: ${PACKAGE_SCHEDULES[m.key].contract}.`;
+      const labels = legLabels(m.key, m.rental).map((l) => l.toLowerCase());
+      return `Payment: total ${inr(m.total)} (package ${inr(m.price)}${m.rental > 0 ? ` + home studio rental ${inr(m.rental)}` : ""}) — ` + m.legs.map((a, i) => `${inr(a)} ${labels[i] || "milestone " + (i + 1)}`).join(" · ") + ".";
+    };
+    const render = () => {
+      const kind = kindOf(), venue = venueOf(), free = q("pdf_venueByStudio").checked;
+      q("pdf_packageWrap").style.display = kind === "paid" ? "" : "none";
+      q("pdf_tfpPackageWrap").style.display = kind === "tfp" ? "" : "none";
+      q("pdf_scheduleWrap").style.display = kind === "paid" ? "" : "none";
+      q("pdf_customPackage_wrap").style.display = (kind === "paid" && q("pdf_packageSelect").value === "custom") ? "" : "none";
+      q("pdf_customCloudRetentionWrap").style.display = q("pdf_customCloudRetention").value === "custom" ? "" : "none";
+      q("pdf_rentalWrap").style.display = (venue === "home" && !free) ? "" : "none";
+      q("pdf_rentalHint").textContent = `Studio rate for ${kind === "tfp" ? "test shoots" : "paid shoots"}: ${inr(rateFor(kind))}. Change it for a discount or a waiver.`;
+      q("pdf_kindHint").textContent = kind === "tfp"
+        ? "No shoot fee. The test shoot release is selected and the only amount is the home studio rental, if any."
+        : "Package rate plus any home studio rental, split on the studio's milestone schedule.";
+      const m = computeMoney(), box = q("pdf_paySummary");
+      if (kind === "tfp") {
+        box.innerHTML = free
+          ? `<div><strong>Nothing payable.</strong> Venue provided by the studio; a test shoot carries no shoot fee.</div>`
+          : m.rental > 0
+            ? `<div class="pdfgen-total">${inr(m.rental)}</div><div>Home studio rental, <strong>payable in full at least 48 hours before the shoot</strong> and non-refundable once paid. No shoot fee.</div>`
+            : venue === "commercial"
+              ? `<div><strong>No shoot fee.</strong> Studio rental, if any, is quoted separately in advance and payable before shoot day.</div>`
+              : `<div><strong>Nothing payable.</strong> No shoot fee on a test shoot, and no studio rental at this venue.</div>`;
+      } else if (m.price === null) {
+        box.innerHTML = `<div><strong>No ₹ amount in the package name</strong>, so the split cannot be shown. Terms: ${esc(PACKAGE_SCHEDULES[m.key].contract)}.</div>`;
+      } else {
+        const labels = legLabels(m.key, m.rental);
+        box.innerHTML = `<div class="pdfgen-total">${inr(m.total)}</div>` +
+          `<div>Package ${inr(m.price)}${m.rental > 0 ? ` + home studio rental ${inr(m.rental)} (paid in full with the advance)` : ""} · ${esc(PACKAGE_SCHEDULES[m.key].label)}</div>` +
+          `<div class="pdfgen-legs">${m.legs.map((a, i) => `<div class="pdfgen-leg"><b>${esc(labels[i] || "Milestone " + (i + 1))}</b><strong>${inr(a)}</strong></div>`).join("")}</div>`;
+      }
+    };
+    const onKindChange = () => {
+      const kind = kindOf(), ver = q("pdf_contractVersion");
+      // The document follows the kind unless the operator has gone custom.
+      if (ver && ver.value !== "Custom Contract") {
+        const target = kind === "tfp" ? window.ACTIVE_CONTRACTS.tfp : window.ACTIVE_CONTRACTS.commercial;
+        if (!Array.from(ver.options).some((o) => o.value === target)) ver.innerHTML = contractVersionOptionsHtml({ selected: target });
+        ver.value = target;
+        ver.dataset.prevValue = target;
+      }
+      if (!rentalTouched) q("pdf_rental").value = rateFor(kind);
+      const durSel = q("pdf_duration");
+      if (kind === "tfp" && durSel && /^Full Day/.test(durSel.value)) durSel.value = "Half Day Morning (10:30 AM – 2:30 PM)";
+      render();
+    };
+    const onVenueChange = () => {
+      const v = venueOf();
+      if (v === "home") {
+        if (!locEl.value.trim() || locEl.dataset.auto === "1") { locEl.value = HOME_STUDIO_NAME; locEl.dataset.auto = "1"; }
+      } else if (locEl.dataset.auto === "1" || /home studio/i.test(locEl.value)) {
+        locEl.value = ""; locEl.dataset.auto = "";
+      }
+      locEl.placeholder = v === "home" ? HOME_STUDIO_NAME : (v === "commercial" ? "Studio name and address" : "Venue or area");
+      render();
+    };
+    document.querySelectorAll('input[name="pdf_kind"]').forEach((r) => r.addEventListener("change", onKindChange));
+    document.querySelectorAll('input[name="pdf_venue"]').forEach((r) => r.addEventListener("change", onVenueChange));
+    locEl.addEventListener("input", () => { locEl.dataset.auto = ""; });
+    q("pdf_rental").addEventListener("input", () => { rentalTouched = true; render(); });
+    ["pdf_venueByStudio", "pdf_packageSelect", "pdf_paymentMilestones", "pdf_customCloudRetention"].forEach((id) => q(id)?.addEventListener("change", render));
+    ["pdf_customPkgName", "pdf_customRetouchedCount", "pdf_customCloudRetentionInput"].forEach((id) => q(id)?.addEventListener("input", render));
+    render();
 
     $("#closePdfGenModal")?.addEventListener("click", () => modal.style.display = "none");
     $("#cancelPdfGenBtn")?.addEventListener("click", () => modal.style.display = "none");
@@ -5651,7 +5736,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const name = $("#pdf_clientName").value.trim() || "Client";
       const date = $("#pdf_date").value.trim() || "scheduled date";
       const ver = $("#pdf_contractVersion").value;
-      const msg = `Hi ${name}! Please find attached your Studio Booking Contract & Production Agreement for ${date}.\n\nPlease review the PDF document and reply to this email / DM with: "I approve and agree to Studio Contract Terms ${ver} for ${date}" to confirm your session.\n\nStudio Operations · nerdyphotographer.in`;
+      const docName = kindOf() === "tfp" ? "Test Shoot Agreement & Model Release" : "Studio Booking Contract & Production Agreement";
+      const msg = `Hi ${name}! Please find attached your ${docName} for ${date}.\n\n${paySummaryText()}\n\nPlease review the PDF document and reply to this email / DM with: "I approve and agree to Studio Contract Terms ${ver} for ${date}" to confirm your session.\n\nStudio Operations · nerdyphotographer.in`;
       navigator.clipboard.writeText(msg).then(() => {
         toast("📋 Approval message copied to clipboard! Paste it into IG DM or Gmail when sending the PDF.");
       }).catch(() => {
@@ -5660,6 +5746,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     });
 
     $("#triggerPrintPdfBtn")?.addEventListener("click", () => {
+      const kind = kindOf(), m = computeMoney(), pkgLabel = currentPackageLabel();
       // Hold the date before printing: printContractPdf hands the browser off
       // to a print window, and anything queued after that is easy to miss.
       if ($("#pdf_holdDate")?.checked) {
@@ -5668,11 +5755,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           clientName: $("#pdf_clientName").value.trim(),
           email: $("#pdf_email").value.trim(),
           phone: $("#pdf_phone").value.trim(),
-          type: b.type,
+          type: kind === "tfp" ? "Selective Collaboration (TFP)" : ((b.type && !/test|tfp/i.test(b.type)) ? b.type : "Client Shoot"),
           duration: $("#pdf_duration").value,
           location: $("#pdf_location").value.trim(),
           venueByStudio: !!$("#pdf_venueByStudio")?.checked,
           notes: $("#pdf_notes").value.trim(),
+          budget: kind === "tfp" ? "Collab / TFP (No Budget)" : pkgLabel,
+          homeStudioFee: m.rental,
+          finalPayable: m.total === null ? 0 : m.total,
           contractVersion: $("#pdf_contractVersion").value
         });
       }
@@ -5686,15 +5776,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         location: $("#pdf_location").value.trim(),
         studioProvidedByPhotographer: !!$("#pdf_venueByStudio")?.checked,
         contractVersion: $("#pdf_contractVersion").value,
-        package: $("#pdf_packageSelect").value === "custom"
-          ? (() => {
-              const cloudRetention = $("#pdf_customCloudRetention").value === "custom"
-                ? $("#pdf_customCloudRetentionInput").value.trim()
-                : $("#pdf_customCloudRetention").value;
-              return `${$("#pdf_customPkgName").value.trim()} — ${$("#pdf_customRetouchedCount").value.trim()} (${$("#pdf_customDownloadPermission").value}; ${$("#pdf_customRevisions").value}; ${cloudRetention})`;
-            })()
-          : $("#pdf_packageSelect").value,
-        paymentMilestones: $("#pdf_paymentMilestones").value,
+        package: pkgLabel,
+        tfpSpecs,
+        paymentMilestones: kind === "tfp" ? "tfp" : $("#pdf_paymentMilestones").value,
+        homeStudioFee: m.rental,
+        packagePrice: m.price,
         notes: $("#pdf_notes").value.trim(),
         sigDataUrl: b.sigDataUrl || "",
         agreementMethod: b.agreementMethod || "",
@@ -5729,12 +5815,36 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // A home-studio booking carries the residence rider wherever the venue is
     // described, so the printed contract says the same as the screen the client
     // signed on rather than only the money half of it.
-    const homeStudioRiderHtml = (studioByPhotographer && /home studio/i.test(studioLocation))
+    const inr = (n) => `₹${Math.round(Number(n) || 0).toLocaleString("en-IN")}`;
+    // The home studio rental the generator (or the booking record) carries.
+    // The printed contract used to know only "venue provided" or "quoted
+    // separately", so a test shoot at the home studio printed without the
+    // one amount the talent actually owes.
+    const rentalFee = Math.max(0, Number(data.homeStudioFee) || 0);
+    const tfpSpecs = String(data.tfpSpecs || (typeof getAdminTfpPackage === "function" && getAdminTfpPackage().specs) || "Full Proofing Gallery + 8 to 12 Retouched Master Clicks").replace(/\s*\(No RAW files delivered\)\s*$/i, "");
+    const tfpPaymentHtml = studioByPhotographer
+      ? `No shoot fee applies to this collaboration. The venue is provided by the Studio — <strong>nothing is payable</strong> for this session.`
+      : rentalFee > 0
+        ? `No shoot fee applies to this collaboration. A fixed home studio rental of <strong>${inr(rentalFee)}</strong> applies for use of the photographer's home studio in ${esc(HOME_STUDIO_AREA)}, <strong>payable in full at least 48 hours before the shoot day</strong> to reserve the space, and non-refundable once paid. No other fee is payable to the Studio.`
+        : `No shoot fee applies to this collaboration. Any dedicated studio rental is quoted separately in advance and payable in full before shoot day; otherwise nothing is payable to the Studio.`;
+    const paidSchedule = PACKAGE_SCHEDULES[data.paymentMilestones] || PACKAGE_SCHEDULES["5050"];
+    const paidScheduleKey = PACKAGE_SCHEDULES[data.paymentMilestones] ? data.paymentMilestones : "5050";
+    const pkgPrice = Number(data.packagePrice) || 0;
+    const paidAmountsHtml = pkgPrice > 0
+      ? (() => {
+          const legs = splitPackageMilestones(pkgPrice, rentalFee, paidScheduleKey);
+          const labels = [`Advance retainer${rentalFee > 0 ? " (incl. studio rental)" : ""}`].concat(paidSchedule.quoteSteps.map((s) => s.replace(/^Step \d · /, "")));
+          return `<br/><strong>💰 Amounts:</strong> Package ${inr(pkgPrice)}${rentalFee > 0 ? ` + home studio rental ${inr(rentalFee)}` : ""} = <strong>${inr(pkgPrice + rentalFee)}</strong> · ` + legs.map((a, i) => `${esc(labels[i] || "Milestone " + (i + 1))} ${inr(a)}`).join(" · ");
+        })()
+      : "";
+    const homeStudioRiderHtml = ((studioByPhotographer || rentalFee > 0) && /home studio/i.test(studioLocation))
       ? ` Attendance is limited to a maximum of 3 people in total including the Participant and any crew they bring (hair &amp; makeup, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`
       : ``;
     const studioClauseTfp = studioByPhotographer
       ? `Studio venue for this session is provided by the photographer${studioLocation ? ` at <strong>${esc(studioLocation)}</strong>` : ""} at no additional rental charge to the talent.${homeStudioRiderHtml}`
-      : `If a dedicated indoor studio venue/space is required, applicable venue rental fees are quoted separately in advance.`;
+      : rentalFee > 0
+        ? `This session takes place at the photographer's home studio${studioLocation ? ` at <strong>${esc(studioLocation)}</strong>` : ` in ${esc(HOME_STUDIO_AREA)}`}; the fixed home studio rental under Payment is the only venue charge.${homeStudioRiderHtml}`
+        : `If a dedicated indoor studio venue/space is required, applicable venue rental fees are quoted separately in advance.`;
 
     const innerHtml = `
       <div style="font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #111; padding: 20px; max-width: 800px; margin: 0 auto; background: #fff; line-height: 1.5;">
@@ -5788,12 +5898,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         <!-- Payment & Rental Policy Box -->
         <div style="background: #fafafa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px 14px; margin-bottom: 18px; font-size: 11px; line-height: 1.4;">
           ${isTfp ? `
-            <strong>📸 TFP Test Shoot Terms:</strong> This session is structured for mutual portfolio growth. Deliverables include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW format files are strictly confidential studio property and are excluded. ${studioClauseTfp}
+            <strong>📸 TFP Test Shoot Terms:</strong> This session is structured for mutual portfolio growth. Deliverables include ${esc(tfpSpecs)}. RAW format files are strictly confidential studio property and are excluded. ${studioClauseTfp}<br/>
+            <strong>💳 Payment:</strong> ${tfpPaymentHtml}
           ` : `
-            <strong>💳 Payment Milestones:</strong> ${(PACKAGE_SCHEDULES[data.paymentMilestones] || PACKAGE_SCHEDULES["5050"]).pdf}<br/>
+            <strong>💳 Payment Milestones:</strong> ${paidSchedule.pdf}${paidAmountsHtml}<br/>
             <strong>🏢 Studio Venue Rental Policy:</strong> ${studioByPhotographer
               ? `The venue for this session${studioLocation ? ` (<strong>${esc(studioLocation)}</strong>)` : ''} is arranged and paid for by the Studio — <strong>no venue rental is billed to the client</strong>.${homeStudioRiderHtml}`
-              : `Dedicated indoor studio venue rentals are <strong>quoted separately in advance</strong>, or the client may directly book their preferred studio space for the session.`}
+              : rentalFee > 0
+                ? `This session takes place at the Studio's home studio in ${esc(HOME_STUDIO_AREA)}. A fixed home studio rental of <strong>${inr(rentalFee)}</strong> applies, is itemised above and is payable in full together with the advance retainer; nothing further is charged for the venue.${homeStudioRiderHtml}`
+                : `Dedicated indoor studio venue rentals are <strong>quoted separately in advance</strong>, or the client may directly book their preferred studio space for the session.`}
           `}
         </div>
 

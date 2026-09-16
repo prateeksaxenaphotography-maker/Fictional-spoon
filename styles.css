@@ -2980,6 +2980,37 @@ html.theme-dark { color-scheme: dark; }
 .arranger-terms-note { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-soft); line-height: 1.5; }
 .arranger-terms-note[hidden] { display: none; }
 
+/* Contract & agreement PDF generator (admin) */
+.pdfgen-head { padding: 18px 24px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; background: var(--bone); }
+.pdfgen-head h3 { margin: 0 0 2px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--ink); }
+.pdfgen-head button { background: none; border: none; font-size: var(--font-md); cursor: pointer; color: var(--ink-soft); padding: 4px; line-height: 1; }
+.pdfgen-body { padding: 18px 24px; overflow-y: auto; display: grid; gap: 14px; }
+.pdfgen-card { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; background: var(--surface); display: grid; gap: 12px; }
+.pdfgen-card > h4 { margin: 0; font-family: var(--mono-font); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+.pdfgen-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pdfgen-field { display: grid; gap: 5px; font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft); align-content: start; }
+.pdfgen-field input, .pdfgen-field select, .pdfgen-field textarea { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: 14px; font-weight: 400; color: var(--ink); background: var(--paper); }
+.pdfgen-field textarea { resize: vertical; }
+.pdfgen-static { padding: 10px; border: 1px dashed var(--line); border-radius: 6px; font-size: 14px; font-weight: 400; color: var(--ink); background: var(--paper); }
+.pdfgen-hint { font-size: 12px; color: var(--ink-soft); font-weight: 400; line-height: 1.45; }
+.pdfgen-seg { display: inline-flex; flex-wrap: wrap; padding: 3px; border-radius: var(--r-pill); background: var(--bone-2); gap: 2px; width: max-content; max-width: 100%; }
+.pdfgen-seg label { position: relative; cursor: pointer; }
+.pdfgen-seg input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.pdfgen-seg span { display: inline-block; padding: 6px 12px; border-radius: var(--r-pill); font-size: 12px; font-weight: 600; color: var(--ink-soft); white-space: nowrap; }
+.pdfgen-seg input:checked + span { background: var(--accent); color: #fff; }
+.pdfgen-seg input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pdfgen-check { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--ink-soft); font-weight: 400; line-height: 1.45; cursor: pointer; }
+.pdfgen-check input { width: 16px; height: 16px; margin: 2px 0 0; flex-shrink: 0; accent-color: var(--accent); }
+.pdfgen-summary { background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 13px; color: var(--ink); line-height: 1.5; display: grid; gap: 8px; }
+.pdfgen-summary .pdfgen-total { font-family: "Archivo", sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+.pdfgen-summary .pdfgen-legs { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+.pdfgen-summary .pdfgen-leg { border-left: 2px solid var(--line-2); padding-left: 8px; display: grid; gap: 2px; }
+.pdfgen-summary .pdfgen-leg b { font-size: 11px; font-weight: 600; color: var(--ink-soft); }
+.pdfgen-summary .pdfgen-leg strong { font-family: var(--mono-font); font-size: 13px; }
+.pdfgen-foot { padding: 14px 24px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--bone); }
+.pdfgen-foot > div { display: flex; gap: 8px; }
+@media (max-width: 620px) { .pdfgen-grid { grid-template-columns: 1fr; } .pdfgen-body, .pdfgen-head, .pdfgen-foot { padding-left: 16px; padding-right: 16px; } }
+
 /* Policy block: labelled lines */
 .policy-k { display: block; font-family: var(--mono-font); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; font-weight: 600; color: var(--accent); margin-bottom: 8px; }
 .policy-lines { margin: 0; display: flex; flex-direction: column; }
