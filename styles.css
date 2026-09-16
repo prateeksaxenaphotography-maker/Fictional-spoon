@@ -370,6 +370,9 @@ a { color: inherit; text-decoration: none; }
    #publishBtn is not, so it never sits on top of the button it proxies. */
 .upload-sticky-bar { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); width: min(calc(100% - 64px), var(--maxw)); z-index: 60; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 14px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.14); }
 .upload-sticky-bar.is-hidden { display: none; }
+/* Never over the open menu: the bar is fixed at the same layer as the
+   overlay and used to stay floating across its footer. */
+body.menu-open .upload-sticky-bar { display: none; }
 .upload-sticky-bar .sticky-note { font-family: var(--mono-font); font-size: var(--font-xs); color: var(--ink-soft); min-width: 0; flex: 1 1 200px; }
 .upload-sticky-bar .sticky-note.ready { color: var(--ink); font-weight: 700; }
 .upload-sticky-bar .sticky-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
