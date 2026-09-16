@@ -3218,6 +3218,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     overlay.setAttribute("aria-hidden", String(!o));
     menuBtn.setAttribute("aria-expanded", String(o));
     document.body.style.overflow = o ? "hidden" : "";
+    // Fixed bars (the booking page's "Total payable / Submit" bar, the
+    // upload page's publish bar) sit at the same layer as the menu and were
+    // left floating over its footer while it was open. The stylesheet hides
+    // them under this class.
+    document.body.classList.toggle("menu-open", o);
     const header = $(".site-header");
     if (header) {
       header.classList.toggle("menu-open", o);
