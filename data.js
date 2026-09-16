@@ -2001,6 +2001,14 @@ window.WPS_DATA = {
           "usage": "both",
           "small": "photos/mu07kqljf8iyar/mu1bk4lhuxdl5n-17@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu1bk4lhuxdl5n-17@960.jpg"
+        },
+        {
+          "id": "mu3xl4iz9hj1lx-18",
+          "url": "photos/mu07kqljf8iyar/mu3xl4iz9hj1lx-18.jpg",
+          "objectPosition": "center",
+          "usage": "comp",
+          "small": "photos/mu07kqljf8iyar/mu3xl4iz9hj1lx-18@480.jpg",
+          "medium": "photos/mu07kqljf8iyar/mu3xl4iz9hj1lx-18@960.jpg"
         }
       ],
       "featured": true,
@@ -2075,60 +2083,6 @@ window.WPS_DATA = {
       "2026-09-11": true
     },
     "bookedDates": {
-      "2026-03-14": [
-        {
-          "id": "shoot-mr55364rvor33m",
-          "shootId": "mr55364rvor33m",
-          "type": "Test Shoot",
-          "status": "confirmed",
-          "isTentative": false
-        }
-      ],
-      "2026-05-15": [
-        {
-          "id": "shoot-mranmpzmfblohv",
-          "shootId": "mranmpzmfblohv",
-          "type": "Test Shoot",
-          "status": "confirmed",
-          "isTentative": false
-        }
-      ],
-      "2026-06-13": [
-        {
-          "id": "shoot-mr4x6kwx3f8rs3",
-          "shootId": "mr4x6kwx3f8rs3",
-          "type": "Test Shoot",
-          "status": "confirmed",
-          "isTentative": false
-        }
-      ],
-      "2026-06-14": [
-        {
-          "id": "shoot-mr4x3r7e4l5g4m",
-          "shootId": "mr4x3r7e4l5g4m",
-          "type": "Test Shoot",
-          "status": "confirmed",
-          "isTentative": false
-        }
-      ],
-      "2026-07-05": [
-        {
-          "id": "shoot-mr8legmk0o8mqz",
-          "shootId": "mr8legmk0o8mqz",
-          "type": "Test Shoot",
-          "status": "confirmed",
-          "isTentative": false
-        }
-      ],
-      "2026-07-24": [
-        {
-          "id": "shoot-ms36z1wqm2xkrz",
-          "shootId": "ms36z1wqm2xkrz",
-          "type": "Workshop Attended",
-          "status": "workshop",
-          "isTentative": false
-        }
-      ],
       "2001-08-15": [
         {
           "id": "b_1786709109940_konc",
@@ -2174,7 +2128,7 @@ window.WPS_DATA = {
         {
           "id": "shoot-msxhrjrtl997mq",
           "shootId": "msxhrjrtl997mq",
-          "type": "Campaign",
+          "type": "Test Shoot",
           "status": "confirmed",
           "isTentative": false
         }
@@ -2207,15 +2161,6 @@ window.WPS_DATA = {
       "2026-08-30": [
         {
           "id": "b_1786903849525_fif0",
-          "type": "Assisting Photographer",
-          "isTentative": false,
-          "status": "assisting",
-          "contractVersion": "Pending Agreement"
-        }
-      ],
-      "2026-09-19": [
-        {
-          "id": "b_1787411831533_6jql",
           "type": "Assisting Photographer",
           "isTentative": false,
           "status": "assisting",
@@ -2262,6 +2207,78 @@ window.WPS_DATA = {
           "status": "confirmed",
           "isTentative": false
         }
+      ],
+      "2026-09-20": [
+        {
+          "id": "b_1789484358930_brgw",
+          "type": "Fashion Editorial",
+          "isTentative": false,
+          "status": "confirmed",
+          "contractVersion": "V3.7-TFP"
+        }
+      ],
+      "2026-09-19": [
+        {
+          "id": "b_1789486815041_s1fh",
+          "type": "Fashion Editorial",
+          "isTentative": true,
+          "status": "tentative",
+          "contractVersion": "Pending Agreement"
+        }
+      ],
+      "2026-06-14": [
+        {
+          "id": "shoot-mr4x3r7e4l5g4m",
+          "shootId": "mr4x3r7e4l5g4m",
+          "type": "Test Shoot",
+          "status": "confirmed",
+          "isTentative": false
+        }
+      ],
+      "2026-06-13": [
+        {
+          "id": "shoot-mr4x6kwx3f8rs3",
+          "shootId": "mr4x6kwx3f8rs3",
+          "type": "Test Shoot",
+          "status": "confirmed",
+          "isTentative": false
+        }
+      ],
+      "2026-03-14": [
+        {
+          "id": "shoot-mr55364rvor33m",
+          "shootId": "mr55364rvor33m",
+          "type": "Test Shoot",
+          "status": "confirmed",
+          "isTentative": false
+        }
+      ],
+      "2026-07-05": [
+        {
+          "id": "shoot-mr8legmk0o8mqz",
+          "shootId": "mr8legmk0o8mqz",
+          "type": "Test Shoot",
+          "status": "confirmed",
+          "isTentative": false
+        }
+      ],
+      "2026-05-15": [
+        {
+          "id": "shoot-mranmpzmfblohv",
+          "shootId": "mranmpzmfblohv",
+          "type": "Test Shoot",
+          "status": "confirmed",
+          "isTentative": false
+        }
+      ],
+      "2026-07-24": [
+        {
+          "id": "shoot-ms36z1wqm2xkrz",
+          "shootId": "ms36z1wqm2xkrz",
+          "type": "Workshop Attended",
+          "status": "workshop",
+          "isTentative": false
+        }
       ]
     },
     "removedBookingIds": [
@@ -2287,7 +2304,19 @@ window.WPS_DATA = {
       "2026-09-20::b_1788502533406_u7q8",
       "2026-08-01::shoot-msap3arwdtg7pb",
       "2026-09-12::b_1788502499439_es7g",
-      "2026-09-20::b_1788522924947_ls3x"
+      "2026-09-20::b_1788522924947_ls3x",
+      "2026-03-14::shoot-mr55364rvor33m",
+      "2026-05-15::shoot-mranmpzmfblohv",
+      "2026-06-13::shoot-mr4x6kwx3f8rs3",
+      "2026-06-14::shoot-mr4x3r7e4l5g4m",
+      "2026-07-05::shoot-mr8legmk0o8mqz",
+      "2026-07-24::shoot-ms36z1wqm2xkrz",
+      "2026-08-16::shoot-msxhrjrtl997mq",
+      "2026-08-22::shoot-mt46wftacuy0w7",
+      "2026-08-29::shoot-mte8dutdkqor3f",
+      "2026-09-13::shoot-mu07kqljf8iyar",
+      "2026-09-19::b_1787411831533_6jql",
+      "2026-09-15::b_1789484541097_vngy"
     ],
     "paymentScheduleType": "5050",
     "updatedAt": 0,
