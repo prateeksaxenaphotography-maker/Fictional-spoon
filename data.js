@@ -2001,6 +2001,14 @@ window.WPS_DATA = {
           "usage": "both",
           "small": "photos/mu07kqljf8iyar/mu1bk4lhuxdl5n-17@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu1bk4lhuxdl5n-17@960.jpg"
+        },
+        {
+          "id": "mu3xl4iz9hj1lx-18",
+          "url": "photos/mu07kqljf8iyar/mu3xl4iz9hj1lx-18.jpg",
+          "objectPosition": "center",
+          "usage": "comp",
+          "small": "photos/mu07kqljf8iyar/mu3xl4iz9hj1lx-18@480.jpg",
+          "medium": "photos/mu07kqljf8iyar/mu3xl4iz9hj1lx-18@960.jpg"
         }
       ],
       "featured": true,
@@ -2075,78 +2083,6 @@ window.WPS_DATA = {
       "2026-09-11": true
     },
     "bookedDates": {
-      "2026-03-14": [
-        {
-          "id": "shoot-mr55364rvor33m",
-          "shootId": "mr55364rvor33m",
-          "name": "Kunaal Raghav",
-          "type": "Test Shoot",
-          "duration": "Full Day",
-          "status": "confirmed",
-          "isTentative": false,
-          "notes": "Published Portfolio Shoot: Kunaal Raghav"
-        }
-      ],
-      "2026-05-15": [
-        {
-          "id": "shoot-mranmpzmfblohv",
-          "shootId": "mranmpzmfblohv",
-          "name": "Harshit Maindola",
-          "type": "Test Shoot",
-          "duration": "Full Day",
-          "status": "confirmed",
-          "isTentative": false,
-          "notes": "Published Portfolio Shoot: Harshit Maindola"
-        }
-      ],
-      "2026-06-13": [
-        {
-          "id": "shoot-mr4x6kwx3f8rs3",
-          "shootId": "mr4x6kwx3f8rs3",
-          "name": "Prachi Choudhary",
-          "type": "Test Shoot",
-          "duration": "Full Day",
-          "status": "confirmed",
-          "isTentative": false,
-          "notes": "Published Portfolio Shoot: Prachi Choudhary"
-        }
-      ],
-      "2026-06-14": [
-        {
-          "id": "shoot-mr4x3r7e4l5g4m",
-          "shootId": "mr4x3r7e4l5g4m",
-          "name": "Rhythm Vohra",
-          "type": "Test Shoot",
-          "duration": "Full Day",
-          "status": "confirmed",
-          "isTentative": false,
-          "notes": "Published Portfolio Shoot: Rhythm Vohra"
-        }
-      ],
-      "2026-07-05": [
-        {
-          "id": "shoot-mr8legmk0o8mqz",
-          "shootId": "mr8legmk0o8mqz",
-          "name": "Abhishek Yadav",
-          "type": "Test Shoot",
-          "duration": "Full Day",
-          "status": "confirmed",
-          "isTentative": false,
-          "notes": "Published Portfolio Shoot: Abhishek Yadav"
-        }
-      ],
-      "2026-07-24": [
-        {
-          "id": "shoot-ms36z1wqm2xkrz",
-          "shootId": "ms36z1wqm2xkrz",
-          "name": "Workshop with Sidology and Clickwalaphotographer",
-          "type": "Workshop Attended",
-          "duration": "Full Day",
-          "status": "workshop",
-          "isTentative": false,
-          "notes": "Published Portfolio Shoot: Workshop with Sidology and Clickwalaphotographer"
-        }
-      ],
       "2001-08-15": [
         {
           "id": "b_1786709109940_konc",
@@ -2281,7 +2217,7 @@ window.WPS_DATA = {
           "id": "shoot-msxhrjrtl997mq",
           "shootId": "msxhrjrtl997mq",
           "name": "Sumitt Verma",
-          "type": "Campaign",
+          "type": "Test Shoot",
           "duration": "Full Day",
           "status": "confirmed",
           "isTentative": false,
@@ -2374,36 +2310,6 @@ window.WPS_DATA = {
           "inviteMeta": null,
           "promoMeta": null,
           "createdAt": 1786903849525
-        }
-      ],
-      "2026-09-19": [
-        {
-          "id": "b_1787411831533_6jql",
-          "name": "Assisting Work",
-          "email": "",
-          "phone": "",
-          "type": "Assisting Photographer",
-          "duration": "Full Day",
-          "isTentative": false,
-          "notes": "Booked for Assisting Work",
-          "location": "",
-          "venueByStudio": false,
-          "agreementMethod": "",
-          "links": [],
-          "attachments": [],
-          "status": "assisting",
-          "contractVersion": "Pending Agreement",
-          "agreedToTerms": false,
-          "contractNumber": "",
-          "sigDataUrl": "",
-          "agreedContract": "",
-          "budget": "",
-          "homeStudioFee": 0,
-          "finalPayable": 0,
-          "financials": null,
-          "inviteMeta": null,
-          "promoMeta": null,
-          "createdAt": 1787411831533
         }
       ],
       "2001-10-17": [
@@ -2523,6 +2429,140 @@ window.WPS_DATA = {
           "isTentative": false,
           "notes": "Published Portfolio Shoot: Devesh Baisoya"
         }
+      ],
+      "2026-09-20": [
+        {
+          "id": "b_1789484358930_brgw",
+          "name": "Atharv Sharma",
+          "email": "ectogainsss@gmail.com",
+          "phone": "+91 8053446667",
+          "type": "Fashion Editorial",
+          "duration": "Full Day",
+          "isTentative": false,
+          "notes": "",
+          "location": "",
+          "venueByStudio": false,
+          "agreementMethod": "",
+          "links": [],
+          "attachments": [],
+          "status": "confirmed",
+          "contractVersion": "V3.7-TFP",
+          "agreedToTerms": true,
+          "contractNumber": "",
+          "contractSentAt": 0,
+          "sigDataUrl": "",
+          "agreedContract": "",
+          "budget": "",
+          "homeStudioFee": 0,
+          "finalPayable": 0,
+          "financials": null,
+          "inviteMeta": null,
+          "promoMeta": null,
+          "createdAt": 1789484358930
+        }
+      ],
+      "2026-09-19": [
+        {
+          "id": "b_1789486815041_s1fh",
+          "name": "Anticipated Client Hold",
+          "email": "",
+          "phone": "",
+          "type": "Fashion Editorial",
+          "duration": "Full Day",
+          "isTentative": true,
+          "notes": "Date held by Admin for anticipated client inquiry.",
+          "location": "",
+          "venueByStudio": false,
+          "agreementMethod": "",
+          "links": [],
+          "attachments": [],
+          "status": "tentative",
+          "contractVersion": "Pending Agreement",
+          "agreedToTerms": false,
+          "contractNumber": "",
+          "contractSentAt": 0,
+          "sigDataUrl": "",
+          "agreedContract": "",
+          "budget": "",
+          "homeStudioFee": 0,
+          "finalPayable": 0,
+          "financials": null,
+          "inviteMeta": null,
+          "promoMeta": null,
+          "createdAt": 1789486815041
+        }
+      ],
+      "2026-06-14": [
+        {
+          "id": "shoot-mr4x3r7e4l5g4m",
+          "shootId": "mr4x3r7e4l5g4m",
+          "name": "Rhythm Vohra",
+          "type": "Test Shoot",
+          "duration": "Full Day",
+          "status": "confirmed",
+          "isTentative": false,
+          "notes": "Published Portfolio Shoot: Rhythm Vohra"
+        }
+      ],
+      "2026-06-13": [
+        {
+          "id": "shoot-mr4x6kwx3f8rs3",
+          "shootId": "mr4x6kwx3f8rs3",
+          "name": "Prachi Choudhary",
+          "type": "Test Shoot",
+          "duration": "Full Day",
+          "status": "confirmed",
+          "isTentative": false,
+          "notes": "Published Portfolio Shoot: Prachi Choudhary"
+        }
+      ],
+      "2026-03-14": [
+        {
+          "id": "shoot-mr55364rvor33m",
+          "shootId": "mr55364rvor33m",
+          "name": "Kunaal Raghav",
+          "type": "Test Shoot",
+          "duration": "Full Day",
+          "status": "confirmed",
+          "isTentative": false,
+          "notes": "Published Portfolio Shoot: Kunaal Raghav"
+        }
+      ],
+      "2026-07-05": [
+        {
+          "id": "shoot-mr8legmk0o8mqz",
+          "shootId": "mr8legmk0o8mqz",
+          "name": "Abhishek Yadav",
+          "type": "Test Shoot",
+          "duration": "Full Day",
+          "status": "confirmed",
+          "isTentative": false,
+          "notes": "Published Portfolio Shoot: Abhishek Yadav"
+        }
+      ],
+      "2026-05-15": [
+        {
+          "id": "shoot-mranmpzmfblohv",
+          "shootId": "mranmpzmfblohv",
+          "name": "Harshit Maindola",
+          "type": "Test Shoot",
+          "duration": "Full Day",
+          "status": "confirmed",
+          "isTentative": false,
+          "notes": "Published Portfolio Shoot: Harshit Maindola"
+        }
+      ],
+      "2026-07-24": [
+        {
+          "id": "shoot-ms36z1wqm2xkrz",
+          "shootId": "ms36z1wqm2xkrz",
+          "name": "Workshop with Sidology and Clickwalaphotographer",
+          "type": "Workshop Attended",
+          "duration": "Full Day",
+          "status": "workshop",
+          "isTentative": false,
+          "notes": "Published Portfolio Shoot: Workshop with Sidology and Clickwalaphotographer"
+        }
       ]
     },
     "removedBookingIds": [
@@ -2548,7 +2588,19 @@ window.WPS_DATA = {
       "2026-09-20::b_1788502533406_u7q8",
       "2026-08-01::shoot-msap3arwdtg7pb",
       "2026-09-12::b_1788502499439_es7g",
-      "2026-09-20::b_1788522924947_ls3x"
+      "2026-09-20::b_1788522924947_ls3x",
+      "2026-03-14::shoot-mr55364rvor33m",
+      "2026-05-15::shoot-mranmpzmfblohv",
+      "2026-06-13::shoot-mr4x6kwx3f8rs3",
+      "2026-06-14::shoot-mr4x3r7e4l5g4m",
+      "2026-07-05::shoot-mr8legmk0o8mqz",
+      "2026-07-24::shoot-ms36z1wqm2xkrz",
+      "2026-08-16::shoot-msxhrjrtl997mq",
+      "2026-08-22::shoot-mt46wftacuy0w7",
+      "2026-08-29::shoot-mte8dutdkqor3f",
+      "2026-09-13::shoot-mu07kqljf8iyar",
+      "2026-09-19::b_1787411831533_6jql",
+      "2026-09-15::b_1789484541097_vngy"
     ],
     "paymentScheduleType": "5050",
     "updatedAt": 0,
