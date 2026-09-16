@@ -1,7 +1,7 @@
 {
   "name": "wolverine-photostudio",
   "version": "1.0.0",
-  "description": "Portfolios, Test Shoots, and Comp Cards for NerdyPhotographer",
+  "description": "Portfolios, test shoots and comp cards for nerdyphotographer.in",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

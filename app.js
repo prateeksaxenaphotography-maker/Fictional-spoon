@@ -510,6 +510,95 @@ const DEFAULT_HOME_STUDIO_RATE = 3000;
 // Where the home studio is, as contracts, quotes and the booking form name it.
 // Only the area: the exact address of a private residence is shared on
 // confirmation, never published.
+// Campaign / production payment schedule, switched on the Calendar admin
+// page and published with the calendar settings. "503020" is the original
+// three-step split; "50301010" holds the last 20% back as two 10% steps —
+// one when the clicks are finalised, one after they are delivered. The brief
+// form shows whichever is set, and the enquiry email records the same one.
+const PRODUCTION_SCHEDULES = {
+  "503020": {
+    label: "50 / 30 / 20",
+    steps: [
+      ["At booking", "50% advance retainer, plus the studio and lighting cost in full"],
+      ["At wrap", "30%"],
+      ["Before final delivery", "20%"]
+    ],
+    text: "50% advance + studio & lighting cost at booking · 30% at wrap · 20% before final delivery"
+  },
+  "50301010": {
+    label: "50 / 30 / 10 / 10",
+    steps: [
+      ["At booking", "50% advance retainer, plus the studio and lighting cost in full"],
+      ["At wrap", "30%"],
+      ["On finalising the clicks", "10%"],
+      ["After delivery of the clicks", "10%"]
+    ],
+    text: "50% advance + studio & lighting cost at booking · 30% at wrap · 10% on finalising the clicks · 10% after delivery of the clicks"
+  }
+};
+// Package payment milestones, switched on the Calendar admin page. The legs
+// split the package rate only — a studio rental is always due in full with
+// the advance — and every place that quotes them (the flowchart, the quote
+// card, the contract text, the terms sheet, the emails, the admin PDF) reads
+// this table, so a schedule added here appears everywhere at once. The 50/50
+// and 50/30/20 wording is the text those places carried before the table.
+const PACKAGE_SCHEDULES = {
+  "5050": {
+    label: "50 / 50",
+    legs: [50, 50],
+    quoteSteps: ["Step 2 · 50% Wrap Balance (Prior to Deliverables)"],
+    emailLegs: ["Balance {amt} at wrap, before any file is released"],
+    short: "pay 50% now · 50% before delivery",
+    contract: "Standard 50/50 Milestones (50% Advance Retainer before shoot day start [non-refundable]; 50% Final Balance after shoot wrap prior to receiving any downloadable file [non-refundable])",
+    sheet: "50% advance retainer before the shoot day (non-refundable), 50% final balance after wrap and before any downloadable file (non-refundable)",
+    release: "Deliverables are released only after the final milestone is cleared.",
+    pdf: "Standard 50/50 Milestones (50% Advance Retainer prior to shoot start [non-refundable]; 50% Final Balance prior to file download [non-refundable])."
+  },
+  "503020": {
+    label: "50 / 30 / 20",
+    legs: [50, 30, 20],
+    quoteSteps: ["Step 2 · 30% Review Milestone (After Shoot)", "Step 3 · 20% Final Deliverables"],
+    emailLegs: ["Review milestone {amt} after the shoot", "Final release {amt} before download"],
+    short: "pay 50% now · 30% at wrap · 20% on delivery",
+    contract: "3-Tier Campaign Milestones (50% Advance Retainer before shoot day start [non-refundable]; 30% Review Milestone after shoot before proofing gallery [non-refundable]; 20% Final Release prior to receiving any downloadable file)",
+    sheet: "50% advance retainer before the shoot day (non-refundable), 30% review milestone after the shoot and before the proofing gallery (non-refundable), 20% final release before any downloadable file",
+    release: "Deliverables are released only after the final milestone is cleared.",
+    pdf: "3-Tier Milestones (50% Advance Retainer / 30% Proofing / 20% Final Deliverables)."
+  },
+  "50301010": {
+    label: "50 / 30 / 10 / 10",
+    legs: [50, 30, 10, 10],
+    quoteSteps: ["Step 2 · 30% Review Milestone (After Shoot)", "Step 3 · 10% On Finalising the Clicks", "Step 4 · 10% After Delivery of the Clicks"],
+    emailLegs: ["Review milestone {amt} after the shoot", "{amt} on finalising the clicks", "{amt} after delivery of the clicks"],
+    short: "pay 50% now · 30% at wrap · 10% on finalising the clicks · 10% after delivery",
+    contract: "4-Tier Campaign Milestones (50% Advance Retainer before shoot day start [non-refundable]; 30% Review Milestone after shoot before proofing gallery [non-refundable]; 10% once the selection of clicks is finalised; 10% after delivery of the retouched clicks)",
+    sheet: "50% advance retainer before the shoot day (non-refundable), 30% review milestone after the shoot and before the proofing gallery (non-refundable), 10% once the selection of clicks is finalised, 10% after the retouched clicks are delivered",
+    release: "Retouched deliverables are released once the third milestone is cleared; the final 10% is due after delivery.",
+    pdf: "4-Tier Milestones (50% Advance Retainer / 30% Proofing / 10% on finalising the clicks / 10% after delivery)."
+  }
+};
+function getPackageScheduleKey() {
+  const key = window.WPS_DATA && window.WPS_DATA.CALENDAR_SETTINGS && window.WPS_DATA.CALENDAR_SETTINGS.paymentScheduleType;
+  return PACKAGE_SCHEDULES[key] ? key : "5050";
+}
+// The package portion split into the schedule's legs. The first leg also
+// carries the studio rental, and the last leg absorbs rounding so the legs
+// always add back up to the total exactly.
+function splitPackageMilestones(packageNet, homeStudioFee, key) {
+  const legs = (PACKAGE_SCHEDULES[key] || PACKAGE_SCHEDULES["5050"]).legs;
+  const net = Math.max(0, Number(packageNet) || 0);
+  const amounts = legs.map((p) => Math.round(net * p / 100));
+  amounts[amounts.length - 1] = Math.max(0, net - amounts.slice(0, -1).reduce((a, b) => a + b, 0));
+  amounts[0] += Math.max(0, Number(homeStudioFee) || 0);
+  return amounts;
+}
+
+function getProductionSchedule() {
+  const key = window.WPS_DATA && window.WPS_DATA.CALENDAR_SETTINGS && window.WPS_DATA.CALENDAR_SETTINGS.productionScheduleType;
+  const use = PRODUCTION_SCHEDULES[key] ? key : "503020";
+  return { key: use, ...PRODUCTION_SCHEDULES[use] };
+}
+
 const HOME_STUDIO_AREA = "Sector 46, Noida";
 const HOME_STUDIO_NAME = `Home studio, ${HOME_STUDIO_AREA}`;
 
@@ -2002,6 +2091,18 @@ window.moveAdminPackageRow = function(index, dir) {
   let resolveBootReady;
   const bootReady = new Promise((res) => { resolveBootReady = res; });
 
+  // The brand became nerdyphotographer.in in July 2026, but albums saved
+  // before then credit "nerdyphotographer" or the placeholder "Studio".
+  // Corrected as albums load, for visitors and on the studio's own device,
+  // and saved with the album the next time it is published.
+  const brandName = () => (window.STUDIO_CONFIG && window.STUDIO_CONFIG.studioName) || "nerdyphotographer.in";
+  function brandCredit(shoot) {
+    if (shoot && typeof shoot.photographer === "string" && /^\s*(nerdyphotographer|studio)\s*$/i.test(shoot.photographer)) {
+      shoot.photographer = brandName();
+    }
+    return shoot;
+  }
+
   async function loadShoots() {
     let real = [];
     try { real = await allShoots(); }
@@ -2015,6 +2116,8 @@ window.moveAdminPackageRow = function(index, dir) {
     
     const demoList = (window.WPS_DATA && window.WPS_DATA.DEMO_SHOOTS) || window.DEMO_SHOOTS || [];
     const validReal = real.filter(s => s && Array.isArray(s.photos) && s.photos.length > 0);
+    demoList.forEach(brandCredit);
+    validReal.forEach(brandCredit);
     usingDemo = validReal.length === 0;
     // Merge published (data.js) and local (IndexedDB) shoots by id, local
     // winning, instead of showing one list XOR the other: a browser holding a
@@ -3949,7 +4052,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <span class="hero-topline-r">Noida · Delhi NCR</span>
           </div>
           <div class="hero-brandmark">
-            <h1 class="hero-wordmark hero-wordmark-nerdy" aria-label="Nerdy Photographer">
+            <h1 class="hero-wordmark hero-wordmark-nerdy" aria-label="nerdyphotographer.in">
               ${nerdyLetters}
             </h1>
             <p class="hero-subword" aria-hidden="true">${subLetters}</p>
@@ -4321,6 +4424,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       bookedDates: {},
       removedBookingIds: [...removedIds],
       paymentScheduleType: (publishedIsNewer ? pub.paymentScheduleType : loc.paymentScheduleType) || pub.paymentScheduleType || loc.paymentScheduleType || "5050",
+      productionScheduleType: (publishedIsNewer ? pub.productionScheduleType : loc.productionScheduleType) || pub.productionScheduleType || loc.productionScheduleType || "503020",
       updatedAt: publishedAt,
       syncedAt: publishedAt,
     };
@@ -5167,6 +5271,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <div class="admin-cal-seg">
                 <button type="button" id="adminPay5050Btn" class="admin-cal-btn" style="cursor: pointer;">50 / 50</button>
                 <button type="button" id="adminPay503020Btn" class="admin-cal-btn" style="cursor: pointer;">50 / 30 / 20</button>
+                <button type="button" id="adminPay50301010Btn" class="admin-cal-btn" style="cursor: pointer;">50 / 30 / 10 / 10</button>
+              </div>
+            </div>
+            <div class="admin-cal-terms">
+              <span>Campaign / production terms</span>
+              <div class="admin-cal-seg">
+                <button type="button" id="adminProd503020Btn" class="admin-cal-btn" style="cursor: pointer;">50 / 30 / 20</button>
+                <button type="button" id="adminProd50301010Btn" class="admin-cal-btn" style="cursor: pointer;">50 / 30 / 10 / 10</button>
               </div>
             </div>
             <button type="button" class="admin-cal-btn" id="adminCalResetBtn">Reset rules</button>
@@ -5358,6 +5470,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
     const dVal = dKey || (new Date()).toISOString().split("T")[0];
     const isTest = b.type && /test|tfp/i.test(b.type);
+    // The milestone terms open on the studio's current package schedule (the
+    // Calendar page toggle) instead of always 50/50, and on the collaboration
+    // terms for a test shoot.
+    const genMilestones = isTest ? "tfp" : getPackageScheduleKey();
     const genSelected = (() => {
       const raw = String(b.contractVersion || "").trim();
       if (raw === "Custom Contract") return raw;
@@ -5489,9 +5605,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
           <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Payment Milestone Terms
             <select id="pdf_paymentMilestones" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;">
-              <option value="5050">Standard 50/50 Milestones (50% Advance Retainer / 50% Final Balance prior to file download)</option>
-              <option value="503020">3-Tier Campaign Milestones (50% Advance / 30% Proofing / 20% Final Deliverables)</option>
-              <option value="tfp">TFP / Test Shoot Collab (0 Fee, Full Proofing Gallery + 8-12 Retouched Clicks)</option>
+              <option value="5050"${genMilestones === "5050" ? " selected" : ""}>Standard 50/50 Milestones (50% Advance Retainer / 50% Final Balance prior to file download)</option>
+              <option value="503020"${genMilestones === "503020" ? " selected" : ""}>3-Tier Campaign Milestones (50% Advance / 30% Proofing / 20% Final Deliverables)</option>
+              <option value="50301010"${genMilestones === "50301010" ? " selected" : ""}>4-Tier Campaign Milestones (50% Advance / 30% Proofing / 10% Clicks Finalised / 10% After Delivery)</option>
+              <option value="tfp"${genMilestones === "tfp" ? " selected" : ""}>TFP / Test Shoot Collab (0 Fee, Full Proofing Gallery + 8-12 Retouched Clicks)</option>
             </select>
           </label>
 
@@ -5668,7 +5785,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           ${isTfp ? `
             <strong>📸 TFP Test Shoot Terms:</strong> This session is structured for mutual portfolio growth. Deliverables include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW format files are strictly confidential studio property and are excluded. ${studioClauseTfp}
           ` : `
-            <strong>💳 Payment Milestones:</strong> ${data.paymentMilestones === '503020' ? '3-Tier Milestones (50% Advance Retainer / 30% Proofing / 20% Final Deliverables).' : 'Standard 50/50 Milestones (50% Advance Retainer prior to shoot start [non-refundable]; 50% Final Balance prior to file download [non-refundable]).'}<br/>
+            <strong>💳 Payment Milestones:</strong> ${(PACKAGE_SCHEDULES[data.paymentMilestones] || PACKAGE_SCHEDULES["5050"]).pdf}<br/>
             <strong>🏢 Studio Venue Rental Policy:</strong> ${studioByPhotographer
               ? `The venue for this session${studioLocation ? ` (<strong>${esc(studioLocation)}</strong>)` : ''} is arranged and paid for by the Studio — <strong>no venue rental is billed to the client</strong>.${homeStudioRiderHtml}`
               : `Dedicated indoor studio venue rentals are <strong>quoted separately in advance</strong>, or the client may directly book their preferred studio space for the session.`}
@@ -6776,38 +6893,51 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       }
     });
 
-    const pay5050Btn = $("#adminPay5050Btn");
-    const pay503020Btn = $("#adminPay503020Btn");
-
+    // One button per schedule in PACKAGE_SCHEDULES; the choice is saved with
+    // the calendar settings and published with them.
+    const payBtns = [[$("#adminPay5050Btn"), "5050"], [$("#adminPay503020Btn"), "503020"], [$("#adminPay50301010Btn"), "50301010"]];
     const updateAdminPayBtns = () => {
-      const currentSched = window.WPS_DATA.CALENDAR_SETTINGS?.paymentScheduleType || "5050";
-      if (currentSched === "503020") {
-        if (pay503020Btn) { pay503020Btn.style.background = "var(--accent)"; pay503020Btn.style.color = "#fff"; }
-        if (pay5050Btn) { pay5050Btn.style.background = "transparent"; pay5050Btn.style.color = "var(--ink)"; }
-      } else {
-        if (pay5050Btn) { pay5050Btn.style.background = "var(--accent)"; pay5050Btn.style.color = "#fff"; }
-        if (pay503020Btn) { pay503020Btn.style.background = "transparent"; pay503020Btn.style.color = "var(--ink)"; }
-      }
+      const on = getPackageScheduleKey();
+      payBtns.forEach(([b, key]) => {
+        if (!b) return;
+        b.style.background = on === key ? "var(--accent)" : "transparent";
+        b.style.color = on === key ? "#fff" : "var(--ink)";
+      });
     };
     updateAdminPayBtns();
-
-    if (pay5050Btn) {
-      pay5050Btn.addEventListener("click", () => {
-        window.WPS_DATA.CALENDAR_SETTINGS.paymentScheduleType = "5050";
+    payBtns.forEach(([b, key]) => {
+      if (!b) return;
+      b.addEventListener("click", () => {
+        window.WPS_DATA.CALENDAR_SETTINGS.paymentScheduleType = key;
         saveCalendarSettings();
         updateAdminPayBtns();
-        toast("Default Studio Payment Terms set to Standard 50/50.");
+        toast(`Default Studio Payment Terms set to ${PACKAGE_SCHEDULES[key].label}. Publish to show it on the site.`);
       });
-    }
+    });
 
-    if (pay503020Btn) {
-      pay503020Btn.addEventListener("click", () => {
-        window.WPS_DATA.CALENDAR_SETTINGS.paymentScheduleType = "503020";
-        saveCalendarSettings();
-        updateAdminPayBtns();
-        toast("Default Studio Payment Terms set to 3-Tier Campaign (50/30/20).");
+    // Campaign / production payment schedule — a separate switch from the
+    // package terms above, because a production brief carries no package:
+    // its figures are quoted on the proposal, and this only decides which
+    // split the brief form shows and the enquiry email records.
+    const prodScheduleBtns = [[$("#adminProd503020Btn"), "503020"], [$("#adminProd50301010Btn"), "50301010"]];
+    const updateAdminProdBtns = () => {
+      const on = getProductionSchedule().key;
+      prodScheduleBtns.forEach(([b, key]) => {
+        if (!b) return;
+        b.style.background = on === key ? "var(--accent)" : "transparent";
+        b.style.color = on === key ? "#fff" : "var(--ink)";
       });
-    }
+    };
+    updateAdminProdBtns();
+    prodScheduleBtns.forEach(([b, key]) => {
+      if (!b) return;
+      b.addEventListener("click", () => {
+        window.WPS_DATA.CALENDAR_SETTINGS.productionScheduleType = key;
+        saveCalendarSettings();
+        updateAdminProdBtns();
+        toast(`Campaign / production payment terms set to ${PRODUCTION_SCHEDULES[key].label}. Publish to show it on the site.`);
+      });
+    });
 
     renderAdminPackagesEditor();
     renderAdminGrid();
@@ -6979,7 +7109,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           disableCompCardDownload: shootsInGroup.some((s) => s.disableCompCardDownload),
           mentor: latestShoot.mentor || "",
           season: latestShoot.season || "Comp Card",
-          photographer: latestShoot.photographer || "Studio",
+          photographer: latestShoot.photographer || brandName(),
           secondaryPhotographers: latestShoot.secondaryPhotographers || "",
           artDirector: latestShoot.artDirector || "",
           stylist: latestShoot.stylist || "",
@@ -7573,10 +7703,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <div class="credits-format" role="note">
                 <span class="credits-format-k">How to write a credit</span>
                 <code>Name (@handle; site.com; …)</code>
-                <span class="credits-format-sub">Socials go in parentheses after the name, separated by <code>;</code> — Instagram <code>@handle</code>, <code>kavyar.com/…</code>, <code>linkedin.com/in/…</code>, <code>behance.net/…</code>, a website, an email. Any of them, in any order: the app tells them apart by their shape. Several people: separate with commas. Example — <em>nerdyphotographer (@nerdyphotographer.in; nerdyphotographer.in; prateeksaxenaphotography@gmail.com)</em>. Instagram, Kavyar, LinkedIn, Behance and websites get a verify link; email cannot be tested. The same pattern works for the agency.</span>
+                <span class="credits-format-sub">Socials go in parentheses after the name, separated by <code>;</code> — Instagram <code>@handle</code>, <code>kavyar.com/…</code>, <code>linkedin.com/in/…</code>, <code>behance.net/…</code>, a website, an email. Any of them, in any order: the app tells them apart by their shape. Several people: separate with commas. Example — <em>nerdyphotographer.in (@nerdyphotographer.in; prateeksaxenaphotography@gmail.com)</em>. Instagram, Kavyar, LinkedIn, Behance and websites get a verify link; email cannot be tested. The same pattern works for the agency.</span>
               </div>
               <div class="field-row">
-                <label class="field"><span>Photographer <em class="label-hint">primary</em></span><input id="f_photographer" type="text" value="nerdyphotographer" placeholder="Your name" /></label>
+                <label class="field"><span>Photographer <em class="label-hint">primary</em></span><input id="f_photographer" type="text" value="nerdyphotographer.in" placeholder="Your name" /></label>
                 <label class="field"><span>Secondary photographer(s)</span><input id="f_photographer2" type="text" placeholder="e.g. Name (@handle; site.com), Name Two" /><span class="field-verify" id="f_photographer2_verify" style="display: none;"></span></label>
               </div>
               <div class="field-row">
@@ -8034,10 +8164,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   </div>
                   <div class="production-terms" role="note">
                     <span class="production-terms-k">How payment works</span>
-                    <ol class="production-terms-list">
-                      <li><b>At booking</b><span>50% advance retainer, plus the studio and lighting cost in full</span></li>
-                      <li><b>At wrap</b><span>30%</span></li>
-                      <li><b>Before final delivery</b><span>20%</span></li>
+                    <ol class="production-terms-list" id="productionTermsList">
+                      ${getProductionSchedule().steps.map(([k, v]) => `<li><b>${k}</b><span>${v}</span></li>`).join("")}
                     </ol>
                     <span class="production-terms-sub">For information now. The exact figures, and the agreement, come with the written proposal after the call. Nothing is due for sending the brief.</span>
                   </div>
@@ -8215,8 +8343,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                       <strong id="summaryBalanceAmount" style="color: #059669; font-size: var(--font-sm); font-family: var(--mono-font);">₹${(getAdminPackages()[0].price - Math.round(getAdminPackages()[0].price / 2)).toLocaleString('en-IN')} INR</strong>
                     </div>
                     <div id="summaryStep3Wrap" style="display: none; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px;">
-                      <span style="color: var(--ink-soft); display: block; font-size: var(--font-xs); text-transform: uppercase;">Step 3 · 20% Final Deliverables</span>
+                      <span id="summaryStep3Label" style="color: var(--ink-soft); display: block; font-size: var(--font-xs); text-transform: uppercase;">Step 3 · 20% Final Deliverables</span>
                       <strong id="summaryStep3Amount" style="color: #f57c00; font-size: var(--font-sm); font-family: var(--mono-font);">₹0 INR</strong>
+                    </div>
+                    <div id="summaryStep4Wrap" style="display: none; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px;">
+                      <span id="summaryStep4Label" style="color: var(--ink-soft); display: block; font-size: var(--font-xs); text-transform: uppercase;">Step 4 · 10% After Delivery of the Clicks</span>
+                      <strong id="summaryStep4Amount" style="color: #f57c00; font-size: var(--font-sm); font-family: var(--mono-font);">₹0 INR</strong>
                     </div>
                   </div>
                   <!-- Collaboration bookings carry no package fee, so the only
@@ -8336,6 +8468,32 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                     <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid upon final approval, prior to receiving any downloadable or high-resolution retouched master file.</p>
                   </div>
                 </div>
+                <!-- Flowchart 4-Step (4-Tier Milestone: the last 20% split into two 10% legs) -->
+                <div id="flowchart4Step" style="display: none; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px;">
+                  <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
+                    <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 6px;">STEP 1 · 50% ADVANCE RETAINER</div>
+                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">48 hours before shoot start</h4>
+                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid at least 48 hours before the shoot day to lock studio date and reserve production crew (unless explicitly discussed with the team). <strong>Mandatory prior to shoot start.</strong> <strong style="color: #b22222;">(Non-refundable)</strong></p>
+                  </div>
+
+                  <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
+                    <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #f57c00; text-transform: uppercase; margin-bottom: 6px;">STEP 2 · 30% REVIEW MILESTONE</div>
+                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">After the shoot · proofing gallery</h4>
+                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid after shoot wrap, before receiving the watermarked proofing gallery to select retouches. <strong style="color: #b22222;">(Non-refundable)</strong></p>
+                  </div>
+
+                  <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
+                    <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #2e7d32; text-transform: uppercase; margin-bottom: 6px;">STEP 3 · 10% ON FINALISING THE CLICKS</div>
+                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">Once the selection of clicks is finalised</h4>
+                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid once the final selection of clicks from the proofing gallery is confirmed.</p>
+                  </div>
+
+                  <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
+                    <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #2e7d32; text-transform: uppercase; margin-bottom: 6px;">STEP 4 · 10% AFTER DELIVERY</div>
+                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">After the retouched clicks are delivered</h4>
+                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid after the retouched master files have been delivered.</p>
+                  </div>
+                </div>
               </fieldset>
  
              <!-- TFP Liability Release Terms Modal -->
@@ -8346,25 +8504,25 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                    <span id="termsModalTag" style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--accent); padding: 4px 8px; border-radius: 4px; color: #fff; font-weight: 700;">TFP-LIABILITY-RELEASE-V3.7 (ACTIVE)</span>
                  </div>
                  <div style="padding: 24px; overflow-y: auto; font-size: var(--font-sm); line-height: 1.6; color: var(--ink); display: flex; flex-direction: column; gap: 20px; text-align: left;">
-                   <p style="margin: 0; font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em;">TFP Collaboration, Model Release &amp; Digital Consent Terms</p>
+                   <p id="termsModalSubtitle" style="margin: 0; font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em;">TFP Collaboration, Model Release &amp; Digital Consent Terms</p>
                    
                    <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 14px; font-size: var(--font-xs); display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px;">
                      <div><strong>Studio/Photographer:</strong> nerdyphotographer.in</div>
-                     <div><strong>Creative Partner/Model:</strong> <span id="terms_partner_name">[Your Name]</span></div>
+                     <div><strong id="termsPartnerLabel">Creative Partner/Model:</strong> <span id="terms_partner_name">[Your Name]</span></div>
                      <div><strong>Business Handle:</strong> @nerdyphotographer.in</div>
                      <div><strong>Consent Tracking:</strong> Verified via Email / Digital Acknowledgment</div>
-                     <div><strong>Production Status:</strong> Time-For-Print (TFP) Collab</div>
+                     <div><strong>Production Status:</strong> <span id="termsProductionStatus">Time-For-Print (TFP) Collab</span></div>
                      <div><strong>Location:</strong> Studio Production Space</div>
                    </div>
  
                    <div>
-                     <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700;">1. SCOPE OF CREATIVE COLLABORATION</h4>
-                     <p style="margin: 0;">This session is scheduled as a peer-to-peer creative collaboration structured for mutual portfolio growth, asset curation, and personal branding advancement. No monetary compensation is required or exchanged for photographer or model services. The Studio provides specialized equipment, lighting architecture, workspace, and post-production engineering; the Participant(s) provide technical modeling direction, personal wardrobe, and makeup artistry. <em id="bookingContractStudioClause">If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges.</em></p>
+                     <h4 id="termsSec1Title" style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700;">1. SCOPE OF CREATIVE COLLABORATION</h4>
+                     <p style="margin: 0;"><span id="termsSec1Text">This session is scheduled as a peer-to-peer creative collaboration structured for mutual portfolio growth, asset curation, and personal branding advancement. No monetary compensation is required or exchanged for photographer or model services. The Studio provides specialized equipment, lighting architecture, workspace, and post-production engineering; the Participant(s) provide technical modeling direction, personal wardrobe, and makeup artistry. </span><em id="bookingContractStudioClause">If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges.</em></p>
                    </div>
  
                    <div>
-                      <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700;">2. INTELLECTUAL PROPERTY, MODEL RELEASE &amp; USAGE LICENSE</h4>
-                      <p style="margin: 0;">The legal copyright of all visual media remains exclusively with the Studio. To support mutual growth and portfolio building, all participants are granted a full non-exclusive license to publish, share, and use final retouched photos for personal self-promotion, social media grids (Instagram/TikTok), personal websites, and agency portfolios.</p>
+                      <h4 id="termsSec2Title" style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700;">2. INTELLECTUAL PROPERTY, MODEL RELEASE &amp; USAGE LICENSE</h4>
+                      <p id="termsSec2Text" style="margin: 0;">The legal copyright of all visual media remains exclusively with the Studio. To support mutual growth and portfolio building, all participants are granted a full non-exclusive license to publish, share, and use final retouched photos for personal self-promotion, social media grids (Instagram/TikTok), personal websites, and agency portfolios.</p>
                       <p style="margin: 6px 0 0 0; font-style: italic;"><strong>No Alterations:</strong> To preserve the lighting design and capture integrity, no party shall apply secondary mobile filters, automated presets, cropping adjustments, or third-party digital modifications to the delivered files.</p>
                     </div>
  
@@ -8762,7 +8920,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         $("#f_activity").value = editingShoot.activity || "";
         $("#f_type").value = editingShoot.type || "";
         $("#f_season").value = editingShoot.season || "";
-        $("#f_photographer").value = editingShoot.photographer || "nerdyphotographer";
+        $("#f_photographer").value = editingShoot.photographer || "nerdyphotographer.in";
         if ($("#f_photographer2")) $("#f_photographer2").value = editingShoot.secondaryPhotographers || "";
         $("#f_ad").value = editingShoot.artDirector || "";
         $("#f_stylist").value = (editingShoot.stylist && editingShoot.stylist !== "—") ? editingShoot.stylist : "";
@@ -10124,19 +10282,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     })();
 
     // Sync Payment Terms & Milestone Schedule with Global Studio Setting
-    const flow2 = $("#flowchart2Step");
-    const flow3 = $("#flowchart3Step");
-    const globalSched = window.WPS_DATA.CALENDAR_SETTINGS?.paymentScheduleType || "5050";
-
-    if (flow2 && flow3) {
-      if (globalSched === "503020") {
-        flow2.style.display = "none";
-        flow3.style.display = "grid";
-      } else {
-        flow2.style.display = "grid";
-        flow3.style.display = "none";
-      }
-    }
+    const globalSched = getPackageScheduleKey();
+    [["#flowchart2Step", "5050"], ["#flowchart3Step", "503020"], ["#flowchart4Step", "50301010"]].forEach(([sel, key]) => {
+      const el = $(sel);
+      if (el) el.style.display = globalSched === key ? "grid" : "none";
+    });
 
     // Invite/promo/pricing state, computed inside updateFields but needed again
     // when the form is submitted. These used to be read straight out of
@@ -10976,32 +11126,22 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           // the package rate itself is divided per the studio's milestone
           // schedule (50/50, or 50/30/20 when that global setting is on).
           const packageNet = Math.max(0, finalPayable - homeStudioFee);
-          const is3Step = globalSched === "503020";
+          const schedule = PACKAGE_SCHEDULES[globalSched] || PACKAGE_SCHEDULES["5050"];
+          const legs = splitPackageMilestones(packageNet, homeStudioFee, globalSched);
+          const advanceRetainer = legs[0], wrapBalance = legs[1] || 0, step3Amount = legs[2] || 0, step4Amount = legs[3] || 0;
           const summaryAdvanceAmount = $("#summaryAdvanceAmount");
           const summaryBalanceAmount = $("#summaryBalanceAmount");
           const summaryAdvanceLabel = $("#summaryAdvanceLabel");
           const summaryStep2Label = $("#summaryStep2Label");
-          const summaryStep3Wrap = $("#summaryStep3Wrap");
-          const summaryStep3Amount = $("#summaryStep3Amount");
-
-          let advanceRetainer, wrapBalance, step3Amount = 0;
-          if (is3Step) {
-            // 30% off the package portion goes to step 2; step 3 takes
-            // whatever rounding left over so the three legs always add
-            // back up to finalPayable exactly.
-            const step2 = Math.round(packageNet * 0.3);
-            advanceRetainer = Math.round(packageNet * 0.5) + homeStudioFee;
-            step3Amount = Math.max(0, packageNet - Math.round(packageNet * 0.5) - step2);
-            wrapBalance = step2;
-          } else {
-            advanceRetainer = Math.round(packageNet / 2) + homeStudioFee;
-            wrapBalance = finalPayable - advanceRetainer;
-          }
+          const summaryStep3Wrap = $("#summaryStep3Wrap"), summaryStep3Label = $("#summaryStep3Label"), summaryStep3Amount = $("#summaryStep3Amount");
+          const summaryStep4Wrap = $("#summaryStep4Wrap"), summaryStep4Label = $("#summaryStep4Label"), summaryStep4Amount = $("#summaryStep4Amount");
 
           if (summaryAdvanceAmount) summaryAdvanceAmount.textContent = `₹${advanceRetainer.toLocaleString("en-IN")} INR`;
           if (summaryBalanceAmount) summaryBalanceAmount.textContent = `₹${wrapBalance.toLocaleString("en-IN")} INR`;
-          if (summaryStep3Wrap) summaryStep3Wrap.style.display = is3Step ? "block" : "none";
+          if (summaryStep3Wrap) summaryStep3Wrap.style.display = legs.length >= 3 ? "block" : "none";
           if (summaryStep3Amount) summaryStep3Amount.textContent = `₹${step3Amount.toLocaleString("en-IN")} INR`;
+          if (summaryStep4Wrap) summaryStep4Wrap.style.display = legs.length >= 4 ? "block" : "none";
+          if (summaryStep4Amount) summaryStep4Amount.textContent = `₹${step4Amount.toLocaleString("en-IN")} INR`;
           if (summaryAdvanceLabel) {
             // The studio the photographer books on the client's behalf is due
             // in full with the advance too (contract clause 1); the amount is
@@ -11013,11 +11153,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   ? "Step 1 · 50% Advance Retainer + Studio & Lighting in full (Due Now)"
                   : "Step 1 · 50% Advance Retainer (Due Now)");
           }
-          if (summaryStep2Label) {
-            summaryStep2Label.textContent = is3Step
-              ? "Step 2 · 30% Review Milestone (After Shoot)"
-              : "Step 2 · 50% Wrap Balance (Prior to Deliverables)";
-          }
+          if (summaryStep2Label) summaryStep2Label.textContent = schedule.quoteSteps[0];
+          if (summaryStep3Label && schedule.quoteSteps[1]) summaryStep3Label.textContent = schedule.quoteSteps[1];
+          if (summaryStep4Label && schedule.quoteSteps[2]) summaryStep4Label.textContent = schedule.quoteSteps[2];
         }
 
         // Update Mobile Sticky Floating Action Bar (FAB)
@@ -11033,6 +11171,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // the full range — none of this applies to them.
     const TFP_MAX_SESSION_MINS = 5 * 60;
     const DEFAULT_DURATION = "Flexible / Photographer Choice";
+    // The window a booking runs in when the client picks nothing. "Flexible /
+    // Photographer Choice" is the form's default, and sending it verbatim
+    // left the studio's inbox and calendar with no time at all — so the
+    // studio's own standard day is written in instead, marked as a default
+    // so the photographer knows the client did not choose it. Test shoots get
+    // the half day the cap allows; the custom panel opens on the same windows.
+    const DEFAULT_SESSION_PAID = "Full Day (10:30 AM – 5:30 PM)";
+    const DEFAULT_SESSION_COLLAB = "Half Day Morning (10:30 AM – 2:30 PM)";
+    const defaultSessionWindow = () => (isCollabSession() ? DEFAULT_SESSION_COLLAB : DEFAULT_SESSION_PAID);
+    const hoursOf = (label) => (label.match(/\(([^)]+)\)/) || [])[1] || label;
     // Matched on the "Full Day" prefix rather than the option's exact label,
     // which carries an en dash and the hours in it — rewording those should not
     // silently switch the cap off.
@@ -11095,6 +11243,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // the photographer sets the hours on a collaboration anyway.
         if (isCollab && isFullDayOption(durSel)) durSel.value = DEFAULT_DURATION;
       }
+      // Say on the form what "flexible" will be recorded as, so the client is
+      // not surprised by a call time they never saw.
+      const flexOpt = Array.from(durSel.options).find((o) => o.value === DEFAULT_DURATION);
+      if (flexOpt) flexOpt.textContent = `Flexible / Photographer Choice (Recommended · defaults to ${hoursOf(isCollab ? DEFAULT_SESSION_COLLAB : DEFAULT_SESSION_PAID)})`;
       const note = $("#b_duration_note");
       if (note) note.style.display = isCollab ? "block" : "none";
       updateCustomTimeBadge();
@@ -11105,8 +11257,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // with it.
     const sessionDurationLabel = () => {
       const durSel = $("#b_duration");
-      if (!durSel) return "";
-      if (durSel.value !== "Custom Timings") return durSel.value;
+      const picked = durSel ? durSel.value : "";
+      if (!picked || picked === DEFAULT_DURATION) {
+        return `${defaultSessionWindow()} · studio default, timing left to the photographer`;
+      }
+      if (picked !== "Custom Timings") return picked;
       const startVal = $("#b_time_start")?.value || "";
       const endVal = $("#b_time_end")?.value || "";
       return `Custom — ${format12(startVal)} to ${format12(endVal)} (${formatHours(customSessionMinutes())} hours)`;
@@ -11279,8 +11434,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         if (visible(nothing)) bits.push("nothing to pay");
         else if (visible(reserve)) bits.push("studio rental paid in full up front");
         else if (visible(steps)) {
-          const n = new Set((steps.innerText.match(/Step (\d)/g) || [])).size;
-          bits.push(n >= 3 ? "pay 50% now · 30% at wrap · 20% on delivery" : "pay 50% now · 50% before delivery");
+          bits.push(PACKAGE_SCHEDULES[getPackageScheduleKey()].short);
         }
         line.textContent = bits.join(" · ");
         line.hidden = !bits.length;
@@ -11529,6 +11683,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         fd.append("Record Type", "SIGNED CONTRACT — keep this email as the studio's permanent record");
         fd.append("Contract Number", payload.contractNumber || "—");
         fd.append("Contract Version", payload.contractVersion || "—");
+        if (payload.isCustomContract) fd.append("Requested Contract Changes", payload.customContractNotes || "Client requested a custom contract / agency MSA (no details given)");
         fd.append("Client Name", payload.clientName || "—");
         fd.append("Client Email", payload.clientEmail || "—");
         fd.append("Phone", payload.phone || "—");
@@ -11608,8 +11763,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
         const isTfpCat = shootCategory === "TFP";
         const isProduction = !!(window.isProductionBrief && window.isProductionBrief());
+        const productionSchedule = getProductionSchedule();
         const productionLines = isProduction
-          ? `What we're shooting: ${val("p_subject") || "—"}\nUsage: ${val("p_usage") || "—"}\nBudget band: ${val("p_budget") || "Prefer to discuss"}\nRough scale: ${val("p_scale") || "—"}\nPayment terms (shown for information): 50% advance + studio & lighting cost at booking · 30% at wrap · 20% before final delivery — figures to be confirmed in the proposal.\n`
+          ? `What we're shooting: ${val("p_subject") || "—"}\nUsage: ${val("p_usage") || "—"}\nBudget band: ${val("p_budget") || "Prefer to discuss"}\nRough scale: ${val("p_scale") || "—"}\nPayment terms (shown for information): ${productionSchedule.text} — figures to be confirmed in the proposal.\n`
           : "";
 
         // Did this booking come in on an invite that supplies the venue? Read
@@ -11674,7 +11830,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // ReferenceError that silently killed every booking submit before.
         const promoCodeUsed = (bookingCalc && bookingCalc.enteredDiscount) || "";
         const inviteCodeUsed = (bookingCalc && bookingCalc.enteredCode) || "";
-        const is3StepActive = $("#flowchart3Step") && $("#flowchart3Step").style.display !== "none";
+        const packageScheduleKey = getPackageScheduleKey();
+        const packageSchedule = PACKAGE_SCHEDULES[packageScheduleKey];
         // The studio rental (home or commercial) reserves the venue, so it is
         // due in full alongside the advance retainer rather than split across
         // milestones like the package rate — the document has to say this
@@ -11683,9 +11840,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const rentalUpfrontNote = homeStudioRentalFee > 0
           ? ` The studio rental of ₹${homeStudioRentalFee.toLocaleString('en-IN')} is payable in full as part of the advance retainer, in addition to the package advance above.`
           : "";
-        const paymentTermsText = is3StepActive ?
-          `Payment Terms: 3-Tier Campaign Milestones (50% Advance Retainer before shoot day start [non-refundable]; 30% Review Milestone after shoot before proofing gallery [non-refundable]; 20% Final Release prior to receiving any downloadable file).${rentalUpfrontNote}` :
-          `Payment Terms: Standard 50/50 Milestones (50% Advance Retainer before shoot day start [non-refundable]; 50% Final Balance after shoot wrap prior to receiving any downloadable file [non-refundable]).${rentalUpfrontNote}`;
+        const paymentTermsText = `Payment Terms: ${packageSchedule.contract}.${rentalUpfrontNote}`;
         // A collaboration carries no shoot fee, but it can still owe the home
         // studio rental — and the document the participant agrees to has to say
         // so, in the same terms the quote showed them.
@@ -11693,7 +11848,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           ? (homeStudioRentalFee > 0
               ? `\n\n7. HOME STUDIO RENTAL & PAYMENT\nThis collaboration carries no shoot fee. A fixed home studio rental of ₹${homeStudioRentalFee.toLocaleString('en-IN')} applies for use of the photographer's home studio in ${HOME_STUDIO_AREA}, and is payable IN FULL at least 48 hours before the shoot day to reserve the space. This rental is non-refundable once paid, including where the Participant cancels or reschedules. No other fee is payable to the Studio for this session.`
               : "")
-          : `\n\n7. ENGAGEMENT FEE, SELECTED PACKAGE & PAYMENT MILESTONES\nSelected package and contracted deliverables: ${budget || "as quoted by the Studio"}.\n${paymentTermsText.replace(/^Payment Terms: /, "Payment terms: ")}\nMilestone payments marked non-refundable are non-refundable once paid, including where the Participant cancels or reschedules. Deliverables are released only after the final milestone is cleared. Any work beyond the contracted package (additional retouched masters, extended usage, gallery buyout) is quoted and invoiced separately.`;
+          : `\n\n7. ENGAGEMENT FEE, SELECTED PACKAGE & PAYMENT MILESTONES\nSelected package and contracted deliverables: ${budget || "as quoted by the Studio"}.\n${paymentTermsText.replace(/^Payment Terms: /, "Payment terms: ")}\nMilestone payments marked non-refundable are non-refundable once paid, including where the Participant cancels or reschedules. ${packageSchedule.release} Any work beyond the contracted package (additional retouched masters, extended usage, gallery buyout) is quoted and invoiced separately.`;
 
         // Test shoots only. A paid booking already carries this risk through its
         // non-refundable retainer; a collaboration pays nothing, so without this
@@ -11716,10 +11871,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           (isCustomContract ? `Custom Contract Notes: ${customContractNotes || 'Client requested custom agency MSA'}\n` : '') +
           `--------------------------------------------------\n\n` +
           (isCustomContract ? 
-            `1. CUSTOM CONTRACT / AGENCY MSA REQUEST\nThis shoot request is submitted under a Custom Client Contract / Agency Master Services Agreement (MSA). Studio V3.3 default terms remain subject to custom contract review and mutual alignment prior to shoot day confirmation.\n\n2. CAMERA GEAR & DATA PROTECTION CLAUSE\nAll camera bodies, memory cards, and raw captures remain confidential studio property. Participants may not touch equipment or delete media from cameras.\n` :
+            `1. CUSTOM CONTRACT / AGENCY MSA REQUEST\nThis shoot request is submitted under a Custom Client Contract / Agency Master Services Agreement (MSA). Studio V3.7 default terms remain subject to custom contract review and mutual alignment prior to shoot day confirmation.\n\n2. CAMERA GEAR & DATA PROTECTION CLAUSE\nAll camera bodies, memory cards, and raw captures remain confidential studio property. Participants may not touch equipment or delete media from cameras.\n` :
             `${venueClause}\n\n2. INTELLECTUAL PROPERTY & USAGE LICENSING\nThe legal copyright of all visual media remains exclusively with the Studio. Clients receive personal, social media, and web self-promotion usage rights.\n\n3. COMPREHENSIVE LIABILITY WAIVER\nParticipant(s) enter the studio workspace and perform physical poses entirely at their own risk.\n\n4. DELIVERABLES, REVISIONS & CLOUD ARCHIVAL\nDeliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for ${isTfpCat ? '3 Months' : '6 Months'}. RAW files are strictly excluded.\n\n5. UNAUTHORIZED CAMERA OPERATION & GEAR PROTECTION\nAll camera gear and memory cards are strictly hands-off.\n\n6. DIGITAL CONSENT & EMAIL ACCEPTANCE\nLegal acceptance is established by submitting this request.${engagementFeeClause}${lateArrivalClause}`
           ) +
-          `\n\nnerdyphotographer.in studios\n` +
+          `\n\nnerdyphotographer.in\n` +
           `==================================================`
         ) : "";
 
@@ -11728,7 +11883,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // a COMPACT body without the release: embedding the full release used
         // to blow past browser URL length limits, so for test shoots the mail
         // app silently refused to open at all.
-        // (is3StepActive / paymentTermsText are resolved above, alongside the
+        // (packageSchedule / paymentTermsText are resolved above, alongside the
         // release text, so the contract and the email quote identical terms.)
         const cleanBudget = (budget && budget !== "Not Decided" && budget !== "TBD") ? `Package & Deliverables: ${budget}\n` : "";
 
@@ -11786,91 +11941,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const deliverablePolicyNote = `RAW Files & Deliverables Policy: Includes proofing gallery + contracted retouched master limit. Requesting the complete full unedited image gallery or extra retouched master clicks beyond the package limit incurs additional gallery buyout fees. RAW unedited camera files remain confidential studio property.\n`;
         const gearPolicyNote = `Camera & Media Policy: All cameras, memory cards, and raw captures are strictly hands-off. Participants may not touch equipment or delete media from cameras. Deleting files constitutes a material breach of contract and incurs full data recovery costs.\n`;
 
-        const compactBody =
-          `${isProduction ? "Campaign / Production Brief" : "Shoot Booking Details"}:\n\n` +
-          `Name: ${name}\n` +
-          `Role: ${role}\n` +
-          `Email: ${email}\n` +
-          `Phone: ${phone || '—'}\n` +
-          `Instagram / Website: ${instagram || '—'}\n` +
-          `Shoot Type: ${type}\n` +
-          `Proposed Date: ${date}\n` +
-          (dateAlreadyBooked ? `⚠️ Date Status: This date already has a booking on the calendar — decide whether to confirm anyway or suggest an alternative.\n` : "") +
-          `Session Duration: ${sessionDuration || '—'}\n` +
-          `Location Pref: ${locationVal}\n` +
-          `Studio Space Rental: ${studioSpaceVal}\n` +
-          studioRentalPolicyNote +
-          travelPolicyNote +
-          (isProduction ? `Budget / Package: Quoted on the brief after a call\n` + productionLines : cleanBudget) +
-          (homeStudioRentalFee > 0
-            ? (homeStudioDiscountedByPromo
-                ? `Home Studio Rental (add-on): ₹${homeStudioRentalFee.toLocaleString('en-IN')} — ${homeStudioPromoDiscountLabel} with promo code ${promoCodeUsed} applied (normally ₹${homeStudioListPriceVal.toLocaleString('en-IN')})\n` +
-                  `Total Savings: ₹${(((bookingCalc && bookingCalc.savings) || 0) + homeStudioPromoDiscountAmount).toLocaleString('en-IN')} (promo discount + home studio discount)\n`
-                : homeStudioDiscountedByInvite
-                  ? `Home Studio Rental (add-on): ₹${homeStudioRentalFee.toLocaleString('en-IN')} — ${homeStudioInviteDiscountLabel} with invite code ${inviteCodeUsed} applied (normally ₹${homeStudioListPriceVal.toLocaleString('en-IN')})\n` +
-                    `Total Savings: ₹${homeStudioInviteDiscountAmount.toLocaleString('en-IN')} (home studio discount via invite code)\n`
-                  : `Home Studio Rental (add-on): ₹${homeStudioRentalFee.toLocaleString('en-IN')}\n`)
-            : (homeStudioWaivedByPromo
-                ? `Home Studio Rental (add-on): ₹0 — complimentary with promo code ${promoCodeUsed} (normally ₹${homeStudioListPriceVal.toLocaleString('en-IN')})\n` +
-                  `Total Savings: ₹${(((bookingCalc && bookingCalc.savings) || 0) + homeStudioListPriceVal).toLocaleString('en-IN')} (promo discount + complimentary home studio)\n`
-                : homeStudioWaivedByInvite
-                  ? `Home Studio Rental (add-on): ₹0 — complimentary with invite code ${inviteCodeUsed} (normally ₹${homeStudioListPriceVal.toLocaleString('en-IN')})\n` +
-                    `Total Savings: ₹${homeStudioListPriceVal.toLocaleString('en-IN')} (complimentary home studio via invite code)\n`
-                  : "")) +
-          (type !== "Selective Collaboration (TFP)"
-            ? `${paymentTermsText}\n`
-            : (homeStudioRentalFee > 0
-                ? `Payment Terms: No shoot fee applies to this collaboration. The home studio rental of ₹${homeStudioRentalFee.toLocaleString('en-IN')} is payable IN FULL at least 48 hours before the shoot day to reserve the space (non-refundable once paid). Nothing else is payable to the studio.\n`
-                : "")) +
-          crewCostPolicyNote +
-          deliverablePolicyNote +
-          gearPolicyNote +
-          `Moodboard Link: ${moodboard || '—'}\n` +
-          (agreedToTerms ? `Contract Agreement: ${name} has agreed to ${contractRefDoc} in full, without modifications. By sending this email the client confirms acceptance of all studio terms and conditions.\nContract Reference: ${contractRefDoc}\nSignature Captured: ${sigDataUrl ? 'Yes' : 'No'}\nRead terms online: https://www.nerdyphotographer.in/book/${isTfpCat ? '#tfp-terms' : '#terms'}\n\n` : `\n`) +
-          `Concept/Vision:\n${concept || '—'}`;
-        const inquiryBody = compactBody + tfpReleaseText;
-        const plainTextBody = `To: ${studioEmail}\nSubject: ${isProduction ? "Production Brief" : "Shoot Booking Request"} — ${name}\n\n` + inquiryBody;
-
-        const subject = encodeURIComponent(isProduction ? `Production Brief — ${name}` : isCustomContract ? `Shoot Booking Request (CUSTOM CONTRACT REQUESTED) — ${name}` : `Shoot Booking Request — ${name}`);
-        const body = encodeURIComponent(compactBody);
-
-        // A mailto: URL is handed to the operating system, not to the browser,
-        // and Windows/Outlook silently truncate or refuse anything past ~2,000
-        // characters — the full brief encodes to ~2,700, which is why the mail
-        // app kept opening blank or not at all. Gmail/Outlook web, the relay
-        // and the copy block all still carry the full text including every
-        // policy clause; only the mailto: link is trimmed, and only when the
-        // full body would not have survived the handoff anyway.
-        const MAILTO_SAFE_LEN = 1900;
-        const buildMailto = (b) => `mailto:${studioEmail}?subject=${subject}&body=${encodeURIComponent(b)}`;
-        const mailtoShortBody =
-          `${isProduction ? "Campaign / Production Brief" : "Shoot Booking Details"}:\n\n` +
-          `Name: ${name}\n` +
-          `Role: ${role}\n` +
-          `Email: ${email}\n` +
-          `Phone: ${phone || '—'}\n` +
-          `Instagram / Website: ${instagram || '—'}\n` +
-          `Shoot Type: ${type}\n` +
-          `Proposed Date: ${date}\n` +
-          (dateAlreadyBooked ? `⚠️ Date Status: This date already has a booking on the calendar — decide whether to confirm anyway or suggest an alternative.\n` : "") +
-          `Session Duration: ${sessionDuration || '—'}\n` +
-          `Location Pref: ${locationVal}\n` +
-          `Studio Space Rental: ${studioSpaceVal}\n` +
-          (isProduction ? `Budget / Package: Quoted on the brief after a call\n` + productionLines : cleanBudget) +
-          `Moodboard Link: ${moodboard || '—'}\n` +
-          (agreedToTerms
-            ? `Contract Agreement: ${name} has agreed to ${contractRefDoc} in full, without modifications. By sending this email the client confirms acceptance of all studio terms and conditions.\nContract Reference: ${contractRefDoc}\nSignature Captured: ${sigDataUrl ? 'Yes' : 'No'}\n`
-            : ``) +
-          (isProduction ? `` :           `Studio Policies (studio rental, travel & accommodation, deliverables & RAW files, camera & media, payment terms): read and accepted in full — https://www.nerdyphotographer.in/book/${isTfpCat ? '#tfp-terms' : '#terms'}\n\n`) +
-          `Concept/Vision:\n${concept || '—'}`;
-
-        let mailtoUrl = buildMailto(compactBody);
-        if (mailtoUrl.length > MAILTO_SAFE_LEN) mailtoUrl = buildMailto(mailtoShortBody);
-        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(studioEmail)}&su=${subject}&body=${body}`;
-        const outlookUrl = `https://outlook.live.com/default.aspx?rru=compose&to=${encodeURIComponent(studioEmail)}&subject=${subject}&body=${body}`;
-
-        const contractNumber = agreedToTerms ? generateContractNumber() : "";
-
         // Gather complete metadata for Admin DB & Audit Vault. The invite,
         // promo and pricing values come from the snapshot updateFields keeps
         // current — they are not in this function's scope.
@@ -11918,6 +11988,161 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           advanceRetainer: homeStudioRentalFee,
           wrapBalance: 0
         };
+
+        // One pricing block, written once and sent everywhere — the studio's
+        // relay email, the client's Gmail/Outlook/copy body and the mailto
+        // fallback. Before this the relay carried a total with no code and no
+        // savings, and the client's copy carried the package with no total, so
+        // a discounted booking could not be reconciled from either inbox; an
+        // invited test shoot named no code at all and reported its waived
+        // home studio as "Not applicable".
+        const inr = (n) => `₹${Math.round(Number(n) || 0).toLocaleString("en-IN")}`;
+        const isCollabPricing = isTfpCat || isValidInvite || type === "Selective Collaboration (TFP)";
+        // Brands and agencies asking for a test shoot name the paid package
+        // they would take if the collaboration is declined; it was collected
+        // on the form and never sent anywhere.
+        const fallbackPackage = isCollabPricing ? (val("b_collab_fallback") || "") : "";
+        const inviteLine = (isValidInvite && inviteMeta)
+          ? `${inviteMeta.code} — ${inviteMeta.desc}${inviteMeta.lockedLocation ? ` · venue set by the studio: ${inviteMeta.lockedLocation}` : ""}`
+          : (enteredCode ? `${enteredCode} — not recognised, no invite applied` : "");
+        const promoLine = promoMeta
+          ? `${promoMeta.code}${promoMeta.tag ? ` — ${promoMeta.tag} on the package` : ""}` +
+            (homeStudioWaivedByPromo
+              ? " · home studio rental waived"
+              : (homeStudioDiscountedByPromo ? ` · ${homeStudioPromoDiscountLabel} on the home studio rental` : "")) +
+            ((!promoMeta.tag && !homeStudioWaivedByPromo && !homeStudioDiscountedByPromo) ? " · no discount applies to this booking" : "")
+          : (enteredDiscount ? `${enteredDiscount} — not recognised, no discount applied` : "");
+        const packageDiscountLine = savings > 0 ? `− ${inr(savings)} (${discountTagText})` : "";
+        const venueChargeLine = homeStudioRentalFee > 0
+          ? `${inr(homeStudioRentalFee)} — ${venueLabel}` +
+            (homeStudioDiscountedByPromo
+              ? ` (${homeStudioPromoDiscountLabel} with promo code ${promoCodeUsed}, normally ${inr(homeStudioListPriceVal)})`
+              : (homeStudioDiscountedByInvite ? ` (${homeStudioInviteDiscountLabel} with invite code ${inviteCodeUsed}, normally ${inr(homeStudioListPriceVal)})` : "")) +
+            " · payable in full before the shoot"
+          : homeStudioWaivedByPromo
+            ? `₹0 — ${venueLabel}, waived by promo code ${promoCodeUsed} (normally ${inr(homeStudioListPriceVal)})`
+            : homeStudioWaivedByInvite
+              ? `₹0 — ${venueLabel}, waived by invite code ${inviteCodeUsed} (normally ${inr(homeStudioListPriceVal)})`
+              : venueByStudio
+                ? `₹0 — ${venueLabel}, provided by the studio${inviteCodeUsed ? ` (invite code ${inviteCodeUsed})` : ""} — no rental billed`
+                : studioArrangerPick === "Photographer Arranges Studio & Lighting (Billed at Actuals)"
+                  ? `Commercial studio & lighting arranged by the photographer — quoted in advance, ${isTfpCat ? "payable in full before shoot day" : "payable in full with the 50% advance"}`
+                  : (studioArrangerPick
+                      ? "Commercial studio & lighting booked by the client directly — nothing billed by the studio"
+                      : "Not applicable — no studio rental");
+        const totalSavings = (Number(savings) || 0) + (Number(homeStudioPromoDiscountAmount) || 0) + (Number(homeStudioInviteDiscountAmount) || 0);
+        const finalPayableNum = Number(financialSummary.finalPayable) || 0;
+        const totalPayableLine = isProduction
+          ? "Quoted on the brief"
+          : finalPayableNum > 0
+            ? `${inr(finalPayableNum)}${isCollabPricing ? " — home studio rental only, no shoot fee" : (totalSavings > 0 ? ` (after ${inr(totalSavings)} in discounts)` : "")}`
+            : (isCollabPricing ? "₹0 — collaboration, nothing payable to the studio" : "—");
+        const paymentScheduleLine = isProduction
+          ? `${productionSchedule.text} — as shown on the brief form; figures confirmed in the proposal`
+          : isCollabPricing
+            ? (homeStudioRentalFee > 0
+                ? `${inr(homeStudioRentalFee)} rental payable in full at least 48 hours before the shoot (non-refundable once paid)`
+                : "Nothing payable")
+            : (() => {
+                const legs = splitPackageMilestones(Math.max(0, finalPayableNum - homeStudioRentalFee), homeStudioRentalFee, packageScheduleKey);
+                const advNote = `non-refundable${homeStudioRentalFee > 0 ? ", includes the studio rental" : ""}`;
+                return [`Advance retainer ${inr(legs[0])} (${advNote})`]
+                  .concat(packageSchedule.emailLegs.map((tpl, i) => tpl.replace("{amt}", inr(legs[i + 1] || 0))))
+                  .join(" · ");
+              })();
+        const pricingLines =
+          (fallbackPackage ? `Paid Fallback Package (if the collaboration is declined): ${fallbackPackage}\n` : "") +
+          (inviteLine ? `Invite Code: ${inviteLine}\n` : "") +
+          (promoLine ? `Promo Code: ${promoLine}\n` : "") +
+          (packageDiscountLine ? `Package Discount: ${packageDiscountLine}\n` : "") +
+          `Studio / Venue Charge: ${venueChargeLine}\n` +
+          (totalSavings > 0 ? `Total Savings: ${inr(totalSavings)}\n` : "") +
+          `Total Payable: ${totalPayableLine}\n` +
+          `Payment Schedule: ${paymentScheduleLine}\n`;
+        // The mailto: link is length-capped, so it gets only the lines that
+        // change what the studio has to invoice.
+        const pricingShort =
+          (inviteLine ? `Invite Code: ${inviteLine}\n` : "") +
+          (promoLine ? `Promo Code: ${promoLine}\n` : "") +
+          `Total Payable: ${totalPayableLine}\n`;
+
+        const compactBody =
+          `${isProduction ? "Campaign / Production Brief" : "Shoot Booking Details"}:\n\n` +
+          `Name: ${name}\n` +
+          `Role: ${role}\n` +
+          `Email: ${email}\n` +
+          `Phone: ${phone || '—'}\n` +
+          `Instagram / Website: ${instagram || '—'}\n` +
+          `Shoot Type: ${type}\n` +
+          `Proposed Date: ${date}\n` +
+          (dateAlreadyBooked ? `⚠️ Date Status: This date already has a booking on the calendar — decide whether to confirm anyway or suggest an alternative.\n` : "") +
+          `Session Duration: ${sessionDuration || '—'}\n` +
+          `Location Pref: ${locationVal}\n` +
+          `Studio Space Rental: ${studioSpaceVal}\n` +
+          studioRentalPolicyNote +
+          travelPolicyNote +
+          (isProduction ? `Budget / Package: Quoted on the brief after a call\n` + productionLines : cleanBudget) +
+          pricingLines +
+          (type !== "Selective Collaboration (TFP)"
+            ? `${paymentTermsText}\n`
+            : (homeStudioRentalFee > 0
+                ? `Payment Terms: No shoot fee applies to this collaboration. The home studio rental of ₹${homeStudioRentalFee.toLocaleString('en-IN')} is payable IN FULL at least 48 hours before the shoot day to reserve the space (non-refundable once paid). Nothing else is payable to the studio.\n`
+                : "")) +
+          crewCostPolicyNote +
+          deliverablePolicyNote +
+          gearPolicyNote +
+          `Moodboard Link: ${moodboard || '—'}\n` +
+          (agreedToTerms
+            ? (isCustomContract
+                ? `Contract Agreement: ${name} has REQUESTED A CUSTOM CONTRACT / AGENCY MSA rather than accepting the standard terms as they stand. Studio default terms remain subject to custom contract review and mutual alignment before the shoot day is confirmed.\nRequested Contract Changes: ${customContractNotes || "—"}\nContract Reference: ${contractRefDoc}\nSignature Captured: ${sigDataUrl ? 'Yes' : 'No'}\nRead terms online: https://www.nerdyphotographer.in/book/${isTfpCat ? '#tfp-terms' : '#terms'}\n\n`
+                : `Contract Agreement: ${name} has agreed to ${contractRefDoc} in full, without modifications. By sending this email the client confirms acceptance of all studio terms and conditions.\nContract Reference: ${contractRefDoc}\nSignature Captured: ${sigDataUrl ? 'Yes' : 'No'}\nRead terms online: https://www.nerdyphotographer.in/book/${isTfpCat ? '#tfp-terms' : '#terms'}\n\n`)
+            : `\n`) +
+          `Concept/Vision:\n${concept || '—'}`;
+        const inquiryBody = compactBody + tfpReleaseText;
+        const plainTextBody = `To: ${studioEmail}\nSubject: ${isProduction ? "Production Brief" : "Shoot Booking Request"} — ${name}\n\n` + inquiryBody;
+
+        const subject = encodeURIComponent(isProduction ? `Production Brief — ${name}` : isCustomContract ? `Shoot Booking Request (CUSTOM CONTRACT REQUESTED) — ${name}` : `Shoot Booking Request — ${name}`);
+        const body = encodeURIComponent(compactBody);
+
+        // A mailto: URL is handed to the operating system, not to the browser,
+        // and Windows/Outlook silently truncate or refuse anything past ~2,000
+        // characters — the full brief encodes to ~2,700, which is why the mail
+        // app kept opening blank or not at all. Gmail/Outlook web, the relay
+        // and the copy block all still carry the full text including every
+        // policy clause; only the mailto: link is trimmed, and only when the
+        // full body would not have survived the handoff anyway.
+        const MAILTO_SAFE_LEN = 1900;
+        const buildMailto = (b) => `mailto:${studioEmail}?subject=${subject}&body=${encodeURIComponent(b)}`;
+        const mailtoShortBody =
+          `${isProduction ? "Campaign / Production Brief" : "Shoot Booking Details"}:\n\n` +
+          `Name: ${name}\n` +
+          `Role: ${role}\n` +
+          `Email: ${email}\n` +
+          `Phone: ${phone || '—'}\n` +
+          `Instagram / Website: ${instagram || '—'}\n` +
+          `Shoot Type: ${type}\n` +
+          `Proposed Date: ${date}\n` +
+          (dateAlreadyBooked ? `⚠️ Date Status: This date already has a booking on the calendar — decide whether to confirm anyway or suggest an alternative.\n` : "") +
+          `Session Duration: ${sessionDuration || '—'}\n` +
+          `Location Pref: ${locationVal}\n` +
+          `Studio Space Rental: ${studioSpaceVal}\n` +
+          (isProduction ? `Budget / Package: Quoted on the brief after a call\n` + productionLines : cleanBudget) +
+          pricingShort +
+          `Moodboard Link: ${moodboard || '—'}\n` +
+          (agreedToTerms
+            ? (isCustomContract
+                ? `Contract Agreement: CUSTOM CONTRACT / AGENCY MSA REQUESTED — standard terms subject to review.\nRequested Contract Changes: ${customContractNotes || "—"}\nContract Reference: ${contractRefDoc}\nSignature Captured: ${sigDataUrl ? 'Yes' : 'No'}\n`
+                : `Contract Agreement: ${name} has agreed to ${contractRefDoc} in full, without modifications. By sending this email the client confirms acceptance of all studio terms and conditions.\nContract Reference: ${contractRefDoc}\nSignature Captured: ${sigDataUrl ? 'Yes' : 'No'}\n`)
+            : ``) +
+          (isProduction ? `` :           `Studio Policies (studio rental, travel & accommodation, deliverables & RAW files, camera & media, payment terms): read and accepted in full — https://www.nerdyphotographer.in/book/${isTfpCat ? '#tfp-terms' : '#terms'}\n\n`) +
+          `Concept/Vision:\n${concept || '—'}`;
+
+        let mailtoUrl = buildMailto(compactBody);
+        if (mailtoUrl.length > MAILTO_SAFE_LEN) mailtoUrl = buildMailto(mailtoShortBody);
+        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(studioEmail)}&su=${subject}&body=${body}`;
+        const outlookUrl = `https://outlook.live.com/default.aspx?rru=compose&to=${encodeURIComponent(studioEmail)}&subject=${subject}&body=${body}`;
+
+        const contractNumber = agreedToTerms ? generateContractNumber() : "";
 
         async function recordContractAudit(payload) {
           saveLocalContractAudit({
@@ -12108,7 +12333,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // email the first time it's used). If the relay is unreachable or
         // rejects, fall back to opening the visitor's mail app pre-filled.
         const relayFields = {
-          _subject: isProduction ? `Production Brief — ${name}` : `Shoot Booking Request — ${name}`,
+          _subject: isProduction ? `Production Brief — ${name}` : (isCustomContract ? `Shoot Booking Request (CUSTOM CONTRACT REQUESTED) — ${name}` : `Shoot Booking Request — ${name}`),
           "Enquiry": isProduction ? "Campaign / production brief — quote on the brief after a call" : "Booking request",
           _replyto: email,
           _template: "box",
@@ -12122,24 +12347,28 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           "Session Duration": sessionDuration || "—",
           "Location Pref": locationVal,
           "Studio Space": studioSpaceVal || "—",
-          "Budget Range": isProduction ? "Quoted on the brief" : budget,
-          ...(isProduction ? { "What we're shooting": val("p_subject") || "—", "Usage": val("p_usage") || "—", "Budget band": val("p_budget") || "Prefer to discuss", "Rough scale": val("p_scale") || "—", "Payment terms (shown)": "50% advance + studio & lighting at booking · 30% at wrap · 20% before final delivery" } : {}),
-          // The rental and the resulting total are what the client just agreed
-          // to pay. Without them the studio's own copy of the booking gave no
-          // hint a rental was owed, so there was nothing to invoice against.
-          "Studio / Venue Charge": homeStudioRentalFee > 0
-            ? `₹${homeStudioRentalFee.toLocaleString('en-IN')} — ${venueLabel} (payable in full before the shoot)`
-            : (studioArrangerPick === "Photographer Arranges Studio & Lighting (Billed at Actuals)"
-                ? `Commercial studio & lighting arranged by the photographer — quoted in advance, ${isTfpCat ? "payable in full before shoot day" : "payable in full with the 50% advance"}`
-                : "Not applicable"),
-          "Total Payable": isProduction ? "Quoted on the brief" : financialSummary.finalPayable > 0
-            ? `₹${financialSummary.finalPayable.toLocaleString('en-IN')}`
-            : (type === "Selective Collaboration (TFP)" ? "₹0 — TFP collaboration" : "—"),
+          "Package": isProduction ? "Quoted on the brief" : budget,
+          ...(isProduction ? { "What we're shooting": val("p_subject") || "—", "Usage": val("p_usage") || "—", "Budget band": val("p_budget") || "Prefer to discuss", "Rough scale": val("p_scale") || "—" } : {}),
+          ...(fallbackPackage ? { "Paid Fallback Package": fallbackPackage } : {}),
+          "Invite Code": inviteLine || "—",
+          "Promo Code": promoLine || "—",
+          "Package Discount": packageDiscountLine || "—",
+          "Studio / Venue Charge": venueChargeLine,
+          "Total Savings": totalSavings > 0 ? inr(totalSavings) : "—",
+          "Total Payable": totalPayableLine,
+          "Payment Schedule": paymentScheduleLine,
+          ...(dateAlreadyBooked ? { "Date Status": "⚠️ This date already has a booking on the calendar — confirm anyway or offer an alternative" } : {}),
           "Moodboard Link": moodboard || "—",
           "Concept / Vision": concept || "—",
-          "TFP Release": agreedToTerms ? `AGREED — ${contractRefDoc} (full text below)` : "Not applicable",
+          "Contract Agreement": agreedToTerms
+            ? `AGREED — ${contractRefDoc}${contractNumber ? ` · No. ${contractNumber}` : ""} · ${sigDataUrl ? "drawn signature captured" : (agreementMethod === "checkbox" ? "accepted by checkbox" : "accepted by email/DM consent")}${isCustomContract ? " · CUSTOM CONTRACT / AGENCY MSA REQUESTED" : ""} (full text below)`
+            : "Not applicable",
+          // What the client typed into "Request Custom Contract". It used to
+          // travel only as one line inside the full contract text below,
+          // where a request to change the terms was easy to miss.
+          ...(isCustomContract ? { "Requested Contract Changes": customContractNotes || "Client requested a custom contract / agency MSA (no details given)" } : {}),
         };
-        if (agreedToTerms) relayFields["Release Full Text"] = tfpReleaseText.trim();
+        if (agreedToTerms) relayFields["Contract Full Text"] = tfpReleaseText.trim();
 
         // The signed-contract email is an independent channel from the inquiry
         // relay — it goes out however the inquiry itself ends up travelling —
@@ -12167,7 +12396,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             contractText: tfpReleaseText.trim(),
             sigDataUrl: sigDataUrl || "",
             agreementMethod: agreementMethod || (sigDataUrl ? "signature" : ""),
-            notes: `Location: ${locationVal} | Budget: ${budget}`
+            isCustomContract,
+            customContractNotes,
+            notes: `Location: ${locationVal} | Package: ${budget} | Total payable: ${totalPayableLine}${inviteLine ? ` | Invite code: ${inviteLine}` : ""}${promoLine ? ` | Promo code: ${promoLine}` : ""}`
           }).then((sent) => setContractEmailStatus(contractNumber, sent ? "sent" : "failed"));
         };
 
@@ -12323,6 +12554,30 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           ? `As a creative collaboration, test shoots (TFP collabs) include <strong>${esc(getAdminTfpPackage().specs)}</strong>. Deliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for 3 Months (90 days). The Studio retains final artistic authority over image selection and editing styles.${venueSentence} Under no circumstances will raw unedited files (RAW format) be delivered.`
           : `Commercial productions include a <strong>Full Proofing Gallery + contracted retouched master deliverables</strong> specified in the rate tier. Deliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for 6 Months (180 days). Extended usage licensing or RAW file access requires separate buyout agreements.${venueSentence} Payment terms follow 50/50 non-refundable milestone payments.`;
       }
+
+      // The sheet's header and first two clauses were written for a test
+      // shoot and never changed: a paying client was ticking a box under
+      // "Production Status: TFP Collab" and "No monetary compensation is
+      // required or exchanged", while the contract emailed to them said the
+      // opposite. Reworded here from the same clauses the emailed commercial
+      // contract carries, so what is ticked and what is recorded agree.
+      const tfpSubtitle = "TFP Collaboration, Model Release & Digital Consent Terms";
+      const subtitleEl = $("#termsModalSubtitle"), partnerLabelEl = $("#termsPartnerLabel"), prodStatusEl = $("#termsProductionStatus");
+      const sec1Title = $("#termsSec1Title"), sec1Text = $("#termsSec1Text"), sec2Title = $("#termsSec2Title"), sec2Text = $("#termsSec2Text");
+      const modalPackage = isTfp ? "" : ($("#b_budget")?.value || "");
+      const modalSchedule = PACKAGE_SCHEDULES[getPackageScheduleKey()];
+      const modalPayTerms = modalSchedule.sheet;
+      if (subtitleEl) subtitleEl.textContent = isTfp ? tfpSubtitle : "Commercial Shoot, Usage Licence & Digital Consent Terms";
+      if (partnerLabelEl) partnerLabelEl.textContent = isTfp ? "Creative Partner/Model:" : "Client:";
+      if (prodStatusEl) prodStatusEl.textContent = isTfp ? "Time-For-Print (TFP) Collab" : `Commercial / paid production${modalPackage ? ` — ${modalPackage}` : ""}`;
+      if (sec1Title) sec1Title.textContent = isTfp ? "1. SCOPE OF CREATIVE COLLABORATION" : "1. SCOPE OF PRODUCTION, PACKAGE FEE & PAYMENT MILESTONES";
+      if (sec1Text) sec1Text.innerHTML = isTfp
+        ? `This session is scheduled as a peer-to-peer creative collaboration structured for mutual portfolio growth, asset curation, and personal branding advancement. No monetary compensation is required or exchanged for photographer or model services. The Studio provides specialized equipment, lighting architecture, workspace, and post-production engineering; the Participant(s) provide technical modeling direction, personal wardrobe, and makeup artistry. `
+        : `This session is scheduled as a commercial photography production under the package selected on the booking form${modalPackage ? ` (<strong>${esc(modalPackage)}</strong>)` : ""}. Package rates cover photography, light design, direction and the contracted retouched master deliverables; hair &amp; makeup, styling, set and any other third-party crew are quoted for your approval and billed at actuals. <strong>Payment:</strong> ${modalPayTerms}; any studio rental is payable in full together with the advance. Milestone payments marked non-refundable are non-refundable once paid, including where the client cancels or reschedules. ${modalSchedule.release} `;
+      if (sec2Title) sec2Title.textContent = isTfp ? "2. INTELLECTUAL PROPERTY, MODEL RELEASE & USAGE LICENSE" : "2. INTELLECTUAL PROPERTY & USAGE LICENSING";
+      if (sec2Text) sec2Text.textContent = isTfp
+        ? "The legal copyright of all visual media remains exclusively with the Studio. To support mutual growth and portfolio building, all participants are granted a full non-exclusive license to publish, share, and use final retouched photos for personal self-promotion, social media grids (Instagram/TikTok), personal websites, and agency portfolios."
+        : "The legal copyright of all visual media remains exclusively with the Studio. Clients receive personal, social media, and web self-promotion usage rights for the final retouched photos. Any work beyond the contracted package (additional retouched masters, extended usage, gallery buyout) is quoted and invoiced separately.";
 
       $("#termsModal").style.display = "flex";
       const acceptBtn = $("#termsAcceptBtn");
@@ -12952,7 +13207,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           "name": s.title || getTalentCleanName(s.talent) || "Photoshoot",
           "caption": p.caption || altFor(s),
           "creditText": "nerdyphotographer.in",
-          "creator": { "@type": "Organization", "name": "Nerdy Photographer" }
+          "creator": { "@type": "Organization", "name": "nerdyphotographer.in" }
         });
         if (images.length >= 30) break;
       }
