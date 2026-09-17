@@ -686,7 +686,7 @@ window.WPS_DATA = {
       "isTestimonial": false,
       "title": "Abhishek Yadav",
       "brand": "Personal Project",
-      "activity": "Fashion",
+      "activity": "Portrait",
       "type": "Test Shoot",
       "season": "July 2026",
       "photographer": "nerdyphotographer.in",
@@ -724,6 +724,8 @@ window.WPS_DATA = {
       "tags": "",
       "gear": "",
       "client": "",
+      "forClient": "model",
+      "alsoFor": [],
       "date": "2026-07-05",
       "instagram": "@_abhishek.yadavv",
       "kavyar": "",
@@ -751,6 +753,7 @@ window.WPS_DATA = {
           "objectPosition": "53.5% 24.5%",
           "angle": "full-body",
           "usage": "both",
+          "look": "fashion",
           "focalX": 53.48975348975349,
           "focalY": 24.462950695561656
         },
@@ -769,6 +772,7 @@ window.WPS_DATA = {
           "objectPosition": "47.8% 13.7%",
           "angle": "front",
           "usage": "both",
+          "look": "fashion",
           "focalX": 47.78734778734779,
           "focalY": 13.699883284438977
         },
@@ -785,6 +789,7 @@ window.WPS_DATA = {
           "objectPosition": "55.2% 41.4%",
           "angle": "full-body",
           "usage": "both",
+          "look": "fashion",
           "focalX": 55.18265518265518,
           "focalY": 41.4214062647866
         },
@@ -793,7 +798,8 @@ window.WPS_DATA = {
           "url": "photos/mr8legmk0o8mqz/mrkbt93zfkswtx-16.jpg",
           "objectPosition": "center",
           "angle": "three-quarter",
-          "usage": "both"
+          "usage": "both",
+          "look": "fitness"
         },
         {
           "id": "mr8ld720pjapet-7",
@@ -801,6 +807,7 @@ window.WPS_DATA = {
           "objectPosition": "51.8% 61.1%",
           "angle": "front",
           "usage": "both",
+          "look": "fashion",
           "focalX": 51.7968517968518,
           "focalY": 61.08009211065897
         },
@@ -827,7 +834,8 @@ window.WPS_DATA = {
           "id": "mrkbt9ca8j1ym1-11",
           "url": "photos/mr8legmk0o8mqz/mrkbt9ca8j1ym1-17.jpg",
           "objectPosition": "center",
-          "usage": "both"
+          "usage": "both",
+          "look": "fitness"
         },
         {
           "id": "mrcy19u4jgcfhu-12",
@@ -854,6 +862,7 @@ window.WPS_DATA = {
       "featured": true,
       "showAsCompCard": true,
       "hideFromCompCard": false,
+      "showOnModelPortfolio": true,
       "disableCompCardDownload": false,
       "isPublic": true,
       "showCredits": true,
@@ -1171,6 +1180,8 @@ window.WPS_DATA = {
       "tags": "",
       "gear": "",
       "client": "",
+      "forClient": "model",
+      "alsoFor": [],
       "date": "2026-08-16",
       "instagram": "",
       "kavyar": "",
@@ -1265,6 +1276,7 @@ window.WPS_DATA = {
       "featured": true,
       "showAsCompCard": false,
       "hideFromCompCard": true,
+      "showOnModelPortfolio": false,
       "disableCompCardDownload": true,
       "isPublic": true,
       "showCredits": true,
@@ -1322,7 +1334,7 @@ window.WPS_DATA = {
       "isTestimonial": false,
       "title": "Arushi Sharma",
       "brand": "Personal Project",
-      "activity": "Fashion",
+      "activity": "Portrait",
       "type": "Test Shoot",
       "season": "August 2026",
       "photographer": "nerdyphotographer.in",
@@ -1360,6 +1372,8 @@ window.WPS_DATA = {
       "tags": "",
       "gear": "",
       "client": "",
+      "forClient": "model",
+      "alsoFor": [],
       "date": "2026-08-22",
       "instagram": "",
       "kavyar": "",
