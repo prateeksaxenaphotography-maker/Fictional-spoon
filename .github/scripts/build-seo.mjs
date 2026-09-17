@@ -214,7 +214,7 @@ const serviceLinksHtml = (skipSlug) => liveServices.filter((v) => v.slug !== ski
         </a>`).join("\n        ");
 
 const siteLinksHtml = `<nav class="container pr-links" aria-label="Site">
-      <a href="/" data-link>Home</a> · <a href="/albums/" data-link>Albums</a> · <a href="/categories/" data-link>Categories</a> · <a href="/services/" data-link>Services</a> · ${STUDIO_PUBLIC ? `<a href="/studio/" data-link>Studio</a> · ` : ""}<a href="/book/" data-link>Book a shoot</a>
+      <a href="/" data-link>Home</a> · <a href="/albums/" data-link>Albums</a> · <a href="/services/" data-link>Services</a> · ${STUDIO_PUBLIC ? `<a href="/studio/" data-link>Studio</a> · ` : ""}<a href="/book/" data-link>Book a shoot</a>
     </nav>`;
 
 /* ---------- album pages ---------- */
@@ -550,12 +550,6 @@ function testimonials() {
   return out;
 }
 
-const countBy = (key) => {
-  const m = new Map();
-  for (const s of albums) if (s[key]) m.set(s[key], (m.get(s[key]) || 0) + 1);
-  return [...m.entries()].sort((a, b) => b[1] - a[1]);
-};
-
 function prerenderBlocks() {
   const quotes = testimonials();
   const blocks = {};
@@ -565,7 +559,7 @@ function prerenderBlocks() {
       <p class="eyebrow">The Creative Studio · Noida · Delhi NCR</p>
       <h1>${BRAND} — fashion, fitness &amp; model portfolio photography in Noida &amp; Delhi NCR</h1>
       <p class="page-sub">Not just photos, a perspective. Editorial-grade portfolios, comp cards, fashion and fitness photography for models and brands, shot in the studio in Noida and on location across Delhi NCR.</p>
-      <p><a href="/book/" data-link>Book a shoot</a> · <a href="/categories/" data-link>Explore the work</a></p>
+      <p><a href="/book/" data-link>Book a shoot</a> · <a href="${liveServices.length ? "/services/" : "/albums/"}" data-link>Explore the work</a></p>
     </div></header>
     <section class="section container">
       <h2>Photoshoots</h2>
@@ -587,27 +581,6 @@ function prerenderBlocks() {
       <p class="page-sub">${albums.length} album${albums.length === 1 ? "" : "s"} in the archive — every photoshoot by ${BRAND}, newest first.</p>
     </div></header>
     <section class="section container">
-      ${albumCardsHtml(newestFirst)}
-    </section>
-    ${siteLinksHtml}`;
-
-  const catList = (kind, entries) => entries.length
-    ? `<ul>${entries.map(([name, n]) => `<li><a href="/categories/?kind=${kind}&amp;val=${encodeURIComponent(name)}" data-link>${esc(name)}</a> — ${n} album${n === 1 ? "" : "s"}</li>`).join("")}</ul>` : "";
-  blocks["categories/index.html"] = `
-    <header class="page-head"><div class="container">
-      <p class="eyebrow">Browse</p>
-      <h1>Categories</h1>
-      <p class="page-sub">The photography archive of ${BRAND}, filed by genre and by kind of production.</p>
-    </div></header>
-    <section class="section container">
-      <h2>By genre</h2>
-      ${catList("activity", countBy("activity"))}
-      <h2>For models</h2>
-      <ul>
-        <li><a href="/categories/?kind=type&amp;val=Model%20Portfolio" data-link>Model portfolios</a></li>
-        <li><a href="${esc(compCardsHref)}" data-link>Model comp cards</a></li>
-      </ul>
-      <h2>Albums</h2>
       ${albumCardsHtml(newestFirst)}
     </section>
     ${siteLinksHtml}`;
@@ -697,7 +670,6 @@ function buildSitemap({ quoteCount }) {
     ...newestFirst.map((s) => entry(albumUrl(s), albumLastMod(s), s.photos.map((p) => absUrl(photoPath(p))))),
     ...(liveServices.length ? [entry("/services/", null)] : []),
     ...liveServices.map((v) => entry(`/services/${v.slug}/`, null)),
-    entry("/categories/", newest),
     ...(STUDIO_PUBLIC ? [entry("/studio/", null)] : []),
     entry("/book/", null),
     ...(quoteCount ? [entry("/testimonials/", null)] : [])
