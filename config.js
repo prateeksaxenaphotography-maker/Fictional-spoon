@@ -39,9 +39,18 @@ const STUDIO_CONFIG = {
 
   // Categories & Taxonomies
   // These drive the navigation, filtering, and upload options
-  activities: ["Beauty", "Editorial", "Fashion", "Fitness", "Portrait", "Sports", "Workshop"],
+  // Activity is the GENRE — what the pictures are. It decides which "What I
+  // shoot" page an album appears under, so a wrong one is a false claim, not an
+  // untidy label. "Creative" is the catch-all for work that fits none of the
+  // others; an album left without an activity lands there too.
+  activities: ["Beauty", "Creative", "Editorial", "Fashion", "Fitness", "Portrait", "Sports", "Workshop"],
   types: ["Campaign", "Commercial", "Documentary", "E-commerce", "Editorial", "Fine Art", "Test Shoot", "Workshop Attended"],
-  brands: ["Personal Project", "Vogue", "National Geographic", "Patagonia", "Local Cafe", "Independent Film"],
+  // Only real values. This list used to ship with Vogue, National Geographic
+  // and Patagonia as demo placeholders — one stray click would have printed a
+  // client the studio has never shot for, on the site and in any PDF built from
+  // it. Add a brand here once it is genuinely a client, or pick "Other" in the
+  // upload form and type it.
+  brands: ["Personal Project"],
   // Admin passcode is stored ONLY as a SHA-256 hash (the site is public
   // source — a readable passcode here could be seen by anyone). To change
   // it, put the SHA-256 hex of your new passcode below.

@@ -3,15 +3,7 @@
    Auto-synced by the Admin Panel. Photo files live under photos/.
    ============================================================ */
 window.WPS_DATA = {
-  "ACTIVITIES": [
-    "Beauty",
-    "Editorial",
-    "Fashion",
-    "Fitness",
-    "Portrait",
-    "Sports",
-    "Workshop"
-  ],
+  "ACTIVITIES": ["Beauty", "Creative", "Editorial", "Fashion", "Fitness", "Portrait", "Sports", "Workshop"],
   "TYPES": [
     "Campaign",
     "Commercial",
@@ -22,14 +14,7 @@ window.WPS_DATA = {
     "Test Shoot",
     "Workshop Attended"
   ],
-  "BRANDS": [
-    "Personal Project",
-    "Vogue",
-    "National Geographic",
-    "Patagonia",
-    "Local Cafe",
-    "Independent Film"
-  ],
+  "BRANDS": ["Personal Project"],
   "DEMO_SHOOTS": [
     {
       "id": "mr4x3r7e4l5g4m",

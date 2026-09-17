@@ -9,6 +9,18 @@
    Keep every claim true to what the studio actually does. No invented
    numbers, awards or client names — Google and clients both check.
 
+   `emptyNote` is what a page says on the day it has no album of its own: it
+   still shows recent work, because a services page with no photographs on it
+   persuades nobody, but it says plainly that those frames are not commissions
+   of this kind. Never let a page imply work that has not happened.
+
+   `h1` carries NO city, by the owner's decision: the heading a person reads is
+   about the work, not the geography. The city still does its job in `metaTitle`
+   (the line Google prints in its results) and in the `eyebrow` above the
+   heading, which reads "For models · Model portfolio shoots · Noida · Delhi
+   NCR". Keep it that way — a city dropped from the title as well would cost the
+   only searches this site can realistically win.
+
    Every page says WHO IT IS FOR in `audience`, in the same words a visitor
    would use about themselves. All four answer that one question, so a fitness
    model knows at a glance whether she is on the right page — naming two pages
@@ -31,6 +43,7 @@ export const SERVICES_INDEX = {
 export const SERVICES = [
   {
     slug: "model-portfolio-shoot-noida",
+    emptyNote: "There is no model portfolio album on the site yet.",
     audience: "For models",
     audienceLead: "You are starting out, or you already work and your portfolio is out of date.",
     kicker: "Models",
@@ -38,8 +51,8 @@ export const SERVICES = [
     cardBlurb: "Agency-ready portfolio shoots and comp cards for new and working models, male and female.",
     metaTitle: "Model Portfolio Shoot in Noida & Delhi NCR — Comp Cards & Portfolios | nerdyphotographer.in",
     metaDescription: "Model portfolio photoshoots in Noida and Delhi NCR for male and female models: agency-ready comp cards, editorial-grade portfolio frames and guided posing. See real portfolios, what a shoot includes, and send a brief for a quote.",
-    eyebrow: "Model portfolio shoots · Noida · Delhi NCR",
-    h1: "Model portfolio shoot in Noida",
+    eyebrow: "Portfolios · Comp cards · Noida & Delhi NCR",
+    h1: "Model portfolio shoots",
     intro: [
       "A modelling portfolio has one job: to get you shortlisted. Agencies and casting teams look at it for a few seconds, so every frame has to show something different about you — your face, your proportions, your range — without heavy styling or retouching getting in the way.",
       "nerdyphotographer.in shoots portfolios and comp cards for new faces and working models, male and female, from a home studio in Noida and on location across Delhi NCR. You are directed through every pose, so you do not need any experience in front of a camera."
@@ -71,6 +84,7 @@ export const SERVICES = [
   },
   {
     slug: "fashion-editorial-photographer-delhi-ncr",
+    emptyNote: "There is no fashion or editorial album on the site yet.",
     audience: "For designers, stylists and magazines",
     audienceLead: "You have a collection, a concept or a story to place, and you need the pictures to carry it.",
     kicker: "Fashion",
@@ -78,8 +92,8 @@ export const SERVICES = [
     cardBlurb: "Concept-led fashion, beauty and editorial stories for designers, stylists and magazine submissions.",
     metaTitle: "Fashion & Editorial Photographer in Delhi NCR & Noida | nerdyphotographer.in",
     metaDescription: "Fashion, beauty and editorial photography in Noida and Delhi NCR — concept-led shoots for designers, stylists, models and magazine submissions. See recent editorials, what a shoot includes, and send a brief for a quote.",
-    eyebrow: "Fashion · Beauty · Editorial",
-    h1: "Fashion & editorial photographer in Delhi NCR",
+    eyebrow: "Fashion · Beauty · Editorial · Noida & Delhi NCR",
+    h1: "Fashion & editorial photography",
     intro: [
       "An editorial is a story told in a handful of frames. It starts with a concept — a mood, a character, a collection — and every decision after that, from light to styling to the edit, serves it.",
       "nerdyphotographer.in shoots fashion, beauty and editorial work in Noida and across Delhi NCR for designers, stylists, make-up artists and models building published work. Shoots are planned frame by frame and credited in full, so everyone on the team can use them."
@@ -108,6 +122,7 @@ export const SERVICES = [
   },
   {
     slug: "fitness-sports-photographer-noida",
+    emptyNote: "No fitness or sports shoot has been published here yet — this is work the studio takes on, not work it can show you yet.",
     audience: "For athletes, coaches and gyms",
     audienceLead: "You have put in the work and need pictures that show it — for a competition, a coaching profile or a gym's own marketing.",
     kicker: "Athletes",
@@ -115,8 +130,8 @@ export const SERVICES = [
     cardBlurb: "Physique, training and action photography for athletes, coaches, gyms and fitness brands.",
     metaTitle: "Fitness & Sports Photographer in Noida & Delhi NCR | nerdyphotographer.in",
     metaDescription: "Fitness and sports photography in Noida and Delhi NCR — physique shoots, athlete portraits and action frames for coaches, competitors, gyms and fitness brands. See what a shoot includes and send a brief for a quote.",
-    eyebrow: "Fitness · Sports · Athletes",
-    h1: "Fitness & sports photographer in Noida",
+    eyebrow: "Fitness · Sports · Noida & Delhi NCR",
+    h1: "Fitness & sports photography",
     intro: [
       "Fitness photography is about light as much as muscle. Hard, directional light is what draws definition; the wrong light flattens months of work into nothing.",
       "nerdyphotographer.in shoots physique sessions, athlete portraits and training action for competitors, coaches, gyms and fitness brands in Noida and Delhi NCR — in the studio, in your gym, or outdoors."
@@ -144,6 +159,7 @@ export const SERVICES = [
   },
   {
     slug: "brand-campaign-photographer-noida",
+    emptyNote: "No brand campaign has been published here yet — this is work the studio takes on, not work it can show you yet.",
     audience: "For brands",
     audienceLead: "You have a product, a season or a launch, and a team that needs usable assets on a date.",
     kicker: "Brands",
@@ -151,8 +167,8 @@ export const SERVICES = [
     cardBlurb: "Campaign, lookbook and e-commerce photography for fashion and lifestyle brands, with usage rights in writing.",
     metaTitle: "Brand Campaign, Lookbook & E-commerce Photographer in Noida & Delhi NCR | nerdyphotographer.in",
     metaDescription: "Campaign, lookbook and e-commerce photography for fashion, fitness and lifestyle brands in Noida and Delhi NCR. Planned productions, clear usage rights and a written contract. Send a brief for a quote.",
-    eyebrow: "Campaigns · Lookbooks · E-commerce",
-    h1: "Brand campaign & lookbook photographer in Noida",
+    eyebrow: "Campaigns · Lookbooks · E-commerce · Noida & Delhi NCR",
+    h1: "Brand campaigns & lookbooks",
     intro: [
       "A brand shoot has to work twice: once as pictures people stop for, and once as assets your team can actually use — the right crops, the right number of frames, delivered on the date you need them.",
       "nerdyphotographer.in plans and shoots campaigns, lookbooks and e-commerce sets for fashion, fitness and lifestyle brands in Noida and Delhi NCR. Every production is covered by a written contract that spells out the deliverables, the payment milestones and the usage rights."
@@ -166,11 +182,11 @@ export const SERVICES = [
       "A contract covering deliverables, payment milestones and usage rights, signed online before the shoot."
     ],
     packageIds: ["pkg_4", "pkg_5"],
-    // Commissioned work first, then fashion and editorial: a lookbook is fashion
-    // photography, so that work is the right evidence for a brand to judge.
-    // Fitness stays strict by contrast — a gym owner shown an editorial learns
-    // nothing about whether this studio can light a physique.
-    albumFilter: { types: ["Campaign", "Commercial", "E-commerce"], clientWork: true, activities: ["Fashion", "Editorial"] },
+    // Commissioned work only. Fashion albums are NOT claimed here: the studio has
+    // shot no campaign yet, and a lookbook shown under "recent work" on a
+    // campaigns page reads as a campaign that happened. The page falls back to
+    // the labelled archive row instead, which says what those frames really are.
+    albumFilter: { types: ["Campaign", "Commercial", "E-commerce"], clientWork: true },
     workLinks: [
       { href: "/categories/", label: "Browse work by category" },
       { href: "/albums/", label: "See all albums" }
@@ -182,6 +198,47 @@ export const SERVICES = [
       ["Do you shoot product-only e-commerce?", "The studio's focus is on-model fashion and lifestyle photography. Product-only catalogues are taken on when they are part of a wider campaign."],
       ["How is payment structured?", "In milestones tied to the production — an advance to hold the date, with the balance split across the shoot and delivery. The exact schedule is in the contract."],
       ["Why are there no prices on this page?", "Because no two productions are the same. The price follows the brief — the number of looks, the finished images you need, the crew and the usage — so you get a quote written against what you are actually asking for, rather than a rate card you have to work around."]
+    ]
+  },
+  {
+    slug: "creative-shoot-photographer-noida",
+    packageIds: ["pkg_2", "pkg_3", "pkg_4"],
+    emptyNote: "No creative or conceptual shoot has been published here yet.",
+    audience: "For anyone with an idea",
+    audienceLead: "You are not a model and not a brand. You have a picture in your head and nowhere obvious to ask for it.",
+    kicker: "For anyone with an idea",
+    cardTitle: "Creative & Conceptual Shoots",
+    cardBlurb: "Conceptual, themed and personal shoots for artists, makers and performers — the work that fits none of the other four pages.",
+    metaTitle: "Creative & Conceptual Photoshoot in Noida & Delhi NCR | nerdyphotographer.in",
+    metaDescription: "Creative and conceptual photography in Noida and Delhi NCR — themed and narrative shoots, portraits that are not for a casting, personal projects and collaborations with artists and makers. See how a shoot with no brief is planned, and send your idea for a quote.",
+    eyebrow: "Conceptual · Themed · Personal projects · Noida & Delhi NCR",
+    h1: "Creative & conceptual shoots",
+    intro: [
+      "Most shoots arrive with a brief already attached: an agency wants a comp card, a magazine wants a story, a brand wants assets by a date. Some ideas have none of that behind them. You have a picture in your head — a character, a place, a thing you make — and nobody whose job it is to turn it into decisions somebody can shoot.",
+      "This page is for that work. nerdyphotographer.in shoots conceptual, themed and personal projects from a home studio in Noida and on location across Delhi NCR: portraits that are not for a casting, narrative sets, and shoots made with artists and makers. The idea stays yours. Pinning it down, then lighting and shooting it, is the part done here."
+    ],
+    includesTitle: "How a shoot with no brief runs",
+    includes: [
+      "A conversation first: what the idea is, what the pictures are for, and what has to be in the frame. It ends written down, as a short brief you can correct.",
+      "References gathered on both sides — pictures, a film still, a colour, a piece of music. An idea that is hard to describe is usually easy to point at.",
+      "The decisions taken before the day: location, light, wardrobe, props, who else needs to be there, and the frames the shoot has to come away with.",
+      "The shoot, run to that list — the planned frames first, then time for what the day turns up.",
+      "The edit: a proofing gallery to choose from, your selects retouched, and colour and sequence worked so the set reads as one idea.",
+      "Full credits for everyone who worked on it, published beside the album if you want the set on this site."
+    ],
+    // The catch-all: an album filed as Creative, Fine Art or Documentary, and
+    // anything the other four pages do not claim.
+    albumFilter: { activities: ["Creative"], types: ["Creative", "Fine Art", "Documentary"], residual: true },
+    workLinks: [
+      { href: "/albums/", label: "See the archive" }
+    ],
+    faqs: [
+      ["I am not a model, a designer or a brand. Is this the right page?", "Probably. This page is for the work the other four do not cover. A portfolio to send to agencies belongs on the model portfolio page, a collection or a magazine story on the fashion and editorial page, physique and training work on the fitness and sports page, and anything whose job is to sell a product on the brand campaigns page. A concept, a theme or a personal project belongs here."],
+      ["My idea is still vague. Is that enough to start with?", "Yes. Half a sentence and three reference pictures is a start. The first conversation turns that into something specific: what is in the frame, where, in what light, and what the set of pictures is for. If the idea needs more thinking before it is worth shooting, you will be told so before a date is held."],
+      ["How much does a creative shoot cost?", "It is quoted to the brief. One portrait idea in the studio and a two-location shoot with a team are not the same job, so the price follows what the idea needs — looks, locations, people, shooting hours and finished images. Send the idea through the booking page and you will have a price written against it before anything is booked."],
+      ["Who else needs to be on the shoot?", "Whoever the idea needs, and often nobody. Bring your own stylist, hair and make-up artist or performers if you have them, or ask when you send the idea and the studio will help put a small team together. Everyone involved is credited on the finished work."],
+      ["Is this a TFP or collaboration shoot?", "No. A creative shoot is quoted and booked like any other. Collaborations are occasional and by invitation only — if you have been given an invite code, enter it on the booking page."],
+      ["When can I book, and what do I get?", "Shoots run on weekends, in the home studio in Noida or on location across Delhi NCR when the idea needs a real place, and the booking page shows the dates that are open. Afterwards you get a proofing gallery to choose from and your selects retouched. RAW files are not delivered, and the shoot is covered by a written contract signed online."]
     ]
   }
 ];
