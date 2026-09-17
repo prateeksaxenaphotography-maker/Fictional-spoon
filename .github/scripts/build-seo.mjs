@@ -354,6 +354,9 @@ const photosForPage = (v) => {
     .filter((x) => x.look === f.look || (f.residual && !x.look && !claimedByClientPage(s))));
 };
 const liveServices = SERVICES.filter((v) => (v.albumFilter && v.albumFilter.look ? photosForPage(v) : albumsForPage(v)).length > 0);
+// The comp cards live on the page that carries them, once it exists (app.js compCardsHref).
+const compCardsPage = liveServices.find((v) => v.compCards);
+const compCardsHref = compCardsPage ? `/services/${compCardsPage.slug}/#comp-cards` : "/categories/?kind=type&val=Comp%20Cards";
 
 // Every photo of one kind, as a grid. Each tile is a plain link to its album,
 // which is what a visitor without JavaScript (and a crawler) follows; app.js
@@ -445,13 +448,7 @@ function buildServicePage(v) {
       </div>
     </section>
 
-    <section class="section container section-divider">
-      <div class="section-head"><p class="eyebrow">What it costs</p><h2>Quoted to the brief</h2></div>
-      <p class="svc-note">No fixed rate card here — the price follows the shoot: how many looks, how many finished images, whether it is a half day or a full production, and where it is shot. Tell me what you need and you will have a price against it, in writing, before anything is booked.</p>
-      <div class="svc-actions"><a href="/book/" data-link class="btn btn-dark">Ask for a quote →</a></div>
-    </section>
-
-    ${(grid || cards).length ? `<section class="section container section-divider">
+    ${(grid || cards).length ? `<section class="section container section-divider"${v.compCards ? ' id="comp-cards"' : ""}>
       <div class="section-head row">
         <div>
           <p class="eyebrow">The work · ${grid ? `${grid.length} photograph${grid.length === 1 ? "" : "s"}` : `${cards.length} album${cards.length === 1 ? "" : "s"}`}</p>
@@ -459,7 +456,7 @@ function buildServicePage(v) {
         </div>
         <div class="svc-worklinks">${workLinks.map((l) => `<a href="${esc(l.href)}" data-link class="link-arrow">${esc(l.label)} →</a>`).join("")}</div>
       </div>
-      ${grid ? photoGridHtml(grid) : clientCardsHtml(v, cards)}
+      ${grid ? photoGridHtml(grid) : v.compCards ? `<div data-comp-cards>${clientCardsHtml(v, cards)}</div>` : clientCardsHtml(v, cards)}
     </section>` : ""}
 
     <section class="section container section-divider">
@@ -608,7 +605,7 @@ function prerenderBlocks() {
       <h2>For models</h2>
       <ul>
         <li><a href="/categories/?kind=type&amp;val=Model%20Portfolio" data-link>Model portfolios</a></li>
-        <li><a href="/categories/?kind=type&amp;val=Comp%20Cards" data-link>Model comp cards</a></li>
+        <li><a href="${esc(compCardsHref)}" data-link>Model comp cards</a></li>
       </ul>
       <h2>Albums</h2>
       ${albumCardsHtml(newestFirst)}

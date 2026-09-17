@@ -2126,7 +2126,11 @@ window.moveAdminPackageRow = function(index, dir) {
     try { return decodeURIComponent(raw); } catch { return raw; }
   };
 
+  // The Comp Cards page's model blocks live on the model portfolio service page;
+  // the old /categories address and every link to it lead there (see render).
+  const COMP_CARDS_PAGE = "/services/model-portfolio-shoot-noida/";
   function isCurrentlyCompCardView() {
+    if (location.pathname.replace(/\/?$/, "/") === COMP_CARDS_PAGE) return true;
     const search = location.pathname + location.search;
     const decoded = decodeURIComponent(search).replace(/\+/g, " ");
     if (sharedAlbumSegment().startsWith("comp-card-")) return true;
@@ -2991,7 +2995,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (hasCompCard) {
       const modelName = getTalentCleanName(shoot.talent);
       const slug = slugify(modelName);
-      if (slug) groups.push({ label: "Comp card", rendered: [`<span class="lb-person"><a href="/share/?a=comp-card-${encodeURIComponent(slug)}">View ${esc(modelName)}’s comp card ↗</a><small class="lb-person-note">Every model on the site has one, free to view and download as a PDF. <a href="/categories?kind=type&amp;val=Comp%20Cards">See all models’ comp cards ↗</a></small></span>`] });
+      if (slug) groups.push({ label: "Comp card", rendered: [`<span class="lb-person"><a href="/share/?a=comp-card-${encodeURIComponent(slug)}">View ${esc(modelName)}’s comp card ↗</a><small class="lb-person-note">Every model on the site has one, free to view and download as a PDF. <a href="${esc(compCardsHref())}" data-link>See all models’ comp cards ↗</a></small></span>`] });
     }
     // Last row, below every credit that belongs to the shoot: these links are
     // the studio's own, not a credit for the work, and naming the studio on
@@ -3312,9 +3316,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       }
     }
 
-    // "See the full album" leaves the page: the router follows the link, and the
-    // viewer must not stay open on top of the album it leads to.
-    lbSidebar.querySelectorAll(".lb-album-link").forEach((a) => a.addEventListener("click", () => closeLb()));
+    // A link in the panel ("See the full album", "See all models' comp cards")
+    // leaves the page: the router follows it, and the viewer must not stay open
+    // on top of the page it leads to.
+    lbSidebar.querySelectorAll("a[data-link]").forEach((a) => a.addEventListener("click", () => closeLb()));
 
     // Wire angle filter buttons for Model Portfolio view inside lightbox
     lbSidebar.querySelectorAll(".angle-filter-btn").forEach(btn => {
@@ -3549,10 +3554,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       adminSec.style.display = "block";
     }
 
-    const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi"), compCardsLi = $("#navCompCardsLi"), portfolioLi = $("#navModelPortfolioLi"), workshopLi = $("#navWorkshopLi"), analyticsLi = $("#navAnalyticsLi"), calendarLi = $("#navCalendarLi");
+    const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi"), portfolioLi = $("#navModelPortfolioLi"), workshopLi = $("#navWorkshopLi"), analyticsLi = $("#navAnalyticsLi"), calendarLi = $("#navCalendarLi");
     if (uploadLi) uploadLi.style.display = active ? "block" : "none";
     if (bookLi) bookLi.style.display = active ? "none" : "block";
-    if (compCardsLi) compCardsLi.style.display = "block";
     // Public for everyone. The PDF switch decides only who can download.
     if (portfolioLi) portfolioLi.style.display = "block";
     if (workshopLi) workshopLi.style.display = "block"; // Always show Workshop in nav
@@ -4244,6 +4248,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     }));
   };
   const liveServiceLinks = () => SERVICE_LINKS.filter((v) => serviceWork(v).length);
+  // Where "comp cards" links go: the model portfolio page's cards once that page
+  // exists (it is written only when it has work), the old page before then.
+  const OLD_COMP_CARDS_HREF = "/categories?kind=type&val=Comp%20Cards";
+  const compCardsHref = () => (liveServiceLinks().some((v) => `/services/${v.slug}/` === COMP_CARDS_PAGE) ? `${COMP_CARDS_PAGE}#comp-cards` : OLD_COMP_CARDS_HREF);
   // Upload: the client an album without one already gets from the page rules
   // (Model, Brand), or "" when none applies.
   const legacyClientOf = (s) => {
@@ -4347,7 +4355,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <p class="hero-mono-tagline reveal">Not just photos, a perspective. <span class="hero-accent">Editorial-grade portfolios</span> for models &amp; brands.</p>
             <div class="hero-actions reveal">
               <a href="/categories" data-link class="btn btn-dark">Explore work →</a>
-              <a href="/categories?kind=type&amp;val=Comp%20Cards" data-link class="btn btn-ghost">Comp cards</a>
+              <a href="${esc(compCardsHref())}" data-link class="btn btn-ghost">Comp cards</a>
               ${isAdmin() ? `<a href="/upload" data-link class="btn btn-ghost">Publish a shoot</a>` : `<a href="/book" data-link class="btn btn-ghost">Book a shoot</a>`}
             </div>
           </div>
@@ -4395,7 +4403,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       <!-- QUICK LINKS -->
       <section class="section container">
         <div class="quick-links-grid reveal" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin: 40px 0;">
-          <a href="/categories?kind=type&amp;val=Comp%20Cards" data-link class="btn btn-dark" style="text-align: center; padding: 16px 24px;">Model Comp Cards →</a>
+          <a href="${esc(compCardsHref())}" data-link class="btn btn-dark" style="text-align: center; padding: 16px 24px;">Model Comp Cards →</a>
           <a href="/workshop-attended" data-link class="btn btn-dark" style="text-align: center; padding: 16px 24px;">Workshop Attended →</a>
         </div>
       </section>
@@ -4514,7 +4522,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <p class="page-sub reveal">This link doesn't match any published album. It may have been shared before the album was renamed, or the album may since have been unpublished.</p>
             <div class="hero-actions" style="margin-top: 18px;">
               <a href="/" data-link class="btn btn-dark">Back home →</a>
-              <a href="/categories?kind=type&amp;val=Comp%20Cards" data-link class="btn btn-ghost">Model comp cards</a>
+              <a href="${esc(compCardsHref())}" data-link class="btn btn-ghost">Model comp cards</a>
             </div>
           </div>
         </section>`;
@@ -7890,15 +7898,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       CURRENT_VIEW_SHOOTS = displayList;
 
       const isTestShoot = (kind === "type" && (d === "Selective Collaboration (TFP)" || d === "Comp Cards" || d === "Model Portfolio"));
-      const alphaFilterHtml = isTestShoot ? `
-        <div class="alpha-filter-bar container reveal">
-          <button class="alpha-btn active" data-alpha="ALL">ALL</button>
-          ${"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(char => {
-            const hasMatches = displayList.some(s => getTalentCleanName(s.talent).trim().charAt(0).toUpperCase() === char);
-            return `<button class="alpha-btn" data-alpha="${char}"${!hasMatches ? " disabled" : ""}>${char}</button>`;
-          }).join("")}
-        </div>
-      ` : "";
+      const alphaFilterHtml = isTestShoot ? alphaFilterBarHtml(displayList) : "";
 
       // A filtered view shows the work but never says what such a shoot costs
       // or what you get. This points up at the page that does. Genres map onto
@@ -8192,13 +8192,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <div class="specialty-item reveal">
             <div class="specialty-meta">
               <h3>
-                <a href="/categories?kind=type&amp;val=Comp%20Cards" data-link>Model Comp Cards</a>
+                <a href="${esc(compCardsHref())}" data-link>Model Comp Cards</a>
               </h3>
               <p>
                 Comprehensive testing shoots and comp card layout photography designed for aspiring and professional model talent. Direct submissions focus: clean test lighting, polaroids, digitals, and styling versatility.
                 <span style="display: block; margin-top: 8px; font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.4;">This compcard archive includes photos clicked or produced under nerdyphotographer.in studio or its subsidiaries.</span>
               </p>
-              <a href="/categories?kind=type&amp;val=Comp%20Cards" data-link class="link-arrow" style="font-size: var(--font-xs); font-weight: 700;">Explore comp cards →</a>
+              <a href="${esc(compCardsHref())}" data-link class="link-arrow" style="font-size: var(--font-xs); font-weight: 700;">Explore comp cards →</a>
             </div>
             <div class="specialty-gallery" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
               ${renderSpecialtyGallery(testShootSamples, "MODEL", "type", "Comp Cards")}
@@ -13550,6 +13550,212 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     return bookBuilderLoad;
   }
 
+  // One share affordance for both card layouts. Prefers the OS share sheet,
+  // because this is mostly pressed on a phone to send a model their own
+  // card over WhatsApp, and falls back to the clipboard and then to a
+  // prompt — clipboard access needs a secure context and can be refused,
+  // and the old handler's only answer to that was "Failed to copy link".
+  function wireShareButton(btn, album) {
+    if (!btn || !album) return;
+    // Start the "is the album's own page live?" check as soon as a finger or
+    // pointer heads for the button, so the answer is in hand by the click.
+    const own = albumPathFor(album);
+    const warm = () => { albumPageIsLive(own); };
+    if (own) {
+      btn.addEventListener("pointerenter", warm, { once: true });
+      btn.addEventListener("touchstart", warm, { once: true, passive: true });
+      btn.addEventListener("focus", warm, { once: true });
+    }
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      let url = shareUrlFor(album);
+      if (own) {
+        // Capped: the share sheet must open while the tap still counts as one.
+        const live = await Promise.race([albumPageIsLive(own), new Promise((r) => setTimeout(() => r(false), 1200))]);
+        if (live) url = albumShareUrlFor(album);
+      }
+      const title = getTalentCleanName(album.isCompCard ? album.talent : (album.title || "Album"));
+      if (navigator.share) {
+        try {
+          await navigator.share({ title, url });
+          return;
+        } catch (err) {
+          // AbortError means the sheet opened and was dismissed on purpose;
+          // anything else means it never opened, so fall through.
+          if (err && err.name === "AbortError") return;
+        }
+      }
+      try {
+        await navigator.clipboard.writeText(url);
+        toast("Link copied to clipboard");
+      } catch {
+        prompt("Copy this album link:", url);
+      }
+    });
+  }
+
+  // Full-bleed work blocks (Albums, Categories, the Comp Cards blocks): open the
+  // lightbox, share, and the admin edit / hide / delete buttons. `root` is the
+  // view, or the slot on the model portfolio service page the blocks are painted into.
+  function wireWorkBlocks(root) {
+    root.querySelectorAll(".work-block").forEach((block) => {
+      const s = CURRENT_VIEW_SHOOTS.find((x) => x.id === block.dataset.shoot) || SHOOTS.find((x) => x.id === block.dataset.shoot);
+      if (!s) return;
+      const isCc = qualifiesAsCompCard(s) && isCurrentlyCompCardView();
+      const isPortView = (s.isCompCard || s.type === "Selective Collaboration (TFP)" || s.type === "Test Shoot") && isCurrentlyModelPortfolioView();
+      // On the Model Portfolio page this used to fall through to "include
+      // everything" (isCc is false there, since isCurrentlyCompCardView()
+      // only matches the Comp Cards view) — so opening the lightbox showed
+      // comp-only photos too, until the angle filter was clicked and rebuilt
+      // the list with this same portfolio-usage rule.
+      const list = s.photos.filter((p) => {
+        if (isCc) return usableOnCompCard(p);
+        if (isPortView) return usableInPortfolio(p);
+        return true;
+      }).map((p) => ({ ...p, shoot: s }));
+      const open = () => openLb(list, 0);
+      if (s.isCompCard) {
+        block.querySelectorAll(".comp-card-thumb").forEach(thumb => {
+          thumb.addEventListener("click", () => {
+            const idx = parseInt(thumb.dataset.index, 10) || 0;
+            openLb(list, idx);
+          });
+        });
+      } else {
+        block.querySelector(".work-media")?.addEventListener("click", open);
+      }
+      block.querySelector(".work-open")?.addEventListener("click", open);
+      wireShareButton(block.querySelector(".work-share"), s);
+      
+      // edit buttons click handler
+      block.querySelectorAll(".work-edit").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const targetId = btn.dataset.id || s.id;
+          history.pushState(null, "", `/upload?edit=${targetId}`);
+          render();
+        });
+      });
+
+      block.querySelectorAll(".work-toggle-hide").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const tName = btn.dataset.talent;
+          if (!tName) return;
+          
+          const matchingShoots = SHOOTS.filter(s => (s.talent || "").trim().toLowerCase() === tName.trim().toLowerCase());
+          if (matchingShoots.length === 0) return;
+          
+          if (btn.dataset.page === "portfolio") {
+            matchingShoots.forEach(s => { s.showOnModelPortfolio = false; });
+            try {
+              localStorage.setItem("wps_custom_shoots", JSON.stringify(SHOOTS));
+            } catch(err) {}
+            alert(`🔒 '${tName}' is now hidden from the public Model portfolio page. Comp cards are unchanged.`);
+            if (typeof render === "function") render();
+            return;
+          }
+          const currentlyHidden = matchingShoots.some(s => s.hideFromCompCard);
+          const newHiddenState = !currentlyHidden;
+          
+          matchingShoots.forEach(s => { s.hideFromCompCard = newHiddenState; });
+          
+          try {
+            localStorage.setItem("wps_custom_shoots", JSON.stringify(SHOOTS));
+          } catch(err) {}
+          
+          alert(newHiddenState ? `🔒 Model card for '${tName}' is now HIDDEN from the public Comp Cards page.` : `👁️ Model card for '${tName}' is now VISIBLE on the public Comp Cards page.`);
+          if (typeof render === "function") render();
+        });
+      });
+      
+      // delete button click handler
+      block.querySelector(".work-delete")?.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if (confirm(`Are you sure you want to delete the photoshoot "${s.title}"?`)) {
+          await delShoot(s.id);
+          await loadShoots();
+          toast(`Deleted "${s.title}".`);
+          render(); // re-render view
+          await syncToGitHub(SHOOTS, { deletedIds: [s.id] });
+        }
+      });
+
+      // view diagram button click handler
+      block.querySelectorAll(".view-diagram-btn").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const wrap = block.querySelector(".diagram-img-wrap");
+          if (wrap) {
+            const visible = wrap.style.display === "block";
+            wrap.style.display = visible ? "none" : "block";
+            btn.textContent = visible ? "View Lighting Diagram" : "Hide Lighting Diagram";
+          }
+        });
+      });
+    });
+  }
+
+  // The A–Z bar above a model list.
+  function wireAlphaFilter(root) {
+    const alphaBtns = root.querySelectorAll(".alpha-btn");
+    if (alphaBtns.length) {
+      alphaBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          alphaBtns.forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          
+          const filterVal = btn.dataset.alpha;
+          const blocks = root.querySelectorAll(".work-block");
+          blocks.forEach(block => {
+            const talent = getTalentCleanName(block.dataset.talent || "");
+            const firstChar = talent.trim().charAt(0).toUpperCase();
+            if (filterVal === "ALL" || firstChar === filterVal) {
+              block.style.display = "";
+            } else {
+              block.style.display = "none";
+            }
+          });
+        });
+      });
+    }
+  }
+  const alphaFilterBarHtml = (list) => `
+        <div class="alpha-filter-bar container reveal">
+          <button class="alpha-btn active" data-alpha="ALL">ALL</button>
+          ${"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(char => {
+            const hasMatches = list.some(s => getTalentCleanName(s.talent).trim().charAt(0).toUpperCase() === char);
+            return `<button class="alpha-btn" data-alpha="${char}"${!hasMatches ? " disabled" : ""}>${char}</button>`;
+          }).join("")}
+        </div>
+      `;
+
+  // The model portfolio service page shows the Comp Cards page's blocks — same
+  // list, same rules, same A–Z bar — in the slot the deploy leaves for them.
+  // The plain album cards the deploy writes there stay as what crawlers and
+  // visitors without JavaScript read. Runs on every paint of a static page, so
+  // a data refresh repaints the cards too.
+  function paintServiceCompCards() {
+    const slot = view.querySelector("[data-comp-cards]");
+    if (!slot) return;
+    const list = buildCompCardDisplayList(SHOOTS.filter((s) => qualifiesAsCompCard(s)), "type", "Comp Cards");
+    if (!list.length) return;
+    const firstPaint = !slot.dataset.painted;
+    CURRENT_VIEW_SHOOTS = list;
+    slot.innerHTML = `${alphaFilterBarHtml(list)}<div class="work-list">${list.map(fullBleedBlock).join("")}</div>`;
+    slot.dataset.painted = "1";
+    const section = slot.closest("section");
+    const eyebrow = section && section.querySelector(".section-head .eyebrow");
+    if (eyebrow) eyebrow.textContent = `The work · ${list.length} model${list.length === 1 ? "" : "s"}`;
+    wireWorkBlocks(slot);
+    wireAlphaFilter(slot);
+    // Arrived from an old Comp Cards link: land on the cards, not the page top.
+    if (firstPaint && location.hash === "#comp-cards" && section) {
+      const header = document.querySelector(".site-header");
+      window.scrollTo({ top: Math.max(0, section.getBoundingClientRect().top + window.scrollY - (header ? header.offsetHeight : 0)), behavior: "auto" });
+    }
+  }
+
   function wireView(key) {
     if (key === "portfolio-book") {
       const root = view.querySelector("#studioBookRoot");
@@ -13587,50 +13793,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         }
       });
     });
-
-    // One share affordance for both card layouts. Prefers the OS share sheet,
-    // because this is mostly pressed on a phone to send a model their own
-    // card over WhatsApp, and falls back to the clipboard and then to a
-    // prompt — clipboard access needs a secure context and can be refused,
-    // and the old handler's only answer to that was "Failed to copy link".
-    function wireShareButton(btn, album) {
-      if (!btn || !album) return;
-      // Start the "is the album's own page live?" check as soon as a finger or
-      // pointer heads for the button, so the answer is in hand by the click.
-      const own = albumPathFor(album);
-      const warm = () => { albumPageIsLive(own); };
-      if (own) {
-        btn.addEventListener("pointerenter", warm, { once: true });
-        btn.addEventListener("touchstart", warm, { once: true, passive: true });
-        btn.addEventListener("focus", warm, { once: true });
-      }
-      btn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        let url = shareUrlFor(album);
-        if (own) {
-          // Capped: the share sheet must open while the tap still counts as one.
-          const live = await Promise.race([albumPageIsLive(own), new Promise((r) => setTimeout(() => r(false), 1200))]);
-          if (live) url = albumShareUrlFor(album);
-        }
-        const title = getTalentCleanName(album.isCompCard ? album.talent : (album.title || "Album"));
-        if (navigator.share) {
-          try {
-            await navigator.share({ title, url });
-            return;
-          } catch (err) {
-            // AbortError means the sheet opened and was dismissed on purpose;
-            // anything else means it never opened, so fall through.
-            if (err && err.name === "AbortError") return;
-          }
-        }
-        try {
-          await navigator.clipboard.writeText(url);
-          toast("Link copied to clipboard");
-        } catch {
-          prompt("Copy this album link:", url);
-        }
-      });
-    }
 
     // Album page: every frame opens the lightbox at that frame.
     view.querySelectorAll(".album-page-grid").forEach((grid) => {
@@ -13751,104 +13913,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       }
     });
 
-    // work-block interactions (open lightbox on media or "View project")
-    view.querySelectorAll(".work-block").forEach((block) => {
-      const s = CURRENT_VIEW_SHOOTS.find((x) => x.id === block.dataset.shoot) || SHOOTS.find((x) => x.id === block.dataset.shoot);
-      if (!s) return;
-      const isCc = qualifiesAsCompCard(s) && isCurrentlyCompCardView();
-      const isPortView = (s.isCompCard || s.type === "Selective Collaboration (TFP)" || s.type === "Test Shoot") && isCurrentlyModelPortfolioView();
-      // On the Model Portfolio page this used to fall through to "include
-      // everything" (isCc is false there, since isCurrentlyCompCardView()
-      // only matches the Comp Cards view) — so opening the lightbox showed
-      // comp-only photos too, until the angle filter was clicked and rebuilt
-      // the list with this same portfolio-usage rule.
-      const list = s.photos.filter((p) => {
-        if (isCc) return usableOnCompCard(p);
-        if (isPortView) return usableInPortfolio(p);
-        return true;
-      }).map((p) => ({ ...p, shoot: s }));
-      const open = () => openLb(list, 0);
-      if (s.isCompCard) {
-        block.querySelectorAll(".comp-card-thumb").forEach(thumb => {
-          thumb.addEventListener("click", () => {
-            const idx = parseInt(thumb.dataset.index, 10) || 0;
-            openLb(list, idx);
-          });
-        });
-      } else {
-        block.querySelector(".work-media")?.addEventListener("click", open);
-      }
-      block.querySelector(".work-open")?.addEventListener("click", open);
-      wireShareButton(block.querySelector(".work-share"), s);
-      
-      // edit buttons click handler
-      block.querySelectorAll(".work-edit").forEach(btn => {
-        btn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const targetId = btn.dataset.id || s.id;
-          history.pushState(null, "", `/upload?edit=${targetId}`);
-          render();
-        });
-      });
+    wireWorkBlocks(view);
 
-      block.querySelectorAll(".work-toggle-hide").forEach(btn => {
-        btn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const tName = btn.dataset.talent;
-          if (!tName) return;
-          
-          const matchingShoots = SHOOTS.filter(s => (s.talent || "").trim().toLowerCase() === tName.trim().toLowerCase());
-          if (matchingShoots.length === 0) return;
-          
-          if (btn.dataset.page === "portfolio") {
-            matchingShoots.forEach(s => { s.showOnModelPortfolio = false; });
-            try {
-              localStorage.setItem("wps_custom_shoots", JSON.stringify(SHOOTS));
-            } catch(err) {}
-            alert(`🔒 '${tName}' is now hidden from the public Model portfolio page. Comp cards are unchanged.`);
-            if (typeof render === "function") render();
-            return;
-          }
-          const currentlyHidden = matchingShoots.some(s => s.hideFromCompCard);
-          const newHiddenState = !currentlyHidden;
-          
-          matchingShoots.forEach(s => { s.hideFromCompCard = newHiddenState; });
-          
-          try {
-            localStorage.setItem("wps_custom_shoots", JSON.stringify(SHOOTS));
-          } catch(err) {}
-          
-          alert(newHiddenState ? `🔒 Model card for '${tName}' is now HIDDEN from the public Comp Cards page.` : `👁️ Model card for '${tName}' is now VISIBLE on the public Comp Cards page.`);
-          if (typeof render === "function") render();
-        });
-      });
-      
-      // delete button click handler
-      block.querySelector(".work-delete")?.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        if (confirm(`Are you sure you want to delete the photoshoot "${s.title}"?`)) {
-          await delShoot(s.id);
-          await loadShoots();
-          toast(`Deleted "${s.title}".`);
-          render(); // re-render view
-          await syncToGitHub(SHOOTS, { deletedIds: [s.id] });
-        }
-      });
-
-      // view diagram button click handler
-      block.querySelectorAll(".view-diagram-btn").forEach((btn) => {
-        btn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const wrap = block.querySelector(".diagram-img-wrap");
-          if (wrap) {
-            const visible = wrap.style.display === "block";
-            wrap.style.display = visible ? "none" : "block";
-            btn.textContent = visible ? "View Lighting Diagram" : "Hide Lighting Diagram";
-          }
-        });
-      });
-    });
-    
     // specialty thumb click interactions
     view.querySelectorAll(".specialty-thumb-btn").forEach((btn) => {
       btn.addEventListener("click", (e) => {
@@ -13875,29 +13941,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       });
     });
 
-    // Alphabetical filter wiring for Model Portfolio
-    const alphaBtns = view.querySelectorAll(".alpha-btn");
-    if (alphaBtns.length) {
-      alphaBtns.forEach(btn => {
-        btn.addEventListener("click", () => {
-          alphaBtns.forEach(b => b.classList.remove("active"));
-          btn.classList.add("active");
-          
-          const filterVal = btn.dataset.alpha;
-          const blocks = view.querySelectorAll(".work-block");
-          blocks.forEach(block => {
-            const talent = getTalentCleanName(block.dataset.talent || "");
-            const firstChar = talent.trim().charAt(0).toUpperCase();
-            if (filterVal === "ALL" || firstChar === filterVal) {
-              block.style.display = "";
-            } else {
-              block.style.display = "none";
-            }
-          });
-        });
-      });
-    }
-    
+    wireAlphaFilter(view);
+
     if (key === "upload") {
       const editId = new URLSearchParams(location.search).get("edit");
       wireUpload(editId);
@@ -14084,6 +14129,19 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       return;
     }
 
+    // The Comp Cards page moved onto the model portfolio service page. Its old
+    // addresses (and the older Test Shoot / TFP forms of it) land there, on the
+    // cards — for as long as that page exists; until then the old page stays.
+    if (key === "categories" && kind === "type" && compCardsHref() !== OLD_COMP_CARDS_HREF) {
+      let wanted = val || "";
+      try { wanted = decodeURIComponent(wanted); } catch { /* literal */ }
+      if (["Comp Cards", "Selective Collaboration (TFP)", "Test Shoot"].includes(wanted.replace(/\+/g, " "))) {
+        history.replaceState(null, "", compCardsHref());
+        render();
+        return;
+      }
+    }
+
     if (key === "categories" && val === "Workshop Attended") {
       const allowed = isAdmin() || shouldShowWorkshopsToAll();
       history.pushState(null, "", allowed ? "/workshop-attended" : "/");
@@ -14170,6 +14228,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         if (typeof smoothScroll !== "undefined" && smoothScroll.enabled) smoothScroll.reset();
         wireView(key);
       }
+      if (staticPath) paintServiceCompCards();
       initReveal();
       setActiveNav(key);
 
