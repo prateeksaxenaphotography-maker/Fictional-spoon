@@ -51,6 +51,32 @@ const STUDIO_CONFIG = {
   // others; an album left without an activity lands there too.
   activities: ["Beauty", "Creative", "Editorial", "Fashion", "Fitness", "Portrait", "Sports", "Workshop"],
   types: ["Campaign", "Commercial", "Documentary", "E-commerce", "Editorial", "Fine Art", "Test Shoot", "Workshop Attended"],
+  // One shoot day can hold several looks of different kinds: two fashion, one
+  // fitness, one creative. Each photo can be tagged with the kind of work it
+  // is; a photo left untagged follows the album, through the Activity (or, for
+  // Creative, the Type) listed here. Fashion, Fitness and Creative each have a
+  // "What I shoot" page that shows every photo of that kind. Portrait has no
+  // page — it shows in its album and under Categories → Portrait.
+  // The keys are stored in data.js: never rename one.
+  looks: [
+    { key: "fashion", label: "Fashion & Editorial", activities: ["Fashion", "Editorial", "Beauty"] },
+    { key: "fitness", label: "Fitness & Sports", activities: ["Fitness", "Sports"] },
+    { key: "creative", label: "Creative", activities: ["Creative"], types: ["Creative", "Fine Art", "Documentary"] },
+    { key: "portrait", label: "Portrait", activities: ["Portrait"] }
+  ],
+  // Who an album was made for: the person who booked the shoot and uses the
+  // pictures — not who is credited on it (a make-up artist is credited on most
+  // shoots). An album has one main client and may also be for others, as on a
+  // collaboration everyone uses. `plural` is the filter button on the shared
+  // designers, stylists & make-up artists page. Keys are stored: never rename.
+  clients: [
+    { key: "model", label: "Model", plural: "Models" },
+    { key: "agency", label: "Model agency", plural: "Agencies" },
+    { key: "brand", label: "Brand", plural: "Brands" },
+    { key: "designer", label: "Fashion designer", plural: "Designers" },
+    { key: "stylist", label: "Stylist", plural: "Stylists" },
+    { key: "mua", label: "Makeup & hair artist", plural: "Makeup & hair" }
+  ],
   // Only real values. This list used to ship with Vogue, National Geographic
   // and Patagonia as demo placeholders — one stray click would have printed a
   // client the studio has never shot for, on the site and in any PDF built from

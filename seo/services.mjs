@@ -22,9 +22,22 @@
    only searches this site can realistically win.
 
    Every page says WHO IT IS FOR in `audience`, in the same words a visitor
-   would use about themselves. All four answer that one question, so a fitness
-   model knows at a glance whether she is on the right page — naming two pages
-   after the client and two after the kind of photograph left her guessing.
+   would use about themselves. Every page answers that one question, so a
+   fitness model knows at a glance whether she is on the right page — naming two
+   pages after the client and two after the kind of photograph left her guessing.
+
+   `albumFilter` decides what a page shows, and so whether it exists at all.
+   There are two kinds of page:
+     look     a kind of photograph (config.js `looks`). The page is a grid of
+              every photo of that kind, from every album: a photo tagged with
+              the look in Upload, or an untagged photo in an album whose
+              Activity belongs to it. One shoot day's fitness look lands here
+              even when the rest of the album is fashion.
+     clients  who the album was made for (config.js `clients`). The page shows
+              album cards, each saying who it was shot for. An album that has
+              never been given a client falls back to the older rules kept
+              beside it: `modelWork` (one model, nobody paying), `clientWork`
+              (a client is named) and `types`.
 
    A slug is a public address. Changing one breaks links that Google and
    clients already hold, so add a new page rather than renaming an old one.
@@ -35,9 +48,9 @@
 export const SERVICES_INDEX = {
   metaTitle: "What I Shoot — Model Portfolios, Fashion, Fitness & Brand Photography in Noida & Delhi NCR | nerdyphotographer.in",
   metaDescription: "Model portfolio and comp card shoots, fashion and editorial photography, fitness and sports shoots, and brand campaigns in Noida and Delhi NCR. See sample work and send a brief for a quote.",
-  eyebrow: "Four kinds of shoot",
+  eyebrow: "Kinds of shoot",
   h1: "What I shoot",
-  intro: "nerdyphotographer.in is a photography studio in Noida working across Delhi NCR. Four kinds of shoot, sorted by who they are for: what is included, what it costs, and the work to judge it by."
+  intro: "nerdyphotographer.in is a photography studio in Noida working across Delhi NCR. Each kind of shoot has its own page, sorted by who it is for: what is included, what it costs, and the work to judge it by."
 };
 
 export const SERVICES = [
@@ -66,8 +79,9 @@ export const SERVICES = [
       "A comp card and an online portfolio page on this site that you can send to agencies and casting calls as a link."
     ],
     packageIds: ["pkg_1", "pkg_2", "pkg_3"],
-    // Model work: a single model, shot for the model rather than for a client.
-    albumFilter: { modelWork: true },
+    // Albums made for a model or a model agency. An album with no client set
+    // falls back to model work: a single model, nobody paying for the pictures.
+    albumFilter: { clients: ["model", "agency"], modelWork: true },
     workLinks: [
       { href: "/categories/?kind=type&val=Model%20Portfolio", label: "See model portfolios" },
       { href: "/categories/?kind=type&val=Comp%20Cards", label: "See comp cards" }
@@ -85,7 +99,7 @@ export const SERVICES = [
   {
     slug: "fashion-editorial-photographer-delhi-ncr",
     emptyNote: "There is no fashion or editorial album on the site yet.",
-    audience: "For designers, stylists and magazines",
+    audience: "For magazines and editorial stories",
     audienceLead: "You have a collection, a concept or a story to place, and you need the pictures to carry it.",
     kicker: "Fashion",
     cardTitle: "Fashion & Editorial",
@@ -107,7 +121,7 @@ export const SERVICES = [
       "Delivery with full team credits — model, stylist, hair and make-up — ready for submission or publication."
     ],
     packageIds: ["pkg_3", "pkg_4"],
-    albumFilter: { activities: ["Fashion", "Editorial", "Beauty"] },
+    albumFilter: { look: "fashion" },
     workLinks: [
       { href: "/categories/?kind=activity&val=Fashion", label: "See fashion work" },
       { href: "/categories/?kind=activity&val=Editorial", label: "See editorial work" }
@@ -145,7 +159,7 @@ export const SERVICES = [
       "A proofing gallery to choose from, with natural retouching on your selects."
     ],
     packageIds: ["pkg_2", "pkg_3"],
-    albumFilter: { activities: ["Fitness", "Sports"] },
+    albumFilter: { look: "fitness" },
     workLinks: [
       { href: "/categories/?kind=activity&val=Fitness", label: "See fitness work" },
       { href: "/categories/?kind=activity&val=Sports", label: "See sports work" }
@@ -182,11 +196,11 @@ export const SERVICES = [
       "A contract covering deliverables, payment milestones and usage rights, signed online before the shoot."
     ],
     packageIds: ["pkg_4", "pkg_5"],
-    // Commissioned work only. Fashion albums are NOT claimed here: the studio has
-    // shot no campaign yet, and a lookbook shown under "recent work" on a
-    // campaigns page reads as a campaign that happened. The page falls back to
-    // the labelled archive row instead, which says what those frames really are.
-    albumFilter: { types: ["Campaign", "Commercial", "E-commerce"], clientWork: true },
+    // Commissioned work only: albums made for a brand. Fashion albums are NOT
+    // claimed here — a lookbook shown on a campaigns page reads as a campaign
+    // that happened. An album with no client set falls back to its Type, or to
+    // a named client.
+    albumFilter: { clients: ["brand"], types: ["Campaign", "Commercial", "E-commerce"], clientWork: true },
     workLinks: [
       { href: "/categories/", label: "Browse work by category" },
       { href: "/albums/", label: "See all albums" }
@@ -201,6 +215,46 @@ export const SERVICES = [
     ]
   },
   {
+    slug: "designer-stylist-makeup-artist-shoot-noida",
+    emptyNote: "No shoot for a designer, stylist or make-up artist has been published here yet.",
+    audience: "For designers, stylists and make-up artists",
+    audienceLead: "Your work is the clothes, the styling or the face, and you need pictures that show it — not a model's portfolio with your name in the credits.",
+    kicker: "Designers · Stylists · Make-up",
+    cardTitle: "Designers, Stylists & Make-up Artists",
+    cardBlurb: "Lookbooks, styling portfolios and make-up looks, shot for the designer, stylist or make-up artist whose work is in the frame.",
+    metaTitle: "Photoshoots for Fashion Designers, Stylists & Makeup Artists in Noida & Delhi NCR | nerdyphotographer.in",
+    metaDescription: "Lookbook, styling portfolio and makeup portfolio shoots in Noida and Delhi NCR for fashion designers, stylists and hair and make-up artists — planned around your work and credited in full. See what a shoot includes and send a brief for a quote.",
+    eyebrow: "Lookbooks · Styling · Hair & make-up · Noida & Delhi NCR",
+    h1: "Shoots for designers, stylists & make-up artists",
+    intro: [
+      "When a model books a shoot, the pictures are about the model. When a designer, a stylist or a make-up artist books one, they have to be about the work: the cut and fabric of a garment, how a look is put together, the finish of the skin. Light, framing and the edit all follow from that.",
+      "nerdyphotographer.in shoots lookbooks for fashion designers, portfolio sets for stylists, and make-up and hair looks for the artists who created them, in the home studio in Noida and on location across Delhi NCR. The shoot is planned around what you need to show, and everyone who worked on it is credited."
+    ],
+    includesTitle: "How a shoot for your work runs",
+    includes: [
+      "The brief: what the pictures are for — a lookbook, a portfolio, your social media, a pitch to a client — and what has to be visible in them.",
+      "Planning: the model, the looks and the order they are shot in, so hair, make-up and outfit changes fit the day.",
+      "Light chosen for the work: even light that keeps a garment's true colour, or closer, softer light that shows skin and make-up.",
+      "Frames of the detail as well as the whole look — full length, half length, and close-ups of fabric, styling or make-up.",
+      "A proofing gallery to choose from, your selects retouched without changing the work itself, and full credits for the team."
+    ],
+    packageIds: ["pkg_2", "pkg_3", "pkg_4"],
+    // Albums made for a fashion designer, a stylist or a hair & make-up artist.
+    // No fallback rule: an album is only here once it has been given one of
+    // these clients in Upload.
+    albumFilter: { clients: ["designer", "stylist", "mua"] },
+    workLinks: [
+      { href: "/albums/", label: "See all albums" }
+    ],
+    faqs: [
+      ["I am a make-up artist. Can I book a shoot for my own portfolio?", "Yes. The shoot is planned around your looks — how many, in what order, and how close the frames need to be to show the detail. Bring your own model, or ask for help finding one when you send the brief."],
+      ["Can you shoot a lookbook for my collection?", "Yes. Send the number of pieces and where the lookbook will be used, and the shoot is planned around that: how many looks, how many frames of each, and whether it is shot in the studio or on location."],
+      ["Who is credited on the pictures?", "Everyone who worked on the shoot — you, the model and the rest of the team. If the album goes on this site, the credits are published beside it."],
+      ["How much does it cost?", "It is quoted to the brief. The price follows the number of looks, the finished images you need and where the shoot happens. Send a brief through the booking page and you will have a price written against it before anything is booked."],
+      ["When can I book?", "Shoots run on weekends. The booking page shows the dates that are open."]
+    ]
+  },
+  {
     slug: "creative-shoot-photographer-noida",
     packageIds: ["pkg_2", "pkg_3", "pkg_4"],
     emptyNote: "No creative or conceptual shoot has been published here yet.",
@@ -208,7 +262,7 @@ export const SERVICES = [
     audienceLead: "You are not a model and not a brand. You have a picture in your head and nowhere obvious to ask for it.",
     kicker: "For anyone with an idea",
     cardTitle: "Creative & Conceptual Shoots",
-    cardBlurb: "Conceptual, themed and personal shoots for artists, makers and performers — the work that fits none of the other four pages.",
+    cardBlurb: "Conceptual, themed and personal shoots for artists, makers and performers — the work that fits none of the other pages.",
     metaTitle: "Creative & Conceptual Photoshoot in Noida & Delhi NCR | nerdyphotographer.in",
     metaDescription: "Creative and conceptual photography in Noida and Delhi NCR — themed and narrative shoots, portraits that are not for a casting, personal projects and collaborations with artists and makers. See how a shoot with no brief is planned, and send your idea for a quote.",
     eyebrow: "Conceptual · Themed · Personal projects · Noida & Delhi NCR",
@@ -226,14 +280,15 @@ export const SERVICES = [
       "The edit: a proofing gallery to choose from, your selects retouched, and colour and sequence worked so the set reads as one idea.",
       "Full credits for everyone who worked on it, published beside the album if you want the set on this site."
     ],
-    // The catch-all: an album filed as Creative, Fine Art or Documentary, and
-    // anything the other four pages do not claim.
-    albumFilter: { activities: ["Creative"], types: ["Creative", "Fine Art", "Documentary"], residual: true },
+    // Every creative photo — tagged Creative, or in an album filed as Creative,
+    // Fine Art or Documentary — and, as the catch-all, the photos of an album
+    // that no other page claims.
+    albumFilter: { look: "creative", residual: true },
     workLinks: [
       { href: "/albums/", label: "See the archive" }
     ],
     faqs: [
-      ["I am not a model, a designer or a brand. Is this the right page?", "Probably. This page is for the work the other four do not cover. A portfolio to send to agencies belongs on the model portfolio page, a collection or a magazine story on the fashion and editorial page, physique and training work on the fitness and sports page, and anything whose job is to sell a product on the brand campaigns page. A concept, a theme or a personal project belongs here."],
+      ["I am not a model, a designer or a brand. Is this the right page?", "Probably. This page is for the work the other pages do not cover. A portfolio to send to agencies belongs on the model portfolio page, a magazine story on the fashion and editorial page, physique and training work on the fitness and sports page, anything whose job is to sell a product on the brand campaigns page, and a designer's, stylist's or make-up artist's own portfolio on theirs. A concept, a theme or a personal project belongs here."],
       ["My idea is still vague. Is that enough to start with?", "Yes. Half a sentence and three reference pictures is a start. The first conversation turns that into something specific: what is in the frame, where, in what light, and what the set of pictures is for. If the idea needs more thinking before it is worth shooting, you will be told so before a date is held."],
       ["How much does a creative shoot cost?", "It is quoted to the brief. One portrait idea in the studio and a two-location shoot with a team are not the same job, so the price follows what the idea needs — looks, locations, people, shooting hours and finished images. Send the idea through the booking page and you will have a price written against it before anything is booked."],
       ["Who else needs to be on the shoot?", "Whoever the idea needs, and often nobody. Bring your own stylist, hair and make-up artist or performers if you have them, or ask when you send the idea and the studio will help put a small team together. Everyone involved is credited on the finished work."],

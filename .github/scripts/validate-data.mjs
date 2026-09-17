@@ -300,6 +300,22 @@ for (const s of shoots) {
     if (p.usage !== undefined && !USAGES.has(p.usage)) fail(`album "${s.title || s.id}" photo ${p.id} has an unknown usage ${JSON.stringify(p.usage)}`);
   }
 }
+// The kind of work a photo is and who an album was made for are keys from
+// config.js (`looks`, `clients`). One it doesn't list puts a photo on no
+// "What I shoot" grid, or an album on no client page, without a word.
+const cfgWin = {};
+try { new Function("window", readFileSync("config.js", "utf8"))(cfgWin); } catch (e) { fail("config.js does not execute: " + e.message); }
+const cfg = cfgWin.STUDIO_CONFIG || {};
+const LOOK_KEYS = new Set((cfg.looks || []).map((l) => l && l.key));
+const CLIENT_KEYS = new Set((cfg.clients || []).map((c) => c && c.key));
+for (const s of shoots) {
+  const name = s.title || s.id;
+  for (const p of s.photos || []) {
+    if (p.look !== undefined && p.look !== "" && !LOOK_KEYS.has(p.look)) fail(`album "${name}" photo ${p.id} has an unknown kind of work ${JSON.stringify(p.look)} — config.js looks are ${[...LOOK_KEYS].join(", ")}`);
+  }
+  if (s.forClient !== undefined && s.forClient !== "" && !CLIENT_KEYS.has(s.forClient)) fail(`album "${name}" is for an unknown client ${JSON.stringify(s.forClient)} — config.js clients are ${[...CLIENT_KEYS].join(", ")}`);
+  if (s.alsoFor !== undefined && (!Array.isArray(s.alsoFor) || s.alsoFor.some((k) => !CLIENT_KEYS.has(k) || k === s.forClient))) fail(`album "${name}" has an alsoFor that is not a list of other known clients: ${JSON.stringify(s.alsoFor)}`);
+}
 
 // ── 10. a publish must not strip what the previous one carried ─────────────
 // A browser tab left open across a release keeps running the old publish
@@ -317,16 +333,18 @@ try {
   if (prevData.PORTFOLIO_PDF && win.WPS_DATA.PORTFOLIO_PDF === undefined) fail(`PORTFOLIO_PDF vanished from data.js.${stale}`);
   const photosById = (data) => new Map((data.DEMO_SHOOTS || []).flatMap((s) => (s.photos || []).map((p) => [p.id, p])));
   const before = photosById(prevData);
-  let lostPose = 0, lostUsage = 0;
+  let lostPose = 0, lostUsage = 0, lostLook = 0;
   for (const [id, p] of photosById(win.WPS_DATA)) {
     const q = before.get(id);
     if (!q) continue;
     if (q.angle && !p.angle) lostPose++;
     if (q.usage && !p.usage) lostUsage++;
+    if (q.look && !p.look) lostLook++;
   }
   // One photo un-tagged on purpose is normal; a batch vanishing at once isn't.
   if (lostPose >= 5) fail(`${lostPose} photos lost their pose tag in one publish.${stale}`);
   if (lostUsage >= 10) fail(`${lostUsage} photos lost their usage setting in one publish.${stale}`);
+  if (lostLook >= 5) fail(`${lostLook} photos lost their kind of work in one publish.${stale}`);
 } catch { /* first commit, shallow clone, or no prior data.js */ }
 
 if (failed) process.exit(1);

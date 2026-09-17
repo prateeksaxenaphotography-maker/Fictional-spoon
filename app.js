@@ -1265,6 +1265,31 @@ window.moveAdminPackageRow = function(index, dir) {
   const ACTIVITIES = [...new Set([...(rawAct || []), ...(cfgData.activities || [])])];
   const TYPES = [...new Set([...(rawTyp || []), ...(cfgData.types || [])])];
   const BRANDS = [...new Set([...(rawBrs || []), ...(cfgData.brands || [])])];
+  // Kinds of work a photo can be (config.js `looks`) and who an album was made
+  // for (`clients`). .github/scripts/build-seo.mjs writes the "What I shoot"
+  // pages with the same rules as albumLook / photoLook / albumClients and
+  // albumOnClientPage below: keep the two in step.
+  const LOOKS = Array.isArray(cfgData.looks) ? cfgData.looks : [];
+  const CLIENTS = Array.isArray(cfgData.clients) ? cfgData.clients : [];
+  const lookByKey = new Map(LOOKS.map((l) => [l.key, l]));
+  const clientByKey = new Map(CLIENTS.map((c) => [c.key, c]));
+  const lookLabel = (k) => (lookByKey.get(k) || {}).label || "";
+  // What an album is filed as, which its untagged photos follow. Activity
+  // decides first; Type only where a look names one (Fine Art → Creative).
+  const albumLook = (s) => ((LOOKS.find((l) => (l.activities || []).includes(s.activity))
+    || LOOKS.find((l) => (l.types || []).includes(s.type)) || {}).key) || "";
+  // A photo's own tag wins; an untagged photo follows its album.
+  const photoLook = (p, s) => (lookByKey.has(p.look) ? p.look : albumLook(s));
+  // Who an album was made for: the main client first, then anyone it is also
+  // for. Empty for an album saved before clients existed.
+  const albumClients = (s) => (clientByKey.has(s.forClient)
+    ? [...new Set([s.forClient, ...(Array.isArray(s.alsoFor) ? s.alsoFor : []).filter((k) => clientByKey.has(k))])]
+    : []);
+  // Categories: an Activity also lists the albums with a look of that kind
+  // inside them — a fitness look in a fashion album is under Fitness too. A look
+  // is filed under its first activity (Fashion & Editorial → Fashion).
+  const albumHasActivity = (s, activity) => s.activity === activity
+    || (s.photos || []).some((p) => p && lookByKey.has(p.look) && (lookByKey.get(p.look).activities || [])[0] === activity);
   const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   // The site itself is static (GitHub Pages) but /api/logs is served by server.js
   // running elsewhere (Render). Same-origin locally; absolute URL in production.
@@ -1753,6 +1778,12 @@ window.moveAdminPackageRow = function(index, dir) {
     }
     if (!String(local.chestLabel || "").trim() && String(published.chestLabel || "").trim()) {
       local.chestLabel = published.chestLabel;
+    }
+    // A copy saved before clients existed has no forClient at all; one saved
+    // since always has the field, even empty, so a cleared client stays cleared.
+    if (local.forClient === undefined && published.forClient) {
+      local.forClient = published.forClient;
+      local.alsoFor = Array.isArray(published.alsoFor) ? published.alsoFor : [];
     }
     return local;
   }
@@ -2400,6 +2431,7 @@ window.moveAdminPackageRow = function(index, dir) {
           // "Unspecified" from the edit form, and that must still publish.
           if (p.angle === undefined && rp.angle) p.angle = rp.angle;
           if (p.usage === undefined && rp.usage) p.usage = rp.usage;
+          if (p.look === undefined && rp.look) p.look = rp.look;
         }
       }
 
@@ -2471,6 +2503,8 @@ window.moveAdminPackageRow = function(index, dir) {
               // visitor ever saw one: the portfolio PDF had nothing to offer.
               ...(p.angle ? { angle: p.angle } : {}),
               ...(p.usage ? { usage: p.usage } : {}),
+              // The kind of work a photo was tagged as puts it on that page's grid.
+              ...(p.look ? { look: p.look } : {}),
               ...(small ? { small } : {}),
               ...(medium ? { medium } : {}),
               ...(p.caption ? { caption: p.caption } : {}),
@@ -2931,7 +2965,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     ` : "";
 
     const metaBits = isCc ? [] : [
-      shoot.activity ? `<div><dt>Activity</dt><dd>${esc(shoot.activity)}</dd></div>` : "",
+      // A photo tagged with its own kind of work says so, rather than the
+      // album's Activity: a fitness look in a fashion album is fitness.
+      lookByKey.has(p.look) ? `<div><dt>Kind of work</dt><dd>${esc(lookLabel(p.look))}</dd></div>`
+        : shoot.activity ? `<div><dt>Activity</dt><dd>${esc(shoot.activity)}</dd></div>` : "",
       shoot.season ? `<div><dt>Season</dt><dd>${esc(shoot.season)}</dd></div>` : ""
     ].filter(Boolean);
     // Comp card panel: every social we have for the model, from the album
@@ -2944,8 +2981,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     return `
       <div class="lb-panel">
         <header class="lb-head">
-          <span class="eyebrow lb-eyebrow">${isCc ? "Model portfolio" : esc([shoot.brand, publicShootType(shoot)].filter(Boolean).join(" · "))}</span>
+          <span class="eyebrow lb-eyebrow">${isCc ? "Model portfolio" : p.gridLook ? esc(lookLabel(p.gridLook)) : esc([shoot.brand, publicShootType(shoot)].filter(Boolean).join(" · "))}</span>
           <h2 class="lb-title">${esc(getTalentCleanName(shoot.talent || shoot.title))}</h2>
+          ${p.albumHref ? `<a href="${esc(p.albumHref)}" data-link class="link-arrow lb-album-link">See the full album →</a>` : ""}
           ${angleHtml}
           ${modelTypeHtml}
           ${shoot.description ? `<p class="lb-desc">${esc(shoot.description)}</p>` : ""}
@@ -3139,6 +3177,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         });
       }
     }
+
+    // "See the full album" leaves the page: the router follows the link, and the
+    // viewer must not stay open on top of the album it leads to.
+    lbSidebar.querySelectorAll(".lb-album-link").forEach((a) => a.addEventListener("click", () => closeLb()));
 
     // Wire angle filter buttons for Model Portfolio view inside lightbox
     lbSidebar.querySelectorAll(".angle-filter-btn").forEach(btn => {
@@ -4014,47 +4056,69 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // never rename one.
   //
   // `phrase` reads inside "what a … shoot includes"; `packageIds` are the
-  // packages that page prices; `match` is the rule deciding which albums belong
-  // to it, and therefore whether the page exists at all. The build fails if any
-  // of the three drifts from seo/services.mjs.
+  // packages that page prices; `match` is the rule deciding what the page shows
+  // — the photos of one `look`, or the albums made for its `clients` — and
+  // therefore whether the page exists at all. The build fails if any of the
+  // three drifts from seo/services.mjs.
   //
   // The kicker names WHO THE PAGE IS FOR, and all five answer that same
   // question: two named after the client and two after the kind of photograph
   // left a fitness model unable to tell which page was hers.
   const SERVICE_LINKS = [
-    { slug: "model-portfolio-shoot-noida", kicker: "For models", title: "Model Portfolios & Comp Cards", phrase: "model portfolio", packageIds: ["pkg_1", "pkg_2", "pkg_3"], match: { modelWork: true }, blurb: "Editorial-grade portfolio building and agency-ready comp cards for new faces and working models, male and female.", cta: "Model portfolio shoots" },
-    { slug: "fashion-editorial-photographer-delhi-ncr", kicker: "For designers & magazines", title: "Fashion & Editorial", phrase: "fashion or editorial", packageIds: ["pkg_3", "pkg_4"], match: { activities: ["Fashion", "Editorial", "Beauty"] }, blurb: "Concept-led fashion, beauty and editorial stories for designers, stylists and magazine submissions.", cta: "Fashion & editorial" },
-    { slug: "fitness-sports-photographer-noida", kicker: "For athletes, coaches & gyms", title: "Fitness & Sports Action", phrase: "fitness or sports", packageIds: ["pkg_2", "pkg_3"], match: { activities: ["Fitness", "Sports"] }, blurb: "Action-freezing athletic portraits and fitness content that shows physique, strength and raw performance.", cta: "Fitness & sports shoots" },
-    { slug: "brand-campaign-photographer-noida", kicker: "For brands", title: "Campaigns & Lookbooks", phrase: "brand campaign", packageIds: ["pkg_4", "pkg_5"], match: { types: ["Campaign", "Commercial", "E-commerce"], clientWork: true }, blurb: "High-concept campaigns, lookbooks and e-commerce sets, planned to the shot list and covered by a written contract.", cta: "Brand campaigns" },
-    { slug: "creative-shoot-photographer-noida", kicker: "For anyone with an idea", title: "Creative & Conceptual", phrase: "creative or conceptual", packageIds: ["pkg_2", "pkg_3", "pkg_4"], match: { activities: ["Creative"], types: ["Creative", "Fine Art", "Documentary"], residual: true }, blurb: "Conceptual, themed and personal shoots for artists, makers and performers — the work that fits none of the other four.", cta: "Creative shoots" }
+    { slug: "model-portfolio-shoot-noida", kicker: "For models", title: "Model Portfolios & Comp Cards", phrase: "model portfolio", packageIds: ["pkg_1", "pkg_2", "pkg_3"], match: { clients: ["model", "agency"], modelWork: true }, blurb: "Editorial-grade portfolio building and agency-ready comp cards for new faces and working models, male and female.", cta: "Model portfolio shoots" },
+    { slug: "fashion-editorial-photographer-delhi-ncr", kicker: "For magazines & editorial stories", title: "Fashion & Editorial", phrase: "fashion or editorial", packageIds: ["pkg_3", "pkg_4"], match: { look: "fashion" }, blurb: "Concept-led fashion, beauty and editorial stories for designers, stylists and magazine submissions.", cta: "Fashion & editorial" },
+    { slug: "fitness-sports-photographer-noida", kicker: "For athletes, coaches & gyms", title: "Fitness & Sports Action", phrase: "fitness or sports", packageIds: ["pkg_2", "pkg_3"], match: { look: "fitness" }, blurb: "Action-freezing athletic portraits and fitness content that shows physique, strength and raw performance.", cta: "Fitness & sports shoots" },
+    { slug: "brand-campaign-photographer-noida", kicker: "For brands", title: "Campaigns & Lookbooks", phrase: "brand campaign", packageIds: ["pkg_4", "pkg_5"], match: { clients: ["brand"], types: ["Campaign", "Commercial", "E-commerce"], clientWork: true }, blurb: "High-concept campaigns, lookbooks and e-commerce sets, planned to the shot list and covered by a written contract.", cta: "Brand campaigns" },
+    { slug: "designer-stylist-makeup-artist-shoot-noida", kicker: "For designers, stylists & make-up artists", title: "Designers, Stylists & Make-up Artists", phrase: "designer, stylist or make-up", packageIds: ["pkg_2", "pkg_3", "pkg_4"], match: { clients: ["designer", "stylist", "mua"] }, blurb: "Lookbooks, styling portfolios and make-up looks, shot for the designer, stylist or make-up artist whose work is in the frame.", cta: "Shoots for your work" },
+    { slug: "creative-shoot-photographer-noida", kicker: "For anyone with an idea", title: "Creative & Conceptual", phrase: "creative or conceptual", packageIds: ["pkg_2", "pkg_3", "pkg_4"], match: { look: "creative", residual: true }, blurb: "Conceptual, themed and personal shoots for artists, makers and performers — the work that fits none of the others.", cta: "Creative shoots" }
   ];
 
   // A page exists once it has work of its own, and not before. The deploy does
   // not write a page with nothing to show, so the card and the menu link must
-  // hide it too or they would lead to a 404. Same rule on both sides, checked
-  // against seo/services.mjs by the build.
-  const serviceAlbums = (v) => {
+  // hide it too or they would lead to a 404. Same rules on both sides (see
+  // build-seo.mjs), and the build checks `match` against seo/services.mjs.
+  const oneModelAlbum = (s) => { const t = (s.talent || "").trim(); return !!t && !t.includes(",") && !/\s(and|&)\s/i.test(t); };
+  const namesClient = (s) => !!(s.client && s.client.trim());
+  // Filed as creative on purpose. For an album with no client set this wins over
+  // the model-work rule (same as the build).
+  const filedAsCreative = (s) => { const c = lookByKey.get("creative") || {}; return (c.activities || []).includes(s.activity) || (c.types || []).includes(s.type); };
+  // An album with a client is on the pages for that client and no others. One
+  // without falls back to the rules the page kept from before clients existed.
+  const albumOnClientPage = (f, s) => {
+    const mine = albumClients(s);
+    if (mine.length) return (f.clients || []).some((c) => mine.includes(c));
+    if (f.types && f.types.includes(s.type)) return true;
+    if (f.modelWork && oneModelAlbum(s) && !namesClient(s) && !filedAsCreative(s)) return true;
+    if (f.clientWork && namesClient(s)) return true;
+    return false;
+  };
+  // What a page shows: the photos of its look, or the albums made for its clients.
+  const serviceWork = (v) => {
     const f = v.match || {};
     const shown = SHOOTS.filter((s) => s && !s.isTestimonial && s.type !== "Workshop Attended" && s.isPublic !== false
       && !isFutureShoot(s) && !s.isCompCard && (s.photos || []).some((p) => p && p.url));
-    const hasClient = (s) => !!(s.client && s.client.trim());
-    const oneModel = (s) => { const t = (s.talent || "").trim(); return !!t && !t.includes(",") && !/\s(and|&)\s/i.test(t); };
-    // Filed as creative on purpose wins over the model-work rule (same as the build).
-    const creative = (SERVICE_LINKS.find((o) => (o.match || {}).residual) || {}).match || {};
-    const filedAsCreative = (s) => (creative.activities || []).includes(s.activity) || (creative.types || []).includes(s.type);
-    const claims = (v2, s) => {
-      const g = v2.match || {};
-      if (g.activities && g.activities.includes(s.activity)) return true;
-      if (g.types && g.types.includes(s.type)) return true;
-      if (g.modelWork && oneModel(s) && !hasClient(s) && !filedAsCreative(s)) return true;
-      if (g.clientWork && hasClient(s)) return true;
-      return false;
-    };
-    // The catch-all takes what is filed as creative, and whatever no other page claims.
-    if (f.residual) return shown.filter((s) => filedAsCreative(s) || !SERVICE_LINKS.some((o) => !(o.match || {}).residual && claims(o, s)));
-    return shown.filter((s) => claims(v, s));
+    if (!f.look) return shown.filter((s) => albumOnClientPage(f, s));
+    // The catch-all also takes the untagged photos of an album that has no kind
+    // of its own and that no client page claims.
+    const claimed = (s) => SERVICE_LINKS.some((o) => (o.match || {}).clients && albumOnClientPage(o.match, s));
+    return shown.flatMap((s) => s.photos.filter((p) => {
+      if (!p || !p.url) return false;
+      const k = photoLook(p, s);
+      return k === f.look || (!!f.residual && !k && !claimed(s));
+    }));
   };
-  const liveServiceLinks = () => SERVICE_LINKS.filter((v) => serviceAlbums(v).length);
+  const liveServiceLinks = () => SERVICE_LINKS.filter((v) => serviceWork(v).length);
+  // Upload: the client an album without one already gets from the page rules
+  // (Model, Brand), or "" when none applies.
+  const legacyClientOf = (s) => {
+    const page = SERVICE_LINKS.find((v) => (v.match || {}).clients && albumOnClientPage(v.match, { ...s, forClient: "" }));
+    return page ? page.match.clients[0] : "";
+  };
+  // Upload: what "follows the album" means for the Activity and Type on the form now.
+  const followAlbumText = () => {
+    const k = albumLook({ activity: $("#f_activity")?.value || "", type: $("#f_type")?.value || "" });
+    return k ? `Follows album — ${lookLabel(k)}` : "Follows album";
+  };
 
   function viewHome() {
     // Nine is a cap for a very large archive, not a curation: with the albums
@@ -7681,7 +7745,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         if (kind === "type" && (d === "Model Portfolio" || d === "Comp Cards" || d === "Selective Collaboration (TFP)" || d === "Test Shoot")) {
           return d === "Model Portfolio" ? showsOnModelPage(s, "Model Portfolio") : qualifiesAsCompCard(s);
         }
-        return (kind === "activity" ? s.activity : kind === "brand" ? s.brand : s.type) === d;
+        if (kind === "activity") return albumHasActivity(s, d);
+        return (kind === "brand" ? s.brand : s.type) === d;
       });
 
       let displayList = buildCompCardDisplayList(list, kind, d);
@@ -7763,7 +7828,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const shoots = SHOOTS.filter((s) => {
         if (s.type === "Workshop Attended") return false;
         if (key === "brand" && (!s.client || !s.client.trim())) return false;
-        return s[key] === v;
+        return key === "activity" ? albumHasActivity(s, v) : s[key] === v;
       });
       const sample = (shoots[0] || SHOOTS[0] || {}).palette || ["#3a3a3a", "#0d0d0d"];
       // Pick a representative cover photo for the tile
@@ -8162,6 +8227,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <button type="button" class="thumb-bulk-angle-btn" data-angle="back" style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">Back</button>
               <button type="button" class="thumb-bulk-angle-btn" data-angle="close-up" style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">Close-up</button>
               <span style="width:1px; align-self:stretch; background:var(--line-2);"></span>
+              <span style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft);">Kind of work:</span>
+              ${LOOKS.map((l) => `<button type="button" class="thumb-bulk-look-btn" data-look="${esc(l.key)}" style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">${esc(l.label)}</button>`).join("")}
+              <button type="button" class="thumb-bulk-look-btn" data-look="" style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink-soft); cursor:pointer;">Follow album</button>
+              <span style="width:1px; align-self:stretch; background:var(--line-2);"></span>
               <button type="button" id="thumbBulkSelectAll" style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink-soft); cursor:pointer;">Select all</button>
               <button type="button" id="thumbBulkClear" style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink-soft); cursor:pointer;">Clear</button>
               <span id="thumbBulkCount" style="margin-left:auto; font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); color:var(--ink-soft);">0 selected</span>
@@ -8201,6 +8270,22 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <label class="field"><span>Season / Year</span><input id="f_season" type="text" placeholder="Spring 2026" /></label>
                 <label class="field"><span>Shoot Location (add Instagram in parentheses)</span><input id="f_location" type="text" placeholder="e.g. Studio (@studiohandle), Noida, Outdoor" /></label>
                 <div id="f_location_verify" style="margin-top: 5px; font-size: var(--font-xs); display: none;"></div>
+              </div>
+              <!-- Who the album was made for decides which client page it is on
+                   (Model portfolios, Campaigns, Designers/stylists/make-up).
+                   The kind of work in each photo is set on the photos. -->
+              <div class="field-row" id="f_for_row">
+                <label class="field"><span>Who is this album for? <em class="label-hint">who booked the shoot and uses the photos</em></span><select id="f_for_client">${chooseOpt}${CLIENTS.map((c) => `<option value="${esc(c.key)}">${esc(c.label)}</option>`).join("")}</select></label>
+              </div>
+              <div class="field" id="f_also_for_field">
+                <span>Also for <em class="label-hint">anyone else who uses the photos, as on a collaboration</em></span>
+                <div id="f_also_for" style="display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 8px;">
+                  ${CLIENTS.map((c) => `
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); font-weight: 500; color: var(--ink); cursor: pointer; user-select: none;">
+                      <input type="checkbox" class="also-for-cb" value="${esc(c.key)}" style="width: 16px; height: 16px; accent-color: var(--accent);" />
+                      ${esc(c.label)}
+                    </label>`).join("")}
+                </div>
               </div>
             </fieldset>
 
@@ -9203,6 +9288,33 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         toast(`Tagged ${n} photo${n > 1 ? "s" : ""} as ${ANGLE_LABELS[angle]}.`);
       });
     });
+    // Kind of work, a look at a time: tick the photos of one look, click its kind.
+    // "Follow album" clears the tag, so the photos go back to the album's Activity.
+    bulkToolbar?.querySelectorAll(".thumb-bulk-look-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (!selectedForBulk.size) { toast("Tick the checkbox on each photo of the look first."); return; }
+        const look = btn.dataset.look;
+        let n = 0;
+        staged.forEach((item) => { if (selectedForBulk.has(item.id)) { item.look = look; n++; } });
+        selectedForBulk.clear();
+        renderStaged();
+        toast(look ? `Tagged ${n} photo${n > 1 ? "s" : ""} as ${lookLabel(look)}.` : `${n} photo${n > 1 ? "s" : ""} now follow${n > 1 ? "" : "s"} the album.`);
+      });
+    });
+    // An untagged photo follows the album, so its dropdown says what that means
+    // right now — and says it again whenever Activity or Type changes.
+    const syncFollowText = () => grid.querySelectorAll('.thumb-look-select option[value=""]').forEach((o) => { o.textContent = followAlbumText(); });
+    $("#f_activity")?.addEventListener("change", syncFollowText);
+    $("#f_type")?.addEventListener("change", syncFollowText);
+    // "Also for" never repeats the main client.
+    const forSelect = $("#f_for_client");
+    const syncAlsoFor = () => document.querySelectorAll("#f_also_for .also-for-cb").forEach((cb) => {
+      const isMain = cb.value === (forSelect?.value || "");
+      if (isMain) cb.checked = false;
+      cb.closest("label").style.display = isMain ? "none" : "";
+    });
+    forSelect?.addEventListener("change", syncAlsoFor);
+    syncAlsoFor();
     $("#thumbBulkSelectAll")?.addEventListener("click", () => {
       staged.forEach((item) => selectedForBulk.add(item.id));
       renderStaged();
@@ -9343,6 +9455,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const activityField = $("#f_activity_field");
       if (activityField) activityField.style.display = isTestimonialOnly ? "none" : "";
       { const row = $("#f_agency_row"); if (row) row.style.display = isTestimonialOnly ? "none" : ""; }
+      ["#f_for_row", "#f_also_for_field"].forEach((sel) => { const el = $(sel); if (el) el.style.display = isTestimonialOnly ? "none" : ""; });
 
       // Change labels and descriptions
       const titleLabel = $("#f_title")?.closest(".field")?.querySelector("span");
@@ -9438,6 +9551,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         $("#f_tags").value = editingShoot.tags || "";
         $("#f_gear").value = editingShoot.gear || "";
         $("#f_client").value = editingShoot.client || "";
+        // An album saved before clients existed shows the client its page rules
+        // already give it, so saving it again changes nothing on the site.
+        if ($("#f_for_client")) $("#f_for_client").value = albumClients(editingShoot)[0] || legacyClientOf(editingShoot);
+        document.querySelectorAll("#f_also_for .also-for-cb").forEach((cb) => { cb.checked = albumClients(editingShoot).slice(1).includes(cb.value); });
+        syncAlsoFor();
         $("#f_height").value = editingShoot.height || "";
 
         // Trigger initial verification updates after loading values (for editing existing albums)
@@ -9558,6 +9676,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             excludeFromCompCard: !!p.excludeFromCompCard,
             usage: p.usage || (p.excludeFromCompCard ? "portfolio" : "both"),
             angle: p.angle || "",
+            look: p.look || "",
             // The 480/960px variants have to ride along through the edit form.
             // This mapping is an explicit field list, so anything missing from
             // it is silently dropped on save — which is how editing an album
@@ -9746,6 +9865,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             
             <div style="display: grid; grid-template-columns: 1fr; gap: 4px;">
               <label style="font-size: var(--font-xs); color: var(--ink-soft); display: flex; flex-direction: column; gap: 2px;">
+                <span>Kind of work</span>
+                <select class="thumb-look-select" data-id="${f.id}" style="font-size: var(--font-xs); padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--paper); color: var(--ink); width: 100%;">
+                  <option value="" ${!lookByKey.has(f.look) ? 'selected' : ''}>${esc(followAlbumText())}</option>
+                  ${LOOKS.map((l) => `<option value="${esc(l.key)}" ${f.look === l.key ? 'selected' : ''}>${esc(l.label)}</option>`).join("")}
+                </select>
+              </label>
+              <label style="font-size: var(--font-xs); color: var(--ink-soft); display: flex; flex-direction: column; gap: 2px;">
                 <span>Usage</span>
                 <select class="thumb-usage-select" data-id="${f.id}" style="font-size: var(--font-xs); padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--paper); color: var(--ink); width: 100%;">
                   <option value="both" ${f.usage === 'both' ? 'selected' : ''}>Both (Comp & Port)</option>
@@ -9803,6 +9929,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         sel.addEventListener("change", (e) => {
           const item = staged.find(x => x.id === e.target.dataset.id);
           if (item) item.angle = e.target.value;
+        });
+        sel.addEventListener("mousedown", (e) => e.stopPropagation());
+      });
+
+      grid.querySelectorAll(".thumb-look-select").forEach((sel) => {
+        sel.addEventListener("change", (e) => {
+          const item = staged.find(x => x.id === e.target.dataset.id);
+          if (item) item.look = e.target.value;
         });
         sel.addEventListener("mousedown", (e) => e.stopPropagation());
       });
@@ -10143,6 +10277,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // Both drive which page this album appears on, so neither may be guessed.
         if (!$("#f_activity").value) { toast("Pick an Activity — it decides which page this album shows up on. Use Creative if it fits none of them."); $("#f_activity").focus(); return; }
         if (!$("#f_type").value) { toast("Pick a Type — Test Shoot for your own work, Campaign or Commercial only for a paid job."); $("#f_type").focus(); return; }
+        if ($("#f_type").value !== "Workshop Attended" && $("#f_for_client") && !$("#f_for_client").value) { toast("Pick who this album is for — it decides which client page it shows up on."); $("#f_for_client").focus(); return; }
       }
       
       const testimonialsList = isTestimonialOnly ? [] : [
@@ -10207,6 +10342,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         tags: isTestimonialOnly ? "" : val("f_tags"),
         gear: isTestimonialOnly ? "" : val("f_gear"),
         client: isTestimonialOnly ? "" : val("f_client"),
+        forClient: isTestimonialOnly ? "" : ($("#f_for_client")?.value || ""),
+        alsoFor: isTestimonialOnly ? [] : [...document.querySelectorAll("#f_also_for .also-for-cb:checked")].map((cb) => cb.value).filter((k) => k !== $("#f_for_client")?.value),
         date: dateVal,
         instagram: val("f_ig"),
         kavyar: val("f_kavyar"),
@@ -10228,6 +10365,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           excludeFromCompCard: !!f.excludeFromCompCard || f.usage === "portfolio" || f.usage === "none",
           usage: f.usage || (f.excludeFromCompCard ? "portfolio" : "both"),
           angle: f.angle || "",
+          // "" is "follows the album", on purpose: a missing field is what the
+          // publish step fills in from the live copy (see syncToGitHub).
+          look: lookByKey.has(f.look) ? f.look : "",
           // Carried back out of the staging list — see the note where staged
           // is built. Kept by value: a photo's id is re-derived from its
           // position here, but these paths point at the file that was actually
@@ -14069,6 +14209,44 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // reveal observer (set up once at boot, survives navigations). A generous
   // rootMargin means bottom-of-page elements still trigger, and a safety timer
   // guarantees footer content can never stay stuck invisible.
+  // The photo grids and filter buttons on the "What I shoot" pages. Those pages
+  // arrive as finished HTML from build-seo.mjs and are kept rather than
+  // repainted, so wireView never runs for them — both work by delegation.
+  function initServiceGrids() {
+    // The filter buttons are hidden without JavaScript; the class the built
+    // pages set in <head> is missing from pages the build does not touch.
+    document.documentElement.classList.add("js");
+    document.addEventListener("click", (e) => {
+      const tile = e.target.closest(".svc-photo");
+      if (tile) {
+        // A new tab or window is the visitor's call: let the link open the album.
+        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        const list = [];
+        let at = -1;
+        tile.closest(".svc-photos").querySelectorAll(".svc-photo").forEach((el) => {
+          const s = SHOOTS.find((x) => x.id === el.dataset.shoot);
+          const p = s && (s.photos || []).find((x) => x.id === el.dataset.photo);
+          if (!p) return;
+          if (el === tile) at = list.length;
+          list.push({ ...p, shoot: s, gridLook: el.dataset.look || "", albumHref: el.getAttribute("href") });
+        });
+        // A photo this browser has no data for yet: the link still opens its album.
+        if (at < 0) return;
+        e.preventDefault();
+        openLb(list, at);
+        return;
+      }
+      const chip = e.target.closest(".svc-chip");
+      if (!chip) return;
+      const want = chip.dataset.client;
+      const section = chip.closest("section") || document;
+      section.querySelectorAll(".svc-chip").forEach((c) => c.setAttribute("aria-pressed", String(c === chip)));
+      section.querySelectorAll(".svc-cards .pr-card").forEach((card) => {
+        card.hidden = !!want && !(card.dataset.clients || "").split(" ").includes(want);
+      });
+    });
+  }
+
   function initFooterReveal() {
     const footer = $(".site-footer"); if (!footer) return;
     const items = [...footer.querySelectorAll(".reveal, .reveal-stagger")];
@@ -17004,6 +17182,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     initStudioSettingsControls();
     initHeaderScroll();
     initRouting();
+    initServiceGrids();
     try {
       $("#year").textContent = new Date().getFullYear();
       initBranding();
