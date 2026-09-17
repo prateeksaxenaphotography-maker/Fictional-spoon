@@ -192,16 +192,19 @@ const breadcrumbLd = (trail) => ({
   itemListElement: trail.map(([name, urlPath], i) => ({ "@type": "ListItem", position: i + 1, name, item: `${ORIGIN}${urlPath}` }))
 });
 
-const albumCardHtml = (s) => {
+// `clients` (the pages for a kind of client) adds who the album was shot for,
+// and the data-clients the page's filter buttons read.
+const albumCardHtml = (s, { clients } = {}) => {
   const cover = albumCover(s);
   const sub = [s.activity, albumPlace(s), String(s.season || "").replace(/^—$/, "")].filter(Boolean).join(" · ");
-  return `<a class="pr-card" href="${albumUrl(s)}" data-link>
+  return `<a class="pr-card" href="${albumUrl(s)}" data-link${clients ? ` data-clients="${esc(clients.join(" "))}"` : ""}>
         <img src="${esc(photoPath(cover))}" alt="${esc(altFor(s))}" loading="lazy" style="object-position: ${esc(cover.objectPosition || "center")};" />
         <span class="pr-card-title">${esc(albumName(s))}</span>
         ${sub ? `<span class="pr-card-sub">${esc(sub)}</span>` : ""}
+        ${clients ? `<span class="pr-card-for">Shot for: ${esc(clients.map(clientLabel).join(" · "))}</span>` : ""}
       </a>`;
 };
-const albumCardsHtml = (list) => `<div class="pr-cards">\n      ${list.map(albumCardHtml).join("\n      ")}\n    </div>`;
+const albumCardsHtml = (list) => `<div class="pr-cards">\n      ${list.map((s) => albumCardHtml(s)).join("\n      ")}\n    </div>`;
 
 const serviceLinksHtml = (skipSlug) => liveServices.filter((v) => v.slug !== skipSlug).map((v) =>
   `<a href="/services/${v.slug}/" data-link class="service-card" style="display: block; text-decoration: none; color: inherit;">
@@ -285,70 +288,121 @@ function buildAlbumPage(s) {
 /* ---------- service pages ---------- */
 const packages = Array.isArray(DATA.PACKAGES) ? DATA.PACKAGES.filter((p) => p && p.name && Number(p.price) > 0) : [];
 
-// Is this album an example of THIS kind of work? A page that fills its "recent
-// work" row with whatever was shot last shows a gym owner a fashion editorial,
-// which is worse than showing nothing. There is no fallback for that reason: a
-// page with no work of its own says so and points at the archive, and picks the
-// albums up by itself on the day one is published.
+// What a page shows decides whether it exists. A page that fills its "recent
+// work" with whatever was shot last shows a gym owner a fashion editorial, which
+// is worse than showing nothing, so a page with no work of its own is not
+// written, not linked and not in the sitemap. It appears by itself the moment
+// one photo or album is filed under it.
+//
+// The vocabularies are config.js `looks` and `clients`, shared with the app.
+// The rules below mirror albumLook / photoLook / albumClients / albumOnClientPage
+// in app.js: keep the two in step.
+const LOOKS = Array.isArray(CONFIG.looks) && CONFIG.looks.length ? CONFIG.looks : fail("config.js: `looks` is missing");
+const CLIENTS = Array.isArray(CONFIG.clients) && CONFIG.clients.length ? CONFIG.clients : fail("config.js: `clients` is missing");
+const lookByKey = new Map(LOOKS.map((l) => [l.key, l]));
+const clientByKey = new Map(CLIENTS.map((c) => [c.key, c]));
+const lookLabel = (k) => (lookByKey.get(k) || {}).label || "";
+const clientLabel = (k) => (clientByKey.get(k) || {}).label || k;
+
+// The kind of work an album is filed as — what its untagged photos follow.
+// Activity decides first; Type only where a look names one (Fine Art → Creative).
+const albumLook = (s) => (LOOKS.find((l) => (l.activities || []).includes(s.activity))
+  || LOOKS.find((l) => (l.types || []).includes(s.type)) || {}).key || "";
+// A photo's own tag wins; an untagged photo follows its album.
+const photoLook = (p, s) => (lookByKey.has(p.look) ? p.look : albumLook(s));
+
 const hasClient = (s) => !!(s.client && s.client.trim());
 const oneModel = (s) => {
   const t = (s.talent || "").trim();
   return !!t && !t.includes(",") && !/\s(and|&)\s/i.test(t);
 };
-// Filed as creative on purpose: its activity or type is one the catch-all page
-// names outright. An explicit choice wins over the model-work rule, or an album
-// of one model tagged "Creative" would still be shown as a model portfolio and
-// the creative page would never see it.
-const creativeService = () => SERVICES.find((v) => v.albumFilter && v.albumFilter.residual);
+// Filed as creative on purpose. For an album with no client set, this wins over
+// the model-work rule, or one model's album filed as Creative would still count
+// as a model portfolio.
 const filedAsCreative = (s) => {
-  const c = creativeService();
-  const f = (c && c.albumFilter) || {};
-  return !!((f.activities || []).includes(s.activity) || (f.types || []).includes(s.type));
+  const c = lookByKey.get("creative") || {};
+  return (c.activities || []).includes(s.activity) || (c.types || []).includes(s.type);
 };
-function albumsForService(v) {
-  const f = v.albumFilter || {};
-  if (v._residual) return { all: v._residual, list: v._residual.slice(0, 6), matched: v._residual.length > 0 };
-  const match = newestFirst.filter((s) => {
-    if (f.activities && f.activities.includes(s.activity)) return true;
-    if (f.types && f.types.includes(s.type)) return true;
-    // Shot for the model: one model, nobody paying for the pictures — unless
-    // the studio filed it as creative work.
-    if (f.modelWork && oneModel(s) && !hasClient(s) && !filedAsCreative(s)) return true;
-    if (f.clientWork && hasClient(s)) return true;
-    return false;
-  });
-  return { all: match, list: match.slice(0, 6), matched: match.length > 0 };
+// Who the album was made for: its main client first, then anyone it is also
+// for. Empty for an album saved before clients existed.
+const albumClients = (s) => (clientByKey.has(s.forClient)
+  ? [...new Set([s.forClient, ...(Array.isArray(s.alsoFor) ? s.alsoFor : []).filter((k) => clientByKey.has(k))])]
+  : []);
+// An album with a client is on the pages for that client and no others. One
+// without falls back to the rules the page kept from before clients existed.
+function albumOnClientPage(f, s) {
+  const mine = albumClients(s);
+  if (mine.length) return (f.clients || []).some((c) => mine.includes(c));
+  if (f.types && f.types.includes(s.type)) return true;
+  if (f.modelWork && oneModel(s) && !hasClient(s) && !filedAsCreative(s)) return true;
+  if (f.clientWork && hasClient(s)) return true;
+  return false;
 }
+// The clients a card names. An album that matched by a fallback rule is
+// named after the page's own first client (Model, Brand).
+const cardClients = (v, s) => { const mine = albumClients(s); return mine.length ? mine : [v.albumFilter.clients[0]]; };
 
-// Which pages exist at all. A page with no work of its own is not written, not
-// linked and not in the sitemap: a shoot the studio has never done, described
-// at length under an empty "recent work" heading, argues against itself. The
-// page appears by itself the moment one album is filed under it — that is the
-// whole mechanism, and the only thing to do is tag an album.
-//
-// "residual" is the catch-all: an album no other page claims. It is computed
-// after the others, so it needs them decided first.
-const claimed = new Set();
-for (const v of SERVICES) {
-  if (v.albumFilter && v.albumFilter.residual) continue;
-  // .all, not .list: .list is trimmed to the six a page shows, and claiming
-  // only those handed the other three to the catch-all as if nothing owned them.
-  for (const s of albumsForService(v).all) claimed.add(s.id);
+const clientPages = SERVICES.filter((v) => v.albumFilter && v.albumFilter.clients);
+const albumsForPage = (v) => newestFirst.filter((s) => albumOnClientPage(v.albumFilter, s));
+const claimedByClientPage = (s) => clientPages.some((v) => albumOnClientPage(v.albumFilter, s));
+// Every photo of the page's kind, newest album first and in each album's own
+// order. "residual" is the catch-all: it also takes the untagged photos of an
+// album that has no kind of its own and that no client page claims.
+const photosForPage = (v) => {
+  const f = v.albumFilter;
+  return newestFirst.flatMap((s) => s.photos.map((p, i) => ({ s, p, i, look: photoLook(p, s) }))
+    .filter((x) => x.look === f.look || (f.residual && !x.look && !claimedByClientPage(s))));
+};
+const liveServices = SERVICES.filter((v) => (v.albumFilter && v.albumFilter.look ? photosForPage(v) : albumsForPage(v)).length > 0);
+
+// Every photo of one kind, as a grid. Each tile is a plain link to its album,
+// which is what a visitor without JavaScript (and a crawler) follows; app.js
+// opens the photo full screen instead, and swipes through the whole grid.
+const srcsetOf = (p) => {
+  const set = [];
+  if (p.small) set.push(`${photoPath({ url: p.small })} 480w`);
+  if (p.medium) set.push(`${photoPath({ url: p.medium })} 960w`);
+  if (set.length) set.push(`${photoPath(p)} 1600w`);
+  return set.join(", ");
+};
+const focusCss = (p) => (typeof p.focalX === "number" && typeof p.focalY === "number" ? `${p.focalX}% ${p.focalY}%` : (p.objectPosition || "center"));
+function photoGridHtml(items) {
+  return `<div class="svc-photos">
+      ${items.map(({ s, p, i, look }) => {
+        const ss = srcsetOf(p);
+        // The alt names the kind of work this photo is, not the album's.
+        const alt = p.caption || altFor({ ...s, activity: lookLabel(look) || s.activity }, i + 1);
+        return `<a class="svc-photo" href="${albumUrl(s)}" data-shoot="${esc(s.id)}" data-photo="${esc(p.id)}" data-look="${esc(look)}">
+        <img src="${esc(photoPath(p.small ? { url: p.small } : p))}"${ss ? ` srcset="${esc(ss)}" sizes="(max-width: 620px) 50vw, (max-width: 1100px) 25vw, 220px"` : ""} alt="${esc(alt)}" loading="lazy" decoding="async" style="object-position: ${esc(focusCss(p))};" />
+      </a>`;
+      }).join("\n      ")}
+    </div>`;
 }
-for (const v of SERVICES) {
-  if (!v.albumFilter || !v.albumFilter.residual) continue;
-  // Filed as creative, or claimed by no other page.
-  v._residual = newestFirst.filter((s) => filedAsCreative(s) || !claimed.has(s.id));
+// Album cards saying who each was shot for. Filter buttons appear once two or
+// more of the page's clients have work — a button that empties the page helps
+// nobody. They need JavaScript, so the page's CSS shows them only with it.
+function clientCardsHtml(v, list) {
+  const present = v.albumFilter.clients.filter((c) => list.some((s) => cardClients(v, s).includes(c)));
+  const chips = present.length > 1 ? `<div class="svc-chips" role="group" aria-label="Show work for">
+        <button type="button" class="svc-chip" data-client="" aria-pressed="true">All</button>
+        ${present.map((c) => `<button type="button" class="svc-chip" data-client="${esc(c)}" aria-pressed="false">${esc((clientByKey.get(c) || {}).plural || clientLabel(c))}</button>`).join("\n        ")}
+      </div>` : "";
+  return `${chips}
+      <div class="pr-cards svc-cards">
+      ${list.map((s) => albumCardHtml(s, { clients: cardClients(v, s) })).join("\n      ")}
+      </div>`;
 }
-const liveServices = SERVICES.filter((v) => (v._residual ? v._residual.length : albumsForService(v).matched));
 
 function buildServicePage(v) {
   const urlPath = `/services/${v.slug}/`;
   const picked = packages.filter((p) => (v.packageIds || []).includes(p.id));
   const shown = picked.length ? picked : packages;
-  const { list: samples, matched } = albumsForService(v);
-  const workLinks = matched ? v.workLinks : [{ href: "/albums/", label: "See the whole archive" }];
-  const ogImage = matched ? absUrl(photoPath(albumCover(samples[0]))) : OG_IMAGE;
+  // A page for a kind of photograph shows the photos; a page for a kind of
+  // client shows the albums made for them.
+  const grid = v.albumFilter.look ? photosForPage(v) : null;
+  const cards = grid ? null : albumsForPage(v);
+  const workLinks = v.workLinks;
+  const ogImage = grid ? (grid.length ? absUrl(photoPath(grid[0].p)) : OG_IMAGE) : (cards.length ? absUrl(photoPath(albumCover(cards[0]))) : OG_IMAGE);
 
   const serviceLd = {
     "@context": "https://schema.org",
@@ -397,15 +451,15 @@ function buildServicePage(v) {
       <div class="svc-actions"><a href="/book/" data-link class="btn btn-dark">Ask for a quote →</a></div>
     </section>
 
-    ${samples.length ? `<section class="section container section-divider">
+    ${(grid || cards).length ? `<section class="section container section-divider">
       <div class="section-head row">
         <div>
-          <p class="eyebrow">${matched ? "Recent work" : "From the archive"}</p>
-          <h2>${matched ? "Judge it by the pictures" : "Judge the pictures, not the label"}</h2>
+          <p class="eyebrow">The work · ${grid ? `${grid.length} photograph${grid.length === 1 ? "" : "s"}` : `${cards.length} album${cards.length === 1 ? "" : "s"}`}</p>
+          <h2>Judge it by the pictures</h2>
         </div>
         <div class="svc-worklinks">${workLinks.map((l) => `<a href="${esc(l.href)}" data-link class="link-arrow">${esc(l.label)} →</a>`).join("")}</div>
       </div>
-      ${albumCardsHtml(samples)}
+      ${grid ? photoGridHtml(grid) : clientCardsHtml(v, cards)}
     </section>` : ""}
 
     <section class="section container section-divider">
@@ -668,6 +722,17 @@ function checkServices() {
     // All four must answer the same question, or a visitor cannot tell which is theirs.
     if (!/^For /.test(v.audience)) fail(`seo/services.mjs: ${v.slug} audience must start with "For " — it names who the page is for`);
     if (!Array.isArray(v.intro) || !v.intro.length || !Array.isArray(v.includes) || !Array.isArray(v.faqs) || !Array.isArray(v.workLinks)) fail(`seo/services.mjs: ${v.slug} is incomplete`);
+    // A page is either for a kind of photograph or for a kind of client, and
+    // every key it names must exist in config.js — an unknown one is a page
+    // that silently never finds its work.
+    const f = v.albumFilter || {};
+    if (!f.look === !f.clients) fail(`seo/services.mjs: ${v.slug} albumFilter needs exactly one of \`look\` or \`clients\``);
+    if (f.look && !lookByKey.has(f.look)) fail(`seo/services.mjs: ${v.slug} names look "${f.look}", which config.js \`looks\` does not have`);
+    if (f.clients && (!Array.isArray(f.clients) || !f.clients.length || f.clients.some((c) => !clientByKey.has(c)))) fail(`seo/services.mjs: ${v.slug} names a client that config.js \`clients\` does not have: ${JSON.stringify(f.clients)}`);
+  }
+  for (const list of [LOOKS, CLIENTS]) {
+    const keys = list.map((x) => x && x.key);
+    if (keys.some((k) => !/^[a-z]+$/.test(k || "")) || new Set(keys).size !== keys.length || list.some((x) => !x.label)) fail(`config.js: every entry in looks/clients needs a unique lowercase key and a label — got ${JSON.stringify(keys)}`);
   }
   // app.js names the same pages for its home-page cards and the menu.
   const m = read("app.js").match(/const SERVICE_LINKS = \[([\s\S]*?)\n {2}\];/);
@@ -682,7 +747,7 @@ function checkServices() {
     if (!m2) fail(`app.js SERVICE_LINKS has no \`match\` for ${v.slug} — it cannot tell whether that page has work`);
     let parsed;
     try { parsed = JSON.parse(m2[1].replace(/([a-zA-Z_]+):/g, '"$1":').replace(/'/g, '"').replace(/,\s*}/, "}")); } catch { fail(`app.js SERVICE_LINKS match for ${v.slug} is not readable`); }
-    const norm = (o) => JSON.stringify({ activities: o.activities || [], types: o.types || [], modelWork: !!o.modelWork, clientWork: !!o.clientWork, residual: !!o.residual });
+    const norm = (o) => JSON.stringify({ look: o.look || "", clients: o.clients || [], types: o.types || [], modelWork: !!o.modelWork, clientWork: !!o.clientWork, residual: !!o.residual });
     if (norm(parsed) !== norm(v.albumFilter || {})) fail(`app.js SERVICE_LINKS match for ${v.slug} is ${norm(parsed)} but seo/services.mjs albumFilter is ${norm(v.albumFilter || {})}`);
   }
   // The filtered category views quote a starting price from SERVICE_LINKS'

@@ -3084,6 +3084,27 @@ html.theme-dark { color-scheme: dark; }
 .pr-card-title { font-family: "Outfit", "Archivo", sans-serif; font-weight: 700; font-size: var(--font-sm); color: var(--ink); }
 .pr-card-sub { font-family: var(--mono-font); font-size: var(--font-xs); color: var(--ink-soft); }
 @media (max-width: 620px) { .pr-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
+.pr-card-for { font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent); }
+.pr-card[hidden] { display: none; }
+
+/* "What I shoot" pages for a kind of photograph: every photo of that kind, from
+   every album. Tiles are one shape so a mixed set of frames reads as one grid;
+   the photo's focal point (inline object-position) decides the crop. */
+.svc-photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.svc-photo { display: block; overflow: hidden; border-radius: var(--r-sm); background: var(--bone-2); cursor: zoom-in; }
+.svc-photo img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover; transition: transform .5s var(--ease); }
+.svc-photo:hover img { transform: scale(1.03); }
+.svc-photo:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 620px) { .svc-photos { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; } }
+/* Filter buttons on a page for a kind of client. They only work with
+   JavaScript, so they only show with it. */
+.svc-chips { display: none; flex-wrap: wrap; gap: 8px; margin: 0 0 22px; }
+.js .svc-chips { display: flex; }
+.svc-chip { font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 8px 14px; border-radius: var(--r-pill); border: 1px solid var(--line-2); background: transparent; color: var(--ink); cursor: pointer; }
+.svc-chip:hover { border-color: var(--ink); }
+.svc-chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.svc-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lb-album-link { display: inline-block; margin-top: 10px; font-size: var(--font-xs); font-weight: 700; color: var(--accent); }
 
 /* The plain-HTML copy of a page (<div class="prerender">). Only ever seen
    without JavaScript — the rule in <head> hides it otherwise — so it needs to
