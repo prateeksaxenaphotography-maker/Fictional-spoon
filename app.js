@@ -4278,10 +4278,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // in its row and stranded the last album alone on a third row.
     const heroPhoto = (window.STUDIO_CONFIG?.heroImage || "").trim();
     const usesHeroPhoto = (s) => heroPhoto && (s.photos || []).some(p => (p.url || "") === heroPhoto);
-    // Every album, newest first; the grid pages through them six at a time
-    // (see wirePagers), so nothing is held back behind a "view all" button.
+    // The albums ticked "Show on the homepage" in Upload, newest first, six to a
+    // page. Home showed every album, which made Albums the same list twice and
+    // left that switch doing nothing. An album saved before the switch existed
+    // has no value and is shown. This filters the list, never SHOOTS itself.
     const feat = SHOOTS
-      .filter(s => !s.isTestimonial && s.type !== "Workshop Attended" && !usesHeroPhoto(s));
+      .filter(s => !s.isTestimonial && s.type !== "Workshop Attended" && s.featured !== false && !usesHeroPhoto(s));
     // Hand-picked in config.js. Falls back to the old typographic hero if it is
     // blank or points at a file that no longer exists, so a mistyped path
     // degrades to the previous design rather than a broken image.
@@ -4354,7 +4356,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <div class="hero-mono-foot">
             <p class="hero-mono-tagline reveal">Not just photos, a perspective. <span class="hero-accent">Editorial-grade portfolios</span> for models &amp; brands.</p>
             <div class="hero-actions reveal">
-              <a href="/categories" data-link class="btn btn-dark">Explore work →</a>
+              <a href="${liveServiceLinks().length ? "/services/" : "/albums"}" data-link class="btn btn-dark">Explore work →</a>
               <a href="${esc(compCardsHref())}" data-link class="btn btn-ghost">Comp cards</a>
               ${isAdmin() ? `<a href="/upload" data-link class="btn btn-ghost">Publish a shoot</a>` : `<a href="/book" data-link class="btn btn-ghost">Book a shoot</a>`}
             </div>
@@ -4461,26 +4463,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     });
     CURRENT_VIEW_SHOOTS = list;
 
-    // Genre pills. These used to test s.type for "fashion"/"commercial", but
-    // type is the kind of booking ("Test Shoot", "Campaign"), so every pill but
-    // "All" was hidden and the row did nothing. Genre lives in s.activity.
-    const genreCounts = new Map();
-    for (const s2 of list) {
-      const g = (s2.activity || "").trim();
-      if (g) genreCounts.set(g, (genreCounts.get(g) || 0) + 1);
-    }
-    const genres = [...genreCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-    const pill = (key, label, active) => `<button type="button" class="album-filter-pill${active ? " active" : ""}" data-filter="${esc(key)}" onclick="window.filterAlbumGrid('${escJs(key)}', this)" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid ${active ? "var(--accent)" : "var(--line)"}; background: ${active ? "var(--accent)" : "var(--paper)"}; color: ${active ? "#fff" : "var(--ink)"}; cursor: pointer; white-space: nowrap;">${esc(label)}</button>`;
-
-    const filterPillHtml = genres.length < 2 ? "" : `
-      <div style="position: sticky; top: calc(70px + var(--admin-banner-h, 0px)); z-index: 30; background: rgba(250,250,250,0.85); backdrop-filter: blur(12px); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 12px 0; margin-bottom: 24px;">
-        <div class="container" style="display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px;">
-          ${pill("all", `All albums (${list.length})`, true)}
-          ${genres.map(([g, n]) => pill(g, `${g} (${n})`, false)).join("")}
-        </div>
-      </div>
-    `;
-
     return `
       <section class="page-head">
         <div class="container">
@@ -4489,7 +4471,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <p class="page-sub reveal">${list.length} album${list.length !== 1 ? "s" : ""} in the archive — every photoshoot, newest first.</p>
         </div>
       </section>
-      ${filterPillHtml}
       <section class="section container full-bleed" style="padding-top: 0;">
         <div class="noth-work-list" id="albumsMainGrid" data-paginate="9" aria-label="Albums">${list.map(nothWorkCard).join("") || emptyCat()}</div>
       </section>
@@ -7950,7 +7931,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       return `
         <section class="page-head">
           <div class="container">
-            <p class="eyebrow reveal"><a href="/categories" data-link>Categories</a> / ${esc(kind)}</p>
+            <p class="eyebrow reveal"><a href="/albums" data-link>Albums</a> / ${esc(kind)}</p>
              <h1 class="reveal">${esc(getCategoryTitle(d))}</h1>
             ${isTestShoot ? `<p class="page-sub" style="max-width: 600px; line-height: 1.6; opacity: 1 !important; visibility: visible !important; transform: none !important;">${esc(getCategoryDescription(d))}<span style="font-size: var(--font-xs); color: var(--ink-soft); display: block; margin-top: 8px;">Note: Models from workshop projects are not included here.</span></p>` : `<p class="page-sub reveal">${displayList.length} master album${displayList.length !== 1 ? "s" : ""} in this ${esc(kind)}.</p>`}
             ${serviceLineHtml}
@@ -8557,7 +8538,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <div class="publish-toggles">
                 <label>
                   <input id="f_featured" type="checkbox" checked style="width: 15px; height: 15px; accent-color: var(--accent); margin: 3px 0 0;" />
-                  <span class="tog-text"><strong>Show on the homepage</strong><small>In the Featured section.</small></span>
+                  <span class="tog-text"><strong>Show on the homepage</strong><small>In Photoshoots on the home page. The album stays on Albums either way.</small></span>
                 </label>
                 <label>
                   <input id="f_on_compcards" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 3px 0 0;" />
@@ -14179,6 +14160,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       }
     }
 
+    // The Categories main page (genre / brand / type tiles) is retired: What I
+    // shoot does that browsing now. Its address lands there. The filtered views
+    // under it (/categories?kind=…) stay — Model Portfolio lives there.
+    if (key === "categories" && !kind && !val) {
+      history.replaceState(null, "", liveServiceLinks().length ? "/services/" : "/albums/");
+      render();
+      return;
+    }
+
     if (key === "categories" && val === "Workshop Attended") {
       const allowed = isAdmin() || shouldShowWorkshopsToAll();
       history.pushState(null, "", allowed ? "/workshop-attended" : "/");
@@ -14450,8 +14440,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // deploy writes a page only once it has work, so the link would otherwise
   // lead to a 404.
   function syncServicesNavLink() {
+    const live = liveServiceLinks().length > 0;
     const li = document.getElementById("navServicesLi");
-    if (li) li.style.display = liveServiceLinks().length ? "" : "none";
+    if (li) li.style.display = live ? "" : "none";
+    document.querySelectorAll('.footer-nav a[href="/services/"]').forEach((a) => { a.style.display = live ? "" : "none"; });
   }
 
   function setActiveNav(key) {
@@ -17600,24 +17592,6 @@ if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || wi
 })();
 
 
-window.filterAlbumGrid = function(filterKey, btnEl) {
-  document.querySelectorAll('.album-filter-pill').forEach(btn => {
-    btn.style.background = 'var(--paper)';
-    btn.style.color = 'var(--ink)';
-    btn.style.borderColor = 'var(--line)';
-  });
-  if (btnEl) {
-    btnEl.style.background = 'var(--accent)';
-    btnEl.style.color = '#ffffff';
-    btnEl.style.borderColor = 'var(--accent)';
-  }
-  const wanted = String(filterKey || "all").toLowerCase();
-  document.querySelectorAll('#albumsMainGrid .noth-work').forEach(card => {
-    const genre = (card.getAttribute('data-activity') || '').toLowerCase();
-    const kind = (card.getAttribute('data-category') || '').toLowerCase();
-    card.style.display = (wanted === 'all' || genre === wanted || kind.includes(wanted)) ? 'block' : 'none';
-  });
-};
 // The menu index spans were removed from index.html; a cached copy of the
 // page can still carry them, so strip any that arrive.
 document.querySelectorAll(".nav-idx").forEach(el => el.remove());
