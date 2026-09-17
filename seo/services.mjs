@@ -105,8 +105,11 @@ export const SERVICES = [
     // page's blocks (and its A–Z bar) into the work section, over the album
     // cards written here for crawlers. The old Comp Cards address leads here.
     compCards: true,
+    // The models are on this page, so this points at them rather than at the
+    // retired Model Portfolio page (whose address now redirects here anyway).
+    // It is rendered twice: as the hero's second button and above the work.
     workLinks: [
-      { href: "/categories/?kind=type&val=Model%20Portfolio", label: "See model portfolios" }
+      { href: "/services/model-portfolio-shoot-noida/#comp-cards", label: "See the models" }
     ],
     faqs: [
       ["How much does a model portfolio shoot cost in Noida?", "It depends on how many looks you shoot and how many finished images you need — a comp card needs fewer than a full editorial portfolio. Send a brief through the booking page and you will have a price against it before anything is booked."],
