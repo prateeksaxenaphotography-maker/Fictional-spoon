@@ -14231,6 +14231,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       if (staticPath) paintServiceCompCards();
       initReveal();
       setActiveNav(key);
+      syncServicesNavLink();
 
       applyRouteSeo(key, parts, params, staticPath);
       updateImageSchema();
@@ -14406,6 +14407,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       "url": location.href,
       "image": images
     });
+  }
+
+  // "What I shoot" is in the menu while at least one of its pages exists: the
+  // deploy writes a page only once it has work, so the link would otherwise
+  // lead to a 404.
+  function syncServicesNavLink() {
+    const li = document.getElementById("navServicesLi");
+    if (li) li.style.display = liveServiceLinks().length ? "" : "none";
   }
 
   function setActiveNav(key) {
@@ -17357,12 +17366,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       if (uploadLi) uploadLi.after(li); else bookNavList.appendChild(li);
     }
 
-    // "Services" in the menu — added here rather than in each page's HTML, for
-    // the same reason as the block below: there are nine shells and they drift.
+    // "What I shoot" in the menu — added here rather than in each page's HTML,
+    // for the same reason as the block below: there are nine shells and they
+    // drift. This runs before the albums load, so it goes in hidden and
+    // syncServicesNavLink shows it on the first paint. Checking for pages here
+    // left it out for good on every page opened directly (Book, Albums, the
+    // portfolio book) — only the home page, which has it in its HTML, kept it.
     const navList = document.querySelector(".nav-links");
-    if (navList && !document.getElementById("navServicesLi") && liveServiceLinks().length) {
+    if (navList && !document.getElementById("navServicesLi")) {
       const li = document.createElement("li");
       li.id = "navServicesLi";
+      li.style.display = "none";
       li.innerHTML = `<a href="/services/" data-link>What I shoot</a>`;
       // Before Studio: the work, then what it costs, then who I am.
       const studioLi = [...navList.children].find((el) => /^\/studio\/?$/.test(el.querySelector("a")?.getAttribute("href") || ""));
