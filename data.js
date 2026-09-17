@@ -3,7 +3,16 @@
    Auto-synced by the Admin Panel. Photo files live under photos/.
    ============================================================ */
 window.WPS_DATA = {
-  "ACTIVITIES": ["Beauty", "Creative", "Editorial", "Fashion", "Fitness", "Portrait", "Sports", "Workshop"],
+  "ACTIVITIES": [
+    "Beauty",
+    "Creative",
+    "Editorial",
+    "Fashion",
+    "Fitness",
+    "Portrait",
+    "Sports",
+    "Workshop"
+  ],
   "TYPES": [
     "Campaign",
     "Commercial",
@@ -14,7 +23,9 @@ window.WPS_DATA = {
     "Test Shoot",
     "Workshop Attended"
   ],
-  "BRANDS": ["Personal Project"],
+  "BRANDS": [
+    "Personal Project"
+  ],
   "DEMO_SHOOTS": [
     {
       "id": "mr4x3r7e4l5g4m",
@@ -1789,7 +1800,7 @@ window.WPS_DATA = {
       "waist": "30",
       "hips": "",
       "shoes": "7.5 UK",
-      "modelHair": "black",
+      "modelHair": "Black",
       "modelEyes": "Dark Brown",
       "agencyCredit": "",
       "agency": "",
@@ -1809,6 +1820,8 @@ window.WPS_DATA = {
       "tags": "",
       "gear": "",
       "client": "",
+      "forClient": "model",
+      "alsoFor": [],
       "date": "2026-09-13",
       "instagram": "",
       "kavyar": "",
@@ -1819,7 +1832,7 @@ window.WPS_DATA = {
       "lightingDiagram": null,
       "lightingDiagramVisibility": "private",
       "palette": [
-        "#69636d",
+        "#68636d",
         "#2f2d31"
       ],
       "photos": [
@@ -1829,6 +1842,7 @@ window.WPS_DATA = {
           "objectPosition": "top",
           "angle": "close-up",
           "usage": "both",
+          "look": "fitness",
           "small": "photos/mu07kqljf8iyar/mu07jx6vxffzbj-0@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu07jx6vxffzbj-0@960.jpg"
         },
@@ -1838,6 +1852,7 @@ window.WPS_DATA = {
           "objectPosition": "center",
           "angle": "three-quarter",
           "usage": "both",
+          "look": "fashion",
           "small": "photos/mu07kqljf8iyar/mu17d8nwh9cw1v-2@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17d8nwh9cw1v-2@960.jpg"
         },
@@ -1847,6 +1862,7 @@ window.WPS_DATA = {
           "objectPosition": "center",
           "angle": "three-quarter",
           "usage": "both",
+          "look": "fashion",
           "small": "photos/mu07kqljf8iyar/mu17d8ywdyh0a6-3@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17d8ywdyh0a6-3@960.jpg"
         },
@@ -1856,6 +1872,7 @@ window.WPS_DATA = {
           "objectPosition": "center",
           "angle": "three-quarter",
           "usage": "both",
+          "look": "fashion",
           "small": "photos/mu07kqljf8iyar/mu17d96ivu3mvw-4@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17d96ivu3mvw-4@960.jpg"
         },
@@ -1865,6 +1882,7 @@ window.WPS_DATA = {
           "objectPosition": "center",
           "angle": "three-quarter",
           "usage": "both",
+          "look": "fashion",
           "small": "photos/mu07kqljf8iyar/mu17d9e2ir9qgr-5@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17d9e2ir9qgr-5@960.jpg"
         },
@@ -1872,8 +1890,8 @@ window.WPS_DATA = {
           "id": "mu07k1m1euvwbk-5",
           "url": "photos/mu07kqljf8iyar/mu07k1m1euvwbk-1.jpg",
           "objectPosition": "center",
-          "angle": "full-body",
           "usage": "both",
+          "look": "creative",
           "small": "photos/mu07kqljf8iyar/mu07k1m1euvwbk-1@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu07k1m1euvwbk-1@960.jpg"
         },
@@ -1883,6 +1901,7 @@ window.WPS_DATA = {
           "objectPosition": "center",
           "angle": "three-quarter",
           "usage": "both",
+          "look": "fashion",
           "small": "photos/mu07kqljf8iyar/mu17d9o9ldqpkw-6@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17d9o9ldqpkw-6@960.jpg"
         },
@@ -1892,6 +1911,7 @@ window.WPS_DATA = {
           "objectPosition": "center",
           "angle": "three-quarter",
           "usage": "both",
+          "look": "fashion",
           "small": "photos/mu07kqljf8iyar/mu17d9wu1wa44y-7@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17d9wu1wa44y-7@960.jpg"
         },
@@ -1901,6 +1921,7 @@ window.WPS_DATA = {
           "objectPosition": "center",
           "angle": "close-up",
           "usage": "both",
+          "look": "fashion",
           "small": "photos/mu07kqljf8iyar/mu17da4tl99dof-8@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17da4tl99dof-8@960.jpg"
         },
@@ -1910,6 +1931,7 @@ window.WPS_DATA = {
           "objectPosition": "49.8% 16.6%",
           "angle": "close-up",
           "usage": "both",
+          "look": "portrait",
           "small": "photos/mu07kqljf8iyar/mu17daf0p7enrr-9@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17daf0p7enrr-9@960.jpg",
           "focalX": 49.786225725029624,
@@ -1921,6 +1943,7 @@ window.WPS_DATA = {
           "objectPosition": "center",
           "angle": "front",
           "usage": "both",
+          "look": "portrait",
           "small": "photos/mu07kqljf8iyar/mu17dap5q9plyz-10@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17dap5q9plyz-10@960.jpg"
         },
@@ -1930,6 +1953,7 @@ window.WPS_DATA = {
           "objectPosition": "center",
           "angle": "right-profile",
           "usage": "both",
+          "look": "portrait",
           "small": "photos/mu07kqljf8iyar/mu17davk3g975o-11@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17davk3g975o-11@960.jpg"
         },
@@ -1939,6 +1963,7 @@ window.WPS_DATA = {
           "objectPosition": "center",
           "angle": "right-profile",
           "usage": "both",
+          "look": "portrait",
           "small": "photos/mu07kqljf8iyar/mu17db20d8wno2-12@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17db20d8wno2-12@960.jpg"
         },
@@ -1948,6 +1973,7 @@ window.WPS_DATA = {
           "objectPosition": "center",
           "angle": "left-profile",
           "usage": "both",
+          "look": "portrait",
           "small": "photos/mu07kqljf8iyar/mu17db89upn08q-13@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17db89upn08q-13@960.jpg"
         },
@@ -1957,6 +1983,7 @@ window.WPS_DATA = {
           "objectPosition": "center",
           "angle": "left-profile",
           "usage": "both",
+          "look": "portrait",
           "small": "photos/mu07kqljf8iyar/mu17dbef5s3n7p-14@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu17dbef5s3n7p-14@960.jpg"
         },
@@ -1966,6 +1993,7 @@ window.WPS_DATA = {
           "objectPosition": "center",
           "angle": "three-quarter",
           "usage": "both",
+          "look": "portrait",
           "small": "photos/mu07kqljf8iyar/mu1bk493tm3duj-15@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu1bk493tm3duj-15@960.jpg"
         },
@@ -1975,6 +2003,7 @@ window.WPS_DATA = {
           "objectPosition": "center",
           "angle": "left-profile",
           "usage": "both",
+          "look": "portrait",
           "small": "photos/mu07kqljf8iyar/mu1bk4gu5u2fbo-16@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu1bk4gu5u2fbo-16@960.jpg"
         },
@@ -1984,6 +2013,7 @@ window.WPS_DATA = {
           "objectPosition": "center",
           "angle": "three-quarter",
           "usage": "both",
+          "look": "portrait",
           "small": "photos/mu07kqljf8iyar/mu1bk4lhuxdl5n-17@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu1bk4lhuxdl5n-17@960.jpg"
         },
@@ -1992,6 +2022,7 @@ window.WPS_DATA = {
           "url": "photos/mu07kqljf8iyar/mu3xl4iz9hj1lx-18.jpg",
           "objectPosition": "center",
           "usage": "comp",
+          "look": "fashion",
           "small": "photos/mu07kqljf8iyar/mu3xl4iz9hj1lx-18@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu3xl4iz9hj1lx-18@960.jpg"
         }
@@ -2060,7 +2091,9 @@ window.WPS_DATA = {
   ],
   "CALENDAR_SETTINGS": {
     "customBlockedDates": {
-      "2026-09-12": true
+      "2026-09-12": true,
+      "2026-10-03": true,
+      "2026-10-04": true
     },
     "customOpenedDates": {
       "2026-09-07": true,
@@ -2477,6 +2510,46 @@ window.WPS_DATA = {
           "createdAt": 1789486815041
         }
       ],
+      "2026-09-16": [
+        {
+          "id": "b_1789583885354_skuk",
+          "name": "Anticipated Client Hold",
+          "email": "",
+          "phone": "",
+          "type": "Fashion Editorial",
+          "duration": "Custom — 10:30 AM to 8:30 PM (10 hours)",
+          "isTentative": true,
+          "notes": "",
+          "location": "Home studio, Sector 46, Noida",
+          "venueByStudio": false,
+          "agreementMethod": "",
+          "links": [],
+          "attachments": [],
+          "status": "tentative",
+          "contractVersion": "V3.7-COMMERCIAL",
+          "agreedToTerms": false,
+          "contractNumber": "",
+          "contractSentAt": 1789583885354,
+          "sigDataUrl": "",
+          "agreedContract": "",
+          "budget": "₹7,000 (Basic Test / Comp Card)",
+          "homeStudioFee": 2000,
+          "finalPayable": 9000,
+          "financials": {
+            "basePrice": 7000,
+            "homeStudioFee": 2000,
+            "homeStudioListPrice": 2000,
+            "savings": 0,
+            "finalPayable": 9000,
+            "advanceRetainer": 5500,
+            "wrapBalance": 3500,
+            "scheduleKey": "503020"
+          },
+          "inviteMeta": null,
+          "promoMeta": null,
+          "createdAt": 1789583885354
+        }
+      ],
       "2026-06-14": [
         {
           "id": "shoot-mr4x3r7e4l5g4m",
@@ -2585,7 +2658,8 @@ window.WPS_DATA = {
       "2026-08-29::shoot-mte8dutdkqor3f",
       "2026-09-13::shoot-mu07kqljf8iyar",
       "2026-09-19::b_1787411831533_6jql",
-      "2026-09-15::b_1789484541097_vngy"
+      "2026-09-15::b_1789484541097_vngy",
+      "2026-09-16::b_1789579417604_z0rd"
     ],
     "paymentScheduleType": "503020",
     "productionScheduleType": "503020",
