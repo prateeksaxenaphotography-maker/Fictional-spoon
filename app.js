@@ -3762,7 +3762,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const title = getTalentCleanName(s.isCompCard ? s.talent : (s.title || "Untitled"));
 
     return `
-      <article class="noth-work reveal" data-shoot="${s.id}" data-category="${esc(s.type || '')}" data-talent="${esc(s.talent || '')}" style="--d:${(i % 2) * 0.08}s; position: relative; border-radius: 12px; overflow: hidden; background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow-sm); transition: transform 0.3s ease, box-shadow 0.3s ease;">
+      <article class="noth-work reveal" data-shoot="${s.id}" data-category="${esc(s.type || '')}" data-activity="${esc(s.activity || '')}" data-talent="${esc(s.talent || '')}" style="--d:${(i % 2) * 0.08}s; position: relative; border-radius: 12px; overflow: hidden; background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow-sm); transition: transform 0.3s ease, box-shadow 0.3s ease;">
         <button class="noth-work-media" aria-label="View ${esc(title)}" style="position: relative; overflow: hidden; border-radius: 12px 12px 0 0;">
           <!-- Floating micro-badge: shoot type. A photo-count badge used to sit
                opposite it, but a frame count is inventory, not something a
@@ -4001,11 +4001,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // The service landing pages, written at deploy from seo/services.mjs. Listed
   // here for the home-page cards and the menu; the build fails if a slug below
   // has no page behind it. A slug is a public address — never rename one.
+  // The kicker on each card names WHO THE PAGE IS FOR, and all four answer that
+  // same question: two named after the client and two after the kind of
+  // photograph left a fitness model unable to tell which page was hers.
+  // Kept in step with `audience` in seo/services.mjs.
   const SERVICE_LINKS = [
-    { slug: "model-portfolio-shoot-noida", kicker: "Models", title: "Model Portfolios & Comp Cards", blurb: "Editorial-grade portfolio building and agency-ready comp cards for new faces and working models, male and female.", cta: "Model portfolio shoots" },
-    { slug: "fashion-editorial-photographer-delhi-ncr", kicker: "Fashion", title: "Fashion & Editorial", blurb: "Concept-led fashion, beauty and editorial stories for designers, stylists and magazine submissions.", cta: "Fashion & editorial" },
-    { slug: "fitness-sports-photographer-noida", kicker: "Athletes", title: "Fitness & Sports Action", blurb: "Action-freezing athletic portraits and fitness content that shows physique, strength and raw performance.", cta: "Fitness & sports shoots" },
-    { slug: "brand-campaign-photographer-noida", kicker: "Brands", title: "Campaigns & Lookbooks", blurb: "High-concept campaigns, lookbooks and e-commerce sets, planned to the shot list and covered by a written contract.", cta: "Brand campaigns" }
+    { slug: "model-portfolio-shoot-noida", kicker: "For models", title: "Model Portfolios & Comp Cards", blurb: "Editorial-grade portfolio building and agency-ready comp cards for new faces and working models, male and female.", cta: "Model portfolio shoots" },
+    { slug: "fashion-editorial-photographer-delhi-ncr", kicker: "For designers & magazines", title: "Fashion & Editorial", blurb: "Concept-led fashion, beauty and editorial stories for designers, stylists and magazine submissions.", cta: "Fashion & editorial" },
+    { slug: "fitness-sports-photographer-noida", kicker: "For athletes, coaches & gyms", title: "Fitness & Sports Action", blurb: "Action-freezing athletic portraits and fitness content that shows physique, strength and raw performance.", cta: "Fitness & sports shoots" },
+    { slug: "brand-campaign-photographer-noida", kicker: "For brands", title: "Campaigns & Lookbooks", blurb: "High-concept campaigns, lookbooks and e-commerce sets, planned to the shot list and covered by a written contract.", cta: "Brand campaigns" }
   ];
 
   function viewHome() {
@@ -4205,23 +4209,22 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     });
     CURRENT_VIEW_SHOOTS = list;
 
-    // Calculate Category Counts
-    const counts = {
-      all: list.length,
-      fashion: list.filter(s => (s.type || "").toLowerCase().includes("fashion")).length,
-      commercial: list.filter(s => (s.type || "").toLowerCase().includes("commercial")).length,
-      tfp: list.filter(s => (s.type || "").toLowerCase().includes("tfp") || (s.type || "").toLowerCase().includes("selective")).length,
-      test: list.filter(s => (s.type || "").toLowerCase().includes("test")).length
-    };
+    // Genre pills. These used to test s.type for "fashion"/"commercial", but
+    // type is the kind of booking ("Test Shoot", "Campaign"), so every pill but
+    // "All" was hidden and the row did nothing. Genre lives in s.activity.
+    const genreCounts = new Map();
+    for (const s2 of list) {
+      const g = (s2.activity || "").trim();
+      if (g) genreCounts.set(g, (genreCounts.get(g) || 0) + 1);
+    }
+    const genres = [...genreCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    const pill = (key, label, active) => `<button type="button" class="album-filter-pill${active ? " active" : ""}" data-filter="${esc(key)}" onclick="window.filterAlbumGrid('${escJs(key)}', this)" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid ${active ? "var(--accent)" : "var(--line)"}; background: ${active ? "var(--accent)" : "var(--paper)"}; color: ${active ? "#fff" : "var(--ink)"}; cursor: pointer; white-space: nowrap;">${esc(label)}</button>`;
 
-    const filterPillHtml = `
+    const filterPillHtml = genres.length < 2 ? "" : `
       <div style="position: sticky; top: calc(70px + var(--admin-banner-h, 0px)); z-index: 30; background: rgba(250,250,250,0.85); backdrop-filter: blur(12px); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 12px 0; margin-bottom: 24px;">
         <div class="container" style="display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px;">
-          <button type="button" class="album-filter-pill active" data-filter="all" onclick="window.filterAlbumGrid('all', this)" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; white-space: nowrap;">🌐 All Albums (${counts.all})</button>
-          ${counts.fashion ? `<button type="button" class="album-filter-pill" data-filter="fashion" onclick="window.filterAlbumGrid('fashion', this)" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; white-space: nowrap;">👗 Fashion (${counts.fashion})</button>` : ''}
-          ${counts.commercial ? `<button type="button" class="album-filter-pill" data-filter="commercial" onclick="window.filterAlbumGrid('commercial', this)" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; white-space: nowrap;">💼 Commercial (${counts.commercial})</button>` : ''}
-          ${(counts.tfp && isAdmin()) ? `<button type="button" class="album-filter-pill" data-filter="tfp" onclick="window.filterAlbumGrid('tfp', this)" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; white-space: nowrap;">🤝 Selective Collab (${counts.tfp})</button>` : ''}
-          ${(counts.test && isAdmin()) ? `<button type="button" class="album-filter-pill" data-filter="test" onclick="window.filterAlbumGrid('test', this)" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; white-space: nowrap;">📸 Test Shoots (${counts.test})</button>` : ''}
+          ${pill("all", `All albums (${list.length})`, true)}
+          ${genres.map(([g, n]) => pill(g, `${g} (${n})`, false)).join("")}
         </div>
       </div>
     `;
@@ -13559,7 +13562,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       <section class="page-head">
         <div class="container">
           <p class="eyebrow reveal">Services</p>
-          <h1 class="kinetic-h1">${esc(one ? one.title : "Photography services")}</h1>
+          <h1 class="kinetic-h1">${esc(one ? one.title : "What I shoot")}</h1>
           <p class="page-sub reveal">${esc(one ? one.blurb : "Model portfolios and comp cards, fashion and editorial, fitness and sports, and brand campaigns — in Noida and across Delhi NCR.")}</p>
           <div class="hero-actions" style="margin-top: 22px;">
             <a href="/book" data-link class="btn btn-dark">Book a shoot →</a>
@@ -13824,7 +13827,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       path = `${staticPath}/`;
       if (page) { title = page.title || title; desc = page.desc || desc; }
       // The stand-in shown when the real page could not be had is not for indexing.
-      else { title = viewServiceFallback(staticPath) ? `Photography services — ${brand}` : `Page not found — ${brand}`; index = false; }
+      else { title = viewServiceFallback(staticPath) ? `What I shoot — ${brand}` : `Page not found — ${brand}`; index = false; }
     } else if (key !== "") {
       // Admin screens, the invitation-only workshop page and the 404.
       title = ROUTES[key] ? `${brand} — The Creative Studio` : `Page not found — ${brand}`;
@@ -16802,9 +16805,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (navList && !document.getElementById("navServicesLi")) {
       const li = document.createElement("li");
       li.id = "navServicesLi";
-      li.innerHTML = `<a href="/services/" data-link>Services</a>`;
+      li.innerHTML = `<a href="/services/" data-link>What I shoot</a>`;
+      // Before Studio: the work, then what it costs, then who I am.
       const studioLi = [...navList.children].find((el) => /^\/studio\/?$/.test(el.querySelector("a")?.getAttribute("href") || ""));
-      if (studioLi) studioLi.after(li); else navList.appendChild(li);
+      if (studioLi) studioLi.before(li); else navList.appendChild(li);
     }
 
     // "Load fresh" utility — injected once into the nav-meta so it appears on
@@ -16994,16 +16998,11 @@ window.filterAlbumGrid = function(filterKey, btnEl) {
     btnEl.style.color = '#ffffff';
     btnEl.style.borderColor = 'var(--accent)';
   }
-  const cards = document.querySelectorAll('#albumsMainGrid .noth-work');
-  cards.forEach(card => {
-    const cat = (card.getAttribute('data-category') || '').toLowerCase();
-    if (filterKey === 'all') {
-      card.style.display = 'block';
-    } else if (cat.includes(filterKey)) {
-      card.style.display = 'block';
-    } else {
-      card.style.display = 'none';
-    }
+  const wanted = String(filterKey || "all").toLowerCase();
+  document.querySelectorAll('#albumsMainGrid .noth-work').forEach(card => {
+    const genre = (card.getAttribute('data-activity') || '').toLowerCase();
+    const kind = (card.getAttribute('data-category') || '').toLowerCase();
+    card.style.display = (wanted === 'all' || genre === wanted || kind.includes(wanted)) ? 'block' : 'none';
   });
 };
 // The menu index spans were removed from index.html; a cached copy of the

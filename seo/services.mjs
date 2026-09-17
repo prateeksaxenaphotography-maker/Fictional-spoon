@@ -9,6 +9,11 @@
    Keep every claim true to what the studio actually does. No invented
    numbers, awards or client names — Google and clients both check.
 
+   Every page says WHO IT IS FOR in `audience`, in the same words a visitor
+   would use about themselves. All four answer that one question, so a fitness
+   model knows at a glance whether she is on the right page — naming two pages
+   after the client and two after the kind of photograph left her guessing.
+
    A slug is a public address. Changing one breaks links that Google and
    clients already hold, so add a new page rather than renaming an old one.
    app.js lists the same slugs in SERVICE_LINKS (home page cards and menu);
@@ -16,16 +21,18 @@
    ============================================================ */
 
 export const SERVICES_INDEX = {
-  metaTitle: "Photography Services in Noida & Delhi NCR — Model Portfolios, Fashion, Fitness, Brands | nerdyphotographer.in",
+  metaTitle: "What I Shoot — Model Portfolios, Fashion, Fitness & Brand Photography in Noida & Delhi NCR | nerdyphotographer.in",
   metaDescription: "Model portfolio and comp card shoots, fashion and editorial photography, fitness and sports shoots, and brand campaigns in Noida and Delhi NCR. See packages, sample work and book a weekend session.",
-  eyebrow: "Services",
-  h1: "Photography services",
-  intro: "nerdyphotographer.in is a photography studio in Noida working across Delhi NCR. These are the four kinds of shoot the studio takes on, each with its own page: what is included, what it costs, and the work to judge it by."
+  eyebrow: "Four kinds of shoot",
+  h1: "What I shoot",
+  intro: "nerdyphotographer.in is a photography studio in Noida working across Delhi NCR. Four kinds of shoot, sorted by who they are for: what is included, what it costs, and the work to judge it by."
 };
 
 export const SERVICES = [
   {
     slug: "model-portfolio-shoot-noida",
+    audience: "For models",
+    audienceLead: "You are starting out, or you already work and your portfolio is out of date.",
     kicker: "Models",
     cardTitle: "Model Portfolios & Comp Cards",
     cardBlurb: "Agency-ready portfolio shoots and comp cards for new and working models, male and female.",
@@ -63,6 +70,8 @@ export const SERVICES = [
   },
   {
     slug: "fashion-editorial-photographer-delhi-ncr",
+    audience: "For designers, stylists and magazines",
+    audienceLead: "You have a collection, a concept or a story to place, and you need the pictures to carry it.",
     kicker: "Fashion",
     cardTitle: "Fashion & Editorial",
     cardBlurb: "Concept-led fashion, beauty and editorial stories for designers, stylists and magazine submissions.",
@@ -98,6 +107,8 @@ export const SERVICES = [
   },
   {
     slug: "fitness-sports-photographer-noida",
+    audience: "For athletes, coaches and gyms",
+    audienceLead: "You have put in the work and need pictures that show it — for a competition, a coaching profile or a gym's own marketing.",
     kicker: "Athletes",
     cardTitle: "Fitness & Sports",
     cardBlurb: "Physique, training and action photography for athletes, coaches, gyms and fitness brands.",
@@ -132,6 +143,8 @@ export const SERVICES = [
   },
   {
     slug: "brand-campaign-photographer-noida",
+    audience: "For brands",
+    audienceLead: "You have a product, a season or a launch, and a team that needs usable assets on a date.",
     kicker: "Brands",
     cardTitle: "Campaigns, Lookbooks & E-commerce",
     cardBlurb: "Campaign, lookbook and e-commerce photography for fashion and lifestyle brands, with usage rights in writing.",

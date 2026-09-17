@@ -203,7 +203,7 @@ const albumCardsHtml = (list) => `<div class="pr-cards">\n      ${list.map(album
 
 const serviceLinksHtml = (skipSlug) => SERVICES.filter((v) => v.slug !== skipSlug).map((v) =>
   `<a href="/services/${v.slug}/" data-link class="service-card" style="display: block; text-decoration: none; color: inherit;">
-          <div class="service-kicker">${esc(v.kicker)}</div>
+          <div class="service-kicker">${esc(v.audience)}</div>
           <h3>${esc(v.cardTitle)}</h3>
           <p>${esc(v.cardBlurb)}</p>
         </a>`).join("\n        ");
@@ -328,8 +328,9 @@ function buildServicePage(v) {
 
   const mainHtml = `
     <section class="page-head svc-head"><div class="container">
-      <p class="eyebrow">${esc(v.eyebrow)}</p>
+      <p class="eyebrow">${esc(v.audience)} · ${esc(v.eyebrow)}</p>
       <h1 class="svc-h1">${esc(v.h1)}</h1>
+      ${v.audienceLead ? `<p class="svc-audience">${esc(v.audienceLead)}</p>` : ""}
       <p class="page-sub">${esc(v.intro[0])}</p>
       <div class="hero-actions svc-actions">
         <a href="/book/" data-link class="btn btn-dark">Book a shoot →</a>
@@ -630,7 +631,9 @@ function checkServices() {
   if (new Set(slugs).size !== slugs.length) fail("seo/services.mjs: two services share a slug");
   for (const v of SERVICES) {
     if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(v.slug)) fail(`seo/services.mjs: bad slug "${v.slug}"`);
-    for (const k of ["kicker", "cardTitle", "cardBlurb", "metaTitle", "metaDescription", "eyebrow", "h1", "includesTitle"]) if (!v[k]) fail(`seo/services.mjs: ${v.slug} is missing ${k}`);
+    for (const k of ["kicker", "cardTitle", "cardBlurb", "metaTitle", "metaDescription", "eyebrow", "h1", "includesTitle", "audience"]) if (!v[k]) fail(`seo/services.mjs: ${v.slug} is missing ${k}`);
+    // All four must answer the same question, or a visitor cannot tell which is theirs.
+    if (!/^For /.test(v.audience)) fail(`seo/services.mjs: ${v.slug} audience must start with "For " — it names who the page is for`);
     if (!Array.isArray(v.intro) || !v.intro.length || !Array.isArray(v.includes) || !Array.isArray(v.faqs) || !Array.isArray(v.workLinks)) fail(`seo/services.mjs: ${v.slug} is incomplete`);
   }
   // app.js names the same pages for its home-page cards and the menu.
