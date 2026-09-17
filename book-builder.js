@@ -1245,7 +1245,7 @@
      the strip of pages, then one panel at a time. */
   const CSS = `
   .sb-root { --sb-line: var(--line, rgba(20,20,22,.14)); --sb-card: var(--paper, #faf8f5); --sb-sunk: var(--bone, #eceae7); --sb-warn: #8A5A00; color: var(--ink, #141416); font: 400 14px/1.45 Inter, system-ui, sans-serif; }
-  html[data-theme="dark"] .sb-root { --sb-warn: #E3B34A; }
+  html.theme-dark .sb-root { --sb-warn: #E3B34A; }
   .sb-root *, .sb-root *::before, .sb-root *::after { box-sizing: border-box; }
   .sb-root h3 { margin: 0; font: 700 11px/1.3 'JetBrains Mono', monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft, #5c5e66); }
   /* the site sets every h3's size with !important */
@@ -1271,20 +1271,22 @@
   .sb-eyebrow { margin: 0; font: 700 11px 'JetBrains Mono', monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft, #5c5e66); }
   .sb-h1 { margin: 6px 0 6px; font: 800 clamp(28px, 4vw, 40px)/1.05 Archivo, Inter, sans-serif; letter-spacing: -.02em; }
   .sb-lede { margin: 0; max-width: 62ch; color: var(--ink-soft, #5c5e66); }
-  .sb-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+  .sb-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 16px; }
   .sb-card { display: grid; grid-template-rows: auto 1fr; border: 1px solid var(--sb-line); border-radius: 12px; overflow: hidden; background: var(--sb-card); }
   .sb-cardcover { display: grid; place-items: center; height: 190px; padding: 14px; border: 0; background: var(--sb-sunk); cursor: pointer; }
   .sb-cardcover canvas { max-width: 100%; max-height: 162px; box-shadow: 0 8px 20px -10px rgba(0,0,0,.45); }
   .sb-cardbody { display: grid; gap: 3px; padding: 12px 14px 14px; align-content: start; }
   .sb-cardbody h4 { margin: 0; font: 700 15px Inter, sans-serif; overflow-wrap: anywhere; }
   .sb-meta { font: 400 12.5px Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
-  .sb-cardacts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .sb-cardacts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 10px; }
+  .sb-cardacts .sb-btn { padding: 7px 12px; }
+  .sb-cardacts .sb-btn.quiet { padding: 6px 7px; font-size: 12.5px; }
   .sb-empty { padding: 28px; border: 1px dashed var(--sb-line); border-radius: 12px; text-align: center; }
   .sb-foot { margin-top: 16px; }
 
   /* the editor */
   .sb-top { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 8px 10px; border: 1px solid var(--sb-line); border-radius: 12px; background: var(--sb-card); }
-  .sb-root .sb-name { flex: 1 1 180px; width: auto; font: 700 16px Inter, sans-serif; border-color: transparent; background: transparent; }
+  .sb-root .sb-name { flex: 1 1 180px; width: auto; font: 700 16px Inter, sans-serif; border-color: var(--sb-line); background: var(--paper, #faf8f5); }
   .sb-root .sb-name:hover, .sb-root .sb-name:focus { border-color: var(--sb-line); background: var(--paper, #faf8f5); }
   .sb-status { font: 600 11.5px 'JetBrains Mono', monospace; letter-spacing: .03em; color: var(--ink-soft, #5c5e66); }
   .sb-topacts { display: flex; gap: 8px; margin-left: auto; }
@@ -1296,7 +1298,7 @@
   .sb-ready { display: flex; flex-wrap: wrap; gap: 6px; }
   .sb-ready a { font: 600 12.5px Inter, sans-serif; padding: 7px 11px; border-radius: 999px; background: var(--ink, #141416); color: var(--paper, #faf8f5); text-decoration: none; }
 
-  .sb-work { display: grid; grid-template-columns: 148px minmax(0, 1fr) 392px; gap: 12px; margin-top: 12px; height: calc(100vh - 220px); min-height: 580px; }
+  .sb-work { display: grid; grid-template-columns: 148px minmax(0, 1fr) 392px; gap: 12px; margin-top: 12px; height: calc(100vh - 220px); min-height: 440px; }
   .sb-rail, .sb-stage, .sb-insp { min-height: 0; border: 1px solid var(--sb-line); border-radius: 12px; background: var(--sb-card); }
   .sb-rail { display: flex; flex-direction: column; overflow: hidden; }
   .sb-railhead { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 12px 4px; }
@@ -1414,7 +1416,6 @@
     .sb-addwrap { border-top: 0; border-left: 1px solid var(--sb-line); display: flex; align-items: center; }
     .sb-addbtn { width: 72px; height: 100%; }
     .sb-panel { overflow: visible; }
-    .sb-tabs { position: sticky; top: 0; z-index: 2; background: var(--sb-card); border-radius: 12px 12px 0 0; }
     .sb-root .sb-name { flex: 1 1 120px; }
     .sb-status { flex: 1 1 auto; min-width: 0; font-size: 10.5px; }
     .sb-topacts { margin-left: auto; }
@@ -1597,11 +1598,12 @@
           <article class="sb-card">
             <button type="button" class="sb-cardcover" data-open="${esc(v.id)}" aria-label="Open ${esc(v.name)}"><span class="sb-hint">…</span></button>
             <div class="sb-cardbody">
-              <h4>${esc(v.name)}</h4>
+              <h4 data-name="${esc(v.id)}">${esc(v.name)}</h4>
               <span class="sb-meta">${esc((STYLES.find((s) => s.key === v.style) || {}).name || "")} · ${esc(colourway(v.colourway).name)} · ${esc(v.orientation)} · ${renderedCount(v)} page${renderedCount(v) === 1 ? "" : "s"}</span>
               <span class="sb-meta">Edited ${esc(new Date(v.updatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }))}</span>
               <div class="sb-cardacts">
                 <button type="button" class="sb-btn dark" data-open="${esc(v.id)}">Open</button>
+                <button type="button" class="sb-btn quiet" data-rename="${esc(v.id)}">Rename</button>
                 <button type="button" class="sb-btn quiet" data-dup="${esc(v.id)}" ${atLimit ? "disabled" : ""}>Duplicate</button>
                 <button type="button" class="sb-btn quiet" data-del="${esc(v.id)}">Delete</button>
               </div>
@@ -1612,6 +1614,31 @@
       $("#sbNew").addEventListener("click", () => { if (!atLimit) openBook(newBook(`Book ${state.versions.length + 1}`), true); });
       $$("[data-open]").forEach((b) => b.addEventListener("click", () => {
         const v = state.versions.find((x) => x.id === b.dataset.open); if (v) openBook(JSON.parse(JSON.stringify(v)));
+      }));
+      // Rename in place on the card: Enter or leaving the box saves, Escape cancels.
+      $$("[data-rename]").forEach((b) => b.addEventListener("click", () => {
+        const id = b.dataset.rename;
+        const title = $$("[data-name]").find((h) => h.dataset.name === id);
+        const v = state.versions.find((x) => x.id === id);
+        if (!title || !v || title.querySelector("input")) return;
+        title.innerHTML = `<label class="sb-vh" for="sbRename">Book name</label><input type="text" id="sbRename" maxlength="80" value="${esc(v.name)}">`;
+        const input = title.querySelector("input");
+        input.focus(); input.select();
+        let done = false;
+        const finish = (save) => {
+          if (done) return; done = true;
+          const name = input.value.trim();
+          if (save && name && name !== v.name) {
+            const cur = readState();
+            const stored = cur.versions.find((x) => x.id === id);
+            if (stored && !writeState({ versions: cur.versions.map((x) => (x.id === id ? { ...x, name, updatedAt: Date.now() } : x)), deleted: cur.deleted })) { API.toast("Not renamed — this device's storage is full or blocked."); }
+            else if (stored) API.toast(`Renamed to “${name}”. Publish to rename it on your other devices.`);
+          }
+          showList();
+          const again = root.querySelector(`[data-rename="${window.CSS && window.CSS.escape ? window.CSS.escape(id) : id}"]`); if (again) again.focus();
+        };
+        input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); finish(true); } if (e.key === "Escape") { e.preventDefault(); finish(false); } });
+        input.addEventListener("blur", () => finish(true));
       }));
       $$("[data-dup]").forEach((b) => b.addEventListener("click", () => {
         const cur = readState();
@@ -1651,7 +1678,7 @@
       root.innerHTML = `
         <div class="sb-top">
           <button type="button" class="sb-btn quiet" id="sbBack">← Books</button>
-          <input type="text" id="sbName" class="sb-name" maxlength="80" value="${esc(book.name)}" aria-label="Book name">
+          <input type="text" id="sbName" class="sb-name" maxlength="80" value="${esc(book.name)}" aria-label="Book name" title="The book's name: type to rename it" placeholder="Name this book">
           <span class="sb-status" id="sbStatus" aria-live="polite">Saved on this device</span>
           <div class="sb-topacts">
             <button type="button" class="sb-btn" id="sbDlToggle" aria-expanded="false" aria-controls="sbDlPop">Download</button>
