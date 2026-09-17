@@ -117,16 +117,17 @@
   // Shrink the type until the text wraps into at most `maxLines`; if it still
   // does not at the smallest size, keep that many lines and end the last with
   // "…". A title never loses words silently. Returns { size, lines }.
-  function fitLines(page, s, maxMm, maxLines, weight, startMm, minMm, family, spacingMm = 0) {
+  function fitLines(page, s, maxMm, maxLines, weight, startMm, minMm, family, spacingMm = 0, italic = false) {
     let size = startMm, lines;
     for (;;) {
-      font(page, weight, size, family, spacingMm);
+      font(page, weight, size, family, spacingMm, italic);
       lines = wrap(page, s, maxMm);
       if (lines.length <= maxLines || size <= minMm) break;
       size = Math.max(minMm, size - 0.5);
     }
     const cut = lines.length > maxLines;
     if (cut) {
+      font(page, weight, size, family, spacingMm, italic);
       // Cut: the last line always ends in "…" and still fits.
       lines = lines.slice(0, maxLines);
       let last = lines[maxLines - 1];
@@ -364,11 +365,19 @@
       frame(page, m, m, W - 2 * m, H - 2 * m, P.ink);
       hair(page, m, divY, W - m, P.ink);
       await drawMark(page, img ? "#FFFFFF" : P.ink, P.accent, img ? "rgba(0,0,0,0)" : P.paper, m + 10, m + 10, 18);
-      const t = fitLines(page, book.title || "Selected Work", W - 2 * m - 20, 2, 300, T.size, T.min, F.serif);
-      const lead = T.lead * (t.size / T.size);
-      t.lines.forEach((l, i) => text(page, l, m + 10, divY + T.first + i * lead, P.ink));
+      const cs = coverStyleOf(book);
+      const tw = W - 2 * m - 20;
+      const TT = textFormat(cs, "title", { w: 300, f: F.serif }, P, P.ink);
+      const t = fitLines(page, book.title || "Selected Work", tw, 2, TT.spec.w, T.size * TT.scale, T.min * TT.scale, TT.spec.f, 0, !!TT.spec.it);
+      const lead = T.lead * (t.size / (T.size * TT.scale)) * TT.scale;
+      t.lines.forEach((l, i) => text(page, l, TT.at(m + 10, tw), divY + T.first + i * lead, TT.color, TT.align));
       let y = divY + T.first + (t.lines.length - 1) * lead;
-      if (book.subtitle) { y += T.sub; font(page, 400, L ? 4.6 : 5.6, F.serif, 0, true); text(page, ellipsize(page, book.subtitle, W - 2 * m - 20), m + 10, y, P.soft); }
+      if (book.subtitle) {
+        const ST = textFormat(cs, "subtitle", { w: 400, f: F.serif, it: true }, P, P.soft);
+        y += T.sub * ST.scale;
+        font(page, ST.spec.w, (L ? 4.6 : 5.6) * ST.scale, ST.spec.f, 0, !!ST.spec.it);
+        text(page, ellipsize(page, book.subtitle, tw), ST.at(m + 10, tw), y, ST.color, ST.align);
+      }
       rect(page, m + 10, y + T.rule - 0.4, 22, 0.8, P.accent);
       font(page, 500, 2.9, F.plex, 0.7);
       text(page, studio().toUpperCase(), m + 10, footY, P.ink);
@@ -425,20 +434,26 @@
       const firstY = fieldEnd + (L ? 36 : 42);
       // Heavy caps at 22mm put most words on a line of their own, so a title is
       // shrunk until it fits two lines AND leaves room for the subtitle.
-      let size = L ? 18 : 22, t;
+      const cs = coverStyleOf(book);
+      const TT = textFormat(cs, "title", { w: 800, f: F.heavy }, P, P.onDeep);
+      const ST = textFormat(cs, "subtitle", { w: 400, f: F.sans }, P, P.onDeep);
+      const tw = W - 40;
+      let size = (L ? 18 : 22) * TT.scale, t;
+      const floorSize = (L ? 9 : 11) * TT.scale;
       for (;;) {
-        t = fitLines(page, (book.title || "Selected Work").toUpperCase(), W - 40, 2, 800, size, L ? 9 : 11, F.heavy, -0.4);
+        t = fitLines(page, (book.title || "Selected Work").toUpperCase(), tw, 2, TT.spec.w, size, floorSize, TT.spec.f, -0.4, !!TT.spec.it);
         const lastBase = firstY + (t.lines.length - 1) * t.size * 0.95;
-        const need = lastBase + t.size * 0.22 + (book.subtitle ? 3 + 4.2 : 0);
-        if (need <= lower - 4 || t.size <= (L ? 9 : 11)) break;
+        const need = lastBase + t.size * 0.22 + (book.subtitle ? 3 + 4.2 * ST.scale : 0);
+        if (need <= lower - 4 || t.size <= floorSize) break;
         size = t.size - 0.5;
       }
       const tLead = t.size * 0.95;
-      font(page, 800, t.size, F.heavy, -0.4);
-      t.lines.forEach((l, i) => text(page, l, 26, firstY + i * tLead, P.onDeep));
+      font(page, TT.spec.w, t.size, TT.spec.f, -0.4, !!TT.spec.it);
+      t.lines.forEach((l, i) => text(page, l, TT.at(26, tw), firstY + i * tLead, TT.color, TT.align));
       if (book.subtitle) {
         const subY = Math.min(lower - 4, Math.max(H - 32, firstY + (t.lines.length - 1) * tLead + t.size * 0.22 + 7));
-        font(page, 400, 4.2, F.sans); text(page, ellipsize(page, book.subtitle, W - 40), 26, subY, P.onDeep);
+        font(page, ST.spec.w, 4.2 * ST.scale, ST.spec.f, 0, !!ST.spec.it);
+        text(page, ellipsize(page, book.subtitle, tw), ST.at(26, tw), subY, ST.color, ST.align);
       }
       hair(page, 26, lower, W - 14, P.onDeep);
       font(page, 700, 2.8, F.mono, 0.5);
@@ -516,14 +531,18 @@
       [`${cl.photos} PLATES`, `${cl.pages} PAGES`, "NOIDA, INDIA"].forEach((w, i) => text(page, w, W - 20, top + i * 6, on, "right"));
       // One line where it fits, at a smaller size before it ever wraps; the
       // rule, the deck line and the mark then sit below whatever was drawn.
-      const t = fitLines(page, (book.title || "Selected Work").toUpperCase(), W - 30, 2, 300, L ? 11 : 13, L ? 7.5 : 8.5, F.serif, 0.8);
+      const cs = coverStyleOf(book);
+      const TT = textFormat(cs, "title", { w: 300, f: F.serif }, P, P.onAccent, "center");
+      const ST = textFormat(cs, "subtitle", { w: 400, f: F.sans }, P, P.onAccent, "center");
+      const tw = W - 30;
+      const t = fitLines(page, (book.title || "Selected Work").toUpperCase(), tw, 2, TT.spec.w, (L ? 11 : 13) * TT.scale, (L ? 7.5 : 8.5) * TT.scale, TT.spec.f, 0.8, !!TT.spec.it);
       const tLead = t.size * 1.23, firstY = band + (L ? 24 : 35);
-      font(page, 300, t.size, F.serif, 0.8);
-      t.lines.forEach((l, i) => text(page, l, W / 2, firstY + i * tLead, P.onAccent, "center"));
+      font(page, TT.spec.w, t.size, TT.spec.f, 0.8, !!TT.spec.it);
+      t.lines.forEach((l, i) => text(page, l, TT.at(15, tw), firstY + i * tLead, TT.color, TT.align));
       const ruleY = firstY + (t.lines.length - 1) * tLead + (L ? 9 : 12.7);
       rect(page, W / 2 - 12, ruleY, 24, 0.6, P.onAccent);
       let below = ruleY;
-      if (book.subtitle) { below = ruleY + (L ? 9 : 12.3); font(page, 400, 4.2, F.sans); text(page, ellipsize(page, book.subtitle, W - 30), W / 2, below, P.onAccent, "center"); }
+      if (book.subtitle) { below = ruleY + (L ? 9 : 12.3) * ST.scale; font(page, ST.spec.w, 4.2 * ST.scale, ST.spec.f, 0, !!ST.spec.it); text(page, ellipsize(page, book.subtitle, tw), ST.at(15, tw), below, ST.color, ST.align); }
       const footY = H - 11, markSize = L ? 12 : 16;
       const markY = Math.max(H - (L ? 34 : 49), below + 5);
       if (markY + markSize <= footY - 5) await drawMark(page, P.onAccent, P.onAccent, P.accent, W / 2 - markSize / 2, markY, markSize);
@@ -576,8 +595,9 @@
 
   // Running text that stops above the foot. If it has to stop early, the last
   // line that fits ends with "…" so nothing is cut mid-thought without a sign.
-  function bodyLines(page, s, x, y, P, maxW, maxY, lead) {
+  function bodyLines(page, s, x, y, P, maxW, maxY, lead, align = "left") {
     const lines = wrap(page, s, maxW);
+    const at = align === "center" ? x + maxW / 2 : align === "right" ? x + maxW : x;
     let i = 0;
     page.lastBodyCut = false;
     for (; i < lines.length; i++) {
@@ -585,7 +605,7 @@
       if (yy > maxY) break;
       const last = i + 1 < lines.length && y + (i + 1) * lead > maxY;
       if (last) page.lastBodyCut = true;
-      text(page, last ? ellipsize(page, `${lines[i]} …`, maxW) : lines[i], x, yy, P.ink);
+      text(page, last ? ellipsize(page, `${lines[i]} …`, maxW) : lines[i], at, yy, P.ink, align === "justify" ? "left" : align);
     }
     return y + i * lead;
   }
@@ -607,19 +627,22 @@
       // which are far wider than the lower case it was typed in.
       const shown = book.style === "elegant" ? (entry.heading || "Selected work") : (entry.heading || "Selected work").toUpperCase();
       const weight = book.style === "modern" ? 800 : 300, family = book.style === "modern" ? F.heavy : F.serif, spacing = book.style === "vogue" ? 1 : 0;
-      const t = fitLines(page, shown, W - 40, 2, weight, book.style === "modern" ? 26 : 30, 12, family, spacing);
+      const HT = textFormat(entry.style, "heading", { w: weight, f: family }, P, on);
+      const LT = textFormat(entry.style, "line", { w: 400, f: F.sans }, P, on);
+      const tw = W - 40;
+      const t = fitLines(page, shown, tw, 2, HT.spec.w, (book.style === "modern" ? 26 : 30) * HT.scale, 12 * HT.scale, HT.spec.f, spacing, !!HT.spec.it);
       if (t.cut) reportCut(page, "heading", "chapter heading");
       const lead = t.size * 1.05;
       const top = H / 2 - (t.lines.length - 1) * lead / 2;
-      font(page, weight, t.size, family, spacing);
-      t.lines.forEach((l, i) => text(page, l, 20, top + i * lead, on));
+      font(page, HT.spec.w, t.size, HT.spec.f, spacing, !!HT.spec.it);
+      t.lines.forEach((l, i) => text(page, l, HT.at(20, tw), top + i * lead, HT.color, HT.align));
       const after = top + (t.lines.length - 1) * lead;
       if (book.style === "elegant") rect(page, 20, after + 8, 22, 0.8, P.accent);
       if (entry.line) {
-        font(page, 400, 4.2, F.sans);
+        font(page, LT.spec.w, 4.2 * LT.scale, LT.spec.f, 0, !!LT.spec.it);
         const lines = wrap(page, entry.line, maxW);
         if (lines.length > 4) reportCut(page, "line", "line under the heading");
-        lines.slice(0, 4).forEach((l, i) => text(page, i === 3 && lines.length > 4 ? ellipsize(page, `${l} …`, maxW) : (i === 3 ? ellipsize(page, l, maxW) : l), 20, after + t.size * 0.5 + 10 + i * 6.4, on));
+        lines.slice(0, 4).forEach((l, i) => text(page, i === 3 && lines.length > 4 ? ellipsize(page, `${l} …`, maxW) : (i === 3 ? ellipsize(page, l, maxW) : l), LT.at(20, maxW), after + t.size * 0.5 + 10 + i * 6.4 * LT.scale, LT.color, LT.align));
       }
       if (book.style === "elegant") ELEGANT.foot(page, P, W, H, n);
       if (book.style === "modern") MODERN.foot(page, P, W, H, n, "", P.onAccent, P.onAccent);
@@ -631,7 +654,10 @@
     if (entry.type === "about") {
       S.label(page, "About the studio", x, y - 10, P);
       y = S.heading(page, "Not just photos, a perspective", x, y, P, maxW);
-      y = S.body(page, (book.texts && book.texts.about) || DEFAULT_ABOUT, x, y + 6, P, maxW, floor);
+      // The About words take the studio's own font, colour, size and alignment.
+      const AT = textFormat(entry.style, "about", { w: book.style === "elegant" ? 300 : 400, f: F.sans, size: book.style === "elegant" ? 4.0 : 3.9, lead: book.style === "elegant" ? 6.4 : (book.style === "modern" ? 6.2 : 6.3) }, P, P.ink);
+      font(page, AT.spec.w, AT.spec.size * AT.scale, AT.spec.f, 0, !!AT.spec.it);
+      y = bodyLines(page, (book.texts && book.texts.about) || DEFAULT_ABOUT, AT.align === "left" ? x : x, y + 6, { ...P, ink: AT.color }, maxW, floor, AT.spec.lead * AT.scale, AT.align);
       if (page.lastBodyCut) reportCut(page, "about", "About text");
     }
     if (entry.type === "services") {
@@ -735,7 +761,7 @@
      recorded, so the editor can say what won't print before a client sees it.
      Field caps (STUDIO_BOOK_LIMITS.fields in app.js) were measured against the
      narrowest style and page shape, so ordinary prose at the cap fits in all. */
-  const WRITING = { story: "Story", note: "About a photo", quote: "Quote", letter: "Letter", feature: "Zig-zag", article: "Story with a full-page photo" };
+  const WRITING = { story: "Story", note: "About a photo", quote: "Quote", letter: "Letter", feature: "Zig-zag", article: "Story with a full-page photo", ways: "Ways we work", process: "How a shoot runs" };
 
   const WTYPE = {
     elegant: {
@@ -753,7 +779,12 @@
       letterBody: { w: 300, size: 4.0, f: F.serif, lead: 6.4 },
       sign: { w: 400, size: 5.0, f: F.serif, it: true },
       signLine: { w: 500, size: 2.6, f: F.plex, sp: 0.55, caps: true },
-      featureSub: { w: 300, f: F.serif, caps: false, start: 6, min: 5, lead: 1.18, color: "ink" }
+      featureSub: { w: 300, f: F.serif, caps: false, start: 6, min: 5, lead: 1.18, color: "ink" },
+      smallLabel: { w: 500, size: 2.2, f: F.plex, sp: 0.45, caps: true },
+      wayName: { w: 300, f: F.serif, start: 6, min: 4.8, lead: 1.18 },
+      wayFor: { w: 400, f: F.serif, it: true, size: 3.6, lead: 5.0, color: "soft" },
+      stepTitle: { w: 300, f: F.serif, start: 5.0, min: 4.2, lead: 1.18 },
+      workNote: { w: 300, f: F.sans, size: 3.8, lead: 6.0 }
     },
     modern: {
       kicker: { w: 700, size: 2.5, f: F.mono, sp: 0.45, caps: true, color: "accentText" },
@@ -771,7 +802,12 @@
       letterBody: { w: 400, size: 3.8, f: F.sans, lead: 6.1 },
       sign: { w: 600, size: 4.0, f: F.sans },
       signLine: { w: 700, size: 2.5, f: F.mono, sp: 0.45, caps: true },
-      featureSub: { w: 800, f: F.heavy, sp: -0.1, caps: true, start: 4.6, min: 4, lead: 1.1, color: "ink" }
+      featureSub: { w: 800, f: F.heavy, sp: -0.1, caps: true, start: 4.6, min: 4, lead: 1.1, color: "ink" },
+      smallLabel: { w: 700, size: 2.2, f: F.mono, sp: 0.4, caps: true },
+      wayName: { w: 800, f: F.heavy, sp: -0.2, caps: true, start: 5.4, min: 4.4, lead: 1.1 },
+      wayFor: { w: 400, f: F.sans, size: 3.4, lead: 4.8, color: "soft" },
+      stepTitle: { w: 800, f: F.heavy, sp: -0.2, start: 5.0, min: 4.2, lead: 1.14 },
+      workNote: { w: 500, f: F.sans, size: 3.8, lead: 6.0 }
     },
     vogue: {
       kicker: { w: 600, size: 2.7, f: F.geo, sp: 0.8, caps: true, color: "accentText" },
@@ -788,7 +824,12 @@
       letterBody: { w: 400, size: 3.8, f: F.sans, lead: 6.1 },
       sign: { w: 400, size: 5.0, f: F.serif, it: true },
       signLine: { w: 600, size: 2.7, f: F.geo, sp: 0.8, caps: true },
-      featureSub: { w: 300, f: F.serif, sp: 0.4, caps: true, start: 5.2, min: 4.4, lead: 1.15, color: "ink" }
+      featureSub: { w: 300, f: F.serif, sp: 0.4, caps: true, start: 5.2, min: 4.4, lead: 1.15, color: "ink" },
+      smallLabel: { w: 600, size: 2.3, f: F.geo, sp: 0.6, caps: true },
+      wayName: { w: 300, f: F.serif, sp: 0.4, caps: true, start: 5.6, min: 4.6, lead: 1.15 },
+      wayFor: { w: 400, f: F.geo, size: 3.4, lead: 4.8, color: "soft" },
+      stepTitle: { w: 300, f: F.serif, sp: 0.4, caps: true, start: 5.0, min: 4.2, lead: 1.15 },
+      workNote: { w: 400, f: F.sans, size: 3.8, lead: 6.0 }
     }
   };
   const DETAIL_TYPE = { w: 400, f: F.sans };
@@ -799,6 +840,207 @@
     vogue: { w: 500, f: F.geo, start: 3.0, min: 2.6 }
   };
   const MARKER = "NO WORDS ON THIS PAGE YET";
+
+  /* ---------- the studio's four ways of working -------------------------------
+     Written from what the site and the contracts already say (the two booking
+     doors, the 50/30/20 schedule, crew and venue rules, the test-shoot terms),
+     so a client reading the book is told the same thing twice. It arrives on
+     the page as ordinary words: every line sits in a box and can be rewritten. */
+  const WAYS_COPY = {
+    "kicker": "How we work",
+    "heading": "Four ways we work with you",
+    "intro": "Some shoots arrive with a plan, others with a goal, a collection or a portfolio to build. We work all four ways, and like ideas shaped together best.",
+    "items": [
+      {
+        "name": "Your plan, lit and shot",
+        "forWho": "Brands, designers and models with the look already decided",
+        "text": "You send the concept, references and shot list. We build the light, direct on set, shoot to your plan and retouch the frames you choose.",
+        "lead": "you"
+      },
+      {
+        "name": "Your goal, our idea",
+        "forWho": "Brands and designers with a goal, not yet a look",
+        "text": "You tell us what the pictures are for and where they will run. We propose an idea, refine it with you, and shoot the plan we agree.",
+        "lead": "together",
+        "liked": true
+      },
+      {
+        "name": "We plan it around you",
+        "forWho": "Designers with a collection, models who need a portfolio",
+        "text": "You bring the garments, or yourself. We plan the looks, light and frames, check the plan with you, and direct the shoot on the day.",
+        "lead": "studio"
+      },
+      {
+        "name": "Test shoot, shaped together",
+        "forWho": "Models, stylists and make-up artists, by invitation",
+        "text": "No shoot fee: new portfolio pictures for all of us. We propose an idea, you tell us what you'd change, and we refine it together.",
+        "lead": "together",
+        "liked": true
+      }
+    ]
+  };
+  const PROCESS_COPY = {
+    "execute": {
+      "menuName": "Your plan, lit and shot",
+      "menuNote": "Client arrives with the concept, references and shot list; the studio shoots to it.",
+      "kicker": "Your plan, lit and shot",
+      "heading": "Your idea stays yours. We light it and shoot it.",
+      "intro": "You come with the concept, references and shot list. We bring light built for it, direction on set and retouching that doesn't change the work.",
+      "steps": [
+        {
+          "who": "you",
+          "title": "Send the brief",
+          "text": "Your references, the looks, the shot list and where the pictures will run. Links and files are both welcome."
+        },
+        {
+          "who": "together",
+          "title": "Questions, then a price",
+          "text": "We go through the brief with you, ask what we need to, and write a price against it before anything is booked."
+        },
+        {
+          "who": "you",
+          "title": "Your team, or help finding one",
+          "text": "Bring your own stylist, hair and make-up artist and model, or ask us to help. Any crew cost is quoted for your approval first."
+        },
+        {
+          "who": "studio",
+          "title": "The shoot, run to your list",
+          "text": "Light built for your concept and direction on set. Your planned frames come first, then the variations you need."
+        },
+        {
+          "who": "you",
+          "title": "Choose your selects",
+          "text": "Pick your selects from an online proofing gallery. Those are the frames we retouch."
+        },
+        {
+          "who": "studio",
+          "title": "Retouched and credited",
+          "text": "Your selects are retouched without changing the work, and the whole team is credited. RAW files are not delivered."
+        }
+      ],
+      "note": "Want a second opinion on the plan? Ask, and we'll talk it through with you."
+    },
+    "pitch": {
+      "menuName": "Your goal, our idea",
+      "menuNote": "Client knows the goal and where the pictures will run; the studio proposes the idea.",
+      "kicker": "Your goal, our idea",
+      "heading": "You set the goal. We propose the idea.",
+      "intro": "You know what the pictures need to do. We come back with an idea for how they could look, then shape it with you until it's a plan we both want to shoot.",
+      "steps": [
+        {
+          "who": "you",
+          "title": "Tell us the goal",
+          "text": "What the pictures are for, where they will run, what they need to say, and anything that can't change."
+        },
+        {
+          "who": "studio",
+          "title": "We propose an idea",
+          "text": "How the pictures could look: the mood, the light, the location and the styling, with reference pictures to show it."
+        },
+        {
+          "who": "together",
+          "title": "Shape it together",
+          "text": "Tell us what works and what doesn't. We refine the idea with you until the look, the team and the shot list are agreed."
+        },
+        {
+          "who": "studio",
+          "title": "Ready before the day",
+          "text": "A price written against the agreed plan, a written contract signed online, and help putting the team together if you need it."
+        },
+        {
+          "who": "studio",
+          "title": "The shoot",
+          "text": "Run to the shot list, with light built for the idea: the planned frames first, then time for what the day turns up."
+        },
+        {
+          "who": "together",
+          "title": "Selects, retouched and credited",
+          "text": "You choose from the proofing gallery. We retouch your selects and credit everyone who worked on the shoot."
+        }
+      ],
+      "note": "The idea is ours to propose and yours to shape. The plan is agreed before the day."
+    },
+    "lead": {
+      "menuName": "We plan it around you",
+      "menuNote": "Designer with garments, or a model wanting a portfolio; the studio plans, client checks.",
+      "kicker": "We plan it around you",
+      "heading": "Bring the garments, or yourself. We plan the shoot.",
+      "intro": "A designer with a new collection and a model who needs a portfolio start in the same place: what the pictures are for. We plan the rest, with you.",
+      "steps": [
+        {
+          "who": "you",
+          "title": "Tell us what it's for",
+          "text": "The collection and where the pictures will be used, or the kind of work you want to be booked for."
+        },
+        {
+          "who": "studio",
+          "title": "We plan the shoot",
+          "text": "The looks and the order they are shot in, the light, the location, who needs to be there and the frames to come away with."
+        },
+        {
+          "who": "together",
+          "title": "Check the plan with us",
+          "text": "It's written down as a short brief you can correct, and the final looks are picked together before the shoot."
+        },
+        {
+          "who": "studio",
+          "title": "We help put the team together",
+          "text": "Hair and make-up, styling or a model, when you ask. Any crew cost is quoted for your approval first."
+        },
+        {
+          "who": "studio",
+          "title": "The shoot, directed",
+          "text": "You are directed through every pose, so no experience is needed. Garments are shot whole and close up, in true colour."
+        },
+        {
+          "who": "together",
+          "title": "Choose, and we retouch",
+          "text": "Pick your selects from the proofing gallery. We retouch them naturally, without changing the work, and credit the team."
+        }
+      ],
+      "note": "Even when the plan is ours, you see it, correct it and pick the final looks with us."
+    },
+    "test": {
+      "menuName": "Test shoot, shaped together",
+      "menuNote": "Invited test shoot: the studio proposes an idea, the client responds, and it's refined.",
+      "kicker": "Test shoot, shaped together",
+      "heading": "We propose. You respond. We refine it together.",
+      "intro": "A test shoot is by invitation and has no shoot fee. Each of us brings our craft to make new portfolio pictures, so the idea has to be worth everyone's time.",
+      "steps": [
+        {
+          "who": "studio",
+          "title": "We propose an idea",
+          "text": "A short idea for the pictures, with references to show it, shared with the people we'd like to shoot with."
+        },
+        {
+          "who": "you",
+          "title": "Tell us what you think",
+          "text": "What you would bring, such as posing, a garment you designed or a hair and make-up look, and what you would change."
+        },
+        {
+          "who": "together",
+          "title": "Refine it until it's right",
+          "text": "We adjust the idea with your feedback until it works for everyone. Once you confirm the plan by reply, your date is held."
+        },
+        {
+          "who": "together",
+          "title": "Agree who brings what",
+          "text": "We bring the camera, the light and the edit. You bring wardrobe and make-up. Any crew or studio rental is quoted in advance."
+        },
+        {
+          "who": "together",
+          "title": "The shoot",
+          "text": "The planned frames first, then time for what the day turns up. We shape the light; you bring the look."
+        },
+        {
+          "who": "studio",
+          "title": "Selection, edit and credits",
+          "text": "You see the proofing gallery. The final selection and edit rest with us, and everyone who worked on it is credited."
+        }
+      ],
+      "note": "Your pictures: portfolios and social media, not commercial use. Instagram posts add @nerdyphotographer.in as co-author."
+    }
+  };
 
   /* ---------- the studio's own formatting of a text -----------------------------
      A font (open-source, SIL Open Font License, from Google Fonts), a colour
@@ -843,6 +1085,19 @@
     return { ...spec, it, w: base ? weightFor(base, wanted, it) : wanted };
   }
   const sizeScale = (f) => (f && typeof f.size === "number" && isFinite(f.size) ? Math.min(1.6, Math.max(0.6, f.size)) : 1);
+  // Formatting for a text on a page the plan engine doesn't lay out (the cover,
+  // a chapter page, the About page). Gives the spec to draw with, the size
+  // scale, the colour, and where to put a line inside its column.
+  function textFormat(where, key, spec, P, color, align = "left") {
+    const f = (where && where[key]) || {};
+    const st = styledSpec(spec, f);
+    return {
+      spec: st, scale: sizeScale(f), color: tintOf(f.color, P, color),
+      align: ALIGNS.includes(f.align) && f.align !== "justify" ? f.align : align,
+      at(x, w) { return this.align === "center" ? x + w / 2 : this.align === "right" ? x + w : x; }
+    };
+  }
+  const coverStyleOf = (book) => (book && book.coverStyle && typeof book.coverStyle === "object" ? book.coverStyle : null);
   function tintOf(color, P, fallback) {
     if (color === "ink" && P) return P.ink;
     if (color === "soft" && P) return P.soft;
@@ -1204,9 +1459,15 @@
     const hasPhoto = photos.length > 0;
     const at = photoAtOf(entry, L);
     const LABEL = { kicker: "small line", headline: "headline", intro: "intro", body: entry.type === "letter" ? "letter" : "story", title: "title", note: "words about the picture", detail: "detail line", quote: "quote", name: "name", role: "role", heading: "heading", signName: "signed name", signLine: "line under the name", sub1: "first subheading", text1: "first block of words", sub2: "second subheading", text2: "second block of words" };
+    const numbered = (field) => {
+      const m = /^(name|forWho|text|title)(\d)$/.exec(field);
+      if (!m) return LABEL[field] || field;
+      const what = { name: "name", forWho: "who it suits", text: entry.type === "ways" ? "words" : "words", title: "title" }[m[1]];
+      return `${entry.type === "ways" ? "way" : "step"} ${m[2]} ${what}`;
+    };
     const report = (field, r) => {
       plan.fields[field] = r;
-      if (r.cut) plan.cuts.push({ field, label: LABEL[field] || field });
+      if (r.cut) plan.cuts.push({ field, label: numbered(field) });
     };
     // Draw a fitted block at baseline y0; an empty one leaves a guide (preview
     // only) and still holds its first line, so the layout doesn't jump.
@@ -1456,6 +1717,172 @@
         body(`text${n}`, entry[`text${n}`], [{ x: tx, w: tw, top: top + 3.2, bottom: row.y + row.h - 2 }], T.body, null);
       });
       if (!has("kicker", "headline", "sub1", "text1", "sub2", "text2")) marker(W / 2, L ? 44 : 64);
+    }
+
+    /* ---------- how we work ------------------------------------------------
+       Two pages the studio can show a client: the four ways of working side
+       by side, and one way step by step. Both say who does what, in words as
+       well as position, and both are the studio's own text: every word is in
+       the boxes and can be edited. */
+    const WHO_WORD = { you: "You", together: "Together", studio: "Studio" };
+    const WHO_ORDER = ["you", "together", "studio"];
+    // Three squares and a word: which one is filled says who does this step.
+    const whoTag = (x, y, who, color) => {
+      WHO_ORDER.forEach((k, i) => rectOp(x + i * 2.6, y - 1.9, 1.9, 1.9, k === who ? (st === "modern" ? accentText(P) : P.ink) : P.rule));
+      const spec = T.smallLabel;
+      put(WHO_WORD[who].toUpperCase(), x + 8.9, y, spec, spec.size, color || P.ink);
+    };
+    const tagWidth = (word) => { font(page, T.smallLabel.w, T.smallLabel.size, T.smallLabel.f, T.smallLabel.sp); return 8.9 + measure(page, word.toUpperCase()); };
+    const hairOp = (x1, y, x2, color, h = 0.3) => rectOp(x1, y - h / 2, x2 - x1, h, color);
+    // The header both pages share.
+    const workHeader = () => {
+      if (!L) {
+        kicker(entry.kicker, 20, 34, 170);
+        const hLast = block("heading", entry.heading, 20, 46, 170, 2, T.storyHead, T.storyHead.start, T.storyHead.min, "mul", P.ink);
+        let ruleY = hLast + 7;
+        if (has("intro")) ruleY = block("intro", entry.intro, 20, hLast + 10, 170, 3, T.storyIntro, T.storyIntro.start, T.storyIntro.min, T.storyIntro.lead, colour(T.storyIntro.color)) + 6.5;
+        else report("intro", { kind: "block", empty: true });
+        rule(20, ruleY);
+        return ruleY;
+      }
+      kicker(entry.kicker, 20, 30, 140);
+      const hLast = block("heading", entry.heading, 20, 42, 140, 2, T.storyHead, T.storyHead.start, T.storyHead.min, "mul", P.ink);
+      const ruleY = hLast + 7;
+      rule(20, ruleY);
+      let introLast = 0;
+      if (has("intro")) introLast = block("intro", entry.intro, 172, 42, 105, 4, T.storyIntro, T.storyIntro.start, T.storyIntro.min, T.storyIntro.lead, colour(T.storyIntro.color));
+      else report("intro", { kind: "block", empty: true });
+      return Math.max(ruleY, introLast + 1.6);
+    };
+
+    if (entry.type === "ways") {
+      ground();
+      const items = (Array.isArray(entry.items) ? entry.items : []).slice(0, 4);
+      const hb = workHeader();
+      const NS = T.wayName, FS = T.wayFor, SL = T.smallLabel;
+      // Every name is set at one size, the smallest any of them needs, so the
+      // four rows read as one table rather than four posters.
+      let nameSize = NS.start;
+      items.forEach((it) => { const r = fitBlock(page, it && it.name, L ? 58.25 : 48, 2, NS, NS.start, NS.min, !!NS.caps); nameSize = Math.min(nameSize, r.size); });
+      const likedMark = (x, y) => put("HOW WE LIKE TO WORK", x, y, SL, SL.size, accentText(P));
+      if (!L) {
+        [["THE WAY", 20], ["HOW IT RUNS", 75], ["WHO LEADS THE IDEAS", 145]].forEach(([s, x]) => put(s, x, hb + 11, SL, SL.size, P.soft));
+        const R0 = hb + 14.5;
+        hairOp(20, R0, 190, P.ink);
+        const rh = (275 - R0) / 4;
+        items.forEach((it, i) => {
+          const r0 = R0 + i * rh, floor = r0 + rh - 4.2;
+          if (i) hairOp(20, r0, 190, P.rule);
+          if (it && it.liked) { rectOp(20, r0, 170, T.rule.h, P.accent); likedMark(20, r0 + 7.2); }
+          const nb = r0 + 15.5 + (st === "modern" ? 1 : 0);
+          const nameLast = block(`name${i + 1}`, it && it.name, 20, nb, 48, 3, NS, nameSize, nameSize, "mul", P.ink);
+          block(`forWho${i + 1}`, it && it.forWho, 20, nameLast + 6, 48, 3, FS, FS.size, FS.size, FS.lead, colour(FS.color));
+          body(`text${i + 1}`, it && it.text, [{ x: 75, w: 62, top: nb, bottom: floor }], T.body, null);
+          whoTag(145, nb - 2.4, (it && WHO_ORDER.includes(it.lead)) ? it.lead : "together");
+        });
+      } else {
+        const cw = 58.25, gap = 8;
+        const cx = (i) => 20 + i * (cw + gap);
+        const T0 = hb + 11;
+        const nbOf = T0 + 15.5 + (st === "modern" ? 1 : 0);
+        let forBottom = nbOf;
+        const nameLasts = [];
+        items.forEach((it, i) => {
+          hairOp(cx(i), T0, cx(i) + cw, P.ink);
+          if (it && it.liked) { rectOp(cx(i), T0, cw, T.rule.h, P.accent); likedMark(cx(i), T0 + 7.2); }
+          const nameLast = block(`name${i + 1}`, it && it.name, cx(i), nbOf, cw, 3, NS, nameSize, nameSize, "mul", P.ink);
+          nameLasts.push(nameLast);
+          const r = fitBlock(page, it && it.forWho, cw, 3, FS, FS.size, FS.size, false);
+          forBottom = Math.max(forBottom, nameLast + 6 + (Math.max(1, r.lines.length) - 1) * FS.lead);
+        });
+        const SB = forBottom + 9.5;
+        items.forEach((it, i) => {
+          block(`forWho${i + 1}`, it && it.forWho, cx(i), nameLasts[i] + 6, cw, 3, FS, FS.size, FS.size, FS.lead, colour(FS.color));
+          if (!i) put("WHO LEADS THE IDEAS", cx(0), SB, SL, SL.size, P.soft);
+          whoTag(cx(i), SB + 8, (it && WHO_ORDER.includes(it.lead)) ? it.lead : "together");
+          body(`text${i + 1}`, it && it.text, [{ x: cx(i), w: cw, top: SB + 20, bottom: 184 }], T.body, null);
+        });
+      }
+      if (!items.some((it) => it && (oneParagraph(it.name).length || oneParagraph(it.text).length)) && !has("kicker", "heading", "intro")) marker(L ? 148 : 105, L ? 110 : 150);
+    }
+
+    if (entry.type === "process") {
+      ground();
+      const steps = (Array.isArray(entry.steps) ? entry.steps : []).slice(0, 6);
+      const n = Math.max(1, steps.length);
+      const hb = workHeader();
+      const NOTE = T.workNote, TS = T.stepTitle, SL = T.smallLabel;
+      // The closing line sits at the foot, with a hairline above it.
+      let floor = L ? 184 : 270;
+      if (has("note")) {
+        const noteR = fitBlock(page, entry.note, L ? 257 : 170, 2, NOTE, NOTE.size, NOTE.size, false);
+        const firstY = (L ? 184 : 270) - (noteR.lines.length - 1) * NOTE.lead;
+        block("note", entry.note, 20, firstY, L ? 257 : 170, 2, NOTE, NOTE.size, NOTE.size, NOTE.lead, P.ink);
+        const hairY = firstY - 0.75 * NOTE.size - 5;
+        hairOp(20, hairY, L ? 277 : 190, P.rule);
+        floor = hairY - 7;
+      } else report("note", { kind: "block", empty: true });
+      const numSize = (L ? { 3: 30, 4: 25, 5: 19, 6: 13 } : { 3: 22, 4: 18, 5: 14, 6: 11.5 })[n] || (L ? 19 : 14);
+      const NUM = { w: T.storyHead.w, f: T.storyHead.f, sp: st === "modern" ? -0.2 : 0 };
+      font(page, NUM.w, numSize, NUM.f, NUM.sp);
+      const numW = Math.max(...steps.map((s2, i) => measure(page, String(i + 1).padStart(2, "0"))), measure(page, "00"));
+      const numCap = page.ctx.measureText("00").actualBoundingBoxAscent / page.u(1);
+      const titleScale = (L ? 1 : { 3: 1.3, 4: 1.15, 5: 1, 6: 1 }[n] || 1);
+      const top0 = hb + 11;
+      if (!L) {
+        const wordsX = 20 + Math.max(numW, tagWidth("Together")) + 9, wordsW = 190 - wordsX;
+        // One title size for every step, and the text that fits under it.
+        let titleSize = TS.start * titleScale;
+        steps.forEach((s2) => { const r = fitBlock(page, s2 && s2.title, wordsW, 2, TS, TS.start * titleScale, TS.min, !!TS.caps); titleSize = Math.min(titleSize, r.size); });
+        const titleStep = titleSize * TS.lead;
+        const measured = steps.map((s2) => {
+          const tr = fitBlock(page, s2 && s2.title, wordsW, 2, TS, titleSize, titleSize, !!TS.caps);
+          return { lines: Math.max(1, tr.lines.length) };
+        });
+        const titleCap = (() => { font(page, TS.w, titleSize, TS.f, TS.sp || 0, !!TS.it); return page.ctx.measureText("Hx").actualBoundingBoxAscent / page.u(1); })();
+        const heightOf = (m, textLines) => Math.max(numCap + 8.2, titleCap + (m.lines - 1) * titleStep + 6.8 + (textLines - 1) * 5.8 + 1.3);
+        let textLines = 3, gap = 0, total = 0;
+        for (; textLines >= 1; textLines--) {
+          total = measured.reduce((a, m) => a + heightOf(m, textLines), 0);
+          gap = n > 1 ? (floor - top0 - total) / (n - 1) : 0;
+          if (gap >= 7 || textLines === 1) break;
+        }
+        gap = Math.min(gap, ({ 3: 40, 4: 32, 5: 24, 6: 18 })[n] || 18);
+        const used = total + gap * (n - 1);
+        let y = top0 + Math.max(0, (floor - top0 - used) / 2);
+        steps.forEach((s2, i) => {
+          const h = heightOf(measured[i], textLines);
+          const nBase = y + numCap;
+          font(page, NUM.w, numSize, NUM.f, NUM.sp);
+          put(String(i + 1).padStart(2, "0"), 20, nBase, NUM, numSize, accentText(P));
+          whoTag(20, nBase + 7.2, (s2 && WHO_ORDER.includes(s2.who)) ? s2.who : "together");
+          const tLast = block(`title${i + 1}`, s2 && s2.title, wordsX, y + titleCap, wordsW, 2, TS, titleSize, titleSize, titleStep, P.ink);
+          body(`text${i + 1}`, s2 && s2.text, [{ x: wordsX, w: wordsW, top: tLast + 6.8, bottom: tLast + 6.8 + (textLines - 1) * 5.8 }], T.body, null);
+          if (i < n - 1) rectOp(20 + numW / 2 - 0.15, nBase + 11.2, 0.3, Math.max(0, (y + h + gap - 3.5) - (nBase + 11.2)), P.rule);
+          y += h + gap;
+        });
+      } else {
+        const gapC = n <= 4 ? 9 : 7;
+        const cw = (257 - (n - 1) * gapC) / n;
+        const cx = (i) => 20 + i * (cw + gapC);
+        const NB = top0 + numCap;
+        const maxLines = cw >= 50 ? 2 : 3;
+        let titleSize = TS.start;
+        steps.forEach((s2) => { const r = fitBlock(page, s2 && s2.title, cw, maxLines, TS, TS.start, TS.min, !!TS.caps); titleSize = Math.min(titleSize, r.size); });
+        const titleStep = titleSize * TS.lead;
+        let lines = 1;
+        steps.forEach((s2) => { const r = fitBlock(page, s2 && s2.title, cw, maxLines + 1, TS, titleSize, titleSize, !!TS.caps); lines = Math.max(lines, Math.min(maxLines + 1, r.lines.length)); });
+        const textTop = NB + 18 + (lines - 1) * titleStep + 7;
+        steps.forEach((s2, i) => {
+          font(page, NUM.w, numSize, NUM.f, NUM.sp);
+          put(String(i + 1).padStart(2, "0"), cx(i), NB, NUM, numSize, accentText(P));
+          if (i < n - 1) hairOp(cx(i) + numW + 4, NB - numCap / 2, cx(i + 1) - 4, P.rule);
+          whoTag(cx(i), NB + 9, (s2 && WHO_ORDER.includes(s2.who)) ? s2.who : "together");
+          block(`title${i + 1}`, s2 && s2.title, cx(i), NB + 18, cw, maxLines + 1, TS, titleSize, titleSize, titleStep, P.ink);
+          body(`text${i + 1}`, s2 && s2.text, [{ x: cx(i), w: cw, top: textTop, bottom: floor }], T.body, null);
+        });
+      }
+      if (!steps.some((s2) => s2 && (oneParagraph(s2.title).length || oneParagraph(s2.text).length)) && !has("kicker", "heading", "intro", "note")) marker(L ? 148 : 105, L ? 110 : 150);
     }
 
     plan.ops = plan.ops.map((o) => placeOp(o, G));
@@ -1804,6 +2231,9 @@
   .sb-custom { display: inline-flex; align-items: center; gap: 4px; font: 600 11.5px 'JetBrains Mono', monospace; color: var(--ink, #141416); }
   .sb-custom input { width: 30px; height: 30px; padding: 0; border: 1px solid var(--sb-line); border-radius: 50%; background: none; cursor: pointer; }
   .sb-seg-sm button { padding: 6px 8px; font-size: 12px; }
+  .sb-rowbox { padding: 10px; border: 1px solid var(--sb-line); border-radius: 10px; }
+  .sb-rowacts { display: flex; gap: 4px; }
+  .sb-rowacts .sb-btn { padding: 5px 8px; font-size: 12px; }
   .sb-sizerow { display: flex; align-items: center; gap: 8px; }
   .sb-sizerow input { flex: 1; accent-color: var(--accent, #d24e1a); }
   .sb-sizerow output { min-width: 40px; font: 600 11.5px 'JetBrains Mono', monospace; color: var(--ink, #141416); }
@@ -1877,7 +2307,7 @@
     document.head.appendChild(st);
   }
 
-  const PAGE_LABEL = { photos: "Photos", spread: "Two-page spread", divider: "Chapter page", about: "About", services: "What I shoot", contact: "Contact", story: "Story", note: "About a photo", quote: "Quote", letter: "Letter", feature: "Zig-zag", article: "Story + full-page photo" };
+  const PAGE_LABEL = { photos: "Photos", spread: "Two-page spread", divider: "Chapter page", about: "About", services: "What I shoot", contact: "Contact", story: "Story", note: "About a photo", quote: "Quote", letter: "Letter", feature: "Zig-zag", article: "Story + full-page photo", ways: "Ways we work", process: "How a shoot runs" };
   const ADD_MENU = [
     { group: "Photographs", items: [
       ["photos", "Photos", "One to six photos, laid out by their shapes."],
@@ -1889,6 +2319,9 @@
       ["letter", "Letter", "A signed page of your own writing: a foreword, or a note to a brand."],
       ["feature", "Zig-zag", "A photo beside words, then words beside a photo, the way magazines alternate them."],
       ["article", "Story + full-page photo", "Two facing pages: your words on one, a photo filling the other."]] },
+    { group: "How we work", items: [
+      ["ways", "Ways we work", "All four ways of working on one page, with who leads the ideas."],
+      ["process", "How a shoot runs", "One way, step by step, marking who does what: you, together, or the studio."]] },
     { group: "Studio pages", items: [
       ["divider", "Chapter page", "A pause between sections, e.g. “Fashion & editorial”."],
       ["about", "About the studio", "Who you are and how you work."],
@@ -1938,15 +2371,17 @@
     ]
   };
   // Fields that can be formatted (font, colour, alignment).
-  const FORMATTABLE = { ...Object.fromEntries(Object.entries({ story: 1, note: 1, quote: 1, letter: 1, feature: 1, article: 1 }).map(([t]) => [t, true])), photos: true };
-  const REQUIRED = { story: ["headline", "body"], note: ["title", "note"], quote: ["quote"], letter: ["heading", "body"], feature: ["headline"], article: ["headline", "body"] };
+  const LEAD_CHOICES = [["you", "You"], ["together", "Together"], ["studio", "Studio"]];
+  const REQUIRED = { story: ["headline", "body"], note: ["title", "note"], quote: ["quote"], letter: ["heading", "body"], feature: ["headline"], article: ["headline", "body"], ways: ["heading"], process: ["heading"] };
   const IDEAS = {
     story: ["What was the brief, and what changed on the day?", "What was the light doing, and what did you do about it?", "What should a brand notice in these pictures?"],
     note: ["Why this frame and not the one before it?", "Where, when, and what did you ask for?", "The one technical choice that made it."],
     quote: ["Something a client or model actually said on set.", "The line you'd put on the studio wall.", "A note from a brand you shot for, with their OK."],
     letter: ["What should a brand know before booking you?", "How you plan a shoot before the day.", "The story behind the work in this book."],
     feature: ["Two moments from one shoot, and what changed between them.", "Before and after: the plan, then the picture.", "One look styled two ways."],
-    article: ["The whole story of one shoot, beside its best frame.", "A brief, the day, and the frame the client chose.", "Why this picture opens the book."]
+    article: ["The whole story of one shoot, beside its best frame.", "A brief, the day, and the frame the client chose.", "Why this picture opens the book."],
+    ways: ["Which way suits the client you're sending this to?", "Say plainly which way you like working best.", "Keep every way sounding welcome."],
+    process: ["Does each step say who does it?", "Would a first-time model understand every line?", "Nothing here should promise what your terms don't."]
   };
   const POSITION_LABEL = { top: "Top", bottom: "Bottom", left: "Left", right: "Right" };
   const BORDER_CHOICES = [["auto", "Auto"], ["none", "None"], ["top", "Top"], ["bottom", "Bottom"], ["left", "Left"], ["right", "Right"], ["all", "All round"]];
@@ -2274,6 +2709,10 @@
       if (type === "divider") { entry.heading = "Selected work"; entry.line = ""; }
       // Writing pages start empty: nothing is ever written for the studio.
       for (const k of Object.keys((fieldCaps()[type]) || {})) if (WRITING[type]) entry[k] = "";
+      // The two "how we work" pages are the exception: they arrive with the
+      // studio's own words, in boxes, ready to be changed.
+      if (type === "ways") Object.assign(entry, { kicker: WAYS_COPY.kicker, heading: WAYS_COPY.heading, intro: WAYS_COPY.intro, items: WAYS_COPY.items.map((x) => ({ ...x })) });
+      if (type === "process") { const c = PROCESS_COPY.pitch; Object.assign(entry, { way: "pitch", kicker: c.kicker, heading: c.heading, intro: c.intro, note: c.note, steps: c.steps.map((x) => ({ ...x })) }); }
       const at = sel < 0 ? 0 : sel + 1;
       book.pages.splice(at, 0, entry);
       flush();
@@ -2318,8 +2757,10 @@
 
     /* --- the pages rail --- */
     const wordsOf = (pg) => oneParagraph(pg.headline || pg.title || pg.heading || pg.quote || pg.body || pg.note || pg.sub1 || pg.text1 || "");
+    const rowsOf = (pg) => [...(pg.items || []), ...(pg.steps || [])];
     function railLabel(pg) {
       if (!pg) return book.title ? `Cover · ${book.title}` : "Cover";
+      if (pg.type === "process") return `${PAGE_LABEL.process} · ${(PROCESS_COPY[pg.way] || {}).menuName || "one way"}`;
       if (WRITING[pg.type]) { const w = wordsOf(pg); return w.length ? `${PAGE_LABEL[pg.type]} · “${w.slice(0, 6).join(" ")}”` : PAGE_LABEL[pg.type]; }
       if (pg.type === "photos" || pg.type === "spread") return `${PAGE_LABEL[pg.type]} · ${(pg.photos || []).length}`;
       if (pg.type === "divider") return pg.heading ? `Chapter · ${pg.heading}` : "Chapter page";
@@ -2359,7 +2800,8 @@
       list.querySelectorAll("[data-rm]").forEach((b) => b.addEventListener("click", () => {
         const i = +b.dataset.rm;
         const pg = book.pages[i];
-        const words = Object.keys(fieldCaps()[pg.type] || {}).reduce((n, k) => n + (pg.type === "photos" ? 0 : oneParagraph(pg[k]).length), 0);
+        const words = Object.keys(fieldCaps()[pg.type] || {}).reduce((n, k) => n + (pg.type === "photos" ? 0 : oneParagraph(pg[k]).length), 0)
+          + rowsOf(pg).reduce((n, row) => n + Object.values(row).reduce((m, v) => m + (typeof v === "string" ? oneParagraph(v).length : 0), 0), 0);
         const photos = (pg.photos || []).length;
         const what = [photos ? `${photos} photo${photos === 1 ? "" : "s"}` : "", words ? `${words} word${words === 1 ? "" : "s"}` : ""].filter(Boolean).join(" and ");
         if (what && !confirm(`Remove this ${PAGE_LABEL[pg.type].toLowerCase()} page and its ${what}?`)) return;
@@ -2466,7 +2908,9 @@
         quote: "One sentence set large: a client's or model's real words, or your own belief about photography.",
         letter: "A page of your own writing, signed: a foreword to the book or a note to one brand.",
         feature: "A photo beside words, then words beside a photo. Choose which side the first photo sits on.",
-        article: "Two facing pages: your story on one, one photograph filling the other. Choose which side the photo page goes."
+        article: "Two facing pages: your story on one, one photograph filling the other. Choose which side the photo page goes.",
+        ways: "All four ways of working, side by side, with who leads the ideas and the ways you like best marked.",
+        process: "One way of working, step by step, marking each step as yours, together, or the studio's."
       };
       const kind = entry ? entry.type : "cover";
       head.innerHTML = `<h3>${esc(entry ? PAGE_LABEL[entry.type] : "Cover")}</h3><p class="sb-hint">${esc(about[kind] || "")}</p>`;
@@ -2474,8 +2918,11 @@
     }
 
     // The small "Format" control under a text's label: font, colour, alignment.
-    function formatHtml(k, entry) {
-      const f = (entry && entry.style && entry.style[k]) || {};
+    const styleHost = (entry) => (entry
+      ? { get: () => entry.style, set: (v) => { if (v) entry.style = v; else delete entry.style; } }
+      : { get: () => book.coverStyle, set: (v) => { if (v) book.coverStyle = v; else delete book.coverStyle; } });
+    function formatHtml(k, host) {
+      const f = ((host && host.get()) || {})[k] || {};
       const P = colourway(book.colourway);
       const groups = ["Serif", "Sans", "Condensed", "Mono"].map((kind) => `<optgroup label="${kind}">${FONT_LIST.filter((x) => x.kind === kind).map((x) => `<option value="${x.key}" ${f.font === x.key ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</optgroup>`).join("");
       const set = !!(f.font || f.color || f.align || f.size || f.weight || f.italic);
@@ -2493,17 +2940,17 @@
         </div>
       </div>`;
     }
-    function wireFormat(box, entry) {
+    function wireFormat(box, host) {
       box.querySelectorAll("[data-fmt]").forEach((wrap) => {
         const k = wrap.dataset.fmt;
         const toggle = wrap.querySelector(".sb-fmttoggle"), row = wrap.querySelector(".sb-fmtrow");
         toggle.addEventListener("click", () => { row.hidden = !row.hidden; toggle.setAttribute("aria-expanded", String(!row.hidden)); });
         const update = (patch) => {
-          const all = { ...(entry.style || {}) };
+          const all = { ...(host.get() || {}) };
           const one = { ...(all[k] || {}), ...patch };
           for (const key of Object.keys(one)) if (!one[key] || (key === "size" && one[key] === 1)) delete one[key];
           if (Object.keys(one).length) all[k] = one; else delete all[k];
-          if (Object.keys(all).length) entry.style = all; else delete entry.style;
+          host.set(Object.keys(all).length ? all : null);
           toggle.textContent = `Format${all[k] ? " · changed" : ""}`;
           change({ rail: false });
           ensureBookFonts(book).then(() => { updateMeters(); schedulePreview(0); scheduleStrip(300); });
@@ -2550,14 +2997,14 @@
         const v = btn.dataset.border;
         if ((entry.border || "auto") === v) return;
         if (v === "auto") { delete entry.border; delete entry.borderWidth; } else entry.border = v;
-        change({ rail: false }); drawFields();
+        change({ rail: false }); drawFieldsAndMeters();
         const again = $(`[data-border="${v}"]`); if (again) again.focus();
       }));
       box.querySelectorAll("[data-borderw]").forEach((btn) => btn.addEventListener("click", () => {
         const v = btn.dataset.borderw;
         if ((entry.borderWidth || "standard") === v) return;
         if (v === "standard") delete entry.borderWidth; else entry.borderWidth = v;
-        change({ rail: false }); drawFields();
+        change({ rail: false }); drawFieldsAndMeters();
         const again = $(`[data-borderw="${v}"]`); if (again) again.focus();
       }));
     }
@@ -2571,9 +3018,13 @@
         ? `<input type="text" id="${id}" data-field="${f.k}" maxlength="${max}" value="${esc(value)}" ${ph} autocapitalize="sentences" spellcheck="true" enterkeyhint="next" aria-describedby="${described}">`
         : `<textarea id="${id}" data-field="${f.k}" maxlength="${max}" rows="${f.rows || 3}" ${ph} autocapitalize="sentences" spellcheck="true" ${f.ctl === "line" ? `data-line="1" enterkeyhint="next"` : `enterkeyhint="enter"`} aria-describedby="${described}">${esc(value)}</textarea>`;
       const entry = sel >= 0 ? book.pages[sel] : null;
-      const formattable = entry && FORMATTABLE[entry.type] && (entry.type !== "photos" || f.k === "caption");
+      const L2 = window.STUDIO_BOOK_LIMITS || {};
+      const allowed = entry
+        ? [...Object.keys((L2.fields || {})[entry.type] || {}), ...((L2.formatFields || {})[entry.type] || [])].filter((k) => entry.type !== "photos" || k === "caption")
+        : ((L2.formatFields || {}).cover || []);
+      const formattable = allowed.includes(f.k);
       return `<div class="sb-field">
-        <div class="sb-labelrow"><label for="${id}">${esc(f.label)}</label>${formattable ? formatHtml(f.k, entry) : ""}</div>
+        <div class="sb-labelrow"><label for="${id}">${esc(f.label)}</label>${formattable ? formatHtml(f.k, styleHost(entry)) : ""}</div>
         ${f.hint ? `<p class="sb-hint" id="${id}_hint">${esc(f.hint)}</p>` : ""}
         ${control}
         <div class="sb-meter"><span id="${id}_fit">${fontsOk ? "" : "Measuring…"}</span><span class="sb-counter" id="${id}_count"></span></div>
@@ -2624,9 +3075,10 @@
           ${fieldHtml({ k: "subtitle", label: "Line under the title", ctl: "input" }, book.subtitle || "", 120)}`;
         wireField($("#sbF_title"), (v) => { book.title = v; }, 80);
         wireField($("#sbF_subtitle"), (v) => { book.subtitle = v; }, 120);
+        wireFormat(box, styleHost(null));
         return;
       }
-      if (WRITING[entry.type]) {
+      if (WRITING[entry.type] && FIELD_UI[entry.type]) {
         box.innerHTML = `<h3>Words</h3>${FIELD_UI[entry.type].map((f) => fieldHtml(f, entry[f.k] || "", (caps[entry.type] || {})[f.k] || 200,
           f.credit ? `<button type="button" class="sb-link" id="sbUseCredit">Use the album credit</button>` : "")).join("")}
           <details class="sb-ideas"><summary>Ideas</summary><ul>${IDEAS[entry.type].map((q) => `<li>${esc(q)}</li>`).join("")}</ul></details>
@@ -2634,7 +3086,7 @@
         if (entry.type === "article") box.insertAdjacentHTML("beforeend", borderHtml(entry));
         for (const f of FIELD_UI[entry.type]) wireField($(`#sbF_${f.k}`), (v) => { entry[f.k] = v; }, (caps[entry.type] || {})[f.k] || 200);
         $$("[data-select]").forEach((b) => b.addEventListener("click", () => selectOverflow(b.dataset.select)));
-        wireFormat(box, entry);
+        wireFormat(box, styleHost(entry));
         if (entry.type === "article") wireBorder(box, entry);
         const credit = $("#sbUseCredit");
         if (credit) credit.addEventListener("click", () => {
@@ -2646,13 +3098,112 @@
         });
         return;
       }
+      if (entry.type === "ways" || entry.type === "process") {
+        const F2 = caps[entry.type] || {};
+        const LIM = window.STUDIO_BOOK_LIMITS || {};
+        const head = [
+          { k: "kicker", label: "Small line above the heading", ctl: "input" },
+          { k: "heading", label: "Heading", ctl: "line", rows: 2 },
+          { k: "intro", label: "Intro", ctl: "line", rows: 3 }
+        ];
+        const seg = (label, attr, i, value) => `<div class="sb-field"><span class="sb-label">${label}</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="${label}">${LEAD_CHOICES.map(([k, n]) => `<button type="button" role="radio" data-${attr}="${i}:${k}" aria-checked="${value === k}">${n}</button>`).join("")}</div></div>`;
+        let html = "";
+        if (entry.type === "process") {
+          html += `<div class="sb-field"><span class="sb-label">Which way is this page about?</span>
+            <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Which way">${Object.entries(PROCESS_COPY).map(([k, v]) => `<button type="button" role="radio" data-way="${k}" aria-checked="${entry.way === k}">${esc(v.menuName)}</button>`).join("")}</div>
+            <p class="sb-hint">${esc((PROCESS_COPY[entry.way] || {}).menuNote || "Pick a way and this page fills with the studio's words for it. Every line stays yours to edit.")}</p></div>`;
+        }
+        html += `<h3>Words</h3>` + head.map((f) => fieldHtml(f, entry[f.k] || "", F2[f.k] || 160)).join("");
+        if (entry.type === "ways") {
+          html += (entry.items || []).map((it, i) => `<div class="sb-sec sb-rowbox"><h3>Way ${i + 1}</h3>
+            ${fieldHtml({ k: `name${i + 1}`, label: "Name", ctl: "input" }, it.name || "", (LIM.wayItem || {}).name || 32)}
+            ${fieldHtml({ k: `forWho${i + 1}`, label: "Who it suits", ctl: "input" }, it.forWho || "", (LIM.wayItem || {}).forWho || 64)}
+            ${fieldHtml({ k: `text${i + 1}`, label: "How it runs", ctl: "area", rows: 3 }, it.text || "", (LIM.wayItem || {}).text || 150)}
+            ${seg("Who leads the ideas", "lead", i, it.lead)}
+            <label class="sb-check-row"><input type="checkbox" data-liked="${i}" ${it.liked ? "checked" : ""}> Mark as how we like to work</label></div>`).join("");
+        } else {
+          const steps = entry.steps || [];
+          html += steps.map((st, i) => `<div class="sb-sec sb-rowbox"><h3>Step ${i + 1}</h3>
+            <div class="sb-rowacts"><button type="button" class="sb-btn quiet" data-stepup="${i}" ${i === 0 ? "disabled" : ""} aria-label="Move step ${i + 1} earlier">↑</button><button type="button" class="sb-btn quiet" data-stepdown="${i}" ${i === steps.length - 1 ? "disabled" : ""} aria-label="Move step ${i + 1} later">↓</button><button type="button" class="sb-btn quiet" data-steprm="${i}" ${steps.length <= 3 ? "disabled" : ""} aria-label="Remove step ${i + 1}">Remove</button></div>
+            ${seg("Who does it", "who", i, st.who)}
+            ${fieldHtml({ k: `title${i + 1}`, label: "Title", ctl: "input" }, st.title || "", (LIM.stepItem || {}).title || 36)}
+            ${fieldHtml({ k: `text${i + 1}`, label: "What happens", ctl: "area", rows: 3 }, st.text || "", (LIM.stepItem || {}).text || 130)}</div>`).join("");
+          html += `<p><button type="button" class="sb-btn quiet" id="sbAddStep" ${steps.length >= 6 ? "disabled" : ""}>+ Add a step</button></p>`;
+          html += fieldHtml({ k: "note", label: "Closing line (optional)", ctl: "input" }, entry.note || "", F2.note || 120);
+        }
+        html += `<details class="sb-ideas"><summary>Ideas</summary><ul>${IDEAS[entry.type].map((q) => `<li>${esc(q)}</li>`).join("")}</ul></details>
+          <p class="sb-hint">These words came from what your site and contracts already say. Change anything that isn't how you work.</p>`;
+        box.innerHTML = html;
+        for (const f of head) wireField($(`#sbF_${f.k}`), (v) => { entry[f.k] = v; }, F2[f.k] || 160);
+        if (entry.type === "ways") (entry.items || []).forEach((it, i) => {
+          wireField($(`#sbF_name${i + 1}`), (v) => { it.name = v; }, (LIM.wayItem || {}).name || 32);
+          wireField($(`#sbF_forWho${i + 1}`), (v) => { it.forWho = v; }, (LIM.wayItem || {}).forWho || 64);
+          wireField($(`#sbF_text${i + 1}`), (v) => { it.text = v; }, (LIM.wayItem || {}).text || 150);
+        });
+        else {
+          (entry.steps || []).forEach((st, i) => {
+            wireField($(`#sbF_title${i + 1}`), (v) => { st.title = v; }, (LIM.stepItem || {}).title || 36);
+            wireField($(`#sbF_text${i + 1}`), (v) => { st.text = v; }, (LIM.stepItem || {}).text || 130);
+          });
+          wireField($("#sbF_note"), (v) => { entry.note = v; }, F2.note || 120);
+        }
+        $$("[data-lead]").forEach((b) => b.addEventListener("click", () => {
+          const [i, k] = b.dataset.lead.split(":");
+          if (entry.items[+i].lead === k) return;
+          entry.items[+i].lead = k; change({ rail: false }); drawFieldsAndMeters();
+          const again = $(`[data-lead="${i}:${k}"]`); if (again) again.focus({ preventScroll: true });
+        }));
+        $$("[data-who]").forEach((b) => b.addEventListener("click", () => {
+          const [i, k] = b.dataset.who.split(":");
+          if (entry.steps[+i].who === k) return;
+          entry.steps[+i].who = k; change({ rail: false }); drawFieldsAndMeters();
+          const again = $(`[data-who="${i}:${k}"]`); if (again) again.focus({ preventScroll: true });
+        }));
+        $$("[data-liked]").forEach((cb) => cb.addEventListener("change", () => {
+          const it = entry.items[+cb.dataset.liked];
+          if (cb.checked) it.liked = true; else delete it.liked;
+          change({ rail: false });
+        }));
+        $$("[data-stepup], [data-stepdown]").forEach((b) => b.addEventListener("click", () => {
+          const up = "stepup" in b.dataset, i = +(b.dataset.stepup || b.dataset.stepdown), j = i + (up ? -1 : 1);
+          [entry.steps[i], entry.steps[j]] = [entry.steps[j], entry.steps[i]];
+          change({ rail: false }); drawFieldsAndMeters();
+        }));
+        $$("[data-steprm]").forEach((b) => b.addEventListener("click", () => {
+          const i = +b.dataset.steprm;
+          const st = entry.steps[i];
+          if ((oneParagraph(st.title).length || oneParagraph(st.text).length) && !confirm(`Remove step ${i + 1}${st.title ? ` (“${st.title}”)` : ""}?`)) return;
+          entry.steps.splice(i, 1); change({ rail: false }); drawFieldsAndMeters();
+        }));
+        const addStep = $("#sbAddStep");
+        if (addStep) addStep.addEventListener("click", () => {
+          if ((entry.steps || []).length >= 6) return;
+          entry.steps.push({ who: "together", title: "", text: "" });
+          change({ rail: false }); drawFieldsAndMeters();
+          const el = $(`#sbF_title${entry.steps.length}`); if (el && matchMedia("(pointer: fine)").matches) el.focus();
+        });
+        $$("[data-way]").forEach((b) => b.addEventListener("click", () => {
+          const k = b.dataset.way;
+          if (entry.way === k) return;
+          const copy = PROCESS_COPY[k], was = PROCESS_COPY[entry.way] || {};
+          const untouched = JSON.stringify({ kicker: entry.kicker, heading: entry.heading, intro: entry.intro, steps: entry.steps, note: entry.note })
+            === JSON.stringify({ kicker: was.kicker || "", heading: was.heading || "", intro: was.intro || "", steps: (was.steps || []).map((x) => ({ ...x })), note: was.note || "" });
+          if (!untouched && !confirm(`Show “${copy.menuName}” instead? The words on this page are replaced.`)) return;
+          Object.assign(entry, { way: k, kicker: copy.kicker, heading: copy.heading, intro: copy.intro, note: copy.note, steps: copy.steps.map((x) => ({ ...x })) });
+          change(); drawFieldsAndMeters();
+          const again = $(`[data-way="${k}"]`); if (again) again.focus({ preventScroll: true });
+        }));
+        $$("[data-select]").forEach((b) => b.addEventListener("click", () => selectOverflow(b.dataset.select)));
+        wireFormat(box, styleHost(entry));
+        return;
+      }
       if (entry.type === "photos") {
         box.innerHTML = fieldHtml({ k: "caption", label: "Caption for this page (optional)", ctl: "input", ph: "e.g. Monsoon edit, shot on the roof in Sector 46" }, entry.caption || "", (caps.photos || {}).caption || 90)
           + `<p class="sb-hint">Published books are public, so keep private details out of captions.</p>`
           + (borderApplies(entry) ? borderHtml(entry) : "");
         wireField($("#sbF_caption"), (v) => { entry.caption = v; }, (caps.photos || {}).caption || 90);
         $$("[data-select]").forEach((b) => b.addEventListener("click", () => selectOverflow(b.dataset.select)));
-        wireFormat(box, entry);
+        wireFormat(box, styleHost(entry));
         wireBorder(box, entry);
         return;
       }
@@ -2665,11 +3216,13 @@
         box.innerHTML = `${fieldHtml({ k: "heading", label: "Heading", ctl: "input" }, entry.heading || "", 60)}${fieldHtml({ k: "line", label: "One line under it", ctl: "input" }, entry.line || "", 160)}`;
         wireField($("#sbF_heading"), (v) => { entry.heading = v; }, 60);
         wireField($("#sbF_line"), (v) => { entry.line = v; }, 160);
+        wireFormat(box, styleHost(entry));
         return;
       }
       if (entry.type === "about") {
         box.innerHTML = fieldHtml({ k: "about", label: "About the studio", ctl: "area", rows: 8, ph: DEFAULT_ABOUT.split("\n")[0] }, book.texts.about || "", 1200);
         wireField($("#sbF_about"), (v) => { book.texts.about = v; }, 1200);
+        wireFormat(box, styleHost(entry));
         return;
       }
       if (entry.type === "services") {
@@ -2699,6 +3252,8 @@
       }
       box.innerHTML = "";
     }
+    // Rebuilding the boxes clears their meters, so they are filled again.
+    const drawFieldsAndMeters = () => { drawFields(); updateMeters(); };
     function selectOverflow(k) {
       const entry = sel >= 0 ? book.pages[sel] : null;
       const el = $(`#sbF_${k}`); if (!entry || !el || !book) return;
@@ -2964,7 +3519,8 @@
         if ((pg.photos || []).some((sh) => !lib.byId.has(sh.id))) add("a photo from a deleted album");
         if (WRITING[pg.type]) {
           const plan = planWriting(b, pg);
-          if (!Object.keys(fieldCaps()[pg.type] || {}).some((k) => oneParagraph(pg[k]).length)) add("no words yet");
+          const rows = [...(pg.items || []), ...(pg.steps || [])];
+          if (!Object.keys(fieldCaps()[pg.type] || {}).some((k) => oneParagraph(pg[k]).length) && !rows.some((row) => Object.values(row).some((v) => typeof v === "string" && oneParagraph(v).length))) add("no words yet");
           else {
             for (const k of REQUIRED[pg.type] || []) if (plan.fields[k] && plan.fields[k].empty) add(`the ${({ headline: "headline", body: pg.type === "letter" ? "letter" : "story", title: "title", note: "words about the picture", quote: "quote", heading: "heading" })[k]} is empty`);
             if (pg.type === "article" && pg.caption && bookCuts({ ...b, pages: [pg] })[0].cuts.some((c) => c.field === "caption")) add("the caption is too long");
@@ -3089,7 +3645,7 @@
     // that loaded the site before they existed still runs the old save code,
     // which would drop them while saying "Saved": refuse until it reloads.
     const L = window.STUDIO_BOOK_LIMITS;
-    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !(L.pageTypes || []).includes("article")) {
+    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !L.workWays || !(L.pageTypes || []).includes("process")) {
       root.innerHTML = `<div class="sb-empty"><p class="sb-warn">The site was updated while this tab was open.</p><p class="sb-hint">Reload the page (or use “↻ Load fresh version”) before editing your books, so nothing you write is lost.</p><p><button type="button" class="sb-btn dark" id="sbReload">Reload now</button></p></div>`;
       root.querySelector("#sbReload").addEventListener("click", () => location.reload());
       return;
@@ -3100,5 +3656,5 @@
     if (again) openBook(JSON.parse(JSON.stringify(again)), false, reopen); else showList();
   }
 
-  window.StudioBook = { mount, renderPages, COLOURWAYS, STYLES, newBook, geometry, PAPERS };
+  window.StudioBook = { mount, renderPages, COLOURWAYS, STYLES, newBook, geometry, PAPERS, WAYS_COPY, PROCESS_COPY };
 })();

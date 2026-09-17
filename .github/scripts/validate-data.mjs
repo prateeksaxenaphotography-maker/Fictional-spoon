@@ -290,7 +290,7 @@ if (books !== undefined && books !== null) {
     fail("WPS_DATA.STUDIO_PORTFOLIOS must be an object { versions: [], deleted: [] }");
   } else {
     const BOOK_STYLES = new Set(["elegant", "modern", "vogue"]);
-    const PAGE_TYPES = new Set(["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article"]);
+    const PAGE_TYPES = new Set(["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process"]);
     // The same caps as STUDIO_BOOK_LIMITS.fields in app.js. Over a cap FAILS
     // here rather than being trimmed: the app's cleaner would otherwise cut a
     // hand-edited data.js without a word.
@@ -301,6 +301,8 @@ if (books !== undefined && books !== null) {
       letter: { kicker: 32, heading: 52, body: 1100, signName: 40, signLine: 48 },
       feature: { kicker: 32, headline: 52, sub1: 40, text1: 360, sub2: 40, text2: 360 },
       article: { kicker: 32, headline: 52, intro: 150, body: 1400, caption: 90 },
+      ways: { kicker: 32, heading: 52, intro: 160 },
+      process: { kicker: 32, heading: 52, intro: 160, note: 120 },
       photos: { caption: 90 }
     };
     const BORDERS = new Set(["none", "top", "bottom", "left", "right", "all"]);
@@ -311,12 +313,14 @@ if (books !== undefined && books !== null) {
     const PHOTO_AT = { story: ["top", "bottom", "left", "right"], note: ["top", "bottom", "left", "right"], quote: ["top", "bottom", "left", "right"], feature: ["left", "right"], article: ["left", "right"] };
     const FITS = new Set(["fill", "whole", "width", "height"]);
     const KNOWN_KEYS = {
-      photos: ["type", "photos", "caption", "border", "borderWidth", "style"], spread: ["type", "photos", "border", "borderWidth"], divider: ["type", "heading", "line"],
-      about: ["type"], services: ["type"], contact: ["type", "hide"],
+      photos: ["type", "photos", "caption", "border", "borderWidth", "style"], spread: ["type", "photos", "border", "borderWidth"], divider: ["type", "heading", "line", "style"],
+      about: ["type", "style"], services: ["type"], contact: ["type", "hide"],
       story: ["type", "photos", "photoAt", "style", ...Object.keys(FIELD_MAX.story)], note: ["type", "photos", "photoAt", "style", ...Object.keys(FIELD_MAX.note)],
       quote: ["type", "photos", "photoAt", "style", ...Object.keys(FIELD_MAX.quote)], letter: ["type", "style", ...Object.keys(FIELD_MAX.letter)],
       feature: ["type", "photos", "photoAt", "style", ...Object.keys(FIELD_MAX.feature)],
-      article: ["type", "photos", "photoAt", "style", "border", "borderWidth", ...Object.keys(FIELD_MAX.article)]
+      article: ["type", "photos", "photoAt", "style", "border", "borderWidth", ...Object.keys(FIELD_MAX.article)],
+      ways: ["type", "items", "style", ...Object.keys(FIELD_MAX.ways)],
+      process: ["type", "way", "steps", "style", ...Object.keys(FIELD_MAX.process)]
     };
     const seenBooks = new Set();
     for (const b of books.versions) {
@@ -344,13 +348,34 @@ if (books !== undefined && books !== null) {
         }
         if (pg.type === "feature" && (!Array.isArray(pg.photos) || pg.photos.length > 2)) fail(`${where} (feature) must have a photos list of at most two photos`);
         if (pg.type === "article" && (!Array.isArray(pg.photos) || pg.photos.length > 1)) fail(`${where} (article) must have a photos list of at most one photo`);
+        if (pg.type === "ways") {
+          if (!Array.isArray(pg.items) || pg.items.length > 4) fail(`${where} (ways) must have a list of at most four ways`);
+          else pg.items.forEach((it, k) => {
+            if (!it || typeof it !== "object") { fail(`${where} way ${k + 1} is not an object`); return; }
+            for (const key of Object.keys(it)) if (!["name", "forWho", "text", "lead", "liked"].includes(key)) fail(`${where} way ${k + 1} has ${JSON.stringify(key)}, which the app drops`);
+            for (const [key, max] of Object.entries({ name: 32, forWho: 64, text: 150 })) { if (typeof it[key] !== "string") fail(`${where} way ${k + 1} has no ${key}`); else if (it[key].length > max) fail(`${where} way ${k + 1} ${key} is ${it[key].length} characters; the most is ${max}`); }
+            if (!["you", "together", "studio"].includes(it.lead)) fail(`${where} way ${k + 1} says ${JSON.stringify(it.lead)} leads`);
+            if (it.liked !== undefined && it.liked !== true) fail(`${where} way ${k + 1} has liked ${JSON.stringify(it.liked)}; only true is written`);
+          });
+        }
+        if (pg.type === "process") {
+          if (pg.way !== undefined && !["execute", "pitch", "lead", "test"].includes(pg.way)) fail(`${where} shows an unknown way ${JSON.stringify(pg.way)}`);
+          if (!Array.isArray(pg.steps) || pg.steps.length > 6) fail(`${where} (process) must have a list of at most six steps`);
+          else pg.steps.forEach((st, k) => {
+            if (!st || typeof st !== "object") { fail(`${where} step ${k + 1} is not an object`); return; }
+            for (const key of Object.keys(st)) if (!["who", "title", "text"].includes(key)) fail(`${where} step ${k + 1} has ${JSON.stringify(key)}, which the app drops`);
+            for (const [key, max] of Object.entries({ title: 36, text: 130 })) { if (typeof st[key] !== "string") fail(`${where} step ${k + 1} has no ${key}`); else if (st[key].length > max) fail(`${where} step ${k + 1} ${key} is ${st[key].length} characters; the most is ${max}`); }
+            if (!["you", "together", "studio"].includes(st.who)) fail(`${where} step ${k + 1} says ${JSON.stringify(st.who)} does it`);
+          });
+        }
         if (pg.hide !== undefined && (!Array.isArray(pg.hide) || pg.hide.some((k) => !["email", "whatsapp", "instagram", "website", "book", "studio", "qr"].includes(k)))) fail(`${where} hides contact lines the app doesn't know: ${JSON.stringify(pg.hide)}`);
         if (pg.border !== undefined && !BORDERS.has(pg.border)) fail(`${where} has an unknown border ${JSON.stringify(pg.border)}`);
         if (pg.borderWidth !== undefined && !BORDER_WIDTHS.has(pg.borderWidth)) fail(`${where} has an unknown border width ${JSON.stringify(pg.borderWidth)}`);
         if (pg.style !== undefined) {
+          const extra = { divider: ["heading", "line"], about: ["about"] }[pg.type] || [];
           if (!pg.style || typeof pg.style !== "object" || Array.isArray(pg.style)) fail(`${where} has a style that is not an object`);
           else for (const [k, f] of Object.entries(pg.style)) {
-            if (!(k in (FIELD_MAX[pg.type] || {}))) { fail(`${where} formats ${JSON.stringify(k)}, which isn't one of its texts`); continue; }
+            if (!(k in (FIELD_MAX[pg.type] || {})) && !extra.includes(k)) { fail(`${where} formats ${JSON.stringify(k)}, which isn't one of its texts`); continue; }
             if (!f || typeof f !== "object") { fail(`${where} has formatting for ${k} that is not an object`); continue; }
             for (const key of Object.keys(f)) if (!["font", "color", "align", "size", "weight", "italic"].includes(key)) fail(`${where} formats ${k} with ${JSON.stringify(key)}, which the app drops`);
             if (f.size !== undefined && !(typeof f.size === "number" && f.size >= 0.6 && f.size <= 1.6)) fail(`${where} sizes ${k} at ${JSON.stringify(f.size)}; it must be 0.6 to 1.6`);
@@ -369,6 +394,17 @@ if (books !== undefined && books !== null) {
       });
       if (b.cover && b.cover.fit !== undefined && !FITS.has(b.cover.fit)) fail(`studio portfolio book ${name} has a cover photo placed as ${JSON.stringify(b.cover.fit)}`);
       if (b.paper !== undefined && (!PAPERS.has(b.paper) || b.paper === "a4")) fail(`studio portfolio book ${name} has paper ${JSON.stringify(b.paper)}; the app writes b5, a5 or letter, and nothing for A4`);
+      if (b.coverStyle !== undefined) {
+        if (!b.coverStyle || typeof b.coverStyle !== "object" || Array.isArray(b.coverStyle)) fail(`studio portfolio book ${name} has a coverStyle that is not an object`);
+        else for (const [k, f] of Object.entries(b.coverStyle)) {
+          if (!["title", "subtitle"].includes(k)) { fail(`studio portfolio book ${name} formats a cover text ${JSON.stringify(k)} the app drops`); continue; }
+          if (!f || typeof f !== "object") { fail(`studio portfolio book ${name} has cover formatting for ${k} that is not an object`); continue; }
+          for (const key of Object.keys(f)) if (!["font", "color", "align", "size", "weight", "italic"].includes(key)) fail(`studio portfolio book ${name} formats the cover ${k} with ${JSON.stringify(key)}, which the app drops`);
+          if (f.font !== undefined && !FONTS.has(f.font)) fail(`studio portfolio book ${name} sets the cover ${k} in an unknown font ${JSON.stringify(f.font)}`);
+          if (f.align !== undefined && !ALIGNS.has(f.align)) fail(`studio portfolio book ${name} aligns the cover ${k} ${JSON.stringify(f.align)}`);
+          if (f.size !== undefined && !(typeof f.size === "number" && f.size >= 0.6 && f.size <= 1.6)) fail(`studio portfolio book ${name} sizes the cover ${k} at ${JSON.stringify(f.size)}`);
+        }
+      }
       if (books.deleted.includes(b.id)) fail(`studio portfolio book ${name} is published and also marked deleted`);
     }
   }
@@ -438,15 +474,16 @@ try {
   // An old app.js strips writing pages and captions from books it never
   // opened, without touching their updatedAt. Words that shrink while the
   // book's edit time stays the same can only come from that.
-  const WRITING = new Set(["story", "note", "quote", "letter", "feature", "article"]);
+  const WRITING = new Set(["story", "note", "quote", "letter", "feature", "article", "ways", "process"]);
   const wordsIn = (b) => {
     let pages = 0, chars = 0, fits = 0;
     const settings = (s) => (s ? (s.fit ? 1 : 0) + (s.opacity !== undefined ? 1 : 0) : 0);
-    fits += settings(b && b.cover) + (b && b.paper ? 1 : 0);
+    fits += settings(b && b.cover) + (b && b.paper ? 1 : 0) + (b && b.coverStyle ? Object.keys(b.coverStyle).length : 0);
     for (const pg of (b && b.pages) || []) {
       if (!pg) continue;
       if (WRITING.has(pg.type)) pages++;
       for (const [k, v] of Object.entries(pg)) if (k !== "type" && typeof v === "string") chars += v.length;
+      for (const row of [...(pg.items || []), ...(pg.steps || [])]) for (const v of Object.values(row || {})) if (typeof v === "string") chars += v.length;
       for (const s of pg.photos || []) fits += settings(s);
       fits += (pg.photoAt ? 1 : 0) + (pg.border ? 1 : 0) + (pg.borderWidth ? 1 : 0) + (pg.style ? Object.keys(pg.style).length : 0) + (Array.isArray(pg.hide) ? pg.hide.length : 0);
     }

@@ -677,7 +677,7 @@ const STUDIO_BOOK_STYLES = ["elegant", "modern", "vogue"];
 // book at `versions` rather than letting the clean-up drop one.
 const STUDIO_BOOK_LIMITS = {
   versions: 200, pages: 30, text: 1200, deleted: 2000,
-  pageTypes: ["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article"],
+  pageTypes: ["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process"],
   fits: ["fill", "whole", "width", "height"],
   // Paper a book prints on; absent means A4. Where a writing page's photo sits;
   // absent means the page shape's usual place.
@@ -693,6 +693,15 @@ const STUDIO_BOOK_LIMITS = {
   aligns: ["left", "center", "right", "justify"],
   // Lines a contact page can leave off.
   contactRows: ["email", "whatsapp", "instagram", "website", "book", "studio", "qr"],
+  // Texts that can be formatted outside the writing pages: the cover's own two
+  // lines (stored on the book as coverStyle), a chapter page and About.
+  formatFields: { cover: ["title", "subtitle"], divider: ["heading", "line"], about: ["about"], ways: ["kicker", "heading", "intro"], process: ["kicker", "heading", "intro", "note"] },
+  // The two "how we work" pages: four ways side by side, or one way step by
+  // step. Their rows are lists, so they have their own caps.
+  leads: ["you", "together", "studio"],
+  workWays: ["execute", "pitch", "lead", "test"],
+  wayItem: { name: 32, forWho: 64, text: 150 },
+  stepItem: { title: 36, text: 130 },
   // Writing pages: the most characters each field may hold. Each cap is what
   // the narrowest style and page shape can print, measured, so ordinary prose
   // at the cap never gets cut when the style or shape changes. book-builder.js
@@ -705,9 +714,29 @@ const STUDIO_BOOK_LIMITS = {
     letter: { kicker: 32, heading: 52, body: 1100, signName: 40, signLine: 48 },
     feature: { kicker: 32, headline: 52, sub1: 40, text1: 360, sub2: 40, text2: 360 },
     article: { kicker: 32, headline: 52, intro: 150, body: 1400, caption: 90 },
+    ways: { kicker: 32, heading: 52, intro: 160 },
+    process: { kicker: 32, heading: 52, intro: 160, note: 120 },
     photos: { caption: 90 }
   }
 };
+// One text's formatting: an open-source font, a colour, an alignment, a size,
+// a weight and italic. Anything else, or a value the app doesn't know, goes.
+function cleanBookFormatting(from, allowed) {
+  if (!from || typeof from !== "object") return null;
+  const style = {};
+  for (const [k, f] of Object.entries(from)) {
+    if (!allowed.includes(k) || !f || typeof f !== "object") continue;
+    const one = {};
+    if (STUDIO_BOOK_LIMITS.fonts.includes(f.font)) one.font = f.font;
+    if (STUDIO_BOOK_LIMITS.colors.includes(f.color) || /^#[0-9a-f]{6}$/i.test(String(f.color || ""))) one.color = String(f.color).toLowerCase();
+    if (STUDIO_BOOK_LIMITS.aligns.includes(f.align)) one.align = f.align;
+    if (typeof f.size === "number" && isFinite(f.size) && Math.abs(f.size - 1) > 0.001) one.size = Math.round(Math.min(1.6, Math.max(0.6, f.size)) * 100) / 100;
+    if (["light", "regular", "bold"].includes(f.weight)) one.weight = f.weight;
+    if (f.italic === true) one.italic = true;
+    if (Object.keys(one).length) style[k] = one;
+  }
+  return Object.keys(style).length ? style : null;
+}
 function cleanStudioPortfolios(o) {
   if (!o || typeof o !== "object" || !Array.isArray(o.versions)) return null;
   const str = (v, max) => (typeof v === "string" ? v.slice(0, max) : "");
@@ -745,6 +774,21 @@ function cleanStudioPortfolios(o) {
         if (STUDIO_BOOK_LIMITS.borderWidths.includes(pg.borderWidth)) out.borderWidth = pg.borderWidth;
       }
       if (pg.type === "divider") { out.heading = str(pg.heading, 60); out.line = str(pg.line, 160); }
+      if (pg.type === "ways") {
+        out.items = (Array.isArray(pg.items) ? pg.items : []).slice(0, 4).map((it) => {
+          const one = { name: strU(it && it.name, STUDIO_BOOK_LIMITS.wayItem.name), forWho: strU(it && it.forWho, STUDIO_BOOK_LIMITS.wayItem.forWho), text: strU(it && it.text, STUDIO_BOOK_LIMITS.wayItem.text), lead: STUDIO_BOOK_LIMITS.leads.includes(it && it.lead) ? it.lead : "together" };
+          if (it && it.liked === true) one.liked = true;
+          return one;
+        });
+      }
+      if (pg.type === "process") {
+        if (STUDIO_BOOK_LIMITS.workWays.includes(pg.way)) out.way = pg.way;
+        out.steps = (Array.isArray(pg.steps) ? pg.steps : []).slice(0, 6).map((st) => ({
+          who: STUDIO_BOOK_LIMITS.leads.includes(st && st.who) ? st.who : "together",
+          title: strU(st && st.title, STUDIO_BOOK_LIMITS.stepItem.title),
+          text: strU(st && st.text, STUDIO_BOOK_LIMITS.stepItem.text)
+        }));
+      }
       if (pg.type === "contact" && Array.isArray(pg.hide)) {
         const hide = [...new Set(pg.hide.filter((k) => STUDIO_BOOK_LIMITS.contactRows.includes(k)))];
         if (hide.length) out.hide = hide;
@@ -755,20 +799,10 @@ function cleanStudioPortfolios(o) {
       // Stored exactly as typed, line breaks included; tidying happens only
       // when a page is laid out, never under the cursor.
       if (FIELDS[pg.type] && pg.type !== "photos") for (const [k, max] of Object.entries(FIELDS[pg.type])) out[k] = strU(pg[k], max);
-      if (FIELDS[pg.type] && pg.style && typeof pg.style === "object") {
-        const style = {};
-        for (const [k, f] of Object.entries(pg.style)) {
-          if (!(k in FIELDS[pg.type]) || !f || typeof f !== "object") continue;
-          const one = {};
-          if (STUDIO_BOOK_LIMITS.fonts.includes(f.font)) one.font = f.font;
-          if (STUDIO_BOOK_LIMITS.colors.includes(f.color) || /^#[0-9a-f]{6}$/i.test(String(f.color || ""))) one.color = String(f.color).toLowerCase();
-          if (STUDIO_BOOK_LIMITS.aligns.includes(f.align)) one.align = f.align;
-          if (typeof f.size === "number" && isFinite(f.size) && Math.abs(f.size - 1) > 0.001) one.size = Math.round(Math.min(1.6, Math.max(0.6, f.size)) * 100) / 100;
-          if (["light", "regular", "bold"].includes(f.weight)) one.weight = f.weight;
-          if (f.italic === true) one.italic = true;
-          if (Object.keys(one).length) style[k] = one;
-        }
-        if (Object.keys(style).length) out.style = style;
+      const styleKeys = [...Object.keys(FIELDS[pg.type] || {}), ...(STUDIO_BOOK_LIMITS.formatFields[pg.type] || [])];
+      if (styleKeys.length) {
+        const style = cleanBookFormatting(pg.style, styleKeys);
+        if (style) out.style = style;
       }
       return out;
     }).filter(Boolean);
@@ -781,6 +815,7 @@ function cleanStudioPortfolios(o) {
       orientation: v.orientation === "landscape" ? "landscape" : "portrait",
       title: str(v.title, 80), subtitle: str(v.subtitle, 120),
       cover: shot(v.cover),
+      ...(cleanBookFormatting(v.coverStyle, STUDIO_BOOK_LIMITS.formatFields.cover) ? { coverStyle: cleanBookFormatting(v.coverStyle, STUDIO_BOOK_LIMITS.formatFields.cover) } : {}),
       pages,
       texts: { about: str(t.about, STUDIO_BOOK_LIMITS.text), phone: str(t.phone, 24), showPrices: t.showPrices === true },
       updatedAt: num(v.updatedAt, 0, 8.64e15, 0)
@@ -804,8 +839,8 @@ function cleanStudioPortfolios(o) {
 // it doesn't know), so the newest key is read first and wins ties.
 const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words_v2";
 const STUDIO_BOOK_WORDS_KEY_V1 = "wps_studio_portfolios_words";
-const studioBookHasWords = (v) => !!v.paper || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
-  (STUDIO_BOOK_LIMITS.fields[pg.type] && (pg.type !== "photos" || pg.caption)) || pg.photoAt || pg.border || pg.borderWidth || pg.style || pg.hide || (pg.photos || []).some((s) => s.fit || s.opacity));
+const studioBookHasWords = (v) => !!v.paper || !!v.coverStyle || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
+  (STUDIO_BOOK_LIMITS.fields[pg.type] && (pg.type !== "photos" || pg.caption)) || pg.items || pg.steps || pg.photoAt || pg.border || pg.borderWidth || pg.style || pg.hide || (pg.photos || []).some((s) => s.fit || s.opacity));
 function getStudioPortfolios(live) {
   let local = null, published = null, remote = null, words = null, wordsV1 = null;
   try { local = cleanStudioPortfolios(JSON.parse(localStorage.getItem("wps_studio_portfolios") || "null")); } catch (e) {}
