@@ -2262,26 +2262,26 @@ window.moveAdminPackageRow = function(index, dir) {
     try { return decodeURIComponent(raw); } catch { return raw; }
   };
 
-  // The Comp Cards page's model blocks live on the model portfolio service page;
-  // the old /categories address and every link to it lead there (see render).
+  // The model blocks live on the model portfolio service page; the old
+  // /categories addresses and every link to them lead there (see render).
+  //
+  // One page, one detector. The separate Model Portfolio page was folded into
+  // these blocks: a model's card now carries both PDFs, so the old address,
+  // the old `portfolio-` share links and the fallback /categories views are
+  // all the same view, and nothing branches on which address it was reached
+  // by. (Before, the two boxes were mutually exclusive BY URL, which is why a
+  // portfolio PDF could not be offered beside a comp card.)
   const COMP_CARDS_PAGE = "/services/model-portfolio-shoot-noida/";
   function isCurrentlyCompCardView() {
     if (location.pathname.replace(/\/?$/, "/") === COMP_CARDS_PAGE) return true;
     const search = location.pathname + location.search;
     const decoded = decodeURIComponent(search).replace(/\+/g, " ");
-    if (sharedAlbumSegment().startsWith("comp-card-")) return true;
+    const shared = sharedAlbumSegment();
+    if (shared.startsWith("comp-card-") || shared.startsWith("portfolio-")) return true;
     return search.includes("categories") && (
       search.includes("Comp%20Cards") || decoded.includes("Comp Cards") ||
+      search.includes("Model%20Portfolio") || decoded.includes("Model Portfolio") ||
       search.includes("Test%20Shoot") || decoded.includes("Selective Collaboration (TFP)") || search.includes("Test+Shoot")
-    );
-  }
-
-  function isCurrentlyModelPortfolioView() {
-    const search = location.pathname + location.search;
-    const decoded = decodeURIComponent(search).replace(/\+/g, " ");
-    if (sharedAlbumSegment().startsWith("portfolio-")) return true;
-    return search.includes("categories") && (
-      search.includes("Model%20Portfolio") || decoded.includes("Model Portfolio")
     );
   }
 
@@ -2916,10 +2916,92 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       el.style.display = el.style.display === "none" ? "block" : "none";
     }
   };
+  // The free comp card, as a box in the model's panel. It is offered when the
+  // studio hasn't switched the download off AND at least one photo may go on a
+  // comp card — the card itself now shows every photo tagged to the model,
+  // whatever its Usage, so "this model has photos" no longer means "this model
+  // has a comp card". An admin is told which of the two reasons hid the box,
+  // because from the outside they look the same.
+  function compCardBoxHtml(shoot) {
+    const adminNote = (text) => isAdmin() ? `
+      <div class="lb-sidebar-section lb-note lb-note-admin">${text} (admin only sees this)</div>
+    ` : "";
+    if (shoot.disableCompCardDownload) return adminNote("Comp card PDF download is switched off for this model");
+    if (!compCardPdfPhotos(shoot).length) return adminNote("None of this model's photos are set to Comp Card or Both, so there's no comp card to export. Change their Usage in Upload, then publish");
+    // Orientation choice is kept per-shoot (not a single global), so picking
+    // Landscape for one model and then opening another — or just stepping to
+    // that model's next photo — doesn't silently carry the choice over: the
+    // toggle shown always matches what Export will actually produce for THIS
+    // model.
+    const currentOrient = (window.compCardOrientationByShoot && window.compCardOrientationByShoot[shoot.id]) || "portrait";
+    const isPortraitActive = currentOrient !== "landscape";
+    return `
+      <div class="lb-sidebar-section lb-card lb-export">
+        <div class="lb-export-head">
+          <span class="lb-h" style="margin: 0;"><span>Comp card PDF</span><small>Free</small></span>
+          <div class="lb-seg" id="compCardOrientGroup" role="radiogroup" aria-label="PDF orientation">
+            <label class="orient-radio-label${isPortraitActive ? " active" : ""}">
+              <input type="radio" name="compCardOrientRadio" value="portrait" ${isPortraitActive ? "checked" : ""} onchange="window.setCompCardOrientation('portrait', this, '${escJs(shoot.id)}')" />
+              <span>Portrait</span>
+            </label>
+            <label class="orient-radio-label${!isPortraitActive ? " active" : ""}">
+              <input type="radio" name="compCardOrientRadio" value="landscape" ${!isPortraitActive ? "checked" : ""} onchange="window.setCompCardOrientation('landscape', this, '${escJs(shoot.id)}')" />
+              <span>Landscape</span>
+            </label>
+          </div>
+        </div>
+        <button class="btn btn-dark btn-block lb-export-btn" onclick="window.triggerCompCardDownload('${escJs(shoot.id)}')">Export comp card PDF</button>
+        <p class="lb-note">Supporting photos are picked at random from every photo tagged to this model, so each export is a little different.</p>
+      </div>
+    `;
+  }
+
+  // The portfolio PDF, under the comp card box. Anyone can pick photos by pose
+  // and preview a one- or two-page PDF; the studio downloads free, clients
+  // download once sales are open and pay by UPI. Two switches gate it: "Show
+  // on Model portfolio" (this box, nothing else — the model is on the page
+  // either way) and whether any photo may go in a portfolio PDF at all.
+  function portfolioPdfBoxHtml(shoot) {
+    const adminNote = (text) => isAdmin() ? `
+      <div class="lb-sidebar-section lb-note lb-note-admin">${text} (admin only sees this)</div>
+    ` : "";
+    if (!showsOnModelPage(shoot, "Model Portfolio")) return adminNote("\"Show on Model portfolio\" is off for this model, so no portfolio PDF is offered here. Turn it on in Upload, then publish");
+    const photoCount = portfolioPdfPhotos(shoot).length;
+    if (!photoCount) return adminNote("None of this model's photos are set to Portfolio or Both, so there's no portfolio PDF to build. Change their Usage in Upload, then publish");
+    const pdfPrice = getPortfolioPdfSettings().price;
+    const exportBtn = `<button class="btn btn-dark btn-block lb-export-btn" onclick="window.printModelPortfolio('${escJs(shoot.id)}')">Make portfolio PDF</button>`;
+    if (isAdmin()) {
+      const emailToBuy = `Clients preview it and email you to buy it${pdfPrice ? ` (₹${pdfPrice})` : ""}.`;
+      const salesNote = !getPortfolioPdfSettings().enabled ? emailToBuy
+        : !portfolioPdfSalesOpen() ? `${emailToBuy} Add your UPI ID to sell it on the site.`
+        : pdfPrice ? `On for clients: they pay ₹${pdfPrice}.` : "On for clients, free.";
+      // A full page load rather than an in-app link, so the lightbox closes;
+      // the calendar opens the Portfolio PDF panel when it sees #portfolio-pdf.
+      const settingsLink = `<a href="/calendar#portfolio-pdf">Portfolio PDF settings →</a>`;
+      return `
+        <div class="lb-sidebar-section lb-card lb-export">
+          <span class="lb-h" style="margin: 0;"><span>Portfolio PDF</span><small>Free for you</small></span>
+          ${exportBtn}
+          <p class="lb-note">${esc(salesNote)} ${settingsLink}</p>
+        </div>
+      `;
+    }
+    const selling = portfolioPdfSalesOpen();
+    // Until sales open, the price and the studio's email, to buy it by mail.
+    const mail = selling ? "" : portfolioPdfMailLink(getTalentCleanName(shoot.talent) || (shoot.title || "").trim());
+    return `
+      <div class="lb-sidebar-section lb-card lb-export">
+        <span class="lb-h" style="margin: 0;"><span>Portfolio PDF</span>${pdfPrice && (selling || mail) ? `<small>₹${pdfPrice}</small>` : ""}</span>
+        ${exportBtn}
+        <p class="lb-note">${selling ? "Pick photos by pose (front, side, back) and download a 1 or 2 page PDF to send to casting directors and designers." : `Pick photos by pose (front, side, back) and preview a 1 or 2 page PDF. ${mail ? `To buy it${pdfPrice ? ` for ₹${pdfPrice}` : ""}, email ${mail}.` : "Downloads aren't open yet."}`}</p>
+      </div>
+    `;
+  }
+
   function renderLbSidebar(p) {
     const shoot = SHOOTS.find(x => x.id === p.shootId) || p.shoot;
     if (!shoot) return "";
-    const isCc = (shoot.type === "Selective Collaboration (TFP)" || shoot.type === "Test Shoot" || shoot.isCompCard) && (isCurrentlyCompCardView() || isCurrentlyModelPortfolioView());
+    const isCc = (shoot.type === "Selective Collaboration (TFP)" || shoot.type === "Test Shoot" || shoot.isCompCard) && isCurrentlyCompCardView();
     
     // Parse social handle
     let igHtml = "";
@@ -2999,7 +3081,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // Agency Model Stats HUD Card (Album Space #4 Redesign with Smart Fallback)
     let statsHtml = "";
     const hasStats = shoot.height || shoot.chest || shoot.waist || shoot.hips || shoot.shoes || shoot.modelHair || shoot.modelEyes;
-    const statsAllowedHere = isCurrentlyModelPortfolioView() ? shoot.showStatsOnModelPortfolio !== false : shoot.showStatsOnCompCard !== false;
+    // One card, one answer: measurements on the page and in this panel follow
+    // "Show stats on Comp Cards". "Show stats on Model Portfolio" still
+    // decides whether they print inside the portfolio PDF.
+    const statsAllowedHere = shoot.showStatsOnCompCard !== false;
     if (isCc && hasStats && statsAllowedHere) {
       const statItems = [
         ["Height", shoot.height],
@@ -3018,54 +3103,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       `;
     }
 
-    let angleHtml = "";
-    let filterBarHtml = "";
-    if (isCurrentlyModelPortfolioView()) {
-      if (p.angle) {
-        const labels = {
-          "front": "Front Portrait",
-          "full-body": "Full Body Shot",
-          "left-profile": "Left Profile",
-          "right-profile": "Right Profile",
-          "back": "Back Angle",
-          "three-quarter": "3/4 Angle",
-          "close-up": "Close-up / Headshot"
-        };
-        const label = labels[p.angle] || p.angle;
-        angleHtml = `
-          <div style="margin-top: 8px;">
-            <span style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight: 700; color:var(--accent); background:rgba(210,78,26,0.1); border: 1px solid var(--accent); padding: 4px 8px; border-radius: 4px; text-transform: uppercase; display: inline-block;">
-              ${esc(label)}
-            </span>
-          </div>
-        `;
-      }
-      
-      const anglesInShoot = [...new Set((shoot.photos || []).filter(usableInPortfolio).map(x => x.angle).filter(Boolean))];
-      if (anglesInShoot.length > 0) {
-        const labels = {
-          "front": "Front",
-          "full-body": "Full Body",
-          "left-profile": "Left Profile",
-          "right-profile": "Right Profile",
-          "back": "Back",
-          "three-quarter": "3/4",
-          "close-up": "Close-up"
-        };
-        filterBarHtml = `
-          <div class="lb-sidebar-section" style="border-top: 1px solid var(--line); padding-top: 16px; margin-top: 16px;">
-            <span class="eyebrow" style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); text-transform:uppercase; color:var(--ink-soft); display:block; margin-bottom: 8px;">Filter Portfolio</span>
-            <div style="display:flex; gap:6px; flex-wrap:wrap;">
-              <button class="angle-filter-btn ${window.activeAngleFilter === 'all' ? 'active' : ''}" data-angle="all" style="font-family:inherit; font-size: var(--font-xs); font-weight:700; padding:4px 8px; border-radius:4px; border:1px solid var(--line); background:${window.activeAngleFilter === 'all' ? 'var(--accent)' : 'var(--paper)'}; color:${window.activeAngleFilter === 'all' ? '#fff' : 'var(--ink)'}; cursor:pointer;">All</button>
-              ${anglesInShoot.map(ang => {
-                const isActive = window.activeAngleFilter === ang;
-                return `<button class="angle-filter-btn ${isActive ? 'active' : ''}" data-angle="${ang}" style="font-family:inherit; font-size: var(--font-xs); font-weight:700; padding:4px 8px; border-radius:4px; border:1px solid var(--line); background:${isActive ? 'var(--accent)' : 'var(--paper)'}; color:${isActive ? '#fff' : 'var(--ink)'}; cursor:pointer;">${labels[ang] || ang}</button>`;
-              }).join("")}
-            </div>
-          </div>
-        `;
-      }
-    }
+    // No pose label and no pose filter in this panel: poses are a tool for
+    // building the portfolio PDF, not a way to browse a model's card, and the
+    // merged panel is the comp card panel plus the portfolio PDF box.
 
     // Credits as one definition list: the role on the left, the people on the
     // right. Models first, then the crew, then where it was shot.
@@ -3131,7 +3171,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (hasCompCard) {
       const modelName = getTalentCleanName(shoot.talent);
       const slug = slugify(modelName);
-      if (slug) groups.push({ label: "Comp card", rendered: [`<span class="lb-person"><a href="/share/?a=comp-card-${encodeURIComponent(slug)}">View ${esc(modelName)}’s comp card ↗</a><small class="lb-person-note">Every model on the site has one, free to view and download as a PDF. <a href="${esc(compCardsHref())}" data-link>See all models’ comp cards ↗</a></small></span>`] });
+      if (slug) groups.push({ label: "Model portfolio", rendered: [`<span class="lb-person"><a href="/share/?a=comp-card-${encodeURIComponent(slug)}">View ${esc(modelName)}’s model portfolio ↗</a><small class="lb-person-note">Every model on the site has one, with a comp card free to view and download as a PDF. <a href="${esc(compCardsHref())}" data-link>See all model portfolios ↗</a></small></span>`] });
     }
     // Last row, below every credit that belongs to the shoot: these links are
     // the studio's own, not a credit for the work, and naming the studio on
@@ -3159,83 +3199,20 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       `;
     }
 
+    // Both PDFs, one under the other: the free comp card first, then the
+    // portfolio PDF built by pose. Which boxes appear is decided by this
+    // model's switches and photos and never by the address — the two used to
+    // live on two different pages, which is the whole point of the merge.
     let pdfBtnHtml = "";
-    if (isCc && !isCurrentlyModelPortfolioView()) {
-      if (!shoot.disableCompCardDownload) {
-        window.currentCompCardShootObj = shoot;
-        // Orientation choice is kept per-shoot (not a single global), so
-        // picking Landscape for one model and then opening another — or just
-        // stepping to that model's next photo — doesn't silently carry the
-        // choice over: the toggle shown always matches what Export will
-        // actually produce for THIS model.
-        const currentOrient = (window.compCardOrientationByShoot && window.compCardOrientationByShoot[shoot.id]) || "portrait";
-        const isPortraitActive = currentOrient !== "landscape";
-        pdfBtnHtml = `
-          <div class="lb-sidebar-section lb-card lb-export">
-            <div class="lb-export-head">
-              <span class="lb-h" style="margin: 0;"><span>Comp card PDF</span></span>
-              <div class="lb-seg" id="compCardOrientGroup" role="radiogroup" aria-label="PDF orientation">
-                <label class="orient-radio-label${isPortraitActive ? " active" : ""}">
-                  <input type="radio" name="compCardOrientRadio" value="portrait" ${isPortraitActive ? "checked" : ""} onchange="window.setCompCardOrientation('portrait', this, '${escJs(shoot.id)}')" />
-                  <span>Portrait</span>
-                </label>
-                <label class="orient-radio-label${!isPortraitActive ? " active" : ""}">
-                  <input type="radio" name="compCardOrientRadio" value="landscape" ${!isPortraitActive ? "checked" : ""} onchange="window.setCompCardOrientation('landscape', this, '${escJs(shoot.id)}')" />
-                  <span>Landscape</span>
-                </label>
-              </div>
-            </div>
-            <button class="btn btn-dark btn-block lb-export-btn" onclick="window.triggerCompCardDownload('${escJs(shoot.id)}')">Export comp card PDF</button>
-            <p class="lb-note">Supporting photos are picked at random from every photo tagged to this model, so each export is a little different.</p>
-          </div>
-        `;
-      } else if (isAdmin()) {
-        pdfBtnHtml = `
-          <div class="lb-sidebar-section lb-note lb-note-admin">Comp card PDF download is switched off for this model (admin only sees this)
-          </div>
-        `;
-      }
-    } else if (isCc && isCurrentlyModelPortfolioView()) {
-      // Anyone can build a one- or two-page PDF from this model's portfolio
-      // photos and preview it. The studio downloads free; clients download
-      // only once sales are open, paying by UPI. With no portfolio photos
-      // there is nothing to build, so visitors get nothing here.
+    if (isCc) {
+      // printCompCard and printModelPortfolio resolve a synthetic album (one
+      // with no id in SHOOTS) through this.
       window.currentCompCardShootObj = shoot;
-      const photoCount = portfolioPdfPhotos(shoot).length;
-      const pdfPrice = getPortfolioPdfSettings().price;
-      const exportBtn = `<button class="btn btn-dark btn-block lb-export-btn" onclick="window.printModelPortfolio('${escJs(shoot.id)}')">Make portfolio PDF</button>`;
-      if (isAdmin()) {
-        const emailToBuy = `Clients preview it and email you to buy it${pdfPrice ? ` (₹${pdfPrice})` : ""}.`;
-        const salesNote = !getPortfolioPdfSettings().enabled ? emailToBuy
-          : !portfolioPdfSalesOpen() ? `${emailToBuy} Add your UPI ID to sell it on the site.`
-          : pdfPrice ? `On for clients: they pay ₹${pdfPrice}.` : "On for clients, free.";
-        // A full page load rather than an in-app link, so the lightbox closes;
-        // the calendar opens the Portfolio PDF panel when it sees #portfolio-pdf.
-        const settingsLink = `<a href="/calendar#portfolio-pdf">Portfolio PDF settings →</a>`;
-        pdfBtnHtml = photoCount ? `
-          <div class="lb-sidebar-section lb-card lb-export">
-            <span class="lb-h" style="margin: 0;"><span>Portfolio PDF</span><small>Free for you</small></span>
-            ${exportBtn}
-            <p class="lb-note">${esc(salesNote)} ${settingsLink}</p>
-          </div>
-        ` : `
-          <div class="lb-sidebar-section lb-note lb-note-admin">None of this model's photos are set to Portfolio or Both, so there's no portfolio PDF to build. Change their Usage in Upload, then publish (admin only sees this)</div>
-        `;
-      } else if (photoCount) {
-        const selling = portfolioPdfSalesOpen();
-        // Until sales open, the price and the studio's email, to buy it by mail.
-        const mail = selling ? "" : portfolioPdfMailLink(getTalentCleanName(shoot.talent) || (shoot.title || "").trim());
-        pdfBtnHtml = `
-          <div class="lb-sidebar-section lb-card lb-export">
-            <span class="lb-h" style="margin: 0;"><span>Portfolio PDF</span>${pdfPrice && (selling || mail) ? `<small>₹${pdfPrice}</small>` : ""}</span>
-            ${exportBtn}
-            <p class="lb-note">${selling ? "Pick photos by pose (front, side, back) and download a 1 or 2 page PDF to send to casting directors and designers." : `Pick photos by pose (front, side, back) and preview a 1 or 2 page PDF. ${mail ? `To buy it${pdfPrice ? ` for ₹${pdfPrice}` : ""}, email ${mail}.` : "Downloads aren't open yet."}`}</p>
-          </div>
-        `;
-      }
+      pdfBtnHtml = compCardBoxHtml(shoot) + portfolioPdfBoxHtml(shoot);
     }
+
     const disclaimerHtml = isCc ? `
-      <p class="lb-disclaimer">To book this talent, connect through their social channels or their representing agency. The photos on this comp card were made by nerdyphotographer.in or its affiliates.</p>
+      <p class="lb-disclaimer">To book this talent, connect through their social channels or their representing agency. The photos on this model portfolio were made by nerdyphotographer.in or its affiliates.</p>
     ` : "";
 
     const metaBits = isCc ? [] : [
@@ -3258,7 +3235,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <span class="eyebrow lb-eyebrow">${isCc ? "Model portfolio" : p.gridLook ? esc(lookLabel(p.gridLook)) : esc([shoot.brand, publicShootType(shoot)].filter(Boolean).join(" · "))}</span>
           <h2 class="lb-title">${esc(getTalentCleanName(shoot.talent || shoot.title))}</h2>
           ${p.albumHref ? `<a href="${esc(p.albumHref)}" data-link class="link-arrow lb-album-link">See the full album →</a>` : ""}
-          ${angleHtml}
           ${modelTypeHtml}
           ${shoot.description ? `<p class="lb-desc">${esc(shoot.description)}</p>` : ""}
         </header>
@@ -3266,7 +3242,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         ${isCc ? socialsHtml : ""}
         ${agencyHtml}
         ${statsHtml}
-        ${filterBarHtml}
         ${isCc ? "" : creditsHtml}
         ${diagHtml}
         ${pdfBtnHtml}
@@ -3310,7 +3285,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
   function openLb(list, idx) {
     if (!list || !list.length) return;   // nothing to show is not a lightbox
-    window.activeAngleFilter = "all";
     lbReturnFocus = document.activeElement;
     lbList = list; lbIdx = idx; paintLb(); lb.hidden = false;
     document.body.style.overflow = "hidden"; $("#lightboxClose").focus();
@@ -3456,34 +3430,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // leaves the page: the router follows it, and the viewer must not stay open
     // on top of the page it leads to.
     lbSidebar.querySelectorAll("a[data-link]").forEach((a) => a.addEventListener("click", () => closeLb()));
-
-    // Wire angle filter buttons for Model Portfolio view inside lightbox
-    lbSidebar.querySelectorAll(".angle-filter-btn").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const selectedAngle = btn.dataset.angle;
-        window.activeAngleFilter = selectedAngle;
-        
-        // Find parent shoot to rebuild filtered list
-        const currentShoot = SHOOTS.find(x => x.id === p.shootId) || p.shoot;
-        const fullList = (currentShoot.photos || []).filter(x => {
-          return usableInPortfolio(x);
-        }).map(x => ({ ...x, shoot: currentShoot }));
-        
-        let filteredList = fullList;
-        if (selectedAngle !== "all") {
-          filteredList = fullList.filter(x => x.angle === selectedAngle);
-        }
-        
-        if (filteredList.length) {
-          lbList = filteredList;
-          lbIdx = 0;
-          paintLb();
-        } else {
-          toast("No photos matching this profile.");
-        }
-      });
-    });
   }
   function stepLb(d) { if (!lbList.length) return; lbIdx = (lbIdx + d + lbList.length) % lbList.length; paintLb(); }
   function closeLb() {
@@ -3690,11 +3636,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       adminSec.style.display = "block";
     }
 
-    const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi"), portfolioLi = $("#navModelPortfolioLi"), workshopLi = $("#navWorkshopLi"), analyticsLi = $("#navAnalyticsLi"), calendarLi = $("#navCalendarLi");
+    // No Model Portfolio entry any more: those cards are the models on What I
+    // shoot → Model portfolio shoots, so the menu would point at a page that
+    // only redirects. Removed from all nine shells, as Comp Cards was in v407.
+    const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi"), workshopLi = $("#navWorkshopLi"), analyticsLi = $("#navAnalyticsLi"), calendarLi = $("#navCalendarLi");
     if (uploadLi) uploadLi.style.display = active ? "block" : "none";
     if (bookLi) bookLi.style.display = active ? "none" : "block";
-    // Public for everyone. The PDF switch decides only who can download.
-    if (portfolioLi) portfolioLi.style.display = "block";
     if (workshopLi) workshopLi.style.display = "block"; // Always show Workshop in nav
     if (calendarLi) calendarLi.style.display = active ? "block" : "none";
     const bookBuilderLi = $("#navBookBuilderLi");
@@ -4154,7 +4101,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
     // Cards render on the homepage / album pages and on the comp card pages;
     // each surface has its own switches for socials, agency and email.
-    const repSurface = (isCurrentlyCompCardView() || isCurrentlyModelPortfolioView()) ? "CompCard" : "Home";
+    const repSurface = isCurrentlyCompCardView() ? "CompCard" : "Home";
     const creditsList = [];
     if (s.isCompCard) {
       // Name only — the handle lives in the talent field's parentheses (see
@@ -4239,7 +4186,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         ${s.isCompCard ? `
           <div class="comp-card-header">
             <h2>${esc(getTalentCleanName(s.talent))}</h2>
-            <p class="comp-card-eyebrow">Comp Card</p>
+            <p class="comp-card-eyebrow">Model portfolio</p>
             ${modelTypeBadgesHtml(s, "margin-top: 10px;")}
           </div>
         ` : ""}
@@ -4271,7 +4218,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             `}`;
           })()}
           
-          ${s.isCompCard && (latestShoot.height || latestShoot.chest || latestShoot.waist || latestShoot.hips || latestShoot.shoes || latestShoot.modelHair || latestShoot.modelEyes) && (isCurrentlyModelPortfolioView() ? s.showStatsOnModelPortfolio !== false : s.showStatsOnCompCard !== false) ? `
+          ${s.isCompCard && (latestShoot.height || latestShoot.chest || latestShoot.waist || latestShoot.hips || latestShoot.shoes || latestShoot.modelHair || latestShoot.modelEyes) && s.showStatsOnCompCard !== false ? `
             <div style="margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px; width: 100%;">
               <p class="eyebrow" style="font-size: var(--font-xs); margin-bottom: 8px; color: var(--ink-soft); letter-spacing: 0.05em; text-align: left;">Model Stats</p>
               <div class="stats-row">
@@ -4300,7 +4247,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             ${(!s.demo && isAdmin()) ? `
               <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0;" data-id="${s.originalShoots ? s.originalShoots[0].id : s.id}">Edit details</button>
               ${s.isCompCard ? `
-                <button class="link-arrow work-toggle-hide" style="color: var(--accent); font-weight: 700; padding: 0;" data-talent="${esc(s.talent)}" data-page="${isCurrentlyModelPortfolioView() ? "portfolio" : "compcards"}">${isCurrentlyModelPortfolioView() ? "🔒 Hide from Model portfolio" : s.originalShoots && s.originalShoots.some(x => x.hideFromCompCard) ? "👁️ Unhide Card" : "🔒 Hide Card"}</button>
+                <button class="link-arrow work-toggle-hide" style="color: var(--accent); font-weight: 700; padding: 0;" data-talent="${esc(s.talent)}" data-page="compcards">${s.originalShoots && s.originalShoots.some(x => x.hideFromCompCard) ? "👁️ Unhide Card" : "🔒 Hide Card"}</button>
               ` : ""}
               <button class="link-arrow work-delete" style="color: #b22222; font-weight: 700; padding: 0;" data-id="${s.originalShoots ? s.originalShoots[0].id : s.id}">Delete</button>
             ` : ""}
@@ -4493,7 +4440,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <p class="hero-mono-tagline reveal">Not just photos, a perspective. <span class="hero-accent">Editorial-grade portfolios</span> for models &amp; brands.</p>
             <div class="hero-actions reveal">
               <a href="${liveServiceLinks().length ? "/services/" : "/albums"}" data-link class="btn btn-dark">Explore work →</a>
-              <a href="${esc(compCardsHref())}" data-link class="btn btn-ghost">Comp cards</a>
+              <a href="${esc(compCardsHref())}" data-link class="btn btn-ghost">Model portfolios</a>
               ${isAdmin() ? `<a href="/upload" data-link class="btn btn-ghost">Publish a shoot</a>` : `<a href="/book" data-link class="btn btn-ghost">Book a shoot</a>`}
             </div>
           </div>
@@ -4541,7 +4488,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       <!-- QUICK LINKS -->
       <section class="section container">
         <div class="quick-links-grid reveal" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin: 40px 0;">
-          <a href="${esc(compCardsHref())}" data-link class="btn btn-dark" style="text-align: center; padding: 16px 24px;">Model Comp Cards →</a>
+          <a href="${esc(compCardsHref())}" data-link class="btn btn-dark" style="text-align: center; padding: 16px 24px;">Model portfolios &amp; comp cards →</a>
           <a href="/workshop-attended" data-link class="btn btn-dark" style="text-align: center; padding: 16px 24px;">Workshop Attended →</a>
         </div>
       </section>
@@ -4639,7 +4586,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <p class="page-sub reveal">This link doesn't match any published album. It may have been shared before the album was renamed, or the album may since have been unpublished.</p>
             <div class="hero-actions" style="margin-top: 18px;">
               <a href="/" data-link class="btn btn-dark">Back home →</a>
-              <a href="${esc(compCardsHref())}" data-link class="btn btn-ghost">Model comp cards</a>
+              <a href="${esc(compCardsHref())}" data-link class="btn btn-ghost">Model portfolios</a>
             </div>
           </div>
         </section>`;
@@ -4649,7 +4596,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     return `
       <section class="page-head">
         <div class="container">
-          <p class="eyebrow reveal">Shared ${album.isCompCard ? "Comp Card" : "Album"}</p>
+          <p class="eyebrow reveal">Shared ${album.isCompCard ? "Model portfolio" : "Album"}</p>
           <h1 class="kinetic-h1">${esc(title)}</h1>
           ${album.description ? `<p class="page-sub reveal">${esc(album.description)}</p>` : ""}
         </div>
@@ -7633,8 +7580,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     let displayList = list;
     if (kind === "type" && (d === "Selective Collaboration (TFP)" || d === "Model Portfolio" || d === "Comp Cards")) {
       const filteredList = list.filter(s => showsOnModelPage(s, d === "Model Portfolio" ? "Model Portfolio" : "Comp Cards") && ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim()) || (s.talent && s.talent.trim())));
-      const isPortPage = (d === "Model Portfolio");
-      const usableHere = isPortPage ? usableInPortfolio : usableOnCompCard;
+      // One card per model, showing EVERY photo tagged to them — Comp Card,
+      // Portfolio, Both, or neither. The card is where a visitor judges the
+      // model, so it holds all the work; Usage decides only what each PDF may
+      // print (usableOnCompCard / usableInPortfolio, applied where the PDFs
+      // are built). Before the merge each page filtered the card to its own
+      // PDF's photos, which is why one model appeared twice with two different
+      // sets of pictures.
+      const usableHere = (p) => !!p;
       const groupable = [];
       const nonGroupable = [];
       for (const s of filteredList) {
@@ -7670,12 +7623,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           return parseDate(b) - parseDate(a);
         });
         const latestShoot = shootsInGroup[0];
-        const isPortView = (d === "Model Portfolio");
-        // usableOnCompCard's `!p.excludeFromCompCard` is a hard AND, not another
-        // OR branch — as an OR it swallowed the usage check entirely, so a
-        // "Portfolio Only" photo still leaked into the comp card album unless
-        // excludeFromCompCard happened to also be set.
-        const allGroupPhotos = shootsInGroup.flatMap(gs => (gs.photos || []).filter(isPortView ? usableInPortfolio : usableOnCompCard).map(p => ({ ...p, parent: gs })));
+        // Every photo of the model, from every album of theirs: see usableHere
+        // above. A photo's Usage is read again where each PDF is built, never
+        // here.
+        const allGroupPhotos = shootsInGroup.flatMap(gs => (gs.photos || []).map(p => ({ ...p, parent: gs })));
         const coverId = latestShoot.coverPhotoId || (latestShoot.photos[0] && latestShoot.photos[0].id);
         const coverPhotoObj = allGroupPhotos.find(p => p.id.split("-")[0] === coverId);
         const remainingPhotos = allGroupPhotos.filter(p => p.id.split("-")[0] !== coverId);
@@ -7708,6 +7659,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           modelTypes: shootsInGroup.flatMap(gs => modelTypesOf(gs))
         });
         
+        // `portfolio-…` ids exist only so links shared from the retired
+        // Model Portfolio page still open this same card; nothing on the site
+        // builds that list any more except resolveShareId.
         const isPort = d === "Model Portfolio";
         return {
           id: isPort ? `portfolio-${encodeURIComponent(modelName)}` : `comp-card-${encodeURIComponent(modelName)}`,
@@ -7715,7 +7669,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           // because compCardOwnHandles parses its parentheses to pick the
           // model's own social. Same reason `id` is left alone — changing
           // it would break links already shared for this album.
-          title: isPort ? `${getTalentCleanName(modelName)} — Portfolio` : `${getTalentCleanName(modelName)} — Comp Card`,
+          title: `${getTalentCleanName(modelName)} — Model portfolio`,
           brand: "Personal Project",
           activity: latestShoot.activity,
           type: "Selective Collaboration (TFP)",
@@ -7744,6 +7698,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           // reads from the album (not the raw shoot) ignored the toggle.
           showStatsOnCompCard: latestShoot.showStatsOnCompCard,
           showStatsOnModelPortfolio: latestShoot.showStatsOnModelPortfolio,
+          // "Show on Model portfolio" on ANY of this model's albums offers the
+          // portfolio PDF on the merged card, because the PDF draws on every
+          // album's photos. Without this the merged card had no such field at
+          // all, and showsOnModelPage silently fell back to the comp-card
+          // switch — the box would have followed the wrong tick.
+          showOnModelPortfolio: shootsInGroup.some((s) => showsOnModelPage(s, "Model Portfolio")),
           // "Turn off the comp card download" on any of this model's albums
           // holds for the merged card too. It was never copied here, so on the
           // Comp cards page (which shows only merged cards) the switch did nothing.
@@ -8201,11 +8161,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const fitnessSamples = getSamples("activity", "Fitness");
     const sportsSamples = getSamples("activity", "Sports");
     const testShootSamples = getSamples("type", "Selective Collaboration (TFP)");
-    // Its own call, not a reuse of the comp-card one: the two pages allow
-    // different photos, so sharing the array showed the portfolio tile frames
-    // that are barred from the portfolio page, and could never show the ones
-    // that belong there.
-    const portfolioSamples = getSamples("type", "Model Portfolio");
 
     return `
       <section class="page-head">
@@ -8319,24 +8274,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             </div>
             <div class="specialty-gallery" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
               ${renderSpecialtyGallery(testShootSamples, "MODEL", "type", "Comp Cards")}
-            </div>
-          </div>
-          ` : ""}
-
-          ${portfolioSamples.length && isAdmin() ? `
-          <div class="specialty-item reveal" style="border-top: 1px dashed var(--line); padding-top: 40px; margin-top: 40px;">
-            <div class="specialty-meta">
-              <span style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom: 6px;">🔒 Admin Portfolio View</span>
-              <h3>
-                <a href="/categories?kind=type&amp;val=Model%20Portfolio" data-link>Model Portfolio</a>
-              </h3>
-              <p>
-                Curated model portfolios displaying agency-ready grids. Optimized for casting directors with quick filters to segment by shooting angle (Front, Side, Back, 3/4, Close-up).
-              </p>
-              <a href="/categories?kind=type&amp;val=Model%20Portfolio" data-link class="link-arrow" style="font-size: var(--font-xs); font-weight: 700; color: var(--accent);">Explore portfolio angles →</a>
-            </div>
-            <div class="specialty-gallery" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
-              ${renderSpecialtyGallery(portfolioSamples, "PORTFOLIO", "type", "Model Portfolio")}
             </div>
           </div>
           ` : ""}
@@ -13718,18 +13655,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     root.querySelectorAll(".work-block").forEach((block) => {
       const s = CURRENT_VIEW_SHOOTS.find((x) => x.id === block.dataset.shoot) || SHOOTS.find((x) => x.id === block.dataset.shoot);
       if (!s) return;
-      const isCc = qualifiesAsCompCard(s) && isCurrentlyCompCardView();
-      const isPortView = (s.isCompCard || s.type === "Selective Collaboration (TFP)" || s.type === "Test Shoot") && isCurrentlyModelPortfolioView();
-      // On the Model Portfolio page this used to fall through to "include
-      // everything" (isCc is false there, since isCurrentlyCompCardView()
-      // only matches the Comp Cards view) — so opening the lightbox showed
-      // comp-only photos too, until the angle filter was clicked and rebuilt
-      // the list with this same portfolio-usage rule.
-      const list = s.photos.filter((p) => {
-        if (isCc) return usableOnCompCard(p);
-        if (isPortView) return usableInPortfolio(p);
-        return true;
-      }).map((p) => ({ ...p, shoot: s }));
+      // The viewer shows what the card shows: every photo tagged to the model.
+      // buildCompCardDisplayList already decided which photos belong to this
+      // card, and re-filtering them here by Usage is what used to hide a
+      // model's portfolio-only work behind the comp-card page (and vice versa).
+      const list = s.photos.map((p) => ({ ...p, shoot: s }));
       const open = () => openLb(list, 0);
       if (s.isCompCard) {
         block.querySelectorAll(".comp-card-thumb").forEach(thumb => {
@@ -13763,15 +13693,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           const matchingShoots = SHOOTS.filter(s => (s.talent || "").trim().toLowerCase() === tName.trim().toLowerCase());
           if (matchingShoots.length === 0) return;
           
-          if (btn.dataset.page === "portfolio") {
-            matchingShoots.forEach(s => { s.showOnModelPortfolio = false; });
-            try {
-              localStorage.setItem("wps_custom_shoots", JSON.stringify(SHOOTS));
-            } catch(err) {}
-            alert(`🔒 '${tName}' is now hidden from the public Model portfolio page. Comp cards are unchanged.`);
-            if (typeof render === "function") render();
-            return;
-          }
+          // One page now, so one thing to hide: the model's card. Whether
+          // their portfolio PDF is offered on it is "Show on Model portfolio"
+          // in Upload, which this button used to duplicate.
           const currentlyHidden = matchingShoots.some(s => s.hideFromCompCard);
           const newHiddenState = !currentlyHidden;
           
@@ -13999,8 +13923,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     view.querySelectorAll(".noth-work").forEach((card) => {
       const s = CURRENT_VIEW_SHOOTS.find((x) => x.id === card.dataset.shoot) || SHOOTS.find((x) => x.id === card.dataset.shoot);
       if (!s) return;
-      const isCc = qualifiesAsCompCard(s) && isCurrentlyCompCardView();
-      const list = s.photos.filter((p) => !isCc || usableOnCompCard(p)).map((p) => ({ ...p, shoot: s }));
+      // As above: the card's own photos, unfiltered.
+      const list = s.photos.map((p) => ({ ...p, shoot: s }));
       const media = card.querySelector(".noth-work-media");
       const cta = card.querySelector(".noth-work-cta");
       const open = () => openLb(list, 0);
@@ -14281,13 +14205,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       return;
     }
 
-    // The Comp Cards page moved onto the model portfolio service page. Its old
-    // addresses (and the older Test Shoot / TFP forms of it) land there, on the
-    // cards — for as long as that page exists; until then the old page stays.
+    // The Comp Cards page moved onto the model portfolio service page, and the
+    // Model Portfolio page was folded into the same cards (one card per model,
+    // carrying both PDFs). All of those old addresses land there — for as long
+    // as that page exists; until then the old pages stay.
     if (key === "categories" && kind === "type" && compCardsHref() !== OLD_COMP_CARDS_HREF) {
       let wanted = val || "";
       try { wanted = decodeURIComponent(wanted); } catch { /* literal */ }
-      if (["Comp Cards", "Selective Collaboration (TFP)", "Test Shoot"].includes(wanted.replace(/\+/g, " "))) {
+      if (["Comp Cards", "Model Portfolio", "Selective Collaboration (TFP)", "Test Shoot"].includes(wanted.replace(/\+/g, " "))) {
         history.replaceState(null, "", compCardsHref());
         render();
         return;
@@ -14296,7 +14221,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
     // The Categories main page (genre / brand / type tiles) is retired: What I
     // shoot does that browsing now. Its address lands there. The filtered views
-    // under it (/categories?kind=…) stay — Model Portfolio lives there.
+    // under it (/categories?kind=…) stay, except the model ones just above.
     if (key === "categories" && !kind && !val) {
       history.replaceState(null, "", liveServiceLinks().length ? "/services/" : "/albums/");
       render();
@@ -15326,25 +15251,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       return;
     }
 
-    // Gather ALL photos across ALL shoots tagged to this model
-    const modelName = getTalentCleanName(shoot.talent || shoot.title).trim();
-    let allModelPhotos = [];
-    if (modelName) {
-      const matchingShoots = SHOOTS.filter(s => {
-        if (s.type === "Workshop Attended") return false;
-        if (!s.talent) return false;
-        const names = s.talent.split(",").map(t => getTalentCleanName(t).trim().toLowerCase());
-        return names.includes(modelName.toLowerCase());
-      });
-      allModelPhotos = matchingShoots.flatMap(s => (s.photos || []).filter(usableOnCompCard));
-    }
-    if (!allModelPhotos.length) {
-      allModelPhotos = (shoot.photos || []).filter(usableOnCompCard);
-    }
-    // No fallback to the album's full photo list: it used to mean that a model
-    // whose every photo was kept off comp cards got a card built from exactly
-    // those photos — the filter undone at the last step.
-    const rawPhotos = allModelPhotos;
+    // Every photo across every album tagged to this model — the same pool the
+    // panel counted before it offered the box.
+    const rawPhotos = compCardPdfPhotos(shoot);
     if (!rawPhotos.length) { toast("None of this model's photos are set to go on a comp card."); return; }
 
     // Freshly shuffle the whole pool every time the button is clicked — the
@@ -15384,11 +15293,37 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     ];
   }
 
-  // What a client may put in the PDF: the photos the Model Portfolio page
-  // shows (usage "portfolio" or "both", or unset on legacy photos), with or
+  // What a client may put in the PDF: the model's photos marked for portfolio
+  // use (usage "portfolio" or "both", or unset on legacy photos), with or
   // without a pose tag. A photo with no pose prints without its tag.
+  //
+  // Since the merge the card carries every photo tagged to the model, whatever
+  // its Usage, so this is the filter that keeps a comp-only or album-only
+  // photo out of the PDF.
   function portfolioPdfPhotos(shoot) {
     return (shoot.photos || []).filter(usableInPortfolio);
+  }
+
+  // What the comp card PDF may print: every photo allowed on a comp card, from
+  // every album that names this model — group shoots and brand jobs included,
+  // not just the album in hand. The panel counts with this and printCompCard
+  // shuffles the same pool, so the box appears exactly when the export has
+  // something to print.
+  function compCardPdfPhotos(shoot) {
+    const modelName = getTalentCleanName(shoot.talent || shoot.title).trim();
+    let photos = [];
+    if (modelName) {
+      photos = SHOOTS.filter((s) => {
+        if (s.type === "Workshop Attended") return false;
+        if (!s.talent) return false;
+        return s.talent.split(",").map((t) => getTalentCleanName(t).trim().toLowerCase()).includes(modelName.toLowerCase());
+      }).flatMap((s) => (s.photos || []).filter(usableOnCompCard));
+    }
+    // Falls back to this album's own allowed photos (a synthetic card whose
+    // model has no name to match on), but never to the album's FULL list: that
+    // used to mean a model whose every photo was kept off comp cards got a
+    // card built from exactly those photos — the filter undone at the last step.
+    return photos.length ? photos : (shoot.photos || []).filter(usableOnCompCard);
   }
 
   // Clients can buy only once the studio has switched it on, and only with
@@ -17481,7 +17416,22 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // app — hence the explicit scheme exclusion.
         if (href && !/^(mailto|tel|sms):/i.test(href) && (href.startsWith("/") || !href.includes("://"))) {
           e.preventDefault();
+          // A link to a section of the page already open (the model page's
+          // "See the models" → #comp-cards) re-renders to the same view, which
+          // paints nothing and would leave the reader where they were: scroll
+          // to the section instead. The first-paint handler covers arriving
+          // from another page.
+          const [path, hash] = href.split("#");
+          const samePage = hash && (!path || path.replace(/\/?$/, "/") === location.pathname.replace(/\/?$/, "/"));
           history.pushState(null, "", href);
+          if (samePage) {
+            const target = document.getElementById(hash);
+            const header = document.querySelector(".site-header");
+            if (target) {
+              window.scrollTo({ top: Math.max(0, target.getBoundingClientRect().top + window.scrollY - (header ? header.offsetHeight : 0)), behavior: "smooth" });
+              return;
+            }
+          }
           render();
         }
       }
