@@ -280,6 +280,34 @@ if (pdfSale !== undefined && pdfSale !== null) {
     }
   }
 }
+// ── 9b. studio portfolio books (book-builder.js) ──────────────────────────
+// Saved books are the studio's own work, rebuilt by hand if lost, so their
+// shape is held to what cleanStudioPortfolios in app.js keeps. A book whose
+// style or pages the app does not recognise would open blank or be dropped.
+const books = win.WPS_DATA.STUDIO_PORTFOLIOS;
+if (books !== undefined && books !== null) {
+  if (typeof books !== "object" || !Array.isArray(books.versions) || !Array.isArray(books.deleted)) {
+    fail("WPS_DATA.STUDIO_PORTFOLIOS must be an object { versions: [], deleted: [] }");
+  } else {
+    const BOOK_STYLES = new Set(["elegant", "modern", "vogue"]);
+    const PAGE_TYPES = new Set(["photos", "spread", "about", "services", "contact", "divider"]);
+    const seenBooks = new Set();
+    for (const b of books.versions) {
+      const name = b && b.name ? `"${b.name}"` : JSON.stringify(b && b.id);
+      if (!b || typeof b.id !== "string" || !b.id) { fail(`a studio portfolio book has no id: ${JSON.stringify(b).slice(0, 120)}`); continue; }
+      if (seenBooks.has(b.id)) fail(`two studio portfolio books share the id ${b.id}`);
+      seenBooks.add(b.id);
+      if (!BOOK_STYLES.has(b.style)) fail(`studio portfolio book ${name} has an unknown style ${JSON.stringify(b.style)}`);
+      if (b.orientation !== "portrait" && b.orientation !== "landscape") fail(`studio portfolio book ${name} has an unknown page shape ${JSON.stringify(b.orientation)}`);
+      if (!Array.isArray(b.pages)) { fail(`studio portfolio book ${name} has no pages list`); continue; }
+      const rendered = 1 + b.pages.reduce((n, pg) => n + (pg && pg.type === "spread" ? 2 : 1), 0);
+      if (rendered > 20) fail(`studio portfolio book ${name} has ${rendered} pages; the builder allows 20, cover included`);
+      for (const pg of b.pages) if (!pg || !PAGE_TYPES.has(pg.type)) fail(`studio portfolio book ${name} has a page of unknown type ${JSON.stringify(pg && pg.type)}`);
+      if (books.deleted.includes(b.id)) fail(`studio portfolio book ${name} is published and also marked deleted`);
+    }
+  }
+}
+
 // The Model Portfolio page's own switch: true, false, or absent (an album saved
 // before it existed, which follows its comp card setting).
 for (const s of shoots) {
@@ -331,6 +359,16 @@ try {
   const prevData = prevWin.WPS_DATA || {};
   const stale = " This is the signature of a publish from an out-of-date browser tab: restore data.js from the previous commit, and reload every open tab of the site before publishing again.";
   if (prevData.PORTFOLIO_PDF && win.WPS_DATA.PORTFOLIO_PDF === undefined) fail(`PORTFOLIO_PDF vanished from data.js.${stale}`);
+  // Saved portfolio books are hours of arranging; an old tab dropping the key,
+  // or a publish that shrinks the list without a matching deletion, loses them.
+  if (prevData.STUDIO_PORTFOLIOS && win.WPS_DATA.STUDIO_PORTFOLIOS === undefined) fail(`STUDIO_PORTFOLIOS vanished from data.js.${stale}`);
+  const prevBooks = (prevData.STUDIO_PORTFOLIOS && prevData.STUDIO_PORTFOLIOS.versions) || [];
+  const nowBooks = win.WPS_DATA.STUDIO_PORTFOLIOS || { versions: [], deleted: [] };
+  const lostBooks = prevBooks.filter((b) => b && !(nowBooks.versions || []).some((x) => x && x.id === b.id) && !(nowBooks.deleted || []).includes(b.id));
+  if (lostBooks.length) fail(`${lostBooks.length} studio portfolio book(s) disappeared without being deleted: ${lostBooks.map((b) => b.name || b.id).join(", ")}.${stale}`);
+  // A deletion that vanishes lets a stale copy of the book come back.
+  const lostTombstones = ((prevData.STUDIO_PORTFOLIOS && prevData.STUDIO_PORTFOLIOS.deleted) || []).filter((id) => !(nowBooks.deleted || []).includes(id));
+  if (lostTombstones.length) fail(`${lostTombstones.length} deleted portfolio book(s) lost their deletion record, so they can reappear: ${lostTombstones.join(", ")}.${stale}`);
   const photosById = (data) => new Map((data.DEMO_SHOOTS || []).flatMap((s) => (s.photos || []).map((p) => [p.id, p])));
   const before = photosById(prevData);
   let lostPose = 0, lostUsage = 0, lostLook = 0;

@@ -662,6 +662,81 @@ function getPortfolioPdfSettings() {
 }
 window.getPortfolioPdfSettings = getPortfolioPdfSettings;
 
+// The studio portfolio book (book-builder.js): every saved version, published
+// with the albums so it opens on any device and survives a cleared browser.
+// Shape: { versions: [ { id, name, style, colourway, orientation, title,
+// subtitle, cover, pages, texts, updatedAt } ], deleted: [ids] }.
+//
+// Merged PER BOOK by updatedAt, never "this device's copy wins": a phone that
+// last opened the builder a month ago must not overwrite the book edited on
+// the laptop since. A deleted book is remembered by id so an old copy
+// elsewhere cannot bring it back — the same lesson as album tombstones.
+const STUDIO_BOOK_STYLES = ["elegant", "modern", "vogue"];
+// versions/tombstones are generous on purpose: a cap that trimmed a list would
+// silently delete the book or the deletion it cut. The builder refuses a new
+// book at `versions` rather than letting the clean-up drop one.
+const STUDIO_BOOK_LIMITS = { versions: 200, pages: 30, text: 1200, deleted: 2000 };
+function cleanStudioPortfolios(o) {
+  if (!o || typeof o !== "object" || !Array.isArray(o.versions)) return null;
+  const str = (v, max) => (typeof v === "string" ? v.slice(0, max) : "");
+  const num = (v, lo, hi, d) => (typeof v === "number" && isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d);
+  const shot = (x) => (x && typeof x === "object" && typeof x.id === "string" && x.id)
+    ? { id: x.id.slice(0, 120), x: num(x.x, 0, 1, 0.5), y: num(x.y, 0, 1, 0.35), zoom: num(x.zoom, 1, 3, 1) } : null;
+  const PAGE_TYPES = ["photos", "spread", "about", "services", "contact", "divider"];
+  const versions = o.versions.slice(0, STUDIO_BOOK_LIMITS.versions).map((v) => {
+    if (!v || typeof v !== "object" || typeof v.id !== "string" || !v.id) return null;
+    const pages = (Array.isArray(v.pages) ? v.pages : []).slice(0, STUDIO_BOOK_LIMITS.pages).map((pg) => {
+      if (!pg || !PAGE_TYPES.includes(pg.type)) return null;
+      const out = { type: pg.type };
+      if (pg.type === "photos") out.photos = (Array.isArray(pg.photos) ? pg.photos : []).map(shot).filter(Boolean).slice(0, 6);
+      if (pg.type === "spread") out.photos = (Array.isArray(pg.photos) ? pg.photos : []).map(shot).filter(Boolean).slice(0, 1);
+      if (pg.type === "divider") { out.heading = str(pg.heading, 60); out.line = str(pg.line, 160); }
+      return out;
+    }).filter(Boolean);
+    const t = v.texts && typeof v.texts === "object" ? v.texts : {};
+    return {
+      id: v.id.slice(0, 40), name: str(v.name, 80) || "Untitled book",
+      style: STUDIO_BOOK_STYLES.includes(v.style) ? v.style : "modern",
+      colourway: str(v.colourway, 40) || "terracotta",
+      orientation: v.orientation === "landscape" ? "landscape" : "portrait",
+      title: str(v.title, 80), subtitle: str(v.subtitle, 120),
+      cover: shot(v.cover),
+      pages,
+      texts: { about: str(t.about, STUDIO_BOOK_LIMITS.text), phone: str(t.phone, 24), showPrices: t.showPrices === true },
+      updatedAt: num(v.updatedAt, 0, 8.64e15, 0)
+    };
+  }).filter(Boolean);
+  // Newest tombstones kept, if ever over the cap: keeping the oldest would drop
+  // the deletion just made and let the published copy bring the book back.
+  const deleted = (Array.isArray(o.deleted) ? o.deleted : []).filter((x) => typeof x === "string" && x).slice(-STUDIO_BOOK_LIMITS.deleted);
+  return { versions, deleted };
+}
+// `live` is the copy just fetched from GitHub when publishing; it joins the
+// same per-book merge as this device's drafts and the copy the page loaded.
+function getStudioPortfolios(live) {
+  let local = null, published = null, remote = null;
+  try { local = cleanStudioPortfolios(JSON.parse(localStorage.getItem("wps_studio_portfolios") || "null")); } catch (e) {}
+  try { published = cleanStudioPortfolios(window.WPS_DATA && window.WPS_DATA.STUDIO_PORTFOLIOS); } catch (e) {}
+  try { remote = live ? cleanStudioPortfolios(live) : null; } catch (e) {}
+  const deleted = [...new Set([...((local && local.deleted) || []), ...((published && published.deleted) || []), ...((remote && remote.deleted) || [])])];
+  const byId = new Map();
+  for (const v of [...((remote && remote.versions) || []), ...((published && published.versions) || []), ...((local && local.versions) || [])]) {
+    const have = byId.get(v.id);
+    if (!have || v.updatedAt > have.updatedAt) byId.set(v.id, v);
+  }
+  const versions = [...byId.values()].filter((v) => !deleted.includes(v.id)).sort((a, b) => b.updatedAt - a.updatedAt);
+  return { versions, deleted };
+}
+function saveStudioPortfolios(state) {
+  const clean = cleanStudioPortfolios(state);
+  if (!clean) return false;
+  try { localStorage.setItem("wps_studio_portfolios", JSON.stringify(clean)); return true; } catch (e) { return false; }
+}
+window.cleanStudioPortfolios = cleanStudioPortfolios;
+window.getStudioPortfolios = getStudioPortfolios;
+window.saveStudioPortfolios = saveStudioPortfolios;
+window.STUDIO_BOOK_LIMITS = STUDIO_BOOK_LIMITS;
+
 function getAdminPackages() {
   try {
     const saved = localStorage.getItem("wps_custom_packages");
@@ -2298,6 +2373,30 @@ window.moveAdminPackageRow = function(index, dir) {
   function parseShootsFromDataJs(text) {
     return parseArrayAfterKey(text, '"DEMO_SHOOTS"');
   }
+  // The object after a quoted key, string-aware, the same way as the arrays
+  // above. Not eval or new Function: the site's CSP has no 'unsafe-eval', so
+  // running the fetched file would throw in production.
+  // undefined = the key is absent (nothing published yet, a valid state);
+  // null = present but unreadable, which the caller must treat as a failure.
+  function parseObjectAfterKey(text, quotedKey) {
+    const key = text.indexOf(quotedKey);
+    if (key === -1) return undefined;
+    try {
+      const start = text.indexOf("{", key);
+      if (start === -1) return null;
+      let depth = 0, inString = false, escaped = false;
+      for (let i = start; i < text.length; i++) {
+        const c = text[i];
+        if (escaped) { escaped = false; continue; }
+        if (c === "\\") { escaped = true; continue; }
+        if (c === '"') { inString = !inString; continue; }
+        if (inString) continue;
+        if (c === "{") depth++;
+        else if (c === "}" && --depth === 0) return JSON.parse(text.slice(start, i + 1));
+      }
+      return null;
+    } catch { return null; }
+  }
   // Published deletion tombstones. A data.js from before tombstones existed
   // has no DELETED_IDS key — that is a valid empty list, not a parse failure.
   function parseDeletedIdsFromDataJs(text) {
@@ -2333,13 +2432,19 @@ window.moveAdminPackageRow = function(index, dir) {
       if (!repoRes.ok) {
         throw explains(new Error(`This token cannot reach ${GH_REPO} (GitHub ${repoRes.status}) — check it grants Contents read & write on that repository. Nothing was published.`));
       }
-      return { shoots: [], deletedIds: [] }; // repo reachable, data.js genuinely not published yet
+      return { shoots: [], deletedIds: [], studioPortfolios: null }; // repo reachable, data.js genuinely not published yet
     }
     if (!res.ok) throw new Error(`Could not read the published data.js (GitHub ${res.status}) — aborting to avoid overwriting other devices' shoots.`);
     const text = await res.text();
     const parsed = parseShootsFromDataJs(text);
     if (parsed === null) throw new Error("Could not parse the published data.js — aborting to avoid overwriting other devices' shoots.");
-    return { shoots: parsed, deletedIds: parseDeletedIdsFromDataJs(text) };
+    // Saved portfolio books are merged with what is LIVE, not with the copy
+    // this page loaded: a tab opened this morning must not publish over a book
+    // edited on another device since, or bring back one deleted there. Same
+    // rule as the albums above — unreadable means stop, not "none published".
+    const books = parseObjectAfterKey(text, '"STUDIO_PORTFOLIOS"');
+    if (books === null) throw new Error("Could not read the saved portfolio books in the published data.js — aborting so no book is overwritten.");
+    return { shoots: parsed, deletedIds: parseDeletedIdsFromDataJs(text), studioPortfolios: books || null };
   }
 
   const MIME_EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
@@ -2534,6 +2639,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         PACKAGES: (typeof window.getAdminPackages === "function" ? window.getAdminPackages() : []),
         // The portfolio PDF's price and the UPI ID it's paid to.
         PORTFOLIO_PDF: (typeof window.getPortfolioPdfSettings === "function" ? window.getPortfolioPdfSettings() : null),
+        // Saved studio portfolio books (book-builder.js), merged per book with
+        // this device's drafts AND the live copy just fetched, never only the
+        // copy this page happened to load.
+        STUDIO_PORTFOLIOS: (typeof window.getStudioPortfolios === "function" ? window.getStudioPortfolios(remote.studioPortfolios) : { versions: [], deleted: [] }),
         TFP_PACKAGE: (typeof window.getAdminTfpPackage === "function" ? window.getAdminTfpPackage() : null),
         HOME_STUDIO_RATE: (typeof window.getHomeStudioRate === "function" ? window.getHomeStudioRate() : 3000),
         // Only published when the studio actually set a separate collaboration
@@ -2627,6 +2736,31 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // being quoted the old price. Returns whether the publish actually landed so
   // the caller can tell the truth about it.
   window.publishStudioDataToLiveSite = () => syncToGitHub(SHOOTS);
+
+  // The studio portfolio book lives in book-builder.js and is only loaded when
+  // the studio opens it. It draws with the same page engine and PDF writer as
+  // the model portfolio, so it borrows them from here rather than keeping a
+  // second copy that would drift. Admin-only in practice: nothing here reads
+  // or writes anything a visitor could not already get from the page.
+  window.WPS_BOOK_API = {
+    newPdfPage: (dpi, size) => newPdfPage(dpi, size),
+    photoFocus: (p) => photoFocus(p),
+    loadImage: (src, cache) => loadPdfImage(src, cache),
+    buildPdf: (pages, title) => buildPortfolioPdf(pages, title),
+    canvasPng: (canvas) => pdfCanvasPng(canvas),
+    canvasJpeg: (canvas, q) => pdfCanvasJpeg(canvas, q),
+    loadQr: () => loadQrLibrary(),
+    studioMark: () => PDF_STUDIO_MARK,
+    photoSrc: (p) => photoSrc(p),
+    shoots: () => SHOOTS,
+    isAdmin: () => isAdmin(),
+    esc: (x) => esc(x),
+    toast: (m) => toast(m),
+    publish: () => syncToGitHub(SHOOTS),
+    liveServices: () => liveServiceLinks(),
+    packages: () => (typeof window.getAdminPackages === "function" ? window.getAdminPackages() : []),
+    config: () => window.STUDIO_CONFIG || {}
+  };
 
   /* ============================================================
      §10 · LIGHTBOX
@@ -3423,6 +3557,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (portfolioLi) portfolioLi.style.display = "block";
     if (workshopLi) workshopLi.style.display = "block"; // Always show Workshop in nav
     if (calendarLi) calendarLi.style.display = active ? "block" : "none";
+    const bookBuilderLi = $("#navBookBuilderLi");
+    if (bookBuilderLi) bookBuilderLi.style.display = active ? "block" : "none";
     if (analyticsLi) analyticsLi.style.display = "none";
     // Every shell has its own copy of the menu and footer, so find the links rather than an id.
     document.querySelectorAll('a[href="/studio"], a[href="/studio/"]').forEach((a) => {
@@ -13396,7 +13532,31 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     });
   }
 
+  let bookBuilderLoad = null;
+  function loadBookBuilder() {
+    if (window.StudioBook) return Promise.resolve(window.StudioBook);
+    if (!bookBuilderLoad) {
+      bookBuilderLoad = new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        // Same version as the rest of the site, so a release never pairs a new
+        // app.js with a cached old builder.
+        const v = (document.querySelector('script[src*="app.js?v="]')?.getAttribute("src") || "").split("v=")[1] || "";
+        s.src = `/book-builder.js${v ? `?v=${v}` : ""}`;
+        s.onload = () => (window.StudioBook ? resolve(window.StudioBook) : reject(new Error("book-builder.js loaded without StudioBook")));
+        s.onerror = () => { bookBuilderLoad = null; reject(new Error("book-builder.js failed to load")); };
+        document.head.appendChild(s);
+      });
+    }
+    return bookBuilderLoad;
+  }
+
   function wireView(key) {
+    if (key === "portfolio-book") {
+      const root = view.querySelector("#studioBookRoot");
+      if (root) loadBookBuilder()
+        .then((SB) => { if (root.isConnected) SB.mount(root); })
+        .catch((err) => { root.innerHTML = `<p class="pp-error">The builder could not load (${esc(err.message)}). Use “Load fresh version” and try again.</p>`; });
+    }
     // Inline live-page editing (Admin mode): edit title/desc/season/location in
     // place; save to IndexedDB on blur/Enter and sync to the repo.
     view.querySelectorAll(".inline-edit").forEach((el) => {
@@ -13752,7 +13912,20 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   /* ============================================================
      §14 · ROUTER
      ============================================================ */
-  const ROUTES = { "": viewHome, "albums": viewAlbums, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload, "book": viewBook, "calendar": viewCalendar, "contracts": viewContracts, "testimonials": viewTestimonials, "workshop-attended": viewWorkshopAttended, "analytics": viewAnalytics };
+  // The studio portfolio book: a shell here, the builder itself in
+  // book-builder.js, loaded on first visit (see wireView).
+  function viewPortfolioBook() {
+    return `
+      <section class="page-head">
+        <div class="container">
+          <p class="eyebrow reveal">Admin · Studio portfolio book</p>
+          <h1 class="kinetic-h1">Portfolio book</h1>
+          <p class="page-sub reveal">Your own book of work to send to clients. Pick photographs from any album, lay them out, choose a style and a colourway, and save as many versions as you need.</p>
+        </div>
+      </section>
+      <section class="section container"><div id="studioBookRoot" class="sb-root"><p class="page-sub">Loading the builder…</p></div></section>`;
+  }
+  const ROUTES = { "": viewHome, "portfolio-book": viewPortfolioBook, "albums": viewAlbums, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload, "book": viewBook, "calendar": viewCalendar, "contracts": viewContracts, "testimonials": viewTestimonials, "workshop-attended": viewWorkshopAttended, "analytics": viewAnalytics };
 
   /* ---- STATIC PAGES ---------------------------------------------------------
      The service pages (/services/…) are written as plain HTML at deploy by
@@ -13870,6 +14043,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
     // Redirect non-admins trying to access the calendar page
     if (key === "calendar" && !isAdmin()) {
+      history.pushState(null, "", "/");
+      render();
+      return;
+    }
+
+    // The portfolio book is the studio's own tool.
+    if (key === "portfolio-book" && !isAdmin()) {
       history.pushState(null, "", "/");
       render();
       return;
@@ -15158,11 +15338,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // A blank A4 canvas with millimetre drawing helpers. Sizes are converted to
   // pixels on every call instead of scaling the context, because some
   // browsers render small text badly under a scale transform.
-  function newPdfPage(dpi) {
+  // `size` defaults to A4 portrait; the studio portfolio book also draws A4
+  // landscape through here, with { w: 297, h: 210 }.
+  function newPdfPage(dpi, size = PDF_PAGE) {
     const k = dpi / 25.4;
     const canvas = document.createElement("canvas");
-    canvas.width = Math.round(PDF_PAGE.w * k);
-    canvas.height = Math.round(PDF_PAGE.h * k);
+    canvas.width = Math.round(size.w * k);
+    canvas.height = Math.round(size.h * k);
     const ctx = canvas.getContext("2d");
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -15899,8 +16081,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   async function buildPortfolioPdf(pages, title) {
     const enc = new TextEncoder();
     const jpegs = [];
-    for (const p of pages) jpegs.push(await pdfCanvasJpeg(p.canvas, 0.9));
-    const PT_W = 595.28, PT_H = 841.89, PT = 72 / 25.4;
+    // A page may arrive already encoded ({ jpeg, width, height, links }) with
+    // its canvas released: a 20-page book held as canvases is ~170 MB, which a
+    // phone refuses. The model portfolio still passes canvases.
+    const dims = (p) => ({ width: p.canvas ? p.canvas.width : p.width, height: p.canvas ? p.canvas.height : p.height });
+    for (const p of pages) jpegs.push(p.jpeg || await pdfCanvasJpeg(p.canvas, 0.9));
+    const PT = 72 / 25.4;
+    // Each page is sized from its own canvas, so a book can mix portrait and
+    // landscape; an A4 portrait canvas comes out at exactly 595.28 x 841.89.
+    const pageBox = (p) => dims(p).width > dims(p).height ? { w: 841.89, h: 595.28 } : { w: 595.28, h: 841.89 };
     const chunks = [];
     const offsets = [];
     let length = 0;
@@ -15927,13 +16116,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     begin(2); write(`<< /Type /Pages /Kids [${ids.map((x) => `${x.page} 0 R`).join(" ")}] /Count ${pages.length} >>`); end();
     pages.forEach((p, i) => {
       const id = ids[i], jpeg = jpegs[i];
+      const { w: PT_W, h: PT_H } = pageBox(p);
       begin(id.page);
       write(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PT_W} ${PT_H}] /Resources << /XObject << /Im0 ${id.image} 0 R >> >> /Contents ${id.content} 0 R${id.annots.length ? ` /Annots [${id.annots.map((a) => `${a} 0 R`).join(" ")}]` : ""} >>`);
       end();
       const content = `q\n${PT_W} 0 0 ${PT_H} 0 0 cm\n/Im0 Do\nQ\n`;
       begin(id.content); write(`<< /Length ${content.length} >>\nstream\n${content}endstream`); end();
       begin(id.image);
-      write(`<< /Type /XObject /Subtype /Image /Width ${p.canvas.width} /Height ${p.canvas.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`);
+      write(`<< /Type /XObject /Subtype /Image /Width ${dims(p).width} /Height ${dims(p).height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`);
       write(jpeg);
       write("\nendstream");
       end();
@@ -17094,6 +17284,18 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         links.push(`<a href="${cfg.kavyar}" target="_blank" rel="noopener" aria-label="Kavyar"><svg viewBox="0 0 24 24" style="stroke-width: 2.5;"><line x1="6" y1="4" x2="6" y2="20"></line><line x1="18" y1="4" x2="6" y2="12"></line><line x1="6" y1="12" x2="18" y2="20"></line></svg></a>`);
       }
       navSocials.innerHTML = links.join("");
+    }
+
+    // "Portfolio book" — the studio's own tool, so it shows only in admin mode
+    // (see the nav visibility block, which reads its id).
+    const bookNavList = document.querySelector(".nav-links");
+    if (bookNavList && !document.getElementById("navBookBuilderLi")) {
+      const li = document.createElement("li");
+      li.id = "navBookBuilderLi";
+      li.style.display = "none";
+      li.innerHTML = `<a href="/portfolio-book" data-link>Portfolio book</a>`;
+      const uploadLi = document.getElementById("navUploadLi");
+      if (uploadLi) uploadLi.after(li); else bookNavList.appendChild(li);
     }
 
     // "Services" in the menu — added here rather than in each page's HTML, for
