@@ -191,6 +191,10 @@ try {
     extractConst("MODEL_TYPE_MAXLEN"),
     extractConst("qualifiesAsCompCard"),
     extractConst("showsOnModelPage"),
+    // buildCompCardDisplayList decides which photos belong on a comp card and
+    // on the Model Portfolio page with these two.
+    extractConst("usableOnCompCard"),
+    extractConst("usableInPortfolio"),
     extractConst("slugify"),
     // buildCompCardDisplayList reads the per-surface credit switches and the
     // handle cleaner when it assembles a unified album. Lifting the function
@@ -286,9 +290,14 @@ for (const s of shoots) {
 // Pose tags decide which photos a client can put in the PDF; a value the app
 // doesn't know would silently leave that photo out of every one.
 const POSES = new Set(["full-body", "front", "left-profile", "right-profile", "three-quarter", "back", "close-up"]);
+// Same for usage: the app asks "is this photo allowed here", so a value it does
+// not know hides the photo from comp cards and the portfolio PDF without a word.
+// A typo such as "None" or "comps" would do exactly that.
+const USAGES = new Set(["both", "portfolio", "comp", "none"]);
 for (const s of shoots) {
   for (const p of s.photos || []) {
     if (p.angle !== undefined && !POSES.has(p.angle)) fail(`album "${s.title || s.id}" photo ${p.id} has an unknown pose tag ${JSON.stringify(p.angle)}`);
+    if (p.usage !== undefined && !USAGES.has(p.usage)) fail(`album "${s.title || s.id}" photo ${p.id} has an unknown usage ${JSON.stringify(p.usage)}`);
   }
 }
 

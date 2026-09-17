@@ -1637,6 +1637,24 @@ window.moveAdminPackageRow = function(index, dir) {
     return qualifiesAsCompCard(s) && !s.hideFromCompCard;
   };
 
+  // Where may a photo be used? Its `usage` is "both" (the default when the
+  // field is missing), "portfolio", "comp", or "none" — none meaning it belongs
+  // to its album and nowhere else: the home page, the Albums page, the album's
+  // own page, the album lightbox and share links still show it, but no comp
+  // card, no Model Portfolio page and no portfolio PDF ever will.
+  //
+  // Both tests ask "is this photo allowed here", never "is it forbidden".
+  // That matters: the old exclusion tests (`!p.excludeFromCompCard && p.usage
+  // !== "portfolio"`) let any value they had not been taught about through, so
+  // "none" would have gone straight onto comp cards. Written this way, a value
+  // this build does not know stays off both surfaces instead.
+  //
+  // Kept as single `const NAME = (p) => …;` statements at this indent because
+  // .github/scripts/validate-data.mjs lifts them out of this file by text to
+  // run buildCompCardDisplayList in CI.
+  const usableOnCompCard = (p) => !!p && !p.excludeFromCompCard && (p.usage === undefined || p.usage === "both" || p.usage === "comp");
+  const usableInPortfolio = (p) => !!p && (p.usage === undefined || p.usage === "both" || p.usage === "portfolio");
+
   // Which book is this model cast from? Agencies file talent by the kind of
   // work they get booked for, not only by measurements, and a model can
   // genuinely straddle two books (fashion who also shoots fitness) — so this
@@ -2713,7 +2731,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         `;
       }
       
-      const anglesInShoot = [...new Set((shoot.photos || []).map(x => x.angle).filter(Boolean))];
+      const anglesInShoot = [...new Set((shoot.photos || []).filter(usableInPortfolio).map(x => x.angle).filter(Boolean))];
       if (anglesInShoot.length > 0) {
         const labels = {
           "front": "Front",
@@ -2791,7 +2809,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // One model on the album and a comp card exists for them: point at it.
     // The share link is the same slug form the Share button hands out.
     const soloModel = hasTalent && shoot.talent.split(",").map(x => x.trim()).filter(Boolean).length === 1;
-    if (soloModel && !isCcPage && showsOnModelPage(shoot, "Comp Cards")) {
+    // …and that card has photos on it: a model whose every photo is kept off
+    // comp cards has no card, so the link would lead to "Album not found".
+    const hasCompCard = soloModel && !isCcPage && showsOnModelPage(shoot, "Comp Cards")
+      && SHOOTS.some((x) => getTalentCleanName(x.talent) === getTalentCleanName(shoot.talent) && (x.photos || []).some(usableOnCompCard));
+    if (hasCompCard) {
       const modelName = getTalentCleanName(shoot.talent);
       const slug = slugify(modelName);
       if (slug) groups.push({ label: "Comp card", rendered: [`<span class="lb-person"><a href="/share/?a=comp-card-${encodeURIComponent(slug)}">View ${esc(modelName)}’s comp card ↗</a><small class="lb-person-note">Every model on the site has one, free to view and download as a PDF. <a href="/categories?kind=type&amp;val=Comp%20Cards">See all models’ comp cards ↗</a></small></span>`] });
@@ -2882,7 +2904,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <p class="lb-note">${esc(salesNote)} ${settingsLink}</p>
           </div>
         ` : `
-          <div class="lb-sidebar-section lb-note lb-note-admin">Every photo of this model is set to Comp Card Only, so there's no portfolio PDF to build. Change their Usage in Upload, then publish (admin only sees this)</div>
+          <div class="lb-sidebar-section lb-note lb-note-admin">None of this model's photos are set to Portfolio or Both, so there's no portfolio PDF to build. Change their Usage in Upload, then publish (admin only sees this)</div>
         `;
       } else if (photoCount) {
         const selling = portfolioPdfSalesOpen();
@@ -2968,6 +2990,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   }
 
   function openLb(list, idx) {
+    if (!list || !list.length) return;   // nothing to show is not a lightbox
     window.activeAngleFilter = "all";
     lbReturnFocus = document.activeElement;
     lbList = list; lbIdx = idx; paintLb(); lb.hidden = false;
@@ -3120,7 +3143,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // Find parent shoot to rebuild filtered list
         const currentShoot = SHOOTS.find(x => x.id === p.shootId) || p.shoot;
         const fullList = (currentShoot.photos || []).filter(x => {
-          return x.usage === "portfolio" || x.usage === "both" || x.usage === undefined;
+          return usableInPortfolio(x);
         }).map(x => ({ ...x, shoot: currentShoot }));
         
         let filteredList = fullList;
@@ -7238,6 +7261,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     let displayList = list;
     if (kind === "type" && (d === "Selective Collaboration (TFP)" || d === "Model Portfolio" || d === "Comp Cards")) {
       const filteredList = list.filter(s => showsOnModelPage(s, d === "Model Portfolio" ? "Model Portfolio" : "Comp Cards") && ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim()) || (s.talent && s.talent.trim())));
+      const isPortPage = (d === "Model Portfolio");
+      const usableHere = isPortPage ? usableInPortfolio : usableOnCompCard;
       const groupable = [];
       const nonGroupable = [];
       for (const s of filteredList) {
@@ -7248,7 +7273,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         if (hasExactlyOneModel && hasNoBrandOrClient) {
           groupable.push(s);
         } else {
-          nonGroupable.push(s);
+          // An album that cannot be merged into a per-model card (several
+          // models, or a brand's job) is shown as itself. It gets a copy
+          // holding only the photos allowed on this page — everything
+          // downstream (cover, thumbnails, counts, lightbox) reads .photos, so
+          // filtering here is what keeps one "none" photo off all of them. The
+          // id is kept, so edit, delete and share links still resolve.
+          const shown = (s.photos || []).filter(usableHere);
+          if (shown.length) nonGroupable.push({ ...s, photos: shown });
         }
       }
       
@@ -7267,17 +7299,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         });
         const latestShoot = shootsInGroup[0];
         const isPortView = (d === "Model Portfolio");
-        const allGroupPhotos = shootsInGroup.flatMap(gs => (gs.photos || []).filter(p => {
-          if (isPortView) {
-            return p.usage === "portfolio" || p.usage === "both" || p.usage === undefined;
-          } else {
-            // `!p.excludeFromCompCard` must be a hard AND, not another OR
-            // branch — as an OR it swallowed the usage check entirely, so
-            // a "Portfolio Only" photo still leaked into the comp card
-            // album unless excludeFromCompCard happened to also be set.
-            return (p.usage === "comp" || p.usage === "both" || p.usage === undefined) && !p.excludeFromCompCard;
-          }
-        }).map(p => ({ ...p, parent: gs })));
+        // usableOnCompCard's `!p.excludeFromCompCard` is a hard AND, not another
+        // OR branch — as an OR it swallowed the usage check entirely, so a
+        // "Portfolio Only" photo still leaked into the comp card album unless
+        // excludeFromCompCard happened to also be set.
+        const allGroupPhotos = shootsInGroup.flatMap(gs => (gs.photos || []).filter(isPortView ? usableInPortfolio : usableOnCompCard).map(p => ({ ...p, parent: gs })));
         const coverId = latestShoot.coverPhotoId || (latestShoot.photos[0] && latestShoot.photos[0].id);
         const coverPhotoObj = allGroupPhotos.find(p => p.id.split("-")[0] === coverId);
         const remainingPhotos = allGroupPhotos.filter(p => p.id.split("-")[0] !== coverId);
@@ -7376,7 +7402,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           isCompCard: true,
           originalShoots: shootsInGroup
         };
-      });
+      // A model every one of whose photos is kept off this page gets no card at
+      // all, rather than a card with an empty grid that opens a blank lightbox.
+      }).filter(a => a.photos.length);
       
       // Order by model name. unifiedAlbums came out of Object.keys(groups),
       // i.e. the order the shoots happened to sit in — so the list read as
@@ -7688,6 +7716,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const getSamples = (key, val, limit = 3) => {
       const targetVal = (key === "type" && (val === "Comp Cards" || val === "Model Portfolio" || val === "Selective Collaboration (TFP)")) ? "Selective Collaboration (TFP)" : val;
       let shoots = SHOOTS.filter(s => (s[key] === targetVal || (targetVal === "Selective Collaboration (TFP)" && (val === "Model Portfolio" ? showsOnModelPage(s, "Model Portfolio") : qualifiesAsCompCard(s)))) && ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim()) || (s.talent && s.talent.trim())));
+      // These thumbnails advertise the Comp Cards and Model Portfolio pages, so
+      // they may only show photos that are allowed on them. `index` below is an
+      // index into this pool, used to avoid picking the same photo twice.
+      const poolOf = (s) => {
+        const all = s.photos || [];
+        if (key !== "type") return all;
+        if (val === "Model Portfolio") return all.filter(usableInPortfolio);
+        if (val === "Comp Cards" || val === "Selective Collaboration (TFP)") return all.filter(usableOnCompCard);
+        return all;
+      };
+      shoots = shoots.filter(s => poolOf(s).length);
       if (!shoots.length) return [];
       
       // Group shoots by UNIQUE model/talent name to ensure distinct models in thumbnails!
@@ -7713,9 +7752,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const samples = [];
       // 1. Take a random photo from each distinct model to guarantee distinct models!
       for (const s of shuffledShoots) {
-        if (s.photos && s.photos.length) {
-          const randomIdx = Math.floor(Math.random() * s.photos.length);
-          samples.push({ ...s.photos[randomIdx], parent: s, index: randomIdx });
+        const pool = poolOf(s);
+        if (pool.length) {
+          const randomIdx = Math.floor(Math.random() * pool.length);
+          samples.push({ ...pool[randomIdx], parent: s, index: randomIdx });
         }
         if (samples.length >= limit) break;
       }
@@ -7724,11 +7764,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       if (samples.length < limit) {
         const remaining = [];
         for (const s of shoots) {
-          if (s.photos && s.photos.length > 1) {
+          const pool = poolOf(s);
+          if (pool.length > 1) {
             const selectedIdxs = samples.filter(p => p.parent.id === s.id).map(p => p.index);
-            for (let i = 0; i < s.photos.length; i++) {
+            for (let i = 0; i < pool.length; i++) {
               if (!selectedIdxs.includes(i)) {
-                remaining.push({ ...s.photos[i], parent: s, index: i });
+                remaining.push({ ...pool[i], parent: s, index: i });
               }
             }
           }
@@ -9620,6 +9661,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   <option value="both" ${f.usage === 'both' ? 'selected' : ''}>Both (Comp & Port)</option>
                   <option value="portfolio" ${f.usage === 'portfolio' ? 'selected' : ''}>Portfolio Only</option>
                   <option value="comp" ${f.usage === 'comp' ? 'selected' : ''}>Comp Card Only</option>
+                  <option value="none" ${f.usage === 'none' ? 'selected' : ''}>Albums Only (No Comp/Port)</option>
                 </select>
               </label>
               <label style="font-size: var(--font-xs); color: var(--ink-soft); display: flex; flex-direction: column; gap: 2px;">
@@ -9656,8 +9698,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           const item = staged.find(x => x.id === e.target.dataset.id);
           if (item) {
             item.usage = e.target.value;
-            // Maintain backwards compatibility:
-            item.excludeFromCompCard = (e.target.value === "portfolio");
+            // The old boolean is kept in step with the dropdown. It is a second
+            // lock on the comp card surfaces, and the only one a visitor still
+            // running a cached older build understands — that build has never
+            // heard of "none", so without this it would put the photo on a
+            // comp card until it next reloads.
+            item.excludeFromCompCard = (e.target.value === "portfolio" || e.target.value === "none");
           }
         });
         sel.addEventListener("mousedown", (e) => e.stopPropagation());
@@ -10083,7 +10129,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           dataUrl: f.dataUrl,
           url: f.url,
           objectPosition: f.objectPosition || (f.isCover ? "top" : "center"),
-          excludeFromCompCard: !!f.excludeFromCompCard,
+          // Derived from usage, not only carried over: whatever path produced
+          // this photo, the old boolean can never end up disagreeing with the
+          // dropdown (see the change handler in renderStaged).
+          excludeFromCompCard: !!f.excludeFromCompCard || f.usage === "portfolio" || f.usage === "none",
           usage: f.usage || (f.excludeFromCompCard ? "portfolio" : "both"),
           angle: f.angle || "",
           // Carried back out of the staging list — see the note where staged
@@ -13242,7 +13291,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const s = CURRENT_VIEW_SHOOTS.find((x) => x.id === card.dataset.shoot) || SHOOTS.find((x) => x.id === card.dataset.shoot);
       if (!s) return;
       const isCc = qualifiesAsCompCard(s) && isCurrentlyCompCardView();
-      const list = s.photos.filter((p) => !(isCc && p.excludeFromCompCard)).map((p) => ({ ...p, shoot: s }));
+      const list = s.photos.filter((p) => !isCc || usableOnCompCard(p)).map((p) => ({ ...p, shoot: s }));
       const media = card.querySelector(".noth-work-media");
       const cta = card.querySelector(".noth-work-cta");
       const open = () => openLb(list, 0);
@@ -13321,8 +13370,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // comp-only photos too, until the angle filter was clicked and rebuilt
       // the list with this same portfolio-usage rule.
       const list = s.photos.filter((p) => {
-        if (isCc) return !p.excludeFromCompCard;
-        if (isPortView) return p.usage === "portfolio" || p.usage === "both" || p.usage === undefined;
+        if (isCc) return usableOnCompCard(p);
+        if (isPortView) return usableInPortfolio(p);
         return true;
       }).map((p) => ({ ...p, shoot: s }));
       const open = () => openLb(list, 0);
@@ -13421,7 +13470,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         }
         
         const isCc = val === "Selective Collaboration (TFP)" && isCurrentlyCompCardView();
-        const list = shoots.flatMap(s => (s.photos || []).filter(p => !(isCc && p.excludeFromCompCard)).map(p => ({ ...p, shoot: s })));
+        const list = shoots.flatMap(s => (s.photos || []).filter(p => !isCc || usableOnCompCard(p)).map(p => ({ ...p, shoot: s })));
         const idx = list.findIndex(p => photoSrc(p) === clickedSrc);
         openLb(list, idx >= 0 ? idx : 0);
       });
@@ -14580,13 +14629,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const names = s.talent.split(",").map(t => getTalentCleanName(t).trim().toLowerCase());
         return names.includes(modelName.toLowerCase());
       });
-      allModelPhotos = matchingShoots.flatMap(s => (s.photos || []).filter(p => !p.excludeFromCompCard && p.usage !== "portfolio"));
+      allModelPhotos = matchingShoots.flatMap(s => (s.photos || []).filter(usableOnCompCard));
     }
     if (!allModelPhotos.length) {
-      allModelPhotos = (shoot.photos || []).filter(p => !p.excludeFromCompCard && p.usage !== "portfolio");
+      allModelPhotos = (shoot.photos || []).filter(usableOnCompCard);
     }
-    const rawPhotos = allModelPhotos.length ? allModelPhotos : (shoot.photos || []);
-    if (!rawPhotos.length) { toast("No photos to export."); return; }
+    // No fallback to the album's full photo list: it used to mean that a model
+    // whose every photo was kept off comp cards got a card built from exactly
+    // those photos — the filter undone at the last step.
+    const rawPhotos = allModelPhotos;
+    if (!rawPhotos.length) { toast("None of this model's photos are set to go on a comp card."); return; }
 
     // Freshly shuffle the whole pool every time the button is clicked — the
     // hero is random too (first of the shuffle), not pinned to the album
@@ -14629,7 +14681,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // shows (usage "portfolio" or "both", or unset on legacy photos), with or
   // without a pose tag. A photo with no pose prints without its tag.
   function portfolioPdfPhotos(shoot) {
-    return (shoot.photos || []).filter((p) => p.usage === "portfolio" || p.usage === "both" || p.usage === undefined);
+    return (shoot.photos || []).filter(usableInPortfolio);
   }
 
   // Clients can buy only once the studio has switched it on, and only with
@@ -15540,6 +15592,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     }, "image/jpeg", quality));
   }
 
+  // Lossless, for the studio's own use (see offerImages): type and hairlines
+  // stay crisp where JPEG would smear them.
+  function pdfCanvasPng(canvas) {
+    return new Promise((resolve, reject) => canvas.toBlob((blob) => {
+      if (blob) resolve(blob); else reject(new Error("A page could not be encoded"));
+    }, "image/png"));
+  }
+
   // A minimal PDF: one full-page JPEG per A4 page, plus link areas over the
   // printed handles and addresses so they can be tapped. JPEG goes into a PDF
   // as-is (DCTDecode), so no PDF library is needed.
@@ -15653,7 +15713,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     };
     const cache = new Map();
     let renderToken = 0;
-    let fileUrl = "";
+    let fileUrls = [];     // blob: addresses of the finished file(s) on offer
+    const dropFiles = () => { fileUrls.forEach((u) => URL.revokeObjectURL(u)); fileUrls = []; };
     let lastSplits = [];   // the short-row splits the last preview drew
 
     // Every photo on offer, in pose order.
@@ -15725,7 +15786,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     function close() {
       renderToken++;
       window.removeEventListener("keydown", onKey, true);
-      if (fileUrl) URL.revokeObjectURL(fileUrl);
+      dropFiles();
       document.body.style.overflow = prevOverflow;
       modal.remove();
     }
@@ -15836,7 +15897,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             </div>
           </div>
         </div>
-        <details class="pp-more"${state.location || state.phone ? " open" : ""}>
+        <!-- Folded away for clients, to keep the picker short (v379). Open for
+             the studio, which fills these in on most cards and could not find
+             them: the summary is one grey line below a long photo grid. -->
+        <details class="pp-more"${admin || state.location || state.phone ? " open" : ""}>
           <summary>Add location and phone</summary>
           <div class="pp-more-fields">
             <label><span class="pp-sr">Based in</span><input type="text" id="ppLocation" maxlength="40" placeholder="Based in (e.g. Mumbai)" value="${esc(state.location)}" /></label>
@@ -16061,19 +16125,26 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <p class="pp-fine">One payment unlocks one PDF. Your payment goes straight to the studio, which matches every reference number against its bank.</p>
           </div>
         ` : `
-          <p class="pp-hint">${admin ? `Free for you as admin. <button type="button" class="pp-link" id="ppDownloadMarked" data-download>Download with watermark</button>` : lookOnly ? `Preview only. ${lookMail ? `To buy this PDF${price ? ` for ₹${price}` : ""}, email ${lookMail} with a screenshot of this preview.` : "Downloads aren't open yet."}` : price ? "Payment noted, thank you. It pays for one PDF with no watermark: once you've downloaded it, changing the photos or layout means paying again." : "Free to download."}</p>
+          <p class="pp-hint">${admin ? `Free for you as admin. With the watermark, to send as a sample: <button type="button" class="pp-link" id="ppDownloadMarked" data-download>PDF</button> · <button type="button" class="pp-link" id="ppDownloadMarkedPng" data-download>PNG ${state.cover || state.pages === 2 ? "images" : "image"}</button>` : lookOnly ? `Preview only. ${lookMail ? `To buy this PDF${price ? ` for ₹${price}` : ""}, email ${lookMail} with a screenshot of this preview.` : "Downloads aren't open yet."}` : price ? "Payment noted, thank you. It pays for one PDF with no watermark: once you've downloaded it, changing the photos or layout means paying again." : "Free to download."}</p>
           <div id="ppReady" class="pp-ready"></div>
         `}
       `;
       foot.innerHTML = `
         <button type="button" class="btn btn-ghost" id="ppBack">← Change photos</button>
+        ${canDownload && admin ? `<button type="button" class="btn btn-ghost" id="ppDownloadPng" data-download>Download PNG</button>` : ""}
         ${canDownload ? `<button type="button" class="btn btn-dark" id="ppDownload" data-download>Download PDF</button>` : ""}
       `;
       foot.querySelector("#ppBack").addEventListener("click", showPick);
       const dl = foot.querySelector("#ppDownload");
       if (dl) dl.addEventListener("click", () => download(dl));
+      // PNG is the studio's: one image per page, for Instagram and WhatsApp,
+      // where a PDF cannot be posted. Clients buy the PDF.
+      const dlPng = foot.querySelector("#ppDownloadPng");
+      if (dlPng) dlPng.addEventListener("click", () => download(dlPng, false, "png"));
       const marked = body.querySelector("#ppDownloadMarked");
       if (marked) marked.addEventListener("click", () => download(marked, true));
+      const markedPng = body.querySelector("#ppDownloadMarkedPng");
+      if (markedPng) markedPng.addEventListener("click", () => download(markedPng, true, "png"));
       if (payable) {
         body.querySelector("#ppEmail").addEventListener("input", (e) => { state.email = e.target.value; });
         body.querySelector("#ppUtr").addEventListener("input", (e) => { state.utr = e.target.value; });
@@ -16127,7 +16198,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       box.classList.add("is-busy");
       const ready = body.querySelector("#ppReady");
       if (ready) ready.replaceChildren();
-      if (fileUrl) { URL.revokeObjectURL(fileUrl); fileUrl = ""; }
+      dropFiles();
       renderPortfolioPdfPages(buildSpec(), { dpi: 72, watermark: !covered(), cache }).then((pages) => {
         if (token !== renderToken) return;
         box.classList.remove("is-busy");
@@ -16339,13 +16410,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     }
 
     // The studio can also save a watermarked copy, to send as a sample.
-    async function download(btn, watermark = false) {
+    async function download(btn, watermark = false, format = "pdf") {
+      // PNG is only ever offered to the studio; refuse it outright otherwise,
+      // so a client cannot reach an unpaid, unmarked image by calling this.
+      if (format === "png" && !admin) return;
+      const asPng = format === "png";
       const token = renderToken;
       const key = specKey();
       const label = btn.textContent;
       const buttons = [...modal.querySelectorAll("[data-download]")];
       buttons.forEach((b) => { b.disabled = true; });
-      btn.textContent = "Making your PDF…";
+      btn.textContent = asPng ? "Making your images…" : "Making your PDF…";
       const ready = body.querySelector("#ppReady");
       try {
         const spec = buildSpec();
@@ -16358,7 +16433,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           try {
             const pages = await renderPortfolioPdfPages(spec, { dpi, watermark, cache });
             try {
-              bytes = await buildPortfolioPdf(pages, `${spec.name} — Model Portfolio${watermark ? " (preview)" : ""}`);
+              bytes = asPng
+                ? await Promise.all(pages.map((p) => pdfCanvasPng(p.canvas)))
+                : await buildPortfolioPdf(pages, `${spec.name} — Model Portfolio${watermark ? " (preview)" : ""}`);
             } finally {
               // Full-resolution canvases are large; give the memory back.
               pages.forEach((p) => { p.canvas.width = 0; p.canvas.height = 0; });
@@ -16372,7 +16449,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         }
         if (!bytes) throw lastErr || new Error("unknown error");
         if (token !== renderToken) return;
-        offerPdf(bytes, `${slugify(spec.name) || "model"}-portfolio${watermark ? "-preview" : ""}.pdf`, `${spec.name} — Model Portfolio${watermark ? " (preview)" : ""}`);
+        const fileBase = `${slugify(spec.name) || "model"}-portfolio${watermark ? "-preview" : ""}`;
+        const fileTitle = `${spec.name} — Model Portfolio${watermark ? " (preview)" : ""}`;
+        if (asPng) offerImages(bytes, fileBase, fileTitle, !!spec.cover);
+        else offerPdf(bytes, `${fileBase}.pdf`, fileTitle);
         if (price) {
           // The payment is spent on this PDF. It downloads again for free, but
           // a different PDF needs a new payment with a new note, and this
@@ -16387,19 +16467,57 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // Name the cause on screen: a client who can't open the console can
         // still send a screenshot that says what went wrong.
         const reason = (err && (err.message || err.name)) || "unknown error";
-        if (ready) ready.innerHTML = `<p class="pp-error">Couldn't make the PDF (${esc(reason)}). Try again, or try another browser.</p>`;
+        if (ready) ready.innerHTML = `<p class="pp-error">Couldn't make the ${asPng ? "images" : "PDF"} (${esc(reason)}). Try again, or try another browser.</p>`;
       } finally {
         buttons.forEach((b) => { b.disabled = false; });
         btn.textContent = label;
       }
     }
 
+    // One PNG per page. A computer downloads them all; a phone gets Share (which
+    // is how images reach Photos, Instagram and WhatsApp) and a Save per page.
+    function offerImages(blobs, fileBase, title, hasCover) {
+      const ready = body.querySelector("#ppReady");
+      if (!ready) return;
+      dropFiles();
+      const inner = blobs.length - (hasCover ? 1 : 0);
+      const items = blobs.map((blob, i) => {
+        const isCover = hasCover && i === 0;
+        const n = i + (hasCover ? 0 : 1);
+        const label = isCover ? "Cover" : inner > 1 ? `Page ${n}` : blobs.length > 1 ? "Page" : "";
+        const suffix = isCover ? "-cover" : inner > 1 ? `-page-${n}` : blobs.length > 1 ? "-page" : "";
+        const fileName = `${fileBase}${suffix}.png`;
+        const url = URL.createObjectURL(blob);
+        return { blob, url, label, fileName, file: typeof File === "function" ? new File([blob], fileName, { type: "image/png" }) : null };
+      });
+      fileUrls = items.map((x) => x.url);
+      const files = items.map((x) => x.file).filter(Boolean);
+      const canShare = !!(files.length === items.length && navigator.canShare && navigator.canShare({ files }));
+      const size = items.reduce((sum, x) => sum + x.blob.size, 0);
+      ready.innerHTML = `
+        <p class="pp-hint"><strong>Your ${items.length > 1 ? `${items.length} images are` : "image is"} ready</strong> (PNG, ${(size / 1048576).toFixed(1)} MB${items.length > 1 ? " in all" : ""}).</p>
+        <div class="pp-ready-actions">
+          ${canShare ? `<button type="button" class="btn btn-dark" id="ppShare">${items.length > 1 ? "Share or save all" : "Share or save"}</button>` : ""}
+          ${items.map((x, i) => `<a class="btn ${canShare ? "btn-ghost" : "btn-dark"} pp-save-img" data-i="${i}" href="${x.url}" download="${esc(x.fileName)}">Save ${esc(x.label || "PNG")}</a>`).join("")}
+        </div>
+      `;
+      const share = ready.querySelector("#ppShare");
+      if (share) share.addEventListener("click", () => navigator.share({ files, title }).catch(() => {}));
+      // On a computer they just download, one after another: a browser asked
+      // for several files in the same instant tends to keep only the first.
+      if (!coarse) {
+        const token = renderToken;
+        ready.querySelectorAll(".pp-save-img").forEach((a, i) => setTimeout(() => { if (token === renderToken && a.isConnected) a.click(); }, i * 450));
+      }
+    }
+
     function offerPdf(bytes, fileName, title) {
       const ready = body.querySelector("#ppReady");
       if (!ready) return;
-      if (fileUrl) URL.revokeObjectURL(fileUrl);
+      dropFiles();
       const blob = new Blob([bytes], { type: "application/pdf" });
-      fileUrl = URL.createObjectURL(blob);
+      const fileUrl = URL.createObjectURL(blob);
+      fileUrls = [fileUrl];
       const file = typeof File === "function" ? new File([blob], fileName, { type: "application/pdf" }) : null;
       const canShare = !!(file && navigator.canShare && navigator.canShare({ files: [file] }));
       ready.innerHTML = `
