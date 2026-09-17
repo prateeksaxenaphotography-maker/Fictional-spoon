@@ -3755,7 +3755,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
         <div class="noth-work-row" style="padding: 16px;">
           <div class="noth-work-titles">
-            <h3 class="noth-work-title" style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin-bottom: 4px;">${esc(title)}</h3>
+            <h3 class="noth-work-title" style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin-bottom: 4px;">${albumPathFor(s) ? `<a href="${esc(albumPathFor(s))}" data-link style="color: inherit; text-decoration: none;">${esc(title)}</a>` : esc(title)}</h3>
             <p class="noth-work-tagline" style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.4;">${esc(tagline)}</p>
           </div>
           <div class="noth-work-meta" style="margin-top: 10px; border-top: 1px solid var(--line); padding-top: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
@@ -3975,6 +3975,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       </div>`;
   }
 
+  // The service landing pages, written at deploy from seo/services.mjs. Listed
+  // here for the home-page cards and the menu; the build fails if a slug below
+  // has no page behind it. A slug is a public address — never rename one.
+  const SERVICE_LINKS = [
+    { slug: "model-portfolio-shoot-noida", kicker: "Models", title: "Model Portfolios & Comp Cards", blurb: "Editorial-grade portfolio building and agency-ready comp cards for new faces and working models, male and female.", cta: "Model portfolio shoots" },
+    { slug: "fashion-editorial-photographer-delhi-ncr", kicker: "Fashion", title: "Fashion & Editorial", blurb: "Concept-led fashion, beauty and editorial stories for designers, stylists and magazine submissions.", cta: "Fashion & editorial" },
+    { slug: "fitness-sports-photographer-noida", kicker: "Athletes", title: "Fitness & Sports Action", blurb: "Action-freezing athletic portraits and fitness content that shows physique, strength and raw performance.", cta: "Fitness & sports shoots" },
+    { slug: "brand-campaign-photographer-noida", kicker: "Brands", title: "Campaigns & Lookbooks", blurb: "High-concept campaigns, lookbooks and e-commerce sets, planned to the shot list and covered by a written contract.", cta: "Brand campaigns" }
+  ];
+
   function viewHome() {
     // Nine is a cap for a very large archive, not a curation: with the albums
     // published today every one of them appears. Trimming to six to make the
@@ -4101,24 +4111,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <h2>Who I shoot for</h2>
         </div>
         <div class="services-grid reveal-stagger">
-          <a href="/categories" data-link class="service-card" style="display: block; text-decoration: none; color: inherit; cursor: pointer;">
-            <div class="service-kicker">Brands</div>
-            <h3>Campaigns &amp; Lookbooks</h3>
-            <p>High-concept visual storytelling, commercial lookbooks, and campaigns tailored to elevate brand identities and drive customer engagement.</p>
-            <span class="link-arrow" style="margin-top: 12px; display: inline-block; font-size: var(--font-xs); font-weight: 700;">Browse categories →</span>
-          </a>
-          <a href="/categories?kind=type&amp;val=Comp%20Cards" data-link class="service-card" style="display: block; text-decoration: none; color: inherit; cursor: pointer;">
-            <div class="service-kicker">Models</div>
-            <h3>Portfolio Building &amp; TFP</h3>
-            <p>Editorial-grade portfolio building, comp card shoot development, and selective test shoots (TFP) to help models stand out in agency submissions.</p>
-            <span class="link-arrow" style="margin-top: 12px; display: inline-block; font-size: var(--font-xs); font-weight: 700; color: var(--accent);">View model comp cards →</span>
-          </a>
-          <a href="/categories?kind=activity&amp;val=Fitness" data-link class="service-card" style="display: block; text-decoration: none; color: inherit; cursor: pointer;">
-            <div class="service-kicker">Athletes</div>
-            <h3>Fitness &amp; Sports Action</h3>
-            <p>Dynamic action-freezing athletic portraits and editorial-grade fitness content that highlights physique, strength, and raw athletic performance.</p>
-            <span class="link-arrow" style="margin-top: 12px; display: inline-block; font-size: var(--font-xs); font-weight: 700;">See fitness work →</span>
-          </a>
+          ${SERVICE_LINKS.map((v) => `
+          <a href="/services/${v.slug}/" data-link class="service-card" style="display: block; text-decoration: none; color: inherit; cursor: pointer;">
+            <div class="service-kicker">${esc(v.kicker)}</div>
+            <h3>${esc(v.title)}</h3>
+            <p>${esc(v.blurb)}</p>
+            <span class="link-arrow" style="margin-top: 12px; display: inline-block; font-size: var(--font-xs); font-weight: 700; color: var(--accent);">${esc(v.cta)} →</span>
+          </a>`).join("")}
         </div>
       </section>
 
@@ -7414,6 +7413,117 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
+  /* ---- Album pages (/albums/<slug>/) ---------------------------------------
+     Every public album has an address of its own, so Google can index it and
+     a link to it previews with the album's own cover. The deploy writes a real
+     page at each address (.github/scripts/build-seo.mjs); this is the same
+     rule for which albums get one and what the slug is. KEEP THE TWO IN STEP —
+     a slug built here that the build did not write is a 404 for crawlers. */
+  function albumPageList() {
+    // Built from what is published, never from an admin's unpublished drafts:
+    // the slugs must come out the same for everyone.
+    // A future-dated album is under embargo ("visible to public after …"): an
+    // admin's SHOOTS still holds it, so it is dropped here, as the build drops it.
+    return SHOOTS.filter((s) => s && !s.isTestimonial && s.type !== "Workshop Attended" && s.isPublic !== false
+      && !isFutureShoot(s) && !s.isCompCard && (s.photos || []).some((p) => p && p.url));
+  }
+  function albumSlugMap() {
+    // Oldest album keeps the bare name; a later album of the same name gets its
+    // id appended, so a second shoot never moves the first one's address.
+    const map = new Map(), taken = new Set();
+    const byAge = albumPageList().slice().sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0) || String(a.id).localeCompare(String(b.id)));
+    for (const s of byAge) {
+      const base = slugify(getTalentCleanName(s.title || s.talent)) || slugify(s.id);
+      let slug = taken.has(base) ? `${base}-${slugify(s.id)}` : base;
+      for (let n = 2; taken.has(slug); n++) slug = `${base}-${slugify(s.id)}-${n}`;
+      taken.add(base); taken.add(slug);
+      map.set(s.id, slug);
+    }
+    return map;
+  }
+  // "" when the album has no page (private, a workshop, a merged comp card).
+  const albumPathFor = (s) => { const slug = s && albumSlugMap().get(s.id); return slug ? `/albums/${slug}/` : ""; };
+  function resolveAlbumSlug(slug) {
+    let wanted = String(slug || "");
+    try { wanted = decodeURIComponent(wanted); } catch { /* literal */ }
+    for (const [id, sl] of albumSlugMap()) if (sl === wanted) return SHOOTS.find((s) => s.id === id) || null;
+    // The slug is built from the album's name, so renaming the album moves it.
+    // Shared links carry the album's id as ?a= for exactly that case; after
+    // that, fall back to the forgiving share-link lookup for a hand-typed or
+    // older form of the address rather than answer "not found".
+    const byId = new URLSearchParams(location.search).get("a");
+    const hit = (byId && SHOOTS.find((s) => s.id === byId)) || resolveShareId(wanted, SHOOTS);
+    return hit && !hit.isCompCard ? hit : null;
+  }
+  const albumPlace = (s) => (s.showLocation === false ? "" : getTalentCleanName(s.location).replace(/^—$/, ""));
+  const albumNotFoundHtml = () => `
+        <section class="page-head">
+          <div class="container">
+            <h1 class="kinetic-h1">Album not found</h1>
+            <p class="page-sub reveal">This link doesn't match any published album. It may have been shared before the album was renamed, or the album may since have been unpublished.</p>
+            <div class="hero-actions" style="margin-top: 18px;">
+              <a href="/" data-link class="btn btn-dark">Back home →</a>
+              <a href="/albums" data-link class="btn btn-ghost">Browse albums</a>
+            </div>
+          </div>
+        </section>`;
+
+  function viewAlbumPage(slug) {
+    const album = resolveAlbumSlug(slug);
+    if (!album || (album.isPublic === false && !isAdmin())) { CURRENT_VIEW_SHOOTS = []; return albumNotFoundHtml(); }
+    CURRENT_VIEW_SHOOTS = [album];
+    const name = getTalentCleanName(album.title || album.talent) || "Untitled";
+    const place = albumPlace(album);
+    const season = (album.season || "").replace(/^—$/, "");
+    const eyebrow = [album.activity && `${album.activity} photography`, place, season].filter(Boolean).join(" · ") || "Album";
+    const credits = album.showCredits === false ? [] : [
+      ["Photographer", getTalentCleanName(album.photographer)], ["Art direction", getTalentCleanName(album.artDirector)],
+      ["Styling", getTalentCleanName(album.stylist)], ["Hair", getTalentCleanName(album.hair)], ["Make-up", getTalentCleanName(album.mua)]
+    ].filter(([, v]) => v && v !== "—");
+    const others = albumPageList().filter((s) => s.id !== album.id)
+      .sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).slice(0, 3);
+    return `
+      <section class="page-head">
+        <div class="container">
+          <p class="eyebrow reveal">${esc(eyebrow)}</p>
+          ${/[^\x20-\x7e]/.test(name)
+            // kineticH1 wraps every UTF-16 unit in its own box, which splits an
+            // emoji in two and breaks Devanagari shaping. Owner-typed names get
+            // the animation only when they are plain ASCII.
+            ? `<h1 class="kinetic-h1 album-page-h1">${esc(name)}</h1>`
+            : kineticH1(name, "album-page-h1")}
+          ${album.description ? `<p class="page-sub reveal">${esc(album.description)}</p>` : ""}
+        </div>
+      </section>
+      <section class="section container album-page">
+        <div class="album-page-grid" data-shoot="${esc(album.id)}">
+          ${album.photos.map((p, i) => `
+            <button type="button" class="album-page-photo" data-index="${i}" aria-label="Open photo ${i + 1} of ${album.photos.length}">
+              <img src="${esc(photoSrc(p))}"${srcsetAttr(p, "(max-width: 620px) 100vw, (max-width: 1100px) 50vw, 33vw")} alt="${esc(p.caption || altFor(album, i + 1))}" ${i < 3 ? `decoding="async"` : `loading="lazy" decoding="async"`} />
+            </button>`).join("")}
+        </div>
+        ${credits.length ? `<p class="album-page-credits">${credits.map(([k, v]) => `<span><strong>${esc(k)}</strong> ${esc(v)}</span>`).join("")}</p>` : ""}
+        <div class="album-page-actions">
+          <button type="button" class="btn btn-ghost work-share" data-id="${esc(album.id)}">Share this album</button>
+          <a href="/albums" data-link class="link-arrow">All albums →</a>
+        </div>
+      </section>
+      ${others.length ? `
+      <section class="section container section-divider">
+        <div class="section-head row reveal">
+          <div><p class="eyebrow">Keep looking</p><h2>More albums</h2></div>
+          <a href="/albums" data-link class="link-arrow">All albums →</a>
+        </div>
+        <div class="noth-work-list" aria-label="More albums">${others.map(nothWorkCard).join("")}</div>
+      </section>` : ""}
+      <section class="cta-band">
+        <div class="container reveal">
+          <h2>Want pictures like these?</h2>
+          <a href="/book" data-link class="btn btn-dark">Book your photoshoot session →</a>
+        </div>
+      </section>`;
+  }
+
   // The path segment that identifies an album in a /share/… link. Real albums
   // keep their own id (short, stable, already URL-safe); unified comp-card and
   // portfolio albums get the readable slug form.
@@ -7431,6 +7541,26 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // underneath. /share/ is a real directory, so this form is a 200 with the
   // right metadata behind it.
   const shareUrlFor = (album) => `${window.location.origin}/share/?a=${encodeURIComponent(shareIdFor(album))}`;
+  // An album with a page of its own (see "Album pages" above) is better shared
+  // by that address: it previews with the album's own cover and title, where
+  // every /share/ link shows the same generic card. But that page is written by
+  // the deploy, so it does not exist for the first minutes after an album is
+  // published, nor if the build step failed — hence albumPageIsLive(), and
+  // /share/ as the fallback. ?a=<id> keeps the link working after a rename.
+  const albumShareUrlFor = (album) => {
+    const own = albumPathFor(album);
+    return own ? `${window.location.origin}${own}?a=${encodeURIComponent(album.id)}` : "";
+  };
+  const ALBUM_PAGE_LIVE = new Map(); // path → Promise<boolean>
+  function albumPageIsLive(path) {
+    if (!path) return Promise.resolve(false);
+    if (!ALBUM_PAGE_LIVE.has(path)) {
+      ALBUM_PAGE_LIVE.set(path, fetch(path, { method: "HEAD", cache: "no-store" })
+        .then((res) => res.status === 200)
+        .catch(() => { ALBUM_PAGE_LIVE.delete(path); return false; }));
+    }
+    return ALBUM_PAGE_LIVE.get(path);
+  }
 
   // Reverse of shareIdFor, and deliberately forgiving — it has to keep every
   // link that has ever been sent out resolvable. Accepts a real album id, the
@@ -13023,9 +13153,23 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // and the old handler's only answer to that was "Failed to copy link".
     function wireShareButton(btn, album) {
       if (!btn || !album) return;
+      // Start the "is the album's own page live?" check as soon as a finger or
+      // pointer heads for the button, so the answer is in hand by the click.
+      const own = albumPathFor(album);
+      const warm = () => { albumPageIsLive(own); };
+      if (own) {
+        btn.addEventListener("pointerenter", warm, { once: true });
+        btn.addEventListener("touchstart", warm, { once: true, passive: true });
+        btn.addEventListener("focus", warm, { once: true });
+      }
       btn.addEventListener("click", async (e) => {
         e.stopPropagation();
-        const url = shareUrlFor(album);
+        let url = shareUrlFor(album);
+        if (own) {
+          // Capped: the share sheet must open while the tap still counts as one.
+          const live = await Promise.race([albumPageIsLive(own), new Promise((r) => setTimeout(() => r(false), 1200))]);
+          if (live) url = albumShareUrlFor(album);
+        }
         const title = getTalentCleanName(album.isCompCard ? album.talent : (album.title || "Album"));
         if (navigator.share) {
           try {
@@ -13045,6 +13189,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         }
       });
     }
+
+    // Album page: every frame opens the lightbox at that frame.
+    view.querySelectorAll(".album-page-grid").forEach((grid) => {
+      const s = SHOOTS.find((x) => x.id === grid.dataset.shoot);
+      if (!s) return;
+      const list = s.photos.map((p) => ({ ...p, shoot: s }));
+      grid.querySelectorAll(".album-page-photo").forEach((btn) => {
+        btn.addEventListener("click", () => openLb(list, parseInt(btn.dataset.index, 10) || 0));
+      });
+      wireShareButton(view.querySelector(".album-page-actions .work-share"), s);
+    });
 
     // noth.in full-bleed work cards → open the shoot in the lightbox.
     // Page numbers under any card list that asks for them (data-paginate="N").
@@ -13311,11 +13466,89 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
      ============================================================ */
   const ROUTES = { "": viewHome, "albums": viewAlbums, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload, "book": viewBook, "calendar": viewCalendar, "contracts": viewContracts, "testimonials": viewTestimonials, "workshop-attended": viewWorkshopAttended, "analytics": viewAnalytics };
 
-  function render() {
+  /* ---- STATIC PAGES ---------------------------------------------------------
+     The service pages (/services/…) are written as plain HTML at deploy by
+     .github/scripts/build-seo.mjs: the page's content is already inside
+     <main id="view" data-static-path="…"> when it arrives, which is what lets
+     every crawler read it. The app keeps that HTML rather than painting over
+     it, and fetches it when a visitor gets there by an in-app link instead. */
+  const STATIC_PAGES = new Map(); // "/services/x" → { html, title, desc }, or null when there is no such page
+  const staticPathOf = (pathname) => "/" + String(pathname).replace(/\/index\.html$/, "").replace(/^\/+|\/+$/g, "");
+  function readStaticMain(mainEl) {
+    const path = mainEl && mainEl.dataset.staticPath;
+    if (!path || !mainEl.innerHTML.trim()) return null;
+    return { path, html: mainEl.innerHTML, title: mainEl.dataset.title || "", desc: mainEl.dataset.desc || "" };
+  }
+  function captureStaticPage() {
+    const page = readStaticMain(view);
+    if (!page) return;
+    STATIC_PAGES.set(page.path, page);
+    view.dataset.showing = page.path;
+  }
+  async function fetchStaticPage(path) {
+    try {
+      const res = await fetch(`${path}/`, { headers: { Accept: "text/html" } });
+      const doc = res.ok ? new DOMParser().parseFromString(await res.text(), "text/html") : null;
+      const page = doc ? readStaticMain(doc.getElementById("view")) : null;
+      // Only a page that says it is this path: the 404 shell and the SPA
+      // fallback both answer with HTML too.
+      if (res.ok || res.status === 404) { STATIC_PAGES.set(path, page && page.path === path ? page : null); return; }
+    } catch { /* offline, or a hiccup */ }
+    // No answer is not "no such page". false = could not load this time; the
+    // next visit to the address tries again (null would be remembered all session).
+    STATIC_PAGES.set(path, false);
+  }
+  // What a /services/ address shows when its page cannot be had — the build
+  // step failed (it is continue-on-error), or the network dropped. The home-page
+  // cards and the menu lead here, so it must never be a dead end.
+  function viewServiceFallback(staticPath) {
+    const slug = staticPath.replace(/^\/services\/?/, "");
+    const one = SERVICE_LINKS.find((v) => v.slug === slug);
+    if (slug && !one) return "";
+    const list = one ? [one] : SERVICE_LINKS;
+    return `
+      <section class="page-head">
+        <div class="container">
+          <p class="eyebrow reveal">Services</p>
+          <h1 class="kinetic-h1">${esc(one ? one.title : "Photography services")}</h1>
+          <p class="page-sub reveal">${esc(one ? one.blurb : "Model portfolios and comp cards, fashion and editorial, fitness and sports, and brand campaigns — in Noida and across Delhi NCR.")}</p>
+          <div class="hero-actions" style="margin-top: 22px;">
+            <a href="/book" data-link class="btn btn-dark">Book a shoot →</a>
+            <a href="/albums" data-link class="btn btn-ghost">See the work</a>
+          </div>
+        </div>
+      </section>
+      ${one ? "" : `
+      <section class="section container">
+        <div class="services-grid">
+          ${list.map((v) => `
+          <a href="/services/${v.slug}/" data-link class="service-card" style="display: block; text-decoration: none; color: inherit;">
+            <div class="service-kicker">${esc(v.kicker)}</div>
+            <h3>${esc(v.title)}</h3>
+            <p>${esc(v.blurb)}</p>
+          </a>`).join("")}
+        </div>
+      </section>`}`;
+  }
+
+  let renderSeq = 0;
+  function render(opts) {
+    // Also the popstate handler, so opts may be an Event: only a literal
+    // { afterFetch: true } from fetchStaticPage's callback counts.
+    const afterFetch = !!(opts && opts.afterFetch === true);
     let raw = location.pathname;
     raw = raw.replace(/\/index\.html$/, "").replace(/^\//, "").replace(/\/$/, "");
     const parts = raw.split("/").filter(Boolean);
     const key = parts[0] || "";
+
+    const staticPath = key === "services" ? staticPathOf(location.pathname) : "";
+    if (staticPath && !afterFetch && (!STATIC_PAGES.has(staticPath) || STATIC_PAGES.get(staticPath) === false)) {
+      // Not in hand yet (or it failed to load last time): fetch it, then come
+      // back through here — unless the visitor has already moved on. afterFetch
+      // stops a failed fetch from asking again in a loop.
+      fetchStaticPage(staticPath).then(() => { if (staticPathOf(location.pathname) === staticPath) render({ afterFetch: true }); });
+      return;
+    }
     
     const params = new URLSearchParams(location.search);
     const qKind = params.get("kind");
@@ -13380,7 +13613,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       return;
     }
 
-    const fn = ROUTES[key] || (() => `
+    const NOT_FOUND_VIEW = () => `
       <section class="hero hero-mono hero-404">
         <div class="hero-bg" aria-hidden="true"></div>
         <div class="container hero-inner">
@@ -13399,21 +13632,41 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             </div>
           </div>
         </div>
-      </section>`);
+      </section>`;
+    const fn = ROUTES[key] || NOT_FOUND_VIEW;
 
-    view.classList.add("leaving");
+    // A static page that is already on screen — it arrived as HTML, or this is
+    // a re-render after a data refresh. Painting the same HTML again would only
+    // flicker, reload its pictures and snap shut whichever FAQ was open.
+    const keep = !!staticPath && view.dataset.showing === staticPath;
+    // Paints are delayed, "keep" paints are not: without a sequence number an
+    // older pending paint could land after a newer one (tap Book, then Back
+    // within 180ms) and leave the booking page under a service address.
+    const seq = ++renderSeq;
+    if (!keep) { view.classList.add("leaving"); view.dataset.showing = ""; }
     const paint = () => {
+      if (seq !== renderSeq) return;
       let html;
-      if (key === "categories") {
+      if (keep) {
+        html = null;
+      } else if (key === "categories") {
         html = viewCategories(kind, val);
       } else if (key === "share") {
         // ?a= is what share links carry now; parts[1] is the older
         // /share/<album> path form, still handed out in links already sent.
         html = viewSharedAlbum(params.get("a") || parts[1] || "");
+      } else if (key === "albums" && parts[1]) {
+        html = viewAlbumPage(parts[1]);
+      } else if (staticPath) {
+        const page = STATIC_PAGES.get(staticPath);
+        html = page ? page.html : (viewServiceFallback(staticPath) || NOT_FOUND_VIEW());
       } else {
         html = fn();
       }
-      view.innerHTML = html;
+      if (!keep) {
+        view.innerHTML = html;
+        view.dataset.showing = staticPath && STATIC_PAGES.get(staticPath) ? staticPath : "";
+      }
       // Inject a lightweight "back" link at the top of every inner page's
       // header so visitors can return home without opening the Menu overlay.
       // Skipped on the home hero (key === "") and the 404 (no .page-head).
@@ -13429,51 +13682,120 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         }
       }
       view.classList.remove("leaving");
-      window.scrollTo({ top: 0, behavior: "auto" });
-      if (typeof smoothScroll !== "undefined" && smoothScroll.enabled) smoothScroll.reset();
-      wireView(key);
+      if (!keep) {
+        window.scrollTo({ top: 0, behavior: "auto" });
+        if (typeof smoothScroll !== "undefined" && smoothScroll.enabled) smoothScroll.reset();
+        wireView(key);
+      }
       initReveal();
       setActiveNav(key);
 
-      // SEO optimization: update page title and description dynamically
-      const cfg = window.STUDIO_CONFIG || { studioName: "nerdyphotographer.in" };
-      let pageTitle = `${cfg.studioName} — The Creative Studio`;
-      let pageDesc = "Noida and Delhi NCR based professional photography studio. Specializing in high-end male and female model photography, fashion, beauty, editorial, sports, and fitness photography. Browse portfolios by nerdyphotographer.in — Noida, Delhi NCR, India.";
-      
-      if (key === "work" || key === "albums") {
-        pageTitle = `All Albums — ${cfg.studioName}`;
-        pageDesc = `Browse the complete photoshoot album archive of ${cfg.studioName} — fashion, beauty, editorial, sports, and fitness photography in Noida & Delhi NCR.`;
-      } else if (key === "categories") {
-        if (parts[1] && parts[2]) {
-          const rawCatName = decodeURIComponent(parts[2]);
-          const catName = rawCatName === "Selective Collaboration (TFP)" ? "Model Portfolio (Comp Cards)" : rawCatName;
-          pageTitle = `${catName} (${parts[1]}) — ${cfg.studioName}`;
-          pageDesc = `Photoshoots filed under the ${parts[1]} category "${catName}" in the photography archive.`;
-        } else {
-          pageTitle = `Browse by Category — ${cfg.studioName}`;
-          pageDesc = `Explore creative photoshoots categorized by activity (genre), brand, or production type.`;
-        }
-      } else if (key === "share") {
-        const shared = CURRENT_VIEW_SHOOTS[0];
-        if (shared) {
-          const sharedName = getTalentCleanName(shared.isCompCard ? shared.talent : (shared.title || "Album"));
-          pageTitle = `${sharedName}${shared.isCompCard ? " — Comp Card" : ""} — ${cfg.studioName}`;
-          pageDesc = shared.description || `${sharedName} — photographed by ${cfg.studioName}, Noida & Delhi NCR.`;
-        }
-      } else if (key === "studio") {
-        pageTitle = `The Creative Studio — ${cfg.studioName}`;
-        pageDesc = `Learn about our creative process, vision, philosophy, and tools behind the photography craft. Noida, India.`;
-      } else if (key === "book") {
-        pageTitle = `Book a Shoot — ${cfg.studioName}`;
-        pageDesc = `Collaborate with us on your next photoshoot. Send a project brief or book a session with Noida's creative studio.`;
-      }
-      
-      document.title = pageTitle;
-      const metaDesc = document.querySelector('meta[name="description"]');
-      if (metaDesc) metaDesc.setAttribute("content", pageDesc);
+      applyRouteSeo(key, parts, params, staticPath);
       updateImageSchema();
     };
-    if (prefersReduced) paint(); else setTimeout(paint, 180);
+    if (prefersReduced || keep) paint(); else setTimeout(paint, 180);
+  }
+
+  /* What a search engine reads about the page on screen: title, description,
+     canonical address and whether to index it. Google indexes the page as it
+     stands AFTER this has run, so whatever is set here wins over the HTML the
+     page arrived with — a vague title here quietly replaces a good one there.
+     Canonicals end in "/" because that is the address GitHub Pages answers
+     200 on; the bare form is a 301 to it. */
+  function applyRouteSeo(key, parts, params, staticPath) {
+    const ORIGIN = "https://www.nerdyphotographer.in";
+    const cfg = window.STUDIO_CONFIG || { studioName: "nerdyphotographer.in" };
+    const brand = cfg.studioName;
+    let title = `${brand} — Fashion, Beauty, Editorial, Sports, Fitness & Model Photography Studio Noida`;
+    let desc = `Professional male and female model photography, fashion, beauty, editorial, sports, and fitness photoshoots by ${brand}. Noida & Delhi NCR, India — high-end modeling portfolios, creative campaigns, and cinematic portraits.`;
+    let path = "/";
+    let index = true;
+
+    if (key === "albums" && parts[1]) {
+      const album = CURRENT_VIEW_SHOOTS[0];
+      if (album) {
+        const name = getTalentCleanName(album.title || album.talent) || "Album";
+        const place = albumPlace(album);
+        const season = (album.season || "").replace(/^—$/, "");
+        title = `${name} — ${album.activity ? `${album.activity} ` : ""}photoshoot${place ? ` in ${place}` : ""} | ${brand}`;
+        desc = album.description || `${album.activity || "Studio"} photography featuring ${name}${place ? `, shot in ${place}` : ""}${season ? ` in ${season}` : ""} by ${brand} — ${album.photos.length} photograph${album.photos.length === 1 ? "" : "s"}.`;
+        path = albumPathFor(album) || `/albums/${parts[1]}/`;
+        index = album.isPublic !== false;
+      } else {
+        title = `Album not found — ${brand}`;
+        path = `/albums/${parts[1]}/`;
+        index = false;
+      }
+    } else if (key === "work" || key === "albums") {
+      title = `All Albums — ${brand} | Fashion, Beauty, Sports & Fitness Photoshoots`;
+      desc = `Browse the complete photoshoot album archive of ${brand} — fashion, beauty, editorial, sports, and fitness photography in Noida & Delhi NCR.`;
+      path = "/albums/";
+    } else if (key === "categories") {
+      const kind = parts[1] || params.get("kind");
+      const rawVal = parts[2] || params.get("val");
+      if (kind && rawVal) {
+        let rawCatName = rawVal;
+        try { rawCatName = decodeURIComponent(rawVal); } catch { /* literal */ }
+        const catName = rawCatName === "Selective Collaboration (TFP)" ? "Model Portfolio (Comp Cards)" : rawCatName;
+        title = `${catName} photography in Noida & Delhi NCR — ${brand}`;
+        desc = `${catName}: photoshoots from the archive of ${brand}, a photography studio in Noida working across Delhi NCR.`;
+        path = `/categories/?kind=${encodeURIComponent(kind)}&val=${encodeURIComponent(rawCatName)}`;
+      } else {
+        title = `Fashion, Editorial, Fitness & Sports Photography Categories | ${brand}`;
+        desc = `Explore creative photoshoots categorized by activity (genre), brand, or production type.`;
+        path = "/categories/";
+      }
+    } else if (key === "share") {
+      const shared = CURRENT_VIEW_SHOOTS[0];
+      path = `/share/${location.search}`;
+      if (shared) {
+        const sharedName = getTalentCleanName(shared.isCompCard ? shared.talent : (shared.title || "Album"));
+        title = `${sharedName}${shared.isCompCard ? " — Comp Card" : ""} — ${brand}`;
+        desc = shared.description || `${sharedName} — photographed by ${brand}, Noida & Delhi NCR.`;
+        // The album's own page is the one to index; this is a second door to it.
+        path = albumPathFor(shared) || path;
+      } else {
+        index = false;
+      }
+    } else if (key === "studio") {
+      title = `About the Studio | ${brand} – Noida Based Photography Studio`;
+      desc = `Learn about our creative process, vision, philosophy, and tools behind the photography craft. Noida, India.`;
+      path = "/studio/";
+    } else if (key === "book") {
+      title = `Book a Fashion/Fitness/Sports Photoshoot in Noida & Delhi NCR | ${brand}`;
+      desc = `Collaborate with us on your next photoshoot. Send a project brief or book a session with Noida's creative studio.`;
+      path = "/book/";
+    } else if (key === "testimonials") {
+      title = `Client Testimonials & Reviews | ${brand}`;
+      desc = `Read reviews and testimonials from models, brands, and creative collaborators who have worked with us in Noida & Delhi NCR.`;
+      path = "/testimonials/";
+      index = getAllTestimonials().length > 0; // an empty page is not worth a place in search results
+    } else if (staticPath) {
+      const page = STATIC_PAGES.get(staticPath);
+      path = `${staticPath}/`;
+      if (page) { title = page.title || title; desc = page.desc || desc; }
+      // The stand-in shown when the real page could not be had is not for indexing.
+      else { title = viewServiceFallback(staticPath) ? `Photography services — ${brand}` : `Page not found — ${brand}`; index = false; }
+    } else if (key !== "") {
+      // Admin screens, the invitation-only workshop page and the 404.
+      title = ROUTES[key] ? `${brand} — The Creative Studio` : `Page not found — ${brand}`;
+      path = location.pathname;
+      index = false;
+    }
+
+    document.title = title;
+    const setAttr = (sel, attr, value) => { const el = document.querySelector(sel); if (el) el.setAttribute(attr, value); };
+    setAttr('meta[name="description"]', "content", desc);
+    setAttr('link[rel="canonical"]', "href", ORIGIN + path);
+    setAttr('meta[property="og:url"]', "content", ORIGIN + path);
+    setAttr('meta[property="og:title"]', "content", title);
+    setAttr('meta[property="og:description"]', "content", desc);
+    let robots = document.querySelector('meta[name="robots"]');
+    if (index) { if (robots) robots.remove(); }
+    else {
+      if (!robots) { robots = document.createElement("meta"); robots.name = "robots"; document.head.appendChild(robots); }
+      robots.content = "noindex, follow";
+    }
   }
 
   // Inject/refresh ImageGallery + ImageObject structured data for the shoots in
@@ -13501,6 +13823,37 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       if (images.length >= 30) break;
     }
     let el = document.getElementById("wps-image-schema");
+    // An album's own page: the deploy already wrote a fuller block under this
+    // same id (album name, canonical address, every frame, licensing fields).
+    // Write that same shape here — the generic one below would replace it with
+    // less, and Google reads the page as it stands after this has run.
+    const onAlbumPage = /^\/albums\/[^/]+\/?$/.test(location.pathname) && CURRENT_VIEW_SHOOTS.length === 1 && albumPathFor(CURRENT_VIEW_SHOOTS[0]);
+    if (onAlbumPage) {
+      const s = CURRENT_VIEW_SHOOTS[0];
+      const name = getTalentCleanName(s.title || s.talent) || "Untitled";
+      const frames = (s.photos || []).filter((p) => p && p.url);
+      if (!el) { el = document.createElement("script"); el.type = "application/ld+json"; el.id = "wps-image-schema"; document.head.appendChild(el); }
+      el.textContent = JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "ImageGallery",
+        "name": `${name} — ${s.activity ? `${s.activity} ` : ""}photoshoot`,
+        "description": document.querySelector('meta[name="description"]')?.content || "",
+        "url": ORIGIN + albumPathFor(s),
+        ...(s.date ? { "dateCreated": s.date } : {}),
+        "creator": { "@id": `${ORIGIN}/#identity` },
+        "image": frames.map((p, i) => ({
+          "@type": "ImageObject",
+          "contentUrl": abs(p.url),
+          "name": `${name} — frame ${i + 1}`,
+          "caption": p.caption || altFor(s, i + 1),
+          "creditText": "nerdyphotographer.in",
+          "copyrightNotice": "© nerdyphotographer.in",
+          "creator": { "@type": "Organization", "name": "nerdyphotographer.in", "url": `${ORIGIN}/` },
+          "acquireLicensePage": `${ORIGIN}/book/`
+        }))
+      }).replace(/</g, "\\u003c");
+      return;
+    }
     if (!images.length) { if (el) el.remove(); return; }
     if (!el) { el = document.createElement("script"); el.type = "application/ld+json"; el.id = "wps-image-schema"; document.head.appendChild(el); }
     el.textContent = JSON.stringify({
@@ -16325,6 +16678,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       navSocials.innerHTML = links.join("");
     }
 
+    // "Services" in the menu — added here rather than in each page's HTML, for
+    // the same reason as the block below: there are nine shells and they drift.
+    const navList = document.querySelector(".nav-links");
+    if (navList && !document.getElementById("navServicesLi")) {
+      const li = document.createElement("li");
+      li.id = "navServicesLi";
+      li.innerHTML = `<a href="/services/" data-link>Services</a>`;
+      const studioLi = [...navList.children].find((el) => /^\/studio\/?$/.test(el.querySelector("a")?.getAttribute("href") || ""));
+      if (studioLi) studioLi.after(li); else navList.appendChild(li);
+    }
+
     // "Load fresh" utility — injected once into the nav-meta so it appears on
     // every route without touching each per-route index.html shell. Lets any
     // visitor clear a stale cached bundle without opening DevTools.
@@ -16403,6 +16767,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       $("#year").textContent = new Date().getFullYear();
       initBranding();
       updateAdminBtn();
+      captureStaticPage();
       await loadShoots();
       render();
       initFooterReveal();

@@ -1,15 +1,28 @@
 # Deploy the static site to GitHub Pages via GitHub Actions.
 #
-# This repo is a no-build static SPA. The legacy Jekyll Pages builder kept
+# This repo is a static SPA. The legacy Jekyll Pages builder kept
 # failing ("Page build failed."), freezing the live site on an old deploy.
-# This workflow uploads the repository as-is (Jekyll is bypassed; .nojekyll is
+# This workflow uploads the repository (Jekyll is bypassed; .nojekyll is
 # present) and publishes it, giving real build logs when something goes wrong.
+#
+# One step runs before the upload: build-seo.mjs writes the pages search
+# engines and link previews read (an HTML page per album, the service pages,
+# the sitemap) from the published data.js. It works on this throwaway checkout
+# only — nothing is committed — and it is continue-on-error on purpose: if it
+# ever breaks, it stops before writing anything and the site still deploys,
+# exactly as it is in the repo. The "Validate portfolio data" workflow runs
+# the same script with --check and goes red, which is how a break gets noticed.
 name: Deploy to GitHub Pages
 
 on:
   push:
     branches: [main]
   workflow_dispatch: {}
+  # Once a day, 00:05 IST. A future-dated album is hidden until its date, and
+  # its page is only written by a deploy — this is the deploy that writes it on
+  # the day, without waiting for the next publish.
+  schedule:
+    - cron: "35 18 * * *"
 
 # Allow the workflow to publish Pages and use OIDC for deploy-pages.
 permissions:
@@ -35,7 +48,15 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload site artifact (repository root, as-is)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build search-engine pages (albums, services, sitemap)
+        continue-on-error: true
+        run: node .github/scripts/build-seo.mjs
+
+      - name: Upload site artifact (repository root)
         uses: actions/upload-pages-artifact@v3
         with:
           path: .

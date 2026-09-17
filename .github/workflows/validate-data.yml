@@ -24,3 +24,9 @@ jobs:
         with:
           node-version: 20
       - run: node .github/scripts/validate-data.mjs
+      # The deploy builds the album/service pages and the sitemap with this
+      # script and carries on without them if it fails. This is where a failure
+      # becomes visible: same script, writes nothing.
+      - name: Search-engine pages still build
+        if: always()
+        run: node .github/scripts/build-seo.mjs --check
