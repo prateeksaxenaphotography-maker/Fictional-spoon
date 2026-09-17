@@ -290,7 +290,24 @@ if (books !== undefined && books !== null) {
     fail("WPS_DATA.STUDIO_PORTFOLIOS must be an object { versions: [], deleted: [] }");
   } else {
     const BOOK_STYLES = new Set(["elegant", "modern", "vogue"]);
-    const PAGE_TYPES = new Set(["photos", "spread", "about", "services", "contact", "divider"]);
+    const PAGE_TYPES = new Set(["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter"]);
+    // The same caps as STUDIO_BOOK_LIMITS.fields in app.js. Over a cap FAILS
+    // here rather than being trimmed: the app's cleaner would otherwise cut a
+    // hand-edited data.js without a word.
+    const FIELD_MAX = {
+      story: { kicker: 32, headline: 52, intro: 150, body: 700 },
+      note: { title: 40, note: 300, detail: 90 },
+      quote: { quote: 220, name: 40, role: 48 },
+      letter: { kicker: 32, heading: 52, body: 1100, signName: 40, signLine: 48 },
+      photos: { caption: 90 }
+    };
+    const FITS = new Set(["fill", "whole", "width", "height"]);
+    const KNOWN_KEYS = {
+      photos: ["type", "photos", "caption"], spread: ["type", "photos"], divider: ["type", "heading", "line"],
+      about: ["type"], services: ["type"], contact: ["type"],
+      story: ["type", "photos", ...Object.keys(FIELD_MAX.story)], note: ["type", "photos", ...Object.keys(FIELD_MAX.note)],
+      quote: ["type", "photos", ...Object.keys(FIELD_MAX.quote)], letter: ["type", ...Object.keys(FIELD_MAX.letter)]
+    };
     const seenBooks = new Set();
     for (const b of books.versions) {
       const name = b && b.name ? `"${b.name}"` : JSON.stringify(b && b.id);
@@ -302,7 +319,22 @@ if (books !== undefined && books !== null) {
       if (!Array.isArray(b.pages)) { fail(`studio portfolio book ${name} has no pages list`); continue; }
       const rendered = 1 + b.pages.reduce((n, pg) => n + (pg && pg.type === "spread" ? 2 : 1), 0);
       if (rendered > 20) fail(`studio portfolio book ${name} has ${rendered} pages; the builder allows 20, cover included`);
-      for (const pg of b.pages) if (!pg || !PAGE_TYPES.has(pg.type)) fail(`studio portfolio book ${name} has a page of unknown type ${JSON.stringify(pg && pg.type)}`);
+      b.pages.forEach((pg, i) => {
+        const where = `studio portfolio book ${name} page entry ${i + 1}`;
+        if (!pg || !PAGE_TYPES.has(pg.type)) { fail(`${where} has an unknown type ${JSON.stringify(pg && pg.type)}`); return; }
+        const extra = Object.keys(pg).filter((k) => !KNOWN_KEYS[pg.type].includes(k));
+        if (extra.length) fail(`${where} (${pg.type}) has ${extra.map((k) => JSON.stringify(k)).join(", ")}, which the app drops when the book loads`);
+        for (const [k, max] of Object.entries(FIELD_MAX[pg.type] || {})) {
+          if (pg[k] === undefined) continue;
+          if (typeof pg[k] !== "string") fail(`${where} (${pg.type}) has a ${k} that is not text`);
+          else if (pg[k].length > max) fail(`${where} (${pg.type}) has a ${k} of ${pg[k].length} characters; the most it can hold is ${max}`);
+        }
+        if (pg.type === "story" || pg.type === "note" || pg.type === "quote") {
+          if (!Array.isArray(pg.photos) || pg.photos.length > 1 || pg.photos.some((s) => !s || typeof s.id !== "string")) fail(`${where} (${pg.type}) must have a photos list of at most one photo`);
+        }
+        for (const s of pg.photos || []) if (s && s.fit !== undefined && !FITS.has(s.fit)) fail(`${where} has a photo placed as ${JSON.stringify(s.fit)}; the app knows ${[...FITS].join(", ")}`);
+      });
+      if (b.cover && b.cover.fit !== undefined && !FITS.has(b.cover.fit)) fail(`studio portfolio book ${name} has a cover photo placed as ${JSON.stringify(b.cover.fit)}`);
       if (books.deleted.includes(b.id)) fail(`studio portfolio book ${name} is published and also marked deleted`);
     }
   }
@@ -369,6 +401,27 @@ try {
   // A deletion that vanishes lets a stale copy of the book come back.
   const lostTombstones = ((prevData.STUDIO_PORTFOLIOS && prevData.STUDIO_PORTFOLIOS.deleted) || []).filter((id) => !(nowBooks.deleted || []).includes(id));
   if (lostTombstones.length) fail(`${lostTombstones.length} deleted portfolio book(s) lost their deletion record, so they can reappear: ${lostTombstones.join(", ")}.${stale}`);
+  // An old app.js strips writing pages and captions from books it never
+  // opened, without touching their updatedAt. Words that shrink while the
+  // book's edit time stays the same can only come from that.
+  const WRITING = new Set(["story", "note", "quote", "letter"]);
+  const wordsIn = (b) => {
+    let pages = 0, chars = 0, fits = (b && b.cover && b.cover.fit) ? 1 : 0;
+    for (const pg of (b && b.pages) || []) {
+      if (!pg) continue;
+      if (WRITING.has(pg.type)) pages++;
+      for (const [k, v] of Object.entries(pg)) if (k !== "type" && typeof v === "string") chars += v.length;
+      for (const s of pg.photos || []) if (s && s.fit) fits++;
+    }
+    return { pages, chars, fits };
+  };
+  for (const was of prevBooks) {
+    const now = was && (nowBooks.versions || []).find((x) => x && x.id === was.id);
+    if (!now || now.updatedAt !== was.updatedAt) continue;
+    const a = wordsIn(was), b = wordsIn(now);
+    if (b.pages < a.pages || b.chars < a.chars) fail(`portfolio book "${was.name || was.id}" lost ${a.pages - b.pages} writing page(s) and ${a.chars - b.chars} characters of words without being edited.${stale}`);
+    if (b.fits < a.fits) fail(`portfolio book "${was.name || was.id}" lost ${a.fits - b.fits} photo placement setting(s) without being edited.${stale}`);
+  }
   const photosById = (data) => new Map((data.DEMO_SHOOTS || []).flatMap((s) => (s.photos || []).map((p) => [p.id, p])));
   const before = photosById(prevData);
   let lostPose = 0, lostUsage = 0, lostLook = 0;

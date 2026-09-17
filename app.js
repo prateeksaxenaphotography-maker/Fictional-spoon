@@ -675,22 +675,58 @@ const STUDIO_BOOK_STYLES = ["elegant", "modern", "vogue"];
 // versions/tombstones are generous on purpose: a cap that trimmed a list would
 // silently delete the book or the deletion it cut. The builder refuses a new
 // book at `versions` rather than letting the clean-up drop one.
-const STUDIO_BOOK_LIMITS = { versions: 200, pages: 30, text: 1200, deleted: 2000 };
+const STUDIO_BOOK_LIMITS = {
+  versions: 200, pages: 30, text: 1200, deleted: 2000,
+  pageTypes: ["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter"],
+  fits: ["fill", "whole", "width", "height"],
+  // Writing pages: the most characters each field may hold. Each cap is what
+  // the narrowest style and page shape can print, measured, so ordinary prose
+  // at the cap never gets cut when the style or shape changes. book-builder.js
+  // uses these as the inputs' maxlength, and validate-data.mjs holds the same
+  // numbers (a test compares them).
+  fields: {
+    story: { kicker: 32, headline: 52, intro: 150, body: 700 },
+    note: { title: 40, note: 300, detail: 90 },
+    quote: { quote: 220, name: 40, role: 48 },
+    letter: { kicker: 32, heading: 52, body: 1100, signName: 40, signLine: 48 },
+    photos: { caption: 90 }
+  }
+};
 function cleanStudioPortfolios(o) {
   if (!o || typeof o !== "object" || !Array.isArray(o.versions)) return null;
   const str = (v, max) => (typeof v === "string" ? v.slice(0, max) : "");
+  // Words are sliced by UTF-16 unit, so an emoji at the limit could be cut in
+  // half; a lone leading surrogate left at the end is dropped.
+  const strU = (v, max) => str(v, max).replace(/[\uD800-\uDBFF]$/, "");
   const num = (v, lo, hi, d) => (typeof v === "number" && isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d);
-  const shot = (x) => (x && typeof x === "object" && typeof x.id === "string" && x.id)
-    ? { id: x.id.slice(0, 120), x: num(x.x, 0, 1, 0.5), y: num(x.y, 0, 1, 0.35), zoom: num(x.zoom, 1, 3, 1) } : null;
-  const PAGE_TYPES = ["photos", "spread", "about", "services", "contact", "divider"];
+  // `fit` (how a photo meets its box) is written only when chosen, so books
+  // saved before it existed store exactly as they did.
+  const shot = (x) => {
+    if (!(x && typeof x === "object" && typeof x.id === "string" && x.id)) return null;
+    const out = { id: x.id.slice(0, 120), x: num(x.x, 0, 1, 0.5), y: num(x.y, 0, 1, 0.35), zoom: num(x.zoom, 1, 3, 1) };
+    if (STUDIO_BOOK_LIMITS.fits.includes(x.fit)) out.fit = x.fit;
+    return out;
+  };
+  const PAGE_TYPES = STUDIO_BOOK_LIMITS.pageTypes;
+  const FIELDS = STUDIO_BOOK_LIMITS.fields;
   const versions = o.versions.slice(0, STUDIO_BOOK_LIMITS.versions).map((v) => {
     if (!v || typeof v !== "object" || typeof v.id !== "string" || !v.id) return null;
     const pages = (Array.isArray(v.pages) ? v.pages : []).slice(0, STUDIO_BOOK_LIMITS.pages).map((pg) => {
       if (!pg || !PAGE_TYPES.includes(pg.type)) return null;
       const out = { type: pg.type };
-      if (pg.type === "photos") out.photos = (Array.isArray(pg.photos) ? pg.photos : []).map(shot).filter(Boolean).slice(0, 6);
+      if (pg.type === "photos") {
+        out.photos = (Array.isArray(pg.photos) ? pg.photos : []).map(shot).filter(Boolean).slice(0, 6);
+        // Written only when there is one, so every book saved before captions
+        // existed stores exactly as it did.
+        const caption = strU(pg.caption, FIELDS.photos.caption);
+        if (caption) out.caption = caption;
+      }
       if (pg.type === "spread") out.photos = (Array.isArray(pg.photos) ? pg.photos : []).map(shot).filter(Boolean).slice(0, 1);
       if (pg.type === "divider") { out.heading = str(pg.heading, 60); out.line = str(pg.line, 160); }
+      if (pg.type === "story" || pg.type === "note" || pg.type === "quote") out.photos = (Array.isArray(pg.photos) ? pg.photos : []).map(shot).filter(Boolean).slice(0, 1);
+      // Stored exactly as typed, line breaks included; tidying happens only
+      // when a page is laid out, never under the cursor.
+      if (FIELDS[pg.type] && pg.type !== "photos") for (const [k, max] of Object.entries(FIELDS[pg.type])) out[k] = strU(pg[k], max);
       return out;
     }).filter(Boolean);
     const t = v.texts && typeof v.texts === "object" ? v.texts : {};
@@ -713,14 +749,24 @@ function cleanStudioPortfolios(o) {
 }
 // `live` is the copy just fetched from GitHub when publishing; it joins the
 // same per-book merge as this device's drafts and the copy the page loaded.
+// A book holding anything older code doesn't know (a writing page, a caption,
+// a photo placement) is also kept under a second key. A tab still running an
+// older app.js cleans every book it saves with the old rules, which drop
+// those from books it never opened while leaving their updatedAt alone. The
+// copy here is read first, so on that equal updatedAt the complete copy wins.
+// Older code never touches it.
+const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words";
+const studioBookHasWords = (v) => (v.cover && v.cover.fit) || (v.pages || []).some((pg) =>
+  (STUDIO_BOOK_LIMITS.fields[pg.type] && (pg.type !== "photos" || pg.caption)) || (pg.photos || []).some((s) => s.fit));
 function getStudioPortfolios(live) {
-  let local = null, published = null, remote = null;
+  let local = null, published = null, remote = null, words = null;
   try { local = cleanStudioPortfolios(JSON.parse(localStorage.getItem("wps_studio_portfolios") || "null")); } catch (e) {}
+  try { words = cleanStudioPortfolios(JSON.parse(localStorage.getItem(STUDIO_BOOK_WORDS_KEY) || "null")); } catch (e) {}
   try { published = cleanStudioPortfolios(window.WPS_DATA && window.WPS_DATA.STUDIO_PORTFOLIOS); } catch (e) {}
   try { remote = live ? cleanStudioPortfolios(live) : null; } catch (e) {}
   const deleted = [...new Set([...((local && local.deleted) || []), ...((published && published.deleted) || []), ...((remote && remote.deleted) || [])])];
   const byId = new Map();
-  for (const v of [...((remote && remote.versions) || []), ...((published && published.versions) || []), ...((local && local.versions) || [])]) {
+  for (const v of [...((words && words.versions) || []), ...((remote && remote.versions) || []), ...((published && published.versions) || []), ...((local && local.versions) || [])]) {
     const have = byId.get(v.id);
     if (!have || v.updatedAt > have.updatedAt) byId.set(v.id, v);
   }
@@ -730,7 +776,9 @@ function getStudioPortfolios(live) {
 function saveStudioPortfolios(state) {
   const clean = cleanStudioPortfolios(state);
   if (!clean) return false;
-  try { localStorage.setItem("wps_studio_portfolios", JSON.stringify(clean)); return true; } catch (e) { return false; }
+  try { localStorage.setItem("wps_studio_portfolios", JSON.stringify(clean)); } catch (e) { return false; }
+  try { localStorage.setItem(STUDIO_BOOK_WORDS_KEY, JSON.stringify({ versions: clean.versions.filter(studioBookHasWords), deleted: [] })); } catch (e) { /* the main copy is saved; this one is a safety net */ }
+  return true;
 }
 window.cleanStudioPortfolios = cleanStudioPortfolios;
 window.getStudioPortfolios = getStudioPortfolios;
@@ -13977,16 +14025,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
      ============================================================ */
   // The studio portfolio book: a shell here, the builder itself in
   // book-builder.js, loaded on first visit (see wireView).
+  // A workspace rather than a page: no hero, just enough room to clear the
+  // fixed header, so the editor fits the screen. The builder draws its own
+  // title on the list of books.
   function viewPortfolioBook() {
     return `
-      <section class="page-head">
-        <div class="container">
-          <p class="eyebrow reveal">Admin · Studio portfolio book</p>
-          <h1 class="kinetic-h1">Portfolio book</h1>
-          <p class="page-sub reveal">Your own book of work to send to clients. Pick photographs from any album, lay them out, choose a style and a colourway, and save as many versions as you need.</p>
-        </div>
-      </section>
-      <section class="section container"><div id="studioBookRoot" class="sb-root"><p class="page-sub">Loading the builder…</p></div></section>`;
+      <section class="container" style="padding-top: 132px; padding-bottom: 48px;">
+        <div id="studioBookRoot" class="sb-root"><p class="page-sub">Loading the builder…</p></div>
+      </section>`;
   }
   const ROUTES = { "": viewHome, "portfolio-book": viewPortfolioBook, "albums": viewAlbums, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload, "book": viewBook, "calendar": viewCalendar, "contracts": viewContracts, "testimonials": viewTestimonials, "workshop-attended": viewWorkshopAttended, "analytics": viewAnalytics };
 
