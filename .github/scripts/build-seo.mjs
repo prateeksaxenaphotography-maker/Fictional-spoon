@@ -201,7 +201,7 @@ const albumCardHtml = (s) => {
 };
 const albumCardsHtml = (list) => `<div class="pr-cards">\n      ${list.map(albumCardHtml).join("\n      ")}\n    </div>`;
 
-const serviceLinksHtml = (skipSlug) => SERVICES.filter((v) => v.slug !== skipSlug).map((v) =>
+const serviceLinksHtml = (skipSlug) => liveServices.filter((v) => v.slug !== skipSlug).map((v) =>
   `<a href="/services/${v.slug}/" data-link class="service-card" style="display: block; text-decoration: none; color: inherit;">
           <div class="service-kicker">${esc(v.audience)}</div>
           <h3>${esc(v.cardTitle)}</h3>
@@ -293,18 +293,52 @@ const oneModel = (s) => {
   const t = (s.talent || "").trim();
   return !!t && !t.includes(",") && !/\s(and|&)\s/i.test(t);
 };
+// Filed as creative on purpose: its activity or type is one the catch-all page
+// names outright. An explicit choice wins over the model-work rule, or an album
+// of one model tagged "Creative" would still be shown as a model portfolio and
+// the creative page would never see it.
+const creativeService = () => SERVICES.find((v) => v.albumFilter && v.albumFilter.residual);
+const filedAsCreative = (s) => {
+  const c = creativeService();
+  const f = (c && c.albumFilter) || {};
+  return !!((f.activities || []).includes(s.activity) || (f.types || []).includes(s.type));
+};
 function albumsForService(v) {
   const f = v.albumFilter || {};
+  if (v._residual) return { all: v._residual, list: v._residual.slice(0, 6), matched: v._residual.length > 0 };
   const match = newestFirst.filter((s) => {
     if (f.activities && f.activities.includes(s.activity)) return true;
     if (f.types && f.types.includes(s.type)) return true;
-    // Shot for the model: one model, nobody paying for the pictures.
-    if (f.modelWork && oneModel(s) && !hasClient(s)) return true;
+    // Shot for the model: one model, nobody paying for the pictures — unless
+    // the studio filed it as creative work.
+    if (f.modelWork && oneModel(s) && !hasClient(s) && !filedAsCreative(s)) return true;
     if (f.clientWork && hasClient(s)) return true;
     return false;
   });
-  return { list: match.slice(0, 6), matched: match.length > 0, total: match.length };
+  return { all: match, list: match.slice(0, 6), matched: match.length > 0 };
 }
+
+// Which pages exist at all. A page with no work of its own is not written, not
+// linked and not in the sitemap: a shoot the studio has never done, described
+// at length under an empty "recent work" heading, argues against itself. The
+// page appears by itself the moment one album is filed under it — that is the
+// whole mechanism, and the only thing to do is tag an album.
+//
+// "residual" is the catch-all: an album no other page claims. It is computed
+// after the others, so it needs them decided first.
+const claimed = new Set();
+for (const v of SERVICES) {
+  if (v.albumFilter && v.albumFilter.residual) continue;
+  // .all, not .list: .list is trimmed to the six a page shows, and claiming
+  // only those handed the other three to the catch-all as if nothing owned them.
+  for (const s of albumsForService(v).all) claimed.add(s.id);
+}
+for (const v of SERVICES) {
+  if (!v.albumFilter || !v.albumFilter.residual) continue;
+  // Filed as creative, or claimed by no other page.
+  v._residual = newestFirst.filter((s) => filedAsCreative(s) || !claimed.has(s.id));
+}
+const liveServices = SERVICES.filter((v) => (v._residual ? v._residual.length : albumsForService(v).matched));
 
 function buildServicePage(v) {
   const urlPath = `/services/${v.slug}/`;
@@ -361,16 +395,16 @@ function buildServicePage(v) {
       <div class="svc-actions"><a href="/book/" data-link class="btn btn-dark">Ask for a quote →</a></div>
     </section>
 
-    ${matched ? `<section class="section container section-divider">
+    ${samples.length ? `<section class="section container section-divider">
       <div class="section-head row">
-        <div><p class="eyebrow">Recent work</p><h2>Judge it by the pictures</h2></div>
+        <div>
+          <p class="eyebrow">${matched ? "Recent work" : "From the archive"}</p>
+          <h2>${matched ? "Judge it by the pictures" : "Judge the pictures, not the label"}</h2>
+        </div>
         <div class="svc-worklinks">${workLinks.map((l) => `<a href="${esc(l.href)}" data-link class="link-arrow">${esc(l.label)} →</a>`).join("")}</div>
       </div>
       ${albumCardsHtml(samples)}
-    </section>` : `<section class="section container section-divider">
-      <div class="section-head"><p class="eyebrow">Recent work</p><h2>Nothing published here yet</h2></div>
-      <p class="svc-note">There is no ${esc(v.cardTitle.toLowerCase())} album on the site yet — rather than show you a fashion editorial and call it fitness work, this space stays empty until there is something of this kind to show. <a href="/albums/" data-link>See the whole archive</a> in the meantime, or <a href="/book/" data-link>send a brief</a>.</p>
-    </section>`}
+    </section>` : ""}
 
     <section class="section container section-divider">
       <div class="section-head"><p class="eyebrow">Questions</p><h2>Before you book</h2></div>
@@ -606,8 +640,8 @@ function buildSitemap({ quoteCount }) {
     entry("/", newest, newestFirst.map((s) => absUrl(photoPath(albumCover(s))))),
     entry("/albums/", newest),
     ...newestFirst.map((s) => entry(albumUrl(s), albumLastMod(s), s.photos.map((p) => absUrl(photoPath(p))))),
-    entry("/services/", null),
-    ...SERVICES.map((v) => entry(`/services/${v.slug}/`, null)),
+    ...(liveServices.length ? [entry("/services/", null)] : []),
+    ...liveServices.map((v) => entry(`/services/${v.slug}/`, null)),
     entry("/categories/", newest),
     entry("/studio/", null),
     entry("/book/", null),
@@ -626,7 +660,7 @@ function checkServices() {
   if (new Set(slugs).size !== slugs.length) fail("seo/services.mjs: two services share a slug");
   for (const v of SERVICES) {
     if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(v.slug)) fail(`seo/services.mjs: bad slug "${v.slug}"`);
-    for (const k of ["kicker", "cardTitle", "cardBlurb", "metaTitle", "metaDescription", "eyebrow", "h1", "includesTitle", "audience"]) if (!v[k]) fail(`seo/services.mjs: ${v.slug} is missing ${k}`);
+    for (const k of ["kicker", "cardTitle", "cardBlurb", "metaTitle", "metaDescription", "eyebrow", "h1", "includesTitle", "audience", "emptyNote"]) if (!v[k]) fail(`seo/services.mjs: ${v.slug} is missing ${k}`);
     // All four must answer the same question, or a visitor cannot tell which is theirs.
     if (!/^For /.test(v.audience)) fail(`seo/services.mjs: ${v.slug} audience must start with "For " — it names who the page is for`);
     if (!Array.isArray(v.intro) || !v.intro.length || !Array.isArray(v.includes) || !Array.isArray(v.faqs) || !Array.isArray(v.workLinks)) fail(`seo/services.mjs: ${v.slug} is incomplete`);
@@ -637,6 +671,16 @@ function checkServices() {
   const inApp = [...m[1].matchAll(/slug:\s*"([^"]+)"/g)].map((x) => x[1]);
   const missing = inApp.filter((s) => !slugs.includes(s));
   if (missing.length) fail(`app.js SERVICE_LINKS points at service pages that do not exist: ${missing.join(", ")}`);
+  // app.js hides a service with no work the same way this script does, so both
+  // must agree on the rule. It reads `match` on each SERVICE_LINKS entry.
+  for (const v of SERVICES) {
+    const m2 = m[1].match(new RegExp(`slug:\\s*"${v.slug}"[\\s\\S]*?match:\\s*(\\{[^}]*\\})`));
+    if (!m2) fail(`app.js SERVICE_LINKS has no \`match\` for ${v.slug} — it cannot tell whether that page has work`);
+    let parsed;
+    try { parsed = JSON.parse(m2[1].replace(/([a-zA-Z_]+):/g, '"$1":').replace(/'/g, '"').replace(/,\s*}/, "}")); } catch { fail(`app.js SERVICE_LINKS match for ${v.slug} is not readable`); }
+    const norm = (o) => JSON.stringify({ activities: o.activities || [], types: o.types || [], modelWork: !!o.modelWork, clientWork: !!o.clientWork, residual: !!o.residual });
+    if (norm(parsed) !== norm(v.albumFilter || {})) fail(`app.js SERVICE_LINKS match for ${v.slug} is ${norm(parsed)} but seo/services.mjs albumFilter is ${norm(v.albumFilter || {})}`);
+  }
   // The filtered category views quote a starting price from SERVICE_LINKS'
   // packageIds. If those drift from this file, a visitor is quoted one price
   // and shown another on the page the link lands on.
@@ -652,8 +696,11 @@ function checkServices() {
 checkServices();
 const outputs = [];
 for (const s of albums) outputs.push(buildAlbumPage(s));
-outputs.push(buildServicesIndex());
-for (const v of SERVICES) outputs.push(buildServicePage(v));
+if (liveServices.length) {
+  outputs.push(buildServicesIndex());
+  for (const v of liveServices) outputs.push(buildServicePage(v));
+}
+console.log(`build-seo: ${liveServices.length}/${SERVICES.length} service pages have work and are published${liveServices.length < SERVICES.length ? ` — waiting on: ${SERVICES.filter((v) => !liveServices.includes(v)).map((v) => v.slug).join(", ")}` : ""}`);
 const { blocks, quoteCount } = prerenderBlocks();
 for (const [rel, inner] of Object.entries(blocks)) {
   outputs.push({ rel, html: shellWithPrerender(rel, inner) });
@@ -675,12 +722,12 @@ for (const o of outputs) {
 }
 
 if (CHECK_ONLY) {
-  console.log(`build-seo: OK (check only) — ${albums.length} album pages, ${SERVICES.length + 1} service pages, ${Object.keys(blocks).length} page copies, sitemap.`);
+  console.log(`build-seo: OK (check only) — ${albums.length} album pages, ${liveServices.length ? liveServices.length + 1 : 0} service pages, ${Object.keys(blocks).length} page copies, sitemap.`);
 } else {
   for (const o of outputs) {
     const abs = path.join(ROOT, o.rel);
     fs.mkdirSync(path.dirname(abs), { recursive: true });
     fs.writeFileSync(abs, o.html);
   }
-  console.log(`build-seo: wrote ${outputs.length} files into ${ROOT} — ${albums.length} album pages, ${SERVICES.length + 1} service pages, ${Object.keys(blocks).length} page copies, sitemap.`);
+  console.log(`build-seo: wrote ${outputs.length} files into ${ROOT} — ${albums.length} album pages, ${liveServices.length ? liveServices.length + 1 : 0} service pages, ${Object.keys(blocks).length} page copies, sitemap.`);
 }

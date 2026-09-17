@@ -2812,7 +2812,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // …and that card has photos on it: a model whose every photo is kept off
     // comp cards has no card, so the link would lead to "Album not found".
     const hasCompCard = soloModel && !isCcPage && showsOnModelPage(shoot, "Comp Cards")
-      && SHOOTS.some((x) => getTalentCleanName(x.talent) === getTalentCleanName(shoot.talent) && (x.photos || []).some(usableOnCompCard));
+      // Compared as slugs, because that is how the link resolves: a second
+      // album of the same model typed in a different case used to fail this
+      // test and hide a link to a card that exists.
+      && SHOOTS.some((x) => showsOnModelPage(x, "Comp Cards")
+        && slugify(getTalentCleanName(x.talent)) === slugify(getTalentCleanName(shoot.talent))
+        && (x.photos || []).some(usableOnCompCard));
     if (hasCompCard) {
       const modelName = getTalentCleanName(shoot.talent);
       const slug = slugify(modelName);
@@ -3999,22 +4004,51 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   }
 
   // The service landing pages, written at deploy from seo/services.mjs. Listed
-  // here for the home-page cards and the menu; the build fails if a slug below
-  // has no page behind it. A slug is a public address — never rename one.
-  // The kicker on each card names WHO THE PAGE IS FOR, and all four answer that
-  // same question: two named after the client and two after the kind of
-  // photograph left a fitness model unable to tell which page was hers.
-  // Kept in step with `audience` in seo/services.mjs.
+  // here for the home-page cards and the menu. A slug is a public address —
+  // never rename one.
+  //
+  // `phrase` reads inside "what a … shoot includes"; `packageIds` are the
+  // packages that page prices; `match` is the rule deciding which albums belong
+  // to it, and therefore whether the page exists at all. The build fails if any
+  // of the three drifts from seo/services.mjs.
+  //
+  // The kicker names WHO THE PAGE IS FOR, and all five answer that same
+  // question: two named after the client and two after the kind of photograph
+  // left a fitness model unable to tell which page was hers.
   const SERVICE_LINKS = [
-    // `phrase` reads inside "what a … shoot includes"; `packageIds` are the
-    // packages that page prices, so a filtered view quotes that shoot's own
-    // starting price and not the cheapest thing the studio sells. The build
-    // fails if either drifts from seo/services.mjs.
-    { slug: "model-portfolio-shoot-noida", kicker: "For models", title: "Model Portfolios & Comp Cards", phrase: "model portfolio", packageIds: ["pkg_1", "pkg_2", "pkg_3"], blurb: "Editorial-grade portfolio building and agency-ready comp cards for new faces and working models, male and female.", cta: "Model portfolio shoots" },
-    { slug: "fashion-editorial-photographer-delhi-ncr", kicker: "For designers & magazines", title: "Fashion & Editorial", phrase: "fashion or editorial", packageIds: ["pkg_3", "pkg_4"], blurb: "Concept-led fashion, beauty and editorial stories for designers, stylists and magazine submissions.", cta: "Fashion & editorial" },
-    { slug: "fitness-sports-photographer-noida", kicker: "For athletes, coaches & gyms", title: "Fitness & Sports Action", phrase: "fitness or sports", packageIds: ["pkg_2", "pkg_3"], blurb: "Action-freezing athletic portraits and fitness content that shows physique, strength and raw performance.", cta: "Fitness & sports shoots" },
-    { slug: "brand-campaign-photographer-noida", kicker: "For brands", title: "Campaigns & Lookbooks", phrase: "brand campaign", packageIds: ["pkg_4", "pkg_5"], blurb: "High-concept campaigns, lookbooks and e-commerce sets, planned to the shot list and covered by a written contract.", cta: "Brand campaigns" }
+    { slug: "model-portfolio-shoot-noida", kicker: "For models", title: "Model Portfolios & Comp Cards", phrase: "model portfolio", packageIds: ["pkg_1", "pkg_2", "pkg_3"], match: { modelWork: true }, blurb: "Editorial-grade portfolio building and agency-ready comp cards for new faces and working models, male and female.", cta: "Model portfolio shoots" },
+    { slug: "fashion-editorial-photographer-delhi-ncr", kicker: "For designers & magazines", title: "Fashion & Editorial", phrase: "fashion or editorial", packageIds: ["pkg_3", "pkg_4"], match: { activities: ["Fashion", "Editorial", "Beauty"] }, blurb: "Concept-led fashion, beauty and editorial stories for designers, stylists and magazine submissions.", cta: "Fashion & editorial" },
+    { slug: "fitness-sports-photographer-noida", kicker: "For athletes, coaches & gyms", title: "Fitness & Sports Action", phrase: "fitness or sports", packageIds: ["pkg_2", "pkg_3"], match: { activities: ["Fitness", "Sports"] }, blurb: "Action-freezing athletic portraits and fitness content that shows physique, strength and raw performance.", cta: "Fitness & sports shoots" },
+    { slug: "brand-campaign-photographer-noida", kicker: "For brands", title: "Campaigns & Lookbooks", phrase: "brand campaign", packageIds: ["pkg_4", "pkg_5"], match: { types: ["Campaign", "Commercial", "E-commerce"], clientWork: true }, blurb: "High-concept campaigns, lookbooks and e-commerce sets, planned to the shot list and covered by a written contract.", cta: "Brand campaigns" },
+    { slug: "creative-shoot-photographer-noida", kicker: "For anyone with an idea", title: "Creative & Conceptual", phrase: "creative or conceptual", packageIds: ["pkg_2", "pkg_3", "pkg_4"], match: { activities: ["Creative"], types: ["Creative", "Fine Art", "Documentary"], residual: true }, blurb: "Conceptual, themed and personal shoots for artists, makers and performers — the work that fits none of the other four.", cta: "Creative shoots" }
   ];
+
+  // A page exists once it has work of its own, and not before. The deploy does
+  // not write a page with nothing to show, so the card and the menu link must
+  // hide it too or they would lead to a 404. Same rule on both sides, checked
+  // against seo/services.mjs by the build.
+  const serviceAlbums = (v) => {
+    const f = v.match || {};
+    const shown = SHOOTS.filter((s) => s && !s.isTestimonial && s.type !== "Workshop Attended" && s.isPublic !== false
+      && !isFutureShoot(s) && !s.isCompCard && (s.photos || []).some((p) => p && p.url));
+    const hasClient = (s) => !!(s.client && s.client.trim());
+    const oneModel = (s) => { const t = (s.talent || "").trim(); return !!t && !t.includes(",") && !/\s(and|&)\s/i.test(t); };
+    // Filed as creative on purpose wins over the model-work rule (same as the build).
+    const creative = (SERVICE_LINKS.find((o) => (o.match || {}).residual) || {}).match || {};
+    const filedAsCreative = (s) => (creative.activities || []).includes(s.activity) || (creative.types || []).includes(s.type);
+    const claims = (v2, s) => {
+      const g = v2.match || {};
+      if (g.activities && g.activities.includes(s.activity)) return true;
+      if (g.types && g.types.includes(s.type)) return true;
+      if (g.modelWork && oneModel(s) && !hasClient(s) && !filedAsCreative(s)) return true;
+      if (g.clientWork && hasClient(s)) return true;
+      return false;
+    };
+    // The catch-all takes what is filed as creative, and whatever no other page claims.
+    if (f.residual) return shown.filter((s) => filedAsCreative(s) || !SERVICE_LINKS.some((o) => !(o.match || {}).residual && claims(o, s)));
+    return shown.filter((s) => claims(v, s));
+  };
+  const liveServiceLinks = () => SERVICE_LINKS.filter((v) => serviceAlbums(v).length);
 
   function viewHome() {
     // Nine is a cap for a very large archive, not a curation: with the albums
@@ -4142,7 +4176,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <h2>Who I shoot for</h2>
         </div>
         <div class="services-grid reveal-stagger">
-          ${SERVICE_LINKS.map((v) => `
+          ${liveServiceLinks().map((v) => `
           <a href="/services/${v.slug}/" data-link class="service-card" style="display: block; text-decoration: none; color: inherit; cursor: pointer;">
             <div class="service-kicker">${esc(v.kicker)}</div>
             <h3>${esc(v.title)}</h3>
@@ -7681,7 +7715,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           "E-commerce": "brand-campaign-photographer-noida"
         };
         const slug = kind2 === "activity" ? byGenre[val] : kind2 === "type" ? byType[val] : "";
-        return slug ? SERVICE_LINKS.find((v) => v.slug === slug) : null;
+        // Only point at a page that exists.
+        return slug ? liveServiceLinks().find((v) => v.slug === slug) : null;
       };
       const service = serviceForCategory(kind, d);
       // No price in this line: shoots are quoted to the brief, so nothing public
@@ -7842,6 +7877,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const fitnessSamples = getSamples("activity", "Fitness");
     const sportsSamples = getSamples("activity", "Sports");
     const testShootSamples = getSamples("type", "Selective Collaboration (TFP)");
+    // Its own call, not a reuse of the comp-card one: the two pages allow
+    // different photos, so sharing the array showed the portfolio tile frames
+    // that are barred from the portfolio page, and could never show the ones
+    // that belong there.
+    const portfolioSamples = getSamples("type", "Model Portfolio");
 
     return `
       <section class="page-head">
@@ -7959,7 +7999,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           </div>
           ` : ""}
 
-          ${testShootSamples.length && isAdmin() ? `
+          ${portfolioSamples.length && isAdmin() ? `
           <div class="specialty-item reveal" style="border-top: 1px dashed var(--line); padding-top: 40px; margin-top: 40px;">
             <div class="specialty-meta">
               <span style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom: 6px;">🔒 Admin Portfolio View</span>
@@ -7972,7 +8012,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <a href="/categories?kind=type&amp;val=Model%20Portfolio" data-link class="link-arrow" style="font-size: var(--font-xs); font-weight: 700; color: var(--accent);">Explore portfolio angles →</a>
             </div>
             <div class="specialty-gallery" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
-              ${renderSpecialtyGallery(testShootSamples, "PORTFOLIO", "type", "Model Portfolio")}
+              ${renderSpecialtyGallery(portfolioSamples, "PORTFOLIO", "type", "Model Portfolio")}
             </div>
           </div>
           ` : ""}
@@ -8075,6 +8115,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   let staged = []; // {id,dataUrl,name}
   function viewUpload() {
     const opt = (arr) => arr.map((v) => `<option value="${v}">${v}</option>`).join("");
+    // Activity and Type decide which "What I shoot" page an album shows up on.
+    // They used to default to whatever sorted first — Beauty and Campaign — so
+    // an album saved without touching them claimed to be a beauty shoot for a
+    // brand campaign. Neither has a default now; the studio picks, and the save
+    // refuses until it does.
+    const chooseOpt = `<option value="">— Choose —</option>`;
     const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
     const dropTitle = isTouch ? "Tap to upload photos" : "Drag your photoshoot here";
     const dropHint = isTouch ? "Select images from files or photo library" : "or <span class=\"link\">browse files</span> — JPG, PNG, WEBP";
@@ -8141,10 +8187,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <div class="field-row">
                 <label class="field" id="f_brand_select_field"><span>Brand</span><select id="f_brand">${opt(BRANDS)}<option>Other</option></select></label>
                 <label class="field" id="f_brand_text_field" style="display: none;"><span>Company / Role *</span><input id="f_brand_text" type="text" placeholder="e.g. Model, Vogue, Brand Director" /></label>
-                <label class="field" id="f_activity_field"><span>Activity</span><select id="f_activity">${opt(ACTIVITIES)}</select></label>
+                <label class="field" id="f_activity_field"><span>Activity</span><select id="f_activity">${chooseOpt}${opt(ACTIVITIES)}</select></label>
               </div>
               <div class="field-row">
-                <label class="field"><span>Type</span><select id="f_type">${opt(TYPES)}</select></label>
+                <label class="field"><span>Type</span><select id="f_type">${chooseOpt}${opt(TYPES)}</select></label>
                 <label class="field"><span>Date shot</span><input id="f_date" type="date" /></label>
                 <label class="field"><span>Season / Year</span><input id="f_season" type="text" placeholder="Spring 2026" /></label>
                 <label class="field"><span>Shoot Location (add Instagram in parentheses)</span><input id="f_location" type="text" placeholder="e.g. Studio (@studiohandle), Noida, Outdoor" /></label>
@@ -10088,6 +10134,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         if (!val("f_desc")) { toast("Testimonial Quote is required."); return; }
       } else {
         if (!staged.length) { toast("Add at least one photo first."); return; }
+        // Both drive which page this album appears on, so neither may be guessed.
+        if (!$("#f_activity").value) { toast("Pick an Activity — it decides which page this album shows up on. Use Creative if it fits none of them."); $("#f_activity").focus(); return; }
+        if (!$("#f_type").value) { toast("Pick a Type — Test Shoot for your own work, Campaign or Commercial only for a paid job."); $("#f_type").focus(); return; }
       }
       
       const testimonialsList = isTestimonialOnly ? [] : [
@@ -13502,10 +13551,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const val = btn.dataset.val;
         const clickedSrc = btn.dataset.src;
         
-        let shoots = SHOOTS.filter(s => s[kind] === val);
-        if (val === "Selective Collaboration (TFP)" || val === "Comp Cards" || val === "Model Portfolio") {
-          shoots = shoots.filter(s => (s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim()));
+        // The comp-card and portfolio tiles advertise a page; no album has
+        // "Comp Cards" as its type, so building a lightbox list from
+        // s[kind] === val came out empty and the thumbnail was a dead click.
+        // Open the page it advertises instead.
+        if (kind === "type") {
+          history.pushState(null, "", `/categories?kind=type&val=${encodeURIComponent(val)}`);
+          render();
+          return;
         }
+        let shoots = SHOOTS.filter(s => s[kind] === val);
         
         const isCc = val === "Selective Collaboration (TFP)" && isCurrentlyCompCardView();
         const list = shoots.flatMap(s => (s.photos || []).filter(p => !isCc || usableOnCompCard(p)).map(p => ({ ...p, shoot: s })));
@@ -13590,9 +13645,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // cards and the menu lead here, so it must never be a dead end.
   function viewServiceFallback(staticPath) {
     const slug = staticPath.replace(/^\/services\/?/, "");
-    const one = SERVICE_LINKS.find((v) => v.slug === slug);
-    if (slug && !one) return "";
-    const list = one ? [one] : SERVICE_LINKS;
+    const live = liveServiceLinks();
+    const one = live.find((v) => v.slug === slug);
+    // A service with no work has no page, so there is nothing to stand in for.
+    if ((slug && !one) || !live.length) return "";
+    const list = one ? [one] : live;
     return `
       <section class="page-head">
         <div class="container">
@@ -13760,11 +13817,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       if (key) {
         const phContainer = view.querySelector(".page-head .container");
         if (phContainer && !phContainer.querySelector(".page-back-link")) {
+          // Back to where this page sits, not all the way home: from one shoot
+          // page to the list of shoots, from one album to the albums.
+          let backHref = "/", backLabel = "Back to home";
+          if (key === "services" && parts[1] && liveServiceLinks().length) { backHref = "/services/"; backLabel = "What I shoot"; }
+          else if (key === "albums" && parts[1]) { backHref = "/albums/"; backLabel = "All albums"; }
           const back = document.createElement("a");
-          back.href = "/";
+          back.href = backHref;
           back.setAttribute("data-link", "");
           back.className = "page-back-link reveal";
-          back.innerHTML = `<span aria-hidden="true">←</span> Back to home`;
+          back.innerHTML = `<span aria-hidden="true">←</span> ${esc(backLabel)}`;
           phContainer.insertBefore(back, phContainer.firstChild);
         }
       }
@@ -16543,9 +16605,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       if (share) share.addEventListener("click", () => navigator.share({ files, title }).catch(() => {}));
       // On a computer they just download, one after another: a browser asked
       // for several files in the same instant tends to keep only the first.
+      // Each save gets its own address and its own anchor, so touching the
+      // preview mid-run cannot revoke the files or detach the links and leave
+      // the studio with only the cover — the on-screen Save buttons are still
+      // withdrawn by the redraw, which is what should happen.
       if (!coarse) {
-        const token = renderToken;
-        ready.querySelectorAll(".pp-save-img").forEach((a, i) => setTimeout(() => { if (token === renderToken && a.isConnected) a.click(); }, i * 450));
+        items.forEach((x, i) => setTimeout(() => {
+          const url = URL.createObjectURL(x.blob);
+          Object.assign(document.createElement("a"), { href: url, download: x.fileName }).click();
+          setTimeout(() => URL.revokeObjectURL(url), 60000);
+        }, i * 450));
       }
     }
 
@@ -16837,7 +16906,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // "Services" in the menu — added here rather than in each page's HTML, for
     // the same reason as the block below: there are nine shells and they drift.
     const navList = document.querySelector(".nav-links");
-    if (navList && !document.getElementById("navServicesLi")) {
+    if (navList && !document.getElementById("navServicesLi") && liveServiceLinks().length) {
       const li = document.createElement("li");
       li.id = "navServicesLi";
       li.innerHTML = `<a href="/services/" data-link>What I shoot</a>`;
