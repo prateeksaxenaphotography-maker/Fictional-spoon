@@ -310,15 +310,7 @@ function buildServicePage(v) {
     url: `${ORIGIN}${urlPath}`,
     provider: { "@id": `${ORIGIN}/#identity` },
     areaServed: ["Noida", "Greater Noida", "Delhi", "Delhi NCR"].map((n) => ({ "@type": "AdministrativeArea", name: n })),
-    ...(shown.length ? {
-      offers: {
-        "@type": "AggregateOffer",
-        priceCurrency: "INR",
-        lowPrice: Math.min(...shown.map((p) => Number(p.price))),
-        highPrice: Math.max(...shown.map((p) => Number(p.price))),
-        offerCount: shown.length
-      }
-    } : {})
+    // No offers/AggregateOffer: prices are quoted to the brief, not published.
   };
   const faqLd = {
     "@context": "https://schema.org",
@@ -350,17 +342,11 @@ function buildServicePage(v) {
       </div>
     </section>
 
-    ${shown.length ? `<section class="section container section-divider">
-      <div class="section-head"><p class="eyebrow">Packages</p><h2>What it costs</h2></div>
-      <div class="services-grid">
-        ${shown.map((p) => `<div class="service-card svc-price">
-          <div class="service-kicker">${esc(inr(p.price))}</div>
-          <h3>${esc(p.name)}</h3>
-          <p>${esc(p.specs || "")}</p>
-        </div>`).join("\n        ")}
-      </div>
-      <p class="svc-note">Prices are per shoot and are the same ones shown on the <a href="/book/" data-link>booking page</a>, where you pick a package and a date. The terms are shown in full before you confirm.</p>
-    </section>` : ""}
+    <section class="section container section-divider">
+      <div class="section-head"><p class="eyebrow">What it costs</p><h2>Quoted to the brief</h2></div>
+      <p class="svc-note">No fixed rate card here — the price follows the shoot: how many looks, how many finished images, whether it is a half day or a full production, and where it is shot. Tell me what you need and you will have a price against it, in writing, before anything is booked.</p>
+      <div class="svc-actions"><a href="/book/" data-link class="btn btn-dark">Ask for a quote →</a></div>
+    </section>
 
     ${samples.length ? `<section class="section container section-divider">
       <div class="section-head row">
@@ -547,7 +533,7 @@ function prerenderBlocks() {
       <p class="page-sub">Book a photoshoot with ${BRAND} in Noida and Delhi NCR. Pick a package and a weekend date, read the terms in full and send your brief.</p>
     </div></header>
     <section class="section container">
-      ${packages.length ? `<h2>Packages</h2><ul>${packages.map((p) => `<li><strong>${esc(p.name)}</strong> — ${esc(inr(p.price))}${p.specs ? `. ${esc(p.specs)}` : ""}</li>`).join("")}</ul>` : ""}
+      ${packages.length ? `<h2>What you get</h2><ul>${packages.map((p) => `<li><strong>${esc(p.name)}</strong>${p.specs ? ` — ${esc(p.specs)}` : ""}</li>`).join("")}</ul>` : ""}
       <h2>What kind of shoot?</h2>
       <div class="services-grid">
         ${serviceLinksHtml(null)}
@@ -575,20 +561,13 @@ function prerenderBlocks() {
 // Every page carries the same LocalBusiness block (@id …/#identity). Prices are
 // not written into the HTML by hand — they change in the Admin Panel — so the
 // price range and the package list are merged into that block here.
+// The business block gets the studio's contact details. It deliberately gets no
+// priceRange and no offer catalogue: the studio quotes each shoot to its brief,
+// and a number published here would be read as a ceiling before any conversation.
 function enrichBusinessLd(html) {
-  if (!packages.length) return html;
-  const prices = packages.map((p) => Number(p.price));
   const extras = {
-    priceRange: `${inr(Math.min(...prices))} – ${inr(Math.max(...prices))}`,
     currenciesAccepted: "INR",
     ...(CONFIG.email ? { email: CONFIG.email } : {}),
-    hasOfferCatalog: {
-      "@type": "OfferCatalog",
-      name: "Photoshoot packages",
-      itemListElement: packages.map((p) => ({
-        "@type": "Offer", name: p.name, ...(p.specs ? { description: p.specs } : {}), price: Number(p.price), priceCurrency: "INR", url: `${ORIGIN}/book/`
-      }))
-    }
   };
   return html.replace(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g, (whole, json) => {
     if (!json.includes("/#identity")) return whole;
@@ -642,6 +621,16 @@ function checkServices() {
   const inApp = [...m[1].matchAll(/slug:\s*"([^"]+)"/g)].map((x) => x[1]);
   const missing = inApp.filter((s) => !slugs.includes(s));
   if (missing.length) fail(`app.js SERVICE_LINKS points at service pages that do not exist: ${missing.join(", ")}`);
+  // The filtered category views quote a starting price from SERVICE_LINKS'
+  // packageIds. If those drift from this file, a visitor is quoted one price
+  // and shown another on the page the link lands on.
+  for (const m2 of m[1].matchAll(/slug:\s*"([^"]+)"[\s\S]*?packageIds:\s*\[([^\]]*)\]/g)) {
+    const v = SERVICES.find((x) => x.slug === m2[1]);
+    if (!v) continue;
+    const inAppIds = [...m2[2].matchAll(/"([^"]+)"/g)].map((x) => x[1]).join(",");
+    const here = (v.packageIds || []).join(",");
+    if (inAppIds !== here) fail(`app.js SERVICE_LINKS packageIds for ${v.slug} are [${inAppIds}] but seo/services.mjs says [${here}]`);
+  }
 }
 
 checkServices();

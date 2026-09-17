@@ -4006,10 +4006,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // photograph left a fitness model unable to tell which page was hers.
   // Kept in step with `audience` in seo/services.mjs.
   const SERVICE_LINKS = [
-    { slug: "model-portfolio-shoot-noida", kicker: "For models", title: "Model Portfolios & Comp Cards", blurb: "Editorial-grade portfolio building and agency-ready comp cards for new faces and working models, male and female.", cta: "Model portfolio shoots" },
-    { slug: "fashion-editorial-photographer-delhi-ncr", kicker: "For designers & magazines", title: "Fashion & Editorial", blurb: "Concept-led fashion, beauty and editorial stories for designers, stylists and magazine submissions.", cta: "Fashion & editorial" },
-    { slug: "fitness-sports-photographer-noida", kicker: "For athletes, coaches & gyms", title: "Fitness & Sports Action", blurb: "Action-freezing athletic portraits and fitness content that shows physique, strength and raw performance.", cta: "Fitness & sports shoots" },
-    { slug: "brand-campaign-photographer-noida", kicker: "For brands", title: "Campaigns & Lookbooks", blurb: "High-concept campaigns, lookbooks and e-commerce sets, planned to the shot list and covered by a written contract.", cta: "Brand campaigns" }
+    // `phrase` reads inside "what a … shoot includes"; `packageIds` are the
+    // packages that page prices, so a filtered view quotes that shoot's own
+    // starting price and not the cheapest thing the studio sells. The build
+    // fails if either drifts from seo/services.mjs.
+    { slug: "model-portfolio-shoot-noida", kicker: "For models", title: "Model Portfolios & Comp Cards", phrase: "model portfolio", packageIds: ["pkg_1", "pkg_2", "pkg_3"], blurb: "Editorial-grade portfolio building and agency-ready comp cards for new faces and working models, male and female.", cta: "Model portfolio shoots" },
+    { slug: "fashion-editorial-photographer-delhi-ncr", kicker: "For designers & magazines", title: "Fashion & Editorial", phrase: "fashion or editorial", packageIds: ["pkg_3", "pkg_4"], blurb: "Concept-led fashion, beauty and editorial stories for designers, stylists and magazine submissions.", cta: "Fashion & editorial" },
+    { slug: "fitness-sports-photographer-noida", kicker: "For athletes, coaches & gyms", title: "Fitness & Sports Action", phrase: "fitness or sports", packageIds: ["pkg_2", "pkg_3"], blurb: "Action-freezing athletic portraits and fitness content that shows physique, strength and raw performance.", cta: "Fitness & sports shoots" },
+    { slug: "brand-campaign-photographer-noida", kicker: "For brands", title: "Campaigns & Lookbooks", phrase: "brand campaign", packageIds: ["pkg_4", "pkg_5"], blurb: "High-concept campaigns, lookbooks and e-commerce sets, planned to the shot list and covered by a written contract.", cta: "Brand campaigns" }
   ];
 
   function viewHome() {
@@ -7655,6 +7659,36 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         </div>
       ` : "";
 
+      // A filtered view shows the work but never says what such a shoot costs
+      // or what you get. This points up at the page that does. Genres map onto
+      // the four pages; anything unmapped simply gets no line.
+      const serviceForCategory = (kind2, val) => {
+        const byGenre = {
+          "Fashion": "fashion-editorial-photographer-delhi-ncr",
+          "Editorial": "fashion-editorial-photographer-delhi-ncr",
+          "Beauty": "fashion-editorial-photographer-delhi-ncr",
+          "Fitness": "fitness-sports-photographer-noida",
+          "Sports": "fitness-sports-photographer-noida",
+          "Portrait": "model-portfolio-shoot-noida"
+        };
+        const byType = {
+          "Comp Cards": "model-portfolio-shoot-noida",
+          "Model Portfolio": "model-portfolio-shoot-noida",
+          "Selective Collaboration (TFP)": "model-portfolio-shoot-noida",
+          "Test Shoot": "model-portfolio-shoot-noida",
+          "Campaign": "brand-campaign-photographer-noida",
+          "Commercial": "brand-campaign-photographer-noida",
+          "E-commerce": "brand-campaign-photographer-noida"
+        };
+        const slug = kind2 === "activity" ? byGenre[val] : kind2 === "type" ? byType[val] : "";
+        return slug ? SERVICE_LINKS.find((v) => v.slug === slug) : null;
+      };
+      const service = serviceForCategory(kind, d);
+      // No price in this line: shoots are quoted to the brief, so nothing public
+      // sets a ceiling before the conversation starts.
+      const serviceLineHtml = service ? `
+        <p class="cat-service reveal">${esc(service.kicker)} — <a href="/services/${esc(service.slug)}/" data-link>what a ${esc(service.phrase)} shoot includes →</a></p>` : "";
+
       const getCategoryTitle = (val) => {
         if (val === "Selective Collaboration (TFP)" || val === "Comp Cards") return "Model Comp Cards";
         if (val === "Model Portfolio") return "Model Portfolio";
@@ -7677,6 +7711,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <p class="eyebrow reveal"><a href="/categories" data-link>Categories</a> / ${esc(kind)}</p>
              <h1 class="reveal">${esc(getCategoryTitle(d))}</h1>
             ${isTestShoot ? `<p class="page-sub" style="max-width: 600px; line-height: 1.6; opacity: 1 !important; visibility: visible !important; transform: none !important;">${esc(getCategoryDescription(d))}<span style="font-size: var(--font-xs); color: var(--ink-soft); display: block; margin-top: 8px;">Note: Models from workshop projects are not included here.</span></p>` : `<p class="page-sub reveal">${displayList.length} master album${displayList.length !== 1 ? "s" : ""} in this ${esc(kind)}.</p>`}
+            ${serviceLineHtml}
           </div>
         </section>
         ${alphaFilterHtml}
