@@ -227,18 +227,36 @@
     text(page, "PHOTO REMOVED", x + w / 2, y + h / 2, P.soft, "center");
   }
 
-  function watermark(page, W, H) {
+  /* ---------- the watermark ---------------------------------------------------
+     The studio's name written across every page, the way the model portfolio
+     marks its samples: faint enough to read the work through, plain enough
+     that nobody mistakes the file for the finished one. The words and how
+     strong they are belong to the book. */
+  const MARK_STRENGTH = { light: 0.12, medium: 0.2, strong: 0.3 };
+  const markSettings = (book) => {
+    const w = (book && book.watermark) || {};
+    return { text: (typeof w.text === "string" && w.text.trim()) || studio(), strength: MARK_STRENGTH[w.strength] ? w.strength : "medium" };
+  };
+  function watermark(page, W, H, P, opts) {
+    const { text, strength } = opts || { text: studio(), strength: "medium" };
     const ctx = page.ctx;
+    const alpha = MARK_STRENGTH[strength] || MARK_STRENGTH.medium;
     ctx.save();
-    ctx.globalAlpha = 0.18;
-    ctx.fillStyle = "#D24E1A";
-    font(page, 700, 6, F.mono, 0.6);
+    font(page, 700, 6, F.mono, 0.3);
     ctx.textAlign = "center";
     ctx.translate(page.u(W / 2), page.u(H / 2));
     ctx.rotate(-Math.PI / 6);
+    // Spaced by the words' own width, in brick rows across the diagonal. It is
+    // written twice, pale then in the book's accent, so it stays readable over
+    // a white page and over the dark part of a photograph alike.
+    const step = measure(page, text) + 24;
     const span = Math.hypot(W, H);
-    for (let row = -span / 2; row <= span / 2; row += 24) {
-      for (let col = -span / 2; col <= span / 2; col += 90) ctx.fillText("nerdyphotographer.in", page.u(col), page.u(row));
+    const cols = Math.ceil(span / step) + 1, rows = Math.ceil(span / 26) + 1;
+    for (const [fill, a, dx] of [["#FFFFFF", alpha * 0.85, 0.5], [P ? accentText(P) : "#D24E1A", alpha, 0]]) {
+      ctx.globalAlpha = a; ctx.fillStyle = fill;
+      for (let row = -rows; row <= rows; row++) {
+        for (let col = -cols; col <= cols; col++) ctx.fillText(text, page.u(col * step + (row % 2 ? step / 2 : 0) + dx), page.u(row * 26 + dx));
+      }
     }
     ctx.restore();
   }
@@ -331,11 +349,35 @@
   /* ---------- styles ---------------------------------------------------------
      Each style is one object: its cover, its photo page, its text pages, and
      its running foot. They share everything else. */
+  // The book being drawn, so the running foot can use its own words. Set at
+  // the start of every render; only one book is drawn at a time.
+  let bookNow = null;
+  const footName = () => String((bookNow && typeof bookNow.footText === "string" && bookNow.footText.trim()) ? bookNow.footText : studio()).toUpperCase();
+  const showNums = () => !(bookNow && bookNow.showPageNumbers === false);
+  const pageCredit = (entry, shoots) => ((entry && typeof entry.credit === "string" && entry.credit.trim()) ? entry.credit : creditLine(shoots));
   const cfg = () => API.config() || {};
   const studio = () => cfg().studioName || "nerdyphotographer.in";
   const year = () => String(new Date().getFullYear());
   const siteUrl = "https://www.nerdyphotographer.in";
 
+  // The lines on a cover, as typed by the studio or, where nothing is typed,
+  // as the style has always drawn them.
+  function coverText(book) {
+    const t = (book && book.coverText && typeof book.coverText === "object") ? book.coverText : {};
+    const one = (v) => (typeof v === "string" && v.trim() ? v : null);
+    return {
+      label: one(t.label) || "STUDIO PORTFOLIO",
+      mast: one(t.mast) || cfg().studioShortName || "NERDY",
+      tagline: one(t.tagline) || "PHOTOGRAPHER",
+      foot: one(t.foot) || studio().toUpperCase(),
+      place: one(t.place) || `NOIDA · INDIA · ${year()}`,
+      showCounts: t.showCounts !== false,
+      left: Array.isArray(t.left) ? t.left.filter((x) => typeof x === "string") : null,
+      right: Array.isArray(t.right) ? t.right.filter((x) => typeof x === "string") : null
+    };
+  }
+  // The lines each cover prints for itself, beside the title and its subtitle.
+  const COVER_LINES = { elegant: ["foot", "place"], modern: ["label", "foot", "place"], vogue: ["mast", "tagline", "foot", "counts"] };
   function coverLines(book) {
     // Cover lines from the book's own photographs, never typed: genres that
     // are actually in it, and counts that are actually true.
@@ -379,9 +421,10 @@
         text(page, ellipsize(page, book.subtitle, tw), ST.at(m + 10, tw), y, ST.color, ST.align);
       }
       rect(page, m + 10, y + T.rule - 0.4, 22, 0.8, P.accent);
+      const CT = coverText(book);
       font(page, 500, 2.9, F.plex, 0.7);
-      text(page, studio().toUpperCase(), m + 10, footY, P.ink);
-      text(page, `NOIDA · INDIA · ${year()}`, W - m - 10, footY, P.soft, "right");
+      text(page, ellipsize(page, CT.foot, (W - 2 * m - 24) * 0.55), m + 10, footY, P.ink);
+      text(page, ellipsize(page, CT.place, (W - 2 * m - 24) * 0.45), W - m - 10, footY, P.soft, "right");
     },
     async photos(page, entry, P, W, H, imgs, shoots, n) {
       const M = this.margins(W > H ? "landscape" : "portrait");
@@ -404,11 +447,12 @@
       // page without one looks exactly as it always did.
       const cap = captionFit(entry, box.w - 12, CAPTION_TYPE.elegant);
       if (cap) drawCaption(page, cap, box.x, H - M.bottom - 2, CAPTION_TYPE.elegant, P.ink, P);
-      const credit = creditLine(shoots);
+      const credit = pageCredit(entry, shoots);
       if (credit) { font(page, 300, 3.0, F.sans); text(page, ellipsize(page, credit, box.w - 12), box.x, H - M.bottom + 4, P.soft); }
       this.foot(page, P, W, H, n);
     },
     foot(page, P, W, H, n) {
+      if (!showNums()) return;
       font(page, 500, 2.4, F.plex, 0.55);
       text(page, String(n).padStart(2, "0"), n % 2 ? W - 20 : 20, H - 12, P.ink, n % 2 ? "right" : "left");
     },
@@ -429,7 +473,8 @@
       if (img) await drawMark(page, "#FFFFFF", P.accent, "rgba(0,0,0,0)", 26, 14, 12);
       else { const s = L ? 40 : 46; await drawMark(page, P.onDeep, P.accent, P.deep, 12 + (W - 12 - s) / 2, (fieldEnd - s) / 2, s); }
       hair(page, 26, fieldEnd, W - 14, P.onDeep);
-      font(page, 700, 3.0, F.mono, 0.7); text(page, "STUDIO PORTFOLIO", 26, fieldEnd + 16, accentOnDeep(P));
+      const CT = coverText(book);
+      font(page, 700, 3.0, F.mono, 0.7); text(page, ellipsize(page, CT.label, W - 52), 26, fieldEnd + 16, accentOnDeep(P));
       const lower = H - 25;                       // the foot hairline
       const firstY = fieldEnd + (L ? 36 : 42);
       // Heavy caps at 22mm put most words on a line of their own, so a title is
@@ -457,8 +502,8 @@
       }
       hair(page, 26, lower, W - 14, P.onDeep);
       font(page, 700, 2.8, F.mono, 0.5);
-      text(page, studio().toUpperCase(), 26, H - 15, P.onDeep);
-      page.ctx.globalAlpha = 0.62; text(page, `NOIDA · INDIA · ${year()}`, W - 14, H - 15, P.onDeep, "right"); page.ctx.globalAlpha = 1;
+      text(page, ellipsize(page, CT.foot, (W - 40) * 0.55), 26, H - 15, P.onDeep);
+      page.ctx.globalAlpha = 0.62; text(page, ellipsize(page, CT.place, (W - 40) * 0.45), W - 14, H - 15, P.onDeep, "right"); page.ctx.globalAlpha = 1;
     },
     async photos(page, entry, P, W, H, imgs, shoots, n) {
       const M = this.margins();
@@ -473,8 +518,8 @@
         rect(page, 0, H - (cap ? 16 : 9), W, cap ? 16 : 9, P.deep);
         if (cap) drawCaption(page, cap, M.side, H - 9.6, CAPTION_TYPE.modern, P.onDeep, P);
         font(page, 700, 2.4, F.mono, 0.4);
-        text(page, String(n).padStart(2, "0"), M.side, H - 3.4, P.onDeep);
-        const credit = creditLine(shoots);
+        if (showNums()) text(page, String(n).padStart(2, "0"), M.side, H - 3.4, P.onDeep);
+        const credit = pageCredit(entry, shoots);
         if (credit) text(page, ellipsize(page, credit.toUpperCase(), W - 2 * M.side - 14), W - M.side, H - 3.4, P.onDeep, "right");
         return;
       }
@@ -487,16 +532,16 @@
         rect(page, c.x, c.y, 7, 5, P.accent);
         font(page, 700, 2.2, F.mono, 0.2); text(page, String(i + 1).padStart(2, "0"), c.x + 3.5, c.y + 3.5, P.onAccent, "center");
       });
-      this.foot(page, P, W, H, n, creditLine(shoots));
+      this.foot(page, P, W, H, n, pageCredit(entry, shoots));
     },
     // `ink`/`soft` default to the page colours; a chapter page on the accent
     // passes onAccent, or the foot all but vanishes on a dark accent.
     foot(page, P, W, H, n, credit, ink = P.ink, soft = P.soft) {
       hair(page, 14, H - 12, W - 14, ink);
       font(page, 700, 2.4, F.mono, 0.4);
-      text(page, String(n).padStart(2, "0"), 14, H - 6, ink);
-      const studioW = measure(page, studio().toUpperCase());
-      text(page, studio().toUpperCase(), W - 14, H - 6, ink, "right");
+      if (showNums()) text(page, String(n).padStart(2, "0"), 14, H - 6, ink);
+      const studioW = measure(page, footName());
+      text(page, footName(), W - 14, H - 6, ink, "right");
       if (credit) { font(page, 400, 2.6, F.sans); text(page, ellipsize(page, credit, (W - 14 - studioW - 6) - 24), 24, H - 6, soft); }
     },
     heading(page, s, x, y, P, maxW) { font(page, 800, 10, F.heavy, -0.2); const lines = wrap(page, String(s).toUpperCase(), maxW); lines.forEach((l, i) => text(page, l, x, y + i * 10.5, P.ink)); rect(page, x, y + (lines.length - 1) * 10.5 + 5, 18, 1.2, P.accent); return y + (lines.length - 1) * 10.5 + 15; },
@@ -520,15 +565,20 @@
       }
       rect(page, 0, band, W, H - band, P.accent);
       const on = img ? "#FFFFFF" : P.ink;
-      const mast = cfg().studioShortName || "NERDY";
+      const CT = coverText(book);
+      const mast = CT.mast;
       fitSize(page, mast, W - 20, 300, L ? 38 : 44, F.serif, 1.5, 20);
       text(page, mast, W / 2, L ? 68 : 92, on, "center");
-      font(page, 500, 5.4, F.geo, 3.2); text(page, "PHOTOGRAPHER", W / 2, L ? 80 : 104, on, "center");
+      font(page, 500, 5.4, F.geo, 3.2); text(page, ellipsize(page, CT.tagline.toUpperCase(), W - 24), W / 2, L ? 80 : 104, on, "center");
       if (!img) hair(page, 20, L ? 90 : 116, W - 20, P.ink);
       const cl = coverLines(book), top = L ? 100 : 132;
       font(page, 600, 3.4, F.geo, 0.4);
-      cl.genres.forEach((g, i) => text(page, g.toUpperCase(), 20, top + i * 6, img ? "#FFFFFF" : (i === 0 ? accentText(P) : P.ink)));
-      [`${cl.photos} PLATES`, `${cl.pages} PAGES`, "NOIDA, INDIA"].forEach((w, i) => text(page, w, W - 20, top + i * 6, on, "right"));
+      if (CT.showCounts) {
+        const left = (CT.left && CT.left.length ? CT.left : cl.genres).slice(0, 3);
+        const right = (CT.right && CT.right.length ? CT.right : [`${cl.photos} PLATES`, `${cl.pages} PAGES`, "NOIDA, INDIA"]).slice(0, 3);
+        left.forEach((g, i) => text(page, ellipsize(page, g.toUpperCase(), (W - 40) * 0.5), 20, top + i * 6, img ? "#FFFFFF" : (i === 0 ? accentText(P) : P.ink)));
+        right.forEach((w, i) => text(page, ellipsize(page, w.toUpperCase(), (W - 40) * 0.45), W - 20, top + i * 6, on, "right"));
+      }
       // One line where it fits, at a smaller size before it ever wraps; the
       // rule, the deck line and the mark then sit below whatever was drawn.
       const cs = coverStyleOf(book);
@@ -546,7 +596,7 @@
       const footY = H - 11, markSize = L ? 12 : 16;
       const markY = Math.max(H - (L ? 34 : 49), below + 5);
       if (markY + markSize <= footY - 5) await drawMark(page, P.onAccent, P.onAccent, P.accent, W / 2 - markSize / 2, markY, markSize);
-      font(page, 600, 2.9, F.geo, 1.1); text(page, studio().toUpperCase(), W / 2, footY, P.onAccent, "center");
+      font(page, 600, 2.9, F.geo, 1.1); text(page, ellipsize(page, CT.foot, W - 24), W / 2, footY, P.onAccent, "center");
     },
     async photos(page, entry, P, W, H, imgs, shoots, n) {
       const M = this.margins();
@@ -566,7 +616,7 @@
         });
       }
       if (cap) drawCaption(page, cap, 12, H - 4.8, CAPTION_TYPE.vogue, P.ink, P);
-      this.foot(page, P, W, H, n, creditLine(shoots));
+      this.foot(page, P, W, H, n, pageCredit(entry, shoots));
     },
     // `side` overrides the page-number parity: a spread's two halves put their
     // bands on the OUTER edges whatever page it starts on, never down the fold.
@@ -583,7 +633,7 @@
       font(page, 600, 2.2, F.geo, 0.6);
       ctx.fillStyle = P.ink; ctx.textAlign = "left";
       ctx.textAlign = "left";
-      ctx.fillText(ellipsize(page, `${String(n).padStart(2, "0")}   ${credit ? credit.toUpperCase() : studio().toUpperCase()}`, H - 16), 0, 0);
+      ctx.fillText(ellipsize(page, `${showNums() ? `${String(n).padStart(2, "0")}   ` : ""}${credit ? credit.toUpperCase() : footName()}`, H - 16), 0, 0);
       ctx.restore();
     },
     heading(page, s, x, y, P, maxW) { font(page, 300, 12, F.serif, 0.6); const lines = wrap(page, String(s).toUpperCase(), maxW); lines.forEach((l, i) => text(page, l, x, y + i * 14, P.ink)); rect(page, x, y + (lines.length - 1) * 14 + 7, 24, 0.6, P.accent); return y + (lines.length - 1) * 14 + 17; },
@@ -595,7 +645,8 @@
 
   // Running text that stops above the foot. If it has to stop early, the last
   // line that fits ends with "…" so nothing is cut mid-thought without a sign.
-  function bodyLines(page, s, x, y, P, maxW, maxY, lead, align = "left") {
+  function bodyLines(page, s, x, y, P, maxW, maxY, lead, align = "left", specAt = null) {
+    if (specAt) return paraLines(page, s, x, y, maxW, maxY, specAt);
     const lines = wrap(page, s, maxW);
     const at = align === "center" ? x + maxW / 2 : align === "right" ? x + maxW : x;
     let i = 0;
@@ -608,6 +659,29 @@
       text(page, last ? ellipsize(page, `${lines[i]} …`, maxW) : lines[i], at, yy, P.ink, align === "justify" ? "left" : align);
     }
     return y + i * lead;
+  }
+  // The same text, but each paragraph in its own font, size, colour and
+  // alignment. Blank lines between paragraphs keep the gap they always had.
+  function paraLines(page, s, x, y, maxW, maxY, specAt) {
+    const blocks = String(s || "").replace(/\r\n?/g, "\n").split(/\n/);
+    let cy = y, pi = 0;
+    page.lastBodyCut = false;
+    for (let bi = 0; bi < blocks.length; bi++) {
+      if (!blocks[bi].trim()) { cy += specAt(Math.max(0, pi - 1)).lead; continue; }
+      const S = specAt(pi++);
+      font(page, S.spec.w, S.spec.size, S.spec.f, 0, !!S.spec.it);
+      const lines = wrap(page, blocks[bi], maxW);
+      const at = S.align === "center" ? x + maxW / 2 : S.align === "right" ? x + maxW : x;
+      for (let li = 0; li < lines.length; li++) {
+        if (cy > maxY) { page.lastBodyCut = true; return cy; }
+        const more = li + 1 < lines.length || blocks.slice(bi + 1).some((b) => b.trim());
+        const last = more && cy + S.lead > maxY;
+        if (last) page.lastBodyCut = true;
+        text(page, last ? ellipsize(page, `${lines[li]} …`, maxW) : lines[li], at, cy, S.color, S.align === "justify" ? "left" : S.align);
+        cy += S.lead;
+      }
+    }
+    return cy;
   }
   // What didn't fit on a page, for the editor and the check before download.
   const reportCut = (page, field, label) => { if (!page.cuts) page.cuts = []; page.cuts.push({ field, label }); };
@@ -651,18 +725,26 @@
     S.ground(page, P, W, H);
     let y = M.top + 22;
     const floor = H - Math.max(M.bottom, 18) - 6;   // nothing below this: the foot lives there
+    const lineOf = (v, fallback) => ((typeof v === "string" && v.trim()) ? v : fallback);
     if (entry.type === "about") {
-      S.label(page, "About the studio", x, y - 10, P);
-      y = S.heading(page, "Not just photos, a perspective", x, y, P, maxW);
-      // The About words take the studio's own font, colour, size and alignment.
-      const AT = textFormat(entry.style, "about", { w: book.style === "elegant" ? 300 : 400, f: F.sans, size: book.style === "elegant" ? 4.0 : 3.9, lead: book.style === "elegant" ? 6.4 : (book.style === "modern" ? 6.2 : 6.3) }, P, P.ink);
+      S.label(page, lineOf(entry.label, "About the studio"), x, y - 10, P);
+      y = S.heading(page, lineOf(entry.heading, "Not just photos, a perspective"), x, y, P, maxW);
+      // The About words take the studio's own font, colour, size and
+      // alignment, and each paragraph may differ.
+      const aBase = { w: book.style === "elegant" ? 300 : 400, f: F.sans, size: book.style === "elegant" ? 4.0 : 3.9, lead: book.style === "elegant" ? 6.4 : (book.style === "modern" ? 6.2 : 6.3) };
+      const aFmt = (entry.style && entry.style.about) || {};
+      const AT = textFormat(entry.style, "about", aBase, P, P.ink);
       font(page, AT.spec.w, AT.spec.size * AT.scale, AT.spec.f, 0, !!AT.spec.it);
-      y = bodyLines(page, (book.texts && book.texts.about) || DEFAULT_ABOUT, AT.align === "left" ? x : x, y + 6, { ...P, ink: AT.color }, maxW, floor, AT.spec.lead * AT.scale, AT.align);
+      const aPara = hasParaFmt(aFmt) ? (pi) => {
+        const pf = paraFmt(aFmt, pi), sc = sizeScale(pf), st = styledSpec(aBase, pf);
+        return { spec: { ...st, size: st.size * sc }, lead: st.lead * sc, color: tintOf(pf.color, P, P.ink), align: ALIGNS.includes(pf.align) ? pf.align : AT.align };
+      } : null;
+      y = bodyLines(page, (book.texts && book.texts.about) || DEFAULT_ABOUT, x, y + 6, { ...P, ink: AT.color }, maxW, floor, AT.spec.lead * AT.scale, AT.align, aPara);
       if (page.lastBodyCut) reportCut(page, "about", "About text");
     }
     if (entry.type === "services") {
-      S.label(page, "What I shoot", x, y - 10, P);
-      y = S.heading(page, "Shoots, and who they are for", x, y, P, maxW);
+      S.label(page, lineOf(entry.label, "What I shoot"), x, y - 10, P);
+      y = S.heading(page, lineOf(entry.heading, "Shoots, and who they are for"), x, y, P, maxW);
       y += 4;
       // Landscape pages are short and wide, so the list runs in two columns
       // rather than stopping after three entries.
@@ -672,7 +754,15 @@
       const top = y;
       let col = 0, cy = top;
       const entries = [];
-      for (const v of (API.liveServices() || [])) entries.push({ kind: "service", v });
+      // Each kind of shoot comes from the site; a book can leave one out or
+      // put it in its own words.
+      const over = (entry.items && typeof entry.items === "object") ? entry.items : {};
+      const hidden = new Set(Array.isArray(entry.hide) ? entry.hide : []);
+      for (const v of (API.liveServices() || [])) {
+        if (hidden.has(v.slug)) continue;
+        const o = over[v.slug] || {};
+        entries.push({ kind: "service", v: { ...v, kicker: lineOf(o.kicker, v.kicker), title: lineOf(o.title, v.title), blurb: lineOf(o.blurb, v.blurb) } });
+      }
       if (book.texts && book.texts.showPrices) {
         // Off unless the studio switches it on for a book: a published price
         // caps a job before the brief is known.
@@ -701,13 +791,13 @@
       }
       if (!(book.texts && book.texts.showPrices)) {
         font(page, 400, 3.6, F.sans);
-        text(page, "Every shoot is quoted to its brief.", colX(col), Math.min(cy + 4, floor), P.soft);
+        text(page, lineOf(entry.note, "Every shoot is quoted to its brief."), colX(col), Math.min(cy + 4, floor), P.soft);
       }
       if (dropped) console.warn(`Portfolio book: ${dropped} item(s) did not fit on the What I shoot page.`);
     }
     if (entry.type === "contact") {
-      S.label(page, "Let's make something", x, y - 10, P);
-      y = S.heading(page, "Book a shoot", x, y, P, maxW);
+      S.label(page, lineOf(entry.label, "Let's make something"), x, y - 10, P);
+      y = S.heading(page, lineOf(entry.heading, "Book a shoot"), x, y, P, maxW);
       y += 4;
       const c = cfg();
       const ig = String(c.instagram || "").replace(/\/+$/, "").split("/").pop();
@@ -720,7 +810,11 @@
         ["website", "Website", "nerdyphotographer.in", siteUrl],
         ["book", "Book online", "nerdyphotographer.in/book", `${siteUrl}/book/`],
         ["studio", "Studio", "Noida · working across Delhi NCR", ""]
-      ].filter((r) => r[2] && !hidden.has(r[0])).map((r) => r.slice(1));
+      ].map(([k, label, value, url]) => {
+        // Any row can be renamed or rewritten for this book.
+        const o = (entry.rows && typeof entry.rows === "object" && entry.rows[k]) || {};
+        return [k, lineOf(o.label, label), lineOf(o.value, value), url];
+      }).filter((r) => r[2] && !hidden.has(r[0])).map((r) => r.slice(1));
       for (const [label, value, url] of rows) {
         S.label(page, label, x, y, P);
         font(page, book.style === "modern" ? 600 : 400, 5.0, book.style === "elegant" || book.style === "vogue" ? F.serif : F.sans);
@@ -736,7 +830,7 @@
         const qx = W - x - size, qy = H - M.bottom - size - 6;
         rect(page, qx - 2, qy - 2, size + 4, size + 4, "#FFFFFF");
         for (let r = 0; r < cells; r++) for (let col = 0; col < cells; col++) if (qr.isDark(r, col)) rect(page, qx + col * cell, qy + r * cell, cell + 0.02, cell + 0.02, "#000000");
-        font(page, 500, 2.2, F.plex, 0.4); text(page, "SCAN TO BOOK", qx + size / 2, qy + size + 5, P.soft, "center");
+        font(page, 500, 2.2, F.plex, 0.4); text(page, lineOf(entry.qrLabel, "SCAN TO BOOK").toUpperCase(), qx + size / 2, qy + size + 5, P.soft, "center");
         page.link(qx, qy, size, size, `${siteUrl}/book/`);
       } catch (e) { /* the QR is a convenience; the links above still work */ }
     }
@@ -1085,6 +1179,21 @@
     return { ...spec, it, w: base ? weightFor(base, wanted, it) : wanted };
   }
   const sizeScale = (f) => (f && typeof f.size === "number" && isFinite(f.size) ? Math.min(1.6, Math.max(0.6, f.size)) : 1);
+  /* A text is formatted as a whole, and then each paragraph can differ: its
+     own font, colour, size, weight, italic and alignment. Paragraph 1 is the
+     first block of words typed, 2 the next, and so on; what a paragraph
+     doesn't set, it takes from the whole text. Only flowing texts carry this
+     (the story, the letter, the words about a photo, About the studio) —
+     headlines and quotes are one run of words, whatever is typed. */
+  const hasParaFmt = (f) => !!(f && f.paras && typeof f.paras === "object" && Object.keys(f.paras).length);
+  function paraFmt(f, i) {
+    const base = f || {};
+    const one = hasParaFmt(base) ? base.paras[String(i + 1)] : null;
+    if (!one) return base;
+    const out = { ...base, ...one };
+    delete out.paras;
+    return out;
+  }
   // Formatting for a text on a page the plan engine doesn't lay out (the cover,
   // a chapter page, the About page). Gives the spec to draw with, the size
   // scale, the colour, and where to put a line inside its column.
@@ -1129,7 +1238,15 @@
   }
   function bookFontKeys(book) {
     const keys = new Set();
-    for (const pg of (book && book.pages) || []) if (pg && pg.style) for (const f of Object.values(pg.style)) if (f && f.font) keys.add(f.font);
+    const take = (style) => {
+      for (const f of Object.values(style || {})) {
+        if (!f || typeof f !== "object") continue;
+        if (f.font) keys.add(f.font);
+        for (const p of Object.values(f.paras || {})) if (p && p.font) keys.add(p.font);
+      }
+    };
+    take(book && book.coverStyle);
+    for (const pg of (book && book.pages) || []) take(pg && pg.style);
     return [...keys];
   }
   const ensureBookFonts = (book) => Promise.all(bookFontKeys(book).map(loadFont));
@@ -1216,10 +1333,14 @@
   // half a line, never at the top of a column. Returns the placed lines and
   // what didn't fit. A drop cap is used only when the first paragraph is long
   // enough to hold it (three lines) and its letter doesn't hang below them.
-  function flowBody(page, s, cols, spec, dropColor) {
+  function flowBody(page, s, cols, spec, dropColor, specFor) {
     const paras = paragraphs(s);
     const flat = paras.map((p) => p.join(" ")).join("\n");
-    const lead = spec.lead;
+    // With no per-paragraph formatting, every paragraph draws with the text's
+    // own spec, exactly as it always has.
+    const specOf = (pi) => (specFor ? specFor(pi).spec : spec);
+    const leadOf = (pi) => (specFor ? specFor(pi).lead : spec.lead);
+    const lead = leadOf(0);
     const run = (drop) => {
       let wi = 0;
       const queues = paras.map((p) => p.map((w) => ({ s: w, w: wi++, end: true })));
@@ -1227,19 +1348,21 @@
       let dc = null, dropWord = 0;
       if (drop) {
         const letter = queues[0][0].s[0].toUpperCase();
-        const size = (2 * lead + 0.728 * spec.size) / 0.716;
+        const size = (2 * lead + 0.728 * specOf(0).size) / 0.716;
         font(page, 300, size, F.serif);
         dc = { s: letter, x: cols[0].x, y: cols[0].top + 2 * lead, size, indent: measure(page, letter) + 2.2 };
         queues[0][0] = { ...queues[0][0], s: queues[0][0].s.slice(1) };
         if (!queues[0][0].s) { queues[0].shift(); dropWord = 1; }
       }
-      font(page, spec.w, spec.size, spec.f, spec.sp || 0, !!spec.it);
       const lines = [];
-      let ci = 0, y = cols[0].top, colTop = true, cut = false;
+      let ci = 0, y = cols[0].top, colTop = true, cut = false, curLead = lead;
       outer:
       for (let pi = 0; pi < queues.length; pi++) {
         const q = queues[pi];
-        if (!colTop) y += lead * 0.5;
+        const ps = specOf(pi);
+        curLead = leadOf(pi);
+        font(page, ps.w, ps.size, ps.f, ps.sp || 0, !!ps.it);
+        if (!colTop) y += curLead * 0.5;
         while (q.length) {
           if (y > cols[ci].bottom + 0.01) {
             if (++ci >= cols.length) { cut = true; break outer; }
@@ -1249,11 +1372,11 @@
           const width = cols[ci].w - ind;
           const pieces = takeLine(page, q, width);
           lines.push({ pieces, x: cols[ci].x + ind, y, w: width, pi, end: q.length === 0 });
-          y += lead; colTop = false;
+          y += curLead; colTop = false;
         }
       }
       let printed = dropWord + lines.reduce((n, l) => n + l.pieces.filter((p) => p.end).length, 0);
-      const out = lines.map((l) => ({ s: joinLine(l.pieces), x: l.x, y: l.y, w: l.w, end: l.end }));
+      const out = lines.map((l) => ({ s: joinLine(l.pieces), x: l.x, y: l.y, w: l.w, end: l.end, pi: l.pi }));
       if (cut && lines.length) {
         const L = lines[lines.length - 1];
         const e = endLine(page, L.pieces, L.w, true);
@@ -1263,7 +1386,7 @@
       let left = 0;
       if (!cut) for (let c = ci; c < cols.length; c++) {
         const from = c === ci ? y : cols[c].top;
-        if (from <= cols[c].bottom + 0.01) left += Math.floor((cols[c].bottom + 0.01 - from) / lead) + 1;
+        if (from <= cols[c].bottom + 0.01) left += Math.floor((cols[c].bottom + 0.01 - from) / curLead) + 1;
       }
       // The letter spans three lines, so the first paragraph must fill all
       // three beside it, or the next paragraph would run into the letter.
@@ -1320,12 +1443,12 @@
       font(page, 700, size, F.mono, 0.4);
       const y = B.bottom ? (cap ? H - 3.4 : H - B.bottom / 2 + size * 0.36) : B.top / 2 + size * 0.36;
       const right = numberSide === "right";
-      text(page, String(n).padStart(2, "0"), right ? rx : lx, y, colors.on, right ? "right" : "left");
+      if (showNums()) text(page, String(n).padStart(2, "0"), right ? rx : lx, y, colors.on, right ? "right" : "left");
       if (credit && size >= 2.4) text(page, ellipsize(page, credit.toUpperCase(), Math.max(10, rx - lx - 14)), right ? lx : rx, y, colors.on, right ? "left" : "right");
     } else if (B.left || B.right) {
       const t = B.left || B.right, size = Math.min(2.4, t * 0.5);
       font(page, 700, size, F.mono, 0.2);
-      text(page, String(n).padStart(2, "0"), B.left ? B.left / 2 : W - B.right / 2, H - 8, colors.on, "center");
+      if (showNums()) text(page, String(n).padStart(2, "0"), B.left ? B.left / 2 : W - B.right / 2, H - 8, colors.on, "center");
     }
   }
   const bandColors = (style, P) => (style === "vogue" ? { band: P.white, on: P.ink } : { band: P.deep, on: P.onDeep });
@@ -1341,7 +1464,7 @@
         if (imgs[i]) drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); else missing(page, P, c.x, c.y, c.w, c.h);
       });
     }
-    paintBands(page, P, W, H, B, bandColors(style, P), n, creditLine(shoots), cap, n % 2 ? "right" : "left");
+    paintBands(page, P, W, H, B, bandColors(style, P), n, pageCredit(entry, shoots), cap, n % 2 ? "right" : "left");
   }
 
   /* ---------- paper sizes -----------------------------------------------------
@@ -1483,17 +1606,29 @@
       return y0 + (r.lines.length - 1) * step;
     };
     const body = (field, s, cols, baseSpec, dropRole) => {
-      const sc = sizeScale(fmt(field));
-      const styledBase = styled(field, baseSpec);
-      const spec = sc === 1 ? styledBase : { ...styledBase, size: styledBase.size * sc, lead: styledBase.lead * sc };
-      const align = alignOf(field, "left");
-      // A drop cap belongs to text ranged left or justified.
-      const r = flowBody(page, s, cols, spec, dropRole && (align === "left" || align === "justify") && !fmt(field).font ? colour(dropRole) : null);
+      const f = fmt(field);
+      // One spec per paragraph, worked out once and kept.
+      const made = new Map();
+      const specFor = (pi) => {
+        if (!made.has(pi)) {
+          const pf = paraFmt(f, pi);
+          const sc = sizeScale(pf);
+          const base = styledSpec(baseSpec, pf);
+          const spec = sc === 1 ? base : { ...base, size: base.size * sc, lead: base.lead * sc };
+          made.set(pi, { spec, lead: spec.lead, color: tintOf(pf.color, P, P.ink), align: ALIGNS.includes(pf.align) ? pf.align : "left" });
+        }
+        return made.get(pi);
+      };
+      const one = specFor(0), spec = one.spec, align = one.align;
+      // A drop cap belongs to text ranged left or justified, in the style's font.
+      const r = flowBody(page, s, cols, spec, dropRole && (align === "left" || align === "justify") && !paraFmt(f, 0).font ? colour(dropRole) : null, hasParaFmt(f) ? specFor : null);
       report(field, { kind: "flow", empty: !r.total, ...r, lines: undefined });
       if (!r.total) { cols.forEach((c) => op({ k: "guide", x: c.x, y: c.top - spec.size, w: c.w, h: c.bottom - c.top + spec.size })); return; }
       if (r.drop) put(r.drop.s, r.drop.x, r.drop.y, { w: 300, f: F.serif }, r.drop.size, r.dropColor);
-      const color = tint(field, P.ink);
-      r.lines.forEach((l, i) => placeLine(l.s, l.x, l.w, l.y, spec, spec.size, color, align, l.end || i === r.lines.length - 1));
+      r.lines.forEach((l, i) => {
+        const S = specFor(l.pi || 0);
+        placeLine(l.s, l.x, l.w, l.y, S.spec, S.spec.size, S.color, S.align, l.end || i === r.lines.length - 1);
+      });
     };
     const rule = (x, y, color = P.accent) => rectOp(x, y - T.rule.h / 2, T.rule.w, T.rule.h, color);
     const ground = () => {
@@ -1957,8 +2092,10 @@
      Yields one finished page at a time, so the caller can encode and release
      each canvas before the next is drawn. */
   async function* renderPages(book, { dpi, watermarked = false, cache, only = null, guides = false }) {
+    const mark = watermarked ? markSettings(book) : null;
     await ensureFonts();
     await ensureBookFonts(book);
+    bookNow = book;
     const P = colourway(book.colourway);
     // Pages are drawn in the paper's design space (A4 or A4 grown to Letter's
     // shape) at a resolution that makes the canvas exactly the printed size
@@ -1987,7 +2124,7 @@
     if (want(-1)) {
       const page = newPage();
       await S.cover(page, book, P, W, H, book.cover ? await imgOf(book.cover) : null);
-      if (watermarked) watermark(page, W, H);
+      if (mark) watermark(page, W, H, P, mark);
       yield { page, index: -1, n: 1 };
     }
     n = 1;
@@ -2016,10 +2153,10 @@
             else drawPhoto(page, img, entry.photos[0], -half * W, 0, W * 2, H);
             page.ctx.restore();
           } else missing(page, P, 0, 0, W, H);
-          if (B) paintBands(page, P, W, H, { ...B, left: half ? 0 : B.left, right: half ? B.right : 0 }, bandColors(book.style, P), pn, half ? creditLine(shoots) : "", null, half ? "right" : "left");
-          else if (book.style === "vogue") VOGUE.foot(page, P, W, H, pn, half ? creditLine(shoots) : "", half ? "right" : "left");
-          else { rect(page, 0, H - 9, W, 9, P.deep); font(page, 700, 2.4, F.mono, 0.4); text(page, String(pn).padStart(2, "0"), half ? W - 14 : 14, H - 3.4, P.onDeep, half ? "right" : "left"); }
-          if (watermarked) watermark(page, W, H);
+          if (B) paintBands(page, P, W, H, { ...B, left: half ? 0 : B.left, right: half ? B.right : 0 }, bandColors(book.style, P), pn, half ? pageCredit(entry, shoots) : "", null, half ? "right" : "left");
+          else if (book.style === "vogue") VOGUE.foot(page, P, W, H, pn, half ? pageCredit(entry, shoots) : "", half ? "right" : "left");
+          else { rect(page, 0, H - 9, W, 9, P.deep); font(page, 700, 2.4, F.mono, 0.4); if (showNums()) text(page, String(pn).padStart(2, "0"), half ? W - 14 : 14, H - 3.4, P.onDeep, half ? "right" : "left"); }
+          if (mark) watermark(page, W, H, P, mark);
           yield { page, index: i, n: pn, half };
         }
         continue;
@@ -2047,7 +2184,7 @@
             page.cuts = [...(page.cuts || []), ...plan.cuts];
             page.plan = plan;
           }
-          if (watermarked) watermark(page, W, H);
+          if (mark) watermark(page, W, H, P, mark);
           yield { page, index: i, n: pn, half };
         }
         continue;
@@ -2070,7 +2207,7 @@
       } else {
         await textPage(page, entry, book, P, W, H, n);
       }
-      if (watermarked) watermark(page, W, H);
+      if (mark) watermark(page, W, H, P, mark);
       yield { page, index: i, n };
     }
   }
@@ -2610,11 +2747,18 @@
           </div>
           <div class="sb-pop" id="sbDlPop" hidden>
             <div class="sb-sec"><h3>Check before sending</h3><div id="sbCheck"><p class="sb-hint">Checking…</p></div></div>
+            <div class="sb-sec">
+              <label class="sb-check-row"><input type="checkbox" id="sbMark"> Write a watermark across every page</label>
+              <div id="sbMarkOpts" hidden>
+                <div class="sb-field"><label for="sbMarkText">The words</label><input type="text" id="sbMarkText" maxlength="40" placeholder="${esc(studio())}"></div>
+                <div class="sb-field"><span class="sb-label">How strong</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="How strong">${[["light", "Light"], ["medium", "Medium"], ["strong", "Strong"]].map(([k, n]) => `<button type="button" role="radio" data-mark="${k}">${n}</button>`).join("")}</div></div>
+                <p class="sb-hint">For a sample you send before a job is agreed. Leave it off for the file the client keeps.</p>
+              </div>
+            </div>
             <div class="sb-dlrow">
               <button type="button" class="sb-btn dark" id="sbPdf" data-dl>Download PDF</button>
               <button type="button" class="sb-btn" id="sbPng" data-dl>PNG pages</button>
             </div>
-            <p class="sb-hint">A sample with the watermark: <button type="button" class="sb-link" id="sbPdfMark" data-dl>PDF</button> · <button type="button" class="sb-link" id="sbPngMark" data-dl>PNG</button></p>
             <div class="sb-ready" id="sbReady"></div>
             <p class="sb-hint">The PDF is made of page images, so its words can't be searched or copied.</p>
           </div>
@@ -2670,10 +2814,33 @@
         pop.hidden = !open; dlBtn.setAttribute("aria-expanded", String(open));
         if (open) { flush(); drawCheck(); }
       });
-      $("#sbPdf").addEventListener("click", (e) => download(e.currentTarget, "pdf", false));
-      $("#sbPng").addEventListener("click", (e) => download(e.currentTarget, "png", false));
-      $("#sbPdfMark").addEventListener("click", (e) => download(e.currentTarget, "pdf", true));
-      $("#sbPngMark").addEventListener("click", (e) => download(e.currentTarget, "png", true));
+      $("#sbPdf").addEventListener("click", (e) => download(e.currentTarget, "pdf", $("#sbMark").checked));
+      $("#sbPng").addEventListener("click", (e) => download(e.currentTarget, "png", $("#sbMark").checked));
+      // The watermark's words and strength stay with the book; whether this
+      // file carries it is chosen each time.
+      const markBox = $("#sbMark"), markOpts = $("#sbMarkOpts"), markText = $("#sbMarkText");
+      const paintMark = () => {
+        const w = book.watermark || {};
+        markText.value = w.text || "";
+        $$("[data-mark]").forEach((b) => b.setAttribute("aria-checked", String((w.strength || "medium") === b.dataset.mark)));
+      };
+      paintMark();
+      markBox.addEventListener("change", () => { markOpts.hidden = !markBox.checked; if (markBox.checked) paintMark(); });
+      markText.addEventListener("input", () => {
+        const v = markText.value.trim();
+        const w = { ...(book.watermark || {}) };
+        if (v) w.text = markText.value; else delete w.text;
+        if (Object.keys(w).length) book.watermark = w; else delete book.watermark;
+        change({ rail: false, typing: true });
+      });
+      markText.addEventListener("blur", () => flush());
+      $$("[data-mark]").forEach((b) => b.addEventListener("click", () => {
+        const w = { ...(book.watermark || {}) };
+        if (b.dataset.mark === "medium") delete w.strength; else w.strength = b.dataset.mark;
+        if (Object.keys(w).length) book.watermark = w; else delete book.watermark;
+        $$("[data-mark]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
+        change({ rail: false });
+      }));
       // Add a page
       $("#sbAddToggle").addEventListener("click", () => ($("#sbAddMenu").hidden ? openAdd() : closeAdd()));
       drawDesign(); drawRail(); drawInspector(); schedulePreview(0); scheduleStrip(0);
@@ -2921,19 +3088,34 @@
     const styleHost = (entry) => (entry
       ? { get: () => entry.style, set: (v) => { if (v) entry.style = v; else delete entry.style; } }
       : { get: () => book.coverStyle, set: (v) => { if (v) book.coverStyle = v; else delete book.coverStyle; } });
-    function formatHtml(k, host) {
-      const f = ((host && host.get()) || {})[k] || {};
+    // Texts that flow as paragraphs: each paragraph can take its own font.
+    const PARA_FLOW = { story: ["body"], article: ["body"], letter: ["body"], note: ["note"], about: ["about"] };
+    const paraCount = (s) => String(s == null ? "" : s).split(/\n+/).map((x) => x.trim()).filter(Boolean).length;
+    const fmtSet = (f) => !!(f && (f.font || f.color || f.align || f.size || f.weight || f.italic || (f.paras && Object.keys(f.paras).length)));
+    // `words` is the text itself when its paragraphs can be formatted apart,
+    // and null when the text is one run of words. `para` is 0 for the whole
+    // text, or the paragraph being formatted.
+    function formatHtml(k, host, words = null, para = 0) {
+      const whole = ((host && host.get()) || {})[k] || {};
+      const n = words == null ? 0 : paraCount(words);
+      if (para > n) para = 0;
+      const f = para ? ((whole.paras || {})[String(para)] || {}) : whole;
       const P = colourway(book.colourway);
       const groups = ["Serif", "Sans", "Condensed", "Mono"].map((kind) => `<optgroup label="${kind}">${FONT_LIST.filter((x) => x.kind === kind).map((x) => `<option value="${x.key}" ${f.font === x.key ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</optgroup>`).join("");
-      const set = !!(f.font || f.color || f.align || f.size || f.weight || f.italic);
+      const set = fmtSet(whole);
       const pct = Math.round(sizeScale(f) * 100);
+      const picker = n >= 2
+        ? `<label class="sb-fmtline"><span>Applies to</span><select data-fmtpara="${k}"><option value="0" ${para ? "" : "selected"}>The whole text</option>${Array.from({ length: n }, (_, i) => `<option value="${i + 1}" ${para === i + 1 ? "selected" : ""}>Paragraph ${i + 1}${(whole.paras || {})[String(i + 1)] ? " ·" : ""}</option>`).join("")}</select></label>`
+        : "";
+      const auto = para ? "Same as the whole text" : "The style's font";
       const swatch = (key, label, c) => `<button type="button" class="sb-swatch" data-fmtcolor="${key}" aria-pressed="${(f.color || "") === key}" title="${label}" aria-label="${label}"><i style="background:${c}"></i></button>`;
       const hex = /^#[0-9a-f]{6}$/i.test(f.color || "") ? f.color : "";
-      return `<div class="sb-fmt" data-fmt="${k}">
+      return `<div class="sb-fmt" data-fmt="${k}" data-fmtat="${para}">
         <button type="button" class="sb-link sb-fmttoggle" aria-expanded="false" aria-controls="sbFmt_${k}">Format${set ? " · changed" : ""}</button>
         <div class="sb-fmtrow" id="sbFmt_${k}" hidden>
-          <label class="sb-fmtline"><span>Font</span><select data-fmtfont="${k}"><option value="">The style's font</option>${groups}</select></label>
-          <div class="sb-fmtline"><span>Colour</span><span class="sb-swatches" role="group" aria-label="Colour">${swatch("", "The style's colour", "linear-gradient(135deg, #fff 45%, #999 50%, #fff 55%)")}${swatch("ink", "Ink", P.ink)}${swatch("soft", "Soft", P.soft)}${swatch("accent", "Accent", accentText(P))}<label class="sb-custom" title="Any colour"><input type="color" data-fmtcustom="${k}" value="${hex || "#1a1712"}" aria-label="Any colour"><span>${hex ? esc(hex) : "Any"}</span></label></span></div>
+          ${picker}
+          <label class="sb-fmtline"><span>Font</span><select data-fmtfont="${k}"><option value="">${auto}</option>${groups}</select></label>
+          <div class="sb-fmtline"><span>Colour</span><span class="sb-swatches" role="group" aria-label="Colour">${swatch("", para ? "Same as the whole text" : "The style's colour", "linear-gradient(135deg, #fff 45%, #999 50%, #fff 55%)")}${swatch("ink", "Ink", P.ink)}${swatch("soft", "Soft", P.soft)}${swatch("accent", "Accent", accentText(P))}<label class="sb-custom" title="Any colour"><input type="color" data-fmtcustom="${k}" value="${hex || "#1a1712"}" aria-label="Any colour"><span>${hex ? esc(hex) : "Any"}</span></label></span></div>
           <label class="sb-fmtline"><span>Size</span><span class="sb-sizerow"><input type="range" min="60" max="160" step="5" value="${pct}" data-fmtsize="${k}" aria-valuetext="${pct} percent"><output>${pct}%</output></span></label>
           <div class="sb-fmtline"><span>Style</span><span class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Weight">${[["", "Auto"], ["light", "Light"], ["regular", "Regular"], ["bold", "Bold"]].map(([w, n]) => `<button type="button" role="radio" data-fmtweight="${w}" aria-checked="${(f.weight || "") === w}">${n}</button>`).join("")}<label class="sb-check-row sb-italic"><input type="checkbox" data-fmtitalic="${k}" ${f.italic ? "checked" : ""}> <i>Italic</i></label></span></div>
           <div class="sb-fmtline"><span>Align</span><span class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Alignment">${[["", "Auto"], ["left", "Left"], ["center", "Centre"], ["right", "Right"], ["justify", "Justify"]].map(([a, n]) => `<button type="button" role="radio" data-fmtalign="${a}" aria-checked="${(f.align || "") === a}">${n}</button>`).join("")}</span></div>
@@ -2941,17 +3123,58 @@
       </div>`;
     }
     function wireFormat(box, host) {
-      box.querySelectorAll("[data-fmt]").forEach((wrap) => {
+      box.querySelectorAll("[data-fmt]").forEach((wrap) => wireFormatOne(wrap, host));
+    }
+    // The words in the box beside this control, so the paragraph list can
+    // follow what is typed.
+    const fmtWords = (wrap, k) => {
+      const field = wrap.closest(".sb-field");
+      const ctl = field && field.querySelector(`[data-field="${k}"]`);
+      return ctl ? ctl.value : null;
+    };
+    function wireFormatOne(wrap, host) {
+      {
         const k = wrap.dataset.fmt;
+        const para = +(wrap.dataset.fmtat || 0);
         const toggle = wrap.querySelector(".sb-fmttoggle"), row = wrap.querySelector(".sb-fmtrow");
-        toggle.addEventListener("click", () => { row.hidden = !row.hidden; toggle.setAttribute("aria-expanded", String(!row.hidden)); });
+        // Redraw the controls, open, for the paragraph now being formatted.
+        const redraw = (at, focusPicker) => {
+          const holder = document.createElement("div");
+          holder.innerHTML = formatHtml(k, host, fmtWords(wrap, k), at);
+          const fresh = holder.firstElementChild;
+          wrap.replaceWith(fresh);
+          wireFormatOne(fresh, host);
+          const r = fresh.querySelector(".sb-fmtrow"), t = fresh.querySelector(".sb-fmttoggle");
+          r.hidden = false; t.setAttribute("aria-expanded", "true");
+          const again = fresh.querySelector(focusPicker ? "[data-fmtpara]" : ".sb-fmttoggle");
+          if (again) again.focus();
+        };
+        const paraSel = wrap.querySelector("[data-fmtpara]");
+        toggle.addEventListener("click", () => {
+          // Opening it: the list of paragraphs follows what has been typed since.
+          const words = fmtWords(wrap, k);
+          const flows = !!paraSel || (PARA_FLOW[sel >= 0 ? book.pages[sel].type : "cover"] || []).includes(k);
+          if (row.hidden && flows && words != null && paraCount(words) !== (paraSel ? paraSel.options.length - 1 : 0)) { redraw(para, false); return; }
+          row.hidden = !row.hidden;
+          toggle.setAttribute("aria-expanded", String(!row.hidden));
+        });
+        if (paraSel) paraSel.addEventListener("change", () => redraw(+paraSel.value || 0, true));
         const update = (patch) => {
           const all = { ...(host.get() || {}) };
-          const one = { ...(all[k] || {}), ...patch };
-          for (const key of Object.keys(one)) if (!one[key] || (key === "size" && one[key] === 1)) delete one[key];
+          const one = { ...(all[k] || {}) };
+          if (para) {
+            const paras = { ...(one.paras || {}) };
+            const at = { ...(paras[String(para)] || {}), ...patch };
+            for (const key of Object.keys(at)) if (!at[key] || (key === "size" && at[key] === 1)) delete at[key];
+            if (Object.keys(at).length) paras[String(para)] = at; else delete paras[String(para)];
+            if (Object.keys(paras).length) one.paras = paras; else delete one.paras;
+          } else {
+            Object.assign(one, patch);
+            for (const key of Object.keys(one)) if (key !== "paras" && (!one[key] || (key === "size" && one[key] === 1))) delete one[key];
+          }
           if (Object.keys(one).length) all[k] = one; else delete all[k];
           host.set(Object.keys(all).length ? all : null);
-          toggle.textContent = `Format${all[k] ? " · changed" : ""}`;
+          toggle.textContent = `Format${fmtSet(all[k]) ? " · changed" : ""}`;
           change({ rail: false });
           ensureBookFonts(book).then(() => { updateMeters(); schedulePreview(0); scheduleStrip(300); });
         };
@@ -2982,7 +3205,7 @@
           wrap.querySelectorAll("[data-fmtalign]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
           update({ align: b.dataset.fmtalign });
         }));
-      });
+      }
     }
     // Bands round a full-page photo: which edges, and how broad.
     function borderHtml(entry) {
@@ -3023,8 +3246,9 @@
         ? [...Object.keys((L2.fields || {})[entry.type] || {}), ...((L2.formatFields || {})[entry.type] || [])].filter((k) => entry.type !== "photos" || k === "caption")
         : ((L2.formatFields || {}).cover || []);
       const formattable = allowed.includes(f.k);
+      const flows = (PARA_FLOW[entry ? entry.type : "cover"] || []).includes(f.k);
       return `<div class="sb-field">
-        <div class="sb-labelrow"><label for="${id}">${esc(f.label)}</label>${formattable ? formatHtml(f.k, styleHost(entry)) : ""}</div>
+        <div class="sb-labelrow"><label for="${id}">${esc(f.label)}</label>${formattable ? formatHtml(f.k, styleHost(entry), flows ? value : null) : ""}</div>
         ${f.hint ? `<p class="sb-hint" id="${id}_hint">${esc(f.hint)}</p>` : ""}
         ${control}
         <div class="sb-meter"><span id="${id}_fit">${fontsOk ? "" : "Measuring…"}</span><span class="sb-counter" id="${id}_count"></span></div>
@@ -3065,6 +3289,77 @@
       });
     }
 
+    /* A line the book draws for itself — a page's small label and heading, the
+       credit under a photo, the words on the cover. Typed here it is used
+       instead; left empty the book keeps its own words, and nothing is stored. */
+    const PT = () => (window.STUDIO_BOOK_LIMITS || {}).pageText || { label: 32, heading: 60, note: 90, credit: 60, qrLabel: 24 };
+    const overHtml = (id, label, value, max, ph, hint) => `<div class="sb-field">
+        <label for="${id}">${esc(label)}</label>
+        ${hint ? `<p class="sb-hint">${esc(hint)}</p>` : ""}
+        <input type="text" id="${id}" maxlength="${max}" value="${esc(value || "")}" placeholder="${esc(ph || "")}" spellcheck="true" autocapitalize="sentences">
+      </div>`;
+    const setOver = (host, k) => (v) => { if (String(v).trim()) host[k] = v; else delete host[k]; };
+    const wireOver = (id, set) => {
+      const el = $(`#${id}`); if (!el) return;
+      el.addEventListener("input", () => { set(el.value); change({ rail: false, typing: true }); patchRail(); });
+      el.addEventListener("blur", () => { flush(); schedulePreview(0); scheduleStrip(300); });
+    };
+    // The small label and heading every About / What I shoot / Contact page draws.
+    const headingsHtml = (entry, label, heading) => overHtml("sbOvLabel", "Small line above the heading", entry.label, PT().label, label)
+      + overHtml("sbOvHeading", "Heading", entry.heading, PT().heading, heading);
+    const wireHeadings = (entry) => { wireOver("sbOvLabel", setOver(entry, "label")); wireOver("sbOvHeading", setOver(entry, "heading")); };
+    // The credit line printed under or beside a photograph.
+    const creditHtml = (entry) => overHtml("sbOvCredit", "Credit line", entry.credit, PT().credit,
+      creditLine(((entry.photos || []).map((s) => { const hit = library().byId.get(s.id); return hit && hit.shoot; }).filter(Boolean))) || "The album's own credit",
+      "Printed in the foot band. Empty means the album's own credit.");
+    const wireCredit = (entry) => wireOver("sbOvCredit", setOver(entry, "credit"));
+
+    /* Everything else the cover prints: the small label, the masthead and its
+       tagline, the two lines at the foot, and the three lines each side. Each
+       is shown with what the book would print if it were left empty. */
+    function coverLinesHtml() {
+      const t = (book.coverText && typeof book.coverText === "object") ? book.coverText : {};
+      const CT = coverText(book), cl = coverLines(book), M = (window.STUDIO_BOOK_LIMITS || {}).coverText || {};
+      const rightNow = [`${cl.photos} PLATES`, `${cl.pages} PAGES`, "NOIDA, INDIA"];
+      const side = (which, now) => `<div class="sb-field"><span class="sb-label">${which === "left" ? "Three lines on the left" : "Three lines on the right"}</span>
+        ${[0, 1, 2].map((i) => `<input type="text" id="sbCov_${which}${i}" maxlength="${(window.STUDIO_BOOK_LIMITS || {}).coverLine || 24}" value="${esc(((t[which] || [])[i]) || "")}" placeholder="${esc(now[i] || "—")}" aria-label="${which === "left" ? "Left" : "Right"} line ${i + 1}">`).join("")}</div>`;
+      // Each style prints its own lines, so only those are offered.
+      const line = { label: "Small label", mast: "Masthead word", tagline: "Line under the masthead", foot: "Foot line", place: "Place and year" };
+      const mine = COVER_LINES[book.style] || COVER_LINES.modern;
+      const counts = mine.includes("counts");
+      return `<details class="sb-sec" id="sbCoverLines"><summary>The rest of the cover</summary>
+        ${mine.filter((k) => line[k]).map((k) => overHtml(`sbCov_${k}`, line[k], t[k], M[k] || 32, CT[k])).join("")}
+        ${counts ? `<label class="sb-check-row"><input type="checkbox" id="sbCovCounts" ${CT.showCounts ? "checked" : ""}> Print the three lines each side</label>` : ""}
+        ${counts && CT.showCounts ? side("left", cl.genres) + side("right", rightNow) : ""}
+        <p class="sb-hint">Left empty, each line is the one the book works out for itself. Another style prints other lines.</p></details>`;
+    }
+    function wireCoverLines() {
+      const at = () => (book.coverText && typeof book.coverText === "object" ? book.coverText : (book.coverText = {}));
+      const mine = COVER_LINES[book.style] || COVER_LINES.modern;
+      const tidy = () => { if (book.coverText && !Object.keys(book.coverText).length) delete book.coverText; };
+      for (const k of mine) {
+        wireOver(`sbCov_${k}`, (v) => { const t = at(); if (String(v).trim()) t[k] = v; else delete t[k]; tidy(); });
+      }
+      const counts = $("#sbCovCounts");
+      if (counts) counts.addEventListener("change", () => {
+        const t = at();
+        if (counts.checked) delete t.showCounts; else t.showCounts = false;
+        tidy(); change({ rail: false }); drawFieldsAndMeters();
+        const open = $("#sbCoverLines"); if (open) { open.open = true; const again = $("#sbCovCounts"); if (again) again.focus(); }
+      });
+      for (const which of ["left", "right"]) for (const i of [0, 1, 2]) {
+        wireOver(`sbCov_${which}${i}`, (v) => {
+          const t = at();
+          const lines = Array.isArray(t[which]) ? t[which].slice() : [];
+          while (lines.length <= i) lines.push("");
+          lines[i] = v;
+          while (lines.length && !String(lines[lines.length - 1]).trim()) lines.pop();
+          if (lines.length) t[which] = lines; else delete t[which];
+          tidy();
+        });
+      }
+    }
+
     function drawFields() {
       const box = $("#sbFields"); if (!box) return;
       const entry = sel >= 0 ? book.pages[sel] : null;
@@ -3072,9 +3367,11 @@
       if (!entry) {
         box.innerHTML = `
           ${fieldHtml({ k: "title", label: "Title", ctl: "input" }, book.title || "", 80)}
-          ${fieldHtml({ k: "subtitle", label: "Line under the title", ctl: "input" }, book.subtitle || "", 120)}`;
+          ${fieldHtml({ k: "subtitle", label: "Line under the title", ctl: "input" }, book.subtitle || "", 120)}
+          ${coverLinesHtml()}`;
         wireField($("#sbF_title"), (v) => { book.title = v; }, 80);
         wireField($("#sbF_subtitle"), (v) => { book.subtitle = v; }, 120);
+        wireCoverLines();
         wireFormat(box, styleHost(null));
         return;
       }
@@ -3083,11 +3380,11 @@
           f.credit ? `<button type="button" class="sb-link" id="sbUseCredit">Use the album credit</button>` : "")).join("")}
           <details class="sb-ideas"><summary>Ideas</summary><ul>${IDEAS[entry.type].map((q) => `<li>${esc(q)}</li>`).join("")}</ul></details>
           <p class="sb-hint">Published books are public: only use names and words people are happy to see there, and no private notes.</p>`;
-        if (entry.type === "article") box.insertAdjacentHTML("beforeend", borderHtml(entry));
+        if (entry.type === "article") box.insertAdjacentHTML("beforeend", creditHtml(entry) + borderHtml(entry));
         for (const f of FIELD_UI[entry.type]) wireField($(`#sbF_${f.k}`), (v) => { entry[f.k] = v; }, (caps[entry.type] || {})[f.k] || 200);
         $$("[data-select]").forEach((b) => b.addEventListener("click", () => selectOverflow(b.dataset.select)));
         wireFormat(box, styleHost(entry));
-        if (entry.type === "article") wireBorder(box, entry);
+        if (entry.type === "article") { wireCredit(entry); wireBorder(box, entry); }
         const credit = $("#sbUseCredit");
         if (credit) credit.addEventListener("click", () => {
           const hit = entry.photos[0] && library().byId.get(entry.photos[0].id);
@@ -3199,16 +3496,19 @@
       }
       if (entry.type === "photos") {
         box.innerHTML = fieldHtml({ k: "caption", label: "Caption for this page (optional)", ctl: "input", ph: "e.g. Monsoon edit, shot on the roof in Sector 46" }, entry.caption || "", (caps.photos || {}).caption || 90)
+          + creditHtml(entry)
           + `<p class="sb-hint">Published books are public, so keep private details out of captions.</p>`
           + (borderApplies(entry) ? borderHtml(entry) : "");
         wireField($("#sbF_caption"), (v) => { entry.caption = v; }, (caps.photos || {}).caption || 90);
+        wireCredit(entry);
         $$("[data-select]").forEach((b) => b.addEventListener("click", () => selectOverflow(b.dataset.select)));
         wireFormat(box, styleHost(entry));
         wireBorder(box, entry);
         return;
       }
       if (entry.type === "spread") {
-        box.innerHTML = borderHtml(entry);
+        box.innerHTML = creditHtml(entry) + borderHtml(entry);
+        wireCredit(entry);
         wireBorder(box, entry);
         return;
       }
@@ -3220,26 +3520,73 @@
         return;
       }
       if (entry.type === "about") {
-        box.innerHTML = fieldHtml({ k: "about", label: "About the studio", ctl: "area", rows: 8, ph: DEFAULT_ABOUT.split("\n")[0] }, book.texts.about || "", 1200);
+        box.innerHTML = headingsHtml(entry, "About the studio", "Not just photos, a perspective")
+          + fieldHtml({ k: "about", label: "About the studio", ctl: "area", rows: 8, ph: DEFAULT_ABOUT.split("\n")[0] }, book.texts.about || "", 1200);
+        wireHeadings(entry);
         wireField($("#sbF_about"), (v) => { book.texts.about = v; }, 1200);
         wireFormat(box, styleHost(entry));
         return;
       }
       if (entry.type === "services") {
-        box.innerHTML = `<label class="sb-check-row"><input type="checkbox" id="sbPrices" ${book.texts.showPrices ? "checked" : ""}> Show package prices on this page</label>
-          <p class="sb-hint">Off by default: a printed price caps a job before the brief is known.</p>`;
+        const live = API.liveServices() || [];
+        const hide = new Set(Array.isArray(entry.hide) ? entry.hide : []);
+        const over = (entry.items && typeof entry.items === "object") ? entry.items : {};
+        const SI = (window.STUDIO_BOOK_LIMITS || {}).serviceItem || { kicker: 28, title: 40, blurb: 120 };
+        box.innerHTML = headingsHtml(entry, "What I shoot", "Shoots, and who they are for")
+          + overHtml("sbOvNote", "Closing line", entry.note, PT().note, "Every shoot is quoted to its brief.")
+          + `<label class="sb-check-row"><input type="checkbox" id="sbPrices" ${book.texts.showPrices ? "checked" : ""}> Show package prices on this page</label>
+          <p class="sb-hint">Off by default: a printed price caps a job before the brief is known.</p>`
+          + live.map((v, i) => {
+            const o = over[v.slug] || {};
+            const changed = !!(o.kicker || o.title || o.blurb);
+            return `<details class="sb-sec sb-rowbox" ${changed ? "open" : ""}><summary>${esc(o.title || v.title || v.slug)}${hide.has(v.slug) ? " · left out" : changed ? " · in your words" : ""}</summary>
+              <label class="sb-check-row"><input type="checkbox" data-svchide="${i}" ${hide.has(v.slug) ? "" : "checked"}> Print this shoot</label>
+              ${overHtml(`sbSvc${i}_kicker`, "Small line", o.kicker, SI.kicker, v.kicker || "")}
+              ${overHtml(`sbSvc${i}_title`, "Name", o.title, SI.title, v.title || "")}
+              ${overHtml(`sbSvc${i}_blurb`, "What it is", o.blurb, SI.blurb, v.blurb || "")}</details>`;
+          }).join("")
+          + `<p class="sb-hint">The shoots come from the site. Anything typed here is used in this book only.</p>`;
+        wireHeadings(entry);
+        wireOver("sbOvNote", setOver(entry, "note"));
         $("#sbPrices").addEventListener("change", (e) => { book.texts.showPrices = e.target.checked; change({ rail: false }); });
+        const items = () => ((entry.items && typeof entry.items === "object") ? entry.items : (entry.items = {}));
+        const tidyItems = () => { if (entry.items && !Object.keys(entry.items).length) delete entry.items; };
+        live.forEach((v, i) => {
+          for (const k of ["kicker", "title", "blurb"]) wireOver(`sbSvc${i}_${k}`, (val) => {
+            const all = items(), one = { ...(all[v.slug] || {}) };
+            if (String(val).trim()) one[k] = val; else delete one[k];
+            if (Object.keys(one).length) all[v.slug] = one; else delete all[v.slug];
+            tidyItems();
+          });
+          const cb = $(`[data-svchide="${i}"]`);
+          if (cb) cb.addEventListener("change", () => {
+            const h = new Set(Array.isArray(entry.hide) ? entry.hide : []);
+            if (cb.checked) h.delete(v.slug); else h.add(v.slug);
+            if (h.size) entry.hide = [...h]; else delete entry.hide;
+            change({ rail: false });
+          });
+        });
         return;
       }
       if (entry.type === "contact") {
         const hidden = new Set(Array.isArray(entry.hide) ? entry.hide : []);
         const cfgNow = cfg();
         const lines = [["email", `Email${cfgNow.email ? ` · ${cfgNow.email}` : ""}`], ["whatsapp", "WhatsApp (when a number is typed below)"], ["instagram", "Instagram"], ["website", "Website"], ["book", "Book online"], ["studio", "Studio · Noida, working across Delhi NCR"], ["qr", "QR code to the booking form"]];
-        box.innerHTML = `<div class="sb-field"><span class="sb-label">Show on this page</span>
+        const CR = (window.STUDIO_BOOK_LIMITS || {}).contactRow || { label: 24, value: 60 };
+        const rowNow = { email: ["Email", cfgNow.email || ""], whatsapp: ["WhatsApp", book.texts.phone || ""], instagram: ["Instagram", cfgNow.instagramHandle ? `@${cfgNow.instagramHandle}` : ""], website: ["Website", "nerdyphotographer.in"], book: ["Book online", "nerdyphotographer.in/book"], studio: ["Studio", "Noida · working across Delhi NCR"] };
+        const rowsOver = (entry.rows && typeof entry.rows === "object") ? entry.rows : {};
+        box.innerHTML = headingsHtml(entry, "Let\u2019s make something", "Book a shoot")
+          + `<div class="sb-field"><span class="sb-label">Show on this page</span>
           ${lines.map(([k, label]) => `<label class="sb-check-row"><input type="checkbox" data-show="${k}" ${hidden.has(k) ? "" : "checked"}> ${esc(label)}</label>`).join("")}</div>
           <div class="sb-field"><label for="sbPhone">WhatsApp number (optional)</label>
           <input type="tel" id="sbPhone" maxlength="24" value="${esc(book.texts.phone || "")}" placeholder="+91 …">
-          <p class="sb-hint">Saved books are published inside the site's data file, which is public. Leave this empty unless you're happy for the number to be public.</p></div>`;
+          <p class="sb-hint">Saved books are published inside the site's data file, which is public. Leave this empty unless you're happy for the number to be public.</p></div>`
+          + overHtml("sbOvQr", "Words under the QR code", entry.qrLabel, PT().qrLabel, "SCAN TO BOOK")
+          + `<details class="sb-sec" id="sbRowsOver"><summary>These lines in your own words</summary>
+            ${Object.entries(rowNow).map(([k, [label, value]], i) => `<div class="sb-rowbox">
+              ${overHtml(`sbRow${i}_label`, `${esc(label)} · what it is called`, (rowsOver[k] || {}).label, CR.label, label)}
+              ${overHtml(`sbRow${i}_value`, `${esc(label)} · what it says`, (rowsOver[k] || {}).value, CR.value, value || "—")}</div>`).join("")}
+            <p class="sb-hint">Left empty, each line stays as the site has it.</p></details>`;
         $$("[data-show]").forEach((cb) => cb.addEventListener("change", () => {
           const h = new Set(Array.isArray(entry.hide) ? entry.hide : []);
           if (cb.checked) h.delete(cb.dataset.show); else h.add(cb.dataset.show);
@@ -3248,6 +3595,17 @@
         }));
         $("#sbPhone").addEventListener("input", (e) => { book.texts.phone = e.target.value; change({ rail: false, typing: true }); });
         $("#sbPhone").addEventListener("blur", () => flush());
+        wireHeadings(entry);
+        wireOver("sbOvQr", setOver(entry, "qrLabel"));
+        const rowsAt = () => ((entry.rows && typeof entry.rows === "object") ? entry.rows : (entry.rows = {}));
+        Object.keys(rowNow).forEach((k, i) => {
+          for (const which of ["label", "value"]) wireOver(`sbRow${i}_${which}`, (val) => {
+            const all = rowsAt(), one = { ...(all[k] || {}) };
+            if (String(val).trim()) one[which] = val; else delete one[which];
+            if (Object.keys(one).length) all[k] = one; else delete all[k];
+            if (entry.rows && !Object.keys(entry.rows).length) delete entry.rows;
+          });
+        });
         return;
       }
       box.innerHTML = "";
@@ -3473,7 +3831,16 @@
         <div class="sb-sec"><h3>Paper size</h3>
           <div class="sb-seg" role="radiogroup" aria-label="Paper size">${Object.entries(PAPERS).map(([k, p]) => `<button type="button" role="radio" data-paper="${k}" aria-checked="${(book.paper || "a4") === k}">${esc(p.name)}</button>`).join("")}</div>
           <p class="sb-hint" id="sbPaperNote">${esc((PAPERS[book.paper] || PAPERS.a4).note)}. Every size keeps the same layout; the words and photos scale with the page.</p>
+        </div>
+        <div class="sb-sec"><h3>The foot of every page</h3>
+          ${overHtml("sbFootText", "Name in the foot", book.footText, (window.STUDIO_BOOK_LIMITS || {}).footText || 40, studio())}
+          <label class="sb-check-row"><input type="checkbox" id="sbNums" ${book.showPageNumbers === false ? "" : "checked"}> Print page numbers</label>
         </div>`;
+      wireOver("sbFootText", (v) => { if (String(v).trim()) book.footText = v; else delete book.footText; });
+      $("#sbNums").addEventListener("change", (e) => {
+        if (e.target.checked) delete book.showPageNumbers; else book.showPageNumbers = false;
+        change();
+      });
       const radio = (selector, apply, current) => panel.querySelectorAll(selector).forEach((b) => b.addEventListener("click", () => {
         if (current(b)) return;
         const before = fontsOk ? new Set(bookCuts(book).filter((x) => x.cuts.length).map((x) => x.entry)) : null;
@@ -3519,7 +3886,7 @@
         if ((pg.photos || []).some((sh) => !lib.byId.has(sh.id))) add("a photo from a deleted album");
         if (WRITING[pg.type]) {
           const plan = planWriting(b, pg);
-          const rows = [...(pg.items || []), ...(pg.steps || [])];
+          const rows = [...(Array.isArray(pg.items) ? pg.items : []), ...(pg.steps || [])];
           if (!Object.keys(fieldCaps()[pg.type] || {}).some((k) => oneParagraph(pg[k]).length) && !rows.some((row) => Object.values(row).some((v) => typeof v === "string" && oneParagraph(v).length))) add("no words yet");
           else {
             for (const k of REQUIRED[pg.type] || []) if (plan.fields[k] && plan.fields[k].empty) add(`the ${({ headline: "headline", body: pg.type === "letter" ? "letter" : "story", title: "title", note: "words about the picture", quote: "quote", heading: "heading" })[k]} is empty`);
@@ -3591,7 +3958,7 @@
       buttons.forEach((b) => { b.disabled = true; });
       btn.textContent = format === "pdf" ? "Making the PDF…" : "Making the images…";
       ready.replaceChildren(); dropFiles();
-      const base = `${(snap.name || "portfolio").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "portfolio"}${watermarked ? "-sample" : ""}`;
+      const base = `${(snap.name || "portfolio").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "portfolio"}${watermarked ? "-watermarked" : ""}`;
       try {
         // Print quality first, then softer if the device runs short of memory.
         let result = null, lastErr = null;
@@ -3645,7 +4012,7 @@
     // that loaded the site before they existed still runs the old save code,
     // which would drop them while saying "Saved": refuse until it reloads.
     const L = window.STUDIO_BOOK_LIMITS;
-    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !L.workWays || !(L.pageTypes || []).includes("process")) {
+    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !L.workWays || !L.markStrengths || !L.paras || !L.coverText || !(L.pageTypes || []).includes("process")) {
       root.innerHTML = `<div class="sb-empty"><p class="sb-warn">The site was updated while this tab was open.</p><p class="sb-hint">Reload the page (or use “↻ Load fresh version”) before editing your books, so nothing you write is lost.</p><p><button type="button" class="sb-btn dark" id="sbReload">Reload now</button></p></div>`;
       root.querySelector("#sbReload").addEventListener("click", () => location.reload());
       return;

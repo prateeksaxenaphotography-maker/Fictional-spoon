@@ -309,16 +309,46 @@ if (books !== undefined && books !== null) {
     const BORDER_WIDTHS = new Set(["narrow", "broad"]);
     const FONTS = new Set(["fraunces", "archivo", "inter", "outfit", "playfair", "cormorant", "baskerville", "bodoni", "dmserif", "sourcesans", "jost", "manrope", "spacegrotesk", "oswald", "plexmono"]);
     const ALIGNS = new Set(["left", "center", "right", "justify"]);
+    // One text's formatting: the whole text, and, for a flowing text, each of
+    // its paragraphs (numbered from 1, at most 60, the same as the app keeps).
+    const PARA_FLOW = { story: ["body"], article: ["body"], letter: ["body"], note: ["note"], about: ["about"] };
+    const checkOneFormat = (f, what) => {
+      if (f.size !== undefined && !(typeof f.size === "number" && f.size >= 0.6 && f.size <= 1.6)) fail(`${what} at size ${JSON.stringify(f.size)}; it must be 0.6 to 1.6`);
+      if (f.weight !== undefined && !["light", "regular", "bold"].includes(f.weight)) fail(`${what} in weight ${JSON.stringify(f.weight)}`);
+      if (f.italic !== undefined && f.italic !== true) fail(`${what} with italic ${JSON.stringify(f.italic)}; only true is written`);
+      if (f.font !== undefined && !FONTS.has(f.font)) fail(`${what} in an unknown font ${JSON.stringify(f.font)}`);
+      if (f.color !== undefined && !["ink", "soft", "accent"].includes(f.color) && !/^#[0-9a-f]{6}$/.test(String(f.color))) fail(`${what} in the colour ${JSON.stringify(f.color)}; use ink, soft, accent or #rrggbb`);
+      if (f.align !== undefined && !ALIGNS.has(f.align)) fail(`${what} aligned ${JSON.stringify(f.align)}`);
+    };
+    const checkFormat = (f, what, key, flows) => {
+      for (const k of Object.keys(f)) if (!["font", "color", "align", "size", "weight", "italic", "paras"].includes(k)) fail(`${what} with ${JSON.stringify(k)}, which the app drops`);
+      checkOneFormat(f, what);
+      if (f.paras === undefined) return;
+      if (!f.paras || typeof f.paras !== "object" || Array.isArray(f.paras)) { fail(`${what} with paragraphs that are not an object`); return; }
+      if (flows === false) fail(`${what} paragraph by paragraph, but ${key} is one run of words, so the app draws it whole`);
+      for (const [at, p] of Object.entries(f.paras)) {
+        if (!/^[1-9][0-9]{0,2}$/.test(at) || Number(at) > 60) { fail(`${what} a paragraph ${JSON.stringify(at)}; paragraphs are numbered 1 to 60`); continue; }
+        if (!p || typeof p !== "object" || Array.isArray(p)) { fail(`${what} paragraph ${at} with formatting that is not an object`); continue; }
+        for (const k of Object.keys(p)) if (!["font", "color", "align", "size", "weight", "italic"].includes(k)) fail(`${what} paragraph ${at} with ${JSON.stringify(k)}, which the app drops`);
+        checkOneFormat(p, `${what} paragraph ${at}`);
+      }
+    };
     const PAPERS = new Set(["a4", "b5", "a5", "letter"]);
     const PHOTO_AT = { story: ["top", "bottom", "left", "right"], note: ["top", "bottom", "left", "right"], quote: ["top", "bottom", "left", "right"], feature: ["left", "right"], article: ["left", "right"] };
     const FITS = new Set(["fill", "whole", "width", "height"]);
+    // Lines a page draws for itself that the studio can write over, and the
+    // most each may hold. They are kept only when typed.
+    const PAGE_TEXT = { label: 32, heading: 60, note: 90, credit: 60, qrLabel: 24 };
+    const SERVICE_ITEM = { kicker: 28, title: 40, blurb: 120 };
+    const CONTACT_ROW = { label: 24, value: 60 };
+    const CREDIT_PAGES = new Set(["photos", "spread", "article", "story", "note", "quote", "feature"]);
     const KNOWN_KEYS = {
-      photos: ["type", "photos", "caption", "border", "borderWidth", "style"], spread: ["type", "photos", "border", "borderWidth"], divider: ["type", "heading", "line", "style"],
-      about: ["type", "style"], services: ["type"], contact: ["type", "hide"],
-      story: ["type", "photos", "photoAt", "style", ...Object.keys(FIELD_MAX.story)], note: ["type", "photos", "photoAt", "style", ...Object.keys(FIELD_MAX.note)],
-      quote: ["type", "photos", "photoAt", "style", ...Object.keys(FIELD_MAX.quote)], letter: ["type", "style", ...Object.keys(FIELD_MAX.letter)],
-      feature: ["type", "photos", "photoAt", "style", ...Object.keys(FIELD_MAX.feature)],
-      article: ["type", "photos", "photoAt", "style", "border", "borderWidth", ...Object.keys(FIELD_MAX.article)],
+      photos: ["type", "photos", "caption", "credit", "border", "borderWidth", "style"], spread: ["type", "photos", "credit", "border", "borderWidth"], divider: ["type", "heading", "line", "style"],
+      about: ["type", "label", "heading", "style"], services: ["type", "label", "heading", "note", "items", "hide"], contact: ["type", "label", "heading", "rows", "qrLabel", "hide"],
+      story: ["type", "photos", "photoAt", "credit", "style", ...Object.keys(FIELD_MAX.story)], note: ["type", "photos", "photoAt", "credit", "style", ...Object.keys(FIELD_MAX.note)],
+      quote: ["type", "photos", "photoAt", "credit", "style", ...Object.keys(FIELD_MAX.quote)], letter: ["type", "style", ...Object.keys(FIELD_MAX.letter)],
+      feature: ["type", "photos", "photoAt", "credit", "style", ...Object.keys(FIELD_MAX.feature)],
+      article: ["type", "photos", "photoAt", "credit", "style", "border", "borderWidth", ...Object.keys(FIELD_MAX.article)],
       ways: ["type", "items", "style", ...Object.keys(FIELD_MAX.ways)],
       process: ["type", "way", "steps", "style", ...Object.keys(FIELD_MAX.process)]
     };
@@ -368,7 +398,39 @@ if (books !== undefined && books !== null) {
             if (!["you", "together", "studio"].includes(st.who)) fail(`${where} step ${k + 1} says ${JSON.stringify(st.who)} does it`);
           });
         }
-        if (pg.hide !== undefined && (!Array.isArray(pg.hide) || pg.hide.some((k) => !["email", "whatsapp", "instagram", "website", "book", "studio", "qr"].includes(k)))) fail(`${where} hides contact lines the app doesn't know: ${JSON.stringify(pg.hide)}`);
+        if (pg.type === "contact" && pg.hide !== undefined && (!Array.isArray(pg.hide) || pg.hide.some((k) => !["email", "whatsapp", "instagram", "website", "book", "studio", "qr"].includes(k)))) fail(`${where} hides contact lines the app doesn't know: ${JSON.stringify(pg.hide)}`);
+        // The lines a page draws for itself, written over by the studio.
+        for (const [k, max] of Object.entries(PAGE_TEXT)) {
+          if (pg[k] === undefined || (FIELD_MAX[pg.type] || {})[k] !== undefined) continue;
+          if (!KNOWN_KEYS[pg.type].includes(k)) continue;
+          if (typeof pg[k] !== "string" || !pg[k].trim()) fail(`${where} (${pg.type}) has a ${k} the app would drop`);
+          else if (pg[k].length > max) fail(`${where} (${pg.type}) has a ${k} of ${pg[k].length} characters; the most it can hold is ${max}`);
+        }
+        if (pg.type === "services") {
+          if (pg.items !== undefined) {
+            if (!pg.items || typeof pg.items !== "object" || Array.isArray(pg.items)) fail(`${where} has items that are not an object of shoots`);
+            else for (const [slug, o] of Object.entries(pg.items)) {
+              if (!slug || slug.length > 60) { fail(`${where} writes over a shoot ${JSON.stringify(slug)} the app drops`); continue; }
+              if (!o || typeof o !== "object" || Array.isArray(o)) { fail(`${where} has words for the shoot ${slug} that are not an object`); continue; }
+              for (const [k, v2] of Object.entries(o)) {
+                if (!(k in SERVICE_ITEM)) { fail(`${where} writes a ${JSON.stringify(k)} for the shoot ${slug}, which the app drops`); continue; }
+                if (typeof v2 !== "string" || !v2.trim() || v2.length > SERVICE_ITEM[k]) fail(`${where} has a ${k} for the shoot ${slug} the app would drop or cut`);
+              }
+            }
+          }
+          if (pg.hide !== undefined && (!Array.isArray(pg.hide) || pg.hide.some((k) => typeof k !== "string" || !k || k.length > 60))) fail(`${where} leaves out shoots the app can't name: ${JSON.stringify(pg.hide)}`);
+        }
+        if (pg.type === "contact" && pg.rows !== undefined) {
+          if (!pg.rows || typeof pg.rows !== "object" || Array.isArray(pg.rows)) fail(`${where} has rows that are not an object`);
+          else for (const [key, o] of Object.entries(pg.rows)) {
+            if (!["email", "whatsapp", "instagram", "website", "book", "studio", "qr"].includes(key)) { fail(`${where} writes over a contact line ${JSON.stringify(key)} the app drops`); continue; }
+            if (!o || typeof o !== "object" || Array.isArray(o)) { fail(`${where} has a contact line ${key} that is not an object`); continue; }
+            for (const [k, v2] of Object.entries(o)) {
+              if (!(k in CONTACT_ROW)) { fail(`${where} writes a ${JSON.stringify(k)} on the contact line ${key}, which the app drops`); continue; }
+              if (typeof v2 !== "string" || !v2.trim() || v2.length > CONTACT_ROW[k]) fail(`${where} has a ${k} on the contact line ${key} the app would drop or cut`);
+            }
+          }
+        }
         if (pg.border !== undefined && !BORDERS.has(pg.border)) fail(`${where} has an unknown border ${JSON.stringify(pg.border)}`);
         if (pg.borderWidth !== undefined && !BORDER_WIDTHS.has(pg.borderWidth)) fail(`${where} has an unknown border width ${JSON.stringify(pg.borderWidth)}`);
         if (pg.style !== undefined) {
@@ -377,13 +439,7 @@ if (books !== undefined && books !== null) {
           else for (const [k, f] of Object.entries(pg.style)) {
             if (!(k in (FIELD_MAX[pg.type] || {})) && !extra.includes(k)) { fail(`${where} formats ${JSON.stringify(k)}, which isn't one of its texts`); continue; }
             if (!f || typeof f !== "object") { fail(`${where} has formatting for ${k} that is not an object`); continue; }
-            for (const key of Object.keys(f)) if (!["font", "color", "align", "size", "weight", "italic"].includes(key)) fail(`${where} formats ${k} with ${JSON.stringify(key)}, which the app drops`);
-            if (f.size !== undefined && !(typeof f.size === "number" && f.size >= 0.6 && f.size <= 1.6)) fail(`${where} sizes ${k} at ${JSON.stringify(f.size)}; it must be 0.6 to 1.6`);
-            if (f.weight !== undefined && !["light", "regular", "bold"].includes(f.weight)) fail(`${where} sets ${k} in weight ${JSON.stringify(f.weight)}`);
-            if (f.italic !== undefined && f.italic !== true) fail(`${where} has italic ${JSON.stringify(f.italic)} for ${k}; only true is written`);
-            if (f.font !== undefined && !FONTS.has(f.font)) fail(`${where} sets ${k} in an unknown font ${JSON.stringify(f.font)}`);
-            if (f.color !== undefined && !["ink", "soft", "accent"].includes(f.color) && !/^#[0-9a-f]{6}$/.test(String(f.color))) fail(`${where} colours ${k} ${JSON.stringify(f.color)}; use ink, soft, accent or #rrggbb`);
-            if (f.align !== undefined && !ALIGNS.has(f.align)) fail(`${where} aligns ${k} ${JSON.stringify(f.align)}`);
+            checkFormat(f, `${where} formats ${k}`, k, (PARA_FLOW[pg.type] || []).includes(k));
           }
         }
         if (pg.photoAt !== undefined && !(PHOTO_AT[pg.type] || []).includes(pg.photoAt)) fail(`${where} (${pg.type}) puts its photo at ${JSON.stringify(pg.photoAt)}; allowed: ${(PHOTO_AT[pg.type] || []).join(", ") || "nowhere"}`);
@@ -394,15 +450,37 @@ if (books !== undefined && books !== null) {
       });
       if (b.cover && b.cover.fit !== undefined && !FITS.has(b.cover.fit)) fail(`studio portfolio book ${name} has a cover photo placed as ${JSON.stringify(b.cover.fit)}`);
       if (b.paper !== undefined && (!PAPERS.has(b.paper) || b.paper === "a4")) fail(`studio portfolio book ${name} has paper ${JSON.stringify(b.paper)}; the app writes b5, a5 or letter, and nothing for A4`);
+      if (b.coverText !== undefined) {
+        const CT_MAX = { label: 32, mast: 18, tagline: 24, foot: 40, place: 40 };
+        const CT_SIDE = (side, lines) => {
+          if (!Array.isArray(lines) || lines.length > 3) fail(`studio portfolio book ${name} has ${side} cover lines that are not a list of at most three`);
+          else lines.forEach((l, i) => { if (typeof l !== "string" || l.length > 24) fail(`studio portfolio book ${name} has a ${side} cover line ${i + 1} the app would cut`); });
+        };
+        if (!b.coverText || typeof b.coverText !== "object" || Array.isArray(b.coverText)) fail(`studio portfolio book ${name} has coverText that is not an object`);
+        else for (const [k, v2] of Object.entries(b.coverText)) {
+          if (k === "showCounts") { if (v2 !== false) fail(`studio portfolio book ${name} writes showCounts ${JSON.stringify(v2)}; only false is written`); continue; }
+          if (k === "left" || k === "right") { CT_SIDE(k, v2); continue; }
+          if (!(k in CT_MAX)) { fail(`studio portfolio book ${name} has a cover line ${JSON.stringify(k)}, which the app drops`); continue; }
+          if (typeof v2 !== "string" || !v2.trim() || v2.length > CT_MAX[k]) fail(`studio portfolio book ${name} has a cover ${k} the app would drop or cut`);
+        }
+      }
+      if (b.footText !== undefined && (typeof b.footText !== "string" || !b.footText.trim() || b.footText.length > 40)) fail(`studio portfolio book ${name} has a running foot the app would drop or cut`);
+      if (b.showPageNumbers !== undefined && b.showPageNumbers !== false) fail(`studio portfolio book ${name} writes showPageNumbers ${JSON.stringify(b.showPageNumbers)}; only false is written`);
+      if (b.watermark !== undefined) {
+        const w = b.watermark;
+        if (!w || typeof w !== "object" || Array.isArray(w)) fail(`studio portfolio book ${name} has a watermark that is not an object`);
+        else {
+          for (const key of Object.keys(w)) if (!["text", "strength"].includes(key)) fail(`studio portfolio book ${name} has a watermark ${JSON.stringify(key)}, which the app drops`);
+          if (w.text !== undefined && (typeof w.text !== "string" || w.text.length > 40)) fail(`studio portfolio book ${name} has watermark words the app would cut`);
+          if (w.strength !== undefined && !["light", "strong"].includes(w.strength)) fail(`studio portfolio book ${name} has watermark strength ${JSON.stringify(w.strength)}; the app writes light or strong, and nothing for medium`);
+        }
+      }
       if (b.coverStyle !== undefined) {
         if (!b.coverStyle || typeof b.coverStyle !== "object" || Array.isArray(b.coverStyle)) fail(`studio portfolio book ${name} has a coverStyle that is not an object`);
         else for (const [k, f] of Object.entries(b.coverStyle)) {
           if (!["title", "subtitle"].includes(k)) { fail(`studio portfolio book ${name} formats a cover text ${JSON.stringify(k)} the app drops`); continue; }
           if (!f || typeof f !== "object") { fail(`studio portfolio book ${name} has cover formatting for ${k} that is not an object`); continue; }
-          for (const key of Object.keys(f)) if (!["font", "color", "align", "size", "weight", "italic"].includes(key)) fail(`studio portfolio book ${name} formats the cover ${k} with ${JSON.stringify(key)}, which the app drops`);
-          if (f.font !== undefined && !FONTS.has(f.font)) fail(`studio portfolio book ${name} sets the cover ${k} in an unknown font ${JSON.stringify(f.font)}`);
-          if (f.align !== undefined && !ALIGNS.has(f.align)) fail(`studio portfolio book ${name} aligns the cover ${k} ${JSON.stringify(f.align)}`);
-          if (f.size !== undefined && !(typeof f.size === "number" && f.size >= 0.6 && f.size <= 1.6)) fail(`studio portfolio book ${name} sizes the cover ${k} at ${JSON.stringify(f.size)}`);
+          checkFormat(f, `studio portfolio book ${name} formats the cover ${k}`, k, false);
         }
       }
       if (books.deleted.includes(b.id)) fail(`studio portfolio book ${name} is published and also marked deleted`);
@@ -478,14 +556,21 @@ try {
   const wordsIn = (b) => {
     let pages = 0, chars = 0, fits = 0;
     const settings = (s) => (s ? (s.fit ? 1 : 0) + (s.opacity !== undefined ? 1 : 0) : 0);
-    fits += settings(b && b.cover) + (b && b.paper ? 1 : 0) + (b && b.coverStyle ? Object.keys(b.coverStyle).length : 0);
+    fits += settings(b && b.cover) + (b && b.paper ? 1 : 0) + (b && b.coverStyle ? Object.keys(b.coverStyle).length : 0) + (b && b.watermark ? Object.keys(b.watermark).length : 0) + (b && b.coverText ? Object.keys(b.coverText).length : 0) + (b && b.footText ? 1 : 0) + (b && b.showPageNumbers === false ? 1 : 0);
+    for (const side of ["left", "right"]) for (const l of ((b && b.coverText && b.coverText[side]) || [])) if (typeof l === "string") chars += l.length;
     for (const pg of (b && b.pages) || []) {
       if (!pg) continue;
       if (WRITING.has(pg.type)) pages++;
       for (const [k, v] of Object.entries(pg)) if (k !== "type" && typeof v === "string") chars += v.length;
-      for (const row of [...(pg.items || []), ...(pg.steps || [])]) for (const v of Object.values(row || {})) if (typeof v === "string") chars += v.length;
+      // `items` is a list on a ways page and an object of shoots on What I shoot.
+      for (const row of [...(Array.isArray(pg.items) ? pg.items : Object.values(pg.items || {})), ...(pg.steps || []), ...Object.values(pg.rows || {})]) {
+        for (const v of Object.values(row || {})) if (typeof v === "string") chars += v.length;
+      }
       for (const s of pg.photos || []) fits += settings(s);
-      fits += (pg.photoAt ? 1 : 0) + (pg.border ? 1 : 0) + (pg.borderWidth ? 1 : 0) + (pg.style ? Object.keys(pg.style).length : 0) + (Array.isArray(pg.hide) ? pg.hide.length : 0);
+      // Each formatted text counts once, and each of its formatted paragraphs
+      // once more, so losing paragraph formatting shows up as a shrink too.
+      const styleWeight = (style) => Object.values(style || {}).reduce((n, f) => n + 1 + (f && f.paras ? Object.keys(f.paras).length : 0), 0);
+      fits += (pg.photoAt ? 1 : 0) + (pg.border ? 1 : 0) + (pg.borderWidth ? 1 : 0) + styleWeight(pg.style) + (Array.isArray(pg.hide) ? pg.hide.length : 0);
     }
     return { pages, chars, fits };
   };
