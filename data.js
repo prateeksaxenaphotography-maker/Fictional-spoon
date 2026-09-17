@@ -252,6 +252,10 @@ window.WPS_DATA = {
       "tags": "",
       "gear": "",
       "client": "",
+      "forClient": "model",
+      "alsoFor": [
+        "mua"
+      ],
       "date": "2026-06-13",
       "instagram": "https://www.instagram.com/prachichoudharyyy , https://www.instagram.com/glamnationbyrashi",
       "kavyar": "https://kavyar.com/e8mvb3trxabe",
@@ -2463,6 +2467,10 @@ window.WPS_DATA = {
     "enabled": false,
     "price": 300,
     "upiId": ""
+  },
+  "STUDIO_PORTFOLIOS": {
+    "versions": [],
+    "deleted": []
   },
   "TFP_PACKAGE": {
     "name": "Test Shoot / TFP Collaboration",
