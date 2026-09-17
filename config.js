@@ -10,6 +10,12 @@ const STUDIO_CONFIG = {
   tagline: "Cinematic photography, visual stories, and fine art prints.",
   introQuote: "“The best photography doesn't just record a moment. It captures the light, the mood, and the silent story within the frame.”",
 
+  // The Studio page (/studio) is being rethought. While this is false, visitors
+  // who open it land on the home page, and it is left out of the menu, the
+  // footer and the sitemap. In admin mode you still see it. Set it to true
+  // when the new page is ready.
+  studioPagePublic: false,
+
   // Homepage hero — hand-picked, not automatic. The first screen is the one
   // image that deserves to be chosen rather than whatever sorts to the top.
   // Pick a LANDSCAPE frame: this fills the full width of the screen, and a
