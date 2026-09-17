@@ -82,9 +82,12 @@ export const SERVICES = [
     // Albums made for a model or a model agency. An album with no client set
     // falls back to model work: a single model, nobody paying for the pictures.
     albumFilter: { clients: ["model", "agency"], modelWork: true },
+    // This page carries the models' comp cards: app.js paints the Comp Cards
+    // page's blocks (and its A–Z bar) into the work section, over the album
+    // cards written here for crawlers. The old Comp Cards address leads here.
+    compCards: true,
     workLinks: [
-      { href: "/categories/?kind=type&val=Model%20Portfolio", label: "See model portfolios" },
-      { href: "/categories/?kind=type&val=Comp%20Cards", label: "See comp cards" }
+      { href: "/categories/?kind=type&val=Model%20Portfolio", label: "See model portfolios" }
     ],
     faqs: [
       ["How much does a model portfolio shoot cost in Noida?", "It depends on how many looks you shoot and how many finished images you need — a comp card needs fewer than a full editorial portfolio. Send a brief through the booking page and you will have a price against it before anything is booked."],
