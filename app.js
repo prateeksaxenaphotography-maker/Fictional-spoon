@@ -3254,19 +3254,22 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // One model on the album and a comp card exists for them: point at it.
     // The share link is the same slug form the Share button hands out.
     const soloModel = hasTalent && shoot.talent.split(",").map(x => x.trim()).filter(Boolean).length === 1;
-    // …and that card has photos on it: a model whose every photo is kept off
-    // comp cards has no card, so the link would lead to "Album not found".
+    // …and that card has photos on it: a model with none has no card, so the
+    // link would lead to "Album not found". Any photo counts, because since
+    // v415 a card carries every photo tagged to the model whatever its Usage.
+    // Testing for a comp-card photo here (as this did) hid the link from a
+    // model whose work is all Portfolio Only, though their card exists.
     const hasCompCard = soloModel && !isCcPage && showsOnModelPage(shoot, "Comp Cards")
       // Compared as slugs, because that is how the link resolves: a second
       // album of the same model typed in a different case used to fail this
       // test and hide a link to a card that exists.
       && SHOOTS.some((x) => showsOnModelPage(x, "Comp Cards")
         && slugify(getTalentCleanName(x.talent)) === slugify(getTalentCleanName(shoot.talent))
-        && (x.photos || []).some(usableOnCompCard));
+        && (x.photos || []).length);
     if (hasCompCard) {
       const modelName = getTalentCleanName(shoot.talent);
       const slug = slugify(modelName);
-      if (slug) groups.push({ label: "Model portfolio", rendered: [`<span class="lb-person"><a href="/share/?a=comp-card-${encodeURIComponent(slug)}">View ${esc(modelName)}’s model portfolio ↗</a><small class="lb-person-note">Every model on the site has one, with a comp card free to view and download as a PDF. <a href="${esc(compCardsHref())}" data-link>See all model portfolios ↗</a></small></span>`] });
+      if (slug) groups.push({ label: "Model portfolio", rendered: [`<span class="lb-person"><a href="/share/?a=comp-card-${encodeURIComponent(slug)}">View ${esc(modelName)}’s model portfolio ↗</a><small class="lb-person-note">Every model on the site has one: all their photographs in one place, with the PDFs the studio offers for them. <a href="${esc(compCardsHref())}" data-link>See all model portfolios ↗</a></small></span>`] });
     }
     // Last row, below every credit that belongs to the shoot: these links are
     // the studio's own, not a credit for the work, and naming the studio on
