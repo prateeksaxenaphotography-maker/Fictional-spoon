@@ -43,7 +43,26 @@
    clients already hold, so add a new page rather than renaming an old one.
    app.js lists the same slugs in SERVICE_LINKS (home page cards and menu);
    the build fails if the two disagree.
+
+   A question in `faqs` is [question, answer], or [question, answer, points]
+   when the answer is a list: the points are printed as a numbered list under
+   the answer.
    ============================================================ */
+
+// Asked on the model portfolio and fitness & sports pages only, by the owner's
+// decision: test shoots are offered to models and athletes. These are the
+// studio's own reasons for agreeing to one.
+const TEST_SHOOT_FAQ = [
+  "When does a test shoot make sense?",
+  "A test shoot has no shoot fee, so it has to be worth everyone's time. It makes sense when you bring at least one of these:",
+  [
+    "You already know the basics of posing, so the photographer only has to refine your poses, not teach them.",
+    "A designer outfit, or a garment you designed, that lifts the look of the pictures for the photographer and everyone else on the team.",
+    "Creative hair or make-up — a look the model and the photographer will both enjoy shooting.",
+    "A following large enough that the post brings new followers to everyone who worked on the shoot.",
+    "Contacts who can bring paid work to the team."
+  ]
+];
 
 export const SERVICES_INDEX = {
   metaTitle: "What I Shoot — Model Portfolios, Fashion, Fitness & Brand Photography in Noida & Delhi NCR | nerdyphotographer.in",
@@ -96,7 +115,8 @@ export const SERVICES = [
       ["Do you shoot male models as well?", "Yes. The portfolios on this site include both male and female models."],
       ["Where does the shoot take place?", "In the studio in Noida, or on location in Noida, Delhi and the rest of Delhi NCR, depending on the looks planned."],
       ["When can I book?", "Shoots run on weekends. The booking page shows the dates that are open."],
-      ["Do you offer TFP or collaboration shoots?", "Occasionally, and by invitation only. If you have been given an invite code, enter it on the booking page."]
+      ["Do you do test shoots (TFP or collaboration)?", "Occasionally, and by invitation only. If you have been given an invite code, enter it on the booking page."],
+      TEST_SHOOT_FAQ
     ]
   },
   {
@@ -171,7 +191,9 @@ export const SERVICES = [
       ["Can you shoot in my gym?", "Yes, with the gym's permission. A quiet hour works best, so lights can be set up without getting in anyone's way."],
       ["When should I schedule a physique shoot?", "Book the date first, then plan your prep towards it. Weekend dates are shown on the booking page."],
       ["Do you shoot for gyms and fitness brands?", "Yes — trainers, facilities, apparel and supplements. Brand work is quoted as a campaign; see the brand campaigns page."],
-      ["How are the photos delivered?", "As an online proofing gallery. You choose your selects, and those are retouched and delivered."]
+      ["How are the photos delivered?", "As an online proofing gallery. You choose your selects, and those are retouched and delivered."],
+      ["Do you do test shoots (TFP or collaboration)?", "Occasionally, and by invitation only. If you have been given an invite code, enter it on the booking page."],
+      TEST_SHOOT_FAQ
     ]
   },
   {
