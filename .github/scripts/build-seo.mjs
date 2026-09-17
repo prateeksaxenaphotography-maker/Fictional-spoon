@@ -421,7 +421,7 @@ function buildServicePage(v) {
   const faqLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: v.faqs.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } }))
+    mainEntity: v.faqs.map(([q, a, points]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: points ? `${a} ${points.map((t, i) => `${i + 1}. ${t}`).join(" ")}` : a } }))
   };
 
   const mainHtml = `
@@ -462,9 +462,12 @@ function buildServicePage(v) {
     <section class="section container section-divider">
       <div class="section-head"><p class="eyebrow">Questions</p><h2>Before you book</h2></div>
       <div class="svc-faq">
-        ${v.faqs.map(([q, a]) => `<details>
+        ${v.faqs.map(([q, a, points]) => `<details>
           <summary>${esc(q)}</summary>
-          <p>${esc(a)}</p>
+          <p>${esc(a)}</p>${points ? `
+          <ol class="svc-list" style="margin: -8px 0 22px; max-width: 700px;">
+            ${points.map((t) => `<li>${esc(t)}</li>`).join("\n            ")}
+          </ol>` : ""}
         </details>`).join("\n        ")}
       </div>
     </section>
@@ -691,6 +694,12 @@ function checkServices() {
     // All four must answer the same question, or a visitor cannot tell which is theirs.
     if (!/^For /.test(v.audience)) fail(`seo/services.mjs: ${v.slug} audience must start with "For " — it names who the page is for`);
     if (!Array.isArray(v.intro) || !v.intro.length || !Array.isArray(v.includes) || !Array.isArray(v.faqs) || !Array.isArray(v.workLinks)) fail(`seo/services.mjs: ${v.slug} is incomplete`);
+    const isText = (t) => typeof t === "string" && t.trim() !== "";
+    for (const f of v.faqs) {
+      const ok = Array.isArray(f) && isText(f[0]) && isText(f[1])
+        && (f.length === 2 || (f.length === 3 && Array.isArray(f[2]) && f[2].length && f[2].every(isText)));
+      if (!ok) fail(`seo/services.mjs: ${v.slug} has a question that is not [question, answer] or [question, answer, [points]]: ${JSON.stringify(f)}`);
+    }
     // A page is either for a kind of photograph or for a kind of client, and
     // every key it names must exist in config.js — an unknown one is a page
     // that silently never finds its work.
