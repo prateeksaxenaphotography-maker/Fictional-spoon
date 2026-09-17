@@ -22,7 +22,7 @@
 
 export const SERVICES_INDEX = {
   metaTitle: "What I Shoot — Model Portfolios, Fashion, Fitness & Brand Photography in Noida & Delhi NCR | nerdyphotographer.in",
-  metaDescription: "Model portfolio and comp card shoots, fashion and editorial photography, fitness and sports shoots, and brand campaigns in Noida and Delhi NCR. See packages, sample work and book a weekend session.",
+  metaDescription: "Model portfolio and comp card shoots, fashion and editorial photography, fitness and sports shoots, and brand campaigns in Noida and Delhi NCR. See sample work and send a brief for a quote.",
   eyebrow: "Four kinds of shoot",
   h1: "What I shoot",
   intro: "nerdyphotographer.in is a photography studio in Noida working across Delhi NCR. Four kinds of shoot, sorted by who they are for: what is included, what it costs, and the work to judge it by."
@@ -37,7 +37,7 @@ export const SERVICES = [
     cardTitle: "Model Portfolios & Comp Cards",
     cardBlurb: "Agency-ready portfolio shoots and comp cards for new and working models, male and female.",
     metaTitle: "Model Portfolio Shoot in Noida & Delhi NCR — Comp Cards & Portfolios | nerdyphotographer.in",
-    metaDescription: "Model portfolio photoshoots in Noida and Delhi NCR for male and female models: agency-ready comp cards, editorial-grade portfolio frames and guided posing. See packages, real portfolios and book a weekend session.",
+    metaDescription: "Model portfolio photoshoots in Noida and Delhi NCR for male and female models: agency-ready comp cards, editorial-grade portfolio frames and guided posing. See real portfolios, what a shoot includes, and send a brief for a quote.",
     eyebrow: "Model portfolio shoots · Noida · Delhi NCR",
     h1: "Model portfolio shoot in Noida",
     intro: [
@@ -59,7 +59,7 @@ export const SERVICES = [
       { href: "/categories/?kind=type&val=Comp%20Cards", label: "See comp cards" }
     ],
     faqs: [
-      ["How much does a model portfolio shoot cost in Noida?", "Packages are listed on this page with their current prices. The right one depends on how many looks and retouched frames you need: a comp card needs fewer than a full editorial portfolio."],
+      ["How much does a model portfolio shoot cost in Noida?", "It depends on how many looks you shoot and how many finished images you need — a comp card needs fewer than a full editorial portfolio. Send a brief through the booking page and you will have a price against it before anything is booked."],
       ["I have never modelled before. Can I still book?", "Yes. Most portfolio clients are new faces. Poses, expressions and angles are directed throughout the shoot, and the looks are planned with you beforehand."],
       ["How many outfits should I bring?", "Bring more than you expect to use — fitted basics in plain colours, one formal look and one that shows your personality. The final looks are picked together before the shoot starts."],
       ["Do you shoot male models as well?", "Yes. The portfolios on this site include both male and female models."],
@@ -76,7 +76,7 @@ export const SERVICES = [
     cardTitle: "Fashion & Editorial",
     cardBlurb: "Concept-led fashion, beauty and editorial stories for designers, stylists and magazine submissions.",
     metaTitle: "Fashion & Editorial Photographer in Delhi NCR & Noida | nerdyphotographer.in",
-    metaDescription: "Fashion, beauty and editorial photography in Noida and Delhi NCR — concept-led shoots for designers, stylists, models and magazine submissions. See recent editorials, packages and book a session.",
+    metaDescription: "Fashion, beauty and editorial photography in Noida and Delhi NCR — concept-led shoots for designers, stylists, models and magazine submissions. See recent editorials, what a shoot includes, and send a brief for a quote.",
     eyebrow: "Fashion · Beauty · Editorial",
     h1: "Fashion & editorial photographer in Delhi NCR",
     intro: [
@@ -113,7 +113,7 @@ export const SERVICES = [
     cardTitle: "Fitness & Sports",
     cardBlurb: "Physique, training and action photography for athletes, coaches, gyms and fitness brands.",
     metaTitle: "Fitness & Sports Photographer in Noida & Delhi NCR | nerdyphotographer.in",
-    metaDescription: "Fitness and sports photography in Noida and Delhi NCR — physique shoots, athlete portraits and action frames for coaches, competitors, gyms and fitness brands. See packages and book a weekend session.",
+    metaDescription: "Fitness and sports photography in Noida and Delhi NCR — physique shoots, athlete portraits and action frames for coaches, competitors, gyms and fitness brands. See what a shoot includes and send a brief for a quote.",
     eyebrow: "Fitness · Sports · Athletes",
     h1: "Fitness & sports photographer in Noida",
     intro: [
@@ -149,7 +149,7 @@ export const SERVICES = [
     cardTitle: "Campaigns, Lookbooks & E-commerce",
     cardBlurb: "Campaign, lookbook and e-commerce photography for fashion and lifestyle brands, with usage rights in writing.",
     metaTitle: "Brand Campaign, Lookbook & E-commerce Photographer in Noida & Delhi NCR | nerdyphotographer.in",
-    metaDescription: "Campaign, lookbook and e-commerce photography for fashion, fitness and lifestyle brands in Noida and Delhi NCR. Planned productions, clear usage rights and a written contract. See packages and send a brief.",
+    metaDescription: "Campaign, lookbook and e-commerce photography for fashion, fitness and lifestyle brands in Noida and Delhi NCR. Planned productions, clear usage rights and a written contract. Send a brief for a quote.",
     eyebrow: "Campaigns · Lookbooks · E-commerce",
     h1: "Brand campaign & lookbook photographer in Noida",
     intro: [
@@ -175,7 +175,8 @@ export const SERVICES = [
       ["Who owns the images?", "The contract sets out usage rights in plain language — where the images can run and for how long — before anything is shot."],
       ["Can you arrange models, styling and make-up?", "Casting, styling and make-up are planned with you in pre-production, and everyone involved is credited on the final work."],
       ["Do you shoot product-only e-commerce?", "The studio's focus is on-model fashion and lifestyle photography. Product-only catalogues are taken on when they are part of a wider campaign."],
-      ["How is payment structured?", "In milestones tied to the production — an advance to hold the date, with the balance split across the shoot and delivery. The exact schedule is in the contract."]
+      ["How is payment structured?", "In milestones tied to the production — an advance to hold the date, with the balance split across the shoot and delivery. The exact schedule is in the contract."],
+      ["Why are there no prices on this page?", "Because no two productions are the same. The price follows the brief — the number of looks, the finished images you need, the crew and the usage — so you get a quote written against what you are actually asking for, rather than a rate card you have to work around."]
     ]
   }
 ];
