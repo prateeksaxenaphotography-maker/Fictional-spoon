@@ -283,14 +283,27 @@ function buildAlbumPage(s) {
 /* ---------- service pages ---------- */
 const packages = Array.isArray(DATA.PACKAGES) ? DATA.PACKAGES.filter((p) => p && p.name && Number(p.price) > 0) : [];
 
+// Is this album an example of THIS kind of work? A page that fills its "recent
+// work" row with whatever was shot last shows a gym owner a fashion editorial,
+// which is worse than showing nothing. There is no fallback for that reason: a
+// page with no work of its own says so and points at the archive, and picks the
+// albums up by itself on the day one is published.
+const hasClient = (s) => !!(s.client && s.client.trim());
+const oneModel = (s) => {
+  const t = (s.talent || "").trim();
+  return !!t && !t.includes(",") && !/\s(and|&)\s/i.test(t);
+};
 function albumsForService(v) {
   const f = v.albumFilter || {};
-  const match = newestFirst.filter((s) => (f.activities || []).includes(s.activity) || ((f.types || []).includes(s.type)));
-  // A service with nothing of its own published yet still shows recent work —
-  // but says so, and does not send anyone to an empty category page. The day a
-  // matching album is published, the page picks it up by itself.
-  const matched = match.length >= 2;
-  return { list: (matched ? match : newestFirst).slice(0, 6), matched };
+  const match = newestFirst.filter((s) => {
+    if (f.activities && f.activities.includes(s.activity)) return true;
+    if (f.types && f.types.includes(s.type)) return true;
+    // Shot for the model: one model, nobody paying for the pictures.
+    if (f.modelWork && oneModel(s) && !hasClient(s)) return true;
+    if (f.clientWork && hasClient(s)) return true;
+    return false;
+  });
+  return { list: match.slice(0, 6), matched: match.length > 0, total: match.length };
 }
 
 function buildServicePage(v) {
@@ -298,7 +311,7 @@ function buildServicePage(v) {
   const picked = packages.filter((p) => (v.packageIds || []).includes(p.id));
   const shown = picked.length ? picked : packages;
   const { list: samples, matched } = albumsForService(v);
-  const workLinks = matched ? v.workLinks : [{ href: "/albums/", label: "See recent work" }];
+  const workLinks = matched ? v.workLinks : [{ href: "/albums/", label: "See the whole archive" }];
   const ogImage = matched ? absUrl(photoPath(albumCover(samples[0]))) : OG_IMAGE;
 
   const serviceLd = {
@@ -348,13 +361,16 @@ function buildServicePage(v) {
       <div class="svc-actions"><a href="/book/" data-link class="btn btn-dark">Ask for a quote →</a></div>
     </section>
 
-    ${samples.length ? `<section class="section container section-divider">
+    ${matched ? `<section class="section container section-divider">
       <div class="section-head row">
-        <div><p class="eyebrow">Recent work</p><h2>${matched ? "Judge it by the pictures" : "Recent work from the studio"}</h2></div>
+        <div><p class="eyebrow">Recent work</p><h2>Judge it by the pictures</h2></div>
         <div class="svc-worklinks">${workLinks.map((l) => `<a href="${esc(l.href)}" data-link class="link-arrow">${esc(l.label)} →</a>`).join("")}</div>
       </div>
       ${albumCardsHtml(samples)}
-    </section>` : ""}
+    </section>` : `<section class="section container section-divider">
+      <div class="section-head"><p class="eyebrow">Recent work</p><h2>Nothing published here yet</h2></div>
+      <p class="svc-note">There is no ${esc(v.cardTitle.toLowerCase())} album on the site yet — rather than show you a fashion editorial and call it fitness work, this space stays empty until there is something of this kind to show. <a href="/albums/" data-link>See the whole archive</a> in the meantime, or <a href="/book/" data-link>send a brief</a>.</p>
+    </section>`}
 
     <section class="section container section-divider">
       <div class="section-head"><p class="eyebrow">Questions</p><h2>Before you book</h2></div>

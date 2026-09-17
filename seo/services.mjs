@@ -53,7 +53,8 @@ export const SERVICES = [
       "A comp card and an online portfolio page on this site that you can send to agencies and casting calls as a link."
     ],
     packageIds: ["pkg_1", "pkg_2", "pkg_3"],
-    albumFilter: { activities: ["Fashion", "Portrait", "Editorial", "Beauty"] },
+    // Model work: a single model, shot for the model rather than for a client.
+    albumFilter: { modelWork: true },
     workLinks: [
       { href: "/categories/?kind=type&val=Model%20Portfolio", label: "See model portfolios" },
       { href: "/categories/?kind=type&val=Comp%20Cards", label: "See comp cards" }
@@ -165,7 +166,11 @@ export const SERVICES = [
       "A contract covering deliverables, payment milestones and usage rights, signed online before the shoot."
     ],
     packageIds: ["pkg_4", "pkg_5"],
-    albumFilter: { types: ["Campaign", "Commercial", "E-commerce", "Editorial"], activities: ["Fashion", "Editorial"] },
+    // Commissioned work first, then fashion and editorial: a lookbook is fashion
+    // photography, so that work is the right evidence for a brand to judge.
+    // Fitness stays strict by contrast — a gym owner shown an editorial learns
+    // nothing about whether this studio can light a physique.
+    albumFilter: { types: ["Campaign", "Commercial", "E-commerce"], clientWork: true, activities: ["Fashion", "Editorial"] },
     workLinks: [
       { href: "/categories/", label: "Browse work by category" },
       { href: "/albums/", label: "See all albums" }
