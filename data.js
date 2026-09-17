@@ -1618,6 +1618,8 @@ window.WPS_DATA = {
       "tags": "",
       "gear": "",
       "client": "",
+      "forClient": "model",
+      "alsoFor": [],
       "date": "2026-08-29",
       "instagram": "",
       "kavyar": "",
@@ -1637,6 +1639,7 @@ window.WPS_DATA = {
           "url": "photos/mte8dutdkqor3f/mte8bxci1pwjht-0.jpg",
           "objectPosition": "top",
           "usage": "both",
+          "look": "portrait",
           "small": "photos/mte8dutdkqor3f/mte8bxci1pwjht-0@480.jpg",
           "medium": "photos/mte8dutdkqor3f/mte8bxci1pwjht-0@960.jpg"
         },
@@ -1645,6 +1648,7 @@ window.WPS_DATA = {
           "url": "photos/mte8dutdkqor3f/mte8bxdfwxtc6u-1.jpg",
           "objectPosition": "center",
           "usage": "both",
+          "look": "portrait",
           "small": "photos/mte8dutdkqor3f/mte8bxdfwxtc6u-1@480.jpg",
           "medium": "photos/mte8dutdkqor3f/mte8bxdfwxtc6u-1@960.jpg"
         },
@@ -1653,6 +1657,7 @@ window.WPS_DATA = {
           "url": "photos/mte8dutdkqor3f/mte8bxf6kajec5-4.jpg",
           "objectPosition": "center",
           "usage": "both",
+          "look": "portrait",
           "small": "photos/mte8dutdkqor3f/mte8bxf6kajec5-4@480.jpg",
           "medium": "photos/mte8dutdkqor3f/mte8bxf6kajec5-4@960.jpg"
         },
@@ -1661,6 +1666,7 @@ window.WPS_DATA = {
           "url": "photos/mte8dutdkqor3f/mte8bxfpvxno70-5.jpg",
           "objectPosition": "center",
           "usage": "both",
+          "look": "portrait",
           "small": "photos/mte8dutdkqor3f/mte8bxfpvxno70-5@480.jpg",
           "medium": "photos/mte8dutdkqor3f/mte8bxfpvxno70-5@960.jpg"
         },
@@ -1669,6 +1675,7 @@ window.WPS_DATA = {
           "url": "photos/mte8dutdkqor3f/mte8bxg9wa91nq-6.jpg",
           "objectPosition": "top",
           "usage": "both",
+          "look": "portrait",
           "small": "photos/mte8dutdkqor3f/mte8bxg9wa91nq-6@480.jpg",
           "medium": "photos/mte8dutdkqor3f/mte8bxg9wa91nq-6@960.jpg"
         },
@@ -1677,6 +1684,7 @@ window.WPS_DATA = {
           "url": "photos/mte8dutdkqor3f/mte8bxgv815ni6-7.jpg",
           "objectPosition": "center",
           "usage": "both",
+          "look": "portrait",
           "small": "photos/mte8dutdkqor3f/mte8bxgv815ni6-7@480.jpg",
           "medium": "photos/mte8dutdkqor3f/mte8bxgv815ni6-7@960.jpg"
         },
@@ -1685,6 +1693,7 @@ window.WPS_DATA = {
           "url": "photos/mte8dutdkqor3f/mte8bxho4pddlx-8.jpg",
           "objectPosition": "center",
           "usage": "both",
+          "look": "portrait",
           "small": "photos/mte8dutdkqor3f/mte8bxho4pddlx-8@480.jpg",
           "medium": "photos/mte8dutdkqor3f/mte8bxho4pddlx-8@960.jpg"
         },
@@ -1693,6 +1702,7 @@ window.WPS_DATA = {
           "url": "photos/mte8dutdkqor3f/mte8bxii37l4vd-9.jpg",
           "objectPosition": "center",
           "usage": "both",
+          "look": "portrait",
           "small": "photos/mte8dutdkqor3f/mte8bxii37l4vd-9@480.jpg",
           "medium": "photos/mte8dutdkqor3f/mte8bxii37l4vd-9@960.jpg"
         },
@@ -1701,6 +1711,7 @@ window.WPS_DATA = {
           "url": "photos/mte8dutdkqor3f/mte8bxj640nrl2-10.jpg",
           "objectPosition": "center",
           "usage": "both",
+          "look": "portrait",
           "small": "photos/mte8dutdkqor3f/mte8bxj640nrl2-10@480.jpg",
           "medium": "photos/mte8dutdkqor3f/mte8bxj640nrl2-10@960.jpg"
         },
@@ -1709,6 +1720,7 @@ window.WPS_DATA = {
           "url": "photos/mte8dutdkqor3f/mtebep126rzwgy-10.jpg",
           "objectPosition": "center",
           "usage": "both",
+          "look": "portrait",
           "small": "photos/mte8dutdkqor3f/mtebep126rzwgy-10@480.jpg",
           "medium": "photos/mte8dutdkqor3f/mtebep126rzwgy-10@960.jpg"
         },
@@ -1717,6 +1729,7 @@ window.WPS_DATA = {
           "url": "photos/mte8dutdkqor3f/mtebkouqixqkl4-10.jpg",
           "objectPosition": "center",
           "usage": "both",
+          "look": "portrait",
           "small": "photos/mte8dutdkqor3f/mtebkouqixqkl4-10@480.jpg",
           "medium": "photos/mte8dutdkqor3f/mtebkouqixqkl4-10@960.jpg"
         }
