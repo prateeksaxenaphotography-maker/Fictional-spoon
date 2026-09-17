@@ -691,6 +691,9 @@ const STUDIO_BOOK_LIMITS = {
   fonts: ["fraunces", "archivo", "inter", "outfit", "playfair", "cormorant", "baskerville", "bodoni", "dmserif", "sourcesans", "jost", "manrope", "spacegrotesk", "oswald", "plexmono"],
   colors: ["ink", "soft", "accent"],
   aligns: ["left", "center", "right", "justify"],
+  // A flowing text (a story, a letter, the words about a photo, About the
+  // studio) can format each paragraph on its own; this many at most.
+  paras: 60,
   // Lines a contact page can leave off.
   contactRows: ["email", "whatsapp", "instagram", "website", "book", "studio", "qr"],
   // Texts that can be formatted outside the writing pages: the cover's own two
@@ -700,6 +703,18 @@ const STUDIO_BOOK_LIMITS = {
   // step. Their rows are lists, so they have their own caps.
   leads: ["you", "together", "studio"],
   workWays: ["execute", "pitch", "lead", "test"],
+  // A watermark across every page of a sample: the words, and how strong.
+  markStrengths: ["light", "medium", "strong"],
+  // The cover's own lines. Empty means "as the style has always drawn it".
+  coverText: { label: 32, mast: 18, tagline: 24, foot: 40, place: 40 },
+  coverLine: 24,          // one of the cover's inside lines, three a side
+  // Lines the book draws for itself that can be written over: a page's small
+  // label and heading, the credit under a photo, the closing line on What I
+  // shoot, the words under the QR code, and the name in the running foot.
+  pageText: { label: 32, heading: 60, note: 90, credit: 60, qrLabel: 24 },
+  serviceItem: { kicker: 28, title: 40, blurb: 120 },
+  contactRow: { label: 24, value: 60 },
+  footText: 40,
   wayItem: { name: 32, forWho: 64, text: 150 },
   stepItem: { title: 36, text: 130 },
   // Writing pages: the most characters each field may hold. Each cap is what
@@ -721,18 +736,33 @@ const STUDIO_BOOK_LIMITS = {
 };
 // One text's formatting: an open-source font, a colour, an alignment, a size,
 // a weight and italic. Anything else, or a value the app doesn't know, goes.
+function cleanOneFormat(f) {
+  if (!f || typeof f !== "object") return null;
+  const one = {};
+  if (STUDIO_BOOK_LIMITS.fonts.includes(f.font)) one.font = f.font;
+  if (STUDIO_BOOK_LIMITS.colors.includes(f.color) || /^#[0-9a-f]{6}$/i.test(String(f.color || ""))) one.color = String(f.color).toLowerCase();
+  if (STUDIO_BOOK_LIMITS.aligns.includes(f.align)) one.align = f.align;
+  if (typeof f.size === "number" && isFinite(f.size) && Math.abs(f.size - 1) > 0.001) one.size = Math.round(Math.min(1.6, Math.max(0.6, f.size)) * 100) / 100;
+  if (["light", "regular", "bold"].includes(f.weight)) one.weight = f.weight;
+  if (f.italic === true) one.italic = true;
+  return Object.keys(one).length ? one : null;
+}
 function cleanBookFormatting(from, allowed) {
   if (!from || typeof from !== "object") return null;
   const style = {};
   for (const [k, f] of Object.entries(from)) {
     if (!allowed.includes(k) || !f || typeof f !== "object") continue;
-    const one = {};
-    if (STUDIO_BOOK_LIMITS.fonts.includes(f.font)) one.font = f.font;
-    if (STUDIO_BOOK_LIMITS.colors.includes(f.color) || /^#[0-9a-f]{6}$/i.test(String(f.color || ""))) one.color = String(f.color).toLowerCase();
-    if (STUDIO_BOOK_LIMITS.aligns.includes(f.align)) one.align = f.align;
-    if (typeof f.size === "number" && isFinite(f.size) && Math.abs(f.size - 1) > 0.001) one.size = Math.round(Math.min(1.6, Math.max(0.6, f.size)) * 100) / 100;
-    if (["light", "regular", "bold"].includes(f.weight)) one.weight = f.weight;
-    if (f.italic === true) one.italic = true;
+    const one = cleanOneFormat(f) || {};
+    // A flowing text can also format each of its paragraphs, numbered from 1.
+    const paras = {};
+    if (f.paras && typeof f.paras === "object" && !Array.isArray(f.paras)) {
+      for (const [at, p] of Object.entries(f.paras)) {
+        if (!/^[1-9][0-9]{0,2}$/.test(at) || Number(at) > STUDIO_BOOK_LIMITS.paras) continue;
+        const c = cleanOneFormat(p);
+        if (c) paras[at] = c;
+      }
+    }
+    if (Object.keys(paras).length) one.paras = paras;
     if (Object.keys(one).length) style[k] = one;
   }
   return Object.keys(style).length ? style : null;
@@ -793,6 +823,43 @@ function cleanStudioPortfolios(o) {
         const hide = [...new Set(pg.hide.filter((k) => STUDIO_BOOK_LIMITS.contactRows.includes(k)))];
         if (hide.length) out.hide = hide;
       }
+      // Every line a page draws for itself can be written over. Each is kept
+      // only when it has been typed, so a book saved before this stores as it did.
+      const PT = STUDIO_BOOK_LIMITS.pageText;
+      const over = (k, max) => { const val = strU(pg[k], max); if (val.trim()) out[k] = val; };
+      if (["about", "services", "contact"].includes(pg.type)) { over("label", PT.label); over("heading", PT.heading); }
+      if (pg.type === "services") {
+        over("note", PT.note);
+        if (pg.items && typeof pg.items === "object" && !Array.isArray(pg.items)) {
+          const items = {};
+          for (const [slug, o] of Object.entries(pg.items).slice(0, 20)) {
+            if (typeof slug !== "string" || !slug || slug.length > 60 || !o || typeof o !== "object") continue;
+            const one = {};
+            for (const [k, max] of Object.entries(STUDIO_BOOK_LIMITS.serviceItem)) { const val = strU(o[k], max); if (val.trim()) one[k] = val; }
+            if (Object.keys(one).length) items[slug] = one;
+          }
+          if (Object.keys(items).length) out.items = items;
+        }
+        if (Array.isArray(pg.hide)) {
+          const hide = [...new Set(pg.hide.filter((k) => typeof k === "string" && k && k.length <= 60))].slice(0, 20);
+          if (hide.length) out.hide = hide;
+        }
+      }
+      if (pg.type === "contact") {
+        over("qrLabel", PT.qrLabel);
+        if (pg.rows && typeof pg.rows === "object" && !Array.isArray(pg.rows)) {
+          const rows = {};
+          for (const key of STUDIO_BOOK_LIMITS.contactRows) {
+            const o = pg.rows[key];
+            if (!o || typeof o !== "object") continue;
+            const one = {};
+            for (const [k, max] of Object.entries(STUDIO_BOOK_LIMITS.contactRow)) { const val = strU(o[k], max); if (val.trim()) one[k] = val; }
+            if (Object.keys(one).length) rows[key] = one;
+          }
+          if (Object.keys(rows).length) out.rows = rows;
+        }
+      }
+      if (["photos", "spread", "article", "story", "note", "quote", "feature"].includes(pg.type)) over("credit", PT.credit);
       if (pg.type === "story" || pg.type === "note" || pg.type === "quote") out.photos = (Array.isArray(pg.photos) ? pg.photos : []).map(shot).filter(Boolean).slice(0, 1);
       if (pg.type === "feature") out.photos = (Array.isArray(pg.photos) ? pg.photos : []).map(shot).filter(Boolean).slice(0, 2);
       if ((STUDIO_BOOK_LIMITS.photoAt[pg.type] || []).includes(pg.photoAt)) out.photoAt = pg.photoAt;
@@ -815,7 +882,32 @@ function cleanStudioPortfolios(o) {
       orientation: v.orientation === "landscape" ? "landscape" : "portrait",
       title: str(v.title, 80), subtitle: str(v.subtitle, 120),
       cover: shot(v.cover),
+      // The running foot: the studio's name unless the book gives its own, and
+      // page numbers unless they are switched off.
+      ...(str(v.footText, STUDIO_BOOK_LIMITS.footText).trim() ? { footText: str(v.footText, STUDIO_BOOK_LIMITS.footText) } : {}),
+      ...(v.showPageNumbers === false ? { showPageNumbers: false } : {}),
       ...(cleanBookFormatting(v.coverStyle, STUDIO_BOOK_LIMITS.formatFields.cover) ? { coverStyle: cleanBookFormatting(v.coverStyle, STUDIO_BOOK_LIMITS.formatFields.cover) } : {}),
+      ...(() => {
+        const t = v.coverText && typeof v.coverText === "object" ? v.coverText : {};
+        const out = {};
+        for (const [k, max] of Object.entries(STUDIO_BOOK_LIMITS.coverText)) { const val = str(t[k], max); if (val.trim()) out[k] = val; }
+        // The three lines each side of the cover's inside block.
+        for (const side of ["left", "right"]) {
+          const lines = (Array.isArray(t[side]) ? t[side] : []).slice(0, 3).map((x) => str(x, STUDIO_BOOK_LIMITS.coverLine));
+          while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+          if (lines.length) out[side] = lines;
+        }
+        if (t.showCounts === false) out.showCounts = false;
+        return Object.keys(out).length ? { coverText: out } : {};
+      })(),
+      ...(() => {
+        const w = v.watermark && typeof v.watermark === "object" ? v.watermark : {};
+        const out = {};
+        const text = str(w.text, 40);
+        if (text.trim()) out.text = text;
+        if (STUDIO_BOOK_LIMITS.markStrengths.includes(w.strength) && w.strength !== "medium") out.strength = w.strength;
+        return Object.keys(out).length ? { watermark: out } : {};
+      })(),
       pages,
       texts: { about: str(t.about, STUDIO_BOOK_LIMITS.text), phone: str(t.phone, 24), showPrices: t.showPrices === true },
       updatedAt: num(v.updatedAt, 0, 8.64e15, 0)
@@ -837,20 +929,23 @@ function cleanStudioPortfolios(o) {
 // Each time the stored shape grows, the copy moves to a new key: code that
 // knows the previous shape still writes the previous key (stripping only what
 // it doesn't know), so the newest key is read first and wins ties.
-const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words_v2";
-const STUDIO_BOOK_WORDS_KEY_V1 = "wps_studio_portfolios_words";
-const studioBookHasWords = (v) => !!v.paper || !!v.coverStyle || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
+const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words_v3";
+// Older keys: code that knows only an older shape keeps rewriting the key it
+// knows, so every growth of the shape gets a new one, read before the old.
+const STUDIO_BOOK_WORDS_OLD = ["wps_studio_portfolios_words_v2", "wps_studio_portfolios_words"];
+const studioBookHasWords = (v) => !!v.paper || !!v.coverStyle || !!v.watermark || !!v.coverText || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
   (STUDIO_BOOK_LIMITS.fields[pg.type] && (pg.type !== "photos" || pg.caption)) || pg.items || pg.steps || pg.photoAt || pg.border || pg.borderWidth || pg.style || pg.hide || (pg.photos || []).some((s) => s.fit || s.opacity));
 function getStudioPortfolios(live) {
-  let local = null, published = null, remote = null, words = null, wordsV1 = null;
+  let local = null, published = null, remote = null, words = null;
+  const older = [];
   try { local = cleanStudioPortfolios(JSON.parse(localStorage.getItem("wps_studio_portfolios") || "null")); } catch (e) {}
   try { words = cleanStudioPortfolios(JSON.parse(localStorage.getItem(STUDIO_BOOK_WORDS_KEY) || "null")); } catch (e) {}
-  try { wordsV1 = cleanStudioPortfolios(JSON.parse(localStorage.getItem(STUDIO_BOOK_WORDS_KEY_V1) || "null")); } catch (e) {}
+  for (const key of STUDIO_BOOK_WORDS_OLD) { try { const got = cleanStudioPortfolios(JSON.parse(localStorage.getItem(key) || "null")); if (got) older.push(got); } catch (e) {} }
   try { published = cleanStudioPortfolios(window.WPS_DATA && window.WPS_DATA.STUDIO_PORTFOLIOS); } catch (e) {}
   try { remote = live ? cleanStudioPortfolios(live) : null; } catch (e) {}
   const deleted = [...new Set([...((local && local.deleted) || []), ...((published && published.deleted) || []), ...((remote && remote.deleted) || [])])];
   const byId = new Map();
-  for (const v of [...((words && words.versions) || []), ...((wordsV1 && wordsV1.versions) || []), ...((remote && remote.versions) || []), ...((published && published.versions) || []), ...((local && local.versions) || [])]) {
+  for (const v of [...((words && words.versions) || []), ...older.flatMap((o) => o.versions), ...((remote && remote.versions) || []), ...((published && published.versions) || []), ...((local && local.versions) || [])]) {
     const have = byId.get(v.id);
     if (!have || v.updatedAt > have.updatedAt) byId.set(v.id, v);
   }
@@ -864,7 +959,7 @@ function saveStudioPortfolios(state) {
   try {
     const copy = JSON.stringify({ versions: clean.versions.filter(studioBookHasWords), deleted: [] });
     localStorage.setItem(STUDIO_BOOK_WORDS_KEY, copy);
-    localStorage.setItem(STUDIO_BOOK_WORDS_KEY_V1, copy);
+    for (const key of STUDIO_BOOK_WORDS_OLD) localStorage.setItem(key, copy);
   } catch (e) { /* the main copy is saved; these are a safety net */ }
   return true;
 }
