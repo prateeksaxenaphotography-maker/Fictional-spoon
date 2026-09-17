@@ -13696,8 +13696,52 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     });
   }
 
-  // The A–Z bar above a model list.
-  function wireAlphaFilter(root) {
+  // Page numbers under a list: ← 1 2 3 →. Items stay in the DOM and only the
+  // current page's are visible, so their wiring binds once. setItems() pages a
+  // filtered subset instead (the A–Z bar, the client filter buttons) and hides
+  // everything outside it. With a single page there is no bar.
+  function makePager(list, per, items) {
+    const every = items;
+    let shown = items, current = 1;
+    const nav = document.createElement("nav");
+    nav.className = "pager";
+    nav.setAttribute("aria-label", "Pages");
+    list.insertAdjacentElement("afterend", nav);
+    const show = (n, scroll) => {
+      const pages = Math.max(1, Math.ceil(shown.length / per));
+      current = Math.min(Math.max(1, n), pages);
+      shown.forEach((el, i) => {
+        const on = Math.floor(i / per) + 1 === current;
+        el.hidden = !on;
+        if (on) el.classList.add("in");
+      });
+      nav.hidden = pages < 2;
+      nav.innerHTML = pages < 2 ? "" : `
+          <button type="button" class="pager-arrow" data-go="${current - 1}" ${current === 1 ? "disabled" : ""} aria-label="Previous page">←</button>
+          ${Array.from({ length: pages }, (_, i) => `<button type="button" data-go="${i + 1}" ${i + 1 === current ? 'aria-current="page"' : ""}>${i + 1}</button>`).join("")}
+          <button type="button" class="pager-arrow" data-go="${current + 1}" ${current === pages ? "disabled" : ""} aria-label="Next page">→</button>`;
+      if (scroll) {
+        const top = list.getBoundingClientRect().top + window.scrollY - 110;
+        window.scrollTo({ top, behavior: "smooth" });
+      }
+    };
+    nav.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-go]");
+      if (!btn || btn.disabled) return;
+      show(parseInt(btn.dataset.go, 10), true);
+    });
+    show(1, false);
+    return {
+      setItems(subset) {
+        every.forEach((el) => { if (!subset.includes(el)) el.hidden = true; });
+        shown = subset;
+        show(1, false);
+      }
+    };
+  }
+
+  // The A–Z bar above a model list. With a pager, the letter pages its matches.
+  function wireAlphaFilter(root, pager) {
     const alphaBtns = root.querySelectorAll(".alpha-btn");
     if (alphaBtns.length) {
       alphaBtns.forEach(btn => {
@@ -13707,6 +13751,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           
           const filterVal = btn.dataset.alpha;
           const blocks = root.querySelectorAll(".work-block");
+          if (pager) {
+            pager.setItems([...blocks].filter((block) => filterVal === "ALL" || getTalentCleanName(block.dataset.talent || "").trim().charAt(0).toUpperCase() === filterVal));
+            return;
+          }
           blocks.forEach(block => {
             const talent = getTalentCleanName(block.dataset.talent || "");
             const firstChar = talent.trim().charAt(0).toUpperCase();
@@ -13748,12 +13796,32 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const eyebrow = section && section.querySelector(".section-head .eyebrow");
     if (eyebrow) eyebrow.textContent = `The work · ${list.length} model${list.length === 1 ? "" : "s"}`;
     wireWorkBlocks(slot);
-    wireAlphaFilter(slot);
+    const cardList = slot.querySelector(".work-list");
+    wireAlphaFilter(slot, makePager(cardList, 5, [...cardList.querySelectorAll(".work-block")]));
     // Arrived from an old Comp Cards link: land on the cards, not the page top.
     if (firstPaint && location.hash === "#comp-cards" && section) {
       const header = document.querySelector(".site-header");
       window.scrollTo({ top: Math.max(0, section.getBoundingClientRect().top + window.scrollY - (header ? header.offsetHeight : 0)), behavior: "auto" });
     }
+  }
+
+  // "Judge it by the pictures" on the What I shoot pages, a page at a time: 12
+  // photos, in a fresh random order on each visit so the same frames don't
+  // always lead, or 5 albums. (The comp cards are paged where they are painted.)
+  // Runs on every paint of a static page; a list already paged is left alone,
+  // so a data refresh neither reshuffles nor resets what is on screen. The HTML
+  // itself keeps the deploy's order and every item, for crawlers.
+  function pageServiceWork() {
+    view.querySelectorAll(".svc-photos:not([data-paged])").forEach((grid) => {
+      grid.dataset.paged = "1";
+      const tiles = shuffleArray([...grid.querySelectorAll(".svc-photo")]);
+      tiles.forEach((tile) => grid.appendChild(tile));
+      makePager(grid, 12, tiles);
+    });
+    view.querySelectorAll(".svc-cards:not([data-paged])").forEach((cards) => {
+      cards.dataset.paged = "1";
+      cards._pager = makePager(cards, 5, [...cards.querySelectorAll(".pr-card")]);
+    });
   }
 
   function wireView(key) {
@@ -13807,40 +13875,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
     // noth.in full-bleed work cards → open the shoot in the lightbox.
     // Page numbers under any card list that asks for them (data-paginate="N").
-    // Cards stay in the DOM — only the current page is visible — so the card
-    // wiring below binds every one of them once.
     view.querySelectorAll("[data-paginate]").forEach((list) => {
       const per = Math.max(1, parseInt(list.dataset.paginate, 10) || 6);
-      const cards = Array.from(list.children).filter(el => el.classList.contains("noth-work"));
-      const pages = Math.ceil(cards.length / per);
-      if (pages < 2) return;
-      const nav = document.createElement("nav");
-      nav.className = "pager";
-      nav.setAttribute("aria-label", "Pages");
-      list.insertAdjacentElement("afterend", nav);
-      let current = 1;
-      const show = (n, scroll) => {
-        current = Math.min(Math.max(1, n), pages);
-        cards.forEach((el, i) => {
-          const on = Math.floor(i / per) + 1 === current;
-          el.hidden = !on;
-          if (on) el.classList.add("in");
-        });
-        nav.innerHTML = `
-          <button type="button" class="pager-arrow" data-go="${current - 1}" ${current === 1 ? "disabled" : ""} aria-label="Previous page">←</button>
-          ${Array.from({ length: pages }, (_, i) => `<button type="button" data-go="${i + 1}" ${i + 1 === current ? 'aria-current="page"' : ""}>${i + 1}</button>`).join("")}
-          <button type="button" class="pager-arrow" data-go="${current + 1}" ${current === pages ? "disabled" : ""} aria-label="Next page">→</button>`;
-        if (scroll) {
-          const top = list.getBoundingClientRect().top + window.scrollY - 110;
-          window.scrollTo({ top, behavior: "smooth" });
-        }
-      };
-      nav.addEventListener("click", (e) => {
-        const btn = e.target.closest("button[data-go]");
-        if (!btn || btn.disabled) return;
-        show(parseInt(btn.dataset.go, 10), true);
-      });
-      show(1, false);
+      makePager(list, per, Array.from(list.children).filter(el => el.classList.contains("noth-work")));
     });
     view.querySelectorAll(".noth-work").forEach((card) => {
       const s = CURRENT_VIEW_SHOOTS.find((x) => x.id === card.dataset.shoot) || SHOOTS.find((x) => x.id === card.dataset.shoot);
@@ -14228,7 +14265,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         if (typeof smoothScroll !== "undefined" && smoothScroll.enabled) smoothScroll.reset();
         wireView(key);
       }
-      if (staticPath) paintServiceCompCards();
+      if (staticPath) { paintServiceCompCards(); pageServiceWork(); }
       initReveal();
       setActiveNav(key);
       syncServicesNavLink();
@@ -14489,9 +14526,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const want = chip.dataset.client;
       const section = chip.closest("section") || document;
       section.querySelectorAll(".svc-chip").forEach((c) => c.setAttribute("aria-pressed", String(c === chip)));
-      section.querySelectorAll(".svc-cards .pr-card").forEach((card) => {
-        card.hidden = !!want && !(card.dataset.clients || "").split(" ").includes(want);
-      });
+      const cardsEl = section.querySelector(".svc-cards");
+      if (!cardsEl) return;
+      const cards = [...cardsEl.querySelectorAll(".pr-card")];
+      const matches = cards.filter((card) => !want || (card.dataset.clients || "").split(" ").includes(want));
+      if (cardsEl._pager) cardsEl._pager.setItems(matches);
+      else cards.forEach((card) => { card.hidden = !matches.includes(card); });
     });
   }
 
