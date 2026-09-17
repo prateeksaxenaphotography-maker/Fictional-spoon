@@ -57,6 +57,8 @@ function loadWindowScript(rel) {
 }
 const DATA = loadWindowScript("data.js").WPS_DATA || fail("data.js did not define window.WPS_DATA");
 const CONFIG = loadWindowScript("config.js").STUDIO_CONFIG || {};
+// config.js studioPagePublic: false keeps /studio/ out of the sitemap, the site links and the page copies.
+const STUDIO_PUBLIC = CONFIG.studioPagePublic !== false;
 const { SERVICES, SERVICES_INDEX } = await import(pathToFileURL(path.join(ROOT, "seo/services.mjs")).href);
 
 /* ---------- helpers that mirror app.js (keep the two in step) ---------- */
@@ -209,7 +211,7 @@ const serviceLinksHtml = (skipSlug) => liveServices.filter((v) => v.slug !== ski
         </a>`).join("\n        ");
 
 const siteLinksHtml = `<nav class="container pr-links" aria-label="Site">
-      <a href="/" data-link>Home</a> · <a href="/albums/" data-link>Albums</a> · <a href="/categories/" data-link>Categories</a> · <a href="/services/" data-link>Services</a> · <a href="/studio/" data-link>Studio</a> · <a href="/book/" data-link>Book a shoot</a>
+      <a href="/" data-link>Home</a> · <a href="/albums/" data-link>Albums</a> · <a href="/categories/" data-link>Categories</a> · <a href="/services/" data-link>Services</a> · ${STUDIO_PUBLIC ? `<a href="/studio/" data-link>Studio</a> · ` : ""}<a href="/book/" data-link>Book a shoot</a>
     </nav>`;
 
 /* ---------- album pages ---------- */
@@ -505,7 +507,6 @@ const countBy = (key) => {
 
 function prerenderBlocks() {
   const quotes = testimonials();
-  const steps = processSteps();
   const blocks = {};
 
   blocks["index.html"] = `
@@ -560,21 +561,24 @@ function prerenderBlocks() {
     </section>
     ${siteLinksHtml}`;
 
-  blocks["studio/index.html"] = `
-    <header class="page-head"><div class="container">
-      <p class="eyebrow">The studio</p>
-      <h1>Studio</h1>
-      <p class="page-sub">A home for the photography behind ${BRAND}'s work — a working studio in Noida and a living archive, in one place.</p>
-    </div></header>
-    <section class="section container">
-      ${CONFIG.introQuote ? `<p>${esc(CONFIG.introQuote)}</p>` : ""}
-      ${steps.length ? `<h2>The process</h2><ol>${steps.map(([t, d]) => `<li><strong>${esc(t)}.</strong> ${esc(d)}</li>`).join("")}</ol>` : ""}
-      <h2>Services</h2>
-      <div class="services-grid">
-        ${serviceLinksHtml(null)}
-      </div>
-    </section>
-    ${siteLinksHtml}`;
+  if (STUDIO_PUBLIC) {
+    const steps = processSteps();
+    blocks["studio/index.html"] = `
+      <header class="page-head"><div class="container">
+        <p class="eyebrow">The studio</p>
+        <h1>Studio</h1>
+        <p class="page-sub">A home for the photography behind ${BRAND}'s work — a working studio in Noida and a living archive, in one place.</p>
+      </div></header>
+      <section class="section container">
+        ${CONFIG.introQuote ? `<p>${esc(CONFIG.introQuote)}</p>` : ""}
+        ${steps.length ? `<h2>The process</h2><ol>${steps.map(([t, d]) => `<li><strong>${esc(t)}.</strong> ${esc(d)}</li>`).join("")}</ol>` : ""}
+        <h2>Services</h2>
+        <div class="services-grid">
+          ${serviceLinksHtml(null)}
+        </div>
+      </section>
+      ${siteLinksHtml}`;
+  }
 
   blocks["book/index.html"] = `
     <header class="page-head"><div class="container">
@@ -643,7 +647,7 @@ function buildSitemap({ quoteCount }) {
     ...(liveServices.length ? [entry("/services/", null)] : []),
     ...liveServices.map((v) => entry(`/services/${v.slug}/`, null)),
     entry("/categories/", newest),
-    entry("/studio/", null),
+    ...(STUDIO_PUBLIC ? [entry("/studio/", null)] : []),
     entry("/book/", null),
     ...(quoteCount ? [entry("/testimonials/", null)] : [])
   ];

@@ -2006,6 +2006,8 @@ window.moveAdminPackageRow = function(index, dir) {
 
   const isAdminAuthorized = () => localStorage.getItem("wps-admin-authorized") === "1";
   const isAdmin = () => isAdminAuthorized() && sessionStorage.getItem("wps-admin") === "1";
+  // studioPagePublic in config.js: false keeps /studio to the admin while it is rethought.
+  const studioPageOpen = () => isAdmin() || window.STUDIO_CONFIG?.studioPagePublic !== false;
   
   // Both detectors also answer for /share/… links, because a shared comp card
   // is the same album seen through a different URL: without this it rendered
@@ -3380,6 +3382,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (workshopLi) workshopLi.style.display = "block"; // Always show Workshop in nav
     if (calendarLi) calendarLi.style.display = active ? "block" : "none";
     if (analyticsLi) analyticsLi.style.display = "none";
+    // Every shell has its own copy of the menu and footer, so find the links rather than an id.
+    document.querySelectorAll('a[href="/studio"], a[href="/studio/"]').forEach((a) => {
+      (a.closest(".nav-links li") || a).style.display = studioPageOpen() ? "" : "none";
+    });
 
     if (themeBtn) {
       themeBtn.style.display = active ? "inline-block" : "none";
@@ -13736,6 +13742,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       return;
     }
 
+    // The Studio page is admin-only while it is rethought. replaceState, not
+    // pushState: Back from the home page would otherwise land here and bounce again.
+    if (key === "studio" && !studioPageOpen()) {
+      history.replaceState(null, "", "/");
+      render();
+      return;
+    }
+
     // Redirect all requests to analytics page to home
     if (key === "analytics") {
       history.pushState(null, "", "/");
@@ -13910,6 +13924,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       title = `About the Studio | ${brand} – Noida Based Photography Studio`;
       desc = `Learn about our creative process, vision, philosophy, and tools behind the photography craft. Noida, India.`;
       path = "/studio/";
+      index = window.STUDIO_CONFIG?.studioPagePublic !== false;
     } else if (key === "book") {
       title = `Book a Fashion/Fitness/Sports Photoshoot in Noida & Delhi NCR | ${brand}`;
       desc = `Collaborate with us on your next photoshoot. Send a project brief or book a session with Noida's creative studio.`;
