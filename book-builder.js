@@ -173,12 +173,16 @@
     if (!iw || !ih) return;
     // A lighting diagram is a drawing with labels: shown whole on white,
     // never cropped, whatever box a layout gives it.
+    // A photo can be faded; the page shows through it.
+    const alpha = shot && typeof shot.opacity === "number" && shot.opacity < 1 ? Math.max(0.1, shot.opacity) : 1;
     if (shot && isDiagram(shot.id)) {
       rect(page, x, y, w, h, "#FFFFFF");
       const a = iw / ih, pad = Math.min(w, h) * 0.04;
       let dw = w - 2 * pad, dh = dw / a;
       if (dh > h - 2 * pad) { dh = h - 2 * pad; dw = dh * a; }
+      if (alpha < 1) { page.ctx.save(); page.ctx.globalAlpha = alpha; }
       page.ctx.drawImage(img, 0, 0, iw, ih, page.u(x + (w - dw) / 2), page.u(y + (h - dh) / 2), page.u(dw), page.u(dh));
+      if (alpha < 1) page.ctx.restore();
       page.photos.push({ id: shot.id, x, y, w, h });
       return { x, y, w, h };
     }
@@ -196,19 +200,21 @@
     const fy = Math.min(1, Math.max(0, shot && typeof shot.y === "number" ? shot.y : 0.35));
     const dw = sw * scale, dh = sh * scale;
     const dx = page.u(x) + (bw - dw) / 2, dy = page.u(y) + (bh - dh) / 2;
+    if (alpha < 1) { page.ctx.save(); page.ctx.globalAlpha = alpha; }
     page.ctx.drawImage(img, (iw - sw) * fx, (ih - sh) * fy, sw, sh, dx, dy, dw, dh);
+    if (alpha < 1) page.ctx.restore();
     page.photos.push({ id: shot && shot.id, x, y, w, h });
     return { x: dx / page.u(1), y: dy / page.u(1), w: dw / page.u(1), h: dh / page.u(1) };
   }
   // Fit whole (no crop) inside the box, centred, or against its right edge when
   // words sit to the right of it; returns the rectangle used. A placement the
   // studio chose for the photo overrides the style's habit.
-  function fitPhoto(page, img, shot, x, y, w, h, right = false) {
+  function fitPhoto(page, img, shot, x, y, w, h, align = "center") {
     if (shot && FIT_MODES.includes(shot.fit)) return drawPhoto(page, img, shot, x, y, w, h);
     const a = (img.naturalWidth || 1) / (img.naturalHeight || 1);
     let dw = w, dh = w / a;
     if (dh > h) { dh = h; dw = h * a; }
-    const dx = right ? x + w - dw : x + (w - dw) / 2, dy = y + (h - dh) / 2;
+    const dx = align === "right" ? x + w - dw : align === "left" ? x : x + (w - dw) / 2, dy = y + (h - dh) / 2;
     drawPhoto(page, img, { ...shot, zoom: 1, x: 0.5, y: 0.5 }, dx, dy, dw, dh);
     return { x: dx, y: dy, w: dw, h: dh };
   }
@@ -265,7 +271,9 @@
 
   /* ---------- page plan ------------------------------------------------------
      A book is a cover plus its page entries. A spread takes two pages. */
-  const renderedCount = (book) => 1 + book.pages.reduce((n, pg) => n + (pg.type === "spread" ? 2 : 1), 0);
+  // A spread and a two-page story each take two pages.
+  const pageSpan = (pg) => (pg && (pg.type === "spread" || pg.type === "article") ? 2 : 1);
+  const renderedCount = (book) => 1 + book.pages.reduce((n, pg) => n + pageSpan(pg), 0);
 
   // Where each photo goes on a page, in mm inside the box (x0, y0, W, H).
   // Chooses from the shapes of the photos on it, as a picture editor would.
@@ -371,6 +379,7 @@
       rect(page, 0, 0, W, H, P.paper);
       const box = { x: M.side, y: M.top, w: W - 2 * M.side, h: H - M.top - M.bottom };
       const shots = entry.photos;
+      if (shots.length === 1 && entry.border) return bandedPhotoPage(page, entry, P, W, H, imgs, shots, shoots, n, captionFit(entry, W - 28, CAPTION_TYPE.elegant), "elegant", M.gap);
       if (shots.length === 1 && imgs[0]) {
         // A single photograph is a plate: whole, never cropped, on paper.
         const r = fitPhoto(page, imgs[0], shots[0], box.x, box.y, box.w, box.h - 8);
@@ -385,7 +394,7 @@
       // The caption takes the gap between the photos and the credit line, so a
       // page without one looks exactly as it always did.
       const cap = captionFit(entry, box.w - 12, CAPTION_TYPE.elegant);
-      if (cap) drawCaption(page, cap, box.x, H - M.bottom - 2, CAPTION_TYPE.elegant, P.ink);
+      if (cap) drawCaption(page, cap, box.x, H - M.bottom - 2, CAPTION_TYPE.elegant, P.ink, P);
       const credit = creditLine(shoots);
       if (credit) { font(page, 300, 3.0, F.sans); text(page, ellipsize(page, credit, box.w - 12), box.x, H - M.bottom + 4, P.soft); }
       this.foot(page, P, W, H, n);
@@ -441,12 +450,13 @@
       rect(page, 0, 0, W, H, P.white);
       const shots = entry.photos;
       const cap = captionFit(entry, W - 2 * M.side, CAPTION_TYPE.modern);
+      if (shots.length === 1 && entry.border) return bandedPhotoPage(page, entry, P, W, H, imgs, shots, shoots, n, cap, "modern", M.gap);
       if (shots.length === 1) {
         if (imgs[0]) drawPhoto(page, imgs[0], shots[0], 0, 0, W, H); else missing(page, P, 0, 0, W, H);
         // A full-bleed page still carries its number, on a band at the foot;
         // the band grows to hold a caption only when there is one.
         rect(page, 0, H - (cap ? 16 : 9), W, cap ? 16 : 9, P.deep);
-        if (cap) drawCaption(page, cap, M.side, H - 9.6, CAPTION_TYPE.modern, P.onDeep);
+        if (cap) drawCaption(page, cap, M.side, H - 9.6, CAPTION_TYPE.modern, P.onDeep, P);
         font(page, 700, 2.4, F.mono, 0.4);
         text(page, String(n).padStart(2, "0"), M.side, H - 3.4, P.onDeep);
         const credit = creditLine(shoots);
@@ -454,7 +464,7 @@
         return;
       }
       const box = { x: M.side, y: M.top, w: W - 2 * M.side, h: H - M.top - M.bottom - (cap ? 7 : 0) };
-      if (cap) drawCaption(page, cap, M.side, H - 17.5, CAPTION_TYPE.modern, P.ink);
+      if (cap) drawCaption(page, cap, M.side, H - 17.5, CAPTION_TYPE.modern, P.ink, P);
       const aspects = shots.map((s, i) => (imgs[i] ? imgs[i].naturalWidth / imgs[i].naturalHeight : 0.7));
       cells(shots.length, box, M.gap, aspects, W > H).forEach((c, i) => {
         if (imgs[i]) drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); else missing(page, P, c.x, c.y, c.w, c.h);
@@ -525,6 +535,7 @@
       const shots = entry.photos;
       // A caption gets a white strip across the foot, clear of the outer band.
       const cap = captionFit(entry, W - 24, CAPTION_TYPE.vogue);
+      if (entry.border) return bandedPhotoPage(page, entry, P, W, H, imgs, shots, shoots, n, cap, "vogue", M.gap);
       const area = cap ? H - 12 : H;
       if (shots.length === 1) {
         if (imgs[0]) drawPhoto(page, imgs[0], shots[0], 0, 0, W, area); else missing(page, P, 0, 0, W, area);
@@ -535,7 +546,7 @@
           if (imgs[i]) drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); else missing(page, P, c.x, c.y, c.w, c.h);
         });
       }
-      if (cap) drawCaption(page, cap, 12, H - 4.8, CAPTION_TYPE.vogue, P.ink);
+      if (cap) drawCaption(page, cap, 12, H - 4.8, CAPTION_TYPE.vogue, P.ink, P);
       this.foot(page, P, W, H, n, creditLine(shoots));
     },
     // `side` overrides the page-number parity: a spread's two halves put their
@@ -674,14 +685,16 @@
       y += 4;
       const c = cfg();
       const ig = String(c.instagram || "").replace(/\/+$/, "").split("/").pop();
+      // Each line can be left off this page (entry.hide lists the ones hidden).
+      const hidden = new Set(Array.isArray(entry.hide) ? entry.hide : []);
       const rows = [
-        ["Email", c.email, c.email ? `mailto:${c.email}` : ""],
-        ["WhatsApp", book.texts && book.texts.phone, book.texts && book.texts.phone ? `https://wa.me/${String(book.texts.phone).replace(/\D/g, "")}` : ""],
-        ["Instagram", ig ? `@${ig}` : "", c.instagram || ""],
-        ["Website", "nerdyphotographer.in", siteUrl],
-        ["Book online", "nerdyphotographer.in/book", `${siteUrl}/book/`],
-        ["Studio", "Noida · working across Delhi NCR", ""]
-      ].filter((r) => r[1]);
+        ["email", "Email", c.email, c.email ? `mailto:${c.email}` : ""],
+        ["whatsapp", "WhatsApp", book.texts && book.texts.phone, book.texts && book.texts.phone ? `https://wa.me/${String(book.texts.phone).replace(/\D/g, "")}` : ""],
+        ["instagram", "Instagram", ig ? `@${ig}` : "", c.instagram || ""],
+        ["website", "Website", "nerdyphotographer.in", siteUrl],
+        ["book", "Book online", "nerdyphotographer.in/book", `${siteUrl}/book/`],
+        ["studio", "Studio", "Noida · working across Delhi NCR", ""]
+      ].filter((r) => r[2] && !hidden.has(r[0])).map((r) => r.slice(1));
       for (const [label, value, url] of rows) {
         S.label(page, label, x, y, P);
         font(page, book.style === "modern" ? 600 : 400, 5.0, book.style === "elegant" || book.style === "vogue" ? F.serif : F.sans);
@@ -690,7 +703,7 @@
         y += 16;
       }
       // A QR straight to the booking form, for a book read on paper.
-      try {
+      if (!hidden.has("qr")) try {
         const qrcode = await API.loadQr();
         const qr = qrcode(0, "M"); qr.addData(`${siteUrl}/book/`); qr.make();
         const cells = qr.getModuleCount(), size = 32, cell = size / cells;
@@ -722,7 +735,7 @@
      recorded, so the editor can say what won't print before a client sees it.
      Field caps (STUDIO_BOOK_LIMITS.fields in app.js) were measured against the
      narrowest style and page shape, so ordinary prose at the cap fits in all. */
-  const WRITING = { story: "Story", note: "About a photo", quote: "Quote", letter: "Letter" };
+  const WRITING = { story: "Story", note: "About a photo", quote: "Quote", letter: "Letter", feature: "Zig-zag", article: "Story with a full-page photo" };
 
   const WTYPE = {
     elegant: {
@@ -739,7 +752,8 @@
       letterHead: { w: 300, f: F.serif, caps: false, start: 11, min: 7.5, lead: 1.18 },
       letterBody: { w: 300, size: 4.0, f: F.serif, lead: 6.4 },
       sign: { w: 400, size: 5.0, f: F.serif, it: true },
-      signLine: { w: 500, size: 2.6, f: F.plex, sp: 0.55, caps: true }
+      signLine: { w: 500, size: 2.6, f: F.plex, sp: 0.55, caps: true },
+      featureSub: { w: 300, f: F.serif, caps: false, start: 6, min: 5, lead: 1.18, color: "ink" }
     },
     modern: {
       kicker: { w: 700, size: 2.5, f: F.mono, sp: 0.45, caps: true, color: "accentText" },
@@ -756,7 +770,8 @@
       letterHead: { w: 800, f: F.heavy, sp: -0.2, caps: true, start: 9, min: 6, lead: 1.08 },
       letterBody: { w: 400, size: 3.8, f: F.sans, lead: 6.1 },
       sign: { w: 600, size: 4.0, f: F.sans },
-      signLine: { w: 700, size: 2.5, f: F.mono, sp: 0.45, caps: true }
+      signLine: { w: 700, size: 2.5, f: F.mono, sp: 0.45, caps: true },
+      featureSub: { w: 800, f: F.heavy, sp: -0.1, caps: true, start: 4.6, min: 4, lead: 1.1, color: "ink" }
     },
     vogue: {
       kicker: { w: 600, size: 2.7, f: F.geo, sp: 0.8, caps: true, color: "accentText" },
@@ -772,7 +787,8 @@
       letterHead: { w: 300, f: F.serif, sp: 0.5, caps: true, start: 10, min: 6.5, lead: 1.15 },
       letterBody: { w: 400, size: 3.8, f: F.sans, lead: 6.1 },
       sign: { w: 400, size: 5.0, f: F.serif, it: true },
-      signLine: { w: 600, size: 2.7, f: F.geo, sp: 0.8, caps: true }
+      signLine: { w: 600, size: 2.7, f: F.geo, sp: 0.8, caps: true },
+      featureSub: { w: 300, f: F.serif, sp: 0.4, caps: true, start: 5.2, min: 4.4, lead: 1.15, color: "ink" }
     }
   };
   const DETAIL_TYPE = { w: 400, f: F.sans };
@@ -783,6 +799,85 @@
     vogue: { w: 500, f: F.geo, start: 3.0, min: 2.6 }
   };
   const MARKER = "NO WORDS ON THIS PAGE YET";
+
+  /* ---------- the studio's own formatting of a text -----------------------------
+     A font (open-source, SIL Open Font License, from Google Fonts), a colour
+     (a book colour or any hex colour) and an alignment, chosen per text. The
+     site's own six families are already loaded; the others load the first
+     time a book uses them. A style's weight snaps to the nearest the family
+     has, so a light Fraunces headline becomes the lightest Playfair. */
+  const FONT_LIST = [
+    { key: "fraunces", name: "Fraunces", kind: "Serif", family: F.serif, weights: [300], italic: [400, 500] },
+    { key: "playfair", name: "Playfair Display", kind: "Serif", family: "'Playfair Display', Georgia, serif", range: [400, 900], css: "Playfair+Display:ital,wght@0,400..900;1,400..900" },
+    { key: "cormorant", name: "Cormorant Garamond", kind: "Serif", family: "'Cormorant Garamond', Georgia, serif", range: [300, 700], css: "Cormorant+Garamond:ital,wght@0,300..700;1,300..700" },
+    { key: "baskerville", name: "Libre Baskerville", kind: "Serif", family: "'Libre Baskerville', Georgia, serif", weights: [400, 700], italic: [400], css: "Libre+Baskerville:ital,wght@0,400;0,700;1,400" },
+    { key: "bodoni", name: "Bodoni Moda", kind: "Serif", family: "'Bodoni Moda', Georgia, serif", range: [400, 900], css: "Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900" },
+    { key: "dmserif", name: "DM Serif Display", kind: "Serif", family: "'DM Serif Display', Georgia, serif", weights: [400], css: "DM+Serif+Display:ital@0;1" },
+    { key: "archivo", name: "Archivo", kind: "Sans", family: F.heavy, range: [400, 900] },
+    { key: "inter", name: "Inter", kind: "Sans", family: F.sans, weights: [300, 400, 500, 600] },
+    { key: "outfit", name: "Outfit", kind: "Sans", family: F.geo, range: [400, 800] },
+    { key: "sourcesans", name: "Source Sans 3", kind: "Sans", family: "'Source Sans 3', Arial, sans-serif", range: [200, 900], css: "Source+Sans+3:ital,wght@0,200..900;1,200..900" },
+    { key: "jost", name: "Jost", kind: "Sans", family: "Jost, Arial, sans-serif", range: [100, 900], css: "Jost:ital,wght@0,100..900;1,100..900" },
+    { key: "manrope", name: "Manrope", kind: "Sans", family: "Manrope, Arial, sans-serif", range: [200, 800], css: "Manrope:wght@200..800" },
+    { key: "spacegrotesk", name: "Space Grotesk", kind: "Sans", family: "'Space Grotesk', Arial, sans-serif", range: [300, 700], css: "Space+Grotesk:wght@300..700" },
+    { key: "oswald", name: "Oswald", kind: "Condensed", family: "Oswald, 'Arial Narrow', sans-serif", range: [200, 700], css: "Oswald:wght@200..700" },
+    { key: "plexmono", name: "IBM Plex Mono", kind: "Mono", family: F.plex, weights: [400, 500, 600, 700] }
+  ];
+  const ALIGNS = ["left", "center", "right", "justify"];
+  const fontByKey = (key) => FONT_LIST.find((f) => f.key === key) || null;
+  function weightFor(font, w, italic) {
+    const list = (italic && font.italic) || font.weights;
+    if (list) return list.reduce((best, x) => (Math.abs(x - w) < Math.abs(best - w) ? x : best), list[0]);
+    return Math.min(font.range[1], Math.max(font.range[0], w));
+  }
+  // Font, weight and italic from the studio's formatting; the family's own
+  // weights decide what a weight becomes.
+  const WEIGHTS = { light: 300, regular: 400, bold: 700 };
+  function styledSpec(spec, f) {
+    if (!f || (!f.font && !f.weight && f.italic === undefined)) return spec;
+    const font = fontByKey(f.font);
+    const it = f.italic === true ? true : !!spec.it;
+    const wanted = WEIGHTS[f.weight] || spec.w;
+    if (font) return { ...spec, f: font.family, it, w: weightFor(font, wanted, it) };
+    const base = FONT_LIST.find((x) => x.family === spec.f);
+    return { ...spec, it, w: base ? weightFor(base, wanted, it) : wanted };
+  }
+  const sizeScale = (f) => (f && typeof f.size === "number" && isFinite(f.size) ? Math.min(1.6, Math.max(0.6, f.size)) : 1);
+  function tintOf(color, P, fallback) {
+    if (color === "ink" && P) return P.ink;
+    if (color === "soft" && P) return P.soft;
+    if (color === "accent" && P) return accentText(P);
+    return /^#[0-9a-f]{6}$/i.test(String(color || "")) ? color : fallback;
+  }
+  const fontLoads = new Map();
+  function loadFont(key) {
+    const font = fontByKey(key);
+    if (!font || !font.css) return Promise.resolve();
+    if (!fontLoads.has(key)) {
+      fontLoads.set(key, new Promise((resolve) => {
+        const link = document.createElement("link");
+        link.rel = "stylesheet"; link.id = `sb-font-${key}`;
+        link.href = `https://fonts.googleapis.com/css2?family=${font.css}&display=swap`;
+        const done = () => resolve();
+        link.onload = done; link.onerror = done; setTimeout(done, 8000);
+        document.head.appendChild(link);
+      }).then(() => {
+        // The stylesheet only names the files; fetch the faces canvas will use.
+        const fam = font.family.split(",")[0].trim();
+        const ws = new Set([300, 400, 500, 600, 700, 800].map((w) => weightFor(font, w, false)));
+        const its = new Set([400, 500].map((w) => weightFor(font, w, true)));
+        return Promise.all([...[...ws].map((w) => `${w} 20px ${fam}`), ...[...its].map((w) => `italic ${w} 20px ${fam}`)]
+          .map((d) => document.fonts.load(d, "Abc€“”").catch(() => null)));
+      }));
+    }
+    return fontLoads.get(key);
+  }
+  function bookFontKeys(book) {
+    const keys = new Set();
+    for (const pg of (book && book.pages) || []) if (pg && pg.style) for (const f of Object.values(pg.style)) if (f && f.font) keys.add(f.font);
+    return [...keys];
+  }
+  const ensureBookFonts = (book) => Promise.all(bookFontKeys(book).map(loadFont));
 
   let measurePage = null;
   const measurer = () => measurePage || (measurePage = API.newPdfPage(72, { w: 10, h: 10 }));
@@ -897,12 +992,13 @@
           }
           const ind = dc && ci === 0 && y <= dc.y + 0.01 ? dc.indent : 0;
           const width = cols[ci].w - ind;
-          lines.push({ pieces: takeLine(page, q, width), x: cols[ci].x + ind, y, w: width, pi });
+          const pieces = takeLine(page, q, width);
+          lines.push({ pieces, x: cols[ci].x + ind, y, w: width, pi, end: q.length === 0 });
           y += lead; colTop = false;
         }
       }
       let printed = dropWord + lines.reduce((n, l) => n + l.pieces.filter((p) => p.end).length, 0);
-      const out = lines.map((l) => ({ s: joinLine(l.pieces), x: l.x, y: l.y }));
+      const out = lines.map((l) => ({ s: joinLine(l.pieces), x: l.x, y: l.y, w: l.w, end: l.end }));
       if (cut && lines.length) {
         const L = lines[lines.length - 1];
         const e = endLine(page, L.pieces, L.w, true);
@@ -928,97 +1024,309 @@
   // A photos page's one caption, measured like the writing pages.
   function captionFit(entry, width, spec) {
     if (!entry || !oneParagraph(entry.caption).length) return null;
-    return fitBlock(measurer(), entry.caption, width, 1, spec, spec.start, spec.min, false);
+    const f = (entry.style && entry.style.caption) || {};
+    const styled = styledSpec(spec, f);
+    const sc = sizeScale(f);
+    const r = fitBlock(measurer(), entry.caption, width, 1, styled, spec.start * sc, spec.min * sc, false);
+    return { ...r, spec: styled, color: f.color, align: f.align === "center" || f.align === "right" ? f.align : "left", width };
   }
-  function drawCaption(page, r, x, y, spec, color) {
-    font(page, spec.w, r.size, spec.f, spec.sp || 0, !!spec.it);
-    text(page, r.lines[0], x, y, color);
+  function drawCaption(page, r, x, y, spec, color, P) {
+    const s = r.spec || spec;
+    font(page, s.w, r.size, s.f, s.sp || 0, !!s.it);
+    const c = tintOf(r.color, P, color);
+    if (r.align === "center") text(page, r.lines[0], x + r.width / 2, y, c, "center");
+    else if (r.align === "right") text(page, r.lines[0], x + r.width, y, c, "right");
+    else text(page, r.lines[0], x, y, c);
     if (r.cut) reportCut(page, "caption", "caption");
   }
 
+  /* ---------- borders round a full-page photo -----------------------------------
+     By default each style draws its own foot on a full-page photo. When the
+     studio picks a border, the photo sits inside bands on the chosen edges,
+     narrow, standard or broad. The page number (and the credit, where there's
+     room) goes in the foot band, else the top band; a caption always gets a
+     band at the foot; "none" leaves the photograph alone, with no number. */
+  const BAND = { narrow: 4, broad: 16 };
+  function bandsFor(entry, hasCaption) {
+    const t = BAND[entry.borderWidth] || 9, e = entry.border;
+    const on = (side) => e === "all" || e === side;
+    return { t, top: on("top") ? t : 0, left: on("left") ? t : 0, right: on("right") ? t : 0, bottom: on("bottom") ? Math.max(t, hasCaption ? 16 : 0) : (hasCaption ? 16 : 0) };
+  }
+  function paintBands(page, P, W, H, B, colors, n, credit, cap, numberSide) {
+    if (B.top) rect(page, 0, 0, W, B.top, colors.band);
+    if (B.bottom) rect(page, 0, H - B.bottom, W, B.bottom, colors.band);
+    if (B.left) rect(page, 0, 0, B.left, H, colors.band);
+    if (B.right) rect(page, W - B.right, 0, B.right, H, colors.band);
+    const lx = B.left + (B.left ? 6 : 14), rx = W - B.right - (B.right ? 6 : 14);
+    if (cap) drawCaption(page, cap, lx, H - 9.6, null, colors.on, P);
+    const across = B.bottom || B.top;
+    if (across) {
+      const size = Math.min(2.4, across * 0.5);
+      font(page, 700, size, F.mono, 0.4);
+      const y = B.bottom ? (cap ? H - 3.4 : H - B.bottom / 2 + size * 0.36) : B.top / 2 + size * 0.36;
+      const right = numberSide === "right";
+      text(page, String(n).padStart(2, "0"), right ? rx : lx, y, colors.on, right ? "right" : "left");
+      if (credit && size >= 2.4) text(page, ellipsize(page, credit.toUpperCase(), Math.max(10, rx - lx - 14)), right ? lx : rx, y, colors.on, right ? "left" : "right");
+    } else if (B.left || B.right) {
+      const t = B.left || B.right, size = Math.min(2.4, t * 0.5);
+      font(page, 700, size, F.mono, 0.2);
+      text(page, String(n).padStart(2, "0"), B.left ? B.left / 2 : W - B.right / 2, H - 8, colors.on, "center");
+    }
+  }
+  const bandColors = (style, P) => (style === "vogue" ? { band: P.white, on: P.ink } : { band: P.deep, on: P.onDeep });
+  function bandedPhotoPage(page, entry, P, W, H, imgs, shots, shoots, n, cap, style, gap) {
+    const B = bandsFor(entry, !!cap);
+    rect(page, 0, 0, W, H, P.white);
+    const a = { x: B.left, y: B.top, w: W - B.left - B.right, h: H - B.top - B.bottom };
+    if (shots.length === 1) {
+      if (imgs[0]) drawPhoto(page, imgs[0], shots[0], a.x, a.y, a.w, a.h); else missing(page, P, a.x, a.y, a.w, a.h);
+    } else {
+      const aspects = shots.map((s, i) => (imgs[i] ? imgs[i].naturalWidth / imgs[i].naturalHeight : 0.7));
+      cells(shots.length, a, gap, aspects, W > H).forEach((c, i) => {
+        if (imgs[i]) drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); else missing(page, P, c.x, c.y, c.w, c.h);
+      });
+    }
+    paintBands(page, P, W, H, B, bandColors(style, P), n, creditLine(shoots), cap, n % 2 ? "right" : "left");
+  }
+
+  /* ---------- paper sizes -----------------------------------------------------
+     Every page is designed on A4 and printed on the paper chosen for the book.
+     B5 and A5 have A4's proportions, so they are A4 made smaller. Letter is a
+     little wider (portrait) or taller (landscape) in proportion, so its design
+     space is A4 grown on that side: the layout keeps its A4 place, the extra
+     goes to the margins, and anything that bleeds still reaches the edge. */
+  const PAPERS = {
+    a4: { name: "A4", w: 210, h: 297, note: "210 × 297 mm · most printers" },
+    b5: { name: "B5", w: 176, h: 250, note: "176 × 250 mm" },
+    a5: { name: "A5", w: 148, h: 210, note: "148 × 210 mm · booklet" },
+    letter: { name: "Letter", w: 215.9, h: 279.4, note: "8.5 × 11 in · US printers" }
+  };
+  function geometry(book) {
+    const L = book.orientation === "landscape";
+    const p = PAPERS[book.paper] || PAPERS.a4;
+    const pw = L ? p.h : p.w, ph = L ? p.w : p.h;          // the printed page, mm
+    const Wa = L ? 297 : 210, Ha = L ? 210 : 297;           // the A4 design frame
+    const s = Math.min(pw / Wa, ph / Ha);                   // design mm → printed mm
+    const W = Math.max(Wa, pw / s), H = Math.max(Ha, ph / s);
+    return { L, W, H, Wa, Ha, s, ox: (W - Wa) / 2, oy: (H - Ha) / 2, pw, ph };
+  }
+  // Moves an operation laid out on the A4 frame onto the paper's design space.
+  function placeOp(o, G) {
+    if (!G.ox && !G.oy) return o;
+    if (o.k === "text" || o.k === "guide") return { ...o, x: o.x + G.ox, y: o.y + G.oy };
+    const axis = (a, len, full, off, total, stretch) => {
+      const atStart = a <= 0.01, atEnd = a + len >= full - 0.01;
+      if (atStart && atEnd) return [0, total];                       // spans the page: still does
+      if (atStart) return [0, stretch ? len + off : len];             // bleeds off the start edge
+      if (atEnd) return stretch ? [a + off, total - (a + off)] : [a + 2 * off, len];   // bleeds off the end edge
+      return [a + off, len];
+    };
+    const stretch = o.k === "photo";
+    const [x, w] = axis(o.x, o.w, G.Wa, G.ox, G.W, stretch);
+    const [y, h] = axis(o.y, o.h, G.Ha, G.oy, G.H, stretch);
+    return { ...o, x, y, w, h };
+  }
+
+  /* ---------- where a writing page's photo sits ------------------------------
+     Boxes on the A4 frame, per page kind, position and style. Elegant insets
+     its photographs on paper with a hairline frame; Modern bleeds them but
+     keeps clear of its foot rule; Vogue bleeds them to every edge it touches.
+     Each position keeps at least the text room the page's word caps were
+     measured against, so words that fit in one position fit in all. */
+  const PHOTO_AT = { story: ["top", "bottom", "left", "right"], note: ["top", "bottom", "left", "right"], quote: ["top", "bottom", "left", "right"], feature: ["left", "right"], article: ["left", "right"] };
+  // Where the photo sits when the studio hasn't chosen: above the words on a
+  // portrait page, beside them on a landscape one; a two-page story opens on
+  // its words, with the photo on the facing (right-hand) page.
+  const photoAtOf = (entry, L) => ((PHOTO_AT[entry.type] || []).includes(entry.photoAt) ? entry.photoAt : (entry.type === "feature" ? "left" : entry.type === "article" ? "right" : (L ? "left" : "top")));
+  const BOXES = {
+    story: {
+      P: { top: { e: [20, 22, 170, 110], m: [0, 0, 210, 132], v: [0, 0, 210, 132] },
+           bottom: { e: [20, 170, 170, 97], m: [0, 170, 210, 109], v: [0, 170, 210, 127] },
+           left: { e: [20, 22, 80, 245], m: [0, 0, 92, 279], v: [0, 0, 92, 297] },
+           right: { e: [110, 22, 80, 245], m: [118, 0, 92, 279], v: [118, 0, 92, 297] } },
+      L: { left: { e: [20, 18, 112, 168], m: [0, 0, 140, 192], v: [0, 0, 140, 210] },
+           right: { e: [165, 18, 112, 168], m: [157, 0, 140, 192], v: [157, 0, 140, 210] },
+           top: { e: [20, 18, 257, 74], m: [0, 0, 297, 86], v: [0, 0, 297, 92] },
+           bottom: { e: [20, 118, 257, 68], m: [0, 118, 297, 74], v: [0, 118, 297, 92] } }
+    },
+    note: {
+      P: { top: { e: [20, 22, 170, 178], m: [0, 0, 210, 202], v: [0, 0, 210, 202] },
+           bottom: { e: [20, 96, 170, 171], m: [0, 96, 210, 183], v: [0, 96, 210, 201] },
+           left: { e: [20, 22, 104, 245], m: [0, 0, 124, 279], v: [0, 0, 124, 297] },
+           right: { e: [86, 22, 104, 245], m: [86, 0, 124, 279], v: [86, 0, 124, 297] } },
+      L: { left: { e: [20, 18, 170, 168], m: [0, 0, 196, 192], v: [0, 0, 196, 210] },
+           right: { e: [107, 18, 170, 168], m: [101, 0, 196, 192], v: [101, 0, 196, 210] },
+           top: { e: [20, 18, 257, 106], m: [0, 0, 297, 120], v: [0, 0, 297, 126] },
+           bottom: { e: [20, 84, 257, 102], m: [0, 84, 297, 108], v: [0, 84, 297, 126] } }
+    },
+    quote: {
+      P: { top: { e: [20, 22, 170, 128], m: [0, 0, 210, 150], v: [0, 0, 210, 150] },
+           bottom: { e: [20, 145, 170, 122], m: [0, 145, 210, 134], v: [0, 146, 210, 151] },
+           left: { e: [20, 22, 80, 245], m: [0, 0, 95, 279], v: [0, 0, 95, 297] },
+           right: { e: [110, 22, 80, 245], m: [115, 0, 95, 279], v: [115, 0, 95, 297] } },
+      L: { left: { e: [20, 18, 112, 168], m: [0, 0, 140, 192], v: [0, 0, 140, 210] },
+           right: { e: [165, 18, 112, 168], m: [157, 0, 140, 192], v: [157, 0, 140, 210] },
+           top: { e: [20, 18, 257, 74], m: [0, 0, 297, 86], v: [0, 0, 297, 92] },
+           bottom: { e: [20, 112, 257, 74], m: [0, 106, 297, 86], v: [0, 118, 297, 92] } }
+    }
+  };
+  const boxFor = (type, st, L, at) => BOXES[type][L ? "L" : "P"][at][st === "elegant" ? "e" : st === "modern" ? "m" : "v"];
+
   // The plan for one writing page: drawing operations in mm, the cuts, and
-  // for the editor, how each field fared.
-  function planWriting(book, entry, W, H) {
+  // for the editor, how each field fared. Laid out on the A4 frame, then
+  // placed on the book's paper.
+  function planWriting(book, entry) {
+    const G = geometry(book);
     const st = WTYPE[book.style] ? book.style : "modern";
     const T = WTYPE[st];
     const P = colourway(book.colourway);
-    const L = W > H;
+    const L = G.L, W = G.Wa, H = G.Ha;
     const page = measurer();
     const plan = { ops: [], cuts: [], fields: {}, foot: {} };
     const op = (o) => plan.ops.push(o);
     const rectOp = (x, y, w, h, c) => op({ k: "rect", x, y, w, h, c });
     const put = (s, x, y, spec, size, c, align = "left") => op({ k: "text", s, x, y, f: [spec.w, size, spec.f, spec.sp || 0, !!spec.it], c, align });
+    // The studio's own formatting of a text: its font, colour and alignment.
+    const fmt = (field) => (entry.style && typeof entry.style === "object" && entry.style[field]) || {};
+    const styled = (field, spec) => styledSpec(spec, fmt(field));
+    const tint = (field, fallback) => tintOf(fmt(field).color, P, fallback);
+    const alignOf = (field, fallback = "left") => (ALIGNS.includes(fmt(field).align) ? fmt(field).align : fallback);
+    // One line inside a box from x to x + w. Justified lines spread their words
+    // to both edges; a paragraph's last line stays ranged left.
+    const placeLine = (s, x, w, y, spec, size, color, align, last) => {
+      if (align === "center") put(s, x + w / 2, y, spec, size, color, "center");
+      else if (align === "right") put(s, x + w, y, spec, size, color, "right");
+      else if (align === "justify" && !last && / /.test(s) && !/…$/.test(s)) op({ k: "text", s, x, y, f: [spec.w, size, spec.f, spec.sp || 0, !!spec.it], c: color, align: "left", justify: w });
+      else put(s, x, y, spec, size, color, "left");
+    };
     const colour = (role) => (role === "accentText" ? accentText(P) : P[role]);
-    const hasPhoto = Array.isArray(entry.photos) && entry.photos.length > 0;
-    const LABEL = { kicker: "small line", headline: "headline", intro: "intro", body: entry.type === "letter" ? "letter" : "story", title: "title", note: "words about the picture", detail: "detail line", quote: "quote", name: "name", role: "role", heading: "heading", signName: "signed name", signLine: "line under the name" };
+    const photos = Array.isArray(entry.photos) ? entry.photos : [];
+    const hasPhoto = photos.length > 0;
+    const at = photoAtOf(entry, L);
+    const LABEL = { kicker: "small line", headline: "headline", intro: "intro", body: entry.type === "letter" ? "letter" : "story", title: "title", note: "words about the picture", detail: "detail line", quote: "quote", name: "name", role: "role", heading: "heading", signName: "signed name", signLine: "line under the name", sub1: "first subheading", text1: "first block of words", sub2: "second subheading", text2: "second block of words" };
     const report = (field, r) => {
       plan.fields[field] = r;
       if (r.cut) plan.cuts.push({ field, label: LABEL[field] || field });
     };
     // Draw a fitted block at baseline y0; an empty one leaves a guide (preview
     // only) and still holds its first line, so the layout doesn't jump.
-    const block = (field, s, x, y0, w, maxLines, spec, start, min, lead, color, align = "left") => {
+    const block = (field, s, x, y0, w, maxLines, baseSpec, start0, min0, lead0, baseColor, baseAlign = "left") => {
+      const spec = styled(field, baseSpec), color = tint(field, baseColor), align = alignOf(field, baseAlign);
+      const sc = sizeScale(fmt(field));
+      const start = start0 * sc, min = min0 * sc, lead = lead0 === "mul" ? "mul" : lead0 * sc;
       const r = fitBlock(page, s, w, maxLines, spec, start, min, !!spec.caps);
       report(field, { kind: "block", empty: !r.total, ...r });
-      if (!r.total) { op({ k: "guide", x: align === "center" ? x - w / 2 : x, y: y0 - start * 0.8, w, h: start }); return y0; }
+      if (!r.total) { op({ k: "guide", x, y: y0 - start * 0.8, w, h: start }); return y0; }
       const step = lead === "mul" ? r.size * spec.lead : lead;
-      r.lines.forEach((l, i) => put(l, x, y0 + i * step, spec, r.size, color, align));
+      r.lines.forEach((l, i) => placeLine(l, x, w, y0 + i * step, spec, r.size, color, align, i === r.lines.length - 1));
       return y0 + (r.lines.length - 1) * step;
     };
-    const body = (field, s, cols, spec, dropRole) => {
-      const r = flowBody(page, s, cols, spec, dropRole ? colour(dropRole) : null);
+    const body = (field, s, cols, baseSpec, dropRole) => {
+      const sc = sizeScale(fmt(field));
+      const styledBase = styled(field, baseSpec);
+      const spec = sc === 1 ? styledBase : { ...styledBase, size: styledBase.size * sc, lead: styledBase.lead * sc };
+      const align = alignOf(field, "left");
+      // A drop cap belongs to text ranged left or justified.
+      const r = flowBody(page, s, cols, spec, dropRole && (align === "left" || align === "justify") && !fmt(field).font ? colour(dropRole) : null);
       report(field, { kind: "flow", empty: !r.total, ...r, lines: undefined });
       if (!r.total) { cols.forEach((c) => op({ k: "guide", x: c.x, y: c.top - spec.size, w: c.w, h: c.bottom - c.top + spec.size })); return; }
       if (r.drop) put(r.drop.s, r.drop.x, r.drop.y, { w: 300, f: F.serif }, r.drop.size, r.dropColor);
-      r.lines.forEach((l) => put(l.s, l.x, l.y, spec, spec.size, P.ink));
+      const color = tint(field, P.ink);
+      r.lines.forEach((l, i) => placeLine(l.s, l.x, l.w, l.y, spec, spec.size, color, align, l.end || i === r.lines.length - 1));
     };
     const rule = (x, y, color = P.accent) => rectOp(x, y - T.rule.h / 2, T.rule.w, T.rule.h, color);
     const ground = () => {
       if (st === "elegant") rectOp(0, 0, W, H, P.paper);
       else { rectOp(0, 0, W, H, P.white); if (st === "modern") rectOp(0, 0, 6, H, P.accent); }
     };
-    const photo = (box, mode, empty) => op({ k: "photo", x: box[0], y: box[1], w: box[2], h: box[3], mode, frame: st === "elegant" ? P.rule : null, empty });
+    const photo = (box, mode, empty, i = 0) => op({ k: "photo", i, x: box[0], y: box[1], w: box[2], h: box[3], mode, frame: st === "elegant" ? P.rule : null, empty });
     const marker = (x, y, color = P.soft) => put(MARKER, x, y, { w: 500, f: F.plex, sp: 0.4 }, 3.2, color, "center");
     const kicker = (s, x, y, w) => block("kicker", s, x, y, w, 1, T.kicker, T.kicker.size, T.kicker.size, 0, colour(T.kicker.color));
     const has = (...keys) => keys.some((k) => oneParagraph(entry[k]).length);
+    const beside = (box) => ({ left: box[0] + box[2] + 12, right: box[0] - 12 });   // text edges next to a side photo
 
-    if (entry.type === "story") {
+    if (entry.type === "story" || entry.type === "article") {
       ground();
-      if (hasPhoto) photo(L ? (st === "elegant" ? [20, 18, 112, 168] : [0, 0, 140, st === "modern" ? 192 : 210]) : (st === "elegant" ? [20, 22, 170, 110] : [0, 0, W, 132]), "crop");
-      const x = L && hasPhoto ? 152 : 20, w = L ? (hasPhoto ? 125 : 257) : 170;
-      const K = L ? 30 : (hasPhoto ? 146 : 34);
-      kicker(entry.kicker, x, K, w);
-      const hLast = block("headline", entry.headline, x, K + 12, w, 2, T.storyHead, T.storyHead.start, T.storyHead.min, "mul", P.ink);
+      let x = 20, w = L ? 257 : 170, K = L ? 30 : 34, maxHead = 2, maxIntro = 3, cols = null, bottom = L ? 184 : 270, headW = null;
+      if (hasPhoto && entry.type === "story") {
+        const box = boxFor("story", st, L, at);
+        photo(box, "crop");
+        if (at === "top" || at === "bottom") {
+          K = at === "top" ? box[1] + box[3] + 14 : (L ? 30 : 34);
+          if (!L) { bottom = at === "top" ? 270 : box[1] - 12; }
+          else {
+            // Landscape band: headline and intro in a left column, the story
+            // in two columns beside them.
+            headW = 80; maxHead = 3; maxIntro = 4;
+            bottom = at === "top" ? 184 : box[1] - 12;
+            const top = K + 12;
+            cols = [{ x: 112, w: 78.5, top, bottom }, { x: 198.5, w: 78.5, top, bottom }];
+          }
+        } else {
+          const e = beside(box);
+          if (at === "left") { x = e.left; w = (L ? 277 : 190) - x; } else { x = 20; w = e.right - 20; }
+          if (!L) { maxHead = 3; maxIntro = 4; }
+        }
+      }
+      const hw = headW || w;
+      // A narrow column lets the headline set smaller before it's cut: wide
+      // capitals (Vogue) need it to hold a headline at its cap in three lines.
+      const headMin = hw < 100 ? Math.min(T.storyHead.min, 5.5) : T.storyHead.min;
+      kicker(entry.kicker, x, K, hw);
+      const hLast = block("headline", entry.headline, x, K + 12, hw, maxHead, T.storyHead, T.storyHead.start, headMin, "mul", P.ink);
       let ruleY = hLast + 7;
-      if (has("intro")) ruleY = block("intro", entry.intro, x, hLast + 10, w, 3, T.storyIntro, T.storyIntro.start, T.storyIntro.min, T.storyIntro.lead, colour(T.storyIntro.color)) + 6.5;
+      if (has("intro")) ruleY = block("intro", entry.intro, x, hLast + 10, hw, maxIntro, T.storyIntro, T.storyIntro.start, T.storyIntro.min, T.storyIntro.lead, colour(T.storyIntro.color)) + 6.5;
       else report("intro", { kind: "block", empty: true });
       rule(x, ruleY);
-      const top = ruleY + 9.5, bottom = L ? 184 : 270;
-      const cols = L && hasPhoto ? [{ x, w, top, bottom }] : [{ x, w: (w - 8) / 2, top, bottom }, { x: x + (w - 8) / 2 + 8, w: (w - 8) / 2, top, bottom }];
+      if (!cols) {
+        const top = ruleY + 9.5;
+        cols = w >= 150 ? [{ x, w: (w - 8) / 2, top, bottom }, { x: x + (w - 8) / 2 + 8, w: (w - 8) / 2, top, bottom }] : [{ x, w, top, bottom }];
+      }
       body("body", entry.body, cols, T.body, T.drop);
-      if (!has("kicker", "headline", "intro", "body")) marker(x + w / 2, (top + bottom) / 2);
+      if (!has("kicker", "headline", "intro", "body")) marker(cols[0].x + cols[0].w / 2, (cols[0].top + cols[0].bottom) / 2);
     }
 
     if (entry.type === "note") {
       ground();
-      photo(L ? (st === "elegant" ? [20, 18, 170, 168] : [0, 0, 196, st === "modern" ? 192 : 210]) : (st === "elegant" ? [20, 22, 170, 178] : [0, 0, W, 202]),
-        st === "elegant" ? (L ? "fit-right" : "fit") : "crop", "NO PHOTO CHOSEN");
+      const box = boxFor("note", st, L, at);
+      const fitMode = st !== "elegant" ? "crop" : at === "left" ? "fit-right" : at === "right" ? "fit-left" : "fit";
+      photo(box, fitMode, "NO PHOTO CHOSEN");
       const TT = T.noteTitle;
-      if (!L) {
-        const tLast = block("title", entry.title, 20, 216, 60, 3, TT, TT.start, TT.min, "mul", P.ink);
-        rule(20, tLast + 7);
-        body("note", entry.note, [{ x: 90, w: 100, top: 216, bottom: 262 }], T.body, null);
-        block("detail", entry.detail, 20, 270, 170, 1, DETAIL_TYPE, 3.0, 2.6, 4.6, P.soft);
-        if (!has("title", "note", "detail")) marker(W / 2, 240);
+      const detail = (x, lastY, w, maxLines) => {
+        const d = fitBlock(page, entry.detail, w, maxLines, DETAIL_TYPE, 3.0, 2.6, false);
+        block("detail", entry.detail, x, lastY - (Math.max(1, d.lines.length) - 1) * 4.6, w, maxLines, DETAIL_TYPE, 3.0, 2.6, 4.6, P.soft);
+      };
+      if (at === "top" || at === "bottom") {
+        if (!L) {
+          // Title beside the note, the detail line under both.
+          const y = at === "top" ? 216 : 34;
+          const tLast = block("title", entry.title, 20, y, 60, 3, TT, TT.start, TT.min, "mul", P.ink);
+          rule(20, tLast + 7);
+          body("note", entry.note, [{ x: 90, w: 100, top: y, bottom: y + 46 }], T.body, null);
+          block("detail", entry.detail, 20, y + 54, 170, 1, DETAIL_TYPE, 3.0, 2.6, 4.6, P.soft);
+          if (!has("title", "note", "detail")) marker(140, y + 24);
+        } else {
+          // Landscape band: title and detail in a left column, the note beside.
+          const y = at === "top" ? box[1] + box[3] + 14 : 30;
+          const last = at === "top" ? 184 : box[1] - 10;
+          const tLast = block("title", entry.title, 20, y, 70, 3, TT, TT.start, TT.min, "mul", P.ink);
+          rule(20, tLast + 7);
+          body("note", entry.note, [{ x: 105, w: 120, top: y, bottom: last }], T.body, null);
+          detail(20, last, 70, 2);
+          if (!has("title", "note", "detail")) marker(165, (y + last) / 2);
+        }
       } else {
-        const x = 208, w = 69;
-        const tLast = block("title", entry.title, x, 34, w, 3, TT, TT.start, TT.min, "mul", P.ink);
+        // A narrow column beside the photo: title, note, then the detail line.
+        const e = beside(box);
+        const x = at === "left" ? e.left : 20;
+        const w = at === "left" ? (L ? 277 : 190) - x : e.right - 20;
+        const y = 34;
+        const tLast = block("title", entry.title, x, y, w, 3, TT, TT.start, TT.min, "mul", P.ink);
         rule(x, tLast + 7);
-        body("note", entry.note, [{ x, w, top: tLast + 16.5, bottom: 170 }], T.body, null);
-        // Up to two lines, set so the last one always sits on 184.
-        const d = fitBlock(page, entry.detail, w, 2, DETAIL_TYPE, 3.0, 2.6, false);
-        block("detail", entry.detail, x, 184 - (Math.max(1, d.lines.length) - 1) * 4.6, w, 2, DETAIL_TYPE, 3.0, 2.6, 4.6, P.soft);
-        if (!has("title", "note", "detail")) marker(x + w / 2, 100);
+        const last = L ? 184 : 270;
+        body("note", entry.note, [{ x, w, top: tLast + 16.5, bottom: last - (L ? 14 : 20) }], T.body, null);
+        detail(x, last, w, L ? 2 : 3);
+        if (!has("title", "note", "detail")) marker(x + w / 2, L ? 100 : 150);
       }
     }
 
@@ -1030,16 +1338,40 @@
       const on = solid ? P.onAccent : P.ink, soft = solid ? P.onAccent : P.soft;
       let zone;
       if (hasPhoto) {
-        photo(L ? (st === "elegant" ? [20, 18, 112, 168] : [0, 0, 140, st === "modern" ? 192 : 210]) : (st === "elegant" ? [20, 22, 170, 128] : [0, 0, W, 150]), "crop");
-        zone = L ? { x: 154, w: 123, top: 24, bottom: 180, lines: 6, start: 9, min: 6 } : { x: 20, w: 170, top: 164, bottom: 266, lines: 5, start: 9, min: 6 };
+        const box = boxFor("quote", st, L, at);
+        photo(box, "crop");
+        if (at === "top") zone = L ? { x: 20, w: 257, top: box[1] + box[3] + 10, bottom: 184, lines: 4 } : { x: 20, w: 170, top: 164, bottom: 266, lines: 5 };
+        else if (at === "bottom") zone = L ? { x: 20, w: 257, top: 24, bottom: box[1] - 10, lines: 4 } : { x: 20, w: 170, top: 30, bottom: 132, lines: 5 };
+        else {
+          const e = beside(box);
+          const x = at === "left" ? e.left : 20;
+          const w = at === "left" ? (L ? 277 : 190) - x : e.right - 20;
+          zone = L ? { x, w, top: 24, bottom: 180, lines: 6 } : { x, w, top: 30, bottom: 266, lines: 10 };
+        }
+        zone.start = 9; zone.min = 6;
       } else zone = L ? { x: 20, w: 257, top: 26, bottom: 180, lines: 5, start: 13, min: 7 } : { x: 20, w: 170, top: 30, bottom: 266, lines: 7, start: 13, min: 7 };
-      const Q = T.quote, center = T.quoteAlign === "center";
+      const Q = styled("quote", T.quote);
+      const qAlign = alignOf("quote", T.quoteAlign === "center" ? "center" : "left");
+      const center = qAlign === "center";
       const said = String(entry.quote || "").replace(QUOTE_MARKS, "");
-      const r = fitBlock(page, said, zone.w, zone.lines, Q, zone.start, zone.min, false);
+      const scaled = (field, spec) => { const sc = sizeScale(fmt(field)); const st2 = styled(field, spec); return sc === 1 ? st2 : { ...st2, size: st2.size * sc }; };
+      const NAME = scaled("name", T.quoteName), ROLE = scaled("role", T.quoteRole);
+      const qsc = sizeScale(fmt("quote"));
+      zone.start *= qsc; zone.min *= qsc;
+      const nameR = has("name") ? fitBlock(page, entry.name, zone.w, 1, NAME, NAME.size, NAME.size, !!NAME.caps) : null;
+      const roleR = has("role") ? fitBlock(page, entry.role, zone.w, 1, ROLE, ROLE.size, ROLE.size, !!ROLE.caps) : null;
+      const attrH = (nameR || roleR) ? 9 + (nameR ? 8 : 0) + (roleR ? (nameR ? 5.6 : 8) : 0) : 0;
+      const heightAt = (r) => (st === "modern" ? 9 : r.size * 1.1) + 7 + (r.lines.length - 1) * r.size * Q.lead + r.size * 0.72 + attrH;
+      // The quote shrinks until it fits its line limit AND the height of its
+      // zone; at the smallest size it gives up lines, ending with "…".
+      let r = null;
+      for (let size = zone.start; ; size = Math.round((size - 0.25) * 100) / 100) {
+        r = fitBlock(page, said, zone.w, zone.lines, Q, size, size, false);
+        if ((!r.cut && heightAt(r) <= zone.bottom - zone.top + 0.01) || size <= zone.min + 1e-6) break;
+      }
+      for (let lines = r.lines.length; lines > 1 && heightAt(r) > zone.bottom - zone.top + 0.01; lines--) r = fitBlock(page, said, zone.w, lines - 1, Q, r.size, r.size, false);
+      r = { ...r, shrunk: r.size < zone.start - 1e-6, nearMin: r.size < zone.start - 1e-6 && r.size - zone.min <= 1 + 1e-6 };
       report("quote", { kind: "block", empty: !r.total, ...r });
-      const cx = center ? zone.x + zone.w / 2 : zone.x, align = center ? "center" : "left";
-      const nameR = has("name") ? fitBlock(page, entry.name, zone.w, 1, T.quoteName, T.quoteName.size, T.quoteName.size, !!T.quoteName.caps) : null;
-      const roleR = has("role") ? fitBlock(page, entry.role, zone.w, 1, T.quoteRole, T.quoteRole.size, T.quoteRole.size, !!T.quoteRole.caps) : null;
       const waiting = !r.total ? { blocked: "Prints once there's a quote" } : {};
       if (nameR) report("name", { kind: "block", empty: false, ...nameR, ...waiting }); else report("name", { kind: "block", empty: true });
       if (roleR) report("role", { kind: "block", empty: false, ...roleR, ...waiting }); else report("role", { kind: "block", empty: true });
@@ -1049,26 +1381,29 @@
       } else {
         const lead = r.size * Q.lead;
         const markH = st === "modern" ? 9 : r.size * 1.1;
-        const textH = (r.lines.length - 1) * lead + r.size * 0.72;
-        const attrH = (nameR || roleR) ? 9 + (nameR ? 8 : 0) + (roleR ? (nameR ? 5.6 : 8) : 0) : 0;
-        const top = zone.top + Math.max(0, (zone.bottom - zone.top - (markH + 7 + textH + attrH)) / 2);
+        const top = zone.top + Math.max(0, (zone.bottom - zone.top - heightAt(r)) / 2);
+        // The mark and the rule follow the quote's alignment.
+        const markAt = (w) => (qAlign === "center" ? zone.x + (zone.w - w) / 2 : qAlign === "right" ? zone.x + zone.w - w : zone.x);
         if (st === "modern") {
-          rectOp(zone.x, top, 12, 9, solid ? P.onAccent : P.accent);
-          put("“", zone.x + 6, top + 11.2, { w: 800, f: F.heavy }, 11, solid ? P.accent : P.onAccent, "center");
+          rectOp(markAt(12), top, 12, 9, solid ? P.onAccent : P.accent);
+          put("“", markAt(12) + 6, top + 11.2, { w: 800, f: F.heavy }, 11, solid ? P.accent : P.onAccent, "center");
         } else {
           const ms = r.size * 2.2;
           font(page, 300, ms, F.serif);
-          const asc = page.ctx.measureText("“").actualBoundingBoxAscent / page.u(1);
-          put("“", center ? cx : zone.x - 0.5, top + asc, { w: 300, f: F.serif }, ms, solid ? P.onAccent : accentText(P), align);
+          const m = page.ctx.measureText("“");
+          const asc = m.actualBoundingBoxAscent / page.u(1), mw = m.width / page.u(1);
+          put("“", qAlign === "center" ? zone.x + zone.w / 2 : qAlign === "right" ? zone.x + zone.w : zone.x - 0.5, top + asc, { w: 300, f: F.serif }, ms, solid ? P.onAccent : accentText(P), qAlign === "center" ? "center" : qAlign === "right" ? "right" : "left");
+          void mw;
         }
         const b1 = top + markH + 7 + r.size * 0.72;
-        r.lines.forEach((l, i) => put(l, cx, b1 + i * lead, Q, r.size, on, align));
+        const qColor = tint("quote", on);
+        r.lines.forEach((l, i) => placeLine(l, zone.x, zone.w, b1 + i * lead, Q, r.size, qColor, qAlign, i === r.lines.length - 1));
         let y = b1 + (r.lines.length - 1) * lead;
         if (nameR || roleR) {
           y += 9;
-          rule(center ? cx - T.rule.w / 2 : zone.x, y, solid ? P.onAccent : P.accent);
-          if (nameR) { y += 8; put(nameR.lines[0], cx, y, T.quoteName, nameR.size, on, align); }
-          if (roleR) { y += nameR ? 5.6 : 8; put(roleR.lines[0], cx, y, T.quoteRole, roleR.size, soft, align); }
+          rule(markAt(T.rule.w), y, solid ? P.onAccent : P.accent);
+          if (nameR) { y += 8; placeLine(nameR.lines[0], zone.x, zone.w, y, NAME, nameR.size, tint("name", on), alignOf("name", qAlign === "justify" ? "left" : qAlign), true); }
+          if (roleR) { y += nameR ? 5.6 : 8; placeLine(roleR.lines[0], zone.x, zone.w, y, ROLE, roleR.size, tint("role", soft), alignOf("role", qAlign === "justify" ? "left" : qAlign), true); }
         }
       }
       if (solid) plan.foot = { ink: P.onAccent, soft: P.onAccent };
@@ -1089,24 +1424,68 @@
       const sx = L ? 155.5 : x, sw = L ? 121.5 : w, nameY = L ? 176 : 258;
       block("signName", entry.signName, sx, nameY, sw, 1, T.sign, T.sign.size, T.sign.size, 0, P.ink);
       block("signLine", entry.signLine, sx, nameY + 6.5, sw, 1, T.signLine, T.signLine.size, T.signLine.size, 0, P.soft);
-      if (!has("kicker", "heading", "body", "signName", "signLine")) marker(x + w / 2, L ? 110 : 150);
+      if (!has("kicker", "heading", "body", "signName", "signLine")) marker(L ? 20 + 121.5 / 2 : x + w / 2, L ? 110 : 150);
     }
+
+    if (entry.type === "feature") {
+      // The zig-zag feature: a photo beside words, then words beside a photo,
+      // the way magazines alternate them down a page.
+      ground();
+      const FH = T.storyHead, SUB = T.featureSub;
+      const first = at === "right" ? "right" : "left";
+      kicker(entry.kicker, 20, L ? 24 : 30, L ? 257 : 170);
+      const hLast = block("headline", entry.headline, 20, L ? 36 : 42, L ? 257 : 170, L ? 1 : 2, FH, FH.start, FH.min, "mul", P.ink);
+      rule(20, hLast + 7);
+      const rows = L ? [{ y: 50, h: 64 }, { y: 122, h: 64 }] : [{ y: 78, h: 90 }, { y: 180, h: 90 }];
+      rows.forEach((row, i) => {
+        const photoLeft = (i === 0) === (first === "left");
+        let pbox, tx, tw;
+        if (!L) {
+          const pw = st === "elegant" ? 80 : 100;
+          if (photoLeft) { pbox = st === "elegant" ? [20, row.y, 80, row.h] : [0, row.y, pw, row.h]; tx = 112; tw = 78; }
+          else { pbox = st === "elegant" ? [110, row.y, 80, row.h] : [110, row.y, pw, row.h]; tx = 20; tw = 78; }
+        } else {
+          if (photoLeft) { pbox = st === "elegant" ? [20, row.y, 126, row.h] : [0, row.y, 146, row.h]; tx = 158; tw = 119; }
+          else { pbox = st === "elegant" ? [151, row.y, 126, row.h] : [151, row.y, 146, row.h]; tx = 20; tw = 119; }
+        }
+        photo(pbox, "crop", "NO PHOTO CHOSEN", i);
+        const n = i + 1;
+        let top = row.y + 4;
+        if (has(`sub${n}`)) top = block(`sub${n}`, entry[`sub${n}`], tx, row.y + SUB.start * 0.85, tw, 2, SUB, SUB.start, SUB.min, "mul", colour(SUB.color)) + 8;
+        else report(`sub${n}`, { kind: "block", empty: true });
+        body(`text${n}`, entry[`text${n}`], [{ x: tx, w: tw, top: top + 3.2, bottom: row.y + row.h - 2 }], T.body, null);
+      });
+      if (!has("kicker", "headline", "sub1", "text1", "sub2", "text2")) marker(W / 2, L ? 44 : 64);
+    }
+
+    plan.ops = plan.ops.map((o) => placeOp(o, G));
     return plan;
   }
 
   async function paintPlan(page, plan, entry, imgOf, P, guides) {
-    const shot = entry.photos && entry.photos[0];
-    const img = shot ? await imgOf(shot) : null;
+    const shots = entry.photos || [];
+    const imgs = await Promise.all(shots.map((s) => imgOf(s)));
     for (const o of plan.ops) {
       if (o.k === "rect") rect(page, o.x, o.y, o.w, o.h, o.c);
-      else if (o.k === "text") { font(page, ...o.f); text(page, o.s, o.x, o.y, o.c, o.align); }
+      else if (o.k === "text") {
+        font(page, ...o.f);
+        if (o.justify) {
+          // Spread the words to both edges, measured at this page's resolution.
+          const words = o.s.split(" ");
+          const widths = words.map((w) => measure(page, w));
+          const gap = (o.justify - widths.reduce((a, b) => a + b, 0)) / Math.max(1, words.length - 1);
+          let xx = o.x;
+          words.forEach((w, k) => { text(page, w, xx, o.y, o.c, "left"); xx += widths[k] + gap; });
+        } else text(page, o.s, o.x, o.y, o.c, o.align);
+      }
       else if (o.k === "photo") {
+        const shot = shots[o.i || 0], img = imgs[o.i || 0];
         if (!shot) {
           if (o.empty) { rect(page, o.x, o.y, o.w, o.h, P.rule); font(page, 500, 3.2, F.plex, 0.4); text(page, o.empty, o.x + o.w / 2, o.y + o.h / 2, P.soft, "center"); }
           continue;
         }
         if (!img) { missing(page, P, o.x, o.y, o.w, o.h); continue; }
-        const r = o.mode === "crop" ? drawPhoto(page, img, shot, o.x, o.y, o.w, o.h) : fitPhoto(page, img, shot, o.x, o.y, o.w, o.h, o.mode === "fit-right");
+        const r = o.mode === "crop" ? drawPhoto(page, img, shot, o.x, o.y, o.w, o.h) : fitPhoto(page, img, shot, o.x, o.y, o.w, o.h, o.mode === "fit-right" ? "right" : o.mode === "fit-left" ? "left" : "center");
         if (o.frame) frame(page, r.x, r.y, r.w, r.h, o.frame, 0.2);
       } else if (o.k === "guide" && guides) {
         // Where words will go, in the editor's preview only; never exported.
@@ -1120,22 +1499,27 @@
     }
   }
 
+  // The caption width a photos page draws at, in design mm.
+  const captionWidth = (book) => {
+    const G = geometry(book);
+    const st = WTYPE[book.style] ? book.style : "modern";
+    return st === "elegant" ? G.W - 52 : st === "modern" ? G.W - 28 : G.W - 24;
+  };
+  const captionStyle = (book) => CAPTION_TYPE[WTYPE[book.style] ? book.style : "modern"];
+
   // Plans every writing page (and every captioned photos page) of a book, for
   // warnings: page number → cuts. Needs the fonts loaded.
   function bookCuts(book) {
-    const size = SIZE[book.orientation] || SIZE.portrait;
     const out = [];
     let n = 1;
     for (const pg of book.pages) {
-      const first = n + 1; n += pg.type === "spread" ? 2 : 1;
+      const first = n + 1; n += pageSpan(pg);
       if (n > MAX_PAGES) break;
       let cuts = [];
-      if (WRITING[pg.type]) cuts = planWriting(book, pg, size.w, size.h).cuts;
-      else if (pg.type === "photos" && pg.caption) {
-        const st = WTYPE[book.style] ? book.style : "modern";
-        const width = st === "elegant" ? size.w - 2 * 20 - 12 : st === "modern" ? size.w - 28 : size.w - 24;
-        const r = captionFit(pg, width, CAPTION_TYPE[st]);
-        if (r && r.cut) cuts = [{ field: "caption", label: "caption" }];
+      if (WRITING[pg.type]) cuts = planWriting(book, pg).cuts;
+      if ((pg.type === "photos" || pg.type === "article") && pg.caption) {
+        const r = captionFit(pg, captionWidth(book), captionStyle(book));
+        if (r && r.cut) cuts = [...cuts, { field: "caption", label: "caption" }];
       }
       out.push({ entry: pg, n: first, cuts });
     }
@@ -1147,9 +1531,15 @@
      each canvas before the next is drawn. */
   async function* renderPages(book, { dpi, watermarked = false, cache, only = null, guides = false }) {
     await ensureFonts();
+    await ensureBookFonts(book);
     const P = colourway(book.colourway);
-    const size = SIZE[book.orientation] || SIZE.portrait;
-    const W = size.w, H = size.h;
+    // Pages are drawn in the paper's design space (A4 or A4 grown to Letter's
+    // shape) at a resolution that makes the canvas exactly the printed size
+    // at `dpi`, and each page carries its printed size in points for the PDF.
+    const G = geometry(book);
+    const W = G.W, H = G.H, size = { w: W, h: H };
+    const pt = { w: G.pw * 72 / 25.4, h: G.ph * 72 / 25.4 };
+    const newPage = () => { const pg = API.newPdfPage(dpi * G.s, size); pg.pt = pt; pg.scale = G.s; return pg; };
     const S = STYLE_IMPL[book.style] || MODERN;
     const lib = library();
     const full = dpi >= 100;
@@ -1159,11 +1549,16 @@
       const src = full ? API.photoSrc(hit.photo) : previewSrc(hit.photo);
       try { return await API.loadImage(src, cache); } catch (e) { return null; }
     };
+    const writingFoot = (page, n, plan) => {
+      if (book.style === "elegant") ELEGANT.foot(page, P, W, H, n);
+      else if (book.style === "vogue") VOGUE.foot(page, P, W, H, n, "");
+      else MODERN.foot(page, P, W, H, n, "", plan.foot.ink, plan.foot.soft);
+    };
     let n = 0;
     const want = (i) => only === null || only === i;
     // Cover
     if (want(-1)) {
-      const page = API.newPdfPage(dpi, size);
+      const page = newPage();
       await S.cover(page, book, P, W, H, book.cover ? await imgOf(book.cover) : null);
       if (watermarked) watermark(page, W, H);
       yield { page, index: -1, n: 1 };
@@ -1173,26 +1568,58 @@
       const entry = book.pages[i];
       // The builder never lets a book past 20 pages, but a book edited by hand
       // in data.js could arrive longer: stop rather than export past the limit.
-      if (n + (entry.type === "spread" ? 2 : 1) > MAX_PAGES) break;
+      if (n + pageSpan(entry) > MAX_PAGES) break;
       const shoots = (entry.photos || []).map((s) => (lib.byId.get(s.id) || {}).shoot).filter(Boolean);
       if (entry.type === "spread") {
         n += 2;
         if (!want(i)) continue;
         const img = entry.photos[0] ? await imgOf(entry.photos[0]) : null;
+        const B = entry.border ? bandsFor(entry, false) : null;
         // One photograph across two pages: drawn once on a double-width sheet,
-        // then cut down the middle, so the halves meet exactly.
+        // then cut down the middle, so the halves meet exactly. A chosen border
+        // runs round the outside of the pair, never down the fold.
         for (const half of [0, 1]) {
-          const page = API.newPdfPage(dpi, size);
+          const page = newPage();
           rect(page, 0, 0, W, H, P.white);
+          const pn = n - 1 + half;
           if (img) {
             page.ctx.save();
             page.ctx.beginPath(); page.ctx.rect(0, 0, page.u(W), page.u(H)); page.ctx.clip();
-            drawPhoto(page, img, entry.photos[0], -half * W, 0, W * 2, H);
+            if (B) drawPhoto(page, img, entry.photos[0], -half * W + B.left, B.top, W * 2 - B.left - B.right, H - B.top - B.bottom);
+            else drawPhoto(page, img, entry.photos[0], -half * W, 0, W * 2, H);
             page.ctx.restore();
           } else missing(page, P, 0, 0, W, H);
-          const pn = n - 1 + half;
-          if (book.style === "vogue") VOGUE.foot(page, P, W, H, pn, half ? creditLine(shoots) : "", half ? "right" : "left");
+          if (B) paintBands(page, P, W, H, { ...B, left: half ? 0 : B.left, right: half ? B.right : 0 }, bandColors(book.style, P), pn, half ? creditLine(shoots) : "", null, half ? "right" : "left");
+          else if (book.style === "vogue") VOGUE.foot(page, P, W, H, pn, half ? creditLine(shoots) : "", half ? "right" : "left");
           else { rect(page, 0, H - 9, W, 9, P.deep); font(page, 700, 2.4, F.mono, 0.4); text(page, String(pn).padStart(2, "0"), half ? W - 14 : 14, H - 3.4, P.onDeep, half ? "right" : "left"); }
+          if (watermarked) watermark(page, W, H);
+          yield { page, index: i, n: pn, half };
+        }
+        continue;
+      }
+      if (entry.type === "article") {
+        // A story over two facing pages: the words on one, the photograph
+        // whole on the other, drawn as that style's full-page photo.
+        n += 2;
+        if (!want(i)) continue;
+        const photoFirst = photoAtOf(entry, G.L) === "left";
+        const imgs = await Promise.all((entry.photos || []).slice(0, 1).map(imgOf));
+        for (const half of [0, 1]) {
+          const page = newPage();
+          const pn = n - 1 + half;
+          if ((half === 0) === photoFirst) {
+            const asPhotos = { type: "photos", photos: (entry.photos || []).slice(0, 1), caption: entry.caption, border: entry.border, borderWidth: entry.borderWidth, style: entry.style && entry.style.caption ? { caption: entry.style.caption } : undefined };
+            if (!asPhotos.photos.length) {
+              S.ground(page, P, W, H);
+              font(page, 500, 3.2, F.plex, 0.4); text(page, "NO PHOTO CHOSEN", W / 2, H / 2, P.soft, "center");
+            } else await S.photos(page, asPhotos, P, W, H, imgs, shoots, pn);
+          } else {
+            const plan = planWriting(book, entry);
+            await paintPlan(page, plan, { ...entry, photos: [] }, imgOf, P, guides);
+            writingFoot(page, pn, plan);
+            page.cuts = [...(page.cuts || []), ...plan.cuts];
+            page.plan = plan;
+          }
           if (watermarked) watermark(page, W, H);
           yield { page, index: i, n: pn, half };
         }
@@ -1200,7 +1627,7 @@
       }
       n += 1;
       if (!want(i)) continue;
-      const page = API.newPdfPage(dpi, size);
+      const page = newPage();
       if (entry.type === "photos") {
         const imgs = await Promise.all((entry.photos || []).map(imgOf));
         if (!(entry.photos || []).length) {
@@ -1208,11 +1635,9 @@
           font(page, 500, 3.2, F.plex, 0.4); text(page, "NO PHOTOS ON THIS PAGE YET", W / 2, H / 2, P.soft, "center");
         } else await S.photos(page, entry, P, W, H, imgs, shoots, n);
       } else if (WRITING[entry.type]) {
-        const plan = planWriting(book, entry, W, H);
+        const plan = planWriting(book, entry);
         await paintPlan(page, plan, entry, imgOf, P, guides);
-        if (book.style === "elegant") ELEGANT.foot(page, P, W, H, n);
-        else if (book.style === "vogue") VOGUE.foot(page, P, W, H, n, "");
-        else MODERN.foot(page, P, W, H, n, "", plan.foot.ink, plan.foot.soft);
+        writingFoot(page, n, plan);
         page.cuts = plan.cuts;
         page.plan = plan;
       } else {
@@ -1365,6 +1790,25 @@
   .sb-ideas summary { cursor: pointer; font: 600 12.5px Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
   .sb-ideas ul { margin: 6px 0 0; padding-left: 18px; font: 400 12.5px/1.6 Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
 
+  .sb-labelrow { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .sb-labelrow > label { font: 600 12.5px Inter, sans-serif; }
+  .sb-fmt { display: contents; }
+  .sb-fmttoggle { font-size: 12px; }
+  .sb-fmtrow { flex-basis: 100%; display: grid; gap: 8px; padding: 10px; margin: 2px 0 4px; border-radius: 10px; background: var(--sb-sunk); }
+  .sb-fmtrow[hidden] { display: none; }
+  .sb-fmtline { display: grid; grid-template-columns: 52px 1fr; align-items: center; gap: 8px; font: 500 12px Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
+  .sb-swatches { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .sb-swatch { width: 30px; height: 30px; padding: 3px; border: 1px solid var(--sb-line); border-radius: 50%; background: var(--paper, #faf8f5); cursor: pointer; }
+  .sb-swatch i { display: block; width: 100%; height: 100%; border-radius: 50%; border: 1px solid rgba(0,0,0,.15); }
+  .sb-swatch[aria-pressed=true] { border-color: var(--ink, #141416); box-shadow: inset 0 0 0 1px var(--ink, #141416); }
+  .sb-custom { display: inline-flex; align-items: center; gap: 4px; font: 600 11.5px 'JetBrains Mono', monospace; color: var(--ink, #141416); }
+  .sb-custom input { width: 30px; height: 30px; padding: 0; border: 1px solid var(--sb-line); border-radius: 50%; background: none; cursor: pointer; }
+  .sb-seg-sm button { padding: 6px 8px; font-size: 12px; }
+  .sb-sizerow { display: flex; align-items: center; gap: 8px; }
+  .sb-sizerow input { flex: 1; accent-color: var(--accent, #d24e1a); }
+  .sb-sizerow output { min-width: 40px; font: 600 11.5px 'JetBrains Mono', monospace; color: var(--ink, #141416); }
+  .sb-italic { font-size: 12px; margin-left: 4px; }
+  .sb-seg[hidden] { display: none; }
   .sb-seg { display: flex; gap: 4px; flex-wrap: wrap; }
   .sb-seg button { flex: 1 1 auto; padding: 7px 9px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--paper, #faf8f5); color: var(--ink, #141416); font: 600 12.5px Inter, sans-serif; cursor: pointer; }
   .sb-seg button[aria-checked=true] { background: var(--ink, #141416); border-color: var(--ink, #141416); color: var(--paper, #faf8f5); }
@@ -1433,7 +1877,7 @@
     document.head.appendChild(st);
   }
 
-  const PAGE_LABEL = { photos: "Photos", spread: "Two-page spread", divider: "Chapter page", about: "About", services: "What I shoot", contact: "Contact", story: "Story", note: "About a photo", quote: "Quote", letter: "Letter" };
+  const PAGE_LABEL = { photos: "Photos", spread: "Two-page spread", divider: "Chapter page", about: "About", services: "What I shoot", contact: "Contact", story: "Story", note: "About a photo", quote: "Quote", letter: "Letter", feature: "Zig-zag", article: "Story + full-page photo" };
   const ADD_MENU = [
     { group: "Photographs", items: [
       ["photos", "Photos", "One to six photos, laid out by their shapes."],
@@ -1442,7 +1886,9 @@
       ["story", "Story", "A photo with a headline, an intro and a story about a shoot or a brief."],
       ["note", "About a photo", "One photo shown large, with a title and a few lines about it."],
       ["quote", "Quote", "Someone's real words set large, with or without a photo."],
-      ["letter", "Letter", "A signed page of your own writing: a foreword, or a note to a brand."]] },
+      ["letter", "Letter", "A signed page of your own writing: a foreword, or a note to a brand."],
+      ["feature", "Zig-zag", "A photo beside words, then words beside a photo, the way magazines alternate them."],
+      ["article", "Story + full-page photo", "Two facing pages: your words on one, a photo filling the other."]] },
     { group: "Studio pages", items: [
       ["divider", "Chapter page", "A pause between sections, e.g. “Fashion & editorial”."],
       ["about", "About the studio", "Who you are and how you work."],
@@ -1474,15 +1920,36 @@
       { k: "body", label: "The letter", ctl: "area", rows: 10, hint: "About 190 words. Press Enter to start a new paragraph." },
       { k: "signName", label: "Signed", ctl: "input", ph: "Your name" },
       { k: "signLine", label: "Under the name", ctl: "input", ph: "e.g. Photographer, Noida" }
+    ],
+    feature: [
+      { k: "kicker", label: "Small line above the headline", ctl: "input", ph: "e.g. On set" },
+      { k: "headline", label: "Headline", ctl: "line", rows: 2, ph: "e.g. Two looks, one afternoon" },
+      { k: "sub1", label: "First block: subheading", ctl: "input", hint: "Sits beside the first photo." },
+      { k: "text1", label: "First block: words", ctl: "area", rows: 5, hint: "About 60 words." },
+      { k: "sub2", label: "Second block: subheading", ctl: "input", hint: "Sits beside the second photo." },
+      { k: "text2", label: "Second block: words", ctl: "area", rows: 5, hint: "About 60 words." }
+    ],
+    article: [
+      { k: "kicker", label: "Small line above the headline", ctl: "input", ph: "e.g. Behind the frame" },
+      { k: "headline", label: "Headline", ctl: "line", rows: 2, hint: "A few words. It's set smaller before it's ever cut." },
+      { k: "intro", label: "Intro", ctl: "line", rows: 3, hint: "One or two sentences that make someone read on." },
+      { k: "body", label: "The story", ctl: "area", rows: 10, hint: "Up to about 240 words. Press Enter to start a new paragraph." },
+      { k: "caption", label: "Caption on the photo page (optional)", ctl: "input", ph: "e.g. Monsoon edit, Sector 46" }
     ]
   };
-  const REQUIRED = { story: ["headline", "body"], note: ["title", "note"], quote: ["quote"], letter: ["heading", "body"] };
+  // Fields that can be formatted (font, colour, alignment).
+  const FORMATTABLE = { ...Object.fromEntries(Object.entries({ story: 1, note: 1, quote: 1, letter: 1, feature: 1, article: 1 }).map(([t]) => [t, true])), photos: true };
+  const REQUIRED = { story: ["headline", "body"], note: ["title", "note"], quote: ["quote"], letter: ["heading", "body"], feature: ["headline"], article: ["headline", "body"] };
   const IDEAS = {
     story: ["What was the brief, and what changed on the day?", "What was the light doing, and what did you do about it?", "What should a brand notice in these pictures?"],
     note: ["Why this frame and not the one before it?", "Where, when, and what did you ask for?", "The one technical choice that made it."],
     quote: ["Something a client or model actually said on set.", "The line you'd put on the studio wall.", "A note from a brand you shot for, with their OK."],
-    letter: ["What should a brand know before booking you?", "How you plan a shoot before the day.", "The story behind the work in this book."]
+    letter: ["What should a brand know before booking you?", "How you plan a shoot before the day.", "The story behind the work in this book."],
+    feature: ["Two moments from one shoot, and what changed between them.", "Before and after: the plan, then the picture.", "One look styled two ways."],
+    article: ["The whole story of one shoot, beside its best frame.", "A brief, the day, and the frame the client chose.", "Why this picture opens the book."]
   };
+  const POSITION_LABEL = { top: "Top", bottom: "Bottom", left: "Left", right: "Right" };
+  const BORDER_CHOICES = [["auto", "Auto"], ["none", "None"], ["top", "Top"], ["bottom", "Bottom"], ["left", "Left"], ["right", "Right"], ["all", "All round"]];
   const FIT_CHOICES = [["auto", "Auto"], ["fill", "Fill"], ["whole", "Whole"], ["width", "Fit width"], ["height", "Fit height"]];
   const FIT_HINT = {
     auto: "The style decides: most fill their space; Elegant shows a single photo whole.",
@@ -1511,10 +1978,11 @@
     // it as the newest version: that stale copy would then win the merge
     // against an edit made on another device since.
     let dirty = false;
-    const dropFiles = () => { fileUrls.forEach((u) => URL.revokeObjectURL(u)); fileUrls = []; };
+    // Released a minute later, so files still downloading one by one finish.
+    const dropFiles = () => { const urls = fileUrls; fileUrls = []; if (urls.length) setTimeout(() => urls.forEach((u) => URL.revokeObjectURL(u)), 60000); };
     const $ = (s) => root.querySelector(s);
     const $$ = (s) => [...root.querySelectorAll(s)];
-    ensureFonts().then(() => { fontsOk = true; if (book) updateMeters(); });
+    ensureFonts().then(() => { fontsOk = true; if (book) ensureBookFonts(book).then(() => { if (book) updateMeters(); }); });
 
     function persist(status = "Saved on this device") {
       if (!book || !dirty) return true;
@@ -1545,6 +2013,8 @@
     function flush() { clearTimeout(saveTimer); saveTimer = null; return persist(); }
     function change(opts = {}) {
       dirty = true;
+      const ready = $("#sbReady");
+      if (ready && ready.childElementCount) { ready.replaceChildren(); dropFiles(); }
       clearTimeout(saveTimer);
       setStatus("Saving…");
       saveTimer = setTimeout(() => { saveTimer = null; persist(); }, opts.typing ? 800 : 350);
@@ -1581,7 +2051,7 @@
 
     /* --- screen 1: the books --- */
     function showList() {
-      book = null; dropFiles();
+      book = null; dropFiles(); forget();
       state = readState();
       const LIMIT = (window.STUDIO_BOOK_LIMITS && window.STUDIO_BOOK_LIMITS.versions) || 200;
       const atLimit = state.versions.length >= LIMIT;
@@ -1599,7 +2069,7 @@
             <button type="button" class="sb-cardcover" data-open="${esc(v.id)}" aria-label="Open ${esc(v.name)}"><span class="sb-hint">…</span></button>
             <div class="sb-cardbody">
               <h4 data-name="${esc(v.id)}">${esc(v.name)}</h4>
-              <span class="sb-meta">${esc((STYLES.find((s) => s.key === v.style) || {}).name || "")} · ${esc(colourway(v.colourway).name)} · ${esc(v.orientation)} · ${renderedCount(v)} page${renderedCount(v) === 1 ? "" : "s"}</span>
+              <span class="sb-meta">${esc((STYLES.find((s) => s.key === v.style) || {}).name || "")} · ${esc(colourway(v.colourway).name)} · ${esc((PAPERS[v.paper] || PAPERS.a4).name)} ${esc(v.orientation)} · ${renderedCount(v)} page${renderedCount(v) === 1 ? "" : "s"}</span>
               <span class="sb-meta">Edited ${esc(new Date(v.updatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }))}</span>
               <div class="sb-cardacts">
                 <button type="button" class="sb-btn dark" data-open="${esc(v.id)}">Open</button>
@@ -1611,13 +2081,19 @@
           </article>`).join("")}</div>`
         : `<div class="sb-empty"><p class="sb-hint">No books yet. A book is a cover plus pages of your photographs and words. Start one, pick your clicks, and save a version for brands, one for agencies, one for a single client.</p></div>`}
         <p class="sb-hint sb-foot">Books save on this device as you work, and publish with your albums when you press Publish, so they open on any device.${atLimit ? ` You have ${LIMIT} books, the most there can be: delete one to start another.` : ""}</p>`;
-      $("#sbNew").addEventListener("click", () => { if (!atLimit) openBook(newBook(`Book ${state.versions.length + 1}`), true); });
+      // A rename in progress is saved first, then the click does what it says.
+      let finishRename = null;
+      const settle = () => { if (finishRename) { const f = finishRename; finishRename = null; f(true, false); } };
+      $("#sbNew").addEventListener("click", () => { settle(); if (!atLimit) openBook(newBook(`Book ${state.versions.length + 1}`), true); });
       $$("[data-open]").forEach((b) => b.addEventListener("click", () => {
+        settle();
         const v = state.versions.find((x) => x.id === b.dataset.open); if (v) openBook(JSON.parse(JSON.stringify(v)));
       }));
       // Rename in place on the card: Enter or leaving the box saves, Escape cancels.
       $$("[data-rename]").forEach((b) => b.addEventListener("click", () => {
         const id = b.dataset.rename;
+        if (finishRename && !root.querySelector(`[data-name] input`)) finishRename = null;
+        if (finishRename) settle();
         const title = $$("[data-name]").find((h) => h.dataset.name === id);
         const v = state.versions.find((x) => x.id === id);
         if (!title || !v || title.querySelector("input")) return;
@@ -1625,22 +2101,27 @@
         const input = title.querySelector("input");
         input.focus(); input.select();
         let done = false;
-        const finish = (save) => {
-          if (done) return; done = true;
+        const finish = (save, redraw = true) => {
+          if (done) return; done = true; finishRename = null;
           const name = input.value.trim();
           if (save && name && name !== v.name) {
             const cur = readState();
             const stored = cur.versions.find((x) => x.id === id);
             if (stored && !writeState({ versions: cur.versions.map((x) => (x.id === id ? { ...x, name, updatedAt: Date.now() } : x)), deleted: cur.deleted })) { API.toast("Not renamed — this device's storage is full or blocked."); }
-            else if (stored) API.toast(`Renamed to “${name}”. Publish to rename it on your other devices.`);
+            else if (stored) { state = readState(); API.toast(`Renamed to “${name}”. Publish to rename it on your other devices.`); }
           }
+          if (!redraw) { title.textContent = (state.versions.find((x) => x.id === id) || v).name; return; }
           showList();
           const again = root.querySelector(`[data-rename="${window.CSS && window.CSS.escape ? window.CSS.escape(id) : id}"]`); if (again) again.focus();
         };
+        finishRename = finish;
         input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); finish(true); } if (e.key === "Escape") { e.preventDefault(); finish(false); } });
-        input.addEventListener("blur", () => finish(true));
+        // Leaving the box saves, a moment later, so a click on another button
+        // on the list still lands.
+        input.addEventListener("blur", () => setTimeout(() => finish(true), 180));
       }));
       $$("[data-dup]").forEach((b) => b.addEventListener("click", () => {
+        settle();
         const cur = readState();
         const v = cur.versions.find((x) => x.id === b.dataset.dup); if (!v) return;
         const copy = { ...JSON.parse(JSON.stringify(v)), id: uid(), name: `${v.name} (copy)`, updatedAt: Date.now() };
@@ -1648,6 +2129,7 @@
         showList();
       }));
       $$("[data-del]").forEach((b) => b.addEventListener("click", () => {
+        settle();
         const cur = readState();
         const v = cur.versions.find((x) => x.id === b.dataset.del); if (!v) return;
         if (!confirm(`Delete “${v.name}”? This cannot be undone once published.`)) return;
@@ -1666,11 +2148,18 @@
       })();
     }
 
-    function openBook(b, isNew = false) {
+    const OPEN_KEY = "wps_book_open";
+    const remember = (extra = {}) => { try { if (book) sessionStorage.setItem(OPEN_KEY, JSON.stringify({ id: book.id, sel, tab, ...extra })); } catch (e) { /* only a convenience */ } };
+    const forget = () => { try { sessionStorage.removeItem(OPEN_KEY); } catch (e) { /* only a convenience */ } };
+    function openBook(b, isNew = false, at = null) {
       book = b; sel = book.pages.length ? 0 : -1; active = 0; filter = "all"; pickerOpen = null; tab = "page";
+      if (at && typeof at.sel === "number" && at.sel >= -1 && at.sel < book.pages.length) sel = at.sel;
+      if (at && (at.tab === "design" || at.tab === "page")) tab = at.tab;
       dirty = isNew;
       if (isNew) persist("New book saved on this device");
+      remember();
       showEditor();
+      if (at && at.status) setStatus(at.status);
     }
 
     /* --- screen 2: the editor --- */
@@ -1720,16 +2209,18 @@
           </aside>
         </div>`;
 
-      $("#sbBack").addEventListener("click", () => { flush(); showList(); });
+      $("#sbBack").addEventListener("click", () => { flush(); forget(); showList(); });
       $("#sbName").addEventListener("input", (e) => { book.name = e.target.value; change({ rail: false, typing: true }); });
       $("#sbPublish").addEventListener("click", publish);
-      $("#sbPrev").addEventListener("click", () => { if (sel > -1) select(sel - 1); });
-      $("#sbNext").addEventListener("click", () => { if (sel < book.pages.length - 1) select(sel + 1); });
+      // Keyboard focus stays on the arrows; when one runs out, it moves to the other.
+      $("#sbPrev").addEventListener("click", () => { if (sel > -1) { select(sel - 1); const b = $("#sbPrev"); (b.disabled ? $("#sbNext") : b).focus({ preventScroll: true }); } });
+      $("#sbNext").addEventListener("click", () => { if (sel < book.pages.length - 1) { select(sel + 1); const b = $("#sbNext"); (b.disabled ? $("#sbPrev") : b).focus({ preventScroll: true }); } });
       const setTab = (t) => {
         tab = t;
         $("#sbTabPage").setAttribute("aria-selected", String(t === "page"));
         $("#sbTabDesign").setAttribute("aria-selected", String(t === "design"));
         $("#sbPanelPage").hidden = t !== "page"; $("#sbPanelDesign").hidden = t !== "design";
+        remember();
       };
       $("#sbTabPage").addEventListener("click", () => setTab("page"));
       $("#sbTabDesign").addEventListener("click", () => setTab("design"));
@@ -1761,7 +2252,7 @@
         <div class="sb-addhead"><strong>Add a page</strong><button type="button" class="sb-btn quiet" id="sbAddClose">Close</button></div>
         <p class="sb-hint">It goes after the page you're on. ${count} of ${MAX_PAGES} pages used.</p>
         ${ADD_MENU.map((g) => `<div class="sb-addgroup"><h3>${esc(g.group)}</h3><div class="sb-additems">${g.items.map(([type, name, note]) => `
-          <button type="button" class="sb-additem" data-add="${type}" ${count + (type === "spread" ? 2 : 1) > MAX_PAGES ? "disabled" : ""}><b>${esc(name)}</b><span>${esc(note)}</span></button>`).join("")}</div></div>`).join("")}`;
+          <button type="button" class="sb-additem" data-add="${type}" ${count + pageSpan({ type }) > MAX_PAGES ? "disabled" : ""}><b>${esc(name)}</b><span>${esc(note)}</span></button>`).join("")}</div></div>`).join("")}`;
       menu.hidden = false;
       $("#sbAddToggle").setAttribute("aria-expanded", "true");
       menu.querySelector("#sbAddClose").addEventListener("click", closeAdd);
@@ -1776,10 +2267,10 @@
     }
 
     function addPage(type) {
-      const extra = type === "spread" ? 2 : 1;
+      const extra = pageSpan({ type });
       if (renderedCount(book) + extra > MAX_PAGES) { API.toast(`A book holds ${MAX_PAGES} pages at most, cover included.`); return; }
       const entry = { type };
-      if (type === "photos" || type === "spread" || type === "story" || type === "note" || type === "quote") entry.photos = [];
+      if (["photos", "spread", "story", "note", "quote", "feature", "article"].includes(type)) entry.photos = [];
       if (type === "divider") { entry.heading = "Selected work"; entry.line = ""; }
       // Writing pages start empty: nothing is ever written for the studio.
       for (const k of Object.keys((fieldCaps()[type]) || {})) if (WRITING[type]) entry[k] = "";
@@ -1802,13 +2293,31 @@
       if (i === sel) return;
       closeAdd(false);
       flush();
+      const fromRail = document.activeElement && document.activeElement.closest && document.activeElement.closest("#sbPages");
       sel = i; active = 0; pickerOpen = null;
       drawRail(); drawInspector(); schedulePreview(0);
-      const cur = $(".sb-pg[aria-current=true]"); if (cur) cur.scrollIntoView({ block: "nearest", inline: "nearest" });
+      remember();
+      // Bring the page into view inside the rail only; scrolling the window
+      // would push the buttons under the site's fixed header on a phone.
+      const cur = $(".sb-pg[aria-current=true]"), list = $("#sbPages");
+      if (cur && list) {
+        const a = cur.closest("li").getBoundingClientRect(), b = list.getBoundingClientRect();
+        if (list.scrollWidth > list.clientWidth + 1) list.scrollLeft += (a.left - b.left) - (b.width - a.width) / 2;
+        else list.scrollTop += (a.top - b.top) - (b.height - a.height) / 2;
+      }
+      if (fromRail && cur) cur.focus({ preventScroll: true });
+      // On a phone the site's header floats over the page: if the preview has
+      // slid under it (or off the bottom), bring it back into view.
+      if (matchMedia("(pointer: coarse)").matches) {
+        const stage = $(".sb-stage");
+        const top = stage ? stage.getBoundingClientRect().top : 0;
+        const under = 128;                                  // the fixed header
+        if (stage && (top < under - 6 || top > window.innerHeight * 0.55)) window.scrollBy(0, top - under);
+      }
     }
 
     /* --- the pages rail --- */
-    const wordsOf = (pg) => oneParagraph(pg.headline || pg.title || pg.heading || pg.quote || pg.body || pg.note || "");
+    const wordsOf = (pg) => oneParagraph(pg.headline || pg.title || pg.heading || pg.quote || pg.body || pg.note || pg.sub1 || pg.text1 || "");
     function railLabel(pg) {
       if (!pg) return book.title ? `Cover · ${book.title}` : "Cover";
       if (WRITING[pg.type]) { const w = wordsOf(pg); return w.length ? `${PAGE_LABEL[pg.type]} · “${w.slice(0, 6).join(" ")}”` : PAGE_LABEL[pg.type]; }
@@ -1820,8 +2329,8 @@
       const out = [{ i: -1, n: "01", entry: null }];
       let n = 1;
       book.pages.forEach((pg, i) => {
-        const first = n + 1; n += pg.type === "spread" ? 2 : 1;
-        out.push({ i, entry: pg, n: pg.type === "spread" ? `${pad2(first)}–${pad2(n)}` : pad2(first) });
+        const first = n + 1; n += pageSpan(pg);
+        out.push({ i, entry: pg, n: pageSpan(pg) === 2 ? `${pad2(first)}–${pad2(n)}` : pad2(first) });
       });
       return out;
     }
@@ -1857,8 +2366,10 @@
         book.pages.splice(i, 1);
         sel = Math.min(i, book.pages.length - 1);
         active = 0;
-        change(); drawInspector();
+        change(); drawInspector(); remember();
+        focusAct("rm");
       }));
+      remember();
       const count = renderedCount(book);
       const c = $("#sbCount"); if (c) c.textContent = `${count}/${MAX_PAGES}`;
       const prev = $("#sbPrev"), next = $("#sbNext");
@@ -1916,7 +2427,9 @@
           if (!groups.has(key)) groups.set(key, []);
           groups.get(key).push(r.page.canvas);
           if (key !== COVER && (WRITING[key.type] || key.type === "photos" || key.type === "about" || key.type === "divider")) {
+            // A two-page story is too long if either of its pages is.
             if (r.half === undefined || r.half === 0) tooLong.set(key, !!(r.page.cuts && r.page.cuts.length));
+            else if (r.page.cuts && r.page.cuts.length) tooLong.set(key, true);
           }
         }
       } catch (e) { return; /* the strip is an overview; the large preview reports errors */ }
@@ -1951,12 +2464,104 @@
         story: "A magazine opener: a headline, an intro and a short story about a shoot or a brief, with a photo if you like.",
         note: "Writing about one picture: the photo large, a title, a few lines, and a detail line.",
         quote: "One sentence set large: a client's or model's real words, or your own belief about photography.",
-        letter: "A page of your own writing, signed: a foreword to the book or a note to one brand."
+        letter: "A page of your own writing, signed: a foreword to the book or a note to one brand.",
+        feature: "A photo beside words, then words beside a photo. Choose which side the first photo sits on.",
+        article: "Two facing pages: your story on one, one photograph filling the other. Choose which side the photo page goes."
       };
       const kind = entry ? entry.type : "cover";
       head.innerHTML = `<h3>${esc(entry ? PAGE_LABEL[entry.type] : "Cover")}</h3><p class="sb-hint">${esc(about[kind] || "")}</p>`;
       drawFields(); drawPhotoBlock(); updateMeters();
     }
+
+    // The small "Format" control under a text's label: font, colour, alignment.
+    function formatHtml(k, entry) {
+      const f = (entry && entry.style && entry.style[k]) || {};
+      const P = colourway(book.colourway);
+      const groups = ["Serif", "Sans", "Condensed", "Mono"].map((kind) => `<optgroup label="${kind}">${FONT_LIST.filter((x) => x.kind === kind).map((x) => `<option value="${x.key}" ${f.font === x.key ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</optgroup>`).join("");
+      const set = !!(f.font || f.color || f.align || f.size || f.weight || f.italic);
+      const pct = Math.round(sizeScale(f) * 100);
+      const swatch = (key, label, c) => `<button type="button" class="sb-swatch" data-fmtcolor="${key}" aria-pressed="${(f.color || "") === key}" title="${label}" aria-label="${label}"><i style="background:${c}"></i></button>`;
+      const hex = /^#[0-9a-f]{6}$/i.test(f.color || "") ? f.color : "";
+      return `<div class="sb-fmt" data-fmt="${k}">
+        <button type="button" class="sb-link sb-fmttoggle" aria-expanded="false" aria-controls="sbFmt_${k}">Format${set ? " · changed" : ""}</button>
+        <div class="sb-fmtrow" id="sbFmt_${k}" hidden>
+          <label class="sb-fmtline"><span>Font</span><select data-fmtfont="${k}"><option value="">The style's font</option>${groups}</select></label>
+          <div class="sb-fmtline"><span>Colour</span><span class="sb-swatches" role="group" aria-label="Colour">${swatch("", "The style's colour", "linear-gradient(135deg, #fff 45%, #999 50%, #fff 55%)")}${swatch("ink", "Ink", P.ink)}${swatch("soft", "Soft", P.soft)}${swatch("accent", "Accent", accentText(P))}<label class="sb-custom" title="Any colour"><input type="color" data-fmtcustom="${k}" value="${hex || "#1a1712"}" aria-label="Any colour"><span>${hex ? esc(hex) : "Any"}</span></label></span></div>
+          <label class="sb-fmtline"><span>Size</span><span class="sb-sizerow"><input type="range" min="60" max="160" step="5" value="${pct}" data-fmtsize="${k}" aria-valuetext="${pct} percent"><output>${pct}%</output></span></label>
+          <div class="sb-fmtline"><span>Style</span><span class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Weight">${[["", "Auto"], ["light", "Light"], ["regular", "Regular"], ["bold", "Bold"]].map(([w, n]) => `<button type="button" role="radio" data-fmtweight="${w}" aria-checked="${(f.weight || "") === w}">${n}</button>`).join("")}<label class="sb-check-row sb-italic"><input type="checkbox" data-fmtitalic="${k}" ${f.italic ? "checked" : ""}> <i>Italic</i></label></span></div>
+          <div class="sb-fmtline"><span>Align</span><span class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Alignment">${[["", "Auto"], ["left", "Left"], ["center", "Centre"], ["right", "Right"], ["justify", "Justify"]].map(([a, n]) => `<button type="button" role="radio" data-fmtalign="${a}" aria-checked="${(f.align || "") === a}">${n}</button>`).join("")}</span></div>
+        </div>
+      </div>`;
+    }
+    function wireFormat(box, entry) {
+      box.querySelectorAll("[data-fmt]").forEach((wrap) => {
+        const k = wrap.dataset.fmt;
+        const toggle = wrap.querySelector(".sb-fmttoggle"), row = wrap.querySelector(".sb-fmtrow");
+        toggle.addEventListener("click", () => { row.hidden = !row.hidden; toggle.setAttribute("aria-expanded", String(!row.hidden)); });
+        const update = (patch) => {
+          const all = { ...(entry.style || {}) };
+          const one = { ...(all[k] || {}), ...patch };
+          for (const key of Object.keys(one)) if (!one[key] || (key === "size" && one[key] === 1)) delete one[key];
+          if (Object.keys(one).length) all[k] = one; else delete all[k];
+          if (Object.keys(all).length) entry.style = all; else delete entry.style;
+          toggle.textContent = `Format${all[k] ? " · changed" : ""}`;
+          change({ rail: false });
+          ensureBookFonts(book).then(() => { updateMeters(); schedulePreview(0); scheduleStrip(300); });
+        };
+        wrap.querySelector("[data-fmtfont]").addEventListener("change", (e) => update({ font: e.target.value }));
+        wrap.querySelectorAll("[data-fmtcolor]").forEach((b) => b.addEventListener("click", () => {
+          wrap.querySelectorAll("[data-fmtcolor]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+          update({ color: b.dataset.fmtcolor });
+        }));
+        const custom = wrap.querySelector("[data-fmtcustom]");
+        custom.addEventListener("input", () => {
+          wrap.querySelectorAll("[data-fmtcolor]").forEach((x) => x.setAttribute("aria-pressed", "false"));
+          custom.nextElementSibling.textContent = custom.value;
+          update({ color: custom.value.toLowerCase() });
+        });
+        const size = wrap.querySelector("[data-fmtsize]");
+        size.addEventListener("input", () => {
+          const v = Math.round(+size.value) / 100;
+          size.nextElementSibling.textContent = `${Math.round(v * 100)}%`;
+          size.setAttribute("aria-valuetext", `${Math.round(v * 100)} percent`);
+          update({ size: v });
+        });
+        wrap.querySelectorAll("[data-fmtweight]").forEach((b) => b.addEventListener("click", () => {
+          wrap.querySelectorAll("[data-fmtweight]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
+          update({ weight: b.dataset.fmtweight });
+        }));
+        wrap.querySelector("[data-fmtitalic]").addEventListener("change", (e) => update({ italic: e.target.checked }));
+        wrap.querySelectorAll("[data-fmtalign]").forEach((b) => b.addEventListener("click", () => {
+          wrap.querySelectorAll("[data-fmtalign]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
+          update({ align: b.dataset.fmtalign });
+        }));
+      });
+    }
+    // Bands round a full-page photo: which edges, and how broad.
+    function borderHtml(entry) {
+      const b = entry.border || "auto", w = entry.borderWidth || "standard";
+      return `<div class="sb-field" id="sbBorder"><span class="sb-label">Border</span>
+        <div class="sb-seg" role="radiogroup" aria-label="Border">${BORDER_CHOICES.map(([k, n]) => `<button type="button" role="radio" data-border="${k}" aria-checked="${b === k}">${n}</button>`).join("")}</div>
+        <div class="sb-seg" role="radiogroup" aria-label="Border width" ${b === "auto" || b === "none" ? "hidden" : ""}>${[["narrow", "Narrow"], ["standard", "Standard"], ["broad", "Broad"]].map(([k, n]) => `<button type="button" role="radio" data-borderw="${k}" aria-checked="${w === k}">${n}</button>`).join("")}</div>
+        <p class="sb-hint">${b === "auto" ? "Auto: the style's usual band with the page number." : b === "none" ? "None: the photo fills the page, with no page number." : "The photo sits inside the band. The page number goes in the foot or top band; a caption always sits at the foot."}</p></div>`;
+    }
+    function wireBorder(box, entry) {
+      box.querySelectorAll("[data-border]").forEach((btn) => btn.addEventListener("click", () => {
+        const v = btn.dataset.border;
+        if ((entry.border || "auto") === v) return;
+        if (v === "auto") { delete entry.border; delete entry.borderWidth; } else entry.border = v;
+        change({ rail: false }); drawFields();
+        const again = $(`[data-border="${v}"]`); if (again) again.focus();
+      }));
+      box.querySelectorAll("[data-borderw]").forEach((btn) => btn.addEventListener("click", () => {
+        const v = btn.dataset.borderw;
+        if ((entry.borderWidth || "standard") === v) return;
+        if (v === "standard") delete entry.borderWidth; else entry.borderWidth = v;
+        change({ rail: false }); drawFields();
+        const again = $(`[data-borderw="${v}"]`); if (again) again.focus();
+      }));
+    }
+    const borderApplies = (entry) => entry.type === "spread" || entry.type === "article" || (entry.type === "photos" && ((entry.photos || []).length === 1 || book.style === "vogue"));
 
     function fieldHtml(f, value, max, extra = "") {
       const id = `sbF_${f.k}`;
@@ -1965,8 +2570,10 @@
       const control = f.ctl === "input"
         ? `<input type="text" id="${id}" data-field="${f.k}" maxlength="${max}" value="${esc(value)}" ${ph} autocapitalize="sentences" spellcheck="true" enterkeyhint="next" aria-describedby="${described}">`
         : `<textarea id="${id}" data-field="${f.k}" maxlength="${max}" rows="${f.rows || 3}" ${ph} autocapitalize="sentences" spellcheck="true" ${f.ctl === "line" ? `data-line="1" enterkeyhint="next"` : `enterkeyhint="enter"`} aria-describedby="${described}">${esc(value)}</textarea>`;
+      const entry = sel >= 0 ? book.pages[sel] : null;
+      const formattable = entry && FORMATTABLE[entry.type] && (entry.type !== "photos" || f.k === "caption");
       return `<div class="sb-field">
-        <label for="${id}">${esc(f.label)}</label>
+        <div class="sb-labelrow"><label for="${id}">${esc(f.label)}</label>${formattable ? formatHtml(f.k, entry) : ""}</div>
         ${f.hint ? `<p class="sb-hint" id="${id}_hint">${esc(f.hint)}</p>` : ""}
         ${control}
         <div class="sb-meter"><span id="${id}_fit">${fontsOk ? "" : "Measuring…"}</span><span class="sb-counter" id="${id}_count"></span></div>
@@ -2024,8 +2631,11 @@
           f.credit ? `<button type="button" class="sb-link" id="sbUseCredit">Use the album credit</button>` : "")).join("")}
           <details class="sb-ideas"><summary>Ideas</summary><ul>${IDEAS[entry.type].map((q) => `<li>${esc(q)}</li>`).join("")}</ul></details>
           <p class="sb-hint">Published books are public: only use names and words people are happy to see there, and no private notes.</p>`;
+        if (entry.type === "article") box.insertAdjacentHTML("beforeend", borderHtml(entry));
         for (const f of FIELD_UI[entry.type]) wireField($(`#sbF_${f.k}`), (v) => { entry[f.k] = v; }, (caps[entry.type] || {})[f.k] || 200);
         $$("[data-select]").forEach((b) => b.addEventListener("click", () => selectOverflow(b.dataset.select)));
+        wireFormat(box, entry);
+        if (entry.type === "article") wireBorder(box, entry);
         const credit = $("#sbUseCredit");
         if (credit) credit.addEventListener("click", () => {
           const hit = entry.photos[0] && library().byId.get(entry.photos[0].id);
@@ -2038,9 +2648,17 @@
       }
       if (entry.type === "photos") {
         box.innerHTML = fieldHtml({ k: "caption", label: "Caption for this page (optional)", ctl: "input", ph: "e.g. Monsoon edit, shot on the roof in Sector 46" }, entry.caption || "", (caps.photos || {}).caption || 90)
-          + `<p class="sb-hint">Published books are public, so keep private details out of captions.</p>`;
+          + `<p class="sb-hint">Published books are public, so keep private details out of captions.</p>`
+          + (borderApplies(entry) ? borderHtml(entry) : "");
         wireField($("#sbF_caption"), (v) => { entry.caption = v; }, (caps.photos || {}).caption || 90);
         $$("[data-select]").forEach((b) => b.addEventListener("click", () => selectOverflow(b.dataset.select)));
+        wireFormat(box, entry);
+        wireBorder(box, entry);
+        return;
+      }
+      if (entry.type === "spread") {
+        box.innerHTML = borderHtml(entry);
+        wireBorder(box, entry);
         return;
       }
       if (entry.type === "divider") {
@@ -2061,9 +2679,20 @@
         return;
       }
       if (entry.type === "contact") {
-        box.innerHTML = `<div class="sb-field"><label for="sbPhone">WhatsApp number (optional)</label>
+        const hidden = new Set(Array.isArray(entry.hide) ? entry.hide : []);
+        const cfgNow = cfg();
+        const lines = [["email", `Email${cfgNow.email ? ` · ${cfgNow.email}` : ""}`], ["whatsapp", "WhatsApp (when a number is typed below)"], ["instagram", "Instagram"], ["website", "Website"], ["book", "Book online"], ["studio", "Studio · Noida, working across Delhi NCR"], ["qr", "QR code to the booking form"]];
+        box.innerHTML = `<div class="sb-field"><span class="sb-label">Show on this page</span>
+          ${lines.map(([k, label]) => `<label class="sb-check-row"><input type="checkbox" data-show="${k}" ${hidden.has(k) ? "" : "checked"}> ${esc(label)}</label>`).join("")}</div>
+          <div class="sb-field"><label for="sbPhone">WhatsApp number (optional)</label>
           <input type="tel" id="sbPhone" maxlength="24" value="${esc(book.texts.phone || "")}" placeholder="+91 …">
           <p class="sb-hint">Saved books are published inside the site's data file, which is public. Leave this empty unless you're happy for the number to be public.</p></div>`;
+        $$("[data-show]").forEach((cb) => cb.addEventListener("change", () => {
+          const h = new Set(Array.isArray(entry.hide) ? entry.hide : []);
+          if (cb.checked) h.delete(cb.dataset.show); else h.add(cb.dataset.show);
+          if (h.size) entry.hide = [...h]; else delete entry.hide;
+          change({ rail: false });
+        }));
         $("#sbPhone").addEventListener("input", (e) => { book.texts.phone = e.target.value; change({ rail: false, typing: true }); });
         $("#sbPhone").addEventListener("blur", () => flush());
         return;
@@ -2073,13 +2702,9 @@
     function selectOverflow(k) {
       const entry = sel >= 0 ? book.pages[sel] : null;
       const el = $(`#sbF_${k}`); if (!entry || !el || !book) return;
-      const size = SIZE[book.orientation] || SIZE.portrait;
       let info = null;
-      if (WRITING[entry.type]) info = planWriting(book, entry, size.w, size.h).fields[k];
-      else if (entry.type === "photos") {
-        const st = WTYPE[book.style] ? book.style : "modern";
-        info = captionFit(entry, st === "elegant" ? size.w - 52 : st === "modern" ? size.w - 28 : size.w - 24, CAPTION_TYPE[st]);
-      }
+      if (k === "caption" && (entry.type === "photos" || entry.type === "article")) info = captionFit(entry, captionWidth(book), captionStyle(book));
+      else if (WRITING[entry.type]) info = planWriting(book, entry).fields[k];
       if (!info) return;
       // Find where the first word that won't print starts, in what was typed.
       // A quote's own quote marks aren't words on the page.
@@ -2099,16 +2724,14 @@
       if (!book || !fontsOk) return;
       const entry = sel >= 0 ? book.pages[sel] : null;
       if (!entry) return;
-      const size = SIZE[book.orientation] || SIZE.portrait;
       let fields = null, cuts = [];
-      if (WRITING[entry.type]) { const plan = planWriting(book, entry, size.w, size.h); fields = plan.fields; cuts = plan.cuts; }
-      else if (entry.type === "photos") {
-        const st = WTYPE[book.style] ? book.style : "modern";
-        const width = st === "elegant" ? size.w - 52 : st === "modern" ? size.w - 28 : size.w - 24;
-        const r = captionFit(entry, width, CAPTION_TYPE[st]);
-        fields = { caption: r ? { kind: "block", empty: false, ...r } : { kind: "block", empty: true } };
-        if (r && r.cut) cuts = [{ field: "caption", label: "caption" }];
-      } else {
+      if (WRITING[entry.type]) { const plan = planWriting(book, entry); fields = { ...plan.fields }; cuts = plan.cuts; }
+      if (entry.type === "photos" || entry.type === "article") {
+        const r = captionFit(entry, captionWidth(book), captionStyle(book));
+        fields = { ...(fields || {}), caption: r ? { kind: "block", empty: false, ...r } : { kind: "block", empty: true } };
+        if (r && r.cut) cuts = [...cuts, { field: "caption", label: "caption" }];
+      }
+      if (!fields) {
         // Only lengths to show: About and chapter pages report fit as they draw.
         $$("[data-field]").forEach((el) => { const c = $(`#${el.id}_count`); if (c) c.textContent = counter(el.value.length, +el.maxLength); });
         $$("[id$=_fit]").forEach((el) => { el.textContent = ""; });
@@ -2150,7 +2773,7 @@
       const entry = sel >= 0 ? book.pages[sel] : null;
       if (!entry) return { list: book.cover ? [book.cover] : [], max: 1, set: (l) => { book.cover = l[0] || null; } };
       if (!entry.photos) return null;
-      return { list: entry.photos, max: entry.type === "photos" ? MAX_PER_PAGE : 1, set: (l) => { entry.photos = l; } };
+      return { list: entry.photos, max: entry.type === "photos" ? MAX_PER_PAGE : entry.type === "feature" ? 2 : 1, set: (l) => { entry.photos = l; } };
     }
     function drawPhotoBlock() {
       const box = $("#sbPhotoBlock"); if (!box) return;
@@ -2162,7 +2785,12 @@
       const list = t.list;
       if (active >= list.length) active = Math.max(0, list.length - 1);
       const cur = list[active];
-      const heading = !entry ? "Cover photo" : entry.type === "photos" ? `Photos · ${list.length} of ${t.max}` : entry.type === "spread" ? "The photo" : entry.type === "note" ? "The photo" : "Photo (optional)";
+      const heading = !entry ? "Cover photo" : entry.type === "photos" ? `Photos · ${list.length} of ${t.max}` : entry.type === "feature" ? `Photos · ${list.length} of 2` : (entry.type === "spread" || entry.type === "note" || entry.type === "article") ? "The photo" : "Photo (optional)";
+      const G = geometry(book);
+      const positions = entry ? PHOTO_AT[entry.type] : null;
+      const at = entry && positions ? photoAtOf(entry, G.L) : null;
+      const positionLabel = entry && entry.type === "feature" ? "First photo on the" : entry && entry.type === "article" ? "Photo page on the" : "Where the photo goes";
+      const opacity = cur && typeof cur.opacity === "number" ? cur.opacity : 1;
       const open = pickerOpen === null ? (list.length === 0 || (t.max > 1 && list.length < t.max)) : pickerOpen;
       const mode = cur && FIT_MODES.includes(cur.fit) ? cur.fit : "auto";
       const shown = [];
@@ -2171,6 +2799,8 @@
       }
       box.innerHTML = `
         <h3>${esc(heading)}</h3>
+        ${positions && (list.length || entry.type === "note" || entry.type === "feature" || entry.type === "article") ? `<div class="sb-field"><span class="sb-label">${positionLabel}</span>
+          <div class="sb-seg" role="radiogroup" aria-label="${positionLabel}">${positions.map((k) => `<button type="button" role="radio" data-photoat="${k}" aria-checked="${at === k}">${POSITION_LABEL[k]}</button>`).join("")}</div></div>` : ""}
         ${list.length ? `<div class="sb-chosen" role="group" aria-label="Chosen">${list.map((s, i) => {
           const hit = lib.byId.get(s.id);
           return `<button type="button" class="sb-ch${hit && hit.photo.diagram ? " diagram" : ""}" data-active="${i}" aria-pressed="${i === active}" aria-label="${t.max > 1 ? `Photo ${i + 1}` : "The photo"}${hit ? `, ${esc(cleanName(hit.shoot.title || hit.shoot.talent))}${hit.photo.diagram ? " lighting diagram" : ""}` : ", from a deleted album"}. Adjust it">${hit ? `<img src="${esc(thumbSrc(hit.photo))}" alt="">` : `<span class="sb-hint">Removed</span>`}${t.max > 1 ? `<i>${i + 1}</i>` : ""}</button>`;
@@ -2186,6 +2816,7 @@
           <label class="sb-range">Zoom <input type="range" min="1" max="3" step="0.05" value="${cur.zoom || 1}" data-slide="zoom"></label>
           <label class="sb-range">Left ↔ right <input type="range" min="0" max="1" step="0.01" value="${cur.x}" data-slide="x"></label>
           <label class="sb-range">Up ↕ down <input type="range" min="0" max="1" step="0.01" value="${cur.y}" data-slide="y"></label>`}
+          <label class="sb-range">Opacity <input type="range" min="10" max="100" step="5" value="${Math.round(opacity * 100)}" data-opacity aria-valuetext="${Math.round(opacity * 100)} percent"></label>
         </div>` : ""}
         <details class="sb-pick" ${open ? "open" : ""}>
           <summary>${list.length ? (t.max === 1 ? "Change the photo" : "Add or remove photos") : "Choose a photo"}</summary>
@@ -2204,16 +2835,25 @@
         </details>`;
 
       const setList = (l) => { photoTarget().set(l); };
-      box.querySelectorAll("[data-active]").forEach((b) => b.addEventListener("click", () => { active = +b.dataset.active; drawPhotoBlock(); const again = box.querySelector(`[data-active="${active}"]`); if (again) again.focus(); }));
+      const refocus = (sel2) => { const el = $(`#sbPhotoBlock ${sel2}`); if (el) el.focus({ preventScroll: true }); };
+      box.querySelectorAll("[data-active]").forEach((b) => b.addEventListener("click", () => { active = +b.dataset.active; drawPhotoBlock(); refocus(`[data-active="${active}"]`); }));
+      box.querySelectorAll("[data-photoat]").forEach((b) => b.addEventListener("click", () => {
+        const v = b.dataset.photoat;
+        if (at === v) return;
+        entry.photoAt = v;
+        change({ photos: true, rail: false }); refocus(`[data-photoat="${v}"]`);
+      }));
       box.querySelectorAll("[data-move]").forEach((b) => b.addEventListener("click", () => {
         const l = photoTarget().list.slice(), j = active + +b.dataset.move;
         [l[active], l[j]] = [l[j], l[active]]; setList(l); active = j; change({ photos: true });
+        refocus(`[data-move="${b.dataset.move}"]:not(:disabled)`) ; if (!box.isConnected || document.activeElement === document.body) refocus(`[data-active="${active}"]`);
       }));
       const rm = box.querySelector("[data-remove]");
-      if (rm) rm.addEventListener("click", () => { const l = photoTarget().list.slice(); l.splice(active, 1); setList(l); active = Math.max(0, active - 1); change({ photos: true }); });
+      if (rm) rm.addEventListener("click", () => { const l = photoTarget().list.slice(); l.splice(active, 1); setList(l); active = Math.max(0, active - 1); change({ photos: true }); refocus(`[data-active="${active}"]`); if (document.activeElement === document.body) refocus("summary"); });
       box.querySelectorAll("[data-fit]").forEach((b) => b.addEventListener("click", () => {
         const l = photoTarget().list.slice();
         const next = { ...l[active] };
+        if ((next.fit || "auto") === b.dataset.fit) return;
         if (b.dataset.fit === "auto") delete next.fit; else next.fit = b.dataset.fit;
         l[active] = next; setList(l); change({ photos: true, rail: false });
         const again = box.querySelector(`[data-fit="${b.dataset.fit}"]`); if (again) again.focus();
@@ -2224,6 +2864,15 @@
         l[active] = { ...l[active], [r.dataset.slide]: +r.value };
         setList(l); change({ rail: false });
       }));
+      const op = box.querySelector("[data-opacity]");
+      if (op) op.addEventListener("input", () => {
+        const l = photoTarget().list.slice();
+        const next = { ...l[active] };
+        const v = Math.round(+op.value) / 100;
+        if (v >= 1) delete next.opacity; else next.opacity = Math.max(0.1, v);
+        op.setAttribute("aria-valuetext", `${Math.round(v * 100)} percent`);
+        l[active] = next; setList(l); change({ rail: false });
+      });
       const det = box.querySelector(".sb-pick");
       det.addEventListener("toggle", () => { pickerOpen = det.open; });
       box.querySelector("#sbAlbum").addEventListener("change", (e) => { filter = e.target.value; pickerOpen = true; drawPhotoBlock(); const s = $("#sbAlbum"); if (s) s.focus(); });
@@ -2247,6 +2896,9 @@
         change({ photos: true });
         const g2 = $("#sbPhotoBlock .sb-grid"); if (g2) g2.scrollTop = scroll;
         patchRail();
+        if (entry && entry.type === "photos") drawFields();   // a border depends on how many photos
+        const again = $(`#sbPhotoBlock [data-pick="${window.CSS && window.CSS.escape ? window.CSS.escape(id) : id}"]`);
+        if (again) again.focus({ preventScroll: true }); else refocus("summary");
       }));
     }
 
@@ -2262,8 +2914,13 @@
         </div>
         <div class="sb-sec"><h3>Page shape</h3>
           <div class="sb-seg" role="radiogroup" aria-label="Page shape">${["portrait", "landscape"].map((o) => `<button type="button" role="radio" data-orient="${o}" aria-checked="${book.orientation === o}">${o === "portrait" ? "Portrait" : "Landscape"}</button>`).join("")}</div>
+        </div>
+        <div class="sb-sec"><h3>Paper size</h3>
+          <div class="sb-seg" role="radiogroup" aria-label="Paper size">${Object.entries(PAPERS).map(([k, p]) => `<button type="button" role="radio" data-paper="${k}" aria-checked="${(book.paper || "a4") === k}">${esc(p.name)}</button>`).join("")}</div>
+          <p class="sb-hint" id="sbPaperNote">${esc((PAPERS[book.paper] || PAPERS.a4).note)}. Every size keeps the same layout; the words and photos scale with the page.</p>
         </div>`;
-      const radio = (selector, apply) => panel.querySelectorAll(selector).forEach((b) => b.addEventListener("click", () => {
+      const radio = (selector, apply, current) => panel.querySelectorAll(selector).forEach((b) => b.addEventListener("click", () => {
+        if (current(b)) return;
         const before = fontsOk ? new Set(bookCuts(book).filter((x) => x.cuts.length).map((x) => x.entry)) : null;
         panel.querySelectorAll(selector).forEach((x) => x.setAttribute("aria-checked", String(x === b)));
         apply(b);
@@ -2279,32 +2936,38 @@
           setStatus(msg); API.toast(msg);
         }
       }));
-      radio("[data-style]", (b) => { book.style = b.dataset.style; });
-      radio("[data-cw]", (b) => { book.colourway = b.dataset.cw; });
-      radio("[data-orient]", (b) => { book.orientation = b.dataset.orient; });
+      radio("[data-style]", (b) => { book.style = b.dataset.style; drawFields(); }, (b) => book.style === b.dataset.style);
+      radio("[data-cw]", (b) => { book.colourway = b.dataset.cw; drawFields(); }, (b) => book.colourway === b.dataset.cw);
+      radio("[data-orient]", (b) => { book.orientation = b.dataset.orient; }, (b) => book.orientation === b.dataset.orient);
+      radio("[data-paper]", (b) => {
+        if (b.dataset.paper === "a4") delete book.paper; else book.paper = b.dataset.paper;
+        const note = $("#sbPaperNote"); if (note) note.textContent = `${(PAPERS[book.paper] || PAPERS.a4).note}. Every size keeps the same layout; the words and photos scale with the page.`;
+      }, (b) => (book.paper || "a4") === b.dataset.paper);
     }
 
     /* --- checks, publish, download --- */
     async function problems(b) {
       await ensureFonts();
       const lib = library();
-      const size = SIZE[b.orientation] || SIZE.portrait;
+      await ensureBookFonts(b);
       const out = [];
       if (b.cover && !lib.byId.has(b.cover.id)) out.push({ i: -1, text: "Cover: the photo is from a deleted album" });
       let n = 1;
       for (let i = 0; i < b.pages.length; i++) {
         const pg = b.pages[i];
-        const first = n + 1; n += pg.type === "spread" ? 2 : 1;
+        const first = n + 1; n += pageSpan(pg);
         if (n > MAX_PAGES) break;
         const add = (text) => out.push({ i, text: `Page ${pad2(first)} · ${PAGE_LABEL[pg.type]}: ${text}` });
         if ((pg.type === "photos" || pg.type === "spread") && !(pg.photos || []).length) add("no photos yet");
-        if (pg.type === "note" && !(pg.photos || []).length) add("no photo chosen");
+        if ((pg.type === "note" || pg.type === "article") && !(pg.photos || []).length) add("no photo chosen");
+        if (pg.type === "feature" && (pg.photos || []).length < 2) add(`${(pg.photos || []).length ? "only one photo" : "no photos"} chosen; it takes two`);
         if ((pg.photos || []).some((sh) => !lib.byId.has(sh.id))) add("a photo from a deleted album");
         if (WRITING[pg.type]) {
-          const plan = planWriting(b, pg, size.w, size.h);
+          const plan = planWriting(b, pg);
           if (!Object.keys(fieldCaps()[pg.type] || {}).some((k) => oneParagraph(pg[k]).length)) add("no words yet");
           else {
             for (const k of REQUIRED[pg.type] || []) if (plan.fields[k] && plan.fields[k].empty) add(`the ${({ headline: "headline", body: pg.type === "letter" ? "letter" : "story", title: "title", note: "words about the picture", quote: "quote", heading: "heading" })[k]} is empty`);
+            if (pg.type === "article" && pg.caption && bookCuts({ ...b, pages: [pg] })[0].cuts.some((c) => c.field === "caption")) add("the caption is too long");
             for (const c of plan.cuts) {
               const info = plan.fields[c.field];
               const miss = info ? info.total - info.printed : 0;
@@ -2344,7 +3007,11 @@
       btn.disabled = true; setStatus("Publishing…");
       try {
         const ok = await API.publish();
-        setStatus(ok ? `Published ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}${longNote()}` : "Saved on this device — publish failed");
+        const status = ok ? `Published ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}${longNote()}` : "Saved on this device — publish failed";
+        // Publishing repaints the site, which mounts the builder again: it
+        // reopens this book, on this page, with this status.
+        remember({ status });
+        setStatus(status);
         if (ok) API.toast("Your books are published with your albums and open on any device.");
       } catch (e) {
         setStatus("Saved on this device — publish failed");
@@ -2359,7 +3026,7 @@
       const list = await problems(snap);
       if (list.length) {
         const shown = list.slice(0, 5).map((p) => `• ${p.text}`).join("\n");
-        const more = list.length > 5 ? `\n…and ${list.length - 5} more (marked in the page list).` : "";
+        const more = list.length > 5 ? `\n…and ${list.length - 5} more (see “Check before sending” in Download).` : "";
         if (!confirm(`Before you send this:\n${shown}${more}\n\nDownload anyway?`)) return;
       }
       const buttons = $$("[data-dl]");
@@ -2377,8 +3044,10 @@
             const out = [];
             let done = 0;
             for await (const r of renderPages(snap, { dpi, watermarked, cache })) {
-              const { canvas, links } = r.page;
-              if (format === "pdf") out.push({ jpeg: await API.canvasJpeg(canvas, 0.9), width: canvas.width, height: canvas.height, links });
+              const { canvas, links, pt, scale } = r.page;
+              // Links are placed in design mm; the PDF wants printed mm.
+              const printed = (links || []).map((l) => ({ ...l, x: l.x * (scale || 1), y: l.y * (scale || 1), w: l.w * (scale || 1), h: l.h * (scale || 1) }));
+              if (format === "pdf") out.push({ jpeg: await API.canvasJpeg(canvas, 0.9), width: canvas.width, height: canvas.height, links: printed, pt });
               else out.push({ blob: await API.canvasPng(canvas), n: r.n });
               canvas.width = 0; canvas.height = 0;            // release before the next page
               done++; btn.textContent = `${format === "pdf" ? "Making the PDF" : "Making the images"}… ${done}/${renderedCount(snap)}`;
@@ -2420,13 +3089,16 @@
     // that loaded the site before they existed still runs the old save code,
     // which would drop them while saying "Saved": refuse until it reloads.
     const L = window.STUDIO_BOOK_LIMITS;
-    if (!L || !L.fields || !L.fits || !(L.pageTypes || []).includes("letter")) {
+    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !(L.pageTypes || []).includes("article")) {
       root.innerHTML = `<div class="sb-empty"><p class="sb-warn">The site was updated while this tab was open.</p><p class="sb-hint">Reload the page (or use “↻ Load fresh version”) before editing your books, so nothing you write is lost.</p><p><button type="button" class="sb-btn dark" id="sbReload">Reload now</button></p></div>`;
       root.querySelector("#sbReload").addEventListener("click", () => location.reload());
       return;
     }
-    showList();
+    let reopen = null;
+    try { reopen = JSON.parse(sessionStorage.getItem(OPEN_KEY) || "null"); } catch (e) { reopen = null; }
+    const again = reopen && state.versions.find((v) => v.id === reopen.id);
+    if (again) openBook(JSON.parse(JSON.stringify(again)), false, reopen); else showList();
   }
 
-  window.StudioBook = { mount, renderPages, COLOURWAYS, STYLES, newBook };
+  window.StudioBook = { mount, renderPages, COLOURWAYS, STYLES, newBook, geometry, PAPERS };
 })();

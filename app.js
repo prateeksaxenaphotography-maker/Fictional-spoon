@@ -677,8 +677,22 @@ const STUDIO_BOOK_STYLES = ["elegant", "modern", "vogue"];
 // book at `versions` rather than letting the clean-up drop one.
 const STUDIO_BOOK_LIMITS = {
   versions: 200, pages: 30, text: 1200, deleted: 2000,
-  pageTypes: ["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter"],
+  pageTypes: ["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article"],
   fits: ["fill", "whole", "width", "height"],
+  // Paper a book prints on; absent means A4. Where a writing page's photo sits;
+  // absent means the page shape's usual place.
+  papers: ["a4", "b5", "a5", "letter"],
+  photoAt: { story: ["top", "bottom", "left", "right"], note: ["top", "bottom", "left", "right"], quote: ["top", "bottom", "left", "right"], feature: ["left", "right"], article: ["left", "right"] },
+  // Bands round a full-page photo (absent = the style's usual foot band).
+  borders: ["none", "top", "bottom", "left", "right", "all"],
+  borderWidths: ["narrow", "broad"],
+  // Per-text formatting on writing pages and captions: an open-source font,
+  // a colour (a book colour or #rrggbb) and an alignment. Absent = the style's.
+  fonts: ["fraunces", "archivo", "inter", "outfit", "playfair", "cormorant", "baskerville", "bodoni", "dmserif", "sourcesans", "jost", "manrope", "spacegrotesk", "oswald", "plexmono"],
+  colors: ["ink", "soft", "accent"],
+  aligns: ["left", "center", "right", "justify"],
+  // Lines a contact page can leave off.
+  contactRows: ["email", "whatsapp", "instagram", "website", "book", "studio", "qr"],
   // Writing pages: the most characters each field may hold. Each cap is what
   // the narrowest style and page shape can print, measured, so ordinary prose
   // at the cap never gets cut when the style or shape changes. book-builder.js
@@ -689,6 +703,8 @@ const STUDIO_BOOK_LIMITS = {
     note: { title: 40, note: 300, detail: 90 },
     quote: { quote: 220, name: 40, role: 48 },
     letter: { kicker: 32, heading: 52, body: 1100, signName: 40, signLine: 48 },
+    feature: { kicker: 32, headline: 52, sub1: 40, text1: 360, sub2: 40, text2: 360 },
+    article: { kicker: 32, headline: 52, intro: 150, body: 1400, caption: 90 },
     photos: { caption: 90 }
   }
 };
@@ -705,6 +721,8 @@ function cleanStudioPortfolios(o) {
     if (!(x && typeof x === "object" && typeof x.id === "string" && x.id)) return null;
     const out = { id: x.id.slice(0, 120), x: num(x.x, 0, 1, 0.5), y: num(x.y, 0, 1, 0.35), zoom: num(x.zoom, 1, 3, 1) };
     if (STUDIO_BOOK_LIMITS.fits.includes(x.fit)) out.fit = x.fit;
+    // Opacity is kept only when the photo is faded; fully visible is the default.
+    if (typeof x.opacity === "number" && isFinite(x.opacity) && x.opacity < 1) out.opacity = Math.round(num(x.opacity, 0.1, 1, 1) * 100) / 100;
     return out;
   };
   const PAGE_TYPES = STUDIO_BOOK_LIMITS.pageTypes;
@@ -721,18 +739,44 @@ function cleanStudioPortfolios(o) {
         const caption = strU(pg.caption, FIELDS.photos.caption);
         if (caption) out.caption = caption;
       }
-      if (pg.type === "spread") out.photos = (Array.isArray(pg.photos) ? pg.photos : []).map(shot).filter(Boolean).slice(0, 1);
+      if (pg.type === "spread" || pg.type === "article") out.photos = (Array.isArray(pg.photos) ? pg.photos : []).map(shot).filter(Boolean).slice(0, 1);
+      if (pg.type === "photos" || pg.type === "spread" || pg.type === "article") {
+        if (STUDIO_BOOK_LIMITS.borders.includes(pg.border)) out.border = pg.border;
+        if (STUDIO_BOOK_LIMITS.borderWidths.includes(pg.borderWidth)) out.borderWidth = pg.borderWidth;
+      }
       if (pg.type === "divider") { out.heading = str(pg.heading, 60); out.line = str(pg.line, 160); }
+      if (pg.type === "contact" && Array.isArray(pg.hide)) {
+        const hide = [...new Set(pg.hide.filter((k) => STUDIO_BOOK_LIMITS.contactRows.includes(k)))];
+        if (hide.length) out.hide = hide;
+      }
       if (pg.type === "story" || pg.type === "note" || pg.type === "quote") out.photos = (Array.isArray(pg.photos) ? pg.photos : []).map(shot).filter(Boolean).slice(0, 1);
+      if (pg.type === "feature") out.photos = (Array.isArray(pg.photos) ? pg.photos : []).map(shot).filter(Boolean).slice(0, 2);
+      if ((STUDIO_BOOK_LIMITS.photoAt[pg.type] || []).includes(pg.photoAt)) out.photoAt = pg.photoAt;
       // Stored exactly as typed, line breaks included; tidying happens only
       // when a page is laid out, never under the cursor.
       if (FIELDS[pg.type] && pg.type !== "photos") for (const [k, max] of Object.entries(FIELDS[pg.type])) out[k] = strU(pg[k], max);
+      if (FIELDS[pg.type] && pg.style && typeof pg.style === "object") {
+        const style = {};
+        for (const [k, f] of Object.entries(pg.style)) {
+          if (!(k in FIELDS[pg.type]) || !f || typeof f !== "object") continue;
+          const one = {};
+          if (STUDIO_BOOK_LIMITS.fonts.includes(f.font)) one.font = f.font;
+          if (STUDIO_BOOK_LIMITS.colors.includes(f.color) || /^#[0-9a-f]{6}$/i.test(String(f.color || ""))) one.color = String(f.color).toLowerCase();
+          if (STUDIO_BOOK_LIMITS.aligns.includes(f.align)) one.align = f.align;
+          if (typeof f.size === "number" && isFinite(f.size) && Math.abs(f.size - 1) > 0.001) one.size = Math.round(Math.min(1.6, Math.max(0.6, f.size)) * 100) / 100;
+          if (["light", "regular", "bold"].includes(f.weight)) one.weight = f.weight;
+          if (f.italic === true) one.italic = true;
+          if (Object.keys(one).length) style[k] = one;
+        }
+        if (Object.keys(style).length) out.style = style;
+      }
       return out;
     }).filter(Boolean);
     const t = v.texts && typeof v.texts === "object" ? v.texts : {};
     return {
       id: v.id.slice(0, 40), name: str(v.name, 80) || "Untitled book",
       style: STUDIO_BOOK_STYLES.includes(v.style) ? v.style : "modern",
+      ...(STUDIO_BOOK_LIMITS.papers.includes(v.paper) && v.paper !== "a4" ? { paper: v.paper } : {}),
       colourway: str(v.colourway, 40) || "terracotta",
       orientation: v.orientation === "landscape" ? "landscape" : "portrait",
       title: str(v.title, 80), subtitle: str(v.subtitle, 120),
@@ -755,18 +799,23 @@ function cleanStudioPortfolios(o) {
 // those from books it never opened while leaving their updatedAt alone. The
 // copy here is read first, so on that equal updatedAt the complete copy wins.
 // Older code never touches it.
-const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words";
-const studioBookHasWords = (v) => (v.cover && v.cover.fit) || (v.pages || []).some((pg) =>
-  (STUDIO_BOOK_LIMITS.fields[pg.type] && (pg.type !== "photos" || pg.caption)) || (pg.photos || []).some((s) => s.fit));
+// Each time the stored shape grows, the copy moves to a new key: code that
+// knows the previous shape still writes the previous key (stripping only what
+// it doesn't know), so the newest key is read first and wins ties.
+const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words_v2";
+const STUDIO_BOOK_WORDS_KEY_V1 = "wps_studio_portfolios_words";
+const studioBookHasWords = (v) => !!v.paper || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
+  (STUDIO_BOOK_LIMITS.fields[pg.type] && (pg.type !== "photos" || pg.caption)) || pg.photoAt || pg.border || pg.borderWidth || pg.style || pg.hide || (pg.photos || []).some((s) => s.fit || s.opacity));
 function getStudioPortfolios(live) {
-  let local = null, published = null, remote = null, words = null;
+  let local = null, published = null, remote = null, words = null, wordsV1 = null;
   try { local = cleanStudioPortfolios(JSON.parse(localStorage.getItem("wps_studio_portfolios") || "null")); } catch (e) {}
   try { words = cleanStudioPortfolios(JSON.parse(localStorage.getItem(STUDIO_BOOK_WORDS_KEY) || "null")); } catch (e) {}
+  try { wordsV1 = cleanStudioPortfolios(JSON.parse(localStorage.getItem(STUDIO_BOOK_WORDS_KEY_V1) || "null")); } catch (e) {}
   try { published = cleanStudioPortfolios(window.WPS_DATA && window.WPS_DATA.STUDIO_PORTFOLIOS); } catch (e) {}
   try { remote = live ? cleanStudioPortfolios(live) : null; } catch (e) {}
   const deleted = [...new Set([...((local && local.deleted) || []), ...((published && published.deleted) || []), ...((remote && remote.deleted) || [])])];
   const byId = new Map();
-  for (const v of [...((words && words.versions) || []), ...((remote && remote.versions) || []), ...((published && published.versions) || []), ...((local && local.versions) || [])]) {
+  for (const v of [...((words && words.versions) || []), ...((wordsV1 && wordsV1.versions) || []), ...((remote && remote.versions) || []), ...((published && published.versions) || []), ...((local && local.versions) || [])]) {
     const have = byId.get(v.id);
     if (!have || v.updatedAt > have.updatedAt) byId.set(v.id, v);
   }
@@ -777,7 +826,11 @@ function saveStudioPortfolios(state) {
   const clean = cleanStudioPortfolios(state);
   if (!clean) return false;
   try { localStorage.setItem("wps_studio_portfolios", JSON.stringify(clean)); } catch (e) { return false; }
-  try { localStorage.setItem(STUDIO_BOOK_WORDS_KEY, JSON.stringify({ versions: clean.versions.filter(studioBookHasWords), deleted: [] })); } catch (e) { /* the main copy is saved; this one is a safety net */ }
+  try {
+    const copy = JSON.stringify({ versions: clean.versions.filter(studioBookHasWords), deleted: [] });
+    localStorage.setItem(STUDIO_BOOK_WORDS_KEY, copy);
+    localStorage.setItem(STUDIO_BOOK_WORDS_KEY_V1, copy);
+  } catch (e) { /* the main copy is saved; these are a safety net */ }
   return true;
 }
 window.cleanStudioPortfolios = cleanStudioPortfolios;
@@ -16235,7 +16288,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const PT = 72 / 25.4;
     // Each page is sized from its own canvas, so a book can mix portrait and
     // landscape; an A4 portrait canvas comes out at exactly 595.28 x 841.89.
-    const pageBox = (p) => dims(p).width > dims(p).height ? { w: 841.89, h: 595.28 } : { w: 595.28, h: 841.89 };
+    // A page drawn for another paper size says its printed size in points.
+    const pageBox = (p) => (p.pt && p.pt.w > 0 && p.pt.h > 0) ? { w: Math.round(p.pt.w * 100) / 100, h: Math.round(p.pt.h * 100) / 100 } : dims(p).width > dims(p).height ? { w: 841.89, h: 595.28 } : { w: 595.28, h: 841.89 };
     const chunks = [];
     const offsets = [];
     let length = 0;

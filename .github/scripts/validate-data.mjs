@@ -290,7 +290,7 @@ if (books !== undefined && books !== null) {
     fail("WPS_DATA.STUDIO_PORTFOLIOS must be an object { versions: [], deleted: [] }");
   } else {
     const BOOK_STYLES = new Set(["elegant", "modern", "vogue"]);
-    const PAGE_TYPES = new Set(["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter"]);
+    const PAGE_TYPES = new Set(["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article"]);
     // The same caps as STUDIO_BOOK_LIMITS.fields in app.js. Over a cap FAILS
     // here rather than being trimmed: the app's cleaner would otherwise cut a
     // hand-edited data.js without a word.
@@ -299,14 +299,24 @@ if (books !== undefined && books !== null) {
       note: { title: 40, note: 300, detail: 90 },
       quote: { quote: 220, name: 40, role: 48 },
       letter: { kicker: 32, heading: 52, body: 1100, signName: 40, signLine: 48 },
+      feature: { kicker: 32, headline: 52, sub1: 40, text1: 360, sub2: 40, text2: 360 },
+      article: { kicker: 32, headline: 52, intro: 150, body: 1400, caption: 90 },
       photos: { caption: 90 }
     };
+    const BORDERS = new Set(["none", "top", "bottom", "left", "right", "all"]);
+    const BORDER_WIDTHS = new Set(["narrow", "broad"]);
+    const FONTS = new Set(["fraunces", "archivo", "inter", "outfit", "playfair", "cormorant", "baskerville", "bodoni", "dmserif", "sourcesans", "jost", "manrope", "spacegrotesk", "oswald", "plexmono"]);
+    const ALIGNS = new Set(["left", "center", "right", "justify"]);
+    const PAPERS = new Set(["a4", "b5", "a5", "letter"]);
+    const PHOTO_AT = { story: ["top", "bottom", "left", "right"], note: ["top", "bottom", "left", "right"], quote: ["top", "bottom", "left", "right"], feature: ["left", "right"], article: ["left", "right"] };
     const FITS = new Set(["fill", "whole", "width", "height"]);
     const KNOWN_KEYS = {
-      photos: ["type", "photos", "caption"], spread: ["type", "photos"], divider: ["type", "heading", "line"],
-      about: ["type"], services: ["type"], contact: ["type"],
-      story: ["type", "photos", ...Object.keys(FIELD_MAX.story)], note: ["type", "photos", ...Object.keys(FIELD_MAX.note)],
-      quote: ["type", "photos", ...Object.keys(FIELD_MAX.quote)], letter: ["type", ...Object.keys(FIELD_MAX.letter)]
+      photos: ["type", "photos", "caption", "border", "borderWidth", "style"], spread: ["type", "photos", "border", "borderWidth"], divider: ["type", "heading", "line"],
+      about: ["type"], services: ["type"], contact: ["type", "hide"],
+      story: ["type", "photos", "photoAt", "style", ...Object.keys(FIELD_MAX.story)], note: ["type", "photos", "photoAt", "style", ...Object.keys(FIELD_MAX.note)],
+      quote: ["type", "photos", "photoAt", "style", ...Object.keys(FIELD_MAX.quote)], letter: ["type", "style", ...Object.keys(FIELD_MAX.letter)],
+      feature: ["type", "photos", "photoAt", "style", ...Object.keys(FIELD_MAX.feature)],
+      article: ["type", "photos", "photoAt", "style", "border", "borderWidth", ...Object.keys(FIELD_MAX.article)]
     };
     const seenBooks = new Set();
     for (const b of books.versions) {
@@ -317,7 +327,7 @@ if (books !== undefined && books !== null) {
       if (!BOOK_STYLES.has(b.style)) fail(`studio portfolio book ${name} has an unknown style ${JSON.stringify(b.style)}`);
       if (b.orientation !== "portrait" && b.orientation !== "landscape") fail(`studio portfolio book ${name} has an unknown page shape ${JSON.stringify(b.orientation)}`);
       if (!Array.isArray(b.pages)) { fail(`studio portfolio book ${name} has no pages list`); continue; }
-      const rendered = 1 + b.pages.reduce((n, pg) => n + (pg && pg.type === "spread" ? 2 : 1), 0);
+      const rendered = 1 + b.pages.reduce((n, pg) => n + (pg && (pg.type === "spread" || pg.type === "article") ? 2 : 1), 0);
       if (rendered > 20) fail(`studio portfolio book ${name} has ${rendered} pages; the builder allows 20, cover included`);
       b.pages.forEach((pg, i) => {
         const where = `studio portfolio book ${name} page entry ${i + 1}`;
@@ -332,9 +342,33 @@ if (books !== undefined && books !== null) {
         if (pg.type === "story" || pg.type === "note" || pg.type === "quote") {
           if (!Array.isArray(pg.photos) || pg.photos.length > 1 || pg.photos.some((s) => !s || typeof s.id !== "string")) fail(`${where} (${pg.type}) must have a photos list of at most one photo`);
         }
-        for (const s of pg.photos || []) if (s && s.fit !== undefined && !FITS.has(s.fit)) fail(`${where} has a photo placed as ${JSON.stringify(s.fit)}; the app knows ${[...FITS].join(", ")}`);
+        if (pg.type === "feature" && (!Array.isArray(pg.photos) || pg.photos.length > 2)) fail(`${where} (feature) must have a photos list of at most two photos`);
+        if (pg.type === "article" && (!Array.isArray(pg.photos) || pg.photos.length > 1)) fail(`${where} (article) must have a photos list of at most one photo`);
+        if (pg.hide !== undefined && (!Array.isArray(pg.hide) || pg.hide.some((k) => !["email", "whatsapp", "instagram", "website", "book", "studio", "qr"].includes(k)))) fail(`${where} hides contact lines the app doesn't know: ${JSON.stringify(pg.hide)}`);
+        if (pg.border !== undefined && !BORDERS.has(pg.border)) fail(`${where} has an unknown border ${JSON.stringify(pg.border)}`);
+        if (pg.borderWidth !== undefined && !BORDER_WIDTHS.has(pg.borderWidth)) fail(`${where} has an unknown border width ${JSON.stringify(pg.borderWidth)}`);
+        if (pg.style !== undefined) {
+          if (!pg.style || typeof pg.style !== "object" || Array.isArray(pg.style)) fail(`${where} has a style that is not an object`);
+          else for (const [k, f] of Object.entries(pg.style)) {
+            if (!(k in (FIELD_MAX[pg.type] || {}))) { fail(`${where} formats ${JSON.stringify(k)}, which isn't one of its texts`); continue; }
+            if (!f || typeof f !== "object") { fail(`${where} has formatting for ${k} that is not an object`); continue; }
+            for (const key of Object.keys(f)) if (!["font", "color", "align", "size", "weight", "italic"].includes(key)) fail(`${where} formats ${k} with ${JSON.stringify(key)}, which the app drops`);
+            if (f.size !== undefined && !(typeof f.size === "number" && f.size >= 0.6 && f.size <= 1.6)) fail(`${where} sizes ${k} at ${JSON.stringify(f.size)}; it must be 0.6 to 1.6`);
+            if (f.weight !== undefined && !["light", "regular", "bold"].includes(f.weight)) fail(`${where} sets ${k} in weight ${JSON.stringify(f.weight)}`);
+            if (f.italic !== undefined && f.italic !== true) fail(`${where} has italic ${JSON.stringify(f.italic)} for ${k}; only true is written`);
+            if (f.font !== undefined && !FONTS.has(f.font)) fail(`${where} sets ${k} in an unknown font ${JSON.stringify(f.font)}`);
+            if (f.color !== undefined && !["ink", "soft", "accent"].includes(f.color) && !/^#[0-9a-f]{6}$/.test(String(f.color))) fail(`${where} colours ${k} ${JSON.stringify(f.color)}; use ink, soft, accent or #rrggbb`);
+            if (f.align !== undefined && !ALIGNS.has(f.align)) fail(`${where} aligns ${k} ${JSON.stringify(f.align)}`);
+          }
+        }
+        if (pg.photoAt !== undefined && !(PHOTO_AT[pg.type] || []).includes(pg.photoAt)) fail(`${where} (${pg.type}) puts its photo at ${JSON.stringify(pg.photoAt)}; allowed: ${(PHOTO_AT[pg.type] || []).join(", ") || "nowhere"}`);
+        for (const s of pg.photos || []) {
+          if (s && s.fit !== undefined && !FITS.has(s.fit)) fail(`${where} has a photo placed as ${JSON.stringify(s.fit)}; the app knows ${[...FITS].join(", ")}`);
+          if (s && s.opacity !== undefined && !(typeof s.opacity === "number" && s.opacity >= 0.1 && s.opacity < 1)) fail(`${where} has a photo opacity of ${JSON.stringify(s.opacity)}; it must be a number from 0.1 to under 1`);
+        }
       });
       if (b.cover && b.cover.fit !== undefined && !FITS.has(b.cover.fit)) fail(`studio portfolio book ${name} has a cover photo placed as ${JSON.stringify(b.cover.fit)}`);
+      if (b.paper !== undefined && (!PAPERS.has(b.paper) || b.paper === "a4")) fail(`studio portfolio book ${name} has paper ${JSON.stringify(b.paper)}; the app writes b5, a5 or letter, and nothing for A4`);
       if (books.deleted.includes(b.id)) fail(`studio portfolio book ${name} is published and also marked deleted`);
     }
   }
@@ -404,14 +438,17 @@ try {
   // An old app.js strips writing pages and captions from books it never
   // opened, without touching their updatedAt. Words that shrink while the
   // book's edit time stays the same can only come from that.
-  const WRITING = new Set(["story", "note", "quote", "letter"]);
+  const WRITING = new Set(["story", "note", "quote", "letter", "feature", "article"]);
   const wordsIn = (b) => {
-    let pages = 0, chars = 0, fits = (b && b.cover && b.cover.fit) ? 1 : 0;
+    let pages = 0, chars = 0, fits = 0;
+    const settings = (s) => (s ? (s.fit ? 1 : 0) + (s.opacity !== undefined ? 1 : 0) : 0);
+    fits += settings(b && b.cover) + (b && b.paper ? 1 : 0);
     for (const pg of (b && b.pages) || []) {
       if (!pg) continue;
       if (WRITING.has(pg.type)) pages++;
       for (const [k, v] of Object.entries(pg)) if (k !== "type" && typeof v === "string") chars += v.length;
-      for (const s of pg.photos || []) if (s && s.fit) fits++;
+      for (const s of pg.photos || []) fits += settings(s);
+      fits += (pg.photoAt ? 1 : 0) + (pg.border ? 1 : 0) + (pg.borderWidth ? 1 : 0) + (pg.style ? Object.keys(pg.style).length : 0) + (Array.isArray(pg.hide) ? pg.hide.length : 0);
     }
     return { pages, chars, fits };
   };
@@ -420,7 +457,7 @@ try {
     if (!now || now.updatedAt !== was.updatedAt) continue;
     const a = wordsIn(was), b = wordsIn(now);
     if (b.pages < a.pages || b.chars < a.chars) fail(`portfolio book "${was.name || was.id}" lost ${a.pages - b.pages} writing page(s) and ${a.chars - b.chars} characters of words without being edited.${stale}`);
-    if (b.fits < a.fits) fail(`portfolio book "${was.name || was.id}" lost ${a.fits - b.fits} photo placement setting(s) without being edited.${stale}`);
+    if (b.fits < a.fits) fail(`portfolio book "${was.name || was.id}" lost ${a.fits - b.fits} photo, paper, border or text-format setting(s) without being edited.${stale}`);
   }
   const photosById = (data) => new Map((data.DEMO_SHOOTS || []).flatMap((s) => (s.photos || []).map((p) => [p.id, p])));
   const before = photosById(prevData);
