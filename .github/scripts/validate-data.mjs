@@ -360,9 +360,12 @@ if (books !== undefined && books !== null) {
     // An Anything page: what the studio placed, as fractions of the A4 frame.
     const BLOCK_KINDS = new Set(["text", "photo", "shape", "line"]);
     const BLOCK_ROLES = new Set(["head", "intro", "body", "kicker", "quote"]);
-    const THICKS = new Set(["hair", "narrow", "broad"]);
+    const THICKS = new Set(["hair", "narrow", "medium", "broad", "heavy"]);
+    const LINE_PATHS = new Set(["v", "d", "u", "curve", "wave", "free"]);
+    const LINE_ENDS = new Set(["end", "start", "both"]);
+    const LINE_TIPS = new Set(["pencil", "brush", "marker", "nib", "taper"]);
     const FILLS = new Set(["ink", "soft", "accent", "paper", "white", "deep", "rule"]);
-    const BLOCK_KEYS = { text: ["k", "x", "y", "w", "h", "r", "t", "role", "fit", "style", "fill", "o", "shape", "corner"], photo: ["k", "x", "y", "w", "h", "r", "p", "edge", "edgeWidth"], shape: ["k", "x", "y", "w", "h", "r", "fill", "o", "shape", "corner"], line: ["k", "x", "y", "w", "r", "color", "o", "thick"] };
+    const BLOCK_KEYS = { text: ["k", "x", "y", "w", "h", "r", "t", "role", "fit", "style", "fill", "o", "shape", "corner"], photo: ["k", "x", "y", "w", "h", "r", "p", "edge", "edgeWidth"], shape: ["k", "x", "y", "w", "h", "r", "fill", "o", "shape", "corner"], line: ["k", "x", "y", "w", "h", "r", "color", "o", "thick", "path", "bend", "pts", "ends", "tip"] };
     const SHAPE_KINDS = new Set(["round", "chamfer", "ellipse", "triangle", "diamond", "star", "parallelogram"]);
     const isFill = (v) => FILLS.has(v) || /^#[0-9a-f]{6}$/.test(String(v));
     const seenBooks = new Set();
@@ -445,7 +448,7 @@ if (books !== undefined && books !== null) {
               if (!BLOCK_KINDS.has(x.k)) { fail(`${at} is a ${JSON.stringify(x.k)}, which the app drops`); return; }
               for (const k of Object.keys(x)) if (!BLOCK_KEYS[x.k].includes(k)) fail(`${at} (${x.k}) has ${JSON.stringify(k)}, which the app drops`);
               for (const k of ["x", "y"]) if (typeof x[k] !== "number" || !(x[k] >= -0.3 && x[k] <= 1.3)) fail(`${at} has ${k} of ${JSON.stringify(x[k])}; it must be a number from -0.3 to 1.3`);
-              for (const k of x.k === "line" ? ["w"] : ["w", "h"]) if (typeof x[k] !== "number" || !(x[k] >= 0.01 && x[k] <= 1.6)) fail(`${at} has ${k} of ${JSON.stringify(x[k])}; it must be a number from 0.01 to 1.6`);
+              for (const k of x.k === "line" && !(x.path && x.path !== "h") ? ["w"] : ["w", "h"]) if (typeof x[k] !== "number" || !(x[k] >= 0.01 && x[k] <= 1.6)) fail(`${at} has ${k} of ${JSON.stringify(x[k])}; it must be a number from 0.01 to 1.6`);
               if (x.r !== undefined && (typeof x.r !== "number" || !(x.r >= -180 && x.r <= 180) || x.r === 0)) fail(`${at} is turned ${JSON.stringify(x.r)}; it must be a number from -180 to 180, and 0 is not written`);
               if (x.k === "text") {
                 if (typeof x.t !== "string") fail(`${at} has words that are not text`);
@@ -474,6 +477,12 @@ if (books !== undefined && books !== null) {
               if (x.k === "line") {
                 if (x.color !== undefined && !isFill(x.color)) fail(`${at} is drawn in ${JSON.stringify(x.color)}; use ${[...FILLS].join(", ")} or #rrggbb`);
                 if (x.thick !== undefined && !THICKS.has(x.thick)) fail(`${at} has a thickness ${JSON.stringify(x.thick)}`);
+                if (x.path !== undefined && !LINE_PATHS.has(x.path)) fail(`${at} runs ${JSON.stringify(x.path)}; the app writes ${[...LINE_PATHS].join(", ")}, and nothing for across`);
+                if (x.ends !== undefined && !LINE_ENDS.has(x.ends)) fail(`${at} has arrowheads ${JSON.stringify(x.ends)}; the app writes end, start or both`);
+                if (x.tip !== undefined && !LINE_TIPS.has(x.tip)) fail(`${at} is drawn with ${JSON.stringify(x.tip)}; the app writes ${[...LINE_TIPS].join(", ")}, and nothing for a pen`);
+                if (x.bend !== undefined && (typeof x.bend !== "number" || !(x.bend >= -1 && x.bend <= 1) || !(x.path === "curve" || x.path === "wave"))) fail(`${at} has a bend ${JSON.stringify(x.bend)}; a curved or wavy line bends from -1 to 1, and 0.5 is not written`);
+                if (x.pts !== undefined && (x.path !== "free" || !Array.isArray(x.pts) || x.pts.length < 2 || x.pts.length > 200 || x.pts.some((q) => !Array.isArray(q) || q.length !== 2 || q.some((v) => typeof v !== "number" || v < 0 || v > 1)))) fail(`${at} has points the app drops; a line drawn by hand keeps 2 to 200 points, each two numbers from 0 to 1`);
+                if (x.path === "free" && x.pts === undefined) fail(`${at} is drawn by hand but has no points`);
               }
               if (x.o !== undefined && !(typeof x.o === "number" && x.o >= 0.05 && x.o < 1)) fail(`${at} is faded to ${JSON.stringify(x.o)}; it must be a number from 0.05 to under 1`);
             });
