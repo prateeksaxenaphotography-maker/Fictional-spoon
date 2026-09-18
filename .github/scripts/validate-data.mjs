@@ -290,7 +290,7 @@ if (books !== undefined && books !== null) {
     fail("WPS_DATA.STUDIO_PORTFOLIOS must be an object { versions: [], deleted: [] }");
   } else {
     const BOOK_STYLES = new Set(["elegant", "modern", "vogue"]);
-    const PAGE_TYPES = new Set(["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process"]);
+    const PAGE_TYPES = new Set(["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process", "free"]);
     // The same caps as STUDIO_BOOK_LIMITS.fields in app.js. Over a cap FAILS
     // here rather than being trimmed: the app's cleaner would otherwise cut a
     // hand-edited data.js without a word.
@@ -350,8 +350,16 @@ if (books !== undefined && books !== null) {
       feature: ["type", "photos", "photoAt", "credit", "style", ...Object.keys(FIELD_MAX.feature)],
       article: ["type", "photos", "photoAt", "credit", "style", "border", "borderWidth", ...Object.keys(FIELD_MAX.article)],
       ways: ["type", "items", "style", ...Object.keys(FIELD_MAX.ways)],
-      process: ["type", "way", "steps", "style", ...Object.keys(FIELD_MAX.process)]
+      process: ["type", "way", "steps", "style", ...Object.keys(FIELD_MAX.process)],
+      free: ["type", "bg", "blocks"]
     };
+    // An Anything page: what the studio placed, as fractions of the A4 frame.
+    const BLOCK_KINDS = new Set(["text", "photo", "shape", "line"]);
+    const BLOCK_ROLES = new Set(["head", "intro", "body", "kicker", "quote"]);
+    const THICKS = new Set(["hair", "narrow", "broad"]);
+    const FILLS = new Set(["ink", "soft", "accent", "paper", "white", "deep", "rule"]);
+    const BLOCK_KEYS = { text: ["k", "x", "y", "w", "h", "r", "t", "role", "fit", "style"], photo: ["k", "x", "y", "w", "h", "r", "p", "edge", "edgeWidth"], shape: ["k", "x", "y", "w", "h", "r", "fill", "o"], line: ["k", "x", "y", "w", "r", "color", "o", "thick"] };
+    const isFill = (v) => FILLS.has(v) || /^#[0-9a-f]{6}$/.test(String(v));
     const seenBooks = new Set();
     for (const b of books.versions) {
       const name = b && b.name ? `"${b.name}"` : JSON.stringify(b && b.id);
@@ -420,6 +428,50 @@ if (books !== undefined && books !== null) {
           }
           if (pg.hide !== undefined && (!Array.isArray(pg.hide) || pg.hide.some((k) => typeof k !== "string" || !k || k.length > 60))) fail(`${where} leaves out shoots the app can't name: ${JSON.stringify(pg.hide)}`);
         }
+        if (pg.type === "free") {
+          if (pg.bg !== undefined && !isFill(pg.bg)) fail(`${where} has a background ${JSON.stringify(pg.bg)}; use ${[...FILLS].join(", ")} or #rrggbb`);
+          if (!Array.isArray(pg.blocks)) fail(`${where} (free) has no list of things on it`);
+          else {
+            if (pg.blocks.length > 12) fail(`${where} has ${pg.blocks.length} things on it; the builder allows 12`);
+            if (pg.blocks.filter((x) => x && x.k === "photo").length > 6) fail(`${where} has more than six photographs on it`);
+            pg.blocks.forEach((x, bi) => {
+              const at = `${where} thing ${bi + 1}`;
+              if (!x || typeof x !== "object" || Array.isArray(x)) { fail(`${at} is not an object`); return; }
+              if (!BLOCK_KINDS.has(x.k)) { fail(`${at} is a ${JSON.stringify(x.k)}, which the app drops`); return; }
+              for (const k of Object.keys(x)) if (!BLOCK_KEYS[x.k].includes(k)) fail(`${at} (${x.k}) has ${JSON.stringify(k)}, which the app drops`);
+              for (const k of ["x", "y"]) if (typeof x[k] !== "number" || !(x[k] >= -0.3 && x[k] <= 1.3)) fail(`${at} has ${k} of ${JSON.stringify(x[k])}; it must be a number from -0.3 to 1.3`);
+              for (const k of x.k === "line" ? ["w"] : ["w", "h"]) if (typeof x[k] !== "number" || !(x[k] >= 0.01 && x[k] <= 1.6)) fail(`${at} has ${k} of ${JSON.stringify(x[k])}; it must be a number from 0.01 to 1.6`);
+              if (x.r !== undefined && (typeof x.r !== "number" || !(x.r >= -180 && x.r <= 180) || x.r === 0)) fail(`${at} is turned ${JSON.stringify(x.r)}; it must be a number from -180 to 180, and 0 is not written`);
+              if (x.k === "text") {
+                if (typeof x.t !== "string") fail(`${at} has words that are not text`);
+                else if (x.t.length > 600) fail(`${at} holds ${x.t.length} characters; the most is 600`);
+                if (x.role !== undefined && !BLOCK_ROLES.has(x.role)) fail(`${at} has a kind of words ${JSON.stringify(x.role)} the app doesn't know`);
+                if (x.fit !== undefined && x.fit !== "cut") fail(`${at} has fit ${JSON.stringify(x.fit)}; the app writes "cut", and nothing when the words shrink`);
+                if (x.style !== undefined) {
+                  if (!x.style || typeof x.style !== "object" || Array.isArray(x.style)) fail(`${at} has formatting that is not an object`);
+                  else checkFormat(x.style, `${at} formats its words`, "t", true);
+                }
+              }
+              if (x.k === "photo") {
+                if (x.p !== undefined) {
+                  if (!x.p || typeof x.p !== "object" || typeof x.p.id !== "string") fail(`${at} has a photo that is not a chosen photograph`);
+                  else {
+                    if (x.p.fit !== undefined && !FITS.has(x.p.fit)) fail(`${at} places its photo as ${JSON.stringify(x.p.fit)}`);
+                    if (x.p.opacity !== undefined && !(typeof x.p.opacity === "number" && x.p.opacity >= 0.1 && x.p.opacity < 1)) fail(`${at} has a photo opacity of ${JSON.stringify(x.p.opacity)}`);
+                  }
+                }
+                if (x.edge !== undefined && !FILLS.has(x.edge)) fail(`${at} has an edge colour ${JSON.stringify(x.edge)} the app drops`);
+                if (x.edgeWidth !== undefined && !THICKS.has(x.edgeWidth)) fail(`${at} has an edge width ${JSON.stringify(x.edgeWidth)}`);
+              }
+              if (x.k === "shape" && x.fill !== undefined && !isFill(x.fill)) fail(`${at} is filled ${JSON.stringify(x.fill)}; use ${[...FILLS].join(", ")} or #rrggbb`);
+              if (x.k === "line") {
+                if (x.color !== undefined && !isFill(x.color)) fail(`${at} is drawn in ${JSON.stringify(x.color)}; use ${[...FILLS].join(", ")} or #rrggbb`);
+                if (x.thick !== undefined && !THICKS.has(x.thick)) fail(`${at} has a thickness ${JSON.stringify(x.thick)}`);
+              }
+              if (x.o !== undefined && !(typeof x.o === "number" && x.o >= 0.05 && x.o < 1)) fail(`${at} is faded to ${JSON.stringify(x.o)}; it must be a number from 0.05 to under 1`);
+            });
+          }
+        }
         if (pg.type === "contact" && pg.rows !== undefined) {
           if (!pg.rows || typeof pg.rows !== "object" || Array.isArray(pg.rows)) fail(`${where} has rows that are not an object`);
           else for (const [key, o] of Object.entries(pg.rows)) {
@@ -464,6 +516,9 @@ if (books !== undefined && books !== null) {
           if (typeof v2 !== "string" || !v2.trim() || v2.length > CT_MAX[k]) fail(`studio portfolio book ${name} has a cover ${k} the app would drop or cut`);
         }
       }
+      // How new the shapes in this book are; see the guard in section 10.
+      if (b.schema !== undefined && !(Number.isInteger(b.schema) && b.schema >= 1 && b.schema <= 99)) fail(`studio portfolio book ${name} has a schema mark ${JSON.stringify(b.schema)}; it must be a whole number from 1 to 99`);
+      if (b.pages.some((pg) => pg && pg.type === "free") && !(b.schema >= 1)) fail(`studio portfolio book ${name} has an Anything page but no schema mark; the app writes schema: 1 for one, and CI needs it to catch an out-of-date tab dropping the page`);
       if (b.footText !== undefined && (typeof b.footText !== "string" || !b.footText.trim() || b.footText.length > 40)) fail(`studio portfolio book ${name} has a running foot the app would drop or cut`);
       if (b.showPageNumbers !== undefined && b.showPageNumbers !== false) fail(`studio portfolio book ${name} writes showPageNumbers ${JSON.stringify(b.showPageNumbers)}; only false is written`);
       if (b.watermark !== undefined) {
@@ -552,7 +607,7 @@ try {
   // An old app.js strips writing pages and captions from books it never
   // opened, without touching their updatedAt. Words that shrink while the
   // book's edit time stays the same can only come from that.
-  const WRITING = new Set(["story", "note", "quote", "letter", "feature", "article", "ways", "process"]);
+  const WRITING = new Set(["story", "note", "quote", "letter", "feature", "article", "ways", "process", "free"]);
   const wordsIn = (b) => {
     let pages = 0, chars = 0, fits = 0;
     const settings = (s) => (s ? (s.fit ? 1 : 0) + (s.opacity !== undefined ? 1 : 0) : 0);
@@ -567,6 +622,12 @@ try {
         for (const v of Object.values(row || {})) if (typeof v === "string") chars += v.length;
       }
       for (const s of pg.photos || []) fits += settings(s);
+      // Everything placed on an Anything page: its words, and the thing itself.
+      for (const bl of pg.blocks || []) {
+        if (!bl) continue;
+        fits += 1 + settings(bl.p);
+        if (typeof bl.t === "string") chars += bl.t.length;
+      }
       // Each formatted text counts once, and each of its formatted paragraphs
       // once more, so losing paragraph formatting shows up as a shrink too.
       const styleWeight = (style) => Object.values(style || {}).reduce((n, f) => n + 1 + (f && f.paras ? Object.keys(f.paras).length : 0), 0);
@@ -574,6 +635,16 @@ try {
     }
     return { pages, chars, fits };
   };
+  // The mark of how new a book's shapes are only ever goes up while this
+  // release is the one saving. An older tab drops a page kind it doesn't know
+  // AND the mark with it, and it bumps updatedAt while doing so — which is
+  // exactly the case the words guard below skips. So this one ignores
+  // updatedAt: a mark that goes backwards is always an out-of-date tab.
+  for (const was of prevBooks) {
+    const now = was && (nowBooks.versions || []).find((x) => x && x.id === was.id);
+    if (!now || !was.schema) continue;
+    if (!(now.schema >= was.schema)) fail(`portfolio book "${was.name || was.id}" was published by an older browser tab: its schema mark went from ${was.schema} to ${JSON.stringify(now.schema)}, which means pages it could not read were dropped.${stale}`);
+  }
   for (const was of prevBooks) {
     const now = was && (nowBooks.versions || []).find((x) => x && x.id === was.id);
     if (!now || now.updatedAt !== was.updatedAt) continue;

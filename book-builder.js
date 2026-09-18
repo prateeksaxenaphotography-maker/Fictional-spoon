@@ -2024,12 +2024,130 @@
     return plan;
   }
 
+
+  /* ---------- a page where the studio decides -----------------------------------
+     The "Anything page": words, photographs, colour blocks and lines, put where
+     the studio wants them. Everything is stored as a fraction of the A4 design
+     frame (0 to 1), so one page prints the same on A4, B5, A5 or Letter and in
+     either shape, and it draws through the same plan-then-paint pipeline as
+     every other page — so the preview, the little page in the rail and the PDF
+     can never disagree. Nothing flows from one box to the next: a box holds
+     what it holds, and says so when the words don't fit. */
+  const FREE_KINDS = ["text", "photo", "shape", "line"];
+  const FREE_ROLES = ["head", "intro", "body", "kicker", "quote"];
+  const FREE_MAX = 12, FREE_PHOTO_MAX = 6, FREE_TEXT_MAX = 600;
+  const THICKS = { hair: 0.3, narrow: 0.8, broad: 2.2 };
+  const FILL_NAMES = ["ink", "soft", "accent", "paper", "white", "deep", "rule"];
+  const blockColor = (v, P, fallback) => (FILL_NAMES.includes(v) ? P[v] : (/^#[0-9a-f]{6}$/i.test(String(v || "")) ? String(v).toLowerCase() : fallback));
+  // What a box of words is: the style's own type, so an Anything page still
+  // looks like the rest of the book.
+  function roleType(T, role) {
+    if (role === "head") return { spec: T.storyHead, start: T.storyHead.start, min: T.storyHead.min, leadMul: T.storyHead.lead, caps: !!T.storyHead.caps, color: "ink" };
+    if (role === "intro") return { spec: T.storyIntro, start: T.storyIntro.start, min: T.storyIntro.min, lead: T.storyIntro.lead, color: T.storyIntro.color || "ink" };
+    if (role === "kicker") return { spec: T.kicker, start: T.kicker.size, min: T.kicker.size * 0.8, lead: T.kicker.size * 1.8, caps: !!T.kicker.caps, color: T.kicker.color || "soft" };
+    if (role === "quote") return { spec: { ...T.quote, sp: T.quote.sp || 0 }, start: 9, min: 4.6, leadMul: T.quote.lead || 1.25, color: "ink" };
+    return { spec: T.body, start: T.body.size, min: T.body.size * 0.72, lead: T.body.lead, color: "ink" };
+  }
+  const freeBlocks = (entry) => (Array.isArray(entry && entry.blocks) ? entry.blocks : []).slice(0, FREE_MAX);
+  // A block's box in design millimetres, on the A4 frame.
+  const blockBox = (b, W, H) => ({ x: (+b.x || 0) * W, y: (+b.y || 0) * H, w: Math.max(0.5, (+b.w || 0) * W), h: b.k === "line" ? (THICKS[b.thick] || THICKS.narrow) : Math.max(0.5, (+b.h || 0) * H) });
+
+  function planFree(book, entry) {
+    const G = geometry(book);
+    const st = WTYPE[book.style] ? book.style : "modern";
+    const T = WTYPE[st];
+    const P = colourway(book.colourway);
+    const page = measurer();
+    const W = G.Wa, H = G.Ha;                      // blocks are fractions of this frame
+    const plan = { ops: [], cuts: [], fields: {}, foot: {}, free: true };
+    const op = (o) => plan.ops.push(o);
+    const colour = (role) => (role === "accentText" ? accentText(P) : P[role]);
+    op({ k: "rect", x: 0, y: 0, w: W, h: H, c: blockColor(entry.bg, P, st === "elegant" ? P.paper : P.white) });
+    freeBlocks(entry).forEach((b, i) => {
+      if (!b || !FREE_KINDS.includes(b.k)) return;
+      const box = blockBox(b, W, H);
+      const turn = Math.abs(+b.r || 0) > 0.05 ? { deg: +b.r, cx: box.x + box.w / 2, cy: box.y + box.h / 2 } : null;
+      const field = `b${i}`;
+      if (b.k === "shape") { op({ k: "rect", x: box.x, y: box.y, w: box.w, h: box.h, c: blockColor(b.fill, P, P.accent), a: b.o, rot: turn }); return; }
+      if (b.k === "line") { op({ k: "rect", x: box.x, y: box.y, w: box.w, h: box.h, c: blockColor(b.color, P, P.rule), a: b.o, rot: turn }); return; }
+      if (b.k === "photo") {
+        op({
+          k: "photo", shot: (b.p && b.p.id) ? b.p : null, x: box.x, y: box.y, w: box.w, h: box.h,
+          mode: b.p && b.p.fit === "whole" ? "fit" : "crop", rot: turn, empty: "CHOOSE A PHOTO",
+          frame: b.edge ? blockColor(b.edge, P, P.rule) : (st === "elegant" ? P.rule : null), frameT: THICKS[b.edgeWidth] || 0.2
+        });
+        return;
+      }
+      // Words. The box holds them: the type shrinks to fit unless the studio
+      // asked for it to be cut, and either way it says what won't print.
+      const f = (b.style && typeof b.style === "object") ? b.style : {};
+      const R = roleType(T, b.role);
+      const base = styledSpec(R.spec, f);
+      const sc = sizeScale(f);
+      const align = ALIGNS.includes(f.align) ? f.align : "left";
+      const color = tintOf(f.color, P, colour(R.color));
+      const words = R.caps ? String(b.t || "").toUpperCase() : String(b.t || "");
+      const start = R.start * sc, floor = b.fit === "cut" ? start : Math.max(1.6, (R.min || R.start) * sc);
+      const leadAt = (size) => (R.leadMul ? size * R.leadMul : R.lead * (size / R.start));
+      let size = start, r = null, lead = leadAt(size);
+      for (;;) {
+        lead = leadAt(size);
+        const spec = { ...base, size, lead };
+        r = flowBody(page, words, [{ x: box.x, w: box.w, top: box.y + size * 0.84, bottom: box.y + box.h - size * 0.2 }], spec, null);
+        r.spec = spec;
+        if (!r.cut || size <= floor + 1e-6) break;
+        size = Math.max(floor, Math.round((size - 0.25) * 100) / 100);
+      }
+      plan.fields[field] = { kind: "flow", empty: !r.total, ...r, lines: undefined };
+      if (r.cut) plan.cuts.push({ field, label: "words on this page" });
+      if (!r.total) { op({ k: "guide", x: box.x, y: box.y, w: box.w, h: box.h }); return; }
+      r.lines.forEach((l, k) => {
+        const last = l.end || k === r.lines.length - 1;
+        const spec = r.spec;
+        const fnt = [spec.w, spec.size, spec.f, spec.sp || 0, !!spec.it];
+        if (align === "center") op({ k: "text", s: l.s, x: l.x + l.w / 2, y: l.y, f: fnt, c: color, align: "center", rot: turn });
+        else if (align === "right") op({ k: "text", s: l.s, x: l.x + l.w, y: l.y, f: fnt, c: color, align: "right", rot: turn });
+        else if (align === "justify" && !last && / /.test(l.s) && !/…$/.test(l.s)) op({ k: "text", s: l.s, x: l.x, y: l.y, f: fnt, c: color, align: "left", justify: l.w, rot: turn });
+        else op({ k: "text", s: l.s, x: l.x, y: l.y, f: fnt, c: color, align: "left", rot: turn });
+      });
+    });
+    plan.ops = plan.ops.map((o) => placeOp(o, G));
+    return plan;
+  }
+  // A page number on an Anything page, without the style's band or rule, so
+  // nothing the studio placed is covered.
+  function freeFoot(page, P, W, H, n) {
+    if (!showNums()) return;
+    font(page, 700, 2.4, F.mono, 0.4);
+    const right = n % 2 === 1;
+    text(page, String(n).padStart(2, "0"), right ? W - 14 : 14, H - 7, P.ink, right ? "right" : "left");
+  }
+
   async function paintPlan(page, plan, entry, imgOf, P, guides) {
     const shots = entry.photos || [];
     const imgs = await Promise.all(shots.map((s) => imgOf(s)));
+    // A block on an Anything page carries its own photograph rather than an
+    // index into the page's list.
+    const own = plan.ops.filter((o) => o.k === "photo" && o.shot);
+    const ownImgs = new Map(await Promise.all(own.map(async (o) => [o, await imgOf(o.shot)])));
+    // Anything a block sets: turned about its own centre, and faded.
+    const around = (o, draw) => {
+      const ctx = page.ctx, fade = typeof o.a === "number" && o.a > 0 && o.a < 1;
+      if (!o.rot && !fade) return draw();
+      ctx.save();
+      if (fade) ctx.globalAlpha = o.a;
+      if (o.rot) {
+        ctx.translate(page.u(o.rot.cx), page.u(o.rot.cy));
+        ctx.rotate(o.rot.deg * Math.PI / 180);
+        ctx.translate(-page.u(o.rot.cx), -page.u(o.rot.cy));
+      }
+      const out = draw();
+      ctx.restore();
+      return out;
+    };
     for (const o of plan.ops) {
-      if (o.k === "rect") rect(page, o.x, o.y, o.w, o.h, o.c);
-      else if (o.k === "text") {
+      if (o.k === "rect") around(o, () => rect(page, o.x, o.y, o.w, o.h, o.c));
+      else if (o.k === "text") around(o, () => {
         font(page, ...o.f);
         if (o.justify) {
           // Spread the words to both edges, measured at this page's resolution.
@@ -2039,16 +2157,19 @@
           let xx = o.x;
           words.forEach((w, k) => { text(page, w, xx, o.y, o.c, "left"); xx += widths[k] + gap; });
         } else text(page, o.s, o.x, o.y, o.c, o.align);
-      }
+      });
       else if (o.k === "photo") {
-        const shot = shots[o.i || 0], img = imgs[o.i || 0];
+        const shot = o.shot !== undefined ? o.shot : shots[o.i || 0];
+        const img = o.shot !== undefined ? ownImgs.get(o) : imgs[o.i || 0];
         if (!shot) {
-          if (o.empty) { rect(page, o.x, o.y, o.w, o.h, P.rule); font(page, 500, 3.2, F.plex, 0.4); text(page, o.empty, o.x + o.w / 2, o.y + o.h / 2, P.soft, "center"); }
+          if (o.empty) around(o, () => { rect(page, o.x, o.y, o.w, o.h, P.rule); font(page, 500, 3.2, F.plex, 0.4); text(page, o.empty, o.x + o.w / 2, o.y + o.h / 2, P.soft, "center"); });
           continue;
         }
-        if (!img) { missing(page, P, o.x, o.y, o.w, o.h); continue; }
-        const r = o.mode === "crop" ? drawPhoto(page, img, shot, o.x, o.y, o.w, o.h) : fitPhoto(page, img, shot, o.x, o.y, o.w, o.h, o.mode === "fit-right" ? "right" : o.mode === "fit-left" ? "left" : "center");
-        if (o.frame) frame(page, r.x, r.y, r.w, r.h, o.frame, 0.2);
+        if (!img) { around(o, () => missing(page, P, o.x, o.y, o.w, o.h)); continue; }
+        around(o, () => {
+          const r = o.mode === "crop" ? drawPhoto(page, img, shot, o.x, o.y, o.w, o.h) : fitPhoto(page, img, shot, o.x, o.y, o.w, o.h, o.mode === "fit-right" ? "right" : o.mode === "fit-left" ? "left" : "center");
+          if (o.frame) frame(page, r.x, r.y, r.w, r.h, o.frame, o.frameT || 0.2);
+        });
       } else if (o.k === "guide" && guides) {
         // Where words will go, in the editor's preview only; never exported.
         const ctx = page.ctx;
@@ -2079,6 +2200,7 @@
       if (n > MAX_PAGES) break;
       let cuts = [];
       if (WRITING[pg.type]) cuts = planWriting(book, pg).cuts;
+      if (pg.type === "free") cuts = planFree(book, pg).cuts;
       if ((pg.type === "photos" || pg.type === "article") && pg.caption) {
         const r = captionFit(pg, captionWidth(book), captionStyle(book));
         if (r && r.cut) cuts = [...cuts, { field: "caption", label: "caption" }];
@@ -2198,6 +2320,12 @@
           S.ground(page, P, W, H);
           font(page, 500, 3.2, F.plex, 0.4); text(page, "NO PHOTOS ON THIS PAGE YET", W / 2, H / 2, P.soft, "center");
         } else await S.photos(page, entry, P, W, H, imgs, shoots, n);
+      } else if (entry.type === "free") {
+        const plan = planFree(book, entry);
+        await paintPlan(page, plan, entry, imgOf, P, guides);
+        freeFoot(page, P, W, H, n);
+        page.cuts = plan.cuts;
+        page.plan = plan;
       } else if (WRITING[entry.type]) {
         const plan = planWriting(book, entry);
         await paintPlan(page, plan, entry, imgOf, P, guides);
@@ -2317,7 +2445,32 @@
   .sb-stagebar strong { flex: 1; text-align: center; font: 600 13px Inter, sans-serif; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sb-nav { width: 34px; height: 30px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--paper, #faf8f5); color: var(--ink, #141416); cursor: pointer; }
   .sb-nav:disabled { opacity: .35; cursor: not-allowed; }
-  .sb-preview { display: flex; align-items: center; justify-content: center; padding: 20px; min-height: 0; background: var(--sb-sunk); overflow: hidden; }
+  .sb-preview { position: relative; display: flex; align-items: center; justify-content: center; padding: 20px; min-height: 0; background: var(--sb-sunk); overflow: hidden; }
+  /* The Anything page: a layer of handles sitting exactly on the drawn page. */
+  .sb-layer { position: absolute; }
+  .sb-blk { position: absolute; margin: 0; padding: 0; border: 1px solid transparent; border-radius: 0; background: none; cursor: move; touch-action: none; }
+  .sb-blk:hover { border-color: rgba(210, 78, 26, .55); }
+  .sb-blk:focus-visible { outline: 2px solid var(--accent, #d24e1a); outline-offset: 1px; }
+  .sb-blk.on { border-color: var(--accent, #d24e1a); border-style: solid; }
+  .sb-blk.line { display: flex; align-items: center; }
+  .sb-h { position: absolute; width: 11px; height: 11px; margin: -6px 0 0 -6px; border: 1px solid var(--accent, #d24e1a); border-radius: 2px; background: var(--paper, #fff); cursor: nwse-resize; }
+  .sb-h[data-h="ne"], .sb-h[data-h="sw"] { cursor: nesw-resize; }
+  .sb-h[data-h="n"], .sb-h[data-h="s"] { cursor: ns-resize; }
+  .sb-h[data-h="e"], .sb-h[data-h="w"] { cursor: ew-resize; }
+  @media (pointer: coarse) { .sb-h { width: 18px; height: 18px; margin: -9px 0 0 -9px; } }
+  .sb-guide { position: absolute; background: #FF3D7F; pointer-events: none; }
+  .sb-blklist { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 4px; }
+  .sb-blkrow { display: flex; align-items: center; gap: 4px; }
+  .sb-blkrow > button:first-child { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sb-blkrow button { min-height: 32px; padding: 4px 8px; border: 1px solid var(--sb-line); border-radius: 7px; background: var(--paper, #fff); color: inherit; font: 500 12px/1.3 Inter, system-ui, sans-serif; cursor: pointer; }
+  .sb-blkrow button[aria-pressed=true] { background: var(--ink, #141416); color: var(--paper, #fff); border-color: var(--ink, #141416); }
+  .sb-adds { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .sb-adds button { flex: 1 1 calc(50% - 6px); min-height: 38px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--paper, #fff); color: inherit; font: 600 13px/1.3 Inter, system-ui, sans-serif; cursor: pointer; }
+  .sb-adds button:hover { border-color: var(--accent, #d24e1a); }
+  .sb-step { display: flex; align-items: center; gap: 6px; margin: 6px 0; font: 500 12px/1.3 Inter, system-ui, sans-serif; }
+  .sb-step span:first-child { flex: 1; color: var(--ink-soft, #5c5e66); }
+  .sb-step button { min-width: 34px; min-height: 32px; border: 1px solid var(--sb-line); border-radius: 7px; background: var(--paper, #fff); color: inherit; font: 600 14px/1 Inter, system-ui, sans-serif; cursor: pointer; }
+  .sb-step output { min-width: 52px; text-align: center; font-variant-numeric: tabular-nums; }
   .sb-preview canvas { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; background: #fff; box-shadow: 0 16px 36px -18px rgba(0,0,0,.5); }
   .sb-preview canvas + canvas { max-width: 50%; }
   .sb-preview.two canvas { max-width: 50%; }
@@ -2444,7 +2597,7 @@
     document.head.appendChild(st);
   }
 
-  const PAGE_LABEL = { photos: "Photos", spread: "Two-page spread", divider: "Chapter page", about: "About", services: "What I shoot", contact: "Contact", story: "Story", note: "About a photo", quote: "Quote", letter: "Letter", feature: "Zig-zag", article: "Story + full-page photo", ways: "Ways we work", process: "How a shoot runs" };
+  const PAGE_LABEL = { photos: "Photos", spread: "Two-page spread", divider: "Chapter page", about: "About", services: "What I shoot", contact: "Contact", story: "Story", note: "About a photo", quote: "Quote", letter: "Letter", feature: "Zig-zag", article: "Story + full-page photo", ways: "Ways we work", process: "How a shoot runs", free: "Anything page" };
   const ADD_MENU = [
     { group: "Photographs", items: [
       ["photos", "Photos", "One to six photos, laid out by their shapes."],
@@ -2459,12 +2612,66 @@
     { group: "How we work", items: [
       ["ways", "Ways we work", "All four ways of working on one page, with who leads the ideas."],
       ["process", "How a shoot runs", "One way, step by step, marking who does what: you, together, or the studio."]] },
+    { group: "Put it where you want", items: [
+      ["free", "Anything page", "An empty page. Put words, photographs, colour blocks and lines wherever you like."],
+      ["free:opener", "Opener", "A photograph across the top, a headline under it, two columns of words."],
+      ["free:two", "Two pictures and a line", "Two photographs side by side with a line of words under them."],
+      ["free:titled", "Title on the picture", "One photograph filling the page, a band across it, the title on the band."],
+      ["free:quote", "A quote under a photograph", "A photograph at the top, big words under it, and who said them."],
+      ["free:three", "Three pictures and a note", "One wide photograph, two under it, and a few words."],
+      ["free:sheet", "Contact sheet", "Six photographs in a grid, the way a proof sheet reads."]] },
     { group: "Studio pages", items: [
       ["divider", "Chapter page", "A pause between sections, e.g. “Fashion & editorial”."],
       ["about", "About the studio", "Who you are and how you work."],
       ["services", "What I shoot", "The kinds of shoot live on your site."],
       ["contact", "Contact", "Email, Instagram, booking link and a QR code."]] }
   ];
+  /* Arrangements to start an Anything page from. Positions are fractions of
+     the A4 frame, chosen against the styles' own margins (20 mm at the side on
+     Elegant, the widest), so a starter page lines up with the rest of the book
+     whichever style it is in. Text boxes start empty: nothing is ever written
+     for the studio. */
+  const FREE_STARTS = {
+    opener: [
+      { k: "photo", x: 0, y: 0, w: 1, h: 0.56 },
+      { k: "text", role: "kicker", x: 0.095, y: 0.6, w: 0.5, h: 0.035 },
+      { k: "text", role: "head", x: 0.095, y: 0.645, w: 0.81, h: 0.12 },
+      { k: "text", role: "body", x: 0.095, y: 0.79, w: 0.39, h: 0.14 },
+      { k: "text", role: "body", x: 0.515, y: 0.79, w: 0.39, h: 0.14 }
+    ],
+    two: [
+      { k: "photo", x: 0.095, y: 0.09, w: 0.39, h: 0.42 },
+      { k: "photo", x: 0.515, y: 0.09, w: 0.39, h: 0.42 },
+      { k: "text", role: "body", x: 0.095, y: 0.55, w: 0.81, h: 0.1 }
+    ],
+    titled: [
+      { k: "photo", x: 0, y: 0, w: 1, h: 1 },
+      { k: "shape", x: 0, y: 0.58, w: 1, h: 0.26, fill: "ink", o: 0.5 },
+      { k: "text", role: "kicker", x: 0.095, y: 0.615, w: 0.5, h: 0.03, style: { color: "#ffffff" } },
+      { k: "text", role: "head", x: 0.095, y: 0.655, w: 0.81, h: 0.15, style: { color: "#ffffff" } }
+    ],
+    quote: [
+      { k: "photo", x: 0, y: 0, w: 1, h: 0.5 },
+      { k: "text", role: "quote", x: 0.095, y: 0.57, w: 0.81, h: 0.22 },
+      { k: "line", x: 0.095, y: 0.82, w: 0.12, thick: "narrow", color: "accent" },
+      { k: "text", role: "kicker", x: 0.095, y: 0.855, w: 0.6, h: 0.03 }
+    ],
+    three: [
+      { k: "photo", x: 0.095, y: 0.075, w: 0.81, h: 0.34 },
+      { k: "photo", x: 0.095, y: 0.43, w: 0.39, h: 0.28 },
+      { k: "photo", x: 0.515, y: 0.43, w: 0.39, h: 0.28 },
+      { k: "text", role: "body", x: 0.095, y: 0.74, w: 0.55, h: 0.12 }
+    ],
+    sheet: [
+      { k: "photo", x: 0.095, y: 0.075, w: 0.255, h: 0.26 },
+      { k: "photo", x: 0.3725, y: 0.075, w: 0.255, h: 0.26 },
+      { k: "photo", x: 0.65, y: 0.075, w: 0.255, h: 0.26 },
+      { k: "photo", x: 0.095, y: 0.355, w: 0.255, h: 0.26 },
+      { k: "photo", x: 0.3725, y: 0.355, w: 0.255, h: 0.26 },
+      { k: "photo", x: 0.65, y: 0.355, w: 0.255, h: 0.26 },
+      { k: "text", role: "kicker", x: 0.095, y: 0.65, w: 0.81, h: 0.03 }
+    ]
+  };
   // The fields of each writing page, in the order they print. `line` fields
   // are one paragraph: Enter does nothing, and the words wrap on their own.
   const FIELD_UI = {
@@ -2543,6 +2750,7 @@
     let book = null;                     // the book being edited (a working copy)
     let sel = -1;                        // -1 = cover, else index into book.pages
     let active = 0;                      // which chosen photo the placement controls act on
+    let blockSel = -1;                   // which thing on an Anything page is chosen
     let filter = "all", pickerOpen = null, tab = "page";
     let saveTimer = null, previewTimer = null, stripTimer = null, renderToken = 0, stripToken = 0, listToken = 0, fileUrls = [];
     let fontsOk = false;
@@ -2608,7 +2816,23 @@
     // is rebuilt each time a book opens.
     const onKey = (e) => {
       if (!root.isConnected) { document.removeEventListener("keydown", onKey); document.removeEventListener("click", onDoc); return; }
+      const el = e.target;
+      const typing = el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable);
+      // Undo is the editor's own, so the browser can never undo a keystroke in
+      // a box the studio isn't looking at.
+      if ((e.metaKey || e.ctrlKey) && (e.key === "z" || e.key === "Z")) {
+        if (typing || !book) return;
+        e.preventDefault();
+        if (e.shiftKey) redo(); else undo();
+        return;
+      }
+      if (!typing && book && freePage() && blockSel >= 0) {
+        const step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+        if (step) { e.preventDefault(); nudgeBlock(step[0], step[1], e.shiftKey); return; }
+        if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); removeBlock(blockSel); return; }
+      }
       if (e.key !== "Escape") return;
+      if (blockSel >= 0) { blockSel = -1; drawLayer(); drawInspector(); return; }
       const pop = $("#sbDlPop"), menu = $("#sbAddMenu");
       if (pop && !pop.hidden) { pop.hidden = true; $("#sbDlToggle").setAttribute("aria-expanded", "false"); $("#sbDlToggle").focus(); }
       if (menu && !menu.hidden) closeAdd();
@@ -2618,8 +2842,13 @@
       const pop = $("#sbDlPop"), btn = $("#sbDlToggle");
       if (pop && !pop.hidden && !pop.contains(e.target) && !(btn && btn.contains(e.target))) { pop.hidden = true; btn.setAttribute("aria-expanded", "false"); }
     };
+    const onResize = () => {
+      if (!root.isConnected) { window.removeEventListener("resize", onResize); return; }
+      if ($("#sbLayer")) drawLayer();
+    };
     document.addEventListener("keydown", onKey);
     document.addEventListener("click", onDoc);
+    window.addEventListener("resize", onResize);
 
     /* --- screen 1: the books --- */
     function showList() {
@@ -2741,6 +2970,7 @@
           <button type="button" class="sb-btn quiet" id="sbBack">← Books</button>
           <input type="text" id="sbName" class="sb-name" maxlength="80" value="${esc(book.name)}" aria-label="Book name" title="The book's name: type to rename it" placeholder="Name this book">
           <span class="sb-status" id="sbStatus" aria-live="polite">Saved on this device</span>
+          <span class="sb-undos"><button type="button" class="sb-btn quiet" id="sbUndo" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>↶</button><button type="button" class="sb-btn quiet" id="sbRedo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo" disabled>↷</button></span>
           <div class="sb-topacts">
             <button type="button" class="sb-btn" id="sbDlToggle" aria-expanded="false" aria-controls="sbDlPop">Download</button>
             <button type="button" class="sb-btn dark" id="sbPublish">Publish</button>
@@ -2791,6 +3021,9 @@
       $("#sbBack").addEventListener("click", () => { flush(); forget(); showList(); });
       $("#sbName").addEventListener("input", (e) => { book.name = e.target.value; change({ rail: false, typing: true }); });
       $("#sbPublish").addEventListener("click", publish);
+      $("#sbUndo").addEventListener("click", () => { undo(); $("#sbUndo").focus(); });
+      $("#sbRedo").addEventListener("click", () => { redo(); $("#sbRedo").focus(); });
+      paintUndo();
       // Keyboard focus stays on the arrows; when one runs out, it moves to the other.
       $("#sbPrev").addEventListener("click", () => { if (sel > -1) { select(sel - 1); const b = $("#sbPrev"); (b.disabled ? $("#sbNext") : b).focus({ preventScroll: true }); } });
       $("#sbNext").addEventListener("click", () => { if (sel < book.pages.length - 1) { select(sel + 1); const b = $("#sbNext"); (b.disabled ? $("#sbPrev") : b).focus({ preventScroll: true }); } });
@@ -2847,6 +3080,255 @@
       try { window.scrollTo({ top: 0 }); } catch (e) { /* older browsers */ }
     }
 
+    /* ---------- undo -------------------------------------------------------
+       The whole book as it was, kept in this tab only: small (a few kB a
+       step), never saved, and cleared when the book closes. A step is taken
+       before a change, not after, so undo puts back what was there. */
+    const history = { past: [], future: [] };
+    let lastMark = 0;
+    const snapshot = () => JSON.stringify(book);
+    function paintUndo() {
+      const u = $("#sbUndo"), r = $("#sbRedo");
+      if (u) u.disabled = !history.past.length;
+      if (r) r.disabled = !history.future.length;
+    }
+    function mark(coalesce) {
+      const now = Date.now();
+      // Typing in one box is one step, not one a keystroke.
+      if (coalesce && history.past.length && now - lastMark < 700) { lastMark = now; return; }
+      history.past.push(snapshot());
+      if (history.past.length > 40) history.past.shift();
+      history.future.length = 0;
+      lastMark = now;
+      paintUndo();
+    }
+    function restoreBook(json) {
+      let was = null;
+      try { was = JSON.parse(json); } catch (e) { return; }
+      for (const k of Object.keys(book)) delete book[k];
+      Object.assign(book, was);
+      if (sel >= book.pages.length) sel = book.pages.length - 1;
+      // Keep hold of the thing that was chosen, if it is still there.
+      const fp = freePage();
+      blockSel = fp && blockSel >= 0 ? Math.min(blockSel, blocksOf(fp).length - 1) : -1;
+      active = 0; pickerOpen = null;
+      change({ rail: true });
+      drawInspector(); drawDesign();
+      paintUndo();
+    }
+    const undo = () => { if (!history.past.length) return; history.future.push(snapshot()); restoreBook(history.past.pop()); lastMark = 0; API.toast("Undone."); };
+    const redo = () => { if (!history.future.length) return; history.past.push(snapshot()); restoreBook(history.future.pop()); lastMark = 0; };
+
+    /* ---------- the Anything page ------------------------------------------
+       Things placed by hand. The page itself is the control surface: each
+       thing has an invisible button sitting exactly on top of it, which is
+       dragged, resized with its corners, and nudged with the arrow keys.
+       Positions stay fractions of the A4 frame, so nothing moves when the
+       paper or the shape changes. */
+    const freePage = () => { const e = sel >= 0 ? book.pages[sel] : null; return e && e.type === "free" ? e : null; };
+    const blocksOf = (e) => (Array.isArray(e.blocks) ? e.blocks : (e.blocks = []));
+    const curBlock = () => { const e = freePage(); if (!e) return null; return blocksOf(e)[blockSel] || null; };
+    const BLOCK_NAME = { text: "Words", photo: "Photograph", shape: "Colour block", line: "Line" };
+    const blockLabel = (b) => (b.k === "text" ? (String(b.t || "").trim().slice(0, 28) || "Words (empty)") : BLOCK_NAME[b.k] || b.k);
+    // Screen pixels to a fraction of the A4 frame, and the other way.
+    function layerMaths() {
+      const G = geometry(book);
+      const layer = $("#sbLayer");
+      const r = layer ? layer.getBoundingClientRect() : { width: 1, height: 1 };
+      return {
+        G, r,
+        fx: (px) => (px / r.width) * (G.W / G.Wa),
+        fy: (px) => (px / r.height) * (G.H / G.Ha),
+        left: (b) => ((b.x * G.Wa + G.ox) / G.W) * 100,
+        top: (b) => ((b.y * G.Ha + G.oy) / G.H) * 100,
+        wide: (b) => ((b.w * G.Wa) / G.W) * 100,
+        high: (b) => (((b.k === "line" ? (THICKS[b.thick] || THICKS.narrow) : b.h * G.Ha)) / G.H) * 100
+      };
+    }
+    const round4 = (v) => Math.round(v * 10000) / 10000;
+    function drawLayer() {
+      const box = $("#sbPreview"); if (!box) return;
+      const e = freePage();
+      const canvas = box.querySelector("canvas");
+      let layer = $("#sbLayer");
+      if (!e || !canvas) { if (layer) layer.remove(); return; }
+      if (!layer) {
+        layer = document.createElement("div");
+        layer.id = "sbLayer"; layer.className = "sb-layer";
+        box.appendChild(layer);
+        wireLayer(layer);
+      }
+      layer.style.left = `${canvas.offsetLeft}px`;
+      layer.style.top = `${canvas.offsetTop}px`;
+      layer.style.width = `${canvas.offsetWidth}px`;
+      layer.style.height = `${canvas.offsetHeight}px`;
+      const M = layerMaths();
+      const blocks = blocksOf(e);
+      if (blockSel >= blocks.length) blockSel = -1;
+      layer.innerHTML = blocks.map((b, i) => {
+        const on = i === blockSel;
+        const turn = b.r ? ` transform: rotate(${b.r}deg);` : "";
+        const handles = on && b.k !== "line"
+          ? ["nw", "n", "ne", "e", "se", "s", "sw", "w"].map((h) => `<span class="sb-h" data-h="${h}" style="left:${{ nw: 0, n: 50, ne: 100, e: 100, se: 100, s: 50, sw: 0, w: 0 }[h]}%; top:${{ nw: 0, n: 0, ne: 0, e: 50, se: 100, s: 100, sw: 100, w: 50 }[h]}%"></span>`).join("")
+          : on ? `<span class="sb-h" data-h="w" style="left:0%; top:50%"></span><span class="sb-h" data-h="e" style="left:100%; top:50%"></span>` : "";
+        return `<button type="button" class="sb-blk${on ? " on" : ""}${b.k === "line" ? " line" : ""}" data-blk="${i}" aria-pressed="${on}"
+          aria-label="${esc(blockLabel(b))}, ${i + 1} of ${blocks.length}"
+          style="left:${M.left(b).toFixed(3)}%; top:${M.top(b).toFixed(3)}%; width:${M.wide(b).toFixed(3)}%; height:${Math.max(M.high(b), b.k === "line" ? 1.2 : 0.6).toFixed(3)}%;${turn}">${handles}</button>`;
+      }).join("");
+      const cur = layer.querySelector(".sb-blk.on");
+      if (cur && layer.dataset.focus === "1") { cur.focus({ preventScroll: true }); layer.dataset.focus = ""; }
+    }
+    // Lines things can land on: the page's own margins, its middle, its thirds,
+    // and every edge and middle of everything else on the page.
+    function guidesFor(e, skip) {
+      const G = geometry(book);
+      const S = STYLE_IMPL[book.style] || STYLE_IMPL.modern;
+      const M = S.margins(book.orientation === "landscape" ? "landscape" : "portrait");
+      const xs = [0, 0.5, 1, 1 / 3, 2 / 3, M.side / G.Wa, 1 - M.side / G.Wa];
+      const ys = [0, 0.5, 1, 1 / 3, 2 / 3, M.top / G.Ha, 1 - M.bottom / G.Ha];
+      blocksOf(e).forEach((b, i) => {
+        if (i === skip) return;
+        xs.push(b.x, b.x + b.w / 2, b.x + b.w);
+        const h = b.k === "line" ? (THICKS[b.thick] || THICKS.narrow) / G.Ha : b.h;
+        ys.push(b.y, b.y + h / 2, b.y + h);
+      });
+      return { xs, ys, tolX: 1.2 / G.Wa, tolY: 1.2 / G.Ha };
+    }
+    const snapTo = (v, list, tol) => { let best = null, gap = tol; for (const t of list) { const d = Math.abs(v - t); if (d <= gap) { gap = d; best = t; } } return best; };
+    function showGuides(marks) {
+      const layer = $("#sbLayer"); if (!layer) return;
+      layer.querySelectorAll(".sb-guide").forEach((g) => g.remove());
+      const G = geometry(book);
+      for (const m of marks) {
+        const g = document.createElement("span");
+        g.className = "sb-guide";
+        if (m.axis === "x") { g.style.left = `${((m.at * G.Wa + G.ox) / G.W) * 100}%`; g.style.top = "0"; g.style.width = "1px"; g.style.height = "100%"; }
+        else { g.style.top = `${((m.at * G.Ha + G.oy) / G.H) * 100}%`; g.style.left = "0"; g.style.height = "1px"; g.style.width = "100%"; }
+        layer.appendChild(g);
+      }
+    }
+    const clearGuides = () => { const l = $("#sbLayer"); if (l) l.querySelectorAll(".sb-guide").forEach((g) => g.remove()); };
+
+    function wireLayer(layer) {
+      layer.addEventListener("pointerdown", (ev) => {
+        const e = freePage(); if (!e) return;
+        const handle = ev.target.closest(".sb-h");
+        const el = ev.target.closest(".sb-blk");
+        if (!el) { if (blockSel !== -1) { blockSel = -1; drawLayer(); drawInspector(); } return; }
+        const i = +el.dataset.blk;
+        if (i !== blockSel) { blockSel = i; drawLayer(); drawInspector(); }
+        const blocks = blocksOf(e);
+        const b = blocks[i]; if (!b) return;
+        const M = layerMaths();
+        const start = { x: b.x, y: b.y, w: b.w, h: b.h };
+        const from = { x: ev.clientX, y: ev.clientY };
+        const dir = handle ? handle.dataset.h : null;
+        const guides = guidesFor(e, i);
+        let moved = false, copy = null;
+        try { layer.setPointerCapture(ev.pointerId); } catch (err) { /* older browsers */ }
+        const move = (m) => {
+          const dx = M.fx(m.clientX - from.x), dy = M.fy(m.clientY - from.y);
+          if (!moved && Math.abs(m.clientX - from.x) < 3 && Math.abs(m.clientY - from.y) < 3) return;
+          if (!moved) {
+            moved = true;
+            mark();
+            // Holding Alt while dragging leaves a copy behind.
+            if (!dir && m.altKey && blocks.length < FREE_MAX) { copy = { ...b }; blocks.splice(i, 0, copy); blockSel = i + 1; }
+          }
+          const hit = [];
+          if (!dir) {
+            let nx = start.x + dx, ny = start.y + dy;
+            const sx = snapTo(nx, guides.xs, guides.tolX), sxm = snapTo(nx + start.w / 2, guides.xs, guides.tolX), sxr = snapTo(nx + start.w, guides.xs, guides.tolX);
+            if (sx !== null) { nx = sx; hit.push({ axis: "x", at: sx }); }
+            else if (sxm !== null) { nx = sxm - start.w / 2; hit.push({ axis: "x", at: sxm }); }
+            else if (sxr !== null) { nx = sxr - start.w; hit.push({ axis: "x", at: sxr }); }
+            const hh = b.k === "line" ? 0 : start.h;
+            const sy = snapTo(ny, guides.ys, guides.tolY), sym = snapTo(ny + hh / 2, guides.ys, guides.tolY), syr = snapTo(ny + hh, guides.ys, guides.tolY);
+            if (sy !== null) { ny = sy; hit.push({ axis: "y", at: sy }); }
+            else if (sym !== null) { ny = sym - hh / 2; hit.push({ axis: "y", at: sym }); }
+            else if (syr !== null) { ny = syr - hh; hit.push({ axis: "y", at: syr }); }
+            b.x = round4(Math.min(1.3, Math.max(-0.3, nx)));
+            b.y = round4(Math.min(1.3, Math.max(-0.3, ny)));
+          } else {
+            const west = dir.includes("w"), east = dir.includes("e"), north = dir.includes("n"), south = dir.includes("s");
+            if (east) { let r = start.x + start.w + dx; const sr = snapTo(r, guides.xs, guides.tolX); if (sr !== null) { r = sr; hit.push({ axis: "x", at: sr }); } b.w = round4(Math.max(0.02, Math.min(1.6, r - b.x))); }
+            if (west) { let l = start.x + dx; const sl = snapTo(l, guides.xs, guides.tolX); if (sl !== null) { l = sl; hit.push({ axis: "x", at: sl }); } const right = start.x + start.w; b.x = round4(Math.min(right - 0.02, l)); b.w = round4(Math.max(0.02, right - b.x)); }
+            if (b.k !== "line") {
+              if (south) { let bo = start.y + start.h + dy; const sb = snapTo(bo, guides.ys, guides.tolY); if (sb !== null) { bo = sb; hit.push({ axis: "y", at: sb }); } b.h = round4(Math.max(0.02, Math.min(1.6, bo - b.y))); }
+              if (north) { let t = start.y + dy; const stp = snapTo(t, guides.ys, guides.tolY); if (stp !== null) { t = stp; hit.push({ axis: "y", at: stp }); } const bot = start.y + start.h; b.y = round4(Math.min(bot - 0.02, t)); b.h = round4(Math.max(0.02, bot - b.y)); }
+            }
+          }
+          drawLayer();
+          showGuides(hit);
+          schedulePreview(60);
+        };
+        const up = () => {
+          layer.removeEventListener("pointermove", move);
+          layer.removeEventListener("pointerup", up);
+          layer.removeEventListener("pointercancel", up);
+          clearGuides();
+          if (moved) { change({ rail: true }); drawInspector(); }
+        };
+        layer.addEventListener("pointermove", move);
+        layer.addEventListener("pointerup", up);
+        layer.addEventListener("pointercancel", up);
+      });
+    }
+    // Arrow keys move the chosen thing half a millimetre, five with Shift.
+    function nudgeBlock(dx, dy, big) {
+      const e = freePage(), b = curBlock(); if (!e || !b) return;
+      const G = geometry(book);
+      const step = big ? 5 : 0.5;
+      mark(true);
+      b.x = round4(Math.min(1.3, Math.max(-0.3, b.x + (dx * step) / G.Wa)));
+      b.y = round4(Math.min(1.3, Math.max(-0.3, b.y + (dy * step) / G.Ha)));
+      change({ rail: true });
+      drawLayer();
+    }
+    function removeBlock(i) {
+      const e = freePage(); if (!e) return;
+      const blocks = blocksOf(e);
+      if (!blocks[i]) return;
+      mark();
+      blocks.splice(i, 1);
+      blockSel = Math.min(i, blocks.length - 1);
+      change({ rail: true });
+      drawInspector();
+      API.toast("Removed · press Ctrl+Z to put it back");
+    }
+    function moveBlock(i, by) {
+      const e = freePage(); if (!e) return;
+      const blocks = blocksOf(e);
+      const to = i + by;
+      if (to < 0 || to >= blocks.length) return;
+      mark();
+      const [b] = blocks.splice(i, 1);
+      blocks.splice(to, 0, b);
+      blockSel = to;
+      change({ rail: true });
+      drawInspector();
+    }
+    function addBlock(k) {
+      const e = freePage(); if (!e) return;
+      const blocks = blocksOf(e);
+      if (blocks.length >= FREE_MAX) { API.toast(`A page holds ${FREE_MAX} things. Remove one to add another.`); return; }
+      if (k === "photo" && blocks.filter((b) => b.k === "photo").length >= FREE_PHOTO_MAX) { API.toast(`${FREE_PHOTO_MAX} photographs on one page is the most.`); return; }
+      mark();
+      const n = blocks.length;
+      const at = (v) => round4(Math.min(0.72, v + n * 0.018));
+      const b = k === "text" ? { k: "text", role: "body", t: "", x: at(0.12), y: at(0.16), w: 0.5, h: 0.18 }
+        : k === "photo" ? { k: "photo", x: at(0.12), y: at(0.16), w: 0.45, h: 0.3 }
+        : k === "shape" ? { k: "shape", x: at(0.12), y: at(0.16), w: 0.45, h: 0.18, fill: "accent" }
+        : { k: "line", x: at(0.12), y: at(0.2), w: 0.3, thick: "narrow", color: "rule" };
+      blocks.push(b);
+      blockSel = blocks.length - 1;
+      active = 0; pickerOpen = null;
+      change({ rail: true });
+      drawInspector();
+      const first = $("#sbF_blocktext");
+      if (first && matchMedia("(pointer: fine)").matches) first.focus();
+    }
+
     function openAdd() {
       const menu = $("#sbAddMenu");
       const count = renderedCount(book);
@@ -2868,10 +3350,14 @@
       if (refocus) $("#sbAddToggle").focus();
     }
 
-    function addPage(type) {
+    function addPage(want) {
+      // An Anything page can arrive empty or as one of the arrangements.
+      const [type, start] = String(want).split(":");
       const extra = pageSpan({ type });
+      mark();
       if (renderedCount(book) + extra > MAX_PAGES) { API.toast(`A book holds ${MAX_PAGES} pages at most, cover included.`); return; }
       const entry = { type };
+      if (type === "free") entry.blocks = (FREE_STARTS[start] || []).map((b) => ({ ...b, ...(b.k === "text" ? { t: "" } : {}), ...(b.style ? { style: { ...b.style } } : {}) }));
       if (["photos", "spread", "story", "note", "quote", "feature", "article"].includes(type)) entry.photos = [];
       if (type === "divider") { entry.heading = "Selected work"; entry.line = ""; }
       // Writing pages start empty: nothing is ever written for the studio.
@@ -2900,7 +3386,7 @@
       closeAdd(false);
       flush();
       const fromRail = document.activeElement && document.activeElement.closest && document.activeElement.closest("#sbPages");
-      sel = i; active = 0; pickerOpen = null;
+      sel = i; active = 0; pickerOpen = null; blockSel = -1;
       drawRail(); drawInspector(); schedulePreview(0);
       remember();
       // Bring the page into view inside the rail only; scrolling the window
@@ -3012,6 +3498,7 @@
         got.forEach((r) => { r.page.canvas.setAttribute("role", "img"); r.page.canvas.setAttribute("aria-label", `Page ${r.n} preview`); });
         box.classList.toggle("two", got.length > 1);
         box.replaceChildren(...got.map((r) => r.page.canvas));
+        drawLayer();
         // Pages that aren't planned (About, chapter pages) report their cuts
         // as they draw.
         const entry = sel >= 0 ? book.pages[sel] : null;
@@ -3035,7 +3522,7 @@
           const key = r.index < 0 ? COVER : book.pages[r.index];
           if (!groups.has(key)) groups.set(key, []);
           groups.get(key).push(r.page.canvas);
-          if (key !== COVER && (WRITING[key.type] || key.type === "photos" || key.type === "about" || key.type === "divider")) {
+          if (key !== COVER && (WRITING[key.type] || key.type === "free" || key.type === "photos" || key.type === "about" || key.type === "divider")) {
             // A two-page story is too long if either of its pages is.
             if (r.half === undefined || r.half === 0) tooLong.set(key, !!(r.page.cuts && r.page.cuts.length));
             else if (r.page.cuts && r.page.cuts.length) tooLong.set(key, true);
@@ -3077,7 +3564,8 @@
         feature: "A photo beside words, then words beside a photo. Choose which side the first photo sits on.",
         article: "Two facing pages: your story on one, one photograph filling the other. Choose which side the photo page goes.",
         ways: "All four ways of working, side by side, with who leads the ideas and the ways you like best marked.",
-        process: "One way of working, step by step, marking each step as yours, together, or the studio's."
+        process: "One way of working, step by step, marking each step as yours, together, or the studio's.",
+        free: "Yours to arrange. Add words, photographs, colour blocks and lines, then drag them on the page."
       };
       const kind = entry ? entry.type : "cover";
       head.innerHTML = `<h3>${esc(entry ? PAGE_LABEL[entry.type] : "Cover")}</h3><p class="sb-hint">${esc(about[kind] || "")}</p>`;
@@ -3089,7 +3577,7 @@
       ? { get: () => entry.style, set: (v) => { if (v) entry.style = v; else delete entry.style; } }
       : { get: () => book.coverStyle, set: (v) => { if (v) book.coverStyle = v; else delete book.coverStyle; } });
     // Texts that flow as paragraphs: each paragraph can take its own font.
-    const PARA_FLOW = { story: ["body"], article: ["body"], letter: ["body"], note: ["note"], about: ["about"] };
+    const PARA_FLOW = { story: ["body"], article: ["body"], letter: ["body"], note: ["note"], about: ["about"], free: ["t"] };
     const paraCount = (s) => String(s == null ? "" : s).split(/\n+/).map((x) => x.trim()).filter(Boolean).length;
     const fmtSet = (f) => !!(f && (f.font || f.color || f.align || f.size || f.weight || f.italic || (f.paras && Object.keys(f.paras).length)));
     // `words` is the text itself when its paragraphs can be formatted apart,
@@ -3608,8 +4096,124 @@
         });
         return;
       }
+      if (entry.type === "free") { drawFreeFields(box, entry); return; }
       box.innerHTML = "";
     }
+
+    /* The Anything page's own panel: what to add, what is on the page, and
+       the settings of the one thing chosen. Everything here also works with
+       a finger, because dragging on a small page is fiddly. */
+    function drawFreeFields(box, entry) {
+      const G = geometry(book);
+      const blocks = blocksOf(entry);
+      const b = blocks[blockSel] || null;
+      const P = colourway(book.colourway);
+      const swatch = (attr, key, label, c, on) => `<button type="button" class="sb-swatch" data-${attr}="${key}" aria-pressed="${on}" title="${esc(label)}" aria-label="${esc(label)}"><i style="background:${c}"></i></button>`;
+      const fills = [["accent", "Accent", P.accent], ["ink", "Ink", P.ink], ["soft", "Soft", P.soft], ["rule", "Hairline", P.rule], ["paper", "Paper", P.paper], ["white", "White", P.white], ["deep", "Deep", P.deep]];
+      const mmX = (v) => `${(v * G.Wa).toFixed(1)} mm`;
+      const mmY = (v) => `${(v * G.Ha).toFixed(1)} mm`;
+      const step = (label, attr, minus, plus, value) => `<div class="sb-step"><span>${esc(label)}</span><button type="button" data-${attr}="${minus}" aria-label="${esc(label)} less">−</button><output>${esc(value)}</output><button type="button" data-${attr}="${plus}" aria-label="${esc(label)} more">+</button></div>`;
+      const fade = b && typeof b.o === "number" ? b.o : 1;
+      const words = b && b.k === "text" ? `
+        <div class="sb-field"><span class="sb-label">What kind of words</span>
+          <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="What kind of words">${[["kicker", "Small line"], ["head", "Headline"], ["intro", "Intro"], ["body", "Words"], ["quote", "Quote"]].map(([k, n]) => `<button type="button" role="radio" data-role="${k}" aria-checked="${(b.role || "body") === k}">${n}</button>`).join("")}</div></div>
+        <div class="sb-field">
+          <div class="sb-labelrow"><label for="sbF_blocktext">The words</label>${formatHtml("t", blockStyleHost(b), b.t || "")}</div>
+          <textarea id="sbF_blocktext" data-field="t" maxlength="${FREE_TEXT_MAX}" rows="4" autocapitalize="sentences" spellcheck="true" aria-describedby="sbF_blocktext_fit sbF_blocktext_count">${esc(b.t || "")}</textarea>
+          <div class="sb-meter"><span id="sbF_blocktext_fit">${fontsOk ? "" : "Measuring…"}</span><span class="sb-counter" id="sbF_blocktext_count"></span></div>
+          <p class="sb-note" id="sbF_blocktext_paste" hidden></p>
+        </div>
+        <div class="sb-field"><span class="sb-label">If they don't all fit</span>
+          <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="If they don't all fit">${[["", "Make them smaller"], ["cut", "Keep the size"]].map(([k, n]) => `<button type="button" role="radio" data-tfit="${k}" aria-checked="${(b.fit || "") === k}">${n}</button>`).join("")}</div></div>` : "";
+      const paint = b && (b.k === "shape" || b.k === "line") ? `
+        <div class="sb-field"><span class="sb-label">Colour</span>
+          <span class="sb-swatches" role="group" aria-label="Colour">${fills.map(([k, n, c]) => swatch("fill", k, n, c, (b.k === "shape" ? b.fill : b.color) === k)).join("")}
+          <label class="sb-custom" title="Any colour"><input type="color" data-fillcustom value="${/^#/.test(b.k === "shape" ? b.fill || "" : b.color || "") ? esc(b.k === "shape" ? b.fill : b.color) : "#d24e1a"}" aria-label="Any colour"><span>Any</span></label></span></div>
+        ${b.k === "line" ? `<div class="sb-field"><span class="sb-label">Thickness</span>
+          <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Thickness">${[["hair", "Hair"], ["narrow", "Narrow"], ["broad", "Broad"]].map(([k, n]) => `<button type="button" role="radio" data-thick="${k}" aria-checked="${(b.thick || "narrow") === k}">${n}</button>`).join("")}</div></div>` : ""}
+        <label class="sb-range">Fade <input type="range" min="10" max="100" step="5" value="${Math.round(fade * 100)}" data-blkfade aria-valuetext="${Math.round(fade * 100)} percent"></label>` : "";
+      box.innerHTML = `
+        <h3>Add to this page</h3>
+        <div class="sb-adds">
+          <button type="button" data-addblk="text">+ Words</button>
+          <button type="button" data-addblk="photo">+ Photo</button>
+          <button type="button" data-addblk="shape">+ Colour block</button>
+          <button type="button" data-addblk="line">+ Line</button>
+        </div>
+        <p class="sb-hint">${blocks.length} of ${FREE_MAX} things. Drag anything on the page to move it, pull a corner to resize it, and use the arrow keys to nudge it.</p>
+        <h3>On this page</h3>
+        ${blocks.length ? `<ol class="sb-blklist">${blocks.map((x, i) => `<li class="sb-blkrow">
+            <button type="button" data-pickblk="${i}" aria-pressed="${i === blockSel}">${esc(blockLabel(x))}</button>
+            <button type="button" data-blkup="${i}" aria-label="Send back" ${i === 0 ? "disabled" : ""}>▲</button>
+            <button type="button" data-blkdown="${i}" aria-label="Bring forward" ${i === blocks.length - 1 ? "disabled" : ""}>▼</button>
+            <button type="button" data-blkdel="${i}" aria-label="Remove">✕</button></li>`).join("")}</ol>
+          <p class="sb-hint">The last one is on top.</p>` : `<p class="sb-hint">Nothing on this page yet. Add something above, or start again from an arrangement in “+ Add page”.</p>`}
+        ${b ? `<div class="sb-sec sb-rowbox"><h3>${esc(BLOCK_NAME[b.k] || "Thing")} ${blockSel + 1}</h3>
+          ${words}${paint}
+          ${b.k === "photo" ? `<p class="sb-hint">Choose the photograph, and how it sits in its box, below.</p>` : ""}
+          ${step("Across", "nudx", "-1", "1", mmX(b.x))}
+          ${step("Down", "nudy", "-1", "1", mmY(b.y))}
+          ${step("Width", "sizw", "-1", "1", mmX(b.w))}
+          ${b.k === "line" ? "" : step("Height", "sizh", "-1", "1", mmY(b.h))}
+          ${step("Turn", "turn", "-15", "15", `${b.r || 0}°`)}
+          <div class="sb-adds"><button type="button" data-fillw>Fill the width</button>${b.k === "line" ? "" : `<button type="button" data-fillp>Fill the page</button>`}</div>
+        </div>` : ""}
+        <div class="sb-field"><span class="sb-label">Page colour</span>
+          <span class="sb-swatches" role="group" aria-label="Page colour">${swatch("bg", "", "The style's own", "linear-gradient(135deg, #fff 45%, #999 50%, #fff 55%)", !entry.bg)}${fills.map(([k, n, c]) => swatch("bg", k, n, c, entry.bg === k)).join("")}</span></div>`;
+
+      const redraw = () => { change({ rail: true }); drawInspector(); };
+      $$("[data-addblk]").forEach((x) => x.addEventListener("click", () => addBlock(x.dataset.addblk)));
+      $$("[data-pickblk]").forEach((x) => x.addEventListener("click", () => { blockSel = +x.dataset.pickblk; drawLayer(); drawInspector(); }));
+      $$("[data-blkup]").forEach((x) => x.addEventListener("click", () => moveBlock(+x.dataset.blkup, -1)));
+      $$("[data-blkdown]").forEach((x) => x.addEventListener("click", () => moveBlock(+x.dataset.blkdown, 1)));
+      $$("[data-blkdel]").forEach((x) => x.addEventListener("click", () => removeBlock(+x.dataset.blkdel)));
+      $$("[data-bg]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.bg) entry.bg = x.dataset.bg; else delete entry.bg; redraw(); }));
+      if (!b) return;
+      const setNum = (key, v, lo, hi) => { b[key] = round4(Math.min(hi, Math.max(lo, v))); };
+      $$("[data-nudx]").forEach((x) => x.addEventListener("click", () => { mark(true); setNum("x", b.x + (+x.dataset.nudx) / G.Wa, -0.3, 1.3); redraw(); }));
+      $$("[data-nudy]").forEach((x) => x.addEventListener("click", () => { mark(true); setNum("y", b.y + (+x.dataset.nudy) / G.Ha, -0.3, 1.3); redraw(); }));
+      $$("[data-sizw]").forEach((x) => x.addEventListener("click", () => { mark(true); setNum("w", b.w + (+x.dataset.sizw) * 2 / G.Wa, 0.02, 1.6); redraw(); }));
+      $$("[data-sizh]").forEach((x) => x.addEventListener("click", () => { mark(true); setNum("h", b.h + (+x.dataset.sizh) * 2 / G.Ha, 0.02, 1.6); redraw(); }));
+      $$("[data-turn]").forEach((x) => x.addEventListener("click", () => {
+        mark(true);
+        const next = Math.round(((b.r || 0) + (+x.dataset.turn)) * 10) / 10;
+        if (next <= -180 || next >= 180 || next === 0) delete b.r; else b.r = next;
+        redraw();
+      }));
+      const fillBtn = $("[data-fillw]");
+      if (fillBtn) fillBtn.addEventListener("click", () => { mark(); b.x = 0; b.w = 1; redraw(); });
+      const fillPage = $("[data-fillp]");
+      if (fillPage) fillPage.addEventListener("click", () => { mark(); b.x = 0; b.y = 0; b.w = 1; b.h = 1; redraw(); });
+      $$("[data-role]").forEach((x) => x.addEventListener("click", () => { mark(); b.role = x.dataset.role; redraw(); }));
+      $$("[data-tfit]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.tfit) b.fit = "cut"; else delete b.fit; redraw(); }));
+      $$("[data-thick]").forEach((x) => x.addEventListener("click", () => { mark(); b.thick = x.dataset.thick; redraw(); }));
+      $$("[data-fill]").forEach((x) => x.addEventListener("click", () => {
+        mark();
+        const key = b.k === "shape" ? "fill" : "color";
+        if (x.dataset.fill) b[key] = x.dataset.fill; else delete b[key];
+        redraw();
+      }));
+      const custom = $("[data-fillcustom]");
+      if (custom) custom.addEventListener("input", () => { mark(true); b[b.k === "shape" ? "fill" : "color"] = custom.value.toLowerCase(); change({ rail: true }); drawLayer(); });
+      const fadeEl = $("[data-blkfade]");
+      if (fadeEl) fadeEl.addEventListener("input", () => {
+        mark(true);
+        const v = Math.round(+fadeEl.value) / 100;
+        if (v >= 1) delete b.o; else b.o = v;
+        fadeEl.setAttribute("aria-valuetext", `${Math.round(v * 100)} percent`);
+        change({ rail: true });
+      });
+      const area = $("#sbF_blocktext");
+      if (area) {
+        wireField(area, (v) => { mark(true); b.t = v; }, FREE_TEXT_MAX);
+        wireFormat(box, blockStyleHost(b));
+      }
+    }
+    // A thing's own formatting, in the same shape every other text uses.
+    const blockStyleHost = (b) => ({
+      get: () => (b && b.style ? { t: b.style } : {}),
+      set: (v) => { if (v && v.t) b.style = v.t; else delete b.style; }
+    });
     // Rebuilding the boxes clears their meters, so they are filled again.
     const drawFieldsAndMeters = () => { drawFields(); updateMeters(); };
     function selectOverflow(k) {
@@ -3643,6 +4247,21 @@
         const r = captionFit(entry, captionWidth(book), captionStyle(book));
         fields = { ...(fields || {}), caption: r ? { kind: "block", empty: false, ...r } : { kind: "block", empty: true } };
         if (r && r.cut) cuts = [...cuts, { field: "caption", label: "caption" }];
+      }
+      if (entry.type === "free") {
+        const plan = planFree(book, entry);
+        const el = $("#sbF_blocktext");
+        if (el) {
+          const info = plan.fields[`b${blockSel}`];
+          const fit = $("#sbF_blocktext_fit"), count = $("#sbF_blocktext_count");
+          const m = meterText(info || { kind: "flow", empty: true }, false);
+          if (fit) { fit.textContent = m.text; fit.className = m.cls; }
+          if (count) { const max = +el.maxLength, len = el.value.length; count.textContent = counter(len, max); count.className = `sb-counter ${len >= max * 0.95 ? "warn" : ""}`; }
+        }
+        setChip(entry, plan.cuts.length > 0);
+        const warn = $("#sbPageWarn");
+        if (warn) { warn.hidden = !plan.cuts.length; warn.textContent = plan.cuts.length ? "Too long: a box of words won't all print. Shorten it, make the box bigger, or let the words get smaller." : ""; }
+        return;
       }
       if (!fields) {
         // Only lengths to show: About and chapter pages report fit as they draw.
@@ -3685,6 +4304,12 @@
     function photoTarget() {
       const entry = sel >= 0 ? book.pages[sel] : null;
       if (!entry) return { list: book.cover ? [book.cover] : [], max: 1, set: (l) => { book.cover = l[0] || null; } };
+      // On an Anything page the picker works on the chosen photo box.
+      if (entry.type === "free") {
+        const b = curBlock();
+        if (!b || b.k !== "photo") return null;
+        return { list: b.p ? [b.p] : [], max: 1, set: (l) => { if (l[0]) b.p = l[0]; else delete b.p; } };
+      }
       if (!entry.photos) return null;
       return { list: entry.photos, max: entry.type === "photos" ? MAX_PER_PAGE : entry.type === "feature" ? 2 : 1, set: (l) => { entry.photos = l; } };
     }
@@ -3884,6 +4509,18 @@
         if ((pg.type === "note" || pg.type === "article") && !(pg.photos || []).length) add("no photo chosen");
         if (pg.type === "feature" && (pg.photos || []).length < 2) add(`${(pg.photos || []).length ? "only one photo" : "no photos"} chosen; it takes two`);
         if ((pg.photos || []).some((sh) => !lib.byId.has(sh.id))) add("a photo from a deleted album");
+        if (pg.type === "free") {
+          const blocks = freeBlocks(pg);
+          if (!blocks.length) add("nothing on this page yet");
+          if (blocks.some((b2) => b2.k === "photo" && b2.p && !lib.byId.has(b2.p.id))) add("a photo from a deleted album");
+          if (blocks.some((b2) => b2.k === "photo" && !(b2.p && b2.p.id))) add("a photo box with no photo chosen");
+          const plan = planFree(b, pg);
+          for (const c of plan.cuts) {
+            const info = plan.fields[c.field];
+            const miss = info ? info.total - info.printed : 0;
+            add(`a box of words is too long${miss ? ` (${miss} word${miss === 1 ? "" : "s"} won't print)` : ""}`);
+          }
+        }
         if (WRITING[pg.type]) {
           const plan = planWriting(b, pg);
           const rows = [...(Array.isArray(pg.items) ? pg.items : []), ...(pg.steps || [])];
@@ -4012,7 +4649,7 @@
     // that loaded the site before they existed still runs the old save code,
     // which would drop them while saying "Saved": refuse until it reloads.
     const L = window.STUDIO_BOOK_LIMITS;
-    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !L.workWays || !L.markStrengths || !L.paras || !L.coverText || !(L.pageTypes || []).includes("process")) {
+    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !L.workWays || !L.markStrengths || !L.paras || !L.coverText || !L.blockKinds || !L.schema || !(L.pageTypes || []).includes("free")) {
       root.innerHTML = `<div class="sb-empty"><p class="sb-warn">The site was updated while this tab was open.</p><p class="sb-hint">Reload the page (or use “↻ Load fresh version”) before editing your books, so nothing you write is lost.</p><p><button type="button" class="sb-btn dark" id="sbReload">Reload now</button></p></div>`;
       root.querySelector("#sbReload").addEventListener("click", () => location.reload());
       return;
