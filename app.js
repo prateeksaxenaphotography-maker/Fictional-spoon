@@ -671,7 +671,10 @@ window.getPortfolioPdfSettings = getPortfolioPdfSettings;
 // last opened the builder a month ago must not overwrite the book edited on
 // the laptop since. A deleted book is remembered by id so an old copy
 // elsewhere cannot bring it back — the same lesson as album tombstones.
-const STUDIO_BOOK_STYLES = ["elegant", "modern", "vogue", "lookbook"];
+const STUDIO_BOOK_STYLES = ["elegant", "modern", "vogue", "lookbook", "noir", "swiss", "pinboard", "dossier", "poster", "atelier", "gazette"];
+// The seven added after Lookbook. A release that doesn't know one turns the
+// book back into Modern, so a book in one carries schema mark 5.
+const STUDIO_BOOK_NEWER_STYLES = ["noir", "swiss", "pinboard", "dossier", "poster", "atelier", "gazette"];
 // versions/tombstones are generous on purpose: a cap that trimmed a list would
 // silently delete the book or the deletion it cut. The builder refuses a new
 // book at `versions` rather than letting the clean-up drop one.
@@ -743,8 +746,10 @@ const STUDIO_BOOK_LIMITS = {
      older release — which would quietly drop a page kind it doesn't know —
      shows up in CI as a book whose mark went backwards, whatever its
      updatedAt says. 1 = Anything pages; 2 = a cover layout or an end page;
-     3 = a look; 4 = the Lookbook style. */
-  schema: 4,
+     3 = a look; 4 = the Lookbook style; 5 = one of the seven styles after it. */
+  schema: 5,
+  // Every style a book can be in; the builder refuses to run under a release that lacks one.
+  styles: STUDIO_BOOK_STYLES,
   // The cover's own lines. Empty means "as the style has always drawn it".
   coverText: { label: 32, mast: 18, tagline: 24, foot: 40, place: 40 },
   coverLine: 24,          // one of the cover's inside lines, three a side
@@ -1026,7 +1031,7 @@ function cleanStudioPortfolios(o) {
       // carried, never lowered here, so an older tab dropping what it cannot
       // read shows up as the mark going backwards.
       ...(() => {
-        const need = v.style === "lookbook" ? 4 : pages.some((pg) => pg.type === "look") ? 3 : (STUDIO_BOOK_LIMITS.coverLayouts.includes(v.coverLayout) || pages.some((pg) => pg.type === "end")) ? 2 : pages.some((pg) => pg.type === "free") ? 1 : 0;
+        const need = STUDIO_BOOK_NEWER_STYLES.includes(v.style) ? 5 : v.style === "lookbook" ? 4 : pages.some((pg) => pg.type === "look") ? 3 : (STUDIO_BOOK_LIMITS.coverLayouts.includes(v.coverLayout) || pages.some((pg) => pg.type === "end")) ? 2 : pages.some((pg) => pg.type === "free") ? 1 : 0;
         const mark = Math.max(need, num(v.schema, 0, 99, 0));
         return mark ? { schema: mark } : {};
       })(),
@@ -1087,11 +1092,11 @@ function cleanStudioPortfolios(o) {
 // Each time the stored shape grows, the copy moves to a new key: code that
 // knows the previous shape still writes the previous key (stripping only what
 // it doesn't know), so the newest key is read first and wins ties.
-const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words_v8";
+const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words_v9";
 // Older keys: code that knows only an older shape keeps rewriting the key it
 // knows, so every growth of the shape gets a new one, read before the old.
-const STUDIO_BOOK_WORDS_OLD = ["wps_studio_portfolios_words_v7", "wps_studio_portfolios_words_v6", "wps_studio_portfolios_words_v5", "wps_studio_portfolios_words_v4", "wps_studio_portfolios_words_v3", "wps_studio_portfolios_words_v2", "wps_studio_portfolios_words"];
-const studioBookHasWords = (v) => v.style === "lookbook" || !!v.paper || !!v.coverStyle || !!v.watermark || !!v.coverText || !!v.schema || !!v.footText || !!v.bg || v.showPageNumbers === false || !!v.coverLayout || !!v.coverPage || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
+const STUDIO_BOOK_WORDS_OLD = ["wps_studio_portfolios_words_v8", "wps_studio_portfolios_words_v7", "wps_studio_portfolios_words_v6", "wps_studio_portfolios_words_v5", "wps_studio_portfolios_words_v4", "wps_studio_portfolios_words_v3", "wps_studio_portfolios_words_v2", "wps_studio_portfolios_words"];
+const studioBookHasWords = (v) => v.style === "lookbook" || STUDIO_BOOK_NEWER_STYLES.includes(v.style) || !!v.paper || !!v.coverStyle || !!v.watermark || !!v.coverText || !!v.schema || !!v.footText || !!v.bg || v.showPageNumbers === false || !!v.coverLayout || !!v.coverPage || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
   (STUDIO_BOOK_LIMITS.fields[pg.type] && (pg.type !== "photos" || pg.caption)) || (pg.blocks || []).length || pg.bg || pg.items || pg.steps || pg.rows || pg.credit || pg.label || pg.heading || pg.photoAt || pg.border || pg.borderWidth || pg.style || pg.hide || (pg.photos || []).some((s) => s.fit || s.opacity));
 function getStudioPortfolios(live) {
   let local = null, published = null, remote = null, words = null;

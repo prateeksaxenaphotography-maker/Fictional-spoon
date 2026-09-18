@@ -289,7 +289,9 @@ if (books !== undefined && books !== null) {
   if (typeof books !== "object" || !Array.isArray(books.versions) || !Array.isArray(books.deleted)) {
     fail("WPS_DATA.STUDIO_PORTFOLIOS must be an object { versions: [], deleted: [] }");
   } else {
-    const BOOK_STYLES = new Set(["elegant", "modern", "vogue", "lookbook"]);
+    const BOOK_STYLES = new Set(["elegant", "modern", "vogue", "lookbook", "noir", "swiss", "pinboard", "dossier", "poster", "atelier", "gazette"]);
+    // The seven after Lookbook: a release that doesn't know one turns the book back into Modern.
+    const NEWER_STYLES = new Set(["noir", "swiss", "pinboard", "dossier", "poster", "atelier", "gazette"]);
     const PAGE_TYPES = new Set(["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process", "free", "end", "look"]);
     // The same caps as STUDIO_BOOK_LIMITS.fields in app.js. Over a cap FAILS
     // here rather than being trimmed: the app's cleaner would otherwise cut a
@@ -565,6 +567,7 @@ if (books !== undefined && books !== null) {
           checkBlocks(`studio portfolio book ${name} cover`, b.coverPage.blocks, "cover");
         }
       } else if (b.coverLayout === "custom") fail(`studio portfolio book ${name} has a cover from scratch but no coverPage`);
+      if (NEWER_STYLES.has(b.style) && !(b.schema >= 5)) fail(`studio portfolio book ${name} is in the ${b.style} style but has a schema mark under 5; the app writes schema: 5 for one, and CI needs it to catch an out-of-date tab turning it back into Modern`);
       if (b.style === "lookbook" && !(b.schema >= 4)) fail(`studio portfolio book ${name} is in the Lookbook style but has a schema mark under 4; the app writes schema: 4 for one, and CI needs it to catch an out-of-date tab turning it back into Modern`);
       if (b.pages.some((pg) => pg && pg.type === "look") && !(b.schema >= 3)) fail(`studio portfolio book ${name} has a look but a schema mark under 3; the app writes schema: 3 for one, and CI needs it to catch an out-of-date tab dropping it`);
       if ((b.coverLayout !== undefined || b.pages.some((pg) => pg && pg.type === "end")) && !(b.schema >= 2)) fail(`studio portfolio book ${name} has a cover layout or an end page but a schema mark under 2; the app writes schema: 2 for one, and CI needs it to catch an out-of-date tab dropping them`);
