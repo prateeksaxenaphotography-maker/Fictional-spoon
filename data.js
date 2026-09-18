@@ -2483,8 +2483,39 @@ window.WPS_DATA = {
     "upiId": ""
   },
   "STUDIO_PORTFOLIOS": {
-    "versions": [],
-    "deleted": []
+    "versions": [
+      {
+        "id": "bkmu6gnf37cnqg",
+        "name": "Book 1",
+        "style": "modern",
+        "colourway": "cobalt",
+        "orientation": "portrait",
+        "title": "Selected Work",
+        "subtitle": "Fashion, portraits & editorial",
+        "cover": null,
+        "schema": 1,
+        "coverStyle": {
+          "title": {
+            "font": "dmserif"
+          }
+        },
+        "pages": [],
+        "texts": {
+          "about": "",
+          "phone": "",
+          "showPrices": false
+        },
+        "updatedAt": 1789707677343
+      }
+    ],
+    "deleted": [
+      "bkmu5na3d8q6et",
+      "bkmu5ovyysqxsp",
+      "bkmu5tb2hfgvdt",
+      "bkmu5u6856ac64",
+      "bkmu5wl4m1kghq",
+      "bkmu5x2919u1wk"
+    ]
   },
   "TFP_PACKAGE": {
     "name": "Test Shoot / TFP Collaboration",
