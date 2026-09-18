@@ -41,14 +41,58 @@
     { key: "crimson",      name: "Crimson",      paper: "#FAF6F4", white: "#FFFFFF", ink: "#180F0F", soft: "#645655", accent: "#C8102E", deep: "#180F0F", onDeep: "#FFFFFF", onAccent: "#FFFFFF", rule: "#E9DAD8" },
     { key: "indigo",       name: "Indigo",       paper: "#F5F4FA", white: "#FFFFFF", ink: "#13112B", soft: "#5B5870", accent: "#6D58DD", deep: "#18123F", onDeep: "#FFFFFF", onAccent: "#FFFFFF", rule: "#DDDAEA" }
   ];
-  const colourway = (key) => COLOURWAYS.find((c) => c.key === key) || COLOURWAYS[0];
+  /* A colourway from one colour: the studio picks its accent and the rest of
+     the theme is worked out from it — a near-black ground and ink with a hint
+     of the hue, a warm paper, a soft grey, a hairline, and what reads on each.
+     The book stores just the hex as its colourway; an older release, not
+     knowing it, draws Terracotta and keeps the hex. */
+  const hexToHsvM = (hex) => {
+    const m = /^#([0-9a-f]{6})$/i.exec(hex || ""); if (!m) return { h: 20, s: 0.8, v: 0.8 };
+    const r = parseInt(m[1].slice(0, 2), 16) / 255, g = parseInt(m[1].slice(2, 4), 16) / 255, b = parseInt(m[1].slice(4, 6), 16) / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+    let h = 0;
+    if (d) { if (max === r) h = ((g - b) / d) % 6; else if (max === g) h = (b - r) / d + 2; else h = (r - g) / d + 4; h = (h * 60 + 360) % 360; }
+    return { h, s: max ? d / max : 0, v: max };
+  };
+  const hsvToHexM = (h, s, v) => {
+    const f = (n) => { const k = (n + h / 60) % 6; const c = v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); return Math.round(c * 255).toString(16).padStart(2, "0"); };
+    return `#${f(5)}${f(3)}${f(1)}`;
+  };
+  const isOwnColourway = (key) => /^#[0-9a-f]{6}$/i.test(String(key || ""));
+  const ownColourways = new Map();
+  function colourwayFrom(hex) {
+    const key = String(hex).toLowerCase();
+    if (ownColourways.has(key)) return ownColourways.get(key);
+    const { h, s, v } = hexToHsvM(key);
+    const c01 = (x) => Math.min(1, Math.max(0, x));
+    const at = (S, V) => hsvToHexM(h, c01(S), c01(V));
+    // How light the accent reads: pale accents take dark words on them and a deeper twin as text.
+    const m = /^#([0-9a-f]{6})$/i.exec(key);
+    const lin = (x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
+    const lum = 0.2126 * lin(parseInt(m[1].slice(0, 2), 16)) + 0.7152 * lin(parseInt(m[1].slice(2, 4), 16)) + 0.0722 * lin(parseInt(m[1].slice(4, 6), 16));
+    const pale = lum > 0.35;
+    const cw = {
+      key, name: "Your own", own: true,
+      paper: at(Math.min(0.05, s * 0.1), 0.985), white: "#FFFFFF",
+      ink: at(Math.min(0.3, s * 0.4), 0.1), soft: at(Math.min(0.2, s * 0.3), 0.42),
+      accent: key, accentText: pale ? at(Math.max(s, 0.45), Math.min(v * 0.62, 0.5)) : key,
+      deep: at(Math.min(0.55, s * 0.7), 0.12), onDeep: at(Math.min(0.05, s * 0.1), 0.97),
+      onAccent: pale ? at(Math.min(0.3, s * 0.4), 0.1) : "#FFFFFF",
+      accentOnDeep: pale ? key : at(Math.max(0.35, s * 0.8), Math.max(0.78, v)),
+      rule: at(Math.min(0.12, s * 0.2), 0.87)
+    };
+    ownColourways.set(key, cw);
+    return cw;
+  }
+  const colourway = (key) => (isOwnColourway(key) ? colourwayFrom(key) : (COLOURWAYS.find((c) => c.key === key) || COLOURWAYS[0]));
   const accentText = (P) => P.accentText || P.accent;
   const accentOnDeep = (P) => P.accentOnDeep || P.accent;
 
   const STYLES = [
     { key: "elegant", name: "Elegant", note: "A gallery catalogue. Photographs framed on paper." },
     { key: "modern", name: "Modern", note: "Your site's voice. Photographs full-bleed." },
-    { key: "vogue", name: "Vogue", note: "A fashion issue. Photographs tiled edge to edge." }
+    { key: "vogue", name: "Vogue", note: "A fashion issue. Photographs tiled edge to edge." },
+    { key: "lookbook", name: "Lookbook", note: "White pages, wide margins, the photographs whole. Small labels." }
   ];
   const SIZE = { portrait: { w: 210, h: 297 }, landscape: { w: 297, h: 210 } };
   const MAX_PAGES = 20;       // rendered pages, cover included
@@ -631,7 +675,7 @@
     };
   }
   // The lines each cover prints for itself, beside the title and its subtitle.
-  const COVER_LINES = { elegant: ["foot", "place"], modern: ["label", "foot", "place"], vogue: ["mast", "tagline", "foot", "counts"] };
+  const COVER_LINES = { elegant: ["foot", "place"], modern: ["label", "foot", "place"], vogue: ["mast", "tagline", "foot", "counts"], lookbook: ["foot", "place"] };
 
   /* ---------- the cover's layout ------------------------------------------
      The style's own cover (nothing stored), one of three presets, or
@@ -653,12 +697,13 @@
     book.coverPage.type = "free";
     return book.coverPage;
   };
-  const styleKey = (book) => (["elegant", "modern", "vogue"].includes(book && book.style) ? book.style : "modern");
+  const styleKey = (book) => (["elegant", "modern", "vogue", "lookbook"].includes(book && book.style) ? book.style : "modern");
   // Each style's title on a cover: the face, whether it is set in capitals, its spacing, and the subtitle's face.
   const COVER_TYPE = {
     elegant: { w: 300, f: F.serif, caps: false, sp: 0, subF: F.serif, subIt: true, small: F.plex },
     modern: { w: 800, f: F.heavy, caps: true, sp: -0.4, subF: F.sans, subIt: false, small: F.mono },
-    vogue: { w: 300, f: F.serif, caps: true, sp: 0.8, subF: F.sans, subIt: false, small: F.geo }
+    vogue: { w: 300, f: F.serif, caps: true, sp: 0.8, subF: F.sans, subIt: false, small: F.geo },
+    lookbook: { w: 300, f: F.sans, caps: false, sp: 0, subF: F.geo, subIt: false, small: F.geo }
   };
   const titleOf = (book, K) => (K.caps ? (book.title || "Selected Work").toUpperCase() : (book.title || "Selected Work"));
   // The title, its subtitle and their on-page regions, drawn from a first baseline.
@@ -717,15 +762,15 @@
     // The photograph in a window at the top, the words under it.
     async framed(page, book, P, W, H, img) {
       const st = styleKey(book), K = COVER_TYPE[st], L = W > H, CT = coverText(book), cs = coverStyleOf(book);
-      const ground = st === "modern" ? P.deep : st === "vogue" ? P.white : P.paper;
+      const ground = st === "modern" ? P.deep : (st === "vogue" || st === "lookbook") ? P.white : P.paper;
       const ink = st === "modern" ? P.onDeep : P.ink, soft = st === "modern" ? P.onDeep : P.soft;
       rect(page, 0, 0, W, H, ground);
       if (st === "modern") rect(page, 0, 0, 12, H, P.accent);
-      const x = st === "modern" ? 26 : st === "vogue" ? 12 : 16, right = W - (st === "modern" ? 14 : x), tw = right - x;
+      const x = st === "modern" ? 26 : st === "vogue" ? 12 : st === "lookbook" ? 22 : 16, right = W - (st === "modern" ? 14 : x), tw = right - x;
       const win = { x, y: L ? 14 : 18, w: tw, h: L ? H * 0.56 : H * 0.6 };
-      if (img) drawPhoto(page, img, book.cover, win.x, win.y, win.w, win.h);
+      if (img) { if (st === "lookbook") fitPhoto(page, img, book.cover, win.x, win.y, win.w, win.h); else drawPhoto(page, img, book.cover, win.x, win.y, win.w, win.h); }
       else {
-        rect(page, win.x, win.y, win.w, win.h, st === "modern" ? "rgba(255,255,255,0.08)" : P.accent);
+        rect(page, win.x, win.y, win.w, win.h, st === "modern" ? "rgba(255,255,255,0.08)" : st === "lookbook" ? P.rule : P.accent);
         const sz = L ? 30 : 36;
         await drawMark(page, st === "modern" ? P.onDeep : P.onAccent, st === "modern" ? P.accent : P.onAccent, "rgba(0,0,0,0)", win.x + (win.w - sz) / 2, win.y + (win.h - sz) / 2, sz);
       }
@@ -741,22 +786,22 @@
     // No photograph: the words, set big, and the mark at the foot.
     async poster(page, book, P, W, H) {
       const st = styleKey(book), K = COVER_TYPE[st], L = W > H, CT = coverText(book), cs = coverStyleOf(book);
-      const ground = st === "elegant" ? P.paper : st === "modern" ? P.deep : P.accent;
-      const ink = st === "elegant" ? P.ink : st === "modern" ? P.onDeep : P.onAccent;
-      const soft = st === "elegant" ? P.soft : ink;
+      const ground = st === "elegant" ? P.paper : st === "lookbook" ? P.white : st === "modern" ? P.deep : P.accent;
+      const ink = (st === "elegant" || st === "lookbook") ? P.ink : st === "modern" ? P.onDeep : P.onAccent;
+      const soft = (st === "elegant" || st === "lookbook") ? P.soft : ink;
       rect(page, 0, 0, W, H, ground);
       if (st === "modern") rect(page, 0, 0, 12, H, P.accent);
       if (st === "elegant") frame(page, 14, 14, W - 28, H - 28, P.ink);
       const x = st === "modern" ? 26 : 24, right = W - (st === "modern" ? 14 : 24), tw = right - x;
       const labelY = L ? 24 : 30;
       font(page, 600, 2.9, K.small, 0.7);
-      text(page, ellipsize(page, CT.label, tw), x, labelY, st === "modern" ? accentOnDeep(P) : st === "elegant" ? accentText(P) : ink);
+      text(page, ellipsize(page, CT.label, tw), x, labelY, st === "modern" ? accentOnDeep(P) : st === "elegant" ? accentText(P) : st === "lookbook" ? P.soft : ink);
       hair(page, x, labelY + 5, right, ink);
       const footY = H - 14, markS = L ? 16 : 20, firstTop = labelY + (L ? 16 : 26);
       const { t, lead } = coverTitleFit(page, book, K, cs, P, tw, 4, L ? 24 : 34, L ? 10 : 12, firstTop + (L ? 24 : 34), 4.2 * 1.3 + 4 + 10 + markS + 10, footY - 8);
       const firstY = firstTop + t.size;
       const subY = coverWords(page, book, K, cs, P, ink, soft, x, tw, firstY, t, lead);
-      rect(page, x, Math.min(subY + 7, footY - markS - 14), 26, 1, st === "elegant" ? P.accent : ink);
+      rect(page, x, Math.min(subY + 7, footY - markS - 14), 26, 1, (st === "elegant" || st === "lookbook") ? P.accent : ink);
       await drawMark(page, ink, st === "vogue" ? ink : P.accent, ground, x, footY - 4 - markS, markS);
       font(page, 600, 2.8, K.small, 0.6);
       text(page, ellipsize(page, CT.foot, tw * 0.6), right, footY - 6, ink, "right");
@@ -779,7 +824,7 @@
   async function drawEnd(page, entry, book, P, W, H, imgs, n, S) {
     const st = styleKey(book), L = W > H, CT = coverText(book), K = COVER_TYPE[st];
     if (endLayoutOf(entry) === "back") {
-      const fb = st === "elegant" ? P.paper : st === "modern" ? P.deep : P.accent;
+      const fb = st === "elegant" ? P.paper : st === "lookbook" ? P.white : st === "modern" ? P.deep : P.accent;
       const ground = isFillish(entry.bg) ? blockColor(entry.bg, P, fb) : fb;
       const ink = st === "modern" ? P.onDeep : st === "vogue" ? P.onAccent : P.ink;
       rect(page, 0, 0, W, H, ground);
@@ -807,7 +852,7 @@
     const img = imgs[0], shot = (entry.photos || [])[0];
     const box = { x: M.side + (st === "modern" ? 6 : 0), y: M.top, w: W - 2 * M.side - (st === "modern" ? 6 : 0), h: H * 0.54 };
     if (img) {
-      if (st === "elegant") { const r = fitPhoto(page, img, shot, box.x, box.y, box.w, box.h); frame(page, r.x, r.y, r.w, r.h, P.rule, 0.2); }
+      if (st === "elegant" || st === "lookbook") { const r = fitPhoto(page, img, shot, box.x, box.y, box.w, box.h); if (st === "elegant") frame(page, r.x, r.y, r.w, r.h, P.rule, 0.2); }
       else drawPhoto(page, img, shot, box.x, box.y, box.w, box.h);
     }
     const top = img ? box.y + box.h + (L ? 12 : 18) : H * 0.4;
@@ -858,7 +903,7 @@
       const boxes = shots.length === 1 ? [pa] : cells(2, pa, M.gap, aspects, L, null);
       boxes.forEach((c, i) => {
         if (!imgs[i]) { missing(page, P, c.x, c.y, c.w, c.h); return; }
-        if (st === "elegant") { const r = fitPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); frame(page, r.x, r.y, r.w, r.h, P.rule, 0.2); }
+        if (st === "elegant" || st === "lookbook") { const r = fitPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); if (st === "elegant") frame(page, r.x, r.y, r.w, r.h, P.rule, 0.2); }
         else drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h);
       });
     }
@@ -1172,7 +1217,68 @@
     label(page, s, x, y, P) { font(page, 600, 2.7, F.geo, 0.8); text(page, s.toUpperCase(), x, y, accentText(P)); },
     ground(page, P, W, H) { rect(page, 0, 0, W, H, pageBg(P, P.white)); }
   };
-  const STYLE_IMPL = { elegant: ELEGANT, modern: MODERN, vogue: VOGUE };
+  /* Lookbook: white pages, wide margins, the photographs whole and unframed,
+     small tracked labels, a light sans; the accent only as a short rule. */
+  const LOOKBOOK = {
+    margins(o) { return o === "landscape" ? { top: 20, side: 24, bottom: 24, gap: 8 } : { top: 24, side: 22, bottom: 30, gap: 7 }; },
+    async cover(page, book, P, W, H, img) {
+      const L = W > H;
+      rect(page, 0, 0, W, H, P.white);
+      const m = L ? 20 : 22;
+      const CT = coverText(book);
+      font(page, 500, 2.4, F.geo, 1.0);
+      text(page, ellipsize(page, CT.foot, W - 2 * m - 20), m, m + 2, P.ink);
+      await drawMark(page, P.ink, P.accent, P.white, W - m - 10, m - 5, 10);
+      // The photograph whole, in a window with white round it.
+      const win = { x: m, y: m + 14, w: W - 2 * m, h: L ? H - m - 14 - 34 : H - (m + 14) - 58 };
+      if (img) fitPhoto(page, img, book.cover, win.x, win.y, win.w, win.h);
+      else { const sz = L ? 28 : 34; await drawMark(page, P.rule, P.accent, P.white, win.x + (win.w - sz) / 2, win.y + (win.h - sz) / 2, sz); }
+      // The title small and light at the foot, the subtitle in tracked capitals, the place at the right.
+      const cs = coverStyleOf(book);
+      const TT = textFormat(cs, "title", { w: 300, f: F.sans }, P, P.ink);
+      const ST = textFormat(cs, "subtitle", { w: 500, f: F.geo }, P, P.soft);
+      const tw = (W - 2 * m) * 0.62;
+      const t = fitLines(page, book.title || "Selected Work", tw, 2, TT.spec.w, (L ? 8 : 9.5) * TT.scale, (L ? 5.5 : 6.5) * TT.scale, TT.spec.f, 0, !!TT.spec.it);
+      const lead = t.size * 1.15, baseY = H - (L ? 18 : 26);
+      const firstY = baseY - (t.lines.length - 1) * lead;
+      font(page, TT.spec.w, t.size, TT.spec.f, 0, !!TT.spec.it);
+      if (skipNow !== "title") t.lines.forEach((l, i) => text(page, l, TT.at(m, tw), firstY + i * lead, TT.color, TT.align));
+      noteText(page, "title", m, firstY - t.size * 0.86, tw, (t.lines.length - 1) * lead + t.size * 1.16, typeOf(TT, t.size, lead));
+      const ss = 2.6 * ST.scale, subY = baseY + 7;
+      font(page, ST.spec.w, ss, ST.spec.f, 0.9, !!ST.spec.it);
+      if (book.subtitle && skipNow !== "subtitle") text(page, ellipsize(page, book.subtitle.toUpperCase(), tw), ST.at(m, tw), subY, ST.color, ST.align);
+      noteText(page, "subtitle", m, subY - ss * 0.86, tw, ss * 1.2, { ...typeOf(ST, ss, ss * 1.3, 0.9), caps: true });
+      font(page, 500, 2.4, F.geo, 0.9);
+      text(page, ellipsize(page, CT.place, (W - 2 * m) * 0.34), W - m, subY, P.soft, "right");
+    },
+    async photos(page, entry, P, W, H, imgs, shoots, n) {
+      const M = this.margins(W > H ? "landscape" : "portrait");
+      rect(page, 0, 0, W, H, pageBg(P, P.white));
+      const box = { x: M.side, y: M.top, w: W - 2 * M.side, h: H - M.top - M.bottom };
+      const shots = entry.photos;
+      if (shots.length === 1 && entry.border) return bandedPhotoPage(page, entry, P, W, H, imgs, shots, shoots, n, captionFit(entry, W - 28, CAPTION_TYPE.lookbook), "lookbook", M.gap);
+      const cap = captionFit(entry, box.w, CAPTION_TYPE.lookbook);
+      const area = { ...box, h: box.h - (cap ? 8 : 0) };
+      if (shots.length === 1) { if (imgs[0]) fitPhoto(page, imgs[0], shots[0], area.x, area.y, area.w, area.h); else missing(page, P, area.x, area.y, area.w, area.h); }
+      else {
+        const aspects = shots.map((sh, i) => (imgs[i] ? imgAspect(imgs[i]) : 0.7));
+        cells(shots.length, area, M.gap, aspects, W > H, entry.rows).forEach((c, i) => { if (imgs[i]) drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); else missing(page, P, c.x, c.y, c.w, c.h); });
+      }
+      if (cap) drawCaption(page, cap, box.x, H - M.bottom - 1, CAPTION_TYPE.lookbook, P.soft, P);
+      this.foot(page, P, W, H, n, pageCredit(entry, shoots));
+    },
+    // The number small in the middle of the foot; a credit at the outer edge.
+    foot(page, P, W, H, n, credit) {
+      font(page, 500, 2.2, F.geo, 0.9);
+      if (showNums()) text(page, String(n).padStart(2, "0"), W / 2, H - 11, P.ink, "center");
+      if (credit) text(page, ellipsize(page, credit.toUpperCase(), W / 2 - 28), n % 2 ? W - 20 : 20, H - 11, P.soft, n % 2 ? "right" : "left");
+    },
+    heading(page, s, x, y, P, maxW) { font(page, 300, 9, F.sans); const lines = wrap(page, s, maxW); lines.forEach((l, i) => text(page, l, x, y + i * 11, P.ink)); rect(page, x, y + (lines.length - 1) * 11 + 6, 16, 0.5, P.accent); return y + (lines.length - 1) * 11 + 15; },
+    body(page, s, x, y, P, maxW, maxY = Infinity) { font(page, 300, 3.7, F.sans); return bodyLines(page, s, x, y, P, maxW, maxY, 6.0); },
+    label(page, s, x, y, P) { font(page, 500, 2.3, F.geo, 0.9); text(page, s.toUpperCase(), x, y, P.soft); },
+    ground(page, P, W, H) { rect(page, 0, 0, W, H, pageBg(P, P.white)); }
+  };
+  const STYLE_IMPL = { elegant: ELEGANT, modern: MODERN, vogue: VOGUE, lookbook: LOOKBOOK };
 
   // Running text that stops above the foot. If it has to stop early, the last
   // line that fits ends with "…" so nothing is cut mid-thought without a sign.
@@ -1238,25 +1344,26 @@
     const x = Math.max(M.side, 20), maxW = Math.min(W - 2 * x, 150);
     if (entry.type === "divider") {
       // A chapter card: the colour as the whole ground.
-      rect(page, 0, 0, W, H, book.style === "elegant" ? P.paper : P.accent);
-      const on = book.style === "elegant" ? P.ink : P.onAccent;
+      rect(page, 0, 0, W, H, book.style === "elegant" ? P.paper : book.style === "lookbook" ? P.white : P.accent);
+      const on = (book.style === "elegant" || book.style === "lookbook") ? P.ink : P.onAccent;
       // Measured exactly as it is drawn: Vogue and Modern set it in capitals,
       // which are far wider than the lower case it was typed in.
-      const shown = book.style === "elegant" ? (entry.heading || "Selected work") : (entry.heading || "Selected work").toUpperCase();
-      const weight = book.style === "modern" ? 800 : 300, family = book.style === "modern" ? F.heavy : F.serif, spacing = book.style === "vogue" ? 1 : 0;
+      const quiet = book.style === "elegant" || book.style === "lookbook";
+      const shown = quiet ? (entry.heading || "Selected work") : (entry.heading || "Selected work").toUpperCase();
+      const weight = book.style === "modern" ? 800 : 300, family = book.style === "modern" ? F.heavy : book.style === "lookbook" ? F.sans : F.serif, spacing = book.style === "vogue" ? 1 : 0;
       const HT = textFormat(entry.style, "heading", { w: weight, f: family }, P, on);
       const LT = textFormat(entry.style, "line", { w: 400, f: F.sans }, P, on);
       const tw = W - 40;
-      const t = fitLines(page, shown, tw, 2, HT.spec.w, (book.style === "modern" ? 26 : 30) * HT.scale, 12 * HT.scale, HT.spec.f, spacing, !!HT.spec.it);
+      const t = fitLines(page, shown, tw, 2, HT.spec.w, (book.style === "modern" ? 26 : book.style === "lookbook" ? 22 : 30) * HT.scale, 12 * HT.scale, HT.spec.f, spacing, !!HT.spec.it);
       if (t.cut) reportCut(page, "heading", "chapter heading");
       const lead = t.size * 1.05;
       const top = H / 2 - (t.lines.length - 1) * lead / 2;
       font(page, HT.spec.w, t.size, HT.spec.f, spacing, !!HT.spec.it);
       if (skipNow !== "heading") t.lines.forEach((l, i) => text(page, l, HT.at(20, tw), top + i * lead, HT.color, HT.align));
-      noteText(page, "heading", 20, top - t.size * 0.86, tw, (t.lines.length - 1) * lead + t.size * 1.16, { ...typeOf(HT, t.size, lead, spacing), caps: book.style !== "elegant" });
+      noteText(page, "heading", 20, top - t.size * 0.86, tw, (t.lines.length - 1) * lead + t.size * 1.16, { ...typeOf(HT, t.size, lead, spacing), caps: !quiet });
       const after = top + (t.lines.length - 1) * lead;
       noteText(page, "line", 20, after + t.size * 0.5 + 10 - 4.2 * LT.scale * 0.86, tw, 3 * 6.4 * LT.scale + 4.2 * LT.scale * 1.2, typeOf(LT, 4.2 * LT.scale, 6.4 * LT.scale));
-      if (book.style === "elegant") rect(page, 20, after + 8, 22, 0.8, P.accent);
+      if (quiet) rect(page, 20, after + 8, book.style === "lookbook" ? 16 : 22, book.style === "lookbook" ? 0.5 : 0.8, P.accent);
       if (entry.line) {
         font(page, LT.spec.w, 4.2 * LT.scale, LT.spec.f, 0, !!LT.spec.it);
         const lines = wrap(page, entry.line, maxW);
@@ -1264,6 +1371,7 @@
         if (skipNow !== "line") lines.slice(0, 4).forEach((l, i) => text(page, i === 3 && lines.length > 4 ? ellipsize(page, `${l} …`, maxW) : (i === 3 ? ellipsize(page, l, maxW) : l), LT.at(20, maxW), after + t.size * 0.5 + 10 + i * 6.4 * LT.scale, LT.color, LT.align));
       }
       if (book.style === "elegant") ELEGANT.foot(page, P, W, H, n);
+      if (book.style === "lookbook") LOOKBOOK.foot(page, P, W, H, n);
       if (book.style === "modern") MODERN.foot(page, P, W, H, n, "", P.onAccent, P.onAccent);
       return;
     }
@@ -1276,7 +1384,8 @@
       y = S.heading(page, lineOf(entry.heading, "Not just photos, a perspective"), x, y, P, maxW);
       // The About words take the studio's own font, colour, size and
       // alignment, and each paragraph may differ.
-      const aBase = { w: book.style === "elegant" ? 300 : 400, f: F.sans, size: book.style === "elegant" ? 4.0 : 3.9, lead: book.style === "elegant" ? 6.4 : (book.style === "modern" ? 6.2 : 6.3) };
+      const light = book.style === "elegant" || book.style === "lookbook";
+      const aBase = { w: light ? 300 : 400, f: F.sans, size: light ? 4.0 : 3.9, lead: light ? 6.4 : (book.style === "modern" ? 6.2 : 6.3) };
       const aFmt = (entry.style && entry.style.about) || {};
       const AT = textFormat(entry.style, "about", aBase, P, P.ink);
       font(page, AT.spec.w, AT.spec.size * AT.scale, AT.spec.f, 0, !!AT.spec.it);
@@ -1325,7 +1434,7 @@
         const cx = colX(col);
         if (e.kind === "service") {
           S.label(page, e.v.kicker || "", cx, cy, P);
-          font(page, book.style === "modern" ? 800 : 400, 5.4, book.style === "modern" ? F.heavy : F.serif);
+          font(page, book.style === "modern" ? 800 : 400, 5.4, book.style === "modern" ? F.heavy : book.style === "lookbook" ? F.sans : F.serif);
           text(page, ellipsize(page, e.v.title || "", colW), cx, cy + 7, P.ink);
           cy = S.body(page, e.v.blurb || "", cx, cy + 13, P, colW, cy + 13 + 3 * 6.3) + 5;
         } else if (e.kind === "label") {
@@ -1383,6 +1492,7 @@
       } catch (e) { /* the QR is a convenience; the links above still work */ }
     }
     if (book.style === "elegant") ELEGANT.foot(page, P, W, H, n);
+    if (book.style === "lookbook") LOOKBOOK.foot(page, P, W, H, n);
     if (book.style === "modern") MODERN.foot(page, P, W, H, n, "");
     if (book.style === "vogue") VOGUE.foot(page, P, W, H, n, "");
   }
@@ -1472,6 +1582,28 @@
       wayFor: { w: 400, f: F.geo, size: 3.4, lead: 4.8, color: "soft" },
       stepTitle: { w: 300, f: F.serif, sp: 0.4, caps: true, start: 5.0, min: 4.2, lead: 1.15 },
       workNote: { w: 400, f: F.sans, size: 3.8, lead: 6.0 }
+    },
+    lookbook: {
+      kicker: { w: 500, size: 2.3, f: F.geo, sp: 0.9, caps: true, color: "soft" },
+      rule: { w: 16, h: 0.5 },
+      body: { w: 300, size: 3.5, f: F.sans, lead: 5.8 },
+      drop: null,
+      storyHead: { w: 300, f: F.sans, caps: false, start: 9, min: 6.5, lead: 1.15 },
+      storyIntro: { w: 400, f: F.sans, start: 4.2, min: 3.9, lead: 6.2, color: "soft" },
+      noteTitle: { w: 300, f: F.sans, caps: false, start: 6.5, min: 5, lead: 1.15 },
+      quote: { w: 300, f: F.sans, lead: 1.3 }, quoteAlign: "left",
+      quoteName: { w: 500, size: 3.6, f: F.sans },
+      quoteRole: { w: 500, size: 2.4, f: F.geo, sp: 0.8, caps: true },
+      letterHead: { w: 300, f: F.sans, caps: false, start: 9, min: 6.5, lead: 1.15 },
+      letterBody: { w: 300, size: 3.8, f: F.sans, lead: 6.2 },
+      sign: { w: 400, size: 4.6, f: F.serif, it: true },
+      signLine: { w: 500, size: 2.4, f: F.geo, sp: 0.8, caps: true },
+      featureSub: { w: 500, f: F.sans, caps: false, start: 4.8, min: 4.2, lead: 1.15, color: "ink" },
+      smallLabel: { w: 500, size: 2.1, f: F.geo, sp: 0.8, caps: true },
+      wayName: { w: 300, f: F.sans, start: 5.4, min: 4.4, lead: 1.15 },
+      wayFor: { w: 400, f: F.sans, size: 3.4, lead: 4.8, color: "soft" },
+      stepTitle: { w: 500, f: F.sans, start: 4.8, min: 4.2, lead: 1.15 },
+      workNote: { w: 300, f: F.sans, size: 3.7, lead: 6.0 }
     }
   };
   const DETAIL_TYPE = { w: 400, f: F.sans };
@@ -1479,7 +1611,8 @@
   const CAPTION_TYPE = {
     elegant: { w: 400, f: F.serif, it: true, start: 3.6, min: 3.2 },
     modern: { w: 400, f: F.sans, start: 3.2, min: 2.8 },
-    vogue: { w: 500, f: F.geo, start: 3.0, min: 2.6 }
+    vogue: { w: 500, f: F.geo, start: 3.0, min: 2.6 },
+    lookbook: { w: 400, f: F.geo, start: 2.8, min: 2.5 }
   };
   const MARKER = "NO WORDS ON THIS PAGE YET";
 
@@ -2031,7 +2164,7 @@
       if (showNums()) text(page, String(n).padStart(2, "0"), B.left ? B.left / 2 : W - B.right / 2, H - 8, colors.on, "center");
     }
   }
-  const bandColors = (style, P) => (style === "vogue" ? { band: P.white, on: P.ink } : { band: P.deep, on: P.onDeep });
+  const bandColors = (style, P) => (style === "vogue" || style === "lookbook" ? { band: P.white, on: P.ink } : { band: P.deep, on: P.onDeep });
   function bandedPhotoPage(page, entry, P, W, H, imgs, shots, shoots, n, cap, style, gap) {
     const B = bandsFor(entry, !!cap);
     rect(page, 0, 0, W, H, pageBgOf(bookNow, entry, P, P.white));
@@ -2147,7 +2280,7 @@
            bottom: { e: [20, 112, 257, 74], m: [0, 106, 297, 86], v: [0, 118, 297, 92] } }
     }
   };
-  const boxFor = (type, st, L, at) => BOXES[type][L ? "L" : "P"][at][st === "elegant" ? "e" : st === "modern" ? "m" : "v"];
+  const boxFor = (type, st, L, at) => BOXES[type][L ? "L" : "P"][at][st === "elegant" || st === "lookbook" ? "e" : st === "modern" ? "m" : "v"];
 
   // The plan for one writing page: drawing operations in mm, the cuts, and
   // for the editor, how each field fared. Laid out on the A4 frame, then
@@ -2447,12 +2580,13 @@
         const photoLeft = (i === 0) === (first === "left");
         let pbox, tx, tw;
         if (!L) {
-          const pw = st === "elegant" ? 80 : 100;
-          if (photoLeft) { pbox = st === "elegant" ? [20, row.y, 80, row.h] : [0, row.y, pw, row.h]; tx = 112; tw = 78; }
-          else { pbox = st === "elegant" ? [110, row.y, 80, row.h] : [110, row.y, pw, row.h]; tx = 20; tw = 78; }
+          const inset = st === "elegant" || st === "lookbook";
+          const pw = inset ? 80 : 100;
+          if (photoLeft) { pbox = inset ? [20, row.y, 80, row.h] : [0, row.y, pw, row.h]; tx = 112; tw = 78; }
+          else { pbox = inset ? [110, row.y, 80, row.h] : [110, row.y, pw, row.h]; tx = 20; tw = 78; }
         } else {
-          if (photoLeft) { pbox = st === "elegant" ? [20, row.y, 126, row.h] : [0, row.y, 146, row.h]; tx = 158; tw = 119; }
-          else { pbox = st === "elegant" ? [151, row.y, 126, row.h] : [151, row.y, 146, row.h]; tx = 20; tw = 119; }
+          if (photoLeft) { pbox = (st === "elegant" || st === "lookbook") ? [20, row.y, 126, row.h] : [0, row.y, 146, row.h]; tx = 158; tw = 119; }
+          else { pbox = (st === "elegant" || st === "lookbook") ? [151, row.y, 126, row.h] : [151, row.y, 146, row.h]; tx = 20; tw = 119; }
         }
         photo(pbox, "crop", "NO PHOTO CHOSEN", i);
         const n = i + 1;
@@ -3002,6 +3136,7 @@
     };
     const writingFoot = (page, n, plan) => {
       if (book.style === "elegant") ELEGANT.foot(page, P, W, H, n);
+      else if (book.style === "lookbook") LOOKBOOK.foot(page, P, W, H, n);
       else if (book.style === "vogue") VOGUE.foot(page, P, W, H, n, "");
       else MODERN.foot(page, P, W, H, n, "", plan.foot.ink, plan.foot.soft);
     };
@@ -3105,6 +3240,7 @@
         await drawLook(page, entry, book, P, W, H, imgs, n, S, lookNumber(book, entry));
         const credit = pageCredit(entry, shoots);
         if (book.style === "elegant") { ELEGANT.foot(page, P, W, H, n); if (credit) { font(page, 300, 3.0, F.sans); text(page, ellipsize(page, credit, W - 60), n % 2 ? 20 : W - 20, H - 12, P.soft, n % 2 ? "left" : "right"); } }
+        else if (book.style === "lookbook") LOOKBOOK.foot(page, P, W, H, n, credit);
         else if (book.style === "vogue") VOGUE.foot(page, P, W, H, n, credit);
         else MODERN.foot(page, P, W, H, n, credit);
       } else if (entry.type === "end") {
@@ -3760,6 +3896,14 @@
       scheduleLight();
       if (!book || !dirty) return true;
       book.updatedAt = Date.now();
+      // The mark of how new the book's shapes are, kept on this working copy
+      // too: the cleaner writes it into the stored copy, but this object is
+      // what the next save starts from, so without this a later edit (a
+      // style changed back, a page removed) would save a lower mark and CI
+      // would read it as an out-of-date tab. Raised as needed, never lowered.
+      const pgs = book.pages || [];
+      const need = book.style === "lookbook" ? 4 : pgs.some((pg) => pg && pg.type === "look") ? 3 : (coverLayoutOf(book) !== "classic" || pgs.some((pg) => pg && pg.type === "end")) ? 2 : pgs.some((pg) => pg && pg.type === "free") ? 1 : 0;
+      if (need > (book.schema || 0)) book.schema = need;
       // Read what is stored now, not this tab's cached list: another builder
       // tab may have saved or deleted a book since, and writing the cached
       // list back would erase that.
@@ -3899,6 +4043,7 @@
       const withKind = (nb, k) => {
         if (k !== "lookbook") return nb;
         nb.name = nb.name.replace(/^Book /, "Lookbook ");
+        nb.style = "lookbook";
         nb.title = "Lookbook"; nb.subtitle = `Collection ${year()}`;
         nb.pages = [{ type: "story", photos: [], kicker: "", headline: "", intro: "", body: "" }, ...Array.from({ length: 6 }, () => ({ type: "look", photos: [] })), { type: "end", layout: "back" }];
         return nb;
@@ -3929,22 +4074,28 @@
           kind = b.dataset.kind;
           box.querySelectorAll("[data-kind]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
           const note = box.querySelector("#sbKindNote"); if (note) note.textContent = KIND_NOTE[kind];
+          if (box.drawPreviews) box.drawPreviews();
         }));
         const first = box.querySelector("[data-start]"); if (first) first.focus();
-        (async () => {
+        // The five covers, drawn small in the style the book will have.
+        let previewToken = 0;
+        const drawPreviews = async () => {
+          const token = ++previewToken;
           const cache = new Map();
           try { await ensureFonts(); } catch (e) { /* the covers draw in what is there */ }
           for (const [k] of COVER_LAYOUTS) {
-            if (!box.isConnected) return;
-            const nb = withLayout(newBook("Preview"), k);
+            if (!box.isConnected || token !== previewToken) return;
+            const nb = withKind(withLayout(newBook("Preview"), k), kind);
             try {
               for await (const r of renderPages(nb, { dpi: 22, cache, only: -1 })) {
                 const slot = box.querySelector(`[data-start="${k}"] .sb-startpic`);
-                if (slot && box.isConnected) slot.replaceChildren(r.page.canvas);
+                if (slot && box.isConnected && token === previewToken) slot.replaceChildren(r.page.canvas);
               }
             } catch (e) { /* the words stay */ }
           }
-        })();
+        };
+        box.drawPreviews = drawPreviews;
+        drawPreviews();
       }
       $$("[data-open]").forEach((b) => b.addEventListener("click", () => {
         settle();
@@ -6693,6 +6844,17 @@
     }
 
     /* --- the inspector: design --- */
+    // The Design panel's colour swatches, repainted for the book's colourway.
+    function refreshDesignColours() {
+      const panel = $("#sbPanelDesign"); if (!panel) return;
+      const P = colourway(book.colourway), own = isOwnColourway(book.colourway);
+      panel.querySelectorAll("[data-cw]").forEach((x) => x.setAttribute("aria-checked", String(!own && book.colourway === x.dataset.cw)));
+      const any = panel.querySelector("[data-cwany]"), lab = panel.querySelector("[data-cwanyhex]");
+      if (any) { any.setAttribute("aria-pressed", String(own)); any.querySelector("i").style.background = own ? book.colourway : "conic-gradient(#f33, #ff3, #3f3, #3ff, #33f, #f3f, #f33)"; }
+      if (lab) lab.textContent = own ? book.colourway : "";
+      const tint = { paper: P.paper, white: P.white, ink: P.ink, soft: P.soft, accent: P.accent, deep: P.deep, rule: P.rule };
+      panel.querySelectorAll("[data-bookbg]").forEach((x) => { const c = tint[x.dataset.bookbg]; if (c) x.querySelector("i").style.background = c; });
+    }
     function drawDesign() {
       const panel = $("#sbPanelDesign"); if (!panel) return;
       panel.innerHTML = `
@@ -6701,6 +6863,11 @@
         </div>
         <div class="sb-sec"><h3>Colourway</h3>
           <div class="sb-cws" role="radiogroup" aria-label="Colourway">${COLOURWAYS.map((c) => `<button type="button" class="sb-cw" role="radio" data-cw="${c.key}" aria-checked="${book.colourway === c.key}"><span class="sb-dot" aria-hidden="true" style="background: conic-gradient(${c.accent} 0 50%, ${c.deep} 50% 75%, ${c.paper} 75% 100%)"></span>${esc(c.name)}</button>`).join("")}</div>
+          <div class="sb-field sb-owncw"><span class="sb-label">Or your own, from one colour</span>
+            <span class="sb-swatches" role="group" aria-label="Your own colourway">${anySwatch("cwany", isOwnColourway(book.colourway) ? book.colourway : "")}</span>
+            <div class="sb-cphost" data-cwanypick hidden></div>
+            <p class="sb-hint">Pick the main colour and the whole book follows: the bars and rules, the labels, the dark ground and the paper are all worked out from it. The wheel inside helps choose it.</p>
+          </div>
         </div>
         <div class="sb-sec"><h3>Page shape</h3>
           <div class="sb-seg" role="radiogroup" aria-label="Page shape">${["portrait", "landscape"].map((o) => `<button type="button" role="radio" data-orient="${o}" aria-checked="${book.orientation === o}">${o === "portrait" ? "Portrait" : "Landscape"}</button>`).join("")}</div>
@@ -6753,7 +6920,15 @@
         }
       }));
       radio("[data-style]", (b) => { book.style = b.dataset.style; drawFields(); }, (b) => book.style === b.dataset.style);
-      radio("[data-cw]", (b) => { book.colourway = b.dataset.cw; drawFields(); }, (b) => book.colourway === b.dataset.cw);
+      radio("[data-cw]", (b) => { book.colourway = b.dataset.cw; drawFields(); refreshDesignColours(); }, (b) => book.colourway === b.dataset.cw);
+      // Your own colourway: the colour is applied as it is picked, and the
+      // panel's own swatches follow, without the picker being rebuilt under a drag.
+      wireAny(panel.querySelector("[data-cwany]"), panel.querySelector("[data-cwanypick]"), () => (isOwnColourway(book.colourway) ? book.colourway : colourway(book.colourway).accent.toLowerCase()), (hex) => {
+        if (book.colourway === hex) return;
+        mark(true);
+        book.colourway = hex;
+        change({ rail: true }); drawPhotoBlock(); drawFields(); refreshDesignColours();
+      });
       radio("[data-orient]", (b) => { book.orientation = b.dataset.orient; }, (b) => book.orientation === b.dataset.orient);
       radio("[data-paper]", (b) => {
         if (b.dataset.paper === "a4") delete book.paper; else book.paper = b.dataset.paper;
