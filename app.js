@@ -719,6 +719,8 @@ const STUDIO_BOOK_LIMITS = {
   blockRoles: ["head", "intro", "body", "kicker", "quote"],
   blockMax: 12, blockPhotoMax: 6, blockText: 600,
   thicks: ["hair", "narrow", "broad"],
+  shapes: ["round", "chamfer", "ellipse", "triangle", "diamond", "star", "parallelogram"],   // a plain box writes nothing
+  corners: ["small", "large"],   // medium writes nothing
   fills: ["ink", "soft", "accent", "paper", "white", "deep", "rule"],
   /* How new the shapes in a book are. A book is marked with the highest one
      it needs, and the mark is never taken off, so a browser tab running an
@@ -869,6 +871,8 @@ function cleanStudioPortfolios(o) {
             one.fill = String(x.fill).toLowerCase();
             if (typeof x.o === "number" && isFinite(x.o) && x.o < 1) one.o = Math.round(num(x.o, 0.05, 1, 1) * 100) / 100;
           }
+          if ((x.k === "shape" || x.k === "text") && L2.shapes.includes(x.shape)) one.shape = x.shape;
+          if ((x.k === "shape" || x.k === "text") && L2.corners.includes(x.corner)) one.corner = x.corner;
           if (x.k === "shape" || x.k === "line") {
             const key = x.k === "shape" ? "fill" : "color";
             if (L2.fills.includes(x[key]) || /^#[0-9a-f]{6}$/i.test(String(x[key] || ""))) one[key] = String(x[key]).toLowerCase();
