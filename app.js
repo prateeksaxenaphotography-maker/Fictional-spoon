@@ -16971,6 +16971,20 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       }
 
       body.querySelector("#ppOrder").addEventListener("click", (e) => {
+        // Which photo is the big one, chosen here as well as with the star in
+        // the contact sheet: the page below shows what "big" means, and going
+        // back to the sheet to change it is a trip for nothing.
+        const star = e.target.closest("[data-make-big]");
+        if (star) {
+          const starId = star.closest("[data-id]").dataset.id;
+          if (starId === state.lead) return;
+          const wasCoveredLead = covered();
+          state.lead = starId;
+          if (covered() !== wasCoveredLead) { showPreview(); return; }
+          syncOrder();
+          drawPreview();
+          return;
+        }
         const btn = e.target.closest("[data-move]");
         if (!btn || btn.disabled) return;
         const id = btn.closest("[data-id]").dataset.id;
@@ -17181,6 +17195,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <span class="pp-order-photo">
             <img src="${esc(photoSrc(s.photo.small ? { url: s.photo.small } : s.photo))}" alt="" style="object-position: ${esc(s.photo.objectPosition || "center")};" />
             <span class="pp-order-n">${i < fixed ? "Big" : i + 1}</span>
+            ${fixed && i >= fixed ? `<button type="button" class="pp-order-star" data-make-big aria-label="Make ${esc(s.name)} the big photo" title="Make this the big photo"></button>` : ""}
           </span>
           ${i < fixed ? "" : `<span class="pp-order-move">
             <button type="button" data-move="-1" aria-label="Move ${esc(s.name)} earlier"${i === fixed ? " disabled" : ""}>‹</button>
