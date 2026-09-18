@@ -677,7 +677,7 @@ const STUDIO_BOOK_STYLES = ["elegant", "modern", "vogue"];
 // book at `versions` rather than letting the clean-up drop one.
 const STUDIO_BOOK_LIMITS = {
   versions: 200, pages: 30, text: 1200, deleted: 2000,
-  pageTypes: ["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process"],
+  pageTypes: ["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process", "free"],
   fits: ["fill", "whole", "width", "height"],
   // Paper a book prints on; absent means A4. Where a writing page's photo sits;
   // absent means the page shape's usual place.
@@ -705,6 +705,21 @@ const STUDIO_BOOK_LIMITS = {
   workWays: ["execute", "pitch", "lead", "test"],
   // A watermark across every page of a sample: the words, and how strong.
   markStrengths: ["light", "medium", "strong"],
+  /* An "Anything page": things the studio places itself. Every position and
+     size is a fraction of the A4 design frame, so the page prints the same on
+     any paper and in either shape. A little outside 0-1 is allowed, so a
+     photograph can run off the edge. */
+  blockKinds: ["text", "photo", "shape", "line"],
+  blockRoles: ["head", "intro", "body", "kicker", "quote"],
+  blockMax: 12, blockPhotoMax: 6, blockText: 600,
+  thicks: ["hair", "narrow", "broad"],
+  fills: ["ink", "soft", "accent", "paper", "white", "deep", "rule"],
+  /* How new the shapes in a book are. A book is marked with the highest one
+     it needs, and the mark is never taken off, so a browser tab running an
+     older release — which would quietly drop a page kind it doesn't know —
+     shows up in CI as a book whose mark went backwards, whatever its
+     updatedAt says. 1 = Anything pages. */
+  schema: 1,
   // The cover's own lines. Empty means "as the style has always drawn it".
   coverText: { label: 32, mast: 18, tagline: 24, foot: 40, place: 40 },
   coverLine: 24,          // one of the cover's inside lines, three a side
@@ -747,23 +762,28 @@ function cleanOneFormat(f) {
   if (f.italic === true) one.italic = true;
   return Object.keys(one).length ? one : null;
 }
+// One text's formatting, and each of its paragraphs.
+function cleanFormatDeep(f) {
+  const one = cleanOneFormat(f) || {};
+  const paras = {};
+  if (f && f.paras && typeof f.paras === "object" && !Array.isArray(f.paras)) {
+    for (const [at, p] of Object.entries(f.paras)) {
+      if (!/^[1-9][0-9]{0,2}$/.test(at) || Number(at) > STUDIO_BOOK_LIMITS.paras) continue;
+      const c = cleanOneFormat(p);
+      if (c) paras[at] = c;
+    }
+  }
+  if (Object.keys(paras).length) one.paras = paras;
+  return Object.keys(one).length ? one : null;
+}
 function cleanBookFormatting(from, allowed) {
   if (!from || typeof from !== "object") return null;
   const style = {};
   for (const [k, f] of Object.entries(from)) {
     if (!allowed.includes(k) || !f || typeof f !== "object") continue;
-    const one = cleanOneFormat(f) || {};
     // A flowing text can also format each of its paragraphs, numbered from 1.
-    const paras = {};
-    if (f.paras && typeof f.paras === "object" && !Array.isArray(f.paras)) {
-      for (const [at, p] of Object.entries(f.paras)) {
-        if (!/^[1-9][0-9]{0,2}$/.test(at) || Number(at) > STUDIO_BOOK_LIMITS.paras) continue;
-        const c = cleanOneFormat(p);
-        if (c) paras[at] = c;
-      }
-    }
-    if (Object.keys(paras).length) one.paras = paras;
-    if (Object.keys(one).length) style[k] = one;
+    const one = cleanFormatDeep(f);
+    if (one) style[k] = one;
   }
   return Object.keys(style).length ? style : null;
 }
@@ -804,6 +824,44 @@ function cleanStudioPortfolios(o) {
         if (STUDIO_BOOK_LIMITS.borderWidths.includes(pg.borderWidth)) out.borderWidth = pg.borderWidth;
       }
       if (pg.type === "divider") { out.heading = str(pg.heading, 60); out.line = str(pg.line, 160); }
+      // An Anything page: the things the studio placed, in the order they are
+      // drawn — the last one is on top. Each is rebuilt from a whitelist, and
+      // every number is clamped and rounded, so nothing hand-edited can put a
+      // block far off the paper or a text past its cap.
+      if (pg.type === "free") {
+        const L2 = STUDIO_BOOK_LIMITS;
+        if (L2.fills.includes(pg.bg) || /^#[0-9a-f]{6}$/i.test(String(pg.bg || ""))) out.bg = String(pg.bg).toLowerCase();
+        const frac = (v, lo, hi, d) => Math.round(num(v, lo, hi, d) * 10000) / 10000;
+        let photos = 0;
+        out.blocks = (Array.isArray(pg.blocks) ? pg.blocks : []).map((x) => {
+          if (!x || typeof x !== "object" || !L2.blockKinds.includes(x.k)) return null;
+          if (x.k === "photo" && ++photos > L2.blockPhotoMax) return null;
+          const one = { k: x.k, x: frac(x.x, -0.3, 1.3, 0), y: frac(x.y, -0.3, 1.3, 0), w: frac(x.w, 0.01, 1.6, 0.3) };
+          if (x.k !== "line") one.h = frac(x.h, 0.01, 1.6, 0.2);
+          const turn = Math.round(num(x.r, -180, 180, 0) * 10) / 10;
+          if (turn) one.r = turn;
+          if (x.k === "text") {
+            one.t = strU(x.t, L2.blockText);
+            if (L2.blockRoles.includes(x.role)) one.role = x.role;
+            if (x.fit === "cut") one.fit = "cut";
+            const st = cleanFormatDeep(x.style);
+            if (st) one.style = st;
+          }
+          if (x.k === "photo") {
+            const p2 = shot(x.p);
+            if (p2) one.p = p2;
+            if (L2.fills.includes(x.edge)) one.edge = x.edge;
+            if (L2.thicks.includes(x.edgeWidth)) one.edgeWidth = x.edgeWidth;
+          }
+          if (x.k === "shape" || x.k === "line") {
+            const key = x.k === "shape" ? "fill" : "color";
+            if (L2.fills.includes(x[key]) || /^#[0-9a-f]{6}$/i.test(String(x[key] || ""))) one[key] = String(x[key]).toLowerCase();
+            if (typeof x.o === "number" && isFinite(x.o) && x.o < 1) one.o = Math.round(num(x.o, 0.05, 1, 1) * 100) / 100;
+            if (x.k === "line" && L2.thicks.includes(x.thick)) one.thick = x.thick;
+          }
+          return one;
+        }).filter(Boolean).slice(0, L2.blockMax);
+      }
       if (pg.type === "ways") {
         out.items = (Array.isArray(pg.items) ? pg.items : []).slice(0, 4).map((it) => {
           const one = { name: strU(it && it.name, STUDIO_BOOK_LIMITS.wayItem.name), forWho: strU(it && it.forWho, STUDIO_BOOK_LIMITS.wayItem.forWho), text: strU(it && it.text, STUDIO_BOOK_LIMITS.wayItem.text), lead: STUDIO_BOOK_LIMITS.leads.includes(it && it.lead) ? it.lead : "together" };
@@ -882,6 +940,14 @@ function cleanStudioPortfolios(o) {
       orientation: v.orientation === "landscape" ? "landscape" : "portrait",
       title: str(v.title, 80), subtitle: str(v.subtitle, 120),
       cover: shot(v.cover),
+      // The book's mark of how new its shapes are: the highest it has ever
+      // carried, never lowered here, so an older tab dropping what it cannot
+      // read shows up as the mark going backwards.
+      ...(() => {
+        const need = pages.some((pg) => pg.type === "free") ? STUDIO_BOOK_LIMITS.schema : 0;
+        const mark = Math.max(need, num(v.schema, 0, 99, 0));
+        return mark ? { schema: mark } : {};
+      })(),
       // The running foot: the studio's name unless the book gives its own, and
       // page numbers unless they are switched off.
       ...(str(v.footText, STUDIO_BOOK_LIMITS.footText).trim() ? { footText: str(v.footText, STUDIO_BOOK_LIMITS.footText) } : {}),
@@ -929,12 +995,12 @@ function cleanStudioPortfolios(o) {
 // Each time the stored shape grows, the copy moves to a new key: code that
 // knows the previous shape still writes the previous key (stripping only what
 // it doesn't know), so the newest key is read first and wins ties.
-const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words_v3";
+const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words_v4";
 // Older keys: code that knows only an older shape keeps rewriting the key it
 // knows, so every growth of the shape gets a new one, read before the old.
-const STUDIO_BOOK_WORDS_OLD = ["wps_studio_portfolios_words_v2", "wps_studio_portfolios_words"];
-const studioBookHasWords = (v) => !!v.paper || !!v.coverStyle || !!v.watermark || !!v.coverText || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
-  (STUDIO_BOOK_LIMITS.fields[pg.type] && (pg.type !== "photos" || pg.caption)) || pg.items || pg.steps || pg.photoAt || pg.border || pg.borderWidth || pg.style || pg.hide || (pg.photos || []).some((s) => s.fit || s.opacity));
+const STUDIO_BOOK_WORDS_OLD = ["wps_studio_portfolios_words_v3", "wps_studio_portfolios_words_v2", "wps_studio_portfolios_words"];
+const studioBookHasWords = (v) => !!v.paper || !!v.coverStyle || !!v.watermark || !!v.coverText || !!v.schema || !!v.footText || v.showPageNumbers === false || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
+  (STUDIO_BOOK_LIMITS.fields[pg.type] && (pg.type !== "photos" || pg.caption)) || (pg.blocks || []).length || pg.items || pg.steps || pg.rows || pg.credit || pg.label || pg.heading || pg.photoAt || pg.border || pg.borderWidth || pg.style || pg.hide || (pg.photos || []).some((s) => s.fit || s.opacity));
 function getStudioPortfolios(live) {
   let local = null, published = null, remote = null, words = null;
   const older = [];
