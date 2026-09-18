@@ -6,3 +6,6 @@ node_modules/
 backend/logs.json
 # Runtime-generated content-engagement counts — no PII, but still local state
 backend/views.json
+
+# npm is the package manager here (package-lock.json); a pnpm lockfile is a second, drifting copy
+pnpm-lock.yaml
