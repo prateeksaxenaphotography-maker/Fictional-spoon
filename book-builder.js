@@ -3269,6 +3269,16 @@
   .sb-addmenu { position: absolute; inset: 8px; z-index: 10; overflow: auto; display: grid; gap: 16px; align-content: start; padding: 16px; background: var(--paper, #faf8f5); border: 1px solid var(--sb-line); border-radius: 10px; box-shadow: 0 18px 40px -20px rgba(0,0,0,.45); }
   .sb-addmenu[hidden] { display: none; }
   .sb-addhead { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .sb-start { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(10,10,12,.42); }
+  .sb-startbox { width: min(760px, 100%); max-height: min(92vh, 760px); overflow: auto; display: grid; gap: 14px; align-content: start; padding: 18px; background: var(--paper, #faf8f5); border: 1px solid var(--sb-line); border-radius: 14px; box-shadow: 0 24px 60px -24px rgba(0,0,0,.5); }
+  .sb-starts { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+  .sb-startitem { display: grid; gap: 6px; padding: 10px; border: 1px solid var(--sb-line); border-radius: 12px; background: var(--sb-card); color: inherit; text-align: left; cursor: pointer; }
+  .sb-startitem:hover, .sb-startitem:focus-visible { border-color: var(--ink, #141416); }
+  .sb-startpic { display: grid; place-items: center; height: 132px; background: var(--sb-sunk); border-radius: 8px; }
+  .sb-startpic canvas { max-height: 116px; max-width: 100%; box-shadow: 0 6px 16px -8px rgba(0,0,0,.5); }
+  .sb-startitem b { font: 700 13.5px Inter, sans-serif; }
+  .sb-startitem > span:last-child { font: 400 12px/1.4 Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
+  @media (max-width: 900px) { .sb-starts { grid-template-columns: 1fr 1fr; } .sb-startpic { height: 110px; } .sb-startpic canvas { max-height: 96px; } }
   .sb-addhead strong { font: 700 15px Inter, sans-serif; }
   .sb-addgroup { display: grid; gap: 8px; }
   .sb-additems { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
@@ -3787,7 +3797,47 @@
       // A rename in progress is saved first, then the click does what it says.
       let finishRename = null;
       const settle = () => { if (finishRename) { const f = finishRename; finishRename = null; f(true, false); } };
-      $$("#sbNew, [data-new]").forEach((b) => b.addEventListener("click", () => { settle(); if (!atLimit) openBook(newBook(`Book ${state.versions.length + 1}`), true); }));
+      $$("#sbNew, [data-new]").forEach((b) => b.addEventListener("click", () => { settle(); if (!atLimit) openStart(); }));
+      /* A new book begins with its cover: the five layouts, each drawn small
+         for real, "From scratch" among them for a cover made by hand. The
+         book then opens on that cover. */
+      const withLayout = (nb, k) => { if (k && k !== "classic") nb.coverLayout = k; if (k === "custom") nb.coverPage = { blocks: [] }; return nb; };
+      function closeStart() { const el = $("#sbStart"); if (el) el.remove(); }
+      function startBook(k) {
+        settle(); if (atLimit) return;
+        closeStart();
+        openBook(withLayout(newBook(`Book ${state.versions.length + 1}`), k), true, { sel: -1 });
+      }
+      function openStart() {
+        closeStart();
+        const box = document.createElement("div");
+        box.className = "sb-start"; box.id = "sbStart"; box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true"); box.setAttribute("aria-label", "Start a new book");
+        box.innerHTML = `<div class="sb-startbox">
+          <div class="sb-addhead"><strong>Start a new book</strong><button type="button" class="sb-btn quiet" id="sbStartClose">Cancel</button></div>
+          <p class="sb-hint">Pick the cover to begin with. It can be changed any time on the cover's own panel, and every book starts with a page of photographs after it.</p>
+          <div class="sb-starts">${COVER_LAYOUTS.map(([k, nm]) => `<button type="button" class="sb-startitem" data-start="${k}"><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(k === "custom" ? "From scratch (blank)" : nm)}</b><span>${esc(COVER_LAYOUT_NOTE[k])}</span></button>`).join("")}</div>
+        </div>`;
+        root.appendChild(box);
+        box.addEventListener("click", (e) => { if (e.target === box) { closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); } });
+        box.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); } });
+        box.querySelector("#sbStartClose").addEventListener("click", () => { closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); });
+        box.querySelectorAll("[data-start]").forEach((b) => b.addEventListener("click", () => startBook(b.dataset.start)));
+        const first = box.querySelector("[data-start]"); if (first) first.focus();
+        (async () => {
+          const cache = new Map();
+          try { await ensureFonts(); } catch (e) { /* the covers draw in what is there */ }
+          for (const [k] of COVER_LAYOUTS) {
+            if (!box.isConnected) return;
+            const nb = withLayout(newBook("Preview"), k);
+            try {
+              for await (const r of renderPages(nb, { dpi: 22, cache, only: -1 })) {
+                const slot = box.querySelector(`[data-start="${k}"] .sb-startpic`);
+                if (slot && box.isConnected) slot.replaceChildren(r.page.canvas);
+              }
+            } catch (e) { /* the words stay */ }
+          }
+        })();
+      }
       $$("[data-open]").forEach((b) => b.addEventListener("click", () => {
         settle();
         const v = state.versions.find((x) => x.id === b.dataset.open); if (v) openBook(JSON.parse(JSON.stringify(v)));
