@@ -2337,6 +2337,24 @@ window.WPS_DATA = {
           "status": "workshop",
           "isTentative": false
         }
+      ],
+      "2026-09-26": [
+        {
+          "id": "b_1789736038024_4o9n",
+          "type": "Assisting Photographer",
+          "isTentative": false,
+          "status": "assisting",
+          "contractVersion": "Pending Agreement"
+        }
+      ],
+      "2026-09-27": [
+        {
+          "id": "b_1789736040303_uhs5",
+          "type": "Workshop Attended",
+          "isTentative": false,
+          "status": "workshop",
+          "contractVersion": "Pending Agreement"
+        }
       ]
     },
     "removedBookingIds": [
@@ -2485,27 +2503,87 @@ window.WPS_DATA = {
   "STUDIO_PORTFOLIOS": {
     "versions": [
       {
-        "id": "bkmu6gnf37cnqg",
+        "id": "bkmu6y7tgqtlo3",
         "name": "Book 1",
         "style": "modern",
-        "colourway": "cobalt",
+        "colourway": "terracotta",
         "orientation": "portrait",
         "title": "Selected Work",
         "subtitle": "Fashion, portraits & editorial",
         "cover": null,
-        "schema": 1,
-        "coverStyle": {
-          "title": {
-            "font": "dmserif"
+        "schema": 2,
+        "pages": [
+          {
+            "type": "photos",
+            "photos": []
+          },
+          {
+            "type": "photos",
+            "photos": [
+              {
+                "id": "mr4x1ect353v87-0",
+                "x": 0.45,
+                "y": 0,
+                "zoom": 1.25,
+                "fit": "fill"
+              },
+              {
+                "id": "mr4x1ein5o1aaq-1",
+                "x": 0.65,
+                "y": 0.35,
+                "zoom": 1.15
+              },
+              {
+                "id": "mr4x1enpef2e4p-2",
+                "x": 0.47,
+                "y": 0.36,
+                "zoom": 1
+              }
+            ]
+          },
+          {
+            "type": "free",
+            "blocks": [
+              {
+                "k": "photo",
+                "x": 0.095,
+                "y": 0.09,
+                "w": 0.39,
+                "h": 0.42
+              },
+              {
+                "k": "photo",
+                "x": 0.515,
+                "y": 0.09,
+                "w": 0.39,
+                "h": 0.42
+              },
+              {
+                "k": "text",
+                "x": 0.095,
+                "y": 0.55,
+                "w": 0.81,
+                "h": 0.1,
+                "t": "",
+                "role": "body"
+              }
+            ]
+          },
+          {
+            "type": "end",
+            "bg": "accent",
+            "layout": "closing",
+            "photos": [],
+            "text": "",
+            "note": ""
           }
-        },
-        "pages": [],
+        ],
         "texts": {
           "about": "",
           "phone": "",
           "showPrices": false
         },
-        "updatedAt": 1789707677343
+        "updatedAt": 1789735957905
       }
     ],
     "deleted": [
@@ -2514,7 +2592,12 @@ window.WPS_DATA = {
       "bkmu5tb2hfgvdt",
       "bkmu5u6856ac64",
       "bkmu5wl4m1kghq",
-      "bkmu5x2919u1wk"
+      "bkmu5x2919u1wk",
+      "bkmu6gnf37cnqg",
+      "bkmu6i50z6m02m",
+      "bkmu6nqlxmq1ot",
+      "bkmu6scnad7tah",
+      "bkmu6xt67z6sya"
     ]
   },
   "TFP_PACKAGE": {
