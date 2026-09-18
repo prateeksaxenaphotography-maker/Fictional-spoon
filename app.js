@@ -17411,8 +17411,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // browse, say) can refuse pages that size, so step down before giving
         // up: a slightly softer PDF beats none. A failed photo load also gets
         // retried this way, since failed loads aren't cached.
+        // A watermarked copy is given away, so it starts a size down from the
+        // one that is paid for: 150 dpi, where the clean PDF and PNG are 200.
         let bytes = null, lastErr = null;
-        for (const dpi of [200, 150, 110]) {
+        for (const dpi of watermark ? [150, 110] : [200, 150, 110]) {
           try {
             const pages = await renderPortfolioPdfPages(spec, { dpi, watermark, markAlpha: PDF_MARK_ALPHA.file, cache });
             try {
