@@ -724,10 +724,10 @@ const STUDIO_BOOK_LIMITS = {
   // up to 200 points, each a fraction of its own box.
   linePaths: ["v", "d", "u", "curve", "wave", "free"],
   lineEnds: ["end", "start", "both"],
-  lineTips: ["pencil", "brush", "marker", "nib", "taper"],
+  lineTips: ["pencil", "brush", "marker", "nib", "taper", "sumi", "bristle"],
   linePoints: 200,
   shapes: ["round", "chamfer", "ellipse", "triangle", "diamond", "star", "parallelogram"],   // a plain box writes nothing
-  corners: ["small", "large"],   // medium writes nothing
+  cornerMax: 0.5,   // corners: a share of the shorter side, 0 to this; the old words small/medium/large still read
   fills: ["ink", "soft", "accent", "paper", "white", "deep", "rule"],
   /* How new the shapes in a book are. A book is marked with the highest one
      it needs, and the mark is never taken off, so a browser tab running an
@@ -878,18 +878,28 @@ function cleanStudioPortfolios(o) {
             one.fill = String(x.fill).toLowerCase();
             if (typeof x.o === "number" && isFinite(x.o) && x.o < 1) one.o = Math.round(num(x.o, 0.05, 1, 1) * 100) / 100;
           }
-          if ((x.k === "shape" || x.k === "text") && L2.shapes.includes(x.shape)) one.shape = x.shape;
-          if ((x.k === "shape" || x.k === "text") && L2.corners.includes(x.corner)) one.corner = x.corner;
+          if ((x.k === "shape" || x.k === "text" || x.k === "photo") && L2.shapes.includes(x.shape)) one.shape = x.shape;
+          if (x.k === "shape" || x.k === "text" || x.k === "photo") {
+            // Corners as a number; the old words still mean what they did.
+            const legacy = { small: 0.1, medium: 0.18, large: 0.3 };
+            const c = typeof x.corner === "number" && isFinite(x.corner) ? x.corner : legacy[x.corner];
+            if (typeof c === "number") one.corner = Math.round(num(c, 0, L2.cornerMax, 0) * 100) / 100;
+          }
           if (x.k === "shape" || x.k === "line") {
             const key = x.k === "shape" ? "fill" : "color";
             if (L2.fills.includes(x[key]) || /^#[0-9a-f]{6}$/i.test(String(x[key] || ""))) one[key] = String(x[key]).toLowerCase();
             if (typeof x.o === "number" && isFinite(x.o) && x.o < 1) one.o = Math.round(num(x.o, 0.05, 1, 1) * 100) / 100;
             if (x.k === "line" && L2.thicks.includes(x.thick)) one.thick = x.thick;
+            // An exact width, in millimetres, from a fifth of one to twelve.
+            if (x.k === "line" && typeof x.width === "number" && isFinite(x.width)) one.width = Math.round(num(x.width, 0.2, 12, 0.8) * 10) / 10;
             if (x.k === "line") {
               if (L2.linePaths.includes(x.path)) one.path = x.path;
               if (L2.lineEnds.includes(x.ends)) one.ends = x.ends;
               if (L2.lineTips.includes(x.tip)) one.tip = x.tip;
               if ((one.path === "curve" || one.path === "wave") && typeof x.bend === "number" && isFinite(x.bend)) { const bd = Math.round(num(x.bend, -1, 1, 0.5) * 100) / 100; if (Math.abs(bd - 0.5) > 0.001) one.bend = bd; }
+              // A wavy line: how many waves (one writes nothing), and how rounded (fully rounded writes nothing).
+              if (one.path === "wave" && typeof x.waves === "number" && isFinite(x.waves)) { const n = Math.round(num(x.waves, 1, 8, 1)); if (n > 1) one.waves = n; }
+              if (one.path === "wave" && typeof x.soft === "number" && isFinite(x.soft)) { const sv = Math.round(num(x.soft, 0, 1, 1) * 100) / 100; if (sv < 0.999) one.soft = sv; }
               if (one.path === "free") {
                 const pts = (Array.isArray(x.pts) ? x.pts : []).filter((q) => Array.isArray(q) && q.length === 2 && typeof q[0] === "number" && typeof q[1] === "number").slice(0, L2.linePoints).map((q) => [Math.round(num(q[0], 0, 1, 0) * 1000) / 1000, Math.round(num(q[1], 0, 1, 0) * 1000) / 1000]);
                 if (pts.length >= 2) one.pts = pts; else delete one.path;
