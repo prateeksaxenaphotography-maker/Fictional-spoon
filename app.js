@@ -4249,6 +4249,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     }
     const meta = [s.brand, s.season, s.location].filter(v => v && v !== "Personal Project" && v !== "—").join(" · ");
     const title = getTalentCleanName(s.isCompCard ? s.talent : (s.title || "Untitled"));
+    // An album with "Show this album on the site" unticked is on no visitor
+    // page; only the studio's own view lists it, so the card says so, or it
+    // would pass for published. That is what a book-only album is.
+    const hidden = s.isPublic === false;
+    const hiddenTag = (hidden && isAdmin())
+      ? `<span class="noth-work-hidden" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 800; background: var(--accent); color: #ffffff; padding: 4px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em;">Hidden · book only</span>`
+      : "";
 
     return `
       <article class="noth-work reveal" data-shoot="${s.id}" data-category="${esc(s.type || '')}" data-activity="${esc(s.activity || '')}" data-talent="${esc(s.talent || '')}" style="--d:${(i % 2) * 0.08}s; position: relative; border-radius: 12px; overflow: hidden; background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow-sm); transition: transform 0.3s ease, box-shadow 0.3s ease;">
@@ -4256,9 +4263,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <!-- Floating micro-badge: shoot type. A photo-count badge used to sit
                opposite it, but a frame count is inventory, not something a
                visitor picks an album by, and it competed with the cover. -->
-          ${typeTag ? `
+          ${(typeTag || hiddenTag) ? `
           <div style="position: absolute; top: 12px; left: 12px; z-index: 4; display: flex; gap: 6px; align-items: center;">
-            <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 800; background: rgba(10, 10, 10, 0.75); backdrop-filter: blur(8px); color: #ffffff; padding: 4px 9px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); text-transform: uppercase; letter-spacing: 0.05em;">${esc(typeTag)}</span>
+            ${typeTag ? `<span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 800; background: rgba(10, 10, 10, 0.75); backdrop-filter: blur(8px); color: #ffffff; padding: 4px 9px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); text-transform: uppercase; letter-spacing: 0.05em;">${esc(typeTag)}</span>` : ""}${hiddenTag}
           </div>` : ""}
 
           <span class="noth-work-backdrop" style="background-image: url('${esc(photoSrc(cover))}');" aria-hidden="true"></span>
@@ -4277,9 +4284,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             </div>
             <div style="display: flex; align-items: center; gap: 8px;">
               <span class="noth-work-cta" style="font-size: var(--font-xs); font-weight: 700; color: var(--accent);">View Album →</span>
-              <button class="work-share" data-id="${s.id}" style="background: var(--bone); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; padding: 4px 8px; display: flex; align-items: center; justify-content: center; color: var(--ink); font-size: var(--font-xs);" title="Share album" aria-label="Share album">
+              ${hidden ? "" : `<button class="work-share" data-id="${s.id}" style="background: var(--bone); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; padding: 4px 8px; display: flex; align-items: center; justify-content: center; color: var(--ink); font-size: var(--font-xs);" title="Share album" aria-label="Share album">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-              </button>
+              </button>`}
             </div>
           </div>
           ${isAdmin() ? `
@@ -8066,6 +8073,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             ? `<h1 class="kinetic-h1 album-page-h1">${esc(name)}</h1>`
             : kineticH1(name, "album-page-h1")}
           ${album.description ? `<p class="page-sub reveal">${esc(album.description)}</p>` : ""}
+          ${album.isPublic === false ? `<p class="page-sub reveal album-hidden-note" style="margin-top: 14px; padding: 10px 12px; border: 1px dashed var(--line-2); border-radius: 10px; font-size: var(--font-xs);">Only you can see this album: it is hidden from the site, a book-only album. Its photos are offered in your portfolio book. To put it on the site, tick "Show this album on the site" in Upload → Publish settings.</p>` : ""}
         </div>
       </section>
       <section class="section container album-page">
@@ -8819,7 +8827,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <fieldset id="fs_publish"><legend>Publish settings</legend>
               <div style="display: flex; align-items: center; gap: 8px;">
                 <input id="f_is_public" type="checkbox" checked style="width: 16px; height: 16px; accent-color: var(--accent); margin: 0; cursor: pointer;" />
-                <label for="f_is_public" style="font-weight: 600; cursor: pointer; margin: 0;">Show this album on the site <span class="label-hint" style="font-weight: 400; text-transform: none; letter-spacing: 0; font-family: inherit; font-size: 12.5px;">— untick to hide it everywhere. It stays saved.</span></label>
+                <label for="f_is_public" style="font-weight: 600; cursor: pointer; margin: 0;">Show this album on the site <span class="label-hint" style="font-weight: 400; text-transform: none; letter-spacing: 0; font-family: inherit; font-size: 12.5px;">— untick to keep it off the homepage, Albums and every other page. It stays saved, and its photos are still offered in your portfolio book: a book-only album.</span></label>
               </div>
               <div class="publish-toggles">
                 <label>
@@ -9920,7 +9928,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         setTimeout(() => {
           const pill = $("#uploadStatusPill"), pubCb = $("#f_is_public");
           if (!pill) return;
-          const paint = () => { const live = !!pubCb?.checked; pill.textContent = live ? "Published · public" : "Hidden from site"; pill.classList.toggle("is-live", live); };
+          const paint = () => { const live = !!pubCb?.checked; pill.textContent = live ? "Published · public" : "Hidden from site · book only"; pill.classList.toggle("is-live", live); };
           pubCb?.addEventListener("change", paint);
           paint();
         }, 0);
