@@ -3328,6 +3328,20 @@
   .sb-ptrow { display: flex; align-items: center; gap: 6px; font: 500 11px Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
   .sb-ptrow input[type=number] { width: 74px; padding: 6px 8px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--paper, #faf8f5); color: var(--ink, #141416); font: 600 13px 'JetBrains Mono', monospace; }
   .sb-cphost { grid-column: 1 / -1; } .sb-cphost[hidden] { display: none; }
+  .sb-cpharm { margin-top: 8px; }
+  .sb-cpharm summary { cursor: pointer; font: 600 12px Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
+  .sb-cpbase { display: flex; align-items: center; gap: 8px; margin-top: 8px; font: 500 11px Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
+  .sb-cpwheelwrap { position: relative; width: 150px; height: 150px; margin: 10px auto; }
+  .sb-cpwheel { position: absolute; inset: 0; border-radius: 50%; cursor: crosshair; background: conic-gradient(hsl(0,100%,50%), hsl(60,100%,50%), hsl(120,100%,50%), hsl(180,100%,50%), hsl(240,100%,50%), hsl(300,100%,50%), hsl(360,100%,50%)); -webkit-mask: radial-gradient(circle, transparent 55%, #000 56%); mask: radial-gradient(circle, transparent 55%, #000 56%); }
+  .sb-cpwheel:focus-visible { outline: 2px solid var(--ink, #141416); outline-offset: 3px; }
+  .sb-cpdots { position: absolute; inset: 0; pointer-events: none; }
+  .sb-cpd { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.45); }
+  .sb-cpd.base { width: 20px; height: 20px; margin: -10px 0 0 -10px; border-width: 3px; }
+  .sb-cpd.near { border-style: dashed; }
+  .sb-cprowh { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 6px; }
+  .sb-cprowh > span { flex: 0 0 82px; font: 500 11px Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
+  .sb-cpsw { width: 21px; height: 21px; padding: 0; border: 1px solid rgba(0,0,0,.18); border-radius: 6px; cursor: pointer; }
+  .sb-cpsw:hover, .sb-cpsw:focus-visible { transform: scale(1.12); outline: 2px solid var(--ink, #141416); outline-offset: 1px; }
   .sb-cpick { display: grid; gap: 8px; margin-top: 6px; padding: 8px; border: 1px solid var(--sb-line); border-radius: 10px; background: var(--paper, #faf8f5); }
   .sb-cpsat { position: relative; height: 118px; border-radius: 8px; border: 1px solid rgba(0,0,0,.15); cursor: crosshair; touch-action: none; }
   .sb-cpsat:focus-visible { outline: 2px solid var(--accent, #d24e1a); outline-offset: 2px; }
@@ -5361,16 +5375,80 @@
       const el = document.createElement("div"); el.className = "sb-cpick";
       el.innerHTML = `<div class="sb-cpsat" role="slider" aria-label="How strong and how bright" tabindex="0"><i class="sb-cpdot"></i></div>
         <input type="range" class="sb-cphue" min="0" max="360" step="1" value="${Math.round(st.h)}" aria-label="Hue">
-        <div class="sb-cprow"><i class="sb-cpprev"></i><input type="text" class="sb-cphex" maxlength="7" value="${/^#[0-9a-f]{6}$/i.test(hex || "") ? hex : hsvToHex(st.h, st.s, st.v)}" aria-label="The colour as #rrggbb" spellcheck="false" autocapitalize="off"><span>or type it</span></div>`;
+        <div class="sb-cprow"><i class="sb-cpprev"></i><input type="text" class="sb-cphex" maxlength="7" value="${/^#[0-9a-f]{6}$/i.test(hex || "") ? hex : hsvToHex(st.h, st.s, st.v)}" aria-label="The colour as #rrggbb" spellcheck="false" autocapitalize="off"><span>or type it</span></div>
+        <details class="sb-cpharm">
+          <summary>Colour wheel and matches</summary>
+          <div class="sb-cpbase"><span>Around</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Around which colour"><button type="button" role="radio" data-cpbase="this" aria-checked="true">This colour</button><button type="button" role="radio" data-cpbase="accent" aria-checked="false">The book's accent</button></div></div>
+          <div class="sb-cpwheelwrap"><div class="sb-cpwheel" role="slider" aria-label="Hue, round the wheel" tabindex="0"></div><div class="sb-cpdots" aria-hidden="true"></div></div>
+          <div class="sb-cprows"></div>
+          <p class="sb-hint">Tap a match to use it. Same family sits beside the colour on the wheel; contrast faces it; triads and quads share the wheel in threes and fours; tints, shades and tones are the colour lighter, darker and greyer.</p>
+        </details>`;
       const sat = el.querySelector(".sb-cpsat"), dot = el.querySelector(".sb-cpdot"), hue = el.querySelector(".sb-cphue"), prev = el.querySelector(".sb-cpprev"), hexIn = el.querySelector(".sb-cphex");
+      /* ---- the wheel and its matches: worked out from this colour, or from
+         the book's accent, in HSV; every match is a swatch that sets the colour. */
+      const harm = el.querySelector(".sb-cpharm"), rows = el.querySelector(".sb-cprows"), dots = el.querySelector(".sb-cpdots"), wheel = el.querySelector(".sb-cpwheel");
+      let base = "this";
+      const accentHex = () => { try { return String(colourway(book.colourway).accent).toLowerCase(); } catch (e) { return "#d24e1a"; } };
+      const baseHsv = () => (base === "accent" ? hexToHsv(accentHex()) : { h: st.h, s: st.s, v: st.v });
+      const wrapH = (h) => ((h % 360) + 360) % 360;
+      const c01 = (x) => Math.min(1, Math.max(0, x));
+      const HARMONIES = (b) => {
+        const at = (dh, s = b.s, v = b.v) => hsvToHex(wrapH(b.h + dh), c01(s), c01(v));
+        const sat = Math.max(b.s, 0.35), val = Math.max(b.v, 0.45);   // a grey base still shows its hue family
+        return [
+          ["Same family", [-30, -15, 0, 15, 30].map((d) => at(d, sat, val))],
+          ["Contrast", [at(0, sat, val), at(180, sat, val), at(150, sat, val), at(210, sat, val), at(180, sat, val * 0.7)]],
+          ["Triad", [at(0, sat, val), at(120, sat, val), at(240, sat, val)]],
+          ["Quad", [at(0, sat, val), at(90, sat, val), at(180, sat, val), at(270, sat, val)]],
+          ["Tints and shades", [at(0, b.s * 0.25, 1), at(0, b.s * 0.55, 1), at(0, b.s, b.v), at(0, b.s, b.v * 0.75), at(0, b.s, b.v * 0.5), at(0, b.s, b.v * 0.3)]],
+          ["Tones", [at(0, b.s * 0.85, b.v * 0.92), at(0, b.s * 0.65, b.v * 0.84), at(0, b.s * 0.45, b.v * 0.76), at(0, b.s * 0.3, b.v * 0.68), at(0, b.s * 0.15, b.v * 0.6)]],
+          ["Saturation", [0.1, 0.3, 0.5, 0.7, 0.85, 1].map((sv) => at(0, sv, val))],
+          ["Hues", [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((d) => at(d, sat, val))]
+        ];
+      };
+      const paintHarm = () => {
+        if (!harm.open) return;
+        const b = baseHsv();
+        rows.innerHTML = HARMONIES(b).map(([name, list]) => `<div class="sb-cprowh"><span>${name}</span>${list.map((hx) => `<button type="button" class="sb-cpsw" data-cphex="${hx}" style="background:${hx}" title="${hx}" aria-label="Use ${hx}"></button>`).join("")}</div>`).join("");
+        const dotAt = (h, cls, hx) => { const a = (h * Math.PI) / 180; const x = 50 + 40 * Math.sin(a), y = 50 - 40 * Math.cos(a); return `<i class="sb-cpd ${cls}" style="left:${x.toFixed(1)}%; top:${y.toFixed(1)}%; background:${hx}"></i>`; };
+        const sat = Math.max(b.s, 0.35), val = Math.max(b.v, 0.45);
+        dots.innerHTML = [[180, "far"], [120, "tri"], [240, "tri"], [-30, "near"], [30, "near"]].map(([d, cls]) => dotAt(wrapH(b.h + d), cls, hsvToHex(wrapH(b.h + d), sat, val))).join("") + dotAt(b.h, "base", hsvToHex(b.h, b.s, b.v));
+      };
       const paint = () => {
         sat.style.background = `linear-gradient(to top, #000, rgba(0,0,0,0)), linear-gradient(to right, #fff, hsl(${st.h}, 100%, 50%))`;
         dot.style.left = `${(st.s * 100).toFixed(1)}%`; dot.style.top = `${((1 - st.v) * 100).toFixed(1)}%`;
         const cur = hsvToHex(st.h, st.s, st.v);
         prev.style.background = cur;
         if (document.activeElement !== hexIn) hexIn.value = cur;
+        paintHarm();
         return cur;
       };
+      harm.addEventListener("toggle", paintHarm);
+      el.querySelectorAll("[data-cpbase]").forEach((b) => b.addEventListener("click", () => {
+        base = b.dataset.cpbase;
+        el.querySelectorAll("[data-cpbase]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
+        paintHarm();
+      }));
+      rows.addEventListener("click", (e) => {
+        const b = e.target.closest("[data-cphex]"); if (!b) return;
+        const got = hexToHsv(b.dataset.cphex);
+        st.h = got.h; st.s = got.s; st.v = got.v; hue.value = String(Math.round(st.h));
+        onChange(paint());
+      });
+      // Round the wheel: hue 0 at the top, clockwise. Dragging turns it.
+      const hueFromWheel = (ev) => { const r = wheel.getBoundingClientRect(); const x = ev.clientX - (r.left + r.width / 2), y = ev.clientY - (r.top + r.height / 2); return wrapH((Math.atan2(x, -y) * 180) / Math.PI); };
+      wheel.addEventListener("pointerdown", (ev) => {
+        ev.preventDefault(); wheel.focus({ preventScroll: true });
+        try { wheel.setPointerCapture(ev.pointerId); } catch (e) { /* older browsers */ }
+        const turn = (m) => { st.h = hueFromWheel(m); hue.value = String(Math.round(st.h)); onChange(paint()); };
+        turn(ev);
+        const up = () => { wheel.removeEventListener("pointermove", turn); wheel.removeEventListener("pointerup", up); wheel.removeEventListener("pointercancel", up); };
+        wheel.addEventListener("pointermove", turn); wheel.addEventListener("pointerup", up); wheel.addEventListener("pointercancel", up);
+      });
+      wheel.addEventListener("keydown", (e) => {
+        const d = { ArrowLeft: -5, ArrowDown: -5, ArrowRight: 5, ArrowUp: 5 }[e.key]; if (!d) return;
+        e.preventDefault(); st.h = wrapH(st.h + d); hue.value = String(Math.round(st.h)); onChange(paint());
+      });
       const emit = () => onChange(paint());
       const fromPoint = (ev) => { const r = sat.getBoundingClientRect(); st.s = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width)); st.v = Math.min(1, Math.max(0, 1 - (ev.clientY - r.top) / r.height)); emit(); };
       sat.addEventListener("pointerdown", (ev) => {
