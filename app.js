@@ -718,7 +718,14 @@ const STUDIO_BOOK_LIMITS = {
   blockKinds: ["text", "photo", "shape", "line"],
   blockRoles: ["head", "intro", "body", "kicker", "quote"],
   blockMax: 12, blockPhotoMax: 6, blockText: 600,
-  thicks: ["hair", "narrow", "broad"],
+  thicks: ["hair", "narrow", "medium", "broad", "heavy"],
+  // A line: how it runs ("h", across, writes nothing), its arrowheads, and
+  // what it is drawn with ("pen" writes nothing). A line drawn by hand keeps
+  // up to 200 points, each a fraction of its own box.
+  linePaths: ["v", "d", "u", "curve", "wave", "free"],
+  lineEnds: ["end", "start", "both"],
+  lineTips: ["pencil", "brush", "marker", "nib", "taper"],
+  linePoints: 200,
   shapes: ["round", "chamfer", "ellipse", "triangle", "diamond", "star", "parallelogram"],   // a plain box writes nothing
   corners: ["small", "large"],   // medium writes nothing
   fills: ["ink", "soft", "accent", "paper", "white", "deep", "rule"],
@@ -850,7 +857,7 @@ function cleanStudioPortfolios(o) {
           if (!x || typeof x !== "object" || !L2.blockKinds.includes(x.k)) return null;
           if (x.k === "photo" && ++photos > L2.blockPhotoMax) return null;
           const one = { k: x.k, x: frac(x.x, -0.3, 1.3, 0), y: frac(x.y, -0.3, 1.3, 0), w: frac(x.w, 0.01, 1.6, 0.3) };
-          if (x.k !== "line") one.h = frac(x.h, 0.01, 1.6, 0.2);
+          if (x.k !== "line" || (L2.linePaths.includes(x.path) && x.path !== "h")) one.h = frac(x.h, 0.01, 1.6, 0.2);
           const turn = Math.round(num(x.r, -180, 180, 0) * 10) / 10;
           if (turn) one.r = turn;
           if (x.k === "text") {
@@ -878,6 +885,16 @@ function cleanStudioPortfolios(o) {
             if (L2.fills.includes(x[key]) || /^#[0-9a-f]{6}$/i.test(String(x[key] || ""))) one[key] = String(x[key]).toLowerCase();
             if (typeof x.o === "number" && isFinite(x.o) && x.o < 1) one.o = Math.round(num(x.o, 0.05, 1, 1) * 100) / 100;
             if (x.k === "line" && L2.thicks.includes(x.thick)) one.thick = x.thick;
+            if (x.k === "line") {
+              if (L2.linePaths.includes(x.path)) one.path = x.path;
+              if (L2.lineEnds.includes(x.ends)) one.ends = x.ends;
+              if (L2.lineTips.includes(x.tip)) one.tip = x.tip;
+              if ((one.path === "curve" || one.path === "wave") && typeof x.bend === "number" && isFinite(x.bend)) { const bd = Math.round(num(x.bend, -1, 1, 0.5) * 100) / 100; if (Math.abs(bd - 0.5) > 0.001) one.bend = bd; }
+              if (one.path === "free") {
+                const pts = (Array.isArray(x.pts) ? x.pts : []).filter((q) => Array.isArray(q) && q.length === 2 && typeof q[0] === "number" && typeof q[1] === "number").slice(0, L2.linePoints).map((q) => [Math.round(num(q[0], 0, 1, 0) * 1000) / 1000, Math.round(num(q[1], 0, 1, 0) * 1000) / 1000]);
+                if (pts.length >= 2) one.pts = pts; else delete one.path;
+              }
+            }
           }
           return one;
         }).filter(Boolean).slice(0, L2.blockMax);

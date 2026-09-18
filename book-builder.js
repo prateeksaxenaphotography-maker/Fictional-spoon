@@ -1825,7 +1825,9 @@
   // Moves an operation laid out on the A4 frame onto the paper's design space.
   function placeOp(o, G) {
     if (!G.ox && !G.oy) return o;
-    if (o.k === "text" || o.k === "guide") return { ...o, x: o.x + G.ox, y: o.y + G.oy };
+    const turned = (out) => (o.rot ? { ...out, rot: { ...o.rot, cx: o.rot.cx + G.ox, cy: o.rot.cy + G.oy } } : out);
+    if (o.k === "stroke") return turned({ ...o, pts: o.pts.map(([x, y]) => [x + G.ox, y + G.oy]) });
+    if (o.k === "text" || o.k === "guide") return turned({ ...o, x: o.x + G.ox, y: o.y + G.oy });
     const axis = (a, len, full, off, total, stretch) => {
       const atStart = a <= 0.01, atEnd = a + len >= full - 0.01;
       if (atStart && atEnd) return [0, total];                       // spans the page: still does
@@ -1836,7 +1838,7 @@
     const stretch = o.k === "photo";   // a rect or a path keeps its size
     const [x, w] = axis(o.x, o.w, G.Wa, G.ox, G.W, stretch);
     const [y, h] = axis(o.y, o.h, G.Ha, G.oy, G.H, stretch);
-    return { ...o, x, y, w, h };
+    return turned({ ...o, x, y, w, h });
   }
 
   /* ---------- where a writing page's photo sits ------------------------------
@@ -2405,7 +2407,66 @@
   const shapeInset = (shape, w, h, k = 0.18) => (shape === "ellipse" ? { x: w * 0.15, y: h * 0.15 } : shape === "diamond" ? { x: w * 0.25, y: h * 0.25 } : shape === "triangle" ? { x: w * 0.22, y: h * 0.38 } : shape === "star" ? { x: w * 0.28, y: h * 0.3 } : shape === "parallelogram" ? { x: w * 0.22, y: Math.min(4, h * 0.2) } : (shape === "round" || shape === "chamfer") ? { x: Math.max(Math.min(4, w * 0.08), Math.min(w, h) * k * 0.6), y: Math.max(Math.min(4, h * 0.2), Math.min(w, h) * k * 0.6) } : { x: Math.min(4, w * 0.08), y: Math.min(4, h * 0.2) });
   const FREE_ROLES = ["head", "intro", "body", "kicker", "quote"];
   const FREE_MAX = 12, FREE_PHOTO_MAX = 6, FREE_TEXT_MAX = 600;
-  const THICKS = { hair: 0.3, narrow: 0.8, broad: 2.2 };
+  const THICKS = { hair: 0.3, narrow: 0.8, medium: 1.5, broad: 2.2, heavy: 4 };
+  /* A line: across (a rule, as always), down, diagonal, curved or wavy with
+     a bend, or drawn by hand as a run of points; an arrowhead at either end,
+     both or none; drawn with a pencil, a pen, a soft brush, a square marker,
+     a flat nib (thick across the stroke, thin along it) or a tapering cone. */
+  const LINE_PATHS = ["h", "v", "d", "u", "curve", "wave", "free"];
+  const LINE_TIPS = ["pencil", "brush", "marker", "nib", "taper"];
+  const linePath = (b) => (LINE_PATHS.includes(b && b.path) ? b.path : "h");
+  const lineThick = (b) => THICKS[b && b.thick] || THICKS.narrow;
+  const lineBend = (b) => Math.max(-1, Math.min(1, typeof b.bend === "number" ? b.bend : 0.5));
+  // The line's own points, in millimetres, inside its box.
+  function linePoints(b, box) {
+    const path = linePath(b), { x, y, w, h } = box, cy = y + h / 2;
+    const sample = (f, n = 32) => Array.from({ length: n + 1 }, (_, i) => f(i / n));
+    if (path === "v") return [[x + w / 2, y], [x + w / 2, y + h]];
+    if (path === "d") return [[x, y], [x + w, y + h]];
+    if (path === "u") return [[x, y + h], [x + w, y]];
+    if (path === "curve") { const k = lineBend(b) * h, cx = x + w / 2; return sample((t) => [(1 - t) * (1 - t) * x + 2 * (1 - t) * t * cx + t * t * (x + w), (1 - t) * (1 - t) * cy + 2 * (1 - t) * t * (cy - k) + t * t * cy]); }
+    if (path === "wave") { const k = lineBend(b) * h; return sample((t) => { const a = 1 - t; return [a * a * a * x + 3 * a * a * t * (x + w / 3) + 3 * a * t * t * (x + 2 * w / 3) + t * t * t * (x + w), a * a * a * cy + 3 * a * a * t * (cy - k) + 3 * a * t * t * (cy + k) + t * t * t * cy]; }, 40); }
+    if (path === "free") return (Array.isArray(b.pts) ? b.pts : []).filter((p) => Array.isArray(p) && p.length === 2).map(([px, py]) => [x + (+px || 0) * w, y + (+py || 0) * h]);
+    return [[x, cy], [x + w, cy]];
+  }
+  // Draws a run of points with the chosen tip, then the arrowheads.
+  function strokeOp(page, o) {
+    const ctx = page.ctx, u = (v) => page.u(v), pts = o.pts;
+    if (!pts || pts.length < 2) return;
+    const tip = LINE_TIPS.includes(o.tip) ? o.tip : "pen";
+    const w = u(o.w);
+    const P = pts.map(([x, y]) => [u(x), u(y)]);
+    const trace = () => {
+      ctx.beginPath(); ctx.moveTo(P[0][0], P[0][1]);
+      for (let i = 1; i < P.length - 1; i++) ctx.quadraticCurveTo(P[i][0], P[i][1], (P[i][0] + P[i + 1][0]) / 2, (P[i][1] + P[i + 1][1]) / 2);
+      const L = P[P.length - 1]; ctx.lineTo(L[0], L[1]);
+    };
+    const draw = (lw, alpha, cap = "round") => { ctx.save(); ctx.globalAlpha *= alpha; ctx.strokeStyle = o.c; ctx.lineWidth = Math.max(0.5, lw); ctx.lineCap = cap; ctx.lineJoin = cap === "square" ? "miter" : "round"; trace(); ctx.stroke(); ctx.restore(); };
+    // A ribbon: each segment as a quad between the offsets at its two ends.
+    const ribbon = (offsetAt) => {
+      ctx.save(); ctx.fillStyle = o.c; ctx.beginPath();
+      for (let i = 0; i < P.length - 1; i++) {
+        const [ax, ay] = offsetAt(i), [bx, by] = offsetAt(i + 1);
+        ctx.moveTo(P[i][0] + ax, P[i][1] + ay); ctx.lineTo(P[i + 1][0] + bx, P[i + 1][1] + by); ctx.lineTo(P[i + 1][0] - bx, P[i + 1][1] - by); ctx.lineTo(P[i][0] - ax, P[i][1] - ay); ctx.closePath();
+      }
+      ctx.fill(); ctx.restore();
+    };
+    const dirAt = (i) => { const a = P[Math.max(0, i - 1)], b2 = P[Math.min(P.length - 1, i + 1)]; const dx = b2[0] - a[0], dy = b2[1] - a[1], L = Math.hypot(dx, dy) || 1; return [dx / L, dy / L]; };
+    if (tip === "brush") { draw(w * 2.2, 0.5); draw(w * 1.3, 0.85); }
+    else if (tip === "pencil") draw(w * 0.75, 0.85, "butt");
+    else if (tip === "marker") draw(w * 1.8, 0.55, "square");
+    else if (tip === "nib") { const a = -Math.PI / 4, nx = Math.cos(a) * w * 1.4, ny = Math.sin(a) * w * 1.4; ribbon(() => [nx, ny]); }
+    else if (tip === "taper") { ribbon((i) => { const [dx, dy] = dirAt(i); const half = w * (1.6 - 1.4 * (i / Math.max(1, P.length - 1))); return [-dy * half, dx * half]; }); ctx.save(); ctx.fillStyle = o.c; ctx.beginPath(); ctx.arc(P[0][0], P[0][1], w * 1.6, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+    else draw(w, 1);
+    const head = (from, to) => {
+      const dx = to[0] - from[0], dy = to[1] - from[1], len = Math.hypot(dx, dy) || 1;
+      const size = Math.max(3, o.w * 3.2), ux = dx / len, uy = dy / len;
+      const bx = to[0] - ux * size, by = to[1] - uy * size, sx = -uy * size * 0.5, sy = ux * size * 0.5;
+      ctx.save(); ctx.fillStyle = o.c; ctx.beginPath(); ctx.moveTo(u(to[0]), u(to[1])); ctx.lineTo(u(bx + sx), u(by + sy)); ctx.lineTo(u(bx - sx), u(by - sy)); ctx.closePath(); ctx.fill(); ctx.restore();
+    };
+    if (o.ends === "end" || o.ends === "both") head(pts[pts.length - 2], pts[pts.length - 1]);
+    if (o.ends === "start" || o.ends === "both") head(pts[1], pts[0]);
+  }
   const FILL_NAMES = ["ink", "soft", "accent", "paper", "white", "deep", "rule"];
   const blockColor = (v, P, fallback) => (FILL_NAMES.includes(v) ? P[v] : (/^#[0-9a-f]{6}$/i.test(String(v || "")) ? String(v).toLowerCase() : fallback));
   // What a box of words is: the style's own type, so an Anything page still
@@ -2419,7 +2480,10 @@
   }
   const freeBlocks = (entry) => (Array.isArray(entry && entry.blocks) ? entry.blocks : []).slice(0, FREE_MAX);
   // A block's box in design millimetres, on the A4 frame.
-  const blockBox = (b, W, H) => ({ x: (+b.x || 0) * W, y: (+b.y || 0) * H, w: Math.max(0.5, (+b.w || 0) * W), h: b.k === "line" ? (THICKS[b.thick] || THICKS.narrow) : Math.max(0.5, (+b.h || 0) * H) });
+  // A line across keeps its box as thin as its stroke, as it always has; any
+  // other line owns a real box.
+  const lineH = (b, H) => (linePath(b) === "h" ? lineThick(b) / H : Math.max(0.01, +b.h || 0.15));
+  const blockBox = (b, W, H) => ({ x: (+b.x || 0) * W, y: (+b.y || 0) * H, w: Math.max(0.5, (+b.w || 0) * W), h: b.k === "line" ? lineH(b, H) * H : Math.max(0.5, (+b.h || 0) * H) });
 
   function planFree(book, entry) {
     const G = geometry(book);
@@ -2438,7 +2502,12 @@
       const turn = Math.abs(+b.r || 0) > 0.05 ? { deg: +b.r, cx: box.x + box.w / 2, cy: box.y + box.h / 2 } : null;
       const field = `b${i}`;
       if (b.k === "shape") { const sh = shapeOf(b); op({ k: sh === "rect" ? "rect" : "path", shape: sh, corner: cornerOf(b), x: box.x, y: box.y, w: box.w, h: box.h, c: blockColor(b.fill, P, P.accent), a: b.o, rot: turn }); return; }
-      if (b.k === "line") { op({ k: "rect", x: box.x, y: box.y, w: box.w, h: box.h, c: blockColor(b.color, P, P.rule), a: b.o, rot: turn }); return; }
+      if (b.k === "line") {
+        const c = blockColor(b.color, P, P.rule);
+        if (linePath(b) === "h" && !b.ends && !b.tip) { op({ k: "rect", x: box.x, y: box.y, w: box.w, h: box.h, c, a: b.o, rot: turn }); return; }
+        op({ k: "stroke", pts: linePoints(b, box), w: lineThick(b), c, a: b.o, tip: b.tip, ends: b.ends, rot: turn });
+        return;
+      }
       if (b.k === "photo") {
         op({
           k: "photo", shot: (b.p && b.p.id) ? b.p : null, x: box.x, y: box.y, w: box.w, h: box.h,
@@ -2529,6 +2598,7 @@
       if (skip && o.field === skip && (o.k === "text" || o.k === "guide")) continue;
       if (o.k === "rect") around(o, () => rect(page, o.x, o.y, o.w, o.h, o.c));
       else if (o.k === "path") around(o, () => { const ctx = page.ctx; tracePath(ctx, o.shape, page.u(o.x), page.u(o.y), page.u(o.w), page.u(o.h), o.corner); ctx.fillStyle = o.c; ctx.fill(); });
+      else if (o.k === "stroke") around(o, () => strokeOp(page, o));
       else if (o.k === "text") around(o, () => {
         font(page, ...o.f);
         if (o.justify) {
@@ -2871,6 +2941,8 @@
   .sb-preview { position: relative; display: flex; align-items: center; justify-content: center; padding: 20px; min-height: 0; background: var(--sb-sunk); overflow: hidden; }
   /* The Anything page: a layer of handles sitting exactly on the drawn page. */
   .sb-layer { position: absolute; }
+  .sb-layer.drawing { cursor: crosshair; touch-action: none; } .sb-layer.drawing .sb-blk { pointer-events: none; }
+  .sb-trail { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
   .sb-blk { position: absolute; margin: 0; padding: 0; border: 1px solid transparent; border-radius: 0; background: none; cursor: move; touch-action: none; }
   .sb-blk:hover { border-color: rgba(210, 78, 26, .55); }
   .sb-blk:focus-visible { outline: 2px solid var(--accent, #d24e1a); outline-offset: 1px; }
@@ -3235,6 +3307,7 @@
     let sel = -1;                        // -1 = cover, else index into book.pages
     let active = 0;                      // which chosen photo the placement controls act on
     let blockSel = -1;                   // which thing on an Anything page is chosen
+    let drawing = false;                 // the pointer draws a line by hand on an Anything page
     let lastRender = [];                 // what the preview last drew, page by page
     let lastFacing = null;               // the page drawn beside it, when Two is on
     let view = { two: false, zoom: false }; // facing pages, and larger than fit
@@ -3343,6 +3416,7 @@
         if (e.key === "[" || e.key === "{") { e.preventDefault(); if (e.shiftKey) moveBlockTo(blockSel, "back"); else moveBlock(blockSel, -1); return; }
       }
       if (e.key !== "Escape") return;
+      if (drawing) { setDrawing(false); return; }
       if (editing) { closeInline(true); return; }
       if (photoSel) { photoSel = null; $$(".sb-hit.photo.on").forEach((x) => x.classList.remove("on")); pageHint(""); return; }
       if ($("#sbRead")) { closeRead(); return; }
@@ -3721,7 +3795,7 @@
     const blocksOf = (e) => (Array.isArray(e.blocks) ? e.blocks : (e.blocks = []));
     const curBlock = () => { const e = freePage(); if (!e) return null; return blocksOf(e)[blockSel] || null; };
     const BLOCK_NAME = { text: "Words", photo: "Photograph", shape: "Shape", line: "Line" };
-    const blockLabel = (b) => (b.k === "text" ? (String(b.t || "").trim().slice(0, 28) || "Words (empty)") : BLOCK_NAME[b.k] || b.k);
+    const blockLabel = (b) => (b.k === "text" ? (String(b.t || "").trim().slice(0, 28) || "Words (empty)") : b.k === "line" && linePath(b) === "free" ? "Drawn line" : BLOCK_NAME[b.k] || b.k);
     // Screen pixels to a fraction of the A4 frame, and the other way.
     function layerMaths() {
       const G = geometry(book);
@@ -3734,7 +3808,7 @@
         left: (b) => ((b.x * G.Wa + G.ox) / G.W) * 100,
         top: (b) => ((b.y * G.Ha + G.oy) / G.H) * 100,
         wide: (b) => ((b.w * G.Wa) / G.W) * 100,
-        high: (b) => (((b.k === "line" ? (THICKS[b.thick] || THICKS.narrow) : b.h * G.Ha)) / G.H) * 100
+        high: (b) => ((b.k === "line" ? lineH(b, G.Ha) * G.Ha : b.h * G.Ha) / G.H) * 100
       };
     }
     const round4 = (v) => Math.round(v * 10000) / 10000;
@@ -3772,12 +3846,12 @@
       layer.insertAdjacentHTML("afterbegin", blocks.map((b, i) => {
         const on = i === blockSel;
         const turn = b.r ? ` transform: rotate(${b.r}deg);` : "";
-        const handles = on && b.k !== "line"
+        const handles = on && !(b.k === "line" && linePath(b) === "h")
           ? ["nw", "n", "ne", "e", "se", "s", "sw", "w"].map((h) => `<span class="sb-h" data-h="${h}" style="left:${{ nw: 0, n: 50, ne: 100, e: 100, se: 100, s: 50, sw: 0, w: 0 }[h]}%; top:${{ nw: 0, n: 0, ne: 0, e: 50, se: 100, s: 100, sw: 100, w: 50 }[h]}%"></span>`).join("")
           : on ? `<span class="sb-h" data-h="w" style="left:0%; top:50%"></span><span class="sb-h" data-h="e" style="left:100%; top:50%"></span>` : "";
-        return `<button type="button" class="sb-blk${on ? " on" : ""}${b.k === "line" ? " line" : ""}${shapeOf(b) === "ellipse" ? " oval" : ""}" data-blk="${i}" aria-pressed="${on}"
+        return `<button type="button" class="sb-blk${on ? " on" : ""}${b.k === "line" && linePath(b) === "h" ? " line" : ""}${shapeOf(b) === "ellipse" ? " oval" : ""}" data-blk="${i}" aria-pressed="${on}"
           aria-label="${esc(blockLabel(b))}, ${i + 1} of ${blocks.length}"
-          style="left:${M.left(b).toFixed(3)}%; top:${M.top(b).toFixed(3)}%; width:${M.wide(b).toFixed(3)}%; height:${Math.max(M.high(b), b.k === "line" ? 1.2 : 0.6).toFixed(3)}%;${turn}">${handles}</button>`;
+          style="left:${M.left(b).toFixed(3)}%; top:${M.top(b).toFixed(3)}%; width:${M.wide(b).toFixed(3)}%; height:${Math.max(M.high(b), b.k === "line" && linePath(b) === "h" ? 1.2 : 0.6).toFixed(3)}%;${turn}">${handles}</button>`;
       }).join(""));
       const old = layer.querySelector("#sbBlkBar"); if (old) old.remove();
       if (blockSel >= 0 && blocks[blockSel]) {
@@ -3819,7 +3893,7 @@
       const boxes = [];
       blocksOf(e).forEach((b, i) => {
         if (i === skip) return;
-        const h = b.k === "line" ? (THICKS[b.thick] || THICKS.narrow) / G.Ha : b.h;
+        const h = b.k === "line" ? lineH(b, G.Ha) : b.h;
         xs.push(b.x, b.x + b.w / 2, b.x + b.w);
         ys.push(b.y, b.y + h / 2, b.y + h);
         // …and the same thing mirrored about the middle, so two things can sit
@@ -3847,7 +3921,7 @@
     function facingBoxes(other) {
       const G = geometry(book);
       const e = other.index >= 0 ? book.pages[other.index] : null;
-      if (e && e.type === "free") return blocksOf(e).map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.k === "line" ? (THICKS[b.thick] || THICKS.narrow) / G.Ha : b.h }));
+      if (e && e.type === "free") return blocksOf(e).map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.k === "line" ? lineH(b, G.Ha) : b.h }));
       return pageRegions(other).map((rg) => ({ x: (rg.box.x - G.ox) / G.Wa, y: (rg.box.y - G.oy) / G.Ha, w: rg.box.w / G.Wa, h: rg.box.h / G.Ha }));
     }
     // Equal gaps: a thing between two others snaps to sit the same distance
@@ -3884,7 +3958,7 @@
     function showMeasure(b, equal) {
       const layer = $("#sbLayer"); if (!layer) return;
       const G = geometry(book);
-      const h = b.k === "line" ? (THICKS[b.thick] || THICKS.narrow) / G.Ha : b.h;
+      const h = b.k === "line" ? lineH(b, G.Ha) : b.h;
       const mm = (v) => `${(v).toFixed(1).replace(/\.0$/, "")}`;
       const left = b.x * G.Wa, right = (1 - b.x - b.w) * G.Wa, top = b.y * G.Ha, bottom = (1 - b.y - h) * G.Ha;
       // The same distance in from the outer edge as something on the facing page?
@@ -3916,6 +3990,28 @@
       layer.addEventListener("pointerdown", (ev) => {
         const e = freePage(); if (!e) return;
         if (ev.target.closest("#sbBlkBar")) return;
+        if (drawing) {
+          // A stroke: points as fractions of the frame, until the pointer lifts.
+          ev.preventDefault();
+          const M = layerMaths();
+          const r = M.r;
+          const at = (m) => [((m.clientX - r.left) / r.width * M.G.W - M.G.ox) / M.G.Wa, ((m.clientY - r.top) / r.height * M.G.H - M.G.oy) / M.G.Ha];
+          const pts = [at(ev)];
+          try { layer.setPointerCapture(ev.pointerId); } catch (err) { /* older browsers */ }
+          let trail = layer.querySelector("#sbTrail");
+          if (!trail) { trail = document.createElementNS("http://www.w3.org/2000/svg", "svg"); trail.id = "sbTrail"; trail.setAttribute("class", "sb-trail"); trail.innerHTML = `<polyline fill="none" stroke="#FF3D7F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`; layer.appendChild(trail); }
+          const poly = trail.querySelector("polyline");
+          const paint = () => { poly.setAttribute("points", pts.map(([px, py]) => `${(((px * M.G.Wa + M.G.ox) / M.G.W) * r.width).toFixed(1)},${(((py * M.G.Ha + M.G.oy) / M.G.H) * r.height).toFixed(1)}`).join(" ")); };
+          paint();
+          const move = (m) => { pts.push(at(m)); paint(); };
+          const up = () => {
+            layer.removeEventListener("pointermove", move); layer.removeEventListener("pointerup", up); layer.removeEventListener("pointercancel", up);
+            trail.remove();
+            strokeToBlock(pts);
+          };
+          layer.addEventListener("pointermove", move); layer.addEventListener("pointerup", up); layer.addEventListener("pointercancel", up);
+          return;
+        }
         const handle = ev.target.closest(".sb-h");
         const el = ev.target.closest(".sb-blk");
         if (!el) { if (blockSel !== -1) { blockSel = -1; drawLayer(); drawInspector(); } return; }
@@ -3943,7 +4039,7 @@
           let equal = { x: null, y: null };
           if (!dir) {
             let nx = start.x + dx, ny = start.y + dy;
-            const hh = b.k === "line" ? 0 : start.h;
+            const hh = b.k === "line" && linePath(b) === "h" ? 0 : (start.h || 0);
             const gx = equalGap(nx, start.w, guides.boxes, "x", guides.tolX), gy = equalGap(ny, hh, guides.boxes, "y", guides.tolY);
             if (gx) { nx = gx.at; equal.x = gx.gap; }
             else {
@@ -3965,7 +4061,7 @@
             const west = dir.includes("w"), east = dir.includes("e"), north = dir.includes("n"), south = dir.includes("s");
             if (east) { let r = start.x + start.w + dx; const sr = snapTo(r, guides.xs, guides.tolX); if (sr !== null) { r = sr; hit.push({ axis: "x", at: sr }); } b.w = round4(Math.max(0.02, Math.min(1.6, r - b.x))); }
             if (west) { let l = start.x + dx; const sl = snapTo(l, guides.xs, guides.tolX); if (sl !== null) { l = sl; hit.push({ axis: "x", at: sl }); } const right = start.x + start.w; b.x = round4(Math.min(right - 0.02, l)); b.w = round4(Math.max(0.02, right - b.x)); }
-            if (b.k !== "line") {
+            if (!(b.k === "line" && linePath(b) === "h")) {
               if (south) { let bo = start.y + start.h + dy; const sb = snapTo(bo, guides.ys, guides.tolY); if (sb !== null) { bo = sb; hit.push({ axis: "y", at: sb }); } b.h = round4(Math.max(0.02, Math.min(1.6, bo - b.y))); }
               if (north) { let t = start.y + dy; const stp = snapTo(t, guides.ys, guides.tolY); if (stp !== null) { t = stp; hit.push({ axis: "y", at: stp }); } const bot = start.y + start.h; b.y = round4(Math.min(bot - 0.02, t)); b.h = round4(Math.max(0.02, bot - b.y)); }
             }
@@ -4019,6 +4115,37 @@
       const [b] = blocks.splice(i, 1);
       blocks.splice(to, 0, b);
       blockSel = to;
+      change({ rail: true });
+      drawInspector();
+    }
+    // Drawing by hand: every stroke on the page becomes a line of its own.
+    function setDrawing(on) {
+      drawing = !!on;
+      const btn = $('[data-addblk="draw"]'); if (btn) btn.setAttribute("aria-pressed", String(drawing));
+      const layer = $("#sbLayer"); if (layer) layer.classList.toggle("drawing", drawing);
+      pageHint(drawing ? "Draw on the page with your finger or mouse; each stroke becomes a line. Esc to stop." : "");
+    }
+    // Fewer points that still follow the hand: the usual corner-keeping cull.
+    function thinPoints(pts, tol) {
+      if (pts.length < 3) return pts;
+      const d = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy || 1e-9; const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L)); return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy)); };
+      let far = 0, at = 0;
+      for (let i = 1; i < pts.length - 1; i++) { const v = d(pts[i], pts[0], pts[pts.length - 1]); if (v > far) { far = v; at = i; } }
+      if (far <= tol) return [pts[0], pts[pts.length - 1]];
+      return [...thinPoints(pts.slice(0, at + 1), tol).slice(0, -1), ...thinPoints(pts.slice(at), tol)];
+    }
+    function strokeToBlock(pts) {
+      const e = freePage(); if (!e || pts.length < 2) return;
+      const blocks = blocksOf(e);
+      if (blocks.length >= FREE_MAX) { API.toast(`A page holds ${FREE_MAX} things. Remove one to add another.`); return; }
+      const G = geometry(book);
+      const thin = thinPoints(pts, 0.35 / G.Wa).slice(0, 200);
+      const xs = thin.map((p) => p[0]), ys = thin.map((p) => p[1]);
+      const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+      const w = Math.max(0.02, x1 - x0), h = Math.max(0.02, y1 - y0);
+      mark();
+      blocks.push({ k: "line", path: "free", x: round4(x0), y: round4(y0), w: round4(w), h: round4(h), thick: "narrow", pts: thin.map(([px, py]) => [Math.round(((px - x0) / w) * 1000) / 1000, Math.round(((py - y0) / h) * 1000) / 1000]) });
+      blockSel = blocks.length - 1;
       change({ rail: true });
       drawInspector();
     }
@@ -4448,7 +4575,7 @@
       closeAdd(false);
       flush();
       const fromRail = document.activeElement && document.activeElement.closest && document.activeElement.closest("#sbPages");
-      closeInline(false); photoSel = null; pageHint("");
+      closeInline(false); photoSel = null; pageHint(""); drawing = false;
       sel = i; active = 0; pickerOpen = null; blockSel = -1;
       drawRail(); drawInspector(); schedulePreview(0);
       remember();
@@ -5512,8 +5639,16 @@
         ${b.k === "shape" || (b.k === "text" && b.fill) ? `<div class="sb-field"><span class="sb-label">Shape</span>
           <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Shape">${[["rect", "▭ Box"], ["round", "▢ Rounded"], ["chamfer", "⬠ Cut corners"], ["ellipse", "◯ Oval"], ["triangle", "△ Triangle"], ["diamond", "◇ Diamond"], ["star", "☆ Star"], ["parallelogram", "▱ Slanted"]].map(([k, n]) => `<button type="button" role="radio" data-shape="${k}" aria-checked="${shapeOf(b) === k}">${n}</button>`).join("")}</div>
           ${shapeOf(b) === "round" || shapeOf(b) === "chamfer" ? `<div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="How big the corners are" style="margin-top:6px">${[["small", "Small corners"], ["medium", "Medium"], ["large", "Large"]].map(([k, n]) => `<button type="button" role="radio" data-corner="${k}" aria-checked="${(b.corner || "medium") === k}">${n}</button>`).join("")}</div>` : ""}</div>` : ""}
-        ${b.k === "line" ? `<div class="sb-field"><span class="sb-label">Thickness</span>
-          <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Thickness">${[["hair", "Hair"], ["narrow", "Narrow"], ["broad", "Broad"]].map(([k, n]) => `<button type="button" role="radio" data-thick="${k}" aria-checked="${(b.thick || "narrow") === k}">${n}</button>`).join("")}</div></div>` : ""}
+        ${b.k === "line" ? `<div class="sb-field"><span class="sb-label">Runs</span>
+          <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="How the line runs">${[["h", "▬ Across"], ["v", "┃ Down"], ["d", "╲ Diagonal"], ["u", "╱ Diagonal up"], ["curve", "◠ Curved"], ["wave", "∿ Wavy"]].map(([k, n]) => `<button type="button" role="radio" data-lpath="${k}" aria-checked="${linePath(b) === k}">${n}</button>`).join("")}${linePath(b) === "free" ? `<button type="button" role="radio" data-lpath="free" aria-checked="true">✎ Drawn by hand</button>` : ""}</div>
+          ${linePath(b) === "curve" || linePath(b) === "wave" ? `<label class="sb-range">Bend <input type="range" min="-100" max="100" step="5" value="${Math.round(lineBend(b) * 100)}" data-lbend aria-valuetext="${Math.round(lineBend(b) * 100)} percent"></label>` : ""}</div>
+          <div class="sb-field"><span class="sb-label">Arrowheads</span>
+          <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Arrowheads">${[["", "None"], ["end", "At the end →"], ["start", "← At the start"], ["both", "↔ Both"]].map(([k, n]) => `<button type="button" role="radio" data-lends="${k}" aria-checked="${(b.ends || "") === k}">${n}</button>`).join("")}</div></div>
+          <div class="sb-field"><span class="sb-label">Drawn with</span>
+          <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Drawn with">${[["pencil", "Pencil"], ["", "Pen"], ["brush", "Soft brush"], ["marker", "Marker"], ["nib", "Flat nib"], ["taper", "Cone"]].map(([k, n]) => `<button type="button" role="radio" data-ltip="${k}" aria-checked="${(b.tip || "") === k}">${n}</button>`).join("")}</div>
+          <p class="sb-hint">A flat nib is thick across the stroke and thin along it, the way calligraphy goes; a cone starts thick and ends thin.</p></div>
+          <div class="sb-field"><span class="sb-label">Thickness</span>
+          <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Thickness">${[["hair", "Hair"], ["narrow", "Narrow"], ["medium", "Medium"], ["broad", "Broad"], ["heavy", "Heavy"]].map(([k, n]) => `<button type="button" role="radio" data-thick="${k}" aria-checked="${(b.thick || "narrow") === k}">${n}</button>`).join("")}</div></div>` : ""}
         ${b.k === "text" && !b.fill ? "" : `<label class="sb-range">Fade <input type="range" min="10" max="100" step="5" value="${Math.round(fade * 100)}" data-blkfade aria-valuetext="${Math.round(fade * 100)} percent"></label>`}` : "";
       box.innerHTML = `
         <h3>Add to this page</h3>
@@ -5522,6 +5657,7 @@
           <button type="button" data-addblk="photo">+ Photo</button>
           <button type="button" data-addblk="shape">+ Shape</button>
           <button type="button" data-addblk="line">+ Line</button>
+          <button type="button" data-addblk="draw" aria-pressed="${drawing}">✎ Draw by hand</button>
         </div>
         <p class="sb-hint">${blocks.length} of ${FREE_MAX} things. Drag anything on the page to move it, pull a corner to resize it, and use the arrow keys to nudge it.</p>
         <h3>On this page</h3>
@@ -5537,19 +5673,19 @@
           ${step("Across", "nudx", "-1", "1", mmX(b.x))}
           ${step("Down", "nudy", "-1", "1", mmY(b.y))}
           ${step("Width", "sizw", "-1", "1", mmX(b.w))}
-          ${b.k === "line" ? "" : step("Height", "sizh", "-1", "1", mmY(b.h))}
+          ${b.k === "line" && linePath(b) === "h" ? "" : step("Height", "sizh", "-1", "1", mmY(b.h || 0.15))}
           ${step("Turn", "turn", "-15", "15", `${b.r || 0}°`)}
           <div class="sb-field"><span class="sb-label">In front or behind</span>
             <div class="sb-adds"><button type="button" data-tofront ${blockSel === blocks.length - 1 ? "disabled" : ""}>Bring to the front</button><button type="button" data-toback ${blockSel === 0 ? "disabled" : ""}>Send to the back</button></div>
             <p class="sb-hint">Words over a photograph: bring the words to the front, or send the photograph to the back.</p></div>
-          <div class="sb-adds"><button type="button" data-fillw>Fill the width</button>${b.k === "line" ? "" : `<button type="button" data-fillp>Fill the page</button>`}</div>
+          <div class="sb-adds"><button type="button" data-fillw>Fill the width</button>${b.k === "line" && linePath(b) === "h" ? "" : `<button type="button" data-fillp>Fill the page</button>`}</div>
         </div>` : ""}
         <div class="sb-field"><span class="sb-label">Page colour</span>
           <span class="sb-swatches" role="group" aria-label="Page colour">${swatch("bg", "", "The style's own", "linear-gradient(135deg, #fff 45%, #999 50%, #fff 55%)", !entry.bg)}${fills.map(([k, n, c]) => swatch("bg", k, n, c, entry.bg === k)).join("")}${anySwatch("bgany", /^#/.test(entry.bg || "") ? entry.bg : "")}</span>
           <div class="sb-cphost" data-bgpick hidden></div></div>`;
 
       const redraw = () => { change({ rail: true }); drawInspector(); };
-      $$("[data-addblk]").forEach((x) => x.addEventListener("click", () => addBlock(x.dataset.addblk)));
+      $$("[data-addblk]").forEach((x) => x.addEventListener("click", () => { if (x.dataset.addblk === "draw") { setDrawing(!drawing); return; } addBlock(x.dataset.addblk); }));
       $$("[data-pickblk]").forEach((x) => x.addEventListener("click", () => { blockSel = +x.dataset.pickblk; drawLayer(); drawInspector(); }));
       $$("[data-blkup]").forEach((x) => x.addEventListener("click", () => moveBlock(+x.dataset.blkup, -1)));
       $$("[data-blkdown]").forEach((x) => x.addEventListener("click", () => moveBlock(+x.dataset.blkdown, 1)));
@@ -5583,6 +5719,17 @@
       $$("[data-role]").forEach((x) => x.addEventListener("click", () => { mark(); b.role = x.dataset.role; redraw(); }));
       $$("[data-tfit]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.tfit) b.fit = "cut"; else delete b.fit; redraw(); }));
       $$("[data-thick]").forEach((x) => x.addEventListener("click", () => { mark(); b.thick = x.dataset.thick; redraw(); }));
+      $$("[data-lpath]").forEach((x) => x.addEventListener("click", () => {
+        mark();
+        const to = x.dataset.lpath;
+        if (to === "h") { delete b.path; delete b.pts; delete b.bend; }
+        else { b.path = to; if (to !== "free") delete b.pts; if (!(b.h > 0.01)) b.h = to === "v" ? 0.25 : 0.15; }
+        redraw();
+      }));
+      $$("[data-lends]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.lends) b.ends = x.dataset.lends; else delete b.ends; redraw(); }));
+      $$("[data-ltip]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.ltip) b.tip = x.dataset.ltip; else delete b.tip; redraw(); }));
+      const bendEl = $("[data-lbend]");
+      if (bendEl) bendEl.addEventListener("input", () => { mark(true); const v = Math.round(+bendEl.value) / 100; if (Math.abs(v - 0.5) < 0.001) delete b.bend; else b.bend = v; bendEl.setAttribute("aria-valuetext", `${Math.round(v * 100)} percent`); change({ rail: true }); drawLayer(); });
       $$("[data-shape]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.shape === "rect") delete b.shape; else b.shape = x.dataset.shape; redraw(); }));
       $$("[data-corner]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.corner === "medium") delete b.corner; else b.corner = x.dataset.corner; redraw(); }));
       $$("[data-fill]").forEach((x) => x.addEventListener("click", () => {
