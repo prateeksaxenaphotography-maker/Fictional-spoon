@@ -3032,8 +3032,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const isPortraitActive = currentOrient !== "landscape";
     return `
       <div class="lb-sidebar-section lb-card lb-export">
+        <span class="lb-h" style="margin: 0;"><span>Comp card PDF</span><small>Free</small></span>
         <div class="lb-export-head">
-          <span class="lb-h" style="margin: 0;"><span>Comp card PDF</span><small>Free</small></span>
           <div class="lb-seg" id="compCardOrientGroup" role="radiogroup" aria-label="PDF orientation">
             <label class="orient-radio-label${isPortraitActive ? " active" : ""}">
               <input type="radio" name="compCardOrientRadio" value="portrait" ${isPortraitActive ? "checked" : ""} onchange="window.setCompCardOrientation('portrait', this, '${escJs(shoot.id)}')" />
@@ -16611,10 +16611,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             ${[1, 2].map((n) => `<button type="button" role="radio" data-pages="${n}" aria-checked="false">${n} page${n > 1 ? "s" : ""}</button>`).join("")}
           </div>
           <div class="pp-seg" role="radiogroup" aria-label="Photos on the pages" id="ppCountSeg"></div>
-          <div class="pp-seg" role="radiogroup" aria-label="Layout" id="ppLayoutSeg">
-            <button type="button" role="radio" data-layout="lead" aria-checked="true">Big photo</button>
-            <button type="button" role="radio" data-layout="equal" aria-checked="false">All equal</button>
-          </div>
         </div>
         <div class="pp-filters" role="toolbar" aria-label="Show one pose">
           <button type="button" data-filter="all" aria-pressed="true">All</button>
@@ -16670,7 +16666,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const btn = e.target.closest("[data-count]");
         if (btn && !btn.disabled) setCount(Number(btn.dataset.count));
       });
-      body.querySelectorAll("#ppLayoutSeg [data-layout]").forEach((btn) => btn.addEventListener("click", () => { state.layout = btn.dataset.layout; syncPick(); }));
       body.querySelectorAll(".pp-filters [data-filter]").forEach((btn) => btn.addEventListener("click", () => { state.filter = btn.dataset.filter; syncPick(); }));
       body.querySelectorAll(".pp-tile").forEach((tile) => {
         tile.querySelector(".pp-tile-pick").addEventListener("click", () => {
@@ -16713,7 +16708,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         btn.disabled = Number(btn.dataset.pages) === 2 && available() < 2;
       });
       body.querySelector("#ppCountSeg").innerHTML = `<span class="pp-seg-cap" aria-hidden="true">Photos</span>` + countOptions(state.pages).map((n) => `<button type="button" role="radio" data-count="${n}" aria-checked="${n === state.count}">${n}</button>`).join("");
-      body.querySelectorAll("#ppLayoutSeg [data-layout]").forEach((btn) => btn.setAttribute("aria-checked", String(btn.dataset.layout === state.layout)));
       body.querySelectorAll("#ppCoverStyleSeg [data-cover-style]").forEach((btn) => btn.setAttribute("aria-checked", String(btn.dataset.coverStyle === state.coverStyle)));
       body.querySelectorAll(".pp-filters [data-filter]").forEach((btn) => {
         btn.setAttribute("aria-pressed", String(btn.dataset.filter === state.filter));
@@ -16846,7 +16840,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         <div class="pp-arrange" id="ppArrange">
           <div class="pp-arrange-head">
             <span class="pp-label" id="ppOrderLabel">Photo order</span>
-            <div class="pp-seg" role="radiogroup" aria-label="Rows" id="ppRowsSeg" hidden></div>
+            <div class="pp-arrange-segs">
+              <div class="pp-seg" role="radiogroup" aria-label="Layout" id="ppLayoutSeg" hidden>
+                <button type="button" role="radio" data-layout="lead">One big photo</button>
+                <button type="button" role="radio" data-layout="equal">All the same size</button>
+              </div>
+              <div class="pp-seg" role="radiogroup" aria-label="Rows" id="ppRowsSeg" hidden></div>
+            </div>
           </div>
           <ol class="pp-order" id="ppOrder" aria-labelledby="ppOrderLabel"></ol>
         </div>
@@ -16926,6 +16926,21 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         syncRows(lastSplits);
         drawPreview();
       });
+      // Which shape the pages take. It lives here rather than with the photo
+      // picking, because "One big photo" and "All the same size" mean nothing
+      // until you can see them: here the page below redraws as you switch.
+      body.querySelector("#ppLayoutSeg").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-layout]");
+        if (!btn || btn.dataset.layout === state.layout) return;
+        const wasCovered = covered();
+        state.layout = btn.dataset.layout;
+        // Big photo pins the big one first in Photo order; All the same size
+        // frees it, so the list is rebuilt rather than just redrawn.
+        if (covered() !== wasCovered) { showPreview(); return; }
+        syncLayout();
+        syncOrder();
+        drawPreview();
+      });
       // A tap on a photo in the preview opens it in Adjust photo.
       body.querySelector(".pp-preview").addEventListener("click", (e) => {
         const canvas = e.target.closest("canvas");
@@ -16936,6 +16951,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const hit = canvas._photos.find((p) => x >= p.x && x <= p.x + p.w && y >= p.y && y <= p.y + p.h);
         if (hit) showAdjust(hit);
       });
+      syncLayout();
       syncOrder(focus);
       drawPreview();
     }
@@ -17132,8 +17148,19 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       syncArrange();
     }
 
+    // Offered only when the two shapes would actually print differently: two
+    // photos on one page come out as equal halves either way.
+    function syncLayout() {
+      const seg = body.querySelector("#ppLayoutSeg");
+      if (!seg) return;
+      seg.hidden = printOrder().length < 3;
+      seg.querySelectorAll("[data-layout]").forEach((btn) => btn.setAttribute("aria-checked", String(btn.dataset.layout === state.layout)));
+      syncArrange();
+    }
+
     function syncArrange() {
-      body.querySelector("#ppArrange").hidden = body.querySelector("#ppOrder").hidden && body.querySelector("#ppRowsSeg").hidden;
+      const hideAll = body.querySelector("#ppOrder").hidden && body.querySelector("#ppRowsSeg").hidden && body.querySelector("#ppLayoutSeg").hidden;
+      body.querySelector("#ppArrange").hidden = hideAll;
     }
 
     function unlock() {

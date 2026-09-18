@@ -2735,6 +2735,8 @@ html.theme-dark { color-scheme: dark; }
 .pp-arrange { display: flex; flex-direction: column; gap: 8px; }
 .pp-arrange[hidden], .pp-seg[hidden], .pp-order[hidden] { display: none; }
 .pp-arrange-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; min-height: 38px; }
+/* Layout and rows sit together on the right of Photo order, and drop below it on a narrow screen. */
+.pp-arrange-segs { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .pp-order { display: flex; gap: 8px; margin: 0; padding: 0 0 4px; list-style: none; overflow-x: auto; }
 .pp-order-item { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 5px; width: 72px; }
 .pp-order-photo { position: relative; display: block; width: 100%; aspect-ratio: 3 / 4; border-radius: 6px; overflow: hidden; background: var(--bone); }
