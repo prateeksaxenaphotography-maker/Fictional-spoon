@@ -3229,7 +3229,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const pdfPrice = getPortfolioPdfSettings().price;
     const exportBtn = `<button class="btn btn-dark btn-block lb-export-btn" onclick="window.printModelPortfolio('${escJs(shoot.id)}')">Make portfolio PDF</button>`;
     if (isAdmin()) {
-      const emailToBuy = `Clients preview it and email you to buy it${pdfPrice ? ` (₹${pdfPrice})` : ""}.`;
+      const emailToBuy = `Clients download it as watermarked PNGs, and email you to buy the PDF${pdfPrice ? ` (₹${pdfPrice})` : ""}.`;
       const salesNote = !getPortfolioPdfSettings().enabled ? emailToBuy
         : !portfolioPdfSalesOpen() ? `${emailToBuy} Add your UPI ID to sell it on the site.`
         : pdfPrice ? `On for clients: they pay ₹${pdfPrice}.` : "On for clients, free.";
@@ -3251,7 +3251,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       <div class="lb-sidebar-section lb-card lb-export">
         <span class="lb-h" style="margin: 0;"><span>Portfolio PDF</span>${pdfPrice && (selling || mail) ? `<small>₹${pdfPrice}</small>` : ""}</span>
         ${exportBtn}
-        <p class="lb-note">${selling ? "Pick photos by pose (front, side, back) and download a 1 or 2 page PDF to send to casting directors and designers." : `Pick photos by pose (front, side, back) and preview a 1 or 2 page PDF. ${mail ? `To buy it${pdfPrice ? ` for ₹${pdfPrice}` : ""}, email ${mail}.` : "Downloads aren't open yet."}`}</p>
+        <p class="lb-note">${selling ? "Pick photos by pose (front, side, back) and download a 1 or 2 page PDF to send to casting directors and designers." : `Pick photos by pose (front, side, back) and lay out 1 or 2 pages. Free to download as PNG images, with a watermark. ${mail ? `To buy the PDF without it${pdfPrice ? ` for ₹${pdfPrice}` : ""}, email ${mail}.` : "The PDF without it isn't on sale yet."}`}</p>
       </div>
     `;
   }
@@ -5980,7 +5980,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             </div>
           </div>
           <div id="adminPdfBody" style="display: none; margin-top: 12px;">
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 12px 0;">Everyone can open Model Portfolio, pick a model's photos by pose and preview a 1 or 2 page PDF. <strong>Off:</strong> only you can download it; clients see this price and your email address, to ask you for one. <strong>On:</strong> clients pay this amount to your UPI ID to download, and each payment unlocks one PDF. Set the price to <strong>0</strong> to make downloads free.</p>
+            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 12px 0;">Everyone can open Model Portfolio, pick a model's photos by pose and preview a 1 or 2 page PDF, and download the pages as watermarked PNG images for free. <strong>Off:</strong> only you can download the PDF; clients see this price and your email address, to ask you for one. <strong>On:</strong> clients pay this amount to your UPI ID to download, and each payment unlocks one PDF. Set the price to <strong>0</strong> to make downloads free.</p>
             <div style="display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap;">
               <div>
                 <span style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft); display: block; margin-bottom: 4px; text-transform: uppercase;">Price per PDF</span>
@@ -15651,7 +15651,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     say("Publishing to the live site…", "busy");
     const ok = await window.publishStudioDataToLiveSite();
     const at = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const salesLine = !enabled ? "Off: clients preview PDFs and email you to buy one." : price === 0 ? "On: free for everyone." : `On: clients pay ₹${price}.`;
+    const salesLine = !enabled ? "Off: clients take watermarked PNGs and email you to buy the PDF." : price === 0 ? "On: free for everyone." : `On: clients pay ₹${price}.`;
     say(ok ? `Live on the site (${at}). ${salesLine}` : `Saved on this device only (${salesLine.split(":")[0]}). Publishing failed, so try again.`, ok ? "ok" : "warn");
   };
 
@@ -16026,12 +16026,18 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     page.text("Fashion, fitness, lifestyle and sports photography, Noida. Comp cards, portfolio cards and frames are creative works produced under nerdyphotographer.in.", M, top + 7.6, { weight: 400, size: 1.9, family: PDF_SANS, color: "#9a9791" });
   }
 
-  // Only on the preview a client sees before paying.
-  function drawPdfPreviewMark(page) {
+  // How strong the studio's name is drawn across a page. The preview a client
+  // looks at before paying keeps it quiet (the louder one was "too loud",
+  // v387); a watermarked file they take away carries it a shade darker,
+  // because that copy leaves the site at full size.
+  const PDF_MARK_ALPHA = { preview: 0.2, file: 0.3 };
+
+  // Never on a PDF that was paid for, or on the studio's own clean copies.
+  function drawPdfPreviewMark(page, alpha = PDF_MARK_ALPHA.preview) {
     const { ctx, u } = page;
     // The studio's name, faint enough to look past but on every photo.
     const mark = "nerdyphotographer.in";
-    const style = { weight: 700, size: 6, family: PDF_DISPLAY, spacing: 0.3, color: "rgba(210, 78, 26, 0.2)", align: "center" };
+    const style = { weight: 700, size: 6, family: PDF_DISPLAY, spacing: 0.3, color: `rgba(210, 78, 26, ${alpha})`, align: "center" };
     // Spaced by the name's own width, across the page's diagonal (364 mm).
     const step = page.measure(mark, style) + 24;
     const cols = Math.ceil(182 / step) + 1;
@@ -16461,7 +16467,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       .map((f) => document.fonts.load(f, sample).catch(() => null)));
   }
 
-  async function renderPortfolioPdfPages(spec, { dpi, watermark, cache }) {
+  async function renderPortfolioPdfPages(spec, { dpi, watermark, markAlpha, cache }) {
     const slots = [spec.lead, ...spec.others];
     // The preview is small, so it draws from the 960px copies when they exist.
     const srcFor = (photo) => photoSrc(dpi < 100 && photo.medium ? { url: photo.medium } : photo);
@@ -16494,7 +16500,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     } else {
       composeOnePagePdf(addPage(), spec, imgs, mark);
     }
-    if (watermark) pages.forEach(drawPdfPreviewMark);
+    if (watermark) pages.forEach((p) => drawPdfPreviewMark(p, markAlpha));
     return pages;
   }
 
@@ -16597,12 +16603,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const admin = isAdmin();
     const sale = getPortfolioPdfSettings();
     const price = admin ? 0 : sale.price;
-    // Until the studio opens sales, clients build and preview, and only the
-    // studio downloads.
+    // Until the studio opens sales, clients build, preview and take the pages
+    // as watermarked PNGs; only the studio downloads the PDF.
     const lookOnly = !admin && !portfolioPdfSalesOpen();
     const name = getTalentCleanName(shoot.talent || shoot.title);
-    // Their screenshot of the preview shows the studio which photos and layout to use.
-    const lookMail = lookOnly ? portfolioPdfMailLink(name, `Hi, I'd like the portfolio PDF of ${name}. I've attached a screenshot of the preview I made.`) : "";
+    // Their PNG (or a screenshot of the preview) shows the studio which photos and layout to use.
+    const lookMail = lookOnly ? portfolioPdfMailLink(name, `Hi, I'd like the portfolio PDF of ${name}. I've attached the preview I made.`) : "";
     const coarse = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
     const known = portfolioPoses();
     // Photos with no pose tag come last, as a group with no name to print.
@@ -16915,7 +16921,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       msg.textContent = warning
         || (state.choosingCover ? "Tap a photo for the cover"
         : short > 0 ? `Pick ${short} more`
-        : `photos${state.cover ? " + cover" : ""} · ${admin ? "free for you" : lookOnly ? "preview only" : !price ? "free" : state.madeKey ? `₹${price} for a new PDF` : state.paid ? "paid" : `₹${price}`}`);
+        : `photos${state.cover ? " + cover" : ""} · ${admin ? "free for you" : lookOnly ? "free with watermark" : !price ? "free" : state.madeKey ? `₹${price} for a new PDF` : state.paid ? "paid" : `₹${price}`}`);
       foot.querySelector("#ppNext").disabled = short !== 0 || state.choosingCover;
     }
 
@@ -17006,6 +17012,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     function showPreview(focus) {
       const canDownload = covered();
       const payable = !canDownload && !lookOnly;
+      // A visitor who can't take the clean PDF (sales closed, or not paid yet)
+      // can still take the pages away as PNG images, watermark and all: one
+      // image per page, so a cover and two pages are three files.
+      const freePng = !admin && !canDownload;
+      const sheets = state.pages + (state.cover ? 1 : 0);
+      const pngs = sheets > 1 ? "PNG images" : "a PNG image";
       const upiLink = portfolioUpiLink(sale.upiId, price, state.ref);
       body.innerHTML = `
         <div class="pp-arrange" id="ppArrange">
@@ -17024,6 +17036,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         <p class="pp-hint pp-tap-hint">Tap a photo to move or zoom it.</p>
         <div class="pp-preview" aria-live="polite"><p class="pp-rendering">Drawing your ${state.pages === 2 || state.cover ? "pages" : "page"}…</p></div>
         ${payable ? `
+          <p class="pp-hint">Free with the watermark, as ${pngs}. Pay below for the PDF without it.</p>
+          <div id="ppReady" class="pp-ready"></div>
           <div class="pp-pay">
             <div>
               <p class="pp-pay-title">${state.madeKey ? `This is a new PDF. Pay ₹${price} to download it` : `Pay ₹${price} to download`}</p>
@@ -17047,22 +17061,26 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <p class="pp-fine">One payment unlocks one PDF. Your payment goes straight to the studio, which matches every reference number against its bank.</p>
           </div>
         ` : `
-          <p class="pp-hint">${admin ? `Free for you as admin. With the watermark, to send as a sample: <button type="button" class="pp-link" id="ppDownloadMarked" data-download>PDF</button> · <button type="button" class="pp-link" id="ppDownloadMarkedPng" data-download>PNG ${state.cover || state.pages === 2 ? "images" : "image"}</button>` : lookOnly ? `Preview only. ${lookMail ? `To buy this PDF${price ? ` for ₹${price}` : ""}, email ${lookMail} with a screenshot of this preview.` : "Downloads aren't open yet."}` : price ? "Payment noted, thank you. It pays for one PDF with no watermark: once you've downloaded it, changing the photos or layout means paying again." : "Free to download."}</p>
+          <p class="pp-hint">${admin ? `Free for you as admin. With the watermark, to send as a sample: <button type="button" class="pp-link" id="ppDownloadMarked" data-download>PDF</button> · <button type="button" class="pp-link" id="ppDownloadMarkedPng" data-download>PNG ${state.cover || state.pages === 2 ? "images" : "image"}</button>` : lookOnly ? `Free to download with the watermark, as ${pngs}. ${lookMail ? `To buy the PDF without it${price ? ` for ₹${price}` : ""}, email ${lookMail} with your PNG or a screenshot of this preview.` : "The PDF without it isn't on sale yet."}` : price ? "Payment noted, thank you. It pays for one PDF with no watermark: once you've downloaded it, changing the photos or layout means paying again." : "Free to download."}</p>
           <div id="ppReady" class="pp-ready"></div>
         `}
       `;
       foot.innerHTML = `
         <button type="button" class="btn btn-ghost" id="ppBack">← Change photos</button>
         ${canDownload && admin ? `<button type="button" class="btn btn-ghost" id="ppDownloadPng" data-download>Download PNG</button>` : ""}
+        ${freePng ? `<button type="button" class="btn ${payable ? "btn-ghost" : "btn-dark"}" id="ppDownloadFreePng" data-download>Download ${sheets > 1 ? `${sheets} PNGs` : "PNG"}</button>` : ""}
         ${canDownload ? `<button type="button" class="btn btn-dark" id="ppDownload" data-download>Download PDF</button>` : ""}
       `;
       foot.querySelector("#ppBack").addEventListener("click", showPick);
       const dl = foot.querySelector("#ppDownload");
       if (dl) dl.addEventListener("click", () => download(dl));
-      // PNG is the studio's: one image per page, for Instagram and WhatsApp,
-      // where a PDF cannot be posted. Clients buy the PDF.
+      // The clean PNG is the studio's: one image per page, for Instagram and
+      // WhatsApp, where a PDF cannot be posted. Clients buy the PDF; the PNG
+      // they can take is the watermarked one.
       const dlPng = foot.querySelector("#ppDownloadPng");
       if (dlPng) dlPng.addEventListener("click", () => download(dlPng, false, "png"));
+      const dlFreePng = foot.querySelector("#ppDownloadFreePng");
+      if (dlFreePng) dlFreePng.addEventListener("click", () => download(dlFreePng, true, "png"));
       const marked = body.querySelector("#ppDownloadMarked");
       if (marked) marked.addEventListener("click", () => download(marked, true));
       const markedPng = body.querySelector("#ppDownloadMarkedPng");
@@ -17373,11 +17391,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       showPreview();
     }
 
-    // The studio can also save a watermarked copy, to send as a sample.
+    // The studio can also save a watermarked copy, to send as a sample; a
+    // visitor's free PNG is that same watermarked copy.
     async function download(btn, watermark = false, format = "pdf") {
-      // PNG is only ever offered to the studio; refuse it outright otherwise,
+      // The clean PNG is only ever the studio's; refuse it outright otherwise,
       // so a client cannot reach an unpaid, unmarked image by calling this.
-      if (format === "png" && !admin) return;
+      if (format === "png" && !admin && !watermark) return;
       const asPng = format === "png";
       const token = renderToken;
       const key = specKey();
@@ -17395,7 +17414,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         let bytes = null, lastErr = null;
         for (const dpi of [200, 150, 110]) {
           try {
-            const pages = await renderPortfolioPdfPages(spec, { dpi, watermark, cache });
+            const pages = await renderPortfolioPdfPages(spec, { dpi, watermark, markAlpha: PDF_MARK_ALPHA.file, cache });
             try {
               bytes = asPng
                 ? await Promise.all(pages.map((p) => pdfCanvasPng(p.canvas)))
@@ -17417,7 +17436,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const fileTitle = `${spec.name} — Model Portfolio${watermark ? " (preview)" : ""}`;
         if (asPng) offerImages(bytes, fileBase, fileTitle, !!spec.cover);
         else offerPdf(bytes, `${fileBase}.pdf`, fileTitle);
-        if (price) {
+        if (price && !watermark) {
+          // A watermarked copy is free and spends nothing.
           // The payment is spent on this PDF. It downloads again for free, but
           // a different PDF needs a new payment with a new note, and this
           // reference number won't unlock anything in this browser again.
@@ -17467,6 +17487,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       `;
       const share = ready.querySelector("#ppShare");
       if (share) share.addEventListener("click", () => navigator.share({ files, title }).catch(() => {}));
+      // A phone saves nothing until one of these is tapped, and they can land
+      // out of sight: above the pay panel, or under a tall preview.
+      ready.scrollIntoView({ block: "nearest", behavior: prefersReduced ? "auto" : "smooth" });
       // On a computer they just download, one after another: a browser asked
       // for several files in the same instant tends to keep only the first.
       // Each save gets its own address and its own anchor, so touching the
