@@ -3897,9 +3897,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       adminSec.style.display = "block";
     }
 
-    // No Model Portfolio entry any more: those cards are the models on What I
-    // shoot → Model portfolio shoots, so the menu would point at a page that
-    // only redirects. Removed from all nine shells, as Comp Cards was in v407.
+    // "Model portfolio" is shown and hidden by syncServicesNavLink, with What I
+    // shoot: it leads to the models' cards on one of those pages (v440).
     const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi"), workshopLi = $("#navWorkshopLi"), analyticsLi = $("#navAnalyticsLi"), calendarLi = $("#navCalendarLi");
     if (uploadLi) uploadLi.style.display = active ? "block" : "none";
     if (bookLi) bookLi.style.display = active ? "none" : "block";
@@ -14768,9 +14767,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // deploy writes a page only once it has work, so the link would otherwise
   // lead to a 404.
   function syncServicesNavLink() {
-    const live = liveServiceLinks().length > 0;
+    const pages = liveServiceLinks();
+    const live = pages.length > 0;
     const li = document.getElementById("navServicesLi");
     if (li) li.style.display = live ? "" : "none";
+    // "Model portfolio" goes to the models' cards, so it needs their page.
+    const modelsLi = document.getElementById("navModelsLi");
+    if (modelsLi) modelsLi.style.display = pages.some((v) => `/services/${v.slug}/` === COMP_CARDS_PAGE) ? "" : "none";
     document.querySelectorAll('.footer-nav a[href="/services/"]').forEach((a) => { a.style.display = live ? "" : "none"; });
   }
 
@@ -17825,15 +17828,29 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // syncServicesNavLink shows it on the first paint. Checking for pages here
     // left it out for good on every page opened directly (Book, Albums, the
     // portfolio book) — only the home page, which has it in its HTML, kept it.
+    //
+    // "Model portfolio" comes with it (v440): it goes straight to the models'
+    // cards, which sit on one of the What I shoot pages. The entry was taken
+    // out in v415, when its own page was retired, and the studio asked for it
+    // back: it is what models and agencies look for by name. It no longer
+    // points at a page that only redirects, which was the reason it went.
     const navList = document.querySelector(".nav-links");
-    if (navList && !document.getElementById("navServicesLi")) {
-      const li = document.createElement("li");
-      li.id = "navServicesLi";
-      li.style.display = "none";
-      li.innerHTML = `<a href="/services/" data-link>What I shoot</a>`;
-      // Before Studio: the work, then what it costs, then who I am.
-      const studioLi = [...navList.children].find((el) => /^\/studio\/?$/.test(el.querySelector("a")?.getAttribute("href") || ""));
-      if (studioLi) studioLi.before(li); else navList.appendChild(li);
+    if (navList) {
+      const navItem = (id, href, label) => {
+        const li = document.createElement("li");
+        li.id = id;
+        li.style.display = "none";
+        li.innerHTML = `<a href="${href}" data-link>${label}</a>`;
+        return li;
+      };
+      // Straight after Home and above Albums: what I shoot, then the models,
+      // then the archive. Placed even when the shell already has the item, so
+      // a shell in the old order (Albums first) is put right as well.
+      const homeLi = [...navList.children].find((el) => el.querySelector("a")?.getAttribute("href") === "/");
+      const servicesLi = document.getElementById("navServicesLi") || navItem("navServicesLi", "/services/", "What I shoot");
+      const modelsLi = document.getElementById("navModelsLi") || navItem("navModelsLi", `${COMP_CARDS_PAGE}#comp-cards`, "Model portfolio");
+      if (homeLi) homeLi.after(servicesLi); else navList.prepend(servicesLi);
+      servicesLi.after(modelsLi);
     }
 
     // "Load fresh" utility — injected once into the nav-meta so it appears on
