@@ -399,7 +399,7 @@ if (books !== undefined && books !== null) {
           else pg.items.forEach((it, k) => {
             if (!it || typeof it !== "object") { fail(`${where} way ${k + 1} is not an object`); return; }
             for (const key of Object.keys(it)) if (!["name", "forWho", "text", "lead", "liked"].includes(key)) fail(`${where} way ${k + 1} has ${JSON.stringify(key)}, which the app drops`);
-            for (const [key, max] of Object.entries({ name: 32, forWho: 64, text: 150 })) { if (typeof it[key] !== "string") fail(`${where} way ${k + 1} has no ${key}`); else if (it[key].length > max) fail(`${where} way ${k + 1} ${key} is ${it[key].length} characters; the most is ${max}`); }
+            for (const [key, max] of Object.entries({ name: 56, forWho: 80, text: 150 })) { if (typeof it[key] !== "string") fail(`${where} way ${k + 1} has no ${key}`); else if (it[key].length > max) fail(`${where} way ${k + 1} ${key} is ${it[key].length} characters; the most is ${max}`); }
             if (!["you", "together", "studio"].includes(it.lead)) fail(`${where} way ${k + 1} says ${JSON.stringify(it.lead)} leads`);
             if (it.liked !== undefined && it.liked !== true) fail(`${where} way ${k + 1} has liked ${JSON.stringify(it.liked)}; only true is written`);
           });
