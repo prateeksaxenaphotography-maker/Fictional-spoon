@@ -1228,31 +1228,31 @@
   const WAYS_COPY = {
     "kicker": "How we work",
     "heading": "Four ways we work with you",
-    "intro": "Some shoots arrive with a plan, others with a goal, a collection or a portfolio to build. We work all four ways, and like ideas shaped together best.",
+    "intro": "Some shoots arrive with a plan, some with a goal, some with a collection or a portfolio to build. We work all four ways, and like the ones we shape together best.",
     "items": [
       {
-        "name": "Your plan, lit and shot",
-        "forWho": "Brands, designers and models with the look already decided",
-        "text": "You send the concept, references and shot list. We build the light, direct on set, shoot to your plan and retouch the frames you choose.",
+        "name": "You've planned it, we shoot it",
+        "forWho": "For a brand or designer with a clear brief, mood board and shot list.",
+        "text": "You send the plan; we light it, shoot it and deliver it, directing on set and retouching the frames you choose.",
         "lead": "you"
       },
       {
-        "name": "Your goal, our idea",
-        "forWho": "Brands and designers with a goal, not yet a look",
-        "text": "You tell us what the pictures are for and where they will run. We propose an idea, refine it with you, and shoot the plan we agree.",
+        "name": "You bring the goal, we bring the idea",
+        "forWho": "You tell us what the pictures are for.",
+        "text": "We come back with a concept, the looks and a shot list, and shape it with you before the day; then we shoot the plan we agreed.",
         "lead": "together",
         "liked": true
       },
       {
-        "name": "We plan it around you",
-        "forWho": "Designers with a collection, models who need a portfolio",
-        "text": "You bring the garments, or yourself. We plan the looks, light and frames, check the plan with you, and direct the shoot on the day.",
+        "name": "You bring the garments, we do the rest",
+        "forWho": "A designer with a collection, or a model who wants a portfolio.",
+        "text": "We plan the looks, the light, the poses and the pace, check the plan with you, and direct the shoot on the day.",
         "lead": "studio"
       },
       {
-        "name": "Test shoot, shaped together",
-        "forWho": "Models, stylists and make-up artists, by invitation",
-        "text": "No shoot fee: new portfolio pictures for all of us. We propose an idea, you tell us what you'd change, and we refine it together.",
+        "name": "A test shoot",
+        "forWho": "By invitation, for models and athletes. No fee.",
+        "text": "We propose an idea, you react, and it grows on the day; everyone leaves with new portfolio pictures.",
         "lead": "together",
         "liked": true
       }
@@ -2238,53 +2238,42 @@
     };
 
     if (entry.type === "ways") {
+      /* Four ways, each its own block down the page (two by two on a
+         landscape page): a number, the name, who leads it in a word, when it
+         fits and how it runs. The two the studio likes best carry a mark. */
       ground();
       const items = (Array.isArray(entry.items) ? entry.items : []).slice(0, 4);
       const hb = workHeader();
       const NS = T.wayName, FS = T.wayFor, SL = T.smallLabel;
-      // Every name is set at one size, the smallest any of them needs, so the
-      // four rows read as one table rather than four posters.
+      const LEAD_WORD = { you: "YOU LEAD", together: "TOGETHER", studio: "WE LEAD" };
+      const nameW = L ? 59 : 60;
+      // Every name at one size, the smallest any of them needs, so the four read as one page.
       let nameSize = NS.start;
-      items.forEach((it) => { const r = fitBlock(page, it && it.name, L ? 58.25 : 48, 2, NS, NS.start, NS.min, !!NS.caps); nameSize = Math.min(nameSize, r.size); });
-      const likedMark = (x, y) => put("HOW WE LIKE TO WORK", x, y, SL, SL.size, accentText(P));
-      if (!L) {
-        [["THE WAY", 20], ["HOW IT RUNS", 75], ["WHO LEADS THE IDEAS", 145]].forEach(([s, x]) => put(s, x, hb + 11, SL, SL.size, P.soft));
-        const R0 = hb + 14.5;
-        hairOp(20, R0, 190, P.ink);
-        const rh = (275 - R0) / 4;
-        items.forEach((it, i) => {
-          const r0 = R0 + i * rh, floor = r0 + rh - 4.2;
-          if (i) hairOp(20, r0, 190, P.rule);
-          if (it && it.liked) { rectOp(20, r0, 170, T.rule.h, P.accent); likedMark(20, r0 + 7.2); }
-          const nb = r0 + 15.5 + (st === "modern" ? 1 : 0);
-          const nameLast = block(`name${i + 1}`, it && it.name, 20, nb, 48, 3, NS, nameSize, nameSize, "mul", P.ink);
-          block(`forWho${i + 1}`, it && it.forWho, 20, nameLast + 6, 48, 3, FS, FS.size, FS.size, FS.lead, colour(FS.color));
-          body(`text${i + 1}`, it && it.text, [{ x: 75, w: 62, top: nb, bottom: floor }], T.body, null);
-          whoTag(145, nb - 2.4, (it && WHO_ORDER.includes(it.lead)) ? it.lead : "together");
-        });
-      } else {
-        const cw = 58.25, gap = 8;
-        const cx = (i) => 20 + i * (cw + gap);
-        const T0 = hb + 11;
-        const nbOf = T0 + 15.5 + (st === "modern" ? 1 : 0);
-        let forBottom = nbOf;
-        const nameLasts = [];
-        items.forEach((it, i) => {
-          hairOp(cx(i), T0, cx(i) + cw, P.ink);
-          if (it && it.liked) { rectOp(cx(i), T0, cw, T.rule.h, P.accent); likedMark(cx(i), T0 + 7.2); }
-          const nameLast = block(`name${i + 1}`, it && it.name, cx(i), nbOf, cw, 3, NS, nameSize, nameSize, "mul", P.ink);
-          nameLasts.push(nameLast);
-          const r = fitBlock(page, it && it.forWho, cw, 3, FS, FS.size, FS.size, false);
-          forBottom = Math.max(forBottom, nameLast + 6 + (Math.max(1, r.lines.length) - 1) * FS.lead);
-        });
-        const SB = forBottom + 9.5;
-        items.forEach((it, i) => {
-          block(`forWho${i + 1}`, it && it.forWho, cx(i), nameLasts[i] + 6, cw, 3, FS, FS.size, FS.size, FS.lead, colour(FS.color));
-          if (!i) put("WHO LEADS THE IDEAS", cx(0), SB, SL, SL.size, P.soft);
-          whoTag(cx(i), SB + 8, (it && WHO_ORDER.includes(it.lead)) ? it.lead : "together");
-          body(`text${i + 1}`, it && it.text, [{ x: cx(i), w: cw, top: SB + 20, bottom: 184 }], T.body, null);
-        });
-      }
+      items.forEach((it) => { const r = fitBlock(page, it && it.name, nameW, 4, NS, NS.start, NS.min, !!NS.caps); nameSize = Math.min(nameSize, r.size); });
+      const top0 = hb + 8;
+      // Landscape: four columns across the page, each way stacked top to bottom.
+      const cells = L
+        ? [0, 1, 2, 3].map((i) => ({ x: 20 + i * 66, w: 59, top: top0, h: 184 - top0 }))
+        : [0, 1, 2, 3].map((i) => ({ x: 20, w: 170, top: top0 + i * ((275 - top0) / 4), h: (275 - top0) / 4 }));
+      items.forEach((it, i) => {
+        const c = cells[i]; if (!c) return;
+        const r0 = c.top, floor = r0 + c.h - 4;
+        hairOp(c.x, r0, c.x + c.w, (L || i === 0) ? P.ink : P.rule);
+        const lead = (it && WHO_ORDER.includes(it.lead)) ? it.lead : "together";
+        put(String(i + 1).padStart(2, "0"), c.x, r0 + 7.5, SL, SL.size, P.soft);
+        if (it && it.liked) { rectOp(c.x, r0, c.w, T.rule.h, P.accent); put("HOW WE LIKE TO WORK", c.x + c.w, r0 + 7.5, SL, SL.size, accentText(P), "right"); }
+        const nb = r0 + 17.5;
+        const nameLast = block(`name${i + 1}`, it && it.name, c.x, nb, nameW, 4, NS, nameSize, nameSize, "mul", P.ink);
+        put(LEAD_WORD[lead], c.x, Math.min(nameLast + 7, floor), SL, SL.size, lead === "together" ? accentText(P) : P.soft);
+        if (L) {
+          const forLast = block(`forWho${i + 1}`, it && it.forWho, c.x, Math.min(nameLast + 14, floor), c.w, 3, FS, FS.size, FS.size, FS.lead, colour(FS.color));
+          body(`text${i + 1}`, it && it.text, [{ x: c.x, w: c.w, top: forLast + 6, bottom: floor }], T.body, null);
+        } else {
+          const tx = c.x + nameW + 8, tw = c.w - nameW - 8;
+          const forLast = block(`forWho${i + 1}`, it && it.forWho, tx, nb, tw, 2, FS, FS.size, FS.size, FS.lead, colour(FS.color));
+          body(`text${i + 1}`, it && it.text, [{ x: tx, w: tw, top: forLast + 7, bottom: floor }], T.body, null);
+        }
+      });
       if (!items.some((it) => it && (oneParagraph(it.name).length || oneParagraph(it.text).length)) && !has("kicker", "heading", "intro")) marker(L ? 148 : 105, L ? 110 : 150);
     }
 

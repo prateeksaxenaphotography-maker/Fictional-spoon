@@ -745,7 +745,7 @@ const STUDIO_BOOK_LIMITS = {
   serviceItem: { kicker: 28, title: 40, blurb: 120 },
   contactRow: { label: 24, value: 60 },
   footText: 40,
-  wayItem: { name: 32, forWho: 64, text: 150 },
+  wayItem: { name: 56, forWho: 80, text: 150 },
   stepItem: { title: 36, text: 130 },
   // Writing pages: the most characters each field may hold. Each cap is what
   // the narrowest style and page shape can print, measured, so ordinary prose
