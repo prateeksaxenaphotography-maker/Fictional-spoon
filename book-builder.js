@@ -301,7 +301,7 @@
 
   // Where each photo goes on a page, in mm inside the box (x0, y0, W, H).
   // Chooses from the shapes of the photos on it, as a picture editor would.
-  function cells(n, box, g, aspects, pageLandscape) {
+  function cells(n, box, g, aspects, pageLandscape, rows) {
     const { x: x0, y: y0, w: W, h: H } = box;
     const port = aspects.map((a) => a < 1);
     const allPort = port.every(Boolean), allLand = port.every((p) => !p);
@@ -311,6 +311,17 @@
       return out.slice(0, n);
     };
     if (n <= 1) return [{ x: x0, y: y0, w: W, h: H }];
+    // Asked for: three photographs in one row, on top or at the bottom, and
+    // the rest (one big, or two, or three) in the other row. The row of three
+    // is the shorter one when the other row holds a single photograph.
+    if ((rows === "3top" || rows === "3bottom") && n >= 4 && n <= 6) {
+      const rest = n - 3;
+      const th = (H - g) * (rest === 1 ? 0.42 : 0.5), oh = H - g - th;
+      const tw = (W - 2 * g) / 3, ow = (W - g * (rest - 1)) / rest;
+      const three = (y) => [0, 1, 2].map((c) => ({ x: x0 + c * (tw + g), y, w: tw, h: th }));
+      const others = (y) => Array.from({ length: rest }, (_, c) => ({ x: x0 + c * (ow + g), y, w: ow, h: oh }));
+      return rows === "3top" ? [...three(y0), ...others(y0 + th + g)] : [...others(y0), ...three(y0 + oh + g)];
+    }
     if (n === 2) {
       if (pageLandscape || allPort) return grid(2, 1);
       return grid(1, 2);
@@ -451,7 +462,7 @@
         frame(page, r.x, r.y, r.w, r.h, P.rule, 0.2);
       } else {
         const aspects = shots.map((s, i) => (imgs[i] ? imgs[i].naturalWidth / imgs[i].naturalHeight : 0.7));
-        cells(shots.length, { ...box, h: box.h - 8 }, M.gap, aspects, W > H).forEach((c, i) => {
+        cells(shots.length, { ...box, h: box.h - 8 }, M.gap, aspects, W > H, entry.rows).forEach((c, i) => {
           if (imgs[i]) { const r = drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); frame(page, r.x, r.y, r.w, r.h, P.rule, 0.2); }
           else missing(page, P, c.x, c.y, c.w, c.h);
         });
@@ -544,7 +555,7 @@
       const box = { x: M.side, y: M.top, w: W - 2 * M.side, h: H - M.top - M.bottom - (cap ? 7 : 0) };
       if (cap) drawCaption(page, cap, M.side, H - 17.5, CAPTION_TYPE.modern, P.ink, P);
       const aspects = shots.map((s, i) => (imgs[i] ? imgs[i].naturalWidth / imgs[i].naturalHeight : 0.7));
-      cells(shots.length, box, M.gap, aspects, W > H).forEach((c, i) => {
+      cells(shots.length, box, M.gap, aspects, W > H, entry.rows).forEach((c, i) => {
         if (imgs[i]) drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); else missing(page, P, c.x, c.y, c.w, c.h);
         // Plate number in a chip, keyed to nothing but its order on the page.
         rect(page, c.x, c.y, 7, 5, P.accent);
@@ -634,7 +645,7 @@
       } else {
         const aspects = shots.map((s, i) => (imgs[i] ? imgs[i].naturalWidth / imgs[i].naturalHeight : 0.7));
         // Tiled trim to trim: tightness is the style.
-        cells(shots.length, { x: 0, y: 0, w: W, h: area }, M.gap, aspects, W > H).forEach((c, i) => {
+        cells(shots.length, { x: 0, y: 0, w: W, h: area }, M.gap, aspects, W > H, entry.rows).forEach((c, i) => {
           if (imgs[i]) drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); else missing(page, P, c.x, c.y, c.w, c.h);
         });
       }
@@ -687,22 +698,34 @@
   // alignment. Blank lines between paragraphs keep the gap they always had.
   function paraLines(page, s, x, y, maxW, maxY, specAt) {
     const blocks = String(s || "").replace(/\r\n?/g, "\n").split(/\n/);
-    let cy = y, pi = 0;
+    let cy = y, pi = 0, numbered = 0;
     page.lastBodyCut = false;
     for (let bi = 0; bi < blocks.length; bi++) {
       if (!blocks[bi].trim()) { cy += specAt(Math.max(0, pi - 1)).lead; continue; }
       const S = specAt(pi++);
       font(page, S.spec.w, S.spec.size, S.spec.f, 0, !!S.spec.it);
-      const lines = wrap(page, blocks[bi], maxW);
-      const at = S.align === "center" ? x + maxW / 2 : S.align === "right" ? x + maxW : x;
+      const mark = S.list === "bullet" ? "•" : S.list === "number" ? `${++numbered}.` : null;
+      if (S.list !== "number") numbered = 0;
+      const hang = mark ? Math.max(4, S.spec.size * 1.35) : 0;
+      const ncol = S.columns === 2 || S.columns === 3 ? S.columns : 1;
+      const gap = Math.max(3, S.spec.size * 0.9);
+      const w = ncol > 1 ? (maxW - gap * (ncol - 1)) / ncol : maxW - hang;
+      const lines = wrap(page, blocks[bi], w);
+      const per = ncol > 1 ? Math.ceil(lines.length / ncol) : lines.length;
+      const align = S.align === "justify" ? "left" : S.align;
+      if (mark) text(page, mark, x, cy, S.color, "left");
       for (let li = 0; li < lines.length; li++) {
-        if (cy > maxY) { page.lastBodyCut = true; return cy; }
+        const c = ncol > 1 ? Math.floor(li / per) : 0, r = ncol > 1 ? li % per : li;
+        const ly = cy + r * S.lead;
+        if (ly > maxY) { page.lastBodyCut = true; return cy + per * S.lead; }
+        const lx = x + hang + c * (w + gap);
+        const at = align === "center" ? lx + w / 2 : align === "right" ? lx + w : lx;
         const more = li + 1 < lines.length || blocks.slice(bi + 1).some((b) => b.trim());
-        const last = more && cy + S.lead > maxY;
+        const last = more && ly + S.lead > maxY && (ncol === 1 || r === per - 1);
         if (last) page.lastBodyCut = true;
-        text(page, last ? ellipsize(page, `${lines[li]} …`, maxW) : lines[li], at, cy, S.color, S.align === "justify" ? "left" : S.align);
-        cy += S.lead;
+        text(page, last ? ellipsize(page, `${lines[li]} …`, w) : lines[li], at, ly, S.color, align);
       }
+      cy += per * S.lead;
     }
     return cy;
   }
@@ -760,9 +783,9 @@
       const aFmt = (entry.style && entry.style.about) || {};
       const AT = textFormat(entry.style, "about", aBase, P, P.ink);
       font(page, AT.spec.w, AT.spec.size * AT.scale, AT.spec.f, 0, !!AT.spec.it);
-      const aPara = hasParaFmt(aFmt) ? (pi) => {
+      const aPara = hasParaFmt(aFmt) || aFmt.list || aFmt.columns ? (pi) => {
         const pf = paraFmt(aFmt, pi), sc = sizeScale(pf), st = styledSpec(aBase, pf);
-        return { spec: { ...st, size: st.size * sc }, lead: st.lead * sc, color: tintOf(pf.color, P, P.ink), align: ALIGNS.includes(pf.align) ? pf.align : AT.align };
+        return { spec: { ...st, size: st.size * sc }, lead: st.lead * sc, color: tintOf(pf.color, P, P.ink), align: ALIGNS.includes(pf.align) ? pf.align : AT.align, list: pf.list, columns: pf.columns };
       } : null;
       noteText(page, "about", x, y + 6 - AT.spec.size * AT.scale * 0.86, maxW, floor - (y + 6) + AT.spec.size * AT.scale * 1.16, typeOf({ ...AT, spec: AT.spec }, AT.spec.size * AT.scale, AT.spec.lead * AT.scale));
       if (skipNow !== "about") {
@@ -1369,6 +1392,7 @@
     // own spec, exactly as it always has.
     const specOf = (pi) => (specFor ? specFor(pi).spec : spec);
     const leadOf = (pi) => (specFor ? specFor(pi).lead : spec.lead);
+    const infoOf = (pi) => (specFor ? specFor(pi) : {});
     const lead = leadOf(0);
     const run = (drop) => {
       let wi = 0;
@@ -1383,22 +1407,52 @@
         queues[0][0] = { ...queues[0][0], s: queues[0][0].s.slice(1) };
         if (!queues[0][0].s) { queues[0].shift(); dropWord = 1; }
       }
-      const lines = [];
-      let ci = 0, y = cols[0].top, colTop = true, cut = false, curLead = lead;
+      const lines = [], marks = [];
+      let ci = 0, y = cols[0].top, colTop = true, cut = false, curLead = lead, numbered = 0;
       outer:
       for (let pi = 0; pi < queues.length; pi++) {
         const q = queues[pi];
-        const ps = specOf(pi);
+        const ps = specOf(pi), info = infoOf(pi);
         curLead = leadOf(pi);
         font(page, ps.w, ps.size, ps.f, ps.sp || 0, !!ps.it);
         if (!colTop) y += curLead * 0.5;
+        // A list paragraph hangs from its bullet or number; numbers run on
+        // until a paragraph that isn't numbered.
+        const mark = info.list === "bullet" ? "•" : info.list === "number" ? `${++numbered}.` : null;
+        if (info.list !== "number") numbered = 0;
+        const hang = mark ? Math.max(4, ps.size * 1.35) : 0;
+        let first = true;
+        // A paragraph set in two or three columns: its lines wrapped narrow
+        // and dealt across the columns, balanced, then the flow goes on below.
+        const ncol = info.columns === 2 || info.columns === 3 ? info.columns : 1;
+        if (ncol > 1 && q.length) {
+          if (y > cols[ci].bottom + 0.01) { if (++ci >= cols.length) { cut = true; break outer; } y = cols[ci].top; colTop = true; }
+          const gap = Math.max(3, ps.size * 0.9);
+          const subW = (cols[ci].w - gap * (ncol - 1)) / ncol;
+          const all = [];
+          while (q.length) all.push(takeLine(page, q, subW));
+          let per = Math.ceil(all.length / ncol);
+          let room = Math.floor((cols[ci].bottom + 0.01 - y) / curLead) + 1;
+          if (per > room && !colTop && ci + 1 < cols.length) { ci++; y = cols[ci].top; colTop = true; room = Math.floor((cols[ci].bottom + 0.01 - y) / curLead) + 1; }
+          const short = per > room;
+          if (short) { per = Math.max(1, room); cut = true; }
+          all.forEach((pieces, k) => {
+            const c = Math.floor(k / per), r = k % per;
+            if (c >= ncol) return;
+            lines.push({ pieces, x: cols[ci].x + c * (subW + gap), y: y + r * curLead, w: subW, pi, end: k === all.length - 1 });
+          });
+          y += per * curLead; colTop = false;
+          if (short) break outer;
+          continue;
+        }
         while (q.length) {
           if (y > cols[ci].bottom + 0.01) {
             if (++ci >= cols.length) { cut = true; break outer; }
             y = cols[ci].top; colTop = true;
           }
-          const ind = dc && ci === 0 && y <= dc.y + 0.01 ? dc.indent : 0;
+          const ind = (dc && ci === 0 && y <= dc.y + 0.01 ? dc.indent : 0) + hang;
           const width = cols[ci].w - ind;
+          if (first && mark) { marks.push({ s: mark, x: cols[ci].x + ind - hang, y, pi }); first = false; }
           const pieces = takeLine(page, q, width);
           lines.push({ pieces, x: cols[ci].x + ind, y, w: width, pi, end: q.length === 0 });
           y += curLead; colTop = false;
@@ -1421,7 +1475,7 @@
       // three beside it, or the next paragraph would run into the letter.
       const dropOk = !dc || (lines.length >= 3 && lines.slice(0, 3).every((l) => l.pi === 0 && l.x > cols[0].x));
       const tail = out.length ? tailOf(out[out.length - 1].s) : "";
-      return { lines: out, cut, printed, total, used: lines.length, left, drop: dc, dropOk, tail };
+      return { lines: out, marks, cut, printed, total, used: lines.length, left, drop: dc, dropOk, tail };
     };
     const wantDrop = !!dropColor && flat.length >= 120 && paras.length && /^[A-IK-PR-Za-ik-pr-z]/.test(paras[0][0]);
     if (wantDrop) { const r = run(true); if (r.dropOk) return { ...r, dropColor }; }
@@ -1489,7 +1543,7 @@
       if (imgs[0]) drawPhoto(page, imgs[0], shots[0], a.x, a.y, a.w, a.h); else missing(page, P, a.x, a.y, a.w, a.h);
     } else {
       const aspects = shots.map((s, i) => (imgs[i] ? imgs[i].naturalWidth / imgs[i].naturalHeight : 0.7));
-      cells(shots.length, a, gap, aspects, W > H).forEach((c, i) => {
+      cells(shots.length, a, gap, aspects, W > H, entry.rows).forEach((c, i) => {
         if (imgs[i]) drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); else missing(page, P, c.x, c.y, c.w, c.h);
       });
     }
@@ -1667,18 +1721,20 @@
           const sc = sizeScale(pf);
           const base = styledSpec(baseSpec, pf);
           const spec = sc === 1 ? base : { ...base, size: base.size * sc, lead: base.lead * sc };
-          made.set(pi, { spec, lead: spec.lead, color: tintOf(pf.color, P, P.ink), align: ALIGNS.includes(pf.align) ? pf.align : "left" });
+          made.set(pi, { spec, lead: spec.lead, color: tintOf(pf.color, P, P.ink), align: ALIGNS.includes(pf.align) ? pf.align : "left", list: pf.list, columns: pf.columns });
         }
         return made.get(pi);
       };
       const one = specFor(0), spec = one.spec, align = one.align;
       // A drop cap belongs to text ranged left or justified, in the style's font.
-      const r = flowBody(page, s, cols, spec, dropRole && (align === "left" || align === "justify") && !paraFmt(f, 0).font ? colour(dropRole) : null, hasParaFmt(f) ? specFor : null);
+      const perPara = hasParaFmt(f) || !!f.list || !!f.columns;
+      const r = flowBody(page, s, cols, spec, dropRole && (align === "left" || align === "justify") && !paraFmt(f, 0).font && !f.list && !f.columns ? colour(dropRole) : null, perPara ? specFor : null);
       const bx = Math.min(...cols.map((c) => c.x)), by = Math.min(...cols.map((c) => c.top)) - spec.size * 0.86;
       report(field, { kind: "flow", empty: !r.total, ...r, lines: undefined, box: { x: bx, y: by, w: Math.max(...cols.map((c) => c.x + c.w)) - bx, h: Math.max(...cols.map((c) => c.bottom)) + spec.size * 0.3 - by }, type: { spec, size: spec.size, lead: spec.lead, color: one.color, align } });
       if (!r.total) { cols.forEach((c) => op({ k: "guide", x: c.x, y: c.top - spec.size, w: c.w, h: c.bottom - c.top + spec.size, field })); return; }
       fieldNow = field;
       if (r.drop) put(r.drop.s, r.drop.x, r.drop.y, { w: 300, f: F.serif }, r.drop.size, r.dropColor);
+      (r.marks || []).forEach((m) => { const S = specFor(m.pi || 0); put(m.s, m.x, m.y, S.spec, S.spec.size, S.color, "left"); });
       r.lines.forEach((l, i) => {
         const S = specFor(l.pi || 0);
         placeLine(l.s, l.x, l.w, l.y, S.spec, S.spec.size, S.color, S.align, l.end || i === r.lines.length - 1);
@@ -2144,11 +2200,14 @@
       const words = R.caps ? String(b.t || "").toUpperCase() : String(b.t || "");
       const start = R.start * sc, floor = b.fit === "cut" ? start : Math.max(1.6, (R.min || R.start) * sc);
       const leadAt = (size) => (R.leadMul ? size * R.leadMul : R.lead * (size / R.start));
+      const perPara = hasParaFmt(f) || !!f.list || !!f.columns;
       let size = start, r = null, lead = leadAt(size);
       for (;;) {
         lead = leadAt(size);
         const spec = { ...base, size, lead };
-        r = flowBody(page, words, [{ x: box.x, w: box.w, top: box.y + size * 0.84, bottom: box.y + box.h - size * 0.2 }], spec, null);
+        const specFor = (pi) => { const pf = paraFmt(f, pi); const st2 = styledSpec(R.spec, pf); const sc2 = sizeScale(pf) / sc; return { spec: { ...st2, size: size * sc2, lead: lead * sc2 }, lead: lead * sc2, color: tintOf(pf.color, P, colour(R.color)), align: ALIGNS.includes(pf.align) ? pf.align : align, list: pf.list, columns: pf.columns }; };
+        r = flowBody(page, words, [{ x: box.x, w: box.w, top: box.y + size * 0.84, bottom: box.y + box.h - size * 0.2 }], spec, null, perPara ? specFor : null);
+        r.specFor = perPara ? specFor : null;
         r.spec = spec;
         if (!r.cut || size <= floor + 1e-6) break;
         size = Math.max(floor, Math.round((size - 0.25) * 100) / 100);
@@ -2156,14 +2215,16 @@
       plan.fields[field] = { kind: "flow", empty: !r.total, ...r, lines: undefined, box: { ...box }, type: { spec: r.spec, size: r.spec.size, lead: r.spec.lead, color, align } };
       if (r.cut) plan.cuts.push({ field, label: "words on this page" });
       if (!r.total) { op({ k: "guide", x: box.x, y: box.y, w: box.w, h: box.h, field }); return; }
+      const styleAt = (pi) => (r.specFor ? r.specFor(pi) : { spec: r.spec, color, align });
+      (r.marks || []).forEach((m) => { const S = styleAt(m.pi || 0); op({ k: "text", s: m.s, x: m.x, y: m.y, f: [S.spec.w, S.spec.size, S.spec.f, S.spec.sp || 0, !!S.spec.it], c: S.color, align: "left", rot: turn, field }); });
       r.lines.forEach((l, k) => {
         const last = l.end || k === r.lines.length - 1;
-        const spec = r.spec;
+        const S = styleAt(l.pi || 0), spec = S.spec, c2 = S.color, al = S.align;
         const fnt = [spec.w, spec.size, spec.f, spec.sp || 0, !!spec.it];
-        if (align === "center") op({ k: "text", s: l.s, x: l.x + l.w / 2, y: l.y, f: fnt, c: color, align: "center", rot: turn, field });
-        else if (align === "right") op({ k: "text", s: l.s, x: l.x + l.w, y: l.y, f: fnt, c: color, align: "right", rot: turn, field });
-        else if (align === "justify" && !last && / /.test(l.s) && !/…$/.test(l.s)) op({ k: "text", s: l.s, x: l.x, y: l.y, f: fnt, c: color, align: "left", justify: l.w, rot: turn, field });
-        else op({ k: "text", s: l.s, x: l.x, y: l.y, f: fnt, c: color, align: "left", rot: turn, field });
+        if (al === "center") op({ k: "text", s: l.s, x: l.x + l.w / 2, y: l.y, f: fnt, c: c2, align: "center", rot: turn, field });
+        else if (al === "right") op({ k: "text", s: l.s, x: l.x + l.w, y: l.y, f: fnt, c: c2, align: "right", rot: turn, field });
+        else if (al === "justify" && !last && / /.test(l.s) && !/…$/.test(l.s)) op({ k: "text", s: l.s, x: l.x, y: l.y, f: fnt, c: c2, align: "left", justify: l.w, rot: turn, field });
+        else op({ k: "text", s: l.s, x: l.x, y: l.y, f: fnt, c: c2, align: "left", rot: turn, field });
       });
     });
     plan.ops = plan.ops.map((o) => placeOp(o, G));
@@ -4217,7 +4278,7 @@
       const head = $("#sbPageHead");
       const about = {
         cover: "The first page. Your headshot can go here when you have one: it fills the cover's empty area and nothing else moves.",
-        photos: "Tap photos below to add them, tap again to remove. Up to six; the layout follows how many there are and their shapes.",
+        photos: "Tap photos below to add them, tap again to remove. Up to six; the layout follows how many there are and their shapes. With four or more, three can sit in one row on top or at the bottom.",
         spread: "One photograph across two facing pages. A landscape frame works best, with nobody's face on the fold.",
         divider: "A quiet page between sections, e.g. “Fashion & editorial” before your fashion work.",
         about: "Your words about the studio. With none typed, the page uses a plain description of the studio.",
@@ -4320,7 +4381,7 @@
     // Texts that flow as paragraphs: each paragraph can take its own font.
     const PARA_FLOW = { story: ["body"], article: ["body"], letter: ["body"], note: ["note"], about: ["about"], free: ["t"] };
     const paraCount = (s) => String(s == null ? "" : s).split(/\n+/).map((x) => x.trim()).filter(Boolean).length;
-    const fmtSet = (f) => !!(f && (f.font || f.color || f.align || f.size || f.weight || f.italic || (f.paras && Object.keys(f.paras).length)));
+    const fmtSet = (f) => !!(f && (f.font || f.color || f.align || f.size || f.weight || f.italic || f.list || f.columns || (f.paras && Object.keys(f.paras).length)));
     // `words` is the text itself when its paragraphs can be formatted apart,
     // and null when the text is one run of words. `para` is 0 for the whole
     // text, or the paragraph being formatted.
@@ -4349,6 +4410,8 @@
           <label class="sb-fmtline"><span>Size</span><span class="sb-sizerow"><input type="range" min="60" max="160" step="5" value="${pct}" data-fmtsize="${k}" aria-valuetext="${pct} percent"><output>${pct}%</output></span></label>
           <div class="sb-fmtline"><span>Style</span><span class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Weight">${[["", "Auto"], ["light", "Light"], ["regular", "Regular"], ["bold", "Bold"]].map(([w, n]) => `<button type="button" role="radio" data-fmtweight="${w}" aria-checked="${(f.weight || "") === w}">${n}</button>`).join("")}<label class="sb-check-row sb-italic"><input type="checkbox" data-fmtitalic="${k}" ${f.italic ? "checked" : ""}> <i>Italic</i></label></span></div>
           <div class="sb-fmtline"><span>Align</span><span class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Alignment">${[["", "Auto"], ["left", "Left"], ["center", "Centre"], ["right", "Right"], ["justify", "Justify"]].map(([a, n]) => `<button type="button" role="radio" data-fmtalign="${a}" aria-checked="${(f.align || "") === a}">${n}</button>`).join("")}</span></div>
+          ${words == null ? "" : `<div class="sb-fmtline"><span>List</span><span class="sb-seg sb-seg-sm" role="radiogroup" aria-label="List">${[["", "None"], ["bullet", "• Bullets"], ["number", "1. Numbers"]].map(([v, n]) => `<button type="button" role="radio" data-fmtlist="${v}" aria-checked="${(f.list || "") === v}">${n}</button>`).join("")}</span></div>
+          <div class="sb-fmtline"><span>Columns</span><span class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Columns">${[["", "1"], ["2", "2"], ["3", "3"]].map(([v, n]) => `<button type="button" role="radio" data-fmtcols="${v}" aria-checked="${String(f.columns || "") === v}">${n}</button>`).join("")}</span></div>`}
         </div>
       </div>`;
     }
@@ -4439,6 +4502,14 @@
         wrap.querySelectorAll("[data-fmtalign]").forEach((b) => b.addEventListener("click", () => {
           wrap.querySelectorAll("[data-fmtalign]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
           update({ align: b.dataset.fmtalign });
+        }));
+        wrap.querySelectorAll("[data-fmtlist]").forEach((b) => b.addEventListener("click", () => {
+          wrap.querySelectorAll("[data-fmtlist]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
+          update({ list: b.dataset.fmtlist });
+        }));
+        wrap.querySelectorAll("[data-fmtcols]").forEach((b) => b.addEventListener("click", () => {
+          wrap.querySelectorAll("[data-fmtcols]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
+          update({ columns: b.dataset.fmtcols ? +b.dataset.fmtcols : "" });
         }));
       }
     }
@@ -4732,12 +4803,23 @@
         return;
       }
       if (entry.type === "photos") {
-        box.innerHTML = fieldHtml({ k: "caption", label: "Caption for this page (optional)", ctl: "input", ph: "e.g. Monsoon edit, shot on the roof in Sector 46" }, entry.caption || "", (caps.photos || {}).caption || 90)
+        const nPhotos = (entry.photos || []).length;
+        box.innerHTML = (nPhotos >= 4 && nPhotos <= 6 ? `<div class="sb-field"><span class="sb-label">Three in a row</span>
+            <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Three in a row">${[["", "Auto"], ["3top", "On top"], ["3bottom", "At the bottom"]].map(([k, n]) => `<button type="button" role="radio" data-rows="${k}" aria-checked="${(entry.rows || "") === k}">${n}</button>`).join("")}</div>
+            <p class="sb-hint">${entry.rows ? `Three photographs in one row ${entry.rows === "3top" ? "on top" : "at the bottom"}, the other ${nPhotos - 3 === 1 ? "one large" : `${nPhotos - 3} in the other row`}.` : "Auto follows how many photographs there are and their shapes."}</p></div>` : "")
+          + fieldHtml({ k: "caption", label: "Caption for this page (optional)", ctl: "input", ph: "e.g. Monsoon edit, shot on the roof in Sector 46" }, entry.caption || "", (caps.photos || {}).caption || 90)
           + creditHtml(entry)
           + `<p class="sb-hint">Published books are public, so keep private details out of captions.</p>`
           + (borderApplies(entry) ? borderHtml(entry) : "");
         wireField($("#sbF_caption"), (v) => { entry.caption = v; }, (caps.photos || {}).caption || 90);
         wireCredit(entry);
+        $$("[data-rows]").forEach((b) => b.addEventListener("click", () => {
+          if ((entry.rows || "") === b.dataset.rows) return;
+          mark();
+          if (b.dataset.rows) entry.rows = b.dataset.rows; else delete entry.rows;
+          change({ rail: true }); drawFields();
+          const again = $(`[data-rows="${b.dataset.rows}"]`); if (again) again.focus();
+        }));
         $$("[data-select]").forEach((b) => b.addEventListener("click", () => selectOverflow(b.dataset.select)));
         wireFormat(box, styleHost(entry));
         wireBorder(box, entry);
@@ -5459,7 +5541,7 @@
     // that loaded the site before they existed still runs the old save code,
     // which would drop them while saying "Saved": refuse until it reloads.
     const L = window.STUDIO_BOOK_LIMITS;
-    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !L.workWays || !L.markStrengths || !L.paras || !L.coverText || !L.blockKinds || !L.schema || !(L.pageTypes || []).includes("free")) {
+    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !L.workWays || !L.markStrengths || !L.paras || !L.coverText || !L.blockKinds || !L.schema || !L.lists || !L.photoRows || !(L.pageTypes || []).includes("free")) {
       root.innerHTML = `<div class="sb-empty"><p class="sb-warn">The site was updated while this tab was open.</p><p class="sb-hint">Reload the page (or use “↻ Load fresh version”) before editing your books, so nothing you write is lost.</p><p><button type="button" class="sb-btn dark" id="sbReload">Reload now</button></p></div>`;
       root.querySelector("#sbReload").addEventListener("click", () => location.reload());
       return;
