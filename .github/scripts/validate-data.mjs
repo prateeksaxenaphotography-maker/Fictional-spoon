@@ -362,7 +362,8 @@ if (books !== undefined && books !== null) {
     const BLOCK_ROLES = new Set(["head", "intro", "body", "kicker", "quote"]);
     const THICKS = new Set(["hair", "narrow", "broad"]);
     const FILLS = new Set(["ink", "soft", "accent", "paper", "white", "deep", "rule"]);
-    const BLOCK_KEYS = { text: ["k", "x", "y", "w", "h", "r", "t", "role", "fit", "style", "fill", "o"], photo: ["k", "x", "y", "w", "h", "r", "p", "edge", "edgeWidth"], shape: ["k", "x", "y", "w", "h", "r", "fill", "o"], line: ["k", "x", "y", "w", "r", "color", "o", "thick"] };
+    const BLOCK_KEYS = { text: ["k", "x", "y", "w", "h", "r", "t", "role", "fit", "style", "fill", "o", "shape", "corner"], photo: ["k", "x", "y", "w", "h", "r", "p", "edge", "edgeWidth"], shape: ["k", "x", "y", "w", "h", "r", "fill", "o", "shape", "corner"], line: ["k", "x", "y", "w", "r", "color", "o", "thick"] };
+    const SHAPE_KINDS = new Set(["round", "chamfer", "ellipse", "triangle", "diamond", "star", "parallelogram"]);
     const isFill = (v) => FILLS.has(v) || /^#[0-9a-f]{6}$/.test(String(v));
     const seenBooks = new Set();
     for (const b of books.versions) {
@@ -468,6 +469,8 @@ if (books !== undefined && books !== null) {
                 if (x.edgeWidth !== undefined && !THICKS.has(x.edgeWidth)) fail(`${at} has an edge width ${JSON.stringify(x.edgeWidth)}`);
               }
               if ((x.k === "shape" || x.k === "text") && x.fill !== undefined && !isFill(x.fill)) fail(`${at} is filled ${JSON.stringify(x.fill)}; use ${[...FILLS].join(", ")} or #rrggbb`);
+              if (x.shape !== undefined && !SHAPE_KINDS.has(x.shape)) fail(`${at} is shaped ${JSON.stringify(x.shape)}; the app writes ${[...SHAPE_KINDS].join(", ")}, and nothing for a box`);
+              if (x.corner !== undefined && !["small", "large"].includes(x.corner)) fail(`${at} has corners ${JSON.stringify(x.corner)}; the app writes small or large, and nothing for medium`);
               if (x.k === "line") {
                 if (x.color !== undefined && !isFill(x.color)) fail(`${at} is drawn in ${JSON.stringify(x.color)}; use ${[...FILLS].join(", ")} or #rrggbb`);
                 if (x.thick !== undefined && !THICKS.has(x.thick)) fail(`${at} has a thickness ${JSON.stringify(x.thick)}`);

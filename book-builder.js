@@ -1833,7 +1833,7 @@
       if (atEnd) return stretch ? [a + off, total - (a + off)] : [a + 2 * off, len];   // bleeds off the end edge
       return [a + off, len];
     };
-    const stretch = o.k === "photo";
+    const stretch = o.k === "photo";   // a rect or a path keeps its size
     const [x, w] = axis(o.x, o.w, G.Wa, G.ox, G.W, stretch);
     const [y, h] = axis(o.y, o.h, G.Ha, G.oy, G.H, stretch);
     return { ...o, x, y, w, h };
@@ -2379,6 +2379,30 @@
      can never disagree. Nothing flows from one box to the next: a box holds
      what it holds, and says so when the words don't fit. */
   const FREE_KINDS = ["text", "photo", "shape", "line"];
+  // What a colour block (or the colour behind a box of words) is shaped like.
+  const SHAPES = ["rect", "round", "chamfer", "ellipse", "triangle", "diamond", "star", "parallelogram"];
+  const CORNER = { small: 0.1, medium: 0.18, large: 0.3 };
+  const cornerOf = (b) => CORNER[b && b.corner] || CORNER.medium;
+  const shapeOf = (b) => (SHAPES.includes(b && b.shape) ? b.shape : "rect");
+  // Traces the shape inside a box, in page units, ready to fill.
+  function tracePath(ctx, shape, x, y, w, h, k = 0.18) {
+    ctx.beginPath();
+    const r = Math.min(w, h) * k;
+    if (shape === "ellipse") ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+    else if (shape === "triangle") { ctx.moveTo(x + w / 2, y); ctx.lineTo(x + w, y + h); ctx.lineTo(x, y + h); ctx.closePath(); }
+    else if (shape === "diamond") { ctx.moveTo(x + w / 2, y); ctx.lineTo(x + w, y + h / 2); ctx.lineTo(x + w / 2, y + h); ctx.lineTo(x, y + h / 2); ctx.closePath(); }
+    else if (shape === "round") { ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+    else if (shape === "chamfer") { ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.lineTo(x + w, y + r); ctx.lineTo(x + w, y + h - r); ctx.lineTo(x + w - r, y + h); ctx.lineTo(x + r, y + h); ctx.lineTo(x, y + h - r); ctx.lineTo(x, y + r); ctx.closePath(); }
+    else if (shape === "parallelogram") { const d = w * 0.2; ctx.moveTo(x + d, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w - d, y + h); ctx.lineTo(x, y + h); ctx.closePath(); }
+    else if (shape === "star") {
+      const cx = x + w / 2, cy = y + h / 2, R = 0.5, rr = 0.2;
+      for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, m = i % 2 ? rr : R; const px = cx + Math.cos(a) * m * w, py = cy + Math.sin(a) * m * h; if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); }
+      ctx.closePath();
+    }
+    else ctx.rect(x, y, w, h);
+  }
+  // How far in from the box the words sit, so they stay inside the shape.
+  const shapeInset = (shape, w, h, k = 0.18) => (shape === "ellipse" ? { x: w * 0.15, y: h * 0.15 } : shape === "diamond" ? { x: w * 0.25, y: h * 0.25 } : shape === "triangle" ? { x: w * 0.22, y: h * 0.38 } : shape === "star" ? { x: w * 0.28, y: h * 0.3 } : shape === "parallelogram" ? { x: w * 0.22, y: Math.min(4, h * 0.2) } : (shape === "round" || shape === "chamfer") ? { x: Math.max(Math.min(4, w * 0.08), Math.min(w, h) * k * 0.6), y: Math.max(Math.min(4, h * 0.2), Math.min(w, h) * k * 0.6) } : { x: Math.min(4, w * 0.08), y: Math.min(4, h * 0.2) });
   const FREE_ROLES = ["head", "intro", "body", "kicker", "quote"];
   const FREE_MAX = 12, FREE_PHOTO_MAX = 6, FREE_TEXT_MAX = 600;
   const THICKS = { hair: 0.3, narrow: 0.8, broad: 2.2 };
@@ -2413,7 +2437,7 @@
       const box = blockBox(b, W, H);
       const turn = Math.abs(+b.r || 0) > 0.05 ? { deg: +b.r, cx: box.x + box.w / 2, cy: box.y + box.h / 2 } : null;
       const field = `b${i}`;
-      if (b.k === "shape") { op({ k: "rect", x: box.x, y: box.y, w: box.w, h: box.h, c: blockColor(b.fill, P, P.accent), a: b.o, rot: turn }); return; }
+      if (b.k === "shape") { const sh = shapeOf(b); op({ k: sh === "rect" ? "rect" : "path", shape: sh, corner: cornerOf(b), x: box.x, y: box.y, w: box.w, h: box.h, c: blockColor(b.fill, P, P.accent), a: b.o, rot: turn }); return; }
       if (b.k === "line") { op({ k: "rect", x: box.x, y: box.y, w: box.w, h: box.h, c: blockColor(b.color, P, P.rule), a: b.o, rot: turn }); return; }
       if (b.k === "photo") {
         op({
@@ -2426,8 +2450,9 @@
       // Words. The box holds them: the type shrinks to fit unless the studio
       // asked for it to be cut, and either way it says what won't print. With
       // a colour behind them, the words sit inset from the box's edge.
-      if (b.fill) op({ k: "rect", x: box.x, y: box.y, w: box.w, h: box.h, c: blockColor(b.fill, P, P.accent), a: b.o, rot: turn });
-      const inset = b.fill ? Math.min(4, box.w * 0.08, box.h * 0.2) : 0;
+      const sh = shapeOf(b);
+      if (b.fill) op({ k: sh === "rect" ? "rect" : "path", shape: sh, corner: cornerOf(b), x: box.x, y: box.y, w: box.w, h: box.h, c: blockColor(b.fill, P, P.accent), a: b.o, rot: turn });
+      const ins = b.fill ? shapeInset(sh, box.w, box.h, cornerOf(b)) : { x: 0, y: 0 };
       const f = (b.style && typeof b.style === "object") ? b.style : {};
       const R = roleType(T, b.role);
       const base = styledSpec(R.spec, f);
@@ -2443,7 +2468,7 @@
         lead = leadAt(size);
         const spec = { ...base, size, lead };
         const specFor = (pi) => { const pf = paraFmt(f, pi); const st2 = styledSpec(R.spec, pf); const sc2 = sizeScale(pf) / sc; return { spec: { ...st2, size: size * sc2, lead: lead * sc2 }, lead: lead * sc2, color: tintOf(pf.color, P, colour(R.color)), align: ALIGNS.includes(pf.align) ? pf.align : align, list: pf.list, columns: pf.columns }; };
-        r = flowBody(page, words, [{ x: box.x + inset, w: box.w - 2 * inset, top: box.y + inset + size * 0.84, bottom: box.y + box.h - inset - size * 0.2 }], spec, null, perPara ? specFor : null);
+        r = flowBody(page, words, [{ x: box.x + ins.x, w: box.w - 2 * ins.x, top: box.y + ins.y + size * 0.84, bottom: box.y + box.h - ins.y - size * 0.2 }], spec, null, perPara ? specFor : null);
         r.specFor = perPara ? specFor : null;
         r.spec = spec;
         if (!r.cut || size <= floor + 1e-6) break;
@@ -2503,6 +2528,7 @@
       // typing in, not by the page underneath it.
       if (skip && o.field === skip && (o.k === "text" || o.k === "guide")) continue;
       if (o.k === "rect") around(o, () => rect(page, o.x, o.y, o.w, o.h, o.c));
+      else if (o.k === "path") around(o, () => { const ctx = page.ctx; tracePath(ctx, o.shape, page.u(o.x), page.u(o.y), page.u(o.w), page.u(o.h), o.corner); ctx.fillStyle = o.c; ctx.fill(); });
       else if (o.k === "text") around(o, () => {
         font(page, ...o.f);
         if (o.justify) {
@@ -2850,6 +2876,7 @@
   .sb-blk:focus-visible { outline: 2px solid var(--accent, #d24e1a); outline-offset: 1px; }
   .sb-blk.on { border-color: var(--accent, #d24e1a); border-style: solid; }
   .sb-blk.line { display: flex; align-items: center; }
+  .sb-blk.oval { border-radius: 50%; }
   .sb-h { position: absolute; width: 11px; height: 11px; margin: -6px 0 0 -6px; border: 1px solid var(--accent, #d24e1a); border-radius: 2px; background: var(--paper, #fff); cursor: nwse-resize; }
   .sb-h[data-h="ne"], .sb-h[data-h="sw"] { cursor: nesw-resize; }
   .sb-h[data-h="n"], .sb-h[data-h="s"] { cursor: ns-resize; }
@@ -3487,8 +3514,8 @@
               <p class="sb-hint" id="sbDpiNote"></p>
             </div>
             <div class="sb-sec"><span class="sb-label">Your full-size photos</span>
-              <p class="sb-hint">The site keeps each photo at 1600 px. For a print run, point the book at the full-size files on this computer. They are read here and never uploaded, even if the browser's dialog says “Upload”.</p>
-              <div class="sb-dlrow"><button type="button" class="sb-btn" id="sbOrig">Choose the folder…</button><button type="button" class="sb-btn" id="sbOrigForget" hidden>Forget them</button></div>
+              <p class="sb-hint">The site keeps each photo at 1600 px. For a print run, point the book at the full-size files on this computer. They are read here and never uploaded, even if the browser's dialog says “Upload”. Choose nothing and the book prints with the site's own copies; “Don't use them” lets go of a folder you chose.</p>
+              <div class="sb-dlrow"><button type="button" class="sb-btn" id="sbOrig">Choose the folder…</button><button type="button" class="sb-btn" id="sbOrigForget" hidden>Don't use them</button></div>
               <input type="file" id="sbOrigFile" multiple accept="image/*" hidden>
               <div id="sbOrigStatus"></div>
             </div>
@@ -3693,7 +3720,7 @@
     const freePage = () => { const e = sel >= 0 ? book.pages[sel] : null; return e && e.type === "free" ? e : null; };
     const blocksOf = (e) => (Array.isArray(e.blocks) ? e.blocks : (e.blocks = []));
     const curBlock = () => { const e = freePage(); if (!e) return null; return blocksOf(e)[blockSel] || null; };
-    const BLOCK_NAME = { text: "Words", photo: "Photograph", shape: "Colour block", line: "Line" };
+    const BLOCK_NAME = { text: "Words", photo: "Photograph", shape: "Shape", line: "Line" };
     const blockLabel = (b) => (b.k === "text" ? (String(b.t || "").trim().slice(0, 28) || "Words (empty)") : BLOCK_NAME[b.k] || b.k);
     // Screen pixels to a fraction of the A4 frame, and the other way.
     function layerMaths() {
@@ -3748,7 +3775,7 @@
         const handles = on && b.k !== "line"
           ? ["nw", "n", "ne", "e", "se", "s", "sw", "w"].map((h) => `<span class="sb-h" data-h="${h}" style="left:${{ nw: 0, n: 50, ne: 100, e: 100, se: 100, s: 50, sw: 0, w: 0 }[h]}%; top:${{ nw: 0, n: 0, ne: 0, e: 50, se: 100, s: 100, sw: 100, w: 50 }[h]}%"></span>`).join("")
           : on ? `<span class="sb-h" data-h="w" style="left:0%; top:50%"></span><span class="sb-h" data-h="e" style="left:100%; top:50%"></span>` : "";
-        return `<button type="button" class="sb-blk${on ? " on" : ""}${b.k === "line" ? " line" : ""}" data-blk="${i}" aria-pressed="${on}"
+        return `<button type="button" class="sb-blk${on ? " on" : ""}${b.k === "line" ? " line" : ""}${shapeOf(b) === "ellipse" ? " oval" : ""}" data-blk="${i}" aria-pressed="${on}"
           aria-label="${esc(blockLabel(b))}, ${i + 1} of ${blocks.length}"
           style="left:${M.left(b).toFixed(3)}%; top:${M.top(b).toFixed(3)}%; width:${M.wide(b).toFixed(3)}%; height:${Math.max(M.high(b), b.k === "line" ? 1.2 : 0.6).toFixed(3)}%;${turn}">${handles}</button>`;
       }).join(""));
@@ -5482,6 +5509,9 @@
         <div class="sb-field"><span class="sb-label">${b.k === "text" ? "Colour behind the words" : "Colour"}</span>
           <span class="sb-swatches" role="group" aria-label="The book's own colours">${b.k === "text" ? swatch("fill", "", "None", "linear-gradient(135deg, #fff 45%, #999 50%, #fff 55%)", !b.fill) : ""}${fills.map(([k, n, c]) => swatch("fill", k, n, c, (b.k === "line" ? b.color : b.fill) === k)).join("")}${anySwatch("fillany", /^#/.test(b.k === "line" ? b.color || "" : b.fill || "") ? (b.k === "line" ? b.color : b.fill) : "")}</span>
           <div class="sb-cphost" data-fillpick hidden></div>${b.k === "text" ? `<p class="sb-hint">A shape with words in it: the words sit inside the colour.</p>` : ""}</div>
+        ${b.k === "shape" || (b.k === "text" && b.fill) ? `<div class="sb-field"><span class="sb-label">Shape</span>
+          <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Shape">${[["rect", "▭ Box"], ["round", "▢ Rounded"], ["chamfer", "⬠ Cut corners"], ["ellipse", "◯ Oval"], ["triangle", "△ Triangle"], ["diamond", "◇ Diamond"], ["star", "☆ Star"], ["parallelogram", "▱ Slanted"]].map(([k, n]) => `<button type="button" role="radio" data-shape="${k}" aria-checked="${shapeOf(b) === k}">${n}</button>`).join("")}</div>
+          ${shapeOf(b) === "round" || shapeOf(b) === "chamfer" ? `<div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="How big the corners are" style="margin-top:6px">${[["small", "Small corners"], ["medium", "Medium"], ["large", "Large"]].map(([k, n]) => `<button type="button" role="radio" data-corner="${k}" aria-checked="${(b.corner || "medium") === k}">${n}</button>`).join("")}</div>` : ""}</div>` : ""}
         ${b.k === "line" ? `<div class="sb-field"><span class="sb-label">Thickness</span>
           <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Thickness">${[["hair", "Hair"], ["narrow", "Narrow"], ["broad", "Broad"]].map(([k, n]) => `<button type="button" role="radio" data-thick="${k}" aria-checked="${(b.thick || "narrow") === k}">${n}</button>`).join("")}</div></div>` : ""}
         ${b.k === "text" && !b.fill ? "" : `<label class="sb-range">Fade <input type="range" min="10" max="100" step="5" value="${Math.round(fade * 100)}" data-blkfade aria-valuetext="${Math.round(fade * 100)} percent"></label>`}` : "";
@@ -5490,7 +5520,7 @@
         <div class="sb-adds">
           <button type="button" data-addblk="text">+ Words</button>
           <button type="button" data-addblk="photo">+ Photo</button>
-          <button type="button" data-addblk="shape">+ Colour block</button>
+          <button type="button" data-addblk="shape">+ Shape</button>
           <button type="button" data-addblk="line">+ Line</button>
         </div>
         <p class="sb-hint">${blocks.length} of ${FREE_MAX} things. Drag anything on the page to move it, pull a corner to resize it, and use the arrow keys to nudge it.</p>
@@ -5553,6 +5583,8 @@
       $$("[data-role]").forEach((x) => x.addEventListener("click", () => { mark(); b.role = x.dataset.role; redraw(); }));
       $$("[data-tfit]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.tfit) b.fit = "cut"; else delete b.fit; redraw(); }));
       $$("[data-thick]").forEach((x) => x.addEventListener("click", () => { mark(); b.thick = x.dataset.thick; redraw(); }));
+      $$("[data-shape]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.shape === "rect") delete b.shape; else b.shape = x.dataset.shape; redraw(); }));
+      $$("[data-corner]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.corner === "medium") delete b.corner; else b.corner = x.dataset.corner; redraw(); }));
       $$("[data-fill]").forEach((x) => x.addEventListener("click", () => {
         mark();
         const key = b.k === "line" ? "color" : "fill";
@@ -6071,7 +6103,12 @@
         await drawCheck();
         btn.dataset.anyway = "1";
         btn.textContent = `${btn.textContent.replace(/ anyway$/, "")} anyway`;
-        const note = $("#sbAnyway"); if (note) { note.hidden = false; note.textContent = `${list.length} thing${list.length === 1 ? "" : "s"} to look at, listed above. Fix ${list.length === 1 ? "it" : "them"}, or press the button again to download anyway.`; }
+        const note = $("#sbAnyway");
+        if (note) {
+          note.hidden = false;
+          note.innerHTML = `<b>${list.length} thing${list.length === 1 ? "" : "s"} to look at</b> — fix ${list.length === 1 ? "it" : "them"}, or press the button again to download anyway.<ul class="sb-check">${list.slice(0, 6).map((x) => `<li><span>${esc(x.text)}</span><button type="button" class="sb-link" data-go="${x.i}">Go</button></li>`).join("")}${list.length > 6 ? `<li><span>…and ${list.length - 6} more, in the check above.</span></li>` : ""}</ul>`;
+          note.querySelectorAll("[data-go]").forEach((g) => g.addEventListener("click", () => { $("#sbDlPop").hidden = true; $("#sbDlToggle").setAttribute("aria-expanded", "false"); select(+g.dataset.go); setTabPage(); }));
+        }
         return;
       }
       delete btn.dataset.anyway;
