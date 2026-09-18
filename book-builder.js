@@ -284,7 +284,8 @@
       const photos = s.photos.filter((p) => p && p.id && (p.url || p.dataUrl));
       const diagram = typeof s.lightingDiagram === "string" && s.lightingDiagram ? { id: DIAGRAM + s.id, url: s.lightingDiagram, diagram: true } : null;
       if (!photos.length && !diagram) continue;
-      albums.push({ id: s.id, name: cleanName(s.title || s.talent) || "Untitled", count: photos.length + (diagram ? 1 : 0) });
+      // An album unticked "Show this album on the site" is the book's alone: say so where it is picked.
+      albums.push({ id: s.id, name: cleanName(s.title || s.talent) || "Untitled", count: photos.length + (diagram ? 1 : 0), hidden: s.isPublic === false });
       for (const p of photos) if (!byId.has(p.id)) byId.set(p.id, { photo: p, shoot: s });
       if (diagram) { byId.set(diagram.id, { photo: diagram, shoot: s }); diagrams++; }
     }
@@ -5997,8 +5998,9 @@
           <select id="sbAlbum">
             <option value="all" ${filter === "all" ? "selected" : ""}>All albums (${lib.byId.size})</option>
             <option value="diagrams" ${filter === "diagrams" ? "selected" : ""}>Lighting diagrams (${lib.diagrams})</option>
-            ${lib.albums.map((a) => `<option value="${esc(a.id)}" ${filter === a.id ? "selected" : ""}>${esc(a.name)} (${a.count})</option>`).join("")}
+            ${lib.albums.map((a) => `<option value="${esc(a.id)}" ${filter === a.id ? "selected" : ""}>${esc(a.name)} (${a.count})${a.hidden ? " · not on the site" : ""}</option>`).join("")}
           </select>
+          ${(lib.albums.find((a) => a.id === filter) || {}).hidden ? `<p class="sb-hint">This album is hidden from the site, a book-only album. Only the book shows its photos.</p>` : ""}
           <div class="sb-grid">${shown.map(([id, hit]) => {
             const pos = list.findIndex((s) => s.id === id);
             const on = pos >= 0;
