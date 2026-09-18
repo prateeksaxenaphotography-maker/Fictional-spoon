@@ -2647,7 +2647,7 @@
   .sb-cpprev { width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(0,0,0,.15); flex: none; }
   .sb-cprow .sb-cphex { width: 104px; padding: 6px 8px; font: 600 12px 'JetBrains Mono', monospace; }
   .sb-swatch.sb-any[aria-expanded=true] { box-shadow: 0 0 0 2px var(--accent, #d24e1a); }
-  .sb-barpick { position: absolute; z-index: 4; width: 236px; padding: 8px; border: 1px solid var(--sb-line); border-radius: 9px; background: var(--sb-card); box-shadow: 0 10px 28px -12px rgba(0,0,0,.4); }
+  .sb-barpick { position: absolute; z-index: 4; width: 272px; padding: 8px; border: 1px solid var(--sb-line); border-radius: 9px; background: var(--sb-card); box-shadow: 0 10px 28px -12px rgba(0,0,0,.4); }
   .sb-barpick .sb-swatches { margin-bottom: 4px; }
   .sb-bardot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,.3); vertical-align: middle; }
   .sb-custom input { width: 30px; height: 30px; padding: 0; border: 1px solid var(--sb-line); border-radius: 50%; background: none; cursor: pointer; }
@@ -2889,6 +2889,7 @@
     let blockSel = -1;                   // which thing on an Anything page is chosen
     let lastRender = [];                 // what the preview last drew, page by page
     let view = { two: false, zoom: false }; // facing pages, and larger than fit
+    let printMode = "normal";            // or "fold": pages two to a sheet, in folding order
     let lightTimer = null;
     let editing = null;                  // the text being typed on the page itself
     let photoSel = null;                 // the photograph chosen on the page itself
@@ -3151,12 +3152,17 @@
                 <p class="sb-hint">For a sample you send before a job is agreed. Leave it off for the file the client keeps.</p>
               </div>
             </div>
+            <div class="sb-sec"><span class="sb-label">How it prints</span>
+              <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="How it prints">
+                <button type="button" role="radio" data-print="normal" aria-checked="true">Normal</button>
+                <button type="button" role="radio" data-print="fold" aria-checked="false">Fold in half</button>
+              </div>
+              <p class="sb-hint" id="sbBookletNote">Normal: one page per sheet, the size you chose in Design.</p>
+            </div>
             <div class="sb-dlrow">
               <button type="button" class="sb-btn dark" id="sbPdf" data-dl>Download PDF</button>
-              <button type="button" class="sb-btn" id="sbBooklet" data-dl>Booklet PDF</button>
               <button type="button" class="sb-btn" id="sbPng" data-dl>PNG pages</button>
             </div>
-            <p class="sb-hint" id="sbBookletNote"></p>
             <div class="sb-ready" id="sbReady"></div>
             <p class="sb-hint">The PDF is made of page images, so its words can't be searched or copied.</p>
           </div>
@@ -3234,9 +3240,15 @@
         pop.hidden = !open; dlBtn.setAttribute("aria-expanded", String(open));
         if (open) { flush(); drawCheck(); }
       });
-      $("#sbPdf").addEventListener("click", (e) => download(e.currentTarget, "pdf", $("#sbMark").checked));
+      $("#sbPdf").addEventListener("click", (e) => download(e.currentTarget, printMode === "fold" ? "booklet" : "pdf", $("#sbMark").checked));
+      $$("[data-print]").forEach((b) => b.addEventListener("click", () => {
+        if (b.disabled) return;
+        printMode = b.dataset.print;
+        $$("[data-print]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
+        bookletNote();
+      }));
       $("#sbPng").addEventListener("click", (e) => download(e.currentTarget, "png", $("#sbMark").checked));
-      $("#sbBooklet").addEventListener("click", (e) => download(e.currentTarget, "booklet", $("#sbMark").checked));
+
       // The watermark's words and strength stay with the book; whether this
       // file carries it is chosen each time.
       const markBox = $("#sbMark"), markOpts = $("#sbMarkOpts"), markText = $("#sbMarkText");
@@ -5299,13 +5311,16 @@
        is the size up from the page — A5 pages on A4 sheets, the case a home
        printer can manage — and the note says so, and how to print it. */
     function bookletNote() {
-      const el = $("#sbBookletNote"), btn = $("#sbBooklet"); if (!el || !btn) return;
+      const el = $("#sbBookletNote"), fold = $('[data-print="fold"]'), pdf = $("#sbPdf"); if (!el || !fold) return;
       const sheet = SHEETS[book.paper || "a4"];
       const can = book.orientation !== "landscape";
-      btn.disabled = !can;
-      if (!can) { el.textContent = "A booklet needs a portrait book: a landscape one would fold along the top edge."; return; }
+      fold.disabled = !can;
+      if (!can && printMode === "fold") { printMode = "normal"; $$("[data-print]").forEach((x) => x.setAttribute("aria-checked", String(x.dataset.print === "normal"))); }
+      if (pdf) pdf.textContent = printMode === "fold" ? "Download PDF to fold" : "Download PDF";
+      if (!can) { el.textContent = `Normal: one ${sheet.page} page per sheet. Folding needs a portrait book — a landscape one would fold along the top edge.`; return; }
+      if (printMode !== "fold") { el.textContent = `Normal: one ${sheet.page} page per sheet, the size you chose in Design.`; return; }
       const n = renderedCount(book), padded = Math.ceil(n / 4) * 4;
-      el.textContent = `Booklet: ${sheet.page} pages two to a ${sheet.name} sheet, in folding order${padded > n ? ` (${padded - n} blank page${padded - n === 1 ? "" : "s"} added to fill the last sheet)` : ""}. Print two-sided, flipping on the short edge, then fold the stack down the middle and staple.${book.paper !== "a5" ? " For A4 sheets from a home printer, set the paper to A5 in Design first." : ""}`;
+      el.textContent = `Fold in half: ${sheet.page} pages two to a ${sheet.name} sheet, in folding order${padded > n ? ` (${padded - n} blank page${padded - n === 1 ? "" : "s"} added to fill the last sheet)` : ""}. Print two-sided, flipping on the short edge, then fold the stack down the middle and staple.${book.paper !== "a5" ? " For A4 sheets from a home printer, set the paper to A5 in Design first." : ""}`;
     }
     async function drawCheck() {
       const box = $("#sbCheck"); if (!box) return;
