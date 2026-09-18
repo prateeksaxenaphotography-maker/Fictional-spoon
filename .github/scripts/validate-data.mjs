@@ -290,7 +290,7 @@ if (books !== undefined && books !== null) {
     fail("WPS_DATA.STUDIO_PORTFOLIOS must be an object { versions: [], deleted: [] }");
   } else {
     const BOOK_STYLES = new Set(["elegant", "modern", "vogue"]);
-    const PAGE_TYPES = new Set(["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process", "free", "end"]);
+    const PAGE_TYPES = new Set(["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process", "free", "end", "look"]);
     // The same caps as STUDIO_BOOK_LIMITS.fields in app.js. Over a cap FAILS
     // here rather than being trimmed: the app's cleaner would otherwise cut a
     // hand-edited data.js without a word.
@@ -304,6 +304,7 @@ if (books !== undefined && books !== null) {
       ways: { kicker: 32, heading: 52, intro: 160 },
       process: { kicker: 32, heading: 52, intro: 160, note: 120 },
       end: { text: 160, note: 60 },
+      look: { title: 40 },
       photos: { caption: 90 }
     };
     const BORDERS = new Set(["none", "top", "bottom", "left", "right", "all"]);
@@ -344,7 +345,7 @@ if (books !== undefined && books !== null) {
     const PAGE_TEXT = { label: 32, heading: 60, note: 90, credit: 60, qrLabel: 24 };
     const SERVICE_ITEM = { kicker: 28, title: 40, blurb: 120 };
     const CONTACT_ROW = { label: 24, value: 60 };
-    const CREDIT_PAGES = new Set(["photos", "spread", "article", "story", "note", "quote", "feature"]);
+    const CREDIT_PAGES = new Set(["photos", "spread", "article", "story", "note", "quote", "feature", "look"]);
     const KNOWN_KEYS_BASE = {
       photos: ["type", "photos", "caption", "credit", "rows", "border", "borderWidth", "style"], spread: ["type", "photos", "credit", "border", "borderWidth"], divider: ["type", "heading", "line", "style"],
       about: ["type", "label", "heading", "style"], services: ["type", "label", "heading", "note", "items", "hide"], contact: ["type", "label", "heading", "rows", "qrLabel", "hide"],
@@ -355,7 +356,8 @@ if (books !== undefined && books !== null) {
       ways: ["type", "items", "style", ...Object.keys(FIELD_MAX.ways)],
       process: ["type", "way", "steps", "style", ...Object.keys(FIELD_MAX.process)],
       free: ["type", "bg", "blocks"],
-      end: ["type", "layout", "photos", "text", "note", "lines", "noLines", "style"]
+      end: ["type", "layout", "photos", "text", "note", "lines", "noLines", "style"],
+      look: ["type", "photos", "label", "title", "lines", "credit", "style"]
     };
     // Any page can carry its own colour behind everything.
     const KNOWN_KEYS = Object.fromEntries(Object.entries(KNOWN_KEYS_BASE).map(([k, v]) => [k, v.includes("bg") ? v : [...v, "bg"]]));
@@ -493,6 +495,10 @@ if (books !== undefined && books !== null) {
         }
         if (pg.bg !== undefined && !isFill(pg.bg)) fail(`${where} has a page colour ${JSON.stringify(pg.bg)}; use ${[...FILLS].join(", ")} or #rrggbb`);
         if (pg.type === "free") checkBlocks(where, pg.blocks, "free");
+        if (pg.type === "look") {
+          if (!Array.isArray(pg.photos) || pg.photos.length > 2 || pg.photos.some((s2) => !s2 || typeof s2.id !== "string")) fail(`${where} (look) must have a photos list of at most two photos`);
+          if (pg.lines !== undefined && (!Array.isArray(pg.lines) || !pg.lines.length || pg.lines.length > 4 || pg.lines.some((l) => typeof l !== "string" || l.length > 60) || !pg.lines[pg.lines.length - 1].trim())) fail(`${where} (look) has lines the app would drop: up to four of 60 characters, the last not blank`);
+        }
         if (pg.type === "end") {
           if (!["back", "closing"].includes(pg.layout)) fail(`${where} (end) has a layout ${JSON.stringify(pg.layout)}; the app writes back or closing`);
           if (pg.layout === "closing" && (!Array.isArray(pg.photos) || pg.photos.length > 1 || pg.photos.some((s2) => !s2 || typeof s2.id !== "string"))) fail(`${where} (end) must have a photos list of at most one photo`);
@@ -559,6 +565,7 @@ if (books !== undefined && books !== null) {
           checkBlocks(`studio portfolio book ${name} cover`, b.coverPage.blocks, "cover");
         }
       } else if (b.coverLayout === "custom") fail(`studio portfolio book ${name} has a cover from scratch but no coverPage`);
+      if (b.pages.some((pg) => pg && pg.type === "look") && !(b.schema >= 3)) fail(`studio portfolio book ${name} has a look but a schema mark under 3; the app writes schema: 3 for one, and CI needs it to catch an out-of-date tab dropping it`);
       if ((b.coverLayout !== undefined || b.pages.some((pg) => pg && pg.type === "end")) && !(b.schema >= 2)) fail(`studio portfolio book ${name} has a cover layout or an end page but a schema mark under 2; the app writes schema: 2 for one, and CI needs it to catch an out-of-date tab dropping them`);
       if (b.footText !== undefined && (typeof b.footText !== "string" || !b.footText.trim() || b.footText.length > 40)) fail(`studio portfolio book ${name} has a running foot the app would drop or cut`);
       if (b.bg !== undefined && !isFill(b.bg)) fail(`studio portfolio book ${name} has a page colour ${JSON.stringify(b.bg)}; use ${[...FILLS].join(", ")} or #rrggbb`);
@@ -649,7 +656,7 @@ try {
   // An old app.js strips writing pages and captions from books it never
   // opened, without touching their updatedAt. Words that shrink while the
   // book's edit time stays the same can only come from that.
-  const WRITING = new Set(["story", "note", "quote", "letter", "feature", "article", "ways", "process", "free", "end"]);
+  const WRITING = new Set(["story", "note", "quote", "letter", "feature", "article", "ways", "process", "free", "end", "look"]);
   const wordsIn = (b) => {
     let pages = 0, chars = 0, fits = 0;
     const settings = (s) => (s ? (s.fit ? 1 : 0) + (s.opacity !== undefined ? 1 : 0) : 0);

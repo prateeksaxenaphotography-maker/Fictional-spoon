@@ -677,13 +677,16 @@ const STUDIO_BOOK_STYLES = ["elegant", "modern", "vogue"];
 // book at `versions` rather than letting the clean-up drop one.
 const STUDIO_BOOK_LIMITS = {
   versions: 200, pages: 30, text: 1200, deleted: 2000,
-  pageTypes: ["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process", "free", "end"],
+  pageTypes: ["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process", "free", "end", "look"],
   // The cover's layout: absent means the style's own; "custom" is a cover
   // arranged like an Anything page (book.coverPage). The end page is the
   // book's back cover or a closing page; its three lines are 40 characters.
   coverLayouts: ["photo", "framed", "poster", "custom"],
   endLayouts: ["back", "closing"],
   endLine: 40,
+  // A look (a lookbook page): up to four lines under its name, 60 characters each.
+  lookLines: 4,
+  lookLine: 60,
   fits: ["fill", "whole", "width", "height"],
   // Paper a book prints on; absent means A4. Where a writing page's photo sits;
   // absent means the page shape's usual place.
@@ -739,8 +742,9 @@ const STUDIO_BOOK_LIMITS = {
      it needs, and the mark is never taken off, so a browser tab running an
      older release — which would quietly drop a page kind it doesn't know —
      shows up in CI as a book whose mark went backwards, whatever its
-     updatedAt says. 1 = Anything pages; 2 = a cover layout or an end page. */
-  schema: 2,
+     updatedAt says. 1 = Anything pages; 2 = a cover layout or an end page;
+     3 = a look. */
+  schema: 3,
   // The cover's own lines. Empty means "as the style has always drawn it".
   coverText: { label: 32, mast: 18, tagline: 24, foot: 40, place: 40 },
   coverLine: 24,          // one of the cover's inside lines, three a side
@@ -768,7 +772,8 @@ const STUDIO_BOOK_LIMITS = {
     ways: { kicker: 32, heading: 52, intro: 160 },
     process: { kicker: 32, heading: 52, intro: 160, note: 120 },
     photos: { caption: 90 },
-    end: { text: 160, note: 60 }
+    end: { text: 160, note: 60 },
+    look: { title: 40 }
   }
 };
 // One text's formatting: an open-source font, a colour, an alignment, a size,
@@ -921,6 +926,12 @@ function cleanStudioPortfolios(o) {
       // book's, and failing that the style's.
       if (STUDIO_BOOK_LIMITS.fills.includes(pg.bg) || /^#[0-9a-f]{6}$/i.test(String(pg.bg || ""))) out.bg = String(pg.bg).toLowerCase();
       if (pg.type === "free") out.blocks = cleanBlocks(pg.blocks);
+      if (pg.type === "look") {
+        out.photos = (Array.isArray(pg.photos) ? pg.photos : []).map(shot).filter(Boolean).slice(0, 2);
+        const lines = (Array.isArray(pg.lines) ? pg.lines : []).slice(0, STUDIO_BOOK_LIMITS.lookLines).map((x) => str(x, STUDIO_BOOK_LIMITS.lookLine));
+        while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+        if (lines.length) out.lines = lines;
+      }
       if (pg.type === "end") {
         out.layout = STUDIO_BOOK_LIMITS.endLayouts.includes(pg.layout) ? pg.layout : "closing";
         if (out.layout === "closing") out.photos = (Array.isArray(pg.photos) ? pg.photos : []).map(shot).filter(Boolean).slice(0, 1);
@@ -956,6 +967,7 @@ function cleanStudioPortfolios(o) {
       const PT = STUDIO_BOOK_LIMITS.pageText;
       const over = (k, max) => { const val = strU(pg[k], max); if (val.trim()) out[k] = val; };
       if (["about", "services", "contact"].includes(pg.type)) { over("label", PT.label); over("heading", PT.heading); }
+      if (pg.type === "look") over("label", PT.label);
       if (pg.type === "services") {
         over("note", PT.note);
         if (pg.items && typeof pg.items === "object" && !Array.isArray(pg.items)) {
@@ -987,7 +999,7 @@ function cleanStudioPortfolios(o) {
           if (Object.keys(rows).length) out.rows = rows;
         }
       }
-      if (["photos", "spread", "article", "story", "note", "quote", "feature"].includes(pg.type)) over("credit", PT.credit);
+      if (["photos", "spread", "article", "story", "note", "quote", "feature", "look"].includes(pg.type)) over("credit", PT.credit);
       if (pg.type === "story" || pg.type === "note" || pg.type === "quote") out.photos = (Array.isArray(pg.photos) ? pg.photos : []).map(shot).filter(Boolean).slice(0, 1);
       if (pg.type === "feature") out.photos = (Array.isArray(pg.photos) ? pg.photos : []).map(shot).filter(Boolean).slice(0, 2);
       if ((STUDIO_BOOK_LIMITS.photoAt[pg.type] || []).includes(pg.photoAt)) out.photoAt = pg.photoAt;
@@ -1014,7 +1026,7 @@ function cleanStudioPortfolios(o) {
       // carried, never lowered here, so an older tab dropping what it cannot
       // read shows up as the mark going backwards.
       ...(() => {
-        const need = (STUDIO_BOOK_LIMITS.coverLayouts.includes(v.coverLayout) || pages.some((pg) => pg.type === "end")) ? 2 : pages.some((pg) => pg.type === "free") ? 1 : 0;
+        const need = pages.some((pg) => pg.type === "look") ? 3 : (STUDIO_BOOK_LIMITS.coverLayouts.includes(v.coverLayout) || pages.some((pg) => pg.type === "end")) ? 2 : pages.some((pg) => pg.type === "free") ? 1 : 0;
         const mark = Math.max(need, num(v.schema, 0, 99, 0));
         return mark ? { schema: mark } : {};
       })(),
@@ -1075,10 +1087,10 @@ function cleanStudioPortfolios(o) {
 // Each time the stored shape grows, the copy moves to a new key: code that
 // knows the previous shape still writes the previous key (stripping only what
 // it doesn't know), so the newest key is read first and wins ties.
-const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words_v6";
+const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words_v7";
 // Older keys: code that knows only an older shape keeps rewriting the key it
 // knows, so every growth of the shape gets a new one, read before the old.
-const STUDIO_BOOK_WORDS_OLD = ["wps_studio_portfolios_words_v5", "wps_studio_portfolios_words_v4", "wps_studio_portfolios_words_v3", "wps_studio_portfolios_words_v2", "wps_studio_portfolios_words"];
+const STUDIO_BOOK_WORDS_OLD = ["wps_studio_portfolios_words_v6", "wps_studio_portfolios_words_v5", "wps_studio_portfolios_words_v4", "wps_studio_portfolios_words_v3", "wps_studio_portfolios_words_v2", "wps_studio_portfolios_words"];
 const studioBookHasWords = (v) => !!v.paper || !!v.coverStyle || !!v.watermark || !!v.coverText || !!v.schema || !!v.footText || !!v.bg || v.showPageNumbers === false || !!v.coverLayout || !!v.coverPage || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
   (STUDIO_BOOK_LIMITS.fields[pg.type] && (pg.type !== "photos" || pg.caption)) || (pg.blocks || []).length || pg.bg || pg.items || pg.steps || pg.rows || pg.credit || pg.label || pg.heading || pg.photoAt || pg.border || pg.borderWidth || pg.style || pg.hide || (pg.photos || []).some((s) => s.fit || s.opacity));
 function getStudioPortfolios(live) {
