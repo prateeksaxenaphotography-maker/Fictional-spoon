@@ -632,6 +632,201 @@
   }
   // The lines each cover prints for itself, beside the title and its subtitle.
   const COVER_LINES = { elegant: ["foot", "place"], modern: ["label", "foot", "place"], vogue: ["mast", "tagline", "foot", "counts"] };
+
+  /* ---------- the cover's layout ------------------------------------------
+     The style's own cover (nothing stored), one of three presets, or
+     "custom": the cover is an Anything page of its own (book.coverPage),
+     arranged with the same tools as any Anything page. */
+  const COVER_LAYOUTS = [["classic", "Classic"], ["photo", "Full photo"], ["framed", "Window"], ["poster", "Words only"], ["custom", "From scratch"]];
+  const COVER_LAYOUT_NOTE = {
+    classic: "The style's own cover: the mark, the title, and your headshot when you add one.",
+    photo: "One photograph fills the cover; the title sits on it.",
+    framed: "The photograph in a window, the title under it.",
+    poster: "No photograph: the title, set big.",
+    custom: "Yours to arrange, like an Anything page: words, photographs, shapes and lines, dragged where you want."
+  };
+  const coverLayoutOf = (book) => (book && ["photo", "framed", "poster", "custom"].includes(book.coverLayout) ? book.coverLayout : "classic");
+  // The cover as an Anything page. `type` is for the editor's own checks and is never stored.
+  const coverEntry = (book) => {
+    if (!book.coverPage || typeof book.coverPage !== "object") book.coverPage = { blocks: [] };
+    if (!Array.isArray(book.coverPage.blocks)) book.coverPage.blocks = [];
+    book.coverPage.type = "free";
+    return book.coverPage;
+  };
+  const styleKey = (book) => (["elegant", "modern", "vogue"].includes(book && book.style) ? book.style : "modern");
+  // Each style's title on a cover: the face, whether it is set in capitals, its spacing, and the subtitle's face.
+  const COVER_TYPE = {
+    elegant: { w: 300, f: F.serif, caps: false, sp: 0, subF: F.serif, subIt: true, small: F.plex },
+    modern: { w: 800, f: F.heavy, caps: true, sp: -0.4, subF: F.sans, subIt: false, small: F.mono },
+    vogue: { w: 300, f: F.serif, caps: true, sp: 0.8, subF: F.sans, subIt: false, small: F.geo }
+  };
+  const titleOf = (book, K) => (K.caps ? (book.title || "Selected Work").toUpperCase() : (book.title || "Selected Work"));
+  // The title, its subtitle and their on-page regions, drawn from a first baseline.
+  function coverWords(page, book, K, cs, P, ink, soft, x, tw, firstY, t, lead) {
+    const TT = textFormat(cs, "title", { w: K.w, f: K.f }, P, ink);
+    const ST = textFormat(cs, "subtitle", { w: 400, f: K.subF, it: K.subIt }, P, soft);
+    font(page, TT.spec.w, t.size, TT.spec.f, K.sp, !!TT.spec.it);
+    if (skipNow !== "title") t.lines.forEach((l, i) => text(page, l, TT.at(x, tw), firstY + i * lead, TT.color, TT.align));
+    noteText(page, "title", x, firstY - t.size * 0.86, tw, (t.lines.length - 1) * lead + t.size * 1.16, { ...typeOf(TT, t.size, lead, K.sp), caps: K.caps });
+    const ss = 4.2 * ST.scale, subY = firstY + (t.lines.length - 1) * lead + Math.max(5, t.size * 0.32) + ss * 1.2;
+    font(page, ST.spec.w, ss, ST.spec.f, 0, !!ST.spec.it);
+    if (book.subtitle && skipNow !== "subtitle") text(page, ellipsize(page, book.subtitle, tw), ST.at(x, tw), subY, ST.color, ST.align);
+    noteText(page, "subtitle", x, subY - ss * 0.86, tw, ss * 1.2, typeOf(ST, ss, ss * 1.3));
+    return subY;
+  }
+  // The title shrunk until it fits `maxLines` and leaves `room` below it before `floorY`.
+  function coverTitleFit(page, book, K, cs, P, tw, maxLines, start, min, firstY, room, floorY) {
+    const TT = textFormat(cs, "title", { w: K.w, f: K.f }, P, P.ink);
+    let size = start * TT.scale, t;
+    const least = min * TT.scale;
+    for (;;) {
+      t = fitLines(page, titleOf(book, K), tw, maxLines, TT.spec.w, size, least, TT.spec.f, K.sp, !!TT.spec.it);
+      const lead = t.size * (K.caps ? 1.0 : 1.12);
+      if (firstY + (t.lines.length - 1) * lead + room <= floorY || t.size <= least) return { t, lead };
+      size = t.size - 0.5;
+    }
+  }
+  function coverFoot(page, K, CT, x, right, y, ink, soft) {
+    font(page, 600, 2.8, K.small, 0.6);
+    text(page, ellipsize(page, CT.foot, (right - x) * 0.55), x, y, ink);
+    text(page, ellipsize(page, CT.place, (right - x) * 0.42), right, y, soft, "right");
+  }
+  const COVER_PRESETS = {
+    // One photograph fills the page; the words sit on a shade at the foot.
+    async photo(page, book, P, W, H, img) {
+      const st = styleKey(book), K = COVER_TYPE[st], L = W > H, CT = coverText(book), cs = coverStyleOf(book);
+      rect(page, 0, 0, W, H, P.deep);
+      if (img) drawPhoto(page, img, book.cover, 0, 0, W, H);
+      else { const sz = L ? 44 : 52; await drawMark(page, P.onDeep, P.accent, P.deep, (W - sz) / 2, H * 0.34 - sz / 2, sz); }
+      const g = page.ctx.createLinearGradient(0, page.u(H * 0.42), 0, page.u(H));
+      g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.66)");
+      page.ctx.fillStyle = g; page.ctx.fillRect(0, page.u(H * 0.42), page.u(W), page.u(H * 0.58));
+      if (st === "modern") rect(page, 0, 0, 12, H, P.accent);
+      const x = st === "modern" ? 26 : 18, right = W - 16, tw = right - x, on = "#FFFFFF";
+      if (img) await drawMark(page, on, P.accent, "rgba(0,0,0,0)", x, 14, 12);
+      const footY = H - 14;
+      const TT = textFormat(cs, "title", { w: K.w, f: K.f }, P, on);
+      const t = fitLines(page, titleOf(book, K), tw, 3, TT.spec.w, (L ? 15 : 19) * TT.scale, (L ? 8 : 10) * TT.scale, TT.spec.f, K.sp, !!TT.spec.it);
+      const lead = t.size * (K.caps ? 1.0 : 1.12);
+      const subH = 4.2 * 1.3 + 4;
+      const firstY = footY - 14 - subH - (t.lines.length - 1) * lead;
+      coverWords(page, book, K, cs, P, on, "rgba(255,255,255,0.86)", x, tw, firstY, t, lead);
+      hair(page, x, footY - 6, right, "rgba(255,255,255,0.5)");
+      coverFoot(page, K, CT, x, right, footY, on, "rgba(255,255,255,0.86)");
+    },
+    // The photograph in a window at the top, the words under it.
+    async framed(page, book, P, W, H, img) {
+      const st = styleKey(book), K = COVER_TYPE[st], L = W > H, CT = coverText(book), cs = coverStyleOf(book);
+      const ground = st === "modern" ? P.deep : st === "vogue" ? P.white : P.paper;
+      const ink = st === "modern" ? P.onDeep : P.ink, soft = st === "modern" ? P.onDeep : P.soft;
+      rect(page, 0, 0, W, H, ground);
+      if (st === "modern") rect(page, 0, 0, 12, H, P.accent);
+      const x = st === "modern" ? 26 : st === "vogue" ? 12 : 16, right = W - (st === "modern" ? 14 : x), tw = right - x;
+      const win = { x, y: L ? 14 : 18, w: tw, h: L ? H * 0.56 : H * 0.6 };
+      if (img) drawPhoto(page, img, book.cover, win.x, win.y, win.w, win.h);
+      else {
+        rect(page, win.x, win.y, win.w, win.h, st === "modern" ? "rgba(255,255,255,0.08)" : P.accent);
+        const sz = L ? 30 : 36;
+        await drawMark(page, st === "modern" ? P.onDeep : P.onAccent, st === "modern" ? P.accent : P.onAccent, "rgba(0,0,0,0)", win.x + (win.w - sz) / 2, win.y + (win.h - sz) / 2, sz);
+      }
+      if (st === "elegant") frame(page, win.x, win.y, win.w, win.h, P.ink);
+      const footY = H - 14, top = win.y + win.h + (L ? 10 : 14);
+      const { t, lead } = coverTitleFit(page, book, K, cs, P, tw, 2, L ? 12 : 15, L ? 7 : 8.5, top + (L ? 12 : 15), 4.2 * 1.3 + 4 + 8, footY - 8);
+      const firstY = top + t.size;
+      const subY = coverWords(page, book, K, cs, P, ink, soft, x, tw, firstY, t, lead);
+      rect(page, x, Math.min(subY + 6, footY - 9), 22, 0.8, P.accent);
+      hair(page, x, footY - 6, right, st === "modern" ? P.onDeep : P.rule);
+      coverFoot(page, K, CT, x, right, footY, ink, soft);
+    },
+    // No photograph: the words, set big, and the mark at the foot.
+    async poster(page, book, P, W, H) {
+      const st = styleKey(book), K = COVER_TYPE[st], L = W > H, CT = coverText(book), cs = coverStyleOf(book);
+      const ground = st === "elegant" ? P.paper : st === "modern" ? P.deep : P.accent;
+      const ink = st === "elegant" ? P.ink : st === "modern" ? P.onDeep : P.onAccent;
+      const soft = st === "elegant" ? P.soft : ink;
+      rect(page, 0, 0, W, H, ground);
+      if (st === "modern") rect(page, 0, 0, 12, H, P.accent);
+      if (st === "elegant") frame(page, 14, 14, W - 28, H - 28, P.ink);
+      const x = st === "modern" ? 26 : 24, right = W - (st === "modern" ? 14 : 24), tw = right - x;
+      const labelY = L ? 24 : 30;
+      font(page, 600, 2.9, K.small, 0.7);
+      text(page, ellipsize(page, CT.label, tw), x, labelY, st === "modern" ? accentOnDeep(P) : st === "elegant" ? accentText(P) : ink);
+      hair(page, x, labelY + 5, right, ink);
+      const footY = H - 14, markS = L ? 16 : 20, firstTop = labelY + (L ? 16 : 26);
+      const { t, lead } = coverTitleFit(page, book, K, cs, P, tw, 4, L ? 24 : 34, L ? 10 : 12, firstTop + (L ? 24 : 34), 4.2 * 1.3 + 4 + 10 + markS + 10, footY - 8);
+      const firstY = firstTop + t.size;
+      const subY = coverWords(page, book, K, cs, P, ink, soft, x, tw, firstY, t, lead);
+      rect(page, x, Math.min(subY + 7, footY - markS - 14), 26, 1, st === "elegant" ? P.accent : ink);
+      await drawMark(page, ink, st === "vogue" ? ink : P.accent, ground, x, footY - 4 - markS, markS);
+      font(page, 600, 2.8, K.small, 0.6);
+      text(page, ellipsize(page, CT.foot, tw * 0.6), right, footY - 6, ink, "right");
+      text(page, ellipsize(page, CT.place, tw * 0.6), right, footY, soft, "right");
+    }
+  };
+
+  /* ---------- the end page --------------------------------------------------
+     "back": the book's back cover — the mark, the studio's name and three
+     lines (typed, or its email, Instagram and site). "closing": a last
+     photograph if there is one, a line to sign off with, a small line under. */
+  const endLayoutOf = (entry) => (entry && entry.layout === "back" ? "back" : "closing");
+  const lineIn = (v, fallback) => ((typeof v === "string" && v.trim()) ? v : fallback);
+  function endLines(entry) {
+    const c = cfg();
+    const ig = String(c.instagram || "").replace(/\/+$/, "").split("/").pop();
+    const own = Array.isArray(entry.lines) ? entry.lines.filter((x) => typeof x === "string" && x.trim()) : [];
+    return { own, defaults: [c.email || "", ig ? `@${ig}` : "", "nerdyphotographer.in"].filter(Boolean) };
+  }
+  async function drawEnd(page, entry, book, P, W, H, imgs, n, S) {
+    const st = styleKey(book), L = W > H, CT = coverText(book), K = COVER_TYPE[st];
+    if (endLayoutOf(entry) === "back") {
+      const fb = st === "elegant" ? P.paper : st === "modern" ? P.deep : P.accent;
+      const ground = isFillish(entry.bg) ? blockColor(entry.bg, P, fb) : fb;
+      const ink = st === "modern" ? P.onDeep : st === "vogue" ? P.onAccent : P.ink;
+      rect(page, 0, 0, W, H, ground);
+      if (st === "modern") rect(page, 0, 0, 12, H, P.accent);
+      if (st === "elegant") frame(page, 14, 14, W - 28, H - 28, P.ink);
+      const sz = L ? 26 : 30, midY = H * 0.36;
+      await drawMark(page, ink, st === "vogue" ? ink : P.accent, ground, (W - sz) / 2, midY - sz / 2, sz);
+      font(page, st === "elegant" ? 300 : 600, st === "elegant" ? 7 : 5.2, st === "elegant" ? F.serif : K.small, st === "elegant" ? 0.4 : 1.2);
+      text(page, st === "elegant" ? studio() : studio().toUpperCase(), W / 2, midY + sz / 2 + 14, ink, "center");
+      rect(page, W / 2 - 11, midY + sz / 2 + 20, 22, 0.8, st === "vogue" ? ink : P.accent);
+      if (!entry.noLines) {
+        const { own, defaults } = endLines(entry);
+        const lines = (own.length ? own : defaults).slice(0, 3);
+        font(page, 400, 3.6, st === "elegant" ? F.serif : F.sans);
+        lines.forEach((l, i) => text(page, ellipsize(page, l, W - 40), W / 2, midY + sz / 2 + 34 + i * 6.5, ink, "center"));
+      }
+      font(page, 600, 2.6, K.small, 0.6);
+      text(page, ellipsize(page, CT.place, W - 40), W / 2, H - 14, ink, "center");
+      return;
+    }
+    const ground = pageBgOf(book, entry, P, st === "elegant" ? P.paper : P.white);
+    rect(page, 0, 0, W, H, ground);
+    if (st === "modern") rect(page, 0, 0, 6, H, P.accent);
+    const M = S.margins(L ? "landscape" : "portrait");
+    const img = imgs[0], shot = (entry.photos || [])[0];
+    const box = { x: M.side + (st === "modern" ? 6 : 0), y: M.top, w: W - 2 * M.side - (st === "modern" ? 6 : 0), h: H * 0.54 };
+    if (img) {
+      if (st === "elegant") { const r = fitPhoto(page, img, shot, box.x, box.y, box.w, box.h); frame(page, r.x, r.y, r.w, r.h, P.rule, 0.2); }
+      else drawPhoto(page, img, shot, box.x, box.y, box.w, box.h);
+    }
+    const top = img ? box.y + box.h + (L ? 12 : 18) : H * 0.4;
+    const TT = textFormat(entry.style, "text", { w: K.w, f: K.f }, P, P.ink);
+    const line = lineIn(entry.text, "Thank you for looking.");
+    const t = fitLines(page, K.caps ? line.toUpperCase() : line, box.w, 3, TT.spec.w, (L ? 9 : 11) * TT.scale, (L ? 6 : 7) * TT.scale, TT.spec.f, K.sp, !!TT.spec.it);
+    const lead = t.size * (K.caps ? 1.0 : 1.15), firstY = top + t.size;
+    font(page, TT.spec.w, t.size, TT.spec.f, K.sp, !!TT.spec.it);
+    if (skipNow !== "text") t.lines.forEach((l, i) => text(page, l, TT.at(box.x, box.w), firstY + i * lead, TT.color, TT.align));
+    noteText(page, "text", box.x, firstY - t.size * 0.86, box.w, (t.lines.length - 1) * lead + t.size * 1.16, { ...typeOf(TT, t.size, lead, K.sp), caps: K.caps });
+    const noteY = firstY + (t.lines.length - 1) * lead + 12;
+    rect(page, box.x, noteY - 7, 22, 0.8, P.accent);
+    const NT = textFormat(entry.style, "note", { w: 400, f: F.sans }, P, P.soft);
+    const ns = 3.4 * NT.scale;
+    font(page, NT.spec.w, ns, NT.spec.f, 0, !!NT.spec.it);
+    const small = lineIn(entry.note, `© ${year()} ${studio()}`);
+    if (skipNow !== "note") text(page, ellipsize(page, small, box.w), NT.at(box.x, box.w), noteY + 2, NT.color, NT.align);
+    noteText(page, "note", box.x, noteY + 2 - ns * 0.86, box.w, ns * 1.2, typeOf(NT, ns, ns * 1.3));
+  }
   function coverLines(book) {
     // Cover lines from the book's own photographs, never typed: genres that
     // are actually in it, and counts that are actually true.
@@ -2528,7 +2723,7 @@
   const lineH = (b, H) => (linePath(b) === "h" ? lineThick(b) / H : Math.max(0.01, +b.h || 0.15));
   const blockBox = (b, W, H) => ({ x: (+b.x || 0) * W, y: (+b.y || 0) * H, w: Math.max(0.5, (+b.w || 0) * W), h: b.k === "line" ? lineH(b, H) * H : Math.max(0.5, (+b.h || 0) * H) });
 
-  function planFree(book, entry) {
+  function planFree(book, entry, ground = null) {
     const G = geometry(book);
     const st = WTYPE[book.style] ? book.style : "modern";
     const T = WTYPE[st];
@@ -2538,7 +2733,8 @@
     const plan = { ops: [], cuts: [], fields: {}, foot: {}, free: true };
     const op = (o) => plan.ops.push(o);
     const colour = (role) => (role === "accentText" ? accentText(P) : P[role]);
-    op({ k: "rect", x: 0, y: 0, w: W, h: H, c: pageBgOf(book, entry, P, st === "elegant" ? P.paper : P.white) });
+    // A cover from scratch takes the style's cover ground, not the book's page colour.
+    op({ k: "rect", x: 0, y: 0, w: W, h: H, c: ground ? (isFillish(entry.bg) ? blockColor(entry.bg, P, ground) : ground) : pageBgOf(book, entry, P, st === "elegant" ? P.paper : P.white) });
     freeBlocks(entry).forEach((b, i) => {
       if (!b || !FREE_KINDS.includes(b.k)) return;
       const box = blockBox(b, W, H);
@@ -2748,7 +2944,14 @@
     entryNow = null;
     if (want(-1)) {
       const page = newPage();
-      await S.cover(page, book, P, W, H, book.cover ? await imgOf(book.cover) : null);
+      const layout = coverLayoutOf(book);
+      if (layout === "custom") {
+        const ce = coverEntry(book);
+        const plan = planFree(book, ce);
+        await paintPlan(page, plan, ce, imgOf, P, guides, skip);
+        page.cuts = plan.cuts; page.plan = plan;
+      } else if (COVER_PRESETS[layout]) await COVER_PRESETS[layout](page, book, P, W, H, layout === "poster" ? null : (book.cover ? await imgOf(book.cover) : null));
+      else await S.cover(page, book, P, W, H, book.cover ? await imgOf(book.cover) : null);
       if (mark) watermark(page, W, H, P, mark);
       yield { page, index: -1, n: 1 };
     }
@@ -2830,6 +3033,10 @@
         freeFoot(page, P, W, H, n);
         page.cuts = plan.cuts;
         page.plan = plan;
+      } else if (entry.type === "end") {
+        const imgs = await Promise.all((entry.photos || []).map(imgOf));
+        await drawEnd(page, entry, book, P, W, H, imgs, n, S);
+        if (endLayoutOf(entry) !== "back") writingFoot(page, n, { foot: {} });
       } else if (WRITING[entry.type]) {
         const plan = planWriting(book, entry);
         await paintPlan(page, plan, entry, imgOf, P, guides, skip);
@@ -3208,7 +3415,7 @@
     document.head.appendChild(st);
   }
 
-  const PAGE_LABEL = { photos: "Photos", spread: "Two-page spread", divider: "Chapter page", about: "About", services: "What I shoot", contact: "Contact", story: "Story", note: "About a photo", quote: "Quote", letter: "Letter", feature: "Zig-zag", article: "Story + full-page photo", ways: "Ways we work", process: "How a shoot runs", free: "Anything page" };
+  const PAGE_LABEL = { photos: "Photos", spread: "Two-page spread", divider: "Chapter page", about: "About", services: "What I shoot", contact: "Contact", story: "Story", note: "About a photo", quote: "Quote", letter: "Letter", feature: "Zig-zag", article: "Story + full-page photo", ways: "Ways we work", process: "How a shoot runs", free: "Anything page", end: "End page" };
   const ADD_MENU = [
     { group: "Photographs", items: [
       ["photos", "Photos", "One to six photos, laid out by their shapes."],
@@ -3236,7 +3443,9 @@
       ["divider", "Chapter page", "A pause between sections, e.g. “Fashion & editorial”."],
       ["about", "About the studio", "Who you are and how you work."],
       ["services", "What I shoot", "The kinds of shoot live on your site."],
-      ["contact", "Contact", "Email, Instagram, booking link and a QR code."]] }
+      ["contact", "Contact", "Email, Instagram, booking link and a QR code."],
+      ["end:back", "Back cover", "The last page: your mark, your name and how to reach you."],
+      ["end:closing", "Closing page", "A last photograph and a line to sign off with, then the book ends."]] }
   ];
   /* Each kind of page as a small picture for the Add-page menu: a page with
      its photographs (grey), lines of words (dark) and any band of colour, in
@@ -3263,7 +3472,9 @@
     divider: "t4,26,24,4 b4,33,10,1.5",
     about: "t4,8,20,3 t4,15,36,2 t4,19,36,2 t4,23,30,2 t4,27,36,2 t4,31,24,2",
     services: "t4,8,14,3 t4,13,30,2 t4,20,14,3 t4,25,30,2 t4,32,14,3 t4,37,30,2 t4,44,14,3 t4,49,30,2",
-    contact: "t4,8,22,3 t4,15,26,2 t4,19,22,2 t4,23,26,2 q28,40,12,12"
+    contact: "t4,8,22,3 t4,15,26,2 t4,19,22,2 t4,23,26,2 q28,40,12,12",
+    "end:back": "b0,0,44,60 w19,18,6,6 w13,30,18,2 w15,36,14,1.5 w15,40,14,1.5 w15,44,14,1.5",
+    "end:closing": "p4,6,36,26 t4,40,26,3 b4,47,8,1 t4,51,20,2"
   };
   function addIcon(type) {
     const FILL = { p: "#cfcbc4", t: "#8a8c93", b: "var(--accent, #d24e1a)", w: "#ffffff", q: "#141416" };
@@ -3892,7 +4103,9 @@
        dragged, resized with its corners, and nudged with the arrow keys.
        Positions stay fractions of the A4 frame, so nothing moves when the
        paper or the shape changes. */
-    const freePage = () => { const e = sel >= 0 ? book.pages[sel] : null; return e && e.type === "free" ? e : null; };
+    // The page being edited: a page of the book, or the cover when it is an Anything page of its own.
+    const curEntry = () => (sel >= 0 ? book.pages[sel] : (coverLayoutOf(book) === "custom" ? coverEntry(book) : null));
+    const freePage = () => { const e = curEntry(); return e && e.type === "free" ? e : null; };
     const blocksOf = (e) => (Array.isArray(e.blocks) ? e.blocks : (e.blocks = []));
     const curBlock = () => { const e = freePage(); if (!e) return null; return blocksOf(e)[blockSel] || null; };
     const BLOCK_NAME = { text: "Words", photo: "Photograph", shape: "Shape", line: "Line" };
@@ -4306,7 +4519,7 @@
     const pageHint = (s) => { const el = $("#sbPageHint"); if (el) el.textContent = s || ""; };
     // Where the words of a field live, and how many there may be.
     function textHost(field) {
-      const entry = sel >= 0 ? book.pages[sel] : null;
+      const entry = curEntry();
       const caps = fieldCaps();
       if (!entry) {
         if (field === "title") return { get: () => book.title || "", set: (v) => { book.title = v; }, max: 80, line: true, host: styleHost(null), key: "title" };
@@ -4323,6 +4536,11 @@
         const m = /^b(\d+)$/.exec(field), b = m && blocksOf(entry)[+m[1]];
         if (!b || b.k !== "text") return null;
         return { get: () => b.t || "", set: (v) => { b.t = v; }, max: FREE_TEXT_MAX, host: blockStyleHost(b), key: "t", block: +m[1] };
+      }
+      if (entry.type === "end") {
+        if (field === "text") return { get: () => entry.text || "", set: (v) => { entry.text = v; }, max: (caps.end || {}).text || 160, host: styleHost(entry), key: "text" };
+        if (field === "note") return { get: () => entry.note || "", set: (v) => { entry.note = v; }, max: (caps.end || {}).note || 60, line: true, host: styleHost(entry), key: "note" };
+        return null;
       }
       if (WRITING[entry.type] && (caps[entry.type] || {})[field] !== undefined) {
         const ui = (FIELD_UI[entry.type] || []).find((f) => f.k === field);
@@ -4341,13 +4559,13 @@
     }
     // The shot object a drawn photograph came from.
     function shotFor(id) {
-      const entry = sel >= 0 ? book.pages[sel] : null;
+      const entry = curEntry();
       if (!entry) return book.cover && book.cover.id === id ? book.cover : null;
       return (entry.photos || []).find((x) => x.id === id) || null;
     }
     function drawHits(got) {
       const box = $("#sbPreview"); if (!box) return;
-      const entry = sel >= 0 ? book.pages[sel] : null;
+      const entry = curEntry();
       if (entry && entry.type === "free") { box.querySelectorAll(".sb-hits").forEach((l) => l.remove()); placeInline(); return; }    // the blocks layer does this there
       const G = geometry(book);
       // The layer holding the box being typed in is kept, so focus never leaves it.
@@ -4394,7 +4612,7 @@
       const pick = () => {
         closeInline(false);
         photoSel = { id, n };
-        const entry = sel >= 0 ? book.pages[sel] : null;
+        const entry = curEntry();
         if (entry && entry.photos) { const k = entry.photos.findIndex((x) => x.id === id); if (k >= 0 && k !== active) { active = k; drawPhotoBlock(); } }
         layer.querySelectorAll(".sb-hit.photo").forEach((x) => x.classList.toggle("on", x === el));
         pageHint(isDiagram(id) ? "A lighting diagram is always shown whole." : "Drag to move the picture in its frame · scroll to zoom · double-click to change how it fills");
@@ -4515,7 +4733,7 @@
       // The fresh region (the type may have changed size while typing).
       let region = null;
       if (host.block != null) {
-        const entry = book.pages[sel], b = blocksOf(entry)[host.block]; if (!b) { closeInline(false); return; }
+        const entry = curEntry(), b = blocksOf(entry)[host.block]; if (!b) { closeInline(false); return; }
         const plan = planFree(book, entry), f = plan.fields[field];
         const G = geometry(book);
         region = { box: { x: b.x * G.Wa + G.ox, y: b.y * G.Ha + G.oy, w: b.w * G.Wa, h: b.h * G.Ha }, type: f && f.type };
@@ -4562,7 +4780,7 @@
       barBusy = false;
       if (!editing) return;
       const { host, ta, field } = editing;
-      const entry = sel >= 0 ? book.pages[sel] : null;
+      const entry = curEntry();
       const allowed = entry
         ? [...Object.keys(fieldCaps()[entry.type] || {}), ...(((window.STUDIO_BOOK_LIMITS || {}).formatFields || {})[entry.type] || []), ...(entry.type === "free" ? ["t"] : [])]
         : (((window.STUDIO_BOOK_LIMITS || {}).formatFields || {}).cover || []);
@@ -4661,7 +4879,14 @@
       // studio's own words, in boxes, ready to be changed.
       if (type === "ways") Object.assign(entry, { kicker: WAYS_COPY.kicker, heading: WAYS_COPY.heading, intro: WAYS_COPY.intro, items: WAYS_COPY.items.map((x) => ({ ...x })) });
       if (type === "process") { const c = PROCESS_COPY.pitch; Object.assign(entry, { way: "pitch", kicker: c.kicker, heading: c.heading, intro: c.intro, note: c.note, steps: c.steps.map((x) => ({ ...x })) }); }
-      const at = sel < 0 ? 0 : sel + 1;
+      if (type === "end") {
+        const have = book.pages.findIndex((pg) => pg && pg.type === "end");
+        if (have >= 0) { API.toast("The book already has an end page: it is the last one."); select(have); return; }
+        entry.layout = start === "back" ? "back" : "closing";
+        if (entry.layout === "closing") entry.photos = [];
+      }
+      // An end page goes last; anything else goes after the page you're on.
+      const at = type === "end" ? book.pages.length : sel < 0 ? 0 : sel + 1;
       book.pages.splice(at, 0, entry);
       flush();
       closeInline(false); photoSel = null; pageHint("");
@@ -4712,7 +4937,8 @@
     const wordsOf = (pg) => oneParagraph(pg.headline || pg.title || pg.heading || pg.quote || pg.body || pg.note || pg.sub1 || pg.text1 || "");
     const rowsOf = (pg) => [...(pg.items || []), ...(pg.steps || [])];
     function railLabel(pg) {
-      if (!pg) return book.title ? `Cover · ${book.title}` : "Cover";
+      if (!pg) return coverLayoutOf(book) === "custom" ? "Cover · from scratch" : book.title ? `Cover · ${book.title}` : "Cover";
+      if (pg.type === "end") return endLayoutOf(pg) === "back" ? "Back cover" : "Closing page";
       if (pg.type === "process") return `${PAGE_LABEL.process} · ${(PROCESS_COPY[pg.way] || {}).menuName || "one way"}`;
       if (WRITING[pg.type]) { const w = wordsOf(pg); return w.length ? `${PAGE_LABEL[pg.type]} · “${w.slice(0, 6).join(" ")}”` : PAGE_LABEL[pg.type]; }
       if (pg.type === "photos" || pg.type === "spread") return `${PAGE_LABEL[pg.type]} · ${(pg.photos || []).length}`;
@@ -4932,7 +5158,7 @@
       li.querySelector(".sb-pglabel span").textContent = railLabel(it.entry);
     }
     function setChip(entry, on) {
-      tooLong.set(entry || COVER, on);
+      tooLong.set(sel >= 0 ? entry : COVER, on);
       const i = entry ? book.pages.indexOf(entry) : -1;
       const chip = $(`#sbPages li[data-i="${i}"] .sb-chip`); if (chip) chip.hidden = !on;
     }
@@ -4965,7 +5191,7 @@
         drawHits(lastRender);
         // Pages that aren't planned (About, chapter pages) report their cuts
         // as they draw.
-        const entry = sel >= 0 ? book.pages[sel] : null;
+        const entry = curEntry();
         if (entry && !WRITING[entry.type] && entry.type !== "photos") {
           const cuts = got.flatMap((r) => r.page.cuts || []);
           setChip(entry, cuts.length > 0);
@@ -5006,10 +5232,10 @@
     /* --- the inspector: this page --- */
     function drawInspector() {
       const panel = $("#sbPanelPage"); if (!panel) return;
-      const entry = sel >= 0 ? book.pages[sel] : null;
+      const entry = curEntry();
       // On a page that IS its photographs, choosing them comes first; on a
       // writing page the words do, and the photo is the second thing.
-      const photoFirst = !!entry && ["note", "photos", "spread"].includes(entry.type);
+      const photoFirst = sel >= 0 && !!entry && ["note", "photos", "spread"].includes(entry.type);
       panel.innerHTML = `
         <div class="sb-sec" id="sbPageHead"></div>
         ${photoFirst ? `<div class="sb-sec" id="sbPhotoBlock"></div><div class="sb-sec" id="sbFields"></div>` : `<div class="sb-sec" id="sbFields"></div><div class="sb-sec" id="sbPhotoBlock"></div>`}
@@ -5032,10 +5258,12 @@
         article: "Two facing pages: your story on one, one photograph filling the other.",
         ways: "All four ways of working, with who leads the ideas.",
         process: "One way of working, step by step: you, together, or the studio.",
-        free: "Add words, photographs, colour blocks and lines, then drag them where you want."
+        free: "Add words, photographs, colour blocks and lines, then drag them where you want.",
+        coverFree: "Your cover, arranged by you: add words, photographs, colour blocks and lines, then drag them where you want.",
+        end: "The book's last page."
       };
-      const kind = entry ? entry.type : "cover";
-      head.innerHTML = `<h3>${esc(entry ? PAGE_LABEL[entry.type] : "Cover")}</h3><p class="sb-hint">${esc(about[kind] || "")}</p>`;
+      const kind = sel < 0 ? (coverLayoutOf(book) === "custom" ? "coverFree" : "cover") : entry.type;
+      head.innerHTML = `<h3>${esc(sel < 0 ? "Cover" : PAGE_LABEL[entry.type])}</h3><p class="sb-hint">${esc(about[kind] || "")}</p>`;
       drawFields(); drawPhotoBlock(); drawPageBg(); updateMeters();
     }
     /* The colour behind this page. Absent, it is the book's (set on Design),
@@ -5043,7 +5271,7 @@
        Anything page has this among its own controls. */
     function drawPageBg() {
       const box = $("#sbPageBg"); if (!box) return;
-      const entry = sel >= 0 ? book.pages[sel] : null;
+      const entry = curEntry();
       if (!entry || entry.type === "free") { box.innerHTML = ""; box.hidden = true; return; }
       box.hidden = false;
       const P = colourway(book.colourway);
@@ -5120,7 +5348,7 @@
     }
     // How big a text prints right now, in millimetres, from the page last drawn.
     function textSizeMm(k) {
-      const entry = sel >= 0 ? book.pages[sel] : null;
+      const entry = curEntry();
       const r = lastRender[0]; if (!r || !r.page) return null;
       if (entry && entry.type === "free") { const f = r.page.plan && r.page.plan.fields[`b${blockSel}`]; return f && f.type ? f.type.size : null; }
       const f = r.page.plan && r.page.plan.fields[k];
@@ -5455,17 +5683,73 @@
 
     function drawFields() {
       const box = $("#sbFields"); if (!box) return;
-      const entry = sel >= 0 ? book.pages[sel] : null;
+      const entry = curEntry();
       const caps = fieldCaps();
-      if (!entry) {
-        box.innerHTML = `
+      if (sel < 0) {
+        const layout = coverLayoutOf(book);
+        box.innerHTML = `<div class="sb-field"><span class="sb-label">Cover layout</span>
+            <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Cover layout">${COVER_LAYOUTS.map(([k, nm]) => `<button type="button" role="radio" data-coverlayout="${k}" aria-checked="${layout === k}">${nm}</button>`).join("")}</div>
+            <p class="sb-hint">${esc(COVER_LAYOUT_NOTE[layout])}</p></div>`
+          + (layout === "custom" ? `<div id="sbCoverFree"></div>` : `
           ${fieldHtml({ k: "title", label: "Title", ctl: "input" }, book.title || "", 80)}
           ${fieldHtml({ k: "subtitle", label: "Line under the title", ctl: "input" }, book.subtitle || "", 120)}
-          ${coverLinesHtml()}`;
+          ${coverLinesHtml()}`);
+        $$("[data-coverlayout]").forEach((b) => b.addEventListener("click", () => {
+          const k = b.dataset.coverlayout;
+          if (k === layout) return;
+          mark();
+          if (k === "classic") delete book.coverLayout; else book.coverLayout = k;
+          if (k === "custom") coverEntry(book);
+          closeInline(false); photoSel = null; blockSel = -1; active = 0; pickerOpen = null;
+          change({ rail: true }); drawInspector();
+          const again = $(`[data-coverlayout="${k}"]`); if (again) again.focus();
+        }));
+        if (layout === "custom") { drawFreeFields($("#sbCoverFree"), coverEntry(book)); return; }
         wireField($("#sbF_title"), (v) => { book.title = v; }, 80);
         wireField($("#sbF_subtitle"), (v) => { book.subtitle = v; }, 120);
         wireCoverLines();
         wireFormat(box, styleHost(null));
+        return;
+      }
+      if (entry.type === "end") {
+        const back = endLayoutOf(entry) === "back";
+        const LIM = window.STUDIO_BOOK_LIMITS || {};
+        const { defaults } = endLines(entry);
+        box.innerHTML = `<div class="sb-field"><span class="sb-label">Which end page</span>
+            <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Which end page">${[["back", "Back cover"], ["closing", "Closing page"]].map(([k, nm]) => `<button type="button" role="radio" data-endlayout="${k}" aria-checked="${(back ? "back" : "closing") === k}">${nm}</button>`).join("")}</div>
+            <p class="sb-hint">${back ? "Your mark, your name and how to reach you, on the book's last page." : "A last photograph if you like, a line to sign off with, and a small line under it."}</p></div>`
+          + (back
+            ? `<div class="sb-field"><span class="sb-label">Three lines under your name</span>${[0, 1, 2].map((i) => `<input type="text" id="sbEnd_line${i}" maxlength="${LIM.endLine || 40}" value="${esc(((entry.lines || [])[i]) || "")}" placeholder="${esc(defaults[i] || "—")}" aria-label="Line ${i + 1}">`).join("")}
+               <p class="sb-hint">Left empty, the lines are your email, Instagram and website.</p></div>
+               <label class="sb-check-row"><input type="checkbox" id="sbEndLines" ${entry.noLines ? "" : "checked"}> Print the three lines</label>`
+            : fieldHtml({ k: "text", label: "The line", ctl: "line", rows: 2, ph: "Thank you for looking." }, entry.text || "", (caps.end || {}).text || 160)
+              + fieldHtml({ k: "note", label: "Small line under it", ctl: "input", ph: `© ${year()} ${studio()}` }, entry.note || "", (caps.end || {}).note || 60));
+        $$("[data-endlayout]").forEach((b) => b.addEventListener("click", () => {
+          const k = b.dataset.endlayout;
+          if ((back ? "back" : "closing") === k) return;
+          mark();
+          entry.layout = k;
+          if (k === "back") { delete entry.photos; } else { entry.photos = Array.isArray(entry.photos) ? entry.photos : []; delete entry.lines; delete entry.noLines; }
+          closeInline(false); photoSel = null; active = 0; pickerOpen = null;
+          change({ rail: true }); drawInspector();
+          const again = $(`[data-endlayout="${k}"]`); if (again) again.focus();
+        }));
+        for (const i of [0, 1, 2]) {
+          const el = $(`#sbEnd_line${i}`); if (!el) continue;
+          el.addEventListener("input", () => {
+            const lines = Array.isArray(entry.lines) ? entry.lines.slice() : [];
+            while (lines.length <= i) lines.push("");
+            lines[i] = el.value;
+            while (lines.length && !String(lines[lines.length - 1]).trim()) lines.pop();
+            if (lines.length) entry.lines = lines; else delete entry.lines;
+            change({ rail: false, typing: true });
+          });
+        }
+        const cb = $("#sbEndLines");
+        if (cb) cb.addEventListener("change", () => { mark(); if (cb.checked) delete entry.noLines; else entry.noLines = true; change({ rail: false }); });
+        if ($("#sbF_text")) wireField($("#sbF_text"), (v) => { entry.text = v; }, (caps.end || {}).text || 160);
+        if ($("#sbF_note")) wireField($("#sbF_note"), (v) => { entry.note = v; }, (caps.end || {}).note || 60);
+        if (!back) wireFormat(box, styleHost(entry));
         return;
       }
       if (WRITING[entry.type] && FIELD_UI[entry.type]) {
@@ -5918,7 +6202,7 @@
     // Rebuilding the boxes clears their meters, so they are filled again.
     const drawFieldsAndMeters = () => { drawFields(); updateMeters(); };
     function selectOverflow(k) {
-      const entry = sel >= 0 ? book.pages[sel] : null;
+      const entry = curEntry();
       const el = $(`#sbF_${k}`); if (!entry || !el || !book) return;
       let info = null;
       if (k === "caption" && (entry.type === "photos" || entry.type === "article")) info = captionFit(entry, captionWidth(book), captionStyle(book));
@@ -5940,7 +6224,7 @@
     // How each field fares, from the same plan the PDF is drawn from.
     function updateMeters() {
       if (!book || !fontsOk) return;
-      const entry = sel >= 0 ? book.pages[sel] : null;
+      const entry = curEntry();
       if (!entry) return;
       let fields = null, cuts = [];
       if (WRITING[entry.type]) { const plan = planWriting(book, entry); fields = { ...plan.fields }; cuts = plan.cuts; }
@@ -6003,7 +6287,8 @@
 
     /* --- photos for the selected page --- */
     function photoTarget() {
-      const entry = sel >= 0 ? book.pages[sel] : null;
+      const entry = curEntry();
+      if (sel < 0 && coverLayoutOf(book) === "poster") return null;
       if (!entry) return { list: book.cover ? [book.cover] : [], max: 1, set: (l) => { book.cover = l[0] || null; } };
       // On an Anything page the picker works on the chosen photo box.
       if (entry.type === "free") {
@@ -6016,7 +6301,7 @@
     }
     function drawPhotoBlock() {
       const box = $("#sbPhotoBlock"); if (!box) return;
-      const entry = sel >= 0 ? book.pages[sel] : null;
+      const entry = curEntry();
       const t = photoTarget();
       if (!t) { box.innerHTML = ""; box.hidden = true; return; }
       box.hidden = false;
@@ -6231,7 +6516,16 @@
       const lib = library();
       await ensureBookFonts(b);
       const out = [];
-      if (b.cover && !lib.byId.has(b.cover.id)) out.push({ i: -1, text: "Cover: the photo is from a deleted album" });
+      const cl = coverLayoutOf(b);
+      if (cl !== "custom" && cl !== "poster" && b.cover && !lib.byId.has(b.cover.id)) out.push({ i: -1, text: "Cover: the photo is from a deleted album" });
+      if (cl === "custom") {
+        const ce = { ...(b.coverPage || {}), type: "free" };
+        const blocks = freeBlocks(ce);
+        if (!blocks.length) out.push({ i: -1, text: "Cover: nothing on it yet" });
+        if (blocks.some((b2) => b2.k === "photo" && b2.p && !lib.byId.has(b2.p.id))) out.push({ i: -1, text: "Cover: a photo from a deleted album" });
+        if (blocks.some((b2) => b2.k === "photo" && !(b2.p && b2.p.id))) out.push({ i: -1, text: "Cover: a photo box with no photo chosen" });
+        for (const c of planFree(b, ce).cuts) { const info = planFree(b, ce).fields[c.field]; const miss = info ? info.total - info.printed : 0; out.push({ i: -1, text: `Cover: a box of words is too long${miss ? ` (${miss} word${miss === 1 ? "" : "s"} won't print)` : ""}` }); }
+      }
       let n = 1;
       for (let i = 0; i < b.pages.length; i++) {
         const pg = b.pages[i];
@@ -6241,6 +6535,7 @@
         if ((pg.type === "photos" || pg.type === "spread") && !(pg.photos || []).length) add("no photos yet");
         if (pageSpan(pg) === 2 && first % 2 === 1) add(`starts on a right-hand page, so its two halves would be split by a page turn — move it, or put a page before it, so it starts on an even page`);
         if ((pg.type === "note" || pg.type === "article") && !(pg.photos || []).length) add("no photo chosen");
+        if (pg.type === "end" && i !== b.pages.length - 1) add("should be the last page — move it to the end");
         if (pg.type === "feature" && (pg.photos || []).length < 2) add(`${(pg.photos || []).length ? "only one photo" : "no photos"} chosen; it takes two`);
         if ((pg.photos || []).some((sh) => !lib.byId.has(sh.id))) add("a photo from a deleted album");
         if (pg.type === "free") {
@@ -6530,7 +6825,7 @@
     // that loaded the site before they existed still runs the old save code,
     // which would drop them while saying "Saved": refuse until it reloads.
     const L = window.STUDIO_BOOK_LIMITS;
-    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !L.workWays || !L.markStrengths || !L.paras || !L.coverText || !L.blockKinds || !L.schema || !L.lists || !L.photoRows || !(L.pageTypes || []).includes("free")) {
+    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !L.workWays || !L.markStrengths || !L.paras || !L.coverText || !L.blockKinds || !L.schema || !L.lists || !L.photoRows || !(L.pageTypes || []).includes("free") || !L.coverLayouts || !(L.pageTypes || []).includes("end")) {
       root.innerHTML = `<div class="sb-empty"><p class="sb-warn">The site was updated while this tab was open.</p><p class="sb-hint">Reload the page (or use “↻ Load fresh version”) before editing your books, so nothing you write is lost.</p><p><button type="button" class="sb-btn dark" id="sbReload">Reload now</button></p></div>`;
       root.querySelector("#sbReload").addEventListener("click", () => location.reload());
       return;
