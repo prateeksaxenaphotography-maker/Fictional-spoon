@@ -290,7 +290,7 @@ if (books !== undefined && books !== null) {
     fail("WPS_DATA.STUDIO_PORTFOLIOS must be an object { versions: [], deleted: [] }");
   } else {
     const BOOK_STYLES = new Set(["elegant", "modern", "vogue"]);
-    const PAGE_TYPES = new Set(["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process", "free"]);
+    const PAGE_TYPES = new Set(["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process", "free", "end"]);
     // The same caps as STUDIO_BOOK_LIMITS.fields in app.js. Over a cap FAILS
     // here rather than being trimmed: the app's cleaner would otherwise cut a
     // hand-edited data.js without a word.
@@ -303,6 +303,7 @@ if (books !== undefined && books !== null) {
       article: { kicker: 32, headline: 52, intro: 150, body: 1400, caption: 90 },
       ways: { kicker: 32, heading: 52, intro: 160 },
       process: { kicker: 32, heading: 52, intro: 160, note: 120 },
+      end: { text: 160, note: 60 },
       photos: { caption: 90 }
     };
     const BORDERS = new Set(["none", "top", "bottom", "left", "right", "all"]);
@@ -353,7 +354,8 @@ if (books !== undefined && books !== null) {
       article: ["type", "photos", "photoAt", "credit", "style", "border", "borderWidth", ...Object.keys(FIELD_MAX.article)],
       ways: ["type", "items", "style", ...Object.keys(FIELD_MAX.ways)],
       process: ["type", "way", "steps", "style", ...Object.keys(FIELD_MAX.process)],
-      free: ["type", "bg", "blocks"]
+      free: ["type", "bg", "blocks"],
+      end: ["type", "layout", "photos", "text", "note", "lines", "noLines", "style"]
     };
     // Any page can carry its own colour behind everything.
     const KNOWN_KEYS = Object.fromEntries(Object.entries(KNOWN_KEYS_BASE).map(([k, v]) => [k, v.includes("bg") ? v : [...v, "bg"]]));
@@ -368,6 +370,59 @@ if (books !== undefined && books !== null) {
     const BLOCK_KEYS = { text: ["k", "x", "y", "w", "h", "r", "t", "role", "fit", "style", "fill", "o", "shape", "corner"], photo: ["k", "x", "y", "w", "h", "r", "p", "edge", "edgeWidth", "shape", "corner"], shape: ["k", "x", "y", "w", "h", "r", "fill", "o", "shape", "corner"], line: ["k", "x", "y", "w", "h", "r", "color", "o", "thick", "width", "path", "bend", "waves", "soft", "pts", "ends", "tip"] };
     const SHAPE_KINDS = new Set(["round", "chamfer", "ellipse", "triangle", "diamond", "star", "parallelogram"]);
     const isFill = (v) => FILLS.has(v) || /^#[0-9a-f]{6}$/.test(String(v));
+    // Everything placed on an Anything page, or on a cover from scratch.
+    const checkBlocks = (where, blocks, what) => {
+      if (!Array.isArray(blocks)) { fail(`${where} (${what}) has no list of things on it`); return; }
+      if (blocks.length > 12) fail(`${where} has ${blocks.length} things on it; the builder allows 12`);
+      if (blocks.filter((x) => x && x.k === "photo").length > 6) fail(`${where} has more than six photographs on it`);
+      blocks.forEach((x, bi) => {
+        const at = `${where} thing ${bi + 1}`;
+        if (!x || typeof x !== "object" || Array.isArray(x)) { fail(`${at} is not an object`); return; }
+        if (!BLOCK_KINDS.has(x.k)) { fail(`${at} is a ${JSON.stringify(x.k)}, which the app drops`); return; }
+        for (const k of Object.keys(x)) if (!BLOCK_KEYS[x.k].includes(k)) fail(`${at} (${x.k}) has ${JSON.stringify(k)}, which the app drops`);
+        for (const k of ["x", "y"]) if (typeof x[k] !== "number" || !(x[k] >= -0.3 && x[k] <= 1.3)) fail(`${at} has ${k} of ${JSON.stringify(x[k])}; it must be a number from -0.3 to 1.3`);
+        for (const k of x.k === "line" && !(x.path && x.path !== "h") ? ["w"] : ["w", "h"]) if (typeof x[k] !== "number" || !(x[k] >= 0.01 && x[k] <= 1.6)) fail(`${at} has ${k} of ${JSON.stringify(x[k])}; it must be a number from 0.01 to 1.6`);
+        if (x.r !== undefined && (typeof x.r !== "number" || !(x.r >= -180 && x.r <= 180) || x.r === 0)) fail(`${at} is turned ${JSON.stringify(x.r)}; it must be a number from -180 to 180, and 0 is not written`);
+        if (x.k === "text") {
+          if (typeof x.t !== "string") fail(`${at} has words that are not text`);
+          else if (x.t.length > 600) fail(`${at} holds ${x.t.length} characters; the most is 600`);
+          if (x.role !== undefined && !BLOCK_ROLES.has(x.role)) fail(`${at} has a kind of words ${JSON.stringify(x.role)} the app doesn't know`);
+          if (x.fit !== undefined && x.fit !== "cut") fail(`${at} has fit ${JSON.stringify(x.fit)}; the app writes "cut", and nothing when the words shrink`);
+          if (x.style !== undefined) {
+            if (!x.style || typeof x.style !== "object" || Array.isArray(x.style)) fail(`${at} has formatting that is not an object`);
+            else checkFormat(x.style, `${at} formats its words`, "t", true);
+          }
+        }
+        if (x.k === "photo") {
+          if (x.p !== undefined) {
+            if (!x.p || typeof x.p !== "object" || typeof x.p.id !== "string") fail(`${at} has a photo that is not a chosen photograph`);
+            else {
+              if (x.p.fit !== undefined && !FITS.has(x.p.fit)) fail(`${at} places its photo as ${JSON.stringify(x.p.fit)}`);
+              if (x.p.opacity !== undefined && !(typeof x.p.opacity === "number" && x.p.opacity >= 0.1 && x.p.opacity < 1)) fail(`${at} has a photo opacity of ${JSON.stringify(x.p.opacity)}`);
+            }
+          }
+          if (x.edge !== undefined && !FILLS.has(x.edge)) fail(`${at} has an edge colour ${JSON.stringify(x.edge)} the app drops`);
+          if (x.edgeWidth !== undefined && !THICKS.has(x.edgeWidth)) fail(`${at} has an edge width ${JSON.stringify(x.edgeWidth)}`);
+        }
+        if ((x.k === "shape" || x.k === "text") && x.fill !== undefined && !isFill(x.fill)) fail(`${at} is filled ${JSON.stringify(x.fill)}; use ${[...FILLS].join(", ")} or #rrggbb`);
+        if (x.shape !== undefined && !SHAPE_KINDS.has(x.shape)) fail(`${at} is shaped ${JSON.stringify(x.shape)}; the app writes ${[...SHAPE_KINDS].join(", ")}, and nothing for a box`);
+        if (x.corner !== undefined && !((typeof x.corner === "number" && x.corner >= 0 && x.corner <= 0.5) || ["small", "medium", "large"].includes(x.corner))) fail(`${at} has corners ${JSON.stringify(x.corner)}; a number from 0 to 0.5`);
+        if (x.k === "line") {
+          if (x.color !== undefined && !isFill(x.color)) fail(`${at} is drawn in ${JSON.stringify(x.color)}; use ${[...FILLS].join(", ")} or #rrggbb`);
+          if (x.thick !== undefined && !THICKS.has(x.thick)) fail(`${at} has a thickness ${JSON.stringify(x.thick)}`);
+          if (x.width !== undefined && !(typeof x.width === "number" && x.width >= 0.2 && x.width <= 12)) fail(`${at} has a width ${JSON.stringify(x.width)}; it must be a number of millimetres from 0.2 to 12`);
+          if (x.path !== undefined && !LINE_PATHS.has(x.path)) fail(`${at} runs ${JSON.stringify(x.path)}; the app writes ${[...LINE_PATHS].join(", ")}, and nothing for across`);
+          if (x.ends !== undefined && !LINE_ENDS.has(x.ends)) fail(`${at} has arrowheads ${JSON.stringify(x.ends)}; the app writes end, start or both`);
+          if (x.tip !== undefined && !LINE_TIPS.has(x.tip)) fail(`${at} is drawn with ${JSON.stringify(x.tip)}; the app writes ${[...LINE_TIPS].join(", ")}, and nothing for a pen`);
+          if (x.bend !== undefined && (typeof x.bend !== "number" || !(x.bend >= -1 && x.bend <= 1) || !(x.path === "curve" || x.path === "wave"))) fail(`${at} has a bend ${JSON.stringify(x.bend)}; a curved or wavy line bends from -1 to 1, and 0.5 is not written`);
+          if (x.pts !== undefined && (x.path !== "free" || !Array.isArray(x.pts) || x.pts.length < 2 || x.pts.length > 200 || x.pts.some((q) => !Array.isArray(q) || q.length !== 2 || q.some((v) => typeof v !== "number" || v < 0 || v > 1)))) fail(`${at} has points the app drops; a line drawn by hand keeps 2 to 200 points, each two numbers from 0 to 1`);
+          if (x.path === "free" && x.pts === undefined) fail(`${at} is drawn by hand but has no points`);
+          if (x.waves !== undefined && (x.path !== "wave" || !Number.isInteger(x.waves) || x.waves < 2 || x.waves > 8)) fail(`${at} has ${JSON.stringify(x.waves)} waves; a wavy line has 2 to 8 written, and nothing for one`);
+          if (x.soft !== undefined && (x.path !== "wave" || typeof x.soft !== "number" || !(x.soft >= 0 && x.soft < 1))) fail(`${at} is ${JSON.stringify(x.soft)} rounded; a wavy line writes 0 to under 1, and nothing for fully rounded`);
+        }
+        if (x.o !== undefined && !(typeof x.o === "number" && x.o >= 0.05 && x.o < 1)) fail(`${at} is faded to ${JSON.stringify(x.o)}; it must be a number from 0.05 to under 1`);
+      });
+    };
     const seenBooks = new Set();
     for (const b of books.versions) {
       const name = b && b.name ? `"${b.name}"` : JSON.stringify(b && b.id);
@@ -437,59 +492,13 @@ if (books !== undefined && books !== null) {
           if (pg.hide !== undefined && (!Array.isArray(pg.hide) || pg.hide.some((k) => typeof k !== "string" || !k || k.length > 60))) fail(`${where} leaves out shoots the app can't name: ${JSON.stringify(pg.hide)}`);
         }
         if (pg.bg !== undefined && !isFill(pg.bg)) fail(`${where} has a page colour ${JSON.stringify(pg.bg)}; use ${[...FILLS].join(", ")} or #rrggbb`);
-        if (pg.type === "free") {
-          if (!Array.isArray(pg.blocks)) fail(`${where} (free) has no list of things on it`);
-          else {
-            if (pg.blocks.length > 12) fail(`${where} has ${pg.blocks.length} things on it; the builder allows 12`);
-            if (pg.blocks.filter((x) => x && x.k === "photo").length > 6) fail(`${where} has more than six photographs on it`);
-            pg.blocks.forEach((x, bi) => {
-              const at = `${where} thing ${bi + 1}`;
-              if (!x || typeof x !== "object" || Array.isArray(x)) { fail(`${at} is not an object`); return; }
-              if (!BLOCK_KINDS.has(x.k)) { fail(`${at} is a ${JSON.stringify(x.k)}, which the app drops`); return; }
-              for (const k of Object.keys(x)) if (!BLOCK_KEYS[x.k].includes(k)) fail(`${at} (${x.k}) has ${JSON.stringify(k)}, which the app drops`);
-              for (const k of ["x", "y"]) if (typeof x[k] !== "number" || !(x[k] >= -0.3 && x[k] <= 1.3)) fail(`${at} has ${k} of ${JSON.stringify(x[k])}; it must be a number from -0.3 to 1.3`);
-              for (const k of x.k === "line" && !(x.path && x.path !== "h") ? ["w"] : ["w", "h"]) if (typeof x[k] !== "number" || !(x[k] >= 0.01 && x[k] <= 1.6)) fail(`${at} has ${k} of ${JSON.stringify(x[k])}; it must be a number from 0.01 to 1.6`);
-              if (x.r !== undefined && (typeof x.r !== "number" || !(x.r >= -180 && x.r <= 180) || x.r === 0)) fail(`${at} is turned ${JSON.stringify(x.r)}; it must be a number from -180 to 180, and 0 is not written`);
-              if (x.k === "text") {
-                if (typeof x.t !== "string") fail(`${at} has words that are not text`);
-                else if (x.t.length > 600) fail(`${at} holds ${x.t.length} characters; the most is 600`);
-                if (x.role !== undefined && !BLOCK_ROLES.has(x.role)) fail(`${at} has a kind of words ${JSON.stringify(x.role)} the app doesn't know`);
-                if (x.fit !== undefined && x.fit !== "cut") fail(`${at} has fit ${JSON.stringify(x.fit)}; the app writes "cut", and nothing when the words shrink`);
-                if (x.style !== undefined) {
-                  if (!x.style || typeof x.style !== "object" || Array.isArray(x.style)) fail(`${at} has formatting that is not an object`);
-                  else checkFormat(x.style, `${at} formats its words`, "t", true);
-                }
-              }
-              if (x.k === "photo") {
-                if (x.p !== undefined) {
-                  if (!x.p || typeof x.p !== "object" || typeof x.p.id !== "string") fail(`${at} has a photo that is not a chosen photograph`);
-                  else {
-                    if (x.p.fit !== undefined && !FITS.has(x.p.fit)) fail(`${at} places its photo as ${JSON.stringify(x.p.fit)}`);
-                    if (x.p.opacity !== undefined && !(typeof x.p.opacity === "number" && x.p.opacity >= 0.1 && x.p.opacity < 1)) fail(`${at} has a photo opacity of ${JSON.stringify(x.p.opacity)}`);
-                  }
-                }
-                if (x.edge !== undefined && !FILLS.has(x.edge)) fail(`${at} has an edge colour ${JSON.stringify(x.edge)} the app drops`);
-                if (x.edgeWidth !== undefined && !THICKS.has(x.edgeWidth)) fail(`${at} has an edge width ${JSON.stringify(x.edgeWidth)}`);
-              }
-              if ((x.k === "shape" || x.k === "text") && x.fill !== undefined && !isFill(x.fill)) fail(`${at} is filled ${JSON.stringify(x.fill)}; use ${[...FILLS].join(", ")} or #rrggbb`);
-              if (x.shape !== undefined && !SHAPE_KINDS.has(x.shape)) fail(`${at} is shaped ${JSON.stringify(x.shape)}; the app writes ${[...SHAPE_KINDS].join(", ")}, and nothing for a box`);
-              if (x.corner !== undefined && !((typeof x.corner === "number" && x.corner >= 0 && x.corner <= 0.5) || ["small", "medium", "large"].includes(x.corner))) fail(`${at} has corners ${JSON.stringify(x.corner)}; a number from 0 to 0.5`);
-              if (x.k === "line") {
-                if (x.color !== undefined && !isFill(x.color)) fail(`${at} is drawn in ${JSON.stringify(x.color)}; use ${[...FILLS].join(", ")} or #rrggbb`);
-                if (x.thick !== undefined && !THICKS.has(x.thick)) fail(`${at} has a thickness ${JSON.stringify(x.thick)}`);
-                if (x.width !== undefined && !(typeof x.width === "number" && x.width >= 0.2 && x.width <= 12)) fail(`${at} has a width ${JSON.stringify(x.width)}; it must be a number of millimetres from 0.2 to 12`);
-                if (x.path !== undefined && !LINE_PATHS.has(x.path)) fail(`${at} runs ${JSON.stringify(x.path)}; the app writes ${[...LINE_PATHS].join(", ")}, and nothing for across`);
-                if (x.ends !== undefined && !LINE_ENDS.has(x.ends)) fail(`${at} has arrowheads ${JSON.stringify(x.ends)}; the app writes end, start or both`);
-                if (x.tip !== undefined && !LINE_TIPS.has(x.tip)) fail(`${at} is drawn with ${JSON.stringify(x.tip)}; the app writes ${[...LINE_TIPS].join(", ")}, and nothing for a pen`);
-                if (x.bend !== undefined && (typeof x.bend !== "number" || !(x.bend >= -1 && x.bend <= 1) || !(x.path === "curve" || x.path === "wave"))) fail(`${at} has a bend ${JSON.stringify(x.bend)}; a curved or wavy line bends from -1 to 1, and 0.5 is not written`);
-                if (x.pts !== undefined && (x.path !== "free" || !Array.isArray(x.pts) || x.pts.length < 2 || x.pts.length > 200 || x.pts.some((q) => !Array.isArray(q) || q.length !== 2 || q.some((v) => typeof v !== "number" || v < 0 || v > 1)))) fail(`${at} has points the app drops; a line drawn by hand keeps 2 to 200 points, each two numbers from 0 to 1`);
-                if (x.path === "free" && x.pts === undefined) fail(`${at} is drawn by hand but has no points`);
-                if (x.waves !== undefined && (x.path !== "wave" || !Number.isInteger(x.waves) || x.waves < 2 || x.waves > 8)) fail(`${at} has ${JSON.stringify(x.waves)} waves; a wavy line has 2 to 8 written, and nothing for one`);
-                if (x.soft !== undefined && (x.path !== "wave" || typeof x.soft !== "number" || !(x.soft >= 0 && x.soft < 1))) fail(`${at} is ${JSON.stringify(x.soft)} rounded; a wavy line writes 0 to under 1, and nothing for fully rounded`);
-              }
-              if (x.o !== undefined && !(typeof x.o === "number" && x.o >= 0.05 && x.o < 1)) fail(`${at} is faded to ${JSON.stringify(x.o)}; it must be a number from 0.05 to under 1`);
-            });
-          }
+        if (pg.type === "free") checkBlocks(where, pg.blocks, "free");
+        if (pg.type === "end") {
+          if (!["back", "closing"].includes(pg.layout)) fail(`${where} (end) has a layout ${JSON.stringify(pg.layout)}; the app writes back or closing`);
+          if (pg.layout === "closing" && (!Array.isArray(pg.photos) || pg.photos.length > 1 || pg.photos.some((s2) => !s2 || typeof s2.id !== "string"))) fail(`${where} (end) must have a photos list of at most one photo`);
+          if (pg.layout === "back" && pg.photos !== undefined) fail(`${where} (end) is a back cover, which carries no photo`);
+          if (pg.lines !== undefined && (pg.layout !== "back" || !Array.isArray(pg.lines) || !pg.lines.length || pg.lines.length > 3 || pg.lines.some((l) => typeof l !== "string" || l.length > 40) || !pg.lines[pg.lines.length - 1].trim())) fail(`${where} (end) has lines the app would drop: up to three of 40 characters, on a back cover, the last not blank`);
+          if (pg.noLines !== undefined && (pg.noLines !== true || pg.layout !== "back")) fail(`${where} (end) writes noLines ${JSON.stringify(pg.noLines)}; only true is written, on a back cover`);
         }
         if (pg.type === "contact" && pg.rows !== undefined) {
           if (!pg.rows || typeof pg.rows !== "object" || Array.isArray(pg.rows)) fail(`${where} has rows that are not an object`);
@@ -540,6 +549,17 @@ if (books !== undefined && books !== null) {
       // How new the shapes in this book are; see the guard in section 10.
       if (b.schema !== undefined && !(Number.isInteger(b.schema) && b.schema >= 1 && b.schema <= 99)) fail(`studio portfolio book ${name} has a schema mark ${JSON.stringify(b.schema)}; it must be a whole number from 1 to 99`);
       if (b.pages.some((pg) => pg && pg.type === "free") && !(b.schema >= 1)) fail(`studio portfolio book ${name} has an Anything page but no schema mark; the app writes schema: 1 for one, and CI needs it to catch an out-of-date tab dropping the page`);
+      if (b.coverLayout !== undefined && !["photo", "framed", "poster", "custom"].includes(b.coverLayout)) fail(`studio portfolio book ${name} has a cover layout ${JSON.stringify(b.coverLayout)}; the app writes photo, framed, poster or custom, and nothing for the style's own`);
+      if (b.coverPage !== undefined) {
+        if (b.coverLayout !== "custom") fail(`studio portfolio book ${name} has a coverPage but its cover layout is ${JSON.stringify(b.coverLayout)}; the app writes one only for a cover from scratch`);
+        if (!b.coverPage || typeof b.coverPage !== "object" || Array.isArray(b.coverPage)) fail(`studio portfolio book ${name} has a coverPage that is not an object`);
+        else {
+          for (const k of Object.keys(b.coverPage)) if (!["blocks", "bg"].includes(k)) fail(`studio portfolio book ${name} cover has ${JSON.stringify(k)}, which the app drops`);
+          if (b.coverPage.bg !== undefined && !isFill(b.coverPage.bg)) fail(`studio portfolio book ${name} cover has a colour ${JSON.stringify(b.coverPage.bg)}; use ${[...FILLS].join(", ")} or #rrggbb`);
+          checkBlocks(`studio portfolio book ${name} cover`, b.coverPage.blocks, "cover");
+        }
+      } else if (b.coverLayout === "custom") fail(`studio portfolio book ${name} has a cover from scratch but no coverPage`);
+      if ((b.coverLayout !== undefined || b.pages.some((pg) => pg && pg.type === "end")) && !(b.schema >= 2)) fail(`studio portfolio book ${name} has a cover layout or an end page but a schema mark under 2; the app writes schema: 2 for one, and CI needs it to catch an out-of-date tab dropping them`);
       if (b.footText !== undefined && (typeof b.footText !== "string" || !b.footText.trim() || b.footText.length > 40)) fail(`studio portfolio book ${name} has a running foot the app would drop or cut`);
       if (b.bg !== undefined && !isFill(b.bg)) fail(`studio portfolio book ${name} has a page colour ${JSON.stringify(b.bg)}; use ${[...FILLS].join(", ")} or #rrggbb`);
       if (b.showPageNumbers !== undefined && b.showPageNumbers !== false) fail(`studio portfolio book ${name} writes showPageNumbers ${JSON.stringify(b.showPageNumbers)}; only false is written`);
@@ -629,12 +649,15 @@ try {
   // An old app.js strips writing pages and captions from books it never
   // opened, without touching their updatedAt. Words that shrink while the
   // book's edit time stays the same can only come from that.
-  const WRITING = new Set(["story", "note", "quote", "letter", "feature", "article", "ways", "process", "free"]);
+  const WRITING = new Set(["story", "note", "quote", "letter", "feature", "article", "ways", "process", "free", "end"]);
   const wordsIn = (b) => {
     let pages = 0, chars = 0, fits = 0;
     const settings = (s) => (s ? (s.fit ? 1 : 0) + (s.opacity !== undefined ? 1 : 0) : 0);
     fits += settings(b && b.cover) + (b && b.paper ? 1 : 0) + (b && b.coverStyle ? Object.keys(b.coverStyle).length : 0) + (b && b.watermark ? Object.keys(b.watermark).length : 0) + (b && b.coverText ? Object.keys(b.coverText).length : 0) + (b && b.footText ? 1 : 0) + (b && b.bg ? 1 : 0) + (b && b.showPageNumbers === false ? 1 : 0);
     for (const side of ["left", "right"]) for (const l of ((b && b.coverText && b.coverText[side]) || [])) if (typeof l === "string") chars += l.length;
+    // The cover's layout, and everything placed on a cover from scratch.
+    fits += (b && b.coverLayout ? 1 : 0) + (b && b.coverPage && b.coverPage.bg ? 1 : 0);
+    for (const bl of (b && b.coverPage && b.coverPage.blocks) || []) { if (!bl) continue; fits += 1 + settings(bl.p); if (typeof bl.t === "string") chars += bl.t.length; }
     for (const pg of (b && b.pages) || []) {
       if (!pg) continue;
       if (WRITING.has(pg.type)) pages++;
@@ -654,6 +677,9 @@ try {
       // once more, so losing paragraph formatting shows up as a shrink too.
       const props = (f) => (f && typeof f === "object" ? Object.keys(f).filter((k) => k !== "paras").length : 0);
       const styleWeight = (style) => Object.values(style || {}).reduce((n, f) => n + 1 + props(f) + (f && f.paras ? Object.values(f.paras).reduce((m, p) => m + 1 + props(p), 0) : 0), 0);
+      // An end page: which one it is, its lines, and whether they print.
+      for (const l of Array.isArray(pg.lines) ? pg.lines : []) if (typeof l === "string") chars += l.length;
+      fits += (pg.layout ? 1 : 0) + (pg.noLines ? 1 : 0);
       fits += (pg.photoAt ? 1 : 0) + (pg.bg ? 1 : 0) + (pg.type === "photos" && pg.rows ? 1 : 0) + (pg.border ? 1 : 0) + (pg.borderWidth ? 1 : 0) + styleWeight(pg.style) + (Array.isArray(pg.hide) ? pg.hide.length : 0);
     }
     return { pages, chars, fits };

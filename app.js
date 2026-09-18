@@ -677,7 +677,13 @@ const STUDIO_BOOK_STYLES = ["elegant", "modern", "vogue"];
 // book at `versions` rather than letting the clean-up drop one.
 const STUDIO_BOOK_LIMITS = {
   versions: 200, pages: 30, text: 1200, deleted: 2000,
-  pageTypes: ["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process", "free"],
+  pageTypes: ["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process", "free", "end"],
+  // The cover's layout: absent means the style's own; "custom" is a cover
+  // arranged like an Anything page (book.coverPage). The end page is the
+  // book's back cover or a closing page; its three lines are 40 characters.
+  coverLayouts: ["photo", "framed", "poster", "custom"],
+  endLayouts: ["back", "closing"],
+  endLine: 40,
   fits: ["fill", "whole", "width", "height"],
   // Paper a book prints on; absent means A4. Where a writing page's photo sits;
   // absent means the page shape's usual place.
@@ -733,8 +739,8 @@ const STUDIO_BOOK_LIMITS = {
      it needs, and the mark is never taken off, so a browser tab running an
      older release — which would quietly drop a page kind it doesn't know —
      shows up in CI as a book whose mark went backwards, whatever its
-     updatedAt says. 1 = Anything pages. */
-  schema: 1,
+     updatedAt says. 1 = Anything pages; 2 = a cover layout or an end page. */
+  schema: 2,
   // The cover's own lines. Empty means "as the style has always drawn it".
   coverText: { label: 32, mast: 18, tagline: 24, foot: 40, place: 40 },
   coverLine: 24,          // one of the cover's inside lines, three a side
@@ -761,7 +767,8 @@ const STUDIO_BOOK_LIMITS = {
     article: { kicker: 32, headline: 52, intro: 150, body: 1400, caption: 90 },
     ways: { kicker: 32, heading: 52, intro: 160 },
     process: { kicker: 32, heading: 52, intro: 160, note: 120 },
-    photos: { caption: 90 }
+    photos: { caption: 90 },
+    end: { text: 160, note: 60 }
   }
 };
 // One text's formatting: an open-source font, a colour, an alignment, a size,
@@ -823,6 +830,70 @@ function cleanStudioPortfolios(o) {
   };
   const PAGE_TYPES = STUDIO_BOOK_LIMITS.pageTypes;
   const FIELDS = STUDIO_BOOK_LIMITS.fields;
+  // The things placed on an Anything page (or a cover from scratch), in the
+  // order they are drawn — the last one is on top. Each is rebuilt from a
+  // whitelist, and every number is clamped and rounded, so nothing hand-edited
+  // can put a block far off the paper or a text past its cap.
+  const cleanBlocks = (list) => {
+    const L2 = STUDIO_BOOK_LIMITS;
+    const frac = (v, lo, hi, d) => Math.round(num(v, lo, hi, d) * 10000) / 10000;
+    let photos = 0;
+    return (Array.isArray(list) ? list : []).map((x) => {
+      if (!x || typeof x !== "object" || !L2.blockKinds.includes(x.k)) return null;
+      if (x.k === "photo" && ++photos > L2.blockPhotoMax) return null;
+      const one = { k: x.k, x: frac(x.x, -0.3, 1.3, 0), y: frac(x.y, -0.3, 1.3, 0), w: frac(x.w, 0.01, 1.6, 0.3) };
+      if (x.k !== "line" || (L2.linePaths.includes(x.path) && x.path !== "h")) one.h = frac(x.h, 0.01, 1.6, 0.2);
+      const turn = Math.round(num(x.r, -180, 180, 0) * 10) / 10;
+      if (turn) one.r = turn;
+      if (x.k === "text") {
+        one.t = strU(x.t, L2.blockText);
+        if (L2.blockRoles.includes(x.role)) one.role = x.role;
+        if (x.fit === "cut") one.fit = "cut";
+        const st = cleanFormatDeep(x.style);
+        if (st) one.style = st;
+      }
+      if (x.k === "photo") {
+        const p2 = shot(x.p);
+        if (p2) one.p = p2;
+        if (L2.fills.includes(x.edge)) one.edge = x.edge;
+        if (L2.thicks.includes(x.edgeWidth)) one.edgeWidth = x.edgeWidth;
+      }
+      if (x.k === "text" && (L2.fills.includes(x.fill) || /^#[0-9a-f]{6}$/i.test(String(x.fill || "")))) {
+        // A shape with words in it.
+        one.fill = String(x.fill).toLowerCase();
+        if (typeof x.o === "number" && isFinite(x.o) && x.o < 1) one.o = Math.round(num(x.o, 0.05, 1, 1) * 100) / 100;
+      }
+      if ((x.k === "shape" || x.k === "text" || x.k === "photo") && L2.shapes.includes(x.shape)) one.shape = x.shape;
+      if (x.k === "shape" || x.k === "text" || x.k === "photo") {
+        // Corners as a number; the old words still mean what they did.
+        const legacy = { small: 0.1, medium: 0.18, large: 0.3 };
+        const c = typeof x.corner === "number" && isFinite(x.corner) ? x.corner : legacy[x.corner];
+        if (typeof c === "number") one.corner = Math.round(num(c, 0, L2.cornerMax, 0) * 100) / 100;
+      }
+      if (x.k === "shape" || x.k === "line") {
+        const key = x.k === "shape" ? "fill" : "color";
+        if (L2.fills.includes(x[key]) || /^#[0-9a-f]{6}$/i.test(String(x[key] || ""))) one[key] = String(x[key]).toLowerCase();
+        if (typeof x.o === "number" && isFinite(x.o) && x.o < 1) one.o = Math.round(num(x.o, 0.05, 1, 1) * 100) / 100;
+        if (x.k === "line" && L2.thicks.includes(x.thick)) one.thick = x.thick;
+        // An exact width, in millimetres, from a fifth of one to twelve.
+        if (x.k === "line" && typeof x.width === "number" && isFinite(x.width)) one.width = Math.round(num(x.width, 0.2, 12, 0.8) * 10) / 10;
+        if (x.k === "line") {
+          if (L2.linePaths.includes(x.path)) one.path = x.path;
+          if (L2.lineEnds.includes(x.ends)) one.ends = x.ends;
+          if (L2.lineTips.includes(x.tip)) one.tip = x.tip;
+          if ((one.path === "curve" || one.path === "wave") && typeof x.bend === "number" && isFinite(x.bend)) { const bd = Math.round(num(x.bend, -1, 1, 0.5) * 100) / 100; if (Math.abs(bd - 0.5) > 0.001) one.bend = bd; }
+          // A wavy line: how many waves (one writes nothing), and how rounded (fully rounded writes nothing).
+          if (one.path === "wave" && typeof x.waves === "number" && isFinite(x.waves)) { const n = Math.round(num(x.waves, 1, 8, 1)); if (n > 1) one.waves = n; }
+          if (one.path === "wave" && typeof x.soft === "number" && isFinite(x.soft)) { const sv = Math.round(num(x.soft, 0, 1, 1) * 100) / 100; if (sv < 0.999) one.soft = sv; }
+          if (one.path === "free") {
+            const pts = (Array.isArray(x.pts) ? x.pts : []).filter((q) => Array.isArray(q) && q.length === 2 && typeof q[0] === "number" && typeof q[1] === "number").slice(0, L2.linePoints).map((q) => [Math.round(num(q[0], 0, 1, 0) * 1000) / 1000, Math.round(num(q[1], 0, 1, 0) * 1000) / 1000]);
+            if (pts.length >= 2) one.pts = pts; else delete one.path;
+          }
+        }
+      }
+      return one;
+    }).filter(Boolean).slice(0, L2.blockMax);
+  };
   const versions = o.versions.slice(0, STUDIO_BOOK_LIMITS.versions).map((v) => {
     if (!v || typeof v !== "object" || typeof v.id !== "string" || !v.id) return null;
     const pages = (Array.isArray(v.pages) ? v.pages : []).slice(0, STUDIO_BOOK_LIMITS.pages).map((pg) => {
@@ -849,65 +920,17 @@ function cleanStudioPortfolios(o) {
       // Any page can have its own colour behind everything; absent means the
       // book's, and failing that the style's.
       if (STUDIO_BOOK_LIMITS.fills.includes(pg.bg) || /^#[0-9a-f]{6}$/i.test(String(pg.bg || ""))) out.bg = String(pg.bg).toLowerCase();
-      if (pg.type === "free") {
-        const L2 = STUDIO_BOOK_LIMITS;
-        const frac = (v, lo, hi, d) => Math.round(num(v, lo, hi, d) * 10000) / 10000;
-        let photos = 0;
-        out.blocks = (Array.isArray(pg.blocks) ? pg.blocks : []).map((x) => {
-          if (!x || typeof x !== "object" || !L2.blockKinds.includes(x.k)) return null;
-          if (x.k === "photo" && ++photos > L2.blockPhotoMax) return null;
-          const one = { k: x.k, x: frac(x.x, -0.3, 1.3, 0), y: frac(x.y, -0.3, 1.3, 0), w: frac(x.w, 0.01, 1.6, 0.3) };
-          if (x.k !== "line" || (L2.linePaths.includes(x.path) && x.path !== "h")) one.h = frac(x.h, 0.01, 1.6, 0.2);
-          const turn = Math.round(num(x.r, -180, 180, 0) * 10) / 10;
-          if (turn) one.r = turn;
-          if (x.k === "text") {
-            one.t = strU(x.t, L2.blockText);
-            if (L2.blockRoles.includes(x.role)) one.role = x.role;
-            if (x.fit === "cut") one.fit = "cut";
-            const st = cleanFormatDeep(x.style);
-            if (st) one.style = st;
-          }
-          if (x.k === "photo") {
-            const p2 = shot(x.p);
-            if (p2) one.p = p2;
-            if (L2.fills.includes(x.edge)) one.edge = x.edge;
-            if (L2.thicks.includes(x.edgeWidth)) one.edgeWidth = x.edgeWidth;
-          }
-          if (x.k === "text" && (L2.fills.includes(x.fill) || /^#[0-9a-f]{6}$/i.test(String(x.fill || "")))) {
-            // A shape with words in it.
-            one.fill = String(x.fill).toLowerCase();
-            if (typeof x.o === "number" && isFinite(x.o) && x.o < 1) one.o = Math.round(num(x.o, 0.05, 1, 1) * 100) / 100;
-          }
-          if ((x.k === "shape" || x.k === "text" || x.k === "photo") && L2.shapes.includes(x.shape)) one.shape = x.shape;
-          if (x.k === "shape" || x.k === "text" || x.k === "photo") {
-            // Corners as a number; the old words still mean what they did.
-            const legacy = { small: 0.1, medium: 0.18, large: 0.3 };
-            const c = typeof x.corner === "number" && isFinite(x.corner) ? x.corner : legacy[x.corner];
-            if (typeof c === "number") one.corner = Math.round(num(c, 0, L2.cornerMax, 0) * 100) / 100;
-          }
-          if (x.k === "shape" || x.k === "line") {
-            const key = x.k === "shape" ? "fill" : "color";
-            if (L2.fills.includes(x[key]) || /^#[0-9a-f]{6}$/i.test(String(x[key] || ""))) one[key] = String(x[key]).toLowerCase();
-            if (typeof x.o === "number" && isFinite(x.o) && x.o < 1) one.o = Math.round(num(x.o, 0.05, 1, 1) * 100) / 100;
-            if (x.k === "line" && L2.thicks.includes(x.thick)) one.thick = x.thick;
-            // An exact width, in millimetres, from a fifth of one to twelve.
-            if (x.k === "line" && typeof x.width === "number" && isFinite(x.width)) one.width = Math.round(num(x.width, 0.2, 12, 0.8) * 10) / 10;
-            if (x.k === "line") {
-              if (L2.linePaths.includes(x.path)) one.path = x.path;
-              if (L2.lineEnds.includes(x.ends)) one.ends = x.ends;
-              if (L2.lineTips.includes(x.tip)) one.tip = x.tip;
-              if ((one.path === "curve" || one.path === "wave") && typeof x.bend === "number" && isFinite(x.bend)) { const bd = Math.round(num(x.bend, -1, 1, 0.5) * 100) / 100; if (Math.abs(bd - 0.5) > 0.001) one.bend = bd; }
-              // A wavy line: how many waves (one writes nothing), and how rounded (fully rounded writes nothing).
-              if (one.path === "wave" && typeof x.waves === "number" && isFinite(x.waves)) { const n = Math.round(num(x.waves, 1, 8, 1)); if (n > 1) one.waves = n; }
-              if (one.path === "wave" && typeof x.soft === "number" && isFinite(x.soft)) { const sv = Math.round(num(x.soft, 0, 1, 1) * 100) / 100; if (sv < 0.999) one.soft = sv; }
-              if (one.path === "free") {
-                const pts = (Array.isArray(x.pts) ? x.pts : []).filter((q) => Array.isArray(q) && q.length === 2 && typeof q[0] === "number" && typeof q[1] === "number").slice(0, L2.linePoints).map((q) => [Math.round(num(q[0], 0, 1, 0) * 1000) / 1000, Math.round(num(q[1], 0, 1, 0) * 1000) / 1000]);
-                if (pts.length >= 2) one.pts = pts; else delete one.path;
-              }
-            }
-          }
-          return one;
-        }).filter(Boolean).slice(0, L2.blockMax);
+      if (pg.type === "free") out.blocks = cleanBlocks(pg.blocks);
+      if (pg.type === "end") {
+        out.layout = STUDIO_BOOK_LIMITS.endLayouts.includes(pg.layout) ? pg.layout : "closing";
+        if (out.layout === "closing") out.photos = (Array.isArray(pg.photos) ? pg.photos : []).map(shot).filter(Boolean).slice(0, 1);
+        else {
+          // The three lines under the name; empty means the studio's own.
+          const lines = (Array.isArray(pg.lines) ? pg.lines : []).slice(0, 3).map((x) => str(x, STUDIO_BOOK_LIMITS.endLine));
+          while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+          if (lines.length) out.lines = lines;
+          if (pg.noLines === true) out.noLines = true;
+        }
       }
       if (pg.type === "ways") {
         out.items = (Array.isArray(pg.items) ? pg.items : []).slice(0, 4).map((it) => {
@@ -991,7 +1014,7 @@ function cleanStudioPortfolios(o) {
       // carried, never lowered here, so an older tab dropping what it cannot
       // read shows up as the mark going backwards.
       ...(() => {
-        const need = pages.some((pg) => pg.type === "free") ? STUDIO_BOOK_LIMITS.schema : 0;
+        const need = (STUDIO_BOOK_LIMITS.coverLayouts.includes(v.coverLayout) || pages.some((pg) => pg.type === "end")) ? 2 : pages.some((pg) => pg.type === "free") ? 1 : 0;
         const mark = Math.max(need, num(v.schema, 0, 99, 0));
         return mark ? { schema: mark } : {};
       })(),
@@ -1001,6 +1024,14 @@ function cleanStudioPortfolios(o) {
       // One colour behind every page (the cover keeps its own), unless a page says otherwise.
       ...(STUDIO_BOOK_LIMITS.fills.includes(v.bg) || /^#[0-9a-f]{6}$/i.test(String(v.bg || "")) ? { bg: String(v.bg).toLowerCase() } : {}),
       ...(v.showPageNumbers === false ? { showPageNumbers: false } : {}),
+      // The cover's layout, and the cover itself when it is arranged from scratch.
+      ...(STUDIO_BOOK_LIMITS.coverLayouts.includes(v.coverLayout) ? { coverLayout: v.coverLayout } : {}),
+      ...(v.coverLayout === "custom" ? { coverPage: (() => {
+        const cp = v.coverPage && typeof v.coverPage === "object" ? v.coverPage : {};
+        const out = { blocks: cleanBlocks(cp.blocks) };
+        if (STUDIO_BOOK_LIMITS.fills.includes(cp.bg) || /^#[0-9a-f]{6}$/i.test(String(cp.bg || ""))) out.bg = String(cp.bg).toLowerCase();
+        return out;
+      })() } : {}),
       ...(cleanBookFormatting(v.coverStyle, STUDIO_BOOK_LIMITS.formatFields.cover) ? { coverStyle: cleanBookFormatting(v.coverStyle, STUDIO_BOOK_LIMITS.formatFields.cover) } : {}),
       ...(() => {
         const t = v.coverText && typeof v.coverText === "object" ? v.coverText : {};
@@ -1044,11 +1075,11 @@ function cleanStudioPortfolios(o) {
 // Each time the stored shape grows, the copy moves to a new key: code that
 // knows the previous shape still writes the previous key (stripping only what
 // it doesn't know), so the newest key is read first and wins ties.
-const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words_v5";
+const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words_v6";
 // Older keys: code that knows only an older shape keeps rewriting the key it
 // knows, so every growth of the shape gets a new one, read before the old.
-const STUDIO_BOOK_WORDS_OLD = ["wps_studio_portfolios_words_v4", "wps_studio_portfolios_words_v3", "wps_studio_portfolios_words_v2", "wps_studio_portfolios_words"];
-const studioBookHasWords = (v) => !!v.paper || !!v.coverStyle || !!v.watermark || !!v.coverText || !!v.schema || !!v.footText || !!v.bg || v.showPageNumbers === false || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
+const STUDIO_BOOK_WORDS_OLD = ["wps_studio_portfolios_words_v5", "wps_studio_portfolios_words_v4", "wps_studio_portfolios_words_v3", "wps_studio_portfolios_words_v2", "wps_studio_portfolios_words"];
+const studioBookHasWords = (v) => !!v.paper || !!v.coverStyle || !!v.watermark || !!v.coverText || !!v.schema || !!v.footText || !!v.bg || v.showPageNumbers === false || !!v.coverLayout || !!v.coverPage || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
   (STUDIO_BOOK_LIMITS.fields[pg.type] && (pg.type !== "photos" || pg.caption)) || (pg.blocks || []).length || pg.bg || pg.items || pg.steps || pg.rows || pg.credit || pg.label || pg.heading || pg.photoAt || pg.border || pg.borderWidth || pg.style || pg.hide || (pg.photos || []).some((s) => s.fit || s.opacity));
 function getStudioPortfolios(live) {
   let local = null, published = null, remote = null, words = null;
