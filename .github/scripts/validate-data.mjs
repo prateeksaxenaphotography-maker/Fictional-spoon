@@ -344,7 +344,7 @@ if (books !== undefined && books !== null) {
     const SERVICE_ITEM = { kicker: 28, title: 40, blurb: 120 };
     const CONTACT_ROW = { label: 24, value: 60 };
     const CREDIT_PAGES = new Set(["photos", "spread", "article", "story", "note", "quote", "feature"]);
-    const KNOWN_KEYS = {
+    const KNOWN_KEYS_BASE = {
       photos: ["type", "photos", "caption", "credit", "rows", "border", "borderWidth", "style"], spread: ["type", "photos", "credit", "border", "borderWidth"], divider: ["type", "heading", "line", "style"],
       about: ["type", "label", "heading", "style"], services: ["type", "label", "heading", "note", "items", "hide"], contact: ["type", "label", "heading", "rows", "qrLabel", "hide"],
       story: ["type", "photos", "photoAt", "credit", "style", ...Object.keys(FIELD_MAX.story)], note: ["type", "photos", "photoAt", "credit", "style", ...Object.keys(FIELD_MAX.note)],
@@ -355,12 +355,14 @@ if (books !== undefined && books !== null) {
       process: ["type", "way", "steps", "style", ...Object.keys(FIELD_MAX.process)],
       free: ["type", "bg", "blocks"]
     };
+    // Any page can carry its own colour behind everything.
+    const KNOWN_KEYS = Object.fromEntries(Object.entries(KNOWN_KEYS_BASE).map(([k, v]) => [k, v.includes("bg") ? v : [...v, "bg"]]));
     // An Anything page: what the studio placed, as fractions of the A4 frame.
     const BLOCK_KINDS = new Set(["text", "photo", "shape", "line"]);
     const BLOCK_ROLES = new Set(["head", "intro", "body", "kicker", "quote"]);
     const THICKS = new Set(["hair", "narrow", "broad"]);
     const FILLS = new Set(["ink", "soft", "accent", "paper", "white", "deep", "rule"]);
-    const BLOCK_KEYS = { text: ["k", "x", "y", "w", "h", "r", "t", "role", "fit", "style"], photo: ["k", "x", "y", "w", "h", "r", "p", "edge", "edgeWidth"], shape: ["k", "x", "y", "w", "h", "r", "fill", "o"], line: ["k", "x", "y", "w", "r", "color", "o", "thick"] };
+    const BLOCK_KEYS = { text: ["k", "x", "y", "w", "h", "r", "t", "role", "fit", "style", "fill", "o"], photo: ["k", "x", "y", "w", "h", "r", "p", "edge", "edgeWidth"], shape: ["k", "x", "y", "w", "h", "r", "fill", "o"], line: ["k", "x", "y", "w", "r", "color", "o", "thick"] };
     const isFill = (v) => FILLS.has(v) || /^#[0-9a-f]{6}$/.test(String(v));
     const seenBooks = new Set();
     for (const b of books.versions) {
@@ -430,8 +432,8 @@ if (books !== undefined && books !== null) {
           }
           if (pg.hide !== undefined && (!Array.isArray(pg.hide) || pg.hide.some((k) => typeof k !== "string" || !k || k.length > 60))) fail(`${where} leaves out shoots the app can't name: ${JSON.stringify(pg.hide)}`);
         }
+        if (pg.bg !== undefined && !isFill(pg.bg)) fail(`${where} has a page colour ${JSON.stringify(pg.bg)}; use ${[...FILLS].join(", ")} or #rrggbb`);
         if (pg.type === "free") {
-          if (pg.bg !== undefined && !isFill(pg.bg)) fail(`${where} has a background ${JSON.stringify(pg.bg)}; use ${[...FILLS].join(", ")} or #rrggbb`);
           if (!Array.isArray(pg.blocks)) fail(`${where} (free) has no list of things on it`);
           else {
             if (pg.blocks.length > 12) fail(`${where} has ${pg.blocks.length} things on it; the builder allows 12`);
@@ -465,7 +467,7 @@ if (books !== undefined && books !== null) {
                 if (x.edge !== undefined && !FILLS.has(x.edge)) fail(`${at} has an edge colour ${JSON.stringify(x.edge)} the app drops`);
                 if (x.edgeWidth !== undefined && !THICKS.has(x.edgeWidth)) fail(`${at} has an edge width ${JSON.stringify(x.edgeWidth)}`);
               }
-              if (x.k === "shape" && x.fill !== undefined && !isFill(x.fill)) fail(`${at} is filled ${JSON.stringify(x.fill)}; use ${[...FILLS].join(", ")} or #rrggbb`);
+              if ((x.k === "shape" || x.k === "text") && x.fill !== undefined && !isFill(x.fill)) fail(`${at} is filled ${JSON.stringify(x.fill)}; use ${[...FILLS].join(", ")} or #rrggbb`);
               if (x.k === "line") {
                 if (x.color !== undefined && !isFill(x.color)) fail(`${at} is drawn in ${JSON.stringify(x.color)}; use ${[...FILLS].join(", ")} or #rrggbb`);
                 if (x.thick !== undefined && !THICKS.has(x.thick)) fail(`${at} has a thickness ${JSON.stringify(x.thick)}`);
@@ -524,6 +526,7 @@ if (books !== undefined && books !== null) {
       if (b.schema !== undefined && !(Number.isInteger(b.schema) && b.schema >= 1 && b.schema <= 99)) fail(`studio portfolio book ${name} has a schema mark ${JSON.stringify(b.schema)}; it must be a whole number from 1 to 99`);
       if (b.pages.some((pg) => pg && pg.type === "free") && !(b.schema >= 1)) fail(`studio portfolio book ${name} has an Anything page but no schema mark; the app writes schema: 1 for one, and CI needs it to catch an out-of-date tab dropping the page`);
       if (b.footText !== undefined && (typeof b.footText !== "string" || !b.footText.trim() || b.footText.length > 40)) fail(`studio portfolio book ${name} has a running foot the app would drop or cut`);
+      if (b.bg !== undefined && !isFill(b.bg)) fail(`studio portfolio book ${name} has a page colour ${JSON.stringify(b.bg)}; use ${[...FILLS].join(", ")} or #rrggbb`);
       if (b.showPageNumbers !== undefined && b.showPageNumbers !== false) fail(`studio portfolio book ${name} writes showPageNumbers ${JSON.stringify(b.showPageNumbers)}; only false is written`);
       if (b.watermark !== undefined) {
         const w = b.watermark;
@@ -615,7 +618,7 @@ try {
   const wordsIn = (b) => {
     let pages = 0, chars = 0, fits = 0;
     const settings = (s) => (s ? (s.fit ? 1 : 0) + (s.opacity !== undefined ? 1 : 0) : 0);
-    fits += settings(b && b.cover) + (b && b.paper ? 1 : 0) + (b && b.coverStyle ? Object.keys(b.coverStyle).length : 0) + (b && b.watermark ? Object.keys(b.watermark).length : 0) + (b && b.coverText ? Object.keys(b.coverText).length : 0) + (b && b.footText ? 1 : 0) + (b && b.showPageNumbers === false ? 1 : 0);
+    fits += settings(b && b.cover) + (b && b.paper ? 1 : 0) + (b && b.coverStyle ? Object.keys(b.coverStyle).length : 0) + (b && b.watermark ? Object.keys(b.watermark).length : 0) + (b && b.coverText ? Object.keys(b.coverText).length : 0) + (b && b.footText ? 1 : 0) + (b && b.bg ? 1 : 0) + (b && b.showPageNumbers === false ? 1 : 0);
     for (const side of ["left", "right"]) for (const l of ((b && b.coverText && b.coverText[side]) || [])) if (typeof l === "string") chars += l.length;
     for (const pg of (b && b.pages) || []) {
       if (!pg) continue;
@@ -636,7 +639,7 @@ try {
       // once more, so losing paragraph formatting shows up as a shrink too.
       const props = (f) => (f && typeof f === "object" ? Object.keys(f).filter((k) => k !== "paras").length : 0);
       const styleWeight = (style) => Object.values(style || {}).reduce((n, f) => n + 1 + props(f) + (f && f.paras ? Object.values(f.paras).reduce((m, p) => m + 1 + props(p), 0) : 0), 0);
-      fits += (pg.photoAt ? 1 : 0) + (pg.type === "photos" && pg.rows ? 1 : 0) + (pg.border ? 1 : 0) + (pg.borderWidth ? 1 : 0) + styleWeight(pg.style) + (Array.isArray(pg.hide) ? pg.hide.length : 0);
+      fits += (pg.photoAt ? 1 : 0) + (pg.bg ? 1 : 0) + (pg.type === "photos" && pg.rows ? 1 : 0) + (pg.border ? 1 : 0) + (pg.borderWidth ? 1 : 0) + styleWeight(pg.style) + (Array.isArray(pg.hide) ? pg.hide.length : 0);
     }
     return { pages, chars, fits };
   };

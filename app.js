@@ -837,9 +837,11 @@ function cleanStudioPortfolios(o) {
       // drawn — the last one is on top. Each is rebuilt from a whitelist, and
       // every number is clamped and rounded, so nothing hand-edited can put a
       // block far off the paper or a text past its cap.
+      // Any page can have its own colour behind everything; absent means the
+      // book's, and failing that the style's.
+      if (STUDIO_BOOK_LIMITS.fills.includes(pg.bg) || /^#[0-9a-f]{6}$/i.test(String(pg.bg || ""))) out.bg = String(pg.bg).toLowerCase();
       if (pg.type === "free") {
         const L2 = STUDIO_BOOK_LIMITS;
-        if (L2.fills.includes(pg.bg) || /^#[0-9a-f]{6}$/i.test(String(pg.bg || ""))) out.bg = String(pg.bg).toLowerCase();
         const frac = (v, lo, hi, d) => Math.round(num(v, lo, hi, d) * 10000) / 10000;
         let photos = 0;
         out.blocks = (Array.isArray(pg.blocks) ? pg.blocks : []).map((x) => {
@@ -861,6 +863,11 @@ function cleanStudioPortfolios(o) {
             if (p2) one.p = p2;
             if (L2.fills.includes(x.edge)) one.edge = x.edge;
             if (L2.thicks.includes(x.edgeWidth)) one.edgeWidth = x.edgeWidth;
+          }
+          if (x.k === "text" && (L2.fills.includes(x.fill) || /^#[0-9a-f]{6}$/i.test(String(x.fill || "")))) {
+            // A shape with words in it.
+            one.fill = String(x.fill).toLowerCase();
+            if (typeof x.o === "number" && isFinite(x.o) && x.o < 1) one.o = Math.round(num(x.o, 0.05, 1, 1) * 100) / 100;
           }
           if (x.k === "shape" || x.k === "line") {
             const key = x.k === "shape" ? "fill" : "color";
@@ -960,6 +967,8 @@ function cleanStudioPortfolios(o) {
       // The running foot: the studio's name unless the book gives its own, and
       // page numbers unless they are switched off.
       ...(str(v.footText, STUDIO_BOOK_LIMITS.footText).trim() ? { footText: str(v.footText, STUDIO_BOOK_LIMITS.footText) } : {}),
+      // One colour behind every page (the cover keeps its own), unless a page says otherwise.
+      ...(STUDIO_BOOK_LIMITS.fills.includes(v.bg) || /^#[0-9a-f]{6}$/i.test(String(v.bg || "")) ? { bg: String(v.bg).toLowerCase() } : {}),
       ...(v.showPageNumbers === false ? { showPageNumbers: false } : {}),
       ...(cleanBookFormatting(v.coverStyle, STUDIO_BOOK_LIMITS.formatFields.cover) ? { coverStyle: cleanBookFormatting(v.coverStyle, STUDIO_BOOK_LIMITS.formatFields.cover) } : {}),
       ...(() => {
@@ -1008,8 +1017,8 @@ const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words_v5";
 // Older keys: code that knows only an older shape keeps rewriting the key it
 // knows, so every growth of the shape gets a new one, read before the old.
 const STUDIO_BOOK_WORDS_OLD = ["wps_studio_portfolios_words_v4", "wps_studio_portfolios_words_v3", "wps_studio_portfolios_words_v2", "wps_studio_portfolios_words"];
-const studioBookHasWords = (v) => !!v.paper || !!v.coverStyle || !!v.watermark || !!v.coverText || !!v.schema || !!v.footText || v.showPageNumbers === false || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
-  (STUDIO_BOOK_LIMITS.fields[pg.type] && (pg.type !== "photos" || pg.caption)) || (pg.blocks || []).length || pg.items || pg.steps || pg.rows || pg.credit || pg.label || pg.heading || pg.photoAt || pg.border || pg.borderWidth || pg.style || pg.hide || (pg.photos || []).some((s) => s.fit || s.opacity));
+const studioBookHasWords = (v) => !!v.paper || !!v.coverStyle || !!v.watermark || !!v.coverText || !!v.schema || !!v.footText || !!v.bg || v.showPageNumbers === false || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
+  (STUDIO_BOOK_LIMITS.fields[pg.type] && (pg.type !== "photos" || pg.caption)) || (pg.blocks || []).length || pg.bg || pg.items || pg.steps || pg.rows || pg.credit || pg.label || pg.heading || pg.photoAt || pg.border || pg.borderWidth || pg.style || pg.hide || (pg.photos || []).some((s) => s.fit || s.opacity));
 function getStudioPortfolios(live) {
   let local = null, published = null, remote = null, words = null;
   const older = [];
