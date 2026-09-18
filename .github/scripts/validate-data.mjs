@@ -317,7 +317,7 @@ if (books !== undefined && books !== null) {
       if (f.weight !== undefined && !["light", "regular", "bold"].includes(f.weight)) fail(`${what} in weight ${JSON.stringify(f.weight)}`);
       if (f.italic !== undefined && f.italic !== true) fail(`${what} with italic ${JSON.stringify(f.italic)}; only true is written`);
       if (f.font !== undefined && !FONTS.has(f.font)) fail(`${what} in an unknown font ${JSON.stringify(f.font)}`);
-      if (f.color !== undefined && !["ink", "soft", "accent"].includes(f.color) && !/^#[0-9a-f]{6}$/.test(String(f.color))) fail(`${what} in the colour ${JSON.stringify(f.color)}; use ink, soft, accent or #rrggbb`);
+      if (f.color !== undefined && !["ink", "soft", "accent", "paper", "white", "deep"].includes(f.color) && !/^#[0-9a-f]{6}$/.test(String(f.color))) fail(`${what} in the colour ${JSON.stringify(f.color)}; use ink, soft, accent, paper, white, deep or #rrggbb`);
       if (f.align !== undefined && !ALIGNS.has(f.align)) fail(`${what} aligned ${JSON.stringify(f.align)}`);
     };
     const checkFormat = (f, what, key, flows) => {

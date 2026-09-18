@@ -689,7 +689,7 @@ const STUDIO_BOOK_LIMITS = {
   // Per-text formatting on writing pages and captions: an open-source font,
   // a colour (a book colour or #rrggbb) and an alignment. Absent = the style's.
   fonts: ["fraunces", "archivo", "inter", "outfit", "playfair", "cormorant", "baskerville", "bodoni", "dmserif", "sourcesans", "jost", "manrope", "spacegrotesk", "oswald", "plexmono"],
-  colors: ["ink", "soft", "accent"],
+  colors: ["ink", "soft", "accent", "paper", "white", "deep"],
   aligns: ["left", "center", "right", "justify"],
   // A flowing text (a story, a letter, the words about a photo, About the
   // studio) can format each paragraph on its own; this many at most.
