@@ -827,6 +827,73 @@
     if (skipNow !== "note") text(page, ellipsize(page, small, box.w), NT.at(box.x, box.w), noteY + 2, NT.color, NT.align);
     noteText(page, "note", box.x, noteY + 2 - ns * 0.86, box.w, ns * 1.2, typeOf(NT, ns, ns * 1.3));
   }
+
+  /* ---------- a look ---------------------------------------------------------
+     One look of a collection: one or two photographs, its number (its place
+     among the looks, unless written over), its name, and up to four lines
+     under it — the garments, who made them, who styled it. */
+  function lookNumber(book, entry) { let n = 0; for (const pg of book.pages) { if (pg && pg.type === "look") { n++; if (pg === entry) return n; } } return n || 1; }
+  async function drawLook(page, entry, book, P, W, H, imgs, n, S, no) {
+    const st = styleKey(book), L = W > H, T = WTYPE[st];
+    rect(page, 0, 0, W, H, pageBgOf(book, entry, P, st === "elegant" ? P.paper : P.white));
+    if (st === "modern") rect(page, 0, 0, 6, H, P.accent);
+    const M = S.margins(L ? "landscape" : "portrait");
+    const side = M.side + (st === "modern" ? 6 : 0);
+    const shots = (entry.photos || []).slice(0, 2);
+    // The photographs take most of the page; the words sit under them, or
+    // beside them on a landscape page. Vogue runs its photographs to the trim.
+    let pa, wa;
+    if (L) {
+      const pw = (st === "vogue" ? W : W - side - M.side) * 0.64;
+      pa = st === "vogue" ? { x: 0, y: 0, w: pw, h: H } : { x: side, y: M.top, w: pw, h: H - M.top - M.bottom };
+      wa = { x: pa.x + pa.w + 12, y: M.top + 6, w: W - M.side - (pa.x + pa.w + 12) - (st === "vogue" ? 6 : 0) };
+    } else {
+      const ph = H * (st === "vogue" ? 0.7 : 0.66);
+      pa = st === "vogue" ? { x: 0, y: 0, w: W, h: ph } : { x: side, y: M.top, w: W - side - M.side, h: ph - M.top };
+      wa = { x: st === "vogue" ? 12 : side, y: pa.y + pa.h + (st === "vogue" ? 12 : 12), w: W - (st === "vogue" ? 12 : side) - M.side };
+    }
+    if (!shots.length) missing(page, P, pa.x, pa.y, pa.w, pa.h);
+    else {
+      const aspects = shots.map((sh, i) => (imgs[i] ? imgAspect(imgs[i]) : 0.7));
+      const boxes = shots.length === 1 ? [pa] : cells(2, pa, M.gap, aspects, L, null);
+      boxes.forEach((c, i) => {
+        if (!imgs[i]) { missing(page, P, c.x, c.y, c.w, c.h); return; }
+        if (st === "elegant") { const r = fitPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); frame(page, r.x, r.y, r.w, r.h, P.rule, 0.2); }
+        else drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h);
+      });
+    }
+    // LOOK 01
+    const SL = T.kicker;
+    const label = lineIn(entry.label, `Look ${String(no).padStart(2, "0")}`);
+    font(page, SL.w, SL.size, SL.f, SL.sp || 0);
+    let y = wa.y + SL.size;
+    text(page, ellipsize(page, SL.caps ? label.toUpperCase() : label, wa.w), wa.x, y, SL.color === "accentText" ? accentText(P) : (P[SL.color] || P.soft));
+    // its name
+    const NS = T.noteTitle;
+    const NT = textFormat(entry.style, "title", { w: NS.w, f: NS.f }, P, P.ink);
+    const name = lineIn(entry.title, "");
+    y += 5;
+    if (name) {
+      const t = fitLines(page, NS.caps ? name.toUpperCase() : name, wa.w, 2, NT.spec.w, NS.start * NT.scale, NS.min * NT.scale, NT.spec.f, NS.sp || 0, !!NT.spec.it);
+      const lead = t.size * NS.lead;
+      font(page, NT.spec.w, t.size, NT.spec.f, NS.sp || 0, !!NT.spec.it);
+      y += t.size;
+      if (skipNow !== "title") t.lines.forEach((l, i) => text(page, l, NT.at(wa.x, wa.w), y + i * lead, NT.color, NT.align));
+      noteText(page, "title", wa.x, y - t.size * 0.86, wa.w, (t.lines.length - 1) * lead + t.size * 1.16, { ...typeOf(NT, t.size, lead, NS.sp || 0), caps: !!NS.caps });
+      y += (t.lines.length - 1) * lead;
+    } else {
+      const sz = NS.start * NT.scale; y += sz;
+      noteText(page, "title", wa.x, y - sz * 0.86, wa.w, sz * 1.16, { ...typeOf(NT, sz, sz * NS.lead, NS.sp || 0), caps: !!NS.caps });
+    }
+    // the lines under it
+    const lines = (Array.isArray(entry.lines) ? entry.lines : []).slice(0, 4).map((v) => (typeof v === "string" ? v : ""));
+    if (lines.some((v) => v.trim())) {
+      rect(page, wa.x, y + 4, T.rule.w, T.rule.h, P.accent);
+      font(page, T.body.w, 3.3, T.body.f);
+      let ly = y + 12;
+      for (const v of lines) { if (!v.trim()) continue; text(page, ellipsize(page, v, wa.w), wa.x, ly, P.soft); ly += 5.2; }
+    }
+  }
   function coverLines(book) {
     // Cover lines from the book's own photographs, never typed: genres that
     // are actually in it, and counts that are actually true.
@@ -3033,6 +3100,13 @@
         freeFoot(page, P, W, H, n);
         page.cuts = plan.cuts;
         page.plan = plan;
+      } else if (entry.type === "look") {
+        const imgs = await Promise.all((entry.photos || []).map(imgOf));
+        await drawLook(page, entry, book, P, W, H, imgs, n, S, lookNumber(book, entry));
+        const credit = pageCredit(entry, shoots);
+        if (book.style === "elegant") { ELEGANT.foot(page, P, W, H, n); if (credit) { font(page, 300, 3.0, F.sans); text(page, ellipsize(page, credit, W - 60), n % 2 ? 20 : W - 20, H - 12, P.soft, n % 2 ? "left" : "right"); } }
+        else if (book.style === "vogue") VOGUE.foot(page, P, W, H, n, credit);
+        else MODERN.foot(page, P, W, H, n, credit);
       } else if (entry.type === "end") {
         const imgs = await Promise.all((entry.photos || []).map(imgOf));
         await drawEnd(page, entry, book, P, W, H, imgs, n, S);
@@ -3439,11 +3513,13 @@
     document.head.appendChild(st);
   }
 
-  const PAGE_LABEL = { photos: "Photos", spread: "Two-page spread", divider: "Chapter page", about: "About", services: "What I shoot", contact: "Contact", story: "Story", note: "About a photo", quote: "Quote", letter: "Letter", feature: "Zig-zag", article: "Story + full-page photo", ways: "Ways we work", process: "How a shoot runs", free: "Anything page", end: "End page" };
+  const PAGE_LABEL = { photos: "Photos", spread: "Two-page spread", divider: "Chapter page", about: "About", services: "What I shoot", contact: "Contact", story: "Story", note: "About a photo", quote: "Quote", letter: "Letter", feature: "Zig-zag", article: "Story + full-page photo", ways: "Ways we work", process: "How a shoot runs", free: "Anything page", end: "End page", look: "Look" };
   const ADD_MENU = [
     { group: "Photographs", items: [
       ["photos", "Photos", "One to six photos, laid out by their shapes."],
       ["spread", "Two-page spread", "One photo across two facing pages."]] },
+    { group: "Lookbook", items: [
+      ["look", "Look", "One or two photographs of one look, its number, its name, and the lines under it: garments, who made them, who styled it."]] },
     { group: "Words", items: [
       ["story", "Story", "A photo with a headline, an intro and a story about a shoot or a brief."],
       ["note", "About a photo", "One photo shown large, with a title and a few lines about it."],
@@ -3498,7 +3574,8 @@
     services: "t4,8,14,3 t4,13,30,2 t4,20,14,3 t4,25,30,2 t4,32,14,3 t4,37,30,2 t4,44,14,3 t4,49,30,2",
     contact: "t4,8,22,3 t4,15,26,2 t4,19,22,2 t4,23,26,2 q28,40,12,12",
     "end:back": "b0,0,44,60 w19,18,6,6 w13,30,18,2 w15,36,14,1.5 w15,40,14,1.5 w15,44,14,1.5",
-    "end:closing": "p4,6,36,26 t4,40,26,3 b4,47,8,1 t4,51,20,2"
+    "end:closing": "p4,6,36,26 t4,40,26,3 b4,47,8,1 t4,51,20,2",
+    look: "p4,4,36,34 t4,42,9,2 t4,46,22,3 b4,51,6,1 t4,54,18,1.5"
   };
   function addIcon(type) {
     const FILL = { p: "#cfcbc4", t: "#8a8c93", b: "var(--accent, #d24e1a)", w: "#ffffff", q: "#141416" };
@@ -3816,11 +3893,21 @@
          for real, "From scratch" among them for a cover made by hand. The
          book then opens on that cover. */
       const withLayout = (nb, k) => { if (k && k !== "classic") nb.coverLayout = k; if (k === "custom") nb.coverPage = { blocks: [] }; return nb; };
+      // A lookbook: a page about the collection, six looks, a back cover.
+      let kind = "magazine";
+      const KIND_NOTE = { magazine: "A cover and a page of photographs; add any pages after.", lookbook: "A cover, a page about the collection, six looks and a back cover. Each look is one or two photographs with its number, its name and its lines." };
+      const withKind = (nb, k) => {
+        if (k !== "lookbook") return nb;
+        nb.name = nb.name.replace(/^Book /, "Lookbook ");
+        nb.title = "Lookbook"; nb.subtitle = `Collection ${year()}`;
+        nb.pages = [{ type: "story", photos: [], kicker: "", headline: "", intro: "", body: "" }, ...Array.from({ length: 6 }, () => ({ type: "look", photos: [] })), { type: "end", layout: "back" }];
+        return nb;
+      };
       function closeStart() { const el = $("#sbStart"); if (el) el.remove(); }
       function startBook(k) {
         settle(); if (atLimit) return;
         closeStart();
-        openBook(withLayout(newBook(`Book ${state.versions.length + 1}`), k), true, { sel: -1 });
+        openBook(withKind(withLayout(newBook(`Book ${state.versions.length + 1}`), k), kind), true, { sel: -1 });
       }
       function openStart() {
         closeStart();
@@ -3828,7 +3915,9 @@
         box.className = "sb-start"; box.id = "sbStart"; box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true"); box.setAttribute("aria-label", "Start a new book");
         box.innerHTML = `<div class="sb-startbox">
           <div class="sb-addhead"><strong>Start a new book</strong><button type="button" class="sb-btn quiet" id="sbStartClose">Cancel</button></div>
-          <p class="sb-hint">Pick the cover to begin with. It can be changed any time on the cover's own panel, and every book starts with a page of photographs after it.</p>
+          <div class="sb-cpbase"><span>Start with</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="What kind of book">${[["magazine", "A magazine"], ["lookbook", "A lookbook"]].map(([k, nm]) => `<button type="button" role="radio" data-kind="${k}" aria-checked="${kind === k}">${nm}</button>`).join("")}</div></div>
+          <p class="sb-hint" id="sbKindNote">${esc(KIND_NOTE[kind])}</p>
+          <p class="sb-hint">Then the cover to begin with. It can be changed any time on the cover's own panel.</p>
           <div class="sb-starts">${COVER_LAYOUTS.map(([k, nm]) => `<button type="button" class="sb-startitem" data-start="${k}"><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(k === "custom" ? "From scratch (blank)" : nm)}</b><span>${esc(COVER_LAYOUT_NOTE[k])}</span></button>`).join("")}</div>
         </div>`;
         root.appendChild(box);
@@ -3836,6 +3925,11 @@
         box.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); } });
         box.querySelector("#sbStartClose").addEventListener("click", () => { closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); });
         box.querySelectorAll("[data-start]").forEach((b) => b.addEventListener("click", () => startBook(b.dataset.start)));
+        box.querySelectorAll("[data-kind]").forEach((b) => b.addEventListener("click", () => {
+          kind = b.dataset.kind;
+          box.querySelectorAll("[data-kind]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
+          const note = box.querySelector("#sbKindNote"); if (note) note.textContent = KIND_NOTE[kind];
+        }));
         const first = box.querySelector("[data-start]"); if (first) first.focus();
         (async () => {
           const cache = new Map();
@@ -4601,6 +4695,7 @@
         if (!b || b.k !== "text") return null;
         return { get: () => b.t || "", set: (v) => { b.t = v; }, max: FREE_TEXT_MAX, host: blockStyleHost(b), key: "t", block: +m[1] };
       }
+      if (entry.type === "look" && field === "title") return { get: () => entry.title || "", set: (v) => { entry.title = v; }, max: (caps.look || {}).title || 40, line: true, host: styleHost(entry), key: "title" };
       if (entry.type === "end") {
         if (field === "text") return { get: () => entry.text || "", set: (v) => { entry.text = v; }, max: (caps.end || {}).text || 160, host: styleHost(entry), key: "text" };
         if (field === "note") return { get: () => entry.note || "", set: (v) => { entry.note = v; }, max: (caps.end || {}).note || 60, line: true, host: styleHost(entry), key: "note" };
@@ -4935,7 +5030,7 @@
       if (renderedCount(book) + extra > MAX_PAGES) { API.toast(`A book holds ${MAX_PAGES} pages at most, cover included.`); return; }
       const entry = { type };
       if (type === "free") entry.blocks = (FREE_STARTS[start] || []).map((b) => ({ ...b, ...(b.k === "text" ? { t: "" } : {}), ...(b.style ? { style: { ...b.style } } : {}) }));
-      if (["photos", "spread", "story", "note", "quote", "feature", "article"].includes(type)) entry.photos = [];
+      if (["photos", "spread", "story", "note", "quote", "feature", "article", "look"].includes(type)) entry.photos = [];
       if (type === "divider") { entry.heading = "Selected work"; entry.line = ""; }
       // Writing pages start empty: nothing is ever written for the studio.
       for (const k of Object.keys((fieldCaps()[type]) || {})) if (WRITING[type]) entry[k] = "";
@@ -5003,6 +5098,7 @@
     function railLabel(pg) {
       if (!pg) return coverLayoutOf(book) === "custom" ? "Cover · from scratch" : book.title ? `Cover · ${book.title}` : "Cover";
       if (pg.type === "end") return endLayoutOf(pg) === "back" ? "Back cover" : "Closing page";
+      if (pg.type === "look") return `Look ${pad2(lookNumber(book, pg))}${pg.title ? ` · ${pg.title}` : ""}`;
       if (pg.type === "process") return `${PAGE_LABEL.process} · ${(PROCESS_COPY[pg.way] || {}).menuName || "one way"}`;
       if (WRITING[pg.type]) { const w = wordsOf(pg); return w.length ? `${PAGE_LABEL[pg.type]} · “${w.slice(0, 6).join(" ")}”` : PAGE_LABEL[pg.type]; }
       if (pg.type === "photos" || pg.type === "spread") return `${PAGE_LABEL[pg.type]} · ${(pg.photos || []).length}`;
@@ -5299,7 +5395,7 @@
       const entry = curEntry();
       // On a page that IS its photographs, choosing them comes first; on a
       // writing page the words do, and the photo is the second thing.
-      const photoFirst = sel >= 0 && !!entry && ["note", "photos", "spread"].includes(entry.type);
+      const photoFirst = sel >= 0 && !!entry && ["note", "photos", "spread", "look"].includes(entry.type);
       panel.innerHTML = `
         <div class="sb-sec" id="sbPageHead"></div>
         ${photoFirst ? `<div class="sb-sec" id="sbPhotoBlock"></div><div class="sb-sec" id="sbFields"></div>` : `<div class="sb-sec" id="sbFields"></div><div class="sb-sec" id="sbPhotoBlock"></div>`}
@@ -5324,7 +5420,8 @@
         process: "One way of working, step by step: you, together, or the studio.",
         free: "Add words, photographs, colour blocks and lines, then drag them where you want.",
         coverFree: "Your cover, arranged by you: add words, photographs, colour blocks and lines, then drag them where you want.",
-        end: "The book's last page."
+        end: "The book's last page.",
+        look: "One look of a collection: its photographs, its number, its name and its lines."
       };
       const kind = sel < 0 ? (coverLayoutOf(book) === "custom" ? "coverFree" : "cover") : entry.type;
       head.innerHTML = `<h3>${esc(sel < 0 ? "Cover" : PAGE_LABEL[entry.type])}</h3><p class="sb-hint">${esc(about[kind] || "")}</p>`;
@@ -5837,6 +5934,32 @@
         wireField($("#sbF_subtitle"), (v) => { book.subtitle = v; }, 120);
         wireCoverLines();
         wireFormat(box, styleHost(null));
+        return;
+      }
+      if (entry.type === "look") {
+        const LIM = window.STUDIO_BOOK_LIMITS || {};
+        const no = lookNumber(book, entry);
+        const ph = ["e.g. Jacket · Ritu Kumar", "e.g. Trousers · Péro", "e.g. Styling · name", "e.g. Hair and make-up · name"];
+        box.innerHTML = `${overHtml("sbOvLabel", "Small line", entry.label, PT().label, `Look ${String(no).padStart(2, "0")}`, "Numbered by its place among the looks. Type to say something else.")}
+          ${fieldHtml({ k: "title", label: "The look's name", ctl: "input", ph: "e.g. Monsoon linen" }, entry.title || "", (caps.look || {}).title || 40)}
+          <div class="sb-field"><span class="sb-label">Lines under it</span>${[0, 1, 2, 3].map((i) => `<input type="text" id="sbLook_line${i}" maxlength="${LIM.lookLine || 60}" value="${esc(((entry.lines || [])[i]) || "")}" placeholder="${esc(ph[i])}" aria-label="Line ${i + 1}">`).join("")}
+            <p class="sb-hint">Garments, who made them, who styled the look. Empty lines are left out.</p></div>
+          ${creditHtml(entry)}`;
+        wireOver("sbOvLabel", setOver(entry, "label"));
+        wireField($("#sbF_title"), (v) => { entry.title = v; }, (caps.look || {}).title || 40);
+        for (const i of [0, 1, 2, 3]) {
+          const el = $(`#sbLook_line${i}`); if (!el) continue;
+          el.addEventListener("input", () => {
+            const lines = Array.isArray(entry.lines) ? entry.lines.slice() : [];
+            while (lines.length <= i) lines.push("");
+            lines[i] = el.value;
+            while (lines.length && !String(lines[lines.length - 1]).trim()) lines.pop();
+            if (lines.length) entry.lines = lines; else delete entry.lines;
+            change({ rail: false, typing: true });
+          });
+        }
+        wireCredit(entry);
+        wireFormat(box, styleHost(entry));
         return;
       }
       if (entry.type === "end") {
@@ -6425,7 +6548,7 @@
         return { list: b.p ? [b.p] : [], max: 1, set: (l) => { if (l[0]) b.p = l[0]; else delete b.p; } };
       }
       if (!entry.photos) return null;
-      return { list: entry.photos, max: entry.type === "photos" ? MAX_PER_PAGE : entry.type === "feature" ? 2 : 1, set: (l) => { entry.photos = l; } };
+      return { list: entry.photos, max: entry.type === "photos" ? MAX_PER_PAGE : (entry.type === "feature" || entry.type === "look") ? 2 : 1, set: (l) => { entry.photos = l; } };
     }
     function drawPhotoBlock() {
       const box = $("#sbPhotoBlock"); if (!box) return;
@@ -6437,7 +6560,7 @@
       const list = t.list;
       if (active >= list.length) active = Math.max(0, list.length - 1);
       const cur = list[active];
-      const heading = !entry ? "Cover photo" : entry.type === "photos" ? `Photos · ${list.length} of ${t.max}` : entry.type === "feature" ? `Photos · ${list.length} of 2` : (entry.type === "spread" || entry.type === "note" || entry.type === "article") ? "The photo" : "Photo (optional)";
+      const heading = !entry ? "Cover photo" : entry.type === "photos" ? `Photos · ${list.length} of ${t.max}` : (entry.type === "feature" || entry.type === "look") ? `Photos · ${list.length} of 2` : (entry.type === "spread" || entry.type === "note" || entry.type === "article") ? "The photo" : "Photo (optional)";
       const G = geometry(book);
       const positions = entry ? PHOTO_AT[entry.type] : null;
       const at = entry && positions ? photoAtOf(entry, G.L) : null;
@@ -6660,7 +6783,7 @@
         const first = n + 1; n += pageSpan(pg);
         if (n > MAX_PAGES) break;
         const add = (text) => out.push({ i, text: `Page ${pad2(first)} · ${PAGE_LABEL[pg.type]}: ${text}` });
-        if ((pg.type === "photos" || pg.type === "spread") && !(pg.photos || []).length) add("no photos yet");
+        if ((pg.type === "photos" || pg.type === "spread" || pg.type === "look") && !(pg.photos || []).length) add("no photos yet");
         if (pageSpan(pg) === 2 && first % 2 === 1) add(`starts on a right-hand page, so its two halves would be split by a page turn — move it, or put a page before it, so it starts on an even page`);
         if ((pg.type === "note" || pg.type === "article") && !(pg.photos || []).length) add("no photo chosen");
         if (pg.type === "end" && i !== b.pages.length - 1) add("should be the last page — move it to the end");
@@ -6953,7 +7076,7 @@
     // that loaded the site before they existed still runs the old save code,
     // which would drop them while saying "Saved": refuse until it reloads.
     const L = window.STUDIO_BOOK_LIMITS;
-    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !L.workWays || !L.markStrengths || !L.paras || !L.coverText || !L.blockKinds || !L.schema || !L.lists || !L.photoRows || !(L.pageTypes || []).includes("free") || !L.coverLayouts || !(L.pageTypes || []).includes("end")) {
+    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !L.workWays || !L.markStrengths || !L.paras || !L.coverText || !L.blockKinds || !L.schema || !L.lists || !L.photoRows || !(L.pageTypes || []).includes("free") || !L.coverLayouts || !(L.pageTypes || []).includes("end") || !(L.pageTypes || []).includes("look")) {
       root.innerHTML = `<div class="sb-empty"><p class="sb-warn">The site was updated while this tab was open.</p><p class="sb-hint">Reload the page (or use “↻ Load fresh version”) before editing your books, so nothing you write is lost.</p><p><button type="button" class="sb-btn dark" id="sbReload">Reload now</button></p></div>`;
       root.querySelector("#sbReload").addEventListener("click", () => location.reload());
       return;
