@@ -2384,24 +2384,41 @@
   // What a colour block (or the colour behind a box of words) is shaped like.
   const SHAPES = ["rect", "round", "chamfer", "ellipse", "triangle", "diamond", "star", "parallelogram"];
   const CORNER = { small: 0.1, medium: 0.18, large: 0.3 };
-  const cornerOf = (b) => CORNER[b && b.corner] || CORNER.medium;
+  // How rounded the corners are, as a share of the shorter side: a box and a
+  // cut-cornered box start at 0.18, any other shape at 0. The old words
+  // small / medium / large still mean what they did.
+  const cornerDefault = (shape) => (shape === "round" || shape === "chamfer" ? 0.18 : 0);
+  const cornerOf = (b) => (typeof (b && b.corner) === "number" ? Math.max(0, Math.min(0.5, b.corner)) : CORNER[b && b.corner] || cornerDefault(shapeOf(b)));
   const shapeOf = (b) => (SHAPES.includes(b && b.shape) ? b.shape : "rect");
   // Traces the shape inside a box, in page units, ready to fill.
+  // A polygon with every corner rounded by r (or sharp when r is 0): each
+  // corner is cut back along both edges and bridged by a curve through it.
+  function roundedPoly(ctx, v, r) {
+    const n = v.length;
+    if (!(r > 0)) { v.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py))); ctx.closePath(); return; }
+    const pts = v.map((V, i) => {
+      const A = v[(i + n - 1) % n], B = v[(i + 1) % n];
+      const la = Math.hypot(A[0] - V[0], A[1] - V[1]) || 1, lb = Math.hypot(B[0] - V[0], B[1] - V[1]) || 1;
+      const ua = [(A[0] - V[0]) / la, (A[1] - V[1]) / la], ub = [(B[0] - V[0]) / lb, (B[1] - V[1]) / lb];
+      const cosT = Math.max(-0.999, Math.min(0.999, ua[0] * ub[0] + ua[1] * ub[1])), theta = Math.acos(cosT);
+      const d = Math.min(r / Math.tan(theta / 2), la / 2, lb / 2);
+      return { p1: [V[0] + ua[0] * d, V[1] + ua[1] * d], p2: [V[0] + ub[0] * d, V[1] + ub[1] * d], V };
+    });
+    pts.forEach((c, i) => { if (i) ctx.lineTo(c.p1[0], c.p1[1]); else ctx.moveTo(c.p1[0], c.p1[1]); ctx.quadraticCurveTo(c.V[0], c.V[1], c.p2[0], c.p2[1]); });
+    ctx.closePath();
+  }
   function tracePath(ctx, shape, x, y, w, h, k = 0.18) {
     ctx.beginPath();
-    const r = Math.min(w, h) * k;
-    if (shape === "ellipse") ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
-    else if (shape === "triangle") { ctx.moveTo(x + w / 2, y); ctx.lineTo(x + w, y + h); ctx.lineTo(x, y + h); ctx.closePath(); }
-    else if (shape === "diamond") { ctx.moveTo(x + w / 2, y); ctx.lineTo(x + w, y + h / 2); ctx.lineTo(x + w / 2, y + h); ctx.lineTo(x, y + h / 2); ctx.closePath(); }
-    else if (shape === "round") { ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
-    else if (shape === "chamfer") { ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.lineTo(x + w, y + r); ctx.lineTo(x + w, y + h - r); ctx.lineTo(x + w - r, y + h); ctx.lineTo(x + r, y + h); ctx.lineTo(x, y + h - r); ctx.lineTo(x, y + r); ctx.closePath(); }
-    else if (shape === "parallelogram") { const d = w * 0.2; ctx.moveTo(x + d, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w - d, y + h); ctx.lineTo(x, y + h); ctx.closePath(); }
-    else if (shape === "star") {
-      const cx = x + w / 2, cy = y + h / 2, R = 0.5, rr = 0.2;
-      for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, m = i % 2 ? rr : R; const px = cx + Math.cos(a) * m * w, py = cy + Math.sin(a) * m * h; if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); }
-      ctx.closePath();
-    }
-    else ctx.rect(x, y, w, h);
+    const r = Math.min(w, h) * Math.max(0, Math.min(0.5, k));
+    if (shape === "ellipse") { ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2); return; }
+    if (shape === "chamfer") { const c = r; ctx.moveTo(x + c, y); ctx.lineTo(x + w - c, y); ctx.lineTo(x + w, y + c); ctx.lineTo(x + w, y + h - c); ctx.lineTo(x + w - c, y + h); ctx.lineTo(x + c, y + h); ctx.lineTo(x, y + h - c); ctx.lineTo(x, y + c); ctx.closePath(); return; }
+    let v;
+    if (shape === "triangle") v = [[x + w / 2, y], [x + w, y + h], [x, y + h]];
+    else if (shape === "diamond") v = [[x + w / 2, y], [x + w, y + h / 2], [x + w / 2, y + h], [x, y + h / 2]];
+    else if (shape === "parallelogram") { const d = w * 0.2; v = [[x + d, y], [x + w, y], [x + w - d, y + h], [x, y + h]]; }
+    else if (shape === "star") { const cx = x + w / 2, cy = y + h / 2; v = Array.from({ length: 10 }, (_, i) => { const a = -Math.PI / 2 + i * Math.PI / 5, m = i % 2 ? 0.2 : 0.5; return [cx + Math.cos(a) * m * w, cy + Math.sin(a) * m * h]; }); }
+    else v = [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];   // a box, rounded or not
+    roundedPoly(ctx, v, r);
   }
   // How far in from the box the words sit, so they stay inside the shape.
   const shapeInset = (shape, w, h, k = 0.18) => (shape === "ellipse" ? { x: w * 0.15, y: h * 0.15 } : shape === "diamond" ? { x: w * 0.25, y: h * 0.25 } : shape === "triangle" ? { x: w * 0.22, y: h * 0.38 } : shape === "star" ? { x: w * 0.28, y: h * 0.3 } : shape === "parallelogram" ? { x: w * 0.22, y: Math.min(4, h * 0.2) } : (shape === "round" || shape === "chamfer") ? { x: Math.max(Math.min(4, w * 0.08), Math.min(w, h) * k * 0.6), y: Math.max(Math.min(4, h * 0.2), Math.min(w, h) * k * 0.6) } : { x: Math.min(4, w * 0.08), y: Math.min(4, h * 0.2) });
@@ -2413,10 +2430,13 @@
      both or none; drawn with a pencil, a pen, a soft brush, a square marker,
      a flat nib (thick across the stroke, thin along it) or a tapering cone. */
   const LINE_PATHS = ["h", "v", "d", "u", "curve", "wave", "free"];
-  const LINE_TIPS = ["pencil", "brush", "marker", "nib", "taper"];
+  const LINE_TIPS = ["pencil", "brush", "marker", "nib", "taper", "sumi", "bristle"];
   const linePath = (b) => (LINE_PATHS.includes(b && b.path) ? b.path : "h");
-  const lineThick = (b) => THICKS[b && b.thick] || THICKS.narrow;
+  // An exact width in millimetres wins over the named ones.
+  const lineThick = (b) => (b && typeof b.width === "number" && isFinite(b.width) ? Math.min(12, Math.max(0.2, b.width)) : THICKS[b && b.thick] || THICKS.narrow);
   const lineBend = (b) => Math.max(-1, Math.min(1, typeof b.bend === "number" ? b.bend : 0.5));
+  const lineWaves = (b) => Math.max(1, Math.min(8, Math.round(typeof b.waves === "number" ? b.waves : 1)));
+  const lineSoft = (b) => Math.max(0, Math.min(1, typeof b.soft === "number" ? b.soft : 1));
   // The line's own points, in millimetres, inside its box.
   function linePoints(b, box) {
     const path = linePath(b), { x, y, w, h } = box, cy = y + h / 2;
@@ -2425,7 +2445,12 @@
     if (path === "d") return [[x, y], [x + w, y + h]];
     if (path === "u") return [[x, y + h], [x + w, y]];
     if (path === "curve") { const k = lineBend(b) * h, cx = x + w / 2; return sample((t) => [(1 - t) * (1 - t) * x + 2 * (1 - t) * t * cx + t * t * (x + w), (1 - t) * (1 - t) * cy + 2 * (1 - t) * t * (cy - k) + t * t * cy]); }
-    if (path === "wave") { const k = lineBend(b) * h; return sample((t) => { const a = 1 - t; return [a * a * a * x + 3 * a * a * t * (x + w / 3) + 3 * a * t * t * (x + 2 * w / 3) + t * t * t * (x + w), a * a * a * cy + 3 * a * a * t * (cy - k) + 3 * a * t * t * (cy + k) + t * t * t * cy]; }, 40); }
+    if (path === "wave") {
+      // As many waves as asked, rounded (a sine) or sharp (a zigzag) or in between.
+      const k = lineBend(b) * h, n = lineWaves(b), soft = lineSoft(b);
+      const tri = (u) => (2 / Math.PI) * Math.asin(Math.sin(2 * Math.PI * u));
+      return sample((t) => [x + t * w, cy - k * (soft * Math.sin(2 * Math.PI * n * t) + (1 - soft) * tri(n * t))], Math.max(40, n * 16));
+    }
     if (path === "free") return (Array.isArray(b.pts) ? b.pts : []).filter((p) => Array.isArray(p) && p.length === 2).map(([px, py]) => [x + (+px || 0) * w, y + (+py || 0) * h]);
     return [[x, cy], [x + w, cy]];
   }
@@ -2457,6 +2482,34 @@
     else if (tip === "marker") draw(w * 1.8, 0.55, "square");
     else if (tip === "nib") { const a = -Math.PI / 4, nx = Math.cos(a) * w * 1.4, ny = Math.sin(a) * w * 1.4; ribbon(() => [nx, ny]); }
     else if (tip === "taper") { ribbon((i) => { const [dx, dy] = dirAt(i); const half = w * (1.6 - 1.4 * (i / Math.max(1, P.length - 1))); return [-dy * half, dx * half]; }); ctx.save(); ctx.fillStyle = o.c; ctx.beginPath(); ctx.arc(P[0][0], P[0][1], w * 1.6, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+    else if (tip === "sumi") {
+      // A Japanese brush: pressed hard at the start, swelling, then lifting
+      // to a dry flick; the edges fibrous, the ink thinner at the sides.
+      const N = Math.max(1, P.length - 1);
+      const prof = (t) => 0.35 + 1.75 * Math.pow(Math.sin(Math.PI * Math.min(1, t * 1.15)), 0.6) * (1 - 0.55 * t);
+      const perp = (i) => { const [dx, dy] = dirAt(i); return [-dy, dx]; };
+      const wobble = (i, k) => 1 + 0.08 * Math.sin(i * 1.7 + k) * Math.cos(i * 0.9 + k * 2);
+      ctx.save(); ctx.globalAlpha *= 0.42; ribbon((i) => { const [px, py] = perp(i); const half = w * prof(i / N) * 1.25 * wobble(i, 1); return [px * half, py * half]; }); ctx.restore();
+      ctx.save(); ctx.globalAlpha *= 0.9; ribbon((i) => { const [px, py] = perp(i); const half = w * prof(i / N) * wobble(i, 2); return [px * half, py * half]; }); ctx.restore();
+      // three dry bristle lines that split off toward the end of the stroke
+      for (const k of [-0.7, 0.2, 0.75]) {
+        ctx.save(); ctx.globalAlpha *= 0.5; ctx.strokeStyle = o.c; ctx.lineWidth = Math.max(0.5, w * 0.35); ctx.lineCap = "round"; ctx.beginPath();
+        P.forEach(([x, y], i) => { const [px, py] = perp(i); const off = w * prof(i / N) * k * (0.6 + 0.6 * (i / N)); if (i) ctx.lineTo(x + px * off, y + py * off); else ctx.moveTo(x + px * off, y + py * off); });
+        ctx.stroke(); ctx.restore();
+      }
+      ctx.save(); ctx.fillStyle = o.c; ctx.beginPath(); ctx.arc(P[0][0], P[0][1], w * prof(0.02), 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    }
+    else if (tip === "bristle") {
+      // A dry, flat bristle brush: many hairs side by side, each its own thin line.
+      const perp = (i) => { const [dx, dy] = dirAt(i); return [-dy, dx]; };
+      const hairs = 9;
+      for (let hIdx = 0; hIdx < hairs; hIdx++) {
+        const off = (hIdx / (hairs - 1) - 0.5) * 2 * w * 1.5, jitter = ((hIdx * 7919) % 17) / 17 - 0.5;
+        ctx.save(); ctx.globalAlpha *= 0.42 + 0.35 * Math.abs(Math.sin(hIdx * 1.3)); ctx.strokeStyle = o.c; ctx.lineWidth = Math.max(0.5, w * (0.28 + 0.18 * Math.abs(Math.cos(hIdx)))); ctx.lineCap = "round"; ctx.beginPath();
+        P.forEach(([x, y], i) => { const [px, py] = perp(i); const o2 = off + jitter * w * 0.6 * Math.sin(i * 0.8 + hIdx); if (i) ctx.lineTo(x + px * o2, y + py * o2); else ctx.moveTo(x + px * o2, y + py * o2); });
+        ctx.stroke(); ctx.restore();
+      }
+    }
     else draw(w, 1);
     const head = (from, to) => {
       const dx = to[0] - from[0], dy = to[1] - from[1], len = Math.hypot(dx, dy) || 1;
@@ -2512,6 +2565,7 @@
         op({
           k: "photo", shot: (b.p && b.p.id) ? b.p : null, x: box.x, y: box.y, w: box.w, h: box.h,
           mode: b.p && b.p.fit === "whole" ? "fit" : "crop", rot: turn, empty: "CHOOSE A PHOTO",
+          shape: b.shape ? shapeOf(b) : (typeof b.corner === "number" && b.corner > 0 ? "rect" : null), corner: cornerOf(b),
           frame: b.edge ? blockColor(b.edge, P, P.rule) : (st === "elegant" ? P.rule : null), frameT: THICKS[b.edgeWidth] || 0.2
         });
         return;
@@ -2619,8 +2673,11 @@
         }
         if (!img) { around(o, () => missing(page, P, o.x, o.y, o.w, o.h)); continue; }
         around(o, () => {
+          const shaped = o.shape && o.shape !== "rect" || (o.shape === "rect" && o.corner > 0);
+          if (shaped) { page.ctx.save(); tracePath(page.ctx, o.shape, page.u(o.x), page.u(o.y), page.u(o.w), page.u(o.h), o.corner); page.ctx.clip(); }
           const r = o.mode === "crop" ? drawPhoto(page, img, shot, o.x, o.y, o.w, o.h) : fitPhoto(page, img, shot, o.x, o.y, o.w, o.h, o.mode === "fit-right" ? "right" : o.mode === "fit-left" ? "left" : "center");
-          if (o.frame) frame(page, r.x, r.y, r.w, r.h, o.frame, o.frameT || 0.2);
+          if (shaped) page.ctx.restore();
+          else if (o.frame) frame(page, r.x, r.y, r.w, r.h, o.frame, o.frameT || 0.2);
         });
       } else if (o.k === "guide" && guides) {
         // Where words will go, in the editor's preview only; never exported.
@@ -5632,23 +5689,32 @@
         </div>
         <div class="sb-field"><span class="sb-label">If they don't all fit</span>
           <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="If they don't all fit">${[["", "Make them smaller"], ["cut", "Keep the size"]].map(([k, n]) => `<button type="button" role="radio" data-tfit="${k}" aria-checked="${(b.fit || "") === k}">${n}</button>`).join("")}</div></div>` : "";
+      const photoShape = b && b.k === "photo" ? `
+        <div class="sb-field"><span class="sb-label">Shape</span>
+          <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Shape">${[["rect", "▭ Box"], ["round", "▢ Rounded"], ["chamfer", "⬠ Cut corners"], ["ellipse", "◯ Oval"], ["triangle", "△ Triangle"], ["diamond", "◇ Diamond"], ["star", "☆ Star"], ["parallelogram", "▱ Slanted"]].map(([k, n]) => `<button type="button" role="radio" data-shape="${k}" aria-checked="${shapeOf(b) === k}">${n}</button>`).join("")}</div>
+          ${shapeOf(b) === "ellipse" ? "" : `<label class="sb-range">Rounded corners <input type="range" min="0" max="50" step="1" value="${Math.round(cornerOf(b) * 100)}" data-cornerpct aria-valuetext="${Math.round(cornerOf(b) * 100)} percent"></label>`}
+          <p class="sb-hint">The photograph is cut to the shape.</p></div>` : "";
       const paint = b && (b.k === "shape" || b.k === "line" || b.k === "text") ? `
         <div class="sb-field"><span class="sb-label">${b.k === "text" ? "Colour behind the words" : "Colour"}</span>
           <span class="sb-swatches" role="group" aria-label="The book's own colours">${b.k === "text" ? swatch("fill", "", "None", "linear-gradient(135deg, #fff 45%, #999 50%, #fff 55%)", !b.fill) : ""}${fills.map(([k, n, c]) => swatch("fill", k, n, c, (b.k === "line" ? b.color : b.fill) === k)).join("")}${anySwatch("fillany", /^#/.test(b.k === "line" ? b.color || "" : b.fill || "") ? (b.k === "line" ? b.color : b.fill) : "")}</span>
           <div class="sb-cphost" data-fillpick hidden></div>${b.k === "text" ? `<p class="sb-hint">A shape with words in it: the words sit inside the colour.</p>` : ""}</div>
         ${b.k === "shape" || (b.k === "text" && b.fill) ? `<div class="sb-field"><span class="sb-label">Shape</span>
           <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Shape">${[["rect", "▭ Box"], ["round", "▢ Rounded"], ["chamfer", "⬠ Cut corners"], ["ellipse", "◯ Oval"], ["triangle", "△ Triangle"], ["diamond", "◇ Diamond"], ["star", "☆ Star"], ["parallelogram", "▱ Slanted"]].map(([k, n]) => `<button type="button" role="radio" data-shape="${k}" aria-checked="${shapeOf(b) === k}">${n}</button>`).join("")}</div>
-          ${shapeOf(b) === "round" || shapeOf(b) === "chamfer" ? `<div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="How big the corners are" style="margin-top:6px">${[["small", "Small corners"], ["medium", "Medium"], ["large", "Large"]].map(([k, n]) => `<button type="button" role="radio" data-corner="${k}" aria-checked="${(b.corner || "medium") === k}">${n}</button>`).join("")}</div>` : ""}</div>` : ""}
+          ${shapeOf(b) === "ellipse" ? "" : `<label class="sb-range">Rounded corners <input type="range" min="0" max="50" step="1" value="${Math.round(cornerOf(b) * 100)}" data-cornerpct aria-valuetext="${Math.round(cornerOf(b) * 100)} percent"></label><p class="sb-hint">0 is sharp; it rounds the tips of a star or a triangle too.</p>`}</div>` : ""}
+        ${b.k === "shape" ? `<div class="sb-field"><span class="sb-label">Put something in it</span><div class="sb-adds"><button type="button" data-into="text">Words in this shape</button><button type="button" data-into="photo">A photo in this shape</button></div></div>` : ""}
         ${b.k === "line" ? `<div class="sb-field"><span class="sb-label">Runs</span>
           <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="How the line runs">${[["h", "▬ Across"], ["v", "┃ Down"], ["d", "╲ Diagonal"], ["u", "╱ Diagonal up"], ["curve", "◠ Curved"], ["wave", "∿ Wavy"]].map(([k, n]) => `<button type="button" role="radio" data-lpath="${k}" aria-checked="${linePath(b) === k}">${n}</button>`).join("")}${linePath(b) === "free" ? `<button type="button" role="radio" data-lpath="free" aria-checked="true">✎ Drawn by hand</button>` : ""}</div>
-          ${linePath(b) === "curve" || linePath(b) === "wave" ? `<label class="sb-range">Bend <input type="range" min="-100" max="100" step="5" value="${Math.round(lineBend(b) * 100)}" data-lbend aria-valuetext="${Math.round(lineBend(b) * 100)} percent"></label>` : ""}</div>
+          ${linePath(b) === "curve" || linePath(b) === "wave" ? `<label class="sb-range">Bend <input type="range" min="-100" max="100" step="5" value="${Math.round(lineBend(b) * 100)}" data-lbend aria-valuetext="${Math.round(lineBend(b) * 100)} percent"></label>` : ""}
+          ${linePath(b) === "wave" ? `<label class="sb-range">How many waves <input type="range" min="1" max="8" step="1" value="${lineWaves(b)}" data-lwaves aria-valuetext="${lineWaves(b)} waves"></label>
+          <label class="sb-range">Sharp ↔ rounded <input type="range" min="0" max="100" step="5" value="${Math.round(lineSoft(b) * 100)}" data-lsoft aria-valuetext="${Math.round(lineSoft(b) * 100)} percent rounded"></label>` : ""}</div>
           <div class="sb-field"><span class="sb-label">Arrowheads</span>
           <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Arrowheads">${[["", "None"], ["end", "At the end →"], ["start", "← At the start"], ["both", "↔ Both"]].map(([k, n]) => `<button type="button" role="radio" data-lends="${k}" aria-checked="${(b.ends || "") === k}">${n}</button>`).join("")}</div></div>
           <div class="sb-field"><span class="sb-label">Drawn with</span>
-          <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Drawn with">${[["pencil", "Pencil"], ["", "Pen"], ["brush", "Soft brush"], ["marker", "Marker"], ["nib", "Flat nib"], ["taper", "Cone"]].map(([k, n]) => `<button type="button" role="radio" data-ltip="${k}" aria-checked="${(b.tip || "") === k}">${n}</button>`).join("")}</div>
-          <p class="sb-hint">A flat nib is thick across the stroke and thin along it, the way calligraphy goes; a cone starts thick and ends thin.</p></div>
+          <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Drawn with">${[["pencil", "Pencil"], ["", "Pen"], ["brush", "Soft brush"], ["marker", "Marker"], ["nib", "Flat nib"], ["taper", "Cone"], ["sumi", "Japanese brush"], ["bristle", "Bristle brush"]].map(([k, n]) => `<button type="button" role="radio" data-ltip="${k}" aria-checked="${(b.tip || "") === k}">${n}</button>`).join("")}</div>
+          <p class="sb-hint">A flat nib is thick across the stroke and thin along it, the way calligraphy goes; a cone starts thick and ends thin; a Japanese brush presses hard, swells, then lifts to a dry flick; a bristle brush is many dry hairs side by side. The thickness below sets the brush.</p></div>
           <div class="sb-field"><span class="sb-label">Thickness</span>
-          <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Thickness">${[["hair", "Hair"], ["narrow", "Narrow"], ["medium", "Medium"], ["broad", "Broad"], ["heavy", "Heavy"]].map(([k, n]) => `<button type="button" role="radio" data-thick="${k}" aria-checked="${(b.thick || "narrow") === k}">${n}</button>`).join("")}</div></div>` : ""}
+          <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Thickness">${[["hair", "Hair"], ["narrow", "Narrow"], ["medium", "Medium"], ["broad", "Broad"], ["heavy", "Heavy"]].map(([k, n]) => `<button type="button" role="radio" data-thick="${k}" aria-checked="${typeof b.width !== "number" && (b.thick || "narrow") === k}">${n}</button>`).join("")}</div>
+          <div class="sb-ptrow" style="margin-top:6px"><input type="range" min="0.2" max="12" step="0.1" value="${lineThick(b)}" data-lwidth aria-label="Thickness in millimetres" style="flex:1"><input type="number" min="0.2" max="12" step="0.1" value="${lineThick(b)}" data-lwidthbox aria-label="Thickness in millimetres"><span>mm</span></div></div>` : ""}
         ${b.k === "text" && !b.fill ? "" : `<label class="sb-range">Fade <input type="range" min="10" max="100" step="5" value="${Math.round(fade * 100)}" data-blkfade aria-valuetext="${Math.round(fade * 100)} percent"></label>`}` : "";
       box.innerHTML = `
         <h3>Add to this page</h3>
@@ -5668,7 +5734,7 @@
             <button type="button" data-blkdel="${i}" aria-label="Remove">✕</button></li>`).join("")}</ol>
           <p class="sb-hint">The last one is on top.</p>` : `<p class="sb-hint">Nothing on this page yet. Add something above, or start again from an arrangement in “+ Add page”.</p>`}
         ${b ? `<div class="sb-sec sb-rowbox"><h3>${esc(BLOCK_NAME[b.k] || "Thing")} ${blockSel + 1}</h3>
-          ${words}${paint}
+          ${words}${paint}${photoShape}
           ${b.k === "photo" ? `<p class="sb-hint">Choose the photograph, and how it sits in its box, below.</p>` : ""}
           ${step("Across", "nudx", "-1", "1", mmX(b.x))}
           ${step("Down", "nudy", "-1", "1", mmY(b.y))}
@@ -5718,7 +5784,12 @@
       if (fillPage) fillPage.addEventListener("click", () => { mark(); b.x = 0; b.y = 0; b.w = 1; b.h = 1; redraw(); });
       $$("[data-role]").forEach((x) => x.addEventListener("click", () => { mark(); b.role = x.dataset.role; redraw(); }));
       $$("[data-tfit]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.tfit) b.fit = "cut"; else delete b.fit; redraw(); }));
-      $$("[data-thick]").forEach((x) => x.addEventListener("click", () => { mark(); b.thick = x.dataset.thick; redraw(); }));
+      $$("[data-thick]").forEach((x) => x.addEventListener("click", () => { mark(); b.thick = x.dataset.thick; delete b.width; redraw(); }));
+      // The exact width: the slider and the box move together; typed, it wins over the named ones.
+      const wSlide = $("[data-lwidth]"), wBox = $("[data-lwidthbox]");
+      const setWidth = (v) => { const n = Math.round(Math.min(12, Math.max(0.2, +v || 0.2)) * 10) / 10; mark(true); b.width = n; $$("[data-thick]").forEach((x) => x.setAttribute("aria-checked", "false")); change({ rail: true }); drawLayer(); if (wSlide) wSlide.value = String(n); if (wBox && document.activeElement !== wBox) wBox.value = String(n); };
+      if (wSlide) wSlide.addEventListener("input", () => setWidth(wSlide.value));
+      if (wBox) wBox.addEventListener("change", () => setWidth(wBox.value));
       $$("[data-lpath]").forEach((x) => x.addEventListener("click", () => {
         mark();
         const to = x.dataset.lpath;
@@ -5728,10 +5799,32 @@
       }));
       $$("[data-lends]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.lends) b.ends = x.dataset.lends; else delete b.ends; redraw(); }));
       $$("[data-ltip]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.ltip) b.tip = x.dataset.ltip; else delete b.tip; redraw(); }));
+      const wavesEl = $("[data-lwaves]");
+      if (wavesEl) wavesEl.addEventListener("input", () => { mark(true); const n = Math.round(+wavesEl.value); if (n <= 1) delete b.waves; else b.waves = n; wavesEl.setAttribute("aria-valuetext", `${n} waves`); change({ rail: true }); drawLayer(); });
+      const softEl = $("[data-lsoft]");
+      if (softEl) softEl.addEventListener("input", () => { mark(true); const v = Math.round(+softEl.value) / 100; if (v >= 0.999) delete b.soft; else b.soft = v; softEl.setAttribute("aria-valuetext", `${Math.round(v * 100)} percent rounded`); change({ rail: true }); drawLayer(); });
       const bendEl = $("[data-lbend]");
       if (bendEl) bendEl.addEventListener("input", () => { mark(true); const v = Math.round(+bendEl.value) / 100; if (Math.abs(v - 0.5) < 0.001) delete b.bend; else b.bend = v; bendEl.setAttribute("aria-valuetext", `${Math.round(v * 100)} percent`); change({ rail: true }); drawLayer(); });
       $$("[data-shape]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.shape === "rect") delete b.shape; else b.shape = x.dataset.shape; redraw(); }));
-      $$("[data-corner]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.corner === "medium") delete b.corner; else b.corner = x.dataset.corner; redraw(); }));
+      const cornerEl = $("[data-cornerpct]");
+      if (cornerEl) cornerEl.addEventListener("input", () => {
+        mark(true);
+        const v = Math.round(+cornerEl.value) / 100;
+        if (Math.abs(v - cornerDefault(shapeOf(b))) < 0.005) delete b.corner; else b.corner = v;
+        cornerEl.setAttribute("aria-valuetext", `${Math.round(v * 100)} percent`);
+        change({ rail: true }); drawLayer();
+      });
+      // A shape becomes a box of words, or a photograph, cut to that shape.
+      $$("[data-into]").forEach((x) => x.addEventListener("click", () => {
+        mark();
+        const keep = { x: b.x, y: b.y, w: b.w, h: b.h, ...(b.r ? { r: b.r } : {}), ...(b.shape ? { shape: b.shape } : {}), ...(typeof b.corner === "number" ? { corner: b.corner } : {}) };
+        for (const k2 of Object.keys(b)) delete b[k2];
+        if (x.dataset.into === "text") Object.assign(b, { k: "text", role: "body", t: "", fill: keep.fill || "accent" }, keep, { fill: "accent" });
+        else Object.assign(b, { k: "photo" }, keep);
+        active = 0; pickerOpen = null;
+        redraw();
+        const first = $("#sbF_blocktext"); if (first && matchMedia("(pointer: fine)").matches) first.focus();
+      }));
       $$("[data-fill]").forEach((x) => x.addEventListener("click", () => {
         mark();
         const key = b.k === "line" ? "color" : "fill";
