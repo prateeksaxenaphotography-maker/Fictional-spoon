@@ -2,9 +2,10 @@
    book-builder.js — the studio portfolio book
 
    The photographer's own book of work to send to clients: photographs picked
-   from any album, laid out on 1 to 20 A4 pages, in one of three styles
-   (elegant, modern, vogue) and one of nine colourways, saved as re-editable
-   versions and exported as a PDF or as one PNG per page.
+   from any album, laid out on 1 to 20 A4 pages, in one of eleven styles
+   (elegant, modern, vogue, lookbook, noir, swiss, pinboard, dossier, poster,
+   atelier, gazette) and one of nine colourways or the studio's own, saved as
+   re-editable versions and exported as a PDF or as one PNG per page.
 
    Admin only. app.js loads this file the first time /portfolio-book is
    opened, so no visitor ever downloads it, and it borrows the page engine,
@@ -92,7 +93,14 @@
     { key: "elegant", name: "Elegant", note: "A gallery catalogue. Photographs framed on paper." },
     { key: "modern", name: "Modern", note: "Your site's voice. Photographs full-bleed." },
     { key: "vogue", name: "Vogue", note: "A fashion issue. Photographs tiled edge to edge." },
-    { key: "lookbook", name: "Lookbook", note: "White pages, wide margins, the photographs whole. Small labels." }
+    { key: "lookbook", name: "Lookbook", note: "White pages, wide margins, the photographs whole. Small labels." },
+    { key: "noir", name: "Noir", note: "Black pages. The photographs glow; the words are white." },
+    { key: "swiss", name: "Swiss", note: "A strict grid. Bold sans, a big page number, a rule across the top." },
+    { key: "pinboard", name: "Pinboard", note: "Prints with white borders, a little askew and taped down. Headings by hand." },
+    { key: "dossier", name: "Dossier", note: "A working file. Typewriter capitals, numbered figures, corner marks." },
+    { key: "poster", name: "Poster", note: "Loud. Tall capitals, thick black outlines, blocks of your colour." },
+    { key: "atelier", name: "Atelier", note: "Soft. Arched windows on a tinted page, italic serif, centred." },
+    { key: "gazette", name: "Gazette", note: "A newspaper. A masthead, double rules, columns, captions in italic." }
   ];
   const SIZE = { portrait: { w: 210, h: 297 }, landscape: { w: 297, h: 210 } };
   const MAX_PAGES = 20;       // rendered pages, cover included
@@ -104,8 +112,166 @@
     sans: "Inter, 'Helvetica Neue', Arial, sans-serif",
     geo: "Outfit, 'Helvetica Neue', Arial, sans-serif",
     mono: "'JetBrains Mono', ui-monospace, monospace",
-    plex: "'IBM Plex Mono', ui-monospace, monospace"
+    plex: "'IBM Plex Mono', ui-monospace, monospace",
+    // Faces the newer styles are set in; each loads the first time its style is drawn.
+    jost: "Jost, Arial, sans-serif",
+    cormorant: "'Cormorant Garamond', Georgia, serif",
+    playfair: "'Playfair Display', Georgia, serif",
+    hand: "Caveat, 'Bradley Hand', cursive",
+    poster: "Anton, Impact, 'Arial Narrow', sans-serif",
+    news: "Newsreader, Georgia, serif"
   };
+
+  /* ---------- colours a style works out for itself --------------------------- */
+  const rgbOf = (hex) => { const m = /^#([0-9a-f]{6})$/i.exec(String(hex || "")); const v = m ? m[1] : "000000"; return [0, 2, 4].map((i) => parseInt(v.slice(i, i + 2), 16)); };
+  const mixHex = (a, b, t) => { const A = rgbOf(a), B = rgbOf(b); return `#${A.map((x, i) => Math.round(x + (B[i] - x) * t).toString(16).padStart(2, "0")).join("")}`; };
+  const lumOf = (hex) => { const [r, g, b] = rgbOf(hex).map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+  const contrastOf = (a, b) => { const x = lumOf(a), y = lumOf(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+  // `fg`, moved toward white (on a dark ground) or black until it reads on `bg`.
+  const readableOn = (fg, bg, min) => { const to = lumOf(bg) < 0.4 ? "#FFFFFF" : "#000000"; let c = fg; for (let t = 0.06; contrastOf(c, bg) < min && t <= 1; t += 0.06) c = mixHex(fg, to, t); return c; };
+  /* A style may read the colourway its own way. Noir turns the page over: the
+     ink becomes the ground and the paper the words, and the accent is lifted
+     until it reads on black. Atelier tints the page with the accent; Gazette
+     prints on newsprint, Pinboard pins to a board, Dossier files on manila. */
+  const PALETTES = {
+    noir(P) {
+      const ground = mixHex(P.ink, "#000000", 0.45), light = mixHex(P.paper, "#FFFFFF", 0.2), accent = readableOn(P.accent, ground, 3.2);
+      return { ...P, paper: ground, white: ground, ink: light, soft: mixHex(light, ground, 0.4), rule: mixHex(ground, light, 0.2), deep: mixHex(ground, light, 0.1), onDeep: light,
+        accent, accentText: readableOn(P.accent, ground, 5.5), accentOnDeep: readableOn(P.accent, ground, 5.5), onAccent: contrastOf(accent, ground) >= contrastOf(accent, light) ? ground : light };
+    },
+    atelier(P) { const tint = mixHex("#FFFFFF", P.accent, 0.09); return { ...P, paper: tint, rule: mixHex(tint, P.accent, 0.24), soft: readableOn(P.soft, tint, 4.6), accentText: readableOn(accentText(P), tint, 4.6) }; },
+    gazette(P) { const news = mixHex(P.paper, "#D9D4C7", 0.45); return { ...P, paper: news, rule: mixHex(news, P.ink, 0.22), soft: readableOn(P.soft, news, 4.6), accentText: readableOn(accentText(P), news, 4.6) }; },
+    pinboard(P) { const board = mixHex(P.rule, P.soft, 0.1); return { ...P, paper: board, rule: mixHex(board, P.ink, 0.16), soft: readableOn(P.soft, board, 4.6), accentText: readableOn(accentText(P), board, 4.6) }; },
+    dossier(P) { const manila = mixHex(P.paper, "#E6DBBE", 0.42); return { ...P, paper: manila, rule: mixHex(manila, P.ink, 0.2), soft: readableOn(P.soft, manila, 4.6), accentText: readableOn(accentText(P), manila, 4.6) }; }
+  };
+
+  /* ---------- what each style does on the pages they share -------------------
+     The preset covers, the end pages, a look, the chapter and text pages and
+     the writing pages are one drawing each. A style changes them through
+     these answers, not through a branch of its own inside every one:
+       boxes         which set of photo boxes a writing page uses: "e" inset on
+                     the page, "m" bled but clear of the foot, "v" bled to the trim
+       ground        the page's own colour, "paper" or "white"
+       bar           an accent bar down the inside pages' left edge (mm), coverBar on covers
+       whole/frame   photographs shown whole, and with a hairline round them
+       bleed         a look's photographs run to the trim
+       framedGround, framedX, framedRight, coverWhole, coverFrame, emptyWin   the Window cover
+       wordsGround, wordsLabel   the Words-only cover and the back cover
+       divider       the chapter page: ground, type, rule, whether it carries a foot
+       about, itemTitle, contactValue   type on the About, What I shoot and Contact pages
+       bands         the colour of a border round a full-page photograph
+       noteFit, quoteSolid, quoteChip, letterX, tagAccent, numSp   habits of the writing pages
+       captionInset  how much narrower than the page a caption is */
+  const TRAITS = {
+    elegant: {
+      boxes: "e", ground: "paper", bar: 0, coverBar: 0, whole: true, frame: true, coverFrame: true,
+      framedGround: "paper", framedX: 16, emptyWin: "accent", wordsGround: "paper", wordsLabel: "accent", serifBack: true,
+      divider: { ground: "paper", caps: false, w: 300, f: F.serif, sp: 0, size: 30, rule: [22, 0.8], foot: true },
+      about: { w: 300, size: 4.0, lead: 6.4 }, itemTitle: { w: 400, f: F.serif }, contactValue: { w: 400, f: F.serif },
+      bands: "deep", noteFit: true, quoteSolid: false, letterX: 40, numSp: 0, captionInset: 52
+    },
+    modern: {
+      boxes: "m", ground: "white", bar: 6, coverBar: 12,
+      framedGround: "deep", framedX: 26, framedRight: 14, emptyWin: "faint", wordsGround: "deep", wordsLabel: "accent",
+      divider: { ground: "accent", caps: true, w: 800, f: F.heavy, sp: 0, size: 26, rule: null, foot: true },
+      about: { w: 400, size: 3.9, lead: 6.2 }, itemTitle: { w: 800, f: F.heavy }, contactValue: { w: 600, f: F.sans },
+      bands: "deep", quoteSolid: true, quoteChip: true, letterX: 20, tagAccent: true, numSp: -0.2, captionInset: 28
+    },
+    vogue: {
+      boxes: "v", ground: "white", bar: 0, coverBar: 0, bleed: true,
+      framedGround: "white", framedX: 12, emptyWin: "accent", wordsGround: "accent", wordsLabel: "ink",
+      divider: { ground: "accent", caps: true, w: 300, f: F.serif, sp: 1, size: 30, rule: null, foot: false },
+      about: { w: 400, size: 3.9, lead: 6.3 }, itemTitle: { w: 400, f: F.serif }, contactValue: { w: 400, f: F.serif },
+      bands: "white", quoteSolid: true, letterX: 40, numSp: 0, captionInset: 24
+    },
+    lookbook: {
+      boxes: "e", ground: "white", bar: 0, coverBar: 0, whole: true, coverWhole: true,
+      framedGround: "white", framedX: 22, emptyWin: "rule", wordsGround: "white", wordsLabel: "soft",
+      divider: { ground: "white", caps: false, w: 300, f: F.sans, sp: 0, size: 22, rule: [16, 0.5], foot: true },
+      about: { w: 300, size: 4.0, lead: 6.4 }, itemTitle: { w: 400, f: F.sans }, contactValue: { w: 400, f: F.sans },
+      bands: "white", quoteSolid: true, letterX: 40, numSp: 0, captionInset: 24
+    },
+    /* The seven after: `palette` is how the style reads the colourway, `fonts`
+       the faces it loads, `deco` how it dresses a photograph (see decoPhoto),
+       `backName`/`backLines` the type on its back cover, `colRule` a hairline
+       between columns of text. */
+    noir: {
+      palette: PALETTES.noir, fonts: ["jost"], boxes: "e", ground: "paper", bar: 0, coverBar: 0, whole: true,
+      framedGround: "paper", framedX: 20, emptyWin: "rule", wordsGround: "paper", wordsLabel: "accent",
+      backName: { w: 300, size: 6, f: F.jost, sp: 2, caps: true }, backLines: F.jost,
+      divider: { ground: "paper", caps: true, w: 300, f: F.jost, sp: 2.4, size: 20, lead: 1.4, align: "center", rule: [30, 0.3], lineF: F.jost, foot: true },
+      about: { w: 400, f: F.jost, size: 3.9, lead: 6.3 }, itemTitle: { w: 400, f: F.jost, size: 4.4, sp: 0.8, caps: true }, contactValue: { w: 300, f: F.jost, size: 5.4 },
+      bands: "white", quoteSolid: true, letterX: 40, numSp: 0.4, captionInset: 32
+    },
+    swiss: {
+      fonts: ["st-inter"], boxes: "e", ground: "white", bar: 0, coverBar: 0,
+      framedGround: "white", framedX: 20, emptyWin: "accent", wordsGround: "white", wordsLabel: "ink",
+      backName: { w: 700, size: 7, f: F.sans, sp: -0.2, caps: false }, backLines: F.sans,
+      divider: { ground: "white", caps: false, w: 700, f: F.sans, sp: -0.7, size: 30, lead: 1.04, at: "low", rule: [9, 9], foot: true },
+      about: { w: 400, size: 3.9, lead: 6.2 }, itemTitle: { w: 700, f: F.sans, sp: -0.1 }, contactValue: { w: 600, f: F.sans },
+      // Its caption is wrapped in the narrow column, so one line's width never cuts it.
+      bands: "white", quoteSolid: true, letterX: 20, tagAccent: true, numSp: -0.3, captionInset: -400
+    },
+    pinboard: {
+      palette: PALETTES.pinboard, fonts: ["st-caveat"], boxes: "e", ground: "paper", bar: 0, coverBar: 0, deco: { kind: "print" },
+      framedGround: "paper", framedX: 24, emptyWin: "rule", wordsGround: "paper", wordsLabel: "soft",
+      backName: { w: 700, size: 11, f: F.hand, sp: 0, caps: false }, backLines: F.plex,
+      divider: { ground: "paper", caps: false, w: 700, f: F.hand, sp: 0, size: 40, lead: 1.0, rule: null, foot: true },
+      about: { w: 400, size: 3.9, lead: 6.2 }, itemTitle: { w: 700, f: F.hand, size: 7.2 }, contactValue: { w: 600, f: F.hand, size: 7 },
+      bands: "paper", quoteSolid: false, letterX: 40, numSp: 0, captionInset: 44, labelGap: 13
+    },
+    dossier: {
+      palette: PALETTES.dossier, fonts: [], boxes: "e", ground: "paper", bar: 0, coverBar: 0, deco: { kind: "figure" },
+      framedGround: "paper", framedX: 22, emptyWin: "rule", wordsGround: "paper", wordsLabel: "accent",
+      backName: { w: 500, size: 5, f: F.plex, sp: 0.6, caps: true }, backLines: F.plex,
+      divider: { ground: "paper", caps: true, w: 500, f: F.plex, sp: 0.4, size: 17, lead: 1.25, rule: null, lineF: F.plex, foot: true },
+      about: { w: 400, size: 3.8, lead: 6.1 }, itemTitle: { w: 500, f: F.plex, size: 4.2, caps: true }, contactValue: { w: 500, f: F.plex, size: 4.2 },
+      bands: "paper", quoteSolid: false, letterX: 40, numSp: 0, captionInset: 48
+    },
+    poster: {
+      fonts: ["st-anton", "st-inter"], boxes: "e", ground: "white", bar: 0, coverBar: 0, deco: { kind: "block" },
+      framedGround: "white", framedX: 18, emptyWin: "accent", wordsGround: "accent", wordsLabel: "ink",
+      backName: { w: 400, size: 9, f: F.poster, sp: 0.4, caps: true }, backLines: F.sans,
+      divider: { ground: "accent", caps: true, w: 400, f: F.poster, sp: 0.3, size: 44, lead: 1.04, at: "low", rule: [18, 3], ruleInk: true, foot: true },
+      about: { w: 400, size: 3.9, lead: 6.2 }, itemTitle: { w: 400, f: F.poster, size: 6, sp: 0.2, caps: true }, contactValue: { w: 400, f: F.poster, size: 6 },
+      bands: "deep", quoteSolid: true, letterX: 20, tagAccent: true, numSp: 0.2, captionInset: 36, labelGap: 15
+    },
+    atelier: {
+      palette: PALETTES.atelier, fonts: ["cormorant"], boxes: "e", ground: "paper", bar: 0, coverBar: 0, deco: { kind: "arch" },
+      framedGround: "paper", framedX: 26, emptyWin: "rule", wordsGround: "paper", wordsLabel: "accent",
+      backName: { w: 500, size: 9, f: F.cormorant, sp: 0.3, caps: false, it: true }, backLines: F.cormorant,
+      divider: { ground: "paper", caps: false, w: 500, f: F.cormorant, it: true, sp: 0, size: 30, align: "center", rule: [22, 0.3], lineF: F.cormorant, lineIt: true, foot: true },
+      about: { w: 500, f: F.cormorant, size: 4.4, lead: 6.4 }, itemTitle: { w: 600, f: F.cormorant, size: 6 }, contactValue: { w: 500, f: F.cormorant, size: 5.8, it: true },
+      bands: "paper", quoteSolid: false, letterX: 40, numSp: 0, captionInset: 56, labelGap: 12.5
+    },
+    gazette: {
+      palette: PALETTES.gazette, fonts: ["playfair", "st-newsreader"], boxes: "e", ground: "paper", bar: 0, coverBar: 0, deco: { kind: "keyline", c: "ink" }, whole: true,
+      framedGround: "paper", framedX: 18, emptyWin: "rule", wordsGround: "paper", wordsLabel: "ink",
+      backName: { w: 900, size: 8, f: F.playfair, sp: 0, caps: false }, backLines: F.news,
+      divider: { ground: "paper", caps: false, w: 800, f: F.playfair, sp: 0, size: 30, lead: 1.1, align: "center", rule: null, lineF: F.news, lineIt: true, foot: true },
+      about: { w: 400, f: F.news, size: 4.0, lead: 6.3 }, itemTitle: { w: 700, f: F.playfair }, contactValue: { w: 400, f: F.news, size: 5.2 },
+      bands: "paper", quoteSolid: false, letterX: 40, numSp: 0, colRule: true, captionInset: 40
+    }
+  };
+  const TR = (st) => TRAITS[st] || TRAITS.modern;
+  // An older release of the site turns any of these back into Modern, so a book in one carries schema mark 5.
+  const NEWER_STYLES = ["noir", "swiss", "pinboard", "dossier", "poster", "atelier", "gazette"];
+  // The colours a book is drawn in: its colourway, as its style reads it. Most
+  // styles take the colourway as it is; one that turns the page dark, or
+  // tints it, says so once here and every page follows.
+  const palettes = new Map();
+  function paletteFor(book) {
+    const base = colourway(book && book.colourway);
+    const st = book && book.style, make = TRAITS[st] && TRAITS[st].palette;
+    if (!make) return base;
+    const key = `${st}|${base.key}`;
+    if (!palettes.has(key)) { if (palettes.size > 300) palettes.clear(); palettes.set(key, make(base)); }
+    return palettes.get(key);
+  }
+  // The colours a cover or a back cover draws in, from the name of its ground.
+  const onGround = (P, g) => (g === "deep" ? { ground: P.deep, ink: P.onDeep, soft: P.onDeep, light: false }
+    : g === "accent" ? { ground: P.accent, ink: P.onAccent, soft: P.onAccent, light: false }
+    : { ground: g === "white" ? P.white : P.paper, ink: P.ink, soft: P.soft, light: true });
 
   // Canvas draws in whatever font is loaded at that instant, with no error, so
   // a page drawn before the fonts arrive is silently set in Helvetica.
@@ -675,7 +841,8 @@
     };
   }
   // The lines each cover prints for itself, beside the title and its subtitle.
-  const COVER_LINES = { elegant: ["foot", "place"], modern: ["label", "foot", "place"], vogue: ["mast", "tagline", "foot", "counts"], lookbook: ["foot", "place"] };
+  const COVER_LINES = { elegant: ["foot", "place"], modern: ["label", "foot", "place"], vogue: ["mast", "tagline", "foot", "counts"], lookbook: ["foot", "place"],
+    noir: ["label", "foot", "place"], swiss: ["label", "foot", "place"], pinboard: ["foot", "place"], dossier: ["label", "foot", "place"], poster: ["label", "foot", "place"], atelier: ["foot", "place"], gazette: ["label", "foot", "place"] };
 
   /* ---------- the cover's layout ------------------------------------------
      The style's own cover (nothing stored), one of three presets, or
@@ -697,26 +864,35 @@
     book.coverPage.type = "free";
     return book.coverPage;
   };
-  const styleKey = (book) => (["elegant", "modern", "vogue", "lookbook"].includes(book && book.style) ? book.style : "modern");
+  const styleKey = (book) => (TRAITS[book && book.style] ? book.style : "modern");
   // Each style's title on a cover: the face, whether it is set in capitals, its spacing, and the subtitle's face.
   const COVER_TYPE = {
     elegant: { w: 300, f: F.serif, caps: false, sp: 0, subF: F.serif, subIt: true, small: F.plex },
     modern: { w: 800, f: F.heavy, caps: true, sp: -0.4, subF: F.sans, subIt: false, small: F.mono },
     vogue: { w: 300, f: F.serif, caps: true, sp: 0.8, subF: F.sans, subIt: false, small: F.geo },
-    lookbook: { w: 300, f: F.sans, caps: false, sp: 0, subF: F.geo, subIt: false, small: F.geo }
+    lookbook: { w: 300, f: F.sans, caps: false, sp: 0, subF: F.geo, subIt: false, small: F.geo },
+    // `lead` is the title's line height; `subSize`, `subW`, `subCaps`, `subSp` set its subtitle.
+    noir: { w: 300, f: F.jost, caps: true, sp: 2.2, lead: 1.32, subF: F.jost, subIt: false, small: F.jost, subSize: 3.4, subCaps: true, subSp: 1.4 },
+    swiss: { w: 700, f: F.sans, caps: false, sp: -0.5, lead: 1.02, subF: F.sans, subIt: false, small: F.sans },
+    pinboard: { w: 700, f: F.hand, caps: false, sp: 0, lead: 1.0, subF: F.hand, subIt: false, small: F.plex, subSize: 6.4 },
+    dossier: { w: 600, f: F.plex, caps: true, sp: 0, lead: 1.16, subF: F.plex, subIt: false, small: F.plex, subSize: 3.4 },
+    poster: { w: 400, f: F.poster, caps: true, sp: 0.2, lead: 1.04, subF: F.sans, subIt: false, small: F.sans, subW: 600, subSize: 5 },
+    atelier: { w: 500, f: F.cormorant, caps: false, sp: 0.2, lead: 1.08, subF: F.cormorant, subIt: true, small: F.geo, subSize: 5.6 },
+    gazette: { w: 800, f: F.playfair, caps: false, sp: 0, lead: 1.08, subF: F.news, subIt: true, small: F.sans, subSize: 5 }
   };
+  const titleLead = (K) => K.lead || (K.caps ? 1.0 : 1.12);
   const titleOf = (book, K) => (K.caps ? (book.title || "Selected Work").toUpperCase() : (book.title || "Selected Work"));
   // The title, its subtitle and their on-page regions, drawn from a first baseline.
-  function coverWords(page, book, K, cs, P, ink, soft, x, tw, firstY, t, lead) {
-    const TT = textFormat(cs, "title", { w: K.w, f: K.f }, P, ink);
-    const ST = textFormat(cs, "subtitle", { w: 400, f: K.subF, it: K.subIt }, P, soft);
+  function coverWords(page, book, K, cs, P, ink, soft, x, tw, firstY, t, lead, align = "left") {
+    const TT = textFormat(cs, "title", { w: K.w, f: K.f }, P, ink, align);
+    const ST = textFormat(cs, "subtitle", { w: K.subW || 400, f: K.subF, it: K.subIt }, P, soft, align);
     font(page, TT.spec.w, t.size, TT.spec.f, K.sp, !!TT.spec.it);
     if (skipNow !== "title") t.lines.forEach((l, i) => text(page, l, TT.at(x, tw), firstY + i * lead, TT.color, TT.align));
     noteText(page, "title", x, firstY - t.size * 0.86, tw, (t.lines.length - 1) * lead + t.size * 1.16, { ...typeOf(TT, t.size, lead, K.sp), caps: K.caps });
-    const ss = 4.2 * ST.scale, subY = firstY + (t.lines.length - 1) * lead + Math.max(5, t.size * 0.32) + ss * 1.2;
-    font(page, ST.spec.w, ss, ST.spec.f, 0, !!ST.spec.it);
-    if (book.subtitle && skipNow !== "subtitle") text(page, ellipsize(page, book.subtitle, tw), ST.at(x, tw), subY, ST.color, ST.align);
-    noteText(page, "subtitle", x, subY - ss * 0.86, tw, ss * 1.2, typeOf(ST, ss, ss * 1.3));
+    const ss = (K.subSize || 4.2) * ST.scale, subY = firstY + (t.lines.length - 1) * lead + Math.max(5, t.size * 0.32) + ss * 1.2;
+    font(page, ST.spec.w, ss, ST.spec.f, K.subSp || 0, !!ST.spec.it);
+    if (book.subtitle && skipNow !== "subtitle") text(page, ellipsize(page, K.subCaps ? book.subtitle.toUpperCase() : book.subtitle, tw), ST.at(x, tw), subY, ST.color, ST.align);
+    noteText(page, "subtitle", x, subY - ss * 0.86, tw, ss * 1.2, K.subCaps ? { ...typeOf(ST, ss, ss * 1.3, K.subSp || 0), caps: true } : typeOf(ST, ss, ss * 1.3));
     return subY;
   }
   // The title shrunk until it fits `maxLines` and leaves `room` below it before `floorY`.
@@ -726,7 +902,7 @@
     const least = min * TT.scale;
     for (;;) {
       t = fitLines(page, titleOf(book, K), tw, maxLines, TT.spec.w, size, least, TT.spec.f, K.sp, !!TT.spec.it);
-      const lead = t.size * (K.caps ? 1.0 : 1.12);
+      const lead = t.size * titleLead(K);
       if (firstY + (t.lines.length - 1) * lead + room <= floorY || t.size <= least) return { t, lead };
       size = t.size - 0.5;
     }
@@ -746,14 +922,15 @@
       const g = page.ctx.createLinearGradient(0, page.u(H * 0.42), 0, page.u(H));
       g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.66)");
       page.ctx.fillStyle = g; page.ctx.fillRect(0, page.u(H * 0.42), page.u(W), page.u(H * 0.58));
-      if (st === "modern") rect(page, 0, 0, 12, H, P.accent);
-      const x = st === "modern" ? 26 : 18, right = W - 16, tw = right - x, on = "#FFFFFF";
+      const D = TR(st);
+      if (D.coverBar) rect(page, 0, 0, D.coverBar, H, P.accent);
+      const x = D.coverBar ? D.coverBar + 14 : 18, right = W - 16, tw = right - x, on = "#FFFFFF";
       if (img) await drawMark(page, on, P.accent, "rgba(0,0,0,0)", x, 14, 12);
       const footY = H - 14;
       const TT = textFormat(cs, "title", { w: K.w, f: K.f }, P, on);
       const t = fitLines(page, titleOf(book, K), tw, 3, TT.spec.w, (L ? 15 : 19) * TT.scale, (L ? 8 : 10) * TT.scale, TT.spec.f, K.sp, !!TT.spec.it);
-      const lead = t.size * (K.caps ? 1.0 : 1.12);
-      const subH = 4.2 * 1.3 + 4;
+      const lead = t.size * titleLead(K);
+      const subH = (K.subSize || 4.2) * 1.3 + 4;
       const firstY = footY - 14 - subH - (t.lines.length - 1) * lead;
       coverWords(page, book, K, cs, P, on, "rgba(255,255,255,0.86)", x, tw, firstY, t, lead);
       hair(page, x, footY - 6, right, "rgba(255,255,255,0.5)");
@@ -762,47 +939,45 @@
     // The photograph in a window at the top, the words under it.
     async framed(page, book, P, W, H, img) {
       const st = styleKey(book), K = COVER_TYPE[st], L = W > H, CT = coverText(book), cs = coverStyleOf(book);
-      const ground = st === "modern" ? P.deep : (st === "vogue" || st === "lookbook") ? P.white : P.paper;
-      const ink = st === "modern" ? P.onDeep : P.ink, soft = st === "modern" ? P.onDeep : P.soft;
+      const D = TR(st), { ground, ink, soft, light } = onGround(P, D.framedGround);
       rect(page, 0, 0, W, H, ground);
-      if (st === "modern") rect(page, 0, 0, 12, H, P.accent);
-      const x = st === "modern" ? 26 : st === "vogue" ? 12 : st === "lookbook" ? 22 : 16, right = W - (st === "modern" ? 14 : x), tw = right - x;
+      if (D.coverBar) rect(page, 0, 0, D.coverBar, H, P.accent);
+      const x = D.framedX, right = W - (D.framedRight || x), tw = right - x;
       const win = { x, y: L ? 14 : 18, w: tw, h: L ? H * 0.56 : H * 0.6 };
-      if (img) { if (st === "lookbook") fitPhoto(page, img, book.cover, win.x, win.y, win.w, win.h); else drawPhoto(page, img, book.cover, win.x, win.y, win.w, win.h); }
+      if (img) { if (D.deco) decoPhoto(page, P, D.deco, img, book.cover, win.x, win.y, win.w, win.h, "crop", 1); else if (D.coverWhole) fitPhoto(page, img, book.cover, win.x, win.y, win.w, win.h); else drawPhoto(page, img, book.cover, win.x, win.y, win.w, win.h); }
       else {
-        rect(page, win.x, win.y, win.w, win.h, st === "modern" ? "rgba(255,255,255,0.08)" : st === "lookbook" ? P.rule : P.accent);
+        const faint = D.emptyWin === "faint";
+        rect(page, win.x, win.y, win.w, win.h, faint ? "rgba(255,255,255,0.08)" : D.emptyWin === "rule" ? P.rule : P.accent);
         const sz = L ? 30 : 36;
-        await drawMark(page, st === "modern" ? P.onDeep : P.onAccent, st === "modern" ? P.accent : P.onAccent, "rgba(0,0,0,0)", win.x + (win.w - sz) / 2, win.y + (win.h - sz) / 2, sz);
+        await drawMark(page, faint ? P.onDeep : P.onAccent, faint ? P.accent : P.onAccent, "rgba(0,0,0,0)", win.x + (win.w - sz) / 2, win.y + (win.h - sz) / 2, sz);
       }
-      if (st === "elegant") frame(page, win.x, win.y, win.w, win.h, P.ink);
+      if (D.coverFrame) frame(page, win.x, win.y, win.w, win.h, P.ink);
       const footY = H - 14, top = win.y + win.h + (L ? 10 : 14);
       const { t, lead } = coverTitleFit(page, book, K, cs, P, tw, 2, L ? 12 : 15, L ? 7 : 8.5, top + (L ? 12 : 15), 4.2 * 1.3 + 4 + 8, footY - 8);
       const firstY = top + t.size;
       const subY = coverWords(page, book, K, cs, P, ink, soft, x, tw, firstY, t, lead);
       rect(page, x, Math.min(subY + 6, footY - 9), 22, 0.8, P.accent);
-      hair(page, x, footY - 6, right, st === "modern" ? P.onDeep : P.rule);
+      hair(page, x, footY - 6, right, light ? P.rule : ink);
       coverFoot(page, K, CT, x, right, footY, ink, soft);
     },
     // No photograph: the words, set big, and the mark at the foot.
     async poster(page, book, P, W, H) {
       const st = styleKey(book), K = COVER_TYPE[st], L = W > H, CT = coverText(book), cs = coverStyleOf(book);
-      const ground = st === "elegant" ? P.paper : st === "lookbook" ? P.white : st === "modern" ? P.deep : P.accent;
-      const ink = (st === "elegant" || st === "lookbook") ? P.ink : st === "modern" ? P.onDeep : P.onAccent;
-      const soft = (st === "elegant" || st === "lookbook") ? P.soft : ink;
+      const D = TR(st), { ground, ink, soft, light } = onGround(P, D.wordsGround);
       rect(page, 0, 0, W, H, ground);
-      if (st === "modern") rect(page, 0, 0, 12, H, P.accent);
-      if (st === "elegant") frame(page, 14, 14, W - 28, H - 28, P.ink);
-      const x = st === "modern" ? 26 : 24, right = W - (st === "modern" ? 14 : 24), tw = right - x;
+      if (D.coverBar) rect(page, 0, 0, D.coverBar, H, P.accent);
+      if (D.coverFrame) frame(page, 14, 14, W - 28, H - 28, P.ink);
+      const x = D.coverBar ? D.coverBar + 14 : 24, right = W - (D.coverBar ? 14 : 24), tw = right - x;
       const labelY = L ? 24 : 30;
       font(page, 600, 2.9, K.small, 0.7);
-      text(page, ellipsize(page, CT.label, tw), x, labelY, st === "modern" ? accentOnDeep(P) : st === "elegant" ? accentText(P) : st === "lookbook" ? P.soft : ink);
+      text(page, ellipsize(page, CT.label, tw), x, labelY, D.wordsLabel === "accent" ? (D.wordsGround === "deep" ? accentOnDeep(P) : accentText(P)) : D.wordsLabel === "soft" ? P.soft : ink);
       hair(page, x, labelY + 5, right, ink);
       const footY = H - 14, markS = L ? 16 : 20, firstTop = labelY + (L ? 16 : 26);
       const { t, lead } = coverTitleFit(page, book, K, cs, P, tw, 4, L ? 24 : 34, L ? 10 : 12, firstTop + (L ? 24 : 34), 4.2 * 1.3 + 4 + 10 + markS + 10, footY - 8);
       const firstY = firstTop + t.size;
       const subY = coverWords(page, book, K, cs, P, ink, soft, x, tw, firstY, t, lead);
-      rect(page, x, Math.min(subY + 7, footY - markS - 14), 26, 1, (st === "elegant" || st === "lookbook") ? P.accent : ink);
-      await drawMark(page, ink, st === "vogue" ? ink : P.accent, ground, x, footY - 4 - markS, markS);
+      rect(page, x, Math.min(subY + 7, footY - markS - 14), 26, 1, light ? P.accent : ink);
+      await drawMark(page, ink, D.wordsGround === "accent" ? ink : P.accent, ground, x, footY - 4 - markS, markS);
       font(page, 600, 2.8, K.small, 0.6);
       text(page, ellipsize(page, CT.foot, tw * 0.6), right, footY - 6, ink, "right");
       text(page, ellipsize(page, CT.place, tw * 0.6), right, footY, soft, "right");
@@ -822,39 +997,37 @@
     return { own, defaults: [c.email || "", ig ? `@${ig}` : "", "nerdyphotographer.in"].filter(Boolean) };
   }
   async function drawEnd(page, entry, book, P, W, H, imgs, n, S) {
-    const st = styleKey(book), L = W > H, CT = coverText(book), K = COVER_TYPE[st];
+    const st = styleKey(book), L = W > H, CT = coverText(book), K = COVER_TYPE[st], D = TR(st);
     if (endLayoutOf(entry) === "back") {
-      const fb = st === "elegant" ? P.paper : st === "lookbook" ? P.white : st === "modern" ? P.deep : P.accent;
+      const G0 = onGround(P, D.wordsGround), fb = G0.ground;
       const ground = isFillish(entry.bg) ? blockColor(entry.bg, P, fb) : fb;
-      const ink = st === "modern" ? P.onDeep : st === "vogue" ? P.onAccent : P.ink;
+      const ink = G0.ink, onColour = D.wordsGround === "accent";
       rect(page, 0, 0, W, H, ground);
-      if (st === "modern") rect(page, 0, 0, 12, H, P.accent);
-      if (st === "elegant") frame(page, 14, 14, W - 28, H - 28, P.ink);
+      if (D.coverBar) rect(page, 0, 0, D.coverBar, H, P.accent);
+      if (D.coverFrame) frame(page, 14, 14, W - 28, H - 28, P.ink);
       const sz = L ? 26 : 30, midY = H * 0.36;
-      await drawMark(page, ink, st === "vogue" ? ink : P.accent, ground, (W - sz) / 2, midY - sz / 2, sz);
-      font(page, st === "elegant" ? 300 : 600, st === "elegant" ? 7 : 5.2, st === "elegant" ? F.serif : K.small, st === "elegant" ? 0.4 : 1.2);
-      text(page, st === "elegant" ? studio() : studio().toUpperCase(), W / 2, midY + sz / 2 + 14, ink, "center");
-      rect(page, W / 2 - 11, midY + sz / 2 + 20, 22, 0.8, st === "vogue" ? ink : P.accent);
+      await drawMark(page, ink, onColour ? ink : P.accent, ground, (W - sz) / 2, midY - sz / 2, sz);
+      const BN = D.backName || (D.serifBack ? { w: 300, size: 7, f: F.serif, sp: 0.4, caps: false } : { w: 600, size: 5.2, f: K.small, sp: 1.2, caps: true });
+      font(page, BN.w, BN.size, BN.f, BN.sp, !!BN.it);
+      text(page, ellipsize(page, BN.caps ? studio().toUpperCase() : studio(), W - 36), W / 2, midY + sz / 2 + 14, ink, "center");
+      rect(page, W / 2 - 11, midY + sz / 2 + 20, 22, 0.8, onColour ? ink : P.accent);
       if (!entry.noLines) {
         const { own, defaults } = endLines(entry);
         const lines = (own.length ? own : defaults).slice(0, 3);
-        font(page, 400, 3.6, st === "elegant" ? F.serif : F.sans);
+        font(page, 400, 3.6, D.backLines || (D.serifBack ? F.serif : F.sans));
         lines.forEach((l, i) => text(page, ellipsize(page, l, W - 40), W / 2, midY + sz / 2 + 34 + i * 6.5, ink, "center"));
       }
       font(page, 600, 2.6, K.small, 0.6);
       text(page, ellipsize(page, CT.place, W - 40), W / 2, H - 14, ink, "center");
       return;
     }
-    const ground = pageBgOf(book, entry, P, st === "elegant" ? P.paper : P.white);
+    const ground = pageBgOf(book, entry, P, D.ground === "paper" ? P.paper : P.white);
     rect(page, 0, 0, W, H, ground);
-    if (st === "modern") rect(page, 0, 0, 6, H, P.accent);
+    if (D.bar) rect(page, 0, 0, D.bar, H, P.accent);
     const M = S.margins(L ? "landscape" : "portrait");
     const img = imgs[0], shot = (entry.photos || [])[0];
-    const box = { x: M.side + (st === "modern" ? 6 : 0), y: M.top, w: W - 2 * M.side - (st === "modern" ? 6 : 0), h: H * 0.54 };
-    if (img) {
-      if (st === "elegant" || st === "lookbook") { const r = fitPhoto(page, img, shot, box.x, box.y, box.w, box.h); if (st === "elegant") frame(page, r.x, r.y, r.w, r.h, P.rule, 0.2); }
-      else drawPhoto(page, img, shot, box.x, box.y, box.w, box.h);
-    }
+    const box = { x: M.side + D.bar, y: Math.max(M.top, D.headRoom || 0), w: W - 2 * M.side - D.bar, h: H * 0.54 };
+    if (img) stylePhoto(page, P, D, img, shot, box.x, box.y, box.w, box.h, n);
     const top = img ? box.y + box.h + (L ? 12 : 18) : H * 0.4;
     const TT = textFormat(entry.style, "text", { w: K.w, f: K.f }, P, P.ink);
     const line = lineIn(entry.text, "Thank you for looking.");
@@ -879,23 +1052,23 @@
      under it — the garments, who made them, who styled it. */
   function lookNumber(book, entry) { let n = 0; for (const pg of book.pages) { if (pg && pg.type === "look") { n++; if (pg === entry) return n; } } return n || 1; }
   async function drawLook(page, entry, book, P, W, H, imgs, n, S, no) {
-    const st = styleKey(book), L = W > H, T = WTYPE[st];
-    rect(page, 0, 0, W, H, pageBgOf(book, entry, P, st === "elegant" ? P.paper : P.white));
-    if (st === "modern") rect(page, 0, 0, 6, H, P.accent);
+    const st = styleKey(book), L = W > H, T = WTYPE[st], D = TR(st), bleed = !!D.bleed;
+    rect(page, 0, 0, W, H, pageBgOf(book, entry, P, D.ground === "paper" ? P.paper : P.white));
+    if (D.bar) rect(page, 0, 0, D.bar, H, P.accent);
     const M = S.margins(L ? "landscape" : "portrait");
-    const side = M.side + (st === "modern" ? 6 : 0);
+    const side = M.side + D.bar;
     const shots = (entry.photos || []).slice(0, 2);
     // The photographs take most of the page; the words sit under them, or
     // beside them on a landscape page. Vogue runs its photographs to the trim.
     let pa, wa;
     if (L) {
-      const pw = (st === "vogue" ? W : W - side - M.side) * 0.64;
-      pa = st === "vogue" ? { x: 0, y: 0, w: pw, h: H } : { x: side, y: M.top, w: pw, h: H - M.top - M.bottom };
-      wa = { x: pa.x + pa.w + 12, y: M.top + 6, w: W - M.side - (pa.x + pa.w + 12) - (st === "vogue" ? 6 : 0) };
+      const pw = (bleed ? W : W - side - M.side) * 0.64;
+      pa = bleed ? { x: 0, y: 0, w: pw, h: H } : { x: side, y: M.top, w: pw, h: H - M.top - M.bottom };
+      wa = { x: pa.x + pa.w + 12, y: M.top + 6, w: W - M.side - (pa.x + pa.w + 12) - (bleed ? 6 : 0) };
     } else {
-      const ph = H * (st === "vogue" ? 0.7 : 0.66);
-      pa = st === "vogue" ? { x: 0, y: 0, w: W, h: ph } : { x: side, y: M.top, w: W - side - M.side, h: ph - M.top };
-      wa = { x: st === "vogue" ? 12 : side, y: pa.y + pa.h + (st === "vogue" ? 12 : 12), w: W - (st === "vogue" ? 12 : side) - M.side };
+      const ph = H * (bleed ? 0.7 : 0.66);
+      pa = bleed ? { x: 0, y: 0, w: W, h: ph } : { x: side, y: M.top, w: W - side - M.side, h: ph - M.top };
+      wa = { x: bleed ? 12 : side, y: pa.y + pa.h + 12, w: W - (bleed ? 12 : side) - M.side };
     }
     if (!shots.length) missing(page, P, pa.x, pa.y, pa.w, pa.h);
     else {
@@ -903,8 +1076,7 @@
       const boxes = shots.length === 1 ? [pa] : cells(2, pa, M.gap, aspects, L, null);
       boxes.forEach((c, i) => {
         if (!imgs[i]) { missing(page, P, c.x, c.y, c.w, c.h); return; }
-        if (st === "elegant" || st === "lookbook") { const r = fitPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); if (st === "elegant") frame(page, r.x, r.y, r.w, r.h, P.rule, 0.2); }
-        else drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h);
+        stylePhoto(page, P, D, imgs[i], shots[i], c.x, c.y, c.w, c.h, n * 7 + i);
       });
     }
     // LOOK 01
@@ -1278,7 +1450,536 @@
     label(page, s, x, y, P) { font(page, 500, 2.3, F.geo, 0.9); text(page, s.toUpperCase(), x, y, P.soft); },
     ground(page, P, W, H) { rect(page, 0, 0, W, H, pageBg(P, P.white)); }
   };
-  const STYLE_IMPL = { elegant: ELEGANT, modern: MODERN, vogue: VOGUE, lookbook: LOOKBOOK };
+
+  /* ---------- seven more styles -------------------------------------------------
+     Noir, Swiss, Pinboard, Dossier, Poster, Atelier and Gazette. Each is its own
+     cover, photo page, running foot (or head) and text-page type, as the first
+     four are; what they do on the shared pages is in TRAITS, and how each
+     dresses a photograph is in decoPhoto. */
+  // The page being drawn and the library it draws from, for a figure's label.
+  let numNow = 1, libNow = null;
+  const albumOf = (shot) => { const hit = shot && (libNow || (libNow = library())).byId.get(shot.id); return hit ? cleanName(hit.shoot.title || hit.shoot.talent) : ""; };
+  // A soft shade over part of a page, top to bottom.
+  function shade(page, x, y, w, h, from, to) {
+    const g = page.ctx.createLinearGradient(0, page.u(y), 0, page.u(y + h));
+    g.addColorStop(0, from); g.addColorStop(1, to);
+    page.ctx.fillStyle = g; page.ctx.fillRect(page.u(x), page.u(y), page.u(w), page.u(h));
+  }
+  // Something drawn turned about a point, by a few degrees.
+  function turned(page, cx, cy, deg, draw) {
+    const ctx = page.ctx;
+    ctx.save(); ctx.translate(page.u(cx), page.u(cy)); ctx.rotate(deg * Math.PI / 180); ctx.translate(-page.u(cx), -page.u(cy));
+    const out = draw(); ctx.restore(); return out;
+  }
+  // An arched window: straight sides, a half-round top. A box wider than it is
+  // tall gets rounded corners instead.
+  function archPath(page, x, y, w, h, always = false) {
+    const ctx = page.ctx, X = page.u(x), Y = page.u(y), Wd = page.u(w), Hd = page.u(h);
+    ctx.beginPath();
+    if (always && h < w * 0.9) { const ry = Hd * 0.6; ctx.moveTo(X, Y + Hd); ctx.lineTo(X, Y + ry); ctx.ellipse(X + Wd / 2, Y + ry, Wd / 2, ry, 0, Math.PI, 0); ctx.lineTo(X + Wd, Y + Hd); ctx.closePath(); return; }
+    if (h < w * 0.9) { const r = Math.min(Wd, Hd) * 0.09; ctx.moveTo(X + r, Y); ctx.arcTo(X + Wd, Y, X + Wd, Y + Hd, r); ctx.arcTo(X + Wd, Y + Hd, X, Y + Hd, r); ctx.arcTo(X, Y + Hd, X, Y, r); ctx.arcTo(X, Y, X + Wd, Y, r); ctx.closePath(); return; }
+    const r = Wd / 2;
+    ctx.moveTo(X, Y + Hd); ctx.lineTo(X, Y + r); ctx.arc(X + r, Y + r, r, Math.PI, 0); ctx.lineTo(X + Wd, Y + Hd); ctx.closePath();
+  }
+  const TAPE = "rgba(238, 226, 190, 0.8)";
+  function tape(page, cx, cy, deg, w = 17, h = 5.6) {
+    turned(page, cx, cy, deg, () => { rect(page, cx - w / 2, cy - h / 2, w, h, TAPE); rect(page, cx - w / 2, cy - h / 2, 0.5, h, "rgba(255,255,255,0.35)"); rect(page, cx + w / 2 - 0.5, cy - h / 2, 0.5, h, "rgba(0,0,0,0.05)"); });
+  }
+  const ANGLES = [-1.7, 1.1, -0.8, 1.6, -1.2, 0.7];
+  // A white-bordered print lying on the page, a little askew, with a shadow
+  // under it and a strip of tape at its head. `inner` draws what it shows.
+  function printOn(page, x, y, w, h, seed, mat, inner) {
+    const ctx = page.ctx, deg = ANGLES[Math.abs(seed) % ANGLES.length];
+    return turned(page, x + w / 2, y + h / 2, deg, () => {
+      ctx.save();
+      ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = page.u(2.6); ctx.shadowOffsetY = page.u(0.9);
+      rect(page, x, y, w, h, "#FDFCF8");
+      ctx.restore();
+      const out = inner(x + mat, y + mat, w - 2 * mat, h - 2 * mat);
+      tape(page, x + w / 2, y + 0.4, (seed % 2 ? 1 : -1) * 2.5);
+      return out;
+    });
+  }
+  // The box a photograph shown whole takes inside (x, y, w, h), by its shape.
+  function wholeBox(img, x, y, w, h, align = "center") {
+    const a = imgAspect(img);
+    let dw = w, dh = w / a;
+    if (dh > h) { dh = h; dw = h * a; }
+    return { x: align === "right" ? x + w - dw : align === "left" ? x : x + (w - dw) / 2, y: y + (h - dh) / 2, w: dw, h: dh };
+  }
+  /* How a style dresses a photograph, wherever one is drawn:
+       keyline  a hairline round it (Gazette)
+       print    a white-bordered print, a little askew, taped down (Pinboard)
+       figure   a hairline, corner ticks, and a figure number and its album under it (Dossier)
+       block    a thick outline, and a block of colour behind it, offset (Poster)
+       arch     an arched window with a fine line round it (Atelier)
+     `mode` is "crop" to fill the box, or "fit" (also "fit-left", "fit-right")
+     to show the photograph whole inside it. */
+  function decoPhoto(page, P, deco, img, shot, x, y, w, h, mode = "crop", seed = 0, index = 0) {
+    const kind = deco && deco.kind, crop = mode === "crop";
+    const align = mode === "fit-right" ? "right" : mode === "fit-left" ? "left" : "center";
+    // A placement the studio chose for the photo wins over showing it whole.
+    const own = shot && FIT_MODES.includes(shot.fit);
+    const boxIn = (bx, by, bw, bh) => (crop || own ? { x: bx, y: by, w: bw, h: bh } : wholeBox(img, bx, by, bw, bh, align));
+    if (kind === "print") {
+      const mat = Math.min(3.2, Math.max(1.8, Math.min(w, h) * 0.035));
+      const b = boxIn(x + mat, y + mat, w - 2 * mat, h - 2 * mat);
+      return printOn(page, b.x - mat, b.y - mat, b.w + 2 * mat, b.h + 2 * mat, seed, mat, (ix, iy, iw, ih) => drawPhoto(page, img, shot, ix, iy, iw, ih));
+    }
+    if (kind === "figure") {
+      const b = boxIn(x, y, w, h - 5.2);
+      const r = drawPhoto(page, img, shot, b.x, b.y, b.w, b.h);
+      frame(page, b.x, b.y, b.w, b.h, P.ink, 0.25);
+      for (const [cx, cy, sx, sy] of [[b.x, b.y, -1, -1], [b.x + b.w, b.y, 1, -1], [b.x, b.y + b.h, -1, 1], [b.x + b.w, b.y + b.h, 1, 1]]) {
+        rect(page, sx < 0 ? cx - 2.6 : cx + 0.8, cy - 0.1, 1.8, 0.2, P.soft); rect(page, cx - 0.1, sy < 0 ? cy - 2.6 : cy + 0.8, 0.2, 1.8, P.soft);
+      }
+      font(page, 500, 2.2, F.plex, 0.35);
+      const label = `FIG. ${numNow}.${index + 1}`;
+      text(page, label, b.x, b.y + b.h + 4, P.ink);
+      const album = albumOf(shot).toUpperCase(), used = measure(page, label) + 5;
+      if (album && b.w - used > 14) text(page, ellipsize(page, album, b.w - used), b.x + b.w, b.y + b.h + 4, P.soft, "right");
+      return r;
+    }
+    if (kind === "block") {
+      const off = Math.min(3.2, Math.min(w, h) * 0.05), b = boxIn(x, y, w - off, h - off);
+      rect(page, b.x + off, b.y + off, b.w, b.h, deco.c === "ink" ? P.ink : P.accent);
+      const r = drawPhoto(page, img, shot, b.x, b.y, b.w, b.h);
+      frame(page, b.x, b.y, b.w, b.h, P.ink, 1.1);
+      return r;
+    }
+    if (kind === "arch") {
+      const pad = 2, b = boxIn(x + pad, y + pad, w - 2 * pad, h - 2 * pad), ctx = page.ctx;
+      ctx.save(); archPath(page, b.x, b.y, b.w, b.h); ctx.clip();
+      const r = drawPhoto(page, img, shot, b.x, b.y, b.w, b.h);
+      ctx.restore();
+      archPath(page, b.x - pad, b.y - pad, b.w + 2 * pad, b.h + 2 * pad);
+      ctx.strokeStyle = P.accent; ctx.lineWidth = Math.max(1, page.u(0.3)); ctx.stroke();
+      return r;
+    }
+    const b = boxIn(x, y, w, h);
+    const r = drawPhoto(page, img, shot, b.x, b.y, b.w, b.h);
+    if (kind === "keyline") frame(page, b.x, b.y, b.w, b.h, deco.c === "ink" ? P.ink : P.rule, 0.2);
+    return r;
+  }
+  // The photographs of a page inside `box`, each dressed the style's way.
+  function decoCells(page, P, deco, entry, imgs, box, gap, L, n, single = "crop") {
+    const shots = entry.photos;
+    if (shots.length === 1) {
+      if (imgs[0]) decoPhoto(page, P, deco, imgs[0], shots[0], box.x, box.y, box.w, box.h, single, n * 7); else missing(page, P, box.x, box.y, box.w, box.h);
+      return;
+    }
+    const aspects = shots.map((s, i) => (imgs[i] ? imgAspect(imgs[i]) : 0.7));
+    cells(shots.length, box, gap, aspects, L, entry.rows).forEach((c, i) => {
+      if (imgs[i]) decoPhoto(page, P, deco, imgs[i], shots[i], c.x, c.y, c.w, c.h, "crop", n * 7 + i, i); else missing(page, P, c.x, c.y, c.w, c.h);
+    });
+  }
+  // A caption set in a narrow column: wrapped, in the studio's own formatting.
+  function captionColumn(page, entry, P, x, y, w, spec, maxLines, color) {
+    const words = oneParagraph(entry && entry.caption).join(" ");
+    if (!words) return y;
+    const f = (entry.style && entry.style.caption) || {}, st = styledSpec(spec, f), size = spec.start * sizeScale(f), lead = size * 1.48;
+    font(page, st.w, size, st.f, st.sp || 0, !!st.it);
+    const lines = wrap(page, words, w);
+    if (lines.length > maxLines) reportCut(page, "caption", "caption");
+    lines.slice(0, maxLines).forEach((l, i) => text(page, i === maxLines - 1 && lines.length > maxLines ? ellipsize(page, `${l} …`, w) : l, x, y + i * lead, tintOf(f.color, P, color)));
+    return y + Math.min(lines.length, maxLines) * lead;
+  }
+  // The heading, body and small label of the About, What I shoot and Contact
+  // pages, from a few numbers: h = heading, b = body, l = label.
+  const textKit = (o) => ({
+    heading(page, s, x, y, P, maxW) {
+      font(page, o.h.w, o.h.size, o.h.f, o.h.sp || 0, !!o.h.it);
+      const lines = wrap(page, o.h.caps ? String(s).toUpperCase() : s, maxW), step = o.h.size * o.h.lead;
+      lines.forEach((l, i) => text(page, l, x, y + i * step, P.ink));
+      const end = y + (lines.length - 1) * step;
+      paintOps(page, ruleOps(o.rule, x, end + 7, P.accent));
+      return end + 16;
+    },
+    body(page, s, x, y, P, maxW, maxY = Infinity) { font(page, o.b.w, o.b.size, o.b.f); return bodyLines(page, s, x, y, P, maxW, maxY, o.b.lead); },
+    label(page, s, x, y, P) { font(page, o.l.w, o.l.size, o.l.f, o.l.sp || 0); text(page, o.l.caps === false ? s : String(s).toUpperCase(), x, y, o.l.color === "ink" ? P.ink : o.l.color === "soft" ? P.soft : accentText(P)); },
+    ground(page, P, W, H) { rect(page, 0, 0, W, H, pageBg(P, o.ground === "white" ? P.white : P.paper)); }
+  });
+  // A caption under the photographs and the style's foot: what most photo pages end with.
+  const captionUnder = (page, entry, P, x, y, w, st, color, align) => { const cap = captionFit(entry, w, CAPTION_TYPE[st], align); if (cap) drawCaption(page, cap, x, y, CAPTION_TYPE[st], color, P); };
+
+  /* Noir: black pages. The photographs whole and unframed, so they glow; the
+     words white, in light tracked capitals; the accent a thin line. */
+  const NOIR = {
+    ...textKit({ h: { w: 300, size: 8.5, f: F.jost, sp: 1.0, caps: true, lead: 1.3 }, b: { w: 400, size: 3.9, f: F.jost, lead: 6.3 }, l: { w: 500, size: 2.4, f: F.jost, sp: 1.4 }, rule: { w: 34, h: 0.3 }, ground: "paper" }),
+    margins(o) { return o === "landscape" ? { top: 16, side: 18, bottom: 22, gap: 3 } : { top: 18, side: 16, bottom: 26, gap: 3 }; },
+    async cover(page, book, P, W, H, img) {
+      const L = W > H, K = COVER_TYPE.noir, CT = coverText(book), cs = coverStyleOf(book);
+      rect(page, 0, 0, W, H, P.paper);
+      if (img) {
+        drawPhoto(page, img, book.cover, 0, 0, W, H);
+        shade(page, 0, 0, W, H * 0.3, "rgba(0,0,0,0.55)", "rgba(0,0,0,0)");
+        shade(page, 0, H * 0.42, W, H * 0.58, "rgba(0,0,0,0)", "rgba(0,0,0,0.88)");
+      } else { const sz = L ? 40 : 48; await drawMark(page, P.ink, P.accent, P.paper, (W - sz) / 2, H * 0.3 - sz / 2, sz); }
+      const x = 22, tw = W - 44, footY = H - 15, on = img ? "#FFFFFF" : P.ink, soft = img ? "rgba(255,255,255,0.78)" : P.soft;
+      font(page, 500, 2.6, K.small, 1.6); text(page, ellipsize(page, CT.foot, tw), W / 2, 18, on, "center");
+      const TT = textFormat(cs, "title", { w: K.w, f: K.f }, P, on, "center");
+      const t = fitLines(page, titleOf(book, K), tw, 3, TT.spec.w, (L ? 12 : 14) * TT.scale, (L ? 7 : 8) * TT.scale, TT.spec.f, K.sp, !!TT.spec.it);
+      const lead = t.size * 1.32, firstY = footY - 17 - 8 - (t.lines.length - 1) * lead;
+      font(page, 500, 2.6, K.small, 1.6); text(page, ellipsize(page, CT.label, tw), W / 2, firstY - t.size - 6, img ? "#FFFFFF" : accentText(P), "center");
+      coverWords(page, book, K, cs, P, on, soft, x, tw, firstY, t, lead, "center");
+      rect(page, W / 2 - 14, footY - 7.4, 28, 0.3, P.accent);
+      font(page, 500, 2.4, K.small, 1.4); text(page, ellipsize(page, CT.place, tw), W / 2, footY, soft, "center");
+    },
+    async photos(page, entry, P, W, H, imgs, shoots, n) {
+      const L = W > H, M = this.margins(L ? "landscape" : "portrait");
+      rect(page, 0, 0, W, H, pageBg(P, P.paper));
+      const shots = entry.photos;
+      if (shots.length === 1 && entry.border) return bandedPhotoPage(page, entry, P, W, H, imgs, shots, shoots, n, captionFit(entry, W - 32, CAPTION_TYPE.noir), "noir", M.gap);
+      const has = oneParagraph(entry.caption).length > 0;
+      const box = { x: M.side, y: M.top, w: W - 2 * M.side, h: H - M.top - M.bottom - (has ? 8 : 0) };
+      decoCells(page, P, null, entry, imgs, box, M.gap, L, n, "fit");
+      captionUnder(page, entry, P, M.side, H - M.bottom - 0.5, W - 2 * M.side, "noir", P.soft, "center");
+      this.foot(page, P, W, H, n, pageCredit(entry, shoots));
+    },
+    // The number in the middle of the foot between two fine lines; the credit and the name either side.
+    foot(page, P, W, H, n, credit, o = {}) {
+      const ink = o.ink || P.ink, soft = o.soft || P.soft, y = H - 11;
+      font(page, 500, 2.3, F.jost, 1.2);
+      if (showNums()) { text(page, String(n).padStart(2, "0"), W / 2 + 0.6, y, ink, "center"); rect(page, W / 2 - 17, y - 0.9, 9, 0.2, soft); rect(page, W / 2 + 8, y - 0.9, 9, 0.2, soft); }
+      if (credit) text(page, ellipsize(page, credit.toUpperCase(), W / 2 - 38), 16, y, soft);
+      text(page, ellipsize(page, footName(), W / 2 - 38), W - 16, y, soft, "right");
+    }
+  };
+
+  /* Swiss: a strict grid on white. A heavy rule and a big numeral across the
+     head of every page, bold sans in lower case, the photographs pushed to the
+     right of a narrow column that carries the caption and the credit. */
+  const SWISS = {
+    ...textKit({ h: { w: 700, size: 10, f: F.sans, sp: -0.3, lead: 1.1 }, b: { w: 400, size: 3.9, f: F.sans, lead: 6.2 }, l: { w: 600, size: 2.6, f: F.sans, sp: 0.1, caps: false, color: "ink" }, rule: { w: 3.2, h: 3.2 }, ground: "white" }),
+    margins(o) { return o === "landscape" ? { top: 24, side: 20, bottom: 18, gap: 4 } : { top: 28, side: 20, bottom: 20, gap: 4 }; },
+    async cover(page, book, P, W, H, img) {
+      const L = W > H, K = COVER_TYPE.swiss, CT = coverText(book), cs = coverStyleOf(book);
+      rect(page, 0, 0, W, H, P.white);
+      const x = 20, right = W - 20, tw = right - x;
+      rect(page, x, 14, tw, 1.6, P.ink);
+      font(page, 600, 2.6, F.sans, 0.2); text(page, ellipsize(page, CT.label, tw), x, 21.6, P.ink);
+      const { t, lead } = coverTitleFit(page, book, K, cs, P, tw, 3, L ? 19 : 25, L ? 10 : 12, 34 + (L ? 19 : 25), 4.2 * 1.3 + 4 + (L ? 100 : 130), H - 26);
+      const subY = coverWords(page, book, K, cs, P, P.ink, P.soft, x, tw, 32 + t.size * 0.86, t, lead);
+      // The photograph in the lower right module; the square marks the grid.
+      const top = Math.max(subY + 12, H * (L ? 0.4 : 0.42)), px = x + tw * (L ? 0.36 : 0.3), box = { x: px, y: top, w: right - px, h: H - 30 - top };
+      rect(page, x, top, 9, 9, P.accent);
+      if (img) drawPhoto(page, img, book.cover, box.x, box.y, box.w, box.h);
+      else { rect(page, box.x, box.y, box.w, box.h, P.accent); const sz = L ? 30 : 38; await drawMark(page, P.onAccent, P.onAccent, "rgba(0,0,0,0)", box.x + (box.w - sz) / 2, box.y + (box.h - sz) / 2, sz); }
+      hair(page, x, H - 22, right, P.ink);
+      font(page, 600, 2.6, F.sans, 0.2);
+      text(page, ellipsize(page, CT.foot, tw * 0.55), x, H - 15.5, P.ink);
+      text(page, ellipsize(page, CT.place, tw * 0.42), right, H - 15.5, P.soft, "right");
+    },
+    async photos(page, entry, P, W, H, imgs, shoots, n) {
+      const L = W > H, M = this.margins(L ? "landscape" : "portrait");
+      rect(page, 0, 0, W, H, pageBg(P, P.white));
+      const shots = entry.photos;
+      if (shots.length === 1 && entry.border) return bandedPhotoPage(page, entry, P, W, H, imgs, shots, shoots, n, captionFit(entry, W - 40, CAPTION_TYPE.swiss), "swiss", M.gap);
+      const col = L ? 46 : 38, box = { x: M.side + col + 6, y: M.top, w: W - 2 * M.side - col - 6, h: H - M.top - M.bottom };
+      if (shots.length === 1) {
+        // One photograph: whole, hung from the top of the grid, against its right edge.
+        if (imgs[0]) { const b = FIT_MODES.includes(shots[0].fit) ? box : wholeBox(imgs[0], box.x, box.y, box.w, box.h, "right"); drawPhoto(page, imgs[0], shots[0], b.x, box.y, b.w, b.h); }
+        else missing(page, P, box.x, box.y, box.w, box.h);
+      } else decoCells(page, P, null, entry, imgs, box, M.gap, L, n);
+      // The narrow column: the square, the caption, and the credit at its foot.
+      rect(page, M.side, box.y, 3.2, 3.2, P.accent);
+      captionColumn(page, entry, P, M.side, box.y + 11, col, CAPTION_TYPE.swiss, 9, P.ink);
+      const credit = pageCredit(entry, shoots);
+      if (credit) {
+        font(page, 400, 2.5, F.sans);
+        const lines = wrap(page, credit.replace(/\s+\/\s+/g, " / "), col).slice(0, 7);
+        lines.forEach((l, i) => text(page, ellipsize(page, l, col), M.side, box.y + box.h - (lines.length - 1 - i) * 3.7, P.soft));
+      }
+      this.foot(page, P, W, H, n, "");
+    },
+    // Not a foot: a rule across the head, the name under it, the page number large at the right.
+    foot(page, P, W, H, n, credit, o = {}) {
+      const ink = o.ink || P.ink, soft = o.soft || P.soft, y0 = W > H ? 9 : 11;
+      rect(page, 20, y0, W - 40, 1.2, ink);
+      font(page, 600, 2.5, F.sans, 0.2);
+      const name = footName(), nameW = measure(page, name);
+      text(page, name, 20, y0 + 6.4, ink);
+      if (credit) { font(page, 400, 2.5, F.sans); text(page, ellipsize(page, credit, W - 40 - nameW - 30), 20 + nameW + 8, y0 + 6.4, soft); }
+      if (showNums()) { font(page, 700, 6.2, F.sans, -0.2); text(page, String(n).padStart(2, "0"), W - 20, y0 + 8.2, ink, "right"); }
+    },
+    // A chapter opens on its number, large, in the colour.
+    dividerDeco(page, book, entry, P, W, H) {
+      let k = 0; for (const pg of book.pages) { if (pg && pg.type === "divider") { k++; if (pg === entry) break; } }
+      font(page, 700, W > H ? 54 : 70, F.sans, -2);
+      text(page, String(k || 1).padStart(2, "0"), 17, W > H ? 78 : 104, P.accent);
+    }
+  };
+
+  /* Pinboard: a board with prints on it. Every photograph a white-bordered
+     print, a little askew, taped at its head; headings and captions by hand. */
+  const PINBOARD = {
+    ...textKit({ h: { w: 700, size: 15, f: F.hand, lead: 1.0 }, b: { w: 400, size: 3.9, f: F.sans, lead: 6.2 }, l: { w: 500, size: 2.3, f: F.plex, sp: 0.4, color: "soft" }, rule: { w: 24, h: 0.5, kind: "wave" }, ground: "paper" }),
+    margins(o) { return o === "landscape" ? { top: 20, side: 24, bottom: 26, gap: 9 } : { top: 24, side: 22, bottom: 30, gap: 9 }; },
+    async cover(page, book, P, W, H, img) {
+      const L = W > H, K = COVER_TYPE.pinboard, CT = coverText(book), cs = coverStyleOf(book);
+      rect(page, 0, 0, W, H, P.paper);
+      const x = 28, tw = W - 56, box = { x: L ? 60 : 28, y: L ? 20 : 26, w: W - (L ? 120 : 56), h: L ? H - 20 - 66 : H * 0.6 };
+      if (img) decoPhoto(page, P, { kind: "print" }, img, book.cover, box.x, box.y, box.w, box.h, "crop", 0);
+      else {
+        // Loaded first: nothing may wait while the page is turned.
+        const owl = await mark(P.soft, P.accent, "rgba(0,0,0,0)"), sz = L ? 30 : 38;
+        printOn(page, box.x, box.y, box.w, box.h, 0, 3.2, (ix, iy, iw, ih) => { rect(page, ix, iy, iw, ih, P.rule); if (owl) page.ctx.drawImage(owl, page.u(ix + (iw - sz) / 2), page.u(iy + (ih - sz) / 2), page.u(sz), page.u(sz)); });
+      }
+      const top = box.y + box.h + (L ? 12 : 17);
+      const { t, lead } = coverTitleFit(page, book, K, cs, P, tw, 2, L ? 17 : 22, L ? 10 : 12, top + (L ? 17 : 22), 6.4 * 1.3 + 4 + 16, H - 12);
+      coverWords(page, book, K, cs, P, P.ink, P.soft, x, tw, top + t.size * 0.7, t, lead);
+      // A label stuck at the foot, a little askew the other way.
+      const lw = 66, lx = W - 28 - lw, ly = H - 28;
+      turned(page, lx + lw / 2, ly + 6, 1.2, () => {
+        page.ctx.save(); page.ctx.shadowColor = "rgba(0,0,0,0.22)"; page.ctx.shadowBlur = page.u(1.6); page.ctx.shadowOffsetY = page.u(0.6);
+        rect(page, lx, ly, lw, 13, "#FDFCF8"); page.ctx.restore();
+        font(page, 500, 2.4, F.plex, 0.3); text(page, ellipsize(page, CT.foot, lw - 8), lx + 4, ly + 5.4, "#1b1b1b");
+        font(page, 400, 2.2, F.plex, 0.3); text(page, ellipsize(page, CT.place, lw - 8), lx + 4, ly + 9.8, "#6a6a6a");
+      });
+    },
+    async photos(page, entry, P, W, H, imgs, shoots, n) {
+      const L = W > H, M = this.margins(L ? "landscape" : "portrait");
+      rect(page, 0, 0, W, H, pageBg(P, P.paper));
+      const shots = entry.photos;
+      if (shots.length === 1 && entry.border) return bandedPhotoPage(page, entry, P, W, H, imgs, shots, shoots, n, captionFit(entry, W - 44, CAPTION_TYPE.pinboard), "pinboard", M.gap);
+      const has = oneParagraph(entry.caption).length > 0;
+      const box = { x: M.side, y: M.top, w: W - 2 * M.side, h: H - M.top - M.bottom - (has ? 9 : 0) };
+      decoCells(page, P, { kind: "print" }, entry, imgs, box, M.gap, L, n, "fit");
+      captionUnder(page, entry, P, M.side, H - M.bottom + 0.5, W - 2 * M.side, "pinboard", P.ink);
+      this.foot(page, P, W, H, n, pageCredit(entry, shoots));
+    },
+    foot(page, P, W, H, n, credit, o = {}) {
+      const ink = o.ink || P.ink, soft = o.soft || P.soft;
+      if (showNums()) { font(page, 600, 5.2, F.hand); text(page, `– ${n} –`, W / 2, H - 10.5, ink, "center"); }
+      if (credit) { font(page, 400, 2.2, F.plex, 0.3); text(page, ellipsize(page, credit.toUpperCase(), W / 2 - 40), 22, H - 11, soft); }
+    },
+    dividerDeco(page, book, entry, P, W, H) { tape(page, 34, 30, -38, 26, 7); tape(page, W - 34, H - 34, -38, 26, 7); }
+  };
+
+  /* Dossier: a working file. Typewriter capitals, a header that counts the
+     sheets, corner marks on the page, and every photograph a numbered figure
+     with its album beside the number. */
+  const cornerMarks = (page, W, H, c) => { for (const [x, y, sx, sy] of [[7, 7, 1, 1], [W - 7, 7, -1, 1], [7, H - 7, 1, -1], [W - 7, H - 7, -1, -1]]) { rect(page, sx > 0 ? x : x - 5, y - 0.1, 5, 0.2, c); rect(page, x - 0.1, sy > 0 ? y : y - 5, 0.2, 5, c); } };
+  const gridOver = (page, W, H, c, step = 10) => { const t = Math.max(0.12, 1 / page.u(1)); page.ctx.save(); page.ctx.globalAlpha = 0.55; for (let gx = step; gx < W; gx += step) rect(page, gx - t / 2, 0, t, H, c); for (let gy = step; gy < H; gy += step) rect(page, 0, gy - t / 2, W, t, c); page.ctx.restore(); };
+  const DOSSIER = {
+    ...textKit({ h: { w: 500, size: 7, f: F.plex, caps: true, lead: 1.34 }, b: { w: 400, size: 3.8, f: F.sans, lead: 6.1 }, l: { w: 500, size: 2.3, f: F.plex, sp: 0.5 }, rule: { w: 22, h: 0.4, kind: "dash" }, ground: "paper" }),
+    margins(o) { return o === "landscape" ? { top: 22, side: 22, bottom: 24, gap: 7 } : { top: 24, side: 22, bottom: 28, gap: 7 }; },
+    async cover(page, book, P, W, H, img) {
+      const L = W > H, K = COVER_TYPE.dossier, CT = coverText(book), cs = coverStyleOf(book);
+      rect(page, 0, 0, W, H, P.paper);
+      gridOver(page, W, H, P.rule); cornerMarks(page, W, H, P.soft);
+      const x = 22, right = W - 22, tw = right - x;
+      font(page, 500, 2.4, F.plex, 0.5);
+      text(page, ellipsize(page, CT.label, tw * 0.55), x, 20, accentText(P)); text(page, ellipsize(page, CT.place, tw * 0.42), right, 20, P.soft, "right");
+      hair(page, x, 23.5, right, P.ink, 0.25);
+      const win = { x, y: 30, w: tw, h: L ? H * 0.47 : H * 0.5 };
+      numNow = 1;
+      if (img) decoPhoto(page, P, { kind: "figure" }, img, book.cover, win.x, win.y, win.w, win.h, "crop", 0);
+      else { rect(page, win.x, win.y, win.w, win.h - 5.2, P.rule); frame(page, win.x, win.y, win.w, win.h - 5.2, P.ink, 0.25); const sz = L ? 28 : 34; await drawMark(page, P.soft, P.accent, "rgba(0,0,0,0)", win.x + (win.w - sz) / 2, win.y + (win.h - 5.2 - sz) / 2, sz); }
+      // Under it, a table of two rows: what the file is, and what is in it.
+      const y0 = win.y + win.h + (L ? 7 : 10), tx = x + 26, ttw = right - tx;
+      hair(page, x, y0, right, P.ink, 0.25);
+      font(page, 500, 2.2, F.plex, 0.4); text(page, "TITLE", x, y0 + 7, P.soft);
+      const { t, lead } = coverTitleFit(page, book, K, cs, P, ttw, 3, L ? 10 : 13, L ? 5 : 6, y0 + 6 + (L ? 10 : 13), 3.4 * 1.3 + 12, H - 27);
+      coverWords(page, book, K, cs, P, P.ink, P.soft, tx, ttw, y0 + 4 + t.size * 0.86, t, lead);
+      hair(page, x, H - 24, right, P.ink, 0.25);
+      font(page, 500, 2.4, F.plex, 0.5);
+      text(page, ellipsize(page, CT.foot, tw * 0.6), x, H - 17.5, P.ink);
+      text(page, `SHEET 01 / ${String(renderedCount(book)).padStart(2, "0")}`, right, H - 17.5, P.soft, "right");
+    },
+    async photos(page, entry, P, W, H, imgs, shoots, n) {
+      const L = W > H, M = this.margins(L ? "landscape" : "portrait");
+      rect(page, 0, 0, W, H, pageBg(P, P.paper));
+      const shots = entry.photos;
+      if (shots.length === 1 && entry.border) return bandedPhotoPage(page, entry, P, W, H, imgs, shots, shoots, n, captionFit(entry, W - 48, CAPTION_TYPE.dossier), "dossier", M.gap);
+      const has = oneParagraph(entry.caption).length > 0;
+      const box = { x: M.side, y: M.top, w: W - 2 * M.side, h: H - M.top - M.bottom - (has ? 7 : 0) };
+      decoCells(page, P, { kind: "figure" }, entry, imgs, box, M.gap, L, n, "fit");
+      captionUnder(page, entry, P, M.side, H - M.bottom + 0.5, W - 2 * M.side, "dossier", P.ink);
+      this.foot(page, P, W, H, n, pageCredit(entry, shoots));
+    },
+    // A header: the name, and which sheet of how many; corner marks; the credit at the foot.
+    foot(page, P, W, H, n, credit, o = {}) {
+      const ink = o.ink || P.ink, soft = o.soft || P.soft, y = W > H ? 12 : 13;
+      cornerMarks(page, W, H, soft);
+      font(page, 500, 2.2, F.plex, 0.4);
+      text(page, ellipsize(page, footName(), W * 0.5), 22, y, ink);
+      if (showNums()) text(page, `SHEET ${String(n).padStart(2, "0")} / ${String(bookNow ? renderedCount(bookNow) : n).padStart(2, "0")}`, W - 22, y, soft, "right");
+      hair(page, 22, y + 2.6, W - 22, ink, 0.2);
+      if (credit) text(page, ellipsize(page, credit.toUpperCase(), W - 44), 22, H - 12, soft);
+    },
+    dividerDeco(page, book, entry, P, W, H) {
+      gridOver(page, W, H, P.rule);
+      let k = 0; for (const pg of book.pages) { if (pg && pg.type === "divider") { k++; if (pg === entry) break; } }
+      font(page, 500, 2.4, F.plex, 0.5); text(page, `SECTION ${String(k || 1).padStart(2, "0")}`, 22, W > H ? 30 : 34, accentText(P));
+    }
+  };
+
+  /* Poster: loud. Tall condensed capitals, a thick black outline round every
+     photograph with a block of the colour behind it, the number in a black
+     square, chapter pages and the cover flooded with the colour. */
+  const POSTER = {
+    ...textKit({ h: { w: 400, size: 15, f: F.poster, sp: 0.2, caps: true, lead: 1.04 }, b: { w: 400, size: 3.9, f: F.sans, lead: 6.2 }, l: { w: 700, size: 2.5, f: F.sans, sp: 0.5 }, rule: { w: 16, h: 2.2 }, ground: "white" }),
+    margins(o) { return o === "landscape" ? { top: 16, side: 18, bottom: 24, gap: 7 } : { top: 18, side: 18, bottom: 26, gap: 7 }; },
+    async cover(page, book, P, W, H, img) {
+      const L = W > H, K = COVER_TYPE.poster, CT = coverText(book), cs = coverStyleOf(book);
+      rect(page, 0, 0, W, H, P.accent);
+      const x = 16, right = W - 16, tw = right - x, band = 24;
+      font(page, 700, 2.6, F.sans, 0.6); text(page, ellipsize(page, CT.label, tw), x, 14, P.onAccent);
+      const start = L ? 30 : 40, room = 5 * 1.3 + 4 + (img ? (L ? 70 : 96) : 40);
+      const { t, lead } = coverTitleFit(page, book, K, cs, P, tw, 4, start, L ? 13 : 15, 20 + start, room, H - band - 6);
+      const subY = coverWords(page, book, K, cs, P, P.onAccent, P.onAccent, x, tw, 19 + t.size * 0.86, t, lead);
+      const top = subY + 10, ph = H - band - 9 - top;
+      if (img && ph > 30) decoPhoto(page, P, { kind: "block", c: "ink" }, img, book.cover, x, top, tw, ph, "crop", 0);
+      else if (!img) { const sz = L ? 34 : 46; await drawMark(page, P.onAccent, P.onAccent, P.accent, x, H - band - 12 - sz, sz); }
+      rect(page, 0, H - band, W, band, P.ink);
+      font(page, 400, 5, F.poster, 0.4);
+      text(page, ellipsize(page, CT.foot, tw * 0.58), x, H - band / 2 + 1.9, P.paper);
+      text(page, ellipsize(page, CT.place, tw * 0.4), right, H - band / 2 + 1.9, P.paper, "right");
+    },
+    async photos(page, entry, P, W, H, imgs, shoots, n) {
+      const L = W > H, M = this.margins(L ? "landscape" : "portrait");
+      rect(page, 0, 0, W, H, pageBg(P, P.white));
+      const shots = entry.photos;
+      if (shots.length === 1 && entry.border) return bandedPhotoPage(page, entry, P, W, H, imgs, shots, shoots, n, captionFit(entry, W - 36, CAPTION_TYPE.poster), "poster", M.gap);
+      const has = oneParagraph(entry.caption).length > 0;
+      const box = { x: M.side, y: M.top, w: W - 2 * M.side, h: H - M.top - M.bottom - (has ? 8 : 0) };
+      decoCells(page, P, { kind: "block" }, entry, imgs, box, M.gap, L, n);
+      captionUnder(page, entry, P, M.side, H - M.bottom + 0.5, W - 2 * M.side, "poster", P.ink);
+      this.foot(page, P, W, H, n, pageCredit(entry, shoots));
+    },
+    // The number in a black square at the outer corner; the name in tall capitals at the inner one.
+    foot(page, P, W, H, n, credit, o = {}) {
+      const ink = o.ink || P.ink, soft = o.soft || P.soft, outer = n % 2 === 1, sq = 11, sx = outer ? W - 18 - sq : 18;
+      if (showNums()) { rect(page, sx, H - 20, sq, sq, ink); font(page, 400, 5.4, F.poster, 0.2); text(page, String(n).padStart(2, "0"), sx + sq / 2 + 0.1, H - 12.4, o.ink ? P.accent : P.white, "center"); }
+      font(page, 400, 3.8, F.poster, 0.5);
+      const name = ellipsize(page, footName(), W * 0.4), nameW = measure(page, name), nx = outer ? 18 : W - 18;
+      text(page, name, nx, H - 12.4, ink, outer ? "left" : "right");
+      if (credit) { font(page, 600, 2.3, F.sans, 0.3); const room = W - 36 - sq - nameW - 14; if (room > 20) text(page, ellipsize(page, credit.toUpperCase(), room), outer ? nx + nameW + 6 : nx - nameW - 6, H - 12.6, soft, outer ? "left" : "right"); }
+    }
+  };
+
+  /* Atelier: soft. A tinted page, every photograph in an arched window with a
+     fine line round it, a narrow italic serif, the cover and the feet centred. */
+  const flourish = (page, cx, y, c, arm = 18) => { hair(page, cx - arm - 3.5, y, cx - 3.5, c, 0.2); hair(page, cx + 3.5, y, cx + arm + 3.5, c, 0.2); paintOps(page, [{ k: "path", shape: "diamond", corner: 0, x: cx - 1.2, y: y - 1.2, w: 2.4, h: 2.4, c }]); };
+  const ATELIER = {
+    ...textKit({ h: { w: 500, size: 13, f: F.cormorant, it: true, lead: 1.06 }, b: { w: 500, size: 4.4, f: F.cormorant, lead: 6.3 }, l: { w: 500, size: 2.3, f: F.geo, sp: 1.2 }, rule: { w: 26, h: 0.3, kind: "diamond" }, ground: "paper" }),
+    margins(o) { return o === "landscape" ? { top: 22, side: 26, bottom: 28, gap: 8 } : { top: 26, side: 24, bottom: 32, gap: 8 }; },
+    async cover(page, book, P, W, H, img) {
+      const L = W > H, K = COVER_TYPE.atelier, CT = coverText(book), cs = coverStyleOf(book);
+      rect(page, 0, 0, W, H, P.paper);
+      const x = 28, tw = W - 56;
+      font(page, 500, 2.5, K.small, 1.6); text(page, ellipsize(page, CT.foot, tw), W / 2 + 0.8, L ? 16 : 20, P.ink, "center");
+      const ah = L ? H * 0.54 : H * 0.5, aw = Math.min(W - 56, ah * (L ? 0.78 : 0.8)), ax = (W - aw) / 2, ay = L ? 23 : 30;
+      if (img) decoPhoto(page, P, { kind: "arch" }, img, book.cover, ax, ay, aw, ah, "crop", 0);
+      else { archPath(page, ax + 2, ay + 2, aw - 4, ah - 4); page.ctx.fillStyle = P.rule; page.ctx.fill(); archPath(page, ax, ay, aw, ah); page.ctx.strokeStyle = P.accent; page.ctx.lineWidth = Math.max(1, page.u(0.3)); page.ctx.stroke(); const sz = L ? 26 : 34; await drawMark(page, P.ink, P.accent, "rgba(0,0,0,0)", (W - sz) / 2, ay + ah * 0.55 - sz / 2, sz); }
+      const top = ay + ah + (L ? 9 : 16), footY = H - (L ? 12 : 15);
+      const { t, lead } = coverTitleFit(page, book, K, cs, P, tw, 2, L ? 13 : 18, L ? 8 : 10, top + (L ? 13 : 18), 5.6 * 1.3 + 4 + 16, footY - 4);
+      const subY = coverWords(page, book, K, cs, P, P.ink, P.soft, x, tw, top + t.size * 0.72, t, lead, "center");
+      flourish(page, W / 2, Math.min(subY + (L ? 6 : 9), footY - 7), P.accent);
+      font(page, 500, 2.4, K.small, 1.4); text(page, ellipsize(page, CT.place, tw), W / 2 + 0.7, footY, P.soft, "center");
+    },
+    async photos(page, entry, P, W, H, imgs, shoots, n) {
+      const L = W > H, M = this.margins(L ? "landscape" : "portrait");
+      rect(page, 0, 0, W, H, pageBg(P, P.paper));
+      const shots = entry.photos;
+      if (shots.length === 1 && entry.border) return bandedPhotoPage(page, entry, P, W, H, imgs, shots, shoots, n, captionFit(entry, W - 56, CAPTION_TYPE.atelier), "atelier", M.gap);
+      const has = oneParagraph(entry.caption).length > 0;
+      let box = { x: M.side, y: M.top, w: W - 2 * M.side, h: H - M.top - M.bottom - (has ? 9 : 0) };
+      // One photograph: a tall arch in the middle of the page.
+      if (shots.length === 1) { const w = Math.min(box.w, box.h * 0.74); box = { ...box, x: box.x + (box.w - w) / 2, w }; }
+      decoCells(page, P, { kind: "arch" }, entry, imgs, box, M.gap, L, n);
+      captionUnder(page, entry, P, M.side, H - M.bottom + 1, W - 2 * M.side, "atelier", P.ink, "center");
+      this.foot(page, P, W, H, n, pageCredit(entry, shoots));
+    },
+    foot(page, P, W, H, n, credit, o = {}) {
+      const ink = o.ink || P.ink, soft = o.soft || P.soft;
+      if (showNums()) { font(page, 500, 4.4, F.cormorant, 0.3, true); text(page, `·  ${n}  ·`, W / 2, H - 15, ink, "center"); }
+      if (credit) { font(page, 500, 2.1, F.geo, 0.9); text(page, ellipsize(page, credit.toUpperCase(), W - 70), W / 2 + 0.4, H - 9.5, soft, "center"); }
+    },
+    // A chapter opens inside a fine arch.
+    dividerDeco(page, book, entry, P, W, H) {
+      const L = W > H, h = H * (L ? 0.74 : 0.62), w = L ? W * 0.8 : W * 0.72;
+      page.ctx.save(); page.ctx.globalAlpha = 0.7; archPath(page, (W - w) / 2, (H - h) / 2 - 4, w, h, true); page.ctx.strokeStyle = P.accent; page.ctx.lineWidth = Math.max(1, page.u(0.3)); page.ctx.stroke(); page.ctx.restore();
+    }
+  };
+
+  /* Gazette: a newspaper. A running head with double rules on every page, a
+     masthead and a headline on the cover, black serif headlines, serif text in
+     columns with a rule between them, italic captions, newsprint for paper. */
+  const GAZETTE = {
+    ...textKit({ h: { w: 800, size: 11, f: F.playfair, lead: 1.13 }, b: { w: 400, size: 3.9, f: F.news, lead: 6.2 }, l: { w: 600, size: 2.3, f: F.sans, sp: 0.6 }, rule: { w: 26, h: 0.6, kind: "double" }, ground: "paper" }),
+    margins(o) { return o === "landscape" ? { top: 22, side: 18, bottom: 22, gap: 5 } : { top: 26, side: 18, bottom: 24, gap: 5 }; },
+    async cover(page, book, P, W, H, img) {
+      const L = W > H, K = COVER_TYPE.gazette, CT = coverText(book), cs = coverStyleOf(book);
+      rect(page, 0, 0, W, H, P.paper);
+      const x = 18, right = W - 18, tw = right - x;
+      font(page, 600, 2.3, F.sans, 0.5);
+      text(page, ellipsize(page, CT.label, tw * 0.5), x, 13, P.ink); text(page, ellipsize(page, CT.place, tw * 0.45), right, 13, P.ink, "right");
+      // The masthead: the studio's name, as wide as it can go, between rules.
+      hair(page, x, 16, right, P.ink, 0.25);
+      const ms = fitSize(page, CT.foot, tw, 900, L ? 14 : 16, F.playfair, 0, 7), mastY = 18.5 + ms * 0.8;
+      text(page, CT.foot, W / 2, mastY, P.ink, "center");
+      const ry = mastY + ms * 0.2 + 3.4;
+      rect(page, x, ry, tw, 0.9, P.ink); rect(page, x, ry + 1.6, tw, 0.25, P.ink);
+      // The headline and its deck.
+      const top = ry + (L ? 8 : 11), start = L ? 12 : 15;
+      const { t, lead } = coverTitleFit(page, book, K, cs, P, tw, 2, start, L ? 7.5 : 9, top + start, 5 * 1.3 + 4 + (L ? 66 : 110), H - 22);
+      const subY = coverWords(page, book, K, cs, P, P.ink, P.soft, x, tw, top + t.size * 0.8, t, lead, "center");
+      hair(page, x, subY + 5.5, right, P.ink, 0.25);
+      const py = subY + 10, ph = H - 25 - py;
+      if (img) decoPhoto(page, P, { kind: "keyline", c: "ink" }, img, book.cover, x, py, tw, ph, "crop", 0);
+      else { rect(page, x, py, tw, ph, P.rule); const sz = L ? 28 : 38; await drawMark(page, P.ink, P.accent, "rgba(0,0,0,0)", (W - sz) / 2, py + (ph - sz) / 2, sz); }
+      hair(page, x, H - 20, right, P.ink, 0.25);
+      font(page, 600, 2.3, F.sans, 0.5);
+      text(page, `© ${year()}`, x, H - 14, P.ink); text(page, ellipsize(page, studio(), tw * 0.6), right, H - 14, P.ink, "right");
+    },
+    async photos(page, entry, P, W, H, imgs, shoots, n) {
+      const L = W > H, M = this.margins(L ? "landscape" : "portrait");
+      rect(page, 0, 0, W, H, pageBg(P, P.paper));
+      const shots = entry.photos;
+      if (shots.length === 1 && entry.border) return bandedPhotoPage(page, entry, P, W, H, imgs, shots, shoots, n, captionFit(entry, W - 40, CAPTION_TYPE.gazette), "gazette", M.gap);
+      const has = oneParagraph(entry.caption).length > 0;
+      const box = { x: M.side, y: M.top, w: W - 2 * M.side, h: H - M.top - M.bottom - (has ? 8 : 0) };
+      decoCells(page, P, { kind: "keyline", c: "ink" }, entry, imgs, box, M.gap, L, n, "fit");
+      captionUnder(page, entry, P, M.side, H - M.bottom + 0.5, W - 2 * M.side, "gazette", P.ink);
+      this.foot(page, P, W, H, n, pageCredit(entry, shoots));
+    },
+    // A running head: double rule, the name in the middle, the page at the left, the year at the right.
+    foot(page, P, W, H, n, credit, o = {}) {
+      const ink = o.ink || P.ink, soft = o.soft || P.soft, y0 = W > H ? 7 : 8.5, yb = y0 + 6.2;
+      rect(page, 18, y0, W - 36, 0.7, ink); rect(page, 18, y0 + 1.3, W - 36, 0.2, ink);
+      font(page, 700, 3.3, F.playfair, 0.3); text(page, ellipsize(page, footName(), W * 0.5), W / 2, yb, ink, "center");
+      font(page, 600, 2.2, F.sans, 0.5);
+      if (showNums()) text(page, `PAGE ${n}`, 18, yb - 0.3, ink);
+      text(page, year(), W - 18, yb - 0.3, soft, "right");
+      rect(page, 18, yb + 2.4, W - 36, 0.2, ink);
+      if (credit) { font(page, 400, 2.9, F.news, 0, true); text(page, ellipsize(page, credit, W - 60), W / 2, H - 11, soft, "center"); }
+    },
+    dividerDeco(page, book, entry, P, W, H) {
+      const a = H / 2 - 50, b = H / 2 + 72;
+      rect(page, 18, a, W - 36, 0.9, P.ink); rect(page, 18, a + 1.6, W - 36, 0.25, P.ink);
+      rect(page, 18, b, W - 36, 0.25, P.ink); rect(page, 18, b + 1, W - 36, 0.9, P.ink);
+    }
+  };
+  const STYLE_IMPL = { elegant: ELEGANT, modern: MODERN, vogue: VOGUE, lookbook: LOOKBOOK, noir: NOIR, swiss: SWISS, pinboard: PINBOARD, dossier: DOSSIER, poster: POSTER, atelier: ATELIER, gazette: GAZETTE };
+
+  // The running foot of a page, whichever style draws it. `o.ink` and `o.soft`
+  // colour it on a coloured page; `o.side` puts Vogue's band on a chosen edge.
+  function pageFoot(book, page, P, W, H, n, credit = "", o = {}) {
+    const st = styleKey(book);
+    if (st === "elegant") return ELEGANT.foot(page, P, W, H, n);
+    if (st === "lookbook") return LOOKBOOK.foot(page, P, W, H, n, credit);
+    if (st === "vogue") return VOGUE.foot(page, P, W, H, n, credit, o.side);
+    if (st === "modern") return MODERN.foot(page, P, W, H, n, credit, o.ink, o.soft);
+    return STYLE_IMPL[st].foot(page, P, W, H, n, credit, o);
+  }
+  // A photograph on a page the styles share, shown the way the style shows them.
+  function stylePhoto(page, P, D, img, shot, x, y, w, h, seed = 0) {
+    if (D.deco) return decoPhoto(page, P, D.deco, img, shot, x, y, w, h, D.whole ? "fit" : "crop", seed);
+    if (D.whole) { const r = fitPhoto(page, img, shot, x, y, w, h); if (D.frame) frame(page, r.x, r.y, r.w, r.h, P.rule, 0.2); return r; }
+    return drawPhoto(page, img, shot, x, y, w, h);
+  }
 
   // Running text that stops above the foot. If it has to stop early, the last
   // line that fits ends with "…" so nothing is cut mid-thought without a sign.
@@ -1339,53 +2040,55 @@
   const DEFAULT_ABOUT = "nerdyphotographer.in is a photography studio in Noida, working across Delhi NCR. It shoots fashion, beauty and editorial stories, fitness and sport, and portfolios and comp cards for models — in a home studio and on location.\n\nEvery shoot is planned before the day: the looks, the light and the frames it has to come away with. You are directed throughout, and the finished work is credited in full.";
 
   async function textPage(page, entry, book, P, W, H, n) {
-    const S = STYLE_IMPL[book.style];
+    const S = STYLE_IMPL[styleKey(book)], D = TR(styleKey(book));
     const M = S.margins(W > H ? "landscape" : "portrait");
     const x = Math.max(M.side, 20), maxW = Math.min(W - 2 * x, 150);
     if (entry.type === "divider") {
-      // A chapter card: the colour as the whole ground.
-      rect(page, 0, 0, W, H, book.style === "elegant" ? P.paper : book.style === "lookbook" ? P.white : P.accent);
-      const on = (book.style === "elegant" || book.style === "lookbook") ? P.ink : P.onAccent;
+      // A chapter card: in most styles the colour as the whole ground.
+      const V = D.divider, G0 = onGround(P, V.ground);
+      rect(page, 0, 0, W, H, G0.ground);
+      const on = G0.ink;
+      if (S.dividerDeco) await S.dividerDeco(page, book, entry, P, W, H, n);
       // Measured exactly as it is drawn: Vogue and Modern set it in capitals,
       // which are far wider than the lower case it was typed in.
-      const quiet = book.style === "elegant" || book.style === "lookbook";
-      const shown = quiet ? (entry.heading || "Selected work") : (entry.heading || "Selected work").toUpperCase();
-      const weight = book.style === "modern" ? 800 : 300, family = book.style === "modern" ? F.heavy : book.style === "lookbook" ? F.sans : F.serif, spacing = book.style === "vogue" ? 1 : 0;
-      const HT = textFormat(entry.style, "heading", { w: weight, f: family }, P, on);
-      const LT = textFormat(entry.style, "line", { w: 400, f: F.sans }, P, on);
+      const shown = V.caps ? (entry.heading || "Selected work").toUpperCase() : (entry.heading || "Selected work");
+      const spacing = V.sp;
+      const HT = textFormat(entry.style, "heading", { w: V.w, f: V.f, it: !!V.it }, P, on, V.align || "left");
+      const LT = textFormat(entry.style, "line", { w: 400, f: V.lineF || F.sans, it: !!V.lineIt }, P, on, V.align || "left");
       const tw = W - 40;
-      const t = fitLines(page, shown, tw, 2, HT.spec.w, (book.style === "modern" ? 26 : book.style === "lookbook" ? 22 : 30) * HT.scale, 12 * HT.scale, HT.spec.f, spacing, !!HT.spec.it);
+      const t = fitLines(page, shown, tw, 2, HT.spec.w, V.size * HT.scale, 12 * HT.scale, HT.spec.f, spacing, !!HT.spec.it);
       if (t.cut) reportCut(page, "heading", "chapter heading");
-      const lead = t.size * 1.05;
-      const top = H / 2 - (t.lines.length - 1) * lead / 2;
+      const lead = t.size * (V.lead || 1.05);
+      // In the middle of the page, or (a style's choice) low on it, clear of the foot.
+      const top = V.at === "low" ? H - 40 - (t.size * 0.5 + 10 + 3 * 6.4 * LT.scale) - (t.lines.length - 1) * lead : H / 2 - (t.lines.length - 1) * lead / 2;
       font(page, HT.spec.w, t.size, HT.spec.f, spacing, !!HT.spec.it);
       if (skipNow !== "heading") t.lines.forEach((l, i) => text(page, l, HT.at(20, tw), top + i * lead, HT.color, HT.align));
-      noteText(page, "heading", 20, top - t.size * 0.86, tw, (t.lines.length - 1) * lead + t.size * 1.16, { ...typeOf(HT, t.size, lead, spacing), caps: !quiet });
+      noteText(page, "heading", 20, top - t.size * 0.86, tw, (t.lines.length - 1) * lead + t.size * 1.16, { ...typeOf(HT, t.size, lead, spacing), caps: !!V.caps });
       const after = top + (t.lines.length - 1) * lead;
       noteText(page, "line", 20, after + t.size * 0.5 + 10 - 4.2 * LT.scale * 0.86, tw, 3 * 6.4 * LT.scale + 4.2 * LT.scale * 1.2, typeOf(LT, 4.2 * LT.scale, 6.4 * LT.scale));
-      if (quiet) rect(page, 20, after + 8, book.style === "lookbook" ? 16 : 22, book.style === "lookbook" ? 0.5 : 0.8, P.accent);
+      if (V.rule) rect(page, HT.align === "center" && V.align === "center" ? W / 2 - V.rule[0] / 2 : 20, after + 8, V.rule[0], V.rule[1], V.ruleInk ? on : P.accent);
       if (entry.line) {
         font(page, LT.spec.w, 4.2 * LT.scale, LT.spec.f, 0, !!LT.spec.it);
         const lines = wrap(page, entry.line, maxW);
         if (lines.length > 4) reportCut(page, "line", "line under the heading");
-        if (skipNow !== "line") lines.slice(0, 4).forEach((l, i) => text(page, i === 3 && lines.length > 4 ? ellipsize(page, `${l} …`, maxW) : (i === 3 ? ellipsize(page, l, maxW) : l), LT.at(20, maxW), after + t.size * 0.5 + 10 + i * 6.4 * LT.scale, LT.color, LT.align));
+        // A style that centres its chapter page centres this on the page, not on the column.
+        const lx = V.align === "center" ? (W - maxW) / 2 : 20;
+        if (skipNow !== "line") lines.slice(0, 4).forEach((l, i) => text(page, i === 3 && lines.length > 4 ? ellipsize(page, `${l} …`, maxW) : (i === 3 ? ellipsize(page, l, maxW) : l), LT.at(lx, maxW), after + t.size * 0.5 + 10 + i * 6.4 * LT.scale, LT.color, LT.align));
       }
-      if (book.style === "elegant") ELEGANT.foot(page, P, W, H, n);
-      if (book.style === "lookbook") LOOKBOOK.foot(page, P, W, H, n);
-      if (book.style === "modern") MODERN.foot(page, P, W, H, n, "", P.onAccent, P.onAccent);
+      if (V.foot) pageFoot(book, page, P, W, H, n, "", { ink: on, soft: on, divider: true });
       return;
     }
     S.ground(page, P, W, H);
     let y = M.top + 22;
     const floor = H - Math.max(M.bottom, 18) - 6;   // nothing below this: the foot lives there
     const lineOf = (v, fallback) => ((typeof v === "string" && v.trim()) ? v : fallback);
+    const labelGap = D.labelGap || 10;   // a tall heading pushes its small label higher
     if (entry.type === "about") {
-      S.label(page, lineOf(entry.label, "About the studio"), x, y - 10, P);
+      S.label(page, lineOf(entry.label, "About the studio"), x, y - labelGap, P);
       y = S.heading(page, lineOf(entry.heading, "Not just photos, a perspective"), x, y, P, maxW);
       // The About words take the studio's own font, colour, size and
       // alignment, and each paragraph may differ.
-      const light = book.style === "elegant" || book.style === "lookbook";
-      const aBase = { w: light ? 300 : 400, f: F.sans, size: light ? 4.0 : 3.9, lead: light ? 6.4 : (book.style === "modern" ? 6.2 : 6.3) };
+      const aBase = { w: D.about.w, f: D.about.f || F.sans, size: D.about.size, lead: D.about.lead };
       const aFmt = (entry.style && entry.style.about) || {};
       const AT = textFormat(entry.style, "about", aBase, P, P.ink);
       font(page, AT.spec.w, AT.spec.size * AT.scale, AT.spec.f, 0, !!AT.spec.it);
@@ -1400,7 +2103,7 @@
       }
     }
     if (entry.type === "services") {
-      S.label(page, lineOf(entry.label, "What I shoot"), x, y - 10, P);
+      S.label(page, lineOf(entry.label, "What I shoot"), x, y - labelGap, P);
       y = S.heading(page, lineOf(entry.heading, "Shoots, and who they are for"), x, y, P, maxW);
       y += 4;
       // Landscape pages are short and wide, so the list runs in two columns
@@ -1434,8 +2137,8 @@
         const cx = colX(col);
         if (e.kind === "service") {
           S.label(page, e.v.kicker || "", cx, cy, P);
-          font(page, book.style === "modern" ? 800 : 400, 5.4, book.style === "modern" ? F.heavy : book.style === "lookbook" ? F.sans : F.serif);
-          text(page, ellipsize(page, e.v.title || "", colW), cx, cy + 7, P.ink);
+          font(page, D.itemTitle.w, D.itemTitle.size || 5.4, D.itemTitle.f, D.itemTitle.sp || 0, !!D.itemTitle.it);
+          text(page, ellipsize(page, D.itemTitle.caps ? String(e.v.title || "").toUpperCase() : (e.v.title || ""), colW), cx, cy + 7, P.ink);
           cy = S.body(page, e.v.blurb || "", cx, cy + 13, P, colW, cy + 13 + 3 * 6.3) + 5;
         } else if (e.kind === "label") {
           S.label(page, "Packages", cx, cy + 2, P); cy += 9;
@@ -1453,7 +2156,7 @@
       if (dropped) console.warn(`Portfolio book: ${dropped} item(s) did not fit on the What I shoot page.`);
     }
     if (entry.type === "contact") {
-      S.label(page, lineOf(entry.label, "Let's make something"), x, y - 10, P);
+      S.label(page, lineOf(entry.label, "Let's make something"), x, y - labelGap, P);
       y = S.heading(page, lineOf(entry.heading, "Book a shoot"), x, y, P, maxW);
       y += 4;
       const c = cfg();
@@ -1474,7 +2177,7 @@
       }).filter((r) => r[2] && !hidden.has(r[0])).map((r) => r.slice(1));
       for (const [label, value, url] of rows) {
         S.label(page, label, x, y, P);
-        font(page, book.style === "modern" ? 600 : 400, 5.0, book.style === "elegant" || book.style === "vogue" ? F.serif : F.sans);
+        font(page, D.contactValue.w, D.contactValue.size || 5.0, D.contactValue.f, 0, !!D.contactValue.it);
         text(page, value, x, y + 7, P.ink);
         if (url) page.link(x, y + 1.5, Math.min(maxW, measure(page, value) + 2), 7, url);
         y += 16;
@@ -1491,10 +2194,7 @@
         page.link(qx, qy, size, size, `${siteUrl}/book/`);
       } catch (e) { /* the QR is a convenience; the links above still work */ }
     }
-    if (book.style === "elegant") ELEGANT.foot(page, P, W, H, n);
-    if (book.style === "lookbook") LOOKBOOK.foot(page, P, W, H, n);
-    if (book.style === "modern") MODERN.foot(page, P, W, H, n, "");
-    if (book.style === "vogue") VOGUE.foot(page, P, W, H, n, "");
+    pageFoot(book, page, P, W, H, n, "");
   }
 
   /* ---------- writing pages ------------------------------------------------------
@@ -1604,6 +2304,167 @@
       wayFor: { w: 400, f: F.sans, size: 3.4, lead: 4.8, color: "soft" },
       stepTitle: { w: 500, f: F.sans, start: 4.8, min: 4.2, lead: 1.15 },
       workNote: { w: 300, f: F.sans, size: 3.7, lead: 6.0 }
+    },
+    /* The seven after. Every size here was set against the widest and tallest
+       of the first four, so words that fit in those fit in these: a headline
+       no wider than Modern's capitals and no taller a line than Elegant's,
+       body text no wider than Inter at 3.6 mm on the same 5.8 mm line.
+       `quoteMark` is the face of the opening mark, `quoteScale` sets a wide
+       face's quote smaller, `rule.kind` is the ornament under a heading. */
+    noir: {
+      kicker: { w: 500, size: 2.5, f: F.jost, sp: 1.4, caps: true, color: "accentText" },
+      rule: { w: 34, h: 0.3 },
+      body: { w: 400, size: 3.8, f: F.jost, lead: 5.8 },
+      drop: null,
+      storyHead: { w: 300, f: F.jost, sp: 0.6, caps: true, start: 8.5, min: 6, lead: 1.22 },
+      storyIntro: { w: 300, f: F.jost, start: 4.4, min: 4.0, lead: 6.4, color: "soft" },
+      noteTitle: { w: 300, f: F.jost, sp: 0.5, caps: true, start: 6.5, min: 5, lead: 1.2 },
+      quote: { w: 300, f: F.jost, lead: 1.3 }, quoteAlign: "center", quoteMark: { w: 300, f: F.jost },
+      quoteName: { w: 500, size: 2.9, f: F.jost, sp: 1.2, caps: true },
+      quoteRole: { w: 400, size: 3.2, f: F.jost },
+      letterHead: { w: 300, f: F.jost, sp: 0.6, caps: true, start: 9, min: 6, lead: 1.2 },
+      letterBody: { w: 400, size: 3.9, f: F.jost, lead: 6.1 },
+      sign: { w: 300, size: 5.0, f: F.jost },
+      signLine: { w: 500, size: 2.5, f: F.jost, sp: 1.0, caps: true },
+      featureSub: { w: 400, f: F.jost, sp: 0.5, caps: true, start: 4.4, min: 3.8, lead: 1.2, color: "ink" },
+      smallLabel: { w: 500, size: 2.2, f: F.jost, sp: 0.8, caps: true },
+      wayName: { w: 300, f: F.jost, sp: 0.4, caps: true, start: 5.2, min: 4.2, lead: 1.2 },
+      wayFor: { w: 400, f: F.jost, size: 3.5, lead: 4.8, color: "soft" },
+      stepTitle: { w: 400, f: F.jost, sp: 0.3, caps: true, start: 4.6, min: 4.0, lead: 1.18 },
+      workNote: { w: 400, f: F.jost, size: 3.9, lead: 6.0 }
+    },
+    swiss: {
+      kicker: { w: 600, size: 2.6, f: F.sans, sp: 0.1, caps: false, color: "ink" },
+      rule: { w: 3.2, h: 3.2 },
+      body: { w: 400, size: 3.6, f: F.sans, lead: 5.8 },
+      drop: null,
+      storyHead: { w: 700, f: F.sans, sp: -0.35, caps: false, start: 10, min: 7, lead: 1.06 },
+      storyIntro: { w: 500, f: F.sans, start: 4.2, min: 3.9, lead: 6.2, color: "ink" },
+      noteTitle: { w: 700, f: F.sans, sp: -0.25, caps: false, start: 7, min: 5.2, lead: 1.08 },
+      quote: { w: 600, f: F.sans, sp: -0.2, lead: 1.18 }, quoteAlign: "left", quoteMark: { w: 700, f: F.sans },
+      quoteName: { w: 600, size: 3.6, f: F.sans },
+      quoteRole: { w: 400, size: 3.2, f: F.sans },
+      letterHead: { w: 700, f: F.sans, sp: -0.35, caps: false, start: 10, min: 6.5, lead: 1.06 },
+      letterBody: { w: 400, size: 3.8, f: F.sans, lead: 6.1 },
+      sign: { w: 600, size: 4.0, f: F.sans },
+      signLine: { w: 400, size: 2.8, f: F.sans },
+      featureSub: { w: 700, f: F.sans, sp: -0.1, caps: false, start: 4.8, min: 4.2, lead: 1.1, color: "ink" },
+      smallLabel: { w: 600, size: 2.2, f: F.sans, sp: 0.2, caps: true },
+      wayName: { w: 700, f: F.sans, sp: -0.2, start: 5.4, min: 4.4, lead: 1.1 },
+      wayFor: { w: 400, f: F.sans, size: 3.4, lead: 4.8, color: "soft" },
+      stepTitle: { w: 700, f: F.sans, sp: -0.15, start: 4.8, min: 4.2, lead: 1.14 },
+      workNote: { w: 500, f: F.sans, size: 3.8, lead: 6.0 }
+    },
+    pinboard: {
+      kicker: { w: 500, size: 2.4, f: F.plex, sp: 0.4, caps: true, color: "soft" },
+      rule: { w: 24, h: 0.5, kind: "wave" },
+      body: { w: 400, size: 3.6, f: F.sans, lead: 5.8 },
+      drop: null,
+      storyHead: { w: 700, f: F.hand, caps: false, start: 11.8, min: 9, lead: 1.0 },
+      storyIntro: { w: 500, f: F.hand, start: 5.8, min: 5.2, lead: 6.6, color: "soft" },
+      noteTitle: { w: 700, f: F.hand, caps: false, start: 9.4, min: 7, lead: 1.0 },
+      quote: { w: 600, f: F.hand, lead: 1.08 }, quoteAlign: "left", quoteMark: { w: 700, f: F.hand },
+      quoteName: { w: 700, size: 5.6, f: F.hand },
+      quoteRole: { w: 500, size: 2.4, f: F.plex, sp: 0.4, caps: true },
+      letterHead: { w: 700, f: F.hand, caps: false, start: 12.6, min: 9, lead: 1.0 },
+      letterBody: { w: 400, size: 3.8, f: F.sans, lead: 6.1 },
+      sign: { w: 700, size: 7.5, f: F.hand },
+      signLine: { w: 500, size: 2.4, f: F.plex, sp: 0.4, caps: true },
+      featureSub: { w: 700, f: F.hand, caps: false, start: 6.6, min: 5.8, lead: 1.0, color: "ink" },
+      smallLabel: { w: 500, size: 2.1, f: F.plex, sp: 0.4, caps: true },
+      wayName: { w: 700, f: F.hand, start: 7.6, min: 6.2, lead: 1.0 },
+      wayFor: { w: 500, f: F.hand, size: 4.6, lead: 5.0, color: "soft" },
+      stepTitle: { w: 700, f: F.hand, start: 6.6, min: 5.8, lead: 1.0 },
+      workNote: { w: 400, f: F.sans, size: 3.8, lead: 6.0 }
+    },
+    dossier: {
+      kicker: { w: 500, size: 2.4, f: F.plex, sp: 0.5, caps: true, color: "accentText" },
+      rule: { w: 22, h: 0.4, kind: "dash" },
+      body: { w: 400, size: 3.6, f: F.sans, lead: 5.8 },
+      drop: null,
+      storyHead: { w: 500, f: F.plex, caps: true, start: 7.4, min: 5.4, lead: 1.2 },
+      storyIntro: { w: 400, f: F.plex, start: 3.3, min: 3.1, lead: 5.6, color: "soft" },
+      noteTitle: { w: 500, f: F.plex, caps: true, start: 5.4, min: 4.2, lead: 1.2 },
+      quote: { w: 400, f: F.plex, lead: 1.35 }, quoteAlign: "left", quoteMark: { w: 400, f: F.plex }, quoteScale: 0.76,
+      quoteName: { w: 600, size: 3.0, f: F.plex, sp: 0.4, caps: true },
+      quoteRole: { w: 400, size: 2.6, f: F.plex },
+      letterHead: { w: 500, f: F.plex, caps: true, start: 7.4, min: 5.2, lead: 1.2 },
+      letterBody: { w: 400, size: 3.8, f: F.sans, lead: 6.1 },
+      sign: { w: 500, size: 3.8, f: F.plex },
+      signLine: { w: 500, size: 2.4, f: F.plex, sp: 0.5, caps: true },
+      featureSub: { w: 600, f: F.plex, caps: true, start: 3.8, min: 3.4, lead: 1.25, color: "ink" },
+      smallLabel: { w: 500, size: 2.1, f: F.plex, sp: 0.4, caps: true },
+      wayName: { w: 600, f: F.plex, caps: true, start: 4.4, min: 3.6, lead: 1.22 },
+      wayFor: { w: 400, f: F.plex, size: 2.6, lead: 4.6, color: "soft" },
+      stepTitle: { w: 600, f: F.plex, caps: true, start: 3.9, min: 3.4, lead: 1.2 },
+      workNote: { w: 400, f: F.sans, size: 3.8, lead: 6.0 }
+    },
+    poster: {
+      kicker: { w: 700, size: 2.5, f: F.sans, sp: 0.5, caps: true, color: "accentText" },
+      rule: { w: 16, h: 2.2 },
+      body: { w: 400, size: 3.6, f: F.sans, lead: 5.8 },
+      drop: null,
+      storyHead: { w: 400, f: F.poster, sp: 0.15, caps: true, start: 11.5, min: 8.6, lead: 1.02 },
+      storyIntro: { w: 600, f: F.sans, start: 4.1, min: 3.8, lead: 6.2, color: "ink" },
+      noteTitle: { w: 400, f: F.poster, sp: 0.1, caps: true, start: 8.5, min: 6.4, lead: 1.04 },
+      quote: { w: 400, f: F.poster, sp: 0.1, lead: 1.14 }, quoteAlign: "left", quoteMark: { w: 400, f: F.poster },
+      quoteName: { w: 700, size: 3.2, f: F.sans, sp: 0.4, caps: true },
+      quoteRole: { w: 400, size: 3.2, f: F.sans },
+      letterHead: { w: 400, f: F.poster, sp: 0.15, caps: true, start: 12, min: 8, lead: 1.02 },
+      letterBody: { w: 400, size: 3.8, f: F.sans, lead: 6.1 },
+      sign: { w: 400, size: 6, f: F.poster },
+      signLine: { w: 700, size: 2.4, f: F.sans, sp: 0.5, caps: true },
+      featureSub: { w: 400, f: F.poster, sp: 0.1, caps: true, start: 6, min: 5.2, lead: 1.06, color: "ink" },
+      smallLabel: { w: 700, size: 2.1, f: F.sans, sp: 0.4, caps: true },
+      wayName: { w: 400, f: F.poster, sp: 0.1, caps: true, start: 7, min: 5.6, lead: 1.06 },
+      wayFor: { w: 500, f: F.sans, size: 3.3, lead: 4.8, color: "soft" },
+      stepTitle: { w: 400, f: F.poster, sp: 0.1, caps: true, start: 6, min: 5.2, lead: 1.08 },
+      workNote: { w: 500, f: F.sans, size: 3.8, lead: 6.0 }
+    },
+    atelier: {
+      kicker: { w: 500, size: 2.3, f: F.geo, sp: 1.3, caps: true, color: "accentText" },
+      rule: { w: 26, h: 0.3, kind: "diamond" },
+      body: { w: 500, size: 4.2, f: F.cormorant, lead: 5.8 },
+      drop: "accentText",
+      storyHead: { w: 500, f: F.cormorant, it: true, caps: false, start: 11.5, min: 8, lead: 1.02 },
+      storyIntro: { w: 500, f: F.cormorant, it: true, start: 5.1, min: 4.7, lead: 6.6, color: "soft" },
+      noteTitle: { w: 500, f: F.cormorant, it: true, caps: false, start: 8.4, min: 6, lead: 1.05 },
+      quote: { w: 400, f: F.cormorant, it: true, lead: 1.15 }, quoteAlign: "center", quoteMark: { w: 400, f: F.cormorant },
+      quoteName: { w: 600, size: 2.7, f: F.geo, sp: 1.2, caps: true },
+      quoteRole: { w: 500, size: 4, f: F.cormorant, it: true },
+      letterHead: { w: 500, f: F.cormorant, it: true, caps: false, start: 12, min: 8, lead: 1.04 },
+      letterBody: { w: 500, size: 4.4, f: F.cormorant, lead: 6.3 },
+      sign: { w: 500, size: 6.4, f: F.cormorant, it: true },
+      signLine: { w: 500, size: 2.3, f: F.geo, sp: 1.2, caps: true },
+      featureSub: { w: 600, f: F.cormorant, caps: false, start: 5.8, min: 5, lead: 1.08, color: "ink" },
+      smallLabel: { w: 500, size: 2.1, f: F.geo, sp: 0.9, caps: true },
+      wayName: { w: 500, f: F.cormorant, it: true, start: 6.8, min: 5.4, lead: 1.06 },
+      wayFor: { w: 500, f: F.cormorant, it: true, size: 4.0, lead: 5.0, color: "soft" },
+      stepTitle: { w: 600, f: F.cormorant, start: 5.8, min: 5, lead: 1.08 },
+      num: { w: 300, f: F.serif },   // Cormorant's own figures are old-style: a 3 would hang into the line below
+      workNote: { w: 500, f: F.cormorant, size: 4.4, lead: 6.0 }
+    },
+    gazette: {
+      kicker: { w: 600, size: 2.3, f: F.sans, sp: 0.6, caps: true, color: "accentText" },
+      rule: { w: 26, h: 0.6, kind: "double" },
+      body: { w: 400, size: 3.7, f: F.news, lead: 5.8 },
+      drop: "ink",
+      storyHead: { w: 800, f: F.playfair, caps: false, start: 10.2, min: 7.4, lead: 1.1 },
+      storyIntro: { w: 400, f: F.news, it: true, start: 4.5, min: 4.1, lead: 6.4, color: "ink" },
+      noteTitle: { w: 800, f: F.playfair, caps: false, start: 7.2, min: 5.4, lead: 1.12 },
+      quote: { w: 500, f: F.playfair, it: true, lead: 1.22 }, quoteAlign: "left", quoteMark: { w: 800, f: F.playfair },
+      quoteName: { w: 700, size: 3.6, f: F.playfair },
+      quoteRole: { w: 600, size: 2.3, f: F.sans, sp: 0.6, caps: true },
+      letterHead: { w: 800, f: F.playfair, caps: false, start: 10.5, min: 7, lead: 1.1 },
+      letterBody: { w: 400, size: 3.9, f: F.news, lead: 6.1 },
+      sign: { w: 500, size: 5.2, f: F.playfair, it: true },
+      signLine: { w: 600, size: 2.3, f: F.sans, sp: 0.6, caps: true },
+      featureSub: { w: 700, f: F.playfair, caps: false, start: 5.2, min: 4.5, lead: 1.12, color: "ink" },
+      smallLabel: { w: 600, size: 2.1, f: F.sans, sp: 0.5, caps: true },
+      wayName: { w: 800, f: F.playfair, start: 5.8, min: 4.7, lead: 1.12 },
+      wayFor: { w: 400, f: F.news, it: true, size: 3.5, lead: 4.8, color: "soft" },
+      stepTitle: { w: 700, f: F.playfair, start: 5.0, min: 4.3, lead: 1.14 },
+      workNote: { w: 400, f: F.news, size: 3.9, lead: 6.0 }
     }
   };
   const DETAIL_TYPE = { w: 400, f: F.sans };
@@ -1612,7 +2473,14 @@
     elegant: { w: 400, f: F.serif, it: true, start: 3.6, min: 3.2 },
     modern: { w: 400, f: F.sans, start: 3.2, min: 2.8 },
     vogue: { w: 500, f: F.geo, start: 3.0, min: 2.6 },
-    lookbook: { w: 400, f: F.geo, start: 2.8, min: 2.5 }
+    lookbook: { w: 400, f: F.geo, start: 2.8, min: 2.5 },
+    noir: { w: 400, f: F.jost, sp: 0.3, start: 3.2, min: 2.8 },
+    swiss: { w: 500, f: F.sans, start: 3.1, min: 3.1 },
+    pinboard: { w: 500, f: F.hand, start: 5.2, min: 4.2 },
+    dossier: { w: 400, f: F.plex, start: 2.7, min: 2.3 },
+    poster: { w: 600, f: F.sans, start: 3.2, min: 2.8 },
+    atelier: { w: 500, f: F.cormorant, it: true, start: 4.2, min: 3.6 },
+    gazette: { w: 400, f: F.news, it: true, start: 3.5, min: 3.1 }
   };
   const MARKER = "NO WORDS ON THIS PAGE YET";
 
@@ -1840,6 +2708,14 @@
     { key: "oswald", name: "Oswald", kind: "Condensed", family: "Oswald, 'Arial Narrow', sans-serif", range: [200, 700], css: "Oswald:wght@200..700" },
     { key: "plexmono", name: "IBM Plex Mono", kind: "Mono", family: F.plex, weights: [400, 500, 600, 700] }
   ];
+  // Faces only a style is set in. They are not in the studio's menu, and load
+  // the first time a book in that style is drawn, like the menu's own.
+  const STYLE_FACES = [
+    { key: "st-inter", family: F.sans, weights: [700, 800], css: "Inter:wght@700;800" },
+    { key: "st-caveat", family: F.hand, range: [400, 700], css: "Caveat:wght@400..700" },
+    { key: "st-anton", family: F.poster, weights: [400], css: "Anton" },
+    { key: "st-newsreader", family: F.news, range: [300, 700], css: "Newsreader:ital,wght@0,300..700;1,300..700" }
+  ];
   const ALIGNS = ["left", "center", "right", "justify"];
   const fontByKey = (key) => FONT_LIST.find((f) => f.key === key) || null;
   function weightFor(font, w, italic) {
@@ -1897,7 +2773,7 @@
   }
   const fontLoads = new Map();
   function loadFont(key) {
-    const font = fontByKey(key);
+    const font = fontByKey(key) || STYLE_FACES.find((f) => f.key === key);
     if (!font || !font.css) return Promise.resolve();
     if (!fontLoads.has(key)) {
       fontLoads.set(key, new Promise((resolve) => {
@@ -1910,7 +2786,7 @@
       }).then(() => {
         // The stylesheet only names the files; fetch the faces canvas will use.
         const fam = font.family.split(",")[0].trim();
-        const ws = new Set([300, 400, 500, 600, 700, 800].map((w) => weightFor(font, w, false)));
+        const ws = new Set([300, 400, 500, 600, 700, 800, 900].map((w) => weightFor(font, w, false)));
         const its = new Set([400, 500].map((w) => weightFor(font, w, true)));
         return Promise.all([...[...ws].map((w) => `${w} 20px ${fam}`), ...[...its].map((w) => `italic ${w} 20px ${fam}`)]
           .map((d) => document.fonts.load(d, "Abc€“”").catch(() => null)));
@@ -1931,7 +2807,9 @@
     for (const pg of (book && book.pages) || []) take(pg && pg.style);
     return [...keys];
   }
-  const ensureBookFonts = (book) => Promise.all(bookFontKeys(book).map(loadFont));
+  // The faces a book needs: those its words were given, and those its style is set in.
+  const ensureBookFonts = (book) => Promise.all([...bookFontKeys(book), ...(TR(book && book.style).fonts || [])].map(loadFont));
+  const ensureStyleFonts = () => Promise.all(Object.values(TRAITS).flatMap((t) => t.fonts || []).map(loadFont));
 
   let measurePage = null;
   const measurer = () => measurePage || (measurePage = API.newPdfPage(72, { w: 10, h: 10 }));
@@ -2113,13 +2991,13 @@
   }
 
   // A photos page's one caption, measured like the writing pages.
-  function captionFit(entry, width, spec) {
+  function captionFit(entry, width, spec, align = "left") {
     if (!entry || !oneParagraph(entry.caption).length) return null;
     const f = (entry.style && entry.style.caption) || {};
     const styled = styledSpec(spec, f);
     const sc = sizeScale(f);
     const r = fitBlock(measurer(), entry.caption, width, 1, styled, spec.start * sc, spec.min * sc, false);
-    return { ...r, spec: styled, color: f.color, align: f.align === "center" || f.align === "right" ? f.align : "left", width };
+    return { ...r, spec: styled, color: f.color, align: f.align === "center" || f.align === "right" || f.align === "left" ? f.align : align, width };
   }
   function drawCaption(page, r, x, y, spec, color, P) {
     const s = r.spec || spec;
@@ -2164,7 +3042,7 @@
       if (showNums()) text(page, String(n).padStart(2, "0"), B.left ? B.left / 2 : W - B.right / 2, H - 8, colors.on, "center");
     }
   }
-  const bandColors = (style, P) => (style === "vogue" || style === "lookbook" ? { band: P.white, on: P.ink } : { band: P.deep, on: P.onDeep });
+  const bandColors = (style, P) => { const b = TR(style).bands; return b === "white" ? { band: P.white, on: P.ink } : b === "paper" ? { band: P.paper, on: P.ink } : { band: P.deep, on: P.onDeep }; };
   function bandedPhotoPage(page, entry, P, W, H, imgs, shots, shoots, n, cap, style, gap) {
     const B = bandsFor(entry, !!cap);
     rect(page, 0, 0, W, H, pageBgOf(bookNow, entry, P, P.white));
@@ -2280,16 +3158,34 @@
            bottom: { e: [20, 112, 257, 74], m: [0, 106, 297, 86], v: [0, 118, 297, 92] } }
     }
   };
-  const boxFor = (type, st, L, at) => BOXES[type][L ? "L" : "P"][at][st === "elegant" || st === "lookbook" ? "e" : st === "modern" ? "m" : "v"];
+  const boxFor = (type, st, L, at) => BOXES[type][L ? "L" : "P"][at][TR(st).boxes];
+
+  // The short rule under a heading, as operations: a plain bar in most styles,
+  // or the style's own ornament.
+  function ruleOps(R, x, y, c) {
+    const kind = R.kind || "bar";
+    if (kind === "double") return [{ k: "rect", x, y: y - 0.8, w: R.w, h: 0.6, c }, { k: "rect", x, y: y + 0.35, w: R.w, h: 0.2, c }];
+    if (kind === "diamond") return [{ k: "path", shape: "diamond", corner: 0, x, y: y - 1.1, w: 2.2, h: 2.2, c }, { k: "rect", x: x + 3.6, y: y - 0.1, w: Math.max(0, R.w - 3.6), h: 0.2, c }];
+    if (kind === "dash") return Array.from({ length: Math.max(1, Math.floor((R.w + 1.4) / 4.4)) }, (_, i) => ({ k: "rect", x: x + i * 4.4, y: y - R.h / 2, w: 3, h: R.h, c }));
+    if (kind === "wave") return [{ k: "stroke", pts: Array.from({ length: 25 }, (_, i) => [x + (i / 24) * R.w, y + Math.sin((i / 24) * Math.PI * 5) * 0.9]), w: R.h, c }];
+    return [{ k: "rect", x, y: y - R.h / 2, w: R.w, h: R.h, c }];
+  }
+  function paintOps(page, ops) {
+    for (const o of ops) {
+      if (o.k === "rect") rect(page, o.x, o.y, o.w, o.h, o.c);
+      else if (o.k === "path") { tracePath(page.ctx, o.shape, page.u(o.x), page.u(o.y), page.u(o.w), page.u(o.h), o.corner); page.ctx.fillStyle = o.c; page.ctx.fill(); }
+      else if (o.k === "stroke") strokeOp(page, o);
+    }
+  }
 
   // The plan for one writing page: drawing operations in mm, the cuts, and
   // for the editor, how each field fared. Laid out on the A4 frame, then
   // placed on the book's paper.
   function planWriting(book, entry) {
     const G = geometry(book);
-    const st = WTYPE[book.style] ? book.style : "modern";
+    const st = styleKey(book), D = TR(st);
     const T = WTYPE[st];
-    const P = colourway(book.colourway);
+    const P = paletteFor(book);
     const L = G.L, W = G.Wa, H = G.Ha;
     const page = measurer();
     const plan = { ops: [], cuts: [], fields: {}, foot: {} };
@@ -2373,13 +3269,15 @@
       });
       fieldNow = null;
     };
-    const rule = (x, y, color = P.accent) => rectOp(x, y - T.rule.h / 2, T.rule.w, T.rule.h, color);
+    const rule = (x, y, color = P.accent) => ruleOps(T.rule, x, y, color).forEach(op);
     const ground = () => {
-      if (st === "elegant") rectOp(0, 0, W, H, pageBgOf(book, entry, P, P.paper));
-      else { rectOp(0, 0, W, H, pageBgOf(book, entry, P, P.white)); if (st === "modern") rectOp(0, 0, 6, H, P.accent); }
+      rectOp(0, 0, W, H, pageBgOf(book, entry, P, D.ground === "paper" ? P.paper : P.white));
+      if (D.bar) rectOp(0, 0, D.bar, H, P.accent);
     };
-    const photo = (box, mode, empty, i = 0) => op({ k: "photo", i, x: box[0], y: box[1], w: box[2], h: box[3], mode, frame: st === "elegant" ? P.rule : null, empty });
+    const photo = (box, mode, empty, i = 0) => op({ k: "photo", i, x: box[0], y: box[1], w: box[2], h: box[3], mode, frame: D.frame ? P.rule : null, deco: D.deco || null, seed: entry.type.length * 5 + i * 3, empty });
     const marker = (x, y, color = P.soft) => put(MARKER, x, y, { w: 500, f: F.plex, sp: 0.4 }, 3.2, color, "center");
+    // A newspaper's hairline between two columns of words.
+    const colRules = (cols) => { if (!D.colRule) return; for (let i = 1; i < cols.length; i++) { const a = cols[i - 1], b = cols[i], mid = (a.x + a.w + b.x) / 2, top = Math.max(a.top, b.top) - 3.4; rectOp(mid - 0.1, top, 0.2, Math.min(a.bottom, b.bottom) - top + 1, P.rule); } };
     const kicker = (s, x, y, w) => block("kicker", s, x, y, w, 1, T.kicker, T.kicker.size, T.kicker.size, 0, colour(T.kicker.color));
     const has = (...keys) => keys.some((k) => oneParagraph(entry[k]).length);
     const beside = (box) => ({ left: box[0] + box[2] + 12, right: box[0] - 12 });   // text edges next to a side photo
@@ -2422,13 +3320,14 @@
         cols = w >= 150 ? [{ x, w: (w - 8) / 2, top, bottom }, { x: x + (w - 8) / 2 + 8, w: (w - 8) / 2, top, bottom }] : [{ x, w, top, bottom }];
       }
       body("body", entry.body, cols, T.body, T.drop);
+      colRules(cols);
       if (!has("kicker", "headline", "intro", "body")) marker(cols[0].x + cols[0].w / 2, (cols[0].top + cols[0].bottom) / 2);
     }
 
     if (entry.type === "note") {
       ground();
       const box = boxFor("note", st, L, at);
-      const fitMode = st !== "elegant" ? "crop" : at === "left" ? "fit-right" : at === "right" ? "fit-left" : "fit";
+      const fitMode = !D.noteFit ? "crop" : at === "left" ? "fit-right" : at === "right" ? "fit-left" : "fit";
       photo(box, fitMode, "NO PHOTO CHOSEN");
       const TT = T.noteTitle;
       const detail = (x, lastY, w, maxLines) => {
@@ -2472,7 +3371,7 @@
     if (entry.type === "quote") {
       // Without a photo, Modern and Vogue turn the page over to the colour: a
       // pause between chapters. Elegant stays on paper.
-      const solid = !hasPhoto && st !== "elegant";
+      const solid = !hasPhoto && !!D.quoteSolid;
       if (solid) rectOp(0, 0, W, H, P.accent); else ground();
       const on = solid ? P.onAccent : P.ink, soft = solid ? P.onAccent : P.soft;
       let zone;
@@ -2495,12 +3394,12 @@
       const said = String(entry.quote || "").replace(QUOTE_MARKS, "");
       const scaled = (field, spec) => { const sc = sizeScale(fmt(field)); const st2 = styled(field, spec); return sc === 1 ? st2 : { ...st2, size: st2.size * sc }; };
       const NAME = scaled("name", T.quoteName), ROLE = scaled("role", T.quoteRole);
-      const qsc = sizeScale(fmt("quote"));
+      const qsc = sizeScale(fmt("quote")) * (T.quoteScale || 1);
       zone.start *= qsc; zone.min *= qsc;
       const nameR = has("name") ? fitBlock(page, entry.name, zone.w, 1, NAME, NAME.size, NAME.size, !!NAME.caps) : null;
       const roleR = has("role") ? fitBlock(page, entry.role, zone.w, 1, ROLE, ROLE.size, ROLE.size, !!ROLE.caps) : null;
       const attrH = (nameR || roleR) ? 9 + (nameR ? 8 : 0) + (roleR ? (nameR ? 5.6 : 8) : 0) : 0;
-      const heightAt = (r) => (st === "modern" ? 9 : r.size * 1.1) + 7 + (r.lines.length - 1) * r.size * Q.lead + r.size * 0.72 + attrH;
+      const heightAt = (r) => (D.quoteChip ? 9 : r.size * 1.1) + 7 + (r.lines.length - 1) * r.size * Q.lead + r.size * 0.72 + attrH;
       // The quote shrinks until it fits its line limit AND the height of its
       // zone; at the smallest size it gives up lines, ending with "…".
       let r = null;
@@ -2519,19 +3418,19 @@
         marker(zone.x + zone.w / 2, (zone.top + zone.bottom) / 2, soft);
       } else {
         const lead = r.size * Q.lead;
-        const markH = st === "modern" ? 9 : r.size * 1.1;
+        const markH = D.quoteChip ? 9 : r.size * 1.1;
         const top = zone.top + Math.max(0, (zone.bottom - zone.top - heightAt(r)) / 2);
         // The mark and the rule follow the quote's alignment.
         const markAt = (w) => (qAlign === "center" ? zone.x + (zone.w - w) / 2 : qAlign === "right" ? zone.x + zone.w - w : zone.x);
-        if (st === "modern") {
+        if (D.quoteChip) {
           rectOp(markAt(12), top, 12, 9, solid ? P.onAccent : P.accent);
           put("“", markAt(12) + 6, top + 11.2, { w: 800, f: F.heavy }, 11, solid ? P.accent : P.onAccent, "center");
         } else {
-          const ms = r.size * 2.2;
-          font(page, 300, ms, F.serif);
+          const ms = r.size * 2.2, QM = T.quoteMark || { w: 300, f: F.serif };
+          font(page, QM.w, ms, QM.f);
           const m = page.ctx.measureText("“");
           const asc = m.actualBoundingBoxAscent / page.u(1), mw = m.width / page.u(1);
-          put("“", qAlign === "center" ? zone.x + zone.w / 2 : qAlign === "right" ? zone.x + zone.w : zone.x - 0.5, top + asc, { w: 300, f: F.serif }, ms, solid ? P.onAccent : accentText(P), qAlign === "center" ? "center" : qAlign === "right" ? "right" : "left");
+          put("“", qAlign === "center" ? zone.x + zone.w / 2 : qAlign === "right" ? zone.x + zone.w : zone.x - 0.5, top + asc, QM, ms, solid ? P.onAccent : accentText(P), qAlign === "center" ? "center" : qAlign === "right" ? "right" : "left");
           void mw;
         }
         const b1 = top + markH + 7 + r.size * 0.72;
@@ -2550,7 +3449,7 @@
 
     if (entry.type === "letter") {
       ground();
-      const x = L ? 20 : (st === "modern" ? 20 : 40), w = L ? 257 : 130;
+      const x = L ? 20 : D.letterX, w = L ? 257 : 130;
       const K = L ? 30 : 46;
       kicker(entry.kicker, x, K, w);
       const LH = T.letterHead;
@@ -2559,6 +3458,7 @@
       const top = hLast + 18.5;
       const cols = L ? [{ x: 20, w: 121.5, top, bottom: 184 }, { x: 155.5, w: 121.5, top, bottom: 164 }] : [{ x, w, top, bottom: 244 }];
       body("body", entry.body, cols, T.letterBody, T.drop);
+      colRules(cols);
       // The signature sits at a fixed place, whether the letter is short or long.
       const sx = L ? 155.5 : x, sw = L ? 121.5 : w, nameY = L ? 176 : 258;
       block("signName", entry.signName, sx, nameY, sw, 1, T.sign, T.sign.size, T.sign.size, 0, P.ink);
@@ -2580,13 +3480,13 @@
         const photoLeft = (i === 0) === (first === "left");
         let pbox, tx, tw;
         if (!L) {
-          const inset = st === "elegant" || st === "lookbook";
+          const inset = D.boxes === "e";
           const pw = inset ? 80 : 100;
           if (photoLeft) { pbox = inset ? [20, row.y, 80, row.h] : [0, row.y, pw, row.h]; tx = 112; tw = 78; }
           else { pbox = inset ? [110, row.y, 80, row.h] : [110, row.y, pw, row.h]; tx = 20; tw = 78; }
         } else {
-          if (photoLeft) { pbox = (st === "elegant" || st === "lookbook") ? [20, row.y, 126, row.h] : [0, row.y, 146, row.h]; tx = 158; tw = 119; }
-          else { pbox = (st === "elegant" || st === "lookbook") ? [151, row.y, 126, row.h] : [151, row.y, 146, row.h]; tx = 20; tw = 119; }
+          if (photoLeft) { pbox = D.boxes === "e" ? [20, row.y, 126, row.h] : [0, row.y, 146, row.h]; tx = 158; tw = 119; }
+          else { pbox = D.boxes === "e" ? [151, row.y, 126, row.h] : [151, row.y, 146, row.h]; tx = 20; tw = 119; }
         }
         photo(pbox, "crop", "NO PHOTO CHOSEN", i);
         const n = i + 1;
@@ -2607,7 +3507,7 @@
     const WHO_ORDER = ["you", "together", "studio"];
     // Three squares and a word: which one is filled says who does this step.
     const whoTag = (x, y, who, color) => {
-      WHO_ORDER.forEach((k, i) => rectOp(x + i * 2.6, y - 1.9, 1.9, 1.9, k === who ? (st === "modern" ? accentText(P) : P.ink) : P.rule));
+      WHO_ORDER.forEach((k, i) => rectOp(x + i * 2.6, y - 1.9, 1.9, 1.9, k === who ? (D.tagAccent ? accentText(P) : P.ink) : P.rule));
       const spec = T.smallLabel;
       put(WHO_WORD[who].toUpperCase(), x + 8.9, y, spec, spec.size, color || P.ink);
     };
@@ -2691,7 +3591,8 @@
         floor = hairY - 7;
       } else report("note", { kind: "block", empty: true });
       const numSize = (L ? { 3: 30, 4: 25, 5: 19, 6: 13 } : { 3: 22, 4: 18, 5: 14, 6: 11.5 })[n] || (L ? 19 : 14);
-      const NUM = { w: T.storyHead.w, f: T.storyHead.f, sp: st === "modern" ? -0.2 : 0 };
+      // The steps' numbers are set in the heading's face, unless its figures hang below the line.
+      const NUM = { w: (T.num || T.storyHead).w, f: (T.num || T.storyHead).f, sp: D.numSp || 0 };
       font(page, NUM.w, numSize, NUM.f, NUM.sp);
       const numW = Math.max(...steps.map((s2, i) => measure(page, String(i + 1).padStart(2, "0"))), measure(page, "00"));
       const numCap = page.ctx.measureText("00").actualBoundingBoxAscent / page.u(1);
@@ -2926,16 +3827,16 @@
 
   function planFree(book, entry, ground = null) {
     const G = geometry(book);
-    const st = WTYPE[book.style] ? book.style : "modern";
+    const st = styleKey(book), D = TR(st);
     const T = WTYPE[st];
-    const P = colourway(book.colourway);
+    const P = paletteFor(book);
     const page = measurer();
     const W = G.Wa, H = G.Ha;                      // blocks are fractions of this frame
     const plan = { ops: [], cuts: [], fields: {}, foot: {}, free: true };
     const op = (o) => plan.ops.push(o);
     const colour = (role) => (role === "accentText" ? accentText(P) : P[role]);
     // A cover from scratch takes the style's cover ground, not the book's page colour.
-    op({ k: "rect", x: 0, y: 0, w: W, h: H, c: ground ? (isFillish(entry.bg) ? blockColor(entry.bg, P, ground) : ground) : pageBgOf(book, entry, P, st === "elegant" ? P.paper : P.white) });
+    op({ k: "rect", x: 0, y: 0, w: W, h: H, c: ground ? (isFillish(entry.bg) ? blockColor(entry.bg, P, ground) : ground) : pageBgOf(book, entry, P, D.ground === "paper" ? P.paper : P.white) });
     freeBlocks(entry).forEach((b, i) => {
       if (!b || !FREE_KINDS.includes(b.k)) return;
       const box = blockBox(b, W, H);
@@ -2953,7 +3854,7 @@
           k: "photo", shot: (b.p && b.p.id) ? b.p : null, x: box.x, y: box.y, w: box.w, h: box.h,
           mode: b.p && b.p.fit === "whole" ? "fit" : "crop", rot: turn, empty: "CHOOSE A PHOTO",
           shape: b.shape ? shapeOf(b) : (typeof b.corner === "number" && b.corner > 0 ? "rect" : null), corner: cornerOf(b),
-          frame: b.edge ? blockColor(b.edge, P, P.rule) : (st === "elegant" ? P.rule : null), frameT: THICKS[b.edgeWidth] || 0.2
+          frame: b.edge ? blockColor(b.edge, P, P.rule) : (D.frame ? P.rule : null), frameT: THICKS[b.edgeWidth] || 0.2
         });
         return;
       }
@@ -3062,6 +3963,7 @@
         around(o, () => {
           const shaped = o.shape && o.shape !== "rect" || (o.shape === "rect" && o.corner > 0);
           if (shaped) { page.ctx.save(); tracePath(page.ctx, o.shape, page.u(o.x), page.u(o.y), page.u(o.w), page.u(o.h), o.corner); page.ctx.clip(); }
+          if (o.deco && !shaped) { decoPhoto(page, P, o.deco, img, shot, o.x, o.y, o.w, o.h, o.mode, o.seed || 0); return; }
           const r = o.mode === "crop" ? drawPhoto(page, img, shot, o.x, o.y, o.w, o.h) : fitPhoto(page, img, shot, o.x, o.y, o.w, o.h, o.mode === "fit-right" ? "right" : o.mode === "fit-left" ? "left" : "center");
           if (shaped) page.ctx.restore();
           else if (o.frame) frame(page, r.x, r.y, r.w, r.h, o.frame, o.frameT || 0.2);
@@ -3081,10 +3983,9 @@
   // The caption width a photos page draws at, in design mm.
   const captionWidth = (book) => {
     const G = geometry(book);
-    const st = WTYPE[book.style] ? book.style : "modern";
-    return st === "elegant" ? G.W - 52 : st === "modern" ? G.W - 28 : G.W - 24;
+    return G.W - TR(styleKey(book)).captionInset;
   };
-  const captionStyle = (book) => CAPTION_TYPE[WTYPE[book.style] ? book.style : "modern"];
+  const captionStyle = (book) => CAPTION_TYPE[styleKey(book)];
 
   // Plans every writing page (and every captioned photos page) of a book, for
   // warnings: page number → cuts. Needs the fonts loaded.
@@ -3109,13 +4010,25 @@
   /* ---------- rendering a book ----------------------------------------------
      Yields one finished page at a time, so the caller can encode and release
      each canvas before the next is drawn. */
+  /* One page is drawn at a time. The drawing code keeps the book, the page and
+     its number in module variables (bookNow, entryNow, numNow…), and the editor
+     runs several renders at once: the preview, the page strip, the covers in a
+     chooser. Taking turns page by page, each with its own variables set, keeps
+     one render from reading another's. A turn that never ends (a hung load) is
+     passed over after 20 seconds, so nothing can lock the book for good. */
+  let drawTurn = Promise.resolve();
+  function takeTurn() {
+    let release;
+    const mine = new Promise((r) => { release = r; });
+    const before = drawTurn;
+    drawTurn = mine;
+    return Promise.race([before, new Promise((r) => setTimeout(r, 20000))]).then(() => release);
+  }
   async function* renderPages(book, { dpi, watermarked = false, cache, only = null, guides = false, skip = null, originals = null }) {
     const mark = watermarked ? markSettings(book) : null;
     await ensureFonts();
     await ensureBookFonts(book);
-    bookNow = book;
-    skipNow = skip;
-    const P = colourway(book.colourway);
+    const P = paletteFor(book);
     // Pages are drawn in the paper's design space (A4 or A4 grown to Letter's
     // shape) at a resolution that makes the canvas exactly the printed size
     // at `dpi`, and each page carries its printed size in points for the PDF.
@@ -3123,7 +4036,7 @@
     const W = G.W, H = G.H, size = { w: W, h: H };
     const pt = { w: G.pw * 72 / 25.4, h: G.ph * 72 / 25.4 };
     const newPage = () => { const pg = API.newPdfPage(dpi * G.s, size); pg.pt = pt; pg.scale = G.s; return pg; };
-    const S = STYLE_IMPL[book.style] || MODERN;
+    const S = STYLE_IMPL[styleKey(book)];
     const lib = library();
     const full = dpi >= 100;
     const imgOf = async (shot) => {
@@ -3134,33 +4047,37 @@
       const src = full ? API.photoSrc(hit.photo) : previewSrc(hit.photo);
       try { return await API.loadImage(src, cache); } catch (e) { return null; }
     };
-    const writingFoot = (page, n, plan) => {
-      if (book.style === "elegant") ELEGANT.foot(page, P, W, H, n);
-      else if (book.style === "lookbook") LOOKBOOK.foot(page, P, W, H, n);
-      else if (book.style === "vogue") VOGUE.foot(page, P, W, H, n, "");
-      else MODERN.foot(page, P, W, H, n, "", plan.foot.ink, plan.foot.soft);
+    const writingFoot = (page, n, plan) => pageFoot(book, page, P, W, H, n, "", { ink: plan.foot.ink, soft: plan.foot.soft });
+    // A page's photographs are fetched before its turn, so a turn is only ever drawing.
+    const shotsOf = (entry) => [...((entry && entry.photos) || []), ...freeBlocks(entry).filter((b) => b && b.k === "photo" && b.p && b.p.id).map((b) => b.p)];
+    const fetched = (entry) => Promise.all(shotsOf(entry).map(imgOf));
+    const inTurn = async (entry, num, draw) => {
+      const done = await takeTurn();
+      try { bookNow = book; skipNow = skip; entryNow = entry; numNow = num; libNow = lib; return await draw(); } finally { done(); }
     };
     let n = 0;
     const want = (i) => only === null || (Array.isArray(only) ? only.includes(i) : only === i);
     // Cover
-    entryNow = null;
     if (want(-1)) {
-      const page = newPage();
       const layout = coverLayoutOf(book);
-      if (layout === "custom") {
-        const ce = coverEntry(book);
-        const plan = planFree(book, ce);
-        await paintPlan(page, plan, ce, imgOf, P, guides, skip);
-        page.cuts = plan.cuts; page.plan = plan;
-      } else if (COVER_PRESETS[layout]) await COVER_PRESETS[layout](page, book, P, W, H, layout === "poster" ? null : (book.cover ? await imgOf(book.cover) : null));
-      else await S.cover(page, book, P, W, H, book.cover ? await imgOf(book.cover) : null);
-      if (mark) watermark(page, W, H, P, mark);
+      if (layout === "custom") await fetched(coverEntry(book)); else if (book.cover && layout !== "poster") await imgOf(book.cover);
+      const page = await inTurn(null, 1, async () => {
+        const page = newPage();
+        if (layout === "custom") {
+          const ce = coverEntry(book);
+          const plan = planFree(book, ce);
+          await paintPlan(page, plan, ce, imgOf, P, guides, skip);
+          page.cuts = plan.cuts; page.plan = plan;
+        } else if (COVER_PRESETS[layout]) await COVER_PRESETS[layout](page, book, P, W, H, layout === "poster" ? null : (book.cover ? await imgOf(book.cover) : null));
+        else await S.cover(page, book, P, W, H, book.cover ? await imgOf(book.cover) : null);
+        if (mark) watermark(page, W, H, P, mark);
+        return page;
+      });
       yield { page, index: -1, n: 1 };
     }
     n = 1;
     for (let i = 0; i < book.pages.length; i++) {
       const entry = book.pages[i];
-      entryNow = entry;
       // The builder never lets a book past 20 pages, but a book edited by hand
       // in data.js could arrive longer: stop rather than export past the limit.
       if (n + pageSpan(entry) > MAX_PAGES) break;
@@ -3174,20 +4091,23 @@
         // then cut down the middle, so the halves meet exactly. A chosen border
         // runs round the outside of the pair, never down the fold.
         for (const half of [0, 1]) {
-          const page = newPage();
-          rect(page, 0, 0, W, H, pageBgOf(book, entry, P, P.white));
           const pn = n - 1 + half;
-          if (img) {
-            page.ctx.save();
-            page.ctx.beginPath(); page.ctx.rect(0, 0, page.u(W), page.u(H)); page.ctx.clip();
-            if (B) drawPhoto(page, img, entry.photos[0], -half * W + B.left, B.top, W * 2 - B.left - B.right, H - B.top - B.bottom);
-            else drawPhoto(page, img, entry.photos[0], -half * W, 0, W * 2, H);
-            page.ctx.restore();
-          } else missing(page, P, 0, 0, W, H);
-          if (B) paintBands(page, P, W, H, { ...B, left: half ? 0 : B.left, right: half ? B.right : 0 }, bandColors(book.style, P), pn, half ? pageCredit(entry, shoots) : "", null, half ? "right" : "left");
-          else if (book.style === "vogue") VOGUE.foot(page, P, W, H, pn, half ? pageCredit(entry, shoots) : "", half ? "right" : "left");
-          else { rect(page, 0, H - 9, W, 9, P.deep); font(page, 700, 2.4, F.mono, 0.4); if (showNums()) text(page, String(pn).padStart(2, "0"), half ? W - 14 : 14, H - 3.4, P.onDeep, half ? "right" : "left"); }
-          if (mark) watermark(page, W, H, P, mark);
+          const page = await inTurn(entry, pn, async () => {
+            const page = newPage();
+            rect(page, 0, 0, W, H, pageBgOf(book, entry, P, P.white));
+            if (img) {
+              page.ctx.save();
+              page.ctx.beginPath(); page.ctx.rect(0, 0, page.u(W), page.u(H)); page.ctx.clip();
+              if (B) drawPhoto(page, img, entry.photos[0], -half * W + B.left, B.top, W * 2 - B.left - B.right, H - B.top - B.bottom);
+              else drawPhoto(page, img, entry.photos[0], -half * W, 0, W * 2, H);
+              page.ctx.restore();
+            } else missing(page, P, 0, 0, W, H);
+            if (B) paintBands(page, P, W, H, { ...B, left: half ? 0 : B.left, right: half ? B.right : 0 }, bandColors(book.style, P), pn, half ? pageCredit(entry, shoots) : "", null, half ? "right" : "left");
+            else if (book.style === "vogue") VOGUE.foot(page, P, W, H, pn, half ? pageCredit(entry, shoots) : "", half ? "right" : "left");
+            else { rect(page, 0, H - 9, W, 9, P.deep); font(page, 700, 2.4, F.mono, 0.4); if (showNums()) text(page, String(pn).padStart(2, "0"), half ? W - 14 : 14, H - 3.4, P.onDeep, half ? "right" : "left"); }
+            if (mark) watermark(page, W, H, P, mark);
+            return page;
+          });
           yield { page, index: i, n: pn, half };
         }
         continue;
@@ -3200,63 +4120,69 @@
         const photoFirst = photoAtOf(entry, G.L) === "left";
         const imgs = await Promise.all((entry.photos || []).slice(0, 1).map(imgOf));
         for (const half of [0, 1]) {
-          const page = newPage();
           const pn = n - 1 + half;
-          if ((half === 0) === photoFirst) {
-            const asPhotos = { type: "photos", photos: (entry.photos || []).slice(0, 1), caption: entry.caption, border: entry.border, borderWidth: entry.borderWidth, style: entry.style && entry.style.caption ? { caption: entry.style.caption } : undefined };
-            if (!asPhotos.photos.length) {
-              S.ground(page, P, W, H);
-              font(page, 500, 3.2, F.plex, 0.4); text(page, "NO PHOTO CHOSEN", W / 2, H / 2, P.soft, "center");
-            } else await S.photos(page, asPhotos, P, W, H, imgs, shoots, pn);
-          } else {
-            const plan = planWriting(book, entry);
-            await paintPlan(page, plan, { ...entry, photos: [] }, imgOf, P, guides, skip);
-            writingFoot(page, pn, plan);
-            page.cuts = [...(page.cuts || []), ...plan.cuts];
-            page.plan = plan;
-          }
-          if (mark) watermark(page, W, H, P, mark);
+          const page = await inTurn(entry, pn, async () => {
+            const page = newPage();
+            if ((half === 0) === photoFirst) {
+              const asPhotos = { type: "photos", photos: (entry.photos || []).slice(0, 1), caption: entry.caption, border: entry.border, borderWidth: entry.borderWidth, style: entry.style && entry.style.caption ? { caption: entry.style.caption } : undefined };
+              if (!asPhotos.photos.length) {
+                S.ground(page, P, W, H);
+                font(page, 500, 3.2, F.plex, 0.4); text(page, "NO PHOTO CHOSEN", W / 2, H / 2, P.soft, "center");
+              } else await S.photos(page, asPhotos, P, W, H, imgs, shoots, pn);
+            } else {
+              const plan = planWriting(book, entry);
+              await paintPlan(page, plan, { ...entry, photos: [] }, imgOf, P, guides, skip);
+              writingFoot(page, pn, plan);
+              page.cuts = [...(page.cuts || []), ...plan.cuts];
+              page.plan = plan;
+            }
+            if (mark) watermark(page, W, H, P, mark);
+            return page;
+          });
           yield { page, index: i, n: pn, half };
         }
         continue;
       }
       n += 1;
       if (!want(i)) continue;
-      const page = newPage();
-      if (entry.type === "photos") {
-        const imgs = await Promise.all((entry.photos || []).map(imgOf));
-        if (!(entry.photos || []).length) {
-          S.ground(page, P, W, H);
-          font(page, 500, 3.2, F.plex, 0.4); text(page, "NO PHOTOS ON THIS PAGE YET", W / 2, H / 2, P.soft, "center");
-        } else await S.photos(page, entry, P, W, H, imgs, shoots, n);
-      } else if (entry.type === "free") {
-        const plan = planFree(book, entry);
-        await paintPlan(page, plan, entry, imgOf, P, guides, skip);
-        freeFoot(page, P, W, H, n);
-        page.cuts = plan.cuts;
-        page.plan = plan;
-      } else if (entry.type === "look") {
-        const imgs = await Promise.all((entry.photos || []).map(imgOf));
-        await drawLook(page, entry, book, P, W, H, imgs, n, S, lookNumber(book, entry));
-        const credit = pageCredit(entry, shoots);
-        if (book.style === "elegant") { ELEGANT.foot(page, P, W, H, n); if (credit) { font(page, 300, 3.0, F.sans); text(page, ellipsize(page, credit, W - 60), n % 2 ? 20 : W - 20, H - 12, P.soft, n % 2 ? "left" : "right"); } }
-        else if (book.style === "lookbook") LOOKBOOK.foot(page, P, W, H, n, credit);
-        else if (book.style === "vogue") VOGUE.foot(page, P, W, H, n, credit);
-        else MODERN.foot(page, P, W, H, n, credit);
-      } else if (entry.type === "end") {
-        const imgs = await Promise.all((entry.photos || []).map(imgOf));
-        await drawEnd(page, entry, book, P, W, H, imgs, n, S);
-        if (endLayoutOf(entry) !== "back") writingFoot(page, n, { foot: {} });
-      } else if (WRITING[entry.type]) {
-        const plan = planWriting(book, entry);
-        await paintPlan(page, plan, entry, imgOf, P, guides, skip);
-        writingFoot(page, n, plan);
-        page.cuts = plan.cuts;
-        page.plan = plan;
-      } else {
-        await textPage(page, entry, book, P, W, H, n);
-      }
-      if (mark) watermark(page, W, H, P, mark);
+      await fetched(entry);
+      const page = await inTurn(entry, n, async () => {
+        const page = newPage();
+        if (entry.type === "photos") {
+          const imgs = await Promise.all((entry.photos || []).map(imgOf));
+          if (!(entry.photos || []).length) {
+            S.ground(page, P, W, H);
+            font(page, 500, 3.2, F.plex, 0.4); text(page, "NO PHOTOS ON THIS PAGE YET", W / 2, H / 2, P.soft, "center");
+          } else await S.photos(page, entry, P, W, H, imgs, shoots, n);
+        } else if (entry.type === "free") {
+          const plan = planFree(book, entry);
+          await paintPlan(page, plan, entry, imgOf, P, guides, skip);
+          freeFoot(page, P, W, H, n);
+          page.cuts = plan.cuts;
+          page.plan = plan;
+        } else if (entry.type === "look") {
+          const imgs = await Promise.all((entry.photos || []).map(imgOf));
+          await drawLook(page, entry, book, P, W, H, imgs, n, S, lookNumber(book, entry));
+          const credit = pageCredit(entry, shoots);
+          pageFoot(book, page, P, W, H, n, credit);
+          // Elegant's foot is the number alone: a look's credit sits across from it.
+          if (styleKey(book) === "elegant" && credit) { font(page, 300, 3.0, F.sans); text(page, ellipsize(page, credit, W - 60), n % 2 ? 20 : W - 20, H - 12, P.soft, n % 2 ? "left" : "right"); }
+        } else if (entry.type === "end") {
+          const imgs = await Promise.all((entry.photos || []).map(imgOf));
+          await drawEnd(page, entry, book, P, W, H, imgs, n, S);
+          if (endLayoutOf(entry) !== "back") writingFoot(page, n, { foot: {} });
+        } else if (WRITING[entry.type]) {
+          const plan = planWriting(book, entry);
+          await paintPlan(page, plan, entry, imgOf, P, guides, skip);
+          writingFoot(page, n, plan);
+          page.cuts = plan.cuts;
+          page.plan = plan;
+        } else {
+          await textPage(page, entry, book, P, W, H, n);
+        }
+        if (mark) watermark(page, W, H, P, mark);
+        return page;
+      });
       yield { page, index: i, n };
     }
   }
@@ -3579,10 +4505,13 @@
   .sb-seg { display: flex; gap: 4px; flex-wrap: wrap; }
   .sb-seg button { flex: 1 1 auto; padding: 7px 9px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--paper, #faf8f5); color: var(--ink, #141416); font: 600 12.5px Inter, sans-serif; cursor: pointer; }
   .sb-seg button[aria-checked=true] { background: var(--ink, #141416); border-color: var(--ink, #141416); color: var(--paper, #faf8f5); }
-  .sb-styles { display: grid; gap: 8px; }
-  .sb-style { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--sb-line); border-radius: 10px; background: var(--paper, #faf8f5); color: inherit; text-align: left; cursor: pointer; }
+  .sb-styles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sb-style { display: grid; gap: 2px; align-content: start; padding: 8px; border: 1px solid var(--sb-line); border-radius: 10px; background: var(--paper, #faf8f5); color: inherit; text-align: left; cursor: pointer; }
   .sb-style b { font: 700 14px Inter, sans-serif; }
-  .sb-style span { font: 400 12px Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
+  .sb-style span { font: 400 12px/1.35 Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
+  .sb-style .sb-stylepic { display: flex; gap: 4px; justify-content: center; align-items: center; height: 96px; margin-bottom: 6px; padding: 6px; background: var(--sb-sunk); border-radius: 7px; overflow: hidden; }
+  .sb-stylepic canvas { max-height: 84px; max-width: 48%; width: auto; height: auto; box-shadow: 0 3px 8px -4px rgba(0,0,0,.45); }
+  .sb-style.is-busy { opacity: .6; }
   .sb-style[aria-checked=true] { border-color: var(--ink, #141416); box-shadow: inset 0 0 0 1px var(--ink, #141416); }
   .sb-cws { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; }
   .sb-cw { display: grid; justify-items: center; gap: 5px; padding: 8px 2px 6px; border: 1px solid transparent; border-radius: 10px; background: none; color: inherit; font: 600 11px/1.2 Inter, sans-serif; text-align: center; cursor: pointer; }
@@ -3902,7 +4831,7 @@
       // style changed back, a page removed) would save a lower mark and CI
       // would read it as an out-of-date tab. Raised as needed, never lowered.
       const pgs = book.pages || [];
-      const need = book.style === "lookbook" ? 4 : pgs.some((pg) => pg && pg.type === "look") ? 3 : (coverLayoutOf(book) !== "classic" || pgs.some((pg) => pg && pg.type === "end")) ? 2 : pgs.some((pg) => pg && pg.type === "free") ? 1 : 0;
+      const need = NEWER_STYLES.includes(book.style) ? 5 : book.style === "lookbook" ? 4 : pgs.some((pg) => pg && pg.type === "look") ? 3 : (coverLayoutOf(book) !== "classic" || pgs.some((pg) => pg && pg.type === "end")) ? 2 : pgs.some((pg) => pg && pg.type === "free") ? 1 : 0;
       if (need > (book.schema || 0)) book.schema = need;
       // Read what is stored now, not this tab's cached list: another builder
       // tab may have saved or deleted a book since, and writing the cached
@@ -4291,6 +5220,7 @@
         $("#sbTabDesign").setAttribute("aria-selected", String(t === "design"));
         $("#sbPanelPage").hidden = t !== "page"; $("#sbPanelDesign").hidden = t !== "design";
         remember();
+        if (t === "design") drawStylePics();
       };
       $("#sbTabPage").addEventListener("click", () => setTab("page"));
       $("#sbTabDesign").addEventListener("click", () => setTab("design"));
@@ -5103,7 +6033,7 @@
       bar.innerHTML = `
         <select data-barfont aria-label="Font"><option value="">Style's font</option>${FONT_LIST.map((x) => `<option value="${x.key}" ${f.font === x.key ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select>
         <span class="sb-barsize"><button type="button" data-barsize="-10" aria-label="Smaller">−</button><output title="${pct}% of the style's size">${nowMm ? `${mmToPt(nowMm)} pt` : `${pct}%`}</output><button type="button" data-barsize="10" aria-label="Bigger">+</button></span>
-        <button type="button" data-barcolour aria-expanded="false" aria-label="Colour"><i class="sb-bardot" style="background:${tintOf(f.color, colourway(book.colourway), (editing.region.type || {}).color || "#000")}"></i></button>
+        <button type="button" data-barcolour aria-expanded="false" aria-label="Colour"><i class="sb-bardot" style="background:${tintOf(f.color, paletteFor(book), (editing.region.type || {}).color || "#000")}"></i></button>
         <button type="button" data-barweight aria-pressed="${f.weight === "bold"}" aria-label="Bold"><b>B</b></button>
         <button type="button" data-baritalic aria-pressed="${!!f.italic}" aria-label="Italic"><i>I</i></button>
         <button type="button" data-baralign aria-label="Alignment: ${f.align || "auto"}">${({ "": "≡", left: "⫷", center: "☰", right: "⫸", justify: "☷" })[f.align || ""] || "≡"}</button>
@@ -5120,7 +6050,7 @@
         if (Object.keys(one).length) all[host.key] = one; else delete all[host.key];
         host.host.set(Object.keys(all).length ? all : null);
         change({ rail: false });
-        ensureBookFonts(book).then(() => { updateMeters(); schedulePreview(0); scheduleStrip(300); if (!keepBar) drawFields(); placeInline(); const dot = $("#sbBar [data-barcolour] i"); if (dot && patch.color !== undefined) dot.style.background = tintOf(patch.color, colourway(book.colourway), (editing && editing.region.type || {}).color || "#000"); });
+        ensureBookFonts(book).then(() => { updateMeters(); schedulePreview(0); scheduleStrip(300); if (!keepBar) drawFields(); placeInline(); const dot = $("#sbBar [data-barcolour] i"); if (dot && patch.color !== undefined) dot.style.background = tintOf(patch.color, paletteFor(book), (editing && editing.region.type || {}).color || "#000"); });
       };
       const keep = () => { if (editing) editing.ta.focus({ preventScroll: true }); };
       bar.addEventListener("pointerdown", (e) => { if (e.target.tagName !== "SELECT") e.preventDefault(); });
@@ -5129,7 +6059,7 @@
       bar.querySelector("[data-barcolour]").addEventListener("click", () => {
         const old = $("#sbBarPick");
         if (old) { old.remove(); barBusy = false; bar.querySelector("[data-barcolour]").setAttribute("aria-expanded", "false"); keep(); return; }
-        const P = colourway(book.colourway);
+        const P = paletteFor(book);
         const pick = document.createElement("div"); pick.id = "sbBarPick"; pick.className = "sb-barpick";
         const sw = (key, label, c) => `<button type="button" class="sb-swatch" data-barsw="${key}" aria-pressed="${(f.color || "") === key}" title="${label}" aria-label="${label}"><i style="background:${c}"></i></button>`;
         pick.innerHTML = `<span class="sb-swatches" role="group" aria-label="The book's own colours">${sw("", "The style's colour", "linear-gradient(135deg, #fff 45%, #999 50%, #fff 55%)")}${sw("ink", "Ink", P.ink)}${sw("soft", "Soft", P.soft)}${sw("accent", "Accent", accentText(P))}${sw("paper", "Paper", P.paper)}${sw("white", "White", P.white)}${sw("deep", "Deep", P.deep)}</span>`;
@@ -5586,7 +6516,7 @@
       const entry = curEntry();
       if (!entry || entry.type === "free") { box.innerHTML = ""; box.hidden = true; return; }
       box.hidden = false;
-      const P = colourway(book.colourway);
+      const P = paletteFor(book);
       const sw = (key, label, c, on) => `<button type="button" class="sb-swatch" data-pgbg="${key}" aria-pressed="${on}" title="${esc(label)}" aria-label="${esc(label)}"><i style="background:${c}"></i></button>`;
       const fills = [["paper", "Paper", P.paper], ["white", "White", P.white], ["ink", "Ink", P.ink], ["soft", "Soft", P.soft], ["accent", "Accent", P.accent], ["deep", "Deep", P.deep], ["rule", "Hairline", P.rule]];
       box.innerHTML = `<h3>Page colour</h3>
@@ -5770,7 +6700,7 @@
       const n = words == null ? 0 : paraCount(words);
       if (para > n) para = 0;
       const f = para ? ((whole.paras || {})[String(para)] || {}) : whole;
-      const P = colourway(book.colourway);
+      const P = paletteFor(book);
       const groups = ["Serif", "Sans", "Condensed", "Mono"].map((kind) => `<optgroup label="${kind}">${FONT_LIST.filter((x) => x.kind === kind).map((x) => `<option value="${x.key}" ${f.font === x.key ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</optgroup>`).join("");
       const set = fmtSet(whole);
       const pct = Math.round(sizeScale(f) * 100);
@@ -6412,7 +7342,7 @@
       const G = geometry(book);
       const blocks = blocksOf(entry);
       const b = blocks[blockSel] || null;
-      const P = colourway(book.colourway);
+      const P = paletteFor(book);
       const swatch = (attr, key, label, c, on) => `<button type="button" class="sb-swatch" data-${attr}="${key}" aria-pressed="${on}" title="${esc(label)}" aria-label="${esc(label)}"><i style="background:${c}"></i></button>`;
       const fills = [["accent", "Accent", P.accent], ["ink", "Ink", P.ink], ["soft", "Soft", P.soft], ["rule", "Hairline", P.rule], ["paper", "Paper", P.paper], ["white", "White", P.white], ["deep", "Deep", P.deep]];
       const mmX = (v) => `${(v * G.Wa).toFixed(1)} mm`;
@@ -6847,7 +7777,7 @@
     // The Design panel's colour swatches, repainted for the book's colourway.
     function refreshDesignColours() {
       const panel = $("#sbPanelDesign"); if (!panel) return;
-      const P = colourway(book.colourway), own = isOwnColourway(book.colourway);
+      const P = paletteFor(book), own = isOwnColourway(book.colourway);
       panel.querySelectorAll("[data-cw]").forEach((x) => x.setAttribute("aria-checked", String(!own && book.colourway === x.dataset.cw)));
       const any = panel.querySelector("[data-cwany]"), lab = panel.querySelector("[data-cwanyhex]");
       if (any) { any.setAttribute("aria-pressed", String(own)); any.querySelector("i").style.background = own ? book.colourway : "conic-gradient(#f33, #ff3, #3f3, #3ff, #33f, #f3f, #f33)"; }
@@ -6855,11 +7785,31 @@
       const tint = { paper: P.paper, white: P.white, ink: P.ink, soft: P.soft, accent: P.accent, deep: P.deep, rule: P.rule };
       panel.querySelectorAll("[data-bookbg]").forEach((x) => { const c = tint[x.dataset.bookbg]; if (c) x.querySelector("i").style.background = c; });
     }
+    // Each style's card shows this book's cover and first page drawn in it:
+    // small, one after another, and again whenever the book has changed.
+    let stylePicToken = 0, stylePicsFor = "";
+    async function drawStylePics(force) {
+      const panel = $("#sbPanelDesign"); if (!panel || panel.hidden || !panel.querySelector(".sb-stylepic")) return;   // drawn when Design is looked at
+      const first = book.pages.findIndex((pg) => pg && pageSpan(pg) === 1);
+      const sig = JSON.stringify([book.colourway, book.orientation, book.paper, book.title, book.subtitle, book.cover, book.coverLayout, book.coverText, book.coverStyle, book.bg, first >= 0 ? book.pages[first] : null]);
+      if (!force && sig === stylePicsFor && !panel.querySelector(".sb-stylepic:empty")) return;
+      stylePicsFor = sig;
+      const token = ++stylePicToken, cache = new Map(), snap = JSON.parse(JSON.stringify(book));
+      try { await ensureStyleFonts(); } catch (e) { /* drawn in what is there */ }
+      for (const st of STYLES) {
+        if (token !== stylePicToken || !panel.isConnected) return;
+        const slot = panel.querySelector(`[data-style="${st.key}"] .sb-stylepic`); if (!slot) continue;
+        const got = [];
+        try { for await (const r of renderPages({ ...snap, style: st.key }, { dpi: 13, cache, only: first >= 0 ? [-1, first] : -1 })) got.push(r.page.canvas); } catch (e) { continue; }
+        if (token === stylePicToken && slot.isConnected) slot.replaceChildren(...got);
+      }
+    }
     function drawDesign() {
       const panel = $("#sbPanelDesign"); if (!panel) return;
       panel.innerHTML = `
         <div class="sb-sec"><h3>Style</h3>
-          <div class="sb-styles" role="radiogroup" aria-label="Style">${STYLES.map((s) => `<button type="button" class="sb-style" role="radio" data-style="${s.key}" aria-checked="${book.style === s.key}"><b>${esc(s.name)}</b><span>${esc(s.note)}</span></button>`).join("")}</div>
+          <div class="sb-styles" role="radiogroup" aria-label="Style">${STYLES.map((s) => `<button type="button" class="sb-style" role="radio" data-style="${s.key}" aria-checked="${book.style === s.key}"><span class="sb-stylepic" aria-hidden="true"></span><b>${esc(s.name)}</b><span>${esc(s.note)}</span></button>`).join("")}</div>
+          <p class="sb-hint">Each is your own cover and first page, drawn in that style. Changing style keeps every page and every word.</p>
         </div>
         <div class="sb-sec"><h3>Colourway</h3>
           <div class="sb-cws" role="radiogroup" aria-label="Colourway">${COLOURWAYS.map((c) => `<button type="button" class="sb-cw" role="radio" data-cw="${c.key}" aria-checked="${book.colourway === c.key}"><span class="sb-dot" aria-hidden="true" style="background: conic-gradient(${c.accent} 0 50%, ${c.deep} 50% 75%, ${c.paper} 75% 100%)"></span>${esc(c.name)}</button>`).join("")}</div>
@@ -6877,7 +7827,7 @@
           <p class="sb-hint" id="sbPaperNote">${esc((PAPERS[book.paper] || PAPERS.a4).note)}. Every size keeps the same layout; the words and photos scale with the page.</p>
         </div>
         <div class="sb-sec"><h3>Page colour, every page</h3>
-          <span class="sb-swatches" role="group" aria-label="Page colour for every page">${[["", "The style's own", "linear-gradient(135deg, #fff 45%, #999 50%, #fff 55%)"], ["paper", "Paper", colourway(book.colourway).paper], ["white", "White", colourway(book.colourway).white], ["ink", "Ink", colourway(book.colourway).ink], ["soft", "Soft", colourway(book.colourway).soft], ["accent", "Accent", colourway(book.colourway).accent], ["deep", "Deep", colourway(book.colourway).deep], ["rule", "Hairline", colourway(book.colourway).rule]].map(([k, n, c]) => `<button type="button" class="sb-swatch" data-bookbg="${k}" aria-pressed="${(book.bg || "") === k}" title="${n}" aria-label="${n}"><i style="background:${c}"></i></button>`).join("")}${anySwatch("bookbgany", /^#/.test(book.bg || "") ? book.bg : "")}</span>
+          <span class="sb-swatches" role="group" aria-label="Page colour for every page">${[["", "The style's own", "linear-gradient(135deg, #fff 45%, #999 50%, #fff 55%)"], ["paper", "Paper", paletteFor(book).paper], ["white", "White", paletteFor(book).white], ["ink", "Ink", paletteFor(book).ink], ["soft", "Soft", paletteFor(book).soft], ["accent", "Accent", paletteFor(book).accent], ["deep", "Deep", paletteFor(book).deep], ["rule", "Hairline", paletteFor(book).rule]].map(([k, n, c]) => `<button type="button" class="sb-swatch" data-bookbg="${k}" aria-pressed="${(book.bg || "") === k}" title="${n}" aria-label="${n}"><i style="background:${c}"></i></button>`).join("")}${anySwatch("bookbgany", /^#/.test(book.bg || "") ? book.bg : "")}</span>
           <div class="sb-cphost" data-bookbgpick hidden></div>
           <p class="sb-hint">Behind every page but the cover, in one go. A page can still have its own colour on This page.</p>
         </div>
@@ -6902,10 +7852,13 @@
         if (e.target.checked) delete book.showPageNumbers; else book.showPageNumbers = false;
         change();
       });
-      const radio = (selector, apply, current) => panel.querySelectorAll(selector).forEach((b) => b.addEventListener("click", () => {
+      const radio = (selector, apply, current, first) => panel.querySelectorAll(selector).forEach((b) => b.addEventListener("click", async () => {
         if (current(b)) return;
+        // A style's own faces arrive before its words are measured in them.
+        if (first) { b.classList.add("is-busy"); try { await first(b); } catch (e) { /* drawn in what is there */ } b.classList.remove("is-busy"); if (!b.isConnected || current(b)) return; }
         const before = fontsOk ? new Set(bookCuts(book).filter((x) => x.cuts.length).map((x) => x.entry)) : null;
         panel.querySelectorAll(selector).forEach((x) => x.setAttribute("aria-checked", String(x === b)));
+        mark();   // a style, colourway, shape or paper tried on can be undone
         apply(b);
         change();
         drawPhotoBlock();
@@ -6919,7 +7872,12 @@
           setStatus(msg); API.toast(msg);
         }
       }));
-      radio("[data-style]", (b) => { book.style = b.dataset.style; drawFields(); }, (b) => book.style === b.dataset.style);
+      // The style cards are this book drawn small: they follow its colourway, shape and paper.
+      let picTimer = 0;
+      const picsSoon = () => { clearTimeout(picTimer); picTimer = setTimeout(() => drawStylePics(), 450); };
+      panel.onclick = (e) => { if (e.target.closest("[data-cw], [data-orient], [data-paper], [data-bookbg]")) picsSoon(); };   // one handler, however often the panel is redrawn
+      radio("[data-style]", (b) => { book.style = b.dataset.style; drawFields(); refreshDesignColours(); }, (b) => book.style === b.dataset.style, (b) => ensureBookFonts({ ...book, style: b.dataset.style }));
+      drawStylePics();
       radio("[data-cw]", (b) => { book.colourway = b.dataset.cw; drawFields(); refreshDesignColours(); }, (b) => book.colourway === b.dataset.cw);
       // Your own colourway: the colour is applied as it is picked, and the
       // panel's own swatches follow, without the picker being rebuilt under a drag.
@@ -6927,7 +7885,7 @@
         if (book.colourway === hex) return;
         mark(true);
         book.colourway = hex;
-        change({ rail: true }); drawPhotoBlock(); drawFields(); refreshDesignColours();
+        change({ rail: true }); drawPhotoBlock(); drawFields(); refreshDesignColours(); picsSoon();
       });
       radio("[data-orient]", (b) => { book.orientation = b.dataset.orient; }, (b) => book.orientation === b.dataset.orient);
       radio("[data-paper]", (b) => {
@@ -7251,7 +8209,7 @@
     // that loaded the site before they existed still runs the old save code,
     // which would drop them while saying "Saved": refuse until it reloads.
     const L = window.STUDIO_BOOK_LIMITS;
-    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !L.workWays || !L.markStrengths || !L.paras || !L.coverText || !L.blockKinds || !L.schema || !L.lists || !L.photoRows || !(L.pageTypes || []).includes("free") || !L.coverLayouts || !(L.pageTypes || []).includes("end") || !(L.pageTypes || []).includes("look")) {
+    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !L.workWays || !L.markStrengths || !L.paras || !L.coverText || !L.blockKinds || !L.schema || !L.lists || !L.photoRows || !(L.pageTypes || []).includes("free") || !L.coverLayouts || !(L.pageTypes || []).includes("end") || !(L.pageTypes || []).includes("look") || !(L.styles || []).includes("gazette")) {
       root.innerHTML = `<div class="sb-empty"><p class="sb-warn">The site was updated while this tab was open.</p><p class="sb-hint">Reload the page (or use “↻ Load fresh version”) before editing your books, so nothing you write is lost.</p><p><button type="button" class="sb-btn dark" id="sbReload">Reload now</button></p></div>`;
       root.querySelector("#sbReload").addEventListener("click", () => location.reload());
       return;
