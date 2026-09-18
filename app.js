@@ -690,6 +690,12 @@ const STUDIO_BOOK_LIMITS = {
   // a colour (a book colour or #rrggbb) and an alignment. Absent = the style's.
   fonts: ["fraunces", "archivo", "inter", "outfit", "playfair", "cormorant", "baskerville", "bodoni", "dmserif", "sourcesans", "jost", "manrope", "spacegrotesk", "oswald", "plexmono"],
   colors: ["ink", "soft", "accent", "paper", "white", "deep"],
+  // A paragraph (or a whole flowing text) can be a list, and can run in two
+  // or three columns. A photos page with four to six photographs can put
+  // three of them in one row, on top or at the bottom.
+  lists: ["bullet", "number"],
+  columns: [2, 3],
+  photoRows: ["3top", "3bottom"],
   aligns: ["left", "center", "right", "justify"],
   // A flowing text (a story, a letter, the words about a photo, About the
   // studio) can format each paragraph on its own; this many at most.
@@ -760,6 +766,8 @@ function cleanOneFormat(f) {
   if (typeof f.size === "number" && isFinite(f.size) && Math.abs(f.size - 1) > 0.001) one.size = Math.round(Math.min(1.6, Math.max(0.6, f.size)) * 100) / 100;
   if (["light", "regular", "bold"].includes(f.weight)) one.weight = f.weight;
   if (f.italic === true) one.italic = true;
+  if (STUDIO_BOOK_LIMITS.lists.includes(f.list)) one.list = f.list;
+  if (STUDIO_BOOK_LIMITS.columns.includes(f.columns)) one.columns = f.columns;
   return Object.keys(one).length ? one : null;
 }
 // One text's formatting, and each of its paragraphs.
@@ -817,6 +825,7 @@ function cleanStudioPortfolios(o) {
         // existed stores exactly as it did.
         const caption = strU(pg.caption, FIELDS.photos.caption);
         if (caption) out.caption = caption;
+        if (STUDIO_BOOK_LIMITS.photoRows.includes(pg.rows)) out.rows = pg.rows;
       }
       if (pg.type === "spread" || pg.type === "article") out.photos = (Array.isArray(pg.photos) ? pg.photos : []).map(shot).filter(Boolean).slice(0, 1);
       if (pg.type === "photos" || pg.type === "spread" || pg.type === "article") {
@@ -995,10 +1004,10 @@ function cleanStudioPortfolios(o) {
 // Each time the stored shape grows, the copy moves to a new key: code that
 // knows the previous shape still writes the previous key (stripping only what
 // it doesn't know), so the newest key is read first and wins ties.
-const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words_v4";
+const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words_v5";
 // Older keys: code that knows only an older shape keeps rewriting the key it
 // knows, so every growth of the shape gets a new one, read before the old.
-const STUDIO_BOOK_WORDS_OLD = ["wps_studio_portfolios_words_v3", "wps_studio_portfolios_words_v2", "wps_studio_portfolios_words"];
+const STUDIO_BOOK_WORDS_OLD = ["wps_studio_portfolios_words_v4", "wps_studio_portfolios_words_v3", "wps_studio_portfolios_words_v2", "wps_studio_portfolios_words"];
 const studioBookHasWords = (v) => !!v.paper || !!v.coverStyle || !!v.watermark || !!v.coverText || !!v.schema || !!v.footText || v.showPageNumbers === false || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
   (STUDIO_BOOK_LIMITS.fields[pg.type] && (pg.type !== "photos" || pg.caption)) || (pg.blocks || []).length || pg.items || pg.steps || pg.rows || pg.credit || pg.label || pg.heading || pg.photoAt || pg.border || pg.borderWidth || pg.style || pg.hide || (pg.photos || []).some((s) => s.fit || s.opacity));
 function getStudioPortfolios(live) {

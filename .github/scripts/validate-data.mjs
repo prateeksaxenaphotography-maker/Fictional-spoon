@@ -319,9 +319,11 @@ if (books !== undefined && books !== null) {
       if (f.font !== undefined && !FONTS.has(f.font)) fail(`${what} in an unknown font ${JSON.stringify(f.font)}`);
       if (f.color !== undefined && !["ink", "soft", "accent", "paper", "white", "deep"].includes(f.color) && !/^#[0-9a-f]{6}$/.test(String(f.color))) fail(`${what} in the colour ${JSON.stringify(f.color)}; use ink, soft, accent, paper, white, deep or #rrggbb`);
       if (f.align !== undefined && !ALIGNS.has(f.align)) fail(`${what} aligned ${JSON.stringify(f.align)}`);
+      if (f.list !== undefined && !["bullet", "number"].includes(f.list)) fail(`${what} as a list ${JSON.stringify(f.list)}; the app knows bullet and number`);
+      if (f.columns !== undefined && ![2, 3].includes(f.columns)) fail(`${what} in ${JSON.stringify(f.columns)} columns; the app writes 2 or 3, and nothing for one`);
     };
     const checkFormat = (f, what, key, flows) => {
-      for (const k of Object.keys(f)) if (!["font", "color", "align", "size", "weight", "italic", "paras"].includes(k)) fail(`${what} with ${JSON.stringify(k)}, which the app drops`);
+      for (const k of Object.keys(f)) if (!["font", "color", "align", "size", "weight", "italic", "list", "columns", "paras"].includes(k)) fail(`${what} with ${JSON.stringify(k)}, which the app drops`);
       checkOneFormat(f, what);
       if (f.paras === undefined) return;
       if (!f.paras || typeof f.paras !== "object" || Array.isArray(f.paras)) { fail(`${what} with paragraphs that are not an object`); return; }
@@ -329,7 +331,7 @@ if (books !== undefined && books !== null) {
       for (const [at, p] of Object.entries(f.paras)) {
         if (!/^[1-9][0-9]{0,2}$/.test(at) || Number(at) > 60) { fail(`${what} a paragraph ${JSON.stringify(at)}; paragraphs are numbered 1 to 60`); continue; }
         if (!p || typeof p !== "object" || Array.isArray(p)) { fail(`${what} paragraph ${at} with formatting that is not an object`); continue; }
-        for (const k of Object.keys(p)) if (!["font", "color", "align", "size", "weight", "italic"].includes(k)) fail(`${what} paragraph ${at} with ${JSON.stringify(k)}, which the app drops`);
+        for (const k of Object.keys(p)) if (!["font", "color", "align", "size", "weight", "italic", "list", "columns"].includes(k)) fail(`${what} paragraph ${at} with ${JSON.stringify(k)}, which the app drops`);
         checkOneFormat(p, `${what} paragraph ${at}`);
       }
     };
@@ -343,7 +345,7 @@ if (books !== undefined && books !== null) {
     const CONTACT_ROW = { label: 24, value: 60 };
     const CREDIT_PAGES = new Set(["photos", "spread", "article", "story", "note", "quote", "feature"]);
     const KNOWN_KEYS = {
-      photos: ["type", "photos", "caption", "credit", "border", "borderWidth", "style"], spread: ["type", "photos", "credit", "border", "borderWidth"], divider: ["type", "heading", "line", "style"],
+      photos: ["type", "photos", "caption", "credit", "rows", "border", "borderWidth", "style"], spread: ["type", "photos", "credit", "border", "borderWidth"], divider: ["type", "heading", "line", "style"],
       about: ["type", "label", "heading", "style"], services: ["type", "label", "heading", "note", "items", "hide"], contact: ["type", "label", "heading", "rows", "qrLabel", "hide"],
       story: ["type", "photos", "photoAt", "credit", "style", ...Object.keys(FIELD_MAX.story)], note: ["type", "photos", "photoAt", "credit", "style", ...Object.keys(FIELD_MAX.note)],
       quote: ["type", "photos", "photoAt", "credit", "style", ...Object.keys(FIELD_MAX.quote)], letter: ["type", "style", ...Object.keys(FIELD_MAX.letter)],
@@ -483,6 +485,8 @@ if (books !== undefined && books !== null) {
             }
           }
         }
+        // `rows` is the row of three on a photos page; on Contact it is the lines in your own words.
+        if (pg.type === "photos" && pg.rows !== undefined && !["3top", "3bottom"].includes(pg.rows)) fail(`${where} puts three in a row ${JSON.stringify(pg.rows)}; the app writes 3top or 3bottom`);
         if (pg.border !== undefined && !BORDERS.has(pg.border)) fail(`${where} has an unknown border ${JSON.stringify(pg.border)}`);
         if (pg.borderWidth !== undefined && !BORDER_WIDTHS.has(pg.borderWidth)) fail(`${where} has an unknown border width ${JSON.stringify(pg.borderWidth)}`);
         if (pg.style !== undefined) {
@@ -630,8 +634,9 @@ try {
       }
       // Each formatted text counts once, and each of its formatted paragraphs
       // once more, so losing paragraph formatting shows up as a shrink too.
-      const styleWeight = (style) => Object.values(style || {}).reduce((n, f) => n + 1 + (f && f.paras ? Object.keys(f.paras).length : 0), 0);
-      fits += (pg.photoAt ? 1 : 0) + (pg.border ? 1 : 0) + (pg.borderWidth ? 1 : 0) + styleWeight(pg.style) + (Array.isArray(pg.hide) ? pg.hide.length : 0);
+      const props = (f) => (f && typeof f === "object" ? Object.keys(f).filter((k) => k !== "paras").length : 0);
+      const styleWeight = (style) => Object.values(style || {}).reduce((n, f) => n + 1 + props(f) + (f && f.paras ? Object.values(f.paras).reduce((m, p) => m + 1 + props(p), 0) : 0), 0);
+      fits += (pg.photoAt ? 1 : 0) + (pg.type === "photos" && pg.rows ? 1 : 0) + (pg.border ? 1 : 0) + (pg.borderWidth ? 1 : 0) + styleWeight(pg.style) + (Array.isArray(pg.hide) ? pg.hide.length : 0);
     }
     return { pages, chars, fits };
   };
