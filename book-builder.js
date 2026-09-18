@@ -217,7 +217,7 @@
   // studio chose for the photo overrides the style's habit.
   function fitPhoto(page, img, shot, x, y, w, h, align = "center") {
     if (shot && FIT_MODES.includes(shot.fit)) return drawPhoto(page, img, shot, x, y, w, h);
-    const a = (img.naturalWidth || 1) / (img.naturalHeight || 1);
+    const a = imgAspect(img);
     let dw = w, dh = w / a;
     if (dh > h) { dh = h; dw = h * a; }
     const dx = align === "right" ? x + w - dw : align === "left" ? x : x + (w - dw) / 2, dy = y + (h - dh) / 2;
@@ -292,6 +292,235 @@
   }
   const previewSrc = (p) => API.photoSrc(p.medium ? { url: p.medium } : p);
   const thumbSrc = (p) => API.photoSrc(p.small ? { url: p.small } : (p.medium ? { url: p.medium } : p));
+  // Width over height of anything drawable: an <img>, an ImageBitmap or a canvas.
+  const imgAspect = (img) => (img.naturalWidth || img.width || 1) / (img.naturalHeight || img.height || 1);
+
+  /* ---------- full-size photos for print ---------------------------------------
+     The site keeps every photo at 1600 px on its long side (resize() in app.js):
+     137 ppi across an A4 page, which is fine on a screen and from a home
+     printer and soft from a press. For a print run the studio points the book
+     at the full-size files on this computer. They are read here, never
+     uploaded, and nothing about them is stored, so the folder is chosen again
+     after a reload. A site photo carries no file name, so each is matched by
+     what it shows: a small thumbnail of each side. Its brightness is compared
+     by normalised correlation, which forgives an exposure or contrast tweak
+     between the export and the upload, and its colour by plain difference,
+     which tells a colour export from the black-and-white edit of the same
+     frame (the site has several such twins). A match must be clear and, unless
+     the runner-up is another book photo's own file (two frames from one
+     burst, both in the book), beat it by a margin. A file serves one photo,
+     except that the same picture published twice shares it. The thresholds
+     were measured over the site's own photos (Sep 2026). */
+  const FP_SIDE = 24;                     // the thumbnail compared, in px
+  const FP_MID = 256;                     // decoded to this first, so the shrink is gentle
+  const ORIG_ACCEPT = 0.97;               // the least a match may score
+  const ORIG_MARGIN = 0.02;               // and how far the runner-up must sit below it
+  const ORIG_COLOUR = 7;                  // the most the colour may differ (mean, of 255): a mono twin sits at 7.5+
+  const ORIG_ASPECT = 0.03;               // shapes may differ by this much (log ratio)
+  const ORIG_MIN_SIDE = 1600;             // a file no bigger than the site's copy gains nothing
+  const ORIG_EXT = /\.(jpe?g|png|webp|avif|gif|bmp)$/i;
+  const RAW_EXT = /\.(nef|nrw|cr2|cr3|arw|srf|sr2|dng|raf|orf|rw2|pef|3fr|iiq|heic|heif|tiff?|psd)$/i;
+  let fpMid = null, fpSmall = null;
+  function fingerprint(img) {
+    const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    if (!iw || !ih) return null;
+    if (!fpMid) {
+      fpMid = document.createElement("canvas"); fpMid.width = fpMid.height = FP_MID;
+      fpSmall = document.createElement("canvas"); fpSmall.width = fpSmall.height = FP_SIDE;
+    }
+    const mid = fpMid.getContext("2d"), small = fpSmall.getContext("2d", { willReadFrequently: true });
+    for (const c of [mid, small]) { c.imageSmoothingEnabled = true; c.imageSmoothingQuality = "high"; }
+    mid.drawImage(img, 0, 0, iw, ih, 0, 0, FP_MID, FP_MID);
+    small.drawImage(fpMid, 0, 0, FP_MID, FP_MID, 0, 0, FP_SIDE, FP_SIDE);
+    const d = small.getImageData(0, 0, FP_SIDE, FP_SIDE).data;
+    const N = FP_SIDE * FP_SIDE, y = new Float32Array(N), c = new Float32Array(N * 2);
+    let mean = 0;
+    for (let i = 0; i < N; i++) {
+      const r = d[i * 4], g = d[i * 4 + 1], b = d[i * 4 + 2], Y = 0.299 * r + 0.587 * g + 0.114 * b;
+      y[i] = Y; mean += Y;
+      c[i * 2] = r - Y; c[i * 2 + 1] = b - Y;
+    }
+    mean /= N;
+    let sq = 0;
+    for (let i = 0; i < N; i++) { y[i] -= mean; sq += y[i] * y[i]; }
+    const sd = Math.sqrt(sq / N) || 1;
+    for (let i = 0; i < N; i++) y[i] /= sd;
+    return { y, c };
+  }
+  // How alike in brightness (1 is the same), and how far apart in colour (0 is the same).
+  const fpScore = (a, b) => { let s = 0; for (let i = 0; i < a.y.length; i++) s += a.y[i] * b.y[i]; return s / a.y.length; };
+  const fpColour = (a, b) => { let s = 0; for (let i = 0; i < a.c.length; i++) s += Math.abs(a.c[i] - b.c[i]); return s / a.c.length; };
+  const sameLook = (a, b) => fpScore(a, b) >= ORIG_ACCEPT && fpColour(a, b) <= ORIG_COLOUR;
+  const aspectClose = (a, b) => a > 0 && b > 0 && Math.abs(Math.log(a / b)) <= ORIG_ASPECT;
+  // A file's size as it will be seen, from its header (a small read, no
+  // decode): PNG's IHDR, or a JPEG's frame header turned by its EXIF
+  // orientation. Null when the file can't say; it is then decoded to find out.
+  async function imageHeader(file) {
+    let dv;
+    try { dv = new DataView(await file.slice(0, 262144).arrayBuffer()); } catch (e) { return null; }
+    const N = dv.byteLength;
+    if (N > 24 && dv.getUint32(0) === 0x89504E47) return { w: dv.getUint32(16), h: dv.getUint32(20) };
+    if (N < 4 || dv.getUint16(0) !== 0xFFD8) return null;
+    let p = 2, w = 0, h = 0, orient = 1;
+    while (p + 4 <= N) {
+      if (dv.getUint8(p) !== 0xFF) return null;
+      const m = dv.getUint8(p + 1);
+      if (m === 0xFF) { p++; continue; }
+      if (m === 0xD8 || m === 0x01 || (m >= 0xD0 && m <= 0xD7)) { p += 2; continue; }
+      const len = dv.getUint16(p + 2);
+      if (m === 0xE1 && p + 10 <= N && dv.getUint32(p + 4) === 0x45786966) orient = exifOrientation(dv, p + 10, Math.min(N, p + 2 + len)) || orient;
+      if (m >= 0xC0 && m <= 0xCF && m !== 0xC4 && m !== 0xC8 && m !== 0xCC) { if (p + 9 <= N) { h = dv.getUint16(p + 5); w = dv.getUint16(p + 7); } break; }
+      if (m === 0xDA) break;
+      p += 2 + len;
+    }
+    if (!w || !h) return null;
+    return orient >= 5 && orient <= 8 ? { w: h, h: w } : { w, h };
+  }
+  function exifOrientation(dv, t, end) {
+    if (t + 8 > end) return 0;
+    const le = dv.getUint16(t) === 0x4949;
+    if (dv.getUint16(t + 2, le) !== 0x2A) return 0;
+    const ifd = t + dv.getUint32(t + 4, le);
+    if (ifd + 2 > end) return 0;
+    const count = dv.getUint16(ifd, le);
+    for (let i = 0; i < count; i++) {
+      const e = ifd + 2 + i * 12;
+      if (e + 12 > end) return 0;
+      if (dv.getUint16(e, le) === 0x0112) return dv.getUint16(e + 8, le);
+    }
+    return 0;
+  }
+  // The files the studio has pointed at, and which site photo each one is.
+  function originalsStore() {
+    const files = [];                    // { file, w, h, fp }: fp undefined until looked at, null when unreadable
+    const seen = new Set();
+    const siteFp = new Map();            // photo id → { fp, aspect } | null
+    const store = { raw: 0, other: 0 };
+    store.count = () => files.length;
+    store.forget = () => { files.length = 0; seen.clear(); store.raw = 0; store.other = 0; };
+    store.add = async (list, progress) => {
+      const fresh = [];
+      for (const file of list || []) {
+        const key = `${file.name}|${file.size}|${file.lastModified}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        if (RAW_EXT.test(file.name)) store.raw++;
+        else if (ORIG_EXT.test(file.name) || /^image\//.test(file.type || "")) fresh.push(file);
+        else store.other++;
+      }
+      for (let i = 0; i < fresh.length; i += 8) {
+        await Promise.all(fresh.slice(i, i + 8).map(async (file) => {
+          const hd = await imageHeader(file);
+          files.push({ file, w: hd ? hd.w : 0, h: hd ? hd.h : 0, fp: undefined });
+        }));
+        if (progress) progress(Math.min(fresh.length, i + 8), fresh.length);
+      }
+      return fresh.length;
+    };
+    const fpOfFile = async (f) => {
+      if (f.fp !== undefined) return f.fp;
+      f.fp = null;
+      try {
+        if (f.w && f.h) {
+          // The decoder scales as it reads, so a 24-megapixel file costs little here.
+          const bmp = await createImageBitmap(f.file, { resizeWidth: FP_MID, resizeHeight: FP_MID, resizeQuality: "high" });
+          f.fp = fingerprint(bmp); if (bmp.close) bmp.close();
+        } else {
+          const bmp = await createImageBitmap(f.file);
+          f.w = bmp.width; f.h = bmp.height; f.fp = fingerprint(bmp); if (bmp.close) bmp.close();
+        }
+      } catch (e) { f.fp = null; }
+      return f.fp;
+    };
+    const fpOfPhoto = async (id, loadThumb) => {
+      if (siteFp.has(id)) return siteFp.get(id);
+      let out = null;
+      try { const img = await loadThumb(id); if (img) out = { fp: fingerprint(img), aspect: imgAspect(img) }; } catch (e) { out = null; }
+      siteFp.set(id, out);
+      return out;
+    };
+    // Which file is which of these photos. loadThumb(id) gives the site's
+    // small copy; progress(done, total) is told as each photo is looked for.
+    store.match = async (ids, loadThumb, progress) => {
+      const want = [], missing = [], ambiguous = [], small = [];
+      for (const id of ids) { const s = await fpOfPhoto(id, loadThumb); if (s && s.fp) want.push({ id, ...s }); else missing.push(id); }
+      const pairs = [];
+      let done = 0;
+      for (const w of want) {
+        for (const f of files) {
+          if (f.w && f.h && !aspectClose(f.w / f.h, w.aspect)) continue;    // the wrong shape, without decoding it
+          const fp = await fpOfFile(f);
+          if (!fp || !aspectClose(f.w / f.h, w.aspect)) continue;
+          const s = fpScore(w.fp, fp);
+          if (s < ORIG_ACCEPT) continue;
+          const cd = fpColour(w.fp, fp);
+          if (cd > ORIG_COLOUR) continue;
+          // Ranked by likeness, colour counting against: a grade change costs
+          // a little, a black-and-white twin has already been turned away.
+          pairs.push({ id: w.id, f, s, cd, k: s - cd / 200 });
+        }
+        done++; if (progress) progress(done, want.length);
+      }
+      pairs.sort((a, b) => b.k - a.k);
+      // Best matches first, each file to one photo.
+      const taken = new Map(), used = new Map();     // file → the photo it serves
+      for (const p of pairs) { if (taken.has(p.id) || used.has(p.f)) continue; taken.set(p.id, p); used.set(p.f, p.id); }
+      const matched = new Map();
+      for (const w of want) {
+        let best = taken.get(w.id);
+        if (!best) {
+          // Its file already serves another photo: fine when that is the
+          // same picture, published twice.
+          const top = pairs.find((p) => p.id === w.id);
+          const twin = top && want.find((o) => o.id === used.get(top.f));
+          if (top && twin && sameLook(w.fp, twin.fp)) best = top; else { missing.push(w.id); continue; }
+        }
+        const rival = pairs.find((p) => p.id === w.id && p.f !== best.f && !used.has(p.f) && p.k > best.k - ORIG_MARGIN);
+        if (rival) { ambiguous.push(w.id); continue; }
+        if (Math.max(best.f.w, best.f.h) <= ORIG_MIN_SIDE) { small.push(w.id); continue; }
+        matched.set(w.id, best.f);
+      }
+      return { matched, missing, ambiguous, small };
+    };
+    return store;
+  }
+  /* Decodes matched files while a page is drawn. A 24-megapixel photo is about
+     96 MB once decoded, so files are decoded one after another, anything
+     bigger than `cap` on its long side is scaled down onto a canvas first, and
+     release() lets them all go once the page is on its canvas. */
+  function originalLoader(matched, cap) {
+    const held = new Map();
+    let chain = Promise.resolve();
+    const decode = async (file) => {
+      const bmp = await createImageBitmap(file);
+      const long = Math.max(bmp.width, bmp.height);
+      if (long <= cap) return bmp;
+      const k = cap / long, c = document.createElement("canvas");
+      c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+      const ctx = c.getContext("2d"); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(bmp, 0, 0, c.width, c.height);
+      if (bmp.close) bmp.close();
+      return c;
+    };
+    const used = new Set();
+    return {
+      used,
+      get(id) {
+        const f = matched.get(id);
+        if (!f) return Promise.resolve(null);
+        if (!held.has(id)) {
+          const p = chain.then(() => decode(f.file)).then((img) => { used.add(id); return img; }, () => null);
+          chain = p;
+          held.set(id, p);
+        }
+        return held.get(id);
+      },
+      async release() {
+        const all = [...held.values()]; held.clear();
+        for (const p of all) { const img = await p; if (!img) continue; if (img.close) img.close(); else { img.width = 0; img.height = 0; } }
+      }
+    };
+  }
 
   /* ---------- page plan ------------------------------------------------------
      A book is a cover plus its page entries. A spread takes two pages. */
@@ -466,7 +695,7 @@
         const r = fitPhoto(page, imgs[0], shots[0], box.x, box.y, box.w, box.h - 8);
         frame(page, r.x, r.y, r.w, r.h, P.rule, 0.2);
       } else {
-        const aspects = shots.map((s, i) => (imgs[i] ? imgs[i].naturalWidth / imgs[i].naturalHeight : 0.7));
+        const aspects = shots.map((s, i) => (imgs[i] ? imgAspect(imgs[i]) : 0.7));
         cells(shots.length, { ...box, h: box.h - 8 }, M.gap, aspects, W > H, entry.rows).forEach((c, i) => {
           if (imgs[i]) { const r = drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); frame(page, r.x, r.y, r.w, r.h, P.rule, 0.2); }
           else missing(page, P, c.x, c.y, c.w, c.h);
@@ -559,7 +788,7 @@
       }
       const box = { x: M.side, y: M.top, w: W - 2 * M.side, h: H - M.top - M.bottom - (cap ? 7 : 0) };
       if (cap) drawCaption(page, cap, M.side, H - 17.5, CAPTION_TYPE.modern, P.ink, P);
-      const aspects = shots.map((s, i) => (imgs[i] ? imgs[i].naturalWidth / imgs[i].naturalHeight : 0.7));
+      const aspects = shots.map((s, i) => (imgs[i] ? imgAspect(imgs[i]) : 0.7));
       cells(shots.length, box, M.gap, aspects, W > H, entry.rows).forEach((c, i) => {
         if (imgs[i]) drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); else missing(page, P, c.x, c.y, c.w, c.h);
         // Plate number in a chip, keyed to nothing but its order on the page.
@@ -648,7 +877,7 @@
       if (shots.length === 1) {
         if (imgs[0]) drawPhoto(page, imgs[0], shots[0], 0, 0, W, area); else missing(page, P, 0, 0, W, area);
       } else {
-        const aspects = shots.map((s, i) => (imgs[i] ? imgs[i].naturalWidth / imgs[i].naturalHeight : 0.7));
+        const aspects = shots.map((s, i) => (imgs[i] ? imgAspect(imgs[i]) : 0.7));
         // Tiled trim to trim: tightness is the style.
         cells(shots.length, { x: 0, y: 0, w: W, h: area }, M.gap, aspects, W > H, entry.rows).forEach((c, i) => {
           if (imgs[i]) drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); else missing(page, P, c.x, c.y, c.w, c.h);
@@ -1547,7 +1776,7 @@
     if (shots.length === 1) {
       if (imgs[0]) drawPhoto(page, imgs[0], shots[0], a.x, a.y, a.w, a.h); else missing(page, P, a.x, a.y, a.w, a.h);
     } else {
-      const aspects = shots.map((s, i) => (imgs[i] ? imgs[i].naturalWidth / imgs[i].naturalHeight : 0.7));
+      const aspects = shots.map((s, i) => (imgs[i] ? imgAspect(imgs[i]) : 0.7));
       cells(shots.length, a, gap, aspects, W > H, entry.rows).forEach((c, i) => {
         if (imgs[i]) drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); else missing(page, P, c.x, c.y, c.w, c.h);
       });
@@ -2340,7 +2569,7 @@
   /* ---------- rendering a book ----------------------------------------------
      Yields one finished page at a time, so the caller can encode and release
      each canvas before the next is drawn. */
-  async function* renderPages(book, { dpi, watermarked = false, cache, only = null, guides = false, skip = null }) {
+  async function* renderPages(book, { dpi, watermarked = false, cache, only = null, guides = false, skip = null, originals = null }) {
     const mark = watermarked ? markSettings(book) : null;
     await ensureFonts();
     await ensureBookFonts(book);
@@ -2360,6 +2589,8 @@
     const imgOf = async (shot) => {
       const hit = shot && lib.byId.get(shot.id);
       if (!hit) return null;
+      // The studio's own full-size file, when one was matched (print files only).
+      if (full && originals) { const own = await originals.get(shot.id); if (own) return own; }
       const src = full ? API.photoSrc(hit.photo) : previewSrc(hit.photo);
       try { return await API.loadImage(src, cache); } catch (e) { return null; }
     };
@@ -2551,7 +2782,10 @@
   .sb-check { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
   .sb-check li { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font: 500 12.5px/1.45 Inter, sans-serif; }
   .sb-dlrow { display: flex; flex-wrap: wrap; gap: 8px; }
-  .sb-ready { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sb-ready { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .sb-ready p { flex-basis: 100%; margin: 0; }
+  .sb-ok { margin: 0; font: 500 12.5px/1.45 Inter, sans-serif; color: var(--ink, #141416); }
+  #sbOrigStatus { display: grid; gap: 4px; } #sbOrigStatus p { margin: 0; }
   .sb-ready a { font: 600 12.5px Inter, sans-serif; padding: 7px 11px; border-radius: 999px; background: var(--ink, #141416); color: var(--paper, #faf8f5); text-decoration: none; }
 
   .sb-work { display: grid; grid-template-columns: 148px minmax(0, 1fr) 392px; gap: 12px; margin-top: 12px; height: calc(100vh - 220px); min-height: 440px; }
@@ -2841,7 +3075,8 @@
       ["free:titled", "Title on the picture", "One photograph filling the page, a band across it, the title on the band."],
       ["free:quote", "A quote under a photograph", "A photograph at the top, big words under it, and who said them."],
       ["free:three", "Three pictures and a note", "One wide photograph, two under it, and a few words."],
-      ["free:sheet", "Contact sheet", "Six photographs in a grid, the way a proof sheet reads."]] },
+      ["free:sheet", "Contact sheet", "Six photographs in a grid, the way a proof sheet reads."],
+      ["free:blank", "Empty page", "Nothing on it but the page colour: for the end of the book, or to keep a two-page spread on facing pages."]] },
     { group: "Studio pages", items: [
       ["divider", "Chapter page", "A pause between sections, e.g. “Fashion & editorial”."],
       ["about", "About the studio", "Who you are and how you work."],
@@ -2977,6 +3212,9 @@
     let lastFacing = null;               // the page drawn beside it, when Two is on
     let view = { two: false, zoom: false }; // facing pages, and larger than fit
     let printMode = "normal";            // or "fold": pages two to a sheet, in folding order
+    let exportDpi = 150;                 // or 300, for a print shop
+    const originals = originalsStore();  // the studio's full-size files, this session only
+    let lastMatch = null;                // what match() last found for this book
     let lightTimer = null;
     let editing = null;                  // the text being typed on the page itself
     let photoSel = null;                 // the photograph chosen on the page itself
@@ -3241,6 +3479,19 @@
                 <p class="sb-hint">For a sample you send before a job is agreed. Leave it off for the file the client keeps.</p>
               </div>
             </div>
+            <div class="sb-sec"><span class="sb-label">Resolution</span>
+              <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Resolution">
+                <button type="button" role="radio" data-dpi="150" aria-checked="true">150 dpi</button>
+                <button type="button" role="radio" data-dpi="300" aria-checked="false">300 dpi</button>
+              </div>
+              <p class="sb-hint" id="sbDpiNote"></p>
+            </div>
+            <div class="sb-sec"><span class="sb-label">Your full-size photos</span>
+              <p class="sb-hint">The site keeps each photo at 1600 px. For a print run, point the book at the full-size files on this computer. They are read here and never uploaded, even if the browser's dialog says “Upload”.</p>
+              <div class="sb-dlrow"><button type="button" class="sb-btn" id="sbOrig">Choose the folder…</button><button type="button" class="sb-btn" id="sbOrigForget" hidden>Forget them</button></div>
+              <input type="file" id="sbOrigFile" multiple accept="image/*" hidden>
+              <div id="sbOrigStatus"></div>
+            </div>
             <div class="sb-sec"><span class="sb-label">How it prints</span>
               <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="How it prints">
                 <button type="button" role="radio" data-print="normal" aria-checked="true">Normal</button>
@@ -3252,6 +3503,7 @@
               <button type="button" class="sb-btn dark" id="sbPdf" data-dl>Download PDF</button>
               <button type="button" class="sb-btn" id="sbPng" data-dl>PNG pages</button>
             </div>
+            <p class="sb-warn" id="sbAnyway" hidden></p>
             <div class="sb-ready" id="sbReady"></div>
             <p class="sb-hint">The PDF is made of page images, so its words can't be searched or copied.</p>
           </div>
@@ -3339,6 +3591,28 @@
         bookletNote();
       }));
       $("#sbPng").addEventListener("click", (e) => download(e.currentTarget, "png", $("#sbMark").checked));
+      $$("[data-dpi]").forEach((b) => b.addEventListener("click", () => {
+        exportDpi = +b.dataset.dpi;
+        $$("[data-dpi]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
+        dpiNote();
+      }));
+      // The studio's full-size photos: a folder on a computer, single files on a phone.
+      const origInput = $("#sbOrigFile"), origBtn = $("#sbOrig");
+      if (matchMedia("(pointer: coarse)").matches) origBtn.textContent = "Choose the photos…"; else origInput.setAttribute("webkitdirectory", "");
+      origBtn.addEventListener("click", () => origInput.click());
+      origInput.addEventListener("change", async () => {
+        const list = [...(origInput.files || [])];
+        origInput.value = "";
+        if (!list.length) return;
+        const el = $("#sbOrigStatus");
+        origBtn.disabled = true;
+        try {
+          await originals.add(list, (d, t) => { if ($("#sbOrigStatus")) el.innerHTML = `<p class="sb-hint">Reading ${d} of ${t} files…</p>`; });
+        } finally { origBtn.disabled = false; }
+        originalsNote();
+      });
+      $("#sbOrigForget").addEventListener("click", () => { originals.forget(); lastMatch = null; originalsNote(); });
+      dpiNote();
 
       // The watermark's words and strength stay with the book; whether this
       // file carries it is chosen each time.
@@ -4179,6 +4453,7 @@
       if (WRITING[pg.type]) { const w = wordsOf(pg); return w.length ? `${PAGE_LABEL[pg.type]} · “${w.slice(0, 6).join(" ")}”` : PAGE_LABEL[pg.type]; }
       if (pg.type === "photos" || pg.type === "spread") return `${PAGE_LABEL[pg.type]} · ${(pg.photos || []).length}`;
       if (pg.type === "divider") return pg.heading ? `Chapter · ${pg.heading}` : "Chapter page";
+      if (pg.type === "free") return (pg.blocks || []).length ? `${PAGE_LABEL.free} · ${pg.blocks.length}` : "Empty page";
       return PAGE_LABEL[pg.type] || pg.type;
     }
     // The page that faces this one in the printed book: the cover sits alone,
@@ -5674,9 +5949,82 @@
       const n = renderedCount(book), padded = Math.ceil(n / 4) * 4;
       el.textContent = `Fold in half: ${sheet.page} pages two to a ${sheet.name} sheet, in folding order${padded > n ? ` (${padded - n} blank page${padded - n === 1 ? "" : "s"} added to fill the last sheet)` : ""}. Print two-sided, flipping on the short edge, then fold the stack down the middle and staple.${book.paper !== "a5" ? " For A4 sheets from a home printer, set the paper to A5 in Design first." : ""}`;
     }
+    // Every photo a book draws, cover and Anything-page boxes included.
+    function bookPhotoIds(b) {
+      const ids = new Set();
+      const add = (s) => { if (s && typeof s.id === "string" && !isDiagram(s.id)) ids.add(s.id); };
+      add(b.cover);
+      for (const pg of b.pages || []) {
+        (pg.photos || []).forEach(add);
+        if (pg.type === "free") for (const blk of freeBlocks(pg)) if (blk.k === "photo") add(blk.p);
+      }
+      return [...ids];
+    }
+    // Where a photo sits, for the notes: "the cover", "page 03", "page 05 (2nd photo)".
+    function photoPlaces(b) {
+      const places = new Map();
+      const note = (id, where) => { if (!id) return; if (!places.has(id)) places.set(id, []); places.get(id).push(where); };
+      const nth = (k) => ["1st", "2nd", "3rd", "4th", "5th", "6th"][k] || `${k + 1}th`;
+      if (b.cover) note(b.cover.id, "the cover");
+      let n = 1;
+      for (const pg of b.pages || []) {
+        const first = n + 1; n += pageSpan(pg);
+        if (n > MAX_PAGES) break;
+        const shots = pg.type === "free" ? freeBlocks(pg).filter((x) => x.k === "photo").map((x) => x.p) : (pg.photos || []);
+        shots.forEach((s, k) => { if (s) note(s.id, `page ${pad2(first)}${shots.length > 1 ? ` (${nth(k)} photo)` : ""}`); });
+      }
+      return places;
+    }
+    const thumbLoader = () => {
+      const lib = library();
+      return async (id) => { const hit = lib.byId.get(id); return hit && !isDiagram(id) ? API.loadImage(thumbSrc(hit.photo), cache) : null; };
+    };
+    async function originalsFor(b, dpi) {
+      if (!originals.count()) return null;
+      const m = await originals.match(bookPhotoIds(b), thumbLoader());
+      if (!m.matched.size) return null;
+      const G = geometry(b);
+      // Nothing on a page is drawn bigger than the page, and a crop shows
+      // at most part of a photo: twice the page's long side keeps every
+      // crop at full resolution without holding more than that.
+      return originalLoader(m.matched, Math.round(Math.max(G.pw, G.ph) * dpi / 25.4 * 2));
+    }
+    function dpiNote() {
+      const el = $("#sbDpiNote"); if (!el) return;
+      const have = lastMatch && lastMatch.matched.size;
+      el.textContent = exportDpi === 300
+        ? (have ? "300 dpi is what a print shop asks for. The file is about four times the size of the 150 dpi one." : "300 dpi is what a print shop asks for. Without your full-size photos (below), a photo is sharp only up to about half a page: the site keeps each at 1600 px.")
+        : "150 dpi suits a screen, email and a home printer. Choose 300 dpi for a print shop.";
+    }
+    let origToken = 0;
+    async function originalsNote() {
+      const el = $("#sbOrigStatus"), forget = $("#sbOrigForget"); if (!el) return;
+      const token = ++origToken;
+      if (!originals.count()) { lastMatch = null; el.innerHTML = originals.raw ? `<p class="sb-warn">${originals.raw} RAW file${originals.raw === 1 ? "" : "s"} skipped: a browser can't read them. Export them as JPEGs first.</p>` : ""; forget.hidden = true; dpiNote(); return; }
+      forget.hidden = false;
+      const ids = bookPhotoIds(book);
+      el.innerHTML = `<p class="sb-hint">Looking through ${originals.count()} files…</p>`;
+      const m = await originals.match(ids, thumbLoader(), (d, t) => { if (token === origToken && $("#sbOrigStatus")) el.innerHTML = `<p class="sb-hint">Looking for photo ${d} of ${t}…</p>`; });
+      if (token !== origToken || !$("#sbOrigStatus")) return;
+      lastMatch = m;
+      const places = photoPlaces(book);
+      const where = (list) => list.map((id) => (places.get(id) || ["somewhere"]).join(" and ")).join("; ");
+      const s = (k) => (k === 1 ? "" : "s");
+      const lines = [`<p class="${m.matched.size ? "sb-ok" : "sb-warn"}">${m.matched.size} of the ${ids.length} photo${s(ids.length)} in this book found among ${originals.count()} file${s(originals.count())}.</p>`];
+      if (m.missing.length) lines.push(`<p class="sb-hint">Not in these files: ${esc(where(m.missing))}.</p>`);
+      if (m.ambiguous.length) lines.push(`<p class="sb-hint">Two files look alike, so neither was used for ${esc(where(m.ambiguous))}.</p>`);
+      if (m.small.length) lines.push(`<p class="sb-hint">Found, but no bigger than the site's copy: ${esc(where(m.small))}.</p>`);
+      if (originals.raw) lines.push(`<p class="sb-hint">${originals.raw} RAW file${s(originals.raw)} skipped: a browser can't read them. Export them as JPEGs first.</p>`);
+      el.innerHTML = lines.join("");
+      dpiNote();
+    }
     async function drawCheck() {
       const box = $("#sbCheck"); if (!box) return;
       bookletNote();
+      $$("[data-dl]").forEach((b2) => { if (b2.dataset.anyway) { delete b2.dataset.anyway; b2.textContent = b2.textContent.replace(/ anyway$/, ""); } });
+      { const note = $("#sbAnyway"); if (note) note.hidden = true; }
+      dpiNote();
+      if (originals.count()) originalsNote();
       box.innerHTML = `<p class="sb-hint">Checking…</p>`;
       const list = await problems(book);
       if (!$("#sbCheck")) return;
@@ -5717,11 +6065,17 @@
       // half in the file, mixing two styles or losing a page it had counted.
       const snap = JSON.parse(JSON.stringify(book));
       const list = await problems(snap);
-      if (list.length) {
-        const shown = list.slice(0, 5).map((p) => `• ${p.text}`).join("\n");
-        const more = list.length > 5 ? `\n…and ${list.length - 5} more (see “Check before sending” in Download).` : "";
-        if (!confirm(`Before you send this:\n${shown}${more}\n\nDownload anyway?`)) return;
+      // Things to look at are listed in the menu; the first press says so and
+      // turns the button into "anyway", the second goes ahead. No pop-up.
+      if (list.length && !btn.dataset.anyway) {
+        await drawCheck();
+        btn.dataset.anyway = "1";
+        btn.textContent = `${btn.textContent.replace(/ anyway$/, "")} anyway`;
+        const note = $("#sbAnyway"); if (note) { note.hidden = false; note.textContent = `${list.length} thing${list.length === 1 ? "" : "s"} to look at, listed above. Fix ${list.length === 1 ? "it" : "them"}, or press the button again to download anyway.`; }
+        return;
       }
+      delete btn.dataset.anyway;
+      { const note = $("#sbAnyway"); if (note) note.hidden = true; }
       const buttons = $$("[data-dl]");
       const label = btn.textContent;
       const ready = $("#sbReady");
@@ -5730,14 +6084,16 @@
       ready.replaceChildren(); dropFiles();
       const base = `${(snap.name || "portfolio").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "portfolio"}${format === "booklet" ? "-booklet" : ""}${watermarked ? "-watermarked" : ""}`;
       try {
-        // Print quality first, then softer if the device runs short of memory.
-        let result = null, lastErr = null;
-        for (const dpi of [150, 110]) {
+        // The chosen resolution first, then softer if the device runs short of memory.
+        let result = null, lastErr = null, madeAt = 0, fullSize = 0;
+        for (const dpi of (exportDpi === 300 ? [300, 150, 110] : [150, 110])) {
+          const orig = await originalsFor(snap, dpi);
           try {
             const out = [];
             let done = 0;
             const pageJpeg = [];    // for a booklet: every page, compressed, by number
-            for await (const r of renderPages(snap, { dpi, watermarked, cache })) {
+            for await (const r of renderPages(snap, { dpi, watermarked, cache, originals: orig })) {
+              if (orig) await orig.release();       // the page holds its pixels now
               const { canvas, links, pt, scale } = r.page;
               // Links are placed in design mm; the PDF wants printed mm.
               const printed = (links || []).map((l) => ({ ...l, x: l.x * (scale || 1), y: l.y * (scale || 1), w: l.w * (scale || 1), h: l.h * (scale || 1) }));
@@ -5775,22 +6131,38 @@
               }
             }
             result = format === "png" ? out : await API.buildPdf(out, `${snap.name} — ${studio()}${format === "booklet" ? " (booklet)" : ""}`);
+            madeAt = dpi; fullSize = orig ? orig.used.size : 0;
             break;
-          } catch (err) { lastErr = err; }
+          } catch (err) { lastErr = err; } finally { if (orig) await orig.release(); }
         }
+        const madeNote = `${madeAt} dpi${fullSize ? ` · ${fullSize} full-size photo${fullSize === 1 ? "" : "s"}` : ""}`;
+        const softer = madeAt && madeAt < exportDpi ? `<p class="sb-warn">Made at ${madeAt} dpi: this device ran short of memory at ${exportDpi}. Try on a computer, or with fewer pages.</p>` : "";
         if (!result) throw lastErr || new Error("unknown error");
         if (!ready.isConnected) return;
         if (format !== "png") {
           const blob = new Blob([result], { type: "application/pdf" });
           const url = URL.createObjectURL(blob); fileUrls.push(url);
-          ready.innerHTML = `<a href="${url}" download="${esc(base)}.pdf">Save ${format === "booklet" ? "booklet" : "PDF"} (${(blob.size / 1048576).toFixed(1)} MB)</a>`;
+          const name = `${base}.pdf`;
+          // A phone can't save a file from a link the way a laptop does — an
+          // iPhone opens it instead — so it also gets the share sheet, where
+          // "Save to Files", AirDrop and WhatsApp live.
+          let file = null;
+          try { file = new File([blob], name, { type: "application/pdf" }); } catch (e) { file = null; }
+          const canShare = !!(file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] }));
+          ready.innerHTML = `<a href="${url}" download="${esc(name)}">Save ${format === "booklet" ? "booklet" : "PDF"} (${(blob.size / 1048576).toFixed(1)} MB · ${madeNote})</a>${canShare ? `<button type="button" class="sb-btn dark" id="sbShare">Share or save to Files</button>` : ""}${softer}`;
+          const share = $("#sbShare");
+          if (share) share.addEventListener("click", () => navigator.share({ files: [file], title: snap.name }).catch(() => { /* the sheet was closed */ }));
           if (!matchMedia("(pointer: coarse)").matches) ready.querySelector("a").click();
-          else { const pop = $("#sbDlPop"); if (pop) { pop.hidden = false; $("#sbDlToggle").setAttribute("aria-expanded", "true"); } API.toast("Your PDF is ready: tap “Save PDF” in Download."); }
+          else {
+            const pop = $("#sbDlPop"); if (pop) { pop.hidden = false; $("#sbDlToggle").setAttribute("aria-expanded", "true"); }
+            (share || ready.querySelector("a")).focus();
+            API.toast(canShare ? "Your PDF is ready: tap “Share or save to Files” in Download." : "Your PDF is ready: tap “Save PDF” in Download.");
+          }
         } else {
           ready.innerHTML = result.map((r) => {
             const url = URL.createObjectURL(r.blob); fileUrls.push(url);
             return `<a href="${url}" download="${esc(base)}-page-${pad2(r.n)}.png">Page ${r.n}</a>`;
-          }).join("");
+          }).join("") + `<p class="sb-hint">${madeNote}</p>` + softer;
           if (!matchMedia("(pointer: coarse)").matches) {
             // One after another: a browser asked for many files at once keeps the first.
             [...ready.querySelectorAll("a")].forEach((a, i) => setTimeout(() => {
@@ -5802,7 +6174,7 @@
         ready.innerHTML = `<p class="sb-warn">Couldn't make the ${format === "png" ? "images" : format === "booklet" ? "booklet" : "PDF"} (${esc(err.message || err)}). Try again, or with fewer pages.</p>`;
       } finally {
         buttons.forEach((b) => { b.disabled = false; });
-        btn.textContent = label;
+        btn.textContent = label.replace(/ anyway$/, "");
       }
     }
 
@@ -5822,5 +6194,5 @@
     if (again) openBook(JSON.parse(JSON.stringify(again)), false, reopen); else showList();
   }
 
-  window.StudioBook = { mount, renderPages, COLOURWAYS, STYLES, newBook, geometry, PAPERS, WAYS_COPY, PROCESS_COPY, bookletSides, SHEETS };
+  window.StudioBook = { mount, renderPages, COLOURWAYS, STYLES, newBook, geometry, PAPERS, WAYS_COPY, PROCESS_COPY, bookletSides, SHEETS, fingerprint, fpScore, fpColour, imageHeader, originalsStore, originalLoader };
 })();
