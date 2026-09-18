@@ -371,6 +371,11 @@
   // The text being typed on the page right now, left out of the paint so the
   // box the studio is typing in is the only copy of the words.
   let skipNow = null;
+  // The page being drawn, so a style's ground can ask for its colour.
+  let entryNow = null;
+  const isFillish = (v) => FILL_NAMES.includes(v) || /^#[0-9a-f]{6}$/i.test(String(v || ""));
+  const pageBgOf = (book, entry, P, fallback) => (entry && isFillish(entry.bg) ? blockColor(entry.bg, P, fallback) : (book && isFillish(book.bg) ? blockColor(book.bg, P, fallback) : fallback));
+  const pageBg = (P, fallback) => pageBgOf(bookNow, entryNow, P, fallback);
   const footName = () => String((bookNow && typeof bookNow.footText === "string" && bookNow.footText.trim()) ? bookNow.footText : studio()).toUpperCase();
   const showNums = () => !(bookNow && bookNow.showPageNumbers === false);
   const pageCredit = (entry, shoots) => ((entry && typeof entry.credit === "string" && entry.credit.trim()) ? entry.credit : creditLine(shoots));
@@ -452,7 +457,7 @@
     },
     async photos(page, entry, P, W, H, imgs, shoots, n) {
       const M = this.margins(W > H ? "landscape" : "portrait");
-      rect(page, 0, 0, W, H, P.paper);
+      rect(page, 0, 0, W, H, pageBg(P, P.paper));
       const box = { x: M.side, y: M.top, w: W - 2 * M.side, h: H - M.top - M.bottom };
       const shots = entry.photos;
       if (shots.length === 1 && entry.border) return bandedPhotoPage(page, entry, P, W, H, imgs, shots, shoots, n, captionFit(entry, W - 28, CAPTION_TYPE.elegant), "elegant", M.gap);
@@ -483,7 +488,7 @@
     heading(page, s, x, y, P, maxW) { font(page, 300, 11, F.serif); const lines = wrap(page, s, maxW); lines.forEach((l, i) => text(page, l, x, y + i * 13, P.ink)); rect(page, x, y + (lines.length - 1) * 13 + 7, 22, 0.8, P.accent); return y + (lines.length - 1) * 13 + 16; },
     body(page, s, x, y, P, maxW, maxY = Infinity) { font(page, 300, 4.0, F.sans); return bodyLines(page, s, x, y, P, maxW, maxY, 6.4); },
     label(page, s, x, y, P) { font(page, 500, 2.6, F.plex, 0.55); text(page, s.toUpperCase(), x, y, P.soft); },
-    ground(page, P, W, H) { rect(page, 0, 0, W, H, P.paper); }
+    ground(page, P, W, H) { rect(page, 0, 0, W, H, pageBg(P, P.paper)); }
   };
 
   const MODERN = {
@@ -536,7 +541,7 @@
     },
     async photos(page, entry, P, W, H, imgs, shoots, n) {
       const M = this.margins();
-      rect(page, 0, 0, W, H, P.white);
+      rect(page, 0, 0, W, H, pageBg(P, P.white));
       const shots = entry.photos;
       const cap = captionFit(entry, W - 2 * M.side, CAPTION_TYPE.modern);
       if (shots.length === 1 && entry.border) return bandedPhotoPage(page, entry, P, W, H, imgs, shots, shoots, n, cap, "modern", M.gap);
@@ -576,7 +581,7 @@
     heading(page, s, x, y, P, maxW) { font(page, 800, 10, F.heavy, -0.2); const lines = wrap(page, String(s).toUpperCase(), maxW); lines.forEach((l, i) => text(page, l, x, y + i * 10.5, P.ink)); rect(page, x, y + (lines.length - 1) * 10.5 + 5, 18, 1.2, P.accent); return y + (lines.length - 1) * 10.5 + 15; },
     body(page, s, x, y, P, maxW, maxY = Infinity) { font(page, 400, 3.9, F.sans); return bodyLines(page, s, x, y, P, maxW, maxY, 6.2); },
     label(page, s, x, y, P) { font(page, 700, 2.5, F.mono, 0.45); text(page, s.toUpperCase(), x, y, accentText(P)); },
-    ground(page, P, W, H) { rect(page, 0, 0, W, H, P.white); rect(page, 0, 0, 6, H, P.accent); }
+    ground(page, P, W, H) { rect(page, 0, 0, W, H, pageBg(P, P.white)); rect(page, 0, 0, 6, H, P.accent); }
   };
 
   const VOGUE = {
@@ -634,7 +639,7 @@
     },
     async photos(page, entry, P, W, H, imgs, shoots, n) {
       const M = this.margins();
-      rect(page, 0, 0, W, H, P.white);
+      rect(page, 0, 0, W, H, pageBg(P, P.white));
       const shots = entry.photos;
       // A caption gets a white strip across the foot, clear of the outer band.
       const cap = captionFit(entry, W - 24, CAPTION_TYPE.vogue);
@@ -673,7 +678,7 @@
     heading(page, s, x, y, P, maxW) { font(page, 300, 12, F.serif, 0.6); const lines = wrap(page, String(s).toUpperCase(), maxW); lines.forEach((l, i) => text(page, l, x, y + i * 14, P.ink)); rect(page, x, y + (lines.length - 1) * 14 + 7, 24, 0.6, P.accent); return y + (lines.length - 1) * 14 + 17; },
     body(page, s, x, y, P, maxW, maxY = Infinity) { font(page, 400, 3.9, F.sans); return bodyLines(page, s, x, y, P, maxW, maxY, 6.3); },
     label(page, s, x, y, P) { font(page, 600, 2.7, F.geo, 0.8); text(page, s.toUpperCase(), x, y, accentText(P)); },
-    ground(page, P, W, H) { rect(page, 0, 0, W, H, P.white); }
+    ground(page, P, W, H) { rect(page, 0, 0, W, H, pageBg(P, P.white)); }
   };
   const STYLE_IMPL = { elegant: ELEGANT, modern: MODERN, vogue: VOGUE };
 
@@ -1537,7 +1542,7 @@
   const bandColors = (style, P) => (style === "vogue" ? { band: P.white, on: P.ink } : { band: P.deep, on: P.onDeep });
   function bandedPhotoPage(page, entry, P, W, H, imgs, shots, shoots, n, cap, style, gap) {
     const B = bandsFor(entry, !!cap);
-    rect(page, 0, 0, W, H, P.white);
+    rect(page, 0, 0, W, H, pageBgOf(bookNow, entry, P, P.white));
     const a = { x: B.left, y: B.top, w: W - B.left - B.right, h: H - B.top - B.bottom };
     if (shots.length === 1) {
       if (imgs[0]) drawPhoto(page, imgs[0], shots[0], a.x, a.y, a.w, a.h); else missing(page, P, a.x, a.y, a.w, a.h);
@@ -1743,8 +1748,8 @@
     };
     const rule = (x, y, color = P.accent) => rectOp(x, y - T.rule.h / 2, T.rule.w, T.rule.h, color);
     const ground = () => {
-      if (st === "elegant") rectOp(0, 0, W, H, P.paper);
-      else { rectOp(0, 0, W, H, P.white); if (st === "modern") rectOp(0, 0, 6, H, P.accent); }
+      if (st === "elegant") rectOp(0, 0, W, H, pageBgOf(book, entry, P, P.paper));
+      else { rectOp(0, 0, W, H, pageBgOf(book, entry, P, P.white)); if (st === "modern") rectOp(0, 0, 6, H, P.accent); }
     };
     const photo = (box, mode, empty, i = 0) => op({ k: "photo", i, x: box[0], y: box[1], w: box[2], h: box[3], mode, frame: st === "elegant" ? P.rule : null, empty });
     const marker = (x, y, color = P.soft) => put(MARKER, x, y, { w: 500, f: F.plex, sp: 0.4 }, 3.2, color, "center");
@@ -2173,7 +2178,7 @@
     const plan = { ops: [], cuts: [], fields: {}, foot: {}, free: true };
     const op = (o) => plan.ops.push(o);
     const colour = (role) => (role === "accentText" ? accentText(P) : P[role]);
-    op({ k: "rect", x: 0, y: 0, w: W, h: H, c: blockColor(entry.bg, P, st === "elegant" ? P.paper : P.white) });
+    op({ k: "rect", x: 0, y: 0, w: W, h: H, c: pageBgOf(book, entry, P, st === "elegant" ? P.paper : P.white) });
     freeBlocks(entry).forEach((b, i) => {
       if (!b || !FREE_KINDS.includes(b.k)) return;
       const box = blockBox(b, W, H);
@@ -2190,7 +2195,10 @@
         return;
       }
       // Words. The box holds them: the type shrinks to fit unless the studio
-      // asked for it to be cut, and either way it says what won't print.
+      // asked for it to be cut, and either way it says what won't print. With
+      // a colour behind them, the words sit inset from the box's edge.
+      if (b.fill) op({ k: "rect", x: box.x, y: box.y, w: box.w, h: box.h, c: blockColor(b.fill, P, P.accent), a: b.o, rot: turn });
+      const inset = b.fill ? Math.min(4, box.w * 0.08, box.h * 0.2) : 0;
       const f = (b.style && typeof b.style === "object") ? b.style : {};
       const R = roleType(T, b.role);
       const base = styledSpec(R.spec, f);
@@ -2206,7 +2214,7 @@
         lead = leadAt(size);
         const spec = { ...base, size, lead };
         const specFor = (pi) => { const pf = paraFmt(f, pi); const st2 = styledSpec(R.spec, pf); const sc2 = sizeScale(pf) / sc; return { spec: { ...st2, size: size * sc2, lead: lead * sc2 }, lead: lead * sc2, color: tintOf(pf.color, P, colour(R.color)), align: ALIGNS.includes(pf.align) ? pf.align : align, list: pf.list, columns: pf.columns }; };
-        r = flowBody(page, words, [{ x: box.x, w: box.w, top: box.y + size * 0.84, bottom: box.y + box.h - size * 0.2 }], spec, null, perPara ? specFor : null);
+        r = flowBody(page, words, [{ x: box.x + inset, w: box.w - 2 * inset, top: box.y + inset + size * 0.84, bottom: box.y + box.h - inset - size * 0.2 }], spec, null, perPara ? specFor : null);
         r.specFor = perPara ? specFor : null;
         r.spec = spec;
         if (!r.cut || size <= floor + 1e-6) break;
@@ -2363,6 +2371,7 @@
     let n = 0;
     const want = (i) => only === null || (Array.isArray(only) ? only.includes(i) : only === i);
     // Cover
+    entryNow = null;
     if (want(-1)) {
       const page = newPage();
       await S.cover(page, book, P, W, H, book.cover ? await imgOf(book.cover) : null);
@@ -2372,6 +2381,7 @@
     n = 1;
     for (let i = 0; i < book.pages.length; i++) {
       const entry = book.pages[i];
+      entryNow = entry;
       // The builder never lets a book past 20 pages, but a book edited by hand
       // in data.js could arrive longer: stop rather than export past the limit.
       if (n + pageSpan(entry) > MAX_PAGES) break;
@@ -2386,7 +2396,7 @@
         // runs round the outside of the pair, never down the fold.
         for (const half of [0, 1]) {
           const page = newPage();
-          rect(page, 0, 0, W, H, P.white);
+          rect(page, 0, 0, W, H, pageBgOf(book, entry, P, P.white));
           const pn = n - 1 + half;
           if (img) {
             page.ctx.save();
@@ -2612,6 +2622,19 @@
   .sb-h[data-h="e"], .sb-h[data-h="w"] { cursor: ew-resize; }
   @media (pointer: coarse) { .sb-h { width: 18px; height: 18px; margin: -9px 0 0 -9px; } }
   .sb-guide { position: absolute; background: #FF3D7F; pointer-events: none; }
+  /* The style's margins and the page's middle, faint, in the editor only. */
+  .sb-mg { position: absolute; pointer-events: none; border: 0 dashed rgba(210, 78, 26, .45); }
+  .sb-mg.v { top: 0; height: 100%; width: 0; border-left-width: 1px; } .sb-mg.h { left: 0; width: 100%; height: 0; border-top-width: 1px; }
+  .sb-mg.mid { border-color: rgba(20, 20, 22, .22); }
+  .sb-measure { position: absolute; z-index: 4; padding: 4px 7px; border-radius: 6px; background: var(--ink, #141416); color: var(--paper, #fff); font: 600 10.5px/1.3 'JetBrains Mono', monospace; letter-spacing: .02em; white-space: nowrap; pointer-events: none; }
+  .sb-measure b { color: #FF9EBB; font-weight: 700; }
+  /* The bar on the chosen thing: which is in front, a copy, and remove. */
+  .sb-blkbar { position: absolute; z-index: 3; display: flex; gap: 2px; padding: 3px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--sb-card); box-shadow: 0 10px 28px -12px rgba(0,0,0,.4); white-space: nowrap; }
+  .sb-blkbar button { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 7px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: inherit; font: 600 11.5px/1 Inter, system-ui, sans-serif; cursor: pointer; }
+  .sb-blkbar button:hover { border-color: var(--sb-line); } .sb-blkbar button:disabled { opacity: .35; cursor: default; }
+  .sb-blkbar button i { font-style: normal; font-size: 13px; }
+  .sb-blkbar .sb-sep { width: 1px; margin: 4px 2px; background: var(--sb-line); }
+  @media (max-width: 900px) { .sb-blkbar button span { display: none; } .sb-blkbar button { padding: 0 8px; min-width: 34px; justify-content: center; } }
   /* Touching the page: an invisible button on every text and photograph. */
   .sb-hits { position: absolute; }
   .sb-hit { position: absolute; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; cursor: text; }
@@ -2696,6 +2719,8 @@
   /* Any colour: a square for how strong and how bright, a strip for the hue,
      and the colour written out. */
   .sb-hexlabel { font: 600 11.5px 'JetBrains Mono', monospace; color: var(--ink, #141416); }
+  .sb-ptrow { display: flex; align-items: center; gap: 6px; font: 500 11px Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
+  .sb-ptrow input[type=number] { width: 74px; padding: 6px 8px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--paper, #faf8f5); color: var(--ink, #141416); font: 600 13px 'JetBrains Mono', monospace; }
   .sb-cphost { grid-column: 1 / -1; } .sb-cphost[hidden] { display: none; }
   .sb-cpick { display: grid; gap: 8px; margin-top: 6px; padding: 8px; border: 1px solid var(--sb-line); border-radius: 10px; background: var(--paper, #faf8f5); }
   .sb-cpsat { position: relative; height: 118px; border-radius: 8px; border: 1px solid rgba(0,0,0,.15); cursor: crosshair; touch-action: none; }
@@ -2949,6 +2974,7 @@
     let active = 0;                      // which chosen photo the placement controls act on
     let blockSel = -1;                   // which thing on an Anything page is chosen
     let lastRender = [];                 // what the preview last drew, page by page
+    let lastFacing = null;               // the page drawn beside it, when Two is on
     let view = { two: false, zoom: false }; // facing pages, and larger than fit
     let printMode = "normal";            // or "fold": pages two to a sheet, in folding order
     let lightTimer = null;
@@ -3048,6 +3074,8 @@
         const step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
         if (step) { e.preventDefault(); nudgeBlock(step[0], step[1], e.shiftKey); return; }
         if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); removeBlock(blockSel); return; }
+        if (e.key === "]" || e.key === "}") { e.preventDefault(); if (e.shiftKey) moveBlockTo(blockSel, "front"); else moveBlock(blockSel, 1); return; }
+        if (e.key === "[" || e.key === "{") { e.preventDefault(); if (e.shiftKey) moveBlockTo(blockSel, "back"); else moveBlock(blockSel, -1); return; }
       }
       if (e.key !== "Escape") return;
       if (editing) { closeInline(true); return; }
@@ -3201,7 +3229,7 @@
           <button type="button" class="sb-light" id="sbLight" aria-live="polite" title="What to look at before sending"><i></i><span>Checking…</span></button>
           <div class="sb-topacts">
             <button type="button" class="sb-btn" id="sbDlToggle" aria-expanded="false" aria-controls="sbDlPop">Download</button>
-            <button type="button" class="sb-btn dark" id="sbPublish">Publish</button>
+            <button type="button" class="sb-btn dark" id="sbPublish" title="Saves this book into the site's own files, so it is there on any device. Nothing is shown to visitors — what a client gets is the PDF.">Publish</button>
           </div>
           <div class="sb-pop" id="sbDlPop" hidden>
             <div class="sb-sec"><h3>Check before sending</h3><div id="sbCheck"><p class="sb-hint">Checking…</p></div></div>
@@ -3267,7 +3295,9 @@
         view.two = b.dataset.view === "two";
         $$("[data-view]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
         closeInline(false); schedulePreview(0);
+        pageHint(view.two ? (sel >= 0 && splitByTurn(sel) ? `This two-page ${book.pages[sel].type === "spread" ? "spread" : "story"} starts on page ${pad2(firstPageOf(sel))}, a right-hand page: in the printed book its halves would be either side of a turn. Move it so it starts on an even page.` : "Two shows the pages as they face each other once printed and folded. It changes nothing: how it prints is chosen in Download.") : "");
       }));
+      $('[data-view="two"]').title = "See the facing page beside this one, as they will sit once printed and folded. How it prints is chosen in Download.";
       $("#sbZoom").addEventListener("click", () => {
         view.zoom = !view.zoom;
         $("#sbZoom").setAttribute("aria-pressed", String(view.zoom));
@@ -3410,7 +3440,8 @@
     function drawLayer() {
       const box = $("#sbPreview"); if (!box) return;
       const e = freePage();
-      const canvas = box.querySelector("canvas");
+      const mine = lastRender[0] && lastRender[0].page && lastRender[0].page.canvas;
+      const canvas = mine && mine.isConnected ? mine : box.querySelector("canvas");
       let layer = $("#sbLayer");
       if (!e || !canvas) { if (layer) layer.remove(); return; }
       if (!layer) {
@@ -3426,7 +3457,17 @@
       const M = layerMaths();
       const blocks = blocksOf(e);
       if (blockSel >= blocks.length) blockSel = -1;
-      layer.querySelectorAll(".sb-blk, .sb-guide").forEach((x) => x.remove());
+      layer.querySelectorAll(".sb-blk, .sb-guide, .sb-mg").forEach((x) => x.remove());
+      {
+        // The style's margins and the middle of the page, as faint lines.
+        const G = M.G, S = STYLE_IMPL[book.style] || STYLE_IMPL.modern;
+        const mg = S.margins(book.orientation === "landscape" ? "landscape" : "portrait");
+        const px = (frac) => `${(((frac * G.Wa + G.ox) / G.W) * 100).toFixed(3)}%`, py = (frac) => `${(((frac * G.Ha + G.oy) / G.H) * 100).toFixed(3)}%`;
+        layer.insertAdjacentHTML("afterbegin", `
+          <i class="sb-mg v" style="left:${px(mg.side / G.Wa)}"></i><i class="sb-mg v" style="left:${px(1 - mg.side / G.Wa)}"></i>
+          <i class="sb-mg h" style="top:${py(mg.top / G.Ha)}"></i><i class="sb-mg h" style="top:${py(1 - mg.bottom / G.Ha)}"></i>
+          <i class="sb-mg v mid" style="left:${px(0.5)}"></i><i class="sb-mg h mid" style="top:${py(0.5)}"></i>`);
+      }
       layer.insertAdjacentHTML("afterbegin", blocks.map((b, i) => {
         const on = i === blockSel;
         const turn = b.r ? ` transform: rotate(${b.r}deg);` : "";
@@ -3437,6 +3478,32 @@
           aria-label="${esc(blockLabel(b))}, ${i + 1} of ${blocks.length}"
           style="left:${M.left(b).toFixed(3)}%; top:${M.top(b).toFixed(3)}%; width:${M.wide(b).toFixed(3)}%; height:${Math.max(M.high(b), b.k === "line" ? 1.2 : 0.6).toFixed(3)}%;${turn}">${handles}</button>`;
       }).join(""));
+      const old = layer.querySelector("#sbBlkBar"); if (old) old.remove();
+      if (blockSel >= 0 && blocks[blockSel]) {
+        const b = blocks[blockSel], n = blocks.length;
+        const bar = document.createElement("div");
+        bar.id = "sbBlkBar"; bar.className = "sb-blkbar"; bar.setAttribute("role", "toolbar"); bar.setAttribute("aria-label", `${blockLabel(b)}: front and back`);
+        bar.innerHTML = `
+          <button type="button" data-order="front" aria-label="Bring to the front" ${blockSel === n - 1 ? "disabled" : ""}><i>⇈</i><span>To front</span></button>
+          <button type="button" data-order="up" aria-label="Bring forward" ${blockSel === n - 1 ? "disabled" : ""}><i>↑</i><span>Forward</span></button>
+          <button type="button" data-order="down" aria-label="Send backward" ${blockSel === 0 ? "disabled" : ""}><i>↓</i><span>Backward</span></button>
+          <button type="button" data-order="back" aria-label="Send to the back" ${blockSel === 0 ? "disabled" : ""}><i>⇊</i><span>To back</span></button>
+          <i class="sb-sep"></i>
+          <button type="button" data-order="dupe" aria-label="Duplicate" ${n >= FREE_MAX ? "disabled" : ""}><i>⧉</i><span>Copy</span></button>
+          <button type="button" data-order="del" aria-label="Remove"><i>✕</i><span>Remove</span></button>`;
+        // Above the thing, or below it when it sits at the top of the page.
+        const top = M.top(b);
+        bar.style.left = `${Math.max(0, Math.min(M.left(b), 100 - 60)).toFixed(3)}%`;
+        if (top < 8) bar.style.top = `calc(${(top + Math.max(M.high(b), 0.6)).toFixed(3)}% + 6px)`; else bar.style.bottom = `calc(${(100 - top).toFixed(3)}% + 6px)`;
+        bar.querySelectorAll("[data-order]").forEach((x) => x.addEventListener("click", () => {
+          const k = x.dataset.order;
+          if (k === "up") moveBlock(blockSel, 1); else if (k === "down") moveBlock(blockSel, -1);
+          else if (k === "front") moveBlockTo(blockSel, "front"); else if (k === "back") moveBlockTo(blockSel, "back");
+          else if (k === "dupe") dupeBlock(blockSel); else if (k === "del") removeBlock(blockSel);
+          const again = $(`#sbBlkBar [data-order="${k}"]`); if (again && !again.disabled) again.focus({ preventScroll: true });
+        }));
+        layer.appendChild(bar);
+      }
       const cur = layer.querySelector(".sb-blk.on");
       if (cur && layer.dataset.focus === "1") { cur.focus({ preventScroll: true }); layer.dataset.focus = ""; }
     }
@@ -3448,13 +3515,54 @@
       const M = S.margins(book.orientation === "landscape" ? "landscape" : "portrait");
       const xs = [0, 0.5, 1, 1 / 3, 2 / 3, M.side / G.Wa, 1 - M.side / G.Wa];
       const ys = [0, 0.5, 1, 1 / 3, 2 / 3, M.top / G.Ha, 1 - M.bottom / G.Ha];
+      const boxes = [];
       blocksOf(e).forEach((b, i) => {
         if (i === skip) return;
-        xs.push(b.x, b.x + b.w / 2, b.x + b.w);
         const h = b.k === "line" ? (THICKS[b.thick] || THICKS.narrow) / G.Ha : b.h;
+        xs.push(b.x, b.x + b.w / 2, b.x + b.w);
         ys.push(b.y, b.y + h / 2, b.y + h);
+        // …and the same thing mirrored about the middle, so two things can sit
+        // the same distance in from each side.
+        xs.push(1 - b.x, 1 - (b.x + b.w));
+        boxes.push({ x: b.x, y: b.y, w: b.w, h });
       });
-      return { xs, ys, tolX: 1.2 / G.Wa, tolY: 1.2 / G.Ha };
+      // The page facing this one: line up with what is on it, at the same
+      // height, and the same distance in from the outer edge (mirrored about the fold).
+      const other = facingRender();
+      if (other) {
+        for (const rg of facingBoxes(other)) {
+          const fx = rg.x, fw = rg.w, fy = rg.y, fh = rg.h;
+          ys.push(fy, fy + fh / 2, fy + fh);
+          xs.push(1 - (fx + fw), 1 - fx, fx, fx + fw);
+        }
+      }
+      // A mouse is not that precise: things snap from a millimetre and a half away.
+      return { xs, ys, boxes, tolX: 1.5 / G.Wa, tolY: 1.5 / G.Ha };
+    }
+    // What the preview drew beside this page, when Two is on.
+    const facingRender = () => (view.two && lastFacing && lastFacing.page ? lastFacing : null);
+    // Everything on the facing page, as fractions of the frame: the things on
+    // an Anything page (all kinds), or the words and photographs drawn on any other.
+    function facingBoxes(other) {
+      const G = geometry(book);
+      const e = other.index >= 0 ? book.pages[other.index] : null;
+      if (e && e.type === "free") return blocksOf(e).map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.k === "line" ? (THICKS[b.thick] || THICKS.narrow) / G.Ha : b.h }));
+      return pageRegions(other).map((rg) => ({ x: (rg.box.x - G.ox) / G.Wa, y: (rg.box.y - G.oy) / G.Ha, w: rg.box.w / G.Wa, h: rg.box.h / G.Ha }));
+    }
+    // Equal gaps: a thing between two others snaps to sit the same distance
+    // from each; returns the position, or null.
+    function equalGap(pos, size, boxes, axis, tol) {
+      const lo = (b) => (axis === "x" ? b.x : b.y), hi = (b) => (axis === "x" ? b.x + b.w : b.y + b.h);
+      const ov = (b) => (axis === "x" ? !(b.y + b.h < 0 || b.y > 1.3) : true);
+      let best = null;
+      for (const a of boxes) for (const c of boxes) {
+        if (a === c || !ov(a) || !ov(c)) continue;
+        if (hi(a) > pos + tol || lo(c) < pos + size - tol) continue;        // a before, c after
+        const want = (hi(a) + lo(c) - size) / 2;
+        const d = Math.abs(want - pos);
+        if (d <= tol && (!best || d < best.d)) best = { at: want, gap: want - hi(a), d };
+      }
+      return best;
     }
     const snapTo = (v, list, tol) => { let best = null, gap = tol; for (const t of list) { const d = Math.abs(v - t); if (d <= gap) { gap = d; best = t; } } return best; };
     function showGuides(marks) {
@@ -3470,6 +3578,32 @@
       }
     }
     const clearGuides = () => { const l = $("#sbLayer"); if (l) l.querySelectorAll(".sb-guide").forEach((g) => g.remove()); };
+    // While dragging: how far the thing is from each edge of the page, in
+    // millimetres, and whether that matches something else on the spread.
+    function showMeasure(b, equal) {
+      const layer = $("#sbLayer"); if (!layer) return;
+      const G = geometry(book);
+      const h = b.k === "line" ? (THICKS[b.thick] || THICKS.narrow) / G.Ha : b.h;
+      const mm = (v) => `${(v).toFixed(1).replace(/\.0$/, "")}`;
+      const left = b.x * G.Wa, right = (1 - b.x - b.w) * G.Wa, top = b.y * G.Ha, bottom = (1 - b.y - h) * G.Ha;
+      // The same distance in from the outer edge as something on the facing page?
+      let twin = "";
+      const other = facingRender();
+      if (other) {
+        const outer = other.index < sel ? right : left;   // this page is on the right when the other is earlier
+        for (const rg of facingBoxes(other)) {
+          const fx = rg.x, fw = rg.w;
+          const theirs = (other.index < sel ? fx : 1 - fx - fw) * G.Wa;
+          if (Math.abs(theirs - outer) < 0.6) { twin = " · <b>same as the facing page</b>"; break; }
+        }
+      }
+      let el = $("#sbMeasure");
+      if (!el) { el = document.createElement("div"); el.id = "sbMeasure"; el.className = "sb-measure"; layer.appendChild(el); }
+      el.innerHTML = `← ${mm(left)}${equal.x !== null ? " <b>= gap</b>" : ""} · → ${mm(right)} · ↑ ${mm(top)}${equal.y !== null ? " <b>= gap</b>" : ""} · ↓ ${mm(bottom)} mm${twin}`;
+      const topPct = ((b.y * G.Ha + G.oy) / G.H) * 100, leftPct = ((b.x * G.Wa + G.ox) / G.W) * 100;
+      el.style.left = `${Math.max(0, Math.min(leftPct, 55)).toFixed(2)}%`;
+      el.style.top = `calc(${Math.max(0, topPct + (h * G.Ha / G.H) * 100).toFixed(2)}% + 8px)`;
+    }
 
     function wireLayer(layer) {
       layer.addEventListener("dblclick", (ev) => {
@@ -3480,6 +3614,7 @@
       });
       layer.addEventListener("pointerdown", (ev) => {
         const e = freePage(); if (!e) return;
+        if (ev.target.closest("#sbBlkBar")) return;
         const handle = ev.target.closest(".sb-h");
         const el = ev.target.closest(".sb-blk");
         if (!el) { if (blockSel !== -1) { blockSel = -1; drawLayer(); drawInspector(); } return; }
@@ -3504,17 +3639,25 @@
             if (!dir && m.altKey && blocks.length < FREE_MAX) { copy = { ...b }; blocks.splice(i, 0, copy); blockSel = i + 1; }
           }
           const hit = [];
+          let equal = { x: null, y: null };
           if (!dir) {
             let nx = start.x + dx, ny = start.y + dy;
-            const sx = snapTo(nx, guides.xs, guides.tolX), sxm = snapTo(nx + start.w / 2, guides.xs, guides.tolX), sxr = snapTo(nx + start.w, guides.xs, guides.tolX);
-            if (sx !== null) { nx = sx; hit.push({ axis: "x", at: sx }); }
-            else if (sxm !== null) { nx = sxm - start.w / 2; hit.push({ axis: "x", at: sxm }); }
-            else if (sxr !== null) { nx = sxr - start.w; hit.push({ axis: "x", at: sxr }); }
             const hh = b.k === "line" ? 0 : start.h;
-            const sy = snapTo(ny, guides.ys, guides.tolY), sym = snapTo(ny + hh / 2, guides.ys, guides.tolY), syr = snapTo(ny + hh, guides.ys, guides.tolY);
-            if (sy !== null) { ny = sy; hit.push({ axis: "y", at: sy }); }
-            else if (sym !== null) { ny = sym - hh / 2; hit.push({ axis: "y", at: sym }); }
-            else if (syr !== null) { ny = syr - hh; hit.push({ axis: "y", at: syr }); }
+            const gx = equalGap(nx, start.w, guides.boxes, "x", guides.tolX), gy = equalGap(ny, hh, guides.boxes, "y", guides.tolY);
+            if (gx) { nx = gx.at; equal.x = gx.gap; }
+            else {
+              const sx = snapTo(nx, guides.xs, guides.tolX), sxm = snapTo(nx + start.w / 2, guides.xs, guides.tolX), sxr = snapTo(nx + start.w, guides.xs, guides.tolX);
+              if (sx !== null) { nx = sx; hit.push({ axis: "x", at: sx }); }
+              else if (sxm !== null) { nx = sxm - start.w / 2; hit.push({ axis: "x", at: sxm }); }
+              else if (sxr !== null) { nx = sxr - start.w; hit.push({ axis: "x", at: sxr }); }
+            }
+            if (gy) { ny = gy.at; equal.y = gy.gap; }
+            else {
+              const sy = snapTo(ny, guides.ys, guides.tolY), sym = snapTo(ny + hh / 2, guides.ys, guides.tolY), syr = snapTo(ny + hh, guides.ys, guides.tolY);
+              if (sy !== null) { ny = sy; hit.push({ axis: "y", at: sy }); }
+              else if (sym !== null) { ny = sym - hh / 2; hit.push({ axis: "y", at: sym }); }
+              else if (syr !== null) { ny = syr - hh; hit.push({ axis: "y", at: syr }); }
+            }
             b.x = round4(Math.min(1.3, Math.max(-0.3, nx)));
             b.y = round4(Math.min(1.3, Math.max(-0.3, ny)));
           } else {
@@ -3528,6 +3671,7 @@
           }
           drawLayer();
           showGuides(hit);
+          showMeasure(b, equal);
           schedulePreview(60);
         };
         const up = () => {
@@ -3535,6 +3679,7 @@
           layer.removeEventListener("pointerup", up);
           layer.removeEventListener("pointercancel", up);
           clearGuides();
+          const mz = $("#sbMeasure"); if (mz) mz.remove();
           if (moved) { change({ rail: true }); drawInspector(); }
         };
         layer.addEventListener("pointermove", move);
@@ -3573,6 +3718,33 @@
       const [b] = blocks.splice(i, 1);
       blocks.splice(to, 0, b);
       blockSel = to;
+      change({ rail: true });
+      drawInspector();
+    }
+    function moveBlockTo(i, where) {
+      const e = freePage(); if (!e) return;
+      const blocks = blocksOf(e);
+      if (!blocks[i]) return;
+      const to = where === "front" ? blocks.length - 1 : 0;
+      if (to === i) return;
+      mark();
+      const [b] = blocks.splice(i, 1);
+      blocks.splice(to, 0, b);
+      blockSel = to;
+      change({ rail: true });
+      drawInspector();
+    }
+    function dupeBlock(i) {
+      const e = freePage(); if (!e) return;
+      const blocks = blocksOf(e);
+      const b = blocks[i]; if (!b) return;
+      if (blocks.length >= FREE_MAX) { API.toast(`A page holds ${FREE_MAX} things. Remove one to add another.`); return; }
+      if (b.k === "photo" && blocks.filter((x) => x.k === "photo").length >= FREE_PHOTO_MAX) { API.toast(`${FREE_PHOTO_MAX} photographs on one page is the most.`); return; }
+      mark();
+      const copy = JSON.parse(JSON.stringify(b));
+      copy.x = round4(Math.min(1.2, copy.x + 0.02)); copy.y = round4(Math.min(1.2, copy.y + 0.02));
+      blocks.splice(i + 1, 0, copy);
+      blockSel = i + 1;
       change({ rail: true });
       drawInspector();
     }
@@ -3864,9 +4036,10 @@
       const bar = document.createElement("div");
       bar.id = "sbBar"; bar.className = "sb-bar"; bar.setAttribute("role", "toolbar"); bar.setAttribute("aria-label", "Format");
       const pct = Math.round(sizeScale(f) * 100);
+      const nowMm = textSizeMm(host.key);
       bar.innerHTML = `
         <select data-barfont aria-label="Font"><option value="">Style's font</option>${FONT_LIST.map((x) => `<option value="${x.key}" ${f.font === x.key ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select>
-        <span class="sb-barsize"><button type="button" data-barsize="-10" aria-label="Smaller">−</button><output>${pct}%</output><button type="button" data-barsize="10" aria-label="Bigger">+</button></span>
+        <span class="sb-barsize"><button type="button" data-barsize="-10" aria-label="Smaller">−</button><output title="${pct}% of the style's size">${nowMm ? `${mmToPt(nowMm)} pt` : `${pct}%`}</output><button type="button" data-barsize="10" aria-label="Bigger">+</button></span>
         <button type="button" data-barcolour aria-expanded="false" aria-label="Colour"><i class="sb-bardot" style="background:${tintOf(f.color, colourway(book.colourway), (editing.region.type || {}).color || "#000")}"></i></button>
         <button type="button" data-barweight aria-pressed="${f.weight === "bold"}" aria-label="Bold"><b>B</b></button>
         <button type="button" data-baritalic aria-pressed="${!!f.italic}" aria-label="Italic"><i>I</i></button>
@@ -3956,7 +4129,8 @@
       const at = sel < 0 ? 0 : sel + 1;
       book.pages.splice(at, 0, entry);
       flush();
-      sel = at; active = 0; pickerOpen = null;
+      closeInline(false); photoSel = null; pageHint("");
+      sel = at; active = 0; pickerOpen = null; blockSel = -1;
       setTabPage();
       change({ rail: true });
       drawInspector();
@@ -4063,6 +4237,27 @@
       if (prev) prev.disabled = Math.min(...pair) <= -1;
       if (next) next.disabled = Math.max(...pair) >= book.pages.length - 1;
     }
+    // A two-page spread or story only sits side by side when it starts on a
+    // left-hand page — an even number, the cover being 1. Started on an odd
+    // page, its halves land either side of a page turn.
+    function firstPageOf(i) {
+      let n = 1;
+      for (let k = 0; k < book.pages.length; k++) { const first = n + 1; if (k === i) return first; n += pageSpan(book.pages[k]); }
+      return -1;
+    }
+    const splitByTurn = (i) => { const pg = book.pages[i]; return !!pg && pageSpan(pg) === 2 && firstPageOf(i) % 2 === 1; };
+    // The fix: an empty page before it, so it starts on an even page.
+    function padBefore(i) {
+      if (renderedCount(book) + 1 > MAX_PAGES) { API.toast(`A book holds ${MAX_PAGES} pages at most, cover included.`); return; }
+      mark();
+      book.pages.splice(i, 0, { type: "free", blocks: [] });
+      sel = i + 1; active = 0; blockSel = -1;
+      change({ rail: true }); drawInspector(); remember();
+      API.toast("An empty page went in before it · Ctrl+Z to undo");
+    }
+    const splitHtml = (i) => (splitByTurn(i) ? `<p class="sb-warn" id="sbSplit">This starts on page ${pad2(firstPageOf(i))}, a right-hand page, so its two halves would be on either side of a page turn. Move it, or put a page before it, so it starts on an even page.</p>
+      <p><button type="button" class="sb-btn" id="sbPadBefore">Put an empty page before it</button></p>` : "");
+    const wireSplit = (i) => { const b = $("#sbPadBefore"); if (b) b.addEventListener("click", () => padBefore(i)); };
     function pageNumbers() {
       const out = [{ i: -1, n: "01", entry: null }];
       let n = 1;
@@ -4078,7 +4273,7 @@
         <li data-i="${it.i}" class="${sel === it.i ? "sel" : ""}">
           <button type="button" class="sb-pg" data-sel="${it.i}" aria-current="${sel === it.i}">
             <span class="sb-pgimg" aria-hidden="true"></span>
-            <span class="sb-pglabel"><b>${it.n}</b><span>${esc(railLabel(it.entry))}</span><i class="sb-chip" ${tooLong.get(it.entry || COVER) ? "" : "hidden"}>too long</i></span>
+            <span class="sb-pglabel"><b>${it.n}</b><span>${esc(railLabel(it.entry))}</span><i class="sb-chip" ${tooLong.get(it.entry || COVER) ? "" : "hidden"}>too long</i>${it.i >= 0 && splitByTurn(it.i) ? `<i class="sb-chip">split by a turn</i>` : ""}</span>
           </button>
           ${sel === it.i && it.i >= 0 ? `<span class="sb-pgacts">
             <button type="button" data-up="${it.i}" aria-label="Move this page earlier" ${it.i === 0 ? "disabled" : ""}>↑</button>
@@ -4093,8 +4288,8 @@
         if (c) li.querySelector(".sb-pgimg").replaceChildren(...c);
       });
       list.querySelectorAll("[data-sel]").forEach((b) => b.addEventListener("click", () => select(+b.dataset.sel)));
-      list.querySelectorAll("[data-up]").forEach((b) => b.addEventListener("click", () => { const i = +b.dataset.up; mark(); [book.pages[i - 1], book.pages[i]] = [book.pages[i], book.pages[i - 1]]; sel = i - 1; change(); focusAct("up"); }));
-      list.querySelectorAll("[data-down]").forEach((b) => b.addEventListener("click", () => { const i = +b.dataset.down; mark(); [book.pages[i + 1], book.pages[i]] = [book.pages[i], book.pages[i + 1]]; sel = i + 1; change(); focusAct("down"); }));
+      list.querySelectorAll("[data-up]").forEach((b) => b.addEventListener("click", () => { const i = +b.dataset.up; mark(); [book.pages[i - 1], book.pages[i]] = [book.pages[i], book.pages[i - 1]]; sel = i - 1; change(); drawInspector(); focusAct("up"); }));
+      list.querySelectorAll("[data-down]").forEach((b) => b.addEventListener("click", () => { const i = +b.dataset.down; mark(); [book.pages[i + 1], book.pages[i]] = [book.pages[i], book.pages[i + 1]]; sel = i + 1; change(); drawInspector(); focusAct("down"); }));
       list.querySelectorAll("[data-dupe]").forEach((b) => b.addEventListener("click", () => {
         const i = +b.dataset.dupe, pg = book.pages[i];
         if (renderedCount(book) + pageSpan(pg) > MAX_PAGES) { API.toast(`A book holds ${MAX_PAGES} pages at most, cover included.`); return; }
@@ -4224,6 +4419,9 @@
         box.querySelectorAll("canvas, p").forEach((c) => c.remove());
         box.prepend(...got.map((r) => r.page.canvas));
         lastRender = got.filter((r) => r.index === sel);
+        lastFacing = got.find((r) => r.index !== sel) || null;
+        // The size-in-points boxes read from the page just drawn.
+        $$("[data-fmtpt]").forEach((el) => { if (document.activeElement === el) return; const mm = textSizeMm(el.dataset.fmtpt); if (mm) el.value = mmToPt(mm); });
         drawLayer();
         drawHits(lastRender);
         // Pages that aren't planned (About, chapter pages) report their cuts
@@ -4274,6 +4472,7 @@
       panel.innerHTML = `
         <div class="sb-sec" id="sbPageHead"></div>
         ${photoFirst ? `<div class="sb-sec" id="sbPhotoBlock"></div><div class="sb-sec" id="sbFields"></div>` : `<div class="sb-sec" id="sbFields"></div><div class="sb-sec" id="sbPhotoBlock"></div>`}
+        <div class="sb-sec" id="sbPageBg"></div>
         <p class="sb-warn" id="sbPageWarn" hidden></p>`;
       const head = $("#sbPageHead");
       const about = {
@@ -4296,7 +4495,25 @@
       };
       const kind = entry ? entry.type : "cover";
       head.innerHTML = `<h3>${esc(entry ? PAGE_LABEL[entry.type] : "Cover")}</h3><p class="sb-hint">${esc(about[kind] || "")}</p>`;
-      drawFields(); drawPhotoBlock(); updateMeters();
+      drawFields(); drawPhotoBlock(); drawPageBg(); updateMeters();
+    }
+    /* The colour behind this page. Absent, it is the book's (set on Design),
+       and failing that the style's own. The cover keeps its own look; an
+       Anything page has this among its own controls. */
+    function drawPageBg() {
+      const box = $("#sbPageBg"); if (!box) return;
+      const entry = sel >= 0 ? book.pages[sel] : null;
+      if (!entry || entry.type === "free") { box.innerHTML = ""; box.hidden = true; return; }
+      box.hidden = false;
+      const P = colourway(book.colourway);
+      const sw = (key, label, c, on) => `<button type="button" class="sb-swatch" data-pgbg="${key}" aria-pressed="${on}" title="${esc(label)}" aria-label="${esc(label)}"><i style="background:${c}"></i></button>`;
+      const fills = [["paper", "Paper", P.paper], ["white", "White", P.white], ["ink", "Ink", P.ink], ["soft", "Soft", P.soft], ["accent", "Accent", P.accent], ["deep", "Deep", P.deep], ["rule", "Hairline", P.rule]];
+      box.innerHTML = `<h3>Page colour</h3>
+        <span class="sb-swatches" role="group" aria-label="Page colour">${sw("", book.bg ? "The book's colour" : "The style's own", book.bg ? blockColor(book.bg, P, P.paper) : "linear-gradient(135deg, #fff 45%, #999 50%, #fff 55%)", !entry.bg)}${fills.map(([k, n, c]) => sw(k, n, c, entry.bg === k)).join("")}${anySwatch("pgbgany", /^#/.test(entry.bg || "") ? entry.bg : "")}</span>
+        <div class="sb-cphost" data-pgbgpick hidden></div>
+        <p class="sb-hint">${entry.bg ? "This page only. " : ""}For every page at once, use Page colour on Design.</p>`;
+      box.querySelectorAll("[data-pgbg]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.pgbg) entry.bg = x.dataset.pgbg; else delete entry.bg; change({ rail: true }); drawPageBg(); const again = $(`[data-pgbg="${x.dataset.pgbg}"]`); if (again) again.focus(); }));
+      wireAny($("[data-pgbgany]"), $("[data-pgbgpick]"), () => (/^#/.test(entry.bg || "") ? entry.bg : ""), (hex) => { mark(true); entry.bg = hex; box.querySelectorAll("[data-pgbg]").forEach((x) => x.setAttribute("aria-pressed", "false")); change({ rail: true }); });
     }
 
     // The small "Format" control under a text's label: font, colour, alignment.
@@ -4360,6 +4577,24 @@
       paint();
       return el;
     }
+    // How big a text prints right now, in millimetres, from the page last drawn.
+    function textSizeMm(k) {
+      const entry = sel >= 0 ? book.pages[sel] : null;
+      const r = lastRender[0]; if (!r || !r.page) return null;
+      if (entry && entry.type === "free") { const f = r.page.plan && r.page.plan.fields[`b${blockSel}`]; return f && f.type ? f.type.size : null; }
+      const f = r.page.plan && r.page.plan.fields[k];
+      if (f && f.type) return f.type.size;
+      const t = (r.page.texts || []).find((x) => x.field === k);
+      return t && t.type ? t.type.size : null;
+    }
+    const mmToPt = (mm) => Math.round(mm * geometry(book).s * 72 / 25.4 * 2) / 2;
+    // The scale that makes a text print at `pt`, given the scale it has now.
+    const scaleForPt = (k, pt, f) => {
+      const now = textSizeMm(k); if (!now) return null;
+      const base = now / sizeScale(f);
+      const want = (pt / (72 / 25.4)) / geometry(book).s / base;
+      return Math.round(Math.min(1.6, Math.max(0.6, want)) * 100) / 100;
+    };
     // The "any colour" swatch: a rainbow until a colour is chosen, then that colour.
     const anySwatch = (attr, hex, extra = "") => `<button type="button" class="sb-swatch sb-any" data-${attr} aria-pressed="${!!hex}" aria-expanded="false" title="Any colour" aria-label="Any colour" ${extra}><i style="background:${hex || "conic-gradient(#f33, #ff3, #3f3, #3ff, #33f, #f3f, #f33)"}"></i></button><span class="sb-hexlabel" data-${attr}hex>${hex ? esc(hex) : ""}</span>`;
     // Wires one "any colour" swatch to a picker that appears under it.
@@ -4408,6 +4643,7 @@
           <div class="sb-fmtline"><span>Colour</span><span class="sb-swatches" role="group" aria-label="The book's own colours">${swatch("", para ? "Same as the whole text" : "The style's colour", "linear-gradient(135deg, #fff 45%, #999 50%, #fff 55%)")}${swatch("ink", "Ink", P.ink)}${swatch("soft", "Soft", P.soft)}${swatch("accent", "Accent", accentText(P))}${swatch("paper", "Paper", P.paper)}${swatch("white", "White", P.white)}${swatch("deep", "Deep", P.deep)}${anySwatch(`fmtany="${k}"`, hex)}</span></div>
           <div class="sb-cphost" data-fmtpick="${k}" hidden></div>
           <label class="sb-fmtline"><span>Size</span><span class="sb-sizerow"><input type="range" min="60" max="160" step="5" value="${pct}" data-fmtsize="${k}" aria-valuetext="${pct} percent"><output>${pct}%</output></span></label>
+          ${para ? "" : (() => { const mm = textSizeMm(k); return `<div class="sb-fmtline"><span>In points</span><span class="sb-ptrow"><input type="number" data-fmtpt="${k}" min="4" max="140" step="0.5" value="${mm ? mmToPt(mm) : ""}" placeholder="…" aria-label="Size in points"><span>pt · from 60% to 160% of the style's size</span></span></div>`; })()}
           <div class="sb-fmtline"><span>Style</span><span class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Weight">${[["", "Auto"], ["light", "Light"], ["regular", "Regular"], ["bold", "Bold"]].map(([w, n]) => `<button type="button" role="radio" data-fmtweight="${w}" aria-checked="${(f.weight || "") === w}">${n}</button>`).join("")}<label class="sb-check-row sb-italic"><input type="checkbox" data-fmtitalic="${k}" ${f.italic ? "checked" : ""}> <i>Italic</i></label></span></div>
           <div class="sb-fmtline"><span>Align</span><span class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Alignment">${[["", "Auto"], ["left", "Left"], ["center", "Centre"], ["right", "Right"], ["justify", "Justify"]].map(([a, n]) => `<button type="button" role="radio" data-fmtalign="${a}" aria-checked="${(f.align || "") === a}">${n}</button>`).join("")}</span></div>
           ${words == null ? "" : `<div class="sb-fmtline"><span>List</span><span class="sb-seg sb-seg-sm" role="radiogroup" aria-label="List">${[["", "None"], ["bullet", "• Bullets"], ["number", "1. Numbers"]].map(([v, n]) => `<button type="button" role="radio" data-fmtlist="${v}" aria-checked="${(f.list || "") === v}">${n}</button>`).join("")}</span></div>
@@ -4488,11 +4724,21 @@
           const any = wrap.querySelector("[data-fmtany]"); if (any) any.setAttribute("aria-pressed", "false");
         }));
         const size = wrap.querySelector("[data-fmtsize]");
+        const ptBox = wrap.querySelector("[data-fmtpt]");
         size.addEventListener("input", () => {
           const v = Math.round(+size.value) / 100;
           size.nextElementSibling.textContent = `${Math.round(v * 100)}%`;
           size.setAttribute("aria-valuetext", `${Math.round(v * 100)} percent`);
           update({ size: v });
+          if (ptBox) setTimeout(() => { const mm = textSizeMm(k); if (mm && document.activeElement !== ptBox) ptBox.value = mmToPt(mm); }, 350);
+        });
+        if (ptBox) ptBox.addEventListener("change", () => {
+          const pt = +ptBox.value; if (!(pt > 0)) return;
+          const cur = ((host.get() || {})[k]) || {};
+          const v = scaleForPt(k, pt, cur); if (v === null) return;
+          update({ size: v });
+          size.value = String(Math.round(v * 100)); size.nextElementSibling.textContent = `${Math.round(v * 100)}%`;
+          setTimeout(() => { const mm = textSizeMm(k); if (mm) { const got = mmToPt(mm); if (Math.abs(got - pt) > 0.6) API.toast(`${got} pt is as ${got < pt ? "big" : "small"} as this text goes here (60% to 160% of the style's size).`); ptBox.value = got; } }, 400);
         });
         wrap.querySelectorAll("[data-fmtweight]").forEach((b) => b.addEventListener("click", () => {
           wrap.querySelectorAll("[data-fmtweight]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
@@ -4686,7 +4932,7 @@
           f.credit ? `<button type="button" class="sb-link" id="sbUseCredit">Use the album credit</button>` : "")).join("")}
           <details class="sb-ideas"><summary>Ideas</summary><ul>${IDEAS[entry.type].map((q) => `<li>${esc(q)}</li>`).join("")}</ul></details>
           <p class="sb-hint">Published books are public: only use names and words people are happy to see there, and no private notes.</p>`;
-        if (entry.type === "article") box.insertAdjacentHTML("beforeend", creditHtml(entry) + borderHtml(entry));
+        if (entry.type === "article") { box.insertAdjacentHTML("afterbegin", splitHtml(sel)); box.insertAdjacentHTML("beforeend", creditHtml(entry) + borderHtml(entry)); wireSplit(sel); }
         for (const f of FIELD_UI[entry.type]) wireField($(`#sbF_${f.k}`), (v) => { entry[f.k] = v; }, (caps[entry.type] || {})[f.k] || 200);
         $$("[data-select]").forEach((b) => b.addEventListener("click", () => selectOverflow(b.dataset.select)));
         wireFormat(box, styleHost(entry));
@@ -4826,7 +5072,8 @@
         return;
       }
       if (entry.type === "spread") {
-        box.innerHTML = creditHtml(entry) + borderHtml(entry);
+        box.innerHTML = splitHtml(sel) + creditHtml(entry) + borderHtml(entry);
+        wireSplit(sel);
         wireCredit(entry);
         wireBorder(box, entry);
         return;
@@ -4956,13 +5203,13 @@
         </div>
         <div class="sb-field"><span class="sb-label">If they don't all fit</span>
           <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="If they don't all fit">${[["", "Make them smaller"], ["cut", "Keep the size"]].map(([k, n]) => `<button type="button" role="radio" data-tfit="${k}" aria-checked="${(b.fit || "") === k}">${n}</button>`).join("")}</div></div>` : "";
-      const paint = b && (b.k === "shape" || b.k === "line") ? `
-        <div class="sb-field"><span class="sb-label">Colour</span>
-          <span class="sb-swatches" role="group" aria-label="The book's own colours">${fills.map(([k, n, c]) => swatch("fill", k, n, c, (b.k === "shape" ? b.fill : b.color) === k)).join("")}${anySwatch("fillany", /^#/.test(b.k === "shape" ? b.fill || "" : b.color || "") ? (b.k === "shape" ? b.fill : b.color) : "")}</span>
-          <div class="sb-cphost" data-fillpick hidden></div></div>
+      const paint = b && (b.k === "shape" || b.k === "line" || b.k === "text") ? `
+        <div class="sb-field"><span class="sb-label">${b.k === "text" ? "Colour behind the words" : "Colour"}</span>
+          <span class="sb-swatches" role="group" aria-label="The book's own colours">${b.k === "text" ? swatch("fill", "", "None", "linear-gradient(135deg, #fff 45%, #999 50%, #fff 55%)", !b.fill) : ""}${fills.map(([k, n, c]) => swatch("fill", k, n, c, (b.k === "line" ? b.color : b.fill) === k)).join("")}${anySwatch("fillany", /^#/.test(b.k === "line" ? b.color || "" : b.fill || "") ? (b.k === "line" ? b.color : b.fill) : "")}</span>
+          <div class="sb-cphost" data-fillpick hidden></div>${b.k === "text" ? `<p class="sb-hint">A shape with words in it: the words sit inside the colour.</p>` : ""}</div>
         ${b.k === "line" ? `<div class="sb-field"><span class="sb-label">Thickness</span>
           <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Thickness">${[["hair", "Hair"], ["narrow", "Narrow"], ["broad", "Broad"]].map(([k, n]) => `<button type="button" role="radio" data-thick="${k}" aria-checked="${(b.thick || "narrow") === k}">${n}</button>`).join("")}</div></div>` : ""}
-        <label class="sb-range">Fade <input type="range" min="10" max="100" step="5" value="${Math.round(fade * 100)}" data-blkfade aria-valuetext="${Math.round(fade * 100)} percent"></label>` : "";
+        ${b.k === "text" && !b.fill ? "" : `<label class="sb-range">Fade <input type="range" min="10" max="100" step="5" value="${Math.round(fade * 100)}" data-blkfade aria-valuetext="${Math.round(fade * 100)} percent"></label>`}` : "";
       box.innerHTML = `
         <h3>Add to this page</h3>
         <div class="sb-adds">
@@ -4987,6 +5234,9 @@
           ${step("Width", "sizw", "-1", "1", mmX(b.w))}
           ${b.k === "line" ? "" : step("Height", "sizh", "-1", "1", mmY(b.h))}
           ${step("Turn", "turn", "-15", "15", `${b.r || 0}°`)}
+          <div class="sb-field"><span class="sb-label">In front or behind</span>
+            <div class="sb-adds"><button type="button" data-tofront ${blockSel === blocks.length - 1 ? "disabled" : ""}>Bring to the front</button><button type="button" data-toback ${blockSel === 0 ? "disabled" : ""}>Send to the back</button></div>
+            <p class="sb-hint">Words over a photograph: bring the words to the front, or send the photograph to the back.</p></div>
           <div class="sb-adds"><button type="button" data-fillw>Fill the width</button>${b.k === "line" ? "" : `<button type="button" data-fillp>Fill the page</button>`}</div>
         </div>` : ""}
         <div class="sb-field"><span class="sb-label">Page colour</span>
@@ -5019,6 +5269,8 @@
         if (next <= -180 || next >= 180 || next === 0) delete b.r; else b.r = next;
         redraw();
       }));
+      const toFront = $("[data-tofront]"); if (toFront) toFront.addEventListener("click", () => moveBlockTo(blockSel, "front"));
+      const toBack = $("[data-toback]"); if (toBack) toBack.addEventListener("click", () => moveBlockTo(blockSel, "back"));
       const fillBtn = $("[data-fillw]");
       if (fillBtn) fillBtn.addEventListener("click", () => { mark(); b.x = 0; b.w = 1; redraw(); });
       const fillPage = $("[data-fillp]");
@@ -5028,12 +5280,12 @@
       $$("[data-thick]").forEach((x) => x.addEventListener("click", () => { mark(); b.thick = x.dataset.thick; redraw(); }));
       $$("[data-fill]").forEach((x) => x.addEventListener("click", () => {
         mark();
-        const key = b.k === "shape" ? "fill" : "color";
-        if (x.dataset.fill) b[key] = x.dataset.fill; else delete b[key];
+        const key = b.k === "line" ? "color" : "fill";
+        if (x.dataset.fill) b[key] = x.dataset.fill; else { delete b[key]; if (b.k === "text") delete b.o; }
         redraw();
       }));
-      wireAny($("[data-fillany]"), $("[data-fillpick]"), () => { const v = b.k === "shape" ? b.fill : b.color; return /^#/.test(v || "") ? v : ""; }, (hex) => {
-        mark(true); b[b.k === "shape" ? "fill" : "color"] = hex;
+      wireAny($("[data-fillany]"), $("[data-fillpick]"), () => { const v = b.k === "line" ? b.color : b.fill; return /^#/.test(v || "") ? v : ""; }, (hex) => {
+        mark(true); b[b.k === "line" ? "color" : "fill"] = hex;
         $$("[data-fill]").forEach((x) => x.setAttribute("aria-pressed", "false"));
         change({ rail: true }); drawLayer();
       });
@@ -5304,11 +5556,28 @@
           <div class="sb-seg" role="radiogroup" aria-label="Paper size">${Object.entries(PAPERS).map(([k, p]) => `<button type="button" role="radio" data-paper="${k}" aria-checked="${(book.paper || "a4") === k}">${esc(p.name)}</button>`).join("")}</div>
           <p class="sb-hint" id="sbPaperNote">${esc((PAPERS[book.paper] || PAPERS.a4).note)}. Every size keeps the same layout; the words and photos scale with the page.</p>
         </div>
+        <div class="sb-sec"><h3>Page colour, every page</h3>
+          <span class="sb-swatches" role="group" aria-label="Page colour for every page">${[["", "The style's own", "linear-gradient(135deg, #fff 45%, #999 50%, #fff 55%)"], ["paper", "Paper", colourway(book.colourway).paper], ["white", "White", colourway(book.colourway).white], ["ink", "Ink", colourway(book.colourway).ink], ["soft", "Soft", colourway(book.colourway).soft], ["accent", "Accent", colourway(book.colourway).accent], ["deep", "Deep", colourway(book.colourway).deep], ["rule", "Hairline", colourway(book.colourway).rule]].map(([k, n, c]) => `<button type="button" class="sb-swatch" data-bookbg="${k}" aria-pressed="${(book.bg || "") === k}" title="${n}" aria-label="${n}"><i style="background:${c}"></i></button>`).join("")}${anySwatch("bookbgany", /^#/.test(book.bg || "") ? book.bg : "")}</span>
+          <div class="sb-cphost" data-bookbgpick hidden></div>
+          <p class="sb-hint">Behind every page but the cover, in one go. A page can still have its own colour on This page.</p>
+        </div>
         <div class="sb-sec"><h3>The foot of every page</h3>
           ${overHtml("sbFootText", "Name in the foot", book.footText, (window.STUDIO_BOOK_LIMITS || {}).footText || 40, studio())}
           <label class="sb-check-row"><input type="checkbox" id="sbNums" ${book.showPageNumbers === false ? "" : "checked"}> Print page numbers</label>
         </div>`;
       wireOver("sbFootText", (v) => { if (String(v).trim()) book.footText = v; else delete book.footText; });
+      panel.querySelectorAll("[data-bookbg]").forEach((x) => x.addEventListener("click", () => {
+        mark();
+        if (x.dataset.bookbg) book.bg = x.dataset.bookbg; else delete book.bg;
+        panel.querySelectorAll("[data-bookbg]").forEach((y) => y.setAttribute("aria-pressed", String(y === x)));
+        const any = panel.querySelector("[data-bookbgany]"); if (any) any.setAttribute("aria-pressed", "false");
+        change(); drawPageBg();
+      }));
+      wireAny(panel.querySelector("[data-bookbgany]"), panel.querySelector("[data-bookbgpick]"), () => (/^#/.test(book.bg || "") ? book.bg : ""), (hex) => {
+        mark(true); book.bg = hex;
+        panel.querySelectorAll("[data-bookbg]").forEach((y) => y.setAttribute("aria-pressed", "false"));
+        change(); drawPageBg();
+      });
       $("#sbNums").addEventListener("change", (e) => {
         if (e.target.checked) delete book.showPageNumbers; else book.showPageNumbers = false;
         change();
@@ -5353,6 +5622,7 @@
         if (n > MAX_PAGES) break;
         const add = (text) => out.push({ i, text: `Page ${pad2(first)} · ${PAGE_LABEL[pg.type]}: ${text}` });
         if ((pg.type === "photos" || pg.type === "spread") && !(pg.photos || []).length) add("no photos yet");
+        if (pageSpan(pg) === 2 && first % 2 === 1) add(`starts on a right-hand page, so its two halves would be split by a page turn — move it, or put a page before it, so it starts on an even page`);
         if ((pg.type === "note" || pg.type === "article") && !(pg.photos || []).length) add("no photo chosen");
         if (pg.type === "feature" && (pg.photos || []).length < 2) add(`${(pg.photos || []).length ? "only one photo" : "no photos"} chosen; it takes two`);
         if ((pg.photos || []).some((sh) => !lib.byId.has(sh.id))) add("a photo from a deleted album");
