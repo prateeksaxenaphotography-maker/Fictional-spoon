@@ -2888,12 +2888,19 @@
   .sb-vh { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   /* books */
+  /* An admin tool: the site's "Book a shoot" band has no business under it.
+     A class, not :has(), which Chrome would re-check on every change to the page. */
+  html.sb-book .footer-cta { display: none !important; }
   .sb-homehead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px 24px; margin-bottom: 22px; }
   .sb-eyebrow { margin: 0; font: 700 11px 'JetBrains Mono', monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft, #5c5e66); }
   .sb-h1 { margin: 6px 0 6px; font: 800 clamp(28px, 4vw, 40px)/1.05 Archivo, Inter, sans-serif; letter-spacing: -.02em; }
   .sb-lede { margin: 0; max-width: 62ch; color: var(--ink-soft, #5c5e66); }
   .sb-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 16px; }
   .sb-card { display: grid; grid-template-rows: auto 1fr; border: 1px solid var(--sb-line); border-radius: 12px; overflow: hidden; background: var(--sb-card); }
+  .sb-newcard { display: grid; grid-template-rows: none; align-content: center; justify-items: center; gap: 6px; min-height: 220px; border: 1px dashed var(--sb-line-2, #b9b7b2); background: none; color: inherit; font: 700 15px Inter, sans-serif; text-align: center; cursor: pointer; }
+  .sb-newcard small { font: 400 12px/1.4 Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
+  .sb-newcard:hover:not(:disabled) { border-color: var(--ink, #141416); }
+  .sb-newcard:disabled { opacity: .45; cursor: not-allowed; }
   .sb-cardcover { display: grid; place-items: center; height: 190px; padding: 14px; border: 0; background: var(--sb-sunk); cursor: pointer; }
   .sb-cardcover canvas { max-width: 100%; max-height: 162px; box-shadow: 0 8px 20px -10px rgba(0,0,0,.45); }
   .sb-cardbody { display: grid; gap: 3px; padding: 12px 14px 14px; align-content: start; }
@@ -2925,6 +2932,7 @@
   .sb-check { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
   .sb-check li { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font: 500 12.5px/1.45 Inter, sans-serif; }
   .sb-dlrow { display: flex; flex-wrap: wrap; gap: 8px; }
+  .sb-sec-quiet { padding-top: 12px; border-top: 1px solid var(--sb-line); }
   .sb-ready { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .sb-ready p { flex-basis: 100%; margin: 0; }
   .sb-ok { margin: 0; font: 500 12.5px/1.45 Inter, sans-serif; color: var(--ink, #141416); }
@@ -3057,7 +3065,8 @@
   .sb-addhead strong { font: 700 15px Inter, sans-serif; }
   .sb-addgroup { display: grid; gap: 8px; }
   .sb-additems { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
-  .sb-additem { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--sb-line); border-radius: 10px; background: var(--sb-card); color: inherit; text-align: left; cursor: pointer; }
+  .sb-additem { display: grid; grid-template-columns: 34px 1fr; grid-template-rows: auto 1fr; gap: 2px 12px; align-items: start; padding: 10px 12px; border: 1px solid var(--sb-line); border-radius: 10px; background: var(--sb-card); color: inherit; text-align: left; cursor: pointer; }
+  .sb-additem .sb-addico { grid-row: 1 / 3; display: block; filter: drop-shadow(0 1px 1px rgba(0,0,0,.12)); }
   .sb-additem:hover { border-color: var(--ink, #141416); }
   .sb-additem b { font: 700 13.5px Inter, sans-serif; }
   .sb-additem span { font: 400 12px/1.4 Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
@@ -3229,6 +3238,43 @@
       ["services", "What I shoot", "The kinds of shoot live on your site."],
       ["contact", "Contact", "Email, Instagram, booking link and a QR code."]] }
   ];
+  /* Each kind of page as a small picture for the Add-page menu: a page with
+     its photographs (grey), lines of words (dark) and any band of colour, in
+     a 44 × 60 box. Nothing here is drawn on a real page. */
+  const ADD_ICONS = {
+    photos: "p4,8,11,44 p16.5,8,11,44 p29,8,11,44",
+    spread: "p2,14,40,32 l22,2,22,58",
+    story: "t4,7,24,3 t4,12,16,2 p4,17,36,20 t4,40,36,2 t4,44,36,2 t4,48,30,2 t4,52,20,2",
+    note: "p4,5,36,30 t4,39,22,3 t4,45,36,2 t4,49,28,2",
+    quote: "t8,20,28,3 t8,26,28,3 t8,32,20,3 t8,40,12,2",
+    letter: "t4,8,36,2 t4,13,36,2 t4,18,32,2 t4,23,36,2 t4,28,34,2 t4,33,36,2 t4,38,20,2 t4,48,12,3",
+    feature: "p4,6,17,18 t24,8,16,2 t24,12,16,2 t24,16,12,2 t4,32,16,2 t4,36,16,2 t4,40,12,2 p23,30,17,18",
+    article: "t4,8,15,2 t4,12,15,2 t4,16,13,2 t4,20,15,2 t4,24,11,2 t4,28,15,2 p23,4,19,52",
+    ways: "t4,8,10,3 t16,8,24,2 t16,12,18,2 t4,20,10,3 t16,20,24,2 t16,24,18,2 t4,32,10,3 t16,32,24,2 t16,36,18,2 t4,44,10,3 t16,44,24,2 t16,48,18,2",
+    process: "b4,9,3,3 t10,9,30,2 b4,17,3,3 t10,17,26,2 b4,25,3,3 t10,25,30,2 b4,33,3,3 t10,33,22,2 b4,41,3,3 t10,41,28,2",
+    free: "d p8,10,16,14 t8,30,28,2 t8,34,24,2 b26,44,10,8",
+    "free:opener": "p0,0,44,26 t4,30,30,3 t4,37,17,2 t4,41,17,2 t4,45,14,2 t23,37,17,2 t23,41,17,2 t23,45,12,2",
+    "free:two": "p4,8,17,20 p23,8,17,20 t4,32,36,2",
+    "free:titled": "p0,0,44,60 b0,36,44,8 w4,38,20,4",
+    "free:quote": "p0,0,44,22 t6,28,32,3 t6,34,32,3 t6,42,14,2",
+    "free:three": "p4,6,36,20 p4,28,17,14 p23,28,17,14 t4,46,30,2",
+    "free:sheet": "p4,6,16,14 p24,6,16,14 p4,22,16,14 p24,22,16,14 p4,38,16,14 p24,38,16,14",
+    "free:blank": "",
+    divider: "t4,26,24,4 b4,33,10,1.5",
+    about: "t4,8,20,3 t4,15,36,2 t4,19,36,2 t4,23,30,2 t4,27,36,2 t4,31,24,2",
+    services: "t4,8,14,3 t4,13,30,2 t4,20,14,3 t4,25,30,2 t4,32,14,3 t4,37,30,2 t4,44,14,3 t4,49,30,2",
+    contact: "t4,8,22,3 t4,15,26,2 t4,19,22,2 t4,23,26,2 q28,40,12,12"
+  };
+  function addIcon(type) {
+    const FILL = { p: "#cfcbc4", t: "#8a8c93", b: "var(--accent, #d24e1a)", w: "#ffffff", q: "#141416" };
+    const parts = String(ADD_ICONS[type] || "").split(/\s+/).filter(Boolean).map((tok) => {
+      if (tok === "d") return `<rect x="4.5" y="4.5" width="35" height="51" fill="none" stroke="#d24e1a" stroke-width=".8" stroke-dasharray="2 1.5"/>`;
+      const k = tok[0], [x, y, w, h] = tok.slice(1).split(",").map(Number);
+      if (k === "l") return `<line x1="${x}" y1="${y}" x2="${w}" y2="${h}" stroke="#c8c6c1" stroke-width="1"/>`;
+      return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${FILL[k] || FILL.t}"/>`;
+    });
+    return `<svg class="sb-addico" viewBox="0 0 44 60" width="34" height="46" aria-hidden="true"><rect x=".5" y=".5" width="43" height="59" rx="2" fill="#fff" stroke="#c8c6c1"/>${parts.join("")}</svg>`;
+  }
   /* Arrangements to start an Anything page from. Positions are fractions of
      the A4 frame, chosen against the styles' own margins (20 mm at the side on
      Elegant, the widest), so a starter page lines up with the rest of the book
@@ -3345,6 +3391,13 @@
 
   function mount(root) {
     injectCss();
+    document.documentElement.classList.add("sb-book");
+    // The site's router replaces the page's contents to leave: the moment the
+    // builder's root is gone, the page is the site's own again.
+    if (root.parentNode) {
+      const gone = new MutationObserver(() => { if (!root.isConnected) { document.documentElement.classList.remove("sb-book", "sb-editing"); gone.disconnect(); } });
+      gone.observe(root.parentNode, { childList: true });
+    }
     const esc = API.esc;
     const cache = new Map();
     const thumbs = new WeakMap();        // page entry → its small canvases
@@ -3478,7 +3531,7 @@
       if (pop && !pop.hidden && !pop.contains(e.target) && !(btn && btn.contains(e.target))) { pop.hidden = true; btn.setAttribute("aria-expanded", "false"); }
     };
     const onResize = () => {
-      if (!root.isConnected) { window.removeEventListener("resize", onResize); document.documentElement.classList.remove("sb-editing"); return; }
+      if (!root.isConnected) { window.removeEventListener("resize", onResize); document.documentElement.classList.remove("sb-editing", "sb-book"); return; }
       if ($("#sbLayer")) drawLayer();
       if ($(".sb-hits") || editing) drawHits(lastRender);
     };
@@ -3516,13 +3569,14 @@
                 <button type="button" class="sb-btn quiet" data-del="${esc(v.id)}">Delete</button>
               </div>
             </div>
-          </article>`).join("")}</div>`
+          </article>`).join("")}
+          <button type="button" class="sb-card sb-newcard" data-new ${atLimit ? "disabled" : ""}>+ New book<small>A cover and a first page of photographs</small></button></div>`
         : `<div class="sb-empty"><p class="sb-hint">No books yet. A book is a cover plus pages of your photographs and words. Start one, pick your clicks, and save a version for brands, one for agencies, one for a single client.</p></div>`}
         <p class="sb-hint sb-foot">Books save on this device as you work, and publish with your albums when you press Publish, so they open on any device.${atLimit ? ` You have ${LIMIT} books, the most there can be: delete one to start another.` : ""}</p>`;
       // A rename in progress is saved first, then the click does what it says.
       let finishRename = null;
       const settle = () => { if (finishRename) { const f = finishRename; finishRename = null; f(true, false); } };
-      $("#sbNew").addEventListener("click", () => { settle(); if (!atLimit) openBook(newBook(`Book ${state.versions.length + 1}`), true); });
+      $$("#sbNew, [data-new]").forEach((b) => b.addEventListener("click", () => { settle(); if (!atLimit) openBook(newBook(`Book ${state.versions.length + 1}`), true); }));
       $$("[data-open]").forEach((b) => b.addEventListener("click", () => {
         settle();
         const v = state.versions.find((x) => x.id === b.dataset.open); if (v) openBook(JSON.parse(JSON.stringify(v)));
@@ -3634,12 +3688,6 @@
               </div>
               <p class="sb-hint" id="sbDpiNote"></p>
             </div>
-            <div class="sb-sec"><span class="sb-label">Your full-size photos</span>
-              <p class="sb-hint">The site keeps each photo at 1600 px. For a print run, point the book at the full-size files on this computer. They are read here and never uploaded, even if the browser's dialog says “Upload”. Choose nothing and the book prints with the site's own copies; “Don't use them” lets go of a folder you chose.</p>
-              <div class="sb-dlrow"><button type="button" class="sb-btn" id="sbOrig">Choose the folder…</button><button type="button" class="sb-btn" id="sbOrigForget" hidden>Don't use them</button></div>
-              <input type="file" id="sbOrigFile" multiple accept="image/*" hidden>
-              <div id="sbOrigStatus"></div>
-            </div>
             <div class="sb-sec"><span class="sb-label">How it prints</span>
               <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="How it prints">
                 <button type="button" role="radio" data-print="normal" aria-checked="true">Normal</button>
@@ -3653,6 +3701,12 @@
             </div>
             <p class="sb-warn" id="sbAnyway" hidden></p>
             <div class="sb-ready" id="sbReady"></div>
+            <div class="sb-sec sb-sec-quiet"><span class="sb-label">Full-size photos, for a print shop</span>
+              <p class="sb-hint">The site keeps each photo at 1600 px. Point the book at the full-size files on this computer and it prints from those; they are read here, never uploaded. Choose none and it uses the site's copies.</p>
+              <div class="sb-dlrow"><button type="button" class="sb-btn" id="sbOrig">Choose the folder…</button><button type="button" class="sb-btn" id="sbOrigForget" hidden>Don't use them</button></div>
+              <input type="file" id="sbOrigFile" multiple accept="image/*" hidden>
+              <div id="sbOrigStatus"></div>
+            </div>
             <p class="sb-hint">The PDF is made of page images, so its words can't be searched or copied.</p>
           </div>
         </div>
@@ -4355,15 +4409,18 @@
         const scale = base * Math.min(3, Math.max(1, Number(shot.zoom) || 1));
         return { iw, ih, scale, sw: Math.min(iw, box.w / scale), sh: Math.min(ih, box.h / scale) };
       };
-      el.addEventListener("pointerdown", async (ev) => {
+      el.addEventListener("pointerdown", (ev) => {
         pick();
         const shot = shotFor(id); const region = rg();
         if (!shot || !region || isDiagram(id)) return;
-        await load(); if (!img) return;
+        // The listeners go on before the picture has loaded: a drag that
+        // starts the moment the finger lands must not be lost while it loads.
+        // Moves that arrive first are kept and applied once it has.
         const M = layerMathsFor(layer);
         const from = { x: ev.clientX, y: ev.clientY, sx: typeof shot.x === "number" ? shot.x : 0.5, sy: typeof shot.y === "number" ? shot.y : 0.35 };
-        let moved = false;
-        const move = (m) => {
+        let moved = false, last = null, done = false;
+        const commit = () => { change({ rail: false, photos: true }); scheduleStrip(300); };
+        const apply = (m) => {
           const dx = M.mmX(m.clientX - from.x), dy = M.mmY(m.clientY - from.y);
           if (!moved && Math.abs(m.clientX - from.x) < 3 && Math.abs(m.clientY - from.y) < 3) return;
           if (!moved) { moved = true; try { layer.setPointerCapture(m.pointerId); } catch (e) { /* older browsers */ } mark(); }
@@ -4372,11 +4429,14 @@
           if (c.ih - c.sh > 0.5) shot.y = Math.round(Math.min(1, Math.max(0, from.sy - dy / c.scale / (c.ih - c.sh))) * 100) / 100;
           schedulePreview(40);
         };
+        const move = (m) => { if (!img) { last = m; return; } apply(m); };
         const up = () => {
+          done = true;
           layer.removeEventListener("pointermove", move); layer.removeEventListener("pointerup", up); layer.removeEventListener("pointercancel", up);
-          if (moved) { change({ rail: false, photos: true }); scheduleStrip(300); }
+          if (moved) commit();
         };
         layer.addEventListener("pointermove", move); layer.addEventListener("pointerup", up); layer.addEventListener("pointercancel", up);
+        load().then(() => { if (!img || !last) return; const was = moved; apply(last); last = null; if (done && moved && !was) commit(); });
       });
       el.addEventListener("wheel", (ev) => {
         if (!photoSel || photoSel.id !== id || photoSel.n !== n) return;
@@ -4571,7 +4631,7 @@
         <div class="sb-addhead"><strong>Add a page</strong><button type="button" class="sb-btn quiet" id="sbAddClose">Close</button></div>
         <p class="sb-hint">It goes after the page you're on. ${count} of ${MAX_PAGES} pages used.</p>
         ${ADD_MENU.map((g) => `<div class="sb-addgroup"><h3>${esc(g.group)}</h3><div class="sb-additems">${g.items.map(([type, name, note]) => `
-          <button type="button" class="sb-additem" data-add="${type}" ${count + pageSpan({ type }) > MAX_PAGES ? "disabled" : ""}><b>${esc(name)}</b><span>${esc(note)}</span></button>`).join("")}</div></div>`).join("")}`;
+          <button type="button" class="sb-additem" data-add="${type}" ${count + pageSpan({ type }) > MAX_PAGES ? "disabled" : ""}>${addIcon(type)}<b>${esc(name)}</b><span>${esc(note)}</span></button>`).join("")}</div></div>`).join("")}`;
       menu.hidden = false;
       $("#sbAddToggle").setAttribute("aria-expanded", "true");
       menu.querySelector("#sbAddClose").addEventListener("click", closeAdd);
@@ -4625,6 +4685,9 @@
       closeInline(false); photoSel = null; pageHint(""); drawing = false;
       sel = i; active = 0; pickerOpen = null; blockSel = -1;
       drawRail(); drawInspector(); schedulePreview(0);
+      // A different page's panel starts at its top, not wherever the last
+      // one was scrolled to.
+      const panel = $(".sb-panel"); if (panel) panel.scrollTop = 0;
       remember();
       // Bring the page into view inside the rail only; scrolling the window
       // would push the buttons under the site's fixed header on a phone.
@@ -4944,7 +5007,9 @@
     function drawInspector() {
       const panel = $("#sbPanelPage"); if (!panel) return;
       const entry = sel >= 0 ? book.pages[sel] : null;
-      const photoFirst = entry && entry.type === "note";
+      // On a page that IS its photographs, choosing them comes first; on a
+      // writing page the words do, and the photo is the second thing.
+      const photoFirst = !!entry && ["note", "photos", "spread"].includes(entry.type);
       panel.innerHTML = `
         <div class="sb-sec" id="sbPageHead"></div>
         ${photoFirst ? `<div class="sb-sec" id="sbPhotoBlock"></div><div class="sb-sec" id="sbFields"></div>` : `<div class="sb-sec" id="sbFields"></div><div class="sb-sec" id="sbPhotoBlock"></div>`}
@@ -4952,22 +5017,22 @@
         <p class="sb-warn" id="sbPageWarn" hidden></p>`;
       const head = $("#sbPageHead");
       const about = {
-        cover: "The first page. Your headshot can go here when you have one: it fills the cover's empty area and nothing else moves.",
-        photos: "Tap photos below to add them, tap again to remove. Up to six; the layout follows how many there are and their shapes. With four or more, three can sit in one row on top or at the bottom.",
-        spread: "One photograph across two facing pages. A landscape frame works best, with nobody's face on the fold.",
-        divider: "A quiet page between sections, e.g. “Fashion & editorial” before your fashion work.",
-        about: "Your words about the studio. With none typed, the page uses a plain description of the studio.",
-        services: "Lists the kinds of shoot that are live on your site.",
-        contact: "Your email, Instagram, website and booking link, with a QR code to the booking form.",
-        story: "A magazine opener: a headline, an intro and a short story about a shoot or a brief, with a photo if you like.",
-        note: "Writing about one picture: the photo large, a title, a few lines, and a detail line.",
-        quote: "One sentence set large: a client's or model's real words, or your own belief about photography.",
-        letter: "A page of your own writing, signed: a foreword to the book or a note to one brand.",
+        cover: "The first page. Your headshot can go on it when you have one.",
+        photos: "Tap a photo to add it, tap again to remove it. Up to six on a page.",
+        spread: "One photograph across two facing pages. A landscape frame works best, with no face on the fold.",
+        divider: "A quiet page between sections, e.g. “Fashion & editorial”.",
+        about: "Your words about the studio. Left empty, the page describes the studio plainly.",
+        services: "The kinds of shoot that are live on your site.",
+        contact: "Email, Instagram, website and booking link, with a QR code to the booking form.",
+        story: "A headline, an intro and a short story, with a photo if you like.",
+        note: "One photo shown large, with a title and a few lines about it.",
+        quote: "One sentence set large: someone's real words, or your own.",
+        letter: "A page of your own writing, signed.",
         feature: "A photo beside words, then words beside a photo. Choose which side the first photo sits on.",
-        article: "Two facing pages: your story on one, one photograph filling the other. Choose which side the photo page goes.",
-        ways: "All four ways of working, side by side, with who leads the ideas and the ways you like best marked.",
-        process: "One way of working, step by step, marking each step as yours, together, or the studio's.",
-        free: "Yours to arrange. Add words, photographs, colour blocks and lines, then drag them on the page."
+        article: "Two facing pages: your story on one, one photograph filling the other.",
+        ways: "All four ways of working, with who leads the ideas.",
+        process: "One way of working, step by step: you, together, or the studio.",
+        free: "Add words, photographs, colour blocks and lines, then drag them where you want."
       };
       const kind = entry ? entry.type : "cover";
       head.innerHTML = `<h3>${esc(entry ? PAGE_LABEL[entry.type] : "Cover")}</h3><p class="sb-hint">${esc(about[kind] || "")}</p>`;
@@ -6067,14 +6132,28 @@
         }
         setList(l);
         pickerOpen = tt.max > 1 ? true : l.length === 0;
-        const grid = box.querySelector(".sb-grid"), scroll = grid ? grid.scrollTop : 0;
+        const grid = box.querySelector(".sb-grid"), scroll = grid ? grid.scrollTop : 0, gridTop = grid ? grid.getBoundingClientRect().top : null;
         change({ photos: true });
-        const g2 = $("#sbPhotoBlock .sb-grid"); if (g2) g2.scrollTop = scroll;
+        const g2 = $("#sbPhotoBlock .sb-grid"); if (g2) { g2.scrollTop = scroll; if (gridTop !== null) holdInView(g2, gridTop); }
         patchRail();
         if (entry && entry.type === "photos") drawFields();   // a border depends on how many photos
         const again = $(`#sbPhotoBlock [data-pick="${window.CSS && window.CSS.escape ? window.CSS.escape(id) : id}"]`);
         if (again) again.focus({ preventScroll: true }); else refocus("summary");
       }));
+    }
+
+    // The grid of photos stays where it was under the finger: the panel (or
+    // the page, on a phone, where the document is what scrolls) moves by
+    // exactly what grew above it when the photo's own tools appeared.
+    function holdInView(el, wasTop) {
+      const r = el.getBoundingClientRect();
+      if (!r.height) return;                       // the picker closed behind the pick: nothing to hold
+      const d = r.top - wasTop;
+      if (Math.abs(d) < 1) return;
+      const panel = el.closest(".sb-panel");
+      // Instant, not the site's smooth scroll: a glide here reads as the grid sliding away.
+      if (panel && getComputedStyle(panel).overflowY !== "visible") panel.scrollTo({ top: panel.scrollTop + d, behavior: "instant" });   // the panel scrolls (laptop)
+      else window.scrollBy({ top: d, behavior: "instant" });                                                                             // the page scrolls (phone)
     }
 
     /* --- the inspector: design --- */
