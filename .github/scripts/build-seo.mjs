@@ -75,9 +75,10 @@ const publicType = (s) => {
   if (testish && !s.showTestShootCategory) return "";
   return t === "Selective Collaboration (TFP)" ? "Selective Collab" : t;
 };
-const altFor = (s, frame) => {
+const altFor = (s, frame, photo) => {
   const who = cleanName(s.talent) || String(s.title || "").trim();
-  const what = [s.activity, publicType(s)].filter(Boolean).join(" ");
+  const look = photo && lookByKey.get(photo.look);
+  const what = [(look && look.label) || s.activity, publicType(s)].filter(Boolean).join(" ");
   return [
     what ? `${what} photography` : "Photography",
     who ? `featuring ${who}` : "",
@@ -138,10 +139,36 @@ const ogCropFor = (slug) => (slug && exists(`photos/og/${slug}.jpg`) ? `/photos/
 const albumCover = (s) => s.photos.find((p) => String(p.id).split("-")[0] === s.coverPhotoId) || s.photos[0];
 const albumPlace = (s) => (s.showLocation === false ? "" : cleanName(s.location).replace(/^—$/, ""));
 const albumWhat = (s) => `${s.activity ? `${s.activity} ` : ""}photoshoot`;
+/* Every album page used to carry the same sentence with the name swapped, so
+   ten pages read as one page ten times over (site audit Sep 2026). This builds
+   from what actually differs between albums — the looks in the frames, who was
+   on the shoot, who it was shot for — and steps aside entirely the moment the
+   studio writes its own description in Upload, which is the real fix. */
+const listOf = (a) => (a.length > 1 ? `${a.slice(0, -1).join(", ")} and ${a[a.length - 1]}` : (a[0] || ""));
+const albumLooks = (s) => {
+  const out = [];
+  for (const p of s.photos || []) {
+    const l = p && lookByKey.get(p.look);
+    if (l && l.label && !out.includes(l.label)) out.push(l.label);
+  }
+  return out;
+};
+const realName = (x) => { const v = cleanName(x).replace(/^[—–-]+$/, "").trim(); return /[a-z]/i.test(v) ? v : ""; };
+const albumTeam = (s) => [...new Set([s.stylist, s.mua, s.hair, s.artDirector].map(realName).filter(Boolean))];
 const albumSentence = (s) => {
+  const own = String(s.description || "").trim();
+  if (own) return own;
   const place = albumPlace(s);
   const when = String(s.season || "").replace(/^—$/, "");
-  return `${s.activity || "Studio"} photography featuring ${albumName(s)}${place ? `, shot in ${place}` : ""}${when ? ` in ${when}` : ""} by ${BRAND} — ${s.photos.length} photograph${s.photos.length === 1 ? "" : "s"}.`;
+  const looks = albumLooks(s);
+  const team = albumTeam(s);
+  const forWhom = albumClients(s).map(clientLabel).filter(Boolean);
+  const n = s.photos.length;
+  const kind = looks.length ? listOf(looks) : (s.activity || "Studio");
+  const out = [`${kind} photography with ${albumName(s)}${place ? `, shot in ${place}` : ""}${when ? ` in ${when}` : ""}.`];
+  out.push(`${n} photograph${n === 1 ? "" : "s"}${looks.length > 1 ? ` across ${looks.length} looks` : ""} by ${BRAND}${team.length ? `, with ${listOf(team)}` : ""}.`);
+  if (forWhom.length) out.push(`Shot for: ${forWhom.join(", ")}.`);
+  return out.join(" ");
 };
 /* Nothing writes updatedAt on an album, so every "last changed" date in the
    sitemap was the album's creation date however often its photos changed
@@ -287,7 +314,7 @@ function buildAlbumPage(s) {
       "@type": "ImageObject",
       contentUrl: absUrl(photoPath(p)),
       name: `${name} — frame ${i + 1}`,
-      caption: p.caption || altFor(s, i + 1),
+      caption: p.caption || altFor(s, i + 1, p),
       creditText: BRAND,
       copyrightNotice: `© ${BRAND}`,
       creator: { "@type": "Organization", name: BRAND, url: `${ORIGIN}/` },
@@ -304,7 +331,7 @@ function buildAlbumPage(s) {
       </div></header>
       <section class="section container">
         <div class="pr-photos">
-          ${s.photos.map((p, i) => `<img src="${esc(photoPath(p.small ? { url: p.small } : p))}"${srcsetOf(p) ? ` srcset="${esc(srcsetOf(p))}" sizes="(max-width: 620px) 100vw, (max-width: 1100px) 50vw, 33vw"` : ""}${p.w && p.h ? ` width="${p.w}" height="${p.h}"` : ""} alt="${esc(p.caption || altFor(s, i + 1))}"${i === 0 ? ' fetchpriority="high"' : ' loading="lazy"'} decoding="async" />`).join("\n          ")}
+          ${s.photos.map((p, i) => `<img src="${esc(photoPath(p.small ? { url: p.small } : p))}"${srcsetOf(p) ? ` srcset="${esc(srcsetOf(p))}" sizes="(max-width: 620px) 100vw, (max-width: 1100px) 50vw, 33vw"` : ""}${p.w && p.h ? ` width="${p.w}" height="${p.h}"` : ""} alt="${esc(p.caption || altFor(s, i + 1, p))}"${i === 0 ? ' fetchpriority="high"' : ' loading="lazy"'} decoding="async" />`).join("\n          ")}
         </div>
         ${credits.length ? `<p class="pr-credits">${credits.map(([k, v]) => `${esc(k)}: ${esc(v)}`).join(" · ")}</p>` : ""}
         <p><a href="/book/" data-link>Book a photoshoot with ${BRAND}</a> · <a href="/albums/" data-link>All albums</a></p>
@@ -418,7 +445,7 @@ function photoGridHtml(items) {
       ${items.map(({ s, p, i, look }) => {
         const ss = srcsetOf(p);
         // The alt names the kind of work this photo is, not the album's.
-        const alt = p.caption || altFor({ ...s, activity: lookLabel(look) || s.activity }, i + 1);
+        const alt = p.caption || altFor({ ...s, activity: lookLabel(look) || s.activity }, i + 1, p);
         return `<a class="svc-photo" href="${albumUrl(s)}" data-shoot="${esc(s.id)}" data-photo="${esc(p.id)}" data-look="${esc(look)}">
         <img src="${esc(photoPath(p.small ? { url: p.small } : p))}"${ss ? ` srcset="${esc(ss)}" sizes="(max-width: 620px) 50vw, (max-width: 1100px) 25vw, 220px"` : ""} alt="${esc(alt)}" loading="lazy" decoding="async" style="object-position: ${esc(focusCss(p))};" />
       </a>`;
