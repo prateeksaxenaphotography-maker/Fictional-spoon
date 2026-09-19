@@ -2532,11 +2532,19 @@ window.moveAdminPackageRow = function(index, dir) {
     } else {
       localStorage.removeItem("wps-admin-authorized");
       localStorage.removeItem("wps-admin");
-      localStorage.removeItem("wps-github-pat");
       // isAdmin() actually reads the session flag below, not localStorage's
       // "wps-admin" — without clearing it too, ?admin=0 then ?admin=1 in the
       // same tab silently restored full admin with no passcode re-entry.
       sessionStorage.removeItem("wps-admin");
+      // Locking admin mode is harmless and always happens. Forgetting the saved
+      // GitHub token is not: it has to be typed in again before anything can be
+      // published, and this used to happen silently — so a link ending in
+      // ?admin=0 from anyone at all cost the studio its token with one tap.
+      // Ask first, and keep the token if the answer is no (site audit Sep 2026).
+      if (localStorage.getItem("wps-github-pat")
+        && window.confirm("Forget the saved GitHub token on this device?\n\nYou will have to enter it again the next time you publish. Admin mode is being locked either way.")) {
+        localStorage.removeItem("wps-github-pat");
+      }
     }
   }
 
