@@ -85,6 +85,21 @@ jobs:
       - name: Build search-engine pages (albums, services, sitemap)
         run: node .github/scripts/build-seo.mjs
 
+      # The repository root is what gets published, so everything in it was
+      # being served from the studio's own domain: the never-deployed Render
+      # backend and its render.yaml (exactly what someone would need to claim
+      # that hostname), package.json naming the old studio, an instruction file
+      # for AI agents, and a README describing a site that no longer exists
+      # (Sep 2026 audit). They stay in the repository, where they are part of
+      # its history; they are simply not part of the website. Removing them
+      # here rather than from the repo means nothing the studio might still
+      # want is lost.
+      - name: Leave development files out of the published site
+        run: |
+          rm -rf backend .agents node_modules
+          rm -f server.js render.yaml package.json package-lock.json .env.example README.md
+          echo "Published files:"; ls -A
+
       - name: Upload site artifact (repository root)
         uses: actions/upload-pages-artifact@v3
         with:
