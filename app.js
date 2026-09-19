@@ -14820,6 +14820,28 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // The photo grids and filter buttons on the "What I shoot" pages. Those pages
   // arrive as finished HTML from build-seo.mjs and are kept rather than
   // repainted, so wireView never runs for them — both work by delegation.
+  // A tile's photo, read off the tile itself. The grids are built at deploy from
+  // the published albums, and this browser's copy of an album can differ: the
+  // studio's own device keeps its saved copy, which wins over data.js (see
+  // loadShoots), and a returning visitor can hold a data.js older than the
+  // page. A photo missing from that copy used to send the click to the whole
+  // album instead of opening the photo (reported for one of Prachi's frames,
+  // Sep 19 2026). The tile carries the photo's addresses, so it never has to.
+  function photoFromTile(el) {
+    const img = el.querySelector("img");
+    if (!img) return null;
+    const sized = (w) => ((img.getAttribute("srcset") || "").split(",").map((c) => c.trim().split(/\s+/)).find((c) => c[1] === w) || [""])[0];
+    const url = sized("1600w") || img.getAttribute("src") || "";
+    return url ? { id: el.dataset.photo, url, small: sized("480w"), medium: sized("960w") } : null;
+  }
+  // The album a tile belongs to, when this browser doesn't know it at all: just
+  // enough for the viewer's panel to name it and link to it.
+  function albumFromTile(el) {
+    const slug = ((el.getAttribute("href") || "").match(/\/albums\/([^/?#]+)/) || [])[1] || "";
+    const name = decodeURIComponent(slug).split("-").filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
+    return { id: el.dataset.shoot || "", title: name, talent: name, photos: [] };
+  }
+
   function initServiceGrids() {
     // The filter buttons are hidden without JavaScript; the class the built
     // pages set in <head> is missing from pages the build does not touch.
@@ -14833,12 +14855,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         let at = -1;
         tile.closest(".svc-photos").querySelectorAll(".svc-photo").forEach((el) => {
           const s = SHOOTS.find((x) => x.id === el.dataset.shoot);
-          const p = s && (s.photos || []).find((x) => x.id === el.dataset.photo);
+          const p = (s && (s.photos || []).find((x) => x.id === el.dataset.photo)) || photoFromTile(el);
           if (!p) return;
           if (el === tile) at = list.length;
-          list.push({ ...p, shoot: s, gridLook: el.dataset.look || "", albumHref: el.getAttribute("href") });
+          list.push({ ...p, shoot: s || albumFromTile(el), gridLook: el.dataset.look || "", albumHref: el.getAttribute("href") });
         });
-        // A photo this browser has no data for yet: the link still opens its album.
+        // A tile with no picture in it: the link still opens its album.
         if (at < 0) return;
         e.preventDefault();
         openLb(list, at);
