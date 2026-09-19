@@ -3262,19 +3262,65 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         throw new Error(`Sync aborted: it would silently remove ${keptRemote - published.length} published album(s) that were not explicitly deleted. Nothing was changed.`);
       }
 
-      // One atomic commit: photo blobs + regenerated data.js.
+      // One atomic commit: photo blobs + regenerated data.js + the files no
+      // album uses any more.
       const ref = await ghApi(pat, `/git/ref/heads/${GH_BRANCH}`);
       const baseCommit = await ghApi(pat, `/git/commits/${ref.object.sha}`);
+
+      /* Deleting an album or a photo used to take it off the pages and leave
+         the file itself on the site for ever, at the same address and in the
+         public repo — 132 such files had built up by Sep 2026, including every
+         photo of four deleted albums. A model asking to be taken down was not
+         actually taken down. So a publish now also removes the picture files
+         that nothing published points at.
+
+         The list it compares against is the MERGED one being published (this
+         device's albums plus every album live on the site), which is the same
+         list that decides what stays on the site at all — so a file can only
+         be dropped when no album anywhere refers to it. Two more guards: the
+         album count checks above have already run, and a publish that somehow
+         referenced nothing at all deletes nothing. */
+      let removedFiles = [];
+      try {
+        const referenced = new Set();
+        published.forEach((s) => (s.photos || []).forEach((p) => {
+          [p && p.url, p && p.small, p && p.medium].forEach((u) => {
+            if (u) referenced.add(String(u).replace(/^\//, ""));
+          });
+        }));
+        if (referenced.size) {
+          const treeNow = await ghApi(pat, `/git/trees/${baseCommit.tree.sha}?recursive=1`);
+          const tracked = (treeNow.tree || []).filter((t) => t && t.type === "blob" && /^photos\//.test(t.path));
+          // A photo added by THIS publish is not in the base tree yet, so it
+          // can never be caught here.
+          removedFiles = tracked.filter((t) => !referenced.has(t.path)).map((t) => t.path);
+          if (treeNow.truncated) {
+            console.warn("Publish: the repository listing was truncated, so unused photo files were left alone this time.");
+            removedFiles = [];
+          }
+        }
+      } catch (err) {
+        // Housekeeping must never cost the studio a publish.
+        console.warn("Publish: could not work out which photo files are unused —", err.message);
+        removedFiles = [];
+      }
+      if (removedFiles.length) console.info(`Publish: removing ${removedFiles.length} photo file(s) no album uses any more.`);
+
       const tree = await ghApi(pat, "/git/trees", {
         method: "POST",
         body: JSON.stringify({
           base_tree: baseCommit.tree.sha,
-          tree: [...photoEntries, { path: "data.js", mode: "100644", type: "blob", content: fileContent }],
+          tree: [
+            ...photoEntries,
+            { path: "data.js", mode: "100644", type: "blob", content: fileContent },
+            // sha: null is how the tree API says "this path is gone".
+            ...removedFiles.map((path) => ({ path, mode: "100644", type: "blob", sha: null })),
+          ],
         }),
       });
       const commit = await ghApi(pat, "/git/commits", {
         method: "POST",
-        body: JSON.stringify({ message: "Auto-sync portfolio data from Admin Panel", tree: tree.sha, parents: [ref.object.sha] }),
+        body: JSON.stringify({ message: `Auto-sync portfolio data from Admin Panel${removedFiles.length ? ` (and ${removedFiles.length} unused photo file${removedFiles.length === 1 ? "" : "s"} removed)` : ""}`, tree: tree.sha, parents: [ref.object.sha] }),
       });
       await ghApi(pat, `/git/refs/heads/${GH_BRANCH}`, { method: "PATCH", body: JSON.stringify({ sha: commit.sha }) });
 
