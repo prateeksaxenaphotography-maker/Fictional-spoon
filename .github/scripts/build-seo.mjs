@@ -128,6 +128,13 @@ const slugById = new Map();
 const albumUrl = (s) => `/albums/${slugById.get(s.id)}/`;
 const newestFirst = [...albums].sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")) || (b.createdAt || 0) - (a.createdAt || 0));
 const albumName = (s) => cleanName(s.title || s.talent) || "Untitled";
+/* The wide crop WhatsApp, Instagram and Google show for a link. Album covers
+   here are portraits, and a preview card is 1.91:1, so the platforms crop the
+   middle out of a standing portrait and show a chest. photos/og/<slug>.jpg is
+   a 1200x630 crop taken around the head by .github/scripts/make-og-images.py;
+   an album added since that last ran has no file and falls back to its cover,
+   exactly as before. */
+const ogCropFor = (slug) => (slug && exists(`photos/og/${slug}.jpg`) ? `/photos/og/${slug}.jpg` : "");
 const albumCover = (s) => s.photos.find((p) => String(p.id).split("-")[0] === s.coverPhotoId) || s.photos[0];
 const albumPlace = (s) => (s.showLocation === false ? "" : cleanName(s.location).replace(/^—$/, ""));
 const albumWhat = (s) => `${s.activity ? `${s.activity} ` : ""}photoshoot`;
@@ -158,7 +165,7 @@ function ldScript(obj, id) {
 }
 
 /** A new page built from index.html: own title, description, address, preview image and content. */
-function pageFromTemplate({ title, description, urlPath, ogImage = OG_IMAGE, ogType = "website", jsonLd = [], mainAttrs = "", mainHtml }) {
+function pageFromTemplate({ title, description, urlPath, ogImage = OG_IMAGE, ogType = "website", jsonLd = [], mainAttrs = "", mainHtml, robots = "" }) {
   let html = TEMPLATE;
   const url = `${ORIGIN}${urlPath}`;
   html = replaceOnce(html, /<title>[\s\S]*?<\/title>/, `<title>${esc(title)}</title>`, "<title>");
@@ -170,14 +177,39 @@ function pageFromTemplate({ title, description, urlPath, ogImage = OG_IMAGE, ogT
   html = replaceOnce(html, /<meta property="og:image" content="[^"]*" \/>/, `<meta property="og:image" content="${esc(ogImage)}" />`, "og:image");
   html = replaceOnce(html, /<meta property="og:url" content="[^"]*" \/>/, `<meta property="og:url" content="${esc(url)}" />`, "og:url");
   html = replaceOnce(html, /<meta name="twitter:image" content="[^"]*" \/>/, `<meta name="twitter:image" content="${esc(ogImage)}" />`, "twitter:image");
-  html = replaceOnce(html, /<\/head>/, `${jsonLd.join("")}${HEAD_SNIPPET}</head>`, "</head>");
+  // The card's own size, so a platform lays the preview out before it has
+  // finished downloading the picture — and an alt line for anyone whose reader
+  // describes the card. Only claimed for the wide crops this build makes; a
+  // fallback portrait cover is left unmeasured rather than described wrongly.
+  if (/\/photos\/og\//.test(ogImage)) {
+    html = replaceOnce(html, /<meta property="og:image" content="[^"]*" \/>/,
+      (m) => `${m}\n  <meta property="og:image:width" content="1200" />\n  <meta property="og:image:height" content="630" />\n  <meta property="og:image:alt" content="${esc(title)}" />`,
+      "og:image dimensions");
+  }
+  html = replaceOnce(html, /<\/head>/, `${robots ? `  <meta name="robots" content="${esc(robots)}" />\n` : ""}${jsonLd.join("")}${HEAD_SNIPPET}</head>`, "</head>");
   html = replaceOnce(html, EMPTY_MAIN, `<main id="view" class="view" tabindex="-1"${mainAttrs}>${mainHtml}</main>`, "empty <main id=\"view\">");
   return enrichBusinessLd(html);
 }
 
 /** An existing page: keep it as it is, add the plain-HTML copy of its content. */
+/* The shells are hand-kept copies, and every one of them still carries the
+   home page's og:title and og:description — so a /book/ link sent to a client
+   previewed as the home page, with none of the words about booking a shoot
+   (Sep 2026 audit). Each page's own <title> and description are already right,
+   so the sharing tags are filled in from them. */
+function shareTagsFromPage(html, rel) {
+  const title = (html.match(/<title>([\s\S]*?)<\/title>/) || [])[1];
+  const desc = (html.match(/<meta name="description" content="([^"]*)" \/>/) || [])[1];
+  const canon = (html.match(/<link rel="canonical" href="([^"]*)" \/>/) || [])[1];
+  if (title) html = replaceOnce(html, /<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${title}" />`, `og:title in ${rel}`);
+  if (desc) html = replaceOnce(html, /<meta property="og:description" content="[^"]*" \/>/, `<meta property="og:description" content="${desc}" />`, `og:description in ${rel}`);
+  if (canon) html = replaceOnce(html, /<meta property="og:url" content="[^"]*" \/>/, `<meta property="og:url" content="${canon}" />`, `og:url in ${rel}`);
+  return html;
+}
+
 function shellWithPrerender(rel, innerHtml) {
   let html = read(rel);
+  html = shareTagsFromPage(html, rel);
   html = replaceOnce(html, /<\/head>/, `${HEAD_SNIPPET}</head>`, `</head> in ${rel}`);
   // A function, not a string: in a replacement STRING "$&", "$'" and "$`" are
   // patterns, and owner-typed text containing one would splice the page apart.
@@ -277,7 +309,7 @@ function buildAlbumPage(s) {
     rel: `albums/${slugById.get(s.id)}/index.html`,
     html: pageFromTemplate({
       title, description, urlPath,
-      ogImage: absUrl(photoPath(cover)),
+      ogImage: absUrl(ogCropFor(slugById.get(s.id)) || photoPath(cover)),
       ogType: "article",
       jsonLd: [ldScript(gallery, "wps-image-schema"), ldScript(breadcrumbLd([["Home", "/"], ["Albums", "/albums/"], [name, urlPath]]))],
       mainHtml
@@ -405,7 +437,14 @@ function buildServicePage(v) {
   const grid = v.albumFilter.look ? photosForPage(v) : null;
   const cards = grid ? null : albumsForPage(v);
   const workLinks = v.workLinks;
-  const ogImage = grid ? (grid.length ? absUrl(photoPath(grid[0].p)) : OG_IMAGE) : (cards.length ? absUrl(photoPath(albumCover(cards[0]))) : OG_IMAGE);
+  // The wide crop of whichever album that lead photo came from, so a shared
+  // "What I shoot" link shows a face rather than the middle of a portrait.
+  const albumOfPhoto = (photo) => newestFirst.find((sh) => (sh.photos || []).some((q) => q && q.id === photo.id));
+  const leadAlbum = grid ? (grid.length ? (grid[0].s || albumOfPhoto(grid[0].p)) : null) : (cards.length ? cards[0] : null);
+  const leadCrop = leadAlbum ? ogCropFor(slugById.get(leadAlbum.id)) : "";
+  const ogImage = leadCrop ? absUrl(leadCrop)
+    : grid ? (grid.length ? absUrl(photoPath(grid[0].p)) : OG_IMAGE)
+    : (cards.length ? absUrl(photoPath(albumCover(cards[0]))) : OG_IMAGE);
 
   const serviceLd = {
     "@context": "https://schema.org",
@@ -740,6 +779,53 @@ function checkServices() {
   }
 }
 
+/* A page per model, at /models/<slug>/.
+
+   Sharing a model's card handed out /share/?a=comp-card-<slug>, and every one
+   of those previews identically — "A shared album from nerdyphotographer.in"
+   over the site's default picture — because one file cannot carry ten models'
+   names and faces (Sep 2026 audit). These pages carry them. app.js reads the
+   address as the same comp-card id (sharedAlbumSegment) and renders the card,
+   so what opens is unchanged.
+
+   They are noindex on purpose: the model's album pages and the model-portfolio
+   service page are the ones meant to rank, and three addresses competing over
+   one model's name would help none of them. */
+function buildModelPages() {
+  if (!compCardsPage) return [];
+  const groups = new Map();
+  for (const s of albumsForPage(compCardsPage)) {
+    const name = cleanName(s.talent || s.title || "").trim();
+    const slug = slugify(name);
+    if (!slug) continue;
+    if (!groups.has(slug)) groups.set(slug, { name, albums: [] });
+    groups.get(slug).albums.push(s);
+  }
+  return [...groups.entries()].map(([slug, g]) => {
+    const lead = g.albums[0];
+    const shots = g.albums.reduce((n, s) => n + (s.photos || []).length, 0);
+    const title = `${g.name} — Model Portfolio | ${BRAND}`;
+    const description = `${g.name}: ${shots} photograph${shots === 1 ? "" : "s"} in one place, with a comp card and a portfolio PDF to download. Photographed by ${BRAND}, Noida & Delhi NCR.`;
+    const urlPath = `/models/${slug}/`;
+    const mainHtml = `<div class="prerender">
+    <h1>${esc(g.name)}</h1>
+    <p>${esc(description)}</p>
+    <p><a href="${esc(compCardsHref)}">See every model</a> &middot; <a href="${esc(albumUrl(lead))}">${esc(g.name)}'s album</a></p>
+    ${g.albums.map((s) => albumCardHtml(s)).join("\n    ")}
+  </div>`;
+    return {
+      rel: `models/${slug}/index.html`,
+      html: pageFromTemplate({
+        title, description, urlPath,
+        ogImage: absUrl(ogCropFor(slugById.get(lead.id)) || photoPath(albumCover(lead))),
+        ogType: "profile",
+        robots: "noindex, follow",
+        mainHtml
+      })
+    };
+  });
+}
+
 checkServices();
 const outputs = [];
 for (const s of albums) outputs.push(buildAlbumPage(s));
@@ -747,6 +833,8 @@ if (liveServices.length) {
   outputs.push(buildServicesIndex());
   for (const v of liveServices) outputs.push(buildServicePage(v));
 }
+const modelPages = buildModelPages();
+for (const m of modelPages) outputs.push(m);
 console.log(`build-seo: ${liveServices.length}/${SERVICES.length} service pages have work and are published${liveServices.length < SERVICES.length ? ` — waiting on: ${SERVICES.filter((v) => !liveServices.includes(v)).map((v) => v.slug).join(", ")}` : ""}`);
 const { blocks, quoteCount } = prerenderBlocks();
 for (const [rel, inner] of Object.entries(blocks)) {
@@ -769,12 +857,12 @@ for (const o of outputs) {
 }
 
 if (CHECK_ONLY) {
-  console.log(`build-seo: OK (check only) — ${albums.length} album pages, ${liveServices.length ? liveServices.length + 1 : 0} service pages, ${Object.keys(blocks).length} page copies, sitemap.`);
+  console.log(`build-seo: OK (check only) — ${modelPages.length} model pages, ${albums.length} album pages, ${liveServices.length ? liveServices.length + 1 : 0} service pages, ${Object.keys(blocks).length} page copies, sitemap.`);
 } else {
   for (const o of outputs) {
     const abs = path.join(ROOT, o.rel);
     fs.mkdirSync(path.dirname(abs), { recursive: true });
     fs.writeFileSync(abs, o.html);
   }
-  console.log(`build-seo: wrote ${outputs.length} files into ${ROOT} — ${albums.length} album pages, ${liveServices.length ? liveServices.length + 1 : 0} service pages, ${Object.keys(blocks).length} page copies, sitemap.`);
+  console.log(`build-seo: wrote ${outputs.length} files into ${ROOT} — ${modelPages.length} model pages, ${albums.length} album pages, ${liveServices.length ? liveServices.length + 1 : 0} service pages, ${Object.keys(blocks).length} page copies, sitemap.`);
 }
