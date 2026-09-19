@@ -5821,11 +5821,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
 
   /* ---- book-builder loader ---- */
+  // The builder draws every page with the engine in pdf-tools.js, which it
+  // reaches through window.WPS_BOOK_API synchronously — so that file is
+  // fetched first and awaited, never raced. A.loadPdfTools is memoised in
+  // app.js, so a second book opening costs nothing.
   let bookBuilderLoad = null;
   function loadBookBuilder() {
-    if (window.StudioBook) return Promise.resolve(window.StudioBook);
+    if (window.StudioBook && window.WPS_PDF) return Promise.resolve(window.StudioBook);
     if (!bookBuilderLoad) {
-      bookBuilderLoad = new Promise((resolve, reject) => {
+      // An older app.js still holds the page engine itself, and hands no
+      // loader across; there is nothing to fetch in that case.
+      bookBuilderLoad = (A.loadPdfTools ? A.loadPdfTools() : Promise.resolve()).then(() => new Promise((resolve, reject) => {
         const s = document.createElement("script");
         // Same version as the rest of the site, so a release never pairs a new
         // app.js with a cached old builder.
@@ -5834,7 +5840,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         s.onload = () => (window.StudioBook ? resolve(window.StudioBook) : reject(new Error("book-builder.js loaded without StudioBook")));
         s.onerror = () => { bookBuilderLoad = null; reject(new Error("book-builder.js failed to load")); };
         document.head.appendChild(s);
-      });
+      })).catch((err) => { bookBuilderLoad = null; throw err; });
     }
     return bookBuilderLoad;
   }

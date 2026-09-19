@@ -812,11 +812,11 @@ try {
   const base = usable ? beforeSha : "HEAD~1";
   const changed = execSync(`git diff --name-only ${base} HEAD`, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
     .split("\n").map((x) => x.trim()).filter(Boolean);
-  // admin.js belongs here for the same reason book-builder.js does: it is
-  // fetched with the same ?v= as app.js, so a release that only touches the
-  // studio's half still has to bump the version or the studio keeps running
-  // the copy its browser already holds.
-  const codeFiles = ["app.js", "admin.js", "styles.css", "config.js", "book-builder.js", "sw.js"];
+  // admin.js and pdf-tools.js belong here for the same reason book-builder.js
+  // does: each is fetched with the same ?v= as app.js, so a release that only
+  // touches one of them still has to bump the version or browsers keep running
+  // the copy they already hold.
+  const codeFiles = ["app.js", "admin.js", "pdf-tools.js", "styles.css", "config.js", "book-builder.js", "sw.js"];
   const codeChanged = changed.filter((f) => codeFiles.includes(f) && f !== "sw.js");
   if (codeChanged.length) {
     const prevSw = execSync(`git show ${base}:sw.js`, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
