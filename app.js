@@ -1,4 +1,41 @@
 /* ============================================================
+   § BROWSER STORAGE SAFETY NET
+   ============================================================ */
+/* Safari's "Block All Cookies" and Chrome's "block all site data" make even
+   READING localStorage throw a SecurityError. The site reads it very early
+   (isAdmin, the theme, the loader's seen-flag), so that one throw used to
+   abort the boot before the loader was dismissed and leave those visitors on
+   a black screen with "STUDIO 000" forever (Sep 2026 audit). Swapping in an
+   in-memory stand-in keeps everything working for the session; nothing is
+   remembered after the tab closes, which is exactly what the visitor asked
+   their browser for. */
+(function installStorageSafetyNet() {
+  const inMemory = () => {
+    const m = new Map();
+    return {
+      getItem: (k) => (m.has(String(k)) ? m.get(String(k)) : null),
+      setItem: (k, v) => { m.set(String(k), String(v)); },
+      removeItem: (k) => { m.delete(String(k)); },
+      clear: () => m.clear(),
+      key: (i) => [...m.keys()][i] ?? null,
+      get length() { return m.size; }
+    };
+  };
+  ["localStorage", "sessionStorage"].forEach((name) => {
+    let broken = false;
+    try {
+      const store = window[name];
+      const probe = "__wps_probe__";
+      store.setItem(probe, "1");
+      store.removeItem(probe);
+    } catch (e) { broken = true; }
+    if (!broken) return;
+    try { Object.defineProperty(window, name, { configurable: true, writable: true, value: inMemory() }); }
+    catch (e) { console.warn(`${name} is blocked and could not be stood in for; some settings will not stick.`); }
+  });
+})();
+
+/* ============================================================
    § UNIFIED MASTER ADMIN PROMO & INVITE CODES ENGINE
    ============================================================ */
 const DEFAULT_PROMO_CODES = {
@@ -3587,11 +3624,22 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     `;
   }
 
+  // An open photo is a step the Back button can undo. Without this, Back with a
+  // photo open ran the router: the page underneath changed while the photo
+  // stayed on top of it, and closing it left the visitor on a different page
+  // (reported in the Sep 2026 audit; on a phone, Back is how people close
+  // things). The entry keeps the same address — a photo has no address of its
+  // own — so Back means "close this", and the page under it never moves.
+  let lbHistoryEntry = false;
   function openLb(list, idx) {
     if (!list || !list.length) return;   // nothing to show is not a lightbox
     lbReturnFocus = document.activeElement;
     lbList = list; lbIdx = idx; paintLb(); lb.hidden = false;
     document.body.style.overflow = "hidden"; $("#lightboxClose").focus();
+    if (!lbHistoryEntry) {
+      lbHistoryEntry = true;
+      try { history.pushState({ wpsLightbox: true }, "", location.href); } catch {}
+    }
   }
   // A logShootView() beacon fired here on every lightbox open, naming the shoot
   // and its talent to the never-deployed Render host. Removed with the rest of
@@ -3689,7 +3737,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         lbSidebar.querySelectorAll(".work-edit").forEach(btn => {
           btn.addEventListener("click", (e) => {
             e.stopPropagation();
-            closeLb();
+            closeLb(true);   // Edit navigates next
             history.pushState(null, "", `/upload?edit=${btn.dataset.id || shoot.id}`);
             render();
           });
@@ -3700,7 +3748,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             const targetId = btn.dataset.id || shoot.id;
             const targetName = btn.dataset.title || shoot.title || shoot.talent;
             if (confirm(`Are you sure you want to delete the photoshoot "${targetName}"?`)) {
-              closeLb();
+              closeLb(true);   // Delete re-renders next
               await delShoot(targetId);
               await loadShoots();
               toast(`Deleted "${targetName}".`);
@@ -3715,17 +3763,29 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // A link in the panel ("See the full album", "See all models' comp cards")
     // leaves the page: the router follows it, and the viewer must not stay open
     // on top of the page it leads to.
-    lbSidebar.querySelectorAll("a[data-link]").forEach((a) => a.addEventListener("click", () => closeLb()));
+    lbSidebar.querySelectorAll("a[data-link]").forEach((a) => a.addEventListener("click", () => closeLb(true)));  // the link navigates next
   }
   function stepLb(d) { if (!lbList.length) return; lbIdx = (lbIdx + d + lbList.length) % lbList.length; paintLb(); }
-  function closeLb() {
+  // keepHistory: the caller is about to navigate (a sidebar link, Edit,
+  // Delete), so leave the history alone — stepping back here would land the
+  // synthetic pop in the middle of that navigation and undo it.
+  function closeLb(keepHistory) {
     lbPaintToken++;                 // cancel any decode still in flight
     lb.classList.remove("lb-loading");
     lb.hidden = true; lbImg.src = ""; document.body.style.overflow = "";
     // Return focus to the thumbnail/card that opened the viewer.
     if (lbReturnFocus && document.contains(lbReturnFocus)) { try { lbReturnFocus.focus(); } catch {} }
     lbReturnFocus = null;
+    if (lbHistoryEntry) {
+      lbHistoryEntry = false;
+      // Closing by hand spends the entry Back would have spent, so one Back
+      // press still leaves the album rather than doing nothing first.
+      if (!keepHistory) { lbClosingByHand = true; try { history.back(); } catch { lbClosingByHand = false; } }
+    }
   }
+  // Set while the line above walks history back; the router ignores that one
+  // pop, because the view it would repaint is the one already on screen.
+  let lbClosingByHand = false;
   function initLightbox() {
     // Simple focus trap: keep Tab within the lightbox while it's open.
     trapTabKey(lb, "button:not([disabled])");
@@ -9220,8 +9280,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                     <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0 2px; margin-top: 8px; border-top: 1px solid var(--line-2);">
                       <span style="color: var(--ink); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-size: var(--font-xs);">Total payable</span>
                       <span id="summaryFinalAmount" style="font-size: var(--font-md); font-weight: 800; color: var(--accent); font-family: var(--mono-font); white-space: nowrap;">₹${getAdminPackages()[0].price.toLocaleString('en-IN')} INR</span>
-                    <div id="summaryIncluded" class="quote-included" hidden></div>
                     </div>
+                    <!-- What the package includes sits UNDER the total, not
+                         inside that row: as a third flex child beside "Total
+                         payable" and the amount it was squeezed into a ~75px
+                         column eleven lines tall, and its widest word set a
+                         minimum width that made the whole booking page wider
+                         than any phone screen (Sep 2026 audit). -->
+                    <div id="summaryIncluded" class="quote-included" hidden></div>
                     <!-- Only when the client has handed studio+lighting booking
                          over to the photographer: the actual venue and lighting
                          cost is not known yet, so the total above will change
@@ -9399,13 +9465,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               </fieldset>
  
              <!-- TFP Liability Release Terms Modal -->
-             <div id="termsModal" class="modal-overlay" style="display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 20px;">
+             <div id="termsModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="termsModalTitle" style="display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 20px;">
                <div class="modal-content" style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; max-width: 680px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.15); overflow: hidden; animation: modalFadeIn 0.3s ease;">
                  <div style="padding: 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; background: var(--bone);">
                    <h3 id="termsModalTitle" style="margin: 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink);">Studio Production &amp; Liability Release</h3>
                    <span id="termsModalTag" style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--accent); padding: 4px 8px; border-radius: 4px; color: #fff; font-weight: 700;">TFP-LIABILITY-RELEASE-V3.7 (ACTIVE)</span>
                  </div>
-                 <div style="padding: 24px; overflow-y: auto; font-size: var(--font-sm); line-height: 1.6; color: var(--ink); display: flex; flex-direction: column; gap: 20px; text-align: left;">
+                 <div id="termsScrollArea" tabindex="0" style="padding: 24px; overflow-y: auto; font-size: var(--font-sm); line-height: 1.6; color: var(--ink); display: flex; flex-direction: column; gap: 20px; text-align: left;">
                    <p id="termsModalSubtitle" style="margin: 0; font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em;">TFP Collaboration, Model Release &amp; Digital Consent Terms</p>
                    
                    <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 14px; font-size: var(--font-xs); display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px;">
@@ -13616,7 +13682,28 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         ? "The legal copyright of all visual media remains exclusively with the Studio. To support mutual growth and portfolio building, all participants are granted a full non-exclusive license to publish, share, and use final retouched photos for personal self-promotion, social media grids (Instagram/TikTok), personal websites, and agency portfolios."
         : "The legal copyright of all visual media remains exclusively with the Studio. Clients receive personal, social media, and web self-promotion usage rights for the final retouched photos. Any work beyond the contracted package (additional retouched masters, extended usage, gallery buyout) is quoted and invoiced separately.";
 
-      $("#termsModal").style.display = "flex";
+      const termsModalEl = $("#termsModal");
+      termsModalEl.style.display = "flex";
+      // Focus used to stay on the Submit button behind the overlay: Tab walked
+      // the page underneath, Escape did nothing, and a keyboard-only client
+      // could never reach Agree — so could not book at all (Sep 2026 audit).
+      const termsOpener = document.activeElement;
+      const termsFocusable = () => [...termsModalEl.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), textarea, select, [tabindex]:not([tabindex="-1"])')]
+        .filter((el) => el.offsetParent !== null);
+      const onTermsKeydown = (e) => {
+        if (e.key === "Escape") { e.preventDefault(); onDeclineClick(); return; }
+        if (e.key !== "Tab") return;
+        const f = termsFocusable();
+        if (!f.length) return;
+        const first = f[0], last = f[f.length - 1];
+        if (e.shiftKey && (document.activeElement === first || !termsModalEl.contains(document.activeElement))) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && (document.activeElement === last || !termsModalEl.contains(document.activeElement))) { e.preventDefault(); first.focus(); }
+      };
+      termsModalEl.addEventListener("keydown", onTermsKeydown);
+      document.addEventListener("keydown", onTermsKeydown);
+      // The terms themselves, so the first thing a screen reader meets is what
+      // is being agreed to rather than the button that agrees to it.
+      setTimeout(() => { const area = $("#termsScrollArea"); (area || termsFocusable()[0] || termsModalEl).focus(); }, 30);
       const acceptBtn = $("#termsAcceptBtn");
 
       // Agreement is captured by the checkbox above. The drawn-signature
@@ -13626,10 +13713,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // still hold a real signature image and are still rendered as one.
 
       const close = () => {
-        $("#termsModal").style.display = "none";
+        termsModalEl.style.display = "none";
+        termsModalEl.removeEventListener("keydown", onTermsKeydown);
+        document.removeEventListener("keydown", onTermsKeydown);
         if (acceptBtn) acceptBtn.removeEventListener("click", onAcceptClick);
         if (customBtn) customBtn.removeEventListener("click", onCustomClick);
         if (declineBtn) declineBtn.removeEventListener("click", onDeclineClick);
+        // Back to the button that opened it, so the visitor keeps their place.
+        if (termsOpener && document.contains(termsOpener)) { try { termsOpener.focus(); } catch {} }
       };
 
       const onAcceptClick = () => {
@@ -14788,7 +14879,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // Show the full loader only once per session; on later loads dismiss fast.
     let seen = false;
     try { seen = sessionStorage.getItem("wps-loaded") === "1"; sessionStorage.setItem("wps-loaded", "1"); } catch {}
-    const w = prefersReduced || seen ? 0 : 1200;
+    // A page that arrived from the deploy already has its words on screen, so
+    // there is nothing to cover; the intro is for the app's own first paint.
+    const prerendered = !!document.querySelector(".prerender, [data-static-path]");
+    const w = prefersReduced || seen || prerendered ? 0 : 600;
 
     // noth.in-style numeric counter 000 -> 100 that runs while the bar fills.
     const countEl = $("#loaderCount");
@@ -17620,7 +17714,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   }
 
   function initRouting() {
-    window.addEventListener("popstate", render);
+    window.addEventListener("popstate", () => {
+      // Our own step-back after closing the photo by hand: the page underneath
+      // never changed, so there is nothing to repaint.
+      if (lbClosingByHand) { lbClosingByHand = false; return; }
+      // Back with a photo open means "close the photo", not "leave the page".
+      if (!lb.hidden) { closeLb(true); return; }
+      render();
+    });
     document.addEventListener("click", (e) => {
       const link = e.target.closest("[data-link]");
       if (link) {
@@ -17794,17 +17895,20 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   (async function boot() {
     // Order matters: admin URL params must apply before anything calls
     // isAdmin() or loadShoots(); chrome wiring must precede first render.
-    applyAdminUrlParams();
-    initLightbox();
-    initImageErrorHandling();
-    initNav();
-    initAdminControls();
-    initThemeControls();
-    initStudioSettingsControls();
-    initHeaderScroll();
-    initRouting();
-    initServiceGrids();
+    // Every one of these is INSIDE the try: they were above it, so a throw in
+    // any of them skipped the finally below and left the loader covering the
+    // page for good (a blocked-storage browser did exactly that).
     try {
+      applyAdminUrlParams();
+      initLightbox();
+      initImageErrorHandling();
+      initNav();
+      initAdminControls();
+      initThemeControls();
+      initStudioSettingsControls();
+      initHeaderScroll();
+      initRouting();
+      initServiceGrids();
       $("#year").textContent = new Date().getFullYear();
       initBranding();
       updateAdminBtn();
@@ -17818,9 +17922,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       console.error("boot failed:", err);
       view.innerHTML = `<section class="page-head"><div class="container"><h1>Something went wrong.</h1><p class="page-sub">Try reloading.</p></div></section>`;
     } finally {
-      // Dismiss the loader no matter what — on load, or immediately if already loaded.
-      if (document.readyState === "complete") dismissLoader();
-      else window.addEventListener("load", dismissLoader, { once: true });
+      // The view has been rendered by this point, so the page is ready to look
+      // at. This used to wait for window "load" — every photo, font and script
+      // — which on mobile data kept a finished page hidden behind the loader
+      // for five to ten seconds, and on the deploy-built pages hid text that
+      // had been on screen since 1.9s (Sep 2026 audit).
+      dismissLoader();
       // Hard safety: never let the loader trap the page.
       setTimeout(dismissLoader, 2500);
       resolveBootReady();
@@ -17872,10 +17979,35 @@ if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || wi
       .then((r) => (r.ok ? r.text() : ""))
       .then((txt) => (String(txt).match(/ASSET_VERSION\s*=\s*"(\d+)"/) || [])[1] || "");
 
+    // Work a visitor would lose. A reload throws away an unsent booking, an
+    // unsent testimonial and a staged upload queue, and this fires whenever a
+    // tab is returned to — on a day with 25 releases it will land on someone
+    // mid-sentence (Sep 2026 audit). The new build can wait until they are done.
+    const hasWorkInProgress = () => {
+      const typedInto = (el) => el && !el.disabled && String(el.value || "").trim() !== "";
+      const anyTyped = [...document.querySelectorAll("form input, form textarea, form select")]
+        .some((el) => {
+          if (el.type === "hidden" || el.type === "submit" || el.type === "button") return false;
+          if (el.type === "checkbox" || el.type === "radio") return el.checked && !el.defaultChecked;
+          return typedInto(el) && el.value !== el.defaultValue;
+        });
+      if (anyTyped) return true;
+      // The booking's own success panel counts as in progress too: it may be
+      // holding the "one last step" fallback the client still has to send.
+      const success = document.getElementById("bookSuccess");
+      if (success && !success.hidden) return true;
+      // Photos staged in the admin's Upload queue but not published yet.
+      const queue = document.querySelector("#uploadPreviewGrid, #photoPreviewGrid, .upload-queue");
+      if (queue && queue.children.length) return true;
+      const modal = document.getElementById("termsModal");
+      return !!(modal && modal.style.display === "flex");
+    };
+
     const checkOnce = () => beacon()
       .then((live) => {
         if (!live || live === loaded) return;
         if (sessionStorage.getItem("wps-updated-to") === live) return;
+        if (hasWorkInProgress()) return;    // try again next time they switch back
         sessionStorage.setItem("wps-updated-to", live);
         // Drop the service worker's precache too, so its offline fallback
         // cannot hand back the build we are trying to leave behind.
