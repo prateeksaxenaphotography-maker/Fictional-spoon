@@ -94,9 +94,21 @@ const STUDIO_CONFIG = {
   // upload form and type it.
   brands: ["Personal Project"],
   // Admin passcode is stored ONLY as a SHA-256 hash (the site is public
-  // source — a readable passcode here could be seen by anyone). To change
-  // it, put the SHA-256 hex of your new passcode below.
-  //adminPasscodeHash: "2e55b636fd71c28ad7c20658421a20086eb22a6ecb9c065c6b1c9c6ecc05b6c5",
+  // source — a readable passcode here could be seen by anyone).
+  //
+  // This line was commented out in July 2026, which switched admin sign-in off
+  // for everyone: with no hash and no plain passcode, verifyAdminPasscode()
+  // returns false for whatever you type, so the prompt could never be passed.
+  // Restored Sep 2026 at the owner's request, now holding the hash of the
+  // passcode they asked for.
+  //
+  // To change it, run this in your browser's console on the site, type the new
+  // passcode when asked, and paste the line it prints over the one below:
+  //   crypto.subtle.digest("SHA-256", new TextEncoder().encode(prompt("New passcode")))
+  //     .then(b => console.log('adminPasscodeHash: "' + [...new Uint8Array(b)]
+  //       .map(x => x.toString(16).padStart(2, "0")).join("") + '",'))
+  // Never put the passcode itself here, and never in a commit message.
+  adminPasscodeHash: "732934c8038f3f6543681c61069d9d44bda89b55a2f45ba4e84a1dd78a530e61",
 
    adminPasscodeHash: "732934c8038f3f6543681c61069d9d44bda89b55a2f45ba4e84a1dd78a530e61",
 
