@@ -84,6 +84,13 @@ window.getAdminPromoCodes = function() {
 // flat ₹500 off the room, or knock the rental to ₹0 outright. Codes saved
 // before this existed only ever carried the boolean freeHomeStudio — read
 // here as {type:'free'} so an old code keeps behaving exactly as it did.
+// A switch, not a delete: a code turned off keeps its wording and its
+// settings and can be turned back on. Absent means on, so every code saved
+// before this existed carries on working untouched.
+window.promoCodeIsActive = function(entry) {
+  return !!entry && entry.active !== false;
+};
+
 window.getPromoHomeStudioDiscount = function(entry) {
   if (!entry) return { type: "none" };
   if (entry.homeStudioDiscount && entry.homeStudioDiscount.type && entry.homeStudioDiscount.type !== "none") {
@@ -110,6 +117,19 @@ window.applyPromoHomeStudioDiscount = function(entry, fee) {
     const pct = Math.max(0, Math.min(100, rawVal));
     const amount = Math.round((fee * pct) / 100);
     return { amount, isFree: amount >= fee, label: `${pct}% OFF` };
+  }
+  // "fixed" says what the room costs with this code rather than what comes off
+  // it. It is still returned as a discount — the gap between the standard rate
+  // and that price — so every total, contract and email downstream keeps
+  // working with no idea this option exists.
+  if (hs.type === "fixed") {
+    const price = Math.max(0, Math.round(rawVal));
+    const amount = Math.max(0, fee - price);
+    // A code can bring the rental down, never up, so a price set above the
+    // standard rate leaves the client paying the standard rate. The label says
+    // what they actually pay rather than the number that was typed in.
+    const paid = fee - amount;
+    return { amount, isFree: paid <= 0, label: paid <= 0 ? "FREE" : `STUDIO ₹${paid.toLocaleString("en-IN")}` };
   }
   return { amount: 0, isFree: false, label: "" };
 };
@@ -6138,7 +6158,11 @@ window.resolveContractArchive = function(version) {
       const discountStatus = $("#discountCodeStatus");
       const savingsBadge = $("#discountSavingsBadge");
       const enteredDiscount = (discountInput?.value || "").trim().toUpperCase();
-      const matchedDiscount = discountCodesMap[enteredDiscount];
+      // A switched-off code behaves exactly like one that was never created,
+      // so nothing downstream — the badge, the quote, the contract, the email
+      // — has to know the switch exists.
+      const matchedDiscountRaw = discountCodesMap[enteredDiscount];
+      const matchedDiscount = window.promoCodeIsActive(matchedDiscountRaw) ? matchedDiscountRaw : undefined;
 
       const btnDiscount = $("#btnApplyDiscountCode");
       if (discountStatus && savingsBadge) {
@@ -7116,7 +7140,10 @@ window.resolveContractArchive = function(version) {
       if (!input || !btn || !chips || !inviteEl || !promoEl) return;
       const fire = (el) => { el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); };
       const inviteCodes = () => (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : []).map(c => String(typeof c === "object" ? c.code : c).toUpperCase());
-      const isPromo = (code) => Object.keys(typeof window.getAdminPromoCodes === "function" ? window.getAdminPromoCodes() : {}).some(k => k.toUpperCase() === code);
+      const isPromo = (code) => {
+        const map = typeof window.getAdminPromoCodes === "function" ? window.getAdminPromoCodes() : {};
+        return Object.keys(map).some((k) => k.toUpperCase() === code && window.promoCodeIsActive(map[k]));
+      };
       let lastError = "";
       const paint = () => {
         const out = [];

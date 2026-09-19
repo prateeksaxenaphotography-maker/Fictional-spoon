@@ -55,6 +55,18 @@ window.editAdminPromoCode = function(codeKey) {
   window.openPromoCodeModal(codeKey);
 };
 
+window.toggleAdminPromoActive = function(codeName) {
+  const codes = window.getAdminPromoCodes();
+  const entry = codes[codeName];
+  if (!entry) return;
+  const nowOn = !window.promoCodeIsActive(entry);
+  codes[codeName] = { ...entry, active: nowOn };
+  window.adminDraftPromoCodes = { ...codes };
+  markUnsavedChanges();
+  if (typeof toast === "function") toast(`🎟️ '${codeName}' ${nowOn ? "switched on" : "switched off"} in draft. Click Save to push live.`);
+  if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
+};
+
 window.deleteAdminPromoCode = function(codeName) {
   if (confirm(`Remove promo code '${codeName}' from draft?`)) {
     const currentCodes = window.getAdminPromoCodes();
@@ -100,7 +112,11 @@ window.openPromoCodeModal = function(codeKey) {
   const hsValEl = document.getElementById("newPromoHomeStudioVal");
   const hsDiscount = window.getPromoHomeStudioDiscount(entry);
   if (hsTypeEl) hsTypeEl.value = hsDiscount.type;
-  if (hsValEl) hsValEl.value = (hsDiscount.type === "flat" || hsDiscount.type === "pct") ? (hsDiscount.value || "") : "";
+  if (hsValEl) hsValEl.value = (hsDiscount.type === "flat" || hsDiscount.type === "pct" || hsDiscount.type === "fixed") ? (hsDiscount.value ?? "") : "";
+  // Without this, reopening a switched-off code to fix a typo would quietly
+  // switch it back on.
+  const activeEl = document.getElementById("newPromoActive");
+  if (activeEl) activeEl.checked = entry ? window.promoCodeIsActive(entry) : true;
   if (typeof window.togglePromoHomeStudioValField === "function") window.togglePromoHomeStudioValField();
 
   form.style.display = "block";
@@ -151,17 +167,25 @@ window.saveNewPromoCodeFromForm = function() {
   let homeStudioDiscount = { type: "none" };
   if (hsType === "free") {
     homeStudioDiscount = { type: "free" };
-  } else if (hsType === "flat" || hsType === "pct") {
+  } else if (hsType === "flat" || hsType === "pct" || hsType === "fixed") {
     const hsVal = Math.round(Number(document.getElementById("newPromoHomeStudioVal")?.value));
-    if (!Number.isFinite(hsVal) || hsVal <= 0 || (hsType === "pct" && hsVal > 100)) {
-      alert(hsType === "pct" ? "Home studio % off must be between 1 and 100." : "Home studio flat discount must be a positive amount in ₹.");
+    // A fixed price of zero is meaningful — the room is free — so only the two
+    // discount types have to be above zero.
+    const bad = !Number.isFinite(hsVal) || hsVal < 0
+      || (hsType !== "fixed" && hsVal <= 0)
+      || (hsType === "pct" && hsVal > 100);
+    if (bad) {
+      alert(hsType === "pct" ? "Home studio % off must be between 1 and 100."
+        : hsType === "fixed" ? "Enter what the client should pay for the home studio, in rupees (0 or more)."
+        : "Home studio flat discount must be a positive amount in rupees.");
       return;
     }
     homeStudioDiscount = { type: hsType, value: hsVal };
   }
+  const active = document.getElementById("newPromoActive") ? !!document.getElementById("newPromoActive").checked : true;
   codes[name] = type === "flat"
-    ? { flat: val, label, includeAddons, homeStudioDiscount }
-    : { pct: val, label, includeAddons, homeStudioDiscount };
+    ? { flat: val, label, includeAddons, homeStudioDiscount, active }
+    : { pct: val, label, includeAddons, homeStudioDiscount, active };
   window.adminDraftPromoCodes = { ...codes };
   window._editingPromoKey = null;
 
@@ -176,9 +200,11 @@ window.togglePromoHomeStudioValField = function() {
   const typeEl = document.getElementById("newPromoHomeStudioType");
   const valEl = document.getElementById("newPromoHomeStudioVal");
   if (!typeEl || !valEl) return;
-  const needsVal = typeEl.value === "flat" || typeEl.value === "pct";
+  const needsVal = typeEl.value === "flat" || typeEl.value === "pct" || typeEl.value === "fixed";
   valEl.style.display = needsVal ? "" : "none";
-  valEl.placeholder = typeEl.value === "pct" ? "e.g. 10" : "e.g. 500";
+  valEl.placeholder = typeEl.value === "pct" ? "e.g. 10"
+    : typeEl.value === "fixed" ? "client pays e.g. 1500"
+    : "e.g. 500";
 };
 
 // Same idea as togglePromoHomeStudioValField, for the invite code form's
@@ -3303,6 +3329,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                     <option value="free">Free — 100% off</option>
                     <option value="flat">Flat ₹ off</option>
                     <option value="pct">% off</option>
+                    <option value="fixed">Set the rental price</option>
                   </select>
                   <input type="number" id="newPromoHomeStudioVal" placeholder="e.g. 500" style="flex: 1; min-width: 100px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-weight: 700; color: #059669; background: var(--paper); display: none;" />
                 </div>
@@ -3310,6 +3337,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               </div>
               <div style="grid-column: span 2;">
                 <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;">
+                  <input type="checkbox" id="newPromoActive" checked style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent-text); cursor: pointer;" />
+                  <span style="font-size: var(--font-xs); color: var(--ink); font-family: 'Archivo', sans-serif; line-height: 1.4;">
+                    <strong>Active</strong> — clients can use this code.<br/>
+                    <span style="color: var(--ink-soft);">Untick to switch it off without deleting it. The code keeps its wording and settings, and anyone typing it is told it is not valid. Tick it again whenever you want it back.</span>
+                  </span>
+                </label>
+                <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px;">
                   <input type="checkbox" id="newPromoIncludeAddons" style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent-text); cursor: pointer;" />
                   <span style="font-size: var(--font-xs); color: var(--ink); font-family: 'Archivo', sans-serif; line-height: 1.4;">
                     <strong>Also discount the rental</strong> — the % also comes off the home studio rental, instead of the package rate alone.<br/>
@@ -3437,7 +3471,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 ? `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(5,150,105,0.12); color: #059669; padding: 2px 6px; border-radius: 4px;" title="Home studio rental discount">🏠 ${hsDiscount.value}% OFF</span>`
                 : "";
           return `
-            <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px; box-shadow: var(--shadow-sm); overflow: hidden; flex-wrap: wrap;">
+            <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px;${window.promoCodeIsActive(item) ? "" : " opacity: 0.55;"} box-shadow: var(--shadow-sm); overflow: hidden; flex-wrap: wrap;">
               <div style="min-width: 0; flex: 1;">
                 <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                   <strong style="color: #059669; font-size: var(--font-sm); font-family: var(--mono-font); letter-spacing: 0.04em;">${esc(codeKey)}</strong>
@@ -3448,11 +3482,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                       ? `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(217,119,6,0.14); color: #d97706; padding: 2px 6px; border-radius: 4px;" title="This discount also comes off the home studio rental">+ ADD-ONS</span>`
                       : `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(120,120,120,0.14); color: var(--ink-soft); padding: 2px 6px; border-radius: 4px;" title="Discount applies to the package rate only">PACKAGE ONLY</span>`}
                   ${hsBadge}
+                  ${window.promoCodeIsActive(item) ? "" : `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(120,120,120,0.18); color: var(--ink-soft); padding: 2px 6px; border-radius: 4px;" title="Switched off — clients cannot use this code">OFF</span>`}
                 </div>
                 <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">${esc(item.label)}</div>
               </div>
               <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap; flex-shrink: 0;">
                 <button type="button" onclick="navigator.clipboard.writeText('${escJs(codeKey)}'); if(typeof toast==='function') toast('📋 Promo Code ${escJs(codeKey)} copied!'); else alert('Copied!');" style="background: #059669; color: #ffffff; border: none; padding: 5px 10px; border-radius: 4px; font-size: var(--font-xs); cursor: pointer; font-weight: 700; font-family: var(--mono-font);" title="Copy Code">📋 Copy</button>
+                <button type="button" onclick="window.toggleAdminPromoActive('${escJs(codeKey)}')" style="background: var(--bone); color: var(--ink); border: 1px solid var(--line); padding: 5px 8px; border-radius: 4px; font-size: var(--font-xs); cursor: pointer; font-weight: 700;" title="${window.promoCodeIsActive(item) ? "Switch this code off" : "Switch this code back on"}">${window.promoCodeIsActive(item) ? "⏸️" : "▶️"}</button>
                 <button type="button" onclick="window.editAdminPromoCode('${escJs(codeKey)}')" style="background: var(--bone); color: var(--ink); border: 1px solid var(--line); padding: 5px 8px; border-radius: 4px; font-size: var(--font-xs); cursor: pointer; font-weight: 700;" title="Edit Code">✏️ Edit</button>
                 <button type="button" onclick="window.deleteAdminPromoCode('${escJs(codeKey)}')" style="background: rgba(255,77,77,0.1); color: #ff4d4d; border: 1px solid rgba(255,77,77,0.3); padding: 5px 8px; border-radius: 4px; font-size: var(--font-xs); cursor: pointer; font-weight: 700;" title="Delete Code">🗑️</button>
               </div>
