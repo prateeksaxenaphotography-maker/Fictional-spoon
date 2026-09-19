@@ -801,12 +801,21 @@ try {
    touching sw.js (Sep 2026 audit). Only runs when there is a previous commit
    to compare against. */
 try {
-  const changed = execSync("git diff --name-only HEAD~1 HEAD", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
+  // The whole push, not just the last commit: a release is often two commits —
+  // the change, then a follow-up — and the version is bumped once, in one of
+  // them. Comparing only HEAD~1 failed a perfectly good release for that
+  // (3124a82, Sep 2026). The workflow passes the commit the branch was at
+  // before this push; without it, fall back to the last commit.
+  const beforeSha = (process.env.BEFORE_SHA || "").trim();
+  const usable = beforeSha && !/^0+$/.test(beforeSha) &&
+    (() => { try { execSync(`git cat-file -e ${beforeSha}^{commit}`, { stdio: "ignore" }); return true; } catch { return false; } })();
+  const base = usable ? beforeSha : "HEAD~1";
+  const changed = execSync(`git diff --name-only ${base} HEAD`, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
     .split("\n").map((x) => x.trim()).filter(Boolean);
   const codeFiles = ["app.js", "styles.css", "config.js", "book-builder.js", "sw.js"];
   const codeChanged = changed.filter((f) => codeFiles.includes(f) && f !== "sw.js");
   if (codeChanged.length) {
-    const prevSw = execSync("git show HEAD~1:sw.js", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    const prevSw = execSync(`git show ${base}:sw.js`, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
     const was = (prevSw.match(/ASSET_VERSION\s*=\s*"(\d+)"/) || [])[1];
     const now = (readFileSync("sw.js", "utf8").match(/ASSET_VERSION\s*=\s*"(\d+)"/) || [])[1];
     if (was && now && was === now) {
