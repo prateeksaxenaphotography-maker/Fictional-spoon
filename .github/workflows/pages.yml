@@ -96,7 +96,7 @@ jobs:
       # want is lost.
       - name: Leave development files out of the published site
         run: |
-          rm -rf backend .agents node_modules
+          rm -rf backend .agents node_modules .claude
           rm -f server.js render.yaml package.json package-lock.json .env.example README.md
           echo "Published files:"; ls -A
 

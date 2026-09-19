@@ -9,3 +9,8 @@ backend/views.json
 
 # npm is the package manager here (package-lock.json); a pnpm lockfile is a second, drifting copy
 pnpm-lock.yaml
+
+# Agent worktrees live here. They are full copies of the repo, so they must
+# never be committed (a peer session running `git add -A` would) and never
+# published (pages.yml uploads the repo root).
+.claude/
