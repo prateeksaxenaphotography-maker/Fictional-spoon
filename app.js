@@ -2615,6 +2615,12 @@ window.moveAdminPackageRow = function(index, dir) {
   // point of sending someone a comp card.
   const sharedAlbumSegment = () => {
     const path = location.pathname.replace(/\/index\.html$/, "");
+    // A model's own address. Every /share/ link previews as the same generic
+    // card whatever it points at, because one file cannot carry ten models'
+    // titles and faces; the deploy writes a page per model instead, and it
+    // means exactly what the comp-card share id means (Sep 2026 audit).
+    const model = path.match(/^\/models\/([^/]+)/);
+    if (model) { try { return "comp-card-" + decodeURIComponent(model[1]); } catch { return "comp-card-" + model[1]; } }
     if (!/^\/share(\/|$)/.test(path)) return "";
     const raw = new URLSearchParams(location.search).get("a") || (path.match(/^\/share\/([^/]+)/) || [])[1] || "";
     try { return decodeURIComponent(raw); } catch { return raw; }
@@ -8254,6 +8260,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   const albumShareUrlFor = (album) => {
     const own = albumPathFor(album);
     return own ? `${window.location.origin}${own}?a=${encodeURIComponent(album.id)}` : "";
+  };
+  // A model card's own page, for the same reason: it previews with that
+  // model's name and face instead of the one generic "shared album" card.
+  const modelPathFor = (album) => {
+    const id = String((album && album.id) || "");
+    if (!/^(comp-card|portfolio)-/.test(id)) return "";
+    const slug = slugify(getTalentCleanName((album && (album.talent || album.title)) || ""));
+    return slug ? `/models/${slug}/` : "";
   };
   const ALBUM_PAGE_LIVE = new Map(); // path → Promise<boolean>
   function albumPageIsLive(path) {
@@ -14096,7 +14110,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (!btn || !album) return;
     // Start the "is the album's own page live?" check as soon as a finger or
     // pointer heads for the button, so the answer is in hand by the click.
-    const own = albumPathFor(album);
+    // A model card has a page of its own, an album has its album page; either
+    // previews with that subject's name and face where a /share/ link shows
+    // the same generic card for everything.
+    const own = modelPathFor(album) || albumPathFor(album);
     const warm = () => { albumPageIsLive(own); };
     if (own) {
       btn.addEventListener("pointerenter", warm, { once: true });
@@ -14109,7 +14126,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       if (own) {
         // Capped: the share sheet must open while the tap still counts as one.
         const live = await Promise.race([albumPageIsLive(own), new Promise((r) => setTimeout(() => r(false), 1200))]);
-        if (live) url = albumShareUrlFor(album);
+        if (live) url = modelPathFor(album) ? `${window.location.origin}${own}` : albumShareUrlFor(album);
       }
       const title = getTalentCleanName(album.isCompCard ? album.talent : (album.title || "Album"));
       if (navigator.share) {
@@ -14728,10 +14745,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         html = null;
       } else if (key === "categories") {
         html = viewCategories(kind, val);
-      } else if (key === "share") {
+      } else if (key === "share" || key === "models") {
         // ?a= is what share links carry now; parts[1] is the older
         // /share/<album> path form, still handed out in links already sent.
-        html = viewSharedAlbum(params.get("a") || parts[1] || "");
+        // /models/<slug>/ is a model's own page, read through sharedAlbumSegment.
+        html = viewSharedAlbum(key === "models" ? sharedAlbumSegment() : (params.get("a") || parts[1] || ""));
       } else if (key === "albums" && parts[1]) {
         html = viewAlbumPage(parts[1]);
       } else if (staticPath) {
@@ -14829,9 +14847,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         desc = `Explore creative photoshoots categorized by activity (genre), brand, or production type.`;
         path = "/categories/";
       }
-    } else if (key === "share") {
+    } else if (key === "share" || key === "models") {
       const shared = CURRENT_VIEW_SHOOTS[0];
-      path = `/share/${location.search}`;
+      path = key === "models" ? location.pathname : `/share/${location.search}`;
       if (shared) {
         const sharedName = getTalentCleanName(shared.isCompCard ? shared.talent : (shared.title || "Album"));
         title = `${sharedName}${shared.isCompCard ? " — Comp Card" : ""} — ${brand}`;
