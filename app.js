@@ -3840,24 +3840,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
   const adminBtn = $("#adminModeBtn");
   const themeBtn = $("#themeOverrideBtn");
-  const visitorStatsLabel = $("#visitorStatsLabel");
-  const visitorStatsBlock = $("#visitorStatsBlock");
 
-  function getVisitorStats(seedString) {
-    function random(seed) {
-      const x = Math.sin(seed++) * 10000;
-      return x - Math.floor(x);
-    }
-    const msInDay = 24 * 60 * 60 * 1000;
-    const currentDay = Math.floor(Date.now() / msInDay);
-    const seedVal = seedString.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const visits24h = Math.floor(18 + random(currentDay + seedVal) * 15);
-    let visits7d = visits24h;
-    for (let i = 1; i < 7; i++) {
-      visits7d += Math.floor(18 + random(currentDay - i + seedVal) * 15);
-    }
-    return { visits24h, visits7d };
-  }
+  // There was a "Visits: N (24H) · N (7D)" line in the admin menu here. Its
+  // numbers came from Math.sin of the day number, not from any visitor, so it
+  // was removed (v442, at the studio's request). Real traffic is in Google
+  // Analytics; nothing on a server-less site can count visits itself.
 
   function updateThemeBtnText() {
     if (!themeBtn) return;
@@ -3915,16 +3902,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (themeBtn) {
       themeBtn.style.display = active ? "inline-block" : "none";
       updateThemeBtnText();
-    }
-
-    if (visitorStatsBlock && visitorStatsLabel) {
-      if (active) {
-        const stats = getVisitorStats("Wolverine Photo Studio");
-        visitorStatsLabel.innerHTML = `Visits: <strong>${stats.visits24h}</strong> (24H) · <strong>${stats.visits7d}</strong> (7D)`;
-        visitorStatsBlock.style.display = "block";
-      } else {
-        visitorStatsBlock.style.display = "none";
-      }
     }
 
     updateAdminReminders();
@@ -4513,9 +4490,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             </button>
             ${(!s.demo && isAdmin()) ? `
               <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0;" data-id="${s.originalShoots ? s.originalShoots[0].id : s.id}">Edit details</button>
-              ${s.isCompCard ? `
-                <button class="link-arrow work-toggle-hide" style="color: var(--accent); font-weight: 700; padding: 0;" data-talent="${esc(s.talent)}" data-page="compcards">${s.originalShoots && s.originalShoots.some(x => x.hideFromCompCard) ? "👁️ Unhide Card" : "🔒 Hide Card"}</button>
-              ` : ""}
               <button class="link-arrow work-delete" style="color: #b22222; font-weight: 700; padding: 0;" data-id="${s.originalShoots ? s.originalShoots[0].id : s.id}">Delete</button>
             ` : ""}
           </div>
@@ -13952,32 +13926,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         });
       });
 
-      block.querySelectorAll(".work-toggle-hide").forEach(btn => {
-        btn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const tName = btn.dataset.talent;
-          if (!tName) return;
-          
-          const matchingShoots = SHOOTS.filter(s => (s.talent || "").trim().toLowerCase() === tName.trim().toLowerCase());
-          if (matchingShoots.length === 0) return;
-          
-          // One page now, so one thing to hide: the model's card. Whether
-          // their portfolio PDF is offered on it is "Show on Model portfolio"
-          // in Upload, which this button used to duplicate.
-          const currentlyHidden = matchingShoots.some(s => s.hideFromCompCard);
-          const newHiddenState = !currentlyHidden;
-          
-          matchingShoots.forEach(s => { s.hideFromCompCard = newHiddenState; });
-          
-          try {
-            localStorage.setItem("wps_custom_shoots", JSON.stringify(SHOOTS));
-          } catch(err) {}
-          
-          alert(newHiddenState ? `🔒 Model card for '${tName}' is now HIDDEN from the public Comp Cards page.` : `👁️ Model card for '${tName}' is now VISIBLE on the public Comp Cards page.`);
-          if (typeof render === "function") render();
-        });
-      });
-      
+      // The "Hide Card" button that sat here was removed (v442): it said the
+      // card was hidden, but only changed this page in memory and wrote a
+      // storage key nothing reads, so the card stayed public. Hiding a model's
+      // card is the "Show on Comp cards" switch in Upload (Edit details),
+      // which saves and publishes.
+
       // delete button click handler
       block.querySelector(".work-delete")?.addEventListener("click", async (e) => {
         e.stopPropagation();
