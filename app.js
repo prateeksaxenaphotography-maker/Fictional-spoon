@@ -613,7 +613,7 @@ const PACKAGE_SCHEDULES = {
     legs: [50, 50],
     quoteSteps: ["Step 2 · 50% Wrap Balance (Prior to Deliverables)"],
     emailLegs: ["Balance {amt} at wrap, before any file is released"],
-    short: "pay 50% now · 50% before delivery",
+    short: "50% before the shoot · 50% before delivery",
     contract: "Standard 50/50 Milestones (50% Advance Retainer before shoot day start [non-refundable]; 50% Final Balance after shoot wrap prior to receiving any downloadable file [non-refundable])",
     sheet: "50% advance retainer before the shoot day (non-refundable), 50% final balance after wrap and before any downloadable file (non-refundable)",
     release: "Deliverables are released only after the final milestone is cleared.",
@@ -624,7 +624,7 @@ const PACKAGE_SCHEDULES = {
     legs: [50, 30, 20],
     quoteSteps: ["Step 2 · 30% Review Milestone (After Shoot)", "Step 3 · 20% Final Deliverables"],
     emailLegs: ["Review milestone {amt} after the shoot", "Final release {amt} before download"],
-    short: "pay 50% now · 30% at wrap · 20% on delivery",
+    short: "50% before the shoot · 30% at wrap · 20% on delivery",
     contract: "3-Tier Campaign Milestones (50% Advance Retainer before shoot day start [non-refundable]; 30% Review Milestone after shoot before proofing gallery [non-refundable]; 20% Final Release prior to receiving any downloadable file)",
     sheet: "50% advance retainer before the shoot day (non-refundable), 30% review milestone after the shoot and before the proofing gallery (non-refundable), 20% final release before any downloadable file",
     release: "Deliverables are released only after the final milestone is cleared.",
@@ -635,7 +635,7 @@ const PACKAGE_SCHEDULES = {
     legs: [50, 30, 10, 10],
     quoteSteps: ["Step 2 · 30% Review Milestone (After Shoot)", "Step 3 · 10% On Finalising the Clicks", "Step 4 · 10% After Delivery of the Clicks"],
     emailLegs: ["Review milestone {amt} after the shoot", "{amt} on finalising the clicks", "{amt} after delivery of the clicks"],
-    short: "pay 50% now · 30% at wrap · 10% on finalising the clicks · 10% after delivery",
+    short: "50% before the shoot · 30% at wrap · 10% on finalising the clicks · 10% after delivery",
     contract: "4-Tier Campaign Milestones (50% Advance Retainer before shoot day start [non-refundable]; 30% Review Milestone after shoot before proofing gallery [non-refundable]; 10% once the selection of clicks is finalised; 10% after delivery of the retouched clicks)",
     sheet: "50% advance retainer before the shoot day (non-refundable), 30% review milestone after the shoot and before the proofing gallery (non-refundable), 10% once the selection of clicks is finalised, 10% after the retouched clicks are delivered",
     release: "Retouched deliverables are released once the third milestone is cleared; the final 10% is due after delivery.",
@@ -1322,7 +1322,7 @@ window.buildLateArrivalHtml = function (isTfp, sectionNumber) {
     ? "and nothing is forfeited — up to a maximum of <strong>two reschedules</strong>, beyond which the invite lapses."
     : "and the advance retainer carries over to the rescheduled date — up to a maximum of <strong>two reschedules</strong>.";
   return `
-    <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: #b22222;">${sectionNumber}. CALL TIME, GRACE PERIOD, LATE ARRIVAL &amp; NO-SHOW</h4>
+    <h4 style="margin: 0 0 6px 0; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--danger-text);">${sectionNumber}. CALL TIME, GRACE PERIOD, LATE ARRIVAL &amp; NO-SHOW</h4>
     <p style="margin: 0; font-weight: 500;">The call time confirmed by the Studio is the time the Participant is expected on set and ready to begin — not the time they set out. The Studio holds the set for <strong>${label}</strong> past that call time. Arriving within that window does not extend the session: the booked wrap time stands, and time lost to a late arrival comes out of the shoot.</p>
     <p style="margin: 6px 0 0 0; font-weight: 500;">If the Participant has not arrived within those ${mins} minutes and has not agreed a later start with the Studio, the Studio may <strong>cancel the session at its sole discretion</strong>. ${consequence}</p>
     <p style="margin: 6px 0 0 0;">A delay or cancellation notified <strong>at least 24 hours</strong> before the call time is treated as a reschedule rather than a no-show, ${reschedule}</p>
@@ -2070,7 +2070,7 @@ window.moveAdminPackageRow = function(index, dir) {
     const url = c.url, label = c.label;
     const arrow = (compact || c.kind === "email") ? "" : " ↗";
     const margin = compact ? "4px" : "6px";
-    return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent); font-weight:700; text-decoration:none; margin-left:${margin}; display:inline-flex; align-items:center; gap:2px;">${esc(label)}${arrow}</a>`;
+    return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent-text); font-weight:700; text-decoration:none; margin-left:${margin}; display:inline-flex; align-items:center; gap:2px;">${esc(label)}${arrow}</a>`;
   }
 
   function renderCreditLinks(text, delimiter = ";", compact = false) {
@@ -3594,7 +3594,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               label = h;
             }
           }
-          return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none; margin-right: 14px; display: inline-block;">${esc(label)}</a>`;
+          return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent-text); text-decoration: none; margin-right: 14px; display: inline-block;">${esc(label)}</a>`;
         }).join("");
         igHtml = links;
       }
@@ -3619,7 +3619,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               label = "Kavyar";
             }
           }
-          return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none; margin-right: 14px; display: inline-block;">${esc(label)}</a>`;
+          return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent-text); text-decoration: none; margin-right: 14px; display: inline-block;">${esc(label)}</a>`;
         }).join("");
         kavyarHtml = links;
       }
@@ -4366,16 +4366,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         </div>
         <div class="admin-shoots-dropdown" id="adminShootsDropdown">
           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 6px;">
-            <strong style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm);">Upcoming Shoots (${upcoming.length})</strong>
+            <strong style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm);">Upcoming Shoots (${upcoming.length})</strong>
             <div style="display: flex; gap: 12px; align-items: center;">
-              <a href="/calendar" data-link style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent); font-weight: 700; text-decoration: none;">View Full Calendar &rarr;</a>
+              <a href="/calendar" data-link style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent-text); font-weight: 700; text-decoration: none;">View Full Calendar &rarr;</a>
               <a href="/contracts" data-link style="font-family: var(--mono-font); font-size: var(--font-xs); color: #059669; font-weight: 700; text-decoration: none;">✅ Contracts &rarr;</a>
             </div>
           </div>
           ${upcoming.length ? upcoming.slice(0, 5).map(b => `
             <div style="padding: 8px; background: var(--bone); border-radius: 6px; border: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center;">
               <div>
-                <div style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent); font-weight: 700;">📅 ${esc(b.dateKey)} (${esc(b.dayLabel)})</div>
+                <div style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent-text); font-weight: 700;">📅 ${esc(b.dateKey)} (${esc(b.dayLabel)})</div>
                 <strong style="font-size: var(--font-xs); color: var(--ink);">${esc(b.name)}</strong>
                 <div style="font-size: var(--font-xs); color: var(--ink-soft);">${esc(b.type)} · ⏱️ ${esc(b.duration || "Full Day")} ${b.phone ? `· 📞 ${esc(b.phone)}` : ""}</div>
               </div>
@@ -4508,14 +4508,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
       if (inst) {
         const url = inst.startsWith("http") ? inst : "https://instagram.com/" + inst;
-        instagramVerify.innerHTML = `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600; text-decoration:underline;">Test Instagram ↗</a>`;
+        instagramVerify.innerHTML = `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--accent-text); font-weight:600; text-decoration:underline;">Test Instagram ↗</a>`;
       } else {
         instagramVerify.innerHTML = "";
       }
 
       if (kav) {
         const url = kav.startsWith("http") ? kav : "https://" + kav;
-        kavyarVerify.innerHTML = `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600; text-decoration:underline;">Test Kavyar ↗</a>`;
+        kavyarVerify.innerHTML = `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--accent-text); font-weight:600; text-decoration:underline;">Test Kavyar ↗</a>`;
       } else {
         kavyarVerify.innerHTML = "";
       }
@@ -4638,16 +4638,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
         <div class="noth-work-row" style="padding: 16px;">
           <div class="noth-work-titles">
-            <h3 class="noth-work-title" style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin-bottom: 4px;">${albumPathFor(s) ? `<a href="${esc(albumPathFor(s))}" data-link style="color: inherit; text-decoration: none;">${esc(title)}</a>` : esc(title)}</h3>
+            <h3 class="noth-work-title" style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin-bottom: 4px;">${albumPathFor(s) ? `<a href="${esc(albumPathFor(s))}" data-link style="color: inherit; text-decoration: none;">${esc(title)}</a>` : esc(title)}</h3>
             <p class="noth-work-tagline" style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.4;">${esc(tagline)}</p>
           </div>
           <div class="noth-work-meta" style="margin-top: 10px; border-top: 1px solid var(--line); padding-top: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
             <div style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--ink-soft);">
               ${meta ? `<span>${esc(meta)}</span>` : ""}
-              ${mentorText ? `<div style="font-size: var(--font-xs); color: var(--accent); margin-top: 2px; font-weight: 600;">${esc(mentorText)}</div>` : ""}
+              ${mentorText ? `<div style="font-size: var(--font-xs); color: var(--accent-text); margin-top: 2px; font-weight: 600;">${esc(mentorText)}</div>` : ""}
             </div>
             <div style="display: flex; align-items: center; gap: 8px;">
-              <span class="noth-work-cta" style="font-size: var(--font-xs); font-weight: 700; color: var(--accent);">View Album →</span>
+              <span class="noth-work-cta" style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text);">View Album →</span>
               ${hidden ? "" : `<button class="work-share" data-id="${s.id}" style="background: var(--bone); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; padding: 4px 8px; display: flex; align-items: center; justify-content: center; color: var(--ink); font-size: var(--font-xs);" title="Share album" aria-label="Share album">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
               </button>`}
@@ -4655,8 +4655,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           </div>
           ${isAdmin() ? `
             <div class="noth-work-admin" style="margin-top: 10px; display: flex; gap: 12px; width: 100%; border-top: 1px dashed var(--line); padding-top: 10px;">
-              <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0; font-size: var(--font-xs); height: auto;" data-id="${s.id}">Edit details →</button>
-              <button class="link-arrow work-delete" style="color: #b22222; font-weight: 700; padding: 0; font-size: var(--font-xs); height: auto;" data-id="${s.id}">Delete →</button>
+              <button class="link-arrow work-edit" style="color: var(--accent-text); font-weight: 700; padding: 0; font-size: var(--font-xs); height: auto;" data-id="${s.id}">Edit details →</button>
+              <button class="link-arrow work-delete" style="color: var(--danger-text); font-weight: 700; padding: 0; font-size: var(--font-xs); height: auto;" data-id="${s.id}">Delete →</button>
             </div>
           ` : ""}
         </div>
@@ -4679,7 +4679,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       }
       igHtml = handles.map(h => {
         const clean = parseIgHandle(h);
-        return `<a href="https://instagram.com/${encodeURIComponent(clean)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600;">@${esc(clean)}</a>`;
+        return `<a href="https://instagram.com/${encodeURIComponent(clean)}" target="_blank" rel="noopener" style="color:var(--accent-text); font-weight:600;">@${esc(clean)}</a>`;
       }).join(" · ");
     }
 
@@ -4698,7 +4698,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // Name only on a card: the handle and website live on the comp card
       // panel and the PDF.
       if (s.agency && showRep(s, "Agency", repSurface)) creditsList.push(`Agency <strong>${esc(s.agency)}</strong>`);
-      if (s.modelEmail && showRep(s, "Email", repSurface)) creditsList.push(`Email <a href="mailto:${esc(s.modelEmail)}" style="color:var(--accent); font-weight:600;">${esc(s.modelEmail)}</a>`);
+      if (s.modelEmail && showRep(s, "Email", repSurface)) creditsList.push(`Email <a href="mailto:${esc(s.modelEmail)}" style="color:var(--accent-text); font-weight:600;">${esc(s.modelEmail)}</a>`);
       if (igHtml && showRep(s, "ModelInstagram", repSurface)) creditsList.push(`Socials ${igHtml}`);
     } else {
       if (s.photographer || s.secondaryPhotographers) {
@@ -4777,7 +4777,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         ${mediaHtml}
         <div class="work-info">
           ${isFutureShoot(s) ? `
-            <div class="future-schedule-badge" style="display: inline-block; background: rgba(210,78,26,0.12); color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 6px 12px; border-radius: 4px; margin-bottom: 16px; border: 1px solid rgba(210,78,26,0.25);">
+            <div class="future-schedule-badge" style="display: inline-block; background: rgba(210,78,26,0.12); color: var(--accent-text); font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 6px 12px; border-radius: 4px; margin-bottom: 16px; border: 1px solid rgba(210,78,26,0.25);">
               To be visible to public after ${esc(s.date)}
             </div>
           ` : ""}
@@ -4829,8 +4829,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               Share link
             </button>
             ${(!s.demo && isAdmin()) ? `
-              <button class="link-arrow work-edit" style="color: var(--accent); font-weight: 700; padding: 0;" data-id="${s.originalShoots ? s.originalShoots[0].id : s.id}">Edit details</button>
-              <button class="link-arrow work-delete" style="color: #b22222; font-weight: 700; padding: 0;" data-id="${s.originalShoots ? s.originalShoots[0].id : s.id}">Delete</button>
+              <button class="link-arrow work-edit" style="color: var(--accent-text); font-weight: 700; padding: 0;" data-id="${s.originalShoots ? s.originalShoots[0].id : s.id}">Edit details</button>
+              <button class="link-arrow work-delete" style="color: var(--danger-text); font-weight: 700; padding: 0;" data-id="${s.originalShoots ? s.originalShoots[0].id : s.id}">Delete</button>
             ` : ""}
           </div>
         </div>
@@ -5061,7 +5061,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <div class="service-kicker">${esc(v.kicker)}</div>
             <h3>${esc(v.title)}</h3>
             <p>${esc(v.blurb)}</p>
-            <span class="link-arrow" style="margin-top: 12px; display: inline-block; font-size: var(--font-xs); font-weight: 700; color: var(--accent);">${esc(v.cta)} →</span>
+            <span class="link-arrow" style="margin-top: 12px; display: inline-block; font-size: var(--font-xs); font-weight: 700; color: var(--accent-text);">${esc(v.cta)} →</span>
           </a>`).join("")}
         </div>
       </section>
@@ -5201,7 +5201,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         </div>
       </section>
       <section class="section container full-bleed">
-        <div class="noth-work-list">${list.map(nothWorkCard).join("") || `<p class="page-sub">No workshop albums published yet. Go to <a href="/upload" data-link style="text-decoration:underline; font-weight:600; color:var(--accent);">Upload</a> to add one with type 'Workshop Attended'.</p>`}</div>
+        <div class="noth-work-list">${list.map(nothWorkCard).join("") || `<p class="page-sub">No workshop albums published yet. Go to <a href="/upload" data-link style="text-decoration:underline; font-weight:600; color:var(--accent-text);">Upload</a> to add one with type 'Workshop Attended'.</p>`}</div>
       </section>
     `;
   }
@@ -5573,7 +5573,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // so a checkbox agreement rendered as a broken image in the admin views.
   const isSigImage = (v) => typeof v === "string" && v.startsWith("data:image/");
   const agreedBadge = (b) =>
-    `<span style="display:inline-block; font-size: var(--font-xs); font-weight:700; color: var(--accent); border:1px solid var(--accent); border-radius:4px; padding:2px 7px;">\u2713 Agreed via checkbox</span>`;
+    `<span style="display:inline-block; font-size: var(--font-xs); font-weight:700; color: var(--accent-text); border:1px solid var(--accent); border-radius:4px; padding:2px 7px;">\u2713 Agreed via checkbox</span>`;
 
   function saveLocalContractAudit(entry) {
     try {
@@ -5838,15 +5838,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       <div style="background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
           <div>
-            <div style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">${esc(b.name || '—')}</div>
+            <div style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">${esc(b.name || '—')}</div>
             <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">
               📅 ${esc(b.dateKey || '—')} &nbsp;·&nbsp; ${esc(b.type || '—')}
               ${b.email ? `&nbsp;·&nbsp; ✉️ ${esc(b.email)}` : ''}
               ${b.phone ? `&nbsp;·&nbsp; 📞 ${esc(b.phone)}` : ''}
             </div>
-            ${b.contractNumber ? `<div style="margin-top: 6px; font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent); font-weight: 700;">Contract #: ${esc(b.contractNumber)}</div>` : ''}
+            ${b.contractNumber ? `<div style="margin-top: 6px; font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent-text); font-weight: 700;">Contract #: ${esc(b.contractNumber)}</div>` : ''}
           </div>
-          <button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('${esc(b.dateKey)}', '${esc(b.id || '')}')" style="border-color: var(--accent); color: var(--accent); font-size: var(--font-xs); padding: 4px 10px; font-weight: 700; white-space: nowrap;">📄 Generate PDF</button>
+          <button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('${esc(b.dateKey)}', '${esc(b.id || '')}')" style="border-color: var(--accent-text); color: var(--accent-text); font-size: var(--font-xs); padding: 4px 10px; font-weight: 700; white-space: nowrap;">📄 Generate PDF</button>
         </div>
         ${b.agreedContract ? `<div style="font-family: var(--mono-font); font-size: var(--font-xs); color: #059669; font-weight: 700;">✅ ${esc(b.agreedContract)}</div>` : ''}
         ${emailBadge(b.contractNumber)}
@@ -5856,7 +5856,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <img src="${b.sigDataUrl}" style="max-height: 48px; max-width: 220px; border-bottom: 1.5px solid var(--line); display: block; background: var(--bone); padding: 4px;" alt="Client signature" />
           </div>
         ` : (b.agreementMethod === "checkbox"
-            ? '<div style="font-size: var(--font-xs); color: var(--accent); font-weight: 700;">\u2713 Agreed via checkbox \u2014 Studio Terms V3.3 accepted</div>'
+            ? '<div style="font-size: var(--font-xs); color: var(--accent-text); font-weight: 700;">\u2713 Agreed via checkbox \u2014 Studio Terms V3.3 accepted</div>'
             : '<div style="font-size: var(--font-xs); color: var(--ink-soft); font-style: italic;">No digital signature captured (email/DM consent)</div>')}
       </div>
     `).join('') : `
@@ -5878,10 +5878,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       <section class="section container" style="max-width: 900px; margin: 0 auto; border-bottom: 1px solid var(--line); padding-bottom: 36px;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
           <div>
-            <p class="eyebrow" style="margin-bottom: 4px; color: var(--accent);">Legal Compliance &amp; Version Control</p>
-            <h2 style="font-family: 'Outfit', sans-serif; font-size: var(--font-md); font-weight: 700; margin: 0;">📜 Studio Contract &amp; Terms Vault</h2>
+            <p class="eyebrow" style="margin-bottom: 4px; color: var(--accent-text);">Legal Compliance &amp; Version Control</p>
+            <h2 style="font-family: 'Archivo', sans-serif; font-size: var(--font-md); font-weight: 700; margin: 0;">📜 Studio Contract &amp; Terms Vault</h2>
           </div>
-          <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 4px 10px; border-radius: 4px; border: 1px solid var(--accent);">8 Historical Contract Versions Preserved</span>
+          <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); background: var(--accent-soft); padding: 4px 10px; border-radius: 4px; border: 1px solid var(--accent);">8 Historical Contract Versions Preserved</span>
         </div>
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
           <div style="background: var(--paper); border: 1.5px solid var(--accent); border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm);">
@@ -5889,16 +5889,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--accent); color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.7 COMMERCIAL (ACTIVE)</span>
               <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Aug 2026 – Present</span>
             </div>
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">💼 Commercial Shoot Agreement V3.7</h3>
+            <h3 style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">💼 Commercial Shoot Agreement V3.7</h3>
             <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Paid Commercial, Editorial, Fashion &amp; Brand. 50/50 &amp; 50/30/20 retainer milestones (studio rental due in full with the advance), Client/photographer studio-arranger choice with a photographer-arranged studio quoted in advance, commercial licensing, travel &gt;20km, gear &amp; media protection.</p>
-            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.7-COMMERCIAL')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review Commercial</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '')" style="font-size: var(--font-xs); border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
+            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.7-COMMERCIAL')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review Commercial</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '')" style="font-size: var(--font-xs); border-color: var(--accent-text); color: var(--accent-text); font-weight: 700;">📄 Print PDF</button></div>
           </div>
           <div style="background: var(--paper); border: 1.5px solid #059669; border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm);">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: #059669; color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.7 TFP / TEST SHOOT (ACTIVE)</span>
               <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Aug 2026 – Present</span>
             </div>
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">📸 Test Shoot &amp; TFP Release V3.7</h3>
+            <h3 style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">📸 Test Shoot &amp; TFP Release V3.7</h3>
             <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Selective Collaborations via Invite Codes. Non-commercial portfolio licensing, 8-12 retouched caps, Instagram credit, Participant/photographer studio-arranger choice, studio rental quoted in advance, liability waiver, gear protection.</p>
             <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.7-TFP')" style="font-size: var(--font-xs); flex: 1; font-weight: 700; background: #059669; border-color: #059669;">👁 Review TFP Release</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.7-TFP')" style="font-size: var(--font-xs); border-color: #059669; color: #059669; font-weight: 700;">📄 Print PDF</button></div>
           </div>
@@ -5907,7 +5907,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.6 COMMERCIAL (ARCHIVED)</span>
               <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Aug 2026 – Sep 2026</span>
             </div>
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">💼 Commercial Shoot Agreement V3.6</h3>
+            <h3 style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">💼 Commercial Shoot Agreement V3.6</h3>
             <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Superseded by V3.7. Same terms, but a photographer-arranged external studio was passed through at cost (billed at actuals). Bookings agreed under it print these terms.</p>
             <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('V3.6-COMMERCIAL')" style="font-size: var(--font-xs); flex: 1;">👁 Review</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.6-COMMERCIAL')" style="font-size: var(--font-xs);">📄 Print PDF</button></div>
           </div>
@@ -5916,7 +5916,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.6 TFP / TEST SHOOT (ARCHIVED)</span>
               <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Sep 2026</span>
             </div>
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">📸 Test Shoot &amp; TFP Release V3.6</h3>
+            <h3 style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">📸 Test Shoot &amp; TFP Release V3.6</h3>
             <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Superseded by V3.7-TFP. Same release with a 20 km travel radius. Bookings agreed under it print these terms.</p>
             <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('V3.6-TFP')" style="font-size: var(--font-xs); flex: 1;">👁 Review</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.6-TFP')" style="font-size: var(--font-xs);">📄 Print PDF</button></div>
           </div>
@@ -5925,7 +5925,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.5 TFP / TEST SHOOT (ARCHIVED)</span>
               <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Aug 2026 – Sep 2026</span>
             </div>
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">📸 Test Shoot &amp; TFP Release V3.5</h3>
+            <h3 style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">📸 Test Shoot &amp; TFP Release V3.5</h3>
             <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Superseded by V3.6-TFP. Same release, but studio rental and a photographer-arranged studio were billed at actuals. Bookings agreed under it print these terms.</p>
             <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn" onclick="window.openContractArchiveModal('V3.5-TFP')" style="font-size: var(--font-xs); flex: 1;">👁 Review</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.5-TFP')" style="font-size: var(--font-xs);">📄 Print PDF</button></div>
           </div>
@@ -5934,45 +5934,45 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.2 (ARCHIVED)</span>
               <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">May 2026 – Aug 2026</span>
             </div>
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">Studio Release &amp; Payment Terms V3.2</h3>
+            <h3 style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">Studio Release &amp; Payment Terms V3.2</h3>
             <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">50/50 &amp; 50/30/20 milestones, RAW exclusion, Test Shoot specs, Studio Space Rental, social media attribution.</p>
-            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.2')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review V3.2</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.2')" style="font-size: var(--font-xs); border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
+            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.2')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review V3.2</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.2')" style="font-size: var(--font-xs); border-color: var(--accent-text); color: var(--accent-text); font-weight: 700;">📄 Print PDF</button></div>
           </div>
           <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.1 (ARCHIVED)</span>
               <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">May 2026 – Jul 2026</span>
             </div>
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">TFP Production &amp; Portfolio Release V3.1</h3>
+            <h3 style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">TFP Production &amp; Portfolio Release V3.1</h3>
             <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Standard TFP portfolio licensing, model release, basic liability waiver, mandatory credit block.</p>
-            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.1')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review V3.1</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.1')" style="font-size: var(--font-xs); border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
+            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.1')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review V3.1</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.1')" style="font-size: var(--font-xs); border-color: var(--accent-text); color: var(--accent-text); font-weight: 700;">📄 Print PDF</button></div>
           </div>
           <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V3.0 (ARCHIVED)</span>
               <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Jan 2026 – Apr 2026</span>
             </div>
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">Creative Collab &amp; Release V3.0</h3>
+            <h3 style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">Creative Collab &amp; Release V3.0</h3>
             <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Initial TFP structure, non-exclusive social media license, and studio rules.</p>
-            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.0')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review V3.0</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.0')" style="font-size: var(--font-xs); border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
+            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V3.0')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review V3.0</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V3.0')" style="font-size: var(--font-xs); border-color: var(--accent-text); color: var(--accent-text); font-weight: 700;">📄 Print PDF</button></div>
           </div>
           <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V2.0 (ARCHIVED)</span>
               <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Jun 2025 – Dec 2025</span>
             </div>
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">Studio Model Release V2.0</h3>
+            <h3 style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">Studio Model Release V2.0</h3>
             <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Early model release covering digital distribution, copyright ownership, promo usage.</p>
-            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V2.0')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review V2.0</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V2.0')" style="font-size: var(--font-xs); border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
+            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V2.0')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review V2.0</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V2.0')" style="font-size: var(--font-xs); border-color: var(--accent-text); color: var(--accent-text); font-weight: 700;">📄 Print PDF</button></div>
           </div>
           <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <span style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--bone); border: 1px solid var(--line); color: var(--ink-soft); padding: 3px 8px; border-radius: 4px; font-weight: 700;">V1.0 (ARCHIVED)</span>
               <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Jan 2025 – May 2025</span>
             </div>
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">Basic Photography Release V1.0</h3>
+            <h3 style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 12px 0 6px;">Basic Photography Release V1.0</h3>
             <p style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Foundational photo release and copyright acknowledgment for early studio testing.</p>
-            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V1.0')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review V1.0</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V1.0')" style="font-size: var(--font-xs); border-color: var(--accent); color: var(--accent); font-weight: 700;">📄 Print PDF</button></div>
+            <div style="display: flex; gap: 8px;"><button type="button" class="admin-cal-btn primary" onclick="window.openContractArchiveModal('V1.0')" style="font-size: var(--font-xs); flex: 1; font-weight: 700;">👁 Review V1.0</button><button type="button" class="admin-cal-btn" onclick="window.openPdfContractGenerator('', '', 'V1.0')" style="font-size: var(--font-xs); border-color: var(--accent-text); color: var(--accent-text); font-weight: 700;">📄 Print PDF</button></div>
           </div>
         </div>
       </section>
@@ -5988,8 +5988,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       <section class="section container" style="max-width: 900px; margin: 0 auto; padding-top: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 10px;">
           <div>
-            <p class="eyebrow" style="margin: 0 0 6px; color: var(--accent);">Contract Audit Trail</p>
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 0;">Audit Records — this browser</h3>
+            <p class="eyebrow" style="margin: 0 0 6px; color: var(--accent-text);">Contract Audit Trail</p>
+            <h3 style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 0;">Audit Records — this browser</h3>
           </div>
         </div>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
@@ -5997,10 +5997,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <div style="background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
               <div style="display:flex; justify-content: space-between; align-items:flex-start; gap: 8px; flex-wrap: wrap;">
                 <div>
-                  <div style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">${esc(a.clientName || 'Unknown')}</div>
+                  <div style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">${esc(a.clientName || 'Unknown')}</div>
                   <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">${esc(a.contractVersion || '—')} · ${esc(a.date || '—')}</div>
                 </div>
-                ${a.contractNumber ? `<span style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent); font-weight: 700;">${esc(a.contractNumber)}</span>` : ''}
+                ${a.contractNumber ? `<span style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent-text); font-weight: 700;">${esc(a.contractNumber)}</span>` : ''}
               </div>
               <div style="font-size: var(--font-xs); color: var(--ink-soft);">${a.clientEmail ? `✉️ ${esc(a.clientEmail)}` : ''} ${a.phone ? `· 📞 ${esc(a.phone)}` : ''}</div>
               <div style="font-size: var(--font-xs); color: var(--ink-soft);">Signed: ${a.sigCaptured ? 'Yes' : 'No'} · Recorded: ${new Date(a.timestamp || '').toLocaleString() || 'Unknown'}</div>
@@ -6111,8 +6111,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <span id="adminPricingSaveStatus" style="font-size: var(--font-xs); font-weight: 700; color: #059669; background: rgba(5,150,105,0.12); padding: 4px 10px; border-radius: 12px; border: 1px solid #059669; font-family: var(--mono-font); display: inline-block; margin-bottom: 8px;">🟢 ALL CHANGES SAVED TO LIVE SITE</span>
             <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 12px 0;">Edit max package rates (INR), package names, or deliverable descriptions. Click <strong>Save &amp; Push Live</strong> to update booking forms.</p>
             <div style="background: var(--paper); border: 1px solid var(--accent); border-radius: 8px; padding: 12px 16px; margin-bottom: 12px;">
-              <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase;">🏠 Home Studio Rental (Sector 46, Noida)</span>
-              <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 8px 0; font-family: 'Outfit', sans-serif;">Charged when someone picks the home studio, and shown as its own line in their quote. Set <strong>0</strong> to switch it off. An invite code that locks a venue carries its own price and ignores both of these.</p>
+              <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">🏠 Home Studio Rental (Sector 46, Noida)</span>
+              <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 8px 0; font-family: 'Archivo', sans-serif;">Charged when someone picks the home studio, and shown as its own line in their quote. Set <strong>0</strong> to switch it off. An invite code that locks a venue carries its own price and ignores both of these.</p>
               <div style="display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap;">
                 <div>
                   <span style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft); display: block; margin-bottom: 4px; text-transform: uppercase;">Paid shoots</span>
@@ -6129,7 +6129,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   </div>
                 </div>
               </div>
-              <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 8px 0 0 0; font-family: 'Outfit', sans-serif;">Leave the test-shoot box <strong>empty</strong> and collaborations pay the same as paid shoots.</p>
+              <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 8px 0 0 0; font-family: 'Archivo', sans-serif;">Leave the test-shoot box <strong>empty</strong> and collaborations pay the same as paid shoots.</p>
             </div>
             <div id="adminPackagesEditorGrid" style="display: flex; flex-direction: column; gap: 8px;"></div>
           </div>
@@ -6755,7 +6755,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         <!-- Header -->
         <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #111; padding-bottom: 14px; margin-bottom: 18px;">
           <div>
-            <div style="font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #000;">NERDYPHOTOGRAPHER.IN</div>
+            <div style="font-family: 'Archivo', sans-serif; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #000;">NERDYPHOTOGRAPHER.IN</div>
             <div style="font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px;">Fashion, Fitness &amp; Commercial Photography Studio</div>
             <div style="font-size: 11px; color: #555; margin-top: 2px;">Web: www.nerdyphotographer.in · Email: ${window.STUDIO_CONFIG?.email || "prateeksaxenaphotography@gmail.com"}</div>
           </div>
@@ -6765,7 +6765,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           </div>
         </div>
 
-        <h2 style="font-family: 'Outfit', sans-serif; font-size: 17px; font-weight: 800; text-transform: uppercase; margin: 0 0 14px; text-align: center; letter-spacing: 0.05em;">
+        <h2 style="font-family: 'Archivo', sans-serif; font-size: 17px; font-weight: 800; text-transform: uppercase; margin: 0 0 14px; text-align: center; letter-spacing: 0.05em;">
           ${isTfp ? 'Time-For-Print (TFP) Production &amp; Model Release Agreement' : 'Studio Shoot Booking Contract &amp; Production Agreement'}
         </h2>
 
@@ -6818,7 +6818,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
         <!-- Contract Terms Text -->
         <div style="margin-bottom: 20px;">
-          <h3 style="font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 800; text-transform: uppercase; border-bottom: 1px solid #111; padding-bottom: 4px; margin: 0 0 8px;">
+          <h3 style="font-family: 'Archivo', sans-serif; font-size: 13px; font-weight: 800; text-transform: uppercase; border-bottom: 1px solid #111; padding-bottom: 4px; margin: 0 0 8px;">
             Terms &amp; Conditions (Contract Version ${esc(cVer)})
           </h3>
           <div style="font-size: 10px; line-height: 1.5; color: #222; text-align: justify; white-space: pre-wrap;">${esc(contractText)}</div>
@@ -6826,7 +6826,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
         <!-- Digital & Physical Pen Signature Acceptance Block -->
         <div style="border: 2px dashed #111; border-radius: 8px; padding: 12px; background: #fff; page-break-inside: avoid;">
-          <div style="font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 800; text-transform: uppercase; color: #000; margin-bottom: 4px; text-align: center;">
+          <div style="font-family: 'Archivo', sans-serif; font-size: 12px; font-weight: 800; text-transform: uppercase; color: #000; margin-bottom: 4px; text-align: center;">
             ✍️ Digital Approval Code OR Physical Pen Signature
           </div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 8px; font-size: 10px; align-items: start;">
@@ -6874,7 +6874,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         <meta name="color-scheme" content="light">
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
           :root { color-scheme: light !important; }
           @page { size: A4 portrait; margin: 12mm 15mm; }
@@ -6903,7 +6903,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          h1, h2, h3, h4 { font-family: 'Outfit', sans-serif; color: #000000 !important; }
+          h1, h2, h3, h4 { font-family: 'Archivo', sans-serif; color: #000000 !important; }
           table { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 12px; border: 1px solid #dddddd; background: #ffffff !important; color: #111111 !important; }
           td, th { padding: 8px 12px; border: 1px solid #dddddd; color: #111111 !important; }
         </style>
@@ -6941,8 +6941,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         <div class="modal-content" style="background: var(--paper); border: 1px solid var(--line); border-radius: 14px; max-width: 720px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: var(--shadow); overflow: hidden; animation: modalFadeIn 0.3s ease;">
           <div style="padding: 20px 24px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; background: var(--bone);">
             <div>
-              <h3 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: var(--font-md); font-weight: 700; color: var(--ink);">${esc(contract.title)}</h3>
-              <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px; font-family: var(--mono-font);">Effective: <strong>${esc(contract.effectiveDate)}</strong> · Status: <span style="color: var(--accent); font-weight:700;">${esc(contract.status)}</span></div>
+              <h3 style="margin: 0; font-family: 'Archivo', sans-serif; font-size: var(--font-md); font-weight: 700; color: var(--ink);">${esc(contract.title)}</h3>
+              <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px; font-family: var(--mono-font);">Effective: <strong>${esc(contract.effectiveDate)}</strong> · Status: <span style="color: var(--accent-text); font-weight:700;">${esc(contract.status)}</span></div>
             </div>
             <button type="button" onclick="document.getElementById('contractArchiveModal').style.display='none'" style="background:none; border:none; font-size: var(--font-md); color: var(--ink-soft); cursor:pointer;">✕</button>
           </div>
@@ -6953,7 +6953,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <pre style="white-space: pre-wrap; font-family: inherit; font-size: var(--font-sm); line-height: 1.6; margin: 0; color: var(--ink);">${esc(contract.fullText)}</pre>
           </div>
           <div style="padding: 16px 24px; border-top: 1px solid var(--line); background: var(--bone); display: flex; justify-content: space-between; align-items: center;">
-            <button type="button" class="admin-cal-btn" onclick="document.getElementById('contractArchiveModal').style.display='none'; window.openPdfContractGenerator('', '', '${esc(contract.version)}');" style="border-color: var(--accent); color: var(--accent); font-weight: 700;">🖨️ Print PDF of ${esc(contract.version)}</button>
+            <button type="button" class="admin-cal-btn" onclick="document.getElementById('contractArchiveModal').style.display='none'; window.openPdfContractGenerator('', '', '${esc(contract.version)}');" style="border-color: var(--accent-text); color: var(--accent-text); font-weight: 700;">🖨️ Print PDF of ${esc(contract.version)}</button>
             <button type="button" class="admin-cal-btn primary" onclick="document.getElementById('contractArchiveModal').style.display='none'">Close Vault Viewer</button>
           </div>
         </div>
@@ -6971,32 +6971,32 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
         const creatorFormHtml = `
           <div id="promoCreatorForm" style="grid-column: 1 / -1; display: none; background: var(--paper); border: 1.5px solid var(--accent); border-radius: 8px; padding: 16px 18px; margin-bottom: 8px; box-shadow: var(--shadow-sm); animation: modalFadeIn 0.3s ease;">
-            <div style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
               <span id="promoCreatorFormTitle">🎟️ Create New Custom Promotional Discount Code</span>
               <button type="button" onclick="document.getElementById('promoCreatorForm').style.display='none'" style="background:none; border:none; color:var(--ink-soft); font-size: var(--font-sm); cursor:pointer;">✕</button>
             </div>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; align-items: flex-end;">
               <div>
-                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">Promo Code String *</label>
+                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">Promo Code String *</label>
                 <input type="text" id="newPromoName" placeholder="e.g. SUMMER30" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-weight: 700; font-family: var(--mono-font); text-transform: uppercase; background: var(--bone); color: var(--ink);" />
               </div>
               <div>
-                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">Discount Type *</label>
+                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">Discount Type *</label>
                 <select id="newPromoType" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); font-weight: 700; background: var(--bone); color: var(--ink);">
                   <option value="pct">Percentage Off (%)</option>
                   <option value="flat">Flat Amount (INR ₹)</option>
                 </select>
               </div>
               <div>
-                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">Value Amount *</label>
+                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">Value Amount *</label>
                 <input type="number" id="newPromoVal" placeholder="e.g. 30 or 1500, or 0 for home studio only" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-weight: 700; color: #059669; background: var(--bone);" />
               </div>
               <div style="grid-column: span 2;">
-                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">Description Label</label>
+                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">Description Label</label>
                 <input type="text" id="newPromoDesc" placeholder="e.g. 30% Off Summer Shoots" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
               </div>
               <div style="grid-column: span 2; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px;">
-                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">🏠 Home Studio Rental Discount</label>
+                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">🏠 Home Studio Rental Discount</label>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                   <select id="newPromoHomeStudioType" onchange="window.togglePromoHomeStudioValField()" style="flex: 1; min-width: 150px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); font-weight: 700; background: var(--paper); color: var(--ink);">
                     <option value="none">No discount on the rental</option>
@@ -7010,8 +7010,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               </div>
               <div style="grid-column: span 2;">
                 <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;">
-                  <input type="checkbox" id="newPromoIncludeAddons" style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent); cursor: pointer;" />
-                  <span style="font-size: var(--font-xs); color: var(--ink); font-family: 'Outfit', sans-serif; line-height: 1.4;">
+                  <input type="checkbox" id="newPromoIncludeAddons" style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent-text); cursor: pointer;" />
+                  <span style="font-size: var(--font-xs); color: var(--ink); font-family: 'Archivo', sans-serif; line-height: 1.4;">
                     <strong>Also discount the rental</strong> — the % also comes off the home studio rental, instead of the package rate alone.<br/>
                     <span style="color: var(--ink-soft);">Only changes anything on a <strong>% code</strong>. On a flat ₹ code the saving is the same either way, so leave it unticked.</span>
                   </span>
@@ -7032,7 +7032,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <div style="background: var(--paper); border: 1px solid var(--accent); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; justify-content: space-between; gap: 10px; box-shadow: var(--shadow-sm); overflow: hidden;">
               <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap;">
                 <div style="min-width: 0; flex: 1;">
-                  <span style="font-size: var(--font-xs); font-weight: 800; color: var(--accent); text-transform: uppercase; font-family: var(--mono-font); display: block;">${idx === 0 ? '⭐ Primary Code' : '🔑 VIP Invite'}</span>
+                  <span style="font-size: var(--font-xs); font-weight: 800; color: var(--accent-text); text-transform: uppercase; font-family: var(--mono-font); display: block;">${idx === 0 ? '⭐ Primary Code' : '🔑 VIP Invite'}</span>
                   <strong style="font-size: var(--font-md); font-family: var(--mono-font); color: var(--ink); letter-spacing: 0.04em; display: block; margin-top: 2px; word-break: break-all;">${esc(codeStr)}</strong>
                   <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 4px; line-height: 1.3;">📝 ${esc(descStr)}</div>
                   ${itemObj && typeof itemObj === 'object' && itemObj.location ? `<div style="font-size: var(--font-xs); color: #059669; font-weight: 700; margin-top: 4px;">🏠 Location Locked: ${esc(itemObj.location)}</div>` : ''}
@@ -7051,30 +7051,30 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <div style="grid-column: 1 / -1; background: rgba(255, 69, 0, 0.06); border: 1.5px solid var(--accent); border-radius: 10px; padding: 16px 18px; margin-bottom: 6px;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
               <div>
-                <div style="font-size: var(--font-xs); font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em;">🔑 Photographer Direct Invite Codes (VIP / TFP Unlock Manager)</div>
+                <div style="font-size: var(--font-xs); font-weight: 800; color: var(--accent-text); text-transform: uppercase; letter-spacing: 0.06em;">🔑 Photographer Direct Invite Codes (VIP / TFP Unlock Manager)</div>
                 <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">Create, edit, auto-generate, or delete multiple active invite codes. Invited talent entering ANY active code on /book unlocks a Test Shoot / TFP session.</div>
               </div>
               <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                 <button type="button" onclick="window.addNewAdminInviteCode()" class="admin-cal-btn primary" style="font-size: var(--font-xs); padding: 5px 12px; font-weight: 700;">➕ Add Custom Code</button>
-                <button type="button" onclick="window.generateRandomAdminInviteCode()" class="admin-cal-btn" style="font-size: var(--font-xs); padding: 5px 12px; font-weight: 700; border-color: var(--accent); color: var(--accent);">🎲 Auto-Generate Random VIP Code</button>
+                <button type="button" onclick="window.generateRandomAdminInviteCode()" class="admin-cal-btn" style="font-size: var(--font-xs); padding: 5px 12px; font-weight: 700; border-color: var(--accent-text); color: var(--accent-text);">🎲 Auto-Generate Random VIP Code</button>
               </div>
             </div>
             <div id="inviteCreatorForm" style="display: none; background: var(--paper); border: 1.5px solid var(--accent); border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; box-shadow: var(--shadow-sm); animation: modalFadeIn 0.3s ease;">
-              <div style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+              <div style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
                 <span id="inviteCreatorFormTitle">🔑 Add New Invite Code</span>
                 <button type="button" onclick="document.getElementById('inviteCreatorForm').style.display='none'" style="background:none; border:none; color:var(--ink-soft); font-size: var(--font-sm); cursor:pointer;">✕</button>
               </div>
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; align-items: flex-end;">
                 <div>
-                  <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">Invite Code String *</label>
+                  <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">Invite Code String *</label>
                   <input type="text" id="newInviteCode" placeholder="e.g. VIP-2431" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-weight: 700; font-family: var(--mono-font); text-transform: uppercase; background: var(--bone); color: var(--ink);" />
                 </div>
                 <div style="grid-column: span 2;">
-                  <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">Description Label</label>
+                  <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">Description Label</label>
                   <input type="text" id="newInviteDesc" placeholder="e.g. Agency model unlock pass" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
                 </div>
                 <div style="grid-column: span 3;">
-                  <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">🏠 Lock Location for Client <span style="font-weight:400;text-transform:none;color:var(--ink-soft);">(optional — leave blank to let client fill)</span></label>
+                  <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">🏠 Lock Location for Client <span style="font-weight:400;text-transform:none;color:var(--ink-soft);">(optional — leave blank to let client fill)</span></label>
                   <input type="text" id="newInviteLocation" placeholder="e.g. Home studio, Sector 46, Noida — or leave blank" oninput="window.syncInviteWaiveVisibility && window.syncInviteWaiveVisibility()" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
                 </div>
                 <!-- Only shown when the code leaves the venue to the talent. A
@@ -7082,7 +7082,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                      by the studio, so the rental is waived and there is nothing
                      here to decide. -->
                 <div id="newInviteWaiveRow" style="grid-column: span 3; display: none;">
-                  <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">💰 Venue cost for this code <span style="font-weight:400;text-transform:none;color:var(--ink-soft);">(optional — leave blank if it is free)</span></label>
+                  <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">💰 Venue cost for this code <span style="font-weight:400;text-transform:none;color:var(--ink-soft);">(optional — leave blank if it is free)</span></label>
                   <input type="number" min="0" id="newInviteVenueCost" placeholder="Blank = complimentary" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); font-weight: 700; color: #059669; background: var(--bone);" />
                   <span style="display: block; margin-top: 5px; font-size: var(--font-xs); line-height: 1.5; color: var(--ink-soft);">You picked the venue above, so you decide what it costs. Leave this blank and the shoot is complimentary. Enter an amount and the talent is billed exactly that, shown as its own line in their quote and payable in full before the shoot.</span>
                 </div>
@@ -7096,7 +7096,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                      standard rate when no venue is locked, or the locked
                      venue's own cost when one is. -->
                 <div style="grid-column: span 3; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;">
-                  <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 4px;">🏠 Home Studio Rental Discount</label>
+                  <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">🏠 Home Studio Rental Discount</label>
                   <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                     <select id="newInviteHomeStudioType" onchange="window.toggleInviteHomeStudioValField()" style="flex: 1; min-width: 150px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); font-weight: 700; background: var(--paper); color: var(--ink);">
                       <option value="none">No discount on the rental</option>
@@ -7187,26 +7187,26 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       pkgsGrid.innerHTML = pkgs.map((p, idx) => `
         <div class="admin-pkg-editor-row" style="background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: grid; grid-template-columns: 1.4fr 0.9fr 2.2fr 110px; gap: 10px; align-items: center;">
           <div>
-            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase;">Package Name #${idx+1}</span>
+            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">Package Name #${idx+1}</span>
             <input type="text" class="pkg-edit-name" value="${esc(p.name)}" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); font-weight: 700; background: var(--bone); color: var(--ink);" />
           </div>
           <div>
-            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase;">Max Rate (INR ₹)</span>
+            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">Max Rate (INR ₹)</span>
             <input type="number" class="pkg-edit-price" value="${p.price}" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); font-weight: 800; color: #059669; background: var(--bone);" />
           </div>
           <div>
-            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase;">Deliverable Specs</span>
+            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">Deliverable Specs</span>
             <input type="text" class="pkg-edit-specs" value="${esc(p.specs)}" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
           </div>
           <div>
-            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em;">Delivery time <span style="font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-soft);">(optional, shown on the quote)</span></span>
+            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em;">Delivery time <span style="font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-soft);">(optional, shown on the quote)</span></span>
             <input type="text" class="pkg-edit-delivery" value="${esc(p.delivery || "")}" placeholder="e.g. 10 working days" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
           </div>
           <div style="display: flex; gap: 4px; justify-content: flex-end; padding-top: 14px;">
-            <button type="button" class="admin-cal-btn" onclick="window.copyPackageBookingLink(${p.price})" title="Copy Shareable Booking Link" style="font-size: var(--font-xs); padding: 6px 8px; border-color: var(--accent); color: var(--accent); font-weight: 700;">🔗 Share Link</button>
+            <button type="button" class="admin-cal-btn" onclick="window.copyPackageBookingLink(${p.price})" title="Copy Shareable Booking Link" style="font-size: var(--font-xs); padding: 6px 8px; border-color: var(--accent-text); color: var(--accent-text); font-weight: 700;">🔗 Share Link</button>
             <button type="button" class="admin-cal-btn" onclick="window.moveAdminPackageRow(${idx}, -1)" title="Move Up" ${idx === 0 ? 'disabled style="opacity:0.3; cursor:not-allowed; padding:6px 8px; font-size: var(--font-xs);"' : 'style="padding:6px 8px; font-size: var(--font-xs);"'}>▲</button>
             <button type="button" class="admin-cal-btn" onclick="window.moveAdminPackageRow(${idx}, 1)" title="Move Down" ${idx === pkgs.length - 1 ? 'disabled style="opacity:0.3; cursor:not-allowed; padding:6px 8px; font-size: var(--font-xs);"' : 'style="padding:6px 8px; font-size: var(--font-xs);"'}>▼</button>
-            <button type="button" class="admin-cal-btn" onclick="window.deleteAdminPackageRow(${idx})" title="Delete Package Tier" style="color: #b22222; border-color: rgba(178,34,34,0.3); padding: 6px 8px; font-size: var(--font-xs);">🗑️</button>
+            <button type="button" class="admin-cal-btn" onclick="window.deleteAdminPackageRow(${idx})" title="Delete Package Tier" style="color: var(--danger-text); border-color: rgba(178,34,34,0.3); padding: 6px 8px; font-size: var(--font-xs);">🗑️</button>
           </div>
         </div>
       `).join("") + (() => {
@@ -7218,23 +7218,23 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         return `
         <div class="admin-pkg-editor-row admin-pkg-editor-row--tfp" style="background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: grid; grid-template-columns: 1.4fr 0.9fr 2.2fr 110px; gap: 10px; align-items: center;">
           <div>
-            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase;">Test shoot / TFP</span>
+            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">Test shoot / TFP</span>
             <input type="text" id="tfpPkgName" value="${esc(tfp.name)}" oninput="window.markUnsavedChanges && window.markUnsavedChanges()" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); font-weight: 700; background: var(--bone); color: var(--ink);" />
           </div>
           <div>
-            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase;">Fee</span>
+            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">Fee</span>
             <div style="padding: 8px 10px; border: 1px dashed var(--line); border-radius: 6px; font-size: var(--font-xs); color: var(--ink-soft); background: transparent;">No fee · rental set above</div>
           </div>
           <div>
-            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase;">Deliverable Specs</span>
+            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">Deliverable Specs</span>
             <input type="text" id="tfpPkgSpecs" value="${esc(tfp.specs)}" oninput="window.markUnsavedChanges && window.markUnsavedChanges()" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
           </div>
           <div>
-            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em;">Delivery time <span style="font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-soft);">(optional, shown on the quote)</span></span>
+            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em;">Delivery time <span style="font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-soft);">(optional, shown on the quote)</span></span>
             <input type="text" id="tfpPkgDelivery" value="${esc(tfp.delivery || "")}" oninput="window.markUnsavedChanges && window.markUnsavedChanges()" placeholder="e.g. 14 working days" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
           </div>
           <div style="display: flex; gap: 4px; justify-content: flex-end; padding-top: 14px;">
-            <button type="button" class="admin-cal-btn" onclick="window.copyTfpBookingLink()" title="Copy a booking link that opens the test-shoot form with your primary invite code" style="font-size: var(--font-xs); padding: 6px 8px; border-color: var(--accent); color: var(--accent); font-weight: 700;">Share link</button>
+            <button type="button" class="admin-cal-btn" onclick="window.copyTfpBookingLink()" title="Copy a booking link that opens the test-shoot form with your primary invite code" style="font-size: var(--font-xs); padding: 6px 8px; border-color: var(--accent-text); color: var(--accent-text); font-weight: 700;">Share link</button>
           </div>
         </div>`;
       })() + `
@@ -7289,7 +7289,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         }).sort((a, b) => (a.yr * 12 + a.mo) - (b.yr * 12 + b.mo));
 
         jumpBar.innerHTML = activeMonths.map(m => `
-          <button type="button" class="admin-cal-btn" style="padding: 3px 8px; font-size: var(--font-xs); font-family: var(--mono-font); ${calYear === m.yr && calMonth === m.mo ? 'background: var(--accent); color: #fff; font-weight: 700; border-color: var(--accent);' : ''}" onclick="window.jumpToCalMonth(${m.yr}, ${m.mo})">${m.label}</button>
+          <button type="button" class="admin-cal-btn" style="padding: 3px 8px; font-size: var(--font-xs); font-family: var(--mono-font); ${calYear === m.yr && calMonth === m.mo ? 'background: var(--accent); color: #fff; font-weight: 700; border-color: var(--accent-text);' : ''}" onclick="window.jumpToCalMonth(${m.yr}, ${m.mo})">${m.label}</button>
         `).join("");
       }
 
@@ -7409,8 +7409,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           : awaitingApproval ? `<span class="contract-sent-note">Contract sent · ${esc(v)} · awaiting client approval</span>${viewTermsBtn}`
           : `<span><strong>Agreed:</strong> ${esc(v)}</span>${viewTermsBtn}`;
         const statusPill = b.status === "workshop" ? `<span class="roster-pill roster-pill-workshop">Workshop</span>` : b.status === "assisting" ? `<span class="roster-pill roster-pill-assisting">Assisting</span>` : (b.isTentative || b.status === "tentative") ? `<span class="roster-pill roster-pill-hold">Hold</span>` : `<span class="roster-pill roster-pill-confirmed">Confirmed</span>`;
-        const links = (b.links && b.links.length) ? `<div><strong>Reference links:</strong> ${b.links.map(l => `<a href="${esc(l)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); word-break: break-all;">${esc(l)} ↗</a>`).join(" · ")}</div>` : "";
-        const atts = (b.attachments && b.attachments.length) ? `<div><strong>Attachments:</strong> ${b.attachments.map(att => `<a href="${esc(att.dataUrl)}" download="${esc(att.name)}" target="_blank" style="color: var(--accent);">${esc(att.name)} (${Math.round(att.size/1024)} KB)</a>`).join(" · ")}</div>` : "";
+        const links = (b.links && b.links.length) ? `<div><strong>Reference links:</strong> ${b.links.map(l => `<a href="${esc(l)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent-text); word-break: break-all;">${esc(l)} ↗</a>`).join(" · ")}</div>` : "";
+        const atts = (b.attachments && b.attachments.length) ? `<div><strong>Attachments:</strong> ${b.attachments.map(att => `<a href="${esc(att.dataUrl)}" download="${esc(att.name)}" target="_blank" style="color: var(--accent-text);">${esc(att.name)} (${Math.round(att.size/1024)} KB)</a>`).join(" · ")}</div>` : "";
         const hasMore = !!(b.email || b.phone || links || atts);
         return `
         <div class="booking-row${isPast ? " is-past" : ""}">
@@ -7454,7 +7454,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       if (pastBookings.length) {
         pastArchiveSection.innerHTML = `
           <details style="width: 100%;">
-            <summary style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; color: var(--ink-soft); cursor: pointer; padding: 8px 0; user-select: none;">
+            <summary style="font-family: 'Archivo', sans-serif; font-size: 16px; font-weight: 700; color: var(--ink-soft); cursor: pointer; padding: 8px 0; user-select: none;">
               Past shoots &amp; archive (${pastBookings.length})
             </summary>
             <div class="booking-roster-grid" style="margin-top: 16px;">
@@ -7550,7 +7550,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <div class="date-admin-modal">
             <button type="button" id="closeEditModal" style="position: absolute; top: 18px; right: 20px; background: none; border: none; font-size: var(--font-md); cursor: pointer; color: var(--ink-soft);">&times;</button>
             <p class="eyebrow" style="margin-bottom: 6px;">Edit Client Booking</p>
-            <h2 style="font-family: 'Outfit', sans-serif; font-size: var(--font-md); font-weight: 800; margin: 0 0 16px; color: var(--ink);">Edit Booking for ${dKey}</h2>
+            <h2 style="font-family: 'Archivo', sans-serif; font-size: var(--font-md); font-weight: 800; margin: 0 0 16px; color: var(--ink);">Edit Booking for ${dKey}</h2>
             
             <form id="editBookingForm" style="display: flex; flex-direction: column; gap: 12px;">
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -7997,10 +7997,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         </div>
         <div style="padding: 16px; display: flex; justify-content: space-between; align-items: center;">
           <div>
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 0 0 2px; color: var(--ink);">${esc(label)}</h3>
+            <h3 style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 0 0 2px; color: var(--ink);">${esc(label)}</h3>
             <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">Browse Category Collection</span>
           </div>
-          <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); display: inline-flex; align-items: center; gap: 4px;">Explore →</span>
+          <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: inline-flex; align-items: center; gap: 4px;">Explore →</span>
         </div>
       </a>`;
   }
@@ -8856,30 +8856,30 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <p class="dropzone-ratio">Cover image works best at 2:3 portrait (e.g. 2000 × 3000 px) or 3:2 landscape (e.g. 3000 × 2000 px).</p>
             </div>
             <div class="thumb-bulk-toolbar" id="thumbBulkToolbar" style="display:none; align-items:center; flex-wrap:wrap; gap:8px; margin-top:14px; padding:10px 12px; border:1px solid var(--line-2); border-radius:8px; background:var(--bone-2); pointer-events:auto;">
-              <span style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft);">Bulk-tag pose:</span>
-              <button type="button" class="thumb-bulk-angle-btn" data-angle="full-body" style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">Full Body</button>
-              <button type="button" class="thumb-bulk-angle-btn" data-angle="front" style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">Front</button>
-              <button type="button" class="thumb-bulk-angle-btn" data-angle="left-profile" style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">Left Profile</button>
-              <button type="button" class="thumb-bulk-angle-btn" data-angle="right-profile" style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">Right Profile</button>
-              <button type="button" class="thumb-bulk-angle-btn" data-angle="three-quarter" style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">3/4</button>
-              <button type="button" class="thumb-bulk-angle-btn" data-angle="back" style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">Back</button>
-              <button type="button" class="thumb-bulk-angle-btn" data-angle="close-up" style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">Close-up</button>
+              <span style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft);">Bulk-tag pose:</span>
+              <button type="button" class="thumb-bulk-angle-btn" data-angle="full-body" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">Full Body</button>
+              <button type="button" class="thumb-bulk-angle-btn" data-angle="front" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">Front</button>
+              <button type="button" class="thumb-bulk-angle-btn" data-angle="left-profile" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">Left Profile</button>
+              <button type="button" class="thumb-bulk-angle-btn" data-angle="right-profile" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">Right Profile</button>
+              <button type="button" class="thumb-bulk-angle-btn" data-angle="three-quarter" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">3/4</button>
+              <button type="button" class="thumb-bulk-angle-btn" data-angle="back" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">Back</button>
+              <button type="button" class="thumb-bulk-angle-btn" data-angle="close-up" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">Close-up</button>
               <span style="width:1px; align-self:stretch; background:var(--line-2);"></span>
-              <span style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft);">Kind of work:</span>
-              ${LOOKS.map((l) => `<button type="button" class="thumb-bulk-look-btn" data-look="${esc(l.key)}" style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">${esc(l.label)}</button>`).join("")}
-              <button type="button" class="thumb-bulk-look-btn" data-look="" style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink-soft); cursor:pointer;">Follow album</button>
+              <span style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft);">Kind of work:</span>
+              ${LOOKS.map((l) => `<button type="button" class="thumb-bulk-look-btn" data-look="${esc(l.key)}" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">${esc(l.label)}</button>`).join("")}
+              <button type="button" class="thumb-bulk-look-btn" data-look="" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink-soft); cursor:pointer;">Follow album</button>
               <span style="width:1px; align-self:stretch; background:var(--line-2);"></span>
-              <button type="button" id="thumbBulkSelectAll" style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink-soft); cursor:pointer;">Select all</button>
-              <button type="button" id="thumbBulkClear" style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink-soft); cursor:pointer;">Clear</button>
-              <span id="thumbBulkCount" style="margin-left:auto; font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); color:var(--ink-soft);">0 selected</span>
+              <button type="button" id="thumbBulkSelectAll" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink-soft); cursor:pointer;">Select all</button>
+              <button type="button" id="thumbBulkClear" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink-soft); cursor:pointer;">Clear</button>
+              <span id="thumbBulkCount" style="margin-left:auto; font-family:var(--mono-font); font-size: var(--font-xs); color:var(--ink-soft);">0 selected</span>
             </div>
             <div class="thumb-grid" id="stagingGrid"></div>
           </div>
 
           <form class="shoot-form reveal" id="shootForm" autocomplete="off">
             <div style="margin-bottom: 24px; padding: 14px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--bone); display: flex; align-items: center; gap: 10px; width: 100%;">
-              <input id="f_is_testimonial_only" type="checkbox" style="width: 16px; height: 16px; accent-color: var(--accent); margin: 0; cursor: pointer;" />
-              <label for="f_is_testimonial_only" style="font-family: 'JetBrains Mono', monospace; font-size: var(--font-xs); text-transform: uppercase; font-weight: 700; cursor: pointer; color: var(--ink);">Testimonial Only (No Photoshoot Album)</label>
+              <input id="f_is_testimonial_only" type="checkbox" style="width: 16px; height: 16px; accent-color: var(--accent-text); margin: 0; cursor: pointer;" />
+              <label for="f_is_testimonial_only" style="font-family: var(--mono-font); font-size: var(--font-xs); text-transform: uppercase; font-weight: 700; cursor: pointer; color: var(--ink);">Testimonial Only (No Photoshoot Album)</label>
             </div>
 
             <!-- Section strip: the form is ~5,000px tall, and without this the
@@ -8920,7 +8920,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <div id="f_also_for" style="display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 8px;">
                   ${CLIENTS.map((c) => `
                     <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); font-weight: 500; color: var(--ink); cursor: pointer; user-select: none;">
-                      <input type="checkbox" class="also-for-cb" value="${esc(c.key)}" style="width: 16px; height: 16px; accent-color: var(--accent);" />
+                      <input type="checkbox" class="also-for-cb" value="${esc(c.key)}" style="width: 16px; height: 16px; accent-color: var(--accent-text);" />
                       ${esc(c.label)}
                     </label>`).join("")}
                 </div>
@@ -8971,14 +8971,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <div id="f_model_types" style="display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 8px;">
                   ${modelTypeOptions().map((t) => `
                     <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); font-weight: 500; color: var(--ink); cursor: pointer; user-select: none;">
-                      <input type="checkbox" class="model-type-cb" value="${esc(t)}" style="width: 16px; height: 16px; accent-color: var(--accent);" />
+                      <input type="checkbox" class="model-type-cb" value="${esc(t)}" style="width: 16px; height: 16px; accent-color: var(--accent-text);" />
                       ${esc(modelTypeLabel(t))}
                     </label>
                   `).join("")}
                 </div>
                 <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center;">
                   <input id="f_model_type_new" type="text" maxlength="${MODEL_TYPE_MAXLEN}" placeholder="Add another type, e.g. Commercial" style="flex: 1 1 220px; min-width: 0; height: 38px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 6px; padding: 0 12px; box-sizing: border-box; font-size: var(--font-sm); outline: none;" />
-                  <button type="button" id="f_model_type_add" class="btn btn-ghost" style="height: 38px; padding: 0 16px; font-size: var(--font-xs); font-family: 'JetBrains Mono', monospace; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">+ Add</button>
+                  <button type="button" id="f_model_type_add" class="btn btn-ghost" style="height: 38px; padding: 0 16px; font-size: var(--font-xs); font-family: var(--mono-font); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">+ Add</button>
                 </div>
                 <p id="f_model_types_hint" style="margin: 6px 0 0; font-size: var(--font-xs); color: var(--ink-soft);">Shown beside the model's name on the comp card album, in the lightbox, and on the exported PDF.</p>
               </div>
@@ -9003,11 +9003,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <label class="field"><span>Eye color</span><input id="f_model_eyes" type="text" placeholder="e.g. Green" /></label>
               <div class="field-row" style="margin-top: 12px; gap: 20px; flex-wrap: wrap;">
                 <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); font-weight: 500; color: var(--ink); cursor: pointer; user-select: none;">
-                  <input id="f_show_stats_comp" type="checkbox" checked style="width: 16px; height: 16px; accent-color: var(--accent);" />
+                  <input id="f_show_stats_comp" type="checkbox" checked style="width: 16px; height: 16px; accent-color: var(--accent-text);" />
                   Show stats on Comp Cards
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); font-weight: 500; color: var(--ink); cursor: pointer; user-select: none;">
-                  <input id="f_show_stats_port" type="checkbox" checked style="width: 16px; height: 16px; accent-color: var(--accent);" />
+                  <input id="f_show_stats_port" type="checkbox" checked style="width: 16px; height: 16px; accent-color: var(--accent-text);" />
                   Show stats on Model Portfolio
                 </label>
               </div>
@@ -9053,28 +9053,28 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                  visibility), with the TFP category tag off in "The shoot". -->
             <fieldset id="fs_publish"><legend>Publish settings</legend>
               <div style="display: flex; align-items: center; gap: 8px;">
-                <input id="f_is_public" type="checkbox" checked style="width: 16px; height: 16px; accent-color: var(--accent); margin: 0; cursor: pointer;" />
+                <input id="f_is_public" type="checkbox" checked style="width: 16px; height: 16px; accent-color: var(--accent-text); margin: 0; cursor: pointer;" />
                 <label for="f_is_public" style="font-weight: 600; cursor: pointer; margin: 0;">Show this album on the site <span class="label-hint" style="font-weight: 400; text-transform: none; letter-spacing: 0; font-family: inherit; font-size: 12.5px;">— untick to keep it off the homepage, Albums and every other page. It stays saved, and its photos are still offered in your portfolio book: a book-only album.</span></label>
               </div>
               <div class="publish-toggles">
                 <label>
-                  <input id="f_featured" type="checkbox" checked style="width: 15px; height: 15px; accent-color: var(--accent); margin: 3px 0 0;" />
+                  <input id="f_featured" type="checkbox" checked style="width: 15px; height: 15px; accent-color: var(--accent-text); margin: 3px 0 0;" />
                   <span class="tog-text"><strong>Show on the homepage</strong><small>In Photoshoots on the home page. The album stays on Albums either way.</small></span>
                 </label>
                 <label>
-                  <input id="f_on_compcards" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 3px 0 0;" />
+                  <input id="f_on_compcards" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent-text); margin: 3px 0 0;" />
                   <span class="tog-text"><strong>Show on Comp cards</strong><small>On for test shoots unless you untick it. The album itself stays on the site either way.</small></span>
                 </label>
                 <label>
-                  <input id="f_on_portfolio" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 3px 0 0;" />
+                  <input id="f_on_portfolio" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent-text); margin: 3px 0 0;" />
                   <span class="tog-text"><strong>Show on Model portfolio</strong><small>On for test shoots unless you untick it. Its photos can go into portfolio PDFs.</small></span>
                 </label>
                 <label>
-                  <input id="f_disable_download" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 3px 0 0;" />
+                  <input id="f_disable_download" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent-text); margin: 3px 0 0;" />
                   <span class="tog-text"><strong>Turn off the comp card download</strong><small>People can still see the comp card, just not download it. The paid portfolio PDF isn't affected.</small></span>
                 </label>
                 <label>
-                  <input id="f_show_test_shoot_cat" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent); margin: 3px 0 0;" />
+                  <input id="f_show_test_shoot_cat" type="checkbox" style="width: 15px; height: 15px; accent-color: var(--accent-text); margin: 3px 0 0;" />
                   <span class="tog-text"><strong>Show that it was a test shoot</strong><small>Adds a "Test shoot" or "Collab" label. Left off, it looks like any other album.</small></span>
                 </label>
               </div>
@@ -9105,35 +9105,35 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 4px 0 0;">On the album page, show:</p>
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
                 <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
-                  <input id="f_show_credits" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
+                  <input id="f_show_credits" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent-text); margin: 0;" />
                   Credits
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
-                  <input id="f_show_pdf" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
+                  <input id="f_show_pdf" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent-text); margin: 0;" />
                   Attached PDF
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
-                  <input id="f_show_instagram" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
+                  <input id="f_show_instagram" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent-text); margin: 0;" />
                   Instagram
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
-                  <input id="f_show_kavyar" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
+                  <input id="f_show_kavyar" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent-text); margin: 0;" />
                   Kavyar
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
-                  <input id="f_show_testimonials" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
+                  <input id="f_show_testimonials" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent-text); margin: 0;" />
                   Testimonials
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
-                  <input id="f_show_stats" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
+                  <input id="f_show_stats" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent-text); margin: 0;" />
                   Measurements
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
-                  <input id="f_show_gear" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
+                  <input id="f_show_gear" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent-text); margin: 0;" />
                   Gear
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); cursor: pointer;">
-                  <input id="f_show_location" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent); margin: 0;" />
+                  <input id="f_show_location" type="checkbox" checked style="width: 14px; height: 14px; accent-color: var(--accent-text); margin: 0;" />
                   Location
                 </label>
               </div>
@@ -9172,7 +9172,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <label class="field"><span>Diagram image</span><input type="file" id="f_diagram_file" accept="image/*" /></label>
               <div id="diagramPreview" style="margin-top: 10px; display: none;">
                 <img id="f_diagram_img" style="max-height: 180px; width: auto; object-fit: contain; border-radius: 6px; border: 1px solid var(--line);" alt="Diagram Preview" />
-                <button type="button" id="clearDiagramBtn" style="display: block; margin-top: 6px; background: none; border: none; color: #b22222; font-size: var(--font-xs); cursor: pointer; text-decoration: underline; padding: 0;">Remove Diagram</button>
+                <button type="button" id="clearDiagramBtn" style="display: block; margin-top: 6px; background: none; border: none; color: var(--danger-text); font-size: var(--font-xs); cursor: pointer; text-decoration: underline; padding: 0;">Remove Diagram</button>
               </div>
               <label class="field"><span>Visibility mode</span>
                 <select id="f_diagram_visibility">
@@ -9285,14 +9285,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
                 <!-- Dedicated Still Photography Specialization & Video Coverage Policy Notice -->
                 <div style="background: rgba(var(--accent-rgb), 0.04); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
-                  <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">Still photography only</div>
+                  <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">Still photography only</div>
                   <div style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5;">
                     Studio packages &amp; rates are <strong>strictly dedicated to Still Photography creation</strong> (Commercial, Fashion, Editorial &amp; Portfolio). Video / Reels coverage is not included in standard packages. Clients may bring their own videographer or request studio assistance to source a freelance videographer for the session.
                   </div>
                 </div>
 
 <div style="margin-bottom: 14px; text-align: left;">
-                  <a id="toggleInviteCodeLink" href="javascript:void(0)" style="font-size: var(--font-xs); color: var(--accent); font-weight: 700; text-decoration: underline; font-family: var(--mono-font); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">Have a photographer invite code? (test shoot)</a>
+                  <a id="toggleInviteCodeLink" href="javascript:void(0)" style="font-size: var(--font-xs); color: var(--accent-text); font-weight: 700; text-decoration: underline; font-family: var(--mono-font); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">Have a photographer invite code? (test shoot)</a>
                 </div>
 
                 <!-- Photographer Direct Invite Code (Hidden by default, expandable via discreet link) -->
@@ -9380,7 +9380,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   </div>
                   <div class="field-row">
                     <label class="field"><span>Budget band <em class="label-hint">optional</em></span>
-                      <select id="p_budget">
+                      <select id="p_budget" style="font-family: var(--mono-font);">
                         <option value="">Prefer to discuss</option>
                         <option>Under ₹2 lakh</option>
                         <option>₹2–5 lakh</option>
@@ -9471,7 +9471,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 </div>
 
                 <div id="b_custom_time_wrap" style="display: none; background: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
-                  <div style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">⏰ Custom Call &amp; Wrap Timings</div>
+                  <div style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">⏰ Custom Call &amp; Wrap Timings</div>
                   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                     <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft);">Start / Call Time *
                       <input type="time" id="b_time_start" value="10:30" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
@@ -9480,13 +9480,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                       <input type="time" id="b_time_end" value="17:30" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
                     </label>
                   </div>
-                  <div id="b_custom_time_badge" style="margin-top: 8px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent);">
+                  <div id="b_custom_time_badge" style="margin-top: 8px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text);">
                     ⏱️ 7 Hours Session (10:30 AM – 5:30 PM)
                   </div>
                 </div>
 
                <div class="field-row">
-                 <label class="field" id="b_budget_field" style="grid-column: 1 / -1;"><span>Package · portfolio &amp; small-brand tiers *</span><span class="field-hint">Campaigns and productions are quoted on the brief — choose "Campaign or production" at the top of this section.</span>
+                 <label class="field" id="b_budget_field" style="grid-column: 1 / -1;"><span>Package · set tiers *</span><span class="field-hint">Anything larger than these — multi-day, multi-location, or a campaign with a crew — is quoted on the brief: choose "Campaign or production" at the top of this section.</span>
                    <select id="b_budget">
                      ${getAdminPackages().map((p, i) => `<option value="₹${esc(p.price.toLocaleString('en-IN'))} (${esc(p.name)})"${i===0?' selected':''}>₹${esc(p.price.toLocaleString('en-IN'))} · ${esc(p.name)} (${esc(p.specs)})</option>`).join("")}
                    </select>
@@ -9517,7 +9517,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                     someone invited to shoot for free. Wrong in the expensive
                     direction; hidden-by-default fails the safe way. -->
                <div id="finalPriceSummaryBox" style="display: none; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; margin-top: 18px; margin-bottom: 28px; box-shadow: var(--shadow-sm);">
-                  <div style="font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                  <div style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
                     <span>Your quote</span>
                     <span id="calcDiscountTag" style="font-size: var(--font-xs); color: #059669; background: rgba(5,150,105,0.2); padding: 3px 10px; border-radius: 12px; font-weight: 700; display: none;"></span>
                   </div>
@@ -9549,7 +9549,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0 2px; margin-top: 8px; border-top: 1px solid var(--line-2);">
                       <span style="color: var(--ink); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-size: var(--font-xs);">Total payable</span>
-                      <span id="summaryFinalAmount" style="font-size: var(--font-md); font-weight: 800; color: var(--accent); font-family: var(--mono-font); white-space: nowrap;">₹${getAdminPackages()[0].price.toLocaleString('en-IN')} INR</span>
+                      <span id="summaryFinalAmount" style="font-size: var(--font-md); font-weight: 800; color: var(--accent-text); font-family: var(--mono-font); white-space: nowrap;">₹${getAdminPackages()[0].price.toLocaleString('en-IN')} INR</span>
                     </div>
                     <!-- What the package includes sits UNDER the total, not
                          inside that row: as a third flex child beside "Total
@@ -9573,8 +9573,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                        contract they are about to sign describes. -->
                   <div id="summaryMilestoneBreakdown" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; font-size: var(--font-xs);">
                     <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px;">
-                      <span id="summaryAdvanceLabel" style="color: var(--ink-soft); display: block; font-size: var(--font-xs); text-transform: uppercase;">Step 1 · 50% Advance Retainer (Due Now)</span>
-                      <strong id="summaryAdvanceAmount" style="color: var(--accent); font-size: var(--font-sm); font-family: var(--mono-font);">₹${Math.round(getAdminPackages()[0].price / 2).toLocaleString('en-IN')} INR</strong>
+                      <span id="summaryAdvanceLabel" style="color: var(--ink-soft); display: block; font-size: var(--font-xs); text-transform: uppercase;">Step 1 · 50% Advance Retainer (Before Shoot Day)</span>
+                      <strong id="summaryAdvanceAmount" style="color: var(--accent-text); font-size: var(--font-sm); font-family: var(--mono-font);">₹${Math.round(getAdminPackages()[0].price / 2).toLocaleString('en-IN')} INR</strong>
                     </div>
                     <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px;">
                       <span id="summaryStep2Label" style="color: var(--ink-soft); display: block; font-size: var(--font-xs); text-transform: uppercase;">Step 2 · 50% Wrap Balance (Prior to Deliverables)</span>
@@ -9582,11 +9582,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                     </div>
                     <div id="summaryStep3Wrap" style="display: none; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px;">
                       <span id="summaryStep3Label" style="color: var(--ink-soft); display: block; font-size: var(--font-xs); text-transform: uppercase;">Step 3 · 20% Final Deliverables</span>
-                      <strong id="summaryStep3Amount" style="color: #f57c00; font-size: var(--font-sm); font-family: var(--mono-font);">₹0 INR</strong>
+                      <strong id="summaryStep3Amount" style="color: var(--warn-text); font-size: var(--font-sm); font-family: var(--mono-font);">₹0 INR</strong>
                     </div>
                     <div id="summaryStep4Wrap" style="display: none; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px;">
                       <span id="summaryStep4Label" style="color: var(--ink-soft); display: block; font-size: var(--font-xs); text-transform: uppercase;">Step 4 · 10% After Delivery of the Clicks</span>
-                      <strong id="summaryStep4Amount" style="color: #f57c00; font-size: var(--font-sm); font-family: var(--mono-font);">₹0 INR</strong>
+                      <strong id="summaryStep4Amount" style="color: var(--warn-text); font-size: var(--font-sm); font-family: var(--mono-font);">₹0 INR</strong>
                     </div>
                   </div>
                   <!-- Collaboration bookings carry no package fee, so the only
@@ -9598,15 +9598,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   </div>
                   <div id="summaryReservationCard" style="display: none; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: var(--font-xs);">
                     <span style="color: var(--ink-soft); display: block; font-size: var(--font-xs); text-transform: uppercase;">Home studio rental · paid in full up front</span>
-                    <strong id="summaryReservationAmount" style="color: var(--accent); font-size: var(--font-sm); font-family: var(--mono-font);">₹0 INR</strong>
+                    <strong id="summaryReservationAmount" style="color: var(--accent-text); font-size: var(--font-sm); font-family: var(--mono-font);">₹0 INR</strong>
                     <span style="color: var(--ink-soft); display: block; margin-top: 4px; line-height: 1.5;">Payable <strong style="color: var(--ink);">in full</strong> at least 48 hours before the shoot day to reserve the home studio. <strong style="color: #e07a5f;">Non-refundable.</strong></span>
                   </div>
                 </div>
 
                <div class="book-policies" style="background: var(--bone); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 10px; padding: 16px 18px; margin-bottom: 20px;">
                  <button type="button" id="bookPoliciesToggle" aria-expanded="false" aria-controls="bookPoliciesDetail" style="all: unset; box-sizing: border-box; cursor: pointer; display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 10px;">
-                   <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em;">Studio policies &amp; terms</span>
-                   <span id="bookPoliciesToggleIcon" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); white-space: nowrap;">+ Read full policies</span>
+                   <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; letter-spacing: 0.08em;">Studio policies &amp; terms</span>
+                   <span id="bookPoliciesToggleIcon" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); white-space: nowrap;">+ Read full policies</span>
                  </button>
                  <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 6px; line-height: 1.4;">Still photography only · studio rental quoted separately · travel beyond 20 km (10 km for test shoots) at actuals · full gallery buyout available</div>
                  <div id="bookPoliciesDetail" style="display: none; margin-top: 12px;">
@@ -9665,7 +9665,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
               <!-- Payment Terms & Milestone Flowchart -->
               <fieldset id="paymentTermsFieldset" style="border: 1px solid var(--line); border-radius: 12px; padding: 24px; background: var(--paper); margin-top: 24px;">
-                <legend style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); padding: 0 10px;">Payment terms &amp; milestones</legend>
+                <legend style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-text); padding: 0 10px;">Payment terms &amp; milestones</legend>
                 
                 <div style="margin-bottom: 18px;">
                   <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">To reserve studio dates and ensure smooth delivery, studio productions follow structured milestone payments as detailed below:</p>
@@ -9674,61 +9674,61 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <!-- Flowchart 2-Step (Default) -->
                 <div id="flowchart2Step" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 18px; position: relative;">
-                    <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 6px;">STEP 1 · 50% ADVANCE RETAINER</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">48 hours before shoot start</h4>
-                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid at least 48 hours before the shoot day to reserve studio space, schedule the crew, and lock calendar availability (unless explicitly discussed with the team). <strong>Mandatory prior to shoot start.</strong> <strong style="color: #b22222;">(Non-refundable)</strong></p>
+                    <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; margin-bottom: 6px;">STEP 1 · 50% ADVANCE RETAINER</div>
+                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">48 hours before shoot start</h4>
+                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid at least 48 hours before the shoot day to reserve studio space, schedule the crew, and lock calendar availability (unless explicitly discussed with the team). <strong>Mandatory prior to shoot start.</strong> <strong style="color: var(--danger-text);">(Non-refundable)</strong></p>
                   </div>
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 18px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #2e7d32; text-transform: uppercase; margin-bottom: 6px;">STEP 2 · 50% FINAL BALANCE</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">After the shoot · before any file is delivered</h4>
-                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid upon completion of the shoot session, prior to receiving any downloadable preview or retouched final deliverable file. <strong style="color: #b22222;">(Non-refundable)</strong></p>
+                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">After the shoot · before any file is delivered</h4>
+                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid upon completion of the shoot session, prior to receiving any downloadable preview or retouched final deliverable file. <strong style="color: var(--danger-text);">(Non-refundable)</strong></p>
                   </div>
                 </div>
 
                 <!-- Flowchart 3-Step (3-Tier Milestone) -->
                 <div id="flowchart3Step" style="display: none; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px;">
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
-                    <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 6px;">STEP 1 · 50% ADVANCE RETAINER</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">48 hours before shoot start</h4>
-                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid at least 48 hours before the shoot day to lock studio date and reserve production crew (unless explicitly discussed with the team). <strong>Mandatory prior to shoot start.</strong> <strong style="color: #b22222;">(Non-refundable)</strong></p>
+                    <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; margin-bottom: 6px;">STEP 1 · 50% ADVANCE RETAINER</div>
+                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">48 hours before shoot start</h4>
+                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid at least 48 hours before the shoot day to lock studio date and reserve production crew (unless explicitly discussed with the team). <strong>Mandatory prior to shoot start.</strong> <strong style="color: var(--danger-text);">(Non-refundable)</strong></p>
                   </div>
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
-                    <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #f57c00; text-transform: uppercase; margin-bottom: 6px;">STEP 2 · 30% REVIEW MILESTONE</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">After the shoot · proofing gallery</h4>
-                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid after shoot wrap, before receiving the watermarked proofing gallery to select retouches. <strong style="color: #b22222;">(Non-refundable)</strong></p>
+                    <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--warn-text); text-transform: uppercase; margin-bottom: 6px;">STEP 2 · 30% REVIEW MILESTONE</div>
+                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">After the shoot · proofing gallery</h4>
+                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid after shoot wrap, before receiving the watermarked proofing gallery to select retouches. <strong style="color: var(--danger-text);">(Non-refundable)</strong></p>
                   </div>
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #2e7d32; text-transform: uppercase; margin-bottom: 6px;">STEP 3 · 20% FINAL DELIVERABLES</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">Before any file is delivered</h4>
+                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">Before any file is delivered</h4>
                     <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid upon final approval, prior to receiving any downloadable or high-resolution retouched master file.</p>
                   </div>
                 </div>
                 <!-- Flowchart 4-Step (4-Tier Milestone: the last 20% split into two 10% legs) -->
                 <div id="flowchart4Step" style="display: none; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px;">
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
-                    <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 6px;">STEP 1 · 50% ADVANCE RETAINER</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">48 hours before shoot start</h4>
-                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid at least 48 hours before the shoot day to lock studio date and reserve production crew (unless explicitly discussed with the team). <strong>Mandatory prior to shoot start.</strong> <strong style="color: #b22222;">(Non-refundable)</strong></p>
+                    <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; margin-bottom: 6px;">STEP 1 · 50% ADVANCE RETAINER</div>
+                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">48 hours before shoot start</h4>
+                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid at least 48 hours before the shoot day to lock studio date and reserve production crew (unless explicitly discussed with the team). <strong>Mandatory prior to shoot start.</strong> <strong style="color: var(--danger-text);">(Non-refundable)</strong></p>
                   </div>
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
-                    <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #f57c00; text-transform: uppercase; margin-bottom: 6px;">STEP 2 · 30% REVIEW MILESTONE</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">After the shoot · proofing gallery</h4>
-                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid after shoot wrap, before receiving the watermarked proofing gallery to select retouches. <strong style="color: #b22222;">(Non-refundable)</strong></p>
+                    <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--warn-text); text-transform: uppercase; margin-bottom: 6px;">STEP 2 · 30% REVIEW MILESTONE</div>
+                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">After the shoot · proofing gallery</h4>
+                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid after shoot wrap, before receiving the watermarked proofing gallery to select retouches. <strong style="color: var(--danger-text);">(Non-refundable)</strong></p>
                   </div>
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #2e7d32; text-transform: uppercase; margin-bottom: 6px;">STEP 3 · 10% ON FINALISING THE CLICKS</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">Once the selection of clicks is finalised</h4>
+                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">Once the selection of clicks is finalised</h4>
                     <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid once the final selection of clicks from the proofing gallery is confirmed.</p>
                   </div>
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #2e7d32; text-transform: uppercase; margin-bottom: 6px;">STEP 4 · 10% AFTER DELIVERY</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">After the retouched clicks are delivered</h4>
+                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">After the retouched clicks are delivered</h4>
                     <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid after the retouched master files have been delivered.</p>
                   </div>
                 </div>
@@ -9738,11 +9738,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
              <div id="termsModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="termsModalTitle" style="display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 20px;">
                <div class="modal-content" style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; max-width: 680px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.15); overflow: hidden; animation: modalFadeIn 0.3s ease;">
                  <div style="padding: 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; background: var(--bone);">
-                   <h3 id="termsModalTitle" style="margin: 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink);">Studio Production &amp; Liability Release</h3>
+                   <h3 id="termsModalTitle" style="margin: 0; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink);">Studio Production &amp; Liability Release</h3>
                    <span id="termsModalTag" style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--accent); padding: 4px 8px; border-radius: 4px; color: #fff; font-weight: 700;">TFP-LIABILITY-RELEASE-V3.7 (ACTIVE)</span>
                  </div>
                  <div id="termsScrollArea" tabindex="0" style="padding: 24px; overflow-y: auto; font-size: var(--font-sm); line-height: 1.6; color: var(--ink); display: flex; flex-direction: column; gap: 20px; text-align: left;">
-                   <p id="termsModalSubtitle" style="margin: 0; font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em;">TFP Collaboration, Model Release &amp; Digital Consent Terms</p>
+                   <p id="termsModalSubtitle" style="margin: 0; font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent-text); text-transform: uppercase; letter-spacing: 0.05em;">TFP Collaboration, Model Release &amp; Digital Consent Terms</p>
                    
                    <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 14px; font-size: var(--font-xs); display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px;">
                      <div><strong>Studio/Photographer:</strong> nerdyphotographer.in</div>
@@ -9754,29 +9754,29 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                    </div>
  
                    <div>
-                     <h4 id="termsSec1Title" style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700;">1. SCOPE OF CREATIVE COLLABORATION</h4>
+                     <h4 id="termsSec1Title" style="margin: 0 0 6px 0; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700;">1. SCOPE OF CREATIVE COLLABORATION</h4>
                      <p style="margin: 0;"><span id="termsSec1Text">This session is scheduled as a peer-to-peer creative collaboration structured for mutual portfolio growth, asset curation, and personal branding advancement. No monetary compensation is required or exchanged for photographer or model services. The Studio provides specialized equipment, lighting architecture, workspace, and post-production engineering; the Participant(s) provide technical modelling direction, personal wardrobe, and makeup artistry. </span><em id="bookingContractStudioClause">If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges.</em></p>
                    </div>
  
                    <div>
-                      <h4 id="termsSec2Title" style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700;">2. INTELLECTUAL PROPERTY, MODEL RELEASE &amp; USAGE LICENSE</h4>
+                      <h4 id="termsSec2Title" style="margin: 0 0 6px 0; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700;">2. INTELLECTUAL PROPERTY, MODEL RELEASE &amp; USAGE LICENSE</h4>
                       <p id="termsSec2Text" style="margin: 0;">The legal copyright of all visual media remains exclusively with the Studio. To support mutual growth and portfolio building, all participants are granted a full non-exclusive license to publish, share, and use final retouched photos for personal self-promotion, social media grids (Instagram/TikTok), personal websites, and agency portfolios.</p>
                       <p style="margin: 6px 0 0 0; font-style: italic;"><strong>No Alterations:</strong> To preserve the lighting design and capture integrity, no party shall apply secondary mobile filters, automated presets, cropping adjustments, or third-party digital modifications to the delivered files.</p>
                     </div>
  
                    <div style="border-left: 3px solid var(--accent); padding-left: 14px; background: rgba(var(--accent-rgb), 0.04);">
-                     <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: #b22222;">3. COMPREHENSIVE LIABILITY WAIVER &amp; INDEMNIFICATION</h4>
+                     <h4 style="margin: 0 0 6px 0; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--danger-text);">3. COMPREHENSIVE LIABILITY WAIVER &amp; INDEMNIFICATION</h4>
                      <p style="margin: 0; font-weight: 500;">CRITICAL SAFETY &amp; LIABILITY RELEASE: The Participant enters the studio environment, uses studio blocks, cubes, chairs, furniture, or props, and performs physical poses entirely at their own risk. The Studio shall not be held liable for any physical injury, illness, accident, psychological distress, property damage, or clothing wear-and-tear incurred before, during, or after this production. The Participant explicitly waives any right to seek damages or legal recourse against the Studio or its operating photographers for accidents or injuries occurring on the premises.</p>
                      <p style="margin: 6px 0 0 0;">Furthermore, the Participant agrees to indemnify and hold harmless the Studio from any claims, damages, liabilities, or legal expenses arising out of the Participant’s conduct or injuries on set.</p>
                    </div>
  
                    <div>
-                      <h4 id="termsSec4Title" style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700;">4. TECHNICAL PERFORMANCE &amp; DELIVERY DISCLAIMER</h4>
+                      <h4 id="termsSec4Title" style="margin: 0 0 6px 0; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700;">4. TECHNICAL PERFORMANCE &amp; DELIVERY DISCLAIMER</h4>
                       <p id="termsSec4Text" style="margin: 0;">As a creative collaboration, test shoots (TFP collabs) include <strong>${esc(getAdminTfpPackage().specs)}</strong>. The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered to the Participant, unless otherwise agreed upon in writing for an additional fee.</p>
                     </div>
  
                    <div>
-                     <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700;">5. MANDATORY ALL-PARTY ATTRIBUTION WORKFLOW</h4>
+                     <h4 style="margin: 0 0 6px 0; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700;">5. MANDATORY ALL-PARTY ATTRIBUTION WORKFLOW</h4>
                      <p style="margin: 0 0 6px 0;">To ensure creative transparency, all parties agree to execute the following mandatory publishing workflow:</p>
                      <ul style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px;">
                        <li><strong>Instagram Collaboration Feature:</strong> For all primary feed or grid publications, the publishing party must issue an Instagram Co-Author Collaboration Invite to <strong>@nerdyphotographer.in</strong> prior to publishing.</li>
@@ -9791,13 +9791,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                    </div>
  
                    <div style="border-left: 3px solid #b22222; padding-left: 14px; background: rgba(178,34,34,0.04);">
-                     <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: #b22222;">6. UNAUTHORIZED CAMERA OPERATION, GEAR HANDS-OFF &amp; DATA PROTECTION CLAUSE</h4>
+                     <h4 style="margin: 0 0 6px 0; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--danger-text);">6. UNAUTHORIZED CAMERA OPERATION, GEAR HANDS-OFF &amp; DATA PROTECTION CLAUSE</h4>
                      <p style="margin: 0; font-weight: 500;">All raw captures, memory cards, and camera equipment remain the exclusive property and intellectual property of the Studio. Under no circumstances is a model, participant, or client permitted to touch, handle, or delete media from the photographer's camera, cards, or tethering systems.</p>
                      <p style="margin: 6px 0 0 0; font-weight: 500;">The Studio retains sole artistic authority over image culling, selection, and deletion. Deleting or attempting to delete media from equipment constitutes a material breach of contract, resulting in immediate termination of the shoot, forfeiture of all deliverables, and potential liability for data recovery expenses.</p>
                    </div>
 
                    <div>
-                     <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700;">7. DIGITAL CONSENT, EMAIL ACCEPTANCE &amp; BINDING NATURE</h4>
+                     <h4 style="margin: 0 0 6px 0; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700;">7. DIGITAL CONSENT, EMAIL ACCEPTANCE &amp; BINDING NATURE</h4>
                      <p style="margin: 0;">In accordance with standard digital contract practices, a physical or handwritten signature is not required to validate these terms. Definitive legal acceptance and a binding obligation to these conditions are established through any of the following actions:</p>
                      <ul style="margin: 6px 0 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px;">
                        <li>Sending a reply stating "I agree", "Confirmed", or equivalent confirmation over email or direct digital messaging channels.</li>
@@ -9806,7 +9806,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                    </div>
 
                     <div style="border-left: 3px solid var(--accent); padding-left: 14px; background: rgba(var(--accent-rgb), 0.04);">
-                      <h4 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--accent);">8. OUTSTATION LOCATION, TRAVEL &amp; ACCOMMODATION EXPENSE POLICY (&gt;<span class="policy-km">20</span> KM FROM NOIDA)</h4>
+                      <h4 style="margin: 0 0 6px 0; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--accent-text);">8. OUTSTATION LOCATION, TRAVEL &amp; ACCOMMODATION EXPENSE POLICY (&gt;<span class="policy-km">20</span> KM FROM NOIDA)</h4>
                       <p style="margin: 0; font-weight: 500;">If the shoot location is located beyond a <span class="policy-km">20</span> km radius from Noida (Delhi NCR), all travel expenses, local conveyance, outstation transport, tolls, and accommodation expenses incurred for the photographer (and core production team) shall be fully borne, arranged, or reimbursed by the client / party requesting the shoot session. This condition applies to both Paid Commercial Shoots and Test Shoot Collaborations (TFP).</p>
                     </div>
                    
@@ -9820,7 +9820,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                    <!-- Checkbox Agreement Block -->
                    <div style="margin-top: 15px; border-top: 1px dashed var(--line); padding-top: 15px;">
                      <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; background: var(--bone); border: 1.5px solid var(--accent); border-radius: 8px; padding: 14px;">
-                       <input type="checkbox" id="termsAgreeCheckbox" style="width: 20px; height: 20px; margin-top: 2px; accent-color: var(--accent); cursor: pointer;" />
+                       <input type="checkbox" id="termsAgreeCheckbox" style="width: 20px; height: 20px; margin-top: 2px; accent-color: var(--accent-text); cursor: pointer;" />
                        <span style="font-size: var(--font-xs); color: var(--ink); line-height: 1.5; font-weight: 600;">
                          I have read, understood, and agree to the <strong id="termsAgreeVersionLabel">Studio Terms &amp; Conditions</strong> and <strong>Model Release Agreement</strong>.
                        </span>
@@ -9836,7 +9836,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                     <div style="display: flex; gap: 8px; justify-content: space-between; align-items: center; flex-wrap: wrap;">
                       <button type="button" class="btn btn-ghost" id="termsDeclineBtn" style="font-size: var(--font-xs); height: auto; padding: 9px 14px;">✕ Decline</button>
                       <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        <button type="button" class="btn btn-ghost" id="termsCustomBtn" style="font-size: var(--font-xs); height: auto; padding: 9px 14px; border: 1px solid var(--accent); color: var(--accent); font-weight: 700;">📝 Request Custom Contract</button>
+                        <button type="button" class="btn btn-ghost" id="termsCustomBtn" style="font-size: var(--font-xs); height: auto; padding: 9px 14px; border: 1px solid var(--accent); color: var(--accent-text); font-weight: 700;">📝 Request Custom Contract</button>
                         <button type="button" class="btn btn-dark" id="termsAcceptBtn" style="font-size: var(--font-xs); height: auto; padding: 9px 18px;">✅ Agree &amp; Continue</button>
                       </div>
                     </div>
@@ -9845,7 +9845,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                </div>
 
             <div id="gearProtectionCallout" style="background: rgba(178,34,34,0.05); border: 1px solid rgba(178,34,34,0.3); border-radius: 10px; padding: 18px; margin-bottom: 20px; text-align: left;">
-             <div style="display: flex; align-items: center; gap: 8px; font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: #b22222; margin-bottom: 10px;">
+             <div style="display: flex; align-items: center; gap: 8px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--danger-text); margin-bottom: 10px;">
                Unauthorised data deletion &amp; gear clause
              </div>
              <p style="font-size: var(--font-xs); color: var(--ink); margin: 0 0 8px; line-height: 1.5; font-weight: 500;">
@@ -9863,13 +9863,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   state live on this outer wrapper instead, which JS never
                   touches, rather than inside the div JS overwrites. -->
              <button type="button" id="bookingPolicyToggle" aria-expanded="false" aria-controls="bookingPolicyNoticeWrap" style="all: unset; box-sizing: border-box; cursor: pointer; display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 10px;">
-               <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em;">Booking &amp; production terms</span>
-               <span id="bookingPolicyToggleIcon" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); white-space: nowrap;">+ Read full terms</span>
+               <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; letter-spacing: 0.05em;">Booking &amp; production terms</span>
+               <span id="bookingPolicyToggleIcon" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); white-space: nowrap;">+ Read full terms</span>
              </button>
              <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 6px; line-height: 1.4;">Retainer &amp; cancellation terms, usage licensing, and call-time policy for this booking.</div>
              <div id="bookingPolicyNoticeWrap" style="display: none; margin-top: 10px;">
                <div id="bookingPolicyNotice" style="font-size: var(--font-xs); line-height: 1.5; color: var(--ink-soft);">
-                  <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Booking &amp; Collaboration Policy</span>
+                  <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Booking &amp; Collaboration Policy</span>
                   Submission of a booking inquiry or TFP collaboration request does not constitute a confirmed session or a commitment to shoot. All inquiries are subject to schedule availability, creative brief alignment, and final studio review. <strong>Note: If a dedicated studio space is booked for the shoot, applicable studio rental charges will apply.</strong> Collaboration requests (TFP/Test Shoots) are selective and accepted at the sole discretion of the studio. Inquiries that are not explicitly approved by the studio will be considered inactive.
                </div>
              </div>
@@ -9882,13 +9882,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                  Shown/hidden by wireBook (fixed, not sticky — see the note on
                  .upload-sticky-bar). -->
             <div class="upload-sticky-bar book-sticky-bar is-hidden" id="bookStickyBar" aria-live="polite">
-              <div class="sticky-total" id="bookStickyTotal" style="display: none;"><small>Total payable</small><strong id="bookStickyAmount">—</strong></div>
+              <div class="sticky-total" id="bookStickyTotal" style="display: none;"><small>Total payable</small><strong id="bookStickyAmount" style="font-family: var(--mono-font);">—</strong></div>
               <span class="sticky-note" id="bookStickyNote">Ready when you are</span>
               <div class="sticky-actions">
                 <button type="button" class="btn btn-dark sticky-publish" id="bookStickySubmit">Submit booking request</button>
               </div>
             </div>
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 15px; text-align: center; line-height: 1.4;">By submitting a booking request, you agree to our standard terms. For test shoots, read our online <a href="#tfp-terms" id="tfpTermsTrigger" style="text-decoration: underline; color: var(--accent); font-weight: 600;">Studio Production &amp; Liability Release</a>.</p>
+            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 15px; text-align: center; line-height: 1.4;">By submitting a booking request, you agree to our standard terms. For test shoots, read our online <a href="#tfp-terms" id="tfpTermsTrigger" style="text-decoration: underline; color: var(--accent-text); font-weight: 600;">Studio Production &amp; Liability Release</a>.</p>
           </form>
         </div>
       </section>
@@ -10011,7 +10011,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       box.type = "checkbox";
       box.className = "model-type-cb";
       box.value = clean;
-      box.style.cssText = "width: 16px; height: 16px; accent-color: var(--accent);";
+      box.style.cssText = "width: 16px; height: 16px; accent-color: var(--accent-text);";
       box.addEventListener("change", syncModelTypeCap);
       label.appendChild(box);
       label.appendChild(document.createTextNode(" " + modelTypeLabel(clean)));
@@ -10506,7 +10506,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           
           <div style="padding: 8px; display: flex; flex-direction: column; gap: 6px; background: var(--bone); border-top: 1px solid var(--line); flex-grow: 1;">
             <label style="display: flex; align-items: center; gap: 5px; font-size: var(--font-xs); color: var(--ink-soft); cursor: pointer;">
-              <input type="checkbox" class="thumb-bulk-check" data-id="${f.id}" ${selectedForBulk.has(f.id) ? 'checked' : ''} style="width: 12px; height: 12px; accent-color: var(--accent); margin: 0; cursor: pointer;" />
+              <input type="checkbox" class="thumb-bulk-check" data-id="${f.id}" ${selectedForBulk.has(f.id) ? 'checked' : ''} style="width: 12px; height: 12px; accent-color: var(--accent-text); margin: 0; cursor: pointer;" />
               Select for bulk tagging
             </label>
             <input type="text" class="thumb-caption-input" data-id="${f.id}" value="${esc(f.caption || '')}" placeholder="Add caption…" style="width: 100%; box-sizing: border-box; font-size: var(--font-xs); padding: 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--paper); color: var(--ink); outline: none;" />
@@ -10728,9 +10728,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
         hasLinks = true;
         const linksHtml = allLinks.map(({ label, url }) =>
-          `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600; text-decoration:underline; display:inline-flex; align-items:center; gap:2px; margin-right:12px;">${esc(label)} ↗</a>`
+          `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--accent-text); font-weight:600; text-decoration:underline; display:inline-flex; align-items:center; gap:2px; margin-right:12px;">${esc(label)} ↗</a>`
         ).join("");
-        verify.innerHTML = `<span style="color:var(--ink-soft); font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); margin-right:6px; text-transform:uppercase;">Verify links:</span> ${linksHtml}`;
+        verify.innerHTML = `<span style="color:var(--ink-soft); font-family:var(--mono-font); font-size: var(--font-xs); margin-right:6px; text-transform:uppercase;">Verify links:</span> ${linksHtml}`;
         verify.style.display = "block";
       }
 
@@ -11345,7 +11345,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <div class="dp-header">
             ${isUserAdmin ? `
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px dashed var(--line);">
-                <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent);">⚙️ Admin Mode</span>
+                <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text);">⚙️ Admin Mode</span>
                 <button type="button" id="dpAdminToggle" style="background: ${adminManageMode ? 'var(--accent)' : 'none'}; color: ${adminManageMode ? '#fff' : 'var(--ink)'}; border: 1px solid var(--line); border-radius: 4px; padding: 3px 8px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; cursor: pointer;">
                   ${adminManageMode ? "Managing Dates (ON)" : "Manage Availability"}
                 </button>
@@ -11437,7 +11437,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // Selection summary
         let summary = "";
         if (adminManageMode) {
-          summary = `<span class="dp-hint" style="color:var(--accent); font-weight:700;">Click dates to Block/Open or Add Bookings</span>`;
+          summary = `<span class="dp-hint" style="color:var(--accent-text); font-weight:700;">Click dates to Block/Open or Add Bookings</span>`;
         } else if (pickerMode === "range") {
           if (rangeStart && !rangeEnd) summary = `<span class="dp-hint">Now pick the end date</span>`;
           else if (rangeStart && rangeEnd) {
@@ -11692,12 +11692,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       if (policyNotice) {
         if (type === "Selective Collaboration (TFP)") {
           policyNotice.innerHTML = `
-            <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">TFP Collaboration &amp; Test Shoot Policy</span>
+            <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">TFP Collaboration &amp; Test Shoot Policy</span>
             Submission of a TFP collaboration request does not constitute a confirmed session or a commitment to shoot. All inquiries are subject to schedule availability, creative alignment, and final studio review. <strong>Note: If a dedicated studio space is booked for the shoot, applicable studio rental charges will apply.</strong> TFP shoots include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW unedited camera files are strictly excluded and remain unreleased. <strong>⏰ Call time &amp; no-show:</strong> ${window.buildLateArrivalSummary(true)}
           `;
         } else {
           policyNotice.innerHTML = `
-            <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Commercial Production &amp; Studio Protection Policy</span>
+            <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Commercial Production &amp; Studio Protection Policy</span>
             <strong>🔒 Booking &amp; Retainer Terms:</strong> 50% advance retainer reserves studio space &amp; production crew (non-refundable). Cancellations within 48h forfeit advance retainer.<br/>
             <strong>📦 Deliverables &amp; Full Gallery Buyout:</strong> Packages include a proofing gallery to select contracted retouches. If the client requests the complete full unedited image gallery or additional retouched master clicks beyond the package limit, extra buyout charges apply. RAW unedited camera files remain confidential studio property.<br/>
             <strong>📜 Usage Licensing:</strong> Rates cover digital web &amp; social media usage. Extended billboard, TV, print, or commercial advertising rights require separate usage licensing.<br/>
@@ -11731,7 +11731,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             // Models, MUAs & Stylists get pure TFP collaboration without being forced to pick a paid package
             collabFallbackWrap.style.display = "block";
             collabFallbackWrap.innerHTML = `
-              <div style="font-family: 'Outfit', sans-serif; font-size: var(--font-xs); font-weight: 700; color: var(--accent); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+              <div style="font-family: 'Archivo', sans-serif; font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
                 📸 Creative Talent TFP Collaboration Policy &amp; Deliverables
               </div>
               <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 6px 0; line-height: 1.5;">
@@ -11750,7 +11750,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             // audit). Keep what they chose across the rebuild.
             const keptFallback = (collabFallbackWrap.querySelector("#b_collab_fallback") || {}).value || "";
             collabFallbackWrap.innerHTML = `
-              <div style="font-family: 'Outfit', sans-serif; font-size: var(--font-xs); font-weight: 700; color: var(--accent); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+              <div style="font-family: 'Archivo', sans-serif; font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
                 📌 Studio Discretion Policy &amp; Paid Fallback Package *
               </div>
               <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 10px 0; line-height: 1.5;">
@@ -12396,7 +12396,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           el = document.createElement("div");
           el.id = "bookPricesUnavailable";
           el.style.cssText = "display:none; background: var(--bone); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-top: 14px; line-height: 1.55;";
-          el.innerHTML = `<p style="margin:0; font-size: var(--font-xs); font-weight:700; color: var(--accent); text-transform: uppercase; letter-spacing:.05em;">Prices unavailable</p>
+          el.innerHTML = `<p style="margin:0; font-size: var(--font-xs); font-weight:700; color: var(--accent-text); text-transform: uppercase; letter-spacing:.05em;">Prices unavailable</p>
             <p style="margin:6px 0 0; font-size: var(--font-sm); color: var(--ink);">The studio's current rates couldn't be loaded just now, so nothing is quoted here. Send your request anyway — you'll get the price by email before anything is booked. Reloading the page usually brings them back.</p>`;
           finalPriceSummaryBox.parentNode.insertBefore(el, finalPriceSummaryBox.nextSibling);
         }
@@ -12553,10 +12553,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             // quoted once the venue is confirmed, so the label carries the
             // rule even though the figure is not on the card yet.
             summaryAdvanceLabel.textContent = homeStudioFee > 0
-              ? "Step 1 · 50% Advance Retainer + Studio Rental (Due Now)"
+              ? "Step 1 · 50% Advance Retainer + Studio Rental (Before Shoot Day)"
               : (studioArrangerChoice === "Photographer Arranges Studio & Lighting (Billed at Actuals)"
-                  ? "Step 1 · 50% Advance Retainer + Studio & Lighting in full (Due Now)"
-                  : "Step 1 · 50% Advance Retainer (Due Now)");
+                  ? "Step 1 · 50% Advance Retainer + Studio & Lighting in full (Before Shoot Day)"
+                  : "Step 1 · 50% Advance Retainer (Before Shoot Day)");
           }
           if (summaryStep2Label) summaryStep2Label.textContent = schedule.quoteSteps[0];
           if (summaryStep3Label && schedule.quoteSteps[1]) summaryStep3Label.textContent = schedule.quoteSteps[1];
@@ -13802,17 +13802,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             // had failed, which was the one thing it could not promise.
             const releaseNote = !agreedToTerms ? ""
               : sentDirectly
-              ? `<br/><br/><strong style="color: var(--accent);">Terms agreed:</strong> your acceptance of <em>${esc(contractRefDoc)}</em>${contractNumber ? ` (${esc(contractNumber)})` : ""} went to the studio with this request, and a copy is on its way to you.`
-              : `<br/><br/><strong style="color: var(--accent);">Terms agreed:</strong> your acceptance of <em>${esc(contractRefDoc)}</em>${contractNumber ? ` (${esc(contractNumber)})` : ""} is saved in this browser and is part of the email below — it reaches the studio when you send it.`;
+              ? `<br/><br/><strong style="color: var(--accent-text);">Terms agreed:</strong> your acceptance of <em>${esc(contractRefDoc)}</em>${contractNumber ? ` (${esc(contractNumber)})` : ""} went to the studio with this request, and a copy is on its way to you.`
+              : `<br/><br/><strong style="color: var(--accent-text);">Terms agreed:</strong> your acceptance of <em>${esc(contractRefDoc)}</em>${contractNumber ? ` (${esc(contractNumber)})` : ""} is saved in this browser and is part of the email below — it reaches the studio when you send it.`;
 
             const msgEl = $("#bookSuccessMsg");
             if (msgEl) {
               if (sending) {
                 msgEl.innerHTML = `Sending this to the studio now — <strong>please keep this page open</strong> for a moment. We'll confirm here as soon as it's through, and show you another way to send it if anything goes wrong.`;
               } else if (sentDirectly && isProduction) {
-                msgEl.innerHTML = `<strong style="color: var(--accent);">Brief received.</strong> It's with the studio. I'll reply within 24 hours to set up a call; the proposal and agreement follow the call.`;
+                msgEl.innerHTML = `<strong style="color: var(--accent-text);">Brief received.</strong> It's with the studio. I'll reply within 24 hours to set up a call; the proposal and agreement follow the call.`;
               } else if (sentDirectly) {
-                msgEl.innerHTML = `<strong style="color: var(--accent);">Request sent!</strong> Your booking inquiry has been delivered straight to the studio — no further action needed. I'll reply to <strong>${esc(email)}</strong>.` +
+                msgEl.innerHTML = `<strong style="color: var(--accent-text);">Request sent!</strong> Your booking inquiry has been delivered straight to the studio — no further action needed. I'll reply to <strong>${esc(email)}</strong>.` +
                   releaseNote +
                   `<br/><br/><span style="opacity: 0.8;">Want a copy for your own records? The buttons below open the same inquiry in your email app.</span>`;
               } else if (mode === "gmail") {
@@ -15409,8 +15409,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   const PRINT_FOOTER_HTML = `
     <div style="border-top: 1px solid #d9d6d0; padding-top: calc(8px * var(--print-scale, 1)); margin-top: auto; width: 100%; flex: 0 0 auto;">
       <div style="display: flex; justify-content: space-between; align-items: baseline; gap: calc(10px * var(--print-scale, 1)); flex-wrap: wrap;">
-        <span style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8a8782; ">Photographed by nerdyphotographer.in &nbsp;·&nbsp; @nerdyphotographer.in</span>
-        <span style="font-family:'JetBrains Mono', monospace; font-size: calc(8.5px * var(--print-scale, 1)); font-weight: 700; color: #000; letter-spacing: 0.04em;">Book a shoot &nbsp;·&nbsp; nerdyphotographer.in/book</span>
+        <span style="font-family:var(--mono-font); font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8a8782; ">Photographed by nerdyphotographer.in &nbsp;·&nbsp; @nerdyphotographer.in</span>
+        <span style="font-family:var(--mono-font); font-size: calc(8.5px * var(--print-scale, 1)); font-weight: 700; color: #000; letter-spacing: 0.04em;">Book a shoot &nbsp;·&nbsp; nerdyphotographer.in/book</span>
       </div>
       <div style="font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: calc(7px * var(--print-scale, 1)); color: #9a9791; margin-top: calc(4px * var(--print-scale, 1)); line-height: 1.4;">Fashion, fitness, lifestyle and sports photography, Noida. Comp cards, portfolio cards and frames are creative works produced under nerdyphotographer.in.</div>
     </div>
@@ -15425,7 +15425,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (!types.length) return "";
     return `
       <div style="display: flex; flex-wrap: wrap; gap: calc(6px * var(--print-scale, 1)); margin: 0; flex: 0 0 auto; ${extraStyle}">
-        ${types.map((t) => `<span style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #333; background: #fff; border: 1px solid #cfccc6; border-radius: 999px; padding: calc(3px * var(--print-scale, 1)) calc(10px * var(--print-scale, 1)); white-space: nowrap;">${esc(modelTypeLabel(t))}</span>`).join("")}
+        ${types.map((t) => `<span style="font-family:var(--mono-font); font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #333; background: #fff; border: 1px solid #cfccc6; border-radius: 999px; padding: calc(3px * var(--print-scale, 1)) calc(10px * var(--print-scale, 1)); white-space: nowrap;">${esc(modelTypeLabel(t))}</span>`).join("")}
       </div>
     `;
   }
@@ -15444,7 +15444,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     if (!pairs.length) return "";
     return `
       <div style="display: flex; flex-wrap: wrap; gap: calc(6px * var(--print-scale, 1)) calc(24px * var(--print-scale, 1)); padding: calc(9px * var(--print-scale, 1)) 0; border-top: 1px solid #d9d6d0; border-bottom: 1px solid #d9d6d0; margin-bottom: calc(12px * var(--print-scale, 1)); flex: 0 0 auto;">
-        ${pairs.map(([k, v]) => `<div><div style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8a8782; margin-bottom: calc(2px * var(--print-scale, 1));">${esc(k)}</div><div style="font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: calc(12px * var(--print-scale, 1)); font-weight: 700; color: #000; letter-spacing: -0.01em;">${esc(v)}</div></div>`).join("")}
+        ${pairs.map(([k, v]) => `<div><div style="font-family:var(--mono-font); font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8a8782; margin-bottom: calc(2px * var(--print-scale, 1));">${esc(k)}</div><div style="font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: calc(12px * var(--print-scale, 1)); font-weight: 700; color: #000; letter-spacing: -0.01em;">${esc(v)}</div></div>`).join("")}
       </div>
     `;
   }
@@ -15478,7 +15478,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // Contact block: one line for the model (every social and the email),
     // one line for the agency (its name, then its socials). Each detail is
     // a small label over its value.
-    const cell = (label, value) => `<div style="min-width: 0;"><div style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8a8782; margin-bottom: calc(2px * var(--print-scale, 1));">${label}</div><div style="font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: calc(11px * var(--print-scale, 1)); font-weight: 700; color: #000;">${value}</div></div>`;
+    const cell = (label, value) => `<div style="min-width: 0;"><div style="font-family:var(--mono-font); font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8a8782; margin-bottom: calc(2px * var(--print-scale, 1));">${label}</div><div style="font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: calc(11px * var(--print-scale, 1)); font-weight: 700; color: #000;">${value}</div></div>`;
     const modelCells = visibleModelLinks(shoot, "Pdf").map(l => cell(SOCIAL_LABEL[l.kind], esc(socialPrintText(l))));
     if (shoot.modelEmail && showRep(shoot, "Email", "Pdf") && !modelCells.some(c => c.includes(esc(shoot.modelEmail)))) modelCells.push(cell("Email", esc(shoot.modelEmail)));
     const agencyCells = [];
@@ -15520,7 +15520,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     }).join("   |   ");
     return creditsItems ? `
       <div style="font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: calc(9px * var(--print-scale, 1)); color: #555; margin-bottom: calc(12px * var(--print-scale, 1)); flex: 0 0 auto;">
-        <span style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8a8782; ">Credits</span> &nbsp;${creditsItems}
+        <span style="font-family:var(--mono-font); font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8a8782; ">Credits</span> &nbsp;${creditsItems}
       </div>
     ` : "";
   }
@@ -15956,8 +15956,8 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     return `
       <div class="print-page${!hasDetails ? " no-details" : ""}">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #d9d6d0; padding-bottom: calc(8px * var(--print-scale, 1)); margin-bottom: calc(12px * var(--print-scale, 1)); flex: 0 0 auto;">
-          <span style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8a8782;">Comp card${updatedStamp ? ` &nbsp;·&nbsp; Updated ${esc(updatedStamp)}` : ""}</span>
-          <span style="display: inline-flex; align-items: center; gap: calc(6px * var(--print-scale, 1));"><svg viewBox="0 0 100 100" fill="none" aria-hidden="true" style="width: calc(13px * var(--print-scale, 1)); height: calc(13px * var(--print-scale, 1)); color: #000; flex: 0 0 auto;"><circle cx="50" cy="52" r="39" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M 26 22 C 26 22 28 32 37 40 C 45 44 48 40 50 38 C 52 40 55 44 63 40 C 72 32 74 22 74 22 C 74 22 70 34 50 44 C 30 34 26 22 26 22 Z" fill="#0e0e0e" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="36" cy="48" r="13" stroke="currentColor" stroke-width="3"/><circle cx="64" cy="48" r="13" stroke="currentColor" stroke-width="3"/><path d="M 49 48 L 51 48" stroke="currentColor" stroke-width="3"/><path d="M 23 48 L 16 48 L 16 40" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M 77 48 L 84 48 L 84 40" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M 36 38 L 41 45 M 42.5 44 L 38 52 M 39 53 L 30 51 M 31 50 L 29 42 M 30 41 L 38 41" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M 64 38 L 69 45 M 70.5 44 L 66 52 M 67 53 L 58 51 M 59 50 L 57 42 M 58 41 L 66 41" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><polygon points="50,49 46,55 54,55" fill="#d24e1a"/><path d="M 20 58 C 24 72 35 78 50 86 C 65 78 76 72 80 58" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M 27 68 C 32 78 40 82 50 90 C 60 82 68 78 73 68" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><span style="font-family:'JetBrains Mono', monospace; font-size: calc(8px * var(--print-scale, 1)); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #000;">nerdyphotographer.in</span></span>
+          <span style="font-family:var(--mono-font); font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8a8782;">Comp card${updatedStamp ? ` &nbsp;·&nbsp; Updated ${esc(updatedStamp)}` : ""}</span>
+          <span style="display: inline-flex; align-items: center; gap: calc(6px * var(--print-scale, 1));"><svg viewBox="0 0 100 100" fill="none" aria-hidden="true" style="width: calc(13px * var(--print-scale, 1)); height: calc(13px * var(--print-scale, 1)); color: #000; flex: 0 0 auto;"><circle cx="50" cy="52" r="39" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M 26 22 C 26 22 28 32 37 40 C 45 44 48 40 50 38 C 52 40 55 44 63 40 C 72 32 74 22 74 22 C 74 22 70 34 50 44 C 30 34 26 22 26 22 Z" fill="#0e0e0e" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="36" cy="48" r="13" stroke="currentColor" stroke-width="3"/><circle cx="64" cy="48" r="13" stroke="currentColor" stroke-width="3"/><path d="M 49 48 L 51 48" stroke="currentColor" stroke-width="3"/><path d="M 23 48 L 16 48 L 16 40" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M 77 48 L 84 48 L 84 40" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M 36 38 L 41 45 M 42.5 44 L 38 52 M 39 53 L 30 51 M 31 50 L 29 42 M 30 41 L 38 41" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M 64 38 L 69 45 M 70.5 44 L 66 52 M 67 53 L 58 51 M 59 50 L 57 42 M 58 41 L 66 41" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><polygon points="50,49 46,55 54,55" fill="#d24e1a"/><path d="M 20 58 C 24 72 35 78 50 86 C 65 78 76 72 80 58" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M 27 68 C 32 78 40 82 50 90 C 60 82 68 78 73 68" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><span style="font-family:var(--mono-font); font-size: calc(8px * var(--print-scale, 1)); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #000;">nerdyphotographer.in</span></span>
         </div>
         <h1 style="font-family: 'Archivo', 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: calc(34px * var(--print-scale, 1)); font-weight: 800; margin: 0 0 calc(8px * var(--print-scale, 1)); text-transform: uppercase; color: #000; letter-spacing: -0.025em; line-height: 1; flex: 0 0 auto;">${name}</h1>
         ${printModelTypeBadgesHtml(shoot, "margin: 0 0 calc(10px * var(--print-scale, 1));")}
@@ -16230,7 +16230,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   /* ---- PDF page drawing (all measurements in millimetres on A4) ---- */
   const PDF_PAGE = { w: 210, h: 297, margin: 12, gap: 2.5 };
   const PDF_FOOTER_H = 8.5;
-  const PDF_MONO = "'JetBrains Mono', ui-monospace, monospace";
+  const PDF_MONO = "var(--mono-font)";
   const PDF_SANS = "Inter, 'Helvetica Neue', Arial, sans-serif";
   const PDF_DISPLAY = "Archivo, Inter, 'Helvetica Neue', Arial, sans-serif";
   const PDF_LABEL = { weight: 600, size: 2.0, family: PDF_MONO, spacing: 0.35, upper: true, color: "#8a8782" };
@@ -16931,7 +16931,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   function ensurePdfFonts(spec) {
     if (!document.fonts || !document.fonts.load) return Promise.resolve();
     const sample = `${spec.name} ${spec.location || ""} ${spec.phone || ""} ABCXYZ abcxyz 0123456789 @·…`;
-    return Promise.all(["800 32px Archivo", "600 16px Inter", "400 16px Inter", "600 16px 'JetBrains Mono'", "700 16px 'JetBrains Mono'"]
+    return Promise.all(["800 32px Archivo", "600 16px Inter", "400 16px Inter", "600 16px 'IBM Plex Mono'", "700 16px 'IBM Plex Mono'"]
       .map((f) => document.fonts.load(f, sample).catch(() => null)));
   }
 
@@ -18092,20 +18092,20 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       modal.innerHTML = `
         <div style="background: var(--bone); border: 1px solid var(--line); padding: 32px; border-radius: 16px; width: 100%; max-width: 420px; box-sizing: border-box; text-align: center; display: flex; flex-direction: column; gap: 20px; box-shadow: var(--shadow);">
           <div>
-            <h3 style="font-family:'Outfit', sans-serif; font-size: 20px; font-weight: 700; margin: 0 0 8px; color: var(--ink);">Enter your Email</h3>
+            <h3 style="font-family:'Archivo', sans-serif; font-size: 20px; font-weight: 700; margin: 0 0 8px; color: var(--ink);">Enter your Email</h3>
             <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin: 0;">Please enter your email to proceed with downloading this talent comp card.</p>
-            <p style="font-size: 10.5px; color: var(--accent); margin: 8px 0 0; font-family: 'JetBrains Mono', monospace; font-weight: 600; line-height: 1.4;">
+            <p style="font-size: 10.5px; color: var(--accent-text); margin: 8px 0 0; font-family: var(--mono-font); font-weight: 600; line-height: 1.4;">
               🎲 Note: Supporting images are randomly selected from all photos tagged to this model on each export.
             </p>
           </div>
           <div style="display: flex; flex-direction: column; gap: 6px; text-align: left;">
-            <label style="font-family:'JetBrains Mono', monospace; font-size: 9px; text-transform: uppercase; font-weight: 700; color: var(--ink-soft);">Email Address</label>
+            <label style="font-family:var(--mono-font); font-size: 9px; text-transform: uppercase; font-weight: 700; color: var(--ink-soft);">Email Address</label>
             <input type="email" id="downloadEmailInput" placeholder="name@example.com" style="width: 100%; height: 42px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 8px; padding: 0 14px; box-sizing: border-box; font-size: 14px; outline: none; transition: border-color 0.2s;" />
-            <span id="downloadEmailError" style="font-size: 10px; color: var(--accent); display: none; margin-top: 4px;">Please enter a valid email address.</span>
+            <span id="downloadEmailError" style="font-size: 10px; color: var(--accent-text); display: none; margin-top: 4px;">Please enter a valid email address.</span>
           </div>
           <div style="display: flex; gap: 12px; margin-top: 8px;">
             <button id="cancelEmailDownload" class="btn btn-ghost btn-block" style="flex: 1; height: 42px;">Cancel</button>
-            <button id="submitEmailDownload" class="btn btn-dark btn-block" style="flex: 1; height: 42px; font-family:'JetBrains Mono', monospace; font-weight: 700;">Download</button>
+            <button id="submitEmailDownload" class="btn btn-dark btn-block" style="flex: 1; height: 42px; font-family:var(--mono-font); font-weight: 700;">Download</button>
           </div>
         </div>
       `;

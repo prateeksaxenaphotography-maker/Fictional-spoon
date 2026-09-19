@@ -571,6 +571,14 @@ function buildServicePage(v) {
 
 function buildServicesIndex() {
   const x = SERVICES_INDEX;
+  // Only describe the pages that were actually published. The old description
+  // named brand campaigns, which has no page until there is campaign work to
+  // put on it, so the promise went out to Google unkept (site audit Sep 2026).
+  const kinds = liveServices.map((v) => v.cardTitle);
+  const list = kinds.length > 1 ? `${kinds.slice(0, -1).join(", ")} and ${kinds[kinds.length - 1]}` : (kinds[0] || "");
+  const metaDescription = kinds.length
+    ? `${list} — photographed in Noida and across Delhi NCR. See the work on each page and send a brief for a quote.`
+    : x.metaDescription;
   const mainHtml = `
     <section class="page-head svc-head"><div class="container">
       <p class="eyebrow">${esc(x.eyebrow)}</p>
@@ -598,9 +606,9 @@ function buildServicesIndex() {
   return {
     rel: "services/index.html",
     html: pageFromTemplate({
-      title: x.metaTitle, description: x.metaDescription, urlPath: "/services/",
+      title: x.metaTitle, description: metaDescription, urlPath: "/services/",
       jsonLd: [ldScript(breadcrumbLd([["Home", "/"], ["Services", "/services/"]]))],
-      mainAttrs: ` data-static-path="/services" data-title="${esc(x.metaTitle)}" data-desc="${esc(x.metaDescription)}"`,
+      mainAttrs: ` data-static-path="/services" data-title="${esc(x.metaTitle)}" data-desc="${esc(metaDescription)}"`,
       mainHtml
     })
   };

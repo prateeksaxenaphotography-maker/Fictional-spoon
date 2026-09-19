@@ -65,11 +65,15 @@ const TEST_SHOOT_FAQ = [
 ];
 
 export const SERVICES_INDEX = {
-  metaTitle: "What I Shoot — Model Portfolios, Fashion, Fitness & Brand Photography in Noida & Delhi NCR | nerdyphotographer.in",
+  // Google shows about 60 characters. The old title was 118, so it was cut
+  // before "Noida" ever appeared. The description is rebuilt at deploy time
+  // from the pages that actually exist (build-seo.mjs), so it cannot promise a
+  // kind of shoot that has no page yet.
+  metaTitle: "What I Shoot — Model Portfolio & Fashion Photography, Noida",
   metaDescription: "Model portfolio and comp card shoots, fashion and editorial photography, fitness and sports shoots, and brand campaigns in Noida and Delhi NCR. See sample work and send a brief for a quote.",
   eyebrow: "Kinds of shoot",
   h1: "What I shoot",
-  intro: "nerdyphotographer.in is a photography studio in Noida working across Delhi NCR. Each kind of shoot has its own page, sorted by who it is for: what is included, what it costs, and the work to judge it by."
+  intro: "nerdyphotographer.in is a photography studio in Noida working across Delhi NCR. Each kind of shoot has its own page, sorted by who it is for: what is included, and the work to judge it by."
 };
 
 export const SERVICES = [
@@ -112,7 +116,7 @@ export const SERVICES = [
       { href: "/services/model-portfolio-shoot-noida/#comp-cards", label: "See the models" }
     ],
     faqs: [
-      ["How much does a model portfolio shoot cost in Noida?", "It depends on how many looks you shoot and how many finished images you need — a comp card needs fewer than a full editorial portfolio. Send a brief through the booking page and you will have a price against it before anything is booked."],
+      ["How much does a model portfolio shoot cost in Noida?", "It depends on how many looks you shoot and how many finished images you need — a comp card needs fewer than a full editorial portfolio. The booking page lists the set tiers and what each one includes, so you can see the price before you send anything."],
       ["I have never modelled before. Can I still book?", "Yes. Most portfolio clients are new faces. Poses, expressions and angles are directed throughout the shoot, and the looks are planned with you beforehand."],
       ["How many outfits should I bring?", "Bring more than you expect to use — fitted basics in plain colours, one formal look and one that shows your personality. The final looks are picked together before the shoot starts."],
       ["Do you shoot male models as well?", "Yes. The portfolios on this site include both male and female models."],
@@ -239,7 +243,7 @@ export const SERVICES = [
       ["Can you arrange models, styling and make-up?", "Casting, styling and make-up are planned with you in pre-production, and everyone involved is credited on the final work."],
       ["Do you shoot product-only e-commerce?", "The studio's focus is on-model fashion and lifestyle photography. Product-only catalogues are taken on when they are part of a wider campaign."],
       ["How is payment structured?", "In milestones tied to the production — an advance to hold the date, with the balance split across the shoot and delivery. The exact schedule is in the contract."],
-      ["Why are there no prices on this page?", "Because no two productions are the same. The price follows the brief — the number of looks, the finished images you need, the crew and the usage — so you get a quote written against what you are actually asking for, rather than a rate card you have to work around."]
+      ["Why are there no prices on this page?", "There are set tiers, and the booking page lists them — they run from a comp card up to a full-day production. Past those, no two campaigns are the same: the price follows the brief — the number of looks, the finished images you need, the crew and the usage — so you get a quote written against what you are actually asking for."]
     ]
   },
   {
@@ -278,7 +282,7 @@ export const SERVICES = [
       ["I am a make-up artist. Can I book a shoot for my own portfolio?", "Yes. The shoot is planned around your looks — how many, in what order, and how close the frames need to be to show the detail. Bring your own model, or ask for help finding one when you send the brief."],
       ["Can you shoot a lookbook for my collection?", "Yes. Send the number of pieces and where the lookbook will be used, and the shoot is planned around that: how many looks, how many frames of each, and whether it is shot in the studio or on location."],
       ["Who is credited on the pictures?", "Everyone who worked on the shoot — you, the model and the rest of the team. If the album goes on this site, the credits are published beside it."],
-      ["How much does it cost?", "It is quoted to the brief. The price follows the number of looks, the finished images you need and where the shoot happens. Send a brief through the booking page and you will have a price written against it before anything is booked."],
+      ["How much does it cost?", "The booking page lists the set tiers, and most of this work fits one of them. Past that it is quoted to the brief: the price follows the number of looks, the finished images you need and where the shoot happens. Send a brief through the booking page and you will have a price written against it before anything is booked."],
       ["When can I book?", "Shoots run on weekends. The booking page shows the dates that are open."]
     ]
   },
@@ -318,7 +322,7 @@ export const SERVICES = [
     faqs: [
       ["I am not a model, a designer or a brand. Is this the right page?", "Probably. This page is for the work the other pages do not cover. A portfolio to send to agencies belongs on the model portfolio page, a magazine story on the fashion and editorial page, physique and training work on the fitness and sports page, anything whose job is to sell a product on the brand campaigns page, and a designer's, stylist's or make-up artist's own portfolio on theirs. A concept, a theme or a personal project belongs here."],
       ["My idea is still vague. Is that enough to start with?", "Yes. Half a sentence and three reference pictures is a start. The first conversation turns that into something specific: what is in the frame, where, in what light, and what the set of pictures is for. If the idea needs more thinking before it is worth shooting, you will be told so before a date is held."],
-      ["How much does a creative shoot cost?", "It is quoted to the brief. One portrait idea in the studio and a two-location shoot with a team are not the same job, so the price follows what the idea needs — looks, locations, people, shooting hours and finished images. Send the idea through the booking page and you will have a price written against it before anything is booked."],
+      ["How much does a creative shoot cost?", "The booking page lists the set tiers and a smaller idea usually fits one. Past that it is quoted to the brief — one portrait idea in the studio and a two-location shoot with a team are not the same job, so the price follows what the idea needs: looks, locations, people, shooting hours and finished images. Send the idea through the booking page and you will have a price written against it before anything is booked."],
       ["Who else needs to be on the shoot?", "Whoever the idea needs, and often nobody. Bring your own stylist, hair and make-up artist or performers if you have them, or ask when you send the idea and the studio will help put a small team together. Everyone involved is credited on the finished work."],
       ["Is this a TFP or collaboration shoot?", "No. A creative shoot is quoted and booked like any other. Collaborations are occasional and by invitation only — if you have been given an invite code, enter it on the booking page."],
       ["When can I book, and what do I get?", "Shoots run on weekends, in the home studio in Noida or on location across Delhi NCR when the idea needs a real place, and the booking page shows the dates that are open. Afterwards you get a proofing gallery to choose from and your selects retouched. RAW files are not delivered, and the shoot is covered by a written contract signed online."]

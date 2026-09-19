@@ -5,6 +5,16 @@
 const STUDIO_CONFIG = {
   // Brand & Naming
   studioName: "nerdyphotographer.in",
+  // The photographer behind the studio. Google has nothing to tell a brand
+  // apart from nerdyphotographer.com (an established American studio) without
+  // a real person attached to it, and the name appeared nowhere on the site
+  // (site audit Sep 2026). It goes in the business details and the footer.
+  photographerName: "Prateek Saxena",
+  // The neighbourhood only — never a street or a flat number. It is what a
+  // local search needs, and clients already see it on their contract.
+  studioArea: "Sector 46, Noida",
+  // Shoots run at weekends by design; search engines read this as opening days.
+  shootDays: ["Saturday", "Sunday"],
   studioShortName: "NERDY",
   studioSubName: "PHOTOGRAPHER.IN",
   tagline: "Fashion, fitness and model portrait photography in Noida & Delhi NCR.",
