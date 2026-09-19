@@ -7,7 +7,7 @@ const STUDIO_CONFIG = {
   studioName: "nerdyphotographer.in",
   studioShortName: "NERDY",
   studioSubName: "PHOTOGRAPHER.IN",
-  tagline: "Cinematic photography, visual stories, and fine art prints.",
+  tagline: "Fashion, fitness and model portrait photography in Noida & Delhi NCR.",
   introQuote: "“The best photography doesn't just record a moment. It captures the light, the mood, and the silent story within the frame.”",
 
   // The Studio page (/studio) is being rethought. While this is false, visitors

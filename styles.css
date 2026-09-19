@@ -3159,3 +3159,21 @@ html.theme-dark { color-scheme: dark; }
 .cat-service a { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; transition: border-color .25s var(--ease); }
 .cat-service a:hover { border-bottom-color: var(--accent); }
 .svc-note-tight { margin-bottom: 26px; }
+
+
+/* ---------- Audit tidy-ups (v452) ---------- */
+/* The studio's own name broke mid-word in the viewer's credit column
+   ("nerdyphotographer.i / n") because the column is 142px and the value wraps
+   anywhere. A name is one word. */
+.lb-person { overflow-wrap: normal; word-break: keep-all; }
+.lb-person a { overflow-wrap: anywhere; }
+
+/* Tap targets. The A–Z letters were 22–28px and the stars 22px, against the
+   44px a finger comfortably hits; the pager and the reorder arrows were close
+   to the line too (Sep 2026 audit). */
+@media (pointer: coarse) {
+  .alpha-btn { min-width: 40px; min-height: 40px; }
+  .pp-tile-star, .work-share, .pager button, [data-move] { min-width: 40px; min-height: 40px; }
+}
+/* Which letter is showing, for anyone who cannot see the highlight. */
+.alpha-btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); }

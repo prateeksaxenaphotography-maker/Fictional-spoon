@@ -143,7 +143,19 @@ const albumSentence = (s) => {
   const when = String(s.season || "").replace(/^—$/, "");
   return `${s.activity || "Studio"} photography featuring ${albumName(s)}${place ? `, shot in ${place}` : ""}${when ? ` in ${when}` : ""} by ${BRAND} — ${s.photos.length} photograph${s.photos.length === 1 ? "" : "s"}.`;
 };
-const albumLastMod = (s) => isoDay(Math.max(s.updatedAt || 0, s.createdAt || 0) || Date.parse(s.date) || Date.now());
+/* Nothing writes updatedAt on an album, so every "last changed" date in the
+   sitemap was the album's creation date however often its photos changed
+   (Sep 2026 audit). A photo id carries the moment it was uploaded in base 36,
+   so the newest photo dates the album. */
+const photoStamp = (p) => {
+  // The id starts with Date.now() in base 36, which is 8 characters; the rest
+  // is the random tail that makes it unique.
+  const t = parseInt(String((p && p.id) || "").split("-")[0].slice(0, 8), 36);
+  return Number.isFinite(t) && t > 1500000000000 && t < 4000000000000 ? t : 0;
+};
+const albumLastMod = (s) => isoDay(
+  Math.max(s.updatedAt || 0, s.createdAt || 0, ...(s.photos || []).map(photoStamp))
+  || Date.parse(s.date) || Date.now());
 
 /* ---------- the template ---------- */
 const TEMPLATE = read("index.html");
