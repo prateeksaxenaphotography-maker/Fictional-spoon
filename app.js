@@ -3342,7 +3342,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         }));
         if (referenced.size) {
           const treeNow = await ghApi(pat, `/git/trees/${baseCommit.tree.sha}?recursive=1`);
-          const tracked = (treeNow.tree || []).filter((t) => t && t.type === "blob" && /^photos\//.test(t.path));
+          // Only files inside an album's own folder — photos/<albumId>/<file>.
+          // Anything else under photos/ belongs to the site rather than to an
+          // album, and no album will ever "reference" it: photos/og/ holds the
+          // wide crops that WhatsApp and Google show for a link, and the first
+          // publish after they were added deleted all ten of them (d3ddcb7,
+          // Sep 2026). A folder this code does not own is not its to tidy.
+          const tracked = (treeNow.tree || []).filter((t) =>
+            t && t.type === "blob" && /^photos\/[^/]+\/[^/]+$/.test(t.path) && !/^photos\/og\//.test(t.path));
           // A photo added by THIS publish is not in the base tree yet, so it
           // can never be caught here.
           removedFiles = tracked.filter((t) => !referenced.has(t.path)).map((t) => t.path);
