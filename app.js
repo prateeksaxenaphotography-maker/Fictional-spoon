@@ -1760,11 +1760,16 @@ window.moveAdminPackageRow = function(index, dir) {
   const albumHasActivity = (s, activity) => s.activity === activity
     || (s.photos || []).some((p) => p && lookByKey.has(p.look) && (lookByKey.get(p.look).activities || [])[0] === activity);
   const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  // The site itself is static (GitHub Pages) but /api/logs is served by server.js
-  // running elsewhere (Render). Same-origin locally; absolute URL in production.
-  // TODO: replace with your actual Render service URL after deploying.
-  const IS_LOCAL_HOST = ["localhost", "127.0.0.1"].includes(window.location.hostname);
-  const COMP_CARD_API_BASE = IS_LOCAL_HOST ? "" : "https://wolverine-photostudio-api.onrender.com";
+  // There was a COMP_CARD_API_BASE here, pointing at a Render service
+  // (wolverine-photostudio-api.onrender.com) that was written but never
+  // deployed. Four calls went to it: a view beacon on every lightbox open, the
+  // full booking payload on every agreed contract, and two admin loaders that
+  // put the admin passcode in the query string. Render hands an unused
+  // subdomain to whoever creates a service with that name, and render.yaml and
+  // server.js are in this public repo, so anyone could have taken the name and
+  // started receiving clients' names, emails, phones and signatures. All four
+  // calls and the host's CSP entry are gone (v443, site audit Sep 2026).
+  // Anything server-backed must use a domain the studio owns.
 
   /* ============================================================
      §2 · CORE UTILITIES
@@ -3016,6 +3021,44 @@ window.moveAdminPackageRow = function(index, dir) {
           : p;
         }),
       }));
+      // A booking record holds everything the client typed: their name, email,
+      // phone, the shoot notes, the location, the money and the contract
+      // number. All of it was being written into data.js, which is a plain file
+      // on a public site and in a public repo — a stranger could read the
+      // studio's client list (found in the Sep 2026 audit). A visitor's page
+      // only ever asks "is this date taken, and how" (getCalDateStatus), so
+      // that is all that leaves the device now.
+      //
+      // The studio's own copy of each booking stays in this browser's
+      // localStorage and in the signed-contract emails. That does mean a
+      // second device shows a date as taken without the client's name on it.
+      const publicCalendarSettings = (settings) => {
+        const src = settings || {};
+        const dates = src.bookedDates || {};
+        const safeDates = {};
+        Object.keys(dates).forEach((key) => {
+          const list = Array.isArray(dates[key]) ? dates[key] : [dates[key]];
+          const kept = list.filter(Boolean).map((b) => ({
+            id: b.id,
+            // Worked out here rather than published as a name for the reader to
+            // pattern-match ("Anticipated…", "Hold…"), which is why the name
+            // used to have to travel.
+            isTentative: !!(b.isTentative || b.status === "tentative"
+              || /anticipated|tentative|hold/i.test(`${b.name || ""} ${b.type || ""}`)),
+            // The kind of day it is, and nothing about who booked it.
+            ...(b.status ? { status: b.status } : {}),
+            ...(b.type ? { type: b.type } : {}),
+            ...(b.contractVersion ? { contractVersion: b.contractVersion } : {}),
+            // The album this day belongs to, when it came from one. Not personal
+            // (the album is on the site), and syncCalendarWithShoots matches on
+            // it: without it a second device cannot tell the published entry
+            // from the one it derives itself, and books the day twice.
+            ...(b.shootId ? { shootId: b.shootId } : {})
+          }));
+          if (kept.length) safeDates[key] = kept;
+        });
+        return { ...src, bookedDates: safeDates };
+      };
       // Regenerate data.js in EXACTLY the committed format — same keys
       // (CALENDAR_SETTINGS included) and same trailing alias lines. The
       // parser and this generator must always agree on the file shape:
@@ -3026,7 +3069,7 @@ window.moveAdminPackageRow = function(index, dir) {
    nerdyphotographer.in — published portfolio data
    Auto-synced by the Admin Panel. Photo files live under photos/.
    ============================================================ */
-window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: published, DELETED_IDS: [...removed].sort(), CALENDAR_SETTINGS: (window.WPS_DATA && window.WPS_DATA.CALENDAR_SETTINGS) || {},
+window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: published, DELETED_IDS: [...removed].sort(), CALENDAR_SETTINGS: publicCalendarSettings(window.WPS_DATA && window.WPS_DATA.CALENDAR_SETTINGS),
         // Invite codes, promo codes and package rates used to live only in the
         // admin device's localStorage, which no visitor can read: a code
         // created in the panel worked for the studio and was rejected as
@@ -3549,29 +3592,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     lbReturnFocus = document.activeElement;
     lbList = list; lbIdx = idx; paintLb(); lb.hidden = false;
     document.body.style.overflow = "hidden"; $("#lightboxClose").focus();
-    logShootView(list[idx]);
   }
-  // Content-engagement signal for the Analytics tab: one record per shoot
-  // opened in the lightbox (not per next/prev step within it), so the admin
-  // can see which categories/shoots get looked at and shoot more of that
-  // kind. No visitor identity is sent. Skips the admin's own browsing (that's
-  // curation, not visitor interest) and demo/placeholder content.
-  function logShootView(photo) {
-    if (!photo || isAdmin()) return;
-    const s = SHOOTS.find(x => x.id === photo.shootId) || photo.shoot;
-    if (!s || s.demo) return;
-    fetch(`${COMP_CARD_API_BASE}/api/views`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        shootId: s.id,
-        activity: s.activity || "",
-        type: s.type || "",
-        talent: s.talent || "",
-        title: s.title || "",
-      }),
-    }).catch(() => {}); // best-effort — never blocks or affects the viewing experience
-  }
+  // A logShootView() beacon fired here on every lightbox open, naming the shoot
+  // and its talent to the never-deployed Render host. Removed with the rest of
+  // that backend (v443). Which shoots get looked at is a question for Google
+  // Analytics, which the site already loads.
   /* Stepping between photos used to assign lbImg.src directly, which makes the
      browser drop the photo on screen and render an EMPTY frame until the next
      one has downloaded and decoded — the flash/stutter on every next/prev.
@@ -3886,14 +3911,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
     // "Model portfolio" is shown and hidden by syncServicesNavLink, with What I
     // shoot: it leads to the models' cards on one of those pages (v440).
-    const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi"), workshopLi = $("#navWorkshopLi"), analyticsLi = $("#navAnalyticsLi"), calendarLi = $("#navCalendarLi");
+    const uploadLi = $("#navUploadLi"), bookLi = $("#navBookLi"), workshopLi = $("#navWorkshopLi"), calendarLi = $("#navCalendarLi");
     if (uploadLi) uploadLi.style.display = active ? "block" : "none";
     if (bookLi) bookLi.style.display = active ? "none" : "block";
     if (workshopLi) workshopLi.style.display = "block"; // Always show Workshop in nav
     if (calendarLi) calendarLi.style.display = active ? "block" : "none";
     const bookBuilderLi = $("#navBookBuilderLi");
     if (bookBuilderLi) bookBuilderLi.style.display = active ? "block" : "none";
-    if (analyticsLi) analyticsLi.style.display = "none";
     // Every shell has its own copy of the menu and footer, so find the links rather than an id.
     document.querySelectorAll('a[href="/studio"], a[href="/studio/"]').forEach((a) => {
       (a.closest(".nav-links li") || a).style.display = studioPageOpen() ? "" : "none";
@@ -4866,95 +4890,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     `;
   }
 
-  // Ranked horizontal bars: length encodes magnitude (a count), one accent
-  // hue throughout. No categorical color assignment is needed here — each
-  // row already carries its own text label, so identity never depends on
-  // color, only on the label beside it.
-  function rankedBarsHtml(items) {
-    const max = Math.max(1, ...items.map((i) => i.count));
-    return items.map((i) => {
-      const pct = Math.max(2, Math.round((i.count / max) * 100));
-      return `
-        <div style="display:flex; flex-direction:column; gap:5px; margin-bottom:14px;">
-          <div style="display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size: var(--font-xs);">
-            <span style="font-weight:600; color:var(--ink);">${esc(i.label)}</span>
-            <span style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); color:var(--ink-soft); font-variant-numeric: tabular-nums; flex:0 0 auto;">${i.count}</span>
-          </div>
-          <div style="height:8px; border-radius:4px; background:var(--line); overflow:hidden;">
-            <div style="height:100%; width:${pct}%; border-radius:4px; background:var(--accent);"></div>
-          </div>
-        </div>
-      `;
-    }).join("");
-  }
-
-  function renderAnalytics(data) {
-    const container = $("#analyticsContent");
-    if (!container) return;
-    const catItems = (data.categories || []).map((c) => ({ label: c.activity, count: c.count }));
-    const shootItems = (data.topShoots || []).map((s) => ({ label: s.label, count: s.count }));
-    const emptyNote = `<p class="page-sub" style="font-size: var(--font-sm); margin:0;">No views recorded yet.</p>`;
-    container.innerHTML = `
-      <div style="padding:18px 22px; border:1px solid var(--line); border-radius:8px; background:var(--bone); display:inline-flex; flex-direction:column; gap:4px; margin-bottom:36px;">
-        <span style="font-family:'JetBrains Mono', monospace; font-size: var(--font-xs); letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-soft);">Total Views</span>
-        <span style="font-size: var(--font-lg); font-weight:800; color:var(--ink); font-variant-numeric: tabular-nums;">${data.totalViews ?? 0}</span>
-      </div>
-      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:40px;">
-        <div>
-          <h3 style="font-family:'Outfit', sans-serif; font-size: var(--font-sm); font-weight:700; margin:0 0 16px; color:var(--ink);">Views by Category</h3>
-          ${catItems.length ? rankedBarsHtml(catItems) : emptyNote}
-        </div>
-        <div>
-          <h3 style="font-family:'Outfit', sans-serif; font-size: var(--font-sm); font-weight:700; margin:0 0 16px; color:var(--ink);">Top Shoots</h3>
-          ${shootItems.length ? rankedBarsHtml(shootItems) : emptyNote}
-        </div>
-      </div>
-    `;
-  }
-
-  function viewAnalytics() {
-    return `
-      <section class="page-head">
-        <div class="container">
-          <p class="eyebrow reveal">Workshops</p>
-          ${kineticH1("Analytics", "kinetic-h1-wide")}
-          <p class="page-sub reveal" style="max-width: 620px; line-height: 1.6; opacity: 1 !important; visibility: visible !important; transform: none !important;">Which photo categories and shoots get looked at most on the site — a signal for what kind of shoot to do more of. Live traffic and referrers are already tracked separately via Cloudflare and Google Analytics; this is just content engagement within the portfolio itself.</p>
-        </div>
-      </section>
-      <section class="section container">
-        <div id="analyticsContent">
-          <button type="button" id="analyticsLoadBtn" class="btn btn-dark" style="font-family:'JetBrains Mono', monospace; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; font-size: var(--font-xs); height:auto; padding:12px 20px;">Load Analytics →</button>
-        </div>
-      </section>
-    `;
-  }
-
-  function wireAnalytics() {
-    const btn = $("#analyticsLoadBtn");
-    if (!btn) return;
-    btn.addEventListener("click", async () => {
-      const passcode = prompt("Enter admin passcode to view analytics:");
-      if (!passcode) return;
-      btn.disabled = true;
-      btn.textContent = "Loading…";
-      try {
-        const res = await fetch(`${COMP_CARD_API_BASE}/api/views/summary?passcode=${encodeURIComponent(passcode.trim())}`);
-        if (res.status === 401) {
-          toast("Incorrect passcode.");
-          btn.disabled = false;
-          btn.textContent = "Load Analytics →";
-          return;
-        }
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        renderAnalytics(await res.json());
-      } catch (err) {
-        console.error("Analytics load failed:", err);
-        toast("Couldn't load analytics — check the server connection.");
-        btn.disabled = false;
-        btn.textContent = "Load Analytics →";
-      }
-    });
-  }
+  // The Analytics screen (rankedBarsHtml, renderAnalytics, viewAnalytics and
+  // wireAnalytics) lived here. Its only source of numbers was the
+  // never-deployed Render host, and its Load button put the admin passcode
+  // into a query string. The /analytics route has redirected to home for a
+  // long time, so nothing ever reached it. Removed in v443; real traffic is in
+  // Google Analytics.
 
   /* ============================================================
      § CALENDAR AVAILABILITY & BOOKING SYSTEM DATA
@@ -5730,14 +5671,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 10px;">
           <div>
             <p class="eyebrow" style="margin: 0 0 6px; color: var(--accent);">Contract Audit Trail</p>
-            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 0;">Audit Records — Server (permanent) + Local (this browser)</h3>
-          </div>
-          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <span id="serverAuditMeta" style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--ink-soft);"></span>
-            <button type="button" class="admin-cal-btn primary" onclick="window.loadServerContractRecords(this)" style="font-size: var(--font-xs); font-weight: 700;">☁️ Load Server Records</button>
+            <h3 style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; margin: 0;">Audit Records — this browser</h3>
           </div>
         </div>
-        <div id="serverAuditGrid" style="display: none; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-bottom: 18px;"></div>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
           ${getLocalContractAudits().length ? getLocalContractAudits().map(a => `
             <div style="background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
@@ -5765,66 +5701,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     `;
   }
 
-  // Fetches the passcode-gated server audit trail (durable GitHub store,
-  // merged with any Render-local fallback entries) into the vault page.
-  window.loadServerContractRecords = async (btn) => {
-    const passcode = prompt("Enter admin passcode to load server contract records:");
-    if (!passcode) return;
-    if (btn) { btn.disabled = true; btn.textContent = "Loading…"; }
-    try {
-      const res = await fetch(`${COMP_CARD_API_BASE}/api/contracts/audit?passcode=${encodeURIComponent(passcode.trim())}`);
-      if (res.status === 401) { toast("Incorrect passcode."); return; }
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const grid = $("#serverAuditGrid");
-      if (!grid) return;
-      const entries = data.entries || [];
-      // Reconcile server audits into local storage and calendar
-      if (Array.isArray(entries) && entries.length > 0) {
-        const localAudits = getLocalContractAudits();
-        let auditAdded = false;
-        entries.forEach(srvEntry => {
-          if (!srvEntry) return;
-          const match = localAudits.find(l => (l.contractNumber && srvEntry.contractNumber && l.contractNumber === srvEntry.contractNumber) || (l.clientName === srvEntry.clientName && l.date === srvEntry.date));
-          if (!match) {
-            localAudits.push(srvEntry);
-            auditAdded = true;
-          }
-        });
-        if (auditAdded) {
-          localStorage.setItem("wps-contract-audit", JSON.stringify(localAudits));
-          syncCalendarWithAudits();
-        }
-      }
-      const meta = $("#serverAuditMeta");
-      if (meta) meta.textContent = `${entries.length} server record${entries.length !== 1 ? "s" : ""} · ${data.storage || ""}`;
-      grid.style.display = "grid";
-      grid.innerHTML = entries.length ? entries.map(a => `
-        <div style="background: var(--surface); border: 1.5px solid var(--accent); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
-          <div style="display:flex; justify-content: space-between; align-items:flex-start; gap: 8px; flex-wrap: wrap;">
-            <div>
-              <div style="font-family: 'Outfit', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">☁️ ${esc(a.clientName || 'Unknown')}</div>
-              <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">${esc(a.contractVersion || '—')} · ${esc(a.date || '—')}</div>
-            </div>
-            ${a.contractNumber ? `<span style="font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent); font-weight: 700;">${esc(a.contractNumber)}</span>` : ''}
-          </div>
-          <div style="font-size: var(--font-xs); color: var(--ink-soft);">${a.clientEmail ? `✉️ ${esc(a.clientEmail)}` : ''} ${a.phone ? `· 📞 ${esc(a.phone)}` : ''}</div>
-          <div style="font-size: var(--font-xs); color: var(--ink-soft);">Signed: ${a.sigCaptured ? 'Yes' : 'No'} · Recorded: ${a.timestamp ? new Date(a.timestamp).toLocaleString() : 'Unknown'}</div>
-          <div style="font-size: var(--font-xs); color: var(--ink-soft);">Notes: ${esc(a.notes || 'No notes')}</div>
-        </div>
-      `).join('') : `
-        <div style="text-align: center; padding: 28px 18px; color: var(--ink-soft); font-size: var(--font-sm); background: var(--bone); border: 1px dashed var(--line); border-radius: 10px;">
-          <div style="font-weight: 700;">No server records yet</div>
-          <div style="font-size: var(--font-xs); margin-top: 6px;">Records land here permanently once clients sign — from any device.</div>
-        </div>
-      `;
-    } catch (err) {
-      console.warn("Server contract records load failed:", err);
-      toast("Couldn't load server records — check the server connection.");
-    } finally {
-      if (btn) { btn.disabled = false; btn.textContent = "☁️ Load Server Records"; }
-    }
-  };
+  // window.loadServerContractRecords lived here: it prompted for the admin
+  // passcode and sent it in the query string to the never-deployed Render
+  // host, so it could only ever fail. Removed in v443 with the rest of that
+  // backend. The signed contracts themselves are in the studio's Gmail.
 
   /* ============================================================
      § ADMIN CALENDAR & BOOKING MANAGEMENT PAGE (/calendar)
@@ -13291,15 +13171,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             notes: payload.notes
           });
 
-          try {
-            await fetch(`${COMP_CARD_API_BASE}/api/contracts/audit`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload)
-            });
-          } catch (err) {
-            console.warn("Contract audit sync failed:", err);
-          }
+          // The same payload used to be POSTed to the never-deployed Render
+          // host as well (v443 removed it): it carried the client's name,
+          // email, phone, Instagram, signature and financials to a hostname
+          // the studio does not own. The record the studio keeps is the
+          // contract email; this local copy is the client's own.
         }
 
         // GUARANTEED INSTANT SAVE: Record the booking and contract acceptance
@@ -13396,8 +13272,21 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // Only "sent" is allowed to look like a completed request — showing a
         // green tick when the mail still has to be sent is what left clients
         // thinking they had booked when the studio had received nothing.
+        // mode: "sending" (waiting on the relay), "sent" (the relay confirmed),
+        // "gmail" / "manual" (the relay failed, the client has to send it).
+        // "sending" is the state the panel opens in: saying "Request sent" before
+        // the relay has answered told clients their booking had arrived when it
+        // might not have, and a client who closed the tab in that window never
+        // saw the correction (site audit, Sep 2026).
         const showSuccess = (mode) => {
+          const sending = mode === "sending";
           const sentDirectly = mode === "sent";
+          // Until the relay answers there is nothing for the client to do, and
+          // the fallback buttons would be telling them to send it themselves.
+          [$("#bookGmailLink"), $("#bookOutlookLink"), $("#bookMailtoLink"), $("#bookAnother"),
+           $("#copyInquiryBtn"), $("#inquiryTextPreview")].forEach((el) => { if (el) el.hidden = sending; });
+          const steps = successPanel && successPanel.querySelector(".next-steps");
+          if (steps) steps.hidden = sending;
           if (successPanel) successPanel.classList.toggle("is-tfp", type === "Selective Collaboration (TFP)");
           if (successPanel) successPanel.classList.toggle("is-production", isProduction);
           // The booking itself was already written to the calendar store by
@@ -13411,25 +13300,36 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
             const iconEl = $("#bookSuccessIcon");
             if (iconEl) {
-              iconEl.innerHTML = sentDirectly
+              iconEl.innerHTML = sending
+                ? `<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 2a10 10 0 0 1 10 10"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.9s" repeatCount="indefinite"/></path><circle cx="12" cy="12" r="10" opacity="0.25"/></svg>`
+                : sentDirectly
                 ? `<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`
                 : `<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>`;
             }
 
             const headingEl = $("#bookSuccessHeading");
             if (headingEl) {
-              headingEl.textContent = sentDirectly
+              headingEl.textContent = sending
+                ? (isProduction ? "Sending your brief…" : "Sending your request…")
+                : sentDirectly
                 ? (isProduction ? "Brief received." : "Request sent.")
                 : (mode === "gmail" ? "One last step — press Send." : "One last step — pick how to send.");
             }
 
-            const releaseNote = agreedToTerms
-              ? `<br/><br/><strong style="color: var(--accent);">Terms Agreed:</strong> Your acceptance of <em>${esc(contractRefDoc)}</em>${contractNumber ? ` (${esc(contractNumber)})` : ""} has already been recorded with the studio — that part is done regardless of the email below.`
-              : "";
+            // What the acceptance note may claim depends on whether the request
+            // actually reached the studio: it used to say "already recorded with
+            // the studio… regardless of the email below" even when both emails
+            // had failed, which was the one thing it could not promise.
+            const releaseNote = !agreedToTerms ? ""
+              : sentDirectly
+              ? `<br/><br/><strong style="color: var(--accent);">Terms agreed:</strong> your acceptance of <em>${esc(contractRefDoc)}</em>${contractNumber ? ` (${esc(contractNumber)})` : ""} went to the studio with this request, and a copy is on its way to you.`
+              : `<br/><br/><strong style="color: var(--accent);">Terms agreed:</strong> your acceptance of <em>${esc(contractRefDoc)}</em>${contractNumber ? ` (${esc(contractNumber)})` : ""} is saved in this browser and is part of the email below — it reaches the studio when you send it.`;
 
             const msgEl = $("#bookSuccessMsg");
             if (msgEl) {
-              if (sentDirectly && isProduction) {
+              if (sending) {
+                msgEl.innerHTML = `Sending this to the studio now — <strong>please keep this page open</strong> for a moment. We'll confirm here as soon as it's through, and show you another way to send it if anything goes wrong.`;
+              } else if (sentDirectly && isProduction) {
                 msgEl.innerHTML = `<strong style="color: var(--accent);">Brief received.</strong> It's with the studio. We'll reply within 24 hours to set up a call; the proposal and agreement follow the call.`;
               } else if (sentDirectly) {
                 msgEl.innerHTML = `<strong style="color: var(--accent);">Request sent!</strong> Your booking inquiry has been delivered straight to the studio — no further action needed. We'll reply to <strong>${esc(email)}</strong>.` +
@@ -13552,14 +13452,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           sendContractRecord();
         };
 
-        // INSTANT UI RESPONSE: show the success state immediately (0ms delay).
-        // The booking and contract audit are ALREADY saved to the Admin DB
-        // above, so the request is genuinely captured at this point and the
-        // client does not have to wait on the network to be told so.
-        showSuccess("sent");
-        sendContractRecord();
+        // The panel opens on "Sending…", not on "Request sent": the booking is
+        // saved on this device by the block above, but only the relay can say
+        // whether the studio has it.
+        showSuccess("sending");
 
-        // ...but the relay still has to be checked. FormSubmit reports soft
+        // FormSubmit reports soft
         // failures (an unactivated form, rate limiting) as HTTP 200 with
         // success:"false", so neither res.ok nor "the fetch didn't throw" means
         // delivered. Announcing success unconditionally told clients "delivered
@@ -13583,7 +13481,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           clearTimeout(relayTimer);
           const body = await res.json().catch(() => null);
           const relayOk = res.ok && !!body && (body.success === true || body.success === "true");
-          if (relayOk) return;                       // optimistic message was right
+          if (relayOk) {
+            // Only now is it true. The signed-contract email follows rather
+            // than travelling beside this one: FormSubmit rate-limits per IP,
+            // and two emails fired in the same millisecond knock each other
+            // out — the bug this sequencing was written for in v258, undone by
+            // an "instant response" change in v281 and found again in the
+            // Sep 2026 audit.
+            showSuccess("sent");
+            sendContractRecord();
+            return;
+          }
           console.warn("Booking relay rejected:", (body && body.message) || res.statusText);
           finishWithFallback();                      // downgrade to "one more step"
         })
@@ -14249,7 +14157,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     }
     if (key === "book") wireBook();
     if (key === "calendar") wireCalendar();
-    if (key === "analytics") wireAnalytics();
     // animate hero counts
     view.querySelectorAll("[data-count]").forEach((el) => animateCount(el, parseInt(el.textContent, 10) || 0));
   }
@@ -14268,7 +14175,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         <div id="studioBookRoot" class="sb-root"><p class="page-sub">Loading the builder…</p></div>
       </section>`;
   }
-  const ROUTES = { "": viewHome, "portfolio-book": viewPortfolioBook, "albums": viewAlbums, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload, "book": viewBook, "calendar": viewCalendar, "contracts": viewContracts, "testimonials": viewTestimonials, "workshop-attended": viewWorkshopAttended, "analytics": viewAnalytics };
+  const ROUTES = { "": viewHome, "portfolio-book": viewPortfolioBook, "albums": viewAlbums, "categories": viewCategories, "studio": viewStudio, "upload": viewUpload, "book": viewBook, "calendar": viewCalendar, "contracts": viewContracts, "testimonials": viewTestimonials, "workshop-attended": viewWorkshopAttended };
 
   /* ---- STATIC PAGES ---------------------------------------------------------
      The service pages (/services/…) are written as plain HTML at deploy by
@@ -14409,13 +14316,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // pushState: Back from the home page would otherwise land here and bounce again.
     if (key === "studio" && !studioPageOpen()) {
       history.replaceState(null, "", "/");
-      render();
-      return;
-    }
-
-    // Redirect all requests to analytics page to home
-    if (key === "analytics") {
-      history.pushState(null, "", "/");
       render();
       return;
     }
