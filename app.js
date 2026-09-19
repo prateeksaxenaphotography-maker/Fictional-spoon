@@ -30,7 +30,10 @@
       store.removeItem(probe);
     } catch (e) { broken = true; }
     if (!broken) return;
-    try { Object.defineProperty(window, name, { configurable: true, writable: true, value: inMemory() }); }
+    try {
+      Object.defineProperty(window, name, { configurable: true, writable: true, value: inMemory() });
+      window.__wpsStorageIsMemoryOnly = true;   // nothing survives a reload
+    }
     catch (e) { console.warn(`${name} is blocked and could not be stood in for; some settings will not stick.`); }
   });
 })();
@@ -1964,12 +1967,24 @@ window.moveAdminPackageRow = function(index, dir) {
     return parts.join(" ");
   };
   function readAsDataURL(f) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); }); }
+  // Always re-encodes, even when the photo is already small enough. Returning
+  // the upload untouched (which this did) published whatever the camera or
+  // Lightroom wrote: three files came in around 1 byte per pixel — 1.3 MB for
+  // a 1020x1360 photo, six times what it needs — and seven carried full EXIF
+  // including the camera body and lens serial numbers and the exact capture
+  // time. Drawing through a canvas drops every metadata block and re-encodes
+  // at a sane quality, so neither can reach the site again (Sep 2026 audit).
   function resize(dataUrl, maxDim = 1600, q = 0.82) {
     return new Promise((res) => { const img = new Image(); img.onload = () => {
-      let { width: w, height: h } = img; if (Math.max(w, h) <= maxDim) return res(dataUrl);
-      const s = maxDim / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s);
+      let { width: w, height: h } = img;
+      if (Math.max(w, h) > maxDim) {
+        const s = maxDim / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s);
+      }
       const c = document.createElement("canvas"); c.width = w; c.height = h; c.getContext("2d").drawImage(img, 0, 0, w, h);
-      res(c.toDataURL("image/jpeg", q));
+      const out = c.toDataURL("image/jpeg", q);
+      // A photo that was already lean stays as it was rather than being
+      // re-compressed for nothing.
+      res(out.length < dataUrl.length ? out : dataUrl);
     }; img.onerror = () => res(dataUrl); img.src = dataUrl; });
   }
   function extractPalette(imgDataUrl) {
@@ -18188,6 +18203,12 @@ if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || wi
 (function autoUpdateStaleVisitors() {
   try {
     const params = new URLSearchParams(location.search);
+    // The version this page was already reloaded to, read before the parameter
+    // is tidied away. It is the only record that survives the reload itself:
+    // the sessionStorage flag below does not when a browser blocks storage and
+    // the in-memory stand-in starts empty on every load — which turned a stale
+    // tab into an endless reload loop (found while testing v448).
+    const arrivedAt = params.get("_v");
     if (params.has("_v")) {
       const clean = new URL(location.href);
       clean.searchParams.delete("_v");
@@ -18234,7 +18255,11 @@ if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || wi
     const checkOnce = () => beacon()
       .then((live) => {
         if (!live || live === loaded) return;
+        if (arrivedAt === live) return;              // this hop has already happened
         if (sessionStorage.getItem("wps-updated-to") === live) return;
+        // Without storage that outlives a reload there is no way to remember
+        // having tried, beyond the one hop above; a second attempt would loop.
+        if (window.__wpsStorageIsMemoryOnly && arrivedAt) return;
         if (hasWorkInProgress()) return;    // try again next time they switch back
         sessionStorage.setItem("wps-updated-to", live);
         // Drop the service worker's precache too, so its offline fallback
