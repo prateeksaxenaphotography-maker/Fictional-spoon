@@ -5,13 +5,21 @@
 # This workflow uploads the repository (Jekyll is bypassed; .nojekyll is
 # present) and publishes it, giving real build logs when something goes wrong.
 #
-# One step runs before the upload: build-seo.mjs writes the pages search
-# engines and link previews read (an HTML page per album, the service pages,
-# the sitemap) from the published data.js. It works on this throwaway checkout
-# only — nothing is committed — and it is continue-on-error on purpose: if it
-# ever breaks, it stops before writing anything and the site still deploys,
-# exactly as it is in the repo. The "Validate portfolio data" workflow runs
-# the same script with --check and goes red, which is how a break gets noticed.
+# A check job runs FIRST and the deploy waits for it. Before, the data check
+# was a separate workflow with no say over the deploy, and the page build was
+# continue-on-error: a broken build-seo.mjs shipped a site with no album pages,
+# no "What I shoot" pages (the model page loses its cards and PDFs) and a stale
+# sitemap, while the deploy went green (Sep 2026 audit). Now a failure keeps
+# the previous, working deploy live instead.
+#
+# The checks are the ones that are never wrong: data.js executes and parses,
+# every photo file exists, the cache-buster matches, the pages build. Judgement
+# calls (a promo code removed, prices re-cut) only print a warning, so they can
+# never stop the studio publishing its own site.
+#
+# build-seo.mjs writes the pages search engines and link previews read (an HTML
+# page per album, the service pages, the sitemap) from the published data.js,
+# on this throwaway checkout only — nothing is committed.
 name: Deploy to GitHub Pages
 
 on:
@@ -36,7 +44,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # HEAD~1 is needed for the collapse checks
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Published data is intact
+        run: node .github/scripts/validate-data.mjs
+      - name: Search-engine pages build
+        run: node .github/scripts/build-seo.mjs --check
+
   deploy:
+    needs: check
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -50,10 +73,12 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
+      # Not continue-on-error any more: the check job has already proved this
+      # builds, so a failure here is real, and stopping keeps the last good
+      # deploy live rather than replacing it with a site missing its pages.
       - name: Build search-engine pages (albums, services, sitemap)
-        continue-on-error: true
         run: node .github/scripts/build-seo.mjs
 
       - name: Upload site artifact (repository root)

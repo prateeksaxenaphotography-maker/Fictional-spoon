@@ -22,7 +22,7 @@ jobs:
           fetch-depth: 2 # HEAD~1 is needed for the album-count-collapse check
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - run: node .github/scripts/validate-data.mjs
       # The deploy builds the album/service pages and the sitemap with this
       # script and carries on without them if it fails. This is where a failure
