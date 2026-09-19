@@ -155,18 +155,36 @@ const albumLooks = (s) => {
 };
 const realName = (x) => { const v = cleanName(x).replace(/^[—–-]+$/, "").trim(); return /[a-z]/i.test(v) ? v : ""; };
 const albumTeam = (s) => [...new Set([s.stylist, s.mua, s.hair, s.artDirector].map(realName).filter(Boolean))];
+const albumLookCounts = (s) => {
+  const n = new Map();
+  for (const p of s.photos || []) {
+    const l = p && lookByKey.get(p.look);
+    if (l && l.label) n.set(l.label, (n.get(l.label) || 0) + 1);
+  }
+  return [...n.entries()].sort((a, b) => b[1] - a[1]);
+};
 const albumSentence = (s) => {
   const own = String(s.description || "").trim();
   if (own) return own;
   const place = albumPlace(s);
   const when = String(s.season || "").replace(/^—$/, "");
-  const looks = albumLooks(s);
+  const counts = albumLookCounts(s);
+  const looks = counts.map(([label]) => label);
   const team = albumTeam(s);
   const forWhom = albumClients(s).map(clientLabel).filter(Boolean);
+  const castFor = (Array.isArray(s.modelTypes) ? s.modelTypes : []).map((x) => String(x || "").trim()).filter(Boolean);
+  const agency = realName(s.agency);
   const n = s.photos.length;
   const kind = looks.length ? listOf(looks) : (s.activity || "Studio");
   const out = [`${kind} photography with ${albumName(s)}${place ? `, shot in ${place}` : ""}${when ? ` in ${when}` : ""}.`];
-  out.push(`${n} photograph${n === 1 ? "" : "s"}${looks.length > 1 ? ` across ${looks.length} looks` : ""} by ${BRAND}${team.length ? `, with ${listOf(team)}` : ""}.`);
+  // The breakdown is the one line no two albums share: it counts this
+  // album's own frames, look by look.
+  const counted = counts.reduce((t, [, c]) => t + c, 0);
+  const parts = listOf(counts.map(([label, c]) => `${c} ${label.toLowerCase()}`));
+  const breakdown = counts.length > 1 ? (counted === n ? ` — ${parts}` : `, including ${parts}`) : "";
+  out.push(`${n} photograph${n === 1 ? "" : "s"} by ${BRAND}${team.length ? `, with ${listOf(team)}` : ""}${breakdown}.`);
+  if (castFor.length) out.push(`${albumName(s)} is cast for ${listOf(castFor.map((x) => x.toLowerCase()))} work${agency ? `, represented by ${agency}` : ""}.`);
+  else if (agency) out.push(`${albumName(s)} is represented by ${agency}.`);
   if (forWhom.length) out.push(`Shot for: ${forWhom.join(", ")}.`);
   return out.join(" ");
 };
