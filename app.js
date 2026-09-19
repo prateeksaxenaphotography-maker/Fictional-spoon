@@ -18342,6 +18342,31 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       navSocials.innerHTML = links.join("");
     }
 
+    // "Upload" and "Calendar & Bookings" — the studio's own screens. They used
+    // to sit in all nine shells' HTML, so every visitor's page, and every
+    // search engine reading it, carried a link to them even though only the
+    // studio can use them (site audit Sep 2026). Built here instead, like
+    // "Portfolio book" below, so they exist only once someone is looking at the
+    // page. The visibility block reads these ids and shows them in admin mode.
+    const adminNavList = document.querySelector(".nav-links");
+    if (adminNavList) {
+      const addAdminLi = (id, href, label, before) => {
+        if (document.getElementById(id)) return;
+        const li = document.createElement("li");
+        li.id = id;
+        li.style.display = "none";
+        const a = document.createElement("a");
+        a.href = href;
+        a.setAttribute("data-link", "");
+        a.textContent = label;
+        li.appendChild(a);
+        if (before) before.before(li); else adminNavList.appendChild(li);
+      };
+      // Upload goes where it always sat, above "Book a shoot"; the calendar last.
+      addAdminLi("navUploadLi", "/upload", "Upload", document.getElementById("navBookLi"));
+      addAdminLi("navCalendarLi", "/calendar", "Calendar & Bookings", null);
+    }
+
     // "Portfolio book" — the studio's own tool, so it shows only in admin mode
     // (see the nav visibility block, which reads its id).
     const bookNavList = document.querySelector(".nav-links");

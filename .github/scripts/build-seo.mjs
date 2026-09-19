@@ -873,6 +873,23 @@ const { blocks, quoteCount } = prerenderBlocks();
 for (const [rel, inner] of Object.entries(blocks)) {
   outputs.push({ rel, html: shellWithPrerender(rel, inner) });
 }
+/* Pages that exist but have nothing for a search engine yet: the Studio page
+   while it is closed to visitors (config.js studioPagePublic), and Testimonials
+   while no review has been published. Both were indexable as good as empty
+   (site audit Sep 2026). The tag is stamped at deploy time rather than typed
+   into the shells, so opening the studio page or publishing the first
+   testimonial takes it away again with nothing to remember. */
+const hiddenShells = new Set();
+if (!STUDIO_PUBLIC && exists("studio/index.html")) hiddenShells.add("studio/index.html");
+if (!quoteCount && exists("testimonials/index.html")) hiddenShells.add("testimonials/index.html");
+const withNoindex = (html, rel) => (/<meta\s+name="robots"/i.test(html) ? html
+  : replaceOnce(html, /<head>/i, (m) => `${m}\n  <meta name="robots" content="noindex, follow" />`, `<head> in ${rel}`));
+for (const rel of hiddenShells) {
+  const at = outputs.findIndex((o) => o.rel === rel);
+  if (at >= 0) outputs[at] = { rel, html: withNoindex(outputs[at].html, rel) };
+  else outputs.push({ rel, html: withNoindex(read(rel), rel) });
+}
+
 outputs.push({ rel: "sitemap.xml", html: buildSitemap({ quoteCount }) });
 
 // Two outputs at one path would mean one page silently overwriting another.
@@ -881,7 +898,7 @@ for (const o of outputs) {
   if (/\.html$/.test(o.rel) && (o.html.match(/<\/main>/g) || []).length !== 1) fail(`${o.rel}: expected exactly one </main>`);
 }
 // Nothing may land on top of a page this script does not own.
-const owned = new Set([...Object.keys(blocks), "sitemap.xml"]);
+const owned = new Set([...Object.keys(blocks), ...hiddenShells, "sitemap.xml"]);
 for (const o of outputs) {
   if (!owned.has(o.rel) && exists(o.rel) && !read(o.rel).includes('class="prerender"') && !read(o.rel).includes("data-static-path=")) {
     fail(`refusing to overwrite ${o.rel}: it exists and was not written by this script`);
