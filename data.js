@@ -2135,224 +2135,224 @@ window.WPS_DATA = {
       "2001-08-15": [
         {
           "id": "b_1786709109940_konc",
-          "type": "Fashion Editorial",
           "isTentative": false,
           "status": "confirmed",
+          "type": "Fashion Editorial",
           "contractVersion": "COMMERCIAL-CONTRACT-V3.3"
         }
       ],
       "2026-01-01": [
         {
           "id": "b_1786709109940_5jr5",
-          "type": "Fashion Editorial",
           "isTentative": false,
           "status": "confirmed",
+          "type": "Fashion Editorial",
           "contractVersion": "COMMERCIAL-CONTRACT-V3.3"
         },
         {
           "id": "b_1787428837182_k801",
-          "type": "Fashion Editorial",
           "isTentative": false,
           "status": "confirmed",
+          "type": "Fashion Editorial",
           "contractVersion": "COMMERCIAL-CONTRACT-V3.5"
         }
       ],
       "2026-08-15": [
         {
           "id": "b_1786709194164_gq8l",
-          "type": "Other",
           "isTentative": false,
           "status": "confirmed",
+          "type": "Other",
           "contractVersion": "V3.3-TFP"
         }
       ],
       "2026-08-16": [
         {
           "id": "b_1786709219783_vbyq",
-          "type": "Fashion Editorial",
           "isTentative": false,
           "status": "confirmed",
+          "type": "Fashion Editorial",
           "contractVersion": "V3.0"
         },
         {
           "id": "shoot-msxhrjrtl997mq",
-          "shootId": "msxhrjrtl997mq",
-          "type": "Test Shoot",
+          "isTentative": false,
           "status": "confirmed",
-          "isTentative": false
+          "type": "Test Shoot",
+          "shootId": "msxhrjrtl997mq"
         }
       ],
       "2026-08-22": [
         {
           "id": "b_1786709227844_f9xi",
-          "type": "Fashion Editorial",
           "isTentative": true,
           "status": "tentative",
+          "type": "Fashion Editorial",
           "contractVersion": "Pending Agreement"
         },
         {
           "id": "shoot-mt46wftacuy0w7",
-          "shootId": "mt46wftacuy0w7",
-          "type": "Test Shoot",
+          "isTentative": false,
           "status": "confirmed",
-          "isTentative": false
+          "type": "Test Shoot",
+          "shootId": "mt46wftacuy0w7"
         }
       ],
       "2026-08-23": [
         {
           "id": "b_1786709231256_wu6z",
-          "type": "Fashion Editorial",
           "isTentative": true,
           "status": "tentative",
+          "type": "Fashion Editorial",
           "contractVersion": "Pending Agreement"
         }
       ],
       "2026-08-30": [
         {
           "id": "b_1786903849525_fif0",
-          "type": "Assisting Photographer",
           "isTentative": false,
           "status": "assisting",
+          "type": "Assisting Photographer",
           "contractVersion": "Pending Agreement"
         }
       ],
       "2001-10-17": [
         {
           "id": "b_1787428837182_i8mi",
-          "type": "Fashion Editorial",
           "isTentative": false,
           "status": "confirmed",
+          "type": "Fashion Editorial",
           "contractVersion": "COMMERCIAL-CONTRACT-V3.5"
         }
       ],
       "2026-08-29": [
         {
           "id": "b_1787749004048_b1bh",
-          "type": "Selective Collaboration (TFP)",
           "isTentative": false,
           "status": "confirmed",
+          "type": "Selective Collaboration (TFP)",
           "contractVersion": "V3.4-TFP"
         },
         {
           "id": "shoot-mte8dutdkqor3f",
-          "shootId": "mte8dutdkqor3f",
-          "type": "Test Shoot",
+          "isTentative": false,
           "status": "confirmed",
-          "isTentative": false
+          "type": "Test Shoot",
+          "shootId": "mte8dutdkqor3f"
         }
       ],
       "2026-09-13": [
         {
           "id": "b_1788962756110_ixb1",
-          "type": "Fashion Editorial",
           "isTentative": false,
           "status": "confirmed",
+          "type": "Fashion Editorial",
           "contractVersion": "V3.7-TFP"
         },
         {
           "id": "shoot-mu07kqljf8iyar",
-          "shootId": "mu07kqljf8iyar",
-          "type": "Test Shoot",
+          "isTentative": false,
           "status": "confirmed",
-          "isTentative": false
+          "type": "Test Shoot",
+          "shootId": "mu07kqljf8iyar"
         }
       ],
       "2026-09-20": [
         {
           "id": "b_1789484358930_brgw",
-          "type": "Fashion Editorial",
           "isTentative": false,
           "status": "confirmed",
+          "type": "Fashion Editorial",
           "contractVersion": "V3.7-TFP"
         }
       ],
       "2026-09-19": [
         {
           "id": "b_1789486815041_s1fh",
-          "type": "Fashion Editorial",
           "isTentative": true,
           "status": "tentative",
+          "type": "Fashion Editorial",
           "contractVersion": "Pending Agreement"
         }
       ],
       "2026-09-16": [
         {
           "id": "b_1789583885354_skuk",
-          "type": "Fashion Editorial",
           "isTentative": true,
           "status": "tentative",
+          "type": "Fashion Editorial",
           "contractVersion": "V3.7-COMMERCIAL"
         }
       ],
       "2026-06-14": [
         {
           "id": "shoot-mr4x3r7e4l5g4m",
-          "shootId": "mr4x3r7e4l5g4m",
-          "type": "Test Shoot",
+          "isTentative": false,
           "status": "confirmed",
-          "isTentative": false
+          "type": "Test Shoot",
+          "shootId": "mr4x3r7e4l5g4m"
         }
       ],
       "2026-06-13": [
         {
           "id": "shoot-mr4x6kwx3f8rs3",
-          "shootId": "mr4x6kwx3f8rs3",
-          "type": "Test Shoot",
+          "isTentative": false,
           "status": "confirmed",
-          "isTentative": false
+          "type": "Test Shoot",
+          "shootId": "mr4x6kwx3f8rs3"
         }
       ],
       "2026-03-14": [
         {
           "id": "shoot-mr55364rvor33m",
-          "shootId": "mr55364rvor33m",
-          "type": "Test Shoot",
+          "isTentative": false,
           "status": "confirmed",
-          "isTentative": false
+          "type": "Test Shoot",
+          "shootId": "mr55364rvor33m"
         }
       ],
       "2026-07-05": [
         {
           "id": "shoot-mr8legmk0o8mqz",
-          "shootId": "mr8legmk0o8mqz",
-          "type": "Test Shoot",
+          "isTentative": false,
           "status": "confirmed",
-          "isTentative": false
+          "type": "Test Shoot",
+          "shootId": "mr8legmk0o8mqz"
         }
       ],
       "2026-05-15": [
         {
           "id": "shoot-mranmpzmfblohv",
-          "shootId": "mranmpzmfblohv",
-          "type": "Test Shoot",
+          "isTentative": false,
           "status": "confirmed",
-          "isTentative": false
+          "type": "Test Shoot",
+          "shootId": "mranmpzmfblohv"
         }
       ],
       "2026-07-24": [
         {
           "id": "shoot-ms36z1wqm2xkrz",
-          "shootId": "ms36z1wqm2xkrz",
-          "type": "Workshop Attended",
+          "isTentative": false,
           "status": "workshop",
-          "isTentative": false
+          "type": "Workshop Attended",
+          "shootId": "ms36z1wqm2xkrz"
         }
       ],
       "2026-09-26": [
         {
           "id": "b_1789736038024_4o9n",
-          "type": "Assisting Photographer",
           "isTentative": false,
           "status": "assisting",
+          "type": "Assisting Photographer",
           "contractVersion": "Pending Agreement"
         }
       ],
       "2026-09-27": [
         {
           "id": "b_1789736040303_uhs5",
-          "type": "Workshop Attended",
           "isTentative": false,
           "status": "workshop",
+          "type": "Workshop Attended",
           "contractVersion": "Pending Agreement"
         }
       ]
