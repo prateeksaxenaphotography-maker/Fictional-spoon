@@ -53,10 +53,9 @@
 // decision: test shoots are offered to models and athletes. These are the
 // studio's own reasons for agreeing to one.
 const TEST_SHOOT_FAQ = [
-  "When does a test shoot make sense?",
-  "A test shoot has no shoot fee, so it has to be worth everyone's time. It makes sense when you bring at least one of these:",
+  "When does a test shoot (or collaboration) make sense?",
+  "A test shoot has no shoot fee, so it has to be worth everyone's time. It assumes you can already direct yourself in front of a camera — needing to be taught is what makes a shoot a booking rather than a collaboration. On top of that, it makes sense when you bring at least one of these:",
   [
-    "You already know the basics of posing, so the photographer only has to refine your poses, not teach them.",
     "A designer outfit, or a garment you designed, that lifts the look of the pictures for the photographer and everyone else on the team.",
     "Creative hair or make-up — a look the model and the photographer will both enjoy shooting.",
     "A following large enough that the post brings new followers to everyone who worked on the shoot.",
