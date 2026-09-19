@@ -534,13 +534,37 @@ window.saveInviteCodeFromForm = function() {
 /* ============================================================
    § ADMIN NO-CODE DYNAMIC PACKAGE & PRICING MANAGEMENT ENGINE
    ============================================================ */
+// Only ever reached when the published data.js could not be read. The ids
+// match the published ones (they were pkg1…pkg5 against the real pkg_1…pkg_5,
+// so every rule that filters by id quietly matched nothing offline), and the
+// prices are NOT treated as quotable — see pricesArePublished(): a booking is
+// taken without a quote rather than at a figure that may not be the studio's.
 const DEFAULT_PACKAGES = [
-  { id: "pkg1", name: "Basic Test / Comp Card", price: 7000, specs: "20 Proof Clicks + 0 Retouched" },
-  { id: "pkg2", name: "Mini Portfolio", price: 10000, specs: "25 Proof Clicks + 3-5 Retouched Clicks" },
-  { id: "pkg3", name: "Standard Editorial Portfolio", price: 25000, specs: "50 Unedited + 8-12 Retouched Clicks" },
-  { id: "pkg4", name: "Premium Brand Campaign", price: 50000, specs: "100 Unedited + 15-25 Retouched Clicks" },
-  { id: "pkg5", name: "High-End Full Day Production", price: 75000, specs: "Full Gallery + 30+ Retouched Master Assets" }
+  { id: "pkg_1", name: "Basic Test / Comp Card", price: 7000, specs: "20 Proof Clicks + 0 Retouched" },
+  { id: "pkg_2", name: "Mini Portfolio", price: 10000, specs: "25 Proof Clicks + 3-5 Retouched Clicks" },
+  { id: "pkg_3", name: "Standard Editorial Portfolio", price: 25000, specs: "50 Unedited + 8-12 Retouched Clicks" },
+  { id: "pkg_4", name: "Premium Brand Campaign", price: 50000, specs: "100 Unedited + 15-25 Retouched Clicks" },
+  { id: "pkg_5", name: "High-End Full Day Production", price: 75000, specs: "Full Gallery + 30+ Retouched Master Assets" }
 ];
+
+/* Are the prices on screen the studio's own?
+
+   The booking form quoted from the built-in list whenever data.js failed to
+   load, and those figures had drifted from the published ones — a home studio
+   at ₹3,000 against the real ₹2,000, a test-shoot rental at ₹3,000 against
+   ₹4,000. Nothing said anything was wrong, so a wrong total could go into a
+   contract email (Sep 2026 audit). When the answer here is false the form
+   shows no figures at all and says why. */
+function pricesArePublished() {
+  try {
+    const pub = window.WPS_DATA && window.WPS_DATA.PACKAGES;
+    if (Array.isArray(pub) && pub.length) return true;
+    // The studio's own device holds its prices locally, and is the one place
+    // they are authoritative without a publish.
+    return !!localStorage.getItem("wps_custom_packages");
+  } catch (e) { return false; }
+}
+window.pricesArePublished = pricesArePublished;
 
 // Fixed rental added to a PAID booking when the client picks the home studio.
 // Editable in the pricing panel and published with the rest of the rates, so
@@ -12242,7 +12266,31 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // switch that lets the itemised quote back through.
       document.body.classList.toggle("wps-rental-quote", homeStudioFee > 0 || collabShowsQuote);
 
-      if (isCollabBooking) {
+      // No published prices in hand (data.js did not load) means no figure on
+      // this page is known to be the studio's, so none is shown: the client
+      // sends the request and the studio quotes by email. Showing the built-in
+      // list instead is how a total that was never the studio's could end up
+      // in a contract (Sep 2026 audit).
+      const pricesKnown = pricesArePublished();
+      const priceNotice = (() => {
+        let el = $("#bookPricesUnavailable");
+        if (!el && finalPriceSummaryBox && finalPriceSummaryBox.parentNode) {
+          el = document.createElement("div");
+          el.id = "bookPricesUnavailable";
+          el.style.cssText = "display:none; background: var(--bone); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-top: 14px; line-height: 1.55;";
+          el.innerHTML = `<p style="margin:0; font-size: var(--font-xs); font-weight:700; color: var(--accent); text-transform: uppercase; letter-spacing:.05em;">Prices unavailable</p>
+            <p style="margin:6px 0 0; font-size: var(--font-sm); color: var(--ink);">The studio's current rates couldn't be loaded just now, so nothing is quoted here. Send your request anyway — you'll get the price by email before anything is booked. Reloading the page usually brings them back.</p>`;
+          finalPriceSummaryBox.parentNode.insertBefore(el, finalPriceSummaryBox.nextSibling);
+        }
+        return el;
+      })();
+      if (priceNotice) priceNotice.style.display = pricesKnown ? "none" : "block";
+
+      if (!pricesKnown) {
+        if (finalPriceSummaryBox) finalPriceSummaryBox.style.display = "none";
+        if (promoCodeWrap) promoCodeWrap.style.display = "none";
+        if (budgetField) budgetField.style.display = "none";
+      } else if (isCollabBooking) {
         if (finalPriceSummaryBox) finalPriceSummaryBox.style.display = collabShowsQuote ? "block" : "none";
         if (promoCodeWrap) promoCodeWrap.style.display = "none";
         if (budgetField) budgetField.style.display = "none";
@@ -13687,7 +13735,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           "Session Duration": sessionDuration || "—",
           "Location Pref": locationVal,
           "Studio Space": studioSpaceVal || "—",
-          "Package": isProduction ? "Quoted on the brief" : budget,
+          // With no published rates in hand, nothing on the page was a real
+          // quote, so the email must not read as though one was agreed.
+          ...(pricesArePublished() ? {} : { "⚠️ Prices": "The studio's rates could not be loaded in this visitor's browser, so no quote was shown and none was agreed. Quote this request by email." }),
+          "Package": isProduction ? "Quoted on the brief" : (pricesArePublished() ? budget : "Not quoted — prices unavailable"),
           ...(isProduction ? { "What we're shooting": val("p_subject") || "—", "Usage": val("p_usage") || "—", "Budget band": val("p_budget") || "Prefer to discuss", "Rough scale": val("p_scale") || "—" } : {}),
           ...(fallbackPackage ? { "Paid Fallback Package": fallbackPackage } : {}),
           "Invite Code": inviteLine || "—",
@@ -13695,7 +13746,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           "Package Discount": packageDiscountLine || "—",
           "Studio / Venue Charge": venueChargeLine,
           "Total Savings": totalSavings > 0 ? inr(totalSavings) : "—",
-          "Total Payable": totalPayableLine,
+          "Total Payable": pricesArePublished() ? totalPayableLine : "Not quoted — prices unavailable",
           "Payment Schedule": paymentScheduleLine,
           ...(dateAlreadyBooked ? { "Date Status": "⚠️ This date already has a booking on the calendar — confirm anyway or offer an alternative" } : {}),
           "Moodboard Link": moodboard || "—",

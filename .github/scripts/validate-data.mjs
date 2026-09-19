@@ -765,5 +765,33 @@ try {
   }
 } catch (e) { warn("could not check the published settings: " + e.message); }
 
+/* ---- 13 · the nine page shells must share one footer, viewer and skip link ----
+   Each shell is a hand-kept copy of the same frame, and they had drifted: five
+   showed visitors a footer with an "Upload" link that bounces them home and no
+   Albums or Book links, the same album opened in two different-looking photo
+   viewers depending on the page arrived from, and six had no skip-to-content
+   link at all (Sep 2026 audit). Fixed in v450; this keeps them fixed. */
+try {
+  const shells = ["index.html", "404.html", "albums/index.html", "book/index.html", "categories/index.html",
+                  "share/index.html", "studio/index.html", "testimonials/index.html", "upload/index.html"];
+  const parts = {
+    footer: /<footer[^>]*>[\s\S]*?<\/footer>/,
+    "photo viewer": /<div class="lightbox" id="lightbox"[\s\S]*?\n  <\/div>/,
+    "skip link": /<a href="#view" class="skip-link">[^<]*<\/a>/
+  };
+  const tidy = (t) => t.replace(/\s+/g, " ").trim();
+  for (const [name, pat] of Object.entries(parts)) {
+    let reference = null, referenceFile = "";
+    for (const f of shells) {
+      if (!existsSync(f)) { fail(`${f} is missing — every page shell must exist`); continue; }
+      const m = readFileSync(f, "utf8").match(pat);
+      if (!m) { fail(`${f} has no ${name} — the nine page shells must all carry the same one`); continue; }
+      const now = tidy(m[0]);
+      if (reference === null) { reference = now; referenceFile = f; }
+      else if (now !== reference) fail(`${f} has a different ${name} from ${referenceFile} — copy it across, or a visitor gets a different page depending on which one they land on`);
+    }
+  }
+} catch (e) { fail("could not compare the page shells: " + e.message); }
+
 if (failed) process.exit(1);
 console.log(`OK: ${shoots.length} albums, ids unique, all photo files present, format contract intact, cache-buster in sync.`);
