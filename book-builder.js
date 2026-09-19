@@ -1718,7 +1718,7 @@
     async cover(page, book, P, W, H, img) {
       const L = W > H, K = COVER_TYPE.pinboard, CT = coverText(book), cs = coverStyleOf(book);
       rect(page, 0, 0, W, H, P.paper);
-      const x = 28, tw = W - 56, box = { x: L ? 60 : 28, y: L ? 20 : 26, w: W - (L ? 120 : 56), h: L ? H - 20 - 66 : H * 0.6 };
+      const x = 28, tw = W - 56, box = { x: L ? 66 : 28, y: L ? 18 : 26, w: W - (L ? 132 : 56), h: L ? H - 18 - 82 : H * 0.6 };
       if (img) decoPhoto(page, P, { kind: "print" }, img, book.cover, box.x, box.y, box.w, box.h, "crop", 0);
       else {
         // Loaded first: nothing may wait while the page is turned.
@@ -4104,6 +4104,13 @@
             } else missing(page, P, 0, 0, W, H);
             if (B) paintBands(page, P, W, H, { ...B, left: half ? 0 : B.left, right: half ? B.right : 0 }, bandColors(book.style, P), pn, half ? pageCredit(entry, shoots) : "", null, half ? "right" : "left");
             else if (book.style === "vogue") VOGUE.foot(page, P, W, H, pn, half ? pageCredit(entry, shoots) : "", half ? "right" : "left");
+            else if (NEWER_STYLES.includes(book.style)) {
+              const C = bandColors(book.style, P), SL = WTYPE[book.style].smallLabel, credit = half ? pageCredit(entry, shoots) : "";
+              rect(page, 0, H - 9, W, 9, C.band);
+              font(page, SL.w, 2.4, SL.f, SL.sp || 0);
+              if (showNums()) text(page, String(pn).padStart(2, "0"), half ? W - 14 : 14, H - 3.4, C.on, half ? "right" : "left");
+              if (credit) text(page, ellipsize(page, credit.toUpperCase(), W - 60), 14, H - 3.4, C.on);
+            }
             else { rect(page, 0, H - 9, W, 9, P.deep); font(page, 700, 2.4, F.mono, 0.4); if (showNums()) text(page, String(pn).padStart(2, "0"), half ? W - 14 : 14, H - 3.4, P.onDeep, half ? "right" : "left"); }
             if (mark) watermark(page, W, H, P, mark);
             return page;
