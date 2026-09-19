@@ -3987,7 +3987,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   let lbClosingByHand = false;
   function initLightbox() {
     // Simple focus trap: keep Tab within the lightbox while it's open.
-    trapTabKey(lb, "button:not([disabled])");
+    // Links too: the trap counted only buttons, so the side panel's links —
+    // the model's Instagram, their model portfolio, the studio's own — could
+    // never be reached with a keyboard (Sep 2026 audit).
+    trapTabKey(lb, 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])');
     $("#lightboxClose").addEventListener("click", (e) => { e.stopPropagation(); closeLb(); });
     $("#lbPrev").addEventListener("click", (e) => { e.stopPropagation(); stepLb(-1); });
     $("#lbNext").addEventListener("click", (e) => { e.stopPropagation(); stepLb(1); });
@@ -3999,7 +4002,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         closeLb();
       }
     });
-    document.addEventListener("keydown", (e) => { if (lb.hidden) return; if (e.key === "Escape") closeLb(); else if (e.key === "ArrowLeft") stepLb(-1); else if (e.key === "ArrowRight") stepLb(1); });
+    document.addEventListener("keydown", (e) => {
+      if (lb.hidden) return;
+      // A radio, a text box or a select inside the viewer owns its own arrow
+      // keys: stepping the photo instead is what made Landscape unreachable
+      // from the keyboard on the comp-card export (Sep 2026 audit).
+      const t = e.target;
+      const typing = t && (t.matches("input, select, textarea, [contenteditable]") || t.closest("[role='radiogroup']"));
+      if (typing && e.key !== "Escape") return;
+      if (e.key === "Escape") closeLb(); else if (e.key === "ArrowLeft") stepLb(-1); else if (e.key === "ArrowRight") stepLb(1); });
 
     // Touch swipe support for lightbox on mobile — scoped to the image/nav
     // area (.lightbox-main), not the whole overlay: attaching to `lb` meant a
@@ -4163,9 +4174,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       menuAdminBtnText.textContent = btnText;
     }
 
+    // Only in admin mode. A visitor opening the menu saw an ADMIN heading and
+    // could open "Studio Links", a form pre-filled with the studio's own
+    // addresses that even said "Studio links updated" on save (it changed
+    // nothing that lasts, but it should not have been reachable at all —
+    // Sep 2026 audit). The passcode prompt behind "Admin Mode" is unaffected:
+    // the studio reaches it the same way it always has, by turning admin mode
+    // on with the keyboard shortcut or the ?admin=1 address.
     const adminSec = $("#navAdminSec");
     if (adminSec) {
-      adminSec.style.display = "block";
+      adminSec.style.display = active ? "block" : "none";
     }
 
     // "Model portfolio" is shown and hidden by syncServicesNavLink, with What I
@@ -4440,8 +4458,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   }
 
   function initStudioSettingsControls() {
+    // Belt as well as braces: the button is hidden for visitors above, and the
+    // editor refuses to open for one even if the button is reached some other
+    // way.
     const modal = $("#studioSettingsModal");
     const btn = $("#studioSettingsBtn");
+    if (btn && !isAdmin()) btn.setAttribute("hidden", "");
     const closeBtn = $("#studioSettingsClose");
     const saveBtn = $("#studioSettingsSave");
     const instagramInput = $("#studio_instagram_input");
@@ -4529,7 +4551,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const words = String(word).split(" ").map(w =>
       `<span class="kw-word">${w.split("").map(ch => `<span class="kw-letter" style="--i:${i++}">${esc(ch)}</span>`).join("")}</span>`
     );
-    return `<h1 class="reveal kinetic-h1 ${extraClass}"><span class="kinetic-word-inner">${words.join(`<span class="kw-space">&nbsp;</span>`)}</span></h1>`;
+    // The letters are separate elements so they can animate, which makes a
+    // screen reader read the heading out one letter at a time ("A l b u m s").
+    // The label carries the real word; the pieces are decoration.
+    return `<h1 class="reveal kinetic-h1 ${extraClass}" aria-label="${esc(String(word))}"><span class="kinetic-word-inner" aria-hidden="true">${words.join(`<span class="kw-space">&nbsp;</span>`)}</span></h1>`;
   };
   // noth.in-style full-bleed work card: big image, title + tagline overlay,
   // image reveal on hover. Opens the shoot in the lightbox via .noth-work wiring.
@@ -4554,7 +4579,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       }).filter(Boolean);
       if (cleanNames.length) mentorText = `Mentors: ${cleanNames.join(", ")}`;
     }
-    const meta = [s.brand, s.season, s.location].filter(v => v && v !== "Personal Project" && v !== "—").join(" · ");
+    // getTalentCleanName on the location too: a venue saved as
+    // "Tavish Studio (https://www.instagram.com/studiotavish/?hl=en)" printed
+    // the whole address, in capitals, on the workshop card (Sep 2026 audit).
+    const meta = [s.brand, s.season, getTalentCleanName(s.location)].filter(v => v && v !== "Personal Project" && v !== "—").join(" · ");
     const title = getTalentCleanName(s.isCompCard ? s.talent : (s.title || "Untitled"));
     // An album with "Show this album on the site" unticked is on no visitor
     // page; only the studio's own view lists it, so the card says so, or it
@@ -4649,9 +4677,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         creditsList.push(`Photo <strong>${esc([s.photographer, ...extra].filter(Boolean).join(", "))}</strong>`);
       }
       if (s.artDirector) creditsList.push(`AD <strong>${esc(s.artDirector)}</strong>`);
-      if (s.stylist && s.stylist !== "—") creditsList.push(`Style <strong>${esc(s.stylist)}</strong>`);
-      if (s.hair && s.hair !== "—") creditsList.push(`Hair <strong>${esc(s.hair)}</strong>`);
-      if (s.mua && s.mua !== "—") creditsList.push(`Makeup <strong>${esc(s.mua)}</strong>`);
+      if (s.stylist && s.stylist !== "—") creditsList.push(`Style <strong>${esc(getTalentCleanName(s.stylist))}</strong>`);
+      if (s.hair && s.hair !== "—") creditsList.push(`Hair <strong>${esc(getTalentCleanName(s.hair))}</strong>`);
+      if (s.mua && s.mua !== "—") creditsList.push(`Makeup <strong>${esc(getTalentCleanName(s.mua))}</strong>`);
       // renderCreditValue (not getTalentCleanName) on this branch: a regular
       // album can list several models, each with their own handle inlined,
       // and s.instagram won't necessarily carry them. This strips the
@@ -9352,7 +9380,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                          wording. Outdoor stays selected by default so an inquiry
                          can never silently claim the home studio; the client has
                          to pick it deliberately. -->
-                    <select id="b_studio_space">
+                    <!-- Hidden until the venue question applies. It kept its
+                         tab stop while invisible, so a keyboard user lost
+                         focus for a press (Sep 2026 audit); the code that
+                         shows it clears these. -->
+                    <select id="b_studio_space" tabindex="-1" aria-hidden="true">
                       <option value="Home Studio - Noida (Provided by Studio)" id="b_studio_space_home">Home studio, Sector 46, Noida — intimate setup, best for portraits, comp cards &amp; solo talent</option>
                       <option value="Dedicated Commercial Studio Rental (Billed at Actuals)">Dedicated Commercial Studio</option>
                       <option value="Outdoor / On-Location (No Studio Required)" selected>Outdoor / on-location — no studio required</option>
@@ -11363,7 +11395,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             if (multiDates.some(md => sameDay(md, d))) classes.push("dp-selected");
           }
 
-          html += `<button type="button" class="${classes.join(" ")}" data-day="${day}" data-date="${status.key}" title="${esc(titleAttr)}" ${isCellDisabled ? "disabled" : ""}>${day}</button>`;
+          // Named in full, with the reason it cannot be booked spoken rather
+          // than left in a tooltip nobody can hover on a phone, and with the
+          // selection stated instead of shown only in colour (Sep 2026 audit).
+          const dayLabel = `${d.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}${titleAttr ? ` — ${String(titleAttr).replace(/\s+/g, " ").trim()}` : ""}`;
+          const isChosen = classes.includes("dp-selected");
+          html += `<button type="button" class="${classes.join(" ")}" data-day="${day}" data-date="${status.key}" title="${esc(titleAttr)}" aria-label="${esc(dayLabel)}" aria-pressed="${isChosen ? "true" : "false"}"${isCellDisabled ? " disabled" : ""}>${day}</button>`;
         }
 
         html += `</div>`;
@@ -11424,6 +11461,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           }
         }
         renderCalendar();
+        // The grid is rebuilt on every pick, which dropped focus to the body:
+        // choosing a second date meant tabbing back through the whole page.
+        const back = popup.querySelector(`[data-date="${dateKey(clicked)}"]`);
+        if (back) { try { back.focus(); } catch (e) {} }
       }
 
       function wireCalendarEvents() {
@@ -11529,11 +11570,32 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
       function openPopup() {
         popup.classList.add("open");
+        toggle.setAttribute("aria-expanded", "true");
         renderCalendar();
+        // Straight to a day, rather than making the visitor tab through the
+        // month arrows and mode buttons first.
+        setTimeout(() => {
+          const first = popup.querySelector("[data-date]:not([disabled])") || popup.querySelector("button");
+          if (first) { try { first.focus(); } catch (e) {} }
+        }, 30);
       }
       function closePopup() {
         popup.classList.remove("open");
+        toggle.setAttribute("aria-expanded", "false");
       }
+      popup.setAttribute("role", "dialog");
+      popup.setAttribute("aria-label", "Choose a shoot date");
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.setAttribute("aria-controls", popup.id || "datePickerPopup");
+      // Escape closed nothing: the picker stayed open over the form and the
+      // keyboard stayed inside it (Sep 2026 audit).
+      popup.addEventListener("keydown", (e) => {
+        if (e.key !== "Escape") return;
+        e.preventDefault();
+        e.stopPropagation();
+        closePopup();
+        try { toggle.focus(); } catch (err) {}
+      });
 
       toggle.addEventListener("click", (e) => {
         e.preventDefault();
@@ -11653,6 +11715,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           } else {
             // Brands & Agencies require a mandatory Paid Fallback Package
             collabFallbackWrap.style.display = "block";
+            // updateFields runs on every change, and rebuilding this block
+            // reset the choice to the first package — a brand that picked the
+            // ₹50,000 tier had ₹7,000 sent to the studio instead (Sep 2026
+            // audit). Keep what they chose across the rebuild.
+            const keptFallback = (collabFallbackWrap.querySelector("#b_collab_fallback") || {}).value || "";
             collabFallbackWrap.innerHTML = `
               <div style="font-family: 'Outfit', sans-serif; font-size: var(--font-xs); font-weight: 700; color: var(--accent); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
                 📌 Studio Discretion Policy &amp; Paid Fallback Package *
@@ -11669,6 +11736,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 </select>
               </label>
             `;
+            if (keptFallback) {
+              const again = collabFallbackWrap.querySelector("#b_collab_fallback");
+              if (again && [...again.options].some((o) => o.value === keptFallback)) again.value = keptFallback;
+            }
           }
         }
       } else {
@@ -12280,6 +12351,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // sends the request and the studio quotes by email. Showing the built-in
       // list instead is how a total that was never the studio's could end up
       // in a contract (Sep 2026 audit).
+      // A field that is on screen belongs in the tab order; one that is not,
+      // does not. Kept in step with whatever the venue rules decide below.
+      const studioSpaceEl = $("#b_studio_space");
+      if (studioSpaceEl) {
+        const shown = !!(studioSpaceEl.offsetParent);
+        studioSpaceEl.tabIndex = shown ? 0 : -1;
+        if (shown) studioSpaceEl.removeAttribute("aria-hidden");
+        else studioSpaceEl.setAttribute("aria-hidden", "true");
+      }
       const pricesKnown = pricesArePublished();
       const priceNotice = (() => {
         let el = $("#bookPricesUnavailable");
@@ -14131,6 +14211,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // Check if loaded with Hash link
     if (location.hash === "#tfp-terms") {
       openTermsModal("Creative Partner", "TFP");
+    } else if (location.hash === "#terms") {
+      // The link in every commercial client's email ("Read terms online:
+      // …/book/#terms") opened the form and nothing else, so a paying client
+      // could not re-read what they had agreed to (Sep 2026 audit).
+      openTermsModal("Client", "Commercial");
     }
 
     // "Send another request" — reset back to a clean form.
@@ -14664,6 +14749,23 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       </section>`}`;
   }
 
+  // One polite live region for route changes: a screen reader reads the new
+  // page's title, the way a full page load would have announced it.
+  let routeAnnouncer = null;
+  function announceRoute(title) {
+    if (!routeAnnouncer) {
+      routeAnnouncer = document.createElement("p");
+      routeAnnouncer.className = "sr-only";
+      routeAnnouncer.setAttribute("role", "status");
+      routeAnnouncer.setAttribute("aria-live", "polite");
+      document.body.appendChild(routeAnnouncer);
+    }
+    const name = String(title || "").split("—")[0].split("|")[0].trim() || "Page";
+    // Re-setting the same text does not re-announce, so clear it first.
+    routeAnnouncer.textContent = "";
+    setTimeout(() => { routeAnnouncer.textContent = `${name} — page loaded`; }, 60);
+  }
+
   let renderSeq = 0;
   function render(opts) {
     // Also the popstate handler, so opts may be an Event: only a literal
@@ -14855,16 +14957,40 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       }
       view.classList.remove("leaving");
       if (!keep) {
+        // Going back should put the visitor where they were, not at the top of
+        // a list they had scrolled a long way down (Sep 2026 audit). The
+        // browser's own restoration cannot help here: the page is rebuilt by
+        // script after the navigation, so the position is remembered per
+        // history entry and reapplied once this paint has settled.
+        const remembered = (history.state && typeof history.state.wpsScrollY === "number") ? history.state.wpsScrollY : 0;
         window.scrollTo({ top: 0, behavior: "auto" });
+        if (remembered > 0) {
+          const settle = () => window.scrollTo({ top: remembered, behavior: "auto" });
+          requestAnimationFrame(() => { settle(); setTimeout(settle, 120); setTimeout(settle, 380); });
+        }
         if (typeof smoothScroll !== "undefined" && smoothScroll.enabled) smoothScroll.reset();
         wireView(key);
       }
       if (staticPath) { paintServiceCompCards(); pageServiceWork(); }
       initReveal();
+      // Arriving on a new page used to leave focus on whatever was clicked and
+      // announce nothing, so a screen-reader user had no idea the page had
+      // changed and a keyboard user restarted from the top of the document.
+      // #view has tabindex="-1", so it can take focus without joining the tab
+      // order; a route that only scrolls (a link to a section of this page)
+      // keeps its place.
       setActiveNav(key);
       syncServicesNavLink();
 
       applyRouteSeo(key, parts, params, staticPath);
+      // After applyRouteSeo, which is what sets the new page's title: announcing
+      // before it read out the page just left. #view has tabindex="-1" in every
+      // shell, so it can take focus without joining the tab order; a render that
+      // only scrolls to a section keeps the visitor where they are.
+      if (!keep) {
+        announceRoute(document.title);
+        try { view.focus({ preventScroll: true }); } catch (e) {}
+      }
       updateImageSchema();
     };
     if (prefersReduced || keep) paint(); else setTimeout(paint, 180);
@@ -17023,7 +17149,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       dropFiles();
       document.body.style.overflow = prevOverflow;
       modal.remove();
+      // Back to whatever opened the builder, rather than the top of the
+      // document — or, worse, nothing at all (Sep 2026 audit).
+      if (pdfOpener && document.contains(pdfOpener)) { try { pdfOpener.focus(); } catch (e) {} }
     }
+    const pdfOpener = document.activeElement;
+    // Tab stays inside. Without this it walked out to the page underneath,
+    // which is hidden behind the builder and cannot be seen.
+    trapTabKey(modal, 'a[href], button:not([disabled]), input:not([disabled]), select, [tabindex]:not([tabindex="-1"])');
     modal._close = close;
     modal.querySelector(".pp-close").addEventListener("click", close);
     modal.addEventListener("click", (e) => { if (e.target === modal) close(); });
@@ -17400,6 +17533,24 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       }
 
       body.querySelector("#ppOrder").addEventListener("click", (e) => {
+        // Move or zoom, from the keyboard as well as by tapping the preview.
+        const adjust = e.target.closest("[data-adjust]");
+        if (adjust) {
+          const id = adjust.dataset.adjust;
+          const canvasPhoto = (body.querySelector(".pp-preview canvas") || {})._photos || [];
+          const frame = canvasPhoto.find((f) => f.id === id);
+          if (frame) showAdjust(frame);
+          else {
+            // The preview may not have drawn its frames yet; Adjust needs one,
+            // so wait for the redraw rather than opening on nothing.
+            const wait = setInterval(() => {
+              const fr = ((body.querySelector(".pp-preview canvas") || {})._photos || []).find((f) => f.id === id);
+              if (fr) { clearInterval(wait); showAdjust(fr); }
+            }, 120);
+            setTimeout(() => clearInterval(wait), 4000);
+          }
+          return;
+        }
         // Which photo is the big one, chosen here as well as with the star in
         // the contact sheet: the page below shows what "big" means, and going
         // back to the sheet to change it is a trip for nothing.
@@ -17626,6 +17777,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             <span class="pp-order-n">${i < fixed ? "Big" : i + 1}</span>
             ${fixed && i >= fixed ? `<button type="button" class="pp-order-star" data-make-big aria-label="Make ${esc(s.name)} the big photo" title="Make this the big photo"></button>` : ""}
           </span>
+          <!-- Adjust photo could only be opened by tapping the preview, so a
+               keyboard user could not reach it at all (Sep 2026 audit). -->
+          <button type="button" class="pp-order-adjust" data-adjust="${esc(s.id)}" aria-label="Move or zoom ${esc(s.name)}" title="Move or zoom this photo">Adjust</button>
           ${i < fixed ? "" : `<span class="pp-order-move">
             <button type="button" data-move="-1" aria-label="Move ${esc(s.name)} earlier"${i === fixed ? " disabled" : ""}>‹</button>
             <button type="button" data-move="1" aria-label="Move ${esc(s.name)} later"${i === list.length - 1 ? " disabled" : ""}>›</button>
@@ -17933,10 +18087,37 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     emailInput.style.borderColor = "var(--line)";
     errorText.style.display = "none";
     
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.setAttribute("aria-label", "Enter your email to download the comp card");
+    errorText.setAttribute("role", "alert");
+    emailInput.setAttribute("aria-describedby", errorText.id || "downloadEmailError");
     modal.style.display = "flex";
     modal.offsetHeight;
     modal.style.opacity = "1";
     emailInput.focus();
+
+    // Tab stayed inside, Escape closes this box and not the viewer behind it,
+    // and Enter in the field submits (Sep 2026 audit).
+    const closeEmailModal = () => {
+      modal.style.opacity = "0";
+      setTimeout(() => { modal.style.display = "none"; }, 300);
+      document.removeEventListener("keydown", onEmailKey, true);
+      if (emailOpener && document.contains(emailOpener)) { try { emailOpener.focus(); } catch (e) {} }
+    };
+    const emailOpener = document.activeElement === emailInput ? null : document.activeElement;
+    function onEmailKey(e) {
+      if (modal.style.display === "none") return;
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeEmailModal(); return; }
+      if (e.key === "Enter" && e.target === emailInput) { e.preventDefault(); modal.querySelector("#submitEmailDownload").click(); return; }
+      if (e.key !== "Tab") return;
+      const f = [...modal.querySelectorAll('button:not([disabled]), input:not([disabled])')].filter((el) => el.offsetParent !== null);
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && (document.activeElement === first || !modal.contains(document.activeElement))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (document.activeElement === last || !modal.contains(document.activeElement))) { e.preventDefault(); first.focus(); }
+    }
+    document.addEventListener("keydown", onEmailKey, true);
     
     const submitBtn = modal.querySelector("#submitEmailDownload");
     const newSubmitBtn = submitBtn.cloneNode(true);
@@ -18047,6 +18228,18 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   }
 
   function initRouting() {
+    // Where this entry was scrolled to, written onto it before any navigation
+    // replaces it. history.scrollRestoration is left alone: it cannot restore
+    // a position on a page that does not exist until script rebuilds it.
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    const rememberScroll = () => {
+      try { history.replaceState({ ...(history.state || {}), wpsScrollY: window.scrollY }, ""); } catch (e) {}
+    };
+    let scrollTick = null;
+    window.addEventListener("scroll", () => {
+      if (scrollTick) return;
+      scrollTick = setTimeout(() => { scrollTick = null; rememberScroll(); }, 250);
+    }, { passive: true });
     window.addEventListener("popstate", () => {
       // Our own step-back after closing the photo by hand: the page underneath
       // never changed, so there is nothing to repaint.
@@ -18072,6 +18265,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           // from another page.
           const [path, hash] = href.split("#");
           const samePage = hash && (!path || path.replace(/\/?$/, "/") === location.pathname.replace(/\/?$/, "/"));
+          rememberScroll();          // so Back returns to this spot
           history.pushState(null, "", href);
           if (samePage) {
             const target = document.getElementById(hash);

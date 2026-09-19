@@ -3177,3 +3177,62 @@ html.theme-dark { color-scheme: dark; }
 }
 /* Which letter is showing, for anyone who cannot see the highlight. */
 .alpha-btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+
+/* Read by a screen reader, invisible on screen. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* Focus you can see. These three menu buttons, the two booking policy toggles
+   and the comp-card email field each removed their own outline inline, so a
+   keyboard user could not tell where they were (Sep 2026 audit). The ring is
+   drawn with a shadow, which an inline `outline: none` cannot cancel. */
+#adminModeBtn:focus-visible, #themeOverrideBtn:focus-visible, #studioSettingsBtn:focus-visible,
+#clearCacheBtn:focus-visible, #bookPoliciesToggle:focus-visible, #bookingPolicyToggle:focus-visible,
+#downloadEmailInput:focus-visible, .inline-edit:focus-visible, .thumb-caption-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent) !important;
+  border-radius: 4px;
+}
+/* The menu links' ring was clipped to a sliver by the row's own overflow. */
+.nav-links li { overflow: visible; }
+.nav-links a:focus-visible { outline: 2px solid var(--accent); outline-offset: 6px; border-radius: 4px; }
+/* A radio drawn as a card: show the ring on the card, not the 1px input. */
+label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox"]:focus-visible) {
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent);
+  border-radius: 8px;
+}
+/* A focused field on the booking page must not hide under the sticky total. */
+#bookingForm { scroll-padding-bottom: 140px; }
+
+/* The keyboard's way into "Adjust photo" (the preview itself is a tap target). */
+.pp-order-adjust {
+  margin-top: 6px; width: 100%; padding: 5px 6px; border: 1px solid var(--line);
+  background: var(--paper); color: var(--ink-soft); border-radius: 6px; cursor: pointer;
+  font: 600 10.5px/1 "JetBrains Mono", monospace; letter-spacing: .06em; text-transform: uppercase;
+}
+.pp-order-adjust:hover { color: var(--ink); border-color: var(--ink); }
+
+/* The phone photo viewer showed a photo 230px wide — 59% of the screen, barely
+   bigger than the thumbnail it was opened from. The photo had 20px of padding
+   inside a 60vh box and its own 48vh ceiling, while the info panel held 40% of
+   the screen whether or not it had much to say (Sep 2026 audit). The photo now
+   gets roughly three quarters of the screen and the panel scrolls under it. */
+@media (max-width: 767px) {
+  .lightbox-main { height: 74svh; padding: 6px 6px 2px; }
+  .lightbox-figure { padding: 0 !important; }
+  /* An <img> with a w-descriptor srcset lays out at its density-corrected
+     intrinsic width — 219px here — and never grows to fill the space it has.
+     object-fit: contain (already set inline) keeps the whole photo visible, so
+     it is safe to hand it the whole box. */
+  .lightbox img, #lightboxImg {
+    width: 100% !important; height: 100% !important;
+    max-width: 100% !important; max-height: 72svh !important;
+    object-fit: contain;
+  }
+  .lightbox-sidebar { height: auto; max-height: 26svh; overflow-y: auto; padding: 14px 18px 20px; }
+  /* The counter sat on top of "Close Viewer". */
+  #lbCounter { top: auto; bottom: 10px; right: 12px; left: auto; }
+  /* A swipe inside the viewer scrolled the page hidden behind it. */
+  .lightbox { overscroll-behavior: contain; }
+}
