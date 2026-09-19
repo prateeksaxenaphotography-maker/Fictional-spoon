@@ -1932,6 +1932,20 @@ window.moveAdminPackageRow = function(index, dir) {
      §3 · PHOTO & MEDIA HELPERS
      ============================================================ */
   // A photo renders from its published file URL when it has one, else its local base64.
+  /* An address safe to put in an href. Only http(s), mailto and tel links are
+     let through; anything else — "javascript:" above all — becomes an empty
+     link rather than something that runs when clicked. Only the studio can
+     write these fields today, so this is a lock on a door rather than a fix
+     for an open one (Sep 2026 audit). */
+  const safeHref = (url) => {
+    const u = String(url || "").trim();
+    if (!u) return "";
+    if (/^(https?:|mailto:|tel:|\/|#|\.\/)/i.test(u)) return u;
+    // A bare domain or path with no scheme is fine; anything with a scheme we
+    // did not name is not.
+    return /^[a-z][a-z0-9+.-]*:/i.test(u) ? "" : u;
+  };
+
   const photoSrc = (p) => {
     if (!p) return "";
     let src = p.url || p.dataUrl || "";
@@ -3613,7 +3627,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // model who moved agencies between shoots shows where they are now.
     const repRows = [];
     if (isCc && shoot.agency && showRep(shoot, "Agency", "CompCard")) {
-      const agSub = visibleAgencyLinks(shoot, "CompCard").map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label)}${l.kind === "email" ? "" : " ↗"}</a>`).join("");
+      const agSub = visibleAgencyLinks(shoot, "CompCard").map(l => `<a href="${esc(safeHref(l.url))}" target="_blank" rel="noopener noreferrer">${esc(l.label)}${l.kind === "email" ? "" : " ↗"}</a>`).join("");
       repRows.push(`<div class="lb-credit"><dt>Agency</dt><dd><span class="lb-person">${esc(shoot.agency)}</span>${agSub ? `<span class="lb-person lb-person-sub">${agSub}</span>` : ""}</dd></div>`);
     }
     // Strictly opt-in, even for admins: it is the model's personal email.
@@ -3698,7 +3712,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       groups.push({ label: "Socials", rendered: [igHtml, kavyarHtml].filter(Boolean).map(h => `<span class="lb-person">${h}</span>`) });
     }
     if (shoot.pdfUrl && shouldShowField(shoot, "Pdf")) {
-      groups.push({ label: "Publication", rendered: [`<span class="lb-person"><a href="${esc(shoot.pdfUrl)}" download>Download PDF ↗</a></span>`] });
+      groups.push({ label: "Publication", rendered: [`<span class="lb-person"><a href="${esc(safeHref(shoot.pdfUrl))}" download>Download PDF ↗</a></span>`] });
     }
     // One model on the album and a comp card exists for them: point at it.
     // The share link is the same slug form the Share button hands out.
@@ -3774,7 +3788,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const socialsHtml = (() => {
       const links = visibleModelLinks(shoot, "CompCard");
       if (!links.length) return "";
-      return creditRows([{ label: "Socials", rendered: links.map(l => `<span class="lb-person"><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label)}${l.kind === "email" ? "" : " ↗"}</a></span>`) }]);
+      return creditRows([{ label: "Socials", rendered: links.map(l => `<span class="lb-person"><a href="${esc(safeHref(l.url))}" target="_blank" rel="noopener noreferrer">${esc(l.label)}${l.kind === "email" ? "" : " ↗"}</a></span>`) }]);
     })();
     return `
       <div class="lb-panel">
@@ -9466,7 +9480,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                <div class="field-row">
                  <label class="field" id="b_budget_field" style="grid-column: 1 / -1;"><span>Package · portfolio &amp; small-brand tiers *</span><span class="field-hint">Campaigns and productions are quoted on the brief — choose "Campaign or production" at the top of this section.</span>
                    <select id="b_budget">
-                     ${getAdminPackages().map((p, i) => `<option value="₹${p.price.toLocaleString('en-IN')} (${p.name})"${i===0?' selected':''}>₹${p.price.toLocaleString('en-IN')} · ${p.name} (${p.specs})</option>`).join("")}
+                     ${getAdminPackages().map((p, i) => `<option value="₹${esc(p.price.toLocaleString('en-IN'))} (${esc(p.name)})"${i===0?' selected':''}>₹${esc(p.price.toLocaleString('en-IN'))} · ${esc(p.name)} (${esc(p.specs)})</option>`).join("")}
                    </select>
                  </label>
                </div>
@@ -11737,7 +11751,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <label class="field" style="margin: 0;">
                 <span style="font-size: var(--font-xs); font-weight: 700; color: var(--ink);">If your collaboration request is not approved, which Paid Package would you like to proceed with? *</span>
                 <select id="b_collab_fallback" style="margin-top: 4px;">
-                  ${getAdminPackages().map(p => `<option value="₹${p.price.toLocaleString('en-IN')} ${p.name} (Paid Fallback)">₹${p.price.toLocaleString('en-IN')} · ${p.name} (${p.specs})</option>`).join("")}
+                  ${getAdminPackages().map(p => `<option value="₹${esc(p.price.toLocaleString('en-IN'))} ${esc(p.name)} (Paid Fallback)">₹${esc(p.price.toLocaleString('en-IN'))} · ${esc(p.name)} (${esc(p.specs)})</option>`).join("")}
                   <option value="Custom Bespoke Package (Paid Fallback)">Custom Bespoke Package</option>
                   <option value="Cancel Inquiry if Collaboration is Declined">Cancel Inquiry if Collaboration is Declined</option>
                 </select>
@@ -15052,6 +15066,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         desc = `Explore creative photoshoots categorised by activity (genre), brand, or production type.`;
         path = "/categories/";
       }
+      // These filtered views are a way of browsing, not pages meant to rank.
+      // "Fashion photography in Noida & Delhi NCR" here competed with the
+      // What I shoot page of nearly the same name that links to it, and an
+      // empty one ("0 master albums… Nothing here yet") was indexable too
+      // (Sep 2026 audit). The service pages and the album pages are the ones
+      // to find; this view is still followed, so it passes on to them.
+      index = false;
     } else if (key === "share" || key === "models") {
       const shared = CURRENT_VIEW_SHOOTS[0];
       path = key === "models" ? location.pathname : `/share/${location.search}`;

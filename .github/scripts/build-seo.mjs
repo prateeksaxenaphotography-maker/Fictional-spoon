@@ -448,7 +448,28 @@ function buildServicePage(v) {
   // client shows the albums made for them.
   const grid = v.albumFilter.look ? photosForPage(v) : null;
   const cards = grid ? null : albumsForPage(v);
-  const workLinks = v.workLinks;
+  /* A "See sports work →" link that lands on "0 master albums in this
+     activity… Nothing here yet" helps nobody and gives Google an empty page to
+     index (Sep 2026 audit). A link to a filtered view is only written when
+     that view has something in it; links to anything else are left alone. */
+  const categoryHasWork = (href) => {
+    const m = String(href).match(/[?&]kind=([^&]+)&val=([^&]+)/);
+    if (!m) return true;                       // not a filtered view
+    let kind, val;
+    try { kind = decodeURIComponent(m[1]); val = decodeURIComponent(m[2]); } catch { return true; }
+    if (kind === "activity") {
+      // Exactly albumHasActivity() in app.js, including the [0]: the view
+      // counts an album under a genre only when that genre is the FIRST
+      // activity of a photo's look, so a looser test here would keep writing a
+      // link to a page the site itself renders empty.
+      return newestFirst.some((s) => s.activity === val
+        || (s.photos || []).some((p) => p && lookByKey.has(p.look) && (lookByKey.get(p.look).activities || [])[0] === val));
+    }
+    if (kind === "brand") return newestFirst.some((s) => s.brand === val);
+    if (kind === "type") return newestFirst.some((s) => s.type === val);
+    return true;
+  };
+  const workLinks = (v.workLinks || []).filter((l) => categoryHasWork(l.href));
   // The wide crop of whichever album that lead photo came from, so a shared
   // "What I shoot" link shows a face rather than the middle of a portrait.
   const albumOfPhoto = (photo) => newestFirst.find((sh) => (sh.photos || []).some((q) => q && q.id === photo.id));
