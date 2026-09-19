@@ -8,6 +8,11 @@ import { execSync } from "node:child_process";
 
 let failed = false;
 const fail = (msg) => { console.error("FAIL: " + msg); failed = true; };
+// A warning is printed and shows in the run, but does not stop the deploy.
+// Some checks are judgement calls — the studio really might delete four promo
+// codes or re-price everything on the same day — and a guess must never be
+// able to lock the owner out of publishing their own site.
+const warn = (msg) => { console.warn("WARNING: " + msg); };
 
 // ── 1. data.js must execute and expose a valid album array ─────────────────
 const dataText = readFileSync("data.js", "utf8");
@@ -727,6 +732,38 @@ try {
   if (lostUsage >= 10) fail(`${lostUsage} photos lost their usage setting in one publish.${stale}`);
   if (lostLook >= 5) fail(`${lostLook} photos lost their kind of work in one publish.${stale}`);
 } catch { /* first commit, shallow clone, or no prior data.js */ }
+
+/* ---- 12 · settings must not vanish or shrink between publishes ----
+   Prices, invite and promo codes, the portfolio-PDF settings and the studio
+   rates are published whole, and until v445 whichever device published last
+   simply replaced them. CI watched albums and books for a collapse but never
+   these, so a price list or a code could disappear from the live site with
+   nothing to say so (Sep 2026 audit). */
+try {
+  const D = win.WPS_DATA;
+  const countOf = (v) => (Array.isArray(v) ? v.length : (v && typeof v === "object") ? Object.keys(v).length : (v === undefined || v === null) ? 0 : 1);
+  for (const key of ["PACKAGES", "INVITE_CODES", "PROMO_CODES", "PORTFOLIO_PDF", "TFP_PACKAGE", "HOME_STUDIO_RATE"]) {
+    if (D[key] === undefined || D[key] === null) fail(`data.js no longer publishes ${key} — clients would fall back to built-in defaults that do not match the studio's`);
+  }
+  if (Array.isArray(D.PACKAGES) && D.PACKAGES.length === 0) fail("PACKAGES is published as an empty list — the booking form would have nothing to quote");
+  // The previous publish, read the same way as check 10 (absent on a first
+  // commit or a shallow clone, in which case only the presence checks run).
+  let prevData = null;
+  try {
+    const prevWin = {};
+    new Function("window", execSync("git show HEAD~1:data.js", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }))(prevWin);
+    prevData = prevWin.WPS_DATA || null;
+  } catch (e) { /* nothing to compare against */ }
+  if (prevData) {
+    for (const key of ["PACKAGES", "INVITE_CODES", "PROMO_CODES"]) {
+      const was = countOf(prevData[key]), now = countOf(D[key]);
+      if (was >= 2 && now < was) warn(`${key} shrank from ${was} to ${now} in one publish — the signature of an older device overwriting a newer change`);
+    }
+    const wasPrices = new Map((prevData.PACKAGES || []).map((p) => [p.id, p.price]));
+    const changed = (D.PACKAGES || []).filter((p) => wasPrices.has(p.id) && wasPrices.get(p.id) !== p.price);
+    if (changed.length >= 3) warn(`${changed.length} package prices changed in one publish (${changed.map((p) => `${p.id}: ${wasPrices.get(p.id)}→${p.price}`).join(", ")}) — check this was deliberate`);
+  }
+} catch (e) { warn("could not check the published settings: " + e.message); }
 
 if (failed) process.exit(1);
 console.log(`OK: ${shoots.length} albums, ids unique, all photo files present, format contract intact, cache-buster in sync.`);

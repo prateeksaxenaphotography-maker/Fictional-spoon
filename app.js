@@ -370,6 +370,7 @@ window.persistAdminInviteCodes = function() {
   try {
     if (!Array.isArray(window.adminDraftInviteCodes)) return false;
     localStorage.setItem("wps_custom_invite_codes", JSON.stringify(window.adminDraftInviteCodes));
+    stampSetting("wps_custom_invite_codes");
     return true;
   } catch (e) {
     return false;
@@ -1168,6 +1169,40 @@ window.getStudioPortfolios = getStudioPortfolios;
 window.saveStudioPortfolios = saveStudioPortfolios;
 window.STUDIO_BOOK_LIMITS = STUDIO_BOOK_LIMITS;
 
+/* Which device last changed a setting. Prices, invite and promo codes, the
+   portfolio-PDF settings and the studio rates are NOT merged at publish time
+   the way albums and books are: whatever the publishing device holds wins. So
+   a price edited on the phone was silently restored to the laptop's older copy
+   the next time the laptop published anything (Sep 2026 audit). Every local
+   save stamps the key; the stamps are published alongside the values, and the
+   publish keeps whichever side is newer. */
+const SETTINGS_KEYS = {
+  PACKAGES: "wps_custom_packages",
+  TFP_PACKAGE: "wps_tfp_package",
+  INVITE_CODES: "wps_custom_invite_codes",
+  PROMO_CODES: "wps_custom_promo_codes",
+  PORTFOLIO_PDF: "wps_portfolio_pdf",
+  HOME_STUDIO_RATE: "wps_home_studio_rate",
+  HOME_STUDIO_RATE_TFP: "wps_home_studio_rate_tfp"
+};
+function stampSetting(storageKey) {
+  try { localStorage.setItem(`wps_at_${storageKey}`, String(Date.now())); } catch (e) {}
+}
+function settingStamp(storageKey) {
+  try { return Number(localStorage.getItem(`wps_at_${storageKey}`)) || 0; } catch (e) { return 0; }
+}
+// The stamps to publish: this device's, except where the live file already
+// carries a newer one for a value we are about to re-publish unchanged.
+function localSettingStamps() {
+  const out = {};
+  Object.entries(SETTINGS_KEYS).forEach(([field, storageKey]) => { out[field] = settingStamp(storageKey); });
+  return out;
+}
+window.stampSetting = stampSetting;
+window.settingStamp = settingStamp;
+window.localSettingStamps = localSettingStamps;
+window.SETTINGS_KEYS = SETTINGS_KEYS;
+
 function getAdminPackages() {
   try {
     const saved = localStorage.getItem("wps_custom_packages");
@@ -1564,6 +1599,7 @@ window.saveAdminCustomPackages = async function() {
       updated.push({ id: `pkg_${i+1}`, name, price, specs, ...(delivery ? { delivery } : {}) });
     });
     localStorage.setItem("wps_custom_packages", JSON.stringify(updated));
+    stampSetting("wps_custom_packages");
   }
   // Test-shoot row (no fee): name + deliverables line.
   const tfpNameEl = document.getElementById("tfpPkgName");
@@ -1576,6 +1612,7 @@ window.saveAdminCustomPackages = async function() {
       delivery: (document.getElementById("tfpPkgDelivery")?.value || "").trim()
     };
     localStorage.setItem("wps_tfp_package", JSON.stringify(tfp));
+    stampSetting("wps_tfp_package");
   }
 
   // Home studio rental. Blank is "leave it as it was", not zero — clearing the
@@ -1583,7 +1620,7 @@ window.saveAdminCustomPackages = async function() {
   const homeRateEl = document.getElementById("homeStudioRateInput");
   if (homeRateEl && homeRateEl.value !== "") {
     const rate = parseInt(homeRateEl.value, 10);
-    if (!isNaN(rate) && rate >= 0) localStorage.setItem("wps_home_studio_rate", String(rate));
+    if (!isNaN(rate) && rate >= 0) { localStorage.setItem("wps_home_studio_rate", String(rate)); stampSetting("wps_home_studio_rate"); }
   }
   // The test-shoot rate is genuinely optional: emptying the box means "charge
   // collaborations the same as paid shoots", so a blank clears the override
@@ -1594,7 +1631,7 @@ window.saveAdminCustomPackages = async function() {
       localStorage.removeItem("wps_home_studio_rate_tfp");
     } else {
       const tfpRate = parseInt(homeRateTfpEl.value, 10);
-      if (!isNaN(tfpRate) && tfpRate >= 0) localStorage.setItem("wps_home_studio_rate_tfp", String(tfpRate));
+      if (!isNaN(tfpRate) && tfpRate >= 0) { localStorage.setItem("wps_home_studio_rate_tfp", String(tfpRate)); stampSetting("wps_home_studio_rate_tfp"); }
     }
   }
 
@@ -1603,11 +1640,13 @@ window.saveAdminCustomPackages = async function() {
   // is an object — but nothing anywhere reads it, so it was dropped.)
   if (window.adminDraftInviteCodes && Array.isArray(window.adminDraftInviteCodes)) {
     localStorage.setItem("wps_custom_invite_codes", JSON.stringify(window.adminDraftInviteCodes));
+    stampSetting("wps_custom_invite_codes");
   }
 
   // Commit Draft Promo Codes
   if (window.adminDraftPromoCodes && typeof window.adminDraftPromoCodes === "object") {
     localStorage.setItem("wps_custom_promo_codes", JSON.stringify(window.adminDraftPromoCodes));
+    stampSetting("wps_custom_promo_codes");
   }
 
   const statusBadge = document.getElementById("adminPricingSaveStatus");
@@ -1672,6 +1711,7 @@ window.addNewAdminPackageRow = function() {
     specs: "Custom Proofing & Master Retouched Deliverables"
   });
   localStorage.setItem("wps_custom_packages", JSON.stringify(pkgs));
+  stampSetting("wps_custom_packages");
   if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
   if (typeof toast === "function") toast(`➕ Package Tier #${nextNum} added! Adjust rates & click Save.`);
   if (typeof render === "function") render();
@@ -1711,6 +1751,8 @@ window.deleteAdminPackageRow = function(index) {
   if (confirm(`Delete Package Tier #${index + 1} (${pkgName})?`)) {
     pkgs.splice(index, 1);
     localStorage.setItem("wps_custom_packages", JSON.stringify(pkgs));
+    stampSetting("wps_custom_packages");
+  stampSetting("wps_custom_packages");
     if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
     if (typeof toast === "function") toast("🗑️ Package tier removed!");
     if (typeof render === "function") render();
@@ -1727,6 +1769,7 @@ window.moveAdminPackageRow = function(index, dir) {
   pkgs[targetIndex] = temp;
   
   localStorage.setItem("wps_custom_packages", JSON.stringify(pkgs));
+  stampSetting("wps_custom_packages");
   if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
   if (typeof toast === "function") toast(`↕️ Reordered Package #${index + 1}!`);
   if (typeof render === "function") render();
@@ -2818,6 +2861,35 @@ window.moveAdminPackageRow = function(index, dir) {
   // running the fetched file would throw in production.
   // undefined = the key is absent (nothing published yet, a valid state);
   // null = present but unreadable, which the caller must treat as a failure.
+  // Reads any JSON value that follows a key in the published file: object,
+  // array or number. parseObjectAfterKey only ever handled objects.
+  function parseValueAfterKey(text, quotedKey) {
+    const at = text.indexOf(quotedKey);
+    if (at === -1) return undefined;
+    const colon = text.indexOf(":", at + quotedKey.length);
+    if (colon === -1) return undefined;
+    const rest = text.slice(colon + 1);
+    const m = rest.match(/^\s*(\{|\[|-?\d)/);
+    if (!m) return undefined;
+    if (m[1] === "{" || m[1] === "[") {
+      const openCh = m[1], closeCh = openCh === "{" ? "}" : "]";
+      const start = rest.indexOf(openCh);
+      let depth = 0, inStr = false, esc = false;
+      for (let i = start; i < rest.length; i++) {
+        const c = rest[i];
+        if (inStr) { if (esc) esc = false; else if (c === "\\") esc = true; else if (c === '"') inStr = false; continue; }
+        if (c === '"') { inStr = true; continue; }
+        if (c === openCh) depth++;
+        else if (c === closeCh && --depth === 0) {
+          try { return JSON.parse(rest.slice(start, i + 1)); } catch (e) { return undefined; }
+        }
+      }
+      return undefined;
+    }
+    const num = rest.match(/^\s*(-?\d+(?:\.\d+)?)/);
+    return num ? Number(num[1]) : undefined;
+  }
+
   function parseObjectAfterKey(text, quotedKey) {
     const key = text.indexOf(quotedKey);
     if (key === -1) return undefined;
@@ -2884,7 +2956,16 @@ window.moveAdminPackageRow = function(index, dir) {
     // rule as the albums above — unreadable means stop, not "none published".
     const books = parseObjectAfterKey(text, '"STUDIO_PORTFOLIOS"');
     if (books === null) throw new Error("Could not read the saved portfolio books in the published data.js — aborting so no book is overwritten.");
-    return { shoots: parsed, deletedIds: parseDeletedIdsFromDataJs(text), studioPortfolios: books || null };
+    // The settings that are not merged per item (prices, codes, rates) come
+    // back whole, with the stamps saying when each was last changed, so the
+    // publish can keep a newer copy made on another device.
+    const settings = {};
+    const stamps = parseObjectAfterKey(text, '"SETTINGS_AT"') || {};
+    ["PACKAGES", "TFP_PACKAGE", "INVITE_CODES", "PROMO_CODES", "PORTFOLIO_PDF", "HOME_STUDIO_RATE", "HOME_STUDIO_RATE_TFP"].forEach((k) => {
+      const v = parseValueAfterKey(text, `"${k}"`);
+      if (v !== undefined) settings[k] = v;
+    });
+    return { shoots: parsed, deletedIds: parseDeletedIdsFromDataJs(text), studioPortfolios: books || null, settings, stamps };
   }
 
   const MIME_EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
@@ -3112,30 +3193,50 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         // created in the panel worked for the studio and was rejected as
         // invalid for every client, and price edits never reached the booking
         // form. Publishing them here is what makes them real for everyone.
-        INVITE_CODES: (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : []),
-        PROMO_CODES: (typeof window.getAdminPromoCodes === "function" ? window.getAdminPromoCodes() : {}),
-        PACKAGES: (typeof window.getAdminPackages === "function" ? window.getAdminPackages() : []),
-        // The portfolio PDF's price and the UPI ID it's paid to.
-        PORTFOLIO_PDF: (typeof window.getPortfolioPdfSettings === "function" ? window.getPortfolioPdfSettings() : null),
+        ...(() => {
+          // Prices, codes and rates are not merged item by item the way albums
+          // and books are, so the publishing device's copy simply replaced the
+          // live one: a price edited on the phone came back to the laptop's
+          // older value the next time the laptop published anything. Each
+          // setting now carries a stamp, and the newer side wins.
+          const mine = {
+            INVITE_CODES: (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : []),
+            PROMO_CODES: (typeof window.getAdminPromoCodes === "function" ? window.getAdminPromoCodes() : {}),
+            PACKAGES: (typeof window.getAdminPackages === "function" ? window.getAdminPackages() : []),
+            TFP_PACKAGE: (typeof window.getAdminTfpPackage === "function" ? window.getAdminTfpPackage() : null),
+            HOME_STUDIO_RATE: (typeof window.getHomeStudioRate === "function" ? window.getHomeStudioRate() : 3000),
+            PORTFOLIO_PDF: (typeof window.getPortfolioPdfSettings === "function" ? window.getPortfolioPdfSettings() : null),
+            HOME_STUDIO_RATE_TFP: (function() {
+              try {
+                const v = localStorage.getItem("wps_home_studio_rate_tfp");
+                if (v !== null && v !== "") {
+                  const n = parseInt(v, 10);
+                  if (!isNaN(n) && n >= 0) return n;
+                }
+                const pub = window.WPS_DATA && window.WPS_DATA.HOME_STUDIO_RATE_TFP;
+                return (typeof pub === "number" && pub >= 0) ? pub : null;
+              } catch (e) { return null; }
+            })()
+          };
+          const liveVals = (remote && remote.settings) || {};
+          const liveAt = (remote && remote.stamps) || {};
+          const mineAt = (typeof window.localSettingStamps === "function") ? window.localSettingStamps() : {};
+          const out = {}, keptAt = {};
+          Object.keys(mine).forEach((k) => {
+            const theirs = liveAt[k] || 0, ours = mineAt[k] || 0;
+            const takeLive = theirs > ours && liveVals[k] !== undefined;
+            out[k] = takeLive ? liveVals[k] : mine[k];
+            keptAt[k] = takeLive ? theirs : ours;
+            if (takeLive) console.info(`Publish: keeping the newer ${k} from the live site (changed on another device).`);
+          });
+          out.SETTINGS_AT = keptAt;
+          return out;
+        })(),
         // Saved studio portfolio books (book-builder.js), merged per book with
         // this device's drafts AND the live copy just fetched, never only the
         // copy this page happened to load.
         STUDIO_PORTFOLIOS: (typeof window.getStudioPortfolios === "function" ? window.getStudioPortfolios(remote.studioPortfolios) : { versions: [], deleted: [] }),
-        TFP_PACKAGE: (typeof window.getAdminTfpPackage === "function" ? window.getAdminTfpPackage() : null),
-        HOME_STUDIO_RATE: (typeof window.getHomeStudioRate === "function" ? window.getHomeStudioRate() : 3000),
-        // Only published when the studio actually set a separate collaboration
-        // rate; null keeps test shoots on the paid rate for every visitor.
-        HOME_STUDIO_RATE_TFP: (function() {
-          try {
-            const v = localStorage.getItem("wps_home_studio_rate_tfp");
-            if (v !== null && v !== "") {
-              const n = parseInt(v, 10);
-              if (!isNaN(n) && n >= 0) return n;
-            }
-            const pub = window.WPS_DATA && window.WPS_DATA.HOME_STUDIO_RATE_TFP;
-            return (typeof pub === "number" && pub >= 0) ? pub : null;
-          } catch(e) { return null; }
-        })() }, null, 2)};
+        }, null, 2)};
 
 // Explicit Global Aliases for Data Safety
 window.ACTIVITIES = window.WPS_DATA.ACTIVITIES || [];
@@ -10936,6 +11037,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       if (!toggle || !popup || !dateInput) return;
 
       let pickerMode = "range"; // "range" or "multi"
+      let pickerIsWriting = false;   // true only while updateInput fills the field
       let viewYear, viewMonth; // currently displayed month
 
       const today = new Date();
@@ -10971,7 +11073,18 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             dateInput.value = sorted.map(formatDate).join(", ");
           }
         }
+        // The days the visitor actually picked, kept beside the text. Saving a
+        // booking used to re-read the text and split it on commas, so
+        // "Oct 10, 2026" became "Oct 10" and "2026" — filed under 10 October
+        // 2001 and 1 January 2026, never the real day (there are such entries
+        // in the published calendar). Typing into the field clears this, so a
+        // hand-typed date is parsed rather than inheriting an old pick.
+        dateInput._wpsPickedDates = (pickerMode === "range"
+          ? [rangeStart, rangeEnd].filter(Boolean)
+          : [...multiDates].sort((a, b) => a - b)).map((d) => new Date(d));
+        pickerIsWriting = true;
         dateInput.dispatchEvent(new Event("input", { bubbles: true }));
+        pickerIsWriting = false;
         checkAvailabilityBadge();
       }
 
@@ -11038,7 +11151,19 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         }
       }
 
-      dateInput.addEventListener("input", checkAvailabilityBadge);
+      // Typing over the field means the picker's memory no longer describes it:
+      // drop the remembered days, and the range/multi selection whose status
+      // the badge and the studio's email were still reporting.
+      dateInput.addEventListener("input", () => {
+        // Anything but the picker writing into the field means the selection no
+        // longer describes it: drop the remembered days and the range/list whose
+        // status the badge and the studio's email were still reporting.
+        if (!pickerIsWriting) {
+          dateInput._wpsPickedDates = null;
+          rangeStart = null; rangeEnd = null; multiDates = [];
+        }
+        checkAvailabilityBadge();
+      });
 
       let adminManageMode = false;
 
@@ -11279,6 +11404,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         popup.querySelector(".dp-clear")?.addEventListener("click", (e) => {
           e.stopPropagation();
           rangeStart = null; rangeEnd = null; multiDates = [];
+          // …and the field and its remembered days, or the "already booked"
+          // badge and the studio's email would keep describing a cleared pick.
+          dateInput.value = "";
+          dateInput._wpsPickedDates = null;
+          checkAvailabilityBadge();
           renderCalendar();
         });
 
@@ -12805,8 +12935,41 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // Flag an already-booked date for the studio's attention rather than
       // blocking submission — the client may still want to send the request
       // so the studio can decide (confirm anyway, or offer an alternative).
-      const dateStatusTarget = rangeStart || (multiDates.length ? multiDates[0] : (() => { const p = new Date(date); return isNaN(p.getTime()) ? null : p; })());
+      // Every day this booking covers, from the picker where it was used and
+      // from the text otherwise (same parsing as the calendar save below).
+      const dateEl0 = $("#b_date");
+      const requestedDates = (dateEl0 && Array.isArray(dateEl0._wpsPickedDates) && dateEl0._wpsPickedDates.length)
+        ? dateEl0._wpsPickedDates.slice()
+        : date.split(/\s*[–—]\s*/)
+              .flatMap((part) => part.split(/,(?=\s*[A-Za-z])/))
+              .map((t) => new Date(t.trim()))
+              .filter((d) => !isNaN(d.getTime()) && d.getFullYear() >= 2020);
+      const dateStatusTarget = requestedDates[0] || null;
       const dateAlreadyBooked = dateStatusTarget ? getCalDateStatus(dateStatusTarget).isBooked : false;
+
+      // The picker disables closed days, but a date typed by hand went through
+      // untouched: a Tuesday, or a Saturday the studio had blocked, reached
+      // "Request sent" and the studio's email said nothing about it (Sep 2026
+      // audit). Same rules either way now. Days that are merely already booked
+      // stay allowed on purpose — the studio decides those — and keep their flag.
+      const todayKey = getCalDateKey(new Date());
+      const unbookable = requestedDates.map((d) => {
+        const st = getCalDateStatus(d);
+        const label = d.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+        if (st.key < todayKey) return `${label} has already passed`;
+        if (st.isCustomBlocked) return `${label} is blocked in the studio's calendar`;
+        if (st.isBlocked) return `${label} is a ${d.toLocaleDateString("en-IN", { weekday: "long" })} — shoots run at weekends`;
+        return null;
+      }).filter(Boolean);
+      if (unbookable.length) {
+        const dateField = $("#b_date");
+        toast(`${unbookable[0]}. Pick a date from the calendar, or email the studio to ask about that day.`);
+        if (dateField) {
+          dateField.focus();
+          dateField.scrollIntoView({ behavior: prefersReduced ? "auto" : "smooth", block: "center" });
+        }
+        return;
+      }
       // The session length was collected and then dropped on the floor: it
       // reached neither the studio's inbox nor the calendar, which recorded
       // every booking as a full day. A cap nobody can see is not a cap, so it
@@ -13279,10 +13442,20 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
           // Auto-save booking into Studio Calendar DB immediately
           if (date) {
-            const rawParts = date.split(/[,–]/).map(s => s.trim()).filter(Boolean);
-            rawParts.forEach(pStr => {
-              const dObj = new Date(pStr);
-              if (!isNaN(dObj.getTime())) {
+            // The days the picker recorded, when it was used. Falling back to
+            // the text, a range or list is split on the en-dash or on commas
+            // that separate whole dates ("Oct 10, 2026, Oct 11, 2026"), never
+            // on the comma inside one date, which is what filed bookings under
+            // the year 2001.
+            const dateEl = $("#b_date");
+            const picked = (dateEl && Array.isArray(dateEl._wpsPickedDates) && dateEl._wpsPickedDates.length)
+              ? dateEl._wpsPickedDates.slice()
+              : date.split(/\s*[–—]\s*/)
+                    .flatMap((part) => part.split(/,(?=\s*[A-Za-z])/))
+                    .map((t) => new Date(t.trim()))
+                    .filter((d) => !isNaN(d.getTime()) && d.getFullYear() >= 2020);
+            picked.forEach(dObj => {
+              {
                 const dKey = getCalDateKey(dObj);
                 addCalBooking(dKey, {
                   name,
@@ -13819,6 +13992,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     // "Send another request" — reset back to a clean form.
     $("#bookAnother")?.addEventListener("click", () => {
       form.reset();
+      // form.reset() empties the field but not the picker behind it: the next
+      // request kept reporting the previous date's "already booked" badge, and
+      // sent that warning to the studio about a different day (Sep 2026 audit).
+      const dateEl = $("#b_date");
+      if (dateEl) {
+        dateEl._wpsPickedDates = null;
+        dateEl.dispatchEvent(new Event("input", { bubbles: true }));
+      }
       ["b_name", "b_email", "b_date"].forEach(clearError);
       if (successPanel) successPanel.hidden = true;
       form.hidden = false;
@@ -15619,6 +15800,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       return;
     }
     localStorage.setItem("wps_portfolio_pdf", JSON.stringify({ enabled, price, upiId }));
+    stampSetting("wps_portfolio_pdf");
     showSwitch(enabled);
     updateAdminBtn();
     say("Publishing to the live site…", "busy");
