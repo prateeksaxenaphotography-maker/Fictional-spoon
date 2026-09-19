@@ -1392,7 +1392,19 @@ window.resolveContractArchive = function(version) {
   };
 
   const isAdminAuthorized = () => localStorage.getItem("wps-admin-authorized") === "1";
-  const isAdmin = () => isAdminAuthorized() && sessionStorage.getItem("wps-admin") === "1";
+  /* Another site can put this page inside a frame, cover it, and lure clicks
+     onto controls the person cannot see — worth doing only while the studio is
+     signed in, since that is where the destructive buttons are. A
+     frame-ancestors header is the proper fix and only the host can set one, so
+     until then admin mode simply does not exist inside a frame: there is
+     nothing to aim a click at. Reading window.top across origins throws, and
+     that throw is itself the answer (site audit Sep 2026).
+
+     The one iframe this app makes is the contract print sheet, which is
+     written into the frame directly and never loads this script, so it is not
+     affected. */
+  const isFramed = () => { try { return window.top !== window.self; } catch (e) { return true; } };
+  const isAdmin = () => !isFramed() && isAdminAuthorized() && sessionStorage.getItem("wps-admin") === "1";
 
   /* The studio's own half of the app — the /calendar, /contracts and /upload
      screens, the code and package editors, the contract archive, publishing —
