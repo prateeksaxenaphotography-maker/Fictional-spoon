@@ -49,11 +49,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2 # HEAD~1 is needed for the collapse checks
+          # Deep enough to reach the commit the branch was at before this push,
+          # so a release made of several commits is judged as one.
+          fetch-depth: 50
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: Published data is intact
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
         run: node .github/scripts/validate-data.mjs
       - name: Search-engine pages build
         run: node .github/scripts/build-seo.mjs --check
