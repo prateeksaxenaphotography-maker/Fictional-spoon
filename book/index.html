@@ -6,13 +6,15 @@
   <!-- Security: restrict where scripts/styles/requests may load from -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com; connect-src 'self' https://api.github.com https://formsubmit.co https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com; object-src 'none'; base-uri 'self'; form-action 'self' mailto:" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-S0Q7T5Y2J4"></script>
+  <!-- Google tag. The 172 KB script is NOT fetched here: at the top of the head
+       it was downloaded before the site's own code, taking about a fifth of a
+       first visit's bytes and a share of a slow connection while app.js waited
+       (Sep 2026 audit). app.js loads it once the page has been drawn; this stub
+       records anything measured before then and replays it. -->
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-    gtag('config', 'G-S0Q7T5Y2J4');
   </script>
   <title>Book a Fashion/Fitness/Sports Photoshoot in Noida &amp; Delhi NCR | nerdyphotographer.in</title>
   <meta name="description" content="Collaborate with us on your next photoshoot. Send a project brief or book a session with Noida's creative studio." />
@@ -36,7 +38,10 @@
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Fraunces:opsz,ital,wght@9..144,0,300;9..144,1,400;9..144,1,500&family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Fraunces:opsz,ital,wght@9..144,0,300;9..144,1,400;9..144,1,500&family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Fraunces:opsz,ital,wght@9..144,0,300;9..144,1,400;9..144,1,500&family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" /></noscript>
-  <link rel="stylesheet" href="/styles.css?v=450" />
+  <link rel="stylesheet" href="/styles.css?v=451" />
+  <link rel="preload" as="script" href="/config.js?v=451" />
+  <link rel="preload" as="script" href="/data.js?v=451" />
+  <link rel="preload" as="script" href="/app.js?v=451" />
   <script>
     (function() {
       function updateTheme() {
@@ -252,9 +257,9 @@
     <div class="lightbox-sidebar" id="lightboxSidebar"></div>
   </div>
 
-  <script src="/config.js?v=450"></script>
-  <script src="/data.js?v=450"></script>
-  <script src="/app.js?v=450"></script>
+  <script src="/config.js?v=451"></script>
+  <script src="/data.js?v=451"></script>
+  <script src="/app.js?v=451"></script>
   <div id="compCardPrintContainer" style="display: none;"></div>
 </body>
 </html>

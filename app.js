@@ -1954,6 +1954,13 @@ window.moveAdminPackageRow = function(index, dir) {
     if (set.length) set.push(`${fixPath(p.url)} 1600w`);
     return set.join(", ");
   };
+  /* The picture's real pixel size, written into the tag. Without it a tile has
+     no height until its photo arrives: every tile on an album page collapsed
+     to nothing, which put all 19 photos inside the browser's lazy-load
+     distance, so they were all requested in the same instant and the ones on
+     screen queued behind the rest (Sep 2026 audit). It also stops the page
+     jumping as each photo lands. */
+  const sizeAttr = (p) => (p && p.w && p.h ? ` width="${p.w}" height="${p.h}"` : "");
   const srcsetAttr = (p, sizes = "(max-width: 620px) 90vw, (max-width: 1100px) 45vw, 640px") => {
     const value = srcsetValue(p);
     return value ? ` srcset="${esc(value)}" sizes="${esc(sizes)}"` : "";
@@ -4683,7 +4690,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         <div class="comp-card-grid">
           ${shownPhotos.map((p, idx) => `
             <button class="comp-card-thumb reveal" data-index="${idx}">
-              <img src="${esc(photoSrc(p))}"${srcsetAttr(p, "(max-width: 620px) 45vw, 22vw")} alt="${esc(altFor(s, idx + 1))}" loading="lazy" />
+              <img src="${esc(photoSrc(p))}"${srcsetAttr(p, "(max-width: 620px) 45vw, 22vw")}${sizeAttr(p)} alt="${esc(altFor(s, idx + 1))}" loading="lazy" />
             </button>
           `).join("")}
           ${fourthPhoto ? `
@@ -8233,7 +8240,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         <div class="album-page-grid" data-shoot="${esc(album.id)}">
           ${album.photos.map((p, i) => `
             <button type="button" class="album-page-photo" data-index="${i}" aria-label="Open photo ${i + 1} of ${album.photos.length}">
-              <img src="${esc(photoSrc(p))}"${srcsetAttr(p, "(max-width: 620px) 100vw, (max-width: 1100px) 50vw, 33vw")} alt="${esc(p.caption || altFor(album, i + 1))}" ${i < 3 ? `decoding="async"` : `loading="lazy" decoding="async"`} />
+              <img src="${esc(photoSrc(p))}"${srcsetAttr(p, "(max-width: 620px) 100vw, (max-width: 1100px) 50vw, 33vw")}${sizeAttr(p)} alt="${esc(p.caption || altFor(album, i + 1))}" ${i < 3 ? `fetchpriority="${i === 0 ? "high" : "auto"}" decoding="async"` : `loading="lazy" decoding="async"`} />
             </button>`).join("")}
         </div>
         ${credits.length ? `<p class="album-page-credits">${credits.map(([k, v]) => `<span><strong>${esc(k)}</strong> ${esc(v)}</span>`).join("")}</p>` : ""}
@@ -8529,7 +8536,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         if (photo) {
           const src = photoSrc(photo);
           html += `<button class="specialty-thumb-btn reveal" data-kind="${esc(kind)}" data-val="${esc(val)}" data-src="${esc(src)}" style="aspect-ratio: 3/4; overflow: hidden; background: var(--bone); border: 1px solid var(--line); border-radius: 4px; padding: 0; cursor: pointer; display: block; width: 100%;">
-                     <img src="${esc(src)}"${srcsetAttr(photo, "(max-width: 620px) 30vw, 18vw")} style="width:100%; height:100%; object-fit:cover; object-position:center; transition: transform .4s var(--ease);" alt="${esc(photo.parent ? altFor(photo.parent) : placeholderPrefix + ' photography by nerdyphotographer.in')}" loading="lazy" />
+                     <img src="${esc(src)}"${srcsetAttr(photo, "(max-width: 620px) 30vw, 18vw")}${sizeAttr(photo)} style="width:100%; height:100%; object-fit:cover; object-position:center; transition: transform .4s var(--ease);" alt="${esc(photo.parent ? altFor(photo.parent) : placeholderPrefix + ' photography by nerdyphotographer.in')}" loading="lazy" />
                    </button>`;
         } else {
           html += `<div class="specialty-thumb-empty">${placeholderPrefix}_0${i+1}</div>`;
@@ -14670,10 +14677,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     const kind = parts[1] || qKind;
     const val = parts[2] || qVal;
     
-    if (typeof gtag === 'function') {
-      gtag('config', 'G-S0Q7T5Y2J4', {
-        'page_path': location.pathname + location.search
-      });
+    // One measurement per view. This used to call config() on every render on
+    // top of the one in the page's head, so a single landing was counted twice
+    // (Sep 2026 audit); the head no longer configures anything, and a view is
+    // recorded as a page_view event rather than by re-configuring the tag.
+    if (typeof gtag === "function") {
+      gtag("event", "page_view", { page_path: location.pathname + location.search, page_title: document.title });
     }
     
     const header = $(".site-header");
@@ -18204,6 +18213,31 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     }
   }
 
+  /* Google's tag is 172 KB and was fetched from the top of every page's head,
+     ahead of the site's own three scripts and sharing a slow connection with
+     them. Nothing on the page needs it to render, so it is fetched once the
+     page has been drawn and the browser is otherwise idle. The stub in the
+     head keeps queueing calls in the meantime, and gtag.js replays that queue
+     when it arrives, so nothing measured before it loads is lost. */
+  let analyticsRequested = false;
+  function loadAnalyticsWhenIdle() {
+    if (analyticsRequested) return;
+    analyticsRequested = true;
+    const start = () => {
+      try {
+        const sc = document.createElement("script");
+        sc.async = true;
+        sc.src = "https://www.googletagmanager.com/gtag/js?id=G-S0Q7T5Y2J4";
+        document.head.appendChild(sc);
+        if (typeof gtag === "function") {
+          gtag("config", "G-S0Q7T5Y2J4", { page_path: location.pathname + location.search });
+        }
+      } catch (e) { /* analytics must never break the site */ }
+    };
+    if (window.requestIdleCallback) requestIdleCallback(start, { timeout: 4000 });
+    else setTimeout(start, 1500);
+  }
+
   (async function boot() {
     // Order matters: admin URL params must apply before anything calls
     // isAdmin() or loadShoots(); chrome wiring must precede first render.
@@ -18240,6 +18274,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // for five to ten seconds, and on the deploy-built pages hid text that
       // had been on screen since 1.9s (Sep 2026 audit).
       dismissLoader();
+      loadAnalyticsWhenIdle();
       // Hard safety: never let the loader trap the page.
       setTimeout(dismissLoader, 2500);
       resolveBootReady();

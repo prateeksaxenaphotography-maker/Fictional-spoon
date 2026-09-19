@@ -292,7 +292,7 @@ function buildAlbumPage(s) {
       </div></header>
       <section class="section container">
         <div class="pr-photos">
-          ${s.photos.map((p, i) => `<img src="${esc(photoPath(p))}" alt="${esc(p.caption || altFor(s, i + 1))}" loading="lazy" />`).join("\n          ")}
+          ${s.photos.map((p, i) => `<img src="${esc(photoPath(p.small ? { url: p.small } : p))}"${srcsetOf(p) ? ` srcset="${esc(srcsetOf(p))}" sizes="(max-width: 620px) 100vw, (max-width: 1100px) 50vw, 33vw"` : ""}${p.w && p.h ? ` width="${p.w}" height="${p.h}"` : ""} alt="${esc(p.caption || altFor(s, i + 1))}"${i === 0 ? ' fetchpriority="high"' : ' loading="lazy"'} decoding="async" />`).join("\n          ")}
         </div>
         ${credits.length ? `<p class="pr-credits">${credits.map(([k, v]) => `${esc(k)}: ${esc(v)}`).join(" · ")}</p>` : ""}
         <p><a href="/book/" data-link>Book a photoshoot with ${BRAND}</a> · <a href="/albums/" data-link>All albums</a></p>
