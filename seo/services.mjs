@@ -122,7 +122,7 @@ export const SERVICES = [
       ["Do you shoot male models as well?", "Yes. The portfolios on this site include both male and female models."],
       ["Where does the shoot take place?", "In the studio in Noida, or on location in Noida, Delhi and the rest of Delhi NCR, depending on the looks planned."],
       ["When can I book?", "Shoots run on weekends. The booking page shows the dates that are open."],
-      ["Do you do test shoots (TFP or collaboration)?", "Occasionally, and by invitation only. If you have been given an invite code, enter it on the booking page."],
+      ["Do you do test shoots (TFP or collaboration)?", "Occasionally, and by invitation only. A collaboration means two experienced people bringing equal value to the same shoot — a professional model, a brand or a company with something of their own to put in. If you are starting out — you want direction, a first portfolio, or you are still building a following — that is a booking rather than a collaboration, and it is quoted like any other shoot. If you have been given an invite code, enter it on the booking page."],
       TEST_SHOOT_FAQ
     ]
   },
@@ -199,7 +199,7 @@ export const SERVICES = [
       ["When should I schedule a physique shoot?", "Book the date first, then plan your prep towards it. Weekend dates are shown on the booking page."],
       ["Do you shoot for gyms and fitness brands?", "Yes — trainers, facilities, apparel and supplements. Brand work is quoted as a campaign; see the brand campaigns page."],
       ["How are the photos delivered?", "As an online proofing gallery. You choose your selects, and those are retouched and delivered."],
-      ["Do you do test shoots (TFP or collaboration)?", "Occasionally, and by invitation only. If you have been given an invite code, enter it on the booking page."],
+      ["Do you do test shoots (TFP or collaboration)?", "Occasionally, and by invitation only. A collaboration means two experienced people bringing equal value to the same shoot — a professional model, a brand or a company with something of their own to put in. If you are starting out — you want direction, a first portfolio, or you are still building a following — that is a booking rather than a collaboration, and it is quoted like any other shoot. If you have been given an invite code, enter it on the booking page."],
       TEST_SHOOT_FAQ
     ]
   },
@@ -324,7 +324,7 @@ export const SERVICES = [
       ["My idea is still vague. Is that enough to start with?", "Yes. Half a sentence and three reference pictures is a start. The first conversation turns that into something specific: what is in the frame, where, in what light, and what the set of pictures is for. If the idea needs more thinking before it is worth shooting, you will be told so before a date is held."],
       ["How much does a creative shoot cost?", "The booking page lists the set tiers and a smaller idea usually fits one. Past that it is quoted to the brief — one portrait idea in the studio and a two-location shoot with a team are not the same job, so the price follows what the idea needs: looks, locations, people, shooting hours and finished images. Send the idea through the booking page and you will have a price written against it before anything is booked."],
       ["Who else needs to be on the shoot?", "Whoever the idea needs, and often nobody. Bring your own stylist, hair and make-up artist or performers if you have them, or ask when you send the idea and the studio will help put a small team together. Everyone involved is credited on the finished work."],
-      ["Is this a TFP or collaboration shoot?", "No. A creative shoot is quoted and booked like any other. Collaborations are occasional and by invitation only — if you have been given an invite code, enter it on the booking page."],
+      ["Is this a TFP or collaboration shoot?", "No. A creative shoot is quoted and booked like any other. A collaboration means two experienced people bringing equal value to the same shoot, it happens occasionally, and it is by invitation only — if you have been given an invite code, enter it on the booking page."],
       ["When can I book, and what do I get?", "Shoots run on weekends, in the home studio in Noida or on location across Delhi NCR when the idea needs a real place, and the booking page shows the dates that are open. Afterwards you get a proofing gallery to choose from and your selects retouched. RAW files are not delivered, and the shoot is covered by a written contract signed online."]
     ]
   }
