@@ -793,5 +793,27 @@ try {
   }
 } catch (e) { fail("could not compare the page shells: " + e.message); }
 
+/* ---- 14 · code changed, so the cache-buster must change too ----
+   Every page asks for app.js?v=<n> and the service worker caches by that
+   number, so a release that edits the code without bumping it reaches nobody
+   who has been to the site before: their browser keeps serving the copy it
+   already has. 29 commits on 2026-09-05 changed app.js or styles.css without
+   touching sw.js (Sep 2026 audit). Only runs when there is a previous commit
+   to compare against. */
+try {
+  const changed = execSync("git diff --name-only HEAD~1 HEAD", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
+    .split("\n").map((x) => x.trim()).filter(Boolean);
+  const codeFiles = ["app.js", "styles.css", "config.js", "book-builder.js", "sw.js"];
+  const codeChanged = changed.filter((f) => codeFiles.includes(f) && f !== "sw.js");
+  if (codeChanged.length) {
+    const prevSw = execSync("git show HEAD~1:sw.js", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    const was = (prevSw.match(/ASSET_VERSION\s*=\s*"(\d+)"/) || [])[1];
+    const now = (readFileSync("sw.js", "utf8").match(/ASSET_VERSION\s*=\s*"(\d+)"/) || [])[1];
+    if (was && now && was === now) {
+      fail(`${codeChanged.join(", ")} changed but ASSET_VERSION is still ${now} — bump it and every page's ?v=, or returning visitors keep the old code`);
+    }
+  }
+} catch (e) { /* first commit, or a shallow clone: nothing to compare */ }
+
 if (failed) process.exit(1);
 console.log(`OK: ${shoots.length} albums, ids unique, all photo files present, format contract intact, cache-buster in sync.`);
