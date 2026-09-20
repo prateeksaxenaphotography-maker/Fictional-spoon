@@ -129,8 +129,8 @@ window.openPromoCodeModal = function(codeKey) {
    window.PDF_TYPE_ROLES — the same list pdf-tools.js draws from — so a role
    added there appears here with no second edit. */
 const pdfEsc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-window.renderPdfTypeEditor = function() {
-  const host = document.getElementById("pdfTypeRows");
+window.renderPdfTypeEditor = function(host) {
+  host = host || document.getElementById("pdfTypeRows");
   if (!host || !window.PDF_TYPE_ROLES) return;
   const cur = (window.getPortfolioPdfSettings() || {}).type || window.defaultPdfType();
   const fams = window.PDF_TYPE_FAMILIES || {};
@@ -168,8 +168,8 @@ window.renderPdfTypeEditor = function() {
 
 /* A frame just inside the edge of every page. Off by default — the pages are
    designed to run to the paper — so this row sits apart from the type rows. */
-window.renderPdfBorderEditor = function() {
-  const host = document.getElementById("pdfBorderRow");
+window.renderPdfBorderEditor = function(host) {
+  host = host || document.getElementById("pdfBorderRow");
   if (!host) return;
   const b = (window.getPortfolioPdfSettings() || {}).border || window.DEFAULT_PDF_BORDER || {};
   const cell = "padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); font-size: var(--font-xs); font-family: inherit;";
@@ -186,22 +186,23 @@ window.renderPdfBorderEditor = function() {
     <input type="color" id="pdfBorderColor" value="${pdfEsc(b.color || "#141416")}" style="width: 34px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer;" aria-label="Border colour" />`;
 };
 
-window.readPdfBorderEditor = function() {
-  const on = document.getElementById("pdfBorderOn");
+window.readPdfBorderEditor = function(host) {
+  host = host || document.getElementById("pdfBorderRow");
+  const on = host && host.querySelector("#pdfBorderOn");
   if (!on) return null;
-  const num = (id, fallback) => { const el = document.getElementById(id); const n = el ? Number(el.value) : NaN; return Number.isFinite(n) ? n : fallback; };
+  const num = (id, fallback) => { const el = host.querySelector("#" + id); const n = el ? Number(el.value) : NaN; return Number.isFinite(n) ? n : fallback; };
   const d = window.DEFAULT_PDF_BORDER || { width: 0.5, inset: 6, color: "#141416" };
   return {
     on: on.checked,
     width: num("pdfBorderWidth", d.width),
     inset: num("pdfBorderInset", d.inset),
-    color: (document.getElementById("pdfBorderColor") || {}).value || d.color
+    color: (host.querySelector("#pdfBorderColor") || {}).value || d.color
   };
 };
 
 // What the rows currently say, in the shape getPortfolioPdfSettings stores.
-window.readPdfTypeEditor = function() {
-  const host = document.getElementById("pdfTypeRows");
+window.readPdfTypeEditor = function(host) {
+  host = host || document.getElementById("pdfTypeRows");
   if (!host || !host.children.length) return null;
   const out = {};
   host.querySelectorAll(".pdf-type-row").forEach((row) => {

@@ -2106,6 +2106,14 @@
             <p class="pp-fine">One payment unlocks one PDF. Your payment goes straight to the studio, which matches every reference number against its bank.</p>
           </div>
         ` : `
+        ${admin ? `
+          <details class="pp-type">
+            <summary>Type &amp; border</summary>
+            <p class="pp-type-note">Every line of the page. Sizes are millimetres. This changes every portfolio PDF from now on, not just this one — it is saved on this device, and goes live the next time you publish from Calendar.</p>
+            <div id="ppTypeRows"></div>
+            <div id="ppBorderRow"></div>
+            <button type="button" class="pp-sample-btn" id="ppTypeReset">↺ Put every line back to the original</button>
+          </details>` : ""}
           <p class="pp-hint${admin ? " pp-hint-sample" : ""}">${admin ? `<span>Yours is free of the watermark. To send a sample with it:</span> <span class="pp-sample-actions"><button type="button" class="pp-sample-btn" id="ppDownloadMarked" data-download>Watermarked PDF</button><button type="button" class="pp-sample-btn" id="ppDownloadMarkedPng" data-download>Watermarked PNG${state.cover || state.pages === 2 ? "s" : ""}</button></span>` : lookOnly ? `Free to download with the watermark, as ${pngs}. ${lookMail ? `To buy the PDF without it${price ? ` for ₹${price}` : ""}, email ${lookMail} with your PNG or a screenshot of this preview.` : "The PDF without it isn't on sale yet."}` : price ? "Payment noted, thank you. It pays for one PDF with no watermark: once you've downloaded it, changing the photos or layout means paying again." : "Free to download."}</p>
           <div id="ppReady" class="pp-ready"></div>
         `}
@@ -2126,6 +2134,39 @@
       if (dlPng) dlPng.addEventListener("click", () => download(dlPng, false, "png"));
       const dlFreePng = foot.querySelector("#ppDownloadFreePng");
       if (dlFreePng) dlFreePng.addEventListener("click", () => download(dlFreePng, true, "png"));
+      // Changing any of it redraws the page underneath, so a choice is judged
+      // against the real thing rather than described.
+      const typeHost = body.querySelector("#ppTypeRows");
+      const borderHost = body.querySelector("#ppBorderRow");
+      if (typeHost && typeof window.renderPdfTypeEditor === "function") {
+        window.renderPdfTypeEditor(typeHost);
+        window.renderPdfBorderEditor(borderHost);
+        const persist = () => {
+          const cur = getPortfolioPdfSettings();
+          const next = {
+            ...cur,
+            type: window.readPdfTypeEditor(typeHost) || cur.type,
+            border: window.readPdfBorderEditor(borderHost) || cur.border
+          };
+          try { localStorage.setItem("wps_portfolio_pdf", JSON.stringify(next)); } catch (e) {}
+          if (typeof window.stampPortfolioPdfSetting === "function") window.stampPortfolioPdfSetting();
+          showPreview();
+          const reopened = body.querySelector(".pp-type");
+          if (reopened) reopened.open = true;
+        };
+        const panel = body.querySelector(".pp-type");
+        panel.addEventListener("change", persist);
+        body.querySelector("#ppTypeReset").addEventListener("click", () => {
+          const cur = getPortfolioPdfSettings();
+          try {
+            localStorage.setItem("wps_portfolio_pdf", JSON.stringify({ ...cur, type: window.defaultPdfType(), border: { ...window.DEFAULT_PDF_BORDER } }));
+          } catch (e) {}
+          if (typeof window.stampPortfolioPdfSetting === "function") window.stampPortfolioPdfSetting();
+          showPreview();
+          const reopened = body.querySelector(".pp-type");
+          if (reopened) reopened.open = true;
+        });
+      }
       const marked = body.querySelector("#ppDownloadMarked");
       if (marked) marked.addEventListener("click", () => download(marked, true));
       const markedPng = body.querySelector("#ppDownloadMarkedPng");

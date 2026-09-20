@@ -3293,3 +3293,19 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
   transition: border-color .25s var(--ease), background .25s var(--ease);
 }
 .pp-sample-btn:hover { border-color: var(--ink); background: var(--bone); }
+
+/* Type & border, inside the portfolio PDF builder. The same controls as the
+   Calendar panel, put next to the page they change so a choice can be judged
+   against the real thing. Admin only. */
+.pp-type { margin: 10px 0 2px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--bone); }
+.pp-type > summary { cursor: pointer; font: 700 12px var(--mono-font); letter-spacing: .1em; text-transform: uppercase; color: var(--accent-text); }
+.pp-type-note { margin: 8px 0 10px; font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); }
+.pp-type .pdf-type-row,
+.pp-type #pdfBorderRow { grid-template-columns: minmax(120px, 1.3fr) repeat(3, minmax(74px, 1fr)) auto !important; }
+.pp-type #ppTypeReset { margin-top: 10px; }
+@media (max-width: 620px) {
+  .pp-type .pdf-type-row,
+  .pp-type #pdfBorderRow { grid-template-columns: 1fr 1fr !important; }
+  .pp-type .pdf-type-row > div:first-child,
+  .pp-type #pdfBorderRow > div:first-child { grid-column: 1 / -1; }
+}

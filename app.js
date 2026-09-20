@@ -500,6 +500,7 @@ function getPortfolioPdfSettings() {
   return clean(window.WPS_DATA && window.WPS_DATA.PORTFOLIO_PDF) || { ...DEFAULT_PORTFOLIO_PDF };
 }
 window.getPortfolioPdfSettings = getPortfolioPdfSettings;
+window.stampPortfolioPdfSetting = () => stampSetting("wps_portfolio_pdf");
 
 /* Which device last changed a setting. Prices, invite and promo codes, the
    portfolio-PDF settings and the studio rates are NOT merged at publish time
