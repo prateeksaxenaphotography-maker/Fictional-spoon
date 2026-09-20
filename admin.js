@@ -1283,6 +1283,47 @@ window.WPS_CONTRACT_ARCHIVE["V3.7-TFP"] = {
     "Shoots requiring travel beyond 10 km from Noida incur travel expenses at actuals."
   )
 };
+/* V3.8: the home studio holds three people INCLUDING the photographer.
+
+   V3.4 introduced the cap as "total attendance including the Client and all
+   such crew is capped at 3 people", which left the photographer outside the
+   count — four people in a room meant for three. The studio's rule is three in
+   total, the photographer and the person being photographed among them.
+
+   That is a narrower term than the one V3.7 clients agreed to, so it is a new
+   version rather than an edit in place: a signed contract has to keep saying
+   what was signed. The TFP release never carried the cap at all and now does,
+   because it is the same room.
+
+   Composed off the active sentences with .replace(), like the versions before
+   it, and matched on the tail of the sentence only, so it does not depend on
+   how the home studio's area happens to be named. */
+window.WPS_CONTRACT_ARCHIVE["V3.8-COMMERCIAL"] = {
+  version: "V3.8-COMMERCIAL",
+  title: "Commercial Shoot & Release Agreement V3.8 (Paid Shoots)",
+  effectiveDate: "September 2026 - Present",
+  status: "Active / Current (Paid Commercial)",
+  summary: window.WPS_CONTRACT_ARCHIVE["V3.7-COMMERCIAL"].summary + " At the home studio the room holds three people in total, the photographer included.",
+  fullText: window.WPS_CONTRACT_ARCHIVE["V3.7-COMMERCIAL"].fullText.replace(
+    "total attendance including the Client and all such crew is capped at 3 people.",
+    "attendance is capped at 3 people in total, and that 3 counts the photographer as well as the Client and every crew member or guest the Client brings."
+  )
+};
+window.WPS_CONTRACT_ARCHIVE["V3.7-COMMERCIAL"].effectiveDate = "September 2026 (superseded by V3.8)";
+window.WPS_CONTRACT_ARCHIVE["V3.7-COMMERCIAL"].status = "Archived - superseded by V3.8 (home studio holds 3 including the photographer)";
+
+window.WPS_CONTRACT_ARCHIVE["V3.8-TFP"] = {
+  version: "V3.8-TFP",
+  title: "Test Shoot & TFP Liability Release V3.8 (Test Shoots)",
+  effectiveDate: "September 2026 - Present",
+  status: "Active / Current (Test Shoot / TFP)",
+  summary: window.WPS_CONTRACT_ARCHIVE["V3.7-TFP"].summary + " At the home studio the room holds three people in total, the photographer included.",
+  fullText: window.WPS_CONTRACT_ARCHIVE["V3.7-TFP"].fullText +
+    "\n\nHOME STUDIO ATTENDANCE\nWhere the session takes place at the photographer's home studio in " + HOME_STUDIO_AREA + ", attendance is capped at 3 people in total, and that 3 counts the photographer as well as the Participant and every crew member or guest the Participant brings."
+};
+window.WPS_CONTRACT_ARCHIVE["V3.7-TFP"].effectiveDate = "September 2026 (superseded by V3.8-TFP)";
+window.WPS_CONTRACT_ARCHIVE["V3.7-TFP"].status = "Archived - superseded by V3.8-TFP (home studio holds 3 including the photographer)";
+
 window.WPS_CONTRACT_ARCHIVE["V3.6-TFP"].effectiveDate = "September 2026 (superseded by V3.7-TFP)";
 window.WPS_CONTRACT_ARCHIVE["V3.6-TFP"].status = "Archived — superseded by V3.7-TFP (test-shoot travel radius 10 km)";
 
@@ -3251,7 +3292,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         })()
       : "";
     const homeStudioRiderHtml = ((studioByPhotographer || rentalFee > 0 || rentalWaived) && /home studio/i.test(studioLocation))
-      ? ` Attendance is limited to a maximum of 3 people in total including the Participant and any crew they bring (hair &amp; makeup, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`
+      ? ` Attendance is limited to a maximum of 3 people in total — the photographer, the Participant, and any crew they bring (hair &amp; makeup, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`
       : ``;
     const studioClauseTfp = studioByPhotographer
       ? `Studio venue for this session is provided by the photographer${studioLocation ? ` at <strong>${esc(studioLocation)}</strong>` : ""} at no additional rental charge to the talent.${homeStudioRiderHtml}`

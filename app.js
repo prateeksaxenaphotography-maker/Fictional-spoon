@@ -572,7 +572,7 @@ window.getAdminTfpPackage = getAdminTfpPackage;
    opening the Calendar view. Defined inside a view function, the archive
    simply did not exist on those paths.
    ============================================================ */
-window.ACTIVE_CONTRACTS = { commercial: "V3.7-COMMERCIAL", tfp: "V3.7-TFP" };
+window.ACTIVE_CONTRACTS = { commercial: "V3.8-COMMERCIAL", tfp: "V3.8-TFP" };
 
 /* ============================================================
    § CALL TIME, GRACE PERIOD & NO-SHOW
@@ -6636,11 +6636,11 @@ window.resolveContractArchive = function(version) {
         // visitor typed an invite code carrying a venue — the whole field
         // refresh died mid-update, leaving pricing and policy text stale.
         const lockedHomeRiderHtml = /home studio/i.test(lockedLocation || "")
-          ? ` Attendance is limited to a maximum of 3 people in total including the Participant and any crew they bring (hair &amp; makeup, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`
+          ? ` Attendance is limited to a maximum of 3 people in total — the photographer, the Participant, and any crew they bring (hair &amp; makeup, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`
           : ``;
         // House rules for the residence, quoted wherever the home studio is
         // the venue — a paid booking is capped exactly like an invited one.
-        const paidHomeRiderHtml = ` Attendance is limited to a maximum of 3 people in total including the Participant and any crew they bring (hair &amp; makeup, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`;
+        const paidHomeRiderHtml = ` Attendance is limited to a maximum of 3 people in total — the photographer, the Participant, and any crew they bring (hair &amp; makeup, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`;
         contractStudioClause.innerHTML = (isValidInvite && lockedLocation && homeStudioFee === 0)
           ? `Studio for this session is provided by the photographer at <strong>${lockedLocation}</strong> at no additional rental charge to the talent.${lockedHomeRiderHtml} Hair &amp; makeup artists, stylists, set designers and any other third-party crew are not included — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`
           : homeStudioFee > 0
@@ -7710,7 +7710,7 @@ window.resolveContractArchive = function(version) {
         const venueByStudio = $("#b_location")?.dataset.inviteLocked === "1" || isHomeStudio;
         const venueByStudioAddress = venueByStudio ? ($("#b_location")?.value || "") : "";
         const homeStudioRider = isHomeStudio
-          ? `\n\nHOME STUDIO SESSIONS\nThis session takes place at the photographer's private residence. Attendance is limited to a maximum of 3 people in total, including the Participant and any crew they bring — hair & makeup artists, stylists, assistants and guests all count towards this limit. Sessions run within booked daylight hours and conclude by 7:00 PM. The full address is shared on booking confirmation. Guests may not attend unaccompanied.`
+          ? `\n\nHOME STUDIO SESSIONS\nThis session takes place at the photographer's private residence. Attendance is limited to a maximum of 3 people in total — the photographer, the Participant, and any crew they bring; hair & makeup artists, stylists, assistants and guests all count towards this limit. Sessions run within booked daylight hours and conclude by 7:00 PM. The full address is shared on booking confirmation. Guests may not attend unaccompanied.`
           : "";
         // Same arranger choice the live contract clause reads during
         // updateFields, re-read here off the same select/radio pair so the
@@ -7833,7 +7833,7 @@ window.resolveContractArchive = function(version) {
         // use-before-declaration crash on every submit.
         // House rules for shooting at the photographer's residence apply
         // whether or not a rental is charged for it.
-        const homeStudioHouseRules = `Home Studio Policy: This session takes place at the photographer's private residence. Attendance is capped at 3 people in total including yourself and any crew you bring (hair & makeup, stylist, assistants and guests all count towards this cap), sessions run within booked daylight hours and finish by 7:00 PM, and the full address is shared once the booking is confirmed. Guests may not attend unaccompanied.\n`;
+        const homeStudioHouseRules = `Home Studio Policy: This session takes place at the photographer's private residence. Attendance is capped at 3 people in total — the photographer, you, and any crew you bring (hair & makeup, stylist, assistants and guests all count towards this cap), sessions run within booked daylight hours and finish by 7:00 PM, and the full address is shared once the booking is confirmed. Guests may not attend unaccompanied.\n`;
 
         // A rental above zero means the home studio IS the venue, whatever the
         // dropdown says — it is hidden entirely on invite bookings, so keying
@@ -8517,7 +8517,7 @@ window.resolveContractArchive = function(version) {
       const modalVenueByStudio = $("#b_location")?.dataset.inviteLocked === "1" || modalIsHomeStudio;
       const modalVenueAddress = modalVenueByStudio ? ($("#b_location")?.value || "") : "";
       const modalHomeRider = modalIsHomeStudio
-        ? ` <strong>Home studio sessions</strong> take place at the photographer's private residence: attendance is capped at 3 people in total including you and any crew you bring — hair &amp; makeup, stylist, assistants and guests all count towards this cap, the session runs within booked daylight hours and finishes by <strong>7:00 PM</strong>, and the full address is shared once your booking is confirmed. Guests may not attend unaccompanied.`
+        ? ` <strong>Home studio sessions</strong> take place at the photographer's private residence: attendance is capped at 3 people in total — the photographer, you, and any crew you bring; hair &amp; makeup, stylist, assistants and guests all count towards this cap, the session runs within booked daylight hours and finishes by <strong>7:00 PM</strong>, and the full address is shared once your booking is confirmed. Guests may not attend unaccompanied.`
         : "";
       // A paid home-studio booking now carries a fixed rental, so the blanket
       // "no studio rental is billed to you" would contradict the quote the
