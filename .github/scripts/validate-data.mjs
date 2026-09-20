@@ -289,6 +289,23 @@ if (pdfSale !== undefined && pdfSale !== null) {
 // Saved books are the studio's own work, rebuilt by hand if lost, so their
 // shape is held to what cleanStudioPortfolios in app.js keeps. A book whose
 // style or pages the app does not recognise would open blank or be dropped.
+// Saved model portfolios: the arrangement of a PDF the studio built for a
+// model, not the file. Same shape rules, same reason — a version the app
+// cannot read opens empty.
+const mpdfs = win.WPS_DATA.MODEL_PDFS;
+if (mpdfs !== undefined && mpdfs !== null) {
+  if (typeof mpdfs !== "object" || !Array.isArray(mpdfs.versions) || !Array.isArray(mpdfs.deleted)) {
+    fail("WPS_DATA.MODEL_PDFS must be an object { versions: [], deleted: [] }");
+  } else {
+    for (const v of mpdfs.versions) {
+      if (!v || typeof v.id !== "string" || !v.id) fail("a saved model portfolio has no id");
+      else if (!v.spec || typeof v.spec !== "object") fail(`saved model portfolio ${v.id} has no spec`);
+      else if (!Array.isArray(v.spec.order) || !Array.isArray(v.spec.picks)) fail(`saved model portfolio ${v.id} has no photo list`);
+    }
+    console.log(`saved model portfolios OK (${mpdfs.versions.length})`);
+  }
+}
+
 const books = win.WPS_DATA.STUDIO_PORTFOLIOS;
 if (books !== undefined && books !== null) {
   if (typeof books !== "object" || !Array.isArray(books.versions) || !Array.isArray(books.deleted)) {
@@ -659,6 +676,14 @@ try {
   const nowBooks = win.WPS_DATA.STUDIO_PORTFOLIOS || { versions: [], deleted: [] };
   const lostBooks = prevBooks.filter((b) => b && !(nowBooks.versions || []).some((x) => x && x.id === b.id) && !(nowBooks.deleted || []).includes(b.id));
   if (lostBooks.length) fail(`${lostBooks.length} studio portfolio book(s) disappeared without being deleted: ${lostBooks.map((b) => b.name || b.id).join(", ")}.${stale}`);
+  // The same protection for the saved model portfolios: arranging one takes
+  // real time, and a stale tab publishing over them would lose the lot.
+  if (prevData.MODEL_PDFS && win.WPS_DATA.MODEL_PDFS === undefined) fail(`MODEL_PDFS vanished from data.js.${stale}`);
+  const prevPdfs = (prevData.MODEL_PDFS && prevData.MODEL_PDFS.versions) || [];
+  const nowPdfs = win.WPS_DATA.MODEL_PDFS || { versions: [], deleted: [] };
+  const lostPdfs = prevPdfs.filter((v) => v && !(nowPdfs.versions || []).some((x) => x && x.id === v.id) && !(nowPdfs.deleted || []).includes(v.id));
+  if (lostPdfs.length) fail(`${lostPdfs.length} saved model portfolio(s) disappeared without being deleted: ${lostPdfs.map((v) => v.name || v.id).join(", ")}${stale}`);
+
   // A deletion that vanishes lets a stale copy of the book come back.
   const lostTombstones = ((prevData.STUDIO_PORTFOLIOS && prevData.STUDIO_PORTFOLIOS.deleted) || []).filter((id) => !(nowBooks.deleted || []).includes(id));
   if (lostTombstones.length) fail(`${lostTombstones.length} deleted portfolio book(s) lost their deletion record, so they can reappear: ${lostTombstones.join(", ")}.${stale}`);

@@ -957,6 +957,85 @@ window.saveStudioPortfolios = saveStudioPortfolios;
 window.STUDIO_BOOK_LIMITS = STUDIO_BOOK_LIMITS;
 
 
+/* ---- saved model-portfolio PDFs ----------------------------------------
+   An arrangement the studio built for a model: which photos, in what order,
+   the layout, the cover and any nudge given to a photo. Saved by name so it
+   can be reopened months later and sent again, with or without the watermark.
+
+   What is stored is the ARRANGEMENT, not the finished file. Three reasons:
+   a PDF is about a megabyte and this repository is public, so the file would
+   be downloadable by anyone who guessed its address; the arrangement is a few
+   hundred bytes of ids; and reopening it draws from the photos and the type
+   settings as they are TODAY, so a saved portfolio improves when the work
+   does rather than going stale. Both downloads are then a press away, as they
+   already are for a PDF made from scratch.
+
+   Shape mirrors STUDIO_PORTFOLIOS above — versions by id, a deleted list, and
+   newest-updatedAt wins — so publishing from two devices merges rather than
+   one silently replacing the other. */
+const MODEL_PDF_LIMITS = { perModel: 12, name: 60 };
+function cleanModelPdfs(state) {
+  if (!state || typeof state !== "object") return { versions: [], deleted: [] };
+  const ids = (a) => (Array.isArray(a) ? a.filter((x) => typeof x === "string" && x).slice(0, 60) : []);
+  const versions = (Array.isArray(state.versions) ? state.versions : []).map((v) => {
+    if (!v || typeof v !== "object" || typeof v.id !== "string" || !v.id) return null;
+    const sp = v.spec && typeof v.spec === "object" ? v.spec : {};
+    const adjust = {};
+    if (sp.adjust && typeof sp.adjust === "object") {
+      for (const [k, a] of Object.entries(sp.adjust).slice(0, 60)) {
+        if (!a || typeof a !== "object") continue;
+        const num = (n, lo, hi) => { const x = Number(n); return Number.isFinite(x) ? Math.min(hi, Math.max(lo, x)) : 0; };
+        adjust[k] = { x: num(a.x, -1, 1), y: num(a.y, -1, 1), zoom: Math.min(4, Math.max(1, Number(a.zoom) || 1)) };
+      }
+    }
+    return {
+      id: v.id,
+      shootId: typeof v.shootId === "string" ? v.shootId : "",
+      name: String(v.name || "").slice(0, MODEL_PDF_LIMITS.name),
+      updatedAt: Number(v.updatedAt) || 0,
+      spec: {
+        pages: sp.pages === 2 ? 2 : 1,
+        count: Math.min(12, Math.max(1, Number(sp.count) || 5)),
+        picks: ids(sp.picks),
+        cleared: ids(sp.cleared),
+        lead: typeof sp.lead === "string" ? sp.lead : "",
+        cover: sp.cover === true,
+        coverId: typeof sp.coverId === "string" ? sp.coverId : "",
+        coverStyle: ["full", "framed", "split"].includes(sp.coverStyle) ? sp.coverStyle : "full",
+        layout: sp.layout === "equal" ? "equal" : "lead",
+        order: ids(sp.order),
+        fewerOnTop: sp.fewerOnTop === true,
+        adjust
+      }
+    };
+  }).filter(Boolean);
+  return { versions, deleted: ids(state.deleted) };
+}
+function getModelPdfs(live) {
+  let local = null, published = null, remote = null;
+  try { local = cleanModelPdfs(JSON.parse(localStorage.getItem("wps_model_pdfs") || "null")); } catch (e) {}
+  try { published = cleanModelPdfs(window.WPS_DATA && window.WPS_DATA.MODEL_PDFS); } catch (e) {}
+  try { remote = live ? cleanModelPdfs(live) : null; } catch (e) {}
+  const deleted = [...new Set([...((local && local.deleted) || []), ...((published && published.deleted) || []), ...((remote && remote.deleted) || [])])];
+  const byId = new Map();
+  for (const v of [...((remote && remote.versions) || []), ...((published && published.versions) || []), ...((local && local.versions) || [])]) {
+    const have = byId.get(v.id);
+    if (!have || v.updatedAt > have.updatedAt) byId.set(v.id, v);
+  }
+  const versions = [...byId.values()].filter((v) => !deleted.includes(v.id)).sort((a, b) => b.updatedAt - a.updatedAt);
+  return { versions, deleted };
+}
+function saveModelPdfs(state) {
+  const clean = cleanModelPdfs(state);
+  try { localStorage.setItem("wps_model_pdfs", JSON.stringify(clean)); } catch (e) { return false; }
+  return true;
+}
+window.cleanModelPdfs = cleanModelPdfs;
+window.getModelPdfs = getModelPdfs;
+window.saveModelPdfs = saveModelPdfs;
+window.MODEL_PDF_LIMITS = MODEL_PDF_LIMITS;
+
+
 /* ---- contract archive text ---- */
 window.WPS_CONTRACT_ARCHIVE = {
   "V3.4-COMMERCIAL": {
@@ -1553,7 +1632,7 @@ window.moveAdminPackageRow = function(index, dir) {
       if (!repoRes.ok) {
         throw explains(new Error(`This token cannot reach ${GH_REPO} (GitHub ${repoRes.status}) — check it grants Contents read & write on that repository. Nothing was published.`));
       }
-      return { shoots: [], deletedIds: [], studioPortfolios: null }; // repo reachable, data.js genuinely not published yet
+      return { shoots: [], deletedIds: [], studioPortfolios: null, modelPdfs: null }; // repo reachable, data.js genuinely not published yet
     }
     if (!res.ok) throw new Error(`Could not read the published data.js (GitHub ${res.status}) — aborting to avoid overwriting other devices' shoots.`);
     const text = await res.text();
@@ -1574,7 +1653,9 @@ window.moveAdminPackageRow = function(index, dir) {
       const v = parseValueAfterKey(text, `"${k}"`);
       if (v !== undefined) settings[k] = v;
     });
-    return { shoots: parsed, deletedIds: parseDeletedIdsFromDataJs(text), studioPortfolios: books || null, settings, stamps };
+    const modelPdfs = parseObjectAfterKey(text, '"MODEL_PDFS"');
+    if (modelPdfs === null) throw new Error("Could not read the saved model portfolios in the published data.js — aborting so none is overwritten.");
+    return { shoots: parsed, deletedIds: parseDeletedIdsFromDataJs(text), studioPortfolios: books || null, modelPdfs: modelPdfs || null, settings, stamps };
   }
 
   const MIME_EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
@@ -1844,6 +1925,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         // Saved studio portfolio books (book-builder.js), merged per book with
         // this device's drafts AND the live copy just fetched, never only the
         // copy this page happened to load.
+        MODEL_PDFS: (typeof window.getModelPdfs === "function" ? window.getModelPdfs(remote.modelPdfs) : { versions: [], deleted: [] }),
         STUDIO_PORTFOLIOS: (typeof window.getStudioPortfolios === "function" ? window.getStudioPortfolios(remote.studioPortfolios) : { versions: [], deleted: [] }),
         }, null, 2)};
 

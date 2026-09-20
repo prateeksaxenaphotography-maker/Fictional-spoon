@@ -3297,8 +3297,8 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
 /* Type & border, inside the portfolio PDF builder. The same controls as the
    Calendar panel, put next to the page they change so a choice can be judged
    against the real thing. Admin only. */
-.pp-type { margin: 10px 0 2px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--bone); }
-.pp-type > summary { cursor: pointer; font: 700 12px var(--mono-font); letter-spacing: .1em; text-transform: uppercase; color: var(--accent-text); }
+.pp-panel { margin: 10px 0 2px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--bone); }
+.pp-panel > summary { cursor: pointer; font: 700 12px var(--mono-font); letter-spacing: .1em; text-transform: uppercase; color: var(--accent-text); }
 .pp-type-note { margin: 8px 0 10px; font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); }
 .pp-type .pdf-type-row,
 .pp-type #pdfBorderRow { grid-template-columns: minmax(120px, 1.3fr) repeat(3, minmax(74px, 1fr)) auto !important; }
@@ -3309,3 +3309,14 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
   .pp-type .pdf-type-row > div:first-child,
   .pp-type #pdfBorderRow > div:first-child { grid-column: 1 / -1; }
 }
+
+/* Saved model portfolios, in the PDF builder. */
+.pp-saved-box .pp-save-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.pp-saved-box .pp-save-row input {
+  flex: 1 1 200px; min-width: 0; padding: 8px 10px; min-height: 40px;
+  border: 1px solid var(--line-2); border-radius: var(--r-sm);
+  background: var(--paper); color: var(--ink); font: 500 13px "Inter", system-ui, sans-serif;
+}
+.pp-saved-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
+.pp-saved-name { flex: 1 1 140px; min-width: 0; font: 600 13px "Inter", system-ui, sans-serif; color: var(--ink); overflow-wrap: anywhere; }
+.pp-saved-when { font: 500 11.5px var(--mono-font); color: var(--ink-soft); white-space: nowrap; }

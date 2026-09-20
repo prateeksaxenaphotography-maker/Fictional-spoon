@@ -2107,7 +2107,16 @@
           </div>
         ` : `
         ${admin ? `
-          <details class="pp-type">
+          <details class="pp-panel pp-saved-box">
+            <summary>Saved portfolios<span id="ppSavedCount"></span></summary>
+            <p class="pp-type-note">Keep this arrangement by name and reopen it whenever you like — the photos, the order, the layout, the cover and any nudge you gave a photo. It saves the arrangement rather than the file, so reopening it draws from today's photos and today's type, and both downloads are a press away. Saved on this device, and live the next time you publish from Calendar.</p>
+            <div class="pp-save-row">
+              <input type="text" id="ppSaveName" maxlength="60" placeholder="Name it, e.g. Devesh — agency set" />
+              <button type="button" class="pp-sample-btn" id="ppSaveBtn">Save this arrangement</button>
+            </div>
+            <div id="ppSavedList"></div>
+          </details>
+          <details class="pp-panel pp-type">
             <summary>Type &amp; border</summary>
             <p class="pp-type-note">Every line of the page. Sizes are millimetres. This changes every portfolio PDF from now on, not just this one — it is saved on this device, and goes live the next time you publish from Calendar.</p>
             <div id="ppTypeRows"></div>
@@ -2136,6 +2145,78 @@
       if (dlFreePng) dlFreePng.addEventListener("click", () => download(dlFreePng, true, "png"));
       // Changing any of it redraws the page underneath, so a choice is judged
       // against the real thing rather than described.
+      // Saved arrangements: keep this one, or put a saved one back on screen.
+      const savedList = body.querySelector("#ppSavedList");
+      if (savedList && typeof window.getModelPdfs === "function") {
+        const shootId = (shoot && shoot.id) || "";
+        const store = () => window.getModelPdfs();
+        const mine = () => store().versions.filter((v) => v.shootId === shootId);
+        const paint = () => {
+          const list = mine();
+          const count = body.querySelector("#ppSavedCount");
+          if (count) count.textContent = list.length ? ` (${list.length})` : "";
+          savedList.innerHTML = list.length
+            ? list.map((v) => `<div class="pp-saved-row" data-id="${esc(v.id)}">
+                <span class="pp-saved-name">${esc(v.name || "Untitled")}</span>
+                <span class="pp-saved-when">${new Date(v.updatedAt).toLocaleDateString()}</span>
+                <button type="button" class="pp-sample-btn" data-open>Open</button>
+                <button type="button" class="pp-sample-btn" data-del>Delete</button>
+              </div>`).join("")
+            : `<p class="pp-type-note" style="margin:0;">Nothing saved for this model yet.</p>`;
+        };
+        const write = (next) => {
+          window.saveModelPdfs(next);
+          if (typeof window.stampPortfolioPdfSetting === "function") window.stampPortfolioPdfSetting();
+          paint();
+        };
+        paint();
+        body.querySelector("#ppSaveBtn").addEventListener("click", () => {
+          const nameEl = body.querySelector("#ppSaveName");
+          // `name` in this scope is the model; this one is the arrangement.
+          const title = (nameEl.value || "").trim() || `${name} — ${new Date().toLocaleDateString()}`;
+          const cur = store();
+          const limit = (window.MODEL_PDF_LIMITS || {}).perModel || 12;
+          if (mine().length >= limit) { toast(`That is ${limit} saved for this model, which is the limit. Delete one first.`); return; }
+          cur.versions.unshift({
+            id: `mp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
+            shootId, name: title, updatedAt: Date.now(),
+            spec: {
+              pages: state.pages, count: state.count, picks: [...state.picks], cleared: [...state.cleared],
+              lead: state.lead, cover: state.cover, coverId: state.coverId, coverStyle: state.coverStyle,
+              layout: state.layout, order: [...state.order], fewerOnTop: state.fewerOnTop,
+              adjust: JSON.parse(JSON.stringify(state.adjust || {}))
+            }
+          });
+          write(cur);
+          nameEl.value = "";
+          toast(`Saved. It is on this device — publish from Calendar to keep it everywhere.`);
+        });
+        savedList.addEventListener("click", (e) => {
+          const row = e.target.closest(".pp-saved-row");
+          if (!row) return;
+          const v = mine().find((x) => x.id === row.dataset.id);
+          if (!v) return;
+          if (e.target.hasAttribute("data-del")) {
+            if (!confirm(`Delete “${v.name}”? The photos are untouched — only this arrangement goes.`)) return;
+            const cur = store();
+            cur.versions = cur.versions.filter((x) => x.id !== v.id);
+            cur.deleted = [...new Set([...(cur.deleted || []), v.id])];
+            write(cur);
+            return;
+          }
+          if (!e.target.hasAttribute("data-open")) return;
+          const sp = v.spec;
+          state.pages = sp.pages; state.count = sp.count;
+          state.picks = new Set(sp.picks); state.cleared = new Set(sp.cleared);
+          state.lead = sp.lead; state.cover = sp.cover; state.coverId = sp.coverId;
+          state.coverStyle = sp.coverStyle; state.layout = sp.layout;
+          state.order = [...sp.order]; state.fewerOnTop = sp.fewerOnTop;
+          state.adjust = JSON.parse(JSON.stringify(sp.adjust || {}));
+          showPreview();
+          toast(`“${v.name}” is back on screen.`);
+        });
+      }
+
       const typeHost = body.querySelector("#ppTypeRows");
       const borderHost = body.querySelector("#ppBorderRow");
       if (typeHost && typeof window.renderPdfTypeEditor === "function") {
