@@ -764,6 +764,25 @@
   const PDF_MONO = "'IBM Plex Mono', monospace";
   const PDF_SANS = "Inter, 'Helvetica Neue', Arial, sans-serif";
   const PDF_DISPLAY = "Archivo, Inter, 'Helvetica Neue', Arial, sans-serif";
+  /* One line of the PDF as the studio has set it. The built-in style is the
+     floor: the setting only replaces the parts it actually carries, so a role
+     that has never been touched draws exactly as it always did.
+
+     "auto" keeps the colour the drawing code worked out for itself — the cover
+     puts these over a photograph, so a fixed colour there could be white on
+     white. Choosing a real colour overrides that everywhere. */
+  function pdfType(key, base) {
+    const cfg = ((typeof getPortfolioPdfSettings === "function" ? getPortfolioPdfSettings() : {}).type || {})[key];
+    if (!cfg) return base;
+    const fams = window.PDF_TYPE_FAMILIES || {};
+    const out = { ...base };
+    if (fams[cfg.family]) out.family = fams[cfg.family].stack;
+    if (cfg.weight) out.weight = cfg.weight;
+    if (cfg.color && cfg.color !== "auto") out.color = cfg.color;
+    if (cfg.size) out.size = cfg.size;
+    return out;
+  }
+
   const PDF_LABEL = { weight: 600, size: 2.0, family: PDF_MONO, spacing: 0.35, upper: true, color: "#8a8782" };
   const PDF_VALUE = { weight: 600, size: 3.3, family: PDF_SANS, color: "#000" };
   const PDF_CELL_H = 6.6;
@@ -777,6 +796,23 @@
   // browsers render small text badly under a scale transform.
   // `size` defaults to A4 portrait; the studio portfolio book also draws A4
   // landscape through here, with { w: 297, h: 210 }.
+  /* The optional frame just inside the edge of every page. The stroke is
+     centred on the path, so the inset is measured to the middle of the line
+     and half of it sits either side — which is what keeps a thick border from
+     creeping off the paper. */
+  function drawPdfBorder(pages) {
+    const b = ((typeof getPortfolioPdfSettings === "function" ? getPortfolioPdfSettings() : {}) || {}).border;
+    if (!b || !b.on) return;
+    for (const page of pages) {
+      const { ctx, u } = page;
+      ctx.save();
+      ctx.strokeStyle = b.color;
+      ctx.lineWidth = u(b.width);
+      ctx.strokeRect(u(b.inset), u(b.inset), u(PDF_PAGE.w - b.inset * 2), u(PDF_PAGE.h - b.inset * 2));
+      ctx.restore();
+    }
+  }
+
   function newPdfPage(dpi, size = PDF_PAGE) {
     const k = dpi / 25.4;
     const canvas = document.createElement("canvas");
@@ -888,7 +924,7 @@
   function drawPdfSlot(page, img, slot, x, y, w, h) {
     drawPdfPhoto(page, img, slot.photo, x, y, w, h);
     if (!slot.label) return;
-    const style = { weight: 700, size: 1.9, family: PDF_MONO, spacing: 0.25, upper: true, color: "#111" };
+    const style = pdfType("photoTag", { weight: 700, size: 1.9, family: PDF_MONO, spacing: 0.25, upper: true, color: "#111" });
     const tw = page.measure(slot.label, style);
     const padX = 1.4, tagH = 3.9;
     if (tw + padX * 2 > w - 3.2) return;
@@ -913,9 +949,9 @@
   function drawPdfHeader(page, mark, label) {
     const { w, margin: M } = PDF_PAGE;
     const base = M + 3.4;
-    page.text(label, M, base, { ...PDF_LABEL, size: 2.3 });
+    page.text(label, M, base, pdfType("header", { ...PDF_LABEL, size: 2.3 }));
     const brand = "nerdyphotographer.in";
-    const brandStyle = { weight: 700, size: 2.3, family: PDF_MONO, spacing: 0.3, upper: true, color: "#000", align: "right" };
+    const brandStyle = pdfType("brand", { weight: 700, size: 2.3, family: PDF_MONO, spacing: 0.3, upper: true, color: "#000", align: "right" });
     const bw = page.measure(brand, brandStyle);
     page.text(brand, w - M, base, brandStyle);
     if (mark) page.ctx.drawImage(mark, page.u(w - M - bw - 5.6), page.u(M + 0.35), page.u(4.4), page.u(4.4));
@@ -927,7 +963,7 @@
   // The model's name as large as the width allows; returns its baseline.
   function drawPdfName(page, name, top, maxSize) {
     const width = PDF_PAGE.w - PDF_PAGE.margin * 2;
-    const style = (size) => ({ weight: 800, size, family: PDF_DISPLAY, spacing: -0.025 * size, upper: true, color: "#000" });
+    const style = (size) => pdfType("name", { weight: 800, size, family: PDF_DISPLAY, spacing: -0.025 * size, upper: true, color: "#000" });
     let size = maxSize;
     while (size > 5 && page.measure(name, style(size)) > width) size -= 0.25;
     page.text(page.fit(name, width, style(size)), PDF_PAGE.margin, top + size * 0.74, style(size));
@@ -937,7 +973,7 @@
   function drawPdfBadges(page, shoot, top, tone = { text: "#333", stroke: "#cfccc6" }) {
     const types = modelTypesOf(shoot);
     if (!types.length) return top;
-    const style = { weight: 600, size: 2.0, family: PDF_MONO, spacing: 0.3, upper: true, color: tone.text };
+    const style = pdfType("role", { weight: 600, size: 2.0, family: PDF_MONO, spacing: 0.3, upper: true, color: tone.text });
     const { ctx, u } = page;
     const h = 4.6;
     let x = tone.x ?? PDF_PAGE.margin;
@@ -982,11 +1018,12 @@
 
   // A small label over its value; returns the width used.
   function drawPdfCell(page, cell, x, top, maxW) {
-    const label = page.fit(cell.label, maxW, PDF_LABEL);
-    const value = page.fit(cell.value, maxW, PDF_VALUE);
-    page.text(label, x, top + 1.6, PDF_LABEL);
-    page.text(value, x, top + 5.8, PDF_VALUE);
-    const w = Math.min(maxW, Math.max(page.measure(label, PDF_LABEL), page.measure(value, PDF_VALUE)));
+    const lab = pdfType("statLabel", PDF_LABEL), val = pdfType("statValue", PDF_VALUE);
+    const label = page.fit(cell.label, maxW, lab);
+    const value = page.fit(cell.value, maxW, val);
+    page.text(label, x, top + 1.6, lab);
+    page.text(value, x, top + 5.8, val);
+    const w = Math.min(maxW, Math.max(page.measure(label, lab), page.measure(value, val)));
     if (cell.url) page.link(x, top, w, PDF_CELL_H, cell.url);
     return w;
   }
@@ -997,7 +1034,7 @@
     const gapX = 7, gapY = 2.6;
     let cx = x, cy = top;
     cells.forEach((cell) => {
-      const w = Math.min(maxW, Math.max(page.measure(cell.label, PDF_LABEL), page.measure(cell.value, PDF_VALUE)));
+      const w = Math.min(maxW, Math.max(page.measure(cell.label, pdfType("statLabel", PDF_LABEL)), page.measure(cell.value, pdfType("statValue", PDF_VALUE))));
       if (cx > x && cx + w > x + maxW) { cx = x; cy += PDF_CELL_H + gapY; }
       if (draw) drawPdfCell(page, cell, cx, cy, x + maxW - cx);
       cx += w + gapX;
@@ -1006,7 +1043,7 @@
   }
 
   function drawPdfBookingNote(page, x, baseline, maxW) {
-    const style = { weight: 400, size: 2.1, family: PDF_SANS, color: "#8a8782" };
+    const style = pdfType("note", { weight: 400, size: 2.1, family: PDF_SANS, color: "#8a8782" });
     page.wrap(PDF_BOOKING_NOTE, maxW, style).forEach((line, i) => page.text(line, x, baseline + i * 3.1, style));
   }
 
@@ -1016,13 +1053,13 @@
     const { w, h, margin: M } = PDF_PAGE;
     const top = h - M - PDF_FOOTER_H;
     page.rule(M, top, w - M);
-    page.text("Photographed by nerdyphotographer.in  ·  @nerdyphotographer.in", M, top + 3.8, PDF_LABEL);
+    page.text("Photographed by nerdyphotographer.in  ·  @nerdyphotographer.in", M, top + 3.8, pdfType("brand", PDF_LABEL));
     const book = "Book a shoot  ·  nerdyphotographer.in/book";
-    const bookStyle = { weight: 700, size: 2.2, family: PDF_MONO, spacing: 0.1, color: "#000", align: "right" };
+    const bookStyle = pdfType("footer", { weight: 700, size: 2.2, family: PDF_MONO, spacing: 0.1, color: "#000", align: "right" });
     const bw = page.measure(book, bookStyle);
     page.text(book, w - M, top + 3.8, bookStyle);
     page.link(w - M - bw, top + 0.8, bw, 4, "https://www.nerdyphotographer.in/book");
-    page.text("Fashion, fitness, lifestyle and sports photography, Noida. Comp cards, portfolio cards and frames are creative works produced under nerdyphotographer.in.", M, top + 7.6, { weight: 400, size: 1.9, family: PDF_SANS, color: "#9a9791" });
+    page.text("Fashion, fitness, lifestyle and sports photography, Noida. Comp cards, portfolio cards and frames are creative works produced under nerdyphotographer.in.", M, top + 7.6, pdfType("fine", { weight: 400, size: 1.9, family: PDF_SANS, color: "#9a9791" }));
   }
 
   // How strong the studio's name is drawn across a page. The preview a client
@@ -1279,7 +1316,7 @@
 
     const white = "#fff", soft = "rgba(255,255,255,0.8)";
     const credit = "Photographed by nerdyphotographer.in";
-    const creditStyle = { ...PDF_LABEL, size: 2.3, color: soft };
+    const creditStyle = pdfType("brand", { ...PDF_LABEL, size: 2.3, color: soft });
     page.text(credit, M, PH - M, creditStyle);
     page.link(M, PH - M - 3, page.measure(credit, creditStyle), 4, "https://www.nerdyphotographer.in/");
     ctx.fillStyle = "rgba(255,255,255,0.35)";
@@ -1291,11 +1328,11 @@
       drawPdfBadges(page, spec.shoot, baseline - 4.6, { text: white, stroke: "rgba(255,255,255,0.7)" });
       baseline -= 8.6;
     }
-    const nameStyle = (size) => ({ weight: 800, size, family: PDF_DISPLAY, spacing: -0.025 * size, upper: true, color: white });
+    const nameStyle = (size) => pdfType("name", { weight: 800, size, family: PDF_DISPLAY, spacing: -0.025 * size, upper: true, color: white });
     let size = 17;
     while (size > 6 && page.measure(spec.name, nameStyle(size)) > CW) size -= 0.25;
     page.text(page.fit(spec.name, CW, nameStyle(size)), M, baseline, nameStyle(size));
-    page.text(pdfHeaderLabel(spec, 0), M, baseline - size * 0.74 - 4, { ...PDF_LABEL, size: 2.5, color: soft });
+    page.text(pdfHeaderLabel(spec, 0), M, baseline - size * 0.74 - 4, pdfType("header", { ...PDF_LABEL, size: 2.5, color: soft }));
   }
 
   // Cover, framed: the photo on white with the name centred beneath it, in
@@ -1307,7 +1344,7 @@
     const top = drawPdfHeader(page, mark, pdfHeaderLabel(spec, 0)) + 7;
     drawPdfFooter(page);
     const footerTop = PH - M - PDF_FOOTER_H;
-    const nameStyle = (size) => ({ weight: 800, size, family: PDF_DISPLAY, spacing: -0.025 * size, upper: true, color: "#000", align: "center" });
+    const nameStyle = (size) => pdfType("name", { weight: 800, size, family: PDF_DISPLAY, spacing: -0.025 * size, upper: true, color: "#000", align: "center" });
     let size = 20;
     while (size > 6 && page.measure(spec.name, nameStyle(size)) > CW) size -= 0.25;
     const types = modelTypesOf(spec.shoot);
@@ -1320,7 +1357,7 @@
     drawPdfPhoto(page, img, spec.cover.photo, M + (CW - w) / 2, top, w, h);
     page.text(page.fit(spec.name, CW, nameStyle(size)), PW / 2, nameBase, nameStyle(size));
     if (types.length) {
-      const pill = { weight: 600, size: 2.0, family: PDF_MONO, spacing: 0.3, upper: true };
+      const pill = pdfType("role", { weight: 600, size: 2.0, family: PDF_MONO, spacing: 0.3, upper: true });
       const total = types.reduce((sum, t) => sum + page.measure(modelTypeLabel(t), pill) + 5.6, 0) + (types.length - 1) * 2;
       drawPdfBadges(page, spec.shoot, badgesTop, { text: "#333", stroke: "#cfccc6", x: (PW - total) / 2 });
     }
@@ -1337,7 +1374,7 @@
     page.ctx.fillStyle = "#e2e0dc";
     page.ctx.fillRect(page.u(photoX), 0, Math.max(1, page.u(0.25)), page.u(PH));
     const x = M, colW = photoX - M - 8;
-    const label = { ...PDF_LABEL, size: 2.3 };
+    const label = pdfType("statLabel", { ...PDF_LABEL, size: 2.3 });
     // One piece per line, wrapped again when the column is narrow (the ¾ split).
     pdfHeaderLabel(spec, 0).split(" · ")
       .flatMap((part) => page.measure(part, label) <= colW ? [part]
@@ -1346,7 +1383,7 @@
       .forEach((line, i) => page.text(line, x, M + 3.4 + i * 3.6, label));
 
     const words = String(spec.name).split(/\s+/).filter(Boolean);
-    const nameStyle = (size) => ({ weight: 800, size, family: PDF_DISPLAY, spacing: -0.025 * size, upper: true, color: "#000" });
+    const nameStyle = (size) => pdfType("name", { weight: 800, size, family: PDF_DISPLAY, spacing: -0.025 * size, upper: true, color: "#000" });
     let size = 17;
     while (size > 6 && Math.max(...words.map((wd) => page.measure(wd, nameStyle(size)))) > colW) size -= 0.25;
     let y = M + 28 + size * 0.74;
@@ -1354,7 +1391,7 @@
     y += (words.length - 1) * size * 0.92 + 7;
 
     // Model types one to a line, so a long pair still fits the column.
-    const pill = { weight: 600, size: 2.0, family: PDF_MONO, spacing: 0.3, upper: true, color: "#333" };
+    const pill = pdfType("role", { weight: 600, size: 2.0, family: PDF_MONO, spacing: 0.3, upper: true, color: "#333" });
     modelTypesOf(spec.shoot).forEach((t) => {
       const text = modelTypeLabel(t);
       const w = page.measure(text, pill) + 5.6;
@@ -1378,7 +1415,7 @@
     page.rule(x, brandBase - 6, x + colW);
     if (mark) page.ctx.drawImage(mark, page.u(x), page.u(brandBase - 3.7), page.u(4.2), page.u(4.2));
     // The studio name shrinks, never overflows, when the column is narrow.
-    const brandStyle = (size) => ({ weight: 700, size, family: PDF_MONO, spacing: (0.3 * size) / 2.2, upper: true, color: "#000" });
+    const brandStyle = (size) => pdfType("brand", { weight: 700, size, family: PDF_MONO, spacing: (0.3 * size) / 2.2, upper: true, color: "#000" });
     let brandSize = 2.2;
     while (brandSize > 1.4 && page.measure("nerdyphotographer.in", brandStyle(brandSize)) > colW - 5.8) brandSize -= 0.1;
     page.text("nerdyphotographer.in", x + 5.8, brandBase, brandStyle(brandSize));
@@ -1411,7 +1448,7 @@
     const { w: PW, h: PH, margin: M, gap } = PDF_PAGE;
     const CW = PW - M * 2;
     let y = drawPdfHeader(page, mark, pdfHeaderLabel(spec, 2)) + 4.5;
-    const nameStyle = { weight: 800, size: 6, family: PDF_DISPLAY, spacing: -0.12, upper: true, color: "#000" };
+    const nameStyle = pdfType("name", { weight: 800, size: 6, family: PDF_DISPLAY, spacing: -0.12, upper: true, color: "#000" });
     const name = page.fit(spec.name, CW - 30, nameStyle);
     page.text(name, M, y + 4.4, nameStyle);
     page.text("Poses", M + page.measure(name, nameStyle) + 3, y + 4.4, PDF_LABEL);
@@ -1500,6 +1537,8 @@
       composeOnePagePdf(addPage(), spec, imgs, mark);
     }
     if (watermark) pages.forEach((p) => drawPdfPreviewMark(p, markAlpha));
+    // Drawn last so it sits over a full-bleed photograph rather than under it.
+    drawPdfBorder(pages);
     return pages;
   }
 

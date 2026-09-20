@@ -124,6 +124,101 @@ window.openPromoCodeModal = function(codeKey) {
   if (nameEl) nameEl.focus();
 };
 
+
+/* The per-line type editor in the Portfolio PDF panel. Rows are generated from
+   window.PDF_TYPE_ROLES — the same list pdf-tools.js draws from — so a role
+   added there appears here with no second edit. */
+const pdfEsc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+window.renderPdfTypeEditor = function() {
+  const host = document.getElementById("pdfTypeRows");
+  if (!host || !window.PDF_TYPE_ROLES) return;
+  const cur = (window.getPortfolioPdfSettings() || {}).type || window.defaultPdfType();
+  const fams = window.PDF_TYPE_FAMILIES || {};
+  const cell = "padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); font-size: var(--font-xs); font-family: inherit;";
+  host.innerHTML = window.PDF_TYPE_ROLES.map((r) => {
+    const v = cur[r.key] || {};
+    const isAuto = v.color === "auto";
+    return `<div class="pdf-type-row" data-role="${pdfEsc(r.key)}" style="display: grid; grid-template-columns: minmax(150px, 1.4fr) repeat(3, minmax(88px, 1fr)) auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line);">
+      <div style="min-width: 0;">
+        <strong style="font-size: var(--font-xs); color: var(--ink);">${pdfEsc(r.label)}</strong>
+        ${r.note ? `<span style="display: block; font-size: var(--font-xs); color: var(--ink-soft);">${pdfEsc(r.note)}</span>` : ""}
+      </div>
+      <select data-f="family" style="${cell}" aria-label="Typeface for ${pdfEsc(r.label)}">
+        ${Object.entries(fams).map(([k, f]) => `<option value="${pdfEsc(k)}"${v.family === k ? " selected" : ""}>${pdfEsc(f.label)}</option>`).join("")}
+      </select>
+      <select data-f="weight" style="${cell}" aria-label="Weight for ${pdfEsc(r.label)}">
+        ${(window.PDF_TYPE_WEIGHTS || []).map((w) => `<option value="${w}"${Number(v.weight) === w ? " selected" : ""}>${w === 400 ? "Regular" : w === 500 ? "Medium" : w === 600 ? "Semibold" : w === 700 ? "Bold" : "Heavy"}</option>`).join("")}
+      </select>
+      ${r.sized
+        ? `<input type="number" data-f="size" min="1" max="20" step="0.1" value="${v.size != null ? v.size : ""}" style="${cell}" aria-label="Size in millimetres for ${pdfEsc(r.label)}" />`
+        : `<span style="font-size: var(--font-xs); color: var(--ink-soft);">fitted</span>`}
+      <span style="display: inline-flex; align-items: center; gap: 6px;">
+        <input type="color" data-f="color" value="${pdfEsc(isAuto ? "#000000" : (v.color || "#000000"))}" ${isAuto ? "disabled" : ""} style="width: 34px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer;" aria-label="Colour for ${pdfEsc(r.label)}" />
+        ${r.adaptive ? `<label style="font-size: var(--font-xs); color: var(--ink-soft); display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;" title="On the cover this line sits over a photograph, so the PDF picks a colour that stays readable."><input type="checkbox" data-f="auto"${isAuto ? " checked" : ""} /> auto</label>` : ""}
+      </span>
+    </div>`;
+  }).join("");
+  host.querySelectorAll('input[data-f="auto"]').forEach((box) => {
+    box.addEventListener("change", () => {
+      const swatch = box.closest(".pdf-type-row").querySelector('input[data-f="color"]');
+      if (swatch) swatch.disabled = box.checked;
+    });
+  });
+};
+
+/* A frame just inside the edge of every page. Off by default — the pages are
+   designed to run to the paper — so this row sits apart from the type rows. */
+window.renderPdfBorderEditor = function() {
+  const host = document.getElementById("pdfBorderRow");
+  if (!host) return;
+  const b = (window.getPortfolioPdfSettings() || {}).border || window.DEFAULT_PDF_BORDER || {};
+  const cell = "padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); font-size: var(--font-xs); font-family: inherit;";
+  host.innerHTML = `
+    <div style="min-width: 0;">
+      <strong style="font-size: var(--font-xs); color: var(--ink);">A border round the page</strong>
+      <span style="display: block; font-size: var(--font-xs); color: var(--ink-soft);">Thickness and how far in, in millimetres</span>
+    </div>
+    <label style="font-size: var(--font-xs); color: var(--ink); display: inline-flex; align-items: center; gap: 6px;">
+      <input type="checkbox" id="pdfBorderOn"${b.on ? " checked" : ""} /> Draw it
+    </label>
+    <input type="number" id="pdfBorderWidth" min="0.1" max="4" step="0.1" value="${b.width}" style="${cell}" aria-label="Border thickness in millimetres" />
+    <input type="number" id="pdfBorderInset" min="0" max="20" step="0.5" value="${b.inset}" style="${cell}" aria-label="How far in from the edge, in millimetres" />
+    <input type="color" id="pdfBorderColor" value="${pdfEsc(b.color || "#141416")}" style="width: 34px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer;" aria-label="Border colour" />`;
+};
+
+window.readPdfBorderEditor = function() {
+  const on = document.getElementById("pdfBorderOn");
+  if (!on) return null;
+  const num = (id, fallback) => { const el = document.getElementById(id); const n = el ? Number(el.value) : NaN; return Number.isFinite(n) ? n : fallback; };
+  const d = window.DEFAULT_PDF_BORDER || { width: 0.5, inset: 6, color: "#141416" };
+  return {
+    on: on.checked,
+    width: num("pdfBorderWidth", d.width),
+    inset: num("pdfBorderInset", d.inset),
+    color: (document.getElementById("pdfBorderColor") || {}).value || d.color
+  };
+};
+
+// What the rows currently say, in the shape getPortfolioPdfSettings stores.
+window.readPdfTypeEditor = function() {
+  const host = document.getElementById("pdfTypeRows");
+  if (!host || !host.children.length) return null;
+  const out = {};
+  host.querySelectorAll(".pdf-type-row").forEach((row) => {
+    const get = (f) => row.querySelector(`[data-f="${f}"]`);
+    const auto = get("auto");
+    const size = get("size");
+    const t = {
+      family: get("family") ? get("family").value : undefined,
+      weight: get("weight") ? Number(get("weight").value) : undefined,
+      color: auto && auto.checked ? "auto" : (get("color") ? get("color").value : undefined)
+    };
+    if (size && size.value.trim() !== "") t.size = Number(size.value);
+    out[row.dataset.role] = t;
+  });
+  return out;
+};
+
 window.saveNewPromoCodeFromForm = function() {
   const name = (document.getElementById("newPromoName")?.value || "").trim().toUpperCase();
   const type = document.getElementById("newPromoType")?.value === "flat" ? "flat" : "pct";
@@ -2492,6 +2587,13 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               </div>
             </div>
             <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 10px 0 0 0;">Every client who buys sees this UPI ID, and it's public in the site's code, so use one that isn't your phone number. Each sale emails you the client's UPI reference number: check the money reached your bank. Two emails with the same number are one payment entered twice.</p>
+            <details class="pdf-type" style="margin-top: 16px;">
+              <summary style="cursor: pointer; font-size: var(--font-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--accent-text);">How each line looks</summary>
+              <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 8px 0 12px;">Every line of the PDF, in the order you meet it on the page. Sizes are millimetres on A4. Only the four typefaces the site already loads are offered — adding another would slow every visitor's first page down, and the PDF can only draw a typeface the site has loaded.</p>
+              <div id="pdfTypeRows"></div>
+              <div id="pdfBorderRow" style="display: grid; grid-template-columns: minmax(150px, 1.4fr) repeat(3, minmax(88px, 1fr)) auto; gap: 8px; align-items: center; padding: 10px 0 2px; border-top: 2px solid var(--line);"></div>
+              <button type="button" class="admin-cal-btn" id="pdfTypeReset" style="margin-top: 10px; font-size: var(--font-xs);">↺ Put every line back to the original</button>
+            </details>
             <span id="portfolioPdfSaveStatus" class="admin-pdf-status" aria-live="polite"></span>
           </div>
         </div>
@@ -4302,6 +4404,18 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     renderAdminPackagesEditor();
     renderAdminGrid();
     renderRoster();
+    // The per-line type rows, and the way back if a choice turns out wrong.
+    if (typeof window.renderPdfTypeEditor === "function") window.renderPdfTypeEditor();
+    if (typeof window.renderPdfBorderEditor === "function") window.renderPdfBorderEditor();
+    document.getElementById("pdfTypeReset")?.addEventListener("click", () => {
+      if (!confirm("Put every line of the PDF back to how it started? Anything you have set here is lost.")) return;
+      const cur = getPortfolioPdfSettings();
+      localStorage.setItem("wps_portfolio_pdf", JSON.stringify({ ...cur, type: window.defaultPdfType(), border: { ...window.DEFAULT_PDF_BORDER } }));
+      stampSetting("wps_portfolio_pdf");
+      window.renderPdfTypeEditor();
+      window.renderPdfBorderEditor();
+      toast("Every line is back to the original. Click Save to publish it.");
+    });
 
     // Arriving from the link in a Model Portfolio lightbox: unfold the
     // Portfolio PDF panel and bring it into view.

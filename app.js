@@ -392,6 +392,91 @@ window.getHomeStudioRate = getHomeStudioRate;
 // data.js. Off until the studio switches it on: no client sees the buy button
 // and Model Portfolio stays out of the menu. A price of 0 makes it free.
 const DEFAULT_PORTFOLIO_PDF = { enabled: false, price: 50, upiId: "" };
+
+/* How every line of the portfolio PDF is set. Each entry is one line the
+   studio can point at on the page, so the editor can name it in their words
+   rather than in the code's.
+
+   Only the four families the site already loads are offered. Adding another
+   would put a whole new font on every visitor's first paint — the opposite of
+   the work that took the site from six families to four — and the PDF is drawn
+   on a canvas, which can only use a font the page has already loaded.
+
+   The model's name has no size here on purpose: it is fitted to the width it
+   has to fill, so a fixed size would either overflow the page or leave a gap.
+   Family, weight and colour still apply to it. */
+const PDF_TYPE_FAMILIES = {
+  display: { label: "Archivo (headings)", stack: "Archivo, Inter, 'Helvetica Neue', Arial, sans-serif" },
+  sans: { label: "Inter (plain text)", stack: "Inter, 'Helvetica Neue', Arial, sans-serif" },
+  mono: { label: "IBM Plex Mono (labels)", stack: "'IBM Plex Mono', monospace" },
+  serif: { label: "Fraunces (serif)", stack: "Fraunces, Georgia, serif" }
+};
+const PDF_TYPE_ROLES = [
+  { key: "name", label: "The model's name", note: "Size is fitted to the page", sized: false, family: "display", weight: 800, color: "#000000" },
+  { key: "role", label: "What they are cast for", note: "The line under the name", sized: true, adaptive: true, family: "mono", size: 2.0, weight: 600, color: "auto" },
+  { key: "statLabel", label: "Stat headings", note: "HEIGHT, CHEST, WAIST…", sized: true, family: "mono", size: 2.0, weight: 600, color: "#8a8782" },
+  { key: "statValue", label: "The stats themselves", note: "5'9, 38-40, 30…", sized: true, family: "sans", size: 3.3, weight: 600, color: "#000000" },
+  { key: "header", label: "The line along the top", note: "MODEL PORTFOLIO · UPDATED…", sized: true, adaptive: true, family: "mono", size: 2.3, weight: 600, color: "auto" },
+  { key: "brand", label: "Your name on the page", note: "In the header and the credit", sized: true, adaptive: true, family: "mono", size: 2.3, weight: 700, color: "auto" },
+  { key: "photoTag", label: "Labels on the photos", note: "FRONT, LEFT PROFILE, CLOSE-UP", sized: true, family: "mono", size: 2.0, weight: 600, color: "#ffffff" },
+  { key: "note", label: "The booking note", note: "“To book this talent…”", sized: true, family: "sans", size: 2.1, weight: 400, color: "#8a8782" },
+  { key: "footer", label: "The book-a-shoot line", sized: true, family: "mono", size: 2.2, weight: 700, color: "#000000" },
+  { key: "fine", label: "The small print", sized: true, family: "sans", size: 1.9, weight: 400, color: "#9a9791" }
+];
+const PDF_TYPE_WEIGHTS = [400, 500, 600, 700, 800];
+// A rule drawn just inside the edge of every page. Off by default: the pages
+// are designed to run to the paper, and a frame is a choice, not a fix.
+const DEFAULT_PDF_BORDER = { on: false, width: 0.5, inset: 6, color: "#141416" };
+const cleanPdfBorder = (o) => {
+  const b = { ...DEFAULT_PDF_BORDER };
+  if (!o || typeof o !== "object") return b;
+  b.on = o.on === true;
+  const w = Number(o.width), i = Number(o.inset);
+  // Millimetres. A hairline under 0.1 does not print; past 4 it is a band.
+  if (Number.isFinite(w) && w >= 0.1 && w <= 4) b.width = Math.round(w * 10) / 10;
+  // Far enough in to clear nothing, close enough not to crowd the content.
+  if (Number.isFinite(i) && i >= 0 && i <= 20) b.inset = Math.round(i * 10) / 10;
+  if (typeof o.color === "string" && HEX_RE.test(o.color.trim())) b.color = o.color.trim().toLowerCase();
+  return b;
+};
+window.DEFAULT_PDF_BORDER = DEFAULT_PDF_BORDER;
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+const defaultPdfType = () => {
+  const out = {};
+  for (const r of PDF_TYPE_ROLES) {
+    out[r.key] = { family: r.family, weight: r.weight, color: r.color };
+    if (r.sized) out[r.key].size = r.size;
+  }
+  return out;
+};
+// Anything unrecognised falls back to the built-in value rather than reaching
+// the drawing code, where a bad number means text off the edge of the page.
+const cleanPdfType = (o) => {
+  const base = defaultPdfType();
+  if (!o || typeof o !== "object") return base;
+  for (const r of PDF_TYPE_ROLES) {
+    const got = o[r.key];
+    if (!got || typeof got !== "object") continue;
+    const t = base[r.key];
+    if (PDF_TYPE_FAMILIES[got.family]) t.family = got.family;
+    if (PDF_TYPE_WEIGHTS.includes(Number(got.weight))) t.weight = Number(got.weight);
+    if (typeof got.color === "string") {
+      const c = got.color.trim().toLowerCase();
+      if (HEX_RE.test(c)) t.color = c;
+      else if (c === "auto" && r.adaptive) t.color = "auto";
+    }
+    if (r.sized) {
+      const n = Number(got.size);
+      // Millimetres on an A4 page: under 1 is unreadable, over 20 cannot fit.
+      if (Number.isFinite(n) && n >= 1 && n <= 20) t.size = Math.round(n * 10) / 10;
+    }
+  }
+  return base;
+};
+window.PDF_TYPE_FAMILIES = PDF_TYPE_FAMILIES;
+window.PDF_TYPE_ROLES = PDF_TYPE_ROLES;
+window.PDF_TYPE_WEIGHTS = PDF_TYPE_WEIGHTS;
+window.defaultPdfType = defaultPdfType;
 // name@handle, as UPI apps take it. CI holds the published value to the same
 // pattern (.github/scripts/validate-data.mjs).
 const UPI_ID_RE = /^[a-zA-Z0-9._-]{2,256}@[a-zA-Z][a-zA-Z0-9.-]{1,64}$/;
@@ -403,7 +488,9 @@ function getPortfolioPdfSettings() {
     return {
       enabled: o.enabled === true,
       price: Number.isInteger(price) && price >= 0 ? price : DEFAULT_PORTFOLIO_PDF.price,
-      upiId: UPI_ID_RE.test(upiId) ? upiId : ""
+      upiId: UPI_ID_RE.test(upiId) ? upiId : "",
+      type: cleanPdfType(o.type),
+      border: cleanPdfBorder(o.border)
     };
   };
   try {
@@ -9928,7 +10015,9 @@ window.resolveContractArchive = function(version) {
       if (upiEl) upiEl.focus();
       return;
     }
-    localStorage.setItem("wps_portfolio_pdf", JSON.stringify({ enabled, price, upiId }));
+    const type = (typeof window.readPdfTypeEditor === "function" && window.readPdfTypeEditor()) || current.type;
+    const border = (typeof window.readPdfBorderEditor === "function" && window.readPdfBorderEditor()) || current.border;
+    localStorage.setItem("wps_portfolio_pdf", JSON.stringify({ enabled, price, upiId, type, border }));
     stampSetting("wps_portfolio_pdf");
     showSwitch(enabled);
     updateAdminBtn();
