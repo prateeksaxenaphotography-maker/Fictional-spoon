@@ -755,7 +755,13 @@
   /* ---- PDF page drawing (all measurements in millimetres on A4) ---- */
   const PDF_PAGE = { w: 210, h: 297, margin: 12, gap: 2.5 };
   const PDF_FOOTER_H = 8.5;
-  const PDF_MONO = "var(--mono-font)";
+  // A LITERAL stack, never a CSS variable: this string goes into ctx.font, and
+  // canvas does not resolve var(). An unresolvable font makes the whole
+  // declaration invalid, so the canvas silently keeps its default 10px sans and
+  // every measured width is wrong — which is what overlapped the name and the
+  // role on the cover, and truncated "HEIGHT" to "H…" (v466). It must stay in
+  // step with --mono-font in styles.css by hand.
+  const PDF_MONO = "'IBM Plex Mono', monospace";
   const PDF_SANS = "Inter, 'Helvetica Neue', Arial, sans-serif";
   const PDF_DISPLAY = "Archivo, Inter, 'Helvetica Neue', Arial, sans-serif";
   const PDF_LABEL = { weight: 600, size: 2.0, family: PDF_MONO, spacing: 0.35, upper: true, color: "#8a8782" };
