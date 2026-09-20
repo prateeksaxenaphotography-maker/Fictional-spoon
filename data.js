@@ -2272,6 +2272,13 @@ window.WPS_DATA = {
           "status": "confirmed",
           "type": "Fashion Editorial",
           "contractVersion": "COMMERCIAL-CONTRACT-V3.3"
+        },
+        {
+          "id": "b_audit_WPS-20260814-173509-WMCY",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Fashion Editorial",
+          "contractVersion": "COMMERCIAL-CONTRACT-V3.3"
         }
       ],
       "2026-01-01": [
@@ -2284,6 +2291,20 @@ window.WPS_DATA = {
         },
         {
           "id": "b_1787428837182_k801",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Fashion Editorial",
+          "contractVersion": "COMMERCIAL-CONTRACT-V3.5"
+        },
+        {
+          "id": "b_audit_WPS-20260814-173509-WMCY",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Fashion Editorial",
+          "contractVersion": "COMMERCIAL-CONTRACT-V3.3"
+        },
+        {
+          "id": "b_audit_WPS-20260823-013037-SRE9",
           "isTentative": false,
           "status": "confirmed",
           "type": "Fashion Editorial",
@@ -2366,6 +2387,13 @@ window.WPS_DATA = {
       "2001-10-17": [
         {
           "id": "b_1787428837182_i8mi",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Fashion Editorial",
+          "contractVersion": "COMMERCIAL-CONTRACT-V3.5"
+        },
+        {
+          "id": "b_audit_WPS-20260823-013037-SRE9",
           "isTentative": false,
           "status": "confirmed",
           "type": "Fashion Editorial",
@@ -2665,7 +2693,74 @@ window.WPS_DATA = {
   "PORTFOLIO_PDF": {
     "enabled": false,
     "price": 300,
-    "upiId": ""
+    "upiId": "",
+    "type": {
+      "name": {
+        "family": "display",
+        "weight": 800,
+        "color": "#000000"
+      },
+      "role": {
+        "family": "mono",
+        "weight": 600,
+        "color": "auto",
+        "size": 2
+      },
+      "statLabel": {
+        "family": "mono",
+        "weight": 600,
+        "color": "#8a8782",
+        "size": 2
+      },
+      "statValue": {
+        "family": "sans",
+        "weight": 600,
+        "color": "#000000",
+        "size": 3.3
+      },
+      "header": {
+        "family": "mono",
+        "weight": 600,
+        "color": "auto",
+        "size": 2.3
+      },
+      "brand": {
+        "family": "mono",
+        "weight": 700,
+        "color": "auto",
+        "size": 2.3
+      },
+      "photoTag": {
+        "family": "mono",
+        "weight": 600,
+        "color": "#ffffff",
+        "size": 2
+      },
+      "note": {
+        "family": "sans",
+        "weight": 400,
+        "color": "#8a8782",
+        "size": 2.1
+      },
+      "footer": {
+        "family": "mono",
+        "weight": 700,
+        "color": "#000000",
+        "size": 2.2
+      },
+      "fine": {
+        "family": "sans",
+        "weight": 400,
+        "color": "#9a9791",
+        "size": 1.9
+      }
+    },
+    "border": {
+      "on": false,
+      "width": 0.5,
+      "inset": 6,
+      "color": "#141416"
+    }
   },
   "HOME_STUDIO_RATE_TFP": 4000,
   "SETTINGS_AT": {
@@ -2678,7 +2773,38 @@ window.WPS_DATA = {
     "HOME_STUDIO_RATE_TFP": 1789826876874
   },
   "STUDIO_PORTFOLIOS": {
-    "versions": [],
+    "versions": [
+      {
+        "id": "bkmu9io6yxzopu",
+        "name": "Book 1",
+        "style": "modern",
+        "colourway": "terracotta",
+        "orientation": "portrait",
+        "title": "Selected Work",
+        "subtitle": "Fashion, portraits & editorial",
+        "cover": null,
+        "pages": [
+          {
+            "type": "story",
+            "photos": [],
+            "kicker": "",
+            "headline": "",
+            "intro": "",
+            "body": ""
+          },
+          {
+            "type": "photos",
+            "photos": []
+          }
+        ],
+        "texts": {
+          "about": "",
+          "phone": "",
+          "showPrices": false
+        },
+        "updatedAt": 1789890642782
+      }
+    ],
     "deleted": [
       "bkmu5na3d8q6et",
       "bkmu5ovyysqxsp",
