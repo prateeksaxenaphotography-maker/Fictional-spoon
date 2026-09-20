@@ -3274,3 +3274,22 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
   transition: color .25s var(--ease), border-color .25s var(--ease);
 }
 .nav-links li.nav-signin button:hover { color: var(--ink); border-color: var(--ink); }
+
+/* The watermarked sample downloads in the portfolio PDF builder. They used to
+   be underlined words inside a sentence, with four real buttons around them,
+   so the studio could not find them at all — they read as prose. */
+.pp-hint-sample { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.pp-sample-actions { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+.pp-sample-btn {
+  background: none;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-pill);
+  color: var(--ink);
+  font: 600 12.5px "Inter", system-ui, sans-serif;
+  padding: 7px 14px;
+  min-height: 40px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color .25s var(--ease), background .25s var(--ease);
+}
+.pp-sample-btn:hover { border-color: var(--ink); background: var(--bone); }
