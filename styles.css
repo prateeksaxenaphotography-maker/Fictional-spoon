@@ -3254,3 +3254,23 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
   /* A swipe inside the viewer scrolled the page hidden behind it. */
   .lightbox { overscroll-behavior: contain; }
 }
+
+/* The menu's sign-in entry. It sits with the navigation links but is a button,
+   not a link, so it is toned down to sit quietly under them rather than read
+   as another destination (site audit follow-up, Sep 2026). */
+.nav-links li.nav-signin { margin-top: 18px; }
+.nav-links li.nav-signin button {
+  background: none;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-pill);
+  color: var(--ink-soft);
+  font-family: var(--mono-font);
+  font-size: var(--font-xs);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  padding: 8px 16px;
+  min-height: 40px;
+  cursor: pointer;
+  transition: color .25s var(--ease), border-color .25s var(--ease);
+}
+.nav-links li.nav-signin button:hover { color: var(--ink); border-color: var(--ink); }

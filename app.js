@@ -2512,7 +2512,10 @@ window.resolveContractArchive = function(version) {
 
     const menuAdminBtnText = $("#menuAdminBtnText");
     if (menuAdminBtnText) {
-      menuAdminBtnText.textContent = btnText;
+      // This entry is the one thing in the menu a visitor can see, so signed
+      // out it says only "Admin" rather than announcing a mode and its state.
+      // Signed in it says what pressing it will do.
+      menuAdminBtnText.textContent = active ? "Sign out of admin" : "Admin";
     }
 
     // Only in admin mode. A visitor opening the menu saw an ADMIN heading and
@@ -2575,6 +2578,9 @@ window.resolveContractArchive = function(version) {
       render();
     };
 
+    // The menu's sign-in entry is built later, in initBranding, so it cannot
+    // be wired by the listeners below — it reaches the toggle through here.
+    window.__wpsSignIn = toggleAdminModeState;
     adminBtn?.addEventListener("click", toggleAdminModeState);
     $("#headerAdminBtn")?.addEventListener("click", toggleAdminModeState);
     $("#menuAdminBtn")?.addEventListener("click", toggleAdminModeState);
@@ -10139,6 +10145,25 @@ window.resolveContractArchive = function(version) {
       // Upload goes where it always sat, above "Book a shoot"; the calendar last.
       addAdminLi("navUploadLi", "/upload", "Upload", document.getElementById("navBookLi"));
       addAdminLi("navCalendarLi", "/calendar", "Calendar & Bookings", null);
+
+      // The way back in. Until this existed the only route was three quick
+      // taps on the footer line, which is not something you can be expected
+      // to remember. Pressing it asks for the passcode; pressing it while
+      // signed in signs you out, the same as the button in the admin block.
+      if (!document.getElementById("navSignInLi")) {
+        const li = document.createElement("li");
+        li.id = "navSignInLi";
+        li.className = "nav-signin";
+        const b = document.createElement("button");
+        b.type = "button";
+        b.id = "menuAdminBtn";
+        b.innerHTML = '<span id="menuAdminBtnText">Admin</span>';
+        b.addEventListener("click", () => {
+          if (typeof window.__wpsSignIn === "function") window.__wpsSignIn();
+        });
+        li.appendChild(b);
+        adminNavList.appendChild(li);
+      }
     }
 
     // "Portfolio book" — the studio's own tool, so it shows only in admin mode
