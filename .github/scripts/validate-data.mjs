@@ -306,6 +306,50 @@ if (mpdfs !== undefined && mpdfs !== null) {
   }
 }
 
+/* Testimonials — what people have written about the studio. They arrive by
+   email and are typed in by hand, so this is the one publish path with a
+   person at the keyboard, and the checks are aimed at what a person can get
+   wrong: an id that collides with another, a rating outside 1–5 (the card
+   draws that many stars and would draw seven), a quote past the length the
+   normaliser trims to, and an entry that is both published and tombstoned —
+   the same contradiction DELETED_IDS is checked for above.
+
+   Nothing here may carry a proof file: the documentation someone attaches
+   stays in the studio's inbox and must never reach this public repository,
+   so a data: URL anywhere in the store fails the build outright. */
+const tms = win.WPS_DATA.TESTIMONIALS;
+if (tms !== undefined && tms !== null) {
+  if (typeof tms !== "object" || !Array.isArray(tms.items) || !Array.isArray(tms.deleted)) {
+    fail("WPS_DATA.TESTIMONIALS must be an object { items: [], deleted: [] }");
+  } else {
+    const KINDS = new Set(["model", "brand", "workshop", "other", ""]);
+    const seen = new Set();
+    const buried = new Set(tms.deleted);
+    const before = failed;
+    for (const t of tms.items) {
+      if (!t || typeof t !== "object" || typeof t.id !== "string" || !t.id) { fail("a testimonial has no id"); continue; }
+      const who = t.by || t.id;
+      if (seen.has(t.id)) fail(`two testimonials share the id ${t.id} — the newer one would hide the older`);
+      seen.add(t.id);
+      if (buried.has(t.id)) fail(`testimonial ${t.id} ("${who}") is published AND listed as deleted`);
+      if (typeof t.quote !== "string" || !t.quote.trim()) fail(`testimonial ${t.id} ("${who}") has no words in it`);
+      else if (t.quote.length > 900) fail(`the testimonial from "${who}" is ${t.quote.length} characters; the app trims at 900, so the published copy would be cut`);
+      if (t.rating !== undefined && !(Number.isInteger(t.rating) && t.rating >= 0 && t.rating <= 5)) {
+        fail(`the testimonial from "${who}" is rated ${JSON.stringify(t.rating)}; it must be a whole 0 (unrated) to 5`);
+      }
+      if (t.kind !== undefined && !KINDS.has(t.kind)) fail(`the testimonial from "${who}" is of kind ${JSON.stringify(t.kind)}, which the app does not know`);
+      for (const [k, v] of Object.entries(t)) {
+        if (typeof v === "string" && /^data:/.test(v)) {
+          fail(`the testimonial from "${who}" carries a file in "${k}" — documentation belongs in the studio's inbox, never in this public repository`);
+        }
+      }
+    }
+    // "OK" only if this block actually found nothing; printing it under a
+    // FAIL it had just raised made a broken publish look half-fine in the log.
+    if (failed === before) console.log(`testimonials OK (${tms.items.length})`);
+  }
+}
+
 const books = win.WPS_DATA.STUDIO_PORTFOLIOS;
 if (books !== undefined && books !== null) {
   if (typeof books !== "object" || !Array.isArray(books.versions) || !Array.isArray(books.deleted)) {

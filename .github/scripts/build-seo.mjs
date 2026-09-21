@@ -668,8 +668,20 @@ function processSteps() {
   try { const v = vm.runInNewContext(`(${m[1]})`, {}, { timeout: 1000 }); return Array.isArray(v) ? v : []; } catch { return []; }
 }
 
+/* Every testimonial a crawler should see, from both places they live: the
+   written-in ones (WPS_DATA.TESTIMONIALS, what the form on /testimonials
+   collects and the studio publishes) and the older ones that ride along on an
+   album. The count this returns is what decides whether /testimonials is in
+   the sitemap and out of noindex at all — see hiddenShells at the foot of
+   this file. */
 function testimonials() {
   const out = [];
+  const store = DATA.TESTIMONIALS || {};
+  const gone = new Set(Array.isArray(store.deleted) ? store.deleted : []);
+  for (const t of (Array.isArray(store.items) ? store.items : [])) {
+    if (!t || !t.id || !t.quote || gone.has(t.id)) continue;
+    out.push({ quote: t.quote, by: t.by || "Anonymous", role: t.role || "", rating: Number(t.rating) || 0 });
+  }
   for (const s of allShoots) {
     if (s.isPublic === false) continue;
     if (s.isTestimonial && s.description) out.push({ quote: s.description, by: cleanName(s.talent) || "Anonymous" });
@@ -749,14 +761,24 @@ function prerenderBlocks() {
     ${siteLinksHtml}`;
 
   if (exists("testimonials/index.html")) {
+    // The crawler's copy mirrors what the page says on arrival: the wall when
+    // there is one, and the invitation to write the first when there is not.
+    // The page is noindexed while it is empty, so this second version is for
+    // the reader whose JavaScript never arrives, not for search.
     blocks["testimonials/index.html"] = `
     <header class="page-head"><div class="container">
-      <p class="eyebrow">Social proof</p>
+      <p class="eyebrow">${quotes.length ? "In their words" : "Your turn"}</p>
       <h1>Testimonials</h1>
-      <p class="page-sub">Words from models, brands and creative partners about their shoot with ${BRAND}.</p>
+      <p class="page-sub">${quotes.length
+        ? `Words from models, brands and creative partners about their shoot with ${BRAND}.`
+        : `Nobody has written one yet. If you have shot with ${BRAND}, yours would be the first.`}</p>
     </div></header>
     <section class="section container">
-      ${quotes.length ? quotes.map((t) => `<blockquote><p>${esc(t.quote)}</p><footer>${esc(t.by)}</footer></blockquote>`).join("") : "<p>No testimonials published yet.</p>"}
+      ${quotes.length
+        ? quotes.map((t) => `<blockquote><p>${esc(t.quote)}</p><footer>${esc(t.by)}${t.role ? ` — ${esc(t.role)}` : ""}</footer></blockquote>`).join("")
+        : ""}
+      <h2>Write a testimonial</h2>
+      <p>Anyone who has worked with ${BRAND} can write one — models, brands and agencies, and anyone who came to a workshop. The form on this page needs JavaScript; you can also email ${esc(CONFIG.email || "")} directly, and attach a PDF or a picture if you have something that backs it up.</p>
     </section>
     ${siteLinksHtml}`;
   }

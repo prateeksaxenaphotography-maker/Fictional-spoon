@@ -964,6 +964,23 @@ window.resolveContractArchive = function(version) {
     return parts.join(" ");
   };
   function readAsDataURL(f) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); }); }
+  /* A data: URL back to the bytes it stands for, for anything that has to be
+     POSTed as a file rather than as text — the drawn signature on a contract,
+     a picture attached to a testimonial. Returns null rather than throwing on
+     anything that is not a base64 data URL, because every caller's answer to
+     that is "send it without the attachment". */
+  function dataUrlToBlob(dataUrl) {
+    try {
+      const m = String(dataUrl).match(/^data:([^;,]+);base64,/);
+      if (!m) return null;
+      const bin = atob(String(dataUrl).slice(m[0].length));
+      const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      return new Blob([arr], { type: m[1] });
+    } catch (e) {
+      return null;
+    }
+  }
   // Always re-encodes, even when the photo is already small enough. Returning
   // the upload untouched (which this did) published whatever the camera or
   // Lightroom wrote: three files came in around 1 byte per pixel — 1.3 MB for
@@ -1401,32 +1418,167 @@ window.resolveContractArchive = function(version) {
     const shootTime = new Date(t).setHours(0, 0, 0, 0);
     return shootTime > todayTime;
   };
+  /* ---- testimonials -------------------------------------------------------
+
+     A testimonial used to be able to arrive only one way: as an album with
+     "Testimonial Only" ticked, which put one person's sentence into the
+     portfolio's own list of shoots and gave it a title, a brand and a season
+     it never had. Anyone can write one now — a model, a brand, someone who
+     came to a workshop — through the form on /testimonials, and it lands in a
+     list of its own. Both are read here, so nothing published the old way
+     disappears from the page.
+
+     Shape in data.js: TESTIMONIALS: { items: [...], deleted: [...] }, merged
+     by id with newest-updatedAt winning. Same bargain as MODEL_PDFS and
+     STUDIO_PORTFOLIOS: two devices can both publish without one silently
+     replacing what the other wrote. The merge itself lives in admin.js with
+     the other publishing code; a visitor only ever reads the published file.
+
+     Nothing a person sends reaches this list by itself. There is no server
+     here (see the booking relay below), so a submission is an email to the
+     studio and publishing is a deliberate act in the studio's own panel —
+     which is also the moderation the page needs. The form says so plainly
+     rather than implying the words appear straight away. */
+  const TESTIMONIAL_KINDS = [
+    { key: "model", label: "Model" },
+    { key: "brand", label: "Brand or agency" },
+    { key: "workshop", label: "Workshop" },
+    { key: "other", label: "Other" }
+  ];
+  const testimonialKindLabel = (k) => (TESTIMONIAL_KINDS.find((x) => x.key === k) || {}).label || "";
+  // Limits are declared once and enforced in three places: the form the writer
+  // types into, the studio's own panel, and the publish check in CI. A quote
+  // longer than this is not rejected on arrival — it arrives by email, where
+  // nothing can reject it — it is trimmed when the studio publishes it.
+  const TESTIMONIAL_LIMITS = { quote: 900, quoteMin: 30, name: 60, role: 80, shoot: 80 };
+  // What the relay will carry. FormSubmit refuses a large attachment outright,
+  // and a refusal here costs the studio the testimonial as well as the file,
+  // so a picture is shrunk to fit and anything still over the line is left
+  // behind with the words sent anyway (see wireTestimonials).
+  const TESTIMONIAL_PROOF_MAX_MB = 4;
+
+  /* The stored testimonials, as this page should see them. On a visitor's
+     device that is exactly what data.js holds. On the studio's own device
+     admin.js has a merged copy — the published list plus edits made here that
+     have not been pushed yet — and that one wins, so the studio can see a
+     draft on the real page before anyone else does. */
+  function storedTestimonials() {
+    let store = null;
+    try {
+      store = (window.WPS_ADMIN && window.WPS_ADMIN.testimonials)
+        ? window.WPS_ADMIN.testimonials()
+        : (window.WPS_DATA && window.WPS_DATA.TESTIMONIALS);
+    } catch (e) { store = null; }
+    const items = store && Array.isArray(store.items) ? store.items : [];
+    const gone = new Set(store && Array.isArray(store.deleted) ? store.deleted : []);
+    return items.filter((t) => t && t.id && t.quote && !gone.has(t.id));
+  }
+
   function getAllTestimonials() {
     const list = [];
+    // Newest first, so a page that shows only a few shows the recent ones.
+    storedTestimonials()
+      .slice()
+      .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+      .forEach((t) => {
+        list.push({
+          id: t.id,
+          quote: t.quote || "",
+          by: t.by || "Anonymous",
+          role: t.role || "",
+          kind: t.kind || "",
+          // What sits under the name on a card. The old cards showed the
+          // album's brand here; a written-in testimonial has the role its
+          // author gave instead ("Model, Noida"), which says more.
+          meta: t.role || testimonialKindLabel(t.kind),
+          season: t.dateLabel || "",
+          rating: Number(t.rating) || 0,
+          // The studio saw a document backing this one up — a letterhead, an
+          // email, a screenshot — in its inbox, and said so. The file itself
+          // is never published: see the note on the upload field.
+          verified: t.verified === true,
+          onHome: t.onHome !== false,
+          shootId: t.shootId || "",
+          shootTitle: t.shoot || ""
+        });
+      });
     SHOOTS.forEach(s => {
       if (s.isTestimonial) {
         list.push({
+          id: s.id,
           quote: s.description || "",
           by: getTalentCleanName(s.talent) || "Anonymous",
+          role: "",
+          kind: "",
           meta: s.brand || "",
           season: s.season || "",
+          rating: 0,
+          verified: false,
+          onHome: true,
           shootId: s.id,
           shootTitle: s.title
         });
       } else if (s.testimonials && s.testimonials.length) {
-        s.testimonials.forEach(t => {
+        s.testimonials.forEach((t, i) => {
           list.push({
+            id: `${s.id}-q${i}`,
             quote: t.quote || "",
             by: t.by || "Anonymous",
+            role: "",
+            kind: "",
             meta: s.brand === "Personal Project" ? "" : s.brand,
             season: s.season || "",
+            rating: 0,
+            verified: false,
+            onHome: true,
             shootId: s.id,
             shootTitle: s.title
           });
         });
       }
     });
-    return list;
+    return list.filter((t) => String(t.quote).trim());
+  }
+
+  // Five stars with the first `n` filled, as one inline SVG per star. Written
+  // once for the cards, the home page and the studio's list. A rating of 0
+  // draws nothing at all: most testimonials are words, and an empty row of
+  // grey stars reads as "rated zero" rather than "not rated".
+  function starRow(n, label) {
+    const filled = Math.max(0, Math.min(5, Math.round(Number(n) || 0)));
+    if (!filled) return "";
+    const star = (on) => `<svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true" class="tm-star${on ? " is-on" : ""}"><path d="M10 1.6l2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5 2.7 1-5.6-4.1-3.9 5.6-.8z"/></svg>`;
+    return `<span class="tm-stars" role="img" aria-label="${esc(label || `${filled} out of 5`)}">${
+      [1, 2, 3, 4, 5].map((i) => star(i <= filled)).join("")
+    }</span>`;
+  }
+
+  /* One testimonial card, used by the home page strip and the testimonials
+     page. It was written out twice with its styling inline in both, which is
+     why the two drifted apart in padding and type size; there is one of it
+     now, and the look lives in styles.css with everything else. */
+  function testimonialCard(t, i) {
+    const under = [t.meta, t.season].filter(Boolean).join(" · ");
+    // The album it came from, when that album is still on the site. A stored
+    // testimonial keeps the shoot as the writer named it, which may be
+    // nothing the archive knows — that stays plain text rather than becoming
+    // a link to a page that does not exist.
+    const album = t.shootId ? SHOOTS.find((s) => s.id === t.shootId) : null;
+    const href = album ? albumPathFor(album) : "";
+    const shoot = !t.shootTitle ? ""
+      : href
+        ? `<a class="tm-card-shoot" href="${esc(href)}" data-link>${esc(t.shootTitle)}</a>`
+        : `<span class="tm-card-shoot">${esc(t.shootTitle)}</span>`;
+    return `
+      <figure class="tm-card reveal" style="--d:${((i % 8) * 0.05).toFixed(2)}s">
+        <blockquote class="tm-card-quote">${esc(t.quote)}</blockquote>
+        <figcaption class="tm-card-by">
+          <span class="tm-card-name">${esc(t.by)}${t.verified ? `<span class="tm-verified" title="The studio has documentation for this one on file">✓</span>` : ""}</span>
+          ${starRow(t.rating, `Rated ${t.rating} out of 5`)}
+          ${under ? `<span class="tm-card-meta">${esc(under)}</span>` : ""}
+          ${shoot}
+        </figcaption>
+      </figure>`;
   }
 
   /* ============================================================
@@ -3277,7 +3429,10 @@ window.resolveContractArchive = function(version) {
     ).join("");
 
     const allT = getAllTestimonials();
-    const shuffledT = shuffleArray(allT);
+    // A testimonial can be kept off the home page without being unpublished —
+    // the studio's own switch. Everything published before that switch
+    // existed counts as "yes", which is what it has always done.
+    const shuffledT = shuffleArray(allT.filter((t) => t.onHome !== false));
     const homeT = shuffledT.slice(0, 5);
     return `
       <section class="hero ${heroSrc ? "hero-shot" : "hero-mono hero-brand"}">
@@ -3361,24 +3516,13 @@ window.resolveContractArchive = function(version) {
             <p class="eyebrow">Client Reactions</p>
             <h2>Testimonials &amp; Trust</h2>
           </div>
-          ${allT.length > 5 ? `<a href="/testimonials" data-link class="link-arrow">All Testimonials (${allT.length}) →</a>` : ""}
+          <a href="/testimonials" data-link class="link-arrow">${allT.length > 5 ? `All ${allT.length} testimonials` : "Read them all"} →</a>
         </div>
-        <div class="testimonials-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 30px;">
-          ${homeT.map((t, i) => `
-            <div class="testimonial-card reveal" style="--d:${(i * 0.06).toFixed(2)}s; background: var(--bone); border: 1px solid var(--line); padding: 24px; border-radius: 12px; display: flex; flex-direction: column; gap: 15px; justify-content: space-between;">
-              <p style="font-family: 'Georgia', serif; font-size: var(--font-sm); font-style: italic; line-height: 1.6; color: var(--ink); margin: 0;">“${esc(t.quote)}”</p>
-              <div style="display: flex; flex-direction: column; gap: 2px;">
-                <strong style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); color: var(--ink);">${esc(t.by)}</strong>
-                <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">${esc(t.meta)} ${t.season ? `· ${esc(t.season)}` : ""}</span>
-              </div>
-            </div>
-          `).join("")}
+        <div class="tm-grid">${homeT.map(testimonialCard).join("")}</div>
+        <div class="tm-home-foot reveal">
+          <a href="/testimonials" data-link class="btn btn-dark">${allT.length > 5 ? `View all ${allT.length} testimonials` : "Read the testimonials"} →</a>
+          <a href="/testimonials#write" data-link class="btn btn-ghost">Write one →</a>
         </div>
-        ${allT.length > 5 ? `
-        <div style="text-align: center; margin-top: 40px;" class="reveal">
-          <a href="/testimonials" data-link class="btn btn-dark">View all ${allT.length} testimonials →</a>
-        </div>
-        ` : ""}
       </section>
       ` : ''}
 
@@ -4872,44 +5016,504 @@ window.resolveContractArchive = function(version) {
       </section>`;
   }
 
+  /* The testimonials page.
+
+     Two pages in one address, because the studio starts with nothing to show.
+     With no testimonial published, this is the form and an honest line saying
+     so — and the page is kept out of the menu and out of search (the menu
+     link is painted by syncTestimonialsNavLink, the noindex tag is stamped at
+     deploy by build-seo.mjs). The address keeps working the whole time, so the
+     studio can send it to a client and collect the first one. Publish that
+     first testimonial and the page becomes itself: the wall, the numbers, and
+     the form underneath it.
+
+     The studio's own panel is mounted at the top by admin.js — on this page
+     rather than on a screen of its own, so the studio edits a card while
+     looking at the page the client will see. */
   function viewTestimonials() {
     const allT = getAllTestimonials();
-    const shuffledT = shuffleArray(allT);
+    const wall = shuffleArray(allT);
+    const rated = allT.filter((t) => t.rating > 0);
+    // An average of one rating is not an average, it is that rating with a
+    // decimal point after it. Two is the least that can honestly be called one.
+    const avg = rated.length >= 2 ? rated.reduce((a, t) => a + t.rating, 0) / rated.length : 0;
+    const kinds = TESTIMONIAL_KINDS.filter((k) => allT.some((t) => t.kind === k.key));
+    // Chips only once they would actually divide something. Below this they
+    // are four buttons over five cards, which is noise with a filter on it.
+    const showChips = allT.length >= 6 && kinds.length >= 2;
+
+    const stats = [
+      { n: String(allT.length), label: allT.length === 1 ? "testimonial" : "testimonials" },
+      avg ? { n: avg.toFixed(1).replace(/\.0$/, ""), label: `average of ${rated.length} ratings`, stars: Math.round(avg) } : null,
+      allT.some((t) => t.verified) ? { n: String(allT.filter((t) => t.verified).length), label: "with documentation on file" } : null
+    ].filter(Boolean);
+
+    const albums = SHOOTS
+      .filter((s) => s && !s.isTestimonial && s.type !== "Workshop Attended" && s.isPublic !== false && !isFutureShoot(s))
+      .slice()
+      .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+
     return `
       <section class="page-head">
         <div class="container">
-          <p class="eyebrow reveal">Social proof</p>
+          <p class="eyebrow reveal">${allT.length ? "In their words" : "Your turn"}</p>
           ${kineticH1("Testimonials")}
-          <p class="page-sub reveal">Words from our creative partners, brands, and models about their shoot experience and production results at nerdyphotographer.in.</p>
+          <p class="page-sub reveal">${allT.length
+            ? "Words from the models, brands and creative partners who have been in front of this camera — and anyone else with something to say about working with the studio."
+            : "Nobody has written one yet. If you have shot with the studio — as a model, a brand, or at a workshop — yours would be the first."}</p>
+          ${stats.length && allT.length ? `
+          <div class="tm-stats reveal">
+            ${stats.map((s) => `
+              <div class="tm-stat">
+                <span class="tm-stat-n">${esc(s.n)}${s.stars ? starRow(s.stars, `${s.n} out of 5`) : ""}</span>
+                <span class="tm-stat-label">${esc(s.label)}</span>
+              </div>`).join("")}
+          </div>` : ""}
+          <div class="hero-actions reveal" style="margin-top: 22px;">
+            <a href="#write" class="btn btn-dark tm-jump">Write a testimonial →</a>
+            ${allT.length ? `<a href="/albums" data-link class="btn btn-ghost">See the work</a>` : ""}
+          </div>
         </div>
       </section>
+
+      ${isAdmin() ? `<div id="tmAdminRoot" class="tm-admin-root"><p class="page-sub container">Loading the studio's panel…</p></div>` : ""}
+
+      ${allT.length ? `
       <section class="section container">
-        ${shuffledT.length ? `
-        <div class="testimonials-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 30px;">
-          ${shuffledT.map((t, i) => `
-            <div class="testimonial-card reveal" style="--d:${(i * 0.05).toFixed(2)}s; background: var(--bone); border: 1px solid var(--line); padding: 28px; border-radius: 12px; display: flex; flex-direction: column; gap: 20px; justify-content: space-between;">
-              <p style="font-family: 'Georgia', serif; font-size: var(--font-sm); font-style: italic; line-height: 1.6; color: var(--ink); margin: 0;">“${esc(t.quote)}”</p>
-              <div style="display: flex; flex-direction: column; gap: 2px;">
-                <strong style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); color: var(--ink);">${esc(t.by)}</strong>
-                <span style="font-size: var(--font-xs); color: var(--ink-soft); font-family: var(--mono-font);">${esc(t.meta)} ${t.season ? `· ${esc(t.season)}` : ""}</span>
-              </div>
-            </div>
-          `).join("")}
+        ${showChips ? `
+        <div class="tm-chips reveal" role="group" aria-label="Filter testimonials">
+          <button type="button" class="tm-chip is-on" data-kind="">All <span>${allT.length}</span></button>
+          ${kinds.map((k) => `<button type="button" class="tm-chip" data-kind="${esc(k.key)}">${esc(k.label)} <span>${allT.filter((t) => t.kind === k.key).length}</span></button>`).join("")}
+        </div>` : ""}
+        <div class="tm-grid tm-wall" id="tmWall">
+          ${wall.map((t, i) => `<div class="tm-cell" data-kind="${esc(t.kind || "")}">${testimonialCard(t, i)}</div>`).join("")}
         </div>
-        ` : `<p class="page-sub">No testimonials published yet.</p>`}
+        <p class="tm-empty-filter" id="tmNoMatch" hidden>Nothing in that group yet.</p>
+      </section>` : ""}
+
+      <section class="section container tm-write" id="write">
+        <div class="tm-write-card reveal">
+          <div class="tm-write-head">
+            <p class="eyebrow">Write one</p>
+            <h2>Say how it went</h2>
+            <p class="tm-write-sub">Anyone who has worked with the studio can write a testimonial — models, brands and agencies, people who came to a workshop, anyone the studio has shot with or for. It arrives as an email in the studio's inbox, and goes on this page once the studio puts it up.</p>
+          </div>
+
+          <form id="tmForm" class="tm-form" novalidate>
+            <div class="field-row">
+              <label class="field"><span>Your name *</span>
+                <input id="tm_name" type="text" maxlength="${TESTIMONIAL_LIMITS.name}" autocomplete="name" placeholder="The name that appears under your words" required />
+              </label>
+              <label class="field"><span>Your email *</span>
+                <input id="tm_email" type="email" autocomplete="email" placeholder="name@example.com" required />
+              </label>
+            </div>
+            <p class="field-hint">Your email is how the studio replies and checks it really is you. It is never published and never leaves the studio's inbox.</p>
+
+            <div class="field-row">
+              <label class="field"><span>Credit you as</span>
+                <input id="tm_role" type="text" maxlength="${TESTIMONIAL_LIMITS.role}" placeholder="e.g. Model, Noida · Founder, Label Name" />
+              </label>
+              <label class="field"><span>You are</span>
+                <select id="tm_kind">
+                  ${TESTIMONIAL_KINDS.map((k) => `<option value="${esc(k.key)}">${esc(k.label)}</option>`).join("")}
+                </select>
+              </label>
+            </div>
+
+            <label class="field"><span>Which shoot was it?</span>
+              <select id="tm_shoot">
+                <option value="">Not listed, or not about one shoot</option>
+                ${albums.map((s) => `<option value="${esc(s.id)}">${esc(s.title || s.talent || s.id)}${s.season ? ` · ${esc(s.season)}` : ""}</option>`).join("")}
+              </select>
+            </label>
+
+            <fieldset class="tm-rate">
+              <legend>How was it? <span class="tm-opt">optional</span></legend>
+              <div class="tm-rate-stars">
+                ${[1, 2, 3, 4, 5].map((n) => `
+                  <input type="radio" name="tm_rating" id="tm_rating_${n}" value="${n}" class="tm-rate-input" />
+                  <label for="tm_rating_${n}" class="tm-rate-star" title="${n} out of 5">
+                    <span class="sr-only">${n} out of 5</span>
+                    <svg viewBox="0 0 20 20" width="30" height="30" aria-hidden="true"><path d="M10 1.6l2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5 2.7 1-5.6-4.1-3.9 5.6-.8z"/></svg>
+                  </label>`).join("")}
+                <button type="button" class="tm-rate-clear" id="tm_rate_clear" hidden>Clear</button>
+              </div>
+            </fieldset>
+
+            <label class="field"><span>Your testimonial *</span>
+              <textarea id="tm_quote" rows="6" maxlength="${TESTIMONIAL_LIMITS.quote}" placeholder="What the shoot was like, what you got out of it, and whether you would do it again." required></textarea>
+            </label>
+            <p class="field-hint tm-count"><span id="tm_count">0</span> / ${TESTIMONIAL_LIMITS.quote} characters · ${TESTIMONIAL_LIMITS.quoteMin} at the least</p>
+
+            <fieldset class="tm-proof">
+              <legend>Anything backing it up? <span class="tm-opt">optional</span></legend>
+              <p class="field-hint" style="margin-bottom: 10px;">A PDF or a picture — a letter on your company's paper, an email, a screenshot of a message, an invoice. It helps the studio show the words are real. <strong>The file goes to the studio's inbox only. It is never put on this website.</strong></p>
+              <label class="attachments-dropzone tm-drop" id="tm_drop" for="tm_proof">
+                📎 <strong>Choose a PDF or a picture</strong>
+                <div style="font-size: var(--font-xs); margin-top: 4px;">One file, up to ${TESTIMONIAL_PROOF_MAX_MB} MB. Pictures are shrunk before they are sent.</div>
+              </label>
+              <input id="tm_proof" type="file" accept="image/*,.pdf,application/pdf" class="sr-only" />
+              <div class="attachment-list" id="tm_proof_list"></div>
+            </fieldset>
+
+            <label class="check-line tm-consent">
+              <input type="checkbox" id="tm_consent" required />
+              <span>I am happy for these words, and the name above, to appear on nerdyphotographer.in. I can ask for them to be taken down at any time by emailing the studio. *</span>
+            </label>
+
+            <!-- FormSubmit drops anything that fills this in; a person never
+                 sees it, and a script filling every field does. -->
+            <input type="text" id="tm_honey" name="_honey" tabindex="-1" autocomplete="off" aria-hidden="true" class="tm-honey" />
+
+            <p class="field-error" id="tmError" hidden></p>
+            <div class="tm-form-foot">
+              <button type="submit" class="btn btn-dark" id="tmSubmit">Send it to the studio →</button>
+              <p class="field-hint">Nothing appears here straight away — the studio reads it first, and puts it up.</p>
+            </div>
+          </form>
+
+          <div class="tm-done" id="tmDone" hidden aria-live="polite">
+            <div class="tm-done-icon" id="tmDoneIcon"></div>
+            <h3 id="tmDoneTitle"></h3>
+            <p id="tmDoneBody"></p>
+            <div class="tm-done-actions" id="tmDoneActions" hidden>
+              <a class="btn btn-dark" id="tmGmailLink" target="_blank" rel="noopener">Open Gmail with it →</a>
+              <a class="btn btn-ghost" id="tmMailLink">Use my mail app</a>
+              <button type="button" class="btn btn-ghost" id="tmCopyBtn">Copy the text</button>
+            </div>
+            <button type="button" class="tm-done-again" id="tmAgain" hidden>Write another</button>
+          </div>
+        </div>
       </section>
+
       <section class="cta-band" style="border-top: 1px solid var(--line); margin-top: 60px;">
         <div class="container reveal">
-          ${isAdmin() ? `
-            <h2>Have a testimonial to publish?</h2>
-            <a href="/upload" data-link class="btn btn-dark">Publish testimonial →</a>
-          ` : `
-            <h2>Ready to collaborate?</h2>
-            <a href="/book" data-link class="btn btn-dark">Book your photoshoot session →</a>
-          `}
+          <h2>Ready to be in front of it?</h2>
+          <a href="/book" data-link class="btn btn-dark">Book a photoshoot session →</a>
         </div>
       </section>
     `;
+  }
+
+  /* Everything the testimonials page does once it is on screen.
+
+     The send is the booking form's bargain in miniature, and for the same
+     reason: there is no server, so an email to the studio is the submission.
+     FormSubmit answers 200 with success:"false" when it refuses, so the body
+     flag decides — never res.ok — and a refusal turns into Gmail-and-buttons
+     rather than a tick over an email nobody received. What it does NOT do is
+     navigate the visitor's tab at a mailto: URL (see the booking relay).
+
+     The one thing that cannot survive the fallback is the attachment: a
+     compose window cannot be handed a file. So the fallback says so in as
+     many words and asks them to attach it themselves. */
+  function wireTestimonials() {
+    // The studio's panel is built in admin.js — the same arrangement as the
+    // upload and calendar screens. A visitor has neither the file nor the root.
+    const adminRoot = view.querySelector("#tmAdminRoot");
+    if (adminRoot) {
+      const mount = window.WPS_ADMIN?.mountTestimonials;
+      if (mount) mount(adminRoot);
+      else adminRoot.innerHTML = `<p class="page-sub container">The studio's screens have not loaded. Use “Load fresh version” in the menu and try again.</p>`;
+    }
+
+    // Arriving at /testimonials#write (from the home page, or the studio's own
+    // link to a client) should land on the form, not the top of the page.
+    if (location.hash === "#write") {
+      setTimeout(() => view.querySelector("#write")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+    }
+    view.querySelector(".tm-jump")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      view.querySelector("#write")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      view.querySelector("#tm_name")?.focus({ preventScroll: true });
+    });
+
+    // Filter chips. Cards are hidden rather than re-rendered, so the shuffle
+    // does not reshuffle under the reader every time they press one.
+    const chips = [...view.querySelectorAll(".tm-chip")];
+    if (chips.length) {
+      const cells = [...view.querySelectorAll(".tm-cell")];
+      const noMatch = view.querySelector("#tmNoMatch");
+      chips.forEach((chip) => chip.addEventListener("click", () => {
+        const want = chip.dataset.kind || "";
+        chips.forEach((c) => c.classList.toggle("is-on", c === chip));
+        let shown = 0;
+        cells.forEach((cell) => {
+          const on = !want || cell.dataset.kind === want;
+          cell.hidden = !on;
+          if (on) shown++;
+        });
+        if (noMatch) noMatch.hidden = shown > 0;
+      }));
+    }
+
+    const form = view.querySelector("#tmForm");
+    if (!form) return;
+    const $$ = (sel) => view.querySelector(sel);
+    const quote = $$("#tm_quote"), count = $$("#tm_count"), errorEl = $$("#tmError");
+
+    const updateCount = () => {
+      if (!count) return;
+      const n = quote.value.trim().length;
+      count.textContent = String(n);
+      count.parentElement.classList.toggle("is-short", n > 0 && n < TESTIMONIAL_LIMITS.quoteMin);
+    };
+    quote?.addEventListener("input", updateCount);
+    updateCount();
+
+    // A rating is optional, and a radio group cannot be un-picked by clicking.
+    const clearBtn = $$("#tm_rate_clear");
+    const rateInputs = [...view.querySelectorAll(".tm-rate-input")];
+    rateInputs.forEach((r) => r.addEventListener("change", () => { if (clearBtn) clearBtn.hidden = false; }));
+    clearBtn?.addEventListener("click", () => {
+      rateInputs.forEach((r) => { r.checked = false; });
+      clearBtn.hidden = true;
+    });
+
+    /* The documentation file. Kept as a Blob ready for the relay, with the
+       picture already shrunk: a phone photograph of a letter is four or five
+       megabytes, which the relay refuses outright — and its refusal would
+       take the testimonial down with it. */
+    let proof = null;  // { blob, name, note }
+    const fileInput = $$("#tm_proof"), fileList = $$("#tm_proof_list"), drop = $$("#tm_drop");
+    // "0.0 MB" beside a file that plainly exists reads as a failure, so
+    // anything under a tenth of a megabyte is shown in kilobytes.
+    const sizeText = (bytes) => (bytes < 102400 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1048576).toFixed(1)} MB`);
+    const mb = (bytes) => (bytes / 1048576).toFixed(1);
+    const paintProof = () => {
+      if (!fileList) return;
+      fileList.innerHTML = proof ? `
+        <div class="attachment-pill">
+          <span>${esc(proof.name)} · ${esc(sizeText(proof.blob.size))}${proof.note ? ` · ${esc(proof.note)}` : ""}</span>
+          <button type="button" class="remove-att" id="tm_proof_remove" aria-label="Remove this file">×</button>
+        </div>` : "";
+      fileList.querySelector("#tm_proof_remove")?.addEventListener("click", () => {
+        proof = null;
+        if (fileInput) fileInput.value = "";
+        paintProof();
+      });
+    };
+    fileInput?.addEventListener("change", async () => {
+      const f = fileInput.files && fileInput.files[0];
+      proof = null;
+      if (!f) { paintProof(); return; }
+      const cap = TESTIMONIAL_PROOF_MAX_MB * 1048576;
+      if (/^image\//.test(f.type)) {
+        if (drop) drop.classList.add("is-busy");
+        try {
+          const shrunk = await resize(await readAsDataURL(f), 1800, 0.82);
+          const blob = dataUrlToBlob(shrunk);
+          if (blob && blob.size <= cap) proof = { blob, name: f.name.replace(/\.[^.]+$/, "") + ".jpg", note: "shrunk to fit" };
+        } catch (e) { console.warn("proof image could not be prepared:", e); }
+        if (drop) drop.classList.remove("is-busy");
+        if (!proof) {
+          showError(`That picture is too big to send even after shrinking. Email it to ${window.STUDIO_CONFIG?.email || "the studio"} instead — the testimonial itself will still go through.`);
+          fileInput.value = "";
+        }
+      } else if (/pdf$/i.test(f.type) || /\.pdf$/i.test(f.name)) {
+        // A PDF cannot be made smaller here, so it either fits or it does not.
+        if (f.size <= cap) proof = { blob: f, name: f.name, note: "" };
+        else {
+          showError(`That PDF is ${mb(f.size)} MB, and the studio's inbox will only take ${TESTIMONIAL_PROOF_MAX_MB} MB. Email it to ${window.STUDIO_CONFIG?.email || "the studio"} separately — the testimonial itself will still go through.`);
+          fileInput.value = "";
+        }
+      } else {
+        showError("That file is neither a picture nor a PDF, so it was not attached.");
+        fileInput.value = "";
+      }
+      paintProof();
+    });
+    // Dragging onto the label is the gesture people try first.
+    ["dragenter", "dragover"].forEach((ev) => drop?.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("is-over"); }));
+    ["dragleave", "drop"].forEach((ev) => drop?.addEventListener(ev, () => drop.classList.remove("is-over")));
+    drop?.addEventListener("drop", (e) => {
+      e.preventDefault();
+      const f = e.dataTransfer?.files?.[0];
+      if (!f || !fileInput) return;
+      const dt = new DataTransfer();
+      dt.items.add(f);
+      fileInput.files = dt.files;
+      fileInput.dispatchEvent(new Event("change"));
+    });
+
+    function showError(msg) {
+      if (!errorEl) return;
+      errorEl.textContent = msg;
+      errorEl.hidden = !msg;
+      if (msg) errorEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    // Wired once, and given their text by whichever send last finished.
+    let copyText = "";
+    $$("#tmCopyBtn")?.addEventListener("click", () => {
+      navigator.clipboard?.writeText(copyText)
+        .then(() => toast("Copied — paste it into an email to the studio."))
+        .catch(() => toast("Could not copy it here; select the text instead."));
+    });
+    $$("#tmAgain")?.addEventListener("click", () => {
+      form.reset();
+      proof = null;
+      paintProof();
+      updateCount();
+      if (clearBtn) clearBtn.hidden = true;
+      showError("");
+      const done = $$("#tmDone");
+      if (done) done.hidden = true;
+      form.hidden = false;
+      form.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    const field = (id) => view.querySelector(id);
+    const valOf = (id) => String(field(id)?.value || "").trim();
+    const markInvalid = (id, bad) => field(id)?.closest(".field, .check-line")?.classList.toggle("field-invalid", bad);
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      showError("");
+      const name = valOf("#tm_name").slice(0, TESTIMONIAL_LIMITS.name);
+      const email = valOf("#tm_email");
+      const role = valOf("#tm_role").slice(0, TESTIMONIAL_LIMITS.role);
+      const kind = valOf("#tm_kind");
+      const shootId = valOf("#tm_shoot");
+      const shoot = shootId ? (SHOOTS.find((s) => s.id === shootId) || {}) : {};
+      const rating = Number(view.querySelector(".tm-rate-input:checked")?.value || 0);
+      const text = String(quote?.value || "").trim().slice(0, TESTIMONIAL_LIMITS.quote);
+      const consent = !!field("#tm_consent")?.checked;
+
+      const problems = [
+        [!name, "#tm_name", "Please give the name to publish this under."],
+        [!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email), "#tm_email", "That email address does not look right."],
+        [text.length < TESTIMONIAL_LIMITS.quoteMin, "#tm_quote", `The testimonial needs at least ${TESTIMONIAL_LIMITS.quoteMin} characters — a sentence or two.`],
+        [!consent, "#tm_consent", "The studio cannot publish it without your permission, so please tick the box."]
+      ];
+      problems.forEach(([bad, id]) => markInvalid(id, bad));
+      const first = problems.find(([bad]) => bad);
+      if (first) {
+        showError(first[2]);
+        field(first[1])?.focus({ preventScroll: true });
+        return;
+      }
+
+      const studioEmail = window.STUDIO_CONFIG?.email || "prateeksaxenaphotography@gmail.com";
+      const kindLabel = testimonialKindLabel(kind) || "Other";
+      const shootLine = shoot.title ? `${shoot.title}${shoot.season ? ` · ${shoot.season}` : ""}` : "Not about one particular shoot";
+      const plain = [
+        `Testimonial for nerdyphotographer.in`,
+        ``,
+        `Name to publish: ${name}`,
+        `Credit as: ${role || "—"}`,
+        `They are: ${kindLabel}`,
+        `Email: ${email}`,
+        `Shoot: ${shootLine}`,
+        `Rating: ${rating ? `${rating} out of 5` : "—"}`,
+        ``,
+        `Testimonial:`,
+        text,
+        ``,
+        `Permission: yes — happy for these words and this name to appear on nerdyphotographer.in.`,
+        proof ? `Documentation: ${proof.name} (attached)` : `Documentation: none`
+      ].join("\n");
+
+      const subject = `Testimonial from ${name}`;
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(studioEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(plain)}`;
+      const mailtoUrl = `mailto:${encodeURIComponent(studioEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(plain.slice(0, 1700))}`;
+
+      // A filled honeypot is a script, not a person: it is told nothing went
+      // wrong, and nothing is sent. Below the message builders above, because
+      // the panel it opens reads them.
+      if (valOf("#tm_honey")) { finish("sent"); return; }
+
+      const submitBtn = field("#tmSubmit");
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Sending…"; }
+      finish("sending");
+
+      const postIt = async (withProof) => {
+        const fd = new FormData();
+        fd.append("_subject", subject);
+        fd.append("_template", "box");
+        fd.append("_replyto", email);
+        // Travels empty from a person and filled from a script, and FormSubmit
+        // drops the filled ones at its end. The check above already refuses
+        // them here; this is the second line, in case a bot posts straight to
+        // the relay without going through the form at all.
+        fd.append("_honey", valOf("#tm_honey"));
+        fd.append("Record Type", "TESTIMONIAL — written through the form on /testimonials");
+        fd.append("Name to publish", name);
+        fd.append("Credit as", role || "—");
+        fd.append("They are", kindLabel);
+        fd.append("Email", email);
+        fd.append("Shoot", shootLine);
+        fd.append("Rating", rating ? `${rating} out of 5` : "—");
+        fd.append("Testimonial", text);
+        fd.append("Permission to publish", "Yes — ticked on the form, for these words and this name.");
+        fd.append("Documentation", proof ? `Attached: ${proof.name}${withProof ? "" : " (too large for this email — ask them to send it separately)"}` : "None sent");
+        fd.append("To put it on the site", "Open nerdyphotographer.in in Admin Mode, go to Testimonials, press “Add a testimonial”, paste this in and press Save & push live.");
+        if (withProof && proof) fd.append("attachment", proof.blob, proof.name);
+        const res = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(studioEmail)}`, {
+          method: "POST", headers: { Accept: "application/json" }, body: fd
+        });
+        const body = await res.json().catch(() => null);
+        return res.ok && !!body && (body.success === true || body.success === "true");
+      };
+
+      try {
+        let ok = await postIt(!!proof);
+        // If the attachment is what the relay choked on, send the words
+        // without it: a testimonial in the inbox beats none, and the studio
+        // can ask for the file. Same rule as the signed-contract email.
+        if (!ok && proof) ok = await postIt(false);
+        finish(ok ? "sent" : (openGmail() ? "gmail" : "manual"));
+      } catch (err) {
+        console.warn("Testimonial relay unreachable:", err && err.message);
+        finish(openGmail() ? "gmail" : "manual");
+      }
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Send it to the studio →"; }
+
+      function openGmail() {
+        try {
+          const w = window.open(gmailUrl, "_blank");
+          if (!w || w.closed || typeof w.closed === "undefined") return false;
+          try { w.focus(); } catch (e) {}
+          return true;
+        } catch (e) { return false; }
+      }
+
+      /* The four honest states, the same four the booking form has. Only
+         "sent" may look finished: a tick over an email that is still sitting
+         in a compose window is the thing that made clients believe they had
+         booked when the studio had received nothing. */
+      function finish(mode) {
+        const done = $$("#tmDone"), icon = $$("#tmDoneIcon"), title = $$("#tmDoneTitle"), bodyEl = $$("#tmDoneBody");
+        const actions = $$("#tmDoneActions"), again = $$("#tmAgain");
+        if (!done) return;
+        form.hidden = true;
+        done.hidden = false;
+        done.classList.toggle("is-sent", mode === "sent");
+        const proofLine = proof
+          ? (mode === "sent" ? ` Your file (${esc(proof.name)}) went with it.` : ` <strong>Your file was not attached</strong> — please attach ${esc(proof.name)} to that email yourself.`)
+          : "";
+        const say = {
+          sending: ["⏳", "Sending…", "Handing it to the studio's inbox."],
+          sent: ["✓", "Thank you — it is with the studio.", `Your words are in ${esc(studioEmail)}. The studio reads every one and puts it on this page; if anything needs checking, they will reply to ${esc(email)}.${proofLine}`],
+          gmail: ["✉️", "Almost — press send.", `The studio's relay did not answer, so nothing has been sent yet. A Gmail window is open with your testimonial already written out: press send there and it is done.${proofLine}`],
+          manual: ["✉️", "One more step.", `The studio's relay did not answer, so nothing has been sent yet. Use one of these to send the same text — it is all written out for you.${proofLine}`]
+        }[mode] || ["", "", ""];
+        if (icon) icon.textContent = say[0];
+        if (title) title.textContent = say[1];
+        if (bodyEl) bodyEl.innerHTML = say[2];
+        if (actions) actions.hidden = mode !== "gmail" && mode !== "manual";
+        if (again) again.hidden = mode === "sending";
+        const g = $$("#tmGmailLink"), m = $$("#tmMailLink");
+        if (g) g.href = gmailUrl;
+        if (m) m.href = mailtoUrl;
+        // The copy and write-another buttons are wired once per page, not once
+        // per call: finish runs twice on a normal send (sending, then sent),
+        // and a listener added each time would fire twice per click.
+        copyText = plain;
+        done.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    });
   }
 
   function viewBook() {
@@ -8731,7 +9335,6 @@ window.resolveContractArchive = function(version) {
             showSuccess("sent");
             sendContractRecord();
             sendSubjectRelease();
-          sendSubjectRelease();
             return;
           }
           console.warn("Booking relay rejected:", (body && body.message) || res.statusText);
@@ -9334,6 +9937,7 @@ window.resolveContractArchive = function(version) {
   }
 
   function wireView(key) {
+    if (key === "testimonials") wireTestimonials();
     if (key === "portfolio-book") {
       const root = view.querySelector("#studioBookRoot");
       // The builder borrows the book's storage and limits from admin.js, so
@@ -9821,6 +10425,7 @@ window.resolveContractArchive = function(version) {
       // keeps its place.
       setActiveNav(key);
       syncServicesNavLink();
+      syncTestimonialsNavLink();
 
       applyRouteSeo(key, parts, params, staticPath);
       // After applyRouteSeo, which is what sets the new page's title: announcing
@@ -9914,10 +10519,17 @@ window.resolveContractArchive = function(version) {
       desc = `Collaborate with us on your next photoshoot. Send a project brief or book a session with Noida's creative studio.`;
       path = "/book/";
     } else if (key === "testimonials") {
-      title = `Client Testimonials & Reviews | ${brand}`;
-      desc = `Read reviews and testimonials from models, brands, and creative collaborators who have worked with us in Noida & Delhi NCR.`;
+      // With nothing published the page is the form, and it says so in the
+      // tab as well — the studio sends this address to a client to write the
+      // first one, and "Client Testimonials & Reviews" over an empty page
+      // would be a promise it cannot keep.
+      const written = getAllTestimonials().length > 0;
+      title = written ? `Client Testimonials & Reviews | ${brand}` : `Write a testimonial | ${brand}`;
+      desc = written
+        ? `Read reviews and testimonials from models, brands, and creative collaborators who have worked with us in Noida & Delhi NCR.`
+        : `Worked with ${brand}? Write a testimonial — it goes straight to the studio.`;
       path = "/testimonials/";
-      index = getAllTestimonials().length > 0; // an empty page is not worth a place in search results
+      index = written; // an empty page is not worth a place in search results
     } else if (staticPath) {
       const page = STATIC_PAGES.get(staticPath);
       path = `${staticPath}/`;
@@ -10025,6 +10637,20 @@ window.resolveContractArchive = function(version) {
     const modelsLi = document.getElementById("navModelsLi");
     if (modelsLi) modelsLi.style.display = pages.some((v) => `/services/${v.slug}/` === COMP_CARDS_PAGE) ? "" : "none";
     document.querySelectorAll('.footer-nav a[href="/services/"]').forEach((a) => { a.style.display = live ? "" : "none"; });
+  }
+
+  /* "Testimonials" is in the menu once there is a testimonial to read, and
+     the studio always sees it. This is the whole of the user's "live only
+     after the first one arrives": until then the page exists at its address
+     (so it can be sent to a client to write the first one) but is not offered
+     to anyone browsing, and build-seo.mjs keeps it out of search by the same
+     count. Both the menu and the footer, on every shell. */
+  function syncTestimonialsNavLink() {
+    const live = isAdmin() || getAllTestimonials().length > 0;
+    document.querySelectorAll('a[href="/testimonials"], a[href="/testimonials/"]').forEach((a) => {
+      const holder = a.closest(".nav-links li") || a;
+      holder.style.display = live ? "" : "none";
+    });
   }
 
   function setActiveNav(key) {
@@ -10657,6 +11283,26 @@ window.resolveContractArchive = function(version) {
       const modelsLi = document.getElementById("navModelsLi") || navItem("navModelsLi", `${COMP_CARDS_PAGE}#comp-cards`, "Model portfolio");
       if (homeLi) homeLi.after(servicesLi); else navList.prepend(servicesLi);
       servicesLi.after(modelsLi);
+      // Testimonials sits at the end of the reading items, above "Book a
+      // shoot": it is what someone checks last, just before deciding. Added
+      // here rather than into all nine shells, and shown or hidden by
+      // syncTestimonialsNavLink once the shoots are loaded.
+      if (!document.getElementById("navTestimonialsLi")) {
+        const tmLi = navItem("navTestimonialsLi", "/testimonials", "Testimonials");
+        const bookLi = document.getElementById("navBookLi");
+        if (bookLi) bookLi.before(tmLi); else navList.appendChild(tmLi);
+      }
+      // ...and in the footer's column, next to the other reading links.
+      const footerNav = document.querySelector(".footer-nav");
+      if (footerNav && !footerNav.querySelector('a[href="/testimonials"]')) {
+        const a = document.createElement("a");
+        a.href = "/testimonials";
+        a.dataset.link = "";
+        a.textContent = "Testimonials";
+        a.style.display = "none";
+        const bookA = footerNav.querySelector('a[href="/book"]');
+        if (bookA) bookA.before(a); else footerNav.appendChild(a);
+      }
     }
 
     // "Load fresh" utility — injected once into the nav-meta so it appears on
@@ -10758,6 +11404,9 @@ window.resolveContractArchive = function(version) {
     // The book builder draws with the page engine in pdf-tools.js, so
     // loadBookBuilder fetches that first (see WPS_BOOK_API above).
     loadPdfTools: () => loadPdfTools(),
+    // The studio's testimonials panel is built in admin.js and mounted onto
+    // the public page, so it needs the page's own vocabulary for them.
+    TESTIMONIAL_KINDS, TESTIMONIAL_LIMITS, getAllTestimonials, starRow, testimonialKindLabel, syncTestimonialsNavLink,
     $, ACTIVITIES, BRANDS, CHEST_LABELS, CLIENTS, LOOKS, MODEL_TYPES_MAX, MODEL_TYPE_MAXLEN,
     REP_SURFACES, REP_SWITCHES, TYPES, addCalBooking, albumClients, backfillPublishedOnlyFields, chestLabelOf, classifySocial,
     cleanIgHandle, createHoldFromContract, esc, escJs, extractPalette, followAlbumText, getCalDateKey, getCalDateStatus,

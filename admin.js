@@ -1143,6 +1143,89 @@ window.saveStudioPortfolios = saveStudioPortfolios;
 window.STUDIO_BOOK_LIMITS = STUDIO_BOOK_LIMITS;
 
 
+/* ---- testimonials -------------------------------------------------------
+   What people have written about working with the studio, and the only store
+   of them. They arrive as email (the form on /testimonials has nowhere else
+   to send them — there is no server), so putting one on the site is the
+   studio typing it in here and publishing. That is also the moderation: a
+   stranger cannot write onto the page, only into the inbox.
+
+   Shape published in data.js: { items: [...], deleted: [...] }, merged by id
+   with newest-updatedAt winning, exactly as MODEL_PDFS and STUDIO_PORTFOLIOS
+   are. Two devices can both add one without either losing the other's, and a
+   deletion is durable rather than being undone by the next device to publish.
+
+   The documentation a writer attached — a letterhead, an email, a screenshot
+   — is deliberately NOT here. It sits in the studio's Gmail, where the signed
+   contracts sit, because this repository is public and a client's paperwork
+   is not ours to publish. All that crosses is `verified`: the studio saw it.
+
+   TRAP, the same one the invite codes have: this normaliser drops any field
+   it does not name. A new field on a testimonial must be added here too, or
+   it will vanish the next time the page is reloaded. */
+const TESTIMONIAL_STORE_LIMITS = { quote: 900, name: 60, role: 80, shoot: 80, items: 200 };
+function cleanTestimonials(state) {
+  if (!state || typeof state !== "object") return { items: [], deleted: [] };
+  const str = (v, n) => String(v == null ? "" : v).replace(/\r/g, "").trim().slice(0, n);
+  const ids = (a) => (Array.isArray(a) ? a.filter((x) => typeof x === "string" && x).slice(0, 400) : []);
+  const KINDS = ["model", "brand", "workshop", "other"];
+  const items = (Array.isArray(state.items) ? state.items : []).map((t) => {
+    if (!t || typeof t !== "object" || typeof t.id !== "string" || !t.id) return null;
+    const quote = str(t.quote, TESTIMONIAL_STORE_LIMITS.quote);
+    if (!quote) return null; // a testimonial with no words is not one
+    const rating = Math.round(Number(t.rating) || 0);
+    return {
+      id: t.id,
+      quote,
+      by: str(t.by, TESTIMONIAL_STORE_LIMITS.name) || "Anonymous",
+      role: str(t.role, TESTIMONIAL_STORE_LIMITS.role),
+      kind: KINDS.includes(t.kind) ? t.kind : "",
+      // Out of five, and 0 means "not rated" rather than "rated nothing".
+      rating: rating >= 1 && rating <= 5 ? rating : 0,
+      // Free text on purpose ("March 2026", "after the Goa shoot"): it is a
+      // caption under a name, not a date anything sorts or compares by.
+      dateLabel: str(t.dateLabel, 40),
+      shoot: str(t.shoot, TESTIMONIAL_STORE_LIMITS.shoot),
+      shootId: str(t.shootId, 80),
+      verified: t.verified === true,
+      onHome: t.onHome !== false,
+      updatedAt: Number(t.updatedAt) || 0
+    };
+  }).filter(Boolean).slice(0, TESTIMONIAL_STORE_LIMITS.items);
+  return { items, deleted: ids(state.deleted) };
+}
+/* The merged list: what is live, what another device published while this one
+   was not looking, and what has been typed in here since. Newest wins per id,
+   and anything deleted anywhere stays deleted. */
+function getTestimonials(live) {
+  let local = null, published = null, remote = null;
+  try { local = cleanTestimonials(JSON.parse(localStorage.getItem("wps_testimonials") || "null")); } catch (e) {}
+  try { published = cleanTestimonials(window.WPS_DATA && window.WPS_DATA.TESTIMONIALS); } catch (e) {}
+  try { remote = live ? cleanTestimonials(live) : null; } catch (e) {}
+  const deleted = [...new Set([
+    ...((local && local.deleted) || []),
+    ...((published && published.deleted) || []),
+    ...((remote && remote.deleted) || [])
+  ])];
+  const byId = new Map();
+  for (const t of [...((remote && remote.items) || []), ...((published && published.items) || []), ...((local && local.items) || [])]) {
+    const have = byId.get(t.id);
+    if (!have || t.updatedAt >= have.updatedAt) byId.set(t.id, t);
+  }
+  const items = [...byId.values()].filter((t) => !deleted.includes(t.id)).sort((a, b) => b.updatedAt - a.updatedAt);
+  return { items, deleted };
+}
+function saveTestimonials(state) {
+  const clean = cleanTestimonials(state);
+  try { localStorage.setItem("wps_testimonials", JSON.stringify(clean)); } catch (e) { return false; }
+  return true;
+}
+window.cleanTestimonials = cleanTestimonials;
+window.getTestimonials = getTestimonials;
+window.saveTestimonials = saveTestimonials;
+window.TESTIMONIAL_STORE_LIMITS = TESTIMONIAL_STORE_LIMITS;
+
+
 /* ---- saved model-portfolio PDFs ----------------------------------------
    An arrangement the studio built for a model: which photos, in what order,
    the layout, the cover and any nudge given to a photo. Saved by name so it
@@ -1592,7 +1675,16 @@ window.moveAdminPackageRow = function(index, dir) {
     });
     const modelPdfs = parseObjectAfterKey(text, '"MODEL_PDFS"');
     if (modelPdfs === null) throw new Error("Could not read the saved model portfolios in the published data.js — aborting so none is overwritten.");
-    return { shoots: parsed, deletedIds: parseDeletedIdsFromDataJs(text), studioPortfolios: books || null, modelPdfs: modelPdfs || null, settings, stamps };
+    // Same rule as the books and the model portfolios: unreadable means stop,
+    // not "none published". A testimonial is somebody's words about the
+    // studio, given once; publishing over the top of them because this file
+    // could not be parsed is not a mistake that can be undone by asking again.
+    // A file that predates testimonials has no key at all, and that IS "none":
+    // parseObjectAfterKey returns undefined for a missing key and null for one
+    // it could not read.
+    const testimonials = parseObjectAfterKey(text, '"TESTIMONIALS"');
+    if (testimonials === null) throw new Error("Could not read the published testimonials in data.js — aborting so none is overwritten.");
+    return { shoots: parsed, deletedIds: parseDeletedIdsFromDataJs(text), studioPortfolios: books || null, modelPdfs: modelPdfs || null, testimonials: testimonials || null, settings, stamps };
   }
 
   const MIME_EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
@@ -1862,6 +1954,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         // Saved studio portfolio books (book-builder.js), merged per book with
         // this device's drafts AND the live copy just fetched, never only the
         // copy this page happened to load.
+        // What people have written about the studio, merged the same way as
+        // the books below: per testimonial, against the copy just fetched, so
+        // one device publishing never drops what another added.
+        TESTIMONIALS: (typeof window.getTestimonials === "function" ? window.getTestimonials(remote.testimonials) : { items: [], deleted: [] }),
         MODEL_PDFS: (typeof window.getModelPdfs === "function" ? window.getModelPdfs(remote.modelPdfs) : { versions: [], deleted: [] }),
         STUDIO_PORTFOLIOS: (typeof window.getStudioPortfolios === "function" ? window.getStudioPortfolios(remote.studioPortfolios) : { versions: [], deleted: [] }),
         }, null, 2)};
@@ -1888,6 +1984,24 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const keptRemote = remote.shoots.filter(s => s && s.id && !s.demo && !removed.has(s.id)).length;
       if (published.length < keptRemote) {
         throw new Error(`Sync aborted: it would silently remove ${keptRemote - published.length} published album(s) that were not explicitly deleted. Nothing was changed.`);
+      }
+      // The same guard for testimonials. They are somebody's words, given
+      // once and usually not recoverable by asking again, so the only way the
+      // count may fall is a deletion this session recorded in `deleted`.
+      try {
+        const liveT = cleanTestimonials(remote.testimonials);
+        // Read back out of the file about to be committed, not out of the
+        // variable that wrote it: this is the round-trip check as well as the
+        // count check, so a key the generator mangled is caught here too.
+        const mineT = cleanTestimonials(parseObjectAfterKey(fileContent, '"TESTIMONIALS"'));
+        const goneT = new Set(mineT.deleted);
+        const keptT = liveT.items.filter((t) => !goneT.has(t.id)).length;
+        if (mineT.items.length < keptT) {
+          throw new Error(`Sync aborted: it would silently remove ${keptT - mineT.items.length} published testimonial(s) that were not deleted here. Nothing was changed.`);
+        }
+      } catch (err) {
+        if (/Sync aborted/.test(err.message)) throw err;
+        console.warn("Publish: could not check the testimonial count —", err.message);
       }
 
       // One atomic commit: photo blobs + regenerated data.js + the files no
@@ -6052,6 +6166,225 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         <div id="studioBookRoot" class="sb-root"><p class="page-sub">Loading the builder…</p></div>
       </section>`;
   }
+  /* ---- the studio's testimonials panel -----------------------------------
+
+     Mounted onto the public /testimonials page rather than given a screen of
+     its own, so the studio edits a card while looking at the page a client
+     will see — and so there is one address to remember for "testimonials"
+     instead of two.
+
+     The shape of the work it supports: someone writes one through the form
+     further down that page, it arrives as an email, the studio reads it and
+     types it in here, and presses Save & push live. Nothing is automatic and
+     nothing can be: there is no server. The panel says so in one line at the
+     top, because a studio that expects submissions to appear by themselves
+     would sit waiting for a page that never changes.
+
+     A testimonial is kept on this device the moment it is saved, and is not
+     live until it is published — the badge and the button are both in here,
+     beside the editing, which is the lesson v473 was written for. */
+  const TM_UNPUBLISHED_KEY = "wps_testimonials_unpublished";
+  const tmUnpublished = () => { try { return localStorage.getItem(TM_UNPUBLISHED_KEY) === "1"; } catch (e) { return false; } };
+  // Every copy of the badge, not the first one: the panel carries one at the
+  // top and one at the foot of the list, so the studio can see the state
+  // without scrolling back up past a screen of testimonials.
+  function tmPaintStatus() {
+    const dirty = tmUnpublished();
+    document.querySelectorAll(".tm-save-status").forEach((el) => {
+      el.style.color = dirty ? "#d97706" : "#2f6b4f";
+      el.style.background = dirty ? "rgba(217,119,6,0.15)" : "rgba(47,107,79,0.12)";
+      el.style.borderColor = dirty ? "#d97706" : "#2f6b4f";
+      el.textContent = dirty ? '⚠️ NOT LIVE YET — press "Save & push live"' : "✓ Everything here is live";
+    });
+  }
+  function tmMarkUnpublished() {
+    try { localStorage.setItem(TM_UNPUBLISHED_KEY, "1"); } catch (e) {}
+    tmPaintStatus();
+  }
+
+  // The one being edited, or null for the list. Kept out here so a repaint
+  // (which rebuilds the panel's markup) does not lose the studio's place.
+  let tmEditing = null;
+
+  function tmStore() { return (typeof getTestimonials === "function" ? getTestimonials() : { items: [], deleted: [] }); }
+
+  function mountTestimonials(root) {
+    if (!root) return;
+    const esc = A.esc;
+
+    const paint = () => {
+      const store = tmStore();
+      root.innerHTML = `
+        <section class="section container">
+          <div class="tm-panel">
+            <div class="tm-panel-head">
+              <div>
+                <p class="eyebrow">Studio only · nobody else sees this</p>
+                <h2 class="tm-panel-title">Testimonials</h2>
+              </div>
+              <div class="tm-panel-actions">
+                <span class="tm-save-status"></span>
+                <button type="button" class="admin-cal-btn primary tm-publish">Save &amp; push live</button>
+              </div>
+            </div>
+            <p class="tm-panel-note">Someone writes one in the form below, it arrives in your email, you add it here, and you press <strong>Save &amp; push live</strong>. Nothing reaches this page on its own — which is what stops anyone else writing straight onto your site.${store.items.length ? "" : ` <strong>With none published, the Testimonials link stays out of your menu and out of Google.</strong> The page still works at its address, so you can send it to a client to write the first one.`}</p>
+
+            ${tmEditing ? tmEditorHtml(tmEditing) : `
+              <div class="tm-panel-bar">
+                <button type="button" class="admin-cal-btn primary" id="tmAddBtn">+ Add a testimonial</button>
+                <span class="tm-panel-count">${store.items.length} added here${store.items.length ? ` · ${store.items.filter((t) => t.onHome !== false).length} shown on the home page` : ""}</span>
+              </div>
+              ${store.items.length ? `
+              <div class="tm-rows">
+                ${store.items.map((t) => `
+                  <div class="tm-row" data-id="${esc(t.id)}">
+                    <div class="tm-row-main">
+                      <p class="tm-row-quote">${esc(t.quote.length > 150 ? t.quote.slice(0, 150) + "…" : t.quote)}</p>
+                      <p class="tm-row-by">${esc(t.by)}${t.role ? ` · ${esc(t.role)}` : ""}${t.rating ? ` · ${t.rating}/5` : ""}${t.dateLabel ? ` · ${esc(t.dateLabel)}` : ""}</p>
+                    </div>
+                    <div class="tm-row-flags">
+                      ${t.verified ? `<span class="tm-flag is-on" title="You have documentation for this one">✓ documented</span>` : ""}
+                      <span class="tm-flag${t.onHome !== false ? " is-on" : ""}">${t.onHome !== false ? "on the home page" : "this page only"}</span>
+                    </div>
+                    <div class="tm-row-btns">
+                      <button type="button" class="admin-cal-btn tm-edit" data-id="${esc(t.id)}">Edit</button>
+                      <button type="button" class="admin-cal-btn tm-del" data-id="${esc(t.id)}">Delete</button>
+                    </div>
+                  </div>`).join("")}
+              </div>
+              <div class="tm-panel-foot">
+                <span class="tm-save-status"></span>
+                <button type="button" class="admin-cal-btn primary tm-publish">Save &amp; push live</button>
+              </div>` : `<p class="tm-panel-empty">Nothing added yet. When the first one lands in your inbox, press <strong>+ Add a testimonial</strong> and paste it in.</p>`}
+            `}
+          </div>
+        </section>`;
+      tmPaintStatus();
+      wire();
+    };
+
+    function tmEditorHtml(t) {
+      const albums = A.shoots()
+        .filter((s) => s && !s.isTestimonial && s.type !== "Workshop Attended")
+        .slice()
+        .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+      return `
+        <div class="tm-editor">
+          <h3>${t.updatedAt ? "Edit this testimonial" : "Add a testimonial"}</h3>
+          <label class="field"><span>What they wrote *</span>
+            <textarea id="tmE_quote" rows="6" maxlength="${TESTIMONIAL_STORE_LIMITS.quote}" placeholder="Paste their words here, exactly as they wrote them.">${esc(t.quote || "")}</textarea>
+          </label>
+          <div class="field-row">
+            <label class="field"><span>Name to show *</span><input id="tmE_by" type="text" maxlength="${TESTIMONIAL_STORE_LIMITS.name}" value="${esc(t.by || "")}" placeholder="Aisha Khan" /></label>
+            <label class="field"><span>Credit them as</span><input id="tmE_role" type="text" maxlength="${TESTIMONIAL_STORE_LIMITS.role}" value="${esc(t.role || "")}" placeholder="Model, Noida" /></label>
+          </div>
+          <div class="field-row">
+            <label class="field"><span>They are</span>
+              <select id="tmE_kind">
+                <option value="">Not saying</option>
+                ${A.TESTIMONIAL_KINDS.map((k) => `<option value="${esc(k.key)}"${t.kind === k.key ? " selected" : ""}>${esc(k.label)}</option>`).join("")}
+              </select>
+            </label>
+            <label class="field"><span>Stars they gave</span>
+              <select id="tmE_rating">
+                <option value="0">No rating</option>
+                ${[5, 4, 3, 2, 1].map((n) => `<option value="${n}"${Number(t.rating) === n ? " selected" : ""}>${n} out of 5</option>`).join("")}
+              </select>
+            </label>
+          </div>
+          <div class="field-row">
+            <label class="field"><span>When (shown under their name)</span><input id="tmE_date" type="text" maxlength="40" value="${esc(t.dateLabel || "")}" placeholder="March 2026" /></label>
+            <label class="field"><span>Which shoot</span>
+              <select id="tmE_shoot">
+                <option value="">Not about one shoot</option>
+                ${albums.map((s) => `<option value="${esc(s.id)}"${t.shootId === s.id ? " selected" : ""}>${esc(s.title || s.talent || s.id)}</option>`).join("")}
+              </select>
+            </label>
+          </div>
+          <label class="check-line"><input type="checkbox" id="tmE_verified"${t.verified ? " checked" : ""} /><span>I have documentation for this one — a letter, an email, a screenshot — in my inbox. <em>The card shows a small tick. The file itself is never put on the website.</em></span></label>
+          <label class="check-line"><input type="checkbox" id="tmE_home"${t.onHome !== false ? " checked" : ""} /><span>Show this one on the home page too</span></label>
+          <p class="field-error" id="tmE_error" hidden></p>
+          <div class="tm-editor-foot">
+            <button type="button" class="admin-cal-btn primary" id="tmSaveBtn">Save on this device</button>
+            <button type="button" class="admin-cal-btn" id="tmCancelBtn">Cancel</button>
+            <span class="tm-editor-hint">Saving keeps it here. It reaches visitors when you press <strong>Save &amp; push live</strong> at the top.</span>
+          </div>
+        </div>`;
+    }
+
+    function wire() {
+      root.querySelector("#tmAddBtn")?.addEventListener("click", () => {
+        tmEditing = { id: A.uid(), quote: "", by: "", role: "", kind: "", rating: 0, dateLabel: "", shoot: "", shootId: "", verified: false, onHome: true, updatedAt: 0 };
+        paint();
+        root.querySelector("#tmE_quote")?.focus();
+      });
+      root.querySelectorAll(".tm-edit").forEach((b) => b.addEventListener("click", () => {
+        tmEditing = tmStore().items.find((x) => x.id === b.dataset.id) || null;
+        paint();
+      }));
+      root.querySelectorAll(".tm-del").forEach((b) => b.addEventListener("click", () => {
+        const store = tmStore();
+        const one = store.items.find((x) => x.id === b.dataset.id);
+        if (!one) return;
+        if (!confirm(`Delete the testimonial from ${one.by}?\n\nIt goes from this page and from the home page. Their email stays in your inbox, so you could add it again — but their words are not stored anywhere else.`)) return;
+        // Recorded as a tombstone, not just dropped: otherwise the next
+        // device to publish, still holding its own copy, would put it back.
+        saveTestimonials({ items: store.items.filter((x) => x.id !== one.id), deleted: [...store.deleted, one.id] });
+        tmMarkUnpublished();
+        A.toast(`Deleted. Press "Save & push live" to take it off the site.`);
+        tmEditing = null;
+        A.render();
+      }));
+      root.querySelector("#tmCancelBtn")?.addEventListener("click", () => { tmEditing = null; paint(); });
+      root.querySelector("#tmSaveBtn")?.addEventListener("click", () => {
+        const val = (id) => String(root.querySelector(id)?.value || "").trim();
+        const err = root.querySelector("#tmE_error");
+        const quote = val("#tmE_quote"), by = val("#tmE_by");
+        const problem = !quote ? "Paste what they wrote first — a testimonial needs their words."
+          : !by ? "Give the name to show under it (or write “Anonymous”)." : "";
+        if (err) { err.textContent = problem; err.hidden = !problem; }
+        if (problem) return;
+        const shootId = val("#tmE_shoot");
+        const album = shootId ? A.shoots().find((s) => s.id === shootId) : null;
+        const store = tmStore();
+        const next = {
+          ...tmEditing,
+          quote, by,
+          role: val("#tmE_role"),
+          kind: val("#tmE_kind"),
+          rating: Number(val("#tmE_rating")) || 0,
+          dateLabel: val("#tmE_date"),
+          shootId,
+          shoot: album ? (album.title || album.talent || "") : "",
+          verified: !!root.querySelector("#tmE_verified")?.checked,
+          onHome: !!root.querySelector("#tmE_home")?.checked,
+          updatedAt: Date.now()
+        };
+        saveTestimonials({ items: [next, ...store.items.filter((x) => x.id !== next.id)], deleted: store.deleted });
+        tmMarkUnpublished();
+        tmEditing = null;
+        A.toast(`Saved on this device. Press "Save & push live" to put it on the site.`);
+        // The whole page, not just this panel: the wall above it, the count in
+        // the heading and the menu link all answer to this list.
+        A.render();
+      });
+      // Both copies of the button do the same thing, and both show the wait.
+      const publishBtns = [...root.querySelectorAll(".tm-publish")];
+      publishBtns.forEach((btn) => btn.addEventListener("click", async () => {
+        publishBtns.forEach((b) => { b.disabled = true; b.textContent = "Publishing…"; });
+        const ok = await syncToGitHub(shootsNow());
+        publishBtns.forEach((b) => { b.disabled = false; b.textContent = "Save & push live"; });
+        if (ok) {
+          try { localStorage.removeItem(TM_UNPUBLISHED_KEY); } catch (e) {}
+          A.toast("Published. Visitors see it within a few minutes.");
+        }
+        tmPaintStatus();
+      }));
+    }
+
+    paint();
+  }
+
   /* ---- Handing the studio's screens back to app.js -----------------------
      app.js's ROUTES cannot name these builders: it is built while this file
      is not loaded, and a missing name there is a ReferenceError that takes
@@ -6067,6 +6400,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 
   window.WPS_ADMIN = {
     publish: (list, opts) => syncToGitHub(list || shootsNow(), opts),
+    // The studio's merged view of the testimonials — what is live plus what
+    // has been typed in here since. app.js prefers this over the published
+    // file when it is there, so the studio sees a draft on the real page.
+    testimonials: () => (typeof getTestimonials === "function" ? getTestimonials() : { items: [], deleted: [] }),
+    mountTestimonials: (root) => mountTestimonials(root),
     wireUpload: (editId) => wireUpload(editId),
     wireCalendar: () => wireCalendar(),
     updateReminders: () => updateAdminReminders(),

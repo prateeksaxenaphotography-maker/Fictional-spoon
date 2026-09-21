@@ -3335,3 +3335,164 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
 .check-line { display: flex; align-items: flex-start; gap: 9px; margin-top: 10px; cursor: pointer; font-size: 13.5px; line-height: 1.5; color: var(--ink); }
 .check-line input { width: 17px; height: 17px; margin-top: 1px; flex: none; accent-color: var(--accent-text); cursor: pointer; }
 @media (max-width: 620px) { .subject-block { padding: 12px 13px; } }
+
+/* ============================================================
+   § TESTIMONIALS — the wall, and the form anyone can write in
+   Built on the tokens above, so the dark theme needs no rules of
+   its own beyond the two places a wash is mixed by hand.
+   ============================================================ */
+.tm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: var(--sp-4); align-items: start; }
+.tm-home-foot { display: flex; flex-wrap: wrap; gap: var(--sp-3); justify-content: center; margin-top: var(--sp-5); }
+
+.tm-card {
+  position: relative; margin: 0; padding: var(--sp-5) var(--sp-4) var(--sp-4);
+  background: var(--bone); border: 1px solid var(--line); border-radius: var(--r-md);
+  display: flex; flex-direction: column; gap: var(--sp-3); box-shadow: var(--shadow-sm);
+  transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+}
+.tm-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: var(--line-2); }
+/* The opening quotation mark, set as a mark rather than typed into the text:
+   it must not be read out, copied with the quote, or counted in its length. */
+.tm-card::before {
+  content: "\201C"; position: absolute; top: 6px; left: 16px;
+  font-family: "Fraunces", Georgia, serif; font-size: 62px; line-height: 1;
+  color: var(--accent); opacity: .22; pointer-events: none;
+}
+.tm-card-quote {
+  margin: 0; font-family: "Fraunces", Georgia, serif; font-style: italic;
+  font-size: 16px; line-height: 1.62; color: var(--ink); white-space: pre-line;
+}
+.tm-card-by { display: flex; flex-direction: column; gap: 3px; padding-top: var(--sp-3); border-top: 1px solid var(--line); }
+.tm-card-name { font-family: "Archivo", sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 6px; }
+.tm-card-meta, .tm-card-shoot { font-family: var(--mono-font); font-size: var(--font-xs); color: var(--ink-soft); }
+.tm-card-shoot { color: var(--accent-text); text-decoration: none; }
+.tm-card-shoot:hover { text-decoration: underline; }
+.tm-verified {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 50%; font-size: 10px; font-weight: 700;
+  background: var(--accent-soft); color: var(--accent-text); cursor: help;
+}
+.tm-stars { display: inline-flex; gap: 2px; }
+.tm-star { fill: var(--line-2); }
+.tm-star.is-on { fill: var(--accent); }
+
+.tm-stats { display: flex; flex-wrap: wrap; gap: var(--sp-5); margin-top: var(--sp-4); }
+.tm-stat { display: flex; flex-direction: column; gap: 2px; }
+.tm-stat-n { font-family: "Archivo", sans-serif; font-size: var(--font-lg); font-weight: 800; color: var(--ink); line-height: 1; display: flex; align-items: center; gap: 8px; }
+.tm-stat-label { font-family: var(--mono-font); font-size: var(--font-xs); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); }
+
+.tm-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-bottom: var(--sp-4); }
+.tm-chip {
+  font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700;
+  text-transform: uppercase; letter-spacing: .08em; padding: 8px 15px;
+  border: 1px solid var(--line-2); border-radius: var(--r-pill);
+  background: transparent; color: var(--ink-soft); cursor: pointer; transition: all .2s;
+}
+.tm-chip:hover { border-color: var(--accent-text); color: var(--accent-text); }
+.tm-chip.is-on { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.tm-chip span { opacity: .6; margin-left: 4px; }
+.tm-empty-filter { text-align: center; color: var(--ink-soft); margin-top: var(--sp-4); }
+
+/* ---- the form ---- */
+.tm-write-card {
+  background: var(--bone); border: 1px solid var(--line); border-radius: var(--r-lg);
+  padding: var(--sp-6) var(--sp-5); box-shadow: var(--shadow-sm);
+  border-top: 3px solid var(--accent); max-width: 760px; margin: 0 auto;
+}
+.tm-write-head { margin-bottom: var(--sp-5); }
+.tm-write-head h2 { margin: 6px 0 10px; }
+.tm-write-sub { font-size: var(--font-sm); line-height: 1.6; color: var(--ink-soft); margin: 0; }
+.tm-form { display: flex; flex-direction: column; gap: var(--sp-3); }
+.tm-form .field-hint { margin: -4px 0 4px; }
+.tm-count.is-short { color: var(--danger-text); }
+.tm-honey { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.tm-opt { font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-soft); }
+
+.tm-rate, .tm-proof { border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--sp-3) var(--sp-4) var(--sp-4); margin: var(--sp-2) 0; background: var(--paper); }
+.tm-rate legend, .tm-proof legend {
+  font-family: "Archivo", sans-serif; font-size: var(--font-sm); font-weight: 700;
+  padding: 0 8px; color: var(--ink);
+}
+.tm-rate-stars { display: flex; align-items: center; gap: 4px; }
+.tm-rate-input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.tm-rate-star { cursor: pointer; line-height: 0; padding: 2px; border-radius: var(--r-sm); }
+.tm-rate-star svg { fill: var(--line-2); transition: fill .15s, transform .15s; }
+.tm-rate-star:hover svg { transform: scale(1.12); }
+/* The whole run up to the hovered star lights, which is how a star rating is
+   read — siblings after it cannot be reached in CSS, so the row is drawn in
+   reverse on hover and by :checked otherwise. */
+.tm-rate-stars:hover .tm-rate-star svg { fill: var(--accent); }
+.tm-rate-star:hover ~ .tm-rate-star svg,
+.tm-rate-stars:hover .tm-rate-input:checked ~ .tm-rate-star svg { fill: var(--line-2); }
+.tm-rate-input:checked ~ .tm-rate-star svg { fill: var(--line-2); }
+.tm-rate-input:checked + .tm-rate-star svg { fill: var(--accent); }
+.tm-rate-input:checked + .tm-rate-star ~ .tm-rate-star svg { fill: var(--line-2); }
+.tm-rate-input:focus-visible + .tm-rate-star { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.tm-rate-clear { background: none; border: none; font-family: var(--mono-font); font-size: var(--font-xs); color: var(--ink-soft); cursor: pointer; text-decoration: underline; margin-left: var(--sp-3); }
+
+.tm-drop { display: block; cursor: pointer; }
+.tm-drop.is-over { border-color: var(--accent); background: var(--accent-soft); }
+.tm-drop.is-busy { opacity: .6; pointer-events: none; }
+.tm-consent { margin-top: var(--sp-3); }
+.tm-form-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); margin-top: var(--sp-3); }
+.tm-form-foot .field-hint { margin: 0; flex: 1 1 220px; }
+
+.tm-done { text-align: center; padding: var(--sp-4) 0; }
+.tm-done-icon { font-size: 40px; line-height: 1; margin-bottom: var(--sp-3); }
+.tm-done h3 { font-family: "Archivo", sans-serif; font-size: var(--font-md); margin: 0 0 10px; color: var(--ink); }
+.tm-done p { font-size: var(--font-sm); line-height: 1.6; color: var(--ink-soft); margin: 0 auto; max-width: 52ch; }
+.tm-done.is-sent .tm-done-icon { color: #2f6b4f; }
+.tm-done-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); justify-content: center; margin-top: var(--sp-4); }
+.tm-done-again { margin-top: var(--sp-4); background: none; border: none; font-family: var(--mono-font); font-size: var(--font-xs); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); cursor: pointer; text-decoration: underline; }
+
+@media (max-width: 620px) {
+  .tm-grid { grid-template-columns: 1fr; gap: var(--sp-3); }
+  .tm-write-card { padding: var(--sp-5) 16px; border-radius: var(--r-md); }
+  .tm-stats { gap: var(--sp-4); }
+  .tm-form-foot .btn { width: 100%; text-align: center; }
+}
+
+/* ---- the studio's testimonials panel (admin only) ---- */
+/* Both of these are jumped to in code — the studio's panel when admin mode
+   paints it, and the form from "Write a testimonial" and from the home page.
+   Without a scroll margin the fixed header lands on top of the thing being
+   jumped to, which on the panel hides the Save & push live button itself.
+   Same allowance the upload form's fieldsets use, including the admin
+   banner's height when one is up. */
+.tm-admin-root { padding-top: var(--sp-4); scroll-margin-top: calc(130px + var(--admin-banner-h, 0px)); }
+.tm-panel, .tm-write { scroll-margin-top: calc(130px + var(--admin-banner-h, 0px)); }
+.tm-panel { background: var(--bone); border: 1px solid var(--line-2); border-left: 3px solid var(--accent); border-radius: var(--r-md); padding: var(--sp-4); box-shadow: var(--shadow-sm); }
+.tm-panel-head { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: flex-start; justify-content: space-between; }
+.tm-panel-title { margin: 4px 0 0; font-size: var(--font-md); }
+.tm-panel-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.tm-save-status { font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 6px 12px; border: 1px solid; border-radius: var(--r-pill); white-space: nowrap; }
+.tm-panel-note { font-size: var(--font-sm); line-height: 1.6; color: var(--ink-soft); margin: var(--sp-3) 0 0; }
+.tm-panel-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); margin-top: var(--sp-4); padding-top: var(--sp-3); border-top: 1px solid var(--line); }
+.tm-panel-count, .tm-panel-empty { font-family: var(--mono-font); font-size: var(--font-xs); color: var(--ink-soft); }
+/* The same badge and button as the panel head, repeated under the list: with
+   a screenful of testimonials above it, the studio should not have to scroll
+   back up to find out whether anything is live (the v473 lesson). */
+.tm-panel-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--line); }
+.tm-panel-empty { margin: var(--sp-4) 0 0; }
+
+.tm-rows { display: flex; flex-direction: column; gap: var(--sp-2); margin-top: var(--sp-3); }
+.tm-row { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; padding: var(--sp-3); background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-sm); }
+.tm-row-main { flex: 1 1 280px; min-width: 0; }
+.tm-row-quote { margin: 0; font-family: "Fraunces", Georgia, serif; font-style: italic; font-size: var(--font-sm); line-height: 1.5; color: var(--ink); }
+.tm-row-by { margin: 5px 0 0; font-family: var(--mono-font); font-size: var(--font-xs); color: var(--ink-soft); }
+.tm-row-flags { display: flex; flex-wrap: wrap; gap: 5px; }
+.tm-flag { font-family: var(--mono-font); font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; padding: 4px 9px; border-radius: var(--r-pill); background: var(--bone-2); color: var(--ink-soft); }
+.tm-flag.is-on { background: var(--accent-soft); color: var(--accent-text); }
+.tm-row-btns { display: flex; gap: 6px; }
+
+.tm-editor { margin-top: var(--sp-4); padding-top: var(--sp-4); border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: var(--sp-3); }
+.tm-editor h3 { margin: 0; font-family: "Archivo", sans-serif; font-size: var(--font-sm); text-transform: uppercase; letter-spacing: .08em; color: var(--accent-text); }
+.tm-editor .check-line em { color: var(--ink-soft); font-style: normal; font-size: var(--font-xs); display: block; margin-top: 2px; }
+.tm-editor-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.tm-editor-hint { flex: 1 1 240px; font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; }
+
+@media (max-width: 620px) {
+  .tm-panel { padding: var(--sp-3) 16px; }
+  .tm-row-btns { width: 100%; }
+  .tm-row-btns .admin-cal-btn { flex: 1; }
+}
