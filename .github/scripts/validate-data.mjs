@@ -858,7 +858,7 @@ try {
   // does: each is fetched with the same ?v= as app.js, so a release that only
   // touches one of them still has to bump the version or browsers keep running
   // the copy they already hold.
-  const codeFiles = ["app.js", "admin.js", "pdf-tools.js", "styles.css", "config.js", "book-builder.js", "sw.js"];
+  const codeFiles = ["app.js", "admin.js", "contracts.js", "pdf-tools.js", "styles.css", "config.js", "book-builder.js", "sw.js"];
   const codeChanged = changed.filter((f) => codeFiles.includes(f) && f !== "sw.js");
   if (codeChanged.length) {
     const prevSw = execSync(`git show ${base}:sw.js`, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });

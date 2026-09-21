@@ -645,7 +645,7 @@ window.getAdminTfpPackage = getAdminTfpPackage;
    opening the Calendar view. Defined inside a view function, the archive
    simply did not exist on those paths.
    ============================================================ */
-window.ACTIVE_CONTRACTS = { commercial: "V3.10-COMMERCIAL", tfp: "V3.10-TFP" };
+window.ACTIVE_CONTRACTS = { commercial: "V3.11-COMMERCIAL", tfp: "V3.11-TFP" };
 
 /* ============================================================
    § CALL TIME, GRACE PERIOD & NO-SHOW
@@ -1594,11 +1594,38 @@ window.resolveContractArchive = function(version) {
      Memoised, and the same version as the rest of the site: scraped off the
      app.js tag rather than written down, because a pinned literal is exactly
      the drift the cache-buster exists to prevent (see book-builder.js). */
+  /* The contract archive. Same lazy pattern as admin.js and for the same
+     reason — it is ~94 KB and only the booking page and the studio's screens
+     need it — but unlike admin.js a VISITOR needs it too, because the terms
+     modal now renders the real document rather than a copy of it. */
+  let contractsLoad = null;
+  function loadContracts() {
+    if (window.WPS_CONTRACT_ARCHIVE) return Promise.resolve(window.WPS_CONTRACT_ARCHIVE);
+    if (!contractsLoad) {
+      contractsLoad = new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        const v = (document.querySelector('script[src*="app.js?v="]')?.getAttribute("src") || "").split("v=")[1] || "";
+        s.src = `/contracts.js${v ? `?v=${v}` : ""}`;
+        s.onload = () => {
+          if (window.WPS_CONTRACT_ARCHIVE) { resolve(window.WPS_CONTRACT_ARCHIVE); return; }
+          contractsLoad = null;
+          reject(new Error("contracts.js loaded without WPS_CONTRACT_ARCHIVE"));
+        };
+        s.onerror = () => { contractsLoad = null; reject(new Error("contracts.js failed to load")); };
+        document.head.appendChild(s);
+      });
+    }
+    return contractsLoad;
+  }
+  window.loadContracts = loadContracts;
+
   let adminLoad = null;
   function loadAdmin() {
     if (window.WPS_ADMIN) return Promise.resolve(window.WPS_ADMIN);
     if (!adminLoad) {
-      adminLoad = new Promise((resolve, reject) => {
+      // admin.js reads window.WPS_CONTRACT_ARCHIVE throughout, so the archive
+      // has to be in place before it runs.
+      adminLoad = loadContracts().then(() => new Promise((resolve, reject) => {
         const s = document.createElement("script");
         const v = (document.querySelector('script[src*="app.js?v="]')?.getAttribute("src") || "").split("v=")[1] || "";
         s.src = `/admin.js${v ? `?v=${v}` : ""}`;
@@ -1609,7 +1636,7 @@ window.resolveContractArchive = function(version) {
         };
         s.onerror = () => { adminLoad = null; reject(new Error("admin.js failed to load")); };
         document.head.appendChild(s);
-      });
+      }));
     }
     return adminLoad;
   }
@@ -5462,7 +5489,7 @@ window.resolveContractArchive = function(version) {
                <div class="modal-content" style="background: var(--paper); border: 1px solid var(--line); border-radius: 12px; max-width: 680px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.15); overflow: hidden; animation: modalFadeIn 0.3s ease;">
                  <div style="padding: 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; background: var(--bone);">
                    <h3 id="termsModalTitle" style="margin: 0; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink);">Studio Production &amp; Liability Release</h3>
-                   <span id="termsModalTag" style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--accent); padding: 4px 8px; border-radius: 4px; color: #fff; font-weight: 700;">TFP-LIABILITY-RELEASE-V3.7 (ACTIVE)</span>
+                   <span id="termsModalTag" style="font-family: var(--mono-font); font-size: var(--font-xs); background: var(--accent); padding: 4px 8px; border-radius: 4px; color: #fff; font-weight: 700;">CONTRACT (ACTIVE)</span>
                  </div>
                  <div id="termsScrollArea" tabindex="0" style="padding: 24px; overflow-y: auto; font-size: var(--font-sm); line-height: 1.6; color: var(--ink); display: flex; flex-direction: column; gap: 20px; text-align: left;">
                    <p id="termsModalSubtitle" style="margin: 0; font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent-text); text-transform: uppercase; letter-spacing: 0.05em;">TFP Collaboration, Model Release &amp; Digital Consent Terms</p>
@@ -5476,69 +5503,12 @@ window.resolveContractArchive = function(version) {
                      <div><strong>Location:</strong> <span id="termsLocation">Studio Production Space</span></div>
                    </div>
  
-                   <div>
-                     <h4 id="termsSec1Title" style="margin: 0 0 6px 0; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700;">1. SCOPE OF CREATIVE COLLABORATION</h4>
-                     <p style="margin: 0;"><span id="termsSec1Text">This session is scheduled as a peer-to-peer creative collaboration structured for mutual portfolio growth, asset curation, and personal branding advancement. No monetary compensation is required or exchanged for photographer or model services. The Studio provides specialized equipment, lighting architecture, workspace, and post-production engineering; the Participant(s) provide technical modelling direction, personal wardrobe, and makeup artistry. </span><em id="bookingContractStudioClause">If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges.</em></p>
-                   </div>
- 
-                   <div>
-                      <h4 id="termsSec2Title" style="margin: 0 0 6px 0; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700;">2. INTELLECTUAL PROPERTY, MODEL RELEASE &amp; USAGE LICENSE</h4>
-                      <p id="termsSec2Text" style="margin: 0;">The legal copyright of all visual media remains exclusively with the Studio. To support mutual growth and portfolio building, all participants are granted a full non-exclusive license to publish, share, and use final retouched photos for personal self-promotion, social media grids (Instagram/TikTok), personal websites, and agency portfolios.</p>
-                      <p style="margin: 6px 0 0 0; font-style: italic;"><strong>No Alterations:</strong> To preserve the lighting design and capture integrity, no party shall apply secondary mobile filters, automated presets, cropping adjustments, or third-party digital modifications to the delivered files.</p>
-                    </div>
- 
-                   <div style="border-left: 3px solid var(--accent); padding-left: 14px; background: rgba(var(--accent-rgb), 0.04);">
-                     <h4 style="margin: 0 0 6px 0; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--danger-text);">3. COMPREHENSIVE LIABILITY WAIVER &amp; INDEMNIFICATION</h4>
-                     <p style="margin: 0; font-weight: 500;">CRITICAL SAFETY &amp; LIABILITY RELEASE: The Participant enters the studio environment, uses studio blocks, cubes, chairs, furniture, or props, and performs physical poses entirely at their own risk. The Studio shall not be held liable for any physical injury, illness, accident, psychological distress, property damage, or clothing wear-and-tear incurred before, during, or after this production. The Participant explicitly waives any right to seek damages or legal recourse against the Studio or its operating photographers for accidents or injuries occurring on the premises.</p>
-                     <p style="margin: 6px 0 0 0;">Furthermore, the Participant agrees to indemnify and hold harmless the Studio from any claims, damages, liabilities, or legal expenses arising out of the Participant’s conduct or injuries on set.</p>
-                   </div>
- 
-                   <div>
-                      <h4 id="termsSec4Title" style="margin: 0 0 6px 0; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700;">4. TECHNICAL PERFORMANCE &amp; DELIVERY DISCLAIMER</h4>
-                      <p id="termsSec4Text" style="margin: 0;">As a creative collaboration, test shoots (TFP collabs) include <strong>${esc(getAdminTfpPackage().specs)}</strong>. The Studio retains final artistic authority over image selection and editing styles. Under no circumstances will raw unedited files (RAW format) be delivered to the Participant, unless otherwise agreed upon in writing for an additional fee.</p>
-                    </div>
- 
-                   <div>
-                     <h4 style="margin: 0 0 6px 0; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700;">5. MANDATORY ALL-PARTY ATTRIBUTION WORKFLOW</h4>
-                     <p style="margin: 0 0 6px 0;">To ensure creative transparency, all parties agree to execute the following mandatory publishing workflow:</p>
-                     <ul style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px;">
-                       <li><strong>Instagram Collaboration Feature:</strong> For all primary feed or grid publications, the publishing party must issue an Instagram Co-Author Collaboration Invite to <strong>@nerdyphotographer.in</strong> prior to publishing.</li>
-                       <li><strong>Full Production Credits Block:</strong> Every party publishing an asset must explicitly credit all contributors in the caption. In formats where joint collaboration tools are restricted, a comprehensive credit block must be placed within the first three lines of the caption body text as follows:
-                         <pre style="margin: 6px 0; background: var(--bone); padding: 8px; border-radius: 4px; font-family: monospace; font-size: var(--font-xs); white-space: pre-wrap; line-height: 1.4;">
-📷 Photography &amp; Light Design: @nerdyphotographer.in
-👤 Model / Talent: @[Handle]
-💄 Makeup Artist / MUA: @[Handle]
-👔 Styling / Wardrobe: @[Handle]</pre>
-                       </li>
-                     </ul>
-                   </div>
- 
-                   <div style="border-left: 3px solid #b22222; padding-left: 14px; background: rgba(178,34,34,0.04);">
-                     <h4 style="margin: 0 0 6px 0; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--danger-text);">6. UNAUTHORIZED CAMERA OPERATION, GEAR HANDS-OFF &amp; DATA PROTECTION CLAUSE</h4>
-                     <p style="margin: 0; font-weight: 500;">All raw captures, memory cards, and camera equipment remain the exclusive property and intellectual property of the Studio. Under no circumstances is a model, participant, or client permitted to touch, handle, or delete media from the photographer's camera, cards, or tethering systems.</p>
-                     <p style="margin: 6px 0 0 0; font-weight: 500;">The Studio retains sole artistic authority over image culling, selection, and deletion. Deleting or attempting to delete media from equipment constitutes a material breach of contract, resulting in immediate termination of the shoot, forfeiture of all deliverables, and potential liability for data recovery expenses.</p>
-                   </div>
-
-                   <div>
-                     <h4 style="margin: 0 0 6px 0; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700;">7. DIGITAL CONSENT, EMAIL ACCEPTANCE &amp; BINDING NATURE</h4>
-                     <p style="margin: 0;">In accordance with standard digital contract practices, a physical or handwritten signature is not required to validate these terms. Definitive legal acceptance and a binding obligation to these conditions are established through any of the following actions:</p>
-                     <ul style="margin: 6px 0 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px;">
-                       <li>Sending a reply stating "I agree", "Confirmed", or equivalent confirmation over email or direct digital messaging channels.</li>
-                       <li>Voluntarily entering the studio workspace environment and participating in the scheduled production session following receipt of these terms.</li>
-                     </ul>
-                   </div>
-
-                    <div style="border-left: 3px solid var(--accent); padding-left: 14px; background: rgba(var(--accent-rgb), 0.04);">
-                      <h4 style="margin: 0 0 6px 0; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--accent-text);">8. OUTSTATION LOCATION, TRAVEL &amp; ACCOMMODATION EXPENSE POLICY (&gt;<span class="policy-km">20</span> KM FROM NOIDA)</h4>
-                      <p style="margin: 0; font-weight: 500;">If the shoot location is located beyond a <span class="policy-km">20</span> km radius from Noida (Delhi NCR), all travel expenses, local conveyance, outstation transport, tolls, and accommodation expenses incurred for the photographer (and core production team) shall be fully borne, arranged, or reimbursed by the client / party requesting the shoot session. This condition applies to both Paid Commercial Shoots and Test Shoot Collaborations (TFP).</p>
-                    </div>
-                   
-                   <!-- Test shoots only: a collaboration brings no retainer with
-                        it, so a no-show costs the studio a held weekend and
-                        nothing else. Hidden for commercial bookings by
-                        openTermsModal, where the non-refundable retainer
-                        already carries that risk. -->
-                   <div id="termsLateArrivalSection" style="border-left: 3px solid #b22222; padding-left: 14px; background: rgba(178,34,34,0.04); display: none;"></div>
+                   <!-- The clauses. Filled by openTermsModal from the contract
+                        that window.ACTIVE_CONTRACTS points at, so what a client
+                        reads here is the document they are signed onto. This
+                        used to be sixty lines of hand-written HTML that fell
+                        three versions behind without anyone noticing. -->
+                   <div id="termsBody" style="display: flex; flex-direction: column; gap: 18px;"></div>
 
                    <!-- Checkbox Agreement Block -->
                    <div style="margin-top: 15px; border-top: 1px dashed var(--line); padding-top: 15px;">
@@ -7989,7 +7959,10 @@ window.resolveContractArchive = function(version) {
         const venueClause = venueByStudio
           ? `1. SCOPE OF PRODUCTION & VENUE (PROVIDED BY STUDIO)\nThis session is scheduled for studio/location photography production at a venue arranged and paid for by the Studio: ${venueByStudioAddress || "as confirmed with the Studio"}. No studio rental, venue hire or space fee is billed to the Participant for this session. A change of venue requested by the Participant is subject to Studio approval and may reintroduce venue costs, quoted in advance.${homeStudioRider}`
           : `1. SCOPE OF PRODUCTION & VENUE RENTAL POLICY\nThis session is scheduled for studio/location photography production. Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio venue space is required, applicable studio rental fees are quoted separately in advance.${studioArrangerSubmitClause}`;
-        const contractRefDoc = isCustomContract ? "CUSTOM-CLIENT-CONTRACT-MSA" : (isTfpCat ? "TFP-LIABILITY-RELEASE-V3.7" : "COMMERCIAL-CONTRACT-V3.7");
+        // Stamped with the version actually in force. Pinned at a literal V3.7
+        // this said one thing while ACTIVE_CONTRACTS said another.
+        const refNum = (String(isTfpCat ? window.ACTIVE_CONTRACTS.tfp : window.ACTIVE_CONTRACTS.commercial).match(/V(\d+\.\d+)/) || [])[1] || "";
+        const contractRefDoc = isCustomContract ? "CUSTOM-CLIENT-CONTRACT-MSA" : `${isTfpCat ? "TFP-LIABILITY-RELEASE" : "COMMERCIAL-CONTRACT"}-V${refNum}`;
         // Resolved before the release text below, which now states the fee and
         // the milestones. They previously appeared only in the inquiry email as
         // booking details — so the document the client actually signed said
@@ -8055,9 +8028,21 @@ window.resolveContractArchive = function(version) {
         // used to be built from them alone, and said far less than the sheet
         // — no house rules on an invited home-studio shoot, no credit
         // workflow, no travel clause, one-line waivers.
-        const legacyStandardClauses = `${venueClause}\n\n2. INTELLECTUAL PROPERTY & USAGE LICENSING\nThe legal copyright of all visual media remains exclusively with the Studio. Clients receive personal, social media, and web self-promotion usage rights.\n\n3. COMPREHENSIVE LIABILITY WAIVER\nParticipant(s) enter the studio workspace and perform physical poses entirely at their own risk.\n\n4. DELIVERABLES, REVISIONS & CLOUD ARCHIVAL\nDeliverables include 1 Round of Minor Revisions (within 7 days). Cloud retention is active for ${isTfpCat ? '3 Months' : '6 Months'}. RAW files are strictly excluded.\n\n5. UNAUTHORIZED CAMERA OPERATION & GEAR PROTECTION\nAll camera gear and memory cards are strictly hands-off.\n\n6. DIGITAL CONSENT & EMAIL ACCEPTANCE\nLegal acceptance is established by submitting this request.${engagementFeeClause}${lateArrivalClause}`;
+        /* Last resort only. A booking cannot be submitted without passing the
+           terms modal, and the modal refuses to let anyone agree when the
+           contract text has not loaded — so in practice sheetText is always
+           there. What used to sit here was a frozen six-clause summary: a
+           third copy of the terms, drifting quietly alongside the modal's.
+           A pointer cannot drift. */
+        const legacyStandardClauses = `${venueClause}\n\nStandard terms: ${contractRefDoc} applies in full, as shown on the booking form at the time of acceptance. A copy is available from the studio on request.${engagementFeeClause}${lateArrivalClause}`;
         const sheetText = (agreedSheetText || "").trim();
-        const standardTermsText = sheetText || legacyStandardClauses;
+        /* Normally the client's record is the sheet they actually read. Where
+           that was not captured, fall back to the live contract rather than to
+           the frozen six-clause summary below it, which is a third copy of the
+           terms and the reason the modal drifted in the first place. */
+        const fallbackDoc = (window.WPS_CONTRACT_ARCHIVE || {})[isTfpCat ? window.ACTIVE_CONTRACTS.tfp : window.ACTIVE_CONTRACTS.commercial];
+        const standardTermsText = sheetText
+          || (fallbackDoc && fallbackDoc.fullText ? `${venueClause}\n\n${fallbackDoc.fullText}` : legacyStandardClauses);
         const tfpReleaseText = agreedToTerms ? (
           `\n\n==================================================\n` +
           `STUDIO PRODUCTION CONTRACT & LEGAL TERMS\n` +
@@ -8775,6 +8760,87 @@ window.resolveContractArchive = function(version) {
 
     if (form) form.addEventListener("submit", handleBookingSubmit);
     if (btn) btn.addEventListener("click", handleBookingSubmit);
+    // Warm the contract text while they fill the form, so pressing Submit does
+    // not sit on a network fetch before the terms can be read.
+    if (form || btn) loadContracts().catch(() => {});
+
+    /* Draw a contract's own text into the modal.
+
+       The archive stores each contract as plain prose: numbered headings on
+       their own line ("7. CALL TIME, GRACE PERIOD…"), later additions as
+       block capitals ("A GUARDIAN FOR YOUNG PARTICIPANTS"), paragraphs
+       separated by blank lines. That is all the structure there is, so that
+       is all this reads. Everything goes in as text, never as HTML — the
+       source is the studio's own file, but it reaches a client's screen and
+       has no business carrying markup. */
+    let contractsUnavailable = false;
+    function renderTermsBody(key, isTfp) {
+      const host = $("#termsBody");
+      if (!host) return;
+      const doc = (window.WPS_CONTRACT_ARCHIVE || {})[key];
+      host.textContent = "";
+      if (!doc && !window.WPS_CONTRACT_ARCHIVE && !contractsUnavailable) {
+        // Not there yet: fetch it and draw when it lands.
+        host.textContent = "Loading the terms…";
+        setTermsAgreeable(false);
+        loadContracts().then(() => renderTermsBody(key, isTfp)).catch(() => { contractsUnavailable = true; renderTermsBody(key, isTfp); });
+        return;
+      }
+      if (!doc || !doc.fullText) {
+        // Nobody should tick "I have read and agree" against a document that
+        // did not arrive. Say so plainly and offer the retry.
+        const warn = document.createElement("p");
+        warn.style.cssText = "margin:0;color:var(--accent-text);font-weight:600;";
+        warn.textContent = "The terms could not be loaded just now, so there is nothing here to agree to. Check your connection and try again.";
+        const again = document.createElement("button");
+        again.type = "button"; again.className = "btn btn-ghost";
+        again.style.cssText = "font-size:var(--font-xs);height:auto;padding:9px 14px;align-self:flex-start;";
+        again.textContent = "Try again";
+        again.addEventListener("click", () => {
+          host.textContent = "Loading the terms…";
+          loadContracts().then(() => renderTermsBody(key, isTfp)).catch(() => renderTermsBody(key, isTfp));
+        });
+        host.append(warn, again);
+        setTermsAgreeable(false);
+        return;
+      }
+      String(doc.fullText).split(/\n\s*\n/).forEach((para) => {
+        const text = para.trim();
+        if (!text) return;
+        const lines = text.split("\n");
+        const head = lines[0].trim();
+        const isHeading = /^\d+\.\s+[A-Z]/.test(head) || (/^[A-Z][A-Z ,&/0-9()>.'-]{5,}$/.test(head) && head === head.toUpperCase());
+        const box = document.createElement("div");
+        if (isHeading) {
+          const h = document.createElement("h4");
+          h.style.cssText = "margin:0 0 6px 0;font-family:'Archivo',sans-serif;font-size:var(--font-sm);font-weight:700;";
+          h.textContent = head;
+          box.appendChild(h);
+          lines.slice(1).join("\n").split("\n").forEach((rest) => {
+            if (!rest.trim()) return;
+            const q = document.createElement("p");
+            q.style.cssText = "margin:0;";
+            q.textContent = rest.trim();
+            box.appendChild(q);
+          });
+        } else {
+          const q = document.createElement("p");
+          q.style.cssText = "margin:0;";
+          q.textContent = text;
+          box.appendChild(q);
+        }
+        host.appendChild(box);
+      });
+      setTermsAgreeable(true);
+    }
+
+    /* With nothing to read there is nothing to agree to, so the tick and the
+       accept button go with the text. */
+    function setTermsAgreeable(on) {
+      const box = $("#termsAgreeCheckbox"), wrap = $("#termsAgreeCheckbox")?.closest("label");
+      if (box) { box.disabled = !on; if (!on) box.checked = false; }
+      if (wrap) { wrap.style.opacity = on ? "" : "0.5"; wrap.style.cursor = on ? "pointer" : "not-allowed"; }
+    }
 
     // Open the terms modal for `partnerName` and `shootCategory` ("TFP" vs "Commercial").
     function openTermsModal(partnerName, shootCategory, onAccept) {
@@ -8799,23 +8865,15 @@ window.resolveContractArchive = function(version) {
       }
 
       if (modalTitle) modalTitle.textContent = isTfp ? "Studio Production & Liability Release" : "Commercial Shoot Contract & Production Agreement";
-      if (modalTag) modalTag.textContent = isTfp ? "TFP-LIABILITY-RELEASE-V3.7 (ACTIVE)" : "COMMERCIAL-CONTRACT-V3.7 (ACTIVE)";
-      // Travel radius in the policy text: 10 km on a test shoot, 20 km otherwise.
-      document.querySelectorAll("#termsModal .policy-km").forEach(el => { el.textContent = isTfp ? "10" : "20"; });
-      // The grace-period clause is a test-shoot term only. It has to be toggled
-      // on every open, not just hidden by default: the modal element persists
-      // across bookings, so a commercial enquiry opened after a TFP one would
-      // otherwise still be showing it.
+      /* The version shown is the version booked. Both used to read a literal
+         "V3.7" while ACTIVE_CONTRACTS had moved on to V3.10, so the badge, the
+         tick-box label and the document itself all claimed a version three
+         behind what the booking was actually stamped with. */
+      const activeKey = isTfp ? window.ACTIVE_CONTRACTS.tfp : window.ACTIVE_CONTRACTS.commercial;
+      const activeNum = (String(activeKey).match(/V(\d+\.\d+)/) || [])[1] || "";
+      if (modalTag) modalTag.textContent = `${isTfp ? "TFP-LIABILITY-RELEASE" : "COMMERCIAL-CONTRACT"}-V${activeNum} (ACTIVE)`;
       const versionLabel = $("#termsAgreeVersionLabel");
-      if (versionLabel) versionLabel.textContent = `Studio Terms & Conditions (${isTfp ? "Version V3.7" : "Version V3.7"})`;
-      const lateArrivalSection = $("#termsLateArrivalSection");
-      if (lateArrivalSection) {
-        // Applies to both kinds now, on different terms — a paid client gets
-        // three hours against a collaboration's one. Rebuilt on every open
-        // because the modal element outlives the booking that filled it.
-        lateArrivalSection.innerHTML = window.buildLateArrivalHtml(isTfp, 9);
-        lateArrivalSection.style.display = "block";
-      }
+      if (versionLabel) versionLabel.textContent = `Studio Terms & Conditions (Version V${activeNum})`;
       if (partnerNameEl) partnerNameEl.textContent = partnerName || "Valued Client";
       const termsLocationEl = $("#termsLocation");
       if (termsLocationEl) termsLocationEl.textContent = ($("#b_location")?.value || "").trim() || "As per the booking form";
@@ -8866,21 +8924,11 @@ window.resolveContractArchive = function(version) {
       // contract carries, so what is ticked and what is recorded agree.
       const tfpSubtitle = "TFP Collaboration, Model Release & Digital Consent Terms";
       const subtitleEl = $("#termsModalSubtitle"), partnerLabelEl = $("#termsPartnerLabel"), prodStatusEl = $("#termsProductionStatus");
-      const sec1Title = $("#termsSec1Title"), sec1Text = $("#termsSec1Text"), sec2Title = $("#termsSec2Title"), sec2Text = $("#termsSec2Text");
       const modalPackage = isTfp ? "" : ($("#b_budget")?.value || "");
-      const modalSchedule = PACKAGE_SCHEDULES[getPackageScheduleKey()];
-      const modalPayTerms = modalSchedule.sheet;
       if (subtitleEl) subtitleEl.textContent = isTfp ? tfpSubtitle : "Commercial Shoot, Usage Licence & Digital Consent Terms";
       if (partnerLabelEl) partnerLabelEl.textContent = isTfp ? "Creative Partner/Model:" : "Client:";
       if (prodStatusEl) prodStatusEl.textContent = isTfp ? "Time-For-Print (TFP) Collab" : `Commercial / paid production${modalPackage ? ` — ${modalPackage}` : ""}`;
-      if (sec1Title) sec1Title.textContent = isTfp ? "1. SCOPE OF CREATIVE COLLABORATION" : "1. SCOPE OF PRODUCTION, PACKAGE FEE & PAYMENT MILESTONES";
-      if (sec1Text) sec1Text.innerHTML = isTfp
-        ? `This session is scheduled as a peer-to-peer creative collaboration structured for mutual portfolio growth, asset curation, and personal branding advancement. No monetary compensation is required or exchanged for photographer or model services. The Studio provides specialized equipment, lighting architecture, workspace, and post-production engineering; the Participant(s) provide technical modelling direction, personal wardrobe, and makeup artistry. `
-        : `This session is scheduled as a commercial photography production under the package selected on the booking form${modalPackage ? ` (<strong>${esc(modalPackage)}</strong>)` : ""}. Package rates cover photography, light design, direction and the contracted retouched master deliverables; hair &amp; makeup, styling, set and any other third-party crew are quoted for your approval and billed at actuals. <strong>Payment:</strong> ${modalPayTerms}; any studio rental is payable in full together with the advance. Milestone payments marked non-refundable are non-refundable once paid, including where the client cancels or reschedules. ${modalSchedule.release} `;
-      if (sec2Title) sec2Title.textContent = isTfp ? "2. INTELLECTUAL PROPERTY, MODEL RELEASE & USAGE LICENSE" : "2. INTELLECTUAL PROPERTY & USAGE LICENSING";
-      if (sec2Text) sec2Text.textContent = isTfp
-        ? "The legal copyright of all visual media remains exclusively with the Studio. To support mutual growth and portfolio building, all participants are granted a full non-exclusive license to publish, share, and use final retouched photos for personal self-promotion, social media grids (Instagram/TikTok), personal websites, and agency portfolios."
-        : "The legal copyright of all visual media remains exclusively with the Studio. Clients receive personal, social media, and web self-promotion usage rights for the final retouched photos. Any work beyond the contracted package (additional retouched masters, extended usage, gallery buyout) is quoted and invoiced separately.";
+      renderTermsBody(activeKey, isTfp);
 
       const termsModalEl = $("#termsModal");
       termsModalEl.style.display = "flex";
