@@ -645,7 +645,7 @@ window.getAdminTfpPackage = getAdminTfpPackage;
    opening the Calendar view. Defined inside a view function, the archive
    simply did not exist on those paths.
    ============================================================ */
-window.ACTIVE_CONTRACTS = { commercial: "V3.9-COMMERCIAL", tfp: "V3.9-TFP" };
+window.ACTIVE_CONTRACTS = { commercial: "V3.10-COMMERCIAL", tfp: "V3.10-TFP" };
 
 /* ============================================================
    § CALL TIME, GRACE PERIOD & NO-SHOW
@@ -4949,6 +4949,11 @@ window.resolveContractArchive = function(version) {
                    </select>
                  </label>
                </div>
+               <!-- Booking for someone else is a thing you say, not something
+                    inferred from your job. A makeup artist may well be booking
+                    a shoot of themselves, and reading it off the Role dropdown
+                    made the form demand a second person's details from them. -->
+               <label class="check-line" id="b_onbehalf_line"><input type="checkbox" id="b_onbehalf" /><span>I am booking on behalf of someone else — they are being photographed, not me</span></label>
                <div class="field-row">
                  <label class="field"><span>Email Address *</span><input id="b_email" type="email" required placeholder="name@example.com" /></label>
                  <label class="field"><span>Phone Number</span><input id="b_phone" type="tel" placeholder="+91 99999-99999" /></label>
@@ -4968,11 +4973,16 @@ window.resolveContractArchive = function(version) {
                     release; an under-18's release goes to a parent or
                     guardian, never to the child. -->
                <div id="b_subject_block" class="subject-block" hidden>
-                 <p class="subject-lede"><strong>Who is being photographed?</strong> You are booking for someone else, so we need their details as well as yours. They are named on the contract and sent their own release — their pictures, their say.</p>
+                 <p class="subject-lede" id="b_subject_lede"><strong>Who is being photographed?</strong> You are booking for someone else, so we need their details as well as yours. They are named on the contract and sent their own release — their pictures, their say.</p>
                  <div class="field-row">
                    <label class="field"><span>Their full name *</span><input id="b_subject_name" type="text" placeholder="The person in front of the camera" /></label>
-                   <label class="field"><span>Their email *</span><input id="b_subject_email" type="email" placeholder="name@example.com" /><span class="field-hint">Their release is sent here. It does not replace yours.</span></label>
+                   <label class="field"><span>Their email *</span><input id="b_subject_email" type="email" placeholder="name@example.com" /></label>
                  </div>
+                 <!-- The hint sits under the whole row, not under the email.
+                      Inside the cell it made that column taller than the one
+                      beside it, so the two fields read as stepped and the
+                      ticks below started against an L-shaped gap. -->
+                 <p class="field-hint subject-hint" id="b_subject_email_hint">Their release goes to their email address. It does not replace yours.</p>
                  <label class="check-line"><input type="checkbox" id="b_subject_minor" /><span>They are under 18</span></label>
                  <div id="b_guardian_block" class="guardian-block" hidden>
                    <p class="subject-lede">Someone under 18 cannot give this permission themselves, so the release goes to their parent or guardian instead.</p>
@@ -4981,7 +4991,7 @@ window.resolveContractArchive = function(version) {
                      <label class="field"><span>Their email *</span><input id="b_guardian_email" type="email" placeholder="name@example.com" /></label>
                    </div>
                  </div>
-                 <label class="check-line"><input type="checkbox" id="b_authorised" /><span>I am authorised to book on their behalf. *</span></label>
+                 <label class="check-line"><input type="checkbox" id="b_authorised" /><span id="b_authorised_text">I am authorised to book on their behalf. *</span></label>
                </div>
              </fieldset>
  
@@ -6255,7 +6265,13 @@ window.resolveContractArchive = function(version) {
          the person cannot see, which is a dead end with no explanation. */
       const subjectBlock = $("#b_subject_block");
       if (subjectBlock) {
-        const onBehalf = role && role !== "Model";
+        const onBehalf = !!$("#b_onbehalf")?.checked;
+        // An agency or a brand already has a contract with the model, and
+        // some forbid approaching their talent directly — so they warrant the
+        // rights in the contract instead of us emailing the model. Everyone
+        // else booking for someone is usually an individual with no paperwork
+        // at all, and there the release has to come from the person.
+        const bookerIsCompany = role === "Agency" || role === "Brand";
         subjectBlock.hidden = !onBehalf;
         const minor = !!$("#b_subject_minor")?.checked;
         const guardianBlock = $("#b_guardian_block");
@@ -6266,6 +6282,29 @@ window.resolveContractArchive = function(version) {
         need("b_authorised", onBehalf);
         need("b_guardian_name", onBehalf && minor);
         need("b_guardian_email", onBehalf && minor);
+
+        /* An agency is a professional counterparty, not someone who needs the
+           idea of a release explained to them — and it already holds one. Ask
+           it to stand behind the rights instead, and do not email its talent.
+           A child is the exception: that yes belongs on this studio's record. */
+        const lede = $("#b_subject_lede"), hint = $("#b_subject_email_hint"), tick = $("#b_authorised_text");
+        if (lede) {
+          lede.innerHTML = bookerIsCompany
+            ? "<strong>Who is being photographed?</strong> They are named on the contract and credited with the work. We will not contact them — you hold their agreement, and the contract asks you to confirm it."
+            : (minor
+              ? "<strong>Who is being photographed?</strong> You are booking for someone else, so we need their details as well as yours. They are named on the contract, and because they are under 18 the release goes to their parent or guardian."
+              : "<strong>Who is being photographed?</strong> You are booking for someone else, so we need their details as well as yours. They are named on the contract and sent their own release — their pictures, their say.");
+        }
+        if (hint) {
+          hint.textContent = bookerIsCompany
+            ? (minor ? "Used only to reach them about the shoot. The release goes to their guardian." : "Used only to reach them about the shoot — no release is sent to them.")
+            : (minor ? "Used only to reach them about the shoot. The release goes to their guardian." : "Their release goes to their email address. It does not replace yours.");
+        }
+        if (tick) {
+          tick.textContent = bookerIsCompany
+            ? "I am authorised to book for them, and we hold their agreement to be photographed and to these pictures being used. *"
+            : "I am authorised to book on their behalf. *";
+        }
       }
 
       if (policyNotice) {
@@ -7282,13 +7321,22 @@ window.resolveContractArchive = function(version) {
     // Wrapped rather than passed by reference: these fire with an Event as the
     // first argument, and a bare handler here would hand it to any parameter
     // this function later grows.
+    /* An agency or a brand is never the one in front of the camera, so tick
+       the box for them. Only on a real change of role, and never unticking
+       what they ticked themselves. */
+    const onRoleChosen = () => {
+      const box = $("#b_onbehalf"), r = $("#b_role")?.value;
+      if (box && !box.checked && (r === "Agency" || r === "Brand")) { box.checked = true; updateFields(); }
+    };
     $("#b_time_start")?.addEventListener("input", () => updateCustomTimeBadge());
     $("#b_time_end")?.addEventListener("input", () => updateCustomTimeBadge());
 
     ["change", "input", "blur", "click"].forEach(evtName => {
       $("#b_type")?.addEventListener(evtName, updateFields);
       $("#b_role")?.addEventListener(evtName, updateFields);
+      $("#b_role")?.addEventListener("change", onRoleChosen);
       $("#b_subject_minor")?.addEventListener("change", updateFields);
+      $("#b_onbehalf")?.addEventListener("change", updateFields);
       $("#b_budget")?.addEventListener(evtName, updateFields);
       $("#b_invite_code")?.addEventListener(evtName, updateFields);
       $("#b_discount_code")?.addEventListener(evtName, updateFields);
@@ -7834,14 +7882,16 @@ window.resolveContractArchive = function(version) {
          they are the same person these are all empty and nothing downstream
          changes. A release for someone under 18 goes to their guardian — the
          child's own address is never used for it. */
-      const onBehalf = !!role && role !== "Model";
+      const onBehalf = !!$("#b_onbehalf")?.checked;
+      // See updateFields: a company warrants the rights, an individual does not.
+      const bookerIsCompany = role === "Agency" || role === "Brand";
       const subjectName = onBehalf ? val("b_subject_name") : "";
       const subjectEmail = onBehalf ? val("b_subject_email") : "";
       const subjectIsMinor = onBehalf && !!$("#b_subject_minor")?.checked;
       const guardianName = subjectIsMinor ? val("b_guardian_name") : "";
       const guardianEmail = subjectIsMinor ? val("b_guardian_email") : "";
       // Who the release is sent to, and in whose name it is signed.
-      const releaseTo = subjectIsMinor ? guardianEmail : subjectEmail;
+      const releaseTo = subjectIsMinor ? guardianEmail : (bookerIsCompany ? "" : subjectEmail);
       const releaseSignedBy = subjectIsMinor ? guardianName : subjectName;
       const bookerAuthorised = !!$("#b_authorised")?.checked;
       // The person the contract's Participant clauses describe.

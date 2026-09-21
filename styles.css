@@ -3327,6 +3327,10 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
 .subject-block { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--line-2); border-radius: var(--r-md, 10px); background: var(--bone); }
 .subject-lede { margin: 0 0 12px; font-size: 13.5px; line-height: 1.55; color: var(--ink-soft); }
 .subject-lede strong { color: var(--ink); }
+/* The hint under this row is full width, so the two fields stay the same
+   height and the site's own `align-items: end` keeps the inputs level even
+   when a label wraps on a narrow screen. */
+.subject-hint { margin: 7px 0 0; }
 .guardian-block { margin: 12px 0 4px; padding: 12px 14px; border-left: 3px solid var(--accent-text); background: var(--paper); border-radius: var(--r-sm, 6px); }
 .check-line { display: flex; align-items: flex-start; gap: 9px; margin-top: 10px; cursor: pointer; font-size: 13.5px; line-height: 1.5; color: var(--ink); }
 .check-line input { width: 17px; height: 17px; margin-top: 1px; flex: none; accent-color: var(--accent-text); cursor: pointer; }

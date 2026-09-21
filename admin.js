@@ -1547,6 +1547,63 @@ window.WPS_CONTRACT_ARCHIVE["V3.9-TFP"] = {
   fullText: window.WPS_CONTRACT_ARCHIVE["V3.8-TFP"].fullText +
     "\n\nBOOKING ON BEHALF OF ANOTHER PERSON\nWhere the person making this booking is not the person being photographed, that person is named here as the Participant, and every term describing the Participant applies to them rather than to the person who booked. Whoever books warrants that they are authorised to do so for the Participant.\n\nPermission to use the photographs is asked of the Participant directly, in their own name, and nothing is published until it is given. Where the Participant is under 18, that permission is asked of a parent or guardian instead. Permission may be withdrawn at any time, and the Studio then removes the photographs from its own website and social media."
 };
+/* V3.10: an agency or brand warrants the rights instead of the studio asking
+   its talent.
+
+   V3.9 asked every booker to hand the release to the person photographed.
+   That is right for an individual booking for a friend, and wrong for a
+   company: an agency already holds a contract with its model, and several
+   forbid approaching their talent directly, so a release email from the
+   studio reads as going around them. What the studio actually needs from a
+   company is not the model's signature but the company's word that it holds
+   the rights and is granting portfolio use.
+
+   So the obligation splits by who is booking. A company warrants; an
+   individual passes the release to the person. A Participant under 18 is the
+   exception either way — that permission is asked of a parent or guardian and
+   kept on the studio's own record, because a child's images are not something
+   to hold on another company's assurance.
+
+   V3.10 also requires a guardian on set for a Participant under 18, or within
+   six months of turning 18, and lets the Studio decline the session where one
+   does not come. Turning 18 does not change who walks through the door, so the
+   months after a birthday are treated like the months before it. The way out
+   is deliberately hard to fake: written, before the call time, on a medium that
+   records the sender, naming the Participant and the date, carrying identity
+   and taking the liability. A phone call is not enough. Who may send it follows
+   the law rather than the booking — a parent or guardian for a child, the
+   Participant themselves once they are 18.
+
+   That clause arrived after V3.10 was drafted and became part of it rather
+   than a V3.11, because V3.10 had never been published: nobody had signed it,
+   so there was no signer's copy to protect. The rule against editing an
+   archived version is about people who agreed to it, not about the numbering. */
+window.WPS_CONTRACT_ARCHIVE["V3.10-COMMERCIAL"] = {
+  version: "V3.10-COMMERCIAL",
+  title: "Commercial Shoot & Release Agreement V3.10 (Paid Shoots)",
+  effectiveDate: "September 2026 - Present",
+  status: "Active / Current (Paid Commercial)",
+  summary: window.WPS_CONTRACT_ARCHIVE["V3.9-COMMERCIAL"].summary + " An agency or brand warrants the Participant's agreement rather than the Studio approaching them. Someone under 18, or within six months of turning 18, comes accompanied by a parent or guardian, and the Studio may decline the session where they do not.",
+  fullText: window.WPS_CONTRACT_ARCHIVE["V3.9-COMMERCIAL"].fullText +
+    "\n\nWHERE THE CLIENT IS AN AGENCY OR A COMPANY\nWhere the Client books as an agency, a brand or any other organisation, the Studio does not approach the Participant for permission and relies instead on the Client. The Client warrants that it holds the Participant's agreement to be photographed at this shoot, and that it is authorised to grant — and does grant — the Studio the right to use the photographs in its own portfolio, on its website and on its social media, with credit. The Client indemnifies the Studio against any claim that this agreement was not held.\n\nThis does not apply where the Participant is under 18. In that case permission is asked of a parent or guardian directly and kept on the Studio's own record, whoever made the booking." +
+    "\n\nA GUARDIAN FOR YOUNG PARTICIPANTS\nWhere the Participant is under 18 on the shoot date, or reached 18 within the six months before it, they are expected on set accompanied by a parent or guardian, who stays for the whole of the session.\n\nWhere they arrive alone, the Studio may decline to begin the session, or end it once begun, at its sole discretion. A session declined on this basis is treated as a no-show under clause 7 above: the shoot day is released and the advance retainer is forfeited.\n\nThe Studio may set this requirement aside only on a written confirmation received before the call time, by email or another medium that records who sent it. That confirmation must name the Participant and the shoot date, state that the sender takes responsibility for the Participant attending unaccompanied, release the Studio from liability arising from their doing so, and enclose a government-issued photographic identity document of the sender. Where the Participant is under 18 it must come from a parent or guardian. Where the Participant has reached 18 it may come from the Participant themselves. A message that cannot be traced to a named adult is not a confirmation, and nothing agreed only in conversation sets this requirement aside.\n\nWhere a parent or guardian attends, they count towards any limit on attendance at the shoot venue."
+};
+window.WPS_CONTRACT_ARCHIVE["V3.9-COMMERCIAL"].effectiveDate = "September 2026 (superseded by V3.10)";
+window.WPS_CONTRACT_ARCHIVE["V3.9-COMMERCIAL"].status = "Archived - superseded by V3.10 (an agency warrants the rights rather than the Studio approaching its talent)";
+
+window.WPS_CONTRACT_ARCHIVE["V3.10-TFP"] = {
+  version: "V3.10-TFP",
+  title: "Test Shoot & TFP Liability Release V3.10 (Test Shoots)",
+  effectiveDate: "September 2026 - Present",
+  status: "Active / Current (Test Shoot / TFP)",
+  summary: window.WPS_CONTRACT_ARCHIVE["V3.9-TFP"].summary + " An agency or brand warrants the Participant's agreement rather than the Studio approaching them. Someone under 18, or within six months of turning 18, comes accompanied by a parent or guardian, and the Studio may decline the session where they do not.",
+  fullText: window.WPS_CONTRACT_ARCHIVE["V3.9-TFP"].fullText +
+    "\n\nWHERE THE BOOKING IS MADE BY AN AGENCY OR A COMPANY\nWhere the booking is made by an agency, a brand or any other organisation, the Studio does not approach the Participant for permission and relies on whoever booked. They warrant that they hold the Participant's agreement to be photographed, and that they are authorised to grant — and do grant — the Studio the right to use the photographs in its own portfolio, on its website and on its social media, with credit.\n\nThis does not apply where the Participant is under 18. In that case permission is asked of a parent or guardian directly and kept on the Studio's own record, whoever made the booking." +
+    "\n\nA GUARDIAN FOR YOUNG PARTICIPANTS\nWhere the Participant is under 18 on the shoot date, or reached 18 within the six months before it, they are expected on set accompanied by a parent or guardian, who stays for the whole of the session.\n\nWhere they arrive alone, the Studio may decline to begin the session, or end it once begun, at its sole discretion, and the session is treated as a no-show under clause 6 above.\n\nThe Studio may set this requirement aside only on a written confirmation received before the call time, by email or another medium that records who sent it. That confirmation must name the Participant and the shoot date, state that the sender takes responsibility for the Participant attending unaccompanied, release the Studio from liability arising from their doing so, and enclose a government-issued photographic identity document of the sender. Where the Participant is under 18 it must come from a parent or guardian. Where the Participant has reached 18 it may come from the Participant themselves. A message that cannot be traced to a named adult is not a confirmation, and nothing agreed only in conversation sets this requirement aside.\n\nAt the home studio the accompanying parent or guardian is one of the three people the room holds, as set out above — the photographer, the Participant and the adult with them."
+};
+window.WPS_CONTRACT_ARCHIVE["V3.9-TFP"].effectiveDate = "September 2026 (superseded by V3.10-TFP)";
+window.WPS_CONTRACT_ARCHIVE["V3.9-TFP"].status = "Archived - superseded by V3.10-TFP (an agency warrants the rights rather than the Studio approaching its talent)";
+
 window.WPS_CONTRACT_ARCHIVE["V3.8-TFP"].effectiveDate = "September 2026 (superseded by V3.9-TFP)";
 window.WPS_CONTRACT_ARCHIVE["V3.8-TFP"].status = "Archived - superseded by V3.9-TFP (booking on another person's behalf; the release follows the Participant)";
 
