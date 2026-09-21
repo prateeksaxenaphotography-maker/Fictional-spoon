@@ -6231,14 +6231,28 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         A.render();
       }));
       root.querySelector("#tmCancelBtn")?.addEventListener("click", () => { tmEditing = null; paint(); });
-      root.querySelector("#tmSaveBtn")?.addEventListener("click", () => {
+      /* Commit whatever is open in the editor.
+
+         One function, because BOTH buttons reach it and the label on them is
+         the same promise. "Save & push live" used to call syncToGitHub
+         directly and never look at the editor, so a studio that pressed the
+         button it could see — filling the form and then reaching for the
+         only button labelled Save — published an empty store and watched its
+         typing disappear on the next repaint. That is exactly what happened
+         to the first real testimonial anyone tried to add.
+
+         Returns "none" when there is nothing open, "invalid" when the editor
+         is open but not finishable (and leaves every word where it is), and
+         "saved" when it went in. */
+      const tmCommitEditor = () => {
+        if (!tmEditing || !root.querySelector("#tmE_quote")) return "none";
         const val = (id) => String(root.querySelector(id)?.value || "").trim();
         const err = root.querySelector("#tmE_error");
         const quote = val("#tmE_quote"), by = val("#tmE_by");
         const problem = !quote ? "Paste what they wrote first — a testimonial needs their words."
           : !by ? "Give the name to show under it (or write “Anonymous”)." : "";
         if (err) { err.textContent = problem; err.hidden = !problem; }
-        if (problem) return;
+        if (problem) { root.querySelector(problem.startsWith("Paste") ? "#tmE_quote" : "#tmE_by")?.focus(); return "invalid"; }
         const shootId = val("#tmE_shoot");
         const album = shootId ? A.shoots().find((s) => s.id === shootId) : null;
         const store = tmStore();
@@ -6258,6 +6272,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         saveTestimonials({ items: [next, ...store.items.filter((x) => x.id !== next.id)], deleted: store.deleted });
         tmMarkUnpublished();
         tmEditing = null;
+        return "saved";
+      };
+
+      root.querySelector("#tmSaveBtn")?.addEventListener("click", () => {
+        if (tmCommitEditor() !== "saved") return;
         A.toast(`Saved on this device. Press "Save & push live" to put it on the site.`);
         // The whole page, not just this panel: the wall above it, the count in
         // the heading and the menu link all answer to this list.
@@ -6266,6 +6285,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // Both copies of the button do the same thing, and both show the wait.
       const publishBtns = [...root.querySelectorAll(".tm-publish")];
       publishBtns.forEach((btn) => btn.addEventListener("click", async () => {
+        /* Anything half-typed goes in FIRST. Both copies of this button run
+           this same line — two controls wearing one label must not take two
+           code paths, which is how this bug would come back. */
+        const committed = tmCommitEditor();
+        if (committed === "invalid") {
+          A.toast("Nothing was published — finish the testimonial above first. Your words are still there.");
+          return;
+        }
         publishBtns.forEach((b) => { b.disabled = true; b.textContent = "Publishing…"; });
         const ok = await syncToGitHub(shootsNow());
         publishBtns.forEach((b) => { b.disabled = false; b.textContent = "Save & push live"; });
@@ -6274,6 +6301,9 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           A.toast("Published. Visitors see it within a few minutes.");
         }
         tmPaintStatus();
+        // Repaint if the editor was folded away into the list by the commit
+        // above, so the studio sees the testimonial it just published.
+        if (committed === "saved") A.render();
       }));
     }
 
