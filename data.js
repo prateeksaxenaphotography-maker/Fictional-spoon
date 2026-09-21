@@ -2652,6 +2652,13 @@ window.WPS_DATA = {
           "status": "confirmed",
           "type": "Fashion Editorial",
           "contractVersion": "V3.7-TFP"
+        },
+        {
+          "id": "shoot-mubczus1xaoo4q",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Test Shoot",
+          "shootId": "mubczus1xaoo4q"
         }
       ],
       "2026-09-19": [
