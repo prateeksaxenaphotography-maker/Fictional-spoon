@@ -2255,23 +2255,25 @@ window.WPS_DATA = {
       "hair": "—",
       "mua": "—",
       "videographer": "—",
-      "talent": "",
+      "talent": "Atharv Sharma (https://www.instagram.com/ectogainsss/?hl=en)",
       "location": "Noida",
-      "height": "",
+      "height": "6 Ft",
       "chest": "",
       "chestLabel": "Chest",
-      "waist": "",
+      "waist": "29",
       "hips": "",
-      "shoes": "",
-      "modelHair": "",
-      "modelEyes": "",
+      "shoes": "9",
+      "modelHair": "black",
+      "modelEyes": "black",
       "agencyCredit": "",
       "agency": "",
       "agencyHandle": "",
       "agencySite": "",
       "agencyLinks": [],
       "modelEmail": "",
-      "modelTypes": [],
+      "modelTypes": [
+        "Fashion"
+      ],
       "showStatsOnCompCard": true,
       "showStatsOnModelPortfolio": true,
       "showTestShootCategory": false,
@@ -2293,8 +2295,8 @@ window.WPS_DATA = {
       "lightingDiagram": null,
       "lightingDiagramVisibility": "private",
       "palette": [
-        "#969696",
-        "#444444"
+        "#3a3a3a",
+        "#0d0d0d"
       ],
       "photos": [
         {
