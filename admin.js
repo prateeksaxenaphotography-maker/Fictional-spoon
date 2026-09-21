@@ -33,16 +33,41 @@
 // previously called but never defined anywhere — the ReferenceError aborted
 // the delete handlers mid-flight, so the grid never repainted and deletes
 // looked like silent no-ops.
+//
+// The badge used to exist once, inside the Package rates panel's folded body,
+// and named a button ("Save All Changes & Push Live") that is not on the page.
+// Someone editing a promo code was told to "click Save" with no Save and no
+// badge in sight. Every settings panel that publishes through
+// saveAdminCustomPackages now carries its own copy (.admin-save-status) beside
+// its own Save & push live button, and this paints them all.
+function paintSaveStatus(color, bg, html) {
+  document.querySelectorAll(".admin-save-status").forEach((el) => {
+    el.style.color = color;
+    el.style.background = bg;
+    el.style.borderColor = color;
+    el.innerHTML = html;
+  });
+}
+window.paintSaveStatus = paintSaveStatus;
+
 function markUnsavedChanges() {
-  const statusBadge = document.getElementById("adminPricingSaveStatus");
-  if (statusBadge && !statusBadge.textContent.includes("UNSAVED")) {
-    statusBadge.style.color = "#d97706";
-    statusBadge.style.background = "rgba(217,119,6,0.15)";
-    statusBadge.style.borderColor = "#d97706";
-    statusBadge.innerHTML = '⚠️ UNSAVED CHANGES — Click "Save All Changes & Push Live"';
-  }
+  paintSaveStatus("#d97706", "rgba(217,119,6,0.15)", '⚠️ NOT LIVE YET — press "Save &amp; push live"');
 }
 window.markUnsavedChanges = markUnsavedChanges;
+
+// A code edit is kept on this device the moment it is made, so it can outlive
+// the page — and so must the fact that it has not been published. Without the
+// flag a reload painted "all changes saved to live site" over an edit no
+// client had received. Cleared only when a publish actually succeeds.
+const UNPUBLISHED_CODES_KEY = "wps_codes_unpublished";
+function markCodesUnpublished() {
+  try { localStorage.setItem(UNPUBLISHED_CODES_KEY, "1"); } catch (e) {}
+  markUnsavedChanges();
+}
+window.markCodesUnpublished = markCodesUnpublished;
+window.codesAreUnpublished = function() {
+  try { return localStorage.getItem(UNPUBLISHED_CODES_KEY) === "1"; } catch (e) { return false; }
+};
 
 
 /* ---- the dates a code works between ---- */
@@ -150,6 +175,20 @@ window.editAdminPromoCode = function(codeKey) {
   window.openPromoCodeModal(codeKey);
 };
 
+// Same promise persistAdminInviteCodes makes for invites. A promo edit used to
+// live in memory until Save & push live was pressed, so a reload — or simply
+// not finding the button — lost it without a word.
+window.persistAdminPromoCodes = function() {
+  try {
+    if (!window.adminDraftPromoCodes || typeof window.adminDraftPromoCodes !== "object") return false;
+    localStorage.setItem("wps_custom_promo_codes", JSON.stringify(window.adminDraftPromoCodes));
+    stampSetting("wps_custom_promo_codes");
+    return true;
+  } catch (e) {
+    return false;
+  }
+};
+
 window.toggleAdminPromoActive = function(codeName) {
   const codes = window.getAdminPromoCodes();
   const entry = codes[codeName];
@@ -157,8 +196,9 @@ window.toggleAdminPromoActive = function(codeName) {
   const nowOn = !window.promoCodeIsActive(entry);
   codes[codeName] = { ...entry, active: nowOn };
   window.adminDraftPromoCodes = { ...codes };
-  markUnsavedChanges();
-  if (typeof toast === "function") toast(`🎟️ '${codeName}' ${nowOn ? "switched on" : "switched off"} in draft. Click Save to push live.`);
+  window.persistAdminPromoCodes();
+  markCodesUnpublished();
+  if (typeof toast === "function") toast(`🎟️ '${codeName}' ${nowOn ? "switched on" : "switched off"}. Press "Save & push live" at the top of Promo codes to make it live.`);
   if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
 };
 
@@ -167,8 +207,9 @@ window.deleteAdminPromoCode = function(codeName) {
     const currentCodes = window.getAdminPromoCodes();
     delete currentCodes[codeName];
     window.adminDraftPromoCodes = { ...currentCodes };
-    markUnsavedChanges();
-    if (typeof toast === "function") toast(`🗑️ Promo code '${codeName}' removed from draft.`);
+    window.persistAdminPromoCodes();
+    markCodesUnpublished();
+    if (typeof toast === "function") toast(`🗑️ Promo code '${codeName}' removed. Press "Save & push live" at the top of Promo codes to make it live.`);
     if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
   }
 };
@@ -390,8 +431,9 @@ window.saveNewPromoCodeFromForm = function() {
   window.adminDraftPromoCodes = { ...codes };
   window._editingPromoKey = null;
 
-  markUnsavedChanges();
-  if (typeof toast === "function") toast(`🎟️ Promo code '${name}' ${editing ? "updated" : "added"} to draft. Click Save to push live.`);
+  window.persistAdminPromoCodes();
+  markCodesUnpublished();
+  if (typeof toast === "function") toast(`🎟️ Promo code '${name}' ${editing ? "updated" : "added"}. Press "Save & push live" at the top of Promo codes to make it live.`);
   if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
 };
 
@@ -462,8 +504,8 @@ window.toggleAdminInviteActive = function(codeStr) {
   window.adminDraftInviteCodes = [...list];
   window.persistAdminInviteCodes();
   // Stored on this device either way; clients only see it once it is pushed.
-  markUnsavedChanges();
-  if (typeof toast === "function") toast(`🔑 '${target}' ${nowOn ? "switched on" : "switched off"}. Click Save to push live.`);
+  markCodesUnpublished();
+  if (typeof toast === "function") toast(`🔑 '${target}' ${nowOn ? "switched on" : "switched off"}. Press "Save & push live" at the top of Invite codes to make it live.`);
   if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
 };
 
@@ -488,10 +530,11 @@ window.deleteAdminInviteCode = function(codeToDelete) {
     const updated = current.filter(x => getItemCodeStr(x) !== targetUpper);
     window.adminDraftInviteCodes = [...updated];
     const persisted = window.persistAdminInviteCodes();
-    if (!persisted) markUnsavedChanges();
+    // Deleted here, still live for clients until it is pushed — same as a save.
+    markCodesUnpublished();
     if (typeof toast === "function") {
       toast(persisted
-        ? `🗑️ Invite code '${targetUpper}' deleted.`
+        ? `🗑️ Invite code '${targetUpper}' deleted. Press "Save & push live" at the top of Invite codes to make it live.`
         : `⚠️ '${targetUpper}' removed but not stored on this device — click "Save & Push Live".`);
     }
     if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
@@ -619,10 +662,10 @@ window.saveInviteCodeFromForm = function() {
   // published list — so the badge asks for the push either way. Saying only
   // "saved" here is how an end date could sit unpublished while the code
   // carried on working for everyone.
-  markUnsavedChanges();
+  markCodesUnpublished();
   if (typeof toast === "function") {
     toast(persisted
-      ? `🔑 Invite code '${code}' ${editing ? "updated" : "saved"}. Click Save to push live.`
+      ? `🔑 Invite code '${code}' ${editing ? "updated" : "saved"}. Press "Save & push live" at the top of Invite codes to make it live.`
       : `⚠️ '${code}' ${editing ? "updated" : "added"} but could not be stored on this device — click "Save & Push Live".`);
   }
   if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
@@ -1535,14 +1578,7 @@ window.saveAdminCustomPackages = async function() {
     stampSetting("wps_custom_promo_codes");
   }
 
-  const statusBadge = document.getElementById("adminPricingSaveStatus");
-  const setBadge = (color, bg, text) => {
-    if (!statusBadge) return;
-    statusBadge.style.color = color;
-    statusBadge.style.background = bg;
-    statusBadge.style.borderColor = color;
-    statusBadge.innerHTML = text;
-  };
+  const setBadge = paintSaveStatus;
 
   if (typeof render === "function") render();
 
@@ -1564,6 +1600,7 @@ window.saveAdminCustomPackages = async function() {
   const ok = await publish();
   const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   if (ok) {
+    try { localStorage.removeItem(UNPUBLISHED_CODES_KEY); } catch (e) {}
     setBadge("#059669", "rgba(5,150,105,0.15)", `🟢 PUBLISHED TO LIVE SITE (${nowStr})`);
     if (typeof toast === "function") toast("✅ Rates, promo & invite codes are live for every client within a few minutes.");
   } else {
@@ -2796,7 +2833,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             </div>
           </div>
           <div id="adminPkgBody" style="display: none; margin-top: 12px;">
-            <span id="adminPricingSaveStatus" style="font-size: var(--font-xs); font-weight: 700; color: #059669; background: rgba(5,150,105,0.12); padding: 4px 10px; border-radius: 12px; border: 1px solid #059669; font-family: var(--mono-font); display: inline-block; margin-bottom: 8px;">🟢 ALL CHANGES SAVED TO LIVE SITE</span>
+            <span id="adminPricingSaveStatus" class="admin-save-status" style="font-size: var(--font-xs); font-weight: 700; color: #059669; background: rgba(5,150,105,0.12); padding: 4px 10px; border-radius: 12px; border: 1px solid #059669; font-family: var(--mono-font); display: inline-block; margin-bottom: 8px;">🟢 ALL CHANGES SAVED TO LIVE SITE</span>
             <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 12px 0;">Edit max package rates (INR), package names, or deliverable descriptions. Click <strong>Save &amp; Push Live</strong> to update booking forms.</p>
             <div style="background: var(--paper); border: 1px solid var(--accent); border-radius: 8px; padding: 12px 16px; margin-bottom: 12px;">
               <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">🏠 Home Studio Rental (Sector 46, Noida)</span>
@@ -2869,11 +2906,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <div class="admin-panel-head" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; cursor: pointer; user-select: none;" onclick="const b=document.getElementById('adminPromoBody');const a=document.getElementById('adminPromoArrow');const open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▼':'▲';">
             <span style="display: flex; align-items: center; gap: 8px;">Promo codes</span>
             <div style="display: flex; gap: 8px; align-items: center;">
-              <button type="button" class="admin-cal-btn primary" onclick="event.stopPropagation();document.getElementById('adminPromoBody').style.display='block';document.getElementById('adminPromoArrow').textContent='▲';window.addNewAdminPromoCode()">Add promo code</button>
+              <button type="button" class="admin-cal-btn" onclick="event.stopPropagation();document.getElementById('adminPromoBody').style.display='block';document.getElementById('adminPromoArrow').textContent='▲';window.addNewAdminPromoCode()">Add promo code</button>
+              <button type="button" class="admin-cal-btn primary" id="adminPromoSaveBtn" onclick="event.stopPropagation();window.saveAdminCustomPackages()">Save &amp; push live</button>
               <span id="adminPromoArrow" style="font-size: var(--font-xs); color: var(--ink-soft); font-weight: 700;">▼</span>
             </div>
           </div>
           <div id="adminPromoBody" style="display: none; margin-top: 12px;">
+            <span class="admin-save-status" style="font-size: var(--font-xs); font-weight: 700; color: #059669; background: rgba(5,150,105,0.12); padding: 4px 10px; border-radius: 12px; border: 1px solid #059669; font-family: var(--mono-font); display: inline-block; margin-bottom: 8px;">🟢 ALL CHANGES SAVED TO LIVE SITE</span>
+            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 12px 0;">A change here is kept on this device straight away. Clients get it once you press <strong>Save &amp; push live</strong> above — the same button publishes rates, promo codes and invite codes together.</p>
             <div id="adminPromoCodesGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;"></div>
           </div>
         </div>
@@ -2885,11 +2925,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <div class="admin-panel-head" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; cursor: pointer; user-select: none;" onclick="const b=document.getElementById('adminInviteBody');const a=document.getElementById('adminInviteArrow');const open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▼':'▲';">
             <span style="display: flex; align-items: center; gap: 8px;">Invite codes <span style="font-weight: 400; color: var(--ink-soft); font-size: 12.5px;">— test shoot / TFP unlocks</span></span>
             <div style="display: flex; gap: 8px; align-items: center;">
-              <button type="button" class="admin-cal-btn primary" onclick="event.stopPropagation();document.getElementById('adminInviteBody').style.display='block';document.getElementById('adminInviteArrow').textContent='▲';window.addNewAdminInviteCode()">Add invite code</button>
+              <button type="button" class="admin-cal-btn" onclick="event.stopPropagation();document.getElementById('adminInviteBody').style.display='block';document.getElementById('adminInviteArrow').textContent='▲';window.addNewAdminInviteCode()">Add invite code</button>
+              <button type="button" class="admin-cal-btn primary" id="adminInviteSaveBtn" onclick="event.stopPropagation();window.saveAdminCustomPackages()">Save &amp; push live</button>
               <span id="adminInviteArrow" style="font-size: var(--font-xs); color: var(--ink-soft); font-weight: 700;">▼</span>
             </div>
           </div>
           <div id="adminInviteBody" style="display: none; margin-top: 12px;">
+            <span class="admin-save-status" style="font-size: var(--font-xs); font-weight: 700; color: #059669; background: rgba(5,150,105,0.12); padding: 4px 10px; border-radius: 12px; border: 1px solid #059669; font-family: var(--mono-font); display: inline-block; margin-bottom: 8px;">🟢 ALL CHANGES SAVED TO LIVE SITE</span>
+            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 12px 0;">A change here is kept on this device straight away. Invited talent get it once you press <strong>Save &amp; push live</strong> above — the same button publishes rates, promo codes and invite codes together.</p>
             <div id="adminInviteCodesGrid" style="display: grid; grid-template-columns: 1fr; gap: 12px;"></div>
           </div>
         </div>
@@ -3893,21 +3936,14 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         promoGrid.innerHTML = creatorFormHtml + codeCardsHtml;
         const inviteGrid = $("#adminInviteCodesGrid");
         if (inviteGrid) inviteGrid.innerHTML = inviteCardHtml;
+        if (window.codesAreUnpublished()) markUnsavedChanges();
       }
 
       // Attach input change listener to flip status badge to UNSAVED CHANGES
       setTimeout(() => {
         const editorInputs = document.querySelectorAll(".pkg-edit-name, .pkg-edit-price, .pkg-edit-specs");
         editorInputs.forEach(input => {
-          input.addEventListener("input", () => {
-            const statusBadge = document.getElementById("adminPricingSaveStatus");
-            if (statusBadge && !statusBadge.textContent.includes("UNSAVED")) {
-              statusBadge.style.color = "#d97706";
-              statusBadge.style.background = "rgba(217,119,6,0.15)";
-              statusBadge.style.borderColor = "#d97706";
-              statusBadge.innerHTML = '⚠️ UNSAVED CHANGES — Click "Save Pricing Changes"';
-            }
-          });
+          input.addEventListener("input", () => markUnsavedChanges());
         });
       }, 50);
 
