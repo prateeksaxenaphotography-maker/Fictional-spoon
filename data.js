@@ -2466,24 +2466,6 @@ window.WPS_DATA = {
           "contractVersion": "V3.7-COMMERCIAL"
         }
       ],
-      "2026-09-26": [
-        {
-          "id": "b_1789736038024_4o9n",
-          "isTentative": false,
-          "status": "assisting",
-          "type": "Assisting Photographer",
-          "contractVersion": "Pending Agreement"
-        }
-      ],
-      "2026-09-27": [
-        {
-          "id": "b_1789736040303_uhs5",
-          "isTentative": false,
-          "status": "workshop",
-          "type": "Workshop Attended",
-          "contractVersion": "Pending Agreement"
-        }
-      ],
       "2026-06-14": [
         {
           "id": "shoot-mr4x3r7e4l5g4m",
@@ -2575,7 +2557,9 @@ window.WPS_DATA = {
       "2026-09-13::shoot-mu07kqljf8iyar",
       "2026-09-19::b_1787411831533_6jql",
       "2026-09-15::b_1789484541097_vngy",
-      "2026-09-16::b_1789579417604_z0rd"
+      "2026-09-16::b_1789579417604_z0rd",
+      "2026-09-26::b_1789736038024_4o9n",
+      "2026-09-27::b_1789736040303_uhs5"
     ],
     "paymentScheduleType": "503020",
     "productionScheduleType": "503020",
@@ -2782,7 +2766,7 @@ window.WPS_DATA = {
   "STUDIO_PORTFOLIOS": {
     "versions": [
       {
-        "id": "bkmu9io6yxzopu",
+        "id": "bkmuax7ucfco12",
         "name": "Book 1",
         "style": "modern",
         "colourway": "terracotta",
@@ -2790,14 +2774,11 @@ window.WPS_DATA = {
         "title": "Selected Work",
         "subtitle": "Fashion, portraits & editorial",
         "cover": null,
+        "schema": 1,
         "pages": [
           {
-            "type": "story",
-            "photos": [],
-            "kicker": "",
-            "headline": "",
-            "intro": "",
-            "body": ""
+            "type": "free",
+            "blocks": []
           },
           {
             "type": "photos",
@@ -2809,7 +2790,7 @@ window.WPS_DATA = {
           "phone": "",
           "showPrices": false
         },
-        "updatedAt": 1789890642782
+        "updatedAt": 1789975550196
       }
     ],
     "deleted": [
@@ -2828,7 +2809,8 @@ window.WPS_DATA = {
       "bkmu71xawtzt3x",
       "bkmu73sac0xsfz",
       "bkmu78imgvxhvw",
-      "bkmu7sm7y0obhy"
+      "bkmu7sm7y0obhy",
+      "bkmu9io6yxzopu"
     ]
   }
 };
