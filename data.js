@@ -2759,6 +2759,10 @@ window.WPS_DATA = {
     "PORTFOLIO_PDF": 1789970038184,
     "HOME_STUDIO_RATE_TFP": 1789975069138
   },
+  "TESTIMONIALS": {
+    "items": [],
+    "deleted": []
+  },
   "MODEL_PDFS": {
     "versions": [],
     "deleted": []
