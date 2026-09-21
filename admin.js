@@ -6227,7 +6227,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <button type="button" class="admin-cal-btn primary tm-publish">Save &amp; push live</button>
               </div>
             </div>
-            <p class="tm-panel-note">Someone writes one in the form below, it arrives in your email, you add it here, and you press <strong>Save &amp; push live</strong>. Nothing reaches this page on its own — which is what stops anyone else writing straight onto your site.${store.items.length ? "" : ` <strong>With none published, the Testimonials link stays out of your menu and out of Google.</strong> The page still works at its address, so you can send it to a client to write the first one.`}</p>
+            <p class="tm-panel-note">A testimonial can reach you any way at all — the form at the bottom of this page, a WhatsApp message, an email, or something a client said on the shoot day. However it came, <strong>you type it in here</strong> and press <strong>Save &amp; push live</strong>. Nothing appears on this page by itself, which is what stops anyone else writing straight onto your site.${store.items.length ? "" : ` <strong>With none published, the Testimonials link stays out of your menu and out of Google.</strong> The page still works at its address, so you can send it to a client to write the first one.`}</p>
 
             ${tmEditing ? tmEditorHtml(tmEditing) : `
               <div class="tm-panel-bar">
@@ -6271,9 +6271,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       return `
         <div class="tm-editor">
           <h3>${t.updatedAt ? "Edit this testimonial" : "Add a testimonial"}</h3>
-          <label class="field"><span>What they wrote *</span>
-            <textarea id="tmE_quote" rows="6" maxlength="${TESTIMONIAL_STORE_LIMITS.quote}" placeholder="Paste their words here, exactly as they wrote them.">${esc(t.quote || "")}</textarea>
+          <label class="field"><span>What they said *</span>
+            <textarea id="tmE_quote" rows="6" maxlength="${TESTIMONIAL_STORE_LIMITS.quote}" placeholder="Paste or type their words — as they wrote them, or as they said them to you.">${esc(t.quote || "")}</textarea>
           </label>
+          <p class="field-hint">Their words, not a summary of them. If they said this to you rather than filling in the form, check they are happy to see it here under their name — the form asks for that in writing, and this does not.</p>
           <div class="field-row">
             <label class="field"><span>Name to show *</span><input id="tmE_by" type="text" maxlength="${TESTIMONIAL_STORE_LIMITS.name}" value="${esc(t.by || "")}" placeholder="Aisha Khan" /></label>
             <label class="field"><span>Credit them as</span><input id="tmE_role" type="text" maxlength="${TESTIMONIAL_STORE_LIMITS.role}" value="${esc(t.role || "")}" placeholder="Model, Noida" /></label>
@@ -6301,7 +6302,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               </select>
             </label>
           </div>
-          <label class="check-line"><input type="checkbox" id="tmE_verified"${t.verified ? " checked" : ""} /><span>I have documentation for this one — a letter, an email, a screenshot — in my inbox. <em>The card shows a small tick. The file itself is never put on the website.</em></span></label>
+          <label class="check-line"><input type="checkbox" id="tmE_verified"${t.verified ? " checked" : ""} /><span>I can show where this came from — a WhatsApp message, an email, a letter, a screenshot. <em>The card shows a small tick. Whatever you have stays in your own inbox and is never put on the website.</em></span></label>
           <label class="check-line"><input type="checkbox" id="tmE_home"${t.onHome !== false ? " checked" : ""} /><span>Show this one on the home page too</span></label>
           <p class="field-error" id="tmE_error" hidden></p>
           <div class="tm-editor-foot">
