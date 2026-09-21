@@ -1450,7 +1450,46 @@ window.resolveContractArchive = function(version) {
   // types into, the studio's own panel, and the publish check in CI. A quote
   // longer than this is not rejected on arrival — it arrives by email, where
   // nothing can reject it — it is trimmed when the studio publishes it.
-  const TESTIMONIAL_LIMITS = { quote: 900, quoteMin: 30, name: 60, role: 80, shoot: 80 };
+  const TESTIMONIAL_LIMITS = { quote: 1000, quoteMin: 30, name: 60, role: 80, shoot: 80 };
+  /* Counted in what a person can SEE, not in UTF-16 units, because a
+     testimonial is meant to carry emoji: the studio's clients write on
+     WhatsApp, Instagram and LinkedIn, where they are ordinary punctuation.
+     There is no emoji "set" to support — it is all just Unicode, and nothing
+     in this path strips it — but the arithmetic was wrong for it. "🎉" is two
+     UTF-16 units and "👨‍👩‍👧‍👦" is eleven, so a plain .length charged someone
+     eleven characters for one picture and the counter under the box lied to
+     them. Worse, .slice() at that boundary cuts a surrogate pair in half and
+     leaves a lone surrogate, which is a replacement character in the relay
+     email, in the studio's panel and in data.js. This file already dodges the
+     same bug class when it animates a heading — see the kinetic-h1 note on
+     the album page, which skips the per-unit boxes for non-ASCII names.
+
+     Intl.Segmenter is in every browser this site supports and in the Node 22
+     that runs CI, which is what lets .github/scripts/validate-data.mjs count
+     a published quote exactly the same way. If you change the measure here,
+     change it there in the same commit or a publish carrying emoji fails a
+     build the app considered perfectly legal. */
+  const graphemesOf = (s) => {
+    const str = String(s ?? "");
+    try {
+      if (typeof Intl !== "undefined" && Intl.Segmenter) {
+        return [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(str)].map((g) => g.segment);
+      }
+    } catch { /* fall through */ }
+    // Code points at the very least: this still never splits a pair.
+    return [...str];
+  };
+  const countChars = (s) => graphemesOf(s).length;
+  const trimChars = (s, max) => {
+    const g = graphemesOf(s);
+    return g.length <= max ? String(s ?? "") : g.slice(0, max).join("");
+  };
+  /* The textarea's own maxlength cannot be expressed in graphemes, so it holds
+     a generous UTF-16 ceiling instead: high enough that no honest testimonial
+     within the visible limit can hit it even in emoji, low enough that a
+     pasted novel never reaches the form handler. The real limit is enforced
+     in JavaScript, where it can be counted properly. */
+  const TESTIMONIAL_HARD_UNITS = TESTIMONIAL_LIMITS.quote * 12;
   // What the relay will carry. FormSubmit refuses a large attachment outright,
   // and a refusal here costs the studio the testimonial as well as the file,
   // so a picture is shrunk to fit and anything still over the line is left
@@ -5180,7 +5219,7 @@ window.resolveContractArchive = function(version) {
             </fieldset>
 
             <label class="field"><span>Your testimonial *</span>
-              <textarea id="tm_quote" rows="6" maxlength="${TESTIMONIAL_LIMITS.quote}" placeholder="What the shoot was like, what you got out of it, and whether you would do it again." required></textarea>
+              <textarea id="tm_quote" rows="6" maxlength="${TESTIMONIAL_HARD_UNITS}" placeholder="What the shoot was like, what you got out of it, and whether you would do it again." required></textarea>
             </label>
             <p class="field-hint tm-count"><span id="tm_count">0</span> / ${TESTIMONIAL_LIMITS.quote} characters · ${TESTIMONIAL_LIMITS.quoteMin} at the least</p>
 
@@ -5293,9 +5332,12 @@ window.resolveContractArchive = function(version) {
 
     const updateCount = () => {
       if (!count) return;
-      const n = quote.value.trim().length;
+      const n = countChars(quote.value.trim());
       count.textContent = String(n);
       count.parentElement.classList.toggle("is-short", n > 0 && n < TESTIMONIAL_LIMITS.quoteMin);
+      // Over the line is shown, never silently cut: the words are the
+      // person's, so the form says what to shorten rather than deciding.
+      count.parentElement.classList.toggle("is-over", n > TESTIMONIAL_LIMITS.quote);
     };
     quote?.addEventListener("input", updateCount);
     updateCount();
@@ -5409,20 +5451,22 @@ window.resolveContractArchive = function(version) {
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       showError("");
-      const name = valOf("#tm_name").slice(0, TESTIMONIAL_LIMITS.name);
+      const name = trimChars(valOf("#tm_name"), TESTIMONIAL_LIMITS.name);
       const email = valOf("#tm_email");
-      const role = valOf("#tm_role").slice(0, TESTIMONIAL_LIMITS.role);
+      const role = trimChars(valOf("#tm_role"), TESTIMONIAL_LIMITS.role);
       const kind = valOf("#tm_kind");
       const shootId = valOf("#tm_shoot");
       const shoot = shootId ? (SHOOTS.find((s) => s.id === shootId) || {}) : {};
       const rating = Number(view.querySelector(".tm-rate-input:checked")?.value || 0);
-      const text = String(quote?.value || "").trim().slice(0, TESTIMONIAL_LIMITS.quote);
+      const text = String(quote?.value || "").trim();
       const consent = !!field("#tm_consent")?.checked;
 
       const problems = [
         [!name, "#tm_name", "Please give the name to publish this under."],
         [!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email), "#tm_email", "That email address does not look right."],
-        [text.length < TESTIMONIAL_LIMITS.quoteMin, "#tm_quote", `The testimonial needs at least ${TESTIMONIAL_LIMITS.quoteMin} characters — a sentence or two.`],
+        [countChars(text) < TESTIMONIAL_LIMITS.quoteMin, "#tm_quote", `The testimonial needs at least ${TESTIMONIAL_LIMITS.quoteMin} characters — a sentence or two.`],
+        // Trimming it here would throw away words somebody chose to write.
+        [countChars(text) > TESTIMONIAL_LIMITS.quote, "#tm_quote", `That is ${countChars(text)} characters and the limit is ${TESTIMONIAL_LIMITS.quote} — please shorten it by ${countChars(text) - TESTIMONIAL_LIMITS.quote}.`],
         [!consent, "#tm_consent", "The studio cannot publish it without your permission, so please tick the box."]
       ];
       problems.forEach(([bad, id]) => markInvalid(id, bad));

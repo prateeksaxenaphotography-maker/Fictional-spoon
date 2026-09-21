@@ -317,6 +317,24 @@ if (mpdfs !== undefined && mpdfs !== null) {
    Nothing here may carry a proof file: the documentation someone attaches
    stays in the studio's inbox and must never reach this public repository,
    so a data: URL anywhere in the store fails the build outright. */
+/* The same limit the write-in form enforces, counted the same way.
+   TESTIMONIAL_LIMITS.quote in app.js is the pair of this: a testimonial is
+   allowed its emoji, so the limit is in graphemes — things a person can see —
+   and not in UTF-16 units, where "👨‍👩‍👧‍👦" would cost eleven. Counting the two
+   differently is worse than either choice: CI would fail a publish carrying
+   emoji that the form had accepted as well within the limit. The second,
+   much higher unit ceiling is a sanity bound on the stored string itself, to
+   catch something that never came through the form at all. */
+const TESTIMONIAL_MAX_CHARS = 1000;
+const TESTIMONIAL_MAX_UNITS = TESTIMONIAL_MAX_CHARS * 12;
+const countChars = (s) => {
+  const str = String(s ?? "");
+  try {
+    if (Intl.Segmenter) return [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(str)].map((g) => g.segment).length;
+  } catch { /* fall through */ }
+  return [...str].length;
+};
+
 const tms = win.WPS_DATA.TESTIMONIALS;
 if (tms !== undefined && tms !== null) {
   if (typeof tms !== "object" || !Array.isArray(tms.items) || !Array.isArray(tms.deleted)) {
@@ -333,7 +351,11 @@ if (tms !== undefined && tms !== null) {
       seen.add(t.id);
       if (buried.has(t.id)) fail(`testimonial ${t.id} ("${who}") is published AND listed as deleted`);
       if (typeof t.quote !== "string" || !t.quote.trim()) fail(`testimonial ${t.id} ("${who}") has no words in it`);
-      else if (t.quote.length > 900) fail(`the testimonial from "${who}" is ${t.quote.length} characters; the app trims at 900, so the published copy would be cut`);
+      else if (countChars(t.quote) > TESTIMONIAL_MAX_CHARS) {
+        fail(`the testimonial from "${who}" is ${countChars(t.quote)} characters; the form's limit is ${TESTIMONIAL_MAX_CHARS}, so this was not written through it`);
+      } else if (t.quote.length > TESTIMONIAL_MAX_UNITS) {
+        fail(`the testimonial from "${who}" is ${t.quote.length} UTF-16 units long; that is beyond anything the form can send`);
+      }
       if (t.rating !== undefined && !(Number.isInteger(t.rating) && t.rating >= 0 && t.rating <= 5)) {
         fail(`the testimonial from "${who}" is rated ${JSON.stringify(t.rating)}; it must be a whole 0 (unrated) to 5`);
       }

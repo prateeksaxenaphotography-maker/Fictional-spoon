@@ -3404,7 +3404,8 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
 .tm-write-sub { font-size: var(--font-sm); line-height: 1.6; color: var(--ink-soft); margin: 0; }
 .tm-form { display: flex; flex-direction: column; gap: var(--sp-3); }
 .tm-form .field-hint { margin: -4px 0 4px; }
-.tm-count.is-short { color: var(--danger-text); }
+.tm-count.is-short, .tm-count.is-over { color: var(--danger-text); }
+.tm-count.is-over { font-weight: 700; }
 .tm-honey { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
 .tm-opt { font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-soft); }
 
