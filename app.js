@@ -10165,7 +10165,8 @@ window.resolveContractArchive = function(version) {
   const ROUTES = { "": viewHome, "portfolio-book": ADMIN_SCREEN_PENDING, "albums": viewAlbums, "categories": viewCategories, "studio": viewStudio, "upload": ADMIN_SCREEN_PENDING, "book": viewBook, "calendar": ADMIN_SCREEN_PENDING, "contracts": ADMIN_SCREEN_PENDING, "testimonials": viewTestimonials, "workshop-attended": viewWorkshopAttended };
 
   /* ---- STATIC PAGES ---------------------------------------------------------
-     The service pages (/services/…) are written as plain HTML at deploy by
+     The service pages (/services/…) and the licensing terms (/licence/) are
+     written as plain HTML at deploy by
      .github/scripts/build-seo.mjs: the page's content is already inside
      <main id="view" data-static-path="…"> when it arrives, which is what lets
      every crawler read it. The app keeps that HTML rather than painting over
@@ -10258,7 +10259,11 @@ window.resolveContractArchive = function(version) {
     const parts = raw.split("/").filter(Boolean);
     const key = parts[0] || "";
 
-    const staticPath = key === "services" ? staticPathOf(location.pathname) : "";
+    // Both prefixes are built at deploy by build-seo.mjs. /licence/ is the
+    // address every photograph names as its terms (the `license` property in
+    // its ImageObject), so it has to resolve to the real page rather than be
+    // painted over with a 404 the way an unknown route is.
+    const staticPath = (key === "services" || key === "licence") ? staticPathOf(location.pathname) : "";
     if (staticPath && !afterFetch && (!STATIC_PAGES.has(staticPath) || STATIC_PAGES.get(staticPath) === false)) {
       // Not in hand yet (or it failed to load last time): fetch it, then come
       // back through here — unless the visitor has already moved on. afterFetch

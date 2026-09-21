@@ -60,6 +60,12 @@ const CONFIG = loadWindowScript("config.js").STUDIO_CONFIG || {};
 // config.js studioPagePublic: false keeps /studio/ out of the sitemap, the site links and the page copies.
 const STUDIO_PUBLIC = CONFIG.studioPagePublic !== false;
 const { SERVICES, SERVICES_INDEX } = await import(pathToFileURL(path.join(ROOT, "seo/services.mjs")).href);
+const { LICENCE } = await import(pathToFileURL(path.join(ROOT, "seo/licence.mjs")).href);
+// The address of the usage terms. Google will only mark a photograph
+// "Licensable" in Google Images, with a link back to the studio beside it,
+// when the picture names both a page to ask on and the terms themselves.
+const LICENCE_PATH = `/${LICENCE.slug}/`;
+const LICENCE_URL = `${ORIGIN}${LICENCE_PATH}`;
 
 /* ---------- helpers that mirror app.js (keep the two in step) ---------- */
 const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -91,6 +97,68 @@ const absUrl = (u) => (/^https?:/.test(u) ? u : `${ORIGIN}${u.startsWith("/") ? 
 const inr = (n) => `₹${Number(n).toLocaleString("en-IN")}`;
 const isoDay = (ms) => new Date(ms).toISOString().slice(0, 10);
 
+/* ---------- how big each photograph actually is ---------- */
+/* Every <img> below has been able to state its picture's size since this
+   script was written — it writes width/height whenever a photo carries w and
+   h — but nothing has ever put those numbers in data.js: 0 of 142 photos as
+   of Sep 2026. Without them a crawler has to fetch a picture before it knows
+   its shape, Google Images has one fewer reason to prefer it, and the plain
+   copy of the page reflows as the photographs arrive.
+
+   The files are in this checkout and their own headers carry the answer, so
+   it is read off the bytes instead of being typed into the Admin Panel. Pure
+   header parsing on purpose: the deploy installs no dependencies (and
+   node_modules is deleted before the upload), so there is no Pillow and no
+   sharp here. Anything unreadable measures as null and its <img> goes out
+   exactly as it did before.
+
+   Only the full-size file is measured. The 480 and 960 variants are the same
+   picture at the same aspect ratio, which is all width/height is for. */
+const sizeCache = new Map();
+function jpegSize(buf) {
+  if (buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8) return null;
+  let i = 2;
+  while (i < buf.length - 9) {
+    if (buf[i] !== 0xff) { i += 1; continue; }            // padding between segments
+    const marker = buf[i + 1];
+    if (marker === 0xff) { i += 1; continue; }            // fill byte, the next one is the marker
+    // Markers that stand alone: no length and no payload to skip.
+    if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd9)) { i += 2; continue; }
+    const len = buf.readUInt16BE(i + 2);
+    if (len < 2) return null;
+    // A start-of-frame segment holds precision, then height, then width.
+    // C4, C8 and CC share that range and are not frames.
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      const h = buf.readUInt16BE(i + 5);
+      const w = buf.readUInt16BE(i + 7);
+      return w && h ? { w, h } : null;
+    }
+    i += 2 + len;
+  }
+  return null;
+}
+function pngSize(buf) {
+  if (buf.length < 24 || buf.readUInt32BE(0) !== 0x89504e47) return null;
+  const w = buf.readUInt32BE(16);
+  const h = buf.readUInt32BE(20);
+  return w && h ? { w, h } : null;
+}
+function imageSize(rel) {
+  if (sizeCache.has(rel)) return sizeCache.get(rel);
+  let out = null;
+  // The whole photos folder is 37 MB, so the file is simply read; a partial
+  // read would have to grow past an EXIF block big enough to hold a thumbnail.
+  try { const buf = fs.readFileSync(path.join(ROOT, rel)); out = jpegSize(buf) || pngSize(buf); } catch { out = null; }
+  sizeCache.set(rel, out);
+  return out;
+}
+/** The photo with the shape of its own file attached, when the file can be measured. */
+const withSize = (p) => {
+  if (p.w && p.h) return p;
+  const size = imageSize(String(p.url || "").replace(/^\//, ""));
+  return size ? { ...p, w: size.w, h: size.h } : p;
+};
+
 /* ---------- which albums get a page ---------- */
 const deleted = new Set(DATA.DELETED_IDS || []);
 const allShoots = (DATA.DEMO_SHOOTS || []).filter((s) => s && s.id && !deleted.has(s.id));
@@ -109,7 +177,7 @@ const isFutureShoot = (s) => {
 };
 const albums = allShoots
   .filter((s) => !s.isTestimonial && s.type !== "Workshop Attended" && s.isPublic !== false && !isFutureShoot(s))
-  .map((s) => ({ ...s, photos: (s.photos || []).filter((p) => p && typeof p.url === "string" && p.url && !p.url.startsWith("data:")) }))
+  .map((s) => ({ ...s, photos: (s.photos || []).filter((p) => p && typeof p.url === "string" && p.url && !p.url.startsWith("data:")).map(withSize) }))
   .filter((s) => s.photos.length);
 
 // Oldest album keeps the bare name; a later album of the same name gets its id
@@ -303,7 +371,7 @@ const serviceLinksHtml = (skipSlug) => liveServices.filter((v) => v.slug !== ski
         </a>`).join("\n        ");
 
 const siteLinksHtml = `<nav class="container pr-links" aria-label="Site">
-      <a href="/" data-link>Home</a> · <a href="/albums/" data-link>Albums</a> · <a href="/services/" data-link>Services</a> · ${STUDIO_PUBLIC ? `<a href="/studio/" data-link>Studio</a> · ` : ""}<a href="/book/" data-link>Book a shoot</a>
+      <a href="/" data-link>Home</a> · <a href="/albums/" data-link>Albums</a> · <a href="/services/" data-link>Services</a> · ${STUDIO_PUBLIC ? `<a href="/studio/" data-link>Studio</a> · ` : ""}<a href="/book/" data-link>Book a shoot</a> · <a href="${LICENCE_PATH}" data-link>Photo licensing</a>
     </nav>`;
 
 /* ---------- album pages ---------- */
@@ -333,9 +401,11 @@ function buildAlbumPage(s) {
       contentUrl: absUrl(photoPath(p)),
       name: `${name} — frame ${i + 1}`,
       caption: p.caption || altFor(s, i + 1, p),
+      ...(p.w && p.h ? { width: p.w, height: p.h } : {}),
       creditText: BRAND,
       copyrightNotice: `© ${BRAND}`,
       creator: { "@type": "Organization", name: BRAND, url: `${ORIGIN}/` },
+      license: LICENCE_URL,
       acquireLicensePage: `${ORIGIN}/book/`
     }))
   };
@@ -614,6 +684,39 @@ function buildServicePage(v) {
   };
 }
 
+/* The usage terms, as a real page. Generated rather than kept as a shell, so
+   it costs no hand-maintained copy of the site's <head> — see seo/licence.mjs
+   for why it is worded the way it is, and why it points at the booking page's
+   terms instead of repeating them. */
+function buildLicencePage() {
+  const x = LICENCE;
+  const mainHtml = `
+    <header class="page-head"><div class="container">
+      <p class="eyebrow">${esc(x.eyebrow)}</p>
+      <h1>${esc(x.h1)}</h1>
+      <p class="page-sub">${esc(x.intro)}</p>
+    </div></header>
+    <section class="section container">
+      ${x.sections.map((sec) => `<h2>${esc(sec.heading)}</h2>
+      ${sec.body.map((t) => `<p>${esc(t)}</p>`).join("\n      ")}${sec.points ? `
+      <ul>
+        ${sec.points.map((t) => `<li>${esc(t)}</li>`).join("\n        ")}
+      </ul>` : ""}`).join("\n      ")}
+      <p><a href="/book/" data-link>Ask about licensing a photograph</a> · <a href="/albums/" data-link>Browse the albums</a></p>
+    </section>
+    ${siteLinksHtml}`;
+
+  return {
+    rel: `${x.slug}/index.html`,
+    html: pageFromTemplate({
+      title: x.metaTitle, description: x.metaDescription, urlPath: LICENCE_PATH,
+      jsonLd: [ldScript(breadcrumbLd([["Home", "/"], [x.h1, LICENCE_PATH]]))],
+      mainAttrs: ` data-static-path="/${x.slug}" data-title="${esc(x.metaTitle)}" data-desc="${esc(x.metaDescription)}"`,
+      mainHtml
+    })
+  };
+}
+
 function buildServicesIndex() {
   const x = SERVICES_INDEX;
   // Only describe the pages that were actually published. The old description
@@ -822,6 +925,7 @@ function buildSitemap({ quoteCount }) {
     ...liveServices.map((v) => entry(`/services/${v.slug}/`, null)),
     ...(STUDIO_PUBLIC ? [entry("/studio/", null)] : []),
     entry("/book/", null),
+    entry(LICENCE_PATH, null),
     ...(quoteCount ? [entry("/testimonials/", null)] : [])
   ];
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -934,13 +1038,29 @@ function buildModelPages() {
   });
 }
 
+function checkLicence() {
+  const x = LICENCE;
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(String(x.slug || ""))) fail(`seo/licence.mjs: bad slug "${x.slug}"`);
+  for (const k of ["metaTitle", "metaDescription", "eyebrow", "h1", "intro"]) if (!x[k]) fail(`seo/licence.mjs: missing ${k}`);
+  if (!Array.isArray(x.sections) || !x.sections.length) fail("seo/licence.mjs: no sections");
+  for (const sec of x.sections) {
+    if (!sec.heading || !Array.isArray(sec.body) || !sec.body.length) fail(`seo/licence.mjs: section "${sec.heading || "?"}" needs a heading and a body`);
+    if (sec.points && (!Array.isArray(sec.points) || !sec.points.length)) fail(`seo/licence.mjs: section "${sec.heading}" has an empty points list`);
+  }
+  // The pictures point at this page; a page that is not there would leave
+  // every ImageObject naming terms that 404.
+  if (!LICENCE_URL.startsWith(ORIGIN)) fail("seo/licence.mjs: the licence address must be on this site");
+}
+
 checkServices();
+checkLicence();
 const outputs = [];
 for (const s of albums) outputs.push(buildAlbumPage(s));
 if (liveServices.length) {
   outputs.push(buildServicesIndex());
   for (const v of liveServices) outputs.push(buildServicePage(v));
 }
+outputs.push(buildLicencePage());
 const modelPages = buildModelPages();
 for (const m of modelPages) outputs.push(m);
 console.log(`build-seo: ${liveServices.length}/${SERVICES.length} service pages have work and are published${liveServices.length < SERVICES.length ? ` — waiting on: ${SERVICES.filter((v) => !liveServices.includes(v)).map((v) => v.slug).join(", ")}` : ""}`);
