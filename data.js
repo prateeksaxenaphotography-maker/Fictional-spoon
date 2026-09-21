@@ -2644,13 +2644,16 @@ window.WPS_DATA = {
         "type": "free"
       }
     },
-    "FRIENDLYDIS": {
+    "SAANUJ": {
       "flat": 7000,
       "label": "Flat ₹7,000 Off (FRIENDLYDIS)",
       "includeAddons": false,
       "homeStudioDiscount": {
-        "type": "none"
-      }
+        "type": "fixed",
+        "value": 2000
+      },
+      "active": true,
+      "startDate": "2026-09-21"
     }
   },
   "PACKAGES": [
@@ -2696,15 +2699,15 @@ window.WPS_DATA = {
     "upiId": "",
     "type": {
       "name": {
-        "family": "display",
+        "family": "sans",
         "weight": 800,
         "color": "#000000"
       },
       "role": {
-        "family": "mono",
+        "family": "sans",
         "weight": 600,
         "color": "auto",
-        "size": 2
+        "size": 2.3
       },
       "statLabel": {
         "family": "mono",
@@ -2756,7 +2759,7 @@ window.WPS_DATA = {
       }
     },
     "border": {
-      "on": false,
+      "on": true,
       "width": 0.5,
       "inset": 6,
       "color": "#141416"
@@ -2764,13 +2767,17 @@ window.WPS_DATA = {
   },
   "HOME_STUDIO_RATE_TFP": 4000,
   "SETTINGS_AT": {
-    "INVITE_CODES": 1789826876874,
-    "PROMO_CODES": 1789826876874,
-    "PACKAGES": 1789826876874,
-    "TFP_PACKAGE": 1789826876874,
-    "HOME_STUDIO_RATE": 1789826876874,
-    "PORTFOLIO_PDF": 0,
-    "HOME_STUDIO_RATE_TFP": 1789826876874
+    "INVITE_CODES": 1789975069138,
+    "PROMO_CODES": 1789975069138,
+    "PACKAGES": 1789975069137,
+    "TFP_PACKAGE": 1789975069138,
+    "HOME_STUDIO_RATE": 1789975069138,
+    "PORTFOLIO_PDF": 1789970038184,
+    "HOME_STUDIO_RATE_TFP": 1789975069138
+  },
+  "MODEL_PDFS": {
+    "versions": [],
+    "deleted": []
   },
   "STUDIO_PORTFOLIOS": {
     "versions": [
