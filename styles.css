@@ -3496,3 +3496,9 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
   .tm-row-btns { width: 100%; }
   .tm-row-btns .admin-cal-btn { flex: 1; }
 }
+
+/* Testimonials on an album's own page — tied to that shoot in the studio
+   panel. The card surfaces (categories, comp cards) style `.work-quote`
+   already; this is the block that holds them here. */
+.album-page-quotes { display: flex; flex-direction: column; gap: var(--sp-3); margin-top: var(--sp-4); padding-top: var(--sp-4); border-top: 1px solid var(--line); }
+.album-page-quotes .work-quote { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }

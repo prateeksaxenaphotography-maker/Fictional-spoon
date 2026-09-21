@@ -4645,11 +4645,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           </div>
 
           <form class="shoot-form reveal" id="shootForm" autocomplete="off">
-            <div style="margin-bottom: 24px; padding: 14px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--bone); display: flex; align-items: center; gap: 10px; width: 100%;">
-              <input id="f_is_testimonial_only" type="checkbox" style="width: 16px; height: 16px; accent-color: var(--accent-text); margin: 0; cursor: pointer;" />
-              <label for="f_is_testimonial_only" style="font-family: var(--mono-font); font-size: var(--font-xs); text-transform: uppercase; font-weight: 700; cursor: pointer; color: var(--ink);">Testimonial Only (No Photoshoot Album)</label>
-            </div>
-
             <!-- Section strip: the form is ~5,000px tall, and without this the
                  only way to know where you were was the legend that happened
                  to be on screen. Chips light up as their section scrolls into
@@ -4660,7 +4655,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <button type="button" data-target="modelStatsFieldset">Model stats</button>
               <button type="button" data-target="fs_details">Details &amp; links</button>
               <button type="button" data-target="fs_publish">Publish settings</button>
-              <button type="button" data-target="extraTestimonialsFs">Extras</button>
             </nav>
 
             <fieldset id="fs_shoot"><legend>The shoot</legend>
@@ -4907,29 +4901,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               </div>
             </fieldset>
 
-            <fieldset id="extraTestimonialsFs" class="fs-collapsible is-collapsed"><legend>Testimonials <span class="legend-opt">optional (up to 3)</span></legend>
-              <div class="fs-head">
-                <span class="fs-summary" id="fsSummaryTestimonials">No testimonials yet</span>
-                <button type="button" class="fs-toggle" aria-expanded="false" aria-controls="fsBodyTestimonials">+ Expand</button>
-              </div>
-              <div class="fs-body" id="fsBodyTestimonials">
-              <div class="testimonial-group">
-                <h4>Testimonial 1</h4>
-                <label class="field"><span>Quote</span><textarea id="f_quote_1" rows="2" placeholder="“First quote…”"></textarea></label>
-                <label class="field"><span>Attribution</span><input id="f_quoteby_1" type="text" placeholder="Attribution 1" /></label>
-              </div>
-              <div style="margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px;">
-                <h4>Testimonial 2</h4>
-                <label class="field"><span>Quote</span><textarea id="f_quote_2" rows="2" placeholder="“Second quote…”"></textarea></label>
-                <label class="field"><span>Attribution</span><input id="f_quoteby_2" type="text" placeholder="Attribution 2" /></label>
-              </div>
-              <div style="margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px;">
-                <h4>Testimonial 3</h4>
-                <label class="field"><span>Quote</span><textarea id="f_quote_3" rows="2" placeholder="“Third quote…”"></textarea></label>
-                <label class="field"><span>Attribution</span><input id="f_quoteby_3" type="text" placeholder="Attribution 3" /></label>
-              </div>
-              </div>
-            </fieldset>
 
             <fieldset id="fieldsetLighting" class="fs-collapsible is-collapsed"><legend>Lighting diagram <span class="legend-opt">optional</span></legend>
               <div class="fs-head">
@@ -5135,68 +5106,18 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     syncModelTypeCap();
 
     const diagInput = $("#f_diagram_file"), diagPreview = $("#diagramPreview"), diagImg = $("#f_diagram_img"), diagVisibility = $("#f_diagram_visibility"), clearDiagBtn = $("#clearDiagramBtn");
-    const testimonialOnlyCheckbox = $("#f_is_testimonial_only");
-    
-    const mentorRow = $("#f_mentor_row");
-    const typeSelect = $("#f_type");
-    const updateMentorRowState = () => {
-      const isTestimonialOnly = !!testimonialOnlyCheckbox?.checked;
-      if (mentorRow && typeSelect) {
-        // Mentors can be credited on any shoot type, not just workshops.
-        mentorRow.style.display = !isTestimonialOnly ? "" : "none";
-      }
-    };
-    typeSelect?.addEventListener("change", updateMentorRowState);
+    /* "Testimonial Only (No Photoshoot Album)" used to live here: a tick that
+       turned this whole form into a one-quote editor, filed the result as an
+       album with no photos, and left five places in app.js having to remember
+       to hide it from the real albums. Testimonials have their own screen now
+       — the studio panel on /testimonials — so the mode and everything that
+       relabelled the form for it are gone.
 
-    const updateTestimonialFormState = () => {
-      const isTestimonialOnly = !!testimonialOnlyCheckbox?.checked;
+       One thing it did has to survive it: the mentor row is hidden in the
+       markup and was revealed by that code, because it was hidden only inside
+       the mode. A mentor can be credited on any shoot, so it is simply shown. */
+    { const row = $("#f_mentor_row"); if (row) row.style.display = ""; }
 
-      // Hide / show the dropzone
-      if (dz) dz.style.display = isTestimonialOnly ? "none" : "";
-
-      // Hide / show other fieldsets
-      const statsFs = $("#modelStatsFieldset");
-      if (statsFs) statsFs.style.display = isTestimonialOnly ? "none" : "";
-
-      // Hide / show Credits mentor field
-      updateMentorRowState();
-
-      const lightingFs = $("#fieldsetLighting");
-      if (lightingFs) lightingFs.style.display = isTestimonialOnly ? "none" : "";
-
-      const extraTestimonialsFs = $("#extraTestimonialsFs");
-      if (extraTestimonialsFs) extraTestimonialsFs.style.display = isTestimonialOnly ? "none" : "";
-
-      // Hide / show Brand Dropdown vs Custom Text Input
-      const brandSelectField = $("#f_brand_select_field");
-      const brandTextField = $("#f_brand_text_field");
-      if (brandSelectField) brandSelectField.style.display = isTestimonialOnly ? "none" : "";
-      if (brandTextField) brandTextField.style.display = isTestimonialOnly ? "" : "none";
-
-      const activityField = $("#f_activity_field");
-      if (activityField) activityField.style.display = isTestimonialOnly ? "none" : "";
-      { const row = $("#f_agency_row"); if (row) row.style.display = isTestimonialOnly ? "none" : ""; }
-      ["#f_for_row", "#f_also_for_field"].forEach((sel) => { const el = $(sel); if (el) el.style.display = isTestimonialOnly ? "none" : ""; });
-
-      // Change labels and descriptions
-      const titleLabel = $("#f_title")?.closest(".field")?.querySelector("span");
-      if (titleLabel) {
-        titleLabel.textContent = isTestimonialOnly ? "Testimonial Subject / Headline *" : "Shoot title *";
-      }
-
-      const talentLabel = $("#f_talent")?.closest(".field")?.querySelector("span");
-      if (talentLabel) {
-        talentLabel.textContent = isTestimonialOnly ? "Client Name *" : "Model / talent";
-      }
-
-      const descLabel = $("#f_desc")?.closest(".field")?.querySelector("span");
-      if (descLabel) {
-        descLabel.textContent = isTestimonialOnly ? "Testimonial Quote *" : "Description";
-      }
-    };
-    testimonialOnlyCheckbox?.addEventListener("change", updateTestimonialFormState);
-    updateTestimonialFormState();
-    updateMentorRowState();
     let diagramDataUrl = null;
 
     diagInput?.addEventListener("change", async (e) => {
@@ -5246,14 +5167,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const stickyPubLabel = $("#stickyPublishBtn");
         if (stickyPubLabel) stickyPubLabel.textContent = "Save changes";
         
-        if (editingShoot.isTestimonial) {
-          if (testimonialOnlyCheckbox) testimonialOnlyCheckbox.checked = true;
-          $("#f_brand_text").value = editingShoot.brand || "";
-        } else {
-          if (testimonialOnlyCheckbox) testimonialOnlyCheckbox.checked = false;
-          $("#f_brand").value = editingShoot.brand || "Other";
-        }
-        updateTestimonialFormState();
+        $("#f_brand").value = editingShoot.brand || "Other";
 
         $("#f_title").value = editingShoot.title || "";
         $("#f_activity").value = editingShoot.activity || "";
@@ -5309,7 +5223,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         if ($("#f_mentor")) $("#f_mentor").value = editingShoot.mentor || "";
         if ($("#f_credits")) $("#f_credits").value = editingShoot.credits || "";
         if (editingShoot.pdfUrl) pdfDataUrl = editingShoot.pdfUrl;
-        updateMentorRowState();
         const toIsoDate = (dStr) => {
           if (!dStr) return "";
           if (/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return dStr;
@@ -5326,20 +5239,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         $("#f_link").value = editingShoot.link || "";
         $("#f_rights").value = editingShoot.rights || "";
         
-        const testimonials = editingShoot.testimonials || (editingShoot.testimonial ? [editingShoot.testimonial] : []);
-        if (testimonials[0]) {
-          $("#f_quote_1").value = testimonials[0].quote || "";
-          $("#f_quoteby_1").value = testimonials[0].by || "";
-        }
-        if (testimonials[1]) {
-          $("#f_quote_2").value = testimonials[1].quote || "";
-          $("#f_quoteby_2").value = testimonials[1].by || "";
-        }
-        if (testimonials[2]) {
-          $("#f_quote_3").value = testimonials[2].quote || "";
-          $("#f_quoteby_3").value = testimonials[2].by || "";
-        }
-
         if (editingShoot.lightingDiagram) {
           diagramDataUrl = editingShoot.lightingDiagram;
           diagImg.src = diagramDataUrl;
@@ -5471,9 +5370,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     });
     const fieldVal = (id) => ($("#" + id)?.value || "").trim();
     const refreshSectionSummaries = () => {
-      const filledQuotes = [1, 2, 3].filter(n => fieldVal("f_quote_" + n) || fieldVal("f_quoteby_" + n)).length;
-      const sumT = $("#fsSummaryTestimonials");
-      if (sumT) sumT.textContent = filledQuotes ? `${filledQuotes} of 3 filled` : "No testimonials yet";
 
       const hasDiagram = ($("#diagramPreview") && $("#diagramPreview").style.display !== "none") || !!($("#f_diagram_file")?.files?.length);
       const sumL = $("#fsSummaryLighting");
@@ -5493,7 +5389,6 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // Sections open themselves when they have content (edit mode) or are
       // relevant to the shoot type, unless the admin has toggled them by hand.
       const auto = (fs, open) => { if (fs && !fs.dataset.userToggled) setCollapsed(fs, !open); };
-      auto($("#extraTestimonialsFs"), filledQuotes > 0);
       auto($("#fieldsetLighting"), hasDiagram);
       auto($("#modelStatsFieldset"), isCompish || statsFilled > 0 || types > 0);
     };
@@ -5515,7 +5410,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       // hidden inline (style.display, see updateTestimonialFormState) stays
       // hidden whichever tab is on, and a chip whose every fieldset is hidden
       // that way disappears with it.
-      const groups = { extraTestimonialsFs: ["extraTestimonialsFs", "fieldsetLighting"] };
+      const groups = { fieldsetLighting: ["fieldsetLighting"] };
       const fsOf = (key) => (groups[key] || [key]).map(id => document.getElementById(id)).filter(Boolean);
       const tabbed = new Set(chips.flatMap(ch => fsOf(ch.dataset.target)));
       const chipUsable = (ch) => fsOf(ch.dataset.target).some(f => f.style.display !== "none");
@@ -5988,12 +5883,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         toast("Please test the location links before publishing.");
         return;
       }
-      const isTestimonialOnly = !!$("#f_is_testimonial_only")?.checked;
-      if (isTestimonialOnly) {
-        if (!val("f_title")) { toast("Testimonial Subject / Headline is required."); return; }
-        if (!val("f_talent")) { toast("Client Name is required."); return; }
-        if (!val("f_desc")) { toast("Testimonial Quote is required."); return; }
-      } else {
+      {
         if (!staged.length) { toast("Add at least one photo first."); return; }
         // Both drive which page this album appears on, so neither may be guessed.
         if (!$("#f_activity").value) { toast("Pick an Activity — it decides which page this album shows up on. Use Creative if it fits none of them."); $("#f_activity").focus(); return; }
@@ -6001,15 +5891,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         if ($("#f_type").value !== "Workshop Attended" && $("#f_for_client") && !$("#f_for_client").value) { toast("Pick who this album is for — it decides which client page it shows up on."); $("#f_for_client").focus(); return; }
       }
       
-      const testimonialsList = isTestimonialOnly ? [] : [
-        val("f_quote_1") ? { quote: val("f_quote_1"), by: val("f_quoteby_1") || "Client" } : null,
-        val("f_quote_2") ? { quote: val("f_quote_2"), by: val("f_quoteby_2") || "Client" } : null,
-        val("f_quote_3") ? { quote: val("f_quote_3"), by: val("f_quoteby_3") || "Client" } : null,
-      ].filter(Boolean);
+      /* Quotes are no longer typed into this form — they belong to the
+         testimonials panel, which can also tie one to a shoot. Anything an
+         older build attached to THIS album is carried through untouched, so
+         re-saving an album published before the move cannot silently drop a
+         quote someone gave. Nothing new is ever added here. */
+      const testimonialsList = Array.isArray(editingShoot?.testimonials) ? editingShoot.testimonials : [];
 
       const coverItem = staged.find(x => x.isCover) || staged[0];
       let pColors = editingShoot ? editingShoot.palette : ["#3a3a3a", "#0d0d0d"];
-      if (coverItem && !isTestimonialOnly) {
+      if (coverItem) {
         pColors = await extractPalette(photoSrc(coverItem));
       }
       let dateVal = val("f_date");
@@ -6022,60 +5913,62 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       const shoot = {
         id: editingShoot ? editingShoot.id : uid(),
         createdAt: editingShoot ? editingShoot.createdAt : Date.now(),
-        isTestimonial: isTestimonialOnly,
+        // Kept on the record, always false: five filters in app.js still ask,
+        // and an album saved without the field would read as undefined there.
+        isTestimonial: false,
         title: val("f_title") || "Untitled",
-        brand: isTestimonialOnly ? val("f_brand_text") : (val("f_brand") || "Other"),
-        activity: isTestimonialOnly ? "Testimonial" : $("#f_activity").value,
-        type: isTestimonialOnly ? "Testimonial" : $("#f_type").value,
+        brand: val("f_brand") || "Other",
+        activity: $("#f_activity").value,
+        type: $("#f_type").value,
         season: val("f_season"),
-        photographer: isTestimonialOnly ? "" : (val("f_photographer") || "Studio"),
-        secondaryPhotographers: isTestimonialOnly ? "" : val("f_photographer2"),
-        artDirector: isTestimonialOnly ? "" : val("f_ad"),
-        stylist: isTestimonialOnly ? "" : (val("f_stylist") || "—"),
-        hair: isTestimonialOnly ? "" : (val("f_hair") || "—"),
-        mua: isTestimonialOnly ? "" : (val("f_mua") || "—"),
-        videographer: isTestimonialOnly ? "" : (val("f_video") || "—"),
+        photographer: val("f_photographer") || "Studio",
+        secondaryPhotographers: val("f_photographer2"),
+        artDirector: val("f_ad"),
+        stylist: val("f_stylist") || "—",
+        hair: val("f_hair") || "—",
+        mua: val("f_mua") || "—",
+        videographer: val("f_video") || "—",
         talent: val("f_talent"),
-        location: isTestimonialOnly ? "" : val("f_location"),
-        height: isTestimonialOnly ? "" : val("f_height"),
-        chest: isTestimonialOnly ? "" : val("f_chest"),
-        chestLabel: isTestimonialOnly ? "" : chestLabelOf({ chestLabel: val("f_chest_label") }),
-        waist: isTestimonialOnly ? "" : val("f_waist"),
-        hips: isTestimonialOnly ? "" : val("f_hips"),
-        shoes: isTestimonialOnly ? "" : val("f_shoes"),
-        modelHair: isTestimonialOnly ? "" : val("f_model_hair"),
-        modelEyes: isTestimonialOnly ? "" : val("f_model_eyes"),
+        location: val("f_location"),
+        height: val("f_height"),
+        chest: val("f_chest"),
+        chestLabel: chestLabelOf({ chestLabel: val("f_chest_label") }),
+        waist: val("f_waist"),
+        hips: val("f_hips"),
+        shoes: val("f_shoes"),
+        modelHair: val("f_model_hair"),
+        modelEyes: val("f_model_eyes"),
         // Per album, because a model changes agencies between shoots; the
         // unified comp card reads the most recent album that names one.
-        agencyCredit: isTestimonialOnly ? "" : val("f_agency"),
-        agency: isTestimonialOnly ? "" : getTalentCleanName(val("f_agency")),
-        agencyHandle: isTestimonialOnly ? "" : igHandleFromCredit(val("f_agency")),
-        agencySite: isTestimonialOnly ? "" : siteFromCredit(val("f_agency")),
-        agencyLinks: isTestimonialOnly ? [] : socialsFromCredit(val("f_agency")),
-        modelEmail: isTestimonialOnly ? "" : val("f_model_email"),
-        modelTypes: isTestimonialOnly ? [] : modelTypesOf({ modelTypes: readModelTypes() }),
-        showStatsOnCompCard: isTestimonialOnly ? true : ($("#f_show_stats_comp") ? $("#f_show_stats_comp").checked : true),
-        showStatsOnModelPortfolio: isTestimonialOnly ? true : ($("#f_show_stats_port") ? $("#f_show_stats_port").checked : true),
-        showTestShootCategory: isTestimonialOnly ? false : ($("#f_show_test_shoot_cat") ? $("#f_show_test_shoot_cat").checked : false),
-        mentor: isTestimonialOnly ? "" : val("f_mentor"),
-        credits: isTestimonialOnly ? "" : val("f_credits"),
+        agencyCredit: val("f_agency"),
+        agency: getTalentCleanName(val("f_agency")),
+        agencyHandle: igHandleFromCredit(val("f_agency")),
+        agencySite: siteFromCredit(val("f_agency")),
+        agencyLinks: socialsFromCredit(val("f_agency")),
+        modelEmail: val("f_model_email"),
+        modelTypes: modelTypesOf({ modelTypes: readModelTypes() }),
+        showStatsOnCompCard: $("#f_show_stats_comp") ? $("#f_show_stats_comp").checked : true,
+        showStatsOnModelPortfolio: $("#f_show_stats_port") ? $("#f_show_stats_port").checked : true,
+        showTestShootCategory: $("#f_show_test_shoot_cat") ? $("#f_show_test_shoot_cat").checked : false,
+        mentor: val("f_mentor"),
+        credits: val("f_credits"),
         description: val("f_desc"),
-        tags: isTestimonialOnly ? "" : val("f_tags"),
-        gear: isTestimonialOnly ? "" : val("f_gear"),
-        client: isTestimonialOnly ? "" : val("f_client"),
-        forClient: isTestimonialOnly ? "" : ($("#f_for_client")?.value || ""),
-        alsoFor: isTestimonialOnly ? [] : [...document.querySelectorAll("#f_also_for .also-for-cb:checked")].map((cb) => cb.value).filter((k) => k !== $("#f_for_client")?.value),
+        tags: val("f_tags"),
+        gear: val("f_gear"),
+        client: val("f_client"),
+        forClient: $("#f_for_client")?.value || "",
+        alsoFor: [...document.querySelectorAll("#f_also_for .also-for-cb:checked")].map((cb) => cb.value).filter((k) => k !== $("#f_for_client")?.value),
         date: dateVal,
         instagram: val("f_ig"),
         kavyar: val("f_kavyar"),
         link: val("f_link"),
-        pdfUrl: isTestimonialOnly ? "" : pdfDataUrl,
-        rights: isTestimonialOnly ? "" : val("f_rights"),
+        pdfUrl: pdfDataUrl,
+        rights: val("f_rights"),
         testimonials: testimonialsList,
-        lightingDiagram: isTestimonialOnly ? null : diagramDataUrl,
-        lightingDiagramVisibility: isTestimonialOnly ? "disabled" : $("#f_diagram_visibility").value,
+        lightingDiagram: diagramDataUrl,
+        lightingDiagramVisibility: $("#f_diagram_visibility").value,
         palette: pColors,
-        photos: isTestimonialOnly ? [] : staged.map((f, i) => ({
+        photos: staged.map((f, i) => ({
           id: f.id + "-" + i,
           dataUrl: f.dataUrl,
           url: f.url,
@@ -6098,7 +5991,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           ...(typeof f.focalX === "number" ? { focalX: f.focalX, focalY: f.focalY } : {}),
           ...(f.caption && f.caption.trim() ? { caption: f.caption.trim() } : {})
         })),
-        featured: isTestimonialOnly ? false : ($("#f_featured")?.checked ?? false),
+        featured: $("#f_featured")?.checked ?? false,
         // Comp cards keep their original pair of flags; the portfolio page has its own.
         showAsCompCard: $("#f_on_compcards")?.checked ?? false,
         hideFromCompCard: !($("#f_on_compcards")?.checked ?? false),
@@ -6114,7 +6007,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         showGear: $("#f_show_gear")?.checked ?? true,
         showLocation: $("#f_show_location")?.checked ?? true,
         ...repSwitchValues(),
-        coverPhotoId: isTestimonialOnly ? null : (coverItem ? coverItem.id : null),
+        coverPhotoId: (coverItem ? coverItem.id : null),
       };
       pub.disabled = true; pub.textContent = editingShoot ? "Saving changes…" : "Publishing…";
       await putShoot(shoot);
@@ -6302,6 +6195,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               </select>
             </label>
           </div>
+          <p class="field-hint">Pick a shoot and this also appears on that shoot's card, under the photos — which is where the three quote boxes in the upload form used to put it. They have gone; this is the one place now.</p>
           <label class="check-line"><input type="checkbox" id="tmE_verified"${t.verified ? " checked" : ""} /><span>I can show where this came from — a WhatsApp message, an email, a letter, a screenshot. <em>The card shows a small tick. Whatever you have stays in your own inbox and is never put on the website.</em></span></label>
           <label class="check-line"><input type="checkbox" id="tmE_home"${t.onHome !== false ? " checked" : ""} /><span>Show this one on the home page too</span></label>
           <p class="field-error" id="tmE_error" hidden></p>

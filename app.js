@@ -3149,8 +3149,22 @@ window.resolveContractArchive = function(version) {
     }
     const creditsHtml = creditsList.join("  ·  ");
 
-    const testimonials = s.testimonials || (s.testimonial ? [s.testimonial] : []);
-    const testimonialsHtml = testimonials.map(t => `
+    /* What someone said about THIS shoot, shown on its card.
+
+       Two sources, and the order matters only in that neither may be lost.
+       The upload form used to carry three quote boxes per album, and anything
+       typed into them before v479 still lives on the album — that is the
+       second half. The first is the testimonials store: one written on
+       /testimonials and tied to this shoot by the panel's "Which shoot" is the
+       same thing said a better way, and lands in the same place on the page.
+       The boxes are gone from the upload form, so nothing new arrives by the
+       old route, but nothing published by it disappears either. */
+    const ownTestimonials = storedTestimonials()
+      .filter((t) => t.shootId === s.id)
+      .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+      .map((t) => ({ quote: t.quote, by: [t.by, t.role].filter(Boolean).join(", ") }));
+    const legacyTestimonials = s.testimonials || (s.testimonial ? [s.testimonial] : []);
+    const testimonialsHtml = [...ownTestimonials, ...legacyTestimonials].map(t => `
       <blockquote class="work-quote">“${esc(t.quote)}” <cite>— ${esc(t.by)}</cite></blockquote>
     `).join("");
 
@@ -4539,6 +4553,30 @@ window.resolveContractArchive = function(version) {
             </button>`).join("")}
         </div>
         ${credits.length ? `<p class="album-page-credits">${credits.map(([k, v]) => `<span><strong>${esc(k)}</strong> ${esc(v)}</span>`).join("")}</p>` : ""}
+        ${(() => {
+          /* What the people in these pictures said about making them.
+
+             The album's own page showed no testimonial at all until v479 —
+             the three quote boxes the upload form used to carry fed the
+             category and comp-card pages and never this one, which is the
+             page anybody actually lands on for a shoot. Tying a testimonial
+             to a shoot in the studio panel now puts it here, where a visitor
+             reading about that shoot will meet it, as well as on the cards
+             that already showed quotes. */
+          const mine = [
+            ...storedTestimonials().filter((t) => t.shootId === album.id)
+              .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+              .map((t) => ({ quote: t.quote, by: [t.by, t.role].filter(Boolean).join(", "), rating: t.rating })),
+            ...(album.testimonials || [])
+          ];
+          return mine.length ? `
+        <div class="album-page-quotes reveal">
+          ${mine.map((t) => `
+            <blockquote class="work-quote">“${esc(t.quote)}”
+              <cite>— ${esc(t.by || "Anonymous")}</cite>${t.rating ? starRow(t.rating, `Rated ${t.rating} out of 5`) : ""}
+            </blockquote>`).join("")}
+        </div>` : "";
+        })()}
         <div class="album-page-actions">
           <button type="button" class="btn btn-ghost work-share" data-id="${esc(album.id)}">Share this album</button>
           <a href="/albums" data-link class="link-arrow">All albums →</a>
