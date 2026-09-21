@@ -771,6 +771,23 @@ try {
     if (D[key] === undefined || D[key] === null) fail(`data.js no longer publishes ${key} — clients would fall back to built-in defaults that do not match the studio's`);
   }
   if (Array.isArray(D.PACKAGES) && D.PACKAGES.length === 0) fail("PACKAGES is published as an empty list — the booking form would have nothing to quote");
+  // The dates a code works between (v472). app.js ignores a date it cannot
+  // read, which turns a mistyped end date into a code that never ends — the
+  // expensive direction — so a malformed one stops the publish instead.
+  const isDay = (v) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(Date.parse(v + "T00:00:00Z"));
+  const datedCodes = [
+    ...(Array.isArray(D.INVITE_CODES) ? D.INVITE_CODES : []).map((c) => [`invite code ${c && c.code}`, c]),
+    ...Object.entries((D.PROMO_CODES && typeof D.PROMO_CODES === "object") ? D.PROMO_CODES : {}).map(([k, c]) => [`promo code ${k}`, c])
+  ];
+  for (const [name, c] of datedCodes) {
+    if (!c || typeof c !== "object") continue;
+    for (const f of ["startDate", "endDate"]) {
+      if (c[f] !== undefined && c[f] !== null && c[f] !== "" && !isDay(c[f])) fail(`${name}: ${f} is not a YYYY-MM-DD date (${JSON.stringify(c[f])})`);
+    }
+    // The cheap direction — nobody gets a discount they should not — so it is
+    // worth saying but not worth holding the whole site back for.
+    if (isDay(c.startDate) && isDay(c.endDate) && c.endDate < c.startDate) warn(`${name} ends (${c.endDate}) before it starts (${c.startDate}), so it can never work`);
+  }
   // The previous publish, read the same way as check 10 (absent on a first
   // commit or a shallow clone, in which case only the presence checks run).
   let prevData = null;

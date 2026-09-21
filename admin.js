@@ -45,6 +45,101 @@ function markUnsavedChanges() {
 window.markUnsavedChanges = markUnsavedChanges;
 
 
+/* ---- the dates a code works between ---- */
+
+// One block shared by the promo and the invite creator forms, told apart by
+// the id prefix ("newPromo" / "newInvite"). The end is a choice rather than a
+// bare date box because "no end date" is the usual answer and an empty date
+// input does not say so: it reads as a field someone forgot to fill in.
+window.codeDatesFieldsHtml = function(prefix, span) {
+  const box = "padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); font-weight: 700; background: var(--paper); color: var(--ink); font-family: inherit;";
+  const cap = "font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft); display: block; margin-bottom: 4px;";
+  return `
+    <div style="grid-column: span ${span}; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;">
+      <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 6px;">📅 When it works</label>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
+        <div style="flex: 1; min-width: 150px;">
+          <label for="${prefix}StartDate" style="${cap}">Starts</label>
+          <input type="date" id="${prefix}StartDate" style="width: 100%; ${box}" />
+        </div>
+        <div style="flex: 1; min-width: 190px;">
+          <label for="${prefix}Ends" style="${cap}">Ends</label>
+          <select id="${prefix}Ends" onchange="window.syncCodeEndsField('${prefix}')" style="width: 100%; ${box}">
+            <option value="open">Runs until I switch it off</option>
+            <option value="date">Ends on a date</option>
+          </select>
+        </div>
+        <div id="${prefix}EndDateWrap" style="flex: 1; min-width: 150px; display: none;">
+          <label for="${prefix}EndDate" style="${cap}">Last day it works</label>
+          <input type="date" id="${prefix}EndDate" style="width: 100%; ${box}" />
+        </div>
+      </div>
+      <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 6px; line-height: 1.4;">Leave Starts empty and the code works straight away. The dates are checked on the day the client fills in the booking form, not the day of the shoot, and both days are included — a code ending on the 31st works all day on the 31st.</div>
+    </div>`;
+};
+
+window.syncCodeEndsField = function(prefix) {
+  const sel = document.getElementById(prefix + "Ends");
+  const wrap = document.getElementById(prefix + "EndDateWrap");
+  if (sel && wrap) wrap.style.display = sel.value === "date" ? "" : "none";
+};
+
+window.fillCodeDatesFields = function(prefix, entry) {
+  const start = window.cleanCodeDate(entry && entry.startDate);
+  const end = window.cleanCodeDate(entry && entry.endDate);
+  const startEl = document.getElementById(prefix + "StartDate");
+  const endsEl = document.getElementById(prefix + "Ends");
+  const endEl = document.getElementById(prefix + "EndDate");
+  if (startEl) startEl.value = start;
+  if (endsEl) endsEl.value = end ? "date" : "open";
+  if (endEl) endEl.value = end;
+  window.syncCodeEndsField(prefix);
+};
+
+// { startDate, endDate } with "" for "not set", or null when the form was
+// refused (the reason has already been shown).
+window.readCodeDatesFields = function(prefix) {
+  const startDate = window.cleanCodeDate(document.getElementById(prefix + "StartDate")?.value);
+  const endsOnDate = document.getElementById(prefix + "Ends")?.value === "date";
+  const endDate = endsOnDate ? window.cleanCodeDate(document.getElementById(prefix + "EndDate")?.value) : "";
+  if (endsOnDate && !endDate) {
+    alert("Pick the last day this code should work — or change Ends to \"Runs until I switch it off\".");
+    return null;
+  }
+  if (startDate && endDate && endDate < startDate) {
+    alert(`The end date (${window.formatCodeDate(endDate)}) is before the start date (${window.formatCodeDate(startDate)}), so this code would never work.`);
+    return null;
+  }
+  if (endDate && endDate < window.codeTodayKey()
+      && !confirm(`${window.formatCodeDate(endDate)} has already passed, so nobody will be able to use this code. Save it anyway?`)) {
+    return null;
+  }
+  return { startDate, endDate };
+};
+
+// The dates in words, for the line under a code on its card. Empty when the
+// code carries no dates, which is most of them.
+window.codeDatesLine = function(entry) {
+  const start = window.cleanCodeDate(entry && entry.startDate);
+  const end = window.cleanCodeDate(entry && entry.endDate);
+  if (start && end) return `Works ${window.formatCodeDate(start)} – ${window.formatCodeDate(end)}`;
+  if (start) return `Works from ${window.formatCodeDate(start)}, until you switch it off`;
+  if (end) return `Works until ${window.formatCodeDate(end)}`;
+  return "";
+};
+
+// The state badge on a code's card. A live code gets none — the card stays as
+// quiet as it was — so a badge always means "clients cannot use this today".
+window.codeStatusBadgeHtml = function(entry) {
+  const st = window.codeStatus(entry);
+  const pill = (bg, fg, text, title) => `<span style="font-size: var(--font-xs); font-weight: 700; background: ${bg}; color: ${fg}; padding: 2px 6px; border-radius: 4px; white-space: nowrap;" title="${title}">${text}</span>`;
+  if (st === "off") return pill("rgba(120,120,120,0.18)", "var(--ink-soft)", "OFF", "Switched off — clients cannot use this code");
+  if (st === "early") return pill("rgba(217,119,6,0.14)", "#d97706", "NOT STARTED", "Clients cannot use this code until its start date");
+  if (st === "ended") return pill("rgba(120,120,120,0.18)", "var(--ink-soft)", "ENDED", "Past its end date — clients cannot use this code. Edit it to set a new end date.");
+  return "";
+};
+
+
 /* ---- promo CRUD ---- */
 
 window.addNewAdminPromoCode = function() {
@@ -117,6 +212,7 @@ window.openPromoCodeModal = function(codeKey) {
   // switch it back on.
   const activeEl = document.getElementById("newPromoActive");
   if (activeEl) activeEl.checked = entry ? window.promoCodeIsActive(entry) : true;
+  window.fillCodeDatesFields("newPromo", entry);
   if (typeof window.togglePromoHomeStudioValField === "function") window.togglePromoHomeStudioValField();
 
   form.style.display = "block";
@@ -243,11 +339,14 @@ window.saveNewPromoCodeFromForm = function() {
     alert("This code would do nothing — enter a package discount above 0, or set a Home Studio Rental Discount below.");
     return;
   }
+  // Read before anything below touches the draft: a refused date must leave
+  // the list exactly as it was, including the old name of a code being renamed.
+  const dates = window.readCodeDatesFields("newPromo");
+  if (!dates) return;
 
   const codes = window.getAdminPromoCodes();
   const editing = window._editingPromoKey;
   if (!editing && codes[name] && !confirm(`Promo code '${name}' already exists. Overwrite it?`)) return;
-  if (editing && editing !== name) delete codes[editing]; // renamed while editing
 
   const label = desc ||
     (val === 0
@@ -279,9 +378,15 @@ window.saveNewPromoCodeFromForm = function() {
     homeStudioDiscount = { type: hsType, value: hsVal };
   }
   const active = document.getElementById("newPromoActive") ? !!document.getElementById("newPromoActive").checked : true;
+  // Written only when set, so a code with no dates stays the shape it was.
+  const dateFields = { ...(dates.startDate ? { startDate: dates.startDate } : {}), ...(dates.endDate ? { endDate: dates.endDate } : {}) };
+  // Renamed while editing. Done here, after every check above has passed: it
+  // used to run first, so a rename refused for a bad home studio value had
+  // already dropped the old code from the draft.
+  if (editing && editing !== name) delete codes[editing];
   codes[name] = type === "flat"
-    ? { flat: val, label, includeAddons, homeStudioDiscount, active }
-    : { pct: val, label, includeAddons, homeStudioDiscount, active };
+    ? { flat: val, label, includeAddons, homeStudioDiscount, active, ...dateFields }
+    : { pct: val, label, includeAddons, homeStudioDiscount, active, ...dateFields };
   window.adminDraftPromoCodes = { ...codes };
   window._editingPromoKey = null;
 
@@ -343,6 +448,25 @@ window.editAdminInviteCode = function(targetCodeStr) {
   window.openInviteCodeModal(targetCodeStr);
 };
 
+// The same switch a promo code has: off keeps the code and everything set on
+// it, and anyone typing it is told it is not recognised. Stored the way
+// getAdminInviteCodes keeps it — `active: false` when off, nothing when on.
+window.toggleAdminInviteActive = function(codeStr) {
+  const list = window.getAdminInviteCodes();
+  const target = (codeStr || "").trim().toUpperCase();
+  const idx = list.findIndex(x => x.code === target);
+  if (idx === -1) return;
+  const nowOn = list[idx].active === false;
+  const { active, ...rest } = list[idx];
+  list[idx] = nowOn ? rest : { ...rest, active: false };
+  window.adminDraftInviteCodes = [...list];
+  window.persistAdminInviteCodes();
+  // Stored on this device either way; clients only see it once it is pushed.
+  markUnsavedChanges();
+  if (typeof toast === "function") toast(`🔑 '${target}' ${nowOn ? "switched on" : "switched off"}. Click Save to push live.`);
+  if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
+};
+
 window.generateRandomAdminInviteCode = function() {
   const prefixes = ["VIP", "NERDY", "MODEL", "STUDIO", "TALENT", "SHOOT"];
   const randomPrefix = prefixes[Math.floor(Math.random() * prefixes.length)];
@@ -401,6 +525,11 @@ window.openInviteCodeModal = function(codeStr) {
   const hsDiscount = window.getPromoHomeStudioDiscount(existing);
   if (hsTypeEl) hsTypeEl.value = hsDiscount.type;
   if (hsValEl) hsValEl.value = (hsDiscount.type === "flat" || hsDiscount.type === "pct") ? (hsDiscount.value || "") : "";
+  // Without this, reopening a switched-off code to fix a typo would quietly
+  // switch it back on.
+  const activeEl = document.getElementById("newInviteActive");
+  if (activeEl) activeEl.checked = existing ? existing.active !== false : true;
+  window.fillCodeDatesFields("newInvite", existing);
   if (typeof window.toggleInviteHomeStudioValField === "function") window.toggleInviteHomeStudioValField();
   if (typeof window.syncInviteWaiveVisibility === "function") window.syncInviteWaiveVisibility();
 
@@ -458,6 +587,10 @@ window.saveInviteCodeFromForm = function() {
     homeStudioDiscount = { type: hsType, value: hsVal };
   }
 
+  const dates = window.readCodeDatesFields("newInvite");
+  if (!dates) return;
+  const isOn = document.getElementById("newInviteActive") ? !!document.getElementById("newInviteActive").checked : true;
+
   const list = window.getAdminInviteCodes();
   const editing = window._editingInviteCode;
   if (list.some(x => x.code === code && x.code !== editing)) {
@@ -465,21 +598,31 @@ window.saveInviteCodeFromForm = function() {
     return;
   }
 
+  const entry = {
+    code, desc, location, venueCost, homeStudioDiscount,
+    ...(isOn ? {} : { active: false }),
+    ...(dates.startDate ? { startDate: dates.startDate } : {}),
+    ...(dates.endDate ? { endDate: dates.endDate } : {})
+  };
   if (editing) {
     const idx = list.findIndex(x => x.code === editing);
-    if (idx !== -1) list[idx] = { code, desc, location, venueCost, homeStudioDiscount };
-    else list.push({ code, desc, location, venueCost, homeStudioDiscount });
+    if (idx !== -1) list[idx] = entry;
+    else list.push(entry);
   } else {
-    list.push({ code, desc, location, venueCost, homeStudioDiscount });
+    list.push(entry);
   }
   window.adminDraftInviteCodes = [...list];
   window._editingInviteCode = null;
 
   const persisted = window.persistAdminInviteCodes();
-  if (!persisted) markUnsavedChanges();
+  // Kept on this device straight away, but a client's browser reads the
+  // published list — so the badge asks for the push either way. Saying only
+  // "saved" here is how an end date could sit unpublished while the code
+  // carried on working for everyone.
+  markUnsavedChanges();
   if (typeof toast === "function") {
     toast(persisted
-      ? `🔑 Invite code '${code}' ${editing ? "updated" : "saved"}.`
+      ? `🔑 Invite code '${code}' ${editing ? "updated" : "saved"}. Click Save to push live.`
       : `⚠️ '${code}' ${editing ? "updated" : "added"} but could not be stored on this device — click "Save & Push Live".`);
   }
   if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
@@ -3561,6 +3704,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 </div>
                 <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 4px; line-height: 1.4;">Only applies when the booking actually carries a home studio rental (dropdown pick, or a locked invite venue with a cost).</div>
               </div>
+              ${window.codeDatesFieldsHtml("newPromo", 2)}
               <div style="grid-column: span 2;">
                 <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;">
                   <input type="checkbox" id="newPromoActive" checked style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent-text); cursor: pointer;" />
@@ -3588,17 +3732,27 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const inviteItemsHtml = allInviteCodes.map((itemObj, idx) => {
           const codeStr = typeof itemObj === 'object' ? itemObj.code : itemObj;
           const descStr = typeof itemObj === 'object' ? (itemObj.desc || 'Admin VIP Code') : 'Admin VIP Code';
+          // Off and ended are dimmed; a code waiting for its start date is not
+          // — it is set up and healthy, it just has not begun.
+          const inviteState = window.codeStatus(itemObj);
+          const inviteIsOn = !(itemObj && typeof itemObj === 'object' && itemObj.active === false);
+          const inviteDates = window.codeDatesLine(itemObj);
           return `
-            <div style="background: var(--paper); border: 1px solid var(--accent); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; justify-content: space-between; gap: 10px; box-shadow: var(--shadow-sm); overflow: hidden;">
+            <div style="background: var(--paper); border: 1px solid var(--accent); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; justify-content: space-between; gap: 10px;${inviteState === "off" || inviteState === "ended" ? " opacity: 0.55;" : ""} box-shadow: var(--shadow-sm); overflow: hidden;">
               <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap;">
-                <div style="min-width: 0; flex: 1;">
-                  <span style="font-size: var(--font-xs); font-weight: 800; color: var(--accent-text); text-transform: uppercase; font-family: var(--mono-font); display: block;">${idx === 0 ? '⭐ Primary Code' : '🔑 VIP Invite'}</span>
+                <!-- A real basis, not flex: 1 alone: with four buttons beside it
+                     the text column used to shrink until the code broke across
+                     four lines. Now the buttons drop underneath instead. -->
+                <div style="min-width: 0; flex: 1 1 190px;">
+                  <span style="font-size: var(--font-xs); font-weight: 800; color: var(--accent-text); text-transform: uppercase; font-family: var(--mono-font); display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"><span>${codeStr === activeInviteCode ? '⭐ Primary Code' : '🔑 VIP Invite'}</span>${window.codeStatusBadgeHtml(itemObj)}</span>
                   <strong style="font-size: var(--font-md); font-family: var(--mono-font); color: var(--ink); letter-spacing: 0.04em; display: block; margin-top: 2px; word-break: break-all;">${esc(codeStr)}</strong>
                   <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 4px; line-height: 1.3;">📝 ${esc(descStr)}</div>
                   ${itemObj && typeof itemObj === 'object' && itemObj.location ? `<div style="font-size: var(--font-xs); color: #059669; font-weight: 700; margin-top: 4px;">🏠 Location Locked: ${esc(itemObj.location)}</div>` : ''}
+                  ${inviteDates ? `<div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 4px;">📅 ${esc(inviteDates)}</div>` : ''}
                 </div>
                 <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap; flex-shrink: 0; margin-top: 2px;">
                   <button type="button" onclick="navigator.clipboard.writeText('${escJs(codeStr)}'); if(typeof toast==='function') toast('📋 Invite Code ${escJs(codeStr)} copied!'); else alert('Copied!');" style="background: var(--accent); color: #ffffff; border: none; padding: 5px 9px; border-radius: 4px; font-size: var(--font-xs); cursor: pointer; font-weight: 700; font-family: var(--mono-font);" title="Copy Invite Code">📋 Copy</button>
+                  <button type="button" onclick="window.toggleAdminInviteActive('${escJs(codeStr)}')" style="background: var(--bone); color: var(--ink); border: 1px solid var(--line); padding: 5px 8px; border-radius: 4px; font-size: var(--font-xs); cursor: pointer; font-weight: 700;" title="${inviteIsOn ? "Switch this code off" : "Switch this code back on"}">${inviteIsOn ? "⏸️" : "▶️"}</button>
                   <button type="button" onclick="window.editAdminInviteCode('${escJs(codeStr)}')" style="background: var(--bone); color: var(--ink); border: 1px solid var(--line); padding: 5px 8px; border-radius: 4px; font-size: var(--font-xs); cursor: pointer; font-weight: 700;" title="Edit Code">✏️ Edit</button>
                   <button type="button" onclick="window.deleteAdminInviteCode('${escJs(codeStr)}')" style="background: rgba(255,77,77,0.1); color: #ff4d4d; border: 1px solid rgba(255,77,77,0.3); padding: 5px 8px; border-radius: 4px; font-size: var(--font-xs); cursor: pointer; font-weight: 700;" title="Delete Code">🗑️</button>
                 </div>
@@ -3668,6 +3822,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   </div>
                   <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 4px; line-height: 1.4;">Only applies when the booking actually carries a home studio rental (standard rate, or this code's own locked venue cost above).</div>
                 </div>
+                ${window.codeDatesFieldsHtml("newInvite", 3)}
+                <div style="grid-column: span 3;">
+                  <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;">
+                    <input type="checkbox" id="newInviteActive" checked style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent-text); cursor: pointer;" />
+                    <span style="font-size: var(--font-xs); color: var(--ink); font-family: 'Archivo', sans-serif; line-height: 1.4;">
+                      <strong>Active</strong> — invited talent can use this code.<br/>
+                      <span style="color: var(--ink-soft);">Untick to switch it off without deleting it. The code keeps everything set here, and anyone typing it is told it is not recognised. Tick it again whenever you want it back.</span>
+                    </span>
+                  </label>
+                </div>
                 <div>
                   <button type="button" class="admin-cal-btn primary" onclick="window.saveInviteCodeFromForm()" style="width: 100%; font-weight: 700; padding: 8px 12px;">💾 Save Invite Code</button>
                 </div>
@@ -3696,9 +3860,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               : hsDiscount.type === "pct"
                 ? `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(5,150,105,0.12); color: #059669; padding: 2px 6px; border-radius: 4px;" title="Home studio rental discount">🏠 ${hsDiscount.value}% OFF</span>`
                 : "";
+          // Off and ended are dimmed; a code waiting for its start date is not.
+          const promoState = window.codeStatus(item);
+          const promoDates = window.codeDatesLine(item);
           return `
-            <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px;${window.promoCodeIsActive(item) ? "" : " opacity: 0.55;"} box-shadow: var(--shadow-sm); overflow: hidden; flex-wrap: wrap;">
-              <div style="min-width: 0; flex: 1;">
+            <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px;${promoState === "off" || promoState === "ended" ? " opacity: 0.55;" : ""} box-shadow: var(--shadow-sm); overflow: hidden; flex-wrap: wrap;">
+              <div style="min-width: 0; flex: 1 1 190px;">
                 <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                   <strong style="color: #059669; font-size: var(--font-sm); font-family: var(--mono-font); letter-spacing: 0.04em;">${esc(codeKey)}</strong>
                   <span style="font-size: var(--font-xs); font-weight: 700; background: rgba(5,150,105,0.12); color: #059669; padding: 2px 6px; border-radius: 4px;">${esc(tagDesc)}</span>
@@ -3708,9 +3875,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                       ? `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(217,119,6,0.14); color: #d97706; padding: 2px 6px; border-radius: 4px;" title="This discount also comes off the home studio rental">+ ADD-ONS</span>`
                       : `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(120,120,120,0.14); color: var(--ink-soft); padding: 2px 6px; border-radius: 4px;" title="Discount applies to the package rate only">PACKAGE ONLY</span>`}
                   ${hsBadge}
-                  ${window.promoCodeIsActive(item) ? "" : `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(120,120,120,0.18); color: var(--ink-soft); padding: 2px 6px; border-radius: 4px;" title="Switched off — clients cannot use this code">OFF</span>`}
+                  ${window.codeStatusBadgeHtml(item)}
                 </div>
                 <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">${esc(item.label)}</div>
+                ${promoDates ? `<div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">📅 ${esc(promoDates)}</div>` : ""}
               </div>
               <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap; flex-shrink: 0;">
                 <button type="button" onclick="navigator.clipboard.writeText('${escJs(codeKey)}'); if(typeof toast==='function') toast('📋 Promo Code ${escJs(codeKey)} copied!'); else alert('Copied!');" style="background: #059669; color: #ffffff; border: none; padding: 5px 10px; border-radius: 4px; font-size: var(--font-xs); cursor: pointer; font-weight: 700; font-family: var(--mono-font);" title="Copy Code">📋 Copy</button>

@@ -91,6 +91,63 @@ window.promoCodeIsActive = function(entry) {
   return !!entry && entry.active !== false;
 };
 
+// A code can also carry the dates it works between: startDate and endDate, both
+// optional, both "YYYY-MM-DD", both inclusive — a code ending on the 31st still
+// works all day on the 31st. No startDate means it works straight away, and no
+// endDate means it runs until the studio switches it off, which is what every
+// code saved before this existed already does. Shared by promo and invite codes.
+//
+// The dates are the studio's, so "today" is read off the studio's calendar
+// (India) rather than the visitor's: someone booking from abroad gets the same
+// answer as someone in Noida, and the last day ends when it ends here.
+window.cleanCodeDate = function(v) {
+  const s = typeof v === "string" ? v.trim() : "";
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : "";
+};
+
+window.codeTodayKey = function(now) {
+  const d = now || new Date();
+  try {
+    const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(d);
+    const get = (t) => (parts.find((p) => p.type === t) || {}).value;
+    if (get("year") && get("month") && get("day")) return `${get("year")}-${get("month")}-${get("day")}`;
+  } catch (e) {}
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+window.formatCodeDate = function(key) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key || "");
+  if (!m) return "";
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${Number(m[3])} ${months[Number(m[2]) - 1] || ""} ${m[1]}`;
+};
+
+// Where a code stands today: "off" (switched off, or not a code at all),
+// "early" (its start date has not come), "ended" (its end date has passed) or
+// "live". Only a live code does anything on the booking form.
+window.codeStatus = function(entry, todayKey) {
+  if (!entry) return "off";
+  if (typeof entry !== "object") return "live";
+  if (entry.active === false) return "off";
+  const today = todayKey || window.codeTodayKey();
+  const start = window.cleanCodeDate(entry.startDate);
+  const end = window.cleanCodeDate(entry.endDate);
+  if (start && today < start) return "early";
+  if (end && today > end) return "ended";
+  return "live";
+};
+
+// What to tell a client whose code is real but outside its dates. A code that
+// is switched off says nothing here on purpose — it behaves as if it had never
+// been created — but "not recognised" for a code that simply starts next week
+// would send them back to the studio asking whether they were given a typo.
+window.codeDatesReason = function(entry) {
+  const st = window.codeStatus(entry);
+  if (st === "early") return `starts working on ${window.formatCodeDate(entry.startDate)}`;
+  if (st === "ended") return `ended on ${window.formatCodeDate(entry.endDate)}`;
+  return "";
+};
+
 window.getPromoHomeStudioDiscount = function(entry) {
   if (!entry) return { type: "none" };
   if (entry.homeStudioDiscount && entry.homeStudioDiscount.type && entry.homeStudioDiscount.type !== "none") {
@@ -160,10 +217,22 @@ window.getAdminInviteCodes = function() {
       const hsDiscount = (typeof item === 'object' && item.homeStudioDiscount && item.homeStudioDiscount.type && item.homeStudioDiscount.type !== "none")
         ? item.homeStudioDiscount
         : null;
+      // The on/off switch and the dates it works between, in the same shape a
+      // promo code uses (see codeStatus). Written only when they say something,
+      // so a code with neither stays byte-for-byte what it was.
+      const isOff = typeof item === 'object' && item.active === false;
+      const startDate = typeof item === 'object' ? window.cleanCodeDate(item.startDate) : "";
+      const endDate = typeof item === 'object' ? window.cleanCodeDate(item.endDate) : "";
       if (codeStr && typeof codeStr === 'string' && !seen.has(codeStr.trim().toUpperCase())) {
         const cleanStr = codeStr.trim().toUpperCase();
         seen.add(cleanStr);
-        result.push({ code: cleanStr, desc: descStr, location: locationStr, venueCost: venueCostVal, ...(hsDiscount ? { homeStudioDiscount: hsDiscount } : {}) });
+        result.push({
+          code: cleanStr, desc: descStr, location: locationStr, venueCost: venueCostVal,
+          ...(hsDiscount ? { homeStudioDiscount: hsDiscount } : {}),
+          ...(isOff ? { active: false } : {}),
+          ...(startDate ? { startDate } : {}),
+          ...(endDate ? { endDate } : {})
+        });
       }
     });
     return result;
@@ -213,9 +282,13 @@ window.getAdminInviteCodes = function() {
   return window.adminDraftInviteCodes;
 };
 
+// The code a share link carries: the first one that works today. A link built
+// from a code that is switched off or past its end date would open the form
+// and unlock nothing. Falls back to the head of the list when none is live.
 window.getAdminInviteCode = function() {
   const list = window.getAdminInviteCodes();
-  return (list[0] && list[0].code) || "NERDYBRAND";
+  const live = list.find((c) => window.codeStatus(c) === "live");
+  return ((live || list[0] || {}).code) || "NERDYBRAND";
 };
 
 /* ============================================================
@@ -6238,8 +6311,11 @@ window.resolveContractArchive = function(version) {
       const allAdminCodes = (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : [{ code: "NERDYBRAND" }]);
       const enteredCode = (inviteCodeInput?.value || "").trim().toUpperCase();
 
-      // Verify against ALL active admin invite codes. Only codes on the admin-managed list are valid.
-      const matchedInvite = enteredCode ? allAdminCodes.find(c => (typeof c === 'object' ? c.code : c).toUpperCase() === enteredCode) : null;
+      // Verify against ALL active admin invite codes. Only codes on the admin-managed list are valid,
+      // and only while they are live: a code switched off, not yet started or past its end date
+      // unlocks nothing, exactly as if it were not on the list.
+      const matchedInviteRaw = enteredCode ? allAdminCodes.find(c => (typeof c === 'object' ? c.code : c).toUpperCase() === enteredCode) : null;
+      const matchedInvite = window.codeStatus(matchedInviteRaw) === "live" ? matchedInviteRaw : null;
       const isValidInvite = !!matchedInvite;
       // Extract location locked by photographer when creating this invite code (empty = client fills it)
       const lockedLocation = (isValidInvite && matchedInvite && typeof matchedInvite === 'object' ? (matchedInvite.location || "") : "").trim();
@@ -6254,9 +6330,11 @@ window.resolveContractArchive = function(version) {
       const enteredDiscount = (discountInput?.value || "").trim().toUpperCase();
       // A switched-off code behaves exactly like one that was never created,
       // so nothing downstream — the badge, the quote, the contract, the email
-      // — has to know the switch exists.
+      // — has to know the switch exists. The same goes for a code outside the
+      // dates it works between: codeStatus folds the switch and the dates
+      // into one answer.
       const matchedDiscountRaw = discountCodesMap[enteredDiscount];
-      const matchedDiscount = window.promoCodeIsActive(matchedDiscountRaw) ? matchedDiscountRaw : undefined;
+      const matchedDiscount = window.codeStatus(matchedDiscountRaw) === "live" ? matchedDiscountRaw : undefined;
 
       const btnDiscount = $("#btnApplyDiscountCode");
       if (discountStatus && savingsBadge) {
@@ -7233,25 +7311,35 @@ window.resolveContractArchive = function(version) {
       const inviteEl = $("#b_invite_code"), promoEl = $("#b_discount_code");
       if (!input || !btn || !chips || !inviteEl || !promoEl) return;
       const fire = (el) => { el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); };
-      const inviteCodes = () => (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : []).map(c => String(typeof c === "object" ? c.code : c).toUpperCase());
-      const isPromo = (code) => {
+      // The entry behind a typed code, whatever state it is in — whether it is
+      // live is asked separately, so a code that is real but outside its dates
+      // can be told apart from one that does not exist.
+      const findInvite = (code) => (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : []).find(c => String(typeof c === "object" ? c.code : c).toUpperCase() === code) || null;
+      const findPromo = (code) => {
         const map = typeof window.getAdminPromoCodes === "function" ? window.getAdminPromoCodes() : {};
-        return Object.keys(map).some((k) => k.toUpperCase() === code && window.promoCodeIsActive(map[k]));
+        const key = Object.keys(map).find((k) => k.toUpperCase() === code);
+        return key ? map[key] : null;
       };
+      const isLive = (entry) => window.codeStatus(entry) === "live";
+      const sentence = (s) => s.charAt(0).toUpperCase() + s.slice(1);
       let lastError = "";
       const paint = () => {
         const out = [];
         const inv = (inviteEl.value || "").trim().toUpperCase();
         if (inv) {
           const ok = ($("#inviteCodeStatus")?.textContent || "").includes("VERIFIED");
-          out.push(`<span class="code-chip ${ok ? "is-ok" : "is-bad"}"><b>${esc(inv)}</b><span>${ok ? "Invite verified · test shoot unlocked" : "Invite code not recognised"}</span><button type="button" data-clear="invite" aria-label="Remove invite code">×</button></span>`);
+          // A code that arrived by link skips apply(), so the dates are
+          // explained here too rather than only when it is typed.
+          const why = ok ? "" : window.codeDatesReason(findInvite(inv));
+          out.push(`<span class="code-chip ${ok ? "is-ok" : "is-bad"}"><b>${esc(inv)}</b><span>${ok ? "Invite verified · test shoot unlocked" : (why ? esc(sentence(why)) : "Invite code not recognised")}</span><button type="button" data-clear="invite" aria-label="Remove invite code">×</button></span>`);
         }
         const pr = (promoEl.value || "").trim().toUpperCase();
         if (pr) {
           const st = $("#discountCodeStatus")?.textContent || "";
           const ok = st.includes("APPLIED");
           const savings = ($("#discountSavingsBadge")?.textContent || "").replace(/^[^:]*:\s*/, "").replace(/[\u{1F300}-\u{1FAFF}]/gu, "").trim();
-          out.push(`<span class="code-chip ${ok ? "is-ok" : "is-bad"}"><b>${esc(pr)}</b><span>${ok ? ("Promo applied" + (savings ? " · " + esc(savings) : "")) : "Promo code not valid for this booking"}</span><button type="button" data-clear="promo" aria-label="Remove promo code">×</button></span>`);
+          const why = ok ? "" : window.codeDatesReason(findPromo(pr));
+          out.push(`<span class="code-chip ${ok ? "is-ok" : "is-bad"}"><b>${esc(pr)}</b><span>${ok ? ("Promo applied" + (savings ? " · " + esc(savings) : "")) : (why ? esc(sentence(why)) : "Promo code not valid for this booking")}</span><button type="button" data-clear="promo" aria-label="Remove promo code">×</button></span>`);
         }
         if (lastError) out.push(`<span class="code-chip is-bad"><span>${esc(lastError)}</span></span>`);
         chips.innerHTML = out.join("");
@@ -7261,9 +7349,13 @@ window.resolveContractArchive = function(version) {
         const code = (input.value || "").trim().toUpperCase();
         lastError = "";
         if (!code) { paint(); return; }
-        if (inviteCodes().includes(code)) { inviteEl.value = code; fire(inviteEl); input.value = ""; }
-        else if (isPromo(code)) { promoEl.value = code; fire(promoEl); input.value = ""; }
-        else lastError = `"${code}" is not an invite or promo code we recognise.`;
+        const invite = findInvite(code), promo = findPromo(code);
+        if (isLive(invite)) { inviteEl.value = code; fire(inviteEl); input.value = ""; }
+        else if (isLive(promo)) { promoEl.value = code; fire(promoEl); input.value = ""; }
+        else {
+          const why = window.codeDatesReason(invite) || window.codeDatesReason(promo);
+          lastError = why ? `"${code}" ${why}.` : `"${code}" is not an invite or promo code we recognise.`;
+        }
         setTimeout(paint, 0);
       };
       btn.addEventListener("click", apply);
