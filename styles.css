@@ -3320,3 +3320,14 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
 .pp-saved-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
 .pp-saved-name { flex: 1 1 140px; min-width: 0; font: 600 13px "Inter", system-ui, sans-serif; color: var(--ink); overflow-wrap: anywhere; }
 .pp-saved-when { font: 500 11.5px var(--mono-font); color: var(--ink-soft); white-space: nowrap; }
+
+/* Booking for someone else: who is actually being photographed. Shown only
+   when the booker is not the talent, so it reads as an addition to their own
+   details rather than a second form. */
+.subject-block { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--line-2); border-radius: var(--r-md, 10px); background: var(--bone); }
+.subject-lede { margin: 0 0 12px; font-size: 13.5px; line-height: 1.55; color: var(--ink-soft); }
+.subject-lede strong { color: var(--ink); }
+.guardian-block { margin: 12px 0 4px; padding: 12px 14px; border-left: 3px solid var(--accent-text); background: var(--paper); border-radius: var(--r-sm, 6px); }
+.check-line { display: flex; align-items: flex-start; gap: 9px; margin-top: 10px; cursor: pointer; font-size: 13.5px; line-height: 1.5; color: var(--ink); }
+.check-line input { width: 17px; height: 17px; margin-top: 1px; flex: none; accent-color: var(--accent-text); cursor: pointer; }
+@media (max-width: 620px) { .subject-block { padding: 12px 13px; } }

@@ -645,7 +645,7 @@ window.getAdminTfpPackage = getAdminTfpPackage;
    opening the Calendar view. Defined inside a view function, the archive
    simply did not exist on those paths.
    ============================================================ */
-window.ACTIVE_CONTRACTS = { commercial: "V3.8-COMMERCIAL", tfp: "V3.8-TFP" };
+window.ACTIVE_CONTRACTS = { commercial: "V3.9-COMMERCIAL", tfp: "V3.9-TFP" };
 
 /* ============================================================
    § CALL TIME, GRACE PERIOD & NO-SHOW
@@ -4954,6 +4954,35 @@ window.resolveContractArchive = function(version) {
                  <label class="field"><span>Phone Number</span><input id="b_phone" type="tel" placeholder="+91 99999-99999" /></label>
                </div>
                <label class="field"><span id="b_instagram_label">Instagram / Website</span><input id="b_instagram" type="text" placeholder="e.g. @handle or website.com" /></label>
+
+               <!-- Booking for someone else. An agency, a brand or a manager
+                    could always book, but the form only ever asked for ONE
+                    name, so the contract's Participant clauses — the physical
+                    risk on the premises, the image release, the indemnity —
+                    attached to whoever signed rather than to the person in
+                    front of the camera. The model had agreed to nothing,
+                    including to their pictures being used.
+
+                    Shown only when the booker is not the talent. The person
+                    photographed is named on the contract and sent their own
+                    release; an under-18's release goes to a parent or
+                    guardian, never to the child. -->
+               <div id="b_subject_block" class="subject-block" hidden>
+                 <p class="subject-lede"><strong>Who is being photographed?</strong> You are booking for someone else, so we need their details as well as yours. They are named on the contract and sent their own release — their pictures, their say.</p>
+                 <div class="field-row">
+                   <label class="field"><span>Their full name *</span><input id="b_subject_name" type="text" placeholder="The person in front of the camera" /></label>
+                   <label class="field"><span>Their email *</span><input id="b_subject_email" type="email" placeholder="name@example.com" /><span class="field-hint">Their release is sent here. It does not replace yours.</span></label>
+                 </div>
+                 <label class="check-line"><input type="checkbox" id="b_subject_minor" /><span>They are under 18</span></label>
+                 <div id="b_guardian_block" class="guardian-block" hidden>
+                   <p class="subject-lede">Someone under 18 cannot give this permission themselves, so the release goes to their parent or guardian instead.</p>
+                   <div class="field-row">
+                     <label class="field"><span>Parent or guardian's name *</span><input id="b_guardian_name" type="text" placeholder="Who is responsible for them" /></label>
+                     <label class="field"><span>Their email *</span><input id="b_guardian_email" type="email" placeholder="name@example.com" /></label>
+                   </div>
+                 </div>
+                 <label class="check-line"><input type="checkbox" id="b_authorised" /><span>I am authorised to book on their behalf. *</span></label>
+               </div>
              </fieldset>
  
              <fieldset id="bookShootFs">
@@ -6217,6 +6246,28 @@ window.resolveContractArchive = function(version) {
         typeNotice.style.display = (type === "Selective Collaboration (TFP)" ? "block" : "none");
       }
 
+      /* Booking for someone else. A model booking themselves is asked none of
+         this; anyone else has to name the person in front of the camera, so
+         the contract binds them rather than the payer.
+
+         `required` is set here rather than in the markup: a hidden required
+         field blocks submission with a browser message pointing at something
+         the person cannot see, which is a dead end with no explanation. */
+      const subjectBlock = $("#b_subject_block");
+      if (subjectBlock) {
+        const onBehalf = role && role !== "Model";
+        subjectBlock.hidden = !onBehalf;
+        const minor = !!$("#b_subject_minor")?.checked;
+        const guardianBlock = $("#b_guardian_block");
+        if (guardianBlock) guardianBlock.hidden = !(onBehalf && minor);
+        const need = (id, on) => { const el = $("#" + id); if (el) el.required = !!on; };
+        need("b_subject_name", onBehalf);
+        need("b_subject_email", onBehalf);
+        need("b_authorised", onBehalf);
+        need("b_guardian_name", onBehalf && minor);
+        need("b_guardian_email", onBehalf && minor);
+      }
+
       if (policyNotice) {
         if (type === "Selective Collaboration (TFP)") {
           policyNotice.innerHTML = `
@@ -7237,6 +7288,7 @@ window.resolveContractArchive = function(version) {
     ["change", "input", "blur", "click"].forEach(evtName => {
       $("#b_type")?.addEventListener(evtName, updateFields);
       $("#b_role")?.addEventListener(evtName, updateFields);
+      $("#b_subject_minor")?.addEventListener("change", updateFields);
       $("#b_budget")?.addEventListener(evtName, updateFields);
       $("#b_invite_code")?.addEventListener(evtName, updateFields);
       $("#b_discount_code")?.addEventListener(evtName, updateFields);
@@ -7687,6 +7739,58 @@ window.resolveContractArchive = function(version) {
       }
     }
 
+    /* The release for a person who did not do the booking.
+
+       An agency or brand books, signs, and pays — but the pictures are of
+       somebody else, and that somebody has to agree to their own image being
+       used. This goes to them in their own name, separately from the
+       contract, and is asked for as a reply rather than a second signing
+       screen: there is no server here, so a reply sitting in the studio's
+       Gmail is the record, exactly as the signed contracts are
+       (see the contract-records note). _replyto is the studio, so their
+       "I agree" lands where the studio will see it.
+
+       For anyone under 18 this is addressed to a parent or guardian and the
+       child's own address is never used. */
+    async function sendSubjectReleaseEmail(payload) {
+      const fd = new FormData();
+      const who = payload.signedBy || payload.subjectName || "the person photographed";
+      fd.append("_subject", `Your photo release — ${payload.subjectName || "shoot"} (${payload.contractNumber || "booking"})`);
+      fd.append("_template", "box");
+      fd.append("_replyto", payload.studioEmail);
+      if (payload.to) fd.append("_cc", payload.to);
+      fd.append("Record Type", payload.isMinor
+        ? "PHOTO RELEASE — sent to the parent or guardian, awaiting their reply"
+        : "PHOTO RELEASE — sent to the person photographed, awaiting their reply");
+      fd.append("Being photographed", payload.subjectName || "—");
+      if (payload.isMinor) fd.append("Parent or guardian", payload.signedBy || "—");
+      fd.append("Booked by", `${payload.bookerName || "—"} (${payload.bookerRole || "—"}, ${payload.bookerEmail || "—"})`);
+      fd.append("Shoot", `${payload.shootType || "—"} on ${payload.date || "—"}${payload.location ? `, ${payload.location}` : ""}`);
+      fd.append("Contract Number", payload.contractNumber || "—");
+      fd.append("What you are agreeing to", [
+        `${who}, this shoot was booked for ${payload.subjectName || "you"} by ${payload.bookerName || "someone else"}.`,
+        payload.isMinor
+          ? "Because they are under 18, this permission is yours to give, not theirs."
+          : "They have signed the booking contract. This part is yours, because it is about your pictures.",
+        "",
+        "By replying I AGREE to this email you confirm:",
+        `1. You are happy for ${payload.subjectName || "the person photographed"} to be photographed at this shoot.`,
+        "2. nerdyphotographer.in may use the photographs in its portfolio, on its website and on its social media, with credit.",
+        "3. The photographs are not sold on to anyone else, and are not used in paid advertising without asking you first.",
+        "4. You may withdraw this at any time by replying to this email, and the pictures come down from the studio's own pages.",
+        "",
+        "If any of that is not right, reply and say so instead — nothing is published until this is settled.",
+        "",
+        "Not expecting this email? Reply and tell the studio, because it means someone booked a shoot in this person's name."
+      ].join("\n"));
+      const res = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(payload.studioEmail)}`, { method: "POST", body: fd });
+      // FormSubmit answers 200 with success:false on a refusal, so the body is
+      // what decides — the same lesson as the booking relay.
+      const body = await res.json().catch(() => null);
+      return !!body && (body.success === true || body.success === "true");
+    }
+
+
     // The terms sheet exactly as the client saw it, captured by openTermsModal
     // at the moment they agree, while the sheet is still on screen so
     // innerText keeps the rendered line breaks. The emailed contract is
@@ -7725,6 +7829,23 @@ window.resolveContractArchive = function(version) {
 
       const name = val("b_name"), role = val("b_role"), email = val("b_email");
       const phone = val("b_phone"), instagram = val("b_instagram"), type = val("b_type");
+      /* Booking on someone else's behalf. `subjectName` is the person in front
+         of the camera; `name` above is whoever is arranging and paying. Where
+         they are the same person these are all empty and nothing downstream
+         changes. A release for someone under 18 goes to their guardian — the
+         child's own address is never used for it. */
+      const onBehalf = !!role && role !== "Model";
+      const subjectName = onBehalf ? val("b_subject_name") : "";
+      const subjectEmail = onBehalf ? val("b_subject_email") : "";
+      const subjectIsMinor = onBehalf && !!$("#b_subject_minor")?.checked;
+      const guardianName = subjectIsMinor ? val("b_guardian_name") : "";
+      const guardianEmail = subjectIsMinor ? val("b_guardian_email") : "";
+      // Who the release is sent to, and in whose name it is signed.
+      const releaseTo = subjectIsMinor ? guardianEmail : subjectEmail;
+      const releaseSignedBy = subjectIsMinor ? guardianName : subjectName;
+      const bookerAuthorised = !!$("#b_authorised")?.checked;
+      // The person the contract's Participant clauses describe.
+      const participantName = subjectName || name;
       const date = val("b_date"), locationVal = val("b_location"), budget = (type === "Selective Collaboration (TFP)" ? "Collab / TFP (No Budget)" : val("b_budget"));
       const moodboard = getFormLinks().join(", "), concept = val("b_concept");
       // Flag an already-booked date for the studio's attention rather than
@@ -8100,6 +8221,16 @@ window.resolveContractArchive = function(version) {
           `${isProduction ? "Campaign / Production Brief" : "Shoot Booking Details"}:\n\n` +
           `Name: ${name}\n` +
           `Role: ${role}\n` +
+          (subjectName
+            ? `\n— BOOKING FOR SOMEONE ELSE —\n` +
+              `Being photographed: ${subjectName}\n` +
+              `Their email: ${subjectEmail || '—'}\n` +
+              (subjectIsMinor
+                ? `Under 18: YES — release goes to ${guardianName || 'their guardian'} (${guardianEmail || '—'}), not to them\n`
+                : `Under 18: no\n`) +
+              `Booker confirmed they may book for them: ${bookerAuthorised ? "yes" : "NO — check before shooting"}\n` +
+              `Release sent to: ${releaseTo || '—'} (separate from the contract; it comes back on its own)\n\n`
+            : "") +
           `Email: ${email}\n` +
           `Phone: ${phone || '—'}\n` +
           `Instagram / Website: ${instagram || '—'}\n` +
@@ -8147,6 +8278,16 @@ window.resolveContractArchive = function(version) {
           `${isProduction ? "Campaign / Production Brief" : "Shoot Booking Details"}:\n\n` +
           `Name: ${name}\n` +
           `Role: ${role}\n` +
+          (subjectName
+            ? `\n— BOOKING FOR SOMEONE ELSE —\n` +
+              `Being photographed: ${subjectName}\n` +
+              `Their email: ${subjectEmail || '—'}\n` +
+              (subjectIsMinor
+                ? `Under 18: YES — release goes to ${guardianName || 'their guardian'} (${guardianEmail || '—'}), not to them\n`
+                : `Under 18: no\n`) +
+              `Booker confirmed they may book for them: ${bookerAuthorised ? "yes" : "NO — check before shooting"}\n` +
+              `Release sent to: ${releaseTo || '—'} (separate from the contract; it comes back on its own)\n\n`
+            : "") +
           `Email: ${email}\n` +
           `Phone: ${phone || '—'}\n` +
           `Instagram / Website: ${instagram || '—'}\n` +
@@ -8438,6 +8579,32 @@ window.resolveContractArchive = function(version) {
         // but it is queued to run AFTER the relay settles rather than beside
         // it: FormSubmit rate-limits per IP, so firing both (plus the
         // attachment retry) at once made them knock each other out.
+        let releaseSent = false;
+        const sendSubjectRelease = async () => {
+          if (releaseSent || !subjectName || !releaseTo) return;
+          releaseSent = true;
+          try {
+            await sendSubjectReleaseEmail({
+              studioEmail,
+              to: releaseTo,
+              subjectName,
+              signedBy: releaseSignedBy,
+              isMinor: subjectIsMinor,
+              bookerName: name,
+              bookerEmail: email,
+              bookerRole: role,
+              shootType: type,
+              date,
+              location: locationVal,
+              contractNumber
+            });
+          } catch (e) {
+            // The booking itself is already through; a failed release is for
+            // the studio to chase, not a reason to tell the client it broke.
+            console.warn("release email failed:", e);
+          }
+        };
+
         let contractRecordSent = false;
         const sendContractRecord = () => {
           if (!agreedToTerms) return;
@@ -8487,6 +8654,7 @@ window.resolveContractArchive = function(version) {
         const finishWithFallback = () => {
           showSuccess(openGmailCompose() ? "gmail" : "manual");
           sendContractRecord();
+          sendSubjectRelease();
         };
 
         // The panel opens on "Sending…", not on "Request sent": the booking is
@@ -8527,6 +8695,8 @@ window.resolveContractArchive = function(version) {
             // Sep 2026 audit.
             showSuccess("sent");
             sendContractRecord();
+            sendSubjectRelease();
+          sendSubjectRelease();
             return;
           }
           console.warn("Booking relay rejected:", (body && body.message) || res.statusText);

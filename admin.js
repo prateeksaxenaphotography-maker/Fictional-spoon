@@ -1507,6 +1507,49 @@ window.WPS_CONTRACT_ARCHIVE["V3.8-TFP"] = {
   fullText: window.WPS_CONTRACT_ARCHIVE["V3.7-TFP"].fullText +
     "\n\nHOME STUDIO ATTENDANCE\nWhere the session takes place at the photographer's home studio in " + HOME_STUDIO_AREA + ", attendance is capped at 3 people in total, and that 3 counts the photographer as well as the Participant and every crew member or guest the Participant brings."
 };
+/* V3.9: someone can book for someone else, and the release follows the face.
+
+   An agency, brand or manager could always book — the role dropdown has said
+   so for a long time — but the form asked for one name, so every Participant
+   clause (the physical risk on the premises, the image release, the
+   indemnity) attached to whoever signed. Where a brand booked a model, the
+   brand had accepted a physical risk that was not theirs to accept, and the
+   model had agreed to nothing at all, including to their own pictures being
+   published.
+
+   V3.9 separates the two: the Client is whoever arranges and pays, the
+   Participant is the person photographed, and the Client warrants they may
+   book for them. The image release is not taken from the Client at all — it
+   is asked of the Participant in their own name, or of a parent or guardian
+   where the Participant is under 18.
+
+   A new version rather than an edit, for the same reason as V3.8: this
+   changes what a signature means, and a signed contract has to keep saying
+   what was signed. */
+window.WPS_CONTRACT_ARCHIVE["V3.9-COMMERCIAL"] = {
+  version: "V3.9-COMMERCIAL",
+  title: "Commercial Shoot & Release Agreement V3.9 (Paid Shoots)",
+  effectiveDate: "September 2026 - Present",
+  status: "Active / Current (Paid Commercial)",
+  summary: window.WPS_CONTRACT_ARCHIVE["V3.8-COMMERCIAL"].summary + " Where the Client books for somebody else, that person is named as the Participant and gives their own permission for their pictures.",
+  fullText: window.WPS_CONTRACT_ARCHIVE["V3.8-COMMERCIAL"].fullText +
+    "\n\nBOOKING ON BEHALF OF ANOTHER PERSON\nWhere the Client is not the person being photographed, that person is named in this booking as the Participant, and every term here describing the Participant applies to them and not to the Client. The Client warrants that they are authorised to make this booking for the Participant and to commit them to the shoot date and place.\n\nPermission to use the photographs is NOT given by the Client. It is asked of the Participant directly, in their own name, and the Studio does not publish or otherwise use the photographs until that permission is given. Where the Participant is under 18, that permission is asked of a parent or guardian instead, and the Participant's own agreement is not relied on. Permission may be withdrawn at any time, and on withdrawal the Studio removes the photographs from its own website and social media."
+};
+window.WPS_CONTRACT_ARCHIVE["V3.8-COMMERCIAL"].effectiveDate = "September 2026 (superseded by V3.9)";
+window.WPS_CONTRACT_ARCHIVE["V3.8-COMMERCIAL"].status = "Archived - superseded by V3.9 (booking on another person's behalf; the release follows the Participant)";
+
+window.WPS_CONTRACT_ARCHIVE["V3.9-TFP"] = {
+  version: "V3.9-TFP",
+  title: "Test Shoot & TFP Liability Release V3.9 (Test Shoots)",
+  effectiveDate: "September 2026 - Present",
+  status: "Active / Current (Test Shoot / TFP)",
+  summary: window.WPS_CONTRACT_ARCHIVE["V3.8-TFP"].summary + " Where the booking is made for somebody else, that person is named as the Participant and gives their own permission for their pictures.",
+  fullText: window.WPS_CONTRACT_ARCHIVE["V3.8-TFP"].fullText +
+    "\n\nBOOKING ON BEHALF OF ANOTHER PERSON\nWhere the person making this booking is not the person being photographed, that person is named here as the Participant, and every term describing the Participant applies to them rather than to the person who booked. Whoever books warrants that they are authorised to do so for the Participant.\n\nPermission to use the photographs is asked of the Participant directly, in their own name, and nothing is published until it is given. Where the Participant is under 18, that permission is asked of a parent or guardian instead. Permission may be withdrawn at any time, and the Studio then removes the photographs from its own website and social media."
+};
+window.WPS_CONTRACT_ARCHIVE["V3.8-TFP"].effectiveDate = "September 2026 (superseded by V3.9-TFP)";
+window.WPS_CONTRACT_ARCHIVE["V3.8-TFP"].status = "Archived - superseded by V3.9-TFP (booking on another person's behalf; the release follows the Participant)";
+
 window.WPS_CONTRACT_ARCHIVE["V3.7-TFP"].effectiveDate = "September 2026 (superseded by V3.8-TFP)";
 window.WPS_CONTRACT_ARCHIVE["V3.7-TFP"].status = "Archived - superseded by V3.8-TFP (home studio holds 3 including the photographer)";
 
