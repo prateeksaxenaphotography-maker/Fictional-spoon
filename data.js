@@ -2679,7 +2679,8 @@ window.WPS_DATA = {
     "customBlockedDates": {
       "2026-09-12": true,
       "2026-10-03": true,
-      "2026-10-04": true
+      "2026-10-04": true,
+      "2026-09-26": true
     },
     "customOpenedDates": {
       "2026-09-07": true,
@@ -3144,7 +3145,7 @@ window.WPS_DATA = {
       "photoTag": {
         "family": "mono",
         "weight": 600,
-        "color": "#ffffff",
+        "color": "#000000",
         "size": 2
       },
       "note": {
@@ -3180,7 +3181,7 @@ window.WPS_DATA = {
     "PACKAGES": 1789975069137,
     "TFP_PACKAGE": 1789975069138,
     "HOME_STUDIO_RATE": 1789975069138,
-    "PORTFOLIO_PDF": 1790062483330,
+    "PORTFOLIO_PDF": 1790090846344,
     "HOME_STUDIO_RATE_TFP": 1789975069138
   },
   "TESTIMONIALS": {
