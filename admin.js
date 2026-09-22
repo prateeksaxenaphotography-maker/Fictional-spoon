@@ -6124,6 +6124,24 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     return g.length <= max ? text : g.slice(0, max).join("") + "…";
   };
 
+  /* The emoji a testimonial actually uses.
+
+     Deliberately not a full set. v482 made a testimonial able to carry any
+     emoji, and the studio then asked the fair question: where is the button?
+     Every operating system has a picker — ⌃⌘Space on a Mac, the key on a
+     phone keyboard — but the studio should not have to know a shortcut to
+     use a feature the site advertises.
+
+     Twenty-eight, chosen for what people say about a photograph. A grid of
+     two thousand pictures is a worse tool than a small one that fits, and
+     the panel points at the system picker for anything not here. */
+  const TM_EMOJI = [
+    "🙏", "❤️", "🔥", "✨", "⭐", "🌟", "👏", "🙌",
+    "😍", "🤩", "😊", "😁", "💯", "👌", "👍", "🎉",
+    "📸", "📷", "🎬", "💫", "🥰", "😇", "💕", "🫶",
+    "💪", "🕺", "💃", "🤝"
+  ];
+
   const TM_DRAFT_KEY = "wps_testimonial_draft";
   const tmReadDraft = () => {
     try {
@@ -6296,6 +6314,15 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <label class="field"><span>What they said *</span>
             <textarea id="tmE_quote" rows="6" maxlength="${TESTIMONIAL_STORE_LIMITS.quote}" placeholder="Paste or type their words — as they wrote them, or as they said them to you.">${esc(t.quote || "")}</textarea>
           </label>
+          <div class="tm-emoji">
+            <button type="button" class="admin-cal-btn" id="tmE_emojiBtn" aria-expanded="false" aria-controls="tmE_emojiPanel">🙂 Add an emoji</button>
+            <div class="tm-emoji-panel" id="tmE_emojiPanel" hidden>
+              <div class="tm-emoji-grid">
+                ${TM_EMOJI.map((e) => `<button type="button" class="tm-emoji-pick" data-e="${esc(e)}" title="${esc(e)}">${esc(e)}</button>`).join("")}
+              </div>
+              <p class="field-hint" style="margin: 8px 0 0;">Anything else: <strong>Control + Command + Space</strong> on a Mac, or the emoji key on a phone's keyboard — they work in the box above like any other letter.</p>
+            </div>
+          </div>
           <p class="field-hint">Their words, not a summary of them. If they said this to you rather than filling in the form, check they are happy to see it here under their name — the form asks for that in writing, and this does not.</p>
           <div class="field-row">
             <label class="field"><span>Name to show *</span><input id="tmE_by" type="text" maxlength="${TESTIMONIAL_STORE_LIMITS.name}" value="${esc(t.by || "")}" placeholder="Aisha Khan" /></label>
@@ -6370,6 +6397,40 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           const snap = tmSnapshot();
           if (snap) tmWriteDraft(snap);
         }));
+      });
+
+      /* The emoji button. Inserts at the cursor rather than appending, so it
+         can be used mid-sentence, and fires a real `input` event afterwards
+         so the character counter and the draft both see it — an emoji put in
+         by setting .value alone would be saved by neither. */
+      const emojiBtn = root.querySelector("#tmE_emojiBtn");
+      const emojiPanel = root.querySelector("#tmE_emojiPanel");
+      emojiBtn?.addEventListener("click", () => {
+        const open = emojiPanel.hidden;
+        emojiPanel.hidden = !open;
+        emojiBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+      root.querySelectorAll(".tm-emoji-pick").forEach((b) => b.addEventListener("click", () => {
+        const box = root.querySelector("#tmE_quote");
+        if (!box) return;
+        const e = b.dataset.e || "";
+        const at = typeof box.selectionStart === "number" ? box.selectionStart : box.value.length;
+        const to = typeof box.selectionEnd === "number" ? box.selectionEnd : at;
+        box.value = box.value.slice(0, at) + e + box.value.slice(to);
+        // Put the caret after what was just inserted, counted in UTF-16 units
+        // because that is what selectionStart speaks — the grapheme count is
+        // for the limit, not for the cursor.
+        const after = at + e.length;
+        box.focus();
+        try { box.setSelectionRange(after, after); } catch (err) {}
+        box.dispatchEvent(new Event("input", { bubbles: true }));
+      }));
+      // Clicking away closes it, the way a small palette should behave.
+      root.addEventListener("click", (ev) => {
+        if (!emojiPanel || emojiPanel.hidden) return;
+        if (ev.target.closest(".tm-emoji")) return;
+        emojiPanel.hidden = true;
+        emojiBtn?.setAttribute("aria-expanded", "false");
       });
 
       /* The studio's own file copies. Kept in IndexedDB against this
