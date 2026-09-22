@@ -1632,11 +1632,24 @@
     // same shape — All the same size, or one big photo on each page.
     let at = 0;
     portfolioSplitFor(spec, slots.length).forEach((n, i) => {
-      const part = slots.slice(at, at + n);
+      const whole = slots.slice(at, at + n);
       const partImgs = imgs.slice(at, at + n);
       at += n;
-      if (!part.length) return;
+      if (!whole.length) return;
+      /* A page shows pose tags only when every photograph ON THAT PAGE has
+         one. Tags under some pictures and not the ones beside them reads as a
+         mistake, which is why the studio asked for all-or-nothing in the first
+         place (v386) — but they asked for it again per page, because that is
+         the unit anybody looks at. Across the whole PDF it meant a model with
+         seventeen tagged photographs and one untagged lost all seventeen. */
+      const bare = whole.filter((s) => !s.label).length;
+      const part = bare ? whole.map((s) => ({ ...s, label: "" })) : whole;
       const page = addPage();
+      // Recorded on the page that was drawn, never recomputed beside it, so
+      // what the builder says about this page cannot disagree with what
+      // printed on it. Same reason page.wide is read back rather than derived.
+      page.tagsBare = bare;
+      page.tagsShown = !bare && whole.some((s) => s.label);
       // A page down to its single photo is that photo as large as it will go.
       if (i === 0 && n === 1 && spec.layout !== "equal") composeLeadPagePdf(page, spec, partImgs[0], mark);
       else if (i === 0) composeOnePagePdf(page, { ...spec, lead: part[0], others: part.slice(1) }, partImgs, mark);
@@ -1777,6 +1790,13 @@
       span: {},            // photo id → 1 or 2 places across, when the client overrules
       order: [],           // photo ids in the order the client arranged them
       fewerOnTop: false,   // All equal: the short row at the top, not the foot
+      // Print the pose under each photograph, or don't. It used to be decided
+      // for the client: tags appeared only when EVERY photograph across the
+      // whole PDF had a pose, so one untagged shot anywhere silently stripped
+      // the tags off every page. The consistency that rule was protecting is
+      // per page — which is where a page's look lives — so the rule moved
+      // there (see renderPortfolioPdfPages) and the choice came here.
+      tags: true,          // print pose tags at all
       filter: "all",       // which pose the grid shows
       choosingCover: false, // the grid is picking the cover photo
       location: "", phone: "", email: "", utr: "",
@@ -1920,10 +1940,12 @@
     function buildSpec() {
       const onPages = printOrder();
       const [lead, ...rest] = onPages;
-      // A pose tag on some photos and not others looks like a mistake, so
-      // one photo without a pose leaves every photo on the pages untagged.
-      const tagged = onPages.every((s) => s.label);
-      const slot = (s) => ({ photo: adjusted(s.photo), label: tagged ? s.label : "", wide: state.span[s.id] || 0 });
+      // Only whether tags are wanted at all. Whether a given page can show
+      // them consistently is decided where the pages actually exist, in
+      // renderPortfolioPdfPages — deciding it here would mean re-deriving the
+      // page split a second time, and a rule derived twice is a rule that can
+      // disagree with the paper.
+      const slot = (s) => ({ photo: adjusted(s.photo), label: state.tags ? s.label : "", wide: state.span[s.id] || 0 });
       return {
         shoot, name, pages: state.pages,
         lead: slot(lead),
@@ -1947,7 +1969,7 @@
         const a = state.adjust[id];
         return a ? [a.x, a.y, a.zoom].map((v) => Math.round(v * 1000)) : 0;
       });
-      return JSON.stringify([state.pages, ids, state.layout, perPage(), state.fewerOnTop,
+      return JSON.stringify([state.pages, ids, state.layout, perPage(), state.fewerOnTop, state.tags,
         ids.map((id) => state.span[id] || 0),
         state.cover ? [state.coverId, state.coverStyle] : null, crops]);
     }
@@ -2233,11 +2255,18 @@
                 <button type="button" role="radio" data-layout="equal">All the same size</button>
               </div>
               <div class="pp-seg" role="radiogroup" aria-label="Rows" id="ppRowsSeg" hidden></div>
+              <!-- In the preview and not the picker: the picker is for
+                   choosing photographs, this is about how they look. -->
+              <div class="pp-seg" role="radiogroup" aria-label="Pose tags" id="ppTagsSeg" hidden>
+                <button type="button" role="radio" data-tags="true">Pose tags on</button>
+                <button type="button" role="radio" data-tags="false">Off</button>
+              </div>
             </div>
           </div>
           <ol class="pp-order" id="ppOrder" aria-labelledby="ppOrderLabel"></ol>
         </div>
         <p class="pp-hint pp-tap-hint">Tap a photo to move or zoom it.</p>
+        <p class="pp-hint" id="ppTagsNote" hidden></p>
         <div class="pp-preview" aria-live="polite"><p class="pp-rendering">Drawing your ${state.pages > 1 || state.cover ? "pages" : "page"}…</p></div>
         <!-- The same two fields as the photo picker. They print on the first
              page, so they belong where you can watch that page redraw. -->
@@ -2353,6 +2382,7 @@
               pages: state.pages, count: state.count, picks: [...state.picks], cleared: [...state.cleared],
               lead: state.lead, cover: state.cover, coverId: state.coverId, coverStyle: state.coverStyle,
               layout: state.layout, order: [...state.order], fewerOnTop: state.fewerOnTop,
+              tags: state.tags,
               perPage: perPage(),
               span: JSON.parse(JSON.stringify(state.span || {})),
               adjust: JSON.parse(JSON.stringify(state.adjust || {}))
@@ -2382,6 +2412,9 @@
           state.lead = sp.lead; state.cover = sp.cover; state.coverId = sp.coverId;
           state.coverStyle = sp.coverStyle; state.layout = sp.layout;
           state.order = [...sp.order]; state.fewerOnTop = sp.fewerOnTop;
+          // An arrangement saved before the switch existed has no answer, and
+          // "on" is what it was saved under.
+          state.tags = sp.tags !== false;
           // One saved before the client could answer page by page is converted
           // from its total, so it reopens as the PDF it was saved as.
           state.perPage = Array.isArray(sp.perPage) && sp.perPage.length
@@ -2493,6 +2526,19 @@
         if (covered() !== wasCovered) { showPreview(); return; }
         drawPreview();
       });
+      body.querySelector("#ppTagsSeg").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-tags]");
+        if (!btn) return;
+        const want = btn.dataset.tags === "true";
+        if (want === state.tags) return;
+        const wasCovered = covered();
+        state.tags = want;
+        // Tags on and tags off are different PDFs (see specKey), so turning
+        // them off after paying swaps the download back for the payment step,
+        // exactly as moving a photograph does.
+        if (covered() !== wasCovered) { showPreview(); return; }
+        drawPreview();
+      });
       body.querySelector("#ppRowsSeg").addEventListener("click", (e) => {
         const btn = e.target.closest("[data-fewer-on-top]");
         if (!btn || (btn.dataset.fewerOnTop === "true") === state.fewerOnTop) return;
@@ -2594,6 +2640,7 @@
         lastWide = new Set(pages.flatMap((p) => p.wide || []));
         syncRows(lastSplits);
         syncWide();
+        syncTags(pages.slice(state.cover ? 1 : 0));
       }).catch((err) => {
         console.warn("Portfolio preview failed:", err);
         if (token !== renderToken) return;
@@ -2798,8 +2845,44 @@
       syncArrange();
     }
 
+    /* The switch, and the one sentence that makes the rule visible.
+
+       Without the sentence this screen lies by omission. Four of the studio's
+       models have no pose on a single photograph, so their PDFs can never show
+       a tag — turn the switch on, watch nothing happen, conclude the switch is
+       broken. The note is read off the pages that were actually drawn
+       (page.tagsBare), so it cannot claim a page printed something it didn't. */
+    function syncTags(pages) {
+      const seg = body.querySelector("#ppTagsSeg");
+      const note = body.querySelector("#ppTagsNote");
+      if (!seg || !note) return;
+      const posed = printOrder().filter((s) => s.label).length;
+      const total = printOrder().length;
+      // Nothing to offer when not one photograph has a pose: the switch would
+      // be a control over nothing. The note explains instead.
+      seg.hidden = !total || !posed;
+      seg.querySelectorAll("[data-tags]").forEach((btn) => btn.setAttribute("aria-checked", String((btn.dataset.tags === "true") === state.tags)));
+      let text = "";
+      if (!total) text = "";
+      else if (!posed) text = total === 1
+        ? "This photograph has no pose set, so no tag can print on it. Poses are set in Upload."
+        : `None of these ${total} photographs has a pose set, so no tags can print. Poses are set in Upload.`;
+      else if (!state.tags) text = "Pose tags are off, so none will print.";
+      else {
+        const bare = (pages || []).map((pg, i) => ({ i, n: pg.tagsBare || 0 })).filter((x) => x.n);
+        if (bare.length) {
+          text = bare.map(({ i, n }) => `Page ${i + 1}: no tags — ${n} photograph${n === 1 ? " has" : "s have"} no pose.`).join(" ")
+            + " A page prints tags only when every photograph on it has one.";
+        }
+      }
+      note.textContent = text;
+      note.hidden = !text;
+      syncArrange();
+    }
+
     function syncArrange() {
       const hideAll = body.querySelector("#ppOrder").hidden && body.querySelector("#ppRowsSeg").hidden
+        && body.querySelector("#ppTagsSeg").hidden
         && body.querySelector("#ppLayoutSeg").hidden;
       body.querySelector("#ppArrange").hidden = hideAll;
     }

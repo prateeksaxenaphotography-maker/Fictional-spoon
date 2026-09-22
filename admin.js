@@ -1403,6 +1403,12 @@ function cleanModelPdfs(state) {
         cover: sp.cover === true,
         coverId: typeof sp.coverId === "string" ? sp.coverId : "",
         coverStyle: ["full", "framed", "split", "split-wide"].includes(sp.coverStyle) ? sp.coverStyle : "full",
+        // Whether pose tags print at all. Named here because this normaliser
+        // drops any field it does not name — the same gate that lost
+        // `split-wide` above for a month. `!== false` rather than `=== true`
+        // so an arrangement saved before the switch existed reopens the way it
+        // was saved, with tags wanted.
+        tags: sp.tags !== false,
         layout: sp.layout === "equal" ? "equal" : "lead",
         order: ids(sp.order),
         fewerOnTop: sp.fewerOnTop === true,
