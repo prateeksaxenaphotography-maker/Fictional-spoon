@@ -3223,8 +3223,11 @@ window.resolveContractArchive = function(version) {
        same thing said a better way, and lands in the same place on the page.
        The boxes are gone from the upload form, so nothing new arrives by the
        old route, but nothing published by it disappears either. */
+    // On a real album that is its own id; on a merged model card it is every
+    // album the card was built from (see sourceShootIds above).
+    const fromShoots = new Set([s.id, ...(Array.isArray(s.sourceShootIds) ? s.sourceShootIds : [])].filter(Boolean));
     const ownTestimonials = storedTestimonials()
-      .filter((t) => t.shootId === s.id)
+      .filter((t) => fromShoots.has(t.shootId))
       .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
       .map((t) => ({ quote: t.quote, by: [t.by, t.role].filter(Boolean).join(", ") }));
     const legacyTestimonials = s.testimonials || (s.testimonial ? [s.testimonial] : []);
@@ -4418,6 +4421,15 @@ window.resolveContractArchive = function(version) {
         const isPort = d === "Model Portfolio";
         return {
           id: isPort ? `portfolio-${encodeURIComponent(modelName)}` : `comp-card-${encodeURIComponent(modelName)}`,
+          /* The real albums this card was merged from.
+             The id above is synthetic — "comp-card-<name>" — so anything that
+             matches on an album id finds nothing here. Testimonials did
+             exactly that and silently never appeared on a model's card, while
+             appearing correctly everywhere else, because the tie is to a shoot
+             and a shoot id never equals a synthetic one. Stated explicitly
+             rather than rediscovered from photos[].parent, so a rewrite of
+             this function has something named to carry forward. */
+          sourceShootIds: shootsInGroup.map((gs) => gs.id).filter(Boolean),
           // Display title is cleaned; `talent` below stays raw on purpose,
           // because compCardOwnHandles parses its parentheses to pick the
           // model's own social. Same reason `id` is left alone — changing
