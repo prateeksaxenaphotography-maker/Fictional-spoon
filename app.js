@@ -4009,6 +4009,13 @@ window.resolveContractArchive = function(version) {
     }
     const dObj = new Date(trimmed);
     if (isNaN(dObj.getTime())) return null;
+    /* A date with no year in it is not a date.
+       V8 answers `new Date("August 15")` with the year 2001, so a half-parsed
+       string does not fail — it succeeds, quietly, on a day twenty-five years
+       ago. The studio's calendar carries three such entries. Anything without
+       a four-digit year is refused rather than guessed at, because a wrong
+       day in a booking calendar is worse than no day. */
+    if (!/\d{4}/.test(trimmed)) return null;
     const yr = dObj.getFullYear();
     const mo = String(dObj.getMonth() + 1).padStart(2, "0");
     const da = String(dObj.getDate()).padStart(2, "0");
@@ -4027,14 +4034,38 @@ window.resolveContractArchive = function(version) {
     let changed = false;
     audits.forEach(audit => {
       if (!audit || !audit.date) return;
-      const rawParts = String(audit.date).split(/[,–]/).map(s => s.trim()).filter(Boolean);
+      /* Split only when the whole thing is not itself a date.
+         This split exists for a booking over several days ("15 Aug, 16 Aug"),
+         but it was applied first and unconditionally — so a contract dated
+         "August 15, 2026" became ["August 15", "2026"], and neither half is
+         the booking. "August 15" has no year, and V8 defaults a year-less
+         date to 2001; "2026" parses as the 1st of January. The studio's live
+         calendar carries exactly that: bookings on 2001-08-15, 2001-10-17 and
+         2026-01-01 whose contract numbers say August 2026. The real day was
+         never blocked by this path at all, which is the part that could cost
+         a double booking rather than just look untidy. */
+      const whole = String(audit.date).trim();
+      const rawParts = parseToCalKey(whole)
+        ? [whole]
+        : whole.split(/[,–]/).map(s => s.trim()).filter(Boolean);
       rawParts.forEach(pStr => {
         const dKey = parseToCalKey(pStr);
         if (!dKey) return;
         if (!booked[dKey]) booked[dKey] = [];
-        const exists = booked[dKey].some(b => 
+        /* Is it already here?
+           This asked about contractNumber, name and email — and all three are
+           stripped out of the published data.js on purpose, so that a public
+           file carries no client details (v443). On any device reading the
+           published calendar every one of them is undefined, the test can
+           never match, and the same booking is appended again on every run.
+           That is why the live file lists some bookings two and three times.
+           The id survives the strip, because it IS the contract number, so
+           that is what the question is asked of now. */
+        const auditId = "b_audit_" + (audit.contractNumber || "");
+        const exists = booked[dKey].some(b =>
+          (audit.contractNumber && b.id === auditId) ||
           (b.contractNumber && audit.contractNumber && b.contractNumber === audit.contractNumber) ||
-          (b.name === audit.clientName && b.email === audit.clientEmail)
+          (b.name && b.email && b.name === audit.clientName && b.email === audit.clientEmail)
         );
         if (!exists) {
           booked[dKey].push({
