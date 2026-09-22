@@ -966,18 +966,36 @@
     page.ctx.strokeRect(page.u(x), page.u(y), page.u(w), page.u(h));
   }
 
-  // A photo with its pose named in a small white tag in the corner, so a
-  // casting director can see which angle is which at a glance. No label, no
-  // tag.
+  // How light a colour reads, 0 (black) to 255 (white).
+  function pdfLuma(color) {
+    const hex = String(color == null ? "" : color).trim().replace(/^#/, "");
+    const six = hex.length === 3 ? hex.split("").map((c) => c + c).join("") : hex.slice(0, 6);
+    const n = /^[0-9a-f]{6}$/i.test(six) ? parseInt(six, 16) : 0x111111;
+    return 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
+  }
+
+  // A photo with its pose named in a small tag in the corner, so a casting
+  // director can see which angle is which at a glance. No label, no tag.
+  //
+  // The tag used to be white whatever colour the type was, and the photo tag
+  // is one of the ten lines the studio can restyle in Type & Border. Its
+  // published setting has been #ffffff — white type on an opaque white chip,
+  // so every tag on every portfolio PDF was drawn correctly and could not be
+  // read (found Sep 22 2026, reported as "tags didnt come"). The chip now
+  // follows the type instead of ignoring it, which fixes the setting already
+  // published without anyone reopening it, and holds for whatever colour the
+  // studio picks next.
   function drawPdfSlot(page, img, slot, x, y, w, h) {
     drawPdfPhoto(page, img, slot.photo, x, y, w, h);
     if (!slot.label) return;
+    // The colour here is a merge base, not a fallback: cleanPdfType always
+    // hands pdfType a complete record, so this #111 has never once applied.
     const style = pdfType("photoTag", { weight: 700, size: 1.9, family: PDF_MONO, spacing: 0.25, upper: true, color: "#111" });
     const tw = page.measure(slot.label, style);
     const padX = 1.4, tagH = 3.9;
     if (tw + padX * 2 > w - 3.2) return;
     const tx = x + 1.6, ty = y + h - tagH - 1.6;
-    page.ctx.fillStyle = "rgba(255,255,255,0.9)";
+    page.ctx.fillStyle = pdfLuma(style.color) > 140 ? "rgba(17,17,17,0.82)" : "rgba(255,255,255,0.9)";
     page.ctx.fillRect(page.u(tx), page.u(ty), page.u(tw + padX * 2), page.u(tagH));
     page.text(slot.label, tx + padX, ty + tagH / 2 + 0.68, style);
   }
