@@ -2297,7 +2297,7 @@ window.WPS_DATA = {
       "agencyHandle": "",
       "agencySite": "",
       "agencyLinks": [],
-      "modelEmail": "",
+      "modelEmail": "ectogainsss@gmail.com",
       "modelTypes": [
         "Fashion"
       ],
@@ -2642,9 +2642,9 @@ window.WPS_DATA = {
       "showModelWebsiteOnCompCard": false,
       "showModelWebsiteOnHome": false,
       "showModelWebsiteOnPdf": false,
-      "showEmailOnCompCard": false,
-      "showEmailOnHome": false,
-      "showEmailOnPdf": false,
+      "showEmailOnCompCard": true,
+      "showEmailOnHome": true,
+      "showEmailOnPdf": true,
       "showAgencyOnCompCard": false,
       "showAgencyOnHome": false,
       "showAgencyOnPdf": false,
@@ -3190,7 +3190,7 @@ window.WPS_DATA = {
     "PACKAGES": 1789975069137,
     "TFP_PACKAGE": 1789975069138,
     "HOME_STUDIO_RATE": 1789975069138,
-    "PORTFOLIO_PDF": 1790090846344,
+    "PORTFOLIO_PDF": 1790099840662,
     "HOME_STUDIO_RATE_TFP": 1789975069138
   },
   "TESTIMONIALS": {
@@ -3359,11 +3359,11 @@ window.WPS_DATA = {
         "agencyHandle": "",
         "agencySite": "",
         "agencyLinks": [],
-        "modelEmail": "",
+        "modelEmail": "ectogainsss@gmail.com",
         "modelTypes": [
           "Fashion"
         ],
-        "updatedAt": 1790096697239,
+        "updatedAt": 1790102971324,
         "showStatsOnCompCard": true,
         "showStatsOnModelPortfolio": true,
         "showModelInstagramOnCompCard": true,
@@ -3833,55 +3833,77 @@ window.WPS_DATA = {
   "MODEL_PDFS": {
     "versions": [
       {
-        "id": "mp_mucczfy9_wugha",
+        "id": "mp_mucz851x_82fju",
         "shootId": "comp-card-Atharv%20Sharma%20(https%3A%2F%2Fwww.instagram.com%2Fectogainsss%2F%3Fhl%3Den)",
-        "name": "trail",
-        "updatedAt": 1790062483329,
+        "name": "Sent",
+        "updatedAt": 1790099840661,
         "spec": {
           "pages": 2,
-          "count": 10,
-          "perPage": [],
+          "count": 9,
+          "perPage": [
+            5,
+            4
+          ],
           "span": {},
           "firstPage": 0,
           "picks": [
-            "muca57r58dg197-2",
+            "muca56vgez53vb-0",
+            "muca57hap5pcdi-1",
             "muca57yixr16s8-3",
             "muca5877bysjsu-4",
-            "muca5ap6var6iu-14",
-            "muca5axgstf29d-15",
-            "muca57hap5pcdi-1",
-            "muca5a9rdmzwin-12",
-            "muca58rgq9nttw-5",
             "muccmrnumyyf3j-24",
-            "muca56vgez53vb-0"
+            "muca5a1qkkj6qh-11",
+            "muca80smjx9k90-18",
+            "muca5ahs75x6u2-13",
+            "muca593bwa9nvo-6"
           ],
           "cleared": [],
-          "lead": "muca57r58dg197-2",
+          "lead": "muca56vgez53vb-0",
           "cover": true,
-          "coverId": "muca5a1qkkj6qh-11",
-          "coverStyle": "framed",
-          "tags": true,
+          "coverId": "muca80xnhe2eom-19",
+          "coverStyle": "full",
+          "tags": [
+            true,
+            true
+          ],
           "tagPlace": "in",
           "tagAlign": "left",
           "layout": "equal",
           "order": [
+            "muca57hap5pcdi-1",
             "muca56vgez53vb-0",
-            "muca57r58dg197-2",
             "muca57yixr16s8-3",
             "muca5877bysjsu-4",
-            "muca5ap6var6iu-14",
-            "muca58rgq9nttw-5",
-            "muca5axgstf29d-15",
-            "muca5a9rdmzwin-12",
-            "muca57hap5pcdi-1",
+            "muca5ahs75x6u2-13",
+            "muca5a1qkkj6qh-11",
+            "muca80smjx9k90-18",
+            "muca593bwa9nvo-6",
             "muccmrnumyyf3j-24"
           ],
           "fewerOnTop": false,
-          "adjust": {}
+          "adjust": {
+            "muca5ahs75x6u2-13": {
+              "x": 0.5,
+              "y": 0,
+              "zoom": 1
+            },
+            "muca593bwa9nvo-6": {
+              "x": 0,
+              "y": 0.29674724072622777,
+              "zoom": 1.1
+            },
+            "muccmrnumyyf3j-24": {
+              "x": 0.5,
+              "y": 0.42534722222222215,
+              "zoom": 1
+            }
+          }
         }
       }
     ],
-    "deleted": []
+    "deleted": [
+      "mp_mucczfy9_wugha"
+    ]
   },
   "STUDIO_PORTFOLIOS": {
     "versions": [
