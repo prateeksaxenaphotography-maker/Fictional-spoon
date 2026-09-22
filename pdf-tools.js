@@ -1898,7 +1898,6 @@
     const minPicks = () => Math.min(state.pages, available());
     // The largest a single page may be asked to hold: six, or fewer when the
     // other pages must keep at least one photograph each.
-    const pageMax = () => Math.max(1, Math.min(PORTFOLIO_PAGE_MAX, state.count - (state.pages - 1)));
     /* The picked photographs spread across the pages, as even as it divides,
        the earlier pages taking the spare one: eight across two is 4 + 4, seven
        is 4 + 3. The client can still shape this by hand in the preview, where
@@ -2236,10 +2235,29 @@
         aria-label="Pose labels on page ${i + 1}">Tags<span class="pp-sheet-tags-note">${esc(note)}</span></button>`;
     }
 
+    /* The row of numbers under a sheet moves photographs BETWEEN pages: the
+       total is what the client picked, so asking this page for more takes it
+       from the others. With a single page there is nowhere to take from and
+       nowhere to give, so the row would be a control that cannot do anything;
+       it is left out rather than shown dead. */
     function pageCountSegHtml(i) {
+      if (state.pages < 2) return "";
       const on = perPage()[i];
       return `<div class="pp-seg pp-page-count" role="radiogroup" aria-label="Photos on page ${i + 1}">
-        ${PORTFOLIO_PAGE_COUNTS.map((n) => `<button type="button" role="radio" data-page="${i}" data-on-page="${n}" aria-checked="${n === on}"${n > pageMax() ? " disabled" : ""}>${n}</button>`).join("")}
+        ${PORTFOLIO_PAGE_COUNTS.map((n) => `<button type="button" role="radio" data-page="${i}" data-on-page="${n}" aria-checked="${n === on}"${canPutOnPage(i, n) ? "" : " disabled"}>${n}</button>`).join("")}
+      </div>`;
+    }
+
+    /* The cover's look, offered under the cover itself in the preview. It was
+       only ever on the picking screen, where the cover is a thumbnail and a
+       switch: the client chooses "Framed" without being able to see what
+       framed does, then finds out a page later. Here the cover is drawn full
+       size beside the pages, so the choice is made while looking at it. */
+    function coverStyleSegHtml() {
+      const on = state.coverStyle || "full";
+      const looks = [["full", "Full"], ["framed", "Framed"], ["split", "Split ½"], ["split-wide", "Split ¾"]];
+      return `<div class="pp-seg pp-cover-look" role="radiogroup" aria-label="Cover look">
+        ${looks.map(([v, label]) => `<button type="button" role="radio" data-sheet-cover-style="${v}" aria-checked="${v === on}">${label}</button>`).join("")}
       </div>`;
     }
 
@@ -2262,19 +2280,50 @@
        it from the others rather than asking for photographs that aren't
        there. */
     function setOnPage(i, n) {
-      const want = Math.max(1, Math.min(n, pageMax()));
-      if (perPage()[i] === want) return;
-      const others = state.pages - 1;
-      const rest = state.count - want;
-      let k = 0;
-      state.perPage = Array.from({ length: state.pages }, (_, j) => {
-        if (j === i) return want;
-        const v = Math.floor(rest / others) + (k < rest % others ? 1 : 0);
-        k++;
-        return v;
-      });
-      syncPick("");
+      // One page has nowhere to move a photograph to, so there is nothing to
+      // balance and the row is not offered (see pageCountSegHtml).
+      if (state.pages < 2) return;
+      if (!canPutOnPage(i, n) || perPage()[i] === n) return;
+      /* This page gets exactly what was asked for and keeps it. The others
+         give up or take on the difference, from the back forwards, each one
+         staying between one photograph and six — so a page the client set
+         earlier is disturbed as little as possible and 1 + 3 + 4 survives
+         being built one number at a time. An earlier version re-spread every
+         other page evenly, which both undid the client's own arrangement and
+         could hand a single page seven photographs, which no page can hold. */
+      const arr = perPage().slice();
+      arr[i] = n;
+      let diff = state.count - arr.reduce((a, b) => a + b, 0);
+      for (let pass = 0; pass < 2 && diff !== 0; pass++) {
+        for (let j = arr.length - 1; j >= 0 && diff !== 0; j--) {
+          if (j === i) continue;
+          if (diff > 0) { const add = Math.min(PORTFOLIO_PAGE_MAX - arr[j], diff); arr[j] += add; diff -= add; }
+          else { const cut = Math.min(arr[j] - 1, -diff); arr[j] -= cut; diff += cut; }
+        }
+      }
+      if (diff !== 0) return;  // not a split these photographs can make
+      state.perPage = arr;
+      /* Deliberately no syncPick here. This is only ever reached from the
+         preview, whose caller redraws the sheets; syncPick speaks to the
+         picker's tiles and footer, which the preview has replaced. Calling it
+         threw on a null element, and the throw landed before the redraw — so
+         asking page 1 for four photographs appeared to do nothing at all. */
     }
+
+    /* Whether this page can hold n — which is only ever about whether the
+       OTHER pages can take the rest, each of them holding between one
+       photograph and six. Every photograph the client picked is printed, so
+       the numbers across the pages always add up to what they chose: with
+       nine picked over two pages that allows 3+6, 4+5, 5+4 and 6+3, and asking
+       for two would leave seven on the other page, which is why two is offered
+       greyed rather than silently doing nothing. To reach 2 + 4 the client
+       takes photographs out — which is what the × on each one is for. */
+    const canPutOnPage = (i, n) => {
+      if (n < 1 || n > PORTFOLIO_PAGE_MAX) return false;
+      const others = state.pages - 1;
+      const rest = state.count - n;
+      return rest >= others && rest <= PORTFOLIO_PAGE_MAX * others;
+    };
 
     /* There is deliberately nothing here that picks a photograph. The screen
        used to top itself up to the count — which is why choosing a page count
@@ -2502,9 +2551,18 @@
           state.tagAlign = sp.tagAlign || "left";
           // One saved before the client could answer page by page is converted
           // from its total, so it reopens as the PDF it was saved as.
-          state.perPage = Array.isArray(sp.perPage) && sp.perPage.length
-            ? sp.perPage.slice(0, sp.pages)
+          /* Six to a page is the hard limit — the grid is built for six and a
+             seventh has nowhere to print. Every other path honours it by
+             construction, but this one takes its numbers from a file written
+             by an older build, so it is clamped rather than trusted, and a
+             set that cannot be made is re-spread from the count instead. */
+          const saved = Array.isArray(sp.perPage) && sp.perPage.length
+            ? sp.perPage.slice(0, sp.pages).map((n) => Math.max(1, Math.min(PORTFOLIO_PAGE_MAX, Number(n) || 1)))
             : portfolioLegacySplit(sp.count, sp.pages, sp.firstPage || 0);
+          state.perPage = saved.reduce((a, b) => a + b, 0) === sp.count && saved.length === sp.pages
+            ? saved
+            : Array.from({ length: sp.pages }, (_, i) =>
+                Math.floor(sp.count / sp.pages) + (i < sp.count % sp.pages ? 1 : 0));
           syncCount();
           state.adjust = JSON.parse(JSON.stringify(sp.adjust || {}));
           state.span = JSON.parse(JSON.stringify(sp.span || {}));
@@ -2611,6 +2669,37 @@
         if (covered() !== wasCovered) { showPreview(); return; }
         drawPreview();
       });
+
+      /* Taking a photograph out, from the preview, where the client can see
+         what it was doing. The pages hold what was picked, so one fewer
+         photograph is one fewer place — which is also how a client reaches a
+         smaller arrangement like 2 + 4 when they had picked nine. */
+      body.querySelector("#ppOrder").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-remove]");
+        if (!btn) return;
+        const id = btn.dataset.remove;
+        if (state.count - 1 < minPicks()) {
+          flashOrderNote(`Every page needs a photograph, so ${state.pages} page${state.pages > 1 ? "s" : ""} cannot go below ${minPicks()}.`);
+          return;
+        }
+        const wasCovered = covered();
+        state.picks.delete(id);
+        state.order = state.order.filter((x) => x !== id);
+        if (state.lead === id) state.lead = defaultLead();
+        syncPages();
+        if (covered() !== wasCovered) { showPreview(); return; }
+        syncLayout(); syncOrder(); drawPreview();
+      });
+
+      /* Swapping one photograph for one that is not in the PDF, in place: the
+         newcomer takes the same position, so an arrangement the client has
+         already built is not disturbed by changing their mind about one
+         picture. */
+      body.querySelector("#ppOrder").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-swap]");
+        if (!btn) return;
+        showSwapChooser(btn.dataset.swap);
+      });
       body.querySelector("#ppTagPlaceSeg").addEventListener("click", (e) => {
         const btn = e.target.closest("[data-tag-place]");
         if (!btn || btn.dataset.tagPlace === state.tagPlace) return;
@@ -2672,6 +2761,15 @@
           drawPreview();
           return;
         }
+        // The cover's look, chosen while looking at the cover itself.
+        const look = e.target.closest("[data-sheet-cover-style]");
+        if (look) {
+          const want = look.dataset.sheetCoverStyle;
+          if (want === state.coverStyle) return;
+          state.coverStyle = want;
+          drawPreview();
+          return;
+        }
         const num = e.target.closest("[data-on-page]");
         if (num) {
           if (num.disabled) return;
@@ -2725,7 +2823,7 @@
           const cap = document.createElement("figcaption");
           cap.className = "pp-sheet-cap";
           cap.innerHTML = i < offset
-            ? `<span class="pp-sheet-name">Cover</span>`
+            ? `<span class="pp-sheet-name">Cover</span>${coverStyleSegHtml()}`
             : `<span class="pp-sheet-head"><span class="pp-sheet-name">Page ${i - offset + 1}</span>${pageTagsBtnHtml(i - offset, p)}</span>${pageCountSegHtml(i - offset)}`;
           item.appendChild(cap);
           return item;
@@ -2870,12 +2968,18 @@
       const strip = body.querySelector("#ppOrder");
       strip.hidden = list.length - fixed < 2;
       strip.innerHTML = list.map((s, i) => `
-        <li class="pp-order-item" data-id="${esc(s.id)}">
-          <span class="pp-order-photo">
-            <img src="${esc(photoSrc(s.photo.small ? { url: s.photo.small } : s.photo))}" alt="" style="object-position: ${esc(s.photo.objectPosition || "center")};" />
+        <li class="pp-order-item" data-id="${esc(s.id)}" data-pos="${i}">
+          <!-- Dragging is on the photograph itself, so the buttons below stay
+               ordinary buttons. Bringing the last photograph to the front was
+               eight taps of the arrow; now it is one drag, and the arrows stay
+               for the keyboard. -->
+          <span class="pp-order-photo" data-drag="${esc(s.id)}" title="Drag to move ${esc(s.name)}">
+            <img src="${esc(photoSrc(s.photo.small ? { url: s.photo.small } : s.photo))}" alt="" draggable="false" style="object-position: ${esc(s.photo.objectPosition || "center")};" />
             <span class="pp-order-n">${i < fixed ? "Big" : i + 1}</span>
             ${fixed && i >= fixed ? `<button type="button" class="pp-order-star" data-make-big aria-label="Make ${esc(s.name)} the big photo" title="Make this the big photo"></button>` : ""}
+            <button type="button" class="pp-order-drop" data-remove="${esc(s.id)}" aria-label="Take ${esc(s.name)} out of this portfolio" title="Take this photo out">&times;</button>
           </span>
+          <button type="button" class="pp-order-swap" data-swap="${esc(s.id)}" aria-label="Put a different photograph in place of ${esc(s.name)}" title="Swap for a photo you haven't used">Swap</button>
           <!-- Adjust photo could only be opened by tapping the preview, so a
                keyboard user could not reach it at all (Sep 2026 audit). -->
           <button type="button" class="pp-order-adjust" data-adjust="${esc(s.id)}" aria-label="Move or zoom ${esc(s.name)}" title="Move or zoom this photo">Adjust</button>
@@ -2891,6 +2995,9 @@
           </span>`}
         </li>`).join("");
       syncWide();
+      // The strip is rebuilt on every change, so the drag is wired to the
+      // strip itself rather than to the items, and only once.
+      wireOrderDrag();
       // Keep the keyboard on the photo that moved, even once it reaches an end.
       if (focus) {
         const item = [...strip.children].find((li) => li.dataset.id === focus.id);
@@ -2898,6 +3005,167 @@
         if (btn) btn.focus();
       }
       syncArrange();
+    }
+
+    /* A word under the strip that fades, for the cases where a tap is
+       deliberately refused — taking out the last photograph a page needs. It
+       borrows the strip's own live region so a screen reader hears it. */
+    let orderNoteTimer = 0;
+    function flashOrderNote(text) {
+      const strip = body.querySelector("#ppOrder");
+      let note = body.querySelector("#ppOrderNote");
+      if (!note) {
+        note = document.createElement("p");
+        note.id = "ppOrderNote";
+        note.className = "pp-hint pp-order-note";
+        note.setAttribute("aria-live", "polite");
+        strip.insertAdjacentElement("afterend", note);
+      }
+      note.textContent = text;
+      note.hidden = false;
+      clearTimeout(orderNoteTimer);
+      orderNoteTimer = setTimeout(() => { note.hidden = true; }, 4000);
+    }
+
+    /* The photographs this model has that are not in the PDF: what a swap can
+       reach for. The cover's photograph is not among them — it is spoken for. */
+    const sparePhotos = () => slots.filter((s) =>
+      !state.picks.has(s.id) && !(state.cover && s.id === state.coverId));
+
+    /* Swap: a sheet of the photographs not being used, and the one tapped
+       takes the place of the one being swapped — same position in the order,
+       same page, so nothing the client arranged moves around it. */
+    function showSwapChooser(outId) {
+      const spare = sparePhotos();
+      const out = slots.find((s) => s.id === outId);
+      if (!out) return;
+      if (!spare.length) {
+        flashOrderNote("Every photograph this model has is already in the portfolio, so there is none to swap in.");
+        return;
+      }
+      const sheet = document.createElement("div");
+      sheet.className = "pp-swap-backdrop";
+      sheet.innerHTML = `
+        <div class="pp-swap" role="dialog" aria-modal="true" aria-label="Swap this photograph">
+          <div class="pp-swap-head">
+            <p class="pp-swap-title">Put another photograph in place of ${esc(out.name)}</p>
+            <button type="button" class="pp-swap-x" data-swap-close aria-label="Keep the one I have">&times;</button>
+          </div>
+          <div class="pp-swap-grid">
+            ${spare.map((s) => `
+              <button type="button" class="pp-swap-tile" data-swap-in="${esc(s.id)}" title="Use ${esc(s.name)}">
+                <img src="${esc(photoSrc(s.photo.small ? { url: s.photo.small } : s.photo))}" alt="${esc(s.name)}" style="object-position: ${esc(s.photo.objectPosition || "center")};" />
+                ${s.label ? `<span class="pp-swap-tag">${esc(s.label)}</span>` : ""}
+              </button>`).join("")}
+          </div>
+        </div>`;
+      const close = () => sheet.remove();
+      sheet.addEventListener("click", (e) => {
+        if (e.target === sheet || e.target.closest("[data-swap-close]")) { close(); return; }
+        const tile = e.target.closest("[data-swap-in]");
+        if (!tile) return;
+        const inId = tile.dataset.swapIn;
+        const wasCovered = covered();
+        // In place: the newcomer inherits the position, so the order holds.
+        const order = printOrder().map((s) => s.id);
+        const at = order.indexOf(outId);
+        state.picks.delete(outId);
+        state.picks.add(inId);
+        if (at >= 0) { order[at] = inId; state.order = order; }
+        if (state.lead === outId) state.lead = inId;
+        // Anything the client had set about the photograph leaving goes with
+        // it: its crop and its width belonged to that picture, not the place.
+        delete state.adjust[outId];
+        delete state.span[outId];
+        close();
+        syncPages();
+        if (covered() !== wasCovered) { showPreview(); return; }
+        syncLayout(); syncOrder(); drawPreview();
+      });
+      document.body.appendChild(sheet);
+    }
+
+    /* Dragging a photograph to a new place, with a pointer — which is one
+       gesture for a mouse, a finger and a stylus alike, where HTML5 drag never
+       fires on a touch screen at all. The arrows stay: they are what a
+       keyboard has, and they are still the quickest way to nudge by one. */
+    function wireOrderDrag() {
+      const strip = body.querySelector("#ppOrder");
+      if (!strip || strip._dragWired) return;
+      strip._dragWired = true;
+      let drag = null;
+
+      const itemsNow = () => [...strip.querySelectorAll(".pp-order-item")];
+      // Where the dragged photograph would land: the item whose middle the
+      // pointer has passed. Measured live, because the strip scrolls.
+      const slotAt = (x, y) => {
+        const items = itemsNow();
+        for (let i = 0; i < items.length; i++) {
+          const r = items[i].getBoundingClientRect();
+          if (x < r.left + r.width / 2 && y < r.bottom) return i;
+          if (y < r.top) return i;
+        }
+        return items.length - 1;
+      };
+
+      strip.addEventListener("pointerdown", (e) => {
+        const grip = e.target.closest("[data-drag]");
+        if (!grip || e.button > 0) return;
+        /* The × and the make-big star sit ON the photograph, inside the part
+           that drags. Capturing the pointer for a drag swallowed their click
+           entirely, so the × could not take a photograph out at all. A press
+           that starts on a button is that button's. */
+        if (e.target.closest("button")) return;
+        const item = grip.closest(".pp-order-item");
+        const fixed = state.layout === "equal" ? 0 : 1;
+        // The big photograph holds first place by the layout's own rule.
+        if (Number(item.dataset.pos) < fixed) return;
+        drag = { id: grip.dataset.drag, from: Number(item.dataset.pos), item, moved: false, x: e.clientX, y: e.clientY };
+        grip.setPointerCapture(e.pointerId);
+      });
+
+      strip.addEventListener("pointermove", (e) => {
+        if (!drag) return;
+        if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 6) return;
+        // Past the slop: this is a drag, not a tap, so stop the strip
+        // scrolling under the finger and show the photograph as lifted.
+        if (!drag.moved) { drag.moved = true; drag.item.classList.add("is-dragging"); strip.classList.add("is-reordering"); }
+        e.preventDefault();
+        const to = slotAt(e.clientX, e.clientY);
+        itemsNow().forEach((li, i) => li.classList.toggle("is-drop-here", i === to && i !== drag.from));
+      });
+
+      const finish = (e) => {
+        if (!drag) return;
+        const was = drag;
+        drag = null;
+        strip.classList.remove("is-reordering");
+        was.item.classList.remove("is-dragging");
+        itemsNow().forEach((li) => li.classList.remove("is-drop-here"));
+        if (!was.moved) return;          // a tap that never travelled
+        const to = slotAt(e.clientX, e.clientY);
+        const fixed = state.layout === "equal" ? 0 : 1;
+        if (to === was.from || to < fixed) return;
+        const wasCovered = covered();
+        if (!dropPhoto(was.id, to)) return;
+        if (covered() !== wasCovered) { showPreview(); return; }
+        syncOrder(); drawPreview();
+      };
+      strip.addEventListener("pointerup", finish);
+      strip.addEventListener("pointercancel", finish);
+    }
+
+    /* Lifts a photograph out of the order and puts it back down at `to`,
+       which is what a drag means — unlike the arrows, which trade places with
+       a neighbour. Carrying the last photograph to the front leaves every
+       other one in its own relative order. */
+    function dropPhoto(id, to) {
+      const ids = printOrder().map((s) => s.id);
+      const from = ids.indexOf(id);
+      if (from < 0 || to < 0 || to >= ids.length || from === to) return false;
+      ids.splice(to, 0, ids.splice(from, 1)[0]);
+      state.order = ids;
+      return true;
     }
 
     // Shows which photographs the page actually drew two places across —
