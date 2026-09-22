@@ -2515,16 +2515,7 @@ window.WPS_DATA = {
           "focalY": 24.573177002982618
         },
         {
-          "id": "mucap3v9hgrrdq-20",
-          "url": "photos/mubczus1xaoo4q/mucap3v9hgrrdq-20.jpg",
-          "objectPosition": "center",
-          "angle": "full-body",
-          "usage": "both",
-          "small": "photos/mubczus1xaoo4q/mucap3v9hgrrdq-20@480.jpg",
-          "medium": "photos/mubczus1xaoo4q/mucap3v9hgrrdq-20@960.jpg"
-        },
-        {
-          "id": "muccmqg0so5eya-21",
+          "id": "muccmqg0so5eya-20",
           "url": "photos/mubczus1xaoo4q/muccmqg0so5eya-21.jpg",
           "objectPosition": "center",
           "excludeFromCompCard": true,
@@ -2533,7 +2524,7 @@ window.WPS_DATA = {
           "medium": "photos/mubczus1xaoo4q/muccmqg0so5eya-21@960.jpg"
         },
         {
-          "id": "muccmqsf3g2u8u-22",
+          "id": "muccmqsf3g2u8u-21",
           "url": "photos/mubczus1xaoo4q/muccmqsf3g2u8u-22.jpg",
           "objectPosition": "center",
           "excludeFromCompCard": true,
@@ -2542,7 +2533,7 @@ window.WPS_DATA = {
           "medium": "photos/mubczus1xaoo4q/muccmqsf3g2u8u-22@960.jpg"
         },
         {
-          "id": "muccmr3wcos5v9-23",
+          "id": "muccmr3wcos5v9-22",
           "url": "photos/mubczus1xaoo4q/muccmr3wcos5v9-23.jpg",
           "objectPosition": "center",
           "excludeFromCompCard": true,
@@ -2551,7 +2542,7 @@ window.WPS_DATA = {
           "medium": "photos/mubczus1xaoo4q/muccmr3wcos5v9-23@960.jpg"
         },
         {
-          "id": "muccmrnumyyf3j-24",
+          "id": "muccmrnumyyf3j-23",
           "url": "photos/mubczus1xaoo4q/muccmrnumyyf3j-24.jpg",
           "objectPosition": "center",
           "usage": "both",
@@ -2559,7 +2550,7 @@ window.WPS_DATA = {
           "medium": "photos/mubczus1xaoo4q/muccmrnumyyf3j-24@960.jpg"
         },
         {
-          "id": "muccmrtlo2j6s7-25",
+          "id": "muccmrtlo2j6s7-24",
           "url": "photos/mubczus1xaoo4q/muccmrtlo2j6s7-25.jpg",
           "objectPosition": "center",
           "excludeFromCompCard": true,
@@ -2568,7 +2559,7 @@ window.WPS_DATA = {
           "medium": "photos/mubczus1xaoo4q/muccmrtlo2j6s7-25@960.jpg"
         },
         {
-          "id": "muccmrxvgwjmbb-26",
+          "id": "muccmrxvgwjmbb-25",
           "url": "photos/mubczus1xaoo4q/muccmrxvgwjmbb-26.jpg",
           "objectPosition": "center",
           "excludeFromCompCard": true,
@@ -2577,7 +2568,7 @@ window.WPS_DATA = {
           "medium": "photos/mubczus1xaoo4q/muccmrxvgwjmbb-26@960.jpg"
         },
         {
-          "id": "muccms4j2bgcj0-27",
+          "id": "muccms4j2bgcj0-26",
           "url": "photos/mubczus1xaoo4q/muccms4j2bgcj0-27.jpg",
           "objectPosition": "center",
           "excludeFromCompCard": true,
@@ -2586,7 +2577,7 @@ window.WPS_DATA = {
           "medium": "photos/mubczus1xaoo4q/muccms4j2bgcj0-27@960.jpg"
         },
         {
-          "id": "muccmsc1j9b6if-28",
+          "id": "muccmsc1j9b6if-27",
           "url": "photos/mubczus1xaoo4q/muccmsc1j9b6if-28.jpg",
           "objectPosition": "center",
           "excludeFromCompCard": true,
@@ -2595,7 +2586,7 @@ window.WPS_DATA = {
           "medium": "photos/mubczus1xaoo4q/muccmsc1j9b6if-28@960.jpg"
         },
         {
-          "id": "muccmsk44qxax1-29",
+          "id": "muccmsk44qxax1-28",
           "url": "photos/mubczus1xaoo4q/muccmsk44qxax1-29.jpg",
           "objectPosition": "center",
           "excludeFromCompCard": true,
@@ -2604,7 +2595,7 @@ window.WPS_DATA = {
           "medium": "photos/mubczus1xaoo4q/muccmsk44qxax1-29@960.jpg"
         },
         {
-          "id": "mucq0dfdg4bivd-30",
+          "id": "mucq0dfdg4bivd-29",
           "url": "photos/mubczus1xaoo4q/mucq0dfdg4bivd-30.jpg",
           "objectPosition": "center",
           "excludeFromCompCard": true,
@@ -3363,7 +3354,7 @@ window.WPS_DATA = {
         "modelTypes": [
           "Fashion"
         ],
-        "updatedAt": 1790102971324,
+        "updatedAt": 1790104705605,
         "showStatsOnCompCard": true,
         "showStatsOnModelPortfolio": true,
         "showModelInstagramOnCompCard": true,
