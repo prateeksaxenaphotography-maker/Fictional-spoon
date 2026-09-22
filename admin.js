@@ -6142,6 +6142,28 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     "💪", "🕺", "💃", "🤝"
   ];
 
+  /* The system emoji picker, named for the machine this actually is.
+
+     The panel used to say "Control + Command + Space on a Mac" full stop,
+     which is no help at all to the studio on a Windows laptop — and they
+     asked. The shortcut is genuinely different per platform, so the sentence
+     has to be as well.
+
+     Detection can be wrong (a spoofed user agent, something unusual), so the
+     fallback is not a guess: it names both, which is right whichever it is.
+     userAgentData is preferred where it exists because navigator.platform is
+     deprecated and lies on some browsers. */
+  function tmEmojiShortcut() {
+    let p = "";
+    try { p = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent || ""; } catch (e) { p = ""; }
+    const mac = /mac|iphone|ipad|ipod/i.test(p);
+    const win = /win/i.test(p);
+    const phone = "or the emoji key on a phone's keyboard — they work in the box above like any other letter.";
+    if (win && !mac) return `press <strong>Windows key + .</strong> (the full stop), ${phone}`;
+    if (mac && !win) return `press <strong>Control + Command + Space</strong>, ${phone}`;
+    return `press <strong>Windows key + .</strong> on Windows or <strong>Control + Command + Space</strong> on a Mac, ${phone}`;
+  }
+
   const TM_DRAFT_KEY = "wps_testimonial_draft";
   const tmReadDraft = () => {
     try {
@@ -6320,7 +6342,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <div class="tm-emoji-grid">
                 ${TM_EMOJI.map((e) => `<button type="button" class="tm-emoji-pick" data-e="${esc(e)}" title="${esc(e)}">${esc(e)}</button>`).join("")}
               </div>
-              <p class="field-hint" style="margin: 8px 0 0;">Anything else: <strong>Control + Command + Space</strong> on a Mac, or the emoji key on a phone's keyboard — they work in the box above like any other letter.</p>
+              <p class="field-hint" style="margin: 8px 0 0;">Anything else: ${tmEmojiShortcut()}</p>
             </div>
           </div>
           <p class="field-hint">Their words, not a summary of them. If they said this to you rather than filling in the form, check they are happy to see it here under their name — the form asks for that in writing, and this does not.</p>

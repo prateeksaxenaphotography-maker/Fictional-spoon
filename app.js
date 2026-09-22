@@ -2442,8 +2442,33 @@ window.resolveContractArchive = function(version) {
         rendered: [`<span class="lb-person">${esc(cfg.studioName || "The studio")}</span><span class="lb-person lb-person-sub lb-studio-links">${studioLinks.join("")}</span>`]
       });
     }
+    /* What the people in these photographs said about making them.
+
+       The album's own page has carried this since v479 and the viewer did
+       not, which the studio found the moment they tied their first real
+       testimonial to a shoot: the viewer is where a visitor actually spends
+       their time, reading the credits beside a photograph, and the one place
+       the words were missing. Same source as everywhere else — the
+       testimonials store, matched on the shoot the studio picked — plus
+       anything an older build attached to the album itself. */
+    const lbQuotes = [
+      ...storedTestimonials()
+        .filter((t) => t.shootId === shoot.id)
+        .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+        .map((t) => ({ quote: t.quote, by: [t.by, t.role].filter(Boolean).join(", "), rating: t.rating })),
+      ...(shoot.testimonials || [])
+    ];
+    const quotesHtml = lbQuotes.length ? `
+      <div class="lb-sidebar-section lb-quotes">
+        <p class="lb-quotes-label">In their words</p>
+        ${lbQuotes.map((t) => `
+          <blockquote class="lb-quote">${esc(t.quote)}
+            <cite>— ${esc(t.by || "Anonymous")}</cite>${t.rating ? starRow(t.rating, `Rated ${t.rating} out of 5`) : ""}
+          </blockquote>`).join("")}
+      </div>` : "";
+
     const creditRows = (list) => `<dl class="lb-credits">${list.map(g => `<div class="lb-credit"><dt>${esc(g.label)}</dt><dd>${g.rendered.join("")}</dd></div>`).join("")}</dl>`;
-    const creditsHtml = groups.length ? creditRows(groups) : "";
+    const creditsHtml = (groups.length ? creditRows(groups) : "") + quotesHtml;
     // Lighting diagram
     let diagHtml = "";
     if (shoot.lightingDiagram && (shoot.lightingDiagramVisibility === "public" || isAdmin())) {

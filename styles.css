@@ -3521,3 +3521,12 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
 .tm-emoji-pick { font-size: 20px; line-height: 1; padding: 6px 0; background: none; border: 1px solid transparent; border-radius: var(--r-sm); cursor: pointer; }
 .tm-emoji-pick:hover, .tm-emoji-pick:focus-visible { background: var(--accent-soft); border-color: var(--accent-text); outline: none; }
 @media (max-width: 620px) { .tm-emoji-grid { grid-template-columns: repeat(7, 1fr); } }
+
+/* Testimonials in the photo viewer's sidebar, below the credits. The album
+   page has carried these since v479; the viewer is where a visitor actually
+   reads about a photograph, so they belong here too. */
+.lb-quotes { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 14px; }
+.lb-quotes-label { font-family: var(--mono-font); font-size: var(--font-xs); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); margin: 0 0 10px; }
+.lb-quote { margin: 0 0 12px; padding-left: 12px; border-left: 2px solid var(--accent); font-family: "Fraunces", Georgia, serif; font-style: italic; font-size: 14px; line-height: 1.55; color: var(--ink); }
+.lb-quote cite { display: block; margin-top: 6px; font-family: var(--mono-font); font-style: normal; font-size: var(--font-xs); color: var(--ink-soft); }
+.lb-quote .tm-stars { margin-top: 4px; }
