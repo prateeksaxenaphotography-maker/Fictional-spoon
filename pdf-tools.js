@@ -1181,37 +1181,90 @@
     return { cells, loss: best.loss };
   }
 
+  // How much of a picture a frame of this shape throws away: 0 when they
+  // match, towards 1 as they diverge.
+  const pdfShapeLoss = (cell, photo) => 1 - Math.min(cell / photo, photo / cell);
+
+  // Photos into rows of at most `cols` columns, in order, each taking as many
+  // columns as its span. A photo that will not fit the row it is offered
+  // starts the next one. `firstCols` narrows the opening row, which is how the
+  // short row is moved to the top without disturbing the order.
+  function pdfPackSpans(spans, cols, firstCols) {
+    const rows = [];
+    let row = [], used = 0, cap = firstCols || cols;
+    spans.forEach((span, i) => {
+      if (row.length && used + span > cap) { rows.push(row); row = []; used = 0; cap = cols; }
+      row.push(i);
+      used += span;
+    });
+    if (row.length) rows.push(row);
+    return rows;
+  }
+
   // Every photo the same size: the column count that gives the biggest cells
   // in W x H. Cells take the photos' typical shape (the median aspect), give
   // up to a tenth of a frame to fill more of the box, and a short row is
   // centred. Five portraits come out three on top and two below, or two on
   // top and three below with fewerOnTop: the client's choice. `rows` reports
   // the split when a row is short, so the builder knows to offer that choice.
-  function pdfEqualGrid(aspects, W, H, gap, fewerOnTop = false) {
+  //
+  // A landscape photograph among portraits used to be cropped to the portrait
+  // shape, which cost it half its picture. It now takes TWO columns instead,
+  // at the same height as everything else: the grid stays regular, the rows
+  // stay level, and it keeps its shape (Sep 22 2026, at the studio's ask).
+  // Nothing is special-cased as "landscape" — a photo spans two columns when
+  // two columns would crop it less than one, so a page of landscapes, where
+  // the median is already wide, spans nothing.
+  function pdfEqualGrid(aspects, W, H, gap, fewerOnTop = false, forced = []) {
     const n = aspects.length;
     const sorted = [...aspects].sort((a, b) => a - b);
     const aspect = sorted[Math.floor((n - 1) / 2)] || 2 / 3;
     let best = null;
     for (let cols = 1; cols <= Math.min(n, 5); cols++) {
-      const rows = Math.ceil(n / cols);
-      const colW = (W - (cols - 1) * gap) / cols;
+      // Which photos want two columns, judged against a first guess at the
+      // cell, since the real one depends on how many rows the spans make.
+      const guessW = (W - (cols - 1) * gap) / cols;
+      const guessH = guessW / aspect;
+      const spans = aspects.map((a, i) => {
+        if (cols < 2) return 1;                       // nothing to span across
+        if (forced[i] === 1 || forced[i] === 2) return forced[i];   // the client said so
+        return pdfShapeLoss((guessW * 2 + gap) / guessH, a) < pdfShapeLoss(guessW / guessH, a) - 1e-6 ? 2 : 1;
+      });
+      // Short row at the top: the rows keep the sizes they would have had,
+      // the opening one just takes the last row's share. Packing backwards
+      // instead would reorder the photographs and, with a double-wide among
+      // them, land them in a staircase.
+      const forward = pdfPackSpans(spans, cols);
+      const lastUnits = forward[forward.length - 1].reduce((s, i) => s + spans[i], 0);
+      const packed = fewerOnTop && forward.length > 1 && lastUnits < cols
+        ? pdfPackSpans(spans, cols, lastUnits)
+        : forward;
+      const rows = packed.length;
       const rowH = (H - (rows - 1) * gap) / rows;
-      const w = Math.min(colW, rowH * aspect * 1.12);
+      const w = Math.min(guessW, rowH * aspect * 1.12);
       const h = Math.min(rowH, (w / aspect) * 1.12);
-      if (w > 0 && h > 0 && (!best || w * h > best.w * best.h + 1e-6)) best = { cols, rows, w, h };
+      if (w > 0 && h > 0 && (!best || w * h > best.w * best.h + 1e-6)) best = { cols, rows, w, h, spans, packed };
     }
-    const { cols, rows, w, h } = best;
+    const { cols, rows, w, h, spans, packed } = best;
     const gridW = cols * w + (cols - 1) * gap;
-    // Photos fill the rows in order, whichever end the short row is at.
-    const short = n % cols;
-    const sizes = Array.from({ length: rows }, () => cols);
-    if (short) sizes[fewerOnTop ? 0 : rows - 1] = short;
     const cells = [];
-    sizes.forEach((inRow, r) => {
-      const rowW = inRow * w + (inRow - 1) * gap;
-      for (let c = 0; c < inRow; c++) cells.push({ x: (gridW - rowW) / 2 + c * (w + gap), y: r * (h + gap), w, h });
+    packed.forEach((row, r) => {
+      const units = row.reduce((s, i) => s + spans[i], 0);
+      const rowW = units * w + (units - 1) * gap;
+      let x = (gridW - rowW) / 2;
+      row.forEach((i) => {
+        const cw = spans[i] * w + (spans[i] - 1) * gap;
+        cells[i] = { x, y: r * (h + gap), w: cw, h };
+        x += cw + gap;
+      });
     });
-    return { cells, width: gridW, height: rows * h + (rows - 1) * gap, rows: short ? { short, full: cols } : null };
+    // The short-row choice is offered in photographs, which is what the client
+    // counts, not in columns — a row of two with one of them double-wide is
+    // still two photographs.
+    const counts = packed.map((r) => r.length);
+    const full = Math.max(...counts), fewest = Math.min(...counts);
+    return { cells, spans, width: gridW, height: rows * h + (rows - 1) * gap,
+      rows: rows > 1 && fewest !== full ? { short: fewest, full } : null };
   }
 
   // How unevenly sized the supporting photos are: 0 when all match, towards 1
@@ -1295,8 +1348,10 @@
     const photoMaxH = PH - M - PDF_FOOTER_H - 5 - (detailsH ? detailsH + 5 : 0) - y;
     if (spec.layout === "equal") {
       const all = [spec.lead, ...spec.others];
-      const grid = pdfEqualGrid(imgs.map(pdfAspect), CW, photoMaxH, gap, spec.fewerOnTop);
+      const grid = pdfEqualGrid(imgs.map(pdfAspect), CW, photoMaxH, gap, spec.fewerOnTop, all.map((s) => s.wide || 0));
       page.equalRows = grid.rows;
+      // Which photographs ended up double-wide, so the builder can show it.
+      page.wide = all.filter((s, i) => grid.spans[i] === 2).map((s) => s.photo.id);
       const gridTop = y + Math.max(0, (photoMaxH - grid.height) / 2);
       const x0 = M + (CW - grid.width) / 2;
       grid.cells.forEach((c, i) => drawPdfSlot(page, imgs[i], all[i], x0 + c.x, gridTop + c.y, c.w, c.h));
@@ -1484,8 +1539,9 @@
       drawPdfFooter(page);
       return;
     }
-    const grid = pdfEqualGrid(imgs.map(pdfAspect), CW, gridH, gap, spec.fewerOnTop);
+    const grid = pdfEqualGrid(imgs.map(pdfAspect), CW, gridH, gap, spec.fewerOnTop, spec.others.map((s) => s.wide || 0));
     page.equalRows = grid.rows || null;
+    page.wide = spec.others.filter((s, i) => grid.spans[i] === 2).map((s) => s.photo.id);
     const x0 = M + (CW - grid.width) / 2;
     grid.cells.forEach((c, i) => drawPdfSlot(page, imgs[i], spec.others[i], x0 + c.x, y + c.y, c.w, c.h));
     drawPdfFooter(page);
@@ -1695,8 +1751,12 @@
       cover: false,        // add a front cover page
       coverId: "",         // id of the cover photo
       coverStyle: "full",  // the cover's look: full photo, framed or split
-      layout: "lead",      // one big photo with the rest around it, or all equal
+      // Every photograph the same size to begin with: a portfolio is a set of
+      // pictures of equal standing, and singling one out is a choice the
+      // client makes rather than one the builder makes for them (Sep 22 2026).
+      layout: "equal",     // all the same size, or one big photo with the rest around it
       perPage: [],         // photos on each page, as the client set them
+      span: {},            // photo id → 1 or 2 places across, when the client overrules
       order: [],           // photo ids in the order the client arranged them
       fewerOnTop: false,   // All equal: the short row at the top, not the foot
       filter: "all",       // which pose the grid shows
@@ -1715,6 +1775,7 @@
     let fileUrls = [];     // blob: addresses of the finished file(s) on offer
     const dropFiles = () => { fileUrls.forEach((u) => URL.revokeObjectURL(u)); fileUrls = []; };
     let lastSplits = [];   // the short-row splits the last preview drew
+    let lastWide = new Set();  // photo ids the last preview drew two places across
 
     // Every photo on offer, in pose order.
     const slots = poses.flatMap((pose) => pose.candidates.map((photo, i) => ({
@@ -1844,7 +1905,7 @@
       // A pose tag on some photos and not others looks like a mistake, so
       // one photo without a pose leaves every photo on the pages untagged.
       const tagged = onPages.every((s) => s.label);
-      const slot = (s) => ({ photo: adjusted(s.photo), label: tagged ? s.label : "" });
+      const slot = (s) => ({ photo: adjusted(s.photo), label: tagged ? s.label : "", wide: state.span[s.id] || 0 });
       return {
         shoot, name, pages: state.pages,
         lead: slot(lead),
@@ -1869,6 +1930,7 @@
         return a ? [a.x, a.y, a.zoom].map((v) => Math.round(v * 1000)) : 0;
       });
       return JSON.stringify([state.pages, ids, state.layout, perPage(), state.fewerOnTop,
+        ids.map((id) => state.span[id] || 0),
         state.cover ? [state.coverId, state.coverStyle] : null, crops]);
     }
     // One payment buys one PDF. Until it's downloaded the client can change
@@ -2274,6 +2336,7 @@
               lead: state.lead, cover: state.cover, coverId: state.coverId, coverStyle: state.coverStyle,
               layout: state.layout, order: [...state.order], fewerOnTop: state.fewerOnTop,
               perPage: perPage(),
+              span: JSON.parse(JSON.stringify(state.span || {})),
               adjust: JSON.parse(JSON.stringify(state.adjust || {}))
             }
           });
@@ -2308,6 +2371,7 @@
             : portfolioLegacySplit(sp.count, sp.pages, sp.firstPage || 0);
           syncCount();
           state.adjust = JSON.parse(JSON.stringify(sp.adjust || {}));
+          state.span = JSON.parse(JSON.stringify(sp.span || {}));
           showPreview();
           toast(`“${v.name}” is back on screen.`);
         });
@@ -2399,6 +2463,16 @@
         // download for the payment step, or back.
         if (covered() !== wasCovered) { showPreview({ id, step }); return; }
         syncOrder({ id, step });
+        drawPreview();
+      });
+      body.querySelector("#ppOrder").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-wide]");
+        if (!btn) return;
+        const id = btn.dataset.wide;
+        const wasCovered = covered();
+        // Whatever it is doing now, ask for the other thing.
+        state.span[id] = lastWide.has(id) ? 1 : 2;
+        if (covered() !== wasCovered) { showPreview(); return; }
         drawPreview();
       });
       body.querySelector("#ppRowsSeg").addEventListener("click", (e) => {
@@ -2499,7 +2573,9 @@
         box.classList.toggle("three", pages.length === 3);
         box.classList.toggle("four", pages.length > 3);
         lastSplits = pages.map((p) => p.equalRows).filter(Boolean);
+        lastWide = new Set(pages.flatMap((p) => p.wide || []));
         syncRows(lastSplits);
+        syncWide();
       }).catch((err) => {
         console.warn("Portfolio preview failed:", err);
         if (token !== renderToken) return;
@@ -2641,11 +2717,18 @@
           <!-- Adjust photo could only be opened by tapping the preview, so a
                keyboard user could not reach it at all (Sep 2026 audit). -->
           <button type="button" class="pp-order-adjust" data-adjust="${esc(s.id)}" aria-label="Move or zoom ${esc(s.name)}" title="Move or zoom this photo">Adjust</button>
+          <!-- A landscape photograph takes two places of its own accord; this
+               is how the client overrules that either way, which they had no
+               means of doing at all (Sep 22 2026). Only "All the same size"
+               has places to take: the big-photo layout already cuts every
+               supporting cell to its own photograph's shape. -->
+          ${state.layout === "equal" ? `<button type="button" class="pp-order-wide" data-wide="${esc(s.id)}" aria-pressed="false" aria-label="Give ${esc(s.name)} two places across" title="Two places across">Wide</button>` : ""}
           ${i < fixed ? "" : `<span class="pp-order-move">
             <button type="button" data-move="-1" aria-label="Move ${esc(s.name)} earlier"${i === fixed ? " disabled" : ""}>‹</button>
             <button type="button" data-move="1" aria-label="Move ${esc(s.name)} later"${i === list.length - 1 ? " disabled" : ""}>›</button>
           </span>`}
         </li>`).join("");
+      syncWide();
       // Keep the keyboard on the photo that moved, even once it reaches an end.
       if (focus) {
         const item = [...strip.children].find((li) => li.dataset.id === focus.id);
@@ -2653,6 +2736,16 @@
         if (btn) btn.focus();
       }
       syncArrange();
+    }
+
+    // Shows which photographs the page actually drew two places across —
+    // whichever chose it for themselves and whichever the client insisted on.
+    // It runs off the drawn page rather than a second copy of the rule, so
+    // the button can never disagree with the paper.
+    function syncWide() {
+      body.querySelectorAll("[data-wide]").forEach((btn) => {
+        btn.setAttribute("aria-pressed", String(lastWide.has(btn.dataset.wide)));
+      });
     }
 
     // Real counts when every page splits the same way ("3 on top"), words when
@@ -2673,12 +2766,16 @@
       syncArrange();
     }
 
-    // Offered only when the two shapes would actually print differently: two
-    // photos on one page come out as equal halves either way.
+    // Offered whenever a page holds more than one photograph. It used to be
+    // held back below three, on the reasoning that two come out as equal
+    // halves either way — true when that was written, and false since v381
+    // gave the lead a penalty for being under 1.8x the largest photo beside
+    // it. Two photographs print 1.85x apart now, so hiding the choice left no
+    // way to ask for the equal pair the note promised (found Sep 22 2026).
     function syncLayout() {
       const seg = body.querySelector("#ppLayoutSeg");
       if (!seg) return;
-      seg.hidden = printOrder().length < 3;
+      seg.hidden = printOrder().length < 2;
       seg.querySelectorAll("[data-layout]").forEach((btn) => btn.setAttribute("aria-checked", String(btn.dataset.layout === state.layout)));
       syncArrange();
     }

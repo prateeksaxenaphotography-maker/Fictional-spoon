@@ -3244,6 +3244,17 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
 }
 .pp-order-adjust:hover { color: var(--ink); border-color: var(--ink); }
 
+/* "Wide": two places across instead of one. It lights up whether the page
+   chose it for the photograph or the client insisted, so the strip always
+   says what the paper is doing. */
+.pp-order-wide {
+  margin-top: 4px; width: 100%; padding: 5px 6px; border: 1px solid var(--line);
+  background: var(--paper); color: var(--ink-soft); border-radius: 6px; cursor: pointer;
+  font: 600 10.5px/1 var(--mono-font); letter-spacing: .06em; text-transform: uppercase;
+}
+.pp-order-wide:hover { color: var(--ink); border-color: var(--ink); }
+.pp-order-wide[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
 /* The phone photo viewer showed a photo 230px wide — 59% of the screen, barely
    bigger than the thumbnail it was opened from. The photo had 20px of padding
    inside a 60vh box and its own 48vh ceiling, while the info panel held 40% of

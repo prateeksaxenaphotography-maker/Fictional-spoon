@@ -1386,6 +1386,16 @@ function cleanModelPdfs(state) {
         // this still reopens as the PDF it was saved as.
         perPage: (Array.isArray(sp.perPage) ? sp.perPage : []).slice(0, 3)
           .map((n) => Math.min(6, Math.max(1, Number(n) || 1))),
+        // Photo id → 1 or 2 places across, where the client overruled the page.
+        span: (() => {
+          const out = {};
+          if (sp.span && typeof sp.span === "object") {
+            for (const [k, v] of Object.entries(sp.span).slice(0, 60)) {
+              if (typeof k === "string" && k && (Number(v) === 1 || Number(v) === 2)) out[k] = Number(v);
+            }
+          }
+          return out;
+        })(),
         firstPage: Math.min(6, Math.max(0, Number(sp.firstPage) || 0)),
         picks: ids(sp.picks),
         cleared: ids(sp.cleared),
