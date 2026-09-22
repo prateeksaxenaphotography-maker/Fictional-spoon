@@ -2290,8 +2290,8 @@ window.WPS_DATA = {
       "waist": "29",
       "hips": "",
       "shoes": "9",
-      "modelHair": "black",
-      "modelEyes": "black",
+      "modelHair": "Black",
+      "modelEyes": "Black",
       "agencyCredit": "",
       "agency": "",
       "agencyHandle": "",
@@ -2634,7 +2634,7 @@ window.WPS_DATA = {
       "showModelWebsiteOnHome": false,
       "showModelWebsiteOnPdf": false,
       "showEmailOnCompCard": true,
-      "showEmailOnHome": true,
+      "showEmailOnHome": false,
       "showEmailOnPdf": true,
       "showAgencyOnCompCard": false,
       "showAgencyOnHome": false,
@@ -3181,7 +3181,7 @@ window.WPS_DATA = {
     "PACKAGES": 1789975069137,
     "TFP_PACKAGE": 1789975069138,
     "HOME_STUDIO_RATE": 1789975069138,
-    "PORTFOLIO_PDF": 1790099840662,
+    "PORTFOLIO_PDF": 1790105974012,
     "HOME_STUDIO_RATE_TFP": 1789975069138
   },
   "TESTIMONIALS": {
@@ -3343,8 +3343,8 @@ window.WPS_DATA = {
         "waist": "29",
         "hips": "",
         "shoes": "9",
-        "modelHair": "black",
-        "modelEyes": "black",
+        "modelHair": "Black",
+        "modelEyes": "Black",
         "agencyCredit": "",
         "agency": "",
         "agencyHandle": "",
@@ -3354,7 +3354,7 @@ window.WPS_DATA = {
         "modelTypes": [
           "Fashion"
         ],
-        "updatedAt": 1790104705605,
+        "updatedAt": 1790106077427,
         "showStatsOnCompCard": true,
         "showStatsOnModelPortfolio": true,
         "showModelInstagramOnCompCard": true,
@@ -3823,6 +3823,99 @@ window.WPS_DATA = {
   },
   "MODEL_PDFS": {
     "versions": [
+      {
+        "id": "mp_mud2vlkr_co23k",
+        "shootId": "comp-card-Atharv%20Sharma%20(https%3A%2F%2Fwww.instagram.com%2Fectogainsss%2F%3Fhl%3Den)",
+        "name": "Test 1",
+        "updatedAt": 1790105974011,
+        "spec": {
+          "pages": 2,
+          "count": 8,
+          "perPage": [
+            4,
+            4
+          ],
+          "span": {
+            "muca80smjx9k90-18": 2
+          },
+          "firstPage": 0,
+          "picks": [
+            "muca5877bysjsu-4",
+            "muca56vgez53vb-0",
+            "muca57yixr16s8-3",
+            "muca57hap5pcdi-1",
+            "muccmrnumyyf3j-23",
+            "muca593bwa9nvo-6",
+            "muca80xnhe2eom-19",
+            "muca80smjx9k90-18"
+          ],
+          "cleared": [],
+          "lead": "muca5877bysjsu-4",
+          "cover": true,
+          "coverId": "muca5a1qkkj6qh-11",
+          "coverStyle": "framed",
+          "tags": [
+            true,
+            true
+          ],
+          "tagPlace": "in",
+          "tagAlign": "left",
+          "layout": "equal",
+          "order": [
+            "muca56vgez53vb-0",
+            "muca57hap5pcdi-1",
+            "muca57yixr16s8-3",
+            "muca5877bysjsu-4",
+            "muca80xnhe2eom-19",
+            "muca593bwa9nvo-6",
+            "muccmrnumyyf3j-23",
+            "muca80smjx9k90-18"
+          ],
+          "fewerOnTop": false,
+          "adjust": {
+            "muca56vgez53vb-0": {
+              "x": 0.5,
+              "y": 0,
+              "zoom": 1
+            },
+            "muca57hap5pcdi-1": {
+              "x": 0.5,
+              "y": 0.35,
+              "zoom": 1
+            },
+            "muca57yixr16s8-3": {
+              "x": 0.5,
+              "y": 0.35,
+              "zoom": 1
+            },
+            "muca5877bysjsu-4": {
+              "x": 0.5,
+              "y": 0.35,
+              "zoom": 1
+            },
+            "muca80smjx9k90-18": {
+              "x": 0.5,
+              "y": 0.35,
+              "zoom": 1
+            },
+            "muca80xnhe2eom-19": {
+              "x": 0.47179368507662245,
+              "y": 0.24573177002982619,
+              "zoom": 1
+            },
+            "muca593bwa9nvo-6": {
+              "x": 0.5,
+              "y": 0.35,
+              "zoom": 1
+            },
+            "muccmrnumyyf3j-23": {
+              "x": 0.5,
+              "y": 0.35,
+              "zoom": 1
+            }
+          }
+        }
+      },
       {
         "id": "mp_mucz851x_82fju",
         "shootId": "comp-card-Atharv%20Sharma%20(https%3A%2F%2Fwww.instagram.com%2Fectogainsss%2F%3Fhl%3Den)",
