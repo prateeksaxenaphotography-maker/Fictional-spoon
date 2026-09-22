@@ -2301,6 +2301,10 @@ window.WPS_DATA = {
       "modelTypes": [
         "Fashion"
       ],
+      "modelKeys": [
+        "atharv-sharma"
+      ],
+      "feedsModelCards": true,
       "showStatsOnCompCard": true,
       "showStatsOnModelPortfolio": true,
       "showTestShootCategory": false,
@@ -2322,8 +2326,8 @@ window.WPS_DATA = {
       "lightingDiagram": null,
       "lightingDiagramVisibility": "private",
       "palette": [
-        "#3a3a3a",
-        "#0d0d0d"
+        "#909090",
+        "#414141"
       ],
       "photos": [
         {
@@ -2523,7 +2527,8 @@ window.WPS_DATA = {
           "id": "muccmqg0so5eya-21",
           "url": "photos/mubczus1xaoo4q/muccmqg0so5eya-21.jpg",
           "objectPosition": "center",
-          "usage": "both",
+          "excludeFromCompCard": true,
+          "usage": "portfolio",
           "small": "photos/mubczus1xaoo4q/muccmqg0so5eya-21@480.jpg",
           "medium": "photos/mubczus1xaoo4q/muccmqg0so5eya-21@960.jpg"
         },
@@ -2531,7 +2536,8 @@ window.WPS_DATA = {
           "id": "muccmqsf3g2u8u-22",
           "url": "photos/mubczus1xaoo4q/muccmqsf3g2u8u-22.jpg",
           "objectPosition": "center",
-          "usage": "both",
+          "excludeFromCompCard": true,
+          "usage": "portfolio",
           "small": "photos/mubczus1xaoo4q/muccmqsf3g2u8u-22@480.jpg",
           "medium": "photos/mubczus1xaoo4q/muccmqsf3g2u8u-22@960.jpg"
         },
@@ -2539,7 +2545,8 @@ window.WPS_DATA = {
           "id": "muccmr3wcos5v9-23",
           "url": "photos/mubczus1xaoo4q/muccmr3wcos5v9-23.jpg",
           "objectPosition": "center",
-          "usage": "both",
+          "excludeFromCompCard": true,
+          "usage": "portfolio",
           "small": "photos/mubczus1xaoo4q/muccmr3wcos5v9-23@480.jpg",
           "medium": "photos/mubczus1xaoo4q/muccmr3wcos5v9-23@960.jpg"
         },
@@ -2555,7 +2562,8 @@ window.WPS_DATA = {
           "id": "muccmrtlo2j6s7-25",
           "url": "photos/mubczus1xaoo4q/muccmrtlo2j6s7-25.jpg",
           "objectPosition": "center",
-          "usage": "both",
+          "excludeFromCompCard": true,
+          "usage": "portfolio",
           "small": "photos/mubczus1xaoo4q/muccmrtlo2j6s7-25@480.jpg",
           "medium": "photos/mubczus1xaoo4q/muccmrtlo2j6s7-25@960.jpg"
         },
@@ -2563,7 +2571,8 @@ window.WPS_DATA = {
           "id": "muccmrxvgwjmbb-26",
           "url": "photos/mubczus1xaoo4q/muccmrxvgwjmbb-26.jpg",
           "objectPosition": "center",
-          "usage": "both",
+          "excludeFromCompCard": true,
+          "usage": "portfolio",
           "small": "photos/mubczus1xaoo4q/muccmrxvgwjmbb-26@480.jpg",
           "medium": "photos/mubczus1xaoo4q/muccmrxvgwjmbb-26@960.jpg"
         },
@@ -2571,7 +2580,8 @@ window.WPS_DATA = {
           "id": "muccms4j2bgcj0-27",
           "url": "photos/mubczus1xaoo4q/muccms4j2bgcj0-27.jpg",
           "objectPosition": "center",
-          "usage": "both",
+          "excludeFromCompCard": true,
+          "usage": "portfolio",
           "small": "photos/mubczus1xaoo4q/muccms4j2bgcj0-27@480.jpg",
           "medium": "photos/mubczus1xaoo4q/muccms4j2bgcj0-27@960.jpg"
         },
@@ -2579,7 +2589,8 @@ window.WPS_DATA = {
           "id": "muccmsc1j9b6if-28",
           "url": "photos/mubczus1xaoo4q/muccmsc1j9b6if-28.jpg",
           "objectPosition": "center",
-          "usage": "both",
+          "excludeFromCompCard": true,
+          "usage": "portfolio",
           "small": "photos/mubczus1xaoo4q/muccmsc1j9b6if-28@480.jpg",
           "medium": "photos/mubczus1xaoo4q/muccmsc1j9b6if-28@960.jpg"
         },
@@ -2587,9 +2598,19 @@ window.WPS_DATA = {
           "id": "muccmsk44qxax1-29",
           "url": "photos/mubczus1xaoo4q/muccmsk44qxax1-29.jpg",
           "objectPosition": "center",
-          "usage": "both",
+          "excludeFromCompCard": true,
+          "usage": "portfolio",
           "small": "photos/mubczus1xaoo4q/muccmsk44qxax1-29@480.jpg",
           "medium": "photos/mubczus1xaoo4q/muccmsk44qxax1-29@960.jpg"
+        },
+        {
+          "id": "mucq0dfdg4bivd-30",
+          "url": "photos/mubczus1xaoo4q/mucq0dfdg4bivd-30.jpg",
+          "objectPosition": "center",
+          "excludeFromCompCard": true,
+          "usage": "portfolio",
+          "small": "photos/mubczus1xaoo4q/mucq0dfdg4bivd-30@480.jpg",
+          "medium": "photos/mubczus1xaoo4q/mucq0dfdg4bivd-30@960.jpg"
         }
       ],
       "featured": true,
@@ -2645,10 +2666,7 @@ window.WPS_DATA = {
       "showAgencyEmailOnCompCard": false,
       "showAgencyEmailOnHome": false,
       "showAgencyEmailOnPdf": false,
-      "coverPhotoId": "muca5a1qkkj6qh",
-      "modelKeys": [
-        "atharv-sharma"
-      ]
+      "coverPhotoId": "muca5a1qkkj6qh"
     }
   ],
   "DELETED_IDS": [
@@ -2672,13 +2690,6 @@ window.WPS_DATA = {
       "2001-08-15": [
         {
           "id": "b_1786709109940_konc",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Fashion Editorial",
-          "contractVersion": "COMMERCIAL-CONTRACT-V3.3"
-        },
-        {
-          "id": "b_audit_WPS-20260814-173509-WMCY",
           "isTentative": false,
           "status": "confirmed",
           "type": "Fashion Editorial",
@@ -2720,20 +2731,6 @@ window.WPS_DATA = {
           "status": "confirmed",
           "type": "Fashion Editorial",
           "contractVersion": "COMMERCIAL-CONTRACT-V3.5"
-        },
-        {
-          "id": "b_audit_WPS-20260814-173509-WMCY",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Fashion Editorial",
-          "contractVersion": "COMMERCIAL-CONTRACT-V3.3"
-        },
-        {
-          "id": "b_audit_WPS-20260823-013037-SRE9",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Fashion Editorial",
-          "contractVersion": "COMMERCIAL-CONTRACT-V3.5"
         }
       ],
       "2026-08-15": [
@@ -2743,6 +2740,13 @@ window.WPS_DATA = {
           "status": "confirmed",
           "type": "Other",
           "contractVersion": "V3.3-TFP"
+        },
+        {
+          "id": "b_audit_WPS-20260814-173509-WMCY",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Fashion Editorial",
+          "contractVersion": "COMMERCIAL-CONTRACT-V3.3"
         }
       ],
       "2026-08-16": [
@@ -2798,13 +2802,6 @@ window.WPS_DATA = {
       "2001-10-17": [
         {
           "id": "b_1787428837182_i8mi",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Fashion Editorial",
-          "contractVersion": "COMMERCIAL-CONTRACT-V3.5"
-        },
-        {
-          "id": "b_audit_WPS-20260823-013037-SRE9",
           "isTentative": false,
           "status": "confirmed",
           "type": "Fashion Editorial",
@@ -2882,6 +2879,15 @@ window.WPS_DATA = {
           "status": "tentative",
           "type": "Fashion Editorial",
           "contractVersion": "V3.7-COMMERCIAL"
+        }
+      ],
+      "2026-10-17": [
+        {
+          "id": "b_audit_WPS-20260823-013037-SRE9",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Fashion Editorial",
+          "contractVersion": "COMMERCIAL-CONTRACT-V3.5"
         }
       ],
       "2026-06-14": [
@@ -3174,7 +3180,7 @@ window.WPS_DATA = {
     "PACKAGES": 1789975069137,
     "TFP_PACKAGE": 1789975069138,
     "HOME_STUDIO_RATE": 1789975069138,
-    "PORTFOLIO_PDF": 1789970038184,
+    "PORTFOLIO_PDF": 1790062483330,
     "HOME_STUDIO_RATE_TFP": 1789975069138
   },
   "TESTIMONIALS": {
@@ -3347,7 +3353,7 @@ window.WPS_DATA = {
         "modelTypes": [
           "Fashion"
         ],
-        "updatedAt": 1790002036369,
+        "updatedAt": 1790084434802,
         "showStatsOnCompCard": true,
         "showStatsOnModelPortfolio": true,
         "showModelInstagramOnCompCard": true,
@@ -3815,7 +3821,53 @@ window.WPS_DATA = {
     "deleted": []
   },
   "MODEL_PDFS": {
-    "versions": [],
+    "versions": [
+      {
+        "id": "mp_mucczfy9_wugha",
+        "shootId": "comp-card-Atharv%20Sharma%20(https%3A%2F%2Fwww.instagram.com%2Fectogainsss%2F%3Fhl%3Den)",
+        "name": "trail",
+        "updatedAt": 1790062483329,
+        "spec": {
+          "pages": 2,
+          "count": 10,
+          "perPage": [],
+          "span": {},
+          "firstPage": 0,
+          "picks": [
+            "muca57r58dg197-2",
+            "muca57yixr16s8-3",
+            "muca5877bysjsu-4",
+            "muca5ap6var6iu-14",
+            "muca5axgstf29d-15",
+            "muca57hap5pcdi-1",
+            "muca5a9rdmzwin-12",
+            "muca58rgq9nttw-5",
+            "muccmrnumyyf3j-24",
+            "muca56vgez53vb-0"
+          ],
+          "cleared": [],
+          "lead": "muca57r58dg197-2",
+          "cover": true,
+          "coverId": "muca5a1qkkj6qh-11",
+          "coverStyle": "framed",
+          "layout": "equal",
+          "order": [
+            "muca56vgez53vb-0",
+            "muca57r58dg197-2",
+            "muca57yixr16s8-3",
+            "muca5877bysjsu-4",
+            "muca5ap6var6iu-14",
+            "muca58rgq9nttw-5",
+            "muca5axgstf29d-15",
+            "muca5a9rdmzwin-12",
+            "muca57hap5pcdi-1",
+            "muccmrnumyyf3j-24"
+          ],
+          "fewerOnTop": false,
+          "adjust": {}
+        }
+      }
+    ],
     "deleted": []
   },
   "STUDIO_PORTFOLIOS": {
