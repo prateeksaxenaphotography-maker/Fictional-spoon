@@ -2973,7 +2973,22 @@ window.WPS_DATA = {
     "HOME_STUDIO_RATE_TFP": 1789975069138
   },
   "TESTIMONIALS": {
-    "items": [],
+    "items": [
+      {
+        "id": "muc7hd842lqnce",
+        "quote": "Big thanks to you for this shoot! Your professionalism, creativity and the way you captured these shots were genuinely amazing. Loved how the pictures turned out. Really Appreciate it!",
+        "by": "Atharv Sharma",
+        "role": "Model, Delhi",
+        "kind": "model",
+        "rating": 0,
+        "dateLabel": "September 2026",
+        "shoot": "Atharv Sharma",
+        "shootId": "mubczus1xaoo4q",
+        "verified": true,
+        "onHome": true,
+        "updatedAt": 1790053577771
+      }
+    ],
     "deleted": []
   },
   "MODEL_PDFS": {
