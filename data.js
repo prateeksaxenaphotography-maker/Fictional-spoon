@@ -2944,6 +2944,15 @@ window.WPS_DATA = {
           "type": "Workshop Attended",
           "shootId": "ms36z1wqm2xkrz"
         }
+      ],
+      "2026-10-10": [
+        {
+          "id": "b_1790091373654_x1t1",
+          "isTentative": false,
+          "status": "workshop",
+          "type": "Workshop Attended",
+          "contractVersion": "Pending Agreement"
+        }
       ]
     },
     "removedBookingIds": [
