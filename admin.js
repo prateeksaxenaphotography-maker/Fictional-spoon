@@ -1225,6 +1225,122 @@ window.getTestimonials = getTestimonials;
 window.saveTestimonials = saveTestimonials;
 window.TESTIMONIAL_STORE_LIMITS = TESTIMONIAL_STORE_LIMITS;
 
+/* ---- the people the studio photographs ----------------------------------
+   One record per model, holding what belongs to the person rather than to any
+   one shoot: their name, their own social handles, their measurements, the
+   agency representing them. Albums and individual photographs point at a
+   record by `key` — a slug of the name — so the same model tagged on a test
+   shoot in March and on a brand's campaign in September is one person with
+   one card, however her name happened to be typed the second time.
+
+   Why this exists at all: a comp card used to be assembled by grouping albums
+   on the raw text of the "Model / talent" credit. That works while every
+   album is one model's test shoot and breaks the moment it is not — a brand's
+   day with six models has one credit line naming all six, belongs to the
+   client, and has frames with two models in one picture. See the model-tagging
+   note in app.js for how photographs are dealt out to the people in them.
+
+   An album still carries its own copy of these fields, and still answers for
+   a model with no record here (see `sources` in buildCompCardDisplayList), so
+   nothing published before this existed changed shape or behaviour.
+
+   TRAP, the same one the testimonials and invite codes have: this normaliser
+   drops any field it does not name. A new field on a model must be added here
+   too, or it will vanish the next time the page is reloaded. The per-surface
+   visibility switches are matched by shape rather than listed, so adding one
+   to REP_SWITCHES in app.js needs no change here. */
+const MODEL_STORE_LIMITS = { name: 80, credit: 300, stat: 40, email: 120, items: 400 };
+function cleanModels(state) {
+  if (!state || typeof state !== "object") return { items: [], deleted: [] };
+  const list = Array.isArray(state) ? state : (Array.isArray(state.items) ? state.items : []);
+  const str = (v, n) => String(v == null ? "" : v).replace(/\r/g, "").trim().slice(0, n);
+  const ids = (a) => (Array.isArray(a) ? a.filter((x) => typeof x === "string" && x).slice(0, 400) : []);
+  const items = list.map((m) => {
+    if (!m || typeof m !== "object") return null;
+    const key = str(m.key, 120);
+    const name = str(m.name, MODEL_STORE_LIMITS.name);
+    // A record with no key cannot be pointed at, and one with no name has
+    // nothing to print on a card. Either way it is not a model.
+    if (!key || !name) return null;
+    const out = {
+      key,
+      name,
+      // The credit line as it is typed everywhere else on the site —
+      // "Name (@handle; site.com)" — because that is the form the comp card,
+      // the lightbox and the PDFs already know how to read handles out of.
+      talent: str(m.talent, MODEL_STORE_LIMITS.credit) || name,
+      height: str(m.height, MODEL_STORE_LIMITS.stat),
+      chest: str(m.chest, MODEL_STORE_LIMITS.stat),
+      chestLabel: str(m.chestLabel, 20),
+      waist: str(m.waist, MODEL_STORE_LIMITS.stat),
+      hips: str(m.hips, MODEL_STORE_LIMITS.stat),
+      shoes: str(m.shoes, MODEL_STORE_LIMITS.stat),
+      modelHair: str(m.modelHair, MODEL_STORE_LIMITS.stat),
+      modelEyes: str(m.modelEyes, MODEL_STORE_LIMITS.stat),
+      agencyCredit: str(m.agencyCredit, MODEL_STORE_LIMITS.credit),
+      agency: str(m.agency, MODEL_STORE_LIMITS.name),
+      agencyHandle: str(m.agencyHandle, 120),
+      agencySite: str(m.agencySite, 200),
+      agencyLinks: (Array.isArray(m.agencyLinks) ? m.agencyLinks : []).slice(0, 8)
+        .map((l) => (l && typeof l === "object" ? { kind: str(l.kind, 20), label: str(l.label, 120), url: str(l.url, 300) } : null))
+        .filter((l) => l && l.url),
+      modelEmail: str(m.modelEmail, MODEL_STORE_LIMITS.email),
+      modelTypes: (Array.isArray(m.modelTypes) ? m.modelTypes : []).slice(0, 4).map((t) => str(t, 40)).filter(Boolean),
+      updatedAt: Number(m.updatedAt) || 0
+    };
+    if (typeof m.showStatsOnCompCard === "boolean") out.showStatsOnCompCard = m.showStatsOnCompCard;
+    if (typeof m.showStatsOnModelPortfolio === "boolean") out.showStatsOnModelPortfolio = m.showStatsOnModelPortfolio;
+    // Matched by shape, not by a list that would have to be kept in step with
+    // REP_SWITCHES × REP_SURFACES in app.js.
+    Object.keys(m).forEach((k) => {
+      if (/^show[A-Za-z]+On(CompCard|Home|Pdf)$/.test(k) && typeof m[k] === "boolean") out[k] = m[k];
+    });
+    return out;
+  }).filter(Boolean);
+  // One record per key: a duplicate key would give the model two cards, which
+  // is the exact failure this registry exists to prevent.
+  const byKey = new Map();
+  for (const m of items) {
+    const have = byKey.get(m.key);
+    if (!have || m.updatedAt >= have.updatedAt) byKey.set(m.key, m);
+  }
+  return { items: [...byKey.values()].slice(0, MODEL_STORE_LIMITS.items), deleted: ids(state.deleted) };
+}
+/* The merged list: what is live, what another device published while this one
+   was not looking, and what has been typed in here since. Newest wins per key,
+   and anyone deleted anywhere stays deleted. */
+function getModels(live) {
+  let local = null, published = null, remote = null;
+  try { local = cleanModels(JSON.parse(localStorage.getItem("wps_models") || "null")); } catch (e) {}
+  try { published = cleanModels(window.WPS_DATA && window.WPS_DATA.MODELS); } catch (e) {}
+  try { remote = live ? cleanModels(live) : null; } catch (e) {}
+  const deleted = [...new Set([
+    ...((local && local.deleted) || []),
+    ...((published && published.deleted) || []),
+    ...((remote && remote.deleted) || [])
+  ])];
+  const byKey = new Map();
+  for (const m of [...((remote && remote.items) || []), ...((published && published.items) || []), ...((local && local.items) || [])]) {
+    const have = byKey.get(m.key);
+    if (!have || m.updatedAt >= have.updatedAt) byKey.set(m.key, m);
+  }
+  const items = [...byKey.values()].filter((m) => !deleted.includes(m.key))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  return { items, deleted };
+}
+function saveModels(state) {
+  const clean = cleanModels(state);
+  try { localStorage.setItem("wps_models", JSON.stringify(clean)); } catch (e) { return false; }
+  // The live list a visitor's page reads is the published one; this keeps the
+  // admin's own pages showing what was just typed without a reload.
+  try { if (window.WPS_DATA) window.MODELS = clean.items; } catch (e) {}
+  return true;
+}
+window.cleanModels = cleanModels;
+window.getModels = getModels;
+window.saveModels = saveModels;
+window.MODEL_STORE_LIMITS = MODEL_STORE_LIMITS;
+
 
 /* ---- saved model-portfolio PDFs ----------------------------------------
    An arrangement the studio built for a model: which photos, in what order,
@@ -1515,6 +1631,7 @@ window.moveAdminPackageRow = function(index, dir) {
     esc, escJs, extractPalette, followAlbumText, getCalDateKey, getCalDateStatus,
     getContractEmailStatuses, getLocalContractAudits, getTalentCleanName, igHandleFromCredit, isAdmin, isDecidableHold,
     isSigImage, kineticH1, legacyClientOf, loadShoots, localTombstones, lookByKey,
+    albumModelKeys, feedsModelCards, modelKeyOf, modelNameFromKey, modelRoster, photoModelKeys, slugify,
     lookLabel, modelTypeLabel, modelTypeOptions, modelTypesOf, normalizeModelType, parseDeletedIdsFromDataJs,
     parseIgHandle, parseKavyarLink, parseObjectAfterKey, parseShootsFromDataJs, parseValueAfterKey, photoSrc,
     putShoot, readAsDataURL, removeCalBooking, render, repSwitchValues, resize,
@@ -1684,7 +1801,13 @@ window.moveAdminPackageRow = function(index, dir) {
     // it could not read.
     const testimonials = parseObjectAfterKey(text, '"TESTIMONIALS"');
     if (testimonials === null) throw new Error("Could not read the published testimonials in data.js — aborting so none is overwritten.");
-    return { shoots: parsed, deletedIds: parseDeletedIdsFromDataJs(text), studioPortfolios: books || null, modelPdfs: modelPdfs || null, testimonials: testimonials || null, settings, stamps };
+    // The people the studio photographs. Same rule again: a file that predates
+    // the list has no key and that IS "none", but a key this cannot read means
+    // stop — republishing without it would strip every model's measurements
+    // and agency from every comp card at once.
+    const models = parseObjectAfterKey(text, '"MODELS"');
+    if (models === null) throw new Error("Could not read the published models in data.js — aborting so none is overwritten.");
+    return { shoots: parsed, deletedIds: parseDeletedIdsFromDataJs(text), studioPortfolios: books || null, modelPdfs: modelPdfs || null, testimonials: testimonials || null, models: models || null, settings, stamps };
   }
 
   const MIME_EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
@@ -1777,6 +1900,9 @@ window.moveAdminPackageRow = function(index, dir) {
           if (p.angle === undefined && rp.angle) p.angle = rp.angle;
           if (p.usage === undefined && rp.usage) p.usage = rp.usage;
           if (p.look === undefined && rp.look) p.look = rp.look;
+          // Who is in the frame, by the same additive rule. An empty array is
+          // a deliberate "nobody is tagged here yet" and still publishes.
+          if (p.models === undefined && Array.isArray(rp.models)) p.models = rp.models;
         }
       }
 
@@ -1850,6 +1976,11 @@ window.moveAdminPackageRow = function(index, dir) {
               ...(p.usage ? { usage: p.usage } : {}),
               // The kind of work a photo was tagged as puts it on that page's grid.
               ...(p.look ? { look: p.look } : {}),
+              // Who is in this frame. This is what sends one photograph to two
+              // models' comp cards, so leaving it out of this list would have
+              // repeated the pose-and-usage bug: tagged on the studio's device,
+              // invisible to every visitor.
+              ...(Array.isArray(p.models) && p.models.length ? { models: p.models } : {}),
               ...(small ? { small } : {}),
               ...(medium ? { medium } : {}),
               ...(p.caption ? { caption: p.caption } : {}),
@@ -1958,6 +2089,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         // the books below: per testimonial, against the copy just fetched, so
         // one device publishing never drops what another added.
         TESTIMONIALS: (typeof window.getTestimonials === "function" ? window.getTestimonials(remote.testimonials) : { items: [], deleted: [] }),
+        // Who the studio photographs, merged per model the same way, so a
+        // model added on the phone is not dropped by the next publish from
+        // the laptop. Albums and photographs reference these by `key`.
+        MODELS: (typeof window.getModels === "function" ? window.getModels(remote.models) : { items: [], deleted: [] }),
         MODEL_PDFS: (typeof window.getModelPdfs === "function" ? window.getModelPdfs(remote.modelPdfs) : { versions: [], deleted: [] }),
         STUDIO_PORTFOLIOS: (typeof window.getStudioPortfolios === "function" ? window.getStudioPortfolios(remote.studioPortfolios) : { versions: [], deleted: [] }),
         }, null, 2)};
@@ -1968,6 +2103,7 @@ window.TYPES = window.WPS_DATA.TYPES || [];
 window.BRANDS = window.WPS_DATA.BRANDS || [];
 window.DEMO_SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
 window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
+window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
 `;
 
       // Round-trip self-test before anything is committed: the very parser
@@ -4636,6 +4772,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <span style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft);">Kind of work:</span>
               ${LOOKS.map((l) => `<button type="button" class="thumb-bulk-look-btn" data-look="${esc(l.key)}" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">${esc(l.label)}</button>`).join("")}
               <button type="button" class="thumb-bulk-look-btn" data-look="" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink-soft); cursor:pointer;">Follow album</button>
+              <!-- Filled in whenever the album has more than one model in it:
+                   with six models and forty frames, tagging one at a time is
+                   the difference between the feature being used and not. -->
+              <span id="thumbBulkPeople" style="display:none; align-items:center; flex-wrap:wrap; gap:8px;"></span>
               <span style="width:1px; align-self:stretch; background:var(--line-2);"></span>
               <button type="button" id="thumbBulkSelectAll" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink-soft); cursor:pointer;">Select all</button>
               <button type="button" id="thumbBulkClear" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink-soft); cursor:pointer;">Clear</button>
@@ -4715,6 +4855,28 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 <label class="field"><span>Model's agency <em class="label-hint">as of this shoot</em></span><input id="f_agency" type="text" placeholder="e.g. Inega Model Management (@inegamodels; inega.com)" /><span class="field-verify" id="f_agency_verify" style="display: none;"></span></label>
                 <label class="field"><span>Model's email <em class="label-hint">optional</em></span><input id="f_model_email" type="email" placeholder="name@example.com" autocomplete="off" /></label>
               </div>
+              <!-- Who is in this album. A test shoot is one person and this
+                   stays out of the way; a brand's day or a makeup artist's day
+                   is where it earns its place. The people are the studio's own
+                   list (MODELS), not text typed again per album, so the same
+                   model tagged in March and in September is one card. -->
+              <div class="field" id="f_models_field" style="margin-top: 14px;">
+                <span>Who's in this album <span style="font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-soft);">— tick everyone who appears</span></span>
+                <p style="margin: 6px 0 0; font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5;">One model needs nothing more — every photo is hers. Tick two or more and a "Who's in it" row appears on each photo below, so a frame with two models reaches both their cards.</p>
+                <div id="f_models" style="display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 10px;"></div>
+                <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center;">
+                  <input id="f_model_new" type="text" placeholder="Add someone — Name (@handle)" style="flex: 1 1 260px; min-width: 0; height: 38px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 6px; padding: 0 12px; box-sizing: border-box; font-size: var(--font-sm); outline: none;" />
+                  <button type="button" id="f_model_add" class="btn btn-ghost" style="height: 38px; padding: 0 16px; font-size: var(--font-xs); font-family: var(--mono-font); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">+ Add</button>
+                </div>
+                <!-- One person's details, opened from their chip above. These
+                     belong to the person, not to this shoot, so they follow
+                     her onto every card built from any album she is in. -->
+                <div id="f_model_detail" style="display: none; margin-top: 12px; padding: 14px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--bone-2);"></div>
+                <label id="f_feeds_row" style="display: none; align-items: flex-start; gap: 10px; margin-top: 14px; font-size: var(--font-sm); font-weight: 500; color: var(--ink); cursor: pointer; user-select: none;">
+                  <input id="f_feeds_model_cards" type="checkbox" style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent-text); flex: 0 0 auto;" />
+                  <span>These photographs may appear on the models' own comp cards<br /><em id="f_feeds_hint" style="font-style: normal; font-weight: 400; font-size: var(--font-xs); color: var(--ink-soft);"></em></span>
+                </label>
+              </div>
               <p class="field-note credits-note" style="margin-top: -2px;">Models move between agencies — the comp card and PDF use the agency from the model's most recent album. Where the agency and email may appear is set under Publish settings.</p>
               <div class="field-row" id="f_mentor_row" style="display: none;">
                 <label class="field" style="grid-column: 1 / -1;"><span>Teacher / Mentor</span><input id="f_mentor" type="text" placeholder="e.g. Mentor One (@handle; site.com), Mentor Two" /><span class="field-verify" id="f_mentor_verify" style="display: none;"></span></label>
@@ -4722,6 +4884,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
               <label class="field"><span>Other credits</span><input id="f_credits" type="text" placeholder="e.g. Set designer Name (@handle; site.com), Assistant Name" /><span class="field-verify" id="f_credits_verify" style="display: none;"></span></label>
             </fieldset>
 
+            <p id="f_stats_shared_note" class="field-note" style="display: none; margin: 4px 0 14px;"></p>
             <fieldset id="modelStatsFieldset" class="fs-collapsible is-collapsed"><legend>Model stats <span class="legend-opt">comp cards</span></legend>
               <div class="fs-head">
                 <span class="fs-summary" id="fsSummaryStats">Only for comp cards — measurements, model type</span>
@@ -5105,6 +5268,244 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     modelTypeBoxes().forEach((b) => b.addEventListener("change", syncModelTypeCap));
     syncModelTypeCap();
 
+    /* ---- who is in this album ------------------------------------------
+       The people are picked from the studio's own list rather than typed
+       again per album, because typing a name twice is how one model ends up
+       with two comp cards. Adding someone here adds them to that list. */
+    const pickedModels = new Set();     // keys ticked for the album being edited
+    let openModelKey = "";              // whose details are expanded, if any
+    const rosterItems = () => (typeof getModels === "function" ? getModels().items : []);
+    const rosterFind = (key) => rosterItems().find((m) => m.key === key) || null;
+    const rosterName = (key) => { const m = rosterFind(key); return m ? m.name : modelNameFromKey(key); };
+    // Everyone the picker offers: the studio's list, plus anyone this album
+    // already tags who is somehow missing from it (edited on another device,
+    // or written into data.js by hand). Never a shorter list than the album
+    // needs, so a tick can never be silently dropped.
+    const pickerKeys = () => {
+      const seen = new Map();
+      rosterItems().forEach((m) => seen.set(m.key, m.name));
+      pickedModels.forEach((k) => { if (!seen.has(k)) seen.set(k, modelNameFromKey(k)); });
+      return [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1], undefined, { sensitivity: "base" }));
+    };
+
+    function renderModelPicker() {
+      const wrap = $("#f_models");
+      if (!wrap) return;
+      const keys = pickerKeys();
+      wrap.innerHTML = keys.length
+        ? keys.map(([key, name]) => `
+            <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px 4px 6px; border: 1px solid ${pickedModels.has(key) ? "var(--accent-text)" : "var(--line-2)"}; border-radius: 20px; background: var(--paper);">
+              <label style="display: inline-flex; align-items: center; gap: 6px; font-size: var(--font-sm); font-weight: 500; color: var(--ink); cursor: pointer; user-select: none; margin: 0;">
+                <input type="checkbox" class="model-pick-cb" value="${esc(key)}" ${pickedModels.has(key) ? "checked" : ""} style="width: 15px; height: 15px; accent-color: var(--accent-text);" />
+                ${esc(name)}
+              </label>
+              <button type="button" class="model-pick-edit" data-key="${esc(key)}" title="${esc(name)}'s measurements, agency and socials" style="border: 0; background: none; padding: 0 2px; cursor: pointer; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: ${openModelKey === key ? "var(--accent-text)" : "var(--ink-soft)"};">${openModelKey === key ? "✕" : "✎"}</button>
+            </span>`).join("")
+        : `<span style="font-size: var(--font-xs); color: var(--ink-soft);">Nobody on the studio's list yet — add the first person below.</span>`;
+      wrap.querySelectorAll(".model-pick-cb").forEach((cb) => {
+        cb.addEventListener("change", (e) => {
+          const key = e.target.value;
+          if (e.target.checked) pickedModels.add(key); else { pickedModels.delete(key); if (openModelKey === key) openModelKey = ""; }
+          renderModelPicker();
+          syncModelsUi();
+        });
+      });
+      wrap.querySelectorAll(".model-pick-edit").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          openModelKey = openModelKey === btn.dataset.key ? "" : btn.dataset.key;
+          renderModelPicker();
+          renderModelDetail();
+        });
+      });
+      renderModelDetail();
+    }
+
+    /* One person's own details. They belong to the person and not to this
+       shoot, so they follow her onto every card built from any album she is
+       in — which is the whole point of the list: a model tagged only on a
+       brand's job still has measurements and an agency to print. */
+    const MODEL_DETAIL_FIELDS = [
+      ["name", "Name", "e.g. Aisha Khan"],
+      ["talent", "Name with her own links", "e.g. Aisha Khan (@aishak; aishakhan.com)"],
+      ["height", "Height", "e.g. 5'9\" / 175 cm"],
+      ["chest", "Chest or bust", "e.g. 32 inch"],
+      ["waist", "Waist", "e.g. 26\" / 66 cm"],
+      ["hips", "Hips", "e.g. 36\" / 91 cm"],
+      ["shoes", "Shoes", "e.g. 8 US / 41 EU"],
+      ["modelHair", "Hair colour", "e.g. Dark Brown"],
+      ["modelEyes", "Eye colour", "e.g. Green"],
+      ["agencyCredit", "Agency", "e.g. Inega Model Management (@inegamodels; inega.com)"],
+      ["modelEmail", "Email", "name@example.com"],
+    ];
+    function renderModelDetail() {
+      const box = $("#f_model_detail");
+      if (!box) return;
+      if (!openModelKey) { box.style.display = "none"; box.innerHTML = ""; return; }
+      const m = rosterFind(openModelKey) || { key: openModelKey, name: modelNameFromKey(openModelKey) };
+      box.style.display = "block";
+      box.innerHTML = `
+        <p style="margin: 0 0 10px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft);">${esc(m.name)} — her own details</p>
+        <p style="margin: 0 0 12px; font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5;">These belong to her, not to this shoot, so they show on her card wherever her photographs came from. Leave anything blank and her albums answer for it instead.</p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+          ${MODEL_DETAIL_FIELDS.map(([f, label, ph]) => `
+            <label class="field" style="margin: 0;"><span>${esc(label)}</span><input class="model-detail-in" data-f="${esc(f)}" type="text" value="${esc(m[f] || "")}" placeholder="${esc(ph)}" /></label>`).join("")}
+          <label class="field" style="margin: 0;"><span>Chest or bust — the word her card uses</span>
+            <select class="model-detail-in" data-f="chestLabel">${CHEST_LABELS.map((l) => `<option value="${esc(l)}" ${chestLabelOf(m) === l ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>
+          </label>
+          <label class="field" style="margin: 0;"><span>Model type <em class="label-hint">up to ${MODEL_TYPES_MAX}, comma separated</em></span><input class="model-detail-in" data-f="modelTypes" type="text" value="${esc(modelTypesOf(m).join(", "))}" placeholder="e.g. Fashion, Fitness" /></label>
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; align-items: center;">
+          <button type="button" id="f_model_detail_save" class="btn btn-ghost" style="height: 36px; padding: 0 16px; font-size: var(--font-xs); font-family: var(--mono-font); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">Save her details</button>
+          <span style="font-size: var(--font-xs); color: var(--ink-soft);">Saved on this device until you publish the album.</span>
+        </div>`;
+      box.querySelectorAll(".model-detail-in").forEach((el) => {
+        el.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); saveOpenModelDetail(); } });
+      });
+      $("#f_model_detail_save")?.addEventListener("click", saveOpenModelDetail);
+    }
+
+    function saveOpenModelDetail() {
+      if (!openModelKey) return;
+      const box = $("#f_model_detail");
+      if (!box) return;
+      const vals = {};
+      box.querySelectorAll(".model-detail-in").forEach((el) => { vals[el.dataset.f] = String(el.value || "").trim(); });
+      const name = vals.name || modelNameFromKey(openModelKey);
+      if (!name) { toast("A model needs a name — her card has nothing to print without one."); return; }
+      const agencyCredit = vals.agencyCredit || "";
+      const record = {
+        ...(rosterFind(openModelKey) || {}),
+        key: openModelKey,
+        name,
+        talent: vals.talent || name,
+        height: vals.height, chest: vals.chest, chestLabel: chestLabelOf({ chestLabel: vals.chestLabel }),
+        waist: vals.waist, hips: vals.hips, shoes: vals.shoes,
+        modelHair: vals.modelHair, modelEyes: vals.modelEyes,
+        // Typed as one credit line and stored split, because the card and the
+        // PDFs print the agency's name and link its handle separately.
+        agencyCredit,
+        agency: getTalentCleanName(agencyCredit),
+        agencyHandle: igHandleFromCredit(agencyCredit),
+        agencySite: siteFromCredit(agencyCredit),
+        agencyLinks: socialsFromCredit(agencyCredit),
+        modelEmail: vals.modelEmail,
+        modelTypes: modelTypesOf({ modelTypes: String(vals.modelTypes || "").split(",") }),
+        updatedAt: Date.now(),
+      };
+      writeModelRecord(record);
+      toast(`Saved ${name}'s details.`);
+      renderModelPicker();
+    }
+
+    // One way in and out of the studio's list, so nothing writes a half-clean
+    // record: cleanModels decides the shape, saveModels persists it, and the
+    // live MODELS every page reads is refreshed in the same breath.
+    function writeModelRecord(record) {
+      const state = (typeof getModels === "function") ? getModels() : { items: [], deleted: [] };
+      const items = state.items.filter((m) => m.key !== record.key).concat([record]);
+      if (typeof saveModels === "function") saveModels({ items, deleted: state.deleted });
+    }
+
+    // "+ Add" takes the same "Name (@handle; site.com)" a credit is typed in,
+    // because that is the form every other name field on this page uses.
+    function addTypedModel() {
+      const input = $("#f_model_new");
+      if (!input) return;
+      const credit = String(input.value || "").trim();
+      const name = getTalentCleanName(credit);
+      if (!name) { toast("Type a name first, e.g. Aisha Khan (@aishak)."); return; }
+      const key = modelKeyOf(name);
+      if (!key) { toast("That name has no letters or digits to make a tag from."); return; }
+      const existing = rosterFind(key);
+      if (!existing) {
+        writeModelRecord({ key, name, talent: credit || name, modelTypes: [], agencyLinks: [], updatedAt: Date.now() });
+      }
+      input.value = "";
+      pickedModels.add(key);
+      // Straight into her details when she is new: a model added from a brand
+      // shoot has no album of her own to carry her measurements, and a comp
+      // card with no measurements is not a comp card.
+      openModelKey = existing ? openModelKey : key;
+      renderModelPicker();
+      syncModelsUi();
+      toast(existing ? `${existing.name} is in this album.` : `Added ${name}. Fill in her details below.`);
+    }
+
+    /* What the rest of the form does about who is in the album.
+       One model: her own stats live on her record, and the album's Model
+       stats fieldset edits them — the studio should not have to know there
+       are two places. Several: those fields cannot mean anything, so they are
+       replaced by a line pointing at each person's own details. */
+    function syncModelsUi() {
+      const n = pickedModels.size;
+      const feedsRow = $("#f_feeds_row");
+      if (feedsRow) feedsRow.style.display = n ? "flex" : "none";
+      const hint = $("#f_feeds_hint");
+      if (hint) {
+        hint.textContent = n
+          ? ($("#f_feeds_model_cards")?.checked
+              ? (n === 1 ? "On. Every photo here shows on her card." : `On. Each photo shows on the cards of whoever is ticked in it below.`)
+              : "Off. Nothing from this album reaches anyone's card — tick this once the work is the model's to show.")
+          : "";
+      }
+      const statsFs = $("#modelStatsFieldset");
+      const statsNote = $("#f_stats_shared_note");
+      if (statsFs) {
+        const many = n > 1;
+        statsFs.style.display = many ? "none" : "";
+        if (statsNote) {
+          statsNote.style.display = many ? "block" : "none";
+          statsNote.textContent = many
+            ? `${n} models in this album — measurements, agency and model type belong to each of them, so edit those with the ✎ beside their name above.`
+            : "";
+        }
+      }
+      renderBulkPeople();
+      // The per-photo "Who's in it" row appears and disappears with the
+      // second model, so the grid has to be rebuilt.
+      if (typeof renderStaged === "function") renderStaged();
+    }
+
+    // Tag everything selected as one person in a click. Adding rather than
+    // replacing, so a frame with two models is two clicks and not a fight:
+    // select the frames she is in, click her, select the frames he is in,
+    // click him, and the frame in both ends up with both.
+    function renderBulkPeople() {
+      const wrap = $("#thumbBulkPeople");
+      if (!wrap) return;
+      const keys = [...pickedModels];
+      if (keys.length < 2) { wrap.style.display = "none"; wrap.innerHTML = ""; return; }
+      wrap.style.display = "inline-flex";
+      wrap.innerHTML = `<span style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft);">Who's in it:</span>`
+        + keys.map((k) => `<button type="button" class="thumb-bulk-person-btn" data-key="${esc(k)}" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink); cursor:pointer;">${esc(rosterName(k))}</button>`).join("")
+        + `<button type="button" class="thumb-bulk-person-btn" data-key="" style="font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; padding:5px 10px; border-radius:5px; border:1px solid var(--line-2); background:var(--paper); color:var(--ink-soft); cursor:pointer;">Nobody</button>`;
+      wrap.querySelectorAll(".thumb-bulk-person-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          if (!selectedForBulk.size) { toast("Tick the checkbox on each photo this person is in first."); return; }
+          const key = btn.dataset.key;
+          let n = 0;
+          staged.forEach((item) => {
+            if (!selectedForBulk.has(item.id)) return;
+            n++;
+            if (!key) { item.models = []; return; }
+            const have = Array.isArray(item.models) ? item.models.slice() : [];
+            if (!have.includes(key)) have.push(key);
+            item.models = have;
+          });
+          selectedForBulk.clear();
+          renderStaged();
+          toast(key ? `${rosterName(key)} is in ${n} photo${n === 1 ? "" : "s"}.` : `Cleared the people on ${n} photo${n === 1 ? "" : "s"}.`);
+        });
+      });
+    }
+
+    $("#f_model_add")?.addEventListener("click", addTypedModel);
+    $("#f_model_new")?.addEventListener("keydown", (e) => {
+      // Enter in a text field would otherwise submit the whole album form.
+      if (e.key === "Enter") { e.preventDefault(); addTypedModel(); }
+    });
+    $("#f_feeds_model_cards")?.addEventListener("change", syncModelsUi);
+
     const diagInput = $("#f_diagram_file"), diagPreview = $("#diagramPreview"), diagImg = $("#f_diagram_img"), diagVisibility = $("#f_diagram_visibility"), clearDiagBtn = $("#clearDiagramBtn");
     /* "Testimonial Only (No Photoshoot Album)" used to live here: a tick that
        turned this whole form into a one-quote editor, filed the result as an
@@ -5191,6 +5592,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         if ($("#f_for_client")) $("#f_for_client").value = albumClients(editingShoot)[0] || legacyClientOf(editingShoot);
         document.querySelectorAll("#f_also_for .also-for-cb").forEach((cb) => { cb.checked = albumClients(editingShoot).slice(1).includes(cb.value); });
         syncAlsoFor();
+        // Who is in it. An album tagged explicitly says so; one from before
+        // tagging existed is read with the same rule the pages read it with,
+        // so opening an old test shoot shows its model already ticked rather
+        // than an empty picker over an album that plainly has a model in it.
+        albumModelKeys(editingShoot).forEach((k) => pickedModels.add(k));
+        if ($("#f_feeds_model_cards")) $("#f_feeds_model_cards").checked = feedsModelCards(editingShoot);
         $("#f_height").value = editingShoot.height || "";
 
         // Trigger initial verification updates after loading values (for editing existing albums)
@@ -5297,6 +5704,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             usage: p.usage || (p.excludeFromCompCard ? "portfolio" : "both"),
             angle: p.angle || "",
             look: p.look || "",
+            // Who is in the frame. Another field this explicit list would drop
+            // on save if it were left out — re-saving a tagged album would
+            // untag every photograph in it.
+            models: Array.isArray(p.models) ? p.models.slice() : [],
             // The 480/960px variants have to ride along through the edit form.
             // This mapping is an explicit field list, so anything missing from
             // it is silently dropped on save — which is how editing an album
@@ -5487,6 +5898,16 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                   ${LOOKS.map((l) => `<option value="${esc(l.key)}" ${f.look === l.key ? 'selected' : ''}>${esc(l.label)}</option>`).join("")}
                 </select>
               </label>
+              ${pickedModels.size > 1 ? `
+              <div style="font-size: var(--font-xs); color: var(--ink-soft); display: flex; flex-direction: column; gap: 3px;">
+                <span>Who's in it${(Array.isArray(f.models) && f.models.filter((k) => pickedModels.has(k)).length) ? "" : ` <em style="font-style: normal; color: var(--danger-text); font-weight: 700;">— nobody yet</em>`}</span>
+                <div style="display: flex; flex-wrap: wrap; gap: 3px;">
+                  ${[...pickedModels].map((key) => {
+                    const on = Array.isArray(f.models) && f.models.includes(key);
+                    return `<button type="button" class="thumb-model-btn" data-id="${esc(f.id)}" data-key="${esc(key)}" aria-pressed="${on}" style="font-family: var(--mono-font); font-size: 9px; font-weight: 700; padding: 3px 6px; border-radius: 4px; cursor: pointer; border: 1px solid ${on ? "var(--accent-text)" : "var(--line-2)"}; background: ${on ? "var(--accent-text)" : "var(--paper)"}; color: ${on ? "#fff" : "var(--ink-soft)"};">${esc(rosterName(key))}</button>`;
+                  }).join("")}
+                </div>
+              </div>` : ""}
               <label style="font-size: var(--font-xs); color: var(--ink-soft); display: flex; flex-direction: column; gap: 2px;">
                 <span>Usage</span>
                 <select class="thumb-usage-select" data-id="${f.id}" style="font-size: var(--font-xs); padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--paper); color: var(--ink); width: 100%;">
@@ -5523,6 +5944,21 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           if (item) item.caption = e.target.value;
         });
         inp.addEventListener("mousedown", (e) => e.stopPropagation());
+      });
+
+      grid.querySelectorAll(".thumb-model-btn").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const item = staged.find((x) => x.id === btn.dataset.id);
+          if (!item) return;
+          const key = btn.dataset.key;
+          const have = Array.isArray(item.models) ? item.models.slice() : [];
+          const at = have.indexOf(key);
+          if (at >= 0) have.splice(at, 1); else have.push(key);
+          item.models = have;
+          renderStaged();
+        });
+        btn.addEventListener("mousedown", (e) => e.stopPropagation());
       });
 
       grid.querySelectorAll(".thumb-usage-select").forEach((sel) => {
@@ -5910,6 +6346,44 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         const m = String(now.getMonth() + 1).padStart(2, "0");
         dateVal = `${y}-${m}-01`;
       }
+      /* One model in this album means the Model stats fieldset above IS her
+         record: the studio should not have to learn that a height lives in
+         two places. Only non-empty values are carried over, so an album whose
+         stats were never filled in cannot blank what her other albums know.
+         Her name is only rewritten when the credit line still names HER —
+         otherwise a mistyped talent field would quietly rename somebody. */
+      if (pickedModels.size === 1) {
+        const soleKey = [...pickedModels][0];
+        const prev = rosterFind(soleKey) || { key: soleKey, name: modelNameFromKey(soleKey), agencyLinks: [], modelTypes: [] };
+        const keep = (v, was) => (String(v || "").trim() || was || "");
+        const talentVal2 = val("f_talent");
+        const samePerson = modelKeyOf(talentVal2) === soleKey;
+        const agencyCredit2 = val("f_agency");
+        const typesNow = modelTypesOf({ modelTypes: readModelTypes() });
+        writeModelRecord({
+          ...prev,
+          key: soleKey,
+          name: samePerson ? (getTalentCleanName(talentVal2) || prev.name) : prev.name,
+          talent: samePerson ? (talentVal2 || prev.talent || prev.name) : (prev.talent || prev.name),
+          height: keep(val("f_height"), prev.height),
+          chest: keep(val("f_chest"), prev.chest),
+          chestLabel: chestLabelOf({ chestLabel: val("f_chest_label") }),
+          waist: keep(val("f_waist"), prev.waist),
+          hips: keep(val("f_hips"), prev.hips),
+          shoes: keep(val("f_shoes"), prev.shoes),
+          modelHair: keep(val("f_model_hair"), prev.modelHair),
+          modelEyes: keep(val("f_model_eyes"), prev.modelEyes),
+          agencyCredit: keep(agencyCredit2, prev.agencyCredit),
+          agency: agencyCredit2 ? getTalentCleanName(agencyCredit2) : (prev.agency || ""),
+          agencyHandle: agencyCredit2 ? igHandleFromCredit(agencyCredit2) : (prev.agencyHandle || ""),
+          agencySite: agencyCredit2 ? siteFromCredit(agencyCredit2) : (prev.agencySite || ""),
+          agencyLinks: agencyCredit2 ? socialsFromCredit(agencyCredit2) : (prev.agencyLinks || []),
+          modelEmail: keep(val("f_model_email"), prev.modelEmail),
+          modelTypes: typesNow.length ? typesNow : (prev.modelTypes || []),
+          updatedAt: Date.now(),
+        });
+      }
+
       const shoot = {
         id: editingShoot ? editingShoot.id : uid(),
         createdAt: editingShoot ? editingShoot.createdAt : Date.now(),
@@ -5947,6 +6421,12 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         agencyLinks: socialsFromCredit(val("f_agency")),
         modelEmail: val("f_model_email"),
         modelTypes: modelTypesOf({ modelTypes: readModelTypes() }),
+        // Who is in this album. Written only when the studio has actually
+        // ticked somebody: an album saved without touching the picker keeps
+        // no modelKeys at all and is read by the old rule, so nothing
+        // published before tagging existed changes by being saved again.
+        ...(pickedModels.size ? { modelKeys: [...pickedModels] } : {}),
+        ...(pickedModels.size ? { feedsModelCards: $("#f_feeds_model_cards")?.checked ?? false } : {}),
         showStatsOnCompCard: $("#f_show_stats_comp") ? $("#f_show_stats_comp").checked : true,
         showStatsOnModelPortfolio: $("#f_show_stats_port") ? $("#f_show_stats_port").checked : true,
         showTestShootCategory: $("#f_show_test_shoot_cat") ? $("#f_show_test_shoot_cat").checked : false,
@@ -5982,6 +6462,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           // "" is "follows the album", on purpose: a missing field is what the
           // publish step fills in from the live copy (see syncToGitHub).
           look: lookByKey.has(f.look) ? f.look : "",
+          // Who is in this frame, kept only to people actually in the album.
+          // Untagging someone in the picker must not leave her tagged on the
+          // photographs, or her card would keep collecting them.
+          models: Array.isArray(f.models) ? f.models.filter((k) => pickedModels.has(k)) : [],
           // Carried back out of the staging list — see the note where staged
           // is built. Kept by value: a photo's id is re-derived from its
           // position here, but these paths point at the file that was actually
@@ -6017,6 +6501,10 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
       history.pushState(null, "", "/"); render();
       await syncToGitHub(shootsNow());
     });
+    // Both painted last: the prefill above has decided who is ticked by now,
+    // and syncModelsUi rebuilds the grid, so renderStaged must already exist.
+    renderModelPicker();
+    syncModelsUi();
     renderStaged();
   }
 

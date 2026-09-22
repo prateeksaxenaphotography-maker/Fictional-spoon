@@ -1226,6 +1226,90 @@ window.resolveContractArchive = function(version) {
   const usableOnCompCard = (p) => !!p && !p.excludeFromCompCard && (p.usage === undefined || p.usage === "both" || p.usage === "comp");
   const usableInPortfolio = (p) => !!p && (p.usage === undefined || p.usage === "both" || p.usage === "portfolio");
 
+  /* ---- Who is in this photograph? -----------------------------------------
+
+     A test shoot is one model's album, and for a long time that was the only
+     kind of album a comp card could be built from: the model's name went into
+     the credits, and the Comp Cards page grouped albums by that string. A
+     brand's campaign or a makeup artist's day breaks both halves of that.
+     Several models pass through in a day, the album belongs to the client
+     rather than to any one of them, and a single frame can hold two of them
+     at once.
+
+     So who is in a picture is recorded rather than guessed:
+
+       · MODELS — the studio's own list of the people it photographs. One
+         record per person, holding what belongs to the person and not to any
+         one shoot: their name, their socials, their measurements, their
+         agency. Keyed by a slug of their name, and that key is what albums
+         and photographs store, so spelling a name differently on a later
+         album can no longer split one model into two cards.
+       · album.modelKeys — everyone who appears somewhere in this album.
+       · photo.models    — everyone in THIS frame. Empty means "whoever the
+         album says", which is what a one-model album wants: a test shoot
+         still needs no tagging at all.
+
+     An album saved before any of this existed carries none of those fields,
+     so albumModelKeys falls back to the old rule — one model named, no client
+     and no brand — and every album already published groups exactly as it did
+     before.
+
+     Declared as two-space-indented `const NAME = …;` for the same reason as
+     usableOnCompCard above: .github/scripts/validate-data.mjs lifts them out
+     of this file by text to run buildCompCardDisplayList in CI. */
+  const modelKeyOf = (name) => slugify(getTalentCleanName(name));
+
+  // A key turned back into something printable, for a model tagged on an
+  // album who has no record in MODELS yet. Their card should carry their
+  // name, not the album's whole credit line.
+  const modelNameFromKey = (k) => String(k || "").split("-").filter(Boolean)
+    .map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
+
+  // The studio's list of people. CI hands it in; a browser reads the
+  // published one. An empty list is a site that has not named anyone yet, and
+  // every model then comes from the legacy path below.
+  const modelRoster = (given) => Array.isArray(given) ? given
+    : (typeof MODELS !== "undefined" && Array.isArray(MODELS) ? MODELS : []);
+
+  // Everyone in this album. An explicit list wins. Without one the old rule
+  // stands: a single model named in the credits, on an album that is nobody's
+  // job but the studio's, is that model's album. Anything else — two names, a
+  // brand, a client — answers with nothing, and the album is shown as itself
+  // rather than folded into somebody's card, exactly as before.
+  const albumModelKeys = (s) => {
+    if (!s) return [];
+    if (Array.isArray(s.modelKeys)) return s.modelKeys.map((k) => String(k || "").trim()).filter(Boolean);
+    const talent = String(s.talent || "").trim();
+    if (!talent) return [];
+    const alone = !talent.includes(",") && !/\s(and|&)\s/i.test(talent);
+    const studiosOwn = (!s.client || !s.client.trim()) && (!s.brand || s.brand === "Personal Project" || !s.brand.trim());
+    return alone && studiosOwn ? [modelKeyOf(talent)].filter(Boolean) : [];
+  };
+
+  // Everyone in this frame. A photograph nobody is tagged in belongs to the
+  // album's model when the album has exactly one — so a test shoot needs no
+  // tagging — and to nobody when it has several. Spreading an untagged frame
+  // across all of them would put one model's photograph on another model's
+  // comp card, and a card showing the wrong person is worse than a card
+  // missing a picture. The panel says how many frames are still untagged.
+  const photoModelKeys = (p, s) => {
+    const tagged = (p && Array.isArray(p.models)) ? p.models.map((k) => String(k || "").trim()).filter(Boolean) : [];
+    if (tagged.length) return tagged;
+    const album = albumModelKeys(s);
+    return album.length === 1 ? album : [];
+  };
+
+  // May this album's photographs travel to the models' own cards? The
+  // studio's own test shoots always could, so they still do without anything
+  // being ticked. A paid job is the client's work, so it says no until the
+  // studio says otherwise: the switch is the studio's record that these
+  // frames are the model's to use for castings.
+  const feedsModelCards = (s) => {
+    if (!s || s.type === "Workshop Attended") return false;
+    if (typeof s.feedsModelCards === "boolean") return s.feedsModelCards;
+    return qualifiesAsCompCard(s);
+  };
+
   // Which book is this model cast from? Agencies file talent by the kind of
   // work they get booked for, not only by measurements, and a model can
   // genuinely straddle two books (fashion who also shoots fitness) — so this
@@ -1330,6 +1414,15 @@ window.resolveContractArchive = function(version) {
     if (local.forClient === undefined && published.forClient) {
       local.forClient = published.forClient;
       local.alsoFor = Array.isArray(published.alsoFor) ? published.alsoFor : [];
+    }
+    // Who is in this album, and whether its photographs may travel to their
+    // own cards. A copy saved before models could be tagged carries neither
+    // field, and publishing from that device must not untag everyone.
+    if (local.modelKeys === undefined && Array.isArray(published.modelKeys)) {
+      local.modelKeys = published.modelKeys;
+    }
+    if (local.feedsModelCards === undefined && typeof published.feedsModelCards === "boolean") {
+      local.feedsModelCards = published.feedsModelCards;
     }
     return local;
   }
@@ -4332,10 +4425,39 @@ window.resolveContractArchive = function(version) {
   //   with "Comp Cards" / "Selective Collaboration (TFP)" for the comp-card
   //   page, or "Model Portfolio" for the portfolio page. Any other category
   //   returns the list untouched.
-  function buildCompCardDisplayList(list, kind, d) {
+  // The studio's people, and the whole archive to look for contributing
+  // albums in. Passed in rather than reached for, so CI can run the builder
+  // over a published data.js with no browser around it.
+  // `typeof` rather than a bare read because CI lifts this out of app.js and
+  // runs it with nothing but the published data around it.
+  const compCardContext = () => ({
+    roster: modelRoster(),
+    pool: (typeof SHOOTS !== "undefined" && Array.isArray(SHOOTS)) ? SHOOTS : []
+  });
+  function buildCompCardDisplayList(list, kind, d, ctx) {
     let displayList = list;
     if (kind === "type" && (d === "Selective Collaboration (TFP)" || d === "Model Portfolio" || d === "Comp Cards")) {
-      const filteredList = list.filter(s => showsOnModelPage(s, d === "Model Portfolio" ? "Model Portfolio" : "Comp Cards") && ((s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim()) || (s.talent && s.talent.trim())));
+      const page = d === "Model Portfolio" ? "Model Portfolio" : "Comp Cards";
+      const roster = modelRoster(ctx && ctx.roster);
+      const named = (s) => (s.instagram && s.instagram.trim()) || (s.kavyar && s.kavyar.trim()) || (s.talent && s.talent.trim()) || albumModelKeys(s).length > 0;
+      const own = list.filter((s) => showsOnModelPage(s, page) && named(s));
+      // Albums that are comp-card material themselves, as before — plus the
+      // ones that merely CONTRIBUTE photographs to somebody's card: a brand's
+      // campaign, a makeup artist's day. Those are filed under their own type
+      // and so never arrive in `list`; they are fetched from the whole
+      // archive instead. An album joins this way only if it says who is in it
+      // and the studio has said its frames may travel.
+      // Strictly opt in, on both counts: the album has to say who is in it
+      // AND carry the studio's own tick that these frames may travel. An
+      // album from before models could be tagged can never arrive this way,
+      // which is what keeps the pages showing exactly what they showed
+      // before — including the albums deliberately hidden from them.
+      const seen = new Set(own.map((s) => s.id));
+      const contributed = (ctx && Array.isArray(ctx.pool) ? ctx.pool : []).filter((s) =>
+        s && !seen.has(s.id) && s.isPublic !== false
+        && s.feedsModelCards === true && feedsModelCards(s)
+        && Array.isArray(s.modelKeys) && s.modelKeys.length > 0);
+      const filteredList = [...own, ...contributed];
       // One card per model, showing EVERY photo tagged to them — Comp Card,
       // Portfolio, Both, or neither. The card is where a visitor judges the
       // model, so it holds all the work; Usage decides only what each PDF may
@@ -4344,48 +4466,82 @@ window.resolveContractArchive = function(version) {
       // PDF's photos, which is why one model appeared twice with two different
       // sets of pictures.
       const usableHere = (p) => !!p;
-      const groupable = [];
+      const newestFirst = (a, b) => {
+        const when = (x) => x.date ? Date.parse(x.date) : (x.createdAt || 0);
+        return when(b) - when(a);
+      };
+      // Photographs are dealt to the people in them, one bucket per model, so
+      // a frame holding two models reaches both their cards. An album naming
+      // nobody cannot be dealt out and is shown as itself — a group shot from
+      // before models could be tagged, or a brand album not yet tagged. It
+      // gets a copy holding only the photos allowed on this page; everything
+      // downstream (cover, thumbnails, counts, lightbox) reads .photos, so
+      // filtering here is what keeps one "none" photo off all of them. The id
+      // is kept, so edit, delete and share links still resolve.
+      const buckets = new Map();
       const nonGroupable = [];
       for (const s of filteredList) {
-        const talentClean = (s.talent || "").trim();
-        const hasExactlyOneModel = talentClean && !talentClean.includes(",") && !talentClean.toLowerCase().includes(" and ") && !talentClean.toLowerCase().includes("&");
-        const hasNoBrandOrClient = (!s.client || !s.client.trim()) && (!s.brand || s.brand === "Personal Project" || !s.brand.trim());
-        
-        if (hasExactlyOneModel && hasNoBrandOrClient) {
-          groupable.push(s);
-        } else {
-          // An album that cannot be merged into a per-model card (several
-          // models, or a brand's job) is shown as itself. It gets a copy
-          // holding only the photos allowed on this page — everything
-          // downstream (cover, thumbnails, counts, lightbox) reads .photos, so
-          // filtering here is what keeps one "none" photo off all of them. The
-          // id is kept, so edit, delete and share links still resolve.
+        if (!albumModelKeys(s).length) {
+          // A contributed album with nobody tagged has nothing to give and is
+          // not on this page in its own right either, so it is simply skipped.
+          if (!showsOnModelPage(s, page)) continue;
           const shown = (s.photos || []).filter(usableHere);
           if (shown.length) nonGroupable.push({ ...s, photos: shown });
+          continue;
+        }
+        for (const p of (s.photos || [])) {
+          if (!usableHere(p)) continue;
+          for (const key of photoModelKeys(p, s)) {
+            if (!buckets.has(key)) buckets.set(key, { photos: [], albums: [] });
+            const bucket = buckets.get(key);
+            bucket.photos.push({ ...p, parent: s });
+            if (!bucket.albums.includes(s)) bucket.albums.push(s);
+          }
         }
       }
-      
-      const groups = {};
-      for (const s of groupable) {
-        const modelName = s.talent.trim();
-        if (!groups[modelName]) groups[modelName] = [];
-        groups[modelName].push(s);
-      }
-      
-      const unifiedAlbums = Object.keys(groups).map(modelName => {
-        const shootsInGroup = groups[modelName];
-        shootsInGroup.sort((a, b) => {
-          const parseDate = (x) => x.date ? Date.parse(x.date) : (x.createdAt || 0);
-          return parseDate(b) - parseDate(a);
-        });
+
+      const unifiedAlbums = Array.from(buckets.entries()).map(([modelKey, bucket]) => {
+        const shootsInGroup = bucket.albums.slice().sort(newestFirst);
         const latestShoot = shootsInGroup[0];
+        // A model's record answers for the model; their albums answer for the
+        // shoot. Asking the record first and the albums newest-first after it
+        // is what lets a model tagged only on a brand's job still have
+        // measurements, an agency and a handle of her own — and it is also
+        // exactly what every card did before the registry existed, for a
+        // model who has no record yet.
+        const rec = roster.find((r) => r && r.key === modelKey) || null;
+        const sources = rec ? [rec, ...shootsInGroup] : shootsInGroup;
+        const findStat = (field) => {
+          const found = sources.find((x) => x[field] && String(x[field]).trim());
+          return found ? String(found[field]).trim() : "";
+        };
+        // The raw credit string: the model's name with their own handles in
+        // parentheses, which compCardOwnHandles reads back out. A record
+        // carries its own. Without one, the key came from a single-model
+        // album, so that album's credit line IS the model — unless the album
+        // tags models explicitly, in which case its credit line names a whole
+        // crew and only the key can say who this card is for.
+        // Failing a record, an album whose OWN credit line is this model
+        // answers instead — handles in parentheses and all, which is what
+        // compCardOwnHandles reads back out. It matches only when that line
+        // names her and nobody else, so a brand album crediting six models
+        // can never hand its whole crew to one card. Last resort, the key
+        // itself, which at least prints her name rather than a crew list.
+        const fromOwnAlbum = shootsInGroup
+          .map((gs) => String(gs.talent || "").trim())
+          .find((t) => t && modelKeyOf(t) === modelKey);
+        const modelName = rec
+          ? String(rec.talent || rec.name || modelNameFromKey(modelKey)).trim()
+          : (fromOwnAlbum || modelNameFromKey(modelKey));
         // Every photo of the model, from every album of theirs: see usableHere
         // above. A photo's Usage is read again where each PDF is built, never
         // here.
-        const allGroupPhotos = shootsInGroup.flatMap(gs => (gs.photos || []).map(p => ({ ...p, parent: gs })));
-        const coverId = latestShoot.coverPhotoId || (latestShoot.photos[0] && latestShoot.photos[0].id);
-        const coverPhotoObj = allGroupPhotos.find(p => p.id.split("-")[0] === coverId);
-        const remainingPhotos = allGroupPhotos.filter(p => p.id.split("-")[0] !== coverId);
+        const allGroupPhotos = bucket.photos;
+        const coverId = latestShoot.coverPhotoId || (latestShoot.photos && latestShoot.photos[0] && latestShoot.photos[0].id);
+        // Only if that cover is one of THIS model's frames. On a shoot with
+        // several models the album's cover is very often somebody else.
+        const coverPhotoObj = allGroupPhotos.find((p) => p.id.split("-")[0] === coverId);
+        const remainingPhotos = allGroupPhotos.filter((p) => p.id.split("-")[0] !== coverId);
         // Supporting photos come from each album in turn — a shuffled lane per
         // album, dealt round-robin — so every shoot is represented instead of
         // the largest one crowding the rest out.
@@ -4395,40 +4551,44 @@ window.resolveContractArchive = function(version) {
         const dealt = [];
         for (let i = 0; lanes.some(l => i < l.length); i++) lanes.forEach(l => { if (i < l.length) dealt.push(l[i]); });
         const finalPhotos = coverPhotoObj ? [coverPhotoObj, ...dealt] : dealt;
-        
-        const findStat = (key) => {
-           const found = shootsInGroup.find(s => s[key] && String(s[key]).trim());
-           return found ? String(found[key]).trim() : "";
-        };
-        // Each visibility switch travels with the album that supplied the
-        // value, so the newest album's choice decides per surface.
-        const agencySrc = shootsInGroup.find(x => x.agency && String(x.agency).trim());
-        const emailSrc = shootsInGroup.find(x => x.modelEmail && String(x.modelEmail).trim());
+
+        // Each visibility switch travels with whatever supplied the value it
+        // guards — the model's record if it holds one, otherwise the album.
+        const agencySrc = sources.find((x) => x.agency && String(x.agency).trim());
+        const emailSrc = sources.find((x) => x.modelEmail && String(x.modelEmail).trim());
         const repFlags = {};
-        REP_SWITCHES.forEach(([, what]) => REP_SURFACES.forEach(([, sf]) => { const src = what.startsWith("Agency") ? agencySrc : what === "Email" ? emailSrc : shootsInGroup[0]; repFlags[`show${what}On${sf}`] = showRep(src, what, sf); }));
+        REP_SWITCHES.forEach(([, what]) => REP_SURFACES.forEach(([, sf]) => { const src = what.startsWith("Agency") ? agencySrc : what === "Email" ? emailSrc : sources[0]; repFlags[`show${what}On${sf}`] = showRep(src, what, sf); }));
 
         // Model type merges across the group instead of taking the latest
         // shoot's value: a model tagged Fashion on one shoot and Fitness on
         // another is both, and the unified card is the only place that can
         // say so. modelTypesOf re-applies the two-type cap on the union.
         const groupModelTypes = modelTypesOf({
-          modelTypes: shootsInGroup.flatMap(gs => modelTypesOf(gs))
+          modelTypes: sources.flatMap((x) => modelTypesOf(x))
         });
-        
+        const statFlag = (field) => {
+          const src = sources.find((x) => typeof x[field] === "boolean");
+          return src ? src[field] : undefined;
+        };
+
         // `portfolio-…` ids exist only so links shared from the retired
         // Model Portfolio page still open this same card; nothing on the site
         // builds that list any more except resolveShareId.
         const isPort = d === "Model Portfolio";
         return {
           id: isPort ? `portfolio-${encodeURIComponent(modelName)}` : `comp-card-${encodeURIComponent(modelName)}`,
-          /* The real albums this card was merged from.
+          /* Every real album this card draws on.
              The id above is synthetic — "comp-card-<name>" — so anything that
              matches on an album id finds nothing here. Testimonials did
              exactly that and silently never appeared on a model's card, while
              appearing correctly everywhere else, because the tie is to a shoot
              and a shoot id never equals a synthetic one. Stated explicitly
              rather than rediscovered from photos[].parent, so a rewrite of
-             this function has something named to carry forward. */
+             this function has something named to carry forward.
+             Since a card is built from the photographs a model is tagged in
+             rather than from whole albums, this is the set of albums those
+             photographs came from — a brand's campaign she appears in counts,
+             and one she does not appear in never enters the list. */
           sourceShootIds: shootsInGroup.map((gs) => gs.id).filter(Boolean),
           // Display title is cleaned; `talent` below stays raw on purpose,
           // because compCardOwnHandles parses its parentheses to pick the
@@ -4446,8 +4606,9 @@ window.resolveContractArchive = function(version) {
           shoes: findStat("shoes"),
           modelHair: findStat("modelHair"),
           modelEyes: findStat("modelEyes"),
-          // Newest album first, so this is the model's current agency even
-          // when older shoots were booked through a different one.
+          // The model's own record first, then their newest album — so this is
+          // her current agency even when older shoots were booked through a
+          // different one.
           agency: findStat("agency"),
           agencyHandle: cleanIgHandle(agencySrc ? agencySrc.agencyHandle : ""),
           agencySite: agencySrc ? (agencySrc.agencySite || "") : "",
@@ -4461,8 +4622,8 @@ window.resolveContractArchive = function(version) {
           // Portfolio" checkboxes still apply once shoots are merged into
           // this synthetic album — without this, every stats display that
           // reads from the album (not the raw shoot) ignored the toggle.
-          showStatsOnCompCard: latestShoot.showStatsOnCompCard,
-          showStatsOnModelPortfolio: latestShoot.showStatsOnModelPortfolio,
+          showStatsOnCompCard: statFlag("showStatsOnCompCard"),
+          showStatsOnModelPortfolio: statFlag("showStatsOnModelPortfolio"),
           // "Show on Model portfolio" on ANY of this model's albums offers the
           // portfolio PDF on the merged card, because the PDF draws on every
           // album's photos. Without this the merged card had no such field at
@@ -4483,6 +4644,7 @@ window.resolveContractArchive = function(version) {
           mua: latestShoot.mua || "",
           videographer: latestShoot.videographer || "",
           talent: modelName,
+          modelKey,
           location: latestShoot.location || "Studio",
           description: latestShoot.description || "",
           tags: latestShoot.tags || "",
@@ -4495,17 +4657,20 @@ window.resolveContractArchive = function(version) {
           rights: latestShoot.rights,
           palette: latestShoot.palette || ["#3a3a3a", "#0d0d0d"],
           photos: finalPhotos,
-          coverPhotoId: latestShoot.coverPhotoId || (latestShoot.photos[0] && latestShoot.photos[0].id),
+          // The frame this card actually opens on. Taking the album's cover
+          // outright named a photograph that need not be in the card at all
+          // once an album can hold several models.
+          coverPhotoId: (finalPhotos[0] && String(finalPhotos[0].id).split("-")[0]) || null,
           isCompCard: true,
           originalShoots: shootsInGroup
         };
       // A model every one of whose photos is kept off this page gets no card at
       // all, rather than a card with an empty grid that opens a blank lightbox.
       }).filter(a => a.photos.length);
-      
-      // Order by model name. unifiedAlbums came out of Object.keys(groups),
-      // i.e. the order the shoots happened to sit in — so the list read as
-      // date-ish/random while the A–Z filter bar right below promised an
+
+      // Order by model name. unifiedAlbums came out of the bucket map,
+      // i.e. the order the photographs happened to be dealt — so the list read
+      // as date-ish/random while the A–Z filter bar right below promised an
       // alphabet. Sort on the cleaned name so "Sumitt Verma (instagram…)"
       // files under S, not under whatever its raw string starts with, and
       // so it matches the letter its alpha-filter button assigns it.
@@ -4744,7 +4909,7 @@ window.resolveContractArchive = function(version) {
       // otherwise slugify into something no album's clean name can match.
       const wanted = new Set([slugify(m[2]), slugify(getTalentCleanName(m[2]))].filter(Boolean));
       const category = m[1] === "portfolio" ? "Model Portfolio" : "Comp Cards";
-      const unified = buildCompCardDisplayList(list.filter((s) => showsOnModelPage(s, category)), "type", category);
+      const unified = buildCompCardDisplayList(list.filter((s) => showsOnModelPage(s, category)), "type", category, compCardContext());
       const hit = unified.find((a) => wanted.has(nameSlug(a)));
       if (hit) return hit;
     }
@@ -4768,7 +4933,7 @@ window.resolveContractArchive = function(version) {
         return (kind === "brand" ? s.brand : s.type) === d;
       });
 
-      let displayList = buildCompCardDisplayList(list, kind, d);
+      let displayList = buildCompCardDisplayList(list, kind, d, compCardContext());
 
       CURRENT_VIEW_SHOOTS = displayList;
 
@@ -10017,7 +10182,7 @@ window.resolveContractArchive = function(version) {
   function paintServiceCompCards() {
     const slot = view.querySelector("[data-comp-cards]");
     if (!slot) return;
-    const list = buildCompCardDisplayList(SHOOTS.filter((s) => qualifiesAsCompCard(s)), "type", "Comp Cards");
+    const list = buildCompCardDisplayList(SHOOTS.filter((s) => qualifiesAsCompCard(s)), "type", "Comp Cards", compCardContext());
     if (!list.length) return;
     const firstPaint = !slot.dataset.painted;
     CURRENT_VIEW_SHOOTS = list;
@@ -11064,14 +11229,25 @@ window.resolveContractArchive = function(version) {
   // shuffles the same pool, so the box appears exactly when the export has
   // something to print.
   function compCardPdfPhotos(shoot) {
-    const modelName = getTalentCleanName(shoot.talent || shoot.title).trim();
+    const key = shoot.modelKey || modelKeyOf(shoot.talent || shoot.title);
     let photos = [];
-    if (modelName) {
-      photos = SHOOTS.filter((s) => {
-        if (s.type === "Workshop Attended") return false;
-        if (!s.talent) return false;
-        return s.talent.split(",").map((t) => getTalentCleanName(t).trim().toLowerCase()).includes(modelName.toLowerCase());
-      }).flatMap((s) => (s.photos || []).filter(usableOnCompCard));
+    if (key) {
+      photos = (Array.isArray(SHOOTS) ? SHOOTS : []).flatMap((s) => {
+        if (!s || s.type === "Workshop Attended") return [];
+        // An album that says who is in it answers frame by frame, and only if
+        // the studio has said its photographs may travel to the models' own
+        // cards — a client's campaign is the client's until it does.
+        if (Array.isArray(s.modelKeys)) {
+          if (!feedsModelCards(s)) return [];
+          return (s.photos || []).filter((p) => usableOnCompCard(p) && photoModelKeys(p, s).includes(key));
+        }
+        // An album from before models could be tagged answers the way it
+        // always has: it names the model somewhere in its credit line, so
+        // every comp-card photo in it counts. Nothing published before this
+        // feature loses a photograph from its pool.
+        if (!String(s.talent || "").split(",").some((t) => modelKeyOf(t) === key)) return [];
+        return (s.photos || []).filter(usableOnCompCard);
+      });
     }
     // Falls back to this album's own allowed photos (a synthetic card whose
     // model has no name to match on), but never to the album's FULL list: that
@@ -11230,6 +11406,17 @@ window.resolveContractArchive = function(version) {
           JSON.stringify(freshDeleted) === JSON.stringify(window.WPS_DATA.DELETED_IDS || [])) return;
       window.WPS_DATA.DEMO_SHOOTS = fresh;
       window.WPS_DATA.DELETED_IDS = freshDeleted;
+      // The people those albums tag. Without this the refresh would leave a
+      // newly-published model's card with no measurements and no agency until
+      // the visitor reloaded the whole page. Unreadable means keep what we
+      // have, the same bargain the albums above strike.
+      try {
+        const freshModels = parseObjectAfterKey(text, '"MODELS"');
+        if (freshModels && Array.isArray(freshModels.items)) {
+          window.WPS_DATA.MODELS = freshModels;
+          window.MODELS = freshModels.items;
+        }
+      } catch (e) { /* keep the models we already have */ }
       await loadShoots();
       render();
     } catch { /* offline or unparsable — keep what we have */ }
@@ -11536,6 +11723,10 @@ window.resolveContractArchive = function(version) {
     cleanIgHandle, createHoldFromContract, esc, escJs, extractPalette, followAlbumText, getCalDateKey, getCalDateStatus,
     getContractEmailStatuses, getLocalContractAudits, getTalentCleanName, igHandleFromCredit, isAdmin, isDecidableHold, isSigImage, kineticH1,
     legacyClientOf, loadShoots, localTombstones, lookByKey, lookLabel, modelTypeLabel, modelTypeOptions, modelTypesOf,
+    // Who is in an album and in a frame. The panel tags people with exactly
+    // the functions the pages read those tags back with, so what the studio
+    // ticks and what a visitor sees can never drift apart.
+    albumModelKeys, feedsModelCards, modelKeyOf, modelNameFromKey, modelRoster, photoModelKeys, slugify,
     normalizeModelType, parseDeletedIdsFromDataJs, parseIgHandle, parseKavyarLink, parseObjectAfterKey, parseShootsFromDataJs, parseValueAfterKey, photoSrc,
     putShoot, readAsDataURL, removeCalBooking, render, repSwitchValues, resize, saveCalendarSettings, showRep,
     showsOnModelPage, siteFromCredit, socialsFromCredit, syncCalendarWithAudits, syncCalendarWithShoots, toast, toggleCalDateBlock, uid,

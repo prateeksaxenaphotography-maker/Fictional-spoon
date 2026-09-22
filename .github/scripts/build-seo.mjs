@@ -475,6 +475,32 @@ const oneModel = (s) => {
   const t = (s.talent || "").trim();
   return !!t && !t.includes(",") && !/\s(and|&)\s/i.test(t);
 };
+/* Who is in an album and in a frame. This mirrors albumModelKeys /
+   photoModelKeys in app.js and MUST stay in step with them: a model page built
+   here for a grouping the site does not make is a page that 404s on click, and
+   one the site makes but this does not is a model with no page at all. The
+   published MODELS list names the people; an album from before tagging existed
+   falls back to the old rule, one model named and no client or brand. */
+const MODEL_ITEMS = (DATA.MODELS && Array.isArray(DATA.MODELS.items)) ? DATA.MODELS.items
+  : (Array.isArray(DATA.MODELS) ? DATA.MODELS : []);
+const modelByKey = new Map(MODEL_ITEMS.map((m) => [m.key, m]));
+const modelKeyOf = (name) => slugify(cleanName(name));
+const modelNameFromKey = (k) => String(k || "").split("-").filter(Boolean)
+  .map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
+const albumModelKeys = (s) => {
+  if (!s) return [];
+  if (Array.isArray(s.modelKeys)) return s.modelKeys.map((k) => String(k || "").trim()).filter(Boolean);
+  const t = String(s.talent || "").trim();
+  if (!t) return [];
+  const studiosOwn = !hasClient(s) && (!s.brand || s.brand === "Personal Project" || !s.brand.trim());
+  return oneModel(s) && studiosOwn ? [modelKeyOf(t)].filter(Boolean) : [];
+};
+const photoModelKeys = (p, s) => {
+  const tagged = (p && Array.isArray(p.models)) ? p.models.map((k) => String(k || "").trim()).filter(Boolean) : [];
+  if (tagged.length) return tagged;
+  const album = albumModelKeys(s);
+  return album.length === 1 ? album : [];
+};
 // Filed as creative on purpose. For an album with no client set, this wins over
 // the model-work rule, or one model's album filed as Creative would still count
 // as a model portfolio.
@@ -1005,17 +1031,34 @@ function checkServices() {
    one model's name would help none of them. */
 function buildModelPages() {
   if (!compCardsPage) return [];
+  // One page per PERSON, not per album. Grouping on the credit line was fine
+  // while every comp-card album was one model's test shoot; on a brand's day
+  // or a makeup artist's day that line names the whole cast, and it would
+  // have built one page addressed to six people joined by hyphens.
   const groups = new Map();
-  for (const s of albumsForPage(compCardsPage)) {
-    const name = cleanName(s.talent || s.title || "").trim();
-    const slug = slugify(name);
-    if (!slug) continue;
-    if (!groups.has(slug)) groups.set(slug, { name, albums: [] });
-    groups.get(slug).albums.push(s);
+  const consider = albumsForPage(compCardsPage).concat(
+    // Albums that only contribute frames — a client's job the studio has said
+    // the models may show. Same two conditions the site applies: tagged, and
+    // ticked.
+    newestFirst.filter((s) => s.feedsModelCards === true && Array.isArray(s.modelKeys) && s.modelKeys.length
+      && s.type !== "Workshop Attended" && !albumsForPage(compCardsPage).includes(s))
+  );
+  for (const s of consider) {
+    const inAlbum = new Set();
+    for (const p of s.photos || []) for (const k of photoModelKeys(p, s)) inAlbum.add(k);
+    for (const key of inAlbum) {
+      if (!key) continue;
+      const rec = modelByKey.get(key);
+      const name = rec ? rec.name : (albumModelKeys(s).length === 1 ? cleanName(s.talent || s.title || "").trim() : modelNameFromKey(key));
+      if (!name) continue;
+      if (!groups.has(key)) groups.set(key, { name, albums: [] });
+      groups.get(key).albums.push(s);
+    }
   }
   return [...groups.entries()].map(([slug, g]) => {
     const lead = g.albums[0];
-    const shots = g.albums.reduce((n, s) => n + (s.photos || []).length, 0);
+    // Her frames, not every frame in the albums she appears in.
+    const shots = g.albums.reduce((n, s) => n + (s.photos || []).filter((p) => photoModelKeys(p, s).includes(slug)).length, 0);
     const title = `${g.name} — Model Portfolio | ${BRAND}`;
     const description = `${g.name}: ${shots} photograph${shots === 1 ? "" : "s"} in one place, with a comp card and a portfolio PDF to download. Photographed by ${BRAND}, Noida & Delhi NCR.`;
     const urlPath = `/models/${slug}/`;

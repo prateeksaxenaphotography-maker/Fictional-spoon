@@ -183,6 +183,10 @@ if (!swVersion) {
 // click a link they had sent. This runs the app's real link builder and
 // resolver over the real published data on every push.
 try {
+  const visibleEarly = shoots.filter((s) => s && s.isPublic !== false);
+  const modelsPublishedEarly = (win.WPS_DATA && win.WPS_DATA.MODELS) || null;
+  const modelItemsEarly = (modelsPublishedEarly && Array.isArray(modelsPublishedEarly.items)) ? modelsPublishedEarly.items
+    : (Array.isArray(modelsPublishedEarly) ? modelsPublishedEarly : []);
   const decls = [
     extractFunction("getTalentCleanName"),
     extractFunction("shuffleArray"),
@@ -211,8 +215,19 @@ try {
     extractConst("REP_SURFACES"),
     extractConst("showRep"),
     extractConst("cleanIgHandle"),
+    // Who is in a photograph. buildCompCardDisplayList deals every frame out
+    // to the people tagged in it with these, so a brand's campaign or a
+    // makeup artist's day reaches the right models' cards and no one else's.
+    extractConst("modelKeyOf"),
+    extractConst("modelNameFromKey"),
+    extractConst("modelRoster"),
+    extractConst("albumModelKeys"),
+    extractConst("photoModelKeys"),
+    extractConst("feedsModelCards"),
+    extractConst("compCardContext"),
   ].join("\n");
-  const api = new Function(decls + "\nreturn { shareIdFor, resolveShareId, buildCompCardDisplayList, qualifiesAsCompCard, showsOnModelPage, modelTypesOf };")();
+  const globals = `const MODELS = ${JSON.stringify(modelItemsEarly)};\nconst SHOOTS = ${JSON.stringify(visibleEarly)};\n`;
+  const api = new Function(globals + decls + "\nreturn { shareIdFor, resolveShareId, buildCompCardDisplayList, qualifiesAsCompCard, showsOnModelPage, modelTypesOf, albumModelKeys, photoModelKeys, modelKeyOf };")();
 
   // Model types are free text now — the studio can add its own from the panel
   // — so the published values are worth a look. modelTypesOf silently drops
@@ -229,12 +244,50 @@ try {
   }
 
   // Public albums, as a visitor's SHOOTS list would hold them.
-  const visible = shoots.filter((s) => s && s.isPublic !== false);
+  const visible = visibleEarly;
+  const modelItems = modelItemsEarly;
   // Plus the unified albums the Comp Cards and Model Portfolio pages build.
+  // The same context the site hands the builder: the studio's people, and the
+  // whole archive to find contributing albums in.
+  const ccCtx = { roster: modelItems, pool: visible };
   const unified = [
-    ...api.buildCompCardDisplayList(visible.filter((s) => api.showsOnModelPage(s, "Comp Cards")), "type", "Comp Cards"),
-    ...api.buildCompCardDisplayList(visible.filter((s) => api.showsOnModelPage(s, "Model Portfolio")), "type", "Model Portfolio"),
+    ...api.buildCompCardDisplayList(visible.filter((s) => api.showsOnModelPage(s, "Comp Cards")), "type", "Comp Cards", ccCtx),
+    ...api.buildCompCardDisplayList(visible.filter((s) => api.showsOnModelPage(s, "Model Portfolio")), "type", "Model Portfolio", ccCtx),
   ].filter((a) => a && a.isCompCard);
+
+  // ── models: the registry albums and photographs point at ─────────────────
+  // A tag naming somebody who is not in the list is a photograph that will
+  // never reach a card, and a duplicate key is one model with two cards —
+  // which is the whole reason the list exists.
+  {
+    const seenKey = new Set();
+    for (const m of modelItems) {
+      if (!m || typeof m.key !== "string" || !m.key) { fail("a model record has no key: " + JSON.stringify(m).slice(0, 80)); continue; }
+      if (!String(m.name || "").trim()) fail(`model "${m.key}" has no name — its card would print nothing`);
+      if (seenKey.has(m.key)) fail(`two model records share the key "${m.key}" — that model would get two cards`);
+      seenKey.add(m.key);
+    }
+    for (const s of shoots) {
+      if (!Array.isArray(s.modelKeys)) continue;
+      for (const k of s.modelKeys) {
+        if (!seenKey.has(k)) fail(`album "${s.title || s.id}" tags a model "${k}" who is not in MODELS — those photographs would reach no card`);
+      }
+      const albumKeys = new Set(s.modelKeys);
+      for (const p of s.photos || []) {
+        if (!Array.isArray(p.models)) continue;
+        for (const k of p.models) {
+          if (!seenKey.has(k)) fail(`a photo in "${s.title || s.id}" tags a model "${k}" who is not in MODELS`);
+          else if (!albumKeys.has(k)) warn(`a photo in "${s.title || s.id}" tags "${k}", who is not listed among that album's models`);
+        }
+      }
+      // Several models and nothing tagged on a frame means that frame reaches
+      // nobody — deliberate (see photoModelKeys), but worth saying out loud.
+      if (s.modelKeys.length > 1) {
+        const untagged = (s.photos || []).filter((p) => !(Array.isArray(p.models) && p.models.length)).length;
+        if (untagged) warn(`album "${s.title || s.id}" has ${s.modelKeys.length} models and ${untagged} photo(s) with nobody tagged — those appear on no model's card`);
+      }
+    }
+  }
 
   let checked = 0;
   const seenLinks = new Map();
