@@ -2633,7 +2633,7 @@ window.WPS_DATA = {
       "showModelWebsiteOnCompCard": false,
       "showModelWebsiteOnHome": false,
       "showModelWebsiteOnPdf": false,
-      "showEmailOnCompCard": true,
+      "showEmailOnCompCard": false,
       "showEmailOnHome": false,
       "showEmailOnPdf": true,
       "showAgencyOnCompCard": false,
@@ -3354,7 +3354,7 @@ window.WPS_DATA = {
         "modelTypes": [
           "Fashion"
         ],
-        "updatedAt": 1790106481028,
+        "updatedAt": 1790107066779,
         "showStatsOnCompCard": true,
         "showStatsOnModelPortfolio": true,
         "showModelInstagramOnCompCard": true,
@@ -3374,7 +3374,7 @@ window.WPS_DATA = {
         "showModelWebsiteOnPdf": false,
         "showEmailOnCompCard": false,
         "showEmailOnHome": false,
-        "showEmailOnPdf": false,
+        "showEmailOnPdf": true,
         "showAgencyOnCompCard": false,
         "showAgencyOnHome": false,
         "showAgencyOnPdf": false,
