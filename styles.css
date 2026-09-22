@@ -3503,3 +3503,12 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
    already; this is the block that holds them here. */
 .album-page-quotes { display: flex; flex-direction: column; gap: var(--sp-3); margin-top: var(--sp-4); padding-top: var(--sp-4); border-top: 1px solid var(--line); }
 .album-page-quotes .work-quote { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+
+/* A draft the panel picked back up, and the studio's own file copies. */
+.tm-editor-restored { margin: 0; padding: 10px 12px; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: var(--r-sm); font-size: var(--font-xs); line-height: 1.5; color: var(--ink); }
+.tm-files { border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--sp-3) var(--sp-4) var(--sp-4); margin: var(--sp-2) 0; background: var(--paper); }
+.tm-files legend { font-family: "Archivo", sans-serif; font-size: var(--font-sm); font-weight: 700; padding: 0 8px; color: var(--ink); }
+.tm-files-drop { display: block; cursor: pointer; }
+.tm-files-warn { margin: 10px 0 0; line-height: 1.5; }
+.tm-file-open { background: none; border: none; padding: 0; font: inherit; color: var(--accent-text); text-decoration: underline; cursor: pointer; text-align: left; }
+.tm-flag.is-file { background: var(--bone-2); color: var(--ink); }

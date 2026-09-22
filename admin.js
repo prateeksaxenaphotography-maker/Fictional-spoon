@@ -6099,11 +6099,131 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
   // (which rebuilds the panel's markup) does not lose the studio's place.
   let tmEditing = null;
 
+  /* The open editor, kept on disk as it is typed.
+
+     v481 stopped "Save & push live" discarding an unsaved editor, but that
+     closed only the half a button caused. An open editor otherwise lives ONLY
+     in the DOM: the panel calls A.render() after a save and after a publish, a
+     background refresh of the published data calls it too, and any of those
+     rebuilds the page and takes the typing with it. So does closing the tab.
+     Nobody types a testimonial twice. */
+  /* Shorten for the list without halving an emoji. `.slice(150)` counts
+     UTF-16 units, so it can cut a surrogate pair in two and leave a
+     replacement character in the studio's own list — the same fault v482
+     fixed on the writing side. A third copy of the primitive, by the same
+     reasoning as validate-data.mjs's: three small copies pinned by a test
+     beat a build step. Must agree with graphemesOf in app.js. */
+  const tmTrim = (str, max) => {
+    const text = String(str ?? "");
+    let g;
+    try {
+      g = (typeof Intl !== "undefined" && Intl.Segmenter)
+        ? [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text)].map((x) => x.segment)
+        : [...text];
+    } catch (e) { g = [...text]; }
+    return g.length <= max ? text : g.slice(0, max).join("") + "…";
+  };
+
+  const TM_DRAFT_KEY = "wps_testimonial_draft";
+  const tmReadDraft = () => {
+    try {
+      const d = JSON.parse(localStorage.getItem(TM_DRAFT_KEY) || "null");
+      return d && typeof d === "object" && typeof d.id === "string" ? d : null;
+    } catch (e) { return null; }
+  };
+  const tmWriteDraft = (d) => { try { localStorage.setItem(TM_DRAFT_KEY, JSON.stringify(d)); } catch (e) {} };
+  const tmClearDraft = () => { try { localStorage.removeItem(TM_DRAFT_KEY); } catch (e) {} };
+
+  /* ---- the studio's own documentation, kept OFF the website --------------
+
+     A client sends a screenshot of what they said on WhatsApp, or an email,
+     or a scan of a letter. The studio wants it filed with the testimonial so
+     they can find it months later. It must never be published, and "private"
+     is not something this site can offer: the repository is public, so a file
+     committed to it is downloadable by anyone who guesses the address — which
+     is exactly why CI fails a publish carrying a data: URL in a testimonial.
+
+     So it lives in this browser and nowhere else: IndexedDB, in a database of
+     its own rather than the albums' one, so nothing here can ever be swept
+     into a publish. The trade is stated in the panel — clearing site data or
+     moving to another device loses it, and the studio's inbox stays the
+     durable copy. A screenshot also usually carries a phone number and a
+     profile photo, which is a second reason it does not belong on a page. */
+  const TM_PROOF_DB = "wps-testimonial-proofs", TM_PROOF_STORE = "proofs";
+  function tmProofDb() {
+    return new Promise((res, rej) => {
+      let r;
+      try { r = indexedDB.open(TM_PROOF_DB, 1); } catch (e) { rej(e); return; }
+      r.onupgradeneeded = () => {
+        const d = r.result;
+        if (!d.objectStoreNames.contains(TM_PROOF_STORE)) {
+          d.createObjectStore(TM_PROOF_STORE, { keyPath: "id" }).createIndex("tmId", "tmId", { unique: false });
+        }
+      };
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+  }
+  async function tmPutProof(rec) {
+    const d = await tmProofDb();
+    return new Promise((res, rej) => {
+      const tx = d.transaction(TM_PROOF_STORE, "readwrite");
+      tx.objectStore(TM_PROOF_STORE).put(rec);
+      tx.oncomplete = () => res(true); tx.onerror = () => rej(tx.error);
+    });
+  }
+  async function tmProofsFor(tmId) {
+    try {
+      const d = await tmProofDb();
+      return await new Promise((res, rej) => {
+        const q = d.transaction(TM_PROOF_STORE, "readonly").objectStore(TM_PROOF_STORE).index("tmId").getAll(tmId);
+        q.onsuccess = () => res(q.result || []); q.onerror = () => rej(q.error);
+      });
+    } catch (e) { return []; }
+  }
+  async function tmDelProof(id) {
+    const d = await tmProofDb();
+    return new Promise((res, rej) => {
+      const tx = d.transaction(TM_PROOF_STORE, "readwrite");
+      tx.objectStore(TM_PROOF_STORE).delete(id);
+      tx.oncomplete = () => res(true); tx.onerror = () => rej(tx.error);
+    });
+  }
+  async function tmDelProofsFor(tmId) {
+    for (const p of await tmProofsFor(tmId)) { try { await tmDelProof(p.id); } catch (e) {} }
+  }
+  // Counts for the list, fetched once per paint rather than per row.
+  async function tmProofCounts() {
+    try {
+      const d = await tmProofDb();
+      const all = await new Promise((res, rej) => {
+        const q = d.transaction(TM_PROOF_STORE, "readonly").objectStore(TM_PROOF_STORE).getAll();
+        q.onsuccess = () => res(q.result || []); q.onerror = () => rej(q.error);
+      });
+      const by = {};
+      all.forEach((p) => { by[p.tmId] = (by[p.tmId] || 0) + 1; });
+      return by;
+    } catch (e) { return {}; }
+  }
+
   function tmStore() { return (typeof getTestimonials === "function" ? getTestimonials() : { items: [], deleted: [] }); }
 
   function mountTestimonials(root) {
     if (!root) return;
     const esc = A.esc;
+
+    // A draft outlives the page, so the panel opens on whatever was being
+    // written when it last went away — rather than on a list that silently
+    // omits it.
+    let tmRestored = false;
+    if (!tmEditing) {
+      const draft = tmReadDraft();
+      if (draft && (String(draft.quote || "").trim() || String(draft.by || "").trim())) {
+        tmEditing = draft;
+        tmRestored = true;
+      }
+    }
+    let proofCounts = {};   // tmId -> how many files are filed on this device
 
     const paint = () => {
       const store = tmStore();
@@ -6122,7 +6242,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
             </div>
             <p class="tm-panel-note">A testimonial can reach you any way at all — the form at the bottom of this page, a WhatsApp message, an email, or something a client said on the shoot day. However it came, <strong>you type it in here</strong> and press <strong>Save &amp; push live</strong>. Nothing appears on this page by itself, which is what stops anyone else writing straight onto your site.${store.items.length ? "" : ` <strong>With none published, the Testimonials link stays out of your menu and out of Google.</strong> The page still works at its address, so you can send it to a client to write the first one.`}</p>
 
-            ${tmEditing ? tmEditorHtml(tmEditing) : `
+            ${tmEditing ? tmEditorHtml(tmEditing, tmRestored) : `
               <div class="tm-panel-bar">
                 <button type="button" class="admin-cal-btn primary" id="tmAddBtn">+ Add a testimonial</button>
                 <span class="tm-panel-count">${store.items.length} added here${store.items.length ? ` · ${store.items.filter((t) => t.onHome !== false).length} shown on the home page` : ""}</span>
@@ -6132,10 +6252,11 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
                 ${store.items.map((t) => `
                   <div class="tm-row" data-id="${esc(t.id)}">
                     <div class="tm-row-main">
-                      <p class="tm-row-quote">${esc(t.quote.length > 150 ? t.quote.slice(0, 150) + "…" : t.quote)}</p>
+                      <p class="tm-row-quote">${esc(tmTrim(t.quote, 150))}</p>
                       <p class="tm-row-by">${esc(t.by)}${t.role ? ` · ${esc(t.role)}` : ""}${t.rating ? ` · ${t.rating}/5` : ""}${t.dateLabel ? ` · ${esc(t.dateLabel)}` : ""}</p>
                     </div>
                     <div class="tm-row-flags">
+                      ${proofCounts[t.id] ? `<span class="tm-flag is-file" title="Files filed on this device — never on the website">📎 ${proofCounts[t.id]} file${proofCounts[t.id] === 1 ? "" : "s"}</span>` : ""}
                       ${t.verified ? `<span class="tm-flag is-on" title="You have documentation for this one">✓ documented</span>` : ""}
                       <span class="tm-flag${t.onHome !== false ? " is-on" : ""}">${t.onHome !== false ? "on the home page" : "this page only"}</span>
                     </div>
@@ -6154,9 +6275,17 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         </section>`;
       tmPaintStatus();
       wire();
+      // The file counts come from IndexedDB, which cannot be read while the
+      // markup is being built. Fetch once and repaint only if the answer
+      // changed, so the first paint is never blocked on a database.
+      tmProofCounts().then((counts) => {
+        if (JSON.stringify(counts) === JSON.stringify(proofCounts)) return;
+        proofCounts = counts;
+        if (root.isConnected) paint();
+      }).catch(() => {});
     };
 
-    function tmEditorHtml(t) {
+    function tmEditorHtml(t, restored) {
       const albums = A.shoots()
         .filter((s) => s && !s.isTestimonial && s.type !== "Workshop Attended")
         .slice()
@@ -6198,7 +6327,19 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
           <p class="field-hint">Pick a shoot and this also appears on that shoot's card, under the photos — which is where the three quote boxes in the upload form used to put it. They have gone; this is the one place now.</p>
           <label class="check-line"><input type="checkbox" id="tmE_verified"${t.verified ? " checked" : ""} /><span>I can show where this came from — a WhatsApp message, an email, a letter, a screenshot. <em>The card shows a small tick. Whatever you have stays in your own inbox and is never put on the website.</em></span></label>
           <label class="check-line"><input type="checkbox" id="tmE_home"${t.onHome !== false ? " checked" : ""} /><span>Show this one on the home page too</span></label>
+          <fieldset class="tm-files">
+            <legend>Your own file copy <span class="tm-opt">never goes on the website</span></legend>
+            <p class="field-hint" style="margin-bottom: 10px;">The screenshot, email or PDF this came in — a WhatsApp message, a letter, an invoice. It is filed here <strong>with this testimonial, on this device only</strong>, so you can find it later. Nobody visiting the site can see it or reach it, and it is never published.</p>
+            <label class="attachments-dropzone tm-files-drop" for="tmE_files">
+              📎 <strong>Add a picture or a PDF</strong>
+              <div style="font-size: var(--font-xs); margin-top: 4px;">As many as you like. Kept in this browser — see the note below.</div>
+            </label>
+            <input id="tmE_files" type="file" accept="image/*,.pdf,application/pdf" multiple class="sr-only" />
+            <div class="attachment-list" id="tmE_fileList"></div>
+            <p class="field-hint tm-files-warn">⚠︎ This browser is the only place these live. Clearing your site data, or opening the panel on another phone or laptop, will not show them — and they are not in any backup. <strong>Keep the original email or chat as your real record;</strong> this is a convenience copy filed next to the words.</p>
+          </fieldset>
           <p class="field-error" id="tmE_error" hidden></p>
+          ${restored ? `<p class="tm-editor-restored">↩︎ Picked up where you left off — this was still unsaved when the page last closed. Press <strong>Save on this device</strong> to keep it, or Cancel to throw it away.</p>` : ""}
           <div class="tm-editor-foot">
             <button type="button" class="admin-cal-btn primary" id="tmSaveBtn">Save on this device</button>
             <button type="button" class="admin-cal-btn" id="tmCancelBtn">Cancel</button>
@@ -6208,6 +6349,84 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
     }
 
     function wire() {
+      /* Every keystroke in the editor goes to the draft. Reading the fields
+         rather than tracking them one by one means a field added later is
+         carried without anyone remembering to add it here. */
+      const tmSnapshot = () => {
+        const el = (n) => root.querySelector(`#tmE_${n}`);
+        if (!el("quote")) return null;
+        return {
+          ...(tmEditing || {}),
+          quote: el("quote").value, by: el("by")?.value || "", role: el("role")?.value || "",
+          kind: el("kind")?.value || "", rating: Number(el("rating")?.value) || 0,
+          dateLabel: el("date")?.value || "", shootId: el("shoot")?.value || "",
+          verified: !!el("verified")?.checked, onHome: !!el("home")?.checked
+        };
+      };
+      ["quote", "by", "role", "kind", "rating", "date", "shoot", "verified", "home"].forEach((n) => {
+        const el = root.querySelector(`#tmE_${n}`);
+        if (!el) return;
+        ["input", "change"].forEach((ev) => el.addEventListener(ev, () => {
+          const snap = tmSnapshot();
+          if (snap) tmWriteDraft(snap);
+        }));
+      });
+
+      /* The studio's own file copies. Kept in IndexedDB against this
+         testimonial's id, listed back with a way to open and to remove, and
+         never touched by saveTestimonials or by a publish. */
+      const fileList = root.querySelector("#tmE_fileList");
+      const paintFiles = async () => {
+        if (!fileList || !tmEditing) return;
+        const files = await tmProofsFor(tmEditing.id);
+        const size = (n) => (n < 102400 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1048576).toFixed(1)} MB`);
+        fileList.innerHTML = files.length ? files.map((f) => `
+          <div class="attachment-pill">
+            <button type="button" class="tm-file-open" data-id="${esc(f.id)}" title="Open it">${esc(f.name)} · ${esc(size(f.size || 0))}</button>
+            <button type="button" class="remove-att tm-file-del" data-id="${esc(f.id)}" aria-label="Remove this file">×</button>
+          </div>`).join("") : "";
+        fileList.querySelectorAll(".tm-file-open").forEach((b) => b.addEventListener("click", async () => {
+          const one = (await tmProofsFor(tmEditing.id)).find((x) => x.id === b.dataset.id);
+          if (!one || !one.blob) return;
+          // A blob: URL exists only in this tab and is revoked straight after,
+          // so nothing lingers and nothing is addressable from outside.
+          const url = URL.createObjectURL(one.blob);
+          window.open(url, "_blank");
+          setTimeout(() => URL.revokeObjectURL(url), 60000);
+        }));
+        fileList.querySelectorAll(".tm-file-del").forEach((b) => b.addEventListener("click", async () => {
+          if (!confirm("Remove this file from your records on this device?")) return;
+          await tmDelProof(b.dataset.id);
+          await paintFiles();
+          A.toast("Removed from this device.");
+        }));
+      };
+      paintFiles();
+
+      root.querySelector("#tmE_files")?.addEventListener("change", async (e) => {
+        const picked = [...(e.target.files || [])];
+        if (!picked.length || !tmEditing) return;
+        let added = 0, skipped = 0;
+        for (const f of picked) {
+          const ok = /^image\//.test(f.type) || /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name);
+          // Generous, because this never travels: it is not going through a
+          // relay or into a repository, only into this browser's own store.
+          if (!ok || f.size > 25 * 1048576) { skipped++; continue; }
+          try {
+            await tmPutProof({
+              id: `${tmEditing.id}:${A.uid()}`, tmId: tmEditing.id,
+              name: f.name, type: f.type || "application/octet-stream", size: f.size,
+              addedAt: Date.now(), blob: f
+            });
+            added++;
+          } catch (err) { console.warn("could not file that one:", err); skipped++; }
+        }
+        e.target.value = "";
+        await paintFiles();
+        if (added) A.toast(`${added} file${added === 1 ? "" : "s"} filed on this device. ${skipped ? `${skipped} skipped. ` : ""}Not on the website.`);
+        else if (skipped) A.toast("Nothing was filed — pictures and PDFs only, up to 25 MB each.");
+      });
+
       root.querySelector("#tmAddBtn")?.addEventListener("click", () => {
         tmEditing = { id: A.uid(), quote: "", by: "", role: "", kind: "", rating: 0, dateLabel: "", shoot: "", shootId: "", verified: false, onHome: true, updatedAt: 0 };
         paint();
@@ -6225,12 +6444,24 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         // Recorded as a tombstone, not just dropped: otherwise the next
         // device to publish, still holding its own copy, would put it back.
         saveTestimonials({ items: store.items.filter((x) => x.id !== one.id), deleted: [...store.deleted, one.id] });
+        // The files filed against it go too: leaving them would keep a
+        // client's screenshot on the device after the words were withdrawn.
+        tmDelProofsFor(one.id).catch(() => {});
         tmMarkUnpublished();
         A.toast(`Deleted. Press "Save & push live" to take it off the site.`);
         tmEditing = null;
         A.render();
       }));
-      root.querySelector("#tmCancelBtn")?.addEventListener("click", () => { tmEditing = null; paint(); });
+      root.querySelector("#tmCancelBtn")?.addEventListener("click", () => {
+        // Cancel is the one place a draft is meant to be thrown away, so it
+        // says what it is throwing away first.
+        const snap = tmSnapshot();
+        if (snap && (String(snap.quote || "").trim() || String(snap.by || "").trim())
+            && !confirm("Throw away what you have typed?\n\nIt has not been saved, and it will not come back.")) return;
+        tmEditing = null;
+        tmClearDraft();
+        paint();
+      });
       /* Commit whatever is open in the editor.
 
          One function, because BOTH buttons reach it and the label on them is
@@ -6272,6 +6503,7 @@ window.SHOOTS = window.WPS_DATA.DEMO_SHOOTS || [];
         saveTestimonials({ items: [next, ...store.items.filter((x) => x.id !== next.id)], deleted: store.deleted });
         tmMarkUnpublished();
         tmEditing = null;
+        tmClearDraft();   // the words are in the store now; the draft has done its job
         return "saved";
       };
 
