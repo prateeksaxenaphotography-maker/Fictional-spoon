@@ -2482,6 +2482,15 @@ window.WPS_DATA = {
           "medium": "photos/mubczus1xaoo4q/muca80xnhe2eom-20@960.jpg",
           "focalX": 47.17936850766225,
           "focalY": 24.573177002982618
+        },
+        {
+          "id": "mucap3v9hgrrdq-20",
+          "url": "photos/mubczus1xaoo4q/mucap3v9hgrrdq-20.jpg",
+          "objectPosition": "center",
+          "angle": "full-body",
+          "usage": "both",
+          "small": "photos/mubczus1xaoo4q/mucap3v9hgrrdq-20@480.jpg",
+          "medium": "photos/mubczus1xaoo4q/mucap3v9hgrrdq-20@960.jpg"
         }
       ],
       "featured": true,
