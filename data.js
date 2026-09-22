@@ -2976,7 +2976,7 @@ window.WPS_DATA = {
     "items": [
       {
         "id": "muc7hd842lqnce",
-        "quote": "Big thanks to you for this shoot! Your professionalism, creativity and the way you captured these shots were genuinely amazing. Loved how the pictures turned out. Really Appreciate it!",
+        "quote": "Big thanks to you for this shoot! 🖤📸Your professionalism, creativity and the way you captured these shots were genuinely amazing. Loved how the pictures turned out. Really Appreciate it!🙌",
         "by": "Atharv Sharma",
         "role": "Model, Delhi",
         "kind": "model",
@@ -2986,7 +2986,7 @@ window.WPS_DATA = {
         "shootId": "mubczus1xaoo4q",
         "verified": true,
         "onHome": true,
-        "updatedAt": 1790053577771
+        "updatedAt": 1790053697385
       }
     ],
     "deleted": []
