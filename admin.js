@@ -6523,6 +6523,30 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         ...repSwitchValues(),
         coverPhotoId: (coverItem ? coverItem.id : null),
       };
+      /* The same switches onto the models this album credits.
+
+         A model's card is merged from every album they are tagged in, and it
+         takes each visibility switch from whatever supplied the value it
+         guards — the model's own record when that holds one. A model whose
+         email lives on their record therefore read the switch from there and
+         never from the album, so ticking "Email → PDFs" here saved, published,
+         and did nothing: the record still said no, and nothing on this page
+         could reach it. Studio hit this on Atharv Sharma's portfolio, Sep 2026.
+
+         The album is where the studio works, so the album decides. Only the
+         switches are written across; the model's name, stats and agency are
+         their record's own. */
+      if (pickedModels.size && typeof getModels === "function" && typeof saveModels === "function") {
+        try {
+          const flags = repSwitchValues();
+          const roster = getModels() || { items: [], deleted: [] };
+          const items = (roster.items || []).map((m) =>
+            pickedModels.has(m.key) ? { ...m, ...flags, updatedAt: Date.now() } : m);
+          saveModels({ items, deleted: roster.deleted || [] });
+        } catch (err) {
+          console.warn("Could not carry the visibility switches to the model records:", err);
+        }
+      }
       pub.disabled = true; pub.textContent = editingShoot ? "Saving changes…" : "Publishing…";
       await putShoot(shoot);
       await loadShoots();
