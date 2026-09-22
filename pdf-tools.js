@@ -947,16 +947,46 @@
     return { x, y };
   }
 
-  // How far a client zoomed a photo in Adjust photo: 1 just fills the frame.
+  /* How far a client zoomed a photo in Adjust photo: 1 just fills the frame.
+     Below 1 the photograph no longer fills it and the paper shows around the
+     edge — which is the only way to put a WHOLE photograph on the page. The
+     frame is a fixed shape and most photographs are not that shape, so
+     "filling it" always means cutting something off; at 1 the client could
+     only ever choose WHICH part to lose, never to keep all of it.
+     pdfFitZoom works out where a given photograph stops being cropped. */
   const PDF_MAX_ZOOM = 3;
-  const pdfZoom = (photo) => Math.min(PDF_MAX_ZOOM, Math.max(1, Number(photo.pdfZoom) || 1));
+  const PDF_MIN_ZOOM = 0.2;
+  const pdfZoom = (photo) => Math.min(PDF_MAX_ZOOM, Math.max(PDF_MIN_ZOOM, Number(photo.pdfZoom) || 1));
+  // The zoom at which the whole of this photograph fits inside that frame —
+  // the ratio between fitting it in and filling it. Always 1 or less, and
+  // exactly 1 when the photograph is already the frame's shape.
+  const pdfFitZoom = (iw, ih, w, h) => {
+    if (!(iw > 0 && ih > 0 && w > 0 && h > 0)) return 1;
+    return Math.min(1, Math.min(w / iw, h / ih) / Math.max(w / iw, h / ih));
+  };
 
   function drawPdfPhoto(page, img, photo, x, y, w, h, frame = true) {
     const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
     const scale = Math.max(w / iw, h / ih) * pdfZoom(photo);
-    const sw = Math.min(iw, w / scale), sh = Math.min(ih, h / scale);
     const f = photoFocus(photo);
-    page.ctx.drawImage(img, (iw - sw) * f.x, (ih - sh) * f.y, sw, sh, page.u(x), page.u(y), page.u(w), page.u(h));
+    /* Drawn whole and positioned, rather than cut out of the source: the two
+       are identical while the photograph covers the frame, but only this one
+       can also place a photograph SMALLER than its frame. Overflow is clipped
+       so a zoomed photograph cannot bleed onto its neighbour. */
+    const dw = iw * scale, dh = ih * scale;
+    const dx = dw > w ? x - (dw - w) * f.x : x + (w - dw) / 2;
+    const dy = dh > h ? y - (dh - h) * f.y : y + (h - dh) / 2;
+    page.ctx.save();
+    page.ctx.beginPath();
+    page.ctx.rect(page.u(x), page.u(y), page.u(w), page.u(h));
+    page.ctx.clip();
+    // Paper behind a photograph that no longer reaches its own edges.
+    if (dw < w - 0.01 || dh < h - 0.01) {
+      page.ctx.fillStyle = "#ffffff";
+      page.ctx.fillRect(page.u(x), page.u(y), page.u(w), page.u(h));
+    }
+    page.ctx.drawImage(img, page.u(dx), page.u(dy), page.u(dw), page.u(dh));
+    page.ctx.restore();
     page.photos.push({ id: photo.id, x, y, w, h });
     // A hairline frame, so a photo shot on white seamless still has an edge
     // against the paper. A full-bleed cover has no paper around it.
@@ -1263,12 +1293,20 @@
   // Nothing is special-cased as "landscape" — a photo spans two columns when
   // two columns would crop it less than one, so a page of landscapes, where
   // the median is already wide, spans nothing.
-  function pdfEqualGrid(aspects, W, H, gap, fewerOnTop = false, forced = []) {
+  function pdfEqualGrid(aspects, W, H, gap, fewerOnTop = false, forced = [], forceCols = 0) {
     const n = aspects.length;
     const sorted = [...aspects].sort((a, b) => a - b);
     const aspect = sorted[Math.floor((n - 1) / 2)] || 2 / 3;
     let best = null;
-    for (let cols = 1; cols <= Math.min(n, 5); cols++) {
+    /* Left alone, the grid takes the column count that makes the biggest
+       cells, which for four portraits is always two and two. That is the best
+       use of the paper and not always the page the studio wants: three across
+       with one beneath is a different picture of the same four photographs,
+       and there was no way to ask for it. A column count given here is
+       obeyed; nothing else about the grid changes. */
+    const from = forceCols ? Math.min(Math.max(1, forceCols), Math.min(n, 5)) : 1;
+    const to = forceCols ? from : Math.min(n, 5);
+    for (let cols = from; cols <= to; cols++) {
       // Which photos want two columns, judged against a first guess at the
       // cell, since the real one depends on how many rows the spans make.
       const guessW = (W - (cols - 1) * gap) / cols;
@@ -1276,6 +1314,13 @@
       const spans = aspects.map((a, i) => {
         if (cols < 2) return 1;                       // nothing to span across
         if (forced[i] === 1 || forced[i] === 2) return forced[i];   // the client said so
+        /* "Three across" means three PHOTOGRAPHS across. A landscape takes two
+           columns of its own accord to keep its shape, which quietly turned a
+           row of three into a row of two — ask for three and still get two and
+           two. Asked for a column count, the grid stops volunteering; a
+           photograph the client pressed Wide on themselves still spans, because
+           that is their instruction and not the grid's guess. */
+        if (forceCols) return 1;
         return pdfShapeLoss((guessW * 2 + gap) / guessH, a) < pdfShapeLoss(guessW / guessH, a) - 1e-6 ? 2 : 1;
       });
       // Short row at the top: the rows keep the sizes they would have had,
@@ -1396,7 +1441,7 @@
     const photoMaxH = PH - M - PDF_FOOTER_H - 5 - (detailsH ? detailsH + 5 : 0) - y;
     if (spec.layout === "equal") {
       const all = [spec.lead, ...spec.others];
-      const grid = pdfEqualGrid(imgs.map(pdfAspect), CW, photoMaxH, gap, spec.fewerOnTop, all.map((s) => s.wide || 0));
+      const grid = pdfEqualGrid(imgs.map(pdfAspect), CW, photoMaxH, gap, spec.fewerOnTop, all.map((s) => s.wide || 0), spec.cols || 0);
       page.equalRows = grid.rows;
       // Which photographs ended up double-wide, so the builder can show it.
       page.wide = all.filter((s, i) => grid.spans[i] === 2).map((s) => s.photo.id);
@@ -1587,7 +1632,7 @@
       drawPdfFooter(page);
       return;
     }
-    const grid = pdfEqualGrid(imgs.map(pdfAspect), CW, gridH, gap, spec.fewerOnTop, spec.others.map((s) => s.wide || 0));
+    const grid = pdfEqualGrid(imgs.map(pdfAspect), CW, gridH, gap, spec.fewerOnTop, spec.others.map((s) => s.wide || 0), spec.cols || 0);
     page.equalRows = grid.rows || null;
     page.wide = spec.others.filter((s, i) => grid.spans[i] === 2).map((s) => s.photo.id);
     const x0 = M + (CW - grid.width) / 2;
@@ -1685,9 +1730,10 @@
       page.tagsBare = bare;
       page.tagsShown = !bare && whole.some((s) => s.label);
       // A page down to its single photo is that photo as large as it will go.
+      const cols = Array.isArray(spec.cols) ? (spec.cols[i] || 0) : 0;
       if (i === 0 && n === 1 && spec.layout !== "equal") composeLeadPagePdf(page, spec, partImgs[0], mark);
-      else if (i === 0) composeOnePagePdf(page, { ...spec, lead: part[0], others: part.slice(1) }, partImgs, mark);
-      else composePosesPdf(page, { ...spec, others: part }, partImgs, mark, i + 1);
+      else if (i === 0) composeOnePagePdf(page, { ...spec, cols, lead: part[0], others: part.slice(1) }, partImgs, mark);
+      else composePosesPdf(page, { ...spec, cols, others: part }, partImgs, mark, i + 1);
     });
     if (watermark) pages.forEach((p) => drawPdfPreviewMark(p, markAlpha));
     // Drawn last so it sits over a full-bleed photograph rather than under it.
@@ -1829,6 +1875,7 @@
       span: {},            // photo id → 1 or 2 places across, when the client overrules
       order: [],           // photo ids in the order the client arranged them
       fewerOnTop: false,   // All equal: the short row at the top, not the foot
+      cols: [],            // photos across, per page; 0 = let the grid decide
       // Print the pose under each photograph, or don't. It used to be decided
       // for the client: tags appeared only when EVERY photograph across the
       // whole PDF had a pose, so one untagged shot anywhere silently stripped
@@ -1876,6 +1923,8 @@
     // Whether each page prints its pose labels. A page nobody has answered
     // for prints them, which is what the single switch used to do.
     const tagsPerPage = () => Array.from({ length: state.pages }, (_, i) => state.tags[i] !== false);
+    // How many photographs stand across a page, when the studio has said.
+    const colsPerPage = () => Array.from({ length: state.pages }, (_, i) => Number(state.cols[i]) || 0);
     /* How many pages the client asks for says how much ROOM the PDF has, and
        nothing whatever about what goes in it. The client picks every
        photograph themselves.
@@ -1891,21 +1940,116 @@
        So `state.count` is now simply how many the client picked — what the PDF
        actually holds — and the pages are a partition of it. */
     const syncCount = () => { state.count = picked().length; };
-    // The most this PDF can hold: six to a page, and never more photographs
-    // than the model has.
-    const capacity = () => Math.min(available(), PORTFOLIO_PAGE_MAX * state.pages);
+
+    /* A page holds six PLACES, not six photographs. A portrait takes one; a
+       landscape takes two, because that is what it already does on the paper —
+       it spans two columns rather than being cropped to a portrait's shape and
+       losing half its picture. So a page carries six portraits, or three
+       landscapes, or a mixture that adds up: two landscapes and two portraits.
+       Asked for by the studio, Sep 2026: "3 pics in landscape mode max in a
+       page."
+
+       Nothing in data.js says which way round a photograph is — the pixel
+       sizes read at deploy go to the SEO pages, not to the photo records — so
+       the shapes are learned here from the thumbnails the picker is showing
+       anyway, and a photograph counts as one place until its own shape is
+       known. */
+    const shotAspect = Object.create(null);
+    let aspectTimer = 0;
+    slots.forEach((sl) => {
+      const im = new Image();
+      im.onload = () => {
+        if (!(im.naturalWidth > 0 && im.naturalHeight > 0)) return;
+        shotAspect[sl.id] = im.naturalWidth / im.naturalHeight;
+        // One redraw for the lot, not one per photograph.
+        clearTimeout(aspectTimer);
+        aspectTimer = setTimeout(() => { try { syncPages(); syncPick(); } catch {} }, 60);
+      };
+      im.src = photoSrc(sl.photo.small ? { url: sl.photo.small } : sl.photo);
+    });
+    // What this photograph costs a page. The client's own Wide decision wins:
+    // it is an instruction, where the shape is only a default.
+    const placesOf = (sl) => {
+      if (state.span[sl.id] === 1) return 1;
+      if (state.span[sl.id] === 2) return 2;
+      const a = shotAspect[sl.id];
+      return a && a > 1.05 ? 2 : 1;
+    };
+    const placesIn = (list) => list.reduce((a, sl) => a + placesOf(sl), 0);
+    const usedPlaces = () => placesIn(picked());
+    // Every place this PDF has, and the ones still free.
+    const allPlaces = () => PORTFOLIO_PAGE_MAX * state.pages;
+    const freePlaces = () => Math.max(0, allPlaces() - usedPlaces());
+    // Whether one more photograph would still fit.
+    const roomFor = (sl) => {
+      if (usedPlaces() + placesOf(sl) > allPlaces()) return false;
+      const next = [...printOrder(), sl];
+      /* A division is only owed once there are enough photographs to put one
+         on every page. Demanding one from the first tap asked how to divide a
+         single photograph across two pages, which has no answer — so on two
+         pages or three, every photograph was refused and nothing could be
+         picked at all. */
+      if (next.length < state.pages) return true;
+      // Beyond that there must be a way to divide them: see bestSplit.
+      return !!bestSplit(next, state.pages);
+    };
+    // The most photographs this PDF could still hold, were the rest portraits.
+    const capacity = () => Math.min(available(), picked().length + freePlaces());
     // The fewest worth previewing: a page with nothing on it is not a page.
     const minPicks = () => Math.min(state.pages, available());
-    // The largest a single page may be asked to hold: six, or fewer when the
-    // other pages must keep at least one photograph each.
-    /* The picked photographs spread across the pages, as even as it divides,
-       the earlier pages taking the spare one: eight across two is 4 + 4, seven
-       is 4 + 3. The client can still shape this by hand in the preview, where
-       each sheet carries its own row of numbers. */
+
+    /* Whether a split can actually be printed: every page must hold at least
+       one photograph and no more than six places. Checked against the order
+       the photographs are in, since that is what decides where each one lands. */
+    const splitFits = (arr) => {
+      if (!Array.isArray(arr) || arr.length !== state.pages) return false;
+      const list = printOrder();
+      let k = 0;
+      for (const n of arr) {
+        if (n < 1) return false;
+        const page = list.slice(k, k + n);
+        if (page.length !== n || placesIn(page) > PORTFOLIO_PAGE_MAX) return false;
+        k += n;
+      }
+      return k === list.length;
+    };
+
+    /* The picked photographs divided across the pages: the most even division
+       that every page can actually print. A page takes at most six
+       photographs and at most six places, and the photographs stay in the
+       order the client put them in, so the division has to be made of
+       consecutive runs — which means some orders genuinely have no answer.
+       One portrait followed by three landscapes is 1 + 2 + 2 + 2 places: no
+       run adds up to six, so over two pages it can only be 5 and 7. Those are
+       refused at the moment of picking (see roomFor) rather than discovered
+       here, and this looks for the answer rather than guessing at one: a
+       dozen photographs over three pages is a few hundred combinations. */
+    const bestSplit = (list, pages) => {
+      let best = null;
+      const walk = (from, left, acc) => {
+        if (left === 1) {
+          const n = list.length - from;
+          if (n < 1 || n > PORTFOLIO_PAGE_MAX) return;
+          if (placesIn(list.slice(from)) > PORTFOLIO_PAGE_MAX) return;
+          const arr = [...acc, n];
+          const spread = Math.max(...arr) - Math.min(...arr);
+          if (!best || spread < best.spread) best = { arr, spread };
+          return;
+        }
+        const most = Math.min(PORTFOLIO_PAGE_MAX, list.length - from - (left - 1));
+        for (let n = 1; n <= most; n++) {
+          if (placesIn(list.slice(from, from + n)) > PORTFOLIO_PAGE_MAX) break;
+          walk(from + n, left - 1, [...acc, n]);
+        }
+      };
+      walk(0, pages, []);
+      return best ? best.arr : null;
+    };
     const spreadPages = () => {
       const total = state.count;
-      state.perPage = Array.from({ length: state.pages }, (_, i) =>
+      const even = Array.from({ length: state.pages }, (_, i) =>
         Math.floor(total / state.pages) + (i < total % state.pages ? 1 : 0));
+      state.perPage = splitFits(even) ? even : (bestSplit(printOrder(), state.pages) || even);
     };
     // Picks changed: the total and the page split both follow them.
     const syncPages = () => { syncCount(); spreadPages(); };
@@ -2014,6 +2158,7 @@
         // themselves always travel on the slots; these decide what becomes of
         // them, page by page, where the split is known.
         tags: tagsPerPage(),
+        cols: colsPerPage(),
         tagPlace: state.tagPlace,
         tagAlign: state.tagAlign,
         location: state.location.trim(),
@@ -2031,7 +2176,7 @@
         return a ? [a.x, a.y, a.zoom].map((v) => Math.round(v * 1000)) : 0;
       });
       return JSON.stringify([state.pages, ids, state.layout, perPage(), state.fewerOnTop,
-        tagsPerPage(), state.tagPlace, state.tagAlign,
+        tagsPerPage(), colsPerPage(), state.tagPlace, state.tagAlign,
         ids.map((id) => state.span[id] || 0),
         state.cover ? [state.coverId, state.coverStyle] : null, crops]);
     }
@@ -2181,6 +2326,9 @@
          "8/12" read as four short of a quota the client never set. */
       const short = minPicks() - chosen.length;
       const msg = foot.querySelector("#ppMsg");
+      /* "of up to" counts the places left as though the rest were portraits —
+         a landscape takes two, so picking one lowers the ceiling by two. It is
+         an honest upper bound rather than a promise. */
       foot.querySelector("#ppTally").textContent = `${chosen.length} of up to ${capacity()}`;
       msg.classList.toggle("is-warn", !!warning);
       msg.textContent = warning
@@ -2202,15 +2350,20 @@
       if (state.picks.has(id)) {
         state.picks.delete(id);
         if (!pickedIn(slot.angle)) state.cleared.add(slot.angle);
-      } else if (picked().length < capacity()) {
+      } else if (roomFor(slot)) {
         state.picks.add(id);
         state.cleared.delete(slot.angle);
       } else {
-        // The room is full, not the choice wrong: say how to make space, and
-        // that another page would make more.
-        syncPick(state.pages < PORTFOLIO_MAX_PAGES
-          ? `${capacity()} is all ${state.pages} page${state.pages > 1 ? "s" : ""} holds. Untick one, or add a page.`
-          : `${capacity()} is the most a portfolio holds. Untick one to swap it for this.`);
+        /* The room is full, not the choice wrong. A landscape needs two free
+           places, so it can be refused while a portrait would still go in —
+           which is worth saying, or the screen looks broken. */
+        const wide = placesOf(slot) === 2;
+        const room = freePlaces();
+        syncPick(wide && room > 0
+          ? `A landscape photograph needs the width of two, and ${room === 1 ? "only one place is" : `${room} places are`} left. Untick one${state.pages < PORTFOLIO_MAX_PAGES ? ", or add a page" : ""}.`
+          : state.pages < PORTFOLIO_MAX_PAGES
+            ? `${state.pages} page${state.pages > 1 ? "s" : ""} ${state.pages > 1 ? "are" : "is"} full. Untick one, or add a page.`
+            : "A portfolio runs to three pages, and they are full. Untick one to swap it for this.");
         return;
       }
       // The pages are a partition of the picks, so both follow every tap.
@@ -2245,6 +2398,23 @@
       const on = perPage()[i];
       return `<div class="pp-seg pp-page-count" role="radiogroup" aria-label="Photos on page ${i + 1}">
         ${PORTFOLIO_PAGE_COUNTS.map((n) => `<button type="button" role="radio" data-page="${i}" data-on-page="${n}" aria-checked="${n === on}"${canPutOnPage(i, n) ? "" : " disabled"}>${n}</button>`).join("")}
+      </div>`;
+    }
+
+    /* How many photographs stand across a page. The grid picks the count that
+       makes the biggest cells, which is right nearly always and is not the
+       only page worth having: four photographs come out two and two, and
+       three across with one beneath is the same four arranged differently.
+       "Auto" is the grid's own judgement and stays the default. A count that
+       would leave a row empty is not offered. */
+    function pageColsSegHtml(i, drawn) {
+      const n = drawn || perPage()[i] || 0;
+      if (state.layout !== "equal" || n < 3) return "";
+      const on = colsPerPage()[i];
+      const opts = [0, ...Array.from({ length: Math.min(n, 5) }, (_, k) => k + 1).filter((c) => c > 1 && c < n)];
+      if (opts.length < 2) return "";
+      return `<div class="pp-seg pp-page-cols" role="radiogroup" aria-label="Photos across page ${i + 1}">
+        ${opts.map((c) => `<button type="button" role="radio" data-page-cols="${i}" data-cols="${c}" aria-checked="${c === on}" title="${c ? `${c} across` : "Let the grid decide"}">${c || "Auto"}</button>`).join("")}
       </div>`;
     }
 
@@ -2284,24 +2454,12 @@
       // balance and the row is not offered (see pageCountSegHtml).
       if (state.pages < 2) return;
       if (!canPutOnPage(i, n) || perPage()[i] === n) return;
-      /* This page gets exactly what was asked for and keeps it. The others
-         give up or take on the difference, from the back forwards, each one
-         staying between one photograph and six — so a page the client set
+      /* This page gets exactly what was asked for and keeps it; the others
+         take up the difference (see rebalanced), so a page the client set
          earlier is disturbed as little as possible and 1 + 3 + 4 survives
-         being built one number at a time. An earlier version re-spread every
-         other page evenly, which both undid the client's own arrangement and
-         could hand a single page seven photographs, which no page can hold. */
-      const arr = perPage().slice();
-      arr[i] = n;
-      let diff = state.count - arr.reduce((a, b) => a + b, 0);
-      for (let pass = 0; pass < 2 && diff !== 0; pass++) {
-        for (let j = arr.length - 1; j >= 0 && diff !== 0; j--) {
-          if (j === i) continue;
-          if (diff > 0) { const add = Math.min(PORTFOLIO_PAGE_MAX - arr[j], diff); arr[j] += add; diff -= add; }
-          else { const cut = Math.min(arr[j] - 1, -diff); arr[j] -= cut; diff += cut; }
-        }
-      }
-      if (diff !== 0) return;  // not a split these photographs can make
+         being built one number at a time. */
+      const arr = rebalanced(i, n);
+      if (!arr) return;  // not a split these photographs can make
       state.perPage = arr;
       /* Deliberately no syncPick here. This is only ever reached from the
          preview, whose caller redraws the sheets; syncPick speaks to the
@@ -2322,7 +2480,28 @@
       if (n < 1 || n > PORTFOLIO_PAGE_MAX) return false;
       const others = state.pages - 1;
       const rest = state.count - n;
-      return rest >= others && rest <= PORTFOLIO_PAGE_MAX * others;
+      if (rest < others || rest > PORTFOLIO_PAGE_MAX * others) return false;
+      // And it has to fit as PLACES: three landscapes fill a page on their own.
+      return splitFits(rebalanced(i, n));
+    };
+
+    /* The split that asking page i for n photographs would produce: this page
+       gets what it asked for, the others take the difference from the back
+       forwards. Worked out here so the row of numbers can grey out an ask
+       before the client makes it, rather than appearing to ignore them. */
+    const rebalanced = (i, n) => {
+      const arr = perPage().slice();
+      if (arr.length !== state.pages) return null;
+      arr[i] = n;
+      let diff = state.count - arr.reduce((a, b) => a + b, 0);
+      for (let pass = 0; pass < 2 && diff !== 0; pass++) {
+        for (let j = arr.length - 1; j >= 0 && diff !== 0; j--) {
+          if (j === i) continue;
+          if (diff > 0) { const add = Math.min(PORTFOLIO_PAGE_MAX - arr[j], diff); arr[j] += add; diff -= add; }
+          else { const cut = Math.min(arr[j] - 1, -diff); arr[j] -= cut; diff += cut; }
+        }
+      }
+      return diff === 0 ? arr : null;
     };
 
     /* There is deliberately nothing here that picks a photograph. The screen
@@ -2334,7 +2513,7 @@
     // photo. Returns their pose names, so the client is told what went.
     function trimPicks() {
       const dropped = [];
-      while (picked().length > capacity()) {
+      while (usedPlaces() > allPlaces() && picked().length > 0) {
         const drop = picked().filter((s) => s.id !== state.lead).pop();
         if (!drop) break;
         state.picks.delete(drop.id);
@@ -2508,7 +2687,7 @@
             spec: {
               pages: state.pages, count: state.count, picks: [...state.picks], cleared: [...state.cleared],
               lead: state.lead, cover: state.cover, coverId: state.coverId, coverStyle: state.coverStyle,
-              layout: state.layout, order: [...state.order], fewerOnTop: state.fewerOnTop,
+              layout: state.layout, order: [...state.order], fewerOnTop: state.fewerOnTop, cols: colsPerPage(),
               tags: tagsPerPage(),
               tagPlace: state.tagPlace,
               tagAlign: state.tagAlign,
@@ -2541,6 +2720,8 @@
           state.lead = sp.lead; state.cover = sp.cover; state.coverId = sp.coverId;
           state.coverStyle = sp.coverStyle; state.layout = sp.layout;
           state.order = [...sp.order]; state.fewerOnTop = sp.fewerOnTop;
+          // Saved before the studio could choose it: the grid works it out.
+          state.cols = Array.isArray(sp.cols) ? sp.cols.slice(0, sp.pages) : [];
           // An arrangement saved before the switch existed has no answer, and
           // "on" is what it was saved under.
           // An arrangement saved when the switch was one for the whole PDF
@@ -2770,6 +2951,17 @@
           drawPreview();
           return;
         }
+        // Photographs across this page.
+        const across = e.target.closest("[data-page-cols]");
+        if (across) {
+          const i = Number(across.dataset.pageCols), c = Number(across.dataset.cols);
+          if ((colsPerPage()[i] || 0) === c) return;
+          const wasCovered = covered();
+          state.cols[i] = c;
+          if (covered() !== wasCovered) { showPreview(); return; }
+          drawPreview();
+          return;
+        }
         const num = e.target.closest("[data-on-page]");
         if (num) {
           if (num.disabled) return;
@@ -2824,7 +3016,7 @@
           cap.className = "pp-sheet-cap";
           cap.innerHTML = i < offset
             ? `<span class="pp-sheet-name">Cover</span>${coverStyleSegHtml()}`
-            : `<span class="pp-sheet-head"><span class="pp-sheet-name">Page ${i - offset + 1}</span>${pageTagsBtnHtml(i - offset, p)}</span>${pageCountSegHtml(i - offset)}`;
+            : `<span class="pp-sheet-head"><span class="pp-sheet-name">Page ${i - offset + 1}</span>${pageTagsBtnHtml(i - offset, p)}</span>${pageCountSegHtml(i - offset)}${pageColsSegHtml(i - offset, (p.canvas && p.canvas._photos || []).length)}`;
           item.appendChild(cap);
           return item;
         }));
@@ -2856,9 +3048,16 @@
       const clamp01 = (v) => Math.min(1, Math.max(0, v));
       body.innerHTML = `
         <div class="pp-adjust">
-          <p class="pp-hint">Drag the photo to move it in its frame. Zoom in to crop closer.</p>
+          <p class="pp-hint">Drag the photo to move it in its frame. Zoom in to crop closer, or fit the whole photo in — the paper shows around it.</p>
           <div class="pp-adjust-stage"><canvas class="pp-adjust-canvas" role="img" aria-label="${esc(slot.name)}, as the PDF crops it"></canvas></div>
-          <label class="pp-adjust-zoom"><span class="pp-label">Zoom</span><input type="range" id="ppZoom" min="1" max="${PDF_MAX_ZOOM}" step="0.05" value="${a.zoom}" /><output id="ppZoomVal"></output></label>
+          <label class="pp-adjust-zoom"><span class="pp-label">Zoom</span><input type="range" id="ppZoom" min="${PDF_MIN_ZOOM}" max="${PDF_MAX_ZOOM}" step="0.01" value="${a.zoom}" /><output id="ppZoomVal"></output></label>
+          <!-- The frame is a fixed shape and most photographs are not, so
+               filling it always cuts something off. This is how the client
+               keeps all of it. -->
+          <div class="pp-adjust-fits">
+            <button type="button" class="btn btn-ghost pp-adjust-fit" id="ppFitWhole">Fit the whole photo</button>
+            <button type="button" class="btn btn-ghost pp-adjust-fit" id="ppFillFrame">Fill the frame</button>
+          </div>
         </div>
       `;
       foot.innerHTML = `
@@ -2883,30 +3082,46 @@
 
       // The crop drawPdfPhoto makes: cover the frame, times the zoom, anchored
       // at the focus point. Worked out in screen pixels.
+      // Mirrors drawPdfPhoto exactly, in screen pixels: the photograph drawn
+      // whole at a scale, and placed — panned by the focus point while it
+      // overflows the frame, centred once it no longer does.
       const crop = () => {
         const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
         const scale = Math.max(cw / iw, ch / ih) * a.zoom;
-        return { iw, ih, scale, sw: Math.min(iw, cw / scale), sh: Math.min(ih, ch / scale) };
+        return { iw, ih, scale, dw: iw * scale, dh: ih * scale };
       };
+      // Where this photograph stops being cropped at all, in this frame.
+      const fitZoom = () => img ? pdfFitZoom(img.naturalWidth || img.width, img.naturalHeight || img.height, cw, ch) : 1;
       const draw = () => {
         queued = false;
-        zoomVal.textContent = `${a.zoom.toFixed(1)}×`;
+        const fz = fitZoom();
+        zoomVal.textContent = a.zoom <= fz + 0.001 ? "Whole photo" : `${a.zoom.toFixed(1)}×`;
         if (!img) return;
         const c = crop();
         const ctx = canvas.getContext("2d");
         ctx.imageSmoothingQuality = "high";
-        ctx.drawImage(img, (c.iw - c.sw) * a.x, (c.ih - c.sh) * a.y, c.sw, c.sh, 0, 0, canvas.width, canvas.height);
+        const k = canvas.width / cw;   // device pixels per CSS pixel
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // The paper the client will actually get, behind a photograph that no
+        // longer reaches the frame's edges.
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const dx = c.dw > cw ? -(c.dw - cw) * a.x : (cw - c.dw) / 2;
+        const dy = c.dh > ch ? -(c.dh - ch) * a.y : (ch - c.dh) / 2;
+        ctx.drawImage(img, dx * k, dy * k, c.dw * k, c.dh * k);
       };
       const redraw = () => { if (!queued) { queued = true; requestAnimationFrame(draw); } };
-      // Moves the photo by screen pixels: dragging it right shows more of its left.
+      // Moves the photo by screen pixels: dragging it right shows more of its
+      // left. A photograph that fits entirely has nothing hidden to pan to.
       const nudge = (from, dx, dy) => {
         const c = crop();
-        if (c.iw - c.sw > 0.5) a.x = clamp01(from.x - dx / c.scale / (c.iw - c.sw));
-        if (c.ih - c.sh > 0.5) a.y = clamp01(from.y - dy / c.scale / (c.ih - c.sh));
+        if (c.dw - cw > 0.5) a.x = clamp01(from.x - dx / (c.dw - cw));
+        if (c.dh - ch > 0.5) a.y = clamp01(from.y - dy / (c.dh - ch));
         redraw();
       };
       const setZoom = (z) => {
-        a.zoom = Math.min(PDF_MAX_ZOOM, Math.max(1, z));
+        a.zoom = Math.min(PDF_MAX_ZOOM, Math.max(fitZoom(), z));
         zoom.value = String(a.zoom);
         redraw();
       };
@@ -2926,13 +3141,20 @@
         setZoom(a.zoom * (e.deltaY < 0 ? 1.08 : 1 / 1.08));
       }, { passive: false });
       zoom.addEventListener("input", () => setZoom(Number(zoom.value)));
+      // Every bit of the photograph, with paper around it; and the opposite,
+      // which is what the frame does on its own.
+      body.querySelector("#ppFitWhole").addEventListener("click", () => setZoom(fitZoom()));
+      body.querySelector("#ppFillFrame").addEventListener("click", () => setZoom(1));
       foot.querySelector("#ppAdjustReset").addEventListener("click", () => {
         Object.assign(a, saved());
         setZoom(1);
       });
       foot.querySelector("#ppAdjustDone").addEventListener("click", () => {
         const s = saved();
-        const changed = Math.abs(a.x - s.x) > 0.001 || Math.abs(a.y - s.y) > 0.001 || a.zoom > 1.001;
+        /* Zoomed OUT counts as a change too. This asked only whether the
+           client had zoomed in, so choosing to show the whole photograph was
+           thrown away the moment they pressed Done. */
+        const changed = Math.abs(a.x - s.x) > 0.001 || Math.abs(a.y - s.y) > 0.001 || Math.abs(a.zoom - 1) > 0.001;
         if (changed) state.adjust[slot.id] = { x: a.x, y: a.y, zoom: a.zoom };
         else delete state.adjust[slot.id];
         showPreview();
@@ -2942,6 +3164,10 @@
       loadPdfImage(photoSrc(slot.photo.medium ? { url: slot.photo.medium } : slot.photo), cache).then((loaded) => {
         if (token !== renderToken) return;
         img = loaded;
+        // Only now is the photograph's own shape known, so only now can the
+        // slider stop where the whole of it fits.
+        zoom.min = String(fitZoom());
+        if (a.zoom < fitZoom()) setZoom(fitZoom());
         draw();
       }).catch(() => {
         if (token !== renderToken) return;

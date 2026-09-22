@@ -3624,3 +3624,10 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
 
 /* The cover's look, offered under the cover in the preview. */
 .pp-cover-look { margin-top: 6px; }
+
+/* Fitting the whole photograph, rather than only choosing which part of it to
+   lose (v500). */
+.pp-adjust-fits { display: flex; gap: 8px; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
+.pp-adjust-fit { font-size: 12px; padding: 6px 12px; }
+.pp-page-cols { margin-top: 5px; }
+.pp-page-cols button { min-width: 34px; }
