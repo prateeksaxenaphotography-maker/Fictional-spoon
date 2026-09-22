@@ -802,6 +802,18 @@ try {
   const nowPdfs = win.WPS_DATA.MODEL_PDFS || { versions: [], deleted: [] };
   const lostPdfs = prevPdfs.filter((v) => v && !(nowPdfs.versions || []).some((x) => x && x.id === v.id) && !(nowPdfs.deleted || []).includes(v.id));
   if (lostPdfs.length) fail(`${lostPdfs.length} saved model portfolio(s) disappeared without being deleted: ${lostPdfs.map((v) => v.name || v.id).join(", ")}${stale}`);
+  // An admin.js from before three-page PDFs clamps a saved arrangement back to
+  // one page and drops the first-page split, without touching its updatedAt.
+  // An arrangement that loses pages while its edit time stands still can only
+  // have come through that older normaliser.
+  for (const was of prevPdfs) {
+    if (!was || !was.spec) continue;
+    const now = (nowPdfs.versions || []).find((x) => x && x.id === was.id);
+    if (!now || !now.spec || now.updatedAt !== was.updatedAt) continue;
+    const label = was.name || was.id;
+    if (Number(now.spec.pages || 1) < Number(was.spec.pages || 1)) fail(`saved model portfolio "${label}" went from ${was.spec.pages} pages to ${now.spec.pages} without being edited, which means an out-of-date browser tab published over it.${stale}`);
+    if (was.spec.firstPage && now.spec.firstPage === undefined) fail(`saved model portfolio "${label}" lost its first-page split without being edited, which means an out-of-date browser tab published over it.${stale}`);
+  }
 
   // A deletion that vanishes lets a stale copy of the book come back.
   const lostTombstones = ((prevData.STUDIO_PORTFOLIOS && prevData.STUDIO_PORTFOLIOS.deleted) || []).filter((id) => !(nowBooks.deleted || []).includes(id));

@@ -645,8 +645,51 @@
   }
 
   // The photo counts a client can choose for each page count. The cover is
-  // not included: it has a page of its own.
-  const PORTFOLIO_PDF_COUNTS = { 1: [2, 3, 4, 5], 2: [8, 9, 10] };
+  // not included: it has a page of its own. Six to a page is the rule
+  // everywhere, a single page included (v490 — it used to stop at five), so a
+  // page holds one to six photographs whichever PDF it belongs to. Each tier
+  // then runs up to what its pages can carry, and every count from one to
+  // sixteen is reachable.
+  const PORTFOLIO_PDF_COUNTS = { 1: [1, 2, 3, 4, 5, 6], 2: [6, 7, 8, 9, 10], 3: [11, 12, 13, 14, 15, 16] };
+
+  // How a multi-page PDF divides its photos. Six to a page, the first page
+  // included — it gives up some of its room to the name, the measurements and
+  // the contact details, so its six print smaller than six on a page of
+  // nothing but photographs. One on the first page means that photo alone, as
+  // large as the paper allows. Six a page is where the top count of sixteen
+  // sits: 4 + 6 + 6, or 6 + 5 + 5, whichever the client prefers.
+  const PORTFOLIO_FIRST_COUNTS = [1, 2, 3, 4, 5, 6];
+  const PORTFOLIO_PAGE_MAX = 6;
+
+  // The first-page counts that leave a workable remainder: enough for a photo
+  // on every page after it, and not more than those pages can hold.
+  function portfolioFirstOptions(total, pages) {
+    if (pages < 2) return [];
+    const later = pages - 1;
+    return PORTFOLIO_FIRST_COUNTS.filter((n) => total - n >= later && total - n <= PORTFOLIO_PAGE_MAX * later);
+  }
+
+  // The photos per page, front to back. `first` is the client's choice for
+  // page one; 0 (or one that no longer fits) falls back to an even split,
+  // which is what every PDF drew before the choice existed.
+  function portfolioPageSplit(total, pages, first) {
+    const out = [];
+    let left = total;
+    for (let i = 0; i < pages; i++) {
+      let n;
+      if (i === 0 && pages > 1) {
+        const options = portfolioFirstOptions(total, pages);
+        n = options.includes(first) ? first : options.length
+          ? options.reduce((a, b) => Math.abs(b - total / pages) < Math.abs(a - total / pages) ? b : a)
+          : Math.floor(total / pages);
+      } else {
+        n = Math.ceil(left / (pages - i));
+      }
+      out.push(Math.max(0, n));
+      left -= n;
+    }
+    return out;
+  }
 
   // Reference numbers this browser has taken for portfolio PDFs: "sent" once
   // the studio has the sale email, "used" once a PDF was made with it. With
@@ -1133,35 +1176,6 @@
     return { cells, loss: best.loss };
   }
 
-  // Fit photos inside W x H: the row split that shows them largest, shrunk
-  // to fit if it runs too tall. If it comes up short, rows may grow up to
-  // maxStretch taller, trimming a little off each photo's sides rather than
-  // leaving the bottom of the page blank.
-  function pdfContainRows(aspects, W, H, gap, maxPerRow, maxStretch = 1) {
-    let best = null;
-    pdfRowSplits(aspects.length, maxPerRow).forEach((rows) => {
-      const heights = pdfRowHeights(rows, aspects, W, gap);
-      const total = heights.reduce((s, x) => s + x, 0) + (rows.length - 1) * gap;
-      const s = Math.min(1, H / total);
-      // Biggest photos win, discounted when rows differ in height, so a grid
-      // doesn't end in one oversized row or a strip of small ones.
-      const area = s * s * W * total * (Math.min(...heights) / Math.max(...heights));
-      if (!best || area > best.area + 1e-6) best = { rows, heights, s, total, area };
-    });
-    const gaps = (best.rows.length - 1) * gap * best.s;
-    const photosH = best.total * best.s - gaps;
-    const stretch = best.s < 1 ? 1 : Math.min(maxStretch, Math.max(1, (H - gaps) / photosH));
-    const cells = [];
-    let y = 0;
-    best.rows.forEach((r, ri) => {
-      const rh = best.heights[ri] * best.s * stretch;
-      let x = 0;
-      r.forEach((i) => { const cw = best.heights[ri] * aspects[i] * best.s; cells[i] = { x, y, w: cw, h: rh }; x += cw + gap * best.s; });
-      y += rh + gap * best.s;
-    });
-    return { cells, width: W * best.s, height: photosH * stretch + gaps };
-  }
-
   // Every photo the same size: the column count that gives the biggest cells
   // in W x H. Cells take the photos' typical shape (the median aspect), give
   // up to a tenth of a frame to fill more of the box, and a short row is
@@ -1443,20 +1457,29 @@
     drawPdfFooter(page);
   }
 
-  // Page two of two: every other pose, trimmed by no more than a sliver.
-  function composePosesPdf(page, spec, imgs, mark) {
+  // A page of nothing but poses: page two, and page three when there is one.
+  function composePosesPdf(page, spec, imgs, mark, pageNo = 2) {
     const { w: PW, h: PH, margin: M, gap } = PDF_PAGE;
     const CW = PW - M * 2;
-    let y = drawPdfHeader(page, mark, pdfHeaderLabel(spec, 2)) + 4.5;
+    let y = drawPdfHeader(page, mark, pdfHeaderLabel(spec, pageNo)) + 4.5;
     const nameStyle = pdfType("name", { weight: 800, size: 6, family: PDF_DISPLAY, spacing: -0.12, upper: true, color: "#000" });
     const name = page.fit(spec.name, CW - 30, nameStyle);
     page.text(name, M, y + 4.4, nameStyle);
     page.text("Poses", M + page.measure(name, nameStyle) + 3, y + 4.4, PDF_LABEL);
     y += 9;
     const gridH = PH - M - PDF_FOOTER_H - 5 - y;
-    const grid = spec.layout === "equal"
-      ? pdfEqualGrid(imgs.map(pdfAspect), CW, gridH, gap, spec.fewerOnTop)
-      : pdfContainRows(imgs.map(pdfAspect), CW, gridH, gap, 4, 1.12);
+    if (spec.layout !== "equal") {
+      // One big photo, on this page too: the first photo the client put on it
+      // is the big one, the rest sit beside or beneath it.
+      page.equalRows = null;
+      const layout = pdfLeadLayout(pdfAspect(imgs[0]), imgs.slice(1).map(pdfAspect), CW, gridH, gap);
+      const top = y + Math.max(0, (gridH - layout.height) / 2);
+      drawPdfSlot(page, imgs[0], spec.others[0], M + layout.lead.x, top + layout.lead.y, layout.lead.w, layout.lead.h);
+      layout.cells.forEach((c, i) => drawPdfSlot(page, imgs[i + 1], spec.others[i + 1], M + c.x, top + c.y, c.w, c.h));
+      drawPdfFooter(page);
+      return;
+    }
+    const grid = pdfEqualGrid(imgs.map(pdfAspect), CW, gridH, gap, spec.fewerOnTop);
     page.equalRows = grid.rows || null;
     const x0 = M + (CW - grid.width) / 2;
     grid.cells.forEach((c, i) => drawPdfSlot(page, imgs[i], spec.others[i], x0 + c.x, y + c.y, c.w, c.h));
@@ -1524,18 +1547,22 @@
     const pages = [];
     const addPage = () => { const p = newPdfPage(dpi); pages.push(p); return p; };
     if (spec.cover) composeFrontCoverPdf(addPage(), spec, coverImg, mark);
-    if (spec.pages === 2 && spec.layout === "equal") {
-      // All equal: the photos split between the two pages, the first page,
-      // which also carries the details, taking the smaller half.
-      const k = Math.floor(slots.length / 2);
-      composeOnePagePdf(addPage(), { ...spec, lead: slots[0], others: slots.slice(1, k) }, imgs.slice(0, k), mark);
-      composePosesPdf(addPage(), { ...spec, others: slots.slice(k) }, imgs.slice(k), mark);
-    } else if (spec.pages === 2) {
-      composeLeadPagePdf(addPage(), spec, imgs[0], mark);
-      composePosesPdf(addPage(), spec, imgs.slice(1), mark);
-    } else {
-      composeOnePagePdf(addPage(), spec, imgs, mark);
-    }
+    // The photos divide between the pages, the first taking however many the
+    // client chose; it also carries the name, the measurements and the
+    // contact details, so it holds fewer. Every page is then drawn in the
+    // same shape — All the same size, or one big photo on each page.
+    let at = 0;
+    portfolioPageSplit(slots.length, spec.pages, spec.firstPage).forEach((n, i) => {
+      const part = slots.slice(at, at + n);
+      const partImgs = imgs.slice(at, at + n);
+      at += n;
+      if (!part.length) return;
+      const page = addPage();
+      // A page down to its single photo is that photo as large as it will go.
+      if (i === 0 && n === 1 && spec.layout !== "equal") composeLeadPagePdf(page, spec, partImgs[0], mark);
+      else if (i === 0) composeOnePagePdf(page, { ...spec, lead: part[0], others: part.slice(1) }, partImgs, mark);
+      else composePosesPdf(page, { ...spec, others: part }, partImgs, mark, i + 1);
+    });
     if (watermark) pages.forEach((p) => drawPdfPreviewMark(p, markAlpha));
     // Drawn last so it sits over a full-bleed photograph rather than under it.
     drawPdfBorder(pages);
@@ -1664,6 +1691,7 @@
       coverId: "",         // id of the cover photo
       coverStyle: "full",  // the cover's look: full photo, framed or split
       layout: "lead",      // one big photo with the rest around it, or all equal
+      firstPage: 0,        // 2-3 pages: photos on page one; 0 = an even split
       order: [],           // photo ids in the order the client arranged them
       fewerOnTop: false,   // All equal: the short row at the top, not the foot
       filter: "all",       // which pose the grid shows
@@ -1704,6 +1732,12 @@
       const fits = PORTFOLIO_PDF_COUNTS[pages].filter((n) => n <= available());
       return fits.length ? fits : [Math.min(available(), PORTFOLIO_PDF_COUNTS[pages][0])];
     };
+    // The first-page counts this arrangement allows, and the one in force.
+    const firstOptions = () => portfolioFirstOptions(printOrder().length, state.pages);
+    const firstPageNow = () => portfolioPageSplit(printOrder().length, state.pages, state.firstPage)[0];
+    // A first-page choice that no longer fits (the count changed under it)
+    // goes back to the even split rather than quietly drawing something else.
+    const fitFirstPage = () => { if (state.firstPage && !firstOptions().includes(state.firstPage)) state.firstPage = 0; };
     // A headshot is the classic lead; otherwise the first photo picked.
     const defaultLead = () => { const p = picked(); return (p.find((s) => s.angle === "close-up") || p[0] || {}).id || ""; };
     // The cover photo is extra. It has a page of its own, so it is never also
@@ -1798,6 +1832,7 @@
         cover: state.cover ? slot(slots.find((s) => s.id === state.coverId) || lead) : null,
         coverStyle: state.coverStyle,
         layout: state.layout,
+        firstPage: state.firstPage,
         fewerOnTop: state.fewerOnTop,
         location: state.location.trim(),
         phone: state.phone.trim()
@@ -1813,7 +1848,7 @@
         const a = state.adjust[id];
         return a ? [a.x, a.y, a.zoom].map((v) => Math.round(v * 1000)) : 0;
       });
-      return JSON.stringify([state.pages, ids, state.layout, state.fewerOnTop,
+      return JSON.stringify([state.pages, ids, state.layout, state.firstPage, state.fewerOnTop,
         state.cover ? [state.coverId, state.coverStyle] : null, crops]);
     }
     // One payment buys one PDF. Until it's downloaded the client can change
@@ -1830,7 +1865,7 @@
       body.innerHTML = `
         <div class="pp-controls">
           <div class="pp-seg" role="radiogroup" aria-label="Pages">
-            ${[1, 2].map((n) => `<button type="button" role="radio" data-pages="${n}" aria-checked="false">${n} page${n > 1 ? "s" : ""}</button>`).join("")}
+            ${[1, 2, 3].map((n) => `<button type="button" role="radio" data-pages="${n}" aria-checked="false">${n} page${n > 1 ? "s" : ""}</button>`).join("")}
           </div>
           <div class="pp-seg" role="radiogroup" aria-label="Photos on the pages" id="ppCountSeg"></div>
         </div>
@@ -1927,7 +1962,8 @@
       if (!state.picks.has(state.lead)) state.lead = defaultLead();
       body.querySelectorAll("[data-pages]").forEach((btn) => {
         btn.setAttribute("aria-checked", String(Number(btn.dataset.pages) === state.pages));
-        btn.disabled = Number(btn.dataset.pages) === 2 && available() < 2;
+        // A page with no photograph on it is not worth printing.
+        btn.disabled = Number(btn.dataset.pages) > available();
       });
       body.querySelector("#ppCountSeg").innerHTML = `<span class="pp-seg-cap" aria-hidden="true">Photos</span>` + countOptions(state.pages).map((n) => `<button type="button" role="radio" data-count="${n}" aria-checked="${n === state.count}">${n}</button>`).join("");
       body.querySelectorAll("#ppCoverStyleSeg [data-cover-style]").forEach((btn) => btn.setAttribute("aria-checked", String(btn.dataset.coverStyle === state.coverStyle)));
@@ -1993,12 +2029,14 @@
     function setPages(n) {
       if (n === state.pages) return;
       state.pages = n;
+      state.firstPage = 0;
       // Each page count starts on the largest count this model's photos allow.
       setCount(Math.max(...countOptions(n)));
     }
 
     function setCount(n) {
       state.count = n;
+      state.firstPage = 0;
       const dropped = trimPicks();
       // A bigger count is topped up at once, so the preview isn't stuck until
       // the client finds several more photos; any of them can be swapped.
@@ -2048,6 +2086,7 @@
       const options = countOptions(state.pages);
       if (!options.includes(state.count)) {
         state.count = Math.max(...options);
+        state.firstPage = 0;
         trimPicks();
       }
       return note;
@@ -2073,13 +2112,24 @@
                 <button type="button" role="radio" data-layout="lead">One big photo</button>
                 <button type="button" role="radio" data-layout="equal">All the same size</button>
               </div>
+              <div class="pp-seg" role="radiogroup" aria-label="Photos on page one" id="ppFirstSeg" hidden></div>
               <div class="pp-seg" role="radiogroup" aria-label="Rows" id="ppRowsSeg" hidden></div>
             </div>
           </div>
           <ol class="pp-order" id="ppOrder" aria-labelledby="ppOrderLabel"></ol>
         </div>
         <p class="pp-hint pp-tap-hint">Tap a photo to move or zoom it.</p>
-        <div class="pp-preview" aria-live="polite"><p class="pp-rendering">Drawing your ${state.pages === 2 || state.cover ? "pages" : "page"}…</p></div>
+        <div class="pp-preview" aria-live="polite"><p class="pp-rendering">Drawing your ${state.pages > 1 || state.cover ? "pages" : "page"}…</p></div>
+        <!-- The same two fields as the photo picker. They print on the first
+             page, so they belong where you can watch that page redraw. -->
+        <details class="pp-more"${state.location || state.phone ? " open" : ""}>
+          <summary>Add location or phone — both optional</summary>
+          <div class="pp-more-fields">
+            <label><span class="pp-sr">Based in</span><input type="text" id="ppLocation" maxlength="40" placeholder="Based in (optional)" value="${esc(state.location)}" /></label>
+            <label><span class="pp-sr">Phone</span><input type="tel" id="ppPhone" maxlength="20" placeholder="Phone (optional)" value="${esc(state.phone)}" /></label>
+          </div>
+          <p class="pp-hint">Fill in either, both or neither — they are independent. Printed on your PDF only, never saved.</p>
+        </details>
         ${payable ? `
           <p class="pp-hint">Free with the watermark, as ${pngs}. Pay below for the PDF without it.</p>
           <div id="ppReady" class="pp-ready"></div>
@@ -2123,7 +2173,7 @@
             <div id="ppBorderRow"></div>
             <button type="button" class="pp-sample-btn" id="ppTypeReset">↺ Put every line back to the original</button>
           </details>` : ""}
-          <p class="pp-hint${admin ? " pp-hint-sample" : ""}">${admin ? `<span>Yours is free of the watermark. To send a sample with it:</span> <span class="pp-sample-actions"><button type="button" class="pp-sample-btn" id="ppDownloadMarked" data-download>Watermarked PDF</button><button type="button" class="pp-sample-btn" id="ppDownloadMarkedPng" data-download>Watermarked PNG${state.cover || state.pages === 2 ? "s" : ""}</button></span>` : lookOnly ? `Free to download with the watermark, as ${pngs}. ${lookMail ? `To buy the PDF without it${price ? ` for ₹${price}` : ""}, email ${lookMail} with your PNG or a screenshot of this preview.` : "The PDF without it isn't on sale yet."}` : price ? "Payment noted, thank you. It pays for one PDF with no watermark: once you've downloaded it, changing the photos or layout means paying again." : "Free to download."}</p>
+          <p class="pp-hint${admin ? " pp-hint-sample" : ""}">${admin ? `<span>Yours is free of the watermark. To send a sample with it:</span> <span class="pp-sample-actions"><button type="button" class="pp-sample-btn" id="ppDownloadMarked" data-download>Watermarked PDF</button><button type="button" class="pp-sample-btn" id="ppDownloadMarkedPng" data-download>Watermarked PNG${sheets > 1 ? "s" : ""}</button></span>` : lookOnly ? `Free to download with the watermark, as ${pngs}. ${lookMail ? `To buy the PDF without it${price ? ` for ₹${price}` : ""}, email ${lookMail} with your PNG or a screenshot of this preview.` : "The PDF without it isn't on sale yet."}` : price ? "Payment noted, thank you. It pays for one PDF with no watermark: once you've downloaded it, changing the photos or layout means paying again." : "Free to download."}</p>
           <div id="ppReady" class="pp-ready"></div>
         `}
       `;
@@ -2184,6 +2234,7 @@
               pages: state.pages, count: state.count, picks: [...state.picks], cleared: [...state.cleared],
               lead: state.lead, cover: state.cover, coverId: state.coverId, coverStyle: state.coverStyle,
               layout: state.layout, order: [...state.order], fewerOnTop: state.fewerOnTop,
+              firstPage: state.firstPage || 0,
               adjust: JSON.parse(JSON.stringify(state.adjust || {}))
             }
           });
@@ -2211,6 +2262,8 @@
           state.lead = sp.lead; state.cover = sp.cover; state.coverId = sp.coverId;
           state.coverStyle = sp.coverStyle; state.layout = sp.layout;
           state.order = [...sp.order]; state.fewerOnTop = sp.fewerOnTop;
+          // Arrangements saved before the split could be chosen take the even one.
+          state.firstPage = sp.firstPage || 0;
           state.adjust = JSON.parse(JSON.stringify(sp.adjust || {}));
           showPreview();
           toast(`“${v.name}” is back on screen.`);
@@ -2305,6 +2358,15 @@
         syncOrder({ id, step });
         drawPreview();
       });
+      body.querySelector("#ppFirstSeg").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-first]");
+        if (!btn || Number(btn.dataset.first) === firstPageNow()) return;
+        const wasCovered = covered();
+        state.firstPage = Number(btn.dataset.first);
+        if (covered() !== wasCovered) { showPreview(); return; }
+        syncFirstPage();
+        drawPreview();
+      });
       body.querySelector("#ppRowsSeg").addEventListener("click", (e) => {
         const btn = e.target.closest("[data-fewer-on-top]");
         if (!btn || (btn.dataset.fewerOnTop === "true") === state.fewerOnTop) return;
@@ -2326,9 +2388,16 @@
         // frees it, so the list is rebuilt rather than just redrawn.
         if (covered() !== wasCovered) { showPreview(); return; }
         syncLayout();
+        syncFirstPage();
         syncOrder();
         drawPreview();
       });
+      let detailsTimer = 0;
+      body.querySelectorAll("#ppLocation, #ppPhone").forEach((input) => input.addEventListener("input", (e) => {
+        state[e.target.id === "ppLocation" ? "location" : "phone"] = e.target.value;
+        clearTimeout(detailsTimer);
+        detailsTimer = setTimeout(drawPreview, 300);
+      }));
       // A tap on a photo in the preview opens it in Adjust photo.
       body.querySelector(".pp-preview").addEventListener("click", (e) => {
         const canvas = e.target.closest("canvas");
@@ -2340,6 +2409,7 @@
         if (hit) showAdjust(hit);
       });
       syncLayout();
+      syncFirstPage();
       syncOrder(focus);
       drawPreview();
     }
@@ -2364,7 +2434,8 @@
           return p.canvas;
         }));
         box.classList.toggle("two", pages.length === 2);
-        box.classList.toggle("three", pages.length > 2);
+        box.classList.toggle("three", pages.length === 3);
+        box.classList.toggle("four", pages.length > 3);
         lastSplits = pages.map((p) => p.equalRows).filter(Boolean);
         syncRows(lastSplits);
       }).catch((err) => {
@@ -2540,6 +2611,22 @@
       syncArrange();
     }
 
+    // How many photos land on the first page; the rest divide evenly over the
+    // pages after it. Shown only when there is a real choice to make.
+    function syncFirstPage() {
+      const seg = body.querySelector("#ppFirstSeg");
+      if (!seg) return;
+      fitFirstPage();
+      const options = state.pages > 1 ? firstOptions() : [];
+      seg.hidden = options.length < 2;
+      if (!seg.hidden) {
+        const now = firstPageNow();
+        seg.innerHTML = `<span class="pp-seg-cap" aria-hidden="true">Page 1</span>` +
+          options.map((n) => `<button type="button" role="radio" data-first="${n}" aria-checked="${n === now}">${n}</button>`).join("");
+      }
+      syncArrange();
+    }
+
     // Offered only when the two shapes would actually print differently: two
     // photos on one page come out as equal halves either way.
     function syncLayout() {
@@ -2551,7 +2638,8 @@
     }
 
     function syncArrange() {
-      const hideAll = body.querySelector("#ppOrder").hidden && body.querySelector("#ppRowsSeg").hidden && body.querySelector("#ppLayoutSeg").hidden;
+      const hideAll = body.querySelector("#ppOrder").hidden && body.querySelector("#ppRowsSeg").hidden
+        && body.querySelector("#ppLayoutSeg").hidden && body.querySelector("#ppFirstSeg").hidden;
       body.querySelector("#ppArrange").hidden = hideAll;
     }
 
