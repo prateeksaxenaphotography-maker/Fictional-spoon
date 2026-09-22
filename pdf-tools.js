@@ -1809,9 +1809,14 @@
     const newSaleRef = () => `NP-${Date.now().toString(36).slice(-3).toUpperCase()}${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
     const state = {
       pages: 1,
-      count: 5,            // photos on the pages; the cover isn't counted
+      count: 0,            // photos on the pages; the cover isn't counted
       picks: new Set(),    // chosen photo ids, any number from one pose
-      cleared: new Set(),  // poses the client deliberately emptied
+      /* Poses the client deliberately emptied. Nothing acts on this any more:
+         it steered the topping-up, which is gone (v498 — the client picks
+         every photograph themselves). It is still written and still saved,
+         because a saved arrangement is read back by builds either side of
+         that change and the shape has to stay the same. */
+      cleared: new Set(),
       lead: "",            // id of the big photo
       cover: false,        // add a front cover page
       coverId: "",         // id of the cover photo
@@ -1866,36 +1871,45 @@
     const pickedIn = (angle) => picked().filter((s) => s.angle === angle).length;
     // Photos free for the pages: every posed photo except the cover's.
     const available = () => slots.length - (state.cover && slots.some((s) => s.id === state.coverId) ? 1 : 0);
-    // The counts on offer for a page count, trimmed to the photos this model
-    // has. A model with too few keeps a single choice: all of them.
-    // The photos this PDF asks for, page by page, and in total. `state.count`
-    // is kept as their sum, because everything downstream — the tally, topping
-    // up, trimming — has always counted the pages as one number.
+    // How the picked photographs fall across the pages — see spreadPages.
     const perPage = () => state.perPage.slice(0, state.pages);
     // Whether each page prints its pose labels. A page nobody has answered
     // for prints them, which is what the single switch used to do.
     const tagsPerPage = () => Array.from({ length: state.pages }, (_, i) => state.tags[i] !== false);
-    const totalWanted = () => perPage().reduce((a, b) => a + b, 0);
-    const syncCount = () => { state.count = totalWanted(); };
-    // The largest a page may be asked for: six, or fewer when this model's
-    // photographs are already spoken for by the other pages.
-    const pageMax = (i) => {
-      const others = perPage().reduce((a, b, j) => a + (j === i ? 0 : b), 0);
-      return Math.max(1, Math.min(PORTFOLIO_PAGE_MAX, available() - others));
+    /* How many pages the client asks for says how much ROOM the PDF has, and
+       nothing whatever about what goes in it. The client picks every
+       photograph themselves.
+
+       It used to be a quota: choosing two pages set the total to twelve, the
+       system ticked twelve photographs on the client's behalf, and Preview
+       stayed dead until exactly twelve were ticked. A client who wanted eight
+       was told "Pick 4 more" with no way to say "eight is what I want", and a
+       client who wanted to choose for themselves first had to untick a dozen
+       someone else had chosen. Both readings of the screen were right and the
+       screen was wrong.
+
+       So `state.count` is now simply how many the client picked — what the PDF
+       actually holds — and the pages are a partition of it. */
+    const syncCount = () => { state.count = picked().length; };
+    // The most this PDF can hold: six to a page, and never more photographs
+    // than the model has.
+    const capacity = () => Math.min(available(), PORTFOLIO_PAGE_MAX * state.pages);
+    // The fewest worth previewing: a page with nothing on it is not a page.
+    const minPicks = () => Math.min(state.pages, available());
+    // The largest a single page may be asked to hold: six, or fewer when the
+    // other pages must keep at least one photograph each.
+    const pageMax = () => Math.max(1, Math.min(PORTFOLIO_PAGE_MAX, state.count - (state.pages - 1)));
+    /* The picked photographs spread across the pages, as even as it divides,
+       the earlier pages taking the spare one: eight across two is 4 + 4, seven
+       is 4 + 3. The client can still shape this by hand in the preview, where
+       each sheet carries its own row of numbers. */
+    const spreadPages = () => {
+      const total = state.count;
+      state.perPage = Array.from({ length: state.pages }, (_, i) =>
+        Math.floor(total / state.pages) + (i < total % state.pages ? 1 : 0));
     };
-    // Sets the pages to a workable arrangement: as full as this model's
-    // photographs allow, spread evenly. Most models have plenty, so that is
-    // six a page; one with nine gets three, three and three rather than six,
-    // two and one.
-    const fillPages = () => {
-      let left = Math.min(available(), PORTFOLIO_PAGE_MAX * state.pages);
-      state.perPage = Array.from({ length: state.pages }, (_, i) => {
-        const n = Math.max(1, Math.min(PORTFOLIO_PAGE_MAX, Math.ceil(left / (state.pages - i))));
-        left -= n;
-        return n;
-      });
-      syncCount();
-    };
+    // Picks changed: the total and the page split both follow them.
+    const syncPages = () => { syncCount(); spreadPages(); };
     // A headshot is the classic lead; otherwise the first photo picked.
     const defaultLead = () => { const p = picked(); return (p.find((s) => s.angle === "close-up") || p[0] || {}).id || ""; };
     // The cover photo is extra. It has a page of its own, so it is never also
@@ -1911,8 +1925,9 @@
       state.coverId = id;
       return state.picks.delete(id) ? "Moved to the cover. Pick one more for the pages." : "";
     };
-    fillPages();
-    fillPicks();
+    // Opens empty. The client's own choice is the whole point of the screen,
+    // so the system starts it with nothing ticked.
+    syncPages();
     state.lead = defaultLead();
 
     const modal = document.createElement("div");
@@ -2162,15 +2177,20 @@
         coverImg.style.objectPosition = coverSlot.photo.objectPosition || "center";
       }
 
-      const short = state.count - chosen.length;
+      /* The tally reads as room, not as a target: "8 of up to 12" says eight
+         is a finished answer and there is space for more, where the old
+         "8/12" read as four short of a quota the client never set. */
+      const short = minPicks() - chosen.length;
       const msg = foot.querySelector("#ppMsg");
-      foot.querySelector("#ppTally").textContent = `${chosen.length}/${state.count}`;
+      foot.querySelector("#ppTally").textContent = `${chosen.length} of up to ${capacity()}`;
       msg.classList.toggle("is-warn", !!warning);
       msg.textContent = warning
         || (state.choosingCover ? "Tap a photo for the cover"
-        : short > 0 ? `Pick ${short} more`
-        : `photos${state.cover ? " + cover" : ""} · ${admin ? "free for you" : lookOnly ? "free with watermark" : !price ? "free" : state.madeKey ? `₹${price} for a new PDF` : state.paid ? "paid" : `₹${price}`}`);
-      foot.querySelector("#ppNext").disabled = short !== 0 || state.choosingCover;
+        : short > 0 ? `Pick ${short} more — every page needs a photograph`
+        : `${state.cover ? "+ cover · " : ""}${admin ? "free for you" : lookOnly ? "free with watermark" : !price ? "free" : state.madeKey ? `₹${price} for a new PDF` : state.paid ? "paid" : `₹${price}`}`);
+      // Anything from one photograph a page up to a full six is a real
+      // portfolio, so Preview opens as soon as every page has something.
+      foot.querySelector("#ppNext").disabled = short > 0 || state.choosingCover;
     }
 
     function togglePick(id) {
@@ -2183,13 +2203,19 @@
       if (state.picks.has(id)) {
         state.picks.delete(id);
         if (!pickedIn(slot.angle)) state.cleared.add(slot.angle);
-      } else if (picked().length < state.count) {
+      } else if (picked().length < capacity()) {
         state.picks.add(id);
         state.cleared.delete(slot.angle);
       } else {
-        syncPick(`All ${state.count} are picked. Untick one to swap it for this.`);
+        // The room is full, not the choice wrong: say how to make space, and
+        // that another page would make more.
+        syncPick(state.pages < PORTFOLIO_MAX_PAGES
+          ? `${capacity()} is all ${state.pages} page${state.pages > 1 ? "s" : ""} holds. Untick one, or add a page.`
+          : `${capacity()} is the most a portfolio holds. Untick one to swap it for this.`);
         return;
       }
+      // The pages are a partition of the picks, so both follow every tap.
+      syncPages();
       syncPick();
     }
 
@@ -2213,63 +2239,53 @@
     function pageCountSegHtml(i) {
       const on = perPage()[i];
       return `<div class="pp-seg pp-page-count" role="radiogroup" aria-label="Photos on page ${i + 1}">
-        ${PORTFOLIO_PAGE_COUNTS.map((n) => `<button type="button" role="radio" data-page="${i}" data-on-page="${n}" aria-checked="${n === on}"${n > pageMax(i) ? " disabled" : ""}>${n}</button>`).join("")}
+        ${PORTFOLIO_PAGE_COUNTS.map((n) => `<button type="button" role="radio" data-page="${i}" data-on-page="${n}" aria-checked="${n === on}"${n > pageMax() ? " disabled" : ""}>${n}</button>`).join("")}
       </div>`;
     }
 
+    /* Changing the page count changes the room, never the contents. Fewer
+       pages can leave the client holding more photographs than now fit, and
+       only then does anything come off — from the back, and it is said out
+       loud. Nothing is ever added. */
     function setPages(n) {
       if (n === state.pages) return;
       state.pages = n;
-      // Each page count starts as full as this model's photographs allow.
-      fillPages();
-      applyCount(`${state.pages} page${state.pages > 1 ? "s" : ""}, ${perPage().join(" + ")}.`);
-    }
-
-    // How many photographs one page asks for. The others are left alone, so
-    // the total simply follows.
-    function setOnPage(i, n) {
-      if (perPage()[i] === n) return;
-      state.perPage[i] = Math.min(n, pageMax(i));
-      syncCount();
-      applyCount("");
-    }
-
-    // Brings the picks in line with what the pages now ask for.
-    function applyCount(note) {
       const dropped = trimPicks();
-      // A bigger count is topped up at once, so the preview isn't stuck until
-      // the client finds several more photos; any of them can be swapped.
-      fillPicks();
-      syncPick(dropped.length ? `Took ${dropped.length} out to fit ${state.count}.` : note);
+      syncPages();
+      syncPick(dropped.length
+        ? `${state.pages} page${state.pages > 1 ? "s" : ""} holds ${capacity()}, so ${dropped.length} came off the end.`
+        : "");
     }
 
-    // Tops the pages up to the count, one photo per pose each round, skipping
-    // poses the client emptied on purpose unless that's the only way to get
-    // there. The cover photo is never used.
-    function fillPicks() {
-      const take = (skipCleared, groups) => {
-        let added = true;
-        while (picked().length < state.count && added) {
-          added = false;
-          for (const p of groups) {
-            if (picked().length >= state.count) break;
-            if (skipCleared && state.cleared.has(p.angle)) continue;
-            const next = p.candidates.find((c) => !state.picks.has(c.id) && !(state.cover && c.id === state.coverId));
-            if (next) { state.picks.add(next.id); added = true; }
-          }
-        }
-      };
-      // Tagged photos first, so the tags print whenever there are enough.
-      take(true, poses.filter((p) => p.angle));
-      take(true, poses);
-      take(false, poses);
+    /* How many photographs one page carries, set by hand in the preview. The
+       total is fixed by what the client picked, so giving this page more takes
+       it from the others rather than asking for photographs that aren't
+       there. */
+    function setOnPage(i, n) {
+      const want = Math.max(1, Math.min(n, pageMax()));
+      if (perPage()[i] === want) return;
+      const others = state.pages - 1;
+      const rest = state.count - want;
+      let k = 0;
+      state.perPage = Array.from({ length: state.pages }, (_, j) => {
+        if (j === i) return want;
+        const v = Math.floor(rest / others) + (k < rest % others ? 1 : 0);
+        k++;
+        return v;
+      });
+      syncPick("");
     }
 
-    // Takes photos off the end until the pages hold the count, never the big
-    // photo. Returns their pose names.
+    /* There is deliberately nothing here that picks a photograph. The screen
+       used to top itself up to the count — which is why choosing a page count
+       ticked photographs the client had never looked at. Every photograph on
+       these pages is one the client tapped. */
+
+    // Takes photographs off the end until they fit the room, never the big
+    // photo. Returns their pose names, so the client is told what went.
     function trimPicks() {
       const dropped = [];
-      while (picked().length > state.count) {
+      while (picked().length > capacity()) {
         const drop = picked().filter((s) => s.id !== state.lead).pop();
         if (!drop) break;
         state.picks.delete(drop.id);
@@ -2278,21 +2294,11 @@
       return dropped;
     }
 
-    // After the cover takes a photo, the chosen count may no longer be
-    // possible; step it down and trim. A freed place is left for the client
-    // to fill, so the note about it still holds.
+    // The cover photo comes off the pages, so the room shrinks by one and the
+    // client may now be holding one photograph too many.
     function fitCountToPhotos(note) {
-      // The cover photo comes off the pages, so a page may now be asking for
-      // more photographs than the model has left. Take the excess off the
-      // back, which is where the client is least likely to miss it.
-      let over = totalWanted() - available();
-      for (let i = state.pages - 1; i >= 0 && over > 0; i--) {
-        const cut = Math.min(over, state.perPage[i] - 1);
-        state.perPage[i] -= cut;
-        over -= cut;
-      }
-      syncCount();
       trimPicks();
+      syncPages();
       return note;
     }
 
@@ -2672,12 +2678,9 @@
           const i = Number(num.dataset.page), n = Number(num.dataset.onPage);
           if (perPage()[i] === n) return;
           const wasCovered = covered();
-          state.perPage[i] = Math.min(n, pageMax(i));
-          syncCount();
-          // Fewer on a page means fewer photographs on the pages at all, so
-          // the picks and the printed order follow rather than going stale.
-          trimPicks();
-          fillPicks();
+          // One rule for this, shared with step 1: the total stays exactly
+          // what the client picked, and the other pages take up the slack.
+          setOnPage(i, n);
           if (covered() !== wasCovered) { showPreview(); return; }
           syncLayout();
           syncOrder();
