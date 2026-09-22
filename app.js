@@ -491,7 +491,18 @@ const PDF_TYPE_ROLES = [
   { key: "statValue", label: "The stats themselves", note: "5'9, 38-40, 30…", sized: true, family: "sans", size: 3.3, weight: 600, color: "#000000" },
   { key: "header", label: "The line along the top", note: "MODEL PORTFOLIO · UPDATED…", sized: true, adaptive: true, family: "mono", size: 2.3, weight: 600, color: "auto" },
   { key: "brand", label: "Your name on the page", note: "In the header and the credit", sized: true, adaptive: true, family: "mono", size: 2.3, weight: 700, color: "auto" },
-  { key: "photoTag", label: "Labels on the photos", note: "FRONT, LEFT PROFILE, CLOSE-UP", sized: true, family: "mono", size: 2.0, weight: 600, color: "#ffffff" },
+  /* Ink, not white. The tag is drawn ON a near-opaque white chip (drawPdfSlot
+     paints rgba(255,255,255,0.9) and then writes the label over it), so white
+     here put white words on a white ground and the pose tags were invisible on
+     every portfolio PDF ever built — the chips printed as pale empty
+     rectangles. The drawing code always meant this to be dark: it passes
+     "#111" as its fallback. That fallback could never fire, because
+     cleanPdfType always returns a COMPLETE settings object seeded from this
+     list, so pdfType always found a colour here and never used its own.
+     Changing this does not repair a PDF built from an already-published
+     setting — a saved "#ffffff" still wins over this default — it stops a
+     fresh install being born broken. */
+  { key: "photoTag", label: "Labels on the photos", note: "FRONT, LEFT PROFILE, CLOSE-UP", sized: true, family: "mono", size: 2.0, weight: 600, color: "#111111" },
   { key: "note", label: "The booking note", note: "“To book this talent…”", sized: true, family: "sans", size: 2.1, weight: 400, color: "#8a8782" },
   { key: "footer", label: "The book-a-shoot line", sized: true, family: "mono", size: 2.2, weight: 700, color: "#000000" },
   { key: "fine", label: "The small print", sized: true, family: "sans", size: 1.9, weight: 400, color: "#9a9791" }
@@ -1606,6 +1617,39 @@ window.resolveContractArchive = function(version) {
     return items.filter((t) => t && t.id && t.quote && !gone.has(t.id));
   }
 
+  /* One person, their newest words — for a surface that gathers several
+     shoots into one place.
+
+     A model's card is built from every album the model is tagged in, so a
+     model who writes a testimonial after their March shoot and another after
+     their September shoot used to appear twice on their own card, the same
+     name over two quotes, reading like a bug rather than like two occasions.
+     Their album pages are untouched by this: a testimonial is tied to a shoot
+     and each album page asks only for its own, which is already right.
+
+     Keyed on the name AND the credit line, not on the name alone, and
+     deliberately so. A testimonial's identity is its `id`; the writer's email
+     is in the studio's inbox and never in this public repository, so a name is
+     the only thing a visitor's browser has to go on. Two different people
+     called Atharv Sharma are told apart here exactly the way a reader tells
+     them apart — "Model, Delhi" against "Model, Mumbai" — which also gives the
+     studio a lever: when two same-named writers must both appear, credit them
+     differently and both stay. Nothing is deleted or unpublished; the older
+     words still carry their own album page, /testimonials and the home strip.
+
+     Newest wins, and with no updatedAt to compare it is first-in that wins,
+     so the caller's own ordering decides. */
+  function newestPerPerson(list) {
+    const seen = new Set();
+    return list.filter((t) => {
+      const key = [t.by, t.role].map((x) => String(x || "").toLowerCase().replace(/\s+/g, " ").trim()).join("|");
+      if (key === "|") return true; // nothing to match on: never fold these together
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
   function getAllTestimonials() {
     const list = [];
     // Newest first, so a page that shows only a few shows the recent ones.
@@ -2544,9 +2588,25 @@ window.resolveContractArchive = function(version) {
        the words were missing. Same source as everywhere else — the
        testimonials store, matched on the shoot the studio picked — plus
        anything an older build attached to the album itself. */
-    const lbQuotes = [
+    /* Which shoot's words belong beside THIS photograph.
+
+       `shoot` above is what the viewer was opened from, and on a model's card
+       that is the card itself — a synthetic thing whose id is
+       "comp-card-<name>". A testimonial is tied to a real shoot, and a real
+       shoot id never equals a synthetic one, so matching on `shoot.id` here
+       found nothing and the viewer on every model card showed no testimonial
+       at all, while the card's own body showed them correctly. That is the
+       same trap the comment on sourceShootIds names; the body was fixed for it
+       and this was not.
+
+       A photograph on a card carries `parent`: the album it was actually taken
+       from. That is the right shoot to ask about, and it is better than the
+       card's whole set — open a photograph from the March shoot and you get
+       what was said about March, open one from September and you get
+       September. So the duplicate never arises here, and no fold is needed. */
+    const quoteShootId = (p.parent && p.parent.id) || shoot.id;    const lbQuotes = [
       ...storedTestimonials()
-        .filter((t) => t.shootId === shoot.id)
+        .filter((t) => t.shootId === quoteShootId)
         .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
         .map((t) => ({ quote: t.quote, by: [t.by, t.role].filter(Boolean).join(", "), rating: t.rating })),
       ...(shoot.testimonials || [])
@@ -2561,7 +2621,13 @@ window.resolveContractArchive = function(version) {
       </div>` : "";
 
     const creditRows = (list) => `<dl class="lb-credits">${list.map(g => `<div class="lb-credit"><dt>${esc(g.label)}</dt><dd>${g.rendered.join("")}</dd></div>`).join("")}</dl>`;
-    const creditsHtml = (groups.length ? creditRows(groups) : "") + quotesHtml;
+    /* The quotes are kept OUT of this, and placed on their own line in the
+       panel below, because a model card's viewer drops the credit rows on
+       purpose — a card is one model, not a crew list — and the quotes were
+       riding along inside them. That, not the shoot id, was why the viewer on
+       a model card showed no testimonial: the block was built correctly and
+       then thrown away by `isCc ? "" : creditsHtml`. */
+    const creditsHtml = groups.length ? creditRows(groups) : "";
     // Lighting diagram
     let diagHtml = "";
     if (shoot.lightingDiagram && (shoot.lightingDiagramVisibility === "public" || isAdmin())) {
@@ -2621,6 +2687,7 @@ window.resolveContractArchive = function(version) {
         ${agencyHtml}
         ${statsHtml}
         ${isCc ? "" : creditsHtml}
+        ${quotesHtml}
         ${diagHtml}
         ${pdfBtnHtml}
         ${disclaimerHtml}
@@ -3319,10 +3386,15 @@ window.resolveContractArchive = function(version) {
     // On a real album that is its own id; on a merged model card it is every
     // album the card was built from (see sourceShootIds above).
     const fromShoots = new Set([s.id, ...(Array.isArray(s.sourceShootIds) ? s.sourceShootIds : [])].filter(Boolean));
-    const ownTestimonials = storedTestimonials()
-      .filter((t) => fromShoots.has(t.shootId))
-      .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
-      .map((t) => ({ quote: t.quote, by: [t.by, t.role].filter(Boolean).join(", ") }));
+    // Sorted newest-first BEFORE the fold, so the one kept per person is the
+    // most recent thing they said — see newestPerPerson. On a real album this
+    // changes nothing unless the studio entered two from the same writer about
+    // the same shoot, where keeping the newer one is also what is wanted.
+    const ownTestimonials = newestPerPerson(
+      storedTestimonials()
+        .filter((t) => fromShoots.has(t.shootId))
+        .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+    ).map((t) => ({ quote: t.quote, by: [t.by, t.role].filter(Boolean).join(", ") }));
     const legacyTestimonials = s.testimonials || (s.testimonial ? [s.testimonial] : []);
     const testimonialsHtml = [...ownTestimonials, ...legacyTestimonials].map(t => `
       <blockquote class="work-quote">“${esc(t.quote)}” <cite>— ${esc(t.by)}</cite></blockquote>
@@ -4835,10 +4907,14 @@ window.resolveContractArchive = function(version) {
              to a shoot in the studio panel now puts it here, where a visitor
              reading about that shoot will meet it, as well as on the cards
              that already showed quotes. */
+          // One page, one shoot, so a writer can only double up by writing
+          // twice about the same shoot — rare, but the rule the model cards
+          // follow reads the same way here: their newest words, once.
           const mine = [
-            ...storedTestimonials().filter((t) => t.shootId === album.id)
-              .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
-              .map((t) => ({ quote: t.quote, by: [t.by, t.role].filter(Boolean).join(", "), rating: t.rating })),
+            ...newestPerPerson(
+              storedTestimonials().filter((t) => t.shootId === album.id)
+                .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+            ).map((t) => ({ quote: t.quote, by: [t.by, t.role].filter(Boolean).join(", "), rating: t.rating })),
             ...(album.testimonials || [])
           ];
           return mine.length ? `
