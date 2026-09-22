@@ -1408,7 +1408,15 @@ function cleanModelPdfs(state) {
         // `split-wide` above for a month. `!== false` rather than `=== true`
         // so an arrangement saved before the switch existed reopens the way it
         // was saved, with tags wanted.
-        tags: sp.tags !== false,
+        // Pose labels, per page since v495. A scalar is an arrangement saved
+        // when the switch governed the whole PDF, and is widened on load; the
+        // absent case must still mean ON, which is why this tests !== false
+        // rather than === true.
+        tags: Array.isArray(sp.tags)
+          ? sp.tags.slice(0, 3).map((v) => v !== false)
+          : sp.tags !== false,
+        tagPlace: ["in", "below", "above"].includes(sp.tagPlace) ? sp.tagPlace : "in",
+        tagAlign: ["left", "center", "right"].includes(sp.tagAlign) ? sp.tagAlign : "left",
         layout: sp.layout === "equal" ? "equal" : "lead",
         order: ids(sp.order),
         fewerOnTop: sp.fewerOnTop === true,

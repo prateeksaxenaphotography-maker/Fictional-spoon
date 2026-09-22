@@ -985,19 +985,49 @@
   // follows the type instead of ignoring it, which fixes the setting already
   // published without anyone reopening it, and holds for whatever colour the
   // studio picks next.
-  function drawPdfSlot(page, img, slot, x, y, w, h) {
-    drawPdfPhoto(page, img, slot.photo, x, y, w, h);
+  // Where a pose label sits against its photograph, and how it lines up.
+  // "in" is the original: over the picture at its foot. "below" and "above"
+  // give the label a strip of paper of its own, taken out of the frame's
+  // height so the grid is untouched and every photograph on the page still
+  // stands the same height as the ones beside it.
+  const PDF_TAG_PLACES = ["in", "below", "above"];
+  const PDF_TAG_ALIGNS = ["left", "center", "right"];
+  const PDF_TAG_H = 3.9;
+
+  function drawPdfSlot(page, img, slot, x, y, w, h, place, align) {
+    const where = PDF_TAG_PLACES.includes(place) ? place : "in";
+    const how = PDF_TAG_ALIGNS.includes(align) ? align : "left";
+    // The strip comes out of the frame, never out of the neighbouring cell.
+    const strip = slot.label && where !== "in" ? PDF_TAG_H + 1.2 : 0;
+    const photoY = where === "above" ? y + strip : y;
+    drawPdfPhoto(page, img, slot.photo, x, photoY, w, h - strip);
     if (!slot.label) return;
     // The colour here is a merge base, not a fallback: cleanPdfType always
     // hands pdfType a complete record, so this #111 has never once applied.
     const style = pdfType("photoTag", { weight: 700, size: 1.9, family: PDF_MONO, spacing: 0.25, upper: true, color: "#111" });
     const tw = page.measure(slot.label, style);
-    const padX = 1.4, tagH = 3.9;
-    if (tw + padX * 2 > w - 3.2) return;
-    const tx = x + 1.6, ty = y + h - tagH - 1.6;
-    page.ctx.fillStyle = pdfLuma(style.color) > 140 ? "rgba(17,17,17,0.82)" : "rgba(255,255,255,0.9)";
-    page.ctx.fillRect(page.u(tx), page.u(ty), page.u(tw + padX * 2), page.u(tagH));
-    page.text(slot.label, tx + padX, ty + tagH / 2 + 0.68, style);
+    const padX = where === "in" ? 1.4 : 0;
+    const boxW = tw + padX * 2;
+    // Over the picture the label keeps a margin off the edge; on paper it
+    // lines up flush with the photograph above or below it.
+    const inset = where === "in" ? 1.6 : 0;
+    if (boxW > w - (where === "in" ? 3.2 : 0)) return;
+    const tx = how === "right" ? x + w - inset - boxW
+      : how === "center" ? x + (w - boxW) / 2
+      : x + inset;
+    const ty = where === "above" ? y
+      : where === "below" ? y + h - PDF_TAG_H
+      : photoY + (h - strip) - PDF_TAG_H - inset;
+    // A chip goes under the label over a photograph, because anything may be
+    // behind it. On paper it is only needed when the type is too pale to read
+    // against the page — which is exactly the case that made every tag
+    // invisible before v493, so it is worth keeping on both paths.
+    const pale = pdfLuma(style.color);
+    if (where === "in" || pale > 200) {
+      page.ctx.fillStyle = pale > 140 ? "rgba(17,17,17,0.82)" : "rgba(255,255,255,0.9)";
+      page.ctx.fillRect(page.u(tx), page.u(ty), page.u(boxW), page.u(PDF_TAG_H));
+    }
+    page.text(slot.label, tx + padX, ty + PDF_TAG_H / 2 + 0.68, style);
   }
 
   // "Model portfolio · Updated July 2026 · 2/3". A cover counts as page 1,
@@ -1372,7 +1402,7 @@
       page.wide = all.filter((s, i) => grid.spans[i] === 2).map((s) => s.photo.id);
       const gridTop = y + Math.max(0, (photoMaxH - grid.height) / 2);
       const x0 = M + (CW - grid.width) / 2;
-      grid.cells.forEach((c, i) => drawPdfSlot(page, imgs[i], all[i], x0 + c.x, gridTop + c.y, c.w, c.h));
+      grid.cells.forEach((c, i) => drawPdfSlot(page, imgs[i], all[i], x0 + c.x, gridTop + c.y, c.w, c.h, spec.tagPlace, spec.tagAlign));
       pdfDetailsBlock(page, spec, gridTop + grid.height + 5, true);
       drawPdfFooter(page);
       return;
@@ -1381,8 +1411,8 @@
     // A crop-free grid can come up shorter than the page allows. Share the
     // spare height above and below, rather than leaving a blank strip at the foot.
     const top = y + Math.max(0, (photoMaxH - layout.height) / 2);
-    drawPdfSlot(page, imgs[0], spec.lead, M + layout.lead.x, top + layout.lead.y, layout.lead.w, layout.lead.h);
-    layout.cells.forEach((c, i) => drawPdfSlot(page, imgs[i + 1], spec.others[i], M + c.x, top + c.y, c.w, c.h));
+    drawPdfSlot(page, imgs[0], spec.lead, M + layout.lead.x, top + layout.lead.y, layout.lead.w, layout.lead.h, spec.tagPlace, spec.tagAlign);
+    layout.cells.forEach((c, i) => drawPdfSlot(page, imgs[i + 1], spec.others[i], M + c.x, top + c.y, c.w, c.h, spec.tagPlace, spec.tagAlign));
     pdfDetailsBlock(page, spec, top + layout.height + 5, true);
     drawPdfFooter(page);
   }
@@ -1530,7 +1560,7 @@
     const lh = Math.min(roomH, (lw / aspect) * 1.1);
     // Same for a lead photo that can't fill the room (a wide one, say).
     const top = y + Math.max(0, (roomH - lh) / 2);
-    drawPdfSlot(page, img, spec.lead, M + (CW - lw) / 2, top, lw, lh);
+    drawPdfSlot(page, img, spec.lead, M + (CW - lw) / 2, top, lw, lh, spec.tagPlace, spec.tagAlign);
     pdfDetailsBlock(page, spec, top + lh + 5, true);
     drawPdfFooter(page);
   }
@@ -1552,8 +1582,8 @@
       page.equalRows = null;
       const layout = pdfLeadLayout(pdfAspect(imgs[0]), imgs.slice(1).map(pdfAspect), CW, gridH, gap);
       const top = y + Math.max(0, (gridH - layout.height) / 2);
-      drawPdfSlot(page, imgs[0], spec.others[0], M + layout.lead.x, top + layout.lead.y, layout.lead.w, layout.lead.h);
-      layout.cells.forEach((c, i) => drawPdfSlot(page, imgs[i + 1], spec.others[i + 1], M + c.x, top + c.y, c.w, c.h));
+      drawPdfSlot(page, imgs[0], spec.others[0], M + layout.lead.x, top + layout.lead.y, layout.lead.w, layout.lead.h, spec.tagPlace, spec.tagAlign);
+      layout.cells.forEach((c, i) => drawPdfSlot(page, imgs[i + 1], spec.others[i + 1], M + c.x, top + c.y, c.w, c.h, spec.tagPlace, spec.tagAlign));
       drawPdfFooter(page);
       return;
     }
@@ -1561,7 +1591,7 @@
     page.equalRows = grid.rows || null;
     page.wide = spec.others.filter((s, i) => grid.spans[i] === 2).map((s) => s.photo.id);
     const x0 = M + (CW - grid.width) / 2;
-    grid.cells.forEach((c, i) => drawPdfSlot(page, imgs[i], spec.others[i], x0 + c.x, y + c.y, c.w, c.h));
+    grid.cells.forEach((c, i) => drawPdfSlot(page, imgs[i], spec.others[i], x0 + c.x, y + c.y, c.w, c.h, spec.tagPlace, spec.tagAlign));
     drawPdfFooter(page);
   }
 
@@ -1642,8 +1672,12 @@
          place (v386) — but they asked for it again per page, because that is
          the unit anybody looks at. Across the whole PDF it meant a model with
          seventeen tagged photographs and one untagged lost all seventeen. */
-      const bare = whole.filter((s) => !s.label).length;
-      const part = bare ? whole.map((s) => ({ ...s, label: "" })) : whole;
+      // Each page carries its own switch, because the studio asked for the
+      // tags "for each page" — one page of a portfolio can want naming and
+      // the next can want the photographs to speak for themselves.
+      const wanted = Array.isArray(spec.tags) ? spec.tags[i] !== false : spec.tags !== false;
+      const bare = wanted ? whole.filter((s) => !s.label).length : 0;
+      const part = !wanted || bare ? whole.map((s) => ({ ...s, label: "" })) : whole;
       const page = addPage();
       // Recorded on the page that was drawn, never recomputed beside it, so
       // what the builder says about this page cannot disagree with what
@@ -1796,7 +1830,9 @@
       // the tags off every page. The consistency that rule was protecting is
       // per page — which is where a page's look lives — so the rule moved
       // there (see renderPortfolioPdfPages) and the choice came here.
-      tags: true,          // print pose tags at all
+      tags: [],            // per page: print pose tags on it at all
+      tagPlace: "in",      // the label over the photograph, or below or above it
+      tagAlign: "left",    // and which end of the photograph it lines up with
       filter: "all",       // which pose the grid shows
       choosingCover: false, // the grid is picking the cover photo
       location: "", phone: "", email: "", utr: "",
@@ -1836,6 +1872,9 @@
     // is kept as their sum, because everything downstream — the tally, topping
     // up, trimming — has always counted the pages as one number.
     const perPage = () => state.perPage.slice(0, state.pages);
+    // Whether each page prints its pose labels. A page nobody has answered
+    // for prints them, which is what the single switch used to do.
+    const tagsPerPage = () => Array.from({ length: state.pages }, (_, i) => state.tags[i] !== false);
     const totalWanted = () => perPage().reduce((a, b) => a + b, 0);
     const syncCount = () => { state.count = totalWanted(); };
     // The largest a page may be asked for: six, or fewer when this model's
@@ -1945,7 +1984,9 @@
       // renderPortfolioPdfPages — deciding it here would mean re-deriving the
       // page split a second time, and a rule derived twice is a rule that can
       // disagree with the paper.
-      const slot = (s) => ({ photo: adjusted(s.photo), label: state.tags ? s.label : "", wide: state.span[s.id] || 0 });
+      // The real label always travels; which pages print it is decided where
+      // the page split exists, in renderPortfolioPdfPages.
+      const slot = (s) => ({ photo: adjusted(s.photo), label: s.label, wide: state.span[s.id] || 0 });
       return {
         shoot, name, pages: state.pages,
         lead: slot(lead),
@@ -1955,6 +1996,12 @@
         layout: state.layout,
         perPage: perPage(),
         fewerOnTop: state.fewerOnTop,
+        // Which pages name their poses, and where the name sits. The labels
+        // themselves always travel on the slots; these decide what becomes of
+        // them, page by page, where the split is known.
+        tags: tagsPerPage(),
+        tagPlace: state.tagPlace,
+        tagAlign: state.tagAlign,
         location: state.location.trim(),
         phone: state.phone.trim()
       };
@@ -1969,7 +2016,8 @@
         const a = state.adjust[id];
         return a ? [a.x, a.y, a.zoom].map((v) => Math.round(v * 1000)) : 0;
       });
-      return JSON.stringify([state.pages, ids, state.layout, perPage(), state.fewerOnTop, state.tags,
+      return JSON.stringify([state.pages, ids, state.layout, perPage(), state.fewerOnTop,
+        tagsPerPage(), state.tagPlace, state.tagAlign,
         ids.map((id) => state.span[id] || 0),
         state.cover ? [state.coverId, state.coverStyle] : null, crops]);
     }
@@ -2148,6 +2196,20 @@
     // The row of numbers that sits under a page in the preview. A number the
     // model has too few photographs for is offered but disabled, so the row
     // never changes length as the client works.
+    // The pose-tag switch for one page, sitting on its own sheet. It reports
+    // what the page DREW (page.tagsShown / page.tagsBare), never what was
+    // asked for, so it cannot claim a page printed labels it did not — the
+    // same rule as the Wide button.
+    function pageTagsBtnHtml(i, drawn) {
+      const on = tagsPerPage()[i];
+      const bare = (drawn && drawn.tagsBare) || 0;
+      const shown = !!(drawn && drawn.tagsShown);
+      const note = !on ? "off" : shown ? "on" : bare ? `${bare} untagged` : "none tagged";
+      return `<button type="button" class="pp-sheet-tags" data-page-tags="${i}" aria-pressed="${on}"
+        title="${on ? "Pose labels on this page" : "No pose labels on this page"}"
+        aria-label="Pose labels on page ${i + 1}">Tags<span class="pp-sheet-tags-note">${esc(note)}</span></button>`;
+    }
+
     function pageCountSegHtml(i) {
       const on = perPage()[i];
       return `<div class="pp-seg pp-page-count" role="radiogroup" aria-label="Photos on page ${i + 1}">
@@ -2256,10 +2318,20 @@
               </div>
               <div class="pp-seg" role="radiogroup" aria-label="Rows" id="ppRowsSeg" hidden></div>
               <!-- In the preview and not the picker: the picker is for
-                   choosing photographs, this is about how they look. -->
-              <div class="pp-seg" role="radiogroup" aria-label="Pose tags" id="ppTagsSeg" hidden>
-                <button type="button" role="radio" data-tags="true">Pose tags on</button>
-                <button type="button" role="radio" data-tags="false">Off</button>
+                   choosing photographs, this is about how they look. Whether
+                   a PAGE shows its labels is asked on the page itself; where
+                   the label sits is one answer for the whole PDF, so it is
+                   asked once, here. -->
+              <div class="pp-seg" role="radiogroup" aria-label="Where the pose label sits" id="ppTagPlaceSeg" hidden>
+                <span class="pp-seg-cap" aria-hidden="true">Label</span>
+                <button type="button" role="radio" data-tag-place="in">On the photo</button>
+                <button type="button" role="radio" data-tag-place="below">Below</button>
+                <button type="button" role="radio" data-tag-place="above">Above</button>
+              </div>
+              <div class="pp-seg" role="radiogroup" aria-label="How the pose label lines up" id="ppTagAlignSeg" hidden>
+                <button type="button" role="radio" data-tag-align="left">Left</button>
+                <button type="button" role="radio" data-tag-align="center">Centre</button>
+                <button type="button" role="radio" data-tag-align="right">Right</button>
               </div>
             </div>
           </div>
@@ -2382,7 +2454,9 @@
               pages: state.pages, count: state.count, picks: [...state.picks], cleared: [...state.cleared],
               lead: state.lead, cover: state.cover, coverId: state.coverId, coverStyle: state.coverStyle,
               layout: state.layout, order: [...state.order], fewerOnTop: state.fewerOnTop,
-              tags: state.tags,
+              tags: tagsPerPage(),
+              tagPlace: state.tagPlace,
+              tagAlign: state.tagAlign,
               perPage: perPage(),
               span: JSON.parse(JSON.stringify(state.span || {})),
               adjust: JSON.parse(JSON.stringify(state.adjust || {}))
@@ -2414,7 +2488,12 @@
           state.order = [...sp.order]; state.fewerOnTop = sp.fewerOnTop;
           // An arrangement saved before the switch existed has no answer, and
           // "on" is what it was saved under.
-          state.tags = sp.tags !== false;
+          // An arrangement saved when the switch was one for the whole PDF
+          // reopens with every page set the way it was.
+          state.tags = Array.isArray(sp.tags) ? sp.tags.slice(0, sp.pages) : [];
+          if (!Array.isArray(sp.tags)) state.tags = Array.from({ length: sp.pages }, () => sp.tags !== false);
+          state.tagPlace = sp.tagPlace || "in";
+          state.tagAlign = sp.tagAlign || "left";
           // One saved before the client could answer page by page is converted
           // from its total, so it reopens as the PDF it was saved as.
           state.perPage = Array.isArray(sp.perPage) && sp.perPage.length
@@ -2526,16 +2605,22 @@
         if (covered() !== wasCovered) { showPreview(); return; }
         drawPreview();
       });
-      body.querySelector("#ppTagsSeg").addEventListener("click", (e) => {
-        const btn = e.target.closest("[data-tags]");
-        if (!btn) return;
-        const want = btn.dataset.tags === "true";
-        if (want === state.tags) return;
+      body.querySelector("#ppTagPlaceSeg").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-tag-place]");
+        if (!btn || btn.dataset.tagPlace === state.tagPlace) return;
         const wasCovered = covered();
-        state.tags = want;
-        // Tags on and tags off are different PDFs (see specKey), so turning
-        // them off after paying swaps the download back for the payment step,
-        // exactly as moving a photograph does.
+        state.tagPlace = btn.dataset.tagPlace;
+        // Where the labels sit makes a different PDF (see specKey), so
+        // changing it after paying swaps the download back for the payment
+        // step, exactly as moving a photograph does.
+        if (covered() !== wasCovered) { showPreview(); return; }
+        drawPreview();
+      });
+      body.querySelector("#ppTagAlignSeg").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-tag-align]");
+        if (!btn || btn.dataset.tagAlign === state.tagAlign) return;
+        const wasCovered = covered();
+        state.tagAlign = btn.dataset.tagAlign;
         if (covered() !== wasCovered) { showPreview(); return; }
         drawPreview();
       });
@@ -2572,6 +2657,15 @@
       // A tap on a photo in the preview opens it in Adjust photo; a tap on a
       // number under a page changes how many photographs that page carries.
       body.querySelector(".pp-preview").addEventListener("click", (e) => {
+        const tagBtn = e.target.closest("[data-page-tags]");
+        if (tagBtn) {
+          const i = Number(tagBtn.dataset.pageTags);
+          const wasCovered = covered();
+          state.tags[i] = !tagsPerPage()[i];
+          if (covered() !== wasCovered) { showPreview(); return; }
+          drawPreview();
+          return;
+        }
         const num = e.target.closest("[data-on-page]");
         if (num) {
           if (num.disabled) return;
@@ -2629,7 +2723,7 @@
           cap.className = "pp-sheet-cap";
           cap.innerHTML = i < offset
             ? `<span class="pp-sheet-name">Cover</span>`
-            : `<span class="pp-sheet-name">Page ${i - offset + 1}</span>${pageCountSegHtml(i - offset)}`;
+            : `<span class="pp-sheet-head"><span class="pp-sheet-name">Page ${i - offset + 1}</span>${pageTagsBtnHtml(i - offset, p)}</span>${pageCountSegHtml(i - offset)}`;
           item.appendChild(cap);
           return item;
         }));
@@ -2853,21 +2947,25 @@
        broken. The note is read off the pages that were actually drawn
        (page.tagsBare), so it cannot claim a page printed something it didn't. */
     function syncTags(pages) {
-      const seg = body.querySelector("#ppTagsSeg");
+      const place = body.querySelector("#ppTagPlaceSeg");
+      const align = body.querySelector("#ppTagAlignSeg");
       const note = body.querySelector("#ppTagsNote");
-      if (!seg || !note) return;
+      if (!place || !align || !note) return;
       const posed = printOrder().filter((s) => s.label).length;
       const total = printOrder().length;
-      // Nothing to offer when not one photograph has a pose: the switch would
-      // be a control over nothing. The note explains instead.
-      seg.hidden = !total || !posed;
-      seg.querySelectorAll("[data-tags]").forEach((btn) => btn.setAttribute("aria-checked", String((btn.dataset.tags === "true") === state.tags)));
+      const anyOn = tagsPerPage().some(Boolean);
+      // Nothing to offer when not one photograph has a pose, or when every
+      // page has its labels switched off: the controls would govern nothing.
+      // The note explains instead.
+      place.hidden = align.hidden = !total || !posed || !anyOn;
+      place.querySelectorAll("[data-tag-place]").forEach((btn) => btn.setAttribute("aria-checked", String(btn.dataset.tagPlace === state.tagPlace)));
+      align.querySelectorAll("[data-tag-align]").forEach((btn) => btn.setAttribute("aria-checked", String(btn.dataset.tagAlign === state.tagAlign)));
       let text = "";
       if (!total) text = "";
       else if (!posed) text = total === 1
         ? "This photograph has no pose set, so no tag can print on it. Poses are set in Upload."
         : `None of these ${total} photographs has a pose set, so no tags can print. Poses are set in Upload.`;
-      else if (!state.tags) text = "Pose tags are off, so none will print.";
+      else if (!anyOn) text = "Pose labels are off on every page, so none will print.";
       else {
         const bare = (pages || []).map((pg, i) => ({ i, n: pg.tagsBare || 0 })).filter((x) => x.n);
         if (bare.length) {
@@ -2882,7 +2980,7 @@
 
     function syncArrange() {
       const hideAll = body.querySelector("#ppOrder").hidden && body.querySelector("#ppRowsSeg").hidden
-        && body.querySelector("#ppTagsSeg").hidden
+        && body.querySelector("#ppTagPlaceSeg").hidden
         && body.querySelector("#ppLayoutSeg").hidden;
       body.querySelector("#ppArrange").hidden = hideAll;
     }

@@ -2765,6 +2765,17 @@ html.theme-dark { color-scheme: dark; }
 /* The page's name and, under every page but the cover, how many photographs
    it carries — the question only answers itself once the page is on screen. */
 .pp-sheet-cap { display: flex; flex-direction: column; align-items: center; gap: 5px; width: 100%; }
+/* The page's name and its own pose-label switch share a line above the count. */
+.pp-sheet-head { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+.pp-sheet-tags {
+  display: inline-flex; align-items: baseline; gap: 5px; padding: 3px 7px;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--paper);
+  color: var(--ink-soft); cursor: pointer;
+  font: 600 10px/1 var(--mono-font); letter-spacing: .06em; text-transform: uppercase;
+}
+.pp-sheet-tags:hover { color: var(--ink); border-color: var(--ink); }
+.pp-sheet-tags[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.pp-sheet-tags-note { font-size: 9px; letter-spacing: .04em; opacity: .75; text-transform: none; }
 .pp-sheet-name { font: 600 11px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
 .pp-page-count { padding: 2px; border-radius: 8px; }
 .pp-seg.pp-page-count button { padding: 7px 2px; border-radius: 6px; flex: 1 1 0; min-width: 0; font-size: 13px; }
