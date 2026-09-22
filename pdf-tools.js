@@ -1870,12 +1870,12 @@
              the studio, which fills these in on most cards and could not find
              them: the summary is one grey line below a long photo grid. -->
         <details class="pp-more"${admin || state.location || state.phone ? " open" : ""}>
-          <summary>Add location and phone</summary>
+          <summary>Add location or phone — both optional</summary>
           <div class="pp-more-fields">
-            <label><span class="pp-sr">Based in</span><input type="text" id="ppLocation" maxlength="40" placeholder="Based in (e.g. Mumbai)" value="${esc(state.location)}" /></label>
-            <label><span class="pp-sr">Phone</span><input type="tel" id="ppPhone" maxlength="20" placeholder="Phone" value="${esc(state.phone)}" /></label>
+            <label><span class="pp-sr">Based in</span><input type="text" id="ppLocation" maxlength="40" placeholder="Based in (optional)" value="${esc(state.location)}" /></label>
+            <label><span class="pp-sr">Phone</span><input type="tel" id="ppPhone" maxlength="20" placeholder="Phone (optional)" value="${esc(state.phone)}" /></label>
           </div>
-          <p class="pp-hint">Printed on your PDF only, never saved.</p>
+          <p class="pp-hint">Fill in either, both or neither — they are independent. Printed on your PDF only, never saved.</p>
         </details>
       `;
       foot.innerHTML = `
