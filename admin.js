@@ -1380,8 +1380,12 @@ function cleanModelPdfs(state) {
       updatedAt: Number(v.updatedAt) || 0,
       spec: {
         pages: [2, 3].includes(sp.pages) ? sp.pages : 1,
-        count: Math.min(16, Math.max(1, Number(sp.count) || 5)),
-        // Photos on the first page; 0 means the even split the builder works out.
+        count: Math.min(18, Math.max(1, Number(sp.count) || 5)),
+        // The client's own answer for each page, one to six a page. `count`
+        // and the older `firstPage` are kept so an arrangement saved before
+        // this still reopens as the PDF it was saved as.
+        perPage: (Array.isArray(sp.perPage) ? sp.perPage : []).slice(0, 3)
+          .map((n) => Math.min(6, Math.max(1, Number(n) || 1))),
         firstPage: Math.min(6, Math.max(0, Number(sp.firstPage) || 0)),
         picks: ids(sp.picks),
         cleared: ids(sp.cleared),

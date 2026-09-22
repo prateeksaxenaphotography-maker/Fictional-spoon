@@ -644,43 +644,28 @@
     ];
   }
 
-  // The photo counts a client can choose for each page count. The cover is
-  // not included: it has a page of its own. Six to a page is the rule
-  // everywhere, a single page included (v490 — it used to stop at five), so a
-  // page holds one to six photographs whichever PDF it belongs to. Each tier
-  // then runs up to what its pages can carry, and every count from one to
-  // sixteen is reachable.
-  const PORTFOLIO_PDF_COUNTS = { 1: [1, 2, 3, 4, 5, 6], 2: [6, 7, 8, 9, 10], 3: [11, 12, 13, 14, 15, 16] };
-
-  // How a multi-page PDF divides its photos. Six to a page, the first page
-  // included — it gives up some of its room to the name, the measurements and
-  // the contact details, so its six print smaller than six on a page of
-  // nothing but photographs. One on the first page means that photo alone, as
-  // large as the paper allows. Six a page is where the top count of sixteen
-  // sits: 4 + 6 + 6, or 6 + 5 + 5, whichever the client prefers.
-  const PORTFOLIO_FIRST_COUNTS = [1, 2, 3, 4, 5, 6];
+  // A page holds one to six photographs, and the client says how many go on
+  // each one. The first page gives up some of its room to the name, the
+  // measurements and the contact details, so its six print smaller than six
+  // on a page of nothing but photographs; one on a page means that photo
+  // alone, as large as the paper allows. The cover is not counted — it has a
+  // page of its own. Three pages of six is the most a portfolio can carry.
+  const PORTFOLIO_MAX_PAGES = 3;
   const PORTFOLIO_PAGE_MAX = 6;
+  const PORTFOLIO_PAGE_COUNTS = [1, 2, 3, 4, 5, 6];
 
-  // The first-page counts that leave a workable remainder: enough for a photo
-  // on every page after it, and not more than those pages can hold.
-  function portfolioFirstOptions(total, pages) {
-    if (pages < 2) return [];
-    const later = pages - 1;
-    return PORTFOLIO_FIRST_COUNTS.filter((n) => total - n >= later && total - n <= PORTFOLIO_PAGE_MAX * later);
-  }
-
-  // The photos per page, front to back. `first` is the client's choice for
-  // page one; 0 (or one that no longer fits) falls back to an even split,
-  // which is what every PDF drew before the choice existed.
-  function portfolioPageSplit(total, pages, first) {
+  // Arrangements saved before v491 recorded a total and, from v490, how many
+  // of it went on the first page; the rest divided evenly. This reproduces
+  // that division, so reopening one draws exactly the PDF it drew then.
+  function portfolioLegacySplit(total, pages, first) {
     const out = [];
     let left = total;
     for (let i = 0; i < pages; i++) {
       let n;
       if (i === 0 && pages > 1) {
-        const options = portfolioFirstOptions(total, pages);
-        n = options.includes(first) ? first : options.length
-          ? options.reduce((a, b) => Math.abs(b - total / pages) < Math.abs(a - total / pages) ? b : a)
+        const fits = PORTFOLIO_PAGE_COUNTS.filter((x) => total - x >= pages - 1 && total - x <= PORTFOLIO_PAGE_MAX * (pages - 1));
+        n = fits.includes(first) ? first : fits.length
+          ? fits.reduce((a, b) => Math.abs(b - total / pages) < Math.abs(a - total / pages) ? b : a)
           : Math.floor(total / pages);
       } else {
         n = Math.ceil(left / (pages - i));
@@ -688,6 +673,26 @@
       out.push(Math.max(0, n));
       left -= n;
     }
+    return out;
+  }
+
+  // The photos each page of this PDF gets. `spec.perPage` is the client's own
+  // answer; an older arrangement is converted. Either way it is trimmed to the
+  // photos actually on the pages, so a short pick can never ask a page for a
+  // photograph that isn't there, and a long one never silently drops the last.
+  function portfolioSplitFor(spec, total) {
+    const want = Array.isArray(spec.perPage) && spec.perPage.length
+      ? spec.perPage.slice(0, spec.pages)
+      : portfolioLegacySplit(total, spec.pages, spec.firstPage);
+    const out = [];
+    let left = total;
+    want.forEach((n, i) => {
+      // Every page after this one keeps at least one photograph.
+      const take = Math.max(0, Math.min(n, left - (want.length - 1 - i)));
+      out.push(take);
+      left -= take;
+    });
+    if (left > 0 && out.length) out[out.length - 1] += left;
     return out;
   }
 
@@ -1552,7 +1557,7 @@
     // contact details, so it holds fewer. Every page is then drawn in the
     // same shape — All the same size, or one big photo on each page.
     let at = 0;
-    portfolioPageSplit(slots.length, spec.pages, spec.firstPage).forEach((n, i) => {
+    portfolioSplitFor(spec, slots.length).forEach((n, i) => {
       const part = slots.slice(at, at + n);
       const partImgs = imgs.slice(at, at + n);
       at += n;
@@ -1691,7 +1696,7 @@
       coverId: "",         // id of the cover photo
       coverStyle: "full",  // the cover's look: full photo, framed or split
       layout: "lead",      // one big photo with the rest around it, or all equal
-      firstPage: 0,        // 2-3 pages: photos on page one; 0 = an even split
+      perPage: [],         // photos on each page, as the client set them
       order: [],           // photo ids in the order the client arranged them
       fewerOnTop: false,   // All equal: the short row at the top, not the foot
       filter: "all",       // which pose the grid shows
@@ -1728,16 +1733,31 @@
     const available = () => slots.length - (state.cover && slots.some((s) => s.id === state.coverId) ? 1 : 0);
     // The counts on offer for a page count, trimmed to the photos this model
     // has. A model with too few keeps a single choice: all of them.
-    const countOptions = (pages) => {
-      const fits = PORTFOLIO_PDF_COUNTS[pages].filter((n) => n <= available());
-      return fits.length ? fits : [Math.min(available(), PORTFOLIO_PDF_COUNTS[pages][0])];
+    // The photos this PDF asks for, page by page, and in total. `state.count`
+    // is kept as their sum, because everything downstream — the tally, topping
+    // up, trimming — has always counted the pages as one number.
+    const perPage = () => state.perPage.slice(0, state.pages);
+    const totalWanted = () => perPage().reduce((a, b) => a + b, 0);
+    const syncCount = () => { state.count = totalWanted(); };
+    // The largest a page may be asked for: six, or fewer when this model's
+    // photographs are already spoken for by the other pages.
+    const pageMax = (i) => {
+      const others = perPage().reduce((a, b, j) => a + (j === i ? 0 : b), 0);
+      return Math.max(1, Math.min(PORTFOLIO_PAGE_MAX, available() - others));
     };
-    // The first-page counts this arrangement allows, and the one in force.
-    const firstOptions = () => portfolioFirstOptions(printOrder().length, state.pages);
-    const firstPageNow = () => portfolioPageSplit(printOrder().length, state.pages, state.firstPage)[0];
-    // A first-page choice that no longer fits (the count changed under it)
-    // goes back to the even split rather than quietly drawing something else.
-    const fitFirstPage = () => { if (state.firstPage && !firstOptions().includes(state.firstPage)) state.firstPage = 0; };
+    // Sets the pages to a workable arrangement: as full as this model's
+    // photographs allow, spread evenly. Most models have plenty, so that is
+    // six a page; one with nine gets three, three and three rather than six,
+    // two and one.
+    const fillPages = () => {
+      let left = Math.min(available(), PORTFOLIO_PAGE_MAX * state.pages);
+      state.perPage = Array.from({ length: state.pages }, (_, i) => {
+        const n = Math.max(1, Math.min(PORTFOLIO_PAGE_MAX, Math.ceil(left / (state.pages - i))));
+        left -= n;
+        return n;
+      });
+      syncCount();
+    };
     // A headshot is the classic lead; otherwise the first photo picked.
     const defaultLead = () => { const p = picked(); return (p.find((s) => s.angle === "close-up") || p[0] || {}).id || ""; };
     // The cover photo is extra. It has a page of its own, so it is never also
@@ -1753,7 +1773,7 @@
       state.coverId = id;
       return state.picks.delete(id) ? "Moved to the cover. Pick one more for the pages." : "";
     };
-    state.count = Math.max(...countOptions(1));
+    fillPages();
     fillPicks();
     state.lead = defaultLead();
 
@@ -1832,7 +1852,7 @@
         cover: state.cover ? slot(slots.find((s) => s.id === state.coverId) || lead) : null,
         coverStyle: state.coverStyle,
         layout: state.layout,
-        firstPage: state.firstPage,
+        perPage: perPage(),
         fewerOnTop: state.fewerOnTop,
         location: state.location.trim(),
         phone: state.phone.trim()
@@ -1848,7 +1868,7 @@
         const a = state.adjust[id];
         return a ? [a.x, a.y, a.zoom].map((v) => Math.round(v * 1000)) : 0;
       });
-      return JSON.stringify([state.pages, ids, state.layout, state.firstPage, state.fewerOnTop,
+      return JSON.stringify([state.pages, ids, state.layout, perPage(), state.fewerOnTop,
         state.cover ? [state.coverId, state.coverStyle] : null, crops]);
     }
     // One payment buys one PDF. Until it's downloaded the client can change
@@ -1865,9 +1885,11 @@
       body.innerHTML = `
         <div class="pp-controls">
           <div class="pp-seg" role="radiogroup" aria-label="Pages">
-            ${[1, 2, 3].map((n) => `<button type="button" role="radio" data-pages="${n}" aria-checked="false">${n} page${n > 1 ? "s" : ""}</button>`).join("")}
+            ${Array.from({ length: PORTFOLIO_MAX_PAGES }, (_, i) => i + 1).map((n) => `<button type="button" role="radio" data-pages="${n}" aria-checked="false">${n} page${n > 1 ? "s" : ""}</button>`).join("")}
           </div>
-          <div class="pp-seg" role="radiogroup" aria-label="Photos on the pages" id="ppCountSeg"></div>
+          <!-- How many photographs go on each page is asked at the preview,
+               not here: it is a question about how the pages look, and the
+               answer only suggests itself once they are on screen. -->
         </div>
         <div class="pp-filters" role="toolbar" aria-label="Show one pose">
           <button type="button" data-filter="all" aria-pressed="true">All</button>
@@ -1919,10 +1941,6 @@
         <button type="button" class="btn btn-dark" id="ppNext">Preview</button>
       `;
       body.querySelectorAll("[data-pages]").forEach((btn) => btn.addEventListener("click", () => setPages(Number(btn.dataset.pages))));
-      body.querySelector("#ppCountSeg").addEventListener("click", (e) => {
-        const btn = e.target.closest("[data-count]");
-        if (btn && !btn.disabled) setCount(Number(btn.dataset.count));
-      });
       body.querySelectorAll(".pp-filters [data-filter]").forEach((btn) => btn.addEventListener("click", () => { state.filter = btn.dataset.filter; syncPick(); }));
       body.querySelectorAll(".pp-tile").forEach((tile) => {
         tile.querySelector(".pp-tile-pick").addEventListener("click", () => {
@@ -1965,7 +1983,6 @@
         // A page with no photograph on it is not worth printing.
         btn.disabled = Number(btn.dataset.pages) > available();
       });
-      body.querySelector("#ppCountSeg").innerHTML = `<span class="pp-seg-cap" aria-hidden="true">Photos</span>` + countOptions(state.pages).map((n) => `<button type="button" role="radio" data-count="${n}" aria-checked="${n === state.count}">${n}</button>`).join("");
       body.querySelectorAll("#ppCoverStyleSeg [data-cover-style]").forEach((btn) => btn.setAttribute("aria-checked", String(btn.dataset.coverStyle === state.coverStyle)));
       body.querySelectorAll(".pp-filters [data-filter]").forEach((btn) => {
         btn.setAttribute("aria-pressed", String(btn.dataset.filter === state.filter));
@@ -2026,22 +2043,40 @@
       syncPick();
     }
 
+    // The row of numbers that sits under a page in the preview. A number the
+    // model has too few photographs for is offered but disabled, so the row
+    // never changes length as the client works.
+    function pageCountSegHtml(i) {
+      const on = perPage()[i];
+      return `<div class="pp-seg pp-page-count" role="radiogroup" aria-label="Photos on page ${i + 1}">
+        ${PORTFOLIO_PAGE_COUNTS.map((n) => `<button type="button" role="radio" data-page="${i}" data-on-page="${n}" aria-checked="${n === on}"${n > pageMax(i) ? " disabled" : ""}>${n}</button>`).join("")}
+      </div>`;
+    }
+
     function setPages(n) {
       if (n === state.pages) return;
       state.pages = n;
-      state.firstPage = 0;
-      // Each page count starts on the largest count this model's photos allow.
-      setCount(Math.max(...countOptions(n)));
+      // Each page count starts as full as this model's photographs allow.
+      fillPages();
+      applyCount(`${state.pages} page${state.pages > 1 ? "s" : ""}, ${perPage().join(" + ")}.`);
     }
 
-    function setCount(n) {
-      state.count = n;
-      state.firstPage = 0;
+    // How many photographs one page asks for. The others are left alone, so
+    // the total simply follows.
+    function setOnPage(i, n) {
+      if (perPage()[i] === n) return;
+      state.perPage[i] = Math.min(n, pageMax(i));
+      syncCount();
+      applyCount("");
+    }
+
+    // Brings the picks in line with what the pages now ask for.
+    function applyCount(note) {
       const dropped = trimPicks();
       // A bigger count is topped up at once, so the preview isn't stuck until
       // the client finds several more photos; any of them can be swapped.
       fillPicks();
-      syncPick(dropped.length ? `Took ${dropped.length} out to fit ${n}.` : "");
+      syncPick(dropped.length ? `Took ${dropped.length} out to fit ${state.count}.` : note);
     }
 
     // Tops the pages up to the count, one photo per pose each round, skipping
@@ -2083,12 +2118,17 @@
     // possible; step it down and trim. A freed place is left for the client
     // to fill, so the note about it still holds.
     function fitCountToPhotos(note) {
-      const options = countOptions(state.pages);
-      if (!options.includes(state.count)) {
-        state.count = Math.max(...options);
-        state.firstPage = 0;
-        trimPicks();
+      // The cover photo comes off the pages, so a page may now be asking for
+      // more photographs than the model has left. Take the excess off the
+      // back, which is where the client is least likely to miss it.
+      let over = totalWanted() - available();
+      for (let i = state.pages - 1; i >= 0 && over > 0; i--) {
+        const cut = Math.min(over, state.perPage[i] - 1);
+        state.perPage[i] -= cut;
+        over -= cut;
       }
+      syncCount();
+      trimPicks();
       return note;
     }
 
@@ -2112,7 +2152,6 @@
                 <button type="button" role="radio" data-layout="lead">One big photo</button>
                 <button type="button" role="radio" data-layout="equal">All the same size</button>
               </div>
-              <div class="pp-seg" role="radiogroup" aria-label="Photos on page one" id="ppFirstSeg" hidden></div>
               <div class="pp-seg" role="radiogroup" aria-label="Rows" id="ppRowsSeg" hidden></div>
             </div>
           </div>
@@ -2234,7 +2273,7 @@
               pages: state.pages, count: state.count, picks: [...state.picks], cleared: [...state.cleared],
               lead: state.lead, cover: state.cover, coverId: state.coverId, coverStyle: state.coverStyle,
               layout: state.layout, order: [...state.order], fewerOnTop: state.fewerOnTop,
-              firstPage: state.firstPage || 0,
+              perPage: perPage(),
               adjust: JSON.parse(JSON.stringify(state.adjust || {}))
             }
           });
@@ -2262,8 +2301,12 @@
           state.lead = sp.lead; state.cover = sp.cover; state.coverId = sp.coverId;
           state.coverStyle = sp.coverStyle; state.layout = sp.layout;
           state.order = [...sp.order]; state.fewerOnTop = sp.fewerOnTop;
-          // Arrangements saved before the split could be chosen take the even one.
-          state.firstPage = sp.firstPage || 0;
+          // One saved before the client could answer page by page is converted
+          // from its total, so it reopens as the PDF it was saved as.
+          state.perPage = Array.isArray(sp.perPage) && sp.perPage.length
+            ? sp.perPage.slice(0, sp.pages)
+            : portfolioLegacySplit(sp.count, sp.pages, sp.firstPage || 0);
+          syncCount();
           state.adjust = JSON.parse(JSON.stringify(sp.adjust || {}));
           showPreview();
           toast(`“${v.name}” is back on screen.`);
@@ -2358,15 +2401,6 @@
         syncOrder({ id, step });
         drawPreview();
       });
-      body.querySelector("#ppFirstSeg").addEventListener("click", (e) => {
-        const btn = e.target.closest("[data-first]");
-        if (!btn || Number(btn.dataset.first) === firstPageNow()) return;
-        const wasCovered = covered();
-        state.firstPage = Number(btn.dataset.first);
-        if (covered() !== wasCovered) { showPreview(); return; }
-        syncFirstPage();
-        drawPreview();
-      });
       body.querySelector("#ppRowsSeg").addEventListener("click", (e) => {
         const btn = e.target.closest("[data-fewer-on-top]");
         if (!btn || (btn.dataset.fewerOnTop === "true") === state.fewerOnTop) return;
@@ -2388,7 +2422,6 @@
         // frees it, so the list is rebuilt rather than just redrawn.
         if (covered() !== wasCovered) { showPreview(); return; }
         syncLayout();
-        syncFirstPage();
         syncOrder();
         drawPreview();
       });
@@ -2398,8 +2431,27 @@
         clearTimeout(detailsTimer);
         detailsTimer = setTimeout(drawPreview, 300);
       }));
-      // A tap on a photo in the preview opens it in Adjust photo.
+      // A tap on a photo in the preview opens it in Adjust photo; a tap on a
+      // number under a page changes how many photographs that page carries.
       body.querySelector(".pp-preview").addEventListener("click", (e) => {
+        const num = e.target.closest("[data-on-page]");
+        if (num) {
+          if (num.disabled) return;
+          const i = Number(num.dataset.page), n = Number(num.dataset.onPage);
+          if (perPage()[i] === n) return;
+          const wasCovered = covered();
+          state.perPage[i] = Math.min(n, pageMax(i));
+          syncCount();
+          // Fewer on a page means fewer photographs on the pages at all, so
+          // the picks and the printed order follow rather than going stale.
+          trimPicks();
+          fillPicks();
+          if (covered() !== wasCovered) { showPreview(); return; }
+          syncLayout();
+          syncOrder();
+          drawPreview();
+          return;
+        }
         const canvas = e.target.closest("canvas");
         if (!canvas || !canvas._photos) return;
         const r = canvas.getBoundingClientRect();
@@ -2409,7 +2461,6 @@
         if (hit) showAdjust(hit);
       });
       syncLayout();
-      syncFirstPage();
       syncOrder(focus);
       drawPreview();
     }
@@ -2427,11 +2478,22 @@
       renderPortfolioPdfPages(buildSpec(), { dpi: 72, watermark: !covered(), cache }).then((pages) => {
         if (token !== renderToken) return;
         box.classList.remove("is-busy");
+        // A cover is page nought: it has no count of its own.
+        const offset = state.cover ? 1 : 0;
         box.replaceChildren(...pages.map((p, i) => {
           p.canvas._photos = p.photos;
           p.canvas.setAttribute("role", "img");
-          p.canvas.setAttribute("aria-label", `Preview of page ${i + 1}`);
-          return p.canvas;
+          p.canvas.setAttribute("aria-label", i < offset ? "Preview of the cover" : `Preview of page ${i - offset + 1}`);
+          const item = document.createElement("figure");
+          item.className = "pp-sheet-item";
+          item.appendChild(p.canvas);
+          const cap = document.createElement("figcaption");
+          cap.className = "pp-sheet-cap";
+          cap.innerHTML = i < offset
+            ? `<span class="pp-sheet-name">Cover</span>`
+            : `<span class="pp-sheet-name">Page ${i - offset + 1}</span>${pageCountSegHtml(i - offset)}`;
+          item.appendChild(cap);
+          return item;
         }));
         box.classList.toggle("two", pages.length === 2);
         box.classList.toggle("three", pages.length === 3);
@@ -2611,22 +2673,6 @@
       syncArrange();
     }
 
-    // How many photos land on the first page; the rest divide evenly over the
-    // pages after it. Shown only when there is a real choice to make.
-    function syncFirstPage() {
-      const seg = body.querySelector("#ppFirstSeg");
-      if (!seg) return;
-      fitFirstPage();
-      const options = state.pages > 1 ? firstOptions() : [];
-      seg.hidden = options.length < 2;
-      if (!seg.hidden) {
-        const now = firstPageNow();
-        seg.innerHTML = `<span class="pp-seg-cap" aria-hidden="true">Page 1</span>` +
-          options.map((n) => `<button type="button" role="radio" data-first="${n}" aria-checked="${n === now}">${n}</button>`).join("");
-      }
-      syncArrange();
-    }
-
     // Offered only when the two shapes would actually print differently: two
     // photos on one page come out as equal halves either way.
     function syncLayout() {
@@ -2639,7 +2685,7 @@
 
     function syncArrange() {
       const hideAll = body.querySelector("#ppOrder").hidden && body.querySelector("#ppRowsSeg").hidden
-        && body.querySelector("#ppLayoutSeg").hidden && body.querySelector("#ppFirstSeg").hidden;
+        && body.querySelector("#ppLayoutSeg").hidden;
       body.querySelector("#ppArrange").hidden = hideAll;
     }
 

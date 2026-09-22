@@ -2699,7 +2699,7 @@ html.theme-dark { color-scheme: dark; }
 .pp-seg button { border: 0; background: transparent; color: var(--ink-soft); font: 600 13px/1.2 "Inter", system-ui, sans-serif; padding: 7px 12px; border-radius: 8px; cursor: pointer; }
 .pp-seg button[aria-checked="true"] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.14); }
 .pp-seg button[disabled] { opacity: .4; cursor: not-allowed; }
-.pp-seg [data-count], .pp-seg [data-first] { min-width: 34px; }
+.pp-page-count { display: flex; width: 100%; }
 .pp-seg-cap { padding: 0 4px 0 8px; font-size: 12px; color: var(--ink-soft); }
 .pp-filters { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
 .pp-filters::-webkit-scrollbar { display: none; }
@@ -2757,10 +2757,17 @@ html.theme-dark { color-scheme: dark; }
 .pp-field input, .pp-field select { width: 100%; box-sizing: border-box; height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font-size: 16px; }
 .pp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .pp-preview { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
-.pp-preview.three canvas { width: min(220px, calc(33.333% - 8px)); }
-.pp-preview.four canvas { width: min(180px, calc(25% - 9px)); }
-.pp-preview canvas { width: min(300px, 100%); height: auto; background: #fff; border: 1px solid var(--line); border-radius: 4px; box-shadow: var(--shadow-sm); }
-.pp-preview.two canvas { width: min(300px, calc(50% - 6px)); }
+.pp-sheet-item { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 0; width: min(300px, 100%); }
+.pp-preview.two .pp-sheet-item { width: min(300px, calc(50% - 6px)); }
+.pp-preview.three .pp-sheet-item { width: min(220px, calc(33.333% - 8px)); }
+.pp-preview.four .pp-sheet-item { width: min(180px, calc(25% - 9px)); }
+.pp-preview canvas { width: 100%; height: auto; background: #fff; border: 1px solid var(--line); border-radius: 4px; box-shadow: var(--shadow-sm); }
+/* The page's name and, under every page but the cover, how many photographs
+   it carries — the question only answers itself once the page is on screen. */
+.pp-sheet-cap { display: flex; flex-direction: column; align-items: center; gap: 5px; width: 100%; }
+.pp-sheet-name { font: 600 11px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.pp-page-count { padding: 2px; border-radius: 8px; }
+.pp-seg.pp-page-count button { padding: 7px 2px; border-radius: 6px; flex: 1 1 0; min-width: 0; font-size: 13px; }
 .pp-preview canvas { transition: opacity .15s; }
 .pp-preview.is-busy canvas { opacity: .55; }
 .pp-preview canvas { cursor: pointer; }
@@ -2835,6 +2842,11 @@ html.theme-dark { color-scheme: dark; }
   .pp-pay-grid { grid-template-columns: 1fr; justify-items: center; }
   .pp-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
   .pp-seg button { padding: 7px 10px; }
+  /* Matched class for class with the side-by-side rules above, or those win. */
+  .pp-preview.two .pp-sheet-item,
+  .pp-preview.three .pp-sheet-item,
+  .pp-preview.four .pp-sheet-item { width: min(320px, 100%); }
+  .pp-preview { gap: 20px; }
 }
 .lb-disclaimer { font-size: 12.5px !important; font-style: normal !important; color: var(--ink-soft); margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; line-height: 1.55; }
 .lb-admin { margin-top: 18px; border-top: 1px dashed var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; width: 100%; }

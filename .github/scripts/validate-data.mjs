@@ -812,6 +812,7 @@ try {
     if (!now || !now.spec || now.updatedAt !== was.updatedAt) continue;
     const label = was.name || was.id;
     if (Number(now.spec.pages || 1) < Number(was.spec.pages || 1)) fail(`saved model portfolio "${label}" went from ${was.spec.pages} pages to ${now.spec.pages} without being edited, which means an out-of-date browser tab published over it.${stale}`);
+    if ((was.spec.perPage || []).length && !(now.spec.perPage || []).length) fail(`saved model portfolio "${label}" lost its photos-per-page without being edited, which means an out-of-date browser tab published over it.${stale}`);
     if (was.spec.firstPage && now.spec.firstPage === undefined) fail(`saved model portfolio "${label}" lost its first-page split without being edited, which means an out-of-date browser tab published over it.${stale}`);
   }
 
