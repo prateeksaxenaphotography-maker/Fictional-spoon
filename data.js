@@ -2891,6 +2891,15 @@ window.WPS_DATA = {
           "contractVersion": "COMMERCIAL-CONTRACT-V3.5"
         }
       ],
+      "2026-10-10": [
+        {
+          "id": "b_1790091373654_x1t1",
+          "isTentative": false,
+          "status": "workshop",
+          "type": "Workshop Attended",
+          "contractVersion": "Pending Agreement"
+        }
+      ],
       "2026-06-14": [
         {
           "id": "shoot-mr4x3r7e4l5g4m",
@@ -2943,15 +2952,6 @@ window.WPS_DATA = {
           "status": "workshop",
           "type": "Workshop Attended",
           "shootId": "ms36z1wqm2xkrz"
-        }
-      ],
-      "2026-10-10": [
-        {
-          "id": "b_1790091373654_x1t1",
-          "isTentative": false,
-          "status": "workshop",
-          "type": "Workshop Attended",
-          "contractVersion": "Pending Agreement"
         }
       ]
     },
@@ -3363,7 +3363,7 @@ window.WPS_DATA = {
         "modelTypes": [
           "Fashion"
         ],
-        "updatedAt": 1790084434802,
+        "updatedAt": 1790096697239,
         "showStatsOnCompCard": true,
         "showStatsOnModelPortfolio": true,
         "showModelInstagramOnCompCard": true,
@@ -3860,6 +3860,9 @@ window.WPS_DATA = {
           "cover": true,
           "coverId": "muca5a1qkkj6qh-11",
           "coverStyle": "framed",
+          "tags": true,
+          "tagPlace": "in",
+          "tagAlign": "left",
           "layout": "equal",
           "order": [
             "muca56vgez53vb-0",
