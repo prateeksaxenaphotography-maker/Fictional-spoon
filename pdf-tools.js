@@ -1156,16 +1156,38 @@
 
   // Cells in wrapping rows across maxW; returns the height. With draw false
   // it only measures, so a page can reserve the room before placing photos.
-  function flowPdfCells(page, cells, x, top, maxW, draw) {
+  /* The stats and the contact details, flowed across the page and, when the
+     studio asks, pushed to the middle or the right of it.
+
+     Each row is measured whole before anything in it is placed, because a row
+     cannot be centred until it knows its own width — the old version placed
+     every cell as it met it, which can only ever build a left-hand edge. */
+  function flowPdfCells(page, cells, x, top, maxW, draw, align = "left") {
     const gapX = 7, gapY = 2.6;
-    let cx = x, cy = top;
+    const width = (cell) => Math.min(maxW, Math.max(
+      page.measure(cell.label, pdfType("statLabel", PDF_LABEL)),
+      page.measure(cell.value, pdfType("statValue", PDF_VALUE))));
+    const rows = [];
+    let row = [], used = 0;
     cells.forEach((cell) => {
-      const w = Math.min(maxW, Math.max(page.measure(cell.label, pdfType("statLabel", PDF_LABEL)), page.measure(cell.value, pdfType("statValue", PDF_VALUE))));
-      if (cx > x && cx + w > x + maxW) { cx = x; cy += PDF_CELL_H + gapY; }
-      if (draw) drawPdfCell(page, cell, cx, cy, x + maxW - cx);
-      cx += w + gapX;
+      const w = width(cell);
+      if (row.length && used + w > maxW) { rows.push({ row, used: used - gapX }); row = []; used = 0; }
+      row.push({ cell, w });
+      used += w + gapX;
     });
-    return cells.length ? cy + PDF_CELL_H - top : 0;
+    if (row.length) rows.push({ row, used: used - gapX });
+    let cy = top;
+    rows.forEach(({ row: r, used: rowW }) => {
+      const slack = Math.max(0, maxW - rowW);
+      const shift = align === "centre" ? slack / 2 : align === "right" ? slack : 0;
+      let cx = x + shift;
+      r.forEach(({ cell, w }) => {
+        if (draw) drawPdfCell(page, cell, cx, cy, x + maxW - cx);
+        cx += w + gapX;
+      });
+      cy += PDF_CELL_H + gapY;
+    });
+    return rows.length ? cy - gapY - top : 0;
   }
 
   function drawPdfBookingNote(page, x, baseline, maxW) {
@@ -1420,14 +1442,15 @@
     const CW = PW - M * 2;
     const stats = portfolioPdfStatCells(spec.shoot);
     const contact = portfolioPdfContactCells(spec.shoot, spec);
+    const align = spec.detailsAlign || "left";
     let y = top;
     if (stats.length) {
       if (draw) page.rule(M, y, PW - M);
-      y += flowPdfCells(page, stats, M, y + 3, CW, draw) + 6;
+      y += flowPdfCells(page, stats, M, y + 3, CW, draw, align) + 6;
       if (draw) page.rule(M, y, PW - M);
     }
     if (contact.length) {
-      y += flowPdfCells(page, contact, M, y + 3, CW, draw) + 3 + PDF_NOTE_H;
+      y += flowPdfCells(page, contact, M, y + 3, CW, draw, align) + 3 + PDF_NOTE_H;
       if (draw) drawPdfBookingNote(page, M, y - 1.2, CW);
     }
     return y - top;
@@ -1876,6 +1899,7 @@
       order: [],           // photo ids in the order the client arranged them
       fewerOnTop: false,   // All equal: the short row at the top, not the foot
       cols: [],            // photos across, per page; 0 = let the grid decide
+      detailsAlign: "left",// the stats and contact row: left, centre or right
       // Print the pose under each photograph, or don't. It used to be decided
       // for the client: tags appeared only when EVERY photograph across the
       // whole PDF had a pose, so one untagged shot anywhere silently stripped
@@ -2159,6 +2183,7 @@
         // them, page by page, where the split is known.
         tags: tagsPerPage(),
         cols: colsPerPage(),
+        detailsAlign: state.detailsAlign,
         tagPlace: state.tagPlace,
         tagAlign: state.tagAlign,
         location: state.location.trim(),
@@ -2176,7 +2201,7 @@
         return a ? [a.x, a.y, a.zoom].map((v) => Math.round(v * 1000)) : 0;
       });
       return JSON.stringify([state.pages, ids, state.layout, perPage(), state.fewerOnTop,
-        tagsPerPage(), colsPerPage(), state.tagPlace, state.tagAlign,
+        tagsPerPage(), colsPerPage(), state.detailsAlign, state.tagPlace, state.tagAlign,
         ids.map((id) => state.span[id] || 0),
         state.cover ? [state.coverId, state.coverStyle] : null, crops]);
     }
@@ -2418,6 +2443,75 @@
       </div>`;
     }
 
+    // Which alignment the stats row is showing as chosen.
+    function syncDetailsAlign() {
+      body.querySelectorAll("#ppDetailsAlignSeg [data-details-align]").forEach((btn) =>
+        btn.setAttribute("aria-checked", String(btn.dataset.detailsAlign === (state.detailsAlign || "left"))));
+    }
+
+    /* A sheet at a size it can be read at, before anything is downloaded.
+       The preview draws at 72 dpi so three sheets fit side by side, which is
+       the right shape for arranging and far too small to proof: the studio
+       could not read its own small print without making the file first. */
+    function zoomBtnHtml(i) {
+      if (!admin) return "";
+      return `<button type="button" class="pp-sheet-zoom" data-zoom="${i}" aria-label="Look at this sheet close up" title="Look at it close up">View</button>`;
+    }
+
+    function showSheetZoom(start) {
+      let at = start;
+      const box = document.createElement("div");
+      box.className = "pp-zoom-backdrop";
+      box.innerHTML = `
+        <div class="pp-zoom" role="dialog" aria-modal="true" aria-label="The sheet, close up">
+          <div class="pp-zoom-head">
+            <span class="pp-zoom-name" id="ppZoomName">Drawing…</span>
+            <span class="pp-zoom-nav">
+              <button type="button" data-zoom-step="-1" aria-label="The sheet before">&lsaquo;</button>
+              <button type="button" data-zoom-step="1" aria-label="The next sheet">&rsaquo;</button>
+            </span>
+            <button type="button" class="pp-zoom-x" data-zoom-close aria-label="Close">&times;</button>
+          </div>
+          <div class="pp-zoom-stage" id="ppZoomStage"><p class="pp-hint">Drawing this sheet at full size…</p></div>
+        </div>`;
+      const stage = () => box.querySelector("#ppZoomStage");
+      const name = () => box.querySelector("#ppZoomName");
+      let sheets = null;
+      const show = () => {
+        if (!sheets) return;
+        at = Math.max(0, Math.min(sheets.length - 1, at));
+        const offset = state.cover ? 1 : 0;
+        name().textContent = at < offset ? "Cover" : `Page ${at - offset + 1} of ${sheets.length - offset}`;
+        const c = sheets[at];
+        c.className = "pp-zoom-canvas";
+        stage().replaceChildren(c);
+        box.querySelectorAll("[data-zoom-step]").forEach((b) => {
+          b.disabled = (Number(b.dataset.zoomStep) < 0 && at === 0) || (Number(b.dataset.zoomStep) > 0 && at === sheets.length - 1);
+        });
+      };
+      /* Drawn again at printing resolution rather than the thumbnail blown
+         up, or the proof would be of the preview's own softness rather than
+         of the sheet. At 300 dpi — the same resolution the studio's own file
+         is made at — so what is read here is what prints. Every sheet is
+         drawn, so stepping between them is instant. */
+      renderPortfolioPdfPages(buildSpec(), { dpi: 300, watermark: !covered(), cache })
+        .then((pages) => { sheets = pages.map((p) => p.canvas); show(); })
+        .catch(() => { stage().innerHTML = `<p class="pp-hint is-warn">That sheet could not be drawn at full size. The preview beneath is unaffected.</p>`; });
+      const close = () => { box.remove(); document.removeEventListener("keydown", onKey); };
+      const onKey = (e) => {
+        if (e.key === "Escape") { close(); return; }
+        if (e.key === "ArrowLeft") { at--; show(); }
+        if (e.key === "ArrowRight") { at++; show(); }
+      };
+      box.addEventListener("click", (e) => {
+        if (e.target === box || e.target.closest("[data-zoom-close]")) { close(); return; }
+        const step = e.target.closest("[data-zoom-step]");
+        if (step && !step.disabled) { at += Number(step.dataset.zoomStep); show(); }
+      });
+      document.addEventListener("keydown", onKey);
+      document.body.appendChild(box);
+    }
+
     /* The cover's look, offered under the cover itself in the preview. It was
        only ever on the picking screen, where the cover is a thumbnail and a
        switch: the client chooses "Framed" without being able to see what
@@ -2567,6 +2661,16 @@
                 <button type="button" role="radio" data-tag-align="center">Centre</button>
                 <button type="button" role="radio" data-tag-align="right">Right</button>
               </div>
+              <!-- The stats and contact row at the foot of a page. It has
+                   always sat hard against the left margin; a portfolio whose
+                   photographs are centred wants the line under them centred
+                   too. One answer for the whole PDF, like the label above. -->
+              <div class="pp-seg" role="radiogroup" aria-label="How the stats line up" id="ppDetailsAlignSeg">
+                <span class="pp-seg-cap" aria-hidden="true">Stats</span>
+                <button type="button" role="radio" data-details-align="left">Left</button>
+                <button type="button" role="radio" data-details-align="centre">Centre</button>
+                <button type="button" role="radio" data-details-align="right">Right</button>
+              </div>
             </div>
           </div>
           <ol class="pp-order" id="ppOrder" aria-labelledby="ppOrderLabel"></ol>
@@ -2688,6 +2792,7 @@
               pages: state.pages, count: state.count, picks: [...state.picks], cleared: [...state.cleared],
               lead: state.lead, cover: state.cover, coverId: state.coverId, coverStyle: state.coverStyle,
               layout: state.layout, order: [...state.order], fewerOnTop: state.fewerOnTop, cols: colsPerPage(),
+              detailsAlign: state.detailsAlign,
               tags: tagsPerPage(),
               tagPlace: state.tagPlace,
               tagAlign: state.tagAlign,
@@ -2722,6 +2827,8 @@
           state.order = [...sp.order]; state.fewerOnTop = sp.fewerOnTop;
           // Saved before the studio could choose it: the grid works it out.
           state.cols = Array.isArray(sp.cols) ? sp.cols.slice(0, sp.pages) : [];
+          // Saved before the studio could choose it: left, as it always was.
+          state.detailsAlign = ["left", "centre", "right"].includes(sp.detailsAlign) ? sp.detailsAlign : "left";
           // An arrangement saved before the switch existed has no answer, and
           // "on" is what it was saved under.
           // An arrangement saved when the switch was one for the whole PDF
@@ -2892,6 +2999,16 @@
         if (covered() !== wasCovered) { showPreview(); return; }
         drawPreview();
       });
+      body.querySelector("#ppDetailsAlignSeg").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-details-align]");
+        if (!btn || btn.dataset.detailsAlign === state.detailsAlign) return;
+        const wasCovered = covered();
+        state.detailsAlign = btn.dataset.detailsAlign;
+        // A different sheet of paper, so a PDF already paid for is a new one.
+        if (covered() !== wasCovered) { showPreview(); return; }
+        syncDetailsAlign();
+        drawPreview();
+      });
       body.querySelector("#ppTagAlignSeg").addEventListener("click", (e) => {
         const btn = e.target.closest("[data-tag-align]");
         if (!btn || btn.dataset.tagAlign === state.tagAlign) return;
@@ -2942,6 +3059,13 @@
           drawPreview();
           return;
         }
+        /* A different photograph for the cover, chosen while looking at the
+           cover. It could only be changed back on the picking screen, where
+           the cover is a thumbnail — so the one place it is shown at full
+           size was the one place it could not be changed. */
+        const zoom = e.target.closest("[data-zoom]");
+        if (zoom) { showSheetZoom(Number(zoom.dataset.zoom)); return; }
+        if (e.target.closest("[data-swap-cover]")) { showCoverChooser(); return; }
         // The cover's look, chosen while looking at the cover itself.
         const look = e.target.closest("[data-sheet-cover-style]");
         if (look) {
@@ -3015,8 +3139,8 @@
           const cap = document.createElement("figcaption");
           cap.className = "pp-sheet-cap";
           cap.innerHTML = i < offset
-            ? `<span class="pp-sheet-name">Cover</span>${coverStyleSegHtml()}`
-            : `<span class="pp-sheet-head"><span class="pp-sheet-name">Page ${i - offset + 1}</span>${pageTagsBtnHtml(i - offset, p)}</span>${pageCountSegHtml(i - offset)}${pageColsSegHtml(i - offset, (p.canvas && p.canvas._photos || []).length)}`;
+            ? `<span class="pp-sheet-head"><span class="pp-sheet-name">Cover</span>${zoomBtnHtml(i)}<button type="button" class="pp-sheet-swap" data-swap-cover aria-label="Use a different photograph for the cover" title="Use a different photograph">Change</button></span>${coverStyleSegHtml()}`
+            : `<span class="pp-sheet-head"><span class="pp-sheet-name">Page ${i - offset + 1}</span>${zoomBtnHtml(i)}${pageTagsBtnHtml(i - offset, p)}</span>${pageCountSegHtml(i - offset)}${pageColsSegHtml(i - offset, (p.canvas && p.canvas._photos || []).length)}`;
           item.appendChild(cap);
           return item;
         }));
@@ -3311,6 +3435,47 @@
       document.body.appendChild(sheet);
     }
 
+    /* A different photograph for the cover. Every photograph the model has is
+       offered, not only the spare ones: the cover is a page of its own, so a
+       photograph already on the pages can take it — it simply comes off the
+       pages, which is what setCoverPhoto does and says. */
+    function showCoverChooser() {
+      const here = state.coverId;
+      const sheet = document.createElement("div");
+      sheet.className = "pp-swap-backdrop";
+      sheet.innerHTML = `
+        <div class="pp-swap" role="dialog" aria-modal="true" aria-label="Choose the cover photograph">
+          <div class="pp-swap-head">
+            <p class="pp-swap-title">Which photograph goes on the cover?</p>
+            <button type="button" class="pp-swap-x" data-swap-close aria-label="Keep the cover I have">&times;</button>
+          </div>
+          <div class="pp-swap-grid">
+            ${slots.map((sl) => `
+              <button type="button" class="pp-swap-tile${sl.id === here ? " is-here" : ""}" data-cover-in="${esc(sl.id)}" title="${esc(sl.name)}"${sl.id === here ? " aria-current=\"true\"" : ""}>
+                <img src="${esc(photoSrc(sl.photo.small ? { url: sl.photo.small } : sl.photo))}" alt="${esc(sl.name)}" style="object-position: ${esc(sl.photo.objectPosition || "center")};" />
+                ${sl.id === here ? `<span class="pp-swap-tag">On the cover</span>` : state.picks.has(sl.id) ? `<span class="pp-swap-tag">On the pages</span>` : ""}
+              </button>`).join("")}
+          </div>
+        </div>`;
+      const close = () => sheet.remove();
+      sheet.addEventListener("click", (e) => {
+        if (e.target === sheet || e.target.closest("[data-swap-close]")) { close(); return; }
+        const tile = e.target.closest("[data-cover-in]");
+        if (!tile) return;
+        const id = tile.dataset.coverIn;
+        close();
+        if (id === here) return;
+        const wasCovered = covered();
+        // Taking it off the pages if it was on them, and saying so.
+        const note = setCoverPhoto(id);
+        syncPages();
+        if (covered() !== wasCovered) { showPreview(); return; }
+        syncLayout(); syncOrder(); drawPreview();
+        if (note) flashOrderNote(note);
+      });
+      document.body.appendChild(sheet);
+    }
+
     /* Dragging a photograph to a new place, with a pointer — which is one
        gesture for a mouse, a finger and a stylus alike, where HTML5 drag never
        fires on a touch screen at all. The arrows stay: they are what a
@@ -3445,6 +3610,7 @@
        (page.tagsBare), so it cannot claim a page printed something it didn't. */
     function syncTags(pages) {
       const place = body.querySelector("#ppTagPlaceSeg");
+      syncDetailsAlign();
       const align = body.querySelector("#ppTagAlignSeg");
       const note = body.querySelector("#ppTagsNote");
       if (!place || !align || !note) return;
@@ -3527,9 +3693,22 @@
         // up: a slightly softer PDF beats none. A failed photo load also gets
         // retried this way, since failed loads aren't cached.
         // A watermarked copy is given away, so it starts a size down from the
-        // one that is paid for: 150 dpi, where the clean PDF and PNG are 200.
-        let bytes = null, lastErr = null;
-        for (const dpi of watermark ? [150, 110] : [200, 150, 110]) {
+        // one that is paid for: 150 dpi, where a client's clean PDF is 200.
+        /* The studio's own copy is drawn at printing resolution — 300 dpi —
+           because it is the one that goes to an agency, gets printed, and is
+           the master every other copy is judged against. It was taking the
+           same 200 a client's does, which is fine on a screen and thin on
+           paper. Asked for by the studio, Sep 2026: "for admin it should
+           always be 300+ dpi."
+           The ladder below it stays, because a browser short of memory can
+           refuse a page that size and a softer file beats none — but when it
+           steps down for the studio it now says so, rather than handing over
+           something quietly smaller than was asked for. */
+        const ladder = admin && !watermark ? [300, 220, 150, 110]
+          : watermark ? [150, 110]
+          : [200, 150, 110];
+        let bytes = null, lastErr = null, madeAt = 0;
+        for (const dpi of ladder) {
           try {
             const pages = await renderPortfolioPdfPages(spec, { dpi, watermark, markAlpha: PDF_MARK_ALPHA.file, cache });
             try {
@@ -3540,6 +3719,7 @@
               // Full-resolution canvases are large; give the memory back.
               pages.forEach((p) => { p.canvas.width = 0; p.canvas.height = 0; });
             }
+            madeAt = dpi;
             break;
           } catch (err) {
             lastErr = err;
@@ -3549,6 +3729,10 @@
         }
         if (!bytes) throw lastErr || new Error("unknown error");
         if (token !== renderToken) return;
+        // Said out loud rather than discovered on the paper.
+        if (admin && !watermark && madeAt && madeAt < 300) {
+          toast(`This browser could not draw the pages at 300 dpi, so it is ${madeAt}. Closing other tabs and making it again usually gets there.`);
+        }
         const fileBase = `${slugify(spec.name) || "model"}-portfolio${watermark ? "-preview" : ""}`;
         const fileTitle = `${spec.name} — Model Portfolio${watermark ? " (preview)" : ""}`;
         if (asPng) offerImages(bytes, fileBase, fileTitle, !!spec.cover);

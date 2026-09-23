@@ -3631,3 +3631,43 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
 .pp-adjust-fit { font-size: 12px; padding: 6px 12px; }
 .pp-page-cols { margin-top: 5px; }
 .pp-page-cols button { min-width: 34px; }
+/* Changing the cover, from the preview where it is drawn full size (v502). */
+.pp-sheet-swap {
+  margin-left: 8px; padding: 3px 9px; border: 1px solid var(--line);
+  background: var(--paper); color: var(--ink-soft); border-radius: 6px; cursor: pointer;
+  font: 600 10px/1 var(--mono-font); letter-spacing: .06em; text-transform: uppercase;
+}
+.pp-sheet-swap:hover { color: var(--ink); border-color: var(--ink); }
+.pp-swap-tile.is-here { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+/* A sheet at a size it can be read at, before any file is made (v502).
+   Drawn at 300 dpi, the same as the studio's own copy. */
+.pp-zoom-backdrop {
+  position: fixed; inset: 0; z-index: 100020; background: rgba(0,0,0,.82);
+  display: flex; align-items: center; justify-content: center; padding: 12px;
+}
+.pp-zoom { display: flex; flex-direction: column; width: min(1100px, 100%); max-height: 96vh; }
+.pp-zoom-head {
+  display: flex; align-items: center; gap: 12px; padding: 0 2px 10px; color: #fff;
+}
+.pp-zoom-name { flex: 1; font: 600 12px/1 var(--mono-font); letter-spacing: .08em; text-transform: uppercase; }
+.pp-zoom-nav { display: inline-flex; gap: 6px; }
+.pp-zoom-nav button, .pp-zoom-x {
+  border: 1px solid rgba(255,255,255,.4); background: none; color: #fff;
+  width: 30px; height: 30px; border-radius: 6px; font-size: 17px; line-height: 1; cursor: pointer;
+}
+.pp-zoom-nav button:disabled { opacity: .3; cursor: default; }
+.pp-zoom-nav button:not(:disabled):hover, .pp-zoom-x:hover { background: rgba(255,255,255,.16); }
+.pp-zoom-stage {
+  flex: 1; min-height: 0; overflow: auto; background: #fff; border-radius: 6px;
+  display: flex; align-items: flex-start; justify-content: center;
+}
+.pp-zoom-stage .pp-hint { padding: 40px 16px; text-align: center; }
+/* The sheet fills the width it is given; scrolling reads down the page. */
+.pp-zoom-canvas { width: 100%; height: auto; display: block; }
+.pp-sheet-zoom {
+  margin-left: 8px; padding: 3px 9px; border: 1px solid var(--line);
+  background: var(--paper); color: var(--ink-soft); border-radius: 6px; cursor: pointer;
+  font: 600 10px/1 var(--mono-font); letter-spacing: .06em; text-transform: uppercase;
+}
+.pp-sheet-zoom:hover { color: var(--ink); border-color: var(--ink); }
