@@ -4238,7 +4238,7 @@ window.WPS_DATA = {
           "phone": "",
           "showPrices": false
         },
-        "updatedAt": 1790191756952
+        "updatedAt": 1790191900242
       }
     ],
     "deleted": [
