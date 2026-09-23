@@ -275,8 +275,13 @@ window.renderPdfTypeEditor = function(host) {
   host.innerHTML = window.PDF_TYPE_ROLES.map((r) => {
     const v = cur[r.key] || {};
     const isAuto = v.color === "auto";
-    return `<div class="pdf-type-row" data-role="${pdfEsc(r.key)}" style="display: grid; grid-template-columns: minmax(150px, 1.4fr) repeat(${r.aligns ? 4 : 3}, minmax(88px, 1fr)) auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line);">
-      <div style="min-width: 0;">
+    /* Laid out in the stylesheet, not here: this editor is shown in the admin
+       page AND in a panel beside the portfolio preview, and a grid of fixed
+       columns written inline could not answer to either. It cut the selects
+       off at the panel's edge and asked the studio to scroll sideways to
+       reach them, which read as the controls being missing. */
+    return `<div class="pdf-type-row" data-role="${pdfEsc(r.key)}"${r.aligns ? ' data-aligns="1"' : ""}>
+      <div class="pdf-type-what">
         <strong style="font-size: var(--font-xs); color: var(--ink);">${pdfEsc(r.label)}</strong>
         ${r.note ? `<span style="display: block; font-size: var(--font-xs); color: var(--ink-soft);">${pdfEsc(r.note)}</span>` : ""}
       </div>
@@ -292,7 +297,7 @@ window.renderPdfTypeEditor = function(host) {
       ${r.sized
         ? `<input type="number" data-f="size" min="1" max="20" step="0.1" value="${v.size != null ? v.size : ""}" style="${cell}" aria-label="Size in millimetres for ${pdfEsc(r.label)}" />`
         : `<span style="font-size: var(--font-xs); color: var(--ink-soft);">fitted</span>`}
-      <span style="display: inline-flex; align-items: center; gap: 6px;">
+      <span class="pdf-type-colour">
         <input type="color" data-f="color" value="${pdfEsc(isAuto ? "#000000" : (v.color || "#000000"))}" ${isAuto ? "disabled" : ""} style="width: 34px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer;" aria-label="Colour for ${pdfEsc(r.label)}" />
         ${r.adaptive ? `<label style="font-size: var(--font-xs); color: var(--ink-soft); display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;" title="On the cover this line sits over a photograph, so the PDF picks a colour that stays readable."><input type="checkbox" data-f="auto"${isAuto ? " checked" : ""} /> auto</label>` : ""}
       </span>

@@ -956,7 +956,16 @@
      pdfFitZoom works out where a given photograph stops being cropped. */
   const PDF_MAX_ZOOM = 3;
   const PDF_MIN_ZOOM = 0.2;
-  const pdfZoom = (photo) => Math.min(PDF_MAX_ZOOM, Math.max(PDF_MIN_ZOOM, Number(photo.pdfZoom) || 1));
+  /* `fallback` is what a photograph does when the client has not said. On the
+     pages that is now "show all of it" rather than "fill the frame": a
+     portfolio is judged on the photographs, and filling a fixed frame always
+     cuts something off — a head, a hand, the shoes on a full-length. A cover
+     still fills, because Full, Framed and Split are explicit choices about a
+     cover's shape. Studio's ask, Sep 2026. */
+  const pdfZoom = (photo, fallback = 1) => {
+    const z = Number(photo.pdfZoom);
+    return Number.isFinite(z) && z > 0 ? Math.min(PDF_MAX_ZOOM, Math.max(PDF_MIN_ZOOM, z)) : fallback;
+  };
   // The zoom at which the whole of this photograph fits inside that frame —
   // the ratio between fitting it in and filling it. Always 1 or less, and
   // exactly 1 when the photograph is already the frame's shape.
@@ -965,9 +974,9 @@
     return Math.min(1, Math.min(w / iw, h / ih) / Math.max(w / iw, h / ih));
   };
 
-  function drawPdfPhoto(page, img, photo, x, y, w, h, frame = true) {
+  function drawPdfPhoto(page, img, photo, x, y, w, h, frame = true, fitWhole = false) {
     const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
-    const scale = Math.max(w / iw, h / ih) * pdfZoom(photo);
+    const scale = Math.max(w / iw, h / ih) * pdfZoom(photo, fitWhole ? pdfFitZoom(iw, ih, w, h) : 1);
     const f = photoFocus(photo);
     /* Drawn whole and positioned, rather than cut out of the source: the two
        are identical while the photograph covers the frame, but only this one
@@ -1030,7 +1039,8 @@
     // The strip comes out of the frame, never out of the neighbouring cell.
     const strip = slot.label && where !== "in" ? PDF_TAG_H + 1.2 : 0;
     const photoY = where === "above" ? y + strip : y;
-    drawPdfPhoto(page, img, slot.photo, x, photoY, w, h - strip);
+    // A photograph on a PAGE shows all of itself unless the client crops it.
+    drawPdfPhoto(page, img, slot.photo, x, photoY, w, h - strip, true, true);
     if (!slot.label) return;
     // The colour here is a merge base, not a fallback: cleanPdfType always
     // hands pdfType a complete record, so this #111 has never once applied.
@@ -1766,9 +1776,11 @@
       page.tagsShown = !bare && whole.some((s) => s.label);
       // A page down to its single photo is that photo as large as it will go.
       const cols = Array.isArray(spec.cols) ? (spec.cols[i] || 0) : 0;
-      if (i === 0 && n === 1 && spec.layout !== "equal") composeLeadPagePdf(page, spec, partImgs[0], mark);
-      else if (i === 0) composeOnePagePdf(page, { ...spec, cols, lead: part[0], others: part.slice(1) }, partImgs, mark);
-      else composePosesPdf(page, { ...spec, cols, others: part }, partImgs, mark, i + 1);
+      // This page's own answer, falling back to the PDF's when it has none.
+      const layout = (Array.isArray(spec.layouts) ? spec.layouts[i] : null) || spec.layout;
+      if (i === 0 && n === 1 && layout !== "equal") composeLeadPagePdf(page, { ...spec, layout }, partImgs[0], mark);
+      else if (i === 0) composeOnePagePdf(page, { ...spec, layout, cols, lead: part[0], others: part.slice(1) }, partImgs, mark);
+      else composePosesPdf(page, { ...spec, layout, cols, others: part }, partImgs, mark, i + 1);
     });
     if (watermark) pages.forEach((p) => drawPdfPreviewMark(p, markAlpha));
     // Drawn last so it sits over a full-bleed photograph rather than under it.
@@ -1911,6 +1923,9 @@
       order: [],           // photo ids in the order the client arranged them
       fewerOnTop: false,   // All equal: the short row at the top, not the foot
       cols: [],            // photos across, per page; 0 = let the grid decide
+      sheetView: "all",    // "all", or the index of the one sheet on show
+      layouts: [],         // per page; empty means "whatever `layout` says"
+      fromSaved: null,     // the saved arrangement this one was opened from
       detailsAlign: "left",// the stats and contact row: left, centre or right
       // Print the pose under each photograph, or don't. It used to be decided
       // for the client: tags appeared only when EVERY photograph across the
@@ -1959,6 +1974,14 @@
     // Whether each page prints its pose labels. A page nobody has answered
     // for prints them, which is what the single switch used to do.
     const tagsPerPage = () => Array.from({ length: state.pages }, (_, i) => state.tags[i] !== false);
+    /* Big photo or all the same size, PAGE BY PAGE. The choice in the rail is
+       the answer for the whole PDF and stays the only one a client is asked;
+       a page can then be told otherwise, because a portfolio often wants its
+       opening page led by one photograph and its later pages even. Asked for
+       by the studio, Sep 2026: "not blanket". */
+    const layoutOf = (i) => state.layouts[i] || state.layout;
+    const layoutsPerPage = () => Array.from({ length: state.pages }, (_, i) => layoutOf(i));
+
     // How many photographs stand across a page, when the studio has said.
     const colsPerPage = () => Array.from({ length: state.pages }, (_, i) => Number(state.cols[i]) || 0);
     /* How many pages the client asks for says how much ROOM the PDF has, and
@@ -2104,10 +2127,54 @@
       state.coverId = id;
       return state.picks.delete(id) ? "Moved to the cover. Pick one more for the pages." : "";
     };
-    // Opens empty. The client's own choice is the whole point of the screen,
-    // so the system starts it with nothing ticked.
+    /* Everything that makes this arrangement what it is, written once so the
+       save button and the draft cannot drift apart. */
+    function currentSpec() {
+      return {
+        pages: state.pages, count: state.count, picks: [...state.picks], cleared: [...state.cleared],
+        lead: state.lead, cover: state.cover, coverId: state.coverId, coverStyle: state.coverStyle,
+        layout: state.layout, layouts: layoutsPerPage(), order: [...state.order],
+        fewerOnTop: state.fewerOnTop, cols: colsPerPage(), detailsAlign: state.detailsAlign,
+        tags: tagsPerPage(), tagPlace: state.tagPlace, tagAlign: state.tagAlign, perPage: perPage(),
+        span: JSON.parse(JSON.stringify(state.span || {})),
+        adjust: JSON.parse(JSON.stringify(state.adjust || {}))
+      };
+    }
+
+    /* Unfinished work, kept on this device, per model. The studio opened a
+       saved arrangement, changed it, closed the builder and lost the lot:
+       saving was the only way to keep anything, and saving meant naming it
+       again. This remembers where they were. It is never published and never
+       leaves the device — a draft is not a portfolio until they say so. */
+    function draftKey() { return `wps_pdf_draft_${(shoot && shoot.id) || ""}`; }
+    function readDraft() {
+      if (!admin) return null;
+      try { const d = JSON.parse(localStorage.getItem(draftKey()) || "null"); return d && d.spec ? d : null; }
+      catch (e) { return null; }
+    }
+    function writeDraft() {
+      // Nothing picked is nothing to remember, and would only resurrect an
+      // empty screen with a note on it.
+      if (!admin || !state.picks.size) return;
+      try {
+        localStorage.setItem(draftKey(), JSON.stringify({ at: Date.now(), from: state.fromSaved || null, spec: currentSpec() }));
+      } catch (e) {}
+    }
+    function clearDraft() { try { localStorage.removeItem(draftKey()); } catch (e) {} }
+
+    /* Opens empty — the client's own choice is the whole point of the screen,
+       so the system starts it with nothing ticked. The one exception is the
+       studio's own unfinished work: that is not the builder choosing
+       photographs, it is giving back the ones they chose before, and the
+       screen says so and offers to drop it. */
     syncPages();
     state.lead = defaultLead();
+    const resumed = readDraft();
+    let resumedNote = false;
+    if (resumed && applySpec(resumed.spec)) {
+      state.fromSaved = resumed.from || null;
+      resumedNote = true;
+    }
 
     const modal = document.createElement("div");
     modal.id = "portfolioPdfModal";
@@ -2136,6 +2203,9 @@
       if (e.key === "Escape") close();
     };
     function close() {
+      // Kept before anything is torn down, so shutting the builder is not the
+      // same as throwing the afternoon's work away.
+      try { writeDraft(); } catch (e) {}
       renderToken++;
       window.removeEventListener("keydown", onKey, true);
       dropFiles();
@@ -2158,7 +2228,9 @@
     // it is the client's order as it stands; Big photo puts the big one first.
     function printOrder() {
       const chosen = picked();
-      if (state.layout === "equal") return chosen;
+      // Page one's answer decides this, because that is where the pinned
+      // photograph lands; a later page leads with whatever reaches it first.
+      if (layoutOf(0) === "equal") return chosen;
       const lead = chosen.find((s) => s.id === state.lead) || chosen[0];
       return lead ? [lead, ...chosen.filter((s) => s !== lead)] : chosen;
     }
@@ -2188,6 +2260,7 @@
         cover: state.cover ? slot(slots.find((s) => s.id === state.coverId) || lead) : null,
         coverStyle: state.coverStyle,
         layout: state.layout,
+        layouts: layoutsPerPage(),
         perPage: perPage(),
         fewerOnTop: state.fewerOnTop,
         // Which pages name their poses, and where the name sits. The labels
@@ -2212,7 +2285,7 @@
         const a = state.adjust[id];
         return a ? [a.x, a.y, a.zoom].map((v) => Math.round(v * 1000)) : 0;
       });
-      return JSON.stringify([state.pages, ids, state.layout, perPage(), state.fewerOnTop,
+      return JSON.stringify([state.pages, ids, state.layout, layoutsPerPage(), perPage(), state.fewerOnTop,
         tagsPerPage(), colsPerPage(), state.detailsAlign, state.tagPlace, state.tagAlign,
         ids.map((id) => state.span[id] || 0),
         state.cover ? [state.coverId, state.coverStyle] : null, crops]);
@@ -2240,11 +2313,64 @@
           ? "Keep this arrangement by name and reopen it whenever you like — the photos, the order, the layout, the cover and any nudge you gave a photo. It saves the arrangement rather than the file, so reopening it draws from today's photos and today's type, and both downloads are a press away. Saved on this device, and live the next time you publish from Calendar."
           : "Open one to pick up where you left off."}</p>
         ${withSave ? `<div class="pp-save-row">
-          <input type="text" id="ppSaveName" maxlength="60" placeholder="Name it, e.g. Devesh — agency set" />
-          <button type="button" class="pp-sample-btn" id="ppSaveBtn">Save this arrangement</button>
-        </div>` : ""}
+          <input type="text" id="ppSaveName" maxlength="60" value="${esc((state.fromSaved && state.fromSaved.name) || "")}" placeholder="Name it, e.g. Devesh — agency set" />
+          <button type="button" class="pp-sample-btn" id="ppSaveBtn">${state.fromSaved ? "Update it" : "Save this arrangement"}</button>
+        </div>
+        ${state.fromSaved ? `<p class="pp-type-note">Saving keeps “${esc(state.fromSaved.name)}”. Change the name to keep a second one instead.</p>` : ""}` : ""}
         <div id="ppSavedList"></div>
       </details>`;
+    }
+
+    /* Put a saved arrangement — or the studio's own unfinished one — back
+       on screen. Shared by the saved list and the draft that survives
+       closing the builder, so the two can never disagree about what a
+       spec means. */
+    function applySpec(sp) {
+      if (!sp) return false;
+      state.pages = sp.pages; state.count = sp.count;
+      state.picks = new Set(sp.picks); state.cleared = new Set(sp.cleared);
+      state.lead = sp.lead; state.cover = sp.cover; state.coverId = sp.coverId;
+      state.coverStyle = sp.coverStyle; state.layout = sp.layout;
+      // Saved before a page could answer for itself: the PDF's own choice.
+      state.layouts = Array.isArray(sp.layouts) ? sp.layouts.slice(0, sp.pages) : [];
+      state.order = [...sp.order]; state.fewerOnTop = sp.fewerOnTop;
+      // Saved before the studio could choose it: the grid works it out.
+      state.cols = Array.isArray(sp.cols) ? sp.cols.slice(0, sp.pages) : [];
+      // Saved before the studio could choose it: left, as it always was.
+      state.detailsAlign = ["left", "centre", "right"].includes(sp.detailsAlign) ? sp.detailsAlign : "left";
+      // An arrangement saved before the switch existed has no answer, and
+      // "on" is what it was saved under.
+      // An arrangement saved when the switch was one for the whole PDF
+      // reopens with every page set the way it was.
+      state.tags = Array.isArray(sp.tags) ? sp.tags.slice(0, sp.pages) : [];
+      if (!Array.isArray(sp.tags)) state.tags = Array.from({ length: sp.pages }, () => sp.tags !== false);
+      state.tagPlace = sp.tagPlace || "in";
+      state.tagAlign = sp.tagAlign || "left";
+      // One saved before the client could answer page by page is converted
+      // from its total, so it reopens as the PDF it was saved as.
+      /* Six to a page is the hard limit — the grid is built for six and a
+         seventh has nowhere to print. Every other path honours it by
+         construction, but this one takes its numbers from a file written
+         by an older build, so it is clamped rather than trusted, and a
+         set that cannot be made is re-spread from the count instead. */
+      const saved = Array.isArray(sp.perPage) && sp.perPage.length
+        ? sp.perPage.slice(0, sp.pages).map((n) => Math.max(1, Math.min(PORTFOLIO_PAGE_MAX, Number(n) || 1)))
+        : portfolioLegacySplit(sp.count, sp.pages, sp.firstPage || 0);
+      state.perPage = saved.reduce((a, b) => a + b, 0) === sp.count && saved.length === sp.pages
+        ? saved
+        : Array.from({ length: sp.pages }, (_, i) =>
+            Math.floor(sp.count / sp.pages) + (i < sp.count % sp.pages ? 1 : 0));
+      syncCount();
+      state.adjust = JSON.parse(JSON.stringify(sp.adjust || {}));
+      state.span = JSON.parse(JSON.stringify(sp.span || {}));
+      return true;
+    }
+
+    // Says what pressing Save will do now — keep the arrangement that is
+    // open, or start a new one — without re-rendering the whole panel.
+    function syncSaveRow() {
+      const btn = body.querySelector("#ppSaveBtn");
+      if (btn) btn.textContent = state.fromSaved ? "Update it" : "Save this arrangement";
     }
 
     function wireSavedPortfolios() {
@@ -2279,6 +2405,19 @@
             // `name` in this scope is the model; this one is the arrangement.
             const title = (nameEl.value || "").trim() || `${name} — ${new Date().toLocaleDateString()}`;
             const cur = store();
+            /* Saving under the name of the arrangement that is open replaces
+               it. Otherwise every edit of a saved set made a second copy with
+               the same name, and the studio had to hunt down the old one —
+               which is most of why changing one felt like starting over. */
+            const open = state.fromSaved && cur.versions.find((x) => x.id === state.fromSaved.id);
+            if (open && title === open.name) {
+              open.spec = currentSpec();
+              open.updatedAt = Date.now();
+              write(cur);
+              clearDraft();
+              toast(`“${open.name}” updated.`);
+              return;
+            }
             const limit = (window.MODEL_PDF_LIMITS || {}).perModel || 12;
             if (mine().length >= limit) { toast(`That is ${limit} saved for this model, which is the limit. Delete one first.`); return; }
             cur.versions.unshift({
@@ -2287,7 +2426,7 @@
               spec: {
                 pages: state.pages, count: state.count, picks: [...state.picks], cleared: [...state.cleared],
                 lead: state.lead, cover: state.cover, coverId: state.coverId, coverStyle: state.coverStyle,
-                layout: state.layout, order: [...state.order], fewerOnTop: state.fewerOnTop, cols: colsPerPage(),
+                layout: state.layout, layouts: layoutsPerPage(), order: [...state.order], fewerOnTop: state.fewerOnTop, cols: colsPerPage(),
                 detailsAlign: state.detailsAlign,
                 tags: tagsPerPage(),
                 tagPlace: state.tagPlace,
@@ -2297,8 +2436,17 @@
                 adjust: JSON.parse(JSON.stringify(state.adjust || {}))
               }
             });
+            const id = cur.versions[0].id;
+            state.fromSaved = { id, name: title };
             write(cur);
-            nameEl.value = "";
+            /* The name STAYS in the box and the button becomes Update. It was
+               cleared, so the next press fell through to "new" under a
+               date-stamped default name — the studio's change went into a
+               second arrangement they never named, which is most of why
+               editing a saved portfolio felt like losing it. */
+            nameEl.value = title;
+            syncSaveRow();
+            clearDraft();
             toast(`Saved. It is on this device — publish from Calendar to keep it everywhere.`);
           });
           savedList.addEventListener("click", (e) => {
@@ -2315,41 +2463,11 @@
               return;
             }
             if (!e.target.hasAttribute("data-open")) return;
-            const sp = v.spec;
-            state.pages = sp.pages; state.count = sp.count;
-            state.picks = new Set(sp.picks); state.cleared = new Set(sp.cleared);
-            state.lead = sp.lead; state.cover = sp.cover; state.coverId = sp.coverId;
-            state.coverStyle = sp.coverStyle; state.layout = sp.layout;
-            state.order = [...sp.order]; state.fewerOnTop = sp.fewerOnTop;
-            // Saved before the studio could choose it: the grid works it out.
-            state.cols = Array.isArray(sp.cols) ? sp.cols.slice(0, sp.pages) : [];
-            // Saved before the studio could choose it: left, as it always was.
-            state.detailsAlign = ["left", "centre", "right"].includes(sp.detailsAlign) ? sp.detailsAlign : "left";
-            // An arrangement saved before the switch existed has no answer, and
-            // "on" is what it was saved under.
-            // An arrangement saved when the switch was one for the whole PDF
-            // reopens with every page set the way it was.
-            state.tags = Array.isArray(sp.tags) ? sp.tags.slice(0, sp.pages) : [];
-            if (!Array.isArray(sp.tags)) state.tags = Array.from({ length: sp.pages }, () => sp.tags !== false);
-            state.tagPlace = sp.tagPlace || "in";
-            state.tagAlign = sp.tagAlign || "left";
-            // One saved before the client could answer page by page is converted
-            // from its total, so it reopens as the PDF it was saved as.
-            /* Six to a page is the hard limit — the grid is built for six and a
-               seventh has nowhere to print. Every other path honours it by
-               construction, but this one takes its numbers from a file written
-               by an older build, so it is clamped rather than trusted, and a
-               set that cannot be made is re-spread from the count instead. */
-            const saved = Array.isArray(sp.perPage) && sp.perPage.length
-              ? sp.perPage.slice(0, sp.pages).map((n) => Math.max(1, Math.min(PORTFOLIO_PAGE_MAX, Number(n) || 1)))
-              : portfolioLegacySplit(sp.count, sp.pages, sp.firstPage || 0);
-            state.perPage = saved.reduce((a, b) => a + b, 0) === sp.count && saved.length === sp.pages
-              ? saved
-              : Array.from({ length: sp.pages }, (_, i) =>
-                  Math.floor(sp.count / sp.pages) + (i < sp.count % sp.pages ? 1 : 0));
-            syncCount();
-            state.adjust = JSON.parse(JSON.stringify(sp.adjust || {}));
-            state.span = JSON.parse(JSON.stringify(sp.span || {}));
+            applySpec(v.spec);
+            // Remembered, so a change to it can be saved BACK rather than
+            // saved again beside it under the same name.
+            state.fromSaved = { id: v.id, name: v.name };
+            syncSaveRow();
             showPreview();
             toast(`“${v.name}” is back on screen.`);
           });
@@ -2365,6 +2483,10 @@
       body.innerHTML = `
         <div class="pp-choose${admin ? " is-studio" : " is-client"}">
         <div class="pp-choose-rail">
+          ${resumedNote ? `<div class="pp-resumed" role="status">
+            <span>${state.fromSaved ? `Carrying on with “${esc(state.fromSaved.name)}”.` : "Carrying on where you left off."}</span>
+            <button type="button" class="pp-link" id="ppDropDraft">Start fresh</button>
+          </div>` : ""}
           <div class="pp-seg" role="radiogroup" aria-label="Pages">
             ${Array.from({ length: PORTFOLIO_MAX_PAGES }, (_, i) => i + 1).map((n) => `<button type="button" role="radio" data-pages="${n}" aria-checked="false">${n} page${n > 1 ? "s" : ""}</button>`).join("")}
           </div>
@@ -2453,6 +2575,17 @@
         body.querySelector("#ppCoverMode").scrollIntoView({ block: "nearest", behavior: "smooth" });
       });
       body.querySelector("#ppCoverModeCancel").addEventListener("click", () => { state.choosingCover = false; syncPick(); });
+      const dropBtn = body.querySelector("#ppDropDraft");
+      if (dropBtn) dropBtn.addEventListener("click", () => {
+        clearDraft();
+        state.picks = new Set(); state.cleared = new Set();
+        state.order = []; state.span = {}; state.adjust = {};
+        state.fromSaved = null; state.layouts = []; state.cols = [];
+        state.cover = false; state.lead = "";
+        resumedNote = false;
+        syncPages();
+        showPick();
+      });
       // The same saved list as the preview's, minus the save row.
       wireSavedPortfolios();
       body.querySelectorAll("#ppCoverStyleSeg [data-cover-style]").forEach((btn) => btn.addEventListener("click", () => { state.coverStyle = btn.dataset.coverStyle; syncPick(); }));
@@ -2589,6 +2722,16 @@
        three across with one beneath is the same four arranged differently.
        "Auto" is the grid's own judgement and stays the default. A count that
        would leave a row empty is not offered. */
+    // This page's own big-photo answer, offered under the page it changes.
+    function pageLayoutSegHtml(i) {
+      if (!admin) return "";
+      const on = layoutOf(i);
+      return `<div class="pp-seg pp-page-layout" role="radiogroup" aria-label="Sizes on page ${i + 1}">
+        <button type="button" role="radio" data-page-layout="${i}" data-layout-val="equal" aria-checked="${on === "equal"}" title="All the same size">Even</button>
+        <button type="button" role="radio" data-page-layout="${i}" data-layout-val="lead" aria-checked="${on === "lead"}" title="One big photo">Big</button>
+      </div>`;
+    }
+
     function pageColsSegHtml(i, drawn) {
       const n = drawn || perPage()[i] || 0;
       if (!admin || state.layout !== "equal" || n < 3) return "";
@@ -2600,10 +2743,63 @@
       </div>`;
     }
 
+    /* All the sheets, or one of them. Three pages side by side is the right
+       way to see a portfolio and the wrong way to work on a page: each one is
+       a third the width, and the studio asked to edit them one at a time. */
+    function sheetViewSegHtml(count) {
+      if (!admin || count < 2) return "";
+      const offset = state.cover ? 1 : 0;
+      const names = Array.from({ length: count }, (_, i) =>
+        [String(i), i < offset ? "Cover" : `Page ${i - offset + 1}`]);
+      return `<div class="pp-seg pp-sheet-view" role="radiogroup" aria-label="Which sheets to show">
+        <span class="pp-seg-cap" aria-hidden="true">Show</span>
+        <button type="button" role="radio" data-sheet-view="all" aria-checked="${state.sheetView === "all"}">All</button>
+        ${names.map(([v, label]) => `<button type="button" role="radio" data-sheet-view="${v}" aria-checked="${String(state.sheetView) === v}">${esc(label)}</button>`).join("")}
+      </div>`;
+    }
+
     // Which alignment the stats row is showing as chosen.
     function syncDetailsAlign() {
       body.querySelectorAll("#ppDetailsAlignSeg [data-details-align]").forEach((btn) =>
         btn.setAttribute("aria-checked", String(btn.dataset.detailsAlign === (state.detailsAlign || "left"))));
+    }
+
+    /* The type editor, given a sheet of its own. In the rail it was a table
+       squeezed into a gutter; here it has the width its rows were designed
+       for, and the preview behind it redraws as each choice is made. */
+    function showTypeSheet() {
+      const panel = body.querySelector("#ppTypePanel");
+      if (!panel) return;
+      const box = document.createElement("div");
+      box.className = "pp-zoom-backdrop pp-type-backdrop";
+      box.innerHTML = `
+        <div class="pp-type-sheet" role="dialog" aria-modal="true" aria-label="Type and border">
+          <div class="pp-zoom-head">
+            <span class="pp-zoom-name">Type &amp; border</span>
+            <button type="button" class="pp-zoom-x" data-type-close aria-label="Done">&times;</button>
+          </div>
+          <div class="pp-type-stage"></div>
+        </div>`;
+      // The live panel is moved in and put back, so every listener already on
+      // it keeps working and nothing is wired twice.
+      const stage = box.querySelector(".pp-type-stage");
+      const home = panel.parentNode, mark = document.createComment("type panel");
+      home.insertBefore(mark, panel);
+      stage.appendChild(panel);
+      panel.open = true;
+      const close = () => {
+        mark.parentNode.insertBefore(panel, mark);
+        mark.remove();
+        panel.open = false;
+        box.remove();
+        document.removeEventListener("keydown", onKey);
+      };
+      const onKey = (e) => { if (e.key === "Escape") close(); };
+      box.addEventListener("click", (e) => {
+        if (e.target === box || e.target.closest("[data-type-close]")) close();
+      });
+      document.addEventListener("keydown", onKey);
+      document.body.appendChild(box);
     }
 
     /* A sheet at a size it can be read at, before anything is downloaded.
@@ -2827,6 +3023,7 @@
                 <button type="button" role="radio" data-layout="equal">All the same size</button>
               </div>
               ${admin ? `<div class="pp-seg" role="radiogroup" aria-label="Rows" id="ppRowsSeg" hidden></div>` : ""}
+              <div id="ppSheetView"></div>
 ${admin ? `
               <!-- In the preview and not the picker: the picker is for
                    choosing photographs, this is about how they look. Whether
@@ -2897,7 +3094,11 @@ ${admin ? `
         ` : `
         ${admin ? `
           ${savedBoxHtml(true, false)}
-          <details class="pp-panel pp-type">
+          <!-- Opened as a sheet of its own rather than unrolled in the rail:
+               it is a table of five controls a row, and in a 286px column it
+               was cut off at the edge with a sideways scroll to reach the
+               rest. The rail keeps the handle; the editor gets the room. -->
+          <details class="pp-panel pp-type" id="ppTypePanel">
             <summary>Type &amp; border</summary>
             <p class="pp-type-note">Every line of the page. Sizes are millimetres. This changes every portfolio PDF from now on, not just this one — it is saved on this device, and goes live the next time you publish from Calendar.</p>
             <div id="ppTypeRows"></div>
@@ -2932,7 +3133,29 @@ ${admin ? `
        no save row — there is nothing arranged yet to name — so the save
        handler is attached only when the button is actually there. */
 
+      /* Listened for on the body, not on the preview: the control stands in
+         the rail beside the sheets, so a listener on .pp-preview never saw
+         its clicks and choosing a single sheet did nothing at all. */
+      body.addEventListener("click", (e) => {
+        const view = e.target.closest("[data-sheet-view]");
+        if (!view) return;
+        const want = view.dataset.sheetView;
+        if (String(state.sheetView) === want) return;
+        state.sheetView = want === "all" ? "all" : Number(want);
+        drawPreview();
+      });
+
       wireSavedPortfolios();
+
+      const typePanel = body.querySelector("#ppTypePanel");
+      if (typePanel) {
+        typePanel.querySelector("summary").addEventListener("click", (e) => {
+          // Never unrolled in place: it opens with the width its rows need.
+          if (typePanel.closest(".pp-type-backdrop")) return;
+          e.preventDefault();
+          showTypeSheet();
+        });
+      }
 
       const typeHost = body.querySelector("#ppTypeRows");
       const borderHost = body.querySelector("#ppBorderRow");
@@ -3129,6 +3352,9 @@ ${admin ? `
         if (!btn || btn.dataset.layout === state.layout) return;
         const wasCovered = covered();
         state.layout = btn.dataset.layout;
+        // Answering for the whole PDF clears what individual pages were told,
+        // or the control in the rail would appear to do nothing to them.
+        state.layouts = [];
         // Big photo pins the big one first in Photo order; All the same size
         // frees it, so the list is rebuilt rather than just redrawn.
         if (covered() !== wasCovered) { showPreview(); return; }
@@ -3158,6 +3384,17 @@ ${admin ? `
            cover. It could only be changed back on the picking screen, where
            the cover is a thumbnail — so the one place it is shown at full
            size was the one place it could not be changed. */
+        // This page's own sizes.
+        const pl = e.target.closest("[data-page-layout]");
+        if (pl) {
+          const i = Number(pl.dataset.pageLayout), want = pl.dataset.layoutVal;
+          if (layoutOf(i) === want) return;
+          const wasCovered = covered();
+          state.layouts[i] = want;
+          if (covered() !== wasCovered) { showPreview(); return; }
+          syncLayout(); syncOrder(); drawPreview();
+          return;
+        }
         const zoom = e.target.closest("[data-zoom]");
         if (zoom) { showSheetZoom(Number(zoom.dataset.zoom)); return; }
         if (e.target.closest("[data-swap-cover]")) { showCoverChooser(); return; }
@@ -3224,6 +3461,11 @@ ${admin ? `
         box.classList.remove("is-busy");
         // A cover is page nought: it has no count of its own.
         const offset = state.cover ? 1 : 0;
+        /* Only the chosen sheet is put on screen. The full set is still built
+           and still measured — the tag notes, the splits and the Wide badges
+           all read from every page — so hiding one changes what is shown and
+           nothing about what is known. */
+        const shown = (i) => state.sheetView === "all" || String(state.sheetView) === String(i);
         box.replaceChildren(...pages.map((p, i) => {
           p.canvas._photos = p.photos;
           p.canvas.setAttribute("role", "img");
@@ -3235,10 +3477,14 @@ ${admin ? `
           cap.className = "pp-sheet-cap";
           cap.innerHTML = i < offset
             ? `<span class="pp-sheet-head"><span class="pp-sheet-name">Cover</span>${zoomBtnHtml(i)}<button type="button" class="pp-sheet-swap" data-swap-cover aria-label="Use a different photograph for the cover" title="Use a different photograph">Change</button></span>${coverStyleSegHtml()}`
-            : `<span class="pp-sheet-head"><span class="pp-sheet-name">Page ${i - offset + 1}</span>${zoomBtnHtml(i)}${pageTagsBtnHtml(i - offset, p)}</span>${pageCountSegHtml(i - offset)}${pageColsSegHtml(i - offset, (p.canvas && p.canvas._photos || []).length)}`;
+            : `<span class="pp-sheet-head"><span class="pp-sheet-name">Page ${i - offset + 1}</span>${zoomBtnHtml(i)}${pageTagsBtnHtml(i - offset, p)}</span>${pageCountSegHtml(i - offset)}${pageLayoutSegHtml(i - offset)}${pageColsSegHtml(i - offset, (p.canvas && p.canvas._photos || []).length)}`;
           item.appendChild(cap);
+          item.hidden = !shown(i);
           return item;
         }));
+        box.classList.toggle("is-single", state.sheetView !== "all");
+        const viewHost = body.querySelector("#ppSheetView");
+        if (viewHost) viewHost.innerHTML = sheetViewSegHtml(pages.length);
         box.classList.toggle("two", pages.length === 2);
         box.classList.toggle("three", pages.length === 3);
         box.classList.toggle("four", pages.length > 3);
@@ -3365,15 +3611,21 @@ ${admin ? `
       body.querySelector("#ppFitWhole").addEventListener("click", () => setZoom(fitZoom()));
       body.querySelector("#ppFillFrame").addEventListener("click", () => setZoom(1));
       foot.querySelector("#ppAdjustReset").addEventListener("click", () => {
+        // Back to what the page does without being told: the whole photograph.
         Object.assign(a, saved());
-        setZoom(1);
+        setZoom(fitZoom());
       });
       foot.querySelector("#ppAdjustDone").addEventListener("click", () => {
         const s = saved();
         /* Zoomed OUT counts as a change too. This asked only whether the
            client had zoomed in, so choosing to show the whole photograph was
            thrown away the moment they pressed Done. */
-        const changed = Math.abs(a.x - s.x) > 0.001 || Math.abs(a.y - s.y) > 0.001 || Math.abs(a.zoom - 1) > 0.001;
+        /* Measured against what the page does on its own — showing the whole
+           photograph — not against "fills the frame", or simply opening
+           Adjust and pressing Done would have recorded a crop nobody asked
+           for. */
+        const base = fitZoom();
+        const changed = Math.abs(a.x - s.x) > 0.001 || Math.abs(a.y - s.y) > 0.001 || Math.abs(a.zoom - base) > 0.001;
         if (changed) state.adjust[slot.id] = { x: a.x, y: a.y, zoom: a.zoom };
         else delete state.adjust[slot.id];
         showPreview();
@@ -3386,7 +3638,12 @@ ${admin ? `
         // Only now is the photograph's own shape known, so only now can the
         // slider stop where the whole of it fits.
         zoom.min = String(fitZoom());
-        if (a.zoom < fitZoom()) setZoom(fitZoom());
+        /* A photograph the client has never adjusted is drawn whole on the
+           page, so this opens showing the same thing. Opening at 1 would have
+           shown a crop the page does not have, and pressing Done would then
+           have SAVED that crop as a deliberate choice. */
+        if (!state.adjust[slot.id]) setZoom(fitZoom());
+        else if (a.zoom < fitZoom()) setZoom(fitZoom());
         draw();
       }).catch(() => {
         if (token !== renderToken) return;

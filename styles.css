@@ -3273,14 +3273,21 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
    gets roughly three quarters of the screen and the panel scrolls under it. */
 @media (max-width: 767px) {
   .lightbox-main { height: 74svh; padding: 6px 6px 2px; }
-  .lightbox-figure { padding: 0 !important; }
+  /* The toolbar — Close Viewer, the counter, the × — is positioned absolute
+     at the top of .lightbox-main, so it sits OVER the photograph unless the
+     figure leaves room for it. The figure's own 60px top padding is exactly
+     that room, and this rule was zeroing all four sides to win back space on a
+     phone: the bar landed squarely on the picture, which is how a visitor saw
+     an album on Android (reported Sep 2026). The sides and foot still give
+     their space back; the top keeps the bar's height. */
+  .lightbox-figure { padding: 84px 0 0 !important; }
   /* An <img> with a w-descriptor srcset lays out at its density-corrected
      intrinsic width — 219px here — and never grows to fill the space it has.
      object-fit: contain (already set inline) keeps the whole photo visible, so
      it is safe to hand it the whole box. */
   .lightbox img, #lightboxImg {
     width: 100% !important; height: 100% !important;
-    max-width: 100% !important; max-height: 72svh !important;
+    max-width: 100% !important; max-height: calc(72svh - 84px) !important;
     object-fit: contain;
   }
   .lightbox-sidebar { height: auto; max-height: 26svh; overflow-y: auto; padding: 14px 18px 20px; }
@@ -3748,7 +3755,9 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
 
 /* 1. The sheet was a small rectangle adrift in a large field. Give it the
       stage's width and cap it by height instead, so it fills the room. */
-.pp-stage .pp-preview { padding: 20px; align-items: center; justify-content: center; }
+/* Top-aligned, not centred: a cover and a page are different heights, and
+   centring them hung the cover lower than the page beside it. */
+.pp-stage .pp-preview { padding: 20px; align-items: flex-start; justify-content: center; }
 .pp-stage .pp-sheet-item { max-width: none; width: 100%; }
 .pp-work .pp-preview.two .pp-sheet-item, .pp-work .pp-preview.three .pp-sheet-item { width: auto; }
 .pp-stage .pp-sheet-item > canvas {
@@ -3860,3 +3869,56 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
    "Phone (op". They stack until there is room for both. */
 .pp-choose-rail .pp-more-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .pp-choose-rail .pp-more-fields input { width: 100%; min-width: 0; }
+
+/* One sheet at a time: it gets the whole stage, so a page can be worked on
+   rather than surveyed. */
+.pp-preview.is-single .pp-sheet-item { width: 100%; max-width: none; }
+.pp-preview.is-single .pp-sheet-item > canvas { max-height: min(70vh, 860px); width: auto; max-width: 100%; margin: 0 auto; }
+.pp-sheet-view { flex-wrap: wrap; }
+.pp-page-layout { margin-top: 0; }
+.pp-page-layout button { min-width: 42px; }
+
+/* ── The type editor, wherever it is shown (v505) ──────────────────────────
+   A label and up to five controls. Written as a fixed inline grid it could
+   only fit the admin page; in the panel beside the preview it was cut off at
+   the edge, and the studio had to scroll sideways to find controls they could
+   not see — which read as the controls not existing. */
+.pdf-type-row {
+  display: grid; gap: 8px; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid var(--line);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.pdf-type-row .pdf-type-what { grid-column: 1 / -1; min-width: 0; }
+.pdf-type-row select, .pdf-type-row input[type="number"] { width: 100%; min-width: 0; }
+.pdf-type-colour { display: inline-flex; align-items: center; gap: 6px; }
+@media (min-width: 620px) {
+  .pdf-type-row { grid-template-columns: minmax(150px, 1.4fr) repeat(3, minmax(84px, 1fr)) auto; }
+  .pdf-type-row .pdf-type-what { grid-column: auto; }
+  .pdf-type-row[data-aligns] { grid-template-columns: minmax(150px, 1.4fr) repeat(4, minmax(84px, 1fr)) auto; }
+}
+/* The type editor's own sheet. */
+.pp-type-sheet {
+  background: var(--paper); color: var(--ink); border-radius: 12px;
+  width: min(960px, 100%); max-height: 92vh; display: flex; flex-direction: column; padding: 14px 16px 6px;
+}
+.pp-type-backdrop .pp-zoom-head { color: var(--ink); border-bottom: 1px solid var(--line); }
+.pp-type-backdrop .pp-zoom-x { border-color: var(--line); color: var(--ink-soft); }
+.pp-type-backdrop .pp-zoom-x:hover { background: var(--bone); color: var(--ink); }
+.pp-type-stage { overflow-y: auto; padding: 8px 2px 14px; min-height: 0; }
+.pp-type-stage .pp-panel { border: 0; padding: 0; background: none; }
+.pp-type-stage .pp-panel > summary { display: none; }
+/* The rail holds handles and short lists, so it no longer needs to scroll:
+   the two dense editors open as sheets of their own. */
+@media (min-width: 1000px) {
+  .pp-rail { position: sticky; top: 0; max-height: none; overflow: visible; }
+}
+/* Work that came back, and the way to drop it. */
+.pp-resumed {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  padding: 9px 11px; border: 1px solid var(--accent); border-radius: 10px;
+  background: var(--paper); font-size: 12.5px; line-height: 1.4;
+}
+.pp-resumed > span { flex: 1; min-width: 0; }
+/* 3. A sheet taken off screen must actually go: .pp-sheet-item carries a
+   display rule, and the hidden attribute alone loses to it. */
+.pp-sheet-item[hidden] { display: none !important; }
