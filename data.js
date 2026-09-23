@@ -3181,7 +3181,7 @@ window.WPS_DATA = {
     "PACKAGES": 1789975069137,
     "TFP_PACKAGE": 1789975069138,
     "HOME_STUDIO_RATE": 1789975069138,
-    "PORTFOLIO_PDF": 1790161486428,
+    "PORTFOLIO_PDF": 1790185479240,
     "HOME_STUDIO_RATE_TFP": 1789975069138
   },
   "TESTIMONIALS": {
@@ -3827,7 +3827,7 @@ window.WPS_DATA = {
         "id": "mp_mud2vlkr_co23k",
         "shootId": "comp-card-Atharv%20Sharma%20(https%3A%2F%2Fwww.instagram.com%2Fectogainsss%2F%3Fhl%3Den)",
         "name": "Test 1",
-        "updatedAt": 1790105974011,
+        "updatedAt": 1790185479240,
         "spec": {
           "pages": 2,
           "count": 8,
@@ -3858,57 +3858,22 @@ window.WPS_DATA = {
             true,
             true
           ],
-          "tagPlace": "in",
+          "tagPlace": "below",
           "tagAlign": "left",
           "layout": "equal",
           "order": [
+            "muca5877bysjsu-4",
             "muca56vgez53vb-0",
             "muca57hap5pcdi-1",
             "muca57yixr16s8-3",
-            "muca5877bysjsu-4",
+            "muca80smjx9k90-18",
             "muca80xnhe2eom-19",
             "muca593bwa9nvo-6",
-            "muccmrnumyyf3j-23",
-            "muca80smjx9k90-18"
+            "muccmrnumyyf3j-23"
           ],
           "fewerOnTop": false,
           "adjust": {
-            "muca56vgez53vb-0": {
-              "x": 0.5,
-              "y": 0,
-              "zoom": 1
-            },
-            "muca57hap5pcdi-1": {
-              "x": 0.5,
-              "y": 0.35,
-              "zoom": 1
-            },
-            "muca57yixr16s8-3": {
-              "x": 0.5,
-              "y": 0.35,
-              "zoom": 1
-            },
-            "muca5877bysjsu-4": {
-              "x": 0.5,
-              "y": 0.35,
-              "zoom": 1
-            },
             "muca80smjx9k90-18": {
-              "x": 0.5,
-              "y": 0.35,
-              "zoom": 1
-            },
-            "muca80xnhe2eom-19": {
-              "x": 0.47179368507662245,
-              "y": 0.24573177002982619,
-              "zoom": 1
-            },
-            "muca593bwa9nvo-6": {
-              "x": 0.5,
-              "y": 0.35,
-              "zoom": 1
-            },
-            "muccmrnumyyf3j-23": {
               "x": 0.5,
               "y": 0.35,
               "zoom": 1
@@ -3926,22 +3891,346 @@ window.WPS_DATA = {
     "versions": [
       {
         "id": "bkmuax7ucfco12",
-        "name": "Book 1",
+        "name": "Portfolio september 2026",
         "style": "modern",
         "colourway": "terracotta",
         "orientation": "portrait",
-        "title": "Selected Work",
-        "subtitle": "Fashion, portraits & editorial",
+        "title": "NerdyPhotographer.in",
+        "subtitle": "",
         "cover": null,
-        "schema": 1,
+        "schema": 2,
+        "coverStyle": {
+          "title": {
+            "size": 0.6
+          }
+        },
         "pages": [
           {
-            "type": "free",
-            "blocks": []
+            "type": "photos",
+            "photos": [
+              {
+                "id": "muca5a1qkkj6qh-11",
+                "x": 0.452,
+                "y": 0.112,
+                "zoom": 1
+              }
+            ]
           },
           {
             "type": "photos",
-            "photos": []
+            "photos": [
+              {
+                "id": "muccmrnumyyf3j-23",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1,
+                "fit": "whole"
+              },
+              {
+                "id": "muca593bwa9nvo-6",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1,
+                "fit": "whole"
+              },
+              {
+                "id": "muca80xnhe2eom-19",
+                "x": 0.472,
+                "y": 0.246,
+                "zoom": 1,
+                "fit": "whole"
+              },
+              {
+                "id": "muccms4j2bgcj0-26",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1,
+                "fit": "whole"
+              },
+              {
+                "id": "muccmrxvgwjmbb-25",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1,
+                "fit": "whole"
+              },
+              {
+                "id": "mucq0dfdg4bivd-29",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1,
+                "fit": "whole"
+              }
+            ]
+          },
+          {
+            "type": "photos",
+            "photos": [
+              {
+                "id": "mu17d96ivu3mvw-3",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1,
+                "fit": "whole"
+              },
+              {
+                "id": "mu17d9o9ldqpkw-6",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1,
+                "fit": "whole"
+              },
+              {
+                "id": "mu1bk4lhuxdl5n-17",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1,
+                "fit": "whole"
+              }
+            ]
+          },
+          {
+            "type": "photos",
+            "photos": [
+              {
+                "id": "mr8ld69w1fq1e5-1",
+                "x": 0.535,
+                "y": 0.245,
+                "zoom": 1
+              },
+              {
+                "id": "mr8ld764kc9619-3",
+                "x": 0.478,
+                "y": 0.137,
+                "zoom": 1
+              },
+              {
+                "id": "mr8ld720pjapet-7",
+                "x": 0.58,
+                "y": 0.611,
+                "zoom": 1
+              },
+              {
+                "id": "mrcy189dfa7lp5-0",
+                "x": 0.5,
+                "y": 0,
+                "zoom": 1,
+                "fit": "width"
+              }
+            ],
+            "rows": "3top"
+          },
+          {
+            "type": "photos",
+            "photos": [
+              {
+                "id": "mrania1npq2mxa-3",
+                "x": 0.5,
+                "y": 0,
+                "zoom": 1
+              },
+              {
+                "id": "mrania0x467ghm-2",
+                "x": 0.5,
+                "y": 0,
+                "zoom": 1
+              },
+              {
+                "id": "mraniak65nyfwg-6",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1
+              },
+              {
+                "id": "mraniber0p6mjp-9",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1
+              }
+            ]
+          },
+          {
+            "type": "photos",
+            "photos": [
+              {
+                "id": "mt641aywyo8l9l-6",
+                "x": 0.52,
+                "y": 0.11,
+                "zoom": 1,
+                "fit": "fill"
+              },
+              {
+                "id": "mt641cm9h0lm42-13",
+                "x": 0.5,
+                "y": 0.9,
+                "zoom": 1.2,
+                "fit": "fill"
+              },
+              {
+                "id": "mt6419358l2g01-1",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1
+              },
+              {
+                "id": "mt641bbyi6v540-8",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1
+              }
+            ]
+          },
+          {
+            "type": "photos",
+            "photos": [
+              {
+                "id": "mtrcns4f0f48p4-0",
+                "x": 0.511,
+                "y": 0.021,
+                "zoom": 1
+              }
+            ]
+          },
+          {
+            "type": "photos",
+            "photos": [
+              {
+                "id": "mtrcnspq75d7p1-3",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1
+              },
+              {
+                "id": "mtrcowl48wk2he-8",
+                "x": 0.377,
+                "y": 0.84,
+                "zoom": 1
+              },
+              {
+                "id": "mtrcoxdqn18vyz-12",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1
+              },
+              {
+                "id": "mtrcnsj03wdoss-2",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1
+              }
+            ]
+          },
+          {
+            "type": "photos",
+            "photos": [
+              {
+                "id": "mr55252orlz86s-0",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1,
+                "fit": "whole"
+              },
+              {
+                "id": "mr55255t1of0wb-1",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1,
+                "fit": "whole"
+              },
+              {
+                "id": "mr55258hn2cz2z-2",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1,
+                "fit": "whole"
+              },
+              {
+                "id": "mr5525z3emtds3-7",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1,
+                "fit": "whole"
+              },
+              {
+                "id": "mr5526qyua40ad-11",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1,
+                "fit": "whole"
+              },
+              {
+                "id": "mr5526tu5qjzd9-12",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1,
+                "fit": "whole"
+              }
+            ]
+          },
+          {
+            "type": "photos",
+            "photos": [
+              {
+                "id": "mr4x1enpef2e4p-2",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1,
+                "fit": "whole"
+              },
+              {
+                "id": "mr4x3k1a7k7iwo-6",
+                "x": 0.531,
+                "y": 0.109,
+                "zoom": 1,
+                "fit": "whole"
+              },
+              {
+                "id": "mr4x3jfi8fc679-3",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1.29,
+                "fit": "width"
+              }
+            ]
+          },
+          {
+            "type": "photos",
+            "photos": [
+              {
+                "id": "msxi7trlr69fmd-4",
+                "x": 0.89,
+                "y": 0.62,
+                "zoom": 1,
+                "fit": "height"
+              },
+              {
+                "id": "msxi7u509ftp4v-7",
+                "x": 1,
+                "y": 0,
+                "zoom": 1,
+                "fit": "fill"
+              },
+              {
+                "id": "msxi7txgnthszg-6",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1
+              },
+              {
+                "id": "msxi7t6urwrvjd-5",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1,
+                "fit": "width"
+              }
+            ],
+            "rows": "3top"
+          },
+          {
+            "type": "end",
+            "layout": "back",
+            "text": "",
+            "note": ""
           }
         ],
         "texts": {
@@ -3949,7 +4238,7 @@ window.WPS_DATA = {
           "phone": "",
           "showPrices": false
         },
-        "updatedAt": 1789975550196
+        "updatedAt": 1790191756952
       }
     ],
     "deleted": [
