@@ -2213,10 +2213,140 @@
        by pose, and a footer that always says where things stand, so a
        message is never scrolled out of sight. */
     const SHORT_POSE = { "full-body": "Full body", front: "Front", "left-profile": "Left", "right-profile": "Right", "three-quarter": "¾ view", back: "Back", "close-up": "Close-up" };
+    /* Saved arrangements, offered on BOTH screens.
+       It used to live only in the preview, which is on the far side of
+       picking photographs — so reopening a set the studio had already made
+       meant first picking photographs they were about to replace. The list is
+       the useful half here; saving belongs to the preview, where there is an
+       arrangement to save. Studio's ask, Sep 2026: "I should not need to
+       select when I already have something already made." */
+    function savedBoxHtml(withSave, open) {
+      if (!admin) return "";
+      return `<details class="pp-panel pp-saved-box"${open ? " open" : ""}>
+        <summary>Saved portfolios<span id="ppSavedCount"></span></summary>
+        <p class="pp-type-note">Keep this arrangement by name and reopen it whenever you like — the photos, the order, the layout, the cover and any nudge you gave a photo. It saves the arrangement rather than the file, so reopening it draws from today's photos and today's type, and both downloads are a press away. Saved on this device, and live the next time you publish from Calendar.</p>
+        ${withSave ? `<div class="pp-save-row">
+          <input type="text" id="ppSaveName" maxlength="60" placeholder="Name it, e.g. Devesh — agency set" />
+          <button type="button" class="pp-sample-btn" id="ppSaveBtn">Save this arrangement</button>
+        </div>` : ""}
+        <div id="ppSavedList"></div>
+      </details>`;
+    }
+
+    function wireSavedPortfolios() {
+        // Saved arrangements: keep this one, or put a saved one back on screen.
+        const savedList = body.querySelector("#ppSavedList");
+        if (savedList && typeof window.getModelPdfs === "function") {
+          const shootId = (shoot && shoot.id) || "";
+          const store = () => window.getModelPdfs();
+          const mine = () => store().versions.filter((v) => v.shootId === shootId);
+          const paint = () => {
+            const list = mine();
+            const count = body.querySelector("#ppSavedCount");
+            if (count) count.textContent = list.length ? ` (${list.length})` : "";
+            savedList.innerHTML = list.length
+              ? list.map((v) => `<div class="pp-saved-row" data-id="${esc(v.id)}">
+                  <span class="pp-saved-name">${esc(v.name || "Untitled")}</span>
+                  <span class="pp-saved-when">${new Date(v.updatedAt).toLocaleDateString()}</span>
+                  <button type="button" class="pp-sample-btn" data-open>Open</button>
+                  <button type="button" class="pp-sample-btn" data-del>Delete</button>
+                </div>`).join("")
+              : `<p class="pp-type-note" style="margin:0;">Nothing saved for this model yet.</p>`;
+          };
+          const write = (next) => {
+            window.saveModelPdfs(next);
+            if (typeof window.stampPortfolioPdfSetting === "function") window.stampPortfolioPdfSetting();
+            paint();
+          };
+          paint();
+          const saveBtn = body.querySelector("#ppSaveBtn");
+          if (saveBtn) saveBtn.addEventListener("click", () => {
+            const nameEl = body.querySelector("#ppSaveName");
+            // `name` in this scope is the model; this one is the arrangement.
+            const title = (nameEl.value || "").trim() || `${name} — ${new Date().toLocaleDateString()}`;
+            const cur = store();
+            const limit = (window.MODEL_PDF_LIMITS || {}).perModel || 12;
+            if (mine().length >= limit) { toast(`That is ${limit} saved for this model, which is the limit. Delete one first.`); return; }
+            cur.versions.unshift({
+              id: `mp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
+              shootId, name: title, updatedAt: Date.now(),
+              spec: {
+                pages: state.pages, count: state.count, picks: [...state.picks], cleared: [...state.cleared],
+                lead: state.lead, cover: state.cover, coverId: state.coverId, coverStyle: state.coverStyle,
+                layout: state.layout, order: [...state.order], fewerOnTop: state.fewerOnTop, cols: colsPerPage(),
+                detailsAlign: state.detailsAlign,
+                tags: tagsPerPage(),
+                tagPlace: state.tagPlace,
+                tagAlign: state.tagAlign,
+                perPage: perPage(),
+                span: JSON.parse(JSON.stringify(state.span || {})),
+                adjust: JSON.parse(JSON.stringify(state.adjust || {}))
+              }
+            });
+            write(cur);
+            nameEl.value = "";
+            toast(`Saved. It is on this device — publish from Calendar to keep it everywhere.`);
+          });
+          savedList.addEventListener("click", (e) => {
+            const row = e.target.closest(".pp-saved-row");
+            if (!row) return;
+            const v = mine().find((x) => x.id === row.dataset.id);
+            if (!v) return;
+            if (e.target.hasAttribute("data-del")) {
+              if (!confirm(`Delete “${v.name}”? The photos are untouched — only this arrangement goes.`)) return;
+              const cur = store();
+              cur.versions = cur.versions.filter((x) => x.id !== v.id);
+              cur.deleted = [...new Set([...(cur.deleted || []), v.id])];
+              write(cur);
+              return;
+            }
+            if (!e.target.hasAttribute("data-open")) return;
+            const sp = v.spec;
+            state.pages = sp.pages; state.count = sp.count;
+            state.picks = new Set(sp.picks); state.cleared = new Set(sp.cleared);
+            state.lead = sp.lead; state.cover = sp.cover; state.coverId = sp.coverId;
+            state.coverStyle = sp.coverStyle; state.layout = sp.layout;
+            state.order = [...sp.order]; state.fewerOnTop = sp.fewerOnTop;
+            // Saved before the studio could choose it: the grid works it out.
+            state.cols = Array.isArray(sp.cols) ? sp.cols.slice(0, sp.pages) : [];
+            // Saved before the studio could choose it: left, as it always was.
+            state.detailsAlign = ["left", "centre", "right"].includes(sp.detailsAlign) ? sp.detailsAlign : "left";
+            // An arrangement saved before the switch existed has no answer, and
+            // "on" is what it was saved under.
+            // An arrangement saved when the switch was one for the whole PDF
+            // reopens with every page set the way it was.
+            state.tags = Array.isArray(sp.tags) ? sp.tags.slice(0, sp.pages) : [];
+            if (!Array.isArray(sp.tags)) state.tags = Array.from({ length: sp.pages }, () => sp.tags !== false);
+            state.tagPlace = sp.tagPlace || "in";
+            state.tagAlign = sp.tagAlign || "left";
+            // One saved before the client could answer page by page is converted
+            // from its total, so it reopens as the PDF it was saved as.
+            /* Six to a page is the hard limit — the grid is built for six and a
+               seventh has nowhere to print. Every other path honours it by
+               construction, but this one takes its numbers from a file written
+               by an older build, so it is clamped rather than trusted, and a
+               set that cannot be made is re-spread from the count instead. */
+            const saved = Array.isArray(sp.perPage) && sp.perPage.length
+              ? sp.perPage.slice(0, sp.pages).map((n) => Math.max(1, Math.min(PORTFOLIO_PAGE_MAX, Number(n) || 1)))
+              : portfolioLegacySplit(sp.count, sp.pages, sp.firstPage || 0);
+            state.perPage = saved.reduce((a, b) => a + b, 0) === sp.count && saved.length === sp.pages
+              ? saved
+              : Array.from({ length: sp.pages }, (_, i) =>
+                  Math.floor(sp.count / sp.pages) + (i < sp.count % sp.pages ? 1 : 0));
+            syncCount();
+            state.adjust = JSON.parse(JSON.stringify(sp.adjust || {}));
+            state.span = JSON.parse(JSON.stringify(sp.span || {}));
+            showPreview();
+            toast(`“${v.name}” is back on screen.`);
+          });
+        }
+    }
+
     function showPick() {
       renderToken++;
       state.choosingCover = false;
       body.innerHTML = `
+        ${savedBoxHtml(false, true)}
         <div class="pp-controls">
           <div class="pp-seg" role="radiogroup" aria-label="Pages">
             ${Array.from({ length: PORTFOLIO_MAX_PAGES }, (_, i) => i + 1).map((n) => `<button type="button" role="radio" data-pages="${n}" aria-checked="false">${n} page${n > 1 ? "s" : ""}</button>`).join("")}
@@ -2301,6 +2431,8 @@
         body.querySelector("#ppCoverMode").scrollIntoView({ block: "nearest", behavior: "smooth" });
       });
       body.querySelector("#ppCoverModeCancel").addEventListener("click", () => { state.choosingCover = false; syncPick(); });
+      // The same saved list as the preview's, minus the save row.
+      wireSavedPortfolios();
       body.querySelectorAll("#ppCoverStyleSeg [data-cover-style]").forEach((btn) => btn.addEventListener("click", () => { state.coverStyle = btn.dataset.coverStyle; syncPick(); }));
       body.querySelector("#ppLocation").addEventListener("input", (e) => { state.location = e.target.value; });
       body.querySelector("#ppPhone").addEventListener("input", (e) => { state.phone = e.target.value; });
@@ -2715,15 +2847,7 @@
           </div>
         ` : `
         ${admin ? `
-          <details class="pp-panel pp-saved-box">
-            <summary>Saved portfolios<span id="ppSavedCount"></span></summary>
-            <p class="pp-type-note">Keep this arrangement by name and reopen it whenever you like — the photos, the order, the layout, the cover and any nudge you gave a photo. It saves the arrangement rather than the file, so reopening it draws from today's photos and today's type, and both downloads are a press away. Saved on this device, and live the next time you publish from Calendar.</p>
-            <div class="pp-save-row">
-              <input type="text" id="ppSaveName" maxlength="60" placeholder="Name it, e.g. Devesh — agency set" />
-              <button type="button" class="pp-sample-btn" id="ppSaveBtn">Save this arrangement</button>
-            </div>
-            <div id="ppSavedList"></div>
-          </details>
+          ${savedBoxHtml(true, false)}
           <details class="pp-panel pp-type">
             <summary>Type &amp; border</summary>
             <p class="pp-type-note">Every line of the page. Sizes are millimetres. This changes every portfolio PDF from now on, not just this one — it is saved on this device, and goes live the next time you publish from Calendar.</p>
@@ -2753,111 +2877,11 @@
       if (dlFreePng) dlFreePng.addEventListener("click", () => download(dlFreePng, true, "png"));
       // Changing any of it redraws the page underneath, so a choice is judged
       // against the real thing rather than described.
-      // Saved arrangements: keep this one, or put a saved one back on screen.
-      const savedList = body.querySelector("#ppSavedList");
-      if (savedList && typeof window.getModelPdfs === "function") {
-        const shootId = (shoot && shoot.id) || "";
-        const store = () => window.getModelPdfs();
-        const mine = () => store().versions.filter((v) => v.shootId === shootId);
-        const paint = () => {
-          const list = mine();
-          const count = body.querySelector("#ppSavedCount");
-          if (count) count.textContent = list.length ? ` (${list.length})` : "";
-          savedList.innerHTML = list.length
-            ? list.map((v) => `<div class="pp-saved-row" data-id="${esc(v.id)}">
-                <span class="pp-saved-name">${esc(v.name || "Untitled")}</span>
-                <span class="pp-saved-when">${new Date(v.updatedAt).toLocaleDateString()}</span>
-                <button type="button" class="pp-sample-btn" data-open>Open</button>
-                <button type="button" class="pp-sample-btn" data-del>Delete</button>
-              </div>`).join("")
-            : `<p class="pp-type-note" style="margin:0;">Nothing saved for this model yet.</p>`;
-        };
-        const write = (next) => {
-          window.saveModelPdfs(next);
-          if (typeof window.stampPortfolioPdfSetting === "function") window.stampPortfolioPdfSetting();
-          paint();
-        };
-        paint();
-        body.querySelector("#ppSaveBtn").addEventListener("click", () => {
-          const nameEl = body.querySelector("#ppSaveName");
-          // `name` in this scope is the model; this one is the arrangement.
-          const title = (nameEl.value || "").trim() || `${name} — ${new Date().toLocaleDateString()}`;
-          const cur = store();
-          const limit = (window.MODEL_PDF_LIMITS || {}).perModel || 12;
-          if (mine().length >= limit) { toast(`That is ${limit} saved for this model, which is the limit. Delete one first.`); return; }
-          cur.versions.unshift({
-            id: `mp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
-            shootId, name: title, updatedAt: Date.now(),
-            spec: {
-              pages: state.pages, count: state.count, picks: [...state.picks], cleared: [...state.cleared],
-              lead: state.lead, cover: state.cover, coverId: state.coverId, coverStyle: state.coverStyle,
-              layout: state.layout, order: [...state.order], fewerOnTop: state.fewerOnTop, cols: colsPerPage(),
-              detailsAlign: state.detailsAlign,
-              tags: tagsPerPage(),
-              tagPlace: state.tagPlace,
-              tagAlign: state.tagAlign,
-              perPage: perPage(),
-              span: JSON.parse(JSON.stringify(state.span || {})),
-              adjust: JSON.parse(JSON.stringify(state.adjust || {}))
-            }
-          });
-          write(cur);
-          nameEl.value = "";
-          toast(`Saved. It is on this device — publish from Calendar to keep it everywhere.`);
-        });
-        savedList.addEventListener("click", (e) => {
-          const row = e.target.closest(".pp-saved-row");
-          if (!row) return;
-          const v = mine().find((x) => x.id === row.dataset.id);
-          if (!v) return;
-          if (e.target.hasAttribute("data-del")) {
-            if (!confirm(`Delete “${v.name}”? The photos are untouched — only this arrangement goes.`)) return;
-            const cur = store();
-            cur.versions = cur.versions.filter((x) => x.id !== v.id);
-            cur.deleted = [...new Set([...(cur.deleted || []), v.id])];
-            write(cur);
-            return;
-          }
-          if (!e.target.hasAttribute("data-open")) return;
-          const sp = v.spec;
-          state.pages = sp.pages; state.count = sp.count;
-          state.picks = new Set(sp.picks); state.cleared = new Set(sp.cleared);
-          state.lead = sp.lead; state.cover = sp.cover; state.coverId = sp.coverId;
-          state.coverStyle = sp.coverStyle; state.layout = sp.layout;
-          state.order = [...sp.order]; state.fewerOnTop = sp.fewerOnTop;
-          // Saved before the studio could choose it: the grid works it out.
-          state.cols = Array.isArray(sp.cols) ? sp.cols.slice(0, sp.pages) : [];
-          // Saved before the studio could choose it: left, as it always was.
-          state.detailsAlign = ["left", "centre", "right"].includes(sp.detailsAlign) ? sp.detailsAlign : "left";
-          // An arrangement saved before the switch existed has no answer, and
-          // "on" is what it was saved under.
-          // An arrangement saved when the switch was one for the whole PDF
-          // reopens with every page set the way it was.
-          state.tags = Array.isArray(sp.tags) ? sp.tags.slice(0, sp.pages) : [];
-          if (!Array.isArray(sp.tags)) state.tags = Array.from({ length: sp.pages }, () => sp.tags !== false);
-          state.tagPlace = sp.tagPlace || "in";
-          state.tagAlign = sp.tagAlign || "left";
-          // One saved before the client could answer page by page is converted
-          // from its total, so it reopens as the PDF it was saved as.
-          /* Six to a page is the hard limit — the grid is built for six and a
-             seventh has nowhere to print. Every other path honours it by
-             construction, but this one takes its numbers from a file written
-             by an older build, so it is clamped rather than trusted, and a
-             set that cannot be made is re-spread from the count instead. */
-          const saved = Array.isArray(sp.perPage) && sp.perPage.length
-            ? sp.perPage.slice(0, sp.pages).map((n) => Math.max(1, Math.min(PORTFOLIO_PAGE_MAX, Number(n) || 1)))
-            : portfolioLegacySplit(sp.count, sp.pages, sp.firstPage || 0);
-          state.perPage = saved.reduce((a, b) => a + b, 0) === sp.count && saved.length === sp.pages
-            ? saved
-            : Array.from({ length: sp.pages }, (_, i) =>
-                Math.floor(sp.count / sp.pages) + (i < sp.count % sp.pages ? 1 : 0));
-          syncCount();
-          state.adjust = JSON.parse(JSON.stringify(sp.adjust || {}));
-          state.span = JSON.parse(JSON.stringify(sp.span || {}));
-          showPreview();
-          toast(`“${v.name}” is back on screen.`);
-        });
-      }
+    /* Wired on whichever screen raised the list. The picking screen has
+       no save row — there is nothing arranged yet to name — so the save
+       handler is attached only when the button is actually there. */
+
+      wireSavedPortfolios();
 
       const typeHost = body.querySelector("#ppTypeRows");
       const borderHost = body.querySelector("#ppBorderRow");
