@@ -2679,7 +2679,7 @@ body.wps-no-pricing.wps-rental-quote #finalPriceSummaryBox { display: block !imp
 html { color-scheme: light; }
 html.theme-dark { color-scheme: dark; }
 .pp-backdrop { position: fixed; inset: 0; z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,.72); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
-.pp-sheet { width: 100%; max-width: 760px; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; overflow: hidden; background: var(--paper); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+.pp-sheet { width: 100%; max-width: 1180px; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; overflow: hidden; background: var(--paper); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
 .pp-head { position: relative; padding: 14px 60px 12px 20px; border-bottom: 1px solid var(--line); }
 .pp-eyebrow { font-family: var(--mono-font); font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); }
 .pp-head h3 { margin: 2px 0 0; font-family: "Archivo", sans-serif; font-size: 18px; font-weight: 800; letter-spacing: -0.01em; color: var(--ink); }
@@ -3671,3 +3671,192 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
   font: 600 10px/1 var(--mono-font); letter-spacing: .06em; text-transform: uppercase;
 }
 .pp-sheet-zoom:hover { color: var(--ink); border-color: var(--ink); }
+
+/* ── The portfolio builder, rebuilt as a workspace (v504) ──────────────────
+   It was a 760px column that scrolled: page count, pose filters, thirty
+   thumbnails, then a row of segmented pills above a postage-stamp sheet. The
+   thing being made was the smallest object on screen and every control
+   competed with it. Now the sheet is the subject and the controls stand in a
+   rail beside it. The studio sees the craft; a client sees the portfolio. */
+
+/* Choose: a quiet rail, then the photographs. */
+.pp-choose { display: grid; gap: 18px; align-items: start; }
+@media (min-width: 900px) { .pp-choose { grid-template-columns: 232px minmax(0, 1fr); gap: 26px; } }
+.pp-choose-rail { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+@media (min-width: 900px) { .pp-choose-rail { position: sticky; top: 0; } }
+.pp-choose-main { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+
+/* Arrange: the sheets take the room, the controls stand aside. */
+.pp-work { display: grid; gap: 18px; align-items: start; min-width: 0; }
+@media (min-width: 1000px) { .pp-work { grid-template-columns: minmax(0, 1fr) 286px; gap: 28px; } }
+.pp-stage { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.pp-rail { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+@media (min-width: 1000px) {
+  .pp-rail { position: sticky; top: 0; max-height: calc(100dvh - 190px); overflow-y: auto; padding-right: 2px; }
+}
+/* The sheets, on a field rather than on the page's own paper, so the white
+   of the paper reads as paper. */
+.pp-stage .pp-preview {
+  background: var(--bone); border-radius: 12px; padding: 22px 18px;
+  align-items: flex-start; min-height: 220px;
+}
+.pp-stage .pp-sheet-item { max-width: 460px; }
+.pp-work.is-client .pp-stage .pp-sheet-item { max-width: 520px; }
+
+/* The photo strip, along the foot of the stage. */
+.pp-strip {
+  border-top: 1px solid var(--line); padding-top: 12px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.pp-strip-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.pp-strip-head .pp-hint { margin: 0; }
+.pp-arrange { margin: 0; }
+.pp-arrange-head { display: flex; flex-wrap: wrap; gap: 10px; }
+.pp-arrange-segs { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+/* In the rail the segmented controls stack, each on its own line, with its
+   caption above rather than crowded alongside. */
+@media (min-width: 1000px) {
+  .pp-rail .pp-seg, .pp-arrange-segs .pp-seg { width: 100%; }
+}
+.pp-seg-cap {
+  font: 600 9.5px/1 var(--mono-font); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-soft); align-self: center; padding: 0 8px 0 4px;
+}
+/* A rail panel: quiet until opened. */
+.pp-rail .pp-panel, .pp-choose-rail .pp-panel { margin: 0; }
+.pp-rail .pp-panel > summary, .pp-choose-rail .pp-panel > summary {
+  font: 600 10.5px/1 var(--mono-font); letter-spacing: .1em; text-transform: uppercase;
+}
+/* Cover and the optional fields sit under the grid on a phone and beside it
+   on a desk, rather than below thirty thumbnails either way. */
+.pp-choose-aside { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+@media (min-width: 900px) {
+  .pp-choose { grid-template-areas: "rail main" "rail aside"; grid-template-rows: auto 1fr; }
+  .pp-choose-rail { grid-area: rail; }
+  .pp-choose-main { grid-area: main; }
+  .pp-choose-aside { grid-area: aside; }
+}
+/* The grid breathes: larger frames, and a steadier rhythm across widths. */
+.pp-choose-main .pp-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
+@media (min-width: 1000px) { .pp-choose-main .pp-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; } }
+/* The footer reads as a status line, not a scoreboard. */
+.pp-foot .pp-status { flex: 1; margin: 0; min-width: 0; }
+.pp-foot #ppTally { font: 600 11px/1 var(--mono-font); letter-spacing: .08em; text-transform: uppercase; }
+
+/* ── Corrections after looking at the rebuilt workspace (v504) ─────────────
+   Three things the screenshots showed that the markup did not. */
+
+/* 1. The sheet was a small rectangle adrift in a large field. Give it the
+      stage's width and cap it by height instead, so it fills the room. */
+.pp-stage .pp-preview { padding: 20px; align-items: center; justify-content: center; }
+.pp-stage .pp-sheet-item { max-width: none; width: 100%; }
+.pp-work .pp-preview.two .pp-sheet-item, .pp-work .pp-preview.three .pp-sheet-item { width: auto; }
+.pp-stage .pp-sheet-item > canvas {
+  width: 100%; height: auto; max-height: min(64vh, 720px); object-fit: contain;
+}
+.pp-work .pp-preview.two .pp-sheet-item > canvas,
+.pp-work .pp-preview.three .pp-sheet-item > canvas { max-height: min(52vh, 560px); width: auto; }
+
+/* 2. The × sat on top of the number. The number keeps the corner it has had
+      since the strip existed; taking a photograph out moves to the far one. */
+.pp-order-drop { left: auto; right: 4px; }
+.pp-order-item.is-lead .pp-order-drop, .pp-order-photo:has(.pp-order-star) .pp-order-drop { top: auto; bottom: 4px; }
+
+/* 3. Swap / Adjust / Wide stacked three rows deep under every thumbnail,
+      which made the strip taller than the photographs in it. They sit on one
+      line and say what they do by their own width. */
+.pp-order-item { width: 96px; }
+.pp-order-acts { display: flex; gap: 3px; width: 100%; }
+.pp-order-acts > button { flex: 1 1 0; min-width: 0; padding: 5px 2px; margin-top: 0; font-size: 9px; letter-spacing: .02em; }
+.pp-order-swap, .pp-order-adjust, .pp-order-wide { margin-top: 0; }
+.pp-order-move { margin-top: 3px; }
+
+/* The sheet is the subject, but not at the cost of the strip beneath it:
+   cap it so the photographs the studio is ordering stay on screen. */
+.pp-stage .pp-sheet-item > canvas { max-height: min(54vh, 620px); }
+.pp-work .pp-preview.two .pp-sheet-item > canvas,
+.pp-work .pp-preview.three .pp-sheet-item > canvas { max-height: min(44vh, 470px); }
+
+/* Everything a sheet says about itself on one line, rather than a caption
+   with an orphaned row of numbers floating under it. */
+.pp-sheet-cap { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 8px; }
+.pp-sheet-head { display: inline-flex; align-items: center; gap: 8px; }
+.pp-page-cols, .pp-page-count { margin-top: 0; }
+
+/* The optional fields read as a panel like the two below them, instead of a
+   stray line of text between the controls and the studio's own drawers. */
+.pp-rail .pp-more {
+  border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--paper);
+}
+.pp-rail .pp-more > summary {
+  font: 600 10.5px/1 var(--mono-font); letter-spacing: .1em; text-transform: uppercase; cursor: pointer;
+}
+
+/* A client has almost no controls — what fills their rail is the payment,
+   which needs width, not a 286px gutter. Squeezed in beside the sheet the QR
+   code sat against three numbered steps one word wide, with the UPI address
+   and "download" running off the edge. So the client keeps one centred
+   column: the sheet, then what to do about it. The studio keeps two panes,
+   where the rail really is controls. */
+.pp-work.is-client { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1000px) { .pp-work.is-client { grid-template-columns: minmax(0, 1fr); } }
+.pp-work.is-client .pp-rail {
+  position: static; max-height: none; overflow: visible;
+  width: 100%; max-width: 660px; margin: 0 auto;
+}
+.pp-work.is-client .pp-stage .pp-sheet-item > canvas { max-height: min(60vh, 700px); }
+/* The paid steps read as steps again, rather than a column of single words. */
+.pp-pay-grid { display: grid; gap: 16px; align-items: start; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 560px) { .pp-pay-grid { grid-template-columns: 168px minmax(0, 1fr); } }
+.pp-pay-grid .pp-steps { min-width: 0; padding-left: 20px; }
+.pp-pay-grid .pp-steps li { overflow-wrap: anywhere; }
+.pp-qr { width: 100%; max-width: 168px; height: auto; }
+
+/* A long summary is a sentence, not a label: leave it in sentence case so it
+   does not wrap into two lines of shouting. */
+.pp-rail .pp-more > summary {
+  font: 600 12.5px/1.35 "Inter", system-ui, sans-serif; letter-spacing: 0; text-transform: none;
+}
+
+/* A saved arrangement is a name, a date and two verbs. In a 232px rail those
+   were wrapping onto four lines each, so the list of two filled the column. */
+.pp-saved-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center;
+  gap: 6px; padding: 7px 0; border-bottom: 1px solid var(--line);
+}
+.pp-saved-row:last-child { border-bottom: 0; }
+.pp-saved-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.pp-saved-when { display: none; }
+.pp-saved-row .pp-sample-btn { padding: 4px 8px; font-size: 10px; white-space: nowrap; }
+/* Wide enough to show the date again. */
+@media (min-width: 1200px) {
+  .pp-saved-row { grid-template-columns: minmax(0, 1fr) auto auto auto; }
+  .pp-saved-when { display: inline; font-size: 10.5px; color: var(--ink-soft); white-space: nowrap; }
+}
+/* The rail's own panels sit flush, and the cover control stacks rather than
+   stretching across a column it no longer has. */
+.pp-choose-rail .pp-cover-line { flex-direction: column; align-items: stretch; gap: 10px; }
+.pp-choose-rail .pp-cover-set { flex-direction: column; align-items: stretch; gap: 8px; }
+.pp-choose-rail .pp-more { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--paper); }
+.pp-choose-rail .pp-more > summary { font: 600 12.5px/1.35 "Inter", system-ui, sans-serif; letter-spacing: 0; text-transform: none; cursor: pointer; }
+
+/* In a rail this narrow a name, a date and two buttons cannot share a line
+   without the name becoming "Te…". The name takes its own line and the rest
+   sits beneath it, which also puts Open where the thumb expects it. */
+@media (max-width: 1199px) {
+  .pp-choose-rail .pp-saved-row { grid-template-columns: minmax(0, 1fr); gap: 5px; }
+  .pp-choose-rail .pp-saved-name { white-space: normal; }
+  .pp-choose-rail .pp-saved-when { display: inline; font-size: 10.5px; color: var(--ink-soft); }
+  .pp-choose-rail .pp-saved-row > .pp-sample-btn { justify-self: start; }
+  .pp-choose-rail .pp-saved-row {
+    grid-template-columns: auto auto 1fr; grid-template-areas: "name name name" "when open del";
+  }
+  .pp-choose-rail .pp-saved-name { grid-area: name; }
+  .pp-choose-rail .pp-saved-when { grid-area: when; align-self: center; }
+  .pp-choose-rail .pp-saved-row > .pp-sample-btn:nth-of-type(1) { grid-area: open; }
+  .pp-choose-rail .pp-saved-row > .pp-sample-btn:nth-of-type(2) { grid-area: del; justify-self: start; }
+}
+/* Two fields side by side in a 232px column showed "Based in (" and
+   "Phone (op". They stack until there is room for both. */
+.pp-choose-rail .pp-more-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.pp-choose-rail .pp-more-fields input { width: 100%; min-width: 0; }

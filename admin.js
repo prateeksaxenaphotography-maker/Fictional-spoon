@@ -275,7 +275,7 @@ window.renderPdfTypeEditor = function(host) {
   host.innerHTML = window.PDF_TYPE_ROLES.map((r) => {
     const v = cur[r.key] || {};
     const isAuto = v.color === "auto";
-    return `<div class="pdf-type-row" data-role="${pdfEsc(r.key)}" style="display: grid; grid-template-columns: minmax(150px, 1.4fr) repeat(3, minmax(88px, 1fr)) auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line);">
+    return `<div class="pdf-type-row" data-role="${pdfEsc(r.key)}" style="display: grid; grid-template-columns: minmax(150px, 1.4fr) repeat(${r.aligns ? 4 : 3}, minmax(88px, 1fr)) auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line);">
       <div style="min-width: 0;">
         <strong style="font-size: var(--font-xs); color: var(--ink);">${pdfEsc(r.label)}</strong>
         ${r.note ? `<span style="display: block; font-size: var(--font-xs); color: var(--ink-soft);">${pdfEsc(r.note)}</span>` : ""}
@@ -286,6 +286,9 @@ window.renderPdfTypeEditor = function(host) {
       <select data-f="weight" style="${cell}" aria-label="Weight for ${pdfEsc(r.label)}">
         ${(window.PDF_TYPE_WEIGHTS || []).map((w) => `<option value="${w}"${Number(v.weight) === w ? " selected" : ""}>${w === 400 ? "Regular" : w === 500 ? "Medium" : w === 600 ? "Semibold" : w === 700 ? "Bold" : "Heavy"}</option>`).join("")}
       </select>
+      ${r.aligns ? `<select data-f="align" style="${cell}" aria-label="How ${pdfEsc(r.label)} line up in their cell">
+        ${[["left", "Left"], ["centre", "Centre"], ["right", "Right"]].map(([k, lbl]) => `<option value="${k}"${(v.align || "left") === k ? " selected" : ""}>${lbl}</option>`).join("")}
+      </select>` : ""}
       ${r.sized
         ? `<input type="number" data-f="size" min="1" max="20" step="0.1" value="${v.size != null ? v.size : ""}" style="${cell}" aria-label="Size in millimetres for ${pdfEsc(r.label)}" />`
         : `<span style="font-size: var(--font-xs); color: var(--ink-soft);">fitted</span>`}
@@ -352,6 +355,8 @@ window.readPdfTypeEditor = function(host) {
       color: auto && auto.checked ? "auto" : (get("color") ? get("color").value : undefined)
     };
     if (size && size.value.trim() !== "") t.size = Number(size.value);
+    const align = get("align");
+    if (align) t.align = align.value;
     out[row.dataset.role] = t;
   });
   return out;

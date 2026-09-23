@@ -1143,13 +1143,25 @@
   }
 
   // A small label over its value; returns the width used.
+  /* A stat heading sits over its value. The cell is as wide as the wider of
+     the two, so the narrower one has room to move: HEIGHT over 6 Ft can hang
+     left, sit centred, or line up right. Measured before either is drawn,
+     because neither can be placed until the cell's width is known. Separate
+     from detailsAlign, which moves the whole row across the page. */
   function drawPdfCell(page, cell, x, top, maxW) {
     const lab = pdfType("statLabel", PDF_LABEL), val = pdfType("statValue", PDF_VALUE);
     const label = page.fit(cell.label, maxW, lab);
     const value = page.fit(cell.value, maxW, val);
-    page.text(label, x, top + 1.6, lab);
-    page.text(value, x, top + 5.8, val);
-    const w = Math.min(maxW, Math.max(page.measure(label, lab), page.measure(value, val)));
+    const lw = page.measure(label, lab), vw = page.measure(value, val);
+    const w = Math.min(maxW, Math.max(lw, vw));
+    const shift = (style, own) => {
+      const a = String(style.align || "left").toLowerCase();
+      if (a === "centre" || a === "center") return Math.max(0, (w - own) / 2);
+      if (a === "right") return Math.max(0, w - own);
+      return 0;
+    };
+    page.text(label, x + shift(lab, lw), top + 1.6, lab);
+    page.text(value, x + shift(val, vw), top + 5.8, val);
     if (cell.url) page.link(x, top, w, PDF_CELL_H, cell.url);
     return w;
   }
@@ -2224,7 +2236,9 @@
       if (!admin) return "";
       return `<details class="pp-panel pp-saved-box"${open ? " open" : ""}>
         <summary>Saved portfolios<span id="ppSavedCount"></span></summary>
-        <p class="pp-type-note">Keep this arrangement by name and reopen it whenever you like — the photos, the order, the layout, the cover and any nudge you gave a photo. It saves the arrangement rather than the file, so reopening it draws from today's photos and today's type, and both downloads are a press away. Saved on this device, and live the next time you publish from Calendar.</p>
+        <p class="pp-type-note">${withSave
+          ? "Keep this arrangement by name and reopen it whenever you like — the photos, the order, the layout, the cover and any nudge you gave a photo. It saves the arrangement rather than the file, so reopening it draws from today's photos and today's type, and both downloads are a press away. Saved on this device, and live the next time you publish from Calendar."
+          : "Open one to pick up where you left off."}</p>
         ${withSave ? `<div class="pp-save-row">
           <input type="text" id="ppSaveName" maxlength="60" placeholder="Name it, e.g. Devesh — agency set" />
           <button type="button" class="pp-sample-btn" id="ppSaveBtn">Save this arrangement</button>
@@ -2345,36 +2359,20 @@
     function showPick() {
       renderToken++;
       state.choosingCover = false;
+      /* The rail carries the decisions, the grid carries the photographs.
+         Both used to stack above thirty thumbnails in one narrow column, so
+         the page count scrolled away the moment the studio started looking. */
       body.innerHTML = `
-        ${savedBoxHtml(false, true)}
-        <div class="pp-controls">
+        <div class="pp-choose${admin ? " is-studio" : " is-client"}">
+        <div class="pp-choose-rail">
           <div class="pp-seg" role="radiogroup" aria-label="Pages">
             ${Array.from({ length: PORTFOLIO_MAX_PAGES }, (_, i) => i + 1).map((n) => `<button type="button" role="radio" data-pages="${n}" aria-checked="false">${n} page${n > 1 ? "s" : ""}</button>`).join("")}
           </div>
           <!-- How many photographs go on each page is asked at the preview,
                not here: it is a question about how the pages look, and the
                answer only suggests itself once they are on screen. -->
-        </div>
-        <div class="pp-filters" role="toolbar" aria-label="Show one pose">
-          <button type="button" data-filter="all" aria-pressed="true">All</button>
-          ${poses.map((p) => `<button type="button" data-filter="${esc(p.angle)}" aria-pressed="false">${esc(p.angle ? SHORT_POSE[p.angle] || p.label : "Other")}<span class="pp-filter-n"></span></button>`).join("")}
-        </div>
-        <div class="pp-mode" id="ppCoverMode" hidden>
-          <span>Tap the photo for your cover</span>
-          <button type="button" class="pp-link" id="ppCoverModeCancel">Cancel</button>
-        </div>
-        <div class="pp-grid" id="ppGrid">
-          ${slots.map((x) => `
-            <div class="pp-tile" data-id="${esc(x.id)}" data-angle="${esc(x.angle)}">
-              <button type="button" class="pp-tile-pick" aria-pressed="false" aria-label="${esc(x.name)}">
-                <img src="${esc(photoSrc(x.photo.small ? { url: x.photo.small } : x.photo))}" alt="" loading="lazy" style="object-position: ${esc(x.photo.objectPosition || "center")};" />
-                ${x.angle ? `<span class="pp-tile-pose">${esc(SHORT_POSE[x.angle] || x.label)}</span>` : ""}
-                <span class="pp-tile-check" aria-hidden="true"></span>
-                <span class="pp-tile-cover" aria-hidden="true">Cover</span>
-              </button>
-              <button type="button" class="pp-tile-star" aria-pressed="false" aria-label="Make ${esc(x.name)} the big photo" title="Big photo"></button>
-            </div>`).join("")}
-        </div>
+          ${savedBoxHtml(false, true)}
+
         <div class="pp-cover-line">
           <label class="pp-switch"><input type="checkbox" id="ppCover" /><span class="pp-switch-track" aria-hidden="true"></span><span>Cover page</span></label>
           <div class="pp-cover-set" id="ppCoverSet" hidden>
@@ -2398,6 +2396,30 @@
           </div>
           <p class="pp-hint">Fill in either, both or neither — they are independent. Printed on your PDF only, never saved.</p>
         </details>
+        </div>
+        <div class="pp-choose-main">
+        <div class="pp-filters" role="toolbar" aria-label="Show one pose">
+          <button type="button" data-filter="all" aria-pressed="true">All</button>
+          ${poses.map((p) => `<button type="button" data-filter="${esc(p.angle)}" aria-pressed="false">${esc(p.angle ? SHORT_POSE[p.angle] || p.label : "Other")}<span class="pp-filter-n"></span></button>`).join("")}
+        </div>
+        <div class="pp-mode" id="ppCoverMode" hidden>
+          <span>Tap the photo for your cover</span>
+          <button type="button" class="pp-link" id="ppCoverModeCancel">Cancel</button>
+        </div>
+        <div class="pp-grid" id="ppGrid">
+          ${slots.map((x) => `
+            <div class="pp-tile" data-id="${esc(x.id)}" data-angle="${esc(x.angle)}">
+              <button type="button" class="pp-tile-pick" aria-pressed="false" aria-label="${esc(x.name)}">
+                <img src="${esc(photoSrc(x.photo.small ? { url: x.photo.small } : x.photo))}" alt="" loading="lazy" style="object-position: ${esc(x.photo.objectPosition || "center")};" />
+                ${x.angle ? `<span class="pp-tile-pose">${esc(SHORT_POSE[x.angle] || x.label)}</span>` : ""}
+                <span class="pp-tile-check" aria-hidden="true"></span>
+                <span class="pp-tile-cover" aria-hidden="true">Cover</span>
+              </button>
+              <button type="button" class="pp-tile-star" aria-pressed="false" aria-label="Make ${esc(x.name)} the big photo" title="Big photo"></button>
+            </div>`).join("")}
+        </div>
+        </div>
+        </div>
       `;
       foot.innerHTML = `
         <p class="pp-status" aria-live="polite"><strong id="ppTally"></strong> <span id="ppMsg"></span></p>
@@ -2536,6 +2558,7 @@
     // asked for, so it cannot claim a page printed labels it did not — the
     // same rule as the Wide button.
     function pageTagsBtnHtml(i, drawn) {
+      if (!admin) return "";
       const on = tagsPerPage()[i];
       const bare = (drawn && drawn.tagsBare) || 0;
       const shown = !!(drawn && drawn.tagsShown);
@@ -2551,7 +2574,9 @@
        nowhere to give, so the row would be a control that cannot do anything;
        it is left out rather than shown dead. */
     function pageCountSegHtml(i) {
-      if (state.pages < 2) return "";
+      // The studio's, not a client's: an automatic even division is the right
+      // answer for someone buying one portfolio, and one fewer decision.
+      if (!admin || state.pages < 2) return "";
       const on = perPage()[i];
       return `<div class="pp-seg pp-page-count" role="radiogroup" aria-label="Photos on page ${i + 1}">
         ${PORTFOLIO_PAGE_COUNTS.map((n) => `<button type="button" role="radio" data-page="${i}" data-on-page="${n}" aria-checked="${n === on}"${canPutOnPage(i, n) ? "" : " disabled"}>${n}</button>`).join("")}
@@ -2566,7 +2591,7 @@
        would leave a row empty is not offered. */
     function pageColsSegHtml(i, drawn) {
       const n = drawn || perPage()[i] || 0;
-      if (state.layout !== "equal" || n < 3) return "";
+      if (!admin || state.layout !== "equal" || n < 3) return "";
       const on = colsPerPage()[i];
       const opts = [0, ...Array.from({ length: Math.min(n, 5) }, (_, k) => k + 1).filter((c) => c > 1 && c < n)];
       if (opts.length < 2) return "";
@@ -2650,6 +2675,7 @@
        framed does, then finds out a page later. Here the cover is drawn full
        size beside the pages, so the choice is made while looking at it. */
     function coverStyleSegHtml() {
+      if (!admin) return "";
       const on = state.coverStyle || "full";
       const looks = [["full", "Full"], ["framed", "Framed"], ["split", "Split ½"], ["split-wide", "Split ¾"]];
       return `<div class="pp-seg pp-cover-look" role="radiogroup" aria-label="Cover look">
@@ -2704,6 +2730,12 @@
        takes photographs out — which is what the × on each one is for. */
     const canPutOnPage = (i, n) => {
       if (n < 1 || n > PORTFOLIO_PAGE_MAX) return false;
+      /* Whatever this page already holds is, by definition, possible. Without
+         this the row could grey out its own current answer — an arrangement
+         built before the places rule, or reopened from a save, can cost a page
+         seven places, and the control then refused the state it was sitting
+         in. A switch that denies where it already is, is a switch that lies. */
+      if (perPage()[i] === n) return true;
       const others = state.pages - 1;
       const rest = state.count - n;
       if (rest < others || rest > PORTFOLIO_PAGE_MAX * others) return false;
@@ -2767,16 +2799,35 @@
       const sheets = state.pages + (state.cover ? 1 : 0);
       const pngs = sheets > 1 ? "PNG images" : "a PNG image";
       const upiLink = portfolioUpiLink(sale.upiId, price, state.ref);
+      /* Two panes, so the sheet can be the subject. It used to be a single
+         column with the controls stacked above it, which put a row of
+         segmented pills where the eye lands and left the thing being made the
+         smallest object on the screen. Now the sheets take the width they
+         deserve and every control stands in a rail beside them. */
       body.innerHTML = `
+        <div class="pp-work${admin ? " is-studio" : " is-client"}">
+        <div class="pp-stage">
+                <div class="pp-preview" aria-live="polite"><p class="pp-rendering">Drawing your ${state.pages > 1 || state.cover ? "pages" : "page"}…</p></div>
+        <p class="pp-hint" id="ppTagsNote" hidden></p>
+        <div class="pp-strip">
+          <div class="pp-strip-head">
+            <span class="pp-label" id="ppOrderLabel">Photo order</span>
+            <p class="pp-hint pp-tap-hint">Drag to reorder · tap to move or zoom</p>
+          </div>
+          <ol class="pp-order" id="ppOrder" aria-labelledby="ppOrderLabel"></ol>
+        </div>
+        </div>
+        <aside class="pp-rail">
         <div class="pp-arrange" id="ppArrange">
           <div class="pp-arrange-head">
-            <span class="pp-label" id="ppOrderLabel">Photo order</span>
             <div class="pp-arrange-segs">
               <div class="pp-seg" role="radiogroup" aria-label="Layout" id="ppLayoutSeg" hidden>
+                <span class="pp-seg-cap" aria-hidden="true">Sizes</span>
                 <button type="button" role="radio" data-layout="lead">One big photo</button>
                 <button type="button" role="radio" data-layout="equal">All the same size</button>
               </div>
-              <div class="pp-seg" role="radiogroup" aria-label="Rows" id="ppRowsSeg" hidden></div>
+              ${admin ? `<div class="pp-seg" role="radiogroup" aria-label="Rows" id="ppRowsSeg" hidden></div>` : ""}
+${admin ? `
               <!-- In the preview and not the picker: the picker is for
                    choosing photographs, this is about how they look. Whether
                    a PAGE shows its labels is asked on the page itself; where
@@ -2789,6 +2840,7 @@
                 <button type="button" role="radio" data-tag-place="above">Above</button>
               </div>
               <div class="pp-seg" role="radiogroup" aria-label="How the pose label lines up" id="ppTagAlignSeg" hidden>
+                <span class="pp-seg-cap" aria-hidden="true">Label sits</span>
                 <button type="button" role="radio" data-tag-align="left">Left</button>
                 <button type="button" role="radio" data-tag-align="center">Centre</button>
                 <button type="button" role="radio" data-tag-align="right">Right</button>
@@ -2803,13 +2855,10 @@
                 <button type="button" role="radio" data-details-align="centre">Centre</button>
                 <button type="button" role="radio" data-details-align="right">Right</button>
               </div>
+              ` : ""}
             </div>
           </div>
-          <ol class="pp-order" id="ppOrder" aria-labelledby="ppOrderLabel"></ol>
         </div>
-        <p class="pp-hint pp-tap-hint">Tap a photo to move or zoom it.</p>
-        <p class="pp-hint" id="ppTagsNote" hidden></p>
-        <div class="pp-preview" aria-live="polite"><p class="pp-rendering">Drawing your ${state.pages > 1 || state.cover ? "pages" : "page"}…</p></div>
         <!-- The same two fields as the photo picker. They print on the first
              page, so they belong where you can watch that page redraw. -->
         <details class="pp-more"${state.location || state.phone ? " open" : ""}>
@@ -2858,6 +2907,8 @@
           <p class="pp-hint${admin ? " pp-hint-sample" : ""}">${admin ? `<span>Yours is free of the watermark. To send a sample with it:</span> <span class="pp-sample-actions"><button type="button" class="pp-sample-btn" id="ppDownloadMarked" data-download>Watermarked PDF</button><button type="button" class="pp-sample-btn" id="ppDownloadMarkedPng" data-download>Watermarked PNG${sheets > 1 ? "s" : ""}</button></span>` : lookOnly ? `Free to download with the watermark, as ${pngs}. ${lookMail ? `To buy the PDF without it${price ? ` for ₹${price}` : ""}, email ${lookMail} with your PNG or a screenshot of this preview.` : "The PDF without it isn't on sale yet."}` : price ? "Payment noted, thank you. It pays for one PDF with no watermark: once you've downloaded it, changing the photos or layout means paying again." : "Free to download."}</p>
           <div id="ppReady" class="pp-ready"></div>
         `}
+        </aside>
+        </div>
       `;
       foot.innerHTML = `
         <button type="button" class="btn btn-ghost" id="ppBack">← Change photos</button>
@@ -3012,7 +3063,11 @@
         if (!btn) return;
         showSwapChooser(btn.dataset.swap);
       });
-      body.querySelector("#ppTagPlaceSeg").addEventListener("click", (e) => {
+      /* Only the studio has this one, so it may not be on the page.
+         Gating the markup without gating the wiring threw on null and
+         took the client's whole preview down with it. */
+      const seg_TagPlaceSeg = body.querySelector("#ppTagPlaceSeg");
+      if (seg_TagPlaceSeg) seg_TagPlaceSeg.addEventListener("click", (e) => {
         const btn = e.target.closest("[data-tag-place]");
         if (!btn || btn.dataset.tagPlace === state.tagPlace) return;
         const wasCovered = covered();
@@ -3023,7 +3078,11 @@
         if (covered() !== wasCovered) { showPreview(); return; }
         drawPreview();
       });
-      body.querySelector("#ppDetailsAlignSeg").addEventListener("click", (e) => {
+      /* Only the studio has this one, so it may not be on the page.
+         Gating the markup without gating the wiring threw on null and
+         took the client's whole preview down with it. */
+      const seg_DetailsAlignSeg = body.querySelector("#ppDetailsAlignSeg");
+      if (seg_DetailsAlignSeg) seg_DetailsAlignSeg.addEventListener("click", (e) => {
         const btn = e.target.closest("[data-details-align]");
         if (!btn || btn.dataset.detailsAlign === state.detailsAlign) return;
         const wasCovered = covered();
@@ -3033,7 +3092,11 @@
         syncDetailsAlign();
         drawPreview();
       });
-      body.querySelector("#ppTagAlignSeg").addEventListener("click", (e) => {
+      /* Only the studio has this one, so it may not be on the page.
+         Gating the markup without gating the wiring threw on null and
+         took the client's whole preview down with it. */
+      const seg_TagAlignSeg = body.querySelector("#ppTagAlignSeg");
+      if (seg_TagAlignSeg) seg_TagAlignSeg.addEventListener("click", (e) => {
         const btn = e.target.closest("[data-tag-align]");
         if (!btn || btn.dataset.tagAlign === state.tagAlign) return;
         const wasCovered = covered();
@@ -3041,7 +3104,11 @@
         if (covered() !== wasCovered) { showPreview(); return; }
         drawPreview();
       });
-      body.querySelector("#ppRowsSeg").addEventListener("click", (e) => {
+      /* Only the studio has this one, so it may not be on the page.
+         Gating the markup without gating the wiring threw on null and
+         took the client's whole preview down with it. */
+      const seg_RowsSeg = body.querySelector("#ppRowsSeg");
+      if (seg_RowsSeg) seg_RowsSeg.addEventListener("click", (e) => {
         const btn = e.target.closest("[data-fewer-on-top]");
         if (!btn || (btn.dataset.fewerOnTop === "true") === state.fewerOnTop) return;
         const wasCovered = covered();
@@ -3053,7 +3120,11 @@
       // Which shape the pages take. It lives here rather than with the photo
       // picking, because "One big photo" and "All the same size" mean nothing
       // until you can see them: here the page below redraws as you switch.
-      body.querySelector("#ppLayoutSeg").addEventListener("click", (e) => {
+      /* Only the studio has this one, so it may not be on the page.
+         Gating the markup without gating the wiring threw on null and
+         took the client's whole preview down with it. */
+      const seg_LayoutSeg = body.querySelector("#ppLayoutSeg");
+      if (seg_LayoutSeg) seg_LayoutSeg.addEventListener("click", (e) => {
         const btn = e.target.closest("[data-layout]");
         if (!btn || btn.dataset.layout === state.layout) return;
         const wasCovered = covered();
@@ -3353,6 +3424,7 @@
             ${fixed && i >= fixed ? `<button type="button" class="pp-order-star" data-make-big aria-label="Make ${esc(s.name)} the big photo" title="Make this the big photo"></button>` : ""}
             <button type="button" class="pp-order-drop" data-remove="${esc(s.id)}" aria-label="Take ${esc(s.name)} out of this portfolio" title="Take this photo out">&times;</button>
           </span>
+          <span class="pp-order-acts">
           <button type="button" class="pp-order-swap" data-swap="${esc(s.id)}" aria-label="Put a different photograph in place of ${esc(s.name)}" title="Swap for a photo you haven't used">Swap</button>
           <!-- Adjust photo could only be opened by tapping the preview, so a
                keyboard user could not reach it at all (Sep 2026 audit). -->
@@ -3363,6 +3435,7 @@
                has places to take: the big-photo layout already cuts every
                supporting cell to its own photograph's shape. -->
           ${state.layout === "equal" ? `<button type="button" class="pp-order-wide" data-wide="${esc(s.id)}" aria-pressed="false" aria-label="Give ${esc(s.name)} two places across" title="Two places across">Wide</button>` : ""}
+          </span>
           ${i < fixed ? "" : `<span class="pp-order-move">
             <button type="button" data-move="-1" aria-label="Move ${esc(s.name)} earlier"${i === fixed ? " disabled" : ""}>‹</button>
             <button type="button" data-move="1" aria-label="Move ${esc(s.name)} later"${i === list.length - 1 ? " disabled" : ""}>›</button>
@@ -3597,6 +3670,7 @@
     // they differ.
     function syncRows(splits) {
       const seg = body.querySelector("#ppRowsSeg");
+      if (!seg) return;
       seg.hidden = !splits.length;
       if (splits.length) {
         const same = splits.every((x) => x.short === splits[0].short && x.full === splits[0].full);
@@ -3619,6 +3693,7 @@
     // way to ask for the equal pair the note promised (found Sep 22 2026).
     function syncLayout() {
       const seg = body.querySelector("#ppLayoutSeg");
+      if (!seg) return;
       if (!seg) return;
       seg.hidden = printOrder().length < 2;
       seg.querySelectorAll("[data-layout]").forEach((btn) => btn.setAttribute("aria-checked", String(btn.dataset.layout === state.layout)));
@@ -3666,10 +3741,12 @@
     }
 
     function syncArrange() {
-      const hideAll = body.querySelector("#ppOrder").hidden && body.querySelector("#ppRowsSeg").hidden
-        && body.querySelector("#ppTagPlaceSeg").hidden
-        && body.querySelector("#ppLayoutSeg").hidden;
-      body.querySelector("#ppArrange").hidden = hideAll;
+      // A control a client never sees counts as hidden, so the block folds
+      // away for them exactly as it does when the studio has nothing to set.
+      const gone = (sel) => { const el = body.querySelector(sel); return !el || el.hidden; };
+      const arrange = body.querySelector("#ppArrange");
+      if (!arrange) return;
+      arrange.hidden = gone("#ppOrder") && gone("#ppRowsSeg") && gone("#ppTagPlaceSeg") && gone("#ppLayoutSeg");
     }
 
     function unlock() {

@@ -487,8 +487,8 @@ const PDF_TYPE_FAMILIES = {
 const PDF_TYPE_ROLES = [
   { key: "name", label: "The model's name", note: "Size is fitted to the page", sized: false, family: "display", weight: 800, color: "#000000" },
   { key: "role", label: "What they are cast for", note: "The line under the name", sized: true, adaptive: true, family: "mono", size: 2.0, weight: 600, color: "auto" },
-  { key: "statLabel", label: "Stat headings", note: "HEIGHT, CHEST, WAIST…", sized: true, family: "mono", size: 2.0, weight: 600, color: "#8a8782" },
-  { key: "statValue", label: "The stats themselves", note: "5'9, 38-40, 30…", sized: true, family: "sans", size: 3.3, weight: 600, color: "#000000" },
+  { key: "statLabel", label: "Stat headings", note: "HEIGHT, CHEST, WAIST…", sized: true, aligns: true, align: "left", family: "mono", size: 2.0, weight: 600, color: "#8a8782" },
+  { key: "statValue", label: "The stats themselves", note: "5'9, 38-40, 30…", sized: true, aligns: true, align: "left", family: "sans", size: 3.3, weight: 600, color: "#000000" },
   { key: "header", label: "The line along the top", note: "MODEL PORTFOLIO · UPDATED…", sized: true, adaptive: true, family: "mono", size: 2.3, weight: 600, color: "auto" },
   { key: "brand", label: "Your name on the page", note: "In the header and the credit", sized: true, adaptive: true, family: "mono", size: 2.3, weight: 700, color: "auto" },
   /* Ink, not white. The tag is drawn ON a near-opaque white chip (drawPdfSlot
@@ -548,6 +548,13 @@ const cleanPdfType = (o) => {
       const c = got.color.trim().toLowerCase();
       if (HEX_RE.test(c)) t.color = c;
       else if (c === "auto" && r.adaptive) t.color = "auto";
+    }
+    /* A stat heading and its value each line up inside their own cell —
+       left under left, or both centred, or both to the right. Separate from
+       where the whole ROW sits on the page (detailsAlign), which moves the
+       block rather than the words inside it. */
+    if (r.aligns && ["left", "centre", "right"].includes(String(got.align || "").toLowerCase())) {
+      t.align = String(got.align).toLowerCase();
     }
     if (r.sized) {
       const n = Number(got.size);
