@@ -3125,7 +3125,7 @@ window.WPS_DATA = {
         "size": 2
       },
       "statValue": {
-        "family": "sans",
+        "family": "mono",
         "weight": 600,
         "color": "#000000",
         "size": 3.3
@@ -3181,7 +3181,7 @@ window.WPS_DATA = {
     "PACKAGES": 1789975069137,
     "TFP_PACKAGE": 1789975069138,
     "HOME_STUDIO_RATE": 1789975069138,
-    "PORTFOLIO_PDF": 1790105974012,
+    "PORTFOLIO_PDF": 1790161486428,
     "HOME_STUDIO_RATE_TFP": 1789975069138
   },
   "TESTIMONIALS": {
@@ -3354,7 +3354,7 @@ window.WPS_DATA = {
         "modelTypes": [
           "Fashion"
         ],
-        "updatedAt": 1790107066779,
+        "updatedAt": 1790168693034,
         "showStatsOnCompCard": true,
         "showStatsOnModelPortfolio": true,
         "showModelInstagramOnCompCard": true,
@@ -3915,78 +3915,11 @@ window.WPS_DATA = {
             }
           }
         }
-      },
-      {
-        "id": "mp_mucz851x_82fju",
-        "shootId": "comp-card-Atharv%20Sharma%20(https%3A%2F%2Fwww.instagram.com%2Fectogainsss%2F%3Fhl%3Den)",
-        "name": "Sent",
-        "updatedAt": 1790099840661,
-        "spec": {
-          "pages": 2,
-          "count": 9,
-          "perPage": [
-            5,
-            4
-          ],
-          "span": {},
-          "firstPage": 0,
-          "picks": [
-            "muca56vgez53vb-0",
-            "muca57hap5pcdi-1",
-            "muca57yixr16s8-3",
-            "muca5877bysjsu-4",
-            "muccmrnumyyf3j-24",
-            "muca5a1qkkj6qh-11",
-            "muca80smjx9k90-18",
-            "muca5ahs75x6u2-13",
-            "muca593bwa9nvo-6"
-          ],
-          "cleared": [],
-          "lead": "muca56vgez53vb-0",
-          "cover": true,
-          "coverId": "muca80xnhe2eom-19",
-          "coverStyle": "full",
-          "tags": [
-            true,
-            true
-          ],
-          "tagPlace": "in",
-          "tagAlign": "left",
-          "layout": "equal",
-          "order": [
-            "muca57hap5pcdi-1",
-            "muca56vgez53vb-0",
-            "muca57yixr16s8-3",
-            "muca5877bysjsu-4",
-            "muca5ahs75x6u2-13",
-            "muca5a1qkkj6qh-11",
-            "muca80smjx9k90-18",
-            "muca593bwa9nvo-6",
-            "muccmrnumyyf3j-24"
-          ],
-          "fewerOnTop": false,
-          "adjust": {
-            "muca5ahs75x6u2-13": {
-              "x": 0.5,
-              "y": 0,
-              "zoom": 1
-            },
-            "muca593bwa9nvo-6": {
-              "x": 0,
-              "y": 0.29674724072622777,
-              "zoom": 1.1
-            },
-            "muccmrnumyyf3j-24": {
-              "x": 0.5,
-              "y": 0.42534722222222215,
-              "zoom": 1
-            }
-          }
-        }
       }
     ],
     "deleted": [
-      "mp_mucczfy9_wugha"
+      "mp_mucczfy9_wugha",
+      "mp_mucz851x_82fju"
     ]
   },
   "STUDIO_PORTFOLIOS": {
