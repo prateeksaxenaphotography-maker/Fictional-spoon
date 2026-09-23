@@ -3922,3 +3922,21 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
 /* 3. A sheet taken off screen must actually go: .pp-sheet-item carries a
    display rule, and the hidden attribute alone loses to it. */
 .pp-sheet-item[hidden] { display: none !important; }
+/* A saved arrangement that was just written to, so pressing Update is
+   visibly something rather than nothing. */
+.pp-saved-row.is-just-saved { animation: pp-saved-flash 2.2s ease; }
+@keyframes pp-saved-flash {
+  0%, 55% { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+  100% { background: transparent; }
+}
+.pp-saved-row.is-just-saved .pp-saved-when { color: var(--accent-text); font-weight: 700; }
+/* A control that has nothing to say about the sheet on screen is taken away
+   rather than shown dead: a menu of things that will not happen is worse than
+   a shorter menu. */
+.pp-rail .is-offsheet { display: none !important; }
+/* The pose-label row carries one control more than the rest: the panel its
+   words sit on, which can be automatic, a colour, or nothing at all. */
+@media (min-width: 620px) {
+  .pdf-type-row[data-fills] { grid-template-columns: minmax(150px, 1.4fr) repeat(3, minmax(84px, 1fr)) auto auto; }
+}
+.pdf-type-colour select { min-width: 0; }

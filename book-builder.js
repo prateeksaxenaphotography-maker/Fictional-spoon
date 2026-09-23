@@ -751,16 +751,42 @@
       return out.slice(0, n);
     };
     if (n <= 1) return [{ x: x0, y: y0, w: W, h: H }];
-    // Asked for: three photographs in one row, on top or at the bottom, and
-    // the rest (one big, or two, or three) in the other row. The row of three
-    // is the shorter one when the other row holds a single photograph.
-    if ((rows === "3top" || rows === "3bottom") && n >= 4 && n <= 6) {
-      const rest = n - 3;
-      const th = (H - g) * (rest === 1 ? 0.42 : 0.5), oh = H - g - th;
-      const tw = (W - 2 * g) / 3, ow = (W - g * (rest - 1)) / rest;
-      const three = (y) => [0, 1, 2].map((c) => ({ x: x0 + c * (tw + g), y, w: tw, h: th }));
-      const others = (y) => Array.from({ length: rest }, (_, c) => ({ x: x0 + c * (ow + g), y, w: ow, h: oh }));
-      return rows === "3top" ? [...three(y0), ...others(y0 + th + g)] : [...others(y0), ...three(y0 + oh + g)];
+    /* Two rows, split where the studio says: "2 + 1", "3 + 1", "4 + 1" and so
+       on — the first number on top, the rest beneath. It used to understand
+       only a row of THREE, on top or at the bottom, so four photographs could
+       be 3 + 1 and never 2 + 2 by choice. "3top" and "3bottom" are what older
+       books carry and still mean what they did.
+
+       The two rows do not split the height evenly. A row of four is four
+       photographs wide, so each is shorter; giving both rows half the height
+       would stretch them. The share leans toward the row with fewer in it,
+       pulled back toward even so neither row is squeezed to a strip. */
+    const asSplit = (v) => {
+      if (typeof v !== "string") return null;
+      const m = v.match(/^(\d+)\+(\d+)$/);
+      if (m) return [Number(m[1]), Number(m[2])];
+      if (v === "3top" && n > 3) return [3, n - 3];
+      if (v === "3bottom" && n > 3) return [n - 3, 3];
+      return null;
+    };
+    // "Two across" is one row of two, which an "a + b" split cannot say: both
+    // numbers describe rows, and a row of two IS the whole page.
+    if (rows === "2across" && n === 2) return grid(2, 1);
+    const split = asSplit(rows);
+    if (split && split[0] >= 1 && split[1] >= 1 && split[0] + split[1] === n) {
+      const [top, rest] = split;
+      /* The height each row gets. A row holding a SINGLE photograph is the
+         one meant to be seen, so it takes the larger share; otherwise the two
+         rows split it evenly. This is exactly what the row-of-three did
+         before it could be any split — 3 + 1 gave the single one 58%, 3 + 2
+         went even — so a book already made is drawn as it always was. A
+         proportional rule read better on paper and moved 32 existing pages,
+         which is not a change to make behind the studio's back. */
+      const frac = rest === 1 ? 0.42 : top === 1 ? 0.58 : 0.5;
+      const th = (H - g) * frac, oh = H - g - th;
+      const tw = (W - g * (top - 1)) / top, ow = (W - g * (rest - 1)) / rest;
+      const row = (count, cw, y, h) => Array.from({ length: count }, (_, c) => ({ x: x0 + c * (cw + g), y, w: cw, h }));
+      return [...row(top, tw, y0, th), ...row(rest, ow, y0 + th + g, oh)];
     }
     if (n === 2) {
       if (pageLandscape || allPort) return grid(2, 1);
@@ -7214,9 +7240,37 @@
       }
       if (entry.type === "photos") {
         const nPhotos = (entry.photos || []).length;
-        box.innerHTML = (nPhotos >= 4 && nPhotos <= 6 ? `<div class="sb-field"><span class="sb-label">Three in a row</span>
-            <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Three in a row">${[["", "Auto"], ["3top", "On top"], ["3bottom", "At the bottom"]].map(([k, n]) => `<button type="button" role="radio" data-rows="${k}" aria-checked="${(entry.rows || "") === k}">${n}</button>`).join("")}</div>
-            <p class="sb-hint">${entry.rows ? `Three photographs in one row ${entry.rows === "3top" ? "on top" : "at the bottom"}, the other ${nPhotos - 3 === 1 ? "one large" : `${nPhotos - 3} in the other row`}.` : "Auto follows how many photographs there are and their shapes."}</p></div>` : "")
+        /* Every split these photographs can make, named as the studio would
+           say it: 2 + 2, 3 + 1, 4 + 1. It offered only a row of THREE, on top
+           or at the bottom, so four photographs could be 3 + 1 and never
+           2 + 2 by choice. An older book's "3top" is shown as the split it
+           has always meant. */
+        const splitNow = (() => {
+          const v = entry.rows;
+          if (typeof v === "string") {
+            if (v === "2across") return v;
+            const m = v.match(/^(\d+)\+(\d+)$/);
+            if (m) return v;
+            if (v === "3top" && nPhotos > 3) return `3+${nPhotos - 3}`;
+            if (v === "3bottom" && nPhotos > 3) return `${nPhotos - 3}+3`;
+          }
+          return "";
+        })();
+        /* Two photographs can stand beside each other or one above the other.
+           Auto decides from their shapes, which is right nearly always and is
+           not a choice — the studio asked to be able to say. */
+        const splits = nPhotos === 2 ? ["2across", "1+1"]
+          : nPhotos >= 3 && nPhotos <= 6
+            ? Array.from({ length: nPhotos - 1 }, (_, i) => `${i + 1}+${nPhotos - 1 - i}`)
+            : [];
+        const splitName = (k) => k === "2across" ? "Side by side"
+          : k === "1+1" && nPhotos === 2 ? "One above the other"
+          : k.replace("+", " + ");
+        box.innerHTML = (splits.length ? `<div class="sb-field"><span class="sb-label">Rows on this page</span>
+            <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="How the photographs divide into rows">${[["", "Auto"], ...splits.map((k) => [k, splitName(k)])].map(([k, n]) => `<button type="button" role="radio" data-rows="${k}" aria-checked="${splitNow === k}">${n}</button>`).join("")}</div>
+            <p class="sb-hint">${!splitNow ? "Auto follows how many photographs there are and their shapes."
+              : splitNow === "2across" ? "Both photographs in one row."
+              : `${splitNow.split("+")[0]} photograph${splitNow.split("+")[0] === "1" ? "" : "s"} on top, ${splitNow.split("+")[1]} beneath.`}</p></div>` : "")
           + fieldHtml({ k: "caption", label: "Caption for this page (optional)", ctl: "input", ph: "e.g. Monsoon edit, shot on the roof in Sector 46" }, entry.caption || "", (caps.photos || {}).caption || 90)
           + creditHtml(entry)
           + `<p class="sb-hint">Published books are public, so keep private details out of captions.</p>`

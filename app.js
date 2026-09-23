@@ -502,7 +502,7 @@ const PDF_TYPE_ROLES = [
      Changing this does not repair a PDF built from an already-published
      setting — a saved "#ffffff" still wins over this default — it stops a
      fresh install being born broken. */
-  { key: "photoTag", label: "Labels on the photos", note: "FRONT, LEFT PROFILE, CLOSE-UP", sized: true, family: "mono", size: 2.0, weight: 600, color: "#111111" },
+  { key: "photoTag", label: "Labels on the photos", note: "FRONT, LEFT PROFILE, CLOSE-UP", sized: true, fills: true, fill: "auto", family: "mono", size: 2.0, weight: 600, color: "#111111" },
   { key: "note", label: "The booking note", note: "“To book this talent…”", sized: true, family: "sans", size: 2.1, weight: 400, color: "#8a8782" },
   { key: "footer", label: "The book-a-shoot line", sized: true, family: "mono", size: 2.2, weight: 700, color: "#000000" },
   { key: "fine", label: "The small print", sized: true, family: "sans", size: 1.9, weight: 400, color: "#9a9791" }
@@ -555,6 +555,14 @@ const cleanPdfType = (o) => {
        block rather than the words inside it. */
     if (r.aligns && ["left", "centre", "right"].includes(String(got.align || "").toLowerCase())) {
       t.align = String(got.align).toLowerCase();
+    }
+    /* The chip a pose label sits on. "auto" is the old behaviour — a pale
+       panel when the label is over a photograph, and only when the type would
+       otherwise be unreadable. "none" leaves the words on the picture itself,
+       which the studio asked for. Anything else is a colour they chose. */
+    if (r.fills && typeof got.fill === "string") {
+      const f = got.fill.trim().toLowerCase();
+      if (f === "auto" || f === "none" || HEX_RE.test(f)) t.fill = f;
     }
     if (r.sized) {
       const n = Number(got.size);

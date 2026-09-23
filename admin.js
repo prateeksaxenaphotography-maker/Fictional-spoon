@@ -280,7 +280,7 @@ window.renderPdfTypeEditor = function(host) {
        columns written inline could not answer to either. It cut the selects
        off at the panel's edge and asked the studio to scroll sideways to
        reach them, which read as the controls being missing. */
-    return `<div class="pdf-type-row" data-role="${pdfEsc(r.key)}"${r.aligns ? ' data-aligns="1"' : ""}>
+    return `<div class="pdf-type-row" data-role="${pdfEsc(r.key)}"${r.aligns ? ' data-aligns="1"' : ""}${r.fills ? ' data-fills="1"' : ""}>
       <div class="pdf-type-what">
         <strong style="font-size: var(--font-xs); color: var(--ink);">${pdfEsc(r.label)}</strong>
         ${r.note ? `<span style="display: block; font-size: var(--font-xs); color: var(--ink-soft);">${pdfEsc(r.note)}</span>` : ""}
@@ -297,12 +297,27 @@ window.renderPdfTypeEditor = function(host) {
       ${r.sized
         ? `<input type="number" data-f="size" min="1" max="20" step="0.1" value="${v.size != null ? v.size : ""}" style="${cell}" aria-label="Size in millimetres for ${pdfEsc(r.label)}" />`
         : `<span style="font-size: var(--font-xs); color: var(--ink-soft);">fitted</span>`}
+      ${r.fills ? `<span class="pdf-type-colour">
+        <select data-f="fillmode" style="${cell}" aria-label="The panel behind ${pdfEsc(r.label)}">
+          <option value="auto"${(v.fill || "auto") === "auto" ? " selected" : ""}>Panel: auto</option>
+          <option value="none"${v.fill === "none" ? " selected" : ""}>No fill</option>
+          <option value="custom"${v.fill && v.fill !== "auto" && v.fill !== "none" ? " selected" : ""}>Panel: pick</option>
+        </select>
+        <input type="color" data-f="fill" value="${pdfEsc(v.fill && v.fill !== "auto" && v.fill !== "none" ? v.fill : "#ffffff")}"${(!v.fill || v.fill === "auto" || v.fill === "none") ? " disabled" : ""} style="width: 34px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer;" aria-label="Panel colour behind ${pdfEsc(r.label)}" />
+      </span>` : ""}
       <span class="pdf-type-colour">
         <input type="color" data-f="color" value="${pdfEsc(isAuto ? "#000000" : (v.color || "#000000"))}" ${isAuto ? "disabled" : ""} style="width: 34px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer;" aria-label="Colour for ${pdfEsc(r.label)}" />
         ${r.adaptive ? `<label style="font-size: var(--font-xs); color: var(--ink-soft); display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;" title="On the cover this line sits over a photograph, so the PDF picks a colour that stays readable."><input type="checkbox" data-f="auto"${isAuto ? " checked" : ""} /> auto</label>` : ""}
       </span>
     </div>`;
   }).join("");
+  // The panel's own swatch is only live when the studio picks a colour.
+  host.querySelectorAll('select[data-f="fillmode"]').forEach((sel) => {
+    sel.addEventListener("change", () => {
+      const sw = sel.closest(".pdf-type-row").querySelector('input[data-f="fill"]');
+      if (sw) sw.disabled = sel.value !== "custom";
+    });
+  });
   host.querySelectorAll('input[data-f="auto"]').forEach((box) => {
     box.addEventListener("change", () => {
       const swatch = box.closest(".pdf-type-row").querySelector('input[data-f="color"]');
@@ -362,6 +377,8 @@ window.readPdfTypeEditor = function(host) {
     if (size && size.value.trim() !== "") t.size = Number(size.value);
     const align = get("align");
     if (align) t.align = align.value;
+    const mode = get("fillmode");
+    if (mode) t.fill = mode.value === "custom" ? (get("fill") ? get("fill").value : "#ffffff") : mode.value;
     out[row.dataset.role] = t;
   });
   return out;

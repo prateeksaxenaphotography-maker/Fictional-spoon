@@ -1062,9 +1062,17 @@
     // behind it. On paper it is only needed when the type is too pale to read
     // against the page — which is exactly the case that made every tag
     // invisible before v493, so it is worth keeping on both paths.
+    /* The chip behind the words. "auto" keeps what it has always done — a
+       pale or dark panel over a photograph, and on paper only when the type
+       would be too faint to read, which is the case that made every tag
+       invisible before v493. "none" leaves the words straight on the picture,
+       asked for by the studio; anything else is a colour they chose. */
+    const fill = String(style.fill || "auto").toLowerCase();
     const pale = pdfLuma(style.color);
-    if (where === "in" || pale > 200) {
-      page.ctx.fillStyle = pale > 140 ? "rgba(17,17,17,0.82)" : "rgba(255,255,255,0.9)";
+    if (fill !== "none" && (where === "in" || pale > 200)) {
+      page.ctx.fillStyle = fill === "auto"
+        ? (pale > 140 ? "rgba(17,17,17,0.82)" : "rgba(255,255,255,0.9)")
+        : fill;
       page.ctx.fillRect(page.u(tx), page.u(ty), page.u(boxW), page.u(PDF_TAG_H));
     }
     page.text(slot.label, tx + padX, ty + PDF_TAG_H / 2 + 0.68, style);
@@ -1464,15 +1472,22 @@
     const CW = PW - M * 2;
     const stats = portfolioPdfStatCells(spec.shoot);
     const contact = portfolioPdfContactCells(spec.shoot, spec);
-    const align = spec.detailsAlign || "left";
+    /* Two rows, two answers. The measurements and the ways to reach the model
+       are different things saying different work — the studio wanted the
+       stats centred over a centred page while the contact line stayed left,
+       and one setting for both could not do it. `detailsAlign` is what older
+       arrangements carry and stands in for either when it is all there is. */
+    const fallback = spec.detailsAlign || "left";
+    const statsAlign = spec.statsAlign || fallback;
+    const contactAlign = spec.contactAlign || fallback;
     let y = top;
     if (stats.length) {
       if (draw) page.rule(M, y, PW - M);
-      y += flowPdfCells(page, stats, M, y + 3, CW, draw, align) + 6;
+      y += flowPdfCells(page, stats, M, y + 3, CW, draw, statsAlign) + 6;
       if (draw) page.rule(M, y, PW - M);
     }
     if (contact.length) {
-      y += flowPdfCells(page, contact, M, y + 3, CW, draw, align) + 3 + PDF_NOTE_H;
+      y += flowPdfCells(page, contact, M, y + 3, CW, draw, contactAlign) + 3 + PDF_NOTE_H;
       if (draw) drawPdfBookingNote(page, M, y - 1.2, CW);
     }
     return y - top;
@@ -1926,7 +1941,9 @@
       sheetView: "all",    // "all", or the index of the one sheet on show
       layouts: [],         // per page; empty means "whatever `layout` says"
       fromSaved: null,     // the saved arrangement this one was opened from
-      detailsAlign: "left",// the stats and contact row: left, centre or right
+      detailsAlign: "left",// kept for arrangements saved before the two split
+      statsAlign: "left",  // the measurements row: left, centre or right
+      contactAlign: "left",// the Instagram/email row, answered separately
       // Print the pose under each photograph, or don't. It used to be decided
       // for the client: tags appeared only when EVERY photograph across the
       // whole PDF had a pose, so one untagged shot anywhere silently stripped
@@ -2269,6 +2286,8 @@
         tags: tagsPerPage(),
         cols: colsPerPage(),
         detailsAlign: state.detailsAlign,
+        statsAlign: state.statsAlign,
+        contactAlign: state.contactAlign,
         tagPlace: state.tagPlace,
         tagAlign: state.tagAlign,
         location: state.location.trim(),
@@ -2286,7 +2305,7 @@
         return a ? [a.x, a.y, a.zoom].map((v) => Math.round(v * 1000)) : 0;
       });
       return JSON.stringify([state.pages, ids, state.layout, layoutsPerPage(), perPage(), state.fewerOnTop,
-        tagsPerPage(), colsPerPage(), state.detailsAlign, state.tagPlace, state.tagAlign,
+        tagsPerPage(), colsPerPage(), state.statsAlign, state.contactAlign, state.tagPlace, state.tagAlign,
         ids.map((id) => state.span[id] || 0),
         state.cover ? [state.coverId, state.coverStyle] : null, crops]);
     }
@@ -2337,7 +2356,12 @@
       // Saved before the studio could choose it: the grid works it out.
       state.cols = Array.isArray(sp.cols) ? sp.cols.slice(0, sp.pages) : [];
       // Saved before the studio could choose it: left, as it always was.
-      state.detailsAlign = ["left", "centre", "right"].includes(sp.detailsAlign) ? sp.detailsAlign : "left";
+      const okAlign = (v, dflt) => ["left", "centre", "right"].includes(v) ? v : dflt;
+      state.detailsAlign = okAlign(sp.detailsAlign, "left");
+      // Saved before the rows could answer separately: both take what the one
+      // setting said, so an old arrangement reopens looking as it did.
+      state.statsAlign = okAlign(sp.statsAlign, state.detailsAlign);
+      state.contactAlign = okAlign(sp.contactAlign, state.detailsAlign);
       // An arrangement saved before the switch existed has no answer, and
       // "on" is what it was saved under.
       // An arrangement saved when the switch was one for the whole PDF
@@ -2368,9 +2392,17 @@
 
     // Says what pressing Save will do now — keep the arrangement that is
     // open, or start a new one — without re-rendering the whole panel.
+    /* The button says what pressing it will actually DO, judged on the name in
+       the box rather than on which arrangement is open. It read "Update it"
+       whenever one was open — so typing a different name and pressing it made
+       a second arrangement while the button promised to replace the first. */
     function syncSaveRow() {
       const btn = body.querySelector("#ppSaveBtn");
-      if (btn) btn.textContent = state.fromSaved ? "Update it" : "Save this arrangement";
+      const nameEl = body.querySelector("#ppSaveName");
+      if (!btn) return;
+      const typed = ((nameEl && nameEl.value) || "").trim();
+      const keeps = state.fromSaved && (typed === state.fromSaved.name || !typed);
+      btn.textContent = keeps ? `Update “${state.fromSaved.name}”` : "Save as a new one";
     }
 
     function wireSavedPortfolios() {
@@ -2399,11 +2431,20 @@
             paint();
           };
           paint();
+          // Typing in the box changes what the button will do, so it says so
+          // as they type rather than after they have pressed it.
+          const nameBox = body.querySelector("#ppSaveName");
+          if (nameBox) nameBox.addEventListener("input", syncSaveRow);
           const saveBtn = body.querySelector("#ppSaveBtn");
           if (saveBtn) saveBtn.addEventListener("click", () => {
             const nameEl = body.querySelector("#ppSaveName");
             // `name` in this scope is the model; this one is the arrangement.
-            const title = (nameEl.value || "").trim() || `${name} — ${new Date().toLocaleDateString()}`;
+            /* An empty box keeps the arrangement that is open, rather than
+               starting another under a date-stamped name the studio never
+               chose — which is what made editing a saved portfolio feel like
+               losing it. With nothing open it still falls back to the date. */
+            const typed = (nameEl.value || "").trim();
+            const title = typed || (state.fromSaved && state.fromSaved.name) || `${name} — ${new Date().toLocaleDateString()}`;
             const cur = store();
             /* Saving under the name of the arrangement that is open replaces
                it. Otherwise every edit of a saved set made a second copy with
@@ -2414,7 +2455,19 @@
               open.spec = currentSpec();
               open.updatedAt = Date.now();
               write(cur);
+              syncSaveRow();
               clearDraft();
+              /* Said on the row itself, not only in a toast that slides away.
+                 Updating on the same day changes nothing the studio can see —
+                 same name, same date — so pressing it read as nothing having
+                 happened at all. */
+              const row = savedList.querySelector(`.pp-saved-row[data-id="${open.id}"]`);
+              if (row) {
+                row.classList.add("is-just-saved");
+                const when = row.querySelector(".pp-saved-when");
+                if (when) when.textContent = "just now";
+                setTimeout(() => row.classList.remove("is-just-saved"), 2200);
+              }
               toast(`“${open.name}” updated.`);
               return;
             }
@@ -2427,7 +2480,7 @@
                 pages: state.pages, count: state.count, picks: [...state.picks], cleared: [...state.cleared],
                 lead: state.lead, cover: state.cover, coverId: state.coverId, coverStyle: state.coverStyle,
                 layout: state.layout, layouts: layoutsPerPage(), order: [...state.order], fewerOnTop: state.fewerOnTop, cols: colsPerPage(),
-                detailsAlign: state.detailsAlign,
+                detailsAlign: state.detailsAlign, statsAlign: state.statsAlign, contactAlign: state.contactAlign,
                 tags: tagsPerPage(),
                 tagPlace: state.tagPlace,
                 tagAlign: state.tagAlign,
@@ -2612,7 +2665,7 @@
       });
 
       const grid = body.querySelector("#ppGrid");
-      grid.classList.toggle("is-equal", state.layout === "equal");
+      grid.classList.toggle("is-equal", layoutsPerPage().every((l) => l === "equal"));
       grid.classList.toggle("is-choosing-cover", state.choosingCover);
       body.querySelector("#ppCoverMode").hidden = !state.choosingCover;
       body.querySelectorAll(".pp-tile").forEach((tile) => {
@@ -2758,10 +2811,39 @@
       </div>`;
     }
 
+    /* The rail shows what the sheet on screen can actually be told. Looking at
+       the COVER, "one big photo", where a pose label sits and how the stats
+       line up are all about pages — offering them there is a menu of things
+       that will not happen. Looking at page two, the measurements row belongs
+       to page one and is no use either. On All, everything is offered, since
+       every sheet is on screen. Studio's ask, Sep 2026: "why should I see
+       things which are not relevant to the page". */
+    function syncRailForSheet() {
+      const view = state.sheetView;
+      const offset = state.cover ? 1 : 0;
+      const all = view === "all";
+      const idx = all ? -1 : Number(view);
+      const onCover = !all && idx < offset;
+      const onFirstPage = !all && !onCover && idx === offset;
+      body.querySelectorAll("[data-forsheet]").forEach((el) => {
+        const want = el.dataset.forsheet;
+        // A control already hidden for its own reasons stays hidden: this
+        // only ever takes a control AWAY, never puts one back that the PDF
+        // has nothing to say about.
+        const irrelevant = all ? false
+          : want === "pages" ? onCover
+          : want === "first" ? !(onFirstPage)
+          : false;
+        el.classList.toggle("is-offsheet", irrelevant);
+      });
+    }
+
     // Which alignment the stats row is showing as chosen.
     function syncDetailsAlign() {
       body.querySelectorAll("#ppDetailsAlignSeg [data-details-align]").forEach((btn) =>
-        btn.setAttribute("aria-checked", String(btn.dataset.detailsAlign === (state.detailsAlign || "left"))));
+        btn.setAttribute("aria-checked", String(btn.dataset.detailsAlign === (state.statsAlign || "left"))));
+      body.querySelectorAll("#ppContactAlignSeg [data-contact-align]").forEach((btn) =>
+        btn.setAttribute("aria-checked", String(btn.dataset.contactAlign === (state.contactAlign || "left"))));
     }
 
     /* The type editor, given a sheet of its own. In the rail it was a table
@@ -3017,12 +3099,12 @@
         <div class="pp-arrange" id="ppArrange">
           <div class="pp-arrange-head">
             <div class="pp-arrange-segs">
-              <div class="pp-seg" role="radiogroup" aria-label="Layout" id="ppLayoutSeg" hidden>
+              <div class="pp-seg" role="radiogroup" aria-label="Layout" id="ppLayoutSeg" data-forsheet="pages" hidden>
                 <span class="pp-seg-cap" aria-hidden="true">Sizes</span>
                 <button type="button" role="radio" data-layout="lead">One big photo</button>
                 <button type="button" role="radio" data-layout="equal">All the same size</button>
               </div>
-              ${admin ? `<div class="pp-seg" role="radiogroup" aria-label="Rows" id="ppRowsSeg" hidden></div>` : ""}
+              ${admin ? `<div class="pp-seg" role="radiogroup" aria-label="Rows" id="ppRowsSeg" data-forsheet="pages" hidden></div>` : ""}
               <div id="ppSheetView"></div>
 ${admin ? `
               <!-- In the preview and not the picker: the picker is for
@@ -3030,13 +3112,13 @@ ${admin ? `
                    a PAGE shows its labels is asked on the page itself; where
                    the label sits is one answer for the whole PDF, so it is
                    asked once, here. -->
-              <div class="pp-seg" role="radiogroup" aria-label="Where the pose label sits" id="ppTagPlaceSeg" hidden>
+              <div class="pp-seg" role="radiogroup" aria-label="Where the pose label sits" id="ppTagPlaceSeg" data-forsheet="pages" hidden>
                 <span class="pp-seg-cap" aria-hidden="true">Label</span>
                 <button type="button" role="radio" data-tag-place="in">On the photo</button>
                 <button type="button" role="radio" data-tag-place="below">Below</button>
                 <button type="button" role="radio" data-tag-place="above">Above</button>
               </div>
-              <div class="pp-seg" role="radiogroup" aria-label="How the pose label lines up" id="ppTagAlignSeg" hidden>
+              <div class="pp-seg" role="radiogroup" aria-label="How the pose label lines up" id="ppTagAlignSeg" data-forsheet="pages" hidden>
                 <span class="pp-seg-cap" aria-hidden="true">Label sits</span>
                 <button type="button" role="radio" data-tag-align="left">Left</button>
                 <button type="button" role="radio" data-tag-align="center">Centre</button>
@@ -3046,11 +3128,20 @@ ${admin ? `
                    always sat hard against the left margin; a portfolio whose
                    photographs are centred wants the line under them centred
                    too. One answer for the whole PDF, like the label above. -->
-              <div class="pp-seg" role="radiogroup" aria-label="How the stats line up" id="ppDetailsAlignSeg">
+              <div class="pp-seg" role="radiogroup" aria-label="How the measurements line up" id="ppDetailsAlignSeg" data-forsheet="first">
                 <span class="pp-seg-cap" aria-hidden="true">Stats</span>
                 <button type="button" role="radio" data-details-align="left">Left</button>
                 <button type="button" role="radio" data-details-align="centre">Centre</button>
                 <button type="button" role="radio" data-details-align="right">Right</button>
+              </div>
+              <!-- The Instagram/email line answers for itself: the studio
+                   wanted the measurements centred with the contact line left,
+                   and one control for both could not say it. -->
+              <div class="pp-seg" role="radiogroup" aria-label="How the contact line lines up" id="ppContactAlignSeg" data-forsheet="first">
+                <span class="pp-seg-cap" aria-hidden="true">Contact</span>
+                <button type="button" role="radio" data-contact-align="left">Left</button>
+                <button type="button" role="radio" data-contact-align="centre">Centre</button>
+                <button type="button" role="radio" data-contact-align="right">Right</button>
               </div>
               ` : ""}
             </div>
@@ -3304,12 +3395,23 @@ ${admin ? `
       /* Only the studio has this one, so it may not be on the page.
          Gating the markup without gating the wiring threw on null and
          took the client's whole preview down with it. */
+      const seg_ContactAlignSeg = body.querySelector("#ppContactAlignSeg");
+      if (seg_ContactAlignSeg) seg_ContactAlignSeg.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-contact-align]");
+        if (!btn || btn.dataset.contactAlign === state.contactAlign) return;
+        const wasCovered = covered();
+        state.contactAlign = btn.dataset.contactAlign;
+        if (covered() !== wasCovered) { showPreview(); return; }
+        syncDetailsAlign();
+        drawPreview();
+      });
       const seg_DetailsAlignSeg = body.querySelector("#ppDetailsAlignSeg");
       if (seg_DetailsAlignSeg) seg_DetailsAlignSeg.addEventListener("click", (e) => {
         const btn = e.target.closest("[data-details-align]");
         if (!btn || btn.dataset.detailsAlign === state.detailsAlign) return;
         const wasCovered = covered();
-        state.detailsAlign = btn.dataset.detailsAlign;
+        state.statsAlign = btn.dataset.detailsAlign;
+        state.detailsAlign = state.statsAlign;
         // A different sheet of paper, so a PDF already paid for is a new one.
         if (covered() !== wasCovered) { showPreview(); return; }
         syncDetailsAlign();
@@ -3485,6 +3587,7 @@ ${admin ? `
         box.classList.toggle("is-single", state.sheetView !== "all");
         const viewHost = body.querySelector("#ppSheetView");
         if (viewHost) viewHost.innerHTML = sheetViewSegHtml(pages.length);
+        syncRailForSheet();
         box.classList.toggle("two", pages.length === 2);
         box.classList.toggle("three", pages.length === 3);
         box.classList.toggle("four", pages.length > 3);
@@ -3658,7 +3761,7 @@ ${admin ? `
       const ids = printOrder().map((s) => s.id);
       const from = ids.indexOf(id), to = from + step;
       // The big photo keeps first place.
-      if (from < 0 || to < (state.layout === "equal" ? 0 : 1) || to >= ids.length) return false;
+      if (from < 0 || to < (layoutOf(0) === "equal" ? 0 : 1) || to >= ids.length) return false;
       [ids[from], ids[to]] = [ids[to], ids[from]];
       state.order = ids;
       return true;
@@ -3666,7 +3769,8 @@ ${admin ? `
 
     function syncOrder(focus) {
       const list = printOrder();
-      const fixed = state.layout === "equal" ? 0 : 1;
+      // Page one decides whether a photograph is pinned as the big one.
+      const fixed = layoutOf(0) === "equal" ? 0 : 1;
       const strip = body.querySelector("#ppOrder");
       strip.hidden = list.length - fixed < 2;
       strip.innerHTML = list.map((s, i) => `
@@ -3691,7 +3795,7 @@ ${admin ? `
                means of doing at all (Sep 22 2026). Only "All the same size"
                has places to take: the big-photo layout already cuts every
                supporting cell to its own photograph's shape. -->
-          ${state.layout === "equal" ? `<button type="button" class="pp-order-wide" data-wide="${esc(s.id)}" aria-pressed="false" aria-label="Give ${esc(s.name)} two places across" title="Two places across">Wide</button>` : ""}
+          ${layoutsPerPage().some((l) => l === "equal") ? `<button type="button" class="pp-order-wide" data-wide="${esc(s.id)}" aria-pressed="false" aria-label="Give ${esc(s.name)} two places across" title="Two places across">Wide</button>` : ""}
           </span>
           ${i < fixed ? "" : `<span class="pp-order-move">
             <button type="button" data-move="-1" aria-label="Move ${esc(s.name)} earlier"${i === fixed ? " disabled" : ""}>‹</button>
@@ -3862,7 +3966,8 @@ ${admin ? `
            that starts on a button is that button's. */
         if (e.target.closest("button")) return;
         const item = grip.closest(".pp-order-item");
-        const fixed = state.layout === "equal" ? 0 : 1;
+        // Page one decides whether a photograph is pinned as the big one.
+      const fixed = layoutOf(0) === "equal" ? 0 : 1;
         // The big photograph holds first place by the layout's own rule.
         if (Number(item.dataset.pos) < fixed) return;
         drag = { id: grip.dataset.drag, from: Number(item.dataset.pos), item, moved: false, x: e.clientX, y: e.clientY };
@@ -3889,7 +3994,8 @@ ${admin ? `
         itemsNow().forEach((li) => li.classList.remove("is-drop-here"));
         if (!was.moved) return;          // a tap that never travelled
         const to = slotAt(e.clientX, e.clientY);
-        const fixed = state.layout === "equal" ? 0 : 1;
+        // Page one decides whether a photograph is pinned as the big one.
+      const fixed = layoutOf(0) === "equal" ? 0 : 1;
         if (to === was.from || to < fixed) return;
         const wasCovered = covered();
         if (!dropPhoto(was.id, to)) return;
