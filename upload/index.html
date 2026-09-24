@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- Security: restrict where scripts/styles/requests may load from -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com; connect-src 'self' https://api.github.com https://formsubmit.co https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com; object-src 'none'; base-uri 'self'; form-action 'self' mailto:" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com; connect-src 'self' https://cloudflareinsights.com https://api.github.com https://formsubmit.co https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com; object-src 'none'; base-uri 'self'; form-action 'self' mailto:" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
   <!-- Google tag. The 172 KB script is NOT fetched here: at the top of the head
        it was downloaded before the site's own code, taking about a fifth of a
@@ -40,10 +40,10 @@
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800;900&family=Fraunces:opsz,ital,wght@9..144,0,300;9..144,1,400&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800;900&family=Fraunces:opsz,ital,wght@9..144,0,300;9..144,1,400&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800;900&family=Fraunces:opsz,ital,wght@9..144,0,300;9..144,1,400&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" /></noscript>
-  <link rel="stylesheet" href="/styles.css?v=523" />
-  <link rel="preload" as="script" href="/config.js?v=523" />
-  <link rel="preload" as="script" href="/data.js?v=523" />
-  <link rel="preload" as="script" href="/app.js?v=523" />
+  <link rel="stylesheet" href="/styles.css?v=524" />
+  <link rel="preload" as="script" href="/config.js?v=524" />
+  <link rel="preload" as="script" href="/data.js?v=524" />
+  <link rel="preload" as="script" href="/app.js?v=524" />
   <script>
     (function() {
       function updateTheme() {
@@ -165,7 +165,7 @@
         <li><a href="/" data-link><span class="nav-idx">01</span> Home</a></li>
         <li><a href="/albums" data-link><span class="nav-idx">02</span> Albums</a></li>
         <li><a href="/studio" data-link><span class="nav-idx">04</span> Studio</a></li>
-        <li id="navWorkshopLi"><a href="/workshop-attended" data-link><span class="nav-idx">07</span> Workshop Attended</a></li>
+        <li id="navWorkshopLi"><a href="/workshop-attended" data-link><span class="nav-idx">07</span> Workshops attended</a></li>
         <li id="navBookLi"><a href="/book" data-link><span class="nav-idx">09</span> Book a shoot</a></li>
       </ul>
       <div class="nav-meta">
@@ -219,6 +219,7 @@
           <a href="/services/" data-link>What I shoot</a>
           <a href="/studio" data-link>Studio</a>
           <a href="/book" data-link>Book a shoot</a>
+          <a href="/licence/" data-link>Photo licensing</a>
           <a href="/privacy/" data-link>Privacy</a>
         </nav>
         <div class="footer-col footer-connect">
@@ -239,10 +240,10 @@
       <!-- Sticky Translucent Top Toolbar -->
       <div style="position: absolute; top: 0; left: 0; right: 0; z-index: 50; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(15, 15, 15, 0.6); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.1);">
         <div style="display: flex; align-items: center; gap: 12px;">
-          <button type="button" onclick="window.closeLb()" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 6px 12px; border-radius: 6px; font-size: var(--font-xs); font-weight: 700; font-family: var(--mono-font); cursor: pointer;">← Close Viewer</button>
           <span class="lightbox-counter" id="lbCounter" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #fff; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 20px;"></span>
         </div>
         <div style="display: flex; align-items: center; gap: 10px;">
+          <button type="button" class="lb-details-btn" id="lbDetailsBtn" aria-expanded="false" aria-controls="lbSidebar">Details &amp; PDFs</button>
           <button class="lightbox-close" id="lightboxClose" aria-label="Close viewer" style="position: static; font-size: var(--font-md); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.15); color: #fff; border-radius: 50%; border: none; cursor: pointer;">×</button>
         </div>
       </div>
@@ -258,9 +259,9 @@
     <div class="lightbox-sidebar" id="lightboxSidebar"></div>
   </div>
 
-  <script src="/config.js?v=523"></script>
-  <script src="/data.js?v=523"></script>
-  <script src="/app.js?v=523"></script>
+  <script src="/config.js?v=524"></script>
+  <script src="/data.js?v=524"></script>
+  <script src="/app.js?v=524"></script>
   <div id="compCardPrintContainer" style="display: none;"></div>
 </body>
 </html>

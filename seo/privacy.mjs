@@ -51,7 +51,7 @@ export const PRIVACY = {
       body: ["The forms do not put anything you type on this website or in its public code — a testimonial appears here only once I choose to put it up, under the name you gave. What you send travels by email:"],
       points: [
         "FormSubmit (formsubmit.co), a form-to-email service, passes each form to my Gmail inbox. It is based outside India.",
-        "Google keeps that inbox (Gmail) and runs the page counts (Google Analytics).",
+        "Google keeps that inbox (Gmail) and runs the page counts (Google Analytics); Cloudflare Web Analytics also counts page visits, without cookies.",
         "Your own browser keeps a copy of a booking you sent and of the contract you agreed to, so you can see them again. Clearing the site's data in your browser removes them.",
         "The website itself is hosted by GitHub and served through Cloudflare. They see ordinary web traffic, not your form details."
       ]

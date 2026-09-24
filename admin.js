@@ -5134,21 +5134,21 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                 <p id="f_model_types_hint" style="margin: 6px 0 0; font-size: var(--font-xs); color: var(--ink-soft);">Shown beside the model's name on the comp card album, in the lightbox, and on the exported PDF.</p>
               </div>
               <div class="field-row">
-                <label class="field"><span>Height</span><input id="f_height" type="text" placeholder="e.g. 5'11&quot; / 180 cm" /></label>
+                <label class="field"><span>Height</span><input id="f_height" type="text" placeholder="e.g. 5'11&quot; (feet and inches)" /></label>
                 <div class="field">
                   <span>Chest or bust <span style="font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-soft);">— pick the word this model's card should use</span></span>
                   <div style="display: flex; gap: 8px; margin-top: 6px;">
                     <select id="f_chest_label" style="flex: 0 0 110px;">${opt(CHEST_LABELS)}</select>
-                    <input id="f_chest" type="text" placeholder="e.g. 38-40 cm" style="flex: 1 1 auto; min-width: 0;" />
+                    <input id="f_chest" type="text" placeholder="e.g. 38&quot; (inches)" style="flex: 1 1 auto; min-width: 0;" />
                   </div>
                 </div>
               </div>
               <div class="field-row">
-                <label class="field"><span>Waist</span><input id="f_waist" type="text" placeholder="e.g. 26&quot; / 66 cm" /></label>
+                <label class="field"><span>Waist</span><input id="f_waist" type="text" placeholder="e.g. 30&quot; (inches)" /></label>
                 <label class="field"><span>Hips</span><input id="f_hips" type="text" placeholder="e.g. 36&quot; / 91 cm" /></label>
               </div>
               <div class="field-row">
-                <label class="field"><span>Shoes</span><input id="f_shoes" type="text" placeholder="e.g. 8 US / 41 EU" /></label>
+                <label class="field"><span>Shoes</span><input id="f_shoes" type="text" placeholder="e.g. UK 9" /></label>
                 <label class="field"><span>Hair color</span><input id="f_model_hair" type="text" placeholder="e.g. Dark Brown" /></label>
               </div>
               <label class="field"><span>Eye color</span><input id="f_model_eyes" type="text" placeholder="e.g. Green" /></label>

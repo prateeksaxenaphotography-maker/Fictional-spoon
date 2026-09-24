@@ -4051,3 +4051,40 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
   #termsModal .modal-content > div:last-child { padding: 10px 12px !important; gap: 6px !important; }
   #termsScrollArea { padding: 14px !important; gap: 14px !important; }
 }
+
+
+/* ---- Sep 2026 audit, section V ---------------------------------------- */
+/* V5: on a phone the info panel held the PDF and comp-card buttons in a
+   26%-high strip that scrolled on its own with no hint. "Details & PDFs"
+   opens it to most of the screen; the photo shrinks above it. */
+.lb-details-btn { display: none; }
+@media (max-width: 900px) {
+  .lb-details-btn {
+    display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px;
+    background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 6px; font: 700 var(--font-xs) var(--mono-font); cursor: pointer;
+  }
+  .lightbox.lb-details-open .lightbox-sidebar { max-height: 70svh; }
+  .lightbox.lb-details-open img, .lightbox.lb-details-open #lightboxImg { max-height: calc(28svh - 40px) !important; }
+}
+/* V16: the ADMIN pill sat on the "Studio" label below it. */
+#navAdminSec { margin-bottom: 18px; }
+/* V17: five service cards read 3 + 2 on a wide screen instead of 4 + 1;
+   a single testimonial sits centred rather than alone at the left. */
+@media (min-width: 1000px) { .services-grid { grid-template-columns: repeat(3, 1fr); } }
+.tm-grid > :only-child { grid-column: 1 / -1; max-width: 640px; margin-inline: auto; }
+/* V18: a black emoji (🖤) vanished on the dark theme; quotes wrap emoji in
+   .tm-emoji and get a faint light backing there. */
+:root[data-theme="dark"] .tm-emoji { background: rgba(255,255,255,0.75); border-radius: 4px; padding: 0 2px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tm-emoji { background: rgba(255,255,255,0.75); border-radius: 4px; padding: 0 2px; } }
+/* V21: "NOIDA VIEW ALBUM →" ran together on a tablet. */
+.noth-work-meta { column-gap: 14px !important; }
+/* V8: over a photograph the wordmark is set tight, as one word, instead of
+   letters spread across the whole width. */
+.hero-shot .hero-wordmark-nerdy { justify-content: flex-start; font-size: min(15vw, 190px); }
+.hero-shot .hero-subword { justify-content: flex-start; gap: .55em; font-size: clamp(11px, 1.35vw, 19px); }
+/* The stand-in hero is an album cover, a portrait: on a phone it gets a
+   portrait frame held at the top, not the 4:3 strip cut for a landscape. */
+@media (max-width: 700px) {
+  .hero-shot-img.hero-shot-portrait { aspect-ratio: 4 / 5; object-position: 50% 12% !important; }
+}

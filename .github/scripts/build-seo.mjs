@@ -693,13 +693,7 @@ function buildServicePage(v) {
         ${serviceLinksHtml(v.slug)}
       </div>
     </section>
-
-    <section class="cta-band">
-      <div class="container">
-        <h2>Ready when you are.</h2>
-        <a href="/book/" data-link class="btn btn-dark">Book your photoshoot session →</a>
-      </div>
-    </section>`;
+`;
 
   return {
     rel: `services/${v.slug}/index.html`,
@@ -773,13 +767,7 @@ function buildServicesIndex() {
         <a href="/albums/" data-link class="link-arrow">All albums →</a>
       </div>
       ${albumCardsHtml(newestFirst.slice(0, 6))}
-    </section>` : ""}
-    <section class="cta-band">
-      <div class="container">
-        <h2>Ready when you are.</h2>
-        <a href="/book/" data-link class="btn btn-dark">Book your photoshoot session →</a>
-      </div>
-    </section>`;
+    </section>` : ""}`;
   return {
     rel: "services/index.html",
     html: pageFromTemplate({
@@ -1040,7 +1028,10 @@ function buildModelPages() {
   // or a makeup artist's day that line names the whole cast, and it would
   // have built one page addressed to six people joined by hyphens.
   const groups = new Map();
-  const consider = albumsForPage(compCardsPage).concat(
+  // A model the studio hid from the cards gets no page either: Sumitt Verma's
+  // answered 200 with his name in the title, then said "Album not found"
+  // (Sep 2026 audit, V2). Same switch the site reads (showsOnModelPage).
+  const consider = albumsForPage(compCardsPage).filter((s) => !s.hideFromCompCard).concat(
     // Albums that only contribute frames — a client's job the studio has said
     // the models may show. Same two conditions the site applies: tagged, and
     // ticked.
@@ -1108,6 +1099,13 @@ if (liveServices.length) {
   for (const v of liveServices) outputs.push(buildServicePage(v));
 }
 outputs.push(buildLicencePage());
+// /workshop-attended is linked from the menu and the home page, but only the
+// app knew it, so crawlers got a 404 for a page visitors could see (Sep 2026
+// audit, V3). While there is a workshop album to show, it gets a copy of the
+// app shell (noindex, as the app marks it) so the address answers 200.
+if (allShoots.some((s) => s && s.type === "Workshop Attended" && s.isPublic !== false)) {
+  outputs.push({ rel: "workshop-attended/index.html", html: read("404.html") });
+}
 outputs.push(buildLicencePage(PRIVACY, PRIVACY_PATH, `<a href="mailto:prateeksaxenaphotography@gmail.com">prateeksaxenaphotography@gmail.com</a> · <a href="/book/" data-link>Book a shoot</a>`));
 const modelPages = buildModelPages();
 for (const m of modelPages) outputs.push(m);

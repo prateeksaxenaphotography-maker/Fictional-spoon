@@ -1818,7 +1818,7 @@ window.resolveContractArchive = function(version) {
         : `<span class="tm-card-shoot">Album: ${esc(t.shootTitle)}</span>`;
     return `
       <figure class="tm-card reveal" style="--d:${((i % 8) * 0.05).toFixed(2)}s">
-        <blockquote class="tm-card-quote">${esc(t.quote)}</blockquote>
+        <blockquote class="tm-card-quote">${esc(t.quote).replace(/(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*)/gu, '<span class="tm-emoji">$1</span>')}</blockquote>
         <figcaption class="tm-card-by">
           <span class="tm-card-name">${esc(t.by)}${t.verified ? `<span class="tm-verified" title="The studio has documentation for this one on file">✓ Verified</span>` : ""}</span>
           ${starRow(t.rating, `Rated ${t.rating} out of 5`)}
@@ -2355,6 +2355,14 @@ window.resolveContractArchive = function(version) {
   // for that file before it fetches the builder, so window.WPS_PDF is always
   // there by the time the builder calls one of these.
   window.closeLb = (keep) => closeLb(keep);
+  // Phone: "Details & PDFs" opens the info panel to most of the screen (V5).
+  document.getElementById("lbDetailsBtn")?.addEventListener("click", (e) => {
+    const box = document.getElementById("lightbox");
+    const open = !box.classList.contains("lb-details-open");
+    box.classList.toggle("lb-details-open", open);
+    e.currentTarget.setAttribute("aria-expanded", String(open));
+    e.currentTarget.textContent = open ? "Back to photo" : "Details & PDFs";
+  });
   window.WPS_BOOK_API = {
     newPdfPage: (dpi, size) => window.WPS_PDF.newPdfPage(dpi, size),
     photoFocus: (p) => window.WPS_PDF.photoFocus(p),
@@ -2746,7 +2754,7 @@ window.resolveContractArchive = function(version) {
     }
 
     const disclaimerHtml = isCc ? `
-      <p class="lb-disclaimer">To book this talent, connect through their social channels or their representing agency. The photos on this model portfolio were made by nerdyphotographer.in or its affiliates.</p>
+      <p class="lb-disclaimer">To book this talent, connect through their social channels or their representing agency. The photos on this model portfolio were made by Prateek Saxena (nerdyphotographer.in).</p>
     ` : "";
 
     const metaBits = isCc ? [] : [
@@ -2967,6 +2975,8 @@ window.resolveContractArchive = function(version) {
   // served from a stale cache still carries that attribute.
   function closeLb(keepHistory) {
     lbPaintToken++;                 // cancel any decode still in flight
+    lb.classList.remove("lb-details-open");
+    document.getElementById("lbDetailsBtn")?.setAttribute("aria-expanded", "false");
     lb.classList.remove("lb-loading");
     lb.hidden = true; lbImg.src = ""; document.body.style.overflow = "";
     // Return focus to the thumbnail/card that opened the viewer.
@@ -3072,6 +3082,7 @@ window.resolveContractArchive = function(version) {
     overlay.classList.toggle("open", o);
     overlay.setAttribute("aria-hidden", String(!o));
     menuBtn.setAttribute("aria-expanded", String(o));
+    menuBtn.setAttribute("aria-label", o ? "Close menu" : "Open menu");
     document.body.style.overflow = o ? "hidden" : "";
     // Fixed bars (the booking page's "Total payable / Submit" bar, the
     // upload page's publish bar) sit at the same layer as the menu and were
@@ -3455,7 +3466,9 @@ window.resolveContractArchive = function(version) {
       // panel and the PDF.
       if (s.agency && showRep(s, "Agency", repSurface)) creditsList.push(`Agency <strong>${esc(s.agency)}</strong>`);
       if (s.modelEmail && showRep(s, "Email", repSurface)) creditsList.push(`Email <a href="mailto:${esc(s.modelEmail)}" style="color:var(--accent-text); font-weight:600;">${esc(s.modelEmail)}</a>`);
-      if (igHtml && showRep(s, "ModelInstagram", repSurface)) creditsList.push(`Socials ${igHtml}`);
+      // The talent line already links the handle when it carries one; the
+      // Socials line printed the same @handle again (V12).
+      if (igHtml && showRep(s, "ModelInstagram", repSurface) && !/@|https?:/i.test(String(s.talent || ""))) creditsList.push(`Socials ${igHtml}`);
     } else {
       if (s.photographer || s.secondaryPhotographers) {
         const extra = (s.secondaryPhotographers || "").split(",").map(x => getTalentCleanName(x.trim())).filter(Boolean);
@@ -3470,7 +3483,9 @@ window.resolveContractArchive = function(version) {
       // and s.instagram won't necessarily carry them. This strips the
       // parentheses AND renders each handle as a link, so no link is lost.
       if (s.talent && s.talent !== "—") creditsList.push(`Talent <strong>${renderCreditValue(s.talent)}</strong>`);
-      if (igHtml && showRep(s, "ModelInstagram", repSurface)) creditsList.push(`Socials ${igHtml}`);
+      // The talent line already links the handle when it carries one; the
+      // Socials line printed the same @handle again (V12).
+      if (igHtml && showRep(s, "ModelInstagram", repSurface) && !/@|https?:/i.test(String(s.talent || ""))) creditsList.push(`Socials ${igHtml}`);
     }
     const creditsHtml = creditsList.join("  ·  ");
 
@@ -3573,7 +3588,7 @@ window.resolveContractArchive = function(version) {
             <p class="work-desc"><span${ed("description")}>${esc(s.description || (canInline ? "Add a description…" : ""))}</span></p>
             ${s.isCompCard ? "" : `
             <dl class="work-credits">
-              <div><dt>Activity</dt><dd>${esc(s.activity)}</dd></div>
+              <div><dt>Main genre</dt><dd>${esc(s.activity)}</dd></div>
               <div><dt>Season</dt><dd><span${ed("season")}>${esc(s.season || "—")}</span></dd></div>
               <div><dt>Location</dt><dd><span${ed("location")}>${esc(s.location || "—")}</span></dd></div>
             </dl>
@@ -3602,7 +3617,7 @@ window.resolveContractArchive = function(version) {
           ${diagramHtml}
           <div style="margin-top: 22px; display: flex; align-items: center; flex-wrap: wrap; gap: 14px; width: 100%;">
             <button class="link-arrow work-open" style="padding: 0;" aria-label="${esc(s.isCompCard ? `View ${getTalentCleanName(s.talent || s.title)}\u2019s details` : `View ${s.title || "project"}`)}">${s.isCompCard ? "View model details" : "View album"} →</button>
-            <button class="link-arrow work-share" style="padding: 0; display: inline-flex; align-items: center; gap: 6px;" title="Share this album" aria-label="Share this album">
+            <button class="link-arrow work-share" style="padding: 0; display: inline-flex; align-items: center; gap: 6px;" title="${s.isCompCard ? "Share this model portfolio" : "Share this album"}" aria-label="Share this album">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
               Share link
             </button>
@@ -3729,9 +3744,21 @@ window.resolveContractArchive = function(version) {
     // Hand-picked in config.js. Falls back to the old typographic hero if it is
     // blank or points at a file that no longer exists, so a mistyped path
     // degrades to the previous design rather than a broken image.
-    const heroSrc = (window.STUDIO_CONFIG?.heroImage || "").trim();
-    const heroFocus = (window.STUDIO_CONFIG?.heroFocus || "50% 35%").trim();
-    const heroAlt = (window.STUDIO_CONFIG?.heroAlt || "Studio photography by nerdyphotographer.in").trim();
+    /* Until a frame is shot for it (config.js heroImage), the first screen shows
+       the newest public album's cover — a photographer's home page opened on
+       no photograph at all (Sep 2026 audit, V8; the owner's choice). */
+    const newestCover = (() => {
+      const s = SHOOTS.filter((x) => x && x.isPublic !== false && !x.isTestimonial && x.type !== "Workshop Attended" && (x.photos || []).length)
+        .sort((a, b) => (Date.parse(b.date) || b.createdAt || 0) - (Date.parse(a.date) || a.createdAt || 0))[0];
+      if (!s) return null;
+      const cover = (s.coverPhotoId && s.photos.find((p) => String(p.id).split("-")[0] === s.coverPhotoId)) || s.photos[0];
+      return cover && cover.url ? { url: cover.url, alt: altFor(s) } : null;
+    })();
+    const heroSrc = (window.STUDIO_CONFIG?.heroImage || "").trim() || (newestCover ? newestCover.url : "");
+    // A stand-in cover is a portrait, framed for the album grid: keep the top
+    // of it, where the face is, when a phone crops it to a wide strip.
+    const heroFocus = ((window.STUDIO_CONFIG?.heroImage || "").trim() ? (window.STUDIO_CONFIG?.heroFocus || "50% 35%") : "50% 12%").trim();
+    const heroAlt = ((window.STUDIO_CONFIG?.heroImage || "").trim() ? (window.STUDIO_CONFIG?.heroAlt || "") : (newestCover ? newestCover.alt : "")).trim() || "Studio photography by nerdyphotographer.in";
     CURRENT_VIEW_SHOOTS = feat;
     const brandCount = new Set(SHOOTS.filter(s => s.client && s.client.trim() && s.type !== "Workshop Attended").map(s => s.brand)).size;
     const activeBrands = BRANDS.filter(b => SHOOTS.some(s => s.brand === b && s.client && s.client.trim() && s.type !== "Workshop Attended"));
@@ -3784,7 +3811,7 @@ window.resolveContractArchive = function(version) {
     return `
       <section class="hero ${heroSrc ? "hero-shot" : "hero-mono hero-brand"}">
         ${heroSrc ? `
-          <img class="hero-shot-img" src="${esc(heroSrc)}"${srcsetAttr({ url: heroSrc }, "100vw")} style="object-position: ${esc(heroFocus)};" alt="${esc(heroAlt)}" fetchpriority="high" decoding="async" />
+          <img class="hero-shot-img${(window.STUDIO_CONFIG?.heroImage || "").trim() ? "" : " hero-shot-portrait"}" src="${esc(heroSrc)}"${srcsetAttr({ url: heroSrc }, "100vw")} style="object-position: ${esc(heroFocus)};" alt="${esc(heroAlt)}" fetchpriority="high" decoding="async" />
           <div class="hero-shot-scrim" aria-hidden="true"></div>
         ` : `<div class="hero-bg" aria-hidden="true"></div>${cameraSvg()}`}
         <div class="container hero-inner">
@@ -3801,7 +3828,7 @@ window.resolveContractArchive = function(version) {
           <div class="hero-mono-foot">
             <p class="hero-mono-tagline reveal">Not just photos, a perspective. <span class="hero-accent">Editorial-grade portfolios</span> for models &amp; brands.</p>
             <div class="hero-actions reveal">
-              <a href="${liveServiceLinks().length ? "/services/" : "/albums"}" data-link class="btn btn-dark">Explore work →</a>
+              <a href="/albums/" data-link class="btn btn-dark">See the work →</a>
               <a href="${esc(compCardsHref())}" data-link class="btn btn-ghost">Model portfolios</a>
               ${isAdmin() ? `<a href="/upload" data-link class="btn btn-ghost">Publish a shoot</a>` : `<a href="/book" data-link class="btn btn-ghost">Book a shoot</a>`}
             </div>
@@ -3809,7 +3836,7 @@ window.resolveContractArchive = function(version) {
         </div>
         <div class="hero-scroll" aria-hidden="true"><span></span>SCROLL</div>
       </section>
-      <h2 class="visually-hidden">Fashion, Fitness &amp; Sports Photography in Noida &amp; Delhi NCR — editorial-grade portfolios for models &amp; brands</h2>
+      <h2 class="visually-hidden">Model portfolio, fashion &amp; fitness photography in Noida &amp; Delhi NCR</h2>
 
       ${partnersHtml}
       ${clientNames.length && !partnersHtml ? `
@@ -3824,7 +3851,7 @@ window.resolveContractArchive = function(version) {
       <section class="section container section-divider">
         ${kineticWord("WORKS")}
         <div class="section-head row reveal" style="margin-top: 8px;">
-          <div><p class="eyebrow">The work</p><h2>Photoshoots</h2></div>
+          <div><p class="eyebrow">Latest</p><h2>Photoshoots</h2></div>
           <a href="/albums" data-link class="link-arrow">All albums →</a>
         </div>
         <div class="noth-work-list" data-paginate="6" aria-label="Photoshoots">${feat.map(nothWorkCard).join("")}</div>
@@ -3851,7 +3878,7 @@ window.resolveContractArchive = function(version) {
       <section class="section container">
         <div class="quick-links-grid reveal" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin: 40px 0;">
           <a href="${esc(compCardsHref())}" data-link class="btn btn-dark" style="text-align: center; padding: 16px 24px;">Model portfolios &amp; comp cards →</a>
-          <a href="/workshop-attended" data-link class="btn btn-dark" style="text-align: center; padding: 16px 24px;">Workshop Attended →</a>
+          <a href="/workshop-attended" data-link class="btn btn-dark" style="text-align: center; padding: 16px 24px;">Workshops attended →</a>
         </div>
       </section>
 
@@ -3863,7 +3890,6 @@ window.resolveContractArchive = function(version) {
             <p class="eyebrow">Client Reactions</p>
             <h2>Testimonials &amp; Trust</h2>
           </div>
-          <a href="/testimonials" data-link class="link-arrow">${allT.length > 5 ? `All ${allT.length} testimonials` : "Read them all"} →</a>
         </div>
         <div class="tm-grid">${homeT.map(testimonialCard).join("")}</div>
         <div class="tm-home-foot reveal">
@@ -3873,18 +3899,15 @@ window.resolveContractArchive = function(version) {
       </section>
       ` : ''}
 
-      <!-- CTA BAND -->
-      <section class="cta-band" style="border-top: 1px solid var(--line); margin-top: 60px;">
+      <!-- CTA BAND (the studio's only: visitors get the footer's "Book a shoot") -->
+      ${isAdmin() ? `<section class="cta-band" style="border-top: 1px solid var(--line); margin-top: 60px;">
         <div class="container reveal">
           ${isAdmin() ? `
             <h2>Your shoot belongs in the archive.</h2>
             <a href="/upload" data-link class="btn btn-dark">Publish your photoshoot →</a>
-          ` : `
-            <h2>Ready to capture your story?</h2>
-            <a href="/book" data-link class="btn btn-dark">Book your photoshoot session →</a>
-          `}
+          ` : ``}
         </div>
-      </section>`;
+      </section>` : ""}`;
   }
 
   // Full listing of every album — the "All albums" page.
@@ -3908,17 +3931,14 @@ window.resolveContractArchive = function(version) {
       <section class="section container full-bleed" style="padding-top: 0;">
         <div class="noth-work-list" id="albumsMainGrid" data-paginate="9" aria-label="Albums">${list.map(nothWorkCard).join("") || emptyCat()}</div>
       </section>
-      <section class="cta-band">
+      ${isAdmin() ? `<section class="cta-band">
         <div class="container reveal">
           ${isAdmin() ? `
             <h2>Add another to the archive.</h2>
             <a href="/upload" data-link class="btn btn-dark">Publish a photoshoot →</a>
-          ` : `
-            <h2>Ready to capture your story?</h2>
-            <a href="/book" data-link class="btn btn-dark">Book your photoshoot session →</a>
-          `}
+          ` : ``}
         </div>
-      </section>`;
+      </section>` : ""}`;
   }
 
   // Shared album view — anyone with the link can view
@@ -3943,6 +3963,13 @@ window.resolveContractArchive = function(version) {
         </section>`;
     }
     CURRENT_VIEW_SHOOTS = [album];
+    // The share page showed one card and asked for one more tap before any
+    // photograph (Sep 2026 audit, V14). An album goes straight to its own page;
+    // the share address keeps its link preview for WhatsApp and the like.
+    if (!album.isCompCard && albumPathFor(album)) {
+      const to = albumPathFor(album);
+      setTimeout(() => { if (/^\/share\/?$/.test(location.pathname)) { history.replaceState(null, "", to); render(); } }, 0);
+    }
     const title = getTalentCleanName(album.isCompCard ? album.talent : (album.title || "Untitled"));
     return `
       <section class="page-head">
@@ -5736,12 +5763,6 @@ window.resolveContractArchive = function(version) {
         </div>
       </section>
 
-      <section class="cta-band" style="border-top: 1px solid var(--line); margin-top: 60px;">
-        <div class="container reveal">
-          <h2>Ready to be in front of it?</h2>
-          <a href="/book" data-link class="btn btn-dark">Book a photoshoot session →</a>
-        </div>
-      </section>
     `;
   }
 
@@ -10983,30 +11004,33 @@ window.resolveContractArchive = function(version) {
       }
     }
     
+    // Every redirect here replaces the address rather than adding one: with
+    // pushState, Back returned to the studio's address and bounced forward
+    // again, so a visitor could not leave (Sep 2026 audit, V7).
     // Redirect non-admins trying to access upload page
     if (key === "upload" && !isAdmin()) {
-      history.pushState(null, "", "/");
+      history.replaceState(null, "", "/");
       render();
       return;
     }
 
     // Redirect non-admins trying to access the calendar page
     if (key === "calendar" && !isAdmin()) {
-      history.pushState(null, "", "/");
+      history.replaceState(null, "", "/");
       render();
       return;
     }
 
     // The portfolio book is the studio's own tool.
     if (key === "portfolio-book" && !isAdmin()) {
-      history.pushState(null, "", "/");
+      history.replaceState(null, "", "/");
       render();
       return;
     }
 
     // Redirect non-admins trying to access the contracts vault
     if (key === "contracts" && !isAdmin()) {
-      history.pushState(null, "", "/");
+      history.replaceState(null, "", "/");
       render();
       return;
     }
@@ -11021,7 +11045,7 @@ window.resolveContractArchive = function(version) {
 
     // Redirect to home if trying to access workshop-attended and not authorized
     if (key === "workshop-attended" && !isAdmin() && !shouldShowWorkshopsToAll()) {
-      history.pushState(null, "", "/");
+      history.replaceState(null, "", "/");
       render();
       return;
     }
@@ -11051,7 +11075,7 @@ window.resolveContractArchive = function(version) {
 
     if (key === "categories" && val === "Workshop Attended") {
       const allowed = isAdmin() || shouldShowWorkshopsToAll();
-      history.pushState(null, "", allowed ? "/workshop-attended" : "/");
+      history.replaceState(null, "", allowed ? "/workshop-attended" : "/");
       render();
       return;
     }
@@ -11122,6 +11146,7 @@ window.resolveContractArchive = function(version) {
           let backHref = "/", backLabel = "Back to home";
           if (key === "services" && parts[1] && liveServiceLinks().length) { backHref = "/services/"; backLabel = "What I shoot"; }
           else if (key === "albums" && parts[1]) { backHref = "/albums/"; backLabel = "All albums"; }
+          else if (key === "models" && parts[1]) { backHref = compCardsHref(); backLabel = "All models"; }
           const back = document.createElement("a");
           back.href = backHref;
           back.setAttribute("data-link", "");
@@ -11386,8 +11411,13 @@ window.resolveContractArchive = function(version) {
 
   function setActiveNav(key) {
     overlay.querySelectorAll(".nav-links a").forEach((a) => {
-      const h = a.getAttribute("href").replace(/^#\/?/, "");
-      a.classList.toggle("active", h === key || (h === "" && key === ""));
+      // "/albums" and "/services/" against the route key "albums": strip the
+      // slashes and anything after the first segment, or nothing ever matched
+      // (Sep 2026 audit, V6).
+      const h = (a.getAttribute("href") || "").replace(/^#?\/?/, "").split(/[/?#]/)[0];
+      const on = h === key;
+      a.classList.toggle("active", on);
+      if (on) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
     });
   }
 
@@ -12062,7 +12092,9 @@ window.resolveContractArchive = function(version) {
     // every route without touching each per-route index.html shell. Lets any
     // visitor clear a stale cached bundle without opening DevTools.
     const navMeta = document.querySelector(".nav-meta");
-    if (navMeta && !document.getElementById("clearCacheBlock")) {
+    // The studio's only: every visitor saw "Trouble loading?" in the menu as
+    // well as the footer's "Load fresh version" (Sep 2026 audit, V16).
+    if (isAdmin() && navMeta && !document.getElementById("clearCacheBlock")) {
       const block = document.createElement("div");
       block.id = "clearCacheBlock";
       block.innerHTML = `
