@@ -441,6 +441,31 @@ window.WPS_CONTRACT_ARCHIVE["V3.11-TFP"] = {
     .replace("Strictly no RAW unedited files are delivered.", "RAW unedited files are not included. Where the Participant wants them, they are available only by separate written agreement with the Studio, for an additional fee agreed in advance.")
     + "\n\nDELIVERABLES, REVISIONS & FILE RETENTION\nThe Participant receives the deliverables agreed for the session. One round of minor revisions is included, requested within 7 days of delivery; revisions cover retouching corrections rather than reselection or reshooting, and the Studio retains final artistic authority over image selection and editing style. The Studio keeps the delivered files available for 3 months (90 days) from the date of delivery, after which they may be removed without further notice."
 };
+/* British spelling in the two versions clients read now (Sep 2026 audit,
+   language items L15/L16): licence (the noun), colour, catalogues,
+   specialisation, make-up. Spelling only — no word changes what the contract
+   means — so the owner chose to keep the V3.11 numbers rather than issue a
+   V3.12 (24 Sep 2026). It runs after both texts are composed, so none of the
+   .replace() calls above can miss its target, and it touches V3.11 alone:
+   every archived version stays exactly as its signers read it. */
+(() => {
+  const BRITISH = [
+    [/\bLICENSE\b/g, "LICENCE"], [/\blicense\b/g, "licence"],
+    [/\bcolor\b/g, "colour"], [/\bcatalogs\b/g, "catalogues"],
+    [/\bSPECIALIZATION\b/g, "SPECIALISATION"], [/\bspecialization\b/g, "specialisation"],
+    [/\bspecialized\b/g, "specialised"], [/\borganized\b/g, "organised"],
+    [/\bauthorization\b/g, "authorisation"],
+    [/\bmakeup\b/g, "make-up"], [/\bMakeup\b/g, "Make-up"]
+  ];
+  const british = (s) => BRITISH.reduce((t, [from, to]) => t.replace(from, to), String(s || ""));
+  ["V3.11-COMMERCIAL", "V3.11-TFP"].forEach((v) => {
+    const c = window.WPS_CONTRACT_ARCHIVE[v];
+    c.title = british(c.title);
+    c.summary = british(c.summary);
+    c.fullText = british(c.fullText);
+  });
+})();
+
 window.WPS_CONTRACT_ARCHIVE["V3.10-TFP"].effectiveDate = "September 2026 (superseded by V3.11-TFP)";
 window.WPS_CONTRACT_ARCHIVE["V3.10-TFP"].status = "Archived - superseded by V3.11-TFP (proofing gallery, revision round, retention window; RAW by paid agreement)";
 
