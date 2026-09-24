@@ -3924,29 +3924,11 @@ window.WPS_DATA = {
             "type": "photos",
             "photos": [
               {
-                "id": "muca5877bysjsu-4",
-                "x": 0.28,
-                "y": 0.35,
-                "zoom": 1,
+                "id": "muca59vuukn3zd-10",
+                "x": 0.5,
+                "y": 0.09,
+                "zoom": 1.35,
                 "fit": "height"
-              },
-              {
-                "id": "muca58rgq9nttw-5",
-                "x": 0.5,
-                "y": 0.35,
-                "zoom": 1
-              },
-              {
-                "id": "muca593bwa9nvo-6",
-                "x": 0.5,
-                "y": 0.35,
-                "zoom": 1
-              },
-              {
-                "id": "muca598rr6zyay-7",
-                "x": 0.5,
-                "y": 0.35,
-                "zoom": 1
               }
             ]
           },
@@ -4021,7 +4003,8 @@ window.WPS_DATA = {
                 "zoom": 1,
                 "fit": "whole"
               }
-            ]
+            ],
+            "bg": "paper"
           },
           {
             "type": "photos",
@@ -4284,7 +4267,7 @@ window.WPS_DATA = {
           "phone": "",
           "showPrices": false
         },
-        "updatedAt": 1790232796810
+        "updatedAt": 1790235706987
       }
     ],
     "deleted": [
@@ -4304,7 +4287,8 @@ window.WPS_DATA = {
       "bkmu73sac0xsfz",
       "bkmu78imgvxhvw",
       "bkmu7sm7y0obhy",
-      "bkmu9io6yxzopu"
+      "bkmu9io6yxzopu",
+      "bkmuf7kfthmb3y"
     ]
   }
 };
