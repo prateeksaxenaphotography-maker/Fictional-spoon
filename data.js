@@ -1024,11 +1024,11 @@ window.WPS_DATA = {
       "talent": "Harshit Maindola",
       "location": "Jaipur",
       "height": "6'3",
-      "chest": "38–40 in",
-      "waist": "30 in",
+      "chest": "38-40 cm",
+      "waist": "30 cm",
       "hips": "",
       "shoes": "UK11",
-      "modelHair": "Black",
+      "modelHair": "Back",
       "modelEyes": "Dark Brown",
       "showStatsOnCompCard": true,
       "showStatsOnModelPortfolio": true,
@@ -2284,12 +2284,12 @@ window.WPS_DATA = {
       "videographer": "—",
       "talent": "Atharv Sharma (https://www.instagram.com/ectogainsss/?hl=en)",
       "location": "Noida",
-      "height": "6 Ft",
+      "height": "6'0\"",
       "chest": "",
       "chestLabel": "Chest",
-      "waist": "29",
+      "waist": "29 in",
       "hips": "",
-      "shoes": "9",
+      "shoes": "US 9",
       "modelHair": "Black",
       "modelEyes": "Black",
       "agencyCredit": "",
@@ -2680,52 +2680,6 @@ window.WPS_DATA = {
       "2026-09-11": true
     },
     "bookedDates": {
-      "2001-08-15": [
-        {
-          "id": "b_1786709109940_konc",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Fashion Editorial",
-          "contractVersion": "COMMERCIAL-CONTRACT-V3.3"
-        },
-        {
-          "id": "b_audit_WPS-20260814-173509-WMCY",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Fashion Editorial",
-          "contractVersion": "COMMERCIAL-CONTRACT-V3.3"
-        }
-      ],
-      "2026-01-01": [
-        {
-          "id": "b_1786709109940_5jr5",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Fashion Editorial",
-          "contractVersion": "COMMERCIAL-CONTRACT-V3.3"
-        },
-        {
-          "id": "b_1787428837182_k801",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Fashion Editorial",
-          "contractVersion": "COMMERCIAL-CONTRACT-V3.5"
-        },
-        {
-          "id": "b_audit_WPS-20260814-173509-WMCY",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Fashion Editorial",
-          "contractVersion": "COMMERCIAL-CONTRACT-V3.3"
-        },
-        {
-          "id": "b_audit_WPS-20260823-013037-SRE9",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Fashion Editorial",
-          "contractVersion": "COMMERCIAL-CONTRACT-V3.5"
-        }
-      ],
       "2026-08-15": [
         {
           "id": "b_1786709194164_gq8l",
@@ -2776,22 +2730,6 @@ window.WPS_DATA = {
           "status": "assisting",
           "type": "Assisting Photographer",
           "contractVersion": "Pending Agreement"
-        }
-      ],
-      "2001-10-17": [
-        {
-          "id": "b_1787428837182_i8mi",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Fashion Editorial",
-          "contractVersion": "COMMERCIAL-CONTRACT-V3.5"
-        },
-        {
-          "id": "b_audit_WPS-20260823-013037-SRE9",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Fashion Editorial",
-          "contractVersion": "COMMERCIAL-CONTRACT-V3.5"
         }
       ],
       "2026-08-29": [
@@ -3096,6 +3034,9 @@ window.WPS_DATA = {
       "color": "#141416"
     }
   },
+  "MEASURE_UNITS": {
+    "display": "metric"
+  },
   "HOME_STUDIO_RATE_TFP": 4000,
   "SETTINGS_AT": {
     "INVITE_CODES": 1789975069138,
@@ -3103,7 +3044,8 @@ window.WPS_DATA = {
     "PACKAGES": 1790257919972,
     "TFP_PACKAGE": 1790257919972,
     "HOME_STUDIO_RATE": 1789975069138,
-    "PORTFOLIO_PDF": 1790239875077,
+    "PORTFOLIO_PDF": 1790257117968,
+    "MEASURE_UNITS": 1790269147688,
     "HOME_STUDIO_RATE_TFP": 1789975069138
   },
   "TESTIMONIALS": {
@@ -3259,12 +3201,12 @@ window.WPS_DATA = {
         "key": "atharv-sharma",
         "name": "Atharv Sharma",
         "talent": "Atharv Sharma (https://www.instagram.com/ectogainsss/?hl=en)",
-        "height": "6 Ft",
+        "height": "6'0\"",
         "chest": "",
         "chestLabel": "Chest",
-        "waist": "29",
+        "waist": "29 in",
         "hips": "",
-        "shoes": "9",
+        "shoes": "US 9",
         "modelHair": "Black",
         "modelEyes": "Black",
         "agencyCredit": "",
@@ -3276,7 +3218,7 @@ window.WPS_DATA = {
         "modelTypes": [
           "Fashion"
         ],
-        "updatedAt": 1790168693034,
+        "updatedAt": 1790269166028,
         "showStatsOnCompCard": true,
         "showStatsOnModelPortfolio": true,
         "showModelInstagramOnCompCard": true,
@@ -3749,7 +3691,7 @@ window.WPS_DATA = {
         "id": "mp_mueija7w_ny3rh",
         "shootId": "comp-card-Atharv%20Sharma%20(https%3A%2F%2Fwww.instagram.com%2Fectogainsss%2F%3Fhl%3Den)",
         "name": "Test 1",
-        "updatedAt": 1790239875077,
+        "updatedAt": 1790257117968,
         "spec": {
           "pages": 2,
           "count": 8,
@@ -3783,10 +3725,19 @@ window.WPS_DATA = {
           "tagPlace": "below",
           "tagAlign": "center",
           "layout": "equal",
-          "layouts": [],
-          "cols": [],
-          "bigAt": [],
-          "detailsAlign": "left",
+          "layouts": [
+            "equal",
+            "lead"
+          ],
+          "cols": [
+            0,
+            0
+          ],
+          "bigAt": [
+            "",
+            ""
+          ],
+          "detailsAlign": "centre",
           "spacing": "none",
           "order": [
             "muca56vgez53vb-0",
@@ -3803,6 +3754,21 @@ window.WPS_DATA = {
             "muca80smjx9k90-18": {
               "x": 0.5,
               "y": 0.35,
+              "zoom": 1.037425997426
+            },
+            "muccmrnumyyf3j-23": {
+              "x": 0.5,
+              "y": 0.35,
+              "zoom": 1
+            },
+            "muca593bwa9nvo-6": {
+              "x": 0.5,
+              "y": 0.35,
+              "zoom": 1
+            },
+            "muca80xnhe2eom-19": {
+              "x": 0.18603887524945684,
+              "y": 0.24573177002982619,
               "zoom": 1
             }
           }
