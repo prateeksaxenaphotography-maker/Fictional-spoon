@@ -4342,27 +4342,69 @@ ${admin ? `
       arrange.hidden = !alive;
     }
 
-    function unlock() {
+    /* A UPI reference (the 12-digit "UPI Ref No.", an RRN) starts with the day
+       the money moved: the last digit of the year, then the day of the year.
+       Any twelve digits used to unlock the PDF — 000000000000 did (Sep 2026
+       audit, P1) — so obvious fakes, and references that do not date from the
+       last ten days, are refused. It stays honour-based: the studio still
+       matches every reference against the bank. */
+    function utrProblem(utr) {
+      if (/^(\d)\1{11}$/.test(utr)) return "fake";
+      const d = utr.split("").map(Number);
+      const steps = d.slice(1).map((x, i) => (x - d[i] + 10) % 10);
+      if (steps.every((s) => s === 1) || steps.every((s) => s === 9)) return "fake";
+      const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+      const dayOfYear = +utr.slice(1, 4);
+      for (let back = -1; back <= 10; back++) {
+        const day = new Date(now); day.setDate(day.getDate() - back);
+        const start = new Date(day.getFullYear(), 0, 0);
+        const doy = Math.round((new Date(day.getFullYear(), day.getMonth(), day.getDate()) - start) / 86400000);
+        if (+utr[0] === day.getFullYear() % 10 && dayOfYear === doy) return "";
+      }
+      return "date";
+    }
+
+    let unlocking = false;
+    async function unlock() {
+      if (unlocking) return;
       const email = state.email.trim();
       const utr = state.utr.replace(/\s+/g, "");
       const error = body.querySelector("#ppPayError");
-      const fail = (message, field) => { error.textContent = message; error.hidden = false; body.querySelector(field).focus(); };
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { fail("Enter your email, so the studio can reach you if the payment doesn't show up.", "#ppEmail"); return; }
+      const btn = body.querySelector("#ppUnlock");
+      const fail = (message, field) => { error.textContent = message; error.hidden = false; if (field) body.querySelector(field).focus(); };
+      if (!/^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(email)) { fail("Enter your email, so the studio can reach you if the payment doesn't show up.", "#ppEmail"); return; }
       if (!/^\d{12}$/.test(utr)) { fail("The UPI reference number is the 12-digit number on your payment receipt.", "#ppUtr"); return; }
+      const problem = utrProblem(utr);
+      if (problem === "fake") { fail("That isn't a UPI reference number. It's the 12-digit “UPI Ref No.” on your payment receipt.", "#ppUtr"); return; }
+      if (problem === "date") { fail("That doesn't look like a UPI reference from the last few days. Check the 12-digit “UPI Ref No.” on your receipt — or, if it's right, email it to the studio.", "#ppUtr"); return; }
       const seen = readPdfUtrs()[utr];
       if (seen === "used") { fail("That reference number has already paid for a PDF. Each payment unlocks one PDF.", "#ppUtr"); return; }
+      error.hidden = true;
+      /* The download opens only once the studio has been told. It used to open
+         whether or not the sale email went — with FormSubmit blocked, offline
+         or refusing, the PDF was taken and the studio heard nothing, so there
+         was no reference to match against the bank (Sep 2026 audit, P1).
+         Entered again after it was sent (a reload, say), it opens at once. */
+      if (seen !== "sent") {
+        unlocking = true;
+        const label = btn ? btn.textContent : "";
+        if (btn) { btn.disabled = true; btn.textContent = "Letting the studio know…"; }
+        const spec = buildSpec();
+        const ok = await sendPortfolioPdfSaleEmail({
+          model: name, price, upiId: sale.upiId, utr, ref: state.ref, email,
+          pages: spec.pages, cover: !!spec.cover, poses: printOrder().map((s) => s.label || "no pose").join(", ")
+        });
+        unlocking = false;
+        if (btn) { btn.disabled = false; btn.textContent = label; }
+        if (!ok) {
+          fail("We couldn't reach the studio to record your payment, so the download isn't open yet. Check your connection and press the button again — your reference number hasn't been used.");
+          return;
+        }
+        markPdfUtr(utr, "sent");
+      }
       state.paid = true;
       state.paidUtr = utr;
       state.madeKey = "";
-      // Entered again before any PDF was made (after a reload, say), the
-      // studio already has this sale's email.
-      if (seen !== "sent") {
-        const spec = buildSpec();
-        sendPortfolioPdfSaleEmail({
-          model: name, price, upiId: sale.upiId, utr, ref: state.ref, email,
-          pages: spec.pages, cover: !!spec.cover, poses: printOrder().map((s) => s.label || "no pose").join(", ")
-        }).then((ok) => { if (ok) markPdfUtr(utr, "sent"); });
-      }
       showPreview();
     }
 
