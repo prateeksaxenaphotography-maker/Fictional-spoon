@@ -398,6 +398,8 @@ window.WPS_DATA = {
           "small": "photos/mr4x6kwx3f8rs3/mtrcowl48wk2he-8@480.jpg",
           "medium": "photos/mr4x6kwx3f8rs3/mtrcowl48wk2he-8@960.jpg",
           "onHome": true,
+          "homeFocalX": 41.70088101958772,
+          "homeFocalY": 55.736770072992705,
           "focalX": 39.511162432640496,
           "focalY": 58.17366180048662
         },
@@ -2574,10 +2576,13 @@ window.WPS_DATA = {
         {
           "id": "muccmrnumyyf3j-23",
           "url": "photos/mubczus1xaoo4q/muccmrnumyyf3j-24.jpg",
-          "objectPosition": "center",
+          "objectPosition": "58.1% 2.7%",
           "usage": "both",
           "small": "photos/mubczus1xaoo4q/muccmrnumyyf3j-24@480.jpg",
-          "medium": "photos/mubczus1xaoo4q/muccmrnumyyf3j-24@960.jpg"
+          "medium": "photos/mubczus1xaoo4q/muccmrnumyyf3j-24@960.jpg",
+          "onHome": true,
+          "focalX": 58.14145160459486,
+          "focalY": 2.7064157164445666
         },
         {
           "id": "muccmrtlo2j6s7-24",
@@ -3252,7 +3257,7 @@ window.WPS_DATA = {
         "modelTypes": [
           "Fashion"
         ],
-        "updatedAt": 1790269166028,
+        "updatedAt": 1790271280390,
         "showStatsOnCompCard": true,
         "showStatsOnModelPortfolio": true,
         "showModelInstagramOnCompCard": true,
@@ -3481,7 +3486,7 @@ window.WPS_DATA = {
         "modelTypes": [
           "Fashion"
         ],
-        "updatedAt": 1790270426171,
+        "updatedAt": 1790271882473,
         "showStatsOnCompCard": true,
         "showStatsOnModelPortfolio": true,
         "showModelInstagramOnCompCard": true,
