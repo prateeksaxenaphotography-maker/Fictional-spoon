@@ -268,6 +268,10 @@ window.WPS_DATA = {
       "modelTypes": [
         "Fashion"
       ],
+      "modelKeys": [
+        "prachi-choudhary"
+      ],
+      "feedsModelCards": true,
       "showStatsOnCompCard": true,
       "showStatsOnModelPortfolio": true,
       "showTestShootCategory": false,
@@ -381,13 +385,14 @@ window.WPS_DATA = {
         {
           "id": "mtrcowl48wk2he-8",
           "url": "photos/mr4x6kwx3f8rs3/mtrcowl48wk2he-8.jpg",
-          "objectPosition": "37.7% 84.0%",
+          "objectPosition": "39.5% 58.2%",
           "angle": "full-body",
           "usage": "both",
           "small": "photos/mr4x6kwx3f8rs3/mtrcowl48wk2he-8@480.jpg",
           "medium": "photos/mr4x6kwx3f8rs3/mtrcowl48wk2he-8@960.jpg",
-          "focalX": 37.70154020501726,
-          "focalY": 84.03904600010303
+          "onHome": true,
+          "focalX": 39.511162432640496,
+          "focalY": 58.17366180048662
         },
         {
           "id": "mtrcows5ek5xfl-9",
@@ -480,10 +485,7 @@ window.WPS_DATA = {
       "showAgencyEmailOnCompCard": false,
       "showAgencyEmailOnHome": false,
       "showAgencyEmailOnPdf": false,
-      "coverPhotoId": "mtrcnsbj428ce3",
-      "modelKeys": [
-        "prachi-choudhary"
-      ]
+      "coverPhotoId": "mtrcnsbj428ce3"
     },
     {
       "id": "mr55364rvor33m",
@@ -503,12 +505,12 @@ window.WPS_DATA = {
       "videographer": "—",
       "talent": "Kunaal Raghav (@https://www.instagram.com/kunaal_raghav07/?hl=en)",
       "location": "Noida",
-      "height": "6'1",
-      "chest": "39 inch",
+      "height": "6'1\"",
+      "chest": "39 in",
       "chestLabel": "Chest",
-      "waist": "31 inch",
-      "hips": "39 inch",
-      "shoes": "10.5 US",
+      "waist": "31 in",
+      "hips": "39 in",
+      "shoes": "US 10.5",
       "modelHair": "Black",
       "modelEyes": "Dark Brown",
       "agencyCredit": "Wilderbeetalents (@https://www.instagram.com/wilderbeetalents/?hl=en; https://www.wilderbeetalentcamp.com/)",
@@ -531,6 +533,10 @@ window.WPS_DATA = {
       "modelTypes": [
         "Fashion"
       ],
+      "modelKeys": [
+        "kunaal-raghav"
+      ],
+      "feedsModelCards": true,
       "showStatsOnCompCard": true,
       "showStatsOnModelPortfolio": true,
       "showTestShootCategory": false,
@@ -540,6 +546,8 @@ window.WPS_DATA = {
       "tags": "",
       "gear": "",
       "client": "",
+      "forClient": "model",
+      "alsoFor": [],
       "date": "2026-03-14",
       "instagram": "",
       "kavyar": "",
@@ -629,11 +637,13 @@ window.WPS_DATA = {
         {
           "id": "mr55268fnt3bp6-8",
           "url": "photos/mr55364rvor33m/mr55268fnt3bp6-8.jpg",
-          "objectPosition": "center",
+          "objectPosition": "56.2% 0.0%",
           "angle": "front",
           "usage": "both",
           "small": "photos/mr55364rvor33m/mr55268fnt3bp6-8@480.jpg",
-          "medium": "photos/mr55364rvor33m/mr55268fnt3bp6-8@960.jpg"
+          "medium": "photos/mr55364rvor33m/mr55268fnt3bp6-8@960.jpg",
+          "focalX": 56.16339566270025,
+          "focalY": 0
         },
         {
           "id": "mr5526c2t4w6c4-9",
@@ -647,29 +657,36 @@ window.WPS_DATA = {
         {
           "id": "mr5526o3uyc3aa-10",
           "url": "photos/mr55364rvor33m/mr5526o3uyc3aa-10.jpg",
-          "objectPosition": "center",
+          "objectPosition": "56.9% 2.5%",
           "angle": "full-body",
           "usage": "both",
           "small": "photos/mr55364rvor33m/mr5526o3uyc3aa-10@480.jpg",
-          "medium": "photos/mr55364rvor33m/mr5526o3uyc3aa-10@960.jpg"
+          "medium": "photos/mr55364rvor33m/mr5526o3uyc3aa-10@960.jpg",
+          "focalX": 56.93092257765415,
+          "focalY": 2.5186609882309843
         },
         {
           "id": "mr5526qyua40ad-11",
           "url": "photos/mr55364rvor33m/mr5526qyua40ad-11.jpg",
-          "objectPosition": "center",
+          "objectPosition": "50.2% 10.7%",
           "angle": "front",
           "usage": "both",
           "small": "photos/mr55364rvor33m/mr5526qyua40ad-11@480.jpg",
-          "medium": "photos/mr55364rvor33m/mr5526qyua40ad-11@960.jpg"
+          "medium": "photos/mr55364rvor33m/mr5526qyua40ad-11@960.jpg",
+          "focalX": 50.22922783701643,
+          "focalY": 10.724916426249028
         },
         {
           "id": "mr5526tu5qjzd9-12",
           "url": "photos/mr55364rvor33m/mr5526tu5qjzd9-12.jpg",
-          "objectPosition": "center",
+          "objectPosition": "55.1% 0.0%",
           "angle": "full-body",
           "usage": "both",
           "small": "photos/mr55364rvor33m/mr5526tu5qjzd9-12@480.jpg",
-          "medium": "photos/mr55364rvor33m/mr5526tu5qjzd9-12@960.jpg"
+          "medium": "photos/mr55364rvor33m/mr5526tu5qjzd9-12@960.jpg",
+          "onHome": true,
+          "focalX": 55.061041570081905,
+          "focalY": 0
         },
         {
           "id": "mr5526vctb1zpd-13",
@@ -734,10 +751,7 @@ window.WPS_DATA = {
       "showAgencyEmailOnCompCard": false,
       "showAgencyEmailOnHome": false,
       "showAgencyEmailOnPdf": false,
-      "coverPhotoId": "mr5525erdhzei6",
-      "modelKeys": [
-        "kunaal-raghav"
-      ]
+      "coverPhotoId": "mr5525erdhzei6"
     },
     {
       "id": "mr8legmk0o8mqz",
@@ -3368,12 +3382,12 @@ window.WPS_DATA = {
         "key": "kunaal-raghav",
         "name": "Kunaal Raghav",
         "talent": "Kunaal Raghav (@https://www.instagram.com/kunaal_raghav07/?hl=en)",
-        "height": "6'1",
-        "chest": "39 inch",
+        "height": "6'1\"",
+        "chest": "39 in",
         "chestLabel": "Chest",
-        "waist": "31 inch",
-        "hips": "39 inch",
-        "shoes": "10.5 US",
+        "waist": "31 in",
+        "hips": "39 in",
+        "shoes": "US 10.5",
         "modelHair": "Black",
         "modelEyes": "Dark Brown",
         "agencyCredit": "Wilderbeetalents (@https://www.instagram.com/wilderbeetalents/?hl=en; https://www.wilderbeetalentcamp.com/)",
@@ -3396,7 +3410,7 @@ window.WPS_DATA = {
         "modelTypes": [
           "Fashion"
         ],
-        "updatedAt": 1783095610059,
+        "updatedAt": 1790270769441,
         "showStatsOnCompCard": true,
         "showStatsOnModelPortfolio": true,
         "showModelInstagramOnCompCard": true,
@@ -3460,7 +3474,7 @@ window.WPS_DATA = {
         "modelTypes": [
           "Fashion"
         ],
-        "updatedAt": 1783082332258,
+        "updatedAt": 1790270426171,
         "showStatsOnCompCard": true,
         "showStatsOnModelPortfolio": true,
         "showModelInstagramOnCompCard": true,
