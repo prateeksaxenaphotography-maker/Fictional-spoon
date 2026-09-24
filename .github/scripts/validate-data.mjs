@@ -123,6 +123,22 @@ try {
   } else if (shoots.length < prev.length) {
     console.warn(`WARN: album count decreased ${prev.length} → ${shoots.length} (fine if albums were deliberately deleted)`);
   }
+  // The same on the photo axis: an album count that holds while every album
+  // empties is the other shape a bad sync can take, and nothing checked it.
+  const photoCount = (list) => list.reduce((n, s) => n + ((s && Array.isArray(s.photos)) ? s.photos.length : 0), 0);
+  const prevPhotos = photoCount(prev), nowPhotos = photoCount(shoots);
+  if (prevPhotos > 0 && nowPhotos === 0 && shoots.length > 0) {
+    fail(`photo count collapsed from ${prevPhotos} to 0 while ${shoots.length} album(s) remain — the signature of a bad sync`);
+  } else if (nowPhotos < prevPhotos) {
+    const prevById = new Map(prev.map((s) => [s && s.id, s]));
+    const shrunk = shoots.map((s) => {
+      const was = prevById.get(s.id);
+      const before = was && Array.isArray(was.photos) ? was.photos.length : 0;
+      const after = Array.isArray(s.photos) ? s.photos.length : 0;
+      return after < before ? `${s.title || s.id} ${before} → ${after}` : null;
+    }).filter(Boolean);
+    console.warn(`WARN: photo count decreased ${prevPhotos} → ${nowPhotos} (fine if photos were deliberately deleted)${shrunk.length ? ": " + shrunk.join("; ") : ""}`);
+  }
 } catch { /* first commit, shallow clone, or no prior data.js */ }
 
 // ── 5. format contract both the parser and the sync generator rely on ──────

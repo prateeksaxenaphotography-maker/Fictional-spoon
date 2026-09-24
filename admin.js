@@ -2014,31 +2014,50 @@ window.moveAdminPackageRow = function(index, dir) {
          dropped, here and on this device, which is what the other device
          asked for; a missing 480/960 variant is dropped on its own, because
          the photo still shows from its full-size file. */
+      /* Two guards on the guard itself (v516). The reads skip the browser
+         cache: GitHub marks them reusable for 60 seconds, so a second publish
+         inside a minute would read the tree from BEFORE the first one and
+         find none of the photos it had just uploaded. And a real deletion on
+         another device is a handful of photos, while a bad tree read is
+         wholesale — so a check that would take out more than 10 photos, or a
+         fifth of the site, publishes nothing instead of trusting itself. */
       const droppedPhotos = [];
+      let fileCheck = null;
       try {
-        const headRef = await ghApi(pat, `/git/ref/heads/${GH_BRANCH}`);
-        const headCommit = await ghApi(pat, `/git/commits/${headRef.object.sha}`);
-        const headTree = await ghApi(pat, `/git/trees/${headCommit.tree.sha}?recursive=1`);
+        const fresh = { cache: "no-store" };
+        const headRef = await ghApi(pat, `/git/ref/heads/${GH_BRANCH}`, fresh);
+        const headCommit = await ghApi(pat, `/git/commits/${headRef.object.sha}`, fresh);
+        const headTree = await ghApi(pat, `/git/trees/${headCommit.tree.sha}?recursive=1`, fresh);
         if (headTree.truncated) {
           console.warn("Publish: the repository listing was truncated, so photo files were not checked this time.");
         } else {
           const onBranch = new Set((headTree.tree || []).filter((t) => t && t.type === "blob").map((t) => t.path));
-          const exists = (u) => !u || /^data:/.test(u) || onBranch.has(String(u).replace(/^\//, ""));
-          for (const s of shoots) {
-            if (!Array.isArray(s.photos)) continue;
-            s.photos = s.photos.filter((p) => {
-              if (!p || !p.url) return true; // not uploaded yet: this publish uploads it
-              if (!exists(p.url)) { droppedPhotos.push(s.title || s.id); return false; }
-              if (!exists(p.small)) delete p.small;
-              if (!exists(p.medium)) delete p.medium;
-              return true;
-            });
-          }
+          fileCheck = (u) => !u || /^data:/.test(u) || onBranch.has(String(u).replace(/^\//, ""));
         }
       } catch (err) {
         // The check guards the deploy; failing to run it must not cost the
         // studio a publish. CI still catches a dangling path, as before.
         console.warn("Publish: could not check that every photo file exists —", err.message);
+      }
+      if (fileCheck) {
+        let total = 0;
+        const gone = new Set();
+        for (const s of shoots) for (const p of s.photos || []) {
+          total++;
+          if (p && p.url && !fileCheck(p.url)) gone.add(p); // no url yet: this publish uploads it
+        }
+        if (gone.size > 10 || (gone.size && gone.size > total * 0.2)) {
+          throw explains(new Error(`Sync aborted: ${gone.size} of ${total} photos look missing from the site, which is far more than a deletion on another device would explain. Nothing was published — wait a minute and publish again.`));
+        }
+        for (const s of shoots) {
+          if (!Array.isArray(s.photos)) continue;
+          s.photos = s.photos.filter((p) => {
+            if (gone.has(p)) { droppedPhotos.push(s.title || s.id); return false; }
+            if (p && !fileCheck(p.small)) delete p.small;
+            if (p && !fileCheck(p.medium)) delete p.medium;
+            return true;
+          });
+        }
       }
       if (droppedPhotos.length) console.info(`Publish: left out ${droppedPhotos.length} photo(s) whose files were deleted elsewhere:`, droppedPhotos);
 
