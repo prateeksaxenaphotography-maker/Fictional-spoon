@@ -1884,7 +1884,7 @@ window.moveAdminPackageRow = function(index, dir) {
     // publish can keep a newer copy made on another device.
     const settings = {};
     const stamps = parseObjectAfterKey(text, '"SETTINGS_AT"') || {};
-    ["PACKAGES", "TFP_PACKAGE", "INVITE_CODES", "PROMO_CODES", "PORTFOLIO_PDF", "HOME_STUDIO_RATE", "HOME_STUDIO_RATE_TFP", "MEASURE_UNITS"].forEach((k) => {
+    ["PACKAGES", "TFP_PACKAGE", "INVITE_CODES", "PROMO_CODES", "PORTFOLIO_PDF", "HOME_STUDIO_RATE", "HOME_STUDIO_RATE_TFP", "MEASURE_UNITS", "HOME_SLIDESHOW"].forEach((k) => {
       const v = parseValueAfterKey(text, `"${k}"`);
       if (v !== undefined) settings[k] = v;
     });
@@ -2006,6 +2006,14 @@ window.moveAdminPackageRow = function(index, dir) {
     const shoeSelect = (attrs, raw) => `<select ${attrs} aria-label="Shoe size system" style="flex: 0 0 84px;">${SHOE_SYSTEMS.map((v) => `<option${splitShoe(raw).sys === v ? " selected" : ""}>${v}</option>`).join("")}</select>`;
     const measureUnitsChooser = (id) => `<label class="field" style="margin: 0;"><span>Show measurements on comp cards &amp; model portfolio in</span>
       <select id="${id}" class="measure-units-choice"><option value="imperial"${window.getMeasureUnits() === "imperial" ? " selected" : ""}>ft / in (height) and inches</option><option value="metric"${window.getMeasureUnits() === "metric" ? " selected" : ""}>cm</option></select></label>`;
+    document.addEventListener("change", (e) => {
+      if (!e.target || e.target.id !== "homeSlideSecondsInput") return;
+      const n = Math.max(3, Math.min(30, Math.round(Number(e.target.value) || 5)));
+      e.target.value = n;
+      try { localStorage.setItem("wps_home_slideshow", JSON.stringify({ seconds: n })); } catch (err) {}
+      if (typeof window.stampSetting === "function") window.stampSetting("wps_home_slideshow");
+      toast(`Home page photos will change every ${n} seconds. Publish to show it on the site.`);
+    });
     // One listener for every copy of the chooser (album form, model details).
     document.addEventListener("change", (e) => {
       const sel = e.target && e.target.closest && e.target.closest(".measure-units-choice");
@@ -2247,6 +2255,8 @@ window.moveAdminPackageRow = function(index, dir) {
               ...(small ? { small } : {}),
               ...(medium ? { medium } : {}),
               ...(p.caption ? { caption: p.caption } : {}),
+              // On the home page slideshow (v527).
+              ...(p.onHome ? { onHome: true } : {}),
               ...(typeof p.focalX === "number" ? { focalX: p.focalX, focalY: p.focalY } : {})
             }
           : p;
@@ -2340,6 +2350,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             TFP_PACKAGE: (typeof window.getAdminTfpPackage === "function" ? window.getAdminTfpPackage() : null),
             HOME_STUDIO_RATE: (typeof window.getHomeStudioRate === "function" ? window.getHomeStudioRate() : 3000),
             PORTFOLIO_PDF: (typeof window.getPortfolioPdfSettings === "function" ? window.getPortfolioPdfSettings() : null),
+            HOME_SLIDESHOW: { seconds: (typeof window.getHomeSlideSeconds === "function" ? window.getHomeSlideSeconds() : 5) },
             MEASURE_UNITS: { display: (typeof window.getMeasureUnits === "function" ? window.getMeasureUnits() : "imperial") },
             HOME_STUDIO_RATE_TFP: (function() {
               try {
@@ -3118,6 +3129,18 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             </div>
             <div id="adminPackagesEditorGrid" style="display: flex; flex-direction: column; gap: 8px;"></div>
           </div>
+        </div>
+
+        <!-- Home page slideshow (v527): the photos are ticked "Home" on their
+             tiles in the album form; this sets how long each stays up. -->
+        <div class="admin-panel" id="home-slideshow">
+          <div class="admin-panel-head">Home page slideshow</div>
+          <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <label for="homeSlideSecondsInput" style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft); text-transform: uppercase;">Seconds per photo</label>
+            <input type="number" id="homeSlideSecondsInput" min="3" max="30" step="1" value="${window.getHomeSlideSeconds()}" style="width: 90px; padding: 8px 10px;" />
+            <span style="font-size: var(--font-xs); color: var(--ink-soft);">${(() => { const n = (window.SHOOTS || window.WPS_DATA?.DEMO_SHOOTS || []).reduce((c, s) => c + (s.photos || []).filter((p) => p.onHome).length, 0); return n ? `${n} photo${n === 1 ? "" : "s"} ticked “Home”.` : "No photos ticked yet — tick “Home” on photos in an album; until then the newest album’s cover shows."; })()}</span>
+          </div>
+          <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 8px 0 0;">Between 3 and 30. Publish to show a change on the site.</p>
         </div>
 
         <!-- What a client pays to download the portfolio PDF they build on the
@@ -6053,6 +6076,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             isCover,
             manuallyAligned: !!(p.objectPosition && p.objectPosition !== "center"),
             caption: p.caption || "",
+            onHome: !!p.onHome,
             excludeFromCompCard: !!p.excludeFromCompCard,
             usage: p.usage || (p.excludeFromCompCard ? "portfolio" : "both"),
             angle: p.angle || "",
@@ -6228,13 +6252,18 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             <input type="radio" name="coverSelect" class="thumb-cover-radio" data-id="${f.id}" ${f.isCover ? 'checked' : ''} />
             Cover
           </label>
-          <div style="position: relative; width: 100%; aspect-ratio: 1; overflow: hidden;">
+          <label class="thumb-cover-ctrl thumb-home-ctrl" title="Show this photo in the home page slideshow">
+            <input type="checkbox" class="thumb-cover-radio thumb-home-check" data-id="${f.id}" ${f.onHome ? 'checked' : ''} />
+            Home
+          </label>
+          <div class="thumb-frame" style="position: relative; width: 100%; aspect-ratio: ${f.onHome ? "16 / 9" : "1"}; overflow: hidden;">
             <img src="${esc(photoSrc(f))}" style="width: 100%; height: 100%; object-fit: cover; object-position: ${esc(pos)}" alt="${esc(f.name)}"/>
             <div class="thumb-focal" data-id="${f.id}" title="Drag to set focal point" style="position: absolute; inset: 0; z-index: 2; cursor: crosshair;">
               <span class="thumb-focal-dot" style="left:${fp.x}%; top:${fp.y}%;"></span>
             </div>
             <button type="button" class="thumb-remove" data-id="${f.id}" aria-label="Remove">×</button>
           </div>
+          ${f.onHome ? `<p class="thumb-home-hint" data-id="${f.id}">Home page: shown wide like this. Drag the dot onto the face to centre it. Best: a landscape photo (3:2 or 16:9), 2400 px wide or more, with the person on the right — the words sit on the left.</p>` : ""}
           
           <div style="padding: 8px; display: flex; flex-direction: column; gap: 6px; background: var(--bone); border-top: 1px solid var(--line); flex-grow: 1;">
             <label style="display: flex; align-items: center; gap: 5px; font-size: var(--font-xs); color: var(--ink-soft); cursor: pointer;">
@@ -6356,7 +6385,22 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         }
         renderStaged();
       }));
-      grid.querySelectorAll(".thumb-cover-radio").forEach((radio) => {
+      grid.querySelectorAll(".thumb-home-check").forEach((cb) => {
+        cb.addEventListener("change", (e) => {
+          const item = staged.find((x) => x.id === e.target.dataset.id);
+          if (item) item.onHome = e.target.checked;
+          if (typeof window.markUnsavedChanges === "function") window.markUnsavedChanges();
+          renderStaged();
+        });
+      });
+      // A portrait ticked for the home page gets a plain warning: that space
+      // is wide, so it is cropped hard (the owner: "one can forget").
+      grid.querySelectorAll(".thumb-home-hint").forEach((hint) => {
+        const img = hint.closest(".thumb")?.querySelector("img");
+        const check = () => { if (img && img.naturalHeight > img.naturalWidth) hint.innerHTML = "<strong>This is a portrait</strong> — the home page is wide, so it will be cropped to the part shown here. Drag the dot onto the face. A landscape photo (3:2 or 16:9, 2400 px+) works best."; };
+        if (img && img.complete) check(); else img?.addEventListener("load", check, { once: true });
+      });
+      grid.querySelectorAll(".thumb-cover-radio:not(.thumb-home-check)").forEach((radio) => {
         radio.addEventListener("change", (e) => {
           const id = e.target.dataset.id;
           staged.forEach(x => { x.isCover = (x.id === id); });
@@ -6826,7 +6870,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           ...(f.small ? { small: f.small } : {}),
           ...(f.medium ? { medium: f.medium } : {}),
           ...(typeof f.focalX === "number" ? { focalX: f.focalX, focalY: f.focalY } : {}),
-          ...(f.caption && f.caption.trim() ? { caption: f.caption.trim() } : {})
+          ...(f.caption && f.caption.trim() ? { caption: f.caption.trim() } : {}),
+          ...(f.onHome ? { onHome: true } : {})
         })),
         featured: $("#f_featured")?.checked ?? false,
         // Comp cards keep their original pair of flags; the portfolio page has its own.

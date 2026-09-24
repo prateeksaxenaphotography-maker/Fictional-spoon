@@ -4088,3 +4088,16 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
 @media (max-width: 700px) {
   .hero-shot-img.hero-shot-portrait { aspect-ratio: 4 / 5; object-position: 50% 12% !important; }
 }
+
+/* Home page slideshow (v527). The photos stack and crossfade; on a phone the
+   frame is portrait-shaped, like the single stand-in cover. */
+.hero-slides { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
+.hero-slide { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 1.2s ease; }
+.hero-slide.is-on { opacity: 1; }
+@media (max-width: 700px) {
+  .hero-slides { position: relative; inset: auto; width: 100%; aspect-ratio: 4 / 5; }
+}
+@media (prefers-reduced-motion: reduce) { .hero-slide { transition: none; } }
+/* The "Home" tick sits under "Cover" on a photo tile. */
+.thumb-home-ctrl { top: 30px; }
+.thumb-home-hint { margin: 0; padding: 6px 8px; font-size: var(--font-xs); line-height: 1.4; color: var(--ink-soft); background: var(--paper); border-top: 1px solid var(--line); }

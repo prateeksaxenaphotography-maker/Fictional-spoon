@@ -672,8 +672,22 @@ const SETTINGS_KEYS = {
   PORTFOLIO_PDF: "wps_portfolio_pdf",
   HOME_STUDIO_RATE: "wps_home_studio_rate",
   HOME_STUDIO_RATE_TFP: "wps_home_studio_rate_tfp",
-  MEASURE_UNITS: "wps_measure_units"
+  MEASURE_UNITS: "wps_measure_units",
+  HOME_SLIDESHOW: "wps_home_slideshow"
 };
+/* Seconds each home-page photo stays up (the owner, Sep 2026: 5 by default,
+   set on the Calendar page). Published as { seconds } for the same reason
+   MEASURE_UNITS is an object. */
+function getHomeSlideSeconds() {
+  const ok = (n) => Number.isFinite(n) && n >= 3 && n <= 30;
+  try {
+    const saved = JSON.parse(localStorage.getItem("wps_home_slideshow") || "null");
+    if (saved && ok(Number(saved.seconds))) return Number(saved.seconds);
+  } catch (e) {}
+  const pub = window.WPS_DATA && window.WPS_DATA.HOME_SLIDESHOW;
+  return pub && ok(Number(pub.seconds)) ? Number(pub.seconds) : 5;
+}
+window.getHomeSlideSeconds = getHomeSlideSeconds;
 /* How measurements are shown everywhere — "imperial" (height in feet and
    inches, chest/waist/hips in inches) or "metric" (all in cm). Published as
    { display } because the settings reader only reads objects, lists and
@@ -3799,6 +3813,7 @@ window.resolveContractArchive = function(version) {
     // in its row and stranded the last album alone on a third row.
     const heroPhoto = (window.STUDIO_CONFIG?.heroImage || "").trim();
     const usesHeroPhoto = (s) => heroPhoto && (s.photos || []).some(p => (p.url || "") === heroPhoto);
+    // (A slideshow drops no album from the grid below: its photos come from many.)
     // The albums ticked "Show on the homepage" in Upload, newest first, six to a
     // page. Home showed every album, which made Albums the same list twice and
     // left that switch doing nothing. An album saved before the switch existed
@@ -3818,10 +3833,17 @@ window.resolveContractArchive = function(version) {
       const cover = (s.coverPhotoId && s.photos.find((p) => String(p.id).split("-")[0] === s.coverPhotoId)) || s.photos[0];
       return cover && cover.url ? { url: cover.url, alt: altFor(s) } : null;
     })();
-    const heroSrc = (window.STUDIO_CONFIG?.heroImage || "").trim() || (newestCover ? newestCover.url : "");
+    /* Photos ticked "Home" in the album form, from every public album (v527).
+       With any ticked, the first screen crossfades through them; the
+       config.js heroImage, if set, still wins as a single fixed frame. */
+    const focusOf = (p) => (typeof p.focalX === "number" && typeof p.focalY === "number") ? `${p.focalX}% ${p.focalY}%` : (p.objectPosition && p.objectPosition !== "center" ? p.objectPosition : "50% 30%");
+    const homeSlides = (window.STUDIO_CONFIG?.heroImage || "").trim() ? [] : SHOOTS
+      .filter((s) => s && s.isPublic !== false && !s.isTestimonial && s.type !== "Workshop Attended")
+      .flatMap((s) => (s.photos || []).filter((p) => p && p.onHome && p.url).map((p) => ({ url: p.url, pos: focusOf(p), alt: p.caption || altFor(s) })));
+    const heroSrc = (window.STUDIO_CONFIG?.heroImage || "").trim() || (homeSlides[0] ? homeSlides[0].url : "") || (newestCover ? newestCover.url : "");
     // A stand-in cover is a portrait, framed for the album grid: keep the top
     // of it, where the face is, when a phone crops it to a wide strip.
-    const heroFocus = ((window.STUDIO_CONFIG?.heroImage || "").trim() ? (window.STUDIO_CONFIG?.heroFocus || "50% 35%") : "50% 12%").trim();
+    const heroFocus = ((window.STUDIO_CONFIG?.heroImage || "").trim() ? (window.STUDIO_CONFIG?.heroFocus || "50% 35%") : (homeSlides[0] ? homeSlides[0].pos : "50% 12%")).trim();
     const heroAlt = ((window.STUDIO_CONFIG?.heroImage || "").trim() ? (window.STUDIO_CONFIG?.heroAlt || "") : (newestCover ? newestCover.alt : "")).trim() || "Studio photography by nerdyphotographer.in";
     CURRENT_VIEW_SHOOTS = feat;
     const brandCount = new Set(SHOOTS.filter(s => s.client && s.client.trim() && s.type !== "Workshop Attended").map(s => s.brand)).size;
@@ -3875,7 +3897,7 @@ window.resolveContractArchive = function(version) {
     return `
       <section class="hero ${heroSrc ? "hero-shot" : "hero-mono hero-brand"}">
         ${heroSrc ? `
-          <img class="hero-shot-img${(window.STUDIO_CONFIG?.heroImage || "").trim() ? "" : " hero-shot-portrait"}" src="${esc(heroSrc)}"${srcsetAttr({ url: heroSrc }, "100vw")} style="object-position: ${esc(heroFocus)};" alt="${esc(heroAlt)}" fetchpriority="high" decoding="async" />
+          ${homeSlides.length > 1 ? `<div class="hero-slides" data-seconds="${getHomeSlideSeconds()}" aria-roledescription="slideshow">${homeSlides.map((h, i) => `<img class="hero-slide${i === 0 ? " is-on" : ""}" ${i === 0 ? `src="${esc(h.url)}" fetchpriority="high"` : `data-src="${esc(h.url)}"`} style="object-position: ${esc(h.pos)};" alt="${esc(h.alt)}" decoding="async" />`).join("")}</div>` : `<img class="hero-shot-img${(window.STUDIO_CONFIG?.heroImage || "").trim() ? "" : " hero-shot-portrait"}" src="${esc(heroSrc)}"${srcsetAttr({ url: heroSrc }, "100vw")} style="object-position: ${esc(heroFocus)};" alt="${esc(heroAlt)}" fetchpriority="high" decoding="async" />`}
           <div class="hero-shot-scrim" aria-hidden="true"></div>
         ` : `<div class="hero-bg" aria-hidden="true"></div>${cameraSvg()}`}
         <div class="container hero-inner">
@@ -11197,6 +11219,7 @@ window.resolveContractArchive = function(version) {
       }
       if (!keep) {
         view.innerHTML = html;
+        startHeroSlideshow(view);
         view.dataset.showing = staticPath && STATIC_PAGES.get(staticPath) ? staticPath : "";
       }
       // Inject a lightweight "back" link at the top of every inner page's
@@ -11471,6 +11494,33 @@ window.resolveContractArchive = function(version) {
       const holder = a.closest(".nav-links li") || a;
       holder.style.display = live ? "" : "none";
     });
+  }
+
+  /* The home slideshow: the next photo is fetched only when its turn comes,
+     then crossfaded in. Paused while the tab is hidden; still for anyone who
+     asks their device for reduced motion; stops when the page changes. */
+  let heroSlideTimer = null;
+  function startHeroSlideshow(root) {
+    clearInterval(heroSlideTimer); heroSlideTimer = null;
+    const wrap = root && root.querySelector(".hero-slides");
+    if (!wrap || prefersReduced) return;
+    const slides = [...wrap.querySelectorAll(".hero-slide")];
+    if (slides.length < 2) return;
+    let at = 0;
+    const ms = Math.max(3, Math.min(30, Number(wrap.dataset.seconds) || 5)) * 1000;
+    const load = (img) => new Promise((res) => {
+      if (img.getAttribute("src")) return res();
+      img.addEventListener("load", res, { once: true }); img.addEventListener("error", res, { once: true });
+      img.src = img.dataset.src;
+    });
+    heroSlideTimer = setInterval(async () => {
+      if (!document.contains(wrap)) { clearInterval(heroSlideTimer); heroSlideTimer = null; return; }
+      if (document.hidden) return;
+      const next = (at + 1) % slides.length;
+      await load(slides[next]);
+      slides[at].classList.remove("is-on"); slides[next].classList.add("is-on"); at = next;
+      const after = slides[(next + 1) % slides.length]; if (after) load(after);
+    }, ms);
   }
 
   function setActiveNav(key) {
