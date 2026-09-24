@@ -3099,11 +3099,16 @@
         <div class="pp-arrange" id="ppArrange">
           <div class="pp-arrange-head">
             <div class="pp-arrange-segs">
-              <div class="pp-seg" role="radiogroup" aria-label="Layout" id="ppLayoutSeg" data-forsheet="pages" hidden>
+              <!-- One answer for the whole PDF, and the studio no longer needs
+                   it: every sheet carries its own Even/Big beneath it, so this
+                   said the same thing twice and less precisely. A client has
+                   no per-page controls — the craft is deliberately not theirs
+                   — so for them this is the only way to ask, and it stays. -->
+              ${admin ? "" : `<div class="pp-seg" role="radiogroup" aria-label="Layout" id="ppLayoutSeg" data-forsheet="pages" hidden>
                 <span class="pp-seg-cap" aria-hidden="true">Sizes</span>
                 <button type="button" role="radio" data-layout="lead">One big photo</button>
                 <button type="button" role="radio" data-layout="equal">All the same size</button>
-              </div>
+              </div>`}
               ${admin ? `<div class="pp-seg" role="radiogroup" aria-label="Rows" id="ppRowsSeg" data-forsheet="pages" hidden></div>` : ""}
               <div id="ppSheetView"></div>
 ${admin ? `
@@ -3316,9 +3321,8 @@ ${admin ? `
         const star = e.target.closest("[data-make-big]");
         if (star) {
           const starId = star.closest("[data-id]").dataset.id;
-          if (starId === state.lead) return;
           const wasCoveredLead = covered();
-          state.lead = starId;
+          if (!makeBigOnItsOwnPage(starId)) return;
           if (covered() !== wasCoveredLead) { showPreview(); return; }
           syncOrder();
           drawPreview();
@@ -3771,6 +3775,19 @@ ${admin ? `
       const list = printOrder();
       // Page one decides whether a photograph is pinned as the big one.
       const fixed = layoutOf(0) === "equal" ? 0 : 1;
+      /* Which page each photograph lands on, and whether it leads that page.
+         "Big" belongs to a page, so the star has to be offered on every page
+         laid out that way — not only when page one is — and the photograph
+         already leading its own page is the big one there. */
+      const per = perPage();
+      const place = [];
+      let at = 0;
+      for (let pg = 0; pg < per.length; pg++) {
+        for (let k = 0; k < per[pg] && at < list.length; k++, at++) {
+          place[at] = { page: pg, leads: k === 0, big: layoutOf(pg) !== "equal" };
+        }
+      }
+      while (at < list.length) { place[at] = { page: per.length - 1, leads: false, big: false }; at++; }
       const strip = body.querySelector("#ppOrder");
       strip.hidden = list.length - fixed < 2;
       strip.innerHTML = list.map((s, i) => `
@@ -3781,8 +3798,8 @@ ${admin ? `
                for the keyboard. -->
           <span class="pp-order-photo" data-drag="${esc(s.id)}" title="Drag to move ${esc(s.name)}">
             <img src="${esc(photoSrc(s.photo.small ? { url: s.photo.small } : s.photo))}" alt="" draggable="false" style="object-position: ${esc(s.photo.objectPosition || "center")};" />
-            <span class="pp-order-n">${i < fixed ? "Big" : i + 1}</span>
-            ${fixed && i >= fixed ? `<button type="button" class="pp-order-star" data-make-big aria-label="Make ${esc(s.name)} the big photo" title="Make this the big photo"></button>` : ""}
+            <span class="pp-order-n">${(place[i] && place[i].big && place[i].leads) ? "Big" : i + 1}</span>
+            ${place[i] && place[i].big && !place[i].leads ? `<button type="button" class="pp-order-star" data-make-big aria-label="Make ${esc(s.name)} the big photo on page ${place[i].page + 1}" title="Make this the big photo on page ${place[i].page + 1}"></button>` : ""}
             <button type="button" class="pp-order-drop" data-remove="${esc(s.id)}" aria-label="Take ${esc(s.name)} out of this portfolio" title="Take this photo out">&times;</button>
           </span>
           <span class="pp-order-acts">
@@ -4010,6 +4027,29 @@ ${admin ? `
        which is what a drag means — unlike the arrows, which trade places with
        a neighbour. Carrying the last photograph to the front leaves every
        other one in its own relative order. */
+    /* The big photograph belongs to the PAGE it is on, not to the portfolio.
+       Each page laid out "Big" leads with whichever photograph reaches it
+       first, so making one big means moving it to the front of ITS OWN run —
+       not to the front of everything. Setting a single lead for the whole PDF
+       pinned it at position nought, which is page one: starring a photograph
+       on page two carried it off that page and made it big on page one
+       instead (studio, Sep 2026). Page one still keeps `lead` as well, so an
+       arrangement saved before pages could differ reopens unchanged. */
+    function makeBigOnItsOwnPage(id) {
+      const ids = printOrder().map((s) => s.id);
+      const from = ids.indexOf(id);
+      if (from < 0) return false;
+      // Where this photograph's page starts and ends in the printed order.
+      let start = 0, page = 0;
+      const per = perPage();
+      while (page < per.length && start + per[page] <= from) { start += per[page]; page++; }
+      if (start === from) return false;               // already leading its page
+      ids.splice(start, 0, ids.splice(from, 1)[0]);
+      state.order = ids;
+      if (page === 0) state.lead = id;
+      return true;
+    }
+
     function dropPhoto(id, to) {
       const ids = printOrder().map((s) => s.id);
       const from = ids.indexOf(id);
@@ -4104,12 +4144,17 @@ ${admin ? `
     }
 
     function syncArrange() {
-      // A control a client never sees counts as hidden, so the block folds
-      // away for them exactly as it does when the studio has nothing to set.
-      const gone = (sel) => { const el = body.querySelector(sel); return !el || el.hidden; };
+      /* The block folds away when it has nothing left to offer, judged on
+         what is actually inside it rather than on a list of names. The list
+         went stale the moment a control moved out of the block (the photo
+         strip) or left it for good (the whole-PDF sizes, now the client's
+         alone) — and it would have hidden Stats, Contact and Show along with
+         it while all three still had something to say. */
       const arrange = body.querySelector("#ppArrange");
       if (!arrange) return;
-      arrange.hidden = gone("#ppOrder") && gone("#ppRowsSeg") && gone("#ppTagPlaceSeg") && gone("#ppLayoutSeg");
+      const alive = [...arrange.querySelectorAll(".pp-seg, [data-forsheet]")]
+        .some((el) => !el.hidden && !el.classList.contains("is-offsheet"));
+      arrange.hidden = !alive;
     }
 
     function unlock() {

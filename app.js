@@ -2302,6 +2302,17 @@ window.resolveContractArchive = function(version) {
     studioMark: () => window.WPS_PDF.studioMark(),
     photoSrc: (p) => photoSrc(p),
     shoots: () => SHOOTS,
+    /* A book can take a photograph from the studio's own computer. Shrinking
+       it to the site's 1600px keeps the store sane; saving the album it is
+       filed under is what lets the studio's ordinary publish upload it, with
+       all the care that path already takes. Both were needed only once the
+       book could hold something the site has never seen (Sep 2026). */
+    resize: (dataUrl, maxDim, q) => resize(dataUrl, maxDim, q),
+    saveShoot: async (rec) => {
+      if (!rec || !rec.id) return;
+      if (!SHOOTS.some((s) => s && s.id === rec.id)) SHOOTS.push(rec);
+      await putShoot(rec);
+    },
     isAdmin: () => isAdmin(),
     esc: (x) => esc(x),
     toast: (m) => toast(m),

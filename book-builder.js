@@ -485,6 +485,144 @@
   const FIT_MODES = ["fill", "whole", "width", "height"];
   const DIAGRAM = "diagram:";
   const isDiagram = (id) => typeof id === "string" && id.startsWith(DIAGRAM);
+  /* ---------- photographs from outside the site --------------------------
+     A book can hold a photograph the site has never seen — something from the
+     desktop that is not in any album. Asked for by the studio, Sep 2026.
+
+     Kept in a store of its own, NOT in an album. The publish flow uploads any
+     photo carrying a dataUrl in any album it publishes, so a print-only
+     photograph filed that way would be committed to a PUBLIC repository on
+     the studio's next publish — the exact opposite of what "print only"
+     promises, and impossible to take back once it is in git history. One the
+     studio marks for the site is added to a hidden album instead, where that
+     same well-tested path uploads it properly.
+
+     IndexedDB rather than localStorage: these are photographs, and a handful
+     would blow the 5MB a string store allows. */
+  const OUT_DB = "wps-book-outside", OUT_STORE = "photos";
+  const OUTSIDE_ALBUM = "outside-this-computer";
+  const OUTSIDE_SHOOT_ID = "book-outside-photos";
+  let outDbP = null;
+  function outDb() {
+    if (outDbP) return outDbP;
+    outDbP = new Promise((res, rej) => {
+      let settled = false;
+      const done = (fn, v) => { if (!settled) { settled = true; fn(v); } };
+      // Never hang the builder on a blocked or unresponsive store.
+      const t = setTimeout(() => done(rej, new Error("indexedDB timeout")), 1500);
+      let r;
+      try { r = indexedDB.open(OUT_DB, 1); } catch (e) { clearTimeout(t); return done(rej, e); }
+      r.onupgradeneeded = () => { const d = r.result; if (!d.objectStoreNames.contains(OUT_STORE)) d.createObjectStore(OUT_STORE, { keyPath: "id" }); };
+      r.onsuccess = () => { clearTimeout(t); done(res, r.result); };
+      r.onerror = () => { clearTimeout(t); done(rej, r.error); };
+      r.onblocked = () => { clearTimeout(t); done(rej, new Error("indexedDB blocked")); };
+    });
+    return outDbP;
+  }
+  const outAll = async () => {
+    try {
+      const d = await outDb();
+      return await new Promise((res, rej) => {
+        const q = d.transaction(OUT_STORE, "readonly").objectStore(OUT_STORE).getAll();
+        q.onsuccess = () => res(q.result || []); q.onerror = () => rej(q.error);
+      });
+    } catch (e) { return []; }
+  };
+  const outPut = async (rec) => {
+    const d = await outDb();
+    return new Promise((res, rej) => {
+      const tx = d.transaction(OUT_STORE, "readwrite");
+      tx.objectStore(OUT_STORE).put(rec);
+      tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+    });
+  };
+  const outDel = async (id) => {
+    try {
+      const d = await outDb();
+      await new Promise((res, rej) => {
+        const tx = d.transaction(OUT_STORE, "readwrite");
+        tx.objectStore(OUT_STORE).delete(id);
+        tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+      });
+    } catch (e) {}
+  };
+  // Read once into memory, because library() is called on every redraw and a
+  // page turn cannot wait on a database.
+  let outsideCache = [];
+  const outsideRefresh = async () => { outsideCache = await outAll(); return outsideCache; };
+  const outsideList = () => outsideCache;
+
+  /* Asked once for each batch, because the two answers have very different
+     consequences and only one of them can be undone. The repository this site
+     publishes from is PUBLIC: a photograph committed to it is downloadable by
+     anyone at a stable address, and stays in the history even after it is
+     removed. Print only is the default, and the wording says why. */
+  function askWhereOutsideGoes(count) {
+    return new Promise((resolve) => {
+      const many = count > 1;
+      const box = document.createElement("div");
+      box.className = "sb-modal-back";
+      box.innerHTML = `
+        <div class="sb-modal" role="dialog" aria-modal="true" aria-labelledby="sbOutTitle">
+          <h3 id="sbOutTitle">${many ? `These ${count} photographs` : "This photograph"} ${many ? "are" : "is"} not on your site</h3>
+          <label class="sb-radio"><input type="radio" name="sbOutWhere" value="print" checked>
+            <span><strong>Use for printing only</strong><small>Kept on this computer. Nothing is uploaded, and the book prints ${many ? "them" : "it"} at full quality. Opened on another machine, or published, ${many ? "they" : "it"} will be missing.</small></span></label>
+          <label class="sb-radio"><input type="radio" name="sbOutWhere" value="site">
+            <span><strong>Add to the site</strong><small>Uploaded with your next publish, like an album photo, so the book works anywhere. Your repository is public: anyone can download ${many ? "them" : "it"}, and ${many ? "they stay" : "it stays"} in the history even if removed later.</small></span></label>
+          <div class="sb-modal-foot">
+            <button type="button" class="sb-btn" data-out-cancel>Cancel</button>
+            <button type="button" class="sb-btn dark" data-out-ok>Add ${many ? `${count} photographs` : "the photograph"}</button>
+          </div>
+        </div>`;
+      const close = (v) => { box.remove(); document.removeEventListener("keydown", onKey); resolve(v); };
+      const onKey = (e) => { if (e.key === "Escape") close(null); };
+      box.addEventListener("click", (e) => {
+        if (e.target === box || e.target.closest("[data-out-cancel]")) return close(null);
+        if (e.target.closest("[data-out-ok]")) {
+          const picked = box.querySelector('input[name="sbOutWhere"]:checked');
+          close(picked && picked.value === "site");
+        }
+      });
+      document.addEventListener("keydown", onKey);
+      document.body.appendChild(box);
+      const first = box.querySelector('input[name="sbOutWhere"]');
+      if (first) first.focus();
+    });
+  }
+
+  /* A photograph marked for the site is put into a hidden album, where the
+     studio's own publish uploads it to photos/<album>/ with its 480 and 960
+     variants and marks it uploaded only once the commit is on the branch.
+     Reusing that path rather than writing a second one is the point: it
+     already survives an expired token and a dropped connection, which an
+     earlier hand-rolled upload did not (see the note in admin.js). */
+  async function syncOutsideToAlbum() {
+    const wanted = outsideList().filter((o) => o.forSite && !o.url);
+    if (!wanted.length || typeof API.shoots !== "function") return;
+    try {
+      const shoots = API.shoots() || [];
+      let album = shoots.find((s) => s && s.id === OUTSIDE_SHOOT_ID);
+      if (!album) {
+        album = {
+          id: OUTSIDE_SHOOT_ID,
+          title: "Book photographs",
+          // Never on the site itself: these are a book's, and the studio chose
+          // to upload them so the book travels, not to publish an album.
+          isPublic: false,
+          date: new Date().toISOString().slice(0, 10),
+          photos: []
+        };
+        shoots.push(album);
+      }
+      album.photos = album.photos || [];
+      for (const o of wanted) {
+        if (album.photos.some((p) => p && p.id === o.id)) continue;
+        album.photos.push({ id: o.id, dataUrl: o.dataUrl, usage: "both" });
+      }
+      if (typeof API.saveShoot === "function") await API.saveShoot(album);
+    } catch (e) { /* the photograph is still in the store and still prints */ }
+  }
+
   function library() {
     const shoots = (API.shoots() || []).filter((s) => s && !s.isTestimonial && Array.isArray(s.photos));
     const byId = new Map();
@@ -498,6 +636,21 @@
       albums.push({ id: s.id, name: cleanName(s.title || s.talent) || "Untitled", count: photos.length + (diagram ? 1 : 0), hidden: s.isPublic === false });
       for (const p of photos) if (!byId.has(p.id)) byId.set(p.id, { photo: p, shoot: s });
       if (diagram) { byId.set(diagram.id, { photo: diagram, shoot: s }); diagrams++; }
+    }
+    /* Photographs from outside the site stand as an album of their own, so
+       every place that picks a photograph can reach them without knowing they
+       are different. They carry their bytes on the record, which is what
+       previewSrc and the drawing already understand. */
+    const outside = outsideList();
+    if (outside.length) {
+      albums.unshift({ id: OUTSIDE_ALBUM, name: "From this computer", count: outside.length, hidden: true, outside: true });
+      for (const o of outside) {
+        if (byId.has(o.id)) continue;
+        byId.set(o.id, {
+          photo: { id: o.id, url: o.dataUrl, dataUrl: o.dataUrl, outside: true, forSite: !!o.forSite, name: o.name || "" },
+          shoot: { id: OUTSIDE_ALBUM, title: "From this computer", isPublic: false }
+        });
+      }
     }
     return { byId, albums, diagrams };
   }
@@ -4801,6 +4954,13 @@
 
   function mount(root) {
     injectCss();
+    /* The studio's own photographs from this computer, read once as the
+       builder opens and held in memory: library() runs on every redraw and a
+       page turn cannot wait on a database. It lands well before the picker is
+       opened, and the picker refreshes it again whenever files are added. If
+       the store will not open at all, the book simply has none of them and
+       everything else works. */
+    outsideRefresh().catch(() => {});
     document.documentElement.classList.add("sb-book");
     // The site's router replaces the page's contents to leave: the moment the
     // builder's root is gone, the page is the site's own again.
@@ -7743,7 +7903,16 @@
             <option value="diagrams" ${filter === "diagrams" ? "selected" : ""}>Lighting diagrams (${lib.diagrams})</option>
             ${lib.albums.map((a) => `<option value="${esc(a.id)}" ${filter === a.id ? "selected" : ""}>${esc(a.name)} (${a.count})${a.hidden ? " · not on the site" : ""}</option>`).join("")}
           </select>
-          ${(lib.albums.find((a) => a.id === filter) || {}).hidden ? `<p class="sb-hint">This album is hidden from the site, a book-only album. Only the book shows its photos.</p>` : ""}
+          ${(lib.albums.find((a) => a.id === filter) || {}).outside
+            ? `<p class="sb-hint">Photographs from this computer. They are kept here, not in an album, and the ones marked “print only” are never uploaded anywhere.</p>`
+            : (lib.albums.find((a) => a.id === filter) || {}).hidden ? `<p class="sb-hint">This album is hidden from the site, a book-only album. Only the book shows its photos.</p>` : ""}
+          <!-- A photograph the site has never seen. Asked for by the studio:
+               something from the desktop that is in no album. -->
+          <div class="sb-outside">
+            <button type="button" class="sb-btn" id="sbOutsideAdd">Add from this computer…</button>
+            <input type="file" id="sbOutsideFile" multiple accept="image/*" hidden>
+            <span class="sb-hint" id="sbOutsideNote"></span>
+          </div>
           <div class="sb-grid">${shown.map(([id, hit]) => {
             const pos = list.findIndex((s) => s.id === id);
             const on = pos >= 0;
@@ -7751,6 +7920,51 @@
             return `<button type="button" class="sb-thumb${hit.photo.diagram ? " diagram" : ""}" data-pick="${esc(id)}" aria-pressed="${on}" data-order="${on && t.max > 1 ? pos + 1 : on ? "✓" : ""}" ${full ? "disabled" : ""} aria-label="${esc(cleanName(hit.shoot.title || hit.shoot.talent))} ${hit.photo.diagram ? "lighting diagram" : "photo"}${on ? ", chosen" : ""}"><img src="${esc(thumbSrc(hit.photo))}" alt="" loading="lazy"></button>`;
           }).join("") || `<p class="sb-hint" style="grid-column: 1 / -1">${filter === "diagrams" ? "No lighting diagrams yet. Add one to an album on the Upload page (Lighting diagram), and it appears here." : "No photos in this album."}</p>`}</div>
         </details>`;
+
+      /* Taking a photograph in from the desktop. It is read here and never
+         sent anywhere by this step; where it ends up is asked once, per
+         photograph, because the two answers are not alike: one stays on this
+         machine and one goes into a PUBLIC repository, where it can be
+         downloaded by anyone and stays in the history even if it is later
+         removed. Print only is the default for that reason. */
+      const outBtn = box.querySelector("#sbOutsideAdd");
+      const outFile = box.querySelector("#sbOutsideFile");
+      const outNote = box.querySelector("#sbOutsideNote");
+      if (outBtn && outFile) {
+        outBtn.addEventListener("click", () => outFile.click());
+        outFile.addEventListener("change", async () => {
+          const files = [...(outFile.files || [])].filter((f) => /^image\//.test(f.type));
+          outFile.value = "";
+          if (!files.length) return;
+          const forSite = await askWhereOutsideGoes(files.length);
+          if (forSite === null) return;
+          outNote.textContent = `Reading ${files.length} photograph${files.length > 1 ? "s" : ""}…`;
+          let added = 0;
+          for (const f of files) {
+            try {
+              // Read to a data URL, and shrink it the way an uploaded photo is
+              // shrunk, so a 12MP frame does not sit in the store whole.
+              const raw = await new Promise((res, rej) => {
+                const r = new FileReader();
+                r.onload = () => res(String(r.result || ""));
+                r.onerror = () => rej(r.error);
+                r.readAsDataURL(f);
+              });
+              const dataUrl = (typeof API.resize === "function" ? await API.resize(raw, 1600, 0.86).catch(() => raw) : raw) || raw;
+              const id = `out_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+              await outPut({ id, name: f.name || "", dataUrl, forSite: !!forSite, at: Date.now() });
+              added++;
+            } catch (e) { /* one bad file must not stop the rest */ }
+          }
+          await outsideRefresh();
+          outNote.textContent = added
+            ? `${added} added${forSite ? " — they go to the site on your next publish." : " — kept on this computer."}`
+            : "None of those could be read.";
+          filter = OUTSIDE_ALBUM;
+          if (forSite) await syncOutsideToAlbum();
+          drawPhotoBlock();
+        });
+      }
 
       const setList = (l) => { photoTarget().set(l); };
       const refocus = (sel2) => { const el = $(`#sbPhotoBlock ${sel2}`); if (el) el.focus({ preventScroll: true }); };
