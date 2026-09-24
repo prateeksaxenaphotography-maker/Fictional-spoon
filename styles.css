@@ -3409,10 +3409,12 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
 .tm-card-meta, .tm-card-shoot { font-family: var(--mono-font); font-size: var(--font-xs); color: var(--ink-soft); }
 .tm-card-shoot { color: var(--accent-text); text-decoration: none; }
 .tm-card-shoot:hover { text-decoration: underline; }
+/* A small pill that fits "✓ Verified" — it was a 16px circle made for the
+   tick alone, and the word spilled out above and below the name. */
 .tm-verified {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 16px; height: 16px; border-radius: 50%; font-size: 10px; font-weight: 700;
-  background: var(--accent-soft); color: var(--accent-text); cursor: help;
+  display: inline-flex; align-items: center; gap: 3px; white-space: nowrap;
+  padding: 2px 8px; border-radius: 100px; font-size: 10px; font-weight: 700; line-height: 1.4;
+  letter-spacing: .02em; background: var(--accent-soft); color: var(--accent-text); cursor: help;
 }
 .tm-stars { display: inline-flex; gap: 2px; }
 .tm-star { fill: var(--line-2); }
@@ -4074,9 +4076,11 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
 @media (min-width: 1000px) { .services-grid { grid-template-columns: repeat(3, 1fr); } }
 .tm-grid > :only-child { grid-column: 1 / -1; max-width: 640px; margin-inline: auto; }
 /* V18: a black emoji (🖤) vanished on the dark theme; quotes wrap emoji in
-   .tm-emoji and get a faint light backing there. */
-:root[data-theme="dark"] .tm-emoji { background: rgba(255,255,255,0.75); border-radius: 4px; padding: 0 2px; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tm-emoji { background: rgba(255,255,255,0.75); border-radius: 4px; padding: 0 2px; } }
+   .tm-quote-emoji and get a faint light backing there. */
+/* Only when the SITE is dark (html.theme-dark) — it followed the computer's
+   dark-mode setting before, so a light page on a dark-mode Mac got white
+   boxes behind every emoji. Own class name: .tm-emoji is the form's picker. */
+html.theme-dark .tm-quote-emoji { background: rgba(255,255,255,0.75); border-radius: 4px; padding: 0 2px; }
 /* V21: "NOIDA VIEW ALBUM →" ran together on a tablet. */
 .noth-work-meta { column-gap: 14px !important; }
 /* V8: over a photograph the wordmark is set tight, as one word, instead of

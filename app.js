@@ -1896,7 +1896,7 @@ window.resolveContractArchive = function(version) {
         : `<span class="tm-card-shoot">Album: ${esc(t.shootTitle)}</span>`;
     return `
       <figure class="tm-card reveal" style="--d:${((i % 8) * 0.05).toFixed(2)}s">
-        <blockquote class="tm-card-quote">${esc(t.quote).replace(/(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*)/gu, '<span class="tm-emoji">$1</span>')}</blockquote>
+        <blockquote class="tm-card-quote">${esc(t.quote).replace(/(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*)/gu, '<span class="tm-quote-emoji">$1</span>')}</blockquote>
         <figcaption class="tm-card-by">
           <span class="tm-card-name">${esc(t.by)}${t.verified ? `<span class="tm-verified" title="The studio has documentation for this one on file">✓ Verified</span>` : ""}</span>
           ${starRow(t.rating, `Rated ${t.rating} out of 5`)}
