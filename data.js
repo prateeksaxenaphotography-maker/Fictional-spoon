@@ -2915,19 +2915,19 @@ window.WPS_DATA = {
   },
   "INVITE_CODES": [
     {
-      "code": "NERDYBRAND",
+      "code": "#f7ebace84610f356cf8f",
       "desc": "Default photographer unlock code for Instagram DMs",
       "location": "",
       "venueCost": null
     },
     {
-      "code": "NERDYTEST",
+      "code": "#2e576aa0e269ddc4d2f3",
       "desc": "Test shoot unlock pass for agency models",
       "location": "",
       "venueCost": null
     },
     {
-      "code": "NERDYHOMECOMP",
+      "code": "#66f0c672286dbeebf612",
       "desc": "Photographer direct unlock code",
       "location": "Home Studio, Sector 46, Noida",
       "venueCost": null,
@@ -2936,7 +2936,7 @@ window.WPS_DATA = {
       }
     },
     {
-      "code": "NERDYHOMED",
+      "code": "#bc436a1e63a8368cc4f5",
       "desc": "Photographer direct unlock code",
       "location": "Noida, Sector-46",
       "venueCost": 4000,
@@ -2947,37 +2947,37 @@ window.WPS_DATA = {
     }
   ],
   "PROMO_CODES": {
-    "NERDY500": {
+    "#f915367ff959b140a003": {
       "flat": 500,
-      "label": "Flat ₹500 off (NERDY500)"
+      "label": "Flat ₹500 off"
     },
-    "NERDY1000": {
+    "#1d069df3fe6fdfed9a57": {
       "flat": 1000,
-      "label": "Flat ₹1,000 off (NERDY1000)"
+      "label": "Flat ₹1,000 off"
     },
-    "NERDY10": {
+    "#37c15c4275c84f574057": {
       "pct": 10,
-      "label": "10% off the package (NERDY10)"
+      "label": "10% off the package"
     },
-    "NERDY15": {
+    "#156de6ef2e2631aca872": {
       "pct": 15,
-      "label": "15% off the package (NERDY15)"
+      "label": "15% off the package"
     },
-    "NERDY20": {
+    "#2501f9458a1245090209": {
       "pct": 20,
-      "label": "20% off the package (NERDY20)"
+      "label": "20% off the package"
     },
-    "NERDYVIP": {
+    "#a859c373f3c8c4b31fb0": {
       "pct": 0,
-      "label": "Home comp",
+      "label": "Home studio free",
       "includeAddons": false,
       "homeStudioDiscount": {
         "type": "free"
       }
     },
-    "SAANUJ": {
+    "#5ae544d40832a744c73d": {
       "flat": 7000,
-      "label": "Flat ₹7,000 off (SAANUJ)",
+      "label": "Flat ₹7,000 off",
       "includeAddons": false,
       "homeStudioDiscount": {
         "type": "fixed",

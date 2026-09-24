@@ -2205,8 +2205,17 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           // older value the next time the laptop published anything. Each
           // setting now carries a stamp, and the newer side wins.
           const mine = {
-            INVITE_CODES: (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : []),
-            PROMO_CODES: (typeof window.getAdminPromoCodes === "function" ? window.getAdminPromoCodes() : {}),
+            // Published as fingerprints: the readable codes stay on this device
+            // (Sep 2026 audit, B10). A code's own name is also taken out of its
+            // label, or the label would give it away.
+            INVITE_CODES: (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : [])
+              .map((c) => (c && typeof c === "object") ? { ...c, code: window.isCodeFingerprint(c.code) ? c.code : window.codeFingerprint(c.code) } : c),
+            PROMO_CODES: Object.fromEntries(Object.entries(typeof window.getAdminPromoCodes === "function" ? window.getAdminPromoCodes() : {})
+              .map(([k, v]) => {
+                if (window.isCodeFingerprint(k)) return [k, v];
+                const label = (v && typeof v.label === "string") ? v.label.replace(new RegExp("\\s*\\(" + k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\)\\s*$", "i"), "") : v && v.label;
+                return [window.codeFingerprint(k), { ...v, ...(label !== undefined ? { label } : {}) }];
+              })),
             PACKAGES: (typeof window.getAdminPackages === "function" ? window.getAdminPackages() : []),
             TFP_PACKAGE: (typeof window.getAdminTfpPackage === "function" ? window.getAdminTfpPackage() : null),
             HOME_STUDIO_RATE: (typeof window.getHomeStudioRate === "function" ? window.getHomeStudioRate() : 3000),
@@ -3921,7 +3930,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                      four lines. Now the buttons drop underneath instead. -->
                 <div style="min-width: 0; flex: 1 1 190px;">
                   <span style="font-size: var(--font-xs); font-weight: 800; color: var(--accent-text); text-transform: uppercase; font-family: var(--mono-font); display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"><span>${codeStr === activeInviteCode ? '⭐ Primary Code' : '🔑 VIP Invite'}</span>${window.codeStatusBadgeHtml(itemObj)}</span>
-                  <strong style="font-size: var(--font-md); font-family: var(--mono-font); color: var(--ink); letter-spacing: 0.04em; display: block; margin-top: 2px; word-break: break-all;">${esc(codeStr)}</strong>
+                  <strong style="font-size: var(--font-md); font-family: var(--mono-font); color: var(--ink); letter-spacing: 0.04em; display: block; margin-top: 2px; word-break: break-all;">${esc(window.codeForDisplay(codeStr))}</strong>
                   <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 4px; line-height: 1.3;">📝 ${esc(descStr)}</div>
                   ${itemObj && typeof itemObj === 'object' && itemObj.location ? `<div style="font-size: var(--font-xs); color: #059669; font-weight: 700; margin-top: 4px;">🏠 Location Locked: ${esc(itemObj.location)}</div>` : ''}
                   ${inviteDates ? `<div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 4px;">📅 ${esc(inviteDates)}</div>` : ''}
@@ -4043,7 +4052,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px;${promoState === "off" || promoState === "ended" ? " opacity: 0.55;" : ""} box-shadow: var(--shadow-sm); overflow: hidden; flex-wrap: wrap;">
               <div style="min-width: 0; flex: 1 1 190px;">
                 <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                  <strong style="color: #059669; font-size: var(--font-sm); font-family: var(--mono-font); letter-spacing: 0.04em;">${esc(codeKey)}</strong>
+                  <strong style="color: #059669; font-size: var(--font-sm); font-family: var(--mono-font); letter-spacing: 0.04em;">${esc(window.codeForDisplay(codeKey))}</strong>
                   <span style="font-size: var(--font-xs); font-weight: 700; background: rgba(5,150,105,0.12); color: #059669; padding: 2px 6px; border-radius: 4px;">${esc(tagDesc)}</span>
                   ${!hasPackageDiscount
                     ? ""

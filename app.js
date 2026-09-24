@@ -51,16 +51,65 @@ if (location.protocol === "http:" && /(^|\.)nerdyphotographer\.in$/i.test(locati
 })();
 
 /* ============================================================
+   § CODE FINGERPRINTS
+   ============================================================ */
+/* Every discount and invite code used to sit in plain text in data.js, a
+   public file: anyone could read SAANUJ (a ₹7,000 package for ₹0) or the
+   "invitation only" test-shoot codes (Sep 2026 audit, B10). A publish now
+   writes each code as a fingerprint — the first 20 hex characters of a
+   SHA-256 — and a typed code is fingerprinted the same way to be checked.
+   The studio's own devices keep the readable codes they were made with.
+   This hides codes from anyone reading the file; it does not stop someone
+   guessing a short, obvious code, which is why the form also says discounts
+   are confirmed before invoicing. Synchronous on purpose: the quote is
+   worked out on every keystroke. */
+function sha256Hex(message) {
+  const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  const bytes = [];
+  const s = unescape(encodeURIComponent(String(message)));
+  for (let i = 0; i < s.length; i++) bytes.push(s.charCodeAt(i));
+  const bitLen = bytes.length * 8;
+  bytes.push(0x80);
+  while (bytes.length % 64 !== 56) bytes.push(0);
+  for (let i = 7; i >= 0; i--) bytes.push(i >= 4 ? 0 : (bitLen >>> (i * 8)) & 0xff);
+  const H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const w = new Array(64);
+  const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+  for (let off = 0; off < bytes.length; off += 64) {
+    for (let i = 0; i < 16; i++) w[i] = (bytes[off + i * 4] << 24) | (bytes[off + i * 4 + 1] << 16) | (bytes[off + i * 4 + 2] << 8) | bytes[off + i * 4 + 3];
+    for (let i = 16; i < 64; i++) {
+      const s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+      const s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) | 0;
+    }
+    let [a, b, c, d, e, f, g, h] = H;
+    for (let i = 0; i < 64; i++) {
+      const t1 = (h + (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + w[i]) | 0;
+      const t2 = ((rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+      h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+    }
+    H[0] = (H[0] + a) | 0; H[1] = (H[1] + b) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0;
+    H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0; H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0;
+  }
+  return H.map((x) => (x >>> 0).toString(16).padStart(8, "0")).join("");
+}
+window.isCodeFingerprint = (v) => /^#[0-9a-f]{20}$/i.test(String(v || ""));
+window.codeFingerprint = (code) => "#" + sha256Hex("nerdyphotographer.in|" + String(code || "").trim().toUpperCase()).slice(0, 20);
+// A stored code (readable on the studio's own device, a fingerprint anywhere
+// else) against what someone typed.
+window.codeMatches = (stored, typed) => {
+  const s = String(stored || "").trim().toUpperCase(), t = String(typed || "").trim().toUpperCase();
+  if (!s || !t) return false;
+  return s === t || (window.isCodeFingerprint(s) && s === window.codeFingerprint(t).toUpperCase());
+};
+window.codeForDisplay = (stored) => window.isCodeFingerprint(stored) ? "•••• (made on another device)" : stored;
+
+/* ============================================================
    § UNIFIED MASTER ADMIN PROMO & INVITE CODES ENGINE
    ============================================================ */
-const DEFAULT_PROMO_CODES = {
-  "NERDY500":  { flat: 500,  label: "Flat ₹500 Off Instant Savings (NERDY500)" },
-  "NERDY1000": { flat: 1000, label: "Flat ₹1,000 Off Instant Savings (NERDY1000)" },
-  "NERDY10":   { pct: 10,    label: "10% Off First Commercial Booking (NERDY10)" },
-  "NERDY15":   { pct: 15,    label: "15% Off Noida / Delhi NCR Shoots (NERDY15)" },
-  "NERDY20":   { pct: 20,    label: "20% Off Studio Production Campaigns (NERDY20)" },
-  "NERDYVIP":  { pct: 25,    label: "25% VIP Partner Discount (NERDYVIP)" }
-};
+// Empty on purpose: a readable list here would publish the codes in app.js
+// instead of data.js (Sep 2026 audit, B10). Only reached if data.js failed.
+const DEFAULT_PROMO_CODES = {};
 
 window.adminDraftPromoCodes = null;
 window.adminDraftInviteCodes = null;
@@ -277,18 +326,8 @@ window.getAdminInviteCodes = function() {
     }
   } catch(e) {}
 
-  const defaultList = [
-    { code: "NERDYBRAND", desc: "Default photographer unlock code for Instagram DMs" },
-    // Built into the defaults on purpose: invite codes added through the Admin
-    // Panel live in this device's localStorage and are never published, so a
-    // code that only exists there is invalid for every client who types it.
-    // No venueCost: this code has always granted the home studio free, and a
-    // blank venue cost is exactly that.
-    { code: "NERDYHOME", desc: "Home Studio TFP Collaboration Unlock (Location Locked)", location: "Home studio, Sector 46, Noida" },
-    { code: "NERDYTEST", desc: "Test shoot unlock pass for agency models" },
-    { code: "INVITE2026", desc: "General 2026 TFP collaboration pass" },
-    { code: "NERDYVIP", desc: "VIP partner unlock code" }
-  ];
+  // Empty for the same reason as DEFAULT_PROMO_CODES.
+  const defaultList = [];
 
   window.adminDraftInviteCodes = normalize(defaultList);
   return window.adminDraftInviteCodes;
@@ -300,7 +339,7 @@ window.getAdminInviteCodes = function() {
 window.getAdminInviteCode = function() {
   const list = window.getAdminInviteCodes();
   const live = list.find((c) => window.codeStatus(c) === "live");
-  return ((live || list[0] || {}).code) || "NERDYBRAND";
+  return ((live || list[0] || {}).code) || "";
 };
 
 /* ============================================================
@@ -6187,7 +6226,7 @@ window.resolveContractArchive = function(version) {
                 <div class="code-box" id="codeBox">
                   <div class="code-box-head">
                     <span class="code-box-title">Have a code?</span>
-                    <span class="code-box-sub">An invite code from the photographer unlocks a test shoot. A promo code discounts a package or the studio rental.</span>
+                    <span class="code-box-sub">An invite code from the photographer unlocks a test shoot. A promo code discounts a package or the studio rental. Discounts are confirmed by the studio before anything is invoiced.</span>
                   </div>
                   <div class="code-box-row">
                     <input id="b_any_code" type="text" placeholder="Enter invite or promo code" autocomplete="off" autocapitalize="characters" spellcheck="false" />
@@ -7552,13 +7591,13 @@ window.resolveContractArchive = function(version) {
       const testShootOpt = $("#b_type")?.querySelector('option[value="Selective Collaboration (TFP)"]');
       const inviteCodeInput = $("#b_invite_code");
       const inviteStatus = $("#inviteCodeStatus");
-      const allAdminCodes = (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : [{ code: "NERDYBRAND" }]);
+      const allAdminCodes = (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : []);
       const enteredCode = (inviteCodeInput?.value || "").trim().toUpperCase();
 
       // Verify against ALL active admin invite codes. Only codes on the admin-managed list are valid,
       // and only while they are live: a code switched off, not yet started or past its end date
       // unlocks nothing, exactly as if it were not on the list.
-      const matchedInviteRaw = enteredCode ? allAdminCodes.find(c => (typeof c === 'object' ? c.code : c).toUpperCase() === enteredCode) : null;
+      const matchedInviteRaw = enteredCode ? allAdminCodes.find(c => window.codeMatches(typeof c === 'object' ? c.code : c, enteredCode)) : null;
       const matchedInvite = window.codeStatus(matchedInviteRaw) === "live" ? matchedInviteRaw : null;
       const isValidInvite = !!matchedInvite;
       // Extract location locked by photographer when creating this invite code (empty = client fills it)
@@ -7577,7 +7616,7 @@ window.resolveContractArchive = function(version) {
       // — has to know the switch exists. The same goes for a code outside the
       // dates it works between: codeStatus folds the switch and the dates
       // into one answer.
-      const matchedDiscountRaw = discountCodesMap[enteredDiscount];
+      const matchedDiscountRaw = discountCodesMap[Object.keys(discountCodesMap).find((k) => window.codeMatches(k, enteredDiscount))];
       const matchedDiscount = window.codeStatus(matchedDiscountRaw) === "live" ? matchedDiscountRaw : undefined;
 
       const btnDiscount = $("#btnApplyDiscountCode");
@@ -8568,10 +8607,10 @@ window.resolveContractArchive = function(version) {
       // The entry behind a typed code, whatever state it is in — whether it is
       // live is asked separately, so a code that is real but outside its dates
       // can be told apart from one that does not exist.
-      const findInvite = (code) => (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : []).find(c => String(typeof c === "object" ? c.code : c).toUpperCase() === code) || null;
+      const findInvite = (code) => (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : []).find(c => window.codeMatches(typeof c === "object" ? c.code : c, code)) || null;
       const findPromo = (code) => {
         const map = typeof window.getAdminPromoCodes === "function" ? window.getAdminPromoCodes() : {};
-        const key = Object.keys(map).find((k) => k.toUpperCase() === code);
+        const key = Object.keys(map).find((k) => window.codeMatches(k, code));
         return key ? map[key] : null;
       };
       const isLive = (entry) => window.codeStatus(entry) === "live";
@@ -9372,7 +9411,7 @@ window.resolveContractArchive = function(version) {
         } = bookingCalc;
 
         const inviteMeta = (isValidInvite && matchedInvite && typeof matchedInvite === "object") ? {
-          code: matchedInvite.code,
+          code: enteredCode,
           desc: matchedInvite.desc || "Photographer Direct Unlock",
           lockedLocation: lockedLocation || ""
         } : (enteredCode ? { code: enteredCode, desc: "Direct Invite", lockedLocation: "" } : null);
