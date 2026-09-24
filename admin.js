@@ -732,6 +732,10 @@ const STUDIO_BOOK_LIMITS = {
   // Paper a book prints on; absent means A4. Where a writing page's photo sits;
   // absent means the page shape's usual place.
   papers: ["a4", "b5", "a5", "letter"],
+  /* How much air sits between photographs, as a multiple of the style's own
+     gutter. Absent means the style's number, so a book made before the studio
+     could ask is stored exactly as it was. */
+  spacings: ["none", "narrow", "medium", "wide"],
   photoAt: { story: ["top", "bottom", "left", "right"], note: ["top", "bottom", "left", "right"], quote: ["top", "bottom", "left", "right"], feature: ["left", "right"], article: ["left", "right"] },
   // Bands round a full-page photo (absent = the style's usual foot band).
   borders: ["none", "top", "bottom", "left", "right", "all"],
@@ -1061,6 +1065,10 @@ function cleanStudioPortfolios(o) {
       id: v.id.slice(0, 40), name: str(v.name, 80) || "Untitled book",
       style: STUDIO_BOOK_STYLES.includes(v.style) ? v.style : "modern",
       ...(STUDIO_BOOK_LIMITS.papers.includes(v.paper) && v.paper !== "a4" ? { paper: v.paper } : {}),
+      /* Named here or it would be dropped: this normaliser keeps only the
+         fields it lists, which is how a new setting silently vanishes on the
+         next reload. "medium" is the style's own, so it is not stored. */
+      ...(STUDIO_BOOK_LIMITS.spacings.includes(v.spacing) && v.spacing !== "medium" ? { spacing: v.spacing } : {}),
       colourway: str(v.colourway, 40) || "terracotta",
       orientation: v.orientation === "landscape" ? "landscape" : "portrait",
       title: str(v.title, 80), subtitle: str(v.subtitle, 120),

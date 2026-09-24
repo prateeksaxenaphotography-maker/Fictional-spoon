@@ -623,6 +623,22 @@
     } catch (e) { /* the photograph is still in the store and still prints */ }
   }
 
+  /* How much air sits between photographs on a page. Each style sets its own
+     gutter, which is part of its voice; this scales that, so a client who
+     wants the photographs tight together — or floating — can have it without
+     the styles losing their proportions to each other. Asked for by the
+     studio, Sep 2026: "no space, narrow space, medium space, large space".
+     Medium is the style's own number, so a book made before this is
+     untouched. */
+  const GAP_SCALE = { none: 0, narrow: 0.45, medium: 1, wide: 1.9 };
+  const GAP_LABEL = [["none", "None"], ["narrow", "Narrow"], ["medium", "Medium"], ["wide", "Wide"]];
+  function gapFactor() {
+    const k = bookNow && bookNow.spacing;
+    return Object.prototype.hasOwnProperty.call(GAP_SCALE, k) ? GAP_SCALE[k] : 1;
+  }
+  // Wraps a style's own margins so its gutter answers to the book's setting.
+  const spaced = (m) => (m && typeof m.gap === "number" ? { ...m, gap: Math.round(m.gap * gapFactor() * 10) / 10 } : m);
+
   function library() {
     const shoots = (API.shoots() || []).filter((s) => s && !s.isTestimonial && Array.isArray(s.photos));
     const byId = new Map();
@@ -1307,7 +1323,7 @@
   }
 
   const ELEGANT = {
-    margins(o) { return o === "landscape" ? { top: 18, side: 20, bottom: 24, gap: 7 } : { top: 22, side: 20, bottom: 30, gap: 6 }; },
+    margins(o) { return spaced(o === "landscape" ? { top: 18, side: 20, bottom: 24, gap: 7 } : { top: 22, side: 20, bottom: 30, gap: 6 }); },
     async cover(page, book, P, W, H, img) {
       const L = W > H;
       rect(page, 0, 0, W, H, P.paper);
@@ -1380,7 +1396,7 @@
   };
 
   const MODERN = {
-    margins() { return { top: 14, side: 14, bottom: 18, gap: 4 }; },
+    margins() { return spaced({ top: 14, side: 14, bottom: 18, gap: 4 }); },
     async cover(page, book, P, W, H, img) {
       const L = W > H;
       rect(page, 0, 0, W, H, P.deep);
@@ -1473,7 +1489,7 @@
   };
 
   const VOGUE = {
-    margins() { return { top: 10, side: 10, bottom: 14, gap: 2 }; },
+    margins() { return spaced({ top: 10, side: 10, bottom: 14, gap: 2 }); },
     async cover(page, book, P, W, H, img) {
       const L = W > H;
       const band = L ? 126 : 179;
@@ -1571,7 +1587,7 @@
   /* Lookbook: white pages, wide margins, the photographs whole and unframed,
      small tracked labels, a light sans; the accent only as a short rule. */
   const LOOKBOOK = {
-    margins(o) { return o === "landscape" ? { top: 20, side: 24, bottom: 24, gap: 8 } : { top: 24, side: 22, bottom: 30, gap: 7 }; },
+    margins(o) { return spaced(o === "landscape" ? { top: 20, side: 24, bottom: 24, gap: 8 } : { top: 24, side: 22, bottom: 30, gap: 7 }); },
     async cover(page, book, P, W, H, img) {
       const L = W > H;
       rect(page, 0, 0, W, H, P.white);
@@ -1785,7 +1801,7 @@
      words white, in light tracked capitals; the accent a thin line. */
   const NOIR = {
     ...textKit({ h: { w: 300, size: 8.5, f: F.jost, sp: 1.0, caps: true, lead: 1.3 }, b: { w: 400, size: 3.9, f: F.jost, lead: 6.3 }, l: { w: 500, size: 2.4, f: F.jost, sp: 1.4 }, rule: { w: 34, h: 0.3 }, ground: "paper" }),
-    margins(o) { return o === "landscape" ? { top: 16, side: 18, bottom: 22, gap: 3 } : { top: 18, side: 16, bottom: 26, gap: 3 }; },
+    margins(o) { return spaced(o === "landscape" ? { top: 16, side: 18, bottom: 22, gap: 3 } : { top: 18, side: 16, bottom: 26, gap: 3 }); },
     async cover(page, book, P, W, H, img) {
       const L = W > H, K = COVER_TYPE.noir, CT = coverText(book), cs = coverStyleOf(book);
       rect(page, 0, 0, W, H, P.paper);
@@ -1830,7 +1846,7 @@
      right of a narrow column that carries the caption and the credit. */
   const SWISS = {
     ...textKit({ h: { w: 700, size: 10, f: F.sans, sp: -0.3, lead: 1.1 }, b: { w: 400, size: 3.9, f: F.sans, lead: 6.2 }, l: { w: 600, size: 2.6, f: F.sans, sp: 0.1, caps: false, color: "ink" }, rule: { w: 3.2, h: 3.2 }, ground: "white" }),
-    margins(o) { return o === "landscape" ? { top: 24, side: 20, bottom: 18, gap: 4 } : { top: 28, side: 20, bottom: 20, gap: 4 }; },
+    margins(o) { return spaced(o === "landscape" ? { top: 24, side: 20, bottom: 18, gap: 4 } : { top: 28, side: 20, bottom: 20, gap: 4 }); },
     async cover(page, book, P, W, H, img) {
       const L = W > H, K = COVER_TYPE.swiss, CT = coverText(book), cs = coverStyleOf(book);
       rect(page, 0, 0, W, H, P.white);
@@ -1893,7 +1909,7 @@
      print, a little askew, taped at its head; headings and captions by hand. */
   const PINBOARD = {
     ...textKit({ h: { w: 700, size: 15, f: F.hand, lead: 1.0 }, b: { w: 400, size: 3.9, f: F.sans, lead: 6.2 }, l: { w: 500, size: 2.3, f: F.plex, sp: 0.4, color: "soft" }, rule: { w: 24, h: 0.5, kind: "wave" }, ground: "paper" }),
-    margins(o) { return o === "landscape" ? { top: 20, side: 24, bottom: 26, gap: 9 } : { top: 24, side: 22, bottom: 30, gap: 9 }; },
+    margins(o) { return spaced(o === "landscape" ? { top: 20, side: 24, bottom: 26, gap: 9 } : { top: 24, side: 22, bottom: 30, gap: 9 }); },
     async cover(page, book, P, W, H, img) {
       const L = W > H, K = COVER_TYPE.pinboard, CT = coverText(book), cs = coverStyleOf(book);
       rect(page, 0, 0, W, H, P.paper);
@@ -1942,7 +1958,7 @@
   const gridOver = (page, W, H, c, step = 10) => { const t = Math.max(0.12, 1 / page.u(1)); page.ctx.save(); page.ctx.globalAlpha = 0.55; for (let gx = step; gx < W; gx += step) rect(page, gx - t / 2, 0, t, H, c); for (let gy = step; gy < H; gy += step) rect(page, 0, gy - t / 2, W, t, c); page.ctx.restore(); };
   const DOSSIER = {
     ...textKit({ h: { w: 500, size: 7, f: F.plex, caps: true, lead: 1.34 }, b: { w: 400, size: 3.8, f: F.sans, lead: 6.1 }, l: { w: 500, size: 2.3, f: F.plex, sp: 0.5 }, rule: { w: 22, h: 0.4, kind: "dash" }, ground: "paper" }),
-    margins(o) { return o === "landscape" ? { top: 22, side: 22, bottom: 24, gap: 7 } : { top: 24, side: 22, bottom: 28, gap: 7 }; },
+    margins(o) { return spaced(o === "landscape" ? { top: 22, side: 22, bottom: 24, gap: 7 } : { top: 24, side: 22, bottom: 28, gap: 7 }); },
     async cover(page, book, P, W, H, img) {
       const L = W > H, K = COVER_TYPE.dossier, CT = coverText(book), cs = coverStyleOf(book);
       rect(page, 0, 0, W, H, P.paper);
@@ -1999,7 +2015,7 @@
      square, chapter pages and the cover flooded with the colour. */
   const POSTER = {
     ...textKit({ h: { w: 400, size: 15, f: F.poster, sp: 0.2, caps: true, lead: 1.04 }, b: { w: 400, size: 3.9, f: F.sans, lead: 6.2 }, l: { w: 700, size: 2.5, f: F.sans, sp: 0.5 }, rule: { w: 16, h: 2.2 }, ground: "white" }),
-    margins(o) { return o === "landscape" ? { top: 16, side: 18, bottom: 24, gap: 7 } : { top: 18, side: 18, bottom: 26, gap: 7 }; },
+    margins(o) { return spaced(o === "landscape" ? { top: 16, side: 18, bottom: 24, gap: 7 } : { top: 18, side: 18, bottom: 26, gap: 7 }); },
     async cover(page, book, P, W, H, img) {
       const L = W > H, K = COVER_TYPE.poster, CT = coverText(book), cs = coverStyleOf(book);
       rect(page, 0, 0, W, H, P.accent);
@@ -2043,7 +2059,7 @@
   const flourish = (page, cx, y, c, arm = 18) => { hair(page, cx - arm - 3.5, y, cx - 3.5, c, 0.2); hair(page, cx + 3.5, y, cx + arm + 3.5, c, 0.2); paintOps(page, [{ k: "path", shape: "diamond", corner: 0, x: cx - 1.2, y: y - 1.2, w: 2.4, h: 2.4, c }]); };
   const ATELIER = {
     ...textKit({ h: { w: 500, size: 13, f: F.cormorant, it: true, lead: 1.06 }, b: { w: 500, size: 4.4, f: F.cormorant, lead: 6.3 }, l: { w: 500, size: 2.3, f: F.geo, sp: 1.2 }, rule: { w: 26, h: 0.3, kind: "diamond" }, ground: "paper" }),
-    margins(o) { return o === "landscape" ? { top: 22, side: 26, bottom: 28, gap: 8 } : { top: 26, side: 24, bottom: 32, gap: 8 }; },
+    margins(o) { return spaced(o === "landscape" ? { top: 22, side: 26, bottom: 28, gap: 8 } : { top: 26, side: 24, bottom: 32, gap: 8 }); },
     async cover(page, book, P, W, H, img) {
       const L = W > H, K = COVER_TYPE.atelier, CT = coverText(book), cs = coverStyleOf(book);
       rect(page, 0, 0, W, H, P.paper);
@@ -2088,7 +2104,7 @@
      columns with a rule between them, italic captions, newsprint for paper. */
   const GAZETTE = {
     ...textKit({ h: { w: 800, size: 11, f: F.playfair, lead: 1.13 }, b: { w: 400, size: 3.9, f: F.news, lead: 6.2 }, l: { w: 600, size: 2.3, f: F.sans, sp: 0.6 }, rule: { w: 26, h: 0.6, kind: "double" }, ground: "paper" }),
-    margins(o) { return o === "landscape" ? { top: 22, side: 18, bottom: 22, gap: 5 } : { top: 26, side: 18, bottom: 24, gap: 5 }; },
+    margins(o) { return spaced(o === "landscape" ? { top: 22, side: 18, bottom: 22, gap: 5 } : { top: 26, side: 18, bottom: 24, gap: 5 }); },
     async cover(page, book, P, W, H, img) {
       const L = W > H, K = COVER_TYPE.gazette, CT = coverText(book), cs = coverStyleOf(book);
       rect(page, 0, 0, W, H, P.paper);
@@ -8101,6 +8117,10 @@
           <div class="sb-seg" role="radiogroup" aria-label="Paper size">${Object.entries(PAPERS).map(([k, p]) => `<button type="button" role="radio" data-paper="${k}" aria-checked="${(book.paper || "a4") === k}">${esc(p.name)}</button>`).join("")}</div>
           <p class="sb-hint" id="sbPaperNote">${esc((PAPERS[book.paper] || PAPERS.a4).note)}. Every size keeps the same layout; the words and photos scale with the page.</p>
         </div>
+        <div class="sb-sec"><h3>Space between photographs</h3>
+          <div class="sb-seg" role="radiogroup" aria-label="Space between photographs">${GAP_LABEL.map(([k, n]) => `<button type="button" role="radio" data-gap="${k}" aria-checked="${(book.spacing || "medium") === k}">${n}</button>`).join("")}</div>
+          <p class="sb-hint" id="sbGapNote">${(book.spacing || "medium") === "medium" ? "The style's own spacing." : (book.spacing === "none" ? "The photographs meet with no gutter at all." : book.spacing === "narrow" ? "Half the style's gutter." : "Nearly twice the style's gutter.")} It scales each style's own number, so the styles keep their proportions to one another.</p>
+        </div>
         <div class="sb-sec"><h3>Page colour, every page</h3>
           <span class="sb-swatches" role="group" aria-label="Page colour for every page">${[["", "The style's own", "linear-gradient(135deg, #fff 45%, #999 50%, #fff 55%)"], ["paper", "Paper", paletteFor(book).paper], ["white", "White", paletteFor(book).white], ["ink", "Ink", paletteFor(book).ink], ["soft", "Soft", paletteFor(book).soft], ["accent", "Accent", paletteFor(book).accent], ["deep", "Deep", paletteFor(book).deep], ["rule", "Hairline", paletteFor(book).rule]].map(([k, n, c]) => `<button type="button" class="sb-swatch" data-bookbg="${k}" aria-pressed="${(book.bg || "") === k}" title="${n}" aria-label="${n}"><i style="background:${c}"></i></button>`).join("")}${anySwatch("bookbgany", /^#/.test(book.bg || "") ? book.bg : "")}</span>
           <div class="sb-cphost" data-bookbgpick hidden></div>
@@ -8150,7 +8170,7 @@
       // The style cards are this book drawn small: they follow its colourway, shape and paper.
       let picTimer = 0;
       const picsSoon = () => { clearTimeout(picTimer); picTimer = setTimeout(() => drawStylePics(), 450); };
-      panel.onclick = (e) => { if (e.target.closest("[data-cw], [data-orient], [data-paper], [data-bookbg]")) picsSoon(); };   // one handler, however often the panel is redrawn
+      panel.onclick = (e) => { if (e.target.closest("[data-cw], [data-orient], [data-paper], [data-bookbg], [data-gap]")) picsSoon(); };   // one handler, however often the panel is redrawn
       radio("[data-style]", (b) => { book.style = b.dataset.style; drawFields(); refreshDesignColours(); }, (b) => book.style === b.dataset.style, (b) => ensureBookFonts({ ...book, style: b.dataset.style }));
       drawStylePics();
       radio("[data-cw]", (b) => { book.colourway = b.dataset.cw; drawFields(); refreshDesignColours(); }, (b) => book.colourway === b.dataset.cw);
@@ -8163,6 +8183,11 @@
         change({ rail: true }); drawPhotoBlock(); drawFields(); refreshDesignColours(); picsSoon();
       });
       radio("[data-orient]", (b) => { book.orientation = b.dataset.orient; }, (b) => book.orientation === b.dataset.orient);
+      radio("[data-gap]", (b) => {
+        if (b.dataset.gap === "medium") delete book.spacing; else book.spacing = b.dataset.gap;
+        const note = $("#sbGapNote");
+        if (note) note.textContent = `${(book.spacing || "medium") === "medium" ? "The style's own spacing." : (book.spacing === "none" ? "The photographs meet with no gutter at all." : book.spacing === "narrow" ? "Half the style's gutter." : "Nearly twice the style's gutter.")} It scales each style's own number, so the styles keep their proportions to one another.`;
+      }, (b) => (book.spacing || "medium") === b.dataset.gap);
       radio("[data-paper]", (b) => {
         if (b.dataset.paper === "a4") delete book.paper; else book.paper = b.dataset.paper;
         const note = $("#sbPaperNote"); if (note) note.textContent = `${(PAPERS[book.paper] || PAPERS.a4).note}. Every size keeps the same layout; the words and photos scale with the page.`;

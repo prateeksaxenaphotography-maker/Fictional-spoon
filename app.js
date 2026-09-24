@@ -2291,6 +2291,7 @@ window.resolveContractArchive = function(version) {
   // bindings are forwarded rather than held. admin.js's loadBookBuilder waits
   // for that file before it fetches the builder, so window.WPS_PDF is always
   // there by the time the builder calls one of these.
+  window.closeLb = (keep) => closeLb(keep);
   window.WPS_BOOK_API = {
     newPdfPage: (dpi, size) => window.WPS_PDF.newPdfPage(dpi, size),
     photoFocus: (p) => window.WPS_PDF.photoFocus(p),
@@ -2899,6 +2900,8 @@ window.resolveContractArchive = function(version) {
   // keepHistory: the caller is about to navigate (a sidebar link, Edit,
   // Delete), so leave the history alone — stepping back here would land the
   // synthetic pop in the middle of that navigation and undo it.
+  // Published because the shells' own markup calls window.closeLb(); a shell
+  // served from a stale cache still carries that attribute.
   function closeLb(keepHistory) {
     lbPaintToken++;                 // cancel any decode still in flight
     lb.classList.remove("lb-loading");
@@ -2923,6 +2926,15 @@ window.resolveContractArchive = function(version) {
     // never be reached with a keyboard (Sep 2026 audit).
     trapTabKey(lb, 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])');
     $("#lightboxClose").addEventListener("click", (e) => { e.stopPropagation(); closeLb(); });
+    /* "← Close Viewer" is written into every shell as onclick="window.closeLb()",
+       and closeLb lives inside this module — so the attribute called something
+       that did not exist and the button did nothing at all, on all nine pages.
+       Wired here rather than trusted to the attribute, and the name is also
+       published so an older cached shell's onclick finds it. */
+    document.querySelectorAll('[onclick*="closeLb"]').forEach((el) => {
+      el.removeAttribute("onclick");
+      el.addEventListener("click", (e) => { e.stopPropagation(); closeLb(); });
+    });
     $("#lbPrev").addEventListener("click", (e) => { e.stopPropagation(); stepLb(-1); });
     $("#lbNext").addEventListener("click", (e) => { e.stopPropagation(); stepLb(1); });
     // Close only on a genuine backdrop click — never when the click lands on the
