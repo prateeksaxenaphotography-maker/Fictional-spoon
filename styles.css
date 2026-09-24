@@ -3960,3 +3960,71 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
 .sb-radio strong { display: block; font-size: 13.5px; }
 .sb-radio small { display: block; margin-top: 3px; color: var(--ink-soft); font-size: 12px; line-height: 1.45; }
 .sb-modal-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+.pp-page-bigat { margin-top: 0; }
+.pp-page-bigat button { min-width: 38px; }
+
+/* ── The studio's rail, as one thing (v510) ────────────────────────────────
+   It had grown to nine rows of segmented pills stacked in a column, with no
+   heading between them: a list of everything the builder can do rather than a
+   design. The controls are the same; what changed is that they are grouped,
+   each group says what it is about, and they run in the order the work is
+   done — what is on screen, how the page is laid out, what the photographs
+   are called, what the lines at the foot do. */
+.pp-rail .pp-group { display: flex; flex-direction: column; gap: 7px; }
+.pp-rail .pp-group + .pp-group { margin-top: 2px; padding-top: 14px; border-top: 1px solid var(--line); }
+.pp-group-name {
+  margin: 0; font: 600 9.5px/1 var(--mono-font); letter-spacing: .14em;
+  text-transform: uppercase; color: var(--ink-soft);
+}
+/* Inside a group the captions are the quiet part and the choices are the
+   loud one, so a caption sits at a fixed width and the buttons line up down
+   the rail instead of starting at a different place on every row. */
+.pp-rail .pp-seg { display: flex; align-items: stretch; width: 100%; }
+.pp-rail .pp-seg-cap {
+  flex: 0 0 58px; display: flex; align-items: center; padding: 0 6px 0 2px;
+  font-size: 9px; letter-spacing: .08em; line-height: 1.15;
+}
+.pp-rail .pp-seg > button { flex: 1 1 0; min-width: 0; }
+.pp-rail .pp-arrange { display: flex; flex-direction: column; gap: 14px; }
+/* The studio's drawers read as one family with the groups above them. */
+.pp-rail .pp-panel, .pp-rail .pp-more { margin-top: 2px; }
+
+/* Icons on the buttons, words on hover (v510). Every one keeps its words for
+   a screen reader and in the tooltip, so nothing is lost by not printing
+   them — the row simply stops reading as a form. */
+/* .pp-sr is defined above — the buttons' words live in it. */
+.pp-seg button svg { display: block; margin: 0 auto; }
+.pp-seg button:has(svg) { padding: 6px 8px; line-height: 0; }
+/* The drawn buttons are square-ish, so a row of them reads as a toolbar
+   rather than as three words of different lengths. */
+.pp-page-layout button:has(svg), .pp-page-bigat button:has(svg) { min-width: 34px; }
+.pp-rail .pp-seg > button:has(svg) { flex: 0 0 auto; min-width: 38px; }
+.pp-rail .pp-seg:has(svg) { gap: 2px; }
+
+/* The strip under the sheets, the same way: Swap / Adjust / Wide and the two
+   arrows were 9px words squeezed into a third of 96px, so "Adjust" printed as
+   "ADJUS" and the arrows fell off the bottom of the panel. They are drawings
+   now, square, on one line, each saying its own name on hover. */
+.pp-order-acts > button:has(svg), .pp-order-move button:has(svg) {
+  display: flex; align-items: center; justify-content: center;
+  padding: 0; height: 28px; line-height: 0; font-size: 0;
+}
+.pp-order-move { gap: 3px; width: 100%; margin-top: 0; }
+.pp-order-move button:has(svg) { flex: 1 1 0; width: auto; height: 26px; }
+.pp-order-item:has(.pp-order-acts svg) { gap: 3px; }
+.pp-order-acts svg, .pp-order-move svg { pointer-events: none; }
+
+/* The caption under a sheet: View and Change become drawings, and the pose
+   label button keeps its note — that note is a reading of the page ("on",
+   "3 untagged"), not a name for the button, so it stays in words. */
+.pp-sheet-zoom:has(svg), .pp-sheet-swap:has(svg) {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 4px 7px; line-height: 0; font-size: 0;
+}
+.pp-sheet-tags:has(svg) { align-items: center; padding: 4px 8px; }
+.pp-sheet-tags svg, .pp-sheet-zoom svg, .pp-sheet-swap svg { pointer-events: none; }
+
+/* The hidden word keeps a size of its own: several of the buttons above set
+   font-size: 0 so no stray text baseline pushes the drawing off centre, and
+   that would otherwise be inherited by the word a screen reader reads. */
+.pp-sr { font-size: 11px; }

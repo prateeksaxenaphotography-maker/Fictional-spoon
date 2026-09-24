@@ -1425,8 +1425,14 @@
   // arrangements at every lead size and block height, and keeps the one that
   // crops least. A shorter block costs a little, since it leaves paper blank,
   // but a clean shorter grid beats a tall one that slices faces.
-  function pdfLeadLayout(leadAspect, aspects, W, maxH, gap) {
+  /* `where` says which edge the big photograph takes: "top", "bottom", "left",
+     "right", or nothing at all, which leaves the page to judge from the
+     photograph's own shape as it always has. The studio asked to be able to
+     say — a portrait lead reads better down one side, a landscape across the
+     top, and only they know which they meant. Sep 2026. */
+  function pdfLeadLayout(leadAspect, aspects, W, maxH, gap, where) {
     let best = null;
+    const wants = (kind) => !where || where === kind;
     const consider = (c) => {
       if (!c) return;
       // "Big photo" has to mean it. With only two photos the least-cropped answer
@@ -1442,15 +1448,24 @@
         consider({ score: pdfCropLoss(w / H, leadAspect) + unused + (1 - w / W) * 0.3, height: H, lead: { x: (W - w) / 2, y: 0, w, h: H }, cells: [] });
         continue;
       }
-      for (let f = 0.38; f <= 0.721; f += 0.02) {
+      // The big photograph down the LEFT, the rest filling the column beside it.
+      if (wants("left") || wants("right")) for (let f = 0.38; f <= 0.721; f += 0.02) {
         const lw = W * f;
         const side = pdfFillRows(aspects, W - lw - gap, H, gap, 2);
-        if (side) consider({ score: pdfCropLoss(lw / H, leadAspect) * 1.5 + side.loss + pdfImbalance(side.cells) * 0.8 + unused, height: H, lead: { x: 0, y: 0, w: lw, h: H }, cells: side.cells.map((c) => ({ ...c, x: c.x + lw + gap })) });
+        if (!side) continue;
+        const score = pdfCropLoss(lw / H, leadAspect) * 1.5 + side.loss + pdfImbalance(side.cells) * 0.8 + unused;
+        if (wants("left")) consider({ score, height: H, lead: { x: 0, y: 0, w: lw, h: H }, cells: side.cells.map((c) => ({ ...c, x: c.x + lw + gap })) });
+        // …or down the RIGHT, which is the same arrangement mirrored.
+        if (wants("right")) consider({ score, height: H, lead: { x: W - lw, y: 0, w: lw, h: H }, cells: side.cells.map((c) => ({ ...c })) });
       }
-      for (let f = 0.4; f <= 0.701; f += 0.02) {
+      // Across the TOP, the rest in rows beneath — or the other way about.
+      if (wants("top") || wants("bottom")) for (let f = 0.4; f <= 0.701; f += 0.02) {
         const lh = H * f;
         const below = pdfFillRows(aspects, W, H - lh - gap, gap, 4);
-        if (below) consider({ score: pdfCropLoss(W / lh, leadAspect) * 1.5 + below.loss + pdfImbalance(below.cells) * 0.8 + unused, height: H, lead: { x: 0, y: 0, w: W, h: lh }, cells: below.cells.map((c) => ({ ...c, y: c.y + lh + gap })) });
+        if (!below) continue;
+        const score = pdfCropLoss(W / lh, leadAspect) * 1.5 + below.loss + pdfImbalance(below.cells) * 0.8 + unused;
+        if (wants("top")) consider({ score, height: H, lead: { x: 0, y: 0, w: W, h: lh }, cells: below.cells.map((c) => ({ ...c, y: c.y + lh + gap })) });
+        if (wants("bottom")) consider({ score, height: H, lead: { x: 0, y: H - lh, w: W, h: lh }, cells: below.cells.map((c) => ({ ...c })) });
       }
     }
     return best;
@@ -1512,7 +1527,7 @@
       drawPdfFooter(page);
       return;
     }
-    const layout = pdfLeadLayout(pdfAspect(imgs[0]), imgs.slice(1).map(pdfAspect), CW, photoMaxH, gap);
+    const layout = pdfLeadLayout(pdfAspect(imgs[0]), imgs.slice(1).map(pdfAspect), CW, photoMaxH, gap, spec.bigAt);
     // A crop-free grid can come up shorter than the page allows. Share the
     // spare height above and below, rather than leaving a blank strip at the foot.
     const top = y + Math.max(0, (photoMaxH - layout.height) / 2);
@@ -1685,7 +1700,7 @@
       // One big photo, on this page too: the first photo the client put on it
       // is the big one, the rest sit beside or beneath it.
       page.equalRows = null;
-      const layout = pdfLeadLayout(pdfAspect(imgs[0]), imgs.slice(1).map(pdfAspect), CW, gridH, gap);
+      const layout = pdfLeadLayout(pdfAspect(imgs[0]), imgs.slice(1).map(pdfAspect), CW, gridH, gap, spec.bigAt);
       const top = y + Math.max(0, (gridH - layout.height) / 2);
       drawPdfSlot(page, imgs[0], spec.others[0], M + layout.lead.x, top + layout.lead.y, layout.lead.w, layout.lead.h, spec.tagPlace, spec.tagAlign);
       layout.cells.forEach((c, i) => drawPdfSlot(page, imgs[i + 1], spec.others[i + 1], M + c.x, top + c.y, c.w, c.h, spec.tagPlace, spec.tagAlign));
@@ -1793,9 +1808,10 @@
       const cols = Array.isArray(spec.cols) ? (spec.cols[i] || 0) : 0;
       // This page's own answer, falling back to the PDF's when it has none.
       const layout = (Array.isArray(spec.layouts) ? spec.layouts[i] : null) || spec.layout;
+      const bigAt = Array.isArray(spec.bigAt) ? (spec.bigAt[i] || "") : "";
       if (i === 0 && n === 1 && layout !== "equal") composeLeadPagePdf(page, { ...spec, layout }, partImgs[0], mark);
-      else if (i === 0) composeOnePagePdf(page, { ...spec, layout, cols, lead: part[0], others: part.slice(1) }, partImgs, mark);
-      else composePosesPdf(page, { ...spec, layout, cols, others: part }, partImgs, mark, i + 1);
+      else if (i === 0) composeOnePagePdf(page, { ...spec, layout, bigAt, cols, lead: part[0], others: part.slice(1) }, partImgs, mark);
+      else composePosesPdf(page, { ...spec, layout, bigAt, cols, others: part }, partImgs, mark, i + 1);
     });
     if (watermark) pages.forEach((p) => drawPdfPreviewMark(p, markAlpha));
     // Drawn last so it sits over a full-bleed photograph rather than under it.
@@ -1940,6 +1956,7 @@
       cols: [],            // photos across, per page; 0 = let the grid decide
       sheetView: "all",    // "all", or the index of the one sheet on show
       layouts: [],         // per page; empty means "whatever `layout` says"
+      bigAt: [],           // per page; where the big photo sits, empty = the page judges
       fromSaved: null,     // the saved arrangement this one was opened from
       detailsAlign: "left",// kept for arrangements saved before the two split
       statsAlign: "left",  // the measurements row: left, centre or right
@@ -1997,6 +2014,9 @@
        opening page led by one photograph and its later pages even. Asked for
        by the studio, Sep 2026: "not blanket". */
     const layoutOf = (i) => state.layouts[i] || state.layout;
+    // Which edge this page's big photograph takes; nothing means the page judges.
+    const bigAtOf = (i) => state.bigAt[i] || "";
+    const bigAtPerPage = () => Array.from({ length: state.pages }, (_, i) => bigAtOf(i));
     const layoutsPerPage = () => Array.from({ length: state.pages }, (_, i) => layoutOf(i));
 
     // How many photographs stand across a page, when the studio has said.
@@ -2150,7 +2170,7 @@
       return {
         pages: state.pages, count: state.count, picks: [...state.picks], cleared: [...state.cleared],
         lead: state.lead, cover: state.cover, coverId: state.coverId, coverStyle: state.coverStyle,
-        layout: state.layout, layouts: layoutsPerPage(), order: [...state.order],
+        layout: state.layout, layouts: layoutsPerPage(), bigAt: bigAtPerPage(), order: [...state.order],
         fewerOnTop: state.fewerOnTop, cols: colsPerPage(), detailsAlign: state.detailsAlign,
         tags: tagsPerPage(), tagPlace: state.tagPlace, tagAlign: state.tagAlign, perPage: perPage(),
         span: JSON.parse(JSON.stringify(state.span || {})),
@@ -2208,6 +2228,23 @@
       </div>
     `;
     document.body.appendChild(modal);
+    /* Hover on a drawn button and it says its name — the same as the portfolio
+       book. Every button here already names itself to a screen reader, and the
+       panels redraw constantly, so the name is copied into the tooltip on each
+       redraw rather than written out at forty call sites. */
+    (function nameOnHover() {
+      const pass = () => modal.querySelectorAll("button[aria-label]:not([title])").forEach((b) => {
+        const name = (b.getAttribute("aria-label") || "").trim();
+        if (name) b.title = name;
+      });
+      let due = 0;
+      pass();
+      // childList only, so writing the title back cannot wake the watcher.
+      new MutationObserver(() => {
+        if (due) return;
+        due = requestAnimationFrame(() => { due = 0; pass(); });
+      }).observe(modal, { childList: true, subtree: true });
+    })();
     const body = modal.querySelector(".pp-body");
     const foot = modal.querySelector(".pp-foot");
     const prevOverflow = document.body.style.overflow;
@@ -2285,6 +2322,7 @@
         coverStyle: state.coverStyle,
         layout: state.layout,
         layouts: layoutsPerPage(),
+        bigAt: bigAtPerPage(),
         perPage: perPage(),
         fewerOnTop: state.fewerOnTop,
         // Which pages name their poses, and where the name sits. The labels
@@ -2312,7 +2350,7 @@
         return a ? [a.x, a.y, a.zoom].map((v) => Math.round(v * 1000)) : 0;
       });
       return JSON.stringify([state.pages, ids, state.layout, layoutsPerPage(), perPage(), state.fewerOnTop,
-        tagsPerPage(), colsPerPage(), state.statsAlign, state.contactAlign, state.tagPlace, state.tagAlign,
+        tagsPerPage(), colsPerPage(), bigAtPerPage(), state.statsAlign, state.contactAlign, state.tagPlace, state.tagAlign,
         ids.map((id) => state.span[id] || 0),
         state.cover ? [state.coverId, state.coverStyle] : null, crops]);
     }
@@ -2359,6 +2397,8 @@
       state.coverStyle = sp.coverStyle; state.layout = sp.layout;
       // Saved before a page could answer for itself: the PDF's own choice.
       state.layouts = Array.isArray(sp.layouts) ? sp.layouts.slice(0, sp.pages) : [];
+      // Saved before a page could be told where its big photograph goes.
+      state.bigAt = Array.isArray(sp.bigAt) ? sp.bigAt.slice(0, sp.pages) : [];
       state.order = [...sp.order]; state.fewerOnTop = sp.fewerOnTop;
       // Saved before the studio could choose it: the grid works it out.
       state.cols = Array.isArray(sp.cols) ? sp.cols.slice(0, sp.pages) : [];
@@ -2766,7 +2806,7 @@
       const note = !on ? "off" : shown ? "on" : bare ? `${bare} untagged` : "none tagged";
       return `<button type="button" class="pp-sheet-tags" data-page-tags="${i}" aria-pressed="${on}"
         title="${on ? "Pose labels on this page" : "No pose labels on this page"}"
-        aria-label="Pose labels on page ${i + 1}">Tags<span class="pp-sheet-tags-note">${esc(note)}</span></button>`;
+        aria-label="Pose labels on page ${i + 1}">${iconBtn("tag", "Pose labels")}<span class="pp-sheet-tags-note">${esc(note)}</span></button>`;
     }
 
     /* The row of numbers under a sheet moves photographs BETWEEN pages: the
@@ -2795,8 +2835,64 @@
       if (!admin) return "";
       const on = layoutOf(i);
       return `<div class="pp-seg pp-page-layout" role="radiogroup" aria-label="Sizes on page ${i + 1}">
-        <button type="button" role="radio" data-page-layout="${i}" data-layout-val="equal" aria-checked="${on === "equal"}" title="All the same size">Even</button>
-        <button type="button" role="radio" data-page-layout="${i}" data-layout-val="lead" aria-checked="${on === "lead"}" title="One big photo">Big</button>
+        <button type="button" role="radio" data-page-layout="${i}" data-layout-val="equal" aria-checked="${on === "equal"}" title="All the same size" aria-label="All the same size on page ${i + 1}">${iconBtn("gridEven", "Even")}</button>
+        <button type="button" role="radio" data-page-layout="${i}" data-layout-val="lead" aria-checked="${on === "lead"}" title="One big photo" aria-label="One big photo on page ${i + 1}">${iconBtn("gridBig", "Big")}</button>
+      </div>`;
+    }
+
+    /* ---------- the little pictures on the buttons ------------------------
+       A row of words saying "Left Centre Right" three times over reads as a
+       form; the same choices drawn read as a tool, which is what the studio
+       asked for — "like MS Word or Canva". Every button keeps its words for a
+       screen reader (aria-label) and gains them back on hover (title), so
+       nothing is lost by not printing them.
+
+       Drawn rather than fetched: an icon font or a sprite is another file to
+       load, another thing to cache wrong, and these are a dozen lines each. */
+    const ICON = (paths, extra = "") => `<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"${extra}>${paths}</svg>`;
+    const ICONS = {
+      alignLeft: ICON('<path d="M2 3.5h12M2 6.8h7M2 10.2h12M2 13.5h7"/>'),
+      alignCentre: ICON('<path d="M2 3.5h12M4.5 6.8h7M2 10.2h12M4.5 13.5h7"/>'),
+      alignRight: ICON('<path d="M2 3.5h12M7 6.8h7M2 10.2h12M7 13.5h7"/>'),
+      // A photograph with its label on it, under it, over it.
+      labelOn: ICON('<rect x="2.2" y="2.8" width="11.6" height="10.4" rx="1.2"/><path d="M4.4 10.8h5" stroke-width="2"/>'),
+      labelBelow: ICON('<rect x="2.2" y="2.2" width="11.6" height="8.4" rx="1.2"/><path d="M4.4 13.2h5" stroke-width="2"/>'),
+      labelAbove: ICON('<path d="M4.4 2.8h5" stroke-width="2"/><rect x="2.2" y="5.4" width="11.6" height="8.4" rx="1.2"/>'),
+      // An even grid, and a page led by one photograph.
+      gridEven: ICON('<rect x="2.2" y="2.2" width="5" height="5" rx="1"/><rect x="8.8" y="2.2" width="5" height="5" rx="1"/><rect x="2.2" y="8.8" width="5" height="5" rx="1"/><rect x="8.8" y="8.8" width="5" height="5" rx="1"/>'),
+      gridBig: ICON('<rect x="2.2" y="2.2" width="11.6" height="6.6" rx="1"/><rect x="2.2" y="10.2" width="3.4" height="3.6" rx="0.8"/><rect x="6.3" y="10.2" width="3.4" height="3.6" rx="0.8"/><rect x="10.4" y="10.2" width="3.4" height="3.6" rx="0.8"/>'),
+      // Which edge the big photograph takes.
+      bigTop: ICON('<rect x="2.2" y="2.2" width="11.6" height="6" rx="1" fill="currentColor" stroke="none"/><rect x="2.2" y="9.6" width="5" height="4.2" rx="0.8"/><rect x="8.8" y="9.6" width="5" height="4.2" rx="0.8"/>'),
+      bigFoot: ICON('<rect x="2.2" y="2.2" width="5" height="4.2" rx="0.8"/><rect x="8.8" y="2.2" width="5" height="4.2" rx="0.8"/><rect x="2.2" y="7.8" width="11.6" height="6" rx="1" fill="currentColor" stroke="none"/>'),
+      bigLeft: ICON('<rect x="2.2" y="2.2" width="6" height="11.6" rx="1" fill="currentColor" stroke="none"/><rect x="9.6" y="2.2" width="4.2" height="5" rx="0.8"/><rect x="9.6" y="8.8" width="4.2" height="5" rx="0.8"/>'),
+      bigRight: ICON('<rect x="2.2" y="2.2" width="4.2" height="5" rx="0.8"/><rect x="2.2" y="8.8" width="4.2" height="5" rx="0.8"/><rect x="7.8" y="2.2" width="6" height="11.6" rx="1" fill="currentColor" stroke="none"/>'),
+      // The strip under the sheets: swap one photograph for another, move or
+      // zoom this one, let it take two places across, walk it up or down.
+      swap: ICON('<path d="M2.6 5h8.2M8.6 2.8 10.8 5 8.6 7.2M13.4 11H5.2M7.4 8.8 5.2 11l2.2 2.2"/>'),
+      adjust: ICON('<path d="M8 1.8v12.4M1.8 8h12.4M8 1.8 6.2 3.6M8 1.8l1.8 1.8M8 14.2l-1.8-1.8M8 14.2l1.8-1.8M1.8 8l1.8-1.8M1.8 8l1.8 1.8M14.2 8l-1.8-1.8M14.2 8l-1.8 1.8"/>'),
+      wide: ICON('<rect x="2.2" y="4" width="11.6" height="8" rx="1.2"/><path d="M5.4 8h5.2M7 6.4 5.4 8 7 9.6M9 6.4 10.6 8 9 9.6"/>'),
+      moveBack: ICON('<path d="M9.6 3.4 5 8l4.6 4.6"/>'),
+      moveOn: ICON('<path d="M6.4 3.4 11 8l-4.6 4.6"/>'),
+      // Under a sheet: look at it close up, pose labels on this page.
+      view: ICON('<circle cx="7.2" cy="7.2" r="4.4"/><path d="M10.5 10.5 14 14"/>'),
+      tag: ICON('<path d="M8.6 2.2H13v4.4l-6.2 6.2a1.2 1.2 0 0 1-1.7 0L2.4 9.7a1.2 1.2 0 0 1 0-1.7Z"/><circle cx="10.6" cy="4.8" r=".9"/>')
+    };
+    // A button that shows a picture and says what it is on hover.
+    const iconBtn = (icon, words) => `${ICONS[icon] || ""}<span class="pp-sr">${esc(words)}</span>`;
+
+    /* Where this page's big photograph sits. Only shown on a page that HAS
+       one, because on an even page there is nothing to place. */
+    function pageBigAtSegHtml(i, drawn) {
+      if (!admin || layoutOf(i) === "equal") return "";
+      const n = drawn || perPage()[i] || 0;
+      if (n < 2) return "";   // one photograph is the page; it sits nowhere else
+      const on = bigAtOf(i);
+      // Auto keeps its word: there is no picture for "let the page judge".
+      const spots = [["", "Auto", ""], ["top", "Across the top", "bigTop"], ["bottom", "Across the foot", "bigFoot"],
+                     ["left", "Down the left", "bigLeft"], ["right", "Down the right", "bigRight"]];
+      return `<div class="pp-seg pp-page-bigat" role="radiogroup" aria-label="Where the big photo sits on page ${i + 1}">
+        <span class="pp-seg-cap" aria-hidden="true">Big</span>
+        ${spots.map(([v, label, icon]) => `<button type="button" role="radio" data-page-bigat="${i}" data-bigat="${v}" aria-checked="${v === on}" title="${esc(label)}" aria-label="${esc(label)}, page ${i + 1}">${icon ? iconBtn(icon, label) : esc(label)}</button>`).join("")}
       </div>`;
     }
 
@@ -2905,7 +3001,7 @@
        could not read its own small print without making the file first. */
     function zoomBtnHtml(i) {
       if (!admin) return "";
-      return `<button type="button" class="pp-sheet-zoom" data-zoom="${i}" aria-label="Look at this sheet close up" title="Look at it close up">View</button>`;
+      return `<button type="button" class="pp-sheet-zoom" data-zoom="${i}" aria-label="Look at this sheet close up" title="Look at it close up">${iconBtn("view", "View")}</button>`;
     }
 
     function showSheetZoom(start) {
@@ -3112,60 +3208,62 @@
         </div>
         <aside class="pp-rail">
         <div class="pp-arrange" id="ppArrange">
-          <div class="pp-arrange-head">
-            <div class="pp-arrange-segs">
-              <!-- One answer for the whole PDF, and the studio no longer needs
-                   it: every sheet carries its own Even/Big beneath it, so this
-                   said the same thing twice and less precisely. A client has
-                   no per-page controls — the craft is deliberately not theirs
-                   — so for them this is the only way to ask, and it stays. -->
-              ${admin ? "" : `<div class="pp-seg" role="radiogroup" aria-label="Layout" id="ppLayoutSeg" data-forsheet="pages" hidden>
-                <span class="pp-seg-cap" aria-hidden="true">Sizes</span>
-                <button type="button" role="radio" data-layout="lead">One big photo</button>
-                <button type="button" role="radio" data-layout="equal">All the same size</button>
-              </div>`}
-              ${admin ? `<div class="pp-seg" role="radiogroup" aria-label="Rows" id="ppRowsSeg" data-forsheet="pages" hidden></div>` : ""}
-              <div id="ppSheetView"></div>
+          <!-- Grouped, because nine rows of pills in a row is a list and not a
+               design. Each group says what it is about, and they run in the
+               order the studio thinks in: what is on screen, how the page is
+               laid out, what the photographs are called, what the lines at
+               the foot do. Studio's ask, Sep 2026: it had stopped feeling
+               like one thing. -->
+          <section class="pp-group">
+            <h4 class="pp-group-name">On screen</h4>
+            <div id="ppSheetView"></div>
+          </section>
+          <section class="pp-group" data-group="layout">
+            <h4 class="pp-group-name">Layout</h4>
+            ${admin ? "" : `<div class="pp-seg" role="radiogroup" aria-label="Layout" id="ppLayoutSeg" data-forsheet="pages" hidden>
+              <span class="pp-seg-cap" aria-hidden="true">Sizes</span>
+              <button type="button" role="radio" data-layout="lead">One big photo</button>
+              <button type="button" role="radio" data-layout="equal">All the same size</button>
+            </div>`}
+            ${admin ? `<div class="pp-seg" role="radiogroup" aria-label="Rows" id="ppRowsSeg" data-forsheet="pages" hidden></div>` : ""}
+          </section>
 ${admin ? `
-              <!-- In the preview and not the picker: the picker is for
-                   choosing photographs, this is about how they look. Whether
-                   a PAGE shows its labels is asked on the page itself; where
-                   the label sits is one answer for the whole PDF, so it is
-                   asked once, here. -->
-              <div class="pp-seg" role="radiogroup" aria-label="Where the pose label sits" id="ppTagPlaceSeg" data-forsheet="pages" hidden>
-                <span class="pp-seg-cap" aria-hidden="true">Label</span>
-                <button type="button" role="radio" data-tag-place="in">On the photo</button>
-                <button type="button" role="radio" data-tag-place="below">Below</button>
-                <button type="button" role="radio" data-tag-place="above">Above</button>
-              </div>
-              <div class="pp-seg" role="radiogroup" aria-label="How the pose label lines up" id="ppTagAlignSeg" data-forsheet="pages" hidden>
-                <span class="pp-seg-cap" aria-hidden="true">Label sits</span>
-                <button type="button" role="radio" data-tag-align="left">Left</button>
-                <button type="button" role="radio" data-tag-align="center">Centre</button>
-                <button type="button" role="radio" data-tag-align="right">Right</button>
-              </div>
-              <!-- The stats and contact row at the foot of a page. It has
-                   always sat hard against the left margin; a portfolio whose
-                   photographs are centred wants the line under them centred
-                   too. One answer for the whole PDF, like the label above. -->
-              <div class="pp-seg" role="radiogroup" aria-label="How the measurements line up" id="ppDetailsAlignSeg" data-forsheet="first">
-                <span class="pp-seg-cap" aria-hidden="true">Stats</span>
-                <button type="button" role="radio" data-details-align="left">Left</button>
-                <button type="button" role="radio" data-details-align="centre">Centre</button>
-                <button type="button" role="radio" data-details-align="right">Right</button>
-              </div>
-              <!-- The Instagram/email line answers for itself: the studio
-                   wanted the measurements centred with the contact line left,
-                   and one control for both could not say it. -->
-              <div class="pp-seg" role="radiogroup" aria-label="How the contact line lines up" id="ppContactAlignSeg" data-forsheet="first">
-                <span class="pp-seg-cap" aria-hidden="true">Contact</span>
-                <button type="button" role="radio" data-contact-align="left">Left</button>
-                <button type="button" role="radio" data-contact-align="centre">Centre</button>
-                <button type="button" role="radio" data-contact-align="right">Right</button>
-              </div>
-              ` : ""}
+          <!-- Whether a PAGE names its poses is asked on the page itself;
+               where that name sits is one answer for the whole PDF. -->
+          <section class="pp-group" data-group="labels">
+            <h4 class="pp-group-name">Pose labels</h4>
+            <div class="pp-seg" role="radiogroup" aria-label="Where the pose label sits" id="ppTagPlaceSeg" data-forsheet="pages" hidden>
+              <span class="pp-seg-cap" aria-hidden="true">Sits</span>
+              <button type="button" role="radio" data-tag-place="in" title="On the photograph" aria-label="On the photograph">${iconBtn("labelOn", "On the photo")}</button>
+              <button type="button" role="radio" data-tag-place="below" title="Below the photograph" aria-label="Below the photograph">${iconBtn("labelBelow", "Below")}</button>
+              <button type="button" role="radio" data-tag-place="above" title="Above the photograph" aria-label="Above the photograph">${iconBtn("labelAbove", "Above")}</button>
             </div>
-          </div>
+            <div class="pp-seg" role="radiogroup" aria-label="How the pose label lines up" id="ppTagAlignSeg" data-forsheet="pages" hidden>
+              <span class="pp-seg-cap" aria-hidden="true">Lines up</span>
+              <button type="button" role="radio" data-tag-align="left" title="Label to the left" aria-label="Label to the left">${iconBtn("alignLeft", "Left")}</button>
+              <button type="button" role="radio" data-tag-align="center" title="Label centred" aria-label="Label centred">${iconBtn("alignCentre", "Centre")}</button>
+              <button type="button" role="radio" data-tag-align="right" title="Label to the right" aria-label="Label to the right">${iconBtn("alignRight", "Right")}</button>
+            </div>
+          </section>
+          <!-- The measurements and the contact line, at the foot of page one.
+               Two answers, because the studio wanted one centred and the
+               other left. -->
+          <section class="pp-group" data-group="foot">
+            <h4 class="pp-group-name">Lines at the foot</h4>
+            <div class="pp-seg" role="radiogroup" aria-label="How the measurements line up" id="ppDetailsAlignSeg" data-forsheet="first">
+              <span class="pp-seg-cap" aria-hidden="true">Stats</span>
+              <button type="button" role="radio" data-details-align="left" title="Measurements to the left" aria-label="Measurements to the left">${iconBtn("alignLeft", "Left")}</button>
+              <button type="button" role="radio" data-details-align="centre" title="Measurements centred" aria-label="Measurements centred">${iconBtn("alignCentre", "Centre")}</button>
+              <button type="button" role="radio" data-details-align="right" title="Measurements to the right" aria-label="Measurements to the right">${iconBtn("alignRight", "Right")}</button>
+            </div>
+            <div class="pp-seg" role="radiogroup" aria-label="How the contact line lines up" id="ppContactAlignSeg" data-forsheet="first">
+              <span class="pp-seg-cap" aria-hidden="true">Contact</span>
+              <button type="button" role="radio" data-contact-align="left" title="Contact line to the left" aria-label="Contact line to the left">${iconBtn("alignLeft", "Left")}</button>
+              <button type="button" role="radio" data-contact-align="centre" title="Contact line centred" aria-label="Contact line centred">${iconBtn("alignCentre", "Centre")}</button>
+              <button type="button" role="radio" data-contact-align="right" title="Contact line to the right" aria-label="Contact line to the right">${iconBtn("alignRight", "Right")}</button>
+            </div>
+          </section>
+          ` : ""}
         </div>
         <!-- The same two fields as the photo picker. They print on the first
              page, so they belong where you can watch that page redraw. -->
@@ -3505,6 +3603,17 @@ ${admin ? `
            cover. It could only be changed back on the picking screen, where
            the cover is a thumbnail — so the one place it is shown at full
            size was the one place it could not be changed. */
+        // Where this page's big photograph sits.
+        const ba = e.target.closest("[data-page-bigat]");
+        if (ba) {
+          const i = Number(ba.dataset.pageBigat), want = ba.dataset.bigat || "";
+          if (bigAtOf(i) === want) return;
+          const wasCovered = covered();
+          if (want) state.bigAt[i] = want; else delete state.bigAt[i];
+          if (covered() !== wasCovered) { showPreview(); return; }
+          drawPreview();
+          return;
+        }
         // This page's own sizes.
         const pl = e.target.closest("[data-page-layout]");
         if (pl) {
@@ -3597,8 +3706,8 @@ ${admin ? `
           const cap = document.createElement("figcaption");
           cap.className = "pp-sheet-cap";
           cap.innerHTML = i < offset
-            ? `<span class="pp-sheet-head"><span class="pp-sheet-name">Cover</span>${zoomBtnHtml(i)}<button type="button" class="pp-sheet-swap" data-swap-cover aria-label="Use a different photograph for the cover" title="Use a different photograph">Change</button></span>${coverStyleSegHtml()}`
-            : `<span class="pp-sheet-head"><span class="pp-sheet-name">Page ${i - offset + 1}</span>${zoomBtnHtml(i)}${pageTagsBtnHtml(i - offset, p)}</span>${pageCountSegHtml(i - offset)}${pageLayoutSegHtml(i - offset)}${pageColsSegHtml(i - offset, (p.canvas && p.canvas._photos || []).length)}`;
+            ? `<span class="pp-sheet-head"><span class="pp-sheet-name">Cover</span>${zoomBtnHtml(i)}<button type="button" class="pp-sheet-swap" data-swap-cover aria-label="Use a different photograph for the cover" title="Use a different photograph">${iconBtn("swap", "Change")}</button></span>${coverStyleSegHtml()}`
+            : `<span class="pp-sheet-head"><span class="pp-sheet-name">Page ${i - offset + 1}</span>${zoomBtnHtml(i)}${pageTagsBtnHtml(i - offset, p)}</span>${pageCountSegHtml(i - offset)}${pageLayoutSegHtml(i - offset)}${pageBigAtSegHtml(i - offset, (p.canvas && p.canvas._photos || []).length)}${pageColsSegHtml(i - offset, (p.canvas && p.canvas._photos || []).length)}`;
           item.appendChild(cap);
           item.hidden = !shown(i);
           return item;
@@ -3818,20 +3927,20 @@ ${admin ? `
             <button type="button" class="pp-order-drop" data-remove="${esc(s.id)}" aria-label="Take ${esc(s.name)} out of this portfolio" title="Take this photo out">&times;</button>
           </span>
           <span class="pp-order-acts">
-          <button type="button" class="pp-order-swap" data-swap="${esc(s.id)}" aria-label="Put a different photograph in place of ${esc(s.name)}" title="Swap for a photo you haven't used">Swap</button>
+          <button type="button" class="pp-order-swap" data-swap="${esc(s.id)}" aria-label="Put a different photograph in place of ${esc(s.name)}" title="Swap for a photo you haven't used">${iconBtn("swap", "Swap")}</button>
           <!-- Adjust photo could only be opened by tapping the preview, so a
                keyboard user could not reach it at all (Sep 2026 audit). -->
-          <button type="button" class="pp-order-adjust" data-adjust="${esc(s.id)}" aria-label="Move or zoom ${esc(s.name)}" title="Move or zoom this photo">Adjust</button>
+          <button type="button" class="pp-order-adjust" data-adjust="${esc(s.id)}" aria-label="Move or zoom ${esc(s.name)}" title="Move or zoom this photo">${iconBtn("adjust", "Adjust")}</button>
           <!-- A landscape photograph takes two places of its own accord; this
                is how the client overrules that either way, which they had no
                means of doing at all (Sep 22 2026). Only "All the same size"
                has places to take: the big-photo layout already cuts every
                supporting cell to its own photograph's shape. -->
-          ${layoutsPerPage().some((l) => l === "equal") ? `<button type="button" class="pp-order-wide" data-wide="${esc(s.id)}" aria-pressed="false" aria-label="Give ${esc(s.name)} two places across" title="Two places across">Wide</button>` : ""}
+          ${layoutsPerPage().some((l) => l === "equal") ? `<button type="button" class="pp-order-wide" data-wide="${esc(s.id)}" aria-pressed="false" aria-label="Give ${esc(s.name)} two places across" title="Two places across">${iconBtn("wide", "Wide")}</button>` : ""}
           </span>
           ${i < fixed ? "" : `<span class="pp-order-move">
-            <button type="button" data-move="-1" aria-label="Move ${esc(s.name)} earlier"${i === fixed ? " disabled" : ""}>‹</button>
-            <button type="button" data-move="1" aria-label="Move ${esc(s.name)} later"${i === list.length - 1 ? " disabled" : ""}>›</button>
+            <button type="button" data-move="-1" aria-label="Move ${esc(s.name)} earlier" title="Move this photo earlier"${i === fixed ? " disabled" : ""}>${iconBtn("moveBack", "Earlier")}</button>
+            <button type="button" data-move="1" aria-label="Move ${esc(s.name)} later" title="Move this photo later"${i === list.length - 1 ? " disabled" : ""}>${iconBtn("moveOn", "Later")}</button>
           </span>`}
         </li>`).join("");
       syncWide();
@@ -4167,8 +4276,15 @@ ${admin ? `
          it while all three still had something to say. */
       const arrange = body.querySelector("#ppArrange");
       if (!arrange) return;
-      const alive = [...arrange.querySelectorAll(".pp-seg, [data-forsheet]")]
-        .some((el) => !el.hidden && !el.classList.contains("is-offsheet"));
+      const showing = (el) => !el.hidden && !el.classList.contains("is-offsheet");
+      /* A group whose controls have all stood down takes its heading with it,
+         or the rail keeps a title over nothing. */
+      arrange.querySelectorAll(".pp-group").forEach((g) => {
+        const kids = [...g.querySelectorAll(".pp-seg, [data-forsheet]")];
+        const live = kids.length ? kids.some(showing) : !!g.querySelector("#ppSheetView .pp-seg");
+        g.hidden = !live;
+      });
+      const alive = [...arrange.querySelectorAll(".pp-group")].some((g) => !g.hidden);
       arrange.hidden = !alive;
     }
 

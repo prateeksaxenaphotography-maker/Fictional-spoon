@@ -4707,6 +4707,15 @@
   .sb-seg { display: flex; gap: 4px; flex-wrap: wrap; }
   .sb-seg button { flex: 1 1 auto; padding: 7px 9px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--paper, #faf8f5); color: var(--ink, #141416); font: 600 12.5px Inter, sans-serif; cursor: pointer; }
   .sb-seg button[aria-checked=true] { background: var(--ink, #141416); border-color: var(--ink, #141416); color: var(--paper, #faf8f5); }
+  /* A drawn button is square and keeps its name for a reader and the tooltip;
+     a row of them reads as a toolbar rather than as words of ragged lengths. */
+  .sb-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; font-size: 11px; }
+  .sb-seg button:has(svg) { display: inline-flex; align-items: center; justify-content: center; min-width: 38px; padding: 7px 9px; line-height: 0; font-size: 0; }
+  /* In a row of drawings, nothing stretches — otherwise the one button that
+     kept its word ("Auto") swallowed all the space left over and the drawn
+     ones huddled at the end. */
+  .sb-seg:has(svg) button { flex: 0 0 auto; }
+  .sb-seg button svg { display: block; pointer-events: none; }
   .sb-styles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .sb-style { display: grid; gap: 2px; align-content: start; padding: 8px; border: 1px solid var(--sb-line); border-radius: 10px; background: var(--paper, #faf8f5); color: inherit; text-align: left; cursor: pointer; }
   .sb-style b { font: 700 14px Inter, sans-serif; }
@@ -4955,7 +4964,46 @@
     ways: ["Which way suits the client you're sending this to?", "Say plainly which way you like working best.", "Keep every way sounding welcome."],
     process: ["Does each step say who does it?", "Would a first-time model understand every line?", "Nothing here should promise what your terms don't."]
   };
+  /* Drawings for the studio's own controls (v510). Every one of these panels
+     was a row of words — Fill / Whole / Fit width / Fit height, Top / Bottom /
+     Left / Right, four times over — which read as a form rather than as a
+     toolbar. Each button now shows what it does and says its name on hover;
+     the name itself stays in the markup, hidden, so a screen reader and the
+     tests both still read it. */
+  const SB_ICON = (paths) => `<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">${paths}</svg>`;
+  const SB_ICONS = {
+    // How a photograph meets its space.
+    fitFill: SB_ICON('<rect x="2" y="2.6" width="12" height="10.8" rx="1.2" fill="currentColor" stroke="none"/>'),
+    fitWhole: SB_ICON('<rect x="2" y="2.6" width="12" height="10.8" rx="1.2"/><rect x="5.2" y="4.6" width="5.6" height="6.8" rx=".8" fill="currentColor" stroke="none"/>'),
+    fitWidth: SB_ICON('<rect x="2" y="4.4" width="12" height="7.2" rx="1.2"/><path d="M4.4 8h7.2M6 6.4 4.4 8 6 9.6M10 6.4 11.6 8 10 9.6"/>'),
+    fitHeight: SB_ICON('<rect x="4.4" y="2" width="7.2" height="12" rx="1.2"/><path d="M8 4.4v7.2M6.4 6 8 4.4 9.6 6M6.4 10 8 11.6 9.6 10"/>'),
+    // Which edge a band, or the big photograph, takes.
+    edgeNone: SB_ICON('<rect x="2.2" y="2.2" width="11.6" height="11.6" rx="1.2"/>'),
+    edgeTop: SB_ICON('<rect x="2.2" y="2.2" width="11.6" height="11.6" rx="1.2"/><path d="M2.2 4.6h11.6" stroke-width="3"/>'),
+    edgeBottom: SB_ICON('<rect x="2.2" y="2.2" width="11.6" height="11.6" rx="1.2"/><path d="M2.2 11.4h11.6" stroke-width="3"/>'),
+    edgeLeft: SB_ICON('<rect x="2.2" y="2.2" width="11.6" height="11.6" rx="1.2"/><path d="M4.6 2.2v11.6" stroke-width="3"/>'),
+    edgeRight: SB_ICON('<rect x="2.2" y="2.2" width="11.6" height="11.6" rx="1.2"/><path d="M11.4 2.2v11.6" stroke-width="3"/>'),
+    edgeAll: SB_ICON('<rect x="3.4" y="3.4" width="9.2" height="9.2" rx=".8" stroke-width="3.2"/>'),
+    // How broad that band is.
+    ruleNarrow: SB_ICON('<path d="M2.4 8h11.2" stroke-width="1.2"/>'),
+    ruleStandard: SB_ICON('<path d="M2.4 8h11.2" stroke-width="3"/>'),
+    ruleBroad: SB_ICON('<path d="M2.4 8h11.2" stroke-width="5.4"/>'),
+    // How much air between the photographs.
+    gapNone: SB_ICON('<rect x="2.2" y="3.4" width="5.9" height="9.2" rx=".6" fill="currentColor" stroke="none"/><rect x="8.1" y="3.4" width="5.9" height="9.2" rx=".6" fill="currentColor" stroke="none"/>'),
+    gapNarrow: SB_ICON('<rect x="2.2" y="3.4" width="5.5" height="9.2" rx=".6" fill="currentColor" stroke="none"/><rect x="8.6" y="3.4" width="5.5" height="9.2" rx=".6" fill="currentColor" stroke="none"/>'),
+    gapMedium: SB_ICON('<rect x="2.2" y="3.4" width="4.8" height="9.2" rx=".6" fill="currentColor" stroke="none"/><rect x="9.3" y="3.4" width="4.8" height="9.2" rx=".6" fill="currentColor" stroke="none"/>'),
+    gapWide: SB_ICON('<rect x="2.2" y="3.4" width="3.8" height="9.2" rx=".6" fill="currentColor" stroke="none"/><rect x="10.3" y="3.4" width="3.8" height="9.2" rx=".6" fill="currentColor" stroke="none"/>'),
+    // The shape of the paper.
+    portrait: SB_ICON('<rect x="4.2" y="1.8" width="7.6" height="12.4" rx="1.2"/>'),
+    landscape: SB_ICON('<rect x="1.8" y="4.2" width="12.4" height="7.6" rx="1.2"/>')
+  };
+  /* A button that shows a drawing and says its name on hover and to a reader.
+     These names are this file's own words, but the escape stays: API.esc lives
+     inside mount(), and reaching for it from out here is what first broke the
+     builder with "esc is not defined". */
+  const sbIcon = (icon, words) => `${SB_ICONS[icon] || ""}<span class="sb-sr">${String(words).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>`;
   const POSITION_LABEL = { top: "Top", bottom: "Bottom", left: "Left", right: "Right" };
+  const POSITION_ICON = { top: "edgeTop", bottom: "edgeBottom", left: "edgeLeft", right: "edgeRight" };
   const BORDER_CHOICES = [["auto", "Auto"], ["none", "None"], ["top", "Top"], ["bottom", "Bottom"], ["left", "Left"], ["right", "Right"], ["all", "All round"]];
   const FIT_CHOICES = [["auto", "Auto"], ["fill", "Fill"], ["whole", "Whole"], ["width", "Fit width"], ["height", "Fit height"]];
   const FIT_HINT = {
@@ -4968,6 +5016,32 @@
   const pad2 = (n) => String(n).padStart(2, "0");
   const COVER = {};                      // a key for the cover in maps keyed by page entry
 
+  /* The studio asked for what Word and Canva do: a drawing on the button and
+     its name when the mouse rests on it. Dozens of these buttons already said
+     their name to a screen reader and to nothing else, and the builder redraws
+     its panels constantly, so rather than write the tooltip out forty times
+     the name is copied across wherever one is missing, on every redraw. */
+  function nameOnHover(root) {
+    // The sheets that open over the builder (the picker, the reading view) are
+    // appended to the body, not inside the root, so both are swept.
+    const WHERE = ".sb-root, .sb-modal-back, .sb-read";
+    const pass = () => {
+      document.querySelectorAll(WHERE).forEach((box) => {
+        box.querySelectorAll("button[aria-label]:not([title])").forEach((b) => {
+          const name = (b.getAttribute("aria-label") || "").trim();
+          if (name) b.title = name;
+        });
+      });
+    };
+    // A redraw is many mutations; one sweep after the frame settles is enough,
+    // and a tooltip a frame late is a tooltip nobody has reached for yet.
+    let due = 0;
+    const soon = () => { if (due) return; due = requestAnimationFrame(() => { due = 0; pass(); }); };
+    pass();
+    // Only childList is watched, so writing the title back cannot wake this up.
+    new MutationObserver(soon).observe(document.body, { childList: true, subtree: true });
+  }
+
   function mount(root) {
     injectCss();
     /* The studio's own photographs from this computer, read once as the
@@ -4977,6 +5051,7 @@
        the store will not open at all, the book simply has none of them and
        everything else works. */
     outsideRefresh().catch(() => {});
+    nameOnHover(root);
     document.documentElement.classList.add("sb-book");
     // The site's router replaces the page's contents to leave: the moment the
     // builder's root is gone, the page is the site's own again.
@@ -7047,8 +7122,8 @@
     function borderHtml(entry) {
       const b = entry.border || "auto", w = entry.borderWidth || "standard";
       return `<div class="sb-field" id="sbBorder"><span class="sb-label">Border</span>
-        <div class="sb-seg" role="radiogroup" aria-label="Border">${BORDER_CHOICES.map(([k, n]) => `<button type="button" role="radio" data-border="${k}" aria-checked="${b === k}">${n}</button>`).join("")}</div>
-        <div class="sb-seg" role="radiogroup" aria-label="Border width" ${b === "auto" || b === "none" ? "hidden" : ""}>${[["narrow", "Narrow"], ["standard", "Standard"], ["broad", "Broad"]].map(([k, n]) => `<button type="button" role="radio" data-borderw="${k}" aria-checked="${w === k}">${n}</button>`).join("")}</div>
+        <div class="sb-seg" role="radiogroup" aria-label="Border">${BORDER_CHOICES.map(([k, n]) => { const ic = { none: "edgeNone", top: "edgeTop", bottom: "edgeBottom", left: "edgeLeft", right: "edgeRight", all: "edgeAll" }[k]; return `<button type="button" role="radio" data-border="${k}" aria-checked="${b === k}" title="Border: ${esc(n)}" aria-label="Border: ${esc(n)}">${ic ? sbIcon(ic, n) : n}</button>`; }).join("")}</div>
+        <div class="sb-seg" role="radiogroup" aria-label="Border width" ${b === "auto" || b === "none" ? "hidden" : ""}>${[["narrow", "Narrow", "ruleNarrow"], ["standard", "Standard", "ruleStandard"], ["broad", "Broad", "ruleBroad"]].map(([k, n, ic]) => `<button type="button" role="radio" data-borderw="${k}" aria-checked="${w === k}" title="Band width: ${esc(n)}" aria-label="Band width: ${esc(n)}">${sbIcon(ic, n)}</button>`).join("")}</div>
         <p class="sb-hint">${b === "auto" ? "Auto: the style's usual band with the page number." : b === "none" ? "None: the photo fills the page, with no page number." : "The photo sits inside the band. The page number goes in the foot or top band; a caption always sits at the foot."}</p></div>`;
     }
     function wireBorder(box, entry) {
@@ -7893,7 +7968,7 @@
       box.innerHTML = `
         <h3>${esc(heading)}</h3>
         ${positions && (list.length || entry.type === "note" || entry.type === "feature" || entry.type === "article") ? `<div class="sb-field"><span class="sb-label">${positionLabel}</span>
-          <div class="sb-seg" role="radiogroup" aria-label="${positionLabel}">${positions.map((k) => `<button type="button" role="radio" data-photoat="${k}" aria-checked="${at === k}">${POSITION_LABEL[k]}</button>`).join("")}</div></div>` : ""}
+          <div class="sb-seg" role="radiogroup" aria-label="${positionLabel}">${positions.map((k) => `<button type="button" role="radio" data-photoat="${k}" aria-checked="${at === k}" title="${esc(POSITION_LABEL[k])}" aria-label="${esc(positionLabel)}: ${esc(POSITION_LABEL[k])}">${POSITION_ICON[k] ? sbIcon(POSITION_ICON[k], POSITION_LABEL[k]) : POSITION_LABEL[k]}</button>`).join("")}</div></div>` : ""}
         ${list.length ? `<div class="sb-chosen" role="group" aria-label="Chosen">${list.map((s, i) => {
           const hit = lib.byId.get(s.id);
           return `<button type="button" class="sb-ch${hit && hit.photo.diagram ? " diagram" : ""}" data-active="${i}" aria-pressed="${i === active}" aria-label="${t.max > 1 ? `Photo ${i + 1}` : "The photo"}${hit ? `, ${esc(cleanName(hit.shoot.title || hit.shoot.talent))}${hit.photo.diagram ? " lighting diagram" : ""}` : ", from a deleted album"}. Adjust it">${hit ? `<img src="${esc(thumbSrc(hit.photo))}" alt="">` : `<span class="sb-hint">Removed</span>`}${t.max > 1 ? `<i>${i + 1}</i>` : ""}</button>`;
@@ -7904,7 +7979,7 @@
             <button type="button" data-remove>Remove</button></span></div>
           ${isDiagram(cur.id) ? `<p class="sb-hint">Lighting diagrams are always shown whole, on white.</p>` : `
           <div class="sb-field"><span class="sb-label">Placement</span>
-            <div class="sb-seg" role="radiogroup" aria-label="Placement">${FIT_CHOICES.map(([k, n]) => `<button type="button" role="radio" data-fit="${k}" aria-checked="${mode === k}">${n}</button>`).join("")}</div>
+            <div class="sb-seg" role="radiogroup" aria-label="Placement">${FIT_CHOICES.map(([k, n]) => { const ic = { fill: "fitFill", whole: "fitWhole", width: "fitWidth", height: "fitHeight" }[k]; return `<button type="button" role="radio" data-fit="${k}" aria-checked="${mode === k}" title="${esc(n)}" aria-label="${esc(n)}">${ic ? sbIcon(ic, n) : n}</button>`; }).join("")}</div>
             <p class="sb-hint">${esc(FIT_HINT[mode])}</p></div>
           <label class="sb-range">Zoom <input type="range" min="1" max="3" step="0.05" value="${cur.zoom || 1}" data-slide="zoom"></label>
           <label class="sb-range">Left ↔ right <input type="range" min="0" max="1" step="0.01" value="${cur.x}" data-slide="x"></label>
@@ -8111,14 +8186,14 @@
           </div>
         </div>
         <div class="sb-sec"><h3>Page shape</h3>
-          <div class="sb-seg" role="radiogroup" aria-label="Page shape">${["portrait", "landscape"].map((o) => `<button type="button" role="radio" data-orient="${o}" aria-checked="${book.orientation === o}">${o === "portrait" ? "Portrait" : "Landscape"}</button>`).join("")}</div>
+          <div class="sb-seg" role="radiogroup" aria-label="Page shape">${["portrait", "landscape"].map((o) => { const n = o === "portrait" ? "Portrait" : "Landscape"; return `<button type="button" role="radio" data-orient="${o}" aria-checked="${book.orientation === o}" title="${n}" aria-label="Page shape: ${n}">${sbIcon(o, n)}</button>`; }).join("")}</div>
         </div>
         <div class="sb-sec"><h3>Paper size</h3>
           <div class="sb-seg" role="radiogroup" aria-label="Paper size">${Object.entries(PAPERS).map(([k, p]) => `<button type="button" role="radio" data-paper="${k}" aria-checked="${(book.paper || "a4") === k}">${esc(p.name)}</button>`).join("")}</div>
           <p class="sb-hint" id="sbPaperNote">${esc((PAPERS[book.paper] || PAPERS.a4).note)}. Every size keeps the same layout; the words and photos scale with the page.</p>
         </div>
         <div class="sb-sec"><h3>Space between photographs</h3>
-          <div class="sb-seg" role="radiogroup" aria-label="Space between photographs">${GAP_LABEL.map(([k, n]) => `<button type="button" role="radio" data-gap="${k}" aria-checked="${(book.spacing || "medium") === k}">${n}</button>`).join("")}</div>
+          <div class="sb-seg" role="radiogroup" aria-label="Space between photographs">${GAP_LABEL.map(([k, n]) => { const ic = { none: "gapNone", narrow: "gapNarrow", medium: "gapMedium", wide: "gapWide" }[k]; return `<button type="button" role="radio" data-gap="${k}" aria-checked="${(book.spacing || "medium") === k}" title="Space between photographs: ${esc(n)}" aria-label="Space between photographs: ${esc(n)}">${ic ? sbIcon(ic, n) : n}</button>`; }).join("")}</div>
           <p class="sb-hint" id="sbGapNote">${(book.spacing || "medium") === "medium" ? "The style's own spacing." : (book.spacing === "none" ? "The photographs meet with no gutter at all." : book.spacing === "narrow" ? "Half the style's gutter." : "Nearly twice the style's gutter.")} It scales each style's own number, so the styles keep their proportions to one another.</p>
         </div>
         <div class="sb-sec"><h3>Page colour, every page</h3>
