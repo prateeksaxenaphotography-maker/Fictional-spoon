@@ -62,6 +62,10 @@ window.WPS_DATA = {
       "modelTypes": [
         "Fashion"
       ],
+      "modelKeys": [
+        "rhythm-vohra"
+      ],
+      "feedsModelCards": true,
       "showStatsOnCompCard": false,
       "showStatsOnModelPortfolio": false,
       "showTestShootCategory": false,
@@ -71,6 +75,8 @@ window.WPS_DATA = {
       "tags": "",
       "gear": "",
       "client": "",
+      "forClient": "model",
+      "alsoFor": [],
       "date": "2026-06-14",
       "instagram": "",
       "kavyar": "",
@@ -81,7 +87,7 @@ window.WPS_DATA = {
       "lightingDiagram": null,
       "lightingDiagramVisibility": "private",
       "palette": [
-        "#473e3b",
+        "#463e3b",
         "#201c1b"
       ],
       "photos": [
@@ -104,10 +110,13 @@ window.WPS_DATA = {
         {
           "id": "mr4x1enpef2e4p-2",
           "url": "photos/mr4x3r7e4l5g4m/mr4x1enpef2e4p-2.jpg",
-          "objectPosition": "center",
+          "objectPosition": "52.2% 17.8%",
           "usage": "both",
           "small": "photos/mr4x3r7e4l5g4m/mr4x1enpef2e4p-2@480.jpg",
-          "medium": "photos/mr4x3r7e4l5g4m/mr4x1enpef2e4p-2@960.jpg"
+          "medium": "photos/mr4x3r7e4l5g4m/mr4x1enpef2e4p-2@960.jpg",
+          "onHome": true,
+          "focalX": 52.20728377891104,
+          "focalY": 17.80006411137061
         },
         {
           "id": "mr4x3jfi8fc679-3",
@@ -179,6 +188,7 @@ window.WPS_DATA = {
       "featured": true,
       "showAsCompCard": false,
       "hideFromCompCard": true,
+      "showOnModelPortfolio": false,
       "disableCompCardDownload": true,
       "isPublic": true,
       "showCredits": true,
@@ -228,10 +238,7 @@ window.WPS_DATA = {
       "showAgencyEmailOnCompCard": false,
       "showAgencyEmailOnHome": false,
       "showAgencyEmailOnPdf": false,
-      "coverPhotoId": "mr4x3k1a7k7iwo",
-      "modelKeys": [
-        "rhythm-vohra"
-      ]
+      "coverPhotoId": "mr4x3k1a7k7iwo"
     },
     {
       "id": "mr4x6kwx3f8rs3",
@@ -3538,7 +3545,7 @@ window.WPS_DATA = {
         "modelTypes": [
           "Fashion"
         ],
-        "updatedAt": 1783082200442,
+        "updatedAt": 1790271171358,
         "showStatsOnCompCard": false,
         "showStatsOnModelPortfolio": false,
         "showModelInstagramOnCompCard": true,
