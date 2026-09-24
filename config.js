@@ -17,7 +17,7 @@ const STUDIO_CONFIG = {
   shootDays: ["Saturday", "Sunday"],
   studioShortName: "NERDY",
   studioSubName: "PHOTOGRAPHER.IN",
-  tagline: "Fashion, fitness and model portrait photography in Noida & Delhi NCR.",
+  tagline: "Model portfolio, fashion & fitness photography in Noida & Delhi NCR.",
   introQuote: "“The best photography doesn't just record a moment. It captures the light, the mood, and the silent story within the frame.”",
 
   // The Studio page (/studio) is being rethought. While this is false, visitors
@@ -85,7 +85,7 @@ const STUDIO_CONFIG = {
     { key: "brand", label: "Brand", plural: "Brands" },
     { key: "designer", label: "Fashion designer", plural: "Designers" },
     { key: "stylist", label: "Stylist", plural: "Stylists" },
-    { key: "mua", label: "Makeup & hair artist", plural: "Makeup & hair" }
+    { key: "mua", label: "Make-up & hair artist", plural: "Make-up & hair" }
   ],
   // Only real values. This list used to ship with Vogue, National Geographic
   // and Patagonia as demo placeholders — one stray click would have printed a
@@ -110,7 +110,6 @@ const STUDIO_CONFIG = {
   // Never put the passcode itself here, and never in a commit message.
   adminPasscodeHash: "732934c8038f3f6543681c61069d9d44bda89b55a2f45ba4e84a1dd78a530e61",
 
-   adminPasscodeHash: "732934c8038f3f6543681c61069d9d44bda89b55a2f45ba4e84a1dd78a530e61",
 
   // Custom Colors Theme (Tailor the clay-orange to your own vibe if wanted!)
   colors: {

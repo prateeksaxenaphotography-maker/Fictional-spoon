@@ -92,7 +92,7 @@
   const STYLES = [
     { key: "elegant", name: "Elegant", note: "A gallery catalogue. Photographs framed on paper." },
     { key: "modern", name: "Modern", note: "Your site's voice. Photographs full-bleed." },
-    { key: "vogue", name: "Vogue", note: "A fashion issue. Photographs tiled edge to edge." },
+    { key: "vogue", name: "Magazine", note: "A fashion issue. Photographs tiled edge to edge." },
     { key: "lookbook", name: "Lookbook", note: "White pages, wide margins, the photographs whole. Small labels." },
     { key: "noir", name: "Noir", note: "Black pages. The photographs glow; the words are white." },
     { key: "swiss", name: "Swiss", note: "A strict grid. Bold sans, a big page number, a rule across the top." },

@@ -9,11 +9,11 @@ A personal **photo studio website** for nerdyphotographer.in — minimalist, neu
 - **Shoot metadata** — title, brand/collection, and photographer per set.
 - **Persistent gallery** — shoots are saved to the browser via **IndexedDB**, and admins can sync them to this repo (a GitHub PAT with Contents write access to this repo is required) so every visitor sees them.
 - **Photo files in `photos/`** — synced photos are committed as real image files; `data.js` only stores their paths.
-- **Brand filtering** — filter the masonry gallery by collection.
+- **Browsing** — albums, “What I shoot” pages by kind of work, and model comp cards.
 - **Lightbox** — click any photo for a full-screen view.
 - **Live stats + responsive layout** — counts animate as you publish; works on mobile.
 
-Large images are automatically downscaled (max 1600px, JPEG) on upload so the gallery stays fast and storage stays small.
+Photos are resized on upload (1600px plus 960px and 480px copies) so pages stay fast.
 
 ## Run it
 

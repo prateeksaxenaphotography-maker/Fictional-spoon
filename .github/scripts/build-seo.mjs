@@ -88,7 +88,7 @@ const altFor = (s, frame, photo) => {
   return [
     what ? `${what} photography` : "Photography",
     who ? `featuring ${who}` : "",
-    `by ${BRAND}, Noida & Delhi NCR`,
+    `by ${BRAND}, ${cleanName(s.location) || "Noida & Delhi NCR"}`,
     frame ? `(frame ${frame})` : ""
   ].filter(Boolean).join(" ");
 };
@@ -371,7 +371,7 @@ const serviceLinksHtml = (skipSlug) => liveServices.filter((v) => v.slug !== ski
         </a>`).join("\n        ");
 
 const siteLinksHtml = `<nav class="container pr-links" aria-label="Site">
-      <a href="/" data-link>Home</a> · <a href="/albums/" data-link>Albums</a> · <a href="/services/" data-link>Services</a> · ${STUDIO_PUBLIC ? `<a href="/studio/" data-link>Studio</a> · ` : ""}<a href="/book/" data-link>Book a shoot</a> · <a href="${LICENCE_PATH}" data-link>Photo licensing</a>
+      <a href="/" data-link>Home</a> · <a href="/albums/" data-link>Albums</a> · <a href="/services/" data-link>What I shoot</a> · ${STUDIO_PUBLIC ? `<a href="/studio/" data-link>Studio</a> · ` : ""}<a href="/book/" data-link>Book a shoot</a> · <a href="${LICENCE_PATH}" data-link>Photo licensing</a>
     </nav>`;
 
 /* ---------- album pages ---------- */
@@ -383,7 +383,7 @@ function buildAlbumPage(s) {
   const description = String(s.description || "").trim() || albumSentence(s);
   const urlPath = albumUrl(s);
   const credits = s.showCredits === false ? [] : [
-    ["Photographer", cleanName(s.photographer)], ["Art direction", cleanName(s.artDirector)], ["Styling", cleanName(s.stylist)],
+    ["Photographer", (CONFIG.photographerName && cleanName(s.photographer) === BRAND) ? `${CONFIG.photographerName} (${BRAND})` : cleanName(s.photographer)], ["Art direction", cleanName(s.artDirector)], ["Styling", cleanName(s.stylist)],
     ["Hair", cleanName(s.hair)], ["Make-up", cleanName(s.mua)]
   ].filter(([, v]) => v && v !== "—");
   const others = newestFirst.filter((o) => o.id !== s.id).slice(0, 6);
@@ -703,7 +703,7 @@ function buildServicePage(v) {
     rel: `services/${v.slug}/index.html`,
     html: pageFromTemplate({
       title: v.metaTitle, description: v.metaDescription, urlPath, ogImage,
-      jsonLd: [ldScript(serviceLd), ldScript(faqLd), ldScript(breadcrumbLd([["Home", "/"], ["Services", "/services/"], [v.cardTitle, urlPath]]))],
+      jsonLd: [ldScript(serviceLd), ldScript(faqLd), ldScript(breadcrumbLd([["Home", "/"], ["What I shoot", "/services/"], [v.cardTitle, urlPath]]))],
       mainAttrs: ` data-static-path="/services/${v.slug}" data-title="${esc(v.metaTitle)}" data-desc="${esc(v.metaDescription)}"`,
       mainHtml
     })
@@ -781,7 +781,7 @@ function buildServicesIndex() {
     rel: "services/index.html",
     html: pageFromTemplate({
       title: x.metaTitle, description: metaDescription, urlPath: "/services/",
-      jsonLd: [ldScript(breadcrumbLd([["Home", "/"], ["Services", "/services/"]]))],
+      jsonLd: [ldScript(breadcrumbLd([["Home", "/"], ["What I shoot", "/services/"]]))],
       mainAttrs: ` data-static-path="/services" data-title="${esc(x.metaTitle)}" data-desc="${esc(metaDescription)}"`,
       mainHtml
     })
@@ -865,7 +865,7 @@ function prerenderBlocks() {
       <section class="section container">
         ${CONFIG.introQuote ? `<p>${esc(CONFIG.introQuote)}</p>` : ""}
         ${steps.length ? `<h2>The process</h2><ol>${steps.map(([t, d]) => `<li><strong>${esc(t)}.</strong> ${esc(d)}</li>`).join("")}</ol>` : ""}
-        <h2>Services</h2>
+        <h2>What I shoot</h2>
         <div class="services-grid">
           ${serviceLinksHtml(null)}
         </div>

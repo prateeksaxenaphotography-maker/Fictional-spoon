@@ -196,7 +196,7 @@ export const SERVICES = [
     faqs: [
       ["Can you shoot in my gym?", "Yes, with the gym's permission. A quiet hour works best, so lights can be set up without getting in anyone's way."],
       ["When should I schedule a physique shoot?", "Book the date first, then plan your prep towards it. Weekend dates are shown on the booking page."],
-      ["Do you shoot for gyms and fitness brands?", "Yes — trainers, facilities, apparel and supplements. Brand work is quoted as a campaign; see the brand campaigns page."],
+      ["Do you shoot for gyms and fitness brands?", "Yes — trainers, facilities, apparel and supplements. Brand work is quoted as a campaign — choose “Campaign or production” on the booking page."],
       ["How are the photos delivered?", "As an online proofing gallery. You choose your selects, and those are retouched and delivered."],
       ["Do you do test shoots (TFP or collaboration)?", "Occasionally, and by invitation only. A collaboration means two experienced people bringing equal value to the same shoot — a professional model, a brand or a company with something of their own to put in. If you are starting out — you want direction, a first portfolio, or you are still building a following — that is a booking rather than a collaboration, and it is quoted like any other shoot. If you have been given an invite code, enter it on the booking page."],
       TEST_SHOOT_FAQ
@@ -253,8 +253,8 @@ export const SERVICES = [
     kicker: "Designers · Stylists · Make-up",
     cardTitle: "Designers, Stylists & Make-up Artists",
     cardBlurb: "Lookbooks, styling portfolios and make-up looks, shot for the designer, stylist or make-up artist whose work is in the frame.",
-    metaTitle: "Photoshoots for Fashion Designers, Stylists & Makeup Artists in Noida & Delhi NCR | nerdyphotographer.in",
-    metaDescription: "Lookbook, styling portfolio and makeup portfolio shoots in Noida and Delhi NCR for fashion designers, stylists and hair and make-up artists — planned around your work and credited in full. See what a shoot includes and send a brief for a quote.",
+    metaTitle: "Photoshoots for Fashion Designers, Stylists & Make-up Artists in Noida & Delhi NCR | nerdyphotographer.in",
+    metaDescription: "Lookbook, styling portfolio and make-up portfolio shoots in Noida and Delhi NCR for fashion designers, stylists and hair and make-up artists — planned around your work and credited in full. See what a shoot includes and send a brief for a quote.",
     eyebrow: "Lookbooks · Styling · Hair & make-up · Noida & Delhi NCR",
     h1: "Shoots for designers, stylists & make-up artists",
     intro: [
@@ -319,7 +319,7 @@ export const SERVICES = [
       { href: "/albums/", label: "See the archive" }
     ],
     faqs: [
-      ["I am not a model, a designer or a brand. Is this the right page?", "Probably. This page is for the work the other pages do not cover. A portfolio to send to agencies belongs on the model portfolio page, a magazine story on the fashion and editorial page, physique and training work on the fitness and sports page, anything whose job is to sell a product on the brand campaigns page, and a designer's, stylist's or make-up artist's own portfolio on theirs. A concept, a theme or a personal project belongs here."],
+      ["I am not a model, a designer or a brand. Is this the right page?", "Probably. This page is for the work the other pages do not cover. A portfolio to send to agencies belongs on the model portfolio page, a magazine story on the fashion and editorial page, physique and training work on the fitness and sports page, anything whose job is to sell a product is quoted as a brand campaign through the booking page, and a designer's, stylist's or make-up artist's own portfolio on theirs. A concept, a theme or a personal project belongs here."],
       ["My idea is still vague. Is that enough to start with?", "Yes. Half a sentence and three reference pictures is a start. The first conversation turns that into something specific: what is in the frame, where, in what light, and what the set of pictures is for. If the idea needs more thinking before it is worth shooting, you will be told so before a date is held."],
       ["How much does a creative shoot cost?", "The booking page lists the set tiers and a smaller idea usually fits one. Past that it is quoted to the brief — one portrait idea in the studio and a two-location shoot with a team are not the same job, so the price follows what the idea needs: looks, locations, people, shooting hours and finished images. Send the idea through the booking page and you will have a price written against it before anything is booked."],
       ["Who else needs to be on the shoot?", "Whoever the idea needs, and often nobody. Bring your own stylist, hair and make-up artist or performers if you have them, or ask when you send the idea and the studio will help put a small team together. Everyone involved is credited on the finished work."],

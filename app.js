@@ -312,11 +312,11 @@ window.getAdminInviteCode = function() {
 // prices are NOT treated as quotable — see pricesArePublished(): a booking is
 // taken without a quote rather than at a figure that may not be the studio's.
 const DEFAULT_PACKAGES = [
-  { id: "pkg_1", name: "Basic Test / Comp Card", price: 7000, specs: "20 Proof Clicks + 0 Retouched" },
-  { id: "pkg_2", name: "Mini Portfolio", price: 10000, specs: "25 Proof Clicks + 3-5 Retouched Clicks" },
-  { id: "pkg_3", name: "Standard Editorial Portfolio", price: 25000, specs: "50 Unedited + 8-12 Retouched Clicks" },
-  { id: "pkg_4", name: "Premium Brand Campaign", price: 50000, specs: "100 Unedited + 15-25 Retouched Clicks" },
-  { id: "pkg_5", name: "High-End Full Day Production", price: 75000, specs: "Full Gallery + 30+ Retouched Master Assets" }
+  { id: "pkg_1", name: "Basic Test / Comp Card", price: 7000, specs: "20 proofs + 0 retouched photos" },
+  { id: "pkg_2", name: "Mini Portfolio", price: 10000, specs: "25 proofs + 3–5 retouched photos" },
+  { id: "pkg_3", name: "Standard Editorial Portfolio", price: 25000, specs: "50 proofs + 8–12 retouched photos" },
+  { id: "pkg_4", name: "Premium Brand Campaign", price: 50000, specs: "100 proofs + 15–25 retouched photos" },
+  { id: "pkg_5", name: "High-End Full Day Production", price: 75000, specs: "Full proof gallery + 30+ retouched photos" }
 ];
 
 /* Are the prices on screen the studio's own?
@@ -996,7 +996,7 @@ window.resolveContractArchive = function(version) {
     const parts = [
       what ? `${what} photography` : "Photography",
       who ? `featuring ${who}` : "",
-      "by nerdyphotographer.in, Noida & Delhi NCR",
+      `by nerdyphotographer.in, ${getTalentCleanName(s.location) || "Noida & Delhi NCR"}`,
       frame ? `(frame ${frame})` : ""
     ].filter(Boolean);
     return parts.join(" ");
@@ -1573,7 +1573,7 @@ window.resolveContractArchive = function(version) {
   const TESTIMONIAL_KINDS = [
     { key: "model", label: "Model" },
     { key: "brand", label: "Brand or agency" },
-    { key: "workshop", label: "Workshop" },
+    { key: "workshop", label: "We met at a workshop" },
     { key: "other", label: "Other" }
   ];
   const testimonialKindLabel = (k) => (TESTIMONIAL_KINDS.find((x) => x.key === k) || {}).label || "";
@@ -1770,13 +1770,13 @@ window.resolveContractArchive = function(version) {
     const href = album ? albumPathFor(album) : "";
     const shoot = !t.shootTitle ? ""
       : href
-        ? `<a class="tm-card-shoot" href="${esc(href)}" data-link>${esc(t.shootTitle)}</a>`
-        : `<span class="tm-card-shoot">${esc(t.shootTitle)}</span>`;
+        ? `<a class="tm-card-shoot" href="${esc(href)}" data-link>Album: ${esc(t.shootTitle)}</a>`
+        : `<span class="tm-card-shoot">Album: ${esc(t.shootTitle)}</span>`;
     return `
       <figure class="tm-card reveal" style="--d:${((i % 8) * 0.05).toFixed(2)}s">
         <blockquote class="tm-card-quote">${esc(t.quote)}</blockquote>
         <figcaption class="tm-card-by">
-          <span class="tm-card-name">${esc(t.by)}${t.verified ? `<span class="tm-verified" title="The studio has documentation for this one on file">✓</span>` : ""}</span>
+          <span class="tm-card-name">${esc(t.by)}${t.verified ? `<span class="tm-verified" title="The studio has documentation for this one on file">✓ Verified</span>` : ""}</span>
           ${starRow(t.rating, `Rated ${t.rating} out of 5`)}
           ${under ? `<span class="tm-card-meta">${esc(under)}</span>` : ""}
           ${shoot}
@@ -2126,6 +2126,13 @@ window.resolveContractArchive = function(version) {
   // Corrected as albums load, for visitors and on the studio's own device,
   // and saved with the album the next time it is published.
   const brandName = () => (window.STUDIO_CONFIG && window.STUDIO_CONFIG.studioName) || "nerdyphotographer.in";
+  // A credit names the person, "Prateek Saxena (nerdyphotographer.in)", not
+  // the domain on its own (Sep 2026 audit, L18). Display only: the album
+  // keeps the value it was published with.
+  const photographerCredit = (v) => {
+    const person = window.STUDIO_CONFIG && window.STUDIO_CONFIG.photographerName;
+    return (person && typeof v === "string" && v.trim() === brandName()) ? `${person} (${brandName()})` : v;
+  };
   function brandCredit(shoot) {
     if (shoot && typeof shoot.photographer === "string" && /^\s*(nerdyphotographer|studio)\s*$/i.test(shoot.photographer)) {
       shoot.photographer = brandName();
@@ -2357,7 +2364,7 @@ window.resolveContractArchive = function(version) {
   // because from the outside they look the same.
   function compCardBoxHtml(shoot) {
     const adminNote = (text) => isAdmin() ? `
-      <div class="lb-sidebar-section lb-note lb-note-admin">${text} (admin only sees this)</div>
+      <div class="lb-sidebar-section lb-note lb-note-admin">${text} (only you see this)</div>
     ` : "";
     if (shoot.disableCompCardDownload) return adminNote("Comp card PDF download is switched off for this model");
     if (!compCardPdfPhotos(shoot).length) return adminNote("None of this model's photos are set to Comp Card or Both, so there's no comp card to export. Change their Usage in Upload, then publish");
@@ -2396,7 +2403,7 @@ window.resolveContractArchive = function(version) {
   // either way) and whether any photo may go in a portfolio PDF at all.
   function portfolioPdfBoxHtml(shoot) {
     const adminNote = (text) => isAdmin() ? `
-      <div class="lb-sidebar-section lb-note lb-note-admin">${text} (admin only sees this)</div>
+      <div class="lb-sidebar-section lb-note lb-note-admin">${text} (only you see this)</div>
     ` : "";
     if (!showsOnModelPage(shoot, "Model Portfolio")) return adminNote("\"Show on Model portfolio\" is off for this model, so no portfolio PDF is offered here. Turn it on in Upload, then publish");
     const photoCount = portfolioPdfPhotos(shoot).length;
@@ -2558,12 +2565,12 @@ window.resolveContractArchive = function(version) {
     };
     const hasTalent = !!(shoot.talent && shoot.talent !== "—");
     if (hasTalent) addGroup("Model", shoot.talent, { plural: "Models", attachIg: true });
-    if (shoot.photographer || shoot.secondaryPhotographers) addGroup("Photography", [shoot.photographer, shoot.secondaryPhotographers].filter(Boolean).join(", "));
+    if (shoot.photographer || shoot.secondaryPhotographers) addGroup("Photography", [photographerCredit(shoot.photographer), shoot.secondaryPhotographers].filter(Boolean).join(", "));
     if (shoot.mentor) addGroup("Mentor", shoot.mentor, { plural: "Mentors" });
     if (shoot.artDirector) addGroup("Art direction", shoot.artDirector);
     if (shoot.stylist) addGroup("Styling", shoot.stylist);
     if (shoot.hair) addGroup("Hair", shoot.hair);
-    if (shoot.mua) addGroup("Makeup", shoot.mua);
+    if (shoot.mua) addGroup("Make-up", shoot.mua);
     if (shoot.videographer) addGroup("Video", shoot.videographer);
     if (shoot.credits && shouldShowField(shoot, "Credits")) addGroup("Also", shoot.credits, { plain: true });
     // Where it was shot. The studio's own profiles used to ride along on this
@@ -2607,7 +2614,7 @@ window.resolveContractArchive = function(version) {
     if (hasCompCard) {
       const modelName = getTalentCleanName(shoot.talent);
       const slug = slugify(modelName);
-      if (slug) groups.push({ label: "Model portfolio", rendered: [`<span class="lb-person"><a href="/share/?a=comp-card-${encodeURIComponent(slug)}">View ${esc(modelName)}’s model portfolio ↗</a><small class="lb-person-note">Every model on the site has one: all their photographs in one place, with the PDFs the studio offers for them. <a href="${esc(compCardsHref())}" data-link>See all model portfolios ↗</a></small></span>`] });
+      if (slug) groups.push({ label: "Model portfolio", rendered: [`<span class="lb-person"><a href="/share/?a=comp-card-${encodeURIComponent(slug)}">View ${esc(modelName)}’s model portfolio ↗</a><small class="lb-person-note">All their photographs in one place, with the PDFs the studio offers for them. <a href="${esc(compCardsHref())}" data-link>See all model portfolios ↗</a></small></span>`] });
     }
     // Last row, below every credit that belongs to the shoot: these links are
     // the studio's own, not a credit for the work, and naming the studio on
@@ -2715,7 +2722,7 @@ window.resolveContractArchive = function(version) {
     return `
       <div class="lb-panel">
         <header class="lb-head">
-          <span class="eyebrow lb-eyebrow">${isCc ? "Model portfolio" : p.gridLook ? esc(lookLabel(p.gridLook)) : esc([shoot.brand, publicShootType(shoot)].filter(Boolean).join(" · "))}</span>
+          <span class="eyebrow lb-eyebrow">${isCc ? "Model portfolio" : p.gridLook ? esc(lookLabel(p.gridLook)) : esc([shoot.brand, publicShootType(shoot)].filter((v) => v && v !== "Personal Project").join(" · "))}</span>
           <h2 class="lb-title">${esc(getTalentCleanName(shoot.talent || shoot.title))}</h2>
           ${p.albumHref ? `<a href="${esc(p.albumHref)}" data-link class="link-arrow lb-album-link">See the full album →</a>` : ""}
           ${modelTypeHtml}
@@ -3408,12 +3415,12 @@ window.resolveContractArchive = function(version) {
     } else {
       if (s.photographer || s.secondaryPhotographers) {
         const extra = (s.secondaryPhotographers || "").split(",").map(x => getTalentCleanName(x.trim())).filter(Boolean);
-        creditsList.push(`Photo <strong>${esc([s.photographer, ...extra].filter(Boolean).join(", "))}</strong>`);
+        creditsList.push(`Photo <strong>${esc([photographerCredit(s.photographer), ...extra].filter(Boolean).join(", "))}</strong>`);
       }
       if (s.artDirector) creditsList.push(`AD <strong>${esc(s.artDirector)}</strong>`);
       if (s.stylist && s.stylist !== "—") creditsList.push(`Style <strong>${esc(getTalentCleanName(s.stylist))}</strong>`);
       if (s.hair && s.hair !== "—") creditsList.push(`Hair <strong>${esc(getTalentCleanName(s.hair))}</strong>`);
-      if (s.mua && s.mua !== "—") creditsList.push(`Makeup <strong>${esc(getTalentCleanName(s.mua))}</strong>`);
+      if (s.mua && s.mua !== "—") creditsList.push(`Make-up <strong>${esc(getTalentCleanName(s.mua))}</strong>`);
       // renderCreditValue (not getTalentCleanName) on this branch: a regular
       // album can list several models, each with their own handle inlined,
       // and s.instagram won't necessarily carry them. This strips the
@@ -3513,7 +3520,7 @@ window.resolveContractArchive = function(version) {
             const ed = (field, extra = "") => canInline
               ? ` class="inline-edit ${extra}" contenteditable="true" spellcheck="false" data-shoot="${s.id}" data-field="${field}" title="Click to edit"`
               : (extra ? ` class="${extra}"` : "");
-            const brandAndType = [s.brand, publicShootType(s)].filter(Boolean).join(" · ");
+            const brandAndType = [s.brand, publicShootType(s)].filter((v) => v && v !== "Personal Project").join(" · ");
             return `
             ${s.isCompCard ? "" : `
               <p class="eyebrow">${esc(brandAndType)}</p>
@@ -3550,7 +3557,7 @@ window.resolveContractArchive = function(version) {
           ${testimonialsHtml}
           ${diagramHtml}
           <div style="margin-top: 22px; display: flex; align-items: center; flex-wrap: wrap; gap: 14px; width: 100%;">
-            <button class="link-arrow work-open" style="padding: 0;" aria-label="${esc(s.isCompCard ? `View ${getTalentCleanName(s.talent || s.title)}\u2019s details` : `View ${s.title || "project"}`)}">${s.isCompCard ? "View model details" : "View project"} →</button>
+            <button class="link-arrow work-open" style="padding: 0;" aria-label="${esc(s.isCompCard ? `View ${getTalentCleanName(s.talent || s.title)}\u2019s details` : `View ${s.title || "project"}`)}">${s.isCompCard ? "View model details" : "View album"} →</button>
             <button class="link-arrow work-share" style="padding: 0; display: inline-flex; align-items: center; gap: 6px;" title="Share this album" aria-label="Share this album">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
               Share link
@@ -3596,12 +3603,12 @@ window.resolveContractArchive = function(version) {
   // question: two named after the client and two after the kind of photograph
   // left a fitness model unable to tell which page was hers.
   const SERVICE_LINKS = [
-    { slug: "model-portfolio-shoot-noida", kicker: "For models", title: "Model Portfolios & Comp Cards", phrase: "model portfolio", packageIds: ["pkg_1", "pkg_2", "pkg_3"], match: { clients: ["model", "agency"], modelWork: true }, blurb: "Editorial-grade portfolio building and agency-ready comp cards for new faces and working models, male and female.", cta: "Model portfolio shoots" },
+    { slug: "model-portfolio-shoot-noida", kicker: "For models", title: "Model Portfolios & Comp Cards", phrase: "model portfolio", packageIds: ["pkg_1", "pkg_2", "pkg_3"], match: { clients: ["model", "agency"], modelWork: true }, blurb: "Agency-ready portfolio shoots and comp cards for new and working models, male and female.", cta: "Model portfolio shoots" },
     { slug: "fashion-editorial-photographer-delhi-ncr", kicker: "For magazines & editorial stories", title: "Fashion & Editorial", phrase: "fashion or editorial", packageIds: ["pkg_3", "pkg_4"], match: { look: "fashion" }, blurb: "Concept-led fashion, beauty and editorial stories for designers, stylists and magazine submissions.", cta: "Fashion & editorial" },
-    { slug: "fitness-sports-photographer-noida", kicker: "For athletes, coaches & gyms", title: "Fitness & Sports Action", phrase: "fitness or sports", packageIds: ["pkg_2", "pkg_3"], match: { look: "fitness" }, blurb: "Action-freezing athletic portraits and fitness content that shows physique, strength and raw performance.", cta: "Fitness & sports shoots" },
-    { slug: "brand-campaign-photographer-noida", kicker: "For brands", title: "Campaigns & Lookbooks", phrase: "brand campaign", packageIds: ["pkg_4", "pkg_5"], match: { clients: ["brand"], types: ["Campaign", "Commercial", "E-commerce"], clientWork: true }, blurb: "High-concept campaigns, lookbooks and e-commerce sets, planned to the shot list and covered by a written contract.", cta: "Brand campaigns" },
-    { slug: "designer-stylist-makeup-artist-shoot-noida", kicker: "For designers, stylists & makeup artists", title: "Designers, Stylists & Makeup Artists", phrase: "designer, stylist or makeup", packageIds: ["pkg_2", "pkg_3", "pkg_4"], match: { clients: ["designer", "stylist", "mua"] }, blurb: "Lookbooks, styling portfolios and makeup looks, shot for the designer, stylist or makeup artist whose work is in the frame.", cta: "Shoots for your work" },
-    { slug: "creative-shoot-photographer-noida", kicker: "For anyone with an idea", title: "Creative & Conceptual", phrase: "creative or conceptual", packageIds: ["pkg_2", "pkg_3", "pkg_4"], match: { look: "creative", residual: true }, blurb: "Conceptual, themed and personal shoots for artists, makers and performers — the work that fits none of the others.", cta: "Creative shoots" }
+    { slug: "fitness-sports-photographer-noida", kicker: "For athletes, coaches & gyms", title: "Fitness & Sports", phrase: "fitness or sports", packageIds: ["pkg_2", "pkg_3"], match: { look: "fitness" }, blurb: "Physique, training and action photography for athletes, coaches, gyms and fitness brands.", cta: "Fitness & sports shoots" },
+    { slug: "brand-campaign-photographer-noida", kicker: "For brands", title: "Campaigns, Lookbooks & E-commerce", phrase: "brand campaign", packageIds: ["pkg_4", "pkg_5"], match: { clients: ["brand"], types: ["Campaign", "Commercial", "E-commerce"], clientWork: true }, blurb: "Campaign, lookbook and e-commerce photography for fashion and lifestyle brands, with usage rights in writing.", cta: "Brand campaigns" },
+    { slug: "designer-stylist-makeup-artist-shoot-noida", kicker: "For designers, stylists & make-up artists", title: "Designers, Stylists & Make-up Artists", phrase: "designer, stylist or make-up", packageIds: ["pkg_2", "pkg_3", "pkg_4"], match: { clients: ["designer", "stylist", "mua"] }, blurb: "Lookbooks, styling portfolios and make-up looks, shot for the designer, stylist or make-up artist whose work is in the frame.", cta: "Shoots for your work" },
+    { slug: "creative-shoot-photographer-noida", kicker: "For anyone with an idea", title: "Creative & Conceptual Shoots", phrase: "creative or conceptual", packageIds: ["pkg_2", "pkg_3", "pkg_4"], match: { look: "creative", residual: true }, blurb: "Conceptual, themed and personal shoots for artists, makers and performers — the work that fits none of the other pages.", cta: "Creative shoots" }
   ];
 
   // A page exists once it has work of its own, and not before. The deploy does
@@ -3916,7 +3923,7 @@ window.resolveContractArchive = function(version) {
         <div class="container">
           <p class="eyebrow reveal">Workshops</p>
           ${kineticH1("Workshops", "kinetic-h1-wide")}
-          <p class="page-sub reveal" style="max-width: 600px; line-height: 1.6; opacity: 1 !important; visibility: visible !important; transform: none !important;">A dedicated record of professional photography workshops attended, people trained, and creative techniques learned to build editorial proficiency.</p>
+          <p class="page-sub reveal" style="max-width: 600px; line-height: 1.6; opacity: 1 !important; visibility: visible !important; transform: none !important;">Workshops I have attended, and the techniques I learned at them.</p>
         </div>
       </section>
       <section class="section container full-bleed">
@@ -4971,8 +4978,8 @@ window.resolveContractArchive = function(version) {
     const season = (album.season || "").replace(/^—$/, "");
     const eyebrow = [album.activity && `${album.activity} photography`, place, season].filter(Boolean).join(" · ") || "Album";
     const credits = album.showCredits === false ? [] : [
-      ["Photographer", getTalentCleanName(album.photographer)], ["Art direction", getTalentCleanName(album.artDirector)],
-      ["Styling", getTalentCleanName(album.stylist)], ["Hair", getTalentCleanName(album.hair)], ["Makeup", getTalentCleanName(album.mua)]
+      ["Photographer", photographerCredit(getTalentCleanName(album.photographer))], ["Art direction", getTalentCleanName(album.artDirector)],
+      ["Styling", getTalentCleanName(album.stylist)], ["Hair", getTalentCleanName(album.hair)], ["Make-up", getTalentCleanName(album.mua)]
     ].filter(([, v]) => v && v !== "—");
     const others = albumPageList().filter((s) => s.id !== album.id)
       .sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).slice(0, 3);
@@ -5200,7 +5207,7 @@ window.resolveContractArchive = function(version) {
           <div class="container">
             <p class="eyebrow reveal"><a href="/albums" data-link>Albums</a> / ${esc(kind)}</p>
              <h1 class="reveal">${esc(getCategoryTitle(d))}</h1>
-            ${isTestShoot ? `<p class="page-sub" style="max-width: 600px; line-height: 1.6; opacity: 1 !important; visibility: visible !important; transform: none !important;">${esc(getCategoryDescription(d))}<span style="font-size: var(--font-xs); color: var(--ink-soft); display: block; margin-top: 8px;">Note: Models from workshop projects are not included here.</span></p>` : `<p class="page-sub reveal">${displayList.length} master album${displayList.length !== 1 ? "s" : ""} in this ${esc(kind)}.</p>`}
+            ${isTestShoot ? `<p class="page-sub" style="max-width: 600px; line-height: 1.6; opacity: 1 !important; visibility: visible !important; transform: none !important;">${esc(getCategoryDescription(d))}<span style="font-size: var(--font-xs); color: var(--ink-soft); display: block; margin-top: 8px;">Note: Models from workshop projects are not included here.</span></p>` : `<p class="page-sub reveal">${displayList.length} album${displayList.length !== 1 ? "s" : ""}.</p>`}
             ${serviceLineHtml}
           </div>
         </section>
@@ -5454,7 +5461,7 @@ window.resolveContractArchive = function(version) {
       ` : ""}
       `;
   }
-  const emptyCat = () => `<p class="page-sub">Nothing here yet — publish a shoot in this category.</p>`;
+  const emptyCat = () => `<p class="page-sub">No albums here yet — <a href="/albums/" data-link>see all albums →</a></p>`;
 
   const PROCESS = [
     ["The Brief", "We start with the story the brand needs to tell — the feeling before the frame."],
@@ -5583,7 +5590,7 @@ window.resolveContractArchive = function(version) {
           <div class="tm-write-head">
             <p class="eyebrow">Write one</p>
             <h2>Say how it went</h2>
-            <p class="tm-write-sub">Anyone who has worked with the studio can write a testimonial — models, brands and agencies, people who came to a workshop, anyone the studio has shot with or for. It arrives as an email in the studio's inbox, and goes on this page once the studio puts it up.</p>
+            <p class="tm-write-sub">Anyone who has worked with the studio can write a testimonial — models, brands and agencies, people I met at a workshop, anyone the studio has shot with or for. It arrives as an email in the studio's inbox, and goes on this page once the studio puts it up.</p>
           </div>
 
           <form id="tmForm" class="tm-form" novalidate>
@@ -5631,7 +5638,7 @@ window.resolveContractArchive = function(version) {
             <label class="field"><span>Your testimonial *</span>
               <textarea id="tm_quote" rows="6" maxlength="${TESTIMONIAL_HARD_UNITS}" placeholder="What the shoot was like, what you got out of it, and whether you would do it again." required></textarea>
             </label>
-            <p class="field-hint tm-count"><span id="tm_count">0</span> / ${TESTIMONIAL_LIMITS.quote} characters · ${TESTIMONIAL_LIMITS.quoteMin} at the least</p>
+            <p class="field-hint tm-count"><span id="tm_count">0</span> / ${TESTIMONIAL_LIMITS.quote} characters · at least ${TESTIMONIAL_LIMITS.quoteMin}</p>
 
             <fieldset class="tm-proof">
               <legend>Anything backing it up? <span class="tm-opt">optional</span></legend>
@@ -6023,7 +6030,7 @@ window.resolveContractArchive = function(version) {
         <div class="container">
           <p class="eyebrow reveal">Book a session</p>
           <h1 class="admin-h1 reveal">Tell me about the shoot.</h1>
-          <p class="page-sub admin-sub reveal">Whether it is a campaign, an editorial or a selective test shoot: who you are, what we are shooting, and the brief. Your quote updates as you go, and nothing is sent until you submit.</p>
+          <p class="page-sub admin-sub reveal">Whether it is a campaign, an editorial or a selective test shoot: who you are, what the shoot is, and the brief. Your quote updates as you go, and nothing is sent until you submit.</p>
         </div>
       </section>
       <section class="section container">
@@ -6064,7 +6071,7 @@ window.resolveContractArchive = function(version) {
                  <label class="field"><span>Role *</span>
                    <select id="b_role">
                      <option value="Model">Model / Talent</option>
-                     <option value="MUA">Makeup Artist / MUA</option>
+                     <option value="MUA">Make-up artist / MUA</option>
                      <option value="Stylist">Stylist / Wardrobe</option>
                      <option value="Brand">Brand / Client</option>
                      <option value="Agency">Agency / Agent</option>
@@ -6243,7 +6250,7 @@ window.resolveContractArchive = function(version) {
                     </ol>
                     <span class="production-terms-sub">For information now. The exact figures, and the agreement, come with the written proposal after the call. Nothing is due for sending the brief.</span>
                   </div>
-                  <p class="production-note">We reply within 24 hours to set up a call, then send a proposal and agreement after it.</p>
+                  <p class="production-note">I reply within 24 hours to set up a call, then send a proposal and agreement after it.</p>
                 </div>
                 <div class="field-row">
                   <label class="field venue-native" style="grid-column: 1 / -1;"><span>Where are we shooting? *</span>
@@ -6428,11 +6435,11 @@ window.resolveContractArchive = function(version) {
                     </div>
                     <div id="summaryStep3Wrap" style="display: none; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px;">
                       <span id="summaryStep3Label" style="color: var(--ink-soft); display: block; font-size: var(--font-xs); text-transform: uppercase;">Step 3 · 20% Final Deliverables</span>
-                      <strong id="summaryStep3Amount" style="color: var(--warn-text); font-size: var(--font-sm); font-family: var(--mono-font);">₹0 INR</strong>
+                      <strong id="summaryStep3Amount" style="color: var(--warn-text); font-size: var(--font-sm); font-family: var(--mono-font);">₹0</strong>
                     </div>
                     <div id="summaryStep4Wrap" style="display: none; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px;">
                       <span id="summaryStep4Label" style="color: var(--ink-soft); display: block; font-size: var(--font-xs); text-transform: uppercase;">Step 4 · 10% After Delivery of the Clicks</span>
-                      <strong id="summaryStep4Amount" style="color: var(--warn-text); font-size: var(--font-sm); font-family: var(--mono-font);">₹0 INR</strong>
+                      <strong id="summaryStep4Amount" style="color: var(--warn-text); font-size: var(--font-sm); font-family: var(--mono-font);">₹0</strong>
                     </div>
                   </div>
                   <!-- Collaboration bookings carry no package fee, so the only
@@ -6444,7 +6451,7 @@ window.resolveContractArchive = function(version) {
                   </div>
                   <div id="summaryReservationCard" style="display: none; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: var(--font-xs);">
                     <span style="color: var(--ink-soft); display: block; font-size: var(--font-xs); text-transform: uppercase;">Home studio rental · paid in full up front</span>
-                    <strong id="summaryReservationAmount" style="color: var(--accent-text); font-size: var(--font-sm); font-family: var(--mono-font);">₹0 INR</strong>
+                    <strong id="summaryReservationAmount" style="color: var(--accent-text); font-size: var(--font-sm); font-family: var(--mono-font);">₹0</strong>
                     <span style="color: var(--ink-soft); display: block; margin-top: 4px; line-height: 1.5;">Payable <strong style="color: var(--ink);">in full</strong> at least 48 hours before the shoot day to reserve the home studio. <strong style="color: #e07a5f;">Non-refundable.</strong></span>
                   </div>
                 </div>
@@ -6459,7 +6466,7 @@ window.resolveContractArchive = function(version) {
                  <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px;">
                    <li style="display: flex; gap: 10px; align-items: flex-start; font-size: var(--font-xs); line-height: 1.55; color: var(--ink-soft);">
                       <span aria-hidden="true" style="flex: 0 0 20px; font-size: var(--font-sm); line-height: 1.4;">📷</span>
-                      <span><strong style="color: var(--ink);">Still Photography Specialization:</strong> Rates &amp; studio packages are <strong style="color: var(--ink);">strictly dedicated to Still Photography creation</strong>. Video / Reels coverage is excluded from standard packages. Clients may hire an external videographer or request studio assistance to source a freelance videographer for the session.</span>
+                      <span><strong style="color: var(--ink);">Still Photography Specialisation:</strong> Rates &amp; studio packages are <strong style="color: var(--ink);">strictly dedicated to Still Photography creation</strong>. Video / Reels coverage is excluded from standard packages. Clients may hire an external videographer or request studio assistance to source a freelance videographer for the session.</span>
                     </li>
 <li style="display: flex; gap: 10px; align-items: flex-start; font-size: var(--font-xs); line-height: 1.55; color: var(--ink-soft);">
                      <span aria-hidden="true" style="flex: 0 0 20px; font-size: var(--font-sm); line-height: 1.4;">🏢</span>
@@ -6592,10 +6599,10 @@ window.resolveContractArchive = function(version) {
                    
                    <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 14px; font-size: var(--font-xs); display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px;">
                      <div><strong>Studio/Photographer:</strong> nerdyphotographer.in</div>
-                     <div><strong id="termsPartnerLabel">Creative Partner/Model:</strong> <span id="terms_partner_name">[Your Name]</span></div>
+                     <div><strong id="termsPartnerLabel">Model:</strong> <span id="terms_partner_name">[Your Name]</span></div>
                      <div><strong>Business Handle:</strong> @nerdyphotographer.in</div>
-                     <div><strong>Consent Tracking:</strong> Verified via Email / Digital Acknowledgment</div>
-                     <div><strong>Production Status:</strong> <span id="termsProductionStatus">Time-For-Print (TFP) Collab</span></div>
+                     <div><strong>Agreement:</strong> by the tick-box below, recorded in your confirmation email</div>
+                     <div><strong>Production Status:</strong> <span id="termsProductionStatus">Test shoot (collaboration)</span></div>
                      <div><strong>Location:</strong> <span id="termsLocation">Studio Production Space</span></div>
                    </div>
  
@@ -6991,11 +6998,11 @@ window.resolveContractArchive = function(version) {
           </div>
           <div class="dp-legend">
             <span class="dp-legend-item"><span class="dp-legend-dot dot-available"></span> Open</span>
-            <span class="dp-legend-item"><span class="dp-legend-dot dot-booked"></span> Date Booked</span>
-            <span class="dp-legend-item"><span class="dp-legend-dot dot-testshoot"></span> Test Shoot Booked</span>
-            <span class="dp-legend-item"><span class="dp-legend-dot dot-workshop"></span> Workshop</span>
-            <span class="dp-legend-item"><span class="dp-legend-dot dot-assisting"></span> Assisting</span>
-            <span class="dp-legend-item"><span class="dp-legend-dot dot-blocked"></span> Weekdays closed</span>
+            <span class="dp-legend-item"><span class="dp-legend-dot dot-booked"></span> Booked</span>
+            <span class="dp-legend-item"><span class="dp-legend-dot dot-testshoot"></span> Test shoot</span>
+            <span class="dp-legend-item"><span class="dp-legend-dot dot-workshop"></span> Away (workshop)</span>
+            <span class="dp-legend-item"><span class="dp-legend-dot dot-assisting"></span> Away (another shoot)</span>
+            <span class="dp-legend-item"><span class="dp-legend-dot dot-blocked"></span> Closed (weekdays)</span>
           </div>
           <div class="dp-nav">
             <button type="button" class="dp-nav-btn dp-prev" aria-label="Previous month">‹</button>
@@ -7029,7 +7036,7 @@ window.resolveContractArchive = function(version) {
               isCellDisabled = true;
             } else if (status.hasAssisting && !status.hasConfirmedBooking) {
               classes.push("dp-booked", "dp-assisting");
-              titleAttr = "Unavailable: Booked for Assisting Work";
+              titleAttr = "Unavailable: away on another shoot";
               isCellDisabled = true;
             } else if (status.isBooked) {
               classes.push("dp-booked");
@@ -7200,7 +7207,7 @@ window.resolveContractArchive = function(version) {
             cell.addEventListener("click", (e) => {
               e.stopPropagation();
               const day = cell.dataset.day;
-              toast(`Unable to select ${MONTHS[viewMonth]} ${day} — Mon–Fri dates are blocked.`);
+              toast(`${MONTHS[viewMonth]} ${day} is a weekday — shoots run on Saturdays and Sundays. Pick a weekend, or email to ask about a weekday.`);
             });
           });
           popup.querySelectorAll(".dp-cell.dp-active").forEach(cell => {
@@ -7395,7 +7402,7 @@ window.resolveContractArchive = function(version) {
       }
 
       if (btn) {
-        btn.textContent = (type === "Selective Collaboration (TFP)" ? "Request for a Test Shoot" : "Submit Booking Request");
+        btn.textContent = (type === "Selective Collaboration (TFP)" ? "Request a test shoot" : "Submit Booking Request");
       }
 
       const paymentTermsFieldset = $("#paymentTermsFieldset");
@@ -7435,17 +7442,17 @@ window.resolveContractArchive = function(version) {
             const keptFallback = (collabFallbackWrap.querySelector("#b_collab_fallback") || {}).value || "";
             collabFallbackWrap.innerHTML = `
               <div style="font-family: 'Archivo', sans-serif; font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-                📌 Studio Discretion Policy &amp; Paid Fallback Package *
+                If this collaboration isn’t a fit *
               </div>
               <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 10px 0; line-height: 1.5;">
-                Brand &amp; Commercial TFP collaborations are accepted at the sole discretion of the studio based on creative brief alignment and portfolio synergy. Unapproved collaboration requests do not reserve shoot dates.
+                Collaborations are by invitation, and a request does not hold the date until I confirm it.
               </p>
               <label class="field" style="margin: 0;">
-                <span style="font-size: var(--font-xs); font-weight: 700; color: var(--ink);">If your collaboration request is not approved, which Paid Package would you like to proceed with? *</span>
+                <span style="font-size: var(--font-xs); font-weight: 700; color: var(--ink);">If it isn’t a fit, which package would you like instead? *</span>
                 <select id="b_collab_fallback" style="margin-top: 4px;">
                   ${getAdminPackages().map(p => `<option value="₹${esc(p.price.toLocaleString('en-IN'))} ${esc(p.name)} (Paid Fallback)">₹${esc(p.price.toLocaleString('en-IN'))} · ${esc(p.name)} (${esc(p.specs)})</option>`).join("")}
-                  <option value="Custom Bespoke Package (Paid Fallback)">Custom Bespoke Package</option>
-                  <option value="Cancel Inquiry if Collaboration is Declined">Cancel Inquiry if Collaboration is Declined</option>
+                  <option value="Custom Bespoke Package (Paid Fallback)">A custom package</option>
+                  <option value="Cancel Inquiry if Collaboration is Declined">None — cancel the request</option>
                 </select>
               </label>
             `;
@@ -7870,18 +7877,18 @@ window.resolveContractArchive = function(version) {
         // visitor typed an invite code carrying a venue — the whole field
         // refresh died mid-update, leaving pricing and policy text stale.
         const lockedHomeRiderHtml = /home studio/i.test(lockedLocation || "")
-          ? ` Attendance is limited to a maximum of 3 people in total — the photographer, the Participant, and any crew they bring (hair &amp; makeup, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`
+          ? ` Attendance is limited to a maximum of 3 people in total — the photographer, the Participant, and any crew they bring (hair &amp; make-up, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`
           : ``;
         // House rules for the residence, quoted wherever the home studio is
         // the venue — a paid booking is capped exactly like an invited one.
-        const paidHomeRiderHtml = ` Attendance is limited to a maximum of 3 people in total — the photographer, the Participant, and any crew they bring (hair &amp; makeup, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`;
+        const paidHomeRiderHtml = ` Attendance is limited to a maximum of 3 people in total — the photographer, the Participant, and any crew they bring (hair &amp; make-up, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`;
         contractStudioClause.innerHTML = (isValidInvite && lockedLocation && homeStudioFee === 0)
-          ? `Studio for this session is provided by the photographer at <strong>${lockedLocation}</strong> at no additional rental charge to the talent.${lockedHomeRiderHtml} Hair &amp; makeup artists, stylists, set designers and any other third-party crew are not included — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`
+          ? `Studio for this session is provided by the photographer at <strong>${lockedLocation}</strong> at no additional rental charge to the talent.${lockedHomeRiderHtml} Hair &amp; make-up artists, stylists, set designers and any other third-party crew are not included — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`
           : homeStudioFee > 0
             // The client is looking at a quote with this rental on it, so the
             // clause they tick has to name the same number.
-            ? `This session takes place at the Studio's home studio in ${HOME_STUDIO_AREA}. A fixed home studio rental of <strong>₹${homeStudioFee.toLocaleString("en-IN")}</strong> applies and is itemised in the production quote, <strong>payable in full at least 48 hours before the shoot day</strong> to reserve the space and non-refundable once paid; no further venue rental applies to it.${paidHomeRiderHtml} Hair &amp; makeup artists, stylists, set designers and any other third-party crew are not included in this booking — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`
-            : `If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges.${studioArrangerClauseHtml} Hair &amp; makeup artists, stylists, set designers and any other third-party crew are not included in this booking — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`;
+            ? `This session takes place at the Studio's home studio in ${HOME_STUDIO_AREA}. A fixed home studio rental of <strong>₹${homeStudioFee.toLocaleString("en-IN")}</strong> applies and is itemised in the production quote, <strong>payable in full at least 48 hours before the shoot day</strong> to reserve the space and non-refundable once paid; no further venue rental applies to it.${paidHomeRiderHtml} Hair &amp; make-up artists, stylists, set designers and any other third-party crew are not included in this booking — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`
+            : `If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges.${studioArrangerClauseHtml} Hair &amp; make-up artists, stylists, set designers and any other third-party crew are not included in this booking — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`;
       }
 
       // Update TFP policy notice studio line if TFP is selected
@@ -8190,7 +8197,7 @@ window.resolveContractArchive = function(version) {
           summaryTotalSavingsAmount.textContent = `₹${totalSavings.toLocaleString("en-IN")}`;
         }
 
-        if (summaryFinalAmount) summaryFinalAmount.textContent = `₹${finalPayable.toLocaleString("en-IN")} INR`;
+        if (summaryFinalAmount) summaryFinalAmount.textContent = `₹${finalPayable.toLocaleString("en-IN")}`;
 
         // The photographer arranging the studio means its real cost is not
         // known yet — it is billed at actuals once booked — so the total
@@ -8216,7 +8223,7 @@ window.resolveContractArchive = function(version) {
 
         if (collabOwesRental) {
           const reservationAmount = $("#summaryReservationAmount");
-          if (reservationAmount) reservationAmount.textContent = `₹${finalPayable.toLocaleString("en-IN")} INR`;
+          if (reservationAmount) reservationAmount.textContent = `₹${finalPayable.toLocaleString("en-IN")}`;
         } else {
           // Itemized Retainer & remaining milestones. The studio rental
           // reserves the venue, so — like a collaboration's rental — it is
@@ -8234,12 +8241,12 @@ window.resolveContractArchive = function(version) {
           const summaryStep3Wrap = $("#summaryStep3Wrap"), summaryStep3Label = $("#summaryStep3Label"), summaryStep3Amount = $("#summaryStep3Amount");
           const summaryStep4Wrap = $("#summaryStep4Wrap"), summaryStep4Label = $("#summaryStep4Label"), summaryStep4Amount = $("#summaryStep4Amount");
 
-          if (summaryAdvanceAmount) summaryAdvanceAmount.textContent = `₹${advanceRetainer.toLocaleString("en-IN")} INR`;
-          if (summaryBalanceAmount) summaryBalanceAmount.textContent = `₹${wrapBalance.toLocaleString("en-IN")} INR`;
+          if (summaryAdvanceAmount) summaryAdvanceAmount.textContent = `₹${advanceRetainer.toLocaleString("en-IN")}`;
+          if (summaryBalanceAmount) summaryBalanceAmount.textContent = `₹${wrapBalance.toLocaleString("en-IN")}`;
           if (summaryStep3Wrap) summaryStep3Wrap.style.display = legs.length >= 3 ? "block" : "none";
-          if (summaryStep3Amount) summaryStep3Amount.textContent = `₹${step3Amount.toLocaleString("en-IN")} INR`;
+          if (summaryStep3Amount) summaryStep3Amount.textContent = `₹${step3Amount.toLocaleString("en-IN")}`;
           if (summaryStep4Wrap) summaryStep4Wrap.style.display = legs.length >= 4 ? "block" : "none";
-          if (summaryStep4Amount) summaryStep4Amount.textContent = `₹${step4Amount.toLocaleString("en-IN")} INR`;
+          if (summaryStep4Amount) summaryStep4Amount.textContent = `₹${step4Amount.toLocaleString("en-IN")}`;
           if (summaryAdvanceLabel) {
             // The studio the photographer books on the client's behalf is due
             // in full with the advance too (contract clause 1); the amount is
@@ -8258,7 +8265,7 @@ window.resolveContractArchive = function(version) {
 
         // Update Mobile Sticky Floating Action Bar (FAB)
         const fabPrice = $("#mobileFabPrice");
-        if (fabPrice) fabPrice.textContent = `Payable: ₹${finalPayable.toLocaleString("en-IN")} INR`;
+        if (fabPrice) fabPrice.textContent = `Payable: ₹${finalPayable.toLocaleString("en-IN")}`;
       }
     };
 
@@ -8990,7 +8997,7 @@ window.resolveContractArchive = function(version) {
         const label = d.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
         if (st.key < todayKey) return `${label} has already passed`;
         if (st.isCustomBlocked) return `${label} is blocked in the studio's calendar`;
-        if (st.isBlocked) return `${label} is a ${d.toLocaleDateString("en-IN", { weekday: "long" })} — shoots run at weekends`;
+        if (st.isBlocked) return `${label} is a ${d.toLocaleDateString("en-IN", { weekday: "long" })} — shoots run on weekends`;
         return null;
       }).filter(Boolean);
       if (unbookable.length) {
@@ -9039,7 +9046,7 @@ window.resolveContractArchive = function(version) {
         const venueByStudio = $("#b_location")?.dataset.inviteLocked === "1" || isHomeStudio;
         const venueByStudioAddress = venueByStudio ? ($("#b_location")?.value || "") : "";
         const homeStudioRider = isHomeStudio
-          ? `\n\nHOME STUDIO SESSIONS\nThis session takes place at the photographer's private residence. Attendance is limited to a maximum of 3 people in total — the photographer, the Participant, and any crew they bring; hair & makeup artists, stylists, assistants and guests all count towards this limit. Sessions run within booked daylight hours and conclude by 7:00 PM. The full address is shared on booking confirmation. Guests may not attend unaccompanied.`
+          ? `\n\nHOME STUDIO SESSIONS\nThis session takes place at the photographer's private residence. Attendance is limited to a maximum of 3 people in total — the photographer, the Participant, and any crew they bring; hair & make-up artists, stylists, assistants and guests all count towards this limit. Sessions run within booked daylight hours and conclude by 7:00 PM. The full address is shared on booking confirmation. Guests may not attend unaccompanied.`
           : "";
         // Same arranger choice the live contract clause reads during
         // updateFields, re-read here off the same select/radio pair so the
@@ -9177,7 +9184,7 @@ window.resolveContractArchive = function(version) {
         // use-before-declaration crash on every submit.
         // House rules for shooting at the photographer's residence apply
         // whether or not a rental is charged for it.
-        const homeStudioHouseRules = `Home Studio Policy: This session takes place at the photographer's private residence. Attendance is capped at 3 people in total — the photographer, you, and any crew you bring (hair & makeup, stylist, assistants and guests all count towards this cap), sessions run within booked daylight hours and finish by 7:00 PM, and the full address is shared once the booking is confirmed. Guests may not attend unaccompanied.\n`;
+        const homeStudioHouseRules = `Home Studio Policy: This session takes place at the photographer's private residence. Attendance is capped at 3 people in total — the photographer, you, and any crew you bring (hair & make-up, stylist, assistants and guests all count towards this cap), sessions run within booked daylight hours and finish by 7:00 PM, and the full address is shared once the booking is confirmed. Guests may not attend unaccompanied.\n`;
 
         // A rental above zero means the home studio IS the venue, whatever the
         // dropdown says — it is hidden entirely on invite bookings, so keying
@@ -9222,8 +9229,8 @@ window.resolveContractArchive = function(version) {
         // covers the photographer's time, never an HMUA or stylist the talent
         // assumed was included.
         const crewCostPolicyNote = (type !== "Selective Collaboration (TFP)")
-          ? `Creative Crew & Third-Party Costs: The package rate covers the photographer's creative fee, light design, direction and retouched master deliverables only. If the shoot requires a hair & makeup artist (HMUA), wardrobe stylist, set designer, props / set construction, art direction or any other third-party creative, their charges apply AT ACTUALS (at cost) over and above the package rate. You are free to bring your own crew, or the studio can source them for you — either way the cost is quoted for your approval before the shoot day and nothing is incurred without your confirmation.\n`
-          : `Creative Crew & Third-Party Costs: This collaboration covers the photographer's creative fee, light design, direction and the agreed retouched master deliverables only. If the shoot requires a hair & makeup artist (HMUA), wardrobe stylist, set designer, props / set construction, art direction or any other third-party creative, those charges apply AT ACTUALS (at cost) and are borne by the participant. You are free to bring your own crew, or the studio can source them for you — either way the cost is quoted for your approval before the shoot day and nothing is incurred without your confirmation.\n`;
+          ? `Creative Crew & Third-Party Costs: The package rate covers the photographer's creative fee, light design, direction and retouched master deliverables only. If the shoot requires a hair & make-up artist (HMUA), wardrobe stylist, set designer, props / set construction, art direction or any other third-party creative, their charges apply AT ACTUALS (at cost) over and above the package rate. You are free to bring your own crew, or the studio can source them for you — either way the cost is quoted for your approval before the shoot day and nothing is incurred without your confirmation.\n`
+          : `Creative Crew & Third-Party Costs: This collaboration covers the photographer's creative fee, light design, direction and the agreed retouched master deliverables only. If the shoot requires a hair & make-up artist (HMUA), wardrobe stylist, set designer, props / set construction, art direction or any other third-party creative, those charges apply AT ACTUALS (at cost) and are borne by the participant. You are free to bring your own crew, or the studio can source them for you — either way the cost is quoted for your approval before the shoot day and nothing is incurred without your confirmation.\n`;
         const deliverablePolicyNote = `RAW Files & Deliverables Policy: Includes proofing gallery + contracted retouched master limit. Requesting the complete full unedited image gallery or extra retouched master clicks beyond the package limit incurs additional gallery buyout fees. RAW unedited camera files remain confidential studio property.\n`;
         const gearPolicyNote = `Camera & Media Policy: All cameras, memory cards, and raw captures are strictly hands-off. Participants may not touch equipment or delete media from cameras. Deleting files constitutes a material breach of contract and incurs full data recovery costs.\n`;
 
@@ -9661,7 +9668,7 @@ window.resolveContractArchive = function(version) {
           btn.classList.remove("is-loading");
           // Restore the type-appropriate label (updateFields sets this same
           // pair) rather than always falling back to the non-Test-Shoot text.
-          btn.textContent = (type === "Selective Collaboration (TFP)" ? "Request for a Test Shoot" : "Submit Booking Request");
+          btn.textContent = (type === "Selective Collaboration (TFP)" ? "Request a test shoot" : "Submit Booking Request");
         };
 
         // Deliver the inquiry directly to the studio inbox via FormSubmit
@@ -9986,7 +9993,7 @@ window.resolveContractArchive = function(version) {
       const modalVenueByStudio = $("#b_location")?.dataset.inviteLocked === "1" || modalIsHomeStudio;
       const modalVenueAddress = modalVenueByStudio ? ($("#b_location")?.value || "") : "";
       const modalHomeRider = modalIsHomeStudio
-        ? ` <strong>Home studio sessions</strong> take place at the photographer's private residence: attendance is capped at 3 people in total — the photographer, you, and any crew you bring; hair &amp; makeup, stylist, assistants and guests all count towards this cap, the session runs within booked daylight hours and finishes by <strong>7:00 PM</strong>, and the full address is shared once your booking is confirmed. Guests may not attend unaccompanied.`
+        ? ` <strong>Home studio sessions</strong> take place at the photographer's private residence: attendance is capped at 3 people in total — the photographer, you, and any crew you bring; hair &amp; make-up, stylist, assistants and guests all count towards this cap, the session runs within booked daylight hours and finishes by <strong>7:00 PM</strong>, and the full address is shared once your booking is confirmed. Guests may not attend unaccompanied.`
         : "";
       // A paid home-studio booking now carries a fixed rental, so the blanket
       // "no studio rental is billed to you" would contradict the quote the
@@ -10025,8 +10032,8 @@ window.resolveContractArchive = function(version) {
       const subtitleEl = $("#termsModalSubtitle"), partnerLabelEl = $("#termsPartnerLabel"), prodStatusEl = $("#termsProductionStatus");
       const modalPackage = isTfp ? "" : ($("#b_budget")?.value || "");
       if (subtitleEl) subtitleEl.textContent = isTfp ? tfpSubtitle : "Commercial Shoot, Usage Licence & Digital Consent Terms";
-      if (partnerLabelEl) partnerLabelEl.textContent = isTfp ? "Creative Partner/Model:" : "Client:";
-      if (prodStatusEl) prodStatusEl.textContent = isTfp ? "Time-For-Print (TFP) Collab" : `Commercial / paid production${modalPackage ? ` — ${modalPackage}` : ""}`;
+      if (partnerLabelEl) partnerLabelEl.textContent = isTfp ? "Model:" : "Client:";
+      if (prodStatusEl) prodStatusEl.textContent = isTfp ? "Test shoot (collaboration)" : `Commercial / paid production${modalPackage ? ` — ${modalPackage}` : ""}`;
       renderTermsBody(activeKey, isTfp);
 
       const termsModalEl = $("#termsModal");
@@ -10155,17 +10162,17 @@ window.resolveContractArchive = function(version) {
     // Wire the terms trigger link
     $("#tfpTermsTrigger")?.addEventListener("click", (e) => {
       e.preventDefault();
-      openTermsModal($("#b_name")?.value || "Creative Partner", "TFP");
+      openTermsModal($("#b_name")?.value || "[Your name]", "TFP");
     });
 
     // Check if loaded with Hash link
     if (location.hash === "#tfp-terms") {
-      openTermsModal("Creative Partner", "TFP");
+      openTermsModal("[Your name]", "TFP");
     } else if (location.hash === "#terms") {
       // The link in every commercial client's email ("Read terms online:
       // …/book/#terms") opened the form and nothing else, so a paying client
       // could not re-read what they had agreed to (Sep 2026 audit).
-      openTermsModal("Client", "Commercial");
+      openTermsModal("[Your name]", "Commercial");
     }
 
     // "Send another request" — reset back to a clean form.
@@ -10952,8 +10959,8 @@ window.resolveContractArchive = function(version) {
     const ORIGIN = "https://www.nerdyphotographer.in";
     const cfg = window.STUDIO_CONFIG || { studioName: "nerdyphotographer.in" };
     const brand = cfg.studioName;
-    let title = `${brand} — Fashion, Beauty, Editorial, Sports, Fitness & Model Photography Studio Noida`;
-    let desc = `Professional male and female model photography, fashion, beauty, editorial, sports, and fitness photoshoots by ${brand}. Noida & Delhi NCR, India — high-end modelling portfolios, creative campaigns, and cinematic portraits.`;
+    let title = `Model Portfolio & Fashion Photographer in Noida | ${brand}`;
+    let desc = `Model portfolios and comp cards, fashion, editorial and fitness photoshoots for men and women by ${brand} in Noida & Delhi NCR.`;
     let path = "/";
     let index = true;
 
@@ -11017,7 +11024,7 @@ window.resolveContractArchive = function(version) {
       index = window.STUDIO_CONFIG?.studioPagePublic !== false;
     } else if (key === "book") {
       title = `Book a Fashion/Fitness/Sports Photoshoot in Noida & Delhi NCR | ${brand}`;
-      desc = `Collaborate with us on your next photoshoot. Send a project brief or book a session with Noida's creative studio.`;
+      desc = `Book a model portfolio, fashion or fitness shoot in Noida & Delhi NCR — see the packages, get an instant quote and send your brief.`;
       path = "/book/";
     } else if (key === "testimonials") {
       // With nothing published the page is the form, and it says so in the
@@ -11027,7 +11034,7 @@ window.resolveContractArchive = function(version) {
       const written = getAllTestimonials().length > 0;
       title = written ? `Client Testimonials & Reviews | ${brand}` : `Write a testimonial | ${brand}`;
       desc = written
-        ? `Read reviews and testimonials from models, brands, and creative collaborators who have worked with us in Noida & Delhi NCR.`
+        ? `Read reviews and testimonials from models, brands, and creative collaborators who have worked with me in Noida & Delhi NCR.`
         : `Worked with ${brand}? Write a testimonial — it goes straight to the studio.`;
       path = "/testimonials/";
       index = written; // an empty page is not worth a place in search results

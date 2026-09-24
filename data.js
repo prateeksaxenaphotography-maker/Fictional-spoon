@@ -2941,23 +2941,23 @@ window.WPS_DATA = {
   "PROMO_CODES": {
     "NERDY500": {
       "flat": 500,
-      "label": "Flat ₹500 Off Instant Savings (NERDY500)"
+      "label": "Flat ₹500 off (NERDY500)"
     },
     "NERDY1000": {
       "flat": 1000,
-      "label": "Flat ₹1,000 Off Instant Savings (NERDY1000)"
+      "label": "Flat ₹1,000 off (NERDY1000)"
     },
     "NERDY10": {
       "pct": 10,
-      "label": "10% Off First Commercial Booking (NERDY10)"
+      "label": "10% off the package (NERDY10)"
     },
     "NERDY15": {
       "pct": 15,
-      "label": "15% Off Noida / Delhi NCR Shoots (NERDY15)"
+      "label": "15% off the package (NERDY15)"
     },
     "NERDY20": {
       "pct": 20,
-      "label": "20% Off Studio Production Campaigns (NERDY20)"
+      "label": "20% off the package (NERDY20)"
     },
     "NERDYVIP": {
       "pct": 0,
@@ -2969,7 +2969,7 @@ window.WPS_DATA = {
     },
     "SAANUJ": {
       "flat": 7000,
-      "label": "Flat ₹7,000 Off (FRIENDLYDIS)",
+      "label": "Flat ₹7,000 off (SAANUJ)",
       "includeAddons": false,
       "homeStudioDiscount": {
         "type": "fixed",
@@ -2984,36 +2984,36 @@ window.WPS_DATA = {
       "id": "pkg_1",
       "name": "Basic Test / Comp Card",
       "price": 7000,
-      "specs": "20 Proof Clicks + 0 Retouched (No RAW files delivered)"
+      "specs": "20 proofs + 0 retouched photos (No RAW files delivered)"
     },
     {
       "id": "pkg_2",
       "name": "Mini Portfolio",
       "price": 10000,
-      "specs": "25 Proof Clicks + 3-5 Retouched Clicks (No RAW files delivered)"
+      "specs": "25 proofs + 3–5 retouched photos (No RAW files delivered)"
     },
     {
       "id": "pkg_3",
       "name": "Standard Editorial Portfolio",
       "price": 25000,
-      "specs": "50 Unedited + 8-12 Retouched Clicks (No RAW files delivered)"
+      "specs": "50 proofs + 8–12 retouched photos (No RAW files delivered)"
     },
     {
       "id": "pkg_4",
       "name": "Premium Brand Campaign",
       "price": 50000,
-      "specs": "100 Unedited + 15-25 Retouched Clicks (No RAW files delivered)"
+      "specs": "100 proofs + 15–25 retouched photos (No RAW files delivered)"
     },
     {
       "id": "pkg_5",
       "name": "High-End Full Day Production",
       "price": 75000,
-      "specs": "Full Gallery + 30+ Retouched Master Assets (No RAW files delivered)"
+      "specs": "Full proof gallery + 30+ retouched photos (No RAW files delivered)"
     }
   ],
   "TFP_PACKAGE": {
     "name": "Test Shoot / TFP Collaboration",
-    "specs": "Full Proofing Gallery + 8 Retouched Master Clicks (No RAW files delivered)"
+    "specs": "Full proof gallery + 8 retouched photos (No RAW files delivered)"
   },
   "HOME_STUDIO_RATE": 2000,
   "PORTFOLIO_PDF": {
@@ -3091,9 +3091,9 @@ window.WPS_DATA = {
   "HOME_STUDIO_RATE_TFP": 4000,
   "SETTINGS_AT": {
     "INVITE_CODES": 1789975069138,
-    "PROMO_CODES": 1789975069138,
-    "PACKAGES": 1789975069137,
-    "TFP_PACKAGE": 1789975069138,
+    "PROMO_CODES": 1790252591623,
+    "PACKAGES": 1790252591623,
+    "TFP_PACKAGE": 1790252591623,
     "HOME_STUDIO_RATE": 1789975069138,
     "PORTFOLIO_PDF": 1790239875077,
     "HOME_STUDIO_RATE_TFP": 1789975069138

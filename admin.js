@@ -547,7 +547,7 @@ window.generateRandomAdminInviteCode = function() {
 window.deleteAdminInviteCode = function(codeToDelete) {
   const current = window.getAdminInviteCodes();
   if (current.length <= 1) {
-    alert("You must keep at least 1 active invite code!");
+    alert("Keep at least one invite code switched on.");
     return;
   }
   const getItemCodeStr = (item) => (typeof item === "object" ? (item.code || "") : String(item)).trim().toUpperCase();
@@ -1625,7 +1625,7 @@ window.resetAdminCustomPackages = function() {
   if (confirm("Reset studio package rates to default values?")) {
     localStorage.removeItem("wps_custom_packages");
     localStorage.removeItem("wps_tfp_package");
-    alert("Reset to default package rates!");
+    alert("Package rates on this device now match the published ones.");
     if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
     if (typeof render === "function") render();
   }
@@ -3605,7 +3605,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         })()
       : "";
     const homeStudioRiderHtml = ((studioByPhotographer || rentalFee > 0 || rentalWaived) && /home studio/i.test(studioLocation))
-      ? ` Attendance is limited to a maximum of 3 people in total — the photographer, the Participant, and any crew they bring (hair &amp; makeup, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`
+      ? ` Attendance is limited to a maximum of 3 people in total — the photographer, the Participant, and any crew they bring (hair &amp; make-up, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`
       : ``;
     const studioClauseTfp = studioByPhotographer
       ? `Studio venue for this session is provided by the photographer${studioLocation ? ` at <strong>${esc(studioLocation)}</strong>` : ""} at no additional rental charge to the talent.${homeStudioRiderHtml}`
@@ -4713,7 +4713,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         const shootType = $("#m_clientType").value.trim() || "Tentative Hold";
         const notes = $("#m_clientNotes").value.trim() || "Date held by Admin for anticipated client inquiry.";
         addCalBooking(dKey, { name: clientName, type: shootType, notes: notes, isTentative: true, status: "tentative", contractVersion: "Pending Agreement", agreedToTerms: false });
-        toast(`Date ${dKey} held as Anticipated Client! (Appears TAKEN to public)`);
+        toast(`${dKey} held for a likely client — visitors see it as taken.`);
         modalContainer.innerHTML = "";
         renderAdminGrid();
         renderRoster();
@@ -4731,7 +4731,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
 
       $("#quickAssistingBtn")?.addEventListener("click", () => {
         addCalBooking(dKey, { name: "Assisting Work", type: "Assisting Photographer", notes: "Booked for Assisting Work", isTentative: false, status: "assisting", contractVersion: "Pending Agreement", agreedToTerms: false });
-        toast(`🤝 Assisting work marked for ${dKey}! (Appears as Assisting Work in Teal)`);
+        toast(`Assisting work marked for ${dKey}.`);
         modalContainer.innerHTML = "";
         renderAdminGrid();
         renderRoster();
@@ -4768,7 +4768,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
 
         const links = rawLink ? [rawLink] : [];
         addCalBooking(dKey, { name, email, phone, type, duration, isTentative, status: statusVal, links, notes, contractVersion, agreedToTerms });
-        toast(isWorkshop ? `📚 Workshop day marked for ${dKey}!` : isAssisting ? `🤝 Assisting work marked for ${dKey}!` : isTentative ? `Date ${dKey} held for ${name}! (Appears TAKEN to public)` : `Booking confirmed for ${name} on ${dKey}!`);
+        toast(isWorkshop ? `Workshop day marked for ${dKey}.` : isAssisting ? `Assisting work marked for ${dKey}.` : isTentative ? `${dKey} held for ${name} — visitors see it as taken.` : `Booking confirmed for ${name} on ${dKey}.`);
         modalContainer.innerHTML = "";
         renderAdminGrid();
         renderRoster();
@@ -4974,10 +4974,10 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             </nav>
 
             <fieldset id="fs_shoot"><legend>The shoot</legend>
-              <label class="field"><span>Shoot title *</span><input id="f_title" type="text" placeholder="e.g. Merrell Trail — Spring '26" required /></label>
+              <label class="field"><span>Shoot title *</span><input id="f_title" type="text" placeholder="e.g. Monsoon lookbook — Spring '26" required /></label>
               <div class="field-row">
                 <label class="field" id="f_brand_select_field"><span>Brand</span><select id="f_brand">${opt(BRANDS)}<option>Other</option></select></label>
-                <label class="field" id="f_brand_text_field" style="display: none;"><span>Company / Role *</span><input id="f_brand_text" type="text" placeholder="e.g. Model, Vogue, Brand Director" /></label>
+                <label class="field" id="f_brand_text_field" style="display: none;"><span>Company / Role *</span><input id="f_brand_text" type="text" placeholder="e.g. Model, magazine, brand director" /></label>
                 <label class="field" id="f_activity_field"><span>Activity</span><select id="f_activity">${chooseOpt}${opt(ACTIVITIES)}</select></label>
               </div>
               <div class="field-row">
@@ -4988,7 +4988,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                 <div id="f_location_verify" style="margin-top: 5px; font-size: var(--font-xs); display: none;"></div>
               </div>
               <!-- Who the album was made for decides which client page it is on
-                   (Model portfolios, Campaigns, Designers/stylists/makeup).
+                   (Model portfolios, Campaigns, Designers/stylists/make-up).
                    The kind of work in each photo is set on the photos. -->
               <div class="field-row" id="f_for_row">
                 <label class="field"><span>Who is this album for? <em class="label-hint">who booked the shoot and uses the photos</em></span><select id="f_for_client">${chooseOpt}${CLIENTS.map((c) => `<option value="${esc(c.key)}">${esc(c.label)}</option>`).join("")}</select></label>
@@ -5025,7 +5025,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                 <label class="field"><span>Hair stylist</span><input id="f_hair" type="text" placeholder="e.g. Name (@handle; site.com)" /><span class="field-verify" id="f_hair_verify" style="display: none;"></span></label>
               </div>
               <div class="field-row">
-                <label class="field"><span>Makeup artist / MUA</span><input id="f_mua" type="text" placeholder="e.g. Name (@handle; site.com)" /><span class="field-verify" id="f_mua_verify" style="display: none;"></span></label>
+                <label class="field"><span>Make-up artist / MUA</span><input id="f_mua" type="text" placeholder="e.g. Name (@handle; site.com)" /><span class="field-verify" id="f_mua_verify" style="display: none;"></span></label>
                 <label class="field"><span>Model / talent</span><input id="f_talent" type="text" placeholder="e.g. Model Name (@handle; site.com), Second Model" /><span class="field-verify" id="f_talent_verify" style="display: none;"></span></label>
               </div>
               <div class="field-row" id="f_agency_row">
@@ -5561,7 +5561,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       const vals = {};
       box.querySelectorAll(".model-detail-in").forEach((el) => { vals[el.dataset.f] = String(el.value || "").trim(); });
       const name = vals.name || modelNameFromKey(openModelKey);
-      if (!name) { toast("A model needs a name — her card has nothing to print without one."); return; }
+      if (!name) { toast("A model needs a name — their card has nothing to print without one."); return; }
       const agencyCredit = vals.agencyCredit || "";
       const record = {
         ...(rosterFind(openModelKey) || {}),
@@ -6470,7 +6470,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       const muaVal = val("f_mua");
       const originalMua = editingShoot ? (editingShoot.mua || "") : "";
       if (muaVal && muaVal !== originalMua && window.muaVerifyFlag?.hasLinks?.() && !window.muaVerifyFlag?.get?.()) {
-        toast("Please test the makeup artist links before publishing.");
+        toast("Please test the make-up artist links before publishing.");
         return;
       }
       const adVal = val("f_ad");
