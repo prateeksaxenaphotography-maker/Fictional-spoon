@@ -3837,9 +3837,11 @@ window.resolveContractArchive = function(version) {
        With any ticked, the first screen crossfades through them; the
        config.js heroImage, if set, still wins as a single fixed frame. */
     const focusOf = (p) => (typeof p.focalX === "number" && typeof p.focalY === "number") ? `${p.focalX}% ${p.focalY}%` : (p.objectPosition && p.objectPosition !== "center" ? p.objectPosition : "50% 30%");
-    const homeSlides = (window.STUDIO_CONFIG?.heroImage || "").trim() ? [] : SHOOTS
+    // In a random order on every visit (the owner, Sep 2026), so the first
+    // photo a visitor sees is not always the same one.
+    const homeSlides = (window.STUDIO_CONFIG?.heroImage || "").trim() ? [] : shuffleArray(SHOOTS
       .filter((s) => s && s.isPublic !== false && !s.isTestimonial && s.type !== "Workshop Attended")
-      .flatMap((s) => (s.photos || []).filter((p) => p && p.onHome && p.url).map((p) => ({ url: p.url, pos: focusOf(p), alt: p.caption || altFor(s) })));
+      .flatMap((s) => (s.photos || []).filter((p) => p && p.onHome && p.url).map((p) => ({ url: p.url, pos: focusOf(p), alt: p.caption || altFor(s) }))));
     const heroSrc = (window.STUDIO_CONFIG?.heroImage || "").trim() || (homeSlides[0] ? homeSlides[0].url : "") || (newestCover ? newestCover.url : "");
     // A stand-in cover is a portrait, framed for the album grid: keep the top
     // of it, where the face is, when a phone crops it to a wide strip.
@@ -11507,6 +11509,10 @@ window.resolveContractArchive = function(version) {
     const slides = [...wrap.querySelectorAll(".hero-slide")];
     if (slides.length < 2) return;
     let at = 0;
+    // Each change jumps to a random other photo, not the next in a list (the
+    // owner: "random, not in sequence"); the one after is fetched ahead.
+    const pickOther = (i) => { if (slides.length < 2) return i; let j = i; while (j === i) j = Math.floor(Math.random() * slides.length); return j; };
+    let upcoming = pickOther(0);
     const ms = Math.max(3, Math.min(30, Number(wrap.dataset.seconds) || 5)) * 1000;
     const load = (img) => new Promise((res) => {
       if (img.getAttribute("src")) return res();
@@ -11516,10 +11522,10 @@ window.resolveContractArchive = function(version) {
     heroSlideTimer = setInterval(async () => {
       if (!document.contains(wrap)) { clearInterval(heroSlideTimer); heroSlideTimer = null; return; }
       if (document.hidden) return;
-      const next = (at + 1) % slides.length;
+      const next = upcoming;
       await load(slides[next]);
       slides[at].classList.remove("is-on"); slides[next].classList.add("is-on"); at = next;
-      const after = slides[(next + 1) % slides.length]; if (after) load(after);
+      upcoming = pickOther(at); load(slides[upcoming]);
     }, ms);
   }
 
