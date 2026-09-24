@@ -2908,10 +2908,10 @@ window.WPS_DATA = {
       "2026-10-10::b_1790247474216_u1p8",
       "2026-10-10::Workshop Day"
     ],
-    "paymentScheduleType": "503020",
+    "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 0,
-    "syncedAt": 0
+    "updatedAt": 1790257919972,
+    "syncedAt": 1790257919972
   },
   "INVITE_CODES": [
     {
@@ -2990,38 +2990,38 @@ window.WPS_DATA = {
   "PACKAGES": [
     {
       "id": "pkg_1",
-      "name": "Basic Test / Comp Card",
+      "name": "Comp Card Starter",
       "price": 7000,
-      "specs": "20 proofs + 0 retouched photos (No RAW files delivered)"
+      "specs": "20 proofs + 2 retouched photos (RAW files not included)"
     },
     {
       "id": "pkg_2",
       "name": "Mini Portfolio",
       "price": 10000,
-      "specs": "25 proofs + 3–5 retouched photos (No RAW files delivered)"
+      "specs": "25 proofs + 3–5 retouched photos (RAW files not included)"
     },
     {
       "id": "pkg_3",
       "name": "Standard Editorial Portfolio",
       "price": 25000,
-      "specs": "50 proofs + 8–12 retouched photos (No RAW files delivered)"
+      "specs": "50 proofs + 8–12 retouched photos (RAW files not included)"
     },
     {
       "id": "pkg_4",
       "name": "Premium Brand Campaign",
       "price": 50000,
-      "specs": "100 proofs + 15–25 retouched photos (No RAW files delivered)"
+      "specs": "100 proofs + 15–25 retouched photos (RAW files not included)"
     },
     {
       "id": "pkg_5",
       "name": "High-End Full Day Production",
       "price": 75000,
-      "specs": "Full proof gallery + 30+ retouched photos (No RAW files delivered)"
+      "specs": "Full proof gallery + 30+ retouched photos (RAW files not included)"
     }
   ],
   "TFP_PACKAGE": {
     "name": "Test Shoot / TFP Collaboration",
-    "specs": "Full proof gallery + 8 retouched photos (No RAW files delivered)"
+    "specs": "Full proof gallery + 8 retouched photos (RAW files not included)"
   },
   "HOME_STUDIO_RATE": 2000,
   "PORTFOLIO_PDF": {
@@ -3100,8 +3100,8 @@ window.WPS_DATA = {
   "SETTINGS_AT": {
     "INVITE_CODES": 1789975069138,
     "PROMO_CODES": 1790252591623,
-    "PACKAGES": 1790252591623,
-    "TFP_PACKAGE": 1790252591623,
+    "PACKAGES": 1790257919972,
+    "TFP_PACKAGE": 1790257919972,
     "HOME_STUDIO_RATE": 1789975069138,
     "PORTFOLIO_PDF": 1790239875077,
     "HOME_STUDIO_RATE_TFP": 1789975069138

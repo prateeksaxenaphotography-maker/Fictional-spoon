@@ -477,3 +477,87 @@ window.WPS_CONTRACT_ARCHIVE["V3.7-TFP"].status = "Archived - superseded by V3.8-
 
 window.WPS_CONTRACT_ARCHIVE["V3.6-TFP"].effectiveDate = "September 2026 (superseded by V3.7-TFP)";
 window.WPS_CONTRACT_ARCHIVE["V3.6-TFP"].status = "Archived — superseded by V3.7-TFP (test-shoot travel radius 10 km)";
+
+/* ── V3.12 (24 Sep 2026) ──────────────────────────────────────────────────
+   The Sep 2026 audit found the contract clients tick disagreeing with the
+   booking page it sits on. The owner settled each point, and V3.12 says it
+   once:
+   - payment: packages are 50/50; campaigns follow their written proposal;
+   - cancellation: 24 hours' notice moves the advance to a new date (up to two
+     moves); less notice or a no-show keeps it; if the Studio cancels, a new
+     date or a full refund;
+   - usage: a package covers the client's own website, social media,
+     portfolio and comp cards; print, outdoor, TV and paid advertising need a
+     separate written licence; campaigns agree usage in their proposal;
+   - RAW: not included, can be bought (unchanged), and clause 5 no longer
+     calls the raw captures the Studio's for ever regardless;
+   - a client who books for themselves gives the Studio permission to show
+     the pictures in its portfolio, withdrawable at any time (there was none);
+   - the parties are named, with governing law, a liability limit and a
+     force-majeure line; ID for an unaccompanied young participant is checked
+     by video call or in person, never emailed; the test-shoot injury waiver
+     no longer covers the Studio's own negligence; retouched counts come from
+     the booking rather than a fixed "8 to 12"; TikTok is gone.
+   A new version, because every one of these changes what a signer agreed to.
+   Composed off V3.11 with .replace(); a sentence that fails to match is
+   recorded in WPS_CONTRACT_COMPOSE_MISSES so a test can prove none did. */
+(() => {
+  const A = window.WPS_CONTRACT_ARCHIVE;
+  const misses = (window.WPS_CONTRACT_COMPOSE_MISSES = window.WPS_CONTRACT_COMPOSE_MISSES || []);
+  const swap = (label, text, pairs) => pairs.reduce((t, [from, to]) => {
+    if (!t.includes(from)) { misses.push(`${label}: ${from.slice(0, 60)}`); return t; }
+    return t.replace(from, to);
+  }, text);
+
+  const CANCEL_PAID = "\nCancelling with less notice than that, or not arriving, means the advance retainer is kept. If the Studio has to cancel the session, the Client is offered a new date or a full refund of everything paid for it, at the Client's choice.";
+  const PORTFOLIO_USE = (who) => `PORTFOLIO USE OF THE PHOTOGRAPHS\nWhere the ${who} made this booking themselves, they agree that the Studio may show the photographs in its own portfolio, on its website and on its social media, with credit. They may withdraw this at any time by email, and the Studio then removes the photographs from its own website and social media. Where the booking is made for someone else, or by an agency or a company, the sections below apply instead.\n\n`;
+  const PARTIES = (who) => `\n\nTHE PARTIES, LIABILITY & GOVERNING LAW\nThe Studio is Prateek Saxena, trading as nerdyphotographer.in, Sector 46, Noida, Uttar Pradesh. The Studio's total liability arising from a session, including for lost or damaged files, is limited to the amount the ${who} paid for that session. Neither party is responsible for a failure caused by events beyond its reasonable control, such as severe weather, illness or government restrictions; the session is then rescheduled, or refunded if it cannot be. This agreement is governed by the laws of India, and the courts at Gautam Buddh Nagar (Noida), Uttar Pradesh have jurisdiction.`;
+  const ID_OLD = "and enclose a government-issued photographic identity document of the sender.";
+  const ID_NEW = "and come from an adult the Studio can identify: the Studio may ask to see the sender's photographic ID on a short video call or in person, and identity documents should not be emailed.";
+
+  A["V3.12-COMMERCIAL"] = {
+    version: "V3.12-COMMERCIAL",
+    title: "Commercial Shoot & Release Agreement V3.12 (Paid Shoots)",
+    effectiveDate: "September 2026 - Present",
+    status: "Active / Current (Paid Commercial)",
+    summary: "Paid shoots. Packages are paid 50% before the shoot and 50% before the final files; campaigns follow their written proposal. Moving the shoot with 24 hours' notice carries the advance to the new date (up to two moves); less notice or a no-show keeps it; if the Studio cancels, a new date or a full refund. A package covers the Client's own website, social media, portfolio and comp cards; print, outdoor, TV and paid advertising are licensed separately in writing. RAW files are not included and can be bought. A client booking for themselves lets the Studio show the pictures in its portfolio, withdrawable at any time. Names the Studio, limits its liability to the fee paid, adds force majeure and Indian law with Noida courts. Keeps the grace period, home-studio cap of three, booking-on-behalf and guardian terms, revisions and file retention.",
+    fullText: swap("V3.12-COMMERCIAL", A["V3.11-COMMERCIAL"].fullText, [
+      ["Package rates cover photography creation, light design & master retouched deliverables. Standard bookings require a 50% advance retainer prior to shoot day start (non-refundable) and 50% final balance after shoot wrap prior to receiving downloadable master files (non-refundable). Commercial campaign bookings follow a 50/30/20 milestone structure.",
+       "Package rates cover photography creation, light design and the retouched photographs specified in the tier booked. Package bookings are paid in two parts: a 50% advance retainer before the shoot day, which holds the date, and the 50% balance after the shoot, before the final files are sent. Campaign and production bookings follow the milestone schedule set out in their written proposal, the last part again due before the final files are sent. The advance retainer is not refunded, except as set out in clause 7 and where the Studio cancels."],
+      ["2. COMMERCIAL USAGE RIGHTS & INTELLECTUAL PROPERTY", "2. USAGE RIGHTS & INTELLECTUAL PROPERTY"],
+      ["The Client is granted full commercial usage rights for digital advertising, website grids, social media campaigns, print catalogues, and brand marketing as specified in the agreed project scope.",
+       "For a package booking, the Client may use the final photographs on their own website and social media, in their own portfolio and on comp cards, crediting the Studio where the platform allows. Print, outdoor, television and paid advertising use is not included and needs a separate written licence from the Studio. For a campaign or production booking, the media, territory and period of use are those agreed in writing in its proposal."],
+      ["All camera bodies, lenses, memory cards, tethering systems, and digital raw captures remain the exclusive physical and intellectual property of the Studio.",
+       "All camera bodies, lenses, memory cards and tethering systems belong to the Studio, and the raw captures remain the Studio's property unless bought out under clause 2."],
+      ["7. CALL TIME, GRACE PERIOD, LATE ARRIVAL & NO-SHOW", "7. CANCELLATION, CALL TIME, LATE ARRIVAL & NO-SHOW"],
+      ["the advance retainer carries over to the rescheduled date — up to a maximum of two reschedules.",
+       "the advance retainer carries over to the rescheduled date — up to a maximum of two reschedules." + CANCEL_PAID],
+      ["BOOKING ON BEHALF OF ANOTHER PERSON\n", PORTFOLIO_USE("Client") + "BOOKING ON BEHALF OF ANOTHER PERSON\n"],
+      [ID_OLD, ID_NEW]
+    ]) + PARTIES("Client")
+  };
+
+  A["V3.12-TFP"] = {
+    version: "V3.12-TFP",
+    title: "Test Shoot & TFP Liability Release V3.12 (Test Shoots)",
+    effectiveDate: "September 2026 - Present",
+    status: "Active / Current (Test Shoot / TFP)",
+    summary: "Test shoots unlocked by an invite code. No shoot fee; any studio rental is quoted in advance and paid before the shoot day. The retouched photographs are the number stated in the booking; RAW files are not included and can be bought. Personal, non-commercial use with Instagram co-author credit. Moving the shoot with 24 hours' notice forfeits nothing (up to two moves); less notice or a no-show keeps what was paid; if the Studio cancels, a new date or a full refund. The participant lets the Studio show the pictures in its portfolio, withdrawable at any time. The injury waiver excludes the Studio's own negligence. Names the Studio, limits its liability to the amount paid, adds force majeure and Indian law with Noida courts. Keeps the 60-minute grace period, home-studio cap of three, booking-on-behalf and guardian terms, revisions and file retention.",
+    fullText: swap("V3.12-TFP", A["V3.11-TFP"].fullText, [
+      ["Standard packages include web gallery access for online proofing and 8 to 12 Retouched Master Clicks.",
+       "The session includes web gallery access for online proofing and the number of retouched photographs stated in the booking."],
+      ["(Instagram/TikTok)", "(Instagram, YouTube and similar)"],
+      ["  👤 Model / Talent: @[Handle]", "  👤 Model / Talent: @ followed by the Participant's own handle"],
+      ["The Studio is not liable for injuries or clothing damage.", "The Studio is not liable for injuries or clothing damage, except where caused by the Studio's own negligence."],
+      ["up to a maximum of two reschedules; beyond that the invite lapses.",
+       "up to a maximum of two reschedules; beyond that the invite lapses. Cancelling with less notice than that, or not arriving, means any home studio rental or other amount already paid is kept. If the Studio has to cancel, the Participant is offered a new date or a full refund of anything paid for the session."],
+      ["BOOKING ON BEHALF OF ANOTHER PERSON\n", PORTFOLIO_USE("Participant") + "BOOKING ON BEHALF OF ANOTHER PERSON\n"],
+      [ID_OLD, ID_NEW]
+    ]) + PARTIES("Participant")
+  };
+
+  A["V3.11-COMMERCIAL"].effectiveDate = "September 2026 (superseded by V3.12)";
+  A["V3.11-COMMERCIAL"].status = "Archived - superseded by V3.12 (50/50 packages, one cancellation rule, own-channel usage, portfolio permission, parties and law)";
+  A["V3.11-TFP"].effectiveDate = "September 2026 (superseded by V3.12-TFP)";
+  A["V3.11-TFP"].status = "Archived - superseded by V3.12-TFP (one cancellation rule, portfolio permission, negligence carve-out, parties and law)";
+})();

@@ -3134,7 +3134,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     const parsePrice = (s) => { const m = String(s || "").replace(/,/g, "").match(/₹\s*(\d+)/); return m ? Number(m[1]) : null; };
     const packages = ((typeof getAdminPackages === "function" && getAdminPackages()) || []).filter((p) => p && p.name);
     const tfpPkg = (typeof getAdminTfpPackage === "function" && getAdminTfpPackage()) || {};
-    const tfpSpecs = String(tfpPkg.specs || "").replace(/\s*\(No RAW files delivered\)\s*$/i, "").trim() || "Full Proofing Gallery + 8 to 12 Retouched Master Clicks";
+    const tfpSpecs = String(tfpPkg.specs || "").replace(/\s*\((No RAW files delivered|RAW files not included)\)\s*$/i, "").trim() || "Full proof gallery + 8 retouched photos";
     const pkgValue = (p) => `₹${Number(p.price).toLocaleString("en-IN")} (${p.name})`;
     const promoCodes = (typeof window.getAdminPromoCodes === "function" && window.getAdminPromoCodes()) || {};
     const describePromo = (e) => {
@@ -3588,7 +3588,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     const discountAmt = Math.max(0, Number(data.discountAmount) || 0);
     const discountLabel = String(data.discountLabel || "").trim();
     const discountNote = discountLabel ? ` (${esc(discountLabel)})` : "";
-    const tfpSpecs = String(data.tfpSpecs || (typeof getAdminTfpPackage === "function" && getAdminTfpPackage().specs) || "Full Proofing Gallery + 8 to 12 Retouched Master Clicks").replace(/\s*\(No RAW files delivered\)\s*$/i, "");
+    const tfpSpecs = String(data.tfpSpecs || (typeof getAdminTfpPackage === "function" && getAdminTfpPackage().specs) || "Full proof gallery + 8 retouched photos").replace(/\s*\((No RAW files delivered|RAW files not included)\)\s*$/i, "");
     const tfpPaymentHtml = studioByPhotographer
       ? `No shoot fee applies to this collaboration. The venue is provided by the Studio — <strong>nothing is payable</strong> for this session.`
       : rentalFee > 0

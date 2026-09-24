@@ -54,7 +54,7 @@
 // studio's own reasons for agreeing to one.
 const TEST_SHOOT_FAQ = [
   "When does a test shoot (or collaboration) make sense?",
-  "A test shoot has no shoot fee, so it has to be worth everyone's time. It assumes you can already direct yourself in front of a camera — needing to be taught is what makes a shoot a booking rather than a collaboration. On top of that, it makes sense when you bring at least one of these:",
+  "A test shoot has no shoot fee (if it uses the home studio, the room is charged, and shown in your quote), so it has to be worth everyone's time. It assumes you can already direct yourself in front of a camera — needing to be taught is what makes a shoot a booking rather than a collaboration. On top of that, it makes sense when you bring at least one of these:",
   [
     "A designer outfit, or a garment you designed, that lifts the look of the pictures for the photographer and everyone else on the team.",
     "Creative hair or make-up — a look the model and the photographer will both enjoy shooting.",
@@ -158,8 +158,8 @@ export const SERVICES = [
     faqs: [
       ["Can you shoot for a magazine submission?", "Yes. Shoots are planned around the publication's requirements, and full team credits are delivered with the images."],
       ["Do you arrange the stylist and the hair and make-up artist?", "Bring your own team, or ask when you send the brief and the studio will help you put one together. Every credit is published alongside the album."],
-      ["Do you shoot outside Noida?", "Yes — across Delhi NCR as standard, and further for a planned production."],
-      ["Do I receive the RAW files?", "No. You receive a proofing gallery and the retouched final images listed in your package."],
+      ["Do you shoot outside Noida?", "Yes — anywhere in Delhi NCR, and further for a planned production. Travel beyond 20 km of the studio in Sector 46, Noida is added at cost."],
+      ["Do I receive the RAW files?", "Not as part of a package — you receive a proofing gallery and the retouched final images listed in it. RAW files can be bought separately; ask."],
       ["When can I book?", "Shoots run on weekends. The booking page shows the dates that are open."]
     ]
   },
@@ -324,7 +324,7 @@ export const SERVICES = [
       ["How much does a creative shoot cost?", "The booking page lists the set tiers and a smaller idea usually fits one. Past that it is quoted to the brief — one portrait idea in the studio and a two-location shoot with a team are not the same job, so the price follows what the idea needs: looks, locations, people, shooting hours and finished images. Send the idea through the booking page and you will have a price written against it before anything is booked."],
       ["Who else needs to be on the shoot?", "Whoever the idea needs, and often nobody. Bring your own stylist, hair and make-up artist or performers if you have them, or ask when you send the idea and the studio will help put a small team together. Everyone involved is credited on the finished work."],
       ["Is this a TFP or collaboration shoot?", "No. A creative shoot is quoted and booked like any other. A collaboration means two experienced people bringing equal value to the same shoot, it happens occasionally, and it is by invitation only — if you have been given an invite code, enter it on the booking page."],
-      ["When can I book, and what do I get?", "Shoots run on weekends, in the home studio in Noida or on location across Delhi NCR when the idea needs a real place, and the booking page shows the dates that are open. Afterwards you get a proofing gallery to choose from and your selects retouched. RAW files are not delivered, and the shoot is covered by a written contract signed online."]
+      ["When can I book, and what do I get?", "Shoots run on weekends, in the home studio in Noida or on location across Delhi NCR when the idea needs a real place, and the booking page shows the dates that are open. Afterwards you get a proofing gallery to choose from and your selects retouched. RAW files aren't included (they can be bought separately), and the shoot is covered by a written contract signed online."]
     ]
   }
 ];

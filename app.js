@@ -312,7 +312,7 @@ window.getAdminInviteCode = function() {
 // prices are NOT treated as quotable — see pricesArePublished(): a booking is
 // taken without a quote rather than at a figure that may not be the studio's.
 const DEFAULT_PACKAGES = [
-  { id: "pkg_1", name: "Basic Test / Comp Card", price: 7000, specs: "20 proofs + 0 retouched photos" },
+  { id: "pkg_1", name: "Comp Card Starter", price: 7000, specs: "20 proofs + 2 retouched photos" },
   { id: "pkg_2", name: "Mini Portfolio", price: 10000, specs: "25 proofs + 3–5 retouched photos" },
   { id: "pkg_3", name: "Standard Editorial Portfolio", price: 25000, specs: "50 proofs + 8–12 retouched photos" },
   { id: "pkg_4", name: "Premium Brand Campaign", price: 50000, specs: "100 proofs + 15–25 retouched photos" },
@@ -386,17 +386,17 @@ const PACKAGE_SCHEDULES = {
     quoteSteps: ["Step 2 · 50% Wrap Balance (Prior to Deliverables)"],
     emailLegs: ["Balance {amt} at wrap, before any file is released"],
     short: "50% before the shoot · 50% before delivery",
-    contract: "Standard 50/50 Milestones (50% Advance Retainer before shoot day start [non-refundable]; 50% Final Balance after shoot wrap prior to receiving any downloadable file [non-refundable])",
-    sheet: "50% advance retainer before the shoot day (non-refundable), 50% final balance after wrap and before any downloadable file (non-refundable)",
+    contract: "Standard 50/50 Milestones (50% Advance Retainer before the shoot day [moves to a new date if rescheduled at least 24 hours ahead, otherwise kept]; 50% Final Balance after the shoot, before the final files are sent)",
+    sheet: "50% advance retainer before the shoot day (moves to a new date if rescheduled at least 24 hours ahead, otherwise kept), 50% balance after the shoot and before the final files are sent",
     release: "Deliverables are released only after the final milestone is cleared.",
-    pdf: "Standard 50/50 Milestones (50% Advance Retainer prior to shoot start [non-refundable]; 50% Final Balance prior to file download [non-refundable])."
+    pdf: "Standard 50/50 Milestones (50% Advance Retainer before the shoot day; 50% Balance before the final files are sent)."
   },
   "503020": {
     label: "50 / 30 / 20",
     legs: [50, 30, 20],
     quoteSteps: ["Step 2 · 30% Review Milestone (After Shoot)", "Step 3 · 20% Final Deliverables"],
     emailLegs: ["Review milestone {amt} after the shoot", "Final release {amt} before download"],
-    short: "50% before the shoot · 30% at wrap · 20% on delivery",
+    short: "50% before the shoot · 30% after it · 20% before the final files",
     contract: "3-Tier Campaign Milestones (50% Advance Retainer before shoot day start [non-refundable]; 30% Review Milestone after shoot before proofing gallery [non-refundable]; 20% Final Release prior to receiving any downloadable file)",
     sheet: "50% advance retainer before the shoot day (non-refundable), 30% review milestone after the shoot and before the proofing gallery (non-refundable), 20% final release before any downloadable file",
     release: "Deliverables are released only after the final milestone is cleared.",
@@ -672,7 +672,7 @@ window.getAdminPackages = getAdminPackages;
 // setting), but a name and a deliverables line the studio can edit in the
 // same panel as the paid tiers. Same resolution order as the tiers —
 // this device's draft, then what is published, then the default.
-const DEFAULT_TFP_PACKAGE = { name: "Test Shoot / TFP Collaboration", specs: "Full Proofing Gallery + 8 to 12 Retouched Master Clicks (No RAW files delivered)" };
+const DEFAULT_TFP_PACKAGE = { name: "Test Shoot / TFP Collaboration", specs: "Full proof gallery + 8 retouched photos (RAW files not included)" };
 function getAdminTfpPackage() {
   const clean = (o) => (o && typeof o === "object") ? { name: String(o.name || "").trim() || DEFAULT_TFP_PACKAGE.name, specs: String(o.specs || "").trim() || DEFAULT_TFP_PACKAGE.specs } : null;
   try { const saved = localStorage.getItem("wps_tfp_package"); if (saved) { const c = clean(JSON.parse(saved)); if (c) return c; } } catch(e) {}
@@ -688,7 +688,7 @@ window.getAdminTfpPackage = getAdminTfpPackage;
    opening the Calendar view. Defined inside a view function, the archive
    simply did not exist on those paths.
    ============================================================ */
-window.ACTIVE_CONTRACTS = { commercial: "V3.11-COMMERCIAL", tfp: "V3.11-TFP" };
+window.ACTIVE_CONTRACTS = { commercial: "V3.12-COMMERCIAL", tfp: "V3.12-TFP" };
 
 /* ============================================================
    § CALL TIME, GRACE PERIOD & NO-SHOW
@@ -6100,6 +6100,7 @@ window.resolveContractArchive = function(version) {
                     inferred from your job. A makeup artist may well be booking
                     a shoot of themselves, and reading it off the Role dropdown
                     made the form demand a second person's details from them. -->
+               <label class="check-line" id="b_adult_line"><input type="checkbox" id="b_adult" /><span>I am 18 or over *</span></label>
                <label class="check-line" id="b_onbehalf_line"><input type="checkbox" id="b_onbehalf" /><span>I am booking on behalf of someone else — they are being photographed, not me</span></label>
                <div class="field-row">
                  <label class="field"><span>Email Address *</span><input id="b_email" type="email" required placeholder="name@example.com" /></label>
@@ -6123,7 +6124,7 @@ window.resolveContractArchive = function(version) {
                  <p class="subject-lede" id="b_subject_lede"><strong>Who is being photographed?</strong> You are booking for someone else, so we need their details as well as yours. They are named on the contract and sent their own release — their pictures, their say.</p>
                  <div class="field-row">
                    <label class="field"><span>Their full name *</span><input id="b_subject_name" type="text" placeholder="The person in front of the camera" /></label>
-                   <label class="field"><span>Their email *</span><input id="b_subject_email" type="email" placeholder="name@example.com" /></label>
+                   <label class="field"><span id="b_subject_email_label">Their email *</span><input id="b_subject_email" type="email" placeholder="name@example.com" /></label>
                  </div>
                  <!-- The hint sits under the whole row, not under the email.
                       Inside the cell it made that column taller than the one
@@ -6472,7 +6473,7 @@ window.resolveContractArchive = function(version) {
                   <div id="summaryReservationCard" style="display: none; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: var(--font-xs);">
                     <span style="color: var(--ink-soft); display: block; font-size: var(--font-xs); text-transform: uppercase;">Home studio rental · paid in full up front</span>
                     <strong id="summaryReservationAmount" style="color: var(--accent-text); font-size: var(--font-sm); font-family: var(--mono-font);">₹0</strong>
-                    <span style="color: var(--ink-soft); display: block; margin-top: 4px; line-height: 1.5;">Payable <strong style="color: var(--ink);">in full</strong> at least 48 hours before the shoot day to reserve the home studio. <strong style="color: #e07a5f;">Non-refundable.</strong></span>
+                    <span style="color: var(--ink-soft); display: block; margin-top: 4px; line-height: 1.5;">Payable <strong style="color: var(--ink);">in full</strong> before the shoot day to reserve the home studio. Moves to a new date if you reschedule at least 24 hours ahead; otherwise it is kept.</span>
                   </div>
                 </div>
 
@@ -6503,7 +6504,7 @@ window.resolveContractArchive = function(version) {
                    <li id="policyLateArrival" style="display: none; gap: 10px; align-items: flex-start; font-size: var(--font-xs); line-height: 1.55; color: var(--ink-soft);"><span aria-hidden="true" style="flex: 0 0 20px; font-size: var(--font-sm); line-height: 1.4;">⏰</span><span id="policyLateArrivalText"></span></li>
                    <li style="display: flex; gap: 10px; align-items: flex-start; font-size: var(--font-xs); line-height: 1.55; color: var(--ink-soft);">
                      <span aria-hidden="true" style="flex: 0 0 20px; font-size: var(--font-sm); line-height: 1.4;">🔒</span>
-                     <span><strong style="color: var(--ink);">Camera &amp; Media Protection:</strong> All camera equipment, memory cards, and raw captures are strictly confidential studio property. Participants may not touch equipment or delete media from cameras. Unauthorized file deletion constitutes a material breach of contract and incurs full data recovery costs.</span>
+                     <span><strong style="color: var(--ink);">Camera &amp; Media Protection:</strong> Please don't handle the studio's equipment or delete anything from its cameras or cards. The raw captures stay the studio's unless bought out.</span>
                    </li>
                  </ul>
                  </div>
@@ -6540,14 +6541,14 @@ window.resolveContractArchive = function(version) {
                 <div id="flowchart2Step" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 18px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; margin-bottom: 6px;">STEP 1 · 50% ADVANCE RETAINER</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">48 hours before shoot start</h4>
-                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid at least 48 hours before the shoot day to reserve studio space, schedule the crew, and lock calendar availability (unless explicitly discussed with the team). <strong>Mandatory prior to shoot start.</strong> <strong style="color: var(--danger-text);">(Non-refundable)</strong></p>
+                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">Before the shoot day</h4>
+                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid before the shoot day to hold the date. <strong>Moves to a new date if you reschedule at least 24 hours ahead; otherwise it is kept.</strong></p>
                   </div>
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 18px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #2e7d32; text-transform: uppercase; margin-bottom: 6px;">STEP 2 · 50% FINAL BALANCE</div>
                     <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">After the shoot · before any file is delivered</h4>
-                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid upon completion of the shoot session, prior to receiving any downloadable preview or retouched final deliverable file. <strong style="color: var(--danger-text);">(Non-refundable)</strong></p>
+                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid after the shoot, before the final files are sent.</p>
                   </div>
                 </div>
 
@@ -6555,14 +6556,14 @@ window.resolveContractArchive = function(version) {
                 <div id="flowchart3Step" style="display: none; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px;">
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; margin-bottom: 6px;">STEP 1 · 50% ADVANCE RETAINER</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">48 hours before shoot start</h4>
-                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid at least 48 hours before the shoot day to lock studio date and reserve production crew (unless explicitly discussed with the team). <strong>Mandatory prior to shoot start.</strong> <strong style="color: var(--danger-text);">(Non-refundable)</strong></p>
+                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">Before the shoot day</h4>
+                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid before the shoot day to hold the date and the crew. <strong>Moves to a new date if you reschedule at least 24 hours ahead; otherwise it is kept.</strong></p>
                   </div>
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--warn-text); text-transform: uppercase; margin-bottom: 6px;">STEP 2 · 30% REVIEW MILESTONE</div>
                     <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">After the shoot · proofing gallery</h4>
-                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid after shoot wrap, before receiving the watermarked proofing gallery to select retouches. <strong style="color: var(--danger-text);">(Non-refundable)</strong></p>
+                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid after shoot wrap, before receiving the proofing gallery to select retouches. <strong style="color: var(--danger-text);">(Non-refundable)</strong></p>
                   </div>
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
@@ -6575,14 +6576,14 @@ window.resolveContractArchive = function(version) {
                 <div id="flowchart4Step" style="display: none; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px;">
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; margin-bottom: 6px;">STEP 1 · 50% ADVANCE RETAINER</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">48 hours before shoot start</h4>
-                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid at least 48 hours before the shoot day to lock studio date and reserve production crew (unless explicitly discussed with the team). <strong>Mandatory prior to shoot start.</strong> <strong style="color: var(--danger-text);">(Non-refundable)</strong></p>
+                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">Before the shoot day</h4>
+                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid before the shoot day to hold the date and the crew. <strong>Moves to a new date if you reschedule at least 24 hours ahead; otherwise it is kept.</strong></p>
                   </div>
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--warn-text); text-transform: uppercase; margin-bottom: 6px;">STEP 2 · 30% REVIEW MILESTONE</div>
                     <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">After the shoot · proofing gallery</h4>
-                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid after shoot wrap, before receiving the watermarked proofing gallery to select retouches. <strong style="color: var(--danger-text);">(Non-refundable)</strong></p>
+                    <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid after shoot wrap, before receiving the proofing gallery to select retouches. <strong style="color: var(--danger-text);">(Non-refundable)</strong></p>
                   </div>
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
@@ -6610,7 +6611,7 @@ window.resolveContractArchive = function(version) {
                    <p id="termsModalSubtitle" style="margin: 0; font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent-text); text-transform: uppercase; letter-spacing: 0.05em;">TFP Collaboration, Model Release &amp; Digital Consent Terms</p>
                    
                    <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 14px; font-size: var(--font-xs); display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px;">
-                     <div><strong>Studio/Photographer:</strong> nerdyphotographer.in</div>
+                     <div><strong>Studio:</strong> Prateek Saxena (nerdyphotographer.in), Sector 46, Noida</div>
                      <div><strong id="termsPartnerLabel">Model:</strong> <span id="terms_partner_name">[Your Name]</span></div>
                      <div><strong>Business Handle:</strong> @nerdyphotographer.in</div>
                      <div><strong>Agreement:</strong> by the tick-box below, recorded in your confirmation email</div>
@@ -6630,7 +6631,7 @@ window.resolveContractArchive = function(version) {
                      <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; background: var(--bone); border: 1.5px solid var(--accent); border-radius: 8px; padding: 14px;">
                        <input type="checkbox" id="termsAgreeCheckbox" style="width: 20px; height: 20px; margin-top: 2px; accent-color: var(--accent-text); cursor: pointer;" />
                        <span style="font-size: var(--font-xs); color: var(--ink); line-height: 1.5; font-weight: 600;">
-                         I have read, understood, and agree to the <strong id="termsAgreeVersionLabel">Studio Terms &amp; Conditions</strong> and <strong>Model Release Agreement</strong>.
+                         I have read, understood, and agree to the <strong id="termsAgreeVersionLabel">Studio Terms &amp; Conditions</strong>, including permission for the studio to show the photographs in its portfolio.
                        </span>
                      </label>
                    </div>
@@ -6654,13 +6655,13 @@ window.resolveContractArchive = function(version) {
 
             <div id="gearProtectionCallout" style="background: rgba(178,34,34,0.05); border: 1px solid rgba(178,34,34,0.3); border-radius: 10px; padding: 18px; margin-bottom: 20px; text-align: left;">
              <div style="display: flex; align-items: center; gap: 8px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--danger-text); margin-bottom: 10px;">
-               Unauthorised data deletion &amp; gear clause
+               Camera &amp; memory cards (contract clause 5)
              </div>
              <p style="font-size: var(--font-xs); color: var(--ink); margin: 0 0 8px; line-height: 1.5; font-weight: 500;">
-               "All raw captures, memory cards, and camera equipment remain the exclusive property and intellectual property of the Studio. Under no circumstances is a model, participant, or client permitted to touch, handle, or delete media from the photographer's camera, cards, or tethering systems."
+               Please don't handle the studio's cameras, cards or tethering, or delete anything from them. The equipment belongs to the studio, and the raw captures stay the studio's unless you buy them out.
              </p>
              <p style="font-size: var(--font-xs); color: var(--ink); margin: 0; line-height: 1.5; font-weight: 500;">
-               "The Studio retains sole artistic authority over image culling, selection, and deletion. Deleting or attempting to delete media from equipment constitutes a material breach of contract, resulting in immediate termination of the shoot, forfeiture of all deliverables, and potential liability for data recovery expenses."
+               The studio makes the final choice of which frames are culled and retouched, within what your package includes.
              </p>
            </div>
 
@@ -6885,6 +6886,7 @@ window.resolveContractArchive = function(version) {
       $("#" + id)?.addEventListener("input", () => clearError(id));
     });
     $("#b_authorised")?.addEventListener("change", () => clearError("b_authorised"));
+    $("#b_adult")?.addEventListener("change", () => clearError("b_adult"));
     document.querySelectorAll('input[name="b_studio_arranger"]').forEach((r) => {
       r.addEventListener("change", () => clearError("b_studio_arranger_client"));
     });
@@ -7417,12 +7419,20 @@ window.resolveContractArchive = function(version) {
         // at all, and there the release has to come from the person.
         const bookerIsCompany = role === "Agency" || role === "Brand";
         subjectBlock.hidden = !onBehalf;
+        const adultLine = $("#b_adult_line");
+        if (adultLine) adultLine.hidden = onBehalf;
         const minor = !!$("#b_subject_minor")?.checked;
         const guardianBlock = $("#b_guardian_block");
         if (guardianBlock) guardianBlock.hidden = !(onBehalf && minor);
         const need = (id, on) => { const el = $("#" + id); if (el) el.required = !!on; };
         need("b_subject_name", onBehalf);
-        need("b_subject_email", onBehalf);
+        // Their own email is needed only where the release goes to them: not
+        // for someone under 18 (who may not have one — it goes to the guardian)
+        // and not where an agency or brand holds the rights (user, 24 Sep 2026).
+        const subjectEmailNeeded = onBehalf && !minor && !bookerIsCompany;
+        need("b_subject_email", subjectEmailNeeded);
+        const subjectEmailLabel = $("#b_subject_email_label");
+        if (subjectEmailLabel) subjectEmailLabel.textContent = subjectEmailNeeded ? "Their email *" : "Their email (optional)";
         need("b_authorised", onBehalf);
         need("b_guardian_name", onBehalf && minor);
         need("b_guardian_email", onBehalf && minor);
@@ -7455,14 +7465,14 @@ window.resolveContractArchive = function(version) {
         if (type === "Selective Collaboration (TFP)") {
           policyNotice.innerHTML = `
             <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">TFP Collaboration &amp; Test Shoot Policy</span>
-            Submission of a TFP collaboration request does not constitute a confirmed session or a commitment to shoot. All inquiries are subject to schedule availability, creative alignment, and final studio review. <strong>Note: If a dedicated studio space is booked for the shoot, applicable studio rental charges will apply.</strong> TFP shoots include a Full Proofing Gallery + 8 to 12 Retouched Master Clicks. RAW unedited camera files are strictly excluded and remain unreleased. <strong>⏰ Call time &amp; no-show:</strong> ${window.buildLateArrivalSummary(true)}
+            Submission of a TFP collaboration request does not constitute a confirmed session or a commitment to shoot. All inquiries are subject to schedule availability, creative alignment, and final studio review. <strong>Note: If a dedicated studio space is booked for the shoot, applicable studio rental charges will apply.</strong> Test shoots include a proofing gallery and ${esc(String(getAdminTfpPackage().specs || "").replace(/\s*\((No RAW files delivered|RAW files not included)\)\s*$/i, ""))}. RAW files aren't included — they can be bought separately; ask. <strong>⏰ Call time &amp; no-show:</strong> ${window.buildLateArrivalSummary(true)}
           `;
         } else {
           policyNotice.innerHTML = `
             <span style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Commercial Production &amp; Studio Protection Policy</span>
-            <strong>🔒 Booking &amp; Retainer Terms:</strong> 50% advance retainer reserves studio space &amp; production crew (non-refundable). Cancellations within 48h forfeit advance retainer.<br/>
-            <strong>📦 Deliverables &amp; Full Gallery Buyout:</strong> Packages include a proofing gallery to select contracted retouches. If the client requests the complete full unedited image gallery or additional retouched master clicks beyond the package limit, extra buyout charges apply. RAW unedited camera files remain confidential studio property.<br/>
-            <strong>📜 Usage Licensing:</strong> Rates cover digital web &amp; social media usage. Extended billboard, TV, print, or commercial advertising rights require separate usage licensing.<br/>
+            <strong>🔒 Booking &amp; Retainer Terms:</strong> the 50% advance retainer holds your date. Move the shoot at least 24 hours before call time and it carries to the new date (up to two moves); with less notice, or a no-show, it is kept. If I have to cancel, you get a new date or a full refund.<br/>
+            <strong>📦 Deliverables &amp; Full Gallery Buyout:</strong> Packages include a proofing gallery to select contracted retouches. If the client requests the complete full unedited image gallery or additional retouched master clicks beyond the package limit, extra buyout charges apply. RAW files aren't included — they can be bought separately; ask.<br/>
+            <strong>📜 Usage:</strong> your package covers your own website, social media, portfolio and comp cards. Print, outdoor, TV and paid advertising need a separate written licence.<br/>
             <strong>⏰ Call Time &amp; No-Show:</strong> ${window.buildLateArrivalSummary(false)}
           `;
         }
@@ -7500,7 +7510,7 @@ window.resolveContractArchive = function(version) {
                 Peer-to-peer collaboration session for portfolio growth &amp; creative curation. Submissions are reviewed at studio discretion based on creative brief alignment and schedule availability.
               </p>
               <div style="font-family: var(--mono-font); font-size: var(--font-xs); color: #059669; font-weight: 700; background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.2); border-radius: 6px; padding: 6px 10px; margin-top: 6px;">
-                🎁 <strong>Contracted Deliverables:</strong> Full Proofing Gallery + 8 to 12 Retouched Master Clicks (No RAW files delivered).
+                🎁 <strong>Deliverables:</strong> ${esc(getAdminTfpPackage().specs)}.
               </div>
             `;
           } else {
@@ -7974,13 +7984,13 @@ window.resolveContractArchive = function(version) {
           : (isValidInvite && lockedLocation)
             ? `Provided by the photographer at ${esc(lockedLocation)}. No rental charge to you.`
             : `If a dedicated studio is booked, the rental is quoted in advance once the venue is confirmed and payable in full before shoot day.`;
-        const tfpSpecs = ((typeof getAdminTfpPackage === "function" && getAdminTfpPackage().specs) || "Full Proofing Gallery + 8 to 12 Retouched Master Clicks").replace(/\s*\(No RAW files delivered\)\s*$/i, "");
+        const tfpSpecs = ((typeof getAdminTfpPackage === "function" && getAdminTfpPackage().specs) || "Full proof gallery + 8 retouched photos").replace(/\s*\(No RAW files delivered\)\s*$/i, "");
         policyNoticeEl.innerHTML = `
           <span class="policy-k">TFP Collaboration &amp; Test Shoot Policy</span>
           <dl class="policy-lines">
             <div><dt>Status</dt><dd>A request is not a confirmed session or a commitment to shoot. Every enquiry is subject to schedule availability, creative fit and final studio review.</dd></div>
             <div><dt>Studio</dt><dd>${studioLine}</dd></div>
-            <div><dt>Deliverables</dt><dd>${esc(tfpSpecs)}. RAW unedited camera files are not released.</dd></div>
+            <div><dt>Deliverables</dt><dd>${esc(tfpSpecs)}. RAW files aren't included — they can be bought separately.</dd></div>
             <div><dt>Travel</dt><dd>Beyond 10 km from Noida, travel is at actuals.</dd></div>
             <div><dt>Call time &amp; no-show</dt><dd>${(t => t.charAt(0).toUpperCase() + t.slice(1))(window.buildLateArrivalSummary(true))}</dd></div>
           </dl>
@@ -8849,7 +8859,7 @@ window.resolveContractArchive = function(version) {
       const onBehalfNow = !!$("#b_onbehalf")?.checked;
       const minorNow = onBehalfNow && !!$("#b_subject_minor")?.checked;
       [["b_subject_name", onBehalfNow, "Please add the name of the person being photographed."],
-       ["b_subject_email", onBehalfNow && !minorNow, "Their release goes to this address — please add it."],
+       ["b_subject_email", onBehalfNow && !minorNow && !["Agency", "Brand"].includes(val("b_role")), "Their release goes to this address — please add it."],
        ["b_guardian_name", minorNow, "Please add their parent or guardian’s name."],
        ["b_guardian_email", minorNow, "The release goes to their parent or guardian — please add their email."]
       ].forEach(([id, needed, msg]) => {
@@ -8858,6 +8868,13 @@ window.resolveContractArchive = function(version) {
         else if (needed && /email/.test(id) && !emailLooksReal(v)) { setError(id, "That email doesn't look right."); firstBad = firstBad || id; }
         else clearError(id);
       });
+      // Someone booking for themselves agrees to a contract, which in India
+      // needs an adult; under 18, a parent or guardian books for them
+      // (Sep 2026 audit, B24). The form still never asks an age.
+      if (!onBehalfNow && !$("#b_adult")?.checked) {
+        setError("b_adult", "Please confirm you are 18 or over — under 18, a parent or guardian books for you (tick “booking on behalf”).");
+        firstBad = firstBad || "b_adult";
+      } else clearError("b_adult");
       if (onBehalfNow && !$("#b_authorised")?.checked) {
         setError("b_authorised", "Please confirm you are authorised to book for them.");
         firstBad = firstBad || "b_authorised";
@@ -9157,7 +9174,7 @@ window.resolveContractArchive = function(version) {
         const venueByStudio = $("#b_location")?.dataset.inviteLocked === "1" || isHomeStudio;
         const venueByStudioAddress = venueByStudio ? ($("#b_location")?.value || "") : "";
         const homeStudioRider = isHomeStudio
-          ? `\n\nHOME STUDIO SESSIONS\nThis session takes place at the photographer's private residence. Attendance is limited to a maximum of 3 people in total — the photographer, the Participant, and any crew they bring; hair & make-up artists, stylists, assistants and guests all count towards this limit. Sessions run within booked daylight hours and conclude by 7:00 PM. The full address is shared on booking confirmation. Guests may not attend unaccompanied.`
+          ? `\n\nHOME STUDIO SESSIONS\nThis session takes place at the photographer's private residence. Attendance is limited to a maximum of 3 people in total — the photographer, the Participant, and any crew they bring; hair & make-up artists, stylists, assistants and guests all count towards this limit. Sessions run within booked daylight hours and conclude by 7:00 PM. The full address is shared on booking confirmation. Anyone under 18 must come with a parent or guardian.`
           : "";
         // Same arranger choice the live contract clause reads during
         // updateFields, re-read here off the same select/radio pair so the
@@ -9226,7 +9243,7 @@ window.resolveContractArchive = function(version) {
           ? (homeStudioRentalFee > 0
               ? `\n\n7. HOME STUDIO RENTAL & PAYMENT\nThis collaboration carries no shoot fee. A fixed home studio rental of ₹${homeStudioRentalFee.toLocaleString('en-IN')} applies for use of the photographer's home studio in ${HOME_STUDIO_AREA}, and is payable IN FULL at least 48 hours before the shoot day to reserve the space. This rental is non-refundable once paid, including where the Participant cancels or reschedules. No other fee is payable to the Studio for this session.`
               : "")
-          : `\n\n7. ENGAGEMENT FEE, SELECTED PACKAGE & PAYMENT MILESTONES\nSelected package and contracted deliverables: ${budget || "as quoted by the Studio"}.\n${paymentTermsText.replace(/^Payment Terms: /, "Payment terms: ")}\nMilestone payments marked non-refundable are non-refundable once paid, including where the Participant cancels or reschedules. ${packageSchedule.release} Any work beyond the contracted package (additional retouched masters, extended usage, gallery buyout) is quoted and invoiced separately.`;
+          : `\n\n7. ENGAGEMENT FEE, SELECTED PACKAGE & PAYMENT MILESTONES\nSelected package and contracted deliverables: ${budget || "as quoted by the Studio"}.\n${paymentTermsText.replace(/^Payment Terms: /, "Payment terms: ")}\nThe advance retainer moves to a new date if the shoot is rescheduled at least 24 hours before the call time (up to two moves); with less notice, or a no-show, it is kept. If the Studio cancels, the Client is offered a new date or a full refund. ${packageSchedule.release} Any work beyond the contracted package (additional retouched masters, extended usage, gallery buyout) is quoted and invoiced separately.`;
 
         // Test shoots only. A paid booking already carries this risk through its
         // non-refundable retainer; a collaboration pays nothing, so without this
@@ -9263,7 +9280,7 @@ window.resolveContractArchive = function(version) {
           `${isCustomContract ? 'CUSTOM CLIENT CONTRACT / AGENCY MSA REQUESTED' : (isTfpCat ? 'TFP COLLABORATION & MODEL RELEASE' : 'COMMERCIAL SHOOT PRODUCTION AGREEMENT')}\n` +
           `Document Reference: ${contractRefDoc}\n` +
           `--------------------------------------------------\n` +
-          `Studio/Photographer: nerdyphotographer.in\n` +
+          `Studio: Prateek Saxena, trading as nerdyphotographer.in, Sector 46, Noida\n` +
           `Client/Participant: ${name}\n` +
           `Contact Email: ${email}\n` +
           `Contract Status: ${isCustomContract ? 'Custom Contract / Agency MSA Requested (Pending Studio Review)' : `Agreed to Studio Contract ${contractRefDoc}`}\n` +
@@ -9295,7 +9312,7 @@ window.resolveContractArchive = function(version) {
         // use-before-declaration crash on every submit.
         // House rules for shooting at the photographer's residence apply
         // whether or not a rental is charged for it.
-        const homeStudioHouseRules = `Home Studio Policy: This session takes place at the photographer's private residence. Attendance is capped at 3 people in total — the photographer, you, and any crew you bring (hair & make-up, stylist, assistants and guests all count towards this cap), sessions run within booked daylight hours and finish by 7:00 PM, and the full address is shared once the booking is confirmed. Guests may not attend unaccompanied.\n`;
+        const homeStudioHouseRules = `Home Studio Policy: This session takes place at the photographer's private residence. Attendance is capped at 3 people in total — the photographer, you, and any crew you bring (hair & make-up, stylist, assistants and guests all count towards this cap), sessions run within booked daylight hours and finish by 7:00 PM, and the full address is shared once the booking is confirmed. Anyone under 18 must come with a parent or guardian.\n`;
 
         // A rental above zero means the home studio IS the venue, whatever the
         // dropdown says — it is hidden entirely on invite bookings, so keying
@@ -9445,7 +9462,7 @@ window.resolveContractArchive = function(version) {
           ? `${productionSchedule.text} — as shown on the brief form; figures confirmed in the proposal`
           : isCollabPricing
             ? (homeStudioRentalFee > 0
-                ? `${inr(homeStudioRentalFee)} rental payable in full at least 48 hours before the shoot (non-refundable once paid)`
+                ? `${inr(homeStudioRentalFee)} rental payable in full before the shoot day (moves with a reschedule made 24 hours ahead; otherwise kept)`
                 : "Nothing payable")
             : (() => {
                 const legs = splitPackageMilestones(finalPayableNum - homeStudioRentalFee, homeStudioRentalFee, packageScheduleKey);
@@ -9804,7 +9821,7 @@ window.resolveContractArchive = function(version) {
             "Under 18": subjectIsMinor ? "Yes" : "No",
             ...(subjectIsMinor ? { "Parent or guardian": `${guardianName || "—"} (${guardianEmail || "—"})` } : {}),
             "Booker confirms they are authorised": bookerAuthorised ? "Yes" : "No"
-          } : {}),
+          } : { "Confirms 18 or over": $("#b_adult")?.checked ? "Yes" : "No" }),
           "Shoot Type": type,
           "Proposed Date": date,
           "Session Duration": sessionDuration || "—",
@@ -10128,7 +10145,7 @@ window.resolveContractArchive = function(version) {
       const modalVenueByStudio = $("#b_location")?.dataset.inviteLocked === "1" || modalIsHomeStudio;
       const modalVenueAddress = modalVenueByStudio ? ($("#b_location")?.value || "") : "";
       const modalHomeRider = modalIsHomeStudio
-        ? ` <strong>Home studio sessions</strong> take place at the photographer's private residence: attendance is capped at 3 people in total — the photographer, you, and any crew you bring; hair &amp; make-up, stylist, assistants and guests all count towards this cap, the session runs within booked daylight hours and finishes by <strong>7:00 PM</strong>, and the full address is shared once your booking is confirmed. Guests may not attend unaccompanied.`
+        ? ` <strong>Home studio sessions</strong> take place at the photographer's private residence: attendance is capped at 3 people in total — the photographer, you, and any crew you bring; hair &amp; make-up, stylist, assistants and guests all count towards this cap, the session runs within booked daylight hours and finishes by <strong>7:00 PM</strong>, and the full address is shared once your booking is confirmed. Anyone under 18 must come with a parent or guardian.`
         : "";
       // A paid home-studio booking now carries a fixed rental, so the blanket
       // "no studio rental is billed to you" would contradict the quote the
