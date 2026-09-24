@@ -679,13 +679,13 @@ window.WPS_DATA = {
         {
           "id": "mr5526tu5qjzd9-12",
           "url": "photos/mr55364rvor33m/mr5526tu5qjzd9-12.jpg",
-          "objectPosition": "55.1% 0.0%",
+          "objectPosition": "48.5% 0.0%",
           "angle": "full-body",
           "usage": "both",
           "small": "photos/mr55364rvor33m/mr5526tu5qjzd9-12@480.jpg",
           "medium": "photos/mr55364rvor33m/mr5526tu5qjzd9-12@960.jpg",
           "onHome": true,
-          "focalX": 55.061041570081905,
+          "focalX": 48.45490900536772,
           "focalY": 0
         },
         {
@@ -3410,7 +3410,7 @@ window.WPS_DATA = {
         "modelTypes": [
           "Fashion"
         ],
-        "updatedAt": 1790270769441,
+        "updatedAt": 1790271028691,
         "showStatsOnCompCard": true,
         "showStatsOnModelPortfolio": true,
         "showModelInstagramOnCompCard": true,
