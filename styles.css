@@ -4102,40 +4102,37 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
 .thumb-home-ctrl { top: 30px; }
 .thumb-home-hint { margin: 0; padding: 6px 8px; font-size: var(--font-xs); line-height: 1.4; color: var(--ink-soft); background: var(--paper); border-top: 1px solid var(--line); }
 
-/* Over a photograph the words sit on a white panel of their own, so "The
-   Creative Studio", the wordmark and the buttons read clearly whatever the
-   picture is (the owner, Sep 2026). Built from the paper colour, so it is
-   dark in the dark theme. On a phone the photo sits above the words, not
-   behind them, so no panel is needed there. */
-.hero-shot .hero-card {
-  display: inline-block;
-  max-width: min(720px, 62vw);
-  padding: 26px 32px 30px;
-  background: color-mix(in srgb, var(--paper) 88%, transparent);
-  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
-  border: 1px solid color-mix(in srgb, var(--paper) 100%, transparent);
-  box-shadow: 0 10px 40px rgba(0,0,0,.08);
-  border-radius: 6px;
+/* Over a photograph the words get a crisp outline in the page colour (white
+   in the light theme) — no box, just an edge on the letters, so "The Creative
+   Studio", the wordmark and the tagline stand out from whatever the picture
+   is (the owner, Sep 2026). The header's logo and MENU get the same edge, as
+   they vanished over a dark photo. Phones stack the photo above the words,
+   so it only applies where the words sit on the photo. */
+.hero-shot {
+  --edge: 1px;
+  --outline: calc(-1 * var(--edge)) calc(-1 * var(--edge)) 0 var(--paper), var(--edge) calc(-1 * var(--edge)) 0 var(--paper),
+             calc(-1 * var(--edge)) var(--edge) 0 var(--paper), var(--edge) var(--edge) 0 var(--paper),
+             0 0 6px var(--paper), 0 0 14px var(--paper);
 }
-.hero-shot .hero-card .hero-wordmark,
-.hero-shot .hero-card .hero-subword,
-.hero-shot .hero-card .hero-mono-tagline,
-.hero-shot .hero-card .hero-topline { text-shadow: none; }
-.hero-shot .hero-card .hero-brandmark,
-.hero-shot .hero-card .hero-mono-foot,
-.hero-shot .hero-card .hero-topline { max-width: none; }
-@media (max-width: 700px) {
-  .hero-shot .hero-card { display: block; max-width: none; padding: 0; background: none; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.hero-shot .hero-topline,
+.hero-shot .hero-topline span,
+.hero-shot .hero-wordmark,
+.hero-shot .hero-subword,
+.hero-shot .hero-mono-tagline { text-shadow: var(--outline) !important; }
+.hero-shot .hero-wordmark { --edge: 2px; }
+.hero-shot .hero-topline-l { color: var(--ink); }
+body:has(.hero-shot) .site-header:not(.scrolled) .brand-text,
+body:has(.hero-shot) .site-header:not(.scrolled) .menu-btn {
+  text-shadow: -1px -1px 0 var(--paper), 1px -1px 0 var(--paper), -1px 1px 0 var(--paper), 1px 1px 0 var(--paper), 0 0 8px var(--paper);
 }
-/* The header's logo, theme switch and MENU sat straight on the photograph and
-   vanished wherever it was dark. Over a hero photo they get the same pale
-   backing as the words (until the page scrolls and the header turns solid). */
-body:has(.hero-shot) .site-header:not(.scrolled) .brand,
-body:has(.hero-shot) .site-header:not(.scrolled) .menu-btn,
+body:has(.hero-shot) .site-header:not(.scrolled) .brand svg,
+body:has(.hero-shot) .site-header:not(.scrolled) .brand img,
+body:has(.hero-shot) .site-header:not(.scrolled) .menu-btn svg,
+body:has(.hero-shot) .site-header:not(.scrolled) .menu-btn span,
 body:has(.hero-shot) .site-header:not(.scrolled) .theme-toggle {
-  background: color-mix(in srgb, var(--paper) 88%, transparent);
-  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
-  border-radius: 100px;
+  filter: drop-shadow(0 0 1px var(--paper)) drop-shadow(0 0 1px var(--paper)) drop-shadow(0 0 4px var(--paper));
 }
-body:has(.hero-shot) .site-header:not(.scrolled) .brand,
-body:has(.hero-shot) .site-header:not(.scrolled) .menu-btn { padding: 6px 12px; }
+@media (max-width: 700px) {
+  .hero-shot .hero-topline, .hero-shot .hero-topline span, .hero-shot .hero-wordmark,
+  .hero-shot .hero-subword, .hero-shot .hero-mono-tagline { text-shadow: none !important; }
+}
