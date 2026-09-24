@@ -806,25 +806,27 @@ window.WPS_DATA = {
         {
           "id": "mrcy189dfa7lp5-0",
           "url": "photos/mr8legmk0o8mqz/mrcy189dfa7lp5-9.jpg",
-          "objectPosition": "top",
+          "objectPosition": "55.0% 19.9%",
           "angle": "three-quarter",
           "usage": "both",
           "small": "photos/mr8legmk0o8mqz/mrcy189dfa7lp5-9@480.jpg",
           "medium": "photos/mr8legmk0o8mqz/mrcy189dfa7lp5-9@960.jpg",
-          "onHome": true
+          "onHome": true,
+          "focalX": 55.02448621714677,
+          "focalY": 19.869966921409834
         },
         {
           "id": "mr8ld69w1fq1e5-1",
           "url": "photos/mr8legmk0o8mqz/mr8ld69w1fq1e5-0.jpg",
-          "objectPosition": "53.5% 24.5%",
+          "objectPosition": "54.9% 9.6%",
           "angle": "full-body",
           "usage": "both",
           "look": "fashion",
           "small": "photos/mr8legmk0o8mqz/mr8ld69w1fq1e5-0@480.jpg",
           "medium": "photos/mr8legmk0o8mqz/mr8ld69w1fq1e5-0@960.jpg",
           "onHome": true,
-          "focalX": 53.48975348975349,
-          "focalY": 24.462950695561656
+          "focalX": 54.93328201180395,
+          "focalY": 9.648722627737225
         },
         {
           "id": "mr8ld6tds7z3f0-2",
@@ -1510,6 +1512,10 @@ window.WPS_DATA = {
       "modelTypes": [
         "Fashion"
       ],
+      "modelKeys": [
+        "arushi-sharma"
+      ],
+      "feedsModelCards": true,
       "showStatsOnCompCard": true,
       "showStatsOnModelPortfolio": true,
       "showTestShootCategory": false,
@@ -1546,10 +1552,13 @@ window.WPS_DATA = {
         {
           "id": "mt6419358l2g01-1",
           "url": "photos/mt46wftacuy0w7/mt6419358l2g01-1.jpg",
-          "objectPosition": "center",
+          "objectPosition": "51.1% 28.1%",
           "usage": "comp",
           "small": "photos/mt46wftacuy0w7/mt6419358l2g01-1@480.jpg",
-          "medium": "photos/mt46wftacuy0w7/mt6419358l2g01-1@960.jpg"
+          "medium": "photos/mt46wftacuy0w7/mt6419358l2g01-1@960.jpg",
+          "onHome": true,
+          "focalX": 51.10127448464631,
+          "focalY": 28.140206812652067
         },
         {
           "id": "mt6419ullj4k6h-2",
@@ -1737,10 +1746,7 @@ window.WPS_DATA = {
       "showAgencyEmailOnCompCard": false,
       "showAgencyEmailOnHome": false,
       "showAgencyEmailOnPdf": false,
-      "coverPhotoId": "mt6419b008xse6",
-      "modelKeys": [
-        "arushi-sharma"
-      ]
+      "coverPhotoId": "mt6419b008xse6"
     },
     {
       "id": "mte8dutdkqor3f",
@@ -3097,7 +3103,7 @@ window.WPS_DATA = {
         "modelTypes": [
           "Fashion"
         ],
-        "updatedAt": 1790270323370,
+        "updatedAt": 1790270355138,
         "showStatsOnCompCard": true,
         "showStatsOnModelPortfolio": true,
         "showModelInstagramOnCompCard": true,
@@ -3161,7 +3167,7 @@ window.WPS_DATA = {
         "modelTypes": [
           "Fashion"
         ],
-        "updatedAt": 1787391753742,
+        "updatedAt": 1790270396837,
         "showStatsOnCompCard": true,
         "showStatsOnModelPortfolio": true,
         "showModelInstagramOnCompCard": true,
