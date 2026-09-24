@@ -4007,10 +4007,27 @@ window.resolveContractArchive = function(version) {
     readSavedCalSettings()
   );
 
+  /* This swallowed every error, so a device whose storage was full lost each
+     calendar edit in silence: the booking left the screen, the toast said
+     "Booking removed", and the next load brought it back from the published
+     copy. The studio asked why they could not delete a booking (Sep 24 2026).
+     Bookings carry their attachments as data URLs, so filling this store is
+     not a remote possibility — it is the ordinary way it fails.
+
+     It says so now, and the callers stop claiming success. */
   function saveCalendarSettings() {
     try {
       localStorage.setItem(CAL_STORE_KEY, JSON.stringify(window.WPS_DATA.CALENDAR_SETTINGS));
-    } catch (e) {}
+      return true;
+    } catch (e) {
+      const full = e && (e.name === "QuotaExceededError" || e.code === 22 || e.code === 1014);
+      if (typeof toast === "function") {
+        toast(full
+          ? "NOT SAVED — this device's storage is full. Open a booking's Details and remove an attachment, then try again."
+          : "NOT SAVED — this device would not keep the change. Private browsing blocks it.");
+      }
+      return false;
+    }
   }
 
   function sanitizeCalendarBookings() {
@@ -4082,9 +4099,20 @@ window.resolveContractArchive = function(version) {
       });
     }
 
+    /* Every published shoot pencils its own date in — but until Sep 24 2026
+       this loop did not look at the tombstones, so a booking the studio had
+       just cancelled was put straight back on the next load, under the id
+       `shoot-<id>` rather than the id it was removed under. The studio
+       cancelled the same day over and over and asked why they could not
+       delete it; the tombstone list in data.js is full of the evidence. */
+    const tombs = new Set(window.WPS_DATA.CALENDAR_SETTINGS.removedBookingIds || []);
     (window.SHOOTS || []).forEach(s => {
       if (!s.date || !/^\d{4}-\d{2}-\d{2}$/.test(s.date)) return;
       const dKey = s.date;
+      // Removed on purpose: leave the day alone. Both the id this loop would
+      // give it and the one it may have carried when it was cancelled.
+      if (tombs.has(`${dKey}::shoot-${s.id}`) || tombs.has(`${dKey}::${s.id}`)
+        || (s.title && tombs.has(`${dKey}::${s.title}`))) return;
       if (!booked[dKey]) booked[dKey] = [];
       const exists = booked[dKey].some(b => b.shootId === s.id || b.name === s.title);
       if (!exists) {
@@ -4463,12 +4491,20 @@ window.resolveContractArchive = function(version) {
       // removed instead of treating it as one that simply hasn't arrived yet
       // and adding it straight back.
       if (!Array.isArray(settings.removedBookingIds)) settings.removedBookingIds = [];
+      /* One booking, several names. A booking derived from a published shoot
+         is remade as `shoot-<shootId>` whatever id it happens to carry now,
+         so removing it has to stop THAT too, or the shoot puts it back. */
       doomed.forEach((b) => {
-        const key = calBookingKey(dKey, b);
-        if (!settings.removedBookingIds.includes(key)) settings.removedBookingIds.push(key);
+        const keys = [calBookingKey(dKey, b)];
+        if (b && b.shootId) keys.push(`${dKey}::shoot-${b.shootId}`, `${dKey}::${b.shootId}`);
+        if (b && b.name) keys.push(`${dKey}::${b.name}`);
+        keys.forEach((key) => {
+          if (key && !settings.removedBookingIds.includes(key)) settings.removedBookingIds.push(key);
+        });
       });
-      saveCalendarSettings();
+      return saveCalendarSettings();
     }
+    return true;
   }
 
   // A hold that is waiting on an answer: the date is penciled in for a named

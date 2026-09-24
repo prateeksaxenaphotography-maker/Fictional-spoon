@@ -1463,10 +1463,27 @@ function cleanModelPdfs(state) {
         tagPlace: ["in", "below", "above"].includes(sp.tagPlace) ? sp.tagPlace : "in",
         tagAlign: ["left", "center", "right"].includes(sp.tagAlign) ? sp.tagAlign : "left",
         layout: sp.layout === "equal" ? "equal" : "lead",
-        /* How much air between the photographs. Named here or this normaliser
-           would drop it, the same gate that lost `split-wide` for a month.
-           Absent means "medium", which is what every portfolio saved before
-           this printed, so an old arrangement reopens unchanged. */
+        /* EVERYTHING the builder decides per page had been falling through
+           this gate, which keeps only the fields it names: the per-page
+           layouts, the per-page columns, where each page's big photograph
+           sits, and the three alignment choices were all saved by the builder
+           and thrown away here. The studio changed a saved arrangement,
+           pressed Update, reopened it and found the change gone — which is
+           why Update read as a button that does nothing (Sep 24 2026). The
+           same gate that lost `split-wide` for a month.
+
+           Absent still means the old default in every case, so an
+           arrangement saved before any of this reopens exactly as it was. */
+        layouts: (Array.isArray(sp.layouts) ? sp.layouts : []).slice(0, 3)
+          .map((x) => (x === "equal" ? "equal" : "lead")),
+        cols: (Array.isArray(sp.cols) ? sp.cols : []).slice(0, 3)
+          .map((n) => (Number(n) === 2 || Number(n) === 3 ? Number(n) : 0)),
+        bigAt: (Array.isArray(sp.bigAt) ? sp.bigAt : []).slice(0, 3)
+          .map((x) => (["top", "bottom", "left", "right"].includes(x) ? x : "")),
+        detailsAlign: ["left", "centre", "right"].includes(sp.detailsAlign) ? sp.detailsAlign : "left",
+        ...(["left", "centre", "right"].includes(sp.statsAlign) ? { statsAlign: sp.statsAlign } : {}),
+        ...(["left", "centre", "right"].includes(sp.contactAlign) ? { contactAlign: sp.contactAlign } : {}),
+        // How much air between the photographs. Absent means "medium".
         ...(["none", "narrow", "wide"].includes(sp.spacing) ? { spacing: sp.spacing } : {}),
         order: ids(sp.order),
         fewerOnTop: sp.fewerOnTop === true,
@@ -4237,7 +4254,13 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           <div class="br-actions">
             ${isDecidableHold(b) && !isPast ? `<button type="button" class="linkish hold-accept" onclick="window.acceptHoldBooking('${b.dateKey}', '${b.id}')">✓ Accept</button><button type="button" class="linkish hold-reject" onclick="window.rejectHoldBooking('${b.dateKey}', '${b.id}')">✕ Reject</button>` : ""}
             <button type="button" class="linkish" onclick="window.openEditBookingModal('${b.dateKey}', '${b.id}')">Edit</button>
-            <button type="button" class="linkish muted" onclick="window.removeBookingFromRoster('${b.dateKey}', '${b.id}')">Cancel</button>
+            <!-- It said "Cancel", and pressing it opened a confirm box whose
+                 own buttons are OK and Cancel. Pressing Cancel there does
+                 nothing, so the studio pressed Cancel, then Cancel, and
+                 reported a button that would not delete the booking (Sep 24
+                 2026). It says what it does, and the day modal's word for the
+                 same action ("Remove") no longer disagrees with it. -->
+            <button type="button" class="linkish muted" onclick="window.removeBookingFromRoster('${b.dateKey}', '${b.id}')" title="Take this booking off the calendar">Delete</button>
             ${hasMore ? `<button type="button" class="linkish muted" onclick="this.closest('.booking-row').classList.toggle('is-open')">Details</button>` : ""}
           </div>
           ${hasMore ? `<div class="br-more">${b.email ? `<div><strong>Email:</strong> ${esc(b.email)}</div>` : ""}${b.phone ? `<div><strong>Phone:</strong> ${esc(b.phone)}</div>` : ""}${links}${atts}</div>` : ""}
@@ -4279,9 +4302,18 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       }
     }
     window.removeBookingFromRoster = (dKey, bId) => {
-      if (confirm(`Are you sure you want to remove this booking for ${dKey}?`)) {
-        removeCalBooking(dKey, bId);
-        toast("Booking removed.");
+      /* "Are you sure you want to remove…" is answered OK / Cancel, and the
+         button that opened it used to say Cancel too. Worded so that the
+         answer the studio wants is obviously OK. */
+      if (confirm(`Delete the booking on ${dKey}? Press OK to delete it. The day goes back on sale.`)) {
+        /* It used to say "Booking removed" whatever happened. On a device
+           whose storage was full the row went away, the message said it was
+           gone, and the next load brought it straight back — which is what
+           "why am I not able to delete the booking" looked like from the
+           other side (Sep 24 2026). saveCalendarSettings names the reason. */
+        const kept = removeCalBooking(dKey, bId);
+        if (kept) toast("Booking removed.");
+        renderRoster();
         renderAdminGrid();
         updateAdminReminders();
       }
@@ -4497,7 +4529,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             ${isDecidableHold(b) ? `<button type="button" class="linkish hold-accept" onclick="window.acceptHoldBooking('${dKey}', '${b.id}')">✓ Accept</button><button type="button" class="linkish hold-reject" onclick="window.rejectHoldBooking('${dKey}', '${b.id}')">✕ Reject</button>` : ""}
             <button type="button" class="linkish" onclick="document.getElementById('closeAdminModal')?.click(); window.openPdfContractGenerator('${dKey}', '${b.id}')">Contract PDF</button>
             <button type="button" class="linkish" onclick="window.openEditBookingModal('${dKey}', '${b.id}')">Edit</button>
-            <button type="button" class="linkish muted" onclick="window.removeBookingFromRoster('${dKey}', '${b.id}'); document.getElementById('closeAdminModal')?.click();">Remove</button>
+            <button type="button" class="linkish muted" onclick="window.removeBookingFromRoster('${dKey}', '${b.id}'); document.getElementById('closeAdminModal')?.click();" title="Take this booking off the calendar">Delete</button>
           </div>
         </div>`;
 
@@ -4907,6 +4939,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                     </label>`).join("")}
                 </div>
               </div>
+              <p class="label-hint" id="f_for_workshop" hidden style="margin: 8px 0 0;">A workshop has no client — nobody booked it and nobody is using the photos commercially. Leave both of these on “Choose”, or this album will be filed on a client page as though it were paid work.</p>
             </fieldset>
 
             <fieldset id="fs_credits"><legend>Credits</legend>
@@ -5206,6 +5239,19 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       $("#f_type")?.addEventListener("change", followType);
       followType();
     }
+    /* "Who is this album for? — who booked the shoot and uses the photos" has
+       no answer for a workshop: the studio attended it, nobody commissioned
+       it. Picking one of the six clients would file the workshop on that
+       client's page as paid work, so the form says so the moment Workshop is
+       chosen, in Type or in Activity. Studio's question, Sep 24 2026. */
+    const isWorkshop = () => /workshop/i.test(($("#f_type")?.value || "") + " " + ($("#f_activity")?.value || ""));
+    const syncWorkshopNote = () => {
+      const note = $("#f_for_workshop");
+      if (note) note.hidden = !isWorkshop();
+    };
+    $("#f_type")?.addEventListener("change", syncWorkshopNote);
+    $("#f_activity")?.addEventListener("change", syncWorkshopNote);
+    syncWorkshopNote();
     const bulkToolbar = $("#thumbBulkToolbar"), bulkCount = $("#thumbBulkCount");
     const ANGLE_LABELS = { "full-body": "Full Body", "front": "Front", "left-profile": "Left Profile", "right-profile": "Right Profile", "three-quarter": "Three-Quarter", "back": "Back", "close-up": "Close-up" };
     function updateBulkToolbar() {

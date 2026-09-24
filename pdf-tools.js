@@ -2552,7 +2552,11 @@
               spec: {
                 pages: state.pages, count: state.count, picks: [...state.picks], cleared: [...state.cleared],
                 lead: state.lead, cover: state.cover, coverId: state.coverId, coverStyle: state.coverStyle,
-                layout: state.layout, layouts: layoutsPerPage(), order: [...state.order], fewerOnTop: state.fewerOnTop, cols: colsPerPage(),
+                /* bigAt was missing here while the draft carried it, so where
+                   each page's big photograph sat was the one decision that a
+                   SAVED arrangement could not keep. */
+                layout: state.layout, layouts: layoutsPerPage(), bigAt: bigAtPerPage(),
+                order: [...state.order], fewerOnTop: state.fewerOnTop, cols: colsPerPage(),
                 detailsAlign: state.detailsAlign, statsAlign: state.statsAlign, contactAlign: state.contactAlign,
                 spacing: state.spacing,
                 tags: tagsPerPage(),
