@@ -3836,7 +3836,9 @@ window.resolveContractArchive = function(version) {
     /* Photos ticked "Home" in the album form, from every public album (v527).
        With any ticked, the first screen crossfades through them; the
        config.js heroImage, if set, still wins as a single fixed frame. */
-    const focusOf = (p) => (typeof p.focalX === "number" && typeof p.focalY === "number") ? `${p.focalX}% ${p.focalY}%` : (p.objectPosition && p.objectPosition !== "center" ? p.objectPosition : "50% 30%");
+    // The photo's own home-page dot first (v531), then its general one.
+    const focusOf = (p) => (typeof p.homeFocalX === "number" && typeof p.homeFocalY === "number") ? `${p.homeFocalX}% ${p.homeFocalY}%`
+      : (typeof p.focalX === "number" && typeof p.focalY === "number") ? `${p.focalX}% ${p.focalY}%` : (p.objectPosition && p.objectPosition !== "center" ? p.objectPosition : "50% 30%");
     // In a random order on every visit (the owner, Sep 2026), so the first
     // photo a visitor sees is not always the same one.
     const homeSlides = (window.STUDIO_CONFIG?.heroImage || "").trim() ? [] : shuffleArray(SHOOTS

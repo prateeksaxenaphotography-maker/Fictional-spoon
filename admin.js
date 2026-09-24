@@ -2257,6 +2257,7 @@ window.moveAdminPackageRow = function(index, dir) {
               ...(p.caption ? { caption: p.caption } : {}),
               // On the home page slideshow (v527).
               ...(p.onHome ? { onHome: true } : {}),
+              ...(p.onHome && typeof p.homeFocalX === "number" ? { homeFocalX: p.homeFocalX, homeFocalY: p.homeFocalY } : {}),
               ...(typeof p.focalX === "number" ? { focalX: p.focalX, focalY: p.focalY } : {})
             }
           : p;
@@ -6077,6 +6078,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             manuallyAligned: !!(p.objectPosition && p.objectPosition !== "center"),
             caption: p.caption || "",
             onHome: !!p.onHome,
+            ...(typeof p.homeFocalX === "number" ? { homeFocalX: p.homeFocalX, homeFocalY: p.homeFocalY } : {}),
             excludeFromCompCard: !!p.excludeFromCompCard,
             usage: p.usage || (p.excludeFromCompCard ? "portfolio" : "both"),
             angle: p.angle || "",
@@ -6243,8 +6245,14 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         stickyNote.classList.toggle("ready", n > 0);
       }
       grid.innerHTML = staged.map((f, index) => {
-        const pos = f.objectPosition && f.objectPosition !== "center" ? f.objectPosition : "center center";
-        const fp = focalPercent(f);
+        /* A photo ticked "Home" has two crops: the square/cover crop everywhere
+           else, and the wide home-page crop. Each has its own dot (the owner,
+           Sep 2026: "which one does the centring follow?"). The switch under
+           the photo says which one the dot is setting. */
+        const homeMode = !!f.onHome && f._dotMode !== "photo";
+        const hp = homePercent(f);
+        const pos = homeMode ? `${hp.x}% ${hp.y}%` : (f.objectPosition && f.objectPosition !== "center" ? f.objectPosition : "center center");
+        const fp = homeMode ? hp : focalPercent(f);
         return `
         <div class="thumb" data-id="${f.id}" draggable="true" style="display: flex; flex-direction: column;">
           <span class="thumb-order">${index + 1}</span>
@@ -6256,14 +6264,19 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             <input type="checkbox" class="thumb-cover-radio thumb-home-check" data-id="${f.id}" ${f.onHome ? 'checked' : ''} />
             Home
           </label>
-          <div class="thumb-frame" style="position: relative; width: 100%; aspect-ratio: ${f.onHome ? "16 / 9" : "1"}; overflow: hidden;">
+          <div class="thumb-frame" style="position: relative; width: 100%; aspect-ratio: ${homeMode ? "16 / 9" : "1"}; overflow: hidden;">
             <img src="${esc(photoSrc(f))}" style="width: 100%; height: 100%; object-fit: cover; object-position: ${esc(pos)}" alt="${esc(f.name)}"/>
             <div class="thumb-focal" data-id="${f.id}" title="Drag to set focal point" style="position: absolute; inset: 0; z-index: 2; cursor: crosshair;">
               <span class="thumb-focal-dot" style="left:${fp.x}%; top:${fp.y}%;"></span>
             </div>
             <button type="button" class="thumb-remove" data-id="${f.id}" aria-label="Remove">×</button>
           </div>
-          ${f.onHome ? `<p class="thumb-home-hint" data-id="${f.id}">Home page: shown wide like this. Drag the dot onto the face to centre it. Best: a landscape photo (3:2 or 16:9), 2400 px wide or more, with the person on the right — the words sit on the left.</p>` : ""}
+          ${f.onHome ? `<div class="thumb-dot-mode" role="group" aria-label="The dot sets">
+            <span>Dot sets:</span>
+            <button type="button" class="thumb-dot-btn" data-id="${f.id}" data-mode="home" aria-pressed="${homeMode}">Home page</button>
+            <button type="button" class="thumb-dot-btn" data-id="${f.id}" data-mode="photo" aria-pressed="${!homeMode}">${f.isCover ? "Cover &amp; album" : "Album"}</button>
+          </div>` : ""}
+          ${f.onHome && homeMode ? `<p class="thumb-home-hint" data-id="${f.id}">Home page: shown wide like this. Drag the dot onto the face to centre it. Best: a landscape photo (3:2 or 16:9), 2400 px wide or more, with the person on the right — the words sit on the left.</p>` : ""}
           
           <div style="padding: 8px; display: flex; flex-direction: column; gap: 6px; background: var(--bone); border-top: 1px solid var(--line); flex-grow: 1;">
             <label style="display: flex; align-items: center; gap: 5px; font-size: var(--font-xs); color: var(--ink-soft); cursor: pointer;">
@@ -6385,6 +6398,11 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         }
         renderStaged();
       }));
+      grid.querySelectorAll(".thumb-dot-btn").forEach((b) => b.addEventListener("click", (e) => {
+        e.preventDefault(); e.stopPropagation();
+        const item = staged.find((x) => x.id === b.dataset.id);
+        if (item) { item._dotMode = b.dataset.mode; renderStaged(); }
+      }));
       grid.querySelectorAll(".thumb-home-check").forEach((cb) => {
         cb.addEventListener("change", (e) => {
           const item = staged.find((x) => x.id === e.target.dataset.id);
@@ -6417,6 +6435,12 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         cb.addEventListener("mousedown", (e) => e.stopPropagation());
       });
       updateBulkToolbar();
+    }
+
+    // The home-page dot: its own point once set, the photo's point until then.
+    function homePercent(f) {
+      if (typeof f.homeFocalX === "number" && typeof f.homeFocalY === "number") return { x: Math.round(f.homeFocalX), y: Math.round(f.homeFocalY) };
+      return focalPercent(f);
     }
 
     // Convert a photo's focal setting into { x, y } percentages for the dot.
@@ -6472,10 +6496,15 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           const r = area.getBoundingClientRect();
           const x = Math.max(0, Math.min(100, ((clientX - r.left) / r.width) * 100));
           const y = Math.max(0, Math.min(100, ((clientY - r.top) / r.height) * 100));
+          dot.style.left = x + "%"; dot.style.top = y + "%";
+          if (item.onHome && item._dotMode !== "photo") {
+            item.homeFocalX = x; item.homeFocalY = y;
+            if (img) img.style.objectPosition = `${x.toFixed(1)}% ${y.toFixed(1)}%`;
+            return;
+          }
           item.focalX = x; item.focalY = y;
           item.objectPosition = `${x.toFixed(1)}% ${y.toFixed(1)}%`;
           item.manuallyAligned = true;
-          dot.style.left = x + "%"; dot.style.top = y + "%";
           if (img) img.style.objectPosition = item.objectPosition;
         };
         dot.addEventListener("mousedown", (e) => { e.preventDefault(); e.stopPropagation(); dragging = true; area.classList.add("focal-active"); });
@@ -6871,7 +6900,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           ...(f.medium ? { medium: f.medium } : {}),
           ...(typeof f.focalX === "number" ? { focalX: f.focalX, focalY: f.focalY } : {}),
           ...(f.caption && f.caption.trim() ? { caption: f.caption.trim() } : {}),
-          ...(f.onHome ? { onHome: true } : {})
+          ...(f.onHome ? { onHome: true } : {}),
+          ...(f.onHome && typeof f.homeFocalX === "number" ? { homeFocalX: f.homeFocalX, homeFocalY: f.homeFocalY } : {})
         })),
         featured: $("#f_featured")?.checked ?? false,
         // Comp cards keep their original pair of flags; the portfolio page has its own.

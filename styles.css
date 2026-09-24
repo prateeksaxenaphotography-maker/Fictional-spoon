@@ -4136,3 +4136,6 @@ body:has(.hero-shot) .site-header:not(.scrolled) .theme-toggle {
   .hero-shot .hero-topline, .hero-shot .hero-topline span, .hero-shot .hero-wordmark,
   .hero-shot .hero-subword, .hero-shot .hero-mono-tagline { text-shadow: none !important; }
 }
+.thumb-dot-mode { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; padding: 6px 8px 0; font-size: var(--font-xs); color: var(--ink-soft); background: var(--paper); }
+.thumb-dot-btn { font: 700 10px var(--mono-font); text-transform: uppercase; letter-spacing: .03em; padding: 3px 7px; border: 1px solid var(--line); border-radius: 100px; background: transparent; color: var(--ink); cursor: pointer; }
+.thumb-dot-btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
