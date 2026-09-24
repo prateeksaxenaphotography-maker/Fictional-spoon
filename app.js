@@ -4200,6 +4200,18 @@ window.resolveContractArchive = function(version) {
            The id survives the strip, because it IS the contract number, so
            that is what the question is asked of now. */
         const auditId = "b_audit_" + (audit.contractNumber || "");
+        /* Deleted on purpose: leave the day alone. Without this the studio
+           could not get a contract's booking off the calendar at all — they
+           deleted it, the removal was recorded and even published, and this
+           loop put it straight back on the very next load under the same id,
+           then saved it. "i have deleted many times but its not going out of
+           calander", Sep 24 2026. The shoot backfill above had the same fault
+           and was fixed a version earlier; this one was missed because the
+           day in question had no shoot on it. */
+        const tombed = new Set(window.WPS_DATA.CALENDAR_SETTINGS.removedBookingIds || []);
+        if (tombed.has(`${dKey}::${auditId}`)
+          || (audit.contractNumber && tombed.has(`${dKey}::${audit.contractNumber}`))
+          || (audit.clientName && tombed.has(`${dKey}::${audit.clientName}`))) return;
         const exists = booked[dKey].some(b =>
           (audit.contractNumber && b.id === auditId) ||
           (b.contractNumber && audit.contractNumber && b.contractNumber === audit.contractNumber) ||
@@ -4497,6 +4509,9 @@ window.resolveContractArchive = function(version) {
       doomed.forEach((b) => {
         const keys = [calBookingKey(dKey, b)];
         if (b && b.shootId) keys.push(`${dKey}::shoot-${b.shootId}`, `${dKey}::${b.shootId}`);
+        // A booking built from a signed contract is remade as
+        // `b_audit_<contractNumber>`, whatever id it is carrying now.
+        if (b && b.contractNumber) keys.push(`${dKey}::b_audit_${b.contractNumber}`, `${dKey}::${b.contractNumber}`);
         if (b && b.name) keys.push(`${dKey}::${b.name}`);
         keys.forEach((key) => {
           if (key && !settings.removedBookingIds.includes(key)) settings.removedBookingIds.push(key);
