@@ -736,6 +736,10 @@ const STUDIO_BOOK_LIMITS = {
      gutter. Absent means the style's number, so a book made before the studio
      could ask is stored exactly as it was. */
   spacings: ["none", "narrow", "medium", "wide"],
+  /* The colour of the chip carrying a photograph's plate number. A book colour
+     or #rrggbb; absent means the style's own accent, and photoNums: false
+     means no number at all. */
+  plateColours: ["paper", "white", "ink", "soft", "accent", "deep", "rule"],
   photoAt: { story: ["top", "bottom", "left", "right"], note: ["top", "bottom", "left", "right"], quote: ["top", "bottom", "left", "right"], feature: ["left", "right"], article: ["left", "right"] },
   // Bands round a full-page photo (absent = the style's usual foot band).
   borders: ["none", "top", "bottom", "left", "right", "all"],
@@ -1087,6 +1091,12 @@ function cleanStudioPortfolios(o) {
       // One colour behind every page (the cover keeps its own), unless a page says otherwise.
       ...(STUDIO_BOOK_LIMITS.fills.includes(v.bg) || /^#[0-9a-f]{6}$/i.test(String(v.bg || "")) ? { bg: String(v.bg).toLowerCase() } : {}),
       ...(v.showPageNumbers === false ? { showPageNumbers: false } : {}),
+      /* The small plate number on each photograph of a grid, and the colour of
+         its chip. Named here or the cleaner would drop them on the next
+         reload. Absent means on, in the style's own accent, so a book made
+         before the studio could ask is stored exactly as it was. */
+      ...(v.photoNums === false ? { photoNums: false } : {}),
+      ...(STUDIO_BOOK_LIMITS.plateColours.includes(v.photoNumColour) || /^#[0-9a-f]{6}$/i.test(String(v.photoNumColour || "")) ? { photoNumColour: String(v.photoNumColour).toLowerCase() } : {}),
       // The cover's layout, and the cover itself when it is arranged from scratch.
       ...(STUDIO_BOOK_LIMITS.coverLayouts.includes(v.coverLayout) ? { coverLayout: v.coverLayout } : {}),
       ...(v.coverLayout === "custom" ? { coverPage: (() => {
@@ -1142,7 +1152,7 @@ const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words_v9";
 // Older keys: code that knows only an older shape keeps rewriting the key it
 // knows, so every growth of the shape gets a new one, read before the old.
 const STUDIO_BOOK_WORDS_OLD = ["wps_studio_portfolios_words_v8", "wps_studio_portfolios_words_v7", "wps_studio_portfolios_words_v6", "wps_studio_portfolios_words_v5", "wps_studio_portfolios_words_v4", "wps_studio_portfolios_words_v3", "wps_studio_portfolios_words_v2", "wps_studio_portfolios_words"];
-const studioBookHasWords = (v) => v.style === "lookbook" || STUDIO_BOOK_NEWER_STYLES.includes(v.style) || !!v.paper || !!v.coverStyle || !!v.watermark || !!v.coverText || !!v.schema || !!v.footText || !!v.bg || v.showPageNumbers === false || !!v.coverLayout || !!v.coverPage || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
+const studioBookHasWords = (v) => v.style === "lookbook" || STUDIO_BOOK_NEWER_STYLES.includes(v.style) || !!v.paper || !!v.coverStyle || !!v.watermark || !!v.coverText || !!v.schema || !!v.footText || !!v.bg || v.showPageNumbers === false || v.photoNums === false || !!v.photoNumColour || !!v.coverLayout || !!v.coverPage || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
   (STUDIO_BOOK_LIMITS.fields[pg.type] && (pg.type !== "photos" || pg.caption)) || (pg.blocks || []).length || pg.bg || pg.items || pg.steps || pg.rows || pg.credit || pg.label || pg.heading || pg.photoAt || pg.border || pg.borderWidth || pg.style || pg.hide || (pg.photos || []).some((s) => s.fit || s.opacity));
 function getStudioPortfolios(live) {
   let local = null, published = null, remote = null, words = null;

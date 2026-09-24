@@ -1013,6 +1013,26 @@
   const pageBg = (P, fallback) => pageBgOf(bookNow, entryNow, P, fallback);
   const footName = () => String((bookNow && typeof bookNow.footText === "string" && bookNow.footText.trim()) ? bookNow.footText : studio()).toUpperCase();
   const showNums = () => !(bookNow && bookNow.showPageNumbers === false);
+  /* The little plate number on each photograph of a grid — "01", "02" — and
+     the chip it sits on. Until v511 both were forced: every photographs page
+     in the Modern style carried them, always on the accent. The studio asked
+     for a way to turn them off and to choose the colour (Sep 24 2026). */
+  const plateNums = () => !(bookNow && bookNow.photoNums === false);
+  const PLATE_KEYS = ["paper", "white", "ink", "soft", "accent", "deep", "rule"];
+  const plateColour = (P) => {
+    const c = bookNow && bookNow.photoNumColour;
+    if (P && PLATE_KEYS.includes(c)) return P[c];
+    return /^#[0-9a-f]{6}$/i.test(String(c || "")) ? String(c) : P.accent;
+  };
+  /* What the number is set in, so it can be read off whatever the chip is.
+     On the style's own accent the palette's answer is kept exactly — a book
+     made before this must not shift by one pixel. */
+  const plateInk = (chip, P) => {
+    if (chip === P.accent) return P.onAccent;
+    const [r, g, b] = rgbOf(chip);
+    const lin = (v) => { const x = v / 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); };
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b) > 0.4 ? P.ink : P.white;
+  };
   const pageCredit = (entry, shoots) => ((entry && typeof entry.credit === "string" && entry.credit.trim()) ? entry.credit : creditLine(shoots));
   const cfg = () => API.config() || {};
   const studio = () => cfg().studioName || "nerdyphotographer.in";
@@ -1467,8 +1487,12 @@
       cells(shots.length, box, M.gap, aspects, W > H, entry.rows).forEach((c, i) => {
         if (imgs[i]) drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); else missing(page, P, c.x, c.y, c.w, c.h);
         // Plate number in a chip, keyed to nothing but its order on the page.
-        rect(page, c.x, c.y, 7, 5, P.accent);
-        font(page, 700, 2.2, F.mono, 0.2); text(page, String(i + 1).padStart(2, "0"), c.x + 3.5, c.y + 3.5, P.onAccent, "center");
+        // Switched off, or given another colour, in Design.
+        if (plateNums()) {
+          const chip = plateColour(P);
+          rect(page, c.x, c.y, 7, 5, chip);
+          font(page, 700, 2.2, F.mono, 0.2); text(page, String(i + 1).padStart(2, "0"), c.x + 3.5, c.y + 3.5, plateInk(chip, P), "center");
+        }
       });
       this.foot(page, P, W, H, n, pageCredit(entry, shoots));
     },
@@ -4715,6 +4739,8 @@
      kept its word ("Auto") swallowed all the space left over and the drawn
      ones huddled at the end. */
   .sb-seg:has(svg) button { flex: 0 0 auto; }
+  /* Save, lit while something is waiting to be written to this device. */
+  #sbSave.is-due { border-color: var(--accent, #d24e1a); color: var(--accent, #d24e1a); font-weight: 700; }
   .sb-seg button svg { display: block; pointer-events: none; }
   .sb-styles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .sb-style { display: grid; gap: 2px; align-content: start; padding: 8px; border: 1px solid var(--sb-line); border-radius: 10px; background: var(--paper, #faf8f5); color: inherit; text-align: left; cursor: pointer; }
@@ -5126,6 +5152,7 @@
         return false;
       }
       dirty = false;
+      markSave();
       state = readState();
       setStatus(status + longNote());
       return true;
@@ -5141,8 +5168,12 @@
     // Only the save to this device waits, and anything that leaves the page
     // or the book saves straight away.
     function flush() { clearTimeout(saveTimer); saveTimer = null; return persist(); }
+    // Says whether anything is waiting to be written to this device, so the
+    // Save button can light up rather than sit there looking the same always.
+    function markSave() { const b = $("#sbSave"); if (b) b.classList.toggle("is-due", !!dirty); }
     function change(opts = {}) {
       dirty = true;
+      markSave();
       const ready = $("#sbReady");
       if (ready && ready.childElementCount) { ready.replaceChildren(); dropFiles(); }
       clearTimeout(saveTimer);
@@ -5401,6 +5432,14 @@
           </span>
           <button type="button" class="sb-light" id="sbLight" aria-live="polite" title="What to look at before sending"><i></i><span>Checking…</span></button>
           <div class="sb-topacts">
+            <!-- Every change is kept on this device the moment it is made, and
+                 the status line beside Undo has always said so. The studio
+                 still could not find a Save and did not trust it (Sep 24
+                 2026), the same way they could not find the one for promo
+                 codes in v473. So: a button that says the word, lights up
+                 while there is something not yet written down, and flushes
+                 the save that was about to happen anyway. -->
+            <button type="button" class="sb-btn" id="sbSave" title="Keep this book on this device now. Every change is kept as you make it — this is here so you can be sure.">Save</button>
             <button type="button" class="sb-btn" id="sbDlToggle" aria-expanded="false" aria-controls="sbDlPop">Download</button>
             <button type="button" class="sb-btn dark" id="sbPublish" title="Saves this book into the site's own files, so it is there on any device. Nothing is shown to visitors — what a client gets is the PDF.">Publish</button>
           </div>
@@ -5476,6 +5515,11 @@
 
       $("#sbBack").addEventListener("click", () => { flush(); forget(); showList(); });
       $("#sbName").addEventListener("input", (e) => { book.name = e.target.value; change({ rail: false, typing: true }); });
+      $("#sbSave").addEventListener("click", () => {
+        if (!flush()) return;   // persist() has already said why it could not
+        setStatus(`Saved on this device · ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}${longNote()}`);
+        API.toast("Saved on this device. Publish puts it into the site's own files, on any device.");
+      });
       $("#sbPublish").addEventListener("click", publish);
       $("#sbLight").addEventListener("click", () => { const t = $("#sbDlToggle"); if (t && $("#sbDlPop").hidden) t.click(); });
       $$("[data-view]").forEach((b) => b.addEventListener("click", () => {
@@ -8150,6 +8194,9 @@
       if (lab) lab.textContent = own ? book.colourway : "";
       const tint = { paper: P.paper, white: P.white, ink: P.ink, soft: P.soft, accent: P.accent, deep: P.deep, rule: P.rule };
       panel.querySelectorAll("[data-bookbg]").forEach((x) => { const c = tint[x.dataset.bookbg]; if (c) x.querySelector("i").style.background = c; });
+      // The number chip's swatches follow the colourway too, and its first
+      // one is the style's own accent, which has no key of its own.
+      panel.querySelectorAll("[data-plate]").forEach((x) => { const c = x.dataset.plate ? tint[x.dataset.plate] : P.accent; if (c) x.querySelector("i").style.background = c; });
     }
     // Each style's card shows this book's cover and first page drawn in it:
     // small, one after another, and again whenever the book has changed.
@@ -8201,6 +8248,14 @@
           <div class="sb-cphost" data-bookbgpick hidden></div>
           <p class="sb-hint">Behind every page but the cover, in one go. A page can still have its own colour on This page.</p>
         </div>
+        <div class="sb-sec"><h3>Numbers on the photographs</h3>
+          <label class="sb-check-row"><input type="checkbox" id="sbPlate" ${book.photoNums === false ? "" : "checked"}> Number each photograph on a page</label>
+          <div id="sbPlateColour" ${book.photoNums === false ? "hidden" : ""}>
+            <span class="sb-swatches" role="group" aria-label="Colour of the number chip">${[["", "The style's accent", paletteFor(book).accent], ["ink", "Ink", paletteFor(book).ink], ["soft", "Soft", paletteFor(book).soft], ["deep", "Deep", paletteFor(book).deep], ["white", "White", paletteFor(book).white], ["paper", "Paper", paletteFor(book).paper], ["rule", "Hairline", paletteFor(book).rule]].map(([k, n, c]) => `<button type="button" class="sb-swatch" data-plate="${k}" aria-pressed="${(book.photoNumColour || "") === k}" title="${n}" aria-label="Number chip: ${n}"><i style="background:${c}"></i></button>`).join("")}${anySwatch("plateany", /^#/.test(book.photoNumColour || "") ? book.photoNumColour : "")}</span>
+            <div class="sb-cphost" data-platepick hidden></div>
+          </div>
+          <p class="sb-hint">The small 01, 02, 03 on a page of several photographs. The Modern style prints them; the other styles do not.</p>
+        </div>
         <div class="sb-sec"><h3>The foot of every page</h3>
           ${overHtml("sbFootText", "Name in the foot", book.footText, (window.STUDIO_BOOK_LIMITS || {}).footText || 40, studio())}
           <label class="sb-check-row"><input type="checkbox" id="sbNums" ${book.showPageNumbers === false ? "" : "checked"}> Print page numbers</label>
@@ -8217,6 +8272,25 @@
         mark(true); book.bg = hex;
         panel.querySelectorAll("[data-bookbg]").forEach((y) => y.setAttribute("aria-pressed", "false"));
         change(); drawPageBg();
+      });
+      panel.querySelectorAll("[data-plate]").forEach((x) => x.addEventListener("click", () => {
+        mark();
+        if (x.dataset.plate) book.photoNumColour = x.dataset.plate; else delete book.photoNumColour;
+        panel.querySelectorAll("[data-plate]").forEach((y) => y.setAttribute("aria-pressed", String(y === x)));
+        const any = panel.querySelector("[data-plateany]"); if (any) any.setAttribute("aria-pressed", "false");
+        change();
+      }));
+      wireAny(panel.querySelector("[data-plateany]"), panel.querySelector("[data-platepick]"), () => (/^#/.test(book.photoNumColour || "") ? book.photoNumColour : ""), (hex) => {
+        mark(true); book.photoNumColour = hex;
+        panel.querySelectorAll("[data-plate]").forEach((y) => y.setAttribute("aria-pressed", "false"));
+        change();
+      });
+      $("#sbPlate").addEventListener("change", (e) => {
+        mark();
+        if (e.target.checked) delete book.photoNums; else book.photoNums = false;
+        // The colour governs nothing while the numbers are off.
+        const box = $("#sbPlateColour"); if (box) box.hidden = !e.target.checked;
+        change();
       });
       $("#sbNums").addEventListener("change", (e) => {
         if (e.target.checked) delete book.showPageNumbers; else book.showPageNumbers = false;
@@ -8245,7 +8319,7 @@
       // The style cards are this book drawn small: they follow its colourway, shape and paper.
       let picTimer = 0;
       const picsSoon = () => { clearTimeout(picTimer); picTimer = setTimeout(() => drawStylePics(), 450); };
-      panel.onclick = (e) => { if (e.target.closest("[data-cw], [data-orient], [data-paper], [data-bookbg], [data-gap]")) picsSoon(); };   // one handler, however often the panel is redrawn
+      panel.onclick = (e) => { if (e.target.closest("[data-cw], [data-orient], [data-paper], [data-bookbg], [data-gap], [data-plate]")) picsSoon(); };   // one handler, however often the panel is redrawn
       radio("[data-style]", (b) => { book.style = b.dataset.style; drawFields(); refreshDesignColours(); }, (b) => book.style === b.dataset.style, (b) => ensureBookFonts({ ...book, style: b.dataset.style }));
       drawStylePics();
       radio("[data-cw]", (b) => { book.colourway = b.dataset.cw; drawFields(); refreshDesignColours(); }, (b) => book.colourway === b.dataset.cw);
@@ -8584,7 +8658,7 @@
     // that loaded the site before they existed still runs the old save code,
     // which would drop them while saying "Saved": refuse until it reloads.
     const L = window.STUDIO_BOOK_LIMITS;
-    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !L.workWays || !L.markStrengths || !L.paras || !L.coverText || !L.blockKinds || !L.schema || !L.lists || !L.photoRows || !(L.pageTypes || []).includes("free") || !L.coverLayouts || !(L.pageTypes || []).includes("end") || !(L.pageTypes || []).includes("look") || !(L.styles || []).includes("gazette")) {
+    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !L.workWays || !L.markStrengths || !L.paras || !L.coverText || !L.blockKinds || !L.schema || !L.lists || !L.photoRows || !(L.pageTypes || []).includes("free") || !L.coverLayouts || !(L.pageTypes || []).includes("end") || !(L.pageTypes || []).includes("look") || !(L.styles || []).includes("gazette") || !L.plateColours) {
       root.innerHTML = `<div class="sb-empty"><p class="sb-warn">The site was updated while this tab was open.</p><p class="sb-hint">Reload the page (or use “↻ Load fresh version”) before editing your books, so nothing you write is lost.</p><p><button type="button" class="sb-btn dark" id="sbReload">Reload now</button></p></div>`;
       root.querySelector("#sbReload").addEventListener("click", () => location.reload());
       return;
