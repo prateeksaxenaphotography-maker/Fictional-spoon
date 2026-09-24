@@ -774,6 +774,10 @@ window.WPS_DATA = {
       "modelTypes": [
         "Fashion"
       ],
+      "modelKeys": [
+        "abhishek-yadav"
+      ],
+      "feedsModelCards": true,
       "showStatsOnCompCard": true,
       "showStatsOnModelPortfolio": true,
       "showTestShootCategory": false,
@@ -806,7 +810,8 @@ window.WPS_DATA = {
           "angle": "three-quarter",
           "usage": "both",
           "small": "photos/mr8legmk0o8mqz/mrcy189dfa7lp5-9@480.jpg",
-          "medium": "photos/mr8legmk0o8mqz/mrcy189dfa7lp5-9@960.jpg"
+          "medium": "photos/mr8legmk0o8mqz/mrcy189dfa7lp5-9@960.jpg",
+          "onHome": true
         },
         {
           "id": "mr8ld69w1fq1e5-1",
@@ -817,6 +822,7 @@ window.WPS_DATA = {
           "look": "fashion",
           "small": "photos/mr8legmk0o8mqz/mr8ld69w1fq1e5-0@480.jpg",
           "medium": "photos/mr8legmk0o8mqz/mr8ld69w1fq1e5-0@960.jpg",
+          "onHome": true,
           "focalX": 53.48975348975349,
           "focalY": 24.462950695561656
         },
@@ -1001,10 +1007,7 @@ window.WPS_DATA = {
       "showAgencyEmailOnCompCard": false,
       "showAgencyEmailOnHome": false,
       "showAgencyEmailOnPdf": false,
-      "coverPhotoId": "mr8ld69w1fq1e5",
-      "modelKeys": [
-        "abhishek-yadav"
-      ]
+      "coverPhotoId": "mr8ld69w1fq1e5"
     },
     {
       "id": "mranmpzmfblohv",
@@ -3034,6 +3037,9 @@ window.WPS_DATA = {
       "color": "#141416"
     }
   },
+  "HOME_SLIDESHOW": {
+    "seconds": 5
+  },
   "MEASURE_UNITS": {
     "display": "metric"
   },
@@ -3045,6 +3051,7 @@ window.WPS_DATA = {
     "TFP_PACKAGE": 1790257919972,
     "HOME_STUDIO_RATE": 1789975069138,
     "PORTFOLIO_PDF": 1790257117968,
+    "HOME_SLIDESHOW": 0,
     "MEASURE_UNITS": 1790269147688,
     "HOME_STUDIO_RATE_TFP": 1789975069138
   },
@@ -3090,7 +3097,7 @@ window.WPS_DATA = {
         "modelTypes": [
           "Fashion"
         ],
-        "updatedAt": 1783304409260,
+        "updatedAt": 1790270323370,
         "showStatsOnCompCard": true,
         "showStatsOnModelPortfolio": true,
         "showModelInstagramOnCompCard": true,
