@@ -2749,13 +2749,6 @@ window.WPS_DATA = {
           "status": "confirmed",
           "type": "Fashion Editorial",
           "contractVersion": "V3.0"
-        },
-        {
-          "id": "shoot-msxhrjrtl997mq",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Test Shoot",
-          "shootId": "msxhrjrtl997mq"
         }
       ],
       "2026-08-22": [
@@ -2765,13 +2758,6 @@ window.WPS_DATA = {
           "status": "tentative",
           "type": "Fashion Editorial",
           "contractVersion": "Pending Agreement"
-        },
-        {
-          "id": "shoot-mt46wftacuy0w7",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Test Shoot",
-          "shootId": "mt46wftacuy0w7"
         }
       ],
       "2026-08-23": [
@@ -2815,13 +2801,6 @@ window.WPS_DATA = {
           "status": "confirmed",
           "type": "Selective Collaboration (TFP)",
           "contractVersion": "V3.4-TFP"
-        },
-        {
-          "id": "shoot-mte8dutdkqor3f",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Test Shoot",
-          "shootId": "mte8dutdkqor3f"
         }
       ],
       "2026-09-13": [
@@ -2831,13 +2810,6 @@ window.WPS_DATA = {
           "status": "confirmed",
           "type": "Fashion Editorial",
           "contractVersion": "V3.7-TFP"
-        },
-        {
-          "id": "shoot-mu07kqljf8iyar",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Test Shoot",
-          "shootId": "mu07kqljf8iyar"
         }
       ],
       "2026-09-20": [
@@ -2882,69 +2854,6 @@ window.WPS_DATA = {
           "type": "Workshop Attended",
           "contractVersion": "Pending Agreement"
         }
-      ],
-      "2026-06-14": [
-        {
-          "id": "shoot-mr4x3r7e4l5g4m",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Test Shoot",
-          "shootId": "mr4x3r7e4l5g4m"
-        }
-      ],
-      "2026-06-13": [
-        {
-          "id": "shoot-mr4x6kwx3f8rs3",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Test Shoot",
-          "shootId": "mr4x6kwx3f8rs3"
-        }
-      ],
-      "2026-03-14": [
-        {
-          "id": "shoot-mr55364rvor33m",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Test Shoot",
-          "shootId": "mr55364rvor33m"
-        }
-      ],
-      "2026-07-05": [
-        {
-          "id": "shoot-mr8legmk0o8mqz",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Test Shoot",
-          "shootId": "mr8legmk0o8mqz"
-        }
-      ],
-      "2026-05-15": [
-        {
-          "id": "shoot-mranmpzmfblohv",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Test Shoot",
-          "shootId": "mranmpzmfblohv"
-        }
-      ],
-      "2026-07-24": [
-        {
-          "id": "shoot-ms36z1wqm2xkrz",
-          "isTentative": false,
-          "status": "workshop",
-          "type": "Workshop Attended",
-          "shootId": "ms36z1wqm2xkrz"
-        }
-      ],
-      "2026-10-17": [
-        {
-          "id": "b_audit_WPS-20260823-013037-SRE9",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Fashion Editorial",
-          "contractVersion": "COMMERCIAL-CONTRACT-V3.5"
-        }
       ]
     },
     "removedBookingIds": [
@@ -2986,7 +2895,10 @@ window.WPS_DATA = {
       "2026-09-16::b_1789579417604_z0rd",
       "2026-09-26::b_1789736038024_4o9n",
       "2026-09-27::b_1789736040303_uhs5",
-      "2026-10-17::b_audit_WPS-20260823-013037-SRE9"
+      "2026-10-17::b_audit_WPS-20260823-013037-SRE9",
+      "2026-10-17::Prateek Saxena",
+      "2026-10-10::b_1790247474216_u1p8",
+      "2026-10-10::Workshop Day"
     ],
     "paymentScheduleType": "503020",
     "productionScheduleType": "503020",
@@ -3863,6 +3775,10 @@ window.WPS_DATA = {
           "tagPlace": "below",
           "tagAlign": "center",
           "layout": "equal",
+          "layouts": [],
+          "cols": [],
+          "bigAt": [],
+          "detailsAlign": "left",
           "spacing": "none",
           "order": [
             "muca56vgez53vb-0",
