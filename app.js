@@ -3901,6 +3901,7 @@ window.resolveContractArchive = function(version) {
           <div class="hero-shot-scrim" aria-hidden="true"></div>
         ` : `<div class="hero-bg" aria-hidden="true"></div>${cameraSvg()}`}
         <div class="container hero-inner">
+          <div class="hero-card">
           <div class="hero-topline reveal">
             <span class="hero-topline-l">The Creative Studio</span>
             <span class="hero-topline-r">Noida · Delhi NCR</span>
@@ -3918,6 +3919,7 @@ window.resolveContractArchive = function(version) {
               <a href="${esc(compCardsHref())}" data-link class="btn btn-ghost">Model portfolios</a>
               ${isAdmin() ? `<a href="/upload" data-link class="btn btn-ghost">Publish a shoot</a>` : `<a href="/book" data-link class="btn btn-ghost">Book a shoot</a>`}
             </div>
+          </div>
           </div>
         </div>
         <div class="hero-scroll" aria-hidden="true"><span></span>SCROLL</div>

@@ -4101,3 +4101,41 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
 /* The "Home" tick sits under "Cover" on a photo tile. */
 .thumb-home-ctrl { top: 30px; }
 .thumb-home-hint { margin: 0; padding: 6px 8px; font-size: var(--font-xs); line-height: 1.4; color: var(--ink-soft); background: var(--paper); border-top: 1px solid var(--line); }
+
+/* Over a photograph the words sit on a white panel of their own, so "The
+   Creative Studio", the wordmark and the buttons read clearly whatever the
+   picture is (the owner, Sep 2026). Built from the paper colour, so it is
+   dark in the dark theme. On a phone the photo sits above the words, not
+   behind them, so no panel is needed there. */
+.hero-shot .hero-card {
+  display: inline-block;
+  max-width: min(720px, 62vw);
+  padding: 26px 32px 30px;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  border: 1px solid color-mix(in srgb, var(--paper) 100%, transparent);
+  box-shadow: 0 10px 40px rgba(0,0,0,.08);
+  border-radius: 6px;
+}
+.hero-shot .hero-card .hero-wordmark,
+.hero-shot .hero-card .hero-subword,
+.hero-shot .hero-card .hero-mono-tagline,
+.hero-shot .hero-card .hero-topline { text-shadow: none; }
+.hero-shot .hero-card .hero-brandmark,
+.hero-shot .hero-card .hero-mono-foot,
+.hero-shot .hero-card .hero-topline { max-width: none; }
+@media (max-width: 700px) {
+  .hero-shot .hero-card { display: block; max-width: none; padding: 0; background: none; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+/* The header's logo, theme switch and MENU sat straight on the photograph and
+   vanished wherever it was dark. Over a hero photo they get the same pale
+   backing as the words (until the page scrolls and the header turns solid). */
+body:has(.hero-shot) .site-header:not(.scrolled) .brand,
+body:has(.hero-shot) .site-header:not(.scrolled) .menu-btn,
+body:has(.hero-shot) .site-header:not(.scrolled) .theme-toggle {
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  border-radius: 100px;
+}
+body:has(.hero-shot) .site-header:not(.scrolled) .brand,
+body:has(.hero-shot) .site-header:not(.scrolled) .menu-btn { padding: 6px 12px; }
