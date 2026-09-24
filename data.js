@@ -3181,7 +3181,7 @@ window.WPS_DATA = {
     "PACKAGES": 1789975069137,
     "TFP_PACKAGE": 1789975069138,
     "HOME_STUDIO_RATE": 1789975069138,
-    "PORTFOLIO_PDF": 1790185479240,
+    "PORTFOLIO_PDF": 1790225113623,
     "HOME_STUDIO_RATE_TFP": 1789975069138
   },
   "TESTIMONIALS": {
@@ -3824,10 +3824,10 @@ window.WPS_DATA = {
   "MODEL_PDFS": {
     "versions": [
       {
-        "id": "mp_mud2vlkr_co23k",
+        "id": "mp_mueija7w_ny3rh",
         "shootId": "comp-card-Atharv%20Sharma%20(https%3A%2F%2Fwww.instagram.com%2Fectogainsss%2F%3Fhl%3Den)",
         "name": "Test 1",
-        "updatedAt": 1790185479240,
+        "updatedAt": 1790225113622,
         "spec": {
           "pages": 2,
           "count": 8,
@@ -3850,20 +3850,20 @@ window.WPS_DATA = {
             "muca80smjx9k90-18"
           ],
           "cleared": [],
-          "lead": "muca5877bysjsu-4",
+          "lead": "muca80smjx9k90-18",
           "cover": true,
           "coverId": "muca5a1qkkj6qh-11",
           "coverStyle": "framed",
           "tags": [
             true,
-            true
+            false
           ],
           "tagPlace": "below",
-          "tagAlign": "left",
+          "tagAlign": "center",
           "layout": "equal",
           "order": [
-            "muca5877bysjsu-4",
             "muca56vgez53vb-0",
+            "muca5877bysjsu-4",
             "muca57hap5pcdi-1",
             "muca57yixr16s8-3",
             "muca80smjx9k90-18",
@@ -3884,7 +3884,8 @@ window.WPS_DATA = {
     ],
     "deleted": [
       "mp_mucczfy9_wugha",
-      "mp_mucz851x_82fju"
+      "mp_mucz851x_82fju",
+      "mp_mud2vlkr_co23k"
     ]
   },
   "STUDIO_PORTFOLIOS": {
@@ -3904,6 +3905,9 @@ window.WPS_DATA = {
             "size": 0.6
           }
         },
+        "watermark": {
+          "strength": "light"
+        },
         "pages": [
           {
             "type": "photos",
@@ -3912,6 +3916,36 @@ window.WPS_DATA = {
                 "id": "muca5a1qkkj6qh-11",
                 "x": 0.452,
                 "y": 0.112,
+                "zoom": 1
+              }
+            ]
+          },
+          {
+            "type": "photos",
+            "photos": [
+              {
+                "id": "muca5877bysjsu-4",
+                "x": 0.28,
+                "y": 0.35,
+                "zoom": 1,
+                "fit": "height"
+              },
+              {
+                "id": "muca58rgq9nttw-5",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1
+              },
+              {
+                "id": "muca593bwa9nvo-6",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1
+              },
+              {
+                "id": "muca598rr6zyay-7",
+                "x": 0.5,
+                "y": 0.35,
                 "zoom": 1
               }
             ]
@@ -4012,9 +4046,9 @@ window.WPS_DATA = {
               },
               {
                 "id": "mrcy189dfa7lp5-0",
-                "x": 0.5,
+                "x": 0.32,
                 "y": 0,
-                "zoom": 1,
+                "zoom": 1.2,
                 "fit": "width"
               }
             ],
@@ -4183,13 +4217,25 @@ window.WPS_DATA = {
                 "y": 0.109,
                 "zoom": 1,
                 "fit": "whole"
-              },
+              }
+            ]
+          },
+          {
+            "type": "photos",
+            "photos": [
               {
                 "id": "mr4x3jfi8fc679-3",
                 "x": 0.5,
                 "y": 0.35,
-                "zoom": 1.29,
-                "fit": "width"
+                "zoom": 1,
+                "fit": "height"
+              },
+              {
+                "id": "mr4x3k8ol3rsf0-7",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1,
+                "fit": "height"
               }
             ]
           },
@@ -4238,7 +4284,7 @@ window.WPS_DATA = {
           "phone": "",
           "showPrices": false
         },
-        "updatedAt": 1790191900242
+        "updatedAt": 1790232796810
       }
     ],
     "deleted": [
