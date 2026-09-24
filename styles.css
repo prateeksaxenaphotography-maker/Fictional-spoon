@@ -4038,3 +4038,16 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
   position: static; width: auto; height: auto; overflow: visible; clip: auto;
   font: 600 9px/1 var(--mono-font); letter-spacing: .04em; text-transform: uppercase;
 }
+
+/* Phone: the terms window's own header, padding and stacked buttons left
+   under half the screen for the contract itself, and the success heading
+   scrolled in under the fixed site header (Sep 2026 audit, B38). The modal
+   is styled inline, so these overrides have to be !important. */
+#bookSuccess { scroll-margin-top: 96px; }
+@media (max-width: 600px) {
+  #termsModal { padding: 8px !important; }
+  #termsModal .modal-content { max-height: 96vh !important; }
+  #termsModal .modal-content > div:first-child { padding: 10px 14px !important; }
+  #termsModal .modal-content > div:last-child { padding: 10px 12px !important; gap: 6px !important; }
+  #termsScrollArea { padding: 14px !important; gap: 14px !important; }
+}

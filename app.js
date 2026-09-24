@@ -423,6 +423,11 @@ function getPackageScheduleKey() {
 // always add back up to the total exactly.
 function splitPackageMilestones(packageNet, homeStudioFee, key) {
   const legs = (PACKAGE_SCHEDULES[key] || PACKAGE_SCHEDULES["5050"]).legs;
+  // A discount larger than the package (a flat code that also covers the
+  // rental) makes packageNet negative; that shortfall comes off the rental,
+  // so step 1 can never be more than the whole total (Sep 2026 audit, B23).
+  const shortfall = Math.min(0, Number(packageNet) || 0);
+  homeStudioFee = Math.max(0, (Number(homeStudioFee) || 0) + shortfall);
   const net = Math.max(0, Number(packageNet) || 0);
   const amounts = legs.map((p) => Math.round(net * p / 100));
   amounts[amounts.length - 1] = Math.max(0, net - amounts.slice(0, -1).reduce((a, b) => a + b, 0));
@@ -3981,7 +3986,11 @@ window.resolveContractArchive = function(version) {
     // A publish newer than the one this device last reconciled with is the
     // studio's current word on availability, so its blocked/opened maps win.
     // Otherwise this device holds the freshest edits and keeps its own.
-    const publishedIsNewer = publishedAt > syncedAt;
+    // A visitor never edits availability, so the studio's published word
+    // always wins for them. A client who had once booked kept the calendar as
+    // it was that day, for ever, because every publish is stamped 0 (Sep 2026
+    // audit, B9). Only the studio's own devices keep local edits.
+    const publishedIsNewer = !isAdmin() || publishedAt > syncedAt;
 
     const removedIds = new Set([
       ...(Array.isArray(pub.removedBookingIds) ? pub.removedBookingIds : []),
@@ -4002,7 +4011,10 @@ window.resolveContractArchive = function(version) {
     // Union both sides, dropping anything tombstoned and de-duplicating the
     // bookings the two copies share.
     const seen = new Set();
-    const absorb = (bookedDates) => {
+    const absorb = (bookedDates, fromDevice) => {
+      // A visitor's own request is not a confirmed booking, so it must not
+      // paint their date as "already booked" on their device.
+      if (fromDevice && !isAdmin()) return;
       Object.entries(bookedDates || {}).forEach(([dKey, list]) => {
         (Array.isArray(list) ? list : []).forEach((b) => {
           if (!b) return;
@@ -4016,7 +4028,7 @@ window.resolveContractArchive = function(version) {
       });
     };
     absorb(pub.bookedDates);
-    absorb(loc.bookedDates);
+    absorb(loc.bookedDates, true);
 
     return merged;
   }
@@ -4181,6 +4193,10 @@ window.resolveContractArchive = function(version) {
 
   function syncCalendarWithAudits() {
     if (!window.WPS_DATA?.CALENDAR_SETTINGS) return;
+    // Rebuilding bookings from signed contracts is the studio's recovery tool.
+    // On a client's own device the only contract is their own request, and
+    // it painted their date "already booked" as if confirmed (Sep 2026 audit, B9).
+    if (!isAdmin()) return;
     if (!window.WPS_DATA.CALENDAR_SETTINGS.bookedDates) {
       window.WPS_DATA.CALENDAR_SETTINGS.bookedDates = {};
     }
@@ -6044,7 +6060,7 @@ window.resolveContractArchive = function(version) {
             <ol class="next-steps" aria-label="What happens next">
               <li><strong>I reply within 24 hours</strong><span class="ns-std">At the email you gave, with answers to your questions and the confirmed quote.</span><span class="ns-prod">At the email you gave, to set up a call at a time that suits you.</span></li>
               <li><strong class="ns-std">Your date is confirmed</strong><strong class="ns-prod">We talk the production through</strong><span class="ns-paid">Once the advance retainer is paid, the date is held for you. Payment details come with that reply.</span><span class="ns-tfp">Once you confirm the plan by reply, the date is held for you.</span><span class="ns-prod">Scope, team, locations, dates and usage, on the call.</span></li>
-              <li><strong class="ns-std">Shoot day</strong><strong class="ns-prod">Proposal and agreement follow the call</strong><span class="ns-std">Call time, venue and wardrobe notes arrive the day before. Proofs follow after the shoot.</span><span class="ns-prod">A written proposal with the quote and the 50 / 30 / 20 schedule, then the agreement. The date is held once it is signed.</span></li>
+              <li><strong class="ns-std">Shoot day</strong><strong class="ns-prod">Proposal and agreement follow the call</strong><span class="ns-std">Call time, venue and wardrobe notes arrive the day before. Proofs follow after the shoot.</span><span class="ns-prod">A written proposal with the quote and the ${esc(getProductionSchedule().label)} schedule, then the agreement. The date is held once it is signed.</span></li>
             </ol>
 
             <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; width: 100%;">
@@ -6073,6 +6089,7 @@ window.resolveContractArchive = function(version) {
                      <option value="Model">Model / Talent</option>
                      <option value="MUA">Make-up artist / MUA</option>
                      <option value="Stylist">Stylist / Wardrobe</option>
+                     <option value="Designer">Fashion designer</option>
                      <option value="Brand">Brand / Client</option>
                      <option value="Agency">Agency / Agent</option>
                      <option value="Other">Other</option>
@@ -6086,7 +6103,7 @@ window.resolveContractArchive = function(version) {
                <label class="check-line" id="b_onbehalf_line"><input type="checkbox" id="b_onbehalf" /><span>I am booking on behalf of someone else — they are being photographed, not me</span></label>
                <div class="field-row">
                  <label class="field"><span>Email Address *</span><input id="b_email" type="email" required placeholder="name@example.com" /></label>
-                 <label class="field"><span>Phone Number</span><input id="b_phone" type="tel" placeholder="+91 99999-99999" /></label>
+                 <label class="field"><span>Phone Number</span><input id="b_phone" type="tel" maxlength="20" placeholder="+91 99999-99999" /></label>
                </div>
                <label class="field"><span id="b_instagram_label">Instagram / Website</span><input id="b_instagram" type="text" placeholder="e.g. @handle or website.com" /></label>
 
@@ -6180,9 +6197,12 @@ window.resolveContractArchive = function(version) {
                <div class="field-row">
                  <label class="field" id="b_type_field_wrap"><span>Desired Project Type *</span>
                    <select id="b_type">
+                     <option value="Model Portfolio / Comp Card" ${isSelected("Model Portfolio / Comp Card")}>Model portfolio / comp card</option>
                      <option value="Fashion Editorial" ${isSelected("Fashion Editorial")}>Fashion Editorial</option>
                      <option value="Fitness &amp; Athletic" ${isSelected("Fitness &amp; Athletic")}>Fitness &amp; Athletic</option>
                      <option value="Sports Action" ${isSelected("Sports Action")}>Sports Action</option>
+                     <option value="Designer / Stylist / Make-up Portfolio" ${isSelected("Designer / Stylist / Make-up Portfolio")}>Designer, stylist or make-up portfolio</option>
+                     <option value="Creative Shoot" ${isSelected("Creative Shoot")}>Creative or conceptual shoot</option>
                      <option value="Commercial Campaign" ${isSelected("Commercial Campaign")}>Commercial Campaign</option>
                      <option value="Selective Collaboration (TFP)" ${isSelected("Selective Collaboration (TFP)")}>SELECTIVE COLLABORATION / TFP (Portfolio Collab)</option>
                      <option value="Other" ${isSelected("Other")}>Other Focus Area</option>
@@ -6208,7 +6228,7 @@ window.resolveContractArchive = function(version) {
                  <label class="field" id="b_date_field">
                     <span>Preferred Date / Timeline * <span id="b_date_availability_badge" style="display: none; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; padding: 2.5px 7px; border-radius: 4px; margin-left: 8px; vertical-align: middle; text-transform: uppercase; letter-spacing: 0.05em;"></span></span>
                     <div class="date-picker-wrap">
-                      <input id="b_date" type="text" required placeholder="e.g. Mid-July 2026, or use the calendar →" autocomplete="off" />
+                      <input id="b_date" type="text" required placeholder="e.g. 24 Oct 2026, or use the calendar →" autocomplete="off" />
                       <button type="button" class="date-picker-toggle" id="datePickerToggle" aria-label="Open date picker" title="Pick dates from calendar">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                       </button>
@@ -6474,7 +6494,7 @@ window.resolveContractArchive = function(version) {
                    </li>
                    <li style="display: flex; gap: 10px; align-items: flex-start; font-size: var(--font-xs); line-height: 1.55; color: var(--ink-soft);">
                      <span aria-hidden="true" style="flex: 0 0 20px; font-size: var(--font-sm); line-height: 1.4;">🚗</span>
-                     <span id="policyTravel"><strong style="color: var(--ink);">Travel &amp; Accommodation:</strong> Shoots requiring travel beyond <strong style="color: var(--ink);">20 km</strong> from the studio base (Noida) incur paid travel and, where an overnight stay is needed, accommodation — billed <strong style="color: var(--ink);">at actuals (at cost)</strong>.</span>
+                     <span id="policyTravel"><strong style="color: var(--ink);">Travel &amp; Accommodation:</strong> Shoots requiring travel beyond <strong style="color: var(--ink);">20 km</strong> from the studio base (Sector 46, Noida) incur paid travel and, where an overnight stay is needed, accommodation — billed <strong style="color: var(--ink);">at actuals (at cost)</strong>.</span>
                    </li>
                    <li style="display: flex; gap: 10px; align-items: flex-start; font-size: var(--font-xs); line-height: 1.55; color: var(--ink-soft);">
                      <span aria-hidden="true" style="flex: 0 0 20px; font-size: var(--font-sm); line-height: 1.4;">📸</span>
@@ -6494,7 +6514,8 @@ window.resolveContractArchive = function(version) {
              <fieldset id="bookBriefFs">
                <legend>Brief</legend>
                 <div class="field" style="display: flex; flex-direction: column; gap: 4px;">
-                  <span>Reference &amp; Mood Board Links (Multiple allowed)</span>
+                  <span>Moodboard, references or brief — as links</span>
+                  <span class="field-hint">Put files in a shared Google Drive or Dropbox folder, or a Pinterest board, and paste the link. Files can’t be sent through this form.</span>
                   <div id="b_links_container">
                     <div class="link-input-row">
                       <input class="b_moodboard_input" type="url" placeholder="Pinterest board, Dropbox, or Google Drive URL" />
@@ -6503,17 +6524,8 @@ window.resolveContractArchive = function(version) {
                   <button type="button" id="b_add_link_btn" style="background:none; border:1px dashed var(--line); padding:6px 12px; border-radius:6px; font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; cursor:pointer; color:var(--ink-soft); align-self:flex-start; margin-top:4px;">+ Add another reference link</button>
                 </div>
 
-                <div class="field" style="display: flex; flex-direction: column; gap: 4px;">
-                  <span>File Attachments (Multiple PDFs, Images, Brief Documents)</span>
-                  <input id="b_file_input" type="file" multiple accept="image/*,application/pdf,.doc,.docx" style="display: none;" />
-                  <div class="attachments-dropzone" id="b_dropzone">
-                    📎 <strong>Click or drag files here to attach</strong>
-                    <div style="font-size: var(--font-xs); margin-top: 4px;">Attach multiple PDFs, moodboard JPEGs, or project documents</div>
-                  </div>
-                  <div class="attachment-list" id="b_file_list"></div>
-                </div>
 
-                <label class="field"><span>Project Concept &amp; Detailed Brief</span><textarea id="b_concept" rows="4" placeholder="Describe the mood, location style, styling ideas, and deliverables you have in mind..."></textarea></label>
+                <label class="field"><span>Project Concept &amp; Detailed Brief</span><textarea id="b_concept" rows="4" maxlength="3000" placeholder="Describe the mood, location style, styling ideas, and deliverables you have in mind..."></textarea></label>
               </fieldset>
 
               <!-- Payment Terms & Milestone Flowchart -->
@@ -6684,7 +6696,7 @@ window.resolveContractArchive = function(version) {
                 <button type="button" class="btn btn-dark sticky-publish" id="bookStickySubmit">Submit booking request</button>
               </div>
             </div>
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 15px; text-align: center; line-height: 1.4;">By submitting a booking request, you agree to our standard terms. For test shoots, read our online <a href="#tfp-terms" id="tfpTermsTrigger" style="text-decoration: underline; color: var(--accent-text); font-weight: 600;">Studio Production &amp; Liability Release</a>.</p>
+            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 15px; text-align: center; line-height: 1.4;">For a package or test shoot you'll see the terms and agree to them before anything is sent. For test shoots, read our online <a href="#tfp-terms" id="tfpTermsTrigger" style="text-decoration: underline; color: var(--accent-text); font-weight: 600;">Studio Production &amp; Liability Release</a>.</p>
           </form>
         </div>
       </section>
@@ -6701,7 +6713,52 @@ window.resolveContractArchive = function(version) {
     const studioEmail = window.STUDIO_CONFIG?.email || "prateeksaxenaphotography@gmail.com";
 
     const val = (id) => $("#" + id)?.value.trim() || "";
-    const fieldOf = (id) => $("#" + id)?.closest(".field");
+    const fieldOf = (id) => $("#" + id)?.closest(".field, .check-line");
+
+    // "Today" is India's today: the studio is in Noida, and a visitor abroad
+    // used to be told a date was past, or open, by their own clock (Sep 2026
+    // audit, B35). Promo codes already used India's date.
+    const indiaToday = () => {
+      const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+      d.setHours(0, 0, 0, 0);
+      return d;
+    };
+    /* A typed date is read only when it names a real day: "24 Oct 2026",
+       "Oct 24", "24/10/2026" (day first, as written in India), "tomorrow". A
+       day with no year means its next occurrence. Anything vaguer ("mid-July",
+       "next month") is a timeline, not a date — it travels to the studio as
+       written and is never guessed into a day. The browser's own guessing
+       turned "Mid-July 2027" into a Thursday and "October 3" into 2001
+       (Sep 2026 audit, B20). */
+    const MONTHS_IDX = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, sept: 8, oct: 9, nov: 10, dec: 11 };
+    const parseOneTypedDate = (raw) => {
+      const s = String(raw || "").trim().replace(/^(mon|tue|wed|thu|fri|sat|sun)[a-z]*,?\s+/i, "").replace(/(\d)(st|nd|rd|th)\b/gi, "$1").replace(/\s+/g, " ");
+      if (!s) return null;
+      const today = indiaToday();
+      if (/^today$/i.test(s)) return today;
+      if (/^tomorrow$/i.test(s)) { const t = new Date(today); t.setDate(t.getDate() + 1); return t; }
+      const make = (y, m, d, yearGiven) => {
+        let dt = new Date(y, m, d);
+        if (dt.getMonth() !== m || dt.getDate() !== d) return null;
+        if (!yearGiven && dt < today) dt = new Date(y + 1, m, d);
+        return dt;
+      };
+      let m = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2}|\d{4})$/);
+      if (m) return make(m[3].length === 2 ? 2000 + +m[3] : +m[3], +m[2] - 1, +m[1], true);
+      m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (m) return make(+m[1], +m[2] - 1, +m[3], true);
+      const monthOf = (w) => MONTHS_IDX[w.slice(0, 4).toLowerCase()] ?? MONTHS_IDX[w.slice(0, 3).toLowerCase()];
+      m = s.match(/^(\d{1,2}) ([a-z]+)\.?,? ?(\d{4})?$/i);
+      if (m && monthOf(m[2]) !== undefined) return make(m[3] ? +m[3] : today.getFullYear(), monthOf(m[2]), +m[1], !!m[3]);
+      m = s.match(/^([a-z]+)\.? (\d{1,2}),? ?(\d{4})?$/i);
+      if (m && monthOf(m[1]) !== undefined) return make(m[3] ? +m[3] : today.getFullYear(), monthOf(m[1]), +m[2], !!m[3]);
+      return null;
+    };
+    const parseTypedDates = (text) => String(text || "")
+      .split(/\s*[–—]\s*|\s+to\s+/i)
+      .flatMap((part) => part.split(/,(?=\s*[A-Za-z])|;/))
+      .map(parseOneTypedDate)
+      .filter(Boolean);
 
     // ── Multi-Link & Multi-File Attachments Handling ──
     window.attachedFiles = window.attachedFiles || [];
@@ -6824,9 +6881,10 @@ window.resolveContractArchive = function(version) {
       field.querySelector(".field-error")?.remove();
     }
     // Clear an error the moment the visitor starts fixing it.
-    ["b_name", "b_email", "b_date", "b_instagram", "b_location"].forEach((id) => {
+    ["b_name", "b_email", "b_date", "b_instagram", "b_location", "b_phone", "b_subject_name", "b_subject_email", "b_guardian_name", "b_guardian_email"].forEach((id) => {
       $("#" + id)?.addEventListener("input", () => clearError(id));
     });
+    $("#b_authorised")?.addEventListener("change", () => clearError("b_authorised"));
     document.querySelectorAll('input[name="b_studio_arranger"]').forEach((r) => {
       r.addEventListener("change", () => clearError("b_studio_arranger_client"));
     });
@@ -6849,8 +6907,7 @@ window.resolveContractArchive = function(version) {
       let pickerIsWriting = false;   // true only while updateInput fills the field
       let viewYear, viewMonth; // currently displayed month
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const today = indiaToday();
       viewYear = today.getFullYear();
       viewMonth = today.getMonth();
 
@@ -6888,8 +6945,16 @@ window.resolveContractArchive = function(version) {
         // 2001 and 1 January 2026, never the real day (there are such entries
         // in the published calendar). Typing into the field clears this, so a
         // hand-typed date is parsed rather than inheriting an old pick.
+        // A range means every day in it: only the two ends used to be checked
+        // and held, so Sat → Sat passed over five closed weekdays (B29).
+        const everyDay = (a, b) => {
+          if (!a || !b) return [a || b].filter(Boolean);
+          const out = [], d = new Date(Math.min(a, b)), end = new Date(Math.max(a, b));
+          for (; d <= end && out.length < 62; d.setDate(d.getDate() + 1)) out.push(new Date(d));
+          return out;
+        };
         dateInput._wpsPickedDates = (pickerMode === "range"
-          ? [rangeStart, rangeEnd].filter(Boolean)
+          ? everyDay(rangeStart, rangeEnd)
           : [...multiDates].sort((a, b) => a - b)).map((d) => new Date(d));
         pickerIsWriting = true;
         dateInput.dispatchEvent(new Event("input", { bubbles: true }));
@@ -6910,8 +6975,8 @@ window.resolveContractArchive = function(version) {
 
         let targetDate = rangeStart || (multiDates.length ? multiDates[0] : null);
         if (!targetDate) {
-          const parsed = new Date(valStr);
-          if (!isNaN(parsed.getTime())) targetDate = parsed;
+          const parsed = parseTypedDates(valStr)[0];
+          if (parsed) targetDate = parsed;
         }
 
         if (!targetDate) {
@@ -6920,7 +6985,7 @@ window.resolveContractArchive = function(version) {
           return;
         }
 
-        const todayObj = new Date();
+        const todayObj = indiaToday();
         todayObj.setHours(0,0,0,0);
 
         if (targetDate < todayObj) {
@@ -6937,7 +7002,13 @@ window.resolveContractArchive = function(version) {
         badge.style.display = "inline-flex";
         if (bookedNote) bookedNote.style.display = st.isBooked ? "block" : "none";
 
-        if (st.isBooked) {
+        if ((st.hasWorkshop || st.hasAssisting) && !st.hasConfirmedBooking) {
+          badge.style.background = "rgba(156,163,175,0.12)";
+          badge.style.border = "1px solid rgba(156,163,175,0.3)";
+          badge.style.color = "#6b7280";
+          badge.innerHTML = "🔒 PHOTOGRAPHER AWAY";
+          if (bookedNote) bookedNote.style.display = "none";
+        } else if (st.isBooked) {
           badge.style.background = "rgba(220,38,38,0.12)";
           badge.style.border = "1px solid rgba(220,38,38,0.3)";
           badge.style.color = "#dc2626";
@@ -6951,7 +7022,7 @@ window.resolveContractArchive = function(version) {
           badge.style.background = "rgba(156,163,175,0.12)";
           badge.style.border = "1px solid rgba(156,163,175,0.3)";
           badge.style.color = "#6b7280";
-          badge.innerHTML = "🔒 WEEKDAY BLOCKED";
+          badge.innerHTML = (targetDate.getDay() === 0 || targetDate.getDay() === 6) ? "🔒 NOT AVAILABLE" : "🔒 WEEKDAY — CLOSED";
         } else {
           badge.style.background = "rgba(16,185,129,0.12)";
           badge.style.border = "1px solid rgba(16,185,129,0.3)";
@@ -7695,7 +7766,7 @@ window.resolveContractArchive = function(version) {
         const travelKm = $("#b_type")?.value === "Selective Collaboration (TFP)" ? 10 : 20;
         policyTravel.innerHTML = venueSuppliedByStudio
           ? `<strong style="color: var(--ink);">Travel &amp; Accommodation:</strong> Travel to the studio-provided venue above is covered by the studio for this session. Standard terms (travel beyond <strong style="color: var(--ink);">${travelKm} km</strong> from the studio base in Noida, and accommodation where an overnight stay is needed, billed at actuals) apply only if you request a different location.`
-          : `<strong style="color: var(--ink);">Travel &amp; Accommodation:</strong> Shoots requiring travel beyond <strong style="color: var(--ink);">${travelKm} km</strong> from the studio base (Noida) incur paid travel and, where an overnight stay is needed, accommodation — billed <strong style="color: var(--ink);">at actuals (at cost)</strong>.`;
+          : `<strong style="color: var(--ink);">Travel &amp; Accommodation:</strong> Shoots requiring travel beyond <strong style="color: var(--ink);">${travelKm} km</strong> from the studio base (Sector 46, Noida) incur paid travel and, where an overnight stay is needed, accommodation — billed <strong style="color: var(--ink);">at actuals (at cost)</strong>.`;
       }
 
       // ── Home studio (paid shoots only) ──────────────────────────────────
@@ -8148,7 +8219,7 @@ window.resolveContractArchive = function(version) {
           // its own hides the size of the gift — the studio is handing over a
           // ₹2,000 room, and the client should see that, not a zero.
           summaryHomeStudioAmount.innerHTML = homeStudioPromoApplied
-            ? `<span style="text-decoration: line-through; color: rgba(255,255,255,0.45); font-weight: 500; margin-right: 8px;">₹${homeStudioListPrice.toLocaleString("en-IN")}</span><span style="color: #059669;">₹${homeStudioFee.toLocaleString("en-IN")}</span>`
+            ? `<span style="text-decoration: line-through; color: var(--ink-soft); opacity: 0.8; font-weight: 500; margin-right: 8px;">₹${homeStudioListPrice.toLocaleString("en-IN")}</span><span style="color: #059669;">₹${homeStudioFee.toLocaleString("en-IN")}</span>`
             : (venueComplimentary ? "₹0" : `+₹${homeStudioFee.toLocaleString("en-IN")}`);
           summaryHomeStudioAmount.style.color = venueComplimentary ? "#2F6B4F" : "var(--ink)";
         }
@@ -8230,7 +8301,7 @@ window.resolveContractArchive = function(version) {
           // due in full up front rather than split across milestones; only
           // the package rate itself is divided per the studio's milestone
           // schedule (50/50, or 50/30/20 when that global setting is on).
-          const packageNet = Math.max(0, finalPayable - homeStudioFee);
+          const packageNet = finalPayable - homeStudioFee; // may be negative: splitPackageMilestones takes it off the rental (B23)
           const schedule = PACKAGE_SCHEDULES[globalSched] || PACKAGE_SCHEDULES["5050"];
           const legs = splitPackageMilestones(packageNet, homeStudioFee, globalSched);
           const advanceRetainer = legs[0], wrapBalance = legs[1] || 0, step3Amount = legs[2] || 0, step4Amount = legs[3] || 0;
@@ -8675,12 +8746,16 @@ window.resolveContractArchive = function(version) {
         const inviteParam = params.get("invite") || params.get("code");
         const roleParam = params.get("role");
 
+        // Set the way a visitor would, so what hangs off each field runs:
+        // ?role=Agency ticks "on behalf", ?date= shows its badge (B37).
         if (roleParam && $("#b_role")) {
           $("#b_role").value = roleParam;
+          $("#b_role").dispatchEvent(new Event("change", { bubbles: true }));
         }
 
         if (dateParam && $("#b_date")) {
           $("#b_date").value = dateParam;
+          setTimeout(() => $("#b_date")?.dispatchEvent(new Event("input", { bubbles: true })), 0);
         }
 
         if (pkgParam && $("#b_budget")) {
@@ -8714,6 +8789,10 @@ window.resolveContractArchive = function(version) {
     });
     updateFields();
 
+    // "test@example.c" used to pass; a real address ends in a dot and at least
+    // two letters (Sep 2026 audit, B33).
+    const emailLooksReal = (v) => /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(String(v || "").trim());
+
     function validate() {
       let firstBad = null;
       const require = (id, msg) => {
@@ -8741,13 +8820,9 @@ window.resolveContractArchive = function(version) {
 
       const rawDateStr = val("b_date");
       if (rawDateStr) {
-        const parsedT = Date.parse(rawDateStr);
-        if (!isNaN(parsedT)) {
-          const parsedD = new Date(parsedT);
-          parsedD.setHours(23, 59, 59, 999);
-          const todayFloor = new Date();
-          todayFloor.setHours(0, 0, 0, 0);
-          if (parsedD < todayFloor) {
+        const parsedD = parseTypedDates(rawDateStr)[0];
+        if (parsedD) {
+          if (parsedD < indiaToday()) {
             setError("b_date", "Dates in the past cannot be booked. Please select today or a future date.");
             firstBad = firstBad || "b_date";
           }
@@ -8756,8 +8831,37 @@ window.resolveContractArchive = function(version) {
 
       const email = val("b_email");
       if (!email) { setError("b_email", "We need an email to reply to."); firstBad = firstBad || "b_email"; }
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("b_email", "That email doesn't look right."); firstBad = firstBad || "b_email"; }
+      else if (!emailLooksReal(email)) { setError("b_email", "That email doesn't look right."); firstBad = firstBad || "b_email"; }
       else clearError("b_email");
+
+      // A phone number is optional, but one that cannot be dialled is worse
+      // than none: "abc" and "123" used to go through (Sep 2026 audit, B33).
+      const phoneDigits = val("b_phone").replace(/\D/g, "");
+      if (val("b_phone") && (phoneDigits.length < 10 || phoneDigits.length > 15)) {
+        setError("b_phone", "Please check the number — 10 digits, or with the country code.");
+        firstBad = firstBad || "b_phone";
+      } else clearError("b_phone");
+
+      // Booking for someone else. These fields were marked required, but the
+      // form skips the browser's own checks and nothing here looked at them,
+      // so an agency booking with no model named, no guardian for a minor and
+      // no "I am authorised" tick went straight through (Sep 2026 audit, B8).
+      const onBehalfNow = !!$("#b_onbehalf")?.checked;
+      const minorNow = onBehalfNow && !!$("#b_subject_minor")?.checked;
+      [["b_subject_name", onBehalfNow, "Please add the name of the person being photographed."],
+       ["b_subject_email", onBehalfNow && !minorNow, "Their release goes to this address — please add it."],
+       ["b_guardian_name", minorNow, "Please add their parent or guardian’s name."],
+       ["b_guardian_email", minorNow, "The release goes to their parent or guardian — please add their email."]
+      ].forEach(([id, needed, msg]) => {
+        const v = val(id);
+        if (needed && !v) { setError(id, msg); firstBad = firstBad || id; }
+        else if (needed && /email/.test(id) && !emailLooksReal(v)) { setError(id, "That email doesn't look right."); firstBad = firstBad || id; }
+        else clearError(id);
+      });
+      if (onBehalfNow && !$("#b_authorised")?.checked) {
+        setError("b_authorised", "Please confirm you are authorised to book for them.");
+        firstBad = firstBad || "b_authorised";
+      } else clearError("b_authorised");
 
       const type = $("#b_type")?.value;
       if (type === "Selective Collaboration (TFP)") {
@@ -8812,12 +8916,17 @@ window.resolveContractArchive = function(version) {
           fd.append("_replyto", payload.clientEmail);
           fd.append("_cc", payload.clientEmail);
         }
-        fd.append("Record Type", "SIGNED CONTRACT — keep this email as the studio's permanent record");
+        fd.append("Record Type", "Signed booking contract — a copy for the client and for the studio's records");
         fd.append("Contract Number", payload.contractNumber || "—");
         fd.append("Contract Version", payload.contractVersion || "—");
         if (payload.isCustomContract) fd.append("Requested Contract Changes", payload.customContractNotes || "Client requested a custom contract / agency MSA (no details given)");
         fd.append("Client Name", payload.clientName || "—");
         fd.append("Client Email", payload.clientEmail || "—");
+        if (payload.participantName) {
+          fd.append("Participant (being photographed)", payload.participantName);
+          fd.append("Participant Email", payload.participantEmail || "—");
+          fd.append("Participant Under 18", payload.participantIsMinor ? `Yes — parent or guardian: ${payload.guardianName || "—"} (${payload.guardianEmail || "—"})` : "No");
+        }
         fd.append("Phone", payload.phone || "—");
         fd.append("Instagram / Website", payload.instagram || "—");
         fd.append("Shoot Type", payload.shootType || "—");
@@ -8831,11 +8940,13 @@ window.resolveContractArchive = function(version) {
         // it meant this line kept naming V3.3 while the reference and full text
         // in the same email had moved on, so the studio's own record disagreed
         // with itself about which document was accepted.
-        fd.append("Signature Captured", sigBlob
+        fd.append("Agreement", sigBlob
           ? (withSig ? "Yes — drawn signature attached as PNG" : "Yes — drawn at booking (attachment unavailable; image kept in booking record)")
-          : (payload.agreementMethod === "checkbox"
-              ? `Yes — accepted via checkbox confirmation on the booking form (${payload.contractVersion || "Studio Terms"})`
-              : "No (email/DM consent)"));
+          : (payload.isCustomContract
+              ? `Custom contract requested — not yet agreed (${payload.contractVersion || "Studio Terms"})`
+              : payload.agreementMethod === "checkbox"
+                ? `Accepted by tick-box on the booking form (${payload.contractVersion || "Studio Terms"})`
+                : "Not recorded on the form"));
         fd.append("Contract Terms (full text)", payload.contractText || "—");
         if (withSig) fd.append("attachment", sigBlob, `signature-${payload.contractNumber || "contract"}.png`);
         const res = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(studioEmail)}`, {
@@ -8979,10 +9090,7 @@ window.resolveContractArchive = function(version) {
       const dateEl0 = $("#b_date");
       const requestedDates = (dateEl0 && Array.isArray(dateEl0._wpsPickedDates) && dateEl0._wpsPickedDates.length)
         ? dateEl0._wpsPickedDates.slice()
-        : date.split(/\s*[–—]\s*/)
-              .flatMap((part) => part.split(/,(?=\s*[A-Za-z])/))
-              .map((t) => new Date(t.trim()))
-              .filter((d) => !isNaN(d.getTime()) && d.getFullYear() >= 2020);
+        : parseTypedDates(date);
       const dateStatusTarget = requestedDates[0] || null;
       const dateAlreadyBooked = dateStatusTarget ? getCalDateStatus(dateStatusTarget).isBooked : false;
 
@@ -8991,16 +9099,19 @@ window.resolveContractArchive = function(version) {
       // "Request sent" and the studio's email said nothing about it (Sep 2026
       // audit). Same rules either way now. Days that are merely already booked
       // stay allowed on purpose — the studio decides those — and keep their flag.
-      const todayKey = getCalDateKey(new Date());
+      const todayKey = getCalDateKey(indiaToday());
       const unbookable = requestedDates.map((d) => {
         const st = getCalDateStatus(d);
         const label = d.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
         if (st.key < todayKey) return `${label} has already passed`;
         if (st.isCustomBlocked) return `${label} is blocked in the studio's calendar`;
+        if ((st.hasWorkshop || st.hasAssisting) && !st.hasConfirmedBooking) return `${label} — the photographer is away that day`;
         if (st.isBlocked) return `${label} is a ${d.toLocaleDateString("en-IN", { weekday: "long" })} — shoots run on weekends`;
         return null;
       }).filter(Boolean);
-      if (unbookable.length) {
+      // A brand's campaign is planned around the brand, weekday or not; the
+      // brief only asks for a call, so the weekend rule is for bookings (B21).
+      if (unbookable.length && !(window.isProductionBrief && window.isProductionBrief())) {
         const dateField = $("#b_date");
         toast(`${unbookable[0]}. Pick a date from the calendar, or email the studio to ask about that day.`);
         if (dateField) {
@@ -9159,7 +9270,7 @@ window.resolveContractArchive = function(version) {
           (isCustomContract ? `Custom Contract Notes: ${customContractNotes || 'Client requested custom agency MSA'}\n` : '') +
           `--------------------------------------------------\n\n` +
           (isCustomContract ?
-            `1. CUSTOM CONTRACT / AGENCY MSA REQUEST\nThis shoot request is submitted under a Custom Client Contract / Agency Master Services Agreement (MSA). Studio V3.7 default terms remain subject to custom contract review and mutual alignment prior to shoot day confirmation.\n\n2. CAMERA GEAR & DATA PROTECTION CLAUSE\nAll camera bodies, memory cards, and raw captures remain confidential studio property. Participants may not touch equipment or delete media from cameras.\n` +
+            `1. CUSTOM CONTRACT / AGENCY MSA REQUEST\nThis shoot request is submitted under a Custom Client Contract / Agency Master Services Agreement (MSA). The studio's standard terms (${isTfpCat ? window.ACTIVE_CONTRACTS.tfp : window.ACTIVE_CONTRACTS.commercial}) remain subject to custom contract review and mutual alignment prior to shoot day confirmation.\n\n2. CAMERA GEAR & DATA PROTECTION CLAUSE\nAll camera bodies, memory cards, and raw captures remain confidential studio property. Participants may not touch equipment or delete media from cameras.\n` +
             `\n\nSTANDARD TERMS SHOWN AT BOOKING (subject to the custom contract review above)\n--------------------------------------------------\n${standardTermsText}` :
             standardTermsText
           ) +
@@ -9221,7 +9332,7 @@ window.resolveContractArchive = function(version) {
         // to v514 (nothing reached the studio, the button hung on "Sending").
         const travelPolicyNote = venueByStudio
           ? `Travel & Accommodation Policy: Travel to the studio-provided venue above is covered by the studio${(bookingCalc && bookingCalc.isValidInvite) ? " for this invite" : ""}. If you later request a different location, standard terms apply again (travel beyond ${isTfpCat ? 10 : 20} km from the studio base in Noida, and accommodation where an overnight stay is needed, billed at actuals).\n`
-          : `Travel & Accommodation Policy: Shoots requiring travel beyond ${isTfpCat ? 10 : 20} km from the studio base (Noida) incur paid travel and, where an overnight stay is needed, accommodation - billed at actuals (at cost).\n`;
+          : `Travel & Accommodation Policy: Shoots requiring travel beyond ${isTfpCat ? 10 : 20} km from the studio base (Sector 46, Noida) incur paid travel and, where an overnight stay is needed, accommodation - billed at actuals (at cost).\n`;
         // Paid shoots only: the package buys the photographer, not the crew.
         // Nothing anywhere said so, which left every HMUA/styling/set cost an
         // argument waiting to happen on shoot day.
@@ -9264,7 +9375,7 @@ window.resolveContractArchive = function(version) {
           // rental — it is due in full up front rather than split across
           // both milestones; only the package rate itself is divided 50/50.
           const packageNet = Math.max(0, finalPayable - (homeStudioFee || 0));
-          const advance = Math.round(packageNet / 2) + (homeStudioFee || 0);
+          const advance = Math.min(finalPayable, Math.round(packageNet / 2) + (homeStudioFee || 0));
           return {
             basePrice: basePrice,
             homeStudioFee: homeStudioFee || 0,
@@ -9296,7 +9407,7 @@ window.resolveContractArchive = function(version) {
         // on the form and never sent anywhere.
         const fallbackPackage = isCollabPricing ? (val("b_collab_fallback") || "") : "";
         const inviteLine = (isValidInvite && inviteMeta)
-          ? `${inviteMeta.code} — ${inviteMeta.desc}${inviteMeta.lockedLocation ? ` · venue set by the studio: ${inviteMeta.lockedLocation}` : ""}`
+          ? `${inviteMeta.code} (test shoot)${inviteMeta.lockedLocation ? ` · venue set by the studio: ${inviteMeta.lockedLocation}` : ""}`
           : (enteredCode ? `${enteredCode} — not recognised, no invite applied` : "");
         const promoLine = promoMeta
           ? `${promoMeta.code}${promoMeta.tag ? ` — ${promoMeta.tag} on the package` : ""}` +
@@ -9337,7 +9448,7 @@ window.resolveContractArchive = function(version) {
                 ? `${inr(homeStudioRentalFee)} rental payable in full at least 48 hours before the shoot (non-refundable once paid)`
                 : "Nothing payable")
             : (() => {
-                const legs = splitPackageMilestones(Math.max(0, finalPayableNum - homeStudioRentalFee), homeStudioRentalFee, packageScheduleKey);
+                const legs = splitPackageMilestones(finalPayableNum - homeStudioRentalFee, homeStudioRentalFee, packageScheduleKey);
                 const advNote = `non-refundable${homeStudioRentalFee > 0 ? ", includes the studio rental" : ""}`;
                 return [`Advance retainer ${inr(legs[0])} (${advNote})`]
                   .concat(packageSchedule.emailLegs.map((tpl, i) => tpl.replace("{amt}", inr(legs[i + 1] || 0))))
@@ -9381,7 +9492,7 @@ window.resolveContractArchive = function(version) {
           (dateAlreadyBooked ? `⚠️ Date Status: This date already has a booking on the calendar — decide whether to confirm anyway or suggest an alternative.\n` : "") +
           `Session Duration: ${sessionDuration || '—'}\n` +
           `Location Pref: ${locationVal}\n` +
-          `Studio Space Rental: ${studioSpaceVal}\n` +
+          `Studio Space Rental: ${studioSpaceVal.replace(/ \(Billed at Actuals\)/g, "")}\n` +
           studioRentalPolicyNote +
           travelPolicyNote +
           (isProduction ? `Budget / Package: Quoted on the brief after a call\n` + productionLines : cleanBudget) +
@@ -9397,8 +9508,8 @@ window.resolveContractArchive = function(version) {
           `Moodboard Link: ${moodboard || '—'}\n` +
           (agreedToTerms
             ? (isCustomContract
-                ? `Contract Agreement: ${name} has REQUESTED A CUSTOM CONTRACT / AGENCY MSA rather than accepting the standard terms as they stand. Studio default terms remain subject to custom contract review and mutual alignment before the shoot day is confirmed.\nRequested Contract Changes: ${customContractNotes || "—"}\nContract Reference: ${contractRefDoc}\nSignature Captured: ${sigDataUrl ? 'Yes' : 'No'}\nRead terms online: https://www.nerdyphotographer.in/book/${isTfpCat ? '#tfp-terms' : '#terms'}\n\n`
-                : `Contract Agreement: ${name} has agreed to ${contractRefDoc} in full, without modifications. By sending this email the client confirms acceptance of all studio terms and conditions.\nContract Reference: ${contractRefDoc}\nSignature Captured: ${sigDataUrl ? 'Yes' : 'No'}\nRead terms online: https://www.nerdyphotographer.in/book/${isTfpCat ? '#tfp-terms' : '#terms'}\n\n`)
+                ? `Contract Agreement: ${name} has REQUESTED A CUSTOM CONTRACT / AGENCY MSA rather than accepting the standard terms as they stand. Studio default terms remain subject to custom contract review and mutual alignment before the shoot day is confirmed.\nRequested Contract Changes: ${customContractNotes || "—"}\nContract Reference: ${contractRefDoc}\nAgreement: ${sigDataUrl ? 'signed on the booking form' : 'accepted by tick-box on the booking form'}\nRead the terms you agreed to: https://www.nerdyphotographer.in/book/#terms-${isTfpCat ? window.ACTIVE_CONTRACTS.tfp : window.ACTIVE_CONTRACTS.commercial}\n\n`
+                : `Contract Agreement: ${name} has agreed to ${contractRefDoc} in full, without modifications. By sending this email the client confirms acceptance of all studio terms and conditions.\nContract Reference: ${contractRefDoc}\nAgreement: ${sigDataUrl ? 'signed on the booking form' : 'accepted by tick-box on the booking form'}\nRead the terms you agreed to: https://www.nerdyphotographer.in/book/#terms-${isTfpCat ? window.ACTIVE_CONTRACTS.tfp : window.ACTIVE_CONTRACTS.commercial}\n\n`)
             : `\n`) +
           `Concept/Vision:\n${concept || '—'}`;
         const inquiryBody = compactBody + tfpReleaseText;
@@ -9438,16 +9549,16 @@ window.resolveContractArchive = function(version) {
           (dateAlreadyBooked ? `⚠️ Date Status: This date already has a booking on the calendar — decide whether to confirm anyway or suggest an alternative.\n` : "") +
           `Session Duration: ${sessionDuration || '—'}\n` +
           `Location Pref: ${locationVal}\n` +
-          `Studio Space Rental: ${studioSpaceVal}\n` +
+          `Studio Space Rental: ${studioSpaceVal.replace(/ \(Billed at Actuals\)/g, "")}\n` +
           (isProduction ? `Budget / Package: Quoted on the brief after a call\n` + productionLines : cleanBudget) +
           pricingShort +
           `Moodboard Link: ${moodboard || '—'}\n` +
           (agreedToTerms
             ? (isCustomContract
-                ? `Contract Agreement: CUSTOM CONTRACT / AGENCY MSA REQUESTED — standard terms subject to review.\nRequested Contract Changes: ${customContractNotes || "—"}\nContract Reference: ${contractRefDoc}\nSignature Captured: ${sigDataUrl ? 'Yes' : 'No'}\n`
-                : `Contract Agreement: ${name} has agreed to ${contractRefDoc} in full, without modifications. By sending this email the client confirms acceptance of all studio terms and conditions.\nContract Reference: ${contractRefDoc}\nSignature Captured: ${sigDataUrl ? 'Yes' : 'No'}\n`)
+                ? `Contract Agreement: CUSTOM CONTRACT / AGENCY MSA REQUESTED — standard terms subject to review.\nRequested Contract Changes: ${customContractNotes || "—"}\nContract Reference: ${contractRefDoc}\nAgreement: ${sigDataUrl ? 'signed on the booking form' : 'accepted by tick-box on the booking form'}\n`
+                : `Contract Agreement: ${name} has agreed to ${contractRefDoc} in full, without modifications. By sending this email the client confirms acceptance of all studio terms and conditions.\nContract Reference: ${contractRefDoc}\nAgreement: ${sigDataUrl ? 'signed on the booking form' : 'accepted by tick-box on the booking form'}\n`)
             : ``) +
-          (isProduction ? `` :           `Studio Policies (studio rental, travel & accommodation, deliverables & RAW files, camera & media, payment terms): read and accepted in full — https://www.nerdyphotographer.in/book/${isTfpCat ? '#tfp-terms' : '#terms'}\n\n`) +
+          (isProduction ? `` :           `Studio Policies (studio rental, travel & accommodation, deliverables & RAW files, camera & media, payment terms): read and accepted in full — https://www.nerdyphotographer.in/book/#terms-${isTfpCat ? window.ACTIVE_CONTRACTS.tfp : window.ACTIVE_CONTRACTS.commercial}\n\n`) +
           `Concept/Vision:\n${concept || '—'}`;
 
         let mailtoUrl = buildMailto(compactBody);
@@ -9528,10 +9639,7 @@ window.resolveContractArchive = function(version) {
             const dateEl = $("#b_date");
             const picked = (dateEl && Array.isArray(dateEl._wpsPickedDates) && dateEl._wpsPickedDates.length)
               ? dateEl._wpsPickedDates.slice()
-              : date.split(/\s*[–—]\s*/)
-                    .flatMap((part) => part.split(/,(?=\s*[A-Za-z])/))
-                    .map((t) => new Date(t.trim()))
-                    .filter((d) => !isNaN(d.getTime()) && d.getFullYear() >= 2020);
+              : parseTypedDates(date);
             picked.forEach(dObj => {
               {
                 const dKey = getCalDateKey(dObj);
@@ -9614,6 +9722,7 @@ window.resolveContractArchive = function(version) {
           if (successPanel) {
             form.hidden = true;
             successPanel.hidden = false;
+            clearBookDraft();
 
             const iconEl = $("#bookSuccessIcon");
             if (iconEl) {
@@ -9639,7 +9748,9 @@ window.resolveContractArchive = function(version) {
             // had failed, which was the one thing it could not promise.
             const releaseNote = !agreedToTerms ? ""
               : sentDirectly
-              ? `<br/><br/><strong style="color: var(--accent-text);">Terms agreed:</strong> your acceptance of <em>${esc(contractRefDoc)}</em>${contractNumber ? ` (${esc(contractNumber)})` : ""} went to the studio with this request, and a copy is on its way to you.`
+              ? (isCustomContract
+                  ? `<br/><br/><strong style="color: var(--accent-text);">Custom contract requested:</strong> your changes went to the studio with this request${contractNumber ? ` (${esc(contractNumber)})` : ""}. Nothing is agreed until the studio replies with the contract.`
+                  : `<br/><br/><strong style="color: var(--accent-text);">Terms agreed:</strong> your acceptance of <em>${esc(contractRefDoc)}</em>${contractNumber ? ` (${esc(contractNumber)})` : ""} went to the studio with this request, and a copy is on its way to you.`)
               : `<br/><br/><strong style="color: var(--accent-text);">Terms agreed:</strong> your acceptance of <em>${esc(contractRefDoc)}</em>${contractNumber ? ` (${esc(contractNumber)})` : ""} is saved in this browser and is part of the email below — it reaches the studio when you send it.`;
 
             const msgEl = $("#bookSuccessMsg");
@@ -9685,11 +9796,20 @@ window.resolveContractArchive = function(version) {
           "Email": email,
           "Phone": phone || "—",
           "Instagram / Website": instagram || "—",
+          // Booking for someone else: the one email that always reaches the
+          // studio never said who was in front of the camera (Sep 2026 audit, B7).
+          ...(onBehalf ? {
+            "Being photographed": subjectName || "—",
+            "Their email": subjectEmail || "—",
+            "Under 18": subjectIsMinor ? "Yes" : "No",
+            ...(subjectIsMinor ? { "Parent or guardian": `${guardianName || "—"} (${guardianEmail || "—"})` } : {}),
+            "Booker confirms they are authorised": bookerAuthorised ? "Yes" : "No"
+          } : {}),
           "Shoot Type": type,
           "Proposed Date": date,
           "Session Duration": sessionDuration || "—",
           "Location Pref": locationVal,
-          "Studio Space": studioSpaceVal || "—",
+          "Studio Space": (studioSpaceVal || "—").replace(/ \(Billed at Actuals\)/g, ""),
           // With no published rates in hand, nothing on the page was a real
           // quote, so the email must not read as though one was agreed.
           ...(pricesArePublished() ? {} : { "⚠️ Prices": "The studio's rates could not be loaded in this visitor's browser, so no quote was shown and none was agreed. Quote this request by email." }),
@@ -9706,7 +9826,9 @@ window.resolveContractArchive = function(version) {
           ...(dateAlreadyBooked ? { "Date Status": "⚠️ This date already has a booking on the calendar — confirm anyway or offer an alternative" } : {}),
           "Moodboard Link": moodboard || "—",
           "Concept / Vision": concept || "—",
-          "Contract Agreement": agreedToTerms
+          "Contract Agreement": agreedToTerms && isCustomContract
+            ? `CUSTOM CONTRACT REQUESTED — not yet agreed; standard terms under review`
+            : agreedToTerms
             ? `AGREED — ${contractRefDoc}${contractNumber ? ` · No. ${contractNumber}` : ""} · ${sigDataUrl ? "drawn signature captured" : (agreementMethod === "checkbox" ? "accepted by checkbox" : "accepted by email/DM consent")}${isCustomContract ? " · CUSTOM CONTRACT / AGENCY MSA REQUESTED" : ""} (full text below)`
             : "Not applicable",
           // What the client typed into "Request Custom Contract". It used to
@@ -9715,6 +9837,9 @@ window.resolveContractArchive = function(version) {
           ...(isCustomContract ? { "Requested Contract Changes": customContractNotes || "Client requested a custom contract / agency MSA (no details given)" } : {}),
         };
         if (agreedToTerms) relayFields["Contract Full Text"] = tfpReleaseText.trim();
+        // A brief carries its own subject, usage and scale; the package form's
+        // defaults ("Fashion Editorial", "Full Day", "Outdoor") only misled.
+        if (isProduction) ["Shoot Type", "Session Duration", "Studio Space"].forEach((k) => delete relayFields[k]);
 
         // The signed-contract email is an independent channel from the inquiry
         // relay — it goes out however the inquiry itself ends up travelling —
@@ -9758,6 +9883,7 @@ window.resolveContractArchive = function(version) {
           sendSignedContractEmail({
             clientName: name,
             clientEmail: email,
+            ...(onBehalf ? { participantName: subjectName, participantEmail: subjectEmail, participantIsMinor: subjectIsMinor, guardianName, guardianEmail } : {}),
             phone,
             instagram,
             date,
@@ -9858,9 +9984,9 @@ window.resolveContractArchive = function(version) {
         return;
       }
       if (type === "Selective Collaboration (TFP)") {
-        openTermsModal(name, "TFP", (agreed, isCustom, notes, sigUrl, method) => proceedSubmit(agreed, "TFP", isCustom, notes, sigUrl, method));
+        openTermsModal(onBehalfName(name), "TFP", (agreed, isCustom, notes, sigUrl, method) => proceedSubmit(agreed, "TFP", isCustom, notes, sigUrl, method));
       } else {
-        openTermsModal(name, "Commercial", (agreed, isCustom, notes, sigUrl, method) => proceedSubmit(agreed, "Commercial", isCustom, notes, sigUrl, method));
+        openTermsModal(onBehalfName(name), "Commercial", (agreed, isCustom, notes, sigUrl, method) => proceedSubmit(agreed, "Commercial", isCustom, notes, sigUrl, method));
       }
     };
 
@@ -9949,7 +10075,12 @@ window.resolveContractArchive = function(version) {
     }
 
     // Open the terms modal for `partnerName` and `shootCategory` ("TFP" vs "Commercial").
-    function openTermsModal(partnerName, shootCategory, onAccept) {
+    // The terms window names who the contract is with; booking for someone
+    // else, it names the person photographed as well (Sep 2026 audit, B7).
+    const onBehalfName = (booker) => ($("#b_onbehalf")?.checked && val("b_subject_name"))
+      ? `${booker} — booking for ${val("b_subject_name")}` : booker;
+
+    function openTermsModal(partnerName, shootCategory, onAccept, pinnedVersion) {
       const isTfp = shootCategory === "TFP";
       const modalTitle = $("#termsModalTitle");
       const modalTag = $("#termsModalTag");
@@ -9975,9 +10106,13 @@ window.resolveContractArchive = function(version) {
          "V3.7" while ACTIVE_CONTRACTS had moved on to V3.10, so the badge, the
          tick-box label and the document itself all claimed a version three
          behind what the booking was actually stamped with. */
-      const activeKey = isTfp ? window.ACTIVE_CONTRACTS.tfp : window.ACTIVE_CONTRACTS.commercial;
+      // A link from a client's email names the version they agreed to, so an
+      // older contract can still be re-read after a newer one takes over
+      // (Sep 2026 audit, B18). Without one, the version in force is shown.
+      const currentKey = isTfp ? window.ACTIVE_CONTRACTS.tfp : window.ACTIVE_CONTRACTS.commercial;
+      const activeKey = (pinnedVersion && /^V\d+\.\d+-(COMMERCIAL|TFP)$/.test(pinnedVersion)) ? pinnedVersion : currentKey;
       const activeNum = (String(activeKey).match(/V(\d+\.\d+)/) || [])[1] || "";
-      if (modalTag) modalTag.textContent = `${isTfp ? "TFP-LIABILITY-RELEASE" : "COMMERCIAL-CONTRACT"}-V${activeNum} (ACTIVE)`;
+      if (modalTag) modalTag.textContent = `${isTfp ? "TFP-LIABILITY-RELEASE" : "COMMERCIAL-CONTRACT"}-V${activeNum} (${activeKey === currentKey ? "ACTIVE" : "AS AGREED"})`;
       const versionLabel = $("#termsAgreeVersionLabel");
       if (versionLabel) versionLabel.textContent = `Studio Terms & Conditions (Version V${activeNum})`;
       if (partnerNameEl) partnerNameEl.textContent = partnerName || "Valued Client";
@@ -10168,6 +10303,9 @@ window.resolveContractArchive = function(version) {
     // Check if loaded with Hash link
     if (location.hash === "#tfp-terms") {
       openTermsModal("[Your name]", "TFP");
+    } else if (/^#terms-V\d+\.\d+-(COMMERCIAL|TFP)$/.test(location.hash)) {
+      const key = location.hash.slice("#terms-".length);
+      openTermsModal("[Your name]", /TFP$/.test(key) ? "TFP" : "Commercial", undefined, key);
     } else if (location.hash === "#terms") {
       // The link in every commercial client's email ("Read terms online:
       // …/book/#terms") opened the form and nothing else, so a paying client
@@ -10175,8 +10313,37 @@ window.resolveContractArchive = function(version) {
       openTermsModal("[Your name]", "Commercial");
     }
 
+    /* A draft of the form, kept for this browser tab only. Going back and
+       forward used to empty every field, a long brief included (Sep 2026
+       audit, B25). Cleared once a request is sent, and by "Send another". */
+    const BOOK_DRAFT_KEY = "wps-book-draft";
+    const draftFields = () => [...form.querySelectorAll("input[id^='b_'], select[id^='b_'], textarea[id^='b_']")]
+      .filter((el) => el.type !== "file" && el.type !== "hidden");
+    const saveBookDraft = () => {
+      try {
+        const d = {};
+        draftFields().forEach((el) => { d[el.id] = (el.type === "checkbox" || el.type === "radio") ? el.checked : el.value; });
+        sessionStorage.setItem(BOOK_DRAFT_KEY, JSON.stringify(d));
+      } catch (e) {}
+    };
+    const clearBookDraft = () => { try { sessionStorage.removeItem(BOOK_DRAFT_KEY); } catch (e) {} };
+    (function restoreBookDraft() {
+      let d = null;
+      try { d = JSON.parse(sessionStorage.getItem(BOOK_DRAFT_KEY) || "null"); } catch (e) {}
+      if (!d || typeof d !== "object") return;
+      draftFields().forEach((el) => {
+        if (!(el.id in d)) return;
+        if (el.type === "checkbox" || el.type === "radio") el.checked = !!d[el.id];
+        else if (!el.value || el.tagName === "SELECT" || el.tagName === "TEXTAREA") el.value = d[el.id];
+        el.dispatchEvent(new Event(el.tagName === "SELECT" || el.type === "checkbox" || el.type === "radio" ? "change" : "input", { bubbles: true }));
+      });
+    })();
+    form.addEventListener("input", saveBookDraft);
+    form.addEventListener("change", saveBookDraft);
+
     // "Send another request" — reset back to a clean form.
     $("#bookAnother")?.addEventListener("click", () => {
+      clearBookDraft();
       form.reset();
       // form.reset() empties the field but not the picker behind it: the next
       // request kept reporting the previous date's "already booked" badge, and

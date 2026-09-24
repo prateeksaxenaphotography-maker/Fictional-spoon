@@ -3090,7 +3090,13 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       duration: "Full Day",
       status: "confirmed",
       location: HOME_STUDIO_NAME,
-      package: "₹10,000 Package — 50 Proof Clicks + 8 Retouched Master Clicks",
+      // The first published package, as quoted: the old literal promised
+      // "50 proofs + 8 retouched" for ₹10,000, a tier that never existed
+      // (Sep 2026 audit, B39).
+      package: (() => {
+        const p = (typeof getAdminPackages === "function" && getAdminPackages()[0]) || null;
+        return p ? `₹${Number(p.price).toLocaleString("en-IN")} ${p.name} — ${p.specs}` : "";
+      })(),
       notes: "",
       contractVersion: preselectedVersion || window.ACTIVE_CONTRACTS.commercial
     };
@@ -3380,7 +3386,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         savings = Math.min(price, disc.type === "pct" ? Math.round(price * disc.value / 100) : disc.value);
       }
       const total = Math.max(0, price + rental - savings);
-      const legs = splitPackageMilestones(Math.max(0, total - rental), rental, key);
+      const legs = splitPackageMilestones(total - rental, rental, key);
       const label = disc.source === "none" ? "" : ((savings > 0 || rentalOff > 0) ? disc.label : `${disc.label} (no effect)`);
       return { kind, listRental, rental, rentalOff, price, savings, total, key, legs, discountLabel: label, discount: disc };
     };
