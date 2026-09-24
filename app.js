@@ -671,8 +671,22 @@ const SETTINGS_KEYS = {
   PROMO_CODES: "wps_custom_promo_codes",
   PORTFOLIO_PDF: "wps_portfolio_pdf",
   HOME_STUDIO_RATE: "wps_home_studio_rate",
-  HOME_STUDIO_RATE_TFP: "wps_home_studio_rate_tfp"
+  HOME_STUDIO_RATE_TFP: "wps_home_studio_rate_tfp",
+  MEASURE_UNITS: "wps_measure_units"
 };
+/* How measurements are shown everywhere — "imperial" (height in feet and
+   inches, chest/waist/hips in inches) or "metric" (all in cm). Published as
+   { display } because the settings reader only reads objects, lists and
+   numbers back out of data.js. This device's choice wins until published. */
+function getMeasureUnits() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("wps_measure_units") || "null");
+    if (saved && (saved.display === "metric" || saved.display === "imperial")) return saved.display;
+  } catch (e) {}
+  const pub = window.WPS_DATA && window.WPS_DATA.MEASURE_UNITS;
+  return pub && pub.display === "metric" ? "metric" : "imperial";
+}
+window.getMeasureUnits = getMeasureUnits;
 function stampSetting(storageKey) {
   try { localStorage.setItem(`wps_at_${storageKey}`, String(Date.now())); } catch (e) {}
 }
@@ -1470,6 +1484,56 @@ window.resolveContractArchive = function(version) {
   // a comp card hedging between the two reads as a form, not a card. The
   // studio picks the word per model; "Chest" only stands in until they do.
   const CHEST_LABELS = ["Chest", "Bust"];
+  /* Models send measurements however they have them — 180 cm, 5'11", "6 Ft",
+     39 inch, "38-40" — and the studio wants them shown one way everywhere
+     (the owner, Sep 2026). A value is kept as typed, with its unit; this reads
+     it and prints it in the chosen style (getMeasureUnits). Nothing written
+     with a unit is ever guessed: only a bare number is read by its size
+     (under 60 is inches for chest/waist/hips; for height 4–8 is feet, 48–99
+     inches, 100+ cm). Shoes, hair and eyes are never converted. */
+  const MEASURE_KINDS = new Set(["height", "chest", "waist", "hips"]);
+  function measureToCm(kind, raw) {
+    const s = String(raw || "").toLowerCase().replace(/[–—]|\bto\b/g, "-").replace(/[’′]/g, "'").replace(/[”″]/g, '"').trim();
+    if (!s) return null;
+    const nums = (s.match(/\d+(?:\.\d+)?/g) || []).map(Number);
+    if (!nums.length) return null;
+    if (kind === "height") {
+      const ftIn = s.match(/(\d)\s*(?:'|ft|feet|foot)\s*(\d{1,2}(?:\.\d+)?)?/);
+      if (ftIn) return [Number(ftIn[1]) * 30.48 + Number(ftIn[2] || 0) * 2.54];
+      const dotted = s.match(/^(\d)(?:\.|\s+)(\d{1,2})$/);
+      if (dotted && Number(dotted[2]) <= 11) return [Number(dotted[1]) * 30.48 + Number(dotted[2]) * 2.54];
+      const n = nums[0];
+      if (/cm/.test(s) || n >= 100) return [n];
+      if (/inch|\bin\b|"/.test(s) || (n >= 48 && n < 100)) return [n * 2.54];
+      if (n >= 4 && n < 8) return [n * 30.48];
+      return null;
+    }
+    const cm = /cm/.test(s) ? true : /inch|\bin\b|"/.test(s) ? false : nums[0] >= 60;
+    return nums.slice(0, 2).map((n) => cm ? n : n * 2.54);
+  }
+  function formatMeasure(kind, raw, units) {
+    const cms = measureToCm(kind, raw);
+    if (!cms) return String(raw || "");
+    const system = units || (typeof getMeasureUnits === "function" ? getMeasureUnits() : "imperial");
+    const range = (v) => (v.length > 1 && v[0] !== v[1]) ? `${v[0]}–${v[1]}` : `${v[0]}`;
+    if (system === "metric") return `${range(cms.map((c) => Math.round(c)))} cm`;
+    if (kind === "height") { const t = Math.round(cms[0] / 2.54); return `${Math.floor(t / 12)}'${t % 12}"`; }
+    return `${range(cms.map((c) => String(Math.round((c / 2.54) * 2) / 2)))}"`;
+  }
+  // Shoes keep their size; only the system is tidied to the front: "7.5 UK",
+  // "UK11" and "uk 7.5" all print "UK 7.5". Anything else prints as typed.
+  function formatShoe(raw) {
+    const s = String(raw || "").trim();
+    const m = s.match(/(?<![a-z])(uk|us|eur?|ind)(?![a-z])/i);
+    if (!m) return s;
+    const size = s.replace(m[0], "").replace(/^[\s:·-]+|[\s:·-]+$/g, "").trim();
+    const sys = m[1].toUpperCase() === "EUR" ? "EU" : m[1].toUpperCase();
+    return size ? `${sys} ${size}` : s;
+  }
+  const statText = (kind, raw) => MEASURE_KINDS.has(kind) ? formatMeasure(kind, raw) : kind === "shoes" ? formatShoe(raw) : String(raw || "");
+  window.statText = statText;
+  window.measureToCm = measureToCm;
+
   const chestLabelOf = (shoot) => {
     const raw = String((shoot && shoot.chestLabel) || "").trim().toLowerCase();
     return CHEST_LABELS.find((l) => l.toLowerCase() === raw) || CHEST_LABELS[0];
@@ -2579,11 +2643,11 @@ window.resolveContractArchive = function(version) {
     const statsAllowedHere = shoot.showStatsOnCompCard !== false;
     if (isCc && hasStats && statsAllowedHere) {
       const statItems = [
-        ["Height", shoot.height],
-        [chestLabelOf(shoot), shoot.chest],
-        ["Waist", shoot.waist],
-        ["Hips", shoot.hips],
-        ["Shoes", shoot.shoes],
+        ["Height", statText("height", shoot.height)],
+        [chestLabelOf(shoot), statText("chest", shoot.chest)],
+        ["Waist", statText("waist", shoot.waist)],
+        ["Hips", statText("hips", shoot.hips)],
+        ["Shoes", statText("shoes", shoot.shoes)],
         ["Hair", shoot.modelHair],
         ["Eyes", shoot.modelEyes]
       ].filter(([, v]) => v).map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`);
@@ -3599,11 +3663,11 @@ window.resolveContractArchive = function(version) {
             <div style="margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px; width: 100%;">
               <p class="eyebrow" style="font-size: var(--font-xs); margin-bottom: 8px; color: var(--ink-soft); letter-spacing: 0.05em; text-align: left;">Model Stats</p>
               <div class="stats-row">
-                ${latestShoot.height ? `<div class="stats-item"><dt>Height</dt><dd>${esc(latestShoot.height)}</dd></div>` : ""}
-                ${latestShoot.chest ? `<div class="stats-item"><dt>${esc(chestLabelOf(latestShoot))}</dt><dd>${esc(latestShoot.chest)}</dd></div>` : ""}
-                ${latestShoot.waist ? `<div class="stats-item"><dt>Waist</dt><dd>${esc(latestShoot.waist)}</dd></div>` : ""}
-                ${latestShoot.hips ? `<div class="stats-item"><dt>Hips</dt><dd>${esc(latestShoot.hips)}</dd></div>` : ""}
-                ${latestShoot.shoes ? `<div class="stats-item"><dt>Shoes</dt><dd>${esc(latestShoot.shoes)}</dd></div>` : ""}
+                ${latestShoot.height ? `<div class="stats-item"><dt>Height</dt><dd>${esc(statText("height", latestShoot.height))}</dd></div>` : ""}
+                ${latestShoot.chest ? `<div class="stats-item"><dt>${esc(chestLabelOf(latestShoot))}</dt><dd>${esc(statText("chest", latestShoot.chest))}</dd></div>` : ""}
+                ${latestShoot.waist ? `<div class="stats-item"><dt>Waist</dt><dd>${esc(statText("waist", latestShoot.waist))}</dd></div>` : ""}
+                ${latestShoot.hips ? `<div class="stats-item"><dt>Hips</dt><dd>${esc(statText("hips", latestShoot.hips))}</dd></div>` : ""}
+                ${latestShoot.shoes ? `<div class="stats-item"><dt>Shoes</dt><dd>${esc(statText("shoes", latestShoot.shoes))}</dd></div>` : ""}
                 ${latestShoot.modelHair ? `<div class="stats-item"><dt>Hair</dt><dd>${esc(latestShoot.modelHair)}</dd></div>` : ""}
                 ${latestShoot.modelEyes ? `<div class="stats-item"><dt>Eyes</dt><dd>${esc(latestShoot.modelEyes)}</dd></div>` : ""}
               </div>

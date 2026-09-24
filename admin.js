@@ -1884,7 +1884,7 @@ window.moveAdminPackageRow = function(index, dir) {
     // publish can keep a newer copy made on another device.
     const settings = {};
     const stamps = parseObjectAfterKey(text, '"SETTINGS_AT"') || {};
-    ["PACKAGES", "TFP_PACKAGE", "INVITE_CODES", "PROMO_CODES", "PORTFOLIO_PDF", "HOME_STUDIO_RATE", "HOME_STUDIO_RATE_TFP"].forEach((k) => {
+    ["PACKAGES", "TFP_PACKAGE", "INVITE_CODES", "PROMO_CODES", "PORTFOLIO_PDF", "HOME_STUDIO_RATE", "HOME_STUDIO_RATE_TFP", "MEASURE_UNITS"].forEach((k) => {
       const v = parseValueAfterKey(text, `"${k}"`);
       if (v !== undefined) settings[k] = v;
     });
@@ -1925,6 +1925,96 @@ window.moveAdminPackageRow = function(index, dir) {
       return null;
     }
   }
+
+    /* Measurements are typed as given, with the unit picked beside them, and
+       stored with that unit ("180 cm", "5'11"", "38 in") so statText can show
+       them in the studio's chosen style anywhere (Sep 2026, the owner). */
+    const UNIT_CHOICES = { height: [["ftin", "ft / in"], ["cm", "cm"]], chest: [["in", "in"], ["cm", "cm"]], waist: [["in", "in"], ["cm", "cm"]], hips: [["in", "in"], ["cm", "cm"]] };
+    const SHOE_SYSTEMS = ["UK", "US", "EU", "Other"];
+    const statIn = (kind) => kind === "height" ? readHeight((document.getElementById("f_height_unit") || { closest: () => null }).closest(".height-group")) : composeMeasure(kind, (document.getElementById("f_" + kind) || {}).value, (document.getElementById("f_" + kind + "_unit") || {}).value);
+    const shoeIn = () => composeShoe((document.getElementById("f_shoes_sys") || {}).value || "UK", (document.getElementById("f_shoes") || {}).value);
+    const guessUnit = (kind, raw) => {
+      const s = String(raw || "").toLowerCase();
+      if (!s.trim()) return window.getMeasureUnits() === "metric" ? "cm" : (kind === "height" ? "ftin" : "in");
+      if (/cm/.test(s)) return "cm";
+      const n = parseFloat(s.replace(/[^\d.]/g, " ").trim()) || 0;
+      if (kind === "height") return (/['’]|ft|feet/.test(s) || n < 100) ? "ftin" : "cm";
+      return (/inch|\bin\b|"/.test(s) || n < 60) ? "in" : "cm";
+    };
+    const bareValue = (kind, raw) => String(raw || "").replace(/\s*(cm|inches|inch|in|")\s*$/i, "").trim();
+    const composeMeasure = (kind, value, unit) => {
+      const v = String(value || "").trim();
+      if (!v) return "";
+      if (unit === "cm") return /cm/i.test(v) ? v : `${v} cm`;
+      if (kind === "height") {
+        if (/['’]|ft|feet/i.test(v)) return v;
+        const p = v.match(/^(\d)(?:[.\s]+(\d{1,2}))?$/);
+        return p ? `${p[1]}'${p[2] || 0}"` : v;
+      }
+      return /inch|\bin\b|"/i.test(v) ? v : `${v} in`;
+    };
+    const splitShoe = (raw) => {
+      const s = String(raw || "").trim();
+      const m = s.match(/(?<![a-z])(uk|us|eur?)(?![a-z])/i);
+      if (!m) return { sys: s ? "Other" : "UK", size: s };
+      return { sys: m[1].toUpperCase() === "EUR" ? "EU" : m[1].toUpperCase(), size: s.replace(m[0], "").replace(/^[\s:·-]+|[\s:·-]+$/g, "").trim() };
+    };
+    /* Height as the owner asked (Sep 2026): feet and inches get a box each, so
+       nobody has to type 5'11" into one; centimetres get one box. The unit
+       picker shows the right boxes. */
+    const heightParts = (raw) => {
+      const s = String(raw || "").replace(/[’′]/g, "'").trim();
+      const unit = guessUnit("height", raw);
+      if (unit === "cm") return { unit, cm: (s.match(/\d+(?:\.\d+)?/) || [""])[0], ft: "", inch: "" };
+      const m = s.match(/(\d)\s*(?:'|ft|feet|foot|\.|\s)\s*(\d{1,2})?/i) || s.match(/^(\d)$/);
+      if (m) return { unit, cm: "", ft: m[1], inch: m[2] || "" };
+      const cms = typeof window.measureToCm === "function" ? window.measureToCm("height", raw) : null;
+      if (!cms) return { unit, cm: "", ft: "", inch: "" };
+      const tot = Math.round(cms[0] / 2.54);
+      return { unit, cm: "", ft: String(Math.floor(tot / 12)), inch: String(tot % 12) };
+    };
+    const heightGroup = (ids, raw) => {
+      const h = heightParts(raw), ft = h.unit === "ftin";
+      const box = "min-width: 0;";
+      return `<span class="height-group" style="display: flex; gap: 6px; align-items: center;">
+        <input ${ids.ft} type="text" inputmode="numeric" maxlength="1" placeholder="ft" aria-label="Feet" value="${esc(h.ft)}" style="${box} flex: 0 0 56px;"${ft ? "" : " hidden"} />
+        <input ${ids.inch} type="text" inputmode="decimal" maxlength="4" placeholder="in" aria-label="Inches" value="${esc(h.inch)}" style="${box} flex: 0 0 64px;"${ft ? "" : " hidden"} />
+        <input ${ids.cm} type="text" inputmode="decimal" maxlength="5" placeholder="cm" aria-label="Centimetres" value="${esc(h.cm)}" style="${box} flex: 1 1 auto;"${ft ? " hidden" : ""} />
+        <select ${ids.unit} class="height-unit" aria-label="Unit" style="flex: 0 0 84px;"><option value="ftin"${ft ? " selected" : ""}>ft / in</option><option value="cm"${ft ? "" : " selected"}>cm</option></select>
+      </span>`;
+    };
+    // Show the boxes that match the picked unit.
+    document.addEventListener("change", (e) => {
+      const sel = e.target && e.target.closest && e.target.closest(".height-unit");
+      if (!sel) return;
+      const g = sel.closest(".height-group"); if (!g) return;
+      const [ftEl, inEl, cmEl] = g.querySelectorAll("input");
+      const ft = sel.value === "ftin";
+      ftEl.hidden = !ft; inEl.hidden = !ft; cmEl.hidden = ft;
+      (ft ? ftEl : cmEl).focus();
+    });
+    const readHeight = (g) => {
+      if (!g) return "";
+      const [ftEl, inEl, cmEl] = g.querySelectorAll("input");
+      const unit = g.querySelector(".height-unit").value;
+      if (unit === "cm") { const v = String(cmEl.value || "").trim(); return v ? `${v} cm` : ""; }
+      const f = String(ftEl.value || "").trim(), i = String(inEl.value || "").trim();
+      return f ? `${f}'${i || 0}"` : "";
+    };
+    const composeShoe = (sys, size) => { const v = String(size || "").trim(); return !v ? "" : sys === "Other" ? v : `${sys} ${v}`; };
+    const unitSelect = (kind, attrs, raw) => `<select ${attrs} aria-label="Unit" style="flex: 0 0 84px;">${UNIT_CHOICES[kind].map(([v, l]) => `<option value="${v}"${guessUnit(kind, raw) === v ? " selected" : ""}>${l}</option>`).join("")}</select>`;
+    const shoeSelect = (attrs, raw) => `<select ${attrs} aria-label="Shoe size system" style="flex: 0 0 84px;">${SHOE_SYSTEMS.map((v) => `<option${splitShoe(raw).sys === v ? " selected" : ""}>${v}</option>`).join("")}</select>`;
+    const measureUnitsChooser = (id) => `<label class="field" style="margin: 0;"><span>Measurements show on cards and PDFs as</span>
+      <select id="${id}" class="measure-units-choice"><option value="imperial"${window.getMeasureUnits() === "imperial" ? " selected" : ""}>Feet &amp; inches · inches</option><option value="metric"${window.getMeasureUnits() === "metric" ? " selected" : ""}>Centimetres</option></select></label>`;
+    // One listener for every copy of the chooser (album form, model details).
+    document.addEventListener("change", (e) => {
+      const sel = e.target && e.target.closest && e.target.closest(".measure-units-choice");
+      if (!sel) return;
+      try { localStorage.setItem("wps_measure_units", JSON.stringify({ display: sel.value })); } catch (err) {}
+      if (typeof window.stampSetting === "function") window.stampSetting("wps_measure_units");
+      document.querySelectorAll(".measure-units-choice").forEach((o) => { o.value = sel.value; });
+      toast(`Measurements will show in ${sel.value === "metric" ? "centimetres" : "feet and inches, and inches"}. Publish to show it on the site.`);
+    });
 
   async function syncToGitHub(shootsList, { deletedIds = [] } = {}) {
     /* The token used to stay in this browser for ever. It is now forgotten
@@ -2250,6 +2340,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             TFP_PACKAGE: (typeof window.getAdminTfpPackage === "function" ? window.getAdminTfpPackage() : null),
             HOME_STUDIO_RATE: (typeof window.getHomeStudioRate === "function" ? window.getHomeStudioRate() : 3000),
             PORTFOLIO_PDF: (typeof window.getPortfolioPdfSettings === "function" ? window.getPortfolioPdfSettings() : null),
+            MEASURE_UNITS: { display: (typeof window.getMeasureUnits === "function" ? window.getMeasureUnits() : "imperial") },
             HOME_STUDIO_RATE_TFP: (function() {
               try {
                 const v = localStorage.getItem("wps_home_studio_rate_tfp");
@@ -5134,24 +5225,25 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                 <p id="f_model_types_hint" style="margin: 6px 0 0; font-size: var(--font-xs); color: var(--ink-soft);">Shown beside the model's name on the comp card album, in the lightbox, and on the exported PDF.</p>
               </div>
               <div class="field-row">
-                <label class="field"><span>Height</span><input id="f_height" type="text" placeholder="e.g. 5'11&quot; (feet and inches)" /></label>
+                <div class="field"><span>Height</span>${heightGroup({ ft: 'id="f_height_ft"', inch: 'id="f_height_in"', cm: 'id="f_height"', unit: 'id="f_height_unit"' }, "")}</div>
                 <div class="field">
                   <span>Chest or bust <span style="font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-soft);">— pick the word this model's card should use</span></span>
-                  <div style="display: flex; gap: 8px; margin-top: 6px;">
-                    <select id="f_chest_label" style="flex: 0 0 110px;">${opt(CHEST_LABELS)}</select>
-                    <input id="f_chest" type="text" placeholder="e.g. 38&quot; (inches)" style="flex: 1 1 auto; min-width: 0;" />
+                  <div style="display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap;">
+                    <select id="f_chest_label" style="flex: 0 0 100px;">${opt(CHEST_LABELS)}</select>
+                    <input id="f_chest" type="text" placeholder="e.g. 38 or 38-40" style="flex: 1 1 90px; min-width: 90px;" />${unitSelect("chest", 'id="f_chest_unit"', "")}
                   </div>
                 </div>
               </div>
               <div class="field-row">
-                <label class="field"><span>Waist</span><input id="f_waist" type="text" placeholder="e.g. 30&quot; (inches)" /></label>
-                <label class="field"><span>Hips</span><input id="f_hips" type="text" placeholder="e.g. 36&quot; / 91 cm" /></label>
+                <label class="field"><span>Waist</span><span style="display: flex; gap: 6px;"><input id="f_waist" type="text" placeholder="e.g. 30" style="flex: 1 1 auto; min-width: 0;" />${unitSelect("waist", 'id="f_waist_unit"', "")}</span></label>
+                <label class="field"><span>Hips</span><span style="display: flex; gap: 6px;"><input id="f_hips" type="text" placeholder="e.g. 36" style="flex: 1 1 auto; min-width: 0;" />${unitSelect("hips", 'id="f_hips_unit"', "")}</span></label>
               </div>
               <div class="field-row">
-                <label class="field"><span>Shoes</span><input id="f_shoes" type="text" placeholder="e.g. UK 9" /></label>
+                <label class="field"><span>Shoes</span><span style="display: flex; gap: 6px;">${shoeSelect('id="f_shoes_sys"', "")}<input id="f_shoes" type="text" placeholder="e.g. 9" style="flex: 1 1 auto; min-width: 0;" /></span></label>
                 <label class="field"><span>Hair color</span><input id="f_model_hair" type="text" placeholder="e.g. Dark Brown" /></label>
               </div>
               <label class="field"><span>Eye color</span><input id="f_model_eyes" type="text" placeholder="e.g. Green" /></label>
+              ${measureUnitsChooser("f_measure_units_album")}
               <div class="field-row" style="margin-top: 12px; gap: 20px; flex-wrap: wrap;">
                 <label style="display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); font-weight: 500; color: var(--ink); cursor: pointer; user-select: none;">
                   <input id="f_show_stats_comp" type="checkbox" checked style="width: 16px; height: 16px; accent-color: var(--accent-text);" />
@@ -5566,10 +5658,10 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     const MODEL_DETAIL_FIELDS = [
       ["name", "Name", "e.g. Aisha Khan"],
       ["talent", "Name with her own links", "e.g. Aisha Khan (@aishak; aishakhan.com)"],
-      ["height", "Height", "e.g. 5'9\" / 175 cm"],
-      ["chest", "Chest or bust", "e.g. 32 inch"],
-      ["waist", "Waist", "e.g. 26\" / 66 cm"],
-      ["hips", "Hips", "e.g. 36\" / 91 cm"],
+      ["height", "Height", "e.g. 5'9 or 175"],
+      ["chest", "Chest or bust", "e.g. 32 or 30-32"],
+      ["waist", "Waist", "e.g. 26"],
+      ["hips", "Hips", "e.g. 36"],
       ["shoes", "Shoes", "e.g. 8 US / 41 EU"],
       ["modelHair", "Hair colour", "e.g. Dark Brown"],
       ["modelEyes", "Eye colour", "e.g. Green"],
@@ -5586,8 +5678,12 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         <p style="margin: 0 0 10px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft);">${esc(m.name)} — her own details</p>
         <p style="margin: 0 0 12px; font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5;">These belong to her, not to this shoot, so they show on her card wherever her photographs came from. Leave anything blank and her albums answer for it instead.</p>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
-          ${MODEL_DETAIL_FIELDS.map(([f, label, ph]) => `
+          ${MODEL_DETAIL_FIELDS.map(([f, label, ph]) => f === "height" ? `
+            <div class="field" style="margin: 0;"><span>${esc(label)}</span>${heightGroup({ ft: 'data-md="h-ft"', inch: 'data-md="h-in"', cm: 'data-md="h-cm"', unit: 'data-md="h-unit"' }, m.height)}</div>` : UNIT_CHOICES[f] ? `
+            <label class="field" style="margin: 0;"><span>${esc(label)}</span><span style="display: flex; gap: 6px;"><input class="model-detail-in" data-f="${esc(f)}" type="text" value="${esc(bareValue(f, m[f]))}" placeholder="${esc(ph)}" style="flex: 1 1 auto; min-width: 0;" />${unitSelect(f, `class="model-detail-unit" data-f="${esc(f)}"`, m[f])}</span></label>` : f === "shoes" ? `
+            <label class="field" style="margin: 0;"><span>${esc(label)}</span><span style="display: flex; gap: 6px;">${shoeSelect(`class="model-detail-shoesys"`, m.shoes)}<input class="model-detail-in" data-f="shoes" type="text" value="${esc(splitShoe(m.shoes).size)}" placeholder="e.g. 9" style="flex: 1 1 auto; min-width: 0;" /></span></label>` : `
             <label class="field" style="margin: 0;"><span>${esc(label)}</span><input class="model-detail-in" data-f="${esc(f)}" type="text" value="${esc(m[f] || "")}" placeholder="${esc(ph)}" /></label>`).join("")}
+          ${measureUnitsChooser("f_measure_units_model")}
           <label class="field" style="margin: 0;"><span>Chest or bust — the word her card uses</span>
             <select class="model-detail-in" data-f="chestLabel">${CHEST_LABELS.map((l) => `<option value="${esc(l)}" ${chestLabelOf(m) === l ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>
           </label>
@@ -5609,6 +5705,10 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       if (!box) return;
       const vals = {};
       box.querySelectorAll(".model-detail-in").forEach((el) => { vals[el.dataset.f] = String(el.value || "").trim(); });
+      box.querySelectorAll(".model-detail-unit").forEach((el) => { vals[el.dataset.f] = composeMeasure(el.dataset.f, vals[el.dataset.f], el.value); });
+      vals.height = readHeight(box.querySelector(".height-group"));
+      const shoeSys = box.querySelector(".model-detail-shoesys");
+      if (shoeSys) vals.shoes = composeShoe(shoeSys.value, vals.shoes);
       const name = vals.name || modelNameFromKey(openModelKey);
       if (!name) { toast("A model needs a name — their card has nothing to print without one."); return; }
       const agencyCredit = vals.agencyCredit || "";
@@ -5837,7 +5937,21 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         // than an empty picker over an album that plainly has a model in it.
         albumModelKeys(editingShoot).forEach((k) => pickedModels.add(k));
         if ($("#f_feeds_model_cards")) $("#f_feeds_model_cards").checked = feedsModelCards(editingShoot);
-        $("#f_height").value = editingShoot.height || "";
+        const loadMeasure = (kind, raw) => {
+          if (kind === "height") {
+            const h = heightParts(raw), g = $("#f_height_unit")?.closest(".height-group");
+            if (g) {
+              const [ftEl, inEl, cmEl] = g.querySelectorAll("input");
+              ftEl.value = h.ft; inEl.value = h.inch; cmEl.value = h.cm;
+              $("#f_height_unit").value = h.unit;
+              ftEl.hidden = inEl.hidden = h.unit !== "ftin"; cmEl.hidden = h.unit === "ftin";
+            }
+            return;
+          }
+          if ($("#f_" + kind)) $("#f_" + kind).value = bareValue(kind, raw);
+          if ($("#f_" + kind + "_unit")) $("#f_" + kind + "_unit").value = guessUnit(kind, raw);
+        };
+        loadMeasure("height", editingShoot.height);
 
         // Trigger initial verification updates after loading values (for editing existing albums)
         if ($("#f_mentor")) $("#f_mentor").dispatchEvent(new Event("input"));
@@ -5850,11 +5964,12 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         if ($("#f_credits")) $("#f_credits").dispatchEvent(new Event("input"));
         if ($("#f_ig")) $("#f_ig").dispatchEvent(new Event("input"));
         if ($("#f_kavyar")) $("#f_kavyar").dispatchEvent(new Event("input"));
-        $("#f_chest").value = editingShoot.chest || "";
+        loadMeasure("chest", editingShoot.chest);
         if ($("#f_chest_label")) $("#f_chest_label").value = chestLabelOf(editingShoot);
-        $("#f_waist").value = editingShoot.waist || "";
-        $("#f_hips").value = editingShoot.hips || "";
-        $("#f_shoes").value = editingShoot.shoes || "";
+        loadMeasure("waist", editingShoot.waist);
+        loadMeasure("hips", editingShoot.hips);
+        $("#f_shoes").value = splitShoe(editingShoot.shoes).size;
+        if ($("#f_shoes_sys")) $("#f_shoes_sys").value = splitShoe(editingShoot.shoes).sys;
         $("#f_model_hair").value = editingShoot.modelHair || "";
         $("#f_model_eyes").value = editingShoot.modelEyes || "";
         if ($("#f_agency")) {
@@ -6604,12 +6719,12 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           key: soleKey,
           name: samePerson ? (getTalentCleanName(talentVal2) || prev.name) : prev.name,
           talent: samePerson ? (talentVal2 || prev.talent || prev.name) : (prev.talent || prev.name),
-          height: keep(val("f_height"), prev.height),
-          chest: keep(val("f_chest"), prev.chest),
+          height: keep(statIn("height"), prev.height),
+          chest: keep(statIn("chest"), prev.chest),
           chestLabel: chestLabelOf({ chestLabel: val("f_chest_label") }),
-          waist: keep(val("f_waist"), prev.waist),
-          hips: keep(val("f_hips"), prev.hips),
-          shoes: keep(val("f_shoes"), prev.shoes),
+          waist: keep(statIn("waist"), prev.waist),
+          hips: keep(statIn("hips"), prev.hips),
+          shoes: keep(shoeIn(), prev.shoes),
           modelHair: keep(val("f_model_hair"), prev.modelHair),
           modelEyes: keep(val("f_model_eyes"), prev.modelEyes),
           agencyCredit: keep(agencyCredit2, prev.agencyCredit),
@@ -6643,12 +6758,12 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         videographer: val("f_video") || "—",
         talent: val("f_talent"),
         location: val("f_location"),
-        height: val("f_height"),
-        chest: val("f_chest"),
+        height: statIn("height"),
+        chest: statIn("chest"),
         chestLabel: chestLabelOf({ chestLabel: val("f_chest_label") }),
-        waist: val("f_waist"),
-        hips: val("f_hips"),
-        shoes: val("f_shoes"),
+        waist: statIn("waist"),
+        hips: statIn("hips"),
+        shoes: shoeIn(),
         modelHair: val("f_model_hair"),
         modelEyes: val("f_model_eyes"),
         // Per album, because a model changes agencies between shoots; the

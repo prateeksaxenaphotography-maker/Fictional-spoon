@@ -72,11 +72,11 @@
   function printStatsBarHtml(shoot) {
     if (shoot.showStatsOnCompCard === false) return "";
     const pairs = [
-      ["Height", shoot.height],
-      [chestLabelOf(shoot), shoot.chest],
-      ["Waist", shoot.waist],
-      ["Hips", shoot.hips],
-      ["Shoes", shoot.shoes],
+      ["Height", window.statText("height", shoot.height)],
+      [chestLabelOf(shoot), window.statText("chest", shoot.chest)],
+      ["Waist", window.statText("waist", shoot.waist)],
+      ["Hips", window.statText("hips", shoot.hips)],
+      ["Shoes", window.statText("shoes", shoot.shoes)],
       ["Hair", shoot.modelHair],
       ["Eyes", shoot.modelEyes]
     ].filter(([, v]) => v);
@@ -1149,8 +1149,8 @@
   function portfolioPdfStatCells(shoot) {
     if (shoot.showStatsOnModelPortfolio === false) return [];
     return [
-      ["Height", shoot.height], [chestLabelOf(shoot), shoot.chest], ["Waist", shoot.waist], ["Hips", shoot.hips],
-      ["Shoes", shoot.shoes], ["Hair", shoot.modelHair], ["Eyes", shoot.modelEyes]
+      ["Height", window.statText("height", shoot.height)], [chestLabelOf(shoot), window.statText("chest", shoot.chest)], ["Waist", window.statText("waist", shoot.waist)], ["Hips", window.statText("hips", shoot.hips)],
+      ["Shoes", window.statText("shoes", shoot.shoes)], ["Hair", shoot.modelHair], ["Eyes", shoot.modelEyes]
     ].filter(([, v]) => v && String(v).trim()).map(([label, v]) => ({ label, value: String(v).trim() }));
   }
 
