@@ -2244,12 +2244,19 @@
     // The pages' photos exactly as they print. All equal has no big photo, so
     // it is the client's order as it stands; Big photo puts the big one first.
     function printOrder() {
-      const chosen = picked();
-      // Page one's answer decides this, because that is where the pinned
-      // photograph lands; a later page leads with whatever reaches it first.
-      if (layoutOf(0) === "equal") return chosen;
-      const lead = chosen.find((s) => s.id === state.lead) || chosen[0];
-      return lead ? [lead, ...chosen.filter((s) => s !== lead)] : chosen;
+      /* The order the client arranged, and nothing else. Every page laid out
+         Big leads with whichever photograph reaches it first, which is one
+         rule for every page and needs no pinning.
+
+         This used to hoist a single `lead` to position nought on EVERY call.
+         That is page one's big photograph, so hoisting it shifted every
+         photograph after it by one — and starring one on a later page then
+         moved somebody else's page as well. It only showed with a cover on,
+         because the cover takes a photograph out of the picks and leaves
+         `lead` no longer sitting first, which is when the hoist actually
+         moves something. A saved arrangement keeps its look: the lead is put
+         in front once, as it is read back (see applySpec). */
+      return picked();
     }
 
     // A photo as this PDF crops it: the client's own position and zoom, when
@@ -2387,6 +2394,14 @@
       syncCount();
       state.adjust = JSON.parse(JSON.stringify(sp.adjust || {}));
       state.span = JSON.parse(JSON.stringify(sp.span || {}));
+      /* Arrangements made before a page could lead for itself recorded the big
+         photograph as `lead` and relied on the order being re-pinned each
+         time. That pinning is gone, so the lead is put in front once, here, as
+         the arrangement is read back — and the page draws exactly as it did. */
+      if (state.lead && (state.layouts[0] || state.layout) !== "equal") {
+        const ids = state.order.filter((x) => x !== state.lead);
+        if (state.order.includes(state.lead)) state.order = [state.lead, ...ids];
+      }
       return true;
     }
 
