@@ -61,11 +61,13 @@ const CONFIG = loadWindowScript("config.js").STUDIO_CONFIG || {};
 const STUDIO_PUBLIC = CONFIG.studioPagePublic !== false;
 const { SERVICES, SERVICES_INDEX } = await import(pathToFileURL(path.join(ROOT, "seo/services.mjs")).href);
 const { LICENCE } = await import(pathToFileURL(path.join(ROOT, "seo/licence.mjs")).href);
+const { PRIVACY } = await import(pathToFileURL(path.join(ROOT, "seo/privacy.mjs")).href);
 // The address of the usage terms. Google will only mark a photograph
 // "Licensable" in Google Images, with a link back to the studio beside it,
 // when the picture names both a page to ask on and the terms themselves.
 const LICENCE_PATH = `/${LICENCE.slug}/`;
 const LICENCE_URL = `${ORIGIN}${LICENCE_PATH}`;
+const PRIVACY_PATH = `/${PRIVACY.slug}/`;
 
 /* ---------- helpers that mirror app.js (keep the two in step) ---------- */
 const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -371,7 +373,7 @@ const serviceLinksHtml = (skipSlug) => liveServices.filter((v) => v.slug !== ski
         </a>`).join("\n        ");
 
 const siteLinksHtml = `<nav class="container pr-links" aria-label="Site">
-      <a href="/" data-link>Home</a> · <a href="/albums/" data-link>Albums</a> · <a href="/services/" data-link>What I shoot</a> · ${STUDIO_PUBLIC ? `<a href="/studio/" data-link>Studio</a> · ` : ""}<a href="/book/" data-link>Book a shoot</a> · <a href="${LICENCE_PATH}" data-link>Photo licensing</a>
+      <a href="/" data-link>Home</a> · <a href="/albums/" data-link>Albums</a> · <a href="/services/" data-link>What I shoot</a> · ${STUDIO_PUBLIC ? `<a href="/studio/" data-link>Studio</a> · ` : ""}<a href="/book/" data-link>Book a shoot</a> · <a href="${LICENCE_PATH}" data-link>Photo licensing</a> · <a href="${PRIVACY_PATH}" data-link>Privacy</a>
     </nav>`;
 
 /* ---------- album pages ---------- */
@@ -714,8 +716,9 @@ function buildServicePage(v) {
    it costs no hand-maintained copy of the site's <head> — see seo/licence.mjs
    for why it is worded the way it is, and why it points at the booking page's
    terms instead of repeating them. */
-function buildLicencePage() {
-  const x = LICENCE;
+/* The privacy notice (seo/privacy.mjs) is the same kind of page: words in
+   one file, built here, no shell. buildLicencePage takes it too. */
+function buildLicencePage(x = LICENCE, urlPath = LICENCE_PATH, cta = `<a href="/book/" data-link>Ask about licensing a photograph</a> · <a href="/albums/" data-link>Browse the albums</a>`) {
   const mainHtml = `
     <header class="page-head"><div class="container">
       <p class="eyebrow">${esc(x.eyebrow)}</p>
@@ -728,15 +731,15 @@ function buildLicencePage() {
       <ul>
         ${sec.points.map((t) => `<li>${esc(t)}</li>`).join("\n        ")}
       </ul>` : ""}`).join("\n      ")}
-      <p><a href="/book/" data-link>Ask about licensing a photograph</a> · <a href="/albums/" data-link>Browse the albums</a></p>
+      <p>${cta}</p>
     </section>
     ${siteLinksHtml}`;
 
   return {
     rel: `${x.slug}/index.html`,
     html: pageFromTemplate({
-      title: x.metaTitle, description: x.metaDescription, urlPath: LICENCE_PATH,
-      jsonLd: [ldScript(breadcrumbLd([["Home", "/"], [x.h1, LICENCE_PATH]]))],
+      title: x.metaTitle, description: x.metaDescription, urlPath,
+      jsonLd: [ldScript(breadcrumbLd([["Home", "/"], [x.h1, urlPath]]))],
       mainAttrs: ` data-static-path="/${x.slug}" data-title="${esc(x.metaTitle)}" data-desc="${esc(x.metaDescription)}"`,
       mainHtml
     })
@@ -952,6 +955,7 @@ function buildSitemap({ quoteCount }) {
     ...(STUDIO_PUBLIC ? [entry("/studio/", null)] : []),
     entry("/book/", null),
     entry(LICENCE_PATH, null),
+    entry(PRIVACY_PATH, null),
     ...(quoteCount ? [entry("/testimonials/", null)] : [])
   ];
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -1081,8 +1085,7 @@ function buildModelPages() {
   });
 }
 
-function checkLicence() {
-  const x = LICENCE;
+function checkLicence(x = LICENCE) {
   if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(String(x.slug || ""))) fail(`seo/licence.mjs: bad slug "${x.slug}"`);
   for (const k of ["metaTitle", "metaDescription", "eyebrow", "h1", "intro"]) if (!x[k]) fail(`seo/licence.mjs: missing ${k}`);
   if (!Array.isArray(x.sections) || !x.sections.length) fail("seo/licence.mjs: no sections");
@@ -1097,6 +1100,7 @@ function checkLicence() {
 
 checkServices();
 checkLicence();
+checkLicence(PRIVACY);
 const outputs = [];
 for (const s of albums) outputs.push(buildAlbumPage(s));
 if (liveServices.length) {
@@ -1104,6 +1108,7 @@ if (liveServices.length) {
   for (const v of liveServices) outputs.push(buildServicePage(v));
 }
 outputs.push(buildLicencePage());
+outputs.push(buildLicencePage(PRIVACY, PRIVACY_PATH, `<a href="mailto:prateeksaxenaphotography@gmail.com">prateeksaxenaphotography@gmail.com</a> · <a href="/book/" data-link>Book a shoot</a>`));
 const modelPages = buildModelPages();
 for (const m of modelPages) outputs.push(m);
 console.log(`build-seo: ${liveServices.length}/${SERVICES.length} service pages have work and are published${liveServices.length < SERVICES.length ? ` — waiting on: ${SERVICES.filter((v) => !liveServices.includes(v)).map((v) => v.slug).join(", ")}` : ""}`);

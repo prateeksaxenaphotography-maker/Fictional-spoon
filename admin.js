@@ -1793,6 +1793,7 @@ window.moveAdminPackageRow = function(index, dir) {
   // token short of clearing localStorage by hand.
   function clearRejectedToken(reason = "401") {
     localStorage.removeItem("wps-github-pat");
+    localStorage.removeItem("wps-github-pat-at");
     return explains(new Error(`GitHub rejected the token (${reason}). It was cleared — you'll be asked for a new one on the next publish.`));
   }
 
@@ -1926,12 +1927,29 @@ window.moveAdminPackageRow = function(index, dir) {
   }
 
   async function syncToGitHub(shootsList, { deletedIds = [] } = {}) {
+    /* The token used to stay in this browser for ever. It is now forgotten
+       30 days after it was entered, and asked for again (Sep 2026 audit, S5,
+       the owner's choice over asking every session). A token saved before
+       this starts its 30 days now. */
+    const PAT_DAYS = 30;
     let pat = localStorage.getItem("wps-github-pat");
+    if (pat) {
+      const at = Number(localStorage.getItem("wps-github-pat-at")) || 0;
+      if (!at) localStorage.setItem("wps-github-pat-at", String(Date.now()));
+      else if (Date.now() - at > PAT_DAYS * 86400000) {
+        localStorage.removeItem("wps-github-pat");
+    localStorage.removeItem("wps-github-pat-at");
+        localStorage.removeItem("wps-github-pat-at");
+        pat = null;
+        toast("Your GitHub token is over 30 days old, so it was forgotten. Paste it again to publish.");
+      }
+    }
     if (!pat) {
-      pat = prompt("Enter your GitHub Personal Access Token (PAT) to publish this change for everyone:");
+      pat = prompt("Paste your GitHub token to publish this change for everyone.\n\nUse a fine-grained token for this one repository only, with Contents: read & write and an expiry date. This device forgets it after 30 days.");
       if (pat) {
         pat = pat.trim();
         localStorage.setItem("wps-github-pat", pat);
+        localStorage.setItem("wps-github-pat-at", String(Date.now()));
       } else {
         toast("Auto-sync skipped. Changes saved locally only.");
         return;
@@ -2144,6 +2162,18 @@ window.moveAdminPackageRow = function(index, dir) {
           : p;
         }),
       }));
+      /* A "show" switch only decided whether a value was drawn; the value
+         itself went into data.js, a public file, either way — a model's email
+         with every switch off could be read there (Sep 2026 audit, S8). What
+         no switch shows now stays on this device. This device's own copy is
+         untouched, so ticking a switch later publishes it again. */
+      const publicOnly = (rec) => {
+        if (!rec || typeof rec !== "object") return rec;
+        const out = { ...rec };
+        if (out.modelEmail && !(out.showEmailOnPdf || out.showEmailOnCompCard || out.showEmailOnHome)) out.modelEmail = "";
+        if (out.lightingDiagram && out.lightingDiagramVisibility === "private") out.lightingDiagram = "";
+        return out;
+      };
       // A booking record holds everything the client typed: their name, email,
       // phone, the shoot notes, the location, the money and the contract
       // number. All of it was being written into data.js, which is a plain file
@@ -2192,7 +2222,7 @@ window.moveAdminPackageRow = function(index, dir) {
    nerdyphotographer.in — published portfolio data
    Auto-synced by the Admin Panel. Photo files live under photos/.
    ============================================================ */
-window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: published, DELETED_IDS: [...removed].sort(), CALENDAR_SETTINGS: publicCalendarSettings(window.WPS_DATA && window.WPS_DATA.CALENDAR_SETTINGS),
+window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: published.map(publicOnly), DELETED_IDS: [...removed].sort(), CALENDAR_SETTINGS: publicCalendarSettings(window.WPS_DATA && window.WPS_DATA.CALENDAR_SETTINGS),
         // Invite codes, promo codes and package rates used to live only in the
         // admin device's localStorage, which no visitor can read: a code
         // created in the panel worked for the studio and was rejected as
@@ -2256,7 +2286,10 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
         // Who the studio photographs, merged per model the same way, so a
         // model added on the phone is not dropped by the next publish from
         // the laptop. Albums and photographs reference these by `key`.
-        MODELS: (typeof window.getModels === "function" ? window.getModels(remote.models) : { items: [], deleted: [] }),
+        MODELS: (() => {
+          const m = (typeof window.getModels === "function" ? window.getModels(remote.models) : { items: [], deleted: [] });
+          return { ...m, items: (m.items || []).map(publicOnly) };
+        })(),
         MODEL_PDFS: (typeof window.getModelPdfs === "function" ? window.getModelPdfs(remote.modelPdfs) : { versions: [], deleted: [] }),
         STUDIO_PORTFOLIOS: (typeof window.getStudioPortfolios === "function" ? window.getStudioPortfolios(remote.studioPortfolios) : { versions: [], deleted: [] }),
         }, null, 2)};
@@ -4918,7 +4951,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
   /* ---------- Upload view (rich, grouped form) ---------- */
   let staged = []; // {id,dataUrl,name}
   function viewUpload() {
-    const opt = (arr) => arr.map((v) => `<option value="${v}">${v}</option>`).join("");
+    // Escaped like every other label: category names come from data.js (S11).
+    const opt = (arr) => arr.map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
     // Activity and Type decide which "What I shoot" page an album shows up on.
     // They used to default to whatever sorted first — Beauty and Campaign — so
     // an album saved without touching them claimed to be a beauty shoot for a
@@ -7100,7 +7134,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
               📎 <strong>Add a picture or a PDF</strong>
               <div style="font-size: var(--font-xs); margin-top: 4px;">As many as you like. Kept in this browser — see the note below.</div>
             </label>
-            <input id="tmE_files" type="file" accept="image/*,.pdf,application/pdf" multiple class="sr-only" />
+            <input id="tmE_files" type="file" accept="image/jpeg,image/png,image/webp,.pdf,application/pdf" multiple class="sr-only" />
             <div class="attachment-list" id="tmE_fileList"></div>
             <p class="field-hint tm-files-warn">⚠︎ This browser is the only place these live. Clearing your site data, or opening the panel on another phone or laptop, will not show them — and they are not in any backup. <strong>Keep the original email or chat as your real record;</strong> this is a convenience copy filed next to the words.</p>
           </fieldset>
@@ -7176,6 +7210,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
          testimonial's id, listed back with a way to open and to remove, and
          never touched by saveTestimonials or by a publish. */
       const fileList = root.querySelector("#tmE_fileList");
+      // Photos and PDFs only (Sep 2026 audit, S2); see the open handler below.
+      const SAFE_PROOF_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
       const paintFiles = async () => {
         if (!fileList || !tmEditing) return;
         const files = await tmProofsFor(tmEditing.id);
@@ -7190,8 +7226,15 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           if (!one || !one.blob) return;
           // A blob: URL exists only in this tab and is revoked straight after,
           // so nothing lingers and nothing is addressable from outside.
-          const url = URL.createObjectURL(one.blob);
-          window.open(url, "_blank");
+          /* Only a photo or a PDF is ever opened in a tab. A blob: URL runs on
+             this site's own address, where the GitHub token lives, so an SVG
+             (which can carry script) opened here could have read it (Sep 2026
+             audit, S2). Anything else is saved to the computer instead. */
+          const kind = String(one.blob.type || one.type || "").toLowerCase();
+          const safe = SAFE_PROOF_TYPES.has(kind);
+          const url = URL.createObjectURL(safe ? one.blob : new Blob([one.blob], { type: "application/octet-stream" }));
+          if (safe) window.open(url, "_blank");
+          else { const a = document.createElement("a"); a.href = url; a.download = one.name || "file"; document.body.appendChild(a); a.click(); a.remove(); }
           setTimeout(() => URL.revokeObjectURL(url), 60000);
         }));
         fileList.querySelectorAll(".tm-file-del").forEach((b) => b.addEventListener("click", async () => {
@@ -7208,7 +7251,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         if (!picked.length || !tmEditing) return;
         let added = 0, skipped = 0;
         for (const f of picked) {
-          const ok = /^image\//.test(f.type) || /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name);
+          // Photos and PDFs only: no SVG or other image type that can carry script.
+          const ok = SAFE_PROOF_TYPES.has(String(f.type || "").toLowerCase()) || (!f.type && /\.pdf$/i.test(f.name));
           // Generous, because this never travels: it is not going through a
           // relay or into a repository, only into this browser's own store.
           if (!ok || f.size > 25 * 1048576) { skipped++; continue; }

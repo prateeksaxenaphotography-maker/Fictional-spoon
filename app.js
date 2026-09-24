@@ -5657,7 +5657,7 @@ window.resolveContractArchive = function(version) {
                 <input id="tm_email" type="email" autocomplete="email" placeholder="name@example.com" required />
               </label>
             </div>
-            <p class="field-hint">Your email is how the studio replies and checks it really is you. It is never published and never leaves the studio's inbox.</p>
+            <p class="field-hint">Your email is how the studio replies and checks it really is you. It is never published. It reaches the studio's inbox through a form service — see the <a href="/privacy/" data-link>privacy page</a>.</p>
 
             <div class="field-row">
               <label class="field"><span>Credit you as</span>
@@ -5697,7 +5697,7 @@ window.resolveContractArchive = function(version) {
 
             <fieldset class="tm-proof">
               <legend>Anything backing it up? <span class="tm-opt">optional</span></legend>
-              <p class="field-hint" style="margin-bottom: 10px;">A PDF or a picture — a letter on your company's paper, an email, a screenshot of a message, an invoice. It helps the studio show the words are real. <strong>The file goes to the studio's inbox only. It is never put on this website.</strong></p>
+              <p class="field-hint" style="margin-bottom: 10px;">A PDF or a picture — a letter on your company's paper, an email, a screenshot of a message, an invoice. It helps the studio show the words are real. <strong>The file goes to the studio's inbox (through a form service) and is never put on this website.</strong></p>
               <label class="attachments-dropzone tm-drop" id="tm_drop" for="tm_proof">
                 📎 <strong>Choose a PDF or a picture</strong>
                 <div style="font-size: var(--font-xs); margin-top: 4px;">One file, up to ${TESTIMONIAL_PROOF_MAX_MB} MB. Pictures are shrunk before they are sent.</div>
@@ -6736,7 +6736,7 @@ window.resolveContractArchive = function(version) {
                 <button type="button" class="btn btn-dark sticky-publish" id="bookStickySubmit">Submit booking request</button>
               </div>
             </div>
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 15px; text-align: center; line-height: 1.4;">For a package or test shoot you'll see the terms and agree to them before anything is sent. For test shoots, read our online <a href="#tfp-terms" id="tfpTermsTrigger" style="text-decoration: underline; color: var(--accent-text); font-weight: 600;">Studio Production &amp; Liability Release</a>.</p>
+            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 15px; text-align: center; line-height: 1.4;">For a package or test shoot you'll see the terms and agree to them before anything is sent. How your details are handled: <a href="/privacy/" data-link style="text-decoration: underline; color: var(--accent-text);">privacy</a>. For test shoots, read our online <a href="#tfp-terms" id="tfpTermsTrigger" style="text-decoration: underline; color: var(--accent-text); font-weight: 600;">Studio Production &amp; Liability Release</a>.</p>
           </form>
         </div>
       </section>
@@ -10951,7 +10951,7 @@ window.resolveContractArchive = function(version) {
     // address every photograph names as its terms (the `license` property in
     // its ImageObject), so it has to resolve to the real page rather than be
     // painted over with a 404 the way an unknown route is.
-    const staticPath = (key === "services" || key === "licence") ? staticPathOf(location.pathname) : "";
+    const staticPath = (key === "services" || key === "licence" || key === "privacy") ? staticPathOf(location.pathname) : "";
     if (staticPath && !afterFetch && (!STATIC_PAGES.has(staticPath) || STATIC_PAGES.get(staticPath) === false)) {
       // Not in hand yet (or it failed to load last time): fetch it, then come
       // back through here — unless the visitor has already moved on. afterFetch
@@ -10970,8 +10970,8 @@ window.resolveContractArchive = function(version) {
     // top of the one in the page's head, so a single landing was counted twice
     // (Sep 2026 audit); the head no longer configures anything, and a view is
     // recorded as a page_view event rather than by re-configuring the tag.
-    if (typeof gtag === "function") {
-      gtag("event", "page_view", { page_path: location.pathname + location.search, page_title: document.title });
+    if (typeof gtag === "function" && !isAdmin()) {
+      gtag("event", "page_view", { page_path: location.pathname, page_title: document.title });
     }
     
     const header = $(".site-header");
@@ -12129,6 +12129,9 @@ window.resolveContractArchive = function(version) {
   let analyticsRequested = false;
   function loadAnalyticsWhenIdle() {
     if (analyticsRequested) return;
+    // Not in the studio's own admin mode: a third-party script has no business
+    // on the page that holds the GitHub token (Sep 2026 audit, S5).
+    if (isAdmin()) return;
     analyticsRequested = true;
     const start = () => {
       try {
@@ -12137,7 +12140,9 @@ window.resolveContractArchive = function(version) {
         sc.src = "https://www.googletagmanager.com/gtag/js?id=G-S0Q7T5Y2J4";
         document.head.appendChild(sc);
         if (typeof gtag === "function") {
-          gtag("config", "G-S0Q7T5Y2J4", { page_path: location.pathname + location.search });
+          // The path only: a query can carry an invite code (?invite=…) or a
+          // share key, which is nobody's business but the visitor's (S6).
+          gtag("config", "G-S0Q7T5Y2J4", { page_path: location.pathname });
         }
       } catch (e) { /* analytics must never break the site */ }
     };
