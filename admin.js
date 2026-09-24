@@ -2003,6 +2003,45 @@ window.moveAdminPackageRow = function(index, dir) {
         }
       }
 
+      /* A photo deleted on another device takes its files with it (the
+         unused-file cleanup further down). This device may still hold the
+         album as it was, and local wins above, so it would publish the photo
+         again pointing at files that no longer exist. CI's missing-file check
+         then fails, the deploy is skipped, and every later publish from here
+         fails the same way: the site silently stops updating while this panel
+         said "Sync complete!" (Sep 2026 audit, A2). So every file the publish
+         would point at must be on the branch. A photo whose file is gone is
+         dropped, here and on this device, which is what the other device
+         asked for; a missing 480/960 variant is dropped on its own, because
+         the photo still shows from its full-size file. */
+      const droppedPhotos = [];
+      try {
+        const headRef = await ghApi(pat, `/git/ref/heads/${GH_BRANCH}`);
+        const headCommit = await ghApi(pat, `/git/commits/${headRef.object.sha}`);
+        const headTree = await ghApi(pat, `/git/trees/${headCommit.tree.sha}?recursive=1`);
+        if (headTree.truncated) {
+          console.warn("Publish: the repository listing was truncated, so photo files were not checked this time.");
+        } else {
+          const onBranch = new Set((headTree.tree || []).filter((t) => t && t.type === "blob").map((t) => t.path));
+          const exists = (u) => !u || /^data:/.test(u) || onBranch.has(String(u).replace(/^\//, ""));
+          for (const s of shoots) {
+            if (!Array.isArray(s.photos)) continue;
+            s.photos = s.photos.filter((p) => {
+              if (!p || !p.url) return true; // not uploaded yet: this publish uploads it
+              if (!exists(p.url)) { droppedPhotos.push(s.title || s.id); return false; }
+              if (!exists(p.small)) delete p.small;
+              if (!exists(p.medium)) delete p.medium;
+              return true;
+            });
+          }
+        }
+      } catch (err) {
+        // The check guards the deploy; failing to run it must not cost the
+        // studio a publish. CI still catches a dangling path, as before.
+        console.warn("Publish: could not check that every photo file exists —", err.message);
+      }
+      if (droppedPhotos.length) console.info(`Publish: left out ${droppedPhotos.length} photo(s) whose files were deleted elsewhere:`, droppedPhotos);
+
       // Upload any photo still stored as base64 to photos/<shoot>/<photo>.<ext>.
       // Also generate 480px + 960px variants for responsive srcset (mobile perf).
       const photoEntries = [];
@@ -2325,7 +2364,13 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         render();
       } catch {}
 
-      toast("Sync complete! Changes go live for everyone within a few minutes.");
+      if (droppedPhotos.length) {
+        const albums = [...new Set(droppedPhotos)].join(", ");
+        const n = droppedPhotos.length;
+        toast(`Sync complete. ${n} photo${n === 1 ? " was" : "s were"} already deleted on another device and ${n === 1 ? "has" : "have"} been removed here too (${albums}).`);
+      } else {
+        toast("Sync complete! Changes go live for everyone within a few minutes.");
+      }
       return true;
     } catch (e) {
       console.error(e);

@@ -1,4 +1,16 @@
 /* ============================================================
+   § HTTPS ONLY
+   ============================================================ */
+/* The site answered over plain http:// with no redirect (Sep 2026 audit, S3),
+   so a booking form or the admin token screen could load unencrypted. The
+   real fix is Cloudflare's "Always Use HTTPS" + HSTS, which redirect before
+   any page is sent; this is the fallback for a visitor who still lands on
+   http://, and it only acts on the real domain so local testing is untouched. */
+if (location.protocol === "http:" && /(^|\.)nerdyphotographer\.in$/i.test(location.hostname)) {
+  location.replace("https://" + location.host + location.pathname + location.search + location.hash);
+}
+
+/* ============================================================
    § BROWSER STORAGE SAFETY NET
    ============================================================ */
 /* Safari's "Block All Cookies" and Chrome's "block all site data" make even
@@ -9196,8 +9208,12 @@ window.resolveContractArchive = function(version) {
               (isHomeStudio ? homeStudioHouseRules : ``)
             : `Studio Rental Policy: Package rates cover photography, light design & retouched master deliverables. If a dedicated indoor studio space is required, venue rental fees are quoted separately in advance, or the client may book the studio directly.\n` +
               (studioArrangerSubmitClause ? `Studio Arranger:${studioArrangerSubmitClause}\n` : ``);
+        // Reads bookingCalc, not inviteMeta: inviteMeta is declared further
+        // down, and touching a const before its line throws — which silently
+        // killed every home-studio and venue-locked invite submit from v452
+        // to v514 (nothing reached the studio, the button hung on "Sending").
         const travelPolicyNote = venueByStudio
-          ? `Travel & Accommodation Policy: Travel to the studio-provided venue above is covered by the studio${inviteMeta ? " for this invite" : ""}. If you later request a different location, standard terms apply again (travel beyond ${isTfpCat ? 10 : 20} km from the studio base in Noida, and accommodation where an overnight stay is needed, billed at actuals).\n`
+          ? `Travel & Accommodation Policy: Travel to the studio-provided venue above is covered by the studio${(bookingCalc && bookingCalc.isValidInvite) ? " for this invite" : ""}. If you later request a different location, standard terms apply again (travel beyond ${isTfpCat ? 10 : 20} km from the studio base in Noida, and accommodation where an overnight stay is needed, billed at actuals).\n`
           : `Travel & Accommodation Policy: Shoots requiring travel beyond ${isTfpCat ? 10 : 20} km from the studio base (Noida) incur paid travel and, where an overnight stay is needed, accommodation - billed at actuals (at cost).\n`;
         // Paid shoots only: the package buys the photographer, not the crew.
         // Nothing anywhere said so, which left every HMUA/styling/set cost an
