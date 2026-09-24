@@ -802,6 +802,17 @@
 
   /* ---- PDF page drawing (all measurements in millimetres on A4) ---- */
   const PDF_PAGE = { w: 210, h: 297, margin: 12, gap: 2.5 };
+  /* How much air sits between the photographs, as a multiple of the page's own
+     2.5mm gutter. The same four settings and the same ratios as the portfolio
+     book, so the two builders answer the studio the same way. Absent means
+     "medium", which is exactly what every portfolio made before this printed. */
+  const PDF_GAP_SCALE = { none: 0, narrow: 0.45, medium: 1, wide: 1.9 };
+  const PDF_GAP_LABEL = [["none", "None"], ["narrow", "Narrow"], ["medium", "Medium"], ["wide", "Wide"]];
+  const pdfGap = (spec) => {
+    const k = spec && spec.spacing;
+    const f = Object.prototype.hasOwnProperty.call(PDF_GAP_SCALE, k) ? PDF_GAP_SCALE[k] : 1;
+    return Math.round(PDF_PAGE.gap * f * 100) / 100;
+  };
   const PDF_FOOTER_H = 8.5;
   // A LITERAL stack, never a CSS variable: this string goes into ctx.font, and
   // canvas does not resolve var(). An unresolvable font makes the whole
@@ -1509,7 +1520,8 @@
   }
 
   function composeOnePagePdf(page, spec, imgs, mark) {
-    const { w: PW, h: PH, margin: M, gap } = PDF_PAGE;
+    const { w: PW, h: PH, margin: M } = PDF_PAGE;
+    const gap = pdfGap(spec);
     const CW = PW - M * 2;
     const y = drawPdfTitleBlock(page, spec, mark);
     const detailsH = pdfDetailsBlock(page, spec, 0, false);
@@ -1687,7 +1699,8 @@
 
   // A page of nothing but poses: page two, and page three when there is one.
   function composePosesPdf(page, spec, imgs, mark, pageNo = 2) {
-    const { w: PW, h: PH, margin: M, gap } = PDF_PAGE;
+    const { w: PW, h: PH, margin: M } = PDF_PAGE;
+    const gap = pdfGap(spec);
     const CW = PW - M * 2;
     let y = drawPdfHeader(page, mark, pdfHeaderLabel(spec, pageNo)) + 4.5;
     const nameStyle = pdfType("name", { weight: 800, size: 6, family: PDF_DISPLAY, spacing: -0.12, upper: true, color: "#000" });
@@ -1959,6 +1972,7 @@
       bigAt: [],           // per page; where the big photo sits, empty = the page judges
       fromSaved: null,     // the saved arrangement this one was opened from
       detailsAlign: "left",// kept for arrangements saved before the two split
+      spacing: "medium",   // air between the photographs: none/narrow/medium/wide
       statsAlign: "left",  // the measurements row: left, centre or right
       contactAlign: "left",// the Instagram/email row, answered separately
       // Print the pose under each photograph, or don't. It used to be decided
@@ -2173,6 +2187,7 @@
         layout: state.layout, layouts: layoutsPerPage(), bigAt: bigAtPerPage(), order: [...state.order],
         fewerOnTop: state.fewerOnTop, cols: colsPerPage(), detailsAlign: state.detailsAlign,
         tags: tagsPerPage(), tagPlace: state.tagPlace, tagAlign: state.tagAlign, perPage: perPage(),
+        spacing: state.spacing,
         span: JSON.parse(JSON.stringify(state.span || {})),
         adjust: JSON.parse(JSON.stringify(state.adjust || {}))
       };
@@ -2333,6 +2348,7 @@
         detailsAlign: state.detailsAlign,
         statsAlign: state.statsAlign,
         contactAlign: state.contactAlign,
+        spacing: state.spacing,
         tagPlace: state.tagPlace,
         tagAlign: state.tagAlign,
         location: state.location.trim(),
@@ -2350,7 +2366,7 @@
         return a ? [a.x, a.y, a.zoom].map((v) => Math.round(v * 1000)) : 0;
       });
       return JSON.stringify([state.pages, ids, state.layout, layoutsPerPage(), perPage(), state.fewerOnTop,
-        tagsPerPage(), colsPerPage(), bigAtPerPage(), state.statsAlign, state.contactAlign, state.tagPlace, state.tagAlign,
+        tagsPerPage(), colsPerPage(), bigAtPerPage(), state.statsAlign, state.contactAlign, state.spacing, state.tagPlace, state.tagAlign,
         ids.map((id) => state.span[id] || 0),
         state.cover ? [state.coverId, state.coverStyle] : null, crops]);
     }
@@ -2409,6 +2425,8 @@
       // setting said, so an old arrangement reopens looking as it did.
       state.statsAlign = okAlign(sp.statsAlign, state.detailsAlign);
       state.contactAlign = okAlign(sp.contactAlign, state.detailsAlign);
+      // Saved before the studio could choose it: the page's own gutter.
+      state.spacing = ["none", "narrow", "medium", "wide"].includes(sp.spacing) ? sp.spacing : "medium";
       // An arrangement saved before the switch existed has no answer, and
       // "on" is what it was saved under.
       // An arrangement saved when the switch was one for the whole PDF
@@ -2536,6 +2554,7 @@
                 lead: state.lead, cover: state.cover, coverId: state.coverId, coverStyle: state.coverStyle,
                 layout: state.layout, layouts: layoutsPerPage(), order: [...state.order], fewerOnTop: state.fewerOnTop, cols: colsPerPage(),
                 detailsAlign: state.detailsAlign, statsAlign: state.statsAlign, contactAlign: state.contactAlign,
+                spacing: state.spacing,
                 tags: tagsPerPage(),
                 tagPlace: state.tagPlace,
                 tagAlign: state.tagAlign,
@@ -2875,6 +2894,12 @@
       moveOn: ICON('<path d="M6.4 3.4 11 8l-4.6 4.6"/>'),
       // Under a sheet: look at it close up, pose labels on this page.
       view: ICON('<circle cx="7.2" cy="7.2" r="4.4"/><path d="M10.5 10.5 14 14"/>'),
+      // Two blocks with more and more air between them. The difference is
+      // exaggerated well past the truth so the four differ at a glance.
+      gapNone: ICON('<rect x="1.6" y="3" width="6.4" height="10" rx=".6" fill="currentColor" stroke="none"/><rect x="8" y="3" width="6.4" height="10" rx=".6" fill="currentColor" stroke="none"/>'),
+      gapNarrow: ICON('<rect x="1.6" y="3" width="5.9" height="10" rx=".6" fill="currentColor" stroke="none"/><rect x="8.5" y="3" width="5.9" height="10" rx=".6" fill="currentColor" stroke="none"/>'),
+      gapMedium: ICON('<rect x="1.6" y="3" width="4.6" height="10" rx=".6" fill="currentColor" stroke="none"/><rect x="9.8" y="3" width="4.6" height="10" rx=".6" fill="currentColor" stroke="none"/>'),
+      gapWide: ICON('<rect x="1.6" y="3" width="2.8" height="10" rx=".6" fill="currentColor" stroke="none"/><rect x="11.6" y="3" width="2.8" height="10" rx=".6" fill="currentColor" stroke="none"/>'),
       tag: ICON('<path d="M8.6 2.2H13v4.4l-6.2 6.2a1.2 1.2 0 0 1-1.7 0L2.4 9.7a1.2 1.2 0 0 1 0-1.7Z"/><circle cx="10.6" cy="4.8" r=".9"/>')
     };
     // A button that shows a picture and says what it is on hover.
@@ -3226,6 +3251,14 @@
               <button type="button" role="radio" data-layout="equal">All the same size</button>
             </div>`}
             ${admin ? `<div class="pp-seg" role="radiogroup" aria-label="Rows" id="ppRowsSeg" data-forsheet="pages" hidden></div>` : ""}
+            <!-- The same control, and the same four ratios, as the portfolio
+                 book: asked for on both builders (Sep 24 2026). The words stay
+                 on the buttons because these drawings stand for a SIZE, and a
+                 15px picture cannot say a size on its own. -->
+            <div class="pp-seg pp-seg-words" role="radiogroup" aria-label="Space between photographs" id="ppGapSeg" data-forsheet="pages">
+              <span class="pp-seg-cap" aria-hidden="true">Air</span>
+              ${PDF_GAP_LABEL.map(([k, n]) => `<button type="button" role="radio" data-gap="${k}" aria-checked="${state.spacing === k}" title="Space between photographs: ${esc(n)}" aria-label="Space between photographs: ${esc(n)}">${iconBtn(`gap${n}`, n)}</button>`).join("")}
+            </div>
           </section>
 ${admin ? `
           <!-- Whether a PAGE names its poses is asked on the page itself;
@@ -3493,6 +3526,23 @@ ${admin ? `
         const btn = e.target.closest("[data-swap]");
         if (!btn) return;
         showSwapChooser(btn.dataset.swap);
+      });
+      /* Air between the photographs. Both the studio and the client have this
+         one, but it is still looked for rather than assumed — every other seg
+         here that was wired without a guard took the client's whole preview
+         down the first time the markup was gated. */
+      const seg_GapSeg = body.querySelector("#ppGapSeg");
+      if (seg_GapSeg) seg_GapSeg.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-gap]");
+        if (!btn || btn.dataset.gap === state.spacing) return;
+        const wasCovered = covered();
+        state.spacing = btn.dataset.gap;
+        seg_GapSeg.querySelectorAll("[data-gap]").forEach((b) => b.setAttribute("aria-checked", String(b === btn)));
+        // A different gutter is a different PDF (see specKey), so changing it
+        // after paying swaps the download back for the payment step, exactly
+        // as moving a photograph does.
+        if (covered() !== wasCovered) { showPreview(); return; }
+        drawPreview();
       });
       /* Only the studio has this one, so it may not be on the page.
          Gating the markup without gating the wiring threw on null and

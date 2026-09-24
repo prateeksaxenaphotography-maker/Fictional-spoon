@@ -4452,7 +4452,7 @@
   .sb-btn:disabled { opacity: .45; cursor: not-allowed; }
   .sb-link { background: none; border: 0; padding: 2px; font: 600 12.5px Inter, sans-serif; color: var(--accent, #d24e1a); text-decoration: underline; cursor: pointer; }
   .sb-root button:focus-visible { outline: 2px solid var(--accent, #d24e1a); outline-offset: 2px; }
-  .sb-hint { margin: 0; font: 400 12.5px/1.5 Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
+  .sb-hint { margin: 0; font: 400 11.5px/1.45 Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
   .sb-warn { margin: 0; font: 600 12.5px/1.5 Inter, sans-serif; color: var(--accent, #d24e1a); }
   .sb-vh { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
@@ -4659,8 +4659,23 @@
   .sb-panel[hidden] { display: none; }
   .sb-sec { display: grid; gap: 10px; }
   .sb-sec[hidden] { display: none; }
+  /* Sections were told apart by a gap alone, so a long one ran into the next.
+     A hairline and one rhythm, the way a modern rail is built. */
+  .sb-panel > .sb-sec + .sb-sec, .sb-panel > .sb-field + .sb-field,
+  .sb-panel > .sb-sec + .sb-field, .sb-panel > .sb-field + .sb-sec {
+    padding-top: 18px; border-top: 1px solid var(--sb-line);
+  }
+  .sb-panel { gap: 0; row-gap: 18px; }
   .sb-field { display: grid; gap: 5px; }
-  .sb-field > label, .sb-field > .sb-label { font: 600 12.5px Inter, sans-serif; }
+  /* ONE label voice down the whole rail. The panel used to alternate between
+     an h3's mono capitals ("PHOTOS", "PAGE COLOUR") and a field label's bold
+     sans ("Placement", "Credit line", "Border"), which read as two interfaces
+     stacked on top of each other rather than one. Every label is now the h3's
+     voice, and nothing in the column competes with the controls. */
+  .sb-field > label, .sb-field > .sb-label, .sb-adjrow > span:first-child {
+    font: 700 11px/1.3 'JetBrains Mono', monospace; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-soft, #5c5e66);
+  }
   .sb-meter { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font: 500 11px/1.4 'JetBrains Mono', monospace; color: var(--ink-soft, #5c5e66); }
   .sb-meter .warn { color: var(--sb-warn); }
   .sb-meter .bad { color: var(--accent, #d24e1a); font-weight: 700; }
@@ -4739,6 +4754,11 @@
      kept its word ("Auto") swallowed all the space left over and the drawn
      ones huddled at the end. */
   .sb-seg:has(svg) button { flex: 0 0 auto; }
+  /* A row that shows the drawing AND says the word under it. Used where the
+     drawing is standing for a size rather than a thing, so it cannot be read
+     on its own. The word is the same .sb-sr span, simply let out of hiding. */
+  .sb-seg-words button:has(svg) { flex-direction: column; gap: 3px; min-width: 56px; padding: 6px 8px; }
+  .sb-seg-words .sb-sr { position: static; width: auto; height: auto; overflow: visible; clip: auto; font: 600 10px/1 'JetBrains Mono', monospace; letter-spacing: .04em; text-transform: uppercase; }
   /* Save, lit while something is waiting to be written to this device. */
   #sbSave.is-due { border-color: var(--accent, #d24e1a); color: var(--accent, #d24e1a); font-weight: 700; }
   .sb-seg button svg { display: block; pointer-events: none; }
@@ -4762,14 +4782,24 @@
   .sb-ch.diagram img { object-fit: contain; background: #fff; }
   .sb-ch[aria-pressed=true] { border-color: var(--accent, #d24e1a); }
   .sb-ch i { position: absolute; top: 3px; left: 3px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: var(--ink, #141416); color: var(--paper, #faf8f5); font: 700 10px/17px Inter, sans-serif; font-style: normal; text-align: center; }
-  .sb-adjust { display: grid; gap: 10px; padding: 12px; border-radius: 10px; background: var(--sb-sunk); }
+  /* This was a filled grey card sitting inside the panel — a second surface,
+     and the one thing in the column that did not sit flat. It is drawn with a
+     line now, like everything else. */
+  .sb-adjust { display: grid; gap: 10px; padding: 12px; border-radius: 10px; border: 1px solid var(--sb-line); background: none; }
   .sb-adjrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; font: 600 12.5px Inter, sans-serif; }
   .sb-adjrow span:last-child { display: flex; gap: 4px; }
   .sb-adjrow button { padding: 5px 9px; border: 1px solid var(--sb-line); border-radius: 7px; background: var(--paper, #faf8f5); color: var(--ink, #141416); font: 600 12px Inter, sans-serif; cursor: pointer; }
   .sb-adjrow button:disabled { opacity: .35; cursor: not-allowed; }
   .sb-range { display: grid; grid-template-columns: 92px 1fr; align-items: center; gap: 8px; font: 500 12px Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
   .sb-range input { width: 100%; accent-color: var(--accent, #d24e1a); }
-  .sb-pick > summary { cursor: pointer; font: 600 13px Inter, sans-serif; padding: 4px 0; }
+  /* The one remaining label in a different voice: the disclosure that opens
+     the photograph chooser. It joins the rest. */
+  .sb-pick > summary {
+    cursor: pointer; padding: 4px 0;
+    font: 700 11px/1.3 'JetBrains Mono', monospace; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-soft, #5c5e66);
+  }
+  .sb-pick > summary:hover { color: var(--ink, #141416); }
   .sb-pick[open] > summary { margin-bottom: 8px; }
   .sb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 6px; max-height: 380px; overflow-y: auto; padding: 2px; margin-top: 8px; }
   .sb-thumb { position: relative; aspect-ratio: 3 / 4; padding: 0; border: 0; border-radius: 6px; overflow: hidden; background: var(--sb-sunk); cursor: pointer; }
@@ -5015,10 +5045,15 @@
     ruleStandard: SB_ICON('<path d="M2.4 8h11.2" stroke-width="3"/>'),
     ruleBroad: SB_ICON('<path d="M2.4 8h11.2" stroke-width="5.4"/>'),
     // How much air between the photographs.
-    gapNone: SB_ICON('<rect x="2.2" y="3.4" width="5.9" height="9.2" rx=".6" fill="currentColor" stroke="none"/><rect x="8.1" y="3.4" width="5.9" height="9.2" rx=".6" fill="currentColor" stroke="none"/>'),
-    gapNarrow: SB_ICON('<rect x="2.2" y="3.4" width="5.5" height="9.2" rx=".6" fill="currentColor" stroke="none"/><rect x="8.6" y="3.4" width="5.5" height="9.2" rx=".6" fill="currentColor" stroke="none"/>'),
-    gapMedium: SB_ICON('<rect x="2.2" y="3.4" width="4.8" height="9.2" rx=".6" fill="currentColor" stroke="none"/><rect x="9.3" y="3.4" width="4.8" height="9.2" rx=".6" fill="currentColor" stroke="none"/>'),
-    gapWide: SB_ICON('<rect x="2.2" y="3.4" width="3.8" height="9.2" rx=".6" fill="currentColor" stroke="none"/><rect x="10.3" y="3.4" width="3.8" height="9.2" rx=".6" fill="currentColor" stroke="none"/>'),
+    /* The four differed by two pixels of gap and read as four identical
+       blobs — the studio could not find this control at all (Sep 24 2026).
+       The gap is exaggerated well past the truth so they differ at a glance,
+       and the row carries its words as well: "None / Narrow / Medium / Wide"
+       are sizes, and a 15px drawing cannot say a size on its own. */
+    gapNone: SB_ICON('<rect x="1.6" y="3" width="6.4" height="10" rx=".6" fill="currentColor" stroke="none"/><rect x="8" y="3" width="6.4" height="10" rx=".6" fill="currentColor" stroke="none"/>'),
+    gapNarrow: SB_ICON('<rect x="1.6" y="3" width="5.9" height="10" rx=".6" fill="currentColor" stroke="none"/><rect x="8.5" y="3" width="5.9" height="10" rx=".6" fill="currentColor" stroke="none"/>'),
+    gapMedium: SB_ICON('<rect x="1.6" y="3" width="4.6" height="10" rx=".6" fill="currentColor" stroke="none"/><rect x="9.8" y="3" width="4.6" height="10" rx=".6" fill="currentColor" stroke="none"/>'),
+    gapWide: SB_ICON('<rect x="1.6" y="3" width="2.8" height="10" rx=".6" fill="currentColor" stroke="none"/><rect x="11.6" y="3" width="2.8" height="10" rx=".6" fill="currentColor" stroke="none"/>'),
     // The shape of the paper.
     portrait: SB_ICON('<rect x="4.2" y="1.8" width="7.6" height="12.4" rx="1.2"/>'),
     landscape: SB_ICON('<rect x="1.8" y="4.2" width="12.4" height="7.6" rx="1.2"/>')
@@ -5033,7 +5068,7 @@
   const BORDER_CHOICES = [["auto", "Auto"], ["none", "None"], ["top", "Top"], ["bottom", "Bottom"], ["left", "Left"], ["right", "Right"], ["all", "All round"]];
   const FIT_CHOICES = [["auto", "Auto"], ["fill", "Fill"], ["whole", "Whole"], ["width", "Fit width"], ["height", "Fit height"]];
   const FIT_HINT = {
-    auto: "The style decides: most fill their space; Elegant shows a single photo whole.",
+    auto: "The style decides.",
     fill: "Fills its space. Zoom and position choose the crop.",
     whole: "The whole photo, centred, with space around it if the shapes differ.",
     width: "As wide as its space. The top and bottom crop, or leave space.",
@@ -6813,7 +6848,7 @@
       const head = $("#sbPageHead");
       const about = {
         cover: "The first page. Your headshot can go on it when you have one.",
-        photos: "Tap a photo to add it, tap again to remove it. Up to six on a page.",
+        photos: "Tap to add, tap again to remove. Up to six.",
         spread: "One photograph across two facing pages. A landscape frame works best, with no face on the fold.",
         divider: "A quiet page between sections, e.g. “Fashion & editorial”.",
         about: "Your words about the studio. Left empty, the page describes the studio plainly.",
@@ -6850,7 +6885,7 @@
       box.innerHTML = `<h3>Page colour</h3>
         <span class="sb-swatches" role="group" aria-label="Page colour">${sw("", book.bg ? "The book's colour" : "The style's own", book.bg ? blockColor(book.bg, P, P.paper) : "linear-gradient(135deg, #fff 45%, #999 50%, #fff 55%)", !entry.bg)}${fills.map(([k, n, c]) => sw(k, n, c, entry.bg === k)).join("")}${anySwatch("pgbgany", /^#/.test(entry.bg || "") ? entry.bg : "")}</span>
         <div class="sb-cphost" data-pgbgpick hidden></div>
-        <p class="sb-hint">${entry.bg ? "This page only. " : ""}For every page at once, use Page colour on Design.</p>`;
+        <p class="sb-hint">${entry.bg ? "This page only. " : ""}Every page at once: Design.</p>`;
       box.querySelectorAll("[data-pgbg]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.pgbg) entry.bg = x.dataset.pgbg; else delete entry.bg; change({ rail: true }); drawPageBg(); const again = $(`[data-pgbg="${x.dataset.pgbg}"]`); if (again) again.focus(); }));
       wireAny($("[data-pgbgany]"), $("[data-pgbgpick]"), () => (/^#/.test(entry.bg || "") ? entry.bg : ""), (hex) => { mark(true); entry.bg = hex; box.querySelectorAll("[data-pgbg]").forEach((x) => x.setAttribute("aria-pressed", "false")); change({ rail: true }); });
     }
@@ -7167,7 +7202,7 @@
       const b = entry.border || "auto", w = entry.borderWidth || "standard";
       return `<div class="sb-field" id="sbBorder"><span class="sb-label">Border</span>
         <div class="sb-seg" role="radiogroup" aria-label="Border">${BORDER_CHOICES.map(([k, n]) => { const ic = { none: "edgeNone", top: "edgeTop", bottom: "edgeBottom", left: "edgeLeft", right: "edgeRight", all: "edgeAll" }[k]; return `<button type="button" role="radio" data-border="${k}" aria-checked="${b === k}" title="Border: ${esc(n)}" aria-label="Border: ${esc(n)}">${ic ? sbIcon(ic, n) : n}</button>`; }).join("")}</div>
-        <div class="sb-seg" role="radiogroup" aria-label="Border width" ${b === "auto" || b === "none" ? "hidden" : ""}>${[["narrow", "Narrow", "ruleNarrow"], ["standard", "Standard", "ruleStandard"], ["broad", "Broad", "ruleBroad"]].map(([k, n, ic]) => `<button type="button" role="radio" data-borderw="${k}" aria-checked="${w === k}" title="Band width: ${esc(n)}" aria-label="Band width: ${esc(n)}">${sbIcon(ic, n)}</button>`).join("")}</div>
+        <div class="sb-seg sb-seg-words" role="radiogroup" aria-label="Border width" ${b === "auto" || b === "none" ? "hidden" : ""}>${[["narrow", "Narrow", "ruleNarrow"], ["standard", "Standard", "ruleStandard"], ["broad", "Broad", "ruleBroad"]].map(([k, n, ic]) => `<button type="button" role="radio" data-borderw="${k}" aria-checked="${w === k}" title="Band width: ${esc(n)}" aria-label="Band width: ${esc(n)}">${sbIcon(ic, n)}</button>`).join("")}</div>
         <p class="sb-hint">${b === "auto" ? "Auto: the style's usual band with the page number." : b === "none" ? "None: the photo fills the page, with no page number." : "The photo sits inside the band. The page number goes in the foot or top band; a caption always sits at the foot."}</p></div>`;
     }
     function wireBorder(box, entry) {
@@ -7266,7 +7301,7 @@
     // The credit line printed under or beside a photograph.
     const creditHtml = (entry) => overHtml("sbOvCredit", "Credit line", entry.credit, PT().credit,
       creditLine(((entry.photos || []).map((s) => { const hit = library().byId.get(s.id); return hit && hit.shoot; }).filter(Boolean))) || "The album's own credit",
-      "Printed in the foot band. Empty means the album's own credit.");
+      "In the foot band. Empty takes the album's own.");
     const wireCredit = (entry) => wireOver("sbOvCredit", setOver(entry, "credit"));
 
     /* Everything else the cover prints: the small label, the masthead and its
@@ -7568,7 +7603,7 @@
               : `${splitNow.split("+")[0]} photograph${splitNow.split("+")[0] === "1" ? "" : "s"} on top, ${splitNow.split("+")[1]} beneath.`}</p></div>` : "")
           + fieldHtml({ k: "caption", label: "Caption for this page (optional)", ctl: "input", ph: "e.g. Monsoon edit, shot on the roof in Sector 46" }, entry.caption || "", (caps.photos || {}).caption || 90)
           + creditHtml(entry)
-          + `<p class="sb-hint">Published books are public, so keep private details out of captions.</p>`
+          + `<p class="sb-hint">Published books are public.</p>`
           + (borderApplies(entry) ? borderHtml(entry) : "");
         wireField($("#sbF_caption"), (v) => { entry.caption = v; }, (caps.photos || {}).caption || 90);
         wireCredit(entry);
@@ -8240,7 +8275,7 @@
           <p class="sb-hint" id="sbPaperNote">${esc((PAPERS[book.paper] || PAPERS.a4).note)}. Every size keeps the same layout; the words and photos scale with the page.</p>
         </div>
         <div class="sb-sec"><h3>Space between photographs</h3>
-          <div class="sb-seg" role="radiogroup" aria-label="Space between photographs">${GAP_LABEL.map(([k, n]) => { const ic = { none: "gapNone", narrow: "gapNarrow", medium: "gapMedium", wide: "gapWide" }[k]; return `<button type="button" role="radio" data-gap="${k}" aria-checked="${(book.spacing || "medium") === k}" title="Space between photographs: ${esc(n)}" aria-label="Space between photographs: ${esc(n)}">${ic ? sbIcon(ic, n) : n}</button>`; }).join("")}</div>
+          <div class="sb-seg sb-seg-words" role="radiogroup" aria-label="Space between photographs">${GAP_LABEL.map(([k, n]) => { const ic = { none: "gapNone", narrow: "gapNarrow", medium: "gapMedium", wide: "gapWide" }[k]; return `<button type="button" role="radio" data-gap="${k}" aria-checked="${(book.spacing || "medium") === k}" title="Space between photographs: ${esc(n)}" aria-label="Space between photographs: ${esc(n)}">${ic ? sbIcon(ic, n) : n}</button>`; }).join("")}</div>
           <p class="sb-hint" id="sbGapNote">${(book.spacing || "medium") === "medium" ? "The style's own spacing." : (book.spacing === "none" ? "The photographs meet with no gutter at all." : book.spacing === "narrow" ? "Half the style's gutter." : "Nearly twice the style's gutter.")} It scales each style's own number, so the styles keep their proportions to one another.</p>
         </div>
         <div class="sb-sec"><h3>Page colour, every page</h3>

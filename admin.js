@@ -1463,6 +1463,11 @@ function cleanModelPdfs(state) {
         tagPlace: ["in", "below", "above"].includes(sp.tagPlace) ? sp.tagPlace : "in",
         tagAlign: ["left", "center", "right"].includes(sp.tagAlign) ? sp.tagAlign : "left",
         layout: sp.layout === "equal" ? "equal" : "lead",
+        /* How much air between the photographs. Named here or this normaliser
+           would drop it, the same gate that lost `split-wide` for a month.
+           Absent means "medium", which is what every portfolio saved before
+           this printed, so an old arrangement reopens unchanged. */
+        ...(["none", "narrow", "wide"].includes(sp.spacing) ? { spacing: sp.spacing } : {}),
         order: ids(sp.order),
         fewerOnTop: sp.fewerOnTop === true,
         adjust

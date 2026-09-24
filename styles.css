@@ -4028,3 +4028,13 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
    font-size: 0 so no stray text baseline pushes the drawing off centre, and
    that would otherwise be inherited by the word a screen reader reads. */
 .pp-sr { font-size: 11px; }
+
+/* A row that shows the drawing AND says the word under it, for the controls
+   where the drawing stands for a size rather than for a thing — "None,
+   Narrow, Medium, Wide" cannot be read off four 15px pictures. Same treatment
+   as the portfolio book's own spacing row. */
+.pp-seg-words button:has(svg) { flex-direction: column; gap: 3px; min-width: 52px; padding: 6px 7px; }
+.pp-seg-words .pp-sr {
+  position: static; width: auto; height: auto; overflow: visible; clip: auto;
+  font: 600 9px/1 var(--mono-font); letter-spacing: .04em; text-transform: uppercase;
+}
