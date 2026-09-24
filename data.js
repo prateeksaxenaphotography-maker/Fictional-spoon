@@ -2671,7 +2671,8 @@ window.WPS_DATA = {
       "2026-09-12": true,
       "2026-10-03": true,
       "2026-10-04": true,
-      "2026-09-26": true
+      "2026-09-26": true,
+      "2026-10-31": true
     },
     "customOpenedDates": {
       "2026-09-07": true,
@@ -2873,15 +2874,6 @@ window.WPS_DATA = {
           "contractVersion": "V3.7-COMMERCIAL"
         }
       ],
-      "2026-10-17": [
-        {
-          "id": "b_audit_WPS-20260823-013037-SRE9",
-          "isTentative": false,
-          "status": "confirmed",
-          "type": "Fashion Editorial",
-          "contractVersion": "COMMERCIAL-CONTRACT-V3.5"
-        }
-      ],
       "2026-10-10": [
         {
           "id": "b_1790091373654_x1t1",
@@ -2944,6 +2936,15 @@ window.WPS_DATA = {
           "type": "Workshop Attended",
           "shootId": "ms36z1wqm2xkrz"
         }
+      ],
+      "2026-10-17": [
+        {
+          "id": "b_audit_WPS-20260823-013037-SRE9",
+          "isTentative": false,
+          "status": "confirmed",
+          "type": "Fashion Editorial",
+          "contractVersion": "COMMERCIAL-CONTRACT-V3.5"
+        }
       ]
     },
     "removedBookingIds": [
@@ -2984,7 +2985,8 @@ window.WPS_DATA = {
       "2026-09-15::b_1789484541097_vngy",
       "2026-09-16::b_1789579417604_z0rd",
       "2026-09-26::b_1789736038024_4o9n",
-      "2026-09-27::b_1789736040303_uhs5"
+      "2026-09-27::b_1789736040303_uhs5",
+      "2026-10-17::b_audit_WPS-20260823-013037-SRE9"
     ],
     "paymentScheduleType": "503020",
     "productionScheduleType": "503020",
@@ -3181,7 +3183,7 @@ window.WPS_DATA = {
     "PACKAGES": 1789975069137,
     "TFP_PACKAGE": 1789975069138,
     "HOME_STUDIO_RATE": 1789975069138,
-    "PORTFOLIO_PDF": 1790225113623,
+    "PORTFOLIO_PDF": 1790239875077,
     "HOME_STUDIO_RATE_TFP": 1789975069138
   },
   "TESTIMONIALS": {
@@ -3827,7 +3829,7 @@ window.WPS_DATA = {
         "id": "mp_mueija7w_ny3rh",
         "shootId": "comp-card-Atharv%20Sharma%20(https%3A%2F%2Fwww.instagram.com%2Fectogainsss%2F%3Fhl%3Den)",
         "name": "Test 1",
-        "updatedAt": 1790225113622,
+        "updatedAt": 1790239875077,
         "spec": {
           "pages": 2,
           "count": 8,
@@ -3861,6 +3863,7 @@ window.WPS_DATA = {
           "tagPlace": "below",
           "tagAlign": "center",
           "layout": "equal",
+          "spacing": "none",
           "order": [
             "muca56vgez53vb-0",
             "muca5877bysjsu-4",
@@ -3899,7 +3902,7 @@ window.WPS_DATA = {
         "title": "NerdyPhotographer.in",
         "subtitle": "",
         "cover": null,
-        "schema": 2,
+        "schema": 5,
         "coverStyle": {
           "title": {
             "size": 0.6
@@ -3924,58 +3927,46 @@ window.WPS_DATA = {
             "type": "photos",
             "photos": [
               {
-                "id": "muca59vuukn3zd-10",
-                "x": 0.5,
-                "y": 0.09,
-                "zoom": 1.35,
-                "fit": "height"
-              }
-            ]
-          },
-          {
-            "type": "photos",
-            "photos": [
-              {
                 "id": "muccmrnumyyf3j-23",
                 "x": 0.5,
                 "y": 0.35,
                 "zoom": 1,
-                "fit": "whole"
+                "fit": "fill"
               },
               {
                 "id": "muca593bwa9nvo-6",
                 "x": 0.5,
                 "y": 0.35,
                 "zoom": 1,
-                "fit": "whole"
+                "fit": "fill"
               },
               {
                 "id": "muca80xnhe2eom-19",
-                "x": 0.472,
-                "y": 0.246,
-                "zoom": 1,
-                "fit": "whole"
+                "x": 0.47,
+                "y": 0.22,
+                "zoom": 1.3,
+                "fit": "fill"
               },
               {
                 "id": "muccms4j2bgcj0-26",
-                "x": 0.5,
-                "y": 0.35,
-                "zoom": 1,
-                "fit": "whole"
+                "x": 0.6,
+                "y": 0.56,
+                "zoom": 1.35,
+                "fit": "fill"
               },
               {
                 "id": "muccmrxvgwjmbb-25",
-                "x": 0.5,
-                "y": 0.35,
-                "zoom": 1,
-                "fit": "whole"
+                "x": 0.42,
+                "y": 0.85,
+                "zoom": 1.3,
+                "fit": "fill"
               },
               {
                 "id": "mucq0dfdg4bivd-29",
                 "x": 0.5,
                 "y": 0.35,
                 "zoom": 1,
-                "fit": "whole"
+                "fit": "fill"
               }
             ]
           },
@@ -3985,8 +3976,8 @@ window.WPS_DATA = {
               {
                 "id": "mu17d96ivu3mvw-3",
                 "x": 0.5,
-                "y": 0.35,
-                "zoom": 1,
+                "y": 0.29,
+                "zoom": 1.25,
                 "fit": "whole"
               },
               {
@@ -4200,6 +4191,24 @@ window.WPS_DATA = {
                 "y": 0.109,
                 "zoom": 1,
                 "fit": "whole"
+              },
+              {
+                "id": "mr4x1ein5o1aaq-1",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1
+              },
+              {
+                "id": "mr4x3jphh1jcaw-4",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1
+              },
+              {
+                "id": "mr4x3jvlqrowyc-5",
+                "x": 0.5,
+                "y": 0.35,
+                "zoom": 1
               }
             ]
           },
@@ -4267,7 +4276,7 @@ window.WPS_DATA = {
           "phone": "",
           "showPrices": false
         },
-        "updatedAt": 1790235706987
+        "updatedAt": 1790240359029
       }
     ],
     "deleted": [
