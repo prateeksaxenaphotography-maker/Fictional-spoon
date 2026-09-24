@@ -2004,8 +2004,8 @@ window.moveAdminPackageRow = function(index, dir) {
     const composeShoe = (sys, size) => { const v = String(size || "").trim(); return !v ? "" : sys === "Other" ? v : `${sys} ${v}`; };
     const unitSelect = (kind, attrs, raw) => `<select ${attrs} aria-label="Unit" style="flex: 0 0 84px;">${UNIT_CHOICES[kind].map(([v, l]) => `<option value="${v}"${guessUnit(kind, raw) === v ? " selected" : ""}>${l}</option>`).join("")}</select>`;
     const shoeSelect = (attrs, raw) => `<select ${attrs} aria-label="Shoe size system" style="flex: 0 0 84px;">${SHOE_SYSTEMS.map((v) => `<option${splitShoe(raw).sys === v ? " selected" : ""}>${v}</option>`).join("")}</select>`;
-    const measureUnitsChooser = (id) => `<label class="field" style="margin: 0;"><span>Measurements show on cards and PDFs as</span>
-      <select id="${id}" class="measure-units-choice"><option value="imperial"${window.getMeasureUnits() === "imperial" ? " selected" : ""}>Feet &amp; inches · inches</option><option value="metric"${window.getMeasureUnits() === "metric" ? " selected" : ""}>Centimetres</option></select></label>`;
+    const measureUnitsChooser = (id) => `<label class="field" style="margin: 0;"><span>Show measurements on comp cards &amp; model portfolio in</span>
+      <select id="${id}" class="measure-units-choice"><option value="imperial"${window.getMeasureUnits() === "imperial" ? " selected" : ""}>ft / in (height) and inches</option><option value="metric"${window.getMeasureUnits() === "metric" ? " selected" : ""}>cm</option></select></label>`;
     // One listener for every copy of the chooser (album form, model details).
     document.addEventListener("change", (e) => {
       const sel = e.target && e.target.closest && e.target.closest(".measure-units-choice");
@@ -5683,7 +5683,6 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             <label class="field" style="margin: 0;"><span>${esc(label)}</span><span style="display: flex; gap: 6px;"><input class="model-detail-in" data-f="${esc(f)}" type="text" value="${esc(bareValue(f, m[f]))}" placeholder="${esc(ph)}" style="flex: 1 1 auto; min-width: 0;" />${unitSelect(f, `class="model-detail-unit" data-f="${esc(f)}"`, m[f])}</span></label>` : f === "shoes" ? `
             <label class="field" style="margin: 0;"><span>${esc(label)}</span><span style="display: flex; gap: 6px;">${shoeSelect(`class="model-detail-shoesys"`, m.shoes)}<input class="model-detail-in" data-f="shoes" type="text" value="${esc(splitShoe(m.shoes).size)}" placeholder="e.g. 9" style="flex: 1 1 auto; min-width: 0;" /></span></label>` : `
             <label class="field" style="margin: 0;"><span>${esc(label)}</span><input class="model-detail-in" data-f="${esc(f)}" type="text" value="${esc(m[f] || "")}" placeholder="${esc(ph)}" /></label>`).join("")}
-          ${measureUnitsChooser("f_measure_units_model")}
           <label class="field" style="margin: 0;"><span>Chest or bust — the word her card uses</span>
             <select class="model-detail-in" data-f="chestLabel">${CHEST_LABELS.map((l) => `<option value="${esc(l)}" ${chestLabelOf(m) === l ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>
           </label>
