@@ -3126,7 +3126,9 @@ window.resolveContractArchive = function(version) {
       if (ss) { lbImg.sizes = LB_SIZES; lbImg.srcset = ss; }
       else { lbImg.removeAttribute("srcset"); lbImg.removeAttribute("sizes"); }
       lbImg.src = src;
-      lbImg.alt = p.caption || altFor(p.shoot);
+      // Its own frame number, so each photo is not announced with the same
+      // words as the one before it (Sep 2026 audit, G17).
+      lbImg.alt = p.caption || altFor(p.shoot, lbIdx + 1);
       lbImg.style.objectPosition = "center";
       return true;
     };
@@ -3171,6 +3173,9 @@ window.resolveContractArchive = function(version) {
     paintLbImage(p);
     lbSidebar.innerHTML = renderLbSidebar(p);
     lbCount.textContent = `${lbIdx + 1} / ${lbList.length}`;
+    // Read out as words, and politely, when the photo changes (G17).
+    lbCount.setAttribute("aria-label", `Photo ${lbIdx + 1} of ${lbList.length}`);
+    lbCount.setAttribute("aria-live", "polite");
 
     // Wire edit & delete buttons inside the lightbox sidebar if in admin mode.
     // Buttons carry data-id of the REAL underlying shoot (unified comp-card /
@@ -3546,6 +3551,9 @@ window.resolveContractArchive = function(version) {
     if (!headerThemeToggle) return;
     const isDark = currentEffectiveTheme() === "dark";
     headerThemeToggle.setAttribute("aria-pressed", String(isDark));
+    // "Dark theme, pressed / not pressed" — a name that says what the state
+    // means; "Toggle light or dark theme" left that to guesswork (G17).
+    headerThemeToggle.setAttribute("aria-label", "Dark theme");
     headerThemeToggle.setAttribute(
       "title",
       isDark ? "Switch to light theme" : "Switch to dark theme"
@@ -3657,7 +3665,7 @@ window.resolveContractArchive = function(version) {
             </div>
             <div style="display: flex; align-items: center; gap: 8px;">
               <span class="noth-work-cta" style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text);">View Album →</span>
-              ${hidden ? "" : `<button class="work-share" data-id="${s.id}" style="background: var(--bone); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; padding: 4px 8px; display: flex; align-items: center; justify-content: center; color: var(--ink); font-size: var(--font-xs);" title="Share album" aria-label="Share album">
+              ${hidden ? "" : `<button class="work-share" data-id="${s.id}" style="background: var(--bone); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; padding: 4px 8px; display: flex; align-items: center; justify-content: center; color: var(--ink); font-size: var(--font-xs);" title="Share this album" aria-label="Share ${esc(getTalentCleanName(s.title || s.talent) || "this album")}">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
               </button>`}
             </div>
@@ -3840,7 +3848,7 @@ window.resolveContractArchive = function(version) {
           ${s.isCompCard && (latestShoot.height || latestShoot.chest || latestShoot.waist || latestShoot.hips || latestShoot.shoes || latestShoot.modelHair || latestShoot.modelEyes) && s.showStatsOnCompCard !== false ? `
             <div style="margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px; width: 100%;">
               <p class="eyebrow" style="font-size: var(--font-xs); margin-bottom: 8px; color: var(--ink-soft); letter-spacing: 0.05em; text-align: left;">Model Stats</p>
-              <div class="stats-row">
+              <dl class="stats-row">
                 ${latestShoot.height ? `<div class="stats-item"><dt>Height</dt><dd>${esc(statText("height", latestShoot.height))}</dd></div>` : ""}
                 ${latestShoot.chest ? `<div class="stats-item"><dt>${esc(chestLabelOf(latestShoot))}</dt><dd>${esc(statText("chest", latestShoot.chest))}</dd></div>` : ""}
                 ${latestShoot.waist ? `<div class="stats-item"><dt>Waist</dt><dd>${esc(statText("waist", latestShoot.waist))}</dd></div>` : ""}
@@ -3848,7 +3856,7 @@ window.resolveContractArchive = function(version) {
                 ${latestShoot.shoes ? `<div class="stats-item"><dt>Shoes</dt><dd>${esc(statText("shoes", latestShoot.shoes))}</dd></div>` : ""}
                 ${latestShoot.modelHair ? `<div class="stats-item"><dt>Hair</dt><dd>${esc(latestShoot.modelHair)}</dd></div>` : ""}
                 ${latestShoot.modelEyes ? `<div class="stats-item"><dt>Eyes</dt><dd>${esc(latestShoot.modelEyes)}</dd></div>` : ""}
-              </div>
+              </dl>
             </div>
           ` : ""}
 
@@ -3859,7 +3867,7 @@ window.resolveContractArchive = function(version) {
           ${diagramHtml}
           <div style="margin-top: 22px; display: flex; align-items: center; flex-wrap: wrap; gap: 14px; width: 100%;">
             <button class="link-arrow work-open" style="padding: 0;" aria-label="${esc(s.isCompCard ? `View ${getTalentCleanName(s.talent || s.title)}\u2019s details` : `View ${s.title || "project"}`)}">${s.isCompCard ? "View model details" : "View album"} →</button>
-            <button class="link-arrow work-share" style="padding: 0; display: inline-flex; align-items: center; gap: 6px;" title="${s.isCompCard ? "Share this model portfolio" : "Share this album"}" aria-label="Share this album">
+            <button class="link-arrow work-share" style="padding: 0; display: inline-flex; align-items: center; gap: 6px;" title="${s.isCompCard ? "Share this model portfolio" : "Share this album"}" aria-label="Share ${esc(getTalentCleanName(s.isCompCard ? s.talent : (s.title || s.talent)) || "this album")}${s.isCompCard ? " — model portfolio" : ""}">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
               Share link
             </button>
@@ -4183,6 +4191,7 @@ window.resolveContractArchive = function(version) {
         </div>
       </section>
       <section class="section container full-bleed" style="padding-top: 0;">
+        <h2 class="visually-hidden">Every album</h2>
         <div class="noth-work-list" id="albumsMainGrid" data-paginate="9" aria-label="Albums">${list.map(nothWorkCard).join("") || emptyCat()}</div>
       </section>
       ${isAdmin() ? `<section class="cta-band">
@@ -6947,13 +6956,13 @@ window.resolveContractArchive = function(version) {
                 <div id="flowchart2Step" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 18px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; margin-bottom: 6px;">STEP 1 · 50% ADVANCE RETAINER</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">Before the shoot day</h4>
+                    <p style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">Before the shoot day</p>
                     <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid before the shoot day to hold the date. <strong>Moves to a new date if you reschedule at least 24 hours ahead; otherwise it is kept.</strong></p>
                   </div>
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 18px; position: relative;">
-                    <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #2e7d32; text-transform: uppercase; margin-bottom: 6px;">STEP 2 · 50% FINAL BALANCE</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">After the shoot · before any file is delivered</h4>
+                    <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--ok-text); text-transform: uppercase; margin-bottom: 6px;">STEP 2 · 50% FINAL BALANCE</div>
+                    <p style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">After the shoot · before any file is delivered</p>
                     <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid after the shoot, before the final files are sent.</p>
                   </div>
                 </div>
@@ -6962,19 +6971,19 @@ window.resolveContractArchive = function(version) {
                 <div id="flowchart3Step" style="display: none; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px;">
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; margin-bottom: 6px;">STEP 1 · 50% ADVANCE RETAINER</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">Before the shoot day</h4>
+                    <p style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">Before the shoot day</p>
                     <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid before the shoot day to hold the date and the crew. <strong>Moves to a new date if you reschedule at least 24 hours ahead; otherwise it is kept.</strong></p>
                   </div>
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--warn-text); text-transform: uppercase; margin-bottom: 6px;">STEP 2 · 30% REVIEW MILESTONE</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">After the shoot · proofing gallery</h4>
+                    <p style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">After the shoot · proofing gallery</p>
                     <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid after shoot wrap, before receiving the proofing gallery to select retouches. <strong style="color: var(--danger-text);">(Non-refundable)</strong></p>
                   </div>
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
-                    <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #2e7d32; text-transform: uppercase; margin-bottom: 6px;">STEP 3 · 20% FINAL DELIVERABLES</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">Before any file is delivered</h4>
+                    <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--ok-text); text-transform: uppercase; margin-bottom: 6px;">STEP 3 · 20% FINAL DELIVERABLES</div>
+                    <p style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">Before any file is delivered</p>
                     <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid upon final approval, prior to receiving any downloadable or high-resolution retouched master file.</p>
                   </div>
                 </div>
@@ -6982,25 +6991,25 @@ window.resolveContractArchive = function(version) {
                 <div id="flowchart4Step" style="display: none; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px;">
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; margin-bottom: 6px;">STEP 1 · 50% ADVANCE RETAINER</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">Before the shoot day</h4>
+                    <p style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">Before the shoot day</p>
                     <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid before the shoot day to hold the date and the crew. <strong>Moves to a new date if you reschedule at least 24 hours ahead; otherwise it is kept.</strong></p>
                   </div>
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
                     <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--warn-text); text-transform: uppercase; margin-bottom: 6px;">STEP 2 · 30% REVIEW MILESTONE</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">After the shoot · proofing gallery</h4>
+                    <p style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">After the shoot · proofing gallery</p>
                     <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid after shoot wrap, before receiving the proofing gallery to select retouches. <strong style="color: var(--danger-text);">(Non-refundable)</strong></p>
                   </div>
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
-                    <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #2e7d32; text-transform: uppercase; margin-bottom: 6px;">STEP 3 · 10% ON FINALISING THE CLICKS</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">Once the selection of clicks is finalised</h4>
+                    <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--ok-text); text-transform: uppercase; margin-bottom: 6px;">STEP 3 · 10% ON FINALISING THE CLICKS</div>
+                    <p style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">Once the selection of clicks is finalised</p>
                     <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid once the final selection of clicks from the proofing gallery is confirmed.</p>
                   </div>
 
                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative;">
-                    <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: #2e7d32; text-transform: uppercase; margin-bottom: 6px;">STEP 4 · 10% AFTER DELIVERY</div>
-                    <h4 style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">After the retouched clicks are delivered</h4>
+                    <div style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; color: var(--ok-text); text-transform: uppercase; margin-bottom: 6px;">STEP 4 · 10% AFTER DELIVERY</div>
+                    <p style="margin: 0 0 6px; font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink);">After the retouched clicks are delivered</p>
                     <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Paid after the retouched master files have been delivered.</p>
                   </div>
                 </div>
@@ -11293,6 +11302,7 @@ window.resolveContractArchive = function(version) {
       </section>
       ${one ? "" : `
       <section class="section container">
+        <h2 class="visually-hidden">The kinds of shoot</h2>
         <div class="services-grid">
           ${list.map((v) => `
           <a href="/services/${v.slug}/" data-link class="service-card" style="display: block; text-decoration: none; color: inherit;">
@@ -11648,9 +11658,11 @@ window.resolveContractArchive = function(version) {
         desc = shared.description || `${sharedName} — photographed by ${brand}, Noida & Delhi NCR.`;
         // The album's own page is the one to index; this is a second door to it.
         path = albumPathFor(shared) || path;
-      } else {
-        index = false;
       }
+      // Never indexed itself: a share link is a door to the album's own page,
+      // and without an album it is an empty page (Sep 2026 audit, G14). The
+      // models' pages are real pages and stay indexable.
+      if (key === "share" || !shared) index = false;
     } else if (key === "studio") {
       title = `About the Studio | ${brand} – Noida Based Photography Studio`;
       desc = `Learn about our creative process, vision, philosophy, and tools behind the photography craft. Noida, India.`;
@@ -11725,7 +11737,7 @@ window.resolveContractArchive = function(version) {
           "name": s.title || getTalentCleanName(s.talent) || "Photoshoot",
           "caption": p.caption || altFor(s),
           "creditText": "nerdyphotographer.in",
-          "creator": { "@type": "Organization", "name": "nerdyphotographer.in" }
+          "creator": { "@type": "Person", "@id": `${ORIGIN}/#prateek-saxena`, "name": (window.STUDIO_CONFIG && window.STUDIO_CONFIG.photographerName) || "Prateek Saxena" }
         });
         if (images.length >= 30) break;
       }
@@ -11757,8 +11769,8 @@ window.resolveContractArchive = function(version) {
           "caption": p.caption || altFor(s, i + 1),
           "creditText": "nerdyphotographer.in",
           "copyrightNotice": "© nerdyphotographer.in",
-          "creator": { "@type": "Organization", "name": "nerdyphotographer.in", "url": `${ORIGIN}/` },
-          "acquireLicensePage": `${ORIGIN}/book/`
+          "creator": { "@type": "Person", "@id": `${ORIGIN}/#prateek-saxena`, "name": (window.STUDIO_CONFIG && window.STUDIO_CONFIG.photographerName) || "Prateek Saxena", "url": `${ORIGIN}/` },
+          "acquireLicensePage": `${ORIGIN}/licence/#how-to-license-a-photograph`
         }))
       }).replace(/</g, "\\u003c");
       return;

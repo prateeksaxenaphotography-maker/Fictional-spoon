@@ -31,17 +31,18 @@
   <meta name="twitter:image" content="https://www.nerdyphotographer.in/og-image.jpg" />
 
     <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800;900&family=Fraunces:opsz,ital,wght@9..144,0,300;9..144,1,400&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800;900&family=Fraunces:opsz,ital,wght@9..144,0,300;9..144,1,400&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800;900&family=Fraunces:opsz,ital,wght@9..144,0,300;9..144,1,400&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" /></noscript>
-  <link rel="stylesheet" href="/styles.css?v=536" />
-  <link rel="preload" as="script" href="/config.js?v=536" />
-  <link rel="preload" as="script" href="/data.js?v=536" />
-  <link rel="preload" as="script" href="/app.js?v=536" />
+  <link rel="stylesheet" href="/styles.css?v=537" />
+  <link rel="preload" as="script" href="/config.js?v=537" />
+  <link rel="preload" as="script" href="/data.js?v=537" />
+  <link rel="preload" as="script" href="/app.js?v=537" />
   <script>
     (function() {
       function updateTheme() {
@@ -68,6 +69,18 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": "https://www.nerdyphotographer.in/#website",
+    "url": "https://www.nerdyphotographer.in/",
+    "name": "nerdyphotographer.in",
+    "alternateName": "Nerdy Photographer — Prateek Saxena",
+    "inLanguage": "en-IN",
+    "publisher": { "@id": "https://www.nerdyphotographer.in/#identity" }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
     "@type": ["LocalBusiness", "Photographer", "ProfessionalService"],
     "name": "nerdyphotographer.in",
     "alternateName": "Nerdy Photographer",
@@ -79,12 +92,20 @@
       "streetAddress": "Sector 46",
       "addressLocality": "Noida",
       "addressRegion": "Uttar Pradesh",
+      "postalCode": "201303",
       "addressCountry": "IN"
     },
+    "priceRange": "From ₹7,000",
     "founder": {
       "@type": "Person",
+      "@id": "https://www.nerdyphotographer.in/#prateek-saxena",
       "name": "Prateek Saxena",
-      "jobTitle": "Photographer"
+      "jobTitle": "Photographer",
+      "worksFor": { "@id": "https://www.nerdyphotographer.in/#identity" },
+      "sameAs": [
+        "https://www.instagram.com/nerdyphotographer.in/",
+        "https://kavyar.com/uucurn46ib8f"
+      ]
     },
     "openingHoursSpecification": [
       {
@@ -307,9 +328,9 @@
     <div class="lightbox-sidebar" id="lightboxSidebar"></div>
   </div>
 
-  <script src="/config.js?v=536"></script>
-  <script src="/data.js?v=536"></script>
-  <script src="/app.js?v=536"></script>
+  <script src="/config.js?v=537"></script>
+  <script src="/data.js?v=537"></script>
+  <script src="/app.js?v=537"></script>
   <div id="compCardPrintContainer" style="display: none;"></div>
 </body>
 </html>

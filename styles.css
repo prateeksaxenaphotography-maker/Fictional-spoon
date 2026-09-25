@@ -3423,7 +3423,8 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
 .tm-verified {
   display: inline-flex; align-items: center; gap: 3px; white-space: nowrap;
   padding: 2px 8px; border-radius: 100px; font-size: 10px; font-weight: 700; line-height: 1.4;
-  letter-spacing: .02em; background: var(--accent-soft); color: var(--accent-text); cursor: help;
+  /* Ink on the pale accent: the accent on it measured 4.34:1 (G16). */
+  letter-spacing: .02em; background: var(--accent-soft); color: var(--ink); cursor: help;
 }
 .tm-stars { display: inline-flex; gap: 2px; }
 .tm-star { fill: var(--line-2); }
@@ -4218,3 +4219,26 @@ html:has(.publish-state:not([hidden])) .toast { bottom: 84px; }
 .token-ask-box input[type="password"], .token-ask-box input[type="text"] { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface, var(--paper)); color: var(--ink); font: 14px var(--mono-font); }
 .token-ask-show { font-size: var(--font-xs); display: inline-flex; gap: 6px; align-items: center; }
 .token-ask-acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+/* Sep 2026 audit G16: the description list the model stats already were, a
+   green that passes 4.5:1 on both grounds. */
+dl.stats-row { margin: 0; }
+:root { --ok-text: #2e7d32; }
+html.theme-dark { --ok-text: #7cc583; }
+
+/* Sep 2026 audit, G18: on a touch screen every control can be hit with a
+   thumb — 44 px — without looking any bigger. The tap area is widened by an
+   invisible layer around the control; the drawing is unchanged. Checkboxes
+   get a larger box of their own. */
+@media (pointer: coarse) {
+  /* !important: the viewer's close button carries position: static inline,
+     and a layer anchored to anything else spread over its neighbours. */
+  .theme-toggle, .lightbox-close, .work-share, .page-back-link, .lb-details-btn, .tm-card-shoot { position: relative !important; }
+  .theme-toggle::after, .lightbox-close::after, .work-share::after, .lb-details-btn::after {
+    content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: max(44px, 100%); height: max(44px, 100%);
+  }
+  .page-back-link, .tm-card-shoot { padding-block: 13px; margin-block: -13px; }
+  input[type="checkbox"] { width: 22px; height: 22px; }
+  .check-line { min-height: 44px; align-items: center; }
+}

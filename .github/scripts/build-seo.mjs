@@ -426,9 +426,11 @@ function buildAlbumPage(s) {
       ...(p.w && p.h ? { width: p.w, height: p.h } : {}),
       creditText: BRAND,
       copyrightNotice: `© ${BRAND}`,
-      creator: { "@type": "Organization", name: BRAND, url: `${ORIGIN}/` },
+      // The person who made the picture, not the business (G15).
+      creator: { "@type": "Person", "@id": `${ORIGIN}/#prateek-saxena`, name: CONFIG.photographerName || "Prateek Saxena", url: `${ORIGIN}/` },
       license: LICENCE_URL,
-      acquireLicensePage: `${ORIGIN}/book/`
+      // The part of the licence page that says how to license a photo.
+      acquireLicensePage: `${ORIGIN}/licence/#how-to-license-a-photograph`
     }))
   };
 
@@ -758,7 +760,7 @@ function buildLicencePage(x = LICENCE, urlPath = LICENCE_PATH, cta = `<a href="/
       <p class="page-sub">${esc(x.intro)}</p>
     </div></header>
     <section class="section container">
-      ${x.sections.map((sec) => `<h2>${esc(sec.heading)}</h2>
+      ${x.sections.map((sec) => `<h2 id="${esc(slugify(sec.heading))}">${esc(sec.heading)}</h2>
       ${sec.body.map((t) => `<p>${esc(t)}</p>`).join("\n      ")}${sec.points ? `
       <ul>
         ${sec.points.map((t) => `<li>${esc(t)}</li>`).join("\n        ")}
@@ -795,6 +797,7 @@ function buildServicesIndex() {
       <p class="page-sub">${esc(x.intro)}</p>
     </div></section>
     <section class="section container">
+      <h2 class="visually-hidden">The kinds of shoot</h2>
       <div class="services-grid">
         ${serviceLinksHtml(null)}
       </div>

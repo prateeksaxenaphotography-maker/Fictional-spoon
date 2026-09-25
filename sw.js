@@ -12,11 +12,12 @@
 //
 // Bump ASSET_VERSION on every release that touches app.js, styles.css,
 // data.js or config.js.
-const ASSET_VERSION = "536";
+const ASSET_VERSION = "537";
 const CACHE_NAME = `wps-v${ASSET_VERSION}`;
+// "/" only, not also "/index.html": the same page twice, fetched on the very
+// first visit while the page itself was still loading (Sep 2026 audit, G19).
 const ASSETS_TO_CACHE = [
   "/",
-  "/index.html",
   `/styles.css?v=${ASSET_VERSION}`,
   `/app.js?v=${ASSET_VERSION}`,
   `/data.js?v=${ASSET_VERSION}`,
@@ -72,20 +73,37 @@ self.addEventListener("fetch", (e) => {
   const revalidate = cacheable && url.pathname === "/data.js";
   const networkReq = revalidate ? new Request(request, { cache: "no-cache" }) : request;
 
-  e.respondWith(
-    fetch(networkReq)
-      .then((res) => {
-        if (cacheable && res.ok) {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => {});
-        }
-        return res;
-      })
-      .catch(() =>
-        caches.match(request).then((hit) =>
-          // Offline navigation to an uncached route still gets the SPA shell.
-          hit || (request.mode === "navigate" ? caches.match("/") : undefined)
-        )
-      )
-  );
+  /* A request that hangs no longer hangs the page: after a few seconds a
+     saved copy is used if there is one, and the network answer, when it
+     comes, still refreshes the cache. One photo request once stalled for 60
+     seconds (Sep 2026 audit, G19). With no saved copy it simply waits. */
+  const network = fetch(networkReq).then((res) => {
+    if (cacheable && res.ok) {
+      const copy = res.clone();
+      caches.open(CACHE_NAME).then((cache) => cache.put(request, copy).then(() => trim(cache))).catch(() => {});
+    }
+    return res;
+  });
+  const fallback = () => caches.match(request).then((hit) =>
+    // Offline navigation to an uncached route still gets the SPA shell.
+    hit || (request.mode === "navigate" ? caches.match("/") : undefined));
+  const patience = request.mode === "navigate" || revalidate ? 6000 : 12000;
+  e.respondWith(new Promise((resolve) => {
+    let done = false;
+    const answer = (r) => { if (!done && r) { done = true; resolve(r); } };
+    const timer = setTimeout(() => fallback().then(answer), patience);
+    network.then((r) => { clearTimeout(timer); answer(r); })
+      .catch(() => { clearTimeout(timer); fallback().then((r) => { if (r) answer(r); else if (!done) { done = true; resolve(Response.error()); } }); });
+  }));
 });
+
+/* The cache is kept to the pages and photos of a normal visit: past 120
+   entries the oldest go (the app's own files, precached above, stay). It
+   grew without limit — 8.1 MB after four pages (G19). */
+const KEEP = 120;
+function trim(cache) {
+  return cache.keys().then((keys) => {
+    const extra = keys.filter((k) => !ASSETS_TO_CACHE.includes(new URL(k.url).pathname + new URL(k.url).search));
+    return Promise.all(extra.slice(0, Math.max(0, extra.length - KEEP)).map((k) => cache.delete(k)));
+  });
+}
