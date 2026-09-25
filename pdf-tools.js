@@ -619,7 +619,7 @@
     printFromContainer(shoot, printCompCardPageHtml(shoot, photos), "CompCard", orientation);
   }
 
-  // ---- Model Portfolio PDF: pose-picked, one or two pages, paid by UPI ----
+  // ---- Model Portfolio PDF: pose-picked, one to three pages, paid by UPI ----
   // Replaces the Composite Lookbook (a cover, a contents page and a page per
   // pose, sent through the print dialog). Clients want a one- or two-page PDF
   // to send casting directors and designers, and a phone's print dialog can't
@@ -709,11 +709,15 @@
       return {};
     }
   }
-  function markPdfUtr(utr, status) {
+  // "used" is stored with the design it paid for ({ status, spec }), so a
+  // buyer who reloads before saving can have that same PDF again (Sep 2026
+  // audit, P2). An entry saved before that is the bare word.
+  const utrStatus = (v) => (typeof v === "string" ? v : (v && v.status) || "");
+  function markPdfUtr(utr, status, spec) {
     if (!utr) return;
     const all = readPdfUtrs();
-    if (all[utr] === "used") return;
-    all[utr] = status;
+    if (utrStatus(all[utr]) === "used") return;
+    all[utr] = status === "used" && spec ? { status, spec } : status;
     // Twelve-digit keys keep the order they were added in; keep the newest 100.
     const keys = Object.keys(all);
     keys.slice(0, Math.max(0, keys.length - 100)).forEach((k) => delete all[k]);
@@ -739,6 +743,10 @@
       fd.append("Paid to", sale.upiId);
       fd.append("Client email", sale.email);
       fd.append("PDF", `${sale.pages} page${sale.pages > 1 ? "s" : ""}${sale.cover ? " + cover" : ""}: ${sale.poses}`);
+      // Enough to make the exact same file again: the pose names alone could
+      // not say which photographs, in what order, cropped how (P2).
+      if (sale.layout) fd.append("Pages, photo by photo", sale.layout);
+      if (sale.design) fd.append("Design (for the studio to rebuild it)", sale.design);
       fd.append("Page", location.href);
       const res = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(to)}`, {
         method: "POST",
@@ -1011,9 +1019,18 @@
     // A hairline frame, so a photo shot on white seamless still has an edge
     // against the paper. A full-bleed cover has no paper around it.
     if (!frame) return;
+    // Left off when the studio said so in Type & border (Sep 25 2026).
+    const bs = ((typeof getPortfolioPdfSettings === "function" ? getPortfolioPdfSettings() : {}) || {}).border;
+    if (bs && bs.photoLines === false) return;
+    /* Round the photograph, not its cell. A page shows every photograph
+       whole, so one that is not its cell's shape leaves paper beside it — and
+       a hairline round the cell framed that paper as white bands, which read
+       as an unfinished page (Sep 2026 audit, P6). */
+    const vx = Math.max(x, dx), vy = Math.max(y, dy);
+    const vw = Math.min(x + w, dx + dw) - vx, vh = Math.min(y + h, dy + dh) - vy;
     page.ctx.strokeStyle = "#e2e0dc";
     page.ctx.lineWidth = Math.max(1, page.u(0.2));
-    page.ctx.strokeRect(page.u(x), page.u(y), page.u(w), page.u(h));
+    page.ctx.strokeRect(page.u(vx), page.u(vy), page.u(vw), page.u(vh));
   }
 
   // How light a colour reads, 0 (black) to 255 (white).
@@ -1268,9 +1285,32 @@
     const cols = Math.ceil(182 / step) + 1;
     ctx.save();
     ctx.translate(u(PDF_PAGE.w / 2), u(PDF_PAGE.h / 2));
-    ctx.rotate(-Math.PI / 6);
-    for (let row = -7; row <= 7; row++) {
-      for (let col = -cols; col <= cols; col++) page.text(mark, col * step + (row % 2 ? step / 2 : 0), row * 26, style);
+    if (alpha < PDF_MARK_ALPHA.file) {
+      // On screen: the calm, even pattern.
+      ctx.rotate(-Math.PI / 6);
+      for (let row = -7; row <= 7; row++) {
+        for (let col = -cols; col <= cols; col++) page.text(mark, col * step + (row % 2 ? step / 2 : 0), row * 26, style);
+      }
+      ctx.restore();
+      return;
+    }
+    /* In a file someone takes away, the mark is never the same twice. One
+       colour at one strength in one grid could be subtracted back out almost
+       exactly — the clean picture was rebuilt to within 0.76/255 (Sep 2026
+       audit, P3). Each file now gets its own angle and offset, the rows sit
+       closer, and every name varies in strength, colour (the accent, ink and
+       paper) and place. */
+    const rnd = () => (crypto && crypto.getRandomValues ? crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296 : Math.random());
+    ctx.rotate(-Math.PI / 6 + (rnd() - 0.5) * 0.35);
+    const dx = rnd() * step, dy = rnd() * 18;
+    const tones = [[210, 78, 26], [20, 20, 20], [250, 248, 244]];
+    for (let row = -10; row <= 10; row++) {
+      for (let col = -cols - 1; col <= cols + 1; col++) {
+        const [r, g, b] = tones[Math.floor(rnd() * tones.length)];
+        const a = alpha * (0.7 + rnd() * 0.6);
+        page.text(mark, col * step + (row % 2 ? step / 2 : 0) + dx + (rnd() - 0.5) * 6, row * 18 + dy + (rnd() - 0.5) * 4,
+          { ...style, size: style.size * (0.9 + rnd() * 0.25), color: `rgba(${r}, ${g}, ${b}, ${a.toFixed(3)})` });
+      }
     }
     ctx.restore();
   }
@@ -2407,6 +2447,24 @@
        spec means. */
     function applySpec(sp) {
       if (!sp) return false;
+      /* An arrangement saved before v533 may name a photo by an id that
+         has since moved: ids were rebuilt from a photo's place in its album
+         on every save (Sep 2026 audit, A4). Each is pointed at the photo
+         with the same first part, wherever the id appears. */
+      try {
+        const now = new Set(slots.map((s) => s.id));
+        const byBase = new Map();
+        slots.forEach((s) => { const m = /^([a-z0-9]{8,})-\d+$/.exec(String(s.id)); if (m && !byBase.has(m[1])) byBase.set(m[1], s.id); });
+        const fix = (id) => {
+          if (typeof id !== "string" || now.has(id)) return id;
+          const m = /^([a-z0-9]{8,})-\d+$/.exec(id);
+          return (m && byBase.get(m[1])) || id;
+        };
+        const deep = (v) => Array.isArray(v) ? v.map(deep)
+          : (v && typeof v === "object") ? Object.fromEntries(Object.entries(v).map(([k, x]) => [fix(k), deep(x)]))
+          : fix(v);
+        sp = deep(sp);
+      } catch (e) { /* the saved ids are used as they are */ }
       state.pages = sp.pages; state.count = sp.count;
       state.picks = new Set(sp.picks); state.cleared = new Set(sp.cleared);
       state.lead = sp.lead; state.cover = sp.cover; state.coverId = sp.coverId;
@@ -3215,7 +3273,7 @@
       // image per page, so a cover and two pages are three files.
       const freePng = !admin && !canDownload;
       const sheets = state.pages + (state.cover ? 1 : 0);
-      const pngs = sheets > 1 ? "PNG images" : "a PNG image";
+      const pngs = sheets > 1 ? "images" : "an image";
       const upiLink = portfolioUpiLink(sale.upiId, price, state.ref);
       /* Two panes, so the sheet can be the subject. It used to be a single
          column with the controls stacked above it, which put a row of
@@ -3360,7 +3418,7 @@ ${admin ? `
       foot.innerHTML = `
         <button type="button" class="btn btn-ghost" id="ppBack">← Change photos</button>
         ${canDownload && admin ? `<button type="button" class="btn btn-ghost" id="ppDownloadPng" data-download>Download PNG</button>` : ""}
-        ${freePng ? `<button type="button" class="btn ${payable ? "btn-ghost" : "btn-dark"}" id="ppDownloadFreePng" data-download>Download ${sheets > 1 ? `${sheets} PNGs` : "PNG"}</button>` : ""}
+        ${freePng ? `<button type="button" class="btn ${payable ? "btn-ghost" : "btn-dark"}" id="ppDownloadFreePng" data-download>Download ${sheets > 1 ? `${sheets} images` : "image"}</button>` : ""}
         ${canDownload ? `<button type="button" class="btn btn-dark" id="ppDownload" data-download>Download PDF</button>` : ""}
       `;
       foot.querySelector("#ppBack").addEventListener("click", showPick);
@@ -4377,8 +4435,19 @@ ${admin ? `
       const problem = utrProblem(utr);
       if (problem === "fake") { fail("That isn't a UPI reference number. It's the 12-digit “UPI Ref No.” on your payment receipt.", "#ppUtr"); return; }
       if (problem === "date") { fail("That doesn't look like a UPI reference from the last few days. Check the 12-digit “UPI Ref No.” on your receipt — or, if it's right, email it to the studio.", "#ppUtr"); return; }
-      const seen = readPdfUtrs()[utr];
-      if (seen === "used") { fail("That reference number has already paid for a PDF. Each payment unlocks one PDF.", "#ppUtr"); return; }
+      const seenRec = readPdfUtrs()[utr];
+      const seen = utrStatus(seenRec);
+      if (seen === "used") {
+        // The same PDF again, free — the design it paid for is put back.
+        if (seenRec && seenRec.spec && applySpec(seenRec.spec)) {
+          error.hidden = true;
+          state.paid = true; state.paidUtr = utr; state.madeKey = specKey();
+          showPreview();
+          toast("This reference already paid for this PDF, so it is back as you made it. Download it again for free.");
+          return;
+        }
+        fail("That reference number has already paid for a PDF. Each payment unlocks one PDF.", "#ppUtr"); return;
+      }
       error.hidden = true;
       /* The download opens only once the studio has been told. It used to open
          whether or not the sale email went — with FormSubmit blocked, offline
@@ -4390,9 +4459,15 @@ ${admin ? `
         const label = btn ? btn.textContent : "";
         if (btn) { btn.disabled = true; btn.textContent = "Letting the studio know…"; }
         const spec = buildSpec();
+        const order = printOrder();
+        const counts = perPage();
+        let at = 0;
+        const layout = counts.map((n, i) => `Page ${i + 1}: ${order.slice(at, at += n).map((s) => `${s.label || "no pose"} (${s.id})`).join(", ")}`).join(" · ")
+          + (spec.cover ? ` · Cover: ${state.coverId}` : "");
         const ok = await sendPortfolioPdfSaleEmail({
           model: name, price, upiId: sale.upiId, utr, ref: state.ref, email,
-          pages: spec.pages, cover: !!spec.cover, poses: printOrder().map((s) => s.label || "no pose").join(", ")
+          pages: spec.pages, cover: !!spec.cover, poses: order.map((s) => s.label || "no pose").join(", "),
+          layout, design: JSON.stringify(currentSpec())
         });
         unlocking = false;
         if (btn) { btn.disabled = false; btn.textContent = label; }
@@ -4440,8 +4515,10 @@ ${admin ? `
            refuse a page that size and a softer file beats none — but when it
            steps down for the studio it now says so, rather than handing over
            something quietly smaller than was asked for. */
+        // A visitor's free pages are a preview, not a print: 110 dpi JPEGs
+        // (P3). The studio's own watermarked sample keeps 150.
         const ladder = admin && !watermark ? [300, 220, 150, 110]
-          : watermark ? [150, 110]
+          : watermark ? (admin ? [150, 110] : [110, 90])
           : [200, 150, 110];
         let bytes = null, lastErr = null, madeAt = 0;
         for (const dpi of ladder) {
@@ -4449,7 +4526,9 @@ ${admin ? `
             const pages = await renderPortfolioPdfPages(spec, { dpi, watermark, markAlpha: PDF_MARK_ALPHA.file, cache });
             try {
               bytes = asPng
-                ? await Promise.all(pages.map((p) => pdfCanvasPng(p.canvas)))
+                ? await Promise.all(pages.map((p) => (watermark && !admin)
+                  ? pdfCanvasJpeg(p.canvas, 0.84).then((b) => new Blob([b], { type: "image/jpeg" }))
+                  : pdfCanvasPng(p.canvas)))
                 : await buildPortfolioPdf(pages, `${spec.name} — Model Portfolio${watermark ? " (preview)" : ""}`);
             } finally {
               // Full-resolution canvases are large; give the memory back.
@@ -4471,18 +4550,32 @@ ${admin ? `
         }
         const fileBase = `${slugify(spec.name) || "model"}-portfolio${watermark ? "-preview" : ""}`;
         const fileTitle = `${spec.name} — Model Portfolio${watermark ? " (preview)" : ""}`;
-        if (asPng) offerImages(bytes, fileBase, fileTitle, !!spec.cover);
-        else offerPdf(bytes, `${fileBase}.pdf`, fileTitle);
-        if (price && !watermark) {
-          // A watermarked copy is free and spends nothing.
-          // The payment is spent on this PDF. It downloads again for free, but
-          // a different PDF needs a new payment with a new note, and this
-          // reference number won't unlock anything in this browser again.
+        /* The payment is spent on this PDF once it is SAVED — a tap on Save or
+           Share, or the download a computer starts by itself. It was spent the
+           moment the file was made, so a phone buyer who never found the Save
+           button (it sat under the sticky footer) and reloaded was told the
+           reference "has already paid for a PDF", with nothing to show for it
+           (Sep 2026 audit, P2). It is stored with the design, so the same
+           reference opens the same PDF again. A watermarked copy spends
+           nothing. */
+        const paidUtr = state.paidUtr;
+        const spend = (price && !watermark) ? (() => {
+          let done = false;
+          const design = currentSpec();
+          return () => {
+            if (done) return; done = true;
+            markPdfUtr(paidUtr, "used", design);
+          };
+        })() : null;
+        if (spend) {
+          // From here only this same PDF stays unlocked; a different one
+          // needs a new payment with a new note.
           state.madeKey = key;
-          markPdfUtr(state.paidUtr, "used");
           state.utr = "";
           state.ref = newSaleRef();
         }
+        if (asPng) offerImages(bytes, fileBase, fileTitle, !!spec.cover);
+        else offerPdf(bytes, `${fileBase}.pdf`, fileTitle, spend);
       } catch (err) {
         console.warn("Portfolio PDF failed:", err);
         // Name the cause on screen: a client who can't open the console can
@@ -4507,19 +4600,20 @@ ${admin ? `
         const n = i + (hasCover ? 0 : 1);
         const label = isCover ? "Cover" : inner > 1 ? `Page ${n}` : blobs.length > 1 ? "Page" : "";
         const suffix = isCover ? "-cover" : inner > 1 ? `-page-${n}` : blobs.length > 1 ? "-page" : "";
-        const fileName = `${fileBase}${suffix}.png`;
+        const jpeg = blob.type === "image/jpeg";
+        const fileName = `${fileBase}${suffix}.${jpeg ? "jpg" : "png"}`;
         const url = URL.createObjectURL(blob);
-        return { blob, url, label, fileName, file: typeof File === "function" ? new File([blob], fileName, { type: "image/png" }) : null };
+        return { blob, url, label, fileName, file: typeof File === "function" ? new File([blob], fileName, { type: blob.type || "image/png" }) : null };
       });
       fileUrls = items.map((x) => x.url);
       const files = items.map((x) => x.file).filter(Boolean);
       const canShare = !!(files.length === items.length && navigator.canShare && navigator.canShare({ files }));
       const size = items.reduce((sum, x) => sum + x.blob.size, 0);
       ready.innerHTML = `
-        <p class="pp-hint"><strong>Your ${items.length > 1 ? `${items.length} images are` : "image is"} ready</strong> (PNG, ${(size / 1048576).toFixed(1)} MB${items.length > 1 ? " in all" : ""}).</p>
+        <p class="pp-hint"><strong>Your ${items.length > 1 ? `${items.length} images are` : "image is"} ready</strong> (${items[0] && items[0].blob.type === "image/jpeg" ? "JPEG" : "PNG"}, ${(size / 1048576).toFixed(1)} MB${items.length > 1 ? " in all" : ""}).</p>
         <div class="pp-ready-actions">
           ${canShare ? `<button type="button" class="btn btn-dark" id="ppShare">${items.length > 1 ? "Share or save all" : "Share or save"}</button>` : ""}
-          ${items.map((x, i) => `<a class="btn ${canShare ? "btn-ghost" : "btn-dark"} pp-save-img" data-i="${i}" href="${x.url}" download="${esc(x.fileName)}">Save ${esc(x.label || "PNG")}</a>`).join("")}
+          ${items.map((x, i) => `<a class="btn ${canShare ? "btn-ghost" : "btn-dark"} pp-save-img" data-i="${i}" href="${x.url}" download="${esc(x.fileName)}">Save ${esc(x.label || "image")}</a>`).join("")}
         </div>
       `;
       const share = ready.querySelector("#ppShare");
@@ -4542,7 +4636,7 @@ ${admin ? `
       }
     }
 
-    function offerPdf(bytes, fileName, title) {
+    function offerPdf(bytes, fileName, title, onSaved = null) {
       const ready = body.querySelector("#ppReady");
       if (!ready) return;
       dropFiles();
@@ -4559,10 +4653,18 @@ ${admin ? `
         </div>
       `;
       const share = ready.querySelector("#ppShare");
-      if (share) share.addEventListener("click", () => navigator.share({ files: [file], title }).catch(() => {}));
+      const saveBtn = ready.querySelector("#ppSave");
+      if (onSaved) saveBtn.addEventListener("click", () => onSaved());
+      if (share) share.addEventListener("click", () => { if (onSaved) onSaved(); navigator.share({ files: [file], title }).catch(() => {}); });
       // On a computer the file just downloads; a phone gets the Save and
-      // Share buttons, which work from a fresh tap.
-      if (!coarse) ready.querySelector("#ppSave").click();
+      // Share buttons, which work from a fresh tap — brought into view, since
+      // they used to appear under the sticky footer with nothing else
+      // changing on screen (P2).
+      if (!coarse) saveBtn.click();
+      else {
+        ready.scrollIntoView({ block: "center", behavior: prefersReduced ? "auto" : "smooth" });
+        try { saveBtn.focus({ preventScroll: true }); } catch (e) {}
+      }
     }
 
     showPick();

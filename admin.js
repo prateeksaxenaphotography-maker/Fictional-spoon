@@ -272,14 +272,17 @@ window.renderPdfTypeEditor = function(host) {
   const cur = (window.getPortfolioPdfSettings() || {}).type || window.defaultPdfType();
   const fams = window.PDF_TYPE_FAMILIES || {};
   const cell = "padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); font-size: var(--font-xs); font-family: inherit;";
-  host.innerHTML = window.PDF_TYPE_ROLES.map((r) => {
+  const swatch = "width: 34px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer;";
+  /* Every row has the same columns in the same order — typeface, weight,
+     align, size, panel, colour — with an empty cell where a line has no such
+     control. Rows used to carry only their own controls and each found its
+     own layout, so the columns wandered from row to row and some rows wrapped
+     a colour swatch onto a line of its own (the owner, Sep 25 2026). */
+  const blank = '<span class="pdf-type-blank" aria-hidden="true"></span>';
+  const head = `<div class="pdf-type-row pdf-type-head" aria-hidden="true"><span></span><span>Typeface</span><span>Weight</span><span>Line up</span><span>Size mm</span><span>Panel</span><span>Colour</span></div>`;
+  host.innerHTML = head + window.PDF_TYPE_ROLES.map((r) => {
     const v = cur[r.key] || {};
     const isAuto = v.color === "auto";
-    /* Laid out in the stylesheet, not here: this editor is shown in the admin
-       page AND in a panel beside the portfolio preview, and a grid of fixed
-       columns written inline could not answer to either. It cut the selects
-       off at the panel's edge and asked the studio to scroll sideways to
-       reach them, which read as the controls being missing. */
     return `<div class="pdf-type-row" data-role="${pdfEsc(r.key)}"${r.aligns ? ' data-aligns="1"' : ""}${r.fills ? ' data-fills="1"' : ""}>
       <div class="pdf-type-what">
         <strong style="font-size: var(--font-xs); color: var(--ink);">${pdfEsc(r.label)}</strong>
@@ -293,21 +296,21 @@ window.renderPdfTypeEditor = function(host) {
       </select>
       ${r.aligns ? `<select data-f="align" style="${cell}" aria-label="How ${pdfEsc(r.label)} line up in their cell">
         ${[["left", "Left"], ["centre", "Centre"], ["right", "Right"]].map(([k, lbl]) => `<option value="${k}"${(v.align || "left") === k ? " selected" : ""}>${lbl}</option>`).join("")}
-      </select>` : ""}
+      </select>` : blank}
       ${r.sized
         ? `<input type="number" data-f="size" min="1" max="20" step="0.1" value="${v.size != null ? v.size : ""}" style="${cell}" aria-label="Size in millimetres for ${pdfEsc(r.label)}" />`
-        : `<span style="font-size: var(--font-xs); color: var(--ink-soft);">fitted</span>`}
+        : `<span class="pdf-type-fitted">fitted</span>`}
       ${r.fills ? `<span class="pdf-type-colour">
         <select data-f="fillmode" style="${cell}" aria-label="The panel behind ${pdfEsc(r.label)}">
-          <option value="auto"${(v.fill || "auto") === "auto" ? " selected" : ""}>Panel: auto</option>
-          <option value="none"${v.fill === "none" ? " selected" : ""}>No fill</option>
-          <option value="custom"${v.fill && v.fill !== "auto" && v.fill !== "none" ? " selected" : ""}>Panel: pick</option>
+          <option value="auto"${(v.fill || "auto") === "auto" ? " selected" : ""}>Auto</option>
+          <option value="none"${v.fill === "none" ? " selected" : ""}>None</option>
+          <option value="custom"${v.fill && v.fill !== "auto" && v.fill !== "none" ? " selected" : ""}>Pick</option>
         </select>
-        <input type="color" data-f="fill" value="${pdfEsc(v.fill && v.fill !== "auto" && v.fill !== "none" ? v.fill : "#ffffff")}"${(!v.fill || v.fill === "auto" || v.fill === "none") ? " disabled" : ""} style="width: 34px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer;" aria-label="Panel colour behind ${pdfEsc(r.label)}" />
-      </span>` : ""}
+        <input type="color" data-f="fill" value="${pdfEsc(v.fill && v.fill !== "auto" && v.fill !== "none" ? v.fill : "#ffffff")}"${(!v.fill || v.fill === "auto" || v.fill === "none") ? " disabled" : ""} style="${swatch}" aria-label="Panel colour behind ${pdfEsc(r.label)}" />
+      </span>` : blank}
       <span class="pdf-type-colour">
-        <input type="color" data-f="color" value="${pdfEsc(isAuto ? "#000000" : (v.color || "#000000"))}" ${isAuto ? "disabled" : ""} style="width: 34px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer;" aria-label="Colour for ${pdfEsc(r.label)}" />
-        ${r.adaptive ? `<label style="font-size: var(--font-xs); color: var(--ink-soft); display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;" title="On the cover this line sits over a photograph, so the PDF picks a colour that stays readable."><input type="checkbox" data-f="auto"${isAuto ? " checked" : ""} /> auto</label>` : ""}
+        <input type="color" data-f="color" value="${pdfEsc(isAuto ? "#000000" : (v.color || "#000000"))}" ${isAuto ? "disabled" : ""} style="${swatch}" aria-label="Colour for ${pdfEsc(r.label)}" />
+        ${r.adaptive ? `<label class="pdf-type-auto" title="On the cover this line sits over a photograph, so the PDF picks a colour that stays readable."><input type="checkbox" data-f="auto"${isAuto ? " checked" : ""} /> auto</label>` : ""}
       </span>
     </div>`;
   }).join("");
@@ -333,17 +336,26 @@ window.renderPdfBorderEditor = function(host) {
   if (!host) return;
   const b = (window.getPortfolioPdfSettings() || {}).border || window.DEFAULT_PDF_BORDER || {};
   const cell = "padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); font-size: var(--font-xs); font-family: inherit;";
-  host.innerHTML = `
-    <div style="min-width: 0;">
+  // Two rows on the same columns as the type rows above them.
+  host.innerHTML = `<div class="pdf-type-row">
+    <div class="pdf-type-what">
       <strong style="font-size: var(--font-xs); color: var(--ink);">A border round the page</strong>
       <span style="display: block; font-size: var(--font-xs); color: var(--ink-soft);">Thickness and how far in, in millimetres</span>
     </div>
-    <label style="font-size: var(--font-xs); color: var(--ink); display: inline-flex; align-items: center; gap: 6px;">
-      <input type="checkbox" id="pdfBorderOn"${b.on ? " checked" : ""} /> Draw it
-    </label>
-    <input type="number" id="pdfBorderWidth" min="0.1" max="4" step="0.1" value="${b.width}" style="${cell}" aria-label="Border thickness in millimetres" />
-    <input type="number" id="pdfBorderInset" min="0" max="20" step="0.5" value="${b.inset}" style="${cell}" aria-label="How far in from the edge, in millimetres" />
-    <input type="color" id="pdfBorderColor" value="${pdfEsc(b.color || "#141416")}" style="width: 34px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer;" aria-label="Border colour" />`;
+    <label class="pdf-type-check"><input type="checkbox" id="pdfBorderOn"${b.on ? " checked" : ""} /> Draw it</label>
+    <label class="pdf-type-num"><span>Thickness</span><input type="number" id="pdfBorderWidth" min="0.1" max="4" step="0.1" value="${b.width}" style="${cell}" aria-label="Border thickness in millimetres" /></label>
+    <label class="pdf-type-num"><span>In from edge</span><input type="number" id="pdfBorderInset" min="0" max="20" step="0.5" value="${b.inset}" style="${cell}" aria-label="How far in from the edge, in millimetres" /></label>
+    <span class="pdf-type-blank" aria-hidden="true"></span>
+    <span class="pdf-type-blank" aria-hidden="true"></span>
+    <span class="pdf-type-colour"><input type="color" id="pdfBorderColor" value="${pdfEsc(b.color || "#141416")}" style="width: 34px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer;" aria-label="Border colour" /></span>
+  </div>
+  <div class="pdf-type-row">
+    <div class="pdf-type-what">
+      <strong style="font-size: var(--font-xs); color: var(--ink);">A line round each photo</strong>
+      <span style="display: block; font-size: var(--font-xs); color: var(--ink-soft);">A hairline that gives a photo shot on white an edge against the paper</span>
+    </div>
+    <label class="pdf-type-check"><input type="checkbox" id="pdfPhotoLines"${b.photoLines === false ? "" : " checked"} /> Draw it</label>
+  </div>`;
 };
 
 window.readPdfBorderEditor = function(host) {
@@ -352,8 +364,10 @@ window.readPdfBorderEditor = function(host) {
   if (!on) return null;
   const num = (id, fallback) => { const el = host.querySelector("#" + id); const n = el ? Number(el.value) : NaN; return Number.isFinite(n) ? n : fallback; };
   const d = window.DEFAULT_PDF_BORDER || { width: 0.5, inset: 6, color: "#141416" };
+  const lines = host.querySelector("#pdfPhotoLines");
   return {
     on: on.checked,
+    ...(lines && !lines.checked ? { photoLines: false } : {}),
     width: num("pdfBorderWidth", d.width),
     inset: num("pdfBorderInset", d.inset),
     color: (host.querySelector("#pdfBorderColor") || {}).value || d.color
@@ -749,11 +763,14 @@ const STUDIO_BOOK_LIMITS = {
   fonts: ["fraunces", "archivo", "inter", "outfit", "playfair", "cormorant", "baskerville", "bodoni", "dmserif", "sourcesans", "jost", "manrope", "spacegrotesk", "oswald", "plexmono"],
   colors: ["ink", "soft", "accent", "paper", "white", "deep"],
   // A paragraph (or a whole flowing text) can be a list, and can run in two
-  // or three columns. A photos page with four to six photographs can put
-  // three of them in one row, on top or at the bottom.
+  // or three columns. A photos page divides its photographs into two rows
+  // however the studio says ("2+2", "3+1", "1+4"…), or puts two side by side
+  // ("2across"). "3top" and "3bottom" are what older books carry. This list
+  // held only those two, so every other choice the builder offers was
+  // dropped on save and the page went back to Auto (Sep 2026 audit, K1).
   lists: ["bullet", "number"],
   columns: [2, 3],
-  photoRows: ["3top", "3bottom"],
+  photoRows: ["3top", "3bottom", "2across", "1+1", "1+2", "2+1", "1+3", "2+2", "3+1", "1+4", "2+3", "3+2", "4+1", "1+5", "2+4", "3+3", "4+2", "5+1"],
   aligns: ["left", "center", "right", "justify"],
   // A flowing text (a story, a letter, the words about a photo, About the
   // studio) can format each paragraph on its own; this many at most.
@@ -1096,6 +1113,7 @@ function cleanStudioPortfolios(o) {
          reload. Absent means on, in the style's own accent, so a book made
          before the studio could ask is stored exactly as it was. */
       ...(v.photoNums === false ? { photoNums: false } : {}),
+      ...(v.photoLines === false || v.photoLines === "on" ? { photoLines: v.photoLines } : {}),
       ...(STUDIO_BOOK_LIMITS.plateColours.includes(v.photoNumColour) || /^#[0-9a-f]{6}$/i.test(String(v.photoNumColour || "")) ? { photoNumColour: String(v.photoNumColour).toLowerCase() } : {}),
       // The cover's layout, and the cover itself when it is arranged from scratch.
       ...(STUDIO_BOOK_LIMITS.coverLayouts.includes(v.coverLayout) ? { coverLayout: v.coverLayout } : {}),
@@ -1152,7 +1170,7 @@ const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words_v9";
 // Older keys: code that knows only an older shape keeps rewriting the key it
 // knows, so every growth of the shape gets a new one, read before the old.
 const STUDIO_BOOK_WORDS_OLD = ["wps_studio_portfolios_words_v8", "wps_studio_portfolios_words_v7", "wps_studio_portfolios_words_v6", "wps_studio_portfolios_words_v5", "wps_studio_portfolios_words_v4", "wps_studio_portfolios_words_v3", "wps_studio_portfolios_words_v2", "wps_studio_portfolios_words"];
-const studioBookHasWords = (v) => v.style === "lookbook" || STUDIO_BOOK_NEWER_STYLES.includes(v.style) || !!v.paper || !!v.coverStyle || !!v.watermark || !!v.coverText || !!v.schema || !!v.footText || !!v.bg || v.showPageNumbers === false || v.photoNums === false || !!v.photoNumColour || !!v.coverLayout || !!v.coverPage || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
+const studioBookHasWords = (v) => v.style === "lookbook" || STUDIO_BOOK_NEWER_STYLES.includes(v.style) || !!v.paper || !!v.coverStyle || !!v.watermark || !!v.coverText || !!v.schema || !!v.footText || !!v.bg || v.showPageNumbers === false || v.photoNums === false || v.photoLines === false || v.photoLines === "on" || !!v.photoNumColour || !!v.coverLayout || !!v.coverPage || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
   (STUDIO_BOOK_LIMITS.fields[pg.type] && (pg.type !== "photos" || pg.caption)) || (pg.blocks || []).length || pg.bg || pg.items || pg.steps || pg.rows || pg.credit || pg.label || pg.heading || pg.photoAt || pg.border || pg.borderWidth || pg.style || pg.hide || (pg.photos || []).some((s) => s.fit || s.opacity));
 function getStudioPortfolios(live) {
   let local = null, published = null, remote = null, words = null;
@@ -1172,14 +1190,21 @@ function getStudioPortfolios(live) {
   return { versions, deleted };
 }
 function saveStudioPortfolios(state) {
+  if (typeof window.markUnpublished === "function") window.markUnpublished("books");
   const clean = cleanStudioPortfolios(state);
   if (!clean) return false;
   try { localStorage.setItem("wps_studio_portfolios", JSON.stringify(clean)); } catch (e) { return false; }
+  /* One safety copy, under the newest key. The same copy used to be written
+     under all eight older keys as well — ten copies of the library per save,
+     so six books with hand-drawn lines filled the browser's 5 MB, which the
+     calendar and the portfolio drafts share (Sep 2026 audit, K7). The older
+     keys are only read now (a tab from before could still have written one),
+     and each is cleared once this copy is safely down. */
   try {
     const copy = JSON.stringify({ versions: clean.versions.filter(studioBookHasWords), deleted: [] });
     localStorage.setItem(STUDIO_BOOK_WORDS_KEY, copy);
-    for (const key of STUDIO_BOOK_WORDS_OLD) localStorage.setItem(key, copy);
-  } catch (e) { /* the main copy is saved; these are a safety net */ }
+    for (const key of STUDIO_BOOK_WORDS_OLD) { try { localStorage.removeItem(key); } catch (e) {} }
+  } catch (e) { /* the main copy is saved; this is a safety net */ }
   return true;
 }
 window.cleanStudioPortfolios = cleanStudioPortfolios;
@@ -1261,6 +1286,7 @@ function getTestimonials(live) {
   return { items, deleted };
 }
 function saveTestimonials(state) {
+  if (typeof window.markUnpublished === "function") window.markUnpublished("testimonials");
   const clean = cleanTestimonials(state);
   try { localStorage.setItem("wps_testimonials", JSON.stringify(clean)); } catch (e) { return false; }
   return true;
@@ -1333,6 +1359,8 @@ function cleanModels(state) {
       modelTypes: (Array.isArray(m.modelTypes) ? m.modelTypes : []).slice(0, 4).map((t) => str(t, 40)).filter(Boolean),
       updatedAt: Number(m.updatedAt) || 0
     };
+    // Under 18: written only when ticked, so every record from before stays as it was.
+    if (m.under18 === true) out.under18 = true;
     if (typeof m.showStatsOnCompCard === "boolean") out.showStatsOnCompCard = m.showStatsOnCompCard;
     if (typeof m.showStatsOnModelPortfolio === "boolean") out.showStatsOnModelPortfolio = m.showStatsOnModelPortfolio;
     // Matched by shape, not by a list that would have to be kept in step with
@@ -1374,6 +1402,7 @@ function getModels(live) {
   return { items, deleted };
 }
 function saveModels(state) {
+  if (typeof window.markUnpublished === "function") window.markUnpublished("models");
   const clean = cleanModels(state);
   try { localStorage.setItem("wps_models", JSON.stringify(clean)); } catch (e) { return false; }
   // The live list a visitor's page reads is the published one; this keeps the
@@ -1508,6 +1537,7 @@ function getModelPdfs(live) {
   return { versions, deleted };
 }
 function saveModelPdfs(state) {
+  if (typeof window.markUnpublished === "function") window.markUnpublished("model portfolios");
   const clean = cleanModelPdfs(state);
   try { localStorage.setItem("wps_model_pdfs", JSON.stringify(clean)); } catch (e) { return false; }
   return true;
@@ -1724,14 +1754,14 @@ window.moveAdminPackageRow = function(index, dir) {
   const {
     $, ACTIVITIES, BRANDS, CHEST_LABELS, CLIENTS, LOOKS,
     MODEL_TYPES_MAX, MODEL_TYPE_MAXLEN, REP_SURFACES, REP_SWITCHES, TYPES, addCalBooking,
-    albumClients, backfillPublishedOnlyFields, chestLabelOf, classifySocial, cleanIgHandle, createHoldFromContract,
+    albumClients, backfillPublishedOnlyFields, mergeAlbumCopies, chestLabelOf, classifySocial, cleanIgHandle, createHoldFromContract,
     esc, escJs, extractPalette, followAlbumText, getCalDateKey, getCalDateStatus,
     getContractEmailStatuses, getLocalContractAudits, getTalentCleanName, igHandleFromCredit, isAdmin, isDecidableHold,
     isSigImage, kineticH1, legacyClientOf, loadShoots, localTombstones, lookByKey,
     albumModelKeys, feedsModelCards, modelKeyOf, modelNameFromKey, modelRoster, photoModelKeys, slugify,
     lookLabel, modelTypeLabel, modelTypeOptions, modelTypesOf, normalizeModelType, parseDeletedIdsFromDataJs,
     parseIgHandle, parseKavyarLink, parseObjectAfterKey, parseShootsFromDataJs, parseValueAfterKey, photoSrc,
-    putShoot, readAsDataURL, removeCalBooking, render, repSwitchValues, resize,
+    putShoot, readAsDataURL, removeCalBooking, render, repSwitchValues, resize, webPhoto, isPhotoFile, refusedPhotosText,
     saveCalendarSettings, showRep, showsOnModelPage, siteFromCredit, socialsFromCredit, syncCalendarWithAudits,
     syncCalendarWithShoots, toast, toggleCalDateBlock, uid, updateCalBooking, view,
     wireView,
@@ -1824,8 +1854,54 @@ window.moveAdminPackageRow = function(index, dir) {
     return err;
   }
 
+  /* Every call to GitHub goes through here.
+
+     Never from the browser's cache: GitHub marks its answers reusable for 60
+     seconds, so "save, spot a typo, save again" read the state from before
+     the first save and failed with advice about the token (Sep 2026 audit,
+     A10).
+
+     A "slow down" is waited out, not blamed on the token. GitHub's secondary
+     limit — easily reached by the ~90 uploads of a 30-photo album — answers
+     403 with the ordinary quota still left, which checkAuthFailure read as a
+     bad token and deleted (A9). It is told apart by its Retry-After header or
+     its message, and waited out up to three times; a wait longer than a
+     minute and a half is reported instead, with the token kept. */
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  async function slowDownFor(res) {
+    if (res.status !== 403 && res.status !== 429) return 0;
+    const after = Number(res.headers.get("Retry-After"));
+    if (after > 0) return after * 1000;
+    if (res.headers.get("X-RateLimit-Remaining") === "0") {
+      const reset = Number(res.headers.get("X-RateLimit-Reset")) * 1000;
+      return reset > Date.now() ? reset - Date.now() + 1000 : 60000;
+    }
+    if (res.status === 429) return 60000;
+    try {
+      const body = await res.clone().text();
+      if (/rate limit|abuse/i.test(body)) return 60000;
+    } catch (e) { /* unreadable: not a rate limit we can prove */ }
+    return 0;
+  }
+  async function ghFetch(url, init = {}) {
+    for (let attempt = 0; ; attempt++) {
+      const res = await fetch(url, { cache: "no-store", ...init });
+      const wait = await slowDownFor(res);
+      if (wait) {
+        if (wait > 90000 || attempt >= 3) {
+          throw explains(new Error(`GitHub asked to slow down (too many uploads in a short time). Nothing was published and your token is fine — wait ${Math.ceil(wait / 60000)} minute${wait > 60000 ? "s" : ""} and publish again.`));
+        }
+        if (typeof toast === "function") toast(`GitHub asked to slow down — waiting ${Math.ceil(wait / 1000)} seconds, then carrying on…`);
+        await sleep(wait);
+        continue;
+      }
+      checkAuthFailure(res);
+      return res;
+    }
+  }
+
   async function ghApi(pat, path, opts = {}) {
-    const res = await fetch(`${GH_API}${path}`, {
+    const res = await ghFetch(`${GH_API}${path}`, {
       ...opts,
       headers: {
         "Authorization": `token ${pat}`,
@@ -1833,8 +1909,11 @@ window.moveAdminPackageRow = function(index, dir) {
         ...(opts.body ? { "Content-Type": "application/json" } : {}),
       },
     });
-    checkAuthFailure(res);
-    if (!res.ok) throw new Error(`GitHub ${opts.method || "GET"} ${path} failed (${res.status})`);
+    if (!res.ok) {
+      const err = new Error(`GitHub ${opts.method || "GET"} ${path} failed (${res.status})`);
+      err.status = res.status;
+      throw err;
+    }
     return res.json();
   }
 
@@ -1845,11 +1924,10 @@ window.moveAdminPackageRow = function(index, dir) {
   // result as "nothing published remotely" and would otherwise publish a
   // local-only view of the world on a network hiccup, silently wiping out
   // shoots that only exist on other devices.
-  async function fetchRemoteData(pat) {
-    const res = await fetch(`${GH_API}/contents/data.js?ref=${GH_BRANCH}`, {
+  async function fetchRemoteData(pat, ref = GH_BRANCH) {
+    const res = await ghFetch(`${GH_API}/contents/data.js?ref=${ref}`, {
       headers: { "Authorization": `token ${pat}`, "Accept": "application/vnd.github.raw+json" },
     });
-    checkAuthFailure(res);
     // 404 is ambiguous, and reading it as "nothing published yet" is only safe
     // for one of the two things it can mean. A repo with no data.js answers
     // 404 — but so does a repo this token cannot see, because GitHub hides a
@@ -1860,10 +1938,9 @@ window.moveAdminPackageRow = function(index, dir) {
     // So the repo itself is checked, and only a demonstrably reachable one is
     // allowed to be genuinely empty.
     if (res.status === 404) {
-      const repoRes = await fetch(GH_API, {
+      const repoRes = await ghFetch(GH_API, {
         headers: { "Authorization": `token ${pat}`, "Accept": "application/vnd.github+json" },
       });
-      checkAuthFailure(repoRes);
       if (!repoRes.ok) {
         throw explains(new Error(`This token cannot reach ${GH_REPO} (GitHub ${repoRes.status}) — check it grants Contents read & write on that repository. Nothing was published.`));
       }
@@ -1905,7 +1982,11 @@ window.moveAdminPackageRow = function(index, dir) {
     // and agency from every comp card at once.
     const models = parseObjectAfterKey(text, '"MODELS"');
     if (models === null) throw new Error("Could not read the published models in data.js — aborting so none is overwritten.");
-    return { shoots: parsed, deletedIds: parseDeletedIdsFromDataJs(text), studioPortfolios: books || null, modelPdfs: modelPdfs || null, testimonials: testimonials || null, models: models || null, settings, stamps };
+    // The live calendar, so a publish merges with it date by date rather
+    // than sending this device's copy over the top (Sep 2026 audit, A3).
+    const calendar = parseObjectAfterKey(text, '"CALENDAR_SETTINGS"');
+    if (calendar === null) throw new Error("Could not read the published calendar in data.js — aborting so no blocked date is undone.");
+    return { shoots: parsed, deletedIds: parseDeletedIdsFromDataJs(text), studioPortfolios: books || null, modelPdfs: modelPdfs || null, testimonials: testimonials || null, models: models || null, settings, stamps, calendar: calendar || null };
   }
 
   const MIME_EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
@@ -2024,7 +2105,7 @@ window.moveAdminPackageRow = function(index, dir) {
       toast(`Measurements will show in ${sel.value === "metric" ? "centimetres" : "feet and inches, and inches"}. Publish to show it on the site.`);
     });
 
-  async function syncToGitHub(shootsList, { deletedIds = [] } = {}) {
+  async function syncToGitHub(shootsList, { deletedIds = [], attempt = 0 } = {}) {
     /* The token used to stay in this browser for ever. It is now forgotten
        30 days after it was entered, and asked for again (Sep 2026 audit, S5,
        the owner's choice over asking every session). A token saved before
@@ -2069,11 +2150,22 @@ window.moveAdminPackageRow = function(index, dir) {
         return false;
       }
 
-      toast("Syncing portfolio to GitHub…");
+      toast(attempt ? "Another device published a moment ago — merging with it…" : "Syncing portfolio to GitHub…");
 
-      // Merge with the published shoots: local wins by id; shoots that only
-      // exist remotely (added from another device) survive; deletes propagate.
-      const remote = await fetchRemoteData(pat); // throws -> caught below, sync aborts, nothing published
+      /* The branch is read FIRST, and everything below is built on that one
+         commit: data.js is read from it and the new commit is made on top of
+         it. data.js used to be read, then the photos uploaded (minutes, on a
+         phone), then the commit placed on whatever the branch had become —
+         so a publish from the other device in between was quietly reverted
+         (Sep 2026 audit, A5). Now GitHub refuses to move the branch if it has
+         moved since, and the whole merge runs again against the new state. */
+      const startRef = await ghApi(pat, `/git/ref/heads/${GH_BRANCH}`);
+      const baseSha = startRef.object.sha;
+
+      // Merge with the published shoots: the newer copy of each album wins
+      // (mergeAlbumCopies); shoots that only exist remotely (added from another
+      // device) survive; deletes propagate.
+      const remote = await fetchRemoteData(pat, baseSha); // throws -> caught below, sync aborts, nothing published
       // Deletions are permanent across devices: union this call's deletions
       // with this device's stored tombstones and the ones already published
       // in data.js. Without the published set, a deletion only held for the
@@ -2082,7 +2174,11 @@ window.moveAdminPackageRow = function(index, dir) {
       const removed = new Set([...deletedIds, ...localTombstones(), ...remote.deletedIds]);
       const merged = new Map();
       remote.shoots.forEach((s) => { if (s && s.id && !s.demo && !removed.has(s.id)) merged.set(s.id, s); });
-      shootsList.forEach((s) => { if (s && s.id && !s.demo && !removed.has(s.id)) merged.set(s.id, s); });
+      shootsList.forEach((s) => {
+        if (!s || !s.id || s.demo || removed.has(s.id)) return;
+        const live = merged.get(s.id);
+        merged.set(s.id, live ? mergeAlbumCopies(s, live) : s);
+      });
       const shoots = [...merged.values()];
 
       // Local wins wholesale above, which is right for everything a device can
@@ -2140,10 +2236,8 @@ window.moveAdminPackageRow = function(index, dir) {
       const droppedPhotos = [];
       let fileCheck = null;
       try {
-        const fresh = { cache: "no-store" };
-        const headRef = await ghApi(pat, `/git/ref/heads/${GH_BRANCH}`, fresh);
-        const headCommit = await ghApi(pat, `/git/commits/${headRef.object.sha}`, fresh);
-        const headTree = await ghApi(pat, `/git/trees/${headCommit.tree.sha}?recursive=1`, fresh);
+        const headCommit = await ghApi(pat, `/git/commits/${baseSha}`);
+        const headTree = await ghApi(pat, `/git/trees/${headCommit.tree.sha}?recursive=1`);
         if (headTree.truncated) {
           console.warn("Publish: the repository listing was truncated, so photo files were not checked this time.");
         } else {
@@ -2225,11 +2319,43 @@ window.moveAdminPackageRow = function(index, dir) {
         }
       }
 
+      /* An album's PDF and its lighting diagram were written into data.js as
+         text: a 3 MB PDF grew the file every visitor downloads on every page
+         from 0.14 MB to 4.3 MB, and the visitor's "Download PDF" link was
+         emptied by the link filter, which refuses data: addresses (Sep 2026
+         audit, A6). They are uploaded as files beside the album's photos now,
+         named by their content so a re-publish finds the same file. A private
+         diagram is never uploaded: the repository is public. */
+      const pendingDocs = new Map(); // album -> { pdfUrl?, lightingDiagram? }
+      const contentName = async (b64) => {
+        try {
+          const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(b64));
+          return [...new Uint8Array(d)].slice(0, 6).map((x) => x.toString(16).padStart(2, "0")).join("");
+        } catch (e) { return Date.now().toString(36); }
+      };
+      for (const s of shoots) {
+        const docs = {};
+        for (const [field, stem] of [["pdfUrl", "album"], ["lightingDiagram", "lighting"]]) {
+          const v = s[field];
+          if (typeof v !== "string" || !v.startsWith("data:")) continue;
+          if (field === "lightingDiagram" && s.lightingDiagramVisibility === "private") continue;
+          const m = v.match(/^data:([a-z]+\/[a-z0-9.+-]+);base64,/i);
+          if (!m) continue;
+          const ext = m[1] === "application/pdf" ? "pdf" : (MIME_EXT[m[1]] || "jpg");
+          const b64 = v.slice(m[0].length);
+          const path = `photos/${s.id}/${stem}-${await contentName(b64)}.${ext}`;
+          await commitBlob(path, b64);
+          docs[field] = path;
+        }
+        if (Object.keys(docs).length) pendingDocs.set(s, docs);
+      }
+
       // Published copy references photo files instead of inline base64. Paths
       // come from pendingPaths for anything uploaded in this run, and from
       // p.url for anything already published in an earlier one.
       const published = shoots.map((s) => ({
         ...s,
+        ...(pendingDocs.get(s) || {}),
         photos: (s.photos || []).map((p) => {
           const fresh = pendingPaths.get(p) || {};
           const url = fresh.url || p.url;
@@ -2268,9 +2394,17 @@ window.moveAdminPackageRow = function(index, dir) {
          with every switch off could be read there (Sep 2026 audit, S8). What
          no switch shows now stays on this device. This device's own copy is
          untouched, so ticking a switch later publishes it again. */
+      /* A model marked under 18 has no measurements and no email in the
+         public file — on their record, or on any album they are tagged in
+         (Sep 2026 audit, P9). This device keeps its own copy. */
+      const minorKeys = new Set(((typeof window.getModels === "function" ? window.getModels(remote.models) : { items: [] }).items || [])
+        .filter((m) => m && m.under18 === true).map((m) => m.key));
+      const MINOR_STRIP = ["height", "chest", "waist", "hips", "shoes", "modelHair", "modelEyes", "modelEmail"];
       const publicOnly = (rec) => {
         if (!rec || typeof rec !== "object") return rec;
         const out = { ...rec };
+        const isMinor = (rec.key && minorKeys.has(rec.key)) || (Array.isArray(rec.modelKeys) && rec.modelKeys.some((k) => minorKeys.has(k)));
+        if (isMinor) MINOR_STRIP.forEach((f) => { if (out[f]) out[f] = ""; });
         if (out.modelEmail && !(out.showEmailOnPdf || out.showEmailOnCompCard || out.showEmailOnHome)) out.modelEmail = "";
         if (out.lightingDiagram && out.lightingDiagramVisibility === "private") out.lightingDiagram = "";
         return out;
@@ -2307,7 +2441,10 @@ window.moveAdminPackageRow = function(index, dir) {
             // (the album is on the site), and syncCalendarWithShoots matches on
             // it: without it a second device cannot tell the published entry
             // from the one it derives itself, and books the day twice.
-            ...(b.shootId ? { shootId: b.shootId } : {})
+            ...(b.shootId ? { shootId: b.shootId } : {}),
+            // When it last changed, so a status set on one device is not
+            // undone by another's older copy (mergeCalendarSettings).
+            ...(b.updatedAt ? { updatedAt: b.updatedAt } : {})
           }));
           if (kept.length) safeDates[key] = kept;
         });
@@ -2319,11 +2456,22 @@ window.moveAdminPackageRow = function(index, dir) {
       // format drift between hand commits and auto-syncs is what previously
       // made parseShootsFromDataJs read a full portfolio as empty and let a
       // sync wipe albums published from other devices.
+      /* The calendar goes out merged with the live one: each blocked or
+         opened date by whichever device changed it last, bookings by the
+         union of both (mergeCalendarSettings in app.js). This device's copy
+         alone used to be published, so a date blocked on the other device
+         reopened with any publish from this one (Sep 2026 audit, A3). */
+      const publishAt = Date.now();
+      const calendarOut = (() => {
+        const mine = (window.WPS_DATA && window.WPS_DATA.CALENDAR_SETTINGS) || {};
+        const cal = (remote.calendar && typeof window.mergeCalendarSettings === "function") ? window.mergeCalendarSettings(remote.calendar, mine) : mine;
+        return { ...cal, updatedAt: publishAt, syncedAt: publishAt };
+      })();
       const fileContent = `/* ============================================================
    nerdyphotographer.in — published portfolio data
    Auto-synced by the Admin Panel. Photo files live under photos/.
    ============================================================ */
-window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: published.map(publicOnly), DELETED_IDS: [...removed].sort(), CALENDAR_SETTINGS: publicCalendarSettings(window.WPS_DATA && window.WPS_DATA.CALENDAR_SETTINGS),
+window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: published.map(publicOnly), DELETED_IDS: [...removed].sort(), CALENDAR_SETTINGS: publicCalendarSettings(calendarOut),
         // Invite codes, promo codes and package rates used to live only in the
         // admin device's localStorage, which no visitor can read: a code
         // created in the panel worked for the studio and was rejected as
@@ -2442,8 +2590,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
 
       // One atomic commit: photo blobs + regenerated data.js + the files no
       // album uses any more.
-      const ref = await ghApi(pat, `/git/ref/heads/${GH_BRANCH}`);
-      const baseCommit = await ghApi(pat, `/git/commits/${ref.object.sha}`);
+      const baseCommit = await ghApi(pat, `/git/commits/${baseSha}`);
 
       /* Deleting an album or a photo used to take it off the pages and leave
          the file itself on the site for ever, at the same address and in the
@@ -2466,6 +2613,10 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             if (u) referenced.add(String(u).replace(/^\//, ""));
           });
         }));
+        // An album's own PDF and diagram files live in its folder too.
+        const albumFile = (u) => { if (typeof u === "string" && /^\/?photos\//.test(u)) referenced.add(u.replace(/^\//, "")); };
+        published.forEach((s) => { albumFile(s.pdfUrl); albumFile(s.lightingDiagram); });
+        remote.shoots.forEach((r) => { if (r && r.id && !removed.has(r.id)) { albumFile(r.pdfUrl); albumFile(r.lightingDiagram); } });
         if (referenced.size) {
           const treeNow = await ghApi(pat, `/git/trees/${baseCommit.tree.sha}?recursive=1`);
           // Only files inside an album's own folder — photos/<albumId>/<file>.
@@ -2478,6 +2629,20 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             t && t.type === "blob" && /^photos\/[^/]+\/[^/]+$/.test(t.path) && !/^photos\/og\//.test(t.path));
           // A photo added by THIS publish is not in the base tree yet, so it
           // can never be caught here.
+          // And a file the live site uses is only ever let go when its photo
+          // was removed on purpose — its album deleted, or the photo recorded
+          // in removedPhotoIds. Anything else the live copy points at stays,
+          // whatever this device's copy says (Sep 2026 audit, A1).
+          const byIdNow = new Map(shoots.map((s) => [s.id, s]));
+          remote.shoots.forEach((r) => {
+            if (!r || !r.id || removed.has(r.id)) return;
+            const mine = byIdNow.get(r.id);
+            const gonePhotos = new Set([...((mine && mine.removedPhotoIds) || []), ...(r.removedPhotoIds || [])]);
+            (r.photos || []).forEach((p) => {
+              if (!p || gonePhotos.has(String(p.id).split("-")[0])) return;
+              [p.url, p.small, p.medium].forEach((u) => { if (u) referenced.add(String(u).replace(/^\//, "")); });
+            });
+          });
           removedFiles = tracked.filter((t) => !referenced.has(t.path)).map((t) => t.path);
           if (treeNow.truncated) {
             console.warn("Publish: the repository listing was truncated, so unused photo files were left alone this time.");
@@ -2505,9 +2670,18 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       });
       const commit = await ghApi(pat, "/git/commits", {
         method: "POST",
-        body: JSON.stringify({ message: `Auto-sync portfolio data from Admin Panel${removedFiles.length ? ` (and ${removedFiles.length} unused photo file${removedFiles.length === 1 ? "" : "s"} removed)` : ""}`, tree: tree.sha, parents: [ref.object.sha] }),
+        body: JSON.stringify({ message: `Auto-sync portfolio data from Admin Panel${removedFiles.length ? ` (and ${removedFiles.length} unused photo file${removedFiles.length === 1 ? "" : "s"} removed)` : ""}`, tree: tree.sha, parents: [baseSha] }),
       });
-      await ghApi(pat, `/git/refs/heads/${GH_BRANCH}`, { method: "PATCH", body: JSON.stringify({ sha: commit.sha }) });
+      try {
+        await ghApi(pat, `/git/refs/heads/${GH_BRANCH}`, { method: "PATCH", body: JSON.stringify({ sha: commit.sha, force: false }) });
+      } catch (err) {
+        // 422: the branch moved while this publish was being built. Nothing
+        // local has changed yet (see the apply step below), so it is simply
+        // done again against what is live now.
+        if (err.status === 422 && attempt < 2) return syncToGitHub(shootsList, { deletedIds, attempt: attempt + 1 });
+        if (err.status === 422) throw explains(new Error("NOT published — another device kept publishing at the same moment. Your changes are saved on this device; publish again in a minute."));
+        throw err;
+      }
 
       // The branch now points at a commit that contains these blobs, so the
       // paths are finally real — only now is it safe to mark these photos as
@@ -2516,6 +2690,10 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       // never happen, the photos keep their base64 and simply upload again on
       // the next publish.
       for (const [photo, paths] of pendingPaths) Object.assign(photo, paths);
+      for (const [album, docs] of pendingDocs) Object.assign(album, docs);
+      // Everything marked before this publish began is on the branch now.
+      if (typeof window.clearUnpublished === "function") window.clearUnpublished(publishAt);
+      watchDeploy(pat, commit.sha);
 
       // Bring this browser up to date with the merged result (photo URLs,
       // shoots that only existed on the other device, and the full published
@@ -2523,6 +2701,9 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       // albums immediately).
       try {
         if (window.WPS_DATA) window.WPS_DATA.DELETED_IDS = [...removed].sort();
+        // This device now holds the calendar as published, with its own
+        // bookings' private details still on them.
+        if (window.WPS_DATA) { window.WPS_DATA.CALENDAR_SETTINGS = calendarOut; saveCalendarSettings(); }
         for (const s of shoots) await putShoot(s);
         await loadShoots();
         render();
@@ -2533,7 +2714,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         const n = droppedPhotos.length;
         toast(`Sync complete. ${n} photo${n === 1 ? " was" : "s were"} already deleted on another device and ${n === 1 ? "has" : "have"} been removed here too (${albums}).`);
       } else {
-        toast("Sync complete! Changes go live for everyone within a few minutes.");
+        toast("Published. The site is rebuilding — the line at the bottom of the screen says when it is live.");
       }
       return true;
     } catch (e) {
@@ -2544,6 +2725,83 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       toast(e.message && (e.userFacing || /401|abort/i.test(e.message)) ? e.message : "GitHub sync failed — changes are saved locally. Check the token and connection, then publish again.");
       return false;
     }
+  }
+
+  /* ---- what is live ----
+     One line, always in the same corner, that says whether this device holds
+     changes the site does not have yet — and after a publish, whether the
+     site actually rebuilt with them. "Sync complete!" used to be the last
+     word, said the moment GitHub took the commit; if the site's automatic
+     check then failed, the change never went live and only a GitHub email
+     said so (Sep 2026 audit, A11 and A13). */
+  let deployWatch = null; // { state: "building" | "live" | "failed" | "sent", url?, at }
+  const KIND_WORDS = { albums: "albums", calendar: "the calendar", settings: "prices & settings", books: "portfolio books", testimonials: "testimonials", models: "models", "model portfolios": "model portfolios" };
+  function paintPublishState() {
+    let bar = document.getElementById("publishStateBar");
+    if (!isAdmin()) { if (bar) bar.hidden = true; return; }
+    if (!bar) {
+      bar = document.createElement("div");
+      bar.id = "publishStateBar";
+      bar.className = "publish-state";
+      bar.setAttribute("role", "status");
+      bar.setAttribute("aria-live", "polite");
+      document.body.appendChild(bar);
+      bar.addEventListener("click", async (e) => {
+        if (e.target.closest(".publish-state-go")) {
+          e.target.disabled = true; e.target.textContent = "Publishing…";
+          await syncToGitHub(shootsNow());
+          paintPublishState();
+        } else if (e.target.closest(".publish-state-x")) {
+          deployWatch = null; paintPublishState();
+        }
+      });
+    }
+    const st = (typeof window.unpublishedState === "function") ? window.unpublishedState() : { kinds: [] };
+    const kinds = (st.kinds || []).map((k) => KIND_WORDS[k] || k);
+    let html = "";
+    if (kinds.length) {
+      html = `<span class="publish-state-dot is-pending" aria-hidden="true"></span><span>Not live yet: ${esc(kinds.join(", "))} changed on this device.</span><button type="button" class="publish-state-go">Publish now</button>`;
+    } else if (deployWatch && deployWatch.state === "building") {
+      html = `<span class="publish-state-dot is-building" aria-hidden="true"></span><span>Published — the site is rebuilding (about 2 minutes)…</span>`;
+    } else if (deployWatch && deployWatch.state === "live") {
+      html = `<span class="publish-state-dot is-live" aria-hidden="true"></span><span>Live on the site.</span><button type="button" class="publish-state-x" aria-label="Close">×</button>`;
+    } else if (deployWatch && deployWatch.state === "sent") {
+      html = `<span class="publish-state-dot is-building" aria-hidden="true"></span><span>Published — visitors see it within a few minutes.</span><button type="button" class="publish-state-x" aria-label="Close">×</button>`;
+    } else if (deployWatch && deployWatch.state === "failed") {
+      html = `<span class="publish-state-dot is-failed" aria-hidden="true"></span><span>NOT live — the site's automatic check refused this publish, so visitors still see the previous version.${deployWatch.url ? ` <a href="${esc(deployWatch.url)}" target="_blank" rel="noopener">See why ↗</a>` : ""}</span><button type="button" class="publish-state-x" aria-label="Close">×</button>`;
+    }
+    bar.hidden = !html;
+    if (html && bar.innerHTML !== html) bar.innerHTML = html;
+  }
+  window.addEventListener("wps-unpublished", paintPublishState);
+  window.addEventListener("storage", (e) => { if (e.key === "wps_unpublished") paintPublishState(); });
+
+  /* After GitHub takes a publish, the site's own workflows check it and
+     build it. Their result is read back here, so "live" means live. A token
+     that may not read Actions (a Contents-only one) simply gets the plain
+     "within a few minutes". */
+  async function watchDeploy(pat, sha) {
+    deployWatch = { state: "building", at: Date.now() };
+    paintPublishState();
+    const until = Date.now() + 8 * 60000;
+    while (Date.now() < until) {
+      await sleep(20000);
+      let runs;
+      try {
+        const res = await ghFetch(`${GH_API}/actions/runs?head_sha=${sha}&per_page=20`, { headers: { "Authorization": `token ${pat}`, "Accept": "application/vnd.github+json" } });
+        if (!res.ok) { deployWatch = { state: "sent" }; paintPublishState(); return; }
+        runs = ((await res.json()).workflow_runs || []).filter((r) => r && !/legacy/i.test(r.name || ""));
+      } catch (e) { deployWatch = { state: "sent" }; paintPublishState(); return; }
+      const failed = runs.find((r) => r.status === "completed" && r.conclusion === "failure");
+      if (failed) { deployWatch = { state: "failed", url: failed.html_url }; paintPublishState(); toast("NOT live — the site's automatic check refused the last publish. The line at the bottom of the screen links to the reason."); return; }
+      const deploy = runs.find((r) => /pages|deploy/i.test(`${r.name} ${r.path || ""}`));
+      if (deploy && deploy.status === "completed" && deploy.conclusion === "success") {
+        deployWatch = { state: "live" }; paintPublishState();
+        setTimeout(() => { if (deployWatch && deployWatch.state === "live") { deployWatch = null; paintPublishState(); } }, 15000);
+        return;
+      }
+    }
+    deployWatch = { state: "sent" }; paintPublishState();
   }
 
   /* ---- admin banner & reminders ---- */
@@ -2598,6 +2856,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     window.addEventListener("resize", syncAdminBannerOffset);
   }
   function updateAdminReminders() {
+    paintPublishState();
     const active = isAdmin();
     let banner = $("#adminStickyReminderBar");
 
@@ -3024,6 +3283,52 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
   /* ============================================================
      § ADMIN CALENDAR & BOOKING MANAGEMENT PAGE (/calendar)
      ============================================================ */
+  /* Client details of a booking live only in this browser: the published
+     calendar carries the date's kind and nothing about who booked it, by
+     design. Safari clears a site's storage after seven days without a
+     visit, and a new phone starts empty (Sep 2026 audit, A12). So the
+     browser is asked to keep this site's data, and the studio can take a
+     copy as a spreadsheet — reminded once a month. */
+  const BOOKINGS_EXPORTED_KEY = "wps_bookings_exported_at";
+  function bookingsWithDetails() {
+    const out = [];
+    const booked = (window.WPS_DATA && window.WPS_DATA.CALENDAR_SETTINGS && window.WPS_DATA.CALENDAR_SETTINGS.bookedDates) || {};
+    Object.keys(booked).sort().forEach((d) => (booked[d] || []).forEach((b) => { if (b && (b.email || b.phone || (b.name && !/^anticipated client hold$/i.test(b.name)))) out.push({ date: d, b }); }));
+    return out;
+  }
+  function bookingBackupNote() {
+    const n = bookingsWithDetails().length;
+    if (!n) return "";
+    const at = Number(localStorage.getItem(BOOKINGS_EXPORTED_KEY)) || 0;
+    const days = at ? Math.floor((Date.now() - at) / 86400000) : null;
+    const due = days === null || days >= 30;
+    return `<div class="container"><p class="admin-sub" id="bookingBackupNote" style="margin-top: 10px; ${due ? "color: #b45309; font-weight: 600;" : ""}">${due
+      ? `The client details of ${n} booking${n === 1 ? "" : "s"} are kept only in this browser${days === null ? " and have never been exported" : ` — last exported ${days} days ago`}. Press “Export bookings (CSV)” and keep the file somewhere safe.`
+      : `Client details are kept only in this browser. Last exported ${days === 0 ? "today" : `${days} day${days === 1 ? "" : "s"} ago`}.`}</p></div>`;
+  }
+  function exportBookingsCsv() {
+    const rows = bookingsWithDetails();
+    const cols = [["Date", (r) => r.date], ["Client", (r) => r.b.name], ["Email", (r) => r.b.email], ["Phone", (r) => r.b.phone], ["Type", (r) => r.b.type], ["Status", (r) => r.b.status], ["Duration", (r) => r.b.duration], ["Location", (r) => r.b.location], ["Budget", (r) => r.b.budget], ["Final payable (₹)", (r) => r.b.finalPayable || ""], ["Home studio fee (₹)", (r) => r.b.homeStudioFee || ""], ["Contract version", (r) => r.b.contractVersion], ["Contract number", (r) => r.b.contractNumber], ["Notes", (r) => r.b.notes], ["Links", (r) => (r.b.links || []).join(" ")], ["Created", (r) => r.b.createdAt ? new Date(r.b.createdAt).toISOString().slice(0, 10) : ""]];
+    // A cell starting with = + - @ is a formula to a spreadsheet; the quote
+    // keeps a client's own words as words.
+    const cell = (v) => { let s = String(v == null ? "" : v); if (/^[=+\-@]/.test(s)) s = "'" + s; return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+    const csv = "\ufeff" + [cols.map(([h]) => cell(h)).join(","), ...rows.map((r) => cols.map(([, f]) => cell(f(r))).join(","))].join("\r\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    a.download = `bookings-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    try { localStorage.setItem(BOOKINGS_EXPORTED_KEY, String(Date.now())); } catch (e) {}
+    toast(`Exported ${rows.length} booking${rows.length === 1 ? "" : "s"}. Keep the file somewhere safe — it holds clients' phone numbers and emails.`);
+    const note = document.getElementById("bookingBackupNote");
+    if (note) note.closest(".container").outerHTML = bookingBackupNote();
+  }
+  try {
+    if (navigator.storage && navigator.storage.persist) {
+      navigator.storage.persisted().then((yes) => yes || navigator.storage.persist()).catch(() => {});
+    }
+  } catch (e) { /* older browsers: nothing to ask */ }
+
   function viewCalendar() {
     return `
       <section class="page-head admin-page-head">
@@ -3039,9 +3344,11 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                  only: syncToGitHub had no caller anywhere in the calendar UI,
                  so bookings never reached data.js and every visitor kept
                  seeing the studio as fully open. -->
+            <button type="button" class="admin-cal-btn" id="adminCalExportBtn" title="Save every booking's client details to a spreadsheet file">Export bookings (CSV)</button>
             <button type="button" class="admin-cal-btn primary" id="adminCalPublishBtn" title="Push this calendar to the live site so visitors see booked dates">Publish to live site</button>
           </div>
         </div>
+        ${bookingBackupNote()}
       </section>
       <section class="section container admin-calendar-wrap">
         <div class="admin-cal-card">
@@ -3160,7 +3467,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             </div>
           </div>
           <div id="adminPdfBody" style="display: none; margin-top: 12px;">
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 12px 0;">Everyone can open Model Portfolio, pick a model's photos by pose and preview a 1 or 2 page PDF, and download the pages as watermarked PNG images for free. <strong>Off:</strong> only you can download the PDF; clients see this price and your email address, to ask you for one. <strong>On:</strong> clients pay this amount to your UPI ID to download, and each payment unlocks one PDF. Set the price to <strong>0</strong> to make downloads free.</p>
+            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 12px 0;">Everyone can open Model Portfolio, pick a model's photos by pose and preview a 1 to 3 page PDF, and download the pages as watermarked images for free. <strong>Off:</strong> only you can download the PDF; clients see this price and your email address, to ask you for one. <strong>On:</strong> clients pay this amount to your UPI ID to download, and each payment unlocks one PDF. Set the price to <strong>0</strong> to make downloads free.</p>
             <div style="display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap;">
               <div>
                 <span style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft); display: block; margin-bottom: 4px; text-transform: uppercase;">Price per PDF</span>
@@ -3178,8 +3485,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             <details class="pdf-type" style="margin-top: 16px;">
               <summary style="cursor: pointer; font-size: var(--font-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--accent-text);">How each line looks</summary>
               <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 8px 0 12px;">Every line of the PDF, in the order you meet it on the page. Sizes are millimetres on A4. Only the four typefaces the site already loads are offered — adding another would slow every visitor's first page down, and the PDF can only draw a typeface the site has loaded.</p>
-              <div id="pdfTypeRows"></div>
-              <div id="pdfBorderRow" style="display: grid; grid-template-columns: minmax(150px, 1.4fr) repeat(3, minmax(88px, 1fr)) auto; gap: 8px; align-items: center; padding: 10px 0 2px; border-top: 2px solid var(--line);"></div>
+              <div class="pdf-type-host"><div id="pdfTypeRows"></div><div id="pdfBorderRow"></div></div>
               <button type="button" class="admin-cal-btn" id="pdfTypeReset" style="margin-top: 10px; font-size: var(--font-xs);">↺ Put every line back to the original</button>
             </details>
             <span id="portfolioPdfSaveStatus" class="admin-pdf-status" aria-live="polite"></span>
@@ -4960,10 +5266,18 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         openDateAdminModal(targetDate.trim());
       }
     });
+    $("#adminCalExportBtn")?.addEventListener("click", exportBookingsCsv);
     $("#adminCalResetBtn")?.addEventListener("click", () => {
       if (confirm("Reset custom date overrides? Monday-Friday will be default blocked, Saturdays-Sundays open.")) {
-        window.WPS_DATA.CALENDAR_SETTINGS.customBlockedDates = {};
-        window.WPS_DATA.CALENDAR_SETTINGS.customOpenedDates = {};
+        // Every date it clears counts as changed now, so the reset reaches
+        // the other devices instead of losing to their older copies.
+        const cal = window.WPS_DATA.CALENDAR_SETTINGS;
+        const now = Date.now();
+        cal.dateStamps = cal.dateStamps || {};
+        Object.keys({ ...(cal.customBlockedDates || {}), ...(cal.customOpenedDates || {}) }).forEach((d) => { cal.dateStamps[d] = now; });
+        cal.customBlockedDates = {};
+        cal.customOpenedDates = {};
+        markUnpublished("calendar");
         saveCalendarSettings();
         toast("Date rules reset to defaults.");
         renderAdminGrid();
@@ -5004,6 +5318,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       if (!b) return;
       b.addEventListener("click", () => {
         window.WPS_DATA.CALENDAR_SETTINGS.paymentScheduleType = key;
+        markUnpublished("calendar");
         saveCalendarSettings();
         updateAdminPayBtns();
         toast(`Default Studio Payment Terms set to ${PACKAGE_SCHEDULES[key].label}. Publish to show it on the site.`);
@@ -5028,6 +5343,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       if (!b) return;
       b.addEventListener("click", () => {
         window.WPS_DATA.CALENDAR_SETTINGS.productionScheduleType = key;
+        markUnpublished("calendar");
         saveCalendarSettings();
         updateAdminProdBtns();
         toast(`Campaign / production payment terms set to ${PRODUCTION_SCHEDULES[key].label}. Publish to show it on the site.`);
@@ -5712,6 +6028,12 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           </label>
           <label class="field" style="margin: 0;"><span>Model type <em class="label-hint">up to ${MODEL_TYPES_MAX}, comma separated</em></span><input class="model-detail-in" data-f="modelTypes" type="text" value="${esc(modelTypesOf(m).join(", "))}" placeholder="e.g. Fashion, Fitness" /></label>
         </div>
+        <!-- Nothing on the site asked a model's age, so a minor's measurements
+             and email could be published on a card (Sep 2026 audit, P9). -->
+        <label style="display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; font-size: var(--font-sm); line-height: 1.45;">
+          <input type="checkbox" id="f_model_under18" ${m.under18 ? "checked" : ""} style="margin-top: 3px;" />
+          <span><strong>Under 18</strong> — keeps their measurements and email off the site, the comp card and every PDF. Book only with a parent or guardian signing the contract.</span>
+        </label>
         <div style="display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; align-items: center;">
           <button type="button" id="f_model_detail_save" class="btn btn-ghost" style="height: 36px; padding: 0 16px; font-size: var(--font-xs); font-family: var(--mono-font); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">Save her details</button>
           <span style="font-size: var(--font-xs); color: var(--ink-soft);">Saved on this device until you publish the album.</span>
@@ -5752,8 +6074,10 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         agencyLinks: socialsFromCredit(agencyCredit),
         modelEmail: vals.modelEmail,
         modelTypes: modelTypesOf({ modelTypes: String(vals.modelTypes || "").split(",") }),
+        under18: !!box.querySelector("#f_model_under18")?.checked,
         updatedAt: Date.now(),
       };
+      if (!record.under18) delete record.under18;
       writeModelRecord(record);
       toast(`Saved ${name}'s details.`);
       renderModelPicker();
@@ -6070,6 +6394,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           if (isCover && pos === "center") pos = "top";
           return {
             id: p.id.split("-")[0],
+            // The id it was published under, kept for life (see the save).
+            fullId: p.id,
             dataUrl: p.dataUrl,
             url: p.url,
             name: "Existing Frame",
@@ -6105,13 +6431,15 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       }
     }
     async function ingest(files) {
-      const imgs = Array.from(files).filter((f) => f.type.startsWith("image/"));
+      const imgs = Array.from(files).filter(isPhotoFile);
       if (!imgs.length) { toast("Those weren't images — try JPG, PNG or WEBP."); return; }
+      const refused = [];
       for (const f of imgs) {
-        const raw = await readAsDataURL(f);
+        const ready = await webPhoto(f);
+        if (!ready) { refused.push(f.name); continue; }
         staged.push({
           id: uid(),
-          dataUrl: await resize(raw),
+          dataUrl: ready,
           name: f.name,
           objectPosition: staged.length === 0 ? "top" : "center",
           isCover: staged.length === 0,
@@ -6123,6 +6451,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         });
       }
       renderStaged();
+      if (refused.length) toast(refusedPhotosText(refused));
     }
     const stickyNote = $("#stickyQueueNote");
     const stickyPub = $("#stickyPublishBtn");
@@ -6309,7 +6638,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                   <option value="both" ${f.usage === 'both' ? 'selected' : ''}>Both (Comp & Port)</option>
                   <option value="portfolio" ${f.usage === 'portfolio' ? 'selected' : ''}>Portfolio Only</option>
                   <option value="comp" ${f.usage === 'comp' ? 'selected' : ''}>Comp Card Only</option>
-                  <option value="none" ${f.usage === 'none' ? 'selected' : ''}>Albums Only (No Comp/Port)</option>
+                  <option value="none" ${f.usage === 'none' ? 'selected' : ''}>Album only (not on the model's card or PDFs)</option>
                 </select>
               </label>
               <label style="font-size: var(--font-xs); color: var(--ink-soft); display: flex; flex-direction: column; gap: 2px;">
@@ -6653,10 +6982,15 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       pdfInput.addEventListener("change", (e) => {
         const file = e.target.files?.[0];
         if (file) {
+          // Published as a file of its own now (see syncToGitHub), not inside
+          // data.js — but it still travels to every device that opens the
+          // album, so it is kept to a sensible size.
+          if (!/pdf$/i.test(file.type || "") && !/\.pdf$/i.test(file.name || "")) { toast(`NOT added — “${file.name}” is not a PDF.`); e.target.value = ""; return; }
+          if (file.size > 15 * 1024 * 1024) { toast(`NOT added — “${file.name}” is ${(file.size / 1048576).toFixed(1)} MB; the limit is 15 MB. Export it smaller (for screen) and add it again.`); e.target.value = ""; return; }
           const reader = new FileReader();
           reader.onload = (evt) => {
             pdfDataUrl = evt.target?.result || "";
-            toast(`PDF loaded: ${file.name}`);
+            toast(`PDF ready: ${file.name}. It is uploaded as its own file when the album is published.`);
           };
           reader.onerror = () => toast("Failed to read PDF");
           reader.readAsDataURL(file);
@@ -6874,8 +7208,12 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         lightingDiagram: diagramDataUrl,
         lightingDiagramVisibility: $("#f_diagram_visibility").value,
         palette: pColors,
+        /* A photo keeps the id it was first saved under. The id used to be
+           rebuilt from its position, so removing the first photo of an album
+           renumbered every one after it and the portfolio book and saved
+           model portfolios lost track of them (Sep 2026 audit, A4). */
         photos: staged.map((f, i) => ({
-          id: f.id + "-" + i,
+          id: f.fullId || (f.id + "-" + i),
           dataUrl: f.dataUrl,
           url: f.url,
           objectPosition: f.objectPosition || (f.isCover ? "top" : "center"),
@@ -6920,6 +7258,17 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         showLocation: $("#f_show_location")?.checked ?? true,
         ...repSwitchValues(),
         coverPhotoId: (coverItem ? coverItem.id : null),
+        // When this copy was last changed, and which photos were taken out of
+        // it: the two things that let a publish from another device tell a
+        // newer album from an older one (mergeAlbumCopies in app.js).
+        updatedAt: Date.now(),
+        ...(() => {
+          const kept = new Set(staged.map((f) => String(f.id).split("-")[0]));
+          const before = editingShoot ? (editingShoot.photos || []).map((p) => String(p.id).split("-")[0]) : [];
+          const gone = new Set([...((editingShoot && editingShoot.removedPhotoIds) || []), ...before.filter((b) => !kept.has(b))]);
+          [...gone].forEach((b) => { if (kept.has(b)) gone.delete(b); });
+          return gone.size ? { removedPhotoIds: [...gone].slice(-500) } : {};
+        })(),
       };
       /* The same switches onto the models this album credits.
 
@@ -6945,10 +7294,25 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           console.warn("Could not carry the visibility switches to the model records:", err);
         }
       }
-      pub.disabled = true; pub.textContent = editingShoot ? "Saving changes…" : "Publishing…";
-      await putShoot(shoot);
+      const pubLabel = pub.textContent;
+      pub.disabled = true; pub.textContent = editingShoot ? "Saving changes…" : "Saving…";
+      markUnpublished("albums");
+      /* A full device used to leave this button on "Saving changes…" for
+         ever, with no word and the form's work gone (Sep 2026 audit, A7). */
+      try {
+        await putShoot(shoot);
+      } catch (err) {
+        console.error("Album save failed:", err);
+        pub.disabled = false; pub.textContent = pubLabel;
+        const full = err && (err.name === "QuotaExceededError" || /quota|space/i.test(String(err.message || "")));
+        toast(full
+          ? "NOT SAVED — this device's storage is full. Nothing was lost from the form: free some space (or remove a few photos) and save again."
+          : `NOT SAVED — this device would not store the album (${(err && err.name) || "unknown error"}). The form is untouched; try again.`);
+        return;
+      }
       await loadShoots();
-      toast(editingShoot ? `Saved changes to “${shoot.title}”.` : `Published “${shoot.title}” — ${staged.length} frame${staged.length > 1 ? "s" : ""}.`);
+      // Saved here; "live" is only said once GitHub has taken it (A11).
+      toast(`Saved “${shoot.title}” on this device — publishing it now…`);
       staged = [];
       history.pushState(null, "", "/"); render();
       await syncToGitHub(shootsNow());

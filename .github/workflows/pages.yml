@@ -79,6 +79,19 @@ jobs:
         with:
           node-version: 22
 
+      # The wide picture WhatsApp and Google show for a link, cut around the
+      # subject's head, for every album — the newest had none and showed a
+      # tall portrait cropped to a chest (Sep 2026 audit, G9). A failure here
+      # only means the plain cover is used, so it never stops the deploy.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Link-preview images for every album
+        continue-on-error: true
+        run: |
+          pip install --quiet pillow
+          python3 .github/scripts/make-og-images.py --prune
+
       # Not continue-on-error any more: the check job has already proved this
       # builds, so a failure here is real, and stopping keeps the last good
       # deploy live rather than replacing it with a site missing its pages.

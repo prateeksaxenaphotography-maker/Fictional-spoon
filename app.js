@@ -117,12 +117,22 @@ window.adminDraftInviteCodes = null;
 window._editingPromoKey = null;
 window._editingInviteCode = null;
 // --- PROMO CODE HANDLERS ---
+/* Prices, codes, the portfolio-PDF switch and the display settings are kept
+   on the studio's device until they are published — and every getter below
+   read that local copy FIRST, on any browser. So a visitor could set "sales
+   on" or a ₹1 price in their own storage and be offered it (Sep 2026 audit,
+   P5). A local copy now counts only on a device that has signed in as the
+   studio; everyone else gets the published settings. */
+const studioDevice = () => { try { return localStorage.getItem("wps-admin-authorized") === "1"; } catch (e) { return false; } };
+const studioLocal = (key) => (studioDevice() ? localStorage.getItem(key) : null);
+window.studioLocal = studioLocal;
+
 window.getAdminPromoCodes = function() {
   if (window.adminDraftPromoCodes && typeof window.adminDraftPromoCodes === "object") {
     return window.adminDraftPromoCodes;
   }
   try {
-    const saved = localStorage.getItem("wps_custom_promo_codes");
+    const saved = studioLocal("wps_custom_promo_codes");
     if (saved) {
       window.adminDraftPromoCodes = JSON.parse(saved);
       return window.adminDraftPromoCodes;
@@ -305,7 +315,7 @@ window.getAdminInviteCodes = function() {
   }
 
   try {
-    const saved = localStorage.getItem("wps_custom_invite_codes");
+    const saved = studioLocal("wps_custom_invite_codes");
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -372,7 +382,7 @@ function pricesArePublished() {
     if (Array.isArray(pub) && pub.length) return true;
     // The studio's own device holds its prices locally, and is the one place
     // they are authoritative without a publish.
-    return !!localStorage.getItem("wps_custom_packages");
+    return !!studioLocal("wps_custom_packages");
   } catch (e) { return false; }
 }
 window.pricesArePublished = pricesArePublished;
@@ -490,7 +500,7 @@ const HOME_STUDIO_NAME = `Home studio, ${HOME_STUDIO_AREA}`;
 function getHomeStudioRate(forTestShoot) {
   const readRate = (localKey, publishedKey) => {
     try {
-      const saved = localStorage.getItem(localKey);
+      const saved = studioLocal(localKey);
       if (saved !== null && saved !== "") {
         const n = parseInt(saved, 10);
         // 0 is a real value — it switches the charge off — so only a genuinely
@@ -577,6 +587,8 @@ const cleanPdfBorder = (o) => {
   // Far enough in to clear nothing, close enough not to crowd the content.
   if (Number.isFinite(i) && i >= 0 && i <= 20) b.inset = Math.round(i * 10) / 10;
   if (typeof o.color === "string" && HEX_RE.test(o.color.trim())) b.color = o.color.trim().toLowerCase();
+  // The thin line round each photograph: on unless the studio turned it off.
+  if (o.photoLines === false) b.photoLines = false;
   return b;
 };
 window.DEFAULT_PDF_BORDER = DEFAULT_PDF_BORDER;
@@ -649,7 +661,7 @@ function getPortfolioPdfSettings() {
     };
   };
   try {
-    const saved = clean(JSON.parse(localStorage.getItem("wps_portfolio_pdf") || "null"));
+    const saved = clean(JSON.parse(studioLocal("wps_portfolio_pdf") || "null"));
     if (saved) return saved;
   } catch(e) {}
   return clean(window.WPS_DATA && window.WPS_DATA.PORTFOLIO_PDF) || { ...DEFAULT_PORTFOLIO_PDF };
@@ -681,7 +693,7 @@ const SETTINGS_KEYS = {
 function getHomeSlideSeconds() {
   const ok = (n) => Number.isFinite(n) && n >= 3 && n <= 30;
   try {
-    const saved = JSON.parse(localStorage.getItem("wps_home_slideshow") || "null");
+    const saved = JSON.parse(studioLocal("wps_home_slideshow") || "null");
     if (saved && ok(Number(saved.seconds))) return Number(saved.seconds);
   } catch (e) {}
   const pub = window.WPS_DATA && window.WPS_DATA.HOME_SLIDESHOW;
@@ -694,7 +706,7 @@ window.getHomeSlideSeconds = getHomeSlideSeconds;
    numbers back out of data.js. This device's choice wins until published. */
 function getMeasureUnits() {
   try {
-    const saved = JSON.parse(localStorage.getItem("wps_measure_units") || "null");
+    const saved = JSON.parse(studioLocal("wps_measure_units") || "null");
     if (saved && (saved.display === "metric" || saved.display === "imperial")) return saved.display;
   } catch (e) {}
   const pub = window.WPS_DATA && window.WPS_DATA.MEASURE_UNITS;
@@ -703,7 +715,34 @@ function getMeasureUnits() {
 window.getMeasureUnits = getMeasureUnits;
 function stampSetting(storageKey) {
   try { localStorage.setItem(`wps_at_${storageKey}`, String(Date.now())); } catch (e) {}
+  markUnpublished("settings");
 }
+/* What on this device has not reached the live site yet. Only codes and
+   testimonials used to say so; an album, a blocked date or a price could sit
+   unpublished with nothing on screen to show it (Sep 2026 audit, A11). Every
+   studio edit marks it here; a publish clears only what was marked before it
+   began, so an edit made while it ran still shows. admin.js paints it. */
+const UNPUBLISHED_KEY = "wps_unpublished";
+function unpublishedState() {
+  try { const v = JSON.parse(localStorage.getItem(UNPUBLISHED_KEY) || "null"); return v && typeof v === "object" ? v : { kinds: [], at: 0 }; }
+  catch (e) { return { kinds: [], at: 0 }; }
+}
+function markUnpublished(kind) {
+  try {
+    const s = unpublishedState();
+    const kinds = new Set(Array.isArray(s.kinds) ? s.kinds : []);
+    kinds.add(String(kind || "changes"));
+    localStorage.setItem(UNPUBLISHED_KEY, JSON.stringify({ kinds: [...kinds], at: Date.now() }));
+  } catch (e) {}
+  try { window.dispatchEvent(new CustomEvent("wps-unpublished")); } catch (e) {}
+}
+function clearUnpublished(before) {
+  try { if ((unpublishedState().at || 0) <= before) localStorage.removeItem(UNPUBLISHED_KEY); } catch (e) {}
+  try { window.dispatchEvent(new CustomEvent("wps-unpublished")); } catch (e) {}
+}
+window.markUnpublished = markUnpublished;
+window.clearUnpublished = clearUnpublished;
+window.unpublishedState = unpublishedState;
 function settingStamp(storageKey) {
   try { return Number(localStorage.getItem(`wps_at_${storageKey}`)) || 0; } catch (e) { return 0; }
 }
@@ -721,7 +760,7 @@ window.SETTINGS_KEYS = SETTINGS_KEYS;
 
 function getAdminPackages() {
   try {
-    const saved = localStorage.getItem("wps_custom_packages");
+    const saved = studioLocal("wps_custom_packages");
     if (saved) return JSON.parse(saved);
   } catch(e) {}
   // Published rates — without this a price edit in the panel changed what the
@@ -742,7 +781,7 @@ window.getAdminPackages = getAdminPackages;
 const DEFAULT_TFP_PACKAGE = { name: "Test Shoot / TFP Collaboration", specs: "Full proof gallery + 8 retouched photos (RAW files not included)" };
 function getAdminTfpPackage() {
   const clean = (o) => (o && typeof o === "object") ? { name: String(o.name || "").trim() || DEFAULT_TFP_PACKAGE.name, specs: String(o.specs || "").trim() || DEFAULT_TFP_PACKAGE.specs } : null;
-  try { const saved = localStorage.getItem("wps_tfp_package"); if (saved) { const c = clean(JSON.parse(saved)); if (c) return c; } } catch(e) {}
+  try { const saved = studioLocal("wps_tfp_package"); if (saved) { const c = clean(JSON.parse(saved)); if (c) return c; } } catch(e) {}
   try { const c = clean(window.WPS_DATA && window.WPS_DATA.TFP_PACKAGE); if (c) return c; } catch(e) {}
   return { ...DEFAULT_TFP_PACKAGE };
 }
@@ -954,10 +993,28 @@ window.resolveContractArchive = function(version) {
   const escJs = (s) => String(s ?? "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   let toastTimer;
+  /* Every message used to vanish after 2.6 seconds whatever it said, so a
+     three-line reason a publish failed was gone before it could be read, and
+     nothing announced it to a screen reader (Sep 2026 audit, A11 and G6). A
+     message now stays as long as it takes to read; one that says something
+     went wrong stays until it is closed, and is announced as an alert. */
+  const TOAST_PROBLEM = /^(NOT |Nothing was|Sync aborted|Could not|Couldn['’]t|GitHub )|failed|aborting|was not (saved|published)|rejected/i;
   function toast(msg) {
-    let el = $(".toast"); if (!el) { el = document.createElement("div"); el.className = "toast"; document.body.appendChild(el); }
-    el.textContent = msg; requestAnimationFrame(() => el.classList.add("show"));
-    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
+    let el = $(".toast");
+    if (!el) {
+      el = document.createElement("div"); el.className = "toast";
+      el.innerHTML = `<span class="toast-msg"></span><button type="button" class="toast-x" aria-label="Close message">×</button>`;
+      el.querySelector(".toast-x").addEventListener("click", () => { clearTimeout(toastTimer); el.classList.remove("show", "toast-sticky"); });
+      document.body.appendChild(el);
+    }
+    const problem = TOAST_PROBLEM.test(String(msg || ""));
+    el.setAttribute("role", problem ? "alert" : "status");
+    el.setAttribute("aria-live", problem ? "assertive" : "polite");
+    el.querySelector(".toast-msg").textContent = msg;
+    el.classList.toggle("toast-sticky", problem);
+    requestAnimationFrame(() => el.classList.add("show"));
+    clearTimeout(toastTimer);
+    if (!problem) toastTimer = setTimeout(() => el.classList.remove("show"), Math.min(9000, Math.max(3200, String(msg || "").length * 60)));
   }
   // The admin promo/invite/package engine at the top of this file lives in
   // global scope (its handlers are wired via onclick attributes), so it can
@@ -1008,6 +1065,9 @@ window.resolveContractArchive = function(version) {
     return /^[a-z][a-z0-9+.-]*:/i.test(u) ? "" : u;
   };
 
+  // A file published beside the photos ("photos/<album>/…") is addressed
+  // from the site root, whatever page links to it.
+  const siteFile = (u) => (typeof u === "string" && u.startsWith("photos/")) ? "/" + u : (u || "");
   const photoSrc = (p) => {
     if (!p) return "";
     let src = p.url || p.dataUrl || "";
@@ -1021,13 +1081,23 @@ window.resolveContractArchive = function(version) {
   // The raw candidate list, for code that assigns the `srcset` *property*
   // (the *Attr helper below returns a whole attribute string, which is right
   // for innerHTML but becomes a malformed value when assigned to img.srcset).
+  /* Each file is labelled with its real WIDTH, which is what a srcset "w"
+     means. The 480 and 960 files are 480 and 960 on their LONG edge, so a
+     portrait's "480" is 320 wide: labelled by the long edge, phones took
+     files twice the size they needed and laptops were handed soft ones
+     (Sep 2026 audit, G2). The deployed data.js carries every photo's real
+     size (build-seo.mjs); without it — the studio's own unpublished photos —
+     a portrait shape is assumed, the site's usual one. */
   const srcsetValue = (p) => {
     if (!p || !p.url) return "";                 // base64/local: no srcset
     const fixPath = (url) => (url && url.startsWith("photos/")) ? "/" + url : url;
+    const W = Number(p.w) || 0, H = Number(p.h) || 0;
+    const long = Math.max(W, H) || 1600, wide = W && H ? W / long : 2 / 3;
+    const widthAt = (edge) => Math.max(1, Math.round(Math.min(edge, long) * wide));
     const set = [];
-    if (p.small)  set.push(`${fixPath(p.small)} 480w`);
-    if (p.medium) set.push(`${fixPath(p.medium)} 960w`);
-    if (set.length) set.push(`${fixPath(p.url)} 1600w`);
+    if (p.small)  set.push(`${fixPath(p.small)} ${widthAt(480)}w`);
+    if (p.medium) set.push(`${fixPath(p.medium)} ${widthAt(960)}w`);
+    if (set.length) set.push(`${fixPath(p.url)} ${W || widthAt(1600)}w`);
     return set.join(", ");
   };
   /* The picture's real pixel size, written into the tag. Without it a tile has
@@ -1111,6 +1181,37 @@ window.resolveContractArchive = function(version) {
       res(out.length < dataUrl.length ? out : dataUrl);
     }; img.onerror = () => res(dataUrl); img.src = dataUrl; });
   }
+  /* A picture from the studio's computer, made ready for the web — or null
+     when this browser cannot draw it. resize() hands back its input when it
+     cannot decode it, or when the input is already smaller, so an iPhone
+     HEIC went through untouched and was published as a ".jpg" that Chrome,
+     Firefox and Android show broken (Sep 2026 audit, A8 and K3). Anything
+     that is not already JPEG, PNG, WebP or GIF is always re-drawn as JPEG,
+     and anything that will not draw is refused by name. */
+  const WEB_IMAGE = /^data:image\/(jpeg|png|webp|gif);/i;
+  async function webPhoto(file, maxDim = 1600, q = 0.82) {
+    let raw;
+    try { raw = await readAsDataURL(file); } catch (e) { return null; }
+    return new Promise((res) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.naturalWidth, h = img.naturalHeight;
+        if (!w || !h) { res(null); return; }
+        if (Math.max(w, h) > maxDim) { const s = maxDim / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s); }
+        try {
+          const c = document.createElement("canvas"); c.width = w; c.height = h; c.getContext("2d").drawImage(img, 0, 0, w, h);
+          const out = c.toDataURL("image/jpeg", q);
+          res(WEB_IMAGE.test(raw) && raw.length <= out.length ? raw : out);
+        } catch (e) { res(null); }
+      };
+      img.onerror = () => res(null);
+      img.src = raw;
+    });
+  }
+  const isPhotoFile = (f) => !!f && (/^image\//.test(f.type || "") || /\.(heic|heif|jpe?g|png|webp)$/i.test(f.name || ""));
+  const refusedPhotosText = (names) => `NOT added — this browser cannot read ${names.length === 1 ? `“${names[0]}”` : `${names.length} files (${names.slice(0, 3).join(", ")}${names.length > 3 ? "…" : ""})`}. iPhone HEIC photos: export them as JPEG first, or set Settings → Camera → Formats → Most Compatible.`;
+  window.webPhoto = webPhoto;
+
   function extractPalette(imgDataUrl) {
     return new Promise((res) => {
       const img = new Image();
@@ -1585,6 +1686,52 @@ window.resolveContractArchive = function(version) {
       local.feedsModelCards = published.feedsModelCards;
     }
     return local;
+  }
+
+  /* Two copies of one album — this device's and the published one — used to
+     be settled by "this device wins", with no look at which was newer. So a
+     laptop publishing after the phone put the phone's renames back, and the
+     photos the phone had added counted as unused and had their files deleted
+     (Sep 2026 audit, A1). Every edit now stamps the album's updatedAt, and
+     the newer copy wins. A photo is only ever taken away by a removal someone
+     actually made: removedPhotoIds records them, by the first part of the
+     photo's id, and travels with the album. Anything else the older copy has
+     and the newer one lacks is added back — a photo published from another
+     device, or one waiting on this device to be uploaded.
+
+     Albums saved before stamps existed carry none on either side. Every
+     album save publishes at once, so an unstamped local copy is almost
+     always an old copy of what is live: the published one wins, unless this
+     device holds photos not yet uploaded (a publish that failed). */
+  const photoBaseId = (id) => String(id || "").split("-")[0];
+  function mergeAlbumCopies(local, published) {
+    if (!local || !published || local === published) return local || published;
+    const lt = Number(local.updatedAt) || 0, pt = Number(published.updatedAt) || 0;
+    const waiting = (s) => (s.photos || []).some((p) => p && p.dataUrl && !p.url);
+    const localWins = lt > pt || (lt === pt && (lt > 0 || waiting(local)));
+    const win = localWins ? local : published, lose = localWins ? published : local;
+    const removed = new Set([...(local.removedPhotoIds || []), ...(published.removedPhotoIds || [])].filter((x) => typeof x === "string"));
+    const out = localWins ? local : { ...published };
+    if (removed.size) out.removedPhotoIds = [...removed].slice(-500);
+    const photos = (win.photos || []).filter((p) => p && !removed.has(photoBaseId(p.id)));
+    const have = new Set(photos.map((p) => photoBaseId(p.id)));
+    (lose.photos || []).forEach((p) => {
+      if (!p || !p.id || have.has(photoBaseId(p.id)) || removed.has(photoBaseId(p.id))) return;
+      // From the published side, anything live. From this device's side only
+      // what never reached the site: a published photo missing from the newer
+      // live copy was removed there, before removals were recorded.
+      if (localWins ? !p.url : (p.url || !p.dataUrl)) return;
+      photos.push(p);
+      have.add(photoBaseId(p.id));
+    });
+    out.photos = photos;
+    // Kept off the published file on purpose (publicOnly in admin.js), so the
+    // live copy never has them: the studio's own copy must not lose them.
+    if (!localWins) {
+      if (!out.modelEmail && local.modelEmail) out.modelEmail = local.modelEmail;
+      if (!out.lightingDiagram && local.lightingDiagram) out.lightingDiagram = local.lightingDiagram;
+    }
+    return backfillPublishedOnlyFields(out, published);
   }
   // On-screen chips. Shared by the album card and the lightbox so the two
   // never drift; the print surfaces have their own inline-styled version
@@ -2218,6 +2365,7 @@ window.resolveContractArchive = function(version) {
   }
   async function delShoot(id) {
     rememberDeletedShoot(id);
+    markUnpublished("albums");
     // Also drop it from the in-memory published list — loadShoots() merges
     // published shoots back in, so without this a just-deleted album would
     // resurrect on the very next render until the deletion syncs to GitHub.
@@ -2233,6 +2381,12 @@ window.resolveContractArchive = function(version) {
   /* ============================================================
      §8 · APP STATE
      ============================================================ */
+  // The page last painted, so render() can tell a new page from a repaint.
+  let lastRenderPath = null;
+  // The words a deploy-built page arrived with — see applyRouteSeo.
+  const BUILT_SEO = document.querySelector(".prerender, [data-static-path]")
+    ? { path: location.pathname, title: document.title, desc: (document.querySelector('meta[name="description"]') || {}).content || "" }
+    : null;
   let SHOOTS = [];      // live shoots (real or demo)
   let usingDemo = true;
   let CURRENT_VIEW_SHOOTS = [];
@@ -2285,12 +2439,13 @@ window.resolveContractArchive = function(version) {
     // any real shoot exists.
     const mergedById = new Map();
     demoList.forEach(s => { if (s && s.id && (usingDemo || !s.demo)) mergedById.set(s.id, s); });
-    validReal.forEach(s => { if (s && s.id) mergedById.set(s.id, s); });
-    // Published-only fields survive a device's local copy of the album — see
-    // backfillPublishedOnlyFields. Without this the studio's own browser is
-    // the one place they never appear.
-    demoList.forEach((pub) => {
-      if (pub && pub.id) backfillPublishedOnlyFields(mergedById.get(pub.id), pub);
+    // The newer copy of each album wins — see mergeAlbumCopies. It also
+    // carries the published-only fields across (backfillPublishedOnlyFields),
+    // without which the studio's own browser is the one place they never appear.
+    validReal.forEach(s => {
+      if (!s || !s.id) return;
+      const pub = mergedById.get(s.id);
+      mergedById.set(s.id, pub ? mergeAlbumCopies(s, pub) : s);
     });
     // Deleted albums stay deleted: drop every id tombstoned either in the
     // published data.js (DELETED_IDS) or locally on this device — otherwise
@@ -2458,9 +2613,12 @@ window.resolveContractArchive = function(version) {
        all the care that path already takes. Both were needed only once the
        book could hold something the site has never seen (Sep 2026). */
     resize: (dataUrl, maxDim, q) => resize(dataUrl, maxDim, q),
+    webPhoto: (file, maxDim, q) => webPhoto(file, maxDim, q),
     saveShoot: async (rec) => {
       if (!rec || !rec.id) return;
       if (!SHOOTS.some((s) => s && s.id === rec.id)) SHOOTS.push(rec);
+      rec.updatedAt = Date.now();
+      markUnpublished("albums");
       await putShoot(rec);
     },
     isAdmin: () => isAdmin(),
@@ -2563,7 +2721,7 @@ window.resolveContractArchive = function(version) {
       <div class="lb-sidebar-section lb-card lb-export">
         <span class="lb-h" style="margin: 0;"><span>Portfolio PDF</span>${pdfPrice && (selling || mail) ? `<small>₹${pdfPrice}</small>` : ""}</span>
         ${exportBtn}
-        <p class="lb-note">${selling ? "Pick photos by pose (front, side, back) and download a 1 or 2 page PDF to send to casting directors and designers." : `Pick photos by pose (front, side, back) and lay out 1 or 2 pages. Free to download as PNG images, with a watermark. ${mail ? `To buy the PDF without it${pdfPrice ? ` for ₹${pdfPrice}` : ""}, email ${mail}.` : "The PDF without it isn't on sale yet."}`}</p>
+        <p class="lb-note">${selling ? "Pick photos by pose (front, side, back) and download a PDF of 1 to 3 pages to send to casting directors and designers." : `Pick photos by pose (front, side, back) and lay out 1 to 3 pages. Free to download as images, with a watermark. ${mail ? `To buy the PDF without it${pdfPrice ? ` for ₹${pdfPrice}` : ""}, email ${mail}.` : "The PDF without it isn't on sale yet."}`}</p>
       </div>
     `;
   }
@@ -2724,7 +2882,7 @@ window.resolveContractArchive = function(version) {
       groups.push({ label: "Socials", rendered: [igHtml, kavyarHtml].filter(Boolean).map(h => `<span class="lb-person">${h}</span>`) });
     }
     if (shoot.pdfUrl && shouldShowField(shoot, "Pdf")) {
-      groups.push({ label: "Publication", rendered: [`<span class="lb-person"><a href="${esc(safeHref(shoot.pdfUrl))}" download>Download PDF ↗</a></span>`] });
+      groups.push({ label: "Publication", rendered: [`<span class="lb-person"><a href="${esc(safeHref(siteFile(shoot.pdfUrl)))}" download>Download PDF ↗</a></span>`] });
     }
     // One model on the album and a comp card exists for them: point at it.
     // The share link is the same slug form the Share button hands out.
@@ -2813,7 +2971,7 @@ window.resolveContractArchive = function(version) {
             View Lighting Setup
           </button>
           <div id="lbDiagramImg" style="display:none; margin-top:12px; border:1px solid var(--line); padding:10px; background:var(--bone); border-radius:4px;">
-            <img src="${esc(shoot.lightingDiagram)}" style="max-width:100%; height:auto;" alt="Lighting setup" />
+            <img src="${esc(siteFile(shoot.lightingDiagram))}" style="max-width:100%; height:auto;" alt="Lighting setup" />
           </div>
         </div>
       `;
@@ -3294,7 +3452,7 @@ window.resolveContractArchive = function(version) {
     const bookBuilderLi = $("#navBookBuilderLi");
     if (bookBuilderLi) bookBuilderLi.style.display = active ? "block" : "none";
     // Every shell has its own copy of the menu and footer, so find the links rather than an id.
-    document.querySelectorAll('a[href="/studio"], a[href="/studio/"]').forEach((a) => {
+    document.querySelectorAll('a[href="/studio/"], a[href="/studio/"]').forEach((a) => {
       (a.closest(".nav-links li") || a).style.display = studioPageOpen() ? "" : "none";
     });
 
@@ -3478,7 +3636,7 @@ window.resolveContractArchive = function(version) {
           </div>` : ""}
 
           <span class="noth-work-backdrop" style="background-image: url('${esc(photoSrc(cover))}');" aria-hidden="true"></span>
-          <img src="${esc(photoSrc(cover))}"${srcsetAttr(cover, "(max-width: 620px) 100vw, 100vw")} style="object-position: ${esc(coverPos)}; transition: transform 0.5s ease;" alt="${esc(altFor(s))}" loading="lazy" />
+          <img src="${esc(photoSrc(cover))}"${srcsetAttr(cover, "(max-width: 760px) 94vw, (max-width: 1100px) 47vw, 30vw")} style="object-position: ${esc(coverPos)}; transition: transform 0.5s ease;" alt="${esc(altFor(s))}" loading="lazy" />
         </button>
 
         <div class="noth-work-row" style="padding: 16px;">
@@ -3604,7 +3762,7 @@ window.resolveContractArchive = function(version) {
         <p class="eyebrow" style="margin: 0 0 10px; font-size: var(--font-xs);">Lighting Setup ${s.lightingDiagramVisibility === 'private' ? '🔒 (Admin Only)' : '🌐 (Public)'}</p>
         <button class="btn btn-ghost btn-block view-diagram-btn" style="padding: 10px; font-size: var(--font-xs); height: auto;" data-id="${s.id}">View Lighting Diagram</button>
         <div class="diagram-img-wrap" style="display: none; margin-top: 14px; text-align: center;">
-          <img src="${esc(s.lightingDiagram)}" style="max-width: 100%; height: auto; border-radius: 6px; box-shadow: var(--shadow);" alt="Lighting Setup Diagram" />
+          <img src="${esc(siteFile(s.lightingDiagram))}" style="max-width: 100%; height: auto; border-radius: 6px; box-shadow: var(--shadow);" alt="Lighting Setup Diagram" />
         </div>
       </div>
     ` : "";
@@ -3618,7 +3776,7 @@ window.resolveContractArchive = function(version) {
         <div class="comp-card-grid">
           ${shownPhotos.map((p, idx) => `
             <button class="comp-card-thumb reveal" data-index="${idx}">
-              <img src="${esc(photoSrc(p))}"${srcsetAttr(p, "(max-width: 620px) 45vw, 22vw")}${sizeAttr(p)} alt="${esc(altFor(s, idx + 1))}" loading="lazy" />
+              <img src="${esc(photoSrc(p))}"${srcsetAttr(p, "(max-width: 620px) 45vw, (max-width: 900px) 21vw, 11vw")}${sizeAttr(p)} alt="${esc(altFor(s, idx + 1))}" loading="lazy" />
             </button>
           `).join("")}
           ${fourthPhoto ? `
@@ -3910,7 +4068,7 @@ window.resolveContractArchive = function(version) {
             <span class="hero-topline-r">Noida · Delhi NCR</span>
           </div>
           <div class="hero-brandmark">
-            <h1 class="hero-wordmark hero-wordmark-nerdy" aria-label="nerdyphotographer.in">
+            <h1 class="hero-wordmark hero-wordmark-nerdy" aria-label="nerdyphotographer.in — model portfolio &amp; fashion photographer in Noida">
               ${nerdyLetters}
             </h1>
             <p class="hero-subword" aria-hidden="true">${subLetters}</p>
@@ -3920,7 +4078,7 @@ window.resolveContractArchive = function(version) {
             <div class="hero-actions reveal">
               <a href="/albums/" data-link class="btn btn-dark">See the work →</a>
               <a href="${esc(compCardsHref())}" data-link class="btn btn-ghost">Model portfolios</a>
-              ${isAdmin() ? `<a href="/upload" data-link class="btn btn-ghost">Publish a shoot</a>` : `<a href="/book" data-link class="btn btn-ghost">Book a shoot</a>`}
+              ${isAdmin() ? `<a href="/upload" data-link class="btn btn-ghost">Publish a shoot</a>` : `<a href="/book/" data-link class="btn btn-ghost">Book a shoot</a>`}
             </div>
           </div>
         </div>
@@ -3942,7 +4100,7 @@ window.resolveContractArchive = function(version) {
         ${kineticWord("WORKS")}
         <div class="section-head row reveal" style="margin-top: 8px;">
           <div><p class="eyebrow">Latest</p><h2>Photoshoots</h2></div>
-          <a href="/albums" data-link class="link-arrow">All albums →</a>
+          <a href="/albums/" data-link class="link-arrow">All albums →</a>
         </div>
         <div class="noth-work-list" data-paginate="6" aria-label="Photoshoots">${feat.map(nothWorkCard).join("")}</div>
       </section>
@@ -3968,7 +4126,7 @@ window.resolveContractArchive = function(version) {
       <section class="section container">
         <div class="quick-links-grid reveal" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin: 40px 0;">
           <a href="${esc(compCardsHref())}" data-link class="btn btn-dark" style="text-align: center; padding: 16px 24px;">Model portfolios &amp; comp cards →</a>
-          <a href="/workshop-attended" data-link class="btn btn-dark" style="text-align: center; padding: 16px 24px;">Workshops attended →</a>
+          <a href="/workshop-attended/" data-link class="btn btn-dark" style="text-align: center; padding: 16px 24px;">Workshops attended →</a>
         </div>
       </section>
 
@@ -3983,7 +4141,7 @@ window.resolveContractArchive = function(version) {
         </div>
         <div class="tm-grid">${homeT.map(testimonialCard).join("")}</div>
         <div class="tm-home-foot reveal">
-          <a href="/testimonials" data-link class="btn btn-dark">${allT.length > 5 ? `View all ${allT.length} testimonials` : "Read the testimonials"} →</a>
+          <a href="/testimonials/" data-link class="btn btn-dark">${allT.length > 5 ? `View all ${allT.length} testimonials` : "Read the testimonials"} →</a>
           <a href="/testimonials#write" data-link class="btn btn-ghost">Write one →</a>
         </div>
       </section>
@@ -4153,20 +4311,54 @@ window.resolveContractArchive = function(version) {
       ...(Array.isArray(loc.removedBookingIds) ? loc.removedBookingIds : []),
     ]);
 
+    /* Blocked and opened days, one date at a time. The whole map used to
+       come from one side, so a Saturday blocked on the laptop reopened the
+       moment the phone published a price change (Sep 2026 audit, A3). Each
+       change now stamps its date (dateStamps), and the side that changed a
+       date last decides it. A date neither side has stamped — every one set
+       before v533 — follows the old whole-calendar rule. A visitor's device
+       never stamps, so the studio's word wins there as before. */
+    const pubSt = (pub.dateStamps && typeof pub.dateStamps === "object") ? pub.dateStamps : {};
+    const locSt = (isAdmin() && loc.dateStamps && typeof loc.dateStamps === "object") ? loc.dateStamps : {};
+    const locSide = (k) => loc[k] || pub[k] || {};
+    const sideFor = (d) => {
+      const a = Number(locSt[d]) || 0, b = Number(pubSt[d]) || 0;
+      if (a || b) return a > b ? "loc" : "pub";
+      return publishedIsNewer ? "pub" : "loc";
+    };
+    const customBlockedDates = {}, customOpenedDates = {}, dateStamps = {};
+    const allDates = new Set([pub.customBlockedDates, pub.customOpenedDates, loc.customBlockedDates, loc.customOpenedDates, pubSt, locSt]
+      .flatMap((m) => Object.keys(m || {})));
+    allDates.forEach((d) => {
+      const side = sideFor(d);
+      const blocked = side === "pub" ? (pub.customBlockedDates || {}) : locSide("customBlockedDates");
+      const opened = side === "pub" ? (pub.customOpenedDates || {}) : locSide("customOpenedDates");
+      if (blocked[d]) customBlockedDates[d] = true;
+      if (opened[d]) customOpenedDates[d] = true;
+      const st = Math.max(Number(pubSt[d]) || 0, Number(locSt[d]) || 0);
+      if (st) dateStamps[d] = st;
+    });
+
     const merged = {
-      customBlockedDates: (publishedIsNewer ? pub.customBlockedDates : loc.customBlockedDates) || pub.customBlockedDates || {},
-      customOpenedDates: (publishedIsNewer ? pub.customOpenedDates : loc.customOpenedDates) || pub.customOpenedDates || {},
+      customBlockedDates,
+      customOpenedDates,
+      dateStamps,
       bookedDates: {},
       removedBookingIds: [...removedIds],
       paymentScheduleType: (publishedIsNewer ? pub.paymentScheduleType : loc.paymentScheduleType) || pub.paymentScheduleType || loc.paymentScheduleType || "5050",
       productionScheduleType: (publishedIsNewer ? pub.productionScheduleType : loc.productionScheduleType) || pub.productionScheduleType || loc.productionScheduleType || "503020",
       updatedAt: publishedAt,
-      syncedAt: publishedAt,
+      syncedAt: Math.max(publishedAt, syncedAt),
     };
 
-    // Union both sides, dropping anything tombstoned and de-duplicating the
-    // bookings the two copies share.
-    const seen = new Set();
+    /* Union both sides, dropping anything tombstoned. A booking both sides
+       hold is ONE record made of both: the published copy only ever carries
+       what a visitor may see (the date's kind, not who booked it), and it
+       used to replace this device's copy outright — client name, phone and
+       notes were gone from the studio's own calendar at the next save. The
+       copy changed last decides its status; this device's private details
+       are always kept. */
+    const byKey = new Map();
     const absorb = (bookedDates, fromDevice) => {
       // A visitor's own request is not a confirmed booking, so it must not
       // paint their date as "already booked" on their device.
@@ -4176,17 +4368,30 @@ window.resolveContractArchive = function(version) {
           if (!b) return;
           const key = calBookingKey(dKey, b);
           if (removedIds.has(key)) return;
-          if (seen.has(key)) return;
-          seen.add(key);
-          if (!merged.bookedDates[dKey]) merged.bookedDates[dKey] = [];
-          merged.bookedDates[dKey].push(b);
+          const have = byKey.get(key);
+          if (!have) { byKey.set(key, { dKey, b }); return; }
+          const [p, l] = fromDevice ? [have.b, b] : [b, have.b];
+          const newerPub = (Number(p.updatedAt) || 0) > (Number(l.updatedAt) || 0);
+          have.b = newerPub ? { ...l, ...p } : { ...p, ...l };
         });
       });
     };
     absorb(pub.bookedDates);
     absorb(loc.bookedDates, true);
+    byKey.forEach(({ dKey, b }) => {
+      if (!merged.bookedDates[dKey]) merged.bookedDates[dKey] = [];
+      merged.bookedDates[dKey].push(b);
+    });
 
     return merged;
+  }
+  // The admin's publish merges the live calendar with this device's copy the
+  // same way (admin.js), so the two can never disagree on the rule.
+  window.mergeCalendarSettings = (pub, loc) => mergeCalendarSettings(pub, loc);
+  // Marks the day as changed here, now — see dateStamps above.
+  function stampCalDate(settings, dKey) {
+    if (!settings.dateStamps || typeof settings.dateStamps !== "object") settings.dateStamps = {};
+    settings.dateStamps[dKey] = Date.now();
   }
 
   window.WPS_DATA.CALENDAR_SETTINGS = mergeCalendarSettings(
@@ -4511,6 +4716,8 @@ window.resolveContractArchive = function(version) {
     const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
     const status = getCalDateStatus(dateObj);
 
+    stampCalDate(settings, dKey);
+    markUnpublished("calendar");
     if (status.isDefaultBlockedWeekday) {
       if (settings.customOpenedDates[dKey]) {
         delete settings.customOpenedDates[dKey];
@@ -4633,9 +4840,11 @@ window.resolveContractArchive = function(version) {
       financials: bookingObj.financials || null,
       inviteMeta: bookingObj.inviteMeta || null,
       promoMeta: bookingObj.promoMeta || null,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      updatedAt: Date.now()
     };
     settings.bookedDates[dKey].push(booking);
+    if (isAdmin()) markUnpublished("calendar");
     saveCalendarSettings();
     return booking;
   }
@@ -4661,8 +4870,10 @@ window.resolveContractArchive = function(version) {
           links: updatedObj.links !== undefined ? updatedObj.links : cur.links,
           contractVersion: updatedObj.contractVersion !== undefined ? updatedObj.contractVersion : cur.contractVersion,
           agreedToTerms: updatedObj.agreedToTerms !== undefined ? updatedObj.agreedToTerms : cur.agreedToTerms,
-          contractNumber: updatedObj.contractNumber !== undefined ? updatedObj.contractNumber : cur.contractNumber
+          contractNumber: updatedObj.contractNumber !== undefined ? updatedObj.contractNumber : cur.contractNumber,
+          updatedAt: Date.now()
         };
+        markUnpublished("calendar");
 
         const newDateKey = updatedObj.newDateKey || dKey;
         if (newDateKey !== dKey) {
@@ -4697,6 +4908,7 @@ window.resolveContractArchive = function(version) {
       /* One booking, several names. A booking derived from a published shoot
          is remade as `shoot-<shootId>` whatever id it happens to carry now,
          so removing it has to stop THAT too, or the shoot puts it back. */
+      if (doomed.length) markUnpublished("calendar");
       doomed.forEach((b) => {
         const keys = [calBookingKey(dKey, b)];
         if (b && b.shootId) keys.push(`${dKey}::shoot-${b.shootId}`, `${dKey}::${b.shootId}`);
@@ -4848,7 +5060,10 @@ window.resolveContractArchive = function(version) {
       // are built). Before the merge each page filtered the card to its own
       // PDF's photos, which is why one model appeared twice with two different
       // sets of pictures.
-      const usableHere = (p) => !!p;
+      // …except a photo the studio marked "Albums only". The rule above says
+      // none means no comp card, and the card showed them anyway: six and nine
+      // photos on two models' cards (Sep 2026 audit, P4).
+      const usableHere = (p) => !!p && p.usage !== "none";
       const newestFirst = (a, b) => {
         const when = (x) => x.date ? Date.parse(x.date) : (x.createdAt || 0);
         return when(b) - when(a);
@@ -4894,7 +5109,11 @@ window.resolveContractArchive = function(version) {
         // model who has no record yet.
         const rec = roster.find((r) => r && r.key === modelKey) || null;
         const sources = rec ? [rec, ...shootsInGroup] : shootsInGroup;
+        // Marked under 18 by the studio: no measurements and no email on the
+        // card or in any PDF, whatever an album holds (Sep 2026 audit, P9).
+        const minor = !!(rec && rec.under18 === true);
         const findStat = (field) => {
+          if (minor) return "";
           const found = sources.find((x) => x[field] && String(x[field]).trim());
           return found ? String(found[field]).trim() : "";
         };
@@ -4938,7 +5157,7 @@ window.resolveContractArchive = function(version) {
         // Each visibility switch travels with whatever supplied the value it
         // guards — the model's record if it holds one, otherwise the album.
         const agencySrc = sources.find((x) => x.agency && String(x.agency).trim());
-        const emailSrc = sources.find((x) => x.modelEmail && String(x.modelEmail).trim());
+        const emailSrc = minor ? null : sources.find((x) => x.modelEmail && String(x.modelEmail).trim());
         const repFlags = {};
         REP_SWITCHES.forEach(([, what]) => REP_SURFACES.forEach(([, sf]) => { const src = what.startsWith("Agency") ? agencySrc : what === "Email" ? emailSrc : sources[0]; repFlags[`show${what}On${sf}`] = showRep(src, what, sf); }));
 
@@ -5136,7 +5355,7 @@ window.resolveContractArchive = function(version) {
             <p class="page-sub reveal">This link doesn't match any published album. It may have been shared before the album was renamed, or the album may since have been unpublished.</p>
             <div class="hero-actions" style="margin-top: 18px;">
               <a href="/" data-link class="btn btn-dark">Back home →</a>
-              <a href="/albums" data-link class="btn btn-ghost">Browse albums</a>
+              <a href="/albums/" data-link class="btn btn-ghost">Browse albums</a>
             </div>
           </div>
         </section>`;
@@ -5173,10 +5392,19 @@ window.resolveContractArchive = function(version) {
         <div class="album-page-grid" data-shoot="${esc(album.id)}">
           ${album.photos.map((p, i) => `
             <button type="button" class="album-page-photo" data-index="${i}" aria-label="Open photo ${i + 1} of ${album.photos.length}">
-              <img src="${esc(photoSrc(p))}"${srcsetAttr(p, "(max-width: 620px) 100vw, (max-width: 1100px) 50vw, 33vw")}${sizeAttr(p)} alt="${esc(p.caption || altFor(album, i + 1))}" ${i < 3 ? `fetchpriority="${i === 0 ? "high" : "auto"}" decoding="async"` : `loading="lazy" decoding="async"`} />
+              <img src="${esc(photoSrc(p))}"${srcsetAttr(p, "(max-width: 760px) 45vw, 30vw")}${sizeAttr(p)} alt="${esc(p.caption || altFor(album, i + 1))}" ${i < 3 ? `fetchpriority="${i === 0 ? "high" : "auto"}" decoding="async"` : `loading="lazy" decoding="async"`} />
             </button>`).join("")}
         </div>
         ${credits.length ? `<p class="album-page-credits">${credits.map(([k, v]) => `<span><strong>${esc(k)}</strong> ${esc(v)}</span>`).join("")}</p>` : ""}
+        ${(() => {
+          // The service pages this album's photographs appear on — the same
+          // rule as partOfHtml in build-seo.mjs (Sep 2026 audit, G11).
+          const pages = liveServiceLinks().filter((v) => {
+            const work = serviceWork(v);
+            return (v.match || {}).look ? work.some((p) => album.photos.includes(p)) : work.some((s) => s.id === album.id);
+          });
+          return pages.length ? `<p class="album-page-partof">Part of: ${pages.map((v) => `<a href="/services/${esc(v.slug)}/" data-link class="link-arrow">${esc(v.title)} →</a>`).join(" ")}</p>` : "";
+        })()}
         ${(() => {
           /* What the people in these pictures said about making them.
 
@@ -5207,21 +5435,21 @@ window.resolveContractArchive = function(version) {
         })()}
         <div class="album-page-actions">
           <button type="button" class="btn btn-ghost work-share" data-id="${esc(album.id)}">Share this album</button>
-          <a href="/albums" data-link class="link-arrow">All albums →</a>
+          <a href="/albums/" data-link class="link-arrow">All albums →</a>
         </div>
       </section>
       ${others.length ? `
       <section class="section container section-divider">
         <div class="section-head row reveal">
           <div><p class="eyebrow">Keep looking</p><h2>More albums</h2></div>
-          <a href="/albums" data-link class="link-arrow">All albums →</a>
+          <a href="/albums/" data-link class="link-arrow">All albums →</a>
         </div>
         <div class="noth-work-list" aria-label="More albums">${others.map(nothWorkCard).join("")}</div>
       </section>` : ""}
       <section class="cta-band">
         <div class="container reveal">
           <h2>Want pictures like these?</h2>
-          <a href="/book" data-link class="btn btn-dark">Book your photoshoot session →</a>
+          <a href="/book/" data-link class="btn btn-dark">Book your photoshoot session →</a>
         </div>
       </section>`;
   }
@@ -5377,7 +5605,7 @@ window.resolveContractArchive = function(version) {
       return `
         <section class="page-head">
           <div class="container">
-            <p class="eyebrow reveal"><a href="/albums" data-link>Albums</a> / ${esc(kind)}</p>
+            <p class="eyebrow reveal"><a href="/albums/" data-link>Albums</a> / ${esc(kind)}</p>
              <h1 class="reveal">${esc(getCategoryTitle(d))}</h1>
             ${isTestShoot ? `<p class="page-sub" style="max-width: 600px; line-height: 1.6; opacity: 1 !important; visibility: visible !important; transform: none !important;">${esc(getCategoryDescription(d))}<span style="font-size: var(--font-xs); color: var(--ink-soft); display: block; margin-top: 8px;">Note: Models from workshop projects are not included here.</span></p>` : `<p class="page-sub reveal">${displayList.length} album${displayList.length !== 1 ? "s" : ""}.</p>`}
             ${serviceLineHtml}
@@ -5737,7 +5965,7 @@ window.resolveContractArchive = function(version) {
           </div>` : ""}
           <div class="hero-actions reveal" style="margin-top: 22px;">
             <a href="#write" class="btn btn-dark tm-jump">Write a testimonial →</a>
-            ${allT.length ? `<a href="/albums" data-link class="btn btn-ghost">See the work</a>` : ""}
+            ${allT.length ? `<a href="/albums/" data-link class="btn btn-ghost">See the work</a>` : ""}
           </div>
         </div>
       </section>
@@ -6233,7 +6461,7 @@ window.resolveContractArchive = function(version) {
             <fieldset id="bookContactFs">
               <legend>Contact</legend>
                <div class="field-row">
-                 <label class="field"><span>Your Name / Brand *</span><input id="b_name" type="text" required placeholder="e.g. John Doe / Brand Name" /></label>
+                 <label class="field"><span>Your Name / Brand *</span><input id="b_name" type="text" required autocomplete="name" placeholder="e.g. John Doe / Brand Name" /></label>
                  <label class="field"><span>Role *</span>
                    <select id="b_role">
                      <option value="Model">Model / Talent</option>
@@ -6253,8 +6481,8 @@ window.resolveContractArchive = function(version) {
                <label class="check-line" id="b_adult_line"><input type="checkbox" id="b_adult" /><span>I am 18 or over *</span></label>
                <label class="check-line" id="b_onbehalf_line"><input type="checkbox" id="b_onbehalf" /><span>I am booking on behalf of someone else — they are being photographed, not me</span></label>
                <div class="field-row">
-                 <label class="field"><span>Email Address *</span><input id="b_email" type="email" required placeholder="name@example.com" /></label>
-                 <label class="field"><span>Phone Number</span><input id="b_phone" type="tel" maxlength="20" placeholder="+91 99999-99999" /></label>
+                 <label class="field"><span>Email Address *</span><input id="b_email" type="email" required autocomplete="email" placeholder="name@example.com" /></label>
+                 <label class="field"><span>Phone Number</span><input id="b_phone" type="tel" maxlength="20" autocomplete="tel" placeholder="+91 99999-99999" /></label>
                </div>
                <label class="field"><span id="b_instagram_label">Instagram / Website</span><input id="b_instagram" type="text" placeholder="e.g. @handle or website.com" /></label>
 
@@ -6324,7 +6552,7 @@ window.resolveContractArchive = function(version) {
                   </div>
                   <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-bottom: 10px; line-height: 1.4;">Enter your photographer invite code to unlock direct Test Shoot / TFP options.</div>
                   <div style="display: flex; gap: 8px;">
-                    <input id="b_invite_code" type="text" placeholder="Enter Direct Invite Code" style="text-transform: uppercase; font-family: var(--mono-font); font-weight: 700; flex: 1; padding: 10px; border: 1px solid var(--line); border-radius: 6px;" />
+                    <input id="b_invite_code" type="text" aria-label="Invite code" autocomplete="off" placeholder="Enter Direct Invite Code" style="text-transform: uppercase; font-family: var(--mono-font); font-weight: 700; flex: 1; padding: 10px; border: 1px solid var(--line); border-radius: 6px;" />
                     <button type="button" id="btnApplyInviteCode" style="background: var(--accent); color: #ffffff; border: none; padding: 0 18px; border-radius: 6px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; cursor: pointer; white-space: nowrap;">Verify Code</button>
                   </div>
                 </div>
@@ -6340,7 +6568,7 @@ window.resolveContractArchive = function(version) {
                     <span class="code-box-sub">An invite code from the photographer unlocks a test shoot. A promo code discounts a package or the studio rental. Discounts are confirmed by the studio before anything is invoiced.</span>
                   </div>
                   <div class="code-box-row">
-                    <input id="b_any_code" type="text" placeholder="Enter invite or promo code" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+                    <input id="b_any_code" type="text" aria-label="Invite or promo code" placeholder="Enter invite or promo code" autocomplete="off" autocapitalize="characters" spellcheck="false" />
                     <button type="button" class="btn btn-dark" id="btnApplyAnyCode">Apply</button>
                   </div>
                   <div class="code-box-chips" id="codeChips" aria-live="polite" hidden></div>
@@ -6525,7 +6753,7 @@ window.resolveContractArchive = function(version) {
                      <span id="discountCodeStatus" style="font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; display: none;"></span>
                    </div>
                    <div style="display: flex; gap: 8px;">
-                     <input id="b_discount_code" type="text" placeholder="Enter Promo Code" style="text-transform: uppercase; font-family: var(--mono-font); font-weight: 700; flex: 1; padding: 10px; border: 1px solid var(--line); border-radius: 6px;" />
+                     <input id="b_discount_code" type="text" aria-label="Promo code" autocomplete="off" placeholder="Enter Promo Code" style="text-transform: uppercase; font-family: var(--mono-font); font-weight: 700; flex: 1; padding: 10px; border: 1px solid var(--line); border-radius: 6px;" />
                      <button type="button" id="btnApplyDiscountCode" style="background: var(--accent); color: #ffffff; border: none; padding: 0 18px; border-radius: 6px; font-family: var(--mono-font); font-size: var(--font-xs); font-weight: 700; cursor: pointer; white-space: nowrap;">Apply Code</button>
                    </div>
                  </label>
@@ -6669,7 +6897,7 @@ window.resolveContractArchive = function(version) {
                   <span class="field-hint">Put files in a shared Google Drive or Dropbox folder, or a Pinterest board, and paste the link. Files can’t be sent through this form.</span>
                   <div id="b_links_container">
                     <div class="link-input-row">
-                      <input class="b_moodboard_input" type="url" placeholder="Pinterest board, Dropbox, or Google Drive URL" />
+                      <input class="b_moodboard_input" type="url" aria-label="Moodboard link" placeholder="Pinterest board, Dropbox, or Google Drive URL" />
                     </div>
                   </div>
                   <button type="button" id="b_add_link_btn" style="background:none; border:1px dashed var(--line); padding:6px 12px; border-radius:6px; font-family:var(--mono-font); font-size: var(--font-xs); font-weight:700; cursor:pointer; color:var(--ink-soft); align-self:flex-start; margin-top:4px;">+ Add another reference link</button>
@@ -6789,7 +7017,7 @@ window.resolveContractArchive = function(version) {
                   <div style="padding: 16px 20px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; background: var(--bone);">
                     <div id="customContractOptionWrap" style="display: none; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 12px; text-align: left;">
                       <label style="font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft); display: block;">Specify Your Custom Contract / Agency MSA Details (Optional):
-                        <input type="text" id="customContractNotesInput" placeholder="e.g. Client Agency MSA provided via Email / Custom Brand Terms" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
+                        <input type="text" id="customContractNotesInput" aria-label="Custom contract notes" placeholder="e.g. Client Agency MSA provided via Email / Custom Brand Terms" style="width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; margin-top: 4px;" />
                       </label>
                     </div>
                     <div style="display: flex; gap: 8px; justify-content: space-between; align-items: center; flex-wrap: wrap;">
@@ -6933,7 +7161,7 @@ window.resolveContractArchive = function(version) {
         const row = document.createElement("div");
         row.className = "link-input-row";
         row.innerHTML = `
-          <input class="b_moodboard_input" type="url" placeholder="Additional Pinterest, Drive, or Dropbox URL" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-sm);" />
+          <input class="b_moodboard_input" type="url" aria-label="Another moodboard link" placeholder="Additional Pinterest, Drive, or Dropbox URL" style="padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-sm);" />
           <button type="button" class="remove-link-btn" title="Remove link">&times;</button>
         `;
         row.querySelector(".remove-link-btn").addEventListener("click", () => row.remove());
@@ -7024,12 +7252,27 @@ window.resolveContractArchive = function(version) {
         field.appendChild(note);
       }
       note.textContent = msg;
+      /* Tied to its field, so a screen reader reads the message with the
+         field and knows it is wrong (Sep 2026 audit, G6). */
+      note.id = `${id}_error`;
+      const input = document.getElementById(id);
+      if (input) {
+        input.setAttribute("aria-invalid", "true");
+        const was = (input.getAttribute("aria-describedby") || "").split(/\s+/).filter((x) => x && x !== note.id);
+        input.setAttribute("aria-describedby", [...was, note.id].join(" "));
+      }
     }
     function clearError(id) {
       const field = fieldOf(id);
       if (!field) return;
       field.classList.remove("field-invalid");
       field.querySelector(".field-error")?.remove();
+      const input = document.getElementById(id);
+      if (input) {
+        input.removeAttribute("aria-invalid");
+        const rest = (input.getAttribute("aria-describedby") || "").split(/\s+/).filter((x) => x && x !== `${id}_error`);
+        if (rest.length) input.setAttribute("aria-describedby", rest.join(" ")); else input.removeAttribute("aria-describedby");
+      }
     }
     // Clear an error the moment the visitor starts fixing it.
     ["b_name", "b_email", "b_date", "b_instagram", "b_location", "b_phone", "b_subject_name", "b_subject_email", "b_guardian_name", "b_guardian_email"].forEach((id) => {
@@ -10804,6 +11047,8 @@ window.resolveContractArchive = function(version) {
         if (value === (el.dataset.original || "").trim()) return; // unchanged
         if (!value && (field === "season" || field === "location")) value = "—";
         s[field] = value;
+        s.updatedAt = Date.now();
+        markUnpublished("albums");
         el.dataset.original = el.textContent;
         try {
           await putShoot(s);
@@ -11013,8 +11258,8 @@ window.resolveContractArchive = function(version) {
           <h1 class="kinetic-h1">${esc(one ? one.title : "What I shoot")}</h1>
           <p class="page-sub reveal">${esc(one ? one.blurb : "Model portfolios and comp cards, fashion and editorial, fitness and sports, and brand campaigns — in Noida and across Delhi NCR.")}</p>
           <div class="hero-actions" style="margin-top: 22px;">
-            <a href="/book" data-link class="btn btn-dark">Book a shoot →</a>
-            <a href="/albums" data-link class="btn btn-ghost">See the work</a>
+            <a href="/book/" data-link class="btn btn-dark">Book a shoot →</a>
+            <a href="/albums/" data-link class="btn btn-ghost">See the work</a>
           </div>
         </div>
       </section>
@@ -11081,9 +11326,14 @@ window.resolveContractArchive = function(version) {
     // top of the one in the page's head, so a single landing was counted twice
     // (Sep 2026 audit); the head no longer configures anything, and a view is
     // recorded as a page_view event rather than by re-configuring the tag.
-    if (typeof gtag === "function" && !isAdmin()) {
-      gtag("event", "page_view", { page_path: location.pathname, page_title: document.title });
-    }
+    // Logged in paint(), once the new page's title is set: here it carried
+    // the title of the page just left (Sep 2026 audit, G3).
+    // A render of the page already on screen (fresh data arriving, say) is
+    // neither a new view to count nor a reason to move focus.
+    const here = location.pathname + location.search;
+    const firstRender = lastRenderPath === null;
+    const moved = !firstRender && lastRenderPath !== here;
+    lastRenderPath = here;
     
     const header = $(".site-header");
     if (header) {
@@ -11185,7 +11435,7 @@ window.resolveContractArchive = function(version) {
             <p class="hero-mono-tagline">This frame doesn't exist — but the archive does.</p>
             <div class="hero-actions">
               <a href="/" data-link class="btn btn-dark">Back home →</a>
-              <a href="/albums" data-link class="btn btn-ghost">Browse albums</a>
+              <a href="/albums/" data-link class="btn btn-ghost">Browse albums</a>
             </div>
           </div>
         </div>
@@ -11275,11 +11525,17 @@ window.resolveContractArchive = function(version) {
       syncTestimonialsNavLink();
 
       applyRouteSeo(key, parts, params, staticPath);
+      if ((firstRender || moved) && typeof gtag === "function" && !isAdmin()) {
+        gtag("event", "page_view", { page_path: location.pathname, page_title: document.title });
+      }
       // After applyRouteSeo, which is what sets the new page's title: announcing
       // before it read out the page just left. #view has tabindex="-1" in every
       // shell, so it can take focus without joining the tab order; a render that
       // only scrolls to a section keeps the visitor where they are.
-      if (!keep) {
+      // Not on the first page of a visit: focus moved into the page, so the
+      // menu was ~48 Tab presses away from the home page (G7). Nothing has
+      // changed yet for anyone to be told about.
+      if (!keep && moved) {
         announceRoute(document.title);
         try { view.focus({ preventScroll: true }); } catch (e) {}
       }
@@ -11296,9 +11552,20 @@ window.resolveContractArchive = function(version) {
      200 on; the bare form is a 301 to it. */
   function applyRouteSeo(key, parts, params, staticPath) {
     const ORIGIN = "https://www.nerdyphotographer.in";
+    /* A page built at deploy arrives with the title and description written
+       for it, and they were better than the ones below: the home title
+       became a 97-character list and every album's own description a
+       template (Sep 2026 audit, G3). On that page they are kept; the app's
+       own apply only once the visitor moves elsewhere. */
+    if (BUILT_SEO && location.pathname === BUILT_SEO.path && !location.search) {
+      document.title = BUILT_SEO.title;
+      const d = document.querySelector('meta[name="description"]');
+      if (d && BUILT_SEO.desc) d.setAttribute("content", BUILT_SEO.desc);
+      return;
+    }
     const cfg = window.STUDIO_CONFIG || { studioName: "nerdyphotographer.in" };
     const brand = cfg.studioName;
-    let title = `Model Portfolio & Fashion Photographer in Noida | ${brand}`;
+    let title = `Model Portfolio & Fashion Photographer in Noida`;
     let desc = `Model portfolios and comp cards, fashion, editorial and fitness photoshoots for men and women by ${brand} in Noida & Delhi NCR.`;
     let path = "/";
     let index = true;
@@ -11319,7 +11586,7 @@ window.resolveContractArchive = function(version) {
         index = false;
       }
     } else if (key === "work" || key === "albums") {
-      title = `All Albums — ${brand} | Fashion, Beauty, Sports & Fitness Photoshoots`;
+      title = `Photoshoot Albums — Fashion, Portrait & Fitness, Noida`;
       desc = `Browse the complete photoshoot album archive of ${brand} — fashion, beauty, editorial, sports, and fitness photography in Noida & Delhi NCR.`;
       path = "/albums/";
     } else if (key === "categories") {
@@ -11333,7 +11600,7 @@ window.resolveContractArchive = function(version) {
         desc = `${catName}: photoshoots from the archive of ${brand}, a photography studio in Noida working across Delhi NCR.`;
         path = `/categories/?kind=${encodeURIComponent(kind)}&val=${encodeURIComponent(rawCatName)}`;
       } else {
-        title = `Fashion, Editorial, Fitness & Sports Photography Categories | ${brand}`;
+        title = `Photography Categories — Fashion, Fitness & More | ${brand}`;
         desc = `Explore creative photoshoots categorised by activity (genre), brand, or production type.`;
         path = "/categories/";
       }
@@ -11362,7 +11629,7 @@ window.resolveContractArchive = function(version) {
       path = "/studio/";
       index = window.STUDIO_CONFIG?.studioPagePublic !== false;
     } else if (key === "book") {
-      title = `Book a Fashion/Fitness/Sports Photoshoot in Noida & Delhi NCR | ${brand}`;
+      title = `Book a Photoshoot in Noida & Delhi NCR — Instant Quote`;
       desc = `Book a model portfolio, fashion or fitness shoot in Noida & Delhi NCR — see the packages, get an instant quote and send your brief.`;
       path = "/book/";
     } else if (key === "testimonials") {
@@ -11390,6 +11657,13 @@ window.resolveContractArchive = function(version) {
       index = false;
     }
 
+    // The same room a search result has as the pages built at deploy
+    // (fitTitle / fitDesc in build-seo.mjs, Sep 2026 audit G10).
+    if (title.length > 60) title = title.replace(/\s*[|—-]\s*nerdyphotographer\.in\s*$/i, "");
+    if (desc.length > 155) {
+      const cut = desc.slice(0, 155), stop = cut.lastIndexOf(". ");
+      desc = stop > 80 ? cut.slice(0, stop + 1) : cut.slice(0, cut.lastIndexOf(" ")).replace(/[,;:—–-]+$/, "") + "…";
+    }
     document.title = title;
     const setAttr = (sel, attr, value) => { const el = document.querySelector(sel); if (el) el.setAttribute(attr, value); };
     setAttr('meta[name="description"]', "content", desc);
@@ -11494,7 +11768,7 @@ window.resolveContractArchive = function(version) {
      count. Both the menu and the footer, on every shell. */
   function syncTestimonialsNavLink() {
     const live = isAdmin() || getAllTestimonials().length > 0;
-    document.querySelectorAll('a[href="/testimonials"], a[href="/testimonials/"]').forEach((a) => {
+    document.querySelectorAll('a[href="/testimonials/"], a[href="/testimonials/"]').forEach((a) => {
       const holder = a.closest(".nav-links li") || a;
       holder.style.display = live ? "" : "none";
     });
@@ -11986,7 +12260,14 @@ window.resolveContractArchive = function(version) {
       // Absolute path: from a nested route such as /book a relative "data.js"
       // resolved to /book/data.js, which the SPA fallback answered with the
       // index page, so the refresh silently never found any albums.
-      const res = await fetch(navigator.serviceWorker && navigator.serviceWorker.controller ? "/data.js" : `/data.js?fresh=${Date.now()}`, { cache: "no-store" });
+      /* The copy the page loaded is asked again at the SAME address, with the
+         browser told to check it rather than reuse it: an unchanged file
+         answers "not modified" with no body. A new address on every visit
+         downloaded the whole file a second time, every page load (Sep 2026
+         audit, G13). */
+      const tag = document.querySelector('script[src*="data.js"]');
+      const url = navigator.serviceWorker && navigator.serviceWorker.controller ? "/data.js" : ((tag && tag.getAttribute("src")) || "/data.js");
+      const res = await fetch(url, { cache: navigator.serviceWorker && navigator.serviceWorker.controller ? "no-store" : "no-cache" });
       if (!res.ok) return;
       const text = await res.text();
       const fresh = parseShootsFromDataJs(text);
@@ -12193,19 +12474,19 @@ window.resolveContractArchive = function(version) {
       // here rather than into all nine shells, and shown or hidden by
       // syncTestimonialsNavLink once the shoots are loaded.
       if (!document.getElementById("navTestimonialsLi")) {
-        const tmLi = navItem("navTestimonialsLi", "/testimonials", "Testimonials");
+        const tmLi = navItem("navTestimonialsLi", "/testimonials/", "Testimonials");
         const bookLi = document.getElementById("navBookLi");
         if (bookLi) bookLi.before(tmLi); else navList.appendChild(tmLi);
       }
       // ...and in the footer's column, next to the other reading links.
       const footerNav = document.querySelector(".footer-nav");
-      if (footerNav && !footerNav.querySelector('a[href="/testimonials"]')) {
+      if (footerNav && !footerNav.querySelector('a[href="/testimonials/"]')) {
         const a = document.createElement("a");
-        a.href = "/testimonials";
+        a.href = "/testimonials/";
         a.dataset.link = "";
         a.textContent = "Testimonials";
         a.style.display = "none";
-        const bookA = footerNav.querySelector('a[href="/book"]');
+        const bookA = footerNav.querySelector('a[href="/book/"]');
         if (bookA) bookA.before(a); else footerNav.appendChild(a);
       }
     }
@@ -12320,7 +12601,7 @@ window.resolveContractArchive = function(version) {
     // the public page, so it needs the page's own vocabulary for them.
     TESTIMONIAL_KINDS, TESTIMONIAL_LIMITS, getAllTestimonials, starRow, testimonialKindLabel, syncTestimonialsNavLink,
     $, ACTIVITIES, BRANDS, CHEST_LABELS, CLIENTS, LOOKS, MODEL_TYPES_MAX, MODEL_TYPE_MAXLEN,
-    REP_SURFACES, REP_SWITCHES, TYPES, addCalBooking, albumClients, backfillPublishedOnlyFields, chestLabelOf, classifySocial,
+    REP_SURFACES, REP_SWITCHES, TYPES, addCalBooking, albumClients, backfillPublishedOnlyFields, mergeAlbumCopies, chestLabelOf, classifySocial,
     cleanIgHandle, createHoldFromContract, esc, escJs, extractPalette, followAlbumText, getCalDateKey, getCalDateStatus,
     getContractEmailStatuses, getLocalContractAudits, getTalentCleanName, igHandleFromCredit, isAdmin, isDecidableHold, isSigImage, kineticH1,
     legacyClientOf, loadShoots, localTombstones, lookByKey, lookLabel, modelTypeLabel, modelTypeOptions, modelTypesOf,
@@ -12329,7 +12610,7 @@ window.resolveContractArchive = function(version) {
     // ticks and what a visitor sees can never drift apart.
     albumModelKeys, feedsModelCards, modelKeyOf, modelNameFromKey, modelRoster, photoModelKeys, slugify,
     normalizeModelType, parseDeletedIdsFromDataJs, parseIgHandle, parseKavyarLink, parseObjectAfterKey, parseShootsFromDataJs, parseValueAfterKey, photoSrc,
-    putShoot, readAsDataURL, removeCalBooking, render, repSwitchValues, resize, saveCalendarSettings, showRep,
+    putShoot, readAsDataURL, removeCalBooking, render, repSwitchValues, resize, webPhoto, isPhotoFile, refusedPhotosText, saveCalendarSettings, showRep,
     showsOnModelPage, siteFromCredit, socialsFromCredit, syncCalendarWithAudits, syncCalendarWithShoots, toast, toggleCalDateBlock, uid,
     updateCalBooking, view, wireView,
   };

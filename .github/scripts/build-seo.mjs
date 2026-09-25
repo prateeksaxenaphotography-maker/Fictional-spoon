@@ -292,7 +292,27 @@ function ldScript(obj, id) {
 }
 
 /** A new page built from index.html: own title, description, address, preview image and content. */
-function pageFromTemplate({ title, description, urlPath, ogImage = OG_IMAGE, ogType = "website", jsonLd = [], mainAttrs = "", mainHtml, robots = "" }) {
+/* What a search result has room for: about 60 characters of title and 155
+   of description. 16 descriptions ran to 295 and 17 titles to 104, and
+   Google cut them wherever it liked (Sep 2026 audit, G10). A long title
+   drops the " | nerdyphotographer.in" Google shows beside it anyway; a long
+   description ends at its last full sentence that fits, or a whole word. */
+function fitTitle(t) {
+  const s = String(t || "");
+  if (s.length <= 60) return s;
+  const bare = s.replace(/\s*[|—-]\s*nerdyphotographer\.in\s*$/i, "");
+  return bare.length < s.length ? bare : s;
+}
+function fitDesc(d, max = 155) {
+  const s = String(d || "").replace(/\s+/g, " ").trim();
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max);
+  const stop = Math.max(cut.lastIndexOf(". "), cut.endsWith(".") ? cut.length - 1 : -1);
+  if (stop > 80) return cut.slice(0, stop + 1);
+  return cut.slice(0, cut.lastIndexOf(" ")).replace(/[,;:—–-]+$/, "") + "…";
+}
+function pageFromTemplate({ title: rawTitle, description: rawDesc, urlPath, ogImage = OG_IMAGE, ogType = "website", jsonLd = [], mainAttrs = "", mainHtml, robots = "" }) {
+  const title = fitTitle(rawTitle), description = fitDesc(rawDesc);
   let html = TEMPLATE;
   const url = `${ORIGIN}${urlPath}`;
   html = replaceOnce(html, /<title>[\s\S]*?<\/title>/, `<title>${esc(title)}</title>`, "<title>");
@@ -357,7 +377,7 @@ const albumCardHtml = (s, { clients } = {}) => {
   const cover = albumCover(s);
   const sub = [s.activity, albumPlace(s), String(s.season || "").replace(/^—$/, "")].filter(Boolean).join(" · ");
   return `<a class="pr-card" href="${albumUrl(s)}" data-link${clients ? ` data-clients="${esc(clients.join(" "))}"` : ""}>
-        <img src="${esc(photoPath(cover))}" alt="${esc(altFor(s))}" loading="lazy" style="object-position: ${esc(cover.objectPosition || "center")};" />
+        <img src="${esc(photoPath(cover.small ? { url: cover.small } : cover))}"${srcsetOf(cover) ? ` srcset="${esc(srcsetOf(cover))}" sizes="(max-width: 760px) 94vw, (max-width: 1100px) 47vw, 30vw"` : ""} alt="${esc(altFor(s))}" loading="lazy" style="object-position: ${esc(cover.objectPosition || "center")};" />
         <span class="pr-card-title">${esc(albumName(s))}</span>
         ${sub ? `<span class="pr-card-sub">${esc(sub)}</span>` : ""}
         ${clients ? `<span class="pr-card-for">Shot for: ${esc(clients.map(clientLabel).join(" · "))}</span>` : ""}
@@ -421,9 +441,10 @@ function buildAlbumPage(s) {
       </div></header>
       <section class="section container">
         <div class="pr-photos">
-          ${s.photos.map((p, i) => `<img src="${esc(photoPath(p.small ? { url: p.small } : p))}"${srcsetOf(p) ? ` srcset="${esc(srcsetOf(p))}" sizes="(max-width: 620px) 100vw, (max-width: 1100px) 50vw, 33vw"` : ""}${p.w && p.h ? ` width="${p.w}" height="${p.h}"` : ""} alt="${esc(p.caption || altFor(s, i + 1, p))}"${i === 0 ? ' fetchpriority="high"' : ' loading="lazy"'} decoding="async" />`).join("\n          ")}
+          ${s.photos.map((p, i) => `<img src="${esc(photoPath(p.small ? { url: p.small } : p))}"${srcsetOf(p) ? ` srcset="${esc(srcsetOf(p))}" sizes="(max-width: 760px) 45vw, 30vw"` : ""}${p.w && p.h ? ` width="${p.w}" height="${p.h}"` : ""} alt="${esc(p.caption || altFor(s, i + 1, p))}"${i === 0 ? ' fetchpriority="high"' : ' loading="lazy"'} decoding="async" />`).join("\n          ")}
         </div>
         ${credits.length ? `<p class="pr-credits">${credits.map(([k, v]) => `${esc(k)}: ${esc(v)}`).join(" · ")}</p>` : ""}
+        ${partOfHtml(s)}
         <p><a href="/book/" data-link>Book a photoshoot with ${BRAND}</a> · <a href="/albums/" data-link>All albums</a></p>
       </section>
       ${others.length ? `<section class="section container">
@@ -444,6 +465,17 @@ function buildAlbumPage(s) {
       mainHtml
     })
   };
+}
+
+/* The service pages are the ones that win searches, and no album linked to
+   them (Sep 2026 audit, G11). Each album names the pages its photographs
+   appear on. */
+function partOfHtml(s) {
+  const pages = liveServices.filter((v) => (v.albumFilter && v.albumFilter.look
+    ? photosForPage(v).some((x) => x.s.id === s.id)
+    : albumsForPage(v).some((a) => a.id === s.id)));
+  if (!pages.length) return "";
+  return `<p class="pr-partof">Part of: ${pages.map((v) => `<a href="/services/${esc(v.slug)}/" data-link>${esc(v.cardTitle || v.kicker || v.slug)} →</a>`).join(" · ")}</p>`;
 }
 
 /* ---------- service pages ---------- */
@@ -548,11 +580,17 @@ const compCardsHref = compCardsPage ? `/services/${compCardsPage.slug}/#comp-car
 // Every photo of one kind, as a grid. Each tile is a plain link to its album,
 // which is what a visitor without JavaScript (and a crawler) follows; app.js
 // opens the photo full screen instead, and swipes through the whole grid.
-const srcsetOf = (p) => {
+// Each file labelled with its real width, the same rule as srcsetValue in
+// app.js: the 480 and 960 files are that long on their LONG edge (G2).
+const srcsetOf = (p0) => {
+  const p = withSize(p0);
+  const W = Number(p.w) || 0, H = Number(p.h) || 0;
+  const long = Math.max(W, H) || 1600, wide = W && H ? W / long : 2 / 3;
+  const widthAt = (edge) => Math.max(1, Math.round(Math.min(edge, long) * wide));
   const set = [];
-  if (p.small) set.push(`${photoPath({ url: p.small })} 480w`);
-  if (p.medium) set.push(`${photoPath({ url: p.medium })} 960w`);
-  if (set.length) set.push(`${photoPath(p)} 1600w`);
+  if (p.small) set.push(`${photoPath({ url: p.small })} ${widthAt(480)}w`);
+  if (p.medium) set.push(`${photoPath({ url: p.medium })} ${widthAt(960)}w`);
+  if (set.length) set.push(`${photoPath(p)} ${W || widthAt(1600)}w`);
   return set.join(", ");
 };
 const focusCss = (p) => (typeof p.focalX === "number" && typeof p.focalY === "number" ? `${p.focalX}% ${p.focalY}%` : (p.objectPosition || "center"));
@@ -1133,13 +1171,79 @@ for (const rel of hiddenShells) {
 
 outputs.push({ rel: "sitemap.xml", html: buildSitemap({ quoteCount }) });
 
+/* A hidden /studio/ was still linked from every page's menu and footer:
+   the app hides the links, but a crawler reads the HTML (Sep 2026 audit,
+   G4). While the page is closed they are taken out of every shell. */
+const SHELLS = ["index.html", "404.html", "albums/index.html", "book/index.html", "categories/index.html", "share/index.html", "studio/index.html", "testimonials/index.html", "upload/index.html"];
+const studioLinksOut = new Set();
+if (!STUDIO_PUBLIC) {
+  const strip = (html) => html
+    .replace(/\s*<li>\s*<a href="\/studio\/?"[^>]*>(?:(?!<\/a>)[\s\S])*<\/a>\s*<\/li>/g, "")
+    .replace(/\s*<a href="\/studio\/?" data-link>Studio<\/a>/g, "");
+  // Every page this script wrote carries the same menu.
+  outputs.forEach((o, i) => { if (/\.html$/.test(o.rel)) outputs[i] = { ...o, html: strip(o.html) }; });
+  for (const rel of SHELLS) {
+    if (!exists(rel)) continue;
+    const at = outputs.findIndex((o) => o.rel === rel);
+    const html = at >= 0 ? outputs[at].html : read(rel);
+    const out = strip(html);
+    if (out === html) continue;
+    if (at >= 0) outputs[at] = { ...outputs[at], html: out };
+    else outputs.push({ rel, html: out });
+    studioLinksOut.add(rel);
+  }
+}
+
+/* The deployed data.js carries each photograph's real width and height.
+   The browser labelled its sizes by the long edge — the "480" file of a
+   portrait is 320 px wide — so phones fetched photos twice the size they
+   needed while laptops showed soft ones, and a tile had no height until its
+   photo arrived (Sep 2026 audit, G2). The numbers are only known here, where
+   the files are, so they are added to the copy being deployed; the repo's
+   data.js, and what the studio's publish reads, are untouched. The object is
+   written back exactly as the admin writes it (JSON, two-space indent) and
+   the text around it — header and alias lines — is kept byte for byte, and
+   the result must read back to the same albums. */
+{
+  const src = read("data.js");
+  const head = src.indexOf("window.WPS_DATA = ");
+  const start = head >= 0 ? src.indexOf("{", head) : -1;
+  let end = -1;
+  if (start >= 0) {
+    let depth = 0, inStr = false, esc2 = false;
+    for (let i = start; i < src.length; i++) {
+      const c = src[i];
+      if (esc2) { esc2 = false; continue; }
+      if (c === "\\") { esc2 = true; continue; }
+      if (c === '"') { inStr = !inStr; continue; }
+      if (inStr) continue;
+      if (c === "{") depth++;
+      else if (c === "}" && --depth === 0) { end = i + 1; break; }
+    }
+  }
+  if (start < 0 || end < 0) fail("data.js: could not find the WPS_DATA object to add photo sizes to");
+  const data = JSON.parse(JSON.stringify(DATA));
+  let added = 0;
+  for (const s of data.DEMO_SHOOTS || []) for (const p of (s && s.photos) || []) {
+    if (!p || p.w || !p.url || String(p.url).startsWith("data:")) continue;
+    const size = imageSize(String(p.url).replace(/^\//, ""));
+    if (size) { p.w = size.w; p.h = size.h; added++; }
+  }
+  const out = src.slice(0, start) + JSON.stringify(data, null, 2) + src.slice(end);
+  const back = (() => { const sb = { window: {} }; vm.createContext(sb); vm.runInContext(out, sb, { timeout: 5000 }); return sb.window; })();
+  const same = (back.WPS_DATA.DEMO_SHOOTS || []).length === (DATA.DEMO_SHOOTS || []).length
+    && Array.isArray(back.DEMO_SHOOTS) && back.DEMO_SHOOTS.length === (DATA.DEMO_SHOOTS || []).length;
+  if (!same) fail("data.js with photo sizes does not read back to the same albums");
+  outputs.push({ rel: "data.js", html: out, sizes: added });
+}
+
 // Two outputs at one path would mean one page silently overwriting another.
 if (new Set(outputs.map((o) => o.rel)).size !== outputs.length) fail("two generated pages share a path");
 for (const o of outputs) {
   if (/\.html$/.test(o.rel) && (o.html.match(/<\/main>/g) || []).length !== 1) fail(`${o.rel}: expected exactly one </main>`);
 }
 // Nothing may land on top of a page this script does not own.
-const owned = new Set([...Object.keys(blocks), ...hiddenShells, "sitemap.xml"]);
+const owned = new Set([...Object.keys(blocks), ...hiddenShells, ...studioLinksOut, "sitemap.xml", "data.js"]);
 for (const o of outputs) {
   if (!owned.has(o.rel) && exists(o.rel) && !read(o.rel).includes('class="prerender"') && !read(o.rel).includes("data-static-path=")) {
     fail(`refusing to overwrite ${o.rel}: it exists and was not written by this script`);

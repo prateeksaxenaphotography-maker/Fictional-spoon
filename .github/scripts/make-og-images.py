@@ -6,7 +6,8 @@ Every album cover here is a portrait photograph. A link preview card is wide
 a standing portrait is a chest, not a face. These are proper 1200x630 crops
 taken around the subject's head instead.
 
-Run it after adding or re-covering an album:
+The deploy runs it for every album (pages.yml, with --prune), so a new
+album always has one (Sep 2026 audit, G9). By hand:
 
     python3 .github/scripts/make-og-images.py
 
@@ -114,6 +115,14 @@ def main():
         path = os.path.join(OUT_DIR, f"{slug}.jpg")
         out.save(path, "JPEG", quality=84, optimize=True, progressive=True)
         made.append((path, os.path.getsize(path), "focal point" if (cover.get("focalY") is not None and cover.get("focalY") <= 40) else "upper third"))
+
+    # --prune (the deploy): a preview whose album is gone would still be
+    # served at its old address, so it is left out of the site.
+    if "--prune" in sys.argv:
+        for name in os.listdir(OUT_DIR):
+            if name.endswith(".jpg") and name[:-4] not in slugs:
+                os.remove(os.path.join(OUT_DIR, name))
+                print(f"  removed {name}: no album of that name")
 
     for path, size, how in made:
         print(f"  {size/1024:6.0f} KB  {path}   ({how})")

@@ -70,7 +70,11 @@ html { scroll-behavior: smooth; overflow-x: hidden; }
    non-visible overflow on body makes body its own scroll container, which
    silently disables position: sticky for every descendant (the upload
    dropzone, the albums filter bar). */
-body { margin: 0; font-family: "Inter", system-ui, sans-serif; color: var(--ink); background: var(--paper); -webkit-font-smoothing: antialiased; line-height: 1.55; }
+/* Arial reshaped to Inter's measurements, shown until Inter arrives, so
+   text does not reflow when it lands (layout shift was 0.082 on one page,
+   near the 0.1 limit — Sep 2026 audit, G13). */
+@font-face { font-family: "Inter Fallback"; src: local("Arial"), local("Helvetica"); size-adjust: 107.1%; ascent-override: 90.4%; descent-override: 22.5%; line-gap-override: 0%; }
+body { margin: 0; font-family: "Inter", "Inter Fallback", system-ui, sans-serif; color: var(--ink); background: var(--paper); -webkit-font-smoothing: antialiased; line-height: 1.55; }
 h1, h2, h3, .brand-text { font-family: "Archivo", sans-serif; letter-spacing: -.02em; margin: 0; }
 img { display: block; max-width: 100%; }
 a { color: inherit; text-decoration: none; }
@@ -126,6 +130,14 @@ a { color: inherit; text-decoration: none; }
 /* ---------- Loader ---------- */
 .loader { position: fixed; inset: 0; z-index: 400; background: #0e0e0e !important; color: #ffffff !important; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; transition: opacity .8s var(--ease), visibility .8s; }
 .loader.done { opacity: 0; visibility: hidden; }
+/* Fail-safe, in CSS so it holds when the script is slow or never runs: the
+   loader stood over a finished page for 4-6 seconds on phones, and for ever
+   when the script failed (Sep 2026 audit, G1). It lifts itself after 1.2 s
+   whatever the script does, and never covers a page built at deploy, whose
+   words are already there. */
+.loader { animation: loaderFailsafe .4s ease 1.2s forwards; }
+@keyframes loaderFailsafe { to { opacity: 0; visibility: hidden; } }
+body:has(.prerender, [data-static-path]) .loader { display: none; }
 .loader-logo { width: 64px; height: 64px; object-fit: contain; animation: mp 1.6s var(--ease) infinite; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5)); }
 .loader-bar { width: 170px; height: 2px; background: rgba(255,255,255,.18); overflow: hidden; }
 .loader-bar span { display: block; height: 100%; width: 0; background: var(--accent); animation: load 1.3s var(--ease) forwards; }
@@ -1028,6 +1040,10 @@ body.menu-open .upload-sticky-bar { display: none; }
 /* ---------- Toast ---------- */
 .toast { position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--ink); color: var(--paper); padding: 14px 22px; border-radius: 100px; font-size: var(--font-sm); font-weight: 600; box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: .3s var(--ease); z-index: 220; }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast { display: flex; align-items: center; gap: 12px; max-width: min(620px, calc(100vw - 32px)); width: max-content; line-height: 1.45; }
+.toast-x { display: none; flex: 0 0 auto; background: none; border: 0; color: inherit; font-size: 20px; line-height: 1; padding: 2px 4px; cursor: pointer; opacity: .8; }
+.toast.toast-sticky { border-radius: 14px; pointer-events: auto; }
+.toast.toast-sticky .toast-x { display: block; }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 920px) {
@@ -3291,8 +3307,9 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
     object-fit: contain;
   }
   .lightbox-sidebar { height: auto; max-height: 26svh; overflow-y: auto; padding: 14px 18px 20px; }
-  /* The counter sat on top of "Close Viewer". */
-  #lbCounter { top: auto; bottom: 10px; right: 12px; left: auto; }
+  /* The counter sits in its own place at the left of the top bar. Pinned to
+     the bar's bottom-right it landed on "Details & PDFs" (the owner, Sep 25). */
+  #lbCounter { position: static; transform: none; margin: 0; }
   /* A swipe inside the viewer scrolled the page hidden behind it. */
   .lightbox { overscroll-behavior: contain; }
 }
@@ -3342,15 +3359,7 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
 .pp-panel { margin: 10px 0 2px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--bone); }
 .pp-panel > summary { cursor: pointer; font: 700 12px var(--mono-font); letter-spacing: .1em; text-transform: uppercase; color: var(--accent-text); }
 .pp-type-note { margin: 8px 0 10px; font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); }
-.pp-type .pdf-type-row,
-.pp-type #pdfBorderRow { grid-template-columns: minmax(120px, 1.3fr) repeat(3, minmax(74px, 1fr)) auto !important; }
 .pp-type #ppTypeReset { margin-top: 10px; }
-@media (max-width: 620px) {
-  .pp-type .pdf-type-row,
-  .pp-type #pdfBorderRow { grid-template-columns: 1fr 1fr !important; }
-  .pp-type .pdf-type-row > div:first-child,
-  .pp-type #pdfBorderRow > div:first-child { grid-column: 1 / -1; }
-}
 
 /* Saved model portfolios, in the PDF builder. */
 .pp-saved-box .pp-save-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
@@ -3893,11 +3902,6 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
 .pdf-type-row .pdf-type-what { grid-column: 1 / -1; min-width: 0; }
 .pdf-type-row select, .pdf-type-row input[type="number"] { width: 100%; min-width: 0; }
 .pdf-type-colour { display: inline-flex; align-items: center; gap: 6px; }
-@media (min-width: 620px) {
-  .pdf-type-row { grid-template-columns: minmax(150px, 1.4fr) repeat(3, minmax(84px, 1fr)) auto; }
-  .pdf-type-row .pdf-type-what { grid-column: auto; }
-  .pdf-type-row[data-aligns] { grid-template-columns: minmax(150px, 1.4fr) repeat(4, minmax(84px, 1fr)) auto; }
-}
 /* The type editor's own sheet. */
 .pp-type-sheet {
   background: var(--paper); color: var(--ink); border-radius: 12px;
@@ -3938,9 +3942,6 @@ label:has(> input[type="radio"]:focus-visible), label:has(> input[type="checkbox
 .pp-rail .is-offsheet { display: none !important; }
 /* The pose-label row carries one control more than the rest: the panel its
    words sit on, which can be automatic, a colour, or nothing at all. */
-@media (min-width: 620px) {
-  .pdf-type-row[data-fills] { grid-template-columns: minmax(150px, 1.4fr) repeat(3, minmax(84px, 1fr)) auto auto; }
-}
 .pdf-type-colour select { min-width: 0; }
 
 /* Taking a photograph into a book from the studio's own computer (v507).
@@ -4149,3 +4150,61 @@ html.theme-dark .tm-quote-emoji { background: rgba(255,255,255,0.75); border-rad
 .thumb-dot-mode { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; padding: 6px 8px 0; font-size: var(--font-xs); color: var(--ink-soft); background: var(--paper); }
 .thumb-dot-btn { font: 700 10px var(--mono-font); text-transform: uppercase; letter-spacing: .03em; padding: 3px 7px; border: 1px solid var(--line); border-radius: 100px; background: transparent; color: var(--ink); cursor: pointer; }
 .thumb-dot-btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+/* The studio's "what is live" line (admin only, admin.js paintPublishState). */
+.publish-state { position: fixed; left: 16px; bottom: 16px; z-index: 210; display: flex; align-items: center; gap: 10px; max-width: min(560px, calc(100vw - 32px)); padding: 10px 14px; border-radius: 12px; background: var(--paper); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--shadow); font-size: var(--font-xs); line-height: 1.4; }
+.publish-state[hidden] { display: none; }
+.publish-state a { color: inherit; text-decoration: underline; }
+.publish-state-dot { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; }
+.publish-state-dot.is-pending { background: #d97706; }
+.publish-state-dot.is-building { background: #2563eb; animation: publishPulse 1.2s ease-in-out infinite; }
+.publish-state-dot.is-live { background: #16a34a; }
+.publish-state-dot.is-failed { background: #dc2626; }
+.publish-state-go { flex: 0 0 auto; border: 0; border-radius: 100px; padding: 6px 12px; background: var(--ink); color: var(--paper); font: inherit; font-weight: 700; cursor: pointer; }
+.publish-state-x { flex: 0 0 auto; background: none; border: 0; color: inherit; font-size: 18px; line-height: 1; cursor: pointer; padding: 0 2px; }
+@keyframes publishPulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .publish-state-dot.is-building { animation: none; } }
+/* On the upload page the sticky publish bar owns the bottom edge. */
+html:has(#uploadStickyBar:not([hidden])) .publish-state { bottom: 84px; }
+html:has(.publish-state:not([hidden])) .toast { bottom: 84px; }
+
+/* "Part of:" under an album — the service pages its photographs are on. */
+.album-page-partof { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; margin: 18px 0 0; font-size: var(--font-sm); color: var(--ink-soft); }
+.album-page-partof a { font-weight: 700; color: var(--accent-text); }
+/* A long single word as a page title ("Testimonials") could not wrap — its
+   letters sit in one unbreakable row — so at 320 px it was cut to
+   "Testimonia" (Sep 2026 audit, G12). On narrow screens the size follows the
+   width, and a word that still will not fit may break. */
+@media (max-width: 480px) {
+  .page-head h1.kinetic-h1 { font-size: min(var(--font-xl), 10.5vw) !important; }
+  .kinetic-h1 .kw-word { flex-wrap: wrap; max-width: 100%; }
+}
+
+/* Type & border: one grid for every row (Sep 25 2026, the owner: "not
+   uniform"). Seven columns — what, typeface, weight, line up, size, panel,
+   colour — the same for every line, with blank cells where a line has no
+   such control. Narrow screens fall back to two columns and drop the blanks. */
+.pdf-type-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.pdf-type-head { display: none; }
+.pdf-type-blank { display: none; }
+.pdf-type-fitted { font-size: var(--font-xs); color: var(--ink-soft); padding-left: 2px; }
+.pdf-type-auto { font-size: var(--font-xs); color: var(--ink-soft); display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.pdf-type-check { font-size: var(--font-xs); color: var(--ink); display: inline-flex; align-items: center; gap: 6px; }
+.pdf-type-num { display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: 10.5px; color: var(--ink-soft); }
+.pdf-type-num input { width: 100%; min-width: 0; }
+/* Measured on the editor itself, which is a wide sheet beside the preview
+   and a narrower column on the Calendar page. */
+#ppTypePanel, .pdf-type-host { container-type: inline-size; }
+@container (min-width: 720px) {
+  .pdf-type-row,
+  .pp-type .pdf-type-row {
+    grid-template-columns: minmax(140px, 1.3fr) minmax(172px, 1.6fr) minmax(0, 1fr) minmax(0, .85fr) minmax(56px, .55fr) minmax(0, .95fr) 96px;
+  }
+  .pdf-type-row .pdf-type-what { grid-column: auto; }
+  .pdf-type-blank { display: block; }
+  .pdf-type-head { display: grid; padding: 0 0 6px; border-bottom: 1px solid var(--line); font: 700 10px var(--mono-font); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+  .pdf-type-colour { justify-self: start; }
+  .pdf-type-row .pdf-type-colour select { flex: 1 1 auto; }
+}

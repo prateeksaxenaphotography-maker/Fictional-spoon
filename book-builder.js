@@ -332,23 +332,36 @@
   // Shrink the type until the text wraps into at most `maxLines`; if it still
   // does not at the smallest size, keep that many lines and end the last with
   // "…". A title never loses words silently. Returns { size, lines }.
-  function fitLines(page, s, maxMm, maxLines, weight, startMm, minMm, family, spacingMm = 0, italic = false) {
+  /* The type also shrinks while any ONE line is wider than the space: a
+     single long word ("NerdyPhotographer.in", "Photographers") never wraps,
+     so counting lines alone let it run off the page while the check said
+     "All good" (Sep 2026 audit, K2). A word still too wide at the smallest
+     size is ended with "…" like a cut title, and the page reports it —
+     under `label`, unless the caller reports cuts itself (null). */
+  function fitLines(page, s, maxMm, maxLines, weight, startMm, minMm, family, spacingMm = 0, italic = false, label = "title") {
     let size = startMm, lines;
+    const widest = (ls) => ls.reduce((m, l) => Math.max(m, measure(page, l)), 0);
     for (;;) {
       font(page, weight, size, family, spacingMm, italic);
       lines = wrap(page, s, maxMm);
-      if (lines.length <= maxLines || size <= minMm) break;
+      if ((lines.length <= maxLines && widest(lines) <= maxMm + 0.01) || size <= minMm) break;
       size = Math.max(minMm, size - 0.5);
     }
-    const cut = lines.length > maxLines;
+    let cut = lines.length > maxLines;
+    font(page, weight, size, family, spacingMm, italic);
     if (cut) {
-      font(page, weight, size, family, spacingMm, italic);
       // Cut: the last line always ends in "…" and still fits.
       lines = lines.slice(0, maxLines);
       let last = lines[maxLines - 1];
       while (last.length > 1 && measure(page, `${last}…`) > maxMm) last = last.slice(0, -1);
       lines[maxLines - 1] = `${last.trimEnd()}…`;
     }
+    lines = lines.map((l) => {
+      if (measure(page, l) <= maxMm + 0.01) return l;
+      cut = true;
+      return ellipsize(page, l, maxMm);
+    });
+    if (cut && label && page) reportCut(page, "title", label);
     return { size, lines, cut };
   }
   function rect(page, x, y, w, h, color) { page.ctx.fillStyle = color; page.ctx.fillRect(page.u(x), page.u(y), page.u(w), page.u(h)); }
@@ -420,6 +433,15 @@
     page.ctx.drawImage(img, (iw - sw) * fx, (ih - sh) * fy, sw, sh, dx, dy, dw, dh);
     if (alpha < 1) page.ctx.restore();
     page.photos.push({ id: shot && shot.id, x, y, w, h });
+    /* "A line round every photograph", in any style (the owner, Sep 25
+       2026). Round the part of the photograph that shows, and never on one
+       that runs to the edge of the paper, where a line would be a stray. */
+    if (bookNow && bookNow.photoLines === "on") {
+      const mm = page.u(1), PW = page.canvas.width / mm, PH = page.canvas.height / mm;
+      const vx = Math.max(x, dx / mm), vy = Math.max(y, dy / mm);
+      const vw = Math.min(x + w, (dx + dw) / mm) - vx, vh = Math.min(y + h, (dy + dh) / mm) - vy;
+      if (vw > 1 && vh > 1 && vx > 0.5 && vy > 0.5 && vx + vw < PW - 0.5 && vy + vh < PH - 0.5) frame(page, vx, vy, vw, vh, paletteFor(bookNow).rule, 0.2);
+    }
     return { x: dx / page.u(1), y: dy / page.u(1), w: dw / page.u(1), h: dh / page.u(1) };
   }
   // Fit whole (no crop) inside the box, centred, or against its right edge when
@@ -566,9 +588,9 @@
         <div class="sb-modal" role="dialog" aria-modal="true" aria-labelledby="sbOutTitle">
           <h3 id="sbOutTitle">${many ? `These ${count} photographs` : "This photograph"} ${many ? "are" : "is"} not on your site</h3>
           <label class="sb-radio"><input type="radio" name="sbOutWhere" value="print" checked>
-            <span><strong>Use for printing only</strong><small>Kept on this computer. Nothing is uploaded, and the book prints ${many ? "them" : "it"} at full quality. Opened on another machine, or published, ${many ? "they" : "it"} will be missing.</small></span></label>
+            <span><strong>Use for printing only</strong><small>Kept on this computer, nothing uploaded. Stored at the size the site uses (1,600 px on the long side): sharp on screen and from a home printer. For a print shop, add your full-size files under Download → “Full-size photos, for a print shop”. Opened on another machine, or published, ${many ? "they" : "it"} will be missing.</small></span></label>
           <label class="sb-radio"><input type="radio" name="sbOutWhere" value="site">
-            <span><strong>Add to the site</strong><small>Uploaded with your next publish, like an album photo, so the book works anywhere. Your repository is public: anyone can download ${many ? "them" : "it"}, and ${many ? "they stay" : "it stays"} in the history even if removed later.</small></span></label>
+            <span><strong>Add to the site</strong><small>Uploaded with your next publish, like an album photo, so the book works on any device. Anyone can then download ${many ? "them" : "it"} from the site, and a copy stays in the site's history even if ${many ? "they are" : "it is"} removed later.</small></span></label>
           <div class="sb-modal-foot">
             <button type="button" class="sb-btn" data-out-cancel>Cancel</button>
             <button type="button" class="sb-btn dark" data-out-ok>Add ${many ? `${count} photographs` : "the photograph"}</button>
@@ -587,6 +609,31 @@
       document.body.appendChild(box);
       const first = box.querySelector('input[name="sbOutWhere"]');
       if (first) first.focus();
+    });
+  }
+
+  function askToDeleteBook(name) {
+    return new Promise((resolve) => {
+      const box = document.createElement("div");
+      box.className = "sb-modal-back";
+      box.innerHTML = `
+        <div class="sb-modal" role="alertdialog" aria-modal="true" aria-labelledby="sbDelTitle" aria-describedby="sbDelText">
+          <h3 id="sbDelTitle">Delete “${esc(name)}”?</h3>
+          <p id="sbDelText" class="sb-hint">It is gone from this device straight away, and this can't be undone. If the book was published, your next publish removes it from your other devices too.</p>
+          <div class="sb-modal-foot">
+            <button type="button" class="sb-btn" data-del-keep>Keep the book</button>
+            <button type="button" class="sb-btn dark" data-del-go>Delete it</button>
+          </div>
+        </div>`;
+      const close = (v) => { box.remove(); document.removeEventListener("keydown", onKey); resolve(v); };
+      const onKey = (e) => { if (e.key === "Escape") close(false); };
+      box.addEventListener("click", (e) => {
+        if (e.target === box || e.target.closest("[data-del-keep]")) return close(false);
+        if (e.target.closest("[data-del-go]")) return close(true);
+      });
+      document.addEventListener("keydown", onKey);
+      document.body.appendChild(box);
+      box.querySelector("[data-del-keep]").focus();
     });
   }
 
@@ -639,9 +686,22 @@
   // Wraps a style's own margins so its gutter answers to the book's setting.
   const spaced = (m) => (m && typeof m.gap === "number" ? { ...m, gap: Math.round(m.gap * gapFactor() * 10) / 10 } : m);
 
+  /* A site photo's id is "<its own id>-<a number>", and before v533 the
+     number was its place in the album, rebuilt on every save: removing one
+     photo renumbered those after it and a book lost them — the cover
+     included (Sep 2026 audit, A4). Ids no longer move, and a reference
+     saved under an old number still finds its photo by the first part. */
+  class PhotoIds extends Map {
+    constructor() { super(); this.base = new Map(); }
+    static baseOf(k) { const m = /^([a-z0-9]{8,})-\d+$/.exec(String(k)); return m ? m[1] : null; }
+    set(k, v) { super.set(k, v); const b = PhotoIds.baseOf(k); if (b && !this.base.has(b)) this.base.set(b, v); return this; }
+    get(k) { if (super.has(k)) return super.get(k); const b = PhotoIds.baseOf(k); return b ? this.base.get(b) : undefined; }
+    has(k) { if (super.has(k)) return true; const b = PhotoIds.baseOf(k); return !!b && this.base.has(b); }
+  }
+
   function library() {
     const shoots = (API.shoots() || []).filter((s) => s && !s.isTestimonial && Array.isArray(s.photos));
-    const byId = new Map();
+    const byId = new PhotoIds();
     const albums = [];
     let diagrams = 0;
     for (const s of shoots) {
@@ -664,7 +724,9 @@
         if (byId.has(o.id)) continue;
         byId.set(o.id, {
           photo: { id: o.id, url: o.dataUrl, dataUrl: o.dataUrl, outside: true, forSite: !!o.forSite, name: o.name || "" },
-          shoot: { id: OUTSIDE_ALBUM, title: "From this computer", isPublic: false }
+          // No title: the name is the picker's, and a page credit printed
+          // "From this computer" under these (Sep 2026 audit, K4).
+          shoot: { id: OUTSIDE_ALBUM, title: "", isPublic: false, outside: true }
         });
       }
     }
@@ -990,6 +1052,8 @@
     for (const s of shoots) {
       if (!s || seen.has(s.id)) continue;
       seen.add(s.id);
+      // A photograph from the studio's own computer has no album to credit.
+      if (s.outside || s.id === OUTSIDE_ALBUM || s.id === OUTSIDE_SHOOT_ID) continue;
       const bits = [cleanName(s.title || s.talent), s.activity, cleanName(s.location), s.season]
         .map((b) => String(b || "").trim()).filter((b) => b && b !== "—" && b !== "Personal Project");
       if (bits.length) parts.push(bits.join(" · "));
@@ -1018,6 +1082,12 @@
      in the Modern style carried them, always on the accent. The studio asked
      for a way to turn them off and to choose the colour (Sep 24 2026). */
   const plateNums = () => !(bookNow && bookNow.photoNums === false);
+  /* The thin line round each photograph. The studio asked to be able to
+     leave it off (Sep 25 2026). A line the studio drew itself — a block's
+     own edge on an Anything page — is theirs, and stays. */
+  // "on": drawPhoto draws the line itself for every style, so the style's
+  // own line stands down rather than doubling it.
+  const photoRule = (P) => (bookNow && (bookNow.photoLines === false || bookNow.photoLines === "on") ? null : P.rule);
   const PLATE_KEYS = ["paper", "white", "ink", "soft", "accent", "deep", "rule"];
   const plateColour = (P) => {
     const c = bookNow && bookNow.photoNumColour;
@@ -1246,7 +1316,7 @@
     const top = img ? box.y + box.h + (L ? 12 : 18) : H * 0.4;
     const TT = textFormat(entry.style, "text", { w: K.w, f: K.f }, P, P.ink);
     const line = lineIn(entry.text, "Thank you for looking.");
-    const t = fitLines(page, K.caps ? line.toUpperCase() : line, box.w, 3, TT.spec.w, (L ? 9 : 11) * TT.scale, (L ? 6 : 7) * TT.scale, TT.spec.f, K.sp, !!TT.spec.it);
+    const t = fitLines(page, K.caps ? line.toUpperCase() : line, box.w, 3, TT.spec.w, (L ? 9 : 11) * TT.scale, (L ? 6 : 7) * TT.scale, TT.spec.f, K.sp, !!TT.spec.it, "closing line");
     const lead = t.size * (K.caps ? 1.0 : 1.15), firstY = top + t.size;
     font(page, TT.spec.w, t.size, TT.spec.f, K.sp, !!TT.spec.it);
     if (skipNow !== "text") t.lines.forEach((l, i) => text(page, l, TT.at(box.x, box.w), firstY + i * lead, TT.color, TT.align));
@@ -1306,7 +1376,7 @@
     const name = lineIn(entry.title, "");
     y += 5;
     if (name) {
-      const t = fitLines(page, NS.caps ? name.toUpperCase() : name, wa.w, 2, NT.spec.w, NS.start * NT.scale, NS.min * NT.scale, NT.spec.f, NS.sp || 0, !!NT.spec.it);
+      const t = fitLines(page, NS.caps ? name.toUpperCase() : name, wa.w, 2, NT.spec.w, NS.start * NT.scale, NS.min * NT.scale, NT.spec.f, NS.sp || 0, !!NT.spec.it, "note title");
       const lead = t.size * NS.lead;
       font(page, NT.spec.w, t.size, NT.spec.f, NS.sp || 0, !!NT.spec.it);
       y += t.size;
@@ -1388,11 +1458,11 @@
       if (shots.length === 1 && imgs[0]) {
         // A single photograph is a plate: whole, never cropped, on paper.
         const r = fitPhoto(page, imgs[0], shots[0], box.x, box.y, box.w, box.h - 8);
-        frame(page, r.x, r.y, r.w, r.h, P.rule, 0.2);
+        if (photoRule(P)) frame(page, r.x, r.y, r.w, r.h, P.rule, 0.2);
       } else {
         const aspects = shots.map((s, i) => (imgs[i] ? imgAspect(imgs[i]) : 0.7));
         cells(shots.length, { ...box, h: box.h - 8 }, M.gap, aspects, W > H, entry.rows).forEach((c, i) => {
-          if (imgs[i]) { const r = drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); frame(page, r.x, r.y, r.w, r.h, P.rule, 0.2); }
+          if (imgs[i]) { const r = drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); if (photoRule(P)) frame(page, r.x, r.y, r.w, r.h, P.rule, 0.2); }
           else missing(page, P, c.x, c.y, c.w, c.h);
         });
       }
@@ -1677,7 +1747,7 @@
      dresses a photograph is in decoPhoto. */
   // The page being drawn and the library it draws from, for a figure's label.
   let numNow = 1, libNow = null;
-  const albumOf = (shot) => { const hit = shot && (libNow || (libNow = library())).byId.get(shot.id); return hit ? cleanName(hit.shoot.title || hit.shoot.talent) : ""; };
+  const albumOf = (shot) => { const hit = shot && (libNow || (libNow = library())).byId.get(shot.id); return hit && !hit.shoot.outside && hit.shoot.id !== OUTSIDE_SHOOT_ID ? cleanName(hit.shoot.title || hit.shoot.talent) : ""; };
   // A soft shade over part of a page, top to bottom.
   function shade(page, x, y, w, h, from, to) {
     const g = page.ctx.createLinearGradient(0, page.u(y), 0, page.u(y + h));
@@ -2196,7 +2266,7 @@
   // A photograph on a page the styles share, shown the way the style shows them.
   function stylePhoto(page, P, D, img, shot, x, y, w, h, seed = 0) {
     if (D.deco) return decoPhoto(page, P, D.deco, img, shot, x, y, w, h, D.whole ? "fit" : "crop", seed);
-    if (D.whole) { const r = fitPhoto(page, img, shot, x, y, w, h); if (D.frame) frame(page, r.x, r.y, r.w, r.h, P.rule, 0.2); return r; }
+    if (D.whole) { const r = fitPhoto(page, img, shot, x, y, w, h); if (D.frame && photoRule(P)) frame(page, r.x, r.y, r.w, r.h, P.rule, 0.2); return r; }
     return drawPhoto(page, img, shot, x, y, w, h);
   }
 
@@ -2275,7 +2345,7 @@
       const HT = textFormat(entry.style, "heading", { w: V.w, f: V.f, it: !!V.it }, P, on, V.align || "left");
       const LT = textFormat(entry.style, "line", { w: 400, f: V.lineF || F.sans, it: !!V.lineIt }, P, on, V.align || "left");
       const tw = W - 40;
-      const t = fitLines(page, shown, tw, 2, HT.spec.w, V.size * HT.scale, 12 * HT.scale, HT.spec.f, spacing, !!HT.spec.it);
+      const t = fitLines(page, shown, tw, 2, HT.spec.w, V.size * HT.scale, 12 * HT.scale, HT.spec.f, spacing, !!HT.spec.it, null);
       if (t.cut) reportCut(page, "heading", "chapter heading");
       const lead = t.size * (V.lead || 1.05);
       // In the middle of the page, or (a style's choice) low on it, clear of the foot.
@@ -3493,7 +3563,7 @@
       rectOp(0, 0, W, H, pageBgOf(book, entry, P, D.ground === "paper" ? P.paper : P.white));
       if (D.bar) rectOp(0, 0, D.bar, H, P.accent);
     };
-    const photo = (box, mode, empty, i = 0) => op({ k: "photo", i, x: box[0], y: box[1], w: box[2], h: box[3], mode, frame: D.frame ? P.rule : null, deco: D.deco || null, seed: entry.type.length * 5 + i * 3, empty });
+    const photo = (box, mode, empty, i = 0) => op({ k: "photo", i, x: box[0], y: box[1], w: box[2], h: box[3], mode, frame: D.frame ? photoRule(P) : null, deco: D.deco || null, seed: entry.type.length * 5 + i * 3, empty });
     const marker = (x, y, color = P.soft) => put(MARKER, x, y, { w: 500, f: F.plex, sp: 0.4 }, 3.2, color, "center");
     // A newspaper's hairline between two columns of words.
     const colRules = (cols) => { if (!D.colRule) return; for (let i = 1; i < cols.length; i++) { const a = cols[i - 1], b = cols[i], mid = (a.x + a.w + b.x) / 2, top = Math.max(a.top, b.top) - 3.4; rectOp(mid - 0.1, top, 0.2, Math.min(a.bottom, b.bottom) - top + 1, P.rule); } };
@@ -4073,7 +4143,7 @@
           k: "photo", shot: (b.p && b.p.id) ? b.p : null, x: box.x, y: box.y, w: box.w, h: box.h,
           mode: b.p && b.p.fit === "whole" ? "fit" : "crop", rot: turn, empty: "CHOOSE A PHOTO",
           shape: b.shape ? shapeOf(b) : (typeof b.corner === "number" && b.corner > 0 ? "rect" : null), corner: cornerOf(b),
-          frame: b.edge ? blockColor(b.edge, P, P.rule) : (D.frame ? P.rule : null), frameT: THICKS[b.edgeWidth] || 0.2
+          frame: b.edge ? blockColor(b.edge, P, P.rule) : (D.frame ? photoRule(P) : null), frameT: THICKS[b.edgeWidth] || 0.2
         });
         return;
       }
@@ -4803,6 +4873,10 @@
   .sb-pick[open] > summary { margin-bottom: 8px; }
   .sb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 6px; max-height: 380px; overflow-y: auto; padding: 2px; margin-top: 8px; }
   .sb-thumb { position: relative; aspect-ratio: 3 / 4; padding: 0; border: 0; border-radius: 6px; overflow: hidden; background: var(--sb-sunk); cursor: pointer; }
+  .sb-thumb-wrap { position: relative; display: block; }
+  .sb-thumb-wrap .sb-thumb { width: 100%; }
+  .sb-thumb-rm { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: rgba(0,0,0,.72); color: #fff; font-size: 15px; line-height: 24px; padding: 0; cursor: pointer; }
+  .sb-thumb-rm:focus-visible { outline: 2px solid var(--sb-accent, #d24e1a); outline-offset: 2px; }
   .sb-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .sb-thumb.diagram img { object-fit: contain; background: #fff; }
   .sb-thumb.diagram::before { content: "Diagram"; position: absolute; left: 3px; bottom: 3px; padding: 0 4px; border-radius: 4px; background: rgba(0,0,0,.7); color: #fff; font: 600 9.5px/15px Inter, sans-serif; }
@@ -5419,11 +5493,16 @@
         if (!writeState({ versions: [copy, ...cur.versions], deleted: cur.deleted })) { API.toast("Not saved — this device's storage is full or blocked."); return; }
         showList();
       }));
-      $$("[data-del]").forEach((b) => b.addEventListener("click", () => {
+      $$("[data-del]").forEach((b) => b.addEventListener("click", async () => {
         settle();
+        const v0 = readState().versions.find((x) => x.id === b.dataset.del); if (!v0) return;
+        /* Deleting is final on this device the moment it is confirmed, and
+           the old OK/Cancel box said it could not be undone "once published"
+           — as if it could be until then (Sep 2026 audit, K6; the same fix as
+           bookings in v513). Two named buttons, and Keep is the one focused. */
+        if (!(await askToDeleteBook(v0.name))) { b.focus(); return; }
         const cur = readState();
         const v = cur.versions.find((x) => x.id === b.dataset.del); if (!v) return;
-        if (!confirm(`Delete “${v.name}”? This cannot be undone once published.`)) return;
         if (!writeState({ versions: cur.versions.filter((x) => x.id !== v.id), deleted: [...cur.deleted, v.id] })) { API.toast("Not deleted — this device's storage is full or blocked."); return; }
         showList(); API.toast(`Deleted “${v.name}”. Publish to remove it everywhere.`);
       }));
@@ -5442,7 +5521,25 @@
     const OPEN_KEY = "wps_book_open";
     const remember = (extra = {}) => { try { if (book) sessionStorage.setItem(OPEN_KEY, JSON.stringify({ id: book.id, sel, tab, ...extra })); } catch (e) { /* only a convenience */ } };
     const forget = () => { try { sessionStorage.removeItem(OPEN_KEY); } catch (e) { /* only a convenience */ } };
+    /* Points references saved under a photo's old number at the id it has
+       now (see PhotoIds), so the pickers show them as chosen. Nothing is
+       saved by this; the next change the studio makes saves it. */
+    function currentPhotoIds(b) {
+      const lib = library();
+      const walk = (o) => {
+        if (!o || typeof o !== "object") return;
+        if (Array.isArray(o)) { o.forEach(walk); return; }
+        if (typeof o.id === "string" && PhotoIds.baseOf(o.id)) {
+          const hit = lib.byId.get(o.id);
+          if (hit && hit.photo && hit.photo.id !== o.id) o.id = hit.photo.id;
+        }
+        Object.values(o).forEach(walk);
+      };
+      try { walk(b && b.pages); walk(b && b.cover); } catch (e) { /* drawing still finds them */ }
+    }
+
     function openBook(b, isNew = false, at = null) {
+      currentPhotoIds(b);
       book = b; sel = book.pages.length ? 0 : -1; active = 0; filter = "all"; pickerOpen = null; tab = "page";
       if (at && typeof at.sel === "number" && at.sel >= -1 && at.sel < book.pages.length) sel = at.sel;
       if (at && (at.tab === "design" || at.tab === "page")) tab = at.tab;
@@ -8087,7 +8184,13 @@
             const pos = list.findIndex((s) => s.id === id);
             const on = pos >= 0;
             const full = !on && list.length >= t.max && t.max > 1;
-            return `<button type="button" class="sb-thumb${hit.photo.diagram ? " diagram" : ""}" data-pick="${esc(id)}" aria-pressed="${on}" data-order="${on && t.max > 1 ? pos + 1 : on ? "✓" : ""}" ${full ? "disabled" : ""} aria-label="${esc(cleanName(hit.shoot.title || hit.shoot.talent))} ${hit.photo.diagram ? "lighting diagram" : "photo"}${on ? ", chosen" : ""}"><img src="${esc(thumbSrc(hit.photo))}" alt="" loading="lazy"></button>`;
+            const pick = `<button type="button" class="sb-thumb${hit.photo.diagram ? " diagram" : ""}" data-pick="${esc(id)}" aria-pressed="${on}" data-order="${on && t.max > 1 ? pos + 1 : on ? "✓" : ""}" ${full ? "disabled" : ""} aria-label="${esc(hit.photo.outside ? (hit.photo.name || "photograph from this computer") : cleanName(hit.shoot.title || hit.shoot.talent))} ${hit.photo.diagram ? "lighting diagram" : "photo"}${on ? ", chosen" : ""}"><img src="${esc(thumbSrc(hit.photo))}" alt="" loading="lazy"></button>`;
+            // A photograph from this computer can be taken out of the store
+            // again (K3); one already in a book page is kept until it is
+            // taken off the page, so a page never silently goes blank.
+            return hit.photo.outside
+              ? `<span class="sb-thumb-wrap">${pick}<button type="button" class="sb-thumb-rm" data-out-remove="${esc(id)}" aria-label="Remove ${esc(hit.photo.name || "this photograph")} from this computer's list" title="Remove from this list">×</button></span>`
+              : pick;
           }).join("") || `<p class="sb-hint" style="grid-column: 1 / -1">${filter === "diagrams" ? "No lighting diagrams yet. Add one to an album on the Upload page (Lighting diagram), and it appears here." : "No photos in this album."}</p>`}</div>
         </details>`;
 
@@ -8103,39 +8206,52 @@
       if (outBtn && outFile) {
         outBtn.addEventListener("click", () => outFile.click());
         outFile.addEventListener("change", async () => {
-          const files = [...(outFile.files || [])].filter((f) => /^image\//.test(f.type));
+          const files = [...(outFile.files || [])].filter((f) => /^image\//.test(f.type) || /\.(heic|heif|jpe?g|png|webp)$/i.test(f.name || ""));
           outFile.value = "";
           if (!files.length) return;
           const forSite = await askWhereOutsideGoes(files.length);
           if (forSite === null) return;
           outNote.textContent = `Reading ${files.length} photograph${files.length > 1 ? "s" : ""}…`;
           let added = 0;
+          const refused = [];
           for (const f of files) {
             try {
-              // Read to a data URL, and shrink it the way an uploaded photo is
-              // shrunk, so a 12MP frame does not sit in the store whole.
-              const raw = await new Promise((res, rej) => {
-                const r = new FileReader();
-                r.onload = () => res(String(r.result || ""));
-                r.onerror = () => rej(r.error);
-                r.readAsDataURL(f);
-              });
-              const dataUrl = (typeof API.resize === "function" ? await API.resize(raw, 1600, 0.86).catch(() => raw) : raw) || raw;
+              /* Drawn before it is kept, and shrunk the way an uploaded photo
+                 is. A file this browser cannot draw — an iPhone HEIC in
+                 Chrome, a damaged JPEG — used to be stored anyway and printed
+                 as a blank column while the check said "All good" (Sep 2026
+                 audit, K3). It is refused by name now. */
+              const dataUrl = typeof API.webPhoto === "function" ? await API.webPhoto(f, 1600, 0.86) : null;
+              if (!dataUrl) { refused.push(f.name || "a file"); continue; }
               const id = `out_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
               await outPut({ id, name: f.name || "", dataUrl, forSite: !!forSite, at: Date.now() });
               added++;
-            } catch (e) { /* one bad file must not stop the rest */ }
+            } catch (e) { refused.push(f.name || "a file"); }
           }
           await outsideRefresh();
-          outNote.textContent = added
-            ? `${added} added${forSite ? " — they go to the site on your next publish." : " — kept on this computer."}`
-            : "None of those could be read.";
           filter = OUTSIDE_ALBUM;
-          if (forSite) await syncOutsideToAlbum();
+          if (forSite && added) await syncOutsideToAlbum();
           drawPhotoBlock();
+          // Said after the redraw, which used to wipe it before it was seen.
+          const msg = (added ? `${added} photograph${added > 1 ? "s" : ""} added${forSite ? " — they go to the site on your next publish." : " — kept on this computer."}` : "")
+            + (refused.length ? `${added ? " " : ""}NOT added (this browser cannot draw ${refused.length > 1 ? "them" : "it"}): ${refused.slice(0, 3).join(", ")}${refused.length > 3 ? "…" : ""}. iPhone HEIC photos: export them as JPEG first.` : "");
+          const note = box.querySelector("#sbOutsideNote") || document.querySelector("#sbOutsideNote");
+          if (note) note.textContent = msg;
+          if (refused.length) API.toast(`NOT added — this browser cannot draw ${refused.slice(0, 3).map((n) => `“${n}”`).join(", ")}. iPhone HEIC photos: export them as JPEG first.`);
+          else if (added) API.toast(msg);
         });
       }
 
+      box.querySelectorAll("[data-out-remove]").forEach((b) => b.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const id = b.dataset.outRemove;
+        const inUse = (book.pages || []).some((pg) => JSON.stringify(pg).includes(`"${id}"`)) || JSON.stringify(book.cover || {}).includes(`"${id}"`);
+        if (inUse) { API.toast("NOT removed — this photograph is on a page of this book. Take it off the page first."); return; }
+        await outDel(id);
+        await outsideRefresh();
+        drawPhotoBlock();
+        API.toast("Removed from this computer's list.");
+      }));
       const setList = (l) => { photoTarget().set(l); };
       const refocus = (sel2) => { const el = $(`#sbPhotoBlock ${sel2}`); if (el) el.focus({ preventScroll: true }); };
       box.querySelectorAll("[data-active]").forEach((b) => b.addEventListener("click", () => { active = +b.dataset.active; drawPhotoBlock(); refocus(`[data-active="${active}"]`); }));
@@ -8283,6 +8399,10 @@
           <div class="sb-cphost" data-bookbgpick hidden></div>
           <p class="sb-hint">Behind every page but the cover, in one go. A page can still have its own colour on This page.</p>
         </div>
+        <div class="sb-sec"><h3>Line round the photographs</h3>
+          <div class="sb-seg sb-seg-words" role="radiogroup" aria-label="Line round the photographs">${[["", "The style's own"], ["on", "Always"], ["off", "Never"]].map(([k, n]) => `<button type="button" role="radio" data-photolines="${k}" aria-checked="${(book.photoLines === false ? "off" : book.photoLines === "on" ? "on" : "") === k}">${n}</button>`).join("")}</div>
+          <p class="sb-hint">A hairline round each photograph gives one shot on white an edge against the paper. Elegant draws it on its own; Always puts it in every style; Never leaves the photographs straight on the page. Borders you draw yourself on a page stay either way.</p>
+        </div>
         <div class="sb-sec"><h3>Numbers on the photographs</h3>
           <label class="sb-check-row"><input type="checkbox" id="sbPlate" ${book.photoNums === false ? "" : "checked"}> Number each photograph on a page</label>
           <div id="sbPlateColour" ${book.photoNums === false ? "hidden" : ""}>
@@ -8320,6 +8440,13 @@
         panel.querySelectorAll("[data-plate]").forEach((y) => y.setAttribute("aria-pressed", "false"));
         change();
       });
+      $$("[data-photolines]").forEach((btn) => btn.addEventListener("click", () => {
+        const k = btn.dataset.photolines;
+        mark();
+        if (k === "on") book.photoLines = "on"; else if (k === "off") book.photoLines = false; else delete book.photoLines;
+        $$("[data-photolines]").forEach((x) => x.setAttribute("aria-checked", String(x === btn)));
+        change();
+      }));
       $("#sbPlate").addEventListener("change", (e) => {
         mark();
         if (e.target.checked) delete book.photoNums; else book.photoNums = false;

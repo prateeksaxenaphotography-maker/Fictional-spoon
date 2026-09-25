@@ -13,6 +13,15 @@ const fail = (msg) => { console.error("FAIL: " + msg); failed = true; };
 // codes or re-price everything on the same day — and a guess must never be
 // able to lock the owner out of publishing their own site.
 const warn = (msg) => { console.warn("WARNING: " + msg); };
+// What "the previous version" means for every comparison below: the commit
+// this push started from, not simply the one before HEAD. A push of several
+// commits used to compare only the last two, so a loss in an earlier one went
+// unseen (Sep 2026 audit, A13).
+const PREV_REF = (() => {
+  const before = (process.env.BEFORE_SHA || "").trim();
+  if (!before || /^0+$/.test(before)) return "HEAD~1";
+  try { execSync(`git cat-file -e ${before}^{commit}`, { stdio: "ignore" }); return before; } catch { return "HEAD~1"; }
+})();
 
 // ── 1. data.js must execute and expose a valid album array ─────────────────
 const dataText = readFileSync("data.js", "utf8");
@@ -114,7 +123,7 @@ try {
 
 // ── 4. album count must not silently collapse vs the previous commit ───────
 try {
-  const prevText = execSync("git show HEAD~1:data.js", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  const prevText = execSync(`git show ${PREV_REF}:data.js`, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
   const prevWin = {};
   new Function("window", prevText)(prevWin);
   const prev = (prevWin.WPS_DATA && prevWin.WPS_DATA.DEMO_SHOOTS) || [];
@@ -139,6 +148,31 @@ try {
     }).filter(Boolean);
     console.warn(`WARN: photo count decreased ${prevPhotos} → ${nowPhotos} (fine if photos were deliberately deleted)${shrunk.length ? ": " + shrunk.join("; ") : ""}`);
   }
+  /* An album keeps its photos unless someone removed them. Since v533 every
+     removal is recorded in the album's removedPhotoIds, by the first part of
+     the photo's id; a photo that vanishes without that record is what a
+     stale device publishing an old copy looks like (Sep 2026 audit, A1). */
+  const baseOf = (id) => String(id || "").split("-")[0];
+  const prevAlbums = new Map(prev.map((s) => [s && s.id, s]));
+  for (const s of shoots) {
+    const was = prevAlbums.get(s && s.id);
+    if (!was || !Array.isArray(was.photos) || !Array.isArray(s.photos)) continue;
+    const now = new Set(s.photos.map((p) => baseOf(p && p.id)));
+    const meant = new Set((s.removedPhotoIds || []).map(String));
+    const lost = was.photos.map((p) => baseOf(p && p.id)).filter((b) => b && !now.has(b) && !meant.has(b));
+    if (!lost.length) continue;
+    const msg = `album "${s.title || s.id}" lost ${lost.length} of ${was.photos.length} photo(s) that nobody recorded removing (${lost.slice(0, 4).join(", ")}${lost.length > 4 ? "…" : ""})`;
+    if (lost.length === was.photos.length || (s.updatedAt && lost.length * 2 > was.photos.length)) fail(msg + " — the signature of an old copy published over a newer one");
+    else warn(msg);
+  }
+  // Blocked days only go away when someone opens them (and since v533 that
+  // stamps the day in dateStamps).
+  const prevCal = (prevWin.WPS_DATA && prevWin.WPS_DATA.CALENDAR_SETTINGS) || {};
+  const nowCal = win.WPS_DATA.CALENDAR_SETTINGS || {};
+  const today = new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 10);
+  const reopened = Object.keys(prevCal.customBlockedDates || {}).filter((d) => d >= today && !(nowCal.customBlockedDates || {})[d]
+    && !((nowCal.dateStamps || {})[d] > (Number(prevCal.updatedAt) || 0)));
+  if (reopened.length) warn(`${reopened.length} future blocked date(s) reopened with no record of anyone opening them: ${reopened.slice(0, 6).join(", ")}`);
 } catch { /* first commit, shallow clone, or no prior data.js */ }
 
 // ── 5. format contract both the parser and the sync generator rely on ──────
@@ -677,7 +711,7 @@ if (books !== undefined && books !== null) {
           }
         }
         // `rows` is the row of three on a photos page; on Contact it is the lines in your own words.
-        if (pg.type === "photos" && pg.rows !== undefined && !["3top", "3bottom"].includes(pg.rows)) fail(`${where} puts three in a row ${JSON.stringify(pg.rows)}; the app writes 3top or 3bottom`);
+        if (pg.type === "photos" && pg.rows !== undefined && !(["3top", "3bottom", "2across"].includes(pg.rows) || (/^[1-5]\+[1-5]$/.test(pg.rows) && Number(pg.rows[0]) + Number(pg.rows[2]) <= 6))) fail(`${where} divides its photographs into rows ${JSON.stringify(pg.rows)}, which the builder does not write`);
         if (pg.border !== undefined && !BORDERS.has(pg.border)) fail(`${where} has an unknown border ${JSON.stringify(pg.border)}`);
         if (pg.borderWidth !== undefined && !BORDER_WIDTHS.has(pg.borderWidth)) fail(`${where} has an unknown border width ${JSON.stringify(pg.borderWidth)}`);
         if (pg.style !== undefined) {
@@ -798,7 +832,7 @@ for (const s of shoots) {
 // Deploys don't wait for this check, but its failure emails the owner, which
 // beats hearing it from a client whose PDF button vanished.
 try {
-  const prevText = execSync("git show HEAD~1:data.js", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  const prevText = execSync(`git show ${PREV_REF}:data.js`, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
   const prevWin = {};
   new Function("window", prevText)(prevWin);
   const prevData = prevWin.WPS_DATA || {};
@@ -941,7 +975,7 @@ try {
   let prevData = null;
   try {
     const prevWin = {};
-    new Function("window", execSync("git show HEAD~1:data.js", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }))(prevWin);
+    new Function("window", execSync(`git show ${PREV_REF}:data.js`, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }))(prevWin);
     prevData = prevWin.WPS_DATA || null;
   } catch (e) { /* nothing to compare against */ }
   if (prevData) {
@@ -1017,6 +1051,48 @@ try {
     }
   }
 } catch (e) { /* first commit, or a shallow clone: nothing to compare */ }
+
+// ── the rest of the Sep 2026 audit's checks (A6, A13) ─────────────────────
+{
+  // A file written into data.js as text is downloaded by every visitor on
+  // every page. Photos, album PDFs and lighting diagrams are uploaded as files.
+  for (const s of shoots) {
+    for (const [what, v] of [["PDF", s.pdfUrl], ["lighting diagram", s.lightingDiagram], ...((s.photos || []).map((p) => ["photo", p && p.url]))]) {
+      if (typeof v === "string" && v.startsWith("data:") && v.length > 20000) fail(`album "${s.title || s.id}" carries its ${what} inside data.js (${Math.round(v.length / 1024)} KB) — it must be uploaded as a file`);
+    }
+  }
+  // A booking both on a date and listed as removed: the two devices disagree,
+  // and which one a visitor sees depends on the order of a merge.
+  const cal = win.WPS_DATA.CALENDAR_SETTINGS || {};
+  const removedB = new Set(cal.removedBookingIds || []);
+  for (const [d, list] of Object.entries(cal.bookedDates || {})) {
+    for (const b of Array.isArray(list) ? list : []) {
+      const key = `${d}::${(b && (b.id || b.name)) || ""}`;
+      if (removedB.has(key)) fail(`the booking ${key} is on the calendar AND listed as removed`);
+    }
+  }
+  // Every photo a saved book or model portfolio names still exists (by the
+  // first part of its id, the way the builders now look them up).
+  const photoBases = new Set();
+  const photoIds = new Set();
+  for (const s of shoots) for (const p of s.photos || []) { if (p && p.id) { photoIds.add(p.id); photoBases.add(String(p.id).split("-")[0]); } }
+  const known = (id) => photoIds.has(id) || photoBases.has(String(id).split("-")[0]);
+  const idLike = /^[a-z0-9]{8,}-\d+$/;
+  const collect = (o, out) => {
+    if (typeof o === "string") { if (idLike.test(o)) out.add(o); return out; }
+    if (Array.isArray(o)) { o.forEach((x) => collect(x, out)); return out; }
+    if (o && typeof o === "object") Object.entries(o).forEach(([k, x]) => { if (idLike.test(k)) out.add(k); collect(x, out); });
+    return out;
+  };
+  const sources = [
+    ...(((win.WPS_DATA.STUDIO_PORTFOLIOS || {}).versions) || []).map((b) => [`portfolio book "${b.name || b.id}"`, b.pages, b.cover]),
+    ...(((win.WPS_DATA.MODEL_PDFS || {}).versions) || []).map((v) => [`saved model portfolio "${v.name || v.id}"`, v.spec]),
+  ];
+  for (const [label, ...parts] of sources) {
+    const missing = [...collect(parts, new Set())].filter((id) => !known(id));
+    if (missing.length) warn(`${label} names ${missing.length} photo(s) no album has any more: ${missing.slice(0, 4).join(", ")}${missing.length > 4 ? "…" : ""}`);
+  }
+}
 
 if (failed) process.exit(1);
 console.log(`OK: ${shoots.length} albums, ids unique, all photo files present, format contract intact, cache-buster in sync.`);

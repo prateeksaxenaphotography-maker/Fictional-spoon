@@ -69,7 +69,7 @@ export const SERVICES_INDEX = {
   // from the pages that actually exist (build-seo.mjs), so it cannot promise a
   // kind of shoot that has no page yet.
   metaTitle: "What I Shoot — Model Portfolio & Fashion Photography, Noida",
-  metaDescription: "Model portfolio and comp card shoots, fashion and editorial photography, fitness and sports shoots, and brand campaigns in Noida and Delhi NCR. See sample work and send a brief for a quote.",
+  metaDescription: "Model portfolio and comp card shoots, fashion, editorial, fitness and sports photography in Noida and Delhi NCR. See the work and send a brief for a quote.",
   eyebrow: "Kinds of shoot",
   h1: "What I shoot",
   intro: "nerdyphotographer.in is a photography studio in Noida working across Delhi NCR. Each kind of shoot has its own page, sorted by who it is for: what is included, and the work to judge it by."
@@ -84,8 +84,8 @@ export const SERVICES = [
     kicker: "Models",
     cardTitle: "Model Portfolios & Comp Cards",
     cardBlurb: "Agency-ready portfolio shoots and comp cards for new and working models, male and female.",
-    metaTitle: "Model Portfolio Shoot in Noida & Delhi NCR — Comp Cards & Portfolios | nerdyphotographer.in",
-    metaDescription: "Model portfolio photoshoots in Noida and Delhi NCR for male and female models: agency-ready comp cards, editorial-grade portfolio frames and guided posing. See real portfolios, what a shoot includes, and send a brief for a quote.",
+    metaTitle: "Model Portfolio Shoot in Noida & Delhi NCR | Comp Cards",
+    metaDescription: "Model portfolio shoots in Noida and Delhi NCR: agency-ready comp cards, editorial portfolio frames and guided posing. See real portfolios and ask for a quote.",
     eyebrow: "Portfolios · Comp cards · Noida & Delhi NCR",
     h1: "Model portfolio shoots",
     intro: [
@@ -133,8 +133,8 @@ export const SERVICES = [
     kicker: "Fashion",
     cardTitle: "Fashion & Editorial",
     cardBlurb: "Concept-led fashion, beauty and editorial stories for designers, stylists and magazine submissions.",
-    metaTitle: "Fashion & Editorial Photographer in Delhi NCR & Noida | nerdyphotographer.in",
-    metaDescription: "Fashion, beauty and editorial photography in Noida and Delhi NCR — concept-led shoots for designers, stylists, models and magazine submissions. See recent editorials, what a shoot includes, and send a brief for a quote.",
+    metaTitle: "Fashion & Editorial Photographer, Noida & Delhi NCR",
+    metaDescription: "Fashion, beauty and editorial photography in Noida and Delhi NCR: concept-led shoots for designers, stylists, models and magazines. Send a brief for a quote.",
     eyebrow: "Fashion · Beauty · Editorial · Noida & Delhi NCR",
     h1: "Fashion & editorial photography",
     intro: [
@@ -152,8 +152,8 @@ export const SERVICES = [
     packageIds: ["pkg_3", "pkg_4"],
     albumFilter: { look: "fashion" },
     workLinks: [
-      { href: "/categories/?kind=activity&val=Fashion", label: "See fashion work" },
-      { href: "/categories/?kind=activity&val=Editorial", label: "See editorial work" }
+      // The album pages, which are indexed — the filtered views are not (G11).
+      { href: "/albums/", label: "See every album" }
     ],
     faqs: [
       ["Can you shoot for a magazine submission?", "Yes. Shoots are planned around the publication's requirements, and full team credits are delivered with the images."],
@@ -171,8 +171,8 @@ export const SERVICES = [
     kicker: "Athletes",
     cardTitle: "Fitness & Sports",
     cardBlurb: "Physique, training and action photography for athletes, coaches, gyms and fitness brands.",
-    metaTitle: "Fitness & Sports Photographer in Noida & Delhi NCR | nerdyphotographer.in",
-    metaDescription: "Fitness and sports photography in Noida and Delhi NCR — physique shoots, athlete portraits and action frames for coaches, competitors, gyms and fitness brands. See what a shoot includes and send a brief for a quote.",
+    metaTitle: "Fitness & Sports Photographer in Noida & Delhi NCR",
+    metaDescription: "Fitness and sports photography in Noida and Delhi NCR: physique shoots, athlete portraits and action frames for coaches, gyms and brands. Send a brief.",
     eyebrow: "Fitness · Sports · Noida & Delhi NCR",
     h1: "Fitness & sports photography",
     intro: [
@@ -190,8 +190,7 @@ export const SERVICES = [
     packageIds: ["pkg_2", "pkg_3"],
     albumFilter: { look: "fitness" },
     workLinks: [
-      { href: "/categories/?kind=activity&val=Fitness", label: "See fitness work" },
-      { href: "/categories/?kind=activity&val=Sports", label: "See sports work" }
+      { href: "/albums/", label: "See every album" }
     ],
     faqs: [
       ["Can you shoot in my gym?", "Yes, with the gym's permission. A quiet hour works best, so lights can be set up without getting in anyone's way."],
@@ -210,8 +209,8 @@ export const SERVICES = [
     kicker: "Brands",
     cardTitle: "Campaigns, Lookbooks & E-commerce",
     cardBlurb: "Campaign, lookbook and e-commerce photography for fashion and lifestyle brands, with usage rights in writing.",
-    metaTitle: "Brand Campaign, Lookbook & E-commerce Photographer in Noida & Delhi NCR | nerdyphotographer.in",
-    metaDescription: "Campaign, lookbook and e-commerce photography for fashion, fitness and lifestyle brands in Noida and Delhi NCR. Planned productions, clear usage rights and a written contract. Send a brief for a quote.",
+    metaTitle: "Brand Campaign & Lookbook Photographer, Noida & Delhi",
+    metaDescription: "Campaign, lookbook and e-commerce photography for fashion, fitness and lifestyle brands in Noida and Delhi NCR, with clear usage rights. Send a brief.",
     eyebrow: "Campaigns · Lookbooks · E-commerce · Noida & Delhi NCR",
     h1: "Brand campaigns & lookbooks",
     intro: [
@@ -253,8 +252,8 @@ export const SERVICES = [
     kicker: "Designers · Stylists · Make-up",
     cardTitle: "Designers, Stylists & Make-up Artists",
     cardBlurb: "Lookbooks, styling portfolios and make-up looks, shot for the designer, stylist or make-up artist whose work is in the frame.",
-    metaTitle: "Photoshoots for Fashion Designers, Stylists & Make-up Artists in Noida & Delhi NCR | nerdyphotographer.in",
-    metaDescription: "Lookbook, styling portfolio and make-up portfolio shoots in Noida and Delhi NCR for fashion designers, stylists and hair and make-up artists — planned around your work and credited in full. See what a shoot includes and send a brief for a quote.",
+    metaTitle: "Shoots for Designers, Stylists & Make-up Artists, Noida",
+    metaDescription: "Lookbook, styling and make-up portfolio shoots in Noida and Delhi NCR for designers, stylists and hair and make-up artists, credited in full. Send a brief.",
     eyebrow: "Lookbooks · Styling · Hair & make-up · Noida & Delhi NCR",
     h1: "Shoots for designers, stylists & make-up artists",
     intro: [
@@ -294,8 +293,8 @@ export const SERVICES = [
     kicker: "For anyone with an idea",
     cardTitle: "Creative & Conceptual Shoots",
     cardBlurb: "Conceptual, themed and personal shoots for artists, makers and performers — the work that fits none of the other pages.",
-    metaTitle: "Creative & Conceptual Photoshoot in Noida & Delhi NCR | nerdyphotographer.in",
-    metaDescription: "Creative and conceptual photography in Noida and Delhi NCR — themed and narrative shoots, portraits that are not for a casting, personal projects and collaborations with artists and makers. See how a shoot with no brief is planned, and send your idea for a quote.",
+    metaTitle: "Creative & Conceptual Photoshoots in Noida & Delhi NCR",
+    metaDescription: "Creative and conceptual photography in Noida and Delhi NCR: themed and narrative shoots, personal projects and collaborations with artists. Send a brief.",
     eyebrow: "Conceptual · Themed · Personal projects · Noida & Delhi NCR",
     h1: "Creative & conceptual shoots",
     intro: [
