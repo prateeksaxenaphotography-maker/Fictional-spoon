@@ -747,6 +747,17 @@ if (books !== undefined && books !== null) {
           if (typeof v2 !== "string" || !v2.trim() || v2.length > CT_MAX[k]) fail(`studio portfolio book ${name} has a cover ${k} the app would drop or cut`);
         }
       }
+      // The book's master settings: text styles, running head, baseline grid.
+      if (b.typeset !== undefined) {
+        if (!b.typeset || typeof b.typeset !== "object" || Array.isArray(b.typeset)) fail(`studio portfolio book ${name} has text styles that are not an object`);
+        else for (const [role, f] of Object.entries(b.typeset)) {
+          if (!["head", "intro", "body", "label", "quote", "caption"].includes(role)) { fail(`studio portfolio book ${name} has a text style ${JSON.stringify(role)} the app drops`); continue; }
+          if (!f || typeof f !== "object" || f.list !== undefined || f.columns !== undefined || f.paras !== undefined) { fail(`studio portfolio book ${name} has a ${role} text style the app would drop or cut`); continue; }
+          checkFormat(f, `studio portfolio book ${name} text style ${role}`, role, false);
+        }
+      }
+      if (b.runHead !== undefined && !["title", "section", "both"].includes(b.runHead)) fail(`studio portfolio book ${name} has a running head ${JSON.stringify(b.runHead)}; the app writes title, section or both`);
+      if (b.baseline !== undefined && b.baseline !== true) fail(`studio portfolio book ${name} writes baseline ${JSON.stringify(b.baseline)}; only true is written`);
       // How new the shapes in this book are; see the guard in section 10.
       if (b.schema !== undefined && !(Number.isInteger(b.schema) && b.schema >= 1 && b.schema <= 99)) fail(`studio portfolio book ${name} has a schema mark ${JSON.stringify(b.schema)}; it must be a whole number from 1 to 99`);
       if (b.pages.some((pg) => pg && pg.type === "free") && !(b.schema >= 1)) fail(`studio portfolio book ${name} has an Anything page but no schema mark; the app writes schema: 1 for one, and CI needs it to catch an out-of-date tab dropping the page`);
@@ -882,6 +893,9 @@ try {
     for (const side of ["left", "right"]) for (const l of ((b && b.coverText && b.coverText[side]) || [])) if (typeof l === "string") chars += l.length;
     // The cover's layout, and everything placed on a cover from scratch.
     fits += (b && b.coverLayout ? 1 : 0) + (b && b.coverPage && b.coverPage.bg ? 1 : 0);
+    // Master settings: each text style's settings, the running head, the grid.
+    for (const f of Object.values((b && b.typeset) || {})) fits += 1 + (f && typeof f === "object" ? Object.keys(f).length : 0);
+    fits += (b && b.runHead ? 1 : 0) + (b && b.baseline ? 1 : 0);
     for (const bl of (b && b.coverPage && b.coverPage.blocks) || []) { if (!bl) continue; fits += 1 + settings(bl.p); if (typeof bl.t === "string") chars += bl.t.length; }
     for (const pg of (b && b.pages) || []) {
       if (!pg) continue;

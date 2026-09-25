@@ -755,6 +755,12 @@ const STUDIO_BOOK_LIMITS = {
   // pages), Sep 25 2026. The builder refuses to open without this list, so it
   // never writes fields an older copy of this file would strip.
   pageLook: ["gap", "nums"],
+  /* A magazine's master settings (Sep 2026): one formatting per kind of text
+     for the whole book (book.typeset[role], the same keys as one text's
+     formatting, no lists or columns), the small line at the top of every
+     page (book.runHead), and the baseline grid (book.baseline: true). */
+  typeRoles: ["head", "intro", "body", "label", "quote", "caption"],
+  runHeads: ["title", "section", "both"],
   /* The colour of the chip carrying a photograph's plate number. A book colour
      or #rrggbb; absent means the style's own accent, and photoNums: false
      means no number at all. */
@@ -1121,6 +1127,19 @@ function cleanStudioPortfolios(o) {
          before the studio could ask is stored exactly as it was. */
       ...(typeof v.photoNums === "boolean" ? { photoNums: v.photoNums } : {}),
       ...(v.photoLines === false || v.photoLines === "on" ? { photoLines: v.photoLines } : {}),
+      ...(() => {
+        const src = v.typeset && typeof v.typeset === "object" && !Array.isArray(v.typeset) ? v.typeset : {};
+        const ts = {};
+        for (const r of STUDIO_BOOK_LIMITS.typeRoles) {
+          const one = cleanOneFormat(src[r]);
+          if (!one) continue;
+          delete one.list; delete one.columns;
+          if (Object.keys(one).length) ts[r] = one;
+        }
+        return Object.keys(ts).length ? { typeset: ts } : {};
+      })(),
+      ...(STUDIO_BOOK_LIMITS.runHeads.includes(v.runHead) ? { runHead: v.runHead } : {}),
+      ...(v.baseline === true ? { baseline: true } : {}),
       ...(STUDIO_BOOK_LIMITS.plateColours.includes(v.photoNumColour) || /^#[0-9a-f]{6}$/i.test(String(v.photoNumColour || "")) ? { photoNumColour: String(v.photoNumColour).toLowerCase() } : {}),
       // The cover's layout, and the cover itself when it is arranged from scratch.
       ...(STUDIO_BOOK_LIMITS.coverLayouts.includes(v.coverLayout) ? { coverLayout: v.coverLayout } : {}),
@@ -1173,10 +1192,10 @@ function cleanStudioPortfolios(o) {
 // Each time the stored shape grows, the copy moves to a new key: code that
 // knows the previous shape still writes the previous key (stripping only what
 // it doesn't know), so the newest key is read first and wins ties.
-const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words_v9";
+const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words_v10";
 // Older keys: code that knows only an older shape keeps rewriting the key it
 // knows, so every growth of the shape gets a new one, read before the old.
-const STUDIO_BOOK_WORDS_OLD = ["wps_studio_portfolios_words_v8", "wps_studio_portfolios_words_v7", "wps_studio_portfolios_words_v6", "wps_studio_portfolios_words_v5", "wps_studio_portfolios_words_v4", "wps_studio_portfolios_words_v3", "wps_studio_portfolios_words_v2", "wps_studio_portfolios_words"];
+const STUDIO_BOOK_WORDS_OLD = ["wps_studio_portfolios_words_v9", "wps_studio_portfolios_words_v8", "wps_studio_portfolios_words_v7", "wps_studio_portfolios_words_v6", "wps_studio_portfolios_words_v5", "wps_studio_portfolios_words_v4", "wps_studio_portfolios_words_v3", "wps_studio_portfolios_words_v2", "wps_studio_portfolios_words"];
 const studioBookHasWords = (v) => v.style === "lookbook" || STUDIO_BOOK_NEWER_STYLES.includes(v.style) || !!v.paper || !!v.coverStyle || !!v.watermark || !!v.coverText || !!v.schema || !!v.footText || !!v.bg || v.showPageNumbers === false || typeof v.photoNums === "boolean" || v.photoLines === false || v.photoLines === "on" || !!v.photoNumColour || !!v.coverLayout || !!v.coverPage || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
   (STUDIO_BOOK_LIMITS.fields[pg.type] && (pg.type !== "photos" || pg.caption)) || (pg.blocks || []).length || pg.bg || pg.items || pg.steps || pg.rows || pg.gap || typeof pg.nums === "boolean" || pg.credit || pg.label || pg.heading || pg.photoAt || pg.border || pg.borderWidth || pg.style || pg.hide || (pg.photos || []).some((s) => s.fit || s.opacity));
 function getStudioPortfolios(live) {

@@ -1890,7 +1890,7 @@
   function captionColumn(page, entry, P, x, y, w, spec, maxLines, color) {
     const words = oneParagraph(entry && entry.caption).join(" ");
     if (!words) return y;
-    const f = (entry.style && entry.style.caption) || {}, st = styledSpec(spec, f), size = spec.start * sizeScale(f), lead = size * 1.48;
+    const f = withRole("caption", entry.style && entry.style.caption), st = styledSpec(spec, f), size = spec.start * sizeScale(f), lead = size * 1.48;
     font(page, st.w, size, st.f, st.sp || 0, !!st.it);
     const lines = wrap(page, words, w);
     if (lines.length > maxLines) reportCut(page, "caption", "caption");
@@ -3064,11 +3064,50 @@
     delete out.paras;
     return out;
   }
+  /* ---------- text styles: one look per kind of text, for the whole book --------
+     A magazine is set in a handful of named styles — headlines, the intro under
+     them, body text, small labels, quotes, captions — and changing one changes
+     every text of that kind. `book.typeset[role]` holds the same formatting a
+     single text can have (font, colour, size, weight, italic, alignment); a
+     text's own formatting still wins over it, field by field. */
+  const TYPE_ROLES = [
+    ["head", "Headlines", "Headlines, titles and headings, the cover's title too"],
+    ["intro", "Intro lines", "The line under a headline, a chapter's line, the cover's subtitle"],
+    ["body", "Body text", "Stories, letters, the words about a photo, About"],
+    ["label", "Small labels", "Kickers, roles and the other small capitals"],
+    ["quote", "Quotes", "Quote pages and quotes on an Anything page"],
+    ["caption", "Captions", "The words under photographs"]
+  ];
+  const ROLE_OF = {
+    headline: "head", title: "head", heading: "head", sub1: "head", sub2: "head",
+    intro: "intro", line: "intro", subtitle: "intro",
+    body: "body", note: "body", text: "body", about: "body", text1: "body", text2: "body",
+    kicker: "label", role: "label", signLine: "label", detail: "label", label: "label",
+    quote: "quote", caption: "caption"
+  };
+  const roleOfField = (field) => ROLE_OF[field] || (/^(name|title)\d$/.test(field) ? "head" : /^(text|forWho)\d$/.test(field) ? "body" : null);
+  // An Anything page's box of words names its kind itself.
+  const FREE_ROLE = { head: "head", intro: "intro", kicker: "label", quote: "quote", body: "body" };
+  // The book whose text styles apply: the one named, else the one being drawn.
+  const typesetOf = (book) => { const b = book || bookNow; return (b && b.typeset && typeof b.typeset === "object") ? b.typeset : null; };
+  // The role's formatting underneath, the text's own on top (its paragraphs kept).
+  function mergeFmt(base, own) {
+    if (!base) return own || {};
+    if (!own) return base;
+    return { ...base, ...own };
+  }
+  /* The baseline grid: every column of body text starts on a line of one grid
+     running down the page at the style's body leading, so lines of text sit
+     level across columns and across facing pages, as in a magazine. A column
+     only ever moves down, by less than one line. */
+  const snapCols = (cols, lead) => (lead > 0 ? cols.map((c) => ({ ...c, top: Math.ceil(c.top / lead - 1e-6) * lead })) : cols);
+  const withRole = (field, own, book) => { const ts = typesetOf(book), r = roleOfField(field); return mergeFmt(ts && r ? ts[r] : null, own); };
+
   // Formatting for a text on a page the plan engine doesn't lay out (the cover,
   // a chapter page, the About page). Gives the spec to draw with, the size
   // scale, the colour, and where to put a line inside its column.
   function textFormat(where, key, spec, P, color, align = "left") {
-    const f = (where && where[key]) || {};
+    const f = withRole(key, where && where[key]);
     const st = styledSpec(spec, f);
     return {
       spec: st, scale: sizeScale(f), color: tintOf(f.color, P, color),
@@ -3117,6 +3156,7 @@
       }
     };
     take(book && book.coverStyle);
+    take(book && book.typeset);
     for (const pg of (book && book.pages) || []) take(pg && pg.style);
     return [...keys];
   }
@@ -3324,7 +3364,7 @@
   // A photos page's one caption, measured like the writing pages.
   function captionFit(entry, width, spec, align = "left") {
     if (!entry || !oneParagraph(entry.caption).length) return null;
-    const f = (entry.style && entry.style.caption) || {};
+    const f = withRole("caption", entry.style && entry.style.caption);
     const styled = styledSpec(spec, f);
     const sc = sizeScale(f);
     const r = fitBlock(measurer(), entry.caption, width, 1, styled, spec.start * sc, spec.min * sc, false);
@@ -3527,7 +3567,8 @@
     let fieldNow = null;
     const put = (s, x, y, spec, size, c, align = "left") => op({ k: "text", s, x, y, f: [spec.w, size, spec.f, spec.sp || 0, !!spec.it], c, align, field: fieldNow });
     // The studio's own formatting of a text: its font, colour and alignment.
-    const fmt = (field) => (entry.style && typeof entry.style === "object" && entry.style[field]) || {};
+    const own = (field) => (entry.style && typeof entry.style === "object" && entry.style[field]) || null;
+    const fmt = (field) => withRole(field, own(field), book);
     const styled = (field, spec) => styledSpec(spec, fmt(field));
     const tint = (field, fallback) => tintOf(fmt(field).color, P, fallback);
     const alignOf = (field, fallback = "left") => (ALIGNS.includes(fmt(field).align) ? fmt(field).align : fallback);
@@ -3587,7 +3628,10 @@
       const one = specFor(0), spec = one.spec, align = one.align;
       // A drop cap belongs to text ranged left or justified, in the style's font.
       const perPara = hasParaFmt(f) || !!f.list || !!f.columns;
-      const r = flowBody(page, s, cols, spec, dropRole && (align === "left" || align === "justify") && !paraFmt(f, 0).font && !f.list && !f.columns ? colour(dropRole) : null, perPara ? specFor : null);
+      // A book-wide body font keeps the drop cap; a font chosen for this text alone doesn't.
+      const ownF = own(field) || {};
+      if (book.baseline) cols = snapCols(cols, T.body.lead);
+      const r = flowBody(page, s, cols, spec, dropRole && (align === "left" || align === "justify") && !paraFmt(ownF, 0).font && !f.list && !f.columns ? colour(dropRole) : null, perPara ? specFor : null);
       const bx = Math.min(...cols.map((c) => c.x)), by = Math.min(...cols.map((c) => c.top)) - spec.size * 0.86;
       report(field, { kind: "flow", empty: !r.total, ...r, lines: undefined, box: { x: bx, y: by, w: Math.max(...cols.map((c) => c.x + c.w)) - bx, h: Math.max(...cols.map((c) => c.bottom)) + spec.size * 0.3 - by }, type: { spec, size: spec.size, lead: spec.lead, color: one.color, align } });
       if (!r.total) { cols.forEach((c) => op({ k: "guide", x: c.x, y: c.top - spec.size, w: c.w, h: c.bottom - c.top + spec.size, field })); return; }
@@ -4243,7 +4287,8 @@
       const sh = shapeOf(b);
       if (b.fill) op({ k: sh === "rect" ? "rect" : "path", shape: sh, corner: cornerOf(b), x: box.x, y: box.y, w: box.w, h: box.h, c: blockColor(b.fill, P, P.accent), a: b.o, rot: turn });
       const ins = b.fill ? shapeInset(sh, box.w, box.h, cornerOf(b)) : { x: 0, y: 0 };
-      const f = (b.style && typeof b.style === "object") ? b.style : {};
+      const ts = typesetOf(book);
+      const f = mergeFmt(ts ? ts[FREE_ROLE[b.role] || "body"] : null, (b.style && typeof b.style === "object") ? b.style : null);
       const R = roleType(T, b.role);
       const base = styledSpec(R.spec, f);
       const sc = sizeScale(f);
@@ -4522,6 +4567,7 @@
               page.cuts = [...(page.cuts || []), ...plan.cuts];
               page.plan = plan;
             }
+            masterHead(page, book, entry, pn, P, W);
             if (mark) watermark(page, W, H, P, mark);
             return page;
           });
@@ -4566,11 +4612,63 @@
         } else {
           await textPage(page, entry, book, P, W, H, n);
         }
+        masterHead(page, book, entry, n, P, W);
+        // The baseline grid, shown in the editor only.
+        if (guides && book.baseline && WRITING[entry.type]) baselineGuides(page, book, W, H);
         if (mark) watermark(page, W, H, P, mark);
         return page;
       });
       yield { page, index: i, n };
     }
+  }
+
+  /* ---------- on every page: the running head ------------------------------------
+     A magazine's master page puts a small line at the top of each page: the
+     book's title on the left-hand page, the section it is in on the right.
+     book.runHead: "title" | "section" | "both"; absent means none. It is drawn
+     only where the top of the page is really empty — the page is looked at,
+     pixel by pixel and word by word, before anything is written — so a
+     photograph to the edge, a style's own running head or a headline near the
+     top is never written over. */
+  const RUN_HEADS = ["title", "section", "both"];
+  const NO_RUN_HEAD = ["divider", "spread", "end"];
+  function sectionOf(book, entry) {
+    const i = book.pages.indexOf(entry);
+    for (let k = i; k >= 0; k--) { const pg = book.pages[k]; if (pg && pg.type === "divider" && String(pg.heading || "").trim()) return String(pg.heading).trim(); }
+    return "";
+  }
+  function runHeadText(book, entry, n) {
+    const title = String(book.title || book.name || "").trim(), section = sectionOf(book, entry);
+    if (book.runHead === "title") return title;
+    if (book.runHead === "section") return section || title;
+    return n % 2 === 0 ? title : (section || title);
+  }
+  function baselineGuides(page, book, W, H) {
+    const lead = WTYPE[styleKey(book)].body.lead; if (!(lead > 0)) return;
+    const ctx = page.ctx; ctx.save(); ctx.globalAlpha = 0.18;
+    for (let y = lead; y < H; y += lead) rect(page, 0, y - 0.08, W, 0.16, "#00A3FF");
+    ctx.restore();
+  }
+  function masterHead(page, book, entry, n, P, W) {
+    if (!RUN_HEADS.includes(book.runHead) || !entry || NO_RUN_HEAD.includes(entry.type)) return;
+    const s = runHeadText(book, entry, n); if (!s) return;
+    const SL = WTYPE[styleKey(book)].smallLabel;
+    font(page, SL.w, 2.2, SL.f, SL.sp || 0.4);
+    const str = ellipsize(page, SL.caps === false ? s : s.toUpperCase(), W / 2 - 20);
+    const right = n % 2 === 1, x = right ? W - 14 : 14, w = measure(page, str);
+    const box = { x: (right ? x - w : x) - 3, y: 4, w: w + 6, h: 8.5 };
+    const k = page.u(1), ctx = page.ctx;
+    const dev = { x0: box.x * k, y0: box.y * k, x1: (box.x + box.w) * k, y1: (box.y + box.h) * k };
+    // Words already set there as type in a print file are not in the pixels.
+    if ((page.vtext || []).some((r) => !r.dropped && r.box.x0 < dev.x1 && dev.x0 < r.box.x1 && r.box.y0 < dev.y1 && dev.y0 < r.box.y1)) return;
+    let ground;
+    try {
+      const d = ctx.getImageData(Math.floor(dev.x0), Math.floor(dev.y0), Math.max(1, Math.ceil(dev.x1 - dev.x0)), Math.max(1, Math.ceil(dev.y1 - dev.y0))).data;
+      ground = [d[0], d[1], d[2]];
+      for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - ground[0]) > 10 || Math.abs(d[i + 1] - ground[1]) > 10 || Math.abs(d[i + 2] - ground[2]) > 10) return;
+    } catch (e) { return; }
+    const dark = (0.2126 * ground[0] + 0.7152 * ground[1] + 0.0722 * ground[2]) / 255 < 0.45;
+    text(page, str, x, 9.6, dark ? (P.onDeep || "#ffffff") : P.soft, right ? "right" : "left");
   }
 
   /* ---------- storage --------------------------------------------------------- */
@@ -4852,6 +4950,11 @@
   .sb-labelrow { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
   .sb-labelrow > label { font: 600 12.5px Inter, sans-serif; }
   .sb-fmt { display: contents; }
+  .sb-typerole { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 10px; padding: 8px 0; border-top: 1px solid var(--sb-line); }
+  .sb-typerole:first-of-type { border-top: 0; }
+  .sb-typename { display: grid; gap: 1px; min-width: 0; flex: 1; }
+  .sb-typename b { font: 600 13px Inter, sans-serif; }
+  .sb-typename span { font: 400 11.5px/1.35 Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
   .sb-fmttoggle { font-size: 12px; }
   .sb-fmtrow { flex-basis: 100%; display: grid; gap: 8px; padding: 10px; margin: 2px 0 4px; border-radius: 10px; background: var(--sb-sunk); }
   .sb-fmtrow[hidden] { display: none; }
@@ -8527,6 +8630,8 @@
         if (token === stylePicToken && slot.isConnected) slot.replaceChildren(...got);
       }
     }
+    // The book's text styles, edited through the same Format controls as one text.
+    const typesetHost = { get: () => book.typeset, set: (v) => { if (v) book.typeset = v; else delete book.typeset; } };
     function drawDesign() {
       const panel = $("#sbPanelDesign"); if (!panel) return;
       panel.innerHTML = `
@@ -8570,11 +8675,34 @@
           </div>
           <p class="sb-hint">The small 01, 02, 03 on the photographs, on every page at once. Modern prints them unless you say not; the other styles only if you say so. A page can have its own on This page.</p>
         </div>
+        <div class="sb-sec" id="sbTypeset"><h3>Text styles</h3>
+          <p class="sb-hint">One look for each kind of text, across the whole book: change Headlines once and every headline follows. A text you format on its own page keeps its own.</p>
+          ${TYPE_ROLES.map(([k, n, note]) => `<div class="sb-typerole"><div class="sb-typename"><b>${esc(n)}</b><span>${esc(note)}</span></div>${formatHtml(k, typesetHost)}</div>`).join("")}
+        </div>
+        <div class="sb-sec"><h3>Top of every page</h3>
+          <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Running head">${[["", "None"], ["title", "Book title"], ["section", "Section"], ["both", "Both"]].map(([k, n]) => `<button type="button" role="radio" data-runhead="${k}" aria-checked="${(book.runHead || "") === k}">${n}</button>`).join("")}</div>
+          <p class="sb-hint">A small line at the top of each page, like a magazine's. Section is the chapter page a page comes after; Both puts the title on left-hand pages and the section on right-hand ones. It is left off wherever the top of a page is already used.</p>
+        </div>
+        <div class="sb-sec"><h3>Baseline grid</h3>
+          <label class="sb-check-row"><input type="checkbox" id="sbBaseline" ${book.baseline ? "checked" : ""}> Line up the body text on one grid</label>
+          <p class="sb-hint">Every column of a story or letter starts on the same set of lines, so the lines sit level across columns and across facing pages. The grid shows faintly in the preview, never in the PDF.</p>
+        </div>
         <div class="sb-sec"><h3>The foot of every page</h3>
           ${overHtml("sbFootText", "Name in the foot", book.footText, (window.STUDIO_BOOK_LIMITS || {}).footText || 40, studio())}
           <label class="sb-check-row"><input type="checkbox" id="sbNums" ${book.showPageNumbers === false ? "" : "checked"}> Print page numbers</label>
         </div>`;
       wireOver("sbFootText", (v) => { if (String(v).trim()) book.footText = v; else delete book.footText; });
+      // Text styles use the same controls as one text's Format; a size in points means nothing for a whole kind of text.
+      const tsBox = panel.querySelector("#sbTypeset");
+      tsBox.querySelectorAll("[data-fmtpt]").forEach((x) => x.closest(".sb-fmtline").remove());
+      wireFormat(tsBox, typesetHost);
+      panel.querySelectorAll("[data-runhead]").forEach((b) => b.addEventListener("click", () => {
+        mark();
+        if (b.dataset.runhead) book.runHead = b.dataset.runhead; else delete book.runHead;
+        panel.querySelectorAll("[data-runhead]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
+        change();
+      }));
+      $("#sbBaseline").addEventListener("change", (e) => { mark(); if (e.target.checked) book.baseline = true; else delete book.baseline; change(); });
       panel.querySelectorAll("[data-bookbg]").forEach((x) => x.addEventListener("click", () => {
         mark();
         if (x.dataset.bookbg) book.bg = x.dataset.bookbg; else delete book.bg;
@@ -9020,7 +9148,7 @@
     // that loaded the site before they existed still runs the old save code,
     // which would drop them while saying "Saved": refuse until it reloads.
     const L = window.STUDIO_BOOK_LIMITS;
-    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !L.workWays || !L.markStrengths || !L.paras || !L.coverText || !L.blockKinds || !L.schema || !L.lists || !L.photoRows || !(L.pageTypes || []).includes("free") || !L.coverLayouts || !(L.pageTypes || []).includes("end") || !(L.pageTypes || []).includes("look") || !(L.styles || []).includes("gazette") || !L.plateColours || !L.pageLook) {
+    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !L.workWays || !L.markStrengths || !L.paras || !L.coverText || !L.blockKinds || !L.schema || !L.lists || !L.photoRows || !(L.pageTypes || []).includes("free") || !L.coverLayouts || !(L.pageTypes || []).includes("end") || !(L.pageTypes || []).includes("look") || !(L.styles || []).includes("gazette") || !L.plateColours || !L.pageLook || !L.typeRoles) {
       root.innerHTML = `<div class="sb-empty"><p class="sb-warn">The site was updated while this tab was open.</p><p class="sb-hint">Reload the page (or use “↻ Load fresh version”) before editing your books, so nothing you write is lost.</p><p><button type="button" class="sb-btn dark" id="sbReload">Reload now</button></p></div>`;
       root.querySelector("#sbReload").addEventListener("click", () => location.reload());
       return;
@@ -9031,5 +9159,5 @@
     if (again) openBook(JSON.parse(JSON.stringify(again)), false, reopen); else showList();
   }
 
-  window.StudioBook = { mount, renderPages, COLOURWAYS, STYLES, newBook, geometry, PAPERS, WAYS_COPY, PROCESS_COPY, bookletSides, SHEETS, fingerprint, fpScore, fpColour, imageHeader, originalsStore, originalLoader };
+  window.StudioBook = { mount, renderPages, planWriting, planFree, COLOURWAYS, STYLES, newBook, geometry, PAPERS, WAYS_COPY, PROCESS_COPY, bookletSides, SHEETS, fingerprint, fpScore, fpColour, imageHeader, originalsStore, originalLoader };
 })();
