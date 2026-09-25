@@ -2715,6 +2715,7 @@ window.WPS_DATA = {
       "2026-09-09": true,
       "2026-09-11": true
     },
+    "dateStamps": {},
     "bookedDates": {
       "2026-08-15": [
         {
@@ -2884,8 +2885,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1790257919972,
-    "syncedAt": 1790257919972
+    "updatedAt": 1790337954885,
+    "syncedAt": 1790337954885
   },
   "INVITE_CODES": [
     {
@@ -3083,7 +3084,7 @@ window.WPS_DATA = {
     "PACKAGES": 1790257919972,
     "TFP_PACKAGE": 1790257919972,
     "HOME_STUDIO_RATE": 1789975069138,
-    "PORTFOLIO_PDF": 1790257117968,
+    "PORTFOLIO_PDF": 1790311312712,
     "HOME_SLIDESHOW": 0,
     "MEASURE_UNITS": 1790269147688,
     "HOME_STUDIO_RATE_TFP": 1789975069138
@@ -3731,7 +3732,7 @@ window.WPS_DATA = {
         "id": "mp_mueija7w_ny3rh",
         "shootId": "comp-card-Atharv%20Sharma%20(https%3A%2F%2Fwww.instagram.com%2Fectogainsss%2F%3Fhl%3Den)",
         "name": "Test 1",
-        "updatedAt": 1790257117968,
+        "updatedAt": 1790311312711,
         "spec": {
           "pages": 2,
           "count": 8,
@@ -3775,7 +3776,7 @@ window.WPS_DATA = {
           ],
           "bigAt": [
             "",
-            ""
+            "top"
           ],
           "detailsAlign": "centre",
           "spacing": "none",
@@ -3809,6 +3810,16 @@ window.WPS_DATA = {
             "muca80xnhe2eom-19": {
               "x": 0.18603887524945684,
               "y": 0.24573177002982619,
+              "zoom": 1
+            },
+            "muca57hap5pcdi-1": {
+              "x": 0.5,
+              "y": 0.8303275652283516,
+              "zoom": 1
+            },
+            "muca57yixr16s8-3": {
+              "x": 0.5,
+              "y": 0.35,
               "zoom": 1
             }
           }
@@ -3925,6 +3936,7 @@ window.WPS_DATA = {
                 "fit": "whole"
               }
             ],
+            "rows": "1+2",
             "bg": "paper"
           },
           {
@@ -4206,7 +4218,7 @@ window.WPS_DATA = {
           "phone": "",
           "showPrices": false
         },
-        "updatedAt": 1790240359029
+        "updatedAt": 1790337946425
       }
     ],
     "deleted": [
