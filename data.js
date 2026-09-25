@@ -2895,8 +2895,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1790357208192,
-    "syncedAt": 1790357208192
+    "updatedAt": 1790362835975,
+    "syncedAt": 1790362835975
   },
   "INVITE_CODES": [
     {
@@ -3094,7 +3094,7 @@ window.WPS_DATA = {
     "PACKAGES": 1790257919972,
     "TFP_PACKAGE": 1790257919972,
     "HOME_STUDIO_RATE": 1789975069138,
-    "PORTFOLIO_PDF": 1790357194557,
+    "PORTFOLIO_PDF": 1790362827044,
     "HOME_SLIDESHOW": 1790354674280,
     "MEASURE_UNITS": 1790269147688,
     "HOME_STUDIO_RATE_TFP": 1789975069138
@@ -3742,7 +3742,7 @@ window.WPS_DATA = {
         "id": "mp_mueija7w_ny3rh",
         "shootId": "comp-card-Atharv%20Sharma%20(https%3A%2F%2Fwww.instagram.com%2Fectogainsss%2F%3Fhl%3Den)",
         "name": "Test 1",
-        "updatedAt": 1790357194556,
+        "updatedAt": 1790362827043,
         "spec": {
           "pages": 2,
           "count": 8,
@@ -3789,6 +3789,8 @@ window.WPS_DATA = {
             "top"
           ],
           "detailsAlign": "centre",
+          "statsAlign": "centre",
+          "contactAlign": "left",
           "spacing": "none",
           "order": [
             "muca56vgez53vb-0",
@@ -3852,7 +3854,7 @@ window.WPS_DATA = {
       {
         "id": "bkmuax7ucfco12",
         "name": "Portfolio september 2026",
-        "style": "modern",
+        "style": "vogue",
         "colourway": "terracotta",
         "orientation": "portrait",
         "title": "NerdyPhotographer.in",
@@ -3872,49 +3874,63 @@ window.WPS_DATA = {
             "type": "photos",
             "photos": [
               {
+                "id": "muca5a1qkkj6qh-11",
+                "x": 0.452,
+                "y": 0,
+                "zoom": 1
+              }
+            ],
+            "border": "all"
+          },
+          {
+            "type": "photos",
+            "photos": [
+              {
                 "id": "muccmrnumyyf3j-23",
                 "x": 0.5,
                 "y": 0.35,
                 "zoom": 1,
-                "fit": "fill"
+                "fit": "whole"
               },
               {
                 "id": "muca593bwa9nvo-6",
                 "x": 0.5,
                 "y": 0.35,
                 "zoom": 1,
-                "fit": "fill"
+                "fit": "whole"
               },
               {
                 "id": "muca80xnhe2eom-19",
                 "x": 0.46,
-                "y": 0.2,
+                "y": 0.25,
                 "zoom": 1.15,
-                "fit": "fill"
+                "fit": "whole"
               },
               {
                 "id": "muccms4j2bgcj0-26",
                 "x": 0.6,
                 "y": 0.56,
                 "zoom": 1.35,
-                "fit": "fill"
+                "fit": "whole"
               },
               {
                 "id": "muccmrxvgwjmbb-25",
                 "x": 0.42,
                 "y": 0.85,
                 "zoom": 1.3,
-                "fit": "fill"
+                "fit": "whole"
               },
               {
                 "id": "mucq0dfdg4bivd-29",
                 "x": 0.5,
                 "y": 0.35,
                 "zoom": 1,
-                "fit": "fill"
+                "fit": "whole"
               }
             ],
-            "nums": false
+            "gap": "medium",
+            "nums": false,
+            "border": "all"
           },
           {
             "type": "photos",
@@ -3945,17 +3961,6 @@ window.WPS_DATA = {
             "gap": "medium",
             "nums": false,
             "bg": "paper"
-          },
-          {
-            "type": "photos",
-            "photos": [
-              {
-                "id": "muca5a1qkkj6qh-11",
-                "x": 0.452,
-                "y": 0.112,
-                "zoom": 1
-              }
-            ]
           },
           {
             "type": "photos",
@@ -4020,68 +4025,6 @@ window.WPS_DATA = {
             "nums": false
           },
           {
-            "type": "free",
-            "blocks": [
-              {
-                "k": "text",
-                "x": 0.095,
-                "y": 0.075,
-                "w": 0.81,
-                "h": 0.1,
-                "t": "",
-                "role": "head"
-              },
-              {
-                "k": "photo",
-                "x": 0.095,
-                "y": 0.2,
-                "w": 0.255,
-                "h": 0.45
-              },
-              {
-                "k": "photo",
-                "x": 0.3725,
-                "y": 0.2,
-                "w": 0.255,
-                "h": 0.45
-              },
-              {
-                "k": "photo",
-                "x": 0.65,
-                "y": 0.2,
-                "w": 0.255,
-                "h": 0.45
-              },
-              {
-                "k": "text",
-                "x": 0.095,
-                "y": 0.67,
-                "w": 0.255,
-                "h": 0.2,
-                "t": "",
-                "role": "body"
-              },
-              {
-                "k": "text",
-                "x": 0.3725,
-                "y": 0.67,
-                "w": 0.255,
-                "h": 0.2,
-                "t": "",
-                "role": "body"
-              },
-              {
-                "k": "text",
-                "x": 0.65,
-                "y": 0.67,
-                "w": 0.255,
-                "h": 0.2,
-                "t": "",
-                "role": "body"
-              }
-            ]
-          },
-          {
             "type": "photos",
             "photos": [
               {
@@ -4110,7 +4053,9 @@ window.WPS_DATA = {
                 "y": 0.35,
                 "zoom": 1
               }
-            ]
+            ],
+            "gap": "medium",
+            "border": "all"
           },
           {
             "type": "photos",
@@ -4301,7 +4246,7 @@ window.WPS_DATA = {
           "phone": "",
           "showPrices": false
         },
-        "updatedAt": 1790356119236
+        "updatedAt": 1790362719013
       }
     ],
     "deleted": [
