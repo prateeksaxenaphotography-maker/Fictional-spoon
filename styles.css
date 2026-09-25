@@ -4111,12 +4111,12 @@ html.theme-dark .tm-quote-emoji { background: rgba(255,255,255,0.75); border-rad
    Studio", the wordmark and the tagline stand out from whatever the picture
    is (the owner, Sep 2026). The header's logo and MENU get the same edge, as
    they vanished over a dark photo. Phones stack the photo above the words,
-   so it only applies where the words sit on the photo. */
+   so it only applies where the words sit on the photo. The edge is hard,
+   with no soft blur around it: the blur read as a glow (the owner, Sep 25). */
 .hero-shot {
   --edge: 1px;
   --outline: calc(-1 * var(--edge)) calc(-1 * var(--edge)) 0 var(--paper), var(--edge) calc(-1 * var(--edge)) 0 var(--paper),
-             calc(-1 * var(--edge)) var(--edge) 0 var(--paper), var(--edge) var(--edge) 0 var(--paper),
-             0 0 6px var(--paper), 0 0 14px var(--paper);
+             calc(-1 * var(--edge)) var(--edge) 0 var(--paper), var(--edge) var(--edge) 0 var(--paper);
 }
 .hero-shot .hero-topline,
 .hero-shot .hero-topline span,
@@ -4125,16 +4125,22 @@ html.theme-dark .tm-quote-emoji { background: rgba(255,255,255,0.75); border-rad
 .hero-shot .hero-mono-tagline { text-shadow: var(--outline) !important; }
 .hero-shot .hero-wordmark { --edge: 2px; }
 .hero-shot .hero-topline-l { color: var(--ink); }
-body:has(.hero-shot) .site-header:not(.scrolled) .brand-text,
-body:has(.hero-shot) .site-header:not(.scrolled) .menu-btn {
-  text-shadow: -1px -1px 0 var(--paper), 1px -1px 0 var(--paper), -1px 1px 0 var(--paper), 1px 1px 0 var(--paper), 0 0 8px var(--paper);
-}
-body:has(.hero-shot) .site-header:not(.scrolled) .brand svg,
-body:has(.hero-shot) .site-header:not(.scrolled) .brand img,
-body:has(.hero-shot) .site-header:not(.scrolled) .menu-btn svg,
-body:has(.hero-shot) .site-header:not(.scrolled) .menu-btn span,
-body:has(.hero-shot) .site-header:not(.scrolled) .theme-toggle {
-  filter: drop-shadow(0 0 1px var(--paper)) drop-shadow(0 0 1px var(--paper)) drop-shadow(0 0 4px var(--paper));
+/* The header over the home photo. An edge in the page colour round dark
+   letters looked odd over a dark photo, blurred or not (the owner, Sep 25),
+   so while it sits over the photo the header is white over a soft shade at
+   the top of the picture, which reads on any photograph. Once the page
+   scrolls, or the menu is open, it is the ordinary header again. Phones
+   stack the photo below the header, so they keep the ordinary one. */
+@media (min-width: 701px) {
+  body:has(.hero-shot):not(.menu-open) .site-header:not(.scrolled) { color: #fff; }
+  body:has(.hero-shot):not(.menu-open) .site-header:not(.scrolled) .brand,
+  body:has(.hero-shot):not(.menu-open) .site-header:not(.scrolled) .brand-text,
+  body:has(.hero-shot):not(.menu-open) .site-header:not(.scrolled) .menu-btn,
+  body:has(.hero-shot):not(.menu-open) .site-header:not(.scrolled) .theme-toggle { color: #fff !important; }
+  body:has(.hero-shot):not(.menu-open) .site-header:not(.scrolled)::before {
+    content: ""; position: absolute; left: 0; right: 0; top: 0; height: 150%; z-index: -1; pointer-events: none;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0));
+  }
 }
 @media (max-width: 700px) {
   .hero-shot .hero-topline, .hero-shot .hero-topline span, .hero-shot .hero-wordmark,
