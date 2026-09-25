@@ -5123,6 +5123,40 @@
   .sb-fmt { display: contents; }
   .sb-freeform { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 8px; }
   .sb-freeform .sb-hint { flex: 1 1 200px; margin: 0; }
+  /* A workspace, not a web page: on a laptop the site's header and footer step
+     aside while a book is open and the editor fills the window (a phone has
+     done this since v421). "← Books" brings the site back. */
+  @media (min-width: 901px) {
+    html.sb-editing .site-header, html.sb-editing .site-footer, html.sb-editing .admin-sticky-reminder, html.sb-editing #adminStickyReminderBar, html.sb-editing .footer-cta { display: none !important; }
+    html.sb-editing body { overflow: hidden; }
+    html.sb-editing .sb-root { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; padding: 10px 14px 12px; background: var(--bone, #eceae7); overflow: hidden; }
+    html.sb-editing .sb-root > .sb-work { flex: 1 1 auto; height: auto; min-height: 0; }
+    /* The site's "Not live yet" card sits at the foot, bottom left, over the
+       page list's "+ Add page": the editor leaves it a strip of its own. */
+    html.sb-editing.sb-bar .sb-root { padding-bottom: 74px; }
+  }
+  /* Design, in four groups that fold away. */
+  .sb-group { border-top: 1px solid var(--sb-line); }
+  .sb-group:first-child { border-top: 0; }
+  .sb-group > summary { list-style: none; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 14px 16px; cursor: pointer; font: 700 14px Inter, sans-serif; }
+  .sb-group > summary::-webkit-details-marker { display: none; }
+  .sb-group > summary small { flex: 1; font: 400 12px/1.35 Inter, sans-serif; color: var(--ink-soft, #5c5e66); text-align: right; }
+  .sb-group > summary::after { content: "+"; font: 400 18px/1 Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
+  .sb-group[open] > summary::after { content: "−"; }
+  .sb-group > .sb-sec { border-top: 0; padding-top: 4px; }
+  /* Find a command. */
+  .sb-cmd { position: fixed; inset: 0; z-index: 120; display: flex; align-items: flex-start; justify-content: center; padding: 12vh 16px 16px; background: rgba(12,12,14,.35); }
+  .sb-cmdbox { width: min(560px, 100%); max-height: 70vh; display: flex; flex-direction: column; overflow: hidden; background: var(--paper, #faf8f5); border: 1px solid var(--sb-line); border-radius: 14px; box-shadow: 0 30px 70px -20px rgba(0,0,0,.5); }
+  .sb-root .sb-cmdbox input { border: 0; border-bottom: 1px solid var(--sb-line); border-radius: 0; padding: 16px 18px; font: 500 16px Inter, sans-serif; background: transparent; }
+  .sb-cmdlist { list-style: none; margin: 0; padding: 6px; overflow-y: auto; }
+  .sb-cmdlist li { display: flex; justify-content: space-between; gap: 12px; padding: 9px 12px; border-radius: 8px; cursor: pointer; font: 500 14px Inter, sans-serif; }
+  .sb-cmdlist li span { color: var(--ink-soft, #5c5e66); font: 400 12px Inter, sans-serif; white-space: nowrap; }
+  .sb-cmdlist li[aria-selected=true] { background: var(--ink, #141416); color: var(--paper, #fff); }
+  .sb-cmdlist li[aria-selected=true] span { color: inherit; opacity: .7; }
+  .sb-cmdfoot { padding: 8px 14px; border-top: 1px solid var(--sb-line); font: 400 11.5px/1.5 Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
+  .sb-root #sbCmd kbd { margin-left: 4px; font: 600 10px 'JetBrains Mono', monospace; padding: 1px 4px; border: 1px solid var(--sb-line); border-radius: 4px; opacity: .7; }
+  .sb-cmdfoot kbd { font: 600 10.5px 'JetBrains Mono', monospace; padd  @media (pointer: coarse) { .sb-root #sbCmd kbd { display: none; } }
+ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
   .sb-layoutgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 6px; margin: 4px 0 10px; }
   .sb-layoutbtn { display: grid; justify-items: center; gap: 3px; padding: 6px 4px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--paper, #fff); font: 500 10.5px/1.25 Inter, sans-serif; color: var(--ink, #141416); cursor: pointer; text-align: center; }
   .sb-layoutbtn:hover, .sb-layoutbtn:focus-visible { border-color: var(--accent, #d24e1a); }
@@ -5894,6 +5928,7 @@
       if (!root.isConnected) { document.removeEventListener("keydown", onKey); document.removeEventListener("click", onDoc); return; }
       const el = e.target;
       const typing = el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable);
+      if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K") && book) { e.preventDefault(); openCmd(); return; }
       // Undo is the editor's own, so the browser can never undo a keystroke in
       // a box the studio isn't looking at.
       if ((e.metaKey || e.ctrlKey) && (e.key === "z" || e.key === "Z")) {
@@ -6137,8 +6172,18 @@
     }
 
     /* --- screen 2: the editor --- */
+    // The site's "Not live yet" card, watched rather than :has()-matched (which
+    // Chrome re-checks on every change the editor makes).
+    let barWatch = null;
+    function watchBar() {
+      const bar = document.getElementById("publishStateBar");
+      const sync = () => document.documentElement.classList.toggle("sb-bar", !!bar && !bar.hidden);
+      sync();
+      if (bar && !barWatch) { barWatch = new MutationObserver(sync); barWatch.observe(bar, { attributes: true, attributeFilter: ["hidden"] }); }
+    }
     function showEditor() {
       document.documentElement.classList.add("sb-editing");
+      watchBar();
       root.innerHTML = `
         <div class="sb-top">
           <button type="button" class="sb-btn quiet" id="sbBack">← Books</button>
@@ -6157,6 +6202,7 @@
                  codes in v473. So: a button that says the word, lights up
                  while there is something not yet written down, and flushes
                  the save that was about to happen anyway. -->
+            <button type="button" class="sb-btn quiet" id="sbCmd" title="Find a command: add a page, go to a page, change the style… (Ctrl+K)" aria-haspopup="dialog">Find <kbd>⌘K</kbd></button>
             <button type="button" class="sb-btn" id="sbSave" title="Keep this book on this device now. Every change is kept as you make it — this is here so you can be sure.">Save</button>
             <button type="button" class="sb-btn" id="sbDlToggle" aria-expanded="false" aria-controls="sbDlPop">Download</button>
             <button type="button" class="sb-btn dark" id="sbPublish" title="Saves this book into the site's own files, so it is there on any device. Nothing is shown to visitors — what a client gets is the PDF.">Publish</button>
@@ -6234,6 +6280,7 @@
 
       $("#sbBack").addEventListener("click", () => { flush(); forget(); showList(); });
       $("#sbName").addEventListener("input", (e) => { book.name = e.target.value; change({ rail: false, typing: true }); });
+      $("#sbCmd").addEventListener("click", () => openCmd());
       $("#sbSave").addEventListener("click", () => {
         if (!flush()) return;   // persist() has already said why it could not
         setStatus(`Saved on this device · ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}${longNote()}`);
@@ -7674,7 +7721,7 @@
       };
       const kind = sel < 0 ? (coverLayoutOf(book) === "custom" ? "coverFree" : "cover") : entry.type;
       head.innerHTML = `<h3>${esc(sel < 0 ? "Cover" : PAGE_LABEL[entry.type])}</h3><p class="sb-hint">${esc(about[kind] || "")}</p>`
-        + (sel >= 0 && FREEFORM_TYPES.includes(entry.type) ? `<div class="sb-freeform"><button type="button" class="sb-btn" id="sbFreeform">Make it free-form</button><span class="sb-hint">Every photograph and every line of words on this page becomes a piece you can move, crop, turn and resize, anywhere. Ctrl+Z puts the page back.</span></div>` : "");
+        + (sel >= 0 && FREEFORM_TYPES.includes(entry.type) ? `<div class="sb-freeform"><button type="button" class="sb-btn" id="sbFreeform">Make it free-form</button><span class="sb-hint">Move, crop and turn anything on it.</span></div>` : "");
       { const ff = $("#sbFreeform"); if (ff) ff.addEventListener("click", () => makeFreeForm(sel)); }
       drawFields(); drawPhotoBlock(); drawPageBg(); updateMeters();
     }
@@ -9273,6 +9320,110 @@
         if (token === stylePicToken && slot.isConnected) slot.replaceChildren(...got);
       }
     }
+    /* Design's sections, in four groups that fold away; which are open is
+       kept while the book is open. Sections are moved by their heading, so a
+       section added later lands at the end rather than disappearing. */
+    const DESIGN_GROUPS = [
+      ["look", "Look", "Style · colourway", ["Style", "Colourway"]],
+      ["paper", "Page & paper", "Shape · size · space between photos · page colour · lines", ["Page shape", "Paper size", "Space between photographs", "Page colour, every page", "Line round the photographs"]],
+      ["type", "Type", "Text styles · baseline grid", ["Text styles", "Baseline grid"]],
+      ["every", "Every page", "Running head · photo numbers · page numbers and foot", ["Top of every page", "Numbers on the photographs", "The foot of every page"]]
+    ];
+    // Which groups are open is remembered on this device, like the tab.
+    const DESIGN_OPEN_KEY = "wps_book_design_open";
+    const designOpen = (() => { try { const v = JSON.parse(localStorage.getItem(DESIGN_OPEN_KEY) || "null"); if (Array.isArray(v)) return new Set(v); } catch (e) { /* private window */ } return new Set(["look"]); })();
+    const keepDesignOpen = () => { try { localStorage.setItem(DESIGN_OPEN_KEY, JSON.stringify([...designOpen])); } catch (e) { /* private window */ } };
+    function groupDesign(panel) {
+      const secs = [...panel.children];
+      const byTitle = new Map(secs.map((el) => [((el.querySelector("h3") || {}).textContent || "").trim(), el]));
+      const used = new Set();
+      const frag = document.createDocumentFragment();
+      for (const [key, name, note, titles] of DESIGN_GROUPS) {
+        const d = document.createElement("details");
+        d.className = "sb-group"; d.dataset.group = key; d.open = designOpen.has(key);
+        d.innerHTML = `<summary>${esc(name)}<small>${esc(note)}</small></summary>`;
+        for (const t of titles) { const el = byTitle.get(t); if (el) { d.appendChild(el); used.add(el); } }
+        d.addEventListener("toggle", () => { if (d.open) designOpen.add(key); else designOpen.delete(key); keepDesignOpen(); if (d.open && key === "look") drawStylePics(); });
+        frag.appendChild(d);
+      }
+      for (const el of secs) if (!used.has(el)) frag.appendChild(el);
+      panel.replaceChildren(frag);
+    }
+    /* ---------- find a command ---------------------------------------------------
+       Ctrl/⌘+K (or Find in the top bar): type a few letters of anything the
+       editor can do — add a page or a layout, go to a page, change the style or
+       colourway, download, publish — and press Enter. */
+    function cmdList() {
+      const out = [];
+      const add = (label, where, run) => out.push({ label, where, run });
+      const design = (selector, group) => () => {
+        const t = $("#sbTabDesign"); if (t && tab !== "design") t.click();
+        const g = $(`.sb-group[data-group="${group}"]`); if (g && !g.open) g.open = true;
+        const el = $(selector); if (el) { el.scrollIntoView({ block: "center" }); el.click(); }
+      };
+      add("Go to the cover", "Pages", () => select(-1));
+      book.pages.forEach((pg, i) => add(`Go to page ${pad2(firstPageOf(i))} · ${railLabel(pg)}`, "Pages", () => select(i)));
+      ADD_MENU.forEach((g) => g.items.forEach(([k, n]) => add(`Add ${/^Layouts/.test(g.group) ? "a layout" : "a page"}: ${n}`, g.group.replace(/^Layouts · /, "Layouts: "), () => addPage(k))));
+      const e = curEntry();
+      if (e && e.type === "free") LAYOUT_GROUPS.forEach((g) => g.items.forEach(([k, n]) => add(`Change this page's layout: ${n}`, "This page", () => applyLayout(e, k))));
+      if (sel >= 0 && e && FREEFORM_TYPES.includes(e.type)) add("Make this page free-form", "This page", () => makeFreeForm(sel));
+      library().albums.filter((a) => a.count).forEach((a) => add(`Pages from an album: ${a.name}`, "Pages", async () => { const n = await autoPages(a.id, true); API.toast(n ? `${n} pages added · Ctrl+Z to take them out` : "Every photograph in that album is already in the book."); }));
+      STYLES.forEach((st) => add(`Style: ${st.name}`, "Design", design(`[data-style="${st.key}"]`, "look")));
+      COLOURWAYS.forEach((c) => add(`Colourway: ${c.name}`, "Design", design(`[data-cw="${c.key}"]`, "look")));
+      add("Text styles", "Design", design("#sbTypeset .sb-fmttoggle", "type"));
+      add(`${book.baseline ? "Turn off" : "Turn on"} the baseline grid`, "Design", design("#sbBaseline", "type"));
+      [["", "No running head"], ["title", "Running head: the book's title"], ["section", "Running head: the section"], ["both", "Running head: title and section"]].forEach(([k, n]) => add(n, "Design", design(`[data-runhead="${k}"]`, "every")));
+      const dl = (marks, fold) => () => {
+        const pop = $("#sbDlPop"); if (pop && pop.hidden) $("#sbDlToggle").click();
+        const pm = $(`[data-print="${fold ? "fold" : "normal"}"]`); if (pm && !pm.disabled) pm.click();
+        const m = $("#sbMarks"); if (m && m.checked !== marks) m.click();
+        $("#sbPdf").click();
+      };
+      add("Download the PDF", "File", dl(false, false));
+      add("Download for a print shop (crop marks and bleed)", "File", dl(true, false));
+      add("Download to fold in half (booklet)", "File", dl(false, true));
+      add("Download PNG pages", "File", () => { const pop = $("#sbDlPop"); if (pop && pop.hidden) $("#sbDlToggle").click(); $("#sbPng").click(); });
+      add("Save", "File", () => $("#sbSave").click());
+      add("Publish", "File", () => $("#sbPublish").click());
+      add("Undo", "Edit", () => undo());
+      add("Redo", "Edit", () => redo());
+      add("Read the book", "View", () => { const r = $('[data-view="read"]') || $("#sbReadBtn"); if (r) r.click(); });
+      add("Back to all books", "File", () => $("#sbBack").click());
+      return out;
+    }
+    function openCmd() {
+      if ($("#sbCmdBox")) return;
+      const list = cmdList();
+      const wrap = document.createElement("div");
+      wrap.className = "sb-cmd"; wrap.id = "sbCmdBox";
+      wrap.innerHTML = `<div class="sb-cmdbox" role="dialog" aria-modal="true" aria-label="Find a command">
+        <input type="text" id="sbCmdQ" placeholder="What do you want to do? e.g. add contents, page 5, noir, print shop" aria-controls="sbCmdList" autocomplete="off">
+        <ul class="sb-cmdlist" id="sbCmdList" role="listbox"></ul>
+        <div class="sb-cmdfoot"><kbd>↑</kbd> <kbd>↓</kbd> choose · <kbd>Enter</kbd> do it · <kbd>Esc</kbd> close · elsewhere: <kbd>Ctrl Z</kbd> undo, arrow keys nudge, <kbd>[</kbd> <kbd>]</kbd> back and front, Shift while turning for 15° steps</div></div>`;
+      root.appendChild(wrap);
+      const q = wrap.querySelector("#sbCmdQ"), ul = wrap.querySelector("#sbCmdList");
+      let shown = [], at = 0;
+      const close = () => { wrap.remove(); const b = $("#sbCmd"); if (b) b.focus(); };
+      const run = (c) => { close(); try { c.run(); } catch (err) { API.toast("That didn't work here."); } };
+      const draw = () => {
+        const words = q.value.toLowerCase().split(/\s+/).filter(Boolean);
+        shown = list.filter((c) => { const t = `${c.label} ${c.where}`.toLowerCase(); return words.every((w) => t.includes(w)); }).slice(0, 40);
+        at = Math.min(at, Math.max(0, shown.length - 1));
+        ul.innerHTML = shown.length ? shown.map((c, i) => `<li role="option" id="sbCmd_${i}" aria-selected="${i === at}" data-i="${i}">${esc(c.label)}<span>${esc(c.where)}</span></li>`).join("") : `<li aria-disabled="true">Nothing by that name. Try other words.</li>`;
+        q.setAttribute("aria-activedescendant", shown.length ? `sbCmd_${at}` : "");
+        const on = ul.querySelector('[aria-selected="true"]'); if (on) on.scrollIntoView({ block: "nearest" });
+      };
+      q.addEventListener("input", () => { at = 0; draw(); });
+      q.addEventListener("keydown", (ev) => {
+        if (ev.key === "ArrowDown") { ev.preventDefault(); at = Math.min(shown.length - 1, at + 1); draw(); }
+        else if (ev.key === "ArrowUp") { ev.preventDefault(); at = Math.max(0, at - 1); draw(); }
+        else if (ev.key === "Enter") { ev.preventDefault(); if (shown[at]) run(shown[at]); }
+        else if (ev.key === "Escape") { ev.preventDefault(); ev.stopPropagation(); close(); }
+      });
+      ul.addEventListener("click", (ev) => { const li = ev.target.closest("[data-i]"); if (li) run(shown[+li.dataset.i]); });
+      wrap.addEventListener("mousedown", (ev) => { if (ev.target === wrap) close(); });
+      draw(); q.focus();
+    }
     // The book's text styles, edited through the same Format controls as one text.
     const typesetHost = { get: () => book.typeset, set: (v) => { if (v) book.typeset = v; else delete book.typeset; } };
     function drawDesign() {
@@ -9334,6 +9485,7 @@
           ${overHtml("sbFootText", "Name in the foot", book.footText, (window.STUDIO_BOOK_LIMITS || {}).footText || 40, studio())}
           <label class="sb-check-row"><input type="checkbox" id="sbNums" ${book.showPageNumbers === false ? "" : "checked"}> Print page numbers</label>
         </div>`;
+      groupDesign(panel);
       wireOver("sbFootText", (v) => { if (String(v).trim()) book.footText = v; else delete book.footText; });
       // Text styles use the same controls as one text's Format; a size in points means nothing for a whole kind of text.
       const tsBox = panel.querySelector("#sbTypeset");
