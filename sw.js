@@ -12,7 +12,7 @@
 //
 // Bump ASSET_VERSION on every release that touches app.js, styles.css,
 // data.js or config.js.
-const ASSET_VERSION = "541";
+const ASSET_VERSION = "542";
 const CACHE_NAME = `wps-v${ASSET_VERSION}`;
 // "/" only, not also "/index.html": the same page twice, fetched on the very
 // first visit while the page itself was still loading (Sep 2026 audit, G19).

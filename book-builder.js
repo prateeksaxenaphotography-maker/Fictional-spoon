@@ -5145,7 +5145,7 @@
     html.sb-editing .sb-root > .sb-work { flex: 1 1 auto; height: auto; min-height: 0; }
     /* The site's "Not live yet" card sits at the foot, bottom left, over the
        page list's "+ Add page": the editor leaves it a strip of its own. */
-    html.sb-editing.sb-bar .sb-root { padding-bottom: 74px; }
+    html.sb-editing.sb-has-pubbar .sb-root { padding-bottom: 74px; }
   }
   /* Design, in four groups that fold away. */
   .sb-group { border-top: 1px solid var(--sb-line); }
@@ -5821,10 +5821,14 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     nameOnHover(root);
     document.documentElement.classList.add("sb-book");
     // The site's router replaces the page's contents to leave: the moment the
-    // builder's root is gone, the page is the site's own again.
+    // builder's root is gone, the page is the site's own again. Every
+    // ancestor is watched, not just the parent: the router removes the
+    // <section> AROUND the root, whose own children never change, so until
+    // v542 leaving through the menu kept "sb-editing" on — the next page had
+    // no header, no footer and could not scroll.
     if (root.parentNode) {
-      const gone = new MutationObserver(() => { if (!root.isConnected) { document.documentElement.classList.remove("sb-book", "sb-editing"); gone.disconnect(); } });
-      gone.observe(root.parentNode, { childList: true });
+      const gone = new MutationObserver(() => { if (!root.isConnected) { document.documentElement.classList.remove("sb-book", "sb-editing"); stopBarWatch(); gone.disconnect(); } });
+      for (let n = root.parentNode; n && n !== document; n = n.parentNode) gone.observe(n, { childList: true });
     }
     const esc = API.esc;
     const cache = new Map();
@@ -5983,7 +5987,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       if (pop && !pop.hidden && !pop.contains(e.target) && !(btn && btn.contains(e.target))) { pop.hidden = true; btn.setAttribute("aria-expanded", "false"); }
     };
     const onResize = () => {
-      if (!root.isConnected) { window.removeEventListener("resize", onResize); document.documentElement.classList.remove("sb-editing", "sb-book"); return; }
+      if (!root.isConnected) { window.removeEventListener("resize", onResize); document.documentElement.classList.remove("sb-editing", "sb-book"); stopBarWatch(); return; }
       if ($("#sbLayer")) drawLayer();
       if ($(".sb-hits") || editing) drawHits(lastRender);
       if ($("#sbWork")) applyPanes();
@@ -5995,6 +5999,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     /* --- screen 1: the books --- */
     function showList() {
       document.documentElement.classList.remove("sb-editing");
+      stopBarWatch();
       book = null; dropFiles(); forget();
       state = readState();
       const LIMIT = (window.STUDIO_BOOK_LIMITS && window.STUDIO_BOOK_LIMITS.versions) || 200;
@@ -6197,12 +6202,24 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     /* --- screen 2: the editor --- */
     // The site's "Not live yet" card, watched rather than :has()-matched (which
     // Chrome re-checks on every change the editor makes).
+    // The class was "sb-bar" until v542, which is also the format toolbar's
+    // class: while the card showed, the toolbar's rules (every button 28px
+    // tall, every select 128px wide, no text wrapping) landed on the whole
+    // page, and because nothing took the class off on leaving, on the rest of
+    // the site too. The root's classes must never be a component's name.
     let barWatch = null;
     function watchBar() {
       const bar = document.getElementById("publishStateBar");
-      const sync = () => document.documentElement.classList.toggle("sb-bar", !!bar && !bar.hidden);
+      const sync = () => {
+        if (!root.isConnected) { stopBarWatch(); return; }
+        document.documentElement.classList.toggle("sb-has-pubbar", !!bar && !bar.hidden && document.documentElement.classList.contains("sb-editing"));
+      };
       sync();
       if (bar && !barWatch) { barWatch = new MutationObserver(sync); barWatch.observe(bar, { attributes: true, attributeFilter: ["hidden"] }); }
+    }
+    function stopBarWatch() {
+      if (barWatch) { barWatch.disconnect(); barWatch = null; }
+      document.documentElement.classList.remove("sb-has-pubbar");
     }
     function showEditor() {
       document.documentElement.classList.add("sb-editing");
