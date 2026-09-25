@@ -2337,7 +2337,23 @@
     let savedSig = null, sigSettle = 0;
     const sigNow = () => JSON.stringify(currentSpec());
     const resumed = readDraft();
-    let resumedNote = false;
+    let resumedNote = false, autoOpened = false;
+    const resumedWords = () => autoOpened && state.fromSaved
+      ? `Opened “${esc(state.fromSaved.name)}”, your latest saved portfolio for this model.`
+      : state.fromSaved ? `Carrying on with “${esc(state.fromSaved.name)}”.` : "Carrying on where you left off.";
+    // Back to an empty screen: from the photo step's "Start fresh" and the
+    // preview's "Start a new one" alike.
+    function startFresh() {
+      clearDraft();
+      state.picks = new Set(); state.cleared = new Set();
+      state.order = []; state.span = {}; state.adjust = {};
+      state.fromSaved = null; state.layouts = []; state.cols = [];
+      state.cover = false; state.lead = "";
+      resumedNote = false; autoOpened = false;
+      savedSig = null; sigSettle = 0;
+      syncPages();
+      showPick();
+    }
     if (resumed && applySpec(resumed.spec)) {
       state.fromSaved = resumed.from || null;
       savedSig = typeof resumed.savedSig === "string" ? resumed.savedSig : null;
@@ -2510,7 +2526,7 @@
           : "Open one to pick up where you left off."}</p>
         ${withSave ? `<div class="pp-save-row">
           <input type="text" id="ppSaveName" maxlength="60" value="${esc((state.fromSaved && state.fromSaved.name) || "")}" placeholder="Name it, e.g. Devesh — agency set" />
-          <button type="button" class="pp-sample-btn" id="ppSaveBtn">${state.fromSaved ? "Update it" : "Save this arrangement"}</button>
+          <button type="button" class="pp-sample-btn" id="ppSaveBtn">${state.fromSaved ? `Update “${esc(state.fromSaved.name)}”` : "Save this arrangement"}</button>
         </div>
         <div class="pp-save-state" id="ppSaveState" role="status" aria-live="polite"></div>
         ${state.fromSaved ? `<p class="pp-type-note">Saving keeps “${esc(state.fromSaved.name)}”. Change the name to keep a second one instead.</p>` : ""}` : ""}
@@ -2804,7 +2820,7 @@
         <div class="pp-choose${admin ? " is-studio" : " is-client"}">
         <div class="pp-choose-rail">
           ${resumedNote ? `<div class="pp-resumed" role="status">
-            <span>${state.fromSaved ? `Carrying on with “${esc(state.fromSaved.name)}”.` : "Carrying on where you left off."}</span>
+            <span>${resumedWords()}</span>
             <button type="button" class="pp-link" id="ppDropDraft">Start fresh</button>
           </div>` : ""}
           <div class="pp-seg" role="radiogroup" aria-label="Pages">
@@ -2896,16 +2912,7 @@
       });
       body.querySelector("#ppCoverModeCancel").addEventListener("click", () => { state.choosingCover = false; syncPick(); });
       const dropBtn = body.querySelector("#ppDropDraft");
-      if (dropBtn) dropBtn.addEventListener("click", () => {
-        clearDraft();
-        state.picks = new Set(); state.cleared = new Set();
-        state.order = []; state.span = {}; state.adjust = {};
-        state.fromSaved = null; state.layouts = []; state.cols = [];
-        state.cover = false; state.lead = "";
-        resumedNote = false;
-        syncPages();
-        showPick();
-      });
+      if (dropBtn) dropBtn.addEventListener("click", startFresh);
       // The same saved list as the preview's, minus the save row.
       wireSavedPortfolios();
       body.querySelectorAll("#ppCoverStyleSeg [data-cover-style]").forEach((btn) => btn.addEventListener("click", () => { state.coverStyle = btn.dataset.coverStyle; syncPick(); }));
@@ -3425,6 +3432,10 @@
         </div>
         </div>
         <aside class="pp-rail">
+        ${admin && (state.fromSaved || resumedNote) ? `<div class="pp-resumed" role="status">
+          <span>${state.fromSaved ? (autoOpened ? resumedWords() : `Open: “${esc(state.fromSaved.name)}”.`) : resumedWords()}</span>
+          <button type="button" class="pp-link" id="ppNewOne">Start a new one</button>
+        </div>` : ""}
         <div class="pp-arrange" id="ppArrange">
           <!-- Grouped, because nine rows of pills in a row is a list and not a
                design. Each group says what it is about, and they run in the
@@ -3528,7 +3539,7 @@ ${admin ? `
           </div>
         ` : `
         ${admin ? `
-          ${savedBoxHtml(true, false)}
+          ${savedBoxHtml(true, true)}
           <!-- Opened as a sheet of its own rather than unrolled in the rail:
                it is a table of five controls a row, and in a 286px column it
                was cut off at the edge with a sideways scroll to reach the
@@ -3553,6 +3564,8 @@ ${admin ? `
         ${canDownload ? `<button type="button" class="btn btn-dark" id="ppDownload" data-download>Download PDF</button>` : ""}
       `;
       foot.querySelector("#ppBack").addEventListener("click", showPick);
+      const newOne = body.querySelector("#ppNewOne");
+      if (newOne) newOne.addEventListener("click", startFresh);
       const dl = foot.querySelector("#ppDownload");
       if (dl) dl.addEventListener("click", () => download(dl));
       // The clean PNG is the studio's: one image per page, for Instagram and
@@ -4809,7 +4822,28 @@ ${admin ? `
       }
     }
 
-    showPick();
+    /* The studio reopening a model's builder wants the portfolio they made,
+       not step one. It opened on "choose photos" every time: empty, or with
+       their photos ticked but the layout, spacing and cover they had just
+       saved a step further on, out of sight. So a portfolio that was saved
+       and updated looked lost ("when I reopen it opens the initial
+       configuration", Sep 26 2026, Atharv's "Test 1"). Now the studio's own
+       unfinished work opens on the preview; failing that, the model's most
+       recently saved portfolio does. Clients still start empty — choosing is
+       the point of the screen for them. */
+    if (admin && !resumedNote && typeof window.getModelPdfs === "function") {
+      try {
+        const sid = (shoot && shoot.id) || "";
+        const latest = window.getModelPdfs().versions.find((v) => v.shootId === sid);
+        if (latest && applySpec(latest.spec)) {
+          state.fromSaved = { id: latest.id, name: latest.name };
+          savedSig = null; sigSettle = Date.now() + 900;
+          resumedNote = true; autoOpened = true;
+        }
+      } catch (e) { /* opens on the photo step, as it always did */ }
+    }
+    if (admin && resumedNote && minPicks() - picked().length <= 0) showPreview();
+    else showPick();
     modal.querySelector(".pp-close").focus();
   }
 
