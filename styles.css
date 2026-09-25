@@ -4208,3 +4208,13 @@ html:has(.publish-state:not([hidden])) .toast { bottom: 84px; }
   .pdf-type-colour { justify-self: start; }
   .pdf-type-row .pdf-type-colour select { flex: 1 1 auto; }
 }
+
+/* The GitHub token form (admin.js askForToken) — the characters stay hidden. */
+.token-ask { position: fixed; inset: 0; z-index: 400; display: grid; place-items: center; padding: 16px; background: rgba(0,0,0,.55); }
+.token-ask-box { width: min(460px, 100%); display: grid; gap: 10px; padding: 20px; border-radius: 14px; background: var(--paper); color: var(--ink); box-shadow: var(--shadow); }
+.token-ask-box h2 { margin: 0; font-size: var(--font-md); }
+.token-ask-box p { margin: 0; font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; }
+.token-ask-box label[for] { font-size: var(--font-xs); font-weight: 700; }
+.token-ask-box input[type="password"], .token-ask-box input[type="text"] { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface, var(--paper)); color: var(--ink); font: 14px var(--mono-font); }
+.token-ask-show { font-size: var(--font-xs); display: inline-flex; gap: 6px; align-items: center; }
+.token-ask-acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }

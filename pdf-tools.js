@@ -742,6 +742,11 @@
       fd.append("Payment note", `Portfolio PDF ${sale.ref}`);
       fd.append("Paid to", sale.upiId);
       fd.append("Client email", sale.email);
+      /* The buyer's receipt: FormSubmit answers the address in the "email"
+         field with this text. Nothing reached the buyer before, so their only
+         record of paying was their bank app (Sep 2026 audit, P15). */
+      fd.append("email", sale.email);
+      fd.append("_autoresponse", `Thank you. nerdyphotographer.in has your UPI reference ${sale.utr} for the ${sale.model} portfolio PDF (₹${sale.price}, note "Portfolio PDF ${sale.ref}"). The studio checks every reference against its bank; keep this email as your receipt. If anything looks wrong, reply to this email.`);
       fd.append("PDF", `${sale.pages} page${sale.pages > 1 ? "s" : ""}${sale.cover ? " + cover" : ""}: ${sale.poses}`);
       // Enough to make the exact same file again: the pose names alone could
       // not say which photographs, in what order, cropped how (P2).
@@ -908,11 +913,22 @@
         setFont(style);
         return ctx.measureText(cased(str, style)).width / k;
       },
+      // Every line of type, in mm, for the PDF's invisible text layer (see
+      // buildPortfolioPdf). Type drawn rotated or moved — the watermark —
+      // is left out: it is not the page's words.
+      texts: [],
       text(str, x, y, style) {
         setFont(style);
         ctx.fillStyle = style.color || "#000";
         ctx.textAlign = style.align || "left";
-        ctx.fillText(cased(str, style), u(x), u(y));
+        const s = cased(str, style);
+        ctx.fillText(s, u(x), u(y));
+        const m = ctx.getTransform ? ctx.getTransform() : null;
+        if (!m || (m.a === 1 && m.b === 0 && m.c === 0 && m.d === 1 && m.e === 0 && m.f === 0)) {
+          const w = ctx.measureText(s).width / k;
+          const left = ctx.textAlign === "center" ? x - w / 2 : (ctx.textAlign === "right" || ctx.textAlign === "end") ? x - w : x;
+          page.texts.push({ s, x: left, y, size: style.size || 3, w });
+        }
       },
       // Shorten to a width, ending in an ellipsis.
       fit(str, maxW, style) {
@@ -1113,9 +1129,10 @@
     const d = new Date(src.date || "");
     const updated = isNaN(d) ? "" : ` · Updated ${d.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}`;
     if (!pageNo) return `Model portfolio${updated}`;
-    const offset = spec.cover ? 1 : 0;
-    const total = spec.pages + offset;
-    return `Model portfolio${updated}${total > 1 ? ` · ${pageNo + offset}/${total}` : ""}`;
+    /* Numbered the way the builder names the sheets — Cover, Page 1, Page 2 —
+       so the cover is not counted. The paper said "2/3" under a sheet the
+       screen called "Page 1" (Sep 2026 audit, P10). */
+    return `Model portfolio${updated}${spec.pages > 1 ? ` · Page ${pageNo} of ${spec.pages}` : ""}`;
   }
 
   function drawPdfHeader(page, mark, label) {
@@ -1879,6 +1896,36 @@
     }, "image/jpeg", quality));
   }
 
+  /* The print size an image says it has: its dots per inch, written into
+     the file. Without it a free page opened in a print dialog at a size the
+     program guessed (Sep 2026 audit, P13). JPEG carries it in the JFIF
+     header the browser writes; PNG in a pHYs chunk, added after IHDR. */
+  const CRC_TABLE = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  const crc32 = (bytes) => { let c = 0xffffffff; for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+  function withDpi(bytes, dpi) {
+    const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    if (!(dpi > 0)) return b;
+    // JPEG: FF D8, then APP0 "JFIF\0" — units at 13, X/Y density at 14-17.
+    if (b[0] === 0xff && b[1] === 0xd8 && b[6] === 0x4a && b[7] === 0x46 && b[8] === 0x49 && b[9] === 0x46) {
+      const out = b.slice();
+      out[13] = 1; out[14] = dpi >> 8; out[15] = dpi & 0xff; out[16] = dpi >> 8; out[17] = dpi & 0xff;
+      return out;
+    }
+    // PNG: signature (8) + IHDR chunk (25) — the pHYs chunk goes right after.
+    if (b[0] === 0x89 && b[1] === 0x50 && b[12] === 0x49 && b[13] === 0x48) {
+      const ppm = Math.round(dpi / 0.0254);
+      const chunk = new Uint8Array(21);
+      const dv = new DataView(chunk.buffer);
+      dv.setUint32(0, 9); chunk.set([0x70, 0x48, 0x59, 0x73], 4);
+      dv.setUint32(8, ppm); dv.setUint32(12, ppm); chunk[16] = 1;
+      dv.setUint32(17, crc32(chunk.subarray(4, 17)));
+      const out = new Uint8Array(b.length + 21);
+      out.set(b.subarray(0, 33)); out.set(chunk, 33); out.set(b.subarray(33), 54);
+      return out;
+    }
+    return b;
+  }
+
   // Lossless, for the studio's own use (see offerImages): type and hairlines
   // stay crisp where JPEG would smear them.
   function pdfCanvasPng(canvas) {
@@ -1931,9 +1978,25 @@
       const id = ids[i], jpeg = jpegs[i];
       const { w: PT_W, h: PT_H } = pageBox(p);
       begin(id.page);
-      write(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PT_W} ${PT_H}] /Resources << /XObject << /Im0 ${id.image} 0 R >> >> /Contents ${id.content} 0 R${id.annots.length ? ` /Annots [${id.annots.map((a) => `${a} 0 R`).join(" ")}]` : ""} >>`);
+      write(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PT_W} ${PT_H}] /Resources << /XObject << /Im0 ${id.image} 0 R >> /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >> >> >> /Contents ${id.content} 0 R${id.annots.length ? ` /Annots [${id.annots.map((a) => `${a} 0 R`).join(" ")}]` : ""} >>`);
       end();
-      const content = `q\n${PT_W} 0 0 ${PT_H} 0 0 cm\n/Im0 Do\nQ\n`;
+      /* The words on the page, as text a reader can select and search, drawn
+         invisibly (render mode 3) exactly over their picture. The page was
+         only a photograph of itself: the model's name, stats and handle could
+         not be copied or found (Sep 2026 audit, P13). Standard Helvetica in
+         WinAnsi, so it needs no embedded font; a character outside Latin-1
+         is left out of the layer, never drawn wrong. Each run is stretched
+         to the width it has on the page, so a selection lines up. */
+      const layer = (p.texts || []).map((tx) => {
+        const s = Array.from(String(tx.s)).map((ch) => ch === "–" || ch === "—" ? "-" : ch === "’" || ch === "‘" ? "'" : ch === "“" || ch === "”" ? '"' : ch === "·" ? "\xb7" : ch).join("").replace(/[^\x20-\x7e\xa0-\xff]/g, "");
+        if (!s.trim()) return "";
+        const size = tx.size * PT, x = tx.x * PT, y = PT_H - tx.y * PT;
+        const natural = s.length * size * 0.5 || 1;
+        const hz = tx.w > 0 ? Math.max(20, Math.min(400, (tx.w * PT) / natural * 100)) : 100;
+        const str = "(" + Array.from(s).map((ch) => { const c = ch.charCodeAt(0); return ch === "(" || ch === ")" || ch === "\\" ? "\\" + ch : c > 126 ? "\\" + c.toString(8).padStart(3, "0") : ch; }).join("") + ")";
+        return `BT /F1 ${num(size)} Tf ${num(hz)} Tz 3 Tr 1 0 0 1 ${num(x)} ${num(y)} Tm ${str} Tj ET\n`;
+      }).join("");
+      const content = `q\n${PT_W} 0 0 ${PT_H} 0 0 cm\n/Im0 Do\nQ\n${layer}`;
       begin(id.content); write(`<< /Length ${content.length} >>\nstream\n${content}endstream`); end();
       begin(id.image);
       write(`<< /Type /XObject /Subtype /Image /Width ${dims(p).width} /Height ${dims(p).height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`);
@@ -3409,7 +3472,7 @@ ${admin ? `
             <div id="ppBorderRow"></div>
             <button type="button" class="pp-sample-btn" id="ppTypeReset">↺ Put every line back to the original</button>
           </details>` : ""}
-          <p class="pp-hint${admin ? " pp-hint-sample" : ""}">${admin ? `<span>Yours is free of the watermark. To send a sample with it:</span> <span class="pp-sample-actions"><button type="button" class="pp-sample-btn" id="ppDownloadMarked" data-download>Watermarked PDF</button><button type="button" class="pp-sample-btn" id="ppDownloadMarkedPng" data-download>Watermarked PNG${sheets > 1 ? "s" : ""}</button></span>` : lookOnly ? `Free to download with the watermark, as ${pngs}. ${lookMail ? `To buy the PDF without it${price ? ` for ₹${price}` : ""}, email ${lookMail} with your PNG or a screenshot of this preview.` : "The PDF without it isn't on sale yet."}` : price ? "Payment noted, thank you. It pays for one PDF with no watermark: once you've downloaded it, changing the photos or layout means paying again." : "Free to download."}</p>
+          <p class="pp-hint${admin ? " pp-hint-sample" : ""}">${admin ? `<span>Yours is free of the watermark. To send a sample with it:</span> <span class="pp-sample-actions"><button type="button" class="pp-sample-btn" id="ppDownloadMarked" data-download>Watermarked PDF</button><button type="button" class="pp-sample-btn" id="ppDownloadMarkedPng" data-download>Watermarked PNG${sheets > 1 ? "s" : ""}</button></span>` : lookOnly ? `Free to download with the watermark, as ${pngs}. ${lookMail ? `To buy the PDF without it${price ? ` for ₹${price}` : ""}, email ${lookMail} with your PNG or a screenshot of this preview.` : "The PDF without it isn't on sale yet."}` : price ? "Reference received — the studio checks it against its bank, and a copy is on its way to your email. It pays for one PDF with no watermark: once you've saved it, changing the photos or layout means paying again." : "Free to download."}</p>
           <div id="ppReady" class="pp-ready"></div>
         `}
         </aside>
@@ -4048,7 +4111,7 @@ ${admin ? `
                means of doing at all (Sep 22 2026). Only "All the same size"
                has places to take: the big-photo layout already cuts every
                supporting cell to its own photograph's shape. -->
-          ${layoutsPerPage().some((l) => l === "equal") ? `<button type="button" class="pp-order-wide" data-wide="${esc(s.id)}" aria-pressed="false" aria-label="Give ${esc(s.name)} two places across" title="Two places across">${iconBtn("wide", "Wide")}</button>` : ""}
+          ${layoutsPerPage().some((l) => l === "equal") ? `<button type="button" class="pp-order-wide" data-wide="${esc(s.id)}" aria-pressed="false" aria-label="Give ${esc(s.name)} two places across" title="Two places across">${iconBtn("wide", "Two across")}</button>` : ""}
           </span>
           ${i < fixed ? "" : `<span class="pp-order-move">
             <button type="button" data-move="-1" aria-label="Move ${esc(s.name)} earlier" title="Move this photo earlier"${i === fixed ? " disabled" : ""}>${iconBtn("moveBack", "Earlier")}</button>
@@ -4527,8 +4590,8 @@ ${admin ? `
             try {
               bytes = asPng
                 ? await Promise.all(pages.map((p) => (watermark && !admin)
-                  ? pdfCanvasJpeg(p.canvas, 0.84).then((b) => new Blob([b], { type: "image/jpeg" }))
-                  : pdfCanvasPng(p.canvas)))
+                  ? pdfCanvasJpeg(p.canvas, 0.84).then((b) => new Blob([withDpi(b, dpi)], { type: "image/jpeg" }))
+                  : pdfCanvasPng(p.canvas).then(async (bl) => new Blob([withDpi(new Uint8Array(await bl.arrayBuffer()), dpi)], { type: "image/png" }))))
                 : await buildPortfolioPdf(pages, `${spec.name} — Model Portfolio${watermark ? " (preview)" : ""}`);
             } finally {
               // Full-resolution canvases are large; give the memory back.
@@ -4576,6 +4639,17 @@ ${admin ? `
         }
         if (asPng) offerImages(bytes, fileBase, fileTitle, !!spec.cover);
         else offerPdf(bytes, `${fileBase}.pdf`, fileTitle, spend);
+        /* Said plainly: "300 dpi" is the type and the lines. The photographs
+           are the site's copies, 1,600 px on the long side, so a full-page
+           photo prints at about 190 dpi however the page is drawn (Sep 2026
+           audit, P12). Sharp enough for a home or office printer; for a print
+           shop, the originals are what count. */
+        if (admin && !watermark && madeAt >= 220 && ready && !asPng) {
+          const note = document.createElement("p");
+          note.className = "pp-hint";
+          note.textContent = `Type and lines at ${madeAt} dpi. The photos are the site's 1,600 px copies — about 190 dpi on a full A4 page, fine for a home or office printer.`;
+          ready.appendChild(note);
+        }
       } catch (err) {
         console.warn("Portfolio PDF failed:", err);
         // Name the cause on screen: a client who can't open the console can

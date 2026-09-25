@@ -2214,7 +2214,7 @@ window.WPS_DATA = {
           "id": "mu1bk4gu5u2fbo-16",
           "url": "photos/mu07kqljf8iyar/mu1bk4gu5u2fbo-16.jpg",
           "objectPosition": "center",
-          "angle": "left-profile",
+          "angle": "close-up",
           "usage": "both",
           "look": "portrait",
           "small": "photos/mu07kqljf8iyar/mu1bk4gu5u2fbo-16@480.jpg",
@@ -2296,7 +2296,8 @@ window.WPS_DATA = {
       "coverPhotoId": "mu17daf0p7enrr",
       "modelKeys": [
         "devesh-baisoya"
-      ]
+      ],
+      "updatedAt": 1790334634454
     },
     {
       "id": "mubczus1xaoo4q",

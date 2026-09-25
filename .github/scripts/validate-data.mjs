@@ -1,7 +1,9 @@
 // Guards the published portfolio against the failure class that repeatedly
 // blanked the live site: data.js and app.js drifting out of agreement about
 // the data format, or a bad sync shrinking the album list. Runs on every
-// push (see .github/workflows/validate-data.yml); a failure emails the repo
+// push (the "check" job in .github/workflows/pages.yml, which gates the
+// deploy; its own workflow ran the same checks a second time and was removed
+// in Sep 2026, audit A18); a failure emails the repo
 // owner instead of being discovered as a broken website.
 import { readFileSync, existsSync } from "node:fs";
 import { execSync } from "node:child_process";

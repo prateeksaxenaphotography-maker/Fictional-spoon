@@ -1068,6 +1068,10 @@ window.resolveContractArchive = function(version) {
   // A file published beside the photos ("photos/<album>/…") is addressed
   // from the site root, whatever page links to it.
   const siteFile = (u) => (typeof u === "string" && u.startsWith("photos/")) ? "/" + u : (u || "");
+  /* What deleting an album really does, said before it happens: the photo
+     files leave the site with the next publish, and any portfolio book or
+     saved model portfolio using them shows a gap (Sep 2026 audit, A18). */
+  const deleteAlbumQuestion = (name) => `Delete the photoshoot "${name}"?\n\nIts photo files are removed from the site when this publishes, and any portfolio book or saved model portfolio that uses them will show a gap. This can't be undone.`;
   const photoSrc = (p) => {
     if (!p) return "";
     let src = p.url || p.dataUrl || "";
@@ -3187,7 +3191,7 @@ window.resolveContractArchive = function(version) {
             e.stopPropagation();
             const targetId = btn.dataset.id || shoot.id;
             const targetName = btn.dataset.title || shoot.title || shoot.talent;
-            if (confirm(`Are you sure you want to delete the photoshoot "${targetName}"?`)) {
+            if (confirm(deleteAlbumQuestion(targetName))) {
               closeLb(true);   // Delete re-renders next
               await delShoot(targetId);
               await loadShoots();
@@ -4897,11 +4901,29 @@ window.resolveContractArchive = function(version) {
   function removeCalBooking(dKey, bookingId) {
     const settings = window.WPS_DATA.CALENDAR_SETTINGS;
     if (settings.bookedDates && settings.bookedDates[dKey]) {
-      const doomed = settings.bookedDates[dKey].filter(b => b.id === bookingId || b.name === bookingId);
+      const here = settings.bookedDates[dKey].filter(b => b.id === bookingId || b.name === bookingId);
       settings.bookedDates[dKey] = settings.bookedDates[dKey].filter(b => b.id !== bookingId && b.name !== bookingId);
       if (!settings.bookedDates[dKey].length) {
         delete settings.bookedDates[dKey];
       }
+      /* The same booking copied onto other dates — an old date bug made
+         such copies — goes with it: matched by its own id or its contract
+         number, never by name, which two clients can share (Sep 2026 audit,
+         A15). Each copy is tombstoned on its own date. */
+      const ids = new Set(here.map((b) => b && b.id).filter((x) => x && !/^shoot-/.test(x)));
+      const contracts = new Set(here.map((b) => b && b.contractNumber).filter(Boolean));
+      const copies = [];
+      if (ids.size || contracts.size) {
+        Object.keys(settings.bookedDates).forEach((d) => {
+          const list = settings.bookedDates[d] || [];
+          const gone = list.filter((b) => b && ((b.id && ids.has(b.id)) || (b.contractNumber && contracts.has(b.contractNumber))));
+          if (!gone.length) return;
+          gone.forEach((b) => copies.push([d, b]));
+          settings.bookedDates[d] = list.filter((b) => !gone.includes(b));
+          if (!settings.bookedDates[d].length) delete settings.bookedDates[d];
+        });
+      }
+      const doomed = here;
       // Tombstone the deletion, so the merge on the next load (or on another
       // device, once this is published) knows the booking was deliberately
       // removed instead of treating it as one that simply hasn't arrived yet
@@ -4911,6 +4933,10 @@ window.resolveContractArchive = function(version) {
          is remade as `shoot-<shootId>` whatever id it happens to carry now,
          so removing it has to stop THAT too, or the shoot puts it back. */
       if (doomed.length) markUnpublished("calendar");
+      copies.forEach(([d, b]) => {
+        const key = calBookingKey(d, b);
+        if (!settings.removedBookingIds.includes(key)) settings.removedBookingIds.push(key);
+      });
       doomed.forEach((b) => {
         const keys = [calBookingKey(dKey, b)];
         if (b && b.shootId) keys.push(`${dKey}::shoot-${b.shootId}`, `${dKey}::${b.shootId}`);
@@ -10865,7 +10891,7 @@ window.resolveContractArchive = function(version) {
       // delete button click handler
       block.querySelector(".work-delete")?.addEventListener("click", async (e) => {
         e.stopPropagation();
-        if (confirm(`Are you sure you want to delete the photoshoot "${s.title}"?`)) {
+        if (confirm(deleteAlbumQuestion(s.title))) {
           await delShoot(s.id);
           await loadShoots();
           toast(`Deleted "${s.title}".`);
@@ -11104,7 +11130,7 @@ window.resolveContractArchive = function(version) {
       });
       card.querySelector(".work-delete")?.addEventListener("click", async (e) => {
         e.stopPropagation();
-        if (confirm(`Are you sure you want to delete the photoshoot "${s.title || s.talent}"?`)) {
+        if (confirm(deleteAlbumQuestion(s.title || s.talent))) {
           await delShoot(s.id);
           await loadShoots();
           toast(`Deleted "${s.title || s.talent}".`);
@@ -12744,8 +12770,10 @@ if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || wi
       const success = document.getElementById("bookSuccess");
       if (success && !success.hidden) return true;
       // Photos staged in the admin's Upload queue but not published yet.
-      const queue = document.querySelector("#uploadPreviewGrid, #photoPreviewGrid, .upload-queue");
-      if (queue && queue.children.length) return true;
+      // Looked for grids that no longer exist, and so held only by accident
+      // (Sep 2026 audit, A17): the staging grid's tiles carry .thumb-remove,
+      // and admin.js flags photos that have not been published.
+      if ((window.__uploadDirty && /^\/upload/.test(location.pathname)) || document.querySelector(".upload-grid .thumb-remove")) return true;
       const modal = document.getElementById("termsModal");
       return !!(modal && modal.style.display === "flex");
     };

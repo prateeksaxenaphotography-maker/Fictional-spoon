@@ -1652,10 +1652,15 @@ window.saveAdminCustomPackages = async function() {
 };
 
 window.resetAdminCustomPackages = function() {
-  if (confirm("Reset studio package rates to default values?")) {
+  /* Named for what it does: it drops this device's price edits and shows
+     the live prices. It said "reset to default values", which it never did
+     (Sep 2026 audit, A14). */
+  if (confirm("Drop the price changes on this device and use the prices that are live on the site?")) {
     localStorage.removeItem("wps_custom_packages");
     localStorage.removeItem("wps_tfp_package");
-    alert("Package rates on this device now match the published ones.");
+    localStorage.removeItem("wps_at_wps_custom_packages");
+    localStorage.removeItem("wps_at_wps_tfp_package");
+    alert("This device now shows the live prices.");
     if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
     if (typeof render === "function") render();
   }
@@ -2105,6 +2110,35 @@ window.moveAdminPackageRow = function(index, dir) {
       toast(`Measurements will show in ${sel.value === "metric" ? "centimetres" : "feet and inches, and inches"}. Publish to show it on the site.`);
     });
 
+  /* The token was typed into the browser's own prompt box, in plain view of
+     anyone looking at the screen (Sep 2026 audit, A18). A small form of the
+     site's own now, with the characters hidden unless "Show" is ticked.
+     Resolves the token, or null when cancelled. */
+  function askForToken() {
+    return new Promise((resolve) => {
+      const back = document.createElement("div");
+      back.className = "token-ask";
+      back.innerHTML = `
+        <form class="token-ask-box" role="dialog" aria-modal="true" aria-labelledby="tokenAskTitle">
+          <h2 id="tokenAskTitle">Paste your GitHub token</h2>
+          <p>It publishes this change for everyone. Use a fine-grained token for this one repository, with Contents: read &amp; write and an expiry date. This device forgets it after 30 days.</p>
+          <label for="tokenAskInput">GitHub token</label>
+          <input id="tokenAskInput" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="github_pat_…" />
+          <label class="token-ask-show"><input type="checkbox" id="tokenAskShow" /> Show</label>
+          <div class="token-ask-acts"><button type="button" class="btn btn-ghost" data-token-cancel>Cancel</button><button type="submit" class="btn btn-dark">Publish</button></div>
+        </form>`;
+      const input = back.querySelector("#tokenAskInput");
+      const done = (v) => { back.remove(); document.removeEventListener("keydown", onKey); resolve(v); };
+      const onKey = (e) => { if (e.key === "Escape") done(null); };
+      back.querySelector("#tokenAskShow").addEventListener("change", (e) => { input.type = e.target.checked ? "text" : "password"; });
+      back.querySelector("[data-token-cancel]").addEventListener("click", () => done(null));
+      back.querySelector("form").addEventListener("submit", (e) => { e.preventDefault(); const v = input.value.trim(); if (v) done(v); else input.focus(); });
+      document.addEventListener("keydown", onKey);
+      document.body.appendChild(back);
+      input.focus();
+    });
+  }
+
   async function syncToGitHub(shootsList, { deletedIds = [], attempt = 0 } = {}) {
     /* The token used to stay in this browser for ever. It is now forgotten
        30 days after it was entered, and asked for again (Sep 2026 audit, S5,
@@ -2117,20 +2151,19 @@ window.moveAdminPackageRow = function(index, dir) {
       if (!at) localStorage.setItem("wps-github-pat-at", String(Date.now()));
       else if (Date.now() - at > PAT_DAYS * 86400000) {
         localStorage.removeItem("wps-github-pat");
-    localStorage.removeItem("wps-github-pat-at");
         localStorage.removeItem("wps-github-pat-at");
         pat = null;
         toast("Your GitHub token is over 30 days old, so it was forgotten. Paste it again to publish.");
       }
     }
     if (!pat) {
-      pat = prompt("Paste your GitHub token to publish this change for everyone.\n\nUse a fine-grained token for this one repository only, with Contents: read & write and an expiry date. This device forgets it after 30 days.");
+      pat = await askForToken();
       if (pat) {
         pat = pat.trim();
         localStorage.setItem("wps-github-pat", pat);
         localStorage.setItem("wps-github-pat-at", String(Date.now()));
       } else {
-        toast("Auto-sync skipped. Changes saved locally only.");
+        toast("Not published — no token was given. Your changes are saved on this device.");
         return;
       }
     }
@@ -3407,7 +3440,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             <span style="display: flex; align-items: center; gap: 8px;">Package rates &amp; deliverables</span>
             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
               <button type="button" class="admin-cal-btn primary" onclick="event.stopPropagation();window.saveAdminCustomPackages()">Save &amp; push live</button>
-              <button type="button" class="admin-cal-btn" onclick="event.stopPropagation();window.resetAdminCustomPackages()" title="Reset to defaults">Reset</button>
+              <button type="button" class="admin-cal-btn" onclick="event.stopPropagation();window.resetAdminCustomPackages()" title="Drop this device's price changes and use the live prices">Use live prices</button>
               <span id="adminPkgArrow" style="font-size: var(--font-xs); color: var(--ink-soft); font-weight: 700;">▼</span>
             </div>
           </div>
@@ -5268,7 +5301,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     });
     $("#adminCalExportBtn")?.addEventListener("click", exportBookingsCsv);
     $("#adminCalResetBtn")?.addEventListener("click", () => {
-      if (confirm("Reset custom date overrides? Monday-Friday will be default blocked, Saturdays-Sundays open.")) {
+      const blockedAhead = Object.keys((window.WPS_DATA.CALENDAR_SETTINGS || {}).customBlockedDates || {}).filter((d) => d >= getCalDateKey(new Date())).length;
+      if (confirm(`Clear every date you have blocked or opened by hand? Weekdays go back to closed and weekends to open.${blockedAhead ? `\n\nThis also reopens ${blockedAhead} weekend${blockedAhead === 1 ? "" : "s"} you blocked from today on.` : ""}`)) {
         // Every date it clears counts as changed now, so the reset reaches
         // the other devices instead of losing to their older copies.
         const cal = window.WPS_DATA.CALENDAR_SETTINGS;
@@ -5278,8 +5312,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         cal.customBlockedDates = {};
         cal.customOpenedDates = {};
         markUnpublished("calendar");
-        saveCalendarSettings();
-        toast("Date rules reset to defaults.");
+        // Said only when it was kept (saveCalendarSettings says why if not).
+        if (saveCalendarSettings()) toast("Every hand-set date cleared on this device. Publish to show it on the site.");
         renderAdminGrid();
       }
     });
@@ -6563,7 +6597,14 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       activate(chips[0].dataset.target);
       syncChips();
     }
+    // Photos added here and not yet saved are lost if the tab closes, so the
+    // browser is asked to warn first (A17). Saved or published, the flag drops.
+    if (!window.__uploadUnloadWired) {
+      window.__uploadUnloadWired = true;
+      window.addEventListener("beforeunload", (e) => { if (window.__uploadDirty && /^\/upload/.test(location.pathname)) { e.preventDefault(); e.returnValue = ""; } });
+    }
     function renderStaged() {
+      window.__uploadDirty = staged.some((f) => f && !f.url && !f.fullId);
       const n = staged.length; pub.disabled = n === 0;
       note.textContent = n ? `${n} photo${n > 1 ? "s" : ""} ready — drag to reorder, drag the dot to set focus.` : "No photos staged yet.";
       note.classList.toggle("ready", n > 0);
@@ -7310,6 +7351,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           : `NOT SAVED — this device would not store the album (${(err && err.name) || "unknown error"}). The form is untouched; try again.`);
         return;
       }
+      window.__uploadDirty = false;
       await loadShoots();
       // Saved here; "live" is only said once GitHub has taken it (A11).
       toast(`Saved “${shoot.title}” on this device — publishing it now…`);

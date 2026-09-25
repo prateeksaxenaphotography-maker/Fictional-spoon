@@ -26,11 +26,16 @@ on:
   push:
     branches: [main]
   workflow_dispatch: {}
-  # Once a day, 00:05 IST. A future-dated album is hidden until its date, and
-  # its page is only written by a deploy — this is the deploy that writes it on
-  # the day, without waiting for the next publish.
+  # 00:05 IST. A future-dated album is hidden until its date, and its page is
+  # only written by a deploy — this is the deploy that writes it on the day,
+  # without waiting for the next publish. GitHub runs schedules late when it
+  # is busy (23 Sep: three hours), so two more tries follow at 00:50 and 01:50
+  # IST; whichever runs first puts the album up, the rest change nothing
+  # (Sep 2026 audit, A16).
   schedule:
     - cron: "35 18 * * *"
+    - cron: "20 19 * * *"
+    - cron: "20 20 * * *"
 
 # Allow the workflow to publish Pages and use OIDC for deploy-pages.
 permissions:
