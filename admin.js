@@ -750,6 +750,10 @@ const STUDIO_BOOK_LIMITS = {
      gutter. Absent means the style's number, so a book made before the studio
      could ask is stored exactly as it was. */
   spacings: ["none", "narrow", "medium", "wide"],
+  // A page's own spacing (photos pages) and numbers (photos and Anything
+  // pages), Sep 25 2026. The builder refuses to open without this list, so it
+  // never writes fields an older copy of this file would strip.
+  pageLook: ["gap", "nums"],
   /* The colour of the chip carrying a photograph's plate number. A book colour
      or #rrggbb; absent means the style's own accent, and photoNums: false
      means no number at all. */
@@ -979,7 +983,9 @@ function cleanStudioPortfolios(o) {
         const caption = strU(pg.caption, FIELDS.photos.caption);
         if (caption) out.caption = caption;
         if (STUDIO_BOOK_LIMITS.photoRows.includes(pg.rows)) out.rows = pg.rows;
+        if (STUDIO_BOOK_LIMITS.spacings.includes(pg.gap)) out.gap = pg.gap;
       }
+      if ((pg.type === "photos" || pg.type === "free") && typeof pg.nums === "boolean") out.nums = pg.nums;
       if (pg.type === "spread" || pg.type === "article") out.photos = (Array.isArray(pg.photos) ? pg.photos : []).map(shot).filter(Boolean).slice(0, 1);
       if (pg.type === "photos" || pg.type === "spread" || pg.type === "article") {
         if (STUDIO_BOOK_LIMITS.borders.includes(pg.border)) out.border = pg.border;
@@ -1112,7 +1118,7 @@ function cleanStudioPortfolios(o) {
          its chip. Named here or the cleaner would drop them on the next
          reload. Absent means on, in the style's own accent, so a book made
          before the studio could ask is stored exactly as it was. */
-      ...(v.photoNums === false ? { photoNums: false } : {}),
+      ...(typeof v.photoNums === "boolean" ? { photoNums: v.photoNums } : {}),
       ...(v.photoLines === false || v.photoLines === "on" ? { photoLines: v.photoLines } : {}),
       ...(STUDIO_BOOK_LIMITS.plateColours.includes(v.photoNumColour) || /^#[0-9a-f]{6}$/i.test(String(v.photoNumColour || "")) ? { photoNumColour: String(v.photoNumColour).toLowerCase() } : {}),
       // The cover's layout, and the cover itself when it is arranged from scratch.
@@ -1170,8 +1176,8 @@ const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words_v9";
 // Older keys: code that knows only an older shape keeps rewriting the key it
 // knows, so every growth of the shape gets a new one, read before the old.
 const STUDIO_BOOK_WORDS_OLD = ["wps_studio_portfolios_words_v8", "wps_studio_portfolios_words_v7", "wps_studio_portfolios_words_v6", "wps_studio_portfolios_words_v5", "wps_studio_portfolios_words_v4", "wps_studio_portfolios_words_v3", "wps_studio_portfolios_words_v2", "wps_studio_portfolios_words"];
-const studioBookHasWords = (v) => v.style === "lookbook" || STUDIO_BOOK_NEWER_STYLES.includes(v.style) || !!v.paper || !!v.coverStyle || !!v.watermark || !!v.coverText || !!v.schema || !!v.footText || !!v.bg || v.showPageNumbers === false || v.photoNums === false || v.photoLines === false || v.photoLines === "on" || !!v.photoNumColour || !!v.coverLayout || !!v.coverPage || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
-  (STUDIO_BOOK_LIMITS.fields[pg.type] && (pg.type !== "photos" || pg.caption)) || (pg.blocks || []).length || pg.bg || pg.items || pg.steps || pg.rows || pg.credit || pg.label || pg.heading || pg.photoAt || pg.border || pg.borderWidth || pg.style || pg.hide || (pg.photos || []).some((s) => s.fit || s.opacity));
+const studioBookHasWords = (v) => v.style === "lookbook" || STUDIO_BOOK_NEWER_STYLES.includes(v.style) || !!v.paper || !!v.coverStyle || !!v.watermark || !!v.coverText || !!v.schema || !!v.footText || !!v.bg || v.showPageNumbers === false || typeof v.photoNums === "boolean" || v.photoLines === false || v.photoLines === "on" || !!v.photoNumColour || !!v.coverLayout || !!v.coverPage || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
+  (STUDIO_BOOK_LIMITS.fields[pg.type] && (pg.type !== "photos" || pg.caption)) || (pg.blocks || []).length || pg.bg || pg.items || pg.steps || pg.rows || pg.gap || typeof pg.nums === "boolean" || pg.credit || pg.label || pg.heading || pg.photoAt || pg.border || pg.borderWidth || pg.style || pg.hide || (pg.photos || []).some((s) => s.fit || s.opacity));
 function getStudioPortfolios(live) {
   let local = null, published = null, remote = null, words = null;
   const older = [];

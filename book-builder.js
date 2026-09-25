@@ -680,7 +680,9 @@
   const GAP_SCALE = { none: 0, narrow: 0.45, medium: 1, wide: 1.9 };
   const GAP_LABEL = [["none", "None"], ["narrow", "Narrow"], ["medium", "Medium"], ["wide", "Wide"]];
   function gapFactor() {
-    const k = bookNow && bookNow.spacing;
+    // A page can have its own (This page → Space between photographs, Sep 2026).
+    const own = entryNow && entryNow.gap;
+    const k = Object.prototype.hasOwnProperty.call(GAP_SCALE, own) ? own : bookNow && bookNow.spacing;
     return Object.prototype.hasOwnProperty.call(GAP_SCALE, k) ? GAP_SCALE[k] : 1;
   }
   // Wraps a style's own margins so its gutter answers to the book's setting.
@@ -1088,7 +1090,11 @@
      the chip it sits on. Until v511 both were forced: every photographs page
      in the Modern style carried them, always on the accent. The studio asked
      for a way to turn them off and to choose the colour (Sep 24 2026). */
-  const plateNums = () => !(bookNow && bookNow.photoNums === false);
+  /* Modern always printed them and the other styles never did, so that stays
+     each style's default; the book can say otherwise in Design (true / false)
+     and any page on This page (entry.nums), which wins (Sep 25 2026). */
+  const plateDefault = (book) => (book && typeof book.photoNums === "boolean" ? book.photoNums : styleKey(book) === "modern");
+  const plateNums = () => (entryNow && typeof entryNow.nums === "boolean" ? entryNow.nums : plateDefault(bookNow));
   /* The thin line round each photograph. The studio asked to be able to
      leave it off (Sep 25 2026). A line the studio drew itself — a block's
      own edge on an Anything page — is theirs, and stays. */
@@ -1110,6 +1116,14 @@
     const lin = (v) => { const x = v / 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); };
     return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b) > 0.4 ? P.ink : P.white;
   };
+  // The chip itself, on the corner of the photograph as drawn (r) or, with
+  // nothing drawn, of its cell (c).
+  function plateChip(page, P, num, c, r) {
+    const chip = plateColour(P);
+    const px = r ? Math.max(c.x, r.x) : c.x, py = r ? Math.max(c.y, r.y) : c.y;
+    rect(page, px, py, 7, 5, chip);
+    font(page, 700, 2.2, F.mono, 0.2); text(page, String(num).padStart(2, "0"), px + 3.5, py + 3.5, plateInk(chip, P), "center");
+  }
   const pageCredit = (entry, shoots) => ((entry && typeof entry.credit === "string" && entry.credit.trim()) ? entry.credit : creditLine(shoots));
   const cfg = () => API.config() || {};
   const studio = () => cfg().studioName || "nerdyphotographer.in";
@@ -1469,8 +1483,8 @@
       } else {
         const aspects = shots.map((s, i) => (imgs[i] ? imgAspect(imgs[i]) : 0.7));
         cells(shots.length, { ...box, h: box.h - 8 }, M.gap, aspects, W > H, entry.rows).forEach((c, i) => {
-          if (imgs[i]) { const r = drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); if (photoRule(P)) frame(page, r.x, r.y, r.w, r.h, P.rule, 0.2); }
-          else missing(page, P, c.x, c.y, c.w, c.h);
+          if (imgs[i]) { const r = drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); if (photoRule(P)) frame(page, r.x, r.y, r.w, r.h, P.rule, 0.2); if (plateNums()) plateChip(page, P, i + 1, c, r); }
+          else { missing(page, P, c.x, c.y, c.w, c.h); if (plateNums()) plateChip(page, P, i + 1, c, null); }
         });
       }
       // The caption takes the gap between the photos and the credit line, so a
@@ -1568,12 +1582,7 @@
         // corner of the photograph as drawn: a photo shown whole is smaller
         // than its cell, and a chip on the cell's corner floated ~25 mm away
         // from it (Sep 2026 audit, K8).
-        if (plateNums()) {
-          const chip = plateColour(P);
-          const px = r ? Math.max(c.x, r.x) : c.x, py = r ? Math.max(c.y, r.y) : c.y;
-          rect(page, px, py, 7, 5, chip);
-          font(page, 700, 2.2, F.mono, 0.2); text(page, String(i + 1).padStart(2, "0"), px + 3.5, py + 3.5, plateInk(chip, P), "center");
-        }
+        if (plateNums()) plateChip(page, P, i + 1, c, r);
       });
       this.foot(page, P, W, H, n, pageCredit(entry, shoots));
     },
@@ -1660,7 +1669,8 @@
         const aspects = shots.map((s, i) => (imgs[i] ? imgAspect(imgs[i]) : 0.7));
         // Tiled trim to trim: tightness is the style.
         cells(shots.length, { x: 0, y: 0, w: W, h: area }, M.gap, aspects, W > H, entry.rows).forEach((c, i) => {
-          if (imgs[i]) drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); else missing(page, P, c.x, c.y, c.w, c.h);
+          const r = imgs[i] ? drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h) : (missing(page, P, c.x, c.y, c.w, c.h), null);
+          if (plateNums()) plateChip(page, P, i + 1, c, r);
         });
       }
       if (cap) drawCaption(page, cap, 12, H - 4.8, CAPTION_TYPE.vogue, P.ink, P);
@@ -1734,7 +1744,7 @@
       if (shots.length === 1) { if (imgs[0]) fitPhoto(page, imgs[0], shots[0], area.x, area.y, area.w, area.h); else missing(page, P, area.x, area.y, area.w, area.h); }
       else {
         const aspects = shots.map((sh, i) => (imgs[i] ? imgAspect(imgs[i]) : 0.7));
-        cells(shots.length, area, M.gap, aspects, W > H, entry.rows).forEach((c, i) => { if (imgs[i]) drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); else missing(page, P, c.x, c.y, c.w, c.h); });
+        cells(shots.length, area, M.gap, aspects, W > H, entry.rows).forEach((c, i) => { const r = imgs[i] ? drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h) : (missing(page, P, c.x, c.y, c.w, c.h), null); if (plateNums()) plateChip(page, P, i + 1, c, r); });
       }
       if (cap) drawCaption(page, cap, box.x, H - M.bottom - 1, CAPTION_TYPE.lookbook, P.soft, P);
       this.foot(page, P, W, H, n, pageCredit(entry, shoots));
@@ -1870,7 +1880,8 @@
     }
     const aspects = shots.map((s, i) => (imgs[i] ? imgAspect(imgs[i]) : 0.7));
     cells(shots.length, box, gap, aspects, L, entry.rows).forEach((c, i) => {
-      if (imgs[i]) decoPhoto(page, P, deco, imgs[i], shots[i], c.x, c.y, c.w, c.h, "crop", n * 7 + i, i); else missing(page, P, c.x, c.y, c.w, c.h);
+      const r = imgs[i] ? decoPhoto(page, P, deco, imgs[i], shots[i], c.x, c.y, c.w, c.h, "crop", n * 7 + i, i) : (missing(page, P, c.x, c.y, c.w, c.h), null);
+      if (plateNums()) plateChip(page, P, i + 1, c, r && typeof r.x === "number" ? r : null);
     });
   }
   // A caption set in a narrow column: wrapped, in the studio's own formatting.
@@ -4125,6 +4136,50 @@
   const lineH = (b, H) => (linePath(b) === "h" ? lineThick(b) / H : Math.max(0.01, +b.h || 0.15));
   const blockBox = (b, W, H) => ({ x: (+b.x || 0) * W, y: (+b.y || 0) * H, w: Math.max(0.5, (+b.w || 0) * W), h: b.k === "line" ? lineH(b, H) * H : Math.max(0.5, (+b.h || 0) * H) });
 
+  /* Lines up an Anything page's photographs with an even gap: photographs
+     that share a row are resized along it, then the rows are resized down
+     the page, so the group keeps its outer edges and only the gaps change.
+     gx, gy: the gap as fractions of the page's width and height. */
+  function spacePhotos(list, gx, gy) {
+    const r4 = (v) => Math.round(v * 10000) / 10000;
+    const overlap = (a0, a1, b0, b1) => Math.min(a1, b1) - Math.max(a0, b0);
+    const groups = (items, lo, hi) => {
+      const out = [];
+      [...items].sort((a, b) => lo(a) - lo(b)).forEach((it) => {
+        const g = out.find((gr) => gr.some((o) => overlap(lo(o), hi(o), lo(it), hi(it)) > 0.5 * Math.min(hi(o) - lo(o), hi(it) - lo(it))));
+        if (g) g.push(it); else out.push([it]);
+      });
+      return out;
+    };
+    const even = (items, pos, size, gap) => {
+      if (items.length < 2) return;
+      items.sort((a, b) => pos.get(a) - pos.get(b));
+      const start = Math.min(...items.map((it) => pos.get(it))), end = Math.max(...items.map((it) => pos.get(it) + size.get(it)));
+      const total = items.reduce((t, it) => t + size.get(it), 0), room = end - start - gap * (items.length - 1);
+      if (room <= 0.02 * items.length) return;
+      let at = start;
+      items.forEach((it) => { const s2 = size.get(it) * room / total; pos.set(it, at); size.set(it, s2); at += s2 + gap; });
+    };
+    // Along each row.
+    const rows = groups(list, (b) => b.y, (b) => b.y + b.h);
+    rows.forEach((row) => {
+      const pos = new Map(row.map((b) => [b, b.x])), size = new Map(row.map((b) => [b, b.w]));
+      even(row, pos, size, gx);
+      row.forEach((b) => { b.x = r4(pos.get(b)); b.w = r4(size.get(b)); });
+    });
+    // Then the rows down the page, each as one band; bands that sit beside
+    // each other (not above) are left alone.
+    const bands = rows.map((row) => ({ row, x0: Math.min(...row.map((b) => b.x)), x1: Math.max(...row.map((b) => b.x + b.w)), y: Math.min(...row.map((b) => b.y)), h: Math.max(...row.map((b) => b.y + b.h)) - Math.min(...row.map((b) => b.y)) }));
+    groups(bands, (t) => t.x0, (t) => t.x1).forEach((stack) => {
+      const pos = new Map(stack.map((t) => [t, t.y])), size = new Map(stack.map((t) => [t, t.h]));
+      even(stack, pos, size, gy);
+      stack.forEach((t) => {
+        const k = size.get(t) / t.h, top = pos.get(t);
+        t.row.forEach((b) => { b.y = r4(top + (b.y - t.y) * k); b.h = r4(b.h * k); });
+      });
+    });
+    return list;
+  }
   function planFree(book, entry, ground = null) {
     const G = geometry(book);
     const st = styleKey(book), D = TR(st);
@@ -4135,6 +4190,9 @@
     const plan = { ops: [], cuts: [], fields: {}, foot: {}, free: true };
     const op = (o) => plan.ops.push(o);
     const colour = (role) => (role === "accentText" ? accentText(P) : P[role]);
+    // Numbers on an Anything page are the studio's to ask for, page by page.
+    let plate = 0;
+    const numbered = !ground && entry.nums === true;
     // A cover from scratch takes the style's cover ground, not the book's page colour.
     op({ k: "rect", x: 0, y: 0, w: W, h: H, c: ground ? (isFillish(entry.bg) ? blockColor(entry.bg, P, ground) : ground) : pageBgOf(book, entry, P, D.ground === "paper" ? P.paper : P.white) });
     freeBlocks(entry).forEach((b, i) => {
@@ -4154,7 +4212,8 @@
           k: "photo", shot: (b.p && b.p.id) ? b.p : null, x: box.x, y: box.y, w: box.w, h: box.h,
           mode: b.p && b.p.fit === "whole" ? "fit" : "crop", rot: turn, empty: "CHOOSE A PHOTO",
           shape: b.shape ? shapeOf(b) : (typeof b.corner === "number" && b.corner > 0 ? "rect" : null), corner: cornerOf(b),
-          frame: b.edge ? blockColor(b.edge, P, P.rule) : (D.frame ? photoRule(P) : null), frameT: THICKS[b.edgeWidth] || 0.2
+          frame: b.edge ? blockColor(b.edge, P, P.rule) : (D.frame ? photoRule(P) : null), frameT: THICKS[b.edgeWidth] || 0.2,
+          ...(numbered && b.p && b.p.id ? { num: ++plate } : {})
         });
         return;
       }
@@ -4267,6 +4326,7 @@
           const r = o.mode === "crop" ? drawPhoto(page, img, shot, o.x, o.y, o.w, o.h) : fitPhoto(page, img, shot, o.x, o.y, o.w, o.h, o.mode === "fit-right" ? "right" : o.mode === "fit-left" ? "left" : "center");
           if (shaped) page.ctx.restore();
           else if (o.frame) frame(page, r.x, r.y, r.w, r.h, o.frame, o.frameT || 0.2);
+          if (o.num) plateChip(page, P, o.num, o, shaped ? null : r);
         });
       } else if (o.k === "guide" && guides) {
         // Where words will go, in the editor's preview only; never exported.
@@ -7723,6 +7783,7 @@
             <p class="sb-hint">${!splitNow ? "Auto follows how many photographs there are and their shapes."
               : splitNow === "2across" ? "Both photographs in one row."
               : `${splitNow.split("+")[0]} photograph${splitNow.split("+")[0] === "1" ? "" : "s"} on top, ${splitNow.split("+")[1]} beneath.`}</p></div>` : "")
+          + pageLookHtml(entry, nPhotos)
           + fieldHtml({ k: "caption", label: "Caption for this page (optional)", ctl: "input", ph: "e.g. Monsoon edit, shot on the roof in Sector 46" }, entry.caption || "", (caps.photos || {}).caption || 90)
           + creditHtml(entry)
           + `<p class="sb-hint">Published books are public.</p>`
@@ -7736,6 +7797,7 @@
           change({ rail: true }); drawFields();
           const again = $(`[data-rows="${b.dataset.rows}"]`); if (again) again.focus();
         }));
+        wirePageLook(entry, drawFields);
         $$("[data-select]").forEach((b) => b.addEventListener("click", () => selectOverflow(b.dataset.select)));
         wireFormat(box, styleHost(entry));
         wireBorder(box, entry);
@@ -7851,6 +7913,54 @@
     /* The Anything page's own panel: what to add, what is on the page, and
        the settings of the one thing chosen. Everything here also works with
        a finger, because dragging on a small page is fiddly. */
+    /* Space between the photographs and their numbers, for one page. The
+       studio looked for both on This page and found them only in Design,
+       which sets every page at once (Sep 25 2026). On a photos page the
+       choice is kept and the style draws it; on an Anything page the studio
+       placed each photograph, so spacing lines them up once, in rows and
+       columns, and they can still be dragged after. */
+    const PAGE_GAP_MM = { none: 0, narrow: 2, medium: 4, wide: 8 };
+    function pageLookHtml(entry, nPhotos, free = false) {
+      if (!nPhotos) return "";
+      const gapBtns = free
+        ? GAP_LABEL.map(([k, n]) => `<button type="button" data-pagegap="${k}" title="Line the photographs up with ${esc(n.toLowerCase())} space between them">${n}</button>`).join("")
+        : [["", "Book's"], ...GAP_LABEL].map(([k, n]) => `<button type="button" role="radio" data-pagegap="${k}" aria-checked="${(entry.gap || "") === k}">${n}</button>`).join("");
+      const numsNow = typeof entry.nums === "boolean" ? String(entry.nums) : "";
+      const numOpts = free ? [["", "Off"], ["true", "On"]] : [["", "Book's"], ["true", "Show"], ["false", "Hide"]];
+      const bookGap = GAP_LABEL.find(([k]) => k === (book.spacing || "medium"))[1].toLowerCase();
+      return `<div class="sb-field"><span class="sb-label">Space between photographs</span>
+          <div class="sb-seg sb-seg-sm" ${free ? 'role="group"' : 'role="radiogroup"'} aria-label="Space between photographs on this page">${gapBtns}</div>
+          <p class="sb-hint">${free ? "Lines the photographs up in their rows and columns with this much space between them. You can still drag them after." : entry.gap ? "This page only. Every page at once: Design." : `The book's spacing (${bookGap}), set in Design.`}</p></div>
+        <div class="sb-field"><span class="sb-label">Numbers on the photographs</span>
+          <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Numbers on the photographs on this page">${numOpts.map(([k, n]) => `<button type="button" role="radio" data-pagenums="${k}" aria-checked="${(free ? (entry.nums === true ? "true" : "") : numsNow) === k}">${n}</button>`).join("")}</div>
+          <p class="sb-hint">${free ? "01, 02, 03 on each photograph, in the order they are listed above." : numsNow ? "This page only. Every page at once: Design." : `The book's setting (${plateDefault(book) ? "shown" : "hidden"}), set in Design.`}</p></div>`;
+    }
+    function wirePageLook(entry, redraw, free = false) {
+      $$("[data-pagegap]").forEach((b) => b.addEventListener("click", () => {
+        const k = b.dataset.pagegap;
+        if (free) {
+          mark();
+          const G = geometry(book), mm = PAGE_GAP_MM[k] || 0;
+          spacePhotos(blocksOf(entry).filter((x) => x.k === "photo" && !(Math.abs(+x.r || 0) > 0.05)), mm / G.Wa, mm / G.Ha);
+          change({ rail: true }); drawLayer(); redraw();
+          const again = $(`[data-pagegap="${k}"]`); if (again) again.focus();
+          return;
+        }
+        if ((entry.gap || "") === k) return;
+        mark();
+        if (k) entry.gap = k; else delete entry.gap;
+        change({ rail: true }); redraw();
+        const again = $(`[data-pagegap="${k}"]`); if (again) again.focus();
+      }));
+      $$("[data-pagenums]").forEach((b) => b.addEventListener("click", () => {
+        const k = b.dataset.pagenums, now = typeof entry.nums === "boolean" ? String(entry.nums) : "";
+        if (now === k) return;
+        mark();
+        if (k) entry.nums = k === "true"; else delete entry.nums;
+        change({ rail: true }); redraw();
+        const again = $(`[data-pagenums="${k}"]`); if (again) again.focus();
+      }));
+    }
     function drawFreeFields(box, entry) {
       const G = geometry(book);
       const blocks = blocksOf(entry);
@@ -7917,6 +8027,7 @@
             <button type="button" data-blkdown="${i}" aria-label="Bring forward" ${i === blocks.length - 1 ? "disabled" : ""}>▼</button>
             <button type="button" data-blkdel="${i}" aria-label="Remove">✕</button></li>`).join("")}</ol>
           <p class="sb-hint">The last one is on top.</p>` : `<p class="sb-hint">Nothing on this page yet. Add something above, or start again from an arrangement in “+ Add page”.</p>`}
+        ${b ? "" : pageLookHtml(entry, blocks.filter((x) => x.k === "photo").length, true)}
         ${b ? `<div class="sb-sec sb-rowbox"><h3>${esc(BLOCK_NAME[b.k] || "Thing")} ${blockSel + 1}</h3>
           ${words}${paint}${photoShape}
           ${b.k === "photo" ? `<p class="sb-hint">Choose the photograph, and how it sits in its box, below.</p>` : ""}
@@ -7941,6 +8052,7 @@
       $$("[data-blkdown]").forEach((x) => x.addEventListener("click", () => moveBlock(+x.dataset.blkdown, 1)));
       $$("[data-blkdel]").forEach((x) => x.addEventListener("click", () => removeBlock(+x.dataset.blkdel)));
       $$("[data-bg]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.bg) entry.bg = x.dataset.bg; else delete entry.bg; redraw(); }));
+      if (!b) wirePageLook(entry, drawInspector, true);
       if (!b) {
         wireAny($("[data-bgany]"), $("[data-bgpick]"), () => (/^#/.test(entry.bg || "") ? entry.bg : ""), (hex) => {
           mark(true); entry.bg = hex;
@@ -8429,12 +8541,12 @@
           <p class="sb-hint">A hairline round each photograph gives one shot on white an edge against the paper. Elegant draws it on its own; Always puts it in every style; Never leaves the photographs straight on the page. Borders you draw yourself on a page stay either way.</p>
         </div>
         <div class="sb-sec"><h3>Numbers on the photographs</h3>
-          <label class="sb-check-row"><input type="checkbox" id="sbPlate" ${book.photoNums === false ? "" : "checked"}> Number each photograph on a page</label>
-          <div id="sbPlateColour" ${book.photoNums === false ? "hidden" : ""}>
+          <label class="sb-check-row"><input type="checkbox" id="sbPlate" ${plateDefault(book) ? "checked" : ""}> Number each photograph on a page</label>
+          <div id="sbPlateColour" ${plateDefault(book) ? "" : "hidden"}>
             <span class="sb-swatches" role="group" aria-label="Colour of the number chip">${[["", "The style's accent", paletteFor(book).accent], ["ink", "Ink", paletteFor(book).ink], ["soft", "Soft", paletteFor(book).soft], ["white", "White", paletteFor(book).white], ["rule", "Hairline", paletteFor(book).rule]].map(([k, n, c]) => `<button type="button" class="sb-swatch" data-plate="${k}" aria-pressed="${(book.photoNumColour || "") === k}" title="${n}" aria-label="Number chip: ${n}"><i style="background:${c}"></i></button>`).join("")}${anySwatch("plateany", /^#/.test(book.photoNumColour || "") ? book.photoNumColour : "")}</span>
             <div class="sb-cphost" data-platepick hidden></div>
           </div>
-          <p class="sb-hint">The small 01, 02, 03 on a page of several photographs. The Modern style prints them; the other styles do not.</p>
+          <p class="sb-hint">The small 01, 02, 03 on the photographs, on every page at once. Modern prints them unless you say not; the other styles only if you say so. A page can have its own on This page.</p>
         </div>
         <div class="sb-sec"><h3>The foot of every page</h3>
           ${overHtml("sbFootText", "Name in the foot", book.footText, (window.STUDIO_BOOK_LIMITS || {}).footText || 40, studio())}
@@ -8474,7 +8586,9 @@
       }));
       $("#sbPlate").addEventListener("change", (e) => {
         mark();
-        if (e.target.checked) delete book.photoNums; else book.photoNums = false;
+        // Whatever the style does on its own is left unwritten, so a book saved before stays as it was.
+        const own = styleKey(book) === "modern";
+        if (e.target.checked === own) delete book.photoNums; else book.photoNums = e.target.checked;
         // The colour governs nothing while the numbers are off.
         const box = $("#sbPlateColour"); if (box) box.hidden = !e.target.checked;
         change();
@@ -8855,7 +8969,7 @@
     // that loaded the site before they existed still runs the old save code,
     // which would drop them while saying "Saved": refuse until it reloads.
     const L = window.STUDIO_BOOK_LIMITS;
-    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !L.workWays || !L.markStrengths || !L.paras || !L.coverText || !L.blockKinds || !L.schema || !L.lists || !L.photoRows || !(L.pageTypes || []).includes("free") || !L.coverLayouts || !(L.pageTypes || []).includes("end") || !(L.pageTypes || []).includes("look") || !(L.styles || []).includes("gazette") || !L.plateColours) {
+    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !L.workWays || !L.markStrengths || !L.paras || !L.coverText || !L.blockKinds || !L.schema || !L.lists || !L.photoRows || !(L.pageTypes || []).includes("free") || !L.coverLayouts || !(L.pageTypes || []).includes("end") || !(L.pageTypes || []).includes("look") || !(L.styles || []).includes("gazette") || !L.plateColours || !L.pageLook) {
       root.innerHTML = `<div class="sb-empty"><p class="sb-warn">The site was updated while this tab was open.</p><p class="sb-hint">Reload the page (or use “↻ Load fresh version”) before editing your books, so nothing you write is lost.</p><p><button type="button" class="sb-btn dark" id="sbReload">Reload now</button></p></div>`;
       root.querySelector("#sbReload").addEventListener("click", () => location.reload());
       return;

@@ -714,6 +714,8 @@ if (books !== undefined && books !== null) {
         }
         // `rows` is the row of three on a photos page; on Contact it is the lines in your own words.
         if (pg.type === "photos" && pg.rows !== undefined && !(["3top", "3bottom", "2across"].includes(pg.rows) || (/^[1-5]\+[1-5]$/.test(pg.rows) && Number(pg.rows[0]) + Number(pg.rows[2]) <= 6))) fail(`${where} divides its photographs into rows ${JSON.stringify(pg.rows)}, which the builder does not write`);
+        if (pg.gap !== undefined && !(pg.type === "photos" && ["none", "narrow", "medium", "wide"].includes(pg.gap))) fail(`${where} has a spacing ${JSON.stringify(pg.gap)} the builder does not write`);
+        if (pg.nums !== undefined && !((pg.type === "photos" || pg.type === "free") && typeof pg.nums === "boolean")) fail(`${where} has numbers set to ${JSON.stringify(pg.nums)}, which the builder does not write`);
         if (pg.border !== undefined && !BORDERS.has(pg.border)) fail(`${where} has an unknown border ${JSON.stringify(pg.border)}`);
         if (pg.borderWidth !== undefined && !BORDER_WIDTHS.has(pg.borderWidth)) fail(`${where} has an unknown border width ${JSON.stringify(pg.borderWidth)}`);
         if (pg.style !== undefined) {
