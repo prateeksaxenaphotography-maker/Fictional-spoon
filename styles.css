@@ -4234,6 +4234,11 @@ html.theme-dark { --ok-text: #7cc583; }
   /* !important: the viewer's close button carries position: static inline,
      and a layer anchored to anything else spread over its neighbours. */
   .theme-toggle, .lightbox-close, .work-share, .page-back-link, .lb-details-btn, .tm-card-shoot { position: relative !important; }
+  /* Relative, the phone rule's top: 16px / right: 20px (meant for the old
+     absolute button) became an OFFSET: the viewer's × slid 16px down and 20px
+     left, onto "Details & PDFs" (the studio's screenshot, Sep 25 2026). It
+     sits in the toolbar's row now, so it takes no offset at all. */
+  #lightboxClose { top: 0 !important; right: 0 !important; }
   .theme-toggle::after, .lightbox-close::after, .work-share::after, .lb-details-btn::after {
     content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
     width: max(44px, 100%); height: max(44px, 100%);
