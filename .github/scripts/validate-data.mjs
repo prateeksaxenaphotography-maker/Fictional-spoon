@@ -543,7 +543,9 @@ if (books !== undefined && books !== null) {
     const CONTACT_ROW = { label: 24, value: 60 };
     const CREDIT_PAGES = new Set(["photos", "spread", "article", "story", "note", "quote", "feature", "look"]);
     const KNOWN_KEYS_BASE = {
-      photos: ["type", "photos", "caption", "credit", "rows", "border", "borderWidth", "style"], spread: ["type", "photos", "credit", "border", "borderWidth"], divider: ["type", "heading", "line", "style"],
+      // gap and nums: a photos page's own spacing and plate numbers (v538); the
+      // app keeps them, so they are known keys, not ones it drops.
+      photos: ["type", "photos", "caption", "credit", "rows", "border", "borderWidth", "style", "gap", "nums"], spread: ["type", "photos", "credit", "border", "borderWidth"], divider: ["type", "heading", "line", "style"],
       about: ["type", "label", "heading", "style"], services: ["type", "label", "heading", "note", "items", "hide"], contact: ["type", "label", "heading", "rows", "qrLabel", "hide"],
       story: ["type", "photos", "photoAt", "credit", "style", ...Object.keys(FIELD_MAX.story)], note: ["type", "photos", "photoAt", "credit", "style", ...Object.keys(FIELD_MAX.note)],
       quote: ["type", "photos", "photoAt", "credit", "style", ...Object.keys(FIELD_MAX.quote)], letter: ["type", "style", ...Object.keys(FIELD_MAX.letter)],
@@ -552,7 +554,7 @@ if (books !== undefined && books !== null) {
       ways: ["type", "items", "style", ...Object.keys(FIELD_MAX.ways)],
       process: ["type", "way", "steps", "style", ...Object.keys(FIELD_MAX.process)],
       contents: ["type", "style", ...Object.keys(FIELD_MAX.contents)], more: ["type"],
-      free: ["type", "bg", "blocks"],
+      free: ["type", "bg", "blocks", "nums"],
       end: ["type", "layout", "photos", "text", "note", "lines", "noLines", "style"],
       look: ["type", "photos", "label", "title", "lines", "credit", "style"]
     };
