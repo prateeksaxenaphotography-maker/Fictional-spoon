@@ -5123,6 +5123,11 @@
   .sb-fmt { display: contents; }
   .sb-freeform { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 8px; }
   .sb-freeform .sb-hint { flex: 1 1 200px; margin: 0; }
+  .sb-layoutgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 6px; margin: 4px 0 10px; }
+  .sb-layoutbtn { display: grid; justify-items: center; gap: 3px; padding: 6px 4px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--paper, #fff); font: 500 10.5px/1.25 Inter, sans-serif; color: var(--ink, #141416); cursor: pointer; text-align: center; }
+  .sb-layoutbtn:hover, .sb-layoutbtn:focus-visible { border-color: var(--accent, #d24e1a); }
+  .sb-autorow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .sb-autorow select { flex: 1 1 180px; min-width: 0; }
   .sb-typerole { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 10px; padding: 8px 0; border-top: 1px solid var(--sb-line); }
   .sb-typerole:first-of-type { border-top: 0; }
   .sb-typename { display: grid; gap: 1px; min-width: 0; flex: 1; }
@@ -5289,6 +5294,43 @@
   }
 
   const PAGE_LABEL = { photos: "Photos", spread: "Two-page spread", divider: "Chapter page", about: "About", services: "What I shoot", contact: "Contact", story: "Story", note: "About a photo", quote: "Quote", letter: "Letter", feature: "Zig-zag", article: "Story + full-page photo", ways: "Ways we work", process: "How a shoot runs", free: "Anything page", end: "End page", look: "Look", more: "Story continued", contents: "Contents" };
+  // The library, by kind, with a name and a line each.
+  const LAYOUT_GROUPS = [
+    { group: "Openers", items: [
+      ["opener", "Opener", "A photograph across the top, a headline under it, two columns of words."],
+      ["halves", "Half and half", "A photograph filling the left half, the story on the right."],
+      ["headfirst", "Headline first", "A big headline, then a photograph to the foot of the page."],
+      ["framed", "Framed opener", "A framed photograph with the headline and a few words under it."],
+      ["coverstory", "Cover story", "One photograph filling the page, the headline written on it."],
+      ["bigword", "One big word", "A single word or two set huge, and a photograph under it."],
+      ["titled", "Title on the picture", "One photograph filling the page, a band across it, the title on the band."]] },
+    { group: "Photo stories", items: [
+      ["edge2", "Two, edge to edge", "Two portraits side by side, filling the page, no gap."],
+      ["two", "Two pictures and a line", "Two photographs side by side with a line of words under them."],
+      ["stacked", "Two, stacked", "Two landscape photographs, one above the other."],
+      ["bigtwo", "One big, two small", "A photograph across the top, two under it, a caption."],
+      ["beside", "Big beside two", "A tall photograph filling most of the page, two beside it."],
+      ["triptych", "Three tall", "Three portraits in a row, like a triptych."],
+      ["three", "Three pictures and a note", "One wide photograph, two under it, and a few words."],
+      ["grid4", "Four in a grid", "Four photographs, two by two."],
+      ["mosaic", "Mosaic", "One big photograph and five around it."],
+      ["sheet", "Contact sheet", "Six photographs in a grid, the way a proof sheet reads."],
+      ["strips", "Filmstrip", "Four wide frames down the page."],
+      ["scatter", "Prints on a table", "Three prints with white edges, turned a little, overlapping."],
+      ["inset", "Photo in a photo", "One photograph filling the page, a smaller one set into it."],
+      ["single", "One, with a caption", "A single photograph with room around it and a caption."]] },
+    { group: "Words and pictures", items: [
+      ["editorial", "Words beside a photo", "Headline and story on the left, a photograph and more words on the right."],
+      ["threecols", "Three columns", "A headline, an intro and the story in three columns."],
+      ["pullquote", "Pull quote", "A story in two columns with a big quote breaking it."],
+      ["interview", "Interview", "A round portrait, a headline beside it, the words under both."],
+      ["captioned", "Three with captions", "Three photographs, each with its own words under it."],
+      ["sidebar", "Colour sidebar", "A band of colour with the headline in it, the story beside."],
+      ["centred", "Centred", "A centred headline, a photograph, then the words."],
+      ["quote", "A quote under a photograph", "A photograph at the top, big words under it, and who said them."],
+      ["quotephoto", "Quote on a photograph", "Big words written across a darkened photograph."]] }
+  ];
+  const LAYOUT_NAME = Object.fromEntries(LAYOUT_GROUPS.flatMap((g) => g.items.map(([k, n]) => [k, n])));
   const ADD_MENU = [
     { group: "Photographs", items: [
       ["photos", "Photos", "One to six photos, laid out by their shapes."],
@@ -5308,13 +5350,9 @@
       ["process", "How a shoot runs", "One way, step by step, marking who does what: you, together, or the studio."]] },
     { group: "Put it where you want", items: [
       ["free", "Anything page", "An empty page. Put words, photographs, colour blocks and lines wherever you like."],
-      ["free:opener", "Opener", "A photograph across the top, a headline under it, two columns of words."],
-      ["free:two", "Two pictures and a line", "Two photographs side by side with a line of words under them."],
-      ["free:titled", "Title on the picture", "One photograph filling the page, a band across it, the title on the band."],
-      ["free:quote", "A quote under a photograph", "A photograph at the top, big words under it, and who said them."],
-      ["free:three", "Three pictures and a note", "One wide photograph, two under it, and a few words."],
-      ["free:sheet", "Contact sheet", "Six photographs in a grid, the way a proof sheet reads."],
       ["free:blank", "Empty page", "Nothing on it but the page colour: for the end of the book, or to keep a two-page spread on facing pages."]] },
+    // The layout library: every one an Anything page, so everything on it can move.
+    ...LAYOUT_GROUPS.map((g) => ({ group: `Layouts · ${g.group}`, items: g.items.map(([k, n, note]) => [`free:${k}`, n, note]) })),
     { group: "Studio pages", items: [
       ["contents", "Contents", "Every chapter and titled page with its page number, always up to date."],
       ["divider", "Chapter page", "A pause between sections, e.g. “Fashion & editorial”."],
@@ -5358,7 +5396,8 @@
   };
   function addIcon(type) {
     const FILL = { p: "#cfcbc4", t: "#8a8c93", b: "var(--accent, #d24e1a)", w: "#ffffff", q: "#141416" };
-    const parts = String(ADD_ICONS[type] || "").split(/\s+/).filter(Boolean).map((tok) => {
+    const spec = ADD_ICONS[type] !== undefined ? ADD_ICONS[type] : (/^free:/.test(type) ? layoutIconSpec(FREE_STARTS[type.slice(5)]) : "");
+    const parts = String(spec || "").split(/\s+/).filter(Boolean).map((tok) => {
       if (tok === "d") return `<rect x="4.5" y="4.5" width="35" height="51" fill="none" stroke="#d24e1a" stroke-width=".8" stroke-dasharray="2 1.5"/>`;
       const k = tok[0], [x, y, w, h] = tok.slice(1).split(",").map(Number);
       if (k === "l") return `<line x1="${x}" y1="${y}" x2="${w}" y2="${h}" stroke="#c8c6c1" stroke-width="1"/>`;
@@ -5410,8 +5449,175 @@
       { k: "photo", x: 0.3725, y: 0.355, w: 0.255, h: 0.26 },
       { k: "photo", x: 0.65, y: 0.355, w: 0.255, h: 0.26 },
       { k: "text", role: "kicker", x: 0.095, y: 0.65, w: 0.81, h: 0.03 }
+    ],
+    /* ---- the magazine layout library (Sep 2026) ---- */
+    // Openers
+    halves: [
+      { k: "photo", x: 0, y: 0, w: 0.5, h: 1 },
+      { k: "text", role: "kicker", x: 0.56, y: 0.14, w: 0.345, h: 0.03 },
+      { k: "text", role: "head", x: 0.56, y: 0.185, w: 0.345, h: 0.18 },
+      { k: "text", role: "intro", x: 0.56, y: 0.385, w: 0.345, h: 0.09 },
+      { k: "text", role: "body", x: 0.56, y: 0.5, w: 0.345, h: 0.42 }
+    ],
+    headfirst: [
+      { k: "text", role: "kicker", x: 0.095, y: 0.075, w: 0.6, h: 0.03 },
+      { k: "text", role: "head", x: 0.095, y: 0.115, w: 0.81, h: 0.2, style: { size: 1.5 } },
+      { k: "photo", x: 0, y: 0.36, w: 1, h: 0.64 }
+    ],
+    framed: [
+      { k: "photo", x: 0.18, y: 0.1, w: 0.64, h: 0.5 },
+      { k: "text", role: "kicker", x: 0.18, y: 0.64, w: 0.64, h: 0.03 },
+      { k: "text", role: "head", x: 0.18, y: 0.68, w: 0.64, h: 0.12 },
+      { k: "text", role: "body", x: 0.18, y: 0.82, w: 0.64, h: 0.1 }
+    ],
+    coverstory: [
+      { k: "photo", x: 0, y: 0, w: 1, h: 1 },
+      { k: "text", role: "kicker", x: 0.095, y: 0.08, w: 0.6, h: 0.03, style: { color: "#ffffff" } },
+      { k: "text", role: "head", x: 0.095, y: 0.12, w: 0.81, h: 0.2, style: { color: "#ffffff", size: 1.4 } }
+    ],
+    bigword: [
+      { k: "text", role: "head", x: 0.095, y: 0.06, w: 0.81, h: 0.3, style: { size: 1.6 } },
+      { k: "photo", x: 0, y: 0.4, w: 1, h: 0.6 }
+    ],
+    // Photo stories
+    edge2: [
+      { k: "photo", x: 0, y: 0, w: 0.5, h: 1 },
+      { k: "photo", x: 0.5, y: 0, w: 0.5, h: 1 }
+    ],
+    stacked: [
+      { k: "photo", x: 0.095, y: 0.075, w: 0.81, h: 0.4 },
+      { k: "photo", x: 0.095, y: 0.49, w: 0.81, h: 0.4 },
+      { k: "text", role: "kicker", x: 0.095, y: 0.91, w: 0.81, h: 0.03 }
+    ],
+    bigtwo: [
+      { k: "photo", x: 0, y: 0, w: 1, h: 0.6 },
+      { k: "photo", x: 0.095, y: 0.64, w: 0.395, h: 0.26 },
+      { k: "photo", x: 0.51, y: 0.64, w: 0.395, h: 0.26 },
+      { k: "text", role: "body", x: 0.095, y: 0.915, w: 0.81, h: 0.04 }
+    ],
+    beside: [
+      { k: "photo", x: 0, y: 0, w: 0.62, h: 1 },
+      { k: "photo", x: 0.65, y: 0.075, w: 0.3, h: 0.415 },
+      { k: "photo", x: 0.65, y: 0.51, w: 0.3, h: 0.415 }
+    ],
+    triptych: [
+      { k: "photo", x: 0.095, y: 0.12, w: 0.26, h: 0.7 },
+      { k: "photo", x: 0.37, y: 0.12, w: 0.26, h: 0.7 },
+      { k: "photo", x: 0.645, y: 0.12, w: 0.26, h: 0.7 },
+      { k: "text", role: "kicker", x: 0.095, y: 0.86, w: 0.81, h: 0.03 }
+    ],
+    grid4: [
+      { k: "photo", x: 0.095, y: 0.075, w: 0.395, h: 0.42 },
+      { k: "photo", x: 0.51, y: 0.075, w: 0.395, h: 0.42 },
+      { k: "photo", x: 0.095, y: 0.51, w: 0.395, h: 0.42 },
+      { k: "photo", x: 0.51, y: 0.51, w: 0.395, h: 0.42 },
+      { k: "text", role: "kicker", x: 0.095, y: 0.945, w: 0.81, h: 0.025 }
+    ],
+    mosaic: [
+      { k: "photo", x: 0.095, y: 0.075, w: 0.535, h: 0.52 },
+      { k: "photo", x: 0.65, y: 0.075, w: 0.255, h: 0.25 },
+      { k: "photo", x: 0.65, y: 0.345, w: 0.255, h: 0.25 },
+      { k: "photo", x: 0.095, y: 0.615, w: 0.255, h: 0.3 },
+      { k: "photo", x: 0.3725, y: 0.615, w: 0.255, h: 0.3 },
+      { k: "photo", x: 0.65, y: 0.615, w: 0.255, h: 0.3 }
+    ],
+    strips: [
+      { k: "photo", x: 0.095, y: 0.075, w: 0.81, h: 0.2 },
+      { k: "photo", x: 0.095, y: 0.29, w: 0.81, h: 0.2 },
+      { k: "photo", x: 0.095, y: 0.505, w: 0.81, h: 0.2 },
+      { k: "photo", x: 0.095, y: 0.72, w: 0.81, h: 0.2 }
+    ],
+    scatter: [
+      { k: "photo", x: 0.1, y: 0.08, w: 0.46, h: 0.36, r: -5, edge: "white", edgeWidth: "broad" },
+      { k: "photo", x: 0.44, y: 0.3, w: 0.44, h: 0.34, r: 4, edge: "white", edgeWidth: "broad" },
+      { k: "photo", x: 0.13, y: 0.57, w: 0.46, h: 0.33, r: -2, edge: "white", edgeWidth: "broad" },
+      { k: "text", role: "kicker", x: 0.62, y: 0.86, w: 0.3, h: 0.03 }
+    ],
+    inset: [
+      { k: "photo", x: 0, y: 0, w: 1, h: 1 },
+      { k: "photo", x: 0.56, y: 0.62, w: 0.34, h: 0.28, edge: "white", edgeWidth: "broad" }
+    ],
+    single: [
+      { k: "photo", x: 0.15, y: 0.1, w: 0.7, h: 0.7 },
+      { k: "text", role: "body", x: 0.15, y: 0.83, w: 0.7, h: 0.08 }
+    ],
+    // Words and pictures
+    editorial: [
+      { k: "text", role: "kicker", x: 0.095, y: 0.075, w: 0.5, h: 0.03 },
+      { k: "text", role: "head", x: 0.095, y: 0.115, w: 0.5, h: 0.15 },
+      { k: "photo", x: 0.64, y: 0.075, w: 0.265, h: 0.4 },
+      { k: "text", role: "body", x: 0.095, y: 0.29, w: 0.5, h: 0.63 },
+      { k: "text", role: "body", x: 0.64, y: 0.5, w: 0.265, h: 0.42 }
+    ],
+    threecols: [
+      { k: "text", role: "kicker", x: 0.095, y: 0.075, w: 0.6, h: 0.03 },
+      { k: "text", role: "head", x: 0.095, y: 0.11, w: 0.81, h: 0.12 },
+      { k: "text", role: "intro", x: 0.095, y: 0.25, w: 0.81, h: 0.07 },
+      { k: "text", role: "body", x: 0.095, y: 0.34, w: 0.81, h: 0.58, style: { columns: 3 } }
+    ],
+    pullquote: [
+      { k: "text", role: "head", x: 0.095, y: 0.075, w: 0.81, h: 0.1 },
+      { k: "text", role: "body", x: 0.095, y: 0.2, w: 0.81, h: 0.28, style: { columns: 2 } },
+      { k: "text", role: "quote", x: 0.095, y: 0.51, w: 0.81, h: 0.14 },
+      { k: "line", x: 0.095, y: 0.665, w: 0.15, thick: "narrow", color: "accent" },
+      { k: "text", role: "body", x: 0.095, y: 0.7, w: 0.81, h: 0.22, style: { columns: 2 } }
+    ],
+    interview: [
+      { k: "photo", x: 0.095, y: 0.075, w: 0.3, h: 0.21, shape: "ellipse" },
+      { k: "text", role: "kicker", x: 0.45, y: 0.09, w: 0.455, h: 0.03 },
+      { k: "text", role: "head", x: 0.45, y: 0.13, w: 0.455, h: 0.16 },
+      { k: "text", role: "body", x: 0.095, y: 0.33, w: 0.81, h: 0.59, style: { columns: 2 } }
+    ],
+    captioned: [
+      { k: "text", role: "head", x: 0.095, y: 0.075, w: 0.81, h: 0.1 },
+      { k: "photo", x: 0.095, y: 0.2, w: 0.255, h: 0.45 },
+      { k: "photo", x: 0.3725, y: 0.2, w: 0.255, h: 0.45 },
+      { k: "photo", x: 0.65, y: 0.2, w: 0.255, h: 0.45 },
+      { k: "text", role: "body", x: 0.095, y: 0.67, w: 0.255, h: 0.2 },
+      { k: "text", role: "body", x: 0.3725, y: 0.67, w: 0.255, h: 0.2 },
+      { k: "text", role: "body", x: 0.65, y: 0.67, w: 0.255, h: 0.2 }
+    ],
+    sidebar: [
+      { k: "shape", x: 0, y: 0, w: 0.34, h: 1, fill: "accent" },
+      { k: "text", role: "kicker", x: 0.05, y: 0.1, w: 0.25, h: 0.03, style: { color: "#ffffff" } },
+      { k: "text", role: "head", x: 0.05, y: 0.15, w: 0.25, h: 0.3, style: { color: "#ffffff" } },
+      { k: "text", role: "body", x: 0.4, y: 0.1, w: 0.505, h: 0.82 }
+    ],
+    centred: [
+      { k: "text", role: "kicker", x: 0.2, y: 0.1, w: 0.6, h: 0.03, style: { align: "center" } },
+      { k: "text", role: "head", x: 0.15, y: 0.14, w: 0.7, h: 0.15, style: { align: "center" } },
+      { k: "photo", x: 0.2, y: 0.33, w: 0.6, h: 0.37 },
+      { k: "text", role: "body", x: 0.2, y: 0.73, w: 0.6, h: 0.19 }
+    ],
+    quotephoto: [
+      { k: "photo", x: 0, y: 0, w: 1, h: 1 },
+      { k: "shape", x: 0, y: 0, w: 1, h: 1, fill: "ink", o: 0.35 },
+      { k: "text", role: "quote", x: 0.1, y: 0.35, w: 0.8, h: 0.25, style: { color: "#ffffff", align: "center" } },
+      { k: "text", role: "kicker", x: 0.1, y: 0.63, w: 0.8, h: 0.03, style: { color: "#ffffff", align: "center" } }
     ]
   };
+  // A layout's small picture, worked out from the layout itself.
+  function layoutIconSpec(blocks) {
+    const r = (v) => Math.round(v * 10) / 10;
+    const out = [];
+    for (const b of blocks || []) {
+      const x = r(Math.max(0, b.x) * 44), y = r(Math.max(0, b.y) * 60), w = r(Math.min(1 - Math.max(0, b.x), b.w) * 44), h = r(Math.min(1 - Math.max(0, b.y), b.h || 0.01) * 60);
+      if (b.k === "photo") out.push(`p${x},${y},${w},${h}`);
+      else if (b.k === "shape") out.push(`${b.fill === "ink" ? "q" : "b"}${x},${y},${w},${h}`);
+      else if (b.k === "line") out.push(`b${x},${y},${w},1`);
+      else if (b.k === "text") {
+        const white = b.style && /^#fff/i.test(b.style.color || "") ? "w" : "t";
+        if (b.role === "head") out.push(`${white}${x},${y},${r(w * 0.8)},${r(Math.min(h, 4))}`);
+        else if (b.role === "kicker") out.push(`${white}${x},${y},${r(w * 0.5)},1.2`);
+        else if (b.role === "quote") { out.push(`${white}${x},${y},${w},2.5`); out.push(`${white}${x},${r(y + 3.5)},${r(w * 0.7)},2.5`); }
+        else {
+          const cols = (b.style && b.style.columns) || 1, cw = (w - (cols - 1) * 1.5) / cols;
+          for (let c = 0; c < cols; c++) for (let l = 0; l * 3.2 < h - 1 && l < 6; l++) out.push(`${white}${r(x + c * (cw + 1.5))},${r(y + l * 3.2)},${r(cw * (l % 3 === 2 ? 0.7 : 1))},1.6`);
+        }
+      }
+    }
+    return out.join(" ");
+  }
   // The fields of each writing page, in the order they print. `line` fields
   // are one paragraph: Enter does nothing, and the words wrap on their own.
   const FIELD_UI = {
@@ -6997,13 +7203,59 @@
       menu.innerHTML = `
         <div class="sb-addhead"><strong>Add a page</strong><button type="button" class="sb-btn quiet" id="sbAddClose">Close</button></div>
         <p class="sb-hint">It goes after the page you're on. The book has ${count} page${count === 1 ? "" : "s"}.</p>
+        <div class="sb-addgroup sb-auto"><h3>Pages from an album</h3>
+          <div class="sb-autorow"><label class="sb-vh" for="sbAutoAlbum">Album</label><select id="sbAutoAlbum">${library().albums.filter((a) => a.count).map((a) => `<option value="${esc(a.id)}">${esc(a.name)} (${a.count})</option>`).join("")}</select>
+          <button type="button" class="sb-btn dark" id="sbAutoGo">Lay it out</button></div>
+          <label class="sb-check-row"><input type="checkbox" id="sbAutoChapter" checked> Start with a chapter page named after the album</label>
+          <p class="sb-hint">Its photographs, paired and grouped by their shapes — two portraits side by side, landscapes stacked, a grid now and then, a spread for a wide one — on as many pages as they need. Photographs already in the book are left out.</p></div>
         ${ADD_MENU.map((g) => `<div class="sb-addgroup"><h3>${esc(g.group)}</h3><div class="sb-additems">${g.items.map(([type, name, note]) => `
           <button type="button" class="sb-additem" data-add="${type}" ${count + pageSpan({ type }) > MAX_PAGES ? "disabled" : ""}>${addIcon(type)}<b>${esc(name)}</b><span>${esc(note)}</span></button>`).join("")}</div></div>`).join("")}`;
       menu.hidden = false;
       $("#sbAddToggle").setAttribute("aria-expanded", "true");
       menu.querySelector("#sbAddClose").addEventListener("click", closeAdd);
       menu.querySelectorAll("[data-add]").forEach((b) => b.addEventListener("click", () => { closeAdd(false); addPage(b.dataset.add); }));
+      { const go = menu.querySelector("#sbAutoGo"); if (go) go.addEventListener("click", async () => {
+        go.disabled = true; go.textContent = "Laying it out…";
+        const n = await autoPages(menu.querySelector("#sbAutoAlbum").value, menu.querySelector("#sbAutoChapter").checked);
+        closeAdd(false);
+        API.toast(n ? `${n} page${n === 1 ? "" : "s"} added · Ctrl+Z to take them out` : "Every photograph in that album is already in the book.");
+      }); }
       const first = menu.querySelector("[data-add]:not(:disabled)"); if (first) first.focus();
+    }
+    /* Pages from an album: its photographs, in the album's order, paired and
+       grouped by their shapes (read from the small copies), onto photos pages
+       and now and then a spread — starting a spread only on a left-hand page. */
+    async function autoPages(albumId, chapter) {
+      const lib = library();
+      const inBook = new Set(bookPhotoIds(book));
+      const list = [];
+      for (const [id, hit] of lib.byId) if (hit.shoot.id === albumId && !hit.photo.diagram && !inBook.has(id)) list.push({ id, hit });
+      if (!list.length) return 0;
+      await Promise.all(list.map(async (it) => { try { it.asp = imgAspect(await API.loadImage(thumbSrc(it.hit.photo), cache)); } catch (e) { it.asp = 1; } }));
+      const shot = (it) => { const f = API.photoFocus(it.hit.photo); return { id: it.id, x: +f.x.toFixed(3), y: +f.y.toFixed(3), zoom: 1 }; };
+      const wide = (it) => it && it.asp > 1.15, tall = (it) => it && it.asp < 0.9;
+      const at0 = sel < 0 ? 0 : (book.pages[sel] && book.pages[sel].type === "end" ? sel : sel + 1);
+      const pages = [];
+      if (chapter) { const al = lib.albums.find((a) => a.id === albumId); pages.push({ type: "divider", heading: String((al && al.name) || "Selected work").slice(0, 60), line: "" }); }
+      // The page number the next page would start on, to keep a spread off the fold.
+      const startNo = () => { let n = 1; for (let k = 0; k < at0; k++) n += pageSpan(book.pages[k]); for (const pg of pages) n += pageSpan(pg); return n + 1; };
+      let i = 0, k = 0;
+      while (i < list.length) {
+        const a = list[i], b2 = list[i + 1], c = list[i + 2], d = list[i + 3];
+        k++;
+        if (k % 5 === 0 && d) { pages.push({ type: "photos", photos: [a, b2, c, d].map(shot) }); i += 4; continue; }
+        if (wide(a) && a.asp > 1.3 && k % 4 === 2 && startNo() % 2 === 0) { pages.push({ type: "spread", photos: [shot(a)] }); i += 1; continue; }
+        if (wide(a) && wide(b2)) { pages.push({ type: "photos", photos: [a, b2].map(shot) }); i += 2; continue; }
+        if (tall(a) && tall(b2) && tall(c) && k % 3 === 0) { pages.push({ type: "photos", photos: [a, b2, c].map(shot) }); i += 3; continue; }
+        if (tall(a) && tall(b2) && k % 2 === 0) { pages.push({ type: "photos", photos: [a, b2].map(shot) }); i += 2; continue; }
+        pages.push({ type: "photos", photos: [shot(a)] }); i += 1;
+      }
+      mark();
+      book.pages.splice(at0, 0, ...pages);
+      flush();
+      change({ rail: true, photos: true });
+      select(at0);
+      return pages.length;
     }
     function closeAdd(refocus = true) {
       const menu = $("#sbAddMenu"); if (!menu) return;
@@ -8427,6 +8679,40 @@
         const again = $(`[data-pagenums="${k}"]`); if (again) again.focus();
       }));
     }
+    /* Another layout for an Anything page, keeping what is on it: photographs
+       go into the new photo places in order (their crop reset to fill the new
+       frame, their focus kept), words go to places of the same kind first,
+       then to any empty box; whatever the layout has no place for stays where
+       it was, on top. The old layout's own colour blocks and lines give way to
+       the new one's. */
+    function applyLayout(entry, key) {
+      const tpl = FREE_STARTS[key]; if (!tpl || !entry) return;
+      const old = blocksOf(entry);
+      const photos = old.filter((b) => b.k === "photo" && b.p && b.p.id);
+      const texts = old.filter((b) => b.k === "text" && String(b.t || "").trim());
+      const usedP = new Set(), usedT = new Set();
+      const out = tpl.map((t) => {
+        const nb = { ...t, ...(t.style ? { style: { ...t.style } } : {}) };
+        if (t.k === "text") nb.t = "";
+        if (t.k === "photo") {
+          const ph = photos.find((x) => !usedP.has(x));
+          if (ph) { usedP.add(ph); nb.p = { ...ph.p, zoom: 1 }; }
+        }
+        if (t.k === "text") {
+          const same = texts.find((x) => !usedT.has(x) && (x.role || "body") === (t.role || "body"));
+          if (same) { usedT.add(same); nb.t = same.t; if (same.style) nb.style = { ...(nb.style || {}), ...same.style }; if (same.fit) nb.fit = same.fit; }
+        }
+        return nb;
+      });
+      for (const nb of out) if (nb.k === "text" && !nb.t) { const any = texts.find((x) => !usedT.has(x)); if (any) { usedT.add(any); nb.t = any.t; if (any.style) nb.style = { ...(nb.style || {}), ...any.style }; } }
+      for (const b of old) if ((b.k === "photo" && b.p && b.p.id && !usedP.has(b)) || (b.k === "text" && String(b.t || "").trim() && !usedT.has(b))) out.push(b);
+      mark();
+      entry.blocks = out.slice(0, FREE_MAX);
+      blockSel = -1;
+      change({ rail: true, photos: true });
+      drawInspector();
+      API.toast(`Layout: ${LAYOUT_NAME[key] || key} · Ctrl+Z to go back`);
+    }
     function drawFreeFields(box, entry) {
       const G = geometry(book);
       const blocks = blocksOf(entry);
@@ -8477,6 +8763,9 @@
           <div class="sb-ptrow" style="margin-top:6px"><input type="range" min="0.2" max="12" step="0.1" value="${lineThick(b)}" data-lwidth aria-label="Thickness in millimetres" style="flex:1"><input type="number" min="0.2" max="12" step="0.1" value="${lineThick(b)}" data-lwidthbox aria-label="Thickness in millimetres"><span>mm</span></div></div>` : ""}
         ${b.k === "text" && !b.fill ? "" : `<label class="sb-range">Fade <input type="range" min="10" max="100" step="5" value="${Math.round(fade * 100)}" data-blkfade aria-valuetext="${Math.round(fade * 100)} percent"></label>`}` : "";
       box.innerHTML = `
+        ${b ? "" : `<details class="sb-pick sb-layouts"><summary>Change the layout</summary>
+          ${LAYOUT_GROUPS.map((g) => `<p class="sb-label">${esc(g.group)}</p><div class="sb-layoutgrid">${g.items.map(([k, n]) => `<button type="button" class="sb-layoutbtn" data-layout="${k}" title="${esc(n)}">${addIcon(`free:${k}`)}<span>${esc(n)}</span></button>`).join("")}</div>`).join("")}
+          <p class="sb-hint">Your photographs and words move into the new layout, headlines to headlines and photographs in order; anything it has no place for stays where it is. Ctrl+Z goes back.</p></details>`}
         <h3>Add to this page</h3>
         <div class="sb-adds">
           <button type="button" data-addblk="text">+ Words</button>
@@ -8513,6 +8802,7 @@
 
       const redraw = () => { change({ rail: true }); drawInspector(); };
       $$("[data-addblk]").forEach((x) => x.addEventListener("click", () => { if (x.dataset.addblk === "draw") { setDrawing(!drawing); return; } addBlock(x.dataset.addblk); }));
+      box.querySelectorAll("[data-layout]").forEach((x) => x.addEventListener("click", () => applyLayout(entry, x.dataset.layout)));
       $$("[data-pickblk]").forEach((x) => x.addEventListener("click", () => { blockSel = +x.dataset.pickblk; drawLayer(); drawInspector(); }));
       $$("[data-blkup]").forEach((x) => x.addEventListener("click", () => moveBlock(+x.dataset.blkup, -1)));
       $$("[data-blkdown]").forEach((x) => x.addEventListener("click", () => moveBlock(+x.dataset.blkdown, 1)));
@@ -9512,5 +9802,5 @@
     if (again) openBook(JSON.parse(JSON.stringify(again)), false, reopen); else showList();
   }
 
-  window.StudioBook = { mount, renderPages, planWriting, planFree, COLOURWAYS, STYLES, newBook, geometry, PAPERS, WAYS_COPY, PROCESS_COPY, bookletSides, SHEETS, fingerprint, fpScore, fpColour, imageHeader, originalsStore, originalLoader };
+  window.StudioBook = { mount, renderPages, planWriting, planFree, FREE_STARTS, COLOURWAYS, STYLES, newBook, geometry, PAPERS, WAYS_COPY, PROCESS_COPY, bookletSides, SHEETS, fingerprint, fpScore, fpColour, imageHeader, originalsStore, originalLoader };
 })();
