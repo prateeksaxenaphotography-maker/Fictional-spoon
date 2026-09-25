@@ -2895,8 +2895,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1790355112552,
-    "syncedAt": 1790355112552
+    "updatedAt": 1790357208192,
+    "syncedAt": 1790357208192
   },
   "INVITE_CODES": [
     {
@@ -3094,7 +3094,7 @@ window.WPS_DATA = {
     "PACKAGES": 1790257919972,
     "TFP_PACKAGE": 1790257919972,
     "HOME_STUDIO_RATE": 1789975069138,
-    "PORTFOLIO_PDF": 1790354848011,
+    "PORTFOLIO_PDF": 1790357194557,
     "HOME_SLIDESHOW": 1790354674280,
     "MEASURE_UNITS": 1790269147688,
     "HOME_STUDIO_RATE_TFP": 1789975069138
@@ -3742,7 +3742,7 @@ window.WPS_DATA = {
         "id": "mp_mueija7w_ny3rh",
         "shootId": "comp-card-Atharv%20Sharma%20(https%3A%2F%2Fwww.instagram.com%2Fectogainsss%2F%3Fhl%3Den)",
         "name": "Test 1",
-        "updatedAt": 1790354848010,
+        "updatedAt": 1790357194556,
         "spec": {
           "pages": 2,
           "count": 8,
@@ -3804,8 +3804,8 @@ window.WPS_DATA = {
           "adjust": {
             "muca80smjx9k90-18": {
               "x": 0.5,
-              "y": 0.35,
-              "zoom": 1.037425997426
+              "y": 0.08963994902161698,
+              "zoom": 1
             },
             "muccmrnumyyf3j-23": {
               "x": 0.5,
@@ -3824,10 +3824,15 @@ window.WPS_DATA = {
             },
             "muca57hap5pcdi-1": {
               "x": 0.5,
-              "y": 0.8303275652283516,
+              "y": 1,
               "zoom": 1
             },
             "muca5877bysjsu-4": {
+              "x": 0.5,
+              "y": 0.6092267115868704,
+              "zoom": 1
+            },
+            "muca57yixr16s8-3": {
               "x": 0.5,
               "y": 0.35,
               "zoom": 1
@@ -3882,9 +3887,9 @@ window.WPS_DATA = {
               },
               {
                 "id": "muca80xnhe2eom-19",
-                "x": 0.47,
-                "y": 0.22,
-                "zoom": 1.3,
+                "x": 0.46,
+                "y": 0.2,
+                "zoom": 1.15,
                 "fit": "fill"
               },
               {
@@ -3908,7 +3913,8 @@ window.WPS_DATA = {
                 "zoom": 1,
                 "fit": "fill"
               }
-            ]
+            ],
+            "nums": false
           },
           {
             "type": "photos",
@@ -4295,7 +4301,7 @@ window.WPS_DATA = {
           "phone": "",
           "showPrices": false
         },
-        "updatedAt": 1790354478331
+        "updatedAt": 1790356119236
       }
     ],
     "deleted": [
