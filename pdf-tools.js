@@ -2289,6 +2289,11 @@
         lead: state.lead, cover: state.cover, coverId: state.coverId, coverStyle: state.coverStyle,
         layout: state.layout, layouts: layoutsPerPage(), bigAt: bigAtPerPage(), order: [...state.order],
         fewerOnTop: state.fewerOnTop, cols: colsPerPage(), detailsAlign: state.detailsAlign,
+        /* The stats and contact lines are aligned apart (since v4xx). Update
+           and the draft both save THIS spec, and it had left the two out:
+           the studio changed where the contact line sits, pressed Update,
+           reopened it and found it back where it was (Sep 25 2026). */
+        statsAlign: state.statsAlign, contactAlign: state.contactAlign,
         tags: tagsPerPage(), tagPlace: state.tagPlace, tagAlign: state.tagAlign, perPage: perPage(),
         spacing: state.spacing,
         span: JSON.parse(JSON.stringify(state.span || {})),
@@ -2611,7 +2616,14 @@
     /* One line under Save that always says where things stand: not saved,
        changes not saved, saved on this device but not live, or live. The
        publish that makes it live is offered right there. */
-    let publishing = false;
+    let publishing = false, saveFailed = false;
+    // The button itself answers the press, for a moment, before it goes back
+    // to saying what the next press will do.
+    function flashSaved() {
+      const btn = body.querySelector("#ppSaveBtn"); if (!btn) return;
+      btn.textContent = "Saved ✓"; btn.classList.add("is-saved");
+      setTimeout(() => { btn.classList.remove("is-saved"); syncSaveRow(); }, 1600);
+    }
     function saveStateNow() {
       const el = body.querySelector("#ppSaveState"); if (!el) return;
       if (sigSettle && Date.now() >= sigSettle) { if (savedSig === null) savedSig = sigNow(); sigSettle = 0; }
@@ -2619,6 +2631,7 @@
       const unpub = typeof window.unpublishedState === "function" && ((window.unpublishedState().kinds) || []).includes("model portfolios");
       let cls, html;
       if (sigSettle) { cls = "is-wait"; html = "Opening…"; }
+      else if (saveFailed) { cls = "is-warn"; html = "<b>Not saved.</b> This browser's storage for the site is full, so it refused. Publish from Calendar, or delete an old saved portfolio, then press Save again."; }
       else if (!state.fromSaved) { cls = "is-warn"; html = "<b>Not saved yet.</b> Name it and press Save to keep this arrangement."; }
       else if (!same) { cls = "is-warn"; html = `<b>Changes not saved.</b> Press Update to keep them in “${esc(state.fromSaved.name)}”.`; }
       else if (publishing) { cls = "is-wait"; html = "<b>Saved.</b> Publishing to the live site…"; }
@@ -2662,10 +2675,16 @@
                 </div>`).join("")
               : `<p class="pp-type-note" style="margin:0;">Nothing saved for this model yet.</p>`;
           };
+          /* Whether it was really kept. saveModelPdfs says false when the
+             browser refuses the write (its storage for this site is full), and
+             that was ignored: the button seemed to do nothing, or the panel
+             said saved when it was not (Sep 25 2026). */
           const write = (next) => {
-            window.saveModelPdfs(next);
-            if (typeof window.stampPortfolioPdfSetting === "function") window.stampPortfolioPdfSetting();
+            const ok = window.saveModelPdfs(next) !== false;
+            if (ok && typeof window.stampPortfolioPdfSetting === "function") window.stampPortfolioPdfSetting();
             paint();
+            if (!ok) toast("Not saved: this browser's storage for the site is full. Publish from Calendar first, or delete an old saved portfolio or book, then press Save again.");
+            return ok;
           };
           paint();
           // Typing in the box changes what the button will do, so it says so
@@ -2691,8 +2710,9 @@
             if (open && title === open.name) {
               open.spec = currentSpec();
               open.updatedAt = Date.now();
-              write(cur);
-              savedSig = sigNow(); saveStateNow();
+              if (!write(cur)) { saveFailed = true; saveStateNow(); return; }
+              saveFailed = false;
+              savedSig = sigNow(); saveStateNow(); flashSaved();
               syncSaveRow();
               clearDraft();
               /* Said on the row itself, not only in a toast that slides away.
@@ -2733,9 +2753,10 @@
               }
             });
             const id = cur.versions[0].id;
+            if (!write(cur)) { saveFailed = true; saveStateNow(); return; }
+            saveFailed = false;
             state.fromSaved = { id, name: title };
-            write(cur);
-            savedSig = sigNow(); saveStateNow();
+            savedSig = sigNow(); saveStateNow(); setTimeout(flashSaved, 0);
             /* The name STAYS in the box and the button becomes Update. It was
                cleared, so the next press fell through to "new" under a
                date-stamped default name — the studio's change went into a

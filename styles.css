@@ -4260,3 +4260,58 @@ html.theme-dark { --ok-text: #7cc583; }
   input[type="checkbox"] { width: 22px; height: 22px; }
   .check-line { min-height: 44px; align-items: center; }
 }
+
+/* Safari on an iPhone measured the booking form's drop-downs by their
+   longest option ("Basic Test / Comp Card (20 Proof Clicks + …"), and the
+   whole booking page scrolled 432px sideways though every box was drawn at
+   its right width (site audit, Sep 25 2026). The form's box clips what
+   spills; its padding keeps the focus glow of the fields. */
+.book-wrap { overflow-x: clip; }
+@supports not (overflow-x: clip) { .book-wrap { overflow-x: hidden; } }
+
+/* Site audit, Sep 25 2026: on a touch screen the menu's email link, its
+   Instagram and Kavyar icons, the MENU button and the links in the photo
+   viewer's details were 17-22px tall. Each gets a finger-sized tap area; the
+   drawing is unchanged. */
+@media (pointer: coarse) {
+  #navEmail, .lightbox-sidebar .lb-person a, .lightbox-sidebar a[target="_blank"] { padding-block: 11px; margin-block: -11px; }
+  #menuBtn, .nav-social a { position: relative; }
+  #menuBtn::after, .nav-social a::after { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: max(44px, 100%); height: max(44px, 100%); }
+}
+
+/* ---- Site UX audit, Sep 25 2026 (Chrome, Safari, iPhone, Android) ---- */
+/* Booking form on a phone: the later "alignment" rules above put the page's
+   16px, the wrap's 16px and the section's 24px on each side of every field,
+   leaving it 276px wide on an iPhone, so the placeholders and the package
+   names were cut mid-word. One layer of padding on a phone. */
+@media (max-width: 600px) {
+  .book-wrap { padding: 0; }
+  .shoot-form fieldset { padding: 18px 14px 20px; }
+}
+/* Safari on a Mac drew every drop-down as a small native pop-up (about 20px
+   tall beside 44px boxes), so the labels of a row no longer lined up. The
+   site's own box and a drawn arrow, the same in every browser. */
+.field select, .book-wrap select, .pp-field select, .book-wrap .field select, .upload-grid #shootForm .field select {
+  -webkit-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23888888' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center; background-size: 12px 8px;
+  padding-right: 34px !important; text-overflow: ellipsis;
+}
+.field select::-ms-expand { display: none; }
+/* The photo viewer's backdrop: Safari needs the prefixed blur, and without
+   it the page (its header, the album's title) showed through the 95% black. */
+#lightbox { -webkit-backdrop-filter: blur(16px); background: rgba(10, 10, 10, 0.97) !important; }
+/* The menu: an item that wraps ("Workshops attended") read as two items,
+   because its lines were as far apart as the items. */
+.nav-links a { line-height: 1; }
+.nav-links li + li { margin-top: .14em; }
+/* The viewer's details: "PHOTOGRAPHY" is 92px in its spaced capitals and ran
+   into the name beside it in the 82px column a phone gave it. */
+@media (max-width: 720px) { .lb-credit { grid-template-columns: 96px minmax(0, 1fr); } }
+/* Licence and privacy: links looked like the words around them, and lines
+   ran the whole width of a desktop screen. */
+main[data-static-path] .section > h2, main[data-static-path] .section > p, main[data-static-path] .section > ul { max-width: 72ch; }
+main[data-static-path] .section a, main[data-static-path] .pr-links a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+main[data-static-path] .pr-links { line-height: 2.4; }
+main[data-static-path] .pr-links a { display: inline-block; padding: 4px 2px; }
+#ppSaveBtn.is-saved { background: #047857; border-color: #047857; color: #fff; }
