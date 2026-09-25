@@ -5823,6 +5823,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     let printMode = "normal";            // or "fold": pages two to a sheet, in folding order
     let exportDpi = 150;                 // or 300, for a print shop
     let printMarks = false;              // 3 mm bleed + crop marks, for a print shop
+    let printCmyk = false;               // the pages in printing inks (CMYK)
     const originals = originalsStore();  // the studio's full-size files, this session only
     let lastMatch = null;                // what match() last found for this book
     let lightTimer = null;
@@ -6231,6 +6232,8 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
               </div>
               <p class="sb-hint" id="sbBookletNote">Normal: one page per sheet, the size you chose in Design.</p>
               <label class="sb-check-row" id="sbMarksRow"><input type="checkbox" id="sbMarks"> Crop marks and 3 mm bleed, for a print shop</label>
+              <label class="sb-check-row" id="sbCmykRow"><input type="checkbox" id="sbCmyk"> Print colours (CMYK)</label>
+              <p class="sb-hint" id="sbCmykNote" hidden>The pages are turned into the four printing inks, with black ink carrying the greys and no more than 300% ink anywhere; black words print in black ink alone. Colours on paper are never as bright as on a screen. Ask your print shop first: many prefer the normal file and convert it with their own press profile. The file is two to three times the size.</p>
             </div>
             <div class="sb-dlrow">
               <button type="button" class="sb-btn dark" id="sbPdf" data-dl>Download PDF</button>
@@ -6338,6 +6341,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       }));
       $("#sbPng").addEventListener("click", (e) => download(e.currentTarget, "png", $("#sbMark").checked));
       $("#sbMarks").addEventListener("change", (e) => { printMarks = e.currentTarget.checked; });
+      $("#sbCmyk").addEventListener("change", (e) => { printCmyk = e.currentTarget.checked; $("#sbCmykNote").hidden = !printCmyk; });
       $$("[data-dpi]").forEach((b) => b.addEventListener("click", () => {
         exportDpi = +b.dataset.dpi;
         $$("[data-dpi]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
@@ -9373,14 +9377,16 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       add("Text styles", "Design", design("#sbTypeset .sb-fmttoggle", "type"));
       add(`${book.baseline ? "Turn off" : "Turn on"} the baseline grid`, "Design", design("#sbBaseline", "type"));
       [["", "No running head"], ["title", "Running head: the book's title"], ["section", "Running head: the section"], ["both", "Running head: title and section"]].forEach(([k, n]) => add(n, "Design", design(`[data-runhead="${k}"]`, "every")));
-      const dl = (marks, fold) => () => {
+      const dl = (marks, fold, inks = false) => () => {
         const pop = $("#sbDlPop"); if (pop && pop.hidden) $("#sbDlToggle").click();
         const pm = $(`[data-print="${fold ? "fold" : "normal"}"]`); if (pm && !pm.disabled) pm.click();
         const m = $("#sbMarks"); if (m && m.checked !== marks) m.click();
+        const ck = $("#sbCmyk"); if (ck && !fold && ck.checked !== inks) ck.click();
         $("#sbPdf").click();
       };
       add("Download the PDF", "File", dl(false, false));
       add("Download for a print shop (crop marks and bleed)", "File", dl(true, false));
+      add("Download for a print shop in print colours (CMYK, crop marks and bleed)", "File", dl(true, false, true));
       add("Download to fold in half (booklet)", "File", dl(false, true));
       add("Download PNG pages", "File", () => { const pop = $("#sbDlPop"); if (pop && pop.hidden) $("#sbDlToggle").click(); $("#sbPng").click(); });
       add("Save", "File", () => $("#sbSave").click());
@@ -9661,6 +9667,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       if (!can && printMode === "fold") { printMode = "normal"; $$("[data-print]").forEach((x) => x.setAttribute("aria-checked", String(x.dataset.print === "normal"))); }
       if (pdf) pdf.textContent = printMode === "fold" ? "Download PDF to fold" : "Download PDF";
       { const row = $("#sbMarksRow"); if (row) row.hidden = printMode === "fold"; }
+      { const row = $("#sbCmykRow"), note = $("#sbCmykNote"); if (row) row.hidden = printMode === "fold"; if (note) note.hidden = printMode === "fold" || !printCmyk; }
       if (!can) { el.textContent = `Normal: one ${sheet.page} page per sheet. Folding needs a portrait book — a landscape one would fold along the top edge.`; return; }
       if (printMode !== "fold") { el.textContent = `Normal: one ${sheet.page} page per sheet, the size you chose in Design.`; return; }
       const n = renderedCount(book), padded = Math.ceil(n / 4) * 4;
@@ -9823,6 +9830,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
            the real pass draws (a canvas call cannot wait for a download). A
            watermarked sample keeps its words in the picture, under the mark. */
         const marks = format === "pdf" && printMarks;
+        const cmyk = format === "pdf" && printCmyk;
         const BP = format !== "png" ? await loadPrint() : null;
         let print = null;
         if (BP && !watermarked) {
@@ -9851,7 +9859,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
               if (format === "pdf") {
                 const bleedPx = marks && BP ? Math.round(3 * dpi / 25.4) : 0;
                 const img = bleedPx ? BP.withBleed(canvas, bleedPx) : canvas;
-                out.push({ jpeg: await API.canvasJpeg(img, 0.9), width: img.width, height: img.height, links: printed, pt, runs, bleedPx,
+                out.push({ jpeg: cmyk && BP ? await BP.cmykJpeg(img, 90) : await API.canvasJpeg(img, 0.9), cmyk: !!(cmyk && BP), width: img.width, height: img.height, links: printed, pt, runs, bleedPx,
                   label: `${ascii(snap.name) || "Portfolio"} - page ${r.n} - trim ${Math.round(G0.pw)} x ${Math.round(G0.ph)} mm - bleed 3 mm` });
                 if (img !== canvas) { img.width = 0; img.height = 0; }
               }
@@ -9890,12 +9898,12 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
               }
             }
             const title = `${snap.name} — ${studio()}${format === "booklet" ? " (booklet)" : ""}`;
-            result = format === "png" ? out : BP ? (await BP.buildPdf(out, { title, author: studio(), marks })).bytes : await API.buildPdf(out, title);
+            result = format === "png" ? out : BP ? (await BP.buildPdf(out, { title, author: studio(), marks, cmyk: !!(cmyk && BP) })).bytes : await API.buildPdf(out, title);
             madeAt = dpi; fullSize = orig ? orig.used.size : 0;
             break;
           } catch (err) { lastErr = err; } finally { if (orig) await orig.release(); }
         }
-        const madeNote = `${madeAt} dpi${fullSize ? ` · ${fullSize} full-size photo${fullSize === 1 ? "" : "s"}` : ""}${format !== "png" ? (print ? " · real type" : watermarked ? "" : " · words as picture: fonts didn't load") : ""}${marks ? " · crop marks + bleed" : ""}`;
+        const madeNote = `${madeAt} dpi${fullSize ? ` · ${fullSize} full-size photo${fullSize === 1 ? "" : "s"}` : ""}${format !== "png" ? (print ? " · real type" : watermarked ? "" : " · words as picture: fonts didn't load") : ""}${marks ? " · crop marks + bleed" : ""}${cmyk ? " · CMYK" : ""}`;
         const softer = madeAt && madeAt < exportDpi ? `<p class="sb-warn">Made at ${madeAt} dpi: this device ran short of memory at ${exportDpi}. Try on a computer, or with fewer pages.</p>` : "";
         if (!result) throw lastErr || new Error("unknown error");
         if (!ready.isConnected) return;

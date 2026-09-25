@@ -438,6 +438,148 @@
     return c;
   }
 
+  /* ---------- print colours (CMYK) ---------------------------------------------
+     A press prints cyan, magenta, yellow and black, not the screen's red,
+     green and blue. When the studio asks for CMYK, every page's picture is
+     turned into those four inks and written as a four-channel JPEG (the
+     browser can only write RGB JPEGs, so this file carries its own encoder),
+     and the type is coloured in inks too.
+
+     The conversion is the usual press recipe without a press profile:
+     grey is carried by black ink rather than three colours (grey component
+     replacement from a quarter tone), and no spot carries more than 300%
+     ink in all, the ceiling most presses ask for. A neutral grey or black
+     set in type becomes black ink alone, so small words print sharp with no
+     colour fringes. A print shop with its own profile may still prefer the
+     RGB file: the menu says so. */
+  function toCmyk(r, g, b) {
+    const R = r / 255, G = g / 255, B = b / 255;
+    let c = 1 - R, m = 1 - G, y = 1 - B;
+    const kmin = Math.min(c, m, y);
+    const k = kmin <= 0.25 ? 0 : (kmin - 0.25) / 0.75;
+    // Black takes over the grey the three colours shared; 30% of that colour
+    // stays under the black (rich black), so a dark photograph keeps its depth.
+    c -= 0.7 * k; m -= 0.7 * k; y -= 0.7 * k;
+    // Grey balance: equal cyan, magenta and yellow print brown on a press, so
+    // the grey the three share carries less magenta and yellow than cyan
+    // (about C50 M39 Y39 for a mid grey, the usual press balance).
+    const n = Math.min(c, m, y);
+    m -= 0.22 * n; y -= 0.22 * n;
+    const total = c + m + y + k;
+    if (total > 3) { const f = (3 - k) / (c + m + y); c *= f; m *= f; y *= f; }
+    return [c, m, y, k];
+  }
+  // A colour for type or a mark: neutral means black ink only.
+  const inkOf = (col) => (Math.abs(col.r - col.g) < 3 && Math.abs(col.g - col.b) < 3 ? [0, 0, 0, 1 - col.r / 255] : toCmyk(col.r, col.g, col.b));
+
+  // A baseline JPEG writer for 4-component (CMYK) pictures: one standard
+  // quantisation table and the standard Huffman tables for every channel, no
+  // subsampling. Values are stored as they are (no Adobe inversion marker).
+  const ZZ = [0, 1, 8, 16, 9, 2, 3, 10, 17, 24, 32, 25, 18, 11, 4, 5, 12, 19, 26, 33, 40, 48, 41, 34, 27, 20, 13, 6, 7, 14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37, 44, 51, 58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62, 63];
+  const QBASE = [16, 11, 10, 16, 24, 40, 51, 61, 12, 12, 14, 19, 26, 58, 60, 55, 14, 13, 16, 24, 40, 57, 69, 56, 14, 17, 22, 29, 51, 87, 80, 62, 18, 22, 37, 56, 68, 109, 103, 77, 24, 35, 55, 64, 81, 104, 113, 92, 49, 64, 78, 87, 103, 121, 120, 101, 72, 92, 95, 98, 112, 100, 103, 99];
+  const DC_BITS = [0, 1, 5, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0], DC_VALS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+  const AC_BITS = [0, 2, 1, 3, 3, 2, 4, 3, 5, 5, 4, 4, 0, 0, 1, 0x7d];
+  const AC_VALS = [0x01, 0x02, 0x03, 0x00, 0x04, 0x11, 0x05, 0x12, 0x21, 0x31, 0x41, 0x06, 0x13, 0x51, 0x61, 0x07, 0x22, 0x71, 0x14, 0x32, 0x81, 0x91, 0xa1, 0x08, 0x23, 0x42, 0xb1, 0xc1, 0x15, 0x52, 0xd1, 0xf0,
+    0x24, 0x33, 0x62, 0x72, 0x82, 0x09, 0x0a, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49,
+    0x4a, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x5a, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6a, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7a, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89,
+    0x8a, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9a, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7, 0xa8, 0xa9, 0xaa, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7, 0xb8, 0xb9, 0xba, 0xc2, 0xc3, 0xc4, 0xc5,
+    0xc6, 0xc7, 0xc8, 0xc9, 0xca, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8, 0xd9, 0xda, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7, 0xe8, 0xe9, 0xea, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa];
+  function huffTable(bits, vals) {
+    const codes = {}, sizes = {};
+    let code = 0, k = 0;
+    for (let len = 1; len <= 16; len++) { for (let i = 0; i < bits[len - 1]; i++) { codes[vals[k]] = code; sizes[vals[k]] = len; k++; code++; } code <<= 1; }
+    return { codes, sizes };
+  }
+  const HDC = huffTable(DC_BITS, DC_VALS), HAC = huffTable(AC_BITS, AC_VALS);
+  const AASF = [1.0, 1.387039845, 1.306562965, 1.175875602, 1.0, 0.785694958, 0.541196100, 0.275899379];
+  async function cmykJpeg(canvas, quality = 90) {
+    const W = canvas.width, H = canvas.height;
+    const scale = quality < 50 ? 5000 / quality : 200 - quality * 2;
+    const qt = QBASE.map((v) => Math.min(255, Math.max(1, Math.floor((v * scale + 50) / 100))));
+    const fdtbl = new Float64Array(64);
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) fdtbl[r * 8 + c] = 1 / (qt[r * 8 + c] * AASF[r] * AASF[c] * 8);
+    // Output buffer, grown as needed.
+    let out = new Uint8Array(1 << 20), len = 0;
+    const byte = (b) => { if (len >= out.length) { const n = new Uint8Array(out.length * 2); n.set(out); out = n; } out[len++] = b; };
+    const word = (w) => { byte((w >> 8) & 255); byte(w & 255); };
+    let bitBuf = 0, bitCnt = 0;
+    const bits = (code, size) => {
+      bitBuf = (bitBuf << size) | code; bitCnt += size;
+      while (bitCnt >= 8) { const b = (bitBuf >> (bitCnt - 8)) & 255; byte(b); if (b === 255) byte(0); bitCnt -= 8; bitBuf &= (1 << bitCnt) - 1; }
+    };
+    // Headers.
+    word(0xffd8);
+    word(0xffdb); word(67); byte(0); for (let i = 0; i < 64; i++) byte(qt[ZZ[i]]);
+    word(0xffc0); word(8 + 3 * 4); byte(8); word(H); word(W); byte(4); for (let c = 1; c <= 4; c++) { byte(c); byte(0x11); byte(0); }
+    const dht = (cls, id, b, v) => { word(0xffc4); word(3 + 16 + v.length); byte((cls << 4) | id); b.forEach(byte); v.forEach(byte); };
+    dht(0, 0, DC_BITS, DC_VALS); dht(1, 0, AC_BITS, AC_VALS);
+    word(0xffda); word(6 + 2 * 4); byte(4); for (let c = 1; c <= 4; c++) { byte(c); byte(0); } byte(0); byte(63); byte(0);
+    const ctx = canvas.getContext("2d");
+    const blk = new Float64Array(64), q = new Int32Array(64);
+    const dcPrev = [0, 0, 0, 0];
+    const catOf = (v) => { let a = v < 0 ? -v : v, n = 0; while (a) { n++; a >>= 1; } return n; };
+    const encodeBlock = (ci) => {
+      // Rows, then columns (AAN).
+      for (let pass = 0; pass < 2; pass++) {
+        for (let i = 0; i < 8; i++) {
+          const s0 = pass ? i : i * 8, st = pass ? 8 : 1;
+          const d0 = blk[s0], d1 = blk[s0 + st], d2 = blk[s0 + 2 * st], d3 = blk[s0 + 3 * st], d4 = blk[s0 + 4 * st], d5 = blk[s0 + 5 * st], d6 = blk[s0 + 6 * st], d7 = blk[s0 + 7 * st];
+          const t0 = d0 + d7, t7 = d0 - d7, t1 = d1 + d6, t6 = d1 - d6, t2 = d2 + d5, t5 = d2 - d5, t3 = d3 + d4, t4 = d3 - d4;
+          let t10 = t0 + t3; const t13 = t0 - t3; let t11 = t1 + t2; let t12 = t1 - t2;
+          blk[s0] = t10 + t11; blk[s0 + 4 * st] = t10 - t11;
+          const z1 = (t12 + t13) * 0.707106781;
+          blk[s0 + 2 * st] = t13 + z1; blk[s0 + 6 * st] = t13 - z1;
+          t10 = t4 + t5; t11 = t5 + t6; t12 = t6 + t7;
+          const z5 = (t10 - t12) * 0.382683433, z2 = 0.5411961 * t10 + z5, z4 = 1.306562965 * t12 + z5, z3 = t11 * 0.707106781;
+          const z11 = t7 + z3, z13 = t7 - z3;
+          blk[s0 + 5 * st] = z13 + z2; blk[s0 + 3 * st] = z13 - z2; blk[s0 + st] = z11 + z4; blk[s0 + 7 * st] = z11 - z4;
+        }
+      }
+      for (let i = 0; i < 64; i++) q[i] = Math.round(blk[ZZ[i]] * fdtbl[ZZ[i]]);
+      const diff = q[0] - dcPrev[ci]; dcPrev[ci] = q[0];
+      const dc = catOf(diff);
+      bits(HDC.codes[dc], HDC.sizes[dc]);
+      if (dc) bits(diff < 0 ? (diff - 1) & ((1 << dc) - 1) : diff, dc);
+      let run = 0;
+      for (let i = 1; i < 64; i++) {
+        const v = q[i];
+        if (!v) { run++; continue; }
+        while (run > 15) { bits(HAC.codes[0xf0], HAC.sizes[0xf0]); run -= 16; }
+        const n = catOf(v), sym = (run << 4) | n;
+        bits(HAC.codes[sym], HAC.sizes[sym]);
+        bits(v < 0 ? (v - 1) & ((1 << n) - 1) : v, n);
+        run = 0;
+      }
+      if (run) bits(HAC.codes[0], HAC.sizes[0]);
+    };
+    // Eight rows of pixels at a time, turned into inks once each.
+    const cmyk = new Uint8Array(W * 8 * 4);
+    for (let by = 0; by < H; by += 8) {
+      const rows = Math.min(8, H - by);
+      const px = ctx.getImageData(0, by, W, rows).data;
+      for (let i = 0, n = W * rows; i < n; i++) {
+        const [c, m, y, k] = toCmyk(px[i * 4], px[i * 4 + 1], px[i * 4 + 2]);
+        cmyk[i * 4] = Math.round(c * 255); cmyk[i * 4 + 1] = Math.round(m * 255); cmyk[i * 4 + 2] = Math.round(y * 255); cmyk[i * 4 + 3] = Math.round(k * 255);
+      }
+      for (let bx = 0; bx < W; bx += 8) {
+        for (let ci = 0; ci < 4; ci++) {
+          for (let yy = 0; yy < 8; yy++) {
+            const sy = Math.min(yy, rows - 1);
+            for (let xx = 0; xx < 8; xx++) {
+              const sx = Math.min(bx + xx, W - 1);
+              blk[yy * 8 + xx] = cmyk[(sy * W + sx) * 4 + ci] - 128;
+            }
+          }
+          encodeBlock(ci);
+        }
+      }
+      if ((by & 127) === 0) await new Promise((r) => setTimeout(r, 0));   // let the page breathe
+    }
+    if (bitCnt > 0) bits((1 << (8 - bitCnt)) - 1, 8 - bitCnt);
+    word(0xffd9);
+    return out.slice(0, len);
+  }
+
   /* ---------- the PDF ----------------------------------------------------------
      pages: [{ jpeg, width, height, pt:{w,h} (trim, points), links (mm from the
                trim's top left), runs (from takeRuns, in the image's pixels,
@@ -499,7 +641,7 @@
       const toPdf = new DOMMatrix([k, 0, 0, -k, ox, oyTop]);
       for (const r of p.runs || []) {
         const T = toPdf.multiply(r.m);
-        c += `BT\n${num(r.color.r / 255)} ${num(r.color.g / 255)} ${num(r.color.b / 255)} rg\n`;
+        c += opts.cmyk ? `BT\n${inkOf(r.color).map(num).join(" ")} k\n` : `BT\n${num(r.color.r / 255)} ${num(r.color.g / 255)} ${num(r.color.b / 255)} rg\n`;
         if (r.alpha < 0.999) c += `/${gsOf(r.alpha)} gs\n`;
         c += `${num(T.a)} ${num(T.b)} ${num(T.c)} ${num(T.d)} ${num(T.e)} ${num(T.f)} Tm\n`;
         let cur = null, pen = 0, arr = "";
@@ -519,13 +661,13 @@
       // starting clear of the bleed; and a slug line saying what this is.
       if (opts.marks) {
         const a = bleed + 2 * MM, L = 5 * MM, x0 = slug, x1 = slug + TW, y0 = slug, y1 = slug + TH;
-        c += "q\n0 0 0 RG 0.25 w\n";
+        c += opts.cmyk ? "q\n0 0 0 1 K 0.25 w\n" : "q\n0 0 0 RG 0.25 w\n";
         for (const [x, y, sx, sy] of [[x0, y0, -1, -1], [x1, y0, 1, -1], [x0, y1, -1, 1], [x1, y1, 1, 1]]) {
           c += `${num(x + sx * a)} ${num(y)} m ${num(x + sx * (a + L))} ${num(y)} l S\n`;
           c += `${num(x)} ${num(y + sy * a)} m ${num(x)} ${num(y + sy * (a + L))} l S\n`;
         }
         c += "Q\n";
-        if (p.label) c += `BT 0 0 0 rg /FS 6 Tf ${num(slug + 2 * MM + L)} ${num(slug / 2 - 2)} Td ${literal(p.label)} Tj ET\n`;
+        if (p.label) c += `BT ${opts.cmyk ? "0 0 0 1 k" : "0 0 0 rg"} /FS 6 Tf ${num(slug + 2 * MM + L)} ${num(slug / 2 - 2)} Td ${literal(p.label)} Tj ET\n`;
       }
       contents.push({ c, MW, MH, TW, TH, k, ox, oyTop, bPx });
     });
@@ -543,7 +685,7 @@
       end();
       await stream(id.content, "", C.c);
       begin(id.image);
-      write(`<< /Type /XObject /Subtype /Image /Width ${p.width} /Height ${p.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${p.jpeg.length} >>\nstream\n`);
+      write(`<< /Type /XObject /Subtype /Image /Width ${p.width} /Height ${p.height} /ColorSpace /${p.cmyk ? "DeviceCMYK" : "DeviceRGB"} /BitsPerComponent 8 /Filter /DCTDecode /Length ${p.jpeg.length} >>\nstream\n`);
       write(p.jpeg); write("\nendstream"); end();
       (p.links || []).forEach((l, li) => {
         const url = l.url.replace(/[^\x21-\x7e]/g, (ch) => encodeURIComponent(ch));
@@ -596,5 +738,5 @@
     return { bytes: out, fonts: fonts.size };
   }
 
-  window.BookPrint = { hook, takeRuns, shiftRuns, withBleed, buildPdf, newNeeds, loadNeeds, faceOf, parseFont };
+  window.BookPrint = { hook, takeRuns, shiftRuns, withBleed, buildPdf, cmykJpeg, toCmyk, newNeeds, loadNeeds, faceOf, parseFont };
 })();
