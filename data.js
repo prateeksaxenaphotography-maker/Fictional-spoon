@@ -2885,8 +2885,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1790337954885,
-    "syncedAt": 1790337954885
+    "updatedAt": 1790354853707,
+    "syncedAt": 1790354853707
   },
   "INVITE_CODES": [
     {
@@ -3072,7 +3072,7 @@ window.WPS_DATA = {
     }
   },
   "HOME_SLIDESHOW": {
-    "seconds": 5
+    "seconds": 4
   },
   "MEASURE_UNITS": {
     "display": "metric"
@@ -3084,8 +3084,8 @@ window.WPS_DATA = {
     "PACKAGES": 1790257919972,
     "TFP_PACKAGE": 1790257919972,
     "HOME_STUDIO_RATE": 1789975069138,
-    "PORTFOLIO_PDF": 1790311312712,
-    "HOME_SLIDESHOW": 0,
+    "PORTFOLIO_PDF": 1790354848011,
+    "HOME_SLIDESHOW": 1790354674280,
     "MEASURE_UNITS": 1790269147688,
     "HOME_STUDIO_RATE_TFP": 1789975069138
   },
@@ -3732,7 +3732,7 @@ window.WPS_DATA = {
         "id": "mp_mueija7w_ny3rh",
         "shootId": "comp-card-Atharv%20Sharma%20(https%3A%2F%2Fwww.instagram.com%2Fectogainsss%2F%3Fhl%3Den)",
         "name": "Test 1",
-        "updatedAt": 1790311312711,
+        "updatedAt": 1790354848010,
         "spec": {
           "pages": 2,
           "count": 8,
@@ -3817,7 +3817,7 @@ window.WPS_DATA = {
               "y": 0.8303275652283516,
               "zoom": 1
             },
-            "muca57yixr16s8-3": {
+            "muca5877bysjsu-4": {
               "x": 0.5,
               "y": 0.35,
               "zoom": 1
@@ -3853,17 +3853,6 @@ window.WPS_DATA = {
           "strength": "light"
         },
         "pages": [
-          {
-            "type": "photos",
-            "photos": [
-              {
-                "id": "muca5a1qkkj6qh-11",
-                "x": 0.452,
-                "y": 0.112,
-                "zoom": 1
-              }
-            ]
-          },
           {
             "type": "photos",
             "photos": [
@@ -3918,7 +3907,7 @@ window.WPS_DATA = {
                 "id": "mu17d96ivu3mvw-3",
                 "x": 0.5,
                 "y": 0.29,
-                "zoom": 1.25,
+                "zoom": 1.1,
                 "fit": "whole"
               },
               {
@@ -3937,7 +3926,20 @@ window.WPS_DATA = {
               }
             ],
             "rows": "1+2",
+            "gap": "medium",
+            "nums": false,
             "bg": "paper"
+          },
+          {
+            "type": "photos",
+            "photos": [
+              {
+                "id": "muca5a1qkkj6qh-11",
+                "x": 0.452,
+                "y": 0.112,
+                "zoom": 1
+              }
+            ]
           },
           {
             "type": "photos",
@@ -3996,6 +3998,70 @@ window.WPS_DATA = {
                 "x": 0.5,
                 "y": 0.35,
                 "zoom": 1
+              }
+            ],
+            "gap": "wide",
+            "nums": false
+          },
+          {
+            "type": "free",
+            "blocks": [
+              {
+                "k": "text",
+                "x": 0.095,
+                "y": 0.075,
+                "w": 0.81,
+                "h": 0.1,
+                "t": "",
+                "role": "head"
+              },
+              {
+                "k": "photo",
+                "x": 0.095,
+                "y": 0.2,
+                "w": 0.255,
+                "h": 0.45
+              },
+              {
+                "k": "photo",
+                "x": 0.3725,
+                "y": 0.2,
+                "w": 0.255,
+                "h": 0.45
+              },
+              {
+                "k": "photo",
+                "x": 0.65,
+                "y": 0.2,
+                "w": 0.255,
+                "h": 0.45
+              },
+              {
+                "k": "text",
+                "x": 0.095,
+                "y": 0.67,
+                "w": 0.255,
+                "h": 0.2,
+                "t": "",
+                "role": "body"
+              },
+              {
+                "k": "text",
+                "x": 0.3725,
+                "y": 0.67,
+                "w": 0.255,
+                "h": 0.2,
+                "t": "",
+                "role": "body"
+              },
+              {
+                "k": "text",
+                "x": 0.65,
+                "y": 0.67,
+                "w": 0.255,
+                "h": 0.2,
+                "t": "",
+                "role": "body"
               }
             ]
           },
@@ -4115,7 +4181,8 @@ window.WPS_DATA = {
                 "zoom": 1,
                 "fit": "whole"
               }
-            ]
+            ],
+            "nums": false
           },
           {
             "type": "photos",
@@ -4218,7 +4285,7 @@ window.WPS_DATA = {
           "phone": "",
           "showPrices": false
         },
-        "updatedAt": 1790337946425
+        "updatedAt": 1790354478331
       }
     ],
     "deleted": [
