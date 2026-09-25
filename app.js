@@ -2852,7 +2852,9 @@ window.resolveContractArchive = function(version) {
       groups.push({ label: (items.length > 1 && opts.plural) ? opts.plural : label, rendered });
     };
     const hasTalent = !!(shoot.talent && shoot.talent !== "—");
-    if (hasTalent) addGroup("Model", shoot.talent, { plural: "Models", attachIg: true });
+    // "Talent" everywhere, the owner's word (Sep 25 2026, audit L17): the cards
+    // and credits already said it; this viewer said "Model".
+    if (hasTalent) addGroup("Talent", shoot.talent, { plural: "Talent", attachIg: true });
     if (shoot.photographer || shoot.secondaryPhotographers) addGroup("Photography", [photographerCredit(shoot.photographer), shoot.secondaryPhotographers].filter(Boolean).join(", "));
     if (shoot.mentor) addGroup("Mentor", shoot.mentor, { plural: "Mentors" });
     if (shoot.artDirector) addGroup("Art direction", shoot.artDirector);
@@ -4074,7 +4076,7 @@ window.resolveContractArchive = function(version) {
             <p class="hero-subword" aria-hidden="true">${subLetters}</p>
           </div>
           <div class="hero-mono-foot">
-            <p class="hero-mono-tagline reveal">Not just photos, a perspective. <span class="hero-accent">Editorial-grade portfolios</span> for models &amp; brands.</p>
+            <p class="hero-mono-tagline reveal"><span class="hero-accent">Model portfolios</span>, fashion &amp; fitness, shot in Noida.</p>
             <div class="hero-actions reveal">
               <a href="/albums/" data-link class="btn btn-dark">See the work →</a>
               <a href="${esc(compCardsHref())}" data-link class="btn btn-ghost">Model portfolios</a>

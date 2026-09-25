@@ -699,6 +699,13 @@
     has(k) { if (super.has(k)) return true; const b = PhotoIds.baseOf(k); return !!b && this.base.has(b); }
   }
 
+  /* Why a photograph the book names cannot be drawn. One added "for printing
+     only" is kept on the computer it was added on, and was being reported as
+     "from a deleted album" everywhere else (Sep 2026 audit, K12). */
+  const goneWhy = (id) => /^out_/.test(String(id || ""))
+    ? "a photo kept only on the computer it was added on (print only)"
+    : "a photo from a deleted album";
+
   function library() {
     const shoots = (API.shoots() || []).filter((s) => s && !s.isTestimonial && Array.isArray(s.photos));
     const byId = new PhotoIds();
@@ -1555,13 +1562,17 @@
       if (cap) drawCaption(page, cap, M.side, H - 17.5, CAPTION_TYPE.modern, P.ink, P);
       const aspects = shots.map((s, i) => (imgs[i] ? imgAspect(imgs[i]) : 0.7));
       cells(shots.length, box, M.gap, aspects, W > H, entry.rows).forEach((c, i) => {
-        if (imgs[i]) drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h); else missing(page, P, c.x, c.y, c.w, c.h);
+        const r = imgs[i] ? drawPhoto(page, imgs[i], shots[i], c.x, c.y, c.w, c.h) : (missing(page, P, c.x, c.y, c.w, c.h), null);
         // Plate number in a chip, keyed to nothing but its order on the page.
-        // Switched off, or given another colour, in Design.
+        // Switched off, or given another colour, in Design. It sits on the
+        // corner of the photograph as drawn: a photo shown whole is smaller
+        // than its cell, and a chip on the cell's corner floated ~25 mm away
+        // from it (Sep 2026 audit, K8).
         if (plateNums()) {
           const chip = plateColour(P);
-          rect(page, c.x, c.y, 7, 5, chip);
-          font(page, 700, 2.2, F.mono, 0.2); text(page, String(i + 1).padStart(2, "0"), c.x + 3.5, c.y + 3.5, plateInk(chip, P), "center");
+          const px = r ? Math.max(c.x, r.x) : c.x, py = r ? Math.max(c.y, r.y) : c.y;
+          rect(page, px, py, 7, 5, chip);
+          font(page, 700, 2.2, F.mono, 0.2); text(page, String(i + 1).padStart(2, "0"), px + 3.5, py + 3.5, plateInk(chip, P), "center");
         }
       });
       this.foot(page, P, W, H, n, pageCredit(entry, shoots));
@@ -4565,7 +4576,9 @@
   .sb-light { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid var(--sb-line); border-radius: 100px; background: transparent; color: inherit; font: 600 11.5px 'JetBrains Mono', monospace; letter-spacing: .03em; cursor: pointer; }
   .sb-light i { width: 9px; height: 9px; border-radius: 50%; background: #b7b3ad; }
   .sb-light.ok i { background: #2f9e5a; } .sb-light.warn i { background: #E0A100; } .sb-light.warn { color: var(--sb-warn); }
-  @media (max-width: 900px) { .sb-ico span { display: none; } .sb-light span { font-size: 10.5px; } }
+  /* Undo and Redo keep their words on a phone: a drawing stands for a thing,
+     and these two needed a hover to be named (Sep 2026 audit, K9). */
+  @media (max-width: 900px) { .sb-ico span { font-size: 11px; } .sb-light span { font-size: 10.5px; } }
   .sb-pop { position: absolute; right: 8px; top: calc(100% + 6px); z-index: 30; width: min(400px, calc(100vw - 32px)); max-height: min(70vh, 620px); overflow: auto; display: grid; gap: 12px; padding: 16px; background: var(--paper, #faf8f5); border: 1px solid var(--sb-line); border-radius: 12px; box-shadow: 0 22px 50px -20px rgba(0,0,0,.45); }
   .sb-pop[hidden] { display: none; }
   .sb-check { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
@@ -4902,7 +4915,8 @@
     .sb-addwrap { border-top: 0; border-left: 1px solid var(--sb-line); display: flex; align-items: center; }
     .sb-addbtn { width: 72px; height: 100%; }
     .sb-panel { overflow: visible; }
-    .sb-root .sb-name { flex: 1 1 120px; }
+    /* A row of its own, so the name is read whole rather than as "Pag…". */
+    .sb-root .sb-name { flex: 1 1 100%; }
     .sb-status { flex: 1 1 auto; min-width: 0; font-size: 10.5px; }
     .sb-topacts { margin-left: auto; }
     .sb-grid { max-height: 340px; }
@@ -5237,7 +5251,13 @@
       try { list = await problems(book); } catch (e) { return; }
       if (book !== mine || !$("#sbLight")) return;
       el.className = `sb-light ${list.length ? "warn" : "ok"}`;
-      el.querySelector("span").textContent = list.length ? `${list.length} to fix` : "All good";
+      /* A page still waiting for its photographs is the next step, not a
+         fault: a brand-new book opened saying "1 to fix" (Sep 2026 audit,
+         K12). Only when something else is wrong does it say fix. */
+      const empty = list.filter((p) => /no photos yet$/.test(p.text)).length;
+      el.querySelector("span").textContent = !list.length ? "All good"
+        : empty === list.length ? `${empty} to fill`
+        : `${list.length - empty} to fix${empty ? ` · ${empty} to fill` : ""}`;
       el.title = list.length ? list.map((p) => p.text).join("\n") : "Every page is ready to send";
     }
     function persist(status = "Saved on this device") {
@@ -5360,7 +5380,7 @@
           <div>
             <p class="sb-eyebrow">Admin · Studio portfolio book</p>
             <h1 class="sb-h1">Portfolio book</h1>
-            <p class="sb-lede">Your own book of work to send to clients: photographs from any album, lighting diagrams and your own words, in one of three styles and nine colourways. Keep as many versions as you need.</p>
+            <p class="sb-lede">Your own book of work to send to clients: photographs from any album, lighting diagrams and your own words, in one of eleven styles and nine colourways, or a colourway made from your own colour. Keep as many versions as you need.</p>
           </div>
           <button type="button" class="sb-btn dark" id="sbNew" ${atLimit ? "disabled" : ""}>New book</button>
         </div>
@@ -6585,8 +6605,11 @@
         entry.layout = start === "back" ? "back" : "closing";
         if (entry.layout === "closing") entry.photos = [];
       }
-      // An end page goes last; anything else goes after the page you're on.
-      const at = type === "end" ? book.pages.length : sel < 0 ? 0 : sel + 1;
+      // An end page goes last; anything else goes after the page you're on —
+      // or, with the end page selected, just before it: the back cover stays
+      // the back cover (Sep 2026 audit, K10).
+      const onEnd = sel >= 0 && book.pages[sel] && book.pages[sel].type === "end";
+      const at = type === "end" ? book.pages.length : sel < 0 ? 0 : onEnd ? sel : sel + 1;
       book.pages.splice(at, 0, entry);
       flush();
       closeInline(false); photoSel = null; pageHint("");
@@ -6744,7 +6767,7 @@
           ${sel === it.i && it.i >= 0 ? `<span class="sb-pgacts">
             <button type="button" data-up="${it.i}" aria-label="Move this page earlier" ${it.i === 0 ? "disabled" : ""}>↑</button>
             <button type="button" data-down="${it.i}" aria-label="Move this page later" ${it.i === book.pages.length - 1 ? "disabled" : ""}>↓</button>
-            <button type="button" data-dupe="${it.i}" aria-label="Duplicate this page" title="Duplicate" ${renderedCount(book) + pageSpan(it.entry) > MAX_PAGES ? "disabled" : ""}>⧉</button>
+            <button type="button" data-dupe="${it.i}" aria-label="Duplicate this page" title="${it.entry && it.entry.type === "end" ? "A book has one end page" : "Duplicate"}" ${renderedCount(book) + pageSpan(it.entry) > MAX_PAGES || (it.entry && it.entry.type === "end") ? "disabled" : ""}>⧉</button>
             <button type="button" data-rm="${it.i}" aria-label="Remove this page">✕</button>
           </span>` : ""}
         </li>`).join("");
@@ -6758,6 +6781,8 @@
       list.querySelectorAll("[data-down]").forEach((b) => b.addEventListener("click", () => { const i = +b.dataset.down; mark(); [book.pages[i + 1], book.pages[i]] = [book.pages[i], book.pages[i + 1]]; sel = i + 1; change(); drawInspector(); focusAct("down"); }));
       list.querySelectorAll("[data-dupe]").forEach((b) => b.addEventListener("click", () => {
         const i = +b.dataset.dupe, pg = book.pages[i];
+        // One end page per book, the same rule as Add page (K10).
+        if (pg && pg.type === "end") { API.toast("A book has one end page, and this is it."); return; }
         if (renderedCount(book) + pageSpan(pg) > MAX_PAGES) { API.toast(`A book holds ${MAX_PAGES} pages at most, cover included.`); return; }
         mark();
         book.pages.splice(i + 1, 0, JSON.parse(JSON.stringify(pg)));
@@ -8144,7 +8169,7 @@
       box.innerHTML = `
         <h3>${esc(heading)}</h3>
         ${positions && (list.length || entry.type === "note" || entry.type === "feature" || entry.type === "article") ? `<div class="sb-field"><span class="sb-label">${positionLabel}</span>
-          <div class="sb-seg" role="radiogroup" aria-label="${positionLabel}">${positions.map((k) => `<button type="button" role="radio" data-photoat="${k}" aria-checked="${at === k}" title="${esc(POSITION_LABEL[k])}" aria-label="${esc(positionLabel)}: ${esc(POSITION_LABEL[k])}">${POSITION_ICON[k] ? sbIcon(POSITION_ICON[k], POSITION_LABEL[k]) : POSITION_LABEL[k]}</button>`).join("")}</div></div>` : ""}
+          <div class="sb-seg sb-seg-words" role="radiogroup" aria-label="${positionLabel}">${positions.map((k) => `<button type="button" role="radio" data-photoat="${k}" aria-checked="${at === k}" title="${esc(POSITION_LABEL[k])}" aria-label="${esc(positionLabel)}: ${esc(POSITION_LABEL[k])}">${POSITION_ICON[k] ? sbIcon(POSITION_ICON[k], POSITION_LABEL[k]) : POSITION_LABEL[k]}</button>`).join("")}</div></div>` : ""}
         ${list.length ? `<div class="sb-chosen" role="group" aria-label="Chosen">${list.map((s, i) => {
           const hit = lib.byId.get(s.id);
           return `<button type="button" class="sb-ch${hit && hit.photo.diagram ? " diagram" : ""}" data-active="${i}" aria-pressed="${i === active}" aria-label="${t.max > 1 ? `Photo ${i + 1}` : "The photo"}${hit ? `, ${esc(cleanName(hit.shoot.title || hit.shoot.talent))}${hit.photo.diagram ? " lighting diagram" : ""}` : ", from a deleted album"}. Adjust it">${hit ? `<img src="${esc(thumbSrc(hit.photo))}" alt="">` : `<span class="sb-hint">Removed</span>`}${t.max > 1 ? `<i>${i + 1}</i>` : ""}</button>`;
@@ -8406,7 +8431,7 @@
         <div class="sb-sec"><h3>Numbers on the photographs</h3>
           <label class="sb-check-row"><input type="checkbox" id="sbPlate" ${book.photoNums === false ? "" : "checked"}> Number each photograph on a page</label>
           <div id="sbPlateColour" ${book.photoNums === false ? "hidden" : ""}>
-            <span class="sb-swatches" role="group" aria-label="Colour of the number chip">${[["", "The style's accent", paletteFor(book).accent], ["ink", "Ink", paletteFor(book).ink], ["soft", "Soft", paletteFor(book).soft], ["deep", "Deep", paletteFor(book).deep], ["white", "White", paletteFor(book).white], ["paper", "Paper", paletteFor(book).paper], ["rule", "Hairline", paletteFor(book).rule]].map(([k, n, c]) => `<button type="button" class="sb-swatch" data-plate="${k}" aria-pressed="${(book.photoNumColour || "") === k}" title="${n}" aria-label="Number chip: ${n}"><i style="background:${c}"></i></button>`).join("")}${anySwatch("plateany", /^#/.test(book.photoNumColour || "") ? book.photoNumColour : "")}</span>
+            <span class="sb-swatches" role="group" aria-label="Colour of the number chip">${[["", "The style's accent", paletteFor(book).accent], ["ink", "Ink", paletteFor(book).ink], ["soft", "Soft", paletteFor(book).soft], ["white", "White", paletteFor(book).white], ["rule", "Hairline", paletteFor(book).rule]].map(([k, n, c]) => `<button type="button" class="sb-swatch" data-plate="${k}" aria-pressed="${(book.photoNumColour || "") === k}" title="${n}" aria-label="Number chip: ${n}"><i style="background:${c}"></i></button>`).join("")}${anySwatch("plateany", /^#/.test(book.photoNumColour || "") ? book.photoNumColour : "")}</span>
             <div class="sb-cphost" data-platepick hidden></div>
           </div>
           <p class="sb-hint">The small 01, 02, 03 on a page of several photographs. The Modern style prints them; the other styles do not.</p>
@@ -8512,12 +8537,12 @@
       await ensureBookFonts(b);
       const out = [];
       const cl = coverLayoutOf(b);
-      if (cl !== "custom" && cl !== "poster" && b.cover && !lib.byId.has(b.cover.id)) out.push({ i: -1, text: "Cover: the photo is from a deleted album" });
+      if (cl !== "custom" && cl !== "poster" && b.cover && !lib.byId.has(b.cover.id)) out.push({ i: -1, text: `Cover: ${goneWhy(b.cover.id)}` });
       if (cl === "custom") {
         const ce = { ...(b.coverPage || {}), type: "free" };
         const blocks = freeBlocks(ce);
         if (!blocks.length) out.push({ i: -1, text: "Cover: nothing on it yet" });
-        if (blocks.some((b2) => b2.k === "photo" && b2.p && !lib.byId.has(b2.p.id))) out.push({ i: -1, text: "Cover: a photo from a deleted album" });
+        { const gone = blocks.find((b2) => b2.k === "photo" && b2.p && !lib.byId.has(b2.p.id)); if (gone) out.push({ i: -1, text: `Cover: ${goneWhy(gone.p.id)}` }); }
         if (blocks.some((b2) => b2.k === "photo" && !(b2.p && b2.p.id))) out.push({ i: -1, text: "Cover: a photo box with no photo chosen" });
         for (const c of planFree(b, ce).cuts) { const info = planFree(b, ce).fields[c.field]; const miss = info ? info.total - info.printed : 0; out.push({ i: -1, text: `Cover: a box of words is too long${miss ? ` (${miss} word${miss === 1 ? "" : "s"} won't print)` : ""}` }); }
       }
@@ -8532,11 +8557,11 @@
         if ((pg.type === "note" || pg.type === "article") && !(pg.photos || []).length) add("no photo chosen");
         if (pg.type === "end" && i !== b.pages.length - 1) add("should be the last page — move it to the end");
         if (pg.type === "feature" && (pg.photos || []).length < 2) add(`${(pg.photos || []).length ? "only one photo" : "no photos"} chosen; it takes two`);
-        if ((pg.photos || []).some((sh) => !lib.byId.has(sh.id))) add("a photo from a deleted album");
+        { const gone = (pg.photos || []).find((sh) => !lib.byId.has(sh.id)); if (gone) add(goneWhy(gone.id)); }
         if (pg.type === "free") {
           const blocks = freeBlocks(pg);
           if (!blocks.length) add("nothing on this page yet");
-          if (blocks.some((b2) => b2.k === "photo" && b2.p && !lib.byId.has(b2.p.id))) add("a photo from a deleted album");
+          { const gone = blocks.find((b2) => b2.k === "photo" && b2.p && !lib.byId.has(b2.p.id)); if (gone) add(goneWhy(gone.p.id)); }
           if (blocks.some((b2) => b2.k === "photo" && !(b2.p && b2.p.id))) add("a photo box with no photo chosen");
           const plan = planFree(b, pg);
           for (const c of plan.cuts) {
@@ -8642,10 +8667,16 @@
       const places = photoPlaces(book);
       const where = (list) => list.map((id) => (places.get(id) || ["somewhere"]).join(" and ")).join("; ");
       const s = (k) => (k === 1 ? "" : "s");
-      const lines = [`<p class="${m.matched.size ? "sb-ok" : "sb-warn"}">${m.matched.size} of the ${ids.length} photo${s(ids.length)} in this book found among ${originals.count()} file${s(originals.count())}.</p>`];
-      if (m.missing.length) lines.push(`<p class="sb-hint">Not in these files: ${esc(where(m.missing))}.</p>`);
-      if (m.ambiguous.length) lines.push(`<p class="sb-hint">Two files look alike, so neither was used for ${esc(where(m.ambiguous))}.</p>`);
-      if (m.small.length) lines.push(`<p class="sb-hint">Found, but no bigger than the site's copy: ${esc(where(m.small))}.</p>`);
+      /* One line that says where things stand; which photo is where folds
+         away beneath it. It listed every unmatched photo — forty lines for a
+         fourteen-page book (Sep 2026 audit, K11). */
+      const rest = ids.length - m.matched.size;
+      const lines = [`<p class="${m.matched.size ? "sb-ok" : "sb-warn"}">${m.matched.size} of ${ids.length} found in ${originals.count()} file${s(originals.count())}${rest ? ` · ${rest} will use the site's cop${rest === 1 ? "y" : "ies"}` : " · every photo prints from its original"}.</p>`];
+      const detail = [];
+      if (m.missing.length) detail.push(`<p class="sb-hint">Not in these files (${m.missing.length}): ${esc(where(m.missing))}.</p>`);
+      if (m.ambiguous.length) detail.push(`<p class="sb-hint">Two files look alike, so neither was used (${m.ambiguous.length}): ${esc(where(m.ambiguous))}.</p>`);
+      if (m.small.length) detail.push(`<p class="sb-hint">Found, but no bigger than the site's copy (${m.small.length}): ${esc(where(m.small))}.</p>`);
+      if (detail.length) lines.push(`<details class="sb-origdetail"><summary class="sb-hint">Which ones</summary>${detail.join("")}</details>`);
       if (originals.raw) lines.push(`<p class="sb-hint">${originals.raw} RAW file${s(originals.raw)} skipped: a browser can't read them. Export them as JPEGs first.</p>`);
       el.innerHTML = lines.join("");
       dpiNote();
@@ -8719,7 +8750,11 @@
       buttons.forEach((b) => { b.disabled = true; });
       btn.textContent = format === "png" ? "Making the images…" : format === "booklet" ? "Making the booklet…" : "Making the PDF…";
       ready.replaceChildren(); dropFiles();
-      const base = `${(snap.name || "portfolio").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "portfolio"}${format === "booklet" ? "-booklet" : ""}${watermarked ? "-watermarked" : ""}`;
+      /* Named for the studio and the book, in the book's own letters: "Book 2"
+         came out as "book-2.pdf", and a name in Hindi as "portfolio.pdf"
+         (Sep 2026 audit, K12). */
+      const slug = String(snap.name || "").normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 60);
+      const base = `nerdyphotographer${slug ? `-${slug}` : "-portfolio"}${format === "booklet" ? "-booklet" : ""}${watermarked ? "-watermarked" : ""}`;
       try {
         // The chosen resolution first, then softer if the device runs short of memory.
         let result = null, lastErr = null, madeAt = 0, fullSize = 0;
@@ -8786,7 +8821,7 @@
           let file = null;
           try { file = new File([blob], name, { type: "application/pdf" }); } catch (e) { file = null; }
           const canShare = !!(file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] }));
-          ready.innerHTML = `<a href="${url}" download="${esc(name)}">Save ${format === "booklet" ? "booklet" : "PDF"} (${(blob.size / 1048576).toFixed(1)} MB · ${madeNote})</a>${canShare ? `<button type="button" class="sb-btn dark" id="sbShare">Share or save to Files</button>` : ""}${softer}`;
+          ready.innerHTML = `<a href="${url}" download="${esc(name)}">Save ${watermarked ? "watermarked " : ""}${format === "booklet" ? "booklet" : "PDF"} (${(blob.size / 1048576).toFixed(1)} MB · ${madeNote})</a>${canShare ? `<button type="button" class="sb-btn dark" id="sbShare">Share or save to Files</button>` : ""}${softer}`;
           const share = $("#sbShare");
           if (share) share.addEventListener("click", () => navigator.share({ files: [file], title: snap.name }).catch(() => { /* the sheet was closed */ }));
           if (!matchMedia("(pointer: coarse)").matches) ready.querySelector("a").click();

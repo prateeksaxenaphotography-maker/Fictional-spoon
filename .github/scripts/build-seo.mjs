@@ -856,7 +856,7 @@ function prerenderBlocks() {
     <header class="page-head"><div class="container">
       <p class="eyebrow">The Creative Studio · Noida · Delhi NCR</p>
       <h1>${BRAND} — fashion, fitness &amp; model portfolio photography in Noida &amp; Delhi NCR</h1>
-      <p class="page-sub">Not just photos, a perspective. Editorial-grade portfolios, comp cards, fashion and fitness photography for models and brands, shot in the studio in Noida and on location across Delhi NCR.</p>
+      <p class="page-sub">Model portfolios, fashion &amp; fitness, shot in Noida — comp cards and editorial-grade portfolios for models and brands, in the studio and on location across Delhi NCR.</p>
       <p><a href="/book/" data-link>Book a shoot</a> · <a href="${liveServices.length ? "/services/" : "/albums/"}" data-link>Explore the work</a></p>
     </div></header>
     <section class="section container">
