@@ -2312,7 +2312,7 @@
       // empty screen with a note on it.
       if (!admin || !state.picks.size) return;
       try {
-        localStorage.setItem(draftKey(), JSON.stringify({ at: Date.now(), from: state.fromSaved || null, spec: currentSpec() }));
+        localStorage.setItem(draftKey(), JSON.stringify({ at: Date.now(), from: state.fromSaved || null, savedSig, spec: currentSpec() }));
       } catch (e) {}
     }
     function clearDraft() { try { localStorage.removeItem(draftKey()); } catch (e) {} }
@@ -2324,10 +2324,18 @@
        screen says so and offers to drop it. */
     syncPages();
     state.lead = defaultLead();
+    /* Is what is on screen saved? `savedSig` is the arrangement as it was
+       last saved or opened; anything else on screen is not saved yet. The
+       studio thought a portfolio was saved when it was not (Sep 25 2026):
+       nothing on screen told the two apart. It travels with the draft, so
+       closing and reopening the builder still knows. */
+    let savedSig = null, sigSettle = 0;
+    const sigNow = () => JSON.stringify(currentSpec());
     const resumed = readDraft();
     let resumedNote = false;
     if (resumed && applySpec(resumed.spec)) {
       state.fromSaved = resumed.from || null;
+      savedSig = typeof resumed.savedSig === "string" ? resumed.savedSig : null;
       resumedNote = true;
     }
 
@@ -2499,6 +2507,7 @@
           <input type="text" id="ppSaveName" maxlength="60" value="${esc((state.fromSaved && state.fromSaved.name) || "")}" placeholder="Name it, e.g. Devesh — agency set" />
           <button type="button" class="pp-sample-btn" id="ppSaveBtn">${state.fromSaved ? "Update it" : "Save this arrangement"}</button>
         </div>
+        <div class="pp-save-state" id="ppSaveState" role="status" aria-live="polite"></div>
         ${state.fromSaved ? `<p class="pp-type-note">Saving keeps “${esc(state.fromSaved.name)}”. Change the name to keep a second one instead.</p>` : ""}` : ""}
         <div id="ppSavedList"></div>
       </details>`;
@@ -2599,6 +2608,40 @@
       btn.textContent = keeps ? `Update “${state.fromSaved.name}”` : "Save as a new one";
     }
 
+    /* One line under Save that always says where things stand: not saved,
+       changes not saved, saved on this device but not live, or live. The
+       publish that makes it live is offered right there. */
+    let publishing = false;
+    function saveStateNow() {
+      const el = body.querySelector("#ppSaveState"); if (!el) return;
+      if (sigSettle && Date.now() >= sigSettle) { if (savedSig === null) savedSig = sigNow(); sigSettle = 0; }
+      const same = !!state.fromSaved && savedSig !== null && savedSig === sigNow();
+      const unpub = typeof window.unpublishedState === "function" && ((window.unpublishedState().kinds) || []).includes("model portfolios");
+      let cls, html;
+      if (sigSettle) { cls = "is-wait"; html = "Opening…"; }
+      else if (!state.fromSaved) { cls = "is-warn"; html = "<b>Not saved yet.</b> Name it and press Save to keep this arrangement."; }
+      else if (!same) { cls = "is-warn"; html = `<b>Changes not saved.</b> Press Update to keep them in “${esc(state.fromSaved.name)}”.`; }
+      else if (publishing) { cls = "is-wait"; html = "<b>Saved.</b> Publishing to the live site…"; }
+      else if (unpub) { cls = "is-ok"; html = `<b>Saved on this device</b> — not on the live site yet. <button type="button" class="pp-sample-btn" id="ppPublishNow">Publish now</button>`; }
+      else { cls = "is-live"; html = "<b>Saved and live.</b> Open it on any device."; }
+      const key = cls + html;
+      if (el.dataset.key !== key) {
+        el.dataset.key = key; el.className = `pp-save-state ${cls}`; el.innerHTML = `<span class="pp-save-dot" aria-hidden="true"></span><span>${html}</span>`;
+        const pub = el.querySelector("#ppPublishNow");
+        if (pub) pub.addEventListener("click", async () => {
+          if (typeof window.publishStudioDataToLiveSite !== "function") { toast("Publishing is not available here. Use Publish in Calendar."); return; }
+          publishing = true; saveStateNow();
+          let ok = false;
+          try { ok = await window.publishStudioDataToLiveSite(); } catch (e) { ok = false; }
+          publishing = false; saveStateNow();
+          if (ok) toast("Published: your saved portfolios are live on every device.");
+        });
+      }
+      // The button asks to be pressed while there is something to keep.
+      const btn = body.querySelector("#ppSaveBtn"); if (btn) btn.classList.toggle("is-due", cls === "is-warn");
+    }
+    const saveWatch = setInterval(() => { if (!modal.isConnected) { clearInterval(saveWatch); return; } saveStateNow(); }, 600);
+
     function wireSavedPortfolios() {
         // Saved arrangements: keep this one, or put a saved one back on screen.
         const savedList = body.querySelector("#ppSavedList");
@@ -2649,6 +2692,7 @@
               open.spec = currentSpec();
               open.updatedAt = Date.now();
               write(cur);
+              savedSig = sigNow(); saveStateNow();
               syncSaveRow();
               clearDraft();
               /* Said on the row itself, not only in a toast that slides away.
@@ -2691,6 +2735,7 @@
             const id = cur.versions[0].id;
             state.fromSaved = { id, name: title };
             write(cur);
+            savedSig = sigNow(); saveStateNow();
             /* The name STAYS in the box and the button becomes Update. It was
                cleared, so the next press fell through to "new" under a
                date-stamped default name — the studio's change went into a
@@ -2719,6 +2764,8 @@
             // Remembered, so a change to it can be saved BACK rather than
             // saved again beside it under the same name.
             state.fromSaved = { id: v.id, name: v.name };
+            // What it looks like once drawn is what "saved" means for it.
+            savedSig = null; sigSettle = Date.now() + 900;
             syncSaveRow();
             showPreview();
             toast(`“${v.name}” is back on screen.`);

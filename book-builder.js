@@ -4934,12 +4934,24 @@
   #sbOrigStatus { display: grid; gap: 4px; } #sbOrigStatus p { margin: 0; }
   .sb-ready a { font: 600 12.5px Inter, sans-serif; padding: 7px 11px; border-radius: 999px; background: var(--ink, #141416); color: var(--paper, #faf8f5); text-decoration: none; }
 
-  .sb-work { display: grid; grid-template-columns: 148px minmax(0, 1fr) 392px; gap: 12px; margin-top: 12px; height: calc(100vh - 220px); min-height: 440px; }
+  .sb-work { position: relative; display: grid; grid-template-columns: var(--sb-rail-w, 148px) minmax(0, 1fr) var(--sb-insp-w, 392px); gap: 12px; margin-top: 12px; height: calc(100vh - 220px); min-height: 440px; }
+  /* The two side panels are as wide as the studio drags them (Sep 2026): a
+     handle in each gap; double-click puts it back. */
+  .sb-split { position: absolute; top: 0; bottom: 0; z-index: 6; width: 12px; cursor: col-resize; touch-action: none; }
+  .sb-split[data-split="rail"] { left: var(--sb-rail-w, 148px); }
+  .sb-split[data-split="insp"] { right: var(--sb-insp-w, 392px); }
+  .sb-split::after { content: ""; position: absolute; left: 5px; top: 50%; width: 2px; height: 44px; border-radius: 2px; background: var(--sb-line); transform: translateY(-50%); transition: height .15s, background .15s; }
+  .sb-split:hover::after, .sb-split:focus-visible::after, .sb-split.on::after { height: 96px; background: var(--accent, #d24e1a); }
+  .sb-split:focus-visible { outline: none; }
   .sb-rail, .sb-stage, .sb-insp { min-height: 0; border: 1px solid var(--sb-line); border-radius: 12px; background: var(--sb-card); }
   .sb-rail { display: flex; flex-direction: column; overflow: hidden; }
   .sb-railhead { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 12px 4px; }
   .sb-count { font: 600 11px 'JetBrains Mono', monospace; color: var(--ink-soft, #5c5e66); }
-  .sb-pages { list-style: none; margin: 0; padding: 6px 8px 10px; overflow-y: auto; flex: 1; display: grid; gap: 6px; align-content: start; }
+  /* Rows never shrink to fit: some Safari versions squeezed a long book's
+     rows into the rail's height, piling the thumbnails over one another (the
+     studio's screenshot, Sep 25 2026). The list scrolls instead. */
+  .sb-pages { list-style: none; margin: 0; padding: 6px 8px 10px; overflow-y: auto; flex: 1 1 0; min-height: 0; display: grid; grid-auto-rows: max-content; gap: 6px; align-content: start; }
+  .sb-pages > li { min-height: max-content; }
   .sb-pages li { display: grid; gap: 4px; }
   .sb-pg { display: grid; gap: 5px; width: 100%; padding: 6px; border: 1px solid transparent; border-radius: 9px; background: none; color: inherit; cursor: pointer; text-align: left; }
   .sb-pg:hover { background: var(--sb-sunk); }
@@ -5086,7 +5098,7 @@
   .sb-tabs { display: flex; gap: 4px; padding: 6px; border-bottom: 1px solid var(--sb-line); }
   .sb-tabs button { flex: 1; padding: 8px; border: 0; border-radius: 8px; background: none; color: var(--ink-soft, #5c5e66); font: 600 13px Inter, sans-serif; cursor: pointer; }
   .sb-tabs button[aria-selected=true] { background: var(--ink, #141416); color: var(--paper, #faf8f5); }
-  .sb-panel { flex: 1; min-height: 0; overflow-y: auto; display: grid; gap: 18px; align-content: start; padding: 14px; }
+  .sb-panel { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-auto-rows: max-content; gap: 18px; align-content: start; padding: 14px; }
   .sb-panel[hidden] { display: none; }
   .sb-sec { display: grid; gap: 10px; }
   .sb-sec[hidden] { display: none; }
@@ -5239,7 +5251,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
   /* Save, lit while something is waiting to be written to this device. */
   #sbSave.is-due { border-color: var(--accent, #d24e1a); color: var(--accent, #d24e1a); font-weight: 700; }
   .sb-seg button svg { display: block; pointer-events: none; }
-  .sb-styles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sb-styles { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: max-content; gap: 8px; }
   .sb-style { display: grid; gap: 2px; align-content: start; padding: 8px; border: 1px solid var(--sb-line); border-radius: 10px; background: var(--paper, #faf8f5); color: inherit; text-align: left; cursor: pointer; }
   .sb-style b { font: 700 14px Inter, sans-serif; }
   .sb-style span { font: 400 12px/1.35 Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
@@ -5254,7 +5266,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
   .sb-dot { width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(0,0,0,.18); }
 
   .sb-chosen { display: flex; flex-wrap: wrap; gap: 6px; }
-  .sb-ch { position: relative; width: 58px; aspect-ratio: 3 / 4; padding: 0; border: 2px solid transparent; border-radius: 7px; overflow: hidden; background: var(--sb-sunk); cursor: pointer; }
+  .sb-ch { position: relative; flex: none; width: 58px; height: 77px; aspect-ratio: 3 / 4; padding: 0; border: 2px solid transparent; border-radius: 7px; overflow: hidden; background: var(--sb-sunk); cursor: pointer; }
   .sb-ch img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .sb-ch.diagram img { object-fit: contain; background: #fff; }
   .sb-ch[aria-pressed=true] { border-color: var(--accent, #d24e1a); }
@@ -5278,8 +5290,14 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
   }
   .sb-pick > summary:hover { color: var(--ink, #141416); }
   .sb-pick[open] > summary { margin-bottom: 8px; }
-  .sb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 6px; max-height: 380px; overflow-y: auto; padding: 2px; margin-top: 8px; }
+  .sb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); grid-auto-rows: max-content; gap: 6px; max-height: 380px; overflow-y: auto; padding: 2px; margin-top: 8px; }
   .sb-thumb { position: relative; aspect-ratio: 3 / 4; padding: 0; border: 0; border-radius: 6px; overflow: hidden; background: var(--sb-sunk); cursor: pointer; }
+  /* A browser without aspect-ratio drew every thumbnail a sliver tall: the
+     box keeps its 3:4 shape the old way there. */
+  @supports not (aspect-ratio: 1 / 1) {
+    .sb-thumb { height: 0; padding-bottom: 133.33%; }
+    .sb-thumb img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  }
   .sb-thumb-wrap { position: relative; display: block; }
   .sb-thumb-wrap .sb-thumb { width: 100%; }
   .sb-thumb-rm { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: rgba(0,0,0,.72); color: #fff; font-size: 15px; line-height: 24px; padding: 0; cursor: pointer; }
@@ -5291,9 +5309,10 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
   .sb-thumb[aria-pressed=true]::after { content: attr(data-order); position: absolute; top: 4px; right: 4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--accent, #d24e1a); color: #fff; font: 700 11px/20px Inter, sans-serif; text-align: center; }
   .sb-thumb:disabled { opacity: .35; cursor: not-allowed; }
 
-  @media (max-width: 1200px) { .sb-work { grid-template-columns: 124px minmax(0, 1fr) 340px; } .sb-pgimg canvas { height: 72px; } .sb-pgimg { min-height: 76px; } }
+  @media (max-width: 1200px) { .sb-work { grid-template-columns: var(--sb-rail-w, 124px) minmax(0, 1fr) var(--sb-insp-w, 340px); } .sb-pgimg canvas { height: 72px; } .sb-pgimg { min-height: 76px; } }
   @media (max-width: 900px) {
     .sb-work { display: flex; flex-direction: column; height: auto; min-height: 0; }
+    .sb-split { display: none; }
     .sb-stage { order: 1; position: sticky; top: 0; z-index: 8; } .sb-rail { order: 2; flex-direction: row; } .sb-insp { order: 3; overflow: visible; }
     .sb-preview { height: min(46vh, 440px); padding: 12px; }
     /* Editing a book on a phone: the site's header, its reminder bar and the
@@ -5829,7 +5848,9 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     let lightTimer = null;
     let editing = null;                  // the text being typed on the page itself
     let photoSel = null;                 // the photograph chosen on the page itself
-    let filter = "all", pickerOpen = null, tab = "page";
+    // No album chosen yet: the photographs appear once one is (or All albums),
+    // not 160 of them at once (the studio's ask, Sep 25 2026).
+    let filter = "", pickerOpen = null, tab = "page";
     let saveTimer = null, previewTimer = null, stripTimer = null, renderToken = 0, stripToken = 0, listToken = 0, fileUrls = [];
     let fontsOk = false;
     // Set by an actual edit. Opening a book and leaving it must not re-stamp
@@ -5965,6 +5986,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       if (!root.isConnected) { window.removeEventListener("resize", onResize); document.documentElement.classList.remove("sb-editing", "sb-book"); return; }
       if ($("#sbLayer")) drawLayer();
       if ($(".sb-hits") || editing) drawHits(lastRender);
+      if ($("#sbWork")) applyPanes();
     };
     document.addEventListener("keydown", onKey);
     document.addEventListener("click", onDoc);
@@ -6162,7 +6184,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
 
     function openBook(b, isNew = false, at = null) {
       currentPhotoIds(b);
-      book = b; sel = book.pages.length ? 0 : -1; active = 0; filter = "all"; pickerOpen = null; tab = "page";
+      book = b; sel = book.pages.length ? 0 : -1; active = 0; filter = ""; pickerOpen = null; tab = "page";
       if (at && typeof at.sel === "number" && at.sel >= -1 && at.sel < book.pages.length) sel = at.sel;
       if (at && (at.tab === "design" || at.tab === "page")) tab = at.tab;
       dirty = isNew;
@@ -6250,7 +6272,9 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
             <p class="sb-hint">The words in the PDF are real type in their own fonts: sharp at any size, and they can be searched and copied.</p>
           </div>
         </div>
-        <div class="sb-work">
+        <div class="sb-work" id="sbWork">
+          <div class="sb-split" data-split="rail" role="separator" aria-orientation="vertical" aria-label="Width of the page list: drag, or use the arrow keys" tabindex="0" title="Drag to make the page list wider or narrower · double-click to reset"></div>
+          <div class="sb-split" data-split="insp" role="separator" aria-orientation="vertical" aria-label="Width of the side panel: drag, or use the arrow keys" tabindex="0" title="Drag to make this panel wider or narrower · double-click to reset"></div>
           <nav class="sb-rail" aria-label="Pages">
             <div class="sb-railhead"><h3>Pages</h3><span class="sb-count" id="sbCount"></span></div>
             <ol class="sb-pages" id="sbPages"></ol>
@@ -6284,6 +6308,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       $("#sbBack").addEventListener("click", () => { flush(); forget(); showList(); });
       $("#sbName").addEventListener("input", (e) => { book.name = e.target.value; change({ rail: false, typing: true }); });
       $("#sbCmd").addEventListener("click", () => openCmd());
+      wireSplits();
       $("#sbSave").addEventListener("click", () => {
         if (!flush()) return;   // persist() has already said why it could not
         setStatus(`Saved on this device · ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}${longNote()}`);
@@ -9111,6 +9136,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           <summary>${list.length ? (t.max === 1 ? "Change the photo" : "Add or remove photos") : "Choose a photo"}</summary>
           <label class="sb-vh" for="sbAlbum">Show</label>
           <select id="sbAlbum">
+            <option value="" disabled ${filter === "" ? "selected" : ""}>Choose an album…</option>
             <option value="all" ${filter === "all" ? "selected" : ""}>All albums (${lib.byId.size})</option>
             <option value="diagrams" ${filter === "diagrams" ? "selected" : ""}>Lighting diagrams (${lib.diagrams})</option>
             ${lib.albums.map((a) => `<option value="${esc(a.id)}" ${filter === a.id ? "selected" : ""}>${esc(a.name)} (${a.count})${a.hidden ? " · not on the site" : ""}</option>`).join("")}
@@ -9136,7 +9162,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
             return hit.photo.outside
               ? `<span class="sb-thumb-wrap">${pick}<button type="button" class="sb-thumb-rm" data-out-remove="${esc(id)}" aria-label="Remove ${esc(hit.photo.name || "this photograph")} from this computer's list" title="Remove from this list">×</button></span>`
               : pick;
-          }).join("") || `<p class="sb-hint" style="grid-column: 1 / -1">${filter === "diagrams" ? "No lighting diagrams yet. Add one to an album on the Upload page (Lighting diagram), and it appears here." : "No photos in this album."}</p>`}</div>
+          }).join("") || `<p class="sb-hint" style="grid-column: 1 / -1">${filter === "" ? "Choose an album above — or All albums — and its photographs appear here." : filter === "diagrams" ? "No lighting diagrams yet. Add one to an album on the Upload page (Lighting diagram), and it appears here." : "No photos in this album."}</p>`}</div>
         </details>`;
 
       /* Taking a photograph in from the desktop. It is read here and never
@@ -9353,6 +9379,59 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       for (const el of secs) if (!used.has(el)) frag.appendChild(el);
       panel.replaceChildren(frag);
     }
+    /* ---------- panel widths ------------------------------------------------------
+       Drag the handle in either gap to widen or narrow the page list or the
+       side panel; the page in the middle takes what is left (never under
+       360 px). Kept on this device; double-click a handle to go back. */
+    const PANES_KEY = "wps_book_panes";
+    const paneDefaults = () => (innerWidth <= 1200 ? { rail: 124, insp: 340 } : { rail: 148, insp: 392 });
+    function readPanes() { try { const v = JSON.parse(localStorage.getItem(PANES_KEY) || "null"); if (v && typeof v === "object") return v; } catch (e) { /* private window */ } return {}; }
+    function applyPanes() {
+      const work = $("#sbWork"); if (!work) return;
+      const saved = readPanes(), d = paneDefaults();
+      const total = work.clientWidth || innerWidth;
+      let rail = Math.min(360, Math.max(96, +saved.rail || d.rail));
+      let insp = Math.min(760, Math.max(280, +saved.insp || d.insp));
+      // The page in the middle keeps at least 360 px, whatever was saved.
+      const over = rail + insp + 24 + 360 - total;
+      if (over > 0) { const cut = Math.min(over, insp - 280); insp -= cut; rail = Math.max(96, rail - (over - cut)); }
+      work.style.setProperty("--sb-rail-w", `${Math.round(rail)}px`);
+      work.style.setProperty("--sb-insp-w", `${Math.round(insp)}px`);
+      $$(".sb-split").forEach((h) => { const v = h.dataset.split === "rail" ? rail : insp; h.setAttribute("aria-valuenow", String(Math.round(v))); });
+      return { rail, insp };
+    }
+    let paneRedraw = 0;
+    const afterPanes = () => { clearTimeout(paneRedraw); paneRedraw = setTimeout(() => { schedulePreview(0); if ($("#sbLayer")) drawLayer(); if ($(".sb-hits") || editing) drawHits(lastRender); }, 120); };
+    function setPane(which, px) {
+      const cur = { ...readPanes() };
+      cur[which] = Math.round(px);
+      try { localStorage.setItem(PANES_KEY, JSON.stringify(cur)); } catch (e) { /* private window */ }
+      applyPanes(); afterPanes();
+    }
+    function wireSplits() {
+      applyPanes();
+      $$(".sb-split").forEach((h) => {
+        const which = h.dataset.split;
+        h.addEventListener("pointerdown", (ev) => {
+          ev.preventDefault();
+          const start = applyPanes(), x0 = ev.clientX;
+          try { h.setPointerCapture(ev.pointerId); } catch (e) { /* older browsers */ }
+          h.classList.add("on");
+          const move = (m) => { const dx = m.clientX - x0; setPane(which, which === "rail" ? start.rail + dx : start.insp - dx); };
+          const up = () => { h.classList.remove("on"); h.removeEventListener("pointermove", move); h.removeEventListener("pointerup", up); h.removeEventListener("pointercancel", up); };
+          h.addEventListener("pointermove", move); h.addEventListener("pointerup", up); h.addEventListener("pointercancel", up);
+        });
+        h.addEventListener("dblclick", () => { const cur = { ...readPanes() }; delete cur[which]; try { localStorage.setItem(PANES_KEY, JSON.stringify(cur)); } catch (e) { /* private window */ } applyPanes(); afterPanes(); });
+        h.addEventListener("keydown", (ev) => {
+          const step = ev.shiftKey ? 48 : 16, now = applyPanes();
+          const grow = which === "rail" ? { ArrowRight: 1, ArrowLeft: -1 } : { ArrowLeft: 1, ArrowRight: -1 };
+          if (!(ev.key in grow)) return;
+          ev.preventDefault();
+          setPane(which, now[which] + grow[ev.key] * step);
+        });
+      });
+    }
+
     /* ---------- find a command ---------------------------------------------------
        Ctrl/⌘+K (or Find in the top bar): type a few letters of anything the
        editor can do — add a page or a layout, go to a page, change the style or
