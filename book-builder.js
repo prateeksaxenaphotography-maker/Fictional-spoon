@@ -399,6 +399,7 @@
   // Crop to fill the box around the photo's focal point, then zoom. The same
   // maths as drawPdfPhoto in app.js, so a book crops a photo the way the
   // model portfolio does.
+  const FLIPS = ["h", "v", "hv"];
   function drawPhoto(page, img, shot, x, y, w, h) {
     const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
     if (!iw || !ih) return;
@@ -432,7 +433,15 @@
     const dw = sw * scale, dh = sh * scale;
     const dx = page.u(x) + (bw - dw) / 2, dy = page.u(y) + (bh - dh) / 2;
     if (alpha < 1) { page.ctx.save(); page.ctx.globalAlpha = alpha; }
-    page.ctx.drawImage(img, (iw - sw) * fx, (ih - sh) * fy, sw, sh, dx, dy, dw, dh);
+    // A photograph can be flipped, left to right or top to bottom: the part
+    // that shows is the same, mirrored in its place.
+    const flip = shot && FLIPS.includes(shot.flip) ? shot.flip : "";
+    if (flip) {
+      const ctx = page.ctx;
+      ctx.save(); ctx.translate(dx + dw / 2, dy + dh / 2); ctx.scale(flip.includes("h") ? -1 : 1, flip.includes("v") ? -1 : 1);
+      ctx.drawImage(img, (iw - sw) * fx, (ih - sh) * fy, sw, sh, -dw / 2, -dh / 2, dw, dh);
+      ctx.restore();
+    } else page.ctx.drawImage(img, (iw - sw) * fx, (ih - sh) * fy, sw, sh, dx, dy, dw, dh);
     if (alpha < 1) page.ctx.restore();
     page.photos.push({ id: shot && shot.id, x, y, w, h });
     /* "A line round every photograph", in any style (the owner, Sep 25
@@ -3633,7 +3642,7 @@
       if (book.baseline) cols = snapCols(cols, T.body.lead);
       const r = flowBody(page, s, cols, spec, dropRole && (align === "left" || align === "justify") && !paraFmt(ownF, 0).font && !f.list && !f.columns ? colour(dropRole) : null, perPara ? specFor : null);
       const bx = Math.min(...cols.map((c) => c.x)), by = Math.min(...cols.map((c) => c.top)) - spec.size * 0.86;
-      report(field, { kind: "flow", empty: !r.total, ...r, lines: undefined, box: { x: bx, y: by, w: Math.max(...cols.map((c) => c.x + c.w)) - bx, h: Math.max(...cols.map((c) => c.bottom)) + spec.size * 0.3 - by }, type: { spec, size: spec.size, lead: spec.lead, color: one.color, align } });
+      report(field, { kind: "flow", cols: cols.length, empty: !r.total, ...r, lines: undefined, box: { x: bx, y: by, w: Math.max(...cols.map((c) => c.x + c.w)) - bx, h: Math.max(...cols.map((c) => c.bottom)) + spec.size * 0.3 - by }, type: { spec, size: spec.size, lead: spec.lead, color: one.color, align } });
       if (!r.total) { cols.forEach((c) => op({ k: "guide", x: c.x, y: c.top - spec.size, w: c.w, h: c.bottom - c.top + spec.size, field })); return; }
       fieldNow = field;
       if (r.drop) put(r.drop.s, r.drop.x, r.drop.y, { w: 300, f: F.serif }, r.drop.size, r.dropColor);
@@ -4085,7 +4094,8 @@
   // How far in from the box the words sit, so they stay inside the shape.
   const shapeInset = (shape, w, h, k = 0.18) => (shape === "ellipse" ? { x: w * 0.15, y: h * 0.15 } : shape === "diamond" ? { x: w * 0.25, y: h * 0.25 } : shape === "triangle" ? { x: w * 0.22, y: h * 0.38 } : shape === "star" ? { x: w * 0.28, y: h * 0.3 } : shape === "parallelogram" ? { x: w * 0.22, y: Math.min(4, h * 0.2) } : (shape === "round" || shape === "chamfer") ? { x: Math.max(Math.min(4, w * 0.08), Math.min(w, h) * k * 0.6), y: Math.max(Math.min(4, h * 0.2), Math.min(w, h) * k * 0.6) } : { x: Math.min(4, w * 0.08), y: Math.min(4, h * 0.2) });
   const FREE_ROLES = ["head", "intro", "body", "kicker", "quote"];
-  const FREE_MAX = 12, FREE_PHOTO_MAX = 6, FREE_TEXT_MAX = 600;
+  // A magazine page can be as full as the studio wants (Sep 2026: 12/6/600 before).
+  const FREE_MAX = 60, FREE_PHOTO_MAX = 30, FREE_TEXT_MAX = 2000;
   const THICKS = { hair: 0.3, narrow: 0.8, medium: 1.5, broad: 2.2, heavy: 4 };
   /* A line: across (a rule, as always), down, diagonal, curved or wavy with
      a bend, or drawn by hand as a run of points; an arrowhead at either end,
@@ -4835,6 +4845,11 @@
   .sb-blk.oval { border-radius: 50%; }
   .sb-h { position: absolute; width: 11px; height: 11px; margin: -6px 0 0 -6px; border: 1px solid var(--accent, #d24e1a); border-radius: 2px; background: var(--paper, #fff); cursor: nwse-resize; }
   .sb-h[data-h="ne"], .sb-h[data-h="sw"] { cursor: nesw-resize; }
+  .sb-h.sb-rot { left: 50% !important; top: -22px !important; border-radius: 50%; cursor: grab; color: var(--accent, #d24e1a); }
+  .sb-h.sb-rot.side { left: calc(100% + 22px) !important; top: 50% !important; }
+  .sb-h.sb-rot.inside { left: calc(100% - 22px) !important; top: 22px !important; }
+  .sb-h.sb-rot.side::after, .sb-h.sb-rot.inside::after { display: none; }
+  .sb-h.sb-rot::after { content: ""; position: absolute; left: 50%; top: 100%; width: 1px; height: 14px; background: currentColor; opacity: .5; }
   .sb-h[data-h="n"], .sb-h[data-h="s"] { cursor: ns-resize; }
   .sb-h[data-h="e"], .sb-h[data-h="w"] { cursor: ew-resize; }
   @media (pointer: coarse) { .sb-h { width: 18px; height: 18px; margin: -9px 0 0 -9px; } }
@@ -4950,6 +4965,8 @@
   .sb-labelrow { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
   .sb-labelrow > label { font: 600 12.5px Inter, sans-serif; }
   .sb-fmt { display: contents; }
+  .sb-freeform { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 8px; }
+  .sb-freeform .sb-hint { flex: 1 1 200px; margin: 0; }
   .sb-typerole { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 10px; padding: 8px 0; border-top: 1px solid var(--sb-line); }
   .sb-typerole:first-of-type { border-top: 0; }
   .sb-typename { display: grid; gap: 1px; min-width: 0; flex: 1; }
@@ -6066,6 +6083,9 @@
         const turn = b.r ? ` transform: rotate(${b.r}deg);` : "";
         const handles = on && !(b.k === "line" && linePath(b) === "h")
           ? ["nw", "n", "ne", "e", "se", "s", "sw", "w"].map((h) => `<span class="sb-h" data-h="${h}" style="left:${{ nw: 0, n: 50, ne: 100, e: 100, se: 100, s: 50, sw: 0, w: 0 }[h]}%; top:${{ nw: 0, n: 0, ne: 0, e: 50, se: 100, s: 100, sw: 100, w: 50 }[h]}%"></span>`).join("")
+            // The turning handle sits above the thing; at the top of the page (where
+            // the front-and-back bar goes underneath) it sits beside it instead.
+            + `<span class="sb-h sb-rot${M.top(b) < 8 ? (M.left(b) + M.wide(b) > 92 ? " inside" : " side") : ""}" data-h="rot" title="Turn it (Shift: 15° steps)" aria-hidden="true"></span>`
           : on ? `<span class="sb-h" data-h="w" style="left:0%; top:50%"></span><span class="sb-h" data-h="e" style="left:100%; top:50%"></span>` : "";
         return `<button type="button" class="sb-blk${on ? " on" : ""}${b.k === "line" && linePath(b) === "h" ? " line" : ""}${shapeOf(b) === "ellipse" ? " oval" : ""}" data-blk="${i}" aria-pressed="${on}"
           aria-label="${esc(blockLabel(b))}, ${i + 1} of ${blocks.length}"
@@ -6102,6 +6122,14 @@
     }
     // Lines things can land on: the page's own margins, its middle, its thirds,
     // and every edge and middle of everything else on the page.
+    // A photograph's shape (width over height), from the copy the preview loaded.
+    const aspects = new Map();
+    function aspectOf(id) {
+      if (aspects.has(id)) return aspects.get(id);
+      const hit = library().byId.get(id);
+      if (hit) API.loadImage(previewSrc(hit.photo), cache).then((img) => { if (img) aspects.set(id, imgAspect(img)); }).catch(() => {});
+      return null;
+    }
     function guidesFor(e, skip) {
       const G = geometry(book);
       const S = STYLE_IMPL[book.style] || STYLE_IMPL.modern;
@@ -6243,6 +6271,37 @@
         const dir = handle ? handle.dataset.h : null;
         const guides = guidesFor(e, i);
         let moved = false, copy = null;
+        // Turning: the round handle above the thing turns it about its middle.
+        if (dir === "rot") {
+          const r0 = el.getBoundingClientRect(), cx = r0.left + r0.width / 2, cy = r0.top + r0.height / 2;
+          const turnMove = (m) => {
+            if (!moved) { moved = true; try { layer.setPointerCapture(m.pointerId); } catch (err) { /* older browsers */ } mark(); }
+            let deg = Math.atan2(m.clientY - cy, m.clientX - cx) * 180 / Math.PI + 90;
+            if (m.shiftKey) deg = Math.round(deg / 15) * 15;
+            else { const near = Math.round(deg / 45) * 45; if (Math.abs(deg - near) < 3) deg = near; }
+            deg = ((deg + 540) % 360) - 180;
+            deg = Math.round(deg * 10) / 10;
+            if (Math.abs(deg) < 0.05 || Math.abs(Math.abs(deg) - 360) < 0.05) delete b.r; else b.r = deg === -180 ? 180 : deg;
+            drawLayer(); schedulePreview(60);
+            const mz = $("#sbMeasure") || Object.assign(document.createElement("div"), { id: "sbMeasure", className: "sb-measure" });
+            if (!mz.isConnected) layer.appendChild(mz);
+            mz.textContent = `${Math.round(b.r || 0)}°`;
+          };
+          const turnUp = () => {
+            layer.removeEventListener("pointermove", turnMove); layer.removeEventListener("pointerup", turnUp); layer.removeEventListener("pointercancel", turnUp);
+            const mz = $("#sbMeasure"); if (mz) mz.remove();
+            if (moved) { change({ rail: true }); drawInspector(); }
+          };
+          layer.addEventListener("pointermove", turnMove); layer.addEventListener("pointerup", turnUp); layer.addEventListener("pointercancel", turnUp);
+          return;
+        }
+        // A photograph's edges crop it (the picture stays where it is on the
+        // page and the frame shows more or less of it); its corners resize it
+        // with its proportions kept, the picture scaling with the frame.
+        const cropping = b.k === "photo" && b.p && b.p.id && !isDiagram(b.p.id) && !FIT_MODES.filter((f) => f !== "fill").includes(b.p.fit) && dir && dir.length === 1;
+        const scaling = b.k === "photo" && dir && dir.length === 2;
+        if (b.k === "photo" && b.p) aspectOf(b.p.id);   // loads it now if the preview hasn't
+        const shot0 = b.p ? { ...b.p } : null;
         const move = (m) => {
           const dx = M.fx(m.clientX - from.x), dy = M.fy(m.clientY - from.y);
           if (!moved && Math.abs(m.clientX - from.x) < 3 && Math.abs(m.clientY - from.y) < 3) return;
@@ -6282,6 +6341,31 @@
             if (!(b.k === "line" && linePath(b) === "h")) {
               if (south) { let bo = start.y + start.h + dy; const sb = snapTo(bo, guides.ys, guides.tolY); if (sb !== null) { bo = sb; hit.push({ axis: "y", at: sb }); } b.h = round4(Math.max(0.02, Math.min(1.6, bo - b.y))); }
               if (north) { let t = start.y + dy; const stp = snapTo(t, guides.ys, guides.tolY); if (stp !== null) { t = stp; hit.push({ axis: "y", at: stp }); } const bot = start.y + start.h; b.y = round4(Math.min(bot - 0.02, t)); b.h = round4(Math.max(0.02, bot - b.y)); }
+            }
+            const Gm = geometry(book), FW = Gm.Wa, FH = Gm.Ha;
+            if (scaling) {
+              // Keep the frame's shape: the width leads, the height follows.
+              const ratio = (start.h * FH) / (start.w * FW);
+              b.h = round4(Math.max(0.02, (b.w * FW * ratio) / FH));
+              if (dir.includes("n")) b.y = round4(start.y + start.h - b.h);
+            } else if (cropping && shot0 && aspects.get(shot0.id)) {
+              const asp = aspects.get(shot0.id);
+              // Where the whole picture lies on the page now, in millimetres.
+              const x0 = start.x * FW, y0 = start.y * FH, w0 = start.w * FW, h0 = start.h * FH;
+              const sc = Math.max(w0 / asp, h0) * Math.min(3, Math.max(1, shot0.zoom || 1));
+              const IW = asp * sc, IH = sc;
+              const fx0 = typeof shot0.x === "number" ? shot0.x : 0.5, fy0 = typeof shot0.y === "number" ? shot0.y : 0.35;
+              const X0 = x0 - (IW - w0) * fx0, Y0 = y0 - (IH - h0) * fy0;
+              // The frame can't reach past the picture.
+              let x1 = b.x * FW, y1 = b.y * FH, x2 = x1 + b.w * FW, y2 = y1 + b.h * FH;
+              x1 = Math.max(X0, x1); y1 = Math.max(Y0, y1); x2 = Math.min(X0 + IW, x2); y2 = Math.min(Y0 + IH, y2);
+              const w1 = Math.max(1, x2 - x1), h1 = Math.max(1, y2 - y1);
+              b.x = round4(x1 / FW); b.y = round4(y1 / FH); b.w = round4(w1 / FW); b.h = round4(h1 / FH);
+              const z1 = Math.min(3, Math.max(1, sc / Math.max(w1 / asp, h1)));
+              const sc1 = Math.max(w1 / asp, h1) * z1, IW1 = asp * sc1, IH1 = sc1;
+              const fx1 = IW1 - w1 > 1e-6 ? Math.min(1, Math.max(0, (x1 - X0) / (IW1 - w1))) : 0.5;
+              const fy1 = IH1 - h1 > 1e-6 ? Math.min(1, Math.max(0, (y1 - Y0) / (IH1 - h1))) : 0.5;
+              b.p = { ...b.p, zoom: Math.round(z1 * 1000) / 1000, x: Math.round(fx1 * 1000) / 1000, y: Math.round(fy1 * 1000) / 1000 };
             }
           }
           drawLayer();
@@ -7175,9 +7259,85 @@
         look: "One look of a collection: its photographs, its number, its name and its lines."
       };
       const kind = sel < 0 ? (coverLayoutOf(book) === "custom" ? "coverFree" : "cover") : entry.type;
-      head.innerHTML = `<h3>${esc(sel < 0 ? "Cover" : PAGE_LABEL[entry.type])}</h3><p class="sb-hint">${esc(about[kind] || "")}</p>`;
+      head.innerHTML = `<h3>${esc(sel < 0 ? "Cover" : PAGE_LABEL[entry.type])}</h3><p class="sb-hint">${esc(about[kind] || "")}</p>`
+        + (sel >= 0 && FREEFORM_TYPES.includes(entry.type) ? `<div class="sb-freeform"><button type="button" class="sb-btn" id="sbFreeform">Make it free-form</button><span class="sb-hint">Every photograph and every line of words on this page becomes a piece you can move, crop, turn and resize, anywhere. Ctrl+Z puts the page back.</span></div>` : "");
+      { const ff = $("#sbFreeform"); if (ff) ff.addEventListener("click", () => makeFreeForm(sel)); }
       drawFields(); drawPhotoBlock(); drawPageBg(); updateMeters();
     }
+    /* ---------- free-form: any page into an Anything page ---------------------
+       A magazine maker lets you take a layout apart. The page is drawn once,
+       small, and what it drew is read back: every photograph where it landed
+       (with its crop, fade and flip), every text where it was set (with its
+       own formatting, in the kind of words it was), and the style's rules and
+       colour bars as lines and shapes. The result is an ordinary Anything page. */
+    const FREEFORM_TYPES = ["photos", "story", "note", "quote", "letter", "feature", "divider", "look"];
+    const FREE_ROLE_OF = { head: "head", intro: "intro", body: "body", label: "kicker", quote: "quote", caption: "body" };
+    async function makeFreeForm(i) {
+      const entry = book.pages[i];
+      if (!entry || !FREEFORM_TYPES.includes(entry.type)) return;
+      const btn = $("#sbFreeform"); if (btn) { btn.disabled = true; btn.textContent = "Taking it apart…"; }
+      let pg = null;
+      try { for await (const r of renderPages(book, { dpi: 30, only: i, cache })) pg = r.page; } catch (e) { pg = null; }
+      if (!pg) { if (btn) { btn.disabled = false; btn.textContent = "Make it free-form"; } API.toast("Couldn't take this page apart."); return; }
+      const G = geometry(book), W = G.Wa, H = G.Ha;
+      const r4 = (v) => Math.round(v * 10000) / 10000;
+      const inFrame = (x, y, w, h, placed) => { const ox = placed ? G.ox : 0, oy = placed ? G.oy : 0; return { x: r4((x - ox) / W), y: r4((y - oy) / H), w: r4(Math.max(0.01, w / W)), h: r4(Math.max(0.01, h / H)) }; };
+      const blocks = [];
+      const hexOf = (c) => (/^#[0-9a-f]{6}$/i.test(String(c || "")) ? String(c).toLowerCase() : null);
+      // The style's rules and bars, behind everything (the page's own ground excepted).
+      if (pg.plan) for (const o of pg.plan.ops) {
+        if (o.k !== "rect" || o.rot || !hexOf(o.c)) continue;
+        if (o.w >= G.W - 0.5 && o.h >= G.H - 0.5) continue;
+        if (o.h < 3) blocks.push({ k: "line", ...inFrame(o.x, o.y, o.w, 0, true), h: undefined, width: Math.max(0.2, Math.round(o.h * 10) / 10), color: hexOf(o.c) });
+        else blocks.push({ k: "shape", ...inFrame(o.x, o.y, o.w, o.h, true), fill: hexOf(o.c) });
+      }
+      // The photographs, as drawn.
+      const shots = entry.photos || [];
+      for (const ph of pg.photos || []) {
+        const shot = shots.find((x) => x && x.id === ph.id);
+        if (!shot) continue;
+        blocks.push({ k: "photo", ...inFrame(ph.x, ph.y, ph.w, ph.h, true), p: { ...shot } });
+      }
+      // The words, with their own formatting and their kind.
+      const done = new Set();
+      const own = (field) => (entry.style && entry.style[field]) || null;
+      const addText = (field, box, placed, cols) => {
+        const t = typeof entry[field] === "string" ? entry[field] : "";
+        if (!t.trim() || done.has(field)) return;
+        done.add(field);
+        const pad = 1.2;
+        const one = { k: "text", ...inFrame(box.x - pad / 2, box.y - pad / 2, box.w + pad, box.h * 1.12 + pad, placed), t: t.slice(0, FREE_TEXT_MAX), role: FREE_ROLE_OF[roleOfField(field)] || "body" };
+        const st = own(field) ? JSON.parse(JSON.stringify(own(field))) : {};
+        if (cols > 1 && !st.columns) st.columns = Math.min(3, cols);
+        if (Object.keys(st).length) one.style = st;
+        blocks.push(one);
+      };
+      if (pg.plan) {
+        for (const [field, f] of Object.entries(pg.plan.fields || {})) {
+          if (!f || !f.box) continue;
+          // How many columns the words ran in: the left edges most lines share.
+          const xs = new Map();
+          for (const o of pg.plan.ops) if (o.k === "text" && o.field === field) { const k = Math.round(o.x); xs.set(k, (xs.get(k) || 0) + 1); }
+          const cols = f.cols || [...xs.values()].filter((n) => n >= 3).length;
+          addText(field, f.box, false, cols);
+        }
+      }
+      for (const t of pg.texts || []) if (t && t.field) addText(t.field, t, true, 1);
+      // A caption the page drew without saying where: under the photographs.
+      if (typeof entry.caption === "string" && entry.caption.trim() && !done.has("caption")) addText("caption", { x: 20, y: H - 34, w: W - 40, h: 10 }, false, 1);
+      for (const b of blocks) if (b.h === undefined) delete b.h;
+      let photos = 0;
+      const kept = blocks.filter((b) => b.k !== "photo" || ++photos <= FREE_PHOTO_MAX).slice(0, FREE_MAX);
+      mark();
+      const next = { type: "free", blocks: kept };
+      if (entry.bg) next.bg = entry.bg;
+      book.pages[i] = next;
+      blockSel = -1; photoSel = null; active = 0;
+      change({ rail: true, photos: true });
+      drawInspector();
+      API.toast(`Free-form: ${kept.length} piece${kept.length === 1 ? "" : "s"} you can move · Ctrl+Z to undo`);
+    }
+
     /* The colour behind this page. Absent, it is the book's (set on Design),
        and failing that the style's own. The cover keeps its own look; an
        Anything page has this among its own controls. */
@@ -8144,7 +8304,7 @@
           <button type="button" data-addblk="line">+ Line</button>
           <button type="button" data-addblk="draw" aria-pressed="${drawing}">✎ Draw by hand</button>
         </div>
-        <p class="sb-hint">${blocks.length} of ${FREE_MAX} things. Drag anything on the page to move it, pull a corner to resize it, and use the arrow keys to nudge it.</p>
+        <p class="sb-hint">${blocks.length} of ${FREE_MAX} things. Drag anything to move it and the round handle to turn it (Shift for 15° steps). Pull a photograph's edge to crop it, its corner to resize it. Arrow keys nudge.</p>
         <h3>On this page</h3>
         ${blocks.length ? `<ol class="sb-blklist">${blocks.map((x, i) => `<li class="sb-blkrow">
             <button type="button" data-pickblk="${i}" aria-pressed="${i === blockSel}">${esc(blockLabel(x))}</button>
@@ -8423,6 +8583,7 @@
           <label class="sb-range">Left ↔ right <input type="range" min="0" max="1" step="0.01" value="${cur.x}" data-slide="x"></label>
           <label class="sb-range">Up ↕ down <input type="range" min="0" max="1" step="0.01" value="${cur.y}" data-slide="y"></label>`}
           <label class="sb-range">Opacity <input type="range" min="10" max="100" step="5" value="${Math.round(opacity * 100)}" data-opacity aria-valuetext="${Math.round(opacity * 100)} percent"></label>
+          ${isDiagram(cur.id) ? "" : `<div class="sb-field"><span class="sb-label">Flip</span><span class="sb-seg sb-seg-sm">${[["h", "↔ Left to right"], ["v", "↕ Top to bottom"]].map(([k, n]) => `<button type="button" data-flip="${k}" aria-pressed="${String(cur.flip || "").includes(k)}">${n}</button>`).join("")}</span></div>`}
         </div>` : ""}
         <details class="sb-pick" ${open ? "open" : ""}>
           <summary>${list.length ? (t.max === 1 ? "Change the photo" : "Add or remove photos") : "Choose a photo"}</summary>
@@ -8543,6 +8704,17 @@
         const l = photoTarget().list.slice();
         l[active] = { ...l[active], [r.dataset.slide]: +r.value };
         setList(l); change({ rail: false });
+      }));
+      box.querySelectorAll("[data-flip]").forEach((b) => b.addEventListener("click", () => {
+        const l = photoTarget().list.slice();
+        const next = { ...l[active] };
+        const has = new Set(String(next.flip || "").split("").filter((c) => c === "h" || c === "v"));
+        if (has.has(b.dataset.flip)) has.delete(b.dataset.flip); else has.add(b.dataset.flip);
+        const v = ["h", "v"].filter((c) => has.has(c)).join("");
+        if (v) next.flip = v; else delete next.flip;
+        mark();
+        l[active] = next; setList(l); change({ rail: false });
+        b.setAttribute("aria-pressed", String(has.has(b.dataset.flip)));
       }));
       const op = box.querySelector("[data-opacity]");
       if (op) op.addEventListener("input", () => {

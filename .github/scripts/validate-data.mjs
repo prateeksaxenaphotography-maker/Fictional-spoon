@@ -570,8 +570,8 @@ if (books !== undefined && books !== null) {
     // Everything placed on an Anything page, or on a cover from scratch.
     const checkBlocks = (where, blocks, what) => {
       if (!Array.isArray(blocks)) { fail(`${where} (${what}) has no list of things on it`); return; }
-      if (blocks.length > 12) fail(`${where} has ${blocks.length} things on it; the builder allows 12`);
-      if (blocks.filter((x) => x && x.k === "photo").length > 6) fail(`${where} has more than six photographs on it`);
+      if (blocks.length > 60) fail(`${where} has ${blocks.length} things on it; the builder allows 60`);
+      if (blocks.filter((x) => x && x.k === "photo").length > 30) fail(`${where} has more than thirty photographs on it`);
       blocks.forEach((x, bi) => {
         const at = `${where} thing ${bi + 1}`;
         if (!x || typeof x !== "object" || Array.isArray(x)) { fail(`${at} is not an object`); return; }
@@ -582,7 +582,7 @@ if (books !== undefined && books !== null) {
         if (x.r !== undefined && (typeof x.r !== "number" || !(x.r >= -180 && x.r <= 180) || x.r === 0)) fail(`${at} is turned ${JSON.stringify(x.r)}; it must be a number from -180 to 180, and 0 is not written`);
         if (x.k === "text") {
           if (typeof x.t !== "string") fail(`${at} has words that are not text`);
-          else if (x.t.length > 600) fail(`${at} holds ${x.t.length} characters; the most is 600`);
+          else if (x.t.length > 2000) fail(`${at} holds ${x.t.length} characters; the most is 2000`);
           if (x.role !== undefined && !BLOCK_ROLES.has(x.role)) fail(`${at} has a kind of words ${JSON.stringify(x.role)} the app doesn't know`);
           if (x.fit !== undefined && x.fit !== "cut") fail(`${at} has fit ${JSON.stringify(x.fit)}; the app writes "cut", and nothing when the words shrink`);
           if (x.style !== undefined) {
@@ -596,6 +596,7 @@ if (books !== undefined && books !== null) {
             else {
               if (x.p.fit !== undefined && !FITS.has(x.p.fit)) fail(`${at} places its photo as ${JSON.stringify(x.p.fit)}`);
               if (x.p.opacity !== undefined && !(typeof x.p.opacity === "number" && x.p.opacity >= 0.1 && x.p.opacity < 1)) fail(`${at} has a photo opacity of ${JSON.stringify(x.p.opacity)}`);
+              if (x.p.flip !== undefined && !["h", "v", "hv"].includes(x.p.flip)) fail(`${at} flips its photo ${JSON.stringify(x.p.flip)}; the app writes h, v or hv`);
             }
           }
           if (x.edge !== undefined && !FILLS.has(x.edge)) fail(`${at} has an edge colour ${JSON.stringify(x.edge)} the app drops`);
@@ -729,6 +730,7 @@ if (books !== undefined && books !== null) {
         for (const s of pg.photos || []) {
           if (s && s.fit !== undefined && !FITS.has(s.fit)) fail(`${where} has a photo placed as ${JSON.stringify(s.fit)}; the app knows ${[...FITS].join(", ")}`);
           if (s && s.opacity !== undefined && !(typeof s.opacity === "number" && s.opacity >= 0.1 && s.opacity < 1)) fail(`${where} has a photo opacity of ${JSON.stringify(s.opacity)}; it must be a number from 0.1 to under 1`);
+          if (s && s.flip !== undefined && !["h", "v", "hv"].includes(s.flip)) fail(`${where} flips a photo ${JSON.stringify(s.flip)}; the app writes h, v or hv`);
         }
       });
       if (b.cover && b.cover.fit !== undefined && !FITS.has(b.cover.fit)) fail(`studio portfolio book ${name} has a cover photo placed as ${JSON.stringify(b.cover.fit)}`);
@@ -888,7 +890,7 @@ try {
   const WRITING = new Set(["story", "note", "quote", "letter", "feature", "article", "ways", "process", "free", "end", "look"]);
   const wordsIn = (b) => {
     let pages = 0, chars = 0, fits = 0;
-    const settings = (s) => (s ? (s.fit ? 1 : 0) + (s.opacity !== undefined ? 1 : 0) : 0);
+    const settings = (s) => (s ? (s.fit ? 1 : 0) + (s.opacity !== undefined ? 1 : 0) + (s.flip ? 1 : 0) : 0);
     fits += settings(b && b.cover) + (b && b.paper ? 1 : 0) + (b && b.coverStyle ? Object.keys(b.coverStyle).length : 0) + (b && b.watermark ? Object.keys(b.watermark).length : 0) + (b && b.coverText ? Object.keys(b.coverText).length : 0) + (b && b.footText ? 1 : 0) + (b && b.bg ? 1 : 0) + (b && b.showPageNumbers === false ? 1 : 0);
     for (const side of ["left", "right"]) for (const l of ((b && b.coverText && b.coverText[side]) || [])) if (typeof l === "string") chars += l.length;
     // The cover's layout, and everything placed on a cover from scratch.

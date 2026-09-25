@@ -803,7 +803,8 @@ const STUDIO_BOOK_LIMITS = {
      photograph can run off the edge. */
   blockKinds: ["text", "photo", "shape", "line"],
   blockRoles: ["head", "intro", "body", "kicker", "quote"],
-  blockMax: 12, blockPhotoMax: 6, blockText: 600,
+  // Sep 2026: an Anything page holds as much as a magazine page (was 12 / 6 / 600).
+  blockMax: 60, blockPhotoMax: 30, blockText: 2000,
   thicks: ["hair", "narrow", "medium", "broad", "heavy"],
   // A line: how it runs ("h", across, writes nothing), its arrowheads, and
   // what it is drawn with ("pen" writes nothing). A line drawn by hand keeps
@@ -910,6 +911,8 @@ function cleanStudioPortfolios(o) {
     if (STUDIO_BOOK_LIMITS.fits.includes(x.fit)) out.fit = x.fit;
     // Opacity is kept only when the photo is faded; fully visible is the default.
     if (typeof x.opacity === "number" && isFinite(x.opacity) && x.opacity < 1) out.opacity = Math.round(num(x.opacity, 0.1, 1, 1) * 100) / 100;
+    // Mirrored left to right (h), top to bottom (v), or both; written only when flipped.
+    if (["h", "v", "hv"].includes(x.flip)) out.flip = x.flip;
     return out;
   };
   const PAGE_TYPES = STUDIO_BOOK_LIMITS.pageTypes;
