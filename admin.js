@@ -731,7 +731,8 @@ const STUDIO_BOOK_NEWER_STYLES = ["noir", "swiss", "pinboard", "dossier", "poste
 // silently delete the book or the deletion it cut. The builder refuses a new
 // book at `versions` rather than letting the clean-up drop one.
 const STUDIO_BOOK_LIMITS = {
-  versions: 200, pages: 30, text: 1200, deleted: 2000,
+  // pages: no limit (Sep 2026, the studio's ask). `Infinity` keeps slice() a no-op.
+  versions: 200, pages: Infinity, text: 1200, deleted: 2000,
   pageTypes: ["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process", "free", "end", "look"],
   // The cover's layout: absent means the style's own; "custom" is a cover
   // arranged like an Anything page (book.coverPage). The end page is the

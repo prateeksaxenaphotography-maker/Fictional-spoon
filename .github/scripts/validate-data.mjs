@@ -629,8 +629,6 @@ if (books !== undefined && books !== null) {
       if (!BOOK_STYLES.has(b.style)) fail(`studio portfolio book ${name} has an unknown style ${JSON.stringify(b.style)}`);
       if (b.orientation !== "portrait" && b.orientation !== "landscape") fail(`studio portfolio book ${name} has an unknown page shape ${JSON.stringify(b.orientation)}`);
       if (!Array.isArray(b.pages)) { fail(`studio portfolio book ${name} has no pages list`); continue; }
-      const rendered = 1 + b.pages.reduce((n, pg) => n + (pg && (pg.type === "spread" || pg.type === "article") ? 2 : 1), 0);
-      if (rendered > 20) fail(`studio portfolio book ${name} has ${rendered} pages; the builder allows 20, cover included`);
       b.pages.forEach((pg, i) => {
         const where = `studio portfolio book ${name} page entry ${i + 1}`;
         if (!pg || !PAGE_TYPES.has(pg.type)) { fail(`${where} has an unknown type ${JSON.stringify(pg && pg.type)}`); return; }
@@ -909,7 +907,7 @@ try {
       fits += (pg.layout ? 1 : 0) + (pg.noLines ? 1 : 0);
       fits += (pg.photoAt ? 1 : 0) + (pg.bg ? 1 : 0) + (pg.type === "photos" && pg.rows ? 1 : 0) + (pg.border ? 1 : 0) + (pg.borderWidth ? 1 : 0) + styleWeight(pg.style) + (Array.isArray(pg.hide) ? pg.hide.length : 0);
     }
-    return { pages, chars, fits };
+    return { pages, chars, fits, entries: ((b && b.pages) || []).length };
   };
   // The mark of how new a book's shapes are only ever goes up while this
   // release is the one saving. An older tab drops a page kind it doesn't know
@@ -926,6 +924,8 @@ try {
     if (!now || now.updatedAt !== was.updatedAt) continue;
     const a = wordsIn(was), b = wordsIn(now);
     if (b.pages < a.pages || b.chars < a.chars) fail(`portfolio book "${was.name || was.id}" lost ${a.pages - b.pages} writing page(s) and ${a.chars - b.chars} characters of words without being edited.${stale}`);
+    // A book has no page limit now; an older tab's cleaner cut books to 30 entries.
+    if (b.entries < a.entries) fail(`portfolio book "${was.name || was.id}" lost ${a.entries - b.entries} page(s) without being edited.${stale}`);
     if (b.fits < a.fits) fail(`portfolio book "${was.name || was.id}" lost ${a.fits - b.fits} photo, paper, border or text-format setting(s) without being edited.${stale}`);
   }
   const photosById = (data) => new Map((data.DEMO_SHOOTS || []).flatMap((s) => (s.photos || []).map((p) => [p.id, p])));
@@ -1044,7 +1044,7 @@ try {
   // does: each is fetched with the same ?v= as app.js, so a release that only
   // touches one of them still has to bump the version or browsers keep running
   // the copy they already hold.
-  const codeFiles = ["app.js", "admin.js", "contracts.js", "pdf-tools.js", "styles.css", "config.js", "book-builder.js", "sw.js"];
+  const codeFiles = ["app.js", "admin.js", "contracts.js", "pdf-tools.js", "styles.css", "config.js", "book-builder.js", "book-print.js", "sw.js"];
   const codeChanged = changed.filter((f) => codeFiles.includes(f) && f !== "sw.js");
   if (codeChanged.length) {
     const prevSw = execSync(`git show ${base}:sw.js`, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });

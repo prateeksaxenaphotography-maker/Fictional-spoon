@@ -2,7 +2,7 @@
    book-builder.js — the studio portfolio book
 
    The photographer's own book of work to send to clients: photographs picked
-   from any album, laid out on 1 to 20 A4 pages, in one of eleven styles
+   from any album, laid out on as many A4 pages as it needs, in one of eleven styles
    (elegant, modern, vogue, lookbook, noir, swiss, pinboard, dossier, poster,
    atelier, gazette) and one of nine colourways or the studio's own, saved as
    re-editable versions and exported as a PDF or as one PNG per page.
@@ -103,7 +103,9 @@
     { key: "gazette", name: "Gazette", note: "A newspaper. A masthead, double rules, columns, captions in italic." }
   ];
   const SIZE = { portrait: { w: 210, h: 297 }, landscape: { w: 297, h: 210 } };
-  const MAX_PAGES = 20;       // rendered pages, cover included
+  // A book has as many pages as the studio gives it (Sep 2026: "no limit on the
+  // number of pages"). Kept as a name so every old check reads the same.
+  const MAX_PAGES = Infinity; // rendered pages, cover included
   const MAX_PER_PAGE = 6;
 
   const F = {
@@ -3122,6 +3124,24 @@
   const ensureBookFonts = (book) => Promise.all([...bookFontKeys(book), ...(TR(book && book.style).fonts || [])].map(loadFont));
   const ensureStyleFonts = () => Promise.all(Object.values(TRAITS).flatMap((t) => t.fonts || []).map(loadFont));
 
+  /* The print file's own writer (real type, bleed, crop marks) lives in
+     book-print.js, fetched the first time a PDF is made, at the site's ?v=. */
+  let printLoad = null;
+  function loadPrint() {
+    if (window.BookPrint) return Promise.resolve(window.BookPrint);
+    if (!printLoad) {
+      printLoad = new Promise((resolve) => {
+        const s = document.createElement("script");
+        const v = (document.querySelector('script[src*="app.js?v="]')?.getAttribute("src") || "").split("v=")[1] || "";
+        s.src = `/book-print.js${v ? `?v=${v}` : ""}`;
+        s.onload = () => resolve(window.BookPrint || null);
+        s.onerror = () => { printLoad = null; resolve(null); };
+        document.head.appendChild(s);
+      });
+    }
+    return printLoad;
+  }
+
   let measurePage = null;
   const measurer = () => measurePage || (measurePage = API.newPdfPage(72, { w: 10, h: 10 }));
 
@@ -4384,7 +4404,7 @@
     drawTurn = mine;
     return Promise.race([before, new Promise((r) => setTimeout(r, 20000))]).then(() => release);
   }
-  async function* renderPages(book, { dpi, watermarked = false, cache, only = null, guides = false, skip = null, originals = null }) {
+  async function* renderPages(book, { dpi, watermarked = false, cache, only = null, guides = false, skip = null, originals = null, print = null }) {
     const mark = watermarked ? markSettings(book) : null;
     await ensureFonts();
     await ensureBookFonts(book);
@@ -4395,7 +4415,8 @@
     const G = geometry(book);
     const W = G.W, H = G.H, size = { w: W, h: H };
     const pt = { w: G.pw * 72 / 25.4, h: G.ph * 72 / 25.4 };
-    const newPage = () => { const pg = API.newPdfPage(dpi * G.s, size); pg.pt = pt; pg.scale = G.s; return pg; };
+    // A print file catches the words as they are drawn, to set them as type (book-print.js).
+    const newPage = () => { const pg = API.newPdfPage(dpi * G.s, size); pg.pt = pt; pg.scale = G.s; if (print && window.BookPrint) window.BookPrint.hook(pg, print, dpi); return pg; };
     const S = STYLE_IMPL[styleKey(book)];
     const lib = library();
     const full = dpi >= 100;
@@ -4438,8 +4459,6 @@
     n = 1;
     for (let i = 0; i < book.pages.length; i++) {
       const entry = book.pages[i];
-      // The builder never lets a book past 20 pages, but a book edited by hand
-      // in data.js could arrive longer: stop rather than export past the limit.
       if (n + pageSpan(entry) > MAX_PAGES) break;
       const shoots = (entry.photos || []).map((s) => (lib.byId.get(s.id) || {}).shoot).filter(Boolean);
       if (entry.type === "spread") {
@@ -5283,6 +5302,7 @@
     let view = { two: false, zoom: false }; // facing pages, and larger than fit
     let printMode = "normal";            // or "fold": pages two to a sheet, in folding order
     let exportDpi = 150;                 // or 300, for a print shop
+    let printMarks = false;              // 3 mm bleed + crop marks, for a print shop
     const originals = originalsStore();  // the studio's full-size files, this session only
     let lastMatch = null;                // what match() last found for this book
     let lightTimer = null;
@@ -5678,6 +5698,7 @@
                 <button type="button" role="radio" data-print="fold" aria-checked="false">Fold in half</button>
               </div>
               <p class="sb-hint" id="sbBookletNote">Normal: one page per sheet, the size you chose in Design.</p>
+              <label class="sb-check-row" id="sbMarksRow"><input type="checkbox" id="sbMarks"> Crop marks and 3 mm bleed, for a print shop</label>
             </div>
             <div class="sb-dlrow">
               <button type="button" class="sb-btn dark" id="sbPdf" data-dl>Download PDF</button>
@@ -5691,7 +5712,7 @@
               <input type="file" id="sbOrigFile" multiple accept="image/*" hidden>
               <div id="sbOrigStatus"></div>
             </div>
-            <p class="sb-hint">The PDF is made of page images, so its words can't be searched or copied.</p>
+            <p class="sb-hint">The words in the PDF are real type in their own fonts: sharp at any size, and they can be searched and copied.</p>
           </div>
         </div>
         <div class="sb-work">
@@ -5783,6 +5804,7 @@
         bookletNote();
       }));
       $("#sbPng").addEventListener("click", (e) => download(e.currentTarget, "png", $("#sbMark").checked));
+      $("#sbMarks").addEventListener("change", (e) => { printMarks = e.currentTarget.checked; });
       $$("[data-dpi]").forEach((b) => b.addEventListener("click", () => {
         exportDpi = +b.dataset.dpi;
         $$("[data-dpi]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
@@ -6627,7 +6649,7 @@
       const count = renderedCount(book);
       menu.innerHTML = `
         <div class="sb-addhead"><strong>Add a page</strong><button type="button" class="sb-btn quiet" id="sbAddClose">Close</button></div>
-        <p class="sb-hint">It goes after the page you're on. ${count} of ${MAX_PAGES} pages used.</p>
+        <p class="sb-hint">It goes after the page you're on. The book has ${count} page${count === 1 ? "" : "s"}.</p>
         ${ADD_MENU.map((g) => `<div class="sb-addgroup"><h3>${esc(g.group)}</h3><div class="sb-additems">${g.items.map(([type, name, note]) => `
           <button type="button" class="sb-additem" data-add="${type}" ${count + pageSpan({ type }) > MAX_PAGES ? "disabled" : ""}>${addIcon(type)}<b>${esc(name)}</b><span>${esc(note)}</span></button>`).join("")}</div></div>`).join("")}`;
       menu.hidden = false;
@@ -6871,7 +6893,7 @@
       }));
       remember();
       const count = renderedCount(book);
-      const c = $("#sbCount"); if (c) c.textContent = `${count}/${MAX_PAGES}`;
+      const c = $("#sbCount"); if (c) c.textContent = `${count} page${count === 1 ? "" : "s"}`;
       const prev = $("#sbPrev"), next = $("#sbNext");
       if (prev) prev.disabled = sel <= -1;
       if (next) next.disabled = sel >= book.pages.length - 1;
@@ -8715,6 +8737,7 @@
       fold.disabled = !can;
       if (!can && printMode === "fold") { printMode = "normal"; $$("[data-print]").forEach((x) => x.setAttribute("aria-checked", String(x.dataset.print === "normal"))); }
       if (pdf) pdf.textContent = printMode === "fold" ? "Download PDF to fold" : "Download PDF";
+      { const row = $("#sbMarksRow"); if (row) row.hidden = printMode === "fold"; }
       if (!can) { el.textContent = `Normal: one ${sheet.page} page per sheet. Folding needs a portrait book — a landscape one would fold along the top edge.`; return; }
       if (printMode !== "fold") { el.textContent = `Normal: one ${sheet.page} page per sheet, the size you chose in Design.`; return; }
       const n = renderedCount(book), padded = Math.ceil(n / 4) * 4;
@@ -8872,19 +8895,44 @@
       try {
         // The chosen resolution first, then softer if the device runs short of memory.
         let result = null, lastErr = null, madeAt = 0, fullSize = 0;
+        /* A PDF sets its words as real type. A quick pass at a tiny size finds
+           every face and letter the book uses, so the fonts are at hand before
+           the real pass draws (a canvas call cannot wait for a download). A
+           watermarked sample keeps its words in the picture, under the mark. */
+        const marks = format === "pdf" && printMarks;
+        const BP = format !== "png" ? await loadPrint() : null;
+        let print = null;
+        if (BP && !watermarked) {
+          btn.textContent = "Getting the fonts…";
+          try {
+            const needs = BP.newNeeds();
+            for await (const r of renderPages(snap, { dpi: 20, cache, print: { mode: "discover", needs } })) { r.page.canvas.width = 0; r.page.canvas.height = 0; }
+            const faces = await BP.loadNeeds(needs);
+            if (faces.size) print = { mode: "vector", faces };
+          } catch (e) { print = null; }
+        }
+        const G0 = geometry(snap);
+        const ascii = (x) => String(x || "").normalize("NFKD").replace(/[^\x20-\x7e]/g, "").trim();
         for (const dpi of (exportDpi === 300 ? [300, 150, 110] : [150, 110])) {
           const orig = await originalsFor(snap, dpi);
           try {
             const out = [];
             let done = 0;
             const pageJpeg = [];    // for a booklet: every page, compressed, by number
-            for await (const r of renderPages(snap, { dpi, watermarked, cache, originals: orig })) {
+            for await (const r of renderPages(snap, { dpi, watermarked, cache, originals: orig, print })) {
               if (orig) await orig.release();       // the page holds its pixels now
               const { canvas, links, pt, scale } = r.page;
               // Links are placed in design mm; the PDF wants printed mm.
               const printed = (links || []).map((l) => ({ ...l, x: l.x * (scale || 1), y: l.y * (scale || 1), w: l.w * (scale || 1), h: l.h * (scale || 1) }));
-              if (format === "pdf") out.push({ jpeg: await API.canvasJpeg(canvas, 0.9), width: canvas.width, height: canvas.height, links: printed, pt });
-              else if (format === "booklet") pageJpeg[r.n] = { jpeg: await API.canvasJpeg(canvas, 0.92), w: canvas.width, h: canvas.height };
+              const runs = print ? BP.takeRuns(r.page) : [];
+              if (format === "pdf") {
+                const bleedPx = marks && BP ? Math.round(3 * dpi / 25.4) : 0;
+                const img = bleedPx ? BP.withBleed(canvas, bleedPx) : canvas;
+                out.push({ jpeg: await API.canvasJpeg(img, 0.9), width: img.width, height: img.height, links: printed, pt, runs, bleedPx,
+                  label: `${ascii(snap.name) || "Portfolio"} - page ${r.n} - trim ${Math.round(G0.pw)} x ${Math.round(G0.ph)} mm - bleed 3 mm` });
+                if (img !== canvas) { img.width = 0; img.height = 0; }
+              }
+              else if (format === "booklet") pageJpeg[r.n] = { jpeg: await API.canvasJpeg(canvas, 0.92), w: canvas.width, h: canvas.height, runs };
               else out.push({ blob: await API.canvasPng(canvas), n: r.n });
               canvas.width = 0; canvas.height = 0;            // release before the next page
               done++; btn.textContent = `${format === "png" ? "Making the images" : format === "booklet" ? "Making the booklet" : "Making the PDF"}… ${done}/${renderedCount(snap)}`;
@@ -8903,25 +8951,28 @@
                 const c = document.createElement("canvas"); c.width = sw; c.height = sh;
                 const ctx = c.getContext("2d");
                 ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, sw, sh);
+                let sheetRuns = [];
                 for (const [k2, x] of [[a, left], [b2, left + pw]]) {
                   if (!k2 || !pageJpeg[k2]) continue;
+                  if (BP && pageJpeg[k2].runs.length) sheetRuns = sheetRuns.concat(BP.shiftRuns(pageJpeg[k2].runs, x, top, pw / pageJpeg[k2].w));
                   const bmp = await createImageBitmap(new Blob([pageJpeg[k2].jpeg], { type: "image/jpeg" }));
                   ctx.drawImage(bmp, x, top, pw, ph);
                   if (bmp.close) bmp.close();
                 }
                 // A faint fold line, so the stack is folded in the right place.
                 ctx.fillStyle = "rgba(0,0,0,0.12)"; ctx.fillRect(Math.round(sw / 2), 0, 1, Math.round(4 * k)); ctx.fillRect(Math.round(sw / 2), sh - Math.round(4 * k), 1, Math.round(4 * k));
-                out.push({ jpeg: await API.canvasJpeg(c, 0.9), width: sw, height: sh, links: [], pt: { w: sheet.w * 72 / 25.4, h: sheet.h * 72 / 25.4 } });
+                out.push({ jpeg: await API.canvasJpeg(c, 0.9), width: sw, height: sh, links: [], pt: { w: sheet.w * 72 / 25.4, h: sheet.h * 72 / 25.4 }, runs: sheetRuns });
                 c.width = 0; c.height = 0;
                 made++; btn.textContent = `Making the booklet… sheet side ${made}/${sides.length}`;
               }
             }
-            result = format === "png" ? out : await API.buildPdf(out, `${snap.name} — ${studio()}${format === "booklet" ? " (booklet)" : ""}`);
+            const title = `${snap.name} — ${studio()}${format === "booklet" ? " (booklet)" : ""}`;
+            result = format === "png" ? out : BP ? (await BP.buildPdf(out, { title, author: studio(), marks })).bytes : await API.buildPdf(out, title);
             madeAt = dpi; fullSize = orig ? orig.used.size : 0;
             break;
           } catch (err) { lastErr = err; } finally { if (orig) await orig.release(); }
         }
-        const madeNote = `${madeAt} dpi${fullSize ? ` · ${fullSize} full-size photo${fullSize === 1 ? "" : "s"}` : ""}`;
+        const madeNote = `${madeAt} dpi${fullSize ? ` · ${fullSize} full-size photo${fullSize === 1 ? "" : "s"}` : ""}${format !== "png" ? (print ? " · real type" : watermarked ? "" : " · words as picture: fonts didn't load") : ""}${marks ? " · crop marks + bleed" : ""}`;
         const softer = madeAt && madeAt < exportDpi ? `<p class="sb-warn">Made at ${madeAt} dpi: this device ran short of memory at ${exportDpi}. Try on a computer, or with fewer pages.</p>` : "";
         if (!result) throw lastErr || new Error("unknown error");
         if (!ready.isConnected) return;
