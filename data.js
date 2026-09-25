@@ -2829,6 +2829,16 @@ window.WPS_DATA = {
           "type": "Workshop Attended",
           "contractVersion": "Pending Agreement"
         }
+      ],
+      "2026-09-27": [
+        {
+          "id": "b_1790354880782_4phy",
+          "isTentative": true,
+          "status": "tentative",
+          "type": "Fashion Editorial",
+          "contractVersion": "Pending Agreement",
+          "updatedAt": 1790354880782
+        }
       ]
     },
     "removedBookingIds": [
@@ -2885,8 +2895,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1790354853707,
-    "syncedAt": 1790354853707
+    "updatedAt": 1790354892306,
+    "syncedAt": 1790354892306
   },
   "INVITE_CODES": [
     {
