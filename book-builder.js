@@ -2535,7 +2535,7 @@
      recorded, so the editor can say what won't print before a client sees it.
      Field caps (STUDIO_BOOK_LIMITS.fields in app.js) were measured against the
      narrowest style and page shape, so ordinary prose at the cap fits in all. */
-  const WRITING = { story: "Story", note: "About a photo", quote: "Quote", letter: "Letter", feature: "Zig-zag", article: "Story with a full-page photo", ways: "Ways we work", process: "How a shoot runs" };
+  const WRITING = { story: "Story", note: "About a photo", quote: "Quote", letter: "Letter", feature: "Zig-zag", article: "Story with a full-page photo", ways: "Ways we work", process: "How a shoot runs", more: "Story continued", contents: "Contents" };
 
   const WTYPE = {
     elegant: {
@@ -3273,7 +3273,9 @@
   // half a line, never at the top of a column. Returns the placed lines and
   // what didn't fit. A drop cap is used only when the first paragraph is long
   // enough to hold it (three lines) and its letter doesn't hang below them.
-  function flowBody(page, s, cols, spec, dropColor, specFor) {
+  // keepEnd: the words go on on a later page, so a full last line is not
+  // shortened to end in "…" and every word on it counts as printed.
+  function flowBody(page, s, cols, spec, dropColor, specFor, keepEnd = false) {
     const paras = paragraphs(s);
     const flat = paras.map((p) => p.join(" ")).join("\n");
     // With no per-paragraph formatting, every paragraph draws with the text's
@@ -3348,7 +3350,7 @@
       }
       let printed = dropWord + lines.reduce((n, l) => n + l.pieces.filter((p) => p.end).length, 0);
       const out = lines.map((l) => ({ s: joinLine(l.pieces), x: l.x, y: l.y, w: l.w, end: l.end, pi: l.pi }));
-      if (cut && lines.length) {
+      if (cut && lines.length && !keepEnd) {
         const L = lines[lines.length - 1];
         const e = endLine(page, L.pieces, L.w, true);
         printed -= L.pieces.filter((p) => p.end).length - e.whole;
@@ -3367,6 +3369,7 @@
     };
     const wantDrop = !!dropColor && flat.length >= 120 && paras.length && /^[A-IK-PR-Za-ik-pr-z]/.test(paras[0][0]);
     if (wantDrop) { const r = run(true); if (r.dropOk) return { ...r, dropColor }; }
+    // (a continuation page never opens with a drop cap: it is mid-story)
     return run(false);
   }
 
@@ -3561,7 +3564,72 @@
   // The plan for one writing page: drawing operations in mm, the cuts, and
   // for the editor, how each field fared. Laid out on the A4 frame, then
   // placed on the book's paper.
-  function planWriting(book, entry) {
+  /* ---------- a story over several pages ---------------------------------------
+     A "Story continued" page (type "more") has no words of its own: it takes
+     the words that did not fit on the story, letter, article or note before
+     it (and on any continued pages between), and a story followed by one no
+     longer ends in "…". */
+  const CONT_SOURCES = ["story", "article", "letter"];
+  const contField = (pg) => (pg && pg.type === "note" ? "note" : "body");
+  const firstPageNo = (book, i) => { let n = 1; for (let k = 0; k < i; k++) n += pageSpan(book.pages[k]); return n + 1; };
+  const continues = (book, entry) => { const i = book.pages.indexOf(entry); const nx = i >= 0 ? book.pages[i + 1] : null; return !!nx && nx.type === "more"; };
+  function restAfter(text, printed) {
+    const paras = paragraphs(text);
+    let skip = printed, po = 0;
+    while (po < paras.length && skip >= paras[po].length) { skip -= paras[po].length; po++; }
+    if (po >= paras.length) return { text: "", paraOffset: po };
+    const rest = [paras[po].slice(skip), ...paras.slice(po + 1)].filter((x) => x.length);
+    return { text: rest.map((x) => x.join(" ")).join("\n"), paraOffset: po };
+  }
+  /* ---------- the contents page -----------------------------------------------
+     Every page with a title, at the page number it will print on: chapters
+     as sections, stories, letters, notes, looks and the studio pages under
+     them. Worked out afresh every time, so it is never out of date. */
+  function contentsItems(book) {
+    const one = (v) => oneParagraph(v).join(" ").trim();
+    const out = [];
+    let n = 1, looks = 0;
+    book.pages.forEach((pg) => {
+      const first = n + 1; n += pageSpan(pg);
+      if (!pg) return;
+      if (pg.type === "look") looks++;
+      let t = "";
+      if (pg.type === "divider") t = one(pg.heading);
+      else if (pg.type === "story" || pg.type === "article" || pg.type === "feature") t = one(pg.headline) || one(pg.sub1);
+      else if (pg.type === "letter") t = one(pg.heading);
+      else if (pg.type === "note") t = one(pg.title);
+      else if (pg.type === "look") t = one(pg.title) || `Look ${String(looks).padStart(2, "0")}`;
+      else if (pg.type === "about") t = one(pg.heading) || "About the studio";
+      else if (pg.type === "services") t = one(pg.heading) || "What I shoot";
+      else if (pg.type === "contact") t = one(pg.heading) || "Contact";
+      else if (pg.type === "ways") t = one(pg.heading) || "Ways we work";
+      else if (pg.type === "process") t = one(pg.heading) || "How a shoot runs";
+      else if (pg.type === "free") { const h = freeBlocks(pg).find((b) => b && b.k === "text" && b.role === "head" && one(b.t)); t = h ? one(h.t) : ""; }
+      if (t) out.push({ n: first, title: t, section: pg.type === "divider" });
+    });
+    return out;
+  }
+  function contOf(book, i) {
+    let j = i - 1;
+    while (j >= 0 && book.pages[j] && book.pages[j].type === "more") j--;
+    const src = book.pages[j];
+    const fromN = i > 0 ? firstPageNo(book, i - 1) + pageSpan(book.pages[i - 1]) - 1 : 0;
+    if (!src || !CONT_SOURCES.includes(src.type)) return { src: null, text: "", paraOffset: 0, fromN };
+    const field = contField(src);
+    const full = String(src[field] || "");
+    const f0 = planWriting(book, src).fields[field];
+    let printed = f0 && typeof f0.printed === "number" ? f0.printed : 0;
+    let rest = restAfter(full, printed);
+    for (let k = j + 1; k < i && rest.text; k++) {
+      const fk = planWriting(book, book.pages[k], { cont: { src, ...rest, fromN: 0 } }).fields.body;
+      printed += fk && typeof fk.printed === "number" ? fk.printed : 0;
+      rest = restAfter(full, printed);
+    }
+    return { src, ...rest, fromN };
+  }
+  function planWriting(book, entry, opts = {}) {
+    if (entry.type === "more" && !opts.cont) opts = { ...opts, cont: contOf(book, book.pages.indexOf(entry)) };
+    const contNow = entry.type === "more" ? opts.cont : null;
     const G = geometry(book);
     const st = styleKey(book), D = TR(st);
     const T = WTYPE[st];
@@ -3576,7 +3644,11 @@
     let fieldNow = null;
     const put = (s, x, y, spec, size, c, align = "left") => op({ k: "text", s, x, y, f: [spec.w, size, spec.f, spec.sp || 0, !!spec.it], c, align, field: fieldNow });
     // The studio's own formatting of a text: its font, colour and alignment.
-    const own = (field) => (entry.style && typeof entry.style === "object" && entry.style[field]) || null;
+    // A continued page is formatted as the story it continues.
+    const styleSrc = contNow && contNow.src ? contNow.src : entry;
+    const own = (field) => (styleSrc.style && typeof styleSrc.style === "object" && styleSrc.style[contNow ? contField(contNow.src) : field]) || null;
+    const paraOff = contNow ? contNow.paraOffset || 0 : 0;
+    const goesOn = continues(book, entry);
     const fmt = (field) => withRole(field, own(field), book);
     const styled = (field, spec) => styledSpec(spec, fmt(field));
     const tint = (field, fallback) => tintOf(fmt(field).color, P, fallback);
@@ -3626,7 +3698,7 @@
       const made = new Map();
       const specFor = (pi) => {
         if (!made.has(pi)) {
-          const pf = paraFmt(f, pi);
+          const pf = paraFmt(f, pi + paraOff);
           const sc = sizeScale(pf);
           const base = styledSpec(baseSpec, pf);
           const spec = sc === 1 ? base : { ...base, size: base.size * sc, lead: base.lead * sc };
@@ -3636,11 +3708,22 @@
       };
       const one = specFor(0), spec = one.spec, align = one.align;
       // A drop cap belongs to text ranged left or justified, in the style's font.
-      const perPara = hasParaFmt(f) || !!f.list || !!f.columns;
+      const perPara = hasParaFmt(f) || !!f.list || !!f.columns || paraOff > 0;
       // A book-wide body font keeps the drop cap; a font chosen for this text alone doesn't.
       const ownF = own(field) || {};
       if (book.baseline) cols = snapCols(cols, T.body.lead);
-      const r = flowBody(page, s, cols, spec, dropRole && (align === "left" || align === "justify") && !paraFmt(ownF, 0).font && !f.list && !f.columns ? colour(dropRole) : null, perPara ? specFor : null);
+      // Only the page's flowing text runs on; a continued page carries its own words.
+      const runsOn = goesOn && (contNow ? field === "body" : field === contField(entry));
+      const r = flowBody(page, s, cols, spec, dropRole && (align === "left" || align === "justify") && !paraFmt(ownF, 0).font && !f.list && !f.columns ? colour(dropRole) : null, perPara ? specFor : null, runsOn);
+      if (runsOn && r.cut) {
+        // Not cut: it goes on. Say where, under the last line.
+        r.cut = false; r.continued = true;
+        const lastCol = cols[cols.length - 1], K = T.kicker;
+        const nextN = firstPageNo(book, book.pages.indexOf(entry) + 1);
+        font(page, K.w, K.size, K.f, K.sp || 0);
+        const word = `${K.caps ? "CONTINUED ON PAGE" : "Continued on page"} ${String(nextN).padStart(2, "0")} →`;
+        op({ k: "text", s: word, x: lastCol.x + lastCol.w, y: lastCol.bottom + spec.lead * 1.35, f: [K.w, K.size, K.f, K.sp || 0, false], c: colour(K.color), align: "right" });
+      }
       const bx = Math.min(...cols.map((c) => c.x)), by = Math.min(...cols.map((c) => c.top)) - spec.size * 0.86;
       report(field, { kind: "flow", cols: cols.length, empty: !r.total, ...r, lines: undefined, box: { x: bx, y: by, w: Math.max(...cols.map((c) => c.x + c.w)) - bx, h: Math.max(...cols.map((c) => c.bottom)) + spec.size * 0.3 - by }, type: { spec, size: spec.size, lead: spec.lead, color: one.color, align } });
       if (!r.total) { cols.forEach((c) => op({ k: "guide", x: c.x, y: c.top - spec.size, w: c.w, h: c.bottom - c.top + spec.size, field })); return; }
@@ -4036,6 +4119,79 @@
         });
       }
       if (!steps.some((s2) => s2 && (oneParagraph(s2.title).length || oneParagraph(s2.text).length)) && !has("kicker", "heading", "intro", "note")) marker(L ? 148 : 105, L ? 110 : 150);
+    }
+
+    if (entry.type === "more") {
+      ground();
+      const c = contNow || { text: "", fromN: 0 };
+      const top = L ? 30 : 34, K = T.kicker;
+      const label = c.src ? `${K.caps ? "CONTINUED FROM PAGE" : "Continued from page"} ${String(c.fromN).padStart(2, "0")}` : (K.caps ? "CONTINUED" : "Continued");
+      put(label, 20, top, K, K.size, colour(K.color));
+      rule(20, top + 6);
+      const colTop = top + 16, bottom = L ? 184 : 270;
+      const n = L ? 3 : 2, gut = 8, cw = ((L ? 257 : 170) - gut * (n - 1)) / n;
+      const cols = Array.from({ length: n }, (_, k) => ({ x: 20 + k * (cw + gut), w: cw, top: colTop, bottom }));
+      const baseSpec = c.src && c.src.type === "letter" ? T.letterBody : T.body;
+      if (c.text) { body("body", c.text, cols, baseSpec, null); colRules(cols); }
+      else marker(105, 150);
+      // Its words are the story's: they are typed there, not here.
+      if (plan.fields.body) plan.fields.body = { ...plan.fields.body, box: null, readOnly: true };
+      if (!c.src) plan.cuts.push({ field: "body", label: "a story, letter or note just before it to continue", none: true });
+    }
+
+    if (entry.type === "contents") {
+      ground();
+      const x = 20, w = L ? 257 : 170, top = L ? 30 : 34, bottom = L ? 184 : 270;
+      const HS = T.storyHead;
+      const hLast = block("heading", has("heading") ? entry.heading : (HS.caps ? "CONTENTS" : "Contents"), x, top + 10, w, 1, HS, HS.start, HS.min, "mul", P.ink);
+      rule(x, hLast + 8);
+      const items = contentsItems(book);
+      const secSpec = styledSpec(HS, withRole("heading", null, book));
+      const itemSpec = styledSpec(T.body, withRole("body", null, book));
+      const numSpec = styledSpec(T.kicker, withRole("label", null, book));
+      const start = hLast + 22;
+      // Try one column, then two, and shrink the lines, until the list fits.
+      let layout = null;
+      for (const ncol of (w > 150 ? [1, 2] : [1])) {
+        for (const k of [1, 0.9, 0.8, 0.7]) {
+          const rowH = 10.5 * k, secH = 15.5 * k, cw = (w - (ncol - 1) * 12) / ncol;
+          const colsY = [];
+          let col = 0, y = start, fits = true;
+          for (const it of items) {
+            const h = it.section ? secH : rowH;
+            if (y + h > bottom + 0.01) { col++; y = start; if (col >= ncol) { fits = false; break; } }
+            colsY.push({ it, col, y, h }); y += h;
+          }
+          if (fits) { layout = { rows: colsY, cw, k, ncol }; break; }
+        }
+        if (layout) break;
+      }
+      if (!layout) {
+        // Too many for one page: as many as fit, and say so.
+        const k = 0.7, rowH = 10.5 * k, secH = 15.5 * k, ncol = w > 150 ? 2 : 1, cw = (w - (ncol - 1) * 12) / ncol;
+        const rows = []; let col = 0, y = start;
+        for (const it of items) { const h = it.section ? secH : rowH; if (y + h > bottom + 0.01) { col++; y = start; if (col >= ncol) break; } rows.push({ it, col, y, h }); y += h; }
+        layout = { rows, cw, k, ncol };
+        plan.cuts.push({ field: "heading", label: "list of pages (it runs past the page)" });
+      }
+      const numW = 12;
+      for (const r of layout.rows) {
+        const cx = x + r.col * (layout.cw + 12);
+        const base = r.y + r.h * 0.62;
+        if (r.it.section) {
+          const size = Math.min(7, HS.start * 0.7) * layout.k;
+          font(page, secSpec.w, size, secSpec.f, secSpec.sp || 0, !!secSpec.it);
+          put(ellipsize(page, HS.caps ? r.it.title.toUpperCase() : r.it.title, layout.cw - numW - 2), cx, base, secSpec, size, P.ink);
+          put(String(r.it.n).padStart(2, "0"), cx + layout.cw, base, numSpec, T.kicker.size * 1.3, accentText(P), "right");
+        } else {
+          const size = T.body.size * 1.3 * layout.k;
+          font(page, itemSpec.w, size, itemSpec.f, itemSpec.sp || 0, !!itemSpec.it);
+          put(ellipsize(page, r.it.title, layout.cw - numW - 2), cx, base, itemSpec, size, P.ink);
+          put(String(r.it.n).padStart(2, "0"), cx + layout.cw, base, numSpec, T.kicker.size * 1.2, colour(T.kicker.color || "soft"), "right");
+          rectOp(cx, r.y + r.h - 0.1, layout.cw, 0.2, P.rule);
+        }
+      }
+      if (!items.length) marker(x + w / 2, 150);
     }
 
     plan.ops = plan.ops.map((o) => placeOp(o, G));
@@ -5132,7 +5288,7 @@
     document.head.appendChild(st);
   }
 
-  const PAGE_LABEL = { photos: "Photos", spread: "Two-page spread", divider: "Chapter page", about: "About", services: "What I shoot", contact: "Contact", story: "Story", note: "About a photo", quote: "Quote", letter: "Letter", feature: "Zig-zag", article: "Story + full-page photo", ways: "Ways we work", process: "How a shoot runs", free: "Anything page", end: "End page", look: "Look" };
+  const PAGE_LABEL = { photos: "Photos", spread: "Two-page spread", divider: "Chapter page", about: "About", services: "What I shoot", contact: "Contact", story: "Story", note: "About a photo", quote: "Quote", letter: "Letter", feature: "Zig-zag", article: "Story + full-page photo", ways: "Ways we work", process: "How a shoot runs", free: "Anything page", end: "End page", look: "Look", more: "Story continued", contents: "Contents" };
   const ADD_MENU = [
     { group: "Photographs", items: [
       ["photos", "Photos", "One to six photos, laid out by their shapes."],
@@ -5145,7 +5301,8 @@
       ["quote", "Quote", "Someone's real words set large, with or without a photo."],
       ["letter", "Letter", "A signed page of your own writing: a foreword, or a note to a brand."],
       ["feature", "Zig-zag", "A photo beside words, then words beside a photo, the way magazines alternate them."],
-      ["article", "Story + full-page photo", "Two facing pages: your words on one, a photo filling the other."]] },
+      ["article", "Story + full-page photo", "Two facing pages: your words on one, a photo filling the other."],
+      ["more", "Story continued", "The rest of the story, letter or note before it, when it runs longer than its page."]] },
     { group: "How we work", items: [
       ["ways", "Ways we work", "All four ways of working on one page, with who leads the ideas."],
       ["process", "How a shoot runs", "One way, step by step, marking who does what: you, together, or the studio."]] },
@@ -5159,6 +5316,7 @@
       ["free:sheet", "Contact sheet", "Six photographs in a grid, the way a proof sheet reads."],
       ["free:blank", "Empty page", "Nothing on it but the page colour: for the end of the book, or to keep a two-page spread on facing pages."]] },
     { group: "Studio pages", items: [
+      ["contents", "Contents", "Every chapter and titled page with its page number, always up to date."],
       ["divider", "Chapter page", "A pause between sections, e.g. “Fashion & editorial”."],
       ["about", "About the studio", "Who you are and how you work."],
       ["services", "What I shoot", "The kinds of shoot live on your site."],
@@ -5194,7 +5352,9 @@
     contact: "t4,8,22,3 t4,15,26,2 t4,19,22,2 t4,23,26,2 q28,40,12,12",
     "end:back": "b0,0,44,60 w19,18,6,6 w13,30,18,2 w15,36,14,1.5 w15,40,14,1.5 w15,44,14,1.5",
     "end:closing": "p4,6,36,26 t4,40,26,3 b4,47,8,1 t4,51,20,2",
-    look: "p4,4,36,34 t4,42,9,2 t4,46,22,3 b4,51,6,1 t4,54,18,1.5"
+    look: "p4,4,36,34 t4,42,9,2 t4,46,22,3 b4,51,6,1 t4,54,18,1.5",
+    contents: "t4,7,20,3 b4,12,8,1 t4,18,26,2 t36,18,4,2 t4,24,24,2 t36,24,4,2 t4,30,28,2 t36,30,4,2 t4,36,20,2 t36,36,4,2 t4,42,26,2 t36,42,4,2",
+    more: "t4,6,14,1.5 b4,9,8,1 t4,13,17,2 t4,17,17,2 t4,21,17,2 t4,25,17,2 t4,29,13,2 t23,13,17,2 t23,17,17,2 t23,21,17,2 t23,25,10,2"
   };
   function addIcon(type) {
     const FILL = { p: "#cfcbc4", t: "#8a8c93", b: "var(--accent, #d24e1a)", w: "#ffffff", q: "#141416" };
@@ -5470,7 +5630,7 @@
       // style changed back, a page removed) would save a lower mark and CI
       // would read it as an out-of-date tab. Raised as needed, never lowered.
       const pgs = book.pages || [];
-      const need = NEWER_STYLES.includes(book.style) ? 5 : book.style === "lookbook" ? 4 : pgs.some((pg) => pg && pg.type === "look") ? 3 : (coverLayoutOf(book) !== "classic" || pgs.some((pg) => pg && pg.type === "end")) ? 2 : pgs.some((pg) => pg && pg.type === "free") ? 1 : 0;
+      const need = pgs.some((pg) => pg && (pg.type === "contents" || pg.type === "more")) ? 6 : NEWER_STYLES.includes(book.style) ? 5 : book.style === "lookbook" ? 4 : pgs.some((pg) => pg && pg.type === "look") ? 3 : (coverLayoutOf(book) !== "classic" || pgs.some((pg) => pg && pg.type === "end")) ? 2 : pgs.some((pg) => pg && pg.type === "free") ? 1 : 0;
       if (need > (book.schema || 0)) book.schema = need;
       // Read what is stored now, not this tab's cached list: another builder
       // tab may have saved or deleted a book since, and writing the cached
@@ -7256,7 +7416,9 @@
         free: "Add words, photographs, colour blocks and lines, then drag them where you want.",
         coverFree: "Your cover, arranged by you: add words, photographs, colour blocks and lines, then drag them where you want.",
         end: "The book's last page.",
-        look: "One look of a collection: its photographs, its number, its name and its lines."
+        look: "One look of a collection: its photographs, its number, its name and its lines.",
+        more: "The rest of the story before it, in columns, when it runs longer than its page.",
+        contents: "A list of what is in the book, with page numbers that keep themselves right."
       };
       const kind = sel < 0 ? (coverLayoutOf(book) === "custom" ? "coverFree" : "cover") : entry.type;
       head.innerHTML = `<h3>${esc(sel < 0 ? "Cover" : PAGE_LABEL[entry.type])}</h3><p class="sb-hint">${esc(about[kind] || "")}</p>`
@@ -7912,6 +8074,25 @@
         if ($("#sbF_text")) wireField($("#sbF_text"), (v) => { entry.text = v; }, (caps.end || {}).text || 160);
         if ($("#sbF_note")) wireField($("#sbF_note"), (v) => { entry.note = v; }, (caps.end || {}).note || 60);
         if (!back) wireFormat(box, styleHost(entry));
+        return;
+      }
+      if (entry.type === "more") {
+        const c = contOf(book, sel);
+        const src = c.src, srcIdx = src ? book.pages.indexOf(src) : -1;
+        const name = src ? (oneParagraph(src.headline || src.heading).join(" ") || PAGE_LABEL[src.type]) : "";
+        box.innerHTML = src
+          ? `<p class="sb-hint">This page carries on <b>${esc(name)}</b> from page ${String(c.fromN).padStart(2, "0")}. Its words are typed there, and so is how they look: write on, and they flow onto this page. ${c.text ? "" : "Right now everything fits before it, so this page is empty."}</p>
+             <button type="button" class="sb-btn" id="sbGoStory">Go to the story</button>
+             <p class="sb-hint">Need more room still? Add another Story continued page after this one.</p>`
+          : `<p class="sb-warn">A Story continued page goes straight after a story, a letter or a story with a full-page photo, and takes the words that don't fit there.</p>`;
+        const go = $("#sbGoStory"); if (go) go.addEventListener("click", () => { select(srcIdx); setTabPage(); });
+        return;
+      }
+      if (entry.type === "contents") {
+        box.innerHTML = `${fieldHtml({ k: "heading", label: "Heading", ctl: "input", ph: "Contents" }, entry.heading || "", (caps.contents || {}).heading || 60)}
+          <p class="sb-hint">The list makes itself from your chapter pages and every page with a title — stories, letters, notes, looks and the studio pages — with the page numbers they will print on. Move a page and the list follows.</p>`;
+        wireField($("#sbF_heading"), (v) => { entry.heading = v; }, (caps.contents || {}).heading || 60);
+        wireFormat(box, styleHost(entry));
         return;
       }
       if (WRITING[entry.type] && FIELD_UI[entry.type]) {
@@ -9016,7 +9197,7 @@
             for (const c of plan.cuts) {
               const info = plan.fields[c.field];
               const miss = info ? info.total - info.printed : 0;
-              add(`the ${c.label} is too long${miss ? ` (${miss} word${miss === 1 ? "" : "s"} won't print)` : ""}`);
+              add(c.none ? `it needs ${c.label}` : `the ${c.label} is too long${miss ? ` (${miss} word${miss === 1 ? "" : "s"} won't print)` : ""}`);
             }
           }
         } else if (pg.type === "photos" && pg.caption) {
@@ -9320,7 +9501,7 @@
     // that loaded the site before they existed still runs the old save code,
     // which would drop them while saying "Saved": refuse until it reloads.
     const L = window.STUDIO_BOOK_LIMITS;
-    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !L.workWays || !L.markStrengths || !L.paras || !L.coverText || !L.blockKinds || !L.schema || !L.lists || !L.photoRows || !(L.pageTypes || []).includes("free") || !L.coverLayouts || !(L.pageTypes || []).includes("end") || !(L.pageTypes || []).includes("look") || !(L.styles || []).includes("gazette") || !L.plateColours || !L.pageLook || !L.typeRoles) {
+    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !L.workWays || !L.markStrengths || !L.paras || !L.coverText || !L.blockKinds || !L.schema || !L.lists || !L.photoRows || !(L.pageTypes || []).includes("free") || !L.coverLayouts || !(L.pageTypes || []).includes("end") || !(L.pageTypes || []).includes("look") || !(L.styles || []).includes("gazette") || !L.plateColours || !L.pageLook || !L.typeRoles || !(L.pageTypes || []).includes("more")) {
       root.innerHTML = `<div class="sb-empty"><p class="sb-warn">The site was updated while this tab was open.</p><p class="sb-hint">Reload the page (or use “↻ Load fresh version”) before editing your books, so nothing you write is lost.</p><p><button type="button" class="sb-btn dark" id="sbReload">Reload now</button></p></div>`;
       root.querySelector("#sbReload").addEventListener("click", () => location.reload());
       return;

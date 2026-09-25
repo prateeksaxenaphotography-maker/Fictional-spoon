@@ -485,17 +485,18 @@ if (books !== undefined && books !== null) {
     const BOOK_STYLES = new Set(["elegant", "modern", "vogue", "lookbook", "noir", "swiss", "pinboard", "dossier", "poster", "atelier", "gazette"]);
     // The seven after Lookbook: a release that doesn't know one turns the book back into Modern.
     const NEWER_STYLES = new Set(["noir", "swiss", "pinboard", "dossier", "poster", "atelier", "gazette"]);
-    const PAGE_TYPES = new Set(["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process", "free", "end", "look"]);
+    const PAGE_TYPES = new Set(["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process", "free", "end", "look", "contents", "more"]);
     // The same caps as STUDIO_BOOK_LIMITS.fields in app.js. Over a cap FAILS
     // here rather than being trimmed: the app's cleaner would otherwise cut a
     // hand-edited data.js without a word.
     const FIELD_MAX = {
-      story: { kicker: 32, headline: 52, intro: 150, body: 700 },
+      story: { kicker: 32, headline: 52, intro: 150, body: 20000 },
       note: { title: 40, note: 300, detail: 90 },
       quote: { quote: 220, name: 40, role: 48 },
-      letter: { kicker: 32, heading: 52, body: 1100, signName: 40, signLine: 48 },
+      letter: { kicker: 32, heading: 52, body: 20000, signName: 40, signLine: 48 },
       feature: { kicker: 32, headline: 52, sub1: 40, text1: 360, sub2: 40, text2: 360 },
-      article: { kicker: 32, headline: 52, intro: 150, body: 1400, caption: 90 },
+      article: { kicker: 32, headline: 52, intro: 150, body: 20000, caption: 90 },
+      contents: { heading: 60 },
       ways: { kicker: 32, heading: 52, intro: 160 },
       process: { kicker: 32, heading: 52, intro: 160, note: 120 },
       end: { text: 160, note: 60 },
@@ -550,6 +551,7 @@ if (books !== undefined && books !== null) {
       article: ["type", "photos", "photoAt", "credit", "style", "border", "borderWidth", ...Object.keys(FIELD_MAX.article)],
       ways: ["type", "items", "style", ...Object.keys(FIELD_MAX.ways)],
       process: ["type", "way", "steps", "style", ...Object.keys(FIELD_MAX.process)],
+      contents: ["type", "style", ...Object.keys(FIELD_MAX.contents)], more: ["type"],
       free: ["type", "bg", "blocks"],
       end: ["type", "layout", "photos", "text", "note", "lines", "noLines", "style"],
       look: ["type", "photos", "label", "title", "lines", "credit", "style"]
@@ -773,6 +775,7 @@ if (books !== undefined && books !== null) {
           checkBlocks(`studio portfolio book ${name} cover`, b.coverPage.blocks, "cover");
         }
       } else if (b.coverLayout === "custom") fail(`studio portfolio book ${name} has a cover from scratch but no coverPage`);
+      if (b.pages.some((pg) => pg && (pg.type === "contents" || pg.type === "more")) && !(b.schema >= 6)) fail(`studio portfolio book ${name} has a contents or continued page but a schema mark under 6; the app writes schema: 6 for one, and CI needs it to catch an out-of-date tab dropping it`);
       if (NEWER_STYLES.has(b.style) && !(b.schema >= 5)) fail(`studio portfolio book ${name} is in the ${b.style} style but has a schema mark under 5; the app writes schema: 5 for one, and CI needs it to catch an out-of-date tab turning it back into Modern`);
       if (b.style === "lookbook" && !(b.schema >= 4)) fail(`studio portfolio book ${name} is in the Lookbook style but has a schema mark under 4; the app writes schema: 4 for one, and CI needs it to catch an out-of-date tab turning it back into Modern`);
       if (b.pages.some((pg) => pg && pg.type === "look") && !(b.schema >= 3)) fail(`studio portfolio book ${name} has a look but a schema mark under 3; the app writes schema: 3 for one, and CI needs it to catch an out-of-date tab dropping it`);
@@ -887,7 +890,7 @@ try {
   // An old app.js strips writing pages and captions from books it never
   // opened, without touching their updatedAt. Words that shrink while the
   // book's edit time stays the same can only come from that.
-  const WRITING = new Set(["story", "note", "quote", "letter", "feature", "article", "ways", "process", "free", "end", "look"]);
+  const WRITING = new Set(["story", "note", "quote", "letter", "feature", "article", "ways", "process", "free", "end", "look", "contents", "more"]);
   const wordsIn = (b) => {
     let pages = 0, chars = 0, fits = 0;
     const settings = (s) => (s ? (s.fit ? 1 : 0) + (s.opacity !== undefined ? 1 : 0) + (s.flip ? 1 : 0) : 0);

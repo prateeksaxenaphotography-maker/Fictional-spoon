@@ -733,7 +733,7 @@ const STUDIO_BOOK_NEWER_STYLES = ["noir", "swiss", "pinboard", "dossier", "poste
 const STUDIO_BOOK_LIMITS = {
   // pages: no limit (Sep 2026, the studio's ask). `Infinity` keeps slice() a no-op.
   versions: 200, pages: Infinity, text: 1200, deleted: 2000,
-  pageTypes: ["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process", "free", "end", "look"],
+  pageTypes: ["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process", "free", "end", "look", "contents", "more"],
   // The cover's layout: absent means the style's own; "custom" is a cover
   // arranged like an Anything page (book.coverPage). The end page is the
   // book's back cover or a closing page; its three lines are 40 characters.
@@ -843,12 +843,14 @@ const STUDIO_BOOK_LIMITS = {
   // uses these as the inputs' maxlength, and validate-data.mjs holds the same
   // numbers (a test compares them).
   fields: {
-    story: { kicker: 32, headline: 52, intro: 150, body: 700 },
+    // A story, letter or article can run on over "Story continued" pages (Sep 2026), so its body holds a long read.
+    story: { kicker: 32, headline: 52, intro: 150, body: 20000 },
     note: { title: 40, note: 300, detail: 90 },
     quote: { quote: 220, name: 40, role: 48 },
-    letter: { kicker: 32, heading: 52, body: 1100, signName: 40, signLine: 48 },
+    letter: { kicker: 32, heading: 52, body: 20000, signName: 40, signLine: 48 },
     feature: { kicker: 32, headline: 52, sub1: 40, text1: 360, sub2: 40, text2: 360 },
-    article: { kicker: 32, headline: 52, intro: 150, body: 1400, caption: 90 },
+    article: { kicker: 32, headline: 52, intro: 150, body: 20000, caption: 90 },
+    contents: { heading: 60 },
     ways: { kicker: 32, heading: 52, intro: 160 },
     process: { kicker: 32, heading: 52, intro: 160, note: 120 },
     photos: { caption: 90 },
@@ -1114,7 +1116,7 @@ function cleanStudioPortfolios(o) {
       // carried, never lowered here, so an older tab dropping what it cannot
       // read shows up as the mark going backwards.
       ...(() => {
-        const need = STUDIO_BOOK_NEWER_STYLES.includes(v.style) ? 5 : v.style === "lookbook" ? 4 : pages.some((pg) => pg.type === "look") ? 3 : (STUDIO_BOOK_LIMITS.coverLayouts.includes(v.coverLayout) || pages.some((pg) => pg.type === "end")) ? 2 : pages.some((pg) => pg.type === "free") ? 1 : 0;
+        const need = pages.some((pg) => pg.type === "contents" || pg.type === "more") ? 6 : STUDIO_BOOK_NEWER_STYLES.includes(v.style) ? 5 : v.style === "lookbook" ? 4 : pages.some((pg) => pg.type === "look") ? 3 : (STUDIO_BOOK_LIMITS.coverLayouts.includes(v.coverLayout) || pages.some((pg) => pg.type === "end")) ? 2 : pages.some((pg) => pg.type === "free") ? 1 : 0;
         const mark = Math.max(need, num(v.schema, 0, 99, 0));
         return mark ? { schema: mark } : {};
       })(),
