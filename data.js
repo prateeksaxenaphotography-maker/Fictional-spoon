@@ -2895,8 +2895,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1790362835975,
-    "syncedAt": 1790362835975
+    "updatedAt": 1790401755364,
+    "syncedAt": 1790401755364
   },
   "INVITE_CODES": [
     {
@@ -3094,7 +3094,7 @@ window.WPS_DATA = {
     "PACKAGES": 1790257919972,
     "TFP_PACKAGE": 1790257919972,
     "HOME_STUDIO_RATE": 1789975069138,
-    "PORTFOLIO_PDF": 1790362827044,
+    "PORTFOLIO_PDF": 1790401749961,
     "HOME_SLIDESHOW": 1790354674280,
     "MEASURE_UNITS": 1790269147688,
     "HOME_STUDIO_RATE_TFP": 1789975069138
@@ -3742,7 +3742,7 @@ window.WPS_DATA = {
         "id": "mp_mueija7w_ny3rh",
         "shootId": "comp-card-Atharv%20Sharma%20(https%3A%2F%2Fwww.instagram.com%2Fectogainsss%2F%3Fhl%3Den)",
         "name": "Test 1",
-        "updatedAt": 1790362827043,
+        "updatedAt": 1790401749960,
         "spec": {
           "pages": 2,
           "count": 8,
@@ -3774,7 +3774,7 @@ window.WPS_DATA = {
             false
           ],
           "tagPlace": "below",
-          "tagAlign": "center",
+          "tagAlign": "left",
           "layout": "equal",
           "layouts": [
             "equal",
@@ -3836,7 +3836,7 @@ window.WPS_DATA = {
             },
             "muca57yixr16s8-3": {
               "x": 0.5,
-              "y": 0.35,
+              "y": 0.5443200748039377,
               "zoom": 1
             }
           }
@@ -3859,8 +3859,14 @@ window.WPS_DATA = {
         "orientation": "portrait",
         "title": "NerdyPhotographer.in",
         "subtitle": "",
-        "cover": null,
+        "cover": {
+          "id": "muca598rr6zyay-7",
+          "x": 0.47,
+          "y": 0,
+          "zoom": 1
+        },
         "schema": 5,
+        "coverLayout": "framed",
         "coverStyle": {
           "title": {
             "size": 0.6
@@ -4246,7 +4252,7 @@ window.WPS_DATA = {
           "phone": "",
           "showPrices": false
         },
-        "updatedAt": 1790362719013
+        "updatedAt": 1790363318956
       }
     ],
     "deleted": [
