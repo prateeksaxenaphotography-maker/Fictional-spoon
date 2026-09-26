@@ -733,6 +733,12 @@ const STUDIO_BOOK_NEWER_STYLES = ["noir", "swiss", "pinboard", "dossier", "poste
 const STUDIO_BOOK_LIMITS = {
   // pages: no limit (Sep 2026, the studio's ask). `Infinity` keeps slice() a no-op.
   versions: 200, pages: Infinity, text: 1200, deleted: 2000,
+  /* A book made FOR someone — a brand, a client, a talent (Sep 26 2026). It
+     is kept on this computer only and never published: the owner's answer
+     to "can these books ever go on the site?" was no. `credit` is where the
+     studio's own credit goes: absent = a line on the last page, "none" =
+     nowhere at all, not even the PDF's details (a contract can forbid it). */
+  madeFor: { kinds: ["brand", "client", "talent"], credits: ["none"], name: 60, email: 120, site: 120, instagram: 40, modelKey: 160, logo: 40 },
   pageTypes: ["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process", "free", "end", "look", "contents", "more"],
   // The cover's layout: absent means the style's own; "custom" is a cover
   // arranged like an Anything page (book.coverPage). The end page is the
@@ -1176,6 +1182,7 @@ function cleanStudioPortfolios(o) {
         if (STUDIO_BOOK_LIMITS.markStrengths.includes(w.strength) && w.strength !== "medium") out.strength = w.strength;
         return Object.keys(out).length ? { watermark: out } : {};
       })(),
+      ...cleanMadeFor(v.madeFor),
       pages,
       texts: { about: str(t.about, STUDIO_BOOK_LIMITS.text), phone: str(t.phone, 24), showPrices: t.showPrices === true },
       updatedAt: num(v.updatedAt, 0, 8.64e15, 0)
@@ -1203,6 +1210,44 @@ const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words_v10";
 const STUDIO_BOOK_WORDS_OLD = ["wps_studio_portfolios_words_v9", "wps_studio_portfolios_words_v8", "wps_studio_portfolios_words_v7", "wps_studio_portfolios_words_v6", "wps_studio_portfolios_words_v5", "wps_studio_portfolios_words_v4", "wps_studio_portfolios_words_v3", "wps_studio_portfolios_words_v2", "wps_studio_portfolios_words"];
 const studioBookHasWords = (v) => v.style === "lookbook" || STUDIO_BOOK_NEWER_STYLES.includes(v.style) || !!v.paper || !!v.coverStyle || !!v.watermark || !!v.coverText || !!v.schema || !!v.footText || !!v.bg || v.showPageNumbers === false || typeof v.photoNums === "boolean" || v.photoLines === false || v.photoLines === "on" || !!v.photoNumColour || !!v.coverLayout || !!v.coverPage || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
   (STUDIO_BOOK_LIMITS.fields[pg.type] && (pg.type !== "photos" || pg.caption)) || (pg.blocks || []).length || pg.bg || pg.items || pg.steps || pg.rows || pg.gap || typeof pg.nums === "boolean" || pg.credit || pg.label || pg.heading || pg.photoAt || pg.border || pg.borderWidth || pg.style || pg.hide || (pg.photos || []).some((s) => s.fit || s.opacity));
+/* Who a book is made for, when it is not the studio's own. Named here or
+   the cleaner would drop it — and a book that lost it would look like the
+   studio's own and be published. That is why privacy does NOT rest on this
+   field: see isBookForOthers and the shelf below. */
+function cleanMadeFor(m) {
+  const M = STUDIO_BOOK_LIMITS.madeFor;
+  if (!m || typeof m !== "object" || !M.kinds.includes(m.kind)) return {};
+  const s = (x, n) => (typeof x === "string" ? x.trim().slice(0, n) : "");
+  const out = { kind: m.kind };
+  for (const k of ["name", "email", "site", "instagram"]) { const v = s(m[k], M[k]); if (v) out[k] = v; }
+  if (m.kind === "talent") { const v = s(m.modelKey, M.modelKey); if (v) out.modelKey = v; }
+  else if (/^lg_[a-z0-9]{4,36}$/.test(String(m.logo || ""))) out.logo = m.logo;
+  if (M.credits.includes(m.credit)) out.credit = m.credit;
+  return { madeFor: out };
+}
+/* A book made for someone else lives on "the shelf": its own key on this
+   computer, which nothing that publishes ever reads. Its id starts "bf", so
+   even a copy that somehow lost `madeFor` is still known for what it is. */
+const BOOKS_FOR_OTHERS_KEY = "wps_books_for_others";
+const isBookForOthers = (v) => !!(v && (v.madeFor || /^bf/.test(String(v.id || ""))));
+function getBooksForOthers() {
+  try {
+    const got = cleanStudioPortfolios(JSON.parse(localStorage.getItem(BOOKS_FOR_OTHERS_KEY) || "null"));
+    if (got) return { versions: got.versions.filter(isBookForOthers), deleted: got.deleted };
+  } catch (e) {}
+  return { versions: [], deleted: [] };
+}
+function saveBooksForOthers(state) {
+  // Never markUnpublished: there is nothing to publish.
+  const clean = cleanStudioPortfolios(state);
+  if (!clean) return false;
+  clean.versions = clean.versions.filter(isBookForOthers);
+  try { localStorage.setItem(BOOKS_FOR_OTHERS_KEY, JSON.stringify(clean)); } catch (e) { return false; }
+  return true;
+}
+window.getBooksForOthers = getBooksForOthers;
+window.saveBooksForOthers = saveBooksForOthers;
+window.isBookForOthers = isBookForOthers;
 function getStudioPortfolios(live) {
   let local = null, published = null, remote = null, words = null;
   const older = [];
@@ -1217,13 +1262,15 @@ function getStudioPortfolios(live) {
     const have = byId.get(v.id);
     if (!have || v.updatedAt > have.updatedAt) byId.set(v.id, v);
   }
-  const versions = [...byId.values()].filter((v) => !deleted.includes(v.id)).sort((a, b) => b.updatedAt - a.updatedAt);
+  // A book made for someone else is never one of these, wherever it came from.
+  const versions = [...byId.values()].filter((v) => !deleted.includes(v.id) && !isBookForOthers(v)).sort((a, b) => b.updatedAt - a.updatedAt);
   return { versions, deleted };
 }
 function saveStudioPortfolios(state) {
   if (typeof window.markUnpublished === "function") window.markUnpublished("books");
   const clean = cleanStudioPortfolios(state);
   if (!clean) return false;
+  clean.versions = clean.versions.filter((v) => !isBookForOthers(v));
   try { localStorage.setItem("wps_studio_portfolios", JSON.stringify(clean)); } catch (e) { return false; }
   /* One safety copy, under the newest key. The same copy used to be written
      under all eight older keys as well — ten copies of the library per save,
@@ -2606,7 +2653,11 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
           return { ...m, items: (m.items || []).map(publicOnly) };
         })(),
         MODEL_PDFS: (typeof window.getModelPdfs === "function" ? window.getModelPdfs(remote.modelPdfs) : { versions: [], deleted: [] }),
-        STUDIO_PORTFOLIOS: (typeof window.getStudioPortfolios === "function" ? window.getStudioPortfolios(remote.studioPortfolios) : { versions: [], deleted: [] }),
+        STUDIO_PORTFOLIOS: (() => {
+          const bs = typeof window.getStudioPortfolios === "function" ? window.getStudioPortfolios(remote.studioPortfolios) : { versions: [], deleted: [] };
+          // A book made for someone else never goes into the public file.
+          return { ...bs, versions: (bs.versions || []).filter((v) => !isBookForOthers(v)) };
+        })(),
         }, null, 2)};
 
 // Explicit Global Aliases for Data Safety
@@ -2632,6 +2683,22 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       const keptRemote = remote.shoots.filter(s => s && s.id && !s.demo && !removed.has(s.id)).length;
       if (published.length < keptRemote) {
         throw new Error(`Sync aborted: it would silently remove ${keptRemote - published.length} published album(s) that were not explicitly deleted. Nothing was changed.`);
+      }
+      /* Books made for a brand, a client or a talent are kept on this
+         computer and never published (the owner's decision, Sep 26 2026):
+         their names, words and phone numbers would otherwise sit in a public
+         file, and in its history, for good. The store and the line above
+         already leave them out; this reads the file about to be committed,
+         so a future bug that let one through stops HERE, before GitHub —
+         CI would only see it once it was already public. */
+      {
+        const shelf = getBooksForOthers();
+        const shelfIds = new Set(shelf.versions.map((v) => v.id));
+        const books = parseObjectAfterKey(fileContent, '"STUDIO_PORTFOLIOS"');
+        const list = books && Array.isArray(books.versions) ? books.versions : null;
+        const leak = /"madeFor"\s*:/.test(fileContent)
+          || (list ? list.some((v) => v && (v.madeFor || /^bf/.test(String(v.id || "")) || shelfIds.has(v.id))) || /"lg_[a-z0-9]{4,}"/.test(JSON.stringify(books)) : books !== undefined);
+        if (leak) throw new Error("Sync aborted before publishing: a book made for a brand, a client or a talent was about to go into the site's public file. Nothing was changed.");
       }
       // The same guard for testimonials. They are somebody's words, given
       // once and usually not recoverable by asking again, so the only way the

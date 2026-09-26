@@ -482,6 +482,14 @@ if (books !== undefined && books !== null) {
   if (typeof books !== "object" || !Array.isArray(books.versions) || !Array.isArray(books.deleted)) {
     fail("WPS_DATA.STUDIO_PORTFOLIOS must be an object { versions: [], deleted: [] }");
   } else {
+    /* A book made for a brand, a client or a talent is kept on the studio's
+       computer and must never be published (owner's decision, Sep 26 2026).
+       The app refuses before committing; this is the tripwire behind it. By
+       the time CI runs the commit is already in the public history, so the
+       failure says to rewrite it out, not just to fix the next publish. */
+    const others = books.versions.filter((v) => v && (v.madeFor !== undefined || /^bf/.test(String(v.id || ""))));
+    if (others.length) fail(`STUDIO_PORTFOLIOS holds ${others.length} book(s) made for someone else (${others.map((v) => v.id).join(", ")}). Those are never published: this commit is already public, so remove it from the history as well as from data.js.`);
+    if (/"lg_[a-z0-9]{4,}"/.test(JSON.stringify(books))) fail("STUDIO_PORTFOLIOS names a client's logo (an lg_ id). Logos are kept on the studio's computer and never published.");
     const BOOK_STYLES = new Set(["elegant", "modern", "vogue", "lookbook", "noir", "swiss", "pinboard", "dossier", "poster", "atelier", "gazette"]);
     // The seven after Lookbook: a release that doesn't know one turns the book back into Modern.
     const NEWER_STYLES = new Set(["noir", "swiss", "pinboard", "dossier", "poster", "atelier", "gazette"]);

@@ -1937,7 +1937,11 @@
   // A minimal PDF: one full-page JPEG per A4 page, plus link areas over the
   // printed handles and addresses so they can be tapped. JPEG goes into a PDF
   // as-is (DCTDecode), so no PDF library is needed.
-  async function buildPortfolioPdf(pages, title) {
+  // `who` names the file's author and creator; the model portfolio and a
+  // studio book leave it out and are the studio's. A book made for a brand,
+  // a client or a talent passes theirs (and "" for the creator when its
+  // contract forbids any credit to the studio).
+  async function buildPortfolioPdf(pages, title, who) {
     const enc = new TextEncoder();
     const jpegs = [];
     // A page may arrive already encoded ({ jpeg, width, height, links }) with
@@ -2011,7 +2015,9 @@
       });
     });
     begin(infoId);
-    write(`<< /Title ${unicodeText(title)} /Author (nerdyphotographer.in) /Creator (nerdyphotographer.in) /CreationDate (D:${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}Z) >>`);
+    const au = who && typeof who.author === "string" ? who.author : "nerdyphotographer.in";
+    const cr = who && typeof who.creator === "string" ? who.creator : "nerdyphotographer.in";
+    write(`<< /Title ${unicodeText(title)} /Author ${unicodeText(au)}${cr ? ` /Creator ${unicodeText(cr)}` : ""} /CreationDate (D:${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}Z) >>`);
     end();
 
     const xrefAt = length;
@@ -5017,7 +5023,10 @@ ${admin ? `
     newPdfPage: (dpi, size) => newPdfPage(dpi, size),
     photoFocus: (p) => photoFocus(p),
     loadPdfImage: (src, cache) => loadPdfImage(src, cache),
-    buildPortfolioPdf: (pages, title) => buildPortfolioPdf(pages, title),
+    buildPortfolioPdf: (pages, title, who) => buildPortfolioPdf(pages, title, who),
+    // A talent's book prints the same measurements and contacts, under the same
+    // switches, as the model's portfolio PDF (Sep 26 2026).
+    modelFacts: (card) => ({ stats: portfolioPdfStatCells(card), contacts: portfolioPdfContactCells(card, {}) }),
     pdfCanvasPng: (canvas) => pdfCanvasPng(canvas),
     pdfCanvasJpeg: (canvas, q) => pdfCanvasJpeg(canvas, q),
     loadQrLibrary: () => loadQrLibrary(),

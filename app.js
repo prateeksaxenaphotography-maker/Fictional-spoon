@@ -2604,7 +2604,25 @@ window.resolveContractArchive = function(version) {
     newPdfPage: (dpi, size) => window.WPS_PDF.newPdfPage(dpi, size),
     photoFocus: (p) => window.WPS_PDF.photoFocus(p),
     loadImage: (src, cache) => window.WPS_PDF.loadPdfImage(src, cache),
-    buildPdf: (pages, title) => window.WPS_PDF.buildPortfolioPdf(pages, title),
+    buildPdf: (pages, title, who) => window.WPS_PDF.buildPortfolioPdf(pages, title, who),
+    /* A talent's book (Sep 26 2026) reads the model's merged card — the one
+       the comp card and the portfolio PDF draw from — so all three agree on
+       which photographs are cleared, which contacts show and whether the
+       measurements print (an under-18's are already blanked on the card). */
+    talentList: () => {
+      try {
+        return buildCompCardDisplayList(SHOOTS.filter((s) => qualifiesAsCompCard(s)), "type", "Comp Cards", compCardContext())
+          .filter((c) => c.modelKey).map((c) => ({ key: c.modelKey, cleared: portfolioPdfPhotos(c).length }));
+      } catch (e) { return []; }
+    },
+    talent: (key) => {
+      try {
+        const card = buildCompCardDisplayList(SHOOTS.filter((s) => qualifiesAsCompCard(s)), "type", "Comp Cards", compCardContext()).find((c) => c.modelKey === key);
+        if (!card) return null;
+        const facts = window.WPS_PDF && typeof window.WPS_PDF.modelFacts === "function" ? window.WPS_PDF.modelFacts(card) : { stats: [], contacts: [] };
+        return { key, name: getTalentCleanName(card.talent || card.title), types: modelTypesOf(card).map(modelTypeLabel), photoIds: portfolioPdfPhotos(card).map((p) => p.id), stats: facts.stats || [], contacts: facts.contacts || [] };
+      } catch (e) { return null; }
+    },
     canvasPng: (canvas) => window.WPS_PDF.pdfCanvasPng(canvas),
     canvasJpeg: (canvas, q) => window.WPS_PDF.pdfCanvasJpeg(canvas, q),
     loadQr: () => window.WPS_PDF.loadQrLibrary(),

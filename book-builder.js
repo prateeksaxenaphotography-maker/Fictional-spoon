@@ -392,8 +392,84 @@
     return markCache.get(key);
   }
   async function drawMark(page, stroke, beak, head, x, y, size) {
+    // A book made for someone else never wears the studio's owl: their logo
+    // where it stood, if the book has one — otherwise nothing, since their
+    // name is already on the page in type.
+    if (forOf(bookNow)) { await drawLogo(page, x, y, size, stroke); return; }
     const img = await mark(stroke, beak, head);
     if (img) page.ctx.drawImage(img, page.u(x), page.u(y), page.u(size), page.u(size));
+  }
+  /* Their logo, kept on this computer with the book's own photographs (never
+     published). Fitted whole, centred where the owl stood: as tall as the
+     owl at most, and up to 2.6 times as wide, since a wordmark is wide. */
+  const logoCache = new Map();
+  function logoImage(id) {
+    const rec = (outsideCache || []).find((r) => r && r.id === id && typeof r.dataUrl === "string");
+    if (!rec) return Promise.resolve(null);
+    if (!logoCache.has(id)) logoCache.set(id, new Promise((resolve) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = () => resolve(null); img.src = rec.dataUrl; }));
+    return logoCache.get(id);
+  }
+  async function drawLogo(page, x, y, size, stroke) {
+    const m = forOf(bookNow);
+    if (!m || !m.logo) return;
+    const img = await logoImage(m.logo);
+    // On a dark ground (the owl would have been drawn light) a logo is set in
+    // one light colour, the way brands knock theirs out: a dark wordmark on
+    // black would otherwise vanish.
+    if (img) placeLogo(page, img, x + size / 2, y + size / 2, size, { dark: isLightInk(stroke) ? stroke : "#FFFFFF", guess: isLightInk(stroke) });
+  }
+  // Whether a logo has see-through parts. Only such a logo can be set in one
+  // light colour on a dark ground; tinting an opaque one (a JPEG, a logo on a
+  // white box) fills the whole rectangle and prints a blank block (v546 review).
+  const alphaMemo = new WeakMap();
+  function logoHasAlpha(img) {
+    if (alphaMemo.has(img)) return alphaMemo.get(img);
+    let yes = false;
+    try {
+      const c = document.createElement("canvas"); c.width = 48; c.height = 48;
+      const g = c.getContext("2d"); g.drawImage(img, 0, 0, 48, 48);
+      const d = g.getImageData(0, 0, 48, 48).data;
+      for (let i = 3; i < d.length; i += 4) if (d[i] < 240) { yes = true; break; }
+    } catch (e) { yes = false; }
+    alphaMemo.set(img, yes);
+    return yes;
+  }
+  const isLightInk = (c) => { const m = /^#?([0-9a-f]{6})$/i.exec(String(c || "").trim()); if (!m) return false; const n = parseInt(m[1], 16); return (0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255 > 0.6; };
+  function placeLogo(page, img, cx, cy, size, tint) {
+    if (!img || !img.naturalWidth || !img.naturalHeight) return;
+    const ar = img.naturalWidth / img.naturalHeight;
+    let w = size, h = size;
+    if (ar >= 1) { w = Math.min(size * 2.6, size * ar); h = w / ar; } else { h = size; w = h * ar; }
+    // Never off the paper: a wide wordmark where the owl stood by an edge is
+    // moved in until it clears it.
+    const Wmm = page.canvas.width / page.u(1);
+    cx = Math.min(Math.max(cx, w / 2 + 6), Wmm - w / 2 - 6);
+    // Whether the ground under it is dark is read off the page itself: the
+    // owl's own colour only says how the owl was meant to be drawn (Lookbook
+    // draws a faint one on white as a placeholder).
+    if (tint && typeof tint === "object" && !logoHasAlpha(img)) tint = null;
+    if (tint && typeof tint === "object") {
+      let dark = null;
+      try {
+        const x0 = Math.max(0, Math.round(page.u(cx - w / 2))), y0 = Math.max(0, Math.round(page.u(cy - h / 2)));
+        const ww = Math.max(1, Math.min(page.canvas.width - x0, Math.round(page.u(w)))), hh = Math.max(1, Math.min(page.canvas.height - y0, Math.round(page.u(h))));
+        const d = page.ctx.getImageData(x0, y0, ww, hh).data;
+        let sum = 0, n = 0;
+        for (let i = 0; i < d.length; i += 4 * 29) { sum += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]; n++; }
+        if (n) dark = sum / n / 255 < 0.42;
+      } catch (e) { dark = null; }
+      tint = (dark === null ? tint.guess : dark) ? tint.dark : null;
+    }
+    let src = img;
+    if (tint) {
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(page.u(w))); c.height = Math.max(1, Math.round(page.u(h)));
+      const g = c.getContext("2d");
+      g.drawImage(img, 0, 0, c.width, c.height);
+      g.globalCompositeOperation = "source-in"; g.fillStyle = tint; g.fillRect(0, 0, c.width, c.height);
+      src = c;
+    }
+    page.ctx.drawImage(src, page.u(cx - w / 2), page.u(cy - h / 2), page.u(w), page.u(h));
   }
 
   // Crop to fill the box around the photo's focal point, then zoom. The same
@@ -583,7 +659,9 @@
   // page turn cannot wait on a database.
   let outsideCache = [];
   const outsideRefresh = async () => { outsideCache = await outAll(); return outsideCache; };
-  const outsideList = () => outsideCache;
+  // A client's logo is kept in the same store (lg_ records) but is never a
+  // photograph to pick.
+  const outsideList = () => outsideCache.filter((r) => r && !r.logo);
 
   /* Asked once for each batch, because the two answers have very different
      consequences and only one of them can be undone. The repository this site
@@ -1097,7 +1175,7 @@
   const isFillish = (v) => FILL_NAMES.includes(v) || /^#[0-9a-f]{6}$/i.test(String(v || ""));
   const pageBgOf = (book, entry, P, fallback) => (entry && isFillish(entry.bg) ? blockColor(entry.bg, P, fallback) : (book && isFillish(book.bg) ? blockColor(book.bg, P, fallback) : fallback));
   const pageBg = (P, fallback) => pageBgOf(bookNow, entryNow, P, fallback);
-  const footName = () => String((bookNow && typeof bookNow.footText === "string" && bookNow.footText.trim()) ? bookNow.footText : studio()).toUpperCase();
+  const footName = () => String((bookNow && typeof bookNow.footText === "string" && bookNow.footText.trim()) ? bookNow.footText : whose(bookNow)).toUpperCase();
   const showNums = () => !(bookNow && bookNow.showPageNumbers === false);
   /* The little plate number on each photograph of a grid — "01", "02" — and
      the chip it sits on. Until v511 both were forced: every photographs page
@@ -1137,23 +1215,79 @@
     rect(page, px, py, 7, 5, chip);
     font(page, 700, 2.2, F.mono, 0.2); text(page, String(num).padStart(2, "0"), px + 3.5, py + 3.5, plateInk(chip, P), "center");
   }
-  const pageCredit = (entry, shoots) => ((entry && typeof entry.credit === "string" && entry.credit.trim()) ? entry.credit : creditLine(shoots));
+  const pageCredit = (entry, shoots) => ((entry && typeof entry.credit === "string" && entry.credit.trim()) ? entry.credit
+    : (forOf(bookNow) && forOf(bookNow).kind !== "talent") ? "" : creditLine(shoots));
   const cfg = () => API.config() || {};
   const studio = () => cfg().studioName || "nerdyphotographer.in";
   const year = () => String(new Date().getFullYear());
   const siteUrl = "https://www.nerdyphotographer.in";
+  /* Whose book this is (Sep 26 2026): the studio's own, or the brand, the
+     client or the talent it was made for. Everything that names the book's
+     owner asks whose(); the studio's own credit is a different thing, and
+     asks creditOf(). */
+  const forOf = (book) => (book && book.madeFor && book.madeFor.kind ? book.madeFor : null);
+  const whose = (book) => { const m = forOf(book || bookNow); return m && m.name ? m.name : studio(); };
+  // The studio's credit in a book made for someone else: one line on the last
+  // page, or nowhere at all when the contract says so (owner's answer).
+  const creditOf = (book) => { const m = forOf(book); return m && m.credit !== "none" ? `Photographs · ${studio()}` : ""; };
+  /* A talent's book: what the model's card says now — the photographs
+     cleared for it, the contacts and measurements its record lets a PDF show.
+     Read through, never copied into the book, so a switch changed in Models
+     is obeyed at once. Cached for a moment: a redraw asks many times. */
+  const talentMemo = new Map();
+  function talentOf(book) {
+    const m = forOf(book);
+    if (!m || m.kind !== "talent" || !m.modelKey || typeof API.talent !== "function") return null;
+    const hit = talentMemo.get(m.modelKey);
+    if (hit && Date.now() - hit.at < 4000) return hit.v;
+    const got = API.talent(m.modelKey);
+    const v = got ? { ...got, cleared: new Set(got.photoIds || []) } : null;
+    talentMemo.set(m.modelKey, { at: Date.now(), v });
+    return v;
+  }
+  // In a talent's book a photograph prints only while it is cleared for their
+  // card — or it came from this computer. The owner's rule: no exceptions.
+  const clearedIn = (book, id) => { const m = forOf(book); if (!m || m.kind !== "talent") return true; if (/^out_/.test(String(id || ""))) return true; const t = talentOf(book); return !!(t && t.cleared.has(id)); };
+  const handleOf = (v) => String(v || "").trim().replace(/\/+$/, "").split("/").pop().replace(/^@/, "").split("?")[0];
+  /* Where a line of words should take a reader. A contact row the studio
+     rewrote used to keep its old link — a page reading "Website: brand.com"
+     still opened nerdyphotographer.in — so a rewritten row now links to what
+     it says, or to nothing when that can't be told. */
+  function linkFor(value, kind) {
+    const v = String(value || "").trim();
+    if (!v) return "";
+    // The row says what the words are (review, v546): an Instagram handle
+    // typed without "@" is still Instagram, a number on the WhatsApp row is
+    // a WhatsApp number, and the studio's address row is never a link.
+    if (kind === "studio") return "";
+    if (kind === "email") return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? `mailto:${v}` : "";
+    if (kind === "whatsapp") { const d = v.replace(/\D/g, ""); return d.length >= 8 ? `https://wa.me/${d}` : ""; }
+    if (kind === "instagram") { const h = handleOf(v); return /^[A-Za-z0-9._]{1,30}$/.test(h) ? `https://www.instagram.com/${h}/` : ""; }
+    if (kind === "website" || kind === "book") return /^https?:\/\//i.test(v) ? v : /^(www\.)?[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/i.test(v) ? `https://${v}` : "";
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return `mailto:${v}`;
+    if (/^@[A-Za-z0-9._]{1,30}$/.test(v)) return `https://www.instagram.com/${v.slice(1)}/`;
+    if (/^https?:\/\//i.test(v)) return v;
+    if (/^(www\.)?[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/i.test(v)) return `https://${v}`;
+    if (/^\+?[\d\s()-]{8,}$/.test(v)) return `https://wa.me/${v.replace(/\D/g, "")}`;
+    return "";
+  }
 
   // The lines on a cover, as typed by the studio or, where nothing is typed,
   // as the style has always drawn them.
   function coverText(book) {
     const t = (book && book.coverText && typeof book.coverText === "object") ? book.coverText : {};
     const one = (v) => (typeof v === "string" && v.trim() ? v : null);
+    // A book made for someone else says nothing about the studio's place or
+    // what it is: its own word for itself, and the year.
+    const m = forOf(book);
+    const short = (nm) => { const up = String(nm || "").toUpperCase(); return up.length <= 12 ? up : up.split(/\s+/)[0].slice(0, 12); };
+    const KIND_LABEL = { brand: "LOOKBOOK", client: "PHOTOGRAPHS", talent: "PORTFOLIO" };
     return {
-      label: one(t.label) || "STUDIO PORTFOLIO",
-      mast: one(t.mast) || cfg().studioShortName || "NERDY",
-      tagline: one(t.tagline) || "PHOTOGRAPHER",
-      foot: one(t.foot) || studio().toUpperCase(),
-      place: one(t.place) || `NOIDA · INDIA · ${year()}`,
+      label: one(t.label) || (m ? KIND_LABEL[m.kind] : "STUDIO PORTFOLIO"),
+      mast: one(t.mast) || (m ? short(m.name) : (cfg().studioShortName || "NERDY")),
+      tagline: one(t.tagline) || (m ? (m.kind === "client" ? year() : m.kind === "talent" ? (((talentOf(book) || {}).types || [])[0] || "Portfolio").toUpperCase() : KIND_LABEL[m.kind]) : "PHOTOGRAPHER"),
+      foot: one(t.foot) || whose(book).toUpperCase(),
+      place: one(t.place) || (m ? year() : `NOIDA · INDIA · ${year()}`),
       showCounts: t.showCounts !== false,
       left: Array.isArray(t.left) ? t.left.filter((x) => typeof x === "string") : null,
       right: Array.isArray(t.right) ? t.right.filter((x) => typeof x === "string") : null
@@ -1309,10 +1443,15 @@
      photograph if there is one, a line to sign off with, a small line under. */
   const endLayoutOf = (entry) => (entry && entry.layout === "back" ? "back" : "closing");
   const lineIn = (v, fallback) => ((typeof v === "string" && v.trim()) ? v : fallback);
-  function endLines(entry) {
+  function endLines(entry, book) {
     const c = cfg();
     const ig = String(c.instagram || "").replace(/\/+$/, "").split("/").pop();
     const own = Array.isArray(entry.lines) ? entry.lines.filter((x) => typeof x === "string" && x.trim()) : [];
+    // Theirs, in a book made for someone else: whatever of their email,
+    // Instagram and website the book was given (none of the studio's).
+    const m = forOf(book || bookNow);
+    if (m && m.kind === "talent") { const t = talentOf(book || bookNow); return { own, defaults: ((t && t.contacts) || []).map((c) => c.value).filter(Boolean).slice(0, 3) }; }
+    if (m) return { own, defaults: [m.email || "", m.instagram ? `@${handleOf(m.instagram)}` : "", m.site || ""].filter(Boolean) };
     return { own, defaults: [c.email || "", ig ? `@${ig}` : "", "nerdyphotographer.in"].filter(Boolean) };
   }
   async function drawEnd(page, entry, book, P, W, H, imgs, n, S) {
@@ -1324,20 +1463,27 @@
       rect(page, 0, 0, W, H, ground);
       if (D.coverBar) rect(page, 0, 0, D.coverBar, H, P.accent);
       if (D.coverFrame) frame(page, 14, 14, W - 28, H - 28, P.ink);
-      const sz = L ? 26 : 30, midY = H * 0.36;
-      await drawMark(page, ink, onColour ? ink : P.accent, ground, (W - sz) / 2, midY - sz / 2, sz);
+      const sz0 = L ? 26 : 30, mfb = forOf(book);
+      // Nothing stands where the mark was in a book made for someone else
+      // without a logo, so the name moves up into the middle.
+      const bare = !!(mfb && !mfb.logo);
+      const sz = bare ? 0 : sz0, midY = bare ? H * 0.40 : H * 0.36;
+      if (!bare) await drawMark(page, ink, onColour ? ink : P.accent, ground, (W - sz) / 2, midY - sz / 2, sz);
       const BN = D.backName || (D.serifBack ? { w: 300, size: 7, f: F.serif, sp: 0.4, caps: false } : { w: 600, size: 5.2, f: K.small, sp: 1.2, caps: true });
       font(page, BN.w, BN.size, BN.f, BN.sp, !!BN.it);
-      text(page, ellipsize(page, BN.caps ? studio().toUpperCase() : studio(), W - 36), W / 2, midY + sz / 2 + 14, ink, "center");
+      text(page, ellipsize(page, BN.caps ? whose(book).toUpperCase() : whose(book), W - 36), W / 2, midY + sz / 2 + 14, ink, "center");
       rect(page, W / 2 - 11, midY + sz / 2 + 20, 22, 0.8, onColour ? ink : P.accent);
       if (!entry.noLines) {
-        const { own, defaults } = endLines(entry);
+        const { own, defaults } = endLines(entry, book);
         const lines = (own.length ? own : defaults).slice(0, 3);
         font(page, 400, 3.6, D.backLines || (D.serifBack ? F.serif : F.sans));
         lines.forEach((l, i) => text(page, ellipsize(page, l, W - 40), W / 2, midY + sz / 2 + 34 + i * 6.5, ink, "center"));
       }
       font(page, 600, 2.6, K.small, 0.6);
-      text(page, ellipsize(page, CT.place, W - 40), W / 2, H - 14, ink, "center");
+      // In a book made for someone else the foot of the back cover carries
+      // the studio's credit (or nothing, if the contract says so).
+      const foot = forOf(book) ? (creditOf(book) || "") : CT.place;
+      if (foot) text(page, ellipsize(page, foot, W - 40), W / 2, H - 14, ink, "center");
       return;
     }
     const ground = pageBgOf(book, entry, P, D.ground === "paper" ? P.paper : P.white);
@@ -1360,7 +1506,7 @@
     const NT = textFormat(entry.style, "note", { w: 400, f: F.sans }, P, P.soft);
     const ns = 3.4 * NT.scale;
     font(page, NT.spec.w, ns, NT.spec.f, 0, !!NT.spec.it);
-    const small = lineIn(entry.note, `© ${year()} ${studio()}`);
+    const small = lineIn(entry.note, forOf(book) ? creditOf(book) : `© ${year()} ${studio()}`);
     if (skipNow !== "note") text(page, ellipsize(page, small, box.w), NT.at(box.x, box.w), noteY + 2, NT.color, NT.align);
     noteText(page, "note", box.x, noteY + 2 - ns * 0.86, box.w, ns * 1.2, typeOf(NT, ns, ns * 1.3));
   }
@@ -1640,7 +1786,7 @@
       font(page, 600, 3.4, F.geo, 0.4);
       if (CT.showCounts) {
         const left = (CT.left && CT.left.length ? CT.left : cl.genres).slice(0, 3);
-        const right = (CT.right && CT.right.length ? CT.right : [`${cl.photos} PLATES`, `${cl.pages} PAGES`, "NOIDA, INDIA"]).slice(0, 3);
+        const right = (CT.right && CT.right.length ? CT.right : [`${cl.photos} PLATES`, `${cl.pages} PAGES`, forOf(book) ? year() : "NOIDA, INDIA"]).slice(0, 3);
         left.forEach((g, i) => text(page, ellipsize(page, g.toUpperCase(), (W - 40) * 0.5), 20, top + i * 6, img ? "#FFFFFF" : (i === 0 ? accentText(P) : P.ink)));
         right.forEach((w, i) => text(page, ellipsize(page, w.toUpperCase(), (W - 40) * 0.45), W - 20, top + i * 6, on, "right"));
       }
@@ -1859,7 +2005,7 @@
       font(page, 500, 2.2, F.plex, 0.35);
       const label = `FIG. ${numNow}.${index + 1}`;
       text(page, label, b.x, b.y + b.h + 4, P.ink);
-      const album = albumOf(shot).toUpperCase(), used = measure(page, label) + 5;
+      const album = forOf(bookNow) ? "" : albumOf(shot).toUpperCase(), used = measure(page, label) + 5;
       if (album && b.w - used > 14) text(page, ellipsize(page, album, b.w - used), b.x + b.w, b.y + b.h + 4, P.soft, "right");
       return r;
     }
@@ -2046,8 +2192,10 @@
       if (img) decoPhoto(page, P, { kind: "print" }, img, book.cover, box.x, box.y, box.w, box.h, "crop", 0);
       else {
         // Loaded first: nothing may wait while the page is turned.
-        const owl = await mark(P.soft, P.accent, "rgba(0,0,0,0)"), sz = L ? 30 : 38;
-        printOn(page, box.x, box.y, box.w, box.h, 0, 3.2, (ix, iy, iw, ih) => { rect(page, ix, iy, iw, ih, P.rule); if (owl) page.ctx.drawImage(owl, page.u(ix + (iw - sz) / 2), page.u(iy + (ih - sz) / 2), page.u(sz), page.u(sz)); });
+        // A book made for someone else shows their logo here, or nothing.
+        const mf = forOf(book);
+        const owl = mf ? (mf.logo ? await logoImage(mf.logo) : null) : await mark(P.soft, P.accent, "rgba(0,0,0,0)"), sz = L ? 30 : 38;
+        printOn(page, box.x, box.y, box.w, box.h, 0, 3.2, (ix, iy, iw, ih) => { rect(page, ix, iy, iw, ih, P.rule); if (owl && mf) placeLogo(page, owl, ix + iw / 2, iy + ih / 2, sz, null); else if (owl) page.ctx.drawImage(owl, page.u(ix + (iw - sz) / 2), page.u(iy + (ih - sz) / 2), page.u(sz), page.u(sz)); });
       }
       const top = box.y + box.h + (L ? 12 : 17);
       const { t, lead } = coverTitleFit(page, book, K, cs, P, tw, 2, L ? 17 : 22, L ? 10 : 12, top + (L ? 17 : 22), 6.4 * 1.3 + 4 + 16, H - 12);
@@ -2256,7 +2404,7 @@
       else { rect(page, x, py, tw, ph, P.rule); const sz = L ? 28 : 38; await drawMark(page, P.ink, P.accent, "rgba(0,0,0,0)", (W - sz) / 2, py + (ph - sz) / 2, sz); }
       hair(page, x, H - 20, right, P.ink, 0.25);
       font(page, 600, 2.3, F.sans, 0.5);
-      text(page, `© ${year()}`, x, H - 14, P.ink); text(page, ellipsize(page, studio(), tw * 0.6), right, H - 14, P.ink, "right");
+      text(page, forOf(book) ? year() : `© ${year()}`, x, H - 14, P.ink); text(page, ellipsize(page, whose(book), tw * 0.6), right, H - 14, P.ink, "right");
     },
     async photos(page, entry, P, W, H, imgs, shoots, n) {
       const L = W > H, M = this.margins(L ? "landscape" : "portrait");
@@ -2408,8 +2556,9 @@
     const lineOf = (v, fallback) => ((typeof v === "string" && v.trim()) ? v : fallback);
     const labelGap = D.labelGap || 10;   // a tall heading pushes its small label higher
     if (entry.type === "about") {
-      S.label(page, lineOf(entry.label, "About the studio"), x, y - labelGap, P);
-      y = S.heading(page, lineOf(entry.heading, "Not just photos, a perspective"), x, y, P, maxW);
+      const mf = forOf(book);
+      S.label(page, lineOf(entry.label, mf ? `About ${mf.name}` : "About the studio"), x, y - labelGap, P);
+      y = S.heading(page, lineOf(entry.heading, mf ? mf.name : "Not just photos, a perspective"), x, y, P, maxW);
       // The About words take the studio's own font, colour, size and
       // alignment, and each paragraph may differ.
       const aBase = { w: D.about.w, f: D.about.f || F.sans, size: D.about.size, lead: D.about.lead };
@@ -2422,7 +2571,8 @@
       } : null;
       noteText(page, "about", x, y + 6 - AT.spec.size * AT.scale * 0.86, maxW, floor - (y + 6) + AT.spec.size * AT.scale * 1.16, typeOf({ ...AT, spec: AT.spec }, AT.spec.size * AT.scale, AT.spec.lead * AT.scale));
       if (skipNow !== "about") {
-        y = bodyLines(page, (book.texts && book.texts.about) || DEFAULT_ABOUT, x, y + 6, { ...P, ink: AT.color }, maxW, floor, AT.spec.lead * AT.scale, AT.align, aPara);
+        const tAbout = (() => { const t = talentOf(book); if (!t) return ""; return [(t.types || []).join(" · "), (t.stats || []).map((c) => `${c.label}  ${c.value}`).join("\n")].filter(Boolean).join("\n\n"); })();
+        y = bodyLines(page, (book.texts && book.texts.about) || (forOf(book) ? tAbout : DEFAULT_ABOUT), x, y + 6, { ...P, ink: AT.color }, maxW, floor, AT.spec.lead * AT.scale, AT.align, aPara);
         if (page.lastBodyCut) reportCut(page, "about", "About text");
       }
     }
@@ -2480,24 +2630,41 @@
       if (dropped) console.warn(`Portfolio book: ${dropped} item(s) did not fit on the What I shoot page.`);
     }
     if (entry.type === "contact") {
-      S.label(page, lineOf(entry.label, "Let's make something"), x, y - labelGap, P);
-      y = S.heading(page, lineOf(entry.heading, "Book a shoot"), x, y, P, maxW);
+      const mfc = forOf(book);
+      S.label(page, lineOf(entry.label, mfc ? "Contact" : "Let's make something"), x, y - labelGap, P);
+      y = S.heading(page, lineOf(entry.heading, mfc ? mfc.name : "Book a shoot"), x, y, P, maxW);
       y += 4;
       const c = cfg();
       const ig = String(c.instagram || "").replace(/\/+$/, "").split("/").pop();
       // Each line can be left off this page (entry.hide lists the ones hidden).
       const hidden = new Set(Array.isArray(entry.hide) ? entry.hide : []);
-      const rows = [
+      // In a book made for someone else the rows are theirs, and the studio's
+      // own (booking link, studio address) are not offered at all.
+      const mf = forOf(book);
+      const mIg = mf && mf.instagram ? handleOf(mf.instagram) : "";
+      const tf = mf && mf.kind === "talent" ? talentOf(book) : null;
+      const KEY_OF = { Email: "email", Instagram: "instagram", Website: "website" };
+      const rows = (tf ? [
+        ...(tf.contacts || []).map((c) => [KEY_OF[c.label] || "", c.label, c.value, c.url || ""]),
+        ["whatsapp", "WhatsApp", book.texts && book.texts.phone, book.texts && book.texts.phone ? `https://wa.me/${String(book.texts.phone).replace(/\D/g, "")}` : ""]
+      ] : mf ? [
+        ["email", "Email", mf.email || "", mf.email ? `mailto:${mf.email}` : ""],
+        ["whatsapp", "WhatsApp", book.texts && book.texts.phone, book.texts && book.texts.phone ? `https://wa.me/${String(book.texts.phone).replace(/\D/g, "")}` : ""],
+        ["instagram", "Instagram", mIg ? `@${mIg}` : "", mIg ? `https://www.instagram.com/${mIg}/` : ""],
+        ["website", "Website", mf.site || "", mf.site ? linkFor(mf.site) : ""]
+      ] : [
         ["email", "Email", c.email, c.email ? `mailto:${c.email}` : ""],
         ["whatsapp", "WhatsApp", book.texts && book.texts.phone, book.texts && book.texts.phone ? `https://wa.me/${String(book.texts.phone).replace(/\D/g, "")}` : ""],
         ["instagram", "Instagram", ig ? `@${ig}` : "", c.instagram || ""],
         ["website", "Website", "nerdyphotographer.in", siteUrl],
         ["book", "Book online", "nerdyphotographer.in/book", `${siteUrl}/book/`],
         ["studio", "Studio", "Noida · working across Delhi NCR", ""]
-      ].map(([k, label, value, url]) => {
-        // Any row can be renamed or rewritten for this book.
+      ]).map(([k, label, value, url]) => {
+        // Any row can be renamed or rewritten for this book — and a rewritten
+        // value links to what it now says, not to the studio's old address.
         const o = (entry.rows && typeof entry.rows === "object" && entry.rows[k]) || {};
-        return [k, lineOf(o.label, label), lineOf(o.value, value), url];
+        const typed = typeof o.value === "string" && o.value.trim();
+        return [k, lineOf(o.label, label), lineOf(o.value, value), typed ? linkFor(o.value, k) : url];
       }).filter((r) => r[2] && !hidden.has(r[0])).map((r) => r.slice(1));
       for (const [label, value, url] of rows) {
         S.label(page, label, x, y, P);
@@ -2506,16 +2673,19 @@
         if (url) page.link(x, y + 1.5, Math.min(maxW, measure(page, value) + 2), 7, url);
         y += 16;
       }
-      // A QR straight to the booking form, for a book read on paper.
-      if (!hidden.has("qr")) try {
+      // A QR straight to the booking form, for a book read on paper — or, in
+      // a book made for someone else, to their website (none without one).
+      const tSite = tf ? ((tf.contacts || []).find((c) => c.label === "Website") || {}).url || "" : "";
+      const qrUrl = tf ? tSite : mf ? (mf.site ? linkFor(mf.site) : "") : `${siteUrl}/book/`;
+      if (!hidden.has("qr") && qrUrl) try {
         const qrcode = await API.loadQr();
-        const qr = qrcode(0, "M"); qr.addData(`${siteUrl}/book/`); qr.make();
+        const qr = qrcode(0, "M"); qr.addData(qrUrl); qr.make();
         const cells = qr.getModuleCount(), size = 32, cell = size / cells;
         const qx = W - x - size, qy = H - M.bottom - size - 6;
         rect(page, qx - 2, qy - 2, size + 4, size + 4, "#FFFFFF");
         for (let r = 0; r < cells; r++) for (let col = 0; col < cells; col++) if (qr.isDark(r, col)) rect(page, qx + col * cell, qy + r * cell, cell + 0.02, cell + 0.02, "#000000");
-        font(page, 500, 2.2, F.plex, 0.4); text(page, lineOf(entry.qrLabel, "SCAN TO BOOK").toUpperCase(), qx + size / 2, qy + size + 5, P.soft, "center");
-        page.link(qx, qy, size, size, `${siteUrl}/book/`);
+        font(page, 500, 2.2, F.plex, 0.4); text(page, lineOf(entry.qrLabel, mf ? "SCAN TO VISIT" : "SCAN TO BOOK").toUpperCase(), qx + size / 2, qy + size + 5, P.soft, "center");
+        page.link(qx, qy, size, size, qrUrl);
       } catch (e) { /* the QR is a convenience; the links above still work */ }
     }
     pageFoot(book, page, P, W, H, n, "");
@@ -4635,7 +4805,7 @@
     const full = dpi >= 100;
     const imgOf = async (shot) => {
       const hit = shot && lib.byId.get(shot.id);
-      if (!hit) return null;
+      if (!hit || !clearedIn(book, shot.id)) return null;
       // The studio's own full-size file, when one was matched (print files only).
       if (full && originals) { const own = await originals.get(shot.id); if (own) return own; }
       const src = full ? API.photoSrc(hit.photo) : previewSrc(hit.photo);
@@ -4673,7 +4843,9 @@
     for (let i = 0; i < book.pages.length; i++) {
       const entry = book.pages[i];
       if (n + pageSpan(entry) > MAX_PAGES) break;
-      const shoots = (entry.photos || []).map((s) => (lib.byId.get(s.id) || {}).shoot).filter(Boolean);
+      // Only what prints is credited: in a talent's book a photograph no longer
+      // cleared for their card is left out, and so is its album's name.
+      const shoots = (entry.photos || []).filter((s) => clearedIn(book, s && s.id)).map((s) => (lib.byId.get(s.id) || {}).shoot).filter(Boolean);
       if (entry.type === "spread") {
         n += 2;
         if (!want(i)) continue;
@@ -4704,6 +4876,7 @@
               if (credit) text(page, ellipsize(page, credit.toUpperCase(), W - 60), 14, H - 3.4, C.on);
             }
             else { rect(page, 0, H - 9, W, 9, P.deep); font(page, 700, 2.4, F.mono, 0.4); if (showNums()) text(page, String(pn).padStart(2, "0"), half ? W - 14 : 14, H - 3.4, P.onDeep, half ? "right" : "left"); }
+            if (half === 1 && i === book.pages.length - 1) lastPageCredit(page, book, P, W, H);
             if (mark) watermark(page, W, H, P, mark);
             return page;
           });
@@ -4736,6 +4909,7 @@
               page.plan = plan;
             }
             masterHead(page, book, entry, pn, P, W);
+            if (half === 1 && i === book.pages.length - 1) lastPageCredit(page, book, P, W, H);
             if (mark) watermark(page, W, H, P, mark);
             return page;
           });
@@ -4783,11 +4957,26 @@
         masterHead(page, book, entry, n, P, W);
         // The baseline grid, shown in the editor only.
         if (guides && book.baseline && WRITING[entry.type]) baselineGuides(page, book, W, H);
+        if (i === book.pages.length - 1 && entry.type !== "end") lastPageCredit(page, book, P, W, H);
         if (mark) watermark(page, W, H, P, mark);
         return page;
       });
       yield { page, index: i, n };
     }
+  }
+
+  /* The studio's credit on the last page of a book made for someone else
+     (owner's decision, Sep 26 2026: "could be in last page, or might never go
+     based on contract signed"). A back cover or closing page carries it in its
+     own foot; any other last page gets it here, small, on a chip of paper so
+     it reads over a photograph. Nothing when the book's credit is "none". */
+  function lastPageCredit(page, book, P, W, H) {
+    const line = creditOf(book);
+    if (!line) return;
+    font(page, 500, 2.1, F.sans, 0.3);
+    const w = measure(page, line) + 4;
+    rect(page, W / 2 - w / 2, H - 7.4, w, 4.4, P.paper);
+    text(page, line, W / 2, H - 4.3, P.soft, "center");
   }
 
   /* ---------- on every page: the running head ------------------------------------
@@ -4840,7 +5029,11 @@
   }
 
   /* ---------- storage --------------------------------------------------------- */
-  const uid = () => `bk${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  // "bf" marks a book made for someone else (a brand, a client, a talent):
+  // it lives on this computer only, and the prefix alone keeps it off the
+  // public file even if a future bug dropped its madeFor.
+  const uid = (forOthers) => `${forOthers ? "bf" : "bk"}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const isForOthers = (v) => !!(v && (v.madeFor || /^bf/.test(String(v.id || ""))));
   function newBook(name) {
     return {
       id: uid(), name: name || "New book", style: "modern", colourway: "terracotta", orientation: "portrait",
@@ -4850,8 +5043,38 @@
       updatedAt: Date.now()
     };
   }
-  function readState() { return window.getStudioPortfolios ? window.getStudioPortfolios() : { versions: [], deleted: [] }; }
-  function writeState(state) { return window.saveStudioPortfolios ? window.saveStudioPortfolios(state) : false; }
+  /* Two stores, one list. The studio's own books are published with the
+     albums; books made for someone else are kept on "the shelf", a store of
+     their own on this computer that nothing which publishes ever reads (the
+     owner's decision, Sep 26 2026: they never go on the site). The builder
+     sees both as one list and each save is split back by id. */
+  const NONE = () => ({ versions: [], deleted: [] });
+  function readState() {
+    const pub = window.getStudioPortfolios ? window.getStudioPortfolios() : NONE();
+    const shelf = window.getBooksForOthers ? window.getBooksForOthers() : NONE();
+    const deleted = [...new Set([...(pub.deleted || []), ...(shelf.deleted || [])])];
+    const versions = [...shelf.versions.filter((v) => !deleted.includes(v.id)), ...pub.versions].sort((a, b) => b.updatedAt - a.updatedAt);
+    return { versions, deleted };
+  }
+  // The public store is written only when something in it changed, so work
+  // on a client's book never says "Not live yet: portfolio books".
+  const pubKey = (st) => JSON.stringify([(st.versions || []).map((v) => JSON.stringify(v)).sort(), [...new Set(st.deleted || [])].sort()]);
+  function writeState(st) {
+    const all = st.versions || [], dead = st.deleted || [];
+    const shelf = { versions: all.filter(isForOthers), deleted: dead.filter((id) => /^bf/.test(id)) };
+    const pub = { versions: all.filter((v) => !isForOthers(v)), deleted: dead.filter((id) => !/^bf/.test(id)) };
+    let ok = true;
+    if (shelf.versions.length || shelf.deleted.length || (window.getBooksForOthers && window.getBooksForOthers().versions.length)) {
+      // Refused (a full store): nothing else is written either, so a save
+      // can never half-happen — a tombstone landing while the book it stands
+      // for failed to (v546 review).
+      if (!(window.saveBooksForOthers && window.saveBooksForOthers(shelf))) return false;
+    }
+    let same = false;
+    try { same = !!window.cleanStudioPortfolios && pubKey(window.getStudioPortfolios()) === pubKey(window.cleanStudioPortfolios(pub)); } catch (e) { same = false; }
+    if (!same) ok = (window.saveStudioPortfolios ? window.saveStudioPortfolios(pub) : false) && ok;
+    return ok;
+  }
 
   /* ---------- the builder UI ---------------------------------------------------
      A workspace, not a long form: the pages down the left, the page itself in
@@ -4866,10 +5089,10 @@
   .sb-root h3 { margin: 0; font: 700 11px/1.3 'JetBrains Mono', monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft, #5c5e66); }
   /* the site sets every h3's size with !important */
   .sb-root h3 { font-size: 11px !important; line-height: 1.3 !important; }
-  .sb-root input[type=text], .sb-root input[type=tel], .sb-root textarea, .sb-root select { width: 100%; font: 500 14px/1.4 Inter, system-ui, sans-serif; padding: 9px 11px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--paper, #faf8f5); color: var(--ink, #141416); min-width: 0; }
+  .sb-root input[type=text], .sb-root input[type=tel], .sb-root input[type=email], .sb-root textarea, .sb-root select { width: 100%; font: 500 14px/1.4 Inter, system-ui, sans-serif; padding: 9px 11px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--paper, #faf8f5); color: var(--ink, #141416); min-width: 0; }
   .sb-root textarea { resize: vertical; line-height: 1.5; }
   .sb-root input:focus-visible, .sb-root textarea:focus-visible, .sb-root select:focus-visible { outline: 2px solid var(--accent, #d24e1a); outline-offset: 1px; }
-  @media (pointer: coarse) { .sb-root input[type=text], .sb-root input[type=tel], .sb-root textarea, .sb-root select { font-size: 16px; } }
+  @media (pointer: coarse) { .sb-root input[type=text], .sb-root input[type=tel], .sb-root input[type=email], .sb-root textarea, .sb-root select { font-size: 16px; } }
   .sb-btn { font: 600 13.5px Inter, system-ui, sans-serif; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--ink, #141416); background: transparent; color: var(--ink, #141416); cursor: pointer; white-space: nowrap; }
   .sb-btn:hover { background: var(--sb-sunk); }
   .sb-btn.dark { background: var(--ink, #141416); color: var(--paper, #faf8f5); }
@@ -5077,7 +5300,7 @@
   .sb-addmenu[hidden] { display: none; }
   .sb-addhead { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
   .sb-start { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(10,10,12,.42); }
-  .sb-startbox { width: min(760px, 100%); max-height: min(92vh, 760px); overflow: auto; display: grid; gap: 14px; align-content: start; padding: 18px; background: var(--paper, #faf8f5); border: 1px solid var(--sb-line); border-radius: 14px; box-shadow: 0 24px 60px -24px rgba(0,0,0,.5); }
+  .sb-startbox { width: min(760px, 100%); max-height: 92vh; overflow: auto; display: grid; gap: 14px; align-content: start; padding: 18px; background: var(--paper, #faf8f5); border: 1px solid var(--sb-line); border-radius: 14px; box-shadow: 0 24px 60px -24px rgba(0,0,0,.5); }
   .sb-starts { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
   .sb-startitem { display: grid; gap: 6px; padding: 10px; border: 1px solid var(--sb-line); border-radius: 12px; background: var(--sb-card); color: inherit; text-align: left; cursor: pointer; }
   .sb-startitem:hover, .sb-startitem:focus-visible { border-color: var(--ink, #141416); }
@@ -5260,6 +5483,16 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
   .sb-style .sb-stylepic { display: flex; gap: 4px; justify-content: center; align-items: center; height: 96px; margin-bottom: 6px; padding: 6px; background: var(--sb-sunk); border-radius: 7px; overflow: hidden; }
   .sb-stylepic canvas { max-height: 84px; max-width: 48%; width: auto; height: auto; box-shadow: 0 3px 8px -4px rgba(0,0,0,.45); }
   .sb-style.is-busy { opacity: .6; }
+  /* Books made for someone else (Sep 26 2026). */
+  .sb-homeacts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .sb-shelftag { color: var(--ink, #141416); }
+  .sb-copydue { color: #9a5b00; font-weight: 600; }
+  .sb-forwho { display: grid; gap: 8px; margin: 4px 0 2px; }
+  .sb-logorow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .sb-logoimg { max-width: 140px; max-height: 44px; object-fit: contain; padding: 4px; border: 1px solid var(--sb-line); border-radius: 6px; background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0 / 12px 12px; }
+  .sb-moveshelf { margin-top: 6px; }
+  .sb-moveshelf > summary { cursor: pointer; font: 600 13px Inter, sans-serif; }
+  .sb-moveshelf[open] { display: grid; gap: 8px; }
   .sb-style[aria-checked=true] { border-color: var(--ink, #141416); box-shadow: inset 0 0 0 1px var(--ink, #141416); }
   .sb-cws { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; }
   .sb-cw { display: grid; justify-items: center; gap: 5px; padding: 8px 2px 6px; border: 1px solid transparent; border-radius: 10px; background: none; color: inherit; font: 600 11px/1.2 Inter, sans-serif; text-align: center; cursor: pointer; }
@@ -5386,6 +5619,22 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       ["quotephoto", "Quote on a photograph", "Big words written across a darkened photograph."]] }
   ];
   const LAYOUT_NAME = Object.fromEntries(LAYOUT_GROUPS.flatMap((g) => g.items.map(([k, n]) => [k, n])));
+  /* The Add menu for the book being edited. A book made for someone else is
+     not offered the studio's own pages — its ways of working, how a shoot
+     runs, what it shoots and its prices — and the rest are worded for them. */
+  const STUDIO_ONLY = new Set(["ways", "process", "services"]);
+  const addMenuFor = (book) => {
+    const m = forOf(book);
+    if (!m) return ADD_MENU;
+    return ADD_MENU.map((g) => ({
+      group: g.group === "Studio pages" ? "Book pages" : g.group,
+      items: g.items.filter(([k]) => !STUDIO_ONLY.has(k)).map(([k, nm, note]) =>
+        k === "about" ? [k, `About ${m.name}`, "Who they are, in their words."]
+        : k === "contact" ? [k, "Contact", "Their email, Instagram and website, with a QR code to their site."]
+        : k === "end:back" ? [k, "Back cover", "The last page: their logo or name, and how to reach them."]
+        : [k, nm, note])
+    })).filter((g) => g.items.length);
+  };
   const ADD_MENU = [
     { group: "Photographs", items: [
       ["photos", "Photos", "One to six photos, laid out by their shapes."],
@@ -5927,6 +6176,12 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       // tab may have saved or deleted a book since, and writing the cached
       // list back would erase that.
       const cur = readState();
+      if (cur.deleted.includes(book.id)) {
+        // Deleted in another window since this one opened it: every save would
+        // say "Saved" and go nowhere. Say so instead.
+        setStatus("NOT SAVED — this book was deleted in another window. Reload to see your books; Duplicate a page's words out first if you need them.");
+        return false;
+      }
       if (!writeState({ versions: [book, ...cur.versions.filter((v) => v.id !== book.id)], deleted: cur.deleted })) {
         setStatus("NOT SAVED — this device's storage is full or blocked");
         return false;
@@ -6036,7 +6291,11 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
             <h1 class="sb-h1">Portfolio book</h1>
             <p class="sb-lede">Your own book of work to send to clients: photographs from any album, lighting diagrams and your own words, in one of eleven styles and nine colourways, or a colourway made from your own colour. Keep as many versions as you need.</p>
           </div>
-          <button type="button" class="sb-btn dark" id="sbNew" ${atLimit ? "disabled" : ""}>New book</button>
+          <div class="sb-homeacts">
+            <button type="button" class="sb-btn" id="sbOpenCopy" title="Open a copy of a book made for a brand, a client or a talent, saved from this builder on this or another computer">Open a copy…</button>
+            <input type="file" id="sbCopyFile" accept=".nerdybook,application/json,application/octet-stream" hidden>
+            <button type="button" class="sb-btn dark" id="sbNew" ${atLimit ? "disabled" : ""}>New book</button>
+          </div>
         </div>
         ${state.versions.length ? `<div class="sb-cards">${state.versions.map((v) => `
           <article class="sb-card">
@@ -6045,6 +6304,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
               <h4 data-name="${esc(v.id)}">${esc(v.name)}</h4>
               <span class="sb-meta">${esc((STYLES.find((s) => s.key === v.style) || {}).name || "")} · ${esc(colourway(v.colourway).name)} · ${esc((PAPERS[v.paper] || PAPERS.a4).name)} ${esc(v.orientation)} · ${renderedCount(v)} page${renderedCount(v) === 1 ? "" : "s"}</span>
               <span class="sb-meta">Edited ${esc(new Date(v.updatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }))}</span>
+              ${isForOthers(v) ? (() => { const cs = copyState(v); return `<span class="sb-meta sb-shelftag">For ${esc((v.madeFor && v.madeFor.name) || "someone else")} · on this computer only · <span class="${cs.ok ? "" : "sb-copydue"}">${esc(cs.text)}</span></span>`; })() : ""}
               <div class="sb-cardacts">
                 <button type="button" class="sb-btn dark" data-open="${esc(v.id)}">Open</button>
                 <button type="button" class="sb-btn quiet" data-rename="${esc(v.id)}">Rename</button>
@@ -6054,8 +6314,19 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
             </div>
           </article>`).join("")}
           <button type="button" class="sb-card sb-newcard" data-new ${atLimit ? "disabled" : ""}>+ New book<small>A cover and a first page of photographs</small></button></div>`
-        : `<div class="sb-empty"><p class="sb-hint">No books yet. A book is a cover plus pages of your photographs and words. Start one, pick your clicks, and save a version for brands, one for agencies, one for a single client.</p></div>`}
-        <p class="sb-hint sb-foot">Books save on this device as you work, and publish with your albums when you press Publish, so they open on any device.${atLimit ? ` You have ${LIMIT} books, the most there can be: delete one to start another.` : ""}</p>`;
+        : `<div class="sb-empty"><p class="sb-hint">No books yet. A book is a cover plus pages of your photographs and words. Start one for your own studio, or one for a brand, a client or a talent — those are kept on this computer and never published.</p></div>`}
+        <p class="sb-hint sb-foot">Your own books save on this device as you work, and go into your site's files when you publish, so they open on any device — visitors see no page, but anyone can read those files. Books made for a brand, a client or a talent stay on this computer only: save a copy of each to move it or keep it safe.${atLimit ? ` You have ${LIMIT} books, the most there can be: delete one to start another.` : ""}</p>`;
+      const copyFile = $("#sbCopyFile");
+      $("#sbOpenCopy").addEventListener("click", () => copyFile.click());
+      copyFile.addEventListener("change", async () => {
+        const f = copyFile.files && copyFile.files[0]; copyFile.value = "";
+        if (!f) return;
+        const got = await openCopy(f);
+        if (got.error) { API.toast(got.error); return; }
+        if (got.older) { API.toast(`“${got.book.name}” on this computer is newer than that copy, so it was kept.`); return; }
+        API.toast(`“${got.book.name}” opened from the copy.`);
+        showList();
+      });
       // A rename in progress is saved first, then the click does what it says.
       let finishRename = null;
       const settle = () => { if (finishRename) { const f = finishRename; finishRename = null; f(true, false); } };
@@ -6075,18 +6346,69 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         nb.pages = [{ type: "story", photos: [], kicker: "", headline: "", intro: "", body: "" }, ...Array.from({ length: 6 }, () => ({ type: "look", photos: [] })), { type: "end", layout: "back" }];
         return nb;
       };
+      /* Who the book is for (Sep 26 2026). The studio's own book is published
+         with the albums as before; one for a brand, a client or a talent is
+         kept on this computer and never published, and wears their name
+         where the studio's would be. */
+      let forWho = "studio", forName = "", forModel = "", kindByBrand = false;
+      const FOR_NOTE = {
+        studio: "Your own book. Publishing puts it in your site's files, so it opens on any device.",
+        brand: "Kept on this computer only — never published to your site. Their name goes where yours would be; your credit is a line on the last page, or nowhere if the contract says so.",
+        client: "Kept on this computer only — never published to your site. Their name goes where yours would be; your credit is a line on the last page, or nowhere if the contract says so.",
+        talent: "Kept on this computer only — never published to your site. Only the photos cleared for this model's card can go in, plus files from this computer."
+      };
+      // Every model, with how many photographs are cleared for their card; a
+      // model with none can't have a book yet, and the list says why.
+      const modelsList = () => {
+        try {
+          const counts = new Map(((typeof API.talentList === "function" && API.talentList()) || []).map((t) => [t.key, t.cleared]));
+          return ((window.getModels && window.getModels().items) || []).filter((m) => m && m.key && m.name)
+            .map((m) => ({ ...m, cleared: counts.get(m.key) || 0 }))
+            .sort((a, b) => (b.cleared > 0) - (a.cleared > 0) || String(a.name).localeCompare(String(b.name)));
+        } catch (e) { return []; }
+      };
+      const withWho = (nb) => {
+        if (forWho === "studio") return nb;
+        const m = forWho === "talent" ? modelsList().find((x) => x.key === forModel) : null;
+        const name = (m ? m.name : forName).trim().slice(0, 60);
+        nb.id = uid(true);
+        nb.madeFor = forWho === "talent" ? { kind: "talent", name, modelKey: m.key } : { kind: forWho, name };
+        // Their book, not in the studio's own terracotta.
+        nb.colourway = "silver-print";
+        nb.name = `${name} — ${kind === "lookbook" ? "lookbook" : forWho === "talent" ? "portfolio" : "book"}`;
+        if (kind !== "lookbook") { nb.title = name; nb.subtitle = forWho === "talent" ? "Portfolio" : ""; }
+        return nb;
+      };
       function closeStart() { const el = $("#sbStart"); if (el) el.remove(); }
       function startBook(k) {
         settle(); if (atLimit) return;
+        // Their name (or the model) first: the book wears it everywhere.
+        const box = $("#sbStart");
+        if (forWho === "talent" ? !forModel : (forWho !== "studio" && !forName.trim())) {
+          const need = box && box.querySelector(forWho === "talent" ? "#sbForModel" : "#sbForName");
+          const say = box && box.querySelector("#sbForNeed");
+          if (say) { say.hidden = false; say.textContent = forWho === "talent" ? "Pick the model first." : "Type their name first."; }
+          if (need) need.focus();
+          return;
+        }
         closeStart();
-        openBook(withKind(withLayout(newBook(`Book ${state.versions.length + 1}`), k), kind), true, { sel: -1 });
+        openBook(withWho(withKind(withLayout(newBook(`Book ${state.versions.length + 1}`), k), kind)), true, { sel: -1 });
       }
       function openStart() {
         closeStart();
+        forWho = "studio"; forName = ""; forModel = ""; kindByBrand = false;
         const box = document.createElement("div");
         box.className = "sb-start"; box.id = "sbStart"; box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true"); box.setAttribute("aria-label", "Start a new book");
         box.innerHTML = `<div class="sb-startbox">
           <div class="sb-addhead"><strong>Start a new book</strong><button type="button" class="sb-btn quiet" id="sbStartClose">Cancel</button></div>
+          <div class="sb-cpbase"><span>Who is it for?</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Who the book is for">${[["studio", "My studio"], ["brand", "A brand"], ["client", "A client"], ["talent", "A talent"]].map(([k, nm]) => `<button type="button" role="radio" data-for="${k}" aria-checked="${forWho === k}">${nm}</button>`).join("")}</div></div>
+          <div class="sb-forwho" id="sbForWho" ${forWho === "studio" ? "hidden" : ""}>
+            <div class="sb-field" id="sbForNameRow" ${forWho === "talent" ? "hidden" : ""}><label for="sbForName">Their name</label><input type="text" id="sbForName" maxlength="60" value="${esc(forName)}" placeholder="e.g. Acme Studio, or Aanya &amp; Kabir" autocomplete="off"></div>
+            <div class="sb-field" id="sbForModelRow" ${forWho === "talent" ? "" : "hidden"}><label for="sbForModel">The model</label><select id="sbForModel"><option value="">Choose from your models…</option>${modelsList().map((m) => `<option value="${esc(m.key)}" ${forModel === m.key ? "selected" : ""} ${m.cleared ? "" : "disabled"}>${esc(m.name)} — ${m.cleared ? `${m.cleared} photo${m.cleared === 1 ? "" : "s"} cleared` : "no photos cleared for their card yet"}</option>`).join("")}</select></div>
+            <p class="sb-hint" id="sbForModelNote" ${forWho === "talent" ? "" : "hidden"}>A photo is cleared when it is tagged with the model, in an album that lets its photos go on the models' cards, with a Usage that allows a portfolio — set in Upload.</p>
+            <p class="sb-warn" id="sbForNeed" hidden></p>
+          </div>
+          <p class="sb-hint" id="sbForNote">${esc(FOR_NOTE[forWho])}</p>
           <div class="sb-cpbase"><span>Start with</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="What kind of book">${[["magazine", "A magazine"], ["lookbook", "A lookbook"]].map(([k, nm]) => `<button type="button" role="radio" data-kind="${k}" aria-checked="${kind === k}">${nm}</button>`).join("")}</div></div>
           <p class="sb-hint" id="sbKindNote">${esc(KIND_NOTE[kind])}</p>
           <p class="sb-hint">Then the cover to begin with. It can be changed any time on the cover's own panel.</p>
@@ -6097,7 +6419,28 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         box.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); } });
         box.querySelector("#sbStartClose").addEventListener("click", () => { closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); });
         box.querySelectorAll("[data-start]").forEach((b) => b.addEventListener("click", () => startBook(b.dataset.start)));
-        box.querySelectorAll("[data-kind]").forEach((b) => b.addEventListener("click", () => {
+        const setWho = (w) => {
+          forWho = w;
+          box.querySelectorAll("[data-for]").forEach((x) => x.setAttribute("aria-checked", String(x.dataset.for === w)));
+          box.querySelector("#sbForWho").hidden = w === "studio";
+          box.querySelector("#sbForNameRow").hidden = w === "talent";
+          box.querySelector("#sbForModelRow").hidden = w !== "talent";
+          box.querySelector("#sbForModelNote").hidden = w !== "talent";
+          box.querySelector("#sbForNeed").hidden = true;
+          box.querySelector("#sbForNote").textContent = FOR_NOTE[w];
+          // A brand's book is usually a lookbook; it can still be changed. Put
+          // back if the audience changes again and the studio never chose it.
+          if (w === "brand" && kind !== "lookbook") { const lb = box.querySelector('[data-kind="lookbook"]'); if (lb) { lb.click(); kindByBrand = true; } }
+          else if (w !== "brand" && kindByBrand && kind === "lookbook") { const mg = box.querySelector('[data-kind="magazine"]'); if (mg) mg.click(); kindByBrand = false; }
+          const f = box.querySelector(w === "talent" ? "#sbForModel" : "#sbForName"); if (w !== "studio" && f) f.focus();
+          if (box.drawPreviews) box.drawPreviews();
+        };
+        let namePreview = 0;
+        box.querySelectorAll("[data-for]").forEach((b) => b.addEventListener("click", () => setWho(b.dataset.for)));
+        box.querySelector("#sbForName").addEventListener("input", (e) => { forName = e.target.value; box.querySelector("#sbForNeed").hidden = true; clearTimeout(namePreview); namePreview = setTimeout(() => { if (box.drawPreviews) box.drawPreviews(); }, 450); });
+        box.querySelector("#sbForModel").addEventListener("change", (e) => { forModel = e.target.value; box.querySelector("#sbForNeed").hidden = true; if (box.drawPreviews) box.drawPreviews(); });
+        box.querySelectorAll("[data-kind]").forEach((b) => b.addEventListener("click", (e) => {
+          if (e.isTrusted) kindByBrand = false;
           kind = b.dataset.kind;
           box.querySelectorAll("[data-kind]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
           const note = box.querySelector("#sbKindNote"); if (note) note.textContent = KIND_NOTE[kind];
@@ -6113,6 +6456,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           for (const [k] of COVER_LAYOUTS) {
             if (!box.isConnected || token !== previewToken) return;
             const nb = withKind(withLayout(newBook("Preview"), k), kind);
+            if (forWho !== "studio") { nb.id = "bfpreview"; nb.madeFor = { kind: forWho, name: (forWho === "talent" ? ((modelsList().find((m) => m.key === forModel) || {}).name || "") : forName).trim() || "Their name" }; nb.colourway = "silver-print"; if (kind !== "lookbook") { nb.title = nb.madeFor.name; nb.subtitle = forWho === "talent" ? "Portfolio" : ""; } }
             try {
               for await (const r of renderPages(nb, { dpi: 22, cache, only: -1 })) {
                 const slot = box.querySelector(`[data-start="${k}"] .sb-startpic`);
@@ -6163,7 +6507,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         settle();
         const cur = readState();
         const v = cur.versions.find((x) => x.id === b.dataset.dup); if (!v) return;
-        const copy = { ...JSON.parse(JSON.stringify(v)), id: uid(), name: `${v.name} (copy)`, updatedAt: Date.now() };
+        const copy = { ...JSON.parse(JSON.stringify(v)), id: uid(isForOthers(v)), name: `${v.name} (copy)`, updatedAt: Date.now() };
         if (!writeState({ versions: [copy, ...cur.versions], deleted: cur.deleted })) { API.toast("Not saved — this device's storage is full or blocked."); return; }
         showList();
       }));
@@ -6214,6 +6558,9 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
 
     function openBook(b, isNew = false, at = null) {
       currentPhotoIds(b);
+      // Undo belongs to the book it was made in: carried across, it put the
+      // previous book back into this one's place.
+      history.past.length = 0; history.future.length = 0; lastMark = 0;
       book = b; sel = book.pages.length ? 0 : -1; active = 0; filter = ""; pickerOpen = null; tab = "page";
       if (at && typeof at.sel === "number" && at.sel >= -1 && at.sel < book.pages.length) sel = at.sel;
       if (at && (at.tab === "design" || at.tab === "page")) tab = at.tab;
@@ -6270,7 +6617,9 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
             <button type="button" class="sb-btn quiet" id="sbCmd" title="Find a command: add a page, go to a page, change the style… (Ctrl+K)" aria-haspopup="dialog">Find <kbd>⌘K</kbd></button>
             <button type="button" class="sb-btn" id="sbSave" title="Keep this book on this device now. Every change is kept as you make it — this is here so you can be sure.">Save</button>
             <button type="button" class="sb-btn" id="sbDlToggle" aria-expanded="false" aria-controls="sbDlPop">Download</button>
-            <button type="button" class="sb-btn dark" id="sbPublish" title="Saves this book into the site's own files, so it is there on any device. Nothing is shown to visitors — what a client gets is the PDF.">Publish</button>
+            ${isForOthers(book)
+              ? `<button type="button" class="sb-btn dark" id="sbPublish" title="This book is for ${esc((book.madeFor && book.madeFor.name) || "someone else")} and stays on this computer — it is never published. This saves a copy file: keep it somewhere safe, and open it on another computer with Open a copy.">Save a copy</button>`
+              : `<button type="button" class="sb-btn dark" id="sbPublish" title="Puts every word of this book into your site's public data file, so it opens on any device. Visitors see no page, but anyone can read that file — what a client gets is the PDF.">Publish</button>`}
           </div>
           <div class="sb-pop" id="sbDlPop" hidden>
             <div class="sb-sec"><h3>Check before sending</h3><div id="sbCheck"><p class="sb-hint">Checking…</p></div></div>
@@ -6385,6 +6734,8 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         $("#sbPanelPage").hidden = t !== "page"; $("#sbPanelDesign").hidden = t !== "design";
         remember();
         if (t === "design") drawStylePics();
+        // What was changed in Design (Made for, above all) shows on This page.
+        if (t === "page") drawInspector();
       };
       $("#sbTabPage").addEventListener("click", () => setTab("page"));
       $("#sbTabDesign").addEventListener("click", () => setTab("design"));
@@ -7322,11 +7673,11 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         <div class="sb-addhead"><strong>Add a page</strong><button type="button" class="sb-btn quiet" id="sbAddClose">Close</button></div>
         <p class="sb-hint">It goes after the page you're on. The book has ${count} page${count === 1 ? "" : "s"}.</p>
         <div class="sb-addgroup sb-auto"><h3>Pages from an album</h3>
-          <div class="sb-autorow"><label class="sb-vh" for="sbAutoAlbum">Album</label><select id="sbAutoAlbum">${library().albums.filter((a) => a.count).map((a) => `<option value="${esc(a.id)}">${esc(a.name)} (${a.count})</option>`).join("")}</select>
+          <div class="sb-autorow"><label class="sb-vh" for="sbAutoAlbum">Album</label><select id="sbAutoAlbum">${autoAlbums().map((a) => `<option value="${esc(a.id)}">${esc(a.name)} (${a.count})</option>`).join("")}</select>
           <button type="button" class="sb-btn dark" id="sbAutoGo">Lay it out</button></div>
           <label class="sb-check-row"><input type="checkbox" id="sbAutoChapter" checked> Start with a chapter page named after the album</label>
           <p class="sb-hint">Its photographs, paired and grouped by their shapes — two portraits side by side, landscapes stacked, a grid now and then, a spread for a wide one — on as many pages as they need. Photographs already in the book are left out.</p></div>
-        ${ADD_MENU.map((g) => `<div class="sb-addgroup"><h3>${esc(g.group)}</h3><div class="sb-additems">${g.items.map(([type, name, note]) => `
+        ${addMenuFor(book).map((g) => `<div class="sb-addgroup"><h3>${esc(g.group)}</h3><div class="sb-additems">${g.items.map(([type, name, note]) => `
           <button type="button" class="sb-additem" data-add="${type}" ${count + pageSpan({ type }) > MAX_PAGES ? "disabled" : ""}>${addIcon(type)}<b>${esc(name)}</b><span>${esc(note)}</span></button>`).join("")}</div></div>`).join("")}`;
       menu.hidden = false;
       $("#sbAddToggle").setAttribute("aria-expanded", "true");
@@ -7343,18 +7694,32 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     /* Pages from an album: its photographs, in the album's order, paired and
        grouped by their shapes (read from the small copies), onto photos pages
        and now and then a spread — starting a spread only on a left-hand page. */
+    /* The albums "Pages from an album" offers. A talent's book is offered one:
+       the photographs cleared for their card, which may come from several
+       albums — the only ones it may print (v546 review: it offered every
+       album, and laid out another model's shoot under their name). */
+    function autoAlbums() {
+      const mf = forOf(book);
+      if (mf && mf.kind === "talent") {
+        const t = talentOf(book), lib = library();
+        const n = t ? [...t.cleared].filter((id) => lib.byId.has(id)).length : 0;
+        return [{ id: "talent", name: `Cleared for ${mf.name}`, count: n }];
+      }
+      return library().albums.filter((a) => a.count);
+    }
     async function autoPages(albumId, chapter) {
       const lib = library();
       const inBook = new Set(bookPhotoIds(book));
       const list = [];
-      for (const [id, hit] of lib.byId) if (hit.shoot.id === albumId && !hit.photo.diagram && !inBook.has(id)) list.push({ id, hit });
+      const tAuto = albumId === "talent" ? talentOf(book) : null;
+      for (const [id, hit] of lib.byId) if ((tAuto ? tAuto.cleared.has(id) : hit.shoot.id === albumId) && !hit.photo.diagram && !inBook.has(id)) list.push({ id, hit });
       if (!list.length) return 0;
       await Promise.all(list.map(async (it) => { try { it.asp = imgAspect(await API.loadImage(thumbSrc(it.hit.photo), cache)); } catch (e) { it.asp = 1; } }));
       const shot = (it) => { const f = API.photoFocus(it.hit.photo); return { id: it.id, x: +f.x.toFixed(3), y: +f.y.toFixed(3), zoom: 1 }; };
       const wide = (it) => it && it.asp > 1.15, tall = (it) => it && it.asp < 0.9;
       const at0 = sel < 0 ? 0 : (book.pages[sel] && book.pages[sel].type === "end" ? sel : sel + 1);
       const pages = [];
-      if (chapter) { const al = lib.albums.find((a) => a.id === albumId); pages.push({ type: "divider", heading: String((al && al.name) || "Selected work").slice(0, 60), line: "" }); }
+      if (chapter) { const al = lib.albums.find((a) => a.id === albumId); pages.push({ type: "divider", heading: String(tAuto ? forOf(book).name : ((al && al.name) || "Selected work")).slice(0, 60), line: "" }); }
       // The page number the next page would start on, to keep a spread off the fold.
       const startNo = () => { let n = 1; for (let k = 0; k < at0; k++) n += pageSpan(book.pages[k]); for (const pg of pages) n += pageSpan(pg); return n + 1; };
       let i = 0, k = 0;
@@ -8309,7 +8674,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     function coverLinesHtml() {
       const t = (book.coverText && typeof book.coverText === "object") ? book.coverText : {};
       const CT = coverText(book), cl = coverLines(book), M = (window.STUDIO_BOOK_LIMITS || {}).coverText || {};
-      const rightNow = [`${cl.photos} PLATES`, `${cl.pages} PAGES`, "NOIDA, INDIA"];
+      const rightNow = [`${cl.photos} PLATES`, `${cl.pages} PAGES`, forOf(book) ? year() : "NOIDA, INDIA"];
       const side = (which, now) => `<div class="sb-field"><span class="sb-label">${which === "left" ? "Three lines on the left" : "Three lines on the right"}</span>
         ${[0, 1, 2].map((i) => `<input type="text" id="sbCov_${which}${i}" maxlength="${(window.STUDIO_BOOK_LIMITS || {}).coverLine || 24}" value="${esc(((t[which] || [])[i]) || "")}" placeholder="${esc(now[i] || "—")}" aria-label="${which === "left" ? "Left" : "Right"} line ${i + 1}">`).join("")}</div>`;
       // Each style prints its own lines, so only those are offered.
@@ -8469,7 +8834,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         box.innerHTML = `<h3>Words</h3>${FIELD_UI[entry.type].map((f) => fieldHtml(f, entry[f.k] || "", (caps[entry.type] || {})[f.k] || 200,
           f.credit ? `<button type="button" class="sb-link" id="sbUseCredit">Use the album credit</button>` : "")).join("")}
           <details class="sb-ideas"><summary>Ideas</summary><ul>${IDEAS[entry.type].map((q) => `<li>${esc(q)}</li>`).join("")}</ul></details>
-          <p class="sb-hint">Published books are public: only use names and words people are happy to see there, and no private notes.</p>`;
+          <p class="sb-hint">${isForOthers(book) ? "This book stays on this computer and is never published." : "Published books are public: only use names and words people are happy to see there, and no private notes."}</p>`;
         if (entry.type === "article") { box.insertAdjacentHTML("afterbegin", splitHtml(sel)); box.insertAdjacentHTML("beforeend", creditHtml(entry) + borderHtml(entry)); wireSplit(sel); }
         for (const f of FIELD_UI[entry.type]) wireField($(`#sbF_${f.k}`), (v) => { entry[f.k] = v; }, (caps[entry.type] || {})[f.k] || 200);
         $$("[data-select]").forEach((b) => b.addEventListener("click", () => selectOverflow(b.dataset.select)));
@@ -8622,7 +8987,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           + pageLookHtml(entry, nPhotos)
           + fieldHtml({ k: "caption", label: "Caption for this page (optional)", ctl: "input", ph: "e.g. Monsoon edit, shot on the roof in Sector 46" }, entry.caption || "", (caps.photos || {}).caption || 90)
           + creditHtml(entry)
-          + `<p class="sb-hint">Published books are public.</p>`
+          + `<p class="sb-hint">${isForOthers(book) ? "This book stays on this computer and is never published." : "Published books are public."}</p>`
           + (borderApplies(entry) ? borderHtml(entry) : "");
         wireField($("#sbF_caption"), (v) => { entry.caption = v; }, (caps.photos || {}).caption || 90);
         wireCredit(entry);
@@ -8705,17 +9070,30 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       if (entry.type === "contact") {
         const hidden = new Set(Array.isArray(entry.hide) ? entry.hide : []);
         const cfgNow = cfg();
-        const lines = [["email", `Email${cfgNow.email ? ` · ${cfgNow.email}` : ""}`], ["whatsapp", "WhatsApp (when a number is typed below)"], ["instagram", "Instagram"], ["website", "Website"], ["book", "Book online"], ["studio", "Studio · Noida, working across Delhi NCR"], ["qr", "QR code to the booking form"]];
+        /* A book made for someone else lists THEIR lines: a brand's or a
+           client's from Made for (in Design), a talent's from their record in
+           Models, as it lets a PDF show them. The studio's booking link and
+           address are not offered. */
+        const mfNow = forOf(book), tfNow = mfNow && mfNow.kind === "talent" ? talentOf(book) : null;
+        const igNow = handleOf(cfgNow.instagram || "");
+        const lines = tfNow
+          ? [["whatsapp", "WhatsApp (when a number is typed below)"], ["qr", "QR code to their website"]]
+          : mfNow
+          ? [["email", `Email${mfNow.email ? ` · ${mfNow.email}` : " (none given in Made for)"}`], ["whatsapp", "WhatsApp (when a number is typed below)"], ["instagram", `Instagram${mfNow.instagram ? ` · @${handleOf(mfNow.instagram)}` : " (none given)"}`], ["website", `Website${mfNow.site ? ` · ${mfNow.site}` : " (none given)"}`], ["qr", "QR code to their website"]]
+          : [["email", `Email${cfgNow.email ? ` · ${cfgNow.email}` : ""}`], ["whatsapp", "WhatsApp (when a number is typed below)"], ["instagram", "Instagram"], ["website", "Website"], ["book", "Book online"], ["studio", "Studio · Noida, working across Delhi NCR"], ["qr", "QR code to the booking form"]];
         const CR = (window.STUDIO_BOOK_LIMITS || {}).contactRow || { label: 24, value: 60 };
-        const rowNow = { email: ["Email", cfgNow.email || ""], whatsapp: ["WhatsApp", book.texts.phone || ""], instagram: ["Instagram", cfgNow.instagramHandle ? `@${cfgNow.instagramHandle}` : ""], website: ["Website", "nerdyphotographer.in"], book: ["Book online", "nerdyphotographer.in/book"], studio: ["Studio", "Noida · working across Delhi NCR"] };
+        const rowNow = tfNow ? { whatsapp: ["WhatsApp", book.texts.phone || ""] }
+          : mfNow ? { email: ["Email", mfNow.email || ""], whatsapp: ["WhatsApp", book.texts.phone || ""], instagram: ["Instagram", mfNow.instagram ? `@${handleOf(mfNow.instagram)}` : ""], website: ["Website", mfNow.site || ""] }
+          : { email: ["Email", cfgNow.email || ""], whatsapp: ["WhatsApp", book.texts.phone || ""], instagram: ["Instagram", igNow ? `@${igNow}` : ""], website: ["Website", "nerdyphotographer.in"], book: ["Book online", "nerdyphotographer.in/book"], studio: ["Studio", "Noida · working across Delhi NCR"] };
         const rowsOver = (entry.rows && typeof entry.rows === "object") ? entry.rows : {};
-        box.innerHTML = headingsHtml(entry, "Let\u2019s make something", "Book a shoot")
+        box.innerHTML = headingsHtml(entry, mfNow ? "Contact" : "Let\u2019s make something", mfNow ? mfNow.name : "Book a shoot")
+          + (tfNow ? `<p class="sb-hint">${esc(tfNow.name)}'s contacts come from their record in Models, as it lets a PDF show them: ${tfNow.contacts.length ? tfNow.contacts.map((c) => esc(`${c.label} ${c.value}`)).join(" · ") : "none are switched on for PDFs"}. Change them there.</p>` : "")
           + `<div class="sb-field"><span class="sb-label">Show on this page</span>
           ${lines.map(([k, label]) => `<label class="sb-check-row"><input type="checkbox" data-show="${k}" ${hidden.has(k) ? "" : "checked"}> ${esc(label)}</label>`).join("")}</div>
           <div class="sb-field"><label for="sbPhone">WhatsApp number (optional)</label>
           <input type="tel" id="sbPhone" maxlength="24" value="${esc(book.texts.phone || "")}" placeholder="+91 …">
-          <p class="sb-hint">Saved books are published inside the site's data file, which is public. Leave this empty unless you're happy for the number to be public.</p></div>`
-          + overHtml("sbOvQr", "Words under the QR code", entry.qrLabel, PT().qrLabel, "SCAN TO BOOK")
+          <p class="sb-hint">${mfNow ? "This book stays on this computer and is never published." : "Saved books are published inside the site's data file, which is public. Leave this empty unless you're happy for the number to be public."}</p></div>`
+          + overHtml("sbOvQr", "Words under the QR code", entry.qrLabel, PT().qrLabel, mfNow ? "SCAN TO VISIT" : "SCAN TO BOOK")
           + `<details class="sb-sec" id="sbRowsOver"><summary>These lines in your own words</summary>
             ${Object.entries(rowNow).map(([k, [label, value]], i) => `<div class="sb-rowbox">
               ${overHtml(`sbRow${i}_label`, `${esc(label)} · what it is called`, (rowsOver[k] || {}).label, CR.label, label)}
@@ -9148,9 +9526,14 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       const opacity = cur && typeof cur.opacity === "number" ? cur.opacity : 1;
       const open = pickerOpen === null ? (list.length === 0 || (t.max > 1 && list.length < t.max)) : pickerOpen;
       const mode = cur && FIT_MODES.includes(cur.fit) ? cur.fit : "auto";
+      /* A talent's book picks only from the photographs cleared for their
+         card (the owner's rule), plus files from this computer. */
+      const tfp = talentOf(book);
+      const isTalentBook = !!(forOf(book) && forOf(book).kind === "talent");
+      if (isTalentBook && filter !== OUTSIDE_ALBUM) filter = "talent";
       const shown = [];
       for (const [id, hit] of lib.byId) {
-        if (filter === "diagrams" ? hit.photo.diagram : (filter === "all" || hit.shoot.id === filter)) shown.push([id, hit]);
+        if (filter === "talent" ? !!(tfp && tfp.cleared.has(id)) : filter === "diagrams" ? hit.photo.diagram : (filter === "all" || hit.shoot.id === filter)) shown.push([id, hit]);
       }
       box.innerHTML = `
         <h3>${esc(heading)}</h3>
@@ -9178,11 +9561,14 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           <summary>${list.length ? (t.max === 1 ? "Change the photo" : "Add or remove photos") : "Choose a photo"}</summary>
           <label class="sb-vh" for="sbAlbum">Show</label>
           <select id="sbAlbum">
+            ${isTalentBook ? `<option value="talent" ${filter === "talent" ? "selected" : ""}>Cleared for ${esc(forOf(book).name)} (${tfp ? [...tfp.cleared].filter((id) => lib.byId.has(id)).length : 0})</option>
+            ${lib.albums.filter((a) => a.outside).map((a) => `<option value="${esc(a.id)}" ${filter === a.id ? "selected" : ""}>${esc(a.name)} (${a.count})</option>`).join("")}` : `
             <option value="" disabled ${filter === "" ? "selected" : ""}>Choose an album…</option>
             <option value="all" ${filter === "all" ? "selected" : ""}>All albums (${lib.byId.size})</option>
             <option value="diagrams" ${filter === "diagrams" ? "selected" : ""}>Lighting diagrams (${lib.diagrams})</option>
-            ${lib.albums.map((a) => `<option value="${esc(a.id)}" ${filter === a.id ? "selected" : ""}>${esc(a.name)} (${a.count})${a.hidden ? " · not on the site" : ""}</option>`).join("")}
+            ${lib.albums.map((a) => `<option value="${esc(a.id)}" ${filter === a.id ? "selected" : ""}>${esc(a.name)} (${a.count})${a.hidden ? " · not on the site" : ""}</option>`).join("")}`}
           </select>
+          ${isTalentBook && filter === "talent" ? `<p class="sb-hint">${!tfp ? `No model card was found for ${esc(forOf(book).name)}. Check them in Models.` : "Only the photographs cleared for their model card: tagged with them, in an album that lets its photos go on the models' cards, with a Usage that allows a portfolio. Change those in Upload. Photos from this computer can go in too."}</p>` : ""}
           ${(lib.albums.find((a) => a.id === filter) || {}).outside
             ? `<p class="sb-hint">Photographs from this computer. They are kept here, not in an album, and the ones marked “print only” are never uploaded anywhere.</p>`
             : (lib.albums.find((a) => a.id === filter) || {}).hidden ? `<p class="sb-hint">This album is hidden from the site, a book-only album. Only the book shows its photos.</p>` : ""}
@@ -9222,7 +9608,9 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           const files = [...(outFile.files || [])].filter((f) => /^image\//.test(f.type) || /\.(heic|heif|jpe?g|png|webp)$/i.test(f.name || ""));
           outFile.value = "";
           if (!files.length) return;
-          const forSite = await askWhereOutsideGoes(files.length);
+          // A book made for someone else is never published, so neither is
+          // anything in it: its photographs stay on this computer, unasked.
+          const forSite = isForOthers(book) ? false : await askWhereOutsideGoes(files.length);
           if (forSite === null) return;
           outNote.textContent = `Reading ${files.length} photograph${files.length > 1 ? "s" : ""}…`;
           let added = 0;
@@ -9396,6 +9784,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
        kept while the book is open. Sections are moved by their heading, so a
        section added later lands at the end rather than disappearing. */
     const DESIGN_GROUPS = [
+      ["for", "Made for", "Whose book this is · their details · your credit", ["Made for"]],
       ["look", "Look", "Style · colourway", ["Style", "Colourway"]],
       ["paper", "Page & paper", "Shape · size · space between photos · page colour · lines", ["Page shape", "Paper size", "Space between photographs", "Page colour, every page", "Line round the photographs"]],
       ["type", "Type", "Text styles · baseline grid", ["Text styles", "Baseline grid"]],
@@ -9410,7 +9799,8 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       const byTitle = new Map(secs.map((el) => [((el.querySelector("h3") || {}).textContent || "").trim(), el]));
       const used = new Set();
       const frag = document.createDocumentFragment();
-      for (const [key, name, note, titles] of DESIGN_GROUPS) {
+      const groups = forOf(book) ? DESIGN_GROUPS : [...DESIGN_GROUPS.slice(1), DESIGN_GROUPS[0]];
+      for (const [key, name, note, titles] of groups) {
         const d = document.createElement("details");
         d.className = "sb-group"; d.dataset.group = key; d.open = designOpen.has(key);
         d.innerHTML = `<summary>${esc(name)}<small>${esc(note)}</small></summary>`;
@@ -9488,11 +9878,11 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       };
       add("Go to the cover", "Pages", () => select(-1));
       book.pages.forEach((pg, i) => add(`Go to page ${pad2(firstPageOf(i))} · ${railLabel(pg)}`, "Pages", () => select(i)));
-      ADD_MENU.forEach((g) => g.items.forEach(([k, n]) => add(`Add ${/^Layouts/.test(g.group) ? "a layout" : "a page"}: ${n}`, g.group.replace(/^Layouts · /, "Layouts: "), () => addPage(k))));
+      addMenuFor(book).forEach((g) => g.items.forEach(([k, n]) => add(`Add ${/^Layouts/.test(g.group) ? "a layout" : "a page"}: ${n}`, g.group.replace(/^Layouts · /, "Layouts: "), () => addPage(k))));
       const e = curEntry();
       if (e && e.type === "free") LAYOUT_GROUPS.forEach((g) => g.items.forEach(([k, n]) => add(`Change this page's layout: ${n}`, "This page", () => applyLayout(e, k))));
       if (sel >= 0 && e && FREEFORM_TYPES.includes(e.type)) add("Make this page free-form", "This page", () => makeFreeForm(sel));
-      library().albums.filter((a) => a.count).forEach((a) => add(`Pages from an album: ${a.name}`, "Pages", async () => { const n = await autoPages(a.id, true); API.toast(n ? `${n} pages added · Ctrl+Z to take them out` : "Every photograph in that album is already in the book."); }));
+      autoAlbums().filter((a) => a.count).forEach((a) => add(`Pages from an album: ${a.name}`, "Pages", async () => { const n = await autoPages(a.id, true); API.toast(n ? `${n} pages added · Ctrl+Z to take them out` : "Every photograph in that album is already in the book."); }));
       STYLES.forEach((st) => add(`Style: ${st.name}`, "Design", design(`[data-style="${st.key}"]`, "look")));
       COLOURWAYS.forEach((c) => add(`Colourway: ${c.name}`, "Design", design(`[data-cw="${c.key}"]`, "look")));
       add("Text styles", "Design", design("#sbTypeset .sb-fmttoggle", "type"));
@@ -9511,7 +9901,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       add("Download to fold in half (booklet)", "File", dl(false, true));
       add("Download PNG pages", "File", () => { const pop = $("#sbDlPop"); if (pop && pop.hidden) $("#sbDlToggle").click(); $("#sbPng").click(); });
       add("Save", "File", () => $("#sbSave").click());
-      add("Publish", "File", () => $("#sbPublish").click());
+      add(book && isForOthers(book) ? "Save a copy" : "Publish", "File", () => $("#sbPublish").click());
       add("Undo", "Edit", () => undo());
       add("Redo", "Edit", () => redo());
       add("Read the book", "View", () => { const r = $('[data-view="read"]') || $("#sbReadBtn"); if (r) r.click(); });
@@ -9553,9 +9943,121 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     }
     // The book's text styles, edited through the same Format controls as one text.
     const typesetHost = { get: () => book.typeset, set: (v) => { if (v) book.typeset = v; else delete book.typeset; } };
+    /* ---- Made for: whose book this is (Sep 26 2026) ----------------------
+       The studio's own book, or one for a brand, a client or a talent, kept on
+       this computer and never published. Their name, details and logo go
+       where the studio's would; the studio's credit is a line on the last
+       page, or nowhere when their contract says so. */
+    const LOGO_MAX = 2 * 1048576;
+    function madeForHtml() {
+      const m = forOf(book), LM = (window.STUDIO_BOOK_LIMITS || {}).madeFor || {};
+      if (!m) return `<div class="sb-sec" id="sbMadeFor"><h3>Made for</h3>
+          <p class="sb-hint">Your studio's own book: your name, mark and details are on it, and Publish puts it in your site's files.</p>
+          <details class="sb-moveshelf"><summary>Make a copy of it for a brand or a client…</summary>
+            <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Who it is for">${[["brand", "A brand"], ["client", "A client"]].map(([k, n], i) => `<button type="button" role="radio" data-movekind="${k}" aria-checked="${i === 0}">${n}</button>`).join("")}</div>
+            <div class="sb-field"><label for="sbMoveName">Their name</label><input type="text" id="sbMoveName" maxlength="${LM.name || 60}" placeholder="e.g. Acme Studio" autocomplete="off"></div>
+            <p class="sb-hint">A copy for them, kept on this computer only and never published, with their name where yours is. This book stays exactly as it is — delete it afterwards if it shouldn't be yours${(((window.WPS_DATA || {}).STUDIO_PORTFOLIOS || {}).versions || []).some((v) => v.id === book.id) ? " (it is published: deleting it takes it off your site's file at your next publish, though what was published stays in the site's history)" : ""}. For a talent, start a new book and pick the model.</p>
+            <button type="button" class="sb-btn dark" id="sbMoveGo">Make the copy</button>
+          </details>
+        </div>`;
+      const KIND = { brand: "A brand", client: "A client", talent: "A talent" };
+      const logoRec = m.logo ? (outsideCache || []).find((r) => r.id === m.logo) : null;
+      return `<div class="sb-sec" id="sbMadeFor"><h3>Made for</h3>
+          ${m.kind === "talent" ? `<p class="sb-hint"><b>${esc(m.name)}</b> — a talent's book. Kept on this computer only; never published.</p>`
+          : `<div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Who it is for">${["brand", "client"].map((k) => `<button type="button" role="radio" data-forkind="${k}" aria-checked="${m.kind === k}">${KIND[k]}</button>`).join("")}</div>
+          <div class="sb-field"><label for="sbForNameE">Their name</label><input type="text" id="sbForNameE" maxlength="${LM.name || 60}" value="${esc(m.name || "")}" autocomplete="off"></div>`}
+          ${m.kind === "talent" ? "" : `<div class="sb-field"><label for="sbForEmail">Their email</label><input type="email" id="sbForEmail" maxlength="${LM.email || 120}" value="${esc(m.email || "")}" placeholder="Empty: left off" autocomplete="off"></div>
+          <div class="sb-field"><label for="sbForSite">Their website</label><input type="text" id="sbForSite" maxlength="${LM.site || 120}" value="${esc(m.site || "")}" placeholder="e.g. acme.in — empty: left off" autocomplete="off"></div>
+          <div class="sb-field"><label for="sbForIg">Their Instagram</label><input type="text" id="sbForIg" maxlength="${LM.instagram || 40}" value="${esc(m.instagram || "")}" placeholder="@handle — empty: left off" autocomplete="off"></div>
+          <div class="sb-field"><span class="sb-label">Their logo</span>
+            <div class="sb-logorow">${logoRec ? `<img class="sb-logoimg" src="${esc(logoRec.dataUrl)}" alt="Their logo">` : ""}
+              <button type="button" class="sb-btn" id="sbLogoAdd">${logoRec ? "Change…" : "Add their logo…"}</button>
+              ${logoRec ? `<button type="button" class="sb-btn quiet" id="sbLogoDrop">Remove</button>` : ""}
+              <input type="file" id="sbLogoFile" accept="image/svg+xml,image/png,image/jpeg,image/webp,.svg,.png,.jpg,.jpeg,.webp" hidden></div>
+            <p class="sb-hint" id="sbLogoNote">${logoRec ? esc(logoRec.note || "Drawn where your owl would be. Kept on this computer; never uploaded.") : "Optional. Without one, nothing stands where your owl would — their name is already on the page. An SVG, or a PNG at least 1000 px across, prints sharp. Kept on this computer; never uploaded."}</p>
+          </div>`}
+          <div class="sb-field"><span class="sb-label">Your credit</span>
+            <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Your credit">${[["", "Last page"], ["none", "Nowhere"]].map(([k, n]) => `<button type="button" role="radio" data-credit="${k}" aria-checked="${(m.credit || "") === k}">${n}</button>`).join("")}</div>
+            <p class="sb-hint">${m.credit === "none" ? "Not on any page and not in the file's details — for a contract that forbids it." : `“Photographs · ${esc(studio())}”, small, on the last page and in the file's details.`}</p>
+          </div>
+        </div>`;
+    }
+    function wireMadeFor(panel) {
+      const m = forOf(book);
+      if (!m) {
+        let kind = "brand";
+        panel.querySelectorAll("[data-movekind]").forEach((b) => b.addEventListener("click", () => { kind = b.dataset.movekind; panel.querySelectorAll("[data-movekind]").forEach((x) => x.setAttribute("aria-checked", String(x === b))); }));
+        const go = panel.querySelector("#sbMoveGo");
+        if (go) go.addEventListener("click", () => {
+          const nameEl = panel.querySelector("#sbMoveName"), name = (nameEl.value || "").trim().slice(0, 60);
+          if (!name) { nameEl.focus(); API.toast("Type their name first."); return; }
+          if (!flush()) { API.toast("No copy made: this book could not be saved first."); return; }
+          /* A copy, never a move: the studio's own book is left exactly as it
+             was, so nothing can be lost to a full store, an Undo or another
+             window (v546 review). What names the studio in words the studio
+             typed is left out of the copy; anything else is flagged by Check
+             before sending. */
+          const nb = JSON.parse(JSON.stringify(book));
+          nb.id = uid(true); nb.madeFor = { kind, name }; nb.updatedAt = Date.now();
+          nb.name = `${name} — ${book.name}`.slice(0, 80);
+          if (nb.colourway === "terracotta") nb.colourway = "silver-print";
+          const own = new RegExp(`${studio().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}|nerdyphotographer|noida`, "i");
+          if (typeof nb.footText === "string" && own.test(nb.footText)) delete nb.footText;
+          if (nb.coverText) { for (const k of Object.keys(nb.coverText)) { const v = nb.coverText[k]; if (typeof v === "string" ? own.test(v) : Array.isArray(v) && v.some((x) => own.test(String(x)))) delete nb.coverText[k]; } }
+          const cur = readState();
+          if (!writeState({ versions: [nb, ...cur.versions.filter((v) => v.id !== nb.id)], deleted: cur.deleted })) { API.toast("No copy made: this computer's storage for the site is full."); return; }
+          const queued = (JSON.stringify(nb).match(/\bout_[a-z0-9_]+/g) || []).filter((id, i, a) => a.indexOf(id) === i).filter((id) => { const r = (outsideCache || []).find((x) => x.id === id); return r && r.forSite; }).length;
+          API.toast(`A copy for ${name} is made, kept on this computer only. Your own book is unchanged.${queued ? ` ${queued} photo${queued === 1 ? "" : "s"} in it ${queued === 1 ? "was" : "were"} set to go to your site from your own book, and still will.` : ""}`);
+          openBook(nb, false, { sel, tab: "design", status: "A copy for them, on this computer only" });
+        });
+        return;
+      }
+      const set = (k, v) => { const t = String(v || "").trim(); if (t) book.madeFor[k] = v; else delete book.madeFor[k]; };
+      const typed = (id, k) => { const el = panel.querySelector(`#${id}`); if (!el) return; el.addEventListener("input", () => { set(k, el.value); change({ rail: false, typing: true }); }); el.addEventListener("blur", () => { flush(); schedulePreview(0); }); };
+      const nameEl = panel.querySelector("#sbForNameE");
+      if (nameEl) {
+        nameEl.addEventListener("input", () => { if (nameEl.value.trim()) { book.madeFor.name = nameEl.value; change({ rail: false, typing: true }); } });
+        nameEl.addEventListener("blur", () => { if (!nameEl.value.trim()) nameEl.value = book.madeFor.name; flush(); schedulePreview(0); });
+      }
+      typed("sbForEmail", "email"); typed("sbForSite", "site"); typed("sbForIg", "instagram");
+      panel.querySelectorAll("[data-forkind]").forEach((b) => b.addEventListener("click", () => { mark(); book.madeFor.kind = b.dataset.forkind; change(); drawDesign(); }));
+      panel.querySelectorAll("[data-credit]").forEach((b) => b.addEventListener("click", () => { mark(); if (b.dataset.credit) book.madeFor.credit = b.dataset.credit; else delete book.madeFor.credit; change(); drawDesign(); }));
+      const add = panel.querySelector("#sbLogoAdd"), file = panel.querySelector("#sbLogoFile"), drop = panel.querySelector("#sbLogoDrop");
+      if (add && file) {
+        add.addEventListener("click", () => file.click());
+        file.addEventListener("change", async () => {
+          const f = file.files && file.files[0]; file.value = "";
+          if (!f) return;
+          const note = panel.querySelector("#sbLogoNote");
+          const isSvg = /svg/i.test(f.type) || /\.svg$/i.test(f.name || "");
+          if (!isSvg && !/^image\/(png|jpeg|webp)$/.test(f.type)) { note.textContent = "That file isn't an SVG, PNG, JPEG or WebP picture."; return; }
+          if (f.size > LOGO_MAX) { note.textContent = "That file is over 2 MB. An SVG, or a PNG about 2000 px across, is plenty."; return; }
+          // Kept exactly as it came (transparency and all), never shrunk to a
+          // JPEG the way a photograph is: a logo is lines and flat colour.
+          const dataUrl = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(String(r.result || "")); r.onerror = () => res(""); r.readAsDataURL(isSvg ? new Blob([f], { type: "image/svg+xml" }) : f); });
+          const img = await new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = dataUrl; });
+          if (!img || !img.naturalWidth) { note.textContent = "This browser can't draw that file, so it wasn't added."; return; }
+          // The owl prints up to 30 mm tall; at 300 dpi that wants ~350 px.
+          const soft = !isSvg && Math.max(img.naturalWidth, img.naturalHeight) < 1000;
+          const warn = soft ? `This logo is small (${img.naturalWidth}×${img.naturalHeight} px): it will print soft. Ask them for an SVG, or a PNG at least 1000 px across.` : "";
+          const id = `lg_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+          try { await outPut({ id, name: f.name || "logo", dataUrl, forSite: false, logo: true, at: Date.now(), note: warn || "Drawn where your owl would be. Kept on this computer; never uploaded." }); }
+          catch (e) { note.textContent = "Not added: this computer's storage for the site refused it."; return; }
+          const was = book.madeFor.logo;
+          await outsideRefresh();
+          mark(); book.madeFor.logo = id; logoCache.delete(id);
+          change(); drawDesign();
+          // The old file is kept: Undo brings its id back, and a duplicated book
+          // may still use it. A logo is small; nothing is uploaded either way.
+          if (warn) API.toast(warn);
+        });
+      }
+      if (drop) drop.addEventListener("click", () => { mark(); delete book.madeFor.logo; change(); drawDesign(); });
+    }
     function drawDesign() {
       const panel = $("#sbPanelDesign"); if (!panel) return;
       panel.innerHTML = `
+        ${madeForHtml()}
         <div class="sb-sec"><h3>Style</h3>
           <div class="sb-styles" role="radiogroup" aria-label="Style">${STYLES.map((s) => `<button type="button" class="sb-style" role="radio" data-style="${s.key}" aria-checked="${book.style === s.key}"><span class="sb-stylepic" aria-hidden="true"></span><b>${esc(s.name)}</b><span>${esc(s.note)}</span></button>`).join("")}</div>
           <p class="sb-hint">Each is your own cover and first page, drawn in that style. Changing style keeps every page and every word.</p>
@@ -9609,10 +10111,11 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           <p class="sb-hint">Every column of a story or letter starts on the same set of lines, so the lines sit level across columns and across facing pages. The grid shows faintly in the preview, never in the PDF.</p>
         </div>
         <div class="sb-sec"><h3>The foot of every page</h3>
-          ${overHtml("sbFootText", "Name in the foot", book.footText, (window.STUDIO_BOOK_LIMITS || {}).footText || 40, studio())}
+          ${overHtml("sbFootText", "Name in the foot", book.footText, (window.STUDIO_BOOK_LIMITS || {}).footText || 40, whose(book))}
           <label class="sb-check-row"><input type="checkbox" id="sbNums" ${book.showPageNumbers === false ? "" : "checked"}> Print page numbers</label>
         </div>`;
       groupDesign(panel);
+      wireMadeFor(panel);
       wireOver("sbFootText", (v) => { if (String(v).trim()) book.footText = v; else delete book.footText; });
       // Text styles use the same controls as one text's Format; a size in points means nothing for a whole kind of text.
       const tsBox = panel.querySelector("#sbTypeset");
@@ -9722,6 +10225,35 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       const lib = library();
       await ensureBookFonts(b);
       const out = [];
+      /* A book made for someone else: a talent's prints only what is cleared
+         for their card, and a photograph from a hidden album is still
+         downloadable from the site, which matters for work not yet out. */
+      {
+        const mf = forOf(b);
+        const ids = [b.cover && b.cover.id, ...(b.pages || []).flatMap((pg) => [...(pg.photos || []).map((x) => x && x.id), ...freeBlocks(pg).filter((x) => x && x.k === "photo" && x.p).map((x) => x.p.id)]), ...freeBlocks({ ...(b.coverPage || {}), type: "free" }).filter((x) => x && x.k === "photo" && x.p).map((x) => x.p.id)].filter(Boolean);
+        if (mf && mf.kind === "talent") {
+          const t = talentOf(b);
+          if (!t) out.push({ i: -1, text: `${mf.name}: no model card found, so no photograph of theirs can print — check them in Models` });
+          else {
+            const not = [...new Set(ids.filter((id) => !clearedIn(b, id)))];
+            if (not.length) out.push({ i: -1, text: `${not.length} photograph${not.length === 1 ? " is" : "s are"} no longer cleared for ${t.name}'s card and print${not.length === 1 ? "s" : ""} as missing — change the album's tick, the tag or the Usage in Upload, or take ${not.length === 1 ? "it" : "them"} out` });
+          }
+        }
+        if (mf) {
+          // Words the studio typed that still name the studio: their book
+          // should not (the owl and the defaults are handled; this is the rest).
+          const c = cfg(), ig = handleOf(c.instagram || "");
+          const esc2 = (x) => String(x).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const own = new RegExp([studio(), "nerdyphotographer", c.email, ig && ig.length > 3 ? ig : ""].filter(Boolean).map(esc2).join("|"), "i");
+          const words = (o) => JSON.stringify(o, (k, v) => (k === "photos" || k === "p" || k === "id" || k === "madeFor" ? undefined : v)) || "";
+          if (own.test(words({ title: b.title, subtitle: b.subtitle, footText: b.footText, coverText: b.coverText, coverPage: b.coverPage, texts: b.texts, watermark: null }))) out.push({ i: -1, text: `Cover or book details: names your studio — this is ${mf.name}'s book` });
+          (b.pages || []).forEach((pg, i) => { if (own.test(words(pg))) out.push({ i, text: `${PAGE_LABEL[pg.type] || "A page"}: names your studio — this is ${mf.name}'s book` }); });
+        }
+        if (mf && mf.kind !== "talent") {
+          const hidden = [...new Set(ids.filter((id) => { const hit = lib.byId.get(id); return hit && hit.shoot && hit.shoot.isPublic === false && !hit.shoot.outside; }))];
+          if (hidden.length) out.push({ i: -1, text: `${hidden.length} photograph${hidden.length === 1 ? " comes" : "s come"} from an album hidden from your site — hidden albums can still be downloaded by anyone who finds them; for work that isn't out yet, add the files from this computer instead` });
+        }
+      }
       const cl = coverLayoutOf(b);
       if (cl !== "custom" && cl !== "poster" && b.cover && !lib.byId.has(b.cover.id)) out.push({ i: -1, text: `Cover: ${goneWhy(b.cover.id)}` });
       if (cl === "custom") {
@@ -9891,8 +10423,74 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       }));
     }
 
+    /* ---- books made for someone else: a copy file instead of Publish ----
+       Kept on this computer only (never published: the owner's decision,
+       Sep 26 2026), so a copy file is how such a book moves to another
+       computer, or survives a browser clearing its data. It holds the book
+       and the photographs and logo it uses from this computer — nothing
+       else, and nothing is sent anywhere by saving it. */
+    const COPIES_KEY = "wps_book_copies";
+    const copiesSaved = () => { try { return JSON.parse(localStorage.getItem(COPIES_KEY) || "{}") || {}; } catch (e) { return {}; } };
+    const noteCopy = (id) => { const all = copiesSaved(); all[id] = Date.now(); try { localStorage.setItem(COPIES_KEY, JSON.stringify(all)); } catch (e) {} };
+    const slugOf = (x) => String(x || "").normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 50) || "book";
+    function copyState(v) {
+      const at = copiesSaved()[v.id];
+      if (!at) return { ok: false, text: "no copy saved yet" };
+      const when = new Date(at).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+      return at >= (v.updatedAt || 0) - 2000 ? { ok: true, text: `copy saved ${when}` } : { ok: false, text: `changed since the copy of ${when}` };
+    }
+    async function saveCopy(b) {
+      const ids = new Set(JSON.stringify(b).match(/\b(?:out|lg)_[a-z0-9_]+/g) || []);
+      const recs = (await outAll()).filter((r) => r && ids.has(r.id) && typeof r.dataUrl === "string");
+      const file = { nerdybook: 1, savedAt: Date.now(), book: b, photos: recs.map((r) => ({ id: r.id, name: r.name || "", dataUrl: r.dataUrl, at: r.at || 0, ...(r.logo ? { logo: true } : {}) })) };
+      const blob = new Blob([JSON.stringify(file)], { type: "application/octet-stream" });
+      const who = slugOf((b.madeFor && b.madeFor.name) || b.name), what = slugOf(b.title || "book");
+      const name = `${who}-${what === who ? ({ brand: "lookbook", client: "book", talent: "portfolio" })[(b.madeFor || {}).kind] || "book" : what}.nerdybook`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = name; a.hidden = true; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      noteCopy(b.id);
+      return { name, size: blob.size, photos: recs.filter((r) => !r.logo).length, logo: recs.some((r) => r.logo) };
+    }
+    async function openCopy(file) {
+      let data = null;
+      try { data = JSON.parse(await file.text()); } catch (e) { data = null; }
+      if (!data || data.nerdybook !== 1 || !data.book || typeof data.book !== "object") return { error: "That file isn't a book copy saved from this builder." };
+      const clean = window.cleanStudioPortfolios ? window.cleanStudioPortfolios({ versions: [data.book], deleted: [] }) : null;
+      const b = clean && clean.versions && clean.versions[0];
+      // Only a book made for someone else is ever saved as a copy; anything
+      // else in such a file is not opened, so it can't reach the public list.
+      if (!b || !isForOthers(b) || !/^bf/.test(b.id)) return { error: "That copy isn't a book made for a brand, a client or a talent, so it wasn't opened." };
+      for (const r of (Array.isArray(data.photos) ? data.photos : [])) {
+        if (!r || !/^(?:out|lg)_[a-z0-9_]+$/.test(String(r.id || "")) || !/^data:image\//.test(String(r.dataUrl || ""))) continue;
+        try { await outPut({ id: r.id, name: String(r.name || "").slice(0, 120), dataUrl: r.dataUrl, forSite: false, at: Number(r.at) || Date.now(), ...(r.logo ? { logo: true } : {}) }); } catch (e) {}
+      }
+      await outsideRefresh();
+      const cur = readState();
+      const have = cur.versions.find((v) => v.id === b.id);
+      if (have && (have.updatedAt || 0) > (b.updatedAt || 0)) return { older: true, book: have };
+      if (!writeState({ versions: [b, ...cur.versions.filter((v) => v.id !== b.id)], deleted: cur.deleted.filter((id) => id !== b.id) })) return { error: "Not opened: this computer's storage for the site is full." };
+      noteCopy(b.id);
+      return { book: b };
+    }
+
     async function publish() {
       const btn = $("#sbPublish");
+      // A book made for someone else is never published: its button saves a
+      // copy file instead.
+      if (book && isForOthers(book)) {
+        if (!flush()) { API.toast("Not saved on this computer, so no copy was made."); return; }
+        btn.disabled = true;
+        try {
+          const got = await saveCopy(JSON.parse(JSON.stringify(book)));
+          setStatus(`Copy saved: ${got.name}`);
+          const size = got.size < 1048576 ? `${Math.max(1, Math.round(got.size / 1024))} KB` : `${(got.size / 1048576).toFixed(1)} MB`;
+          const bits = [got.photos ? `${got.photos} photo${got.photos === 1 ? "" : "s"} from this computer` : "", got.logo ? "their logo" : ""].filter(Boolean).join(" and ");
+          API.toast(`Copy saved (${size}${bits ? `, with ${bits}` : ""}). Keep it somewhere safe, such as your Google Drive; open it on another computer with Portfolio book → Open a copy.`);
+        } catch (e) { API.toast("The copy could not be made."); }
+        finally { btn.disabled = false; }
+        return;
+      }
       // An unsaved edit must not be reported as published while the older
       // stored version is what actually goes out.
       if (!flush()) { API.toast("Not published: this book could not be saved on this device first."); return; }
@@ -9942,7 +10540,12 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
          came out as "book-2.pdf", and a name in Hindi as "portfolio.pdf"
          (Sep 2026 audit, K12). */
       const slug = String(snap.name || "").normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 60);
-      const base = `nerdyphotographer${slug ? `-${slug}` : "-portfolio"}${format === "booklet" ? "-booklet" : ""}${watermarked ? "-watermarked" : ""}`;
+      // A book made for someone else is named for them and its cover, never
+      // for the studio or the book's working name.
+      const mf = forOf(snap);
+      const base = mf
+        ? `${slugOf(mf.name)}-${slugOf(snap.title || (mf.kind === "talent" ? "portfolio" : "book"))}${format === "booklet" ? "-booklet" : ""}${watermarked ? "-watermarked" : ""}`
+        : `nerdyphotographer${slug ? `-${slug}` : "-portfolio"}${format === "booklet" ? "-booklet" : ""}${watermarked ? "-watermarked" : ""}`;
       try {
         // The chosen resolution first, then softer if the device runs short of memory.
         let result = null, lastErr = null, madeAt = 0, fullSize = 0;
@@ -10018,8 +10621,12 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
                 made++; btn.textContent = `Making the booklet… sheet side ${made}/${sides.length}`;
               }
             }
-            const title = `${snap.name} — ${studio()}${format === "booklet" ? " (booklet)" : ""}`;
-            result = format === "png" ? out : BP ? (await BP.buildPdf(out, { title, author: studio(), marks, cmyk: !!(cmyk && BP) })).bytes : await API.buildPdf(out, title);
+            // The file's details: the studio's for its own book; for anyone
+            // else's, their name, with the studio's credit as its creator —
+            // or no mention of the studio at all when the contract says so.
+            const title = mf ? `${snap.title || snap.name} — ${mf.name}${format === "booklet" ? " (booklet)" : ""}` : `${snap.name} — ${studio()}${format === "booklet" ? " (booklet)" : ""}`;
+            const who = mf ? { author: mf.name, creator: creditOf(snap), producer: creditOf(snap) ? studio() : "" } : null;
+            result = format === "png" ? out : BP ? (await BP.buildPdf(out, { title, author: who ? who.author : studio(), ...(who ? { creator: who.creator, producer: who.producer } : {}), marks, cmyk: !!(cmyk && BP) })).bytes : await API.buildPdf(out, title, who);
             madeAt = dpi; fullSize = orig ? orig.used.size : 0;
             break;
           } catch (err) { lastErr = err; } finally { if (orig) await orig.release(); }
@@ -10072,7 +10679,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     // that loaded the site before they existed still runs the old save code,
     // which would drop them while saying "Saved": refuse until it reloads.
     const L = window.STUDIO_BOOK_LIMITS;
-    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !L.workWays || !L.markStrengths || !L.paras || !L.coverText || !L.blockKinds || !L.schema || !L.lists || !L.photoRows || !(L.pageTypes || []).includes("free") || !L.coverLayouts || !(L.pageTypes || []).includes("end") || !(L.pageTypes || []).includes("look") || !(L.styles || []).includes("gazette") || !L.plateColours || !L.pageLook || !L.typeRoles || !(L.pageTypes || []).includes("more")) {
+    if (!L || !L.fields || !L.fits || !L.papers || !L.borders || !L.fonts || !L.contactRows || !L.workWays || !L.markStrengths || !L.paras || !L.coverText || !L.blockKinds || !L.schema || !L.lists || !L.photoRows || !(L.pageTypes || []).includes("free") || !L.coverLayouts || !(L.pageTypes || []).includes("end") || !(L.pageTypes || []).includes("look") || !(L.styles || []).includes("gazette") || !L.plateColours || !L.pageLook || !L.typeRoles || !(L.pageTypes || []).includes("more") || !L.madeFor || typeof window.getBooksForOthers !== "function") {
       root.innerHTML = `<div class="sb-empty"><p class="sb-warn">The site was updated while this tab was open.</p><p class="sb-hint">Reload the page (or use “↻ Load fresh version”) before editing your books, so nothing you write is lost.</p><p><button type="button" class="sb-btn dark" id="sbReload">Reload now</button></p></div>`;
       root.querySelector("#sbReload").addEventListener("click", () => location.reload());
       return;

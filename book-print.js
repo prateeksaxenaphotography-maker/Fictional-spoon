@@ -724,7 +724,11 @@
       await stream(uniId, "", cmap);
     }
     begin(infoId);
-    write(`<< /Title ${unicodeText(opts.title || "Portfolio")} /Author ${unicodeText(opts.author || "nerdyphotographer.in")} /Creator (nerdyphotographer.in portfolio book) /Producer (nerdyphotographer.in) /CreationDate (D:${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}Z) >>`);
+    // A book made for someone else passes its own author, and a creator that
+    // is the studio's credit or, when the contract forbids one, nothing.
+    const creator = typeof opts.creator === "string" ? opts.creator : "nerdyphotographer.in portfolio book";
+    const producer = typeof opts.producer === "string" ? opts.producer : "nerdyphotographer.in";
+    write(`<< /Title ${unicodeText(opts.title || "Portfolio")} /Author ${unicodeText(opts.author || "nerdyphotographer.in")}${creator ? ` /Creator ${unicodeText(creator)}` : ""}${producer ? ` /Producer ${unicodeText(producer)}` : ""} /CreationDate (D:${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}Z) >>`);
     end();
 
     const xrefAt = length;
