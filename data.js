@@ -2007,12 +2007,12 @@ window.WPS_DATA = {
       "videographer": "—",
       "talent": "Devesh Baisoya(https://www.instagram.com/devesh.baisoya/?hl=en)",
       "location": "Noida",
-      "height": "5'9",
-      "chest": "38-40",
+      "height": "5'9\"",
+      "chest": "38-40 in",
       "chestLabel": "Chest",
-      "waist": "30",
+      "waist": "30 in",
       "hips": "",
-      "shoes": "7.5 UK",
+      "shoes": "UK 7.5",
       "modelHair": "Black",
       "modelEyes": "Dark Brown",
       "agencyCredit": "",
@@ -2024,6 +2024,10 @@ window.WPS_DATA = {
       "modelTypes": [
         "Fitness"
       ],
+      "modelKeys": [
+        "devesh-baisoya"
+      ],
+      "feedsModelCards": true,
       "showStatsOnCompCard": true,
       "showStatsOnModelPortfolio": true,
       "showTestShootCategory": false,
@@ -2045,7 +2049,7 @@ window.WPS_DATA = {
       "lightingDiagram": null,
       "lightingDiagramVisibility": "private",
       "palette": [
-        "#68636d",
+        "#69636d",
         "#2f2d31"
       ],
       "photos": [
@@ -2103,7 +2107,8 @@ window.WPS_DATA = {
           "id": "mu07k1m1euvwbk-5",
           "url": "photos/mu07kqljf8iyar/mu07k1m1euvwbk-1.jpg",
           "objectPosition": "center",
-          "usage": "both",
+          "excludeFromCompCard": true,
+          "usage": "none",
           "look": "creative",
           "small": "photos/mu07kqljf8iyar/mu07k1m1euvwbk-1@480.jpg",
           "medium": "photos/mu07kqljf8iyar/mu07k1m1euvwbk-1@960.jpg"
@@ -2294,10 +2299,7 @@ window.WPS_DATA = {
       "showAgencyEmailOnHome": false,
       "showAgencyEmailOnPdf": false,
       "coverPhotoId": "mu17daf0p7enrr",
-      "modelKeys": [
-        "devesh-baisoya"
-      ],
-      "updatedAt": 1790334634454
+      "updatedAt": 1790401923455
     },
     {
       "id": "mubczus1xaoo4q",
@@ -2896,8 +2898,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1790401882111,
-    "syncedAt": 1790401882111
+    "updatedAt": 1790401926540,
+    "syncedAt": 1790401926540
   },
   "INVITE_CODES": [
     {
@@ -3317,12 +3319,12 @@ window.WPS_DATA = {
         "key": "devesh-baisoya",
         "name": "Devesh Baisoya",
         "talent": "Devesh Baisoya(https://www.instagram.com/devesh.baisoya/?hl=en)",
-        "height": "5'9",
-        "chest": "38-40",
+        "height": "5'9\"",
+        "chest": "38-40 in",
         "chestLabel": "Chest",
-        "waist": "30",
+        "waist": "30 in",
         "hips": "",
-        "shoes": "7.5 UK",
+        "shoes": "UK 7.5",
         "modelHair": "Black",
         "modelEyes": "Dark Brown",
         "agencyCredit": "",
@@ -3334,7 +3336,7 @@ window.WPS_DATA = {
         "modelTypes": [
           "Fitness"
         ],
-        "updatedAt": 1789327805095,
+        "updatedAt": 1790401923455,
         "showStatsOnCompCard": true,
         "showStatsOnModelPortfolio": true,
         "showModelInstagramOnCompCard": true,
