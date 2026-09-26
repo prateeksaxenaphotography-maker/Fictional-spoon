@@ -4315,3 +4315,9 @@ main[data-static-path] .section a, main[data-static-path] .pr-links a { color: v
 main[data-static-path] .pr-links { line-height: 2.4; }
 main[data-static-path] .pr-links a { display: inline-block; padding: 4px 2px; }
 #ppSaveBtn.is-saved { background: #047857; border-color: #047857; color: #fff; }
+
+/* The model portfolio that is open now, in its saved list (Sep 26 2026:
+   saving rebuilt — it saves itself). */
+.pp-saved-row.is-open .pp-saved-name { font-weight: 700; }
+.pp-saved-row.is-open .pp-saved-when { color: var(--accent); font-weight: 600; }
+.pp-saved-box .pp-type-note .pp-link { padding: 0; font-size: inherit; }

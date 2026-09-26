@@ -2044,6 +2044,13 @@
     // as watermarked PNGs; only the studio downloads the PDF.
     const lookOnly = !admin && !portfolioPdfSalesOpen();
     const name = getTalentCleanName(shoot.talent || shoot.title);
+    /* Whose saved portfolios these are. The model's card has an id built
+       from their name AND the Instagram link in it, so editing the link used
+       to make every saved portfolio of theirs vanish from this list. They are
+       matched by the model's own key too (from Models), and saved with it. */
+    const shootIdNow = (shoot && shoot.id) || "";
+    const modelKeyNow = (shoot && shoot.modelKey) || (Array.isArray(shoot && shoot.modelKeys) && shoot.modelKeys.length === 1 ? shoot.modelKeys[0] : slugify(name));
+    const isMine = (v) => !!v && (v.shootId === shootIdNow || (!!modelKeyNow && v.modelKey === modelKeyNow));
     // Their PNG (or a screenshot of the preview) shows the studio which photos and layout to use.
     const lookMail = lookOnly ? portfolioPdfMailLink(name, `Hi, I'd like the portfolio PDF of ${name}. I've attached the preview I made.`) : "";
     const coarse = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
@@ -2354,7 +2361,18 @@
        closing and reopening the builder still knows. */
     let savedSig = null, sigSettle = 0;
     const sigNow = () => JSON.stringify(currentSpec());
-    const resumed = readDraft();
+    /* A draft that belongs to a saved portfolio is only worth resuming if it
+       is newer than that portfolio (unsaved work from before saving saved
+       itself). An older one — or one whose portfolio has gone — would put an
+       old arrangement on screen, and autosave would then write it over the
+       newer save. Such drafts come only from builds before 26 Sep 2026. */
+    const resumed = (() => {
+      const d = readDraft();
+      if (!d || !d.from || typeof window.getModelPdfs !== "function") return d;
+      const v = window.getModelPdfs().versions.find((x) => x.id === d.from.id);
+      if (!v || (v.updatedAt || 0) >= (d.at || 0)) { clearDraft(); return null; }
+      return d;
+    })();
     let resumedNote = false, autoOpened = false;
     const resumedWords = () => autoOpened && state.fromSaved
       ? `Opened “${esc(state.fromSaved.name)}”, your latest saved portfolio for this model.`
@@ -2422,8 +2440,11 @@
     };
     function close() {
       // Kept before anything is torn down, so shutting the builder is not the
-      // same as throwing the afternoon's work away.
-      try { writeDraft(); } catch (e) {}
+      // same as throwing the afternoon's work away. An open portfolio is
+      // simply saved (no draft beside it, which could later be put over a
+      // newer save); unsaved work is kept as the draft.
+      if (admin && state.fromSaved) { commitPending(); clearDraft(); }
+      else { try { writeDraft(); } catch (e) {} }
       renderToken++;
       window.removeEventListener("keydown", onKey, true);
       dropFiles();
@@ -2542,17 +2563,22 @@
        select when I already have something already made." */
     function savedBoxHtml(withSave, open) {
       if (!admin) return "";
+      const on = state.fromSaved;
       return `<details class="pp-panel pp-saved-box"${open ? " open" : ""}>
         <summary>Saved portfolios<span id="ppSavedCount"></span></summary>
-        <p class="pp-type-note">${withSave
-          ? "Keep this arrangement by name and reopen it whenever you like — the photos, the order, the layout, the cover and any nudge you gave a photo. It saves the arrangement rather than the file, so reopening it draws from today's photos and today's type, and both downloads are a press away. Saved on this device, and live the next time you publish from Calendar."
-          : "Open one to pick up where you left off."}</p>
-        ${withSave ? `<div class="pp-save-row">
-          <input type="text" id="ppSaveName" maxlength="60" value="${esc((state.fromSaved && state.fromSaved.name) || "")}" placeholder="Name it, e.g. Devesh — agency set" />
-          <button type="button" class="pp-sample-btn" id="ppSaveBtn">${state.fromSaved ? `Update “${esc(state.fromSaved.name)}”` : "Save this arrangement"}</button>
+        ${!withSave ? `<p class="pp-type-note">Open one to pick up where you left off.</p>` : on ? `
+        <div class="pp-save-row">
+          <input type="text" id="ppSaveName" maxlength="60" value="${esc(on.name)}" aria-label="This portfolio's name" title="Its name: type to rename it" />
+          <button type="button" class="pp-sample-btn" id="ppSaveBtn">Save now</button>
         </div>
         <div class="pp-save-state" id="ppSaveState" role="status" aria-live="polite"></div>
-        ${state.fromSaved ? `<p class="pp-type-note">Saving keeps “${esc(state.fromSaved.name)}”. Change the name to keep a second one instead.</p>` : ""}` : ""}
+        <p class="pp-type-note">It saves itself: every change is kept within a second, then read back to make sure. <button type="button" class="pp-link" id="ppSaveCopy">Save as a copy</button> to keep a second version.</p>` : `
+        <div class="pp-save-row">
+          <input type="text" id="ppSaveName" maxlength="60" value="" placeholder="Name it, e.g. ${esc(name)} — agency set" aria-label="A name for this portfolio" />
+          <button type="button" class="pp-sample-btn" id="ppSaveBtn">Save this portfolio</button>
+        </div>
+        <div class="pp-save-state" id="ppSaveState" role="status" aria-live="polite"></div>
+        <p class="pp-type-note">Save it once and it keeps itself: every change after that saves on its own. Kept on this device, and on the live site the next time you publish.</p>`}
         <div id="ppSavedList"></div>
       </details>`;
     }
@@ -2637,44 +2663,106 @@
       return true;
     }
 
-    // Says what pressing Save will do now — keep the arrangement that is
-    // open, or start a new one — without re-rendering the whole panel.
-    /* The button says what pressing it will actually DO, judged on the name in
-       the box rather than on which arrangement is open. It read "Update it"
-       whenever one was open — so typing a different name and pressing it made
-       a second arrangement while the button promised to replace the first. */
-    function syncSaveRow() {
-      const btn = body.querySelector("#ppSaveBtn");
-      const nameEl = body.querySelector("#ppSaveName");
-      if (!btn) return;
-      const typed = ((nameEl && nameEl.value) || "").trim();
-      const keeps = state.fromSaved && (typed === state.fromSaved.name || !typed);
-      btn.textContent = keeps ? `Update “${state.fromSaved.name}”` : "Save as a new one";
+    /* ---- Saving, rebuilt (26 Sep 2026) -----------------------------------
+       The studio reported Save and Update "not working" four times. Each time
+       one path was mended — a field the normaliser dropped, a field the save
+       left out, a status that could not see a change, a builder that reopened
+       on step one — and each time the design itself was the trouble: a button
+       that had to be remembered, a name box that decided whether a press
+       updated or duplicated, a draft beside the save that could disagree
+       with it. So it was rebuilt from nothing:
+       - an open portfolio SAVES ITSELF: a change that has held still for
+         0.7 s is written, and closing the builder writes anything pending;
+       - every write is READ BACK and REOPENED in memory, and the line under
+         the name says exactly what happened — saved, not saved and why, or
+         saved except for the named settings that would not come back;
+       - a new arrangement is saved once, by name; from then on it is the open
+         portfolio. The name box renames it. "Save as a copy" keeps a second.
+       - no draft is kept beside a saved portfolio: the portfolio is the
+         record, so a stale draft can never be put over a newer save;
+       - a model's portfolios are theirs by their key, not by an id that
+         changes when their Instagram link is edited. */
+    let publishing = false, saveFailed = false, saveLost = [], lastSavedAt = 0, seenSig = null, stableSince = 0;
+    const store = () => (typeof window.getModelPdfs === "function" ? window.getModelPdfs() : { versions: [], deleted: [] });
+    const mine = () => store().versions.filter(isMine);
+    let paintSaved = () => {};
+    const LOST_WORDS = { pages: "the number of pages", count: "the photos", picks: "the photos", cleared: "the photos", order: "the order of the photos", lead: "the big photo", cover: "the cover", coverId: "the cover photo", coverStyle: "the cover's look", layout: "the layout", layouts: "the layout", bigAt: "where the big photo sits", cols: "the columns", fewerOnTop: "the short row", detailsAlign: "the alignment", statsAlign: "the measurements' alignment", contactAlign: "the contact line's alignment", tags: "the pose labels", tagPlace: "where the pose labels sit", tagAlign: "how the pose labels line up", perPage: "photos per page", spacing: "the spacing", span: "a photo's width", adjust: "a photo's position or zoom" };
+    // What reopening the stored copy would put on screen, against what is on
+    // screen now. applySpec replaces every setting it touches with a new value,
+    // so a shallow copy of the state puts everything back afterwards.
+    function reopenLoses(spec) {
+      if (!spec) return ["everything"];
+      const keep = { ...state };
+      let before, after;
+      try { before = JSON.parse(sigNow()); applySpec(JSON.parse(JSON.stringify(spec))); after = JSON.parse(sigNow()); }
+      catch (e) { Object.assign(state, keep); return []; }
+      Object.assign(state, keep);
+      return [...new Set(Object.keys(before).filter((k) => JSON.stringify(before[k]) !== JSON.stringify(after[k])).map((k) => LOST_WORDS[k] || k))];
     }
-
-    /* One line under Save that always says where things stand: not saved,
-       changes not saved, saved on this device but not live, or live. The
-       publish that makes it live is offered right there. */
-    let publishing = false, saveFailed = false;
-    // The button itself answers the press, for a moment, before it goes back
-    // to saying what the next press will do.
+    const newId = () => `mp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+    const dateName = () => `${name} — ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`;
+    /* Write what is on screen into the open portfolio — or, with `asNew`, into
+       a new one by that name — then read it back. */
+    function commit(asNew) {
+      const cur = store();
+      let v = !asNew && state.fromSaved ? cur.versions.find((x) => x.id === state.fromSaved.id) : null;
+      if (!asNew && state.fromSaved && !v) { state.fromSaved = null; savedSig = null; return { gone: true }; }
+      if (!v) {
+        const limit = (window.MODEL_PDF_LIMITS || {}).perModel || 12;
+        if (cur.versions.filter(isMine).length >= limit) return { full: limit };
+        v = { id: newId(), name: String((asNew && asNew.name) || dateName()).slice(0, 60) };
+        cur.versions.unshift(v);
+      }
+      v.shootId = shootIdNow;
+      if (modelKeyNow) v.modelKey = modelKeyNow;
+      v.spec = currentSpec();
+      v.updatedAt = Date.now();
+      if (window.saveModelPdfs(cur) === false) { saveFailed = true; return { failed: true }; }
+      if (typeof window.stampPortfolioPdfSetting === "function") window.stampPortfolioPdfSetting();
+      const back = store().versions.find((x) => x.id === v.id);
+      if (!back) { saveFailed = true; return { failed: true }; }
+      state.fromSaved = { id: back.id, name: back.name };
+      savedSig = sigNow(); seenSig = savedSig; lastSavedAt = Date.now(); saveFailed = false;
+      saveLost = reopenLoses(back.spec);
+      clearDraft();
+      paintSaved();
+      return { ok: true, v: back };
+    }
+    // The open portfolio saves itself once a change has held still.
+    function autoSave() {
+      if (!admin || !state.fromSaved || sigSettle || savedSig === null || publishing) return;
+      const now = sigNow();
+      if (now === savedSig) { seenSig = now; return; }
+      if (now !== seenSig) { seenSig = now; stableSince = Date.now(); return; }
+      if (Date.now() - stableSince < 700) return;
+      // Half-way through picking is not an arrangement: it waits for a whole one.
+      if (minPicks() - picked().length > 0) return;
+      const r = commit(false);
+      if (r.gone) { toast("That portfolio was deleted in another window. Save this one again to keep it."); redrawSavedBox(); }
+    }
+    // Anything not yet written goes when the builder closes (see close()).
+    function commitPending() {
+      try { if (admin && state.fromSaved && !sigSettle && savedSig !== null && sigNow() !== savedSig && minPicks() - picked().length <= 0) commit(false); } catch (e) {}
+    }
     function flashSaved() {
       const btn = body.querySelector("#ppSaveBtn"); if (!btn) return;
       btn.textContent = "Saved ✓"; btn.classList.add("is-saved");
-      setTimeout(() => { btn.classList.remove("is-saved"); syncSaveRow(); }, 1600);
+      setTimeout(() => { if (!btn.isConnected) return; btn.classList.remove("is-saved"); btn.textContent = state.fromSaved ? "Save now" : "Save this portfolio"; }, 1600);
     }
+    const whenSaved = () => (Date.now() - lastSavedAt < 6000 ? "just now" : `at ${new Date(lastSavedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`);
     function saveStateNow() {
       const el = body.querySelector("#ppSaveState"); if (!el) return;
-      if (sigSettle && Date.now() >= sigSettle) { if (savedSig === null) savedSig = sigNow(); sigSettle = 0; }
-      const same = !!state.fromSaved && savedSig !== null && savedSig === sigNow();
+      if (sigSettle && Date.now() >= sigSettle) { if (savedSig === null) savedSig = sigNow(); seenSig = savedSig; sigSettle = 0; }
       const unpub = typeof window.unpublishedState === "function" && ((window.unpublishedState().kinds) || []).includes("model portfolios");
+      const pending = !!state.fromSaved && savedSig !== null && sigNow() !== savedSig;
       let cls, html;
       if (sigSettle) { cls = "is-wait"; html = "Opening…"; }
-      else if (saveFailed) { cls = "is-warn"; html = "<b>Not saved.</b> This browser's storage for the site is full, so it refused. Publish from Calendar, or delete an old saved portfolio, then press Save again."; }
-      else if (!state.fromSaved) { cls = "is-warn"; html = "<b>Not saved yet.</b> Name it and press Save to keep this arrangement."; }
-      else if (!same) { cls = "is-warn"; html = `<b>Changes not saved.</b> Press Update to keep them in “${esc(state.fromSaved.name)}”.`; }
+      else if (saveFailed) { cls = "is-warn"; html = "<b>Not saved.</b> This browser's storage for the site is full, so it refused. Publish from Calendar, or delete an old saved portfolio or book, then press Save now."; }
+      else if (!state.fromSaved) { cls = "is-warn"; html = "<b>Not saved yet.</b> Name it and press Save this portfolio — after that it saves itself."; }
+      else if (pending) { cls = "is-wait"; html = minPicks() - picked().length > 0 ? "Waiting for a photograph on every page before saving…" : "Saving…"; }
+      else if (saveLost.length) { cls = "is-warn"; html = `<b>Saved, except ${esc(saveLost.join(", "))}</b>: reopening it would not bring ${saveLost.length === 1 ? "that" : "those"} back. Everything else is kept.`; }
       else if (publishing) { cls = "is-wait"; html = "<b>Saved.</b> Publishing to the live site…"; }
-      else if (unpub) { cls = "is-ok"; html = `<b>Saved on this device</b> — not on the live site yet. <button type="button" class="pp-sample-btn" id="ppPublishNow">Publish now</button>`; }
+      else if (unpub) { cls = "is-ok"; html = `<b>Saved${lastSavedAt ? ` ${whenSaved()}` : ""}</b> on this device — not on the live site yet. <button type="button" class="pp-sample-btn" id="ppPublishNow">Publish now</button>`; }
       else { cls = "is-live"; html = "<b>Saved and live.</b> Open it on any device."; }
       const key = cls + html;
       if (el.dataset.key !== key) {
@@ -2682,6 +2770,7 @@
         const pub = el.querySelector("#ppPublishNow");
         if (pub) pub.addEventListener("click", async () => {
           if (typeof window.publishStudioDataToLiveSite !== "function") { toast("Publishing is not available here. Use Publish in Calendar."); return; }
+          commitPending();
           publishing = true; saveStateNow();
           let ok = false;
           try { ok = await window.publishStudioDataToLiveSite(); } catch (e) { ok = false; }
@@ -2689,148 +2778,107 @@
           if (ok) toast("Published: your saved portfolios are live on every device.");
         });
       }
-      // The button asks to be pressed while there is something to keep.
-      const btn = body.querySelector("#ppSaveBtn"); if (btn) btn.classList.toggle("is-due", cls === "is-warn");
+      const btn = body.querySelector("#ppSaveBtn"); if (btn) btn.classList.toggle("is-due", cls === "is-warn" && !state.fromSaved);
     }
-    const saveWatch = setInterval(() => { if (!modal.isConnected) { clearInterval(saveWatch); return; } saveStateNow(); }, 600);
+    const saveWatch = setInterval(() => {
+      if (!modal.isConnected) { clearInterval(saveWatch); return; }
+      try { autoSave(); } catch (e) { console.warn("Portfolio autosave:", e); }
+      saveStateNow();
+    }, 350);
+    // The box, drawn again after the open portfolio changes (saved, copied,
+    // opened, deleted), on whichever screen is showing.
+    function redrawSavedBox() {
+      const old = body.querySelector(".pp-saved-box"); if (!old) return;
+      const wrap = document.createElement("div");
+      wrap.innerHTML = savedBoxHtml(!!body.querySelector(".pp-work"), true);
+      old.replaceWith(wrap.firstElementChild);
+      wireSavedPortfolios();
+    }
 
     function wireSavedPortfolios() {
-        // Saved arrangements: keep this one, or put a saved one back on screen.
-        const savedList = body.querySelector("#ppSavedList");
-        if (savedList && typeof window.getModelPdfs === "function") {
-          const shootId = (shoot && shoot.id) || "";
-          const store = () => window.getModelPdfs();
-          const mine = () => store().versions.filter((v) => v.shootId === shootId);
-          const paint = () => {
-            const list = mine();
-            const count = body.querySelector("#ppSavedCount");
-            if (count) count.textContent = list.length ? ` (${list.length})` : "";
-            savedList.innerHTML = list.length
-              ? list.map((v) => `<div class="pp-saved-row" data-id="${esc(v.id)}">
-                  <span class="pp-saved-name">${esc(v.name || "Untitled")}</span>
-                  <span class="pp-saved-when">${new Date(v.updatedAt).toLocaleDateString()}</span>
-                  <button type="button" class="pp-sample-btn" data-open>Open</button>
-                  <button type="button" class="pp-sample-btn" data-del>Delete</button>
-                </div>`).join("")
-              : `<p class="pp-type-note" style="margin:0;">Nothing saved for this model yet.</p>`;
-          };
-          /* Whether it was really kept. saveModelPdfs says false when the
-             browser refuses the write (its storage for this site is full), and
-             that was ignored: the button seemed to do nothing, or the panel
-             said saved when it was not (Sep 25 2026). */
-          const write = (next) => {
-            const ok = window.saveModelPdfs(next) !== false;
-            if (ok && typeof window.stampPortfolioPdfSetting === "function") window.stampPortfolioPdfSetting();
-            paint();
-            if (!ok) toast("Not saved: this browser's storage for the site is full. Publish from Calendar first, or delete an old saved portfolio or book, then press Save again.");
-            return ok;
-          };
-          paint();
-          // Typing in the box changes what the button will do, so it says so
-          // as they type rather than after they have pressed it.
-          const nameBox = body.querySelector("#ppSaveName");
-          if (nameBox) nameBox.addEventListener("input", syncSaveRow);
-          const saveBtn = body.querySelector("#ppSaveBtn");
-          if (saveBtn) saveBtn.addEventListener("click", () => {
-            const nameEl = body.querySelector("#ppSaveName");
-            // `name` in this scope is the model; this one is the arrangement.
-            /* An empty box keeps the arrangement that is open, rather than
-               starting another under a date-stamped name the studio never
-               chose — which is what made editing a saved portfolio feel like
-               losing it. With nothing open it still falls back to the date. */
-            const typed = (nameEl.value || "").trim();
-            const title = typed || (state.fromSaved && state.fromSaved.name) || `${name} — ${new Date().toLocaleDateString()}`;
-            const cur = store();
-            /* Saving under the name of the arrangement that is open replaces
-               it. Otherwise every edit of a saved set made a second copy with
-               the same name, and the studio had to hunt down the old one —
-               which is most of why changing one felt like starting over. */
-            const open = state.fromSaved && cur.versions.find((x) => x.id === state.fromSaved.id);
-            if (open && title === open.name) {
-              open.spec = currentSpec();
-              open.updatedAt = Date.now();
-              if (!write(cur)) { saveFailed = true; saveStateNow(); return; }
-              saveFailed = false;
-              savedSig = sigNow(); saveStateNow(); flashSaved();
-              syncSaveRow();
-              clearDraft();
-              /* Said on the row itself, not only in a toast that slides away.
-                 Updating on the same day changes nothing the studio can see —
-                 same name, same date — so pressing it read as nothing having
-                 happened at all. */
-              const row = savedList.querySelector(`.pp-saved-row[data-id="${open.id}"]`);
-              if (row) {
-                row.classList.add("is-just-saved");
-                const when = row.querySelector(".pp-saved-when");
-                if (when) when.textContent = "just now";
-                setTimeout(() => row.classList.remove("is-just-saved"), 2200);
-              }
-              toast(`“${open.name}” updated.`);
-              return;
-            }
-            const limit = (window.MODEL_PDF_LIMITS || {}).perModel || 12;
-            if (mine().length >= limit) { toast(`That is ${limit} saved for this model, which is the limit. Delete one first.`); return; }
-            cur.versions.unshift({
-              id: `mp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
-              shootId, name: title, updatedAt: Date.now(),
-              spec: {
-                pages: state.pages, count: state.count, picks: [...state.picks], cleared: [...state.cleared],
-                lead: state.lead, cover: state.cover, coverId: state.coverId, coverStyle: state.coverStyle,
-                /* bigAt was missing here while the draft carried it, so where
-                   each page's big photograph sat was the one decision that a
-                   SAVED arrangement could not keep. */
-                layout: state.layout, layouts: layoutsPerPage(), bigAt: bigAtPerPage(),
-                order: [...state.order], fewerOnTop: state.fewerOnTop, cols: colsPerPage(),
-                detailsAlign: state.detailsAlign, statsAlign: state.statsAlign, contactAlign: state.contactAlign,
-                spacing: state.spacing,
-                tags: tagsPerPage(),
-                tagPlace: state.tagPlace,
-                tagAlign: state.tagAlign,
-                perPage: perPage(),
-                span: JSON.parse(JSON.stringify(state.span || {})),
-                adjust: JSON.parse(JSON.stringify(state.adjust || {}))
-              }
-            });
-            const id = cur.versions[0].id;
-            if (!write(cur)) { saveFailed = true; saveStateNow(); return; }
-            saveFailed = false;
-            state.fromSaved = { id, name: title };
-            savedSig = sigNow(); saveStateNow(); setTimeout(flashSaved, 0);
-            /* The name STAYS in the box and the button becomes Update. It was
-               cleared, so the next press fell through to "new" under a
-               date-stamped default name — the studio's change went into a
-               second arrangement they never named, which is most of why
-               editing a saved portfolio felt like losing it. */
-            nameEl.value = title;
-            syncSaveRow();
-            clearDraft();
-            toast(`Saved. It is on this device — publish from Calendar to keep it everywhere.`);
-          });
-          savedList.addEventListener("click", (e) => {
-            const row = e.target.closest(".pp-saved-row");
-            if (!row) return;
-            const v = mine().find((x) => x.id === row.dataset.id);
-            if (!v) return;
-            if (e.target.hasAttribute("data-del")) {
-              if (!confirm(`Delete “${v.name}”? The photos are untouched — only this arrangement goes.`)) return;
-              const cur = store();
-              cur.versions = cur.versions.filter((x) => x.id !== v.id);
-              cur.deleted = [...new Set([...(cur.deleted || []), v.id])];
-              write(cur);
-              return;
-            }
-            if (!e.target.hasAttribute("data-open")) return;
-            applySpec(v.spec);
-            // Remembered, so a change to it can be saved BACK rather than
-            // saved again beside it under the same name.
-            state.fromSaved = { id: v.id, name: v.name };
-            // What it looks like once drawn is what "saved" means for it.
-            savedSig = null; sigSettle = Date.now() + 900;
-            syncSaveRow();
-            showPreview();
-            toast(`“${v.name}” is back on screen.`);
-          });
+      const savedList = body.querySelector("#ppSavedList");
+      if (!savedList || typeof window.getModelPdfs !== "function") return;
+      paintSaved = () => {
+        if (!savedList.isConnected) return;
+        const list = mine();
+        const count = body.querySelector("#ppSavedCount");
+        if (count) count.textContent = list.length ? ` (${list.length})` : "";
+        savedList.innerHTML = list.length
+          ? list.map((v) => { const on = state.fromSaved && state.fromSaved.id === v.id; return `<div class="pp-saved-row${on ? " is-open" : ""}" data-id="${esc(v.id)}">
+              <span class="pp-saved-name">${esc(v.name || "Untitled")}</span>
+              <span class="pp-saved-when">${on ? "open now" : new Date(v.updatedAt).toLocaleDateString()}</span>
+              ${on ? "" : `<button type="button" class="pp-sample-btn" data-open>Open</button>`}
+              <button type="button" class="pp-sample-btn" data-del>Delete</button>
+            </div>`; }).join("")
+          : `<p class="pp-type-note" style="margin:0;">Nothing saved for this model yet.</p>`;
+      };
+      paintSaved();
+      const nameBox = body.querySelector("#ppSaveName");
+      const saveBtn = body.querySelector("#ppSaveBtn");
+      // The name box renames the open portfolio — kept as it is typed.
+      if (nameBox && state.fromSaved) {
+        const rename = () => {
+          const nm = nameBox.value.trim().slice(0, 60);
+          if (!nm || !state.fromSaved || nm === state.fromSaved.name) return;
+          const cur = store(), v = cur.versions.find((x) => x.id === state.fromSaved.id);
+          if (!v) return;
+          v.name = nm; v.updatedAt = Date.now();
+          if (window.saveModelPdfs(cur) === false) { saveFailed = true; return; }
+          state.fromSaved = { id: v.id, name: nm };
+          paintSaved();
+        };
+        nameBox.addEventListener("input", () => { clearTimeout(nameBox._t); nameBox._t = setTimeout(rename, 500); });
+        nameBox.addEventListener("change", rename);
+        nameBox.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rename(); nameBox.blur(); } });
+        nameBox.addEventListener("blur", () => { if (!nameBox.value.trim()) nameBox.value = state.fromSaved ? state.fromSaved.name : ""; });
+      }
+      if (saveBtn) saveBtn.addEventListener("click", () => {
+        if (minPicks() - picked().length > 0) { toast("Pick a photograph for every page first — then it can be saved."); return; }
+        const wasNew = !state.fromSaved;
+        const typed = ((nameBox && nameBox.value) || "").trim();
+        const r = wasNew ? commit({ name: typed || dateName() }) : commit(false);
+        if (r.full) { toast(`That is ${r.full} saved for this model, which is the limit. Delete one first.`); return; }
+        if (r.failed) { saveStateNow(); toast("Not saved: this browser's storage for the site is full. Publish from Calendar first, or delete an old saved portfolio or book, then press Save now."); return; }
+        if (r.gone) { toast("That portfolio was deleted in another window. Press Save this portfolio to keep this one."); redrawSavedBox(); return; }
+        toast(wasNew ? `Saved “${r.v.name}”. From now on every change saves itself.` : `“${r.v.name}” saved.`);
+        if (wasNew) redrawSavedBox();
+        saveStateNow(); flashSaved();
+      });
+      const copyBtn = body.querySelector("#ppSaveCopy");
+      if (copyBtn) copyBtn.addEventListener("click", () => {
+        if (minPicks() - picked().length > 0) { toast("Pick a photograph for every page first."); return; }
+        commitPending();
+        const from = state.fromSaved ? state.fromSaved.name : name;
+        const r = commit({ name: `${from} (copy)` });
+        if (r.full) { toast(`That is ${r.full} saved for this model, which is the limit. Delete one first.`); return; }
+        if (r.failed) { saveStateNow(); toast("Not saved: this browser's storage for the site is full."); return; }
+        toast(`Saved a copy, “${r.v.name}” — you are working on the copy now. “${from}” is unchanged.`);
+        redrawSavedBox();
+      });
+      savedList.addEventListener("click", (e) => {
+        const row = e.target.closest(".pp-saved-row");
+        if (!row) return;
+        const v = mine().find((x) => x.id === row.dataset.id);
+        if (!v) return;
+        if (e.target.hasAttribute("data-del")) {
+          if (!confirm(`Delete “${v.name}”? The photos are untouched — only this saved portfolio goes.`)) return;
+          const cur = store();
+          cur.versions = cur.versions.filter((x) => x.id !== v.id);
+          cur.deleted = [...new Set([...(cur.deleted || []), v.id])];
+          if (window.saveModelPdfs(cur) === false) { toast("Not deleted: this browser's storage for the site is full."); return; }
+          if (state.fromSaved && state.fromSaved.id === v.id) { state.fromSaved = null; savedSig = null; saveLost = []; redrawSavedBox(); }
+          else paintSaved();
+          return;
         }
+        if (!e.target.hasAttribute("data-open")) return;
+        commitPending();
+        applySpec(v.spec);
+        state.fromSaved = { id: v.id, name: v.name };
+        // What it looks like once drawn is what "saved" means for it.
+        savedSig = null; sigSettle = Date.now() + 900; saveLost = []; lastSavedAt = v.updatedAt || 0;
+        showPreview();
+        toast(`“${v.name}” is back on screen.`);
+      });
     }
 
     function showPick() {
@@ -4857,7 +4905,7 @@ ${admin ? `
     if (admin && !resumedNote && typeof window.getModelPdfs === "function") {
       try {
         const sid = (shoot && shoot.id) || "";
-        const latest = window.getModelPdfs().versions.find((v) => v.shootId === sid);
+        const latest = window.getModelPdfs().versions.find(isMine);
         if (latest && applySpec(latest.spec)) {
           state.fromSaved = { id: latest.id, name: latest.name };
           savedSig = null; sigSettle = Date.now() + 900;

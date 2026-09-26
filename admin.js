@@ -1528,6 +1528,10 @@ function cleanModelPdfs(state) {
     return {
       id: v.id,
       shootId: typeof v.shootId === "string" ? v.shootId : "",
+      // The model it belongs to (from Models), so editing the Instagram link
+      // inside their card's name no longer hides their saved portfolios.
+      // Named here or this normaliser drops it (Sep 26 2026).
+      ...(typeof v.modelKey === "string" && v.modelKey.trim() ? { modelKey: v.modelKey.trim().slice(0, 160) } : {}),
       name: String(v.name || "").slice(0, MODEL_PDF_LIMITS.name),
       updatedAt: Number(v.updatedAt) || 0,
       spec: {

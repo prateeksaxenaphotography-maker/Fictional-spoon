@@ -6377,6 +6377,12 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         nb.colourway = "silver-print";
         nb.name = `${name} — ${kind === "lookbook" ? "lookbook" : forWho === "talent" ? "portfolio" : "book"}`;
         if (kind !== "lookbook") { nb.title = name; nb.subtitle = forWho === "talent" ? "Portfolio" : ""; }
+        /* A talent's book starts with the pages that carry what their record
+           holds: About (their type and measurements), a page of photographs,
+           Contact (their email and Instagram, as their record lets a PDF
+           show them) and a back cover — so the details are there without
+           hunting for which page prints them (owner's question, 26 Sep 2026). */
+        if (forWho === "talent" && kind !== "lookbook") nb.pages = [{ type: "about" }, { type: "photos", photos: [] }, { type: "contact" }, { type: "end", layout: "back" }];
         return nb;
       };
       function closeStart() { const el = $("#sbStart"); if (el) el.remove(); }
