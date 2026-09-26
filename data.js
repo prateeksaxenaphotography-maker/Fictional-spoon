@@ -2898,8 +2898,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1790422780619,
-    "syncedAt": 1790422780619
+    "updatedAt": 1790422796948,
+    "syncedAt": 1790422796948
   },
   "INVITE_CODES": [
     {
@@ -3097,7 +3097,7 @@ window.WPS_DATA = {
     "PACKAGES": 1790257919972,
     "TFP_PACKAGE": 1790257919972,
     "HOME_STUDIO_RATE": 1789975069138,
-    "PORTFOLIO_PDF": 1790422773968,
+    "PORTFOLIO_PDF": 1790422792000,
     "HOME_SLIDESHOW": 1790354674280,
     "MEASURE_UNITS": 1790269147688,
     "HOME_STUDIO_RATE_TFP": 1789975069138
@@ -3741,6 +3741,110 @@ window.WPS_DATA = {
   },
   "MODEL_PDFS": {
     "versions": [
+      {
+        "id": "mp_muibi3wg_q4nmp",
+        "shootId": "comp-card-Atharv%20Sharma%20(https%3A%2F%2Fwww.instagram.com%2Fectogainsss%2F%3Fhl%3Den)",
+        "name": "Test",
+        "updatedAt": 1790422792000,
+        "spec": {
+          "pages": 2,
+          "count": 8,
+          "perPage": [
+            4,
+            4
+          ],
+          "span": {
+            "muca80smjx9k90-18": 2
+          },
+          "firstPage": 0,
+          "picks": [
+            "muca5877bysjsu-4",
+            "muca56vgez53vb-0",
+            "muca57yixr16s8-3",
+            "muca57hap5pcdi-1",
+            "muccmrnumyyf3j-23",
+            "muca593bwa9nvo-6",
+            "muca80xnhe2eom-19",
+            "muca80smjx9k90-18"
+          ],
+          "cleared": [],
+          "lead": "muca80smjx9k90-18",
+          "cover": true,
+          "coverId": "muca5a1qkkj6qh-11",
+          "coverStyle": "framed",
+          "tags": [
+            true,
+            false
+          ],
+          "tagPlace": "below",
+          "tagAlign": "left",
+          "layout": "equal",
+          "layouts": [
+            "equal",
+            "lead"
+          ],
+          "cols": [
+            0,
+            0
+          ],
+          "bigAt": [
+            "",
+            "top"
+          ],
+          "detailsAlign": "centre",
+          "statsAlign": "centre",
+          "contactAlign": "left",
+          "spacing": "none",
+          "order": [
+            "muca56vgez53vb-0",
+            "muca5877bysjsu-4",
+            "muca57hap5pcdi-1",
+            "muca57yixr16s8-3",
+            "muca80smjx9k90-18",
+            "muca80xnhe2eom-19",
+            "muca593bwa9nvo-6",
+            "muccmrnumyyf3j-23"
+          ],
+          "fewerOnTop": false,
+          "adjust": {
+            "muca80smjx9k90-18": {
+              "x": 0.5,
+              "y": 0.08963994902161698,
+              "zoom": 1
+            },
+            "muccmrnumyyf3j-23": {
+              "x": 0.5,
+              "y": 0.35,
+              "zoom": 1
+            },
+            "muca593bwa9nvo-6": {
+              "x": 0.5,
+              "y": 0.35,
+              "zoom": 1
+            },
+            "muca80xnhe2eom-19": {
+              "x": 0.18603887524945684,
+              "y": 0.24573177002982619,
+              "zoom": 1
+            },
+            "muca57hap5pcdi-1": {
+              "x": 0.5,
+              "y": 1,
+              "zoom": 1
+            },
+            "muca5877bysjsu-4": {
+              "x": 0.5,
+              "y": 0.6092267115868704,
+              "zoom": 1
+            },
+            "muca57yixr16s8-3": {
+              "x": 0.5,
+              "y": 0.6395129213251747,
+              "zoom": 1
+            }
+          }
+        }
+      },
       {
         "id": "mp_mueija7w_ny3rh",
         "shootId": "comp-card-Atharv%20Sharma%20(https%3A%2F%2Fwww.instagram.com%2Fectogainsss%2F%3Fhl%3Den)",
