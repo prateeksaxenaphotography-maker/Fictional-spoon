@@ -2098,6 +2098,14 @@
       // the sale email even before looking at the reference number.
       ref: newSaleRef()
     };
+    /* The arrangement settings a new portfolio starts from. "Start a new
+       one" (and the older "Start fresh") cleared the photographs but kept the
+       last portfolio's cover style, spacing, alignments and page count, so a
+       new one quietly inherited them — and since v543 the builder opens on
+       the latest saved portfolio, a new one always began from it. */
+    const FRESH = ["pages", "count", "lead", "cover", "coverId", "coverStyle", "layout", "perPage", "span", "order",
+      "fewerOnTop", "cols", "sheetView", "layouts", "bigAt", "detailsAlign", "spacing", "statsAlign", "contactAlign",
+      "tags", "tagPlace", "tagAlign", "filter", "adjust"].reduce((o, k) => { o[k] = JSON.parse(JSON.stringify(state[k])); return o; }, {});
     const cache = new Map();
     let renderToken = 0;
     let fileUrls = [];     // blob: addresses of the finished file(s) on offer
@@ -2317,7 +2325,11 @@
       // empty screen with a note on it.
       if (!admin || !state.picks.size) return;
       try {
-        localStorage.setItem(draftKey(), JSON.stringify({ at: Date.now(), from: state.fromSaved || null, savedSig, spec: currentSpec() }));
+        // Which step they were on, so reopening carries on THERE: half-way
+        // through picking comes back to the picking, a finished arrangement
+        // to its preview.
+        const screen = body && body.querySelector(".pp-work") ? "preview" : "pick";
+        localStorage.setItem(draftKey(), JSON.stringify({ at: Date.now(), from: state.fromSaved || null, savedSig, screen, spec: currentSpec() }));
       } catch (e) {}
     }
     function clearDraft() { try { localStorage.removeItem(draftKey()); } catch (e) {} }
@@ -2345,10 +2357,9 @@
     // preview's "Start a new one" alike.
     function startFresh() {
       clearDraft();
+      Object.assign(state, JSON.parse(JSON.stringify(FRESH)));
       state.picks = new Set(); state.cleared = new Set();
-      state.order = []; state.span = {}; state.adjust = {};
-      state.fromSaved = null; state.layouts = []; state.cols = [];
-      state.cover = false; state.lead = "";
+      state.fromSaved = null; state.choosingCover = false;
       resumedNote = false; autoOpened = false;
       savedSig = null; sigSettle = 0;
       syncPages();
@@ -2410,7 +2421,13 @@
       renderToken++;
       window.removeEventListener("keydown", onKey, true);
       dropFiles();
-      document.body.style.overflow = prevOverflow;
+      /* What was open when the builder opened may have closed since: Back
+         closes the photo viewer underneath and clears the page's lock, and
+         putting back the "hidden" saved at the start left the page locked
+         with nothing open, which stops the site's sticky headers (v542
+         review). Locked only if the viewer is still there. */
+      const lb = document.getElementById("lightbox");
+      document.body.style.overflow = prevOverflow === "hidden" && !(lb && !lb.hidden) ? "" : prevOverflow;
       modal.remove();
       // Back to whatever opened the builder, rather than the top of the
       // document — or, worse, nothing at all (Sep 2026 audit).
@@ -4842,7 +4859,10 @@ ${admin ? `
         }
       } catch (e) { /* opens on the photo step, as it always did */ }
     }
-    if (admin && resumedNote && minPicks() - picked().length <= 0) showPreview();
+    // A draft written before v544 has no step: one that came from a saved
+    // portfolio was that portfolio, so it opens on its preview.
+    const onPreview = autoOpened || !!(resumed && (resumed.screen ? resumed.screen === "preview" : resumed.from));
+    if (admin && resumedNote && onPreview && minPicks() - picked().length <= 0) showPreview();
     else showPick();
     modal.querySelector(".pp-close").focus();
   }

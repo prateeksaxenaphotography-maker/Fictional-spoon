@@ -608,6 +608,7 @@
           </div>
         </div>`;
       const close = (v) => { box.remove(); document.removeEventListener("keydown", onKey); resolve(v); };
+      box._cancel = () => close(null);
       const onKey = (e) => { if (e.key === "Escape") close(null); };
       box.addEventListener("click", (e) => {
         if (e.target === box || e.target.closest("[data-out-cancel]")) return close(null);
@@ -629,7 +630,7 @@
       box.className = "sb-modal-back";
       box.innerHTML = `
         <div class="sb-modal" role="alertdialog" aria-modal="true" aria-labelledby="sbDelTitle" aria-describedby="sbDelText">
-          <h3 id="sbDelTitle">Delete “${esc(name)}”?</h3>
+          <h3 id="sbDelTitle">Delete “${API.esc(name)}”?</h3>
           <p id="sbDelText" class="sb-hint">It is gone from this device straight away, and this can't be undone. If the book was published, your next publish removes it from your other devices too.</p>
           <div class="sb-modal-foot">
             <button type="button" class="sb-btn" data-del-keep>Keep the book</button>
@@ -637,6 +638,7 @@
           </div>
         </div>`;
       const close = (v) => { box.remove(); document.removeEventListener("keydown", onKey); resolve(v); };
+      box._cancel = () => close(false);
       const onKey = (e) => { if (e.key === "Escape") close(false); };
       box.addEventListener("click", (e) => {
         if (e.target === box || e.target.closest("[data-del-keep]")) return close(false);
@@ -5789,6 +5791,10 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
      its panels constantly, so rather than write the tooltip out forty times
      the name is copied across wherever one is missing, on every redraw. */
   function nameOnHover(root) {
+    // It sweeps the whole document, so one watcher serves every visit; each
+    // visit used to leave another one running on the body.
+    if (nameOnHover.on) return;
+    nameOnHover.on = true;
     // The sheets that open over the builder (the picker, the reading view) are
     // appended to the body, not inside the root, so both are swept.
     const WHERE = ".sb-root, .sb-modal-back, .sb-read";
@@ -5826,8 +5832,27 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     // <section> AROUND the root, whose own children never change, so until
     // v542 leaving through the menu kept "sb-editing" on — the next page had
     // no header, no footer and could not scroll.
+    /* ...and only the builder on screen may do so. An earlier visit's
+       leftovers used to fire later — its resize handler on the next resize or
+       full-screen, long after the studio had come back — and strip the
+       classes from the editor that was open NOW: the site's header and footer
+       came back over it (found in the v542 review). mount.current is the root
+       in charge; anything older only cleans up after itself. */
+    mount.current = root;
+    const leave = () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("click", onDoc);
+      window.removeEventListener("resize", onResize);
+      // Sheets this builder put on the body (a question about a photograph
+      // from this computer, the delete question) go too, answered "cancel".
+      document.querySelectorAll(".sb-modal-back").forEach((m) => { if (m._cancel) m._cancel(); else m.remove(); });
+      if (mount.current !== root) return;
+      mount.current = null;
+      document.documentElement.classList.remove("sb-book", "sb-editing");
+      stopBarWatch();
+    };
     if (root.parentNode) {
-      const gone = new MutationObserver(() => { if (!root.isConnected) { document.documentElement.classList.remove("sb-book", "sb-editing"); stopBarWatch(); gone.disconnect(); } });
+      const gone = new MutationObserver(() => { if (!root.isConnected) { gone.disconnect(); leave(); } });
       for (let n = root.parentNode; n && n !== document; n = n.parentNode) gone.observe(n, { childList: true });
     }
     const esc = API.esc;
@@ -5987,7 +6012,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       if (pop && !pop.hidden && !pop.contains(e.target) && !(btn && btn.contains(e.target))) { pop.hidden = true; btn.setAttribute("aria-expanded", "false"); }
     };
     const onResize = () => {
-      if (!root.isConnected) { window.removeEventListener("resize", onResize); document.documentElement.classList.remove("sb-editing", "sb-book"); stopBarWatch(); return; }
+      if (!root.isConnected) { leave(); return; }
       if ($("#sbLayer")) drawLayer();
       if ($(".sb-hits") || editing) drawHits(lastRender);
       if ($("#sbWork")) applyPanes();
@@ -6219,7 +6244,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     }
     function stopBarWatch() {
       if (barWatch) { barWatch.disconnect(); barWatch = null; }
-      document.documentElement.classList.remove("sb-has-pubbar");
+      if (mount.current === root || !mount.current) document.documentElement.classList.remove("sb-has-pubbar");
     }
     function showEditor() {
       document.documentElement.classList.add("sb-editing");
