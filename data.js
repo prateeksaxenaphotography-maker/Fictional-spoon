@@ -2322,7 +2322,7 @@ window.WPS_DATA = {
       "chestLabel": "Chest",
       "waist": "29 in",
       "hips": "",
-      "shoes": "US 9",
+      "shoes": "UK 9",
       "modelHair": "Black",
       "modelEyes": "Black",
       "agencyCredit": "",
@@ -2693,7 +2693,8 @@ window.WPS_DATA = {
       "showAgencyEmailOnCompCard": false,
       "showAgencyEmailOnHome": false,
       "showAgencyEmailOnPdf": false,
-      "coverPhotoId": "muca5a1qkkj6qh"
+      "coverPhotoId": "muca5a1qkkj6qh",
+      "updatedAt": 1790401878851
     }
   ],
   "DELETED_IDS": [
@@ -2895,8 +2896,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1790401755364,
-    "syncedAt": 1790401755364
+    "updatedAt": 1790401882111,
+    "syncedAt": 1790401882111
   },
   "INVITE_CODES": [
     {
@@ -3257,7 +3258,7 @@ window.WPS_DATA = {
         "chestLabel": "Chest",
         "waist": "29 in",
         "hips": "",
-        "shoes": "US 9",
+        "shoes": "UK 9",
         "modelHair": "Black",
         "modelEyes": "Black",
         "agencyCredit": "",
@@ -3269,7 +3270,7 @@ window.WPS_DATA = {
         "modelTypes": [
           "Fashion"
         ],
-        "updatedAt": 1790271280390,
+        "updatedAt": 1790401878852,
         "showStatsOnCompCard": true,
         "showStatsOnModelPortfolio": true,
         "showModelInstagramOnCompCard": true,
