@@ -39,11 +39,10 @@
    be free to change. The rule to hold instead of single-sourcing is that
    this page must never CONTRADICT, and never GRANT MORE THAN, the clause
    "COMMERCIAL USAGE RIGHTS & INTELLECTUAL PROPERTY" in the version that
-   window.ACTIVE_CONTRACTS points at (V3.12-COMMERCIAL as this is written,
-   where it is "USAGE RIGHTS & INTELLECTUAL PROPERTY"). That clause keeps
-   copyright exclusively with the studio and grants a paying client use on
-   their own website, social media, portfolio and comp cards (print, outdoor,
-   TV and paid advertising licensed separately); everything below is narrower than
+   window.ACTIVE_CONTRACTS points at (V4.0-COMMERCIAL as this is written, the V3.11 wording;
+   V3.12 briefly called it "USAGE RIGHTS & INTELLECTUAL PROPERTY"). That clause keeps
+   copyright exclusively with the studio and grants a paying client the usage
+   "specified in the agreed project scope"; everything below is narrower than
    it — the public is granted only linking, sharing and private reference.
    If that clause is ever widened or narrowed, read this page again.
    ============================================================ */

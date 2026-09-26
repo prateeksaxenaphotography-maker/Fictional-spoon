@@ -561,3 +561,35 @@ window.WPS_CONTRACT_ARCHIVE["V3.6-TFP"].status = "Archived — superseded by V3.
   A["V3.11-TFP"].effectiveDate = "September 2026 (superseded by V3.12-TFP)";
   A["V3.11-TFP"].status = "Archived - superseded by V3.12-TFP (one cancellation rule, portfolio permission, negligence carve-out, parties and law)";
 })();
+
+/* ── V4.0 (26 Sep 2026) ─────────────────────────────────────────────────────
+   The owner's instruction: the contract clients sign goes back to the V3.11
+   wording — "I want the contract language that was before … match it to
+   V3.11". V3.12 (24 Sep 2026) had been issued without the owner approving its
+   wording; among other things its usage clause could be read as a package
+   promising the client's portfolio and comp cards, when making those is
+   extra, paid work.
+   V4.0 is V3.11 word for word (including the British spelling V3.11 already
+   carries); only the version name and date differ. A new number rather than
+   pointing back at V3.11, so every booking says which text it was made under
+   and the week of V3.12 stays readable: V3.12 is archived unchanged for anyone
+   who signed it between 24 and 26 Sep 2026. */
+(() => {
+  const A = window.WPS_CONTRACT_ARCHIVE;
+  for (const [kind, label] of [["COMMERCIAL", "Paid Commercial"], ["TFP", "Test Shoot / TFP"]]) {
+    const from = A[`V3.11-${kind}`];
+    // "V4.0", not "V4": the site reads version numbers as number.number
+    // (the admin's sorting, the booking's reference, the terms modal), and a
+    // bare "V4" would sort as the oldest and print as a blank.
+    A[`V4.0-${kind}`] = {
+      version: `V4.0-${kind}`,
+      title: from.title.replace("V3.11", "V4.0"),
+      effectiveDate: "26 September 2026 - Present",
+      status: `Active / Current (${label})`,
+      summary: from.summary,
+      fullText: from.fullText
+    };
+    A[`V3.12-${kind}`].effectiveDate = "24 - 26 September 2026 (superseded by V4.0)";
+    A[`V3.12-${kind}`].status = "Archived - superseded by V4.0, which restores the V3.11 wording";
+  }
+})();

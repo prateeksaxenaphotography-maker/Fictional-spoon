@@ -794,7 +794,7 @@ window.getAdminTfpPackage = getAdminTfpPackage;
    opening the Calendar view. Defined inside a view function, the archive
    simply did not exist on those paths.
    ============================================================ */
-window.ACTIVE_CONTRACTS = { commercial: "V3.12-COMMERCIAL", tfp: "V3.12-TFP" };
+window.ACTIVE_CONTRACTS = { commercial: "V4.0-COMMERCIAL", tfp: "V4.0-TFP" };
 
 /* ============================================================
    § CALL TIME, GRACE PERIOD & NO-SHOW
