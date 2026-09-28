@@ -2898,8 +2898,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1790422820173,
-    "syncedAt": 1790422820173
+    "updatedAt": 1790616107476,
+    "syncedAt": 1790616107476
   },
   "INVITE_CODES": [
     {
@@ -2937,27 +2937,27 @@ window.WPS_DATA = {
   "PROMO_CODES": {
     "#f915367ff959b140a003": {
       "flat": 500,
-      "label": "Flat ₹500 off"
+      "label": "Flat ₹500 Off Instant Savings"
     },
     "#1d069df3fe6fdfed9a57": {
       "flat": 1000,
-      "label": "Flat ₹1,000 off"
+      "label": "Flat ₹1,000 Off Instant Savings"
     },
     "#37c15c4275c84f574057": {
       "pct": 10,
-      "label": "10% off the package"
+      "label": "10% Off First Commercial Booking"
     },
     "#156de6ef2e2631aca872": {
       "pct": 15,
-      "label": "15% off the package"
+      "label": "15% Off Noida / Delhi NCR Shoots"
     },
     "#2501f9458a1245090209": {
       "pct": 20,
-      "label": "20% off the package"
+      "label": "20% Off Studio Production Campaigns"
     },
     "#a859c373f3c8c4b31fb0": {
       "pct": 0,
-      "label": "Home studio free",
+      "label": "Home comp",
       "includeAddons": false,
       "homeStudioDiscount": {
         "type": "free"
@@ -2965,11 +2965,11 @@ window.WPS_DATA = {
     },
     "#5ae544d40832a744c73d": {
       "flat": 7000,
-      "label": "Flat ₹7,000 off",
+      "label": "Flat ₹7,000 Off (FRIENDLYDIS)",
       "includeAddons": false,
       "homeStudioDiscount": {
         "type": "fixed",
-        "value": 2000
+        "value": 3000
       },
       "active": true,
       "startDate": "2026-09-21"
@@ -2978,38 +2978,38 @@ window.WPS_DATA = {
   "PACKAGES": [
     {
       "id": "pkg_1",
-      "name": "Comp Card Starter",
+      "name": "Basic Test / Comp Card",
       "price": 7000,
-      "specs": "20 proofs + 2 retouched photos (RAW files not included)"
+      "specs": "20 Proof Clicks + 0 Retouched (No RAW files delivered)"
     },
     {
       "id": "pkg_2",
       "name": "Mini Portfolio",
       "price": 10000,
-      "specs": "25 proofs + 3–5 retouched photos (RAW files not included)"
+      "specs": "25 Proof Clicks + 3-5 Retouched Clicks (No RAW files delivered)"
     },
     {
       "id": "pkg_3",
       "name": "Standard Editorial Portfolio",
       "price": 25000,
-      "specs": "50 proofs + 8–12 retouched photos (RAW files not included)"
+      "specs": "50 Unedited + 8-12 Retouched Clicks (No RAW files delivered)"
     },
     {
       "id": "pkg_4",
       "name": "Premium Brand Campaign",
       "price": 50000,
-      "specs": "100 proofs + 15–25 retouched photos (RAW files not included)"
+      "specs": "100 Unedited + 15-25 Retouched Clicks (No RAW files delivered)"
     },
     {
       "id": "pkg_5",
       "name": "High-End Full Day Production",
       "price": 75000,
-      "specs": "Full proof gallery + 30+ retouched photos (RAW files not included)"
+      "specs": "Full Gallery + 30+ Retouched Master Assets (No RAW files delivered)"
     }
   ],
   "TFP_PACKAGE": {
     "name": "Test Shoot / TFP Collaboration",
-    "specs": "Full proof gallery + 8 retouched photos (RAW files not included)"
+    "specs": "Full Proofing Gallery + 8 Retouched Master Clicks (No RAW files delivered)"
   },
   "HOME_STUDIO_RATE": 2000,
   "PORTFOLIO_PDF": {
@@ -3092,15 +3092,15 @@ window.WPS_DATA = {
   },
   "HOME_STUDIO_RATE_TFP": 4000,
   "SETTINGS_AT": {
-    "INVITE_CODES": 1789975069138,
-    "PROMO_CODES": 1790252591623,
-    "PACKAGES": 1790257919972,
-    "TFP_PACKAGE": 1790257919972,
-    "HOME_STUDIO_RATE": 1789975069138,
+    "INVITE_CODES": 1790616103542,
+    "PROMO_CODES": 1790616103542,
+    "PACKAGES": 1790616103541,
+    "TFP_PACKAGE": 1790616103542,
+    "HOME_STUDIO_RATE": 1790616103542,
     "PORTFOLIO_PDF": 1790422802684,
     "HOME_SLIDESHOW": 1790354674280,
     "MEASURE_UNITS": 1790269147688,
-    "HOME_STUDIO_RATE_TFP": 1789975069138
+    "HOME_STUDIO_RATE_TFP": 1790616103542
   },
   "TESTIMONIALS": {
     "items": [
