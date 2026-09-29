@@ -2904,12 +2904,17 @@ window.WPS_DATA = {
       "2026-10-17::b_audit_WPS-20260823-013037-SRE9",
       "2026-10-17::Prateek Saxena",
       "2026-10-10::b_1790247474216_u1p8",
-      "2026-10-10::Workshop Day"
+      "2026-10-10::Workshop Day",
+      "2026-10-17::b_audit_NP-20260929-152027-SGWM",
+      "2026-10-17::NP-20260929-152027-SGWM",
+      "2026-10-17::Prateek",
+      "2026-10-17::b_audit_NP-20260929-153038-U78V",
+      "2026-10-17::NP-20260929-153038-U78V"
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1790675073218,
-    "syncedAt": 1790675073218
+    "updatedAt": 1790679411713,
+    "syncedAt": 1790679411713
   },
   "INVITE_CODES": [
     {
