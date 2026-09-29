@@ -579,6 +579,20 @@ if (books !== undefined && books !== null) {
     const BLOCK_KEYS = { text: ["k", "x", "y", "w", "h", "r", "t", "role", "fit", "style", "fill", "o", "shape", "corner"], photo: ["k", "x", "y", "w", "h", "r", "p", "edge", "edgeWidth", "shape", "corner"], shape: ["k", "x", "y", "w", "h", "r", "fill", "o", "shape", "corner"], line: ["k", "x", "y", "w", "h", "r", "color", "o", "thick", "width", "path", "bend", "waves", "soft", "pts", "ends", "tip"] };
     const SHAPE_KINDS = new Set(["round", "chamfer", "ellipse", "triangle", "diamond", "star", "parallelogram"]);
     const isFill = (v) => FILLS.has(v) || /^#[0-9a-f]{6}$/.test(String(v));
+    // A photograph's adjustments (v561): whole numbers, -100…100 (vignette 0…100), none written as 0; bw is true or absent.
+    const ADJ_FROM = { br: -100, ct: -100, sa: -100, wm: -100, vg: 0 };
+    const checkAdj = (at, s) => {
+      if (!s || typeof s !== "object" || s.adj === undefined) return;
+      const a = s.adj;
+      if (!a || typeof a !== "object" || Array.isArray(a)) { fail(`${at} has photo adjustments that are not an object`); return; }
+      if (!Object.keys(a).length) fail(`${at} has an empty set of photo adjustments; the app writes none`);
+      for (const [k, v] of Object.entries(a)) {
+        if (k === "bw") { if (v !== true) fail(`${at} has black and white ${JSON.stringify(v)}; the app writes true`); continue; }
+        if (!(k in ADJ_FROM)) { fail(`${at} adjusts ${JSON.stringify(k)}, which the app drops`); continue; }
+        if (!Number.isInteger(v) || v === 0 || v < ADJ_FROM[k] || v > 100) fail(`${at} has ${k} ${JSON.stringify(v)}; the app writes a whole number from ${ADJ_FROM[k]} to 100, and nothing for 0`);
+      }
+    };
+    const BLEND_MODES = new Set(["multiply", "screen", "overlay", "soft-light", "darken", "lighten", "color", "luminosity"]);
     // Everything placed on an Anything page, or on a cover from scratch.
     const checkBlocks = (where, blocks, what) => {
       if (!Array.isArray(blocks)) { fail(`${where} (${what}) has no list of things on it`); return; }
@@ -589,7 +603,28 @@ if (books !== undefined && books !== null) {
         if (!x || typeof x !== "object" || Array.isArray(x)) { fail(`${at} is not an object`); return; }
         if (!BLOCK_KINDS.has(x.k)) { fail(`${at} is a ${JSON.stringify(x.k)}, which the app drops`); return; }
         // Grouped, locked or hidden (v559) on any kind of thing.
-        for (const k of Object.keys(x)) if (!BLOCK_KEYS[x.k].includes(k) && !["g", "lock", "hide"].includes(k)) fail(`${at} (${x.k}) has ${JSON.stringify(k)}, which the app drops`);
+        for (const k of Object.keys(x)) if (!BLOCK_KEYS[x.k].includes(k) && !["g", "lock", "hide", "shadow", "blend", "outline"].includes(k)) fail(`${at} (${x.k}) has ${JSON.stringify(k)}, which the app drops`);
+        // Effects (v561).
+        if (x.shadow !== undefined) {
+          const sh = x.shadow;
+          if (!sh || typeof sh !== "object" || Array.isArray(sh)) fail(`${at} has a shadow that is not an object`);
+          else {
+            for (const k of Object.keys(sh)) if (!["d", "b", "o", "a", "c"].includes(k)) fail(`${at} has a shadow ${JSON.stringify(k)}, which the app drops`);
+            for (const [k, lo, hi] of [["d", 0, 20], ["b", 0, 20], ["o", 0.05, 1], ["a", 0, 359]]) if (typeof sh[k] !== "number" || !(sh[k] >= lo && sh[k] <= hi)) fail(`${at} has a shadow ${k} of ${JSON.stringify(sh[k])}; it must be a number from ${lo} to ${hi}`);
+            if (sh.c !== undefined && !isFill(sh.c)) fail(`${at} has a shadow colour ${JSON.stringify(sh.c)}`);
+          }
+        }
+        if (x.outline !== undefined) {
+          const ol = x.outline;
+          if (x.k !== "text" && x.k !== "shape") fail(`${at} (${x.k}) has an outline; only words and shapes take one`);
+          else if (!ol || typeof ol !== "object" || Array.isArray(ol)) fail(`${at} has an outline that is not an object`);
+          else {
+            for (const k of Object.keys(ol)) if (!["w", "c"].includes(k)) fail(`${at} has an outline ${JSON.stringify(k)}, which the app drops`);
+            if (typeof ol.w !== "number" || !(ol.w >= 0.1 && ol.w <= 3)) fail(`${at} has an outline ${JSON.stringify(ol.w)} mm thick; it must be from 0.1 to 3`);
+            if (ol.c !== undefined && !isFill(ol.c)) fail(`${at} has an outline colour ${JSON.stringify(ol.c)}`);
+          }
+        }
+        if (x.blend !== undefined && !BLEND_MODES.has(x.blend)) fail(`${at} blends as ${JSON.stringify(x.blend)}; the app knows ${[...BLEND_MODES].join(", ")}`);
         if (x.g !== undefined && !(typeof x.g === "string" && /^[a-z0-9]{1,12}$/i.test(x.g))) fail(`${at} is in a group named ${JSON.stringify(x.g)}; the app writes up to 12 letters and numbers`);
         for (const k of ["lock", "hide"]) if (x[k] !== undefined && x[k] !== true) fail(`${at} has ${k} ${JSON.stringify(x[k])}; the app writes true, and nothing otherwise`);
         for (const k of ["x", "y"]) if (typeof x[k] !== "number" || !(x[k] >= -0.3 && x[k] <= 1.3)) fail(`${at} has ${k} of ${JSON.stringify(x[k])}; it must be a number from -0.3 to 1.3`);
@@ -612,6 +647,7 @@ if (books !== undefined && books !== null) {
               if (x.p.fit !== undefined && !FITS.has(x.p.fit)) fail(`${at} places its photo as ${JSON.stringify(x.p.fit)}`);
               if (x.p.opacity !== undefined && !(typeof x.p.opacity === "number" && x.p.opacity >= 0.1 && x.p.opacity < 1)) fail(`${at} has a photo opacity of ${JSON.stringify(x.p.opacity)}`);
               if (x.p.flip !== undefined && !["h", "v", "hv"].includes(x.p.flip)) fail(`${at} flips its photo ${JSON.stringify(x.p.flip)}; the app writes h, v or hv`);
+              checkAdj(at, x.p);
             }
           }
           if (x.edge !== undefined && !FILLS.has(x.edge)) fail(`${at} has an edge colour ${JSON.stringify(x.edge)} the app drops`);
@@ -746,9 +782,11 @@ if (books !== undefined && books !== null) {
           if (s && s.fit !== undefined && !FITS.has(s.fit)) fail(`${where} has a photo placed as ${JSON.stringify(s.fit)}; the app knows ${[...FITS].join(", ")}`);
           if (s && s.opacity !== undefined && !(typeof s.opacity === "number" && s.opacity >= 0.1 && s.opacity < 1)) fail(`${where} has a photo opacity of ${JSON.stringify(s.opacity)}; it must be a number from 0.1 to under 1`);
           if (s && s.flip !== undefined && !["h", "v", "hv"].includes(s.flip)) fail(`${where} flips a photo ${JSON.stringify(s.flip)}; the app writes h, v or hv`);
+          checkAdj(`${where} photo ${s && s.id}`, s);
         }
       });
       if (b.cover && b.cover.fit !== undefined && !FITS.has(b.cover.fit)) fail(`studio portfolio book ${name} has a cover photo placed as ${JSON.stringify(b.cover.fit)}`);
+      checkAdj(`studio portfolio book ${name} cover photo`, b.cover);
       if (b.paper !== undefined && (!PAPERS.has(b.paper) || b.paper === "a4")) fail(`studio portfolio book ${name} has paper ${JSON.stringify(b.paper)}; the app writes b5, a5 or letter, and nothing for A4`);
       if (b.coverText !== undefined) {
         const CT_MAX = { label: 32, mast: 18, tagline: 24, foot: 40, place: 40 };
@@ -907,7 +945,8 @@ try {
   const WRITING = new Set(["story", "note", "quote", "letter", "feature", "article", "ways", "process", "free", "end", "look", "contents", "more"]);
   const wordsIn = (b) => {
     let pages = 0, chars = 0, fits = 0;
-    const settings = (s) => (s ? (s.fit ? 1 : 0) + (s.opacity !== undefined ? 1 : 0) + (s.flip ? 1 : 0) : 0);
+    const settings = (s) => (s ? (s.fit ? 1 : 0) + (s.opacity !== undefined ? 1 : 0) + (s.flip ? 1 : 0) + (s.adj && typeof s.adj === "object" ? Object.keys(s.adj).length : 0) : 0);
+    const effects = (bl) => (bl.shadow ? 1 : 0) + (bl.outline ? 1 : 0) + (bl.blend ? 1 : 0);
     fits += settings(b && b.cover) + (b && b.paper ? 1 : 0) + (b && b.coverStyle ? Object.keys(b.coverStyle).length : 0) + (b && b.watermark ? Object.keys(b.watermark).length : 0) + (b && b.coverText ? Object.keys(b.coverText).length : 0) + (b && b.footText ? 1 : 0) + (b && b.bg ? 1 : 0) + (b && b.showPageNumbers === false ? 1 : 0) + (b && b.edgeBar === false ? 1 : 0);
     for (const side of ["left", "right"]) for (const l of ((b && b.coverText && b.coverText[side]) || [])) if (typeof l === "string") chars += l.length;
     // The cover's layout, and everything placed on a cover from scratch.
@@ -915,7 +954,7 @@ try {
     // Master settings: each text style's settings, the running head, the grid.
     for (const f of Object.values((b && b.typeset) || {})) fits += 1 + (f && typeof f === "object" ? Object.keys(f).length : 0);
     fits += (b && b.runHead ? 1 : 0) + (b && b.baseline ? 1 : 0);
-    for (const bl of (b && b.coverPage && b.coverPage.blocks) || []) { if (!bl) continue; fits += 1 + settings(bl.p); if (typeof bl.t === "string") chars += bl.t.length; }
+    for (const bl of (b && b.coverPage && b.coverPage.blocks) || []) { if (!bl) continue; fits += 1 + settings(bl.p) + effects(bl); if (typeof bl.t === "string") chars += bl.t.length; }
     for (const pg of (b && b.pages) || []) {
       if (!pg) continue;
       if (WRITING.has(pg.type)) pages++;
@@ -928,7 +967,7 @@ try {
       // Everything placed on an Anything page: its words, and the thing itself.
       for (const bl of pg.blocks || []) {
         if (!bl) continue;
-        fits += 1 + settings(bl.p);
+        fits += 1 + settings(bl.p) + effects(bl);
         if (typeof bl.t === "string") chars += bl.t.length;
       }
       // Each formatted text counts once, and each of its formatted paragraphs

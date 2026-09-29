@@ -481,6 +481,44 @@
   // maths as drawPdfPhoto in app.js, so a book crops a photo the way the
   // model portfolio does.
   const FLIPS = ["h", "v", "hv"];
+  /* Photo adjustments (phase 4 of the owner's list, Sep 29 2026). Kept on the
+     photo itself as `adj`, so they follow it wherever it is placed (a page of
+     photographs, the cover, an Anything page) and into every file made from
+     the book: every photograph is drawn by drawPhoto. Each is -100…100
+     (vignette 0…100) and written only when moved; black and white is a
+     switch. Brightness, contrast and colour are the canvas's own filters;
+     warmth is a soft-light wash of amber or blue, the vignette a dark edge.
+     The photograph itself is never changed. */
+  const CANVAS_FILTER = typeof CanvasRenderingContext2D !== "undefined" && "filter" in CanvasRenderingContext2D.prototype;
+  const ADJ_SLIDERS = [["br", "Brightness", -100], ["ct", "Contrast", -100], ["sa", "Colour", -100], ["wm", "Warmth", -100], ["vg", "Vignette", 0]];
+  const LOOKS = [["", "Original", {}], ["bright", "Bright", { br: 16, ct: 6, sa: 8 }], ["vivid", "Vivid", { ct: 14, sa: 40 }], ["warm", "Warm", { sa: 6, wm: 45 }], ["cool", "Cool", { ct: 4, wm: -40 }], ["matte", "Matte", { br: 8, ct: -28, sa: -18 }], ["moody", "Moody", { br: -14, ct: 22, sa: -25, vg: 45 }], ["bw", "Black & white", { ct: 8, bw: true }], ["noir", "Noir", { br: -6, ct: 40, vg: 50, bw: true }]];
+  function adjOf(shot) {
+    const a = shot && shot.adj;
+    if (!a || typeof a !== "object") return null;
+    const out = {};
+    for (const [k, , lo] of ADJ_SLIDERS) { const v = Math.round(Math.min(100, Math.max(lo, +a[k] || 0))); if (v) out[k] = v; }
+    if (a.bw === true) out.bw = true;
+    return Object.keys(out).length ? out : null;
+  }
+  const adjFilter = (a) => [a.br ? `brightness(${(1 + a.br * 0.004).toFixed(3)})` : "", a.ct ? `contrast(${(1 + a.ct * 0.005).toFixed(3)})` : "", a.bw ? "grayscale(1)" : a.sa ? `saturate(${(1 + a.sa * 0.01).toFixed(3)})` : ""].filter(Boolean).join(" ") || "none";
+  const WARM = "#ff8a2a", COOL = "#2a7bff";
+  const warmAlpha = (wm) => Math.min(1, Math.abs(wm) * 0.007), vignetteAlpha = (vg) => Math.min(1, vg * 0.0085);
+  // Warmth and the vignette, over the part of the photograph just drawn.
+  function adjAfter(ctx, a, x, y, w, h) {
+    if (!a.wm && !a.vg) return;
+    const a0 = ctx.globalAlpha;
+    ctx.save(); ctx.filter = "none";
+    if (a.wm) { ctx.globalCompositeOperation = "soft-light"; ctx.globalAlpha = a0 * warmAlpha(a.wm); ctx.fillStyle = a.wm > 0 ? WARM : COOL; ctx.fillRect(x, y, w, h); }
+    if (a.vg) {
+      ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = a0 * vignetteAlpha(a.vg);
+      // An ellipse the shape of the photograph: a circle, squashed to it.
+      ctx.translate(x + w / 2, y + h / 2); ctx.scale(1, h / w);
+      const g = ctx.createRadialGradient(0, 0, w * 0.32, 0, 0, w * 0.5 * Math.SQRT2);
+      g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,1)");
+      ctx.fillStyle = g; ctx.fillRect(-w / 2, -w / 2, w, w);
+    }
+    ctx.restore();
+  }
   function drawPhoto(page, img, shot, x, y, w, h) {
     const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
     if (!iw || !ih) return;
@@ -517,12 +555,19 @@
     // A photograph can be flipped, left to right or top to bottom: the part
     // that shows is the same, mirrored in its place.
     const flip = shot && FLIPS.includes(shot.flip) ? shot.flip : "";
+    const adj = adjOf(shot);
+    if (adj) { page.ctx.save(); page.ctx.filter = adjFilter(adj); }
     if (flip) {
       const ctx = page.ctx;
       ctx.save(); ctx.translate(dx + dw / 2, dy + dh / 2); ctx.scale(flip.includes("h") ? -1 : 1, flip.includes("v") ? -1 : 1);
       ctx.drawImage(img, (iw - sw) * fx, (ih - sh) * fy, sw, sh, -dw / 2, -dh / 2, dw, dh);
+      if (adj) adjAfter(ctx, adj, -dw / 2, -dh / 2, dw, dh);
       ctx.restore();
-    } else page.ctx.drawImage(img, (iw - sw) * fx, (ih - sh) * fy, sw, sh, dx, dy, dw, dh);
+    } else {
+      page.ctx.drawImage(img, (iw - sw) * fx, (ih - sh) * fy, sw, sh, dx, dy, dw, dh);
+      if (adj) adjAfter(page.ctx, adj, dx, dy, dw, dh);
+    }
+    if (adj) page.ctx.restore();
     if (alpha < 1) page.ctx.restore();
     page.photos.push({ id: shot && shot.id, x, y, w, h });
     /* "A line round every photograph", in any style (the owner, Sep 25
@@ -4567,6 +4612,73 @@
     if (o.ends === "start" || o.ends === "both") head(pts[1], pts[0]);
   }
   const FILL_NAMES = ["ink", "soft", "accent", "paper", "white", "deep", "rule"];
+  /* Effects on the things of an Anything page (phase 4): a shadow, an outline
+     (words and shapes) and how a thing blends with what is behind it. A
+     shadow falls the same way on the page however the thing is turned. In a
+     PDF, words stay real type: their shadow and outline are drawn in the
+     picture beneath them, and words that blend become part of the picture. */
+  const BLENDS = [["", "Normal"], ["multiply", "Multiply"], ["screen", "Screen"], ["overlay", "Overlay"], ["soft-light", "Soft light"], ["darken", "Darken"], ["lighten", "Lighten"], ["color", "Colour"], ["luminosity", "Luminosity"]];
+  const BLEND_KEYS = BLENDS.map(([k]) => k).filter(Boolean);
+  const SHADOW_KINDS = [["soft", "Soft", { d: 1.5, b: 4, o: 0.35 }], ["drop", "Drop", { d: 2.5, b: 1.25, o: 0.5 }], ["hard", "Hard", { d: 2, b: 0, o: 0.85 }], ["glow", "Glow", { d: 0, b: 5, o: 0.7 }]];
+  const OUTLINES = [["thin", "Thin", 0.2], ["medium", "Medium", 0.5], ["thick", "Thick", 1]];
+  const numIn = (v, lo, hi, d) => (typeof v === "number" && isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d);
+  function effectsOf(b, P) {
+    const out = {};
+    const s = b && b.shadow;
+    if (s && typeof s === "object") {
+      const d = numIn(s.d, 0, 20, 2), a = numIn(s.a, 0, 359, 45) * Math.PI / 180;
+      out.sh = { dx: d * Math.cos(a), dy: d * Math.sin(a), blur: numIn(s.b, 0, 20, 2), o: numIn(s.o, 0.05, 1, 0.4), c: blockColor(s.c, P, "#000000") };
+    }
+    if (b && BLEND_KEYS.includes(b.blend)) out.bl = b.blend;
+    const ol = b && b.outline;
+    if (ol && typeof ol === "object" && (b.k === "text" || b.k === "shape")) out.ol = { w: numIn(ol.w, 0.1, 3, 0.3), c: blockColor(ol.c, P, P.ink) };
+    return out;
+  }
+  // A shadow's offset in the frame of a thing turned by rot.deg: the light stays put.
+  const shadowShift = (sh, rot) => { if (!rot) return [sh.dx, sh.dy]; const r = -rot.deg * Math.PI / 180; return [sh.dx * Math.cos(r) - sh.dy * Math.sin(r), sh.dx * Math.sin(r) + sh.dy * Math.cos(r)]; };
+  const blurPx = (page, mm) => `blur(${Math.max(0.3, page.u(mm) / 2).toFixed(2)}px)`;
+  // The shadow of a box, a shape, a photograph or a line, drawn just before it.
+  function castShadow(page, o) {
+    const ctx = page.ctx, s = o.sh, [dx, dy] = shadowShift(s, o.rot);
+    ctx.save();
+    ctx.globalAlpha *= s.o; ctx.globalCompositeOperation = "source-over";
+    if (s.blur > 0) ctx.filter = blurPx(page, s.blur);
+    if (o.k === "stroke") strokeOp(page, { ...o, c: s.c, pts: o.pts.map(([x, y]) => [x + dx, y + dy]) });
+    else {
+      const shaped = o.k === "path" || (o.k === "photo" && !!o.shape);
+      tracePath(ctx, shaped ? o.shape || "rect" : "rect", page.u(o.x + dx), page.u(o.y + dy), page.u(o.w), page.u(o.h), shaped ? o.corner || 0 : 0);
+      ctx.fillStyle = s.c; ctx.fill();
+    }
+    ctx.restore();
+  }
+  // A line round a shape, over its colour.
+  function outlineOp(page, o) {
+    const ctx = page.ctx;
+    ctx.save(); ctx.filter = "none";
+    tracePath(ctx, o.k === "path" ? o.shape : "rect", page.u(o.x), page.u(o.y), page.u(o.w), page.u(o.h), o.k === "path" ? o.corner || 0 : 0);
+    ctx.lineWidth = Math.max(0.5, page.u(o.ol.w)); ctx.strokeStyle = o.ol.c; ctx.lineJoin = "round"; ctx.stroke();
+    ctx.restore();
+  }
+  // Words: the shadow, then the outline (half of it shows outside the letters), before the letters themselves.
+  function textFx(page, o, s, x, y, align) {
+    const ctx = page.ctx;
+    if (o.sh) {
+      const [dx, dy] = shadowShift(o.sh, o.rot);
+      ctx.save(); ctx.globalAlpha *= o.sh.o; ctx.globalCompositeOperation = "source-over";
+      // Always a filter, even for a hard shadow: the PDF writer keeps filtered
+      // words in the picture, so the shadow never becomes a second, searchable
+      // copy of the words.
+      ctx.filter = o.sh.blur > 0 ? blurPx(page, o.sh.blur) : "opacity(1)";
+      ctx.fillStyle = o.sh.c; ctx.textAlign = align;
+      ctx.fillText(String(s), page.u(x + dx), page.u(y + dy));
+      ctx.restore();
+    }
+    if (o.ol) {
+      ctx.save(); ctx.lineJoin = "round"; ctx.miterLimit = 2; ctx.lineWidth = Math.max(0.5, page.u(o.ol.w) * 2); ctx.strokeStyle = o.ol.c; ctx.textAlign = align;
+      ctx.strokeText(String(s), page.u(x), page.u(y));
+      ctx.restore();
+    }
+  }
   const blockColor = (v, P, fallback) => (FILL_NAMES.includes(v) ? P[v] : (/^#[0-9a-f]{6}$/i.test(String(v || "")) ? String(v).toLowerCase() : fallback));
   // What a box of words is: the style's own type, so an Anything page still
   // looks like the rest of the book.
@@ -4648,17 +4760,18 @@
       const box = blockBox(b, W, H);
       const turn = Math.abs(+b.r || 0) > 0.05 ? { deg: +b.r, cx: box.x + box.w / 2, cy: box.y + box.h / 2 } : null;
       const field = `b${i}`;
-      if (b.k === "shape") { const sh = shapeOf(b); op({ k: sh === "rect" ? "rect" : "path", shape: sh, corner: cornerOf(b), x: box.x, y: box.y, w: box.w, h: box.h, c: blockColor(b.fill, P, P.accent), a: b.o, rot: turn }); return; }
+      const fx = effectsOf(b, P);
+      if (b.k === "shape") { const sh = shapeOf(b); op({ k: sh === "rect" ? "rect" : "path", shape: sh, corner: cornerOf(b), x: box.x, y: box.y, w: box.w, h: box.h, c: blockColor(b.fill, P, P.accent), a: b.o, rot: turn, ...fx }); return; }
       if (b.k === "line") {
         const c = blockColor(b.color, P, P.rule);
-        if (linePath(b) === "h" && !b.ends && !b.tip) { op({ k: "rect", x: box.x, y: box.y, w: box.w, h: box.h, c, a: b.o, rot: turn }); return; }
-        op({ k: "stroke", pts: linePoints(b, box), w: lineThick(b), c, a: b.o, tip: b.tip, ends: b.ends, rot: turn });
+        if (linePath(b) === "h" && !b.ends && !b.tip) { op({ k: "rect", x: box.x, y: box.y, w: box.w, h: box.h, c, a: b.o, rot: turn, sh: fx.sh, bl: fx.bl }); return; }
+        op({ k: "stroke", pts: linePoints(b, box), w: lineThick(b), c, a: b.o, tip: b.tip, ends: b.ends, rot: turn, sh: fx.sh, bl: fx.bl });
         return;
       }
       if (b.k === "photo") {
         op({
           k: "photo", shot: (b.p && b.p.id) ? b.p : null, x: box.x, y: box.y, w: box.w, h: box.h,
-          mode: b.p && b.p.fit === "whole" ? "fit" : "crop", rot: turn, empty: "CHOOSE A PHOTO",
+          mode: b.p && b.p.fit === "whole" ? "fit" : "crop", rot: turn, empty: "CHOOSE A PHOTO", sh: fx.sh, bl: fx.bl,
           shape: b.shape ? shapeOf(b) : (typeof b.corner === "number" && b.corner > 0 ? "rect" : null), corner: cornerOf(b),
           frame: b.edge ? blockColor(b.edge, P, P.rule) : (D.frame ? photoRule(P) : null), frameT: THICKS[b.edgeWidth] || 0.2,
           ...(numbered && b.p && b.p.id ? { num: ++plate } : {})
@@ -4669,7 +4782,9 @@
       // asked for it to be cut, and either way it says what won't print. With
       // a colour behind them, the words sit inset from the box's edge.
       const sh = shapeOf(b);
-      if (b.fill) op({ k: sh === "rect" ? "rect" : "path", shape: sh, corner: cornerOf(b), x: box.x, y: box.y, w: box.w, h: box.h, c: blockColor(b.fill, P, P.accent), a: b.o, rot: turn });
+      // With a colour behind the words, the shadow is the colour's; the outline is always the letters'.
+      const tfx = b.fill ? { ol: fx.ol, bl: fx.bl } : fx;
+      if (b.fill) op({ k: sh === "rect" ? "rect" : "path", shape: sh, corner: cornerOf(b), x: box.x, y: box.y, w: box.w, h: box.h, c: blockColor(b.fill, P, P.accent), a: b.o, rot: turn, sh: fx.sh, bl: fx.bl });
       const ins = b.fill ? shapeInset(sh, box.w, box.h, cornerOf(b)) : { x: 0, y: 0 };
       const ts = typesetOf(book);
       const f = mergeFmt(ts ? ts[FREE_ROLE[b.role] || "body"] : null, (b.style && typeof b.style === "object") ? b.style : null);
@@ -4697,15 +4812,15 @@
       if (r.cut) plan.cuts.push({ field, label: "words on this page" });
       if (!r.total) { op({ k: "guide", x: box.x, y: box.y, w: box.w, h: box.h, field }); return; }
       const styleAt = (pi) => (r.specFor ? r.specFor(pi) : { spec: r.spec, color, align });
-      (r.marks || []).forEach((m) => { const S = styleAt(m.pi || 0); op({ k: "text", s: m.s, x: m.x, y: m.y, f: [S.spec.w, S.spec.size, S.spec.f, S.spec.sp || 0, !!S.spec.it], c: S.color, align: "left", rot: turn, field }); });
+      (r.marks || []).forEach((m) => { const S = styleAt(m.pi || 0); op({ k: "text", s: m.s, x: m.x, y: m.y, f: [S.spec.w, S.spec.size, S.spec.f, S.spec.sp || 0, !!S.spec.it], c: S.color, align: "left", rot: turn, field, ...tfx }); });
       r.lines.forEach((l, k) => {
         const last = l.end || k === r.lines.length - 1;
         const S = styleAt(l.pi || 0), spec = S.spec, c2 = S.color, al = S.align;
         const fnt = [spec.w, spec.size, spec.f, spec.sp || 0, !!spec.it];
-        if (al === "center") op({ k: "text", s: l.s, x: l.x + l.w / 2, y: l.y, f: fnt, c: c2, align: "center", rot: turn, field });
-        else if (al === "right") op({ k: "text", s: l.s, x: l.x + l.w, y: l.y, f: fnt, c: c2, align: "right", rot: turn, field });
-        else if (al === "justify" && !last && / /.test(l.s) && !/…$/.test(l.s)) op({ k: "text", s: l.s, x: l.x, y: l.y, f: fnt, c: c2, align: "left", justify: l.w, rot: turn, field });
-        else op({ k: "text", s: l.s, x: l.x, y: l.y, f: fnt, c: c2, align: "left", rot: turn, field });
+        if (al === "center") op({ k: "text", s: l.s, x: l.x + l.w / 2, y: l.y, f: fnt, c: c2, align: "center", rot: turn, field, ...tfx });
+        else if (al === "right") op({ k: "text", s: l.s, x: l.x + l.w, y: l.y, f: fnt, c: c2, align: "right", rot: turn, field, ...tfx });
+        else if (al === "justify" && !last && / /.test(l.s) && !/…$/.test(l.s)) op({ k: "text", s: l.s, x: l.x, y: l.y, f: fnt, c: c2, align: "left", justify: l.w, rot: turn, field, ...tfx });
+        else op({ k: "text", s: l.s, x: l.x, y: l.y, f: fnt, c: c2, align: "left", rot: turn, field, ...tfx });
       });
     });
     plan.ops = plan.ops.map((o) => placeOp(o, G));
@@ -4730,7 +4845,7 @@
     // Anything a block sets: turned about its own centre, and faded.
     const around = (o, draw) => {
       const ctx = page.ctx, fade = typeof o.a === "number" && o.a > 0 && o.a < 1;
-      if (!o.rot && !fade) return draw();
+      if (!o.rot && !fade && !o.sh && !o.bl) return draw();
       ctx.save();
       if (fade) ctx.globalAlpha = o.a;
       if (o.rot) {
@@ -4738,6 +4853,9 @@
         ctx.rotate(o.rot.deg * Math.PI / 180);
         ctx.translate(-page.u(o.rot.cx), -page.u(o.rot.cy));
       }
+      // Effects (see effectsOf): the shadow first, then the thing, blended.
+      if (o.sh && o.k !== "text") castShadow(page, o);
+      if (o.bl) ctx.globalCompositeOperation = o.bl;
       const out = draw();
       ctx.restore();
       return out;
@@ -4746,8 +4864,8 @@
       // The words being typed on the page are drawn by the box the studio is
       // typing in, not by the page underneath it.
       if (skip && o.field === skip && (o.k === "text" || o.k === "guide")) continue;
-      if (o.k === "rect") around(o, () => rect(page, o.x, o.y, o.w, o.h, o.c));
-      else if (o.k === "path") around(o, () => { const ctx = page.ctx; tracePath(ctx, o.shape, page.u(o.x), page.u(o.y), page.u(o.w), page.u(o.h), o.corner); ctx.fillStyle = o.c; ctx.fill(); });
+      if (o.k === "rect") around(o, () => { rect(page, o.x, o.y, o.w, o.h, o.c); if (o.ol) outlineOp(page, o); });
+      else if (o.k === "path") around(o, () => { const ctx = page.ctx; tracePath(ctx, o.shape, page.u(o.x), page.u(o.y), page.u(o.w), page.u(o.h), o.corner); ctx.fillStyle = o.c; ctx.fill(); if (o.ol) outlineOp(page, o); });
       else if (o.k === "stroke") around(o, () => strokeOp(page, o));
       else if (o.k === "text") around(o, () => {
         font(page, ...o.f);
@@ -4757,8 +4875,11 @@
           const widths = words.map((w) => measure(page, w));
           const gap = (o.justify - widths.reduce((a, b) => a + b, 0)) / Math.max(1, words.length - 1);
           let xx = o.x;
-          words.forEach((w, k) => { text(page, w, xx, o.y, o.c, "left"); xx += widths[k] + gap; });
-        } else text(page, o.s, o.x, o.y, o.c, o.align);
+          words.forEach((w, k) => { if (o.sh || o.ol) textFx(page, o, w, xx, o.y, "left"); text(page, w, xx, o.y, o.c, "left"); xx += widths[k] + gap; });
+        } else {
+          if (o.sh || o.ol) textFx(page, o, o.s, o.x, o.y, o.align);
+          text(page, o.s, o.x, o.y, o.c, o.align);
+        }
       });
       else if (o.k === "photo") {
         const shot = o.shot !== undefined ? o.shot : shots[o.i || 0];
@@ -5387,6 +5508,19 @@
   .sb-adds button { flex: 1 1 calc(50% - 6px); min-height: 38px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--paper, #fff); color: inherit; font: 600 13px/1.3 Inter, system-ui, sans-serif; cursor: pointer; }
   .sb-adds button:hover { border-color: var(--accent, #d24e1a); }
   .sb-step { display: flex; align-items: center; gap: 6px; margin: 6px 0; font: 500 12px/1.3 Inter, system-ui, sans-serif; }
+  .sb-look, .sb-fx { margin: 10px 0; border-top: 1px solid var(--sb-line); padding-top: 4px; }
+  .sb-look > summary, .sb-fx > summary { cursor: pointer; padding: 8px 0; font: 600 12.5px/1.3 Inter, system-ui, sans-serif; list-style: revert; }
+  .sb-looks { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 8px; margin: 4px 0 12px; }
+  .sb-lookbtn { all: unset; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; font: 500 10.5px/1.2 Inter, system-ui, sans-serif; text-align: center; color: inherit; }
+  .sb-lookpic { position: relative; display: block; width: 100%; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: var(--sb-line); outline: 2px solid transparent; outline-offset: 1px; }
+  .sb-lookpic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .sb-lookpic i { position: absolute; inset: 0; }
+  .sb-lookpic i.w { mix-blend-mode: soft-light; }
+  .sb-lookpic i.v { background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, #000 100%); }
+  .sb-lookbtn[aria-checked=true] .sb-lookpic { outline-color: var(--accent, #d24e1a); }
+  .sb-lookbtn:focus-visible .sb-lookpic { outline-color: var(--ink, #111); }
+  .sb-fx .sb-field { margin-top: 12px; }
+  .sb-fx select { width: 100%; padding: 7px 9px; border: 1px solid var(--sb-line); border-radius: 7px; background: var(--paper, #fff); color: inherit; font: 500 12.5px/1.3 Inter, system-ui, sans-serif; }
   .sb-step span:first-child { flex: 1; color: var(--ink-soft, #5c5e66); }
   .sb-step button { min-width: 34px; min-height: 32px; border: 1px solid var(--sb-line); border-radius: 7px; background: var(--paper, #fff); color: inherit; font: 600 14px/1 Inter, system-ui, sans-serif; cursor: pointer; }
   .sb-step output { min-width: 52px; text-align: center; font-variant-numeric: tabular-nums; }
@@ -6468,6 +6602,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     // No album chosen yet: the photographs appear once one is (or All albums),
     // not 160 of them at once (the studio's ask, Sep 25 2026).
     let filter = "", pickerOpen = null, tab = "page";
+    let adjOpen = false, fxOpen = false;   // "Adjust the photo" and "Effects" stay open while they are used
     let saveTimer = null, previewTimer = null, stripTimer = null, renderToken = 0, stripToken = 0, listToken = 0, fileUrls = [];
     let fontsOk = false;
     // Set by an actual edit. Opening a book and leaving it must not re-stamp
@@ -10089,6 +10224,28 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       const mmY = (v) => `${(v * G.Ha).toFixed(1)} mm`;
       const step = (label, attr, minus, plus, value) => `<div class="sb-step"><span>${esc(label)}</span><button type="button" data-${attr}="${minus}" aria-label="${esc(label)} less">−</button><output>${esc(value)}</output><button type="button" data-${attr}="${plus}" aria-label="${esc(label)} more">+</button></div>`;
       const fade = b && typeof b.o === "number" ? b.o : 1;
+      // Effects (see effectsOf).
+      const shNow = b && b.shadow && typeof b.shadow === "object" ? b.shadow : null;
+      const shKind = shNow ? (SHADOW_KINDS.find(([, , v]) => v.d === shNow.d && v.b === shNow.b && v.o === shNow.o) || ["custom"])[0] : "";
+      const olNow = b && (b.k === "text" || b.k === "shape") && b.outline && typeof b.outline === "object" ? b.outline : null;
+      const fxOn = !!(shNow || olNow || (b && b.blend));
+      const fxColours = (attr, cur, deflt) => `<span class="sb-swatches" role="group" aria-label="Colour">${[["#000000", "Black", "#000000"], ...fills].map(([k, n, c]) => swatch(attr, k, n, c, (cur || deflt) === k)).join("")}${anySwatch(`${attr}any`, /^#/.test(cur || "") && cur !== "#000000" ? cur : "")}</span><div class="sb-cphost" data-${attr}pick hidden></div>`;
+      const effects = b ? `<details class="sb-fx" data-fxbox ${fxOpen || fxOn ? "open" : ""}><summary>Effects${fxOn ? ` <i class="sb-chip">on</i>` : ""}</summary>
+          <div class="sb-field"><span class="sb-label">Shadow</span>
+            <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Shadow">${[["", "None"], ...SHADOW_KINDS].map(([k, n]) => `<button type="button" role="radio" data-shadow="${k}" aria-checked="${k ? shKind === k : !shNow}">${n}</button>`).join("")}</div>
+            ${shNow ? `<label class="sb-range">Distance <input type="range" min="0" max="10" step="0.25" value="${numIn(shNow.d, 0, 20, 2)}" data-shv="d" aria-valuetext="${numIn(shNow.d, 0, 20, 2)} mm"></label>
+            <label class="sb-range">Softness <input type="range" min="0" max="10" step="0.25" value="${numIn(shNow.b, 0, 20, 2)}" data-shv="b" aria-valuetext="${numIn(shNow.b, 0, 20, 2)} mm"></label>
+            <label class="sb-range">Strength <input type="range" min="5" max="100" step="5" value="${Math.round(numIn(shNow.o, 0.05, 1, 0.4) * 100)}" data-shv="o" aria-valuetext="${Math.round(numIn(shNow.o, 0.05, 1, 0.4) * 100)} percent"></label>
+            <label class="sb-range">Direction <input type="range" min="0" max="355" step="5" value="${numIn(shNow.a, 0, 359, 45)}" data-shv="a" aria-valuetext="${numIn(shNow.a, 0, 359, 45)} degrees"></label>
+            <span class="sb-label">Shadow colour</span>${fxColours("shc", shNow.c, "#000000")}` : ""}</div>
+          ${b.k === "text" || b.k === "shape" ? `<div class="sb-field"><span class="sb-label">${b.k === "text" ? "Outline round the letters" : "Outline"}</span>
+            <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Outline">${[["", "None", 0], ...OUTLINES].map(([k, n, w]) => `<button type="button" role="radio" data-outline="${k}" aria-checked="${k ? !!olNow && olNow.w === w : !olNow}">${n}</button>`).join("")}</div>
+            ${olNow ? `<div class="sb-ptrow" style="margin-top:6px"><input type="range" min="0.1" max="3" step="0.05" value="${numIn(olNow.w, 0.1, 3, 0.3)}" data-olw aria-label="Outline thickness in millimetres" style="flex:1"><span data-olwout>${numIn(olNow.w, 0.1, 3, 0.3)} mm</span></div>
+            ${fxColours("olc", olNow.c, "ink")}` : ""}</div>` : ""}
+          <div class="sb-field"><label class="sb-label" for="sbBlend">Blend with what's behind</label>
+            <select id="sbBlend" data-blend>${BLENDS.map(([k, n]) => `<option value="${k}" ${(b.blend || "") === k ? "selected" : ""}>${n}</option>`).join("")}</select>
+            <p class="sb-hint">Multiply lets the paper and anything underneath show through the light parts, the way ink does; Screen does the same with the dark parts.${b.k === "text" ? " Blended words print as part of the picture rather than as type." : ""}</p></div>
+        </details>` : "";
       const words = b && b.k === "text" ? `
         <div class="sb-field"><span class="sb-label">What kind of words</span>
           <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="What kind of words">${[["kicker", "Small line"], ["head", "Headline"], ["intro", "Intro"], ["body", "Words"], ["quote", "Quote"]].map(([k, n]) => `<button type="button" role="radio" data-role="${k}" aria-checked="${(b.role || "body") === k}">${n}</button>`).join("")}</div></div>
@@ -10146,7 +10303,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         ${blocks.length ? `<p class="sb-hint sb-layhint">Front to back. Drag on the page to move · Shift-click or drag a box to choose several · corner to resize · a photo's edge to crop · arrow keys nudge.</p>${layerListHtml(blocks)}` : `<p class="sb-hint">Nothing on this page yet. Add something above, or start again from an arrangement in “+ Add page”.</p>`}
         ${b ? "" : pageLookHtml(entry, blocks.filter((x) => x.k === "photo").length, true)}
         ${b ? `<div class="sb-sec sb-rowbox"><h3>${esc(BLOCK_NAME[b.k] || "Thing")} ${blockSel + 1}</h3>
-          ${words}${paint}${photoShape}
+          ${words}${paint}${photoShape}${effects}
           ${b.k === "photo" ? `<p class="sb-hint">Choose the photograph, and how it sits in its box, below.</p>` : ""}
           ${step("Across", "nudx", "-1", "1", mmX(b.x))}
           ${step("Down", "nudy", "-1", "1", mmY(b.y))}
@@ -10282,6 +10439,60 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         $$("[data-bg]").forEach((x) => x.setAttribute("aria-pressed", "false"));
         change({ rail: true });
       });
+      // Effects.
+      { const fxd = $("[data-fxbox]"); if (fxd) fxd.addEventListener("toggle", () => { fxOpen = fxd.open; }); }
+      $$("[data-shadow]").forEach((x) => x.addEventListener("click", () => {
+        const kind = SHADOW_KINDS.find(([k]) => k === x.dataset.shadow);
+        mark();
+        if (!kind) delete b.shadow;
+        else b.shadow = { ...kind[2], a: b.shadow && typeof b.shadow.a === "number" ? b.shadow.a : 45, ...(b.shadow && b.shadow.c ? { c: b.shadow.c } : {}) };
+        fxOpen = true; redraw();
+      }));
+      $$("[data-shv]").forEach((x) => x.addEventListener("input", () => {
+        if (!b.shadow) return;
+        mark(true);
+        const k = x.dataset.shv, v = +x.value;
+        b.shadow = { ...b.shadow, [k]: k === "o" ? Math.round(v) / 100 : v };
+        x.setAttribute("aria-valuetext", k === "o" ? `${Math.round(v)} percent` : k === "a" ? `${v} degrees` : `${v} mm`);
+        change({ rail: true });
+      }));
+      $$("[data-shc]").forEach((x) => x.addEventListener("click", () => {
+        if (!b.shadow) return;
+        mark(); b.shadow = { ...b.shadow, c: x.dataset.shc };
+        if (x.dataset.shc === "#000000") delete b.shadow.c;
+        fxOpen = true; redraw();
+      }));
+      wireAny($("[data-shcany]"), $("[data-shcpick]"), () => (b.shadow && /^#/.test(b.shadow.c || "") ? b.shadow.c : ""), (hex) => {
+        if (!b.shadow) return;
+        mark(true); b.shadow = { ...b.shadow, c: hex };
+        $$("[data-shc]").forEach((y) => y.setAttribute("aria-pressed", "false"));
+        change({ rail: true });
+      });
+      $$("[data-outline]").forEach((x) => x.addEventListener("click", () => {
+        const kind = OUTLINES.find(([k]) => k === x.dataset.outline);
+        mark();
+        if (!kind) delete b.outline; else b.outline = { w: kind[2], ...(b.outline && b.outline.c ? { c: b.outline.c } : {}) };
+        fxOpen = true; redraw();
+      }));
+      { const ow = $("[data-olw]"); if (ow) ow.addEventListener("input", () => {
+        if (!b.outline) return;
+        mark(true); b.outline = { ...b.outline, w: Math.round(+ow.value * 100) / 100 };
+        const out = $("[data-olwout]"); if (out) out.textContent = `${b.outline.w} mm`;
+        change({ rail: true });
+      }); }
+      $$("[data-olc]").forEach((x) => x.addEventListener("click", () => {
+        if (!b.outline) return;
+        mark(); b.outline = { ...b.outline, c: x.dataset.olc };
+        if (x.dataset.olc === "ink") delete b.outline.c;
+        fxOpen = true; redraw();
+      }));
+      wireAny($("[data-olcany]"), $("[data-olcpick]"), () => (b.outline && /^#/.test(b.outline.c || "") ? b.outline.c : ""), (hex) => {
+        if (!b.outline) return;
+        mark(true); b.outline = { ...b.outline, c: hex };
+        $$("[data-olc]").forEach((y) => y.setAttribute("aria-pressed", "false"));
+        change({ rail: true });
+      });
+      { const bs = $("[data-blend]"); if (bs) bs.addEventListener("change", () => { mark(); if (bs.value) b.blend = bs.value; else delete b.blend; fxOpen = true; redraw(); const again = $("[data-blend]"); if (again) again.focus(); }); }
       const fadeEl = $("[data-blkfade]");
       if (fadeEl) fadeEl.addEventListener("input", () => {
         mark(true);
@@ -10468,6 +10679,21 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       if (!quiet && refused.length) API.toast(`NOT added — this browser cannot draw ${refused.slice(0, 3).map((n) => `“${n}”`).join(", ")}. iPhone HEIC photos: export them as JPEG first.`);
       return { ids, refused, forSite };
     }
+    /* The photo's adjustments (see adjOf): a look to start from, each shown on
+       this very photograph, then a slider for each. */
+    const sameAdj = (a, b) => JSON.stringify(adjOf({ adj: a }) || {}) === JSON.stringify(adjOf({ adj: b }) || {});
+    const lookCss = (a) => { const f = adjFilter(a || {}); return { f: f === "none" ? "" : f, wm: a && a.wm ? `background:${a.wm > 0 ? WARM : COOL};opacity:${warmAlpha(a.wm).toFixed(2)}` : "", vg: a && a.vg ? `opacity:${vignetteAlpha(a.vg).toFixed(2)}` : "" }; };
+    function adjustHtml(cur, lib) {
+      const a = adjOf(cur) || {}, on = !!adjOf(cur);
+      const hit = lib.byId.get(cur.id), src = hit ? thumbSrc(hit.photo) : "";
+      return `<details class="sb-look" data-adjbox ${adjOpen || on ? "open" : ""}><summary>Adjust the photo${on ? ` <i class="sb-chip">edited</i>` : ""}</summary>
+          <div class="sb-looks" role="radiogroup" aria-label="Looks">${LOOKS.map(([k, n, v]) => { const c = lookCss(v); return `<button type="button" role="radio" class="sb-lookbtn" data-look="${k}" aria-checked="${sameAdj(a, v)}"><span class="sb-lookpic">${src ? `<img src="${esc(src)}" alt="" loading="lazy"${c.f ? ` style="filter:${c.f}"` : ""}>` : ""}${c.wm ? `<i class="w" style="${c.wm}"></i>` : ""}${c.vg ? `<i class="v" style="${c.vg}"></i>` : ""}</span><span>${esc(n)}</span></button>`; }).join("")}</div>
+          ${ADJ_SLIDERS.map(([k, n, lo]) => `<label class="sb-range">${esc(n)} <input type="range" min="${lo}" max="100" step="1" value="${a[k] || 0}" data-adj="${k}" ${k === "sa" && a.bw ? "disabled" : ""} aria-valuetext="${a[k] || 0}"></label>`).join("")}
+          <div class="sb-adds"><button type="button" data-adjbw aria-pressed="${!!a.bw}">${a.bw ? "✓ " : ""}Black and white</button><button type="button" data-adjreset ${on ? "" : "disabled"}>Back to the original</button></div>
+          ${CANVAS_FILTER ? "" : `<p class="sb-warn">This browser can't show brightness, contrast or colour changes. They are kept, and show in Chrome.</p>`}
+          <p class="sb-hint">Double-click a slider to put it back to 0. The photograph itself is never changed: this is kept with the book and applied wherever it is drawn, the PDF included.</p>
+        </details>`;
+    }
     function drawPhotoBlock() {
       const box = $("#sbPhotoBlock"); if (!box) return;
       const entry = curEntry();
@@ -10516,6 +10742,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           <label class="sb-range">Left ↔ right <input type="range" min="0" max="1" step="0.01" value="${cur.x}" data-slide="x"></label>
           <label class="sb-range">Up ↕ down <input type="range" min="0" max="1" step="0.01" value="${cur.y}" data-slide="y"></label>`}
           <label class="sb-range">Opacity <input type="range" min="10" max="100" step="5" value="${Math.round(opacity * 100)}" data-opacity aria-valuetext="${Math.round(opacity * 100)} percent"></label>
+          ${isDiagram(cur.id) ? "" : adjustHtml(cur, lib)}
           ${isDiagram(cur.id) ? "" : `<div class="sb-field"><span class="sb-label">Flip</span><span class="sb-seg sb-seg-sm">${[["h", "↔ Left to right"], ["v", "↕ Top to bottom"]].map(([k, n]) => `<button type="button" data-flip="${k}" aria-pressed="${String(cur.flip || "").includes(k)}">${n}</button>`).join("")}</span></div>`}
         </div>` : ""}
         <details class="sb-pick" ${open ? "open" : ""}>
@@ -10650,6 +10877,28 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         op.setAttribute("aria-valuetext", `${Math.round(v * 100)} percent`);
         l[active] = next; setList(l); change({ rail: false });
       });
+      // Adjust the photo.
+      const setAdj = (fn, coalesce = true) => {
+        const l = photoTarget().list.slice();
+        if (!l[active]) return;
+        const next = { ...l[active] };
+        const a = adjOf({ adj: fn({ ...(adjOf(next) || {}) }) });
+        if (a) next.adj = a; else delete next.adj;
+        mark(coalesce);
+        l[active] = next; setList(l); change({ rail: false });
+      };
+      const paintLooks = () => { const a = adjOf(photoTarget().list[active]) || {}; box.querySelectorAll("[data-look]").forEach((x) => x.setAttribute("aria-checked", String(sameAdj(a, (LOOKS.find(([k]) => k === x.dataset.look) || [])[2] || {})))); };
+      { const d = box.querySelector("[data-adjbox]"); if (d) d.addEventListener("toggle", () => { adjOpen = d.open; }); }
+      box.querySelectorAll("[data-look]").forEach((x) => x.addEventListener("click", () => {
+        const v = (LOOKS.find(([k]) => k === x.dataset.look) || [])[2] || {};
+        setAdj(() => ({ ...v }), false); adjOpen = true; drawPhotoBlock(); refocus(`[data-look="${x.dataset.look}"]`);
+      }));
+      box.querySelectorAll("[data-adj]").forEach((r) => {
+        r.addEventListener("input", () => { setAdj((a) => ({ ...a, [r.dataset.adj]: +r.value })); r.setAttribute("aria-valuetext", r.value); paintLooks(); });
+        r.addEventListener("dblclick", () => { r.value = 0; r.dispatchEvent(new Event("input")); });
+      });
+      { const bw = box.querySelector("[data-adjbw]"); if (bw) bw.addEventListener("click", () => { setAdj((a) => ({ ...a, bw: !a.bw }), false); adjOpen = true; drawPhotoBlock(); refocus("[data-adjbw]"); }); }
+      { const rs = box.querySelector("[data-adjreset]"); if (rs) rs.addEventListener("click", () => { setAdj(() => ({}), false); adjOpen = true; drawPhotoBlock(); refocus("[data-look=\"\"]"); }); }
       const det = box.querySelector(".sb-pick");
       det.addEventListener("toggle", () => { pickerOpen = det.open; });
       box.querySelector("#sbAlbum").addEventListener("change", (e) => { filter = e.target.value; pickerOpen = true; drawPhotoBlock(); const s = $("#sbAlbum"); if (s) s.focus(); });

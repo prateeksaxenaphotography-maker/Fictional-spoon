@@ -1035,6 +1035,13 @@ function cleanStudioPortfolios(o) {
     if (typeof x.opacity === "number" && isFinite(x.opacity) && x.opacity < 1) out.opacity = Math.round(num(x.opacity, 0.1, 1, 1) * 100) / 100;
     // Mirrored left to right (h), top to bottom (v), or both; written only when flipped.
     if (["h", "v", "hv"].includes(x.flip)) out.flip = x.flip;
+    // Adjusted (v561): each -100…100 (vignette 0…100), written only when moved; black and white a switch.
+    if (x.adj && typeof x.adj === "object") {
+      const a = {};
+      for (const [k, lo] of [["br", -100], ["ct", -100], ["sa", -100], ["wm", -100], ["vg", 0]]) { const v = Math.round(num(x.adj[k], lo, 100, 0)); if (v) a[k] = v; }
+      if (x.adj.bw === true) a.bw = true;
+      if (Object.keys(a).length) out.adj = a;
+    }
     return out;
   };
   const PAGE_TYPES = STUDIO_BOOK_LIMITS.pageTypes;
@@ -1058,6 +1065,20 @@ function cleanStudioPortfolios(o) {
       if (typeof x.g === "string" && /^[a-z0-9]{1,12}$/i.test(x.g)) one.g = x.g;
       if (x.lock === true) one.lock = true;
       if (x.hide === true) one.hide = true;
+      // Effects (v561): a shadow, an outline (words and shapes), a blend.
+      const colourOk = (c) => L2.fills.includes(c) || /^#[0-9a-f]{6}$/i.test(String(c || ""));
+      if (x.shadow && typeof x.shadow === "object") {
+        const r2 = (v) => Math.round(v * 100) / 100;
+        const sh = { d: r2(num(x.shadow.d, 0, 20, 2)), b: r2(num(x.shadow.b, 0, 20, 2)), o: r2(num(x.shadow.o, 0.05, 1, 0.4)), a: Math.round(num(x.shadow.a, 0, 359, 45)) };
+        if (colourOk(x.shadow.c)) sh.c = String(x.shadow.c).toLowerCase();
+        one.shadow = sh;
+      }
+      if ((x.k === "text" || x.k === "shape") && x.outline && typeof x.outline === "object") {
+        const ol = { w: Math.round(num(x.outline.w, 0.1, 3, 0.3) * 100) / 100 };
+        if (colourOk(x.outline.c)) ol.c = String(x.outline.c).toLowerCase();
+        one.outline = ol;
+      }
+      if (["multiply", "screen", "overlay", "soft-light", "darken", "lighten", "color", "luminosity"].includes(x.blend)) one.blend = x.blend;
       if (x.k === "text") {
         one.t = strU(x.t, L2.blockText);
         if (L2.blockRoles.includes(x.role)) one.role = x.role;
@@ -1324,12 +1345,12 @@ function cleanStudioPortfolios(o) {
 // Each time the stored shape grows, the copy moves to a new key: code that
 // knows the previous shape still writes the previous key (stripping only what
 // it doesn't know), so the newest key is read first and wins ties.
-const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words_v10";
+const STUDIO_BOOK_WORDS_KEY = "wps_studio_portfolios_words_v11";
 // Older keys: code that knows only an older shape keeps rewriting the key it
 // knows, so every growth of the shape gets a new one, read before the old.
-const STUDIO_BOOK_WORDS_OLD = ["wps_studio_portfolios_words_v9", "wps_studio_portfolios_words_v8", "wps_studio_portfolios_words_v7", "wps_studio_portfolios_words_v6", "wps_studio_portfolios_words_v5", "wps_studio_portfolios_words_v4", "wps_studio_portfolios_words_v3", "wps_studio_portfolios_words_v2", "wps_studio_portfolios_words"];
-const studioBookHasWords = (v) => v.style === "lookbook" || STUDIO_BOOK_NEWER_STYLES.includes(v.style) || !!v.paper || !!v.coverStyle || !!v.watermark || !!v.coverText || !!v.schema || !!v.footText || !!v.bg || v.showPageNumbers === false || typeof v.photoNums === "boolean" || v.photoLines === false || v.photoLines === "on" || !!v.photoNumColour || !!v.coverLayout || !!v.coverPage || !!(v.cover && (v.cover.fit || v.cover.opacity)) || (v.pages || []).some((pg) =>
-  (STUDIO_BOOK_LIMITS.fields[pg.type] && (pg.type !== "photos" || pg.caption)) || (pg.blocks || []).length || pg.bg || pg.items || pg.steps || pg.rows || pg.gap || typeof pg.nums === "boolean" || pg.credit || pg.label || pg.heading || pg.photoAt || pg.border || pg.borderWidth || pg.style || pg.hide || (pg.photos || []).some((s) => s.fit || s.opacity));
+const STUDIO_BOOK_WORDS_OLD = ["wps_studio_portfolios_words_v10", "wps_studio_portfolios_words_v9", "wps_studio_portfolios_words_v8", "wps_studio_portfolios_words_v7", "wps_studio_portfolios_words_v6", "wps_studio_portfolios_words_v5", "wps_studio_portfolios_words_v4", "wps_studio_portfolios_words_v3", "wps_studio_portfolios_words_v2", "wps_studio_portfolios_words"];
+const studioBookHasWords = (v) => v.style === "lookbook" || STUDIO_BOOK_NEWER_STYLES.includes(v.style) || !!v.paper || !!v.coverStyle || !!v.watermark || !!v.coverText || !!v.schema || !!v.footText || !!v.bg || v.showPageNumbers === false || typeof v.photoNums === "boolean" || v.photoLines === false || v.photoLines === "on" || !!v.photoNumColour || !!v.coverLayout || !!v.coverPage || !!(v.cover && (v.cover.fit || v.cover.opacity || v.cover.adj)) || (v.pages || []).some((pg) =>
+  (STUDIO_BOOK_LIMITS.fields[pg.type] && (pg.type !== "photos" || pg.caption)) || (pg.blocks || []).length || pg.bg || pg.items || pg.steps || pg.rows || pg.gap || typeof pg.nums === "boolean" || pg.credit || pg.label || pg.heading || pg.photoAt || pg.border || pg.borderWidth || pg.style || pg.hide || (pg.photos || []).some((s) => s.fit || s.opacity || s.adj));
 /* Who a book is made for, when it is not the studio's own. Named here or
    the cleaner would drop it — and a book that lost it would look like the
    studio's own and be published. That is why privacy does NOT rest on this
