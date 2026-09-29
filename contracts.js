@@ -592,4 +592,25 @@ window.WPS_CONTRACT_ARCHIVE["V3.6-TFP"].status = "Archived — superseded by V3.
     A[`V3.12-${kind}`].effectiveDate = "24 - 26 September 2026 (superseded by V4.0)";
     A[`V3.12-${kind}`].status = "Archived - superseded by V4.0, which restores the V3.11 wording";
   }
+
+  /* V4.0-TFP, 29 Sep 2026 — the owner's two points for test shoots, in the
+     wording the owner approved, and at the owner's instruction WITHOUT a new
+     version number: no test shoot had been agreed under V4.0-TFP (live since
+     26 Sep). Test shoots only; the paid-shoot contract is untouched.
+     1. The photographer and the Studio keep the copyright and may post the
+        photographs for promotion at any time after the shoot — subject, as
+        before, to the consent the sections below require for a booking made
+        for another person and for anyone under 18.
+     2. On Instagram, tagging is not enough: the post must add the Studio as
+        a Collaborator. */
+  const misses = (window.WPS_CONTRACT_COMPOSE_MISSES = window.WPS_CONTRACT_COMPOSE_MISSES || []);
+  const swap = (text, from, to) => { if (!text.includes(from)) { misses.push(`V4.0-TFP: ${from.slice(0, 60)}`); return text; } return text.replace(from, to); };
+  const T = A["V4.0-TFP"];
+  T.fullText = swap(T.fullText,
+    "2. NON-COMMERCIAL PORTFOLIO USAGE LICENCE\nParticipants are granted a non-exclusive licence to use final retouched photos for personal self-promotion, social media grids (Instagram/TikTok), personal websites, and agency portfolios. Commercial licensing or selling assets to third parties is strictly prohibited.",
+    "2. COPYRIGHT, THE STUDIO'S USE & THE PARTICIPANT'S LICENCE\nThe copyright and all primary rights in the photographs belong to the photographer and the Studio. The Studio may post and publish them for its own promotion and publicity (on its website, its social media and in its portfolio) at any time after they are taken, as and when it needs, subject only to the sections below on bookings made for another person and on participants under 18.\n\nThe Participant is granted a non-exclusive licence to use the final retouched photos for personal self-promotion, social media grids (Instagram/TikTok), personal websites and agency portfolios. Commercial licensing or selling to third parties is strictly prohibited.");
+  T.fullText = swap(T.fullText,
+    "3. MANDATORY ATTRIBUTION & INSTAGRAM CO-AUTHOR WORKFLOW\nAll primary feed or grid publications must issue an Instagram Co-Author Collaboration Invite to @nerdyphotographer.in prior to publishing, and include full production credits in the caption:\n  📷 Photography & Light Design: @nerdyphotographer.in\n  👤 Model / Talent: @[Handle]",
+    "3. CREDIT & INSTAGRAM COLLABORATOR\nEvery post that uses the photographs must credit the Studio in its caption:\n  📷 Photography & Light Design: @nerdyphotographer.in\n  👤 Model / Talent: @[Handle]\nOn Instagram, tagging is not enough: every feed post, carousel or Reel that uses the photographs must also add @nerdyphotographer.in as a Collaborator (Instagram's \"Invite collaborator\"), sent before the post is published.");
+  T.summary = "The photographer and the Studio keep the copyright and may post the photographs for promotion at any time after the shoot; on Instagram the Participant must add @nerdyphotographer.in as a Collaborator as well as tagging it. " + T.summary;
 })();
