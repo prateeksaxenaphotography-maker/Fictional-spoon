@@ -1246,6 +1246,8 @@ function cleanStudioPortfolios(o) {
       // One colour behind every page (the cover keeps its own), unless a page says otherwise.
       ...(STUDIO_BOOK_LIMITS.fills.includes(v.bg) || /^#[0-9a-f]{6}$/i.test(String(v.bg || "")) ? { bg: String(v.bg).toLowerCase() } : {}),
       ...(v.showPageNumbers === false ? { showPageNumbers: false } : {}),
+      // The style's coloured bar down the left edge, taken off (v558). Absent = the style's own.
+      ...(v.edgeBar === false ? { edgeBar: false } : {}),
       /* The small plate number on each photograph of a grid, and the colour of
          its chip. Named here or the cleaner would drop them on the next
          reload. Absent means on, in the style's own accent, so a book made

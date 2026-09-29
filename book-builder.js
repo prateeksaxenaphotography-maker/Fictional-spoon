@@ -256,6 +256,11 @@
     }
   };
   const TR = (st) => TRAITS[st] || TRAITS.modern;
+  /* A book's own traits: its style's, with the coloured bar down the left
+     edge taken off when the book says so (the owner, Sep 29 2026: "why cant
+     i remove the grey boder" — Modern's accent bar, grey in a silver
+     colourway, had no switch). */
+  const trOf = (book) => { const t = TR(book && TRAITS[book.style] ? book.style : "modern"); return book && book.edgeBar === false ? { ...t, bar: 0, coverBar: 0 } : t; };
   // An older release of the site turns any of these back into Modern, so a book in one carries schema mark 5.
   const NEWER_STYLES = ["noir", "swiss", "pinboard", "dossier", "poster", "atelier", "gazette"];
   // The colours a book is drawn in: its colourway, as its style reads it. Most
@@ -1375,7 +1380,7 @@
       const g = page.ctx.createLinearGradient(0, page.u(H * 0.42), 0, page.u(H));
       g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.66)");
       page.ctx.fillStyle = g; page.ctx.fillRect(0, page.u(H * 0.42), page.u(W), page.u(H * 0.58));
-      const D = TR(st);
+      const D = trOf(book);
       if (D.coverBar) rect(page, 0, 0, D.coverBar, H, P.accent);
       const x = D.coverBar ? D.coverBar + 14 : 18, right = W - 16, tw = right - x, on = "#FFFFFF";
       if (img) await drawMark(page, on, P.accent, "rgba(0,0,0,0)", x, 14, 12);
@@ -1392,7 +1397,7 @@
     // The photograph in a window at the top, the words under it.
     async framed(page, book, P, W, H, img) {
       const st = styleKey(book), K = COVER_TYPE[st], L = W > H, CT = coverText(book), cs = coverStyleOf(book);
-      const D = TR(st), { ground, ink, soft, light } = onGround(P, D.framedGround);
+      const D = trOf(book), { ground, ink, soft, light } = onGround(P, D.framedGround);
       rect(page, 0, 0, W, H, ground);
       if (D.coverBar) rect(page, 0, 0, D.coverBar, H, P.accent);
       const x = D.framedX, right = W - (D.framedRight || x), tw = right - x;
@@ -1416,7 +1421,7 @@
     // No photograph: the words, set big, and the mark at the foot.
     async poster(page, book, P, W, H) {
       const st = styleKey(book), K = COVER_TYPE[st], L = W > H, CT = coverText(book), cs = coverStyleOf(book);
-      const D = TR(st), { ground, ink, soft, light } = onGround(P, D.wordsGround);
+      const D = trOf(book), { ground, ink, soft, light } = onGround(P, D.wordsGround);
       rect(page, 0, 0, W, H, ground);
       if (D.coverBar) rect(page, 0, 0, D.coverBar, H, P.accent);
       if (D.coverFrame) frame(page, 14, 14, W - 28, H - 28, P.ink);
@@ -1455,7 +1460,7 @@
     return { own, defaults: [c.email || "", ig ? `@${ig}` : "", "nerdyphotographer.in"].filter(Boolean) };
   }
   async function drawEnd(page, entry, book, P, W, H, imgs, n, S) {
-    const st = styleKey(book), L = W > H, CT = coverText(book), K = COVER_TYPE[st], D = TR(st);
+    const st = styleKey(book), L = W > H, CT = coverText(book), K = COVER_TYPE[st], D = trOf(book);
     if (endLayoutOf(entry) === "back") {
       const G0 = onGround(P, D.wordsGround), fb = G0.ground;
       const ground = isFillish(entry.bg) ? blockColor(entry.bg, P, fb) : fb;
@@ -1517,7 +1522,7 @@
      under it — the garments, who made them, who styled it. */
   function lookNumber(book, entry) { let n = 0; for (const pg of book.pages) { if (pg && pg.type === "look") { n++; if (pg === entry) return n; } } return n || 1; }
   async function drawLook(page, entry, book, P, W, H, imgs, n, S, no) {
-    const st = styleKey(book), L = W > H, T = WTYPE[st], D = TR(st), bleed = !!D.bleed;
+    const st = styleKey(book), L = W > H, T = WTYPE[st], D = trOf(book), bleed = !!D.bleed;
     rect(page, 0, 0, W, H, pageBgOf(book, entry, P, D.ground === "paper" ? P.paper : P.white));
     if (D.bar) rect(page, 0, 0, D.bar, H, P.accent);
     const M = S.margins(L ? "landscape" : "portrait");
@@ -1672,7 +1677,7 @@
       rect(page, 0, 0, W, H, P.deep);
       const fieldEnd = L ? 116 : 186;
       if (img) drawPhoto(page, img, book.cover, 0, 0, W, fieldEnd);
-      rect(page, 0, 0, 12, H, P.accent);
+      if (book.edgeBar !== false) rect(page, 0, 0, 12, H, P.accent);   // the bar, unless the book switched it off (Design)
       if (img) await drawMark(page, "#FFFFFF", P.accent, "rgba(0,0,0,0)", 26, 14, 12);
       else { const s = L ? 40 : 46; await drawMark(page, P.onDeep, P.accent, P.deep, 12 + (W - 12 - s) / 2, (fieldEnd - s) / 2, s); }
       hair(page, 26, fieldEnd, W - 14, P.onDeep);
@@ -1758,7 +1763,7 @@
     heading(page, s, x, y, P, maxW) { font(page, 800, 10, F.heavy, -0.2); const lines = wrap(page, String(s).toUpperCase(), maxW); lines.forEach((l, i) => text(page, l, x, y + i * 10.5, P.ink)); rect(page, x, y + (lines.length - 1) * 10.5 + 5, 18, 1.2, P.accent); return y + (lines.length - 1) * 10.5 + 15; },
     body(page, s, x, y, P, maxW, maxY = Infinity) { font(page, 400, 3.9, F.sans); return bodyLines(page, s, x, y, P, maxW, maxY, 6.2); },
     label(page, s, x, y, P) { font(page, 700, 2.5, F.mono, 0.45); text(page, s.toUpperCase(), x, y, accentText(P)); },
-    ground(page, P, W, H) { rect(page, 0, 0, W, H, pageBg(P, P.white)); rect(page, 0, 0, 6, H, P.accent); }
+    ground(page, P, W, H, book) { rect(page, 0, 0, W, H, pageBg(P, P.white)); if (!book || book.edgeBar !== false) rect(page, 0, 0, 6, H, P.accent); }
   };
 
   const VOGUE = {
@@ -2512,7 +2517,7 @@
   const DEFAULT_ABOUT = "nerdyphotographer.in is a photography studio in Noida, working across Delhi NCR. It shoots fashion, beauty and editorial stories, fitness and sport, and portfolios and comp cards for models — in a home studio and on location.\n\nEvery shoot is planned before the day: the looks, the light and the frames it has to come away with. You are directed throughout, and the finished work is credited in full.";
 
   async function textPage(page, entry, book, P, W, H, n) {
-    const S = STYLE_IMPL[styleKey(book)], D = TR(styleKey(book));
+    const S = STYLE_IMPL[styleKey(book)], D = trOf(book);
     const M = S.margins(W > H ? "landscape" : "portrait");
     const x = Math.max(M.side, 20), maxW = Math.min(W - 2 * x, 150);
     if (entry.type === "divider") {
@@ -2550,7 +2555,7 @@
       if (V.foot) pageFoot(book, page, P, W, H, n, "", { ink: on, soft: on, divider: true });
       return;
     }
-    S.ground(page, P, W, H);
+    S.ground(page, P, W, H, book);
     let y = M.top + 22;
     const floor = H - Math.max(M.bottom, 18) - 6;   // nothing below this: the foot lives there
     const lineOf = (v, fallback) => ((typeof v === "string" && v.trim()) ? v : fallback);
@@ -3803,7 +3808,7 @@
     if (entry.type === "more" && !opts.cont) opts = { ...opts, cont: contOf(book, book.pages.indexOf(entry)) };
     const contNow = entry.type === "more" ? opts.cont : null;
     const G = geometry(book);
-    const st = styleKey(book), D = TR(st);
+    const st = styleKey(book), D = trOf(book);
     const T = WTYPE[st];
     const P = paletteFor(book);
     const L = G.L, W = G.Wa, H = G.Ha;
@@ -4584,7 +4589,7 @@
   }
   function planFree(book, entry, ground = null) {
     const G = geometry(book);
-    const st = styleKey(book), D = TR(st);
+    const st = styleKey(book), D = trOf(book);
     const T = WTYPE[st];
     const P = paletteFor(book);
     const page = measurer();
@@ -4898,7 +4903,7 @@
             if ((half === 0) === photoFirst) {
               const asPhotos = { type: "photos", photos: (entry.photos || []).slice(0, 1), caption: entry.caption, border: entry.border, borderWidth: entry.borderWidth, style: entry.style && entry.style.caption ? { caption: entry.style.caption } : undefined };
               if (!asPhotos.photos.length) {
-                S.ground(page, P, W, H);
+                S.ground(page, P, W, H, book);
                 font(page, 500, 3.2, F.plex, 0.4); text(page, "NO PHOTO CHOSEN", W / 2, H / 2, P.soft, "center");
               } else await S.photos(page, asPhotos, P, W, H, imgs, shoots, pn);
             } else {
@@ -4925,7 +4930,7 @@
         if (entry.type === "photos") {
           const imgs = await Promise.all((entry.photos || []).map(imgOf));
           if (!(entry.photos || []).length) {
-            S.ground(page, P, W, H);
+            S.ground(page, P, W, H, book);
             font(page, 500, 3.2, F.plex, 0.4); text(page, "NO PHOTOS ON THIS PAGE YET", W / 2, H / 2, P.soft, "center");
           } else await S.photos(page, entry, P, W, H, imgs, shoots, n);
         } else if (entry.type === "free") {
@@ -10118,7 +10123,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     const DESIGN_GROUPS = [
       ["for", "Made for", "Whose book this is · their details · your credit", ["Made for"]],
       ["look", "Look", "Style · colourway", ["Style", "Colourway"]],
-      ["paper", "Page & paper", "Shape · size · space between photos · page colour · lines", ["Page shape", "Paper size", "Space between photographs", "Page colour, every page", "Line round the photographs"]],
+      ["paper", "Page & paper", "Shape · size · space between photos · page colour · edge bar · lines", ["Page shape", "Paper size", "Space between photographs", "Page colour, every page", "Bar down the left edge", "Line round the photographs"]],
       ["type", "Type", "Text styles · baseline grid", ["Text styles", "Baseline grid"]],
       ["every", "Every page", "Running head · photo numbers · page numbers and foot", ["Top of every page", "Numbers on the photographs", "The foot of every page"]]
     ];
@@ -10418,6 +10423,10 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           <div class="sb-cphost" data-bookbgpick hidden></div>
           <p class="sb-hint">Behind every page but the cover, in one go. A page can still have its own colour on This page.</p>
         </div>
+        ${TR(styleKey(book)).coverBar || TR(styleKey(book)).bar ? `<div class="sb-sec"><h3>Bar down the left edge</h3>
+          <label class="sb-check-row"><input type="checkbox" id="sbEdgeBar" ${book.edgeBar === false ? "" : "checked"}> Show the style's coloured bar on the cover and pages</label>
+          <p class="sb-hint">Untick for clean edges: the bar goes from the cover and every page, on screen and in the PDF.</p>
+        </div>` : ""}
         <div class="sb-sec"><h3>Line round the photographs</h3>
           <div class="sb-seg sb-seg-words" role="radiogroup" aria-label="Line round the photographs">${[["", "The style's own"], ["on", "Always"], ["off", "Never"]].map(([k, n]) => `<button type="button" role="radio" data-photolines="${k}" aria-checked="${(book.photoLines === false ? "off" : book.photoLines === "on" ? "on" : "") === k}">${n}</button>`).join("")}</div>
           <p class="sb-hint">A hairline round each photograph gives one shot on white an edge against the paper. Elegant draws it on its own; Always puts it in every style; Never leaves the photographs straight on the page. Borders you draw yourself on a page stay either way.</p>
@@ -10500,6 +10509,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         const box = $("#sbPlateColour"); if (box) box.hidden = !e.target.checked;
         change();
       });
+      { const eb = $("#sbEdgeBar"); if (eb) eb.addEventListener("change", (e) => { mark(); if (e.target.checked) delete book.edgeBar; else book.edgeBar = false; change({ rail: true }); }); }
       $("#sbNums").addEventListener("change", (e) => {
         if (e.target.checked) delete book.showPageNumbers; else book.showPageNumbers = false;
         change();

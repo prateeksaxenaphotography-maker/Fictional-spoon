@@ -793,6 +793,7 @@ if (books !== undefined && books !== null) {
       if (b.footText !== undefined && (typeof b.footText !== "string" || !b.footText.trim() || b.footText.length > 40)) fail(`studio portfolio book ${name} has a running foot the app would drop or cut`);
       if (b.bg !== undefined && !isFill(b.bg)) fail(`studio portfolio book ${name} has a page colour ${JSON.stringify(b.bg)}; use ${[...FILLS].join(", ")} or #rrggbb`);
       if (b.showPageNumbers !== undefined && b.showPageNumbers !== false) fail(`studio portfolio book ${name} writes showPageNumbers ${JSON.stringify(b.showPageNumbers)}; only false is written`);
+      if (b.edgeBar !== undefined && b.edgeBar !== false) fail(`studio portfolio book ${name} writes edgeBar ${JSON.stringify(b.edgeBar)}; only false is written`);
       if (b.watermark !== undefined) {
         const w = b.watermark;
         if (!w || typeof w !== "object" || Array.isArray(w)) fail(`studio portfolio book ${name} has a watermark that is not an object`);
@@ -904,7 +905,7 @@ try {
   const wordsIn = (b) => {
     let pages = 0, chars = 0, fits = 0;
     const settings = (s) => (s ? (s.fit ? 1 : 0) + (s.opacity !== undefined ? 1 : 0) + (s.flip ? 1 : 0) : 0);
-    fits += settings(b && b.cover) + (b && b.paper ? 1 : 0) + (b && b.coverStyle ? Object.keys(b.coverStyle).length : 0) + (b && b.watermark ? Object.keys(b.watermark).length : 0) + (b && b.coverText ? Object.keys(b.coverText).length : 0) + (b && b.footText ? 1 : 0) + (b && b.bg ? 1 : 0) + (b && b.showPageNumbers === false ? 1 : 0);
+    fits += settings(b && b.cover) + (b && b.paper ? 1 : 0) + (b && b.coverStyle ? Object.keys(b.coverStyle).length : 0) + (b && b.watermark ? Object.keys(b.watermark).length : 0) + (b && b.coverText ? Object.keys(b.coverText).length : 0) + (b && b.footText ? 1 : 0) + (b && b.bg ? 1 : 0) + (b && b.showPageNumbers === false ? 1 : 0) + (b && b.edgeBar === false ? 1 : 0);
     for (const side of ["left", "right"]) for (const l of ((b && b.coverText && b.coverText[side]) || [])) if (typeof l === "string") chars += l.length;
     // The cover's layout, and everything placed on a cover from scratch.
     fits += (b && b.coverLayout ? 1 : 0) + (b && b.coverPage && b.coverPage.bg ? 1 : 0);
