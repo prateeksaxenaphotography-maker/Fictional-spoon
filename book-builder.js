@@ -660,6 +660,47 @@
       });
     } catch (e) {}
   };
+  /* Version history (phase 3 of the owner's list, Sep 29 2026: "you can't
+     reopen the book as it was on Tuesday"). Each book's past states, kept
+     on this computer in IndexedDB — a book is tens of kB and the 5 MB string
+     store would fill in days: one when a book is opened, one at most every
+     ten minutes while it changes, and any the studio names. Named ones stay
+     until deleted; of the automatic ones the latest 60 a book are kept. */
+  const HIST_DB = "wps-book-history", HIST_STORE = "versions", HIST_EVERY = 10 * 60000, HIST_KEEP = 60;
+  let histDbP = null;
+  function histDb() {
+    if (histDbP) return histDbP;
+    histDbP = new Promise((res, rej) => {
+      let settled = false;
+      const done = (fn, v) => { if (!settled) { settled = true; fn(v); } };
+      const t = setTimeout(() => done(rej, new Error("indexedDB timeout")), 1500);
+      let r;
+      try { r = indexedDB.open(HIST_DB, 1); } catch (e) { clearTimeout(t); return done(rej, e); }
+      r.onupgradeneeded = () => { const d = r.result; if (!d.objectStoreNames.contains(HIST_STORE)) d.createObjectStore(HIST_STORE, { keyPath: "key" }).createIndex("book", "bookId"); };
+      r.onsuccess = () => { clearTimeout(t); done(res, r.result); };
+      r.onerror = () => { clearTimeout(t); done(rej, r.error); };
+      r.onblocked = () => { clearTimeout(t); done(rej, new Error("indexedDB blocked")); };
+    });
+    histDbP.catch(() => { histDbP = null; });
+    return histDbP;
+  }
+  const histOf = async (bookId) => {
+    try {
+      const d = await histDb();
+      const all = await new Promise((res, rej) => { const q = d.transaction(HIST_STORE, "readonly").objectStore(HIST_STORE).index("book").getAll(bookId); q.onsuccess = () => res(q.result || []); q.onerror = () => rej(q.error); });
+      return all.sort((a, c) => c.at - a.at);
+    } catch (e) { return []; }
+  };
+  const histPut = async (rec) => { const d = await histDb(); return new Promise((res, rej) => { const tx = d.transaction(HIST_STORE, "readwrite"); tx.objectStore(HIST_STORE).put(rec); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); };
+  const histDel = async (key) => { try { const d = await histDb(); await new Promise((res, rej) => { const tx = d.transaction(HIST_STORE, "readwrite"); tx.objectStore(HIST_STORE).delete(key); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); } catch (e) {} };
+  const whenLabel = (at, secs = false) => {
+    const d = new Date(at), now = new Date(), y = new Date(now); y.setDate(now.getDate() - 1);
+    const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", ...(secs ? { second: "2-digit" } : {}) });
+    if (d.toDateString() === now.toDateString()) return `Today, ${time}`;
+    if (d.toDateString() === y.toDateString()) return `Yesterday, ${time}`;
+    return `${d.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short", ...(d.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}) })}, ${time}`;
+  };
+
   // Read once into memory, because library() is called on every redraw and a
   // page turn cannot wait on a database.
   let outsideCache = [];
@@ -6488,6 +6529,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       markSave();
       state = readState();
       setStatus(status + longNote());
+      maybeSnapshot();
       return true;
     }
     // Pages whose words don't all fit stay named next to the save status, so
@@ -7031,6 +7073,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       remember();
       showEditor();
       if (at && at.status) setStatus(at.status);
+      startHistory();
     }
 
     /* --- screen 2: the editor --- */
@@ -7066,6 +7109,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           <span class="sb-undos">
             <button type="button" class="sb-btn quiet sb-ico" id="sbUndo" title="Undo (Ctrl+Z)" aria-label="Undo" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 5.5 3.5 9l4 3.5M4 9h7.5a4 4 0 0 1 0 8H9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Undo</span></button>
             <button type="button" class="sb-btn quiet sb-ico" id="sbRedo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12.5 5.5 4 3.5-4 3.5M16 9H8.5a4 4 0 0 0 0 8H11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Redo</span></button>
+            <button type="button" class="sb-btn quiet sb-ico" id="sbHistory" title="Version history" aria-label="Version history"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 10a6.5 6.5 0 1 0 2-4.7M3.5 3.5v3h3M10 6.5V10l2.5 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>History</span></button>
           </span>
           <button type="button" class="sb-light" id="sbLight" aria-live="polite" title="What to look at before sending"><i></i><span>Checking…</span></button>
           <div class="sb-topacts">
@@ -7184,6 +7228,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       });
       $("#sbReadBtn").addEventListener("click", openRead);
       $("#sbUndo").addEventListener("click", () => { undo(); $("#sbUndo").focus(); });
+      { const hb = $("#sbHistory"); if (hb) hb.addEventListener("click", () => openHistory()); }
       $("#sbRedo").addEventListener("click", () => { redo(); $("#sbRedo").focus(); });
       paintUndo();
       // Keyboard focus stays on the arrows; when one runs out, it moves to the other.
@@ -7313,6 +7358,111 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       paintUndo();
     }
     const undo = () => { if (!history.past.length) return; history.future.push(snapshot()); restoreBook(history.past.pop()); lastMark = 0; API.toast("Undone."); };
+    /* ---------- version history (see HIST_DB) ---------- */
+    let lastSnapAt = 0, lastSnapJson = "", histBook = null;
+    async function snapshotNow({ name = "", auto = true, force = false } = {}) {
+      if (!book) return null;
+      const json = JSON.stringify(book);
+      if (!force && json === lastSnapJson) return null;
+      const at = Date.now();
+      const rec = { key: `${book.id}|${at}`, bookId: book.id, at, name: String(name || "").slice(0, 60), auto: !!auto, pages: (book.pages || []).length + 1, title: book.name || book.title || "", json };
+      try { await histPut(rec); } catch (e) { return null; }
+      lastSnapAt = at; lastSnapJson = json;
+      if (auto) {
+        const all = await histOf(rec.bookId);
+        const autos = all.filter((r) => r.auto);
+        for (const old of autos.slice(HIST_KEEP)) await histDel(old.key);
+      }
+      return rec;
+    }
+    // After a save: one automatic version per ten minutes of changes.
+    function maybeSnapshot() { if (histBook === book && Date.now() - lastSnapAt >= (typeof window.__sbHistEvery === "number" ? window.__sbHistEvery : HIST_EVERY)) snapshotNow(); }
+    // On opening: the book as it was, unless the latest version already is.
+    async function startHistory() {
+      // Until the stored versions are read, a save takes none (the one made on
+      // opening would otherwise race it and land twice).
+      lastSnapAt = 0; lastSnapJson = ""; histBook = null;
+      const b0 = book; if (!b0) return;
+      const all = await histOf(b0.id);
+      if (book !== b0) return;
+      if (all[0]) { lastSnapJson = all[0].json; lastSnapAt = all[0].at; }
+      if (JSON.stringify(book) !== lastSnapJson) await snapshotNow({ auto: true, force: true });
+      if (book === b0) histBook = b0;
+    }
+    async function openHistory() {
+      flush();
+      const box = document.createElement("div");
+      box.className = "sb-modal-back";
+      box.innerHTML = `<div class="sb-modal sb-histbox" role="dialog" aria-modal="true" aria-labelledby="sbHistTitle">
+          <h3 id="sbHistTitle">Version history</h3>
+          <p class="sb-hint">Earlier states of this book, kept on this computer: one each time it is opened, one every ten minutes while you work, and any you name. Restoring keeps the present one as a version too, and Ctrl+Z goes back.</p>
+          <div class="sb-histname"><input type="text" id="sbHistName" maxlength="60" placeholder="e.g. Sent to the client" aria-label="Name this version"><button type="button" class="sb-btn dark" data-hist-save>Save this version</button></div>
+          <ol class="sb-histlist" id="sbHistList"><li class="sb-hint">Reading…</li></ol>
+          <div class="sb-modal-foot"><button type="button" class="sb-btn" data-hist-close>Close</button></div>
+        </div>`;
+      const close = () => { box.remove(); document.removeEventListener("keydown", onEsc); };
+      box._cancel = close;
+      const onEsc = (e) => { if (e.key === "Escape") close(); };
+      document.addEventListener("keydown", onEsc);
+      document.body.appendChild(box);
+      const draw = async () => {
+        const list = box.querySelector("#sbHistList");
+        const all = await histOf(book.id);
+        if (!all.length) { list.innerHTML = `<li class="sb-hint">No earlier versions yet: they gather as you work.</li>`; return; }
+        // Two in the same minute are told apart by their seconds.
+        const lbl = all.map((r) => whenLabel(r.at)), twice = new Set(lbl.filter((x, i) => lbl.indexOf(x) !== i));
+        list.innerHTML = all.map((r, i) => `<li class="sb-histrow" data-key="${esc(r.key)}">
+            <span class="sb-histpic" data-pic="${i}"></span>
+            <span class="sb-histwhat"><b>${esc(whenLabel(r.at, twice.has(lbl[i])))}</b><small>${r.name ? esc(r.name) : r.auto ? "Automatic" : "Saved"} · ${r.pages} page${r.pages === 1 ? "" : "s"}${i === 0 && r.json === JSON.stringify(book) ? " · as it is now" : ""}</small></span>
+            <span class="sb-histacts"><button type="button" class="sb-btn" data-hist-copy="${i}">Open a copy</button><button type="button" class="sb-btn dark" data-hist-restore="${i}">Restore</button>${r.auto ? "" : `<button type="button" class="sb-btn quiet" data-hist-del="${i}" aria-label="Delete this version" title="Delete this version">✕</button>`}</span>
+          </li>`).join("");
+        // Each version's cover, small: drawn after the list shows.
+        const cache = new Map();
+        for (const [i, r] of all.slice(0, 24).entries()) {
+          const slot = list.querySelector(`[data-pic="${i}"]`); if (!slot) continue;
+          try { const v = JSON.parse(r.json); for await (const x of renderPages(v, { dpi: 14, cache, only: -1 })) { if (slot.isConnected) slot.replaceChildren(x.page.canvas); } } catch (e) { /* no picture, still listed */ }
+        }
+        list.querySelectorAll("[data-hist-restore]").forEach((btn) => btn.addEventListener("click", async () => {
+          const r = all[+btn.dataset.histRestore]; if (!r) return;
+          await snapshotNow({ name: "Before restoring", auto: true, force: true });
+          let was; try { was = JSON.parse(r.json); } catch (e) { return; }
+          was.id = book.id;
+          mark();
+          restoreBook(JSON.stringify(was));
+          dirty = true; flush();
+          lastSnapJson = JSON.stringify(book);
+          close();
+          API.toast(`Restored the version from ${whenLabel(r.at)} · Ctrl+Z goes back`);
+        }));
+        list.querySelectorAll("[data-hist-copy]").forEach((btn) => btn.addEventListener("click", () => {
+          const r = all[+btn.dataset.histCopy]; if (!r) return;
+          let v; try { v = JSON.parse(r.json); } catch (e) { return; }
+          const cur = readState();
+          const copy = { ...v, id: uid(isForOthers(v)), name: `${(v.name || "Book").slice(0, 50)} (${whenLabel(r.at)})`.slice(0, 80), updatedAt: Date.now() };
+          if (!writeState({ versions: [copy, ...cur.versions], deleted: cur.deleted })) { API.toast("Not saved — this device's storage is full or blocked."); return; }
+          state = readState();
+          close();
+          openBook(copy, false);
+          API.toast(`Opened a copy of the version from ${whenLabel(r.at)}. The original book is unchanged.`);
+        }));
+        list.querySelectorAll("[data-hist-del]").forEach((btn) => btn.addEventListener("click", async () => {
+          const r = all[+btn.dataset.histDel]; if (!r) return;
+          await histDel(r.key); draw();
+        }));
+      };
+      box.addEventListener("click", async (e) => {
+        if (e.target === box || e.target.closest("[data-hist-close]")) return close();
+        if (e.target.closest("[data-hist-save]")) {
+          const name = (box.querySelector("#sbHistName").value || "").trim() || `Saved ${whenLabel(Date.now())}`;
+          await snapshotNow({ name, auto: false, force: true });
+          box.querySelector("#sbHistName").value = "";
+          API.toast(`Saved this version: “${name}”`);
+          draw();
+        }
+      });
+      box.querySelector("#sbHistName").addEventListener("keydown", (e) => { if (e.key === "Enter") box.querySelector("[data-hist-save]").click(); });
+      draw();
+    }
     const redo = () => { if (!history.future.length) return; history.past.push(snapshot()); restoreBook(history.future.pop()); lastMark = 0; };
 
     /* ---------- the Anything page ------------------------------------------
@@ -7725,7 +7875,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
             drawLayer(); schedulePreview(60);
             const mz = $("#sbMeasure") || Object.assign(document.createElement("div"), { id: "sbMeasure", className: "sb-measure" });
             if (!mz.isConnected) layer.appendChild(mz);
-            mz.textContent = `${Math.round(b.r || 0)}°`;
+            mz.textContent = `${Math.round((b.r || 0) * 10) / 10}°`;
           };
           const turnUp = () => {
             layer.removeEventListener("pointermove", turnMove); layer.removeEventListener("pointerup", turnUp); layer.removeEventListener("pointercancel", turnUp);
@@ -10002,7 +10152,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           ${step("Down", "nudy", "-1", "1", mmY(b.y))}
           ${step("Width", "sizw", "-1", "1", mmX(b.w))}
           ${b.k === "line" && linePath(b) === "h" ? "" : step("Height", "sizh", "-1", "1", mmY(b.h || 0.15))}
-          ${step("Turn", "turn", "-15", "15", `${b.r || 0}°`)}
+          <div class="sb-step sb-turnstep"><span>Turn</span><button type="button" data-turn="-1" aria-label="Turn 1° left (Shift: 15°)" title="1° (Shift: 15°)">−</button><label class="sb-turnin"><input type="number" inputmode="decimal" step="0.1" min="-360" max="360" value="${b.r || 0}" data-turnto aria-label="Turn, in degrees">°</label><button type="button" data-turn="1" aria-label="Turn 1° right (Shift: 15°)" title="1° (Shift: 15°)">+</button></div>
           <div class="sb-field"><span class="sb-label">Line up with the page</span><div class="sb-alignrow">${alignBtns(true)}</div></div>
           <div class="sb-adds"><button type="button" data-slock>${ALIGN_ICON.lock} Lock in place</button><button type="button" data-shide>${ALIGN_ICON.eyeOff} Hide</button></div>
           <div class="sb-field"><span class="sb-label">In front or behind</span>
@@ -10044,12 +10194,26 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       $$("[data-nudy]").forEach((x) => x.addEventListener("click", () => { mark(true); setNum("y", b.y + (+x.dataset.nudy) / G.Ha, -0.3, 1.3); redraw(); }));
       $$("[data-sizw]").forEach((x) => x.addEventListener("click", () => { mark(true); setNum("w", b.w + (+x.dataset.sizw) * 2 / G.Wa, 0.02, 1.6); redraw(); }));
       $$("[data-sizh]").forEach((x) => x.addEventListener("click", () => { mark(true); setNum("h", b.h + (+x.dataset.sizh) * 2 / G.Ha, 0.02, 1.6); redraw(); }));
-      $$("[data-turn]").forEach((x) => x.addEventListener("click", () => {
+      /* Turn: any angle to a tenth of a degree, typed (71, 12.5, -30) or stepped
+         1° at a time (Shift: 15°). The owner asked for 71° (Sep 29 2026): the
+         buttons went in 15s and 165 + 15 fell back to 0 instead of 180. */
+      const turnTo = (deg) => {
+        if (!Number.isFinite(deg)) return;
+        let d = Math.round(deg * 10) / 10;
+        d = Math.round(((((d + 180) % 360) + 360) % 360 - 180) * 10) / 10;
+        if (d === -180) d = 180;
+        if (Math.abs(d) < 0.05) delete b.r; else b.r = d;
+      };
+      $$("[data-turn]").forEach((x) => x.addEventListener("click", (ev) => {
         mark(true);
-        const next = Math.round(((b.r || 0) + (+x.dataset.turn)) * 10) / 10;
-        if (next <= -180 || next >= 180 || next === 0) delete b.r; else b.r = next;
+        turnTo((b.r || 0) + (+x.dataset.turn) * (ev.shiftKey ? 15 : 1));
         redraw();
       }));
+      { const ti = $("[data-turnto]"); if (ti) {
+        const take = () => { const v = parseFloat(String(ti.value).replace(",", ".")); if (!Number.isFinite(v)) { ti.value = b.r || 0; return; } if (Math.abs(v - (b.r || 0)) < 0.05) return; mark(true); turnTo(v); redraw(); };
+        ti.addEventListener("change", take);
+        ti.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); take(); } });
+      } }
       box.querySelectorAll(".sb-rowbox [data-malign]").forEach((x) => x.addEventListener("click", () => alignChosen(x.dataset.malign)));
       { const sl = $("[data-slock]"); if (sl) sl.addEventListener("click", () => setLocked([blockSel], true)); }
       { const sh = $("[data-shide]"); if (sh) sh.addEventListener("click", () => setHidden([blockSel], true)); }

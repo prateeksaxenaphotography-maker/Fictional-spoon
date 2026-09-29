@@ -588,7 +588,10 @@ if (books !== undefined && books !== null) {
         const at = `${where} thing ${bi + 1}`;
         if (!x || typeof x !== "object" || Array.isArray(x)) { fail(`${at} is not an object`); return; }
         if (!BLOCK_KINDS.has(x.k)) { fail(`${at} is a ${JSON.stringify(x.k)}, which the app drops`); return; }
-        for (const k of Object.keys(x)) if (!BLOCK_KEYS[x.k].includes(k)) fail(`${at} (${x.k}) has ${JSON.stringify(k)}, which the app drops`);
+        // Grouped, locked or hidden (v559) on any kind of thing.
+        for (const k of Object.keys(x)) if (!BLOCK_KEYS[x.k].includes(k) && !["g", "lock", "hide"].includes(k)) fail(`${at} (${x.k}) has ${JSON.stringify(k)}, which the app drops`);
+        if (x.g !== undefined && !(typeof x.g === "string" && /^[a-z0-9]{1,12}$/i.test(x.g))) fail(`${at} is in a group named ${JSON.stringify(x.g)}; the app writes up to 12 letters and numbers`);
+        for (const k of ["lock", "hide"]) if (x[k] !== undefined && x[k] !== true) fail(`${at} has ${k} ${JSON.stringify(x[k])}; the app writes true, and nothing otherwise`);
         for (const k of ["x", "y"]) if (typeof x[k] !== "number" || !(x[k] >= -0.3 && x[k] <= 1.3)) fail(`${at} has ${k} of ${JSON.stringify(x[k])}; it must be a number from -0.3 to 1.3`);
         for (const k of x.k === "line" && !(x.path && x.path !== "h") ? ["w"] : ["w", "h"]) if (typeof x[k] !== "number" || !(x[k] >= 0.01 && x[k] <= 1.6)) fail(`${at} has ${k} of ${JSON.stringify(x[k])}; it must be a number from 0.01 to 1.6`);
         if (x.r !== undefined && (typeof x.r !== "number" || !(x.r >= -180 && x.r <= 180) || x.r === 0)) fail(`${at} is turned ${JSON.stringify(x.r)}; it must be a number from -180 to 180, and 0 is not written`);
