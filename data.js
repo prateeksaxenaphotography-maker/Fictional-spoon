@@ -2898,8 +2898,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1790659023477,
-    "syncedAt": 1790659023477
+    "updatedAt": 1790659032809,
+    "syncedAt": 1790659032809
   },
   "INVITE_CODES": [
     {
