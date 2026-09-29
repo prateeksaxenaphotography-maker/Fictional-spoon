@@ -2843,14 +2843,14 @@ window.WPS_DATA = {
           "updatedAt": 1790354880782
         }
       ],
-      "2026-09-29": [
+      "2026-09-09": [
         {
-          "id": "b_1790668207292_sywn",
+          "id": "b_1790680684907_3pjg",
           "isTentative": true,
           "status": "tentative",
-          "type": "Selective Collaboration (TFP)",
-          "contractVersion": "V4.0-TFP",
-          "updatedAt": 1790668207292
+          "type": "Fashion Editorial",
+          "contractVersion": "V4.0-COMMERCIAL",
+          "updatedAt": 1790680684907
         }
       ]
     },
@@ -2909,12 +2909,13 @@ window.WPS_DATA = {
       "2026-10-17::NP-20260929-152027-SGWM",
       "2026-10-17::Prateek",
       "2026-10-17::b_audit_NP-20260929-153038-U78V",
-      "2026-10-17::NP-20260929-153038-U78V"
+      "2026-10-17::NP-20260929-153038-U78V",
+      "2026-09-29::b_1790668207292_sywn"
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1790679411713,
-    "syncedAt": 1790679411713
+    "updatedAt": 1790686366475,
+    "syncedAt": 1790686366475
   },
   "INVITE_CODES": [
     {
