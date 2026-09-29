@@ -291,14 +291,21 @@ window.applyPromoHomeStudioDiscount = function(entry, fee) {
   // it. It is still returned as a discount — the gap between the standard rate
   // and that price — so every total, contract and email downstream keeps
   // working with no idea this option exists.
+  //
+  // The price can be ABOVE the standard rate, and then the "discount" is
+  // negative and the rental goes up: the owner, Sep 29 2026, "rental can be
+  // increased because i have given discount on shoot" — a code that takes
+  // ₹7,000 off the package may ask ₹3,000 for the room. It used to be capped at
+  // the standard rate, so the quote said ₹2,000 and nothing said why. Callers
+  // that count savings take only a positive amount.
+  // Below the standard rate the set price IS a home studio discount, and the
+  // client is told how big as a percentage — 40% for ₹1,500 on a ₹2,500 room
+  // (owner, Sep 29 2026: "if its lower than standard rate … show home studio
+  // discount given and … the % discount"). Above it, no discount is claimed.
   if (hs.type === "fixed") {
     const price = Math.max(0, Math.round(rawVal));
-    const amount = Math.max(0, fee - price);
-    // A code can bring the rental down, never up, so a price set above the
-    // standard rate leaves the client paying the standard rate. The label says
-    // what they actually pay rather than the number that was typed in.
-    const paid = fee - amount;
-    return { amount, isFree: paid <= 0, label: paid <= 0 ? "FREE" : `STUDIO ₹${paid.toLocaleString("en-IN")}` };
+    const pct = price < fee ? Math.max(1, Math.round(((fee - price) / fee) * 100)) : 0;
+    return { amount: fee - price, isFree: price <= 0, pct, label: price <= 0 ? "FREE" : pct ? `${pct}% DISCOUNT` : `STUDIO ₹${price.toLocaleString("en-IN")}` };
   }
   return { amount: 0, isFree: false, label: "" };
 };
@@ -2667,7 +2674,10 @@ window.resolveContractArchive = function(version) {
         const card = buildCompCardDisplayList(SHOOTS.filter((s) => qualifiesAsCompCard(s)), "type", "Comp Cards", compCardContext()).find((c) => c.modelKey === key);
         if (!card) return null;
         const facts = window.WPS_PDF && typeof window.WPS_PDF.modelFacts === "function" ? window.WPS_PDF.modelFacts(card) : { stats: [], contacts: [] };
-        return { key, name: getTalentCleanName(card.talent || card.title), types: modelTypesOf(card).map(modelTypeLabel), photoIds: portfolioPdfPhotos(card).map((p) => p.id), stats: facts.stats || [], contacts: facts.contacts || [] };
+        const cleared = portfolioPdfPhotos(card);
+        // The brands of the albums they appear in, for a comp card's "brand experience".
+        const brands = [...new Set((card.sourceShootIds || []).map((id) => ((SHOOTS || []).find((s) => s && s.id === id) || {}).brand).map((b) => String(b || "").trim()).filter((b) => b && !/^personal project$/i.test(b)))];
+        return { key, name: getTalentCleanName(card.talent || card.title), types: modelTypesOf(card).map(modelTypeLabel), photoIds: cleared.map((p) => p.id), photos: cleared.map((p) => ({ id: p.id, angle: p.angle || "", pos: p.objectPosition || "" })), brands, stats: facts.stats || [], contacts: facts.contacts || [] };
       } catch (e) { return null; }
     },
     canvasPng: (canvas) => window.WPS_PDF.pdfCanvasPng(canvas),
@@ -8096,7 +8106,13 @@ window.resolveContractArchive = function(version) {
             // half of the offer. Shown as "if you shoot there" since the
             // venue pick itself may not be made yet.
             const bannerHsDiscount = getPromoHomeStudioDiscount(matchedDiscount);
-            savingsBadge.textContent = !hasPackageDiscount
+            // A set rental price below the standard rate, as the discount it is.
+            const bannerFixedPct = bannerHsDiscount.type === "fixed" ? (applyPromoHomeStudioDiscount(matchedDiscount, getHomeStudioRate(false)).pct || 0) : 0;
+            savingsBadge.textContent = bannerFixedPct
+              ? (hasPackageDiscount
+                  ? `🎉 Promo Offer Applied: ${tagMsg} on your package — plus a ${bannerFixedPct}% home studio discount if you shoot there!`
+                  : `🎉 Promo Offer Applied: a ${bannerFixedPct}% home studio discount if you shoot there!`)
+              : !hasPackageDiscount
               ? (bannerHsDiscount.type === "free"
                   ? `🎉 Promo Offer Applied: Home studio free if you shoot there!`
                   : (bannerHsDiscount.type === "flat" || bannerHsDiscount.type === "pct")
@@ -8574,6 +8590,9 @@ window.resolveContractArchive = function(version) {
         promoDiscountsHomeStudio,
         promoHomeStudioAmount: promoHomeStudioResult.amount,
         promoHomeStudioLabel: promoHomeStudioResult.label,
+        // A code that sets the room above the standard rate (see
+        // applyPromoHomeStudioDiscount): the studio's email says so.
+        promoRaisesHomeStudio: promoHomeStudioResult.amount < 0,
         savings,
         finalPayable
       };
@@ -9705,7 +9724,9 @@ window.resolveContractArchive = function(version) {
         // Same promo code, applied only partially — the rental still costs
         // something, so this reads differently from the fully-waived case above.
         const homeStudioDiscountedByPromo = !!(bookingCalc && bookingCalc.promoDiscountsHomeStudio);
-        const homeStudioPromoDiscountAmount = (bookingCalc && bookingCalc.promoHomeStudioAmount) || 0;
+        // Only a saving counts as one: a code that raised the rental is not a negative saving.
+        const homeStudioPromoDiscountAmount = Math.max(0, (bookingCalc && bookingCalc.promoHomeStudioAmount) || 0);
+        const homeStudioRaisedByPromo = !!(bookingCalc && bookingCalc.promoRaisesHomeStudio);
         const homeStudioPromoDiscountLabel = (bookingCalc && bookingCalc.promoHomeStudioLabel) || "";
         // An invite code can carry the same kind of rental discount as a promo
         // code — checked separately so the record credits whichever code
@@ -9925,15 +9946,17 @@ window.resolveContractArchive = function(version) {
           ? `${promoMeta.code}${promoMeta.tag ? ` — ${promoMeta.tag} on the package` : ""}` +
             (homeStudioWaivedByPromo
               ? " · home studio rental waived"
-              : (homeStudioDiscountedByPromo ? ` · ${homeStudioPromoDiscountLabel} on the home studio rental` : "")) +
-            ((!promoMeta.tag && !homeStudioWaivedByPromo && !homeStudioDiscountedByPromo) ? " · no discount applies to this booking" : "")
+              : (homeStudioDiscountedByPromo ? ` · ${homeStudioPromoDiscountLabel} on the home studio rental`
+                : (homeStudioRaisedByPromo ? ` · home studio rental set to ${inr(homeStudioRentalFee)} by the code` : ""))) +
+            ((!promoMeta.tag && !homeStudioWaivedByPromo && !homeStudioDiscountedByPromo && !homeStudioRaisedByPromo) ? " · no discount applies to this booking" : "")
           : (enteredDiscount ? `${enteredDiscount} — not recognised, no discount applied` : "");
         const packageDiscountLine = savings > 0 ? `− ${inr(savings)} (${discountTagText})` : "";
         const venueChargeLine = homeStudioRentalFee > 0
           ? `${inr(homeStudioRentalFee)} — ${venueLabel}` +
             (homeStudioDiscountedByPromo
               ? ` (${homeStudioPromoDiscountLabel} with promo code ${promoCodeUsed}, normally ${inr(homeStudioListPriceVal)})`
-              : (homeStudioDiscountedByInvite ? ` (${homeStudioInviteDiscountLabel} with invite code ${inviteCodeUsed}, normally ${inr(homeStudioListPriceVal)})` : "")) +
+              : (homeStudioDiscountedByInvite ? ` (${homeStudioInviteDiscountLabel} with invite code ${inviteCodeUsed}, normally ${inr(homeStudioListPriceVal)})`
+                : (homeStudioRaisedByPromo ? ` (set by promo code ${promoCodeUsed}; the standard rate is ${inr(homeStudioListPriceVal)})` : ""))) +
             " · payable in full before the shoot"
           : homeStudioWaivedByPromo
             ? `₹0 — ${venueLabel}, waived by promo code ${promoCodeUsed} (normally ${inr(homeStudioListPriceVal)})`

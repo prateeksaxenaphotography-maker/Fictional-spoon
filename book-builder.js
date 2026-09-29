@@ -5626,7 +5626,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
   const addMenuFor = (book) => {
     const m = forOf(book);
     if (!m) return ADD_MENU;
-    return ADD_MENU.map((g) => ({
+    const menu = ADD_MENU.map((g) => ({
       group: g.group === "Studio pages" ? "Book pages" : g.group,
       items: g.items.filter(([k]) => !STUDIO_ONLY.has(k)).map(([k, nm, note]) =>
         k === "about" ? [k, `About ${m.name}`, "Who they are, in their words."]
@@ -5634,6 +5634,10 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         : k === "end:back" ? [k, "Back cover", "The last page: their logo or name, and how to reach them."]
         : [k, nm, note])
     })).filter((g) => g.items.length);
+    // A talent's book opens its menu with their comp card (Sep 29 2026).
+    return m.kind === "talent"
+      ? [{ group: "Comp card", items: [["free:compcard", "Comp card", `One page: a big photograph with three beside it, ${m.name}'s name, what they do, their measurements and the brands they have worked with — filled from their card, every part movable.`]] }, ...menu]
+      : menu;
   };
   const ADD_MENU = [
     { group: "Photographs", items: [
@@ -5698,6 +5702,61 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     contents: "t4,7,20,3 b4,12,8,1 t4,18,26,2 t36,18,4,2 t4,24,24,2 t36,24,4,2 t4,30,28,2 t36,30,4,2 t4,36,20,2 t36,36,4,2 t4,42,26,2 t36,42,4,2",
     more: "t4,6,14,1.5 b4,9,8,1 t4,13,17,2 t4,17,17,2 t4,21,17,2 t4,25,17,2 t4,29,13,2 t23,13,17,2 t23,17,17,2 t23,21,17,2 t23,25,10,2"
   };
+  /* The comp card filled from a talent's card: the photographs cleared for
+     it — a full-length one large and a close-up, a front and a profile beside
+     it, by the angles they are tagged with — their name, what they do, their
+     measurements as their record lets a PDF show them, and the brands of the
+     albums they are in. Every part is an ordinary block, so it moves, changes
+     and goes like anything else on an Anything page. With no card to read it
+     is the bare arrangement. Returns the blocks and what went in. */
+  function compCardBlocks(book) {
+    const tpl = FREE_STARTS.compcard;
+    const blank = (b) => ({ ...b, ...(b.k === "text" ? { t: "" } : {}), ...(b.style ? { style: { ...b.style } } : {}) });
+    const t = talentOf(book);
+    if (!t) return { blocks: tpl.map(blank), photos: 0, stats: 0, brands: 0, name: "" };
+    const shots = (t.photos || []).filter((x) => x && x.id && clearedIn(book, x.id));
+    const used = new Set();
+    const take = (...angles) => {
+      for (const a of angles) {
+        const hit = shots.find((x) => !used.has(x.id) && (a === "*" || x.angle === a));
+        if (hit) { used.add(hit.id); return hit; }
+      }
+      return null;
+    };
+    const picks = [take("full-body", "three-quarter", "front", "*"), take("close-up", "front", "*"), take("front", "three-quarter", "close-up", "*"), take("left-profile", "right-profile", "three-quarter", "back", "*")];
+    // Framed on the point the album's own tile is framed on; a photograph with
+    // none set leans to the top, where a face usually is.
+    const focus = (pos) => {
+      const w = String(pos || "").trim().toLowerCase().split(/\s+/), at = { left: 0, top: 0, center: 0.5, right: 1, bottom: 1 };
+      const one = (v, d) => (/^-?[\d.]+%$/.test(v || "") ? Math.min(1, Math.max(0, parseFloat(v) / 100)) : (v in at ? at[v] : d));
+      if (w.length === 1 && (w[0] === "top" || w[0] === "bottom")) return { x: 0.5, y: at[w[0]] };
+      if (!w[0] || (w.length === 1 && w[0] === "center")) return { x: 0.5, y: 0.4 };
+      return { x: one(w[0], 0.5), y: one(w[1], 0.5) };
+    };
+    const blocks = tpl.filter((b) => b.k === "photo").map((b, i) => ({ ...b, ...(picks[i] ? { p: { id: picks[i].id, ...focus(picks[i].pos), zoom: 1 } } : {}) }));
+    const L = 0.035, W = 0.525;
+    const text = (role, x, y, w, h, words, style) => blocks.push({ k: "text", role, x, y, w, h, t: words, ...(style ? { style } : {}) });
+    text("head", L, 0.645, W, 0.06, String(t.name || "").toUpperCase(), { size: 1.6, weight: "bold" });
+    const roles = (t.types || []).filter(Boolean).join(" | ");
+    if (roles) text("kicker", L, 0.708, W, 0.022, roles);
+    blocks.push({ k: "line", x: L, y: 0.74, w: W, thick: "narrow", color: "ink" });
+    // Four measurements to a row, each its name over its value.
+    const stats = (t.stats || []).filter((c) => c && c.label && c.value).slice(0, 8);
+    const cellW = W / 4, rowH = 0.05, top = 0.755;
+    stats.forEach((c, i) => {
+      const x = L + (i % 4) * cellW, y = top + Math.floor(i / 4) * rowH;
+      text("kicker", x, y, cellW - 0.01, 0.018, String(c.label).toUpperCase());
+      text("body", x, y + 0.02, cellW - 0.01, 0.025, String(c.value), { weight: "bold" });
+    });
+    let y = top + Math.ceil(stats.length / 4) * rowH;
+    const brands = (t.brands || []).filter(Boolean);
+    if (brands.length) {
+      if (stats.length) { blocks.push({ k: "line", x: L, y: y + 0.004, w: W, thick: "hair", color: "ink" }); y += 0.018; }
+      text("kicker", L, y, W, 0.018, "BRAND EXPERIENCE");
+      text("body", L, y + 0.022, W, Math.min(0.06, 0.975 - (y + 0.022)), brands.join(" · "));
+    }
+    return { blocks, photos: picks.filter(Boolean).length, stats: stats.length, brands: brands.length, name: t.name || "" };
+  }
   function addIcon(type) {
     const FILL = { p: "#cfcbc4", t: "#8a8c93", b: "var(--accent, #d24e1a)", w: "#ffffff", q: "#141416" };
     const spec = ADD_ICONS[type] !== undefined ? ADD_ICONS[type] : (/^free:/.test(type) ? layoutIconSpec(FREE_STARTS[type.slice(5)]) : "");
@@ -5715,6 +5774,19 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
      whichever style it is in. Text boxes start empty: nothing is ever written
      for the studio. */
   const FREE_STARTS = {
+    /* A comp card (Sep 29 2026): one big photograph, three stacked beside
+       it, and under the big one the name, what they do, a grid of
+       measurements and the brands they have worked with. Filled from the
+       talent's record by compCardBlocks(); this is its bare shape. */
+    compcard: [
+      { k: "photo", x: 0, y: 0, w: 0.57, h: 0.625 },
+      { k: "photo", x: 0.582, y: 0, w: 0.418, h: 0.3 },
+      { k: "photo", x: 0.582, y: 0.312, w: 0.418, h: 0.313 },
+      { k: "photo", x: 0.582, y: 0.637, w: 0.418, h: 0.363 },
+      { k: "text", role: "head", x: 0.035, y: 0.645, w: 0.525, h: 0.06, style: { size: 1.6, weight: "bold" } },
+      { k: "text", role: "kicker", x: 0.035, y: 0.708, w: 0.525, h: 0.022 },
+      { k: "line", x: 0.035, y: 0.74, w: 0.525, thick: "narrow", color: "ink" }
+    ],
     opener: [
       { k: "photo", x: 0, y: 0, w: 1, h: 0.56 },
       { k: "text", role: "kicker", x: 0.095, y: 0.6, w: 0.5, h: 0.035 },
@@ -7760,7 +7832,9 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       mark();
       if (renderedCount(book) + extra > MAX_PAGES) { API.toast(`A book holds ${MAX_PAGES} pages at most, cover included.`); return; }
       const entry = { type };
-      if (type === "free") entry.blocks = (FREE_STARTS[start] || []).map((b) => ({ ...b, ...(b.k === "text" ? { t: "" } : {}), ...(b.style ? { style: { ...b.style } } : {}) }));
+      const card = type === "free" && start === "compcard" ? compCardBlocks(book) : null;
+      if (card) entry.blocks = card.blocks;
+      else if (type === "free") entry.blocks = (FREE_STARTS[start] || []).map((b) => ({ ...b, ...(b.k === "text" ? { t: "" } : {}), ...(b.style ? { style: { ...b.style } } : {}) }));
       if (["photos", "spread", "story", "note", "quote", "feature", "article", "look"].includes(type)) entry.photos = [];
       if (type === "divider") { entry.heading = "Selected work"; entry.line = ""; }
       // Writing pages start empty: nothing is ever written for the studio.
@@ -7791,6 +7865,13 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       // would cover the new page, so it just scrolls into view.
       const first = $("#sbPanelPage [data-field]");
       if (first && matchMedia("(pointer: fine)").matches && type !== "note") first.focus();
+      // What the comp card was filled with, and what is missing from their card.
+      if (card && card.name) {
+        const n = (k, one) => `${card[k]} ${one}${card[k] === 1 ? "" : "s"}`;
+        API.toast(card.photos
+          ? `Comp card filled from ${card.name}'s card: ${n("photos", "photograph")}, ${card.stats ? n("stats", "measurement") : "no measurements (switched off for PDFs, or none typed in)"}${card.brands ? `, ${n("brands", "brand")}` : ""}. Click anything on it to move or change it.`
+          : `No photographs are cleared for ${card.name}'s card yet, so the frames are empty — clear some in their albums, or click a frame to put in a photo from this computer.`);
+      }
     }
     const fieldCaps = () => ((window.STUDIO_BOOK_LIMITS && window.STUDIO_BOOK_LIMITS.fields) || {});
     function setTabPage() { const t = $("#sbTabPage"); if (t && tab !== "page") t.click(); }

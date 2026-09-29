@@ -545,7 +545,8 @@ window.togglePromoHomeStudioValField = function() {
 /* What the client actually pays for the rental with this code, said under
    the box as it is typed. The studio set a code's rental price to ₹3,000
    while the standard rate for paid shoots was ₹2,000, and the quote said
-   ₹2,000 with no word why: a code only ever lowers the rental (Sep 29 2026). */
+   ₹2,000 with no word why (Sep 29 2026). A set price now counts either way,
+   above or below the standard rate. */
 window.paintPromoRentalHint = function() {
   const hint = document.getElementById("newPromoHomeStudioHint");
   if (!hint) return;
@@ -558,10 +559,10 @@ window.paintPromoRentalHint = function() {
   if (type !== "none" && (type === "free" || (raw !== "" && Number.isFinite(val)))) {
     const off = window.applyPromoHomeStudioDiscount({ homeStudioDiscount: type === "free" ? { type } : { type, value: val } }, rate);
     text += ` With this code the client pays ${inr(rate - off.amount)} for it.`;
-    if (type === "fixed" && val > rate) {
-      warn = true;
-      text += ` A code can only lower the rental, never raise it, so ${inr(val)} is not charged. To charge ${inr(val)} for every paid shoot, change the rental in Package rates instead.`;
-    }
+    // A price above the standard rate raises the rental (owner, Sep 29 2026: the shoot itself is discounted);
+    // below it, the booking page calls it a home studio discount and gives the percentage.
+    if (type === "fixed" && val > rate) text += ` That is ${inr(val - rate)} more than the standard rate — the quote shows the rental as ${inr(val)}, with no discount mentioned.`;
+    else if (off.pct) text += ` The booking page shows this as a ${off.pct}% home studio discount.`;
   }
   hint.textContent = text;
   hint.style.color = warn ? "#d97706" : "var(--ink-soft)";
@@ -3894,6 +3895,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       if (hs.type === "free") parts.push("home studio rental waived");
       else if (hs.type === "flat") parts.push(`${inr(hs.value)} off the rental`);
       else if (hs.type === "pct") parts.push(`${hs.value}% off the rental`);
+      else if (hs.type === "fixed") parts.push(`home studio rental set to ${inr(hs.value)}`);
       return parts.join(" · ") || "no discount";
     };
     // A booking that arrived with a promo code reopens with it; one with a
@@ -4117,7 +4119,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     const computeMoney = () => {
       const kind = kindOf(), listRental = currentRental(), key = q("pdf_paymentMilestones").value, disc = currentDiscount();
       let rental = listRental, rentalOff = 0;
-      if (disc.source === "promo") { const r = window.applyPromoHomeStudioDiscount(disc.entry, listRental); rentalOff = r.amount; rental = Math.max(0, listRental - r.amount); }
+      // rentalOff is a saving, so a code that sets the room above the standard rate raises the rental and saves nothing on it.
+      if (disc.source === "promo") { const r = window.applyPromoHomeStudioDiscount(disc.entry, listRental); rentalOff = Math.max(0, r.amount); rental = Math.max(0, listRental - r.amount); }
       if (kind === "tfp") {
         // A collaboration has no package, so a custom discount can only be
         // taken off the rental; a promo code's package part does nothing here.
