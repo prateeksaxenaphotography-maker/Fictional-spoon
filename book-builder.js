@@ -5281,11 +5281,32 @@
   .sb-pagehint { padding: 4px 12px 8px; font: 500 11.5px/1.4 Inter, system-ui, sans-serif; color: var(--ink-soft, #5c5e66); text-align: center; }
   .sb-pagehint:empty { display: none; }
   @media (max-width: 900px) { .sb-bar { gap: 2px; } .sb-bar select { max-width: 96px; } }
-  .sb-blklist { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 4px; }
-  .sb-blkrow { display: flex; align-items: center; gap: 4px; }
-  .sb-blkrow > button:first-child { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sb-blkrow button { min-height: 32px; padding: 4px 8px; border: 1px solid var(--sb-line); border-radius: 7px; background: var(--paper, #fff); color: inherit; font: 500 12px/1.3 Inter, system-ui, sans-serif; cursor: pointer; }
-  .sb-blkrow button[aria-pressed=true] { background: var(--ink, #141416); color: var(--paper, #fff); border-color: var(--ink, #141416); }
+  /* On this page: slim layer rows (Sep 29 2026). */
+  .sb-layhead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .sb-layhead h3 { margin-bottom: 2px; }
+  .sb-laycount { font: 600 11px/1 ui-monospace, "SF Mono", Menlo, monospace; color: var(--ink-soft, #6b6b70); letter-spacing: .02em; }
+  .sb-layhint { margin: 0 0 8px; font-size: 11.5px; }
+  .sb-blklist { list-style: none; margin: 0 0 12px; padding: 3px; display: flex; flex-direction: column; gap: 1px; border: 1px solid var(--sb-line); border-radius: 10px; background: var(--sb-card); }
+  .sb-blkrow { display: flex; align-items: center; min-height: 34px; border-radius: 7px; padding-right: 3px; }
+  .sb-blkrow:hover { background: var(--sb-sunk); }
+  .sb-blkrow.is-sel, .sb-blkrow.is-sel:hover { background: color-mix(in srgb, var(--accent, #d24e1a) 11%, var(--sb-card)); box-shadow: inset 3px 0 0 var(--accent, #d24e1a); }
+  .sb-blkrow.is-sel .sb-layname { font-weight: 650; }
+  .sb-laypick { all: unset; box-sizing: border-box; flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 5px 8px; cursor: pointer; font: 500 12.5px/1.3 Inter, system-ui, sans-serif; color: var(--ink, #141416); border-radius: 7px; }
+  .sb-laypick:focus-visible { outline: 2px solid var(--accent, #d24e1a); outline-offset: -2px; }
+  .sb-layico { flex: none; width: 24px; height: 24px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; background: var(--sb-sunk); color: var(--ink-soft, #6b6b70); overflow: hidden; }
+  .sb-blkrow:hover .sb-layico, .sb-blkrow.is-sel .sb-layico { background: var(--sb-card); }
+  .sb-layico.has-pic { background: none; }
+  .sb-layico img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .sb-layname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sb-layname.is-empty { color: var(--ink-soft, #6b6b70); font-style: italic; font-weight: 400; }
+  .sb-layacts { display: flex; flex: none; opacity: 0; transition: opacity .12s; }
+  .sb-blkrow:hover .sb-layacts, .sb-blkrow:focus-within .sb-layacts, .sb-blkrow.is-sel .sb-layacts { opacity: 1; }
+  @media (pointer: coarse) { .sb-layacts { opacity: 1; } .sb-blkrow { min-height: 42px; } }
+  .sb-layacts button { all: unset; box-sizing: border-box; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--ink-soft, #6b6b70); cursor: pointer; }
+  .sb-layacts button:hover { background: var(--sb-card); color: var(--ink, #141416); }
+  .sb-layacts button[data-blkdel]:hover { color: #c0392b; }
+  .sb-layacts button:disabled { opacity: .28; cursor: default; background: none; }
+  .sb-layacts button:focus-visible { outline: 2px solid var(--accent, #d24e1a); outline-offset: -1px; }
   .sb-adds { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
   .sb-adds button { flex: 1 1 calc(50% - 6px); min-height: 38px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--paper, #fff); color: inherit; font: 600 13px/1.3 Inter, system-ui, sans-serif; cursor: pointer; }
   .sb-adds button:hover { border-color: var(--accent, #d24e1a); }
@@ -6983,6 +7004,48 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     const curBlock = () => { const e = freePage(); if (!e) return null; return blocksOf(e)[blockSel] || null; };
     const BLOCK_NAME = { text: "Words", photo: "Photograph", shape: "Shape", line: "Line" };
     const blockLabel = (b) => (b.k === "text" ? (String(b.t || "").trim().slice(0, 28) || "Words (empty)") : b.k === "line" && linePath(b) === "free" ? "Drawn line" : BLOCK_NAME[b.k] || b.k);
+    /* The list of what is on an Anything page, as layers (the owner, Sep 29
+       2026: "improve UX of this page … modern and minimalistic"): one slim
+       row each — a small picture of the thing, its words — front to back,
+       top first, as design tools list them; the three buttons show on hover,
+       on the chosen row and on touch screens. */
+    const LAYER_ICON = {
+      text: `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3 3.5h10M8 3.5v9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`,
+      photo: `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3.5 11.5l3-3 2.2 2.2L10.5 9l2 2.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>`,
+      shape: `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor" opacity=".55"/></svg>`,
+      line: `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2.5 8h11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+      drawn: `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2.5 11c2-5 4 1 6-3s3-2 5-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`
+    };
+    const LAYER_BTN = {
+      front: `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M4 10l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+      back: `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+      del: `<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`
+    };
+    function layerListHtml(blocks) {
+      let lib = null;
+      const thumb = (b) => {
+        if (b.k !== "photo" || !b.p || !b.p.id || /^out_/.test(b.p.id)) return "";
+        try { lib = lib || library(); const hit = lib.byId.get(b.p.id); return hit && hit.photo ? `<img src="${esc(API.photoSrc(hit.photo.small ? { url: hit.photo.small } : hit.photo))}" alt="" loading="lazy">` : ""; } catch (e) { return ""; }
+      };
+      const nameOf = (b) => {
+        if (b.k === "text") { const t = String(b.t || "").trim(); return t ? { text: t.split("\n")[0].slice(0, 40), empty: false } : { text: "Empty text", empty: true }; }
+        if (b.k === "photo") return b.p && b.p.id ? { text: "Photo", empty: false } : { text: "Empty photo frame", empty: true };
+        if (b.k === "line") return { text: linePath(b) === "free" ? "Drawn line" : "Line", empty: false };
+        return { text: BLOCK_NAME[b.k] || b.k, empty: false };
+      };
+      const last = blocks.length - 1;
+      return `<ol class="sb-blklist" aria-label="On this page, front to back">${blocks.map((x, i) => ({ x, i })).reverse().map(({ x, i }) => {
+        const n = nameOf(x), pic = thumb(x);
+        const ico = pic || LAYER_ICON[x.k === "line" && linePath(x) === "free" ? "drawn" : x.k] || LAYER_ICON.shape;
+        return `<li class="sb-blkrow${i === blockSel ? " is-sel" : ""}">
+          <button type="button" class="sb-laypick" data-pickblk="${i}" aria-pressed="${i === blockSel}"><span class="sb-layico${pic ? " has-pic" : ""}">${ico}</span><span class="sb-layname${n.empty ? " is-empty" : ""}">${esc(n.text)}</span></button>
+          <span class="sb-layacts">
+            <button type="button" data-blkdown="${i}" aria-label="Bring forward" title="Bring forward" ${i === last ? "disabled" : ""}>${LAYER_BTN.front}</button>
+            <button type="button" data-blkup="${i}" aria-label="Send back" title="Send back" ${i === 0 ? "disabled" : ""}>${LAYER_BTN.back}</button>
+            <button type="button" data-blkdel="${i}" aria-label="Remove" title="Remove">${LAYER_BTN.del}</button>
+          </span></li>`;
+      }).join("")}</ol>`;
+    }
     // Screen pixels to a fraction of the A4 frame, and the other way.
     function layerMaths() {
       const G = geometry(book);
@@ -9396,14 +9459,8 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           <button type="button" data-addblk="line">+ Line</button>
           <button type="button" data-addblk="draw" aria-pressed="${drawing}">✎ Draw by hand</button>
         </div>
-        <p class="sb-hint">${blocks.length} of ${FREE_MAX} things. Drag anything to move it and the round handle to turn it (Shift for 15° steps). Pull a photograph's edge to crop it, its corner to resize it. Arrow keys nudge.</p>
-        <h3>On this page</h3>
-        ${blocks.length ? `<ol class="sb-blklist">${blocks.map((x, i) => `<li class="sb-blkrow">
-            <button type="button" data-pickblk="${i}" aria-pressed="${i === blockSel}">${esc(blockLabel(x))}</button>
-            <button type="button" data-blkup="${i}" aria-label="Send back" ${i === 0 ? "disabled" : ""}>▲</button>
-            <button type="button" data-blkdown="${i}" aria-label="Bring forward" ${i === blocks.length - 1 ? "disabled" : ""}>▼</button>
-            <button type="button" data-blkdel="${i}" aria-label="Remove">✕</button></li>`).join("")}</ol>
-          <p class="sb-hint">The last one is on top.</p>` : `<p class="sb-hint">Nothing on this page yet. Add something above, or start again from an arrangement in “+ Add page”.</p>`}
+        <div class="sb-layhead"><h3>On this page</h3><span class="sb-laycount" title="${blocks.length} of ${FREE_MAX} things a page can hold">${blocks.length} / ${FREE_MAX}</span></div>
+        ${blocks.length ? `<p class="sb-hint sb-layhint">Front to back. Drag on the page to move · corner to resize · a photo's edge to crop · round handle to turn · arrow keys nudge.</p>${layerListHtml(blocks)}` : `<p class="sb-hint">Nothing on this page yet. Add something above, or start again from an arrangement in “+ Add page”.</p>`}
         ${b ? "" : pageLookHtml(entry, blocks.filter((x) => x.k === "photo").length, true)}
         ${b ? `<div class="sb-sec sb-rowbox"><h3>${esc(BLOCK_NAME[b.k] || "Thing")} ${blockSel + 1}</h3>
           ${words}${paint}${photoShape}
