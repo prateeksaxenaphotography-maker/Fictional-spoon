@@ -1054,6 +1054,10 @@ function cleanStudioPortfolios(o) {
       if (x.k !== "line" || (L2.linePaths.includes(x.path) && x.path !== "h")) one.h = frac(x.h, 0.01, 1.6, 0.2);
       const turn = Math.round(num(x.r, -180, 180, 0) * 10) / 10;
       if (turn) one.r = turn;
+      // Grouped, locked or hidden (v559): named here or the cleaner would drop them.
+      if (typeof x.g === "string" && /^[a-z0-9]{1,12}$/i.test(x.g)) one.g = x.g;
+      if (x.lock === true) one.lock = true;
+      if (x.hide === true) one.hide = true;
       if (x.k === "text") {
         one.t = strU(x.t, L2.blockText);
         if (L2.blockRoles.includes(x.role)) one.role = x.role;

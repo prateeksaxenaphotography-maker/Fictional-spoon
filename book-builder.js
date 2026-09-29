@@ -4603,7 +4603,7 @@
     // A cover from scratch takes the style's cover ground, not the book's page colour.
     op({ k: "rect", x: 0, y: 0, w: W, h: H, c: ground ? (isFillish(entry.bg) ? blockColor(entry.bg, P, ground) : ground) : pageBgOf(book, entry, P, D.ground === "paper" ? P.paper : P.white) });
     freeBlocks(entry).forEach((b, i) => {
-      if (!b || !FREE_KINDS.includes(b.k)) return;
+      if (!b || !FREE_KINDS.includes(b.k) || b.hide) return;   // hidden from the list under "On this page"
       const box = blockBox(b, W, H);
       const turn = Math.abs(+b.r || 0) > 0.05 ? { deg: +b.r, cx: box.x + box.w / 2, cy: box.y + box.h / 2 } : null;
       const field = `b${i}`;
@@ -5265,6 +5265,32 @@
   .sb-blkbar button i { font-style: normal; font-size: 13px; }
   .sb-blkbar .sb-sep { width: 1px; margin: 4px 2px; background: var(--sb-line); }
   .sb-photobar { z-index: 4; }
+  /* Drag and drop (v559). */
+  .sb-droptarget { outline: 3px solid var(--accent, #d24e1a) !important; outline-offset: -3px; background: color-mix(in srgb, var(--accent, #d24e1a) 14%, transparent) !important; }
+  .sb-thumb[aria-disabled=true] { opacity: .45; }
+  .sb-thumb[draggable=true] { cursor: grab; }
+  /* Several chosen (v559). */
+  .sb-blk.multi { outline: 1.5px dashed var(--accent, #d24e1a); outline-offset: 1px; }
+  .sb-blk.locked { pointer-events: none; }
+  .sb-multibox { position: absolute; border: 1px solid var(--accent, #d24e1a); pointer-events: none; z-index: 2; }
+  .sb-marquee { position: absolute; border: 1px dashed var(--accent, #d24e1a); background: color-mix(in srgb, var(--accent, #d24e1a) 8%, transparent); pointer-events: none; z-index: 5; }
+  .sb-multibar { align-items: center; }
+  .sb-multibar .sb-mcount { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 6px; margin: 0 2px 0 3px; border-radius: 11px; background: var(--accent, #d24e1a); color: #fff; font: 700 11px/1 Inter, system-ui, sans-serif; }
+  .sb-multibar button { padding: 0 6px; }
+  .sb-alignrow { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .sb-alignrow button { display: inline-flex; align-items: center; gap: 5px; height: 32px; min-width: 32px; justify-content: center; padding: 0 8px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--sb-card); color: var(--ink, #141416); font: 600 12px/1 Inter, system-ui, sans-serif; cursor: pointer; }
+  .sb-alignrow button:hover:not(:disabled) { background: var(--sb-sunk); }
+  .sb-alignrow button:disabled { opacity: .35; cursor: default; }
+  .sb-alignrow .sb-sep { width: 1px; height: 22px; margin: 0 3px; background: var(--sb-line); }
+  .sb-adds button svg { vertical-align: -3px; }
+  .sb-laystate { display: flex; flex: none; }
+  .sb-laystate button { all: unset; box-sizing: border-box; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--ink-soft, #6b6b70); cursor: pointer; opacity: 0; }
+  .sb-blkrow:hover .sb-laystate button, .sb-blkrow.is-sel .sb-laystate button, .sb-laystate button[aria-pressed=true], .sb-blkrow:focus-within .sb-laystate button { opacity: 1; }
+  .sb-laystate button[aria-pressed=true] { color: var(--accent, #d24e1a); }
+  .sb-laystate button:hover { background: var(--sb-card); color: var(--ink, #141416); }
+  @media (pointer: coarse) { .sb-laystate button { opacity: 1; } }
+  .sb-blkrow.is-hidden .sb-layname, .sb-blkrow.is-hidden .sb-layico { opacity: .45; }
+  .sb-laygrp { flex: none; margin-left: auto; padding: 1px 6px; border-radius: 9px; border: 1px solid var(--sb-line); font: 600 10px/1.4 Inter, system-ui, sans-serif; color: var(--ink-soft, #6b6b70); }
   .sb-swapping .sb-blk, .sb-swapping .sb-hit.photo { cursor: copy; }
   .sb-replacing { margin: 6px 0 8px; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--accent, #d24e1a) 10%, var(--sb-card)); font-size: 12.5px; line-height: 1.45; }
   .sb-linkbtn { all: unset; cursor: pointer; font-weight: 700; text-decoration: underline; margin-left: 4px; }
@@ -6239,6 +6265,14 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     let sel = -1;                        // -1 = cover, else index into book.pages
     let active = 0;                      // which chosen photo the placement controls act on
     let blockSel = -1;                   // which thing on an Anything page is chosen
+    /* Several things at once (the owner's list, Sep 29 2026: "selecting
+       several items at once, grouping, align or distribute buttons, or
+       locking and hiding an item"). `multi` holds their indexes while two or
+       more are chosen, tied to the page they are on; blockSel stays the one
+       the studio touched last. */
+    let multi = null;
+    // What a picker thumbnail carries when it is dragged onto the page.
+    const DRAG_TYPE = "text/x-sb-photo";
     let drawing = false;                 // the pointer draws a line by hand on an Anything page
     let lastRender = [];                 // what the preview last drew, page by page
     let lastFacing = null;               // the page drawn beside it, when Two is on
@@ -6260,6 +6294,136 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
        moves; `swapFrom` is the photograph waiting for the one to trade with. */
     let replacing = null, swapFrom = null;
     const replaceKey = () => `${sel}|${blockSel}|${active}`;
+    // A thing's height on the page (a straight rule has none of its own).
+    const hOf = (b) => (b.k === "line" && linePath(b) === "h" ? lineH(b, geometry(book).Ha) : (+b.h || 0));
+    const boxOf = (list) => {
+      const x = Math.min(...list.map((b) => b.x)), y = Math.min(...list.map((b) => b.y));
+      return { x, y, w: Math.max(...list.map((b) => b.x + b.w)) - x, h: Math.max(...list.map((b) => b.y + hOf(b))) - y };
+    };
+    const multiNow = () => {
+      const e = freePage();
+      if (!e || !multi || multi.page !== sel || !multi.set.has(blockSel)) return null;
+      const bl = blocksOf(e);
+      const l = [...multi.set].filter((i) => bl[i] && !bl[i].hide).sort((a, c) => a - c);
+      return l.length > 1 ? l : null;
+    };
+    // A grouped thing stands for its whole group.
+    const groupMembers = (i) => {
+      const e = freePage(); if (!e) return [i];
+      const bl = blocksOf(e), g = bl[i] && bl[i].g;
+      return g ? bl.map((b, j) => (b && b.g === g && !b.hide ? j : -1)).filter((j) => j >= 0) : [i];
+    };
+    function chooseBlocks(list, primary) {
+      const l = [...new Set(list)].filter((i) => i >= 0);
+      blockSel = primary != null && l.includes(primary) ? primary : (l.length ? l[l.length - 1] : -1);
+      multi = l.length > 1 ? { page: sel, set: new Set(l) } : null;
+      drawLayer(); drawInspector();
+    }
+    const chosenNow = () => multiNow() || (blockSel >= 0 && freePage() && blocksOf(freePage())[blockSel] ? [blockSel] : []);
+    // What moves as one when lining up: each group whole, everything else on its own.
+    const unitsOf = (l, bl) => {
+      const byG = new Map();
+      for (const j of l) { const k = bl[j].g ? `g:${bl[j].g}` : `i:${j}`; if (!byG.has(k)) byG.set(k, []); byG.get(k).push(j); }
+      return [...byG.values()].map((js) => ({ js, box: boxOf(js.map((j) => bl[j])) }));
+    };
+    const shiftUnit = (u, bl, dx, dy) => { for (const j of u.js) { bl[j].x = round4(bl[j].x + dx); bl[j].y = round4(bl[j].y + dy); } };
+    /* Line things up: several with each other (each group as one), or a
+       single thing — or a single group — with the page. */
+    function alignChosen(how) {
+      const e = freePage(), l = chosenNow(); if (!e || !l.length) return;
+      const bl = blocksOf(e), units = unitsOf(l, bl);
+      const frame = units.length === 1 ? { x: 0, y: 0, w: 1, h: 1 } : boxOf(l.map((j) => bl[j]));
+      mark();
+      for (const u of units) {
+        const b = u.box;
+        const tx = how === "left" ? frame.x : how === "centre" ? frame.x + (frame.w - b.w) / 2 : how === "right" ? frame.x + frame.w - b.w : b.x;
+        const ty = how === "top" ? frame.y : how === "middle" ? frame.y + (frame.h - b.h) / 2 : how === "bottom" ? frame.y + frame.h - b.h : b.y;
+        shiftUnit(u, bl, tx - b.x, ty - b.y);
+      }
+      change({ rail: true }); drawLayer(); drawInspector();
+    }
+    // Even gaps between three or more, the first and last staying put.
+    function distributeChosen(axis) {
+      const e = freePage(), l = multiNow(); if (!e || !l) return;
+      const bl = blocksOf(e), units = unitsOf(l, bl);
+      if (units.length < 3) { API.toast("Choose three or more to space them evenly."); return; }
+      const X = axis === "x", pos = (u) => (X ? u.box.x : u.box.y), size = (u) => (X ? u.box.w : u.box.h);
+      units.sort((a, c) => pos(a) - pos(c));
+      const first = units[0], last = units[units.length - 1];
+      const span = pos(last) + size(last) - pos(first), total = units.reduce((t, u) => t + size(u), 0);
+      const gap = (span - total) / (units.length - 1);
+      mark();
+      let at = pos(first) + size(first) + gap;
+      for (const u of units.slice(1, -1)) { const d = at - pos(u); shiftUnit(u, bl, X ? d : 0, X ? 0 : d); at += size(u) + gap; }
+      change({ rail: true }); drawLayer(); drawInspector();
+    }
+    function groupChosen() {
+      const e = freePage(), l = multiNow(); if (!e || !l) { API.toast("Choose two or more things first (Shift-click, or drag a box round them)."); return; }
+      const bl = blocksOf(e), g = Math.random().toString(36).slice(2, 9);
+      mark(); for (const j of l) bl[j].g = g;
+      change({ rail: true }); drawLayer(); drawInspector();
+      API.toast("Grouped: they move together · Ctrl+Shift+G takes them apart");
+    }
+    function ungroupChosen() {
+      const e = freePage(), l = chosenNow(); if (!e || !l.length) return;
+      const bl = blocksOf(e); if (!l.some((j) => bl[j].g)) return;
+      mark(); for (const j of l) delete bl[j].g;
+      change({ rail: true }); drawLayer(); drawInspector();
+      API.toast("Ungrouped");
+    }
+    // Locked things stay where they are and can't be picked on the page; the list still reaches them.
+    function setLocked(list, on) {
+      const e = freePage(); if (!e || !list.length) return;
+      const bl = blocksOf(e);
+      mark(); for (const j of list) { if (on) bl[j].lock = true; else delete bl[j].lock; }
+      if (on) { multi = null; }
+      change({ rail: true }); drawLayer(); drawInspector();
+      if (on) API.toast(`Locked · unlock it from the list under “On this page”`);
+    }
+    // Hidden things are not drawn on the page or printed; the list brings them back.
+    function setHidden(list, on) {
+      const e = freePage(); if (!e || !list.length) return;
+      const bl = blocksOf(e);
+      mark(); for (const j of list) { if (on) bl[j].hide = true; else delete bl[j].hide; }
+      if (on) { multi = null; if (list.includes(blockSel)) blockSel = -1; }
+      change({ rail: true }); drawLayer(); drawInspector();
+    }
+    function removeChosen() {
+      const e = freePage(), l = chosenNow(); if (!e || !l.length) return;
+      if (l.length === 1) { removeBlock(l[0]); return; }
+      const bl = blocksOf(e);
+      mark(); [...l].sort((a, c) => c - a).forEach((j) => bl.splice(j, 1));
+      blockSel = -1; multi = null;
+      change({ rail: true }); drawLayer(); drawInspector();
+      API.toast(`${l.length} removed · press Ctrl+Z to put them back`);
+    }
+    function dupeChosen() {
+      const e = freePage(), l = multiNow(); if (!e || !l) return;
+      const bl = blocksOf(e);
+      if (bl.length + l.length > FREE_MAX) { API.toast(`A page holds ${FREE_MAX} things at most.`); return; }
+      const G = geometry(book), dx = 4 / G.Wa, dy = 4 / G.Ha, gmap = new Map();
+      mark();
+      const made = l.map((j) => {
+        const c = JSON.parse(JSON.stringify(bl[j]));
+        c.x = round4(c.x + dx); c.y = round4(c.y + dy);
+        if (c.g) { if (!gmap.has(c.g)) gmap.set(c.g, Math.random().toString(36).slice(2, 9)); c.g = gmap.get(c.g); }
+        delete c.lock;
+        bl.push(c); return bl.length - 1;
+      });
+      change({ rail: true }); chooseBlocks(made);
+    }
+    function nudgeChosen(dx, dy, big) {
+      const e = freePage(), l = multiNow(); if (!e || !l) return;
+      const bl = blocksOf(e), G = geometry(book), st = big ? 5 : 0.5;
+      mark(true);
+      for (const j of l) { bl[j].x = round4(Math.min(1.3, Math.max(-0.3, bl[j].x + (dx * st) / G.Wa))); bl[j].y = round4(Math.min(1.3, Math.max(-0.3, bl[j].y + (dy * st) / G.Ha))); }
+      change({ rail: true }); drawLayer();
+    }
+    function selectAllBlocks() {
+      const e = freePage(); if (!e) return;
+      const bl = blocksOf(e);
+      chooseBlocks(bl.map((b, j) => (b && !b.lock && !b.hide ? j : -1)).filter((j) => j >= 0));
+    }
     // No album chosen yet: the photographs appear once one is (or All albums),
     // not 160 of them at once (the studio's ask, Sep 25 2026).
     let filter = "", pickerOpen = null, tab = "page";
@@ -6378,10 +6542,14 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         return;
       }
       if (!typing && book && $("#sbRead") && (e.key === "ArrowLeft" || e.key === "ArrowRight")) { e.preventDefault(); turnRead(e.key === "ArrowLeft" ? -1 : 1); return; }
+      if (!typing && book && freePage() && !$("#sbRead")) {
+        if ((e.metaKey || e.ctrlKey) && (e.key === "a" || e.key === "A")) { e.preventDefault(); selectAllBlocks(); return; }
+        if ((e.metaKey || e.ctrlKey) && (e.key === "g" || e.key === "G")) { e.preventDefault(); if (e.shiftKey) ungroupChosen(); else groupChosen(); return; }
+      }
       if (!typing && book && freePage() && blockSel >= 0) {
         const step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
-        if (step) { e.preventDefault(); nudgeBlock(step[0], step[1], e.shiftKey); return; }
-        if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); removeBlock(blockSel); return; }
+        if (step) { e.preventDefault(); if (multiNow()) nudgeChosen(step[0], step[1], e.shiftKey); else nudgeBlock(step[0], step[1], e.shiftKey); return; }
+        if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); if (multiNow()) removeChosen(); else removeBlock(blockSel); return; }
         if (e.key === "]" || e.key === "}") { e.preventDefault(); if (e.shiftKey) moveBlockTo(blockSel, "front"); else moveBlock(blockSel, 1); return; }
         if (e.key === "[" || e.key === "{") { e.preventDefault(); if (e.shiftKey) moveBlockTo(blockSel, "back"); else moveBlock(blockSel, -1); return; }
       }
@@ -6392,7 +6560,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       if (replacing) { replacing = null; pickerOpen = false; pageHint(""); drawPhotoBlock(); return; }
       if (photoSel) { photoSel = null; $$(".sb-hit.photo.on").forEach((x) => x.classList.remove("on")); pageHint(""); return; }
       if ($("#sbRead")) { closeRead(); return; }
-      if (blockSel >= 0) { blockSel = -1; drawLayer(); drawInspector(); return; }
+      if (blockSel >= 0 || multi) { blockSel = -1; multi = null; drawLayer(); drawInspector(); return; }
       const pop = $("#sbDlPop"), menu = $("#sbAddMenu");
       if (pop && !pop.hidden) { pop.hidden = true; $("#sbDlToggle").setAttribute("aria-expanded", "false"); $("#sbDlToggle").focus(); }
       if (menu && !menu.hidden) closeAdd();
@@ -6408,6 +6576,137 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       if ($(".sb-hits") || editing) drawHits(lastRender);
       if ($("#sbWork")) applyPanes();
     };
+    /* Drag and drop (Sep 29 2026, from the owner's list): a thumbnail from the
+       picker, or photographs straight from the desktop, dropped on the page.
+       Onto a photo it takes that photo's place; onto an Anything page's empty
+       space it becomes a new photo where it lands; onto a page of photographs
+       it is added while there is room; onto the cover it is the cover photo. */
+    /* What is under the pointer, found by position: during a drag the
+       browser's own hit-testing skips the page's layer, so "is it on the
+       page" is asked of the page's rectangle, and "is it on a photo" of
+       everything stacked at that point. */
+    const inside = (el, x, y) => { if (!el) return false; const r = el.getBoundingClientRect(); return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; };
+    const dropTargetAt = (x, y) => {
+      const stack = document.elementsFromPoint(x, y);
+      const e = freePage();
+      if (e) {
+        const layer = $("#sbLayer");
+        if (!inside(layer, x, y)) return null;
+        const bl = blocksOf(e);
+        // The topmost photograph box at that point (hidden and locked ones are not on the page to take it).
+        const blk = [...layer.querySelectorAll(".sb-blk")].reverse().find((q) => { const b = bl[+q.dataset.blk]; return b && b.k === "photo" && !b.lock && inside(q, x, y); })
+          || stack.find((q) => q.classList && q.classList.contains("sb-blk") && bl[+q.dataset.blk] && bl[+q.dataset.blk].k === "photo");
+        return blk ? { kind: "block", i: +blk.dataset.blk, el: blk } : { kind: "free", el: layer };
+      }
+      const hits = [...document.querySelectorAll("#sbPreview .sb-hits")].find((l) => inside(l, x, y));
+      const canvas = [...document.querySelectorAll("#sbPreview canvas")].find((c) => inside(c, x, y));
+      if (!hits && !canvas) return null;
+      const hit = hits ? [...hits.querySelectorAll(".sb-hit.photo")].reverse().find((q) => inside(q, x, y)) : null;
+      if (hit) return { kind: "slot", id: hit.dataset.id, el: hit };
+      return { kind: "page", el: hits || canvas };
+    };
+    let dropMark = null;
+    const clearDropMark = () => { if (dropMark) { dropMark.classList.remove("sb-droptarget"); dropMark = null; } };
+    const carriesPhoto = (ev) => { const ty = [...((ev.dataTransfer && ev.dataTransfer.types) || [])]; return ty.includes(DRAG_TYPE) || ty.includes("Files"); };
+    const onDragOver = (ev) => {
+      if (!root.isConnected) { stopDrops(); return; }
+      if (!book || !carriesPhoto(ev)) return;
+      const t = dropTargetAt(ev.clientX, ev.clientY);
+      if (!t) { clearDropMark(); return; }
+      ev.preventDefault();
+      ev.dataTransfer.dropEffect = "copy";
+      if (dropMark !== t.el) { clearDropMark(); dropMark = t.el; dropMark.classList.add("sb-droptarget"); }
+      pageHint(t.kind === "block" || t.kind === "slot" ? "Drop to put it in place of this photo" : t.kind === "free" ? "Drop to place it here" : "Drop to add it to this page");
+    };
+    const onDragEnd = () => { clearDropMark(); };
+    const onDrop = async (ev) => {
+      if (!root.isConnected) { stopDrops(); return; }
+      if (!book || !carriesPhoto(ev)) return;
+      const t = dropTargetAt(ev.clientX, ev.clientY);
+      clearDropMark(); pageHint("");
+      if (!t) return;
+      ev.preventDefault();
+      const one = ev.dataTransfer.getData(DRAG_TYPE);
+      let ids = one ? [one] : [];
+      if (!ids.length && ev.dataTransfer.files && ev.dataTransfer.files.length) {
+        const got = await importOutsideFiles([...ev.dataTransfer.files]);
+        if (!got) return;
+        ids = got.ids;
+      }
+      if (ids.length) placeDropped(ids, t, ev.clientX, ev.clientY);
+    };
+    function stopDrops() { document.removeEventListener("dragover", onDragOver); document.removeEventListener("drop", onDrop); document.removeEventListener("dragend", onDragEnd); }
+    const shotOf = (id) => {
+      const hit = library().byId.get(id);
+      const f = hit && !hit.photo.diagram ? API.photoFocus(hit.photo) : { x: 0.5, y: 0.5 };
+      return { id, x: +f.x.toFixed(3), y: +f.y.toFixed(3), zoom: 1 };
+    };
+    function placeDropped(ids, t, cx, cy) {
+      // A talent's book takes only their cleared photographs, or ones from this computer.
+      ids = ids.filter((id) => clearedIn(book, id));
+      if (!ids.length) { API.toast("That photograph isn't cleared for this model's card."); return; }
+      if (t.kind === "block") {
+        const b = blocksOf(freePage())[t.i]; if (!b) return;
+        mark(); b.p = shotOf(ids[0]); blockSel = t.i; multi = null;
+        change({ rail: true, photos: true }); drawLayer(); drawInspector();
+        API.toast("Photo placed · Ctrl+Z to undo");
+        return;
+      }
+      if (t.kind === "free") {
+        const bl = blocksOf(freePage()), M = layerMaths(), G = M.G, r = M.r;
+        const fx = ((cx - r.left) / r.width * G.W - G.ox) / G.Wa, fy = ((cy - r.top) / r.height * G.H - G.oy) / G.Ha;
+        mark();
+        const made = [];
+        ids.forEach((id, k) => {
+          if (bl.length >= FREE_MAX) return;
+          const asp = aspects.get(id) || 0.75;   // width over height when known; a portrait till then
+          const w = 0.34, h = Math.min(0.6, (w * G.Wa) / asp / G.Ha);
+          bl.push({ k: "photo", x: round4(Math.min(1 - w, Math.max(0, fx - w / 2 + k * 0.03))), y: round4(Math.min(1 - h, Math.max(0, fy - h / 2 + k * 0.03))), w, h: round4(h), p: shotOf(id) });
+          made.push(bl.length - 1);
+        });
+        change({ rail: true, photos: true }); chooseBlocks(made);
+        API.toast(`${made.length > 1 ? `${made.length} photos` : "Photo"} placed · Ctrl+Z to undo`);
+        return;
+      }
+      const entry = curEntry();
+      if (!entry) {
+        if (coverLayoutOf(book) === "poster") { API.toast("This cover is words only: change its look on the cover's panel to give it a photo."); return; }
+        mark(); book.cover = shotOf(ids[0]); active = 0;
+        change({ rail: true, photos: true }); drawPhotoBlock();
+        API.toast("Cover photo placed · Ctrl+Z to undo");
+        return;
+      }
+      const tt = photoTarget();
+      if (!tt) { API.toast("This page doesn't take photographs."); return; }
+      const l = tt.list.slice();
+      if (t.kind === "slot") {
+        const n = l.findIndex((q) => q.id === t.id);
+        if (n >= 0) {
+          const at = l.findIndex((q) => q.id === ids[0]);
+          mark();
+          if (at >= 0 && at !== n) [l[at], l[n]] = [l[n], l[at]];     // already on the page: the two trade places
+          else if (at < 0) l[n] = shotOf(ids[0]);
+          tt.set(l); active = n;
+          change({ rail: true, photos: true }); drawPhotoBlock();
+          API.toast("Photo placed · Ctrl+Z to undo");
+          return;
+        }
+      }
+      if (tt.max === 1) { mark(); tt.set([shotOf(ids[0])]); active = 0; }
+      else {
+        const room = tt.max - l.length;
+        if (room <= 0) { API.toast(`This page holds ${tt.max} photos: drop onto one of them to replace it.`); return; }
+        mark();
+        ids.filter((id) => !l.some((q) => q.id === id)).slice(0, room).forEach((id) => l.push(shotOf(id)));
+        tt.set(l); active = l.length - 1;
+      }
+      change({ rail: true, photos: true }); drawPhotoBlock();
+      if (entry.type === "photos") drawFields();
+      API.toast("Added to this page · Ctrl+Z to undo");
+    }
+    document.addEventListener("dragover", onDragOver);
+    document.addEventListener("drop", onDrop);
+    document.addEventListener("dragend", onDragEnd);
     document.addEventListener("keydown", onKey);
     document.addEventListener("click", onDoc);
     window.addEventListener("resize", onResize);
@@ -7041,6 +7340,47 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       line: `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2.5 8h11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
       drawn: `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2.5 11c2-5 4 1 6-3s3-2 5-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`
     };
+    const svgI = (d) => `<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">${d}</svg>`;
+    const ALIGN_ICON = {
+      left: svgI('<path d="M2.5 2v12"/><rect x="4.5" y="4" width="9" height="3" rx=".8"/><rect x="4.5" y="9" width="5" height="3" rx=".8"/>'),
+      centre: svgI('<path d="M8 2v12"/><rect x="3" y="4" width="10" height="3" rx=".8"/><rect x="5" y="9" width="6" height="3" rx=".8"/>'),
+      right: svgI('<path d="M13.5 2v12"/><rect x="2.5" y="4" width="9" height="3" rx=".8"/><rect x="6.5" y="9" width="5" height="3" rx=".8"/>'),
+      top: svgI('<path d="M2 2.5h12"/><rect x="4" y="4.5" width="3" height="9" rx=".8"/><rect x="9" y="4.5" width="3" height="5" rx=".8"/>'),
+      middle: svgI('<path d="M2 8h12"/><rect x="4" y="3" width="3" height="10" rx=".8"/><rect x="9" y="5" width="3" height="6" rx=".8"/>'),
+      bottom: svgI('<path d="M2 13.5h12"/><rect x="4" y="2.5" width="3" height="9" rx=".8"/><rect x="9" y="6.5" width="3" height="5" rx=".8"/>'),
+      x: svgI('<path d="M2 2v12M14 2v12"/><rect x="6" y="5" width="4" height="6" rx=".8"/>'),
+      y: svgI('<path d="M2 2h12M2 14h12"/><rect x="5" y="6" width="6" height="4" rx=".8"/>'),
+      group: svgI('<rect x="2" y="2" width="12" height="12" rx="2" stroke-dasharray="2 2"/><rect x="4.5" y="4.5" width="4" height="4" rx=".6"/><rect x="8" y="8" width="3.5" height="3.5" rx=".6"/>'),
+      lock: svgI('<rect x="3.5" y="7" width="9" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/>'),
+      unlock: svgI('<rect x="3.5" y="7" width="9" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 4.8-1"/>'),
+      eye: svgI('<path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="1.8"/>'),
+      eyeOff: svgI('<path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z"/><path d="M2.5 13.5l11-11"/>'),
+      copy: svgI('<rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/>'),
+      del: svgI('<path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/>')
+    };
+    const ALIGN_NAMES = [["left", "Line up left edges"], ["centre", "Centre across"], ["right", "Line up right edges"], ["top", "Line up tops"], ["middle", "Centre up and down"], ["bottom", "Line up bottoms"]];
+    const alignBtns = (toPage) => ALIGN_NAMES.map(([k, n]) => `<button type="button" data-malign="${k}" title="${esc(toPage ? n.replace("Line up", "To the page's").replace("Centre across", "Centre on the page, across").replace("Centre up and down", "Centre on the page, up and down") : n)}" aria-label="${esc(n)}">${ALIGN_ICON[k]}</button>`).join("");
+    // The row of buttons for two or more things, on the page and in the panel alike.
+    const multiBtns = (l, bl) => {
+      const grouped = l.every((j) => bl[j].g && bl[j].g === bl[l[0]].g);
+      const units = unitsOf(l, bl).length;
+      return `${alignBtns(false)}<i class="sb-sep"></i>
+        <button type="button" data-mdist="x" title="Space evenly across" aria-label="Space evenly across" ${units < 3 ? "disabled" : ""}>${ALIGN_ICON.x}</button>
+        <button type="button" data-mdist="y" title="Space evenly down" aria-label="Space evenly down" ${units < 3 ? "disabled" : ""}>${ALIGN_ICON.y}</button><i class="sb-sep"></i>
+        ${grouped ? `<button type="button" data-mungroup title="Ungroup (Ctrl+Shift+G)" aria-label="Ungroup">${ALIGN_ICON.group}<span>Ungroup</span></button>` : `<button type="button" data-mgroup title="Group (Ctrl+G)" aria-label="Group">${ALIGN_ICON.group}<span>Group</span></button>`}
+        <button type="button" data-mlock title="Lock in place" aria-label="Lock in place">${ALIGN_ICON.lock}</button>
+        <button type="button" data-mdupe title="Duplicate" aria-label="Duplicate">${ALIGN_ICON.copy}</button>
+        <button type="button" data-mdel title="Remove" aria-label="Remove">${ALIGN_ICON.del}</button>`;
+    };
+    function wireMultiBtns(host) {
+      host.querySelectorAll("[data-malign]").forEach((x) => x.addEventListener("click", (ev) => { ev.stopPropagation(); alignChosen(x.dataset.malign); }));
+      host.querySelectorAll("[data-mdist]").forEach((x) => x.addEventListener("click", (ev) => { ev.stopPropagation(); distributeChosen(x.dataset.mdist); }));
+      host.querySelectorAll("[data-mgroup]").forEach((x) => x.addEventListener("click", (ev) => { ev.stopPropagation(); groupChosen(); }));
+      host.querySelectorAll("[data-mungroup]").forEach((x) => x.addEventListener("click", (ev) => { ev.stopPropagation(); ungroupChosen(); }));
+      host.querySelectorAll("[data-mlock]").forEach((x) => x.addEventListener("click", (ev) => { ev.stopPropagation(); setLocked(chosenNow(), true); }));
+      host.querySelectorAll("[data-mdupe]").forEach((x) => x.addEventListener("click", (ev) => { ev.stopPropagation(); dupeChosen(); }));
+      host.querySelectorAll("[data-mdel]").forEach((x) => x.addEventListener("click", (ev) => { ev.stopPropagation(); removeChosen(); }));
+    }
     const LAYER_BTN = {
       front: `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M4 10l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
       back: `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
@@ -7059,11 +7399,17 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         return { text: BLOCK_NAME[b.k] || b.k, empty: false };
       };
       const last = blocks.length - 1;
+      const ml = multiNow();
       return `<ol class="sb-blklist" aria-label="On this page, front to back">${blocks.map((x, i) => ({ x, i })).reverse().map(({ x, i }) => {
         const n = nameOf(x), pic = thumb(x);
         const ico = pic || LAYER_ICON[x.k === "line" && linePath(x) === "free" ? "drawn" : x.k] || LAYER_ICON.shape;
-        return `<li class="sb-blkrow${i === blockSel ? " is-sel" : ""}">
-          <button type="button" class="sb-laypick" data-pickblk="${i}" aria-pressed="${i === blockSel}"><span class="sb-layico${pic ? " has-pic" : ""}">${ico}</span><span class="sb-layname${n.empty ? " is-empty" : ""}">${esc(n.text)}</span></button>
+        const on = ml ? ml.includes(i) : i === blockSel;
+        return `<li class="sb-blkrow${on ? " is-sel" : ""}${x.hide ? " is-hidden" : ""}${x.lock ? " is-locked" : ""}${x.g ? " is-grouped" : ""}">
+          <button type="button" class="sb-laypick" data-pickblk="${i}" aria-pressed="${on}" title="Shift-click to choose more than one"><span class="sb-layico${pic ? " has-pic" : ""}">${ico}</span><span class="sb-layname${n.empty ? " is-empty" : ""}">${esc(n.text)}</span>${x.g ? `<span class="sb-laygrp" title="In a group">group</span>` : ""}</button>
+          <span class="sb-laystate">
+            <button type="button" data-blklock="${i}" aria-pressed="${!!x.lock}" title="${x.lock ? "Unlock" : "Lock in place"}" aria-label="${x.lock ? "Unlock" : "Lock in place"}">${x.lock ? ALIGN_ICON.lock : ALIGN_ICON.unlock}</button>
+            <button type="button" data-blkhide="${i}" aria-pressed="${!!x.hide}" title="${x.hide ? "Show it" : "Hide it (not printed)"}" aria-label="${x.hide ? "Show it" : "Hide it"}">${x.hide ? ALIGN_ICON.eyeOff : ALIGN_ICON.eye}</button>
+          </span>
           <span class="sb-layacts">
             <button type="button" data-blkdown="${i}" aria-label="Bring forward" title="Bring forward" ${i === last ? "disabled" : ""}>${LAYER_BTN.front}</button>
             <button type="button" data-blkup="${i}" aria-label="Send back" title="Send back" ${i === 0 ? "disabled" : ""}>${LAYER_BTN.back}</button>
@@ -7118,21 +7464,51 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           <i class="sb-mg h" style="top:${py(mg.top / G.Ha)}"></i><i class="sb-mg h" style="top:${py(1 - mg.bottom / G.Ha)}"></i>
           <i class="sb-mg v mid" style="left:${px(0.5)}"></i><i class="sb-mg h mid" style="top:${py(0.5)}"></i>`);
       }
+      const multiL = multiNow();
       layer.insertAdjacentHTML("afterbegin", blocks.map((b, i) => {
-        const on = i === blockSel;
+        if (b.hide) return "";   // hidden: not on the page, only in the list
+        const inM = !!(multiL && multiL.includes(i));
+        const on = i === blockSel && !multiL;
         const turn = b.r ? ` transform: rotate(${b.r}deg);` : "";
-        const handles = on && !(b.k === "line" && linePath(b) === "h")
+        const handles = on && !b.lock && !(b.k === "line" && linePath(b) === "h")
           ? ["nw", "n", "ne", "e", "se", "s", "sw", "w"].map((h) => `<span class="sb-h" data-h="${h}" style="left:${{ nw: 0, n: 50, ne: 100, e: 100, se: 100, s: 50, sw: 0, w: 0 }[h]}%; top:${{ nw: 0, n: 0, ne: 0, e: 50, se: 100, s: 100, sw: 100, w: 50 }[h]}%"></span>`).join("")
             // The turning handle sits above the thing; at the top of the page (where
             // the front-and-back bar goes underneath) it sits beside it instead.
             + `<span class="sb-h sb-rot${M.top(b) < 8 ? (M.left(b) + M.wide(b) > 92 ? " inside" : " side") : ""}" data-h="rot" title="Turn it (Shift: 15° steps)" aria-hidden="true"></span>`
-          : on ? `<span class="sb-h" data-h="w" style="left:0%; top:50%"></span><span class="sb-h" data-h="e" style="left:100%; top:50%"></span>` : "";
-        return `<button type="button" class="sb-blk${on ? " on" : ""}${b.k === "line" && linePath(b) === "h" ? " line" : ""}${shapeOf(b) === "ellipse" ? " oval" : ""}" data-blk="${i}" aria-pressed="${on}"
+          : on && !b.lock ? `<span class="sb-h" data-h="w" style="left:0%; top:50%"></span><span class="sb-h" data-h="e" style="left:100%; top:50%"></span>` : "";
+        return `<button type="button" class="sb-blk${on ? " on" : ""}${inM ? " multi" : ""}${b.lock ? " locked" : ""}${b.k === "line" && linePath(b) === "h" ? " line" : ""}${shapeOf(b) === "ellipse" ? " oval" : ""}" data-blk="${i}" aria-pressed="${on}"
           aria-label="${esc(blockLabel(b))}, ${i + 1} of ${blocks.length}"
           style="left:${M.left(b).toFixed(3)}%; top:${M.top(b).toFixed(3)}%; width:${M.wide(b).toFixed(3)}%; height:${Math.max(M.high(b), b.k === "line" && linePath(b) === "h" ? 1.2 : 0.6).toFixed(3)}%;${turn}">${handles}</button>`;
       }).join(""));
       const old = layer.querySelector("#sbBlkBar"); if (old) old.remove();
-      if (blockSel >= 0 && blocks[blockSel]) {
+      layer.querySelectorAll(".sb-multibox").forEach((x) => x.remove());
+      if (multiL) {
+        // Two or more: one frame round them all, and their bar.
+        const bb = boxOf(multiL.map((j) => blocks[j]));
+        const fr = document.createElement("div");
+        fr.className = "sb-multibox";
+        fr.style.left = `${M.left(bb).toFixed(3)}%`; fr.style.top = `${M.top(bb).toFixed(3)}%`; fr.style.width = `${M.wide(bb).toFixed(3)}%`; fr.style.height = `${Math.max(0.6, M.high({ ...bb, k: "shape" })).toFixed(3)}%`;
+        layer.appendChild(fr);
+        const bar = document.createElement("div");
+        bar.id = "sbBlkBar"; bar.className = "sb-blkbar sb-multibar"; bar.setAttribute("role", "toolbar"); bar.setAttribute("aria-label", `${multiL.length} things chosen`);
+        bar.innerHTML = `<span class="sb-mcount">${multiL.length}</span>${multiBtns(multiL, blocks)}`;
+        const top = M.top(bb);
+        bar.style.left = `${Math.max(0, Math.min(M.left(bb), 100 - 70)).toFixed(3)}%`;
+        if (top < 8) bar.style.top = `calc(${(top + Math.max(M.high({ ...bb, k: "shape" }), 0.6)).toFixed(3)}% + 6px)`; else bar.style.bottom = `calc(${(100 - top).toFixed(3)}% + 6px)`;
+        wireMultiBtns(bar);
+        layer.appendChild(bar);
+      } else if (blockSel >= 0 && blocks[blockSel] && blocks[blockSel].lock && !blocks[blockSel].hide) {
+        // Chosen from the list while locked: say so, and offer the way out.
+        const b = blocks[blockSel];
+        const bar = document.createElement("div");
+        bar.id = "sbBlkBar"; bar.className = "sb-blkbar"; bar.setAttribute("role", "toolbar");
+        bar.innerHTML = `<button type="button" data-unlockit aria-label="Unlock">${ALIGN_ICON.unlock}<span>Locked · Unlock</span></button>`;
+        const top = M.top(b);
+        bar.style.left = `${Math.max(0, Math.min(M.left(b), 100 - 30)).toFixed(3)}%`;
+        if (top < 8) bar.style.top = `calc(${(top + Math.max(M.high(b), 0.6)).toFixed(3)}% + 6px)`; else bar.style.bottom = `calc(${(100 - top).toFixed(3)}% + 6px)`;
+        bar.querySelector("[data-unlockit]").addEventListener("click", (ev) => { ev.stopPropagation(); setLocked([blockSel], false); });
+        layer.appendChild(bar);
+      } else if (blockSel >= 0 && blocks[blockSel] && !blocks[blockSel].hide) {
         const b = blocks[blockSel], n = blocks.length;
         const bar = document.createElement("div");
         bar.id = "sbBlkBar"; bar.className = "sb-blkbar"; bar.setAttribute("role", "toolbar"); bar.setAttribute("aria-label", `${blockLabel(b)}: front and back`);
@@ -7182,7 +7558,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       const ys = [0, 0.5, 1, 1 / 3, 2 / 3, M.top / G.Ha, 1 - M.bottom / G.Ha];
       const boxes = [];
       blocksOf(e).forEach((b, i) => {
-        if (i === skip) return;
+        if (i === skip || (skip instanceof Set && skip.has(i)) || b.hide) return;
         const h = b.k === "line" ? lineH(b, G.Ha) : b.h;
         xs.push(b.x, b.x + b.w / 2, b.x + b.w);
         ys.push(b.y, b.y + h / 2, b.y + h);
@@ -7275,7 +7651,9 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         const el = ev.target.closest(".sb-blk"); if (!el) return;
         const e = freePage(); if (!e) return;
         const i = +el.dataset.blk, b = blocksOf(e)[i];
-        if (b && b.k === "text") { blockSel = i; drawLayer(); drawInspector(); openInline(`b${i}`, { box: { x: 0, y: 0, w: 1, h: 1 }, type: null }, layer); }
+        // Into a group: a double-click chooses the one thing under the pointer.
+        if (b && b.g && b.k !== "text") { blockSel = i; multi = null; drawLayer(); drawInspector(); return; }
+        if (b && b.k === "text") { blockSel = i; multi = null; drawLayer(); drawInspector(); openInline(`b${i}`, { box: { x: 0, y: 0, w: 1, h: 1 }, type: null }, layer); }
       });
       layer.addEventListener("pointerdown", (ev) => {
         const e = freePage(); if (!e) return;
@@ -7304,14 +7682,27 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         }
         const handle = ev.target.closest(".sb-h");
         const el = ev.target.closest(".sb-blk");
-        if (!el) { if (blockSel !== -1) { blockSel = -1; drawLayer(); drawInspector(); } return; }
+        if (!el) { startMarquee(ev, layer, e); return; }
         const i = +el.dataset.blk;
         if (swapFrom && swapFrom.kind === "block") {
           const bb = blocksOf(e)[i];
           if (bb && bb.k === "photo" && i !== swapFrom.at) { ev.preventDefault(); doSwap(i); return; }
           endSwap(); pageHint("");
         }
-        if (i !== blockSel) { blockSel = i; drawLayer(); drawInspector(); }
+        // Shift (or Ctrl / ⌘) adds to what is chosen, or takes away.
+        if (ev.shiftKey || ev.metaKey || ev.ctrlKey) {
+          ev.preventDefault();
+          const cur = chosenNow(), mine = groupMembers(i);
+          const has = mine.every((j) => cur.includes(j));
+          const next = has ? cur.filter((j) => !mine.includes(j)) : [...cur, ...mine];
+          chooseBlocks(next, next.includes(i) ? i : undefined);
+          return;
+        }
+        const ml = multiNow();
+        if (ml && ml.includes(i) && !handle) { moveMany(ml, ev, layer, e); return; }
+        const grp = groupMembers(i);
+        if (grp.length > 1 && !handle && !(blockSel === i && !multi)) { chooseBlocks(grp, i); moveMany(grp, ev, layer, e); return; }
+        if (i !== blockSel || multi) { blockSel = i; multi = null; drawLayer(); drawInspector(); }
         const blocks = blocksOf(e);
         const b = blocks[i]; if (!b) return;
         const M = layerMaths();
@@ -7434,6 +7825,51 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         layer.addEventListener("pointerup", up);
         layer.addEventListener("pointercancel", up);
       });
+    }
+    // Several chosen things dragged as one: their frame snaps like a single thing.
+    function moveMany(list, ev, layer, e) {
+      const bl = blocksOf(e), M = layerMaths();
+      const from = { x: ev.clientX, y: ev.clientY };
+      const starts = list.map((j) => ({ j, x: bl[j].x, y: bl[j].y }));
+      const box = boxOf(list.map((j) => bl[j]));
+      const guides = guidesFor(e, new Set(list));
+      let moved = false;
+      const move = (m) => {
+        if (!moved && Math.abs(m.clientX - from.x) < 3 && Math.abs(m.clientY - from.y) < 3) return;
+        if (!moved) { moved = true; try { layer.setPointerCapture(m.pointerId); } catch (err) { /* older browsers */ } mark(); }
+        let dx = M.fx(m.clientX - from.x), dy = M.fy(m.clientY - from.y);
+        const hit = [];
+        for (const off of [0, box.w / 2, box.w]) { const sn = snapTo(box.x + dx + off, guides.xs, guides.tolX); if (sn !== null) { dx = sn - off - box.x; hit.push({ axis: "x", at: sn }); break; } }
+        for (const off of [0, box.h / 2, box.h]) { const sn = snapTo(box.y + dy + off, guides.ys, guides.tolY); if (sn !== null) { dy = sn - off - box.y; hit.push({ axis: "y", at: sn }); break; } }
+        for (const st of starts) { const b = bl[st.j]; b.x = round4(Math.min(1.3, Math.max(-0.3, st.x + dx))); b.y = round4(Math.min(1.3, Math.max(-0.3, st.y + dy))); }
+        drawLayer(); showGuides(hit); schedulePreview(60);
+      };
+      const up = () => {
+        layer.removeEventListener("pointermove", move); layer.removeEventListener("pointerup", up); layer.removeEventListener("pointercancel", up);
+        clearGuides();
+        if (moved) { change({ rail: true }); drawInspector(); }
+      };
+      layer.addEventListener("pointermove", move); layer.addEventListener("pointerup", up); layer.addEventListener("pointercancel", up);
+    }
+    // Dragging on an empty part of the page draws a box; whatever it touches is chosen.
+    function startMarquee(ev, layer, e) {
+      const r = layer.getBoundingClientRect(), x0 = ev.clientX, y0 = ev.clientY;
+      let box = null;
+      const move = (m) => {
+        if (!box && Math.abs(m.clientX - x0) < 4 && Math.abs(m.clientY - y0) < 4) return;
+        if (!box) { box = document.createElement("div"); box.className = "sb-marquee"; layer.appendChild(box); try { layer.setPointerCapture(m.pointerId); } catch (err) { /* older browsers */ } }
+        box.style.left = `${Math.min(x0, m.clientX) - r.left}px`; box.style.top = `${Math.min(y0, m.clientY) - r.top}px`;
+        box.style.width = `${Math.abs(m.clientX - x0)}px`; box.style.height = `${Math.abs(m.clientY - y0)}px`;
+      };
+      const up = () => {
+        layer.removeEventListener("pointermove", move); layer.removeEventListener("pointerup", up); layer.removeEventListener("pointercancel", up);
+        if (!box) { if (blockSel !== -1 || multi) { blockSel = -1; multi = null; drawLayer(); drawInspector(); } return; }
+        const br = box.getBoundingClientRect(); box.remove();
+        const bl = blocksOf(e);
+        const touched = [...layer.querySelectorAll(".sb-blk")].filter((q) => { const qr = q.getBoundingClientRect(); return qr.right > br.left && qr.left < br.right && qr.bottom > br.top && qr.top < br.bottom; }).map((q) => +q.dataset.blk);
+        chooseBlocks([...new Set(touched.flatMap((j) => groupMembers(j)))].filter((j) => bl[j] && !bl[j].lock && !bl[j].hide));
+      };
+      layer.addEventListener("pointermove", move); layer.addEventListener("pointerup", up); layer.addEventListener("pointercancel", up);
     }
     // Arrow keys move the chosen thing half a millimetre, five with Shift.
     function nudgeBlock(dx, dy, big) {
@@ -9494,7 +9930,8 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     function drawFreeFields(box, entry) {
       const G = geometry(book);
       const blocks = blocksOf(entry);
-      const b = blocks[blockSel] || null;
+      const ml = multiNow();
+      const b = ml ? null : (blocks[blockSel] || null);
       const P = paletteFor(book);
       const swatch = (attr, key, label, c, on) => `<button type="button" class="sb-swatch" data-${attr}="${key}" aria-pressed="${on}" title="${esc(label)}" aria-label="${esc(label)}"><i style="background:${c}"></i></button>`;
       const fills = [["accent", "Accent", P.accent], ["ink", "Ink", P.ink], ["soft", "Soft", P.soft], ["rule", "Hairline", P.rule], ["paper", "Paper", P.paper], ["white", "White", P.white], ["deep", "Deep", P.deep]];
@@ -9553,7 +9990,10 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           <button type="button" data-addblk="draw" aria-pressed="${drawing}">✎ Draw by hand</button>
         </div>
         <div class="sb-layhead"><h3>On this page</h3><span class="sb-laycount" title="${blocks.length} of ${FREE_MAX} things a page can hold">${blocks.length} / ${FREE_MAX}</span></div>
-        ${blocks.length ? `<p class="sb-hint sb-layhint">Front to back. Drag on the page to move · corner to resize · a photo's edge to crop · round handle to turn · arrow keys nudge.</p>${layerListHtml(blocks)}` : `<p class="sb-hint">Nothing on this page yet. Add something above, or start again from an arrangement in “+ Add page”.</p>`}
+        ${ml ? `<div class="sb-sec sb-rowbox sb-multisec"><h3>${ml.length} things chosen</h3>
+          <div class="sb-alignrow">${multiBtns(ml, blocks)}</div>
+          <p class="sb-hint">Line them up with each other, space three or more evenly, group them to move as one. Shift-click or drag a box on the page to choose more · Ctrl+G groups · arrow keys move them all · Esc lets go.</p></div>` : ""}
+        ${blocks.length ? `<p class="sb-hint sb-layhint">Front to back. Drag on the page to move · Shift-click or drag a box to choose several · corner to resize · a photo's edge to crop · arrow keys nudge.</p>${layerListHtml(blocks)}` : `<p class="sb-hint">Nothing on this page yet. Add something above, or start again from an arrangement in “+ Add page”.</p>`}
         ${b ? "" : pageLookHtml(entry, blocks.filter((x) => x.k === "photo").length, true)}
         ${b ? `<div class="sb-sec sb-rowbox"><h3>${esc(BLOCK_NAME[b.k] || "Thing")} ${blockSel + 1}</h3>
           ${words}${paint}${photoShape}
@@ -9563,6 +10003,8 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           ${step("Width", "sizw", "-1", "1", mmX(b.w))}
           ${b.k === "line" && linePath(b) === "h" ? "" : step("Height", "sizh", "-1", "1", mmY(b.h || 0.15))}
           ${step("Turn", "turn", "-15", "15", `${b.r || 0}°`)}
+          <div class="sb-field"><span class="sb-label">Line up with the page</span><div class="sb-alignrow">${alignBtns(true)}</div></div>
+          <div class="sb-adds"><button type="button" data-slock>${ALIGN_ICON.lock} Lock in place</button><button type="button" data-shide>${ALIGN_ICON.eyeOff} Hide</button></div>
           <div class="sb-field"><span class="sb-label">In front or behind</span>
             <div class="sb-adds"><button type="button" data-tofront ${blockSel === blocks.length - 1 ? "disabled" : ""}>Bring to the front</button><button type="button" data-toback ${blockSel === 0 ? "disabled" : ""}>Send to the back</button></div>
             <p class="sb-hint">Words over a photograph: bring the words to the front, or send the photograph to the back.</p></div>
@@ -9575,7 +10017,15 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       const redraw = () => { change({ rail: true }); drawInspector(); };
       $$("[data-addblk]").forEach((x) => x.addEventListener("click", () => { if (x.dataset.addblk === "draw") { setDrawing(!drawing); return; } addBlock(x.dataset.addblk); }));
       box.querySelectorAll("[data-layout]").forEach((x) => x.addEventListener("click", () => applyLayout(entry, x.dataset.layout)));
-      $$("[data-pickblk]").forEach((x) => x.addEventListener("click", () => { blockSel = +x.dataset.pickblk; drawLayer(); drawInspector(); }));
+      $$("[data-pickblk]").forEach((x) => x.addEventListener("click", (ev) => {
+        const i = +x.dataset.pickblk;
+        // Shift-click in the list chooses several too; a plain click, just that one (even inside a group).
+        if (ev.shiftKey || ev.metaKey || ev.ctrlKey) { const cur = chosenNow(); chooseBlocks(cur.includes(i) ? cur.filter((j) => j !== i) : [...cur, i], i); return; }
+        blockSel = i; multi = null; drawLayer(); drawInspector();
+      }));
+      $$("[data-blklock]").forEach((x) => x.addEventListener("click", () => { const i = +x.dataset.blklock; setLocked([i], !blocksOf(entry)[i].lock); }));
+      $$("[data-blkhide]").forEach((x) => x.addEventListener("click", () => { const i = +x.dataset.blkhide; setHidden([i], !blocksOf(entry)[i].hide); }));
+      { const ms = box.querySelector(".sb-multisec"); if (ms) wireMultiBtns(ms); }
       $$("[data-blkup]").forEach((x) => x.addEventListener("click", () => moveBlock(+x.dataset.blkup, -1)));
       $$("[data-blkdown]").forEach((x) => x.addEventListener("click", () => moveBlock(+x.dataset.blkdown, 1)));
       $$("[data-blkdel]").forEach((x) => x.addEventListener("click", () => removeBlock(+x.dataset.blkdel)));
@@ -9600,6 +10050,9 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         if (next <= -180 || next >= 180 || next === 0) delete b.r; else b.r = next;
         redraw();
       }));
+      box.querySelectorAll(".sb-rowbox [data-malign]").forEach((x) => x.addEventListener("click", () => alignChosen(x.dataset.malign)));
+      { const sl = $("[data-slock]"); if (sl) sl.addEventListener("click", () => setLocked([blockSel], true)); }
+      { const sh = $("[data-shide]"); if (sh) sh.addEventListener("click", () => setHidden([blockSel], true)); }
       const toFront = $("[data-tofront]"); if (toFront) toFront.addEventListener("click", () => moveBlockTo(blockSel, "front"));
       const toBack = $("[data-toback]"); if (toBack) toBack.addEventListener("click", () => moveBlockTo(blockSel, "back"));
       const fillBtn = $("[data-fillw]");
@@ -9825,6 +10278,32 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       }
       pageHint(""); API.toast("Photos swapped · Ctrl+Z to undo");
     }
+    /* Photographs from this computer, read and kept (by the button, or dropped
+       on the page). Drawn before they are kept, and shrunk the way an uploaded
+       photo is: a file this browser cannot draw — an iPhone HEIC in Chrome, a
+       damaged JPEG — is refused by name (Sep 2026 audit, K3). A book made for
+       someone else is never published, so its photographs stay here, unasked.
+       Returns { ids, refused, forSite }, or null when the studio cancelled. */
+    async function importOutsideFiles(files, { quiet = false } = {}) {
+      files = files.filter((f) => /^image\//.test(f.type) || /\.(heic|heif|jpe?g|png|webp)$/i.test(f.name || ""));
+      if (!files.length) { API.toast("Only photographs can go in: JPEG, PNG or WebP."); return null; }
+      const forSite = isForOthers(book) ? false : await askWhereOutsideGoes(files.length);
+      if (forSite === null) return null;
+      const ids = [], refused = [];
+      for (const f of files) {
+        try {
+          const dataUrl = typeof API.webPhoto === "function" ? await API.webPhoto(f, 1600, 0.86) : null;
+          if (!dataUrl) { refused.push(f.name || "a file"); continue; }
+          const id = `out_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+          await outPut({ id, name: f.name || "", dataUrl, forSite: !!forSite, at: Date.now() });
+          ids.push(id);
+        } catch (e) { refused.push(f.name || "a file"); }
+      }
+      await outsideRefresh();
+      if (forSite && ids.length) await syncOutsideToAlbum();
+      if (!quiet && refused.length) API.toast(`NOT added — this browser cannot draw ${refused.slice(0, 3).map((n) => `“${n}”`).join(", ")}. iPhone HEIC photos: export them as JPEG first.`);
+      return { ids, refused, forSite };
+    }
     function drawPhotoBlock() {
       const box = $("#sbPhotoBlock"); if (!box) return;
       const entry = curEntry();
@@ -9902,7 +10381,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
             const pos = list.findIndex((s) => s.id === id);
             const on = pos >= 0;
             const full = !replacing && !on && list.length >= t.max && t.max > 1;
-            const pick = `<button type="button" class="sb-thumb${hit.photo.diagram ? " diagram" : ""}" data-pick="${esc(id)}" aria-pressed="${on}" data-order="${on && t.max > 1 ? pos + 1 : on ? "✓" : ""}" ${full ? "disabled" : ""} aria-label="${esc(hit.photo.outside ? (hit.photo.name || "photograph from this computer") : cleanName(hit.shoot.title || hit.shoot.talent))} ${hit.photo.diagram ? "lighting diagram" : "photo"}${on ? ", chosen" : ""}"><img src="${esc(thumbSrc(hit.photo))}" alt="" loading="lazy"></button>`;
+            const pick = `<button type="button" class="sb-thumb${hit.photo.diagram ? " diagram" : ""}" data-pick="${esc(id)}" draggable="true" aria-pressed="${on}" data-order="${on && t.max > 1 ? pos + 1 : on ? "✓" : ""}" ${full ? 'aria-disabled="true"' : ""} aria-label="${esc(hit.photo.outside ? (hit.photo.name || "photograph from this computer") : cleanName(hit.shoot.title || hit.shoot.talent))} ${hit.photo.diagram ? "lighting diagram" : "photo"}${on ? ", chosen" : ""}"><img src="${esc(thumbSrc(hit.photo))}" alt="" loading="lazy"></button>`;
             // A photograph from this computer can be taken out of the store
             // again (K3); one already in a book page is kept until it is
             // taken off the page, so a page never silently goes blank.
@@ -9924,33 +10403,14 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       if (outBtn && outFile) {
         outBtn.addEventListener("click", () => outFile.click());
         outFile.addEventListener("change", async () => {
-          const files = [...(outFile.files || [])].filter((f) => /^image\//.test(f.type) || /\.(heic|heif|jpe?g|png|webp)$/i.test(f.name || ""));
+          const files = [...(outFile.files || [])];
           outFile.value = "";
           if (!files.length) return;
-          // A book made for someone else is never published, so neither is
-          // anything in it: its photographs stay on this computer, unasked.
-          const forSite = isForOthers(book) ? false : await askWhereOutsideGoes(files.length);
-          if (forSite === null) return;
           outNote.textContent = `Reading ${files.length} photograph${files.length > 1 ? "s" : ""}…`;
-          let added = 0;
-          const refused = [];
-          for (const f of files) {
-            try {
-              /* Drawn before it is kept, and shrunk the way an uploaded photo
-                 is. A file this browser cannot draw — an iPhone HEIC in
-                 Chrome, a damaged JPEG — used to be stored anyway and printed
-                 as a blank column while the check said "All good" (Sep 2026
-                 audit, K3). It is refused by name now. */
-              const dataUrl = typeof API.webPhoto === "function" ? await API.webPhoto(f, 1600, 0.86) : null;
-              if (!dataUrl) { refused.push(f.name || "a file"); continue; }
-              const id = `out_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
-              await outPut({ id, name: f.name || "", dataUrl, forSite: !!forSite, at: Date.now() });
-              added++;
-            } catch (e) { refused.push(f.name || "a file"); }
-          }
-          await outsideRefresh();
+          const got = await importOutsideFiles(files, { quiet: true });
+          if (!got) { outNote.textContent = ""; return; }
+          const added = got.ids.length, refused = got.refused, forSite = got.forSite;
           filter = OUTSIDE_ALBUM;
-          if (forSite && added) await syncOutsideToAlbum();
           drawPhotoBlock();
           // Said after the redraw, which used to wipe it before it was seen.
           const msg = (added ? `${added} photograph${added > 1 ? "s" : ""} added${forSite ? " — they go to the site on your next publish." : " — kept on this computer."}` : "")
@@ -10029,7 +10489,15 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       const det = box.querySelector(".sb-pick");
       det.addEventListener("toggle", () => { pickerOpen = det.open; });
       box.querySelector("#sbAlbum").addEventListener("change", (e) => { filter = e.target.value; pickerOpen = true; drawPhotoBlock(); const s = $("#sbAlbum"); if (s) s.focus(); });
+      // Dragged onto the page: onto a photo it replaces it, onto the page it goes in (see onDrop).
+      box.querySelectorAll("[data-pick]").forEach((b) => b.addEventListener("dragstart", (ev) => {
+        ev.dataTransfer.setData(DRAG_TYPE, b.dataset.pick);
+        ev.dataTransfer.setData("text/plain", "");
+        ev.dataTransfer.effectAllowed = "copy";
+        pageHint("Drop it on a photo to put it in its place, or on the page to add it");
+      }));
       box.querySelectorAll("[data-pick]").forEach((b) => b.addEventListener("click", () => {
+        if (b.getAttribute("aria-disabled") === "true" && !replacing) { API.toast("This page is full: drag a photo onto one to replace it, or remove one first."); return; }
         const id = b.dataset.pick;
         const tt = photoTarget();
         const l = tt.list.slice();
@@ -10603,7 +11071,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         const blocks = freeBlocks(ce);
         if (!blocks.length) out.push({ i: -1, text: "Cover: nothing on it yet" });
         { const gone = blocks.find((b2) => b2.k === "photo" && b2.p && !lib.byId.has(b2.p.id)); if (gone) out.push({ i: -1, text: `Cover: ${goneWhy(gone.p.id)}` }); }
-        if (blocks.some((b2) => b2.k === "photo" && !(b2.p && b2.p.id))) out.push({ i: -1, text: "Cover: a photo box with no photo chosen" });
+        if (blocks.some((b2) => b2.k === "photo" && !b2.hide && !(b2.p && b2.p.id))) out.push({ i: -1, text: "Cover: a photo box with no photo chosen" });
         for (const c of planFree(b, ce).cuts) { const info = planFree(b, ce).fields[c.field]; const miss = info ? info.total - info.printed : 0; out.push({ i: -1, text: `Cover: a box of words is too long${miss ? ` (${miss} word${miss === 1 ? "" : "s"} won't print)` : ""}` }); }
       }
       let n = 1;
@@ -10622,7 +11090,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           const blocks = freeBlocks(pg);
           if (!blocks.length) add("nothing on this page yet");
           { const gone = blocks.find((b2) => b2.k === "photo" && b2.p && !lib.byId.has(b2.p.id)); if (gone) add(goneWhy(gone.p.id)); }
-          if (blocks.some((b2) => b2.k === "photo" && !(b2.p && b2.p.id))) add("a photo box with no photo chosen");
+          if (blocks.some((b2) => b2.k === "photo" && !b2.hide && !(b2.p && b2.p.id))) add("a photo box with no photo chosen");
           const plan = planFree(b, pg);
           for (const c of plan.cuts) {
             const info = plan.fields[c.field];
