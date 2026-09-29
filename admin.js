@@ -231,9 +231,15 @@ window.openPromoCodeModal = function(codeKey) {
   const typeEl = document.getElementById("newPromoType");
   const valEl = document.getElementById("newPromoVal");
   const descEl = document.getElementById("newPromoDesc");
-  if (title) title.textContent = editing ? `✏️ Edit Promo Code — ${editing}` : "🎟️ Create New Custom Promotional Discount Code";
+  /* A code made on another device is held here as its fingerprint (the
+     readable code never leaves the device it was made on). Its name can't be
+     shown or changed, but everything else about it can be edited — the form
+     used to refuse the fingerprint as "not a code", so no such code could be
+     edited or published at all (Sep 29 2026, P0). */
+  const fp = !!(editing && window.isCodeFingerprint(editing));
+  if (title) title.textContent = editing ? `✏️ Edit Promo Code — ${fp ? "made on another device" : editing}` : "🎟️ Create New Custom Promotional Discount Code";
   const entry = editing ? codes[editing] : null;
-  if (nameEl) nameEl.value = editing || "";
+  if (nameEl) { nameEl.value = fp ? window.codeForDisplay(editing) : (editing || ""); nameEl.readOnly = fp; nameEl.title = fp ? "Made on another device: its name can only be seen there. Everything else here can be changed." : ""; }
   // 'in' rather than truthiness: a home-studio-only code can legitimately
   // store a package value of 0, which || would treat the same as "absent"
   // and blank out on reopen — then reject the next save as not-a-number.
@@ -398,14 +404,17 @@ window.readPdfTypeEditor = function(host) {
   return out;
 };
 
+// Returns true once the code is saved, so "Save & push live" can tell a saved
+// form from a refused one.
 window.saveNewPromoCodeFromForm = function() {
-  const name = (document.getElementById("newPromoName")?.value || "").trim().toUpperCase();
+  const fpKey = window._editingPromoKey && window.isCodeFingerprint(window._editingPromoKey) ? window._editingPromoKey : null;
+  const name = fpKey || (document.getElementById("newPromoName")?.value || "").trim().toUpperCase();
   const type = document.getElementById("newPromoType")?.value === "flat" ? "flat" : "pct";
   const val = Math.round(Number(document.getElementById("newPromoVal")?.value));
   const desc = (document.getElementById("newPromoDesc")?.value || "").trim();
   const hsType = document.getElementById("newPromoHomeStudioType")?.value || "none";
 
-  if (!/^[A-Z0-9][A-Z0-9_-]{1,23}$/.test(name)) {
+  if (!fpKey && !/^[A-Z0-9][A-Z0-9_-]{1,23}$/.test(name)) {
     alert("Enter a promo code of 2–24 letters, numbers, dashes or underscores (e.g. SUMMER30).");
     return;
   }
@@ -430,10 +439,11 @@ window.saveNewPromoCodeFromForm = function() {
   const editing = window._editingPromoKey;
   if (!editing && codes[name] && !confirm(`Promo code '${name}' already exists. Overwrite it?`)) return;
 
+  const tag = fpKey ? "" : ` (${name})`;
   const label = desc ||
     (val === 0
-      ? `Home Studio Discount Only (${name})`
-      : (type === "flat" ? `Flat ₹${val.toLocaleString("en-IN")} Off (${name})` : `${val}% Off (${name})`));
+      ? `Home Studio Discount Only${tag}`
+      : (type === "flat" ? `Flat ₹${val.toLocaleString("en-IN")} Off${tag}` : `${val}% Off${tag}`));
   // Per-code choice: does this discount also come off add-ons (the home studio
   // rental), or only the package rate? Off by default, so a rental the studio
   // actually pays for is never discounted unless that is the intent.
@@ -474,8 +484,9 @@ window.saveNewPromoCodeFromForm = function() {
 
   window.persistAdminPromoCodes();
   markCodesUnpublished();
-  if (typeof toast === "function") toast(`🎟️ Promo code '${name}' ${editing ? "updated" : "added"}. Press "Save & push live" at the top of Promo codes to make it live.`);
+  if (typeof toast === "function") toast(`🎟️ Promo code ${fpKey ? "" : `'${name}' `}${editing ? "updated" : "added"}. Press "Save & push live" at the top of Promo codes to make it live.`);
   if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
+  return true;
 };
 
 // Shows the value input only for the two discount types that need a number —
@@ -597,8 +608,10 @@ window.openInviteCodeModal = function(codeStr) {
   const codeEl = document.getElementById("newInviteCode");
   const descEl = document.getElementById("newInviteDesc");
   const locationEl = document.getElementById("newInviteLocation");
-  if (title) title.textContent = existing ? `✏️ Edit Invite Code — ${existing.code}` : "🔑 Add New Invite Code";
-  if (codeEl) codeEl.value = existing ? existing.code : target;
+  // Made on another device: edited like any other, but its name stays hidden (see openPromoCodeModal).
+  const fp = !!(existing && window.isCodeFingerprint(existing.code));
+  if (title) title.textContent = existing ? `✏️ Edit Invite Code — ${fp ? "made on another device" : existing.code}` : "🔑 Add New Invite Code";
+  if (codeEl) { codeEl.value = fp ? window.codeForDisplay(existing.code) : (existing ? existing.code : target); codeEl.readOnly = fp; codeEl.title = fp ? "Made on another device: its name can only be seen there. Everything else here can be changed." : ""; }
   if (descEl) descEl.value = existing ? (existing.desc || "") : "";
   if (locationEl) locationEl.value = existing ? (existing.location || "") : "";
   // Blank cost box means complimentary, which is what most invites are.
@@ -633,8 +646,10 @@ window.syncInviteWaiveVisibility = function() {
   if (note) note.style.display = hasVenue ? "none" : "block";
 };
 
+// Returns true once the code is saved (see saveNewPromoCodeFromForm).
 window.saveInviteCodeFromForm = function() {
-  const code = (document.getElementById("newInviteCode")?.value || "").trim().toUpperCase();
+  const fpCode = window._editingInviteCode && window.isCodeFingerprint(window._editingInviteCode) ? window._editingInviteCode : null;
+  const code = fpCode || (document.getElementById("newInviteCode")?.value || "").trim().toUpperCase();
   const desc = (document.getElementById("newInviteDesc")?.value || "").trim() || "Photographer direct unlock code";
   const location = (document.getElementById("newInviteLocation")?.value || "").trim();
   // Only a code that supplies a venue carries a venue cost; without one the
@@ -650,7 +665,7 @@ window.saveInviteCodeFromForm = function() {
     venueCost = n;
   }
 
-  if (!/^[A-Z0-9][A-Z0-9_-]{1,23}$/.test(code)) {
+  if (!fpCode && !/^[A-Z0-9][A-Z0-9_-]{1,23}$/.test(code)) {
     alert("Enter an invite code of 2–24 letters, numbers, dashes or underscores (e.g. VIP-2431).");
     return;
   }
@@ -705,11 +720,40 @@ window.saveInviteCodeFromForm = function() {
   // carried on working for everyone.
   markCodesUnpublished();
   if (typeof toast === "function") {
+    const shown = fpCode ? "The code" : `Invite code '${code}'`;
     toast(persisted
-      ? `🔑 Invite code '${code}' ${editing ? "updated" : "saved"}. Press "Save & push live" at the top of Invite codes to make it live.`
-      : `⚠️ '${code}' ${editing ? "updated" : "added"} but could not be stored on this device — click "Save & Push Live".`);
+      ? `🔑 ${shown} ${editing ? "updated" : "saved"}. Press "Save & push live" at the top of Invite codes to make it live.`
+      : `⚠️ ${shown} ${editing ? "updated" : "added"} but could not be stored on this device — click "Save & Push Live".`);
   }
   if (typeof renderAdminPackagesEditor === "function") renderAdminPackagesEditor();
+  return true;
+};
+
+/* A code typed into the promo or invite form and not yet saved with the
+   form's own button was left out: "Save & push live" published the codes as
+   they were, said it had, and the new code never reached the site (Sep 29
+   2026, P0 — the 09:33 publish re-stamped the codes and changed nothing).
+   An open form with something in it is saved first. Returns "" when all is
+   saved, or which form could not be (its own alert says why). */
+window.flushOpenCodeForms = function() {
+  const isOpen = (id) => { const f = document.getElementById(id); return !!f && f.style.display === "block"; };
+  const typed = (id) => ((document.getElementById(id) || {}).value || "").trim();
+  // Saving one form redraws the panels, which wipes what is typed in the
+  // other: so every open form is read first, and put back if it was wiped.
+  const snap = (formId) => { const vals = {}; document.getElementById(formId).querySelectorAll("input[id], select[id], textarea[id]").forEach((el) => { vals[el.id] = el.type === "checkbox" ? el.checked : el.value; }); return vals; };
+  const restore = (vals) => Object.entries(vals).forEach(([id, v]) => { const el = document.getElementById(id); if (!el) return; if (el.type === "checkbox") el.checked = !!v; else el.value = v; });
+  const jobs = [];
+  if (isOpen("promoCreatorForm") && (typed("newPromoName") || window._editingPromoKey)) {
+    jobs.push({ kind: "promo", form: "promoCreatorForm", editing: window._editingPromoKey, vals: snap("promoCreatorForm"), open: (k) => window.openPromoCodeModal(k || undefined), save: () => window.saveNewPromoCodeFromForm() });
+  }
+  if (isOpen("inviteCreatorForm") && (typed("newInviteCode") || window._editingInviteCode)) {
+    jobs.push({ kind: "invite", form: "inviteCreatorForm", editing: window._editingInviteCode, vals: snap("inviteCreatorForm"), open: (k) => window.openInviteCodeModal(k || ""), save: () => window.saveInviteCodeFromForm() });
+  }
+  for (const j of jobs) {
+    if (!isOpen(j.form)) { j.open(j.editing); restore(j.vals); }
+    if (j.save() !== true) return j.kind;
+  }
+  return "";
 };
 
 
@@ -1640,6 +1684,12 @@ window.MODEL_PDF_LIMITS = MODEL_PDF_LIMITS;
 
 /* ---- package-editor CRUD ---- */
 window.saveAdminCustomPackages = async function() {
+  // A code still in its form is saved before anything is published (see flushOpenCodeForms).
+  const unsaved = typeof window.flushOpenCodeForms === "function" ? window.flushOpenCodeForms() : "";
+  if (unsaved) {
+    if (typeof toast === "function") toast(`Not published: the ${unsaved} code in the open form isn't saved yet — fix what it says, then press Save & push live again.`);
+    return false;
+  }
   // The test-shoot row shares the class for layout but is not a paid tier.
   const rows = document.querySelectorAll(".admin-pkg-editor-row:not(.admin-pkg-editor-row--tfp)");
   if (rows.length) {
@@ -2883,6 +2933,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       document.body.appendChild(bar);
       bar.addEventListener("click", async (e) => {
         if (e.target.closest(".publish-state-go")) {
+          const unsaved = typeof window.flushOpenCodeForms === "function" ? window.flushOpenCodeForms() : "";
+          if (unsaved) { if (typeof toast === "function") toast(`Not published: the ${unsaved} code in the open form isn't saved yet — fix what it says, then publish again.`); return; }
           e.target.disabled = true; e.target.textContent = "Publishing…";
           await syncToGitHub(shootsNow());
           paintPublishState();
