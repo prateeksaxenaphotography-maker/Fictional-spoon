@@ -5259,6 +5259,10 @@
   .sb-blkbar button:hover { border-color: var(--sb-line); } .sb-blkbar button:disabled { opacity: .35; cursor: default; }
   .sb-blkbar button i { font-style: normal; font-size: 13px; }
   .sb-blkbar .sb-sep { width: 1px; margin: 4px 2px; background: var(--sb-line); }
+  .sb-photobar { z-index: 4; }
+  .sb-swapping .sb-blk, .sb-swapping .sb-hit.photo { cursor: copy; }
+  .sb-replacing { margin: 6px 0 8px; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--accent, #d24e1a) 10%, var(--sb-card)); font-size: 12.5px; line-height: 1.45; }
+  .sb-linkbtn { all: unset; cursor: pointer; font-weight: 700; text-decoration: underline; margin-left: 4px; }
   @media (max-width: 900px) { .sb-blkbar button span { display: none; } .sb-blkbar button { padding: 0 8px; min-width: 34px; justify-content: center; } }
   /* Touching the page: an invisible button on every text and photograph. */
   .sb-hits { position: absolute; }
@@ -5646,9 +5650,14 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
      not offered the studio's own pages — its ways of working, how a shoot
      runs, what it shoots and its prices — and the rest are worded for them. */
   const STUDIO_ONLY = new Set(["ways", "process", "services"]);
+  /* A book whose cover is made by hand — the one-page comp card — can still
+     be given a proper cover (the owner, Sep 29 2026: "option to add cover
+     page is also missing"): the hand-made cover becomes the first page. */
+  const COVER_ITEM = { group: "Cover", items: [["cover", "Cover in front", "A cover before what is on the first page now, which moves to page 2 unchanged. It starts as one photograph filling the page; change its look on the cover's own panel."]] };
   const addMenuFor = (book) => {
+    const withCover = (menu) => (coverLayoutOf(book) === "custom" ? [COVER_ITEM, ...menu] : menu);
     const m = forOf(book);
-    if (!m) return ADD_MENU;
+    if (!m) return withCover(ADD_MENU);
     const menu = ADD_MENU.map((g) => ({
       group: g.group === "Studio pages" ? "Book pages" : g.group,
       items: g.items.filter(([k]) => !STUDIO_ONLY.has(k)).map(([k, nm, note]) =>
@@ -5658,9 +5667,9 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         : [k, nm, note])
     })).filter((g) => g.items.length);
     // A talent's book opens its menu with their comp card (Sep 29 2026).
-    return m.kind === "talent"
+    return withCover(m.kind === "talent"
       ? [{ group: "Comp card", items: [["free:compcard", "Comp card", `One page: a big photograph with three beside it, ${m.name}'s name, what they do, their measurements and the brands they have worked with — filled from their card, every part movable.`]] }, ...menu]
-      : menu;
+      : menu);
   };
   const ADD_MENU = [
     { group: "Photographs", items: [
@@ -5715,6 +5724,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     "free:three": "p4,6,36,20 p4,28,17,14 p23,28,17,14 t4,46,30,2",
     "free:sheet": "p4,6,16,14 p24,6,16,14 p4,22,16,14 p24,22,16,14 p4,38,16,14 p24,38,16,14",
     "free:blank": "",
+    cover: "p0,0,44,60 w4,44,28,4 w4,51,18,2",
     divider: "t4,26,24,4 b4,33,10,1.5",
     about: "t4,8,20,3 t4,15,36,2 t4,19,36,2 t4,23,30,2 t4,27,36,2 t4,31,24,2",
     services: "t4,8,14,3 t4,13,30,2 t4,20,14,3 t4,25,30,2 t4,32,14,3 t4,37,30,2 t4,44,14,3 t4,49,30,2",
@@ -6237,6 +6247,14 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     let lightTimer = null;
     let editing = null;                  // the text being typed on the page itself
     let photoSel = null;                 // the photograph chosen on the page itself
+    /* Change photo and Swap, on every photograph in the book (the owner,
+       Sep 29 2026: "how can i swap pictures?", "there is option to remove the
+       image but not changing it", "change photo should be available
+       everywhere in portfolio book"). `replacing` is the photograph the
+       picker will replace, keyed to where it is so it lapses when the choice
+       moves; `swapFrom` is the photograph waiting for the one to trade with. */
+    let replacing = null, swapFrom = null;
+    const replaceKey = () => `${sel}|${blockSel}|${active}`;
     // No album chosen yet: the photographs appear once one is (or All albums),
     // not 160 of them at once (the studio's ask, Sep 25 2026).
     let filter = "", pickerOpen = null, tab = "page";
@@ -6365,6 +6383,8 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       if (e.key !== "Escape") return;
       if (drawing) { setDrawing(false); return; }
       if (editing) { closeInline(true); return; }
+      if (swapFrom) { endSwap(); pageHint(""); return; }
+      if (replacing) { replacing = null; pickerOpen = false; pageHint(""); drawPhotoBlock(); return; }
       if (photoSel) { photoSel = null; $$(".sb-hit.photo.on").forEach((x) => x.classList.remove("on")); pageHint(""); return; }
       if ($("#sbRead")) { closeRead(); return; }
       if (blockSel >= 0) { blockSel = -1; drawLayer(); drawInspector(); return; }
@@ -7117,6 +7137,9 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           <button type="button" data-order="down" aria-label="Send backward" ${blockSel === 0 ? "disabled" : ""}><i>↓</i><span>Backward</span></button>
           <button type="button" data-order="back" aria-label="Send to the back" ${blockSel === 0 ? "disabled" : ""}><i>⇊</i><span>To back</span></button>
           <i class="sb-sep"></i>
+          ${b.k === "photo" ? `<button type="button" data-order="change" aria-label="Change photo"><i>⟳</i><span>Change photo</span></button>
+          <button type="button" data-order="swap" aria-label="Swap with another photo" ${blocks.filter((x) => x.k === "photo").length < 2 ? "disabled" : ""}><i>⇄</i><span>Swap</span></button>
+          <i class="sb-sep"></i>` : ""}
           <button type="button" data-order="dupe" aria-label="Duplicate" ${n >= FREE_MAX ? "disabled" : ""}><i>⧉</i><span>Copy</span></button>
           <button type="button" data-order="del" aria-label="Remove"><i>✕</i><span>Remove</span></button>`;
         // Above the thing, or below it when it sits at the top of the page.
@@ -7128,6 +7151,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           if (k === "up") moveBlock(blockSel, 1); else if (k === "down") moveBlock(blockSel, -1);
           else if (k === "front") moveBlockTo(blockSel, "front"); else if (k === "back") moveBlockTo(blockSel, "back");
           else if (k === "dupe") dupeBlock(blockSel); else if (k === "del") removeBlock(blockSel);
+          else if (k === "change") { startChange(); return; } else if (k === "swap") { startSwap({ kind: "block", at: blockSel }); return; }
           const again = $(`#sbBlkBar [data-order="${k}"]`); if (again && !again.disabled) again.focus({ preventScroll: true });
         }));
         layer.appendChild(bar);
@@ -7277,6 +7301,11 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         const el = ev.target.closest(".sb-blk");
         if (!el) { if (blockSel !== -1) { blockSel = -1; drawLayer(); drawInspector(); } return; }
         const i = +el.dataset.blk;
+        if (swapFrom && swapFrom.kind === "block") {
+          const bb = blocksOf(e)[i];
+          if (bb && bb.k === "photo" && i !== swapFrom.at) { ev.preventDefault(); doSwap(i); return; }
+          endSwap(); pageHint("");
+        }
         if (i !== blockSel) { blockSel = i; drawLayer(); drawInspector(); }
         const blocks = blocksOf(e);
         const b = blocks[i]; if (!b) return;
@@ -7594,9 +7623,43 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         }).join(""));
         layer._regions = regions; layer._page = r.page;
         wireHits(layer);
+        // The chosen photograph's own bar: Change photo, Swap, Remove.
+        const chosen = photoSel && r.index === sel ? regions.find((x) => x.kind === "photo" && x.id === photoSel.id && x.n === photoSel.n) : null;
+        if (chosen) layer.appendChild(photoBar(chosen, G));
       });
       box.querySelectorAll(".sb-hits").forEach((l) => { if (!fresh.includes(l)) l.remove(); });
       placeInline();
+    }
+    function photoBar(rg, G) {
+      const entry = curEntry();
+      const many = !!(entry && entry.photos && entry.photos.length > 1);
+      const bar = document.createElement("div");
+      bar.className = "sb-blkbar sb-photobar"; bar.setAttribute("role", "toolbar"); bar.setAttribute("aria-label", "This photo");
+      bar.innerHTML = `<button type="button" data-pb="change" aria-label="Change photo"><i>⟳</i><span>Change photo</span></button>
+        ${entry && entry.photos ? `<button type="button" data-pb="swap" aria-label="Swap with another photo" ${many ? "" : "disabled"}><i>⇄</i><span>Swap</span></button>` : ""}
+        <button type="button" data-pb="del" aria-label="Remove"><i>✕</i><span>Remove</span></button>`;
+      // Above the photograph, or — with no room above it — just inside its top
+      // edge: below a tall one would fall off the page.
+      const top = (rg.box.y / G.H) * 100;
+      const left = Math.max(0, Math.min((rg.box.x / G.W) * 100, 60));
+      if (top < 8) { bar.style.top = `calc(${top.toFixed(3)}% + 8px)`; bar.style.left = `calc(${left.toFixed(3)}% + 8px)`; }
+      else { bar.style.bottom = `calc(${(100 - top).toFixed(3)}% + 6px)`; bar.style.left = `${left.toFixed(3)}%`; }
+      bar.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+      bar.querySelectorAll("[data-pb]").forEach((x) => x.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        const k = x.dataset.pb, e2 = curEntry();
+        const at = e2 && e2.photos ? e2.photos.findIndex((q) => q.id === rg.id) : 0;
+        if (at >= 0 && e2 && e2.photos) active = at;
+        if (k === "change") startChange();
+        else if (k === "swap") startSwap({ kind: "list", at });
+        else if (k === "del") {
+          mark();
+          if (!e2) book.cover = null; else { const l = e2.photos.slice(); l.splice(at, 1); e2.photos = l; active = Math.max(0, at - 1); }
+          photoSel = null; pageHint("");
+          change({ photos: true, rail: true }); drawPhotoBlock();
+        }
+      }));
+      return bar;
     }
     function wireHits(layer) {
       layer.querySelectorAll('.sb-hit[data-kind="text"]').forEach((el) => {
@@ -7619,6 +7682,8 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         const entry = curEntry();
         if (entry && entry.photos) { const k = entry.photos.findIndex((x) => x.id === id); if (k >= 0 && k !== active) { active = k; drawPhotoBlock(); } }
         layer.querySelectorAll(".sb-hit.photo").forEach((x) => x.classList.toggle("on", x === el));
+        layer.querySelectorAll(".sb-photobar").forEach((x) => x.remove());
+        { const G2 = geometry(book), region0 = rg(); if (region0) layer.appendChild(photoBar(region0, G2)); }
         pageHint(isDiagram(id) ? "A lighting diagram is always shown whole." : "Drag to move the picture in its frame · scroll to zoom · double-click to change how it fills");
       };
       let img = null;
@@ -7632,6 +7697,11 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         return { iw, ih, scale, sw: Math.min(iw, box.w / scale), sh: Math.min(ih, box.h / scale) };
       };
       el.addEventListener("pointerdown", (ev) => {
+        if (swapFrom && swapFrom.kind === "list") {
+          const e2 = curEntry(), to = e2 && e2.photos ? e2.photos.findIndex((q) => q.id === id) : -1;
+          if (to >= 0 && to !== swapFrom.at) { ev.preventDefault(); doSwap(to); return; }
+          endSwap(); pageHint("");
+        }
         pick();
         const shot = shotFor(id); const region = rg();
         if (!shot || !region || isDiagram(id)) return;
@@ -7928,6 +7998,24 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     }
 
     function addPage(want) {
+      // A cover in front of a hand-made one (see COVER_ITEM).
+      if (want === "cover") {
+        if (coverLayoutOf(book) !== "custom") { API.toast("The book has its cover already: it is the first page."); return; }
+        mark();
+        const card = { type: "free", blocks: ((book.coverPage && book.coverPage.blocks) || []).map((b) => ({ ...b })) };
+        if (book.coverPage && book.coverPage.bg) card.bg = book.coverPage.bg;
+        book.pages.unshift(card);
+        const big = card.blocks.find((b) => b.k === "photo" && b.p && b.p.id);
+        if (big && !book.cover) book.cover = { ...big.p };
+        book.coverLayout = "photo";
+        delete book.coverPage;
+        flush();
+        closeInline(false); photoSel = null; pageHint("");
+        sel = -1; active = 0; pickerOpen = null; blockSel = -1;
+        setTabPage(); change({ rail: true }); drawInspector();
+        API.toast("A cover is in front now, and what was the first page is page 2 · change the cover's look on its panel · Ctrl+Z to undo");
+        return;
+      }
       // An Anything page can arrive empty or as one of the arrangements.
       const [type, start] = String(want).split(":");
       const extra = pageSpan({ type });
@@ -9691,6 +9779,47 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       if (!entry.photos) return null;
       return { list: entry.photos, max: entry.type === "photos" ? MAX_PER_PAGE : (entry.type === "feature" || entry.type === "look") ? 2 : 1, set: (l) => { entry.photos = l; } };
     }
+    // Opens the picker to replace the chosen photograph, and brings it into view.
+    function startChange() {
+      swapFrom = null;
+      if (typeof setTabPage === "function") setTabPage();
+      replacing = { key: replaceKey() };
+      pickerOpen = true;
+      drawPhotoBlock();
+      const det = $("#sbPhotoBlock .sb-pick");
+      if (det) { det.open = true; det.scrollIntoView({ block: "start", behavior: "smooth" }); const s = $("#sbAlbum"); if (s) s.focus({ preventScroll: true }); }
+      pageHint("Choose the new photo in the panel: it takes this one's place");
+    }
+    // Swap: the photograph chosen, waiting for the one to trade places with.
+    function startSwap(from) {
+      replacing = null;
+      swapFrom = from;
+      pageHint("Now click the photo to swap with · Esc to cancel");
+      const layer = $("#sbLayer") || $(".sb-hits"); if (layer) layer.classList.add("sb-swapping");
+    }
+    function endSwap() {
+      swapFrom = null;
+      $$(".sb-swapping").forEach((x) => x.classList.remove("sb-swapping"));
+    }
+    // Two photographs on a page trade places: on a page of photographs their
+    // order, on an Anything page the whole photograph with its crop.
+    function doSwap(to) {
+      const from = swapFrom; endSwap();
+      if (!from || from.at === to) { pageHint(""); return; }
+      const entry = curEntry();
+      mark();
+      if (from.kind === "block") {
+        const bl = blocksOf(entry), a = bl[from.at], b2 = bl[to];
+        if (!a || !b2 || a.k !== "photo" || b2.k !== "photo") return;
+        const pa = a.p; if (b2.p) a.p = b2.p; else delete a.p; if (pa) b2.p = pa; else delete b2.p;
+        change({ photos: true, rail: true }); drawLayer(); drawInspector();
+      } else {
+        const l = entry.photos.slice(); if (!l[from.at] || !l[to]) return;
+        [l[from.at], l[to]] = [l[to], l[from.at]]; entry.photos = l; active = to;
+        change({ photos: true, rail: true }); drawPhotoBlock();
+      }
+      pageHint(""); API.toast("Photos swapped · Ctrl+Z to undo");
+    }
     function drawPhotoBlock() {
       const box = $("#sbPhotoBlock"); if (!box) return;
       const entry = curEntry();
@@ -9701,6 +9830,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       const list = t.list;
       if (active >= list.length) active = Math.max(0, list.length - 1);
       const cur = list[active];
+      if (replacing && (replacing.key !== replaceKey() || !cur)) replacing = null;
       const heading = !entry ? "Cover photo" : entry.type === "photos" ? `Photos · ${list.length} of ${t.max}` : (entry.type === "feature" || entry.type === "look") ? `Photos · ${list.length} of 2` : (entry.type === "spread" || entry.type === "note" || entry.type === "article") ? "The photo" : "Photo (optional)";
       const G = geometry(book);
       const positions = entry ? PHOTO_AT[entry.type] : null;
@@ -9729,7 +9859,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         ${cur ? `<div class="sb-adjust">
           <div class="sb-adjrow"><span>${t.max > 1 ? `Photo ${active + 1}` : "This photo"}</span><span>
             ${t.max > 1 ? `<button type="button" data-move="-1" aria-label="Move earlier" ${active === 0 ? "disabled" : ""}>←</button><button type="button" data-move="1" aria-label="Move later" ${active === list.length - 1 ? "disabled" : ""}>→</button>` : ""}
-            <button type="button" data-remove>Remove</button></span></div>
+            <button type="button" data-change>Change photo</button><button type="button" data-remove>Remove</button></span></div>
           ${isDiagram(cur.id) ? `<p class="sb-hint">Lighting diagrams are always shown whole, on white.</p>` : `
           <div class="sb-field"><span class="sb-label">Placement</span>
             <div class="sb-seg" role="radiogroup" aria-label="Placement">${FIT_CHOICES.map(([k, n]) => { const ic = { fill: "fitFill", whole: "fitWhole", width: "fitWidth", height: "fitHeight" }[k]; return `<button type="button" role="radio" data-fit="${k}" aria-checked="${mode === k}" title="${esc(n)}" aria-label="${esc(n)}">${ic ? sbIcon(ic, n) : n}</button>`; }).join("")}</div>
@@ -9741,7 +9871,8 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           ${isDiagram(cur.id) ? "" : `<div class="sb-field"><span class="sb-label">Flip</span><span class="sb-seg sb-seg-sm">${[["h", "↔ Left to right"], ["v", "↕ Top to bottom"]].map(([k, n]) => `<button type="button" data-flip="${k}" aria-pressed="${String(cur.flip || "").includes(k)}">${n}</button>`).join("")}</span></div>`}
         </div>` : ""}
         <details class="sb-pick" ${open ? "open" : ""}>
-          <summary>${list.length ? (t.max === 1 ? "Change the photo" : "Add or remove photos") : "Choose a photo"}</summary>
+          <summary>${replacing ? "Choose the new photo" : list.length ? (t.max === 1 ? "Change the photo" : "Add or remove photos") : "Choose a photo"}</summary>
+          ${replacing ? `<p class="sb-replacing">Replacing ${t.max > 1 ? `photo ${active + 1}` : "this photo"}: click the new one below and it takes the same place. <button type="button" class="sb-linkbtn" data-cancelchange>Cancel</button></p>` : ""}
           <label class="sb-vh" for="sbAlbum">Show</label>
           <select id="sbAlbum">
             ${isTalentBook ? `<option value="talent" ${filter === "talent" ? "selected" : ""}>Cleared for ${esc(forOf(book).name)} (${tfp ? [...tfp.cleared].filter((id) => lib.byId.has(id)).length : 0})</option>
@@ -9765,7 +9896,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           <div class="sb-grid">${shown.map(([id, hit]) => {
             const pos = list.findIndex((s) => s.id === id);
             const on = pos >= 0;
-            const full = !on && list.length >= t.max && t.max > 1;
+            const full = !replacing && !on && list.length >= t.max && t.max > 1;
             const pick = `<button type="button" class="sb-thumb${hit.photo.diagram ? " diagram" : ""}" data-pick="${esc(id)}" aria-pressed="${on}" data-order="${on && t.max > 1 ? pos + 1 : on ? "✓" : ""}" ${full ? "disabled" : ""} aria-label="${esc(hit.photo.outside ? (hit.photo.name || "photograph from this computer") : cleanName(hit.shoot.title || hit.shoot.talent))} ${hit.photo.diagram ? "lighting diagram" : "photo"}${on ? ", chosen" : ""}"><img src="${esc(thumbSrc(hit.photo))}" alt="" loading="lazy"></button>`;
             // A photograph from this computer can be taken out of the store
             // again (K3); one already in a book page is kept until it is
@@ -9850,6 +9981,10 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         [l[active], l[j]] = [l[j], l[active]]; setList(l); active = j; change({ photos: true });
         refocus(`[data-move="${b.dataset.move}"]:not(:disabled)`) ; if (!box.isConnected || document.activeElement === document.body) refocus(`[data-active="${active}"]`);
       }));
+      const chg = box.querySelector("[data-change]");
+      if (chg) chg.addEventListener("click", () => startChange());
+      const cancelChg = box.querySelector("[data-cancelchange]");
+      if (cancelChg) cancelChg.addEventListener("click", () => { replacing = null; pickerOpen = false; pageHint(""); drawPhotoBlock(); });
       const rm = box.querySelector("[data-remove]");
       if (rm) rm.addEventListener("click", () => { const l = photoTarget().list.slice(); l.splice(active, 1); setList(l); active = Math.max(0, active - 1); change({ photos: true }); refocus(`[data-active="${active}"]`); if (document.activeElement === document.body) refocus("summary"); });
       box.querySelectorAll("[data-fit]").forEach((b) => b.addEventListener("click", () => {
@@ -9894,6 +10029,20 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         const tt = photoTarget();
         const l = tt.list.slice();
         const at = l.findIndex((s) => s.id === id);
+        // Replacing: the new photograph takes the old one's place; one already
+        // on this page trades places with it instead of being added twice.
+        if (replacing && l[active]) {
+          mark();
+          if (at >= 0 && at !== active) { const t2 = l[at]; l[at] = l[active]; l[active] = t2; }
+          else if (at < 0) { const hit2 = lib.byId.get(id); const f2 = hit2 && !hit2.photo.diagram ? API.photoFocus(hit2.photo) : { x: 0.5, y: 0.5 }; l[active] = { id, x: +f2.x.toFixed(3), y: +f2.y.toFixed(3), zoom: 1 }; }
+          replacing = null; pickerOpen = false;
+          setList(l);
+          change({ photos: true }); patchRail();
+          if (entry && entry.type === "photos") drawFields();
+          pageHint("");
+          API.toast("Photo changed · Ctrl+Z to undo");
+          return;
+        }
         if (at >= 0) { l.splice(at, 1); active = Math.min(active, Math.max(0, l.length - 1)); }
         else {
           const hit = lib.byId.get(id);
