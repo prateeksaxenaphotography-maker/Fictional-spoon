@@ -12,7 +12,7 @@
 //
 // Bump ASSET_VERSION on every release that touches app.js, styles.css,
 // data.js or config.js.
-const ASSET_VERSION = "549";
+const ASSET_VERSION = "550";
 const CACHE_NAME = `wps-v${ASSET_VERSION}`;
 // "/" only, not also "/index.html": the same page twice, fetched on the very
 // first visit while the page itself was still loading (Sep 2026 audit, G19).
@@ -55,7 +55,10 @@ self.addEventListener("fetch", (e) => {
   if (request.method !== "GET" || !request.url.startsWith("http")) return;
 
   const url = new URL(request.url);
-  const cacheable = url.origin === self.location.origin && !url.pathname.startsWith("/api/");
+  // ?live= is the code panel asking what the site holds right now (admin.js,
+  // checkCodesLive): a new address every time, so keeping each one would
+  // only fill the cache.
+  const cacheable = url.origin === self.location.origin && !url.pathname.startsWith("/api/") && !url.searchParams.has("live");
 
   // data.js is the one asset the Admin Panel rewrites between releases: a
   // calendar or album publish changes its contents while its ?v= address stays

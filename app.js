@@ -127,6 +127,40 @@ const studioDevice = () => { try { return localStorage.getItem("wps-admin-author
 const studioLocal = (key) => (studioDevice() ? localStorage.getItem(key) : null);
 window.studioLocal = studioLocal;
 
+/* A studio device keeps its own copy of the codes, and the getters below
+   read it first — so a second signed-in device carried on with the list it
+   had saved days before after a new code was published from the first: the
+   code worked for every client and was refused on the studio's own phone,
+   and a Save & push live from the phone would have taken it off the site
+   (Sep 29 2026: "why is a promo code/invite code made on a device not
+   getting live on other device when testing"). When the site's copy is newer
+   than this device's, and this device has no code changes of its own waiting
+   to be published, the site's copy is taken — under this device's readable
+   names where it knows them. With changes waiting, the device keeps its own
+   and the code panel shows each code the two disagree on. */
+function siteCodesIfNewer(field, storageKey) {
+  try {
+    const pubAt = Number(window.WPS_DATA && window.WPS_DATA.SETTINGS_AT && window.WPS_DATA.SETTINGS_AT[field]) || 0;
+    if (!pubAt || pubAt <= settingStamp(storageKey)) return null;
+    if (localStorage.getItem("wps_codes_unpublished") === "1") return null;
+    const pub = window.WPS_DATA[field];
+    return pub && typeof pub === "object" ? { pub, pubAt } : null;
+  } catch (e) { return null; }
+}
+// Fingerprint -> the readable name this device knows it by.
+function codeNamesHere(names) {
+  const out = {};
+  names.forEach((n) => { if (n && !window.isCodeFingerprint(n)) out[window.codeFingerprint(n).toLowerCase()] = String(n).trim().toUpperCase(); });
+  return out;
+}
+function takeSiteCodes(storageKey, list, pubAt) {
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(list));
+    // The site's own date, not now: nothing here is waiting to be published.
+    localStorage.setItem(`wps_at_${storageKey}`, String(pubAt));
+  } catch (e) {}
+}
+
 window.getAdminPromoCodes = function() {
   if (window.adminDraftPromoCodes && typeof window.adminDraftPromoCodes === "object") {
     return window.adminDraftPromoCodes;
@@ -134,7 +168,14 @@ window.getAdminPromoCodes = function() {
   try {
     const saved = studioLocal("wps_custom_promo_codes");
     if (saved) {
-      window.adminDraftPromoCodes = JSON.parse(saved);
+      let codes = JSON.parse(saved);
+      const site = siteCodesIfNewer("PROMO_CODES", "wps_custom_promo_codes");
+      if (site && !Array.isArray(site.pub)) {
+        const names = codeNamesHere(Object.keys(codes && typeof codes === "object" ? codes : {}));
+        codes = Object.fromEntries(Object.entries(site.pub).map(([fp, v]) => [names[String(fp).toLowerCase()] || fp, v]));
+        takeSiteCodes("wps_custom_promo_codes", codes, site.pubAt);
+      }
+      window.adminDraftPromoCodes = codes;
       return window.adminDraftPromoCodes;
     }
   } catch(e) {}
@@ -317,7 +358,13 @@ window.getAdminInviteCodes = function() {
   try {
     const saved = studioLocal("wps_custom_invite_codes");
     if (saved) {
-      const parsed = JSON.parse(saved);
+      let parsed = JSON.parse(saved);
+      const site = siteCodesIfNewer("INVITE_CODES", "wps_custom_invite_codes");
+      if (site && Array.isArray(site.pub) && site.pub.length > 0) {
+        const names = codeNamesHere((Array.isArray(parsed) ? parsed : []).map((c) => (c && typeof c === "object") ? c.code : c));
+        parsed = site.pub.map((c) => (c && typeof c === "object" && c.code) ? { ...c, code: names[String(c.code).toLowerCase()] || c.code } : c);
+        takeSiteCodes("wps_custom_invite_codes", parsed, site.pubAt);
+      }
       if (Array.isArray(parsed) && parsed.length > 0) {
         window.adminDraftInviteCodes = normalize(parsed);
         return window.adminDraftInviteCodes;

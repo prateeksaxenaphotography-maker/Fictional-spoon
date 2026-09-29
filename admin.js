@@ -165,6 +165,43 @@ window.codeStatusBadgeHtml = function(entry) {
 };
 
 
+/* ---- what a code looks like on the live site ---- */
+
+// The one place a code on this computer is turned into what the live site
+// holds for it: its fingerprint instead of its name, and the name taken out
+// of its label, or the label would give it away (Sep 2026 audit, B10). The
+// publish writes this and the live badge on each code compares against it,
+// so the two cannot disagree about what "the same code" means.
+window.publishedPromoEntry = function(k, v) {
+  if (window.isCodeFingerprint(k)) return [k, v];
+  const label = (v && typeof v.label === "string") ? v.label.replace(new RegExp("\\s*\\(" + k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\)\\s*$", "i"), "") : v && v.label;
+  return [window.codeFingerprint(k), { ...v, ...(label !== undefined ? { label } : {}) }];
+};
+window.publishedInviteEntry = (c) => (c && typeof c === "object")
+  ? { ...c, code: window.isCodeFingerprint(c.code) ? c.code : window.codeFingerprint(c.code) }
+  : c;
+
+// Codes deleted (or renamed) on this computer that may still be live, by
+// fingerprint, with the name they had here — so the panel can say "you
+// removed this, it still works until you publish" and put it back by its
+// own name. Nothing here is ever published.
+const CODES_REMOVED_KEY = "wps_codes_removed_here";
+window.codesRemovedHere = function() {
+  try {
+    const v = JSON.parse(localStorage.getItem(CODES_REMOVED_KEY) || "null");
+    return { promo: (v && v.promo) || {}, invite: (v && v.invite) || {} };
+  } catch (e) { return { promo: {}, invite: {} }; }
+};
+window.setCodeRemovedHere = function(kind, code, removed) {
+  if (!code) return;
+  const fp = (window.isCodeFingerprint(code) ? String(code) : window.codeFingerprint(code)).toLowerCase();
+  const all = window.codesRemovedHere();
+  if (removed) all[kind][fp] = window.isCodeFingerprint(code) ? "" : String(code);
+  else delete all[kind][fp];
+  try { localStorage.setItem(CODES_REMOVED_KEY, JSON.stringify(all)); } catch (e) {}
+};
+
+
 /* ---- promo CRUD ---- */
 
 window.addNewAdminPromoCode = function() {
@@ -206,6 +243,7 @@ window.deleteAdminPromoCode = function(codeName) {
   if (confirm(`Remove promo code '${codeName}' from draft?`)) {
     const currentCodes = window.getAdminPromoCodes();
     delete currentCodes[codeName];
+    window.setCodeRemovedHere("promo", codeName, true);
     window.adminDraftPromoCodes = { ...currentCodes };
     window.persistAdminPromoCodes();
     markCodesUnpublished();
@@ -475,7 +513,8 @@ window.saveNewPromoCodeFromForm = function() {
   // Renamed while editing. Done here, after every check above has passed: it
   // used to run first, so a rename refused for a bad home studio value had
   // already dropped the old code from the draft.
-  if (editing && editing !== name) delete codes[editing];
+  if (editing && editing !== name) { delete codes[editing]; window.setCodeRemovedHere("promo", editing, true); }
+  window.setCodeRemovedHere("promo", name, false);
   codes[name] = type === "flat"
     ? { flat: val, label, includeAddons, homeStudioDiscount, active, ...dateFields }
     : { pct: val, label, includeAddons, homeStudioDiscount, active, ...dateFields };
@@ -500,6 +539,33 @@ window.togglePromoHomeStudioValField = function() {
   valEl.placeholder = typeEl.value === "pct" ? "e.g. 10"
     : typeEl.value === "fixed" ? "client pays e.g. 1500"
     : "e.g. 500";
+  window.paintPromoRentalHint();
+};
+
+/* What the client actually pays for the rental with this code, said under
+   the box as it is typed. The studio set a code's rental price to ₹3,000
+   while the standard rate for paid shoots was ₹2,000, and the quote said
+   ₹2,000 with no word why: a code only ever lowers the rental (Sep 29 2026). */
+window.paintPromoRentalHint = function() {
+  const hint = document.getElementById("newPromoHomeStudioHint");
+  if (!hint) return;
+  const type = (document.getElementById("newPromoHomeStudioType") || {}).value || "none";
+  const raw = (document.getElementById("newPromoHomeStudioVal") || {}).value;
+  const val = Math.round(Number(raw));
+  const rate = typeof window.getHomeStudioRate === "function" ? window.getHomeStudioRate(false) : 0;
+  const inr = (n) => `₹${Math.max(0, Math.round(n)).toLocaleString("en-IN")}`;
+  let text = `Your standard home studio rental for paid shoots is ${inr(rate)} (Package rates panel).`, warn = false;
+  if (type !== "none" && (type === "free" || (raw !== "" && Number.isFinite(val)))) {
+    const off = window.applyPromoHomeStudioDiscount({ homeStudioDiscount: type === "free" ? { type } : { type, value: val } }, rate);
+    text += ` With this code the client pays ${inr(rate - off.amount)} for it.`;
+    if (type === "fixed" && val > rate) {
+      warn = true;
+      text += ` A code can only lower the rental, never raise it, so ${inr(val)} is not charged. To charge ${inr(val)} for every paid shoot, change the rental in Package rates instead.`;
+    }
+  }
+  hint.textContent = text;
+  hint.style.color = warn ? "#d97706" : "var(--ink-soft)";
+  hint.style.fontWeight = warn ? "700" : "";
 };
 
 // Same idea as togglePromoHomeStudioValField, for the invite code form's
@@ -581,6 +647,7 @@ window.deleteAdminInviteCode = function(codeToDelete) {
   if (confirm(`Remove invite code '${targetUpper}' from draft?`)) {
     const updated = current.filter(x => getItemCodeStr(x) !== targetUpper);
     window.adminDraftInviteCodes = [...updated];
+    window.setCodeRemovedHere("invite", targetUpper, true);
     const persisted = window.persistAdminInviteCodes();
     // Deleted here, still live for clients until it is pushed — same as a save.
     markCodesUnpublished();
@@ -707,9 +774,11 @@ window.saveInviteCodeFromForm = function() {
     const idx = list.findIndex(x => x.code === editing);
     if (idx !== -1) list[idx] = entry;
     else list.push(entry);
+    if (editing !== code) window.setCodeRemovedHere("invite", editing, true);
   } else {
     list.push(entry);
   }
+  window.setCodeRemovedHere("invite", code, false);
   window.adminDraftInviteCodes = [...list];
   window._editingInviteCode = null;
 
@@ -1741,15 +1810,22 @@ window.saveAdminCustomPackages = async function() {
   // Commit Draft Invite Codes. (A legacy singular "wps_custom_invite_code"
   // key used to be written here too — as "[object Object]", since the entry
   // is an object — but nothing anywhere reads it, so it was dropped.)
+  /* The codes are dated "changed now" only when they were changed on this
+     device. They were dated now on every press, so a Save & push live from
+     the laptop — to publish a price, say — counted the laptop's code list as
+     the newest and took off the site a code just published from the phone
+     (Sep 29 2026). Every code edit is already dated when it is made
+     (persistAdminPromoCodes / persistAdminInviteCodes). */
+  const codesChangedHere = window.codesAreUnpublished();
   if (window.adminDraftInviteCodes && Array.isArray(window.adminDraftInviteCodes)) {
     localStorage.setItem("wps_custom_invite_codes", JSON.stringify(window.adminDraftInviteCodes));
-    stampSetting("wps_custom_invite_codes");
+    if (codesChangedHere) stampSetting("wps_custom_invite_codes");
   }
 
   // Commit Draft Promo Codes
   if (window.adminDraftPromoCodes && typeof window.adminDraftPromoCodes === "object") {
     localStorage.setItem("wps_custom_promo_codes", JSON.stringify(window.adminDraftPromoCodes));
-    stampSetting("wps_custom_promo_codes");
+    if (codesChangedHere) stampSetting("wps_custom_promo_codes");
   }
 
   const setBadge = paintSaveStatus;
@@ -2308,6 +2384,7 @@ window.moveAdminPackageRow = function(index, dir) {
       if (stale) {
         toast("This page is out of date, so nothing was published.");
         if (confirm(`A newer version of the site is live (v${stale.live}; this page is v${stale.loaded}).\n\nYour changes are saved on this device, but publishing from an out-of-date page can undo parts of the live site, so nothing was published.\n\nReload now, then publish again?`)) {
+          try { sessionStorage.setItem("wps-reloaded-to-publish", "1"); } catch (e) {}
           const next = new URL(location.href);
           next.searchParams.set("_v", String(stale.live));
           location.replace(next.toString());
@@ -2627,6 +2704,9 @@ window.moveAdminPackageRow = function(index, dir) {
          alone used to be published, so a date blocked on the other device
          reopened with any publish from this one (Sep 2026 audit, A3). */
       const publishAt = Date.now();
+      // The codes as this publish sends them, so the code panel can tell
+      // "published, the site is rebuilding" from "never sent".
+      let codesSent = null;
       const calendarOut = (() => {
         const mine = (window.WPS_DATA && window.WPS_DATA.CALENDAR_SETTINGS) || {};
         const cal = (remote.calendar && typeof window.mergeCalendarSettings === "function") ? window.mergeCalendarSettings(remote.calendar, mine) : mine;
@@ -2652,14 +2732,9 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             // Published as fingerprints: the readable codes stay on this device
             // (Sep 2026 audit, B10). A code's own name is also taken out of its
             // label, or the label would give it away.
-            INVITE_CODES: (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : [])
-              .map((c) => (c && typeof c === "object") ? { ...c, code: window.isCodeFingerprint(c.code) ? c.code : window.codeFingerprint(c.code) } : c),
+            INVITE_CODES: (typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : []).map(window.publishedInviteEntry),
             PROMO_CODES: Object.fromEntries(Object.entries(typeof window.getAdminPromoCodes === "function" ? window.getAdminPromoCodes() : {})
-              .map(([k, v]) => {
-                if (window.isCodeFingerprint(k)) return [k, v];
-                const label = (v && typeof v.label === "string") ? v.label.replace(new RegExp("\\s*\\(" + k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\)\\s*$", "i"), "") : v && v.label;
-                return [window.codeFingerprint(k), { ...v, ...(label !== undefined ? { label } : {}) }];
-              })),
+              .map(([k, v]) => window.publishedPromoEntry(k, v))),
             PACKAGES: (typeof window.getAdminPackages === "function" ? window.getAdminPackages() : []),
             TFP_PACKAGE: (typeof window.getAdminTfpPackage === "function" ? window.getAdminTfpPackage() : null),
             HOME_STUDIO_RATE: (typeof window.getHomeStudioRate === "function" ? window.getHomeStudioRate() : 3000),
@@ -2690,6 +2765,7 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             if (takeLive) console.info(`Publish: keeping the newer ${k} from the live site (changed on another device).`);
           });
           out.SETTINGS_AT = keptAt;
+          codesSent = { promo: out.PROMO_CODES, invite: out.INVITE_CODES };
           return out;
         })(),
         // Saved studio portfolio books (book-builder.js), merged per book with
@@ -2878,6 +2954,18 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       for (const [album, docs] of pendingDocs) Object.assign(album, docs);
       // Everything marked before this publish began is on the branch now.
       if (typeof window.clearUnpublished === "function") window.clearUnpublished(publishAt);
+      if (codesSent) {
+        try { localStorage.setItem("wps_codes_pushed", JSON.stringify({ at: Date.now(), ...codesSent })); } catch (e) {}
+        // Every code on this device went out as it is here (the live list did
+        // not win), so none is waiting any more, whichever button started the
+        // publish. Only the codes panel's own button used to say so, and a
+        // device still "waiting" never takes a newer list from the site.
+        try {
+          const sig = (idx) => sameJson(Object.fromEntries(Object.entries(idx).map(([fp, e]) => [fp, e.json])));
+          if (["promo", "invite"].every((kind) => sig(codesHere(kind)) === sig(codeIndex(kind, codesSent[kind])))) localStorage.removeItem(UNPUBLISHED_CODES_KEY);
+        } catch (e) {}
+        if (typeof window.checkCodesLive === "function") window.checkCodesLive(true);
+      }
       watchDeploy(pat, commit.sha);
 
       // Bring this browser up to date with the merged result (photo URLs,
@@ -2962,6 +3050,18 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
   }
   window.addEventListener("wps-unpublished", paintPublishState);
   window.addEventListener("storage", (e) => { if (e.key === "wps_unpublished") paintPublishState(); });
+  /* Back from the out-of-date reload above. The reload is where it used to
+     end: nothing said the publish had not happened, so the changes sat on
+     this computer while the studio believed them live (Sep 29 2026). */
+  try {
+    if (sessionStorage.getItem("wps-reloaded-to-publish")) {
+      sessionStorage.removeItem("wps-reloaded-to-publish");
+      setTimeout(() => {
+        paintPublishState();
+        if (typeof toast === "function") toast("This page is now the newest version and your changes are still here — nothing is live yet. Press Publish now at the bottom of the screen (or Save & push live) to publish them.");
+      }, 1500);
+    }
+  } catch (e) {}
 
   /* After GitHub takes a publish, the site's own workflows check it and
      build it. Their result is read back here, so "live" means live. A token
@@ -4483,6 +4583,209 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     };
 
 
+  /* ---- which codes are live ----
+     The studio, Sep 29 2026: "can we have indicator on codes in admin panel
+     showing which are live and which are not, which are there only in local
+     — its being confusing". A code lives on this computer until it is
+     published, and the only sign was one NOT LIVE YET line for the whole
+     panel, so a code that never went out looked exactly like one that had
+     (that morning a new code sat unsent through three publishes). Each card
+     now says what the live site holds for it, read from the site's own
+     data.js — what a client's booking form gets — not from the copy this
+     page loaded. Codes the site has and this computer does not are shown
+     too: Save & push live from here would take them off the site. */
+  const codeLive = { at: 0, busy: false, failed: false, promo: null, invite: null, stale: null, timer: 0 };
+  const lowFp = (s) => String(s || "").toLowerCase();
+  // The same value whatever order its keys were written in.
+  const sameJson = (v) => JSON.stringify(v, (k, val) => (val && typeof val === "object" && !Array.isArray(val))
+    ? Object.keys(val).sort().reduce((o, key) => { o[key] = val[key]; return o; }, {}) : val);
+  // { fingerprint: { json, value } } for the promo map or the invite list.
+  const codeIndex = (kind, src) => {
+    const out = {};
+    if (kind === "promo") {
+      Object.entries(src && typeof src === "object" && !Array.isArray(src) ? src : {})
+        .forEach(([k, v]) => { out[lowFp(k)] = { json: sameJson(v), value: v }; });
+    } else {
+      (Array.isArray(src) ? src : []).forEach((c) => {
+        if (c && typeof c === "object" && c.code) out[lowFp(c.code)] = { json: sameJson({ ...c, code: lowFp(c.code) }), value: c };
+      });
+    }
+    return out;
+  };
+  // This computer's codes as a publish would send them.
+  const codesHere = (kind) => kind === "promo"
+    ? codeIndex("promo", Object.fromEntries(Object.entries(window.getAdminPromoCodes() || {}).map(([k, v]) => window.publishedPromoEntry(k, v))))
+    : codeIndex("invite", (window.getAdminInviteCodes() || []).map(window.publishedInviteEntry));
+  // What the last publish from here sent, for 20 minutes: long enough for the
+  // site to rebuild, short enough that one which never landed stops being
+  // called "going live".
+  const codesPushed = () => {
+    try {
+      const p = JSON.parse(localStorage.getItem("wps_codes_pushed") || "null");
+      return p && Date.now() - (Number(p.at) || 0) < 20 * 60000 ? p : null;
+    } catch (e) { return null; }
+  };
+  function codeLiveState(kind, fp, json) {
+    const live = codeLive[kind];
+    if (!live) return codeLive.failed ? "unknown" : "checking";
+    if (live[fp] && live[fp].json === json) return "live";
+    const sent = codesPushed();
+    const sentHere = sent ? codeIndex(kind, sent[kind])[fp] : null;
+    if (sentHere && sentHere.json === json) return "going";
+    return live[fp] ? "changed" : "new";
+  }
+  const LIVE_LOOK = {
+    live: ["✓ LIVE", "rgba(5,150,105,0.12)", "#059669", "Clients can use this code on the booking page now."],
+    going: ["⏳ GOING LIVE", "rgba(37,99,235,0.12)", "#2563eb", "Published — the site is rebuilding. Clients can use it in about 2 minutes, and this turns to LIVE by itself."],
+    new: ["ONLY ON THIS COMPUTER — NOT LIVE", "rgba(217,119,6,0.14)", "#d97706", "Clients who type this code are told it is not recognised. Press Save & push live to publish it."],
+    changed: ["EDITED HERE — NOT LIVE YET", "rgba(217,119,6,0.14)", "#d97706", "Clients still get the version on the site. Press Save & push live to publish this one."],
+    checking: ["Checking the site…", "rgba(120,120,120,0.14)", "var(--ink-soft)", "Looking at what the live site holds for this code."]
+  };
+  const LIVE_NOTES = {
+    new: "Clients can't use this code yet — press Save & push live.",
+    changed: "Clients still get the old version — press Save & push live to send this one."
+  };
+  const livePill = (state) => {
+    const look = LIVE_LOOK[state];
+    return look ? `<span data-live-state="${state}" style="font-size: var(--font-xs); font-weight: 800; background: ${look[1]}; color: ${look[2]}; padding: 2px 6px; border-radius: 4px; white-space: nowrap;" title="${esc(look[3])}">${look[0]}</span>` : "";
+  };
+  const smallBtn = "background: none; border: 1px solid currentColor; color: inherit; border-radius: 4px; padding: 1px 7px; font: inherit; font-weight: 700; cursor: pointer;";
+  const clockNow = (t) => new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+  function paintCodeLive() {
+    const removed = window.codesRemovedHere();
+    ["promo", "invite"].forEach((kind) => {
+      const here = codesHere(kind);
+      const counts = { live: 0, going: 0, new: 0, changed: 0 };
+      Object.entries(here).forEach(([fp, { json }]) => {
+        const st = codeLiveState(kind, fp, json);
+        if (st in counts) counts[st]++;
+        document.querySelectorAll(`.code-live-slot[data-kind="${kind}"][data-fp="${fp}"]`).forEach((el) => { el.innerHTML = livePill(st); });
+        document.querySelectorAll(`.code-live-note[data-kind="${kind}"][data-fp="${fp}"]`).forEach((el) => { el.textContent = LIVE_NOTES[st] || ""; el.hidden = !LIVE_NOTES[st]; });
+      });
+      const live = codeLive[kind];
+      const ghosts = live ? Object.keys(live).filter((fp) => !here[fp]) : [];
+      // Removed here and gone from the site as well: nothing left to say.
+      if (live) Object.keys(removed[kind]).forEach((fp) => { if (!live[fp] || here[fp]) window.setCodeRemovedHere(kind, fp, false); });
+
+      const ghostBox = document.getElementById(`${kind}LiveGhosts`);
+      if (ghostBox) {
+        ghostBox.innerHTML = ghosts.map((fp) => {
+          const v = live[fp].value || {};
+          const nameHere = removed[kind][fp];
+          const wasRemoved = nameHere !== undefined;
+          const what = kind === "promo"
+            ? [v.flat ? `Flat ₹${Number(v.flat).toLocaleString("en-IN")} off` : v.pct ? `${v.pct}% off` : "Home studio only", v.label].filter(Boolean).join(" — ")
+            : (v.desc || "Invite code");
+          const why = wasRemoved
+            ? "You removed it on this computer, but clients can still use it until you press Save & push live."
+            : "Clients can use it, but it isn't in this computer's list (it was made or changed on another device). Save & push live from here would take it off the site — press Keep it to stop that.";
+          return `
+            <div class="code-live-ghost" style="background: var(--paper); border: 1.5px dashed #d97706; border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <div style="min-width: 0; flex: 1 1 190px;">
+                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                  <strong style="font-size: var(--font-sm); font-family: var(--mono-font); letter-spacing: 0.04em; color: var(--ink);">${esc(nameHere || "••••")}</strong>
+                  <span style="font-size: var(--font-xs); font-weight: 800; background: rgba(217,119,6,0.14); color: #d97706; padding: 2px 6px; border-radius: 4px; white-space: nowrap;">${wasRemoved ? "REMOVED HERE — STILL LIVE" : "LIVE — NOT ON THIS COMPUTER"}</span>
+                </div>
+                <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">${esc(what)}</div>
+                <div style="font-size: var(--font-xs); color: #d97706; font-weight: 700; margin-top: 4px; line-height: 1.4;">${why}</div>
+              </div>
+              <button type="button" onclick="window.keepLiveCode('${kind}', '${fp}')" style="background: var(--bone); color: var(--ink); border: 1px solid var(--line); padding: 5px 10px; border-radius: 4px; font-size: var(--font-xs); cursor: pointer; font-weight: 700;">${wasRemoved ? "↩ Put it back" : "➕ Keep it"}</button>
+            </div>`;
+        }).join("");
+      }
+
+      const sum = document.getElementById(`${kind}LiveSummary`);
+      if (!sum) return;
+      let html;
+      if (!live) {
+        html = codeLive.failed
+          ? `Couldn't reach the live site to check which of these clients can use. <button type="button" onclick="window.checkCodesLive(true)" style="${smallBtn}">↻ Check again</button>`
+          : "Checking which of these clients can use…";
+      } else {
+        const parts = [];
+        if (counts.live) parts.push(`<b style="color: #059669;">${counts.live} live</b>`);
+        if (counts.going) parts.push(`<b style="color: #2563eb;">${counts.going} going live</b>`);
+        if (counts.new) parts.push(`<b style="color: #d97706;">${counts.new} only on this computer</b>`);
+        if (counts.changed) parts.push(`<b style="color: #d97706;">${counts.changed} edited here, not live yet</b>`);
+        if (ghosts.length) parts.push(`<b style="color: #d97706;">${ghosts.length} live but not on this computer</b>`);
+        html = `On the live site: ${parts.join(" · ") || "no codes yet"} <span style="white-space: nowrap;">— checked ${clockNow(codeLive.at)} <button type="button" onclick="window.checkCodesLive(true)" style="${smallBtn}">↻ Check again</button></span>`;
+      }
+      if (codeLive.stale) {
+        html = `<div style="color: #d97706; font-weight: 700; margin-bottom: 4px;">⚠️ This page is out of date (v${codeLive.stale.loaded}; the site is on v${codeLive.stale.live}), and an out-of-date page is not allowed to publish. Your codes are saved on this computer. <button type="button" onclick="window.reloadToLatestBuild(${Number(codeLive.stale.live)})" style="${smallBtn}">Reload now</button></div>` + html;
+      }
+      sum.innerHTML = html;
+    });
+  }
+
+  async function checkCodesLive(force) {
+    if (codeLive.busy) return;
+    if (!force && codeLive.at && Date.now() - codeLive.at < 30000) { paintCodeLive(); return; }
+    codeLive.busy = true;
+    try {
+      // A URL nothing has seen before, so no cache between here and the site
+      // can hand back an older file (sw.js leaves these out of its own cache).
+      const res = await fetch(`/data.js?live=${Date.now()}`, { cache: "no-store" });
+      if (!res.ok) throw new Error(`data.js ${res.status}`);
+      const text = await res.text();
+      if (!/window\.WPS_DATA\s*=/.test(text)) throw new Error("not data.js");
+      codeLive.promo = codeIndex("promo", parseValueAfterKey(text, '"PROMO_CODES"'));
+      codeLive.invite = codeIndex("invite", parseValueAfterKey(text, '"INVITE_CODES"'));
+      codeLive.failed = false;
+    } catch (e) {
+      codeLive.promo = codeLive.invite = null;
+      codeLive.failed = true;
+    }
+    codeLive.stale = await staleBuildCheck();
+    codeLive.at = Date.now();
+    codeLive.busy = false;
+    paintCodeLive();
+    // While a publish is rebuilding the site, look again every 20 seconds,
+    // so GOING LIVE turns to LIVE without anyone pressing anything.
+    clearTimeout(codeLive.timer);
+    if (document.querySelector('.code-live-slot [data-live-state="going"]')) {
+      codeLive.timer = setTimeout(() => { if (document.getElementById("adminPromoCodesGrid")) checkCodesLive(true); }, 20000);
+    }
+  }
+  window.checkCodesLive = checkCodesLive;
+  window.paintCodeLive = paintCodeLive;
+
+  // Adds a code the site has back to this computer's list, exactly as it is
+  // live — by its own name when it was removed here. Written straight to
+  // storage without the setting's date: nothing changed that the site does
+  // not already have, so there is nothing to publish.
+  window.keepLiveCode = function(kind, fp) {
+    const entry = codeLive[kind] && codeLive[kind][fp];
+    if (!entry) return;
+    const name = window.codesRemovedHere()[kind][fp] || "";
+    try {
+      if (kind === "promo") {
+        const codes = window.getAdminPromoCodes();
+        codes[name || fp] = { ...entry.value };
+        window.adminDraftPromoCodes = { ...codes };
+        localStorage.setItem("wps_custom_promo_codes", JSON.stringify(window.adminDraftPromoCodes));
+      } else {
+        window.adminDraftInviteCodes = [...window.getAdminInviteCodes(), { ...entry.value, code: name || entry.value.code }];
+        localStorage.setItem("wps_custom_invite_codes", JSON.stringify(window.getAdminInviteCodes()));
+      }
+    } catch (e) {
+      if (typeof toast === "function") toast("This computer's storage is full, so the code could not be kept here.");
+      return;
+    }
+    window.setCodeRemovedHere(kind, fp, false);
+    if (typeof toast === "function") toast(`${name ? `'${name}'` : "The code"} is back on this computer's list, as it is on the site.`);
+    if (typeof window.renderAdminPackagesEditor === "function") window.renderAdminPackagesEditor();
+  };
+
+  // The same hop the out-of-date publish makes: a fresh address, so no cache
+  // hands back the old page.
+  window.reloadToLatestBuild = function(live) {
+    const next = new URL(location.href);
+    next.searchParams.set("_v", String(live || Date.now()));
+    location.replace(next.toString());
+  };
+
+
   function wireCalendar() {
     function renderAdminPackagesEditor() {
       const promoGrid = $("#adminPromoCodesGrid");
@@ -4526,8 +4829,9 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                     <option value="pct">% off</option>
                     <option value="fixed">Set the rental price</option>
                   </select>
-                  <input type="number" id="newPromoHomeStudioVal" placeholder="e.g. 500" style="flex: 1; min-width: 100px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-weight: 700; color: #059669; background: var(--paper); display: none;" />
+                  <input type="number" id="newPromoHomeStudioVal" oninput="window.paintPromoRentalHint()" placeholder="e.g. 500" style="flex: 1; min-width: 100px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-weight: 700; color: #059669; background: var(--paper); display: none;" />
                 </div>
+                <div id="newPromoHomeStudioHint" style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 6px; line-height: 1.4;"></div>
                 <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 4px; line-height: 1.4;">Only applies when the booking actually carries a home studio rental (dropdown pick, or a locked invite venue with a cost).</div>
               </div>
               ${window.codeDatesFieldsHtml("newPromo", 2)}
@@ -4563,6 +4867,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           const inviteState = window.codeStatus(itemObj);
           const inviteIsOn = !(itemObj && typeof itemObj === 'object' && itemObj.active === false);
           const inviteDates = window.codeDatesLine(itemObj);
+          const inviteFp = lowFp(window.publishedInviteEntry(itemObj).code);
           return `
             <div style="background: var(--paper); border: 1px solid var(--accent); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; justify-content: space-between; gap: 10px;${inviteState === "off" || inviteState === "ended" ? " opacity: 0.55;" : ""} box-shadow: var(--shadow-sm); overflow: hidden;">
               <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap;">
@@ -4570,11 +4875,12 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                      the text column used to shrink until the code broke across
                      four lines. Now the buttons drop underneath instead. -->
                 <div style="min-width: 0; flex: 1 1 190px;">
-                  <span style="font-size: var(--font-xs); font-weight: 800; color: var(--accent-text); text-transform: uppercase; font-family: var(--mono-font); display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"><span>${codeStr === activeInviteCode ? '⭐ Primary Code' : '🔑 VIP Invite'}</span>${window.codeStatusBadgeHtml(itemObj)}</span>
+                  <span style="font-size: var(--font-xs); font-weight: 800; color: var(--accent-text); text-transform: uppercase; font-family: var(--mono-font); display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"><span>${codeStr === activeInviteCode ? '⭐ Primary Code' : '🔑 VIP Invite'}</span>${window.codeStatusBadgeHtml(itemObj)}<span class="code-live-slot" data-kind="invite" data-fp="${inviteFp}"></span></span>
                   <strong style="font-size: var(--font-md); font-family: var(--mono-font); color: var(--ink); letter-spacing: 0.04em; display: block; margin-top: 2px; word-break: break-all;">${esc(window.codeForDisplay(codeStr))}</strong>
                   <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 4px; line-height: 1.3;">📝 ${esc(descStr)}</div>
                   ${itemObj && typeof itemObj === 'object' && itemObj.location ? `<div style="font-size: var(--font-xs); color: #059669; font-weight: 700; margin-top: 4px;">🏠 Location Locked: ${esc(itemObj.location)}</div>` : ''}
                   ${inviteDates ? `<div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 4px;">📅 ${esc(inviteDates)}</div>` : ''}
+                  <div class="code-live-note" data-kind="invite" data-fp="${inviteFp}" hidden style="font-size: var(--font-xs); color: #d97706; font-weight: 700; margin-top: 4px;"></div>
                 </div>
                 <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap; flex-shrink: 0; margin-top: 2px;">
                   <button type="button" onclick="navigator.clipboard.writeText('${escJs(codeStr)}'); if(typeof toast==='function') toast('📋 Invite Code ${escJs(codeStr)} copied!'); else alert('Copied!');" style="background: var(--accent); color: #ffffff; border: none; padding: 5px 9px; border-radius: 4px; font-size: var(--font-xs); cursor: pointer; font-weight: 700; font-family: var(--mono-font);" title="Copy Invite Code">📋 Copy</button>
@@ -4663,8 +4969,10 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                 </div>
               </div>
             </div>
+            <div id="inviteLiveSummary" class="code-live-summary" style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 10px;"></div>
             <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;">
               ${inviteItemsHtml}
+              <div id="inviteLiveGhosts" style="display: contents;"></div>
             </div>
           </div>
         `;
@@ -4689,6 +4997,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           // Off and ended are dimmed; a code waiting for its start date is not.
           const promoState = window.codeStatus(item);
           const promoDates = window.codeDatesLine(item);
+          const promoFp = lowFp(window.publishedPromoEntry(codeKey, item)[0]);
           return `
             <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px;${promoState === "off" || promoState === "ended" ? " opacity: 0.55;" : ""} box-shadow: var(--shadow-sm); overflow: hidden; flex-wrap: wrap;">
               <div style="min-width: 0; flex: 1 1 190px;">
@@ -4702,9 +5011,11 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                       : `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(120,120,120,0.14); color: var(--ink-soft); padding: 2px 6px; border-radius: 4px;" title="Discount applies to the package rate only">PACKAGE ONLY</span>`}
                   ${hsBadge}
                   ${window.codeStatusBadgeHtml(item)}
+                  <span class="code-live-slot" data-kind="promo" data-fp="${promoFp}"></span>
                 </div>
                 <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">${esc(item.label)}</div>
                 ${promoDates ? `<div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">📅 ${esc(promoDates)}</div>` : ""}
+                <div class="code-live-note" data-kind="promo" data-fp="${promoFp}" hidden style="font-size: var(--font-xs); color: #d97706; font-weight: 700; margin-top: 4px;"></div>
               </div>
               <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap; flex-shrink: 0;">
                 <button type="button" onclick="navigator.clipboard.writeText('${escJs(codeKey)}'); if(typeof toast==='function') toast('📋 Promo Code ${escJs(codeKey)} copied!'); else alert('Copied!');" style="background: #059669; color: #ffffff; border: none; padding: 5px 10px; border-radius: 4px; font-size: var(--font-xs); cursor: pointer; font-weight: 700; font-family: var(--mono-font);" title="Copy Code">📋 Copy</button>
@@ -4716,10 +5027,16 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           `;
         }).join("");
 
-        promoGrid.innerHTML = creatorFormHtml + codeCardsHtml;
+        promoGrid.innerHTML = creatorFormHtml
+          + `<div id="promoLiveSummary" class="code-live-summary" style="grid-column: 1 / -1; font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5;"></div>`
+          + codeCardsHtml + `<div id="promoLiveGhosts" style="display: contents;"></div>`;
         const inviteGrid = $("#adminInviteCodesGrid");
         if (inviteGrid) inviteGrid.innerHTML = inviteCardHtml;
         if (window.codesAreUnpublished()) markUnsavedChanges();
+        // Each code's LIVE / NOT LIVE badge: at once from what is known, then
+        // from the live site itself.
+        paintCodeLive();
+        checkCodesLive();
       }
 
       // Attach input change listener to flip status badge to UNSAVED CHANGES
