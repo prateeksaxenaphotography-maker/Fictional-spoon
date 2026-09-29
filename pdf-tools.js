@@ -753,8 +753,9 @@
       if (sale.layout) fd.append("Pages, photo by photo", sale.layout);
       if (sale.design) fd.append("Design (for the studio to rebuild it)", sale.design);
       fd.append("Page", location.href);
-      // FormSubmit, then the backup relay (app.js sendStudioMail). The backup
-      // sends no receipt to the buyer, and its email to the studio says so.
+      // FormSubmit first here, for the buyer's receipt; Web3Forms as its
+      // backup sends no receipt, and its email to the studio says so
+      // (app.js sendStudioMail).
       const r = await window.sendStudioMail(to, fd);
       if (!r.ok) console.warn("Portfolio PDF sale email failed:", r.message);
       return r.ok;

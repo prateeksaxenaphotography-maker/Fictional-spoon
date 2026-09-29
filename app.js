@@ -108,67 +108,99 @@ window.codeForDisplay = (stored) => window.isCodeFingerprint(stored) ? "••�
    § EMAIL TO THE STUDIO, WITH A BACKUP
    ============================================================
    Every form on the site — a booking, the signed contract, a photo release,
-   a testimonial, a portfolio PDF sale — reaches the studio's Gmail through
-   FormSubmit, a free form-to-email relay (there is no server). On Sep 29 2026
-   it went down for everyone: "Server Error" or no answer at all, and every
-   booking fell back to asking the client to send it from their own mail.
-   So a second relay, Web3Forms, now takes the message whenever FormSubmit
-   refuses it, errors or has not answered within `wait` ms.
+   a testimonial, a portfolio PDF sale — reaches the studio's Gmail through a
+   free form-to-email relay (there is no server). Two of them now, each the
+   other's backup:
+
+   - FormSubmit, the only relay until Sep 29 2026, when it went down for
+     everyone ("Server Error" or no answer) and every booking fell back to
+     asking the client to send it from their own mail;
+   - Web3Forms, added that day. The studio found its emails clearer ("this
+     is better than formsubmit") and sends ~30 a month against a free 250,
+     so it goes FIRST — whenever it can carry the whole message. Its free
+     plan takes no file, no copy to a second address (_cc) and no automatic
+     receipt (_autoresponse); a message with any of those goes to FormSubmit
+     first, and Web3Forms carries it only if FormSubmit fails, saying in the
+     email what it could not send.
 
    `payload` is what FormSubmit is sent: a FormData (it may carry a file) or
-   a plain object of fields. Returns { ok, via, message }. A message that
-   FormSubmit delivers after giving up on it may arrive twice — never not at
-   all. Web3Forms' free plan carries no file, no copy to a second address and
-   no automatic receipt, so when it is used the email says which of those
-   did not go, for the studio to forward by hand. */
+   a plain object of fields. A relay that refuses, errors or has not answered
+   in `wait` ms hands over to the other. Returns { ok, via, message }. A
+   message a slow relay delivers after being given up on may arrive twice —
+   never not at all. */
 window.sendStudioMail = async function(to, payload, { wait = 15000, backup = true } = {}) {
   const entries = payload instanceof FormData ? [...payload.entries()] : Object.entries(payload || {});
-  const fsInit = payload instanceof FormData
-    ? { method: "POST", headers: { Accept: "application/json" }, body: payload }
-    : { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(payload || {}) };
-  let message = "";
-  try {
+  const key = window.STUDIO_CONFIG && window.STUDIO_CONFIG.web3formsKey;
+  const needsFormSubmit = entries.some(([k, v]) => typeof v !== "string" || k === "_cc" || k === "_autoresponse");
+  const timed = async (url, init) => {
     const stop = new AbortController();
     const timer = setTimeout(() => stop.abort(), wait);
-    const res = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(to)}`, { ...fsInit, signal: stop.signal });
-    clearTimeout(timer);
-    // FormSubmit answers 200 with success:"false" when it refuses, so the
-    // body's flag is the only honest signal.
-    const body = await res.json().catch(() => null);
-    if (res.ok && body && (body.success === true || body.success === "true")) return { ok: true, via: "formsubmit", message: "" };
-    message = (body && body.message) || res.statusText || `HTTP ${res.status}`;
-  } catch (err) {
-    message = err && err.name === "AbortError" ? `no answer in ${Math.round(wait / 1000)}s` : ((err && err.message) || "unreachable");
-  }
-  console.warn("FormSubmit did not take it:", message);
-  const key = window.STUDIO_CONFIG && window.STUDIO_CONFIG.web3formsKey;
-  if (!backup || !key) return { ok: false, via: "", message };
-  // FormSubmit's own fields, in Web3Forms' words; whatever it cannot carry is
-  // named in the email instead of silently dropped.
-  const out = { access_key: key, from_name: "nerdyphotographer.in website" };
-  const missed = [];
-  entries.forEach(([k, v]) => {
-    if (typeof v !== "string") { missed.push(`the attached file (${(v && v.name) || "attachment"})`); return; }
-    if (k === "_subject") out.subject = v;
-    else if (k === "_replyto") out.replyto = v;
-    else if (k === "_honey") out.botcheck = v;
-    else if (k === "_cc") missed.push(`the copy to ${v}`);
-    else if (k === "_autoresponse") missed.push("the automatic receipt to the client");
-    else if (k.startsWith("_")) return;
-    else out[k] = v;
-  });
-  out["Sent through"] = `the backup relay (Web3Forms) — FormSubmit: ${message}`;
-  if (missed.length) out["Not sent by the backup"] = `${missed.join("; ")}. Forward this email where needed.`;
-  try {
-    const res = await fetch("https://api.web3forms.com/submit", {
-      method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(out)
+    try { return await fetch(url, { ...init, signal: stop.signal }); } finally { clearTimeout(timer); }
+  };
+  const why = (err) => (err && err.name === "AbortError" ? `no answer in ${Math.round(wait / 1000)}s` : ((err && err.message) || "unreachable"));
+
+  // FormSubmit, with a line saying so when it is standing in for Web3Forms.
+  const viaFormSubmit = async (note) => {
+    try {
+      let init;
+      if (payload instanceof FormData) {
+        const fd = new FormData();
+        entries.forEach(([k, v]) => (typeof v === "string" ? fd.append(k, v) : fd.append(k, v, v.name)));
+        if (note) fd.append("Sent through", note);
+        init = { method: "POST", headers: { Accept: "application/json" }, body: fd };
+      } else {
+        init = { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ ...(payload || {}), ...(note ? { "Sent through": note } : {}) }) };
+      }
+      const res = await timed(`https://formsubmit.co/ajax/${encodeURIComponent(to)}`, init);
+      // FormSubmit answers 200 with success:"false" when it refuses, so the
+      // body's flag is the only honest signal.
+      const body = await res.json().catch(() => null);
+      if (res.ok && body && (body.success === true || body.success === "true")) return { ok: true, message: "" };
+      return { ok: false, message: (body && body.message) || res.statusText || `HTTP ${res.status}` };
+    } catch (err) { return { ok: false, message: why(err) }; }
+  };
+
+  // Web3Forms, with FormSubmit's own fields put in its words; whatever it
+  // cannot carry is named in the email instead of silently dropped.
+  const viaWeb3Forms = async (note) => {
+    if (!key) return { ok: false, message: "no Web3Forms key" };
+    const out = { access_key: key, from_name: "nerdyphotographer.in website" };
+    const missed = [];
+    entries.forEach(([k, v]) => {
+      if (typeof v !== "string") { missed.push(`the attached file (${(v && v.name) || "attachment"})`); return; }
+      if (k === "_subject") out.subject = v;
+      else if (k === "_replyto") out.replyto = v;
+      else if (k === "_honey") out.botcheck = v;
+      else if (k === "_cc") missed.push(`the copy to ${v}`);
+      else if (k === "_autoresponse") missed.push("the automatic receipt to the client");
+      else if (!k.startsWith("_")) out[k] = v;
     });
-    const body = await res.json().catch(() => null);
-    if (body && body.success === true) return { ok: true, via: "web3forms", message };
-    return { ok: false, via: "", message: `${message}; backup: ${(body && body.message) || res.statusText}` };
-  } catch (err) {
-    return { ok: false, via: "", message: `${message}; backup unreachable` };
+    if (note) out["Sent through"] = note;
+    if (missed.length) out["Not sent by the backup"] = `${missed.join("; ")}. Forward this email where needed.`;
+    try {
+      const res = await timed("https://api.web3forms.com/submit", {
+        method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(out)
+      });
+      const body = await res.json().catch(() => null);
+      if (body && body.success === true) return { ok: true, message: "" };
+      return { ok: false, message: (body && body.message) || res.statusText || `HTTP ${res.status}` };
+    } catch (err) { return { ok: false, message: why(err) }; }
+  };
+
+  if (key && !needsFormSubmit) {
+    const w = await viaWeb3Forms("");
+    if (w.ok) return { ok: true, via: "web3forms", message: "" };
+    console.warn("Web3Forms did not take it:", w.message);
+    if (!backup) return { ok: false, via: "", message: w.message };
+    const f = await viaFormSubmit(`the backup relay (FormSubmit) — Web3Forms: ${w.message}`);
+    return f.ok ? { ok: true, via: "formsubmit", message: w.message } : { ok: false, via: "", message: `${w.message}; backup: ${f.message}` };
   }
+  const f = await viaFormSubmit("");
+  if (f.ok) return { ok: true, via: "formsubmit", message: "" };
+  console.warn("FormSubmit did not take it:", f.message);
+  if (!backup) return { ok: false, via: "", message: f.message };
+  const w = await viaWeb3Forms(`the backup relay (Web3Forms) — FormSubmit: ${f.message}`);
+  return w.ok ? { ok: true, via: "web3forms", message: f.message } : { ok: false, via: "", message: `${f.message}; backup: ${w.message}` };
 };
 
 /* ============================================================
@@ -10562,7 +10594,7 @@ window.resolveContractArchive = function(version) {
         // client keeps the instant response; a failure quietly turns it into
         // "one more step" with the Gmail / mail-app buttons, instead of a
         // cheerful message about an email nobody received.
-        // FormSubmit first, then the backup relay (sendStudioMail); only if
+        // Web3Forms first, FormSubmit as its backup (sendStudioMail); only if
         // both fail does the client get "one more step".
         window.sendStudioMail(studioEmail, relayFields, { wait: 15000 })
         .then((r) => {
