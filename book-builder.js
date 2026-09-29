@@ -5302,6 +5302,8 @@
   .sb-start { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(10,10,12,.42); }
   .sb-startbox { width: min(760px, 100%); max-height: 92vh; overflow: auto; display: grid; gap: 14px; align-content: start; padding: 18px; background: var(--paper, #faf8f5); border: 1px solid var(--sb-line); border-radius: 14px; box-shadow: 0 24px 60px -24px rgba(0,0,0,.5); }
   .sb-starts { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+  .sb-starts[hidden], .sb-startcc[hidden] { display: none; }
+  .sb-startcc { margin: 4px 0 2px; }
   .sb-startitem { display: grid; gap: 6px; padding: 10px; border: 1px solid var(--sb-line); border-radius: 12px; background: var(--sb-card); color: inherit; text-align: left; cursor: pointer; }
   .sb-startitem:hover, .sb-startitem:focus-visible { border-color: var(--ink, #141416); }
   .sb-startpic { display: grid; place-items: center; height: 132px; background: var(--sb-sunk); border-radius: 8px; }
@@ -5715,11 +5717,23 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     const t = talentOf(book);
     if (!t) return { blocks: tpl.map(blank), photos: 0, stats: 0, brands: 0, name: "" };
     const shots = (t.photos || []).filter((x) => x && x.id && clearedIn(book, x.id));
+    // A second comp card, and a third, take photographs the book does not
+    // show yet before any it already does (the owner, Sep 29 2026: "can i
+    // multiple pages?" — each page used to pick the same four).
+    const inBook = new Set();
+    if (book.cover && book.cover.id) inBook.add(book.cover.id);
+    (book.pages || []).forEach((pg) => {
+      (pg && pg.photos || []).forEach((x) => { if (x && x.id) inBook.add(x.id); });
+      (pg && pg.blocks || []).forEach((b) => { if (b && b.p && b.p.id) inBook.add(b.p.id); });
+    });
+    const fresh = shots.filter((x) => !inBook.has(x.id));
     const used = new Set();
     const take = (...angles) => {
-      for (const a of angles) {
-        const hit = shots.find((x) => !used.has(x.id) && (a === "*" || x.angle === a));
-        if (hit) { used.add(hit.id); return hit; }
+      for (const pool of [fresh, shots]) {
+        for (const a of angles) {
+          const hit = pool.find((x) => !used.has(x.id) && (a === "*" || x.angle === a));
+          if (hit) { used.add(hit.id); return hit; }
+        }
       }
       return null;
     };
@@ -5749,12 +5763,16 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       text("body", x, y + 0.02, cellW - 0.01, 0.025, String(c.value), { weight: "bold" });
     });
     let y = top + Math.ceil(stats.length / 4) * rowH;
+    /* The brands, always as a heading and a line of their own (the owner,
+       Sep 29 2026: "give the Line as editable for brands … i can add it or
+       remove it or edit it"): filled from the albums' brands when they name
+       any, otherwise an empty line to type into. Either can be edited or
+       deleted, and a brand's logo can go beside them as a photo from this
+       computer. An empty line is not printed. */
     const brands = (t.brands || []).filter(Boolean);
-    if (brands.length) {
-      if (stats.length) { blocks.push({ k: "line", x: L, y: y + 0.004, w: W, thick: "hair", color: "ink" }); y += 0.018; }
-      text("kicker", L, y, W, 0.018, "BRAND EXPERIENCE");
-      text("body", L, y + 0.022, W, Math.min(0.06, 0.975 - (y + 0.022)), brands.join(" · "));
-    }
+    if (stats.length) { blocks.push({ k: "line", x: L, y: y + 0.004, w: W, thick: "hair", color: "ink" }); y += 0.018; }
+    text("kicker", L, y, W, 0.018, "BRAND EXPERIENCE");
+    text("body", L, y + 0.022, W, Math.min(0.06, 0.975 - (y + 0.022)), brands.join(" · "));
     return { blocks, photos: picks.filter(Boolean).length, stats: stats.length, brands: brands.length, name: t.name || "" };
   }
   function addIcon(type) {
@@ -6409,7 +6427,8 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       const withLayout = (nb, k) => { if (k && k !== "classic") nb.coverLayout = k; if (k === "custom") nb.coverPage = { blocks: [] }; return nb; };
       // A lookbook: a page about the collection, six looks, a back cover.
       let kind = "magazine";
-      const KIND_NOTE = { magazine: "A cover and a page of photographs; add any pages after.", lookbook: "A cover, a page about the collection, six looks and a back cover. Each look is one or two photographs with its number, its name and its lines." };
+      const KIND_NOTE = { magazine: "A cover and a page of photographs; add any pages after.", lookbook: "A cover, a page about the collection, six looks and a back cover. Each look is one or two photographs with its number, its name and its lines.",
+        compcard: "One page, like a printed comp card: a big photograph with three beside it, their name, what they do, their measurements and the brands they have worked with — filled from their card. Every part can be moved, edited or deleted, and a brand's logo added as a photo from this computer." };
       const withKind = (nb, k) => {
         if (k !== "lookbook") return nb;
         nb.name = nb.name.replace(/^Book /, "Lookbook ");
@@ -6447,7 +6466,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         nb.madeFor = forWho === "talent" ? { kind: "talent", name, modelKey: m.key } : { kind: forWho, name };
         // Their book, not in the studio's own terracotta.
         nb.colourway = "silver-print";
-        nb.name = `${name} — ${kind === "lookbook" ? "lookbook" : forWho === "talent" ? "portfolio" : "book"}`;
+        nb.name = `${name} — ${kind === "lookbook" ? "lookbook" : forWho === "talent" && kind === "compcard" ? "comp card" : forWho === "talent" ? "portfolio" : "book"}`;
         if (kind !== "lookbook") { nb.title = name; nb.subtitle = forWho === "talent" ? "Portfolio" : ""; }
         /* A talent's book starts with the pages that carry what their record
            holds: About (their type and measurements), a page of photographs,
@@ -6455,6 +6474,15 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
            show them) and a back cover — so the details are there without
            hunting for which page prints them (owner's question, 26 Sep 2026). */
         if (forWho === "talent" && kind !== "lookbook") nb.pages = [{ type: "about" }, { type: "photos", photos: [] }, { type: "contact" }, { type: "end", layout: "back" }];
+        /* A comp card from the start (the owner, Sep 29 2026, looking for it
+           on this screen: "comp cards are generally 1 page"). The card is the
+           whole book: its one page is the cover, arranged from scratch and
+           filled from their card; no other pages. */
+        if (forWho === "talent" && kind === "compcard") {
+          nb.coverLayout = "custom";
+          nb.coverPage = { blocks: compCardBlocks(nb).blocks };
+          nb.pages = [];
+        }
         return nb;
       };
       function closeStart() { const el = $("#sbStart"); if (el) el.remove(); }
@@ -6475,6 +6503,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       function openStart() {
         closeStart();
         forWho = "studio"; forName = ""; forModel = ""; kindByBrand = false;
+        if (kind === "compcard") kind = "magazine";   // a comp card is chosen for a model, each time
         const box = document.createElement("div");
         box.className = "sb-start"; box.id = "sbStart"; box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true"); box.setAttribute("aria-label", "Start a new book");
         box.innerHTML = `<div class="sb-startbox">
@@ -6487,10 +6516,11 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
             <p class="sb-warn" id="sbForNeed" hidden></p>
           </div>
           <p class="sb-hint" id="sbForNote">${esc(FOR_NOTE[forWho])}</p>
-          <div class="sb-cpbase"><span>Start with</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="What kind of book">${[["magazine", "A magazine"], ["lookbook", "A lookbook"]].map(([k, nm]) => `<button type="button" role="radio" data-kind="${k}" aria-checked="${kind === k}">${nm}</button>`).join("")}</div></div>
+          <div class="sb-cpbase"><span>Start with</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="What kind of book">${[["magazine", "A magazine"], ["lookbook", "A lookbook"], ["compcard", "A comp card"]].map(([k, nm]) => `<button type="button" role="radio" data-kind="${k}" aria-checked="${kind === k}" ${k === "compcard" && forWho !== "talent" ? "hidden" : ""}>${nm}</button>`).join("")}</div></div>
           <p class="sb-hint" id="sbKindNote">${esc(KIND_NOTE[kind])}</p>
-          <p class="sb-hint">Then the cover to begin with. It can be changed any time on the cover's own panel.</p>
-          <div class="sb-starts">${COVER_LAYOUTS.map(([k, nm]) => `<button type="button" class="sb-startitem" data-start="${k}"><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(k === "custom" ? "From scratch (blank)" : nm)}</b><span>${esc(COVER_LAYOUT_NOTE[k])}</span></button>`).join("")}</div>
+          <div class="sb-startcc" id="sbStartCC" hidden><button type="button" class="sb-btn" data-start="custom" data-compcard="1">Make the comp card →</button></div>
+          <p class="sb-hint" id="sbCoverHint">Then the cover to begin with. It can be changed any time on the cover's own panel.</p>
+          <div class="sb-starts" id="sbStartCovers">${COVER_LAYOUTS.map(([k, nm]) => `<button type="button" class="sb-startitem" data-start="${k}"><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(k === "custom" ? "From scratch (blank)" : nm)}</b><span>${esc(COVER_LAYOUT_NOTE[k])}</span></button>`).join("")}</div>
         </div>`;
         root.appendChild(box);
         box.addEventListener("click", (e) => { if (e.target === box) { closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); } });
@@ -6506,6 +6536,10 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           box.querySelector("#sbForModelNote").hidden = w !== "talent";
           box.querySelector("#sbForNeed").hidden = true;
           box.querySelector("#sbForNote").textContent = FOR_NOTE[w];
+          // A comp card is only for a model's book.
+          const cc = box.querySelector('[data-kind="compcard"]');
+          if (cc) cc.hidden = w !== "talent";
+          if (w !== "talent" && kind === "compcard") { const mg = box.querySelector('[data-kind="magazine"]'); if (mg) mg.click(); }
           // A brand's book is usually a lookbook; it can still be changed. Put
           // back if the audience changes again and the studio never chose it.
           if (w === "brand" && kind !== "lookbook") { const lb = box.querySelector('[data-kind="lookbook"]'); if (lb) { lb.click(); kindByBrand = true; } }
@@ -6522,6 +6556,11 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           kind = b.dataset.kind;
           box.querySelectorAll("[data-kind]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
           const note = box.querySelector("#sbKindNote"); if (note) note.textContent = KIND_NOTE[kind];
+          // A comp card is one page with no cover to choose: one button instead.
+          const cc = kind === "compcard";
+          box.querySelector("#sbStartCC").hidden = !cc;
+          box.querySelector("#sbCoverHint").hidden = cc;
+          box.querySelector("#sbStartCovers").hidden = cc;
           if (box.drawPreviews) box.drawPreviews();
         }));
         const first = box.querySelector("[data-start]"); if (first) first.focus();
