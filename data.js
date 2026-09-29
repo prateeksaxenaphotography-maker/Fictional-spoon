@@ -2908,8 +2908,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1790674966345,
-    "syncedAt": 1790674966345
+    "updatedAt": 1790675073218,
+    "syncedAt": 1790675073218
   },
   "INVITE_CODES": [
     {
@@ -2979,7 +2979,7 @@ window.WPS_DATA = {
       "includeAddons": false,
       "homeStudioDiscount": {
         "type": "fixed",
-        "value": 2500
+        "value": 2700
       },
       "active": true,
       "startDate": "2026-09-21"
@@ -3103,7 +3103,7 @@ window.WPS_DATA = {
   "HOME_STUDIO_RATE_TFP": 4000,
   "SETTINGS_AT": {
     "INVITE_CODES": 1790661324121,
-    "PROMO_CODES": 1790674958090,
+    "PROMO_CODES": 1790675065627,
     "PACKAGES": 1790661324121,
     "TFP_PACKAGE": 1790661324121,
     "HOME_STUDIO_RATE": 1790661324121,
