@@ -6564,7 +6564,7 @@ window.resolveContractArchive = function(version) {
             </div>
 
             <div style="margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 20px; width: 100%; display: flex; flex-direction: column; gap: 10px; align-items: center;">
-              <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Mail app didn't open? Copy the inquiry details below and email them to <strong style="color: var(--ink); font-family: monospace;">${studioEmail}</strong>:</p>
+              <p id="inquiryCopyNote" style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0; line-height: 1.5;">Mail app didn't open? Copy the inquiry details below and email them to <strong style="color: var(--ink); font-family: monospace;">${studioEmail}</strong>:</p>
               <button type="button" class="btn btn-ghost" id="copyInquiryBtn" style="font-size: var(--font-xs); padding: 8px 16px; height: auto;">Copy Inquiry Text</button>
               <pre id="inquiryTextPreview" style="width: 100%; box-sizing: border-box; background: var(--bone); padding: 14px; border-radius: 6px; font-size: var(--font-xs); font-family: monospace; white-space: pre-wrap; text-align: left; max-height: 200px; overflow-y: auto; border: 1px solid var(--line); color: var(--ink); margin: 0;"></pre>
             </div>
@@ -6590,7 +6590,7 @@ window.resolveContractArchive = function(version) {
                     inferred from your job. A makeup artist may well be booking
                     a shoot of themselves, and reading it off the Role dropdown
                     made the form demand a second person's details from them. -->
-               <label class="check-line" id="b_adult_line"><input type="checkbox" id="b_adult" /><span>I am 18 or over *</span></label>
+               <label class="check-line" id="b_adult_line"><input type="checkbox" id="b_adult" /><span>I am 18 or over *<em class="check-hint">Under 18? You need a parent or guardian to book this for you — they tick “I am booking on behalf of someone else” below and add your name.</em></span></label>
                <label class="check-line" id="b_onbehalf_line"><input type="checkbox" id="b_onbehalf" /><span>I am booking on behalf of someone else — they are being photographed, not me</span></label>
                <div class="field-row">
                  <label class="field"><span>Email Address *</span><input id="b_email" type="email" required autocomplete="email" placeholder="name@example.com" /></label>
@@ -7100,7 +7100,7 @@ window.resolveContractArchive = function(version) {
                  <div id="termsScrollArea" tabindex="0" style="padding: 24px; overflow-y: auto; font-size: var(--font-sm); line-height: 1.6; color: var(--ink); display: flex; flex-direction: column; gap: 20px; text-align: left;">
                    <p id="termsModalSubtitle" style="margin: 0; font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent-text); text-transform: uppercase; letter-spacing: 0.05em;">TFP Collaboration, Model Release &amp; Digital Consent Terms</p>
                    
-                   <div style="background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 14px; font-size: var(--font-xs); display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px;">
+                   <div id="termsIntroGrid" style="background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 14px; font-size: var(--font-xs); display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px;">
                      <div><strong>Studio:</strong> Prateek Saxena (nerdyphotographer.in), Sector 46, Noida</div>
                      <div><strong id="termsPartnerLabel">Model:</strong> <span id="terms_partner_name">[Your Name]</span></div>
                      <div><strong>Business Handle:</strong> @nerdyphotographer.in</div>
@@ -7116,8 +7116,16 @@ window.resolveContractArchive = function(version) {
                         three versions behind without anyone noticing. -->
                    <div id="termsBody" style="display: flex; flex-direction: column; gap: 18px;"></div>
 
+                   <!-- The contract a page at a time (the owner, Sep 29 2026:
+                        "page 1 page 2 rather than 1 big"); see showTermsPage. -->
+                   <div id="termsPager" class="ct-pager" hidden>
+                     <button type="button" class="btn btn-ghost" id="termsPrevBtn">← Previous page</button>
+                     <span id="termsPageNo" class="ct-pager-no" aria-live="polite"></span>
+                     <button type="button" class="btn btn-dark" id="termsNextBtn">Next page →</button>
+                   </div>
+
                    <!-- Checkbox Agreement Block -->
-                   <div style="margin-top: 15px; border-top: 1px dashed var(--line); padding-top: 15px;">
+                   <div id="termsAgreeBlock" style="margin-top: 15px; border-top: 1px dashed var(--line); padding-top: 15px;">
                      <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; background: var(--bone); border: 1.5px solid var(--accent); border-radius: 8px; padding: 14px;">
                        <input type="checkbox" id="termsAgreeCheckbox" style="width: 20px; height: 20px; margin-top: 2px; accent-color: var(--accent-text); cursor: pointer;" />
                        <span style="font-size: var(--font-xs); color: var(--ink); line-height: 1.5; font-weight: 600;">
@@ -9386,7 +9394,8 @@ window.resolveContractArchive = function(version) {
       // needs an adult; under 18, a parent or guardian books for them
       // (Sep 2026 audit, B24). The form still never asks an age.
       if (!onBehalfNow && !$("#b_adult")?.checked) {
-        setError("b_adult", "Please confirm you are 18 or over — under 18, a parent or guardian books for you (tick “booking on behalf”).");
+        // Said plainly (the owner, Sep 29 2026: "this should tell them … that you need a guardian to book it").
+        setError("b_adult", "You need to be 18 or over to book. If you are under 18, a parent or guardian needs to book this for you — they tick “I am booking on behalf of someone else” and add your name.");
         firstBad = firstBad || "b_adult";
       } else clearError("b_adult");
       if (onBehalfNow && !$("#b_authorised")?.checked) {
@@ -9567,8 +9576,15 @@ window.resolveContractArchive = function(version) {
         if (!body) return "";
         const parts = [];
         Array.from(body.children).forEach((el) => {
-          if (el.querySelector("#termsAgreeCheckbox")) return;
+          if (el.querySelector("#termsAgreeCheckbox") || el.id === "termsPager") return;
+          // The contract's own text, exactly as written (see renderTermsBody).
+          if (el.id === "termsBody" && el.__contractText) { parts.push(el.__contractText.trim()); return; }
+          // Page 1 is off screen by the time they agree; innerText of a hidden
+          // part loses its line breaks, so it is read shown.
+          const wasHidden = el.hidden;
+          el.hidden = false;
           const t = (el.innerText || "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+          el.hidden = wasHidden;
           if (t) parts.push(t);
         });
         return parts.join("\n\n");
@@ -10247,6 +10263,16 @@ window.resolveContractArchive = function(version) {
            $("#copyInquiryBtn"), $("#inquiryTextPreview")].forEach((el) => { if (el) el.hidden = sending; });
           const steps = successPanel && successPanel.querySelector(".next-steps");
           if (steps) steps.hidden = sending;
+          /* Once the request has reached the studio, the copy below is the
+             client's own record, not something left for them to send: "Mail
+             app didn't open? … email them" under a delivered request read as
+             a failed send (the studio, testing it, Sep 29 2026). */
+          const copyNote = $("#inquiryCopyNote");
+          if (copyNote) {
+            copyNote.hidden = sending;
+            if (sentDirectly) copyNote.textContent = "Your copy of this request — it has already reached the studio, so there is nothing more to send. Keep it for your records.";
+            else copyNote.innerHTML = `Mail app didn't open? Copy the inquiry details below and email them to <strong style="color: var(--ink); font-family: monospace;">${esc(studioEmail)}</strong>:`;
+          }
           if (successPanel) successPanel.classList.toggle("is-tfp", type === "Selective Collaboration (TFP)");
           if (successPanel) successPanel.classList.toggle("is-production", isProduction);
           // The booking itself was already written to the calendar store by
@@ -10541,11 +10567,139 @@ window.resolveContractArchive = function(version) {
        source is the studio's own file, but it reaches a client's screen and
        has no business carrying markup. */
     let contractsUnavailable = false;
+    /* A contract laid out to be read (the owner, Sep 29 2026: "the contracts
+       UX is bad, can we have bullet points and headers and sub headers …
+       You dont have to change the content"). Not one word of the contract
+       changes: each clause becomes a header with its number, a clause's
+       paragraphs stay apart, a paragraph of several sentences becomes one
+       bullet per sentence, and the figures in it are bold. The short
+       sub-headers (CONTRACT_LABELS) are on-screen reading aids only — they
+       are not in the contract text, the emails or the signed record.
+       Everything goes in as text, never as HTML. */
+    const CONTRACT_LABELS = [
+      ["Any studio rental applicable to the session", "Studio rental"],
+      ["Where a dedicated external or commercial studio space is booked", "Booking an outside studio"],
+      ["RAW unedited files are not included", "RAW files"],
+      ["The Participant is granted a non-exclusive licence", "Your licence"],
+      ["On Instagram, tagging is not enough", "Instagram Collaborator"],
+      ["Shoots requiring travel beyond", "Travel"],
+      ["Where the session takes place at the Studio’s home studio", "Home studio attendance"],
+      ["If the Participant has not arrived", "No-show"],
+      ["A delay or cancellation notified at least 24 hours", "Rescheduling"],
+      ["A delay notified on the shoot day", "Running late on the day"],
+      ["If the Studio is not ready to begin", "If the Studio runs late"],
+      ["Permission to use the photographs", "Permission to use the photographs"],
+      ["This does not apply where the Participant is under 18", "Participants under 18"],
+      ["Where they arrive alone", "Arriving alone"],
+      ["The Studio may set this requirement aside", "Written confirmation"],
+      ["Where a parent or guardian attends", "Guardians and attendance"],
+      ["One round of minor revisions", "Revisions"],
+      ["The Studio keeps the delivered files", "File retention"]
+    ];
+    // Amounts, times, distances and counts: the numbers a reader looks for.
+    const CONTRACT_FIGURES = /(₹\s?[\d,]+|\b\d{1,2}:\d{2}\s?[AP]M\b|\b\d+(?:\/\d+)+(?=\s|\b)|\b\d+(?:\.\d+)?%|>?\b\d+\s?(?:km|KM)\b|\b\d+\s(?:to\s\d+\s)?(?:minutes|hours|days|months|people|Retouched Master Clicks)\b(?:\s\(\d+\s\w+\))?|\bunder 18\b|\bmaximum of two reschedules\b|\bOne round\b)/g;
+    window.contractLayout = function(fullText, { labels = true, contents = true } = {}) {
+      const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
+      const withFigures = (node, text) => {
+        let at = 0;
+        String(text).replace(CONTRACT_FIGURES, (m, _g, i) => {
+          if (i > at) node.appendChild(document.createTextNode(text.slice(at, i)));
+          node.appendChild(el("strong", "ct-fig", m));
+          at = i + m.length;
+          return m;
+        });
+        if (at < text.length) node.appendChild(document.createTextNode(text.slice(at)));
+        return node;
+      };
+      // Sentences, split only where a full stop, ? or ! is followed by a new
+      // sentence — never at a semicolon, so no bullet starts mid-sentence.
+      // Two characters before the stop, so an initial ("A.") never ends one.
+      const sentences = (t) => String(t).split(/(?<=[A-Za-z0-9)”"'’\]]{2}[.!?])\s+(?=[A-Z0-9“"(‘])/).map((s) => s.trim()).filter(Boolean);
+      // A heading written in capitals, as a line in the contents list: in
+      // ordinary case, with the contract's own capitals kept where it uses
+      // them — its defined terms and the names it writes that way.
+      const KEEP_CASE = { hmua: "HMUA", raw: "RAW", tfp: "TFP", ncr: "NCR", km: "km", noida: "Noida", delhi: "Delhi", instagram: "Instagram", client: "Client", participant: "Participant", "participant's": "Participant's", "studio's": "Studio's" };
+      const plainCase = (h) => {
+        const low = String(h).toLowerCase().replace(/\b[a-z][a-z'’]*\b/g, (w) => KEEP_CASE[w.replace(/’/g, "'")] || w).replace(/\bthe studio\b/g, "the Studio");
+        return low.charAt(0).toUpperCase() + low.slice(1);
+      };
+      const isHead = (l) => /^\d+\.\s+[A-Z]/.test(l) || (/^[A-Z][A-Z ,&/0-9()>.'’-]{5,}$/.test(l) && l === l.toUpperCase());
+      const sections = [];
+      let cur = null;
+      String(fullText || "").split(/\n\s*\n/).forEach((block) => {
+        const lines = block.replace(/\s+$/, "").split("\n");
+        if (!lines.join("").trim()) return;
+        if (isHead(lines[0].trim())) { cur = { head: lines.shift().trim(), paras: [] }; sections.push(cur); }
+        else if (!cur) { cur = { head: "", paras: [] }; sections.push(cur); }
+        let quote = null;
+        lines.forEach((ln) => {
+          // An indented line is quoted as written (the credit lines).
+          if (/^\s{2,}\S/.test(ln)) { if (!quote) { quote = { quote: [] }; cur.paras.push(quote); } quote.quote.push(ln.trim()); return; }
+          quote = null;
+          if (ln.trim()) cur.paras.push({ text: ln.trim() });
+        });
+      });
+      const frag = document.createDocumentFragment();
+      const titled = sections.filter((s) => s.head);
+      if (contents && titled.length > 2) {
+        const toc = el("nav", "ct-toc");
+        toc.setAttribute("aria-label", "Contents");
+        toc.appendChild(el("span", "ct-toc-k", "Contents"));
+        const list = el("ol", "ct-toc-list");
+        titled.forEach((s, i) => {
+          const m = s.head.match(/^(\d+)\.\s+(.*)$/);
+          const b = el("button", "ct-toc-item");
+          b.type = "button";
+          b.appendChild(el("span", "ct-toc-n", m ? m[1] : "·"));
+          b.appendChild(document.createTextNode(plainCase(m ? m[2] : s.head)));
+          b.addEventListener("click", () => {
+            const t = frag.__secs && frag.__secs[i];
+            if (!t) return;
+            // Shown first when the contract is paged (showTermsPage listens).
+            t.dispatchEvent(new CustomEvent("ct-jump", { bubbles: true }));
+            t.scrollIntoView({ behavior: "smooth", block: "start" });
+          });
+          const li = el("li"); li.appendChild(b); list.appendChild(li);
+        });
+        toc.appendChild(list);
+        frag.appendChild(toc);
+      }
+      const secs = [];
+      sections.forEach((s, si) => {
+        const sec = el("section", "ct-sec");
+        if (s.head) {
+          const m = s.head.match(/^(\d+)\.\s+(.*)$/);
+          const h = el("h4", "ct-head");
+          if (m) h.appendChild(el("span", "ct-num", m[1]));
+          h.appendChild(el("span", "ct-title", m ? m[2] : s.head));
+          sec.appendChild(h);
+          secs.push(sec);
+        }
+        let first = true;
+        s.paras.forEach((p) => {
+          if (p.quote) { const q = el("div", "ct-quote"); p.quote.forEach((ln) => q.appendChild(el("div", "", ln))); sec.appendChild(q); return; }
+          const parts = sentences(p.text);
+          let list = null;
+          parts.forEach((sn) => {
+            const label = labels && !first ? CONTRACT_LABELS.find(([start]) => sn.replace(/'/g, "’").startsWith(start.replace(/'/g, "’"))) : null;
+            if (label) { sec.appendChild(el("h5", "ct-sub", label[1])); list = null; }
+            first = false;
+            if (parts.length === 1) { sec.appendChild(withFigures(el("p", "ct-p"), sn)); return; }
+            if (!list) { list = el("ul", "ct-list"); sec.appendChild(list); }
+            list.appendChild(withFigures(el("li"), sn));
+          });
+        });
+        frag.appendChild(sec);
+      });
+      frag.__secs = secs;
+      return frag;
+    };
     function renderTermsBody(key, isTfp) {
       const host = $("#termsBody");
       if (!host) return;
       const doc = (window.WPS_CONTRACT_ARCHIVE || {})[key];
       host.textContent = "";
+      host.__contractText = "";
       if (!doc && !window.WPS_CONTRACT_ARCHIVE && !contractsUnavailable) {
         // Not there yet: fetch it and draw when it lands.
         host.textContent = "Loading the terms…";
@@ -10571,35 +10725,81 @@ window.resolveContractArchive = function(version) {
         setTermsAgreeable(false);
         return;
       }
-      String(doc.fullText).split(/\n\s*\n/).forEach((para) => {
-        const text = para.trim();
-        if (!text) return;
-        const lines = text.split("\n");
-        const head = lines[0].trim();
-        const isHeading = /^\d+\.\s+[A-Z]/.test(head) || (/^[A-Z][A-Z ,&/0-9()>.'-]{5,}$/.test(head) && head === head.toUpperCase());
-        const box = document.createElement("div");
-        if (isHeading) {
-          const h = document.createElement("h4");
-          h.style.cssText = "margin:0 0 6px 0;font-family:'Archivo',sans-serif;font-size:var(--font-sm);font-weight:700;";
-          h.textContent = head;
-          box.appendChild(h);
-          lines.slice(1).join("\n").split("\n").forEach((rest) => {
-            if (!rest.trim()) return;
-            const q = document.createElement("p");
-            q.style.cssText = "margin:0;";
-            q.textContent = rest.trim();
-            box.appendChild(q);
-          });
-        } else {
-          const q = document.createElement("p");
-          q.style.cssText = "margin:0;";
-          q.textContent = text;
-          box.appendChild(q);
-        }
-        host.appendChild(box);
-      });
+      host.appendChild(window.contractLayout(doc.fullText));
+      // The words themselves, for the record: serializeTermsSheet takes these,
+      // not the laid-out screen, so no heading, contents line or bullet break
+      // added for reading ever becomes part of the agreed contract.
+      host.__contractText = String(doc.fullText);
+      paginateTerms(host);
+      showTermsPage(1);
       setTermsAgreeable(true);
     }
+
+    /* The contract a page at a time, like a paper one (the owner, Sep 29
+       2026: "cant we have it like page 1 page 2 rather than 1 big"). Page 1
+       is who the agreement is between and the contents; the clauses follow,
+       a few to a page and never split across two. The tick-box and "Agree &
+       Continue" stay on every page from the first — reading every page is
+       the client's choice (the owner: "we can keep the check box in first
+       page itself its upto user to read it or not"). Only what is on screen
+       is paged: the agreed record is the contract text itself
+       (serializeTermsSheet). */
+    const TERMS_PAGE_CHARS = 2000;
+    function paginateTerms(host) {
+      const toc = host.querySelector(".ct-toc");
+      const secs = [...host.querySelectorAll(".ct-sec")];
+      let page = 1, used = 0;
+      if (toc && secs.length) { toc.dataset.page = "1"; page = 2; }
+      secs.forEach((sec) => {
+        const len = (sec.textContent || "").length;
+        if (used > 0 && used + len > TERMS_PAGE_CHARS) { page++; used = 0; }
+        sec.dataset.page = String(page);
+        used += len;
+      });
+      host.__pages = secs.length ? page : 0;
+      // Each line of the contents says which page it is on.
+      const titled = secs.filter((sec) => sec.querySelector(".ct-head"));
+      if (toc) toc.querySelectorAll(".ct-toc-item").forEach((b, i) => {
+        if (!titled[i] || b.querySelector(".ct-toc-p")) return;
+        const tag = document.createElement("span");
+        tag.className = "ct-toc-p";
+        tag.textContent = `p. ${titled[i].dataset.page}`;
+        b.appendChild(tag);
+      });
+      if (!host.__jumpWired) {
+        host.addEventListener("ct-jump", (e) => { const pg = Number(e.target && e.target.dataset && e.target.dataset.page); if (pg) showTermsPage(pg, true); });
+        host.__jumpWired = true;
+      }
+    }
+    function showTermsPage(n, keepScroll) {
+      const host = $("#termsBody"), area = $("#termsScrollArea"), pager = $("#termsPager"), agree = $("#termsAgreeBlock");
+      const intro = [$("#termsModalSubtitle"), $("#termsIntroGrid")];
+      const pages = (host && host.__pages) || 0;
+      if (!pages) {
+        // Nothing paged (still loading, or not there): everything as it was.
+        if (pager) pager.hidden = true;
+        intro.forEach((el) => { if (el) el.hidden = false; });
+        if (agree) agree.hidden = false;
+        return;
+      }
+      const page = Math.min(pages, Math.max(1, n || 1));
+      host.__page = page;
+      host.querySelectorAll("[data-page]").forEach((el) => { el.hidden = Number(el.dataset.page) !== page; });
+      // The first clause on a page needs no rule above it.
+      let firstSeen = false;
+      host.querySelectorAll(".ct-sec").forEach((el) => { const first = !el.hidden && !firstSeen; if (first) firstSeen = true; el.classList.toggle("ct-first", first); });
+      intro.forEach((el) => { if (el) el.hidden = page !== 1; });
+      if (agree) agree.hidden = false;
+      if (pager) {
+        pager.hidden = false;
+        const prev = $("#termsPrevBtn"), next = $("#termsNextBtn"), no = $("#termsPageNo");
+        if (prev) { prev.disabled = page === 1; prev.onclick = () => showTermsPage(page - 1); }
+        if (next) { next.hidden = page === pages; next.onclick = () => showTermsPage(page + 1); }
+        if (no) no.textContent = `Page ${page} of ${pages}`;
+      }
+      if (area && !keepScroll) { area.scrollTop = 0; try { area.focus({ preventScroll: true }); } catch (e) {} }
+    }
+    window.showTermsPage = showTermsPage;
 
     /* With nothing to read there is nothing to agree to, so the tick and the
        accept button go with the text. */
