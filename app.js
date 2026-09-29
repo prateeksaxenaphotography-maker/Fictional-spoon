@@ -105,6 +105,73 @@ window.codeMatches = (stored, typed) => {
 window.codeForDisplay = (stored) => window.isCodeFingerprint(stored) ? "•••• (made on another device)" : stored;
 
 /* ============================================================
+   § EMAIL TO THE STUDIO, WITH A BACKUP
+   ============================================================
+   Every form on the site — a booking, the signed contract, a photo release,
+   a testimonial, a portfolio PDF sale — reaches the studio's Gmail through
+   FormSubmit, a free form-to-email relay (there is no server). On Sep 29 2026
+   it went down for everyone: "Server Error" or no answer at all, and every
+   booking fell back to asking the client to send it from their own mail.
+   So a second relay, Web3Forms, now takes the message whenever FormSubmit
+   refuses it, errors or has not answered within `wait` ms.
+
+   `payload` is what FormSubmit is sent: a FormData (it may carry a file) or
+   a plain object of fields. Returns { ok, via, message }. A message that
+   FormSubmit delivers after giving up on it may arrive twice — never not at
+   all. Web3Forms' free plan carries no file, no copy to a second address and
+   no automatic receipt, so when it is used the email says which of those
+   did not go, for the studio to forward by hand. */
+window.sendStudioMail = async function(to, payload, { wait = 15000, backup = true } = {}) {
+  const entries = payload instanceof FormData ? [...payload.entries()] : Object.entries(payload || {});
+  const fsInit = payload instanceof FormData
+    ? { method: "POST", headers: { Accept: "application/json" }, body: payload }
+    : { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(payload || {}) };
+  let message = "";
+  try {
+    const stop = new AbortController();
+    const timer = setTimeout(() => stop.abort(), wait);
+    const res = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(to)}`, { ...fsInit, signal: stop.signal });
+    clearTimeout(timer);
+    // FormSubmit answers 200 with success:"false" when it refuses, so the
+    // body's flag is the only honest signal.
+    const body = await res.json().catch(() => null);
+    if (res.ok && body && (body.success === true || body.success === "true")) return { ok: true, via: "formsubmit", message: "" };
+    message = (body && body.message) || res.statusText || `HTTP ${res.status}`;
+  } catch (err) {
+    message = err && err.name === "AbortError" ? `no answer in ${Math.round(wait / 1000)}s` : ((err && err.message) || "unreachable");
+  }
+  console.warn("FormSubmit did not take it:", message);
+  const key = window.STUDIO_CONFIG && window.STUDIO_CONFIG.web3formsKey;
+  if (!backup || !key) return { ok: false, via: "", message };
+  // FormSubmit's own fields, in Web3Forms' words; whatever it cannot carry is
+  // named in the email instead of silently dropped.
+  const out = { access_key: key, from_name: "nerdyphotographer.in website" };
+  const missed = [];
+  entries.forEach(([k, v]) => {
+    if (typeof v !== "string") { missed.push(`the attached file (${(v && v.name) || "attachment"})`); return; }
+    if (k === "_subject") out.subject = v;
+    else if (k === "_replyto") out.replyto = v;
+    else if (k === "_honey") out.botcheck = v;
+    else if (k === "_cc") missed.push(`the copy to ${v}`);
+    else if (k === "_autoresponse") missed.push("the automatic receipt to the client");
+    else if (k.startsWith("_")) return;
+    else out[k] = v;
+  });
+  out["Sent through"] = `the backup relay (Web3Forms) — FormSubmit: ${message}`;
+  if (missed.length) out["Not sent by the backup"] = `${missed.join("; ")}. Forward this email where needed.`;
+  try {
+    const res = await fetch("https://api.web3forms.com/submit", {
+      method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(out)
+    });
+    const body = await res.json().catch(() => null);
+    if (body && body.success === true) return { ok: true, via: "web3forms", message };
+    return { ok: false, via: "", message: `${message}; backup: ${(body && body.message) || res.statusText}` };
+  } catch (err) {
+    return { ok: false, via: "", message: `${message}; backup unreachable` };
+  }
+};
+
+/* ============================================================
    § UNIFIED MASTER ADMIN PROMO & INVITE CODES ENGINE
    ============================================================ */
 // Empty on purpose: a readable list here would publish the codes in app.js
@@ -6455,11 +6522,9 @@ window.resolveContractArchive = function(version) {
         fd.append("Documentation", proof ? `Attached: ${proof.name}${withProof ? "" : " (too large for this email — ask them to send it separately)"}` : "None sent");
         fd.append("To put it on the site", "Open nerdyphotographer.in in Admin Mode, go to Testimonials, press “Add a testimonial”, paste this in and press Save & push live.");
         if (withProof && proof) fd.append("attachment", proof.blob, proof.name);
-        const res = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(studioEmail)}`, {
-          method: "POST", headers: { Accept: "application/json" }, body: fd
-        });
-        const body = await res.json().catch(() => null);
-        return res.ok && !!body && (body.success === true || body.success === "true");
+        // With a file, FormSubmit alone (the backup carries no file); the
+        // second try, without it, may go by either relay (sendStudioMail).
+        return (await window.sendStudioMail(studioEmail, fd, { backup: !withProof })).ok;
       };
 
       try {
@@ -9489,13 +9554,10 @@ window.resolveContractArchive = function(version) {
                 : "Not recorded on the form"));
         fd.append("Contract Terms (full text)", payload.contractText || "—");
         if (withSig) fd.append("attachment", sigBlob, `signature-${payload.contractNumber || "contract"}.png`);
-        const res = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(studioEmail)}`, {
-          method: "POST",
-          headers: { "Accept": "application/json" },
-          body: fd
-        });
-        const body = await res.json().catch(() => null);
-        return { ok: res.ok && !!body && (body.success === true || body.success === "true"), message: (body && body.message) || res.statusText };
+        // With the signature image, FormSubmit alone (the backup carries no
+        // file); without it, either relay (sendStudioMail).
+        const r = await window.sendStudioMail(studioEmail, fd, { backup: !withSig });
+        return { ok: r.ok, message: r.message };
       };
 
       try {
@@ -9555,11 +9617,9 @@ window.resolveContractArchive = function(version) {
         "",
         "Not expecting this email? Reply and tell the studio, because it means someone booked a shoot in this person's name."
       ].join("\n"));
-      const res = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(payload.studioEmail)}`, { method: "POST", body: fd });
-      // FormSubmit answers 200 with success:false on a refusal, so the body is
-      // what decides — the same lesson as the booking relay.
-      const body = await res.json().catch(() => null);
-      return !!body && (body.success === true || body.success === "true");
+      // Either relay (sendStudioMail). The backup cannot copy the person
+      // photographed in, so its email to the studio says to forward it.
+      return (await window.sendStudioMail(payload.studioEmail, fd)).ok;
     }
 
 
@@ -10502,20 +10562,11 @@ window.resolveContractArchive = function(version) {
         // client keeps the instant response; a failure quietly turns it into
         // "one more step" with the Gmail / mail-app buttons, instead of a
         // cheerful message about an email nobody received.
-        const relayAbort = new AbortController();
-        const relayTimer = setTimeout(() => relayAbort.abort(), 15000);
-
-        fetch(`https://formsubmit.co/ajax/${encodeURIComponent(studioEmail)}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Accept": "application/json" },
-          body: JSON.stringify(relayFields),
-          signal: relayAbort.signal
-        })
-        .then(async (res) => {
-          clearTimeout(relayTimer);
-          const body = await res.json().catch(() => null);
-          const relayOk = res.ok && !!body && (body.success === true || body.success === "true");
-          if (relayOk) {
+        // FormSubmit first, then the backup relay (sendStudioMail); only if
+        // both fail does the client get "one more step".
+        window.sendStudioMail(studioEmail, relayFields, { wait: 15000 })
+        .then((r) => {
+          if (r.ok) {
             // Only now is it true. The signed-contract email follows rather
             // than travelling beside this one: FormSubmit rate-limits per IP,
             // and two emails fired in the same millisecond knock each other
@@ -10527,13 +10578,11 @@ window.resolveContractArchive = function(version) {
             sendSubjectRelease();
             return;
           }
-          console.warn("Booking relay rejected:", (body && body.message) || res.statusText);
+          console.warn("Booking relay rejected:", r.message);
           finishWithFallback();                      // downgrade to "one more step"
         })
         .catch((err) => {
-          clearTimeout(relayTimer);
-          if (err && err.name === "AbortError") console.warn("Booking relay timed out");
-          else console.warn("Booking relay unreachable:", err && err.message);
+          console.warn("Booking relay unreachable:", err && err.message);
           finishWithFallback();
         });
       };

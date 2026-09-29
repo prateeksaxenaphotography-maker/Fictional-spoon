@@ -45,6 +45,10 @@ const STUDIO_CONFIG = {
 
   // Contact & Socials
   email: "prateeksaxenaphotography@gmail.com",
+  // The backup email relay (Web3Forms), used when FormSubmit fails. This key
+  // is made to sit in public code: it can only ever send to the studio's own
+  // inbox. Created by the studio on Sep 29 2026.
+  web3formsKey: "c72cadca-daeb-4ad2-a73c-012d33705989",
   instagram: "https://www.instagram.com/nerdyphotographer.in/",
   kavyar: "https://kavyar.com/uucurn46ib8f",
 

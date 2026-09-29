@@ -753,17 +753,11 @@
       if (sale.layout) fd.append("Pages, photo by photo", sale.layout);
       if (sale.design) fd.append("Design (for the studio to rebuild it)", sale.design);
       fd.append("Page", location.href);
-      const res = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(to)}`, {
-        method: "POST",
-        headers: { "Accept": "application/json" },
-        body: fd
-      });
-      // FormSubmit answers 200 with success:"false" when it refuses, so the
-      // body's flag is the only honest signal.
-      const body = await res.json().catch(() => null);
-      const ok = res.ok && !!body && (body.success === true || body.success === "true");
-      if (!ok) console.warn("Portfolio PDF sale email failed:", (body && body.message) || res.statusText);
-      return ok;
+      // FormSubmit, then the backup relay (app.js sendStudioMail). The backup
+      // sends no receipt to the buyer, and its email to the studio says so.
+      const r = await window.sendStudioMail(to, fd);
+      if (!r.ok) console.warn("Portfolio PDF sale email failed:", r.message);
+      return r.ok;
     } catch (err) {
       console.warn("Portfolio PDF sale email error:", err);
       return false;
