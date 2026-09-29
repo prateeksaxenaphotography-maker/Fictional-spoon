@@ -2842,6 +2842,16 @@ window.WPS_DATA = {
           "contractVersion": "Pending Agreement",
           "updatedAt": 1790354880782
         }
+      ],
+      "2026-09-29": [
+        {
+          "id": "b_1790668207292_sywn",
+          "isTentative": true,
+          "status": "tentative",
+          "type": "Selective Collaboration (TFP)",
+          "contractVersion": "V4.0-TFP",
+          "updatedAt": 1790668207292
+        }
       ]
     },
     "removedBookingIds": [
@@ -2898,8 +2908,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1790661335800,
-    "syncedAt": 1790661335800
+    "updatedAt": 1790668570544,
+    "syncedAt": 1790668570544
   },
   "INVITE_CODES": [
     {
