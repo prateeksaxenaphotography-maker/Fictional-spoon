@@ -541,7 +541,7 @@ if (books !== undefined && books !== null) {
         checkOneFormat(p, `${what} paragraph ${at}`);
       }
     };
-    const PAPERS = new Set(["a4", "b5", "a5", "letter"]);
+    const PAPERS = new Set(["a4", "b5", "a5", "letter", "ig45", "square", "story"]);
     const PHOTO_AT = { story: ["top", "bottom", "left", "right"], note: ["top", "bottom", "left", "right"], quote: ["top", "bottom", "left", "right"], feature: ["left", "right"], article: ["left", "right"] };
     const FITS = new Set(["fill", "whole", "width", "height"]);
     // Lines a page draws for itself that the studio can write over, and the

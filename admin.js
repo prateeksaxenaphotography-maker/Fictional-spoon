@@ -866,7 +866,7 @@ const STUDIO_BOOK_LIMITS = {
   fits: ["fill", "whole", "width", "height"],
   // Paper a book prints on; absent means A4. Where a writing page's photo sits;
   // absent means the page shape's usual place.
-  papers: ["a4", "b5", "a5", "letter"],
+  papers: ["a4", "b5", "a5", "letter", "ig45", "square", "story"],
   /* How much air sits between photographs, as a multiple of the style's own
      gutter. Absent means the style's number, so a book made before the studio
      could ask is stored exactly as it was. */

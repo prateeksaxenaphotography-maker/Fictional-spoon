@@ -3714,7 +3714,21 @@
     a4: { name: "A4", w: 210, h: 297, note: "210 × 297 mm · most printers" },
     b5: { name: "B5", w: 176, h: 250, note: "176 × 250 mm" },
     a5: { name: "A5", w: 148, h: 210, note: "148 × 210 mm · booklet" },
-    letter: { name: "Letter", w: 215.9, h: 279.4, note: "8.5 × 11 in · US printers" }
+    letter: { name: "Letter", w: 215.9, h: 279.4, note: "8.5 × 11 in · US printers" },
+    /* Social media (phase 5, Sep 30 2026). 7.2 in wide, so a page at 150 dpi
+       is exactly 1080 px across, the width Instagram shows; 300 dpi doubles
+       it. Landscape turns 4:5 into 5:4 and a story into 16:9. */
+    ig45: { name: "Instagram 4:5", w: 182.88, h: 228.6, social: true, note: "Instagram portrait post" },
+    square: { name: "Square 1:1", w: 182.88, h: 182.88, social: true, note: "Instagram square post" },
+    story: { name: "Story 9:16", w: 182.88, h: 325.12, social: true, note: "Stories, Reels and WhatsApp status" }
+  };
+  const isSocial = (book) => !!(PAPERS[book && book.paper] || {}).social;
+  // The paper's note, and for a social size the pixels each page comes out at.
+  const paperNote = (book) => {
+    const p = PAPERS[book.paper] || PAPERS.a4;
+    if (!p.social) return `${p.note}. Every size keeps the same layout; the words and photos scale with the page.`;
+    const G = geometry(book), px = (mm, dpi) => Math.round(mm / 25.4 * dpi);
+    return `${p.note}: each page is ${px(G.pw, 150)} × ${px(G.ph, 150)} px (at 150 dpi in Download; 300 dpi doubles it). Download PNG pages and post them together as a carousel. The layouts are the book's own, fitted to the shape.`;
   };
   /* Booklets: pages printed two to a sheet, in the order that folds into a
      book. The sheet is the size up from the page (A5 pages on A4 sheets). */
@@ -11004,7 +11018,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     const DESIGN_GROUPS = [
       ["for", "Made for", "Whose book this is · their details · your credit", ["Made for"]],
       ["look", "Look", "Style · colourway", ["Style", "Colourway"]],
-      ["paper", "Page & paper", "Shape · size · space between photos · page colour · edge bar · lines", ["Page shape", "Paper size", "Space between photographs", "Page colour, every page", "Bar down the left edge", "Line round the photographs"]],
+      ["paper", "Page & paper", "Shape · print or Instagram size · space between photos · page colour · edge bar · lines", ["Page shape", "Paper size", "Space between photographs", "Page colour, every page", "Bar down the left edge", "Line round the photographs"]],
       ["type", "Type", "Text styles · baseline grid", ["Text styles", "Baseline grid"]],
       ["every", "Every page", "Running head · photo numbers · page numbers and foot", ["Top of every page", "Numbers on the photographs", "The foot of every page"]]
     ];
@@ -11117,6 +11131,10 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       add("Download for a print shop (crop marks and bleed)", "File", dl(true, false));
       add("Download for a print shop in print colours (CMYK, crop marks and bleed)", "File", dl(true, false, true));
       add("Download to fold in half (booklet)", "File", dl(false, true));
+      for (const [k, p2] of Object.entries(PAPERS)) if (p2.social) {
+        add(`Make a ${p2.name} copy for social media`, "Design", design(`[data-socialcopy="${k}"]`, "paper"));
+        add(`Make this book ${p2.name}`, "Design", design(`[data-paper="${k}"]`, "paper"));
+      }
       add("Download PNG pages", "File", () => { const pop = $("#sbDlPop"); if (pop && pop.hidden) $("#sbDlToggle").click(); $("#sbPng").click(); });
       add("Save", "File", () => $("#sbSave").click());
       add(book && isForOthers(book) ? "Save a copy" : "Publish", "File", () => $("#sbPublish").click());
@@ -11292,8 +11310,13 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           <div class="sb-seg" role="radiogroup" aria-label="Page shape">${["portrait", "landscape"].map((o) => { const n = o === "portrait" ? "Portrait" : "Landscape"; return `<button type="button" role="radio" data-orient="${o}" aria-checked="${book.orientation === o}" title="${n}" aria-label="Page shape: ${n}">${sbIcon(o, n)}</button>`; }).join("")}</div>
         </div>
         <div class="sb-sec"><h3>Paper size</h3>
-          <div class="sb-seg" role="radiogroup" aria-label="Paper size">${Object.entries(PAPERS).map(([k, p]) => `<button type="button" role="radio" data-paper="${k}" aria-checked="${(book.paper || "a4") === k}">${esc(p.name)}</button>`).join("")}</div>
-          <p class="sb-hint" id="sbPaperNote">${esc((PAPERS[book.paper] || PAPERS.a4).note)}. Every size keeps the same layout; the words and photos scale with the page.</p>
+          <div class="sb-seg" role="radiogroup" aria-label="Paper size">${Object.entries(PAPERS).filter(([, p]) => !p.social).map(([k, p]) => `<button type="button" role="radio" data-paper="${k}" aria-checked="${(book.paper || "a4") === k}">${esc(p.name)}</button>`).join("")}</div>
+          <span class="sb-label" style="display:block;margin-top:10px">For social media</span>
+          <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Social media size">${Object.entries(PAPERS).filter(([, p]) => p.social).map(([k, p]) => `<button type="button" role="radio" data-paper="${k}" aria-checked="${book.paper === k}">${esc(p.name)}</button>`).join("")}</div>
+          <p class="sb-hint" id="sbPaperNote">${esc(paperNote(book))}</p>
+          <div class="sb-field"><span class="sb-label">Keep this book, and make a copy for social media</span>
+            <div class="sb-adds">${Object.entries(PAPERS).filter(([, p]) => p.social).map(([k, p]) => `<button type="button" data-socialcopy="${k}">${esc(p.name)} copy</button>`).join("")}</div>
+            <p class="sb-hint">The copy opens here with the same pages at that size; this book stays as it is.</p></div>
         </div>
         <div class="sb-sec"><h3>Space between photographs</h3>
           <div class="sb-seg sb-seg-words" role="radiogroup" aria-label="Space between photographs">${GAP_LABEL.map(([k, n]) => { const ic = { none: "gapNone", narrow: "gapNarrow", medium: "gapMedium", wide: "gapWide" }[k]; return `<button type="button" role="radio" data-gap="${k}" aria-checked="${(book.spacing || "medium") === k}" title="Space between photographs: ${esc(n)}" aria-label="Space between photographs: ${esc(n)}">${ic ? sbIcon(ic, n) : n}</button>`; }).join("")}</div>
@@ -11438,8 +11461,19 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       }, (b) => (book.spacing || "medium") === b.dataset.gap);
       radio("[data-paper]", (b) => {
         if (b.dataset.paper === "a4") delete book.paper; else book.paper = b.dataset.paper;
-        const note = $("#sbPaperNote"); if (note) note.textContent = `${(PAPERS[book.paper] || PAPERS.a4).note}. Every size keeps the same layout; the words and photos scale with the page.`;
+        const note = $("#sbPaperNote"); if (note) note.textContent = paperNote(book);
       }, (b) => (book.paper || "a4") === b.dataset.paper);
+      // A copy at a social media size: a new book, opened; this one untouched.
+      $$("[data-socialcopy]").forEach((x) => x.addEventListener("click", () => {
+        flush();
+        const k = x.dataset.socialcopy, cur = readState();
+        const v = JSON.parse(JSON.stringify(book));
+        const copy = { ...v, id: uid(isForOthers(v)), name: `${String(v.name || "Book").slice(0, 50)} (${PAPERS[k].name})`.slice(0, 80), paper: k, orientation: "portrait", updatedAt: Date.now() };
+        if (!writeState({ versions: [copy, ...cur.versions], deleted: cur.deleted })) { API.toast("Not saved — this device's storage is full or blocked."); return; }
+        state = readState();
+        openBook(copy, false, { tab: "design", sel });
+        API.toast(`Made “${copy.name}”. Your original book is unchanged: it is in Books.`);
+      }));
     }
 
     /* --- checks, publish, download --- */
@@ -11537,13 +11571,16 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
        printer can manage — and the note says so, and how to print it. */
     function bookletNote() {
       const el = $("#sbBookletNote"), fold = $('[data-print="fold"]'), pdf = $("#sbPdf"); if (!el || !fold) return;
-      const sheet = SHEETS[book.paper || "a4"];
-      const can = book.orientation !== "landscape";
+      const sheet = SHEETS[book.paper || "a4"] || SHEETS.a4, social = isSocial(book);
+      const can = book.orientation !== "landscape" && !social;
       fold.disabled = !can;
       if (!can && printMode === "fold") { printMode = "normal"; $$("[data-print]").forEach((x) => x.setAttribute("aria-checked", String(x.dataset.print === "normal"))); }
       if (pdf) pdf.textContent = printMode === "fold" ? "Download PDF to fold" : "Download PDF";
       { const row = $("#sbMarksRow"); if (row) row.hidden = printMode === "fold"; }
       { const row = $("#sbCmykRow"), note = $("#sbCmykNote"); if (row) row.hidden = printMode === "fold"; if (note) note.hidden = printMode === "fold" || !printCmyk; }
+      { const row = $("#sbMarksRow"); if (row && social) row.hidden = true; }
+      { const row = $("#sbCmykRow"); if (row && social) row.hidden = true; }
+      if (social) { el.textContent = `A ${(PAPERS[book.paper] || {}).name || "social media"} book is for screens: PNG pages are the files to post, one image a page. Folding, crop marks and print colours are for printed books.`; return; }
       if (!can) { el.textContent = `Normal: one ${sheet.page} page per sheet. Folding needs a portrait book — a landscape one would fold along the top edge.`; return; }
       if (printMode !== "fold") { el.textContent = `Normal: one ${sheet.page} page per sheet, the size you chose in Design.`; return; }
       const n = renderedCount(book), padded = Math.ceil(n / 4) * 4;
@@ -11595,6 +11632,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       el.textContent = exportDpi === 300
         ? (have ? "300 dpi is what a print shop asks for. The file is about four times the size of the 150 dpi one." : "300 dpi is what a print shop asks for. Without your full-size photos (below), a photo is sharp only up to about half a page: the site keeps each at 1600 px.")
         : "150 dpi suits a screen, email and a home printer. Choose 300 dpi for a print shop.";
+      if (isSocial(book)) { const G = geometry(book), px = (mm) => Math.round(mm / 25.4 * exportDpi); el.textContent = `Each page comes out ${px(G.pw)} × ${px(G.ph)} px${exportDpi === 150 ? ", the size Instagram shows" : ": twice the size Instagram shows, for a sharper zoom"}.`; }
     }
     let origToken = 0;
     async function originalsNote() {
