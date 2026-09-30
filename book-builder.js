@@ -5905,6 +5905,15 @@
   .sb-preview.two canvas { max-width: 50%; }
   .sb-preview.two canvas + canvas { margin-left: 0; box-shadow: 1px 0 0 rgba(16,16,20,.06), 10px 14px 32px -12px rgba(16,16,20,.3); }
   .sb-preview.two canvas:first-child { box-shadow: -10px 14px 32px -12px rgba(16,16,20,.3), inset -12px 0 18px -14px rgba(0,0,0,.25); }
+  /* Zoomed in, one page or two: every page keeps its shape and grows as a
+     whole, so a wide one scrolls sideways. Two-page view kept its "half the
+     width each" limit while zoomed, so the pages were squashed tall and could
+     never scroll across (the studio, Sep 30 2026: "there is no horizontal
+     scroll"). Auto margins centre a zoomed page that still fits across,
+     without the unreachable overflow that centring by flex would cause. */
+  .sb-preview.zoom canvas, .sb-preview.two.zoom canvas, .sb-preview.zoom canvas + canvas { flex: none; max-width: none; max-height: none; height: calc(var(--sbz, 1.65) * 100%); width: auto; }
+  .sb-preview.zoom > canvas:first-of-type { margin-left: auto; }
+  .sb-preview.zoom > canvas:last-of-type { margin-right: auto; }
   .sb-preview canvas.facing { cursor: pointer; opacity: .9; transition: opacity .15s; }
   .sb-preview canvas.facing:hover { opacity: 1; }
   .sb-preview > .sb-hint { color: var(--sb-text-3); }
