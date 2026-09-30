@@ -2914,8 +2914,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1790688791628,
-    "syncedAt": 1790688791628
+    "updatedAt": 1790765185177,
+    "syncedAt": 1790765185177
   },
   "INVITE_CODES": [
     {
@@ -3890,7 +3890,9 @@ window.WPS_DATA = {
       "bkmu7sm7y0obhy",
       "bkmu9io6yxzopu",
       "bkmuf7kfthmb3y",
-      "bkmuax7ucfco12"
+      "bkmuax7ucfco12",
+      "bkmunjf0vyndfr",
+      "bkmunm8y3ed2r3"
     ]
   }
 };
