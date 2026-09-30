@@ -933,7 +933,7 @@ const STUDIO_BOOK_LIMITS = {
   lineEnds: ["end", "start", "both"],
   lineTips: ["pencil", "brush", "marker", "nib", "taper", "sumi", "bristle"],
   linePoints: 200,
-  shapes: ["round", "chamfer", "ellipse", "triangle", "diamond", "star", "parallelogram"],   // a plain box writes nothing
+  shapes: ["round", "chamfer", "ellipse", "triangle", "diamond", "star", "parallelogram", "g:heart", "g:sparkle", "g:burst", "g:badge", "g:ring", "g:flower", "g:sun", "g:moon", "g:leaf", "g:arrow", "g:curve", "g:speech", "g:quotes", "g:camera", "g:film", "g:frame", "g:focus", "g:pin", "g:mail", "g:phone", "g:check", "g:plus", "g:stroke"],   // a plain box writes nothing; g: = a drawing (v565)
   cornerMax: 0.5,   // corners: a share of the shorter side, 0 to this; the old words small/medium/large still read
   fills: ["ink", "soft", "accent", "paper", "white", "deep", "rule"],
   /* How new the shapes in a book are. A book is marked with the highest one
@@ -983,7 +983,8 @@ const STUDIO_BOOK_LIMITS = {
 function cleanOneFormat(f) {
   if (!f || typeof f !== "object") return null;
   const one = {};
-  if (STUDIO_BOOK_LIMITS.fonts.includes(f.font)) one.font = f.font;
+  // One of the studio's own fonts (v565), kept on its computer: `own_<id>`.
+  if (STUDIO_BOOK_LIMITS.fonts.includes(f.font) || /^own_[a-z0-9]{4,24}$/.test(String(f.font || ""))) one.font = f.font;
   if (STUDIO_BOOK_LIMITS.colors.includes(f.color) || /^#[0-9a-f]{6}$/i.test(String(f.color || ""))) one.color = String(f.color).toLowerCase();
   if (STUDIO_BOOK_LIMITS.aligns.includes(f.align)) one.align = f.align;
   if (typeof f.size === "number" && isFinite(f.size) && Math.abs(f.size - 1) > 0.001) one.size = Math.round(Math.min(1.6, Math.max(0.6, f.size)) * 100) / 100;

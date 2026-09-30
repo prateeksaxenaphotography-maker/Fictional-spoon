@@ -798,8 +798,8 @@
       if (!v || typeof v !== "object") return BRAND_EMPTY();
       return {
         colours: (Array.isArray(v.colours) ? v.colours : []).filter((c) => /^#[0-9a-f]{6}$/.test(c)).slice(0, 10),
-        head: typeof v.head === "string" && fontByKey(v.head) ? v.head : "",
-        body: typeof v.body === "string" && fontByKey(v.body) ? v.body : "",
+        head: typeof v.head === "string" && (fontByKey(v.head) || /^own_[a-z0-9]{4,24}$/.test(v.head)) ? v.head : "",
+        body: typeof v.body === "string" && (fontByKey(v.body) || /^own_[a-z0-9]{4,24}$/.test(v.body)) ? v.body : "",
         logo: typeof v.logo === "string" ? v.logo : "",
         start: v.start === true
       };
@@ -3404,7 +3404,47 @@
     { key: "st-newsreader", family: F.news, range: [300, 700], css: "Newsreader:ital,wght@0,300..700;1,300..700" }
   ];
   const ALIGNS = ["left", "center", "right", "justify"];
-  const fontByKey = (key) => FONT_LIST.find((f) => f.key === key) || null;
+  /* Your own fonts (phase 8, Sep 30 2026): a TTF, OTF, WOFF or WOFF2 file
+     kept on this computer (IndexedDB), registered with the page as a face of
+     its own and offered in every font menu under "Your fonts". A book stores
+     it as `own_<id>`; a computer without the file draws the style's font.
+     TTF, OTF and WOFF print as real type in a PDF; WOFF2 as picture. */
+  const OWN_FONTS = [];
+  const FONT_DB = "wps-book-fonts", FONT_STORE = "f";
+  let fontDbP = null;
+  function fontDb() {
+    if (fontDbP) return fontDbP;
+    fontDbP = new Promise((res, rej) => {
+      let settled = false;
+      const done = (fn, v) => { if (!settled) { settled = true; fn(v); } };
+      const t = setTimeout(() => done(rej, new Error("indexedDB timeout")), 1500);
+      let r;
+      try { r = indexedDB.open(FONT_DB, 1); } catch (e) { clearTimeout(t); return done(rej, e); }
+      r.onupgradeneeded = () => { const d = r.result; if (!d.objectStoreNames.contains(FONT_STORE)) d.createObjectStore(FONT_STORE, { keyPath: "id" }); };
+      r.onsuccess = () => { clearTimeout(t); done(res, r.result); };
+      r.onerror = () => { clearTimeout(t); done(rej, r.error); };
+      r.onblocked = () => { clearTimeout(t); done(rej, new Error("indexedDB blocked")); };
+    });
+    fontDbP.catch(() => { fontDbP = null; });
+    return fontDbP;
+  }
+  const fontRecs = async () => { try { const d = await fontDb(); return await new Promise((res, rej) => { const q = d.transaction(FONT_STORE, "readonly").objectStore(FONT_STORE).getAll(); q.onsuccess = () => res((q.result || []).sort((a, c) => a.at - c.at)); q.onerror = () => rej(q.error); }); } catch (e) { return []; } };
+  const fontPut = async (rec) => { const d = await fontDb(); return new Promise((res, rej) => { const tx = d.transaction(FONT_STORE, "readwrite"); tx.objectStore(FONT_STORE).put(rec); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); };
+  const fontDel = async (id) => { try { const d = await fontDb(); await new Promise((res, rej) => { const tx = d.transaction(FONT_STORE, "readwrite"); tx.objectStore(FONT_STORE).delete(id); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); } catch (e) {} };
+  const ownFamily = (id) => `ownfont-${id}`;
+  async function registerOwnFont(rec) {
+    const family = ownFamily(rec.id);
+    try { const ff = new FontFace(family, rec.bytes.slice(0), { weight: "100 900", style: "normal" }); await ff.load(); document.fonts.add(ff); } catch (e) { return null; }
+    const f = { key: `own_${rec.id}`, id: rec.id, name: rec.name, kind: "Yours", family: `'${family}', sans-serif`, range: [100, 900], own: true, fmt: rec.fmt, bytes: rec.bytes };
+    const at = OWN_FONTS.findIndex((x) => x.key === f.key);
+    if (at >= 0) OWN_FONTS[at] = f; else OWN_FONTS.push(f);
+    return f;
+  }
+  let ownFontsReady = null;
+  const loadOwnFonts = () => { if (!ownFontsReady) ownFontsReady = (async () => { for (const r of await fontRecs()) await registerOwnFont(r); })().catch(() => {}); return ownFontsReady; };
+  const allFonts = () => [...FONT_LIST, ...OWN_FONTS];
+  const fontGroups = () => ["Serif", "Sans", "Condensed", "Mono", ...(OWN_FONTS.length ? ["Yours"] : [])];
+  const fontByKey = (key) => FONT_LIST.find((f) => f.key === key) || OWN_FONTS.find((f) => f.key === key) || null;
   function weightFor(font, w, italic) {
     const list = (italic && font.italic) || font.weights;
     if (list) return list.reduce((best, x) => (Math.abs(x - w) < Math.abs(best - w) ? x : best), list[0]);
@@ -3499,6 +3539,7 @@
   }
   const fontLoads = new Map();
   function loadFont(key) {
+    if (/^own_/.test(String(key || ""))) return loadOwnFonts();
     const font = fontByKey(key) || STYLE_FACES.find((f) => f.key === key);
     if (!font || !font.css) return Promise.resolve();
     if (!fontLoads.has(key)) {
@@ -3935,7 +3976,7 @@
   function paintOps(page, ops) {
     for (const o of ops) {
       if (o.k === "rect") rect(page, o.x, o.y, o.w, o.h, o.c);
-      else if (o.k === "path") { tracePath(page.ctx, o.shape, page.u(o.x), page.u(o.y), page.u(o.w), page.u(o.h), o.corner); page.ctx.fillStyle = o.c; page.ctx.fill(); }
+      else if (o.k === "path") { const gp = tracePath(page.ctx, o.shape, page.u(o.x), page.u(o.y), page.u(o.w), page.u(o.h), o.corner); page.ctx.fillStyle = o.c; if (gp) page.ctx.fill(gp.path, gp.rule); else page.ctx.fill(); }
       else if (o.k === "stroke") strokeOp(page, o);
     }
   }
@@ -4589,13 +4630,50 @@
   const FREE_KINDS = ["text", "photo", "shape", "line"];
   // What a colour block (or the colour behind a box of words) is shaped like.
   const SHAPES = ["rect", "round", "chamfer", "ellipse", "triangle", "diamond", "star", "parallelogram"];
+  /* Drawings (phase 8, Sep 30 2026): a small library for an Anything page,
+     each a path on a 24-unit square, filled in the thing's colour and
+     stretched to its box. Stored as a shape ("g:heart"), so colour, fade,
+     turn, outline, shadow and blend all apply, and a photograph can be cut
+     to one. The keys are stored: never rename one (admin.js and the data
+     check list them too). */
+  const circleD = (cx, cy, r) => `M${cx - r} ${cy}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0z`;
+  const burstD = (n, r1, r2) => { const pts = []; for (let i = 0; i < n * 2; i++) { const a = (i * Math.PI) / n - Math.PI / 2, r = i % 2 ? r2 : r1; pts.push(`${(12 + r * Math.cos(a)).toFixed(2)} ${(12 + r * Math.sin(a)).toFixed(2)}`); } return `M${pts.join("L")}Z`; };
+  const scallopD = (n, r, bump) => { const st = (2 * Math.PI) / n; let d = `M${(12 + r).toFixed(2)} 12`; for (let i = 0; i < n; i++) { const am = (i + 0.5) * st, a1 = (i + 1) * st; d += `Q${(12 + bump * Math.cos(am)).toFixed(2)} ${(12 + bump * Math.sin(am)).toFixed(2)} ${(12 + r * Math.cos(a1)).toFixed(2)} ${(12 + r * Math.sin(a1)).toFixed(2)}`; } return `${d}Z`; };
+  const CORNERS_D = "M2 2h8v2.2H4.2V10H2zM22 2v8h-2.2V4.2H14V2zM2 22v-8h2.2v5.8H10V22zM22 22h-8v-2.2h5.8V14H22z";
+  const GRAPHICS = [
+    ["heart", "Heart", "M12 21.4 10.6 20.1C5.4 15.4 2 12.3 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.8-3.4 6.9-8.6 11.6z"],
+    ["sparkle", "Sparkle", "M12 1C12.8 7.5 16.5 11.2 23 12 16.5 12.8 12.8 16.5 12 23 11.2 16.5 7.5 12.8 1 12 7.5 11.2 11.2 7.5 12 1Z"],
+    ["burst", "Burst", burstD(12, 11.5, 8.6)],
+    ["badge", "Badge", scallopD(16, 10, 12.2)],
+    ["ring", "Ring", circleD(12, 12, 11) + circleD(12, 12, 7.5), "evenodd"],
+    ["flower", "Flower", [0, 1, 2, 3, 4].map((i) => { const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5; return circleD(+(12 + 5.4 * Math.cos(a)).toFixed(2), +(12 + 5.4 * Math.sin(a)).toFixed(2), 4.3); }).join("") + circleD(12, 12, 3.4)],
+    ["sun", "Sun", circleD(12, 12, 4.5) + "M11 1h2v4h-2zM11 19h2v4h-2zM1 11h4v2H1zM19 11h4v2h-4zM4.2 5.6 5.6 4.2 8.4 7 7 8.4zM15.6 17 17 15.6 19.8 18.4 18.4 19.8zM4.2 18.4 7 15.6 8.4 17 5.6 19.8zM15.6 7 18.4 4.2 19.8 5.6 17 8.4z"],
+    ["moon", "Moon", "M21 14.5A9 9 0 1 1 9.5 3a7 7 0 0 0 11.5 11.5z"],
+    ["leaf", "Leaf", "M21 3C10 3 4 8.5 4 16c0 1.7.4 3.3 1 4.8C6 17 8.6 14 13 12c-3.5 2.6-5.7 5.6-6.7 9C16 21 21 14 21 3z"],
+    ["arrow", "Arrow", "M2 10.5h13.5V5L23 12l-7.5 7v-5.5H2z"],
+    ["curve", "Curved arrow", "M4 20c0-8 5-13 13-13V3l6 6-6 6v-4C10.5 11 7 14 4 20z"],
+    ["speech", "Speech bubble", "M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-9l-5 4.5V17H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"],
+    ["quotes", "Quote marks", "M3 18v-5.5C3 8 5.2 5 9.5 4l.8 1.8C8 6.7 7 8.4 7 11h3.5v7zm10.5 0v-5.5c0-4.5 2.2-7.5 6.5-8.5l.8 1.8c-2.3.9-3.3 2.6-3.3 5.2H21v7z"],
+    ["camera", "Camera", "M8.5 4h7l1.6 2.5H20a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.5a2 2 0 0 1 2-2h2.9z" + circleD(12, 13, 4.2), "evenodd"],
+    ["film", "Film strip", "M3 3h18v18H3zM5 5v2h2V5zM5 9v2h2V9zM5 13v2h2v-2zM5 17v2h2v-2zM17 5v2h2V5zM17 9v2h2V9zM17 13v2h2v-2zM17 17v2h2v-2zM9 5v14h6V5z", "evenodd"],
+    ["frame", "Corners", CORNERS_D],
+    ["focus", "Focus", CORNERS_D + "M11 8h2v8h-2zM8 11h8v2H8z"],
+    ["pin", "Place", "M12 1.5a7.5 7.5 0 0 0-7.5 7.5c0 5.6 7.5 13.5 7.5 13.5s7.5-7.9 7.5-13.5A7.5 7.5 0 0 0 12 1.5z" + circleD(12, 9, 2.8), "evenodd"],
+    ["mail", "Envelope", "M2 5h20v14H2zM4 7.2v1.3l8 5.3 8-5.3V7.2l-8 5.3z", "evenodd"],
+    ["phone", "Phone", "M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"],
+    ["check", "Tick", "M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"],
+    ["plus", "Plus", "M10.5 3h3v7.5H21v3h-7.5V21h-3v-7.5H3v-3h7.5z"],
+    ["stroke", "Brush stroke", "M2 14c3-2.5 6.5-3.3 10-2.6 3.5.7 6.8.2 10-1.4v3.2c-3.3 1.8-6.8 2.3-10.4 1.6-3.4-.6-6.6.2-9.6 2.4z"]
+  ];
+  const GRAPHIC_PATHS = new Map(GRAPHICS.map(([k, , d, rule]) => [k, { d, rule: rule || "nonzero" }]));
+  const isGraphic = (shape) => typeof shape === "string" && shape.startsWith("g:") && GRAPHIC_PATHS.has(shape.slice(2));
   const CORNER = { small: 0.1, medium: 0.18, large: 0.3 };
   // How rounded the corners are, as a share of the shorter side: a box and a
   // cut-cornered box start at 0.18, any other shape at 0. The old words
   // small / medium / large still mean what they did.
   const cornerDefault = (shape) => (shape === "round" || shape === "chamfer" ? 0.18 : 0);
   const cornerOf = (b) => (typeof (b && b.corner) === "number" ? Math.max(0, Math.min(0.5, b.corner)) : CORNER[b && b.corner] || cornerDefault(shapeOf(b)));
-  const shapeOf = (b) => (SHAPES.includes(b && b.shape) ? b.shape : "rect");
+  const shapeOf = (b) => (SHAPES.includes(b && b.shape) || isGraphic(b && b.shape) ? b.shape : "rect");
   // Traces the shape inside a box, in page units, ready to fill.
   // A polygon with every corner rounded by r (or sharp when r is 0): each
   // corner is cut back along both edges and bridged by a curve through it.
@@ -4614,6 +4692,11 @@
     ctx.closePath();
   }
   function tracePath(ctx, shape, x, y, w, h, k = 0.18) {
+    if (isGraphic(shape)) {
+      const g = GRAPHIC_PATHS.get(shape.slice(2)), path = new Path2D();
+      path.addPath(new Path2D(g.d), new DOMMatrix([w / 24, 0, 0, h / 24, x, y]));
+      return { path, rule: g.rule };
+    }
     ctx.beginPath();
     const r = Math.min(w, h) * Math.max(0, Math.min(0.5, k));
     if (shape === "ellipse") { ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2); return; }
@@ -4762,8 +4845,8 @@
     if (o.k === "stroke") strokeOp(page, { ...o, c: s.c, pts: o.pts.map(([x, y]) => [x + dx, y + dy]) });
     else {
       const shaped = o.k === "path" || (o.k === "photo" && !!o.shape);
-      tracePath(ctx, shaped ? o.shape || "rect" : "rect", page.u(o.x + dx), page.u(o.y + dy), page.u(o.w), page.u(o.h), shaped ? o.corner || 0 : 0);
-      ctx.fillStyle = s.c; ctx.fill();
+      const gp = tracePath(ctx, shaped ? o.shape || "rect" : "rect", page.u(o.x + dx), page.u(o.y + dy), page.u(o.w), page.u(o.h), shaped ? o.corner || 0 : 0);
+      ctx.fillStyle = s.c; if (gp) ctx.fill(gp.path, gp.rule); else ctx.fill();
     }
     ctx.restore();
   }
@@ -4771,8 +4854,8 @@
   function outlineOp(page, o) {
     const ctx = page.ctx;
     ctx.save(); ctx.filter = "none";
-    tracePath(ctx, o.k === "path" ? o.shape : "rect", page.u(o.x), page.u(o.y), page.u(o.w), page.u(o.h), o.k === "path" ? o.corner || 0 : 0);
-    ctx.lineWidth = Math.max(0.5, page.u(o.ol.w)); ctx.strokeStyle = o.ol.c; ctx.lineJoin = "round"; ctx.stroke();
+    const gp = tracePath(ctx, o.k === "path" ? o.shape : "rect", page.u(o.x), page.u(o.y), page.u(o.w), page.u(o.h), o.k === "path" ? o.corner || 0 : 0);
+    ctx.lineWidth = Math.max(0.5, page.u(o.ol.w)); ctx.strokeStyle = o.ol.c; ctx.lineJoin = "round"; if (gp) ctx.stroke(gp.path); else ctx.stroke();
     ctx.restore();
   }
   // Words: the shadow, then the outline (half of it shows outside the letters), before the letters themselves.
@@ -4981,7 +5064,7 @@
       // typing in, not by the page underneath it.
       if (skip && o.field === skip && (o.k === "text" || o.k === "guide")) continue;
       if (o.k === "rect") around(o, () => { rect(page, o.x, o.y, o.w, o.h, o.c); if (o.ol) outlineOp(page, o); });
-      else if (o.k === "path") around(o, () => { const ctx = page.ctx; tracePath(ctx, o.shape, page.u(o.x), page.u(o.y), page.u(o.w), page.u(o.h), o.corner); ctx.fillStyle = o.c; ctx.fill(); if (o.ol) outlineOp(page, o); });
+      else if (o.k === "path") around(o, () => { const ctx = page.ctx; const gp = tracePath(ctx, o.shape, page.u(o.x), page.u(o.y), page.u(o.w), page.u(o.h), o.corner); ctx.fillStyle = o.c; if (gp) ctx.fill(gp.path, gp.rule); else ctx.fill(); if (o.ol) outlineOp(page, o); });
       else if (o.k === "stroke") around(o, () => strokeOp(page, o));
       else if (o.k === "text") around(o, () => {
         font(page, ...o.f);
@@ -5007,7 +5090,7 @@
         if (!img) { around(o, () => missing(page, P, o.x, o.y, o.w, o.h)); continue; }
         around(o, () => {
           const shaped = o.shape && o.shape !== "rect" || (o.shape === "rect" && o.corner > 0);
-          if (shaped) { page.ctx.save(); tracePath(page.ctx, o.shape, page.u(o.x), page.u(o.y), page.u(o.w), page.u(o.h), o.corner); page.ctx.clip(); }
+          if (shaped) { page.ctx.save(); const gp = tracePath(page.ctx, o.shape, page.u(o.x), page.u(o.y), page.u(o.w), page.u(o.h), o.corner); if (gp) page.ctx.clip(gp.path, gp.rule); else page.ctx.clip(); }
           if (o.deco && !shaped) { decoPhoto(page, P, o.deco, img, shot, o.x, o.y, o.w, o.h, o.mode, o.seed || 0); return; }
           const r = o.mode === "crop" ? drawPhoto(page, img, shot, o.x, o.y, o.w, o.h) : fitPhoto(page, img, shot, o.x, o.y, o.w, o.h, o.mode === "fit-right" ? "right" : o.mode === "fit-left" ? "left" : "center");
           if (shaped) page.ctx.restore();
@@ -5662,6 +5745,20 @@
   .sb-tplwrap .sb-tplrm { top: 4px; right: 4px; }
   .sb-brandlogo { display: block; max-width: 160px; max-height: 64px; margin: 4px 0 8px; object-fit: contain; background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0 / 12px 12px; border-radius: 6px; padding: 6px; }
   .sb-cpbrand { margin: 8px 0 2px; }
+  .sb-graphics { display: grid; grid-template-columns: repeat(auto-fill, minmax(36px, 1fr)); gap: 6px; margin: 4px 0 6px; }
+  .sb-graphics button { all: unset; box-sizing: border-box; display: flex; align-items: center; justify-content: center; aspect-ratio: 1; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--paper, #fff); color: var(--ink, #141416); cursor: pointer; }
+  .sb-graphics button svg { width: 20px; height: 20px; }
+  .sb-graphics button:hover { border-color: var(--ink, #141416); }
+  .sb-graphics button[aria-checked=true] { border-color: var(--accent, #d24e1a); color: var(--accent, #d24e1a); box-shadow: 0 0 0 1px var(--accent, #d24e1a); }
+  .sb-graphics button:focus-visible { outline: 2px solid var(--ink, #141416); outline-offset: 1px; }
+  .sb-ownfonts { list-style: none; margin: 4px 0 8px; padding: 0; border: 1px solid var(--sb-line); border-radius: 10px; }
+  .sb-ownfonts li { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-top: 1px solid var(--sb-line); }
+  .sb-ownfonts li:first-child { border-top: 0; }
+  .sb-ownfont-aa { flex: none; width: 34px; font-size: 22px; line-height: 1; }
+  .sb-ownfont-name { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .sb-ownfont-name small { font-size: 11.5px; color: var(--ink-soft, #5c5e66); }
+  .sb-ownfonts button { all: unset; width: 24px; height: 24px; text-align: center; border-radius: 6px; cursor: pointer; color: var(--ink-soft, #5c5e66); }
+  .sb-ownfonts button:hover { background: var(--sb-sunk); color: var(--ink, #141416); }
   .sb-additem canvas.sb-tplpic { grid-row: 1 / 3; width: 34px; height: auto; border-radius: 2px; box-shadow: 0 0 0 1px var(--sb-line), 0 1px 2px rgba(0,0,0,.12); }
   .sb-fx select { width: 100%; padding: 7px 9px; border: 1px solid var(--sb-line); border-radius: 7px; background: var(--paper, #fff); color: inherit; font: 500 12.5px/1.3 Inter, system-ui, sans-serif; }
   .sb-step span:first-child { flex: 1; color: var(--ink-soft, #5c5e66); }
@@ -6544,6 +6641,9 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
        everything else works. */
     outsideRefresh().catch(() => {});
     tplRefresh().catch(() => {});
+    // Your fonts are read after the editor first draws: once they are in, the
+    // page, the strip and the Design panel (its list and menus) draw again.
+    loadOwnFonts().then(() => { if (OWN_FONTS.length && book && root.isConnected) { schedulePreview(0); scheduleStrip(200); if ($("#sbPanelDesign")) drawDesign(); } });
     nameOnHover(root);
     document.documentElement.classList.add("sb-book");
     // The site's router replaces the page's contents to leave: the moment the
@@ -8606,6 +8706,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         : k === "photo" ? { k: "photo", x: at(0.12), y: at(0.16), w: 0.45, h: 0.3 }
         : k === "logo" ? { k: "photo", x: 0.7, y: 0.04, w: 0.24, h: 0.09, p: { id: brandOf().logo, x: 0.5, y: 0.5, zoom: 1, fit: "whole" } }
         : k === "shape" ? { k: "shape", x: at(0.12), y: at(0.16), w: 0.45, h: 0.18, fill: "accent" }
+        : k === "drawing" ? { k: "shape", x: at(0.3), y: at(0.3), w: 0.2, h: round4((0.2 * geometry(book).Wa) / geometry(book).Ha), fill: "accent", shape: "g:sparkle" }
         : { k: "line", x: at(0.12), y: at(0.2), w: 0.3, thick: "narrow", color: "rule" };
       blocks.push(b);
       blockSel = blocks.length - 1;
@@ -8938,7 +9039,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       const pct = Math.round(sizeScale(f) * 100);
       const nowMm = textSizeMm(host.key);
       bar.innerHTML = `
-        <select data-barfont aria-label="Font"><option value="">Style's font</option>${FONT_LIST.map((x) => `<option value="${x.key}" ${f.font === x.key ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select>
+        <select data-barfont aria-label="Font"><option value="">Style's font</option>${allFonts().map((x) => `<option value="${x.key}" ${f.font === x.key ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select>
         <span class="sb-barsize"><button type="button" data-barsize="-10" aria-label="Smaller">−</button><output title="${pct}% of the style's size">${nowMm ? `${mmToPt(nowMm)} pt` : `${pct}%`}</output><button type="button" data-barsize="10" aria-label="Bigger">+</button></span>
         <button type="button" data-barcolour aria-expanded="false" aria-label="Colour"><i class="sb-bardot" style="background:${tintOf(f.color, paletteFor(book), (editing.region.type || {}).color || "#000")}"></i></button>
         <button type="button" data-barweight aria-pressed="${f.weight === "bold"}" aria-label="Bold"><b>B</b></button>
@@ -9827,7 +9928,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       if (para > n) para = 0;
       const f = para ? ((whole.paras || {})[String(para)] || {}) : whole;
       const P = paletteFor(book);
-      const groups = ["Serif", "Sans", "Condensed", "Mono"].map((kind) => `<optgroup label="${kind}">${FONT_LIST.filter((x) => x.kind === kind).map((x) => `<option value="${x.key}" ${f.font === x.key ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</optgroup>`).join("");
+      const groups = fontGroups().map((kind) => `<optgroup label="${kind === "Yours" ? "Your fonts" : kind}">${allFonts().filter((x) => x.kind === kind).map((x) => `<option value="${x.key}" ${f.font === x.key ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</optgroup>`).join("");
       const set = fmtSet(whole);
       const pct = Math.round(sizeScale(f) * 100);
       const picker = n >= 2
@@ -10620,6 +10721,8 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       const mmY = (v) => `${(v * G.Ha).toFixed(1)} mm`;
       const step = (label, attr, minus, plus, value) => `<div class="sb-step"><span>${esc(label)}</span><button type="button" data-${attr}="${minus}" aria-label="${esc(label)} less">−</button><output>${esc(value)}</output><button type="button" data-${attr}="${plus}" aria-label="${esc(label)} more">+</button></div>`;
       const fade = b && typeof b.o === "number" ? b.o : 1;
+      // The drawings (see GRAPHICS), for a shape or a photograph to take.
+      const graphicsRow = (bb) => (bb && (bb.k === "shape" || bb.k === "photo") ? `<span class="sb-label" style="display:block;margin-top:8px">${bb.k === "photo" ? "Or cut to a drawing" : "Or a drawing"}</span><div class="sb-graphics" role="radiogroup" aria-label="Drawings">${GRAPHICS.map(([k, n, d, rule]) => `<button type="button" role="radio" data-shape="g:${k}" aria-checked="${shapeOf(bb) === `g:${k}`}" title="${esc(n)}" aria-label="${esc(n)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}" fill="currentColor" fill-rule="${rule || "nonzero"}"/></svg></button>`).join("")}</div>` : "");
       // Effects (see effectsOf).
       const shNow = b && b.shadow && typeof b.shadow === "object" ? b.shadow : null;
       const shKind = shNow ? (SHADOW_KINDS.find(([, , v]) => v.d === shNow.d && v.b === shNow.b && v.o === shNow.o) || ["custom"])[0] : "";
@@ -10655,16 +10758,16 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="If they don't all fit">${[["", "Make them smaller"], ["cut", "Keep the size"]].map(([k, n]) => `<button type="button" role="radio" data-tfit="${k}" aria-checked="${(b.fit || "") === k}">${n}</button>`).join("")}</div></div>` : "";
       const photoShape = b && b.k === "photo" ? `
         <div class="sb-field"><span class="sb-label">Shape</span>
-          <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Shape">${[["rect", "▭ Box"], ["round", "▢ Rounded"], ["chamfer", "⬠ Cut corners"], ["ellipse", "◯ Oval"], ["triangle", "△ Triangle"], ["diamond", "◇ Diamond"], ["star", "☆ Star"], ["parallelogram", "▱ Slanted"]].map(([k, n]) => `<button type="button" role="radio" data-shape="${k}" aria-checked="${shapeOf(b) === k}">${n}</button>`).join("")}</div>
-          ${shapeOf(b) === "ellipse" ? "" : `<label class="sb-range">Rounded corners <input type="range" min="0" max="50" step="1" value="${Math.round(cornerOf(b) * 100)}" data-cornerpct aria-valuetext="${Math.round(cornerOf(b) * 100)} percent"></label>`}
+          <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Shape">${[["rect", "▭ Box"], ["round", "▢ Rounded"], ["chamfer", "⬠ Cut corners"], ["ellipse", "◯ Oval"], ["triangle", "△ Triangle"], ["diamond", "◇ Diamond"], ["star", "☆ Star"], ["parallelogram", "▱ Slanted"]].map(([k, n]) => `<button type="button" role="radio" data-shape="${k}" aria-checked="${shapeOf(b) === k}">${n}</button>`).join("")}</div>${graphicsRow(b)}
+          ${shapeOf(b) === "ellipse" || isGraphic(shapeOf(b)) ? "" : `<label class="sb-range">Rounded corners <input type="range" min="0" max="50" step="1" value="${Math.round(cornerOf(b) * 100)}" data-cornerpct aria-valuetext="${Math.round(cornerOf(b) * 100)} percent"></label>`}
           <p class="sb-hint">The photograph is cut to the shape.</p></div>` : "";
       const paint = b && (b.k === "shape" || b.k === "line" || b.k === "text") ? `
         <div class="sb-field"><span class="sb-label">${b.k === "text" ? "Colour behind the words" : "Colour"}</span>
           <span class="sb-swatches" role="group" aria-label="The book's own colours">${b.k === "text" ? swatch("fill", "", "None", "linear-gradient(135deg, #fff 45%, #999 50%, #fff 55%)", !b.fill) : ""}${fills.map(([k, n, c]) => swatch("fill", k, n, c, (b.k === "line" ? b.color : b.fill) === k)).join("")}${anySwatch("fillany", /^#/.test(b.k === "line" ? b.color || "" : b.fill || "") ? (b.k === "line" ? b.color : b.fill) : "")}</span>
           <div class="sb-cphost" data-fillpick hidden></div>${b.k === "text" ? `<p class="sb-hint">A shape with words in it: the words sit inside the colour.</p>` : ""}</div>
         ${b.k === "shape" || (b.k === "text" && b.fill) ? `<div class="sb-field"><span class="sb-label">Shape</span>
-          <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Shape">${[["rect", "▭ Box"], ["round", "▢ Rounded"], ["chamfer", "⬠ Cut corners"], ["ellipse", "◯ Oval"], ["triangle", "△ Triangle"], ["diamond", "◇ Diamond"], ["star", "☆ Star"], ["parallelogram", "▱ Slanted"]].map(([k, n]) => `<button type="button" role="radio" data-shape="${k}" aria-checked="${shapeOf(b) === k}">${n}</button>`).join("")}</div>
-          ${shapeOf(b) === "ellipse" ? "" : `<label class="sb-range">Rounded corners <input type="range" min="0" max="50" step="1" value="${Math.round(cornerOf(b) * 100)}" data-cornerpct aria-valuetext="${Math.round(cornerOf(b) * 100)} percent"></label><p class="sb-hint">0 is sharp; it rounds the tips of a star or a triangle too.</p>`}</div>` : ""}
+          <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Shape">${[["rect", "▭ Box"], ["round", "▢ Rounded"], ["chamfer", "⬠ Cut corners"], ["ellipse", "◯ Oval"], ["triangle", "△ Triangle"], ["diamond", "◇ Diamond"], ["star", "☆ Star"], ["parallelogram", "▱ Slanted"]].map(([k, n]) => `<button type="button" role="radio" data-shape="${k}" aria-checked="${shapeOf(b) === k}">${n}</button>`).join("")}</div>${graphicsRow(b)}
+          ${shapeOf(b) === "ellipse" || isGraphic(shapeOf(b)) ? "" : `<label class="sb-range">Rounded corners <input type="range" min="0" max="50" step="1" value="${Math.round(cornerOf(b) * 100)}" data-cornerpct aria-valuetext="${Math.round(cornerOf(b) * 100)} percent"></label><p class="sb-hint">0 is sharp; it rounds the tips of a star or a triangle too.</p>`}</div>` : ""}
         ${b.k === "shape" ? `<div class="sb-field"><span class="sb-label">Put something in it</span><div class="sb-adds"><button type="button" data-into="text">Words in this shape</button><button type="button" data-into="photo">A photo in this shape</button></div></div>` : ""}
         ${b.k === "line" ? `<div class="sb-field"><span class="sb-label">Runs</span>
           <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="How the line runs">${[["h", "▬ Across"], ["v", "┃ Down"], ["d", "╲ Diagonal"], ["u", "╱ Diagonal up"], ["curve", "◠ Curved"], ["wave", "∿ Wavy"]].map(([k, n]) => `<button type="button" role="radio" data-lpath="${k}" aria-checked="${linePath(b) === k}">${n}</button>`).join("")}${linePath(b) === "free" ? `<button type="button" role="radio" data-lpath="free" aria-checked="true">✎ Drawn by hand</button>` : ""}</div>
@@ -10690,6 +10793,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           <button type="button" data-addblk="photo">+ Photo</button>
           <button type="button" data-addblk="shape">+ Shape</button>
           <button type="button" data-addblk="line">+ Line</button>
+          <button type="button" data-addblk="drawing">+ Drawing</button>
           <button type="button" data-addblk="draw" aria-pressed="${drawing}">✎ Draw by hand</button>
           ${brandOf().logo && (outsideCache || []).some((r) => r.id === brandOf().logo) ? `<button type="button" data-addblk="logo">+ Your logo</button>` : ""}
         </div>
@@ -11686,13 +11790,18 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     function brandHtml() {
       const br = brandOf();
       const logoRec = br.logo ? (outsideCache || []).find((r) => r.id === br.logo) : null;
-      const fontOpts = (cur) => `<option value="">The style's own</option>${["Serif", "Sans", "Condensed", "Mono"].map((kind) => `<optgroup label="${kind}">${FONT_LIST.filter((x) => x.kind === kind).map((x) => `<option value="${x.key}" ${cur === x.key ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</optgroup>`).join("")}`;
+      const fontOpts = (cur) => `<option value="">The style's own</option>${fontGroups().map((kind) => `<optgroup label="${kind === "Yours" ? "Your fonts" : kind}">${allFonts().filter((x) => x.kind === kind).map((x) => `<option value="${x.key}" ${cur === x.key ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</optgroup>`).join("")}`;
       return `<div class="sb-sec"><h3>Your brand</h3>
           <p class="sb-hint">Kept on this computer, for every book: your colours come first wherever a colour is chosen, and your fonts and logo are a click away.</p>
           <div class="sb-field"><span class="sb-label">Your colours</span>
             <span class="sb-swatches sb-brandcols" role="group" aria-label="Your colours">${br.colours.map((hx) => `<span class="sb-brandcol"><i style="background:${hx}" title="${hx}"></i><button type="button" data-brandcolrm="${hx}" aria-label="Take ${hx} out of your colours" title="Take it out">×</button></span>`).join("")}<button type="button" class="sb-swatch sb-any" data-brandadd aria-expanded="false" title="Add a colour" aria-label="Add a colour"><i style="background:conic-gradient(#f33, #ff3, #3f3, #3ff, #33f, #f3f, #f33)"></i></button></span>
             <div class="sb-cphost" data-brandaddpick hidden></div>
             <div class="sb-adds"><button type="button" data-brandaccent>Add this book's accent</button></div></div>
+          <div class="sb-field"><span class="sb-label">Your fonts</span>
+            ${OWN_FONTS.length ? `<ul class="sb-ownfonts">${OWN_FONTS.map((f) => `<li><span class="sb-ownfont-aa" style="font-family:${esc(f.family)}">Aa</span><span class="sb-ownfont-name"><b>${esc(f.name)}</b><small>${f.fmt === "woff2" ? "WOFF2: prints as picture in a PDF" : "prints as real type"}</small></span><button type="button" data-fontrm="${esc(f.key)}" aria-label="Take ${esc(f.name)} off this computer" title="Take it off this computer">×</button></li>`).join("")}</ul>` : ""}
+            <div class="sb-adds"><button type="button" id="sbFontAdd">Add a font file…</button></div>
+            <input type="file" id="sbFontFile" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2,application/font-woff,application/x-font-ttf" multiple hidden>
+            <p class="sb-hint">A TTF, OTF or WOFF file you're licensed to use. Kept on this computer and offered in every font menu under “Your fonts”; a computer without it prints those words in the style's own font.</p></div>
           <div class="sb-field"><label for="sbBrandHead">Headline font</label><select id="sbBrandHead">${fontOpts(br.head)}</select></div>
           <div class="sb-field"><label for="sbBrandBody">Words font</label><select id="sbBrandBody">${fontOpts(br.body)}</select></div>
           <div class="sb-field"><span class="sb-label">Your logo</span>
@@ -11768,6 +11877,35 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           API.toast(soft ? `Your logo is in. It is small (${img.naturalWidth}×${img.naturalHeight} px) and will print soft: an SVG, or a PNG at least 1000 px across, prints sharp.` : "Your logo is in. On an Anything page, “+ Your logo” puts it on the page.");
         });
       }
+      // Your fonts.
+      { const add = panel.querySelector("#sbFontAdd"), file = panel.querySelector("#sbFontFile");
+        if (add && file) {
+          add.addEventListener("click", () => file.click());
+          file.addEventListener("change", async () => {
+            const files = [...(file.files || [])]; file.value = "";
+            let n = 0;
+            for (const f of files) {
+              if (f.size > 5 * 1048576) { API.toast(`“${f.name}” is over 5 MB, so it wasn't added.`); continue; }
+              const bytes = await f.arrayBuffer();
+              const b4 = new Uint8Array(bytes.slice(0, 4)), sig = String.fromCharCode(...b4);
+              const fmt = sig === "wOF2" ? "woff2" : sig === "wOFF" ? "woff" : sig === "OTTO" ? "otf" : (sig === "true" || (b4[0] === 0 && b4[1] === 1 && b4[2] === 0 && b4[3] === 0)) ? "ttf" : "";
+              if (!fmt) { API.toast(`“${f.name}” isn't a font file (TTF, OTF, WOFF or WOFF2).`); continue; }
+              const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+              const name = String(f.name || "").replace(/\.(ttf|otf|woff2?)$/i, "").replace(/[-_]+/g, " ").trim().slice(0, 40) || "My font";
+              const rec = { id, name, fmt, bytes, at: Date.now() };
+              if (!(await registerOwnFont(rec))) { API.toast(`This browser can't read “${f.name}” as a font.`); continue; }
+              try { await fontPut(rec); n++; } catch (e) { API.toast("Not saved — this computer's storage refused it."); }
+            }
+            if (n) { redrawBrand(); API.toast(n === 1 ? "Your font is in: it is in every font menu, under “Your fonts”." : `${n} fonts are in, under “Your fonts” in every font menu.`); }
+          });
+        } }
+      panel.querySelectorAll("[data-fontrm]").forEach((x) => x.addEventListener("click", async () => {
+        const key = x.dataset.fontrm, i = OWN_FONTS.findIndex((f) => f.key === key);
+        await fontDel(key.slice(4));
+        if (i >= 0) OWN_FONTS.splice(i, 1);
+        redrawBrand(); schedulePreview(0);
+        API.toast("Font taken off this computer. Words set in it now print in the style's own font.");
+      }));
       { const rm = panel.querySelector("[data-brandlogorm]"); if (rm) rm.addEventListener("click", () => { edit((br) => { br.logo = ""; }); redrawBrand(); if (freePage()) drawInspector(); API.toast("Your logo is out of the brand kit. Pages that already have it keep it."); }); }
     }
     async function saveTemplate(kind) {
@@ -11992,6 +12130,8 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       const lib = library();
       await ensureBookFonts(b);
       const out = [];
+      { const miss = [...new Set(JSON.stringify(b).match(/"own_[a-z0-9]{4,24}"/g) || [])].map((x) => x.slice(1, -1)).filter((k) => !OWN_FONTS.some((f) => f.key === k));
+        if (miss.length) out.push({ i: -1, text: `${miss.length === 1 ? "One of your fonts isn't" : `${miss.length} of your fonts aren't`} on this computer, so those words print in the style's own font — add the file in Design → Brand kit → Your fonts` }); }
       /* A book made for someone else: a talent's prints only what is cleared
          for their card, and a photograph from a hidden album is still
          downloadable from the site, which matters for work not yet out. */
@@ -12327,6 +12467,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         const marks = format === "pdf" && printMarks;
         const cmyk = format === "pdf" && printCmyk;
         const BP = format !== "png" ? await loadPrint() : null;
+        if (BP && BP.addOwnFace) { await loadOwnFonts(); for (const f of OWN_FONTS) BP.addOwnFace(ownFamily(f.id), f.bytes, f.name); }
         let print = null;
         if (BP && !watermarked) {
           btn.textContent = "Getting the fonts…";

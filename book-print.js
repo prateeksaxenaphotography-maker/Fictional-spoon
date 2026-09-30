@@ -64,6 +64,15 @@
     "space grotesk": { pkg: "space-grotesk", w: all(300, 700), it: [] },
     "oswald": { pkg: "oswald", w: all(200, 700), it: [] }
   };
+  /* The studio's own fonts (book-builder's "Your fonts"): the file's bytes,
+     handed over before a PDF is made; one face drawn at every weight. A TTF,
+     OTF or WOFF is set as type; a WOFF2 (Brotli) stays in the picture. */
+  const OWN = new Map();
+  function addOwnFace(family, bytes, name) {
+    const fam = String(family).toLowerCase();
+    OWN.set(fam, { bytes: new Uint8Array(bytes.slice ? bytes.slice(0) : bytes), name: String(name || fam) });
+    FACES[fam] = { pkg: fam.replace(/[^a-z0-9-]/g, ""), own: fam, w: [100, 200, 300, 400, 500, 600, 700, 800, 900], it: [] };
+  }
   const FRAUNCES_SRC = "https://cdn.jsdelivr.net/gh/undercasetype/Fraunces@ea507ccb0a2a8a3f8644385c4de7fa3fa1078ffe/fonts/ttf";
   const FRAUNCES_W = { 100: "Thin", 300: "Light", 400: "Regular", 600: "SemiBold", 700: "Bold", 900: "Black" };
   const nearest = (list, w) => list.reduce((b, x) => (Math.abs(x - w) < Math.abs(b - w) ? x : b), list[0]);
@@ -130,7 +139,7 @@
     if (drawn === null) return null;
     const weight = nearest(italic ? fam.it : fam.w, drawn);
     const opsz = fam.opsz ? nearest(fam.opsz, pt) : 0;
-    return { key: `${fam.pkg}-${weight}-${italic ? "italic" : "normal"}${opsz ? `-o${opsz}` : ""}`, pkg: fam.pkg, weight, italic, opsz, px: f.px };
+    return { key: `${fam.pkg}-${weight}-${italic ? "italic" : "normal"}${opsz ? `-o${opsz}` : ""}`, pkg: fam.pkg, weight, italic, opsz, px: f.px, own: fam.own || null };
   }
 
   /* ---------- fonts: WOFF → TrueType → what the PDF needs ------------------ */
@@ -234,6 +243,20 @@
   const fontCache = new Map();   // "<pkg>-<w>-<style>-<subset>" → Promise<font|null>
   function fetchPart(face, subset) {
     const id = `${face.key}-${subset}`;
+    if (face.own) {
+      // One file holds every letter it has; nothing to fetch.
+      if (subset !== "latin") return Promise.resolve(null);
+      if (!fontCache.has(id)) fontCache.set(id, (async () => {
+        try {
+          const o = OWN.get(face.own); if (!o) return null;
+          const b = o.bytes, sig = String.fromCharCode(b[0], b[1], b[2], b[3]);
+          if (sig === "wOF2") return null;
+          const { sfnt, tables, cff } = sig === "wOFF" ? await woffToSfnt(b) : (() => { const t = sfntTables(b); return { sfnt: b, tables: t, cff: !!t["CFF "] }; })();
+          return { id, name: `${face.pkg}-${face.weight}`, sfnt, cff, italic: false, ...readFont(tables) };
+        } catch (e) { return null; }
+      })());
+      return fontCache.get(id);
+    }
     if (!fontCache.has(id)) {
       // A Fraunces cut is one whole TrueType file with every letter it has.
       const ttf = face.opsz ? `${FRAUNCES_SRC}/Fraunces${face.opsz}pt-${face.italic ? (face.weight === 400 ? "" : FRAUNCES_W[face.weight]) + "Italic" : FRAUNCES_W[face.weight]}.ttf` : null;
@@ -742,5 +765,5 @@
     return { bytes: out, fonts: fonts.size };
   }
 
-  window.BookPrint = { hook, takeRuns, shiftRuns, withBleed, buildPdf, cmykJpeg, toCmyk, newNeeds, loadNeeds, faceOf, parseFont };
+  window.BookPrint = { hook, takeRuns, shiftRuns, withBleed, buildPdf, cmykJpeg, toCmyk, newNeeds, loadNeeds, faceOf, parseFont, addOwnFace };
 })();

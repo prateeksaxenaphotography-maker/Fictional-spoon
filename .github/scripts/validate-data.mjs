@@ -522,7 +522,7 @@ if (books !== undefined && books !== null) {
       if (f.size !== undefined && !(typeof f.size === "number" && f.size >= 0.6 && f.size <= 1.6)) fail(`${what} at size ${JSON.stringify(f.size)}; it must be 0.6 to 1.6`);
       if (f.weight !== undefined && !["light", "regular", "bold"].includes(f.weight)) fail(`${what} in weight ${JSON.stringify(f.weight)}`);
       if (f.italic !== undefined && f.italic !== true) fail(`${what} with italic ${JSON.stringify(f.italic)}; only true is written`);
-      if (f.font !== undefined && !FONTS.has(f.font)) fail(`${what} in an unknown font ${JSON.stringify(f.font)}`);
+      if (f.font !== undefined && !FONTS.has(f.font) && !/^own_[a-z0-9]{4,24}$/.test(String(f.font))) fail(`${what} in an unknown font ${JSON.stringify(f.font)}`);
       if (f.color !== undefined && !["ink", "soft", "accent", "paper", "white", "deep"].includes(f.color) && !/^#[0-9a-f]{6}$/.test(String(f.color))) fail(`${what} in the colour ${JSON.stringify(f.color)}; use ink, soft, accent, paper, white, deep or #rrggbb`);
       if (f.align !== undefined && !ALIGNS.has(f.align)) fail(`${what} aligned ${JSON.stringify(f.align)}`);
       if (f.list !== undefined && !["bullet", "number"].includes(f.list)) fail(`${what} as a list ${JSON.stringify(f.list)}; the app knows bullet and number`);
@@ -577,7 +577,7 @@ if (books !== undefined && books !== null) {
     const LINE_TIPS = new Set(["pencil", "brush", "marker", "nib", "taper", "sumi", "bristle"]);
     const FILLS = new Set(["ink", "soft", "accent", "paper", "white", "deep", "rule"]);
     const BLOCK_KEYS = { text: ["k", "x", "y", "w", "h", "r", "t", "role", "fit", "style", "fill", "o", "shape", "corner"], photo: ["k", "x", "y", "w", "h", "r", "p", "edge", "edgeWidth", "shape", "corner"], shape: ["k", "x", "y", "w", "h", "r", "fill", "o", "shape", "corner"], line: ["k", "x", "y", "w", "h", "r", "color", "o", "thick", "width", "path", "bend", "waves", "soft", "pts", "ends", "tip"] };
-    const SHAPE_KINDS = new Set(["round", "chamfer", "ellipse", "triangle", "diamond", "star", "parallelogram"]);
+    const SHAPE_KINDS = new Set(["round", "chamfer", "ellipse", "triangle", "diamond", "star", "parallelogram", "g:heart", "g:sparkle", "g:burst", "g:badge", "g:ring", "g:flower", "g:sun", "g:moon", "g:leaf", "g:arrow", "g:curve", "g:speech", "g:quotes", "g:camera", "g:film", "g:frame", "g:focus", "g:pin", "g:mail", "g:phone", "g:check", "g:plus", "g:stroke"]);
     const isFill = (v) => FILLS.has(v) || /^#[0-9a-f]{6}$/.test(String(v));
     // A photograph's adjustments (v561): whole numbers, -100…100 (vignette 0…100), none written as 0; bw is true or absent.
     const ADJ_FROM = { br: -100, ct: -100, sa: -100, wm: -100, vg: 0 };
