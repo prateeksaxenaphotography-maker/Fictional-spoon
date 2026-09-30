@@ -746,6 +746,79 @@
     return `${d.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short", ...(d.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}) })}, ${time}`;
   };
 
+  /* My templates (phase 6, Sep 30 2026): a page or a whole book kept to start
+     from again. On this computer (IndexedDB), never published: a page
+     template is offered under "+ Add page", a book template by New book. */
+  const TPL_DB = "wps-book-templates", TPL_STORE = "t";
+  let tplDbP = null;
+  function tplDb() {
+    if (tplDbP) return tplDbP;
+    tplDbP = new Promise((res, rej) => {
+      let settled = false;
+      const done = (fn, v) => { if (!settled) { settled = true; fn(v); } };
+      const t = setTimeout(() => done(rej, new Error("indexedDB timeout")), 1500);
+      let r;
+      try { r = indexedDB.open(TPL_DB, 1); } catch (e) { clearTimeout(t); return done(rej, e); }
+      r.onupgradeneeded = () => { const d = r.result; if (!d.objectStoreNames.contains(TPL_STORE)) d.createObjectStore(TPL_STORE, { keyPath: "id" }); };
+      r.onsuccess = () => { clearTimeout(t); done(res, r.result); };
+      r.onerror = () => { clearTimeout(t); done(rej, r.error); };
+      r.onblocked = () => { clearTimeout(t); done(rej, new Error("indexedDB blocked")); };
+    });
+    tplDbP.catch(() => { tplDbP = null; });
+    return tplDbP;
+  }
+  const tplAll = async () => { try { const d = await tplDb(); return await new Promise((res, rej) => { const q = d.transaction(TPL_STORE, "readonly").objectStore(TPL_STORE).getAll(); q.onsuccess = () => res((q.result || []).sort((a, c) => c.at - a.at)); q.onerror = () => rej(q.error); }); } catch (e) { return []; } };
+  const tplPut = async (rec) => { const d = await tplDb(); return new Promise((res, rej) => { const tx = d.transaction(TPL_STORE, "readwrite"); tx.objectStore(TPL_STORE).put(rec); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); };
+  const tplDel = async (id) => { try { const d = await tplDb(); await new Promise((res, rej) => { const tx = d.transaction(TPL_STORE, "readwrite"); tx.objectStore(TPL_STORE).delete(id); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); } catch (e) {} };
+  let tplCache = [];
+  const tplRefresh = async () => { tplCache = await tplAll(); return tplCache; };
+  // A page, or a book, with its frames kept and emptied of photographs.
+  function withoutPhotos(entry) {
+    const e = JSON.parse(JSON.stringify(entry));
+    if (Array.isArray(e.photos)) e.photos = [];
+    for (const b of e.blocks || []) if (b && b.k === "photo") delete b.p;
+    return e;
+  }
+  function bookWithoutPhotos(b) {
+    const v = JSON.parse(JSON.stringify(b));
+    delete v.cover;
+    v.pages = (v.pages || []).map(withoutPhotos);
+    if (v.coverPage) v.coverPage = withoutPhotos(v.coverPage);
+    return v;
+  }
+  /* The brand kit (phase 6): the studio's colours, fonts and logo, kept on
+     this computer for every book. Its colours come first wherever a colour
+     is chosen; "Use my brand" sets a book's text styles and colourway from
+     it; new books can start in it. */
+  const BRAND_KEY = "wps_book_brand";
+  const BRAND_EMPTY = () => ({ colours: [], head: "", body: "", logo: "", start: false });
+  function brandOf() {
+    try {
+      const v = JSON.parse(localStorage.getItem(BRAND_KEY) || "null");
+      if (!v || typeof v !== "object") return BRAND_EMPTY();
+      return {
+        colours: (Array.isArray(v.colours) ? v.colours : []).filter((c) => /^#[0-9a-f]{6}$/.test(c)).slice(0, 10),
+        head: typeof v.head === "string" && fontByKey(v.head) ? v.head : "",
+        body: typeof v.body === "string" && fontByKey(v.body) ? v.body : "",
+        logo: typeof v.logo === "string" ? v.logo : "",
+        start: v.start === true
+      };
+    } catch (e) { return BRAND_EMPTY(); }
+  }
+  const saveBrand = (b) => { try { localStorage.setItem(BRAND_KEY, JSON.stringify(b)); return true; } catch (e) { return false; } };
+  const brandHas = (br) => !!(br.colours.length || br.head || br.body);
+  // A book in the brand: its fonts as the text styles, its first colour as the colourway.
+  function applyBrand(bk, br = brandOf()) {
+    if (br.head || br.body) {
+      const ts = { ...((bk.typeset && typeof bk.typeset === "object") ? bk.typeset : {}) };
+      if (br.head) ts.head = { ...(ts.head || {}), font: br.head };
+      if (br.body) for (const r of ["body", "intro", "caption"]) ts[r] = { ...(ts[r] || {}), font: br.body };
+      bk.typeset = ts;
+    }
+    if (br.colours[0]) bk.colourway = br.colours[0];
+    return bk;
+  }
+
   // Read once into memory, because library() is called on every redraw and a
   // page turn cannot wait on a database.
   let outsideCache = [];
@@ -790,6 +863,35 @@
       document.body.appendChild(box);
       const first = box.querySelector('input[name="sbOutWhere"]');
       if (first) first.focus();
+    });
+  }
+
+  function askTemplate(kind, suggest) {
+    return new Promise((resolve) => {
+      const box = document.createElement("div");
+      box.className = "sb-modal-back";
+      box.innerHTML = `
+        <div class="sb-modal" role="dialog" aria-modal="true" aria-labelledby="sbTplTitle">
+          <h3 id="sbTplTitle">Save this ${kind} as a template</h3>
+          <div class="sb-field"><label for="sbTplName">Its name</label><input type="text" id="sbTplName" maxlength="60" value="${API.esc(suggest || "")}"></div>
+          <label class="sb-check-row"><input type="checkbox" id="sbTplPhotos"> Keep its photographs</label>
+          <p class="sb-hint">Left off, the frames stay where they are, empty, ready for new photographs. The words and the look are kept. A template stays on this computer; ${kind === "book" ? "it appears when you start a New book" : "it appears under “+ Add page”, in My templates"}.</p>
+          <div class="sb-modal-foot">
+            <button type="button" class="sb-btn" data-tpl-cancel>Cancel</button>
+            <button type="button" class="sb-btn dark" data-tpl-ok>Save the template</button>
+          </div>
+        </div>`;
+      const close = (v) => { box.remove(); document.removeEventListener("keydown", onKey); resolve(v); };
+      box._cancel = () => close(null);
+      const ok = () => { const name = (box.querySelector("#sbTplName").value || "").trim(); if (!name) { box.querySelector("#sbTplName").focus(); return; } close({ name: name.slice(0, 60), photos: box.querySelector("#sbTplPhotos").checked }); };
+      const onKey = (e) => { if (e.key === "Escape") close(null); if (e.key === "Enter" && e.target && e.target.id === "sbTplName") ok(); };
+      box.addEventListener("click", (e) => {
+        if (e.target === box || e.target.closest("[data-tpl-cancel]")) return close(null);
+        if (e.target.closest("[data-tpl-ok]")) ok();
+      });
+      document.addEventListener("keydown", onKey);
+      document.body.appendChild(box);
+      const inp = box.querySelector("#sbTplName"); inp.focus(); inp.select();
     });
   }
 
@@ -5534,6 +5636,17 @@
   .sb-lookbtn[aria-checked=true] .sb-lookpic { outline-color: var(--accent, #d24e1a); }
   .sb-lookbtn:focus-visible .sb-lookpic { outline-color: var(--ink, #111); }
   .sb-fx .sb-field { margin-top: 12px; }
+  .sb-brandcols { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .sb-brandcol { position: relative; display: inline-flex; }
+  .sb-brandcol i { display: block; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--sb-line); }
+  .sb-brandcol button, .sb-tplrm { all: unset; position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%; background: var(--ink, #111); color: #fff; font: 700 12px/18px Inter, system-ui, sans-serif; text-align: center; cursor: pointer; opacity: 0; transition: opacity .12s; }
+  .sb-brandcol:hover button, .sb-brandcol button:focus-visible, .sb-tplwrap:hover .sb-tplrm, .sb-tplrm:focus-visible { opacity: 1; }
+  @media (pointer: coarse) { .sb-brandcol button, .sb-tplrm { opacity: 1; } }
+  .sb-tplwrap { position: relative; display: block; }
+  .sb-tplwrap .sb-tplrm { top: 4px; right: 4px; }
+  .sb-brandlogo { display: block; max-width: 160px; max-height: 64px; margin: 4px 0 8px; object-fit: contain; background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0 / 12px 12px; border-radius: 6px; padding: 6px; }
+  .sb-cpbrand { margin: 8px 0 2px; }
+  .sb-additem canvas.sb-tplpic { grid-row: 1 / 3; width: 34px; height: auto; border-radius: 2px; box-shadow: 0 0 0 1px var(--sb-line), 0 1px 2px rgba(0,0,0,.12); }
   .sb-fx select { width: 100%; padding: 7px 9px; border: 1px solid var(--sb-line); border-radius: 7px; background: var(--paper, #fff); color: inherit; font: 500 12.5px/1.3 Inter, system-ui, sans-serif; }
   .sb-step span:first-child { flex: 1; color: var(--ink-soft, #5c5e66); }
   .sb-step button { min-width: 34px; min-height: 32px; border: 1px solid var(--sb-line); border-radius: 7px; background: var(--paper, #fff); color: inherit; font: 600 14px/1 Inter, system-ui, sans-serif; cursor: pointer; }
@@ -6414,6 +6527,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
        the store will not open at all, the book simply has none of them and
        everything else works. */
     outsideRefresh().catch(() => {});
+    tplRefresh().catch(() => {});
     nameOnHover(root);
     document.documentElement.classList.add("sb-book");
     // The site's router replaces the page's contents to leave: the moment the
@@ -7034,7 +7148,40 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           return;
         }
         closeStart();
-        openBook(withWho(withKind(withLayout(newBook(`Book ${state.versions.length + 1}`), k), kind)), true, { sel: -1 });
+        const nb = withWho(withKind(withLayout(newBook(`Book ${state.versions.length + 1}`), k), kind));
+        // The studio's own books can start in its brand (Design → Brand kit).
+        if (forWho === "studio" && brandOf().start && brandHas(brandOf())) applyBrand(nb);
+        openBook(nb, true, { sel: -1 });
+      }
+      // A book from one of My templates, for whoever the chooser says.
+      function startFromTemplate(id) {
+        settle(); if (atLimit) return;
+        const box = $("#sbStart");
+        if (forWho === "talent" ? !forModel : (forWho !== "studio" && !forName.trim())) {
+          const need = box && box.querySelector(forWho === "talent" ? "#sbForModel" : "#sbForName");
+          const say = box && box.querySelector("#sbForNeed");
+          if (say) { say.hidden = false; say.textContent = forWho === "talent" ? "Pick the model first." : "Type their name first."; }
+          if (need) need.focus();
+          return;
+        }
+        const t = tplCache.find((x) => x.id === id && x.kind === "book");
+        let v = null; try { v = t ? JSON.parse(t.json) : null; } catch (e) { v = null; }
+        if (!v || !Array.isArray(v.pages)) { API.toast("That template couldn't be read."); return; }
+        closeStart();
+        delete v.madeFor;
+        v.id = uid(forWho !== "studio");
+        v.name = `${t.name} ${state.versions.length + 1}`.slice(0, 80);
+        v.updatedAt = Date.now();
+        if (forWho !== "studio") {
+          const m = forWho === "talent" ? modelsList().find((x) => x.key === forModel) : null;
+          const name = (m ? m.name : forName).trim().slice(0, 60);
+          v.madeFor = forWho === "talent" ? { kind: "talent", name, modelKey: m.key } : { kind: forWho, name };
+          v.name = `${name} — ${t.name}`.slice(0, 80);
+          // Their book never carries the studio-only pages.
+          v.pages = v.pages.filter((pg) => pg && !STUDIO_ONLY.has(pg.type));
+        }
+        openBook(v, true, { sel: -1 });
+        API.toast(`Started from your template “${t.name}”.`);
       }
       function openStart() {
         closeStart();
@@ -7057,12 +7204,21 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           <div class="sb-startcc" id="sbStartCC" hidden><button type="button" class="sb-btn" data-start="custom" data-compcard="1">Make the comp card →</button></div>
           <p class="sb-hint" id="sbCoverHint">Then the cover to begin with. It can be changed any time on the cover's own panel.</p>
           <div class="sb-starts" id="sbStartCovers">${COVER_LAYOUTS.map(([k, nm]) => `<button type="button" class="sb-startitem" data-start="${k}"><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(k === "custom" ? "From scratch (blank)" : nm)}</b><span>${esc(COVER_LAYOUT_NOTE[k])}</span></button>`).join("")}</div>
+          ${tplCache.some((t) => t.kind === "book") ? `<div id="sbStartTpls"><p class="sb-hint">Or start from one of your templates: its pages, words and look, as you saved them.</p>
+          <div class="sb-starts">${tplCache.filter((t) => t.kind === "book").map((t) => `<span class="sb-tplwrap"><button type="button" class="sb-startitem" data-starttpl="${esc(t.id)}"><span class="sb-startpic" data-tplpic="${esc(t.id)}"><span class="sb-hint">…</span></span><b>${esc(t.name)}</b><span>Your template · ${t.pages || 1} page${(t.pages || 1) === 1 ? "" : "s"}</span></button><button type="button" class="sb-tplrm" data-tpldel="${esc(t.id)}" aria-label="Delete the template ${esc(t.name)}" title="Delete this template">×</button></span>`).join("")}</div></div>` : ""}
         </div>`;
         root.appendChild(box);
         box.addEventListener("click", (e) => { if (e.target === box) { closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); } });
         box.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); } });
         box.querySelector("#sbStartClose").addEventListener("click", () => { closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); });
         box.querySelectorAll("[data-start]").forEach((b) => b.addEventListener("click", () => startBook(b.dataset.start)));
+        box.querySelectorAll("[data-starttpl]").forEach((b) => b.addEventListener("click", () => startFromTemplate(b.dataset.starttpl)));
+        box.querySelectorAll("[data-tpldel]").forEach((b) => b.addEventListener("click", async () => {
+          await tplDel(b.dataset.tpldel); await tplRefresh();
+          const w = b.closest(".sb-tplwrap"); if (w) w.remove();
+          const all = box.querySelector("#sbStartTpls"); if (all && !all.querySelector("[data-starttpl]")) all.remove();
+          API.toast("Template deleted.");
+        }));
         const setWho = (w) => {
           forWho = w;
           box.querySelectorAll("[data-for]").forEach((x) => x.setAttribute("aria-checked", String(x.dataset.for === w)));
@@ -7116,6 +7272,17 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
                 if (slot && box.isConnected && token === previewToken) slot.replaceChildren(r.page.canvas);
               }
             } catch (e) { /* the words stay */ }
+          }
+          // Your templates' covers, as they were saved.
+          for (const t of tplCache.filter((x) => x.kind === "book")) {
+            if (!box.isConnected || token !== previewToken) return;
+            let v; try { v = JSON.parse(t.json); } catch (e) { continue; }
+            try {
+              for await (const r of renderPages(v, { dpi: 22, cache, only: -1 })) {
+                const slot = box.querySelector(`[data-tplpic="${window.CSS && window.CSS.escape ? window.CSS.escape(t.id) : t.id}"]`);
+                if (slot && box.isConnected && token === previewToken) slot.replaceChildren(r.page.canvas);
+              }
+            } catch (e) { /* the name stays */ }
           }
         };
         box.drawPreviews = drawPreviews;
@@ -8266,12 +8433,13 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       const e = freePage(); if (!e) return;
       const blocks = blocksOf(e);
       if (blocks.length >= FREE_MAX) { API.toast(`A page holds ${FREE_MAX} things. Remove one to add another.`); return; }
-      if (k === "photo" && blocks.filter((b) => b.k === "photo").length >= FREE_PHOTO_MAX) { API.toast(`${FREE_PHOTO_MAX} photographs on one page is the most.`); return; }
+      if ((k === "photo" || k === "logo") && blocks.filter((b) => b.k === "photo").length >= FREE_PHOTO_MAX) { API.toast(`${FREE_PHOTO_MAX} photographs on one page is the most.`); return; }
       mark();
       const n = blocks.length;
       const at = (v) => round4(Math.min(0.72, v + n * 0.018));
       const b = k === "text" ? { k: "text", role: "body", t: "", x: at(0.12), y: at(0.16), w: 0.5, h: 0.18 }
         : k === "photo" ? { k: "photo", x: at(0.12), y: at(0.16), w: 0.45, h: 0.3 }
+        : k === "logo" ? { k: "photo", x: 0.7, y: 0.04, w: 0.24, h: 0.09, p: { id: brandOf().logo, x: 0.5, y: 0.5, zoom: 1, fit: "whole" } }
         : k === "shape" ? { k: "shape", x: at(0.12), y: at(0.16), w: 0.45, h: 0.18, fill: "accent" }
         : { k: "line", x: at(0.12), y: at(0.2), w: 0.3, thick: "narrow", color: "rule" };
       blocks.push(b);
@@ -8667,12 +8835,33 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           <button type="button" class="sb-btn dark" id="sbAutoGo">Lay it out</button></div>
           <label class="sb-check-row"><input type="checkbox" id="sbAutoChapter" checked> Start with a chapter page named after the album</label>
           <p class="sb-hint">Its photographs, paired and grouped by their shapes — two portraits side by side, landscapes stacked, a grid now and then, a spread for a wide one — on as many pages as they need. Photographs already in the book are left out.</p></div>
+        <div class="sb-addgroup sb-tplgroup"><h3>My templates</h3>
+          ${tplCache.some((t) => t.kind === "page") ? `<div class="sb-additems">${tplCache.filter((t) => t.kind === "page").map((t) => `<span class="sb-tplwrap"><button type="button" class="sb-additem" data-add="tpl:${esc(t.id)}" ${count + pageSpan({ type: t.pageType }) > MAX_PAGES || (forOf(book) && STUDIO_ONLY.has(t.pageType)) ? "disabled" : ""}>${addIcon(t.pageType === "free" ? "free:blank" : t.pageType)}<b>${esc(t.name)}</b><span>Saved ${esc(whenLabel(t.at))}</span></button><button type="button" class="sb-tplrm" data-tpldel="${esc(t.id)}" aria-label="Delete the template ${esc(t.name)}" title="Delete this template">×</button></span>`).join("")}</div>` : `<p class="sb-hint">Pages you save as templates appear here, ready to add to any book.</p>`}
+          <div class="sb-adds"><button type="button" data-savetpl="page">Save the page you're on as a template…</button></div></div>
         ${addMenuFor(book).map((g) => `<div class="sb-addgroup"><h3>${esc(g.group)}</h3><div class="sb-additems">${g.items.map(([type, name, note]) => `
           <button type="button" class="sb-additem" data-add="${type}" ${count + pageSpan({ type }) > MAX_PAGES ? "disabled" : ""}>${addIcon(type)}<b>${esc(name)}</b><span>${esc(note)}</span></button>`).join("")}</div></div>`).join("")}`;
       menu.hidden = false;
       $("#sbAddToggle").setAttribute("aria-expanded", "true");
       menu.querySelector("#sbAddClose").addEventListener("click", closeAdd);
       menu.querySelectorAll("[data-add]").forEach((b) => b.addEventListener("click", () => { closeAdd(false); addPage(b.dataset.add); }));
+      menu.querySelectorAll("[data-savetpl]").forEach((b) => b.addEventListener("click", () => { closeAdd(false); saveTemplate(b.dataset.savetpl); }));
+      menu.querySelectorAll("[data-tpldel]").forEach((b) => b.addEventListener("click", async () => { await tplDel(b.dataset.tpldel); await tplRefresh(); openAdd(); API.toast("Template deleted."); }));
+      // Each template drawn small, in this book's look, in place of its icon.
+      (async () => {
+        const cache = new Map();
+        for (const t of tplCache.filter((x) => x.kind === "page")) {
+          const btn = menu.querySelector(`[data-add="tpl:${window.CSS && window.CSS.escape ? window.CSS.escape(t.id) : t.id}"]`); if (!btn) continue;
+          let entry; try { entry = JSON.parse(t.json); } catch (e) { continue; }
+          const v = { ...JSON.parse(JSON.stringify(book)), pages: [entry] };
+          try {
+            for await (const r of renderPages(v, { dpi: 12, cache, only: 0 })) {
+              if (!menu.isConnected || menu.hidden) return;
+              const svg = btn.querySelector("svg"); const c = r.page.canvas; c.className = "sb-tplpic";
+              if (svg) svg.replaceWith(c); else btn.prepend(c);
+            }
+          } catch (e) { /* the icon stays */ }
+        }
+      })();
       { const go = menu.querySelector("#sbAutoGo"); if (go) go.addEventListener("click", async () => {
         go.disabled = true; go.textContent = "Laying it out…";
         const n = await autoPages(menu.querySelector("#sbAutoAlbum").value, menu.querySelector("#sbAutoChapter").checked);
@@ -8754,6 +8943,25 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         sel = -1; active = 0; pickerOpen = null; blockSel = -1;
         setTabPage(); change({ rail: true }); drawInspector();
         API.toast("A cover is in front now, and what was the first page is page 2 · change the cover's look on its panel · Ctrl+Z to undo");
+        return;
+      }
+      // One of My templates: a copy of the saved page, where a new page goes.
+      if (String(want).startsWith("tpl:")) {
+        const t = tplCache.find((x) => x.id === String(want).slice(4) && x.kind === "page");
+        let entry = null; try { entry = t ? JSON.parse(t.json) : null; } catch (e) { entry = null; }
+        if (!entry || !entry.type) { API.toast("That template couldn't be read."); return; }
+        if (forOf(book) && STUDIO_ONLY.has(entry.type)) { API.toast("That page is about your studio, so it isn't offered in a book made for someone else."); return; }
+        if (renderedCount(book) + pageSpan(entry) > MAX_PAGES) { API.toast(`A book holds ${MAX_PAGES} pages at most, cover included.`); return; }
+        if (entry.type === "end" && book.pages.some((pg) => pg && pg.type === "end")) { API.toast("The book already has an end page: it is the last one."); return; }
+        mark();
+        const onEnd0 = sel >= 0 && book.pages[sel] && book.pages[sel].type === "end";
+        const at0 = entry.type === "end" ? book.pages.length : sel < 0 ? 0 : onEnd0 ? sel : sel + 1;
+        book.pages.splice(at0, 0, entry);
+        flush();
+        closeInline(false); photoSel = null; pageHint("");
+        sel = at0; active = 0; pickerOpen = null; blockSel = -1;
+        setTabPage(); change({ rail: true }); drawInspector();
+        API.toast(`Added “${t.name}” · Ctrl+Z to take it out`);
         return;
       }
       // An Anything page can arrive empty or as one of the arrangements.
@@ -9298,6 +9506,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       el.innerHTML = `<div class="sb-cpsat" role="slider" aria-label="How strong and how bright" tabindex="0"><i class="sb-cpdot"></i></div>
         <input type="range" class="sb-cphue" min="0" max="360" step="1" value="${Math.round(st.h)}" aria-label="Hue">
         <div class="sb-cprow"><i class="sb-cpprev"></i><input type="text" class="sb-cphex" maxlength="7" value="${/^#[0-9a-f]{6}$/i.test(hex || "") ? hex : hsvToHex(st.h, st.s, st.v)}" aria-label="The colour as #rrggbb" spellcheck="false" autocapitalize="off"><span>or type it</span></div>
+        ${brandOf().colours.length ? `<div class="sb-cprowh sb-cpbrand"><span>Your brand</span>${brandOf().colours.map((hx) => `<button type="button" class="sb-cpsw" data-cpbrand="${hx}" style="background:${hx}" title="${hx}" aria-label="Use your colour ${hx}"></button>`).join("")}</div>` : ""}
         <details class="sb-cpharm">
           <summary>Colour wheel and matches</summary>
           <div class="sb-cpbase"><span>Around</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Around which colour"><button type="button" role="radio" data-cpbase="this" aria-checked="true">This colour</button><button type="button" role="radio" data-cpbase="accent" aria-checked="false">The book's accent</button></div></div>
@@ -9346,6 +9555,11 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         return cur;
       };
       harm.addEventListener("toggle", paintHarm);
+      el.querySelectorAll("[data-cpbrand]").forEach((b) => b.addEventListener("click", () => {
+        const got = hexToHsv(b.dataset.cpbrand);
+        st.h = got.h; st.s = got.s; st.v = got.v; hue.value = String(Math.round(st.h));
+        onChange(paint());
+      }));
       el.querySelectorAll("[data-cpbase]").forEach((b) => b.addEventListener("click", () => {
         base = b.dataset.cpbase;
         el.querySelectorAll("[data-cpbase]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
@@ -10233,7 +10447,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       const b = ml ? null : (blocks[blockSel] || null);
       const P = paletteFor(book);
       const swatch = (attr, key, label, c, on) => `<button type="button" class="sb-swatch" data-${attr}="${key}" aria-pressed="${on}" title="${esc(label)}" aria-label="${esc(label)}"><i style="background:${c}"></i></button>`;
-      const fills = [["accent", "Accent", P.accent], ["ink", "Ink", P.ink], ["soft", "Soft", P.soft], ["rule", "Hairline", P.rule], ["paper", "Paper", P.paper], ["white", "White", P.white], ["deep", "Deep", P.deep]];
+      const fills = [["accent", "Accent", P.accent], ["ink", "Ink", P.ink], ["soft", "Soft", P.soft], ["rule", "Hairline", P.rule], ["paper", "Paper", P.paper], ["white", "White", P.white], ["deep", "Deep", P.deep], ...brandOf().colours.map((hx) => [hx, `Your brand colour ${hx}`, hx])];
       const mmX = (v) => `${(v * G.Wa).toFixed(1)} mm`;
       const mmY = (v) => `${(v * G.Ha).toFixed(1)} mm`;
       const step = (label, attr, minus, plus, value) => `<div class="sb-step"><span>${esc(label)}</span><button type="button" data-${attr}="${minus}" aria-label="${esc(label)} less">−</button><output>${esc(value)}</output><button type="button" data-${attr}="${plus}" aria-label="${esc(label)} more">+</button></div>`;
@@ -10309,6 +10523,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           <button type="button" data-addblk="shape">+ Shape</button>
           <button type="button" data-addblk="line">+ Line</button>
           <button type="button" data-addblk="draw" aria-pressed="${drawing}">✎ Draw by hand</button>
+          ${brandOf().logo && (outsideCache || []).some((r) => r.id === brandOf().logo) ? `<button type="button" data-addblk="logo">+ Your logo</button>` : ""}
         </div>
         <div class="sb-layhead"><h3>On this page</h3><span class="sb-laycount" title="${blocks.length} of ${FREE_MAX} things a page can hold">${blocks.length} / ${FREE_MAX}</span></div>
         ${ml ? `<div class="sb-sec sb-rowbox sb-multisec"><h3>${ml.length} things chosen</h3>
@@ -11020,7 +11235,8 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       ["look", "Look", "Style · colourway", ["Style", "Colourway"]],
       ["paper", "Page & paper", "Shape · print or Instagram size · space between photos · page colour · edge bar · lines", ["Page shape", "Paper size", "Space between photographs", "Page colour, every page", "Bar down the left edge", "Line round the photographs"]],
       ["type", "Type", "Text styles · baseline grid", ["Text styles", "Baseline grid"]],
-      ["every", "Every page", "Running head · photo numbers · page numbers and foot", ["Top of every page", "Numbers on the photographs", "The foot of every page"]]
+      ["every", "Every page", "Running head · photo numbers · page numbers and foot", ["Top of every page", "Numbers on the photographs", "The foot of every page"]],
+      ["brand", "Brand kit & templates", "Your colours · fonts · logo · save as a template", ["Your brand", "Templates"]]
     ];
     // Which groups are open is remembered on this device, like the tab.
     const DESIGN_OPEN_KEY = "wps_book_design_open";
@@ -11135,6 +11351,10 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         add(`Make a ${p2.name} copy for social media`, "Design", design(`[data-socialcopy="${k}"]`, "paper"));
         add(`Make this book ${p2.name}`, "Design", design(`[data-paper="${k}"]`, "paper"));
       }
+      add("Save this page as a template", "File", () => saveTemplate("page"));
+      add("Save this book as a template", "File", () => saveTemplate("book"));
+      add("Your brand: colours, fonts and logo", "Design", () => { design("#sbNoSuchThing", "brand")(); const h = $("#sbBrandHead"); if (h) { h.scrollIntoView({ block: "center" }); h.focus(); } });
+      add("Use my brand on this book", "Design", design("[data-brandapply]", "brand"));
       add("Download PNG pages", "File", () => { const pop = $("#sbDlPop"); if (pop && pop.hidden) $("#sbDlToggle").click(); $("#sbPng").click(); });
       add("Save", "File", () => $("#sbSave").click());
       add(book && isForOthers(book) ? "Save a copy" : "Publish", "File", () => $("#sbPublish").click());
@@ -11290,6 +11510,117 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       }
       if (drop) drop.addEventListener("click", () => { mark(); delete book.madeFor.logo; change(); drawDesign(); });
     }
+    /* ---------- the brand kit and templates (phase 6) ---------- */
+    function brandHtml() {
+      const br = brandOf();
+      const logoRec = br.logo ? (outsideCache || []).find((r) => r.id === br.logo) : null;
+      const fontOpts = (cur) => `<option value="">The style's own</option>${["Serif", "Sans", "Condensed", "Mono"].map((kind) => `<optgroup label="${kind}">${FONT_LIST.filter((x) => x.kind === kind).map((x) => `<option value="${x.key}" ${cur === x.key ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</optgroup>`).join("")}`;
+      return `<div class="sb-sec"><h3>Your brand</h3>
+          <p class="sb-hint">Kept on this computer, for every book: your colours come first wherever a colour is chosen, and your fonts and logo are a click away.</p>
+          <div class="sb-field"><span class="sb-label">Your colours</span>
+            <span class="sb-swatches sb-brandcols" role="group" aria-label="Your colours">${br.colours.map((hx) => `<span class="sb-brandcol"><i style="background:${hx}" title="${hx}"></i><button type="button" data-brandcolrm="${hx}" aria-label="Take ${hx} out of your colours" title="Take it out">×</button></span>`).join("")}<button type="button" class="sb-swatch sb-any" data-brandadd aria-expanded="false" title="Add a colour" aria-label="Add a colour"><i style="background:conic-gradient(#f33, #ff3, #3f3, #3ff, #33f, #f3f, #f33)"></i></button></span>
+            <div class="sb-cphost" data-brandaddpick hidden></div>
+            <div class="sb-adds"><button type="button" data-brandaccent>Add this book's accent</button></div></div>
+          <div class="sb-field"><label for="sbBrandHead">Headline font</label><select id="sbBrandHead">${fontOpts(br.head)}</select></div>
+          <div class="sb-field"><label for="sbBrandBody">Words font</label><select id="sbBrandBody">${fontOpts(br.body)}</select></div>
+          <div class="sb-field"><span class="sb-label">Your logo</span>
+            ${logoRec ? `<img class="sb-brandlogo" src="${esc(logoRec.dataUrl)}" alt="Your logo">` : ""}
+            <div class="sb-adds"><button type="button" id="sbBrandLogo">${logoRec ? "Change the logo…" : "Add your logo…"}</button>${logoRec ? `<button type="button" data-brandlogorm>Take it out</button>` : ""}</div>
+            <input type="file" id="sbBrandLogoFile" accept="image/svg+xml,image/png,image/jpeg,image/webp,.svg,.png,.jpg,.jpeg,.webp" hidden>
+            <p class="sb-hint" id="sbBrandLogoNote">${logoRec ? "On an Anything page, “+ Your logo” puts it on the page. It is kept on this computer; a book that uses it prints it from here." : "An SVG, or a PNG with a see-through background, prints best."}</p></div>
+          <div class="sb-adds"><button type="button" class="sb-btn dark" data-brandapply ${brandHas(br) ? "" : "disabled"}>Use my brand on this book</button></div>
+          <p class="sb-hint">Sets this book's headline and words fonts, and its colourway from your first colour. Ctrl+Z undoes it.</p>
+          <label class="sb-check-row"><input type="checkbox" id="sbBrandStart" ${br.start ? "checked" : ""}> Start every new book of my own with my brand</label>
+        </div>`;
+    }
+    function wireBrand(panel) {
+      const redrawBrand = (open = true) => { drawDesign(); const g = $('.sb-group[data-group="brand"]'); if (g && open) g.open = true; };
+      const edit = (fn) => { const br = brandOf(); fn(br); if (!saveBrand(br)) API.toast("Not saved — this device's storage is full or blocked."); };
+      panel.querySelectorAll("[data-brandcolrm]").forEach((x) => x.addEventListener("click", () => { edit((br) => { br.colours = br.colours.filter((c) => c !== x.dataset.brandcolrm); }); redrawBrand(); }));
+      const addColour = (hx) => {
+        hx = String(hx || "").toLowerCase();
+        if (!/^#[0-9a-f]{6}$/.test(hx)) return;
+        const br = brandOf();
+        if (br.colours.includes(hx)) { API.toast("That colour is in your brand already."); return; }
+        if (br.colours.length >= 10) { API.toast("Ten colours is the most. Take one out to add another."); return; }
+        edit((b2) => { b2.colours = [...b2.colours, hx]; });
+        redrawBrand(); API.toast(`Added ${hx} to your colours.`);
+      };
+      { const add = panel.querySelector("[data-brandadd]"), host = panel.querySelector("[data-brandaddpick]");
+        if (add && host) add.addEventListener("click", () => {
+          if (host.hidden && !host.firstChild) {
+            const start = String(paletteFor(book).accent || "#d24e1a").toLowerCase();
+            let pick = /^#[0-9a-f]{6}$/.test(start) ? start : "#d24e1a";
+            host.appendChild(colourPicker(pick, (hx) => { pick = hx; }));
+            const ok = document.createElement("button"); ok.type = "button"; ok.className = "sb-btn dark"; ok.textContent = "Add this colour"; ok.style.marginTop = "8px";
+            ok.addEventListener("click", () => addColour(pick));
+            host.appendChild(ok);
+          }
+          host.hidden = !host.hidden; add.setAttribute("aria-expanded", String(!host.hidden));
+        }); }
+      { const a = panel.querySelector("[data-brandaccent]"); if (a) a.addEventListener("click", () => addColour(paletteFor(book).accent)); }
+      for (const [id, key] of [["#sbBrandHead", "head"], ["#sbBrandBody", "body"]]) {
+        const sel2 = panel.querySelector(id);
+        if (sel2) sel2.addEventListener("change", () => { edit((br) => { br[key] = sel2.value; }); const ap = panel.querySelector("[data-brandapply]"); if (ap) ap.disabled = !brandHas(brandOf()); });
+      }
+      { const st2 = panel.querySelector("#sbBrandStart"); if (st2) st2.addEventListener("change", () => edit((br) => { br.start = st2.checked; })); }
+      { const ap = panel.querySelector("[data-brandapply]"); if (ap) ap.addEventListener("click", async () => {
+        const br = brandOf(); if (!brandHas(br)) return;
+        mark();
+        applyBrand(book, br);
+        try { await ensureBookFonts(book); } catch (e) { /* drawn in what is there */ }
+        change({ rail: true }); redrawBrand();
+        API.toast("Your brand is on this book · Ctrl+Z to undo");
+      }); }
+      // The logo: kept exactly as it came (see the client logo), as a picture from this computer.
+      const pickBtn = panel.querySelector("#sbBrandLogo"), file = panel.querySelector("#sbBrandLogoFile"), note = panel.querySelector("#sbBrandLogoNote");
+      if (pickBtn && file) {
+        pickBtn.addEventListener("click", () => file.click());
+        file.addEventListener("change", async () => {
+          const f = file.files && file.files[0]; file.value = "";
+          if (!f) return;
+          const isSvg = /svg/i.test(f.type) || /\.svg$/i.test(f.name || "");
+          if (!isSvg && !/^image\/(png|jpeg|webp)$/.test(f.type)) { note.textContent = "That file isn't an SVG, PNG, JPEG or WebP picture."; return; }
+          if (f.size > 2 * 1048576) { note.textContent = "That file is over 2 MB. An SVG, or a PNG about 2000 px across, is plenty."; return; }
+          const dataUrl = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(String(r.result || "")); r.onerror = () => res(""); r.readAsDataURL(isSvg ? new Blob([f], { type: "image/svg+xml" }) : f); });
+          const img = await new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = dataUrl; });
+          if (!img || !img.naturalWidth) { note.textContent = "This browser can't draw that file, so it wasn't added."; return; }
+          const id = `out_brand_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+          try { await outPut({ id, name: f.name || "Your logo", dataUrl, forSite: false, brand: true, at: Date.now() }); }
+          catch (e) { note.textContent = "Not added: this computer's storage for the site refused it."; return; }
+          await outsideRefresh();
+          edit((br) => { br.logo = id; });
+          redrawBrand();
+          if (freePage()) drawInspector();
+          const soft = !isSvg && Math.max(img.naturalWidth, img.naturalHeight) < 1000;
+          API.toast(soft ? `Your logo is in. It is small (${img.naturalWidth}×${img.naturalHeight} px) and will print soft: an SVG, or a PNG at least 1000 px across, prints sharp.` : "Your logo is in. On an Anything page, “+ Your logo” puts it on the page.");
+        });
+      }
+      { const rm = panel.querySelector("[data-brandlogorm]"); if (rm) rm.addEventListener("click", () => { edit((br) => { br.logo = ""; }); redrawBrand(); if (freePage()) drawInspector(); API.toast("Your logo is out of the brand kit. Pages that already have it keep it."); }); }
+    }
+    async function saveTemplate(kind) {
+      flush();
+      if (kind === "page") {
+        const entry = sel >= 0 ? book.pages[sel] : (coverLayoutOf(book) === "custom" ? { type: "free", blocks: (book.coverPage && book.coverPage.blocks) || [], ...(book.coverPage && book.coverPage.bg ? { bg: book.coverPage.bg } : {}) } : null);
+        if (!entry) { API.toast("The cover goes with its book: choose a page, or save the whole book as a template."); return; }
+        const ans = await askTemplate("page", sel >= 0 ? railLabel(entry) : "My cover from scratch");
+        if (!ans) return;
+        const data = ans.photos ? JSON.parse(JSON.stringify(entry)) : withoutPhotos(entry);
+        try { await tplPut({ id: `tp_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, kind: "page", name: ans.name, at: Date.now(), pageType: entry.type, json: JSON.stringify(data) }); }
+        catch (e) { API.toast("Not saved — this computer's storage refused it."); return; }
+        await tplRefresh();
+        API.toast(`Saved “${ans.name}”. It is under “+ Add page”, in My templates.`);
+        return;
+      }
+      const ans = await askTemplate("book", book.name || "My book");
+      if (!ans) return;
+      const v = ans.photos ? JSON.parse(JSON.stringify(book)) : bookWithoutPhotos(book);
+      delete v.id; delete v.madeFor; delete v.updatedAt; v.name = ans.name;
+      try { await tplPut({ id: `tp_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, kind: "book", name: ans.name, at: Date.now(), pages: renderedCount(book), json: JSON.stringify(v) }); }
+      catch (e) { API.toast("Not saved — this computer's storage refused it."); return; }
+      await tplRefresh();
+      API.toast(`Saved “${ans.name}”. It is offered when you start a New book.`);
+    }
     function drawDesign() {
       const panel = $("#sbPanelDesign"); if (!panel) return;
       panel.innerHTML = `
@@ -11358,9 +11689,16 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         <div class="sb-sec"><h3>The foot of every page</h3>
           ${overHtml("sbFootText", "Name in the foot", book.footText, (window.STUDIO_BOOK_LIMITS || {}).footText || 40, whose(book))}
           <label class="sb-check-row"><input type="checkbox" id="sbNums" ${book.showPageNumbers === false ? "" : "checked"}> Print page numbers</label>
+        </div>
+        ${brandHtml()}
+        <div class="sb-sec"><h3>Templates</h3>
+          <div class="sb-adds"><button type="button" data-savetpl="book">Save this book as a template…</button><button type="button" data-savetpl="page">Save this page as a template…</button></div>
+          <p class="sb-hint">Kept on this computer. A book template is offered when you start a New book; a page template under “+ Add page”, in My templates.</p>
         </div>`;
       groupDesign(panel);
       wireMadeFor(panel);
+      wireBrand(panel);
+      panel.querySelectorAll("[data-savetpl]").forEach((x) => x.addEventListener("click", () => saveTemplate(x.dataset.savetpl)));
       wireOver("sbFootText", (v) => { if (String(v).trim()) book.footText = v; else delete book.footText; });
       // Text styles use the same controls as one text's Format; a size in points means nothing for a whole kind of text.
       const tsBox = panel.querySelector("#sbTypeset");
