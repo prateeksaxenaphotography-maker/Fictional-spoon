@@ -614,3 +614,27 @@ window.WPS_CONTRACT_ARCHIVE["V3.6-TFP"].status = "Archived — superseded by V3.
     "3. CREDIT & INSTAGRAM COLLABORATOR\nEvery post that uses the photographs must credit the Studio in its caption:\n  📷 Photography & Light Design: @nerdyphotographer.in\n  👤 Model / Talent: @[Handle]\nOn Instagram, tagging is not enough: every feed post, carousel or Reel that uses the photographs must also add @nerdyphotographer.in as a Collaborator (Instagram's \"Invite collaborator\"), sent before the post is published.");
   T.summary = "The photographer and the Studio keep the copyright and may post the photographs for promotion at any time after the shoot; on Instagram the Participant must add @nerdyphotographer.in as a Collaborator as well as tagging it. " + T.summary;
 })();
+
+/* V4.0-TFP, 30 Sep 2026 — styling, wardrobe, hair and make-up, in the wording
+   the owner approved ("add it as written"), and at the owner's instruction
+   WITHOUT a new version number ("without making version update"). What they
+   wanted it to say, politely: the photographer is there for the photographs,
+   not for styling; where no designer, stylist or make-up artist is part of the
+   team, the Participant arranges these or comes ready, and the Studio does not
+   take on arranging them. Anyone who agreed to V4.0-TFP before today keeps an
+   exact copy of the text they agreed to: the booking email records the full
+   text (#termsBody.__contractText → "Contract Full Text"), not just the
+   version name. Placed after clause 6, unnumbered like the sections after it,
+   so the guardian section's "clause 6 above" still points where it did.
+   Test shoots only; the paid-shoot contract is untouched. */
+(() => {
+  const T = window.WPS_CONTRACT_ARCHIVE["V4.0-TFP"];
+  const misses = (window.WPS_CONTRACT_COMPOSE_MISSES = window.WPS_CONTRACT_COMPOSE_MISSES || []);
+  const at = "\n\nHOME STUDIO ATTENDANCE\n";
+  if (!T || !T.fullText.includes(at)) { misses.push("V4.0-TFP: HOME STUDIO ATTENDANCE (styling, wardrobe, hair & make-up)"); return; }
+  T.fullText = T.fullText.replace(at, () => "\n\nSTYLING, WARDROBE, HAIR & MAKE-UP\n"
+    + "The photographer's role on a test shoot is the photography itself: the light, the direction on set and the retouching. Styling, wardrobe, hair and make-up are a craft of their own, belonging to the designers, stylists and make-up artists who specialise in them, and are not something the Studio provides.\n\n"
+    + "Where a designer, stylist or make-up artist is part of the team for the shoot, they will look after these. Where they are not, the Participant is kindly requested to arrange their own outfits, styling, hair and make-up, or to arrive ready having done them on their own. The Studio is therefore not able to take on the responsibility of arranging or providing them, and is grateful for the Participant's understanding.\n\n"
+    + "Anyone the Participant brings along to help counts towards the home studio's limit of three people, set out below."
+    + at);
+})();

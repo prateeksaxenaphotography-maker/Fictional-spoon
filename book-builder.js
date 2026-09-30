@@ -5996,6 +5996,8 @@
   .sb-hit { position: absolute; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; cursor: text; }
   .sb-hit:hover, .sb-hit:focus-visible { outline: 1px solid var(--sb-sel); outline-offset: 1px; }
   .sb-hit.photo { cursor: grab; touch-action: none; }
+  /* A zoomed page scrolls under a finger unless it lands on the chosen photo or thing. */
+  .sb-preview.zoom .sb-hit.photo:not(.on), .sb-preview.zoom .sb-blk:not(.on) { touch-action: pan-x pan-y; }
   .sb-hit.photo.on { outline: 2px solid var(--sb-sel); outline-offset: -2px; cursor: grabbing; }
   .sb-hit.photo.on::after { content: ""; position: absolute; inset: 6px; border: 1px dashed rgba(255,255,255,.7); mix-blend-mode: difference; pointer-events: none; }
   .sb-inline { position: absolute; margin: 0; padding: 0; border: 0; border-radius: 0; resize: none; overflow: hidden; background: transparent; outline: 1.5px solid var(--sb-sel); outline-offset: 3px; white-space: pre-wrap; overflow-wrap: break-word; box-shadow: none; }
@@ -8247,7 +8249,7 @@
       // Ctrl (⌘) + scroll, or a trackpad pinch, zooms the page — but not over a photograph, where the wheel zooms the photo.
       $("#sbPreview").addEventListener("wheel", (ev) => {
         if (!(ev.ctrlKey || ev.metaKey)) return;
-        if (ev.target.closest && ev.target.closest(".sb-hit.photo, .sb-blk")) return;
+        if (ev.target.closest && ev.target.closest(".sb-hit.photo.on")) return;
         ev.preventDefault();
         setZoom(zoomAt * (ev.deltaY < 0 ? 1.12 : 1 / 1.12));
       }, { passive: false });
@@ -8946,7 +8948,14 @@
         if (b && b.g && b.k !== "text") { blockSel = i; multi = null; drawLayer(); drawInspector(); return; }
         if (b && b.k === "text") { blockSel = i; multi = null; drawLayer(); drawInspector(); openInline(`b${i}`, { box: { x: 0, y: 0, w: 1, h: 1 }, type: null }, layer); }
       });
+      let tapBlk = -1;
+      layer.addEventListener("click", (ev) => {
+        if (tapBlk < 0) return;
+        const el = ev.target.closest(".sb-blk"), i = tapBlk; tapBlk = -1;
+        if (el && +el.dataset.blk === i && freePage()) { blockSel = i; multi = null; drawLayer(); drawInspector(); }
+      });
       layer.addEventListener("pointerdown", (ev) => {
+        tapBlk = -1;
         const e = freePage(); if (!e) return;
         if (ev.target.closest("#sbBlkBar")) return;
         if (drawing) {
@@ -8993,6 +9002,8 @@
         if (ml && ml.includes(i) && !handle) { moveMany(ml, ev, layer, e); return; }
         const grp = groupMembers(i);
         if (grp.length > 1 && !handle && !(blockSel === i && !multi)) { chooseBlocks(grp, i); moveMany(grp, ev, layer, e); return; }
+        // As for photographs: on a zoomed page a swipe on a thing that isn't chosen scrolls; a tap chooses it (the click below).
+        if (ev.pointerType === "touch" && view.zoom && !handle && (i !== blockSel || multi)) { tapBlk = i; return; }
         if (i !== blockSel || multi) { blockSel = i; multi = null; drawLayer(); drawInspector(); }
         const blocks = blocksOf(e);
         const b = blocks[i]; if (!b) return;
@@ -9418,7 +9429,7 @@
         layer.querySelectorAll(".sb-hit.photo").forEach((x) => x.classList.toggle("on", x === el));
         layer.querySelectorAll(".sb-photobar").forEach((x) => x.remove());
         { const G2 = geometry(book), region0 = rg(); if (region0) layer.appendChild(photoBar(region0, G2)); }
-        pageHint(isDiagram(id) ? "A lighting diagram is always shown whole." : "Drag to move the picture in its frame · scroll to zoom · double-click to change how it fills");
+        pageHint(isDiagram(id) ? "A lighting diagram is always shown whole." : view.zoom ? "Drag to move the picture in its frame · Ctrl + scroll to zoom it · double-click to change how it fills" : "Drag to move the picture in its frame · scroll to zoom · double-click to change how it fills");
       };
       let img = null;
       const load = async () => { if (img) return img; const hit = library().byId.get(id); if (!hit) return null; try { img = await API.loadImage(previewSrc(hit.photo), cache); } catch (e) { img = null; } return img; };
@@ -9430,12 +9441,20 @@
         const scale = base * Math.min(3, Math.max(1, Number(shot.zoom) || 1));
         return { iw, ih, scale, sw: Math.min(iw, box.w / scale), sh: Math.min(ih, box.h / scale) };
       };
+      let tapToChoose = false;
+      el.addEventListener("click", () => { if (tapToChoose) { tapToChoose = false; pick(); } });
       el.addEventListener("pointerdown", (ev) => {
         if (swapFrom && swapFrom.kind === "list") {
           const e2 = curEntry(), to = e2 && e2.photos ? e2.photos.findIndex((q) => q.id === id) : -1;
           if (to >= 0 && to !== swapFrom.at) { ev.preventDefault(); doSwap(to); return; }
           endSwap(); pageHint("");
         }
+        // On a zoomed page a finger on a photo that isn't chosen scrolls the
+        // page (touch-action allows it, see CSS): a swipe is a scroll, and
+        // only a tap chooses the photo (the click below). Once chosen, a drag
+        // moves the picture in its frame.
+        tapToChoose = ev.pointerType === "touch" && !el.classList.contains("on") && view.zoom;
+        if (tapToChoose) return;
         pick();
         const shot = shotFor(id); const region = rg();
         if (!shot || !region || isDiagram(id)) return;
@@ -9466,6 +9485,14 @@
       });
       el.addEventListener("wheel", (ev) => {
         if (!photoSel || photoSel.id !== id || photoSel.n !== n) return;
+        // A page zoomed in scrolls under the wheel even over the chosen photo
+        // — the wheel used to be swallowed here and the studio could not
+        // scroll back up (Sep 30 2026). Ctrl, ⌘ or Alt with the wheel, or a
+        // trackpad pinch, zooms the photo instead. At Fit the page has
+        // nowhere to scroll, so the plain wheel zooms the photo as before.
+        const pv = $("#sbPreview");
+        const canScroll = !!pv && (pv.scrollHeight > pv.clientHeight + 1 || pv.scrollWidth > pv.clientWidth + 1);
+        if (canScroll && !(ev.ctrlKey || ev.metaKey || ev.altKey)) return;
         const shot = shotFor(id); if (!shot || isDiagram(id)) return;
         ev.preventDefault();
         mark(true);

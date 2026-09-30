@@ -2563,11 +2563,12 @@
         <summary>Saved portfolios<span id="ppSavedCount"></span></summary>
         ${!withSave ? `<p class="pp-type-note">Open one to pick up where you left off.</p>` : on ? `
         <div class="pp-save-row">
-          <input type="text" id="ppSaveName" maxlength="60" value="${esc(on.name)}" aria-label="This portfolio's name" title="Its name: type to rename it" />
+          <input type="text" id="ppSaveName" maxlength="60" value="${esc(on.name)}" aria-label="Name" title="Type a new name and press Save as new to keep this one and start another" />
           <button type="button" class="pp-sample-btn" id="ppSaveBtn">Save now</button>
         </div>
         <div class="pp-save-state" id="ppSaveState" role="status" aria-live="polite"></div>
-        <p class="pp-type-note">It saves itself: every change is kept within a second, then read back to make sure. <button type="button" class="pp-link" id="ppSaveCopy">Save as a copy</button> to keep a second version.</p>` : `
+        <p class="pp-type-note" id="ppRenameRow" hidden><button type="button" class="pp-link" id="ppRename">Rename it instead</button></p>
+        <p class="pp-type-note">“${esc(on.name)}” saves itself as you work. To keep it as it is and make another, type a new name and press <b>Save as new</b> — or <button type="button" class="pp-link" id="ppSaveCopy">save a copy</button>.</p>` : `
         <div class="pp-save-row">
           <input type="text" id="ppSaveName" maxlength="60" value="" placeholder="Name it, e.g. ${esc(name)} — agency set" aria-label="A name for this portfolio" />
           <button type="button" class="pp-sample-btn" id="ppSaveBtn">Save this portfolio</button>
@@ -2810,27 +2811,52 @@
       paintSaved();
       const nameBox = body.querySelector("#ppSaveName");
       const saveBtn = body.querySelector("#ppSaveBtn");
-      // The name box renames the open portfolio — kept as it is typed.
+      /* The name box, with a portfolio open. It used to rename the open one
+         as it was typed, so the studio typed "Test 2", pressed Save, and
+         "Test 1" was gone — renamed, not kept (Sep 30 2026: "person should be
+         allowed multiple saves"). Now a new name makes a NEW saved portfolio
+         beside the open one, and renaming is a link of its own that says so. */
+      const typedName = () => ((nameBox && nameBox.value) || "").trim().slice(0, 60);
+      const isNewName = () => !!state.fromSaved && !!typedName() && typedName() !== state.fromSaved.name;
+      const syncName = () => {
+        const d = isNewName();
+        if (saveBtn && !saveBtn.classList.contains("is-saved")) saveBtn.textContent = state.fromSaved ? (d ? "Save as new" : "Save now") : "Save this portfolio";
+        const rr = body.querySelector("#ppRenameRow"), rb = body.querySelector("#ppRename");
+        if (rr) rr.hidden = !d;
+        if (rb && d) rb.textContent = `Rename “${state.fromSaved.name}” to “${typedName()}” instead`;
+      };
       if (nameBox && state.fromSaved) {
-        const rename = () => {
-          const nm = nameBox.value.trim().slice(0, 60);
+        nameBox.addEventListener("input", syncName);
+        nameBox.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); if (saveBtn) saveBtn.click(); } });
+        nameBox.addEventListener("blur", () => { if (!nameBox.value.trim()) { nameBox.value = state.fromSaved ? state.fromSaved.name : ""; syncName(); } });
+        const renameBtn = body.querySelector("#ppRename");
+        if (renameBtn) renameBtn.addEventListener("click", () => {
+          const nm = typedName();
           if (!nm || !state.fromSaved || nm === state.fromSaved.name) return;
           const cur = store(), v = cur.versions.find((x) => x.id === state.fromSaved.id);
           if (!v) return;
+          const was = v.name;
           v.name = nm; v.updatedAt = Date.now();
-          if (window.saveModelPdfs(cur) === false) { saveFailed = true; return; }
+          if (window.saveModelPdfs(cur) === false) { saveFailed = true; toast("Not renamed: this browser's storage for the site is full."); return; }
           state.fromSaved = { id: v.id, name: nm };
-          paintSaved();
-        };
-        nameBox.addEventListener("input", () => { clearTimeout(nameBox._t); nameBox._t = setTimeout(rename, 500); });
-        nameBox.addEventListener("change", rename);
-        nameBox.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); rename(); nameBox.blur(); } });
-        nameBox.addEventListener("blur", () => { if (!nameBox.value.trim()) nameBox.value = state.fromSaved ? state.fromSaved.name : ""; });
+          toast(`Renamed “${was}” to “${nm}”.`);
+          redrawSavedBox();
+        });
       }
       if (saveBtn) saveBtn.addEventListener("click", () => {
         if (minPicks() - picked().length > 0) { toast("Pick a photograph for every page first — then it can be saved."); return; }
         const wasNew = !state.fromSaved;
         const typed = ((nameBox && nameBox.value) || "").trim();
+        // A new name with one open: a second saved portfolio; the open one stays as it was.
+        if (isNewName()) {
+          const from = state.fromSaved.name;
+          const r2 = commit({ name: typed.slice(0, 60) });
+          if (r2.full) { toast(`That is ${r2.full} saved for this model, which is the limit. Delete one first.`); return; }
+          if (r2.failed) { saveStateNow(); toast("Not saved: this browser's storage for the site is full."); return; }
+          toast(`Saved “${r2.v.name}” as a new portfolio — “${from}” is kept as it was. You are working on “${r2.v.name}” now.`);
+          redrawSavedBox();
+          return;
+        }
         const r = wasNew ? commit({ name: typed || dateName() }) : commit(false);
         if (r.full) { toast(`That is ${r.full} saved for this model, which is the limit. Delete one first.`); return; }
         if (r.failed) { saveStateNow(); toast("Not saved: this browser's storage for the site is full. Publish from Calendar first, or delete an old saved portfolio or book, then press Save now."); return; }
