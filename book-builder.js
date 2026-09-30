@@ -5490,7 +5490,23 @@
   .sb-views .sb-btn { padding: 5px 9px; font-size: 12px; }
   .sb-views .sb-btn[aria-pressed=true] { background: var(--ink, #141416); color: var(--paper, #fff); border-color: var(--ink, #141416); }
   .sb-preview.zoom { overflow: auto; align-items: flex-start; justify-content: flex-start; }
-  .sb-preview.zoom canvas { max-width: none; max-height: none; height: 165%; width: auto; }
+  .sb-preview.zoom canvas { max-width: none; max-height: none; height: calc(var(--sbz, 1.65) * 100%); width: auto; }
+  .sb-zoom { display: inline-flex; align-items: center; gap: 2px; }
+  .sb-zoom #sbZoom { min-width: 52px; font-variant-numeric: tabular-nums; }
+  .sb-zoom #sbZoomOut, .sb-zoom #sbZoomIn { min-width: 28px; padding-left: 6px; padding-right: 6px; }
+  /* Rulers (millimetres, from the page's top-left corner) and the studio's guides. */
+  .sb-ruler { position: absolute; z-index: 6; background: var(--sb-card, #fff); box-shadow: 0 0 0 1px var(--sb-line); cursor: copy; touch-action: none; }
+  .sb-ruler.top { height: 16px; cursor: row-resize; }
+  .sb-ruler.left { width: 16px; cursor: col-resize; }
+  .sb-guides { position: absolute; z-index: 5; pointer-events: none; }
+  .sb-ug { position: absolute; pointer-events: auto; touch-action: none; }
+  .sb-ug.v { top: 0; bottom: 0; width: 7px; margin-left: -3px; cursor: col-resize; }
+  .sb-ug.h { left: 0; right: 0; height: 7px; margin-top: -3px; cursor: row-resize; }
+  .sb-ug::after { content: ""; position: absolute; background: #16a3c7; }
+  .sb-ug.v::after { left: 3px; top: 0; bottom: 0; width: 1px; }
+  .sb-ug.h::after { top: 3px; left: 0; right: 0; height: 1px; }
+  .sb-ug.ghost::after { background: #16a3c7; opacity: .6; }
+  .sb-ugtag { position: absolute; z-index: 7; padding: 2px 6px; border-radius: 5px; background: #16a3c7; color: #fff; font: 600 11px/1.3 Inter, system-ui, sans-serif; pointer-events: none; white-space: nowrap; }
   .sb-preview.two canvas + canvas { margin-left: 0; box-shadow: 8px 16px 36px -18px rgba(0,0,0,.5); }
   .sb-preview.two canvas:first-child { box-shadow: -8px 16px 36px -18px rgba(0,0,0,.5); }
   .sb-preview canvas.facing { cursor: pointer; opacity: .96; }
@@ -6580,6 +6596,34 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     let lastRender = [];                 // what the preview last drew, page by page
     let lastFacing = null;               // the page drawn beside it, when Two is on
     let view = { two: false, zoom: false }; // facing pages, and larger than fit
+    /* Zoom (phase 7, Sep 30 2026): Fit, or 125% to 400% of it. "Larger" was
+       one step (165%); the owner's list asked for real zoom. view.zoom stays
+       truthy exactly when zoomed, so everything that read it still does. */
+    const ZOOMS = [1, 1.25, 1.65, 2, 3, 4];
+    let zoomAt = 1;
+    const zoomLabel = () => (zoomAt === 1 ? "Fit" : `${Math.round(zoomAt * 100)}%`);
+    function setZoom(z, keep) {
+      const box = $("#sbPreview");
+      // Keep the middle of what was on screen in the middle.
+      const before = box ? { w: box.scrollWidth, h: box.scrollHeight, cx: box.scrollLeft + box.clientWidth / 2, cy: box.scrollTop + box.clientHeight / 2 } : null;
+      zoomAt = Math.min(4, Math.max(1, z));
+      view.zoom = zoomAt > 1;
+      const zb = $("#sbZoom"); if (zb) { zb.textContent = zoomLabel(); zb.setAttribute("aria-pressed", String(view.zoom)); zb.title = view.zoom ? "Back to the whole page (Ctrl+0)" : "Zoom in (Ctrl+=)"; }
+      const zo = $("#sbZoomOut"); if (zo) zo.disabled = zoomAt <= 1;
+      const zi = $("#sbZoomIn"); if (zi) zi.disabled = zoomAt >= 4;
+      if (box) {
+        box.style.setProperty("--sbz", String(zoomAt));
+        box.classList.toggle("zoom", view.zoom);
+        if (before && keep !== false) {
+          const fx = before.cx / Math.max(1, before.w), fy = before.cy / Math.max(1, before.h);
+          box.scrollLeft = fx * box.scrollWidth - box.clientWidth / 2; box.scrollTop = fy * box.scrollHeight - box.clientHeight / 2;
+        }
+      }
+      drawLayer(); drawHits(lastRender); drawGuides();
+      // Sharper when larger: the page is drawn again at a resolution for the zoom.
+      schedulePreview(60);
+    }
+    const zoomStep = (dir) => { const i = ZOOMS.findIndex((z) => z >= zoomAt - 1e-6); setZoom(ZOOMS[Math.min(ZOOMS.length - 1, Math.max(0, (i < 0 ? ZOOMS.length - 1 : i) + dir))]); };
     let printMode = "normal";            // or "fold": pages two to a sheet, in folding order
     let exportDpi = 150;                 // or 300, for a print shop
     let printMarks = false;              // 3 mm bleed + crop marks, for a print shop
@@ -6838,6 +6882,12 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       const el = e.target;
       const typing = el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable);
       if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K") && book) { e.preventDefault(); openCmd(); return; }
+      // Zoom the page, not the browser, while a book is open.
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && book && $("#sbPreview") && ["=", "+", "-", "_", "0"].includes(e.key)) {
+        e.preventDefault();
+        if (e.key === "0") setZoom(1); else zoomStep(e.key === "-" || e.key === "_" ? -1 : 1);
+        return;
+      }
       // Undo is the editor's own, so the browser can never undo a keystroke in
       // a box the studio isn't looking at.
       if ((e.metaKey || e.ctrlKey) && (e.key === "z" || e.key === "Z")) {
@@ -6879,6 +6929,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       if (!root.isConnected) { leave(); return; }
       if ($("#sbLayer")) drawLayer();
       if ($(".sb-hits") || editing) drawHits(lastRender);
+      drawGuides();
       if ($("#sbWork")) applyPanes();
     };
     /* Drag and drop (Sep 29 2026, from the owner's list): a thumbnail from the
@@ -7499,7 +7550,8 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
               <strong id="sbStageTitle">Cover</strong>
               <span class="sb-views">
                 <span class="sb-seg sb-seg-sm" role="radiogroup" aria-label="How many pages to show"><button type="button" role="radio" data-view="one" aria-checked="true">One</button><button type="button" role="radio" data-view="two" aria-checked="false">Two</button></span>
-                <button type="button" class="sb-btn quiet" id="sbZoom" aria-pressed="false" title="Larger">Larger</button>
+                <span class="sb-zoom" role="group" aria-label="Zoom"><button type="button" class="sb-btn quiet" id="sbZoomOut" title="Zoom out (Ctrl+−)" aria-label="Zoom out" disabled>−</button><button type="button" class="sb-btn quiet" id="sbZoom" aria-pressed="false" title="Zoom in (Ctrl+=)">Fit</button><button type="button" class="sb-btn quiet" id="sbZoomIn" title="Zoom in (Ctrl+=)" aria-label="Zoom in">+</button></span>
+                <button type="button" class="sb-btn quiet" id="sbRulers" aria-pressed="false" title="Rulers in millimetres; drag from one to make a guide">Rulers</button>
                 <button type="button" class="sb-btn quiet" id="sbReadBtn" title="Read it through, the way a client will">Read</button>
               </span>
               <button type="button" class="sb-nav" id="sbNext" aria-label="Next page">›</button>
@@ -7536,12 +7588,19 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         pageHint(view.two ? (sel >= 0 && splitByTurn(sel) ? `This two-page ${book.pages[sel].type === "spread" ? "spread" : "story"} starts on page ${pad2(firstPageOf(sel))}, a right-hand page: in the printed book its halves would be either side of a turn. Move it so it starts on an even page.` : "Two shows the pages as they face each other once printed and folded. It changes nothing: how it prints is chosen in Download.") : "");
       }));
       $('[data-view="two"]').title = "See the facing page beside this one, as they will sit once printed and folded. How it prints is chosen in Download.";
-      $("#sbZoom").addEventListener("click", () => {
-        view.zoom = !view.zoom;
-        $("#sbZoom").setAttribute("aria-pressed", String(view.zoom));
-        $("#sbPreview").classList.toggle("zoom", view.zoom);
-        drawLayer(); drawHits(lastRender);
-      });
+      // The middle button: from Fit to the old "Larger" (165%), and back to Fit from any zoom.
+      $("#sbZoom").addEventListener("click", () => setZoom(view.zoom ? 1 : 1.65));
+      $("#sbZoomIn").addEventListener("click", () => zoomStep(1));
+      $("#sbZoomOut").addEventListener("click", () => zoomStep(-1));
+      $("#sbRulers").addEventListener("click", () => { rulersOn = !rulersOn; try { localStorage.setItem(RULERS_KEY, rulersOn ? "1" : "0"); } catch (e) {} $("#sbRulers").setAttribute("aria-pressed", String(rulersOn)); drawGuides(); });
+      $("#sbRulers").setAttribute("aria-pressed", String(rulersOn));
+      // Ctrl (⌘) + scroll, or a trackpad pinch, zooms the page — but not over a photograph, where the wheel zooms the photo.
+      $("#sbPreview").addEventListener("wheel", (ev) => {
+        if (!(ev.ctrlKey || ev.metaKey)) return;
+        if (ev.target.closest && ev.target.closest(".sb-hit.photo, .sb-blk")) return;
+        ev.preventDefault();
+        setZoom(zoomAt * (ev.deltaY < 0 ? 1.12 : 1 / 1.12));
+      }, { passive: false });
       $("#sbReadBtn").addEventListener("click", openRead);
       $("#sbUndo").addEventListener("click", () => { undo(); $("#sbUndo").focus(); });
       { const hb = $("#sbHistory"); if (hb) hb.addEventListener("click", () => openHistory()); }
@@ -7899,6 +7958,110 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       };
     }
     const round4 = (v) => Math.round(v * 10000) / 10000;
+    /* ---------- rulers and guides (phase 7) ----------------------------------
+       Rulers in millimetres from the page's top-left corner, along the top and
+       the left of the page being edited. Drag from one to make a guide; drag a
+       guide back onto a ruler (or off the page) to take it off. Guides belong
+       to the book on this computer, show on every page and never print; things
+       on an Anything page snap to them. */
+    const RULERS_KEY = "wps_book_rulers", GUIDES_KEY = "wps_book_guides";
+    let rulersOn = (() => { try { return localStorage.getItem(RULERS_KEY) === "1"; } catch (e) { return false; } })();
+    let guideWatch = null;
+    const guidesAll = () => { try { const v = JSON.parse(localStorage.getItem(GUIDES_KEY) || "{}"); return v && typeof v === "object" && !Array.isArray(v) ? v : {}; } catch (e) { return {}; } };
+    const guidesOf = () => { const g = (book && guidesAll()[book.id]) || {}; const ok = (a) => (Array.isArray(a) ? a : []).filter((x) => typeof x === "number" && isFinite(x)).slice(0, 40); return { v: ok(g.v), h: ok(g.h) }; };
+    const setGuides = (g) => { try { const all = guidesAll(); if (g.v.length || g.h.length) all[book.id] = g; else delete all[book.id]; localStorage.setItem(GUIDES_KEY, JSON.stringify(all)); } catch (e) { /* private window */ } };
+    function drawGuides() {
+      const box = $("#sbPreview");
+      if (!box) return;
+      box.querySelectorAll(".sb-ruler, #sbGuides, .sb-ugtag").forEach((x) => x.remove());
+      if (!book) return;
+      const mine = lastRender[0] && lastRender[0].page && lastRender[0].page.canvas;
+      const canvas = mine && mine.isConnected ? mine : box.querySelector("canvas");
+      if (!canvas || !canvas.offsetWidth) return;
+      const G = geometry(book), g = guidesOf();
+      const L = canvas.offsetLeft, T = canvas.offsetTop, Wd = canvas.offsetWidth, Hd = canvas.offsetHeight;
+      /* The page changes size without being drawn again (a hint line above
+         it, a panel dragged wider): the guides and rulers follow it. Watched
+         per page element, and redrawn only when its size or place moved. */
+      if (window.ResizeObserver) {
+        if (!guideWatch) guideWatch = new ResizeObserver(() => {
+          const cv = guideWatch.el; if (!cv || !cv.isConnected) return;
+          const now = `${cv.offsetLeft}|${cv.offsetTop}|${cv.offsetWidth}|${cv.offsetHeight}`;
+          if (now !== guideWatch.at) { cancelAnimationFrame(guideWatch.raf); guideWatch.raf = requestAnimationFrame(drawGuides); }
+        });
+        if (guideWatch.el !== canvas) { guideWatch.disconnect(); guideWatch.el = canvas; guideWatch.observe(canvas); guideWatch.observe(box); }
+        guideWatch.at = `${L}|${T}|${Wd}|${Hd}`;
+      }
+      const ov = document.createElement("div"); ov.id = "sbGuides"; ov.className = "sb-guides";
+      Object.assign(ov.style, { left: `${L}px`, top: `${T}px`, width: `${Wd}px`, height: `${Hd}px` });
+      ov.innerHTML = [...g.v.map((mm, i) => `<i class="sb-ug v" data-ug="v" data-i="${i}" style="left:${((mm / G.W) * 100).toFixed(3)}%" title="Guide at ${mm} mm: drag to move, onto the ruler to take off"></i>`),
+        ...g.h.map((mm, i) => `<i class="sb-ug h" data-ug="h" data-i="${i}" style="top:${((mm / G.H) * 100).toFixed(3)}%" title="Guide at ${mm} mm: drag to move, onto the ruler to take off"></i>`)].join("");
+      box.appendChild(ov);
+      const mmAt = (axis, ev) => { const r = canvas.getBoundingClientRect(); return axis === "v" ? ((ev.clientX - r.left) / r.width) * G.W : ((ev.clientY - r.top) / r.height) * G.H; };
+      const inside = (axis, mm) => mm >= 0 && mm <= (axis === "v" ? G.W : G.H);
+      const tag = (axis, mm, ev) => {
+        let t = box.querySelector(".sb-ugtag"); if (!t) { t = document.createElement("span"); t.className = "sb-ugtag"; box.appendChild(t); }
+        const r = box.getBoundingClientRect();
+        t.textContent = inside(axis, mm) ? `${mm.toFixed(1)} mm` : "Let go to take it off";
+        t.style.left = `${ev.clientX - r.left + box.scrollLeft + 12}px`; t.style.top = `${ev.clientY - r.top + box.scrollTop + 12}px`;
+      };
+      // One drag, for a new guide from a ruler or an old one moved.
+      const dragGuide = (axis, index, ev, from) => {
+        ev.preventDefault();
+        const line = document.createElement("i"); line.className = `sb-ug ${axis} ghost`; ov.appendChild(line);
+        const place = (mm) => { if (axis === "v") line.style.left = `${((mm / G.W) * 100).toFixed(3)}%`; else line.style.top = `${((mm / G.H) * 100).toFixed(3)}%`; };
+        const old = index >= 0 ? ov.querySelector(`[data-ug="${axis}"][data-i="${index}"]`) : null;
+        if (old) old.style.visibility = "hidden";
+        const snapMm = (mm) => { const half = Math.round(mm * 2) / 2; const mid = (axis === "v" ? G.W : G.H) / 2; return Math.abs(mm - mid) < 1.2 ? mid : half; };
+        let last = null;
+        const move = (m) => { last = snapMm(mmAt(axis, m)); place(last); line.style.display = inside(axis, last) ? "" : "none"; tag(axis, last, m); };
+        move(ev);
+        const up = () => {
+          from.removeEventListener("pointermove", move); from.removeEventListener("pointerup", up); from.removeEventListener("pointercancel", up);
+          const t = box.querySelector(".sb-ugtag"); if (t) t.remove();
+          const gg = guidesOf(), list = gg[axis].slice();
+          if (index >= 0) list.splice(index, 1);
+          const kept = last !== null && inside(axis, last) && !(index < 0 && last <= 0.01);
+          if (kept) list.push(Math.round(last * 10) / 10);
+          gg[axis] = list; setGuides(gg);
+          drawGuides();
+          if (index >= 0 && !kept) API.toast("Guide taken off.");
+        };
+        try { from.setPointerCapture(ev.pointerId); } catch (e) { /* older browsers */ }
+        from.addEventListener("pointermove", move); from.addEventListener("pointerup", up); from.addEventListener("pointercancel", up);
+      };
+      ov.querySelectorAll(".sb-ug").forEach((el) => el.addEventListener("pointerdown", (ev) => dragGuide(el.dataset.ug, +el.dataset.i, ev, el)));
+      if (!rulersOn) return;
+      const dpr = window.devicePixelRatio || 1;
+      const ruler = (axis) => {
+        const len = axis === "v" ? Wd : Hd, full = axis === "v" ? G.W : G.H;
+        const c = document.createElement("canvas");
+        c.className = `sb-ruler ${axis === "v" ? "top" : "left"}`;
+        c.setAttribute("role", "img"); c.setAttribute("aria-label", `Ruler, ${Math.round(full)} mm ${axis === "v" ? "across" : "down"}; drag from it to make a guide`);
+        const W2 = axis === "v" ? len : 16, H2 = axis === "v" ? 16 : len;
+        c.width = Math.round(W2 * dpr); c.height = Math.round(H2 * dpr);
+        Object.assign(c.style, { width: `${W2}px`, height: `${H2}px`, left: `${axis === "v" ? L : L - 18}px`, top: `${axis === "v" ? T - 18 : T}px` });
+        const x = c.getContext("2d"); x.scale(dpr, dpr);
+        const per = len / full;
+        const minor = per >= 4 ? 1 : per >= 1.2 ? 5 : 10, label = per * 10 >= 26 ? 10 : per * 50 >= 26 ? 50 : 100;
+        x.strokeStyle = "rgba(20,20,22,.55)"; x.fillStyle = "rgba(20,20,22,.8)"; x.lineWidth = 1;
+        x.font = "9px Inter, system-ui, sans-serif"; x.textBaseline = "top";
+        for (let mm = 0; mm <= full + 1e-6; mm += minor) {
+          const p = Math.round(mm * per) + 0.5, big = mm % label === 0, mid = mm % 5 === 0;
+          const tick = big ? 8 : mid ? 5 : 3;
+          x.beginPath();
+          if (axis === "v") { x.moveTo(p, 16); x.lineTo(p, 16 - tick); } else { x.moveTo(16, p); x.lineTo(16 - tick, p); }
+          x.stroke();
+          if (big && mm > 0) {
+            if (axis === "v") x.fillText(String(mm), p + 2, 1);
+            else { x.save(); x.translate(1, p + 2); x.rotate(Math.PI / 2); x.translate(0, -9); x.fillText(String(mm), 0, 0); x.restore(); }
+          }
+        }
+        c.addEventListener("pointerdown", (ev) => dragGuide(axis === "v" ? "h" : "v", -1, ev, c));
+        return c;
+      };
+      box.appendChild(ruler("v")); box.appendChild(ruler("h"));
+    }
     function drawLayer() {
       const box = $("#sbPreview"); if (!box) return;
       const e = freePage();
@@ -8043,6 +8206,8 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           xs.push(1 - (fx + fw), 1 - fx, fx, fx + fw);
         }
       }
+      // The studio's own guides (see drawGuides), in the frame's fractions.
+      { const ug = guidesOf(); for (const mm of ug.v) xs.push((mm - G.ox) / G.Wa); for (const mm of ug.h) ys.push((mm - G.oy) / G.Ha); }
       // A mouse is not that precise: things snap from a millimetre and a half away.
       return { xs, ys, boxes, tolX: 1.5 / G.Wa, tolY: 1.5 / G.Ha };
     }
@@ -9287,7 +9452,8 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       try {
         const got = [];
         const only = view.two ? facing(sel) : sel;
-        for await (const r of renderPages(book, { dpi: 72, cache, only, guides: true, skip: editing ? editing.field : null })) { got.push(r); if (token !== renderToken) return; }
+        const pdpi = zoomAt > 1 ? Math.round(72 * Math.min(2.5, zoomAt)) : 72;
+        for await (const r of renderPages(book, { dpi: pdpi, cache, only, guides: true, skip: editing ? editing.field : null })) { got.push(r); if (token !== renderToken) return; }
         if (token !== renderToken) return;
         got.forEach((r) => {
           r.page.canvas.setAttribute("role", "img"); r.page.canvas.setAttribute("aria-label", `Page ${r.n} preview`);
@@ -9296,6 +9462,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         });
         box.classList.toggle("two", got.length > 1);
         box.classList.toggle("zoom", view.zoom);
+        box.style.setProperty("--sbz", String(zoomAt));
         box.querySelectorAll("canvas, p").forEach((c) => c.remove());
         box.prepend(...got.map((r) => r.page.canvas));
         lastRender = got.filter((r) => r.index === sel);
@@ -9304,6 +9471,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         $$("[data-fmtpt]").forEach((el) => { if (document.activeElement === el) return; const mm = textSizeMm(el.dataset.fmtpt); if (mm) el.value = mmToPt(mm); });
         drawLayer();
         drawHits(lastRender);
+        drawGuides();
         // Pages that aren't planned (About, chapter pages) report their cuts
         // as they draw.
         const entry = curEntry();
@@ -11281,7 +11449,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       return { rail, insp };
     }
     let paneRedraw = 0;
-    const afterPanes = () => { clearTimeout(paneRedraw); paneRedraw = setTimeout(() => { schedulePreview(0); if ($("#sbLayer")) drawLayer(); if ($(".sb-hits") || editing) drawHits(lastRender); }, 120); };
+    const afterPanes = () => { clearTimeout(paneRedraw); paneRedraw = setTimeout(() => { schedulePreview(0); if ($("#sbLayer")) drawLayer(); if ($(".sb-hits") || editing) drawHits(lastRender); drawGuides(); }, 120); };
     function setPane(which, px) {
       const cur = { ...readPanes() };
       cur[which] = Math.round(px);
@@ -11351,6 +11519,10 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         add(`Make a ${p2.name} copy for social media`, "Design", design(`[data-socialcopy="${k}"]`, "paper"));
         add(`Make this book ${p2.name}`, "Design", design(`[data-paper="${k}"]`, "paper"));
       }
+      add(rulersOn ? "Hide the rulers" : "Show the rulers", "View", () => { const r = $("#sbRulers"); if (r) r.click(); });
+      add("Take off every guide on this book", "View", () => { setGuides({ v: [], h: [] }); drawGuides(); API.toast("Guides taken off."); });
+      add("Zoom to fit the page", "View", () => setZoom(1));
+      add("Zoom in", "View", () => zoomStep(1));
       add("Save this page as a template", "File", () => saveTemplate("page"));
       add("Save this book as a template", "File", () => saveTemplate("book"));
       add("Your brand: colours, fonts and logo", "Design", () => { design("#sbNoSuchThing", "brand")(); const h = $("#sbBrandHead"); if (h) { h.scrollIntoView({ block: "center" }); h.focus(); } });
