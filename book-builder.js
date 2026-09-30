@@ -481,6 +481,9 @@
   // maths as drawPdfPhoto in app.js, so a book crops a photo the way the
   // model portfolio does.
   const FLIPS = ["h", "v", "hv"];
+  /* The cover wrap (phase 10): the papers a spine is worked out from, as the
+     thickness of one leaf (two pages). A printer's own figure wins. */
+  const WRAP_PAPERS = [["standard", "Standard, 130–150 gsm", 0.13], ["silk", "Silk or matte, 170 gsm", 0.17], ["photo", "Photo, 200–250 gsm", 0.25], ["layflat", "Lay-flat, board-backed", 0.45]];
   /* Photo adjustments (phase 4 of the owner's list, Sep 29 2026). Kept on the
      photo itself as `adj`, so they follow it wherever it is placed (a page of
      photographs, the cover, an Anything page) and into every file made from
@@ -5843,6 +5846,10 @@
   .sb-tplwrap .sb-tplrm { top: 4px; right: 4px; }
   .sb-brandlogo { display: block; max-width: 160px; max-height: 64px; margin: 4px 0 8px; object-fit: contain; background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0 / 12px 12px; border-radius: 6px; padding: 6px; }
   .sb-cpbrand { margin: 8px 0 2px; }
+  .sb-wraprow { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 8px 0 4px; font: 500 12.5px/1.3 Inter, system-ui, sans-serif; }
+  .sb-wraprow label { display: inline-flex; align-items: center; gap: 6px; }
+  .sb-wraprow select, .sb-wraprow input { padding: 5px 7px; border: 1px solid var(--sb-line); border-radius: 7px; background: var(--paper, #fff); color: inherit; font: inherit; }
+  .sb-wraprow input { width: 70px; text-align: right; }
   .sb-cutbox { max-width: 560px; width: min(560px, 94vw); }
   .sb-cutview { display: flex; align-items: center; justify-content: center; height: min(52vh, 460px); margin: 6px 0 10px; border-radius: 10px; background: repeating-conic-gradient(#e6e6e6 0 25%, #fff 0 50%) 0 0 / 18px 18px; overflow: hidden; }
   .sb-cutview canvas { max-width: 100%; max-height: 100%; }
@@ -7722,6 +7729,13 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
               <label class="sb-check-row" id="sbCmykRow"><input type="checkbox" id="sbCmyk"> Print colours (CMYK)</label>
               <p class="sb-hint" id="sbCmykNote" hidden>The pages are turned into the four printing inks, with black ink carrying the greys and no more than 300% ink anywhere; black words print in black ink alone. Colours on paper are never as bright as on a screen. Ask your print shop first: many prefer the normal file and convert it with their own press profile. The file is two to three times the size.</p>
             </div>
+            <div class="sb-sec" id="sbWrapSec"><span class="sb-label">A bound book's cover</span>
+              <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Binding"><button type="button" role="radio" data-bind="soft" aria-checked="true">Softcover</button><button type="button" role="radio" data-bind="hard" aria-checked="false">Hardcover</button></div>
+              <div class="sb-wraprow"><label>Paper <select id="sbWrapPaper">${WRAP_PAPERS.map(([k, n, mm]) => `<option value="${k}">${esc(n)} · ${mm} mm a leaf</option>`).join("")}</select></label>
+                <label>Spine <input type="number" id="sbSpine" min="0" max="99" step="0.1" inputmode="decimal" aria-describedby="sbWrapNote"> mm</label></div>
+              <p class="sb-hint" id="sbWrapNote"></p>
+              <button type="button" class="sb-btn" id="sbWrap" data-dl>Download the cover wrap</button>
+            </div>
             <div class="sb-dlrow">
               <button type="button" class="sb-btn dark" id="sbPdf" data-dl>Download PDF</button>
               <button type="button" class="sb-btn" id="sbPng" data-dl>PNG pages</button>
@@ -7841,6 +7855,15 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         bookletNote();
       }));
       $("#sbPng").addEventListener("click", (e) => download(e.currentTarget, "png", $("#sbMark").checked));
+      $("#sbWrap").addEventListener("click", (e) => downloadWrap(e.currentTarget));
+      $$("[data-bind]").forEach((x) => x.addEventListener("click", () => { setWrapPrefs({ ...wrapPrefs(), bind: x.dataset.bind }); wrapNote(); }));
+      $("#sbWrapPaper").addEventListener("change", (e) => { setWrapPrefs({ ...wrapPrefs(), paper: e.target.value, spine: null }); wrapNote(); });
+      $("#sbSpine").addEventListener("change", (e) => {
+        const v = parseFloat(String(e.target.value).replace(",", "."));
+        const worked = wrapFacts(book, { ...wrapPrefs(), spine: null }).worked;
+        setWrapPrefs({ ...wrapPrefs(), spine: Number.isFinite(v) && v > 0 && v < 100 && Math.abs(v - worked) > 0.04 ? Math.round(v * 10) / 10 : null });
+        wrapNote();
+      });
       $("#sbMarks").addEventListener("change", (e) => { printMarks = e.currentTarget.checked; });
       $("#sbCmyk").addEventListener("change", (e) => { printCmyk = e.currentTarget.checked; $("#sbCmykNote").hidden = !printCmyk; });
       $$("[data-dpi]").forEach((b) => b.addEventListener("click", () => {
@@ -12402,6 +12425,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
        printer can manage — and the note says so, and how to print it. */
     function bookletNote() {
       const el = $("#sbBookletNote"), fold = $('[data-print="fold"]'), pdf = $("#sbPdf"); if (!el || !fold) return;
+      wrapNote();
       const sheet = SHEETS[book.paper || "a4"] || SHEETS.a4, social = isSocial(book);
       const can = book.orientation !== "landscape" && !social;
       fold.disabled = !can;
@@ -12600,6 +12624,135 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       } finally { btn.disabled = false; }
     }
 
+    /* ---------- the cover wrap (phase 10, Sep 30 2026) ---------------------
+       A bound book's cover is printed as one sheet: back cover, spine, front
+       cover, with 3 mm bleed (a softcover) or the cloth that wraps round the
+       boards (a hardcover: 15 mm turn-in, 8 mm hinges, boards 3 mm bigger
+       than the pages). The spine is as thick as the inside pages: leaves ×
+       the paper's leaf, a little more for the cover or the boards; a
+       printer's own figure, typed in, wins. The words on the covers stay
+       real type. Ordering needs a server this site doesn't have, so the
+       files are made here to upload to a printer. */
+    function wrapPrefs() {
+      try {
+        const all = JSON.parse(localStorage.getItem("wps_book_wrap") || "{}"), v = (book && all[book.id]) || {};
+        return { bind: v.bind === "hard" ? "hard" : "soft", paper: WRAP_PAPERS.some(([k]) => k === v.paper) ? v.paper : "silk", spine: typeof v.spine === "number" && v.spine > 0 && v.spine < 100 ? v.spine : null };
+      } catch (e) { return { bind: "soft", paper: "silk", spine: null }; }
+    }
+    function setWrapPrefs(v) { try { const all = JSON.parse(localStorage.getItem("wps_book_wrap") || "{}"); all[book.id] = v; localStorage.setItem("wps_book_wrap", JSON.stringify(all)); } catch (e) { /* private window */ } }
+    function wrapFacts(b, pref) {
+      const last = b.pages[b.pages.length - 1];
+      const backAt = last && last.type === "end" && last.layout === "back" ? b.pages.length - 1 : -1;
+      const inside = Math.max(0, renderedCount(b) - 1 - (backAt >= 0 ? 1 : 0));
+      const leaves = Math.ceil(inside / 2);
+      const cal = (WRAP_PAPERS.find(([k]) => k === pref.paper) || WRAP_PAPERS[1])[2];
+      const hard = pref.bind === "hard";
+      const worked = Math.round((leaves * cal + (hard ? 4 : 0.6)) * 10) / 10;
+      const spine = pref.spine || worked;
+      const G = geometry(b);
+      const edge = hard ? 15 : 3, hinge = hard ? 8 : 0, bw = G.pw + (hard ? 3 : 0), bh = G.ph + (hard ? 6 : 0);
+      return { backAt, inside, leaves, cal, hard, worked, spine, edge, hinge, bw, bh, G, W: edge * 2 + bw * 2 + hinge * 2 + spine, H: edge * 2 + bh };
+    }
+    function wrapNote() {
+      const el = $("#sbWrapNote"), sec = $("#sbWrapSec"); if (!el || !book) return;
+      if (sec) sec.hidden = isSocial(book);
+      const pref = wrapPrefs(), f = wrapFacts(book, pref);
+      $$("[data-bind]").forEach((x) => x.setAttribute("aria-checked", String(x.dataset.bind === pref.bind)));
+      const ps = $("#sbWrapPaper"); if (ps) ps.value = pref.paper;
+      const sp = $("#sbSpine"); if (sp && document.activeElement !== sp) { sp.value = String(f.spine); sp.placeholder = String(f.worked); }
+      const odd = f.inside % 2 ? ` The inside pages are an odd number (${f.inside}): add one, as every leaf has two sides.` : f.hard && f.inside % 4 ? ` Many binders want the inside pages in fours; ${f.inside} isn't.` : "";
+      el.textContent = `${f.inside} inside page${f.inside === 1 ? "" : "s"} (${f.leaves} lea${f.leaves === 1 ? "f" : "ves"}), so a ${f.spine} mm spine${pref.spine ? " — your printer's figure" : ` at ${f.cal} mm a leaf`}. One sheet ${Math.round(f.W)} × ${Math.round(f.H)} mm: back cover, spine, front cover, ${f.hard ? "with 15 mm to wrap round the boards, 8 mm hinges, and boards 3 mm bigger than the pages" : "with 3 mm bleed all round"}.${f.backAt < 0 ? " The book has no back cover page, so the back is the cover's own colour." : ""}${odd} Printers work spines out differently: if yours gives you a figure, type it in. Send this with the PDF made with crop marks and bleed.`;
+    }
+    const spineWords = (b) => [b.title || b.name, forOf(b) ? (forOf(b).name || "") : studio()].filter(Boolean).join("   ·   ");
+    async function downloadWrap(btn) {
+      flush();
+      const snap = JSON.parse(JSON.stringify(book));
+      const pref = wrapPrefs(), f = wrapFacts(snap, pref);
+      const buttons = $$("[data-dl]"), label = btn.textContent, ready = $("#sbReady");
+      buttons.forEach((x) => { x.disabled = true; });
+      btn.textContent = "Making the cover wrap…";
+      ready.replaceChildren(); dropFiles();
+      try {
+        const dpi = exportDpi, k = dpi / 25.4, cache = new Map(), px = (mm) => Math.round(mm * k);
+        const BP = await loadPrint();
+        if (!BP) throw new Error("the print writer didn't load");
+        if (BP.addOwnFace) { await loadOwnFonts(); for (const of2 of OWN_FONTS) BP.addOwnFace(ownFamily(of2.id), of2.bytes, of2.name); }
+        const only = f.backAt >= 0 ? [-1, f.backAt] : -1;
+        let print = null;
+        try {
+          const needs = BP.newNeeds();
+          for await (const r of renderPages(snap, { dpi: 20, cache, only, print: { mode: "discover", needs } })) { r.page.canvas.width = 0; r.page.canvas.height = 0; }
+          // …and the spine's words, so their face is at hand too.
+          const probe = API.newPdfPage(20, { w: 20, h: 20 }); BP.hook(probe, { mode: "discover", needs }, 20);
+          probe.ctx.font = `700 12px ${F.sans}`; probe.ctx.textBaseline = "alphabetic"; probe.ctx.fillText(spineWords(snap), 0, 10);
+          probe.canvas.width = 0;
+          const faces = await BP.loadNeeds(needs);
+          if (faces.size) print = { mode: "vector", faces };
+        } catch (e) { print = null; }
+        const got = {};
+        for await (const r of renderPages(snap, { dpi, cache, only, print })) got[r.index < 0 ? "front" : "back"] = { canvas: r.page.canvas, runs: print ? BP.takeRuns(r.page) : [] };
+        const sheet = API.newPdfPage(dpi, { w: f.W, h: f.H });
+        if (print) BP.hook(sheet, print, dpi);
+        const ctx = sheet.ctx, c = sheet.canvas;
+        // The spine's colour is the front cover's own, from its spine-side edge.
+        const fc = got.front.canvas, smp = fc.getContext("2d").getImageData(0, Math.round(fc.height * 0.1), Math.max(1, Math.round(k)), Math.max(1, Math.round(fc.height * 0.8))).data;
+        let rs = 0, gs = 0, bs = 0, nn = 0;
+        for (let i = 0; i < smp.length; i += 16) { rs += smp[i]; gs += smp[i + 1]; bs += smp[i + 2]; nn++; }
+        const rgb = [rs / nn, gs / nn, bs / nn].map(Math.round), spineHex = `#${rgb.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+        ctx.fillStyle = spineHex; ctx.fillRect(0, 0, c.width, c.height);
+        let runs = [];
+        // A panel: the page stretched to the board, carried past its edges into the bleed or the turn-in by mirroring.
+        const panel = (src, xmm) => {
+          const sw = src.canvas.width, sh = src.canvas.height, bwp = px(f.bw), bhp = px(f.bh), e = px(f.edge), x0 = px(xmm);
+          const sc = Math.max(bwp / sw, bhp / sh), dx = (bwp - sw * sc) / 2, dy = (bhp - sh * sc) / 2;
+          const board = document.createElement("canvas"); board.width = bwp; board.height = bhp;
+          board.getContext("2d").drawImage(src.canvas, dx, dy, sw * sc, sh * sc);
+          const grown = BP.withBleed(board, e);
+          ctx.drawImage(grown, x0 - e, 0);
+          runs = runs.concat(BP.shiftRuns(src.runs, x0 + dx, e + dy, sc));
+          board.width = 0; grown.width = 0;
+        };
+        if (got.back) panel(got.back, f.edge);
+        panel(got.front, f.edge + f.bw + 2 * f.hinge + f.spine);
+        // The spine (and a hardcover's hinges), in the cover's colour, with the title down it.
+        ctx.fillStyle = spineHex; ctx.fillRect(px(f.edge + f.bw), 0, px(2 * f.hinge + f.spine), c.height);
+        const words = spineWords(snap);
+        if (f.spine >= 5 && words) {
+          const lum = (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255;
+          let size = Math.min(f.spine * 0.42, 5);
+          ctx.save();
+          ctx.translate(px(f.edge + f.bw + f.hinge + f.spine / 2), c.height / 2); ctx.rotate(Math.PI / 2);
+          ctx.textAlign = "center"; ctx.textBaseline = "alphabetic"; ctx.fillStyle = lum < 0.5 ? "#ffffff" : "#141416";
+          const setF = () => { ctx.font = `700 ${(size * k).toFixed(2)}px ${F.sans}`; };
+          setF();
+          while (ctx.measureText(words).width > px(f.bh * 0.8) && size > 2) { size -= 0.25; setF(); }
+          ctx.fillText(words, 0, size * k * 0.36);
+          ctx.restore();
+        }
+        // Fold marks at the spine's edges (and the hinges'), in the bleed or the turn-in, never on the cover.
+        ctx.fillStyle = "rgba(0,0,0,0.55)";
+        const tick = Math.min(f.edge * 0.6, 4);
+        for (const xm of new Set([f.edge + f.bw, f.edge + f.bw + f.hinge, f.edge + f.bw + f.hinge + f.spine, f.edge + f.bw + 2 * f.hinge + f.spine])) {
+          ctx.fillRect(px(xm), 0, Math.max(1, px(0.25)), px(tick)); ctx.fillRect(px(xm), c.height - px(tick), Math.max(1, px(0.25)), px(tick));
+        }
+        if (print) runs = runs.concat(BP.takeRuns(sheet));
+        const jpeg = printCmyk ? await BP.cmykJpeg(c, 90) : await API.canvasJpeg(c, 0.9);
+        const name0 = String(snap.name || "book").normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "book";
+        const out = [{ jpeg, cmyk: !!printCmyk, width: c.width, height: c.height, links: [], pt: { w: f.W * 72 / 25.4, h: f.H * 72 / 25.4 }, runs, bleedPx: 0, label: `${name0} - cover wrap - spine ${f.spine} mm` }];
+        const bytes = (await BP.buildPdf(out, { title: `${snap.title || snap.name} — cover wrap`, author: forOf(snap) ? forOf(snap).name : studio(), marks: false, cmyk: !!printCmyk })).bytes;
+        c.width = 0; c.height = 0; Object.values(got).forEach((g) => { g.canvas.width = 0; });
+        const blob = new Blob([bytes], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob); fileUrls.push(url);
+        const fname = `${name0}-cover-wrap-${f.hard ? "hardcover" : "softcover"}.pdf`;
+        ready.innerHTML = `<a href="${url}" download="${esc(fname)}">Save the cover wrap (${(blob.size / 1048576).toFixed(1)} MB · ${Math.round(f.W)} × ${Math.round(f.H)} mm · ${f.spine} mm spine · ${dpi} dpi${print ? " · real type" : ""})</a>`;
+        if (!matchMedia("(pointer: coarse)").matches) ready.querySelector("a").click();
+      } catch (err) {
+        ready.innerHTML = `<p class="sb-warn">Couldn't make the cover wrap (${esc(err.message || err)}).</p>`;
+      } finally {
+        buttons.forEach((x) => { x.disabled = false; });
+        btn.textContent = label;
+      }
+    }
     async function download(btn, format, watermarked) {
       flush();
       // A frozen copy: an edit made while pages are being drawn must not end up
