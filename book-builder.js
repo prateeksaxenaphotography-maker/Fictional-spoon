@@ -5549,609 +5549,920 @@
      page") or the look of the whole book ("Design"). Download and Publish
      sit in the bar at the top. On a phone the same parts stack: the page,
      the strip of pages, then one panel at a time. */
+  /* One family of line icons for the editor's own buttons (v568): a 24-unit
+     square, a 1.75 stroke, round ends — in place of the glyphs (⧉ ⇈ ⟳ ✕ ‹)
+     that each font drew at its own size and weight. */
+  const UI_PATHS = {
+    back: '<path d="m15 18-6-6 6-6"/>',
+    left: '<path d="m15 18-6-6 6-6"/>', right: '<path d="m9 18 6-6-6-6"/>', up: '<path d="m18 15-6-6-6 6"/>', down: '<path d="m6 9 6 6 6-6"/>',
+    arrowUp: '<path d="M12 19V5"/><path d="m5 12 7-7 7 7"/>', arrowDown: '<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',
+    arrowLeft: '<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>', arrowRight: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+    toFront: '<path d="M5 3h14"/><path d="M12 21V8"/><path d="m7 13 5-5 5 5"/>', toBack: '<path d="M5 21h14"/><path d="M12 3v13"/><path d="m7 11 5 5 5-5"/>',
+    undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+    redo: '<path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>',
+    history: '<path d="M3 12a9 9 0 1 0 2.64-6.36L3 8.3"/><path d="M3 3.5v4.8h4.8"/><path d="M12 7.5V12l3 2"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+    download: '<path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/>',
+    globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z"/>',
+    save: '<path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path d="M8 3v5h7V3"/><path d="M8 21v-6h8v6"/>',
+    plus: '<path d="M12 5v14"/><path d="M5 12h14"/>', minus: '<path d="M5 12h14"/>', x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+    trash: '<path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="m6 7 1 12.2A2 2 0 0 0 9 21h6a2 2 0 0 0 2-1.8L18 7"/><path d="M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7"/>',
+    copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5V5"/>',
+    pencil: '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+    one: '<rect x="6.5" y="3" width="11" height="18" rx="1.5"/>',
+    two: '<rect x="2.5" y="4" width="9" height="16" rx="1.2"/><rect x="12.5" y="4" width="9" height="16" rx="1.2"/>',
+    ruler: '<path d="M3 15.5 15.5 3 21 8.5 8.5 21z"/><path d="m7 11.5 2 2"/><path d="m10 8.5 2 2"/><path d="m13 5.5 2 2"/>',
+    read: '<path d="M2.5 5.5h6a3.5 3.5 0 0 1 3.5 3.5v11a2.5 2.5 0 0 0-2.5-2.5h-7z"/><path d="M21.5 5.5h-6A3.5 3.5 0 0 0 12 9v11a2.5 2.5 0 0 1 2.5-2.5h7z"/>',
+    image: '<rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="9" cy="9" r="1.8"/><path d="m21 15-4.5-4.5L6 21"/>',
+    replace: '<path d="M3.5 12a8.5 8.5 0 0 1 14.6-5.9L20.5 8.5"/><path d="M20.5 3.5v5h-5"/><path d="M20.5 12a8.5 8.5 0 0 1-14.6 5.9L3.5 15.5"/><path d="M3.5 20.5v-5h5"/>',
+    swap: '<path d="m16 3 4 4-4 4"/><path d="M20 7H9"/><path d="m8 21-4-4 4-4"/><path d="M4 17h11"/>',
+    face: '<path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="10.5" r="2.8"/><path d="M7.8 17.5a5 5 0 0 1 8.4 0"/>',
+    cutout: '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9"/><path d="M14.5 14.5 20 20"/><path d="M8.1 8.1 12 12"/>',
+    wand: '<path d="m4 20 11-11"/><path d="m13.5 7.5 3 3"/><path d="M17 3v3"/><path d="M15.5 4.5h3"/><path d="M20 9v2"/><path d="M19 10h2"/><path d="M8 3v2"/><path d="M7 4h2"/>',
+    grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+    page: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
+    book: '<path d="M4 19.5V5a2 2 0 0 1 2-2h14v15H6.5A2.5 2.5 0 0 0 4 20.5 2.5 2.5 0 0 0 6.5 23H20"/>',
+    check: '<path d="M20 6 9 17l-5-5"/>',
+    folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    flipH: '<path d="M12 3v18"/><path d="M8 7 3 12l5 5z"/><path d="m16 7 5 5-5 5z"/>',
+    flipV: '<path d="M3 12h18"/><path d="M7 8l5-5 5 5z"/><path d="m7 16 5 5 5-5z"/>',
+    layout: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/>',
+    type: '<path d="M4 7V5h16v2"/><path d="M12 5v14"/><path d="M9 19h6"/>',
+    shape: '<rect x="3" y="3" width="11" height="11" rx="2"/><circle cx="15.5" cy="15.5" r="5.5"/>',
+    line: '<path d="M4 20 20 4"/>',
+    star: '<path d="m12 3 2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/>',
+    pen: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+    badge: '<circle cx="12" cy="9" r="6"/><path d="m8.5 14-1.5 7 3.5-2 1.5 1 1.5-1 3.5 2-1.5-7"/>',
+    keyboard: '<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>',
+    lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    eyeOff: '<path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6 0 9.5 7 9.5 7a17 17 0 0 1-2.6 3.4M6.6 6.6A17 17 0 0 0 2.5 12S6 19 12 19a9.6 9.6 0 0 0 4.4-1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>'
+  };
+  const uiIc = (name, px = 16) => `<svg class="sb-i" viewBox="0 0 24 24" width="${px}" height="${px}" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${UI_PATHS[name] || ""}</svg>`;
+
   const CSS = `
-  .sb-root { --sb-line: var(--line, rgba(20,20,22,.14)); --sb-card: var(--paper, #faf8f5); --sb-sunk: var(--bone, #eceae7); --sb-warn: #8A5A00; color: var(--ink, #141416); font: 400 14px/1.45 Inter, system-ui, sans-serif; }
-  html.theme-dark .sb-root { --sb-warn: #E3B34A; }
+  /* ── The editor's look (v568, Sep 30 2026) ─────────────────────────────────
+     The studio: "it looks immature… like a 10th class student made". It was a
+     web page's parts stacked into a tool: beige cards inside cards, three type
+     voices (mono capitals, bold sans, serif), orange on every control, pill
+     buttons of four heights, native sliders and checkboxes, glyph icons (⧉ ⇈ ⟳).
+     It is now drawn the way a design tool is: one neutral surface system, one
+     type voice in sentence case, one blue for "chosen" (the page's own accent
+     is the book's, never the tool's), hairlines instead of boxes, switches,
+     slim sliders, a floating page toolbar, and one family of line icons.
+     Tokens live on :root so the dialogs the editor puts on <body> share them. */
+  :root {
+    --sb-app: #f4f4f5; --sb-board: #e8e8eb; --sb-panel: #ffffff; --sb-raised: #ffffff;
+    --sb-sunk: #f4f4f5; --sb-sunk-2: #ebebee; --sb-seg-on: #ffffff; --sb-hover: rgba(24,24,27,.05); --sb-press: rgba(24,24,27,.09);
+    --sb-line: rgba(24,24,27,.09); --sb-line-2: rgba(24,24,27,.16); --sb-line-3: rgba(24,24,27,.28);
+    --sb-text: #18181b; --sb-text-2: #52525b; --sb-text-3: #8b8b94;
+    --sb-sel: #3565f0; --sb-sel-2: #2750d6; --sb-sel-soft: rgba(53,101,240,.10); --sb-sel-ring: rgba(53,101,240,.28);
+    --sb-primary: #18181b; --sb-on-primary: #ffffff; --sb-primary-hover: #2e2e33;
+    --sb-danger: #d92d20; --sb-ok: #12915a; --sb-warn: #b25e09; --sb-warn-soft: rgba(245,158,11,.14); --sb-ok-soft: rgba(18,145,90,.12);
+    --sb-snap: #f0386b; --sb-guide: #0ea5c6;
+    --sb-r: 8px; --sb-r-sm: 6px; --sb-r-lg: 12px; --sb-r-xl: 16px;
+    --sb-sh-1: 0 1px 2px rgba(16,16,20,.06);
+    --sb-sh-2: 0 1px 2px rgba(16,16,20,.05), 0 4px 12px -2px rgba(16,16,20,.08);
+    --sb-sh-3: 0 0 0 1px rgba(16,16,20,.06), 0 8px 24px -6px rgba(16,16,20,.18), 0 2px 6px -2px rgba(16,16,20,.08);
+    --sb-sh-4: 0 0 0 1px rgba(16,16,20,.06), 0 24px 64px -16px rgba(16,16,20,.35);
+    --sb-page-sh: 0 0 0 1px rgba(16,16,20,.05), 0 2px 4px rgba(16,16,20,.06), 0 12px 32px -8px rgba(16,16,20,.22);
+    --sb-font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --sb-mono: ui-monospace, "SF Mono", Menlo, monospace;
+    --sb-ease: cubic-bezier(.2,.7,.2,1);
+    --sb-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b8b94' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  }
+  html.theme-dark {
+    --sb-app: #111113; --sb-board: #0b0b0d; --sb-panel: #19191c; --sb-raised: #222226;
+    --sb-sunk: #222226; --sb-sunk-2: #2a2a2f; --sb-seg-on: #45454d; --sb-hover: rgba(255,255,255,.06); --sb-press: rgba(255,255,255,.1);
+    --sb-line: rgba(255,255,255,.08); --sb-line-2: rgba(255,255,255,.14); --sb-line-3: rgba(255,255,255,.26);
+    --sb-text: #f4f4f5; --sb-text-2: #b4b4bd; --sb-text-3: #7c7c86;
+    --sb-sel: #6b8cff; --sb-sel-2: #8aa4ff; --sb-sel-soft: rgba(107,140,255,.16); --sb-sel-ring: rgba(107,140,255,.35);
+    --sb-primary: #f4f4f5; --sb-on-primary: #18181b; --sb-primary-hover: #ffffff;
+    --sb-danger: #ff6b5e; --sb-ok: #4ade80; --sb-warn: #f5b546; --sb-warn-soft: rgba(245,181,70,.14); --sb-ok-soft: rgba(74,222,128,.12);
+    --sb-sh-1: 0 1px 2px rgba(0,0,0,.4);
+    --sb-sh-2: 0 1px 2px rgba(0,0,0,.4), 0 4px 12px -2px rgba(0,0,0,.4);
+    --sb-sh-3: 0 0 0 1px rgba(255,255,255,.07), 0 10px 28px -6px rgba(0,0,0,.6);
+    --sb-sh-4: 0 0 0 1px rgba(255,255,255,.08), 0 24px 64px -16px rgba(0,0,0,.75);
+    --sb-page-sh: 0 0 0 1px rgba(255,255,255,.04), 0 16px 40px -10px rgba(0,0,0,.7);
+    --sb-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237c7c86' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  }
+  .sb-root { color: var(--sb-text); font: 400 13px/1.45 var(--sb-font); -webkit-font-smoothing: antialiased; }
   .sb-root *, .sb-root *::before, .sb-root *::after { box-sizing: border-box; }
-  .sb-root h3 { margin: 0; font: 700 11px/1.3 'JetBrains Mono', monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft, #5c5e66); }
+  .sb-i { display: block; flex: none; width: 16px; height: 16px; }
+  .sb-root h3 { margin: 0; font: 600 13px/1.35 var(--sb-font); letter-spacing: -.005em; text-transform: none; color: var(--sb-text); }
   /* the site sets every h3's size with !important */
-  .sb-root h3 { font-size: 11px !important; line-height: 1.3 !important; }
-  .sb-root input[type=text], .sb-root input[type=tel], .sb-root input[type=email], .sb-root textarea, .sb-root select { width: 100%; font: 500 14px/1.4 Inter, system-ui, sans-serif; padding: 9px 11px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--paper, #faf8f5); color: var(--ink, #141416); min-width: 0; }
-  .sb-root textarea { resize: vertical; line-height: 1.5; }
-  .sb-root input:focus-visible, .sb-root textarea:focus-visible, .sb-root select:focus-visible { outline: 2px solid var(--accent, #d24e1a); outline-offset: 1px; }
-  @media (pointer: coarse) { .sb-root input[type=text], .sb-root input[type=tel], .sb-root input[type=email], .sb-root textarea, .sb-root select { font-size: 16px; } }
-  .sb-btn { font: 600 13.5px Inter, system-ui, sans-serif; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--ink, #141416); background: transparent; color: var(--ink, #141416); cursor: pointer; white-space: nowrap; }
-  .sb-btn:hover { background: var(--sb-sunk); }
-  .sb-btn.dark { background: var(--ink, #141416); color: var(--paper, #faf8f5); }
-  .sb-btn.dark:hover { background: var(--accent, #d24e1a); border-color: var(--accent, #d24e1a); }
-  .sb-btn.quiet { border-color: transparent; }
-  .sb-btn:disabled { opacity: .45; cursor: not-allowed; }
-  .sb-link { background: none; border: 0; padding: 2px; font: 600 12.5px Inter, sans-serif; color: var(--accent, #d24e1a); text-decoration: underline; cursor: pointer; }
-  .sb-root button:focus-visible { outline: 2px solid var(--accent, #d24e1a); outline-offset: 2px; }
-  .sb-hint { margin: 0; font: 400 11.5px/1.45 Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
-  .sb-warn { margin: 0; font: 600 12.5px/1.5 Inter, sans-serif; color: var(--accent, #d24e1a); }
+  .sb-root h3 { font-size: 13px !important; line-height: 1.35 !important; }
+
+  /* Fields: one height, one border, one focus ring. */
+  .sb-root input[type=text], .sb-root input[type=tel], .sb-root input[type=email], .sb-root input[type=number], .sb-root input[type=search], .sb-root textarea, .sb-root select {
+    width: 100%; min-width: 0; min-height: 34px; padding: 7px 10px; font: 400 13px/1.4 var(--sb-font); color: var(--sb-text);
+    background: var(--sb-panel); border: 1px solid var(--sb-line-2); border-radius: var(--sb-r); box-shadow: var(--sb-sh-1);
+    transition: border-color .12s, box-shadow .12s;
+  }
+  .sb-root textarea { resize: vertical; line-height: 1.55; padding: 8px 10px; }
+  .sb-root select { -webkit-appearance: none; appearance: none; padding-right: 30px; background: var(--sb-panel) var(--sb-chev) no-repeat right 8px center / 16px 16px; cursor: pointer; }
+  .sb-root input:hover:not(:focus), .sb-root textarea:hover:not(:focus), .sb-root select:hover:not(:focus) { border-color: var(--sb-line-3); }
+  .sb-root input:focus, .sb-root textarea:focus, .sb-root select:focus { outline: none; border-color: var(--sb-sel); box-shadow: 0 0 0 3px var(--sb-sel-ring); }
+  .sb-root input::placeholder, .sb-root textarea::placeholder { color: var(--sb-text-3); }
+  @media (pointer: coarse) { .sb-root input[type=text], .sb-root input[type=tel], .sb-root input[type=email], .sb-root input[type=number], .sb-root textarea, .sb-root select { font-size: 16px; } }
+
+  /* Sliders: a slim track and a round thumb, the same everywhere. */
+  .sb-root input[type=range]:not(.sb-cphue), .sb-modal input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 20px; margin: 0; background: transparent; cursor: pointer; accent-color: var(--sb-sel); }
+  .sb-root input[type=range]:not(.sb-cphue)::-webkit-slider-runnable-track, .sb-modal input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: var(--sb-sunk-2); }
+  .sb-root input[type=range]:not(.sb-cphue)::-moz-range-track, .sb-modal input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--sb-sunk-2); }
+  .sb-root input[type=range]:not(.sb-cphue)::-webkit-slider-thumb, .sb-modal input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 0 0 1px rgba(16,16,20,.22), 0 1px 3px rgba(16,16,20,.25); transition: transform .12s; }
+  .sb-root input[type=range]:not(.sb-cphue)::-moz-range-thumb, .sb-modal input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 0 0 1px rgba(16,16,20,.22), 0 1px 3px rgba(16,16,20,.25); }
+  .sb-root input[type=range]:not(.sb-cphue):hover::-webkit-slider-thumb { transform: scale(1.12); }
+  .sb-root input[type=range]:focus-visible { outline: none; }
+  .sb-root input[type=range]:not(.sb-cphue):focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--sb-sel-ring), 0 0 0 1px var(--sb-sel); }
+
+  /* Buttons: primary (ink), secondary (a hairline), quiet (nothing until hovered). */
+  .sb-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 0 12px; font: 500 13px/1 var(--sb-font); letter-spacing: -.005em; color: var(--sb-text); background: var(--sb-panel); border: 1px solid var(--sb-line-2); border-radius: var(--sb-r); box-shadow: var(--sb-sh-1); cursor: pointer; white-space: nowrap; transition: background .12s, border-color .12s, color .12s, box-shadow .12s; }
+  .sb-btn:hover:not(:disabled) { background: var(--sb-sunk); border-color: var(--sb-line-3); }
+  .sb-btn:active:not(:disabled) { background: var(--sb-sunk-2); }
+  .sb-btn.dark { color: var(--sb-on-primary); background: var(--sb-primary); border-color: var(--sb-primary); box-shadow: 0 1px 2px rgba(16,16,20,.2), inset 0 1px 0 rgba(255,255,255,.08); }
+  .sb-btn.dark:hover:not(:disabled) { background: var(--sb-primary-hover); border-color: var(--sb-primary-hover); }
+  .sb-btn.quiet { background: transparent; border-color: transparent; box-shadow: none; color: var(--sb-text-2); }
+  .sb-btn.quiet:hover:not(:disabled) { background: var(--sb-hover); border-color: transparent; color: var(--sb-text); }
+  .sb-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .sb-btn .sb-i { width: 16px; height: 16px; }
+  .sb-iconbtn { width: 32px; padding: 0; }
+  .sb-link { background: none; border: 0; padding: 2px; font: 500 12.5px var(--sb-font); color: var(--sb-sel); text-decoration: none; cursor: pointer; border-radius: 4px; }
+  .sb-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+  .sb-root button:focus-visible, .sb-root [tabindex]:focus-visible { outline: 2px solid var(--sb-sel); outline-offset: 2px; }
+  .sb-hint { margin: 0; font: 400 12px/1.5 var(--sb-font); color: var(--sb-text-3); }
+  .sb-warn { margin: 0; font: 500 12.5px/1.5 var(--sb-font); color: var(--sb-danger); }
   .sb-vh { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .sb-root kbd, .sb-kbd { display: inline-flex; align-items: center; min-width: 18px; height: 18px; padding: 0 5px; font: 500 10.5px/1 var(--sb-font); color: var(--sb-text-3); background: var(--sb-sunk); border: 1px solid var(--sb-line); border-bottom-width: 2px; border-radius: 5px; }
+  /* A name for a drawn button, shown on hover (and to a screen reader always). */
+  .sb-root [data-tip] { position: relative; }
+  .sb-root [data-tip]:hover::after, .sb-root [data-tip]:focus-visible::after { content: attr(data-tip); position: absolute; left: 50%; top: calc(100% + 8px); z-index: 90; transform: translateX(-50%); padding: 5px 8px; border-radius: 6px; background: #18181b; color: #fff; font: 500 11.5px/1.3 var(--sb-font); letter-spacing: 0; white-space: nowrap; pointer-events: none; box-shadow: var(--sb-sh-2); animation: sbTip .15s .35s both; }
+  .sb-root [data-tip-up]:hover::after, .sb-root [data-tip-up]:focus-visible::after { top: auto; bottom: calc(100% + 8px); }
+  html.theme-dark .sb-root [data-tip]:hover::after { background: #f4f4f5; color: #18181b; }
+  @keyframes sbTip { from { opacity: 0; transform: translate(-50%, 2px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  @media (hover: none) { .sb-root [data-tip]:hover::after { display: none; } }
 
-  /* books */
-  /* An admin tool: the site's "Book a shoot" band has no business under it.
-     A class, not :has(), which Chrome would re-check on every change to the page. */
+  /* Switches, where a box used to be ticked. The input is the same checkbox. */
+  .sb-check-row { display: flex; align-items: center; gap: 10px; min-height: 32px; font: 400 13px/1.4 var(--sb-font); color: var(--sb-text); cursor: pointer; }
+  .sb-check-row input[type=checkbox], .sb-modal .sb-check-row input[type=checkbox] { -webkit-appearance: none; appearance: none; flex: none; position: relative; width: 30px; height: 18px; margin: 0; border-radius: 9px; background: var(--sb-line-3); cursor: pointer; transition: background .15s var(--sb-ease); }
+  .sb-check-row input[type=checkbox]::before { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .15s var(--sb-ease); }
+  .sb-check-row input[type=checkbox]:checked { background: var(--sb-sel); }
+  .sb-check-row input[type=checkbox]:checked::before { transform: translateX(12px); }
+  .sb-check-row input[type=checkbox]:focus-visible { outline: 2px solid var(--sb-sel); outline-offset: 2px; }
+  .sb-check-row input[type=checkbox]:disabled { opacity: .45; }
+
+  /* Segmented choices: a sunk track with the chosen one raised. */
+  .sb-seg { display: flex; flex-wrap: wrap; gap: 2px; padding: 2px; background: var(--sb-sunk-2); border-radius: var(--sb-r); }
+  .sb-seg[hidden] { display: none; }
+  .sb-seg button { flex: 1 1 auto; min-height: 28px; padding: 0 10px; font: 500 12.5px/1.2 var(--sb-font); color: var(--sb-text-2); background: transparent; border: 0; border-radius: var(--sb-r-sm); cursor: pointer; transition: background .12s, color .12s, box-shadow .12s; }
+  .sb-seg button:hover:not([aria-checked=true]):not(:disabled) { color: var(--sb-text); background: var(--sb-hover); }
+  .sb-seg button[aria-checked=true] { color: var(--sb-text); background: var(--sb-seg-on); box-shadow: 0 0 0 .5px var(--sb-line-2), 0 1px 2px rgba(16,16,20,.1); font-weight: 600; }
+  .sb-seg button:disabled { opacity: .4; cursor: not-allowed; }
+  .sb-seg-sm button { min-height: 26px; padding: 0 9px; font-size: 12px; }
+  /* A drawn button is square and keeps its name for a reader and the tooltip. */
+  .sb-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; font-size: 11px; }
+  .sb-seg button:has(svg) { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; padding: 0 8px; line-height: 0; font-size: 0; }
+  .sb-seg:has(svg) button { flex: 1 1 0; }
+  /* A drawing that stands for a size says its word too (v512). */
+  .sb-seg-words button:has(svg) { flex-direction: column; gap: 4px; min-width: 52px; padding: 6px 6px 5px; }
+  .sb-seg-words .sb-sr { position: static; width: auto; height: auto; overflow: visible; clip: auto; font: 500 10.5px/1 var(--sb-font); letter-spacing: 0; text-transform: none; }
+  .sb-seg button svg { display: block; pointer-events: none; }
+
+  /* ── The books ──────────────────────────────────────────────────────────── */
   html.sb-book .footer-cta { display: none !important; }
-  .sb-homehead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px 24px; margin-bottom: 22px; }
-  .sb-eyebrow { margin: 0; font: 700 11px 'JetBrains Mono', monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft, #5c5e66); }
-  .sb-h1 { margin: 6px 0 6px; font: 800 clamp(28px, 4vw, 40px)/1.05 Archivo, Inter, sans-serif; letter-spacing: -.02em; }
-  .sb-lede { margin: 0; max-width: 62ch; color: var(--ink-soft, #5c5e66); }
-  .sb-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 16px; }
-  .sb-card { display: grid; grid-template-rows: auto 1fr; border: 1px solid var(--sb-line); border-radius: 12px; overflow: hidden; background: var(--sb-card); }
-  .sb-newcard { display: grid; grid-template-rows: none; align-content: center; justify-items: center; gap: 6px; min-height: 220px; border: 1px dashed var(--sb-line-2, #b9b7b2); background: none; color: inherit; font: 700 15px Inter, sans-serif; text-align: center; cursor: pointer; }
-  .sb-newcard small { font: 400 12px/1.4 Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
-  .sb-newcard:hover:not(:disabled) { border-color: var(--ink, #141416); }
+  .sb-homehead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 24px; margin-bottom: 28px; }
+  .sb-eyebrow { display: inline-flex; align-items: center; gap: 6px; margin: 0; font: 500 12px/1 var(--sb-font); letter-spacing: 0; text-transform: none; color: var(--sb-text-3); }
+  .sb-eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--sb-sel); }
+  .sb-h1 { margin: 10px 0 6px !important; font: 650 30px/1.1 var(--sb-font) !important; letter-spacing: -.025em !important; color: var(--sb-text); }
+  .sb-lede { margin: 0; max-width: 60ch; font: 400 14px/1.55 var(--sb-font); color: var(--sb-text-2); }
+  .sb-homeacts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .sb-homeacts .sb-btn { min-height: 36px; padding: 0 14px; }
+  .sb-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 248px), 1fr)); gap: 20px; }
+  .sb-card { position: relative; display: grid; grid-template-rows: auto 1fr; border: 1px solid var(--sb-line); border-radius: var(--sb-r-lg); overflow: hidden; background: var(--sb-panel); box-shadow: var(--sb-sh-1); transition: box-shadow .2s var(--sb-ease), transform .2s var(--sb-ease), border-color .2s; }
+  .sb-card:not(.sb-newcard):hover { box-shadow: var(--sb-sh-3); transform: translateY(-2px); border-color: transparent; }
+  .sb-newcard { grid-template-rows: none; align-content: center; justify-items: center; gap: 10px; min-height: 300px; border: 1.5px dashed var(--sb-line-2); background: transparent; box-shadow: none; color: var(--sb-text); font: 600 14px var(--sb-font); text-align: center; cursor: pointer; }
+  .sb-newcard::before { content: ""; width: 44px; height: 44px; border-radius: 50%; background: var(--sb-sunk-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2352525b' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E") no-repeat center / 20px; transition: background-color .15s; }
+  .sb-newcard small { max-width: 24ch; font: 400 12.5px/1.45 var(--sb-font); color: var(--sb-text-3); }
+  .sb-newcard:hover:not(:disabled) { border-color: var(--sb-sel); background: var(--sb-sel-soft); }
   .sb-newcard:disabled { opacity: .45; cursor: not-allowed; }
-  .sb-cardcover { display: grid; place-items: center; height: 190px; padding: 14px; border: 0; background: var(--sb-sunk); cursor: pointer; }
-  .sb-cardcover canvas { max-width: 100%; max-height: 162px; box-shadow: 0 8px 20px -10px rgba(0,0,0,.45); }
-  .sb-cardbody { display: grid; gap: 3px; padding: 12px 14px 14px; align-content: start; }
-  .sb-cardbody h4 { margin: 0; font: 700 15px Inter, sans-serif; overflow-wrap: anywhere; }
-  .sb-meta { font: 400 12.5px Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
-  .sb-cardacts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 10px; }
-  .sb-cardacts .sb-btn { padding: 7px 12px; }
-  .sb-cardacts .sb-btn.quiet { padding: 6px 7px; font-size: 12.5px; }
-  .sb-empty { padding: 28px; border: 1px dashed var(--sb-line); border-radius: 12px; text-align: center; }
-  .sb-foot { margin-top: 16px; }
+  .sb-cardcover { display: grid; place-items: center; height: 212px; padding: 20px; border: 0; background: radial-gradient(120% 90% at 50% 0%, var(--sb-sunk) 0%, var(--sb-sunk-2) 100%); cursor: pointer; }
+  .sb-cardcover canvas { max-width: 100%; max-height: 172px; border-radius: 1px 3px 3px 1px; box-shadow: var(--sb-page-sh); transition: transform .25s var(--sb-ease); }
+  .sb-card:hover .sb-cardcover canvas { transform: translateY(-3px) scale(1.02); }
+  .sb-cardbody { display: grid; gap: 2px; padding: 14px 14px 12px; align-content: start; }
+  .sb-cardbody h4 { margin: 0 0 2px; font: 600 14px/1.35 var(--sb-font); letter-spacing: -.01em; overflow-wrap: anywhere; }
+  .sb-meta { font: 400 12px/1.45 var(--sb-font); color: var(--sb-text-3); }
+  .sb-cardacts { display: flex; flex-wrap: nowrap; align-items: center; gap: 0; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--sb-line); }
+  .sb-cardacts .sb-btn { min-height: 30px; padding: 0 11px; font-size: 12.5px; }
+  .sb-cardacts .sb-btn.dark { margin-right: auto; }
+  .sb-cardacts .sb-btn.quiet { padding: 0 7px; gap: 5px; }
+  .sb-cardacts .sb-btn.sb-iconbtn { width: 30px; padding: 0; }
+  .sb-cardacts [data-del]:hover:not(:disabled) { color: var(--sb-danger); }
+  .sb-empty { display: grid; justify-items: center; gap: 8px; padding: 56px 24px; border: 1.5px dashed var(--sb-line-2); border-radius: var(--sb-r-lg); text-align: center; }
+  .sb-empty .sb-hint { max-width: 56ch; font-size: 13px; }
+  .sb-foot { max-width: 90ch; margin-top: 24px; }
+  .sb-shelftag { color: var(--sb-text-2); }
+  .sb-copydue { color: var(--sb-warn); font-weight: 600; }
 
-  /* the editor */
-  .sb-top { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 8px 10px; border: 1px solid var(--sb-line); border-radius: 12px; background: var(--sb-card); }
-  .sb-root .sb-name { flex: 1 1 180px; width: auto; font: 700 16px Inter, sans-serif; border-color: var(--sb-line); background: var(--paper, #faf8f5); }
-  .sb-root .sb-name:hover, .sb-root .sb-name:focus { border-color: var(--sb-line); background: var(--paper, #faf8f5); }
-  .sb-status { font: 600 11.5px 'JetBrains Mono', monospace; letter-spacing: .03em; color: var(--ink-soft, #5c5e66); }
-  .sb-topacts { display: flex; gap: 8px; margin-left: auto; }
-  .sb-undos { display: inline-flex; gap: 4px; }
-  .sb-ico { display: inline-flex; align-items: center; gap: 5px; padding: 6px 9px; }
+  /* ── The editor: a workspace that fills the window ─────────────────────── */
+  .sb-top { position: relative; z-index: 20; display: flex; align-items: center; gap: 4px 6px; min-height: 56px; padding: 8px 12px; background: var(--sb-panel); border: 1px solid var(--sb-line); border-radius: var(--sb-r-lg); }
+  .sb-topl { display: flex; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; }
+  .sb-topc { display: flex; align-items: center; gap: 2px; flex: none; }
+  .sb-topr, .sb-topacts { display: flex; align-items: center; gap: 6px; flex: none; }
+  .sb-topdiv { flex: none; width: 1px; height: 20px; margin: 0 4px; background: var(--sb-line-2); }
+  .sb-backbtn { padding: 0 10px 0 6px; }
+  .sb-root input.sb-name { flex: 0 1 320px; width: auto; min-width: 80px; min-height: 32px; padding: 5px 8px; font: 600 14px/1.3 var(--sb-font); letter-spacing: -.01em; border-color: transparent; background: transparent; box-shadow: none; text-overflow: ellipsis; }
+  .sb-root input.sb-name:hover:not(:focus) { background: var(--sb-hover); border-color: transparent; }
+  .sb-root input.sb-name:focus { background: var(--sb-panel); border-color: var(--sb-sel); }
+  .sb-status { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; font: 400 12px/1.3 var(--sb-font); letter-spacing: 0; color: var(--sb-text-3); white-space: nowrap; text-overflow: ellipsis; }
+  .sb-undos { display: inline-flex; align-items: center; gap: 2px; }
+  .sb-ico { gap: 6px; }
   .sb-ico svg { width: 16px; height: 16px; }
   .sb-ico:disabled { opacity: .35; }
+  /* Undo and Redo: a drawing on a laptop (named on hover); on a phone they
+     keep their words, since nothing can be hovered (Sep 2026 audit, K9). */
+  #sbUndo, #sbRedo { width: 32px; padding: 0; }
+  #sbUndo > span, #sbRedo > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  @media (hover: none) { #sbUndo, #sbRedo { width: auto; padding: 0 8px; } #sbUndo > span, #sbRedo > span { position: static; width: auto; height: auto; clip: auto; font-size: 12px; } }
   /* The check light: green when every page is ready, amber with a count when not. */
-  .sb-light { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid var(--sb-line); border-radius: 100px; background: transparent; color: inherit; font: 600 11.5px 'JetBrains Mono', monospace; letter-spacing: .03em; cursor: pointer; }
-  .sb-light i { width: 9px; height: 9px; border-radius: 50%; background: #b7b3ad; }
-  .sb-light.ok i { background: #2f9e5a; } .sb-light.warn i { background: #E0A100; } .sb-light.warn { color: var(--sb-warn); }
-  /* Undo and Redo keep their words on a phone: a drawing stands for a thing,
-     and these two needed a hover to be named (Sep 2026 audit, K9). */
-  @media (max-width: 900px) { .sb-ico span { font-size: 11px; } .sb-light span { font-size: 10.5px; } }
-  .sb-pop { position: absolute; right: 8px; top: calc(100% + 6px); z-index: 30; width: min(400px, calc(100vw - 32px)); max-height: min(70vh, 620px); overflow: auto; display: grid; gap: 12px; padding: 16px; background: var(--paper, #faf8f5); border: 1px solid var(--sb-line); border-radius: 12px; box-shadow: 0 22px 50px -20px rgba(0,0,0,.45); }
+  .sb-light { display: inline-flex; align-items: center; gap: 7px; min-height: 28px; padding: 0 10px; border: 0; border-radius: 999px; background: var(--sb-sunk); color: var(--sb-text-2); font: 500 12px/1 var(--sb-font); letter-spacing: 0; cursor: pointer; transition: background .12s; }
+  .sb-light:hover { background: var(--sb-sunk-2); }
+  .sb-light i { width: 7px; height: 7px; border-radius: 50%; background: var(--sb-text-3); }
+  .sb-light.ok { background: var(--sb-ok-soft); color: var(--sb-ok); } .sb-light.ok i { background: var(--sb-ok); }
+  .sb-light.warn { background: var(--sb-warn-soft); color: var(--sb-warn); } .sb-light.warn i { background: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.2); }
+  #sbCmd { gap: 8px; color: var(--sb-text-2); }
+  #sbCmd kbd { margin-left: 2px; }
+  #sbSave.is-due { border-color: var(--sb-sel); color: var(--sb-sel); box-shadow: 0 0 0 3px var(--sb-sel-soft); }
+
+  /* Download: a panel under its button, the buttons always in sight at its foot. */
+  .sb-pop { position: absolute; right: 12px; top: calc(100% + 8px); z-index: 40; width: min(420px, calc(100vw - 24px)); max-height: min(calc(100vh - 96px), 760px); display: flex; flex-direction: column; overflow: hidden; background: var(--sb-panel); border: 0; border-radius: var(--sb-r-lg); box-shadow: var(--sb-sh-4); animation: sbPop .18s var(--sb-ease); }
   .sb-pop[hidden] { display: none; }
-  .sb-check { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
-  .sb-check li { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font: 500 12.5px/1.45 Inter, sans-serif; }
+  @keyframes sbPop { from { opacity: 0; transform: translateY(-4px) scale(.99); } to { opacity: 1; transform: none; } }
+  .sb-pophead { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px 12px; border-bottom: 1px solid var(--sb-line); }
+  .sb-pophead strong { font: 600 15px/1.2 var(--sb-font); letter-spacing: -.01em; }
+  .sb-popbody { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: grid; gap: 0; padding: 0 16px; }
+  .sb-popbody > .sb-sec { padding: 14px 0; border-top: 1px solid var(--sb-line); }
+  .sb-popbody > .sb-sec:first-child { border-top: 0; }
+  .sb-popbody > .sb-hint { padding: 0 0 14px; }
+  .sb-popfoot { display: grid; gap: 10px; padding: 12px 16px 14px; border-top: 1px solid var(--sb-line); background: var(--sb-panel); }
+  .sb-popfoot .sb-dlrow .sb-btn { min-height: 36px; }
+  .sb-popfoot .sb-dlrow .sb-btn.dark { flex: 1 1 auto; }
+  .sb-check { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+  .sb-check li { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 6px 8px; border-radius: var(--sb-r-sm); background: var(--sb-warn-soft); font: 500 12.5px/1.45 var(--sb-font); }
+  #sbCheck > p { margin: 0; }
   .sb-dlrow { display: flex; flex-wrap: wrap; gap: 8px; }
-  .sb-sec-quiet { padding-top: 12px; border-top: 1px solid var(--sb-line); }
+  .sb-sec-quiet { }
   .sb-ready { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .sb-ready:empty { display: none; }
   .sb-ready p { flex-basis: 100%; margin: 0; }
-  .sb-ok { margin: 0; font: 500 12.5px/1.45 Inter, sans-serif; color: var(--ink, #141416); }
+  .sb-ok { margin: 0; font: 500 12.5px/1.45 var(--sb-font); color: var(--sb-text); }
   #sbOrigStatus { display: grid; gap: 4px; } #sbOrigStatus p { margin: 0; }
-  .sb-ready a { font: 600 12.5px Inter, sans-serif; padding: 7px 11px; border-radius: 999px; background: var(--ink, #141416); color: var(--paper, #faf8f5); text-decoration: none; }
+  .sb-ready a { display: inline-flex; align-items: center; min-height: 30px; padding: 0 12px; font: 500 12.5px var(--sb-font); border-radius: var(--sb-r); background: var(--sb-sel); color: #fff; text-decoration: none; }
 
-  .sb-work { position: relative; display: grid; grid-template-columns: var(--sb-rail-w, 148px) minmax(0, 1fr) var(--sb-insp-w, 392px); gap: 12px; margin-top: 12px; height: calc(100vh - 220px); min-height: 440px; }
-  /* The two side panels are as wide as the studio drags them (Sep 2026): a
-     handle in each gap; double-click puts it back. */
-  .sb-split { position: absolute; top: 0; bottom: 0; z-index: 6; width: 12px; cursor: col-resize; touch-action: none; }
-  .sb-split[data-split="rail"] { left: var(--sb-rail-w, 148px); }
-  .sb-split[data-split="insp"] { right: var(--sb-insp-w, 392px); }
-  .sb-split::after { content: ""; position: absolute; left: 5px; top: 50%; width: 2px; height: 44px; border-radius: 2px; background: var(--sb-line); transform: translateY(-50%); transition: height .15s, background .15s; }
-  .sb-split:hover::after, .sb-split:focus-visible::after, .sb-split.on::after { height: 96px; background: var(--accent, #d24e1a); }
+  .sb-work { position: relative; display: grid; grid-template-columns: var(--sb-rail-w, 168px) minmax(0, 1fr) var(--sb-insp-w, 360px); gap: 0; margin-top: 12px; height: calc(100vh - 220px); min-height: 440px; border: 1px solid var(--sb-line); border-radius: var(--sb-r-lg); overflow: hidden; background: var(--sb-panel); }
+  /* The two side panels are as wide as the studio drags them: a handle on
+     each edge; double-click puts it back. */
+  .sb-split { position: absolute; top: 0; bottom: 0; z-index: 16; width: 9px; margin-left: -4px; cursor: col-resize; touch-action: none; }
+  .sb-split[data-split="rail"] { left: var(--sb-rail-w, 168px); }
+  .sb-split[data-split="insp"] { right: var(--sb-insp-w, 360px); margin-left: 0; margin-right: -4px; }
+  .sb-split::after { content: ""; position: absolute; left: 4px; top: 0; bottom: 0; width: 1px; background: transparent; transition: background .15s, box-shadow .15s; }
+  .sb-split:hover::after, .sb-split:focus-visible::after, .sb-split.on::after { background: var(--sb-sel); box-shadow: 0 0 0 1px var(--sb-sel); }
   .sb-split:focus-visible { outline: none; }
-  .sb-rail, .sb-stage, .sb-insp { min-height: 0; border: 1px solid var(--sb-line); border-radius: 12px; background: var(--sb-card); }
-  .sb-rail { display: flex; flex-direction: column; overflow: hidden; }
-  .sb-railhead { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 12px 4px; }
-  .sb-count { font: 600 11px 'JetBrains Mono', monospace; color: var(--ink-soft, #5c5e66); }
-  /* Rows never shrink to fit: some Safari versions squeezed a long book's
-     rows into the rail's height, piling the thumbnails over one another (the
-     studio's screenshot, Sep 25 2026). The list scrolls instead. */
-  .sb-pages { list-style: none; margin: 0; padding: 6px 8px 10px; overflow-y: auto; flex: 1 1 0; min-height: 0; display: grid; grid-auto-rows: max-content; gap: 6px; align-content: start; }
+  .sb-rail, .sb-stage, .sb-insp { min-height: 0; }
+  .sb-rail { display: flex; flex-direction: column; overflow: hidden; background: var(--sb-panel); border-right: 1px solid var(--sb-line); }
+  .sb-railhead { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 14px 6px; }
+  .sb-count { font: 400 12px var(--sb-font); color: var(--sb-text-3); font-variant-numeric: tabular-nums; }
+  /* Rows never shrink to fit (Safari piled thumbnails over each other, Sep 25). */
+  .sb-pages { list-style: none; margin: 0; padding: 4px 8px 12px; overflow-y: auto; flex: 1 1 0; min-height: 0; display: grid; grid-auto-rows: max-content; gap: 2px; align-content: start; scrollbar-width: thin; }
   .sb-pages > li { min-height: max-content; }
-  .sb-pages li { display: grid; gap: 4px; }
-  .sb-pg { display: grid; gap: 5px; width: 100%; padding: 6px; border: 1px solid transparent; border-radius: 9px; background: none; color: inherit; cursor: pointer; text-align: left; }
-  .sb-pg:hover { background: var(--sb-sunk); }
-  .sb-pg[aria-current=true] { border-color: var(--accent, #d24e1a); background: var(--sb-sunk); }
-  .sb-pgimg { display: flex; justify-content: center; align-items: center; min-height: 92px; }
-  .sb-pgimg canvas { display: block; height: 88px; width: auto; max-width: 100%; background: #fff; box-shadow: 0 3px 8px -3px rgba(0,0,0,.35); }
+  .sb-pages li { position: relative; display: grid; gap: 0; }
+  .sb-pg { display: grid; grid-template-columns: 20px minmax(0, 1fr); grid-template-rows: auto auto; gap: 6px 4px; width: 100%; padding: 8px 6px 6px 2px; border: 0; border-radius: var(--sb-r); background: none; color: inherit; cursor: pointer; text-align: left; transition: background .12s; }
+  .sb-pg:hover { background: var(--sb-hover); }
+  .sb-pg[aria-current=true] { background: var(--sb-sel-soft); }
+  .sb-pgimg { grid-column: 2; grid-row: 1; display: flex; justify-content: center; align-items: center; min-height: 96px; }
+  .sb-pgimg canvas { display: block; height: 92px; width: auto; max-width: 100%; background: #fff; border-radius: 1px; box-shadow: 0 0 0 1px var(--sb-line), 0 1px 3px rgba(16,16,20,.12); transition: box-shadow .12s; }
   .sb-pgimg canvas + canvas { max-width: 50%; }
-  .sb-pglabel { display: flex; align-items: baseline; gap: 5px; min-width: 0; font: 500 11.5px/1.3 Inter, sans-serif; }
-  .sb-pglabel b { flex: none; font: 700 10.5px 'JetBrains Mono', monospace; color: var(--ink-soft, #5c5e66); }
-  .sb-pglabel span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sb-chip { flex: none; font: 700 9.5px/1.4 'JetBrains Mono', monospace; font-style: normal; color: #fff; background: var(--accent, #d24e1a); border-radius: 4px; padding: 0 4px; }
+  .sb-pg[aria-current=true] .sb-pgimg canvas { box-shadow: 0 0 0 2px var(--sb-sel), 0 2px 8px -2px rgba(16,16,20,.25); }
+  .sb-pglabel { display: contents; font: 500 11.5px/1.3 var(--sb-font); }
+  .sb-pglabel b { grid-column: 1; grid-row: 1; align-self: start; padding-top: 2px; text-align: right; font: 500 11px/1.2 var(--sb-font); color: var(--sb-text-3); font-variant-numeric: tabular-nums; }
+  .sb-pg[aria-current=true] .sb-pglabel b { color: var(--sb-sel); font-weight: 600; }
+  .sb-pglabel > span { grid-column: 2; grid-row: 2; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; font: 500 11.5px/1.3 var(--sb-font); color: var(--sb-text-2); }
+  .sb-pg[aria-current=true] .sb-pglabel > span { color: var(--sb-text); }
+  .sb-chip { grid-column: 2; grid-row: 1; align-self: start; justify-self: end; z-index: 1; margin: 4px 4px 0 0; font: 600 9.5px/1.5 var(--sb-font); font-style: normal; letter-spacing: .01em; color: #fff; background: var(--sb-danger); border-radius: 4px; padding: 0 5px; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+  .sb-chip + .sb-chip { margin-top: 22px; }
   .sb-chip[hidden] { display: none; }
-  .sb-pgacts { display: flex; justify-content: center; gap: 4px; }
+  /* The chosen page's own buttons: a quiet row under it. */
+  .sb-pgacts { display: flex; justify-content: center; gap: 2px; margin: -2px 0 4px 22px; }
+  .sb-pgacts button { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: var(--sb-r-sm); background: transparent; color: var(--sb-text-2); cursor: pointer; }
+  .sb-pgacts button:hover:not(:disabled) { background: var(--sb-hover); color: var(--sb-text); }
+  .sb-pgacts button[data-rm]:hover { color: var(--sb-danger); }
+  .sb-pgacts button:disabled { opacity: .3; cursor: not-allowed; }
+  .sb-pgacts .sb-i { width: 15px; height: 15px; }
   .sb-pages.reordering { cursor: grabbing; } .sb-pages.reordering .sb-pg { cursor: grabbing; }
-  .sb-pages li.dragging { opacity: .45; }
-  .sb-pages li.drop-before { box-shadow: 0 -3px 0 0 var(--accent, #d24e1a); } .sb-pages li.drop-after { box-shadow: 0 3px 0 0 var(--accent, #d24e1a); }
-  @media (max-width: 900px) { .sb-pages li.drop-before { box-shadow: -3px 0 0 0 var(--accent, #d24e1a); } .sb-pages li.drop-after { box-shadow: 3px 0 0 0 var(--accent, #d24e1a); } }
+  .sb-pages li.dragging { opacity: .4; }
+  .sb-pages li.drop-before { box-shadow: 0 -2px 0 0 var(--sb-sel); } .sb-pages li.drop-after { box-shadow: 0 2px 0 0 var(--sb-sel); }
+  @media (max-width: 900px) { .sb-pages li.drop-before { box-shadow: -2px 0 0 0 var(--sb-sel); } .sb-pages li.drop-after { box-shadow: 2px 0 0 0 var(--sb-sel); } }
   .sb-pg { touch-action: pan-x pan-y; }
-  .sb-pgacts button { width: 32px; height: 28px; border: 1px solid var(--sb-line); border-radius: 7px; background: var(--paper, #faf8f5); color: var(--ink, #141416); cursor: pointer; }
-  .sb-pgacts button:disabled { opacity: .35; cursor: not-allowed; }
-  .sb-addwrap { padding: 8px; border-top: 1px solid var(--sb-line); }
-  .sb-addbtn { width: 100%; padding: 9px 8px; border: 1px dashed var(--ink-soft, #5c5e66); border-radius: 9px; background: none; color: var(--ink, #141416); font: 600 12.5px Inter, sans-serif; cursor: pointer; }
-  .sb-addbtn:hover { background: var(--sb-sunk); }
+  .sb-addwrap { padding: 10px; border-top: 1px solid var(--sb-line); }
+  .sb-addbtn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 34px; padding: 0 10px; border: 1px solid var(--sb-line-2); border-radius: var(--sb-r); background: var(--sb-panel); box-shadow: var(--sb-sh-1); color: var(--sb-text); font: 500 13px var(--sb-font); cursor: pointer; transition: background .12s, border-color .12s; }
+  .sb-addbtn:hover { background: var(--sb-sunk); border-color: var(--sb-line-3); }
+  .sb-addbtn[aria-expanded=true] { background: var(--sb-sel-soft); border-color: var(--sb-sel); color: var(--sb-sel); }
 
-  .sb-stage { position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; }
-  .sb-stagebar { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid var(--sb-line); flex-wrap: wrap; }
-  .sb-views { display: inline-flex; align-items: center; gap: 6px; margin-left: 2px; }
-  .sb-views .sb-btn { padding: 5px 9px; font-size: 12px; }
-  .sb-views .sb-btn[aria-pressed=true] { background: var(--ink, #141416); color: var(--paper, #fff); border-color: var(--ink, #141416); }
+  /* The stage: the page on a grey board, the page's tools floating under it. */
+  .sb-stage { position: relative; display: grid; grid-template-rows: minmax(0, 1fr); overflow: hidden; background: var(--sb-board); }
+  .sb-stagebar { position: absolute; left: 50%; bottom: 14px; z-index: 12; display: flex; align-items: center; gap: 2px; max-width: calc(100% - 24px); padding: 4px; transform: translateX(-50%); background: var(--sb-raised); border-radius: var(--sb-r-lg); box-shadow: var(--sb-sh-3); white-space: nowrap; }
+  .sb-stagebar strong { min-width: 0; max-width: 200px; padding: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 12.5px/1 var(--sb-font); color: var(--sb-text); text-align: center; font-variant-numeric: tabular-nums; }
+  .sb-tsep { flex: none; width: 1px; height: 18px; margin: 0 4px; background: var(--sb-line-2); }
+  .sb-views { display: inline-flex; align-items: center; gap: 2px; }
+  .sb-views .sb-btn { min-height: 30px; padding: 0 9px; font-size: 12.5px; }
+  .sb-views .sb-btn.sb-iconbtn { width: 30px; padding: 0; }
+  .sb-views .sb-btn[aria-pressed=true] { background: var(--sb-sel-soft); color: var(--sb-sel); }
+  .sb-views .sb-seg { flex-wrap: nowrap; background: transparent; padding: 0; gap: 2px; }
+  .sb-views .sb-seg button { min-height: 30px; min-width: 30px; padding: 0 7px; }
+  .sb-views .sb-seg button[aria-checked=true] { background: var(--sb-sel-soft); color: var(--sb-sel); box-shadow: none; }
+  .sb-nav { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: var(--sb-r); background: transparent; color: var(--sb-text-2); cursor: pointer; }
+  .sb-nav:hover:not(:disabled) { background: var(--sb-hover); color: var(--sb-text); }
+  .sb-nav:disabled { opacity: .3; cursor: not-allowed; }
   .sb-preview.zoom { overflow: auto; align-items: flex-start; justify-content: flex-start; }
   .sb-preview.zoom canvas { max-width: none; max-height: none; height: calc(var(--sbz, 1.65) * 100%); width: auto; }
-  .sb-zoom { display: inline-flex; align-items: center; gap: 2px; }
-  .sb-zoom #sbZoom { min-width: 52px; font-variant-numeric: tabular-nums; }
-  .sb-zoom #sbZoomOut, .sb-zoom #sbZoomIn { min-width: 28px; padding-left: 6px; padding-right: 6px; }
+  .sb-zoom { display: inline-flex; align-items: center; gap: 0; }
+  .sb-zoom #sbZoom { min-width: 54px; padding: 0 6px; font-variant-numeric: tabular-nums; }
+  .sb-zoom #sbZoomOut, .sb-zoom #sbZoomIn { width: 30px; padding: 0; }
   /* Rulers (millimetres, from the page's top-left corner) and the studio's guides. */
-  .sb-ruler { position: absolute; z-index: 6; background: var(--sb-card, #fff); box-shadow: 0 0 0 1px var(--sb-line); cursor: copy; touch-action: none; }
+  .sb-ruler { position: absolute; z-index: 6; background: var(--sb-panel); box-shadow: 0 0 0 1px var(--sb-line); cursor: copy; touch-action: none; }
   .sb-ruler.top { height: 16px; cursor: row-resize; }
   .sb-ruler.left { width: 16px; cursor: col-resize; }
   .sb-guides { position: absolute; z-index: 5; pointer-events: none; }
   .sb-ug { position: absolute; pointer-events: auto; touch-action: none; }
   .sb-ug.v { top: 0; bottom: 0; width: 7px; margin-left: -3px; cursor: col-resize; }
   .sb-ug.h { left: 0; right: 0; height: 7px; margin-top: -3px; cursor: row-resize; }
-  .sb-ug::after { content: ""; position: absolute; background: #16a3c7; }
+  .sb-ug::after { content: ""; position: absolute; background: var(--sb-guide); }
   .sb-ug.v::after { left: 3px; top: 0; bottom: 0; width: 1px; }
   .sb-ug.h::after { top: 3px; left: 0; right: 0; height: 1px; }
-  .sb-ug.ghost::after { background: #16a3c7; opacity: .6; }
-  .sb-ugtag { position: absolute; z-index: 7; padding: 2px 6px; border-radius: 5px; background: #16a3c7; color: #fff; font: 600 11px/1.3 Inter, system-ui, sans-serif; pointer-events: none; white-space: nowrap; }
-  .sb-preview.two canvas + canvas { margin-left: 0; box-shadow: 8px 16px 36px -18px rgba(0,0,0,.5); }
-  .sb-preview.two canvas:first-child { box-shadow: -8px 16px 36px -18px rgba(0,0,0,.5); }
-  .sb-preview canvas.facing { cursor: pointer; opacity: .96; }
+  .sb-ug.ghost::after { background: var(--sb-guide); opacity: .6; }
+  .sb-ugtag { position: absolute; z-index: 7; padding: 2px 6px; border-radius: 5px; background: var(--sb-guide); color: #fff; font: 600 11px/1.3 var(--sb-font); pointer-events: none; white-space: nowrap; }
+  .sb-preview { position: relative; display: flex; align-items: center; justify-content: center; padding: 32px 32px 76px; min-height: 0; background: var(--sb-board); overflow: hidden; }
+  .sb-preview canvas { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; background: #fff; box-shadow: var(--sb-page-sh); }
+  .sb-preview canvas + canvas { max-width: 50%; }
+  .sb-preview.two canvas { max-width: 50%; }
+  .sb-preview.two canvas + canvas { margin-left: 0; box-shadow: 1px 0 0 rgba(16,16,20,.06), 10px 14px 32px -12px rgba(16,16,20,.3); }
+  .sb-preview.two canvas:first-child { box-shadow: -10px 14px 32px -12px rgba(16,16,20,.3), inset -12px 0 18px -14px rgba(0,0,0,.25); }
+  .sb-preview canvas.facing { cursor: pointer; opacity: .9; transition: opacity .15s; }
+  .sb-preview canvas.facing:hover { opacity: 1; }
+  .sb-preview > .sb-hint { color: var(--sb-text-3); }
+  .sb-pagehint { position: absolute; top: 12px; left: 50%; z-index: 11; max-width: calc(100% - 40px); transform: translateX(-50%); margin: 0; padding: 6px 12px; border-radius: 999px; background: var(--sb-raised); box-shadow: var(--sb-sh-2); font: 500 12px/1.4 var(--sb-font); color: var(--sb-text-2); text-align: center; pointer-events: none; }
+  .sb-pagehint:empty { display: none; }
   /* Reading it through: the pages large on a dark ground, nothing else. */
-  .sb-read { position: fixed; inset: 0; z-index: 300; display: grid; grid-template-rows: auto minmax(0, 1fr); background: #141416; color: #fff; }
-  .sb-readbar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; font: 600 12px/1.3 'JetBrains Mono', monospace; letter-spacing: .06em; }
-  .sb-readbar .sb-btn { border-color: rgba(255,255,255,.35); color: #fff; }
-  .sb-readbar strong { flex: 1; text-align: center; font-weight: 600; }
-  .sb-readpages { display: flex; align-items: center; justify-content: center; gap: 0; padding: 12px 24px 28px; min-height: 0; }
-  .sb-readpages canvas { max-height: 100%; max-width: 50%; width: auto; height: auto; box-shadow: 0 30px 60px -30px rgba(0,0,0,.8); }
+  .sb-read { position: fixed; inset: 0; z-index: 300; display: grid; grid-template-rows: auto minmax(0, 1fr); background: #0e0e10; color: #fff; }
+  .sb-readbar { display: flex; align-items: center; gap: 10px; padding: 12px 16px; font: 500 13px/1.3 var(--sb-font); letter-spacing: 0; }
+  .sb-readbar .sb-btn { color: #fff; background: rgba(255,255,255,.08); border-color: transparent; box-shadow: none; }
+  .sb-readbar .sb-btn:hover:not(:disabled) { background: rgba(255,255,255,.16); border-color: transparent; }
+  .sb-readbar strong { flex: 1; text-align: center; font-weight: 500; color: rgba(255,255,255,.75); font-variant-numeric: tabular-nums; }
+  .sb-readpages { display: flex; align-items: center; justify-content: center; gap: 0; padding: 12px 72px 32px; min-height: 0; }
+  .sb-readpages canvas { max-height: 100%; max-width: 50%; width: auto; height: auto; box-shadow: 0 40px 80px -30px rgba(0,0,0,.9); }
   .sb-readpages canvas:only-child { max-width: 100%; }
-  .sb-readnav { position: absolute; top: 50%; width: 48px; height: 48px; margin-top: -24px; border: 0; border-radius: 50%; background: rgba(255,255,255,.12); color: #fff; font-size: 22px; cursor: pointer; }
-  .sb-readnav:disabled { opacity: .25; cursor: default; } .sb-readnav.prev { left: 12px; } .sb-readnav.next { right: 12px; }
-  @media (max-width: 900px) { .sb-views .sb-btn { padding: 5px 7px; font-size: 11.5px; } .sb-readpages { padding: 8px 8px 20px; } .sb-readnav { width: 40px; height: 40px; margin-top: -20px; } }
-  .sb-stagebar strong { flex: 1; text-align: center; font: 600 13px Inter, sans-serif; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sb-nav { width: 34px; height: 30px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--paper, #faf8f5); color: var(--ink, #141416); cursor: pointer; }
-  .sb-nav:disabled { opacity: .35; cursor: not-allowed; }
-  .sb-preview { position: relative; display: flex; align-items: center; justify-content: center; padding: 20px; min-height: 0; background: var(--sb-sunk); overflow: hidden; }
-  /* The Anything page: a layer of handles sitting exactly on the drawn page. */
+  .sb-readnav { position: absolute; top: 50%; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-top: -22px; border: 0; border-radius: 50%; background: rgba(255,255,255,.1); color: #fff; font-size: 22px; cursor: pointer; transition: background .15s; }
+  .sb-readnav:hover:not(:disabled) { background: rgba(255,255,255,.2); }
+  .sb-readnav:disabled { opacity: .2; cursor: default; } .sb-readnav.prev { left: 16px; } .sb-readnav.next { right: 16px; }
+  .sb-readnav .sb-i { width: 22px; height: 22px; }
+  @media (max-width: 900px) { .sb-readpages { padding: 8px 8px 20px; } .sb-readnav { width: 40px; height: 40px; margin-top: -20px; } }
+
+  /* ── On the page ─────────────────────────────────────────────────────────── */
   .sb-layer { position: absolute; }
   .sb-layer.drawing { cursor: crosshair; touch-action: none; } .sb-layer.drawing .sb-blk { pointer-events: none; }
   .sb-trail { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
   .sb-blk { position: absolute; margin: 0; padding: 0; border: 1px solid transparent; border-radius: 0; background: none; cursor: move; touch-action: none; }
-  .sb-blk:hover { border-color: rgba(210, 78, 26, .55); }
-  .sb-blk:focus-visible { outline: 2px solid var(--accent, #d24e1a); outline-offset: 1px; }
-  .sb-blk.on { border-color: var(--accent, #d24e1a); border-style: solid; }
+  .sb-blk:hover { border-color: var(--sb-sel); }
+  .sb-blk:focus-visible { outline: 2px solid var(--sb-sel); outline-offset: 1px; }
+  .sb-blk.on { border: 1.5px solid var(--sb-sel); }
   .sb-blk.line { display: flex; align-items: center; }
   .sb-blk.oval { border-radius: 50%; }
-  .sb-h { position: absolute; width: 11px; height: 11px; margin: -6px 0 0 -6px; border: 1px solid var(--accent, #d24e1a); border-radius: 2px; background: var(--paper, #fff); cursor: nwse-resize; }
+  .sb-h { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border: 1.5px solid var(--sb-sel); border-radius: 2px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); cursor: nwse-resize; }
   .sb-h[data-h="ne"], .sb-h[data-h="sw"] { cursor: nesw-resize; }
-  .sb-h.sb-rot { left: 50% !important; top: -22px !important; border-radius: 50%; cursor: grab; color: var(--accent, #d24e1a); }
+  .sb-h.sb-rot { left: 50% !important; top: -24px !important; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; cursor: grab; color: var(--sb-sel); }
   .sb-h.sb-rot.side { left: calc(100% + 22px) !important; top: 50% !important; }
   .sb-h.sb-rot.inside { left: calc(100% - 22px) !important; top: 22px !important; }
   .sb-h.sb-rot.side::after, .sb-h.sb-rot.inside::after { display: none; }
-  .sb-h.sb-rot::after { content: ""; position: absolute; left: 50%; top: 100%; width: 1px; height: 14px; background: currentColor; opacity: .5; }
-  .sb-h[data-h="n"], .sb-h[data-h="s"] { cursor: ns-resize; }
-  .sb-h[data-h="e"], .sb-h[data-h="w"] { cursor: ew-resize; }
-  @media (pointer: coarse) { .sb-h { width: 18px; height: 18px; margin: -9px 0 0 -9px; } }
-  .sb-guide { position: absolute; background: #FF3D7F; pointer-events: none; }
+  .sb-h.sb-rot::after { content: ""; position: absolute; left: 50%; top: 100%; width: 1.5px; height: 12px; margin-left: -.75px; background: currentColor; }
+  .sb-h[data-h="n"], .sb-h[data-h="s"] { cursor: ns-resize; width: 16px; height: 6px; margin: -3px 0 0 -8px; border-radius: 3px; }
+  .sb-h[data-h="e"], .sb-h[data-h="w"] { cursor: ew-resize; width: 6px; height: 16px; margin: -8px 0 0 -3px; border-radius: 3px; }
+  @media (pointer: coarse) { .sb-h { width: 18px; height: 18px; margin: -9px 0 0 -9px; } .sb-h[data-h="n"], .sb-h[data-h="s"], .sb-h[data-h="e"], .sb-h[data-h="w"] { width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; } }
+  .sb-guide { position: absolute; background: var(--sb-snap); pointer-events: none; }
   /* The style's margins and the page's middle, faint, in the editor only. */
-  .sb-mg { position: absolute; pointer-events: none; border: 0 dashed rgba(210, 78, 26, .45); }
+  .sb-mg { position: absolute; pointer-events: none; border: 0 dashed rgba(53, 101, 240, .35); }
   .sb-mg.v { top: 0; height: 100%; width: 0; border-left-width: 1px; } .sb-mg.h { left: 0; width: 100%; height: 0; border-top-width: 1px; }
-  .sb-mg.mid { border-color: rgba(20, 20, 22, .22); }
-  .sb-measure { position: absolute; z-index: 4; padding: 4px 7px; border-radius: 6px; background: var(--ink, #141416); color: var(--paper, #fff); font: 600 10.5px/1.3 'JetBrains Mono', monospace; letter-spacing: .02em; white-space: nowrap; pointer-events: none; }
-  .sb-measure b { color: #FF9EBB; font-weight: 700; }
-  /* The bar on the chosen thing: which is in front, a copy, and remove. */
-  .sb-blkbar { position: absolute; z-index: 3; display: flex; gap: 2px; padding: 3px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--sb-card); box-shadow: 0 10px 28px -12px rgba(0,0,0,.4); white-space: nowrap; }
-  .sb-blkbar button { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 7px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: inherit; font: 600 11.5px/1 Inter, system-ui, sans-serif; cursor: pointer; }
-  .sb-blkbar button:hover { border-color: var(--sb-line); } .sb-blkbar button:disabled { opacity: .35; cursor: default; }
-  .sb-blkbar button i { font-style: normal; font-size: 13px; }
-  .sb-blkbar .sb-sep { width: 1px; margin: 4px 2px; background: var(--sb-line); }
+  .sb-mg.mid { border-color: rgba(20, 20, 22, .18); }
+  .sb-measure { position: absolute; z-index: 4; padding: 3px 7px; border-radius: 5px; background: var(--sb-snap); color: #fff; font: 600 11px/1.3 var(--sb-font); font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+  .sb-measure b { color: #fff; font-weight: 700; opacity: .85; }
+  /* The floating bars: on the chosen thing, on a photograph, on words. */
+  .sb-blkbar, .sb-bar { position: absolute; z-index: 3; display: flex; align-items: center; gap: 1px; padding: 3px; border: 0; border-radius: 10px; background: var(--sb-raised); box-shadow: var(--sb-sh-3); white-space: nowrap; color: var(--sb-text); animation: sbPop .14s var(--sb-ease); }
+  .sb-blkbar button, .sb-bar button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 28px; height: 28px; padding: 0 7px; border: 0; border-radius: 7px; background: transparent; color: var(--sb-text-2); font: 500 12px/1 var(--sb-font); cursor: pointer; transition: background .1s, color .1s; }
+  .sb-blkbar button:hover:not(:disabled), .sb-bar button:hover:not(:disabled) { background: var(--sb-hover); color: var(--sb-text); }
+  .sb-blkbar button:disabled { opacity: .3; cursor: default; }
+  .sb-blkbar button i { display: inline-flex; font-style: normal; font-size: 13px; }
+  .sb-blkbar button i .sb-i, .sb-blkbar button > svg { width: 15px; height: 15px; }
+  .sb-blkbar button[data-order="del"]:hover, .sb-blkbar button[data-pb="del"]:hover, .sb-blkbar button[data-mdel]:hover { color: var(--sb-danger); }
+  .sb-blkbar .sb-sep, .sb-bar .sb-sep { align-self: stretch; width: 1px; margin: 5px 3px; background: var(--sb-line-2); }
   .sb-photobar { z-index: 4; }
+  .sb-bar { gap: 2px; padding: 4px; }
+  .sb-bar select { width: auto; max-width: 132px; min-height: 28px; padding: 3px 26px 3px 8px; font-size: 12px; border-radius: 7px; box-shadow: none; border-color: var(--sb-line); background-position: right 5px center; }
+  .sb-bar button[aria-pressed=true] { background: var(--sb-sel-soft); color: var(--sb-sel); }
+  .sb-bar b { font-weight: 800; } .sb-bar i { font-style: italic; font-family: Georgia, serif; }
+  .sb-bar .sb-barsize { display: inline-flex; align-items: center; gap: 1px; }
+  .sb-bar output { min-width: 34px; text-align: center; font: 500 11.5px/1 var(--sb-font); font-variant-numeric: tabular-nums; }
+  @media (max-width: 900px) { .sb-blkbar button span { display: none; } .sb-blkbar button { padding: 0 8px; min-width: 34px; } .sb-bar { gap: 1px; } .sb-bar select { max-width: 96px; } }
   /* Drag and drop (v559). */
-  .sb-droptarget { outline: 3px solid var(--accent, #d24e1a) !important; outline-offset: -3px; background: color-mix(in srgb, var(--accent, #d24e1a) 14%, transparent) !important; }
+  .sb-droptarget { outline: 2px solid var(--sb-sel) !important; outline-offset: -2px; background: var(--sb-sel-soft) !important; }
   .sb-thumb[aria-disabled=true] { opacity: .45; }
   .sb-thumb[draggable=true] { cursor: grab; }
   /* Several chosen (v559). */
-  .sb-blk.multi { outline: 1.5px dashed var(--accent, #d24e1a); outline-offset: 1px; }
+  .sb-blk.multi { outline: 1px solid var(--sb-sel); outline-offset: 0; }
   .sb-blk.locked { pointer-events: none; }
-  .sb-multibox { position: absolute; border: 1px solid var(--accent, #d24e1a); pointer-events: none; z-index: 2; }
-  .sb-marquee { position: absolute; border: 1px dashed var(--accent, #d24e1a); background: color-mix(in srgb, var(--accent, #d24e1a) 8%, transparent); pointer-events: none; z-index: 5; }
+  .sb-multibox { position: absolute; border: 1.5px solid var(--sb-sel); pointer-events: none; z-index: 2; }
+  .sb-marquee { position: absolute; border: 1px solid var(--sb-sel); background: var(--sb-sel-soft); pointer-events: none; z-index: 5; }
   .sb-multibar { align-items: center; }
-  .sb-multibar .sb-mcount { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 6px; margin: 0 2px 0 3px; border-radius: 11px; background: var(--accent, #d24e1a); color: #fff; font: 700 11px/1 Inter, system-ui, sans-serif; }
+  .sb-multibar .sb-mcount { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 6px; margin: 0 3px; border-radius: 11px; background: var(--sb-sel); color: #fff; font: 600 11px/1 var(--sb-font); }
   .sb-multibar button { padding: 0 6px; }
-  .sb-alignrow { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
-  .sb-alignrow button { display: inline-flex; align-items: center; gap: 5px; height: 32px; min-width: 32px; justify-content: center; padding: 0 8px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--sb-card); color: var(--ink, #141416); font: 600 12px/1 Inter, system-ui, sans-serif; cursor: pointer; }
-  .sb-alignrow button:hover:not(:disabled) { background: var(--sb-sunk); }
-  .sb-alignrow button:disabled { opacity: .35; cursor: default; }
-  .sb-alignrow .sb-sep { width: 1px; height: 22px; margin: 0 3px; background: var(--sb-line); }
+  .sb-alignrow { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; padding: 3px; border-radius: var(--sb-r); background: var(--sb-sunk); }
+  .sb-alignrow button { display: inline-flex; align-items: center; gap: 5px; height: 30px; min-width: 30px; justify-content: center; padding: 0 7px; border: 0; border-radius: var(--sb-r-sm); background: transparent; color: var(--sb-text-2); font: 500 12px/1 var(--sb-font); cursor: pointer; }
+  .sb-alignrow button:hover:not(:disabled) { background: var(--sb-raised); color: var(--sb-text); box-shadow: var(--sb-sh-1); }
+  .sb-alignrow button:disabled { opacity: .3; cursor: default; }
+  .sb-alignrow .sb-sep { width: 1px; height: 18px; margin: 0 3px; background: var(--sb-line-2); }
   .sb-adds button svg { vertical-align: -3px; }
-  .sb-laystate { display: flex; flex: none; }
-  .sb-laystate button { all: unset; box-sizing: border-box; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--ink-soft, #6b6b70); cursor: pointer; opacity: 0; }
-  .sb-blkrow:hover .sb-laystate button, .sb-blkrow.is-sel .sb-laystate button, .sb-laystate button[aria-pressed=true], .sb-blkrow:focus-within .sb-laystate button { opacity: 1; }
-  .sb-laystate button[aria-pressed=true] { color: var(--accent, #d24e1a); }
-  .sb-laystate button:hover { background: var(--sb-card); color: var(--ink, #141416); }
-  @media (pointer: coarse) { .sb-laystate button { opacity: 1; } }
-  .sb-blkrow.is-hidden .sb-layname, .sb-blkrow.is-hidden .sb-layico { opacity: .45; }
-  .sb-laygrp { flex: none; margin-left: auto; padding: 1px 6px; border-radius: 9px; border: 1px solid var(--sb-line); font: 600 10px/1.4 Inter, system-ui, sans-serif; color: var(--ink-soft, #6b6b70); }
   .sb-swapping .sb-blk, .sb-swapping .sb-hit.photo { cursor: copy; }
-  .sb-replacing { margin: 6px 0 8px; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--accent, #d24e1a) 10%, var(--sb-card)); font-size: 12.5px; line-height: 1.45; }
-  .sb-linkbtn { all: unset; cursor: pointer; font-weight: 700; text-decoration: underline; margin-left: 4px; }
-  @media (max-width: 900px) { .sb-blkbar button span { display: none; } .sb-blkbar button { padding: 0 8px; min-width: 34px; justify-content: center; } }
+  .sb-replacing { margin: 6px 0 8px; padding: 9px 11px; border-radius: var(--sb-r); background: var(--sb-sel-soft); color: var(--sb-text); font-size: 12.5px; line-height: 1.45; }
+  .sb-linkbtn { all: unset; cursor: pointer; font-weight: 600; color: var(--sb-sel); margin-left: 4px; }
+  .sb-linkbtn:hover { text-decoration: underline; }
   /* Touching the page: an invisible button on every text and photograph. */
   .sb-hits { position: absolute; }
   .sb-hit { position: absolute; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; cursor: text; }
-  .sb-hit:hover, .sb-hit:focus-visible { outline: 1px dashed rgba(210, 78, 26, .7); outline-offset: 1px; }
+  .sb-hit:hover, .sb-hit:focus-visible { outline: 1px solid var(--sb-sel); outline-offset: 1px; }
   .sb-hit.photo { cursor: grab; touch-action: none; }
-  .sb-hit.photo.on { outline: 2px solid var(--accent, #d24e1a); outline-offset: -2px; cursor: grabbing; }
+  .sb-hit.photo.on { outline: 2px solid var(--sb-sel); outline-offset: -2px; cursor: grabbing; }
   .sb-hit.photo.on::after { content: ""; position: absolute; inset: 6px; border: 1px dashed rgba(255,255,255,.7); mix-blend-mode: difference; pointer-events: none; }
-  .sb-inline { position: absolute; margin: 0; padding: 0; border: 0; border-radius: 0; resize: none; overflow: hidden; background: transparent; outline: 2px solid var(--accent, #d24e1a); outline-offset: 2px; white-space: pre-wrap; overflow-wrap: break-word; box-shadow: none; }
-  .sb-inline:focus-visible { outline: 2px solid var(--accent, #d24e1a); outline-offset: 2px; }
+  .sb-inline { position: absolute; margin: 0; padding: 0; border: 0; border-radius: 0; resize: none; overflow: hidden; background: transparent; outline: 1.5px solid var(--sb-sel); outline-offset: 3px; white-space: pre-wrap; overflow-wrap: break-word; box-shadow: none; }
+  .sb-inline:focus-visible { outline: 1.5px solid var(--sb-sel); outline-offset: 3px; }
   .sb-inline.caps { text-transform: uppercase; }
-  .sb-bar { position: absolute; z-index: 3; display: flex; align-items: center; gap: 3px; padding: 4px; border: 1px solid var(--sb-line); border-radius: 9px; background: var(--sb-card); box-shadow: 0 10px 28px -12px rgba(0,0,0,.4); white-space: nowrap; }
-  .sb-bar select { width: auto; max-width: 128px; padding: 4px 6px; font-size: 12px; border-radius: 6px; }
-  .sb-bar button { min-width: 28px; height: 28px; padding: 0 6px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: inherit; font: 600 12px/1 Inter, system-ui, sans-serif; cursor: pointer; }
-  .sb-bar button:hover { border-color: var(--sb-line); }
-  .sb-bar button[aria-pressed=true] { background: var(--ink, #141416); color: var(--paper, #fff); }
-  .sb-bar b { font-weight: 800; } .sb-bar i { font-style: italic; font-family: Georgia, serif; }
-  .sb-bar .sb-barsize { display: inline-flex; align-items: center; gap: 1px; }
-  .sb-bar output { min-width: 34px; text-align: center; font: 600 11px/1 'JetBrains Mono', monospace; }
-  .sb-pagehint { padding: 4px 12px 8px; font: 500 11.5px/1.4 Inter, system-ui, sans-serif; color: var(--ink-soft, #5c5e66); text-align: center; }
-  .sb-pagehint:empty { display: none; }
-  @media (max-width: 900px) { .sb-bar { gap: 2px; } .sb-bar select { max-width: 96px; } }
+
+  /* ── The side panel ──────────────────────────────────────────────────────── */
+  .sb-insp { display: flex; flex-direction: column; overflow: hidden; background: var(--sb-panel); border-left: 1px solid var(--sb-line); }
+  .sb-tabs { display: flex; gap: 2px; margin: 12px 12px 0; padding: 2px; border-radius: var(--sb-r); background: var(--sb-sunk-2); }
+  .sb-tabs button { flex: 1; min-height: 30px; padding: 0 8px; border: 0; border-radius: var(--sb-r-sm); background: none; color: var(--sb-text-2); font: 500 13px var(--sb-font); cursor: pointer; transition: background .12s, color .12s; }
+  .sb-tabs button:hover:not([aria-selected=true]) { color: var(--sb-text); }
+  .sb-tabs button[aria-selected=true] { background: var(--sb-seg-on); color: var(--sb-text); font-weight: 600; box-shadow: 0 0 0 .5px var(--sb-line-2), 0 1px 2px rgba(16,16,20,.1); }
+  .sb-panel { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; gap: 0; row-gap: 16px; align-content: start; padding: 16px; scrollbar-width: thin; }
+  .sb-panel[hidden] { display: none; }
+  .sb-sec { display: grid; gap: 10px; }
+  .sb-sec[hidden] { display: none; }
+  .sb-sec:empty { display: none; }
+  .sb-panel > .sb-sec + .sb-sec, .sb-panel > .sb-field + .sb-field,
+  .sb-panel > .sb-sec + .sb-field, .sb-panel > .sb-field + .sb-sec { padding-top: 16px; border-top: 1px solid var(--sb-line); }
+  #sbPageHead h3 { font-size: 15px !important; font-weight: 650; letter-spacing: -.015em; }
+  #sbPageHead { gap: 4px; }
+  .sb-field { display: grid; gap: 6px; }
+  /* One label voice down the whole panel: small, sentence case, quiet. */
+  .sb-field > label, .sb-field > .sb-label, .sb-label, .sb-adjrow > span:first-child { font: 500 12px/1.35 var(--sb-font); letter-spacing: 0; text-transform: none; color: var(--sb-text-2); }
+  .sb-meter { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font: 400 11px/1.4 var(--sb-font); color: var(--sb-text-3); font-variant-numeric: tabular-nums; }
+  .sb-meter .warn { color: var(--sb-warn); }
+  .sb-meter .bad { color: var(--sb-danger); font-weight: 600; }
+  .sb-meter .sb-counter { flex: none; }
+  .sb-note { margin: 0; padding: 8px 10px; border-radius: var(--sb-r); background: var(--sb-warn-soft); font: 500 12px/1.45 var(--sb-font); color: var(--sb-warn); }
+  .sb-note[hidden], .sb-link[hidden] { display: none; }
+  .sb-ideas summary { cursor: pointer; font: 500 12.5px var(--sb-font); color: var(--sb-text-2); }
+  .sb-ideas ul { margin: 6px 0 0; padding-left: 18px; font: 400 12.5px/1.6 var(--sb-font); color: var(--sb-text-2); }
+  .sb-labelrow { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .sb-labelrow > label { font: 500 12px var(--sb-font); color: var(--sb-text-2); }
+  .sb-fmt { display: contents; }
+  .sb-freeform { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 8px; }
+  .sb-freeform .sb-hint { flex: 1 1 180px; margin: 0; }
+  /* Design, in groups that fold away. */
+  #sbPanelDesign { padding: 4px 0 16px; row-gap: 0; }
+  .sb-group { min-width: 0; border-top: 1px solid var(--sb-line); }
+  .sb-group:first-child { border-top: 0; }
+  .sb-group > summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; padding: 12px 16px; cursor: pointer; font: 600 13px var(--sb-font); letter-spacing: -.005em; transition: background .12s; }
+  .sb-group > summary:hover { background: var(--sb-hover); }
+  .sb-group > summary::-webkit-details-marker { display: none; }
+  .sb-group > summary small { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 400 12px/1.35 var(--sb-font); color: var(--sb-text-3); text-align: right; }
+  .sb-group > summary::after { content: ""; flex: none; width: 16px; height: 16px; background: var(--sb-chev) no-repeat center / 16px; transform: rotate(-90deg); transition: transform .18s var(--sb-ease); }
+  .sb-group[open] > summary::after { transform: none; }
+  .sb-group > .sb-sec { border-top: 0; padding: 4px 16px 18px; }
+  .sb-group > .sb-sec + .sb-sec { padding-top: 14px; border-top: 1px solid var(--sb-line); margin: 0 16px; padding-left: 0; padding-right: 0; }
   /* On this page: slim layer rows (Sep 29 2026). */
   .sb-layhead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
   .sb-layhead h3 { margin-bottom: 2px; }
-  .sb-laycount { font: 600 11px/1 ui-monospace, "SF Mono", Menlo, monospace; color: var(--ink-soft, #6b6b70); letter-spacing: .02em; }
-  .sb-layhint { margin: 0 0 8px; font-size: 11.5px; }
-  .sb-blklist { list-style: none; margin: 0 0 12px; padding: 3px; display: flex; flex-direction: column; gap: 1px; border: 1px solid var(--sb-line); border-radius: 10px; background: var(--sb-card); }
-  .sb-blkrow { display: flex; align-items: center; min-height: 34px; border-radius: 7px; padding-right: 3px; }
-  .sb-blkrow:hover { background: var(--sb-sunk); }
-  .sb-blkrow.is-sel, .sb-blkrow.is-sel:hover { background: color-mix(in srgb, var(--accent, #d24e1a) 11%, var(--sb-card)); box-shadow: inset 3px 0 0 var(--accent, #d24e1a); }
-  .sb-blkrow.is-sel .sb-layname { font-weight: 650; }
-  .sb-laypick { all: unset; box-sizing: border-box; flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 5px 8px; cursor: pointer; font: 500 12.5px/1.3 Inter, system-ui, sans-serif; color: var(--ink, #141416); border-radius: 7px; }
-  .sb-laypick:focus-visible { outline: 2px solid var(--accent, #d24e1a); outline-offset: -2px; }
-  .sb-layico { flex: none; width: 24px; height: 24px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; background: var(--sb-sunk); color: var(--ink-soft, #6b6b70); overflow: hidden; }
-  .sb-blkrow:hover .sb-layico, .sb-blkrow.is-sel .sb-layico { background: var(--sb-card); }
+  .sb-laycount { font: 400 12px/1 var(--sb-font); color: var(--sb-text-3); }
+  .sb-layhint { margin: 0 0 8px; font-size: 12px; }
+  .sb-blklist { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+  .sb-blkrow { display: flex; align-items: center; min-height: 34px; border-radius: var(--sb-r-sm); padding-right: 3px; }
+  .sb-blkrow:hover { background: var(--sb-hover); }
+  .sb-blkrow.is-sel, .sb-blkrow.is-sel:hover { background: var(--sb-sel-soft); box-shadow: none; }
+  .sb-blkrow.is-sel .sb-layname { font-weight: 600; color: var(--sb-sel); }
+  .sb-laypick { all: unset; box-sizing: border-box; flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 5px 8px; cursor: pointer; font: 500 12.5px/1.3 var(--sb-font); color: var(--sb-text); border-radius: var(--sb-r-sm); }
+  .sb-laypick:focus-visible { outline: 2px solid var(--sb-sel); outline-offset: -2px; }
+  .sb-layico { flex: none; width: 24px; height: 24px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; background: var(--sb-sunk-2); color: var(--sb-text-2); overflow: hidden; }
+  .sb-blkrow.is-sel .sb-layico { color: var(--sb-sel); }
   .sb-layico.has-pic { background: none; }
   .sb-layico img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .sb-layname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sb-layname.is-empty { color: var(--ink-soft, #6b6b70); font-style: italic; font-weight: 400; }
-  .sb-layacts { display: flex; flex: none; opacity: 0; transition: opacity .12s; }
+  .sb-layname.is-empty { color: var(--sb-text-3); font-style: italic; font-weight: 400; }
+  .sb-layacts, .sb-laystate { display: flex; flex: none; }
+  .sb-layacts { opacity: 0; transition: opacity .12s; }
   .sb-blkrow:hover .sb-layacts, .sb-blkrow:focus-within .sb-layacts, .sb-blkrow.is-sel .sb-layacts { opacity: 1; }
-  @media (pointer: coarse) { .sb-layacts { opacity: 1; } .sb-blkrow { min-height: 42px; } }
-  .sb-layacts button { all: unset; box-sizing: border-box; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--ink-soft, #6b6b70); cursor: pointer; }
-  .sb-layacts button:hover { background: var(--sb-card); color: var(--ink, #141416); }
-  .sb-layacts button[data-blkdel]:hover { color: #c0392b; }
+  .sb-laystate button { all: unset; box-sizing: border-box; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--sb-text-3); cursor: pointer; opacity: 0; }
+  .sb-blkrow:hover .sb-laystate button, .sb-blkrow.is-sel .sb-laystate button, .sb-laystate button[aria-pressed=true], .sb-blkrow:focus-within .sb-laystate button { opacity: 1; }
+  .sb-laystate button[aria-pressed=true] { color: var(--sb-sel); }
+  .sb-laystate button:hover { background: var(--sb-raised); color: var(--sb-text); }
+  @media (pointer: coarse) { .sb-laystate button, .sb-layacts { opacity: 1; } .sb-blkrow { min-height: 42px; } }
+  .sb-blkrow.is-hidden .sb-layname, .sb-blkrow.is-hidden .sb-layico { opacity: .45; }
+  .sb-laygrp { flex: none; margin-left: auto; padding: 1px 6px; border-radius: 9px; background: var(--sb-sunk-2); font: 500 10.5px/1.4 var(--sb-font); color: var(--sb-text-2); }
+  .sb-layacts button { all: unset; box-sizing: border-box; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--sb-text-3); cursor: pointer; }
+  .sb-layacts button:hover { background: var(--sb-raised); color: var(--sb-text); }
+  .sb-layacts button[data-blkdel]:hover { color: var(--sb-danger); }
   .sb-layacts button:disabled { opacity: .28; cursor: default; background: none; }
-  .sb-layacts button:focus-visible { outline: 2px solid var(--accent, #d24e1a); outline-offset: -1px; }
-  .sb-adds { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-  .sb-adds button { flex: 1 1 calc(50% - 6px); min-height: 38px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--paper, #fff); color: inherit; font: 600 13px/1.3 Inter, system-ui, sans-serif; cursor: pointer; }
-  .sb-adds button:hover { border-color: var(--accent, #d24e1a); }
-  .sb-step { display: flex; align-items: center; gap: 6px; margin: 6px 0; font: 500 12px/1.3 Inter, system-ui, sans-serif; }
-  .sb-look, .sb-fx { margin: 10px 0; border-top: 1px solid var(--sb-line); padding-top: 4px; }
-  .sb-look > summary, .sb-fx > summary { cursor: pointer; padding: 8px 0; font: 600 12.5px/1.3 Inter, system-ui, sans-serif; list-style: revert; }
-  .sb-looks { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 8px; margin: 4px 0 12px; }
-  .sb-lookbtn { all: unset; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; font: 500 10.5px/1.2 Inter, system-ui, sans-serif; text-align: center; color: inherit; }
-  .sb-lookpic { position: relative; display: block; width: 100%; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: var(--sb-line); outline: 2px solid transparent; outline-offset: 1px; }
+  .sb-layacts button:focus-visible { outline: 2px solid var(--sb-sel); outline-offset: -1px; }
+  /* Rows of plain actions: quiet cards with a drawing, the words beside it. */
+  .sb-adds { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 6px; margin-bottom: 4px; }
+  .sb-adds button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; padding: 6px 10px; border: 1px solid var(--sb-line-2); border-radius: var(--sb-r); background: var(--sb-panel); box-shadow: var(--sb-sh-1); color: var(--sb-text); font: 500 12.5px/1.25 var(--sb-font); text-align: center; cursor: pointer; transition: background .12s, border-color .12s; }
+  .sb-adds button:hover:not(:disabled) { background: var(--sb-sunk); border-color: var(--sb-line-3); }
+  .sb-adds button:disabled { opacity: .4; cursor: not-allowed; }
+  .sb-adds button .sb-i { color: var(--sb-text-2); }
+  /* The Anything page's tools: a drawing over its name, three to a row. */
+  .sb-tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 6px; }
+  .sb-tools button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 64px; padding: 8px 4px; border: 0; border-radius: var(--sb-r); background: var(--sb-sunk); color: var(--sb-text); font: 500 12px/1.2 var(--sb-font); text-align: center; cursor: pointer; transition: background .12s, color .12s, box-shadow .12s; }
+  .sb-tools button .sb-i { width: 20px; height: 20px; color: var(--sb-text-2); transition: color .12s; }
+  .sb-tools button:hover { background: var(--sb-sunk-2); }
+  .sb-tools button:hover .sb-i { color: var(--sb-text); }
+  .sb-tools button[aria-pressed=true] { background: var(--sb-sel-soft); color: var(--sb-sel); box-shadow: inset 0 0 0 1.5px var(--sb-sel); }
+  .sb-tools button[aria-pressed=true] .sb-i { color: var(--sb-sel); }
+  .sb-step { display: flex; align-items: center; gap: 6px; margin: 6px 0; font: 500 12px/1.3 var(--sb-font); }
+  .sb-step span:first-child { flex: 1; color: var(--sb-text-2); }
+  .sb-step button { min-width: 30px; min-height: 30px; border: 1px solid var(--sb-line-2); border-radius: var(--sb-r-sm); background: var(--sb-panel); color: inherit; font: 500 14px/1 var(--sb-font); cursor: pointer; }
+  .sb-step button:hover:not(:disabled) { background: var(--sb-sunk); }
+  .sb-step output { min-width: 52px; text-align: center; font-variant-numeric: tabular-nums; }
+  .sb-look, .sb-fx { margin: 4px 0 0; border-top: 1px solid var(--sb-line); padding-top: 2px; }
+  .sb-look > summary, .sb-fx > summary { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 0; font: 500 13px/1.3 var(--sb-font); list-style: none; }
+  .sb-look > summary::-webkit-details-marker, .sb-fx > summary::-webkit-details-marker { display: none; }
+  .sb-look > summary::before, .sb-fx > summary::before { content: ""; width: 14px; height: 14px; background: var(--sb-chev) no-repeat center / 14px; transform: rotate(-90deg); transition: transform .18s var(--sb-ease); }
+  .sb-look[open] > summary::before, .sb-fx[open] > summary::before { transform: none; }
+  .sb-looks { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 8px; margin: 4px 0 12px; }
+  .sb-lookbtn { all: unset; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; font: 500 11px/1.2 var(--sb-font); text-align: center; color: var(--sb-text-2); }
+  .sb-lookpic { position: relative; display: block; width: 100%; aspect-ratio: 1; border-radius: var(--sb-r); overflow: hidden; background: var(--sb-sunk-2); box-shadow: 0 0 0 1px var(--sb-line); transition: box-shadow .12s; }
   .sb-lookpic img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .sb-lookpic i { position: absolute; inset: 0; }
   .sb-lookpic i.w { mix-blend-mode: soft-light; }
   .sb-lookpic i.v { background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, #000 100%); }
-  .sb-lookbtn[aria-checked=true] .sb-lookpic { outline-color: var(--accent, #d24e1a); }
-  .sb-lookbtn:focus-visible .sb-lookpic { outline-color: var(--ink, #111); }
+  .sb-lookbtn:hover .sb-lookpic { box-shadow: 0 0 0 1px var(--sb-line-3); }
+  .sb-lookbtn[aria-checked=true] .sb-lookpic { box-shadow: 0 0 0 2px var(--sb-sel); }
+  .sb-lookbtn[aria-checked=true] { color: var(--sb-sel); font-weight: 600; }
+  .sb-lookbtn:focus-visible .sb-lookpic { box-shadow: 0 0 0 2px var(--sb-sel), 0 0 0 5px var(--sb-sel-ring); }
   .sb-fx .sb-field { margin-top: 12px; }
+  .sb-fx select { width: 100%; }
   .sb-brandcols { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .sb-brandcol { position: relative; display: inline-flex; }
-  .sb-brandcol i { display: block; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--sb-line); }
-  .sb-brandcol button, .sb-tplrm { all: unset; position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%; background: var(--ink, #111); color: #fff; font: 700 12px/18px Inter, system-ui, sans-serif; text-align: center; cursor: pointer; opacity: 0; transition: opacity .12s; }
+  .sb-brandcol i { display: block; width: 28px; height: 28px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
+  .sb-brandcol button, .sb-tplrm { all: unset; position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%; background: var(--sb-primary); color: var(--sb-on-primary); font: 600 12px/18px var(--sb-font); text-align: center; cursor: pointer; opacity: 0; transition: opacity .12s; box-shadow: var(--sb-sh-2); }
   .sb-brandcol:hover button, .sb-brandcol button:focus-visible, .sb-tplwrap:hover .sb-tplrm, .sb-tplrm:focus-visible { opacity: 1; }
   @media (pointer: coarse) { .sb-brandcol button, .sb-tplrm { opacity: 1; } }
   .sb-tplwrap { position: relative; display: block; }
-  .sb-tplwrap .sb-tplrm { top: 4px; right: 4px; }
+  .sb-tplwrap .sb-tplrm { top: 8px; right: 8px; width: 22px; height: 22px; line-height: 22px; }
   .sb-brandlogo { display: block; max-width: 160px; max-height: 64px; margin: 4px 0 8px; object-fit: contain; background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0 / 12px 12px; border-radius: 6px; padding: 6px; }
   .sb-cpbrand { margin: 8px 0 2px; }
-  .sb-wraprow { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 8px 0 4px; font: 500 12.5px/1.3 Inter, system-ui, sans-serif; }
-  .sb-wraprow label { display: inline-flex; align-items: center; gap: 6px; }
-  .sb-wraprow select, .sb-wraprow input { padding: 5px 7px; border: 1px solid var(--sb-line); border-radius: 7px; background: var(--paper, #fff); color: inherit; font: inherit; }
-  .sb-wraprow input { width: 70px; text-align: right; }
-  .sb-cutbox { max-width: 560px; width: min(560px, 94vw); }
-  .sb-cutview { display: flex; align-items: center; justify-content: center; height: min(52vh, 460px); margin: 6px 0 10px; border-radius: 10px; background: repeating-conic-gradient(#e6e6e6 0 25%, #fff 0 50%) 0 0 / 18px 18px; overflow: hidden; }
-  .sb-cutview canvas { max-width: 100%; max-height: 100%; }
-  .sb-graphics { display: grid; grid-template-columns: repeat(auto-fill, minmax(36px, 1fr)); gap: 6px; margin: 4px 0 6px; }
-  .sb-graphics button { all: unset; box-sizing: border-box; display: flex; align-items: center; justify-content: center; aspect-ratio: 1; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--paper, #fff); color: var(--ink, #141416); cursor: pointer; }
+  .sb-wraprow { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 8px 0 4px; font: 400 12.5px/1.3 var(--sb-font); color: var(--sb-text-2); }
+  .sb-wraprow label { display: inline-flex; align-items: center; gap: 8px; }
+  .sb-root .sb-wraprow select { width: auto; }
+  .sb-root .sb-wraprow input { width: 74px; text-align: right; }
+  .sb-graphics { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 6px; margin: 4px 0 6px; }
+  .sb-graphics button { all: unset; box-sizing: border-box; display: flex; align-items: center; justify-content: center; aspect-ratio: 1; border-radius: var(--sb-r); background: var(--sb-sunk); color: var(--sb-text); cursor: pointer; transition: background .12s, box-shadow .12s; }
   .sb-graphics button svg { width: 20px; height: 20px; }
-  .sb-graphics button:hover { border-color: var(--ink, #141416); }
-  .sb-graphics button[aria-checked=true] { border-color: var(--accent, #d24e1a); color: var(--accent, #d24e1a); box-shadow: 0 0 0 1px var(--accent, #d24e1a); }
-  .sb-graphics button:focus-visible { outline: 2px solid var(--ink, #141416); outline-offset: 1px; }
-  .sb-ownfonts { list-style: none; margin: 4px 0 8px; padding: 0; border: 1px solid var(--sb-line); border-radius: 10px; }
-  .sb-ownfonts li { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-top: 1px solid var(--sb-line); }
+  .sb-graphics button:hover { background: var(--sb-sunk-2); }
+  .sb-graphics button[aria-checked=true] { background: var(--sb-sel-soft); color: var(--sb-sel); box-shadow: inset 0 0 0 1.5px var(--sb-sel); }
+  .sb-graphics button:focus-visible { outline: 2px solid var(--sb-sel); outline-offset: 1px; }
+  .sb-ownfonts { list-style: none; margin: 4px 0 8px; padding: 0; border: 1px solid var(--sb-line); border-radius: var(--sb-r); }
+  .sb-ownfonts li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-top: 1px solid var(--sb-line); }
   .sb-ownfonts li:first-child { border-top: 0; }
   .sb-ownfont-aa { flex: none; width: 34px; font-size: 22px; line-height: 1; }
   .sb-ownfont-name { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-  .sb-ownfont-name small { font-size: 11.5px; color: var(--ink-soft, #5c5e66); }
-  .sb-ownfonts button { all: unset; width: 24px; height: 24px; text-align: center; border-radius: 6px; cursor: pointer; color: var(--ink-soft, #5c5e66); }
-  .sb-ownfonts button:hover { background: var(--sb-sunk); color: var(--ink, #141416); }
-  .sb-additem canvas.sb-tplpic { grid-row: 1 / 3; width: 34px; height: auto; border-radius: 2px; box-shadow: 0 0 0 1px var(--sb-line), 0 1px 2px rgba(0,0,0,.12); }
-  .sb-fx select { width: 100%; padding: 7px 9px; border: 1px solid var(--sb-line); border-radius: 7px; background: var(--paper, #fff); color: inherit; font: 500 12.5px/1.3 Inter, system-ui, sans-serif; }
-  .sb-step span:first-child { flex: 1; color: var(--ink-soft, #5c5e66); }
-  .sb-step button { min-width: 34px; min-height: 32px; border: 1px solid var(--sb-line); border-radius: 7px; background: var(--paper, #fff); color: inherit; font: 600 14px/1 Inter, system-ui, sans-serif; cursor: pointer; }
-  .sb-step output { min-width: 52px; text-align: center; font-variant-numeric: tabular-nums; }
-  .sb-preview canvas { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; background: #fff; box-shadow: 0 16px 36px -18px rgba(0,0,0,.5); }
-  .sb-preview canvas + canvas { max-width: 50%; }
-  .sb-preview.two canvas { max-width: 50%; }
-  .sb-addmenu { position: absolute; inset: 8px; z-index: 10; overflow: auto; display: grid; gap: 16px; align-content: start; padding: 16px; background: var(--paper, #faf8f5); border: 1px solid var(--sb-line); border-radius: 10px; box-shadow: 0 18px 40px -20px rgba(0,0,0,.45); }
-  .sb-addmenu[hidden] { display: none; }
-  .sb-addhead { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-  .sb-start { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(10,10,12,.42); }
-  .sb-startbox { width: min(760px, 100%); max-height: 92vh; overflow: auto; display: grid; gap: 14px; align-content: start; padding: 18px; background: var(--paper, #faf8f5); border: 1px solid var(--sb-line); border-radius: 14px; box-shadow: 0 24px 60px -24px rgba(0,0,0,.5); }
-  .sb-starts { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
-  .sb-starts[hidden], .sb-startcc[hidden] { display: none; }
-  .sb-startcc { margin: 4px 0 2px; }
-  .sb-startitem { display: grid; gap: 6px; padding: 10px; border: 1px solid var(--sb-line); border-radius: 12px; background: var(--sb-card); color: inherit; text-align: left; cursor: pointer; }
-  .sb-startitem:hover, .sb-startitem:focus-visible { border-color: var(--ink, #141416); }
-  .sb-startpic { display: grid; place-items: center; height: 132px; background: var(--sb-sunk); border-radius: 8px; }
-  .sb-startpic canvas { max-height: 116px; max-width: 100%; box-shadow: 0 6px 16px -8px rgba(0,0,0,.5); }
-  .sb-startitem b { font: 700 13.5px Inter, sans-serif; }
-  .sb-startitem > span:last-child { font: 400 12px/1.4 Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
-  @media (max-width: 900px) { .sb-starts { grid-template-columns: 1fr 1fr; } .sb-startpic { height: 110px; } .sb-startpic canvas { max-height: 96px; } }
-  .sb-addhead strong { font: 700 15px Inter, sans-serif; }
-  .sb-addgroup { display: grid; gap: 8px; }
-  .sb-additems { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
-  .sb-additem { display: grid; grid-template-columns: 34px 1fr; grid-template-rows: auto 1fr; gap: 2px 12px; align-items: start; padding: 10px 12px; border: 1px solid var(--sb-line); border-radius: 10px; background: var(--sb-card); color: inherit; text-align: left; cursor: pointer; }
-  .sb-additem .sb-addico { grid-row: 1 / 3; display: block; filter: drop-shadow(0 1px 1px rgba(0,0,0,.12)); }
-  .sb-additem:hover { border-color: var(--ink, #141416); }
-  .sb-additem b { font: 700 13.5px Inter, sans-serif; }
-  .sb-additem span { font: 400 12px/1.4 Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
-  .sb-additem:disabled { opacity: .45; cursor: not-allowed; }
-
-  .sb-insp { display: flex; flex-direction: column; overflow: hidden; }
-  .sb-tabs { display: flex; gap: 4px; padding: 6px; border-bottom: 1px solid var(--sb-line); }
-  .sb-tabs button { flex: 1; padding: 8px; border: 0; border-radius: 8px; background: none; color: var(--ink-soft, #5c5e66); font: 600 13px Inter, sans-serif; cursor: pointer; }
-  .sb-tabs button[aria-selected=true] { background: var(--ink, #141416); color: var(--paper, #faf8f5); }
-  .sb-panel { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-auto-rows: max-content; gap: 18px; align-content: start; padding: 14px; }
-  .sb-panel[hidden] { display: none; }
-  .sb-sec { display: grid; gap: 10px; }
-  .sb-sec[hidden] { display: none; }
-  /* Sections were told apart by a gap alone, so a long one ran into the next.
-     A hairline and one rhythm, the way a modern rail is built. */
-  .sb-panel > .sb-sec + .sb-sec, .sb-panel > .sb-field + .sb-field,
-  .sb-panel > .sb-sec + .sb-field, .sb-panel > .sb-field + .sb-sec {
-    padding-top: 18px; border-top: 1px solid var(--sb-line);
-  }
-  .sb-panel { gap: 0; row-gap: 18px; }
-  .sb-field { display: grid; gap: 5px; }
-  /* ONE label voice down the whole rail. The panel used to alternate between
-     an h3's mono capitals ("PHOTOS", "PAGE COLOUR") and a field label's bold
-     sans ("Placement", "Credit line", "Border"), which read as two interfaces
-     stacked on top of each other rather than one. Every label is now the h3's
-     voice, and nothing in the column competes with the controls. */
-  .sb-field > label, .sb-field > .sb-label, .sb-adjrow > span:first-child {
-    font: 700 11px/1.3 'JetBrains Mono', monospace; letter-spacing: .12em;
-    text-transform: uppercase; color: var(--ink-soft, #5c5e66);
-  }
-  .sb-meter { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font: 500 11px/1.4 'JetBrains Mono', monospace; color: var(--ink-soft, #5c5e66); }
-  .sb-meter .warn { color: var(--sb-warn); }
-  .sb-meter .bad { color: var(--accent, #d24e1a); font-weight: 700; }
-  .sb-meter .sb-counter { flex: none; }
-  .sb-note { margin: 0; font: 500 12px/1.45 Inter, sans-serif; color: var(--sb-warn); }
-  .sb-note[hidden], .sb-link[hidden] { display: none; }
-  .sb-check-row { display: flex; align-items: center; gap: 8px; font: 500 13px Inter, sans-serif; }
-  .sb-check-row input { width: 18px; height: 18px; accent-color: var(--accent, #d24e1a); }
-  .sb-ideas summary { cursor: pointer; font: 600 12.5px Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
-  .sb-ideas ul { margin: 6px 0 0; padding-left: 18px; font: 400 12.5px/1.6 Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
-
-  .sb-labelrow { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-  .sb-labelrow > label { font: 600 12.5px Inter, sans-serif; }
-  .sb-fmt { display: contents; }
-  .sb-freeform { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 8px; }
-  .sb-freeform .sb-hint { flex: 1 1 200px; margin: 0; }
-  /* A workspace, not a web page: on a laptop the site's header and footer step
-     aside while a book is open and the editor fills the window (a phone has
-     done this since v421). "← Books" brings the site back. */
-  @media (min-width: 901px) {
-    html.sb-editing .site-header, html.sb-editing .site-footer, html.sb-editing .admin-sticky-reminder, html.sb-editing #adminStickyReminderBar, html.sb-editing .footer-cta { display: none !important; }
-    html.sb-editing body { overflow: hidden; }
-    html.sb-editing .sb-root { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; padding: 10px 14px 12px; background: var(--bone, #eceae7); overflow: hidden; }
-    html.sb-editing .sb-root > .sb-work { flex: 1 1 auto; height: auto; min-height: 0; }
-    /* The site's "Not live yet" card sits at the foot, bottom left, over the
-       page list's "+ Add page": the editor leaves it a strip of its own. */
-    html.sb-editing.sb-has-pubbar .sb-root { padding-bottom: 74px; }
-  }
-  /* Design, in four groups that fold away. */
-  .sb-group { border-top: 1px solid var(--sb-line); }
-  .sb-group:first-child { border-top: 0; }
-  .sb-group > summary { list-style: none; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 14px 16px; cursor: pointer; font: 700 14px Inter, sans-serif; }
-  .sb-group > summary::-webkit-details-marker { display: none; }
-  .sb-group > summary small { flex: 1; font: 400 12px/1.35 Inter, sans-serif; color: var(--ink-soft, #5c5e66); text-align: right; }
-  .sb-group > summary::after { content: "+"; font: 400 18px/1 Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
-  .sb-group[open] > summary::after { content: "−"; }
-  .sb-group > .sb-sec { border-top: 0; padding-top: 4px; }
-  /* Find a command. */
-  .sb-cmd { position: fixed; inset: 0; z-index: 120; display: flex; align-items: flex-start; justify-content: center; padding: 12vh 16px 16px; background: rgba(12,12,14,.35); }
-  .sb-cmdbox { width: min(560px, 100%); max-height: 70vh; display: flex; flex-direction: column; overflow: hidden; background: var(--paper, #faf8f5); border: 1px solid var(--sb-line); border-radius: 14px; box-shadow: 0 30px 70px -20px rgba(0,0,0,.5); }
-  .sb-root .sb-cmdbox input { border: 0; border-bottom: 1px solid var(--sb-line); border-radius: 0; padding: 16px 18px; font: 500 16px Inter, sans-serif; background: transparent; }
-  .sb-cmdlist { list-style: none; margin: 0; padding: 6px; overflow-y: auto; }
-  .sb-cmdlist li { display: flex; justify-content: space-between; gap: 12px; padding: 9px 12px; border-radius: 8px; cursor: pointer; font: 500 14px Inter, sans-serif; }
-  .sb-cmdlist li span { color: var(--ink-soft, #5c5e66); font: 400 12px Inter, sans-serif; white-space: nowrap; }
-  .sb-cmdlist li[aria-selected=true] { background: var(--ink, #141416); color: var(--paper, #fff); }
-  .sb-cmdlist li[aria-selected=true] span { color: inherit; opacity: .7; }
-  .sb-cmdfoot { padding: 8px 14px; border-top: 1px solid var(--sb-line); font: 400 11.5px/1.5 Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
-  .sb-root #sbCmd kbd { margin-left: 4px; font: 600 10px 'JetBrains Mono', monospace; padding: 1px 4px; border: 1px solid var(--sb-line); border-radius: 4px; opacity: .7; }
-  .sb-cmdfoot kbd { font: 600 10.5px 'JetBrains Mono', monospace; padd  @media (pointer: coarse) { .sb-root #sbCmd kbd { display: none; } }
-ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
-  .sb-layoutgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 6px; margin: 4px 0 10px; }
-  .sb-layoutbtn { display: grid; justify-items: center; gap: 3px; padding: 6px 4px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--paper, #fff); font: 500 10.5px/1.25 Inter, sans-serif; color: var(--ink, #141416); cursor: pointer; text-align: center; }
-  .sb-layoutbtn:hover, .sb-layoutbtn:focus-visible { border-color: var(--accent, #d24e1a); }
-  .sb-autorow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .sb-autorow select { flex: 1 1 180px; min-width: 0; }
-  .sb-typerole { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 10px; padding: 8px 0; border-top: 1px solid var(--sb-line); }
+  .sb-ownfont-name small { font-size: 11.5px; color: var(--sb-text-3); }
+  .sb-ownfonts button { all: unset; width: 24px; height: 24px; text-align: center; border-radius: 6px; cursor: pointer; color: var(--sb-text-3); }
+  .sb-ownfonts button:hover { background: var(--sb-hover); color: var(--sb-danger); }
+  .sb-typerole { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 10px; padding: 10px 0; border-top: 1px solid var(--sb-line); }
   .sb-typerole:first-of-type { border-top: 0; }
   .sb-typename { display: grid; gap: 1px; min-width: 0; flex: 1; }
-  .sb-typename b { font: 600 13px Inter, sans-serif; }
-  .sb-typename span { font: 400 11.5px/1.35 Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
+  .sb-typename b { font: 500 13px var(--sb-font); }
+  .sb-typename span { font: 400 11.5px/1.35 var(--sb-font); color: var(--sb-text-3); }
   .sb-fmttoggle { font-size: 12px; }
-  .sb-fmtrow { flex-basis: 100%; display: grid; gap: 8px; padding: 10px; margin: 2px 0 4px; border-radius: 10px; background: var(--sb-sunk); }
+  .sb-fmtrow { flex-basis: 100%; display: grid; gap: 10px; padding: 12px; margin: 4px 0; border-radius: var(--sb-r); background: var(--sb-sunk); }
   .sb-fmtrow[hidden] { display: none; }
-  .sb-fmtline { display: grid; grid-template-columns: 52px 1fr; align-items: center; gap: 8px; font: 500 12px Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
+  .sb-fmtline { display: grid; grid-template-columns: 56px 1fr; align-items: center; gap: 8px; font: 500 12px var(--sb-font); color: var(--sb-text-2); }
+  /* Colours. */
   .sb-swatches { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-  .sb-swatch { width: 30px; height: 30px; padding: 3px; border: 1px solid var(--sb-line); border-radius: 50%; background: var(--paper, #faf8f5); cursor: pointer; }
-  .sb-swatch i { display: block; width: 100%; height: 100%; border-radius: 50%; border: 1px solid rgba(0,0,0,.15); }
-  .sb-swatch[aria-pressed=true] { border-color: var(--ink, #141416); box-shadow: inset 0 0 0 1px var(--ink, #141416); }
-  .sb-custom { display: inline-flex; align-items: center; gap: 4px; font: 600 11.5px 'JetBrains Mono', monospace; color: var(--ink, #141416); }
-  /* Any colour: a square for how strong and how bright, a strip for the hue,
-     and the colour written out. */
-  .sb-hexlabel { font: 600 11.5px 'JetBrains Mono', monospace; color: var(--ink, #141416); }
-  .sb-ptrow { display: flex; align-items: center; gap: 6px; font: 500 11px Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
-  .sb-ptrow input[type=number] { width: 74px; padding: 6px 8px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--paper, #faf8f5); color: var(--ink, #141416); font: 600 13px 'JetBrains Mono', monospace; }
+  .sb-swatch { width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; box-shadow: 0 0 0 1px var(--sb-line-2); transition: box-shadow .12s, transform .12s; }
+  .sb-swatch:hover { transform: scale(1.08); }
+  .sb-swatch i { display: block; width: 100%; height: 100%; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.1); }
+  .sb-swatch[aria-pressed=true] { box-shadow: 0 0 0 2px var(--sb-panel), 0 0 0 4px var(--sb-sel); }
+  .sb-swatch.sb-any[aria-expanded=true] { box-shadow: 0 0 0 2px var(--sb-panel), 0 0 0 4px var(--sb-sel); }
+  .sb-custom { display: inline-flex; align-items: center; gap: 4px; font: 500 11.5px var(--sb-mono); color: var(--sb-text); }
+  .sb-custom input { width: 28px; height: 28px; padding: 0; border: 1px solid var(--sb-line); border-radius: 50%; background: none; cursor: pointer; }
+  .sb-hexlabel { font: 500 11.5px var(--sb-mono); color: var(--sb-text-2); }
+  .sb-ptrow { display: flex; align-items: center; gap: 6px; font: 500 11.5px var(--sb-font); color: var(--sb-text-2); }
+  .sb-root .sb-ptrow input[type=number] { width: 78px; font-variant-numeric: tabular-nums; }
   .sb-cphost { grid-column: 1 / -1; } .sb-cphost[hidden] { display: none; }
   .sb-cpharm { margin-top: 8px; }
-  .sb-cpharm summary { cursor: pointer; font: 600 12px Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
-  .sb-cpbase { display: flex; align-items: center; gap: 8px; margin-top: 8px; font: 500 11px Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
+  .sb-cpharm summary { cursor: pointer; font: 500 12px var(--sb-font); color: var(--sb-text-2); }
+  .sb-cpbase { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 8px; font: 500 12px var(--sb-font); color: var(--sb-text-2); }
   .sb-cpwheelwrap { position: relative; width: 150px; height: 150px; margin: 10px auto; }
   .sb-cpwheel { position: absolute; inset: 0; border-radius: 50%; cursor: crosshair; background: conic-gradient(hsl(0,100%,50%), hsl(60,100%,50%), hsl(120,100%,50%), hsl(180,100%,50%), hsl(240,100%,50%), hsl(300,100%,50%), hsl(360,100%,50%)); -webkit-mask: radial-gradient(circle, transparent 55%, #000 56%); mask: radial-gradient(circle, transparent 55%, #000 56%); }
-  .sb-cpwheel:focus-visible { outline: 2px solid var(--ink, #141416); outline-offset: 3px; }
+  .sb-cpwheel:focus-visible { outline: 2px solid var(--sb-sel); outline-offset: 3px; }
   .sb-cpdots { position: absolute; inset: 0; pointer-events: none; }
   .sb-cpd { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.45); }
   .sb-cpd.base { width: 20px; height: 20px; margin: -10px 0 0 -10px; border-width: 3px; }
   .sb-cpd.near { border-style: dashed; }
   .sb-cprowh { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 6px; }
-  .sb-cprowh > span { flex: 0 0 82px; font: 500 11px Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
-  .sb-cpsw { width: 21px; height: 21px; padding: 0; border: 1px solid rgba(0,0,0,.18); border-radius: 6px; cursor: pointer; }
-  .sb-cpsw:hover, .sb-cpsw:focus-visible { transform: scale(1.12); outline: 2px solid var(--ink, #141416); outline-offset: 1px; }
-  .sb-cpick { display: grid; gap: 8px; margin-top: 6px; padding: 8px; border: 1px solid var(--sb-line); border-radius: 10px; background: var(--paper, #faf8f5); }
-  .sb-cpsat { position: relative; height: 118px; border-radius: 8px; border: 1px solid rgba(0,0,0,.15); cursor: crosshair; touch-action: none; }
-  .sb-cpsat:focus-visible { outline: 2px solid var(--accent, #d24e1a); outline-offset: 2px; }
-  .sb-cpdot { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,.55); pointer-events: none; }
-  .sb-cphue { width: 100%; height: 14px; margin: 2px 0; -webkit-appearance: none; appearance: none; border-radius: 7px; border: 1px solid rgba(0,0,0,.12); background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
-  .sb-cphue::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 1px solid rgba(0,0,0,.4); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
-  .sb-cphue::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 1px solid rgba(0,0,0,.4); }
-  .sb-cprow { display: flex; align-items: center; gap: 8px; font: 500 12px Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
-  .sb-cpprev { width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(0,0,0,.15); flex: none; }
-  .sb-cprow .sb-cphex { width: 104px; padding: 6px 8px; font: 600 12px 'JetBrains Mono', monospace; }
-  .sb-swatch.sb-any[aria-expanded=true] { box-shadow: 0 0 0 2px var(--accent, #d24e1a); }
-  .sb-barpick { position: absolute; z-index: 4; width: 272px; padding: 8px; border: 1px solid var(--sb-line); border-radius: 9px; background: var(--sb-card); box-shadow: 0 10px 28px -12px rgba(0,0,0,.4); }
-  .sb-barpick .sb-swatches { margin-bottom: 4px; }
-  .sb-bardot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,.3); vertical-align: middle; }
-  .sb-custom input { width: 30px; height: 30px; padding: 0; border: 1px solid var(--sb-line); border-radius: 50%; background: none; cursor: pointer; }
-  .sb-seg-sm button { padding: 6px 8px; font-size: 12px; }
-  .sb-rowbox { padding: 10px; border: 1px solid var(--sb-line); border-radius: 10px; }
-  .sb-rowacts { display: flex; gap: 4px; }
-  .sb-rowacts .sb-btn { padding: 5px 8px; font-size: 12px; }
-  .sb-sizerow { display: flex; align-items: center; gap: 8px; }
-  .sb-sizerow input { flex: 1; accent-color: var(--accent, #d24e1a); }
-  .sb-sizerow output { min-width: 40px; font: 600 11.5px 'JetBrains Mono', monospace; color: var(--ink, #141416); }
+  .sb-cprowh > span { flex: 0 0 82px; font: 400 11.5px var(--sb-font); color: var(--sb-text-3); }
+  .sb-cpsw { width: 22px; height: 22px; padding: 0; border: 0; border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); cursor: pointer; transition: transform .1s; }
+  .sb-cpsw:hover, .sb-cpsw:focus-visible { transform: scale(1.12); outline: 2px solid var(--sb-sel); outline-offset: 1px; }
+  .sb-cpick { display: grid; gap: 10px; margin-top: 6px; padding: 10px; border: 0; border-radius: var(--sb-r-lg); background: var(--sb-raised); box-shadow: var(--sb-sh-3); }
+  .sb-cpsat { position: relative; height: 128px; border-radius: var(--sb-r); box-shadow: inset 0 0 0 1px rgba(0,0,0,.1); cursor: crosshair; touch-action: none; }
+  .sb-cpsat:focus-visible { outline: 2px solid var(--sb-sel); outline-offset: 2px; }
+  .sb-cpdot { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,.45), 0 1px 3px rgba(0,0,0,.3); pointer-events: none; }
+  .sb-cphue { width: 100%; height: 12px; margin: 2px 0; -webkit-appearance: none; appearance: none; border-radius: 6px; border: 0; box-shadow: inset 0 0 0 1px rgba(0,0,0,.1); background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
+  .sb-cphue::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 0 0 1px rgba(0,0,0,.3), 0 1px 3px rgba(0,0,0,.3); }
+  .sb-cphue::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 0 0 1px rgba(0,0,0,.3); }
+  .sb-cprow { display: flex; align-items: center; gap: 8px; font: 500 12px var(--sb-font); color: var(--sb-text-2); }
+  .sb-cpprev { width: 28px; height: 28px; border-radius: var(--sb-r-sm); box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); flex: none; }
+  .sb-root .sb-cprow .sb-cphex { width: 104px; font: 500 12px var(--sb-mono); }
+  .sb-barpick { position: absolute; z-index: 4; width: 280px; padding: 10px; border: 0; border-radius: var(--sb-r-lg); background: var(--sb-raised); box-shadow: var(--sb-sh-3); }
+  .sb-barpick .sb-swatches { margin-bottom: 6px; }
+  .sb-bardot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); vertical-align: middle; }
+  .sb-rowbox { padding: 12px; border: 1px solid var(--sb-line); border-radius: var(--sb-r); background: var(--sb-panel); }
+  .sb-rowacts { display: flex; gap: 2px; }
+  .sb-rowacts .sb-btn { min-height: 28px; padding: 0 8px; font-size: 12px; }
+  .sb-sizerow { display: flex; align-items: center; gap: 10px; }
+  .sb-sizerow input { flex: 1; }
+  .sb-sizerow output { min-width: 42px; text-align: right; font: 500 12px var(--sb-font); color: var(--sb-text); font-variant-numeric: tabular-nums; }
   .sb-italic { font-size: 12px; margin-left: 4px; }
-  .sb-seg[hidden] { display: none; }
-  .sb-seg { display: flex; gap: 4px; flex-wrap: wrap; }
-  .sb-seg button { flex: 1 1 auto; padding: 7px 9px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--paper, #faf8f5); color: var(--ink, #141416); font: 600 12.5px Inter, sans-serif; cursor: pointer; }
-  .sb-seg button[aria-checked=true] { background: var(--ink, #141416); border-color: var(--ink, #141416); color: var(--paper, #faf8f5); }
-  /* A drawn button is square and keeps its name for a reader and the tooltip;
-     a row of them reads as a toolbar rather than as words of ragged lengths. */
-  .sb-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; font-size: 11px; }
-  .sb-seg button:has(svg) { display: inline-flex; align-items: center; justify-content: center; min-width: 38px; padding: 7px 9px; line-height: 0; font-size: 0; }
-  /* In a row of drawings, nothing stretches — otherwise the one button that
-     kept its word ("Auto") swallowed all the space left over and the drawn
-     ones huddled at the end. */
-  .sb-seg:has(svg) button { flex: 0 0 auto; }
-  /* A row that shows the drawing AND says the word under it. Used where the
-     drawing is standing for a size rather than a thing, so it cannot be read
-     on its own. The word is the same .sb-sr span, simply let out of hiding. */
-  .sb-seg-words button:has(svg) { flex-direction: column; gap: 3px; min-width: 56px; padding: 6px 8px; }
-  .sb-seg-words .sb-sr { position: static; width: auto; height: auto; overflow: visible; clip: auto; font: 600 10px/1 'JetBrains Mono', monospace; letter-spacing: .04em; text-transform: uppercase; }
-  /* Save, lit while something is waiting to be written to this device. */
-  #sbSave.is-due { border-color: var(--accent, #d24e1a); color: var(--accent, #d24e1a); font-weight: 700; }
-  .sb-seg button svg { display: block; pointer-events: none; }
-  .sb-styles { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: max-content; gap: 8px; }
-  .sb-style { display: grid; gap: 2px; align-content: start; padding: 8px; border: 1px solid var(--sb-line); border-radius: 10px; background: var(--paper, #faf8f5); color: inherit; text-align: left; cursor: pointer; }
-  .sb-style b { font: 700 14px Inter, sans-serif; }
-  .sb-style span { font: 400 12px/1.35 Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
-  .sb-style .sb-stylepic { display: flex; gap: 4px; justify-content: center; align-items: center; height: 96px; margin-bottom: 6px; padding: 6px; background: var(--sb-sunk); border-radius: 7px; overflow: hidden; }
-  .sb-stylepic canvas { max-height: 84px; max-width: 48%; width: auto; height: auto; box-shadow: 0 3px 8px -4px rgba(0,0,0,.45); }
+  /* Styles and colourways. */
+  .sb-styles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: max-content; gap: 10px; }
+  .sb-style { display: grid; gap: 2px; align-content: start; padding: 6px 6px 10px; border: 0; border-radius: var(--sb-r-lg); background: transparent; color: inherit; text-align: left; cursor: pointer; transition: background .12s; }
+  .sb-style:hover { background: var(--sb-hover); }
+  .sb-style b { padding: 0 4px; font: 600 13px var(--sb-font); letter-spacing: -.005em; }
+  .sb-style > span:not(.sb-stylepic) { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; padding: 0 4px; font: 400 11.5px/1.4 var(--sb-font); color: var(--sb-text-3); }
+  .sb-style .sb-stylepic { display: flex; gap: 3px; justify-content: center; align-items: center; height: 104px; margin-bottom: 8px; padding: 8px; background: var(--sb-sunk); border-radius: var(--sb-r); overflow: hidden; box-shadow: inset 0 0 0 1px var(--sb-line); transition: box-shadow .12s; }
+  .sb-stylepic canvas { max-height: 88px; max-width: 48%; width: auto; height: auto; box-shadow: 0 1px 3px rgba(16,16,20,.2); }
+  .sb-style[aria-checked=true] .sb-stylepic { box-shadow: inset 0 0 0 2px var(--sb-sel); background: var(--sb-sel-soft); }
+  .sb-style[aria-checked=true] b { color: var(--sb-sel); }
   .sb-style.is-busy { opacity: .6; }
-  /* Books made for someone else (Sep 26 2026). */
-  .sb-homeacts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .sb-shelftag { color: var(--ink, #141416); }
-  .sb-copydue { color: #9a5b00; font-weight: 600; }
-  .sb-forwho { display: grid; gap: 8px; margin: 4px 0 2px; }
+  .sb-cws { display: grid; grid-template-columns: repeat(auto-fill, minmax(66px, 1fr)); gap: 4px; }
+  .sb-cw { display: grid; justify-items: center; gap: 6px; padding: 8px 2px 7px; border: 0; border-radius: var(--sb-r); background: none; color: var(--sb-text-2); font: 500 11px/1.2 var(--sb-font); text-align: center; cursor: pointer; transition: background .12s; }
+  .sb-cw:hover { background: var(--sb-hover); }
+  .sb-cw[aria-checked=true] { background: var(--sb-sel-soft); color: var(--sb-sel); font-weight: 600; }
+  .sb-dot { width: 30px; height: 30px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.1); }
+  .sb-cw[aria-checked=true] .sb-dot { box-shadow: 0 0 0 2px var(--sb-panel), 0 0 0 4px var(--sb-sel); }
+  /* Books made for someone else. */
+  .sb-forwho { display: grid; gap: 10px; margin: 4px 0 2px; }
+  .sb-forwho[hidden] { display: none; }
   .sb-logorow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .sb-logoimg { max-width: 140px; max-height: 44px; object-fit: contain; padding: 4px; border: 1px solid var(--sb-line); border-radius: 6px; background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0 / 12px 12px; }
   .sb-moveshelf { margin-top: 6px; }
-  .sb-moveshelf > summary { cursor: pointer; font: 600 13px Inter, sans-serif; }
+  .sb-moveshelf > summary { cursor: pointer; font: 500 13px var(--sb-font); }
   .sb-moveshelf[open] { display: grid; gap: 8px; }
-  .sb-style[aria-checked=true] { border-color: var(--ink, #141416); box-shadow: inset 0 0 0 1px var(--ink, #141416); }
-  .sb-cws { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; }
-  .sb-cw { display: grid; justify-items: center; gap: 5px; padding: 8px 2px 6px; border: 1px solid transparent; border-radius: 10px; background: none; color: inherit; font: 600 11px/1.2 Inter, sans-serif; text-align: center; cursor: pointer; }
-  .sb-cw:hover { background: var(--sb-sunk); }
-  .sb-cw[aria-checked=true] { border-color: var(--ink, #141416); background: var(--paper, #faf8f5); }
-  .sb-dot { width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(0,0,0,.18); }
-
-  .sb-chosen { display: flex; flex-wrap: wrap; gap: 6px; }
-  .sb-ch { position: relative; flex: none; width: 58px; height: 77px; aspect-ratio: 3 / 4; padding: 0; border: 2px solid transparent; border-radius: 7px; overflow: hidden; background: var(--sb-sunk); cursor: pointer; }
+  /* The page's photographs, and the one being changed. */
+  .sb-chosen { display: flex; flex-wrap: wrap; gap: 8px; }
+  .sb-ch { position: relative; flex: none; width: 58px; height: 77px; padding: 0; border: 0; border-radius: var(--sb-r-sm); overflow: hidden; background: var(--sb-sunk); cursor: pointer; box-shadow: 0 0 0 1px var(--sb-line); transition: box-shadow .12s, transform .12s; }
+  .sb-ch:hover { transform: translateY(-1px); }
   .sb-ch img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .sb-ch.diagram img { object-fit: contain; background: #fff; }
-  .sb-ch[aria-pressed=true] { border-color: var(--accent, #d24e1a); }
-  .sb-ch i { position: absolute; top: 3px; left: 3px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: var(--ink, #141416); color: var(--paper, #faf8f5); font: 700 10px/17px Inter, sans-serif; font-style: normal; text-align: center; }
-  /* This was a filled grey card sitting inside the panel — a second surface,
-     and the one thing in the column that did not sit flat. It is drawn with a
-     line now, like everything else. */
-  .sb-adjust { display: grid; gap: 10px; padding: 12px; border-radius: 10px; border: 1px solid var(--sb-line); background: none; }
-  .sb-adjrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; font: 600 12.5px Inter, sans-serif; }
-  .sb-adjrow span:last-child { display: flex; gap: 4px; }
-  .sb-adjrow button { padding: 5px 9px; border: 1px solid var(--sb-line); border-radius: 7px; background: var(--paper, #faf8f5); color: var(--ink, #141416); font: 600 12px Inter, sans-serif; cursor: pointer; }
+  .sb-ch[aria-pressed=true] { box-shadow: 0 0 0 2px var(--sb-panel), 0 0 0 4px var(--sb-sel); }
+  .sb-ch i { position: absolute; top: 4px; left: 4px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: rgba(16,16,20,.72); color: #fff; font: 600 10px/16px var(--sb-font); font-style: normal; text-align: center; backdrop-filter: blur(4px); }
+  .sb-ch[aria-pressed=true] i { background: var(--sb-sel); }
+  .sb-adjust { display: grid; gap: 12px; padding: 12px; border-radius: var(--sb-r-lg); border: 1px solid var(--sb-line); background: var(--sb-panel); }
+  .sb-adjrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; font: 500 12.5px var(--sb-font); }
+  .sb-adjrow > span:first-child { font-weight: 600; color: var(--sb-text); font-size: 13px; }
+  .sb-adjrow span:last-child { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  .sb-adjrow button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 28px; min-width: 28px; padding: 0 9px; border: 1px solid var(--sb-line-2); border-radius: var(--sb-r-sm); background: var(--sb-panel); color: var(--sb-text); font: 500 12px var(--sb-font); cursor: pointer; }
+  .sb-adjrow button:hover:not(:disabled) { background: var(--sb-sunk); }
+  .sb-adjrow button[data-move] { padding: 0; }
+  .sb-adjrow button[data-remove]:hover { color: var(--sb-danger); }
   .sb-adjrow button:disabled { opacity: .35; cursor: not-allowed; }
-  .sb-range { display: grid; grid-template-columns: 92px 1fr; align-items: center; gap: 8px; font: 500 12px Inter, sans-serif; color: var(--ink-soft, #5c5e66); }
-  .sb-range input { width: 100%; accent-color: var(--accent, #d24e1a); }
-  /* The one remaining label in a different voice: the disclosure that opens
-     the photograph chooser. It joins the rest. */
-  .sb-pick > summary {
-    cursor: pointer; padding: 4px 0;
-    font: 700 11px/1.3 'JetBrains Mono', monospace; letter-spacing: .12em;
-    text-transform: uppercase; color: var(--ink-soft, #5c5e66);
-  }
-  .sb-pick > summary:hover { color: var(--ink, #141416); }
+  .sb-range { display: grid; grid-template-columns: 88px 1fr; align-items: center; gap: 10px; font: 400 12px var(--sb-font); color: var(--sb-text-2); }
+  .sb-range input { width: 100%; }
+  /* The photograph chooser. */
+  .sb-pick > summary { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px 0; list-style: none; font: 600 13px/1.3 var(--sb-font); letter-spacing: 0; text-transform: none; color: var(--sb-text); }
+  .sb-pick > summary::-webkit-details-marker { display: none; }
+  .sb-pick > summary::before { content: ""; width: 14px; height: 14px; background: var(--sb-chev) no-repeat center / 14px; transform: rotate(-90deg); transition: transform .18s var(--sb-ease); }
+  .sb-pick[open] > summary::before { transform: none; }
+  .sb-pick > summary:hover { color: var(--sb-sel); }
   .sb-pick[open] > summary { margin-bottom: 8px; }
-  .sb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); grid-auto-rows: max-content; gap: 6px; max-height: 380px; overflow-y: auto; padding: 2px; margin-top: 8px; }
-  .sb-thumb { position: relative; aspect-ratio: 3 / 4; padding: 0; border: 0; border-radius: 6px; overflow: hidden; background: var(--sb-sunk); cursor: pointer; }
-  /* A browser without aspect-ratio drew every thumbnail a sliver tall: the
-     box keeps its 3:4 shape the old way there. */
+  .sb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); grid-auto-rows: max-content; gap: 6px; max-height: 400px; overflow-y: auto; padding: 3px; margin-top: 10px; scrollbar-width: thin; }
+  .sb-thumb { position: relative; aspect-ratio: 3 / 4; padding: 0; border: 0; border-radius: var(--sb-r-sm); overflow: hidden; background: var(--sb-sunk); cursor: pointer; transition: transform .12s, box-shadow .12s; }
+  .sb-thumb:hover:not(:disabled) { transform: scale(1.03); box-shadow: var(--sb-sh-2); }
   @supports not (aspect-ratio: 1 / 1) {
     .sb-thumb { height: 0; padding-bottom: 133.33%; }
     .sb-thumb img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
   }
   .sb-thumb-wrap { position: relative; display: block; }
   .sb-thumb-wrap .sb-thumb { width: 100%; }
-  .sb-thumb-rm { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: rgba(0,0,0,.72); color: #fff; font-size: 15px; line-height: 24px; padding: 0; cursor: pointer; }
-  .sb-thumb-rm:focus-visible { outline: 2px solid var(--sb-accent, #d24e1a); outline-offset: 2px; }
+  .sb-thumb-rm { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: rgba(16,16,20,.72); color: #fff; font-size: 14px; line-height: 22px; padding: 0; cursor: pointer; backdrop-filter: blur(4px); }
+  .sb-thumb-rm:focus-visible { outline: 2px solid var(--sb-sel); outline-offset: 2px; }
   .sb-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .sb-thumb.diagram img { object-fit: contain; background: #fff; }
-  .sb-thumb.diagram::before { content: "Diagram"; position: absolute; left: 3px; bottom: 3px; padding: 0 4px; border-radius: 4px; background: rgba(0,0,0,.7); color: #fff; font: 600 9.5px/15px Inter, sans-serif; }
-  .sb-thumb[aria-pressed=true] { box-shadow: inset 0 0 0 3px var(--accent, #d24e1a); }
-  .sb-thumb[aria-pressed=true]::after { content: attr(data-order); position: absolute; top: 4px; right: 4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--accent, #d24e1a); color: #fff; font: 700 11px/20px Inter, sans-serif; text-align: center; }
+  .sb-thumb.diagram::before { content: "Diagram"; position: absolute; left: 4px; bottom: 4px; padding: 0 5px; border-radius: 4px; background: rgba(16,16,20,.72); color: #fff; font: 500 9.5px/16px var(--sb-font); }
+  .sb-thumb[aria-pressed=true] { box-shadow: inset 0 0 0 2.5px var(--sb-sel); }
+  .sb-thumb[aria-pressed=true] img { opacity: .9; }
+  .sb-thumb[aria-pressed=true]::after { content: attr(data-order); position: absolute; top: 5px; right: 5px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--sb-sel); color: #fff; font: 600 11px/20px var(--sb-font); text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
   .sb-thumb:disabled { opacity: .35; cursor: not-allowed; }
+  .sb-layoutgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px; margin: 4px 0 10px; }
+  .sb-layoutbtn { display: grid; justify-items: center; gap: 4px; padding: 8px 4px 6px; border: 0; border-radius: var(--sb-r); background: var(--sb-sunk); font: 500 10.5px/1.25 var(--sb-font); color: var(--sb-text-2); cursor: pointer; text-align: center; transition: background .12s, box-shadow .12s; }
+  .sb-layoutbtn:hover, .sb-layoutbtn:focus-visible { background: var(--sb-sunk-2); color: var(--sb-text); }
+  .sb-autorow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .sb-autorow select { flex: 1 1 180px; min-width: 0; }
+  .sb-cutbox { max-width: 580px; width: min(580px, 94vw); }
+  .sb-cutview { display: flex; align-items: center; justify-content: center; height: min(52vh, 460px); margin: 6px 0 12px; border-radius: var(--sb-r-lg); background: repeating-conic-gradient(#e9e9ec 0 25%, #fff 0 50%) 0 0 / 16px 16px; overflow: hidden; }
+  .sb-cutview canvas { max-width: 100%; max-height: 100%; }
 
-  @media (max-width: 1200px) { .sb-work { grid-template-columns: var(--sb-rail-w, 124px) minmax(0, 1fr) var(--sb-insp-w, 340px); } .sb-pgimg canvas { height: 72px; } .sb-pgimg { min-height: 76px; } }
+  /* ── Add a page: a gallery of real pages, drawn in this book's look ─────── */
+  .sb-addmenu { position: absolute; inset: 0; z-index: 14; display: grid; grid-template-columns: 188px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); background: var(--sb-panel); animation: sbFade .16s var(--sb-ease); }
+  .sb-addmenu[hidden] { display: none; }
+  @keyframes sbFade { from { opacity: 0; } to { opacity: 1; } }
+  .sb-addhead { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .sb-addmenu > .sb-addhead { grid-column: 1 / -1; padding: 14px 16px 14px 20px; border-bottom: 1px solid var(--sb-line); }
+  .sb-addhead strong { font: 600 15px/1.2 var(--sb-font); letter-spacing: -.01em; }
+  .sb-addhead .sb-hint { flex: 1; }
+  .sb-addsearch { position: relative; flex: 0 1 260px; }
+  .sb-addsearch .sb-i { position: absolute; left: 10px; top: 50%; margin-top: -8px; color: var(--sb-text-3); pointer-events: none; }
+  .sb-root .sb-addsearch input { padding-left: 32px; min-height: 32px; }
+  .sb-addnav { overflow-y: auto; padding: 12px 10px; border-right: 1px solid var(--sb-line); display: flex; flex-direction: column; gap: 1px; }
+  .sb-addnav button { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; padding: 0 10px; border: 0; border-radius: var(--sb-r-sm); background: none; color: var(--sb-text-2); font: 500 13px/1.2 var(--sb-font); text-align: left; cursor: pointer; }
+  .sb-addnav button:hover { background: var(--sb-hover); color: var(--sb-text); }
+  .sb-addnav button[aria-current=true] { background: var(--sb-sel-soft); color: var(--sb-sel); }
+  .sb-addnav button small { font: 400 11.5px var(--sb-font); color: var(--sb-text-3); }
+  .sb-addnav button[hidden] { display: none; }
+  .sb-addnav button.sub { padding-left: 18px; }
+  .sb-addnavhead { padding: 14px 10px 4px; font: 600 11.5px var(--sb-font); color: var(--sb-text-3); }
+  .sb-addscroll { overflow-y: auto; padding: 8px 24px 32px; display: grid; gap: 28px; align-content: start; scroll-behavior: smooth; }
+  .sb-addgroup { display: grid; gap: 12px; scroll-margin-top: 12px; }
+  .sb-addgroup > h3 { position: sticky; top: -8px; z-index: 1; padding: 12px 0 6px; background: var(--sb-panel); }
+  .sb-addgroup[hidden] { display: none; }
+  .sb-additems { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px 14px; }
+  .sb-additem { display: grid; grid-template-columns: none; grid-template-rows: auto auto 1fr; align-content: start; gap: 3px; align-items: start; padding: 0; border: 0; border-radius: var(--sb-r-lg); background: none; color: inherit; text-align: left; cursor: pointer; }
+  .sb-additem[hidden] { display: none; }
+  .sb-addpic { display: grid; place-items: center; height: 168px; margin-bottom: 8px; padding: 14px; border-radius: var(--sb-r-lg); background: var(--sb-sunk); box-shadow: inset 0 0 0 1px var(--sb-line); transition: background .15s, box-shadow .15s; overflow: hidden; }
+  .sb-addpic canvas { display: block; max-width: 100%; max-height: 140px; width: auto; height: auto; box-shadow: 0 0 0 1px rgba(16,16,20,.05), 0 6px 16px -6px rgba(16,16,20,.3); transition: transform .2s var(--sb-ease); }
+  .sb-addpic canvas + canvas { max-width: 50%; }
+  .sb-addpic .sb-addico { width: 44px; height: 60px; opacity: .8; }
+  .sb-additem:hover:not(:disabled) .sb-addpic, .sb-additem:focus-visible .sb-addpic { background: var(--sb-sel-soft); box-shadow: inset 0 0 0 1.5px var(--sb-sel); }
+  .sb-additem:hover:not(:disabled) .sb-addpic canvas { transform: translateY(-3px); }
+  .sb-additem:focus-visible { outline: none; }
+  .sb-additem b { padding: 0 2px; font: 600 13px/1.3 var(--sb-font); letter-spacing: -.005em; }
+  .sb-additem > span:last-child { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; padding: 0 2px; font: 400 12px/1.45 var(--sb-font); color: var(--sb-text-3); }
+  .sb-additem:disabled { opacity: .4; cursor: not-allowed; }
+  .sb-additem canvas.sb-tplpic { grid-row: auto; width: auto; }
+  .sb-addauto { display: grid; gap: 10px; padding: 16px; border-radius: var(--sb-r-lg); background: var(--sb-sunk); }
+  .sb-addnone { padding: 32px 0; text-align: center; }
+  .sb-tplsave { display: flex; }
+  .sb-tplsave button { display: inline-flex; align-items: center; gap: 6px; }
+
+  /* ── New book ───────────────────────────────────────────────────────────── */
+  .sb-start { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(12,12,16,.5); backdrop-filter: blur(3px); animation: sbFade .15s; }
+  .sb-startbox { width: min(880px, 100%); max-height: 92vh; overflow: auto; display: grid; gap: 16px; align-content: start; padding: 0 24px 24px; background: var(--sb-panel); border: 0; border-radius: var(--sb-r-xl); box-shadow: var(--sb-sh-4); animation: sbPop .2s var(--sb-ease); }
+  .sb-startbox > .sb-addhead { position: sticky; top: 0; z-index: 2; margin: 0 -24px; padding: 18px 20px 14px 24px; background: var(--sb-panel); border-bottom: 1px solid var(--sb-line); }
+  .sb-startbox > .sb-addhead strong { font-size: 17px; }
+  .sb-startbox .sb-cpbase { margin-top: 0; }
+  .sb-startbox .sb-cpbase > span { min-width: 92px; font-weight: 500; color: var(--sb-text); }
+  .sb-starts { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+  .sb-starts[hidden], .sb-startcc[hidden] { display: none; }
+  .sb-startcc { margin: 4px 0 2px; }
+  .sb-startitem { display: grid; align-content: start; gap: 3px; padding: 0; border: 0; border-radius: var(--sb-r-lg); background: none; color: inherit; text-align: left; cursor: pointer; }
+  .sb-startpic { display: grid; place-items: center; height: 176px; margin-bottom: 8px; padding: 14px; background: var(--sb-sunk); border-radius: var(--sb-r-lg); box-shadow: inset 0 0 0 1px var(--sb-line); transition: background .15s, box-shadow .15s; }
+  .sb-startpic canvas { max-height: 148px; max-width: 100%; box-shadow: 0 0 0 1px rgba(16,16,20,.05), 0 8px 20px -8px rgba(16,16,20,.35); transition: transform .2s var(--sb-ease); }
+  .sb-startitem:hover .sb-startpic, .sb-startitem:focus-visible .sb-startpic { background: var(--sb-sel-soft); box-shadow: inset 0 0 0 1.5px var(--sb-sel); }
+  .sb-startitem:hover .sb-startpic canvas { transform: translateY(-3px); }
+  .sb-startitem:focus-visible { outline: none; }
+  .sb-startitem b { padding: 0 2px; font: 600 13px var(--sb-font); }
+  .sb-startitem > span:last-child { padding: 0 2px; font: 400 12px/1.45 var(--sb-font); color: var(--sb-text-3); }
+  @media (max-width: 900px) { .sb-starts { grid-template-columns: 1fr 1fr; } .sb-startpic { height: 132px; } .sb-startpic canvas { max-height: 108px; } }
+
+  /* ── Find a command ─────────────────────────────────────────────────────── */
+  .sb-cmd { position: fixed; inset: 0; z-index: 120; display: flex; align-items: flex-start; justify-content: center; padding: 14vh 16px 16px; background: rgba(12,12,16,.4); backdrop-filter: blur(2px); animation: sbFade .12s; }
+  .sb-cmdbox { width: min(600px, 100%); max-height: 68vh; display: flex; flex-direction: column; overflow: hidden; background: var(--sb-panel); border: 0; border-radius: var(--sb-r-xl); box-shadow: var(--sb-sh-4); animation: sbPop .16s var(--sb-ease); }
+  .sb-root .sb-cmdbox input { min-height: 54px; border: 0; border-bottom: 1px solid var(--sb-line); border-radius: 0; box-shadow: none; padding: 16px 18px 16px 46px; font: 400 16px var(--sb-font); background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b8b94' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 16px center / 18px; }
+  .sb-root .sb-cmdbox input:focus { box-shadow: none; border-color: var(--sb-line); }
+  .sb-cmdlist { list-style: none; margin: 0; padding: 6px; overflow-y: auto; }
+  .sb-cmdlist li { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 38px; padding: 0 12px; border-radius: var(--sb-r); cursor: pointer; font: 400 13.5px var(--sb-font); color: var(--sb-text); }
+  .sb-cmdlist li span { color: var(--sb-text-3); font: 400 12px var(--sb-font); white-space: nowrap; }
+  .sb-cmdlist li[aria-selected=true] { background: var(--sb-sel-soft); color: var(--sb-text); }
+  .sb-cmdlist li[aria-selected=true] span { color: var(--sb-sel); opacity: 1; }
+  .sb-cmdfoot { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--sb-line); background: var(--sb-sunk); font: 400 11.5px/1.5 var(--sb-font); color: var(--sb-text-3); }
+  .sb-cmdfoot kbd { margin: 0 2px; }
+  @media (pointer: coarse) { #sbCmd kbd { display: none; } }
+
+  /* Right-click menus. */
+  .sb-ctx { position: fixed; z-index: 400; min-width: 220px; padding: 5px; background: var(--sb-raised); border-radius: 10px; box-shadow: var(--sb-sh-4); animation: sbPop .12s var(--sb-ease); }
+  .sb-ctx button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 30px; padding: 0 10px; border: 0; border-radius: 6px; background: none; color: var(--sb-text); font: 400 13px/1.2 var(--sb-font); text-align: left; cursor: pointer; }
+  .sb-ctx button .sb-i { color: var(--sb-text-2); }
+  .sb-ctx button:hover:not(:disabled), .sb-ctx button:focus-visible { background: var(--sb-sel); color: #fff; outline: none; }
+  .sb-ctx button:hover:not(:disabled) .sb-i, .sb-ctx button:focus-visible .sb-i { color: #fff; }
+  .sb-ctx button kbd { margin-left: auto; padding: 0; border: 0; background: none; color: inherit; opacity: .55; font: 400 12px var(--sb-font); }
+  .sb-ctx button.danger { color: var(--sb-danger); } .sb-ctx button.danger .sb-i { color: var(--sb-danger); }
+  .sb-ctx button.danger:hover:not(:disabled), .sb-ctx button.danger:focus-visible { background: var(--sb-danger); color: #fff; }
+  .sb-ctx button:disabled { opacity: .4; cursor: default; }
+  .sb-ctxsep { display: block; height: 1px; margin: 4px 6px; background: var(--sb-line); }
+  /* The shortcuts sheet. */
+  .sb-keysbox { width: min(720px, 100%) !important; }
+  .sb-modalhead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  .sb-modalhead h3 { margin: 0 !important; }
+  .sb-keys { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 8px 28px; }
+  .sb-keys section { display: grid; gap: 2px; align-content: start; padding: 8px 0; }
+  .sb-keys h4 { margin: 0 0 6px; font: 600 12px var(--sb-font); color: var(--sb-text-3); }
+  .sb-keys div { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 30px; border-bottom: 1px solid var(--sb-line); font: 400 13px var(--sb-font); color: var(--sb-text); }
+  .sb-keys div > span:last-child { display: inline-flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  .sb-keys kbd { display: inline-flex; align-items: center; min-width: 20px; height: 20px; padding: 0 6px; font: 500 11.5px var(--sb-font); color: var(--sb-text-2); background: var(--sb-sunk); border: 1px solid var(--sb-line-2); border-bottom-width: 2px; border-radius: 5px; }
+
+  /* ── Dialogs the editor puts on the page (styles.css draws their frame) ─── */
+  .sb-modal-back { background: rgba(12,12,16,.5) !important; backdrop-filter: blur(3px); animation: sbFade .15s; }
+  .sb-modal { color: var(--sb-text) !important; background: var(--sb-panel) !important; border-radius: var(--sb-r-xl) !important; padding: 22px 24px 20px !important; box-shadow: var(--sb-sh-4); font: 400 13px/1.5 var(--sb-font); animation: sbPop .18s var(--sb-ease); }
+  .sb-modal h3 { margin: 0 0 14px !important; font: 600 17px/1.3 var(--sb-font) !important; letter-spacing: -.015em; color: var(--sb-text); }
+  .sb-modal .sb-hint { margin: 0 0 12px; font-size: 12.5px; color: var(--sb-text-2); }
+  .sb-modal .sb-field { display: grid; gap: 6px; margin-bottom: 12px; }
+  .sb-modal .sb-field > label { font: 500 12px var(--sb-font); color: var(--sb-text-2); }
+  .sb-modal input[type=text] { width: 100%; min-height: 36px; padding: 7px 10px; font: 400 14px var(--sb-font); color: var(--sb-text); background: var(--sb-panel); border: 1px solid var(--sb-line-2); border-radius: var(--sb-r); }
+  .sb-modal input[type=text]:focus { outline: none; border-color: var(--sb-sel); box-shadow: 0 0 0 3px var(--sb-sel-ring); }
+  .sb-modal .sb-check-row { margin-bottom: 8px; }
+  .sb-modal-foot { gap: 8px !important; margin-top: 18px !important; }
+  .sb-radio { gap: 12px !important; padding: 14px !important; border: 1px solid var(--sb-line-2) !important; border-radius: var(--sb-r-lg) !important; transition: border-color .12s, background .12s; }
+  .sb-radio:hover { border-color: var(--sb-line-3) !important; }
+  .sb-radio:has(input:checked) { border-color: var(--sb-sel) !important; background: var(--sb-sel-soft); }
+  .sb-radio input { accent-color: var(--sb-sel); }
+  .sb-radio strong { font: 600 13.5px var(--sb-font) !important; }
+  .sb-radio small { color: var(--sb-text-2) !important; }
+  .sb-modal .sb-btn { min-height: 34px; }
+  .sb-histlist { border-color: var(--sb-line) !important; border-radius: var(--sb-r-lg) !important; }
+  .sb-histrow { border-color: var(--sb-line) !important; padding: 10px 12px !important; }
+  .sb-histrow:hover { background: var(--sb-hover); }
+  .sb-histpic { background: var(--sb-sunk) !important; border-radius: 2px !important; box-shadow: 0 0 0 1px var(--sb-line); }
+  .sb-histwhat small { color: var(--sb-text-3) !important; }
+  .sb-histname input { border-color: var(--sb-line-2) !important; background: var(--sb-panel) !important; color: var(--sb-text) !important; }
+  .sb-histacts .sb-btn { min-height: 28px; padding: 0 10px !important; font-size: 12px !important; }
+  .sb-turnstep input[data-turnto] { border-color: var(--sb-line-2) !important; background: var(--sb-panel) !important; border-radius: var(--sb-r-sm) !important; min-height: 28px; }
+
+  /* ── The workspace fills the window on a laptop ─────────────────────────── */
+  @media (min-width: 901px) {
+    html.sb-editing .site-header, html.sb-editing .site-footer, html.sb-editing .admin-sticky-reminder, html.sb-editing #adminStickyReminderBar, html.sb-editing .footer-cta { display: none !important; }
+    html.sb-editing body { overflow: hidden; }
+    html.sb-editing .sb-root { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; padding: 0; background: var(--sb-app); overflow: hidden; }
+    html.sb-editing .sb-root > .sb-top { flex: none; min-height: 56px; border: 0; border-bottom: 1px solid var(--sb-line); border-radius: 0; }
+    html.sb-editing .sb-root > .sb-work { flex: 1 1 auto; height: auto; min-height: 0; margin: 0; border: 0; border-radius: 0; }
+    /* The site's "Not live yet" card sits at the foot, bottom left: the
+       editor leaves it a strip of its own. */
+    html.sb-editing.sb-has-pubbar .sb-root { padding-bottom: 74px; }
+  }
+  @media (max-width: 1280px) { .sb-status { display: none; } }
+  @media (max-width: 1200px) { .sb-work { grid-template-columns: var(--sb-rail-w, 140px) minmax(0, 1fr) var(--sb-insp-w, 320px); } .sb-pgimg canvas { height: 76px; } .sb-pgimg { min-height: 80px; } #sbCmd > span { display: none; } }
+  @media (max-width: 1080px) { .sb-stagebar strong { display: none; } .sb-backbtn > span { display: none; } }
   @media (max-width: 900px) {
-    .sb-work { display: flex; flex-direction: column; height: auto; min-height: 0; }
+    /* A phone: the name and Publish on the first line, the tools on the second. */
+    .sb-top { flex-wrap: wrap; row-gap: 6px; border-radius: var(--sb-r-lg); padding: 8px; }
+    .sb-topr, .sb-topacts { display: contents; }
+    .sb-topl { order: 0; flex: 1 1 calc(100% - 110px); }
+    #sbPublish { order: 1; }
+    .sb-topc { order: 2; flex: 0 0 auto; }
+    #sbLight { order: 3; } #sbCmd { order: 4; } #sbSave { order: 5; margin-left: auto; } #sbDlToggle { order: 6; }
+    #sbHistory > span, #sbCmd > span, #sbCmd kbd, #sbDlToggle > span, #sbReadBtn > span { display: none; }
+    #sbHistory, #sbCmd, #sbDlToggle { width: 32px; padding: 0; }
+    #sbReadBtn { width: 30px; padding: 0; }
+    .sb-stagebar { max-width: calc(100% - 12px); }
+    .sb-backbtn > span { display: none; }
+    .sb-stage:has(.sb-addmenu:not([hidden])) { z-index: 80; }
+    .sb-addhead .sb-hint { display: none; }
+    .sb-addmenu .sb-addsearch { display: block; flex: 1 1 auto; }
+    .sb-root input.sb-name { flex: 1 1 auto; }
+    .sb-status { display: none; }
+    .sb-work { display: flex; flex-direction: column; height: auto; min-height: 0; overflow: visible; border: 0; background: none; gap: 10px; }
     .sb-split { display: none; }
-    .sb-stage { order: 1; position: sticky; top: 0; z-index: 8; } .sb-rail { order: 2; flex-direction: row; } .sb-insp { order: 3; overflow: visible; }
-    .sb-preview { height: min(46vh, 440px); padding: 12px; }
-    /* Editing a book on a phone: the site's header, its reminder bar and the
-       marketing footer get out of the way; the page stays pinned at the top. */
+    .sb-stage { order: 1; position: sticky; top: 0; z-index: 8; border-radius: var(--sb-r-lg); }
+    .sb-rail { order: 2; flex-direction: row; border: 1px solid var(--sb-line); border-radius: var(--sb-r-lg); }
+    .sb-insp { order: 3; overflow: visible; border: 1px solid var(--sb-line); border-radius: var(--sb-r-lg); }
+    .sb-preview { height: min(52vh, 480px); padding: 14px 14px 60px; }
+    .sb-stagebar { bottom: 8px; }
     html.sb-editing .site-header, html.sb-editing .site-footer, html.sb-editing .admin-sticky-reminder, html.sb-editing #adminStickyReminderBar { display: none !important; }
-    html.sb-editing .sb-root { padding-top: 0; }
+    html.sb-editing .sb-root { padding-top: 8px; }
     html.sb-editing body { padding-top: 0 !important; }
     .sb-railhead { display: none; }
-    .sb-pages { display: flex; overflow-x: auto; overflow-y: hidden; padding: 8px; gap: 6px; }
-    .sb-pages li { flex: none; width: 86px; }
-    .sb-pages li.sel { width: 136px; }
+    .sb-pages { display: flex; overflow-x: auto; overflow-y: hidden; padding: 8px; gap: 4px; }
+    .sb-pages li { flex: none; width: 92px; }
+    .sb-pages li.sel { width: 104px; }
     .sb-pgimg canvas { height: 76px; }
     .sb-addwrap { border-top: 0; border-left: 1px solid var(--sb-line); display: flex; align-items: center; }
-    .sb-addbtn { width: 72px; height: 100%; }
+    .sb-addbtn { width: 76px; height: 100%; flex-direction: column; }
     .sb-panel { overflow: visible; }
-    /* A row of its own, so the name is read whole rather than as "Pag…". */
-    .sb-root .sb-name { flex: 1 1 100%; }
-    .sb-status { flex: 1 1 auto; min-width: 0; font-size: 10.5px; }
-    .sb-topacts { margin-left: auto; }
     .sb-grid { max-height: 340px; }
-    .sb-additems { grid-template-columns: 1fr; }
+    .sb-addmenu { position: fixed; z-index: 70; grid-template-columns: 1fr; grid-template-rows: auto auto minmax(0, 1fr); }
+    .sb-addnav { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--sb-line); padding: 8px; }
+    .sb-addnav button { flex: none; }
+    .sb-addnav button small { display: none; }
+    .sb-addscroll { padding: 4px 14px 24px; }
+    .sb-additems { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
+    .sb-addpic { height: 140px; } .sb-addpic canvas { max-height: 116px; }
   }
-  @media (pointer: coarse) { .sb-pgacts button, .sb-nav, .sb-seg button, .sb-adjrow button { min-height: 40px; } .sb-pgacts button { width: 40px; } }
+  @media (pointer: coarse) { .sb-nav, .sb-seg button, .sb-adjrow button { min-height: 40px; } .sb-pgacts button { width: 36px; height: 36px; } }
   `;
   function injectCss() {
     const old = document.getElementById("sb-css");
@@ -7104,6 +7415,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         if (e.shiftKey) redo(); else undo();
         return;
       }
+      if (!typing && book && e.key === "?" && !e.metaKey && !e.ctrlKey && !$("#sbCmdBox")) { e.preventDefault(); openKeys(); return; }
       if (!typing && book && $("#sbRead") && (e.key === "ArrowLeft" || e.key === "ArrowRight")) { e.preventDefault(); turnRead(e.key === "ArrowLeft" ? -1 : 1); return; }
       if (!typing && book && freePage() && !$("#sbRead")) {
         if ((e.metaKey || e.ctrlKey) && (e.key === "a" || e.key === "A")) { e.preventDefault(); selectAllBlocks(); return; }
@@ -7117,6 +7429,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         if (e.key === "[" || e.key === "{") { e.preventDefault(); if (e.shiftKey) moveBlockTo(blockSel, "back"); else moveBlock(blockSel, -1); return; }
       }
       if (e.key !== "Escape") return;
+      { const m = $("#sbAddMenu"); if (m && !m.hidden) { closeAdd(); return; } }
       if (drawing) { setDrawing(false); return; }
       if (editing) { closeInline(true); return; }
       if (swapFrom) { endSwap(); pageHint(""); return; }
@@ -7274,6 +7587,113 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     document.addEventListener("keydown", onKey);
     document.addEventListener("click", onDoc);
     window.addEventListener("resize", onResize);
+    /* A right-click menu (v568): on a page in the list, and on anything on an
+       Anything page — the actions already on their buttons, where a design
+       tool keeps them. Arrow keys move through it; Escape or a click away closes. */
+    function closeCtx() {
+      const m = document.getElementById("sbCtx"); if (m) m.remove();
+      document.removeEventListener("pointerdown", ctxAway, true);
+      window.removeEventListener("resize", closeCtx); window.removeEventListener("blur", closeCtx);
+    }
+    function ctxAway(e) { const m = document.getElementById("sbCtx"); if (m && !m.contains(e.target)) closeCtx(); }
+    function ctxMenu(x, y, items) {
+      closeCtx();
+      const m = document.createElement("div");
+      m.className = "sb-ctx"; m.id = "sbCtx"; m.setAttribute("role", "menu");
+      m.innerHTML = items.map((it, k) => it === "-" ? `<i class="sb-ctxsep" role="separator"></i>`
+        : `<button type="button" role="menuitem" data-ctx="${k}" class="${it.danger ? "danger" : ""}" ${it.off ? "disabled" : ""}>${uiIc(it.icon || "")}<span>${esc(it.label)}</span>${it.kbd ? `<kbd>${esc(it.kbd)}</kbd>` : ""}</button>`).join("");
+      root.appendChild(m);
+      const r = m.getBoundingClientRect();
+      m.style.left = `${Math.max(8, Math.min(x, innerWidth - r.width - 8))}px`;
+      m.style.top = `${Math.max(8, Math.min(y, innerHeight - r.height - 8))}px`;
+      const btns = () => [...m.querySelectorAll("[data-ctx]:not(:disabled)")];
+      m.addEventListener("click", (e) => { const b = e.target.closest("[data-ctx]"); if (!b || b.disabled) return; closeCtx(); try { items[+b.dataset.ctx].run(); } catch (err) { API.toast("That didn't work here."); } });
+      m.addEventListener("keydown", (e) => {
+        const l = btns(), at = l.indexOf(document.activeElement);
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); const n = l[(at + (e.key === "ArrowDown" ? 1 : -1) + l.length) % l.length]; if (n) n.focus(); }
+        else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeCtx(); }
+      });
+      const first = btns()[0]; if (first) first.focus({ preventScroll: true });
+      setTimeout(() => { document.addEventListener("pointerdown", ctxAway, true); window.addEventListener("resize", closeCtx); window.addEventListener("blur", closeCtx); }, 0);
+    }
+    const MOD = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "⌘" : "Ctrl+";
+    root.addEventListener("contextmenu", (e) => {
+      if (!book || !document.documentElement.classList.contains("sb-editing")) return;
+      const pg = e.target.closest(".sb-pg[data-sel]");
+      const bk = e.target.closest("#sbLayer .sb-blk[data-blk]");
+      if (!pg && !bk) return;
+      e.preventDefault();
+      if (pg) {
+        const i = +pg.dataset.sel;
+        if (i !== sel) select(i);
+        const click = (k) => () => { const b = $(`[data-${k}="${i}"]`); if (b && !b.disabled) b.click(); };
+        const off = (k) => { const b = $(`[data-${k}="${i}"]`); return !b || b.disabled; };
+        ctxMenu(e.clientX, e.clientY, i < 0 ? [
+          { label: "Add a page after it…", icon: "plus", run: () => openAdd() },
+          { label: "Save the whole book as a template…", icon: "save", run: () => saveTemplate("book") }
+        ] : [
+          { label: "Add a page after it…", icon: "plus", run: () => openAdd() },
+          { label: "Duplicate", icon: "copy", run: click("dupe"), off: off("dupe") },
+          "-",
+          { label: "Move earlier", icon: "arrowUp", run: click("up"), off: off("up") },
+          { label: "Move later", icon: "arrowDown", run: click("down"), off: off("down") },
+          "-",
+          { label: "Save as a template…", icon: "save", run: () => saveTemplate("page") },
+          "-",
+          { label: "Remove the page", icon: "trash", danger: true, run: click("rm"), off: off("rm") }
+        ]);
+        return;
+      }
+      const i = +bk.dataset.blk, e2 = freePage(); if (!e2) return;
+      const bl = blocksOf(e2), n = bl.length, many = multiNow();
+      if (many && many.includes(i)) {
+        ctxMenu(e.clientX, e.clientY, [
+          { label: many.every((j) => bl[j].g && bl[j].g === bl[many[0]].g) ? "Ungroup" : "Group", icon: "grid", kbd: `${MOD}G`, run: () => { if (many.every((j) => bl[j].g && bl[j].g === bl[many[0]].g)) ungroupChosen(); else groupChosen(); } },
+          { label: "Lock in place", icon: "lock", run: () => setLocked(many, true) },
+          { label: "Hide", icon: "eyeOff", run: () => setHidden(many, true) },
+          "-",
+          { label: `Remove all ${many.length}`, icon: "trash", danger: true, kbd: "Del", run: () => removeChosen() }
+        ]);
+        return;
+      }
+      if (blockSel !== i || many) { blockSel = i; multi = null; drawLayer(); drawInspector(); }
+      const b = bl[i];
+      ctxMenu(e.clientX, e.clientY, [
+        { label: "Duplicate", icon: "copy", run: () => dupeBlock(i), off: n >= FREE_MAX },
+        ...(b && b.k === "photo" ? [{ label: "Change photo", icon: "replace", run: () => { const x = $('#sbBlkBar [data-order="change"]'); if (x) x.click(); } }] : []),
+        "-",
+        { label: "Bring to the front", icon: "toFront", kbd: "Shift+]", run: () => moveBlockTo(i, "front"), off: i === n - 1 },
+        { label: "Bring forward", icon: "arrowUp", kbd: "]", run: () => moveBlock(i, 1), off: i === n - 1 },
+        { label: "Send backward", icon: "arrowDown", kbd: "[", run: () => moveBlock(i, -1), off: i === 0 },
+        { label: "Send to the back", icon: "toBack", kbd: "Shift+[", run: () => moveBlockTo(i, "back"), off: i === 0 },
+        "-",
+        { label: "Lock in place", icon: "lock", run: () => setLocked([i], true) },
+        { label: "Hide", icon: "eyeOff", run: () => setHidden([i], true) },
+        "-",
+        { label: "Remove", icon: "trash", danger: true, kbd: "Del", run: () => removeBlock(i) }
+      ]);
+    });
+    /* Every keyboard shortcut on one sheet (v568): "?" or Find → Keyboard shortcuts. */
+    function openKeys() {
+      if (document.getElementById("sbKeys")) return;
+      const rows = [
+        ["Anywhere", [["Find a command", `${MOD}K`], ["Undo", `${MOD}Z`], ["Redo", `${MOD}Shift+Z`], ["Zoom in · out", `${MOD}+ · ${MOD}−`], ["Fit the page", `${MOD}0`], ["Zoom with the wheel", `${MOD}scroll`], ["Let go · close", "Esc"], ["This sheet", "?"]]],
+        ["On an Anything page", [["Choose everything", `${MOD}A`], ["Choose several", "Shift+click"], ["Group · ungroup", `${MOD}G · ${MOD}Shift+G`], ["Nudge · nudge further", "Arrows · Shift+arrows"], ["Forward · backward", "] · ["], ["To the front · to the back", "Shift+] · Shift+["], ["Remove", "Del"], ["Turn in 15° steps", "Shift while turning"], ["More", "Right-click"]]],
+        ["On a photograph", [["Move it in its frame", "Drag"], ["Zoom it", "Wheel"], ["Fill · whole · width · height", "Double-click"]]],
+        ["Reading it through", [["Turn the page", "← · →"], ["Close", "Esc"]]]
+      ];
+      const box = document.createElement("div");
+      box.className = "sb-modal-back"; box.id = "sbKeys";
+      box.innerHTML = `<div class="sb-modal sb-keysbox" role="dialog" aria-modal="true" aria-labelledby="sbKeysTitle">
+        <div class="sb-modalhead"><h3 id="sbKeysTitle">Keyboard shortcuts</h3><button type="button" class="sb-btn quiet sb-iconbtn" data-keys-close aria-label="Close">${uiIc("x")}</button></div>
+        <div class="sb-keys">${rows.map(([h, l]) => `<section><h4>${esc(h)}</h4>${l.map(([what, k]) => `<div><span>${esc(what)}</span><span>${k.split(" · ").map((one) => `<kbd>${esc(one)}</kbd>`).join(" ")}</span></div>`).join("")}</section>`).join("")}</div></div>`;
+      const close = () => { box.remove(); document.removeEventListener("keydown", onEsc, true); };
+      const onEsc = (e) => { if (e.key === "Escape" || e.key === "?") { e.preventDefault(); e.stopPropagation(); close(); } };
+      box.addEventListener("click", (e) => { if (e.target === box || e.target.closest("[data-keys-close]")) close(); });
+      document.addEventListener("keydown", onEsc, true);
+      document.body.appendChild(box);
+      box.querySelector("[data-keys-close]").focus();
+    }
 
     /* --- screen 1: the books --- */
     function showList() {
@@ -7286,14 +7706,14 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       root.innerHTML = `
         <div class="sb-homehead">
           <div>
-            <p class="sb-eyebrow">Admin · Studio portfolio book</p>
-            <h1 class="sb-h1">Portfolio book</h1>
+            <p class="sb-eyebrow">Studio · admin only</p>
+            <h1 class="sb-h1">Portfolio books</h1>
             <p class="sb-lede">Your own book of work to send to clients: photographs from any album, lighting diagrams and your own words, in one of eleven styles and nine colourways, or a colourway made from your own colour. Keep as many versions as you need.</p>
           </div>
           <div class="sb-homeacts">
-            <button type="button" class="sb-btn" id="sbOpenCopy" title="Open a copy of a book made for a brand, a client or a talent, saved from this builder on this or another computer">Open a copy…</button>
+            <button type="button" class="sb-btn" id="sbOpenCopy" title="Open a copy of a book made for a brand, a client or a talent, saved from this builder on this or another computer">${uiIc("folder")}Open a copy…</button>
             <input type="file" id="sbCopyFile" accept=".nerdybook,application/json,application/octet-stream" hidden>
-            <button type="button" class="sb-btn dark" id="sbNew" ${atLimit ? "disabled" : ""}>New book</button>
+            <button type="button" class="sb-btn dark" id="sbNew" ${atLimit ? "disabled" : ""}>${uiIc("plus")}New book</button>
           </div>
         </div>
         ${state.versions.length ? `<div class="sb-cards">${state.versions.map((v) => `
@@ -7306,13 +7726,13 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
               ${isForOthers(v) ? (() => { const cs = copyState(v); return `<span class="sb-meta sb-shelftag">For ${esc((v.madeFor && v.madeFor.name) || "someone else")} · on this computer only · <span class="${cs.ok ? "" : "sb-copydue"}">${esc(cs.text)}</span></span>`; })() : ""}
               <div class="sb-cardacts">
                 <button type="button" class="sb-btn dark" data-open="${esc(v.id)}">Open</button>
-                <button type="button" class="sb-btn quiet" data-rename="${esc(v.id)}">Rename</button>
-                <button type="button" class="sb-btn quiet" data-dup="${esc(v.id)}" ${atLimit ? "disabled" : ""}>Duplicate</button>
-                <button type="button" class="sb-btn quiet" data-del="${esc(v.id)}">Delete</button>
+                <button type="button" class="sb-btn quiet" data-rename="${esc(v.id)}" title="Rename">${uiIc("pencil")}<span>Rename</span></button>
+                <button type="button" class="sb-btn quiet" data-dup="${esc(v.id)}" title="Duplicate" ${atLimit ? "disabled" : ""}>${uiIc("copy")}<span>Duplicate</span></button>
+                <button type="button" class="sb-btn quiet sb-iconbtn" data-del="${esc(v.id)}" aria-label="Delete" title="Delete">${uiIc("trash")}</button>
               </div>
             </div>
           </article>`).join("")}
-          <button type="button" class="sb-card sb-newcard" data-new ${atLimit ? "disabled" : ""}>+ New book<small>A cover and a first page of photographs</small></button></div>`
+          <button type="button" class="sb-card sb-newcard" data-new ${atLimit ? "disabled" : ""}>New book<small>A cover and a first page of photographs</small></button></div>`
         : `<div class="sb-empty"><p class="sb-hint">No books yet. A book is a cover plus pages of your photographs and words. Start one for your own studio, or one for a brand, a client or a talent — those are kept on this computer and never published.</p></div>`}
         <p class="sb-hint sb-foot">Your own books save on this device as you work, and go into your site's files when you publish, so they open on any device — visitors see no page, but anyone can read those files. Books made for a brand, a client or a talent stay on this computer only: save a copy of each to move it or keep it safe.${atLimit ? ` You have ${LIMIT} books, the most there can be: delete one to start another.` : ""}</p>`;
       const copyFile = $("#sbCopyFile");
@@ -7394,7 +7814,9 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         }
         return nb;
       };
-      function closeStart() { const el = $("#sbStart"); if (el) el.remove(); }
+      function closeStart() { const el = $("#sbStart"); if (el) el.remove(); document.removeEventListener("keydown", startEsc); }
+      // Escape closes the chooser wherever the focus happens to be.
+      function startEsc(e) { if (e.key === "Escape" && $("#sbStart")) { e.preventDefault(); closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); } }
       function startBook(k) {
         settle(); if (atLimit) return;
         // Their name (or the model) first: the book wears it everywhere.
@@ -7449,7 +7871,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         const box = document.createElement("div");
         box.className = "sb-start"; box.id = "sbStart"; box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true"); box.setAttribute("aria-label", "Start a new book");
         box.innerHTML = `<div class="sb-startbox">
-          <div class="sb-addhead"><strong>Start a new book</strong><button type="button" class="sb-btn quiet" id="sbStartClose">Cancel</button></div>
+          <div class="sb-addhead"><strong>Start a new book</strong><button type="button" class="sb-btn quiet sb-iconbtn" id="sbStartClose" aria-label="Cancel" title="Cancel (Esc)">${uiIc("x")}</button></div>
           <div class="sb-cpbase"><span>Who is it for?</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Who the book is for">${[["studio", "My studio"], ["brand", "A brand"], ["client", "A client"], ["talent", "A talent"]].map(([k, nm]) => `<button type="button" role="radio" data-for="${k}" aria-checked="${forWho === k}">${nm}</button>`).join("")}</div></div>
           <div class="sb-forwho" id="sbForWho" ${forWho === "studio" ? "hidden" : ""}>
             <div class="sb-field" id="sbForNameRow" ${forWho === "talent" ? "hidden" : ""}><label for="sbForName">Their name</label><input type="text" id="sbForName" maxlength="60" value="${esc(forName)}" placeholder="e.g. Acme Studio, or Aanya &amp; Kabir" autocomplete="off"></div>
@@ -7467,6 +7889,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           <div class="sb-starts">${tplCache.filter((t) => t.kind === "book").map((t) => `<span class="sb-tplwrap"><button type="button" class="sb-startitem" data-starttpl="${esc(t.id)}"><span class="sb-startpic" data-tplpic="${esc(t.id)}"><span class="sb-hint">…</span></span><b>${esc(t.name)}</b><span>Your template · ${t.pages || 1} page${(t.pages || 1) === 1 ? "" : "s"}</span></button><button type="button" class="sb-tplrm" data-tpldel="${esc(t.id)}" aria-label="Delete the template ${esc(t.name)}" title="Delete this template">×</button></span>`).join("")}</div></div>` : ""}
         </div>`;
         root.appendChild(box);
+        document.addEventListener("keydown", startEsc);
         box.addEventListener("click", (e) => { if (e.target === box) { closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); } });
         box.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); } });
         box.querySelector("#sbStartClose").addEventListener("click", () => { closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); });
@@ -7678,16 +8101,20 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       watchBar();
       root.innerHTML = `
         <div class="sb-top">
-          <button type="button" class="sb-btn quiet" id="sbBack">← Books</button>
-          <input type="text" id="sbName" class="sb-name" maxlength="80" value="${esc(book.name)}" aria-label="Book name" title="The book's name: type to rename it" placeholder="Name this book">
-          <span class="sb-status" id="sbStatus" aria-live="polite">Saved on this device</span>
-          <span class="sb-undos">
-            <button type="button" class="sb-btn quiet sb-ico" id="sbUndo" title="Undo (Ctrl+Z)" aria-label="Undo" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 5.5 3.5 9l4 3.5M4 9h7.5a4 4 0 0 1 0 8H9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Undo</span></button>
-            <button type="button" class="sb-btn quiet sb-ico" id="sbRedo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12.5 5.5 4 3.5-4 3.5M16 9H8.5a4 4 0 0 0 0 8H11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Redo</span></button>
-            <button type="button" class="sb-btn quiet sb-ico" id="sbHistory" title="Version history" aria-label="Version history"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 10a6.5 6.5 0 1 0 2-4.7M3.5 3.5v3h3M10 6.5V10l2.5 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>History</span></button>
+          <div class="sb-topl">
+            <button type="button" class="sb-btn quiet sb-backbtn" id="sbBack" aria-label="Back to your books">${uiIc("back")}<span>Books</span></button>
+            <span class="sb-topdiv" aria-hidden="true"></span>
+            <input type="text" id="sbName" class="sb-name" maxlength="80" value="${esc(book.name)}" aria-label="Book name" title="The book's name: type to rename it" placeholder="Name this book">
+            <span class="sb-status" id="sbStatus" aria-live="polite">Saved on this device</span>
+          </div>
+          <span class="sb-topc sb-undos">
+            <button type="button" class="sb-btn quiet sb-ico" id="sbUndo" data-tip="Undo · Ctrl+Z" aria-label="Undo" disabled>${uiIc("undo")}<span>Undo</span></button>
+            <button type="button" class="sb-btn quiet sb-ico" id="sbRedo" data-tip="Redo · Ctrl+Shift+Z" aria-label="Redo" disabled>${uiIc("redo")}<span>Redo</span></button>
+            <span class="sb-topdiv" aria-hidden="true"></span>
+            <button type="button" class="sb-btn quiet sb-ico" id="sbHistory" title="Version history: go back to how the book was earlier" aria-label="Version history">${uiIc("history")}<span>History</span></button>
           </span>
-          <button type="button" class="sb-light" id="sbLight" aria-live="polite" title="What to look at before sending"><i></i><span>Checking…</span></button>
-          <div class="sb-topacts">
+          <div class="sb-topr sb-topacts">
+            <button type="button" class="sb-light" id="sbLight" aria-live="polite" title="What to look at before sending"><i></i><span>Checking…</span></button>
             <!-- Every change is kept on this device the moment it is made, and
                  the status line beside Undo has always said so. The studio
                  still could not find a Save and did not trust it (Sep 24
@@ -7695,14 +8122,16 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
                  codes in v473. So: a button that says the word, lights up
                  while there is something not yet written down, and flushes
                  the save that was about to happen anyway. -->
-            <button type="button" class="sb-btn quiet" id="sbCmd" title="Find a command: add a page, go to a page, change the style… (Ctrl+K)" aria-haspopup="dialog">Find <kbd>⌘K</kbd></button>
+            <button type="button" class="sb-btn quiet" id="sbCmd" title="Find a command: add a page, go to a page, change the style… (Ctrl+K)" aria-haspopup="dialog">${uiIc("search")}<span>Find</span> <kbd>⌘K</kbd></button>
             <button type="button" class="sb-btn" id="sbSave" title="Keep this book on this device now. Every change is kept as you make it — this is here so you can be sure.">Save</button>
-            <button type="button" class="sb-btn" id="sbDlToggle" aria-expanded="false" aria-controls="sbDlPop">Download</button>
+            <button type="button" class="sb-btn" id="sbDlToggle" aria-expanded="false" aria-controls="sbDlPop" aria-label="Download">${uiIc("download")}<span>Download</span></button>
             ${isForOthers(book)
               ? `<button type="button" class="sb-btn dark" id="sbPublish" title="This book is for ${esc((book.madeFor && book.madeFor.name) || "someone else")} and stays on this computer — it is never published. This saves a copy file: keep it somewhere safe, and open it on another computer with Open a copy.">Save a copy</button>`
               : `<button type="button" class="sb-btn dark" id="sbPublish" title="Puts every word of this book into your site's public data file, so it opens on any device. Visitors see no page, but anyone can read that file — what a client gets is the PDF.">Publish</button>`}
           </div>
-          <div class="sb-pop" id="sbDlPop" hidden>
+          <div class="sb-pop" id="sbDlPop" role="dialog" aria-label="Download" hidden>
+            <div class="sb-pophead"><strong>Download</strong><button type="button" class="sb-btn quiet sb-iconbtn" id="sbDlClose" aria-label="Close" data-tip="Close">${uiIc("x")}</button></div>
+            <div class="sb-popbody">
             <div class="sb-sec"><h3>Check before sending</h3><div id="sbCheck"><p class="sb-hint">Checking…</p></div></div>
             <div class="sb-sec">
               <label class="sb-check-row"><input type="checkbox" id="sbMark"> Write a watermark across every page</label>
@@ -7734,14 +8163,8 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
               <div class="sb-wraprow"><label>Paper <select id="sbWrapPaper">${WRAP_PAPERS.map(([k, n, mm]) => `<option value="${k}">${esc(n)} · ${mm} mm a leaf</option>`).join("")}</select></label>
                 <label>Spine <input type="number" id="sbSpine" min="0" max="99" step="0.1" inputmode="decimal" aria-describedby="sbWrapNote"> mm</label></div>
               <p class="sb-hint" id="sbWrapNote"></p>
-              <button type="button" class="sb-btn" id="sbWrap" data-dl>Download the cover wrap</button>
+              <button type="button" class="sb-btn" id="sbWrap" data-dl>${uiIc("download")}Download the cover wrap</button>
             </div>
-            <div class="sb-dlrow">
-              <button type="button" class="sb-btn dark" id="sbPdf" data-dl>Download PDF</button>
-              <button type="button" class="sb-btn" id="sbPng" data-dl>PNG pages</button>
-            </div>
-            <p class="sb-warn" id="sbAnyway" hidden></p>
-            <div class="sb-ready" id="sbReady"></div>
             <div class="sb-sec sb-sec-quiet"><span class="sb-label">Full-size photos, for a print shop</span>
               <p class="sb-hint">The site keeps each photo at 1600 px. Point the book at the full-size files on this computer and it prints from those; they are read here, never uploaded. Choose none and it uses the site's copies.</p>
               <div class="sb-dlrow"><button type="button" class="sb-btn" id="sbOrig">Choose the folder…</button><button type="button" class="sb-btn" id="sbOrigForget" hidden>Don't use them</button></div>
@@ -7749,6 +8172,15 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
               <div id="sbOrigStatus"></div>
             </div>
             <p class="sb-hint">The words in the PDF are real type in their own fonts: sharp at any size, and they can be searched and copied.</p>
+            </div>
+            <div class="sb-popfoot">
+              <p class="sb-warn" id="sbAnyway" hidden></p>
+              <div class="sb-ready" id="sbReady"></div>
+              <div class="sb-dlrow">
+                <button type="button" class="sb-btn dark" id="sbPdf" data-dl>Download PDF</button>
+                <button type="button" class="sb-btn" id="sbPng" data-dl>PNG pages</button>
+              </div>
+            </div>
           </div>
         </div>
         <div class="sb-work" id="sbWork">
@@ -7757,19 +8189,22 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           <nav class="sb-rail" aria-label="Pages">
             <div class="sb-railhead"><h3>Pages</h3><span class="sb-count" id="sbCount"></span></div>
             <ol class="sb-pages" id="sbPages"></ol>
-            <div class="sb-addwrap"><button type="button" class="sb-addbtn" id="sbAddToggle" aria-expanded="false" aria-controls="sbAddMenu">+ Add page</button></div>
+            <div class="sb-addwrap"><button type="button" class="sb-addbtn" id="sbAddToggle" aria-expanded="false" aria-controls="sbAddMenu">${uiIc("plus")}<span>Add page</span></button></div>
           </nav>
           <section class="sb-stage" aria-label="Page preview">
             <div class="sb-stagebar">
-              <button type="button" class="sb-nav" id="sbPrev" aria-label="Previous page">‹</button>
+              <button type="button" class="sb-nav" id="sbPrev" aria-label="Previous page" data-tip="Previous page" data-tip-up>${uiIc("left")}</button>
               <strong id="sbStageTitle">Cover</strong>
+              <button type="button" class="sb-nav" id="sbNext" aria-label="Next page" data-tip="Next page" data-tip-up>${uiIc("right")}</button>
+              <i class="sb-tsep" aria-hidden="true"></i>
               <span class="sb-views">
-                <span class="sb-seg sb-seg-sm" role="radiogroup" aria-label="How many pages to show"><button type="button" role="radio" data-view="one" aria-checked="true">One</button><button type="button" role="radio" data-view="two" aria-checked="false">Two</button></span>
-                <span class="sb-zoom" role="group" aria-label="Zoom"><button type="button" class="sb-btn quiet" id="sbZoomOut" title="Zoom out (Ctrl+−)" aria-label="Zoom out" disabled>−</button><button type="button" class="sb-btn quiet" id="sbZoom" aria-pressed="false" title="Zoom in (Ctrl+=)">Fit</button><button type="button" class="sb-btn quiet" id="sbZoomIn" title="Zoom in (Ctrl+=)" aria-label="Zoom in">+</button></span>
-                <button type="button" class="sb-btn quiet" id="sbRulers" aria-pressed="false" title="Rulers in millimetres; drag from one to make a guide">Rulers</button>
-                <button type="button" class="sb-btn quiet" id="sbReadBtn" title="Read it through, the way a client will">Read</button>
+                <span class="sb-seg sb-seg-sm" role="radiogroup" aria-label="How many pages to show"><button type="button" role="radio" data-view="one" aria-checked="true" aria-label="One page" data-tip="One page" data-tip-up>${uiIc("one")}<span class="sb-sr">One</span></button><button type="button" role="radio" data-view="two" aria-checked="false" aria-label="Two pages, as the book opens" data-tip="Two pages, as the book opens" data-tip-up>${uiIc("two")}<span class="sb-sr">Two</span></button></span>
+                <i class="sb-tsep" aria-hidden="true"></i>
+                <span class="sb-zoom" role="group" aria-label="Zoom"><button type="button" class="sb-btn quiet" id="sbZoomOut" data-tip="Zoom out · Ctrl −" data-tip-up aria-label="Zoom out" disabled>${uiIc("minus")}</button><button type="button" class="sb-btn quiet" id="sbZoom" aria-pressed="false" title="Zoom in (Ctrl+=)">Fit</button><button type="button" class="sb-btn quiet" id="sbZoomIn" data-tip="Zoom in · Ctrl +" data-tip-up aria-label="Zoom in">${uiIc("plus")}</button></span>
+                <i class="sb-tsep" aria-hidden="true"></i>
+                <button type="button" class="sb-btn quiet sb-iconbtn" id="sbRulers" aria-pressed="false" aria-label="Rulers" data-tip="Rulers · drag from one to make a guide" data-tip-up>${uiIc("ruler")}</button>
+                <button type="button" class="sb-btn quiet" id="sbReadBtn" title="Read it through, the way a client will" aria-label="Read it through">${uiIc("read")}<span>Read</span></button>
               </span>
-              <button type="button" class="sb-nav" id="sbNext" aria-label="Next page">›</button>
             </div>
             <div class="sb-preview" id="sbPreview"><p class="sb-hint">Drawing…</p></div>
             <p class="sb-pagehint" id="sbPageHint"></p>
@@ -7847,6 +8282,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         pop.hidden = !open; dlBtn.setAttribute("aria-expanded", String(open));
         if (open) { flush(); drawCheck(); }
       });
+      $("#sbDlClose").addEventListener("click", () => { pop.hidden = true; dlBtn.setAttribute("aria-expanded", "false"); dlBtn.focus(); });
       $("#sbPdf").addEventListener("click", (e) => download(e.currentTarget, printMode === "fold" ? "booklet" : "pdf", $("#sbMark").checked));
       $$("[data-print]").forEach((b) => b.addEventListener("click", () => {
         if (b.disabled) return;
@@ -8366,16 +8802,16 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         const bar = document.createElement("div");
         bar.id = "sbBlkBar"; bar.className = "sb-blkbar"; bar.setAttribute("role", "toolbar"); bar.setAttribute("aria-label", `${blockLabel(b)}: front and back`);
         bar.innerHTML = `
-          <button type="button" data-order="front" aria-label="Bring to the front" ${blockSel === n - 1 ? "disabled" : ""}><i>⇈</i><span>To front</span></button>
-          <button type="button" data-order="up" aria-label="Bring forward" ${blockSel === n - 1 ? "disabled" : ""}><i>↑</i><span>Forward</span></button>
-          <button type="button" data-order="down" aria-label="Send backward" ${blockSel === 0 ? "disabled" : ""}><i>↓</i><span>Backward</span></button>
-          <button type="button" data-order="back" aria-label="Send to the back" ${blockSel === 0 ? "disabled" : ""}><i>⇊</i><span>To back</span></button>
+          <button type="button" data-order="front" aria-label="Bring to the front" ${blockSel === n - 1 ? "disabled" : ""}><i>${uiIc("toFront")}</i><span>To front</span></button>
+          <button type="button" data-order="up" aria-label="Bring forward" ${blockSel === n - 1 ? "disabled" : ""}><i>${uiIc("arrowUp")}</i><span>Forward</span></button>
+          <button type="button" data-order="down" aria-label="Send backward" ${blockSel === 0 ? "disabled" : ""}><i>${uiIc("arrowDown")}</i><span>Backward</span></button>
+          <button type="button" data-order="back" aria-label="Send to the back" ${blockSel === 0 ? "disabled" : ""}><i>${uiIc("toBack")}</i><span>To back</span></button>
           <i class="sb-sep"></i>
-          ${b.k === "photo" ? `<button type="button" data-order="change" aria-label="Change photo"><i>⟳</i><span>Change photo</span></button>
-          <button type="button" data-order="swap" aria-label="Swap with another photo" ${blocks.filter((x) => x.k === "photo").length < 2 ? "disabled" : ""}><i>⇄</i><span>Swap</span></button>
+          ${b.k === "photo" ? `<button type="button" data-order="change" aria-label="Change photo"><i>${uiIc("replace")}</i><span>Change photo</span></button>
+          <button type="button" data-order="swap" aria-label="Swap with another photo" ${blocks.filter((x) => x.k === "photo").length < 2 ? "disabled" : ""}><i>${uiIc("swap")}</i><span>Swap</span></button>
           <i class="sb-sep"></i>` : ""}
-          <button type="button" data-order="dupe" aria-label="Duplicate" ${n >= FREE_MAX ? "disabled" : ""}><i>⧉</i><span>Copy</span></button>
-          <button type="button" data-order="del" aria-label="Remove"><i>✕</i><span>Remove</span></button>`;
+          <button type="button" data-order="dupe" aria-label="Duplicate" ${n >= FREE_MAX ? "disabled" : ""}><i>${uiIc("copy")}</i><span>Copy</span></button>
+          <button type="button" data-order="del" aria-label="Remove"><i>${uiIc("trash")}</i><span>Remove</span></button>`;
         // Above the thing, or below it when it sits at the top of the page.
         const top = M.top(b);
         bar.style.left = `${Math.max(0, Math.min(M.left(b), 100 - 60)).toFixed(3)}%`;
@@ -8933,9 +9369,9 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       const many = !!(entry && entry.photos && entry.photos.length > 1);
       const bar = document.createElement("div");
       bar.className = "sb-blkbar sb-photobar"; bar.setAttribute("role", "toolbar"); bar.setAttribute("aria-label", "This photo");
-      bar.innerHTML = `<button type="button" data-pb="change" aria-label="Change photo"><i>⟳</i><span>Change photo</span></button>
-        ${entry && entry.photos ? `<button type="button" data-pb="swap" aria-label="Swap with another photo" ${many ? "" : "disabled"}><i>⇄</i><span>Swap</span></button>` : ""}
-        <button type="button" data-pb="del" aria-label="Remove"><i>✕</i><span>Remove</span></button>`;
+      bar.innerHTML = `<button type="button" data-pb="change" aria-label="Change photo"><i>${uiIc("replace")}</i><span>Change photo</span></button>
+        ${entry && entry.photos ? `<button type="button" data-pb="swap" aria-label="Swap with another photo" ${many ? "" : "disabled"}><i>${uiIc("swap")}</i><span>Swap</span></button>` : ""}
+        <button type="button" data-pb="del" aria-label="Remove"><i>${uiIc("trash")}</i><span>Remove</span></button>`;
       // Above the photograph, or — with no room above it — just inside its top
       // edge: below a tall one would fall off the page.
       const top = (rg.box.y / G.H) * 100;
@@ -9214,43 +9650,160 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       });
     }
 
+    /* Add a page (v568): a gallery, not a list. Every kind of page is drawn
+       for real, small, in this book's own style, colourway and paper, with
+       sample words and the book's own photographs — the way a design tool
+       shows its templates — beside a list of the kinds and a search box.
+       The drawings are kept per look, so the second visit is instant. */
+    const SAMPLE_WORDS = () => ({
+      kicker: "Behind the frame", headline: "Light first, then the pose", heading: "Light first, then the pose",
+      intro: "A morning in the studio, one soft light and a long lens: how a simple set became a cover.",
+      body: "We start every shoot the same way, with the light. One soft box feathered past the face, a white card to lift the shadows under the chin.\n\nThen the pose. Small movements, a turn of the shoulder, the weight on the back foot, until it stops looking like a photograph and starts looking like a person.",
+      title: "Monsoon linen", note: "Shot at noon under a silk: the fabric does the work, the light only shows it.", detail: "85 mm · f/2 · one light",
+      quote: "The best photograph is the one you planned for, then let happen.", name: "Ritu Kumar", role: "Creative director",
+      signName: studio(), signLine: "With thanks", sub1: "The brief", sub2: "The result",
+      text1: "Three looks, one day, a studio and a rooftop. Clean light for the catalogue, warm light for the campaign.",
+      text2: "Forty frames chosen, twelve retouched, and a cover the client printed twice.",
+      caption: "Monsoon edit, shot on the roof", text: "Thank you for looking."
+    });
+    const SAMPLE_ROLE = { head: "headline", kicker: "kicker", label: "kicker", intro: "intro", quote: "quote", role: "role", body: "text1", caption: "caption" };
+    function samplePhotos(n) {
+      const lib = library(), out = [];
+      const ok = (id) => { const h = lib.byId.get(id); return h && !h.photo.diagram && !out.includes(id); };
+      for (const id of bookPhotoIds(book)) { if (out.length >= n) break; if (ok(id)) out.push(id); }
+      for (const [id] of lib.byId) { if (out.length >= n) break; if (ok(id)) out.push(id); }
+      return out.map((id) => { const hit = lib.byId.get(id), f = hit ? API.photoFocus(hit.photo) : { x: 0.5, y: 0.35 }; return { id, x: +f.x.toFixed(3), y: +f.y.toFixed(3), zoom: 1 }; });
+    }
+    // The page an item would add, dressed for its picture only; never stored.
+    function sampleEntry(want) {
+      const [type, start] = String(want).split(":");
+      if (type === "cover") return null;
+      const words = SAMPLE_WORDS(), caps = fieldCaps()[type] || {};
+      const entry = { type };
+      if (type === "free") {
+        const card = start === "compcard" ? compCardBlocks(book) : null;
+        const shots = samplePhotos(6); let k = 0;
+        entry.blocks = ((card && card.blocks) || FREE_STARTS[start] || []).map((b) => {
+          const c = JSON.parse(JSON.stringify(b));
+          if (c.k === "photo" && !(c.p && c.p.id) && shots.length) c.p = { ...shots[k++ % shots.length] };
+          if (c.k === "text" && !c.t) c.t = words[SAMPLE_ROLE[c.role] || "text1"] || words.text1;
+          return c;
+        });
+        return entry;
+      }
+      const n = { photos: 3, spread: 1, story: 1, note: 1, quote: 1, feature: 2, article: 1, look: 1 }[type];
+      if (n) entry.photos = samplePhotos(n);
+      if (type === "divider") { entry.heading = "Selected work"; entry.line = "Editorial and lookbooks"; }
+      for (const key of Object.keys(caps)) if (WRITING[type] || type === "look") entry[key] = String(words[key] || "").slice(0, caps[key]);
+      if (type === "photos") delete entry.caption;
+      if (type === "look") entry.lines = ["Jacket · Ritu Kumar", "Styling · Aanya"];
+      if (type === "ways") Object.assign(entry, { kicker: WAYS_COPY.kicker, heading: WAYS_COPY.heading, intro: WAYS_COPY.intro, items: WAYS_COPY.items.map((x) => ({ ...x })) });
+      if (type === "process") { const c = PROCESS_COPY.pitch; Object.assign(entry, { way: "pitch", kicker: c.kicker, heading: c.heading, intro: c.intro, note: c.note, steps: c.steps.map((x) => ({ ...x })) }); }
+      if (type === "end") { entry.layout = start === "back" ? "back" : "closing"; if (entry.layout === "closing") { entry.photos = samplePhotos(1); entry.text = words.text; } }
+      if (type === "contents") entry.heading = "";
+      return entry;
+    }
+    const addPics = new Map();   // look + item → the canvases drawn for it
+    const addLookKey = () => JSON.stringify([book.style, book.colourway, book.paper, book.orientation, book.bg || "", book.edgeBar, book.typeset || null, bookPhotoIds(book).slice(0, 6)]);
     function openAdd() {
       const menu = $("#sbAddMenu");
       const count = renderedCount(book);
-      menu.innerHTML = `
-        <div class="sb-addhead"><strong>Add a page</strong><button type="button" class="sb-btn quiet" id="sbAddClose">Close</button></div>
-        <p class="sb-hint">It goes after the page you're on. The book has ${count} page${count === 1 ? "" : "s"}.</p>
-        <div class="sb-addgroup sb-auto"><h3>Pages from an album</h3>
+      const full = (type) => count + pageSpan({ type }) > MAX_PAGES;
+      const pageTpls = tplCache.filter((t) => t.kind === "page");
+      const tile = (want, name, note, find, disabled, extra = "") => `<button type="button" class="sb-additem" data-add="${esc(want)}" data-find="${esc(`${name} ${note} ${find}`.toLowerCase())}" ${disabled ? "disabled" : ""}${extra}><span class="sb-addpic">${addIcon(want.startsWith("tpl:") ? "free:blank" : want)}</span><b>${esc(name)}</b><span>${esc(note)}</span></button>`;
+      const groups = [];
+      groups.push({ id: "auto", name: "From an album", html: `<div class="sb-addauto">
           <div class="sb-autorow"><label class="sb-vh" for="sbAutoAlbum">Album</label><select id="sbAutoAlbum">${autoAlbums().map((a) => `<option value="${esc(a.id)}">${esc(a.name)} (${a.count})</option>`).join("")}</select>
-          <button type="button" class="sb-btn dark" id="sbAutoGo">Lay it out</button></div>
+          <button type="button" class="sb-btn dark" id="sbAutoGo">${uiIc("wand")}Lay it out</button></div>
           <label class="sb-check-row"><input type="checkbox" id="sbAutoChapter" checked> Start with a chapter page named after the album</label>
-          <p class="sb-hint">Its photographs, paired and grouped by their shapes — two portraits side by side, landscapes stacked, a grid now and then, a spread for a wide one — on as many pages as they need. Photographs already in the book are left out.</p></div>
-        <div class="sb-addgroup sb-tplgroup"><h3>My templates</h3>
-          ${tplCache.some((t) => t.kind === "page") ? `<div class="sb-additems">${tplCache.filter((t) => t.kind === "page").map((t) => `<span class="sb-tplwrap"><button type="button" class="sb-additem" data-add="tpl:${esc(t.id)}" ${count + pageSpan({ type: t.pageType }) > MAX_PAGES || (forOf(book) && STUDIO_ONLY.has(t.pageType)) ? "disabled" : ""}>${addIcon(t.pageType === "free" ? "free:blank" : t.pageType)}<b>${esc(t.name)}</b><span>Saved ${esc(whenLabel(t.at))}</span></button><button type="button" class="sb-tplrm" data-tpldel="${esc(t.id)}" aria-label="Delete the template ${esc(t.name)}" title="Delete this template">×</button></span>`).join("")}</div>` : `<p class="sb-hint">Pages you save as templates appear here, ready to add to any book.</p>`}
-          <div class="sb-adds"><button type="button" data-savetpl="page">Save the page you're on as a template…</button></div></div>
-        ${addMenuFor(book).map((g) => `<div class="sb-addgroup"><h3>${esc(g.group)}</h3><div class="sb-additems">${g.items.map(([type, name, note]) => `
-          <button type="button" class="sb-additem" data-add="${type}" ${count + pageSpan({ type }) > MAX_PAGES ? "disabled" : ""}>${addIcon(type)}<b>${esc(name)}</b><span>${esc(note)}</span></button>`).join("")}</div></div>`).join("")}`;
+          <p class="sb-hint">Its photographs, paired and grouped by their shapes — two portraits side by side, landscapes stacked, a grid now and then, a spread for a wide one — on as many pages as they need. Photographs already in the book are left out.</p></div>`, cls: "sb-auto" });
+      groups.push({ id: "tpl", name: "My templates", n: pageTpls.length, cls: "sb-tplgroup", html: `${pageTpls.length ? `<div class="sb-additems">${pageTpls.map((t) => `<span class="sb-tplwrap">${tile(`tpl:${t.id}`, t.name, `Saved ${whenLabel(t.at)}`, "my template", full(t.pageType) || (forOf(book) && STUDIO_ONLY.has(t.pageType)))}<button type="button" class="sb-tplrm" data-tpldel="${esc(t.id)}" aria-label="Delete the template ${esc(t.name)}" title="Delete this template">×</button></span>`).join("")}</div>` : `<p class="sb-hint">Pages you save as templates appear here, ready to add to any book.</p>`}
+          <div class="sb-adds sb-tplsave"><button type="button" data-savetpl="page">${uiIc("save")}Save the page you're on as a template…</button></div>` });
+      let layoutsSeen = false;
+      for (const g of addMenuFor(book)) {
+        const lay = /^Layouts · /.test(g.group);
+        const name = lay ? g.group.replace(/^Layouts · /, "") : g.group;
+        groups.push({ id: `g${groups.length}`, name, n: g.items.length, navHead: lay && !layoutsSeen ? "Layouts" : "", title: lay ? `Layouts · ${name}` : name,
+          html: `<div class="sb-additems">${g.items.map(([type, nm, note]) => tile(type, nm, note, g.group, type !== "cover" && full(type.split(":")[0]))).join("")}</div>` });
+        if (lay) layoutsSeen = true;
+      }
+      menu.innerHTML = `
+        <div class="sb-addhead"><strong>Add a page</strong><span class="sb-hint">It goes after the page you're on. The book has ${count} page${count === 1 ? "" : "s"}.</span>
+          <label class="sb-addsearch">${uiIc("search")}<span class="sb-vh">Find a kind of page</span><input type="search" id="sbAddFind" placeholder="Find a page…" autocomplete="off"></label>
+          <button type="button" class="sb-btn quiet sb-iconbtn" id="sbAddClose" aria-label="Close" data-tip="Close · Esc">${uiIc("x")}</button></div>
+        <nav class="sb-addnav" aria-label="Kinds of page">${groups.map((g) => `${g.navHead ? `<span class="sb-addnavhead">${esc(g.navHead)}</span>` : ""}<button type="button" data-addnav="${g.id}"${g.navHead || /^Layouts/.test(g.title || "") ? ` class="sub"` : ""}><span>${esc(g.name)}</span>${g.n ? `<small>${g.n}</small>` : ""}</button>`).join("")}</nav>
+        <div class="sb-addscroll" id="sbAddScroll">
+          ${groups.map((g) => `<section class="sb-addgroup ${g.cls || ""}" id="sbAddG_${g.id}" data-group="${g.id}"><h3>${esc(g.title || g.name)}</h3>${g.html}</section>`).join("")}
+          <p class="sb-hint sb-addnone" id="sbAddNone" hidden>No page by that name. Try “photo”, “words” or “cover”.</p>
+        </div>`;
       menu.hidden = false;
       $("#sbAddToggle").setAttribute("aria-expanded", "true");
       menu.querySelector("#sbAddClose").addEventListener("click", closeAdd);
       menu.querySelectorAll("[data-add]").forEach((b) => b.addEventListener("click", () => { closeAdd(false); addPage(b.dataset.add); }));
       menu.querySelectorAll("[data-savetpl]").forEach((b) => b.addEventListener("click", () => { closeAdd(false); saveTemplate(b.dataset.savetpl); }));
       menu.querySelectorAll("[data-tpldel]").forEach((b) => b.addEventListener("click", async () => { await tplDel(b.dataset.tpldel); await tplRefresh(); openAdd(); API.toast("Template deleted."); }));
-      // Each template drawn small, in this book's look, in place of its icon.
+      // The list of kinds: a click scrolls to one; scrolling lights the one in view.
+      const scroller = menu.querySelector("#sbAddScroll");
+      const navBtns = [...menu.querySelectorAll("[data-addnav]")];
+      const lightNav = () => {
+        const top = scroller.getBoundingClientRect().top + 24;
+        let cur = null;
+        for (const s of scroller.querySelectorAll(".sb-addgroup:not([hidden])")) if (s.getBoundingClientRect().top <= top) cur = s.dataset.group;
+        if (!cur) { const first = scroller.querySelector(".sb-addgroup:not([hidden])"); cur = first && first.dataset.group; }
+        navBtns.forEach((b) => b.setAttribute("aria-current", String(b.dataset.addnav === cur)));
+      };
+      navBtns.forEach((b) => b.addEventListener("click", () => { const s = menu.querySelector(`#sbAddG_${b.dataset.addnav}`); if (s) { s.hidden = false; scroller.scrollTo({ top: s.offsetTop - 8, behavior: "smooth" }); } }));
+      scroller.addEventListener("scroll", lightNav, { passive: true });
+      lightNav();
+      // Find: words in the name, the line under it, or the kind.
+      const find = menu.querySelector("#sbAddFind");
+      find.addEventListener("input", () => {
+        const q = find.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+        let any = false;
+        scroller.querySelectorAll(".sb-addgroup").forEach((s) => {
+          if (!q.length) { s.hidden = false; s.querySelectorAll(".sb-additem").forEach((x) => { x.hidden = false; }); return; }
+          const items = [...s.querySelectorAll(".sb-additem")];
+          let shown = 0;
+          items.forEach((x) => { const hit = q.every((w) => (x.dataset.find || "").includes(w)); x.hidden = !hit; if (hit) shown++; });
+          s.hidden = !shown; if (shown) any = true;
+        });
+        menu.querySelector("#sbAddNone").hidden = !q.length || any;
+        navBtns.forEach((b) => {
+          const s = menu.querySelector(`#sbAddG_${b.dataset.addnav}`); b.hidden = !!(s && s.hidden);
+          const small = b.querySelector("small"); if (small && s) small.textContent = String(s.querySelectorAll(".sb-additem:not([hidden])").length || "");
+        });
+        scroller.scrollTop = 0; lightNav();
+      });
+      find.addEventListener("keydown", (e) => { if (e.key === "Enter") { const first = scroller.querySelector(".sb-additem:not([hidden]):not(:disabled)"); if (first) first.click(); } });
+      // The pictures, one at a time, the ones in view first.
+      const look = addLookKey();
+      const place = (btn, canvases) => { const pic = btn.querySelector(".sb-addpic"); if (pic && canvases && canvases.length) pic.replaceChildren(...canvases); };
+      const queue = [];
+      menu.querySelectorAll(".sb-additem[data-add]").forEach((btn) => {
+        const want = btn.dataset.add, key = `${look}|${want}`;
+        if (addPics.has(key)) place(btn, addPics.get(key)); else queue.push({ btn, want, key });
+      });
+      const seen = new Set();
+      const io = "IntersectionObserver" in window ? new IntersectionObserver((es) => { for (const e of es) if (e.isIntersecting) seen.add(e.target); }, { root: scroller, rootMargin: "300px 0px" }) : null;
+      if (io) queue.forEach((q) => io.observe(q.btn));
       (async () => {
-        const cache = new Map();
-        for (const t of tplCache.filter((x) => x.kind === "page")) {
-          const btn = menu.querySelector(`[data-add="tpl:${window.CSS && window.CSS.escape ? window.CSS.escape(t.id) : t.id}"]`); if (!btn) continue;
-          let entry; try { entry = JSON.parse(t.json); } catch (e) { continue; }
+        const cache2 = new Map();
+        while (queue.length) {
+          if (!menu.isConnected || menu.hidden) break;
+          let at = queue.findIndex((q) => seen.has(q.btn)); if (at < 0) at = 0;
+          const { btn, want, key } = queue.splice(at, 1)[0];
+          let entry = null;
+          if (want.startsWith("tpl:")) { const t = pageTpls.find((x) => x.id === want.slice(4)); try { entry = t ? JSON.parse(t.json) : null; } catch (e) { entry = null; } }
+          else entry = sampleEntry(want);
+          if (want === "cover") { const v = JSON.parse(JSON.stringify(book)); delete v.coverLayout; delete v.coverPage; v.cover = v.cover || (samplePhotos(1)[0] || null); try { for await (const r of renderPages(v, { dpi: 14, cache: cache2, only: -1 })) { addPics.set(key, [r.page.canvas]); place(btn, [r.page.canvas]); } } catch (e) { /* the drawing stays */ } continue; }
+          if (!entry) continue;
           const v = { ...JSON.parse(JSON.stringify(book)), pages: [entry] };
-          try {
-            for await (const r of renderPages(v, { dpi: 12, cache, only: 0 })) {
-              if (!menu.isConnected || menu.hidden) return;
-              const svg = btn.querySelector("svg"); const c = r.page.canvas; c.className = "sb-tplpic";
-              if (svg) svg.replaceWith(c); else btn.prepend(c);
-            }
-          } catch (e) { /* the icon stays */ }
+          const got = [];
+          try { for await (const r of renderPages(v, { dpi: 14, cache: cache2, only: 0 })) got.push(r.page.canvas); } catch (e) { /* the drawing stays */ }
+          if (got.length) { addPics.set(key, got); place(btn, got); }
+          await new Promise((res) => setTimeout(res, 0));
         }
+        if (io) io.disconnect();
       })();
       { const go = menu.querySelector("#sbAutoGo"); if (go) go.addEventListener("click", async () => {
         go.disabled = true; go.textContent = "Laying it out…";
@@ -9258,7 +9811,8 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         closeAdd(false);
         API.toast(n ? `${n} page${n === 1 ? "" : "s"} added · Ctrl+Z to take them out` : "Every photograph in that album is already in the book.");
       }); }
-      const first = menu.querySelector("[data-add]:not(:disabled)"); if (first) first.focus();
+      if (matchMedia("(pointer: fine)").matches) find.focus();
+      else { const first = menu.querySelector("[data-add]:not(:disabled)"); if (first) first.focus({ preventScroll: true }); }
     }
     /* Pages from an album: its photographs, in the album's order, paired and
        grouped by their shapes (read from the small copies), onto photos pages
@@ -9475,7 +10029,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       el.id = "sbRead"; el.className = "sb-read"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Reading the book");
       el.innerHTML = `<div class="sb-readbar"><button type="button" class="sb-btn quiet" id="sbReadClose">Close</button><strong id="sbReadTitle"></strong><span>${esc(book.name)}</span></div>
         <div class="sb-readpages" id="sbReadPages"><p class="sb-hint" style="color:#aaa">Drawing…</p></div>
-        <button type="button" class="sb-readnav prev" id="sbReadPrev" aria-label="Previous">‹</button><button type="button" class="sb-readnav next" id="sbReadNext" aria-label="Next">›</button>`;
+        <button type="button" class="sb-readnav prev" id="sbReadPrev" aria-label="Previous">${uiIc("left")}</button><button type="button" class="sb-readnav next" id="sbReadNext" aria-label="Next">${uiIc("right")}</button>`;
       root.appendChild(el);
       readAt = sel;
       el.querySelector("#sbReadClose").addEventListener("click", closeRead);
@@ -9544,10 +10098,10 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
             <span class="sb-pglabel"><b>${it.n}</b><span>${esc(railLabel(it.entry))}</span><i class="sb-chip" ${tooLong.get(it.entry || COVER) ? "" : "hidden"}>too long</i>${it.i >= 0 && splitByTurn(it.i) ? `<i class="sb-chip">split by a turn</i>` : ""}</span>
           </button>
           ${sel === it.i && it.i >= 0 ? `<span class="sb-pgacts">
-            <button type="button" data-up="${it.i}" aria-label="Move this page earlier" ${it.i === 0 ? "disabled" : ""}>↑</button>
-            <button type="button" data-down="${it.i}" aria-label="Move this page later" ${it.i === book.pages.length - 1 ? "disabled" : ""}>↓</button>
-            <button type="button" data-dupe="${it.i}" aria-label="Duplicate this page" title="${it.entry && it.entry.type === "end" ? "A book has one end page" : "Duplicate"}" ${renderedCount(book) + pageSpan(it.entry) > MAX_PAGES || (it.entry && it.entry.type === "end") ? "disabled" : ""}>⧉</button>
-            <button type="button" data-rm="${it.i}" aria-label="Remove this page">✕</button>
+            <button type="button" data-up="${it.i}" aria-label="Move this page earlier" title="Move earlier" ${it.i === 0 ? "disabled" : ""}>${uiIc("arrowUp")}</button>
+            <button type="button" data-down="${it.i}" aria-label="Move this page later" title="Move later" ${it.i === book.pages.length - 1 ? "disabled" : ""}>${uiIc("arrowDown")}</button>
+            <button type="button" data-dupe="${it.i}" aria-label="Duplicate this page" title="${it.entry && it.entry.type === "end" ? "A book has one end page" : "Duplicate"}" ${renderedCount(book) + pageSpan(it.entry) > MAX_PAGES || (it.entry && it.entry.type === "end") ? "disabled" : ""}>${uiIc("copy")}</button>
+            <button type="button" data-rm="${it.i}" aria-label="Remove this page" title="Remove this page">${uiIc("trash")}</button>
           </span>` : ""}
         </li>`).join("");
       list.querySelectorAll("li").forEach((li) => {
@@ -10912,14 +11466,14 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           ${LAYOUT_GROUPS.map((g) => `<p class="sb-label">${esc(g.group)}</p><div class="sb-layoutgrid">${g.items.map(([k, n]) => `<button type="button" class="sb-layoutbtn" data-layout="${k}" title="${esc(n)}">${addIcon(`free:${k}`)}<span>${esc(n)}</span></button>`).join("")}</div>`).join("")}
           <p class="sb-hint">Your photographs and words move into the new layout, headlines to headlines and photographs in order; anything it has no place for stays where it is. Ctrl+Z goes back.</p></details>`}
         <h3>Add to this page</h3>
-        <div class="sb-adds">
-          <button type="button" data-addblk="text">+ Words</button>
-          <button type="button" data-addblk="photo">+ Photo</button>
-          <button type="button" data-addblk="shape">+ Shape</button>
-          <button type="button" data-addblk="line">+ Line</button>
-          <button type="button" data-addblk="drawing">+ Drawing</button>
-          <button type="button" data-addblk="draw" aria-pressed="${drawing}">✎ Draw by hand</button>
-          ${brandOf().logo && (outsideCache || []).some((r) => r.id === brandOf().logo) ? `<button type="button" data-addblk="logo">+ Your logo</button>` : ""}
+        <div class="sb-tools">
+          <button type="button" data-addblk="text">${uiIc("type", 20)}<span>Words</span></button>
+          <button type="button" data-addblk="photo">${uiIc("image", 20)}<span>Photo</span></button>
+          <button type="button" data-addblk="shape">${uiIc("shape", 20)}<span>Shape</span></button>
+          <button type="button" data-addblk="line">${uiIc("line", 20)}<span>Line</span></button>
+          <button type="button" data-addblk="drawing">${uiIc("star", 20)}<span>Drawing</span></button>
+          <button type="button" data-addblk="draw" aria-pressed="${drawing}">${uiIc("pen", 20)}<span>Draw by hand</span></button>
+          ${brandOf().logo && (outsideCache || []).some((r) => r.id === brandOf().logo) ? `<button type="button" data-addblk="logo">${uiIc("badge", 20)}<span>Your logo</span></button>` : ""}
         </div>
         <div class="sb-layhead"><h3>On this page</h3><span class="sb-laycount" title="${blocks.length} of ${FREE_MAX} things a page can hold">${blocks.length} / ${FREE_MAX}</span></div>
         ${ml ? `<div class="sb-sec sb-rowbox sb-multisec"><h3>${ml.length} things chosen</h3>
@@ -11410,13 +11964,13 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         }).join("")}</div>` : ""}
         ${cur ? `<div class="sb-adjust">
           <div class="sb-adjrow"><span>${t.max > 1 ? `Photo ${active + 1}` : "This photo"}</span><span>
-            ${t.max > 1 ? `<button type="button" data-move="-1" aria-label="Move earlier" ${active === 0 ? "disabled" : ""}>←</button><button type="button" data-move="1" aria-label="Move later" ${active === list.length - 1 ? "disabled" : ""}>→</button>` : ""}
-            <button type="button" data-change>Change photo</button><button type="button" data-remove>Remove</button></span></div>
+            ${t.max > 1 ? `<button type="button" data-move="-1" aria-label="Move earlier" title="Move earlier" ${active === 0 ? "disabled" : ""}>${uiIc("arrowLeft")}</button><button type="button" data-move="1" aria-label="Move later" title="Move later" ${active === list.length - 1 ? "disabled" : ""}>${uiIc("arrowRight")}</button>` : ""}
+            <button type="button" data-change>${uiIc("replace")}Change photo</button><button type="button" data-remove>${uiIc("trash")}Remove</button></span></div>
           ${isDiagram(cur.id) ? `<p class="sb-hint">Lighting diagrams are always shown whole, on white.</p>` : `
           <div class="sb-field"><span class="sb-label">Placement</span>
             <div class="sb-seg" role="radiogroup" aria-label="Placement">${FIT_CHOICES.map(([k, n]) => { const ic = { fill: "fitFill", whole: "fitWhole", width: "fitWidth", height: "fitHeight" }[k]; return `<button type="button" role="radio" data-fit="${k}" aria-checked="${mode === k}" title="${esc(n)}" aria-label="${esc(n)}">${ic ? sbIcon(ic, n) : n}</button>`; }).join("")}</div>
             <p class="sb-hint">${esc(FIT_HINT[mode])}</p></div>
-          <div class="sb-adds"><button type="button" data-frameface>Frame the face</button><button type="button" data-cutout>Take out the background…</button></div>
+          <div class="sb-adds"><button type="button" data-frameface>${uiIc("face")}Frame the face</button><button type="button" data-cutout>${uiIc("cutout")}Take out the background…</button></div>
           <p class="sb-hint">Both read the photograph the way a studio shot is made: the backdrop is the colour round its edges. They work best on a plain backdrop.</p>
           <label class="sb-range">Zoom <input type="range" min="1" max="3" step="0.05" value="${cur.zoom || 1}" data-slide="zoom"></label>
           <label class="sb-range">Left ↔ right <input type="range" min="0" max="1" step="0.01" value="${cur.x}" data-slide="x"></label>
@@ -11565,7 +12119,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         ff.disabled = true; ff.textContent = "Looking…";
         let img = null; try { img = await API.loadImage(thumbSrc(hit2.photo), new Map()); } catch (e) { img = null; }
         const head = img ? await findHead(img) : null;
-        ff.disabled = false; ff.textContent = "Frame the face";
+        ff.disabled = false; ff.innerHTML = `${uiIc("face")}Frame the face`;
         if (!head) { API.toast("Couldn't find the person: this works on a plain backdrop. Move the photo with Left ↔ right and Up ↕ down instead."); return; }
         // The box's shape: the Anything-page thing, or the frame the page drew it in.
         const bb = freePage() && blockSel >= 0 ? blocksOf(freePage())[blockSel] : null;
@@ -11835,6 +12389,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       add("Save this book as a template", "File", () => saveTemplate("book"));
       add("Your brand: colours, fonts and logo", "Design", () => { design("#sbNoSuchThing", "brand")(); const h = $("#sbBrandHead"); if (h) { h.scrollIntoView({ block: "center" }); h.focus(); } });
       add("Use my brand on this book", "Design", design("[data-brandapply]", "brand"));
+      add("Keyboard shortcuts", "Help", () => openKeys());
       add("Download PNG pages", "File", () => { const pop = $("#sbDlPop"); if (pop && pop.hidden) $("#sbDlToggle").click(); $("#sbPng").click(); });
       add("Save", "File", () => $("#sbSave").click());
       add(book && isForOthers(book) ? "Save a copy" : "Publish", "File", () => $("#sbPublish").click());
@@ -12668,7 +13223,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
       flush();
       const snap = JSON.parse(JSON.stringify(book));
       const pref = wrapPrefs(), f = wrapFacts(snap, pref);
-      const buttons = $$("[data-dl]"), label = btn.textContent, ready = $("#sbReady");
+      const buttons = $$("[data-dl]"), label = btn.innerHTML, ready = $("#sbReady");
       buttons.forEach((x) => { x.disabled = true; });
       btn.textContent = "Making the cover wrap…";
       ready.replaceChildren(); dropFiles();
@@ -12750,7 +13305,7 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         ready.innerHTML = `<p class="sb-warn">Couldn't make the cover wrap (${esc(err.message || err)}).</p>`;
       } finally {
         buttons.forEach((x) => { x.disabled = false; });
-        btn.textContent = label;
+        btn.innerHTML = label;
       }
     }
     async function download(btn, format, watermarked) {
