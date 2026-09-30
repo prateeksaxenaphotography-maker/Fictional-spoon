@@ -503,6 +503,104 @@
   const adjFilter = (a) => [a.br ? `brightness(${(1 + a.br * 0.004).toFixed(3)})` : "", a.ct ? `contrast(${(1 + a.ct * 0.005).toFixed(3)})` : "", a.bw ? "grayscale(1)" : a.sa ? `saturate(${(1 + a.sa * 0.01).toFixed(3)})` : ""].filter(Boolean).join(" ") || "none";
   const WARM = "#ff8a2a", COOL = "#2a7bff";
   const warmAlpha = (wm) => Math.min(1, Math.abs(wm) * 0.007), vignetteAlpha = (vg) => Math.min(1, vg * 0.0085);
+  /* The backdrop, the person and their head (phase 9, Sep 30 2026). No
+     face-finding model runs in this page: the site's security policy loads
+     nothing from outside it, and a model is megabytes. So a photograph is
+     read the way a studio shot is made: the backdrop is the colour round its
+     edges, grown inward through pixels close to their neighbours and not too
+     far from it; what is left is the person, and the top of them is the
+     head. Where the browser has its own face finder, that is asked first. */
+  /* The backdrop is told apart by its colour, not its brightness: a shadow
+     cast on a backdrop is the same colour, darker, so it goes with it, while
+     pale clothes of another colour stay (tried on the site's own studio
+     shots, Sep 30 2026: light-blue jeans on a lilac backdrop). ct is how far
+     the colour may stray, in thousandths of the red and green shares. A dark
+     backdrop has too little colour to judge, so there it is brightness. */
+  function backdropMask(data, w, h, ct) {
+    const n = w * h, bg = new Uint8Array(n), q = new Int32Array(n);
+    const bd = [];
+    for (let x = 0; x < w; x++) bd.push(x, (h - 1) * w + x);
+    for (let y = 1; y < h - 1; y++) bd.push(y * w, y * w + w - 1);
+    const med = [0, 1, 2].map((k) => { const v = bd.map((p) => data[p * 4 + k]).sort((a, b) => a - b); return v[v.length >> 1]; });
+    const S0 = med[0] + med[1] + med[2] + 1, r0 = med[0] / S0, g0 = med[1] / S0, dark = S0 < 90;
+    const lo = Math.max(0.25, 0.55 - ct * 0.01), hi = 1.1 + ct * 0.002;
+    const sum = (i) => data[i] + data[i + 1] + data[i + 2] + 1;
+    const dist = (i) => { const S = sum(i); return dark ? Math.max(0, S - S0) / 3 : Math.hypot(data[i] / S - r0, data[i + 1] / S - g0) * 1000; };
+    const ok = (i) => { const S = sum(i); if (dark) return S < S0 + 30 + ct * 2; const lr = S / S0; return lr >= lo && lr <= hi && dist(i) < ct; };
+    let qt = 0, qh = 0;
+    for (const p of bd) if (!bg[p] && ok(p * 4)) { bg[p] = 1; q[qt++] = p; }
+    const onBorder = qt / bd.length, step = Math.max(24, S0 * 0.1);
+    const tryN = (nn, pi) => {
+      if (bg[nn]) return;
+      const i = nn * 4;
+      if (Math.abs(sum(i) - sum(pi)) < step && ok(i)) { bg[nn] = 1; q[qt++] = nn; }
+    };
+    while (qh < qt) {
+      const p = q[qh++], x = p % w, pi = p * 4;
+      if (x > 0) tryN(p - 1, pi);
+      if (x < w - 1) tryN(p + 1, pi);
+      if (p >= w) tryN(p - w, pi);
+      if (p < n - w) tryN(p + w, pi);
+    }
+    return { bg, med, onBorder, dist };
+  }
+  function pixelsOf(img, max) {
+    const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    const sc = Math.min(1, max / Math.max(iw, ih)), w = Math.max(8, Math.round(iw * sc)), h = Math.max(8, Math.round(ih * sc));
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    const g = c.getContext("2d", { willReadFrequently: true }); g.drawImage(img, 0, 0, w, h);
+    return { c, g, w, h, img: g.getImageData(0, 0, w, h) };
+  }
+  // The person on a plain backdrop: their box and their head, as fractions of the photograph; null when the backdrop isn't plain.
+  function subjectOf(img) {
+    const { w, h, img: id } = pixelsOf(img, 320), data = id.data;
+    const { bg, onBorder } = backdropMask(data, w, h, 14);
+    if (onBorder < 0.45) return null;
+    const rowN = new Int32Array(h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (!bg[y * w + x]) rowN[y]++;
+    let y0 = -1, y1 = -1;
+    for (let y = 0; y < h; y++) if (rowN[y] >= Math.max(2, w * 0.02)) { if (y0 < 0) y0 = y; y1 = y; }
+    if (y0 < 0) return null;
+    const colN = new Int32Array(w);
+    for (let y = y0; y <= y1; y++) for (let x = 0; x < w; x++) if (!bg[y * w + x]) colN[x]++;
+    let x0 = -1, x1 = -1;
+    for (let x = 0; x < w; x++) if (colN[x] >= Math.max(2, (y1 - y0 + 1) * 0.02)) { if (x0 < 0) x0 = x; x1 = x; }
+    const band = Math.max(2, Math.round((y1 - y0) * 0.12));
+    let sx = 0, cnt = 0;
+    for (let y = y0; y < Math.min(h, y0 + band); y++) for (let x = 0; x < w; x++) if (!bg[y * w + x]) { sx += x; cnt++; }
+    return { box: { x0: x0 / w, y0: y0 / h, x1: (x1 + 1) / w, y1: (y1 + 1) / h }, head: { x: cnt ? sx / cnt / w : (x0 + x1 + 1) / 2 / w, y: (y0 + band / 2) / h } };
+  }
+  async function findHead(img) {
+    try {
+      if (typeof window.FaceDetector === "function") {
+        const faces = await new window.FaceDetector({ fastMode: true, maxDetectedFaces: 4 }).detect(img);
+        if (faces && faces.length) {
+          const bb = faces.map((f) => f.boundingBox).reduce((a, c) => (a.width * a.height >= c.width * c.height ? a : c));
+          const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+          return { x: (bb.x + bb.width / 2) / iw, y: (bb.y + bb.height / 2) / ih, how: "face" };
+        }
+      }
+    } catch (e) { /* no face finder here */ }
+    const sub = subjectOf(img);
+    return sub ? { ...sub.head, how: "subject" } : null;
+  }
+  /* The photograph with its backdrop taken out: see-through where the
+     backdrop was, a soft edge where the person meets it. */
+  function cutoutCanvas(img, max, tol, soft) {
+    const px = pixelsOf(img, max), { w, h, g } = px, data = px.img.data;
+    const { bg, dist } = backdropMask(data, w, h, tol);
+    const out = g.createImageData(w, h), o = out.data;
+    for (let p = 0, n = w * h; p < n; p++) {
+      const i = p * 4;
+      o[i] = data[i]; o[i + 1] = data[i + 1]; o[i + 2] = data[i + 2];
+      if (bg[p]) { o[i + 3] = 0; continue; }
+      const x = p % w;
+      const edge = (x > 0 && bg[p - 1]) || (x < w - 1 && bg[p + 1]) || (p >= w && bg[p - w]) || (p < n - w && bg[p + w]);
+      o[i + 3] = edge && soft ? Math.round(255 * Math.min(1, Math.max(0.15, (dist(i) - tol * 0.5) / (tol * 1.5)))) : data[i + 3];
+    }
+    g.putImageData(out, 0, 0);
+    return { canvas: px.c, taken: bg.reduce((a, v) => a + v, 0) / (w * h) };
+  }
   // Warmth and the vignette, over the part of the photograph just drawn.
   function adjAfter(ctx, a, x, y, w, h) {
     if (!a.wm && !a.vg) return;
@@ -5745,6 +5843,9 @@
   .sb-tplwrap .sb-tplrm { top: 4px; right: 4px; }
   .sb-brandlogo { display: block; max-width: 160px; max-height: 64px; margin: 4px 0 8px; object-fit: contain; background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0 / 12px 12px; border-radius: 6px; padding: 6px; }
   .sb-cpbrand { margin: 8px 0 2px; }
+  .sb-cutbox { max-width: 560px; width: min(560px, 94vw); }
+  .sb-cutview { display: flex; align-items: center; justify-content: center; height: min(52vh, 460px); margin: 6px 0 10px; border-radius: 10px; background: repeating-conic-gradient(#e6e6e6 0 25%, #fff 0 50%) 0 0 / 18px 18px; overflow: hidden; }
+  .sb-cutview canvas { max-width: 100%; max-height: 100%; }
   .sb-graphics { display: grid; grid-template-columns: repeat(auto-fill, minmax(36px, 1fr)); gap: 6px; margin: 4px 0 6px; }
   .sb-graphics button { all: unset; box-sizing: border-box; display: flex; align-items: center; justify-content: center; aspect-ratio: 1; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--paper, #fff); color: var(--ink, #141416); cursor: pointer; }
   .sb-graphics button svg { width: 20px; height: 20px; }
@@ -11195,6 +11296,59 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           <p class="sb-hint">Double-click a slider to put it back to 0. The photograph itself is never changed: this is kept with the book and applied wherever it is drawn, the PDF included.</p>
         </details>`;
     }
+    /* Take out the background: a preview to judge, one slider, then a
+       cut-out copy kept on this computer takes the photograph's place (the
+       original is untouched, and Ctrl+Z puts it back). */
+    async function openCutout() {
+      const t = photoTarget(); const cur = t && t.list[active]; if (!cur) return;
+      const hit = library().byId.get(cur.id); if (!hit || hit.photo.diagram) return;
+      let img = null;
+      try { img = await API.loadImage(hit.photo.outside ? hit.photo.dataUrl : API.photoSrc(hit.photo), new Map()); } catch (e) { img = null; }
+      if (!img) { API.toast("This photograph couldn't be read."); return; }
+      const box = document.createElement("div");
+      box.className = "sb-modal-back";
+      box.innerHTML = `<div class="sb-modal sb-cutbox" role="dialog" aria-modal="true" aria-labelledby="sbCutTitle">
+          <h3 id="sbCutTitle">Take out the background</h3>
+          <div class="sb-cutview"><canvas id="sbCutPrev" aria-label="The cut-out, on a see-through check"></canvas></div>
+          <label class="sb-range">How much to take out <input type="range" id="sbCutTol" min="4" max="30" step="1" value="14"></label>
+          <label class="sb-check-row"><input type="checkbox" id="sbCutSoft" checked> Soften the edge</label>
+          <p class="sb-hint" id="sbCutNote">The backdrop is the colour round the photograph's edges. More takes out shadows and gradients too; too much eats into the person. A cut-out copy is kept on this computer; the photograph itself is untouched.</p>
+          <div class="sb-modal-foot"><button type="button" class="sb-btn" data-cut-cancel>Cancel</button><button type="button" class="sb-btn dark" data-cut-ok>Use the cut-out</button></div>
+        </div>`;
+      const close = () => { box.remove(); document.removeEventListener("keydown", onKey); };
+      const onKey = (e) => { if (e.key === "Escape") close(); };
+      box._cancel = close;
+      document.addEventListener("keydown", onKey);
+      document.body.appendChild(box);
+      const prev = box.querySelector("#sbCutPrev"), tolEl = box.querySelector("#sbCutTol"), softEl = box.querySelector("#sbCutSoft"), note = box.querySelector("#sbCutNote");
+      const draw = () => {
+        const r = cutoutCanvas(img, 520, +tolEl.value, softEl.checked);
+        prev.width = r.canvas.width; prev.height = r.canvas.height;
+        prev.getContext("2d").drawImage(r.canvas, 0, 0);
+        const pc = Math.round(r.taken * 100);
+        note.textContent = pc < 3 ? "Nothing matched the colour round the edges: this works on a plain backdrop. Try more, or keep the photograph as it is." : `${pc}% of the photograph taken out. More takes out shadows and gradients too; too much eats into the person. A cut-out copy is kept on this computer; the photograph itself is untouched.`;
+      };
+      let raf = 0;
+      tolEl.addEventListener("input", () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(draw); });
+      softEl.addEventListener("change", draw);
+      draw();
+      box.addEventListener("click", async (e) => {
+        if (e.target === box || e.target.closest("[data-cut-cancel]")) return close();
+        if (!e.target.closest("[data-cut-ok]")) return;
+        const btn = e.target.closest("[data-cut-ok]"); btn.disabled = true; btn.textContent = "Cutting out…";
+        await new Promise((r) => setTimeout(r, 30));
+        const full = cutoutCanvas(img, 2000, +tolEl.value, softEl.checked);
+        const dataUrl = full.canvas.toDataURL("image/png");
+        const id = `out_cut_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+        try { await outPut({ id, name: `${hit.photo.name || cleanName(hit.shoot.title || hit.shoot.talent || "Photograph")} (cut out)`, dataUrl, forSite: false, at: Date.now() }); }
+        catch (err) { btn.disabled = false; btn.textContent = "Use the cut-out"; note.textContent = "Not saved: this computer's storage for the site refused it."; return; }
+        await outsideRefresh();
+        const l = photoTarget().list.slice();
+        if (l[active]) { mark(); l[active] = { ...l[active], id }; photoTarget().set(l); change({ photos: true }); drawPhotoBlock(); }
+        close();
+        API.toast("The background is out · the cut-out is kept on this computer · Ctrl+Z puts the photograph back");
+      });
+    }
     function drawPhotoBlock() {
       const box = $("#sbPhotoBlock"); if (!box) return;
       const entry = curEntry();
@@ -11239,6 +11393,8 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
           <div class="sb-field"><span class="sb-label">Placement</span>
             <div class="sb-seg" role="radiogroup" aria-label="Placement">${FIT_CHOICES.map(([k, n]) => { const ic = { fill: "fitFill", whole: "fitWhole", width: "fitWidth", height: "fitHeight" }[k]; return `<button type="button" role="radio" data-fit="${k}" aria-checked="${mode === k}" title="${esc(n)}" aria-label="${esc(n)}">${ic ? sbIcon(ic, n) : n}</button>`; }).join("")}</div>
             <p class="sb-hint">${esc(FIT_HINT[mode])}</p></div>
+          <div class="sb-adds"><button type="button" data-frameface>Frame the face</button><button type="button" data-cutout>Take out the background…</button></div>
+          <p class="sb-hint">Both read the photograph the way a studio shot is made: the backdrop is the colour round its edges. They work best on a plain backdrop.</p>
           <label class="sb-range">Zoom <input type="range" min="1" max="3" step="0.05" value="${cur.zoom || 1}" data-slide="zoom"></label>
           <label class="sb-range">Left ↔ right <input type="range" min="0" max="1" step="0.01" value="${cur.x}" data-slide="x"></label>
           <label class="sb-range">Up ↕ down <input type="range" min="0" max="1" step="0.01" value="${cur.y}" data-slide="y"></label>`}
@@ -11378,6 +11534,31 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
         op.setAttribute("aria-valuetext", `${Math.round(v * 100)} percent`);
         l[active] = next; setList(l); change({ rail: false });
       });
+      // Frame the face: the head a third of the way down the photo's box, across its middle.
+      { const ff = box.querySelector("[data-frameface]"); if (ff) ff.addEventListener("click", async () => {
+        const l = photoTarget().list.slice(), cur2 = l[active]; if (!cur2) return;
+        if (cur2.fit === "whole") { API.toast("The whole photograph shows in this box: there is nothing to frame. Choose Fill first."); return; }
+        const hit2 = lib.byId.get(cur2.id); if (!hit2) return;
+        ff.disabled = true; ff.textContent = "Looking…";
+        let img = null; try { img = await API.loadImage(thumbSrc(hit2.photo), new Map()); } catch (e) { img = null; }
+        const head = img ? await findHead(img) : null;
+        ff.disabled = false; ff.textContent = "Frame the face";
+        if (!head) { API.toast("Couldn't find the person: this works on a plain backdrop. Move the photo with Left ↔ right and Up ↕ down instead."); return; }
+        // The box's shape: the Anything-page thing, or the frame the page drew it in.
+        const bb = freePage() && blockSel >= 0 ? blocksOf(freePage())[blockSel] : null;
+        const G = geometry(book);
+        const reg = !bb ? ((lastRender[0] && lastRender[0].page && lastRender[0].page.photos) || []).find((r) => r.id === cur2.id) : null;
+        const A = bb ? (bb.w * G.Wa) / ((bb.h || 0.2) * G.Ha) : reg ? reg.w / reg.h : 0.75;
+        const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height, a = iw / ih, z = Math.max(1, cur2.zoom || 1);
+        const cw = a > A ? A / (a * z) : 1 / z, ch = a > A ? 1 / z : a / (A * z);
+        const clamp01 = (v) => Math.min(1, Math.max(0, v));
+        const nx = cw < 0.999 ? clamp01((head.x - cw / 2) / (1 - cw)) : 0.5, ny = ch < 0.999 ? clamp01((head.y - ch / 3) / (1 - ch)) : 0.5;
+        mark();
+        l[active] = { ...cur2, x: +nx.toFixed(3), y: +ny.toFixed(3) };
+        setList(l); change({ rail: false }); drawPhotoBlock();
+        API.toast(head.how === "face" ? "Framed on the face · Ctrl+Z to undo" : "Framed on the person's head · Ctrl+Z to undo");
+      }); }
+      { const co = box.querySelector("[data-cutout]"); if (co) co.addEventListener("click", () => openCutout()); }
       // Adjust the photo.
       const setAdj = (fn, coalesce = true) => {
         const l = photoTarget().list.slice();
@@ -12602,5 +12783,5 @@ ing: 1px 5px; border: 1px solid var(--sb-line); border-radius: 4px; }
     if (again) openBook(JSON.parse(JSON.stringify(again)), false, reopen); else showList();
   }
 
-  window.StudioBook = { mount, renderPages, planWriting, planFree, FREE_STARTS, COLOURWAYS, STYLES, newBook, geometry, PAPERS, WAYS_COPY, PROCESS_COPY, bookletSides, SHEETS, fingerprint, fpScore, fpColour, imageHeader, originalsStore, originalLoader };
+  window.StudioBook = { mount, renderPages, subjectOf, cutoutCanvas, planWriting, planFree, FREE_STARTS, COLOURWAYS, STYLES, newBook, geometry, PAPERS, WAYS_COPY, PROCESS_COPY, bookletSides, SHEETS, fingerprint, fpScore, fpColour, imageHeader, originalsStore, originalLoader };
 })();
