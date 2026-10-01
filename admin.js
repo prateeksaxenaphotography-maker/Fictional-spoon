@@ -864,7 +864,7 @@ const STUDIO_BOOK_LIMITS = {
      studio's own credit goes: absent = a line on the last page, "none" =
      nowhere at all, not even the PDF's details (a contract can forbid it). */
   // A moodboard or plan (v575): kept on this computer, never published, whoever it is for.
-  plans: ["moodboard", "pitch", "shoot"],
+  plans: ["moodboard", "pitch", "shoot", "calendar"],
   // roles … statValue: a talent not on the studio's list (v575), whose details live in the book alone.
   madeFor: { kinds: ["brand", "client", "talent"], credits: ["none"], name: 60, email: 120, site: 120, instagram: 40, modelKey: 160, logo: 40, roles: 80, phone: 30, stats: 10, statLabel: 24, statValue: 40 },
   pageTypes: ["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process", "free", "end", "look", "contents", "more"],
@@ -880,7 +880,7 @@ const STUDIO_BOOK_LIMITS = {
   fits: ["fill", "whole", "width", "height"],
   // Paper a book prints on; absent means A4. Where a writing page's photo sits;
   // absent means the page shape's usual place.
-  papers: ["a4", "b5", "a5", "letter", "ig45", "square", "story"],
+  papers: ["a4", "b5", "a5", "letter", "ig45", "square", "story", "a3", "a2", "in1218", "sq12", "desk86"],
   /* How much air sits between photographs, as a multiple of the style's own
      gutter. Absent means the style's number, so a book made before the studio
      could ask is stored exactly as it was. */
@@ -935,7 +935,7 @@ const STUDIO_BOOK_LIMITS = {
      size is a fraction of the A4 design frame, so the page prints the same on
      any paper and in either shape. A little outside 0-1 is allowed, so a
      photograph can run off the edge. */
-  blockKinds: ["text", "photo", "shape", "line"],
+  blockKinds: ["text", "photo", "shape", "line", "cal"],
   blockRoles: ["head", "intro", "body", "kicker", "quote"],
   // Sep 2026: an Anything page holds as much as a magazine page (was 12 / 6 / 600).
   blockMax: 60, blockPhotoMax: 30, blockText: 2000,
@@ -1094,6 +1094,13 @@ function cleanStudioPortfolios(o) {
         one.outline = ol;
       }
       if (["multiply", "screen", "overlay", "soft-light", "darken", "lighten", "color", "luminosity"].includes(x.blend)) one.blend = x.blend;
+      // A month (v580): which (0–12 after the calendar's first), small or not, its name, its numbers' colour.
+      if (x.k === "cal") {
+        one.m = Math.round(num(x.m, 0, 12, 0));
+        if (x.look === "mini") one.look = "mini";
+        if (x.title === false) one.title = false;
+        if (colourOk(x.color)) one.color = String(x.color).toLowerCase();
+      }
       if (x.k === "text") {
         one.t = strU(x.t, L2.blockText);
         if (L2.blockRoles.includes(x.role)) one.role = x.role;
@@ -1343,6 +1350,17 @@ function cleanStudioPortfolios(o) {
       ...cleanMadeFor(v.madeFor),
       // Named here or a moodboard would lose its section on the next save (v575).
       ...(STUDIO_BOOK_LIMITS.plans.includes(v.plan) ? { plan: v.plan } : {}),
+      // A calendar's year, first month, week, faint days, holidays and the studio's dates (v580).
+      ...(v.calendar && typeof v.calendar === "object" ? (() => {
+        const c = v.calendar, out = { year: Math.round(num(c.year, 1900, 2200, new Date().getFullYear())) };
+        const st = Math.round(num(c.start, 0, 11, 0)); if (st) out.start = st;
+        if (c.week === 1) out.week = 1;
+        if (c.ghost === false) out.ghost = false;
+        if (c.fixed === false) out.fixed = false;
+        const d = (Array.isArray(c.dates) ? c.dates : []).filter((x) => x && typeof x.d === "string" && /^(\d{4}-)?\d{2}-\d{2}$/.test(x.d)).slice(0, 100).map((x) => ({ d: x.d, t: typeof x.t === "string" ? x.t.slice(0, 30) : "" }));
+        if (d.length) out.dates = d;
+        return { calendar: out };
+      })() : {}),
       // Started as a lookbook (v579): its section on the Books screen, whatever style it wears.
       ...(v.kind === "lookbook" ? { kind: "lookbook" } : {}),
       pages,

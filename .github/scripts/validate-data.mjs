@@ -541,7 +541,7 @@ if (books !== undefined && books !== null) {
         checkOneFormat(p, `${what} paragraph ${at}`);
       }
     };
-    const PAPERS = new Set(["a4", "b5", "a5", "letter", "ig45", "square", "story"]);
+    const PAPERS = new Set(["a4", "b5", "a5", "letter", "ig45", "square", "story", "a3", "a2", "in1218", "sq12", "desk86"]);
     const PHOTO_AT = { story: ["top", "bottom", "left", "right"], note: ["top", "bottom", "left", "right"], quote: ["top", "bottom", "left", "right"], feature: ["left", "right"], article: ["left", "right"] };
     const FITS = new Set(["fill", "whole", "width", "height"]);
     // Lines a page draws for itself that the studio can write over, and the
@@ -570,14 +570,14 @@ if (books !== undefined && books !== null) {
     // Any page can be the team's alone, left out of the client copy (v577).
     const KNOWN_KEYS = Object.fromEntries(Object.entries(KNOWN_KEYS_BASE).map(([k, v]) => [k, [...(v.includes("bg") ? v : [...v, "bg"]), "teamOnly"]]));
     // An Anything page: what the studio placed, as fractions of the A4 frame.
-    const BLOCK_KINDS = new Set(["text", "photo", "shape", "line"]);
+    const BLOCK_KINDS = new Set(["text", "photo", "shape", "line", "cal"]);
     const BLOCK_ROLES = new Set(["head", "intro", "body", "kicker", "quote"]);
     const THICKS = new Set(["hair", "narrow", "medium", "broad", "heavy"]);
     const LINE_PATHS = new Set(["v", "d", "u", "curve", "wave", "free"]);
     const LINE_ENDS = new Set(["end", "start", "both"]);
     const LINE_TIPS = new Set(["pencil", "brush", "marker", "nib", "taper", "sumi", "bristle"]);
     const FILLS = new Set(["ink", "soft", "accent", "paper", "white", "deep", "rule"]);
-    const BLOCK_KEYS = { text: ["k", "x", "y", "w", "h", "r", "t", "role", "fit", "style", "fill", "o", "shape", "corner"], photo: ["k", "x", "y", "w", "h", "r", "p", "edge", "edgeWidth", "shape", "corner"], shape: ["k", "x", "y", "w", "h", "r", "fill", "o", "shape", "corner"], line: ["k", "x", "y", "w", "h", "r", "color", "o", "thick", "width", "path", "bend", "waves", "soft", "pts", "ends", "tip"] };
+    const BLOCK_KEYS = { cal: ["k", "x", "y", "w", "h", "r", "m", "look", "title", "color"], text: ["k", "x", "y", "w", "h", "r", "t", "role", "fit", "style", "fill", "o", "shape", "corner"], photo: ["k", "x", "y", "w", "h", "r", "p", "edge", "edgeWidth", "shape", "corner"], shape: ["k", "x", "y", "w", "h", "r", "fill", "o", "shape", "corner"], line: ["k", "x", "y", "w", "h", "r", "color", "o", "thick", "width", "path", "bend", "waves", "soft", "pts", "ends", "tip"] };
     const SHAPE_KINDS = new Set(["round", "chamfer", "ellipse", "triangle", "diamond", "star", "parallelogram", "g:heart", "g:sparkle", "g:burst", "g:badge", "g:ring", "g:flower", "g:sun", "g:moon", "g:leaf", "g:arrow", "g:curve", "g:speech", "g:quotes", "g:camera", "g:film", "g:frame", "g:focus", "g:pin", "g:mail", "g:phone", "g:check", "g:plus", "g:stroke"]);
     const isFill = (v) => FILLS.has(v) || /^#[0-9a-f]{6}$/.test(String(v));
     // A photograph's adjustments (v561): whole numbers, -100…100 (vignette 0…100), none written as 0; bw is true or absent.
@@ -631,6 +631,12 @@ if (books !== undefined && books !== null) {
         for (const k of ["x", "y"]) if (typeof x[k] !== "number" || !(x[k] >= -0.3 && x[k] <= 1.3)) fail(`${at} has ${k} of ${JSON.stringify(x[k])}; it must be a number from -0.3 to 1.3`);
         for (const k of x.k === "line" && !(x.path && x.path !== "h") ? ["w"] : ["w", "h"]) if (typeof x[k] !== "number" || !(x[k] >= 0.01 && x[k] <= 1.6)) fail(`${at} has ${k} of ${JSON.stringify(x[k])}; it must be a number from 0.01 to 1.6`);
         if (x.r !== undefined && (typeof x.r !== "number" || !(x.r >= -180 && x.r <= 180) || x.r === 0)) fail(`${at} is turned ${JSON.stringify(x.r)}; it must be a number from -180 to 180, and 0 is not written`);
+        if (x.k === "cal") {
+          if (!Number.isInteger(x.m) || x.m < 0 || x.m > 12) fail(`${at} shows month ${JSON.stringify(x.m)}; the app writes 0 to 12 after the calendar's first`);
+          if (x.look !== undefined && x.look !== "mini") fail(`${at} looks ${JSON.stringify(x.look)}; the app writes "mini", and nothing for a month to write in`);
+          if (x.title !== undefined && x.title !== false) fail(`${at} has title ${JSON.stringify(x.title)}; the app writes false, and nothing otherwise`);
+          if (x.color !== undefined && !isFill(x.color)) fail(`${at} has numbers in ${JSON.stringify(x.color)}`);
+        }
         if (x.k === "text") {
           if (typeof x.t !== "string") fail(`${at} has words that are not text`);
           else if (x.t.length > 2000) fail(`${at} holds ${x.t.length} characters; the most is 2000`);

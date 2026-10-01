@@ -3983,6 +3983,12 @@
     b5: { name: "B5", w: 176, h: 250, note: "176 × 250 mm" },
     a5: { name: "A5", w: 148, h: 210, note: "148 × 210 mm · booklet" },
     letter: { name: "Letter", w: 215.9, h: 279.4, note: "8.5 × 11 in · US printers" },
+    // v580: calendars and posters (sizes from Vistaprint India, printposters.in and the print shops' guides).
+    a3: { name: "A3", w: 297, h: 420, note: "297 × 420 mm · wall calendars, posters" },
+    a2: { name: "A2", w: 420, h: 594, note: "420 × 594 mm · posters, a year on one page" },
+    in1218: { name: "12 × 18 in", w: 304.8, h: 457.2, note: "12 × 18 in · India's usual wall calendar" },
+    sq12: { name: "12 × 12 in", w: 304.8, h: 304.8, note: "12 × 12 in · square calendars" },
+    desk86: { name: "6 × 8 in", w: 152.4, h: 203.2, note: "6 × 8 in · India's usual table calendar, on its side" },
     /* Social media (phase 5, Sep 30 2026). 7.2 in wide, so a page at 150 dpi
        is exactly 1080 px across, the width Instagram shows; 300 dpi doubles
        it. Landscape turns 4:5 into 5:4 and a story into 16:9. */
@@ -4752,7 +4758,7 @@
      every other page — so the preview, the little page in the rail and the PDF
      can never disagree. Nothing flows from one box to the next: a box holds
      what it holds, and says so when the words don't fit. */
-  const FREE_KINDS = ["text", "photo", "shape", "line"];
+  const FREE_KINDS = ["text", "photo", "shape", "line", "cal"];
   // What a colour block (or the colour behind a box of words) is shaped like.
   const SHAPES = ["rect", "round", "chamfer", "ellipse", "triangle", "diamond", "star", "parallelogram"];
   /* Drawings (phase 8, Sep 30 2026): a small library for an Anything page,
@@ -5064,6 +5070,112 @@
     });
     return list;
   }
+  /* ---------- calendars (v580) -----------------------------------------------
+     The owner (Oct 1 2026): "create a section for calendars (could be wall,
+     desk, longitudinal or vertical for next 100 years … standard shapes and
+     sizes)". A month is a block of its own ("cal") on an Anything page —
+     placed, moved and sized like a photograph — drawn from the book's
+     calendar: its year, the month it starts in and the day weeks start on, so
+     a page is whichever month its block says, this year or in a hundred.
+     From the research: Sunday first is India's convention (the Government
+     calendar, CLDR), Monday the European; six rows always, so every page has
+     the same shape; days of the months either side faint; Sundays and
+     holidays in the accent colour. Only the fixed national days can be known
+     ahead — festivals follow the moon and the states — so the studio adds its
+     own dates. Leap years by the Gregorian rule: 2100 is not one. */
+  const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const FIXED_DAYS = { "01-26": "Republic Day", "08-15": "Independence Day", "10-02": "Gandhi Jayanti", "12-25": "Christmas" };
+  const isLeap = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  const monthDays = (y, m) => [31, isLeap(y) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m];
+  // In UTC, so no time zone can move a date.
+  const dayOfWeek = (y, m, d) => new Date(Date.UTC(y, m, d)).getUTCDay();
+  // The calendar a book keeps: next year once September is here, January, Sunday first.
+  function calOf(book) {
+    const c = (book && book.calendar) || {}, now = new Date();
+    const year = Number.isInteger(c.year) ? c.year : now.getFullYear() + (now.getMonth() >= 8 ? 1 : 0);
+    return { year, start: Number.isInteger(c.start) && c.start >= 0 && c.start < 12 ? c.start : 0, week: c.week === 1 ? 1 : 0, ghost: c.ghost !== false, fixed: c.fixed !== false, dates: Array.isArray(c.dates) ? c.dates.filter((x) => x && typeof x.d === "string") : [] };
+  }
+  // The year as a page says it: "2027", or "2027–28" for a calendar starting after January.
+  const calYearLabel = (book) => { const c = calOf(book); return c.start === 0 ? String(c.year) : `${c.year}–${String(c.year + 1).slice(-2)}`; };
+  // The month a block shows: the calendar's first, moved on m months.
+  function calMonth(book, m) { const c = calOf(book), k = c.start + (m || 0); return { y: c.year + Math.floor(k / 12), m: ((k % 12) + 12) % 12 }; }
+  // 42 cells (six weeks) from the week holding the 1st, with how many rows the month itself needs.
+  function monthGrid(y, m, week) {
+    const lead = (dayOfWeek(y, m, 1) - week + 7) % 7, n = monthDays(y, m);
+    const py = m === 0 ? y - 1 : y, pm = (m + 11) % 12, pn = monthDays(py, pm);
+    const cells = [];
+    for (let i = 0; i < 42; i++) {
+      const d = i - lead + 1;
+      if (d < 1) cells.push({ d: pn + d, out: true, y: py, m: pm });
+      else if (d > n) cells.push({ d: d - n, out: true, y: m === 11 ? y + 1 : y, m: (m + 1) % 12 });
+      else cells.push({ d, out: false, y, m });
+    }
+    return { cells, rows: Math.ceil((lead + n) / 7), lead };
+  }
+  const two = (v) => String(v).padStart(2, "0");
+  // What a day says: one of the studio's own dates (on that day, or that day every year), or a national day.
+  function dayNote(cal, y, m, d) {
+    const iso = `${y}-${two(m + 1)}-${two(d)}`, md = `${two(m + 1)}-${two(d)}`;
+    const own = cal.dates.find((x) => x.d === iso || x.d === md);
+    if (own) return { t: String(own.t || ""), own: true };
+    if (cal.fixed && FIXED_DAYS[md]) return { t: FIXED_DAYS[md], own: false };
+    return null;
+  }
+  /* A month block as ordinary drawing — rules and words in the style's own
+     type — so the screen, the PDF (with real type) and print all follow. A
+     "grid" is a month to write in; a "mini" is one of twelve on a year page. */
+  function calOps(book, b, box, P, T, turn, op, page) {
+    const cal = calOf(book), at = calMonth(book, b.m || 0), y = at.y, m = at.m;
+    const mini = b.look === "mini";
+    const ink = blockColor(b.color, P, P.ink), accent = P.accent, soft = P.soft, rule = P.rule;
+    const H1 = T.storyHead || T.body, K = T.kicker || T.body, Bd = T.body;
+    const txt = (s, x, yy, size, spec, c, align = "left", w = null) => {
+      const sp = spec.sp && spec.size ? (spec.sp * size) / spec.size : 0;
+      op({ k: "text", s: String(s), x, y: yy, f: [w || spec.w || 400, size, spec.f, sp, false], c, align, rot: turn });
+    };
+    const g = monthGrid(y, m, cal.week);
+    let top = box.y;
+    if (b.title !== false) {
+      const th = mini ? Math.min(box.h * 0.16, 7) : Math.min(box.h * 0.15, 17);
+      const ts = th * 0.6;
+      txt(mini ? MONTHS[m].toUpperCase() : `${MONTHS[m].toUpperCase()} ${y}`, box.x, top + ts * 0.95, ts, mini ? K : H1, ink, "left", mini ? Math.max(600, K.w || 600) : (H1.w || 700));
+      top += th;
+    }
+    const cw = box.w / 7;
+    const hh = mini ? Math.min(box.h * 0.1, 4.5) : Math.min(box.h * 0.08, 7.5);
+    const hs = Math.min(hh * 0.55, cw * (mini ? 0.42 : 0.3));
+    for (let i = 0; i < 7; i++) {
+      const dow = (i + cal.week) % 7;
+      const name = mini || cw < 16 ? WEEKDAYS[dow][0] : WEEKDAYS[dow].slice(0, 3).toUpperCase();
+      txt(name, mini ? box.x + cw * i + cw / 2 : box.x + cw * i + 1.4, top + hs * 1.15, hs, K, dow === 0 ? accent : soft, mini ? "center" : "left", Math.max(600, K.w || 600));
+    }
+    top += hh;
+    if (!mini) op({ k: "rect", x: box.x, y: top - 0.9, w: box.w, h: 0.3, c: ink, rot: turn });
+    const rows = 6, ch = (box.y + box.h - top) / rows;
+    const ns = mini ? Math.min(ch * 0.58, cw * 0.46) : Math.min(ch * 0.3, cw * 0.28, 7.5);
+    for (let r = 0; r < rows; r++) {
+      if (!mini && r > 0) op({ k: "rect", x: box.x, y: top + ch * r - 0.4, w: box.w, h: 0.15, c: rule, rot: turn });
+      for (let i = 0; i < 7; i++) {
+        const cell = g.cells[r * 7 + i];
+        if (cell.out && (mini || !cal.ghost)) continue;
+        const dow = (i + cal.week) % 7;
+        const note = cell.out ? null : dayNote(cal, cell.y, cell.m, cell.d);
+        const col = cell.out ? rule : dow === 0 || (note && !note.own) ? accent : ink;
+        const x0 = box.x + cw * i, y0 = top + ch * r;
+        if (mini) { txt(cell.d, x0 + cw / 2, y0 + ch * 0.5 + ns * 0.36, ns, Bd, col, "center", 500); continue; }
+        txt(cell.d, x0 + 1.4, y0 + ns * 1.08, ns, H1, col, "left", Math.max(500, Math.min(700, H1.w || 600)));
+        if (note && note.t) {
+          const s2 = Math.max(1.6, ns * 0.42);
+          font(page, 500, s2, Bd.f);
+          let t = note.t;
+          if (measure(page, t) > cw - 2.6) { while (t.length > 1 && measure(page, `${t}…`) > cw - 2.6) t = t.slice(0, -1); t = `${t}…`; }
+          txt(t, x0 + 1.4, y0 + ch - 1.8, s2, Bd, note.own ? ink : accent, "left", 500);
+        }
+      }
+    }
+  }
+
   function planFree(book, entry, ground = null) {
     const G = geometry(book);
     const st = styleKey(book), D = trOf(book);
@@ -5085,6 +5197,7 @@
       const turn = Math.abs(+b.r || 0) > 0.05 ? { deg: +b.r, cx: box.x + box.w / 2, cy: box.y + box.h / 2 } : null;
       const field = `b${i}`;
       const fx = effectsOf(b, P);
+      if (b.k === "cal") { calOps(book, b, box, P, T, turn, op, page); return; }
       if (b.k === "shape") { const sh = shapeOf(b); op({ k: sh === "rect" ? "rect" : "path", shape: sh, corner: cornerOf(b), x: box.x, y: box.y, w: box.w, h: box.h, c: blockColor(b.fill, P, P.accent), a: b.o, rot: turn, ...fx }); return; }
       if (b.k === "line") {
         const c = blockColor(b.color, P, P.rule);
@@ -5530,7 +5643,34 @@
      on the shelf with the books made for others — a "bf" id, which CI also
      refuses to publish — whoever it is for, the studio included. `plan` says
      which kind, and puts it under its own heading in Books. */
-  const PLAN_NAME = { moodboard: "Moodboard", pitch: "Pitch", shoot: "Shoot plan" };
+  const PLAN_NAME = { moodboard: "Moodboard", pitch: "Pitch", shoot: "Shoot plan", calendar: "Calendar" };
+  /* The calendars to start from (v580): wall portrait and landscape, the
+     12 × 18 in office calendar, square, desk (A5 and 6 × 8 in, on their side),
+     and the year on one poster. Each is a cover, twelve months and a back of
+     the year's months — or, for the poster, the one page. */
+  const CAL_FORMATS = {
+    wall: { name: "Wall · photograph over the month", note: "A4 portrait — print it A3 too.", paper: "a4", land: false, cover: "cal_cover", month: "cal_wall", back: "cal_back" },
+    overlay: { name: "Wall · the month on the photograph", note: "A4 portrait: the photograph to the edges, the month on a pale panel.", paper: "a4", land: false, cover: "cal_cover", month: "cal_overlay", back: "cal_back" },
+    land: { name: "Wall · landscape", note: "A4 on its side: the photograph left, the month right.", paper: "a4", land: true, cover: "cal_cover_land", month: "cal_side", back: "cal_back_land" },
+    tall: { name: "Wall · 12 × 18 in", note: "India's usual office calendar.", paper: "in1218", land: false, cover: "cal_cover", month: "cal_wall", back: "cal_back" },
+    square: { name: "Square · 12 × 12 in", note: "The photograph above, the month below.", paper: "sq12", land: false, cover: "cal_cover_type", month: "cal_square", back: "cal_back" },
+    desk: { name: "Desk · A5", note: "On its side, for a stand: the photograph left, the month right.", paper: "a5", land: true, cover: "cal_cover_land", month: "cal_desk", back: "cal_back_land" },
+    desk86: { name: "Desk · 6 × 8 in", note: "India's usual table calendar: the photograph above the month.", paper: "desk86", land: true, cover: "cal_cover_land", month: "cal_desk2", back: "cal_back_land" },
+    year: { name: "The year on one page", note: "An A3 poster: a photograph and all twelve months.", paper: "a3", land: false, year: true, cover: "cal_year" }
+  };
+  // A calendar laid out: its paper, its cover, a page a month (each block on its month) and the back.
+  function calendarBook(nb, fmt, cal) {
+    const f = CAL_FORMATS[fmt] || CAL_FORMATS.wall;
+    nb.plan = "calendar";
+    nb.calendar = { year: cal.year, start: cal.start, ...(cal.week === 1 ? { week: 1 } : {}) };
+    if (f.paper !== "a4") nb.paper = f.paper; else delete nb.paper;
+    nb.orientation = f.land ? "landscape" : "portrait";
+    nb.title = "Calendar"; nb.subtitle = "";
+    nb.coverLayout = "custom";
+    nb.coverPage = { blocks: startBlocks(f.cover, nb, "add") };
+    nb.pages = f.year ? [] : [...Array.from({ length: 12 }, (_, i) => ({ type: "free", blocks: startBlocks(f.month, nb, "add").map((x) => (x.k === "cal" ? { ...x, m: i } : x)) })), { type: "free", blocks: startBlocks(f.back, nb, "add") }];
+    return nb;
+  }
   // Said once at the foot of a page that holds pasted pictures (v577).
   const REF_LINE = "References are directional and not licensed for use.";
   // The site a pasted picture's address names, for its credit (the photographer, when known, is better).
@@ -5776,6 +5916,13 @@
   .sb-eyebrow { display: inline-flex; align-items: center; gap: 6px; margin: 0; font: 500 12px/1 var(--sb-font); letter-spacing: 0; text-transform: none; color: var(--sb-text-3); }
   .sb-eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--sb-sel); }
   .sb-sect { margin-top: 8px; }
+  .sb-calrow { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; margin-bottom: 12px; }
+  .sb-calrow .sb-field { margin: 0; min-width: 120px; }
+  .sb-calyear { display: flex; align-items: center; gap: 4px; }
+  .sb-calyear input { width: 90px; text-align: center; }
+  .sb-caldates { display: grid; gap: 6px; margin: 4px 0 8px; }
+  .sb-caldate { display: grid; grid-template-columns: 150px minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+  .sb-startcal[hidden] { display: none; }
   .sb-plans { margin-top: 34px; padding-top: 22px; border-top: 1px solid var(--sb-line); }
   .sb-plansh { margin: 0 0 4px; font: 650 19px/1.25 var(--sb-font); letter-spacing: -.01em; color: var(--sb-text); }
   .sb-plans > .sb-hint { margin: 0 0 14px; max-width: 70ch; }
@@ -6159,7 +6306,8 @@
   /* The Anything page's tools: a drawing over its name, three to a row. */
   .sb-tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 6px; }
   /* v578: the insert toolbar floats at the top of the page, like the page bar at its foot. */
-  .sb-insert { position: absolute; left: 50%; top: 12px; z-index: 12; max-width: calc(100% - 24px); padding: 4px; transform: translateX(-50%); background: var(--sb-raised); border: 1px solid var(--sb-line); border-radius: var(--sb-r-lg); box-shadow: var(--sb-sh-2); }
+  /* Centred by margins, not by left 50% — that left the toolbar only half the stage to fit in, and it was cut. */
+  .sb-insert { position: absolute; left: 0; right: 0; top: 12px; z-index: 12; width: max-content; max-width: calc(100% - 24px); margin: 0 auto; padding: 4px; background: var(--sb-raised); border: 1px solid var(--sb-line); border-radius: var(--sb-r-lg); box-shadow: var(--sb-sh-2); }
   .sb-insert[hidden] { display: none; }
   .sb-insert .sb-tools { display: flex; flex-wrap: nowrap; gap: 2px; margin: 0; overflow-x: auto; scrollbar-width: none; }
   .sb-insert .sb-tools button { flex: none; flex-direction: row; gap: 6px; min-height: 32px; padding: 6px 10px; background: transparent; border-radius: var(--sb-r); font-size: 12.5px; }
@@ -6622,6 +6770,19 @@
        section of the Add-page gallery of its own, not a "Layouts ·" one. */
     /* v579 (the owner: "magazine and look books … sections will have their own
        templates with covers and back"), from fashion-magazine and lookbook kits. */
+    { group: "Calendar", top: true, items: [
+      ["cal_wall", "Photograph over the month", "A photograph across the top, the month to write in under it."],
+      ["cal_overlay", "Month on the photograph", "The photograph to the edges, the month on a pale panel at its foot."],
+      ["cal_square", "Square month", "The photograph above, the month below, for a square calendar."],
+      ["cal_side", "Beside the photograph", "On its side: the photograph left, the month right."],
+      ["cal_desk", "Desk", "On its side, half and half: the photograph and the month."],
+      ["cal_desk2", "Desk, photograph on top", "On its side: the photograph above, the month below."],
+      ["cal_cover", "Calendar cover", "One photograph to the edges, the year large."],
+      ["cal_cover_type", "Cover, the year first", "The year large, a photograph under it."],
+      ["cal_cover_land", "Cover, on its side", "One photograph to the edges, the year large, for a landscape calendar."],
+      ["cal_year", "The year on one page", "A photograph and all twelve months, small."],
+      ["cal_back", "Back · the year", "All twelve months, small, and your name."],
+      ["cal_back_land", "Back · the year, on its side", "All twelve months for a landscape calendar."]] },
     { group: "Magazine", top: true, items: [
       ["mg_cover", "Magazine cover", "Masthead, issue line, cover lines and a barcode box over one photograph."],
       ["mg_cover_min", "Minimal cover", "The title across the top, the photograph framed under it, one line."],
@@ -6702,10 +6863,11 @@
      layouts (the owner, Oct 1 2026: "moodboard can have templates relevant to
      moodboard"), its own kind first; the studio's "how we work" pages and the
      lookbook's look pages are not offered; everything else follows. */
-  const PLAN_FIRST = { moodboard: ["Moodboard", "Pitch", "Shoot plan", "Team pages"], pitch: ["Pitch", "Moodboard", "Team pages", "Shoot plan"], shoot: ["Shoot plan", "Moodboard", "Team pages", "Pitch"] };
+  const PLAN_FIRST = { calendar: ["Calendar", "Moodboard"], moodboard: ["Moodboard", "Pitch", "Shoot plan", "Team pages"], pitch: ["Pitch", "Moodboard", "Team pages", "Shoot plan"], shoot: ["Shoot plan", "Moodboard", "Team pages", "Pitch"] };
   const PLAN_NOT = new Set(["How we work", "Lookbook"]);
   const addMenuFor = (book) => {
-    const menu = addMenuBase(book), first = PLAN_FIRST[book && book.plan];
+    // Calendar pages only in a calendar: a month needs the calendar's year to be one.
+    const menu = addMenuBase(book).filter((g) => g.group !== "Calendar" || (book && book.plan === "calendar")), first = PLAN_FIRST[book && book.plan];
     if (!first) return menu;
     return [...first.map((g) => menu.find((x) => x.group === g)).filter(Boolean), ...menu.filter((x) => !first.includes(x.group) && !PLAN_NOT.has(x.group))];
   };
@@ -6905,6 +7067,7 @@
     if (bind === "byline") return `${studio()} · ${new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" })}`;
     if (bind === "studio") return studio().toUpperCase();
     if (bind === "title") return String(book.title || "").toUpperCase();
+    if (bind === "calyear") return calYearLabel(book);
     return "";
   }
   function startBlocks(key, book, how = "add") {
@@ -7629,6 +7792,66 @@
         T("body", 0.07, 0.45, 0.86, 0.08, { sample: "Prices are wholesale, before tax. Sizes XS to XL in every style." }),
         P(0.07, 0.56, 0.86, 0.37)
       ]
+      ,
+      // ---- v580: calendars — covers, a month a page, the year, a back (research: Vistaprint, CEWE, printposters.in) ----
+      // Portrait: the photograph on top, the month under it (the wall calendar's usual page); the top ~12 mm kept clear for the binding.
+      cal_cover: [
+        P(0, 0, 1, 1),
+        T("head", 0.06, 0.72, 0.88, 0.17, { bind: "calyear", sample: "2027", style: { size: 1.6, weight: "bold", color: "#ffffff" } }),
+        T("kicker", 0.06, 0.9, 0.88, 0.022, { bind: "studio", sample: "NERDYPHOTOGRAPHER.IN", style: { color: "#ffffff" } })
+      ],
+      cal_cover_type: [
+        T("head", 0.06, 0.1, 0.88, 0.2, { bind: "calyear", sample: "2027", style: { size: 1.6, weight: "bold", align: "center" } }),
+        P(0.22, 0.34, 0.56, 0.5),
+        T("kicker", 0.06, 0.88, 0.88, 0.022, { bind: "studio", sample: "NERDYPHOTOGRAPHER.IN", style: { align: "center" } })
+      ],
+      cal_wall: [
+        P(0, 0, 1, 0.58),
+        { k: "cal", x: 0.07, y: 0.615, w: 0.86, h: 0.35 }
+      ],
+      cal_overlay: [
+        P(0, 0, 1, 1),
+        S(0.05, 0.6, 0.9, 0.37, "#ffffff", { o: 0.88 }),
+        { k: "cal", x: 0.08, y: 0.62, w: 0.84, h: 0.33 }
+      ],
+      cal_square: [
+        P(0, 0, 1, 0.55),
+        { k: "cal", x: 0.07, y: 0.58, w: 0.86, h: 0.39 }
+      ],
+      cal_back: [
+        label(0.07, 0.05, 0.86, "THE YEAR"),
+        ...Array.from({ length: 12 }, (_, i) => ({ k: "cal", look: "mini", m: i, x: r3(0.07 + (i % 3) * 0.3), y: r3(0.1 + Math.floor(i / 3) * 0.205), w: 0.26, h: 0.18 })),
+        T("kicker", 0.07, 0.93, 0.86, 0.022, { bind: "studio", sample: "NERDYPHOTOGRAPHER.IN" })
+      ],
+      cal_year: [
+        P(0, 0, 1, 0.36),
+        T("head", 0.06, 0.38, 0.88, 0.07, { bind: "calyear", sample: "2027", style: { weight: "bold" } }),
+        ...Array.from({ length: 12 }, (_, i) => ({ k: "cal", look: "mini", m: i, x: r3(0.06 + (i % 4) * 0.225), y: r3(0.47 + Math.floor(i / 4) * 0.17), w: 0.205, h: 0.155 })),
+        T("kicker", 0.06, 0.97, 0.88, 0.018, { bind: "studio", sample: "NERDYPHOTOGRAPHER.IN" })
+      ],
+      // Landscape (the frame is A4 on its side): the photograph beside the month.
+      cal_cover_land: [
+        P(0, 0, 1, 1),
+        T("head", 0.05, 0.68, 0.6, 0.2, { bind: "calyear", sample: "2027", style: { size: 1.6, weight: "bold", color: "#ffffff" } }),
+        T("kicker", 0.05, 0.9, 0.6, 0.03, { bind: "studio", sample: "NERDYPHOTOGRAPHER.IN", style: { color: "#ffffff" } })
+      ],
+      cal_side: [
+        P(0, 0, 0.56, 1),
+        { k: "cal", x: 0.6, y: 0.08, w: 0.36, h: 0.85 }
+      ],
+      cal_desk: [
+        P(0, 0, 0.5, 1),
+        { k: "cal", x: 0.54, y: 0.09, w: 0.42, h: 0.83 }
+      ],
+      cal_desk2: [
+        P(0, 0, 1, 0.55),
+        { k: "cal", x: 0.06, y: 0.59, w: 0.88, h: 0.37 }
+      ],
+      cal_back_land: [
+        label(0.05, 0.05, 0.9, "THE YEAR"),
+        ...Array.from({ length: 12 }, (_, i) => ({ k: "cal", look: "mini", m: i, x: r3(0.05 + (i % 4) * 0.23), y: r3(0.13 + Math.floor(i / 4) * 0.27), w: 0.21, h: 0.24 })),
+        T("kicker", 0.05, 0.94, 0.9, 0.03, { bind: "studio", sample: "NERDYPHOTOGRAPHER.IN" })
+      ]
     });
   })();
   // A layout's small picture, worked out from the layout itself.
@@ -7640,6 +7863,7 @@
       if (b.k === "photo") out.push(`p${x},${y},${w},${h}`);
       else if (b.k === "shape") out.push(/^#[0-9a-f]{6}$/i.test(b.fill || "") ? `h${x},${y},${w},${h},${b.fill}` : `${b.fill === "ink" ? "q" : "b"}${x},${y},${w},${h}`);
       else if (b.k === "line") out.push(`b${x},${y},${w},1`);
+      else if (b.k === "cal") { for (let q = 0; q < 5; q++) out.push(`t${x},${r(y + (h * (q + 1)) / 6)},${w},0.7`); }
       else if (b.k === "text") {
         if (b.fill) out.push(/^#[0-9a-f]{6}$/i.test(b.fill) ? `h${x},${y},${w},${h},${b.fill}` : `b${x},${y},${w},${h}`);
         const white = b.style && /^#fff/i.test(b.style.color || "") ? "w" : "t";
@@ -8610,7 +8834,7 @@
           /* A section for each kind (v579, the owner: "like you have for moodboard create a section for … magazine and
              look books"). A lookbook is one started as a lookbook, or one in the Lookbook style from before. */
           const lookbook = (v) => v.kind === "lookbook" || (!v.kind && v.style === "lookbook");
-          const books = state.versions.filter((v) => !v.plan && !lookbook(v)), looks = state.versions.filter((v) => !v.plan && lookbook(v)), plans = state.versions.filter((v) => v.plan);
+          const books = state.versions.filter((v) => !v.plan && !lookbook(v)), looks = state.versions.filter((v) => !v.plan && lookbook(v)), plans = state.versions.filter((v) => v.plan && v.plan !== "calendar"), cals = state.versions.filter((v) => v.plan === "calendar");
           return `<section class="sb-sect" aria-labelledby="sbMagHead"><h2 class="sb-plansh" id="sbMagHead">Magazines &amp; portfolios</h2>
             <p class="sb-hint">Your own book of work, and magazines for brands, clients and talents: a cover, pages, a back cover.</p>
             <div class="sb-cards">${books.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-new data-newkind="magazine" ${atLimit ? "disabled" : ""}>New magazine<small>A cover, a page of photographs and a back cover</small></button></div></section>
@@ -8619,7 +8843,10 @@
             <div class="sb-cards">${looks.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-newkind="lookbook" ${atLimit ? "disabled" : ""}>New lookbook<small>A cover, the collection, six looks and a back cover</small></button></div></section>
           <section class="sb-plans" aria-labelledby="sbPlansHead"><h2 class="sb-plansh" id="sbPlansHead">Moodboards &amp; plans</h2>
             <p class="sb-hint">Moodboards to pitch an idea, plan a shoot or get the team on the same page — your photographs, and pictures pasted from anywhere. Kept on this computer only and never published, whoever they're for.</p>
-            <div class="sb-cards">${plans.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-newplan ${atLimit ? "disabled" : ""}>New moodboard<small>Plug in your photographs, or paste pictures from anywhere</small></button></div></section>`;
+            <div class="sb-cards">${plans.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-newplan ${atLimit ? "disabled" : ""}>New moodboard<small>Plug in your photographs, or paste pictures from anywhere</small></button></div></section>
+          <section class="sb-plans" aria-labelledby="sbCalHead"><h2 class="sb-plansh" id="sbCalHead">Calendars</h2>
+            <p class="sb-hint">Wall, desk and poster calendars for any year — a hundred ahead if you like — in the standard sizes. Kept on this computer only: save a copy for the print shop.</p>
+            <div class="sb-cards">${cals.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-newkind="calendar" ${atLimit ? "disabled" : ""}>New calendar<small>A cover, twelve months and the year on the back</small></button></div></section>`;
         })()}
         <p class="sb-hint sb-foot">Your own books save on this device as you work, and go into your site's files when you publish, so they open on any device — visitors see no page, but anyone can read those files. Books made for a brand, a client or a talent, and every moodboard, stay on this computer only: save a copy of each to move it or keep it safe.${atLimit ? ` You have ${LIMIT} books, the most there can be: delete one to start another.` : ""}</p>`;
       const copyFile = $("#sbCopyFile");
@@ -8650,6 +8877,7 @@
       let board = "mb_grid";
       const KIND_NOTE = { magazine: "A cover, a page of photographs and a back cover; add pages in between — a magazine has its own covers, contents, letter, features, interviews and back covers in Add page.",
         pitch: "A pitch to win a shoot, eleven pages to fill: a cover, the idea and its mood words, references, colours, the model, styling, hair & make-up, location, light, deliverables and your past work. Kept on this computer only and never published, whoever it's for.",
+        calendar: "Twelve months for any year — a hundred years ahead if you like: a cover, a page a month with a photograph and a back of the whole year; or the year on one poster. Pick the year, the month it starts in and the day weeks start on, then its shape. Kept on this computer only.",
         shootplan: "Everything for the day, eleven pages: a cover, the brief, the moodboard in six parts, a page for each of three looks, hair & make-up, this-not-that, the shot list, the call sheet and the credits. Kept on this computer only and never published, whoever it's for.",
         moodboard: `A cover, the board you pick below and a back cover, like a magazine. Plug in your own photographs, or copy any picture from Pinterest, Google or anywhere and paste it with ${MOD}V. Pick the board's layout — or a blank page to make your own; more boards come from Add page → Moodboard. Kept on this computer only and never published, whoever it's for.`, lookbook: "A cover, a page about the collection, six looks and a back cover. Each look is one or two photographs with its number, its name and its lines.",
         compcard: "One page, like a printed comp card: a big photograph with three beside it, their name, what they do, their measurements and the brands they have worked with — filled from their card. Every part can be moved, edited or deleted, and a brand's logo added as a photo from this computer." };
@@ -8659,6 +8887,11 @@
         /* A moodboard: the board is the book's first page, laid out from
            scratch like a comp card, with nothing after it. */
         // A pitch or a shoot plan: its cover and pages, filled once it knows who it is for (planPages).
+        if (k === "calendar") {
+          nb.id = uid(true);
+          nb.name = nb.name.replace(/^Book /, "Calendar ");
+          return calendarBook(nb, calPick.fmt, calPick);
+        }
         if (k === "pitch" || k === "shootplan") {
           nb.id = uid(true); nb.plan = KIND_PLAN[k];
           nb.name = nb.name.replace(/^Book /, `${PLAN_NAME[nb.plan]} `);
@@ -8692,7 +8925,9 @@
       let forWho = "studio", forName = "", forModel = "", kindByBrand = false;
       const OWN_MODEL = "__own";   // "Someone not on your list…"
       // A kind of book that is a plan, and the plan it makes.
-      const KIND_PLAN = { moodboard: "moodboard", pitch: "pitch", shootplan: "shoot" };
+      const KIND_PLAN = { moodboard: "moodboard", pitch: "pitch", shootplan: "shoot", calendar: "calendar" };
+      // What the calendar's chooser said, read before it closes (as the model typed in is).
+      let calPick = { fmt: "wall", year: calOf(null).year, start: 0, week: 0 };
       const planPages = (nb) => {
         if (!PLAN_COVER[nb.plan]) return nb;
         nb.coverPage = { blocks: startBlocks(PLAN_COVER[nb.plan], nb, "add") };
@@ -8706,7 +8941,7 @@
         return nb;
       };
       const TEAM_PAGES = new Set(["sp_shots", "sp_call", "tm_hairmakeup"]);
-      const forNoteNow = () => (forWho === "studio" && KIND_PLAN[kind] ? "Your own moodboard: kept on this computer only and never published — it is planning work, often with pictures that aren't yours." : FOR_NOTE[forWho]);
+      const forNoteNow = () => (forWho === "studio" && KIND_PLAN[kind] ? (kind === "calendar" ? "Your own calendar: kept on this computer only and never published — save a copy to take it to a print shop." : `Your own ${PLAN_NAME[KIND_PLAN[kind]].toLowerCase()}: kept on this computer only and never published — it is planning work, often with pictures that aren't yours.`) : FOR_NOTE[forWho]);
       const FOR_NOTE = {
         studio: "Your own book. Publishing puts it in your site's files, so it opens on any device.",
         brand: "Kept on this computer only — never published to your site. Their name goes where yours would be; your credit is a line on the last page, or nowhere if the contract says so.",
@@ -8864,9 +9099,17 @@
             <p class="sb-warn" id="sbForNeed" hidden></p>
           </div>
           <p class="sb-hint" id="sbForNote">${esc(forNoteNow())}</p>
-          <div class="sb-cpbase"><span>Start with</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="What kind of book">${[["magazine", "A magazine"], ["lookbook", "A lookbook"], ["moodboard", "A moodboard"], ["pitch", "A pitch"], ["shootplan", "A shoot plan"], ["compcard", "A comp card"]].map(([k, nm]) => `<button type="button" role="radio" data-kind="${k}" aria-checked="${kind === k}" ${k === "compcard" && forWho !== "talent" ? "hidden" : ""}>${nm}</button>`).join("")}</div></div>
+          <div class="sb-cpbase"><span>Start with</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="What kind of book">${[["magazine", "A magazine"], ["lookbook", "A lookbook"], ["moodboard", "A moodboard"], ["pitch", "A pitch"], ["shootplan", "A shoot plan"], ["calendar", "A calendar"], ["compcard", "A comp card"]].map(([k, nm]) => `<button type="button" role="radio" data-kind="${k}" aria-checked="${kind === k}" ${k === "compcard" && forWho !== "talent" ? "hidden" : ""}>${nm}</button>`).join("")}</div></div>
           <p class="sb-hint" id="sbKindNote">${esc(KIND_NOTE[kind])}</p>
           <div class="sb-startcc" id="sbStartCC" hidden><button type="button" class="sb-btn" data-start="custom" data-compcard="1">Make the comp card →</button><button type="button" class="sb-btn dark" data-start="custom" data-makeplan="1" hidden>Make it →</button></div>
+          <div class="sb-startcal" id="sbStartCal" ${kind === "calendar" ? "" : "hidden"}>
+            <div class="sb-calrow">
+              <div class="sb-field"><label for="sbNewCalYear">Year</label><input type="number" id="sbNewCalYear" min="1900" max="2200" value="${calPick.year}"></div>
+              <div class="sb-field"><label for="sbNewCalStart">Starts in</label><select id="sbNewCalStart">${MONTHS.map((n, i) => `<option value="${i}" ${calPick.start === i ? "selected" : ""}>${n}${i === 3 ? " (financial year)" : ""}</option>`).join("")}</select></div>
+              <div class="sb-field"><span class="sb-label">Weeks start on</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Weeks start on">${[[0, "Sunday"], [1, "Monday"]].map(([k, n]) => `<button type="button" role="radio" data-newcalweek="${k}" aria-checked="${calPick.week === k}">${n}</button>`).join("")}</div></div>
+            </div>
+            <div class="sb-starts">${Object.entries(CAL_FORMATS).map(([k, f]) => `<button type="button" class="sb-startitem" data-calfmt="${k}"><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(f.name)}</b><span>${esc(f.note)}</span></button>`).join("")}</div>
+          </div>
           <div class="sb-starts" id="sbStartBoards" ${kind === "moodboard" ? "" : "hidden"}>${BOARDS.map(([k, nm, note]) => `<button type="button" class="sb-startitem" data-board="${k}"><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(nm)}</b><span>${esc(note)}</span></button>`).join("")}</div>
           <p class="sb-hint" id="sbCoverHint">Then the cover to begin with. It can be changed any time on the cover's own panel.</p>
           <div class="sb-starts" id="sbStartCovers">${Object.entries(KIND_COVERS).flatMap(([kk, list]) => list.map(([t, nm, note]) => `<button type="button" class="sb-startitem" data-start="custom" data-covertpl="${t}" data-kindonly="${kk}" ${kind === kk ? "" : "hidden"}><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(nm)}</b><span>${esc(note)}</span></button>`)).join("")}${COVER_LAYOUTS.map(([k, nm]) => `<button type="button" class="sb-startitem" data-start="${k}"><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(k === "custom" ? "From scratch (blank)" : nm)}</b><span>${esc(COVER_LAYOUT_NOTE[k])}</span></button>`).join("")}</div>
@@ -8880,6 +9123,11 @@
         box.querySelector("#sbStartClose").addEventListener("click", () => { closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); });
         box.querySelectorAll("[data-start]").forEach((b) => b.addEventListener("click", () => startBook(b.dataset.start, null, b.dataset.covertpl)));
         box.querySelectorAll("[data-board]").forEach((b) => b.addEventListener("click", () => startBook("classic", b.dataset.board)));
+        // A calendar: its choices read now, the chooser closes, then the book is made.
+        const readCal = () => { const yv = parseInt((box.querySelector("#sbNewCalYear") || {}).value, 10); calPick.year = yv >= 1900 && yv <= 2200 ? yv : calOf(null).year; calPick.start = +(box.querySelector("#sbNewCalStart") || {}).value || 0; };
+        box.querySelectorAll("[data-calfmt]").forEach((b) => b.addEventListener("click", () => { readCal(); calPick.fmt = b.dataset.calfmt; startBook("custom"); }));
+        box.querySelectorAll("[data-newcalweek]").forEach((b) => b.addEventListener("click", () => { calPick.week = +b.dataset.newcalweek; box.querySelectorAll("[data-newcalweek]").forEach((x) => x.setAttribute("aria-checked", String(x === b))); readCal(); if (box.drawPreviews) box.drawPreviews(); }));
+        ["#sbNewCalYear", "#sbNewCalStart"].forEach((sel) => { const el = box.querySelector(sel); if (el) el.addEventListener("change", () => { readCal(); if (box.drawPreviews) box.drawPreviews(); }); });
         box.querySelectorAll("[data-starttpl]").forEach((b) => b.addEventListener("click", () => startFromTemplate(b.dataset.starttpl)));
         box.querySelectorAll("[data-tpldel]").forEach((b) => b.addEventListener("click", async () => {
           await tplDel(b.dataset.tpldel); await tplRefresh();
@@ -8928,12 +9176,13 @@
           // A comp card is one page with no cover to choose: one button instead.
           // A moodboard starts on a board: its layouts stand where the covers would.
           // A pitch or a shoot plan has its own cover: one button too.
-          const cc = kind === "compcard", mb = kind === "moodboard", pl = kind === "pitch" || kind === "shootplan";
+          const cc = kind === "compcard", mb = kind === "moodboard", pl = kind === "pitch" || kind === "shootplan", cal = kind === "calendar";
+          box.querySelector("#sbStartCal").hidden = !cal;
           box.querySelector("#sbStartCC").hidden = !cc && !pl;
           box.querySelector('[data-compcard="1"]').hidden = !cc;
           { const mk = box.querySelector("[data-makeplan]"); mk.hidden = !pl; mk.textContent = kind === "pitch" ? "Make the pitch →" : "Make the shoot plan →"; }
-          box.querySelector("#sbCoverHint").hidden = cc || mb || pl;
-          box.querySelector("#sbStartCovers").hidden = cc || mb || pl;
+          box.querySelector("#sbCoverHint").hidden = cc || mb || pl || cal;
+          box.querySelector("#sbStartCovers").hidden = cc || mb || pl || cal;
           box.querySelector("#sbStartBoards").hidden = !mb;
           box.querySelectorAll("[data-kindonly]").forEach((x) => { x.hidden = x.dataset.kindonly !== kind; });
           if (box.drawPreviews) box.drawPreviews();
@@ -8955,6 +9204,23 @@
                 if (slot && box.isConnected && token === previewToken) slot.replaceChildren(r.page.canvas);
               }
             } catch (e) { /* the words stay */ }
+          }
+          // The calendars, each drawn as its first month (the poster whole), in the year chosen.
+          if (kind === "calendar") {
+            const ids = []; try { for (const [id, hit] of library().byId) { if (!hit.photo.diagram && !hit.photo.outside) ids.push(id); if (ids.length >= 6) break; } } catch (e) { /* frames stay empty */ }
+            for (const [k, f] of Object.entries(CAL_FORMATS)) {
+              if (!box.isConnected || token !== previewToken) return;
+              const nb = calendarBook(newBook("Preview"), k, calPick); let n = 0;
+              const first = f.year ? nb.coverPage.blocks : nb.pages[0].blocks;
+              nb.coverPage = { blocks: first.map((b) => (b.k === "photo" && ids.length ? { ...b, p: { id: ids[n++ % ids.length], x: 0.5, y: 0.35, zoom: 1 } } : b)) };
+              nb.pages = [];
+              try {
+                for await (const r of renderPages(nb, { dpi: 22, cache, only: -1 })) {
+                  const slot = box.querySelector(`[data-calfmt="${k}"] .sb-startpic`);
+                  if (slot && box.isConnected && token === previewToken) slot.replaceChildren(r.page.canvas);
+                }
+              } catch (e) { /* the words stay */ }
+            }
           }
           // A kind's own covers, with sample words and the studio's photographs.
           for (const [t] of KIND_COVERS[kind] || []) {
@@ -9283,7 +9549,7 @@
       $("#sbSave").addEventListener("click", () => {
         if (!flush()) return;   // persist() has already said why it could not
         setStatus(`Saved on this device · ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}${longNote()}`);
-        API.toast("Saved on this device. Publish puts it into the site's own files, on any device.");
+        API.toast(isForOthers(book) ? "Saved on this computer. It is never published: Save a copy to keep it safe or take it to another computer." : "Saved on this device. Publish puts it into the site's own files, on any device.");
       });
       $("#sbPublish").addEventListener("click", publish);
       $("#sbLight").addEventListener("click", () => { const t = $("#sbDlToggle"); if (t && $("#sbDlPop").hidden) t.click(); });
@@ -9574,7 +9840,7 @@
     const freePage = () => { const e = curEntry(); return e && e.type === "free" ? e : null; };
     const blocksOf = (e) => (Array.isArray(e.blocks) ? e.blocks : (e.blocks = []));
     const curBlock = () => { const e = freePage(); if (!e) return null; return blocksOf(e)[blockSel] || null; };
-    const BLOCK_NAME = { text: "Words", photo: "Photograph", shape: "Shape", line: "Line" };
+    const BLOCK_NAME = { text: "Words", photo: "Photograph", shape: "Shape", line: "Line", cal: "Month" };
     const blockLabel = (b) => (b.k === "text" ? (String(b.t || "").trim().slice(0, 28) || "Words (empty)") : b.k === "line" && linePath(b) === "free" ? "Drawn line" : BLOCK_NAME[b.k] || b.k);
     /* The list of what is on an Anything page, as layers (the owner, Sep 29
        2026: "improve UX of this page … modern and minimalistic"): one slim
@@ -9644,6 +9910,7 @@
         if (b.k === "text") { const t = String(b.t || "").trim(); return t ? { text: t.split("\n")[0].slice(0, 40), empty: false } : { text: "Empty text", empty: true }; }
         if (b.k === "photo") return b.p && b.p.id ? { text: "Photo", empty: false } : { text: "Empty photo frame", empty: true };
         if (b.k === "line") return { text: linePath(b) === "free" ? "Drawn line" : "Line", empty: false };
+        if (b.k === "cal") { const at = calMonth(book, b.m || 0); return { text: `${MONTHS[at.m]} ${at.y}`, empty: false }; }
         return { text: BLOCK_NAME[b.k] || b.k, empty: false };
       };
       const last = blocks.length - 1;
@@ -10889,7 +11156,7 @@
          Start (v577: "why cant i make a moodboard without any album" — it
          opened on From an album); a talent's or a brand's book leads with
          their cards. Within a kind, the order the menu gives. */
-      const PLANNING = new Set(["Moodboard", "Pitch", "Shoot plan", "Team pages"]), CARDS = new Set(["Comp cards", "For brands"]);
+      const PLANNING = new Set(["Calendar", "Moodboard", "Pitch", "Shoot plan", "Team pages"]), CARDS = new Set(["Comp cards", "For brands"]);
       const sectionOf = (g) => (g.id === "auto" || g.id === "tpl" ? "Start" : g.lay ? "Layouts" : PLANNING.has(g.name) ? "Planning" : CARDS.has(g.name) ? "Cards" : "Pages");
       const mf = forOf(book);
       const ORDER = book.plan ? ["Planning", "Pages", "Cards", "Layouts", "Start"] : mf && (mf.kind === "talent" || mf.kind === "brand") ? ["Start", "Cards", "Pages", "Planning", "Layouts"] : ["Start", "Pages", "Planning", "Cards", "Layouts"];
@@ -11172,7 +11439,14 @@
       if (WRITING[pg.type]) { const w = wordsOf(pg); return w.length ? `${PAGE_LABEL[pg.type]} · “${w.slice(0, 6).join(" ")}”` : PAGE_LABEL[pg.type]; }
       if (pg.type === "photos" || pg.type === "spread") return `${PAGE_LABEL[pg.type]} · ${(pg.photos || []).length}`;
       if (pg.type === "divider") return pg.heading ? `Chapter · ${pg.heading}` : "Chapter page";
-      if (pg.type === "free") return (pg.blocks || []).length ? `${PAGE_LABEL.free} · ${pg.blocks.length}` : "Empty page";
+      // A calendar page by its month (v580); a year page as the year.
+      if (pg.type === "free") {
+        const months = (pg.blocks || []).filter((x) => x && x.k === "cal");
+        const big = months.find((x) => x.look !== "mini");
+        if (big) { const at = calMonth(book, big.m || 0); return `${MONTHS[at.m]} ${at.y}`; }
+        if (months.length >= 12) return `The year · ${calYearLabel(book)}`;
+        return (pg.blocks || []).length ? `${PAGE_LABEL.free} · ${pg.blocks.length}` : "Empty page";
+      }
       return PAGE_LABEL[pg.type] || pg.type;
     }
     // The page that faces this one in the printed book: the cover sits alone,
@@ -12618,6 +12892,13 @@
             <select id="sbBlend" data-blend>${BLENDS.map(([k, n]) => `<option value="${k}" ${(b.blend || "") === k ? "selected" : ""}>${n}</option>`).join("")}</select>
             <p class="sb-hint">Multiply lets the paper and anything underneath show through the light parts, the way ink does; Screen does the same with the dark parts.${b.k === "text" ? " Blended words print as part of the picture rather than as type." : ""}</p></div>
         </details>` : "";
+      // A month (v580): which one, how it looks, its name on top or not, the colour of its numbers.
+      const calFields = b && b.k === "cal" ? `
+          <div class="sb-field"><label for="sbCalM">Which month</label><select id="sbCalM" data-calm>${Array.from({ length: 13 }, (_, i) => { const at = calMonth(book, i); return `<option value="${i}" ${(b.m || 0) === i ? "selected" : ""}>${MONTHS[at.m]} ${at.y}</option>`; }).join("")}</select></div>
+          <div class="sb-field"><span class="sb-label">How it looks</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="How the month looks">${[["grid", "A month to write in"], ["mini", "Small"]].map(([k, n]) => `<button type="button" role="radio" data-callook="${k}" aria-checked="${(b.look || "grid") === k}">${n}</button>`).join("")}</div></div>
+          <label class="sb-check-row"><input type="checkbox" data-caltitle ${b.title === false ? "" : "checked"}> The month's name on top</label>
+          <div class="sb-field"><span class="sb-label">Colour of the numbers</span><span class="sb-swatches" role="group" aria-label="Colour of the numbers">${swatch("calcol", "", "The style's own", P.ink, !b.color)}${fills.filter(([k]) => k !== "ink").map(([k, n, c]) => swatch("calcol", k, n, c, b.color === k)).join("")}</span></div>
+          <p class="sb-hint">The year, the month it starts in and the day weeks start on are the whole calendar's: Design → Calendar.</p>` : "";
       const words = b && b.k === "text" ? `
         <div class="sb-field"><span class="sb-label">What kind of words</span>
           <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="What kind of words">${[["kicker", "Small line"], ["head", "Headline"], ["intro", "Intro"], ["body", "Words"], ["quote", "Quote"]].map(([k, n]) => `<button type="button" role="radio" data-role="${k}" aria-checked="${(b.role || "body") === k}">${n}</button>`).join("")}</div></div>
@@ -12666,7 +12947,7 @@
 `;
       box.innerHTML = `
         ${b ? "" : `<details class="sb-pick sb-layouts"><summary>Change the layout</summary>
-          ${LAYOUT_GROUPS.map((g) => `<p class="sb-label">${esc(g.group)}</p><div class="sb-layoutgrid">${g.items.map(([k, n]) => `<button type="button" class="sb-layoutbtn" data-layout="${k}" title="${esc(n)}">${addIcon(`free:${k}`)}<span>${esc(n)}</span></button>`).join("")}</div>`).join("")}
+          ${LAYOUT_GROUPS.filter((g) => g.group !== "Calendar" || book.plan === "calendar").map((g) => `<p class="sb-label">${esc(g.group)}</p><div class="sb-layoutgrid">${g.items.map(([k, n]) => `<button type="button" class="sb-layoutbtn" data-layout="${k}" title="${esc(n)}">${addIcon(`free:${k}`)}<span>${esc(n)}</span></button>`).join("")}</div>`).join("")}
           <p class="sb-hint">Your photographs and words move into the new layout, headlines to headlines and photographs in order; anything it has no place for stays where it is. Ctrl+Z goes back.</p></details>`}
         <div class="sb-tools">
           <button type="button" data-addblk="text">${uiIc("type", 20)}<span>Words</span></button>
@@ -12681,7 +12962,7 @@
         ${b ? "" : layersHtml}
         ${b ? "" : pageLookHtml(entry, blocks.filter((x) => x.k === "photo").length, true)}
         ${b ? `<div class="sb-sec sb-rowbox sb-item"><div class="sb-itemhead"><button type="button" class="sb-btn quiet sb-backpage" data-backpage aria-label="Back to the page">${uiIc("left", 14)}<span>Page</span></button><h3>${esc(BLOCK_NAME[b.k] || "Thing")} ${blockSel + 1}</h3></div>
-          ${words}${paint}${photoShape}${effects}
+          ${words}${calFields}${paint}${photoShape}${effects}
           ${b.k === "photo" ? `<div class="sb-adds"><button type="button" data-noteunder>${uiIc("type")}Add a note under it</button><button type="button" data-colours ${b.p && b.p.id ? "" : "disabled"}>${uiIc("palette")}Colours from it</button></div>` : ""}
           ${(() => {
             const rec = b.k === "photo" && b.p && /^out_/.test(String(b.p.id)) ? (outsideCache || []).find((r) => r.id === b.p.id && r.pasted) : null;
@@ -12715,6 +12996,12 @@
       // Back to the page's own settings; the open groups are remembered across redraws.
       { const bp = box.querySelector("[data-backpage]"); if (bp) bp.addEventListener("click", () => { blockSel = -1; multi = null; drawLayer(); drawInspector(); }); }
       box.querySelectorAll("details[data-more]").forEach((d) => d.addEventListener("toggle", () => { moreOpen[d.dataset.more] = d.open; }));
+      if (b && b.k === "cal") {
+        { const sm = box.querySelector("[data-calm]"); if (sm) sm.addEventListener("change", () => { mark(); b.m = +sm.value; redraw(); }); }
+        box.querySelectorAll("[data-callook]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.callook === "mini") b.look = "mini"; else delete b.look; redraw(); }));
+        { const ct = box.querySelector("[data-caltitle]"); if (ct) ct.addEventListener("change", () => { mark(); if (ct.checked) delete b.title; else b.title = false; redraw(); }); }
+        box.querySelectorAll("[data-calcol]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.calcol) b.color = x.dataset.calcol; else delete b.color; redraw(); }));
+      }
       { const ph = $("#sbPageHead"); if (ph) ph.hidden = !!b; }
       placeInsert(box);
       $$("[data-addblk]").forEach((x) => x.addEventListener("click", () => { if (x.dataset.addblk === "draw") { setDrawing(!drawing); return; } if (x.dataset.addblk === "paste") { pasteFromButton(); return; } addBlock(x.dataset.addblk); }));
@@ -13540,13 +13827,15 @@
       const byTitle = new Map(secs.map((el) => [((el.querySelector("h3") || {}).textContent || "").trim(), el]));
       const used = new Set();
       const frag = document.createDocumentFragment();
-      const groups = forOf(book) ? DESIGN_GROUPS : [...DESIGN_GROUPS.slice(1), DESIGN_GROUPS[0]];
+      const base = forOf(book) ? DESIGN_GROUPS : [...DESIGN_GROUPS.slice(1), DESIGN_GROUPS[0]];
+      // A calendar's own settings come first, open until closed (v580).
+      const groups = book.plan === "calendar" ? [["calendar", "Calendar", "Year · first month · week · holidays · your dates", ["Calendar"]], ...base] : base;
       for (const [key, name, note, titles] of groups) {
         const d = document.createElement("details");
-        d.className = "sb-group"; d.dataset.group = key; d.open = designOpen.has(key);
+        d.className = "sb-group"; d.dataset.group = key; d.open = key === "calendar" ? !designOpen.has("calendar-shut") : designOpen.has(key);
         d.innerHTML = `<summary>${esc(name)}<small>${esc(note)}</small></summary>`;
         for (const t of titles) { const el = byTitle.get(t); if (el) { d.appendChild(el); used.add(el); } }
-        d.addEventListener("toggle", () => { if (d.open) designOpen.add(key); else designOpen.delete(key); keepDesignOpen(); if (d.open && key === "look") drawStylePics(); });
+        d.addEventListener("toggle", () => { if (key === "calendar") { if (d.open) designOpen.delete("calendar-shut"); else designOpen.add("calendar-shut"); } else if (d.open) designOpen.add(key); else designOpen.delete(key); keepDesignOpen(); if (d.open && key === "look") drawStylePics(); });
         frag.appendChild(d);
       }
       for (const el of secs) if (!used.has(el)) frag.appendChild(el);
@@ -13978,9 +14267,54 @@
       await tplRefresh();
       API.toast(`Saved “${ans.name}”. It is offered when you start a New book.`);
     }
+    function calendarHtml() {
+      if (!book || book.plan !== "calendar") return "";
+      const c = calOf(book);
+      return `<div class="sb-sec" id="sbCalSec"><h3>Calendar</h3>
+          <div class="sb-calrow">
+            <div class="sb-field"><label for="sbCalYear">Year</label><div class="sb-calyear"><button type="button" class="sb-btn quiet sb-iconbtn" data-calyr="-1" aria-label="A year earlier">−</button><input type="number" id="sbCalYear" min="1900" max="2200" value="${c.year}"><button type="button" class="sb-btn quiet sb-iconbtn" data-calyr="1" aria-label="A year later">+</button></div></div>
+            <div class="sb-field"><label for="sbCalStart">Starts in</label><select id="sbCalStart">${MONTHS.map((n, i) => `<option value="${i}" ${c.start === i ? "selected" : ""}>${n}${i === 3 ? " (financial year)" : ""}</option>`).join("")}</select></div>
+          </div>
+          <div class="sb-field"><span class="sb-label">Weeks start on</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Weeks start on">${[[0, "Sunday"], [1, "Monday"]].map(([k, n]) => `<button type="button" role="radio" data-calweek="${k}" aria-checked="${c.week === k}">${n}</button>`).join("")}</div></div>
+          <label class="sb-check-row"><input type="checkbox" id="sbCalGhost" ${c.ghost ? "checked" : ""}> The days of the months either side, faint</label>
+          <label class="sb-check-row"><input type="checkbox" id="sbCalFixed" ${c.fixed ? "checked" : ""}> National holidays: 26 Jan, 15 Aug, 2 Oct, 25 Dec</label>
+          <div class="sb-field"><span class="sb-label">Your dates</span>
+            <div class="sb-caldates">${c.dates.map((x, i) => `<div class="sb-caldate"><input type="date" data-cald="${i}" value="${/^\d{4}-/.test(x.d) ? esc(x.d) : ""}" aria-label="Date ${i + 1}"><input type="text" data-calt="${i}" maxlength="30" value="${esc(x.t || "")}" placeholder="Shoot, birthday, Diwali…" aria-label="What it is"><button type="button" class="sb-btn quiet sb-iconbtn" data-caldel="${i}" aria-label="Remove this date">${uiIc("x")}</button></div>`).join("")}</div>
+            <button type="button" class="sb-btn" data-caladd ${c.dates.length >= 100 ? "disabled" : ""}>${uiIc("plus")}Add a date</button>
+            <p class="sb-hint">Festivals move with the moon and differ from state to state, so they are yours to add — Holi, Eid, Diwali — with this year's dates, along with shoots and birthdays. Each is written in its day.</p></div>
+        </div>`;
+    }
+    function wireCalendar(panel) {
+      if (!book || book.plan !== "calendar" || !panel.querySelector("#sbCalSec")) return;
+      const cur = () => { book.calendar = { ...(book.calendar || {}) }; return book.calendar; };
+      /* A change of year or first month: the words that said the old year say the new one (the cover's year, typed
+         from the calendar); every month block follows by itself. */
+      const setYear = (year, start) => {
+        const was = calYearLabel(book);
+        mark();
+        const c = cur();
+        if (year !== undefined) c.year = Math.max(1900, Math.min(2200, Math.round(year)));
+        if (start !== undefined) c.start = start;
+        const now = calYearLabel(book);
+        if (now !== was) [...(book.coverPage ? [book.coverPage] : []), ...book.pages].forEach((pg) => (pg.blocks || []).forEach((x) => { if (x.k === "text" && x.t === was) x.t = now; }));
+        change({ rail: true }); drawDesign(); drawInspector();
+      };
+      panel.querySelectorAll("[data-calyr]").forEach((x) => x.addEventListener("click", () => setYear(calOf(book).year + +x.dataset.calyr)));
+      { const yi = panel.querySelector("#sbCalYear"); yi.addEventListener("change", () => { const v = parseInt(yi.value, 10); if (v >= 1900 && v <= 2200) setYear(v); else yi.value = calOf(book).year; }); }
+      panel.querySelector("#sbCalStart").addEventListener("change", (e) => setYear(undefined, +e.target.value));
+      panel.querySelectorAll("[data-calweek]").forEach((x) => x.addEventListener("click", () => { mark(); const c = cur(); if (+x.dataset.calweek === 1) c.week = 1; else delete c.week; change({ rail: true }); drawDesign(); }));
+      panel.querySelector("#sbCalGhost").addEventListener("change", (e) => { mark(); const c = cur(); if (e.target.checked) delete c.ghost; else c.ghost = false; change({ rail: true }); });
+      panel.querySelector("#sbCalFixed").addEventListener("change", (e) => { mark(); const c = cur(); if (e.target.checked) delete c.fixed; else c.fixed = false; change({ rail: true }); });
+      const dates = () => { const c = cur(); c.dates = Array.isArray(c.dates) ? c.dates.map((x) => ({ ...x })) : []; return c.dates; };
+      panel.querySelector("[data-caladd]").addEventListener("click", () => { mark(); const d = dates(); const c = calOf(book); d.push({ d: `${c.year}-${two(c.start + 1)}-01`, t: "" }); change({ rail: true }); drawDesign(); const t = panel.ownerDocument.querySelector(`[data-calt="${d.length - 1}"]`); if (t) t.focus(); });
+      panel.querySelectorAll("[data-caldel]").forEach((x) => x.addEventListener("click", () => { mark(); dates().splice(+x.dataset.caldel, 1); change({ rail: true }); drawDesign(); }));
+      panel.querySelectorAll("[data-cald]").forEach((x) => x.addEventListener("change", () => { if (!/^\d{4}-\d{2}-\d{2}$/.test(x.value)) return; mark(); dates()[+x.dataset.cald].d = x.value; change({ rail: true }); }));
+      panel.querySelectorAll("[data-calt]").forEach((x) => x.addEventListener("input", () => { dates()[+x.dataset.calt].t = x.value.slice(0, 30); change({ rail: false, typing: true }); }));
+    }
     function drawDesign() {
       const panel = $("#sbPanelDesign"); if (!panel) return;
       panel.innerHTML = `
+        ${calendarHtml()}
         ${madeForHtml()}
         <div class="sb-sec"><h3>Style</h3>
           <div class="sb-styles" role="radiogroup" aria-label="Style">${STYLES.map((s) => `<button type="button" class="sb-style" role="radio" data-style="${s.key}" aria-checked="${book.style === s.key}"><span class="sb-stylepic" aria-hidden="true"></span><b>${esc(s.name)}</b><span>${esc(s.note)}</span></button>`).join("")}</div>
@@ -14054,6 +14388,7 @@
         </div>`;
       groupDesign(panel);
       wireMadeFor(panel);
+      wireCalendar(panel);
       wireBrand(panel);
       panel.querySelectorAll("[data-savetpl]").forEach((x) => x.addEventListener("click", () => saveTemplate(x.dataset.savetpl)));
       wireOver("sbFootText", (v) => { if (String(v).trim()) book.footText = v; else delete book.footText; });
@@ -14775,5 +15110,5 @@
     if (again) openBook(JSON.parse(JSON.stringify(again)), false, reopen); else showList();
   }
 
-  window.StudioBook = { mount, renderPages, subjectOf, cutoutCanvas, planWriting, planFree, FREE_STARTS, COLOURWAYS, STYLES, newBook, geometry, PAPERS, WAYS_COPY, PROCESS_COPY, bookletSides, SHEETS, fingerprint, fpScore, fpColour, imageHeader, originalsStore, originalLoader };
+  window.StudioBook = { calendar: { monthGrid, monthDays, dayOfWeek, calOf, calMonth, isLeap }, mount, renderPages, subjectOf, cutoutCanvas, planWriting, planFree, FREE_STARTS, COLOURWAYS, STYLES, newBook, geometry, PAPERS, WAYS_COPY, PROCESS_COPY, bookletSides, SHEETS, fingerprint, fpScore, fpColour, imageHeader, originalsStore, originalLoader };
 })();
