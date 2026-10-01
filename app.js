@@ -643,8 +643,95 @@ function getProductionSchedule() {
   return { key: use, ...PRODUCTION_SCHEDULES[use] };
 }
 
+// The contract archive's own words for the studio. A contract someone signed
+// keeps the place, the room limit and the finishing time it named, so these
+// two never change: contracts.js is written in them, and old invite codes
+// that lock "Home studio, Sector 46, Noida" are recognised by them.
 const HOME_STUDIO_AREA = "Sector 46, Noida";
 const HOME_STUDIO_NAME = `Home studio, ${HOME_STUDIO_AREA}`;
+
+/* The studio as it is NOW — set on the Calendar page (Oct 2026, the owner:
+   "in future i might change my home … eventually i will buy my small studio
+   space … and then contracts should also reflect the same"). What it is (a
+   home studio, or a studio space of the studio's own), its name, the area
+   shown on the site, how many people the room holds counting the
+   photographer, and the time sessions finish by. Kept on this device until
+   published, then read by every visitor from data.js — the same path as the
+   rental rates. Everything a client reads about the studio goes through
+   studioText(), which turns the archive's words into these; with the
+   settings as they were it changes nothing, letter for letter. */
+const STUDIO_DEFAULTS = { kind: "home", name: "", area: HOME_STUDIO_AREA, capacity: 3, finishBy: "7:00 PM" };
+const STUDIO_OWN_NAME = "nerdyphotographer.in studio";
+function cleanStudio(s) {
+  if (!s || typeof s !== "object") return null;
+  const str = (v, max) => String(v == null ? "" : v).replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, max);
+  const cap = Math.round(Number(s.capacity));
+  const finish = str(s.finishBy, 12).toUpperCase().replace(/\s*(AM|PM)$/, " $1");
+  return {
+    kind: s.kind === "own" ? "own" : "home",
+    name: str(s.name, 60),
+    area: str(s.area, 80) || STUDIO_DEFAULTS.area,
+    capacity: Number.isFinite(cap) && cap >= 2 && cap <= 50 ? cap : STUDIO_DEFAULTS.capacity,
+    finishBy: /^(1[0-2]|[1-9]):[0-5]\d (AM|PM)$/.test(finish) ? finish : STUDIO_DEFAULTS.finishBy
+  };
+}
+function getStudio() {
+  try { const saved = cleanStudio(JSON.parse(studioLocal("wps_studio") || "null")); if (saved) return saved; } catch (e) {}
+  return cleanStudio(window.WPS_DATA && window.WPS_DATA.STUDIO) || { ...STUDIO_DEFAULTS };
+}
+// "Home studio" / "nerdyphotographer.in studio", or the name the studio gave it.
+const studioName = (st = getStudio()) => st.name || (st.kind === "own" ? STUDIO_OWN_NAME : "Home studio");
+// "Home studio, Sector 46, Noida": how the venue is named on the booking page.
+const studioLabel = (st = getStudio()) => `${studioName(st)}, ${st.area}`;
+const studioIsArchive = (st = getStudio()) => st.kind === "home" && st.area === HOME_STUDIO_AREA && st.capacity === 3 && st.finishBy === "7:00 PM";
+const NUMBER_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
+/* The archive's words about the home studio, said of the studio as it is now:
+   its area, room limit and finishing time, and — for a studio space of its
+   own — its name in place of "home studio", with the lines that only a
+   private residence needs (whose home it is, the address held back until a
+   booking is confirmed) left out. Only for text a client reads: never for a
+   stored value, and never for a contract opened as the one someone agreed to. */
+function studioText(text, st = getStudio()) {
+  let t = String(text == null ? "" : text);
+  if (!t || studioIsArchive(st)) return t;
+  const n = st.capacity, word = NUMBER_WORDS[n] || String(n);
+  if (st.kind === "own") {
+    const nm = studioName(st);
+    t = t
+      // whose home it is, and the address a home keeps back
+      .replace(/<strong>Home studio sessions<\/strong> take place at the photographer['’]s private residence:/g, `<strong>Sessions at the ${nm}</strong>:`)
+      .replace(/at the photographer['’]s private residence/g, `at the ${nm} in ${HOME_STUDIO_AREA}`)
+      .replace(/;? ?the full address is shared on booking confirmation;?/g, (m) => (m.endsWith(";") && m.startsWith(";") ? ";" : ""))
+      .replace(/,? and the full address is shared once (?:your|the) booking is confirmed/g, "")
+      .replace(/ ?The full address is shared on booking confirmation\./g, "")
+      // the place itself
+      .replace(/the (?:photographer|Studio|studio)['’]s home studio/g, `the ${nm}`)
+      .replace(/Home [Ss]tudio [Rr]ental/g, `${nm} rental`)
+      .replace(/HOME STUDIO/g, "STUDIO").replace(/Home [Ss]tudio/g, "Studio")
+      .replace(/home studio/g, nm);
+  }
+  return t
+    .split(HOME_STUDIO_AREA).join(st.area)
+    .replace(/maximum of 3 people/g, `maximum of ${n} people`)
+    .replace(/capped at 3 people in total, and that 3 counts/g, `capped at ${n} people in total, and that ${n} counts`)
+    .replace(/capped at 3 people/g, `capped at ${n} people`)
+    .replace(/\bthree people\b/g, `${word} people`)
+    .replace(/7:00 PM/g, st.finishBy);
+}
+// Whether a venue as written (an invite's locked location) is the studio: its
+// name now, or the archive's "home studio" wording an older invite carries.
+function isStudioVenue(v, st = getStudio()) {
+  const t = String(v || "").trim().toLowerCase();
+  if (!t) return false;
+  return t === HOME_STUDIO_NAME.toLowerCase() || t === studioLabel(st).toLowerCase() || /home studio/.test(t) || (st.kind === "own" && t.includes(studioName(st).toLowerCase()));
+}
+window.isStudioVenue = isStudioVenue;
+window.getStudio = getStudio;
+window.cleanStudio = cleanStudio;
+window.studioName = studioName;
+window.studioLabel = studioLabel;
+window.studioText = studioText;
+window.STUDIO_DEFAULTS = STUDIO_DEFAULTS;
 
 // forTestShoot picks the collaboration rate. A test shoot brings no shoot fee
 // with it, so the studio may want to hand the space over cheaper than a paid
@@ -838,7 +925,8 @@ const SETTINGS_KEYS = {
   HOME_STUDIO_RATE: "wps_home_studio_rate",
   HOME_STUDIO_RATE_TFP: "wps_home_studio_rate_tfp",
   MEASURE_UNITS: "wps_measure_units",
-  HOME_SLIDESHOW: "wps_home_slideshow"
+  HOME_SLIDESHOW: "wps_home_slideshow",
+  STUDIO: "wps_studio"
 };
 /* Seconds each home-page photo stays up (the owner, Sep 2026: 5 by default,
    set on the Calendar page). Published as { seconds } for the same reason
@@ -6875,7 +6963,7 @@ window.resolveContractArchive = function(version) {
                          focus for a press (Sep 2026 audit); the code that
                          shows it clears these. -->
                     <select id="b_studio_space" tabindex="-1" aria-hidden="true">
-                      <option value="Home Studio - Noida (Provided by Studio)" id="b_studio_space_home">Home studio, Sector 46, Noida — intimate setup, best for portraits, comp cards &amp; solo talent</option>
+                      <option value="Home Studio - Noida (Provided by Studio)" id="b_studio_space_home">${esc(studioLabel())} — intimate setup, best for portraits, comp cards &amp; solo talent</option>
                       <option value="Dedicated Commercial Studio Rental (Billed at Actuals)">Dedicated Commercial Studio</option>
                       <option value="Outdoor / On-Location (No Studio Required)" selected>Outdoor / on-location — no studio required</option>
                     </select>
@@ -6886,7 +6974,7 @@ window.resolveContractArchive = function(version) {
                        is untouched. Kept inside this .field-row so the invite
                        code's venue lock hides both together. -->
                   <div class="venue-cards" id="venueCards" style="grid-column: 1 / -1;" role="radiogroup" aria-label="Where are we shooting?">
-                    <label class="venue-card"><input type="radio" name="venue_pick" value="Home Studio - Noida (Provided by Studio)" /><span class="vc-main"><strong>Home studio, Sector 46, Noida</strong><small>Intimate setup · portraits, comp cards, solo talent</small></span><span class="vc-tag">Rental itemised in your quote</span></label>
+                    <label class="venue-card"><input type="radio" name="venue_pick" value="Home Studio - Noida (Provided by Studio)" /><span class="vc-main"><strong>${esc(studioLabel())}</strong><small>Intimate setup · portraits, comp cards, solo talent</small></span><span class="vc-tag">Rental itemised in your quote</span></label>
                     <label class="venue-card"><input type="radio" name="venue_pick" value="Dedicated Commercial Studio Rental (Billed at Actuals)" /><span class="vc-main"><strong>Commercial studio</strong><small>Rented space, booked by you or by us</small></span><span class="vc-tag">Rental quoted separately</span></label>
                     <label class="venue-card"><input type="radio" name="venue_pick" value="Outdoor / On-Location (No Studio Required)" checked /><span class="vc-main"><strong>Outdoor / on location</strong><small>Your venue, or the outdoors</small></span><span class="vc-tag">No studio needed</span></label>
                   </div>
@@ -6992,7 +7080,7 @@ window.resolveContractArchive = function(version) {
                       <span id="summaryOriginalPrice" style="font-weight: 700; color: var(--ink); white-space: nowrap;">₹${getAdminPackages()[0].price.toLocaleString('en-IN')}</span>
                     </div>
                     <div id="summaryHomeStudioWrap" style="display: none; justify-content: space-between; align-items: baseline; gap: 12px; padding: 5px 0;">
-                      <span style="color: var(--ink-soft);"><span id="summaryHomeStudioLabel">Home Studio Rental (Sector 46, Noida)</span></span>
+                      <span style="color: var(--ink-soft);"><span id="summaryHomeStudioLabel">${esc(studioText("Home Studio Rental (Sector 46, Noida)"))}</span></span>
                       <span id="summaryHomeStudioAmount" style="font-weight: 700; color: var(--ink); white-space: nowrap;">+₹0</span>
                     </div>
                     <div id="summaryDiscountWrap" style="display: none; justify-content: space-between; align-items: baseline; gap: 12px; padding: 5px 0;">
@@ -7058,7 +7146,7 @@ window.resolveContractArchive = function(version) {
                     <strong>Nothing to pay for this collaboration.</strong> The studio is covering the venue for this session — the figure above is what it would otherwise have cost.
                   </div>
                   <div id="summaryReservationCard" style="display: none; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: var(--font-xs);">
-                    <span style="color: var(--ink-soft); display: block; font-size: var(--font-xs); text-transform: uppercase;">Home studio rental · paid in full up front</span>
+                    <span style="color: var(--ink-soft); display: block; font-size: var(--font-xs); text-transform: uppercase;">${esc(studioText("Home studio rental · paid in full up front"))}</span>
                     <strong id="summaryReservationAmount" style="color: var(--accent-text); font-size: var(--font-sm); font-family: var(--mono-font);">₹0</strong>
                     <span style="color: var(--ink-soft); display: block; margin-top: 4px; line-height: 1.5;">Payable <strong style="color: var(--ink);">in full</strong> before the shoot day to reserve the home studio. Moves to a new date if you reschedule at least 24 hours ahead; otherwise it is kept.</span>
                   </div>
@@ -7082,7 +7170,7 @@ window.resolveContractArchive = function(version) {
                    </li>
                    <li style="display: flex; gap: 10px; align-items: flex-start; font-size: var(--font-xs); line-height: 1.55; color: var(--ink-soft);">
                      <span aria-hidden="true" style="flex: 0 0 20px; font-size: var(--font-sm); line-height: 1.4;">🚗</span>
-                     <span id="policyTravel"><strong style="color: var(--ink);">Travel &amp; Accommodation:</strong> Shoots requiring travel beyond <strong style="color: var(--ink);">20 km</strong> from the studio base (Sector 46, Noida) incur paid travel and, where an overnight stay is needed, accommodation — billed <strong style="color: var(--ink);">at actuals (at cost)</strong>.</span>
+                     <span id="policyTravel"><strong style="color: var(--ink);">Travel &amp; Accommodation:</strong> Shoots requiring travel beyond <strong style="color: var(--ink);">20 km</strong> from the studio base (${esc(getStudio().area)}) incur paid travel and, where an overnight stay is needed, accommodation — billed <strong style="color: var(--ink);">at actuals (at cost)</strong>.</span>
                    </li>
                    <li style="display: flex; gap: 10px; align-items: flex-start; font-size: var(--font-xs); line-height: 1.55; color: var(--ink-soft);">
                      <span aria-hidden="true" style="flex: 0 0 20px; font-size: var(--font-sm); line-height: 1.4;">📸</span>
@@ -7198,7 +7286,7 @@ window.resolveContractArchive = function(version) {
                    <p id="termsModalSubtitle" style="margin: 0; font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent-text); text-transform: uppercase; letter-spacing: 0.05em;">TFP Collaboration, Model Release &amp; Digital Consent Terms</p>
                    
                    <div id="termsIntroGrid" style="background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 14px; font-size: var(--font-xs); display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px;">
-                     <div><strong>Studio:</strong> Prateek Saxena (nerdyphotographer.in), <span id="termsStudioArea">Sector 46, Noida</span></div>
+                     <div><strong>Studio:</strong> Prateek Saxena (nerdyphotographer.in), <span id="termsStudioArea">${esc(getStudio().area)}</span></div>
                      <div><strong id="termsPartnerLabel">Model:</strong> <span id="terms_partner_name">[Your Name]</span></div>
                      <div><strong>Business Handle:</strong> @nerdyphotographer.in</div>
                      <div><strong>Agreement:</strong> by the tick-box below, recorded in your confirmation email</div>
@@ -8004,7 +8092,7 @@ window.resolveContractArchive = function(version) {
     function bookingAtHomeStudio() {
       if (bookingCalc && bookingCalc.isValidInvite && bookingCalc.lockedLocation) {
         const v = String(bookingCalc.lockedLocation).trim();
-        return v === HOME_STUDIO_NAME || /home studio/i.test(v);
+        return isStudioVenue(v);
       }
       return document.getElementById("b_studio_space")?.value === "Home Studio - Noida (Provided by Studio)";
     }
@@ -8239,6 +8327,7 @@ window.resolveContractArchive = function(version) {
                 : (bannerHsDiscount.type === "flat" || bannerHsDiscount.type === "pct")
                   ? `🎉 Promo Offer Applied: ${tagMsg} on your package — plus ${bannerHsDiscount.type === "flat" ? `₹${Number(bannerHsDiscount.value || 0).toLocaleString("en-IN")}` : `${bannerHsDiscount.value}%`} off the home studio rental if you shoot there!`
                   : `🎉 Promo Offer Applied: You save ${tagMsg} on your selected package total!`;
+            savingsBadge.textContent = studioText(savingsBadge.textContent);
             if (btnDiscount) {
               btnDiscount.textContent = "✕ Remove Code";
               btnDiscount.style.background = "transparent";
@@ -8389,7 +8478,7 @@ window.resolveContractArchive = function(version) {
       const HOME_STUDIO_VALUE = "Home Studio - Noida (Provided by Studio)";
       const OUTDOOR_VALUE = "Outdoor / On-Location (No Studio Required)";
       const COMMERCIAL_STUDIO_VALUE = "Dedicated Commercial Studio Rental (Billed at Actuals)";
-      const HOME_STUDIO_LABEL = HOME_STUDIO_NAME;
+      const HOME_STUDIO_LABEL = studioLabel();
       const studioSpaceSel = $("#b_studio_space");
       const homeStudioOpt = $("#b_studio_space_home");
       const isTfpType = $("#b_type")?.value === "Selective Collaboration (TFP)";
@@ -8480,7 +8569,7 @@ window.resolveContractArchive = function(version) {
           }
         } else if (locationField.dataset.homePrefill === "1") {
           // Moved off the home studio — take the prefill back out again.
-          if (locationField.value.trim() === HOME_STUDIO_LABEL) locationField.value = "";
+          if (locationField.value.trim() === HOME_STUDIO_LABEL || locationField.value.trim() === HOME_STUDIO_NAME) locationField.value = "";
           delete locationField.dataset.homePrefill;
         }
       }
@@ -8560,18 +8649,18 @@ window.resolveContractArchive = function(version) {
         // own function, so reaching for it threw a ReferenceError the moment a
         // visitor typed an invite code carrying a venue — the whole field
         // refresh died mid-update, leaving pricing and policy text stale.
-        const lockedHomeRiderHtml = /home studio/i.test(lockedLocation || "")
-          ? ` Attendance is limited to a maximum of 3 people in total — the photographer, the Participant, and any crew they bring (hair &amp; make-up, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`
+        const lockedHomeRiderHtml = isStudioVenue(lockedLocation)
+          ? studioText(` Attendance is limited to a maximum of 3 people in total — the photographer, the Participant, and any crew they bring (hair &amp; make-up, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`)
           : ``;
         // House rules for the residence, quoted wherever the home studio is
         // the venue — a paid booking is capped exactly like an invited one.
-        const paidHomeRiderHtml = ` Attendance is limited to a maximum of 3 people in total — the photographer, the Participant, and any crew they bring (hair &amp; make-up, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`;
+        const paidHomeRiderHtml = studioText(` Attendance is limited to a maximum of 3 people in total — the photographer, the Participant, and any crew they bring (hair &amp; make-up, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`);
         contractStudioClause.innerHTML = (isValidInvite && lockedLocation && homeStudioFee === 0)
           ? `Studio for this session is provided by the photographer at <strong>${lockedLocation}</strong> at no additional rental charge to the talent.${lockedHomeRiderHtml} Hair &amp; make-up artists, stylists, set designers and any other third-party crew are not included — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`
           : homeStudioFee > 0
             // The client is looking at a quote with this rental on it, so the
             // clause they tick has to name the same number.
-            ? `This session takes place at the Studio's home studio in ${HOME_STUDIO_AREA}. A fixed home studio rental of <strong>₹${homeStudioFee.toLocaleString("en-IN")}</strong> applies and is itemised in the production quote, <strong>payable in full at least 48 hours before the shoot day</strong> to reserve the space and non-refundable once paid; no further venue rental applies to it.${paidHomeRiderHtml} Hair &amp; make-up artists, stylists, set designers and any other third-party crew are not included in this booking — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`
+            ? studioText(`This session takes place at the Studio's home studio in ${HOME_STUDIO_AREA}. A fixed home studio rental of <strong>₹${homeStudioFee.toLocaleString("en-IN")}</strong> applies and is itemised in the production quote, <strong>payable in full at least 48 hours before the shoot day</strong> to reserve the space and non-refundable once paid; no further venue rental applies to it.${paidHomeRiderHtml} Hair &amp; make-up artists, stylists, set designers and any other third-party crew are not included in this booking — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`)
             : `If a dedicated external or commercial studio space is requested or booked for the shoot, the Participant shall be entirely responsible for covering the applicable studio rental charges.${studioArrangerClauseHtml} Hair &amp; make-up artists, stylists, set designers and any other third-party crew are not included in this booking — the Participant may bring their own or ask the Studio to source them, and such crew are billed at actuals (at cost).`;
       }
 
@@ -8583,7 +8672,7 @@ window.resolveContractArchive = function(version) {
         // Labelled lines, like the paid-shoot block. Deliverables come from the
         // test-shoot package setting so the two never disagree.
         const studioLine = homeStudioFee > 0
-          ? `Home studio session: a fixed rental of ₹${homeStudioFee.toLocaleString("en-IN")} applies, itemised in your quote and payable in full before shoot day.`
+          ? studioText(`Home studio session: a fixed rental of ₹${homeStudioFee.toLocaleString("en-IN")} applies, itemised in your quote and payable in full before shoot day.`)
           : (isValidInvite && lockedLocation)
             ? `Provided by the photographer at ${esc(lockedLocation)}. No rental charge to you.`
             : `If a dedicated studio is booked, the rental is quoted in advance once the venue is confirmed and payable in full before shoot day.`;
@@ -8712,17 +8801,17 @@ window.resolveContractArchive = function(version) {
         const policyRental = $("#policyStudioRental");
         const policyTravel = $("#policyTravel");
         if (policyRental) {
-          policyRental.innerHTML = rentalFee > 0
+          policyRental.innerHTML = studioText(rentalFee > 0
             ? `<strong style="color: var(--ink);">Studio Rental:</strong> This session takes place at ${atHome ? `the studio's home studio in ${esc(HOME_STUDIO_AREA)}` : `<strong style="color: var(--ink);">${esc(venueAddressShown || "the venue above")}</strong>`}. A fixed ${atHome ? "home studio " : ""}rental of <strong style="color: var(--ink);">₹${rentalFee.toLocaleString("en-IN")}</strong> applies and is itemised in your quote — nothing further is charged for the venue.`
             : venueSuppliedByStudio
             ? `<strong style="color: var(--ink);">Studio Rental:</strong> The venue for this session${venueAddressShown ? ` (<strong style="color: var(--ink);">${esc(venueAddressShown)}</strong>)` : ""} is arranged and paid for by the studio. <strong style="color: var(--ink);">No studio rental or venue fee is billed to you.</strong> If you later ask to shoot somewhere else, standard venue terms apply again.`
-            : `<strong style="color: var(--ink);">Studio Rental:</strong> Package rates cover photography creation, light design &amp; master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are <strong style="color: var(--ink);">quoted separately in advance</strong>, or the client may directly book their preferred studio space for the production.`;
+            : `<strong style="color: var(--ink);">Studio Rental:</strong> Package rates cover photography creation, light design &amp; master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are <strong style="color: var(--ink);">quoted separately in advance</strong>, or the client may directly book their preferred studio space for the production.`);
         }
         if (policyTravel) {
           const travelKm = $("#b_type")?.value === "Selective Collaboration (TFP)" ? 10 : 20;
-          policyTravel.innerHTML = venueSuppliedByStudio
+          policyTravel.innerHTML = studioText(venueSuppliedByStudio
             ? `<strong style="color: var(--ink);">Travel &amp; Accommodation:</strong> Travel to the studio-provided venue above is covered by the studio for this session. Standard terms (travel beyond <strong style="color: var(--ink);">${travelKm} km</strong> from the studio base in Noida, and accommodation where an overnight stay is needed, billed at actuals) apply only if you request a different location.`
-            : `<strong style="color: var(--ink);">Travel &amp; Accommodation:</strong> Shoots requiring travel beyond <strong style="color: var(--ink);">${travelKm} km</strong> from the studio base (Sector 46, Noida) incur paid travel and, where an overnight stay is needed, accommodation — billed <strong style="color: var(--ink);">at actuals (at cost)</strong>.`;
+            : `<strong style="color: var(--ink);">Travel &amp; Accommodation:</strong> Shoots requiring travel beyond <strong style="color: var(--ink);">${travelKm} km</strong> from the studio base (Sector 46, Noida) incur paid travel and, where an overnight stay is needed, accommodation — billed <strong style="color: var(--ink);">at actuals (at cost)</strong>.`);
         }
       }
 
@@ -8878,7 +8967,7 @@ window.resolveContractArchive = function(version) {
         if (summaryHomeStudioLabel && showHomeStudioLine) {
           const venueName = inviteLocksVenue
             ? `Studio Venue (${lockedLocation})`
-            : `Home Studio Rental (${HOME_STUDIO_AREA})`;
+            : studioText(`Home Studio Rental (${HOME_STUDIO_AREA})`);
           summaryHomeStudioLabel.innerHTML = venueComplimentary
             ? `${esc(venueName)} <span style="color:#059669;font-weight:700;">— complimentary${venueFreeWithCode ? ` with ${esc(venueFreeWithCode)}` : ""}</span>`
             : promoDiscountsHomeStudio
@@ -9810,12 +9899,12 @@ window.resolveContractArchive = function(version) {
         // venue cards or an invite code supplied it: the house rules and the
         // "no rental billed" wording used to be skipped on invited bookings
         // because only the dropdown was consulted.
-        const inviteLockedHome = $("#b_location")?.dataset.inviteLocked === "1" && /home studio/i.test($("#b_location")?.value || "");
+        const inviteLockedHome = $("#b_location")?.dataset.inviteLocked === "1" && isStudioVenue($("#b_location")?.value);
         const isHomeStudio = $("#b_studio_space")?.value === "Home Studio - Noida (Provided by Studio)" || inviteLockedHome;
         const venueByStudio = $("#b_location")?.dataset.inviteLocked === "1" || isHomeStudio;
         const venueByStudioAddress = venueByStudio ? ($("#b_location")?.value || "") : "";
         const homeStudioRider = isHomeStudio
-          ? `\n\nHOME STUDIO SESSIONS\nThis session takes place at the photographer's private residence. Attendance is limited to a maximum of 3 people in total — the photographer, the Participant, and any crew they bring; hair & make-up artists, stylists, assistants and guests all count towards this limit. Sessions run within booked daylight hours and conclude by 7:00 PM. The full address is shared on booking confirmation. Anyone under 18 must come with a parent or guardian.`
+          ? studioText(`\n\nHOME STUDIO SESSIONS\nThis session takes place at the photographer's private residence. Attendance is limited to a maximum of 3 people in total — the photographer, the Participant, and any crew they bring; hair & make-up artists, stylists, assistants and guests all count towards this limit. Sessions run within booked daylight hours and conclude by 7:00 PM. The full address is shared on booking confirmation. Anyone under 18 must come with a parent or guardian.`)
           : "";
         // Same arranger choice the live contract clause reads during
         // updateFields, re-read here off the same select/radio pair so the
@@ -9884,7 +9973,7 @@ window.resolveContractArchive = function(version) {
         // so, in the same terms the quote showed them.
         const engagementFeeClause = isTfpCat
           ? (homeStudioRentalFee > 0
-              ? `\n\n7. HOME STUDIO RENTAL & PAYMENT\nThis collaboration carries no shoot fee. A fixed home studio rental of ₹${homeStudioRentalFee.toLocaleString('en-IN')} applies for use of the photographer's home studio in ${HOME_STUDIO_AREA}, and is payable IN FULL at least 48 hours before the shoot day to reserve the space. This rental is non-refundable once paid, including where the Participant cancels or reschedules. No other fee is payable to the Studio for this session.`
+              ? studioText(`\n\n7. HOME STUDIO RENTAL & PAYMENT\nThis collaboration carries no shoot fee. A fixed home studio rental of ₹${homeStudioRentalFee.toLocaleString('en-IN')} applies for use of the photographer's home studio in ${HOME_STUDIO_AREA}, and is payable IN FULL at least 48 hours before the shoot day to reserve the space. This rental is non-refundable once paid, including where the Participant cancels or reschedules. No other fee is payable to the Studio for this session.`)
               : "")
           : `\n\n7. ENGAGEMENT FEE, SELECTED PACKAGE & PAYMENT MILESTONES\nSelected package and contracted deliverables: ${budget || "as quoted by the Studio"}.\n${paymentTermsText.replace(/^Payment Terms: /, "Payment terms: ")}\nThe advance retainer moves to a new date if the shoot is rescheduled at least 24 hours before the call time (up to two moves); with less notice, or a no-show, it is kept. If the Studio cancels, the Client is offered a new date or a full refund. ${packageSchedule.release} Any work beyond the contracted package (additional retouched masters, extended usage, gallery buyout) is quoted and invoiced separately.`;
 
@@ -9894,7 +9983,7 @@ window.resolveContractArchive = function(version) {
         // Numbered off whether the rental clause above is present, since it is
         // omitted on a collaboration with no rental — hardcoding "8" would
         // print a document that jumps from 6 to 8.
-        const lateArrivalClause = "\n\n" + window.buildLateArrivalText(isTfpCat, engagementFeeClause ? 8 : 7);
+        const lateArrivalClause = "\n\n" + studioText(window.buildLateArrivalText(isTfpCat, engagementFeeClause ? 8 : 7));
 
         // What goes on the record is the sheet the client ticked (see
         // serializeTermsSheet). The clauses below are the old hand-written
@@ -9923,7 +10012,7 @@ window.resolveContractArchive = function(version) {
           `${isCustomContract ? 'CUSTOM CLIENT CONTRACT / AGENCY MSA REQUESTED' : (isTfpCat ? 'TFP COLLABORATION & MODEL RELEASE' : 'COMMERCIAL SHOOT PRODUCTION AGREEMENT')}\n` +
           `Document Reference: ${contractRefDoc}\n` +
           `--------------------------------------------------\n` +
-          `Studio: Prateek Saxena, trading as nerdyphotographer.in, Sector 46, Noida\n` +
+          `Studio: Prateek Saxena, trading as nerdyphotographer.in, ${getStudio().area}\n` +
           `Client/Participant: ${name}\n` +
           `Contact Email: ${email}\n` +
           `Contract Status: ${isCustomContract ? 'Custom Contract / Agency MSA Requested (Pending Studio Review)' : `Agreed to Studio Contract ${contractRefDoc}`}\n` +
@@ -9955,7 +10044,7 @@ window.resolveContractArchive = function(version) {
         // use-before-declaration crash on every submit.
         // House rules for shooting at the photographer's residence apply
         // whether or not a rental is charged for it.
-        const homeStudioHouseRules = `Home Studio Policy: This session takes place at the photographer's private residence. Attendance is capped at 3 people in total — the photographer, you, and any crew you bring (hair & make-up, stylist, assistants and guests all count towards this cap), sessions run within booked daylight hours and finish by 7:00 PM, and the full address is shared once the booking is confirmed. Anyone under 18 must come with a parent or guardian.\n`;
+        const homeStudioHouseRules = studioText(`Home Studio Policy: This session takes place at the photographer's private residence. Attendance is capped at 3 people in total — the photographer, you, and any crew you bring (hair & make-up, stylist, assistants and guests all count towards this cap), sessions run within booked daylight hours and finish by 7:00 PM, and the full address is shared once the booking is confirmed. Anyone under 18 must come with a parent or guardian.\n`);
 
         // A rental above zero means the home studio IS the venue, whatever the
         // dropdown says — it is hidden entirely on invite bookings, so keying
@@ -9965,7 +10054,7 @@ window.resolveContractArchive = function(version) {
         // rented space as the home studio leaves the studio's own record
         // describing a shoot that never happened there.
         const inviteVenueName = (bookingCalc && bookingCalc.isValidInvite && bookingCalc.lockedLocation) || "";
-        const venueLabel = inviteVenueName || HOME_STUDIO_NAME;
+        const venueLabel = inviteVenueName || studioLabel();
         const studioSpaceVal = (isHomeStudio || homeStudioRentalFee > 0)
           ? (homeStudioRentalFee > 0
               ? `${venueLabel} — provided by the studio, fixed rental ₹${homeStudioRentalFee.toLocaleString('en-IN')} (itemised in the quote)`
@@ -9979,7 +10068,7 @@ window.resolveContractArchive = function(version) {
           // A paid home-studio booking is the one case where the studio does
           // charge for its own venue, so the stock "no fee is billed to you"
           // and "billed at actuals" lines would both misstate the quote.
-          ? `Studio Rental Policy: This session takes place at the studio's home studio in ${HOME_STUDIO_AREA}. A fixed home studio rental of ₹${homeStudioRentalFee.toLocaleString('en-IN')} applies and is itemised in your production quote — nothing further is charged for the venue.\n` +
+          ? studioText(`Studio Rental Policy: This session takes place at the studio's home studio in ${HOME_STUDIO_AREA}. A fixed home studio rental of ₹${homeStudioRentalFee.toLocaleString('en-IN')} applies and is itemised in your production quote — nothing further is charged for the venue.\n`) +
             homeStudioHouseRules
           : venueByStudio
             ? `Studio Rental Policy: The venue for this session is arranged and paid for by the studio. No venue rental or studio space fee is billed to you for this shoot.\n` +
@@ -9991,8 +10080,8 @@ window.resolveContractArchive = function(version) {
         // killed every home-studio and venue-locked invite submit from v452
         // to v514 (nothing reached the studio, the button hung on "Sending").
         const travelPolicyNote = venueByStudio
-          ? `Travel & Accommodation Policy: Travel to the studio-provided venue above is covered by the studio${(bookingCalc && bookingCalc.isValidInvite) ? " for this invite" : ""}. If you later request a different location, standard terms apply again (travel beyond ${isTfpCat ? 10 : 20} km from the studio base in Noida, and accommodation where an overnight stay is needed, billed at actuals).\n`
-          : `Travel & Accommodation Policy: Shoots requiring travel beyond ${isTfpCat ? 10 : 20} km from the studio base (Sector 46, Noida) incur paid travel and, where an overnight stay is needed, accommodation - billed at actuals (at cost).\n`;
+          ? studioText(`Travel & Accommodation Policy: Travel to the studio-provided venue above is covered by the studio${(bookingCalc && bookingCalc.isValidInvite) ? " for this invite" : ""}. If you later request a different location, standard terms apply again (travel beyond ${isTfpCat ? 10 : 20} km from the studio base in Noida, and accommodation where an overnight stay is needed, billed at actuals).\n`)
+          : studioText(`Travel & Accommodation Policy: Shoots requiring travel beyond ${isTfpCat ? 10 : 20} km from the studio base (Sector 46, Noida) incur paid travel and, where an overnight stay is needed, accommodation - billed at actuals (at cost).\n`);
         // Paid shoots only: the package buys the photographer, not the crew.
         // Nothing anywhere said so, which left every HMUA/styling/set cost an
         // argument waiting to happen on shoot day.
@@ -10071,7 +10160,7 @@ window.resolveContractArchive = function(version) {
           : (enteredCode ? `${enteredCode} — not recognised, no invite applied` : "");
         const promoLine = promoMeta
           ? `${promoMeta.code}${promoMeta.tag ? ` — ${promoMeta.tag} on the package` : ""}` +
-            (homeStudioWaivedByPromo
+            studioText(homeStudioWaivedByPromo
               ? " · home studio rental waived"
               : (homeStudioDiscountedByPromo ? ` · ${homeStudioPromoDiscountLabel} on the home studio rental`
                 : (homeStudioRaisedByPromo ? ` · home studio rental set to ${inr(homeStudioRentalFee)} by the code` : ""))) +
@@ -10101,7 +10190,7 @@ window.resolveContractArchive = function(version) {
         const totalPayableLine = isProduction
           ? "Quoted on the brief"
           : finalPayableNum > 0
-            ? `${inr(finalPayableNum)}${isCollabPricing ? " — home studio rental only, no shoot fee" : (totalSavings > 0 ? ` (after ${inr(totalSavings)} in discounts)` : "")}`
+            ? studioText(`${inr(finalPayableNum)}${isCollabPricing ? " — home studio rental only, no shoot fee" : (totalSavings > 0 ? ` (after ${inr(totalSavings)} in discounts)` : "")}`)
             : (isCollabPricing ? "₹0 — collaboration, nothing payable to the studio" : "—");
         const paymentScheduleLine = isProduction
           ? `${productionSchedule.text} — as shown on the brief form; figures confirmed in the proposal`
@@ -10162,7 +10251,7 @@ window.resolveContractArchive = function(version) {
           (type !== "Selective Collaboration (TFP)"
             ? `${paymentTermsText}\n`
             : (homeStudioRentalFee > 0
-                ? `Payment Terms: No shoot fee applies to this collaboration. The home studio rental of ₹${homeStudioRentalFee.toLocaleString('en-IN')} is payable IN FULL at least 48 hours before the shoot day to reserve the space (non-refundable once paid). Nothing else is payable to the studio.\n`
+                ? studioText(`Payment Terms: No shoot fee applies to this collaboration. The home studio rental of ₹${homeStudioRentalFee.toLocaleString('en-IN')} is payable IN FULL at least 48 hours before the shoot day to reserve the space (non-refundable once paid). Nothing else is payable to the studio.\n`)
                 : "")) +
           crewCostPolicyNote +
           deliverablePolicyNote +
@@ -10267,7 +10356,7 @@ window.resolveContractArchive = function(version) {
             `Budget: ${budget || "TBD"}`,
             inviteMeta ? `Invite Code: ${inviteMeta.code} (${inviteMeta.desc})` : null,
             promoMeta ? `Promo Code: ${promoMeta.code} (${promoMeta.tag})` : null,
-            financialSummary.homeStudioFee > 0 ? `Home Studio Rental: ₹${financialSummary.homeStudioFee.toLocaleString('en-IN')}` : null,
+            financialSummary.homeStudioFee > 0 ? studioText(`Home Studio Rental: ₹${financialSummary.homeStudioFee.toLocaleString('en-IN')}`) : null,
             financialSummary.finalPayable > 0 ? `Payable: ₹${financialSummary.finalPayable.toLocaleString('en-IN')} (Retainer: ₹${financialSummary.advanceRetainer.toLocaleString('en-IN')}, Balance: ₹${financialSummary.wrapBalance.toLocaleString('en-IN')})` : `Category: TFP / Collab ($0)`
           ].filter(Boolean).join(" | ");
 
@@ -10838,7 +10927,9 @@ window.resolveContractArchive = function(version) {
         setTermsAgreeable(false);
         return;
       }
-      const agreed = atHome === false ? withoutHomeStudio(doc.fullText) : String(doc.fullText);
+      // A contract read as part of a booking (atHome known) speaks of the studio as it is now;
+      // one opened from an email link (atHome null) is the archive's, word for word.
+      const agreed = atHome === false ? studioText(withoutHomeStudio(doc.fullText)) : atHome === true ? studioText(doc.fullText) : String(doc.fullText);
       host.appendChild(window.contractLayout(agreed));
       // The words themselves, for the record: serializeTermsSheet takes these,
       // not the laid-out screen, so no heading, contents line or bullet break
@@ -10977,7 +11068,7 @@ window.resolveContractArchive = function(version) {
       const modalVenueByStudio = $("#b_location")?.dataset.inviteLocked === "1" || modalIsHomeStudio;
       const modalVenueAddress = modalVenueByStudio ? ($("#b_location")?.value || "") : "";
       const modalHomeRider = modalIsHomeStudio
-        ? ` <strong>Home studio sessions</strong> take place at the photographer's private residence: attendance is capped at 3 people in total — the photographer, you, and any crew you bring; hair &amp; make-up, stylist, assistants and guests all count towards this cap, the session runs within booked daylight hours and finishes by <strong>7:00 PM</strong>, and the full address is shared once your booking is confirmed. Anyone under 18 must come with a parent or guardian.`
+        ? studioText(` <strong>Home studio sessions</strong> take place at the photographer's private residence: attendance is capped at 3 people in total — the photographer, you, and any crew you bring; hair &amp; make-up, stylist, assistants and guests all count towards this cap, the session runs within booked daylight hours and finishes by <strong>7:00 PM</strong>, and the full address is shared once your booking is confirmed. Anyone under 18 must come with a parent or guardian.`)
         : "";
       // A paid home-studio booking now carries a fixed rental, so the blanket
       // "no studio rental is billed to you" would contradict the quote the
@@ -10991,7 +11082,7 @@ window.resolveContractArchive = function(version) {
       const venueSentence = modalHomeStudioFee > 0 && !modalIsHomeStudio
         ? ` This session takes place at <strong>${esc(modalVenueAddress || ($("#b_location")?.value || "").trim() || "the venue named in your booking")}</strong>. A fixed venue rental of <strong>₹${modalHomeStudioFee.toLocaleString("en-IN")}</strong> applies and is itemised in your quote, <strong>payable in full at least 48 hours before the shoot day</strong> to reserve the space and non-refundable once paid — nothing further is charged for the venue, and no travel cost is charged for it.`
         : modalHomeStudioFee > 0
-        ? ` This session takes place at the Studio's home studio in ${HOME_STUDIO_AREA}${modalVenueAddress && modalVenueAddress !== HOME_STUDIO_NAME ? ` (<strong>${esc(modalVenueAddress)}</strong>)` : ""}. A fixed home studio rental of <strong>₹${modalHomeStudioFee.toLocaleString("en-IN")}</strong> applies and is itemised in your quote, <strong>payable in full at least 48 hours before the shoot day</strong> to reserve the space and non-refundable once paid — nothing further is charged for the venue, and no travel cost is charged for it.${modalHomeRider}`
+        ? studioText(` This session takes place at the Studio's home studio in ${HOME_STUDIO_AREA}${modalVenueAddress && modalVenueAddress !== HOME_STUDIO_NAME ? ` (<strong>${esc(modalVenueAddress)}</strong>)` : ""}. A fixed home studio rental of <strong>₹${modalHomeStudioFee.toLocaleString("en-IN")}</strong> applies and is itemised in your quote, <strong>payable in full at least 48 hours before the shoot day</strong> to reserve the space and non-refundable once paid — nothing further is charged for the venue, and no travel cost is charged for it.${modalHomeRider}`)
         : modalVenueByStudio
         ? ` The shoot venue${modalVenueAddress ? ` (<strong>${esc(modalVenueAddress)}</strong>)` : ""} is arranged and paid for by the Studio — no studio rental, venue hire or travel cost is billed to you for it. Requesting a different location later re-applies the standard venue and travel terms.${modalHomeRider}`
         : (isTfp
@@ -11029,7 +11120,7 @@ window.resolveContractArchive = function(version) {
       // passages that only apply there (the studio, Sep 30 2026). A contract
       // opened from a client's email link (pinned) is shown whole.
       const termsAtHome = pinnedVersion ? null : bookingAtHomeStudio();
-      { const area = $("#termsStudioArea"); if (area) area.textContent = termsAtHome === false ? "Noida" : HOME_STUDIO_AREA; }
+      { const area = $("#termsStudioArea"); if (area) area.textContent = termsAtHome === false ? "Noida" : getStudio().area; }
       renderTermsBody(activeKey, isTfp, termsAtHome);
 
       const termsModalEl = $("#termsModal");

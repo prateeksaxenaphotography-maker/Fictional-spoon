@@ -62,6 +62,15 @@ const STUDIO_PUBLIC = CONFIG.studioPagePublic !== false;
 const { SERVICES, SERVICES_INDEX } = await import(pathToFileURL(path.join(ROOT, "seo/services.mjs")).href);
 const { LICENCE } = await import(pathToFileURL(path.join(ROOT, "seo/licence.mjs")).href);
 const { PRIVACY } = await import(pathToFileURL(path.join(ROOT, "seo/privacy.mjs")).href);
+// The studio's area as set on the Calendar page (Oct 2026): the services FAQ
+// and the privacy notice name it, and follow it when the studio moves.
+{
+  const area = (DATA.STUDIO && typeof DATA.STUDIO.area === "string" && DATA.STUDIO.area.trim()) || "";
+  const swap = (v) => typeof v === "string" ? v.split("Sector 46, Noida").join(area)
+    : Array.isArray(v) ? v.forEach((x, i) => { v[i] = swap(x); }) || v
+    : v && typeof v === "object" ? (Object.keys(v).forEach((k) => { v[k] = swap(v[k]); }), v) : v;
+  if (area && area !== "Sector 46, Noida") { swap(SERVICES); swap(PRIVACY); }
+}
 // The address of the usage terms. Google will only mark a photograph
 // "Licensable" in Google Images, with a link back to the studio beside it,
 // when the picture names both a page to ask on and the terms themselves.

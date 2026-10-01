@@ -1,3 +1,14 @@
+/* How the studio settings will read, for the Calendar page's preview: the
+   name on the booking page and the contract's own sentences, through the same
+   studioText() the booking page uses. */
+window.studioPreviewHtml = function (st) {
+  const e = (x) => String(x).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" })[c]);
+  const T = (x) => window.studioText(x, st);
+  const rule = T("Where the session takes place at the photographer's home studio in Sector 46, Noida, attendance is capped at 3 people in total, and that 3 counts the photographer as well as the Participant and every crew member or guest the Participant brings.");
+  const finish = T("A delay notified on the shoot day may be accommodated where the set is still free and the session can still finish within booked daylight hours, and by 7:00 PM at the home studio.");
+  const rider = T("Home studio sessions take place at the photographer's private residence: attendance is capped at 3 people in total, and the full address is shared once your booking is confirmed.").replace("Home studio sessions take place at the " + window.studioName(st) + " in", "Sessions take place at the " + window.studioName(st) + " in");
+  return `<strong>On the booking page:</strong> ${e(window.studioLabel(st))}<br><strong>The contract will say:</strong> “${e(rule)}”<br>“${e(finish)}”<br><strong>Before they book:</strong> “${e(rider)}”`;
+};
 /* ============================================================
    nerdyphotographer.in — admin (the studio's own half of the app)
 
@@ -2203,7 +2214,7 @@ window.moveAdminPackageRow = function(index, dir) {
     // publish can keep a newer copy made on another device.
     const settings = {};
     const stamps = parseObjectAfterKey(text, '"SETTINGS_AT"') || {};
-    ["PACKAGES", "TFP_PACKAGE", "INVITE_CODES", "PROMO_CODES", "PORTFOLIO_PDF", "HOME_STUDIO_RATE", "HOME_STUDIO_RATE_TFP", "MEASURE_UNITS", "HOME_SLIDESHOW"].forEach((k) => {
+    ["PACKAGES", "TFP_PACKAGE", "INVITE_CODES", "PROMO_CODES", "PORTFOLIO_PDF", "HOME_STUDIO_RATE", "HOME_STUDIO_RATE_TFP", "MEASURE_UNITS", "HOME_SLIDESHOW", "STUDIO"].forEach((k) => {
       const v = parseValueAfterKey(text, `"${k}"`);
       if (v !== undefined) settings[k] = v;
     });
@@ -2336,6 +2347,29 @@ window.moveAdminPackageRow = function(index, dir) {
       try { localStorage.setItem("wps_home_slideshow", JSON.stringify({ seconds: n })); } catch (err) {}
       if (typeof window.stampSetting === "function") window.stampSetting("wps_home_slideshow");
       toast(`Home page photos will change every ${n} seconds. Publish to show it on the site.`);
+    });
+    /* Your studio: what the form says, a preview that follows it, and Save. */
+    const studioFromForm = () => {
+      const kind = (document.querySelector('input[name="studioKind"]:checked') || {}).value === "own" ? "own" : "home";
+      const [h, m] = String(document.getElementById("studioFinishInput")?.value || "19:00").split(":").map(Number);
+      const finishBy = `${((h + 11) % 12) + 1}:${String(m || 0).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
+      return window.cleanStudio({ kind, name: document.getElementById("studioNameInput")?.value, area: document.getElementById("studioAreaInput")?.value, capacity: document.getElementById("studioCapacityInput")?.value, finishBy });
+    };
+    const paintStudioPreview = () => {
+      const box = document.getElementById("studioPreview"); if (!box) return;
+      const st = studioFromForm();
+      const nm = document.getElementById("studioNameInput"); if (nm) nm.placeholder = st.kind === "own" ? "nerdyphotographer.in studio" : "Home studio";
+      box.innerHTML = window.studioPreviewHtml(st);
+    };
+    document.addEventListener("input", (e) => { if (e.target && e.target.closest && e.target.closest("#your-studio")) paintStudioPreview(); });
+    document.addEventListener("change", (e) => { if (e.target && e.target.closest && e.target.closest("#your-studio")) paintStudioPreview(); });
+    document.addEventListener("click", (e) => {
+      if (!e.target || !e.target.closest || !e.target.closest("#studioSaveBtn")) return;
+      const st = studioFromForm();
+      try { localStorage.setItem("wps_studio", JSON.stringify(st)); } catch (err) { toast("Not saved: this browser's storage for the site is full."); return; }
+      if (typeof window.stampSetting === "function") window.stampSetting("wps_studio");
+      paintStudioPreview();
+      toast(`Saved: ${window.studioLabel(st)}. Publish to put it on the booking page and in new contracts.`);
     });
     // One listener for every copy of the chooser (album form, model details).
     document.addEventListener("change", (e) => {
@@ -2769,6 +2803,8 @@ window.WPS_DATA = ${JSON.stringify({ ACTIVITIES, TYPES, BRANDS, DEMO_SHOOTS: pub
             HOME_STUDIO_RATE: (typeof window.getHomeStudioRate === "function" ? window.getHomeStudioRate() : 3000),
             PORTFOLIO_PDF: (typeof window.getPortfolioPdfSettings === "function" ? window.getPortfolioPdfSettings() : null),
             HOME_SLIDESHOW: { seconds: (typeof window.getHomeSlideSeconds === "function" ? window.getHomeSlideSeconds() : 5) },
+            // What and where the studio is (Oct 2026): the booking page and new contracts read it.
+            STUDIO: (typeof window.getStudio === "function" ? window.getStudio() : null),
             MEASURE_UNITS: { display: (typeof window.getMeasureUnits === "function" ? window.getMeasureUnits() : "imperial") },
             HOME_STUDIO_RATE_TFP: (function() {
               try {
@@ -3718,6 +3754,37 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
 
         <div class="admin-settings">
           <h3 class="admin-roster-title" style="margin-bottom: 12px;">Settings</h3>
+        <!-- Your studio (Oct 2026, the owner: "in future i might change my home …
+             eventually i will buy my small studio space"). What it is, its name,
+             the area shown on the site, the room limit and the finishing time —
+             read by the booking page, the quote, the policies, the contract box
+             and the booking emails through studioText(). Saved here, published
+             with the rates. A contract already agreed keeps its own words. -->
+        ${(() => {
+          const st = window.getStudio();
+          const t24 = (s) => { const m = /^(\d{1,2}):(\d\d) (AM|PM)$/.exec(s || ""); if (!m) return "19:00"; let h = +m[1] % 12; if (m[3] === "PM") h += 12; return `${String(h).padStart(2, "0")}:${m[2]}`; };
+          const card = (k, title, note) => `<label class="studio-kind" style="flex: 1 1 220px; display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; background: var(--bone);"><input type="radio" name="studioKind" value="${k}" ${st.kind === k ? "checked" : ""} style="margin-top: 3px;" /><span><strong style="display: block; font-size: var(--font-sm);">${title}</strong><span style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.45;">${note}</span></span></label>`;
+          return `<div class="admin-panel" id="your-studio">
+          <div class="admin-panel-head">Your studio</div>
+          <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 8px 0 12px;">Where a shoot happens when a client chooses the studio. Its name and area appear on the booking page, in the quote and in the contract a client agrees to. Contracts already agreed keep the words they were agreed with.</p>
+          <div role="radiogroup" aria-label="What the studio is" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;">
+            ${card("home", "A home studio", "Your home. The contract says it is a private residence, and the full address is shared only once a booking is confirmed.")}
+            ${card("own", "A studio space of your own", "Named below in place of “home studio”. The private-residence lines are left out.")}
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px 14px;">
+            <label class="field" style="margin: 0;"><span>Its name</span><input type="text" id="studioNameInput" maxlength="60" value="${esc(st.name)}" placeholder="${st.kind === "own" ? "nerdyphotographer.in studio" : "Home studio"}" /></label>
+            <label class="field" style="margin: 0;"><span>Area shown on the site</span><input type="text" id="studioAreaInput" maxlength="80" value="${esc(st.area)}" placeholder="e.g. Sector 46, Noida" /></label>
+            <label class="field" style="margin: 0;"><span>People the room holds, you included</span><input type="number" id="studioCapacityInput" min="2" max="50" step="1" value="${st.capacity}" /></label>
+            <label class="field" style="margin: 0;"><span>Sessions finish by</span><input type="time" id="studioFinishInput" value="${t24(st.finishBy)}" /></label>
+          </div>
+          <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 6px 0 0;">The area only — never a street or flat number. The full address goes to a client once their booking is confirmed.</p>
+          <div id="studioPreview" aria-live="polite" style="margin-top: 12px; padding: 12px 14px; border-radius: 10px; background: var(--paper); border: 1px dashed var(--line); font-size: var(--font-xs); line-height: 1.55;">${window.studioPreviewHtml(st)}</div>
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px;">
+            <button type="button" class="admin-cal-btn" id="studioSaveBtn" style="font-weight: 800;">Save studio details</button>
+            <span style="font-size: var(--font-xs); color: var(--ink-soft);">Then publish to put it on the site.</span>
+          </div>
+        </div>`;
+        })()}
         <div class="admin-panel">
           <div class="admin-panel-head" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; cursor: pointer; user-select: none;" onclick="const b=document.getElementById('adminPkgBody');const a=document.getElementById('adminPkgArrow');const open=b.style.display!=='none';b.style.display=open?'none':'block';a.textContent=open?'▼':'▲';">
             <span style="display: flex; align-items: center; gap: 8px;">Package rates &amp; deliverables</span>
@@ -3731,7 +3798,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             <span id="adminPricingSaveStatus" class="admin-save-status" style="font-size: var(--font-xs); font-weight: 700; color: #059669; background: rgba(5,150,105,0.12); padding: 4px 10px; border-radius: 12px; border: 1px solid #059669; font-family: var(--mono-font); display: inline-block; margin-bottom: 8px;">🟢 ALL CHANGES SAVED TO LIVE SITE</span>
             <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 12px 0;">Edit max package rates (INR), package names, or deliverable descriptions. Click <strong>Save &amp; Push Live</strong> to update booking forms.</p>
             <div style="background: var(--paper); border: 1px solid var(--accent); border-radius: 8px; padding: 12px 16px; margin-bottom: 12px;">
-              <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">🏠 Home Studio Rental (Sector 46, Noida)</span>
+              <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">🏠 ${esc(window.studioText("Home Studio Rental (Sector 46, Noida)"))}</span>
               <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 8px 0; font-family: 'Archivo', sans-serif;">Charged when someone picks the home studio, and shown as its own line in their quote. Set <strong>0</strong> to switch it off. An invite code that locks a venue carries its own price and ignores both of these.</p>
               <div style="display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap;">
                 <div>
@@ -3868,7 +3935,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       type: "Fashion Editorial",
       duration: "Full Day",
       status: "confirmed",
-      location: HOME_STUDIO_NAME,
+      location: window.studioLabel(),
       // The first published package, as quoted: the old literal promised
       // "50 proofs + 8 retouched" for ₹10,000, a tier that never existed
       // (Sep 2026 audit, B39).
@@ -4011,7 +4078,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
               </div>
             </div>
             <div class="pdfgen-grid">
-              <label class="pdfgen-field">Location address *<input type="text" id="pdf_location" value="${esc(initialLocation || HOME_STUDIO_NAME)}" placeholder="Venue name and address" /></label>
+              <label class="pdfgen-field">Location address *<input type="text" id="pdf_location" value="${esc(initialLocation || window.studioLabel())}" placeholder="Venue name and address" /></label>
               <label class="pdfgen-field" id="pdf_rentalWrap">Home studio rental (₹)<input type="number" id="pdf_rental" min="0" step="100" inputmode="numeric" /><span class="pdfgen-hint" id="pdf_rentalHint"></span></label>
             </div>
             <label class="pdfgen-check"><input type="checkbox" id="pdf_venueByStudio" ${b.venueByStudio ? 'checked' : ''} /><span><strong>Venue provided by the studio — no rental billed.</strong> Ticked automatically for bookings that came in on an invite code carrying a location; tick it by hand when you are supplying the space for free.</span></label>
@@ -4106,7 +4173,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     setRadio("pdf_kind", initialKind);
     setRadio("pdf_venue", initialVenue);
     const locEl = q("pdf_location");
-    if (initialVenue === "home" && (!initialLocation || initialLocation === HOME_STUDIO_NAME)) locEl.dataset.auto = "1";
+    if (initialVenue === "home" && (!initialLocation || initialLocation === HOME_STUDIO_NAME || initialLocation === window.studioLabel())) locEl.dataset.auto = "1";
     const rateFor = (kind) => getHomeStudioRate(kind === "tfp");
     let rentalTouched = initialRental !== null;
     q("pdf_rental").value = initialRental !== null ? initialRental : rateFor(initialKind);
@@ -4250,11 +4317,11 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     const onVenueChange = () => {
       const v = venueOf();
       if (v === "home") {
-        if (!locEl.value.trim() || locEl.dataset.auto === "1") { locEl.value = HOME_STUDIO_NAME; locEl.dataset.auto = "1"; }
+        if (!locEl.value.trim() || locEl.dataset.auto === "1") { locEl.value = window.studioLabel(); locEl.dataset.auto = "1"; }
       } else if (locEl.dataset.auto === "1" || /home studio/i.test(locEl.value)) {
         locEl.value = ""; locEl.dataset.auto = "";
       }
-      locEl.placeholder = v === "home" ? HOME_STUDIO_NAME : (v === "commercial" ? "Studio name and address" : "Venue or area");
+      locEl.placeholder = v === "home" ? window.studioLabel() : (v === "commercial" ? "Studio name and address" : "Venue or area");
       render();
     };
     document.querySelectorAll('input[name="pdf_kind"]').forEach((r) => r.addEventListener("change", onKindChange));
@@ -4373,7 +4440,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
     const tfpPaymentHtml = studioByPhotographer
       ? `No shoot fee applies to this collaboration. The venue is provided by the Studio — <strong>nothing is payable</strong> for this session.`
       : rentalFee > 0
-        ? `No shoot fee applies to this collaboration. A fixed home studio rental of <strong>${inr(rentalFee)}</strong>${rentalOff > 0 ? ` (${inr(rentalList)} less a ${inr(rentalOff)} discount${discountNote})` : ""} applies for use of the photographer's home studio in ${esc(HOME_STUDIO_AREA)}, <strong>payable in full at least 48 hours before the shoot day</strong> to reserve the space, and non-refundable once paid. No other fee is payable to the Studio.`
+        ? window.studioText(`No shoot fee applies to this collaboration. A fixed home studio rental of <strong>${inr(rentalFee)}</strong>${rentalOff > 0 ? ` (${inr(rentalList)} less a ${inr(rentalOff)} discount${discountNote})` : ""} applies for use of the photographer's home studio in ${esc(HOME_STUDIO_AREA)}, <strong>payable in full at least 48 hours before the shoot day</strong> to reserve the space, and non-refundable once paid. No other fee is payable to the Studio.`)
         : rentalWaived
           ? `No shoot fee applies to this collaboration. The home studio rental (normally ${inr(rentalList)}) is waived${discountNote} — <strong>nothing is payable</strong> for this session.`
           : `No shoot fee applies to this collaboration. Any dedicated studio rental is quoted separately in advance and payable in full before shoot day; otherwise nothing is payable to the Studio.`;
@@ -4391,15 +4458,15 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
           return `<br/><strong>💰 Amounts:</strong> Package ${inr(pkgPrice)}${discountAmt > 0 ? ` − discount ${inr(discountAmt)}${discountNote} = ${inr(net)}` : ""}${rentalPart} = <strong>${inr(net + rentalFee)}</strong> · ` + legs.map((a, i) => `${esc(labels[i] || "Milestone " + (i + 1))} ${inr(a)}`).join(" · ");
         })()
       : "";
-    const homeStudioRiderHtml = ((studioByPhotographer || rentalFee > 0 || rentalWaived) && /home studio/i.test(studioLocation))
-      ? ` Attendance is limited to a maximum of 3 people in total — the photographer, the Participant, and any crew they bring (hair &amp; make-up, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`
+    const homeStudioRiderHtml = ((studioByPhotographer || rentalFee > 0 || rentalWaived) && window.isStudioVenue(studioLocation))
+      ? window.studioText(` Attendance is limited to a maximum of 3 people in total — the photographer, the Participant, and any crew they bring (hair &amp; make-up, stylist, assistants or guests all count towards this limit); the session runs within booked daylight hours and concludes by <strong>7:00 PM</strong>; the full address is shared on booking confirmation; guests may not attend unaccompanied.`)
       : ``;
     const studioClauseTfp = studioByPhotographer
       ? `Studio venue for this session is provided by the photographer${studioLocation ? ` at <strong>${esc(studioLocation)}</strong>` : ""} at no additional rental charge to the talent.${homeStudioRiderHtml}`
       : rentalFee > 0
-        ? `This session takes place at the photographer's home studio${studioLocation ? ` at <strong>${esc(studioLocation)}</strong>` : ` in ${esc(HOME_STUDIO_AREA)}`}; the fixed home studio rental under Payment is the only venue charge.${homeStudioRiderHtml}`
+        ? window.studioText(`This session takes place at the photographer's home studio${studioLocation ? ` at <strong>${esc(studioLocation)}</strong>` : ` in ${esc(HOME_STUDIO_AREA)}`}; the fixed home studio rental under Payment is the only venue charge.${homeStudioRiderHtml}`)
         : rentalWaived
-          ? `This session takes place at the photographer's home studio${studioLocation ? ` at <strong>${esc(studioLocation)}</strong>` : ` in ${esc(HOME_STUDIO_AREA)}`}; the rental is waived (see Payment).${homeStudioRiderHtml}`
+          ? window.studioText(`This session takes place at the photographer's home studio${studioLocation ? ` at <strong>${esc(studioLocation)}</strong>` : ` in ${esc(HOME_STUDIO_AREA)}`}; the rental is waived (see Payment).${homeStudioRiderHtml}`)
           : `If a dedicated indoor studio venue/space is required, applicable venue rental fees are quoted separately in advance.`;
 
     const innerHtml = `
@@ -4461,9 +4528,9 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             <strong>🏢 Studio Venue Rental Policy:</strong> ${studioByPhotographer
               ? `The venue for this session${studioLocation ? ` (<strong>${esc(studioLocation)}</strong>)` : ''} is arranged and paid for by the Studio — <strong>no venue rental is billed to the client</strong>.${homeStudioRiderHtml}`
               : rentalFee > 0
-                ? `This session takes place at the Studio's home studio in ${esc(HOME_STUDIO_AREA)}. A fixed home studio rental of <strong>${inr(rentalFee)}</strong>${rentalOff > 0 ? ` (${inr(rentalList)} less a ${inr(rentalOff)} discount${discountNote})` : ""} applies, is itemised above and is payable in full together with the advance retainer; nothing further is charged for the venue.${homeStudioRiderHtml}`
+                ? window.studioText(`This session takes place at the Studio's home studio in ${esc(HOME_STUDIO_AREA)}. A fixed home studio rental of <strong>${inr(rentalFee)}</strong>${rentalOff > 0 ? ` (${inr(rentalList)} less a ${inr(rentalOff)} discount${discountNote})` : ""} applies, is itemised above and is payable in full together with the advance retainer; nothing further is charged for the venue.${homeStudioRiderHtml}`)
                 : rentalWaived
-                  ? `This session takes place at the Studio's home studio in ${esc(HOME_STUDIO_AREA)}. The home studio rental (normally ${inr(rentalList)}) is waived${discountNote}; nothing is charged for the venue.${homeStudioRiderHtml}`
+                  ? window.studioText(`This session takes place at the Studio's home studio in ${esc(HOME_STUDIO_AREA)}. The home studio rental (normally ${inr(rentalList)}) is waived${discountNote}; nothing is charged for the venue.${homeStudioRiderHtml}`)
                   : `Dedicated indoor studio venue rentals are <strong>quoted separately in advance</strong>, or the client may directly book their preferred studio space for the session.`}
           `}
         </div>
@@ -4952,7 +5019,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                 </div>
                 <div style="grid-column: span 3;">
                   <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">🏠 Lock Location for Client <span style="font-weight:400;text-transform:none;color:var(--ink-soft);">(optional — leave blank to let client fill)</span></label>
-                  <input type="text" id="newInviteLocation" placeholder="e.g. Home studio, Sector 46, Noida — or leave blank" oninput="window.syncInviteWaiveVisibility && window.syncInviteWaiveVisibility()" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
+                  <input type="text" id="newInviteLocation" placeholder="e.g. ${esc(window.studioLabel())} — or leave blank" oninput="window.syncInviteWaiveVisibility && window.syncInviteWaiveVisibility()" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
                 </div>
                 <!-- Only shown when the code leaves the venue to the talent. A
                      code that names a venue has already had it chosen for them

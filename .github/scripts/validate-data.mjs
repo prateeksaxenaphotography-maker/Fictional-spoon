@@ -1029,6 +1029,23 @@ try {
     if (D[key] === undefined || D[key] === null) fail(`data.js no longer publishes ${key} — clients would fall back to built-in defaults that do not match the studio's`);
   }
   if (Array.isArray(D.PACKAGES) && D.PACKAGES.length === 0) fail("PACKAGES is published as an empty list — the booking form would have nothing to quote");
+  // The studio (Oct 2026): what and where it is, its room limit and finishing
+  // time. Optional — absent, the site uses the home studio as it always was —
+  // but read into the contract a client agrees to, so a malformed one stops
+  // the publish rather than reaching a contract.
+  if (D.STUDIO !== undefined && D.STUDIO !== null) {
+    const S = D.STUDIO;
+    if (typeof S !== "object" || Array.isArray(S)) fail("STUDIO is not an object");
+    else {
+      if (S.kind !== "home" && S.kind !== "own") fail(`STUDIO.kind must be "home" or "own" (${JSON.stringify(S.kind)})`);
+      for (const [k, max] of [["name", 60], ["area", 80]]) {
+        if (S[k] !== undefined && (typeof S[k] !== "string" || S[k].length > max || /[<>]/.test(S[k]))) fail(`STUDIO.${k} must be plain words of at most ${max} characters`);
+      }
+      if (!S.area || !String(S.area).trim()) fail("STUDIO.area is empty — the booking page and contracts would name no place");
+      if (!Number.isInteger(S.capacity) || S.capacity < 2 || S.capacity > 50) fail(`STUDIO.capacity must be a whole number from 2 to 50 (${JSON.stringify(S.capacity)})`);
+      if (typeof S.finishBy !== "string" || !/^(1[0-2]|[1-9]):[0-5]\d (AM|PM)$/.test(S.finishBy)) fail(`STUDIO.finishBy must read like "7:00 PM" (${JSON.stringify(S.finishBy)})`);
+    }
+  }
   // The dates a code works between (v472). app.js ignores a date it cannot
   // read, which turns a mistyped end date into a code that never ends — the
   // expensive direction — so a malformed one stops the publish instead.
