@@ -4383,3 +4383,12 @@ main[data-static-path] .pr-links a { display: inline-block; padding: 4px 2px; }
 .sb-turnstep .sb-turnin { display: inline-flex; align-items: center; gap: 2px; font-variant-numeric: tabular-nums; }
 .sb-turnstep input[data-turnto] { width: 62px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); font: inherit; text-align: right; -moz-appearance: textfield; }
 .sb-turnstep input[data-turnto]::-webkit-outer-spin-button, .sb-turnstep input[data-turnto]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* The package rows on the Calendar page: four columns are too tight on a
+   phone (the name was cut to "Test S"), so they fold to two. Inline styles set
+   the desktop grid, hence !important. Fields line up by their boxes, not their
+   labels (Oct 2026: "this is not aligned"). */
+@media (max-width: 700px) {
+  .admin-pkg-editor-row { grid-template-columns: 1fr 1fr !important; }
+  .admin-pkg-editor-row > div:last-child { grid-column: 1 / -1; justify-content: flex-start !important; padding-top: 4px !important; }
+}

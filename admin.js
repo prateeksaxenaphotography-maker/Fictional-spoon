@@ -3771,11 +3771,11 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             ${card("home", "A home studio", "Your home. The contract says it is a private residence, and the full address is shared only once a booking is confirmed.")}
             ${card("own", "A studio space of your own", "Named below in place of “home studio”. The private-residence lines are left out.")}
           </div>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px 14px;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px 14px; align-items: end;">
             <label class="field" style="margin: 0;"><span>Its name</span><input type="text" id="studioNameInput" maxlength="60" value="${esc(st.name)}" placeholder="${st.kind === "own" ? "nerdyphotographer.in studio" : "Home studio"}" /></label>
             <label class="field" style="margin: 0;"><span>Area shown on the site</span><input type="text" id="studioAreaInput" maxlength="80" value="${esc(st.area)}" placeholder="e.g. Sector 46, Noida" /></label>
             <label class="field" style="margin: 0;"><span>People the room holds, you included</span><input type="number" id="studioCapacityInput" min="2" max="50" step="1" value="${st.capacity}" /></label>
-            <label class="field" style="margin: 0;"><span>Sessions finish by</span><input type="time" id="studioFinishInput" value="${t24(st.finishBy)}" /></label>
+            <label class="field" style="margin: 0;"><span>Sessions finish by</span><input type="time" id="studioFinishInput" value="${t24(st.finishBy)}" style="height: 42px; box-sizing: border-box;" /></label>
           </div>
           <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 6px 0 0;">The area only — never a street or flat number. The full address goes to a client once their booking is confirmed.</p>
           <div id="studioPreview" aria-live="polite" style="margin-top: 12px; padding: 12px 14px; border-radius: 10px; background: var(--paper); border: 1px dashed var(--line); font-size: var(--font-xs); line-height: 1.55;">${window.studioPreviewHtml(st)}</div>
@@ -5149,7 +5149,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       if (!pkgsGrid) return;
       const pkgs = getAdminPackages();
       pkgsGrid.innerHTML = pkgs.map((p, idx) => `
-        <div class="admin-pkg-editor-row" style="background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: grid; grid-template-columns: 1.4fr 0.9fr 2.2fr 110px; gap: 10px; align-items: center;">
+        <div class="admin-pkg-editor-row" style="background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: grid; grid-template-columns: 1.4fr 0.9fr 2.2fr 110px; gap: 10px; align-items: end;">
           <div>
             <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">Package Name #${idx+1}</span>
             <input type="text" class="pkg-edit-name" value="${esc(p.name)}" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); font-weight: 700; background: var(--bone); color: var(--ink);" />
@@ -5163,8 +5163,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             <input type="text" class="pkg-edit-specs" value="${esc(p.specs)}" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
           </div>
           <div>
-            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em;">Delivery time <span style="font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-soft);">(optional, shown on the quote)</span></span>
-            <input type="text" class="pkg-edit-delivery" value="${esc(p.delivery || "")}" placeholder="e.g. 10 working days" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
+            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">Delivery time</span>
+            <input type="text" class="pkg-edit-delivery" value="${esc(p.delivery || "")}" placeholder="Optional · e.g. 10 working days" title="Optional — shown on the quote" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
           </div>
           <div style="display: flex; gap: 4px; justify-content: flex-end; padding-top: 14px;">
             <button type="button" class="admin-cal-btn" onclick="window.copyPackageBookingLink(${p.price})" title="Copy Shareable Booking Link" style="font-size: var(--font-xs); padding: 6px 8px; border-color: var(--accent-text); color: var(--accent-text); font-weight: 700;">🔗 Share Link</button>
@@ -5180,7 +5180,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         // test-shoot notices, the terms modal and the quote.
         const tfp = getAdminTfpPackage();
         return `
-        <div class="admin-pkg-editor-row admin-pkg-editor-row--tfp" style="background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: grid; grid-template-columns: 1.4fr 0.9fr 2.2fr 110px; gap: 10px; align-items: center;">
+        <div class="admin-pkg-editor-row admin-pkg-editor-row--tfp" style="background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: grid; grid-template-columns: 1.4fr 0.9fr 2.2fr 110px; gap: 10px; align-items: end;">
           <div>
             <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">Test shoot / TFP</span>
             <input type="text" id="tfpPkgName" value="${esc(tfp.name)}" oninput="window.markUnsavedChanges && window.markUnsavedChanges()" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); font-weight: 700; background: var(--bone); color: var(--ink);" />
@@ -5194,8 +5194,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             <input type="text" id="tfpPkgSpecs" value="${esc(tfp.specs)}" oninput="window.markUnsavedChanges && window.markUnsavedChanges()" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
           </div>
           <div>
-            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em;">Delivery time <span style="font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-soft);">(optional, shown on the quote)</span></span>
-            <input type="text" id="tfpPkgDelivery" value="${esc(tfp.delivery || "")}" oninput="window.markUnsavedChanges && window.markUnsavedChanges()" placeholder="e.g. 14 working days" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
+            <span style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); display: block; margin-bottom: 4px; text-transform: uppercase;">Delivery time</span>
+            <input type="text" id="tfpPkgDelivery" value="${esc(tfp.delivery || "")}" oninput="window.markUnsavedChanges && window.markUnsavedChanges()" placeholder="Optional · e.g. 14 working days" title="Optional — shown on the quote" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
           </div>
           <div style="display: flex; gap: 4px; justify-content: flex-end; padding-top: 14px;">
             <button type="button" class="admin-cal-btn" onclick="window.copyTfpBookingLink()" title="Copy a booking link that opens the test-shoot form with your primary invite code" style="font-size: var(--font-xs); padding: 6px 8px; border-color: var(--accent-text); color: var(--accent-text); font-weight: 700;">Share link</button>
