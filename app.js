@@ -7198,7 +7198,7 @@ window.resolveContractArchive = function(version) {
                    <p id="termsModalSubtitle" style="margin: 0; font-family: var(--mono-font); font-size: var(--font-xs); color: var(--accent-text); text-transform: uppercase; letter-spacing: 0.05em;">TFP Collaboration, Model Release &amp; Digital Consent Terms</p>
                    
                    <div id="termsIntroGrid" style="background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 14px; font-size: var(--font-xs); display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px;">
-                     <div><strong>Studio:</strong> Prateek Saxena (nerdyphotographer.in), Sector 46, Noida</div>
+                     <div><strong>Studio:</strong> Prateek Saxena (nerdyphotographer.in), <span id="termsStudioArea">Sector 46, Noida</span></div>
                      <div><strong id="termsPartnerLabel">Model:</strong> <span id="terms_partner_name">[Your Name]</span></div>
                      <div><strong>Business Handle:</strong> @nerdyphotographer.in</div>
                      <div><strong>Agreement:</strong> by the tick-box below, recorded in your confirmation email</div>
@@ -7997,6 +7997,17 @@ window.resolveContractArchive = function(version) {
       savings: 0,
       finalPayable: 0
     };
+    /* Whether this booking is at the photographer's home studio: picked in the
+       studio-space list, or an invite whose locked venue is the home studio (the
+       list is hidden then, and may still hold a stale pick). An invite can lock
+       another venue altogether, so a locked venue is read by its name. */
+    function bookingAtHomeStudio() {
+      if (bookingCalc && bookingCalc.isValidInvite && bookingCalc.lockedLocation) {
+        const v = String(bookingCalc.lockedLocation).trim();
+        return v === HOME_STUDIO_NAME || /home studio/i.test(v);
+      }
+      return document.getElementById("b_studio_space")?.value === "Home Studio - Noida (Provided by Studio)";
+    }
 
     // Dynamic field update logic
     const updateFields = () => {
@@ -8371,30 +8382,6 @@ window.resolveContractArchive = function(version) {
       }
       window._prevLockedLocation = lockedLocation;
 
-      // ── Studio Policies & Terms block ───────────────────────────────────
-      // The Studio Rental and Travel lines in the policies panel are written
-      // for a client who sources and pays for the venue. When the studio is
-      // supplying it — an invite carrying a location, or the home studio on a
-      // paid shoot — they state the opposite of everything else on the page and
-      // of the contract the client signs. Same correction as the release text
-      // in v268/v269, applied to the last surface still reading the old way.
-      const venueSuppliedByStudio = !!lockedLocation
-        || $("#b_studio_space")?.value === "Home Studio - Noida (Provided by Studio)";
-      const venueAddressShown = ($("#b_location")?.value || "").trim();
-      const policyRental = $("#policyStudioRental");
-      const policyTravel = $("#policyTravel");
-      if (policyRental) {
-        policyRental.innerHTML = venueSuppliedByStudio
-          ? `<strong style="color: var(--ink);">Studio Rental:</strong> The venue for this session${venueAddressShown ? ` (<strong style="color: var(--ink);">${esc(venueAddressShown)}</strong>)` : ""} is arranged and paid for by the studio. <strong style="color: var(--ink);">No studio rental or venue fee is billed to you.</strong> If you later ask to shoot somewhere else, standard venue terms apply again.`
-          : `<strong style="color: var(--ink);">Studio Rental:</strong> Package rates cover photography creation, light design &amp; master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are <strong style="color: var(--ink);">quoted separately in advance</strong>, or the client may directly book their preferred studio space for the production.`;
-      }
-      if (policyTravel) {
-        const travelKm = $("#b_type")?.value === "Selective Collaboration (TFP)" ? 10 : 20;
-        policyTravel.innerHTML = venueSuppliedByStudio
-          ? `<strong style="color: var(--ink);">Travel &amp; Accommodation:</strong> Travel to the studio-provided venue above is covered by the studio for this session. Standard terms (travel beyond <strong style="color: var(--ink);">${travelKm} km</strong> from the studio base in Noida, and accommodation where an overnight stay is needed, billed at actuals) apply only if you request a different location.`
-          : `<strong style="color: var(--ink);">Travel &amp; Accommodation:</strong> Shoots requiring travel beyond <strong style="color: var(--ink);">${travelKm} km</strong> from the studio base (Sector 46, Noida) incur paid travel and, where an overnight stay is needed, accommodation — billed <strong style="color: var(--ink);">at actuals (at cost)</strong>.`;
-      }
-
       // ── Home studio (paid shoots only) ──────────────────────────────────
       // The home studio is offered on paid bookings; TFP venues are handled by
       // the invite code instead, so the option is removed for a test shoot
@@ -8706,6 +8693,38 @@ window.resolveContractArchive = function(version) {
       // back off bookingCalc by the badge and the submit-time check, so setting
       // them any earlier would apply this pass's limits to last pass's status.
       syncDurationLimits(isCollabBooking);
+
+      // ── Studio Policies & Terms block ───────────────────────────────────
+      // The Studio Rental and Travel lines in the policies panel are written
+      // for a client who sources and pays for the venue. When the studio is
+      // supplying it — an invite carrying a location, or the home studio — they
+      // used to say "no studio rental or venue fee is billed to you" even with
+      // a rental in the quote right above them (the studio, Sep 30 2026: "we
+      // are charging 4000 however, down it is saying we will not charge"). They
+      // are painted here, after the quote, and say what the quote says, in the
+      // words the studio's own record of the booking already uses.
+      {
+        const venueSuppliedByStudio = !!lockedLocation
+          || $("#b_studio_space")?.value === "Home Studio - Noida (Provided by Studio)";
+        const venueAddressShown = ($("#b_location")?.value || "").trim();
+        const rentalFee = (bookingCalc && bookingCalc.homeStudioFee) || 0;
+        const atHome = bookingAtHomeStudio();
+        const policyRental = $("#policyStudioRental");
+        const policyTravel = $("#policyTravel");
+        if (policyRental) {
+          policyRental.innerHTML = rentalFee > 0
+            ? `<strong style="color: var(--ink);">Studio Rental:</strong> This session takes place at ${atHome ? `the studio's home studio in ${esc(HOME_STUDIO_AREA)}` : `<strong style="color: var(--ink);">${esc(venueAddressShown || "the venue above")}</strong>`}. A fixed ${atHome ? "home studio " : ""}rental of <strong style="color: var(--ink);">₹${rentalFee.toLocaleString("en-IN")}</strong> applies and is itemised in your quote — nothing further is charged for the venue.`
+            : venueSuppliedByStudio
+            ? `<strong style="color: var(--ink);">Studio Rental:</strong> The venue for this session${venueAddressShown ? ` (<strong style="color: var(--ink);">${esc(venueAddressShown)}</strong>)` : ""} is arranged and paid for by the studio. <strong style="color: var(--ink);">No studio rental or venue fee is billed to you.</strong> If you later ask to shoot somewhere else, standard venue terms apply again.`
+            : `<strong style="color: var(--ink);">Studio Rental:</strong> Package rates cover photography creation, light design &amp; master retouched deliverables. If a dedicated indoor studio venue/space is required, applicable studio rental fees are <strong style="color: var(--ink);">quoted separately in advance</strong>, or the client may directly book their preferred studio space for the production.`;
+        }
+        if (policyTravel) {
+          const travelKm = $("#b_type")?.value === "Selective Collaboration (TFP)" ? 10 : 20;
+          policyTravel.innerHTML = venueSuppliedByStudio
+            ? `<strong style="color: var(--ink);">Travel &amp; Accommodation:</strong> Travel to the studio-provided venue above is covered by the studio for this session. Standard terms (travel beyond <strong style="color: var(--ink);">${travelKm} km</strong> from the studio base in Noida, and accommodation where an overnight stay is needed, billed at actuals) apply only if you request a different location.`
+            : `<strong style="color: var(--ink);">Travel &amp; Accommodation:</strong> Shoots requiring travel beyond <strong style="color: var(--ink);">${travelKm} km</strong> from the studio base (Sector 46, Noida) incur paid travel and, where an overnight stay is needed, accommodation — billed <strong style="color: var(--ink);">at actuals (at cost)</strong>.`;
+        }
+      }
 
       // The grace-period bullet is a test-shoot term, so it follows the same
       // signal the rest of the collaboration UI does rather than the raw type —
@@ -10775,7 +10794,20 @@ window.resolveContractArchive = function(version) {
       frag.__secs = secs;
       return frag;
     };
-    function renderTermsBody(key, isTfp) {
+    /* The passages of a contract that apply only at the home studio, and name
+       where it is. Each is written "where the session takes place at the home
+       studio…", so leaving them out of a booking made for somewhere else
+       changes nothing that booking agrees to; what is left out is what the
+       client reads, ticks and has recorded. */
+    function withoutHomeStudio(text) {
+      return String(text)
+        .replace(/\n\nHOME STUDIO ATTENDANCE\n[\s\S]*?(?=\n\n[A-Z0-9][A-Z0-9 ,&'’()\-./]{3,}\n|$)/, "")
+        .replace(/\n\nAt the home studio the accompanying parent or guardian[^\n]*/, "")
+        .replace(/\n\nAnyone the Participant brings along to help counts towards the home studio's limit[^\n]*/, "")
+        // The paid contract says it in one sentence at the end of its crew clause.
+        .replace(/ Where the session takes place at the (?:Studio|photographer)[’']s home studio in [^.\n]*\./, "");
+    }
+    function renderTermsBody(key, isTfp, atHome) {
       const host = $("#termsBody");
       if (!host) return;
       const doc = (window.WPS_CONTRACT_ARCHIVE || {})[key];
@@ -10785,7 +10817,7 @@ window.resolveContractArchive = function(version) {
         // Not there yet: fetch it and draw when it lands.
         host.textContent = "Loading the terms…";
         setTermsAgreeable(false);
-        loadContracts().then(() => renderTermsBody(key, isTfp)).catch(() => { contractsUnavailable = true; renderTermsBody(key, isTfp); });
+        loadContracts().then(() => renderTermsBody(key, isTfp, atHome)).catch(() => { contractsUnavailable = true; renderTermsBody(key, isTfp, atHome); });
         return;
       }
       if (!doc || !doc.fullText) {
@@ -10800,17 +10832,18 @@ window.resolveContractArchive = function(version) {
         again.textContent = "Try again";
         again.addEventListener("click", () => {
           host.textContent = "Loading the terms…";
-          loadContracts().then(() => renderTermsBody(key, isTfp)).catch(() => renderTermsBody(key, isTfp));
+          loadContracts().then(() => renderTermsBody(key, isTfp, atHome)).catch(() => renderTermsBody(key, isTfp, atHome));
         });
         host.append(warn, again);
         setTermsAgreeable(false);
         return;
       }
-      host.appendChild(window.contractLayout(doc.fullText));
+      const agreed = atHome === false ? withoutHomeStudio(doc.fullText) : String(doc.fullText);
+      host.appendChild(window.contractLayout(agreed));
       // The words themselves, for the record: serializeTermsSheet takes these,
       // not the laid-out screen, so no heading, contents line or bullet break
       // added for reading ever becomes part of the agreed contract.
-      host.__contractText = String(doc.fullText);
+      host.__contractText = agreed;
       paginateTerms(host);
       showTermsPage(1);
       setTermsAgreeable(true);
@@ -10940,7 +10973,7 @@ window.resolveContractArchive = function(version) {
       // supplies the venue, the stock "locations >20 km require client-funded
       // travel" / "venue rentals billed at actuals" lines are the opposite of
       // what the visitor was just shown.
-      const modalIsHomeStudio = $("#b_studio_space")?.value === "Home Studio - Noida (Provided by Studio)";
+      const modalIsHomeStudio = bookingAtHomeStudio();
       const modalVenueByStudio = $("#b_location")?.dataset.inviteLocked === "1" || modalIsHomeStudio;
       const modalVenueAddress = modalVenueByStudio ? ($("#b_location")?.value || "") : "";
       const modalHomeRider = modalIsHomeStudio
@@ -10949,8 +10982,15 @@ window.resolveContractArchive = function(version) {
       // A paid home-studio booking now carries a fixed rental, so the blanket
       // "no studio rental is billed to you" would contradict the quote the
       // client is looking at while they tick this box.
-      const modalHomeStudioFee = (modalIsHomeStudio && bookingCalc && bookingCalc.homeStudioFee) || 0;
-      const venueSentence = modalHomeStudioFee > 0
+      // The rental is read from the quote, not from the studio-space list: an
+      // invite that locks the home studio hides that list, and the sheet then
+      // told a test shoot being charged ₹4,000 that no rental was billed (the
+      // studio, Sep 30 2026). A rental at a venue that isn't the home studio is
+      // named as that venue.
+      const modalHomeStudioFee = (bookingCalc && bookingCalc.homeStudioFee) || 0;
+      const venueSentence = modalHomeStudioFee > 0 && !modalIsHomeStudio
+        ? ` This session takes place at <strong>${esc(modalVenueAddress || ($("#b_location")?.value || "").trim() || "the venue named in your booking")}</strong>. A fixed venue rental of <strong>₹${modalHomeStudioFee.toLocaleString("en-IN")}</strong> applies and is itemised in your quote, <strong>payable in full at least 48 hours before the shoot day</strong> to reserve the space and non-refundable once paid — nothing further is charged for the venue, and no travel cost is charged for it.`
+        : modalHomeStudioFee > 0
         ? ` This session takes place at the Studio's home studio in ${HOME_STUDIO_AREA}${modalVenueAddress && modalVenueAddress !== HOME_STUDIO_NAME ? ` (<strong>${esc(modalVenueAddress)}</strong>)` : ""}. A fixed home studio rental of <strong>₹${modalHomeStudioFee.toLocaleString("en-IN")}</strong> applies and is itemised in your quote, <strong>payable in full at least 48 hours before the shoot day</strong> to reserve the space and non-refundable once paid — nothing further is charged for the venue, and no travel cost is charged for it.${modalHomeRider}`
         : modalVenueByStudio
         ? ` The shoot venue${modalVenueAddress ? ` (<strong>${esc(modalVenueAddress)}</strong>)` : ""} is arranged and paid for by the Studio — no studio rental, venue hire or travel cost is billed to you for it. Requesting a different location later re-applies the standard venue and travel terms.${modalHomeRider}`
@@ -10985,7 +11025,12 @@ window.resolveContractArchive = function(version) {
       if (subtitleEl) subtitleEl.textContent = isTfp ? tfpSubtitle : "Commercial Shoot, Usage Licence & Digital Consent Terms";
       if (partnerLabelEl) partnerLabelEl.textContent = isTfp ? "Model:" : "Client:";
       if (prodStatusEl) prodStatusEl.textContent = isTfp ? "Test shoot (collaboration)" : `Commercial / paid production${modalPackage ? ` — ${modalPackage}` : ""}`;
-      renderTermsBody(activeKey, isTfp);
+      // A booking away from the home studio does not see where it is, nor the
+      // passages that only apply there (the studio, Sep 30 2026). A contract
+      // opened from a client's email link (pinned) is shown whole.
+      const termsAtHome = pinnedVersion ? null : bookingAtHomeStudio();
+      { const area = $("#termsStudioArea"); if (area) area.textContent = termsAtHome === false ? "Noida" : HOME_STUDIO_AREA; }
+      renderTermsBody(activeKey, isTfp, termsAtHome);
 
       const termsModalEl = $("#termsModal");
       termsModalEl.style.display = "flex";

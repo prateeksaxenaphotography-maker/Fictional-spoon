@@ -9500,7 +9500,8 @@
         // trackpad pinch, zooms the photo instead. At Fit the page has
         // nowhere to scroll, so the plain wheel zooms the photo as before.
         const pv = $("#sbPreview");
-        const canScroll = !!pv && (pv.scrollHeight > pv.clientHeight + 1 || pv.scrollWidth > pv.clientWidth + 1);
+        // Only a zoomed page scrolls: at Fit the board is overflow-hidden, and a pixel of overhang must not count.
+        const canScroll = !!pv && view.zoom && (pv.scrollHeight > pv.clientHeight + 1 || pv.scrollWidth > pv.clientWidth + 1);
         if (canScroll && !(ev.ctrlKey || ev.metaKey || ev.altKey)) return;
         const shot = shotFor(id); if (!shot || isDiagram(id)) return;
         ev.preventDefault();
