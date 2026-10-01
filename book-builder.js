@@ -5531,6 +5531,12 @@
      refuses to publish — whoever it is for, the studio included. `plan` says
      which kind, and puts it under its own heading in Books. */
   const PLAN_NAME = { moodboard: "Moodboard", pitch: "Pitch", shoot: "Shoot plan" };
+  // The pages each starts with (v576), in the order the research found them read.
+  const PLAN_PAGES = {
+    pitch: ["pt_idea", "pt_refs", "mb_palette", "pt_model", "tm_styling", "tm_hairmakeup", "tm_set", "tm_light", "pt_deliver", "pt_why"],
+    shoot: ["sp_brief", "mb_six", "sp_look", "sp_look", "sp_look", "tm_hairmakeup", "mb_notthis", "sp_shots", "sp_call", "sp_credits"]
+  };
+  const PLAN_COVER = { pitch: "pt_cover", shoot: "sp_cover" };
   function newBook(name) {
     return {
       id: uid(), name: name || "New book", style: "modern", colourway: "terracotta", orientation: "portrait",
@@ -6573,7 +6579,28 @@
       ["mb_lookfeel", "Look and feel", "Three pictures down the side; the idea, light, framing, colour, styling and location beside them."],
       ["mb_palette", "Colour story", "A picture, the five colours drawn from it with their codes, and why."],
       ["mb_styling", "Styling board", "The look at full length, and six pieces of it, each named."],
-      ["mb_pinboard", "Pinboard", "Six prints pinned at angles, and a note stuck beside them."]] },
+      ["mb_pinboard", "Pinboard", "Six prints pinned at angles, and a note stuck beside them."],
+      ["mb_six", "Six parts", "Light, colour, framing, poses, styling and location: two pictures and a note each."],
+      ["mb_notthis", "This, not that", "What you want beside what you don't, the second crossed through, each with a line."]] },
+    { group: "Pitch", top: true, items: [
+      ["pt_cover", "Pitch cover", "One strong picture, who the pitch is for, its title, your name and the month."],
+      ["pt_idea", "The idea", "The idea in a few lines, its mood words, and one picture."],
+      ["pt_refs", "References", "Nine pictures that set the look — one large — each with a line saying why."],
+      ["pt_model", "The model", "Three pictures of the kind of model, their age, look and experience."],
+      ["pt_deliver", "Deliverables", "How many photographs, which sizes, delivery, usage, revisions and when."],
+      ["pt_why", "Past work", "Four of your own photographs that show you can make it, and a line."]] },
+    { group: "Shoot plan", top: true, items: [
+      ["sp_cover", "Shoot plan cover", "Its name, a picture, the date, the place, the call time and the team."],
+      ["sp_brief", "The brief", "What the shoot is for, who for, when, where, what to deliver and the must-haves."],
+      ["sp_look", "One look", "Three pictures of the look, its garments, shoes, hair, make-up and its shots."],
+      ["sp_shots", "Shot list", "Eight shots, numbered, each with a picture, what it is, must or nice, and minutes."],
+      ["sp_call", "Call sheet", "Where, call times, the day hour by hour, contacts, who brings what, good to know."],
+      ["sp_credits", "Credits", "Everyone who made it, and a picture of the team."]] },
+    { group: "Team pages", top: true, items: [
+      ["tm_styling", "Styling", "The clothes: three pictures, garments, shoes, accessories, colours and what to avoid."],
+      ["tm_hairmakeup", "Hair & make-up", "Exact looks to copy: skin, eyes, lips, hair and the time it takes."],
+      ["tm_set", "Location & set", "The place, the time of day, the backdrop, props and who brings what."],
+      ["tm_light", "Light", "Key, fill, modifier, contrast, and what to do if the weather turns."]] },
     { group: "Comp cards", top: true, items: [
       ["cc_actor", "Actor's card", "Name large, what they do, four photographs two by two; Details, Work experience and Contact beside them."],
       ["cc_front", "Comp card · front", "The front of a two-sided card: one photograph to the edges, the name under it."],
@@ -6595,7 +6622,18 @@
      be given a proper cover (the owner, Sep 29 2026: "option to add cover
      page is also missing"): the hand-made cover becomes the first page. */
   const COVER_ITEM = { group: "Cover", items: [["cover", "Cover in front", "A cover before what is on the first page now, which moves to page 2 unchanged. It starts as one photograph filling the page; change its look on the cover's own panel."]] };
+  /* A moodboard, a pitch or a shoot plan opens Add page on the planning
+     layouts (the owner, Oct 1 2026: "moodboard can have templates relevant to
+     moodboard"), its own kind first; the studio's "how we work" pages and the
+     lookbook's look pages are not offered; everything else follows. */
+  const PLAN_FIRST = { moodboard: ["Moodboard", "Pitch", "Shoot plan", "Team pages"], pitch: ["Pitch", "Moodboard", "Team pages", "Shoot plan"], shoot: ["Shoot plan", "Moodboard", "Team pages", "Pitch"] };
+  const PLAN_NOT = new Set(["How we work", "Lookbook"]);
   const addMenuFor = (book) => {
+    const menu = addMenuBase(book), first = PLAN_FIRST[book && book.plan];
+    if (!first) return menu;
+    return [...first.map((g) => menu.find((x) => x.group === g)).filter(Boolean), ...menu.filter((x) => !first.includes(x.group) && !PLAN_NOT.has(x.group))];
+  };
+  const addMenuBase = (book) => {
     const withCover = (menu) => (coverLayoutOf(book) === "custom" ? [COVER_ITEM, ...menu] : menu);
     const m = forOf(book);
     if (!m) return withCover(ADD_MENU);
@@ -6783,6 +6821,14 @@
      "preview" for its picture in the Add-page gallery (sample words where
      nothing else is written), and "layout" for Change the layout: labels
      only, since the page's own photographs and words go in after. */
+  // Words a layout takes from the book whoever it is for (v576): who a pitch is for, the studio's line.
+  function bookWords(book, bind) {
+    const m = forOf(book);
+    if (bind === "pitchfor") return m && m.name ? `A pitch for ${m.name}`.toUpperCase() : "";
+    if (bind === "byline") return `${studio()} · ${new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" })}`;
+    if (bind === "studio") return studio().toUpperCase();
+    return "";
+  }
   function startBlocks(key, book, how = "add") {
     const tpl = FREE_STARTS[key] || [];
     const t = how === "layout" ? null : talentOf(book);
@@ -6790,7 +6836,7 @@
     return tpl.map((b) => {
       const { keep, sample, bind, ...c } = b;
       if (c.style) c.style = { ...c.style };
-      if (c.k === "text") c.t = (t && bind ? talentWords(t, bind, keep) : "") || keep || (how === "preview" && sample) || "";
+      if (c.k === "text") c.t = (bind && how !== "layout" ? bookWords(book, bind) : "") || (t && bind ? talentWords(t, bind, keep) : "") || keep || (how === "preview" && sample) || "";
       if (c.k === "photo" && pick && bind) { const p = pick(String(bind).split(",")); if (p) c.p = p; }
       return c;
     });
@@ -7044,6 +7090,14 @@
     const swatches = (x, y, w, h, gap, n) => PALETTE.slice(0, n).map((c, i) => S(x + i * (w + gap), y, w, h, c));
     const NAME = "AANYA RAO", ROLES = "Model – Actor";
     const r3 = (v) => Math.round(v * 1000) / 1000;
+    // One discipline's page (v576): what to aim for, three pictures, its details, a note.
+    const teamPage = (name, head, list, note) => [
+      label(0.07, 0.05, 0.86, name),
+      T("head", 0.07, 0.077, 0.86, 0.05, { sample: head }),
+      P(0.07, 0.14, 0.5, 0.5), P(0.59, 0.14, 0.34, 0.24), P(0.59, 0.4, 0.34, 0.24),
+      ...rows(0.07, 0.68, 0.04, 0.24, 0.62, list.map(([n, sample]) => [n, "", sample])),
+      T("body", 0.07, 0.89, 0.86, 0.05, { sample: note })
+    ];
     Object.assign(FREE_STARTS, {
       // ---- Comp cards ----
       /* The owner's own (Oct 2026): name large, what they do, four photographs
@@ -7210,6 +7264,136 @@
         P(0.07, 0.76, 0.3, 0.19, { r: -2, edge: "white", edgeWidth: "broad" }),
         P(0.4, 0.75, 0.27, 0.2, { r: 4, edge: "white", edgeWidth: "broad" }),
         T("body", 0.7, 0.77, 0.24, 0.15, { fill: "#f2e3a0", r: -3, sample: "Bring: the linen set, gold hoops, the old film camera." })
+      ]
+      ,
+      // ---- v576: a pitch, a shoot plan, and the pages the team reads (Oct 1 2026) ----
+      /* From the research the owner asked for ("first check online about
+         moodboard"): a pitch runs cover → the idea → references → colours →
+         the model → styling, hair & make-up, location, light → deliverables
+         → past work; a shoot plan runs brief → board → a page a look → shot
+         list → call sheet → credits; a team reads one page per discipline,
+         and a "not this" strip. Labels are written in; the rest is to fill. */
+      pt_cover: [
+        P(0, 0, 1, 0.7),
+        T("kicker", 0.07, 0.735, 0.86, 0.022, { bind: "pitchfor", sample: "A PITCH FOR ACME" }),
+        T("head", 0.07, 0.765, 0.86, 0.1, { sample: "Monsoon, slowed down", style: { size: 1.4 } }),
+        T("body", 0.07, 0.885, 0.86, 0.03, { bind: "byline", sample: "nerdyphotographer.in · October 2026" })
+      ],
+      pt_idea: [
+        label(0.07, 0.07, 0.86, "THE IDEA"),
+        T("head", 0.07, 0.1, 0.86, 0.12, { sample: "Monsoon, slowed down" }),
+        T("intro", 0.07, 0.235, 0.86, 0.15, { sample: "Linen in the rain: a calm, warm story about clothes made for slow days. Real people, soft light, small movements." }),
+        label(0.07, 0.405, 0.86, "MOOD WORDS"),
+        T("quote", 0.07, 0.435, 0.86, 0.08, { sample: "calm · warm · honest · unhurried" }),
+        P(0.07, 0.55, 0.86, 0.38)
+      ],
+      pt_refs: [
+        label(0.07, 0.05, 0.6, "REFERENCES"),
+        T("head", 0.07, 0.077, 0.86, 0.05, { sample: "The visual world" }),
+        P(0.07, 0.14, 0.52, 0.4), T("body", 0.07, 0.545, 0.52, 0.022, { sample: "The light: soft, from one side", style: { size: 0.8 } }),
+        P(0.62, 0.14, 0.31, 0.185), T("body", 0.62, 0.328, 0.31, 0.022, { sample: "Skin, not make-up", style: { size: 0.8 } }),
+        P(0.62, 0.355, 0.31, 0.185), T("body", 0.62, 0.545, 0.31, 0.022, { sample: "Weight on one foot", style: { size: 0.8 } }),
+        ...["Wet linen", "Morning blue", "Hands in the frame", "Rain on glass", "Bare feet, wet floor", "A warm grade"].flatMap((sample, i) => {
+          const x = r3(0.07 + (i % 3) * 0.3), y = r3(0.585 + Math.floor(i / 3) * 0.18);
+          return [P(x, y, 0.26, 0.14), T("body", x, r3(y + 0.145), 0.26, 0.022, { sample, style: { size: 0.8 } })];
+        })
+      ],
+      pt_model: [
+        label(0.07, 0.07, 0.86, "THE MODEL"),
+        T("head", 0.07, 0.1, 0.86, 0.06, { sample: "Real, unhurried, mid-twenties" }),
+        P(0.07, 0.18, 0.26, 0.34), P(0.37, 0.18, 0.26, 0.34), P(0.67, 0.18, 0.26, 0.34),
+        ...rows(0.07, 0.56, 0.036, 0.18, 0.68, [["Age", "", "24–30"], ["Look", "", "Natural; freckles welcome"], ["Experience", "", "Some on camera"], ["Agency", "", "Any, or none"]]),
+        T("body", 0.07, 0.72, 0.86, 0.12, { sample: "Someone who moves easily and laughs off camera. Two or three to choose from before the shoot." })
+      ],
+      pt_deliver: [
+        label(0.07, 0.07, 0.86, "DELIVERABLES"),
+        T("head", 0.07, 0.1, 0.86, 0.06, { sample: "What you get" }),
+        ...rows(0.07, 0.2, 0.05, 0.22, 0.64, [["Photographs", "", "20 edited"], ["Sizes", "", "4:5 for the feed · 9:16 for Stories · 3:2 for the web"], ["Delivery", "", "Seven days after the shoot"], ["Usage", "", "Web and social, one year"], ["Revisions", "", "One round"], ["Timeline", "", "Shoot 18 Oct · first edit 22 Oct"]]),
+        L(0.07, 0.52, 0.86),
+        T("body", 0.07, 0.54, 0.86, 0.1, { sample: "Everything here can change with the brief." }),
+        P(0.07, 0.66, 0.42, 0.27), P(0.51, 0.66, 0.42, 0.27)
+      ],
+      pt_why: [
+        label(0.07, 0.07, 0.86, "PAST WORK"),
+        T("head", 0.07, 0.1, 0.86, 0.06, { sample: "Light first, then the pose" }),
+        P(0.07, 0.18, 0.42, 0.3), P(0.51, 0.18, 0.42, 0.3), P(0.07, 0.5, 0.42, 0.3), P(0.51, 0.5, 0.42, 0.3),
+        T("body", 0.07, 0.82, 0.86, 0.07, { sample: "Fashion and portraits for brands, designers and the people who wear them." }),
+        T("kicker", 0.07, 0.905, 0.86, 0.022, { bind: "studio", sample: "NERDYPHOTOGRAPHER.IN" })
+      ],
+      sp_cover: [
+        label(0.07, 0.06, 0.86, "SHOOT PLAN"),
+        T("head", 0.07, 0.09, 0.86, 0.09, { sample: "Monsoon linen", style: { size: 1.4 } }),
+        P(0.07, 0.2, 0.86, 0.5),
+        ...rows(0.07, 0.74, 0.042, 0.2, 0.66, [["Date", "", "Saturday 18 October"], ["Location", "", "A flat with a north window"], ["Call time", "", "7:30 am"], ["Team", "", "Photographer, model, hair & make-up, stylist"]])
+      ],
+      sp_brief: [
+        label(0.07, 0.07, 0.86, "THE BRIEF"),
+        T("head", 0.07, 0.1, 0.86, 0.06, { sample: "Monsoon linen" }),
+        T("intro", 0.07, 0.18, 0.86, 0.12, { sample: "Twelve photographs of the new linen for the website and Instagram: calm, warm, people at ease at home on a rainy morning." }),
+        ...rows(0.07, 0.33, 0.05, 0.22, 0.64, [["Client", "", "Acme"], ["What it's for", "", "Website and Instagram"], ["Date", "", "Saturday 18 October"], ["Location", "", "A flat with a north window"], ["Deliverables", "", "12 edited · 4:5 and 9:16"], ["Must-haves", "", "The shirt, worn open; one full-length a look"]]),
+        P(0.07, 0.66, 0.42, 0.27), P(0.51, 0.66, 0.42, 0.27)
+      ],
+      sp_look: [
+        label(0.07, 0.05, 0.6, "LOOK 1"),
+        T("head", 0.07, 0.077, 0.86, 0.05, { sample: "The linen set" }),
+        P(0.07, 0.14, 0.48, 0.5), P(0.58, 0.14, 0.35, 0.24), P(0.58, 0.4, 0.35, 0.24),
+        ...rows(0.07, 0.67, 0.04, 0.24, 0.62, [["Garments", "", "Linen shirt, wide trousers"], ["Shoes & accessories", "", "Bare feet · thin gold chain"], ["Hair", "", "Loose, air-dried"], ["Make-up", "", "Fresh skin, tinted balm"], ["Shots", "", "Full length walking · seated close-up · detail of the cuff"]]),
+        T("body", 0.07, 0.88, 0.86, 0.06, { sample: "Change after this look: 15 minutes." })
+      ],
+      sp_shots: [
+        label(0.07, 0.05, 0.6, "SHOT LIST"),
+        T("head", 0.07, 0.077, 0.86, 0.05, { sample: "Monsoon linen · Saturday" }),
+        ...[["#", 0.07, 0.05], ["PICTURE", 0.13, 0.1], ["THE SHOT", 0.25, 0.42], ["MUST / NICE", 0.69, 0.11], ["MINUTES", 0.82, 0.11]].map(([w, x, ww]) => T("kicker", x, 0.155, ww, 0.02, { keep: w })),
+        L(0.07, 0.18, 0.86, { thick: "narrow" }),
+        ...["Look 1 · walking towards camera, full length", "Look 1 · seated by the window, waist up", "Look 1 · detail: the cuff and the hand", "Look 2 · leaning on the wall, three-quarter", "Look 2 · close-up, eyes down", "Look 3 · on the floor with tea, wide", "Look 3 · laughing, off camera", "Everyone · behind the scenes"].flatMap((sample, i) => {
+          const y = r3(0.192 + i * 0.095);
+          return [T("body", 0.07, y, 0.05, 0.024, { keep: String(i + 1).padStart(2, "0"), style: { weight: "bold" } }), P(0.13, y, 0.1, 0.075), T("body", 0.25, y, 0.42, 0.075, { sample }), T("body", 0.69, y, 0.11, 0.024, { sample: i % 3 === 2 ? "Nice" : "Must" }), T("body", 0.82, y, 0.11, 0.024, { sample: String([20, 15, 10, 20, 10, 25, 10, 5][i]) }), L(0.07, r3(y + 0.085), 0.86)];
+        })
+      ],
+      sp_call: [
+        label(0.07, 0.05, 0.6, "CALL SHEET"),
+        T("head", 0.07, 0.077, 0.86, 0.05, { sample: "Monsoon linen · Saturday 18 October" }),
+        label(0.07, 0.15, 0.41, "WHERE"),
+        ...rows(0.07, 0.18, 0.04, 0.15, 0.26, [["Address", "", "A flat with a north window"], ["Map", "", "Link sent on WhatsApp"], ["Parking", "", "Visitors' parking, gate 2"], ["Sunset", "", "5:52 pm"]]),
+        label(0.07, 0.36, 0.41, "CALL TIMES"),
+        ...rows(0.07, 0.39, 0.04, 0.2, 0.21, [["Hair & make-up", "", "7:30 am"], ["Model", "", "7:45 am"], ["Stylist", "", "8:00 am"], ["Photographer", "", "8:00 am"], ["Assistant", "", "7:30 am"], ["Client", "", "10:00 am"]]),
+        label(0.52, 0.15, 0.41, "THE DAY"),
+        ...[["8:30", "Look 1"], ["10:30", "Look 2"], ["12:30", "Lunch"], ["13:30", "Look 3"], ["16:00", "Wrap"]].flatMap(([t, w], i) => [T("body", 0.52, r3(0.18 + i * 0.04), 0.1, 0.024, { sample: t, style: { weight: "bold" } }), T("body", 0.63, r3(0.18 + i * 0.04), 0.3, 0.024, { sample: w })]),
+        label(0.52, 0.4, 0.41, "CONTACTS"),
+        T("body", 0.52, 0.43, 0.41, 0.12, { sample: "Photographer · 98100 00000\nStylist · 98100 00001\nClient · 98100 00002" }),
+        label(0.07, 0.66, 0.41, "WHO BRINGS WHAT"),
+        T("body", 0.07, 0.69, 0.41, 0.16, { sample: "Stylist: the linen, steamer\nModel: nude underwear, own sandals\nStudio: lights, chair, water" }),
+        label(0.52, 0.66, 0.41, "GOOD TO KNOW"),
+        T("body", 0.52, 0.69, 0.41, 0.16, { sample: "Wrap at 4 pm sharp. Lunch is on set. Nearest hospital: 10 minutes." })
+      ],
+      sp_credits: [
+        label(0.07, 0.07, 0.86, "CREDITS"),
+        T("head", 0.07, 0.1, 0.86, 0.06, { sample: "Thank you" }),
+        ...rows(0.07, 0.19, 0.04, 0.26, 0.6, [["Photographs", "", "nerdyphotographer.in"], ["Model", "", "@name"], ["Hair & make-up", "", "@name"], ["Styling", "", "@name"], ["Assistant", "", "@name"], ["Clothes", "", "@brand"], ["Location", "", "@place"]]),
+        P(0.07, 0.5, 0.86, 0.43)
+      ],
+      tm_styling: teamPage("STYLING", "Linen, undone", [["Garments", "Linen shirts, wide trousers"], ["Shoes", "Bare feet, leather sandals"], ["Accessories", "Small gold, nothing loud"], ["Colours", "Bone, sage, clay"], ["Avoid", "Logos, black, anything shiny"]], "Steam everything the night before; bring two sizes of each."),
+      tm_hairmakeup: teamPage("HAIR & MAKE-UP", "Skin first", [["Skin", "Fresh, a little dewy"], ["Eyes", "Clean; brushed brows"], ["Lips", "Tinted balm"], ["Hair", "Loose, air-dried"], ["Time needed", "45 minutes"]], "Between looks: blot, no powder build-up."),
+      tm_set: teamPage("LOCATION & SET", "A bare room by a big window", [["Place", "A flat with a north window"], ["Time of day", "8 to 11 am"], ["Backdrop", "Off-white wall, wooden floor"], ["Props", "One chair, a glass of water"], ["Who brings what", "Studio: chair · stylist: linen"]], "Clear the room before the call time."),
+      tm_light: teamPage("LIGHT", "One soft window", [["Key", "The window, camera left"], ["Fill", "A white card"], ["Modifier", "A silk on the window"], ["Contrast", "Low; soft shadows"], ["If it rains hard", "One big softbox, same side"]], "Keep the window in, or out, the same for every look."),
+      mb_six: [
+        ...[["LIGHT", "Soft, one side, low contrast."], ["COLOUR", "Bone, sage, clay; one deep green."], ["FRAMING", "Close and loose; some frames cut at the edge."], ["POSES", "Small movements, weight on one foot."], ["STYLING", "Linen, undone; bare feet."], ["LOCATION", "A bare room with a big window."]].flatMap(([lab, sample], i) => {
+          const x = i % 2 ? 0.52 : 0.07, y = r3(0.05 + Math.floor(i / 2) * 0.315);
+          return [label(x, y, 0.41, lab), P(x, r3(y + 0.03), 0.2, 0.21), P(r3(x + 0.21), r3(y + 0.03), 0.2, 0.21), T("body", x, r3(y + 0.248), 0.41, 0.045, { sample })];
+        })
+      ],
+      // This, and not that: what is wanted beside what isn't, the "not" crossed through.
+      mb_notthis: [
+        label(0.07, 0.05, 0.41, "THIS"),
+        label(0.52, 0.05, 0.41, "NOT THIS"),
+        ...[0, 1].flatMap((i) => {
+          const y = r3(0.08 + i * 0.44);
+          return [
+            P(0.07, y, 0.41, 0.36), T("body", 0.07, r3(y + 0.365), 0.41, 0.022, { sample: ["Soft, from one side", "Skin that looks like skin"][i] }),
+            P(0.52, y, 0.41, 0.36), { k: "line", x: 0.52, y, w: 0.41, h: 0.36, path: "d", thick: "heavy", color: "accent" }, { k: "line", x: 0.52, y, w: 0.41, h: 0.36, path: "u", thick: "heavy", color: "accent" },
+            T("body", 0.52, r3(y + 0.365), 0.41, 0.022, { sample: ["No hard flash", "No heavy retouching"][i] })
+          ];
+        })
       ]
     });
   })();
@@ -8094,7 +8278,7 @@
       const b = bl[i];
       ctxMenu(e.clientX, e.clientY, [
         { label: "Duplicate", icon: "copy", run: () => dupeBlock(i), off: n >= FREE_MAX },
-        ...(b && b.k === "photo" ? [{ label: "Change photo", icon: "replace", run: () => { const x = $('#sbBlkBar [data-order="change"]'); if (x) x.click(); } }] : []),
+        ...(b && b.k === "photo" ? [{ label: "Change photo", icon: "replace", run: () => { const x = $('#sbBlkBar [data-order="change"]'); if (x) x.click(); } }, { label: "Add a note under it", icon: "type", run: () => noteUnder(i), off: n >= FREE_MAX }] : []),
         "-",
         { label: "Bring to the front", icon: "toFront", kbd: "Shift+]", run: () => moveBlockTo(i, "front"), off: i === n - 1 },
         { label: "Bring forward", icon: "arrowUp", kbd: "]", run: () => moveBlock(i, 1), off: i === n - 1 },
@@ -8201,11 +8385,21 @@
       const BOARDS = LAYOUT_GROUPS.find((g) => g.group === "Moodboard").items;
       let board = "mb_grid";
       const KIND_NOTE = { magazine: "A cover and a page of photographs; add any pages after.",
+        pitch: "A pitch to win a shoot, eleven pages to fill: a cover, the idea and its mood words, references, colours, the model, styling, hair & make-up, location, light, deliverables and your past work. Kept on this computer only and never published, whoever it's for.",
+        shootplan: "Everything for the day, eleven pages: a cover, the brief, the moodboard in six parts, a page for each of three looks, hair & make-up, this-not-that, the shot list, the call sheet and the credits. Kept on this computer only and never published, whoever it's for.",
         moodboard: `One page to start: a moodboard to plug pictures into — your own photographs, or copy any picture from Pinterest, Google or anywhere and paste it with ${MOD}V. Pick its layout; more boards come from Add page → Moodboard. Kept on this computer only and never published, whoever it's for.`, lookbook: "A cover, a page about the collection, six looks and a back cover. Each look is one or two photographs with its number, its name and its lines.",
         compcard: "One page, like a printed comp card: a big photograph with three beside it, their name, what they do, their measurements and the brands they have worked with — filled from their card. Every part can be moved, edited or deleted, and a brand's logo added as a photo from this computer." };
       const withKind = (nb, k) => {
         /* A moodboard: the board is the book's first page, laid out from
            scratch like a comp card, with nothing after it. */
+        // A pitch or a shoot plan: its cover and pages, filled once it knows who it is for (planPages).
+        if (k === "pitch" || k === "shootplan") {
+          nb.id = uid(true); nb.plan = KIND_PLAN[k];
+          nb.name = nb.name.replace(/^Book /, `${PLAN_NAME[nb.plan]} `);
+          nb.title = PLAN_NAME[nb.plan]; nb.subtitle = "";
+          nb.coverLayout = "custom"; nb.coverPage = { blocks: [] }; nb.pages = [];
+          return nb;
+        }
         if (k === "moodboard") {
           nb.id = uid(true); nb.plan = "moodboard";
           nb.name = nb.name.replace(/^Book /, "Moodboard ");
@@ -8228,7 +8422,20 @@
          where the studio's would be. */
       let forWho = "studio", forName = "", forModel = "", kindByBrand = false;
       const OWN_MODEL = "__own";   // "Someone not on your list…"
-      const forNoteNow = () => (forWho === "studio" && PLAN_NAME[kind] ? "Your own moodboard: kept on this computer only and never published — it is planning work, often with pictures that aren't yours." : FOR_NOTE[forWho]);
+      // A kind of book that is a plan, and the plan it makes.
+      const KIND_PLAN = { moodboard: "moodboard", pitch: "pitch", shootplan: "shoot" };
+      const planPages = (nb) => {
+        if (!PLAN_COVER[nb.plan]) return nb;
+        nb.coverPage = { blocks: startBlocks(PLAN_COVER[nb.plan], nb, "add") };
+        let look = 0;
+        nb.pages = PLAN_PAGES[nb.plan].map((key) => {
+          const blocks = startBlocks(key, nb, "add");
+          if (key === "sp_look") { look++; const lab = blocks.find((b) => b.k === "text" && b.t === "LOOK 1"); if (lab) lab.t = `LOOK ${look}`; }
+          return { type: "free", blocks };
+        });
+        return nb;
+      };
+      const forNoteNow = () => (forWho === "studio" && KIND_PLAN[kind] ? "Your own moodboard: kept on this computer only and never published — it is planning work, often with pictures that aren't yours." : FOR_NOTE[forWho]);
       const FOR_NOTE = {
         studio: "Your own book. Publishing puts it in your site's files, so it opens on any device.",
         brand: "Kept on this computer only — never published to your site. Their name goes where yours would be; your credit is a line on the last page, or nowhere if the contract says so.",
@@ -8252,14 +8459,14 @@
         const name = nb.madeFor.name;
         // Their book, not in the studio's own terracotta.
         nb.colourway = "silver-print";
-        nb.name = `${name} — ${kind === "lookbook" ? "lookbook" : kind === "moodboard" ? "moodboard" : forWho === "talent" && kind === "compcard" ? "comp card" : forWho === "talent" ? "portfolio" : "book"}`;
-        if (kind !== "lookbook" && kind !== "moodboard") { nb.title = name; nb.subtitle = forWho === "talent" ? "Portfolio" : ""; }
+        nb.name = `${name} — ${kind === "lookbook" ? "lookbook" : KIND_PLAN[kind] ? PLAN_NAME[KIND_PLAN[kind]].toLowerCase() : forWho === "talent" && kind === "compcard" ? "comp card" : forWho === "talent" ? "portfolio" : "book"}`;
+        if (kind !== "lookbook" && !KIND_PLAN[kind]) { nb.title = name; nb.subtitle = forWho === "talent" ? "Portfolio" : ""; }
         /* A talent's book starts with the pages that carry what their record
            holds: About (their type and measurements), a page of photographs,
            Contact (their email and Instagram, as their record lets a PDF
            show them) and a back cover — so the details are there without
            hunting for which page prints them (owner's question, 26 Sep 2026). */
-        if (forWho === "talent" && kind !== "lookbook" && kind !== "moodboard") nb.pages = [{ type: "about" }, { type: "photos", photos: [] }, { type: "contact" }, { type: "end", layout: "back" }];
+        if (forWho === "talent" && kind !== "lookbook" && !KIND_PLAN[kind]) nb.pages = [{ type: "about" }, { type: "photos", photos: [] }, { type: "contact" }, { type: "end", layout: "back" }];
         /* A comp card from the start (the owner, Sep 29 2026, looking for it
            on this screen: "comp cards are generally 1 page"). The card is the
            whole book: its one page is the cover, arranged from scratch and
@@ -8317,7 +8524,7 @@
         if (missingWho()) return;
         if (pick) board = pick;
         closeStart();
-        const nb = withWho(withKind(withLayout(newBook(`Book ${state.versions.length + 1}`), k), kind));
+        const nb = planPages(withWho(withKind(withLayout(newBook(`Book ${state.versions.length + 1}`), k), kind)));
         // The studio's own books can start in its brand (Design → Brand kit).
         if (forWho === "studio" && brandOf().start && brandHas(brandOf())) applyBrand(nb);
         openBook(nb, true, { sel: -1 });
@@ -8347,7 +8554,7 @@
       function openStart() {
         closeStart();
         forWho = "studio"; forName = ""; forModel = ""; kindByBrand = false;
-        if (kind === "compcard" || kind === "moodboard") kind = "magazine";   // a comp card is chosen for a model, and a moodboard for a board, each time
+        if (kind === "compcard" || KIND_PLAN[kind]) kind = "magazine";   // a comp card is chosen for a model, and a moodboard for a board, each time
         const box = document.createElement("div");
         box.className = "sb-start"; box.id = "sbStart"; box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true"); box.setAttribute("aria-label", "Start a new book");
         box.innerHTML = `<div class="sb-startbox">
@@ -8380,9 +8587,9 @@
             <p class="sb-warn" id="sbForNeed" hidden></p>
           </div>
           <p class="sb-hint" id="sbForNote">${esc(forNoteNow())}</p>
-          <div class="sb-cpbase"><span>Start with</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="What kind of book">${[["magazine", "A magazine"], ["lookbook", "A lookbook"], ["moodboard", "A moodboard"], ["compcard", "A comp card"]].map(([k, nm]) => `<button type="button" role="radio" data-kind="${k}" aria-checked="${kind === k}" ${k === "compcard" && forWho !== "talent" ? "hidden" : ""}>${nm}</button>`).join("")}</div></div>
+          <div class="sb-cpbase"><span>Start with</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="What kind of book">${[["magazine", "A magazine"], ["lookbook", "A lookbook"], ["moodboard", "A moodboard"], ["pitch", "A pitch"], ["shootplan", "A shoot plan"], ["compcard", "A comp card"]].map(([k, nm]) => `<button type="button" role="radio" data-kind="${k}" aria-checked="${kind === k}" ${k === "compcard" && forWho !== "talent" ? "hidden" : ""}>${nm}</button>`).join("")}</div></div>
           <p class="sb-hint" id="sbKindNote">${esc(KIND_NOTE[kind])}</p>
-          <div class="sb-startcc" id="sbStartCC" hidden><button type="button" class="sb-btn" data-start="custom" data-compcard="1">Make the comp card →</button></div>
+          <div class="sb-startcc" id="sbStartCC" hidden><button type="button" class="sb-btn" data-start="custom" data-compcard="1">Make the comp card →</button><button type="button" class="sb-btn dark" data-start="custom" data-makeplan="1" hidden>Make it →</button></div>
           <div class="sb-starts" id="sbStartBoards" ${kind === "moodboard" ? "" : "hidden"}>${BOARDS.map(([k, nm, note]) => `<button type="button" class="sb-startitem" data-board="${k}"><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(nm)}</b><span>${esc(note)}</span></button>`).join("")}</div>
           <p class="sb-hint" id="sbCoverHint">Then the cover to begin with. It can be changed any time on the cover's own panel.</p>
           <div class="sb-starts" id="sbStartCovers">${COVER_LAYOUTS.map(([k, nm]) => `<button type="button" class="sb-startitem" data-start="${k}"><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(k === "custom" ? "From scratch (blank)" : nm)}</b><span>${esc(COVER_LAYOUT_NOTE[k])}</span></button>`).join("")}</div>
@@ -8443,10 +8650,13 @@
           box.querySelector("#sbForNote").textContent = forNoteNow();
           // A comp card is one page with no cover to choose: one button instead.
           // A moodboard starts on a board: its layouts stand where the covers would.
-          const cc = kind === "compcard", mb = kind === "moodboard";
-          box.querySelector("#sbStartCC").hidden = !cc;
-          box.querySelector("#sbCoverHint").hidden = cc || mb;
-          box.querySelector("#sbStartCovers").hidden = cc || mb;
+          // A pitch or a shoot plan has its own cover: one button too.
+          const cc = kind === "compcard", mb = kind === "moodboard", pl = kind === "pitch" || kind === "shootplan";
+          box.querySelector("#sbStartCC").hidden = !cc && !pl;
+          box.querySelector('[data-compcard="1"]').hidden = !cc;
+          { const mk = box.querySelector("[data-makeplan]"); mk.hidden = !pl; mk.textContent = kind === "pitch" ? "Make the pitch →" : "Make the shoot plan →"; }
+          box.querySelector("#sbCoverHint").hidden = cc || mb || pl;
+          box.querySelector("#sbStartCovers").hidden = cc || mb || pl;
           box.querySelector("#sbStartBoards").hidden = !mb;
           if (box.drawPreviews) box.drawPreviews();
         }));
@@ -8457,7 +8667,7 @@
           const token = ++previewToken;
           const cache = new Map();
           try { await ensureFonts(); } catch (e) { /* the covers draw in what is there */ }
-          for (const [k] of kind === "moodboard" ? [] : COVER_LAYOUTS) {
+          for (const [k] of KIND_PLAN[kind] ? [] : COVER_LAYOUTS) {
             if (!box.isConnected || token !== previewToken) return;
             const nb = withKind(withLayout(newBook("Preview"), k), kind);
             if (forWho !== "studio") { nb.id = "bfpreview"; nb.madeFor = { kind: forWho, name: (forWho === "talent" ? (forModel === OWN_MODEL ? ownFromForm().name : ((modelsList().find((m) => m.key === forModel) || {}).name || "")) : forName).trim() || "Their name" }; nb.colourway = "silver-print"; if (kind !== "lookbook") { nb.title = nb.madeFor.name; nb.subtitle = forWho === "talent" ? "Portfolio" : ""; } }
@@ -9793,6 +10003,22 @@
       change({ rail: true });
       drawInspector();
     }
+    /* A line of words under a photograph, as wide as it, ready to type: why
+       it is on the board (v576). Above it when there is no room below. */
+    function noteUnder(i) {
+      const e = freePage(); if (!e) return;
+      const bl = blocksOf(e), p = bl[i];
+      if (!p || p.k !== "photo") return;
+      if (bl.length >= FREE_MAX) { API.toast(`A page holds ${FREE_MAX} things. Remove one to add another.`); return; }
+      mark();
+      const h = 0.03, below = p.y + (p.h || 0) + 0.008;
+      const y = below + h <= 0.99 ? below : Math.max(0, p.y - h - 0.008);
+      bl.push({ k: "text", role: "body", t: "", x: round4(p.x), y: round4(y), w: round4(p.w), h, style: { size: 0.8 } });
+      blockSel = bl.length - 1; multi = null;
+      change({ rail: true }); drawLayer(); drawInspector();
+      const f = $("#sbF_blocktext"); if (f) f.focus();
+      API.toast("A note under the picture: type why it's there · Ctrl+Z to take it off");
+    }
     function addBlock(k) {
       const e = freePage(); if (!e) return;
       const blocks = blocksOf(e);
@@ -10283,6 +10509,11 @@
           html: `<div class="sb-additems">${g.items.map(([type, nm, note]) => tile(type, nm, note, g.group, type !== "cover" && full(type.split(":")[0]))).join("")}</div>` });
         if (lay) layoutsSeen = true;
       }
+      /* In a moodboard, a pitch or a shoot plan the planning layouts come first;
+         an album laid out and your templates go after them (the owner, on
+         v575: "why cant i make a moodboard without any album" — it opened on
+         From an album). */
+      if (book.plan) groups.push(...groups.splice(0, 2));
       menu.innerHTML = `
         <div class="sb-addhead"><strong>Add a page</strong><span class="sb-hint">It goes after the page you're on. The book has ${count} page${count === 1 ? "" : "s"}.</span>
           <label class="sb-addsearch">${uiIc("search")}<span class="sb-vh">Find a kind of page</span><input type="search" id="sbAddFind" placeholder="Find a page…" autocomplete="off"></label>
@@ -12038,6 +12269,7 @@
         ${b ? "" : pageLookHtml(entry, blocks.filter((x) => x.k === "photo").length, true)}
         ${b ? `<div class="sb-sec sb-rowbox"><h3>${esc(BLOCK_NAME[b.k] || "Thing")} ${blockSel + 1}</h3>
           ${words}${paint}${photoShape}${effects}
+          ${b.k === "photo" ? `<div class="sb-adds"><button type="button" data-noteunder>${uiIc("type")}Add a note under it</button></div>` : ""}
           ${b.k === "photo" ? `<p class="sb-hint">Choose the photograph, and how it sits in its box, below.</p>` : ""}
           ${step("Across", "nudx", "-1", "1", mmX(b.x))}
           ${step("Down", "nudy", "-1", "1", mmY(b.y))}
@@ -12107,6 +12339,7 @@
       } }
       box.querySelectorAll(".sb-rowbox [data-malign]").forEach((x) => x.addEventListener("click", () => alignChosen(x.dataset.malign)));
       { const sl = $("[data-slock]"); if (sl) sl.addEventListener("click", () => setLocked([blockSel], true)); }
+      { const nu = $("[data-noteunder]"); if (nu) nu.addEventListener("click", () => noteUnder(blockSel)); }
       { const sh = $("[data-shide]"); if (sh) sh.addEventListener("click", () => setHidden([blockSel], true)); }
       const toFront = $("[data-tofront]"); if (toFront) toFront.addEventListener("click", () => moveBlockTo(blockSel, "front"));
       const toBack = $("[data-toback]"); if (toBack) toBack.addEventListener("click", () => moveBlockTo(blockSel, "back"));
