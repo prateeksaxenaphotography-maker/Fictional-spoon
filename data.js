@@ -2860,7 +2860,7 @@ window.WPS_DATA = {
           "status": "tentative",
           "type": "Fashion Editorial",
           "contractVersion": "Pending Agreement",
-          "updatedAt": 1790784432842
+          "updatedAt": 1790784710365
         }
       ]
     },
@@ -2924,8 +2924,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1790784443588,
-    "syncedAt": 1790784443588
+    "updatedAt": 1790833871439,
+    "syncedAt": 1790833871439
   },
   "INVITE_CODES": [
     {
@@ -3031,6 +3031,12 @@ window.WPS_DATA = {
       "name": "High-End Full Day Production",
       "price": 75000,
       "specs": "Full Gallery + 30+ Retouched Master Assets (No RAW files delivered)"
+    },
+    {
+      "id": "pkg_6",
+      "name": "Custom Package Tier #6",
+      "price": 85000,
+      "specs": "Custom Proofing & Master Retouched Deliverables"
     }
   ],
   "TFP_PACKAGE": {
@@ -3120,10 +3126,10 @@ window.WPS_DATA = {
   "SETTINGS_AT": {
     "INVITE_CODES": 1790661324121,
     "PROMO_CODES": 1790675065627,
-    "PACKAGES": 1790661324121,
+    "PACKAGES": 1790833862540,
     "TFP_PACKAGE": 1790661324121,
     "HOME_STUDIO_RATE": 1790661324121,
-    "PORTFOLIO_PDF": 1790422802684,
+    "PORTFOLIO_PDF": 1790786320186,
     "HOME_SLIDESHOW": 1790354674280,
     "MEASURE_UNITS": 1790269147688,
     "HOME_STUDIO_RATE_TFP": 1790661324121
@@ -3770,8 +3776,9 @@ window.WPS_DATA = {
       {
         "id": "mp_muibi3wg_q4nmp",
         "shootId": "comp-card-Atharv%20Sharma%20(https%3A%2F%2Fwww.instagram.com%2Fectogainsss%2F%3Fhl%3Den)",
-        "name": "Test",
-        "updatedAt": 1790422792000,
+        "modelKey": "atharv-sharma",
+        "name": "Test 2",
+        "updatedAt": 1790786320186,
         "spec": {
           "pages": 2,
           "count": 8,
