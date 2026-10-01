@@ -5553,6 +5553,7 @@
      square, a 1.75 stroke, round ends — in place of the glyphs (⧉ ⇈ ⟳ ✕ ‹)
      that each font drew at its own size and weight. */
   const UI_PATHS = {
+    paste: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M16 4h2a2 2 0 0 1 2 2v4"/><path d="M21 14H11"/><path d="m15 10-4 4 4 4"/>',
     back: '<path d="m15 18-6-6 6-6"/>',
     left: '<path d="m15 18-6-6 6-6"/>', right: '<path d="m9 18 6-6-6-6"/>', up: '<path d="m18 15-6-6-6 6"/>', down: '<path d="m6 9 6 6 6-6"/>',
     arrowUp: '<path d="M12 19V5"/><path d="m5 12 7-7 7 7"/>', arrowDown: '<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',
@@ -6519,7 +6520,28 @@
       ["sidebar", "Colour sidebar", "A band of colour with the headline in it, the story beside."],
       ["centred", "Centred", "A centred headline, a photograph, then the words."],
       ["quote", "A quote under a photograph", "A photograph at the top, big words under it, and who said them."],
-      ["quotephoto", "Quote on a photograph", "Big words written across a darkened photograph."]] }
+      ["quotephoto", "Quote on a photograph", "Big words written across a darkened photograph."]] },
+    /* Three that are kinds of page in their own right (Oct 2026): each is a
+       section of the Add-page gallery of its own, not a "Layouts ·" one. */
+    { group: "Moodboard", top: true, items: [
+      ["mb_grid", "Grid of nine", "A title, nine pictures three by three, a row of colours and a note. Copy a picture anywhere and paste it in."],
+      ["mb_collage", "Collage", "One big picture and five around it, four colours and a line about the mood."],
+      ["mb_sections", "Mood, light, styling, location", "Four parts, each named, with two pictures and a note."],
+      ["mb_lookfeel", "Look and feel", "Three pictures down the side; the idea, light, framing, colour, styling and location beside them."],
+      ["mb_palette", "Colour story", "A picture, the five colours drawn from it with their codes, and why."],
+      ["mb_styling", "Styling board", "The look at full length, and six pieces of it, each named."],
+      ["mb_pinboard", "Pinboard", "Six prints pinned at angles, and a note stuck beside them."]] },
+    { group: "Comp cards", top: true, items: [
+      ["cc_actor", "Actor's card", "Name large, what they do, four photographs two by two; Details, Work experience and Contact beside them."],
+      ["cc_front", "Comp card · front", "The front of a two-sided card: one photograph to the edges, the name under it."],
+      ["cc_back", "Comp card · back", "Four photographs, the measurements in a row, and how to reach them."],
+      ["cc_five", "Five photographs", "One big photograph and four round it, the name and measurements in the corner."],
+      ["cc_digitals", "Digitals", "Six plain photographs, each named: front, profile, full length, three-quarter, back and smile."]] },
+    { group: "For brands", top: true, items: [
+      ["bl_linesheet", "Line sheet", "Six pieces with their names, style numbers and prices, and the terms under them."],
+      ["bl_product", "One piece", "The photograph down one side; its name, price, fabric, sizes, colours and care, and two details."],
+      ["bl_range", "The range", "Eight pieces at a glance, each named and numbered."],
+      ["bl_campaign", "Campaign", "One photograph to the edges, the brand's mark, and the line across a dark band."]] }
   ];
   const LAYOUT_NAME = Object.fromEntries(LAYOUT_GROUPS.flatMap((g) => g.items.map(([k, n]) => [k, n])));
   /* The Add menu for the book being edited. A book made for someone else is
@@ -6542,10 +6564,13 @@
         : k === "end:back" ? [k, "Back cover", "The last page: their logo or name, and how to reach them."]
         : [k, nm, note])
     })).filter((g) => g.items.length);
-    // A talent's book opens its menu with their comp card (Sep 29 2026).
-    return withCover(m.kind === "talent"
-      ? [{ group: "Comp card", items: [["free:compcard", "Comp card", `One page: a big photograph with three beside it, ${m.name}'s name, what they do, their measurements and the brands they have worked with — filled from their card, every part movable.`]] }, ...menu]
-      : menu);
+    /* A talent's book opens its menu with their comp cards (Sep 29 2026),
+       the one filled from their card first; a brand's with its own pages. */
+    const first = m.kind === "talent" ? "Comp cards" : m.kind === "brand" ? "For brands" : "";
+    const lead = menu.find((g) => g.group === first);
+    const rest = menu.filter((g) => g !== lead);
+    if (m.kind === "talent") return withCover([{ group: "Comp cards", items: [["free:compcard", "Comp card", `One page: a big photograph with three beside it, ${m.name}'s name, what they do, their measurements and the brands they have worked with — filled from their card, every part movable.`], ...(lead ? lead.items.map(([k, n, note]) => [k, n, `${note} Filled from ${m.name}'s card.`]) : [])] }, ...rest]);
+    return withCover(lead ? [lead, ...rest] : menu);
   };
   const ADD_MENU = [
     { group: "Photographs", items: [
@@ -6553,6 +6578,7 @@
       ["spread", "Two-page spread", "One photo across two facing pages."]] },
     { group: "Lookbook", items: [
       ["look", "Look", "One or two photographs of one look, its number, its name, and the lines under it: garments, who made them, who styled it."]] },
+    ...LAYOUT_GROUPS.filter((g) => g.top).map((g) => ({ group: g.group, items: g.items.map(([k, n, note]) => [`free:${k}`, n, note]) })),
     { group: "Words", items: [
       ["story", "Story", "A photo with a headline, an intro and a story about a shoot or a brief."],
       ["note", "About a photo", "One photo shown large, with a title and a few lines about it."],
@@ -6568,7 +6594,7 @@
       ["free", "Anything page", "An empty page. Put words, photographs, colour blocks and lines wherever you like."],
       ["free:blank", "Empty page", "Nothing on it but the page colour: for the end of the book, or to keep a two-page spread on facing pages."]] },
     // The layout library: every one an Anything page, so everything on it can move.
-    ...LAYOUT_GROUPS.map((g) => ({ group: `Layouts · ${g.group}`, items: g.items.map(([k, n, note]) => [`free:${k}`, n, note]) })),
+    ...LAYOUT_GROUPS.filter((g) => !g.top).map((g) => ({ group: `Layouts · ${g.group}`, items: g.items.map(([k, n, note]) => [`free:${k}`, n, note]) })),
     { group: "Studio pages", items: [
       ["contents", "Contents", "Every chapter and titled page with its page number, always up to date."],
       ["divider", "Chapter page", "A pause between sections, e.g. “Fashion & editorial”."],
@@ -6611,18 +6637,10 @@
     contents: "t4,7,20,3 b4,12,8,1 t4,18,26,2 t36,18,4,2 t4,24,24,2 t36,24,4,2 t4,30,28,2 t36,30,4,2 t4,36,20,2 t36,36,4,2 t4,42,26,2 t36,42,4,2",
     more: "t4,6,14,1.5 b4,9,8,1 t4,13,17,2 t4,17,17,2 t4,21,17,2 t4,25,17,2 t4,29,13,2 t23,13,17,2 t23,17,17,2 t23,21,17,2 t23,25,10,2"
   };
-  /* The comp card filled from a talent's card: the photographs cleared for
-     it — a full-length one large and a close-up, a front and a profile beside
-     it, by the angles they are tagged with — their name, what they do, their
-     measurements as their record lets a PDF show them, and the brands of the
-     albums they are in. Every part is an ordinary block, so it moves, changes
-     and goes like anything else on an Anything page. With no card to read it
-     is the bare arrangement. Returns the blocks and what went in. */
-  function compCardBlocks(book) {
-    const tpl = FREE_STARTS.compcard;
-    const blank = (b) => ({ ...b, ...(b.k === "text" ? { t: "" } : {}), ...(b.style ? { style: { ...b.style } } : {}) });
-    const t = talentOf(book);
-    if (!t) return { blocks: tpl.map(blank), photos: 0, stats: 0, brands: 0, name: "" };
+  /* Photographs from a talent's card for a comp card's frames: ask with the
+     angles a frame wants, best first ("*" is any); each is used once. Only
+     photographs cleared for their card, framed as the album frames them. */
+  function talentPicker(book, t) {
     const shots = (t.photos || []).filter((x) => x && x.id && clearedIn(book, x.id));
     // A second comp card, and a third, take photographs the book does not
     // show yet before any it already does (the owner, Sep 29 2026: "can i
@@ -6644,7 +6662,6 @@
       }
       return null;
     };
-    const picks = [take("full-body", "three-quarter", "front", "*"), take("close-up", "front", "*"), take("front", "three-quarter", "close-up", "*"), take("left-profile", "right-profile", "three-quarter", "back", "*")];
     // Framed on the point the album's own tile is framed on; a photograph with
     // none set leans to the top, where a face usually is.
     const focus = (pos) => {
@@ -6654,7 +6671,23 @@
       if (!w[0] || (w.length === 1 && w[0] === "center")) return { x: 0.5, y: 0.4 };
       return { x: one(w[0], 0.5), y: one(w[1], 0.5) };
     };
-    const blocks = tpl.filter((b) => b.k === "photo").map((b, i) => ({ ...b, ...(picks[i] ? { p: { id: picks[i].id, ...focus(picks[i].pos), zoom: 1 } } : {}) }));
+    return (angles) => { const hit = take(...angles); return hit ? { id: hit.id, ...focus(hit.pos), zoom: 1 } : null; };
+  }
+  /* The comp card filled from a talent's card: the photographs cleared for
+     it — a full-length one large and a close-up, a front and a profile beside
+     it, by the angles they are tagged with — their name, what they do, their
+     measurements as their record lets a PDF show them, and the brands of the
+     albums they are in. Every part is an ordinary block, so it moves, changes
+     and goes like anything else on an Anything page. With no card to read it
+     is the bare arrangement. Returns the blocks and what went in. */
+  function compCardBlocks(book) {
+    const tpl = FREE_STARTS.compcard;
+    const blank = (b) => ({ ...b, ...(b.k === "text" ? { t: "" } : {}), ...(b.style ? { style: { ...b.style } } : {}) });
+    const t = talentOf(book);
+    if (!t) return { blocks: tpl.map(blank), photos: 0, stats: 0, brands: 0, name: "" };
+    const pick = talentPicker(book, t);
+    const picks = [pick(["full-body", "three-quarter", "front", "*"]), pick(["close-up", "front", "*"]), pick(["front", "three-quarter", "close-up", "*"]), pick(["left-profile", "right-profile", "three-quarter", "back", "*"])];
+    const blocks = tpl.filter((b) => b.k === "photo").map((b, i) => ({ ...b, ...(picks[i] ? { p: picks[i] } : {}) }));
     const L = 0.035, W = 0.525;
     const text = (role, x, y, w, h, words, style) => blocks.push({ k: "text", role, x, y, w, h, t: words, ...(style ? { style } : {}) });
     text("head", L, 0.645, W, 0.06, String(t.name || "").toUpperCase(), { size: 1.6, weight: "bold" });
@@ -6682,12 +6715,50 @@
     text("body", L, y + 0.022, W, Math.min(0.06, 0.975 - (y + 0.022)), brands.join(" · "));
     return { blocks, photos: picks.filter(Boolean).length, stats: stats.length, brands: brands.length, name: t.name || "" };
   }
+  // The words a starter's `bind` asks for, from a talent's card ("" when it has none).
+  function talentWords(t, bind, keep) {
+    const stats = (t.stats || []).filter((c) => c && c.label && c.value);
+    const statOf = (names) => stats.find((c) => String(names || "").split("|").some((n) => String(c.label).toLowerCase() === n.toLowerCase()));
+    const contacts = (t.contacts || []).filter((c) => c && c.value).map((c) => String(c.value));
+    const i = String(bind).indexOf(":"), kind = i < 0 ? String(bind) : String(bind).slice(0, i), arg = i < 0 ? "" : String(bind).slice(i + 1);
+    const line = (c) => `${c.label} ${c.value}`;
+    if (kind === "name") return String(t.name || "").toUpperCase();
+    if (kind === "roles") return (t.types || []).filter(Boolean).join(" – ");
+    if (kind === "stat") { const c = statOf(arg); return c ? String(c.value) : ""; }
+    // A measurement's own name: Bust on a card that says Bust, though the layout says Chest.
+    if (kind === "label") { const c = statOf(arg); return !c ? "" : keep && keep === keep.toUpperCase() ? String(c.label).toUpperCase() : String(c.label); }
+    if (kind === "stats") return stats.map(line).join(" · ");
+    if (kind === "statlines") return stats.map(line).join("\n");
+    if (kind === "brands") return (t.brands || []).filter(Boolean).join(" · ");
+    if (kind === "contact") return contacts.join("\n");
+    if (kind === "contactline") return contacts.join(" · ");
+    return "";
+  }
+  /* A layout's blocks, ready to go on a page: the starter's own keys taken
+     off (see FREE_STARTS: keep, sample, bind), its labels written in, and in
+     a talent's book what their card says. `how` is "add" for a new page,
+     "preview" for its picture in the Add-page gallery (sample words where
+     nothing else is written), and "layout" for Change the layout: labels
+     only, since the page's own photographs and words go in after. */
+  function startBlocks(key, book, how = "add") {
+    const tpl = FREE_STARTS[key] || [];
+    const t = how === "layout" ? null : talentOf(book);
+    const pick = t ? talentPicker(book, t) : null;
+    return tpl.map((b) => {
+      const { keep, sample, bind, ...c } = b;
+      if (c.style) c.style = { ...c.style };
+      if (c.k === "text") c.t = (t && bind ? talentWords(t, bind, keep) : "") || keep || (how === "preview" && sample) || "";
+      if (c.k === "photo" && pick && bind) { const p = pick(String(bind).split(",")); if (p) c.p = p; }
+      return c;
+    });
+  }
   function addIcon(type) {
     const FILL = { p: "#cfcbc4", t: "#8a8c93", b: "var(--accent, #d24e1a)", w: "#ffffff", q: "#141416" };
     const spec = ADD_ICONS[type] !== undefined ? ADD_ICONS[type] : (/^free:/.test(type) ? layoutIconSpec(FREE_STARTS[type.slice(5)]) : "");
     const parts = String(spec || "").split(/\s+/).filter(Boolean).map((tok) => {
       if (tok === "d") return `<rect x="4.5" y="4.5" width="35" height="51" fill="none" stroke="#d24e1a" stroke-width=".8" stroke-dasharray="2 1.5"/>`;
       const k = tok[0], [x, y, w, h] = tok.slice(1).split(",").map(Number);
+      if (k === "h") { const c = tok.split(",")[4]; return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${/^#[0-9a-f]{6}$/i.test(c) ? c : FILL.b}"/>`; }
       if (k === "l") return `<line x1="${x}" y1="${y}" x2="${w}" y2="${h}" stroke="#c8c6c1" stroke-width="1"/>`;
       return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${FILL[k] || FILL.t}"/>`;
     });
@@ -6897,6 +6968,208 @@
       { k: "text", role: "kicker", x: 0.1, y: 0.63, w: 0.8, h: 0.03, style: { color: "#ffffff", align: "center" } }
     ]
   };
+  /* Comp cards, pages for brands, and moodboards (Oct 2026, the owner: "this
+     is one configuration for comp cards that should be available.. find more
+     configuration templates for talents, brands", and "create a section …
+     named as moodboard … various templates in which i can plug and make
+     moodboards"). Laid out like the rest, in fractions of the A4 frame. A
+     starter block can carry three things that are never stored, taken off by
+     startBlocks():
+       keep   — words that belong to the layout, a label such as DETAILS or
+                Height: written in, and edited or deleted like any words;
+       sample — words for the layout's picture in the Add-page gallery only;
+       bind   — what a talent's book fills it with from their card: name,
+                roles, stat:Height (stat:Chest|Bust takes either), label:… (the
+                card's own name for that measurement), stats (all on one line),
+                statlines (one to a line), brands, contact (one to a line),
+                contactline (one line); on a photograph, the angles it is
+                chosen by, best first ("close-up,front,*").
+     Anything else starts empty: nothing is written for the studio. */
+  (() => {
+    const T = (role, x, y, w, h, more = {}) => ({ k: "text", role, x, y, w, h, ...more });
+    const P = (x, y, w, h, more = {}) => ({ k: "photo", x, y, w, h, ...more });
+    const S = (x, y, w, h, fill, more = {}) => ({ k: "shape", x, y, w, h, fill, ...more });
+    const L = (x, y, w, more = {}) => ({ k: "line", x, y, w, thick: "hair", color: "ink", ...more });
+    // A section's name, bold in the words' own type, as on the owner's card (a kicker printed too small to head a list).
+    const label = (x, y, w, words) => T("body", x, y, w, 0.024, { keep: words, style: { weight: "bold" } });
+    // A list: each row its name, kept, and a value beside it to type, or filled from the card.
+    const rows = (x, y, step, lw, vw, list) => list.flatMap(([name, bind, sample], i) => [
+      T("body", x, y + i * step, lw, 0.024, { keep: name, ...(bind && bind.startsWith("label:") ? { bind } : {}) }),
+      T("body", x + lw, y + i * step, vw, 0.024, { style: { weight: "bold" }, ...(bind && !bind.startsWith("label:") ? { bind } : bind ? { bind: bind.replace(/^label:/, "stat:") } : {}), ...(sample ? { sample } : {}) })
+    ]);
+    const PALETTE = ["#d9c7b0", "#a68a6d", "#6b705c", "#3f4238", "#ece6da"];
+    const swatches = (x, y, w, h, gap, n) => PALETTE.slice(0, n).map((c, i) => S(x + i * (w + gap), y, w, h, c));
+    const NAME = "AANYA RAO", ROLES = "Model – Actor";
+    const r3 = (v) => Math.round(v * 1000) / 1000;
+    Object.assign(FREE_STARTS, {
+      // ---- Comp cards ----
+      /* The owner's own (Oct 2026): name large, what they do, four photographs
+         two by two, and beside them Details, Work experience and Contact. */
+      cc_actor: [
+        T("head", 0.05, 0.04, 0.9, 0.075, { bind: "name", sample: NAME, style: { size: 1.6, weight: "bold" } }),
+        T("body", 0.05, 0.118, 0.9, 0.03, { bind: "roles", sample: "Actor – Model – Poet", style: { size: 1.2 } }),
+        L(0.05, 0.162, 0.9, { thick: "narrow" }),
+        P(0.05, 0.185, 0.28, 0.33, { bind: "close-up,front,*" }),
+        P(0.345, 0.185, 0.28, 0.33, { bind: "three-quarter,front,*" }),
+        P(0.05, 0.53, 0.28, 0.33, { bind: "full-body,three-quarter,*" }),
+        P(0.345, 0.53, 0.28, 0.33, { bind: "left-profile,right-profile,*" }),
+        label(0.67, 0.19, 0.28, "DETAILS"),
+        ...rows(0.67, 0.225, 0.031, 0.13, 0.15, [["Height", "stat:Height", "5′ 7″"], ["Age", "", "24"], ["Eyes", "stat:Eyes", "Brown"], ["Chest", "label:Chest|Bust", "34″"], ["Waist", "stat:Waist", "26″"], ["Hips", "stat:Hips", "36″"]]),
+        label(0.67, 0.44, 0.28, "WORK EXPERIENCE"),
+        ...rows(0.67, 0.475, 0.031, 0.13, 0.15, [["Theatre", "", "3 plays"], ["Short films", "", "4"], ["TVC ads", "", "2"], ["Digitals", "", "6 brands"], ["Feature films", "", "1"]]),
+        label(0.67, 0.665, 0.28, "CONTACT"),
+        T("body", 0.67, 0.7, 0.28, 0.1, { bind: "contact", sample: "hello@example.com\n+91 98100 00000\n@aanya.rao" }),
+        label(0.05, 0.878, 0.9, "BRANDS"),
+        T("body", 0.05, 0.905, 0.9, 0.05, { bind: "brands", sample: "Brand one · Brand two · Brand three" })
+      ],
+      // The front of a two-sided card: one photograph and the name.
+      cc_front: [
+        P(0, 0, 1, 0.84, { bind: "close-up,front,*" }),
+        T("head", 0.06, 0.862, 0.88, 0.065, { bind: "name", sample: NAME, style: { size: 1.6, weight: "bold", align: "center" } }),
+        T("kicker", 0.06, 0.935, 0.88, 0.022, { bind: "roles", sample: ROLES, style: { align: "center" } })
+      ],
+      // Its back: four photographs, the measurements in a row, how to reach them.
+      cc_back: [
+        P(0.04, 0.035, 0.45, 0.37, { bind: "full-body,three-quarter,*" }),
+        P(0.51, 0.035, 0.45, 0.37, { bind: "close-up,front,*" }),
+        P(0.04, 0.42, 0.45, 0.37, { bind: "three-quarter,front,*" }),
+        P(0.51, 0.42, 0.45, 0.37, { bind: "left-profile,right-profile,back,*" }),
+        T("head", 0.04, 0.803, 0.92, 0.042, { bind: "name", sample: NAME, style: { weight: "bold" } }),
+        L(0.04, 0.852, 0.92),
+        ...[["HEIGHT", "Height", "5′ 7″"], ["CHEST", "Chest|Bust", "34″"], ["WAIST", "Waist", "26″"], ["HIPS", "Hips", "36″"], ["SHOES", "Shoes", "6 UK"], ["HAIR", "Hair", "Brown"], ["EYES", "Eyes", "Brown"]].flatMap(([lab, stat, sample], i) => [
+          T("kicker", r3(0.04 + i * 0.1314), 0.862, 0.124, 0.02, { keep: lab, ...(stat.includes("|") ? { bind: `label:${stat}` } : {}) }),
+          T("body", r3(0.04 + i * 0.1314), 0.884, 0.124, 0.024, { bind: `stat:${stat}`, sample, style: { weight: "bold" } })
+        ]),
+        T("body", 0.04, 0.93, 0.92, 0.035, { bind: "contactline", sample: "hello@example.com · @aanya.rao" })
+      ],
+      // Five photographs: a big one, the rest around it, the facts in the corner.
+      cc_five: [
+        P(0.04, 0.035, 0.56, 0.6, { bind: "full-body,three-quarter,*" }),
+        P(0.62, 0.035, 0.34, 0.29, { bind: "close-up,front,*" }),
+        P(0.62, 0.345, 0.34, 0.29, { bind: "left-profile,right-profile,*" }),
+        P(0.04, 0.655, 0.27, 0.31, { bind: "three-quarter,front,*" }),
+        P(0.33, 0.655, 0.27, 0.31, { bind: "back,*" }),
+        T("head", 0.62, 0.66, 0.34, 0.05, { bind: "name", sample: NAME, style: { weight: "bold" } }),
+        T("kicker", 0.62, 0.715, 0.34, 0.022, { bind: "roles", sample: ROLES }),
+        L(0.62, 0.746, 0.34),
+        T("body", 0.62, 0.76, 0.34, 0.13, { bind: "statlines", sample: "Height 5′ 7″\nBust 34″\nWaist 26″\nHips 36″\nShoes 6 UK\nEyes Brown" }),
+        T("body", 0.62, 0.9, 0.34, 0.065, { bind: "contact", sample: "hello@example.com\n@aanya.rao" })
+      ],
+      // Digitals: the plain, unretouched set agencies ask for, each named.
+      cc_digitals: [
+        T("head", 0.05, 0.035, 0.9, 0.05, { bind: "name", sample: NAME, style: { weight: "bold" } }),
+        T("body", 0.05, 0.092, 0.9, 0.026, { bind: "stats", sample: "Height 5′ 7″ · Bust 34″ · Waist 26″ · Hips 36″ · Shoes 6 UK · Eyes Brown" }),
+        ...[["FRONT", "front,close-up,*"], ["PROFILE", "left-profile,right-profile,*"], ["FULL LENGTH", "full-body,*"], ["THREE-QUARTER", "three-quarter,*"], ["BACK", "back,*"], ["SMILE", "close-up,front,*"]].flatMap(([lab, bind], i) => {
+          const x = r3(0.05 + (i % 3) * 0.315), y = r3(0.14 + Math.floor(i / 3) * 0.39);
+          return [P(x, y, 0.27, 0.33, { bind }), T("kicker", x, r3(y + 0.338), 0.27, 0.02, { keep: lab })];
+        }),
+        T("body", 0.05, 0.925, 0.9, 0.035, { bind: "contactline", sample: "hello@example.com · @aanya.rao" })
+      ],
+      // ---- For brands ----
+      // A line sheet: six pieces, each with its name, style number and price.
+      bl_linesheet: [
+        T("kicker", 0.07, 0.045, 0.6, 0.022, { sample: "SPRING / SUMMER 2027" }),
+        T("head", 0.07, 0.07, 0.86, 0.06, { sample: "The linen edit" }),
+        L(0.07, 0.142, 0.86),
+        ...["Camp-collar shirt", "Wide trousers", "Wrap dress", "Linen blazer", "Pleated skirt", "Easy tee"].flatMap((nm, i) => {
+          const x = r3(0.07 + (i % 3) * 0.3), y = r3(0.16 + Math.floor(i / 3) * 0.36);
+          return [P(x, y, 0.26, 0.27), T("body", x, r3(y + 0.278), 0.26, 0.022, { sample: nm, style: { weight: "bold" } }), T("kicker", x, r3(y + 0.302), 0.26, 0.02, { sample: `Style no. ${1041 + i} · ₹${(2200 + i * 300).toLocaleString("en-IN")}` })];
+        }),
+        L(0.07, 0.875, 0.86),
+        T("body", 0.07, 0.888, 0.86, 0.06, { sample: "Wholesale prices in ₹ · Sizes XS–XL · Six pieces a style at least · Delivery from March" })
+      ],
+      // One piece: the photograph, its name and price, what it is made of.
+      bl_product: [
+        P(0, 0, 0.55, 1),
+        T("kicker", 0.6, 0.07, 0.33, 0.022, { sample: "THE LINEN EDIT" }),
+        T("head", 0.6, 0.1, 0.33, 0.12, { sample: "Relaxed linen shirt" }),
+        T("intro", 0.6, 0.235, 0.33, 0.04, { sample: "₹2,400 · Style no. 1042" }),
+        T("body", 0.6, 0.29, 0.33, 0.14, { sample: "Washed linen, cut loose through the body, with a camp collar and horn buttons." }),
+        L(0.6, 0.45, 0.33),
+        ...rows(0.6, 0.465, 0.031, 0.11, 0.22, [["Fabric", "", "100% linen"], ["Sizes", "", "XS–XL"], ["Colours", "", "Ivory, sage, clay"], ["Care", "", "Machine wash cold"]]),
+        P(0.6, 0.63, 0.155, 0.2),
+        P(0.775, 0.63, 0.155, 0.2),
+        T("kicker", 0.6, 0.842, 0.33, 0.02, { sample: "The collar and the buttons" })
+      ],
+      // The whole range at a glance: eight pieces, numbered.
+      bl_range: [
+        T("kicker", 0.07, 0.045, 0.6, 0.022, { sample: "AUTUMN 2027 · EIGHT PIECES" }),
+        T("head", 0.07, 0.07, 0.86, 0.06, { sample: "The collection" }),
+        ...["Overshirt", "Cord trousers", "Knit vest", "Wool coat", "Shirt dress", "Cardigan", "Scarf", "Tote"].flatMap((nm, i) => {
+          const x = r3(0.07 + (i % 4) * 0.2225), y = r3(0.16 + Math.floor(i / 4) * 0.39);
+          return [P(x, y, 0.2, 0.3), T("body", x, r3(y + 0.307), 0.2, 0.022, { sample: nm, style: { weight: "bold" } }), T("kicker", x, r3(y + 0.331), 0.2, 0.018, { sample: `No. ${String(i + 1).padStart(2, "0")}` })];
+        }),
+        T("body", 0.07, 0.92, 0.86, 0.04, { sample: "Every piece in three colours · Orders by 15 August" })
+      ],
+      // A campaign page: a photograph to the edges, the brand's mark, the line.
+      bl_campaign: [
+        P(0, 0, 1, 1),
+        // Near-black whatever the style: its words are white, and a dark style's ink is light.
+        S(0, 0.7, 1, 0.3, "#111111", { o: 0.5 }),
+        P(0.07, 0.05, 0.2, 0.08),
+        T("kicker", 0.07, 0.735, 0.86, 0.022, { sample: "THE MONSOON CAMPAIGN", style: { color: "#ffffff" } }),
+        T("head", 0.07, 0.765, 0.86, 0.09, { sample: "Made for the rain", style: { color: "#ffffff" } }),
+        T("intro", 0.07, 0.865, 0.86, 0.06, { sample: "New season, in stores and online from June.", style: { color: "#ffffff" } })
+      ],
+      // ---- Moodboards ----
+      mb_grid: [
+        T("kicker", 0.07, 0.04, 0.6, 0.022, { sample: "MOODBOARD · THE BRIEF" }),
+        T("head", 0.07, 0.065, 0.86, 0.055, { sample: "Quiet mornings" }),
+        ...Array.from({ length: 9 }, (_, i) => P(r3(0.07 + (i % 3) * 0.295), r3(0.14 + Math.floor(i / 3) * 0.25), 0.27, 0.235)),
+        label(0.07, 0.9, 0.4, "PALETTE"),
+        ...swatches(0.07, 0.928, 0.07, 0.042, 0.015, 5),
+        T("body", 0.52, 0.9, 0.41, 0.07, { sample: "Soft window light, film grain, linen and stone. Nothing shiny." })
+      ],
+      mb_collage: [
+        T("head", 0.06, 0.04, 0.6, 0.055, { sample: "Desert linen" }),
+        T("kicker", 0.06, 0.1, 0.6, 0.022, { sample: "MOOD AND REFERENCES" }),
+        P(0.06, 0.14, 0.52, 0.44), P(0.6, 0.14, 0.34, 0.21), P(0.6, 0.37, 0.34, 0.21),
+        P(0.06, 0.6, 0.25, 0.27), P(0.33, 0.6, 0.25, 0.27), P(0.6, 0.6, 0.34, 0.27),
+        ...swatches(0.06, 0.9, 0.075, 0.05, 0.015, 4),
+        T("body", 0.45, 0.895, 0.49, 0.07, { sample: "Warm sand, long shadows, loose fabric moving in the wind." })
+      ],
+      mb_sections: [
+        T("head", 0.06, 0.035, 0.88, 0.045, { sample: "The shoot, in four parts" }),
+        ...[["MOOD", "Calm, unhurried, a little nostalgic."], ["LIGHT", "One soft source from the side, deep shadows."], ["STYLING, HAIR & MAKE-UP", "Natural skin, loose hair, linen in earth tones."], ["LOCATION & SET", "A bare room with a big window, or a rooftop at six."]].flatMap(([lab, sample], i) => {
+          const x = i % 2 ? 0.52 : 0.06, y = i < 2 ? 0.1 : 0.55;
+          return [label(x, y, 0.42, lab), P(x, r3(y + 0.035), 0.2, 0.3), P(r3(x + 0.22), r3(y + 0.035), 0.2, 0.3), T("body", x, r3(y + 0.345), 0.42, 0.05, { sample })];
+        })
+      ],
+      mb_lookfeel: [
+        T("kicker", 0.07, 0.045, 0.5, 0.022, { sample: "LOOK AND FEEL" }),
+        T("head", 0.07, 0.07, 0.86, 0.055, { sample: "A slow Sunday" }),
+        P(0.07, 0.145, 0.42, 0.255), P(0.07, 0.415, 0.42, 0.255), P(0.07, 0.685, 0.42, 0.255),
+        ...[["THE IDEA", "A slow Sunday at home: coffee, records, an unmade bed."], ["LIGHT", "Daylight from one window; let the far side fall dark."], ["FRAMING", "Close and loose; some frames cut at the edges."], ["COLOUR", "Warm whites, faded denim, a touch of rust."], ["STYLING", "Oversized shirts, bare feet, no jewellery."], ["LOCATION", "A small flat with plants and a wooden floor."]].flatMap(([lab, sample], i) => [label(0.54, r3(0.15 + i * 0.13), 0.39, lab), T("body", 0.54, r3(0.178 + i * 0.13), 0.39, 0.075, { sample })])
+      ],
+      mb_palette: [
+        T("kicker", 0.07, 0.045, 0.6, 0.022, { sample: "COLOUR STORY" }),
+        T("head", 0.07, 0.07, 0.86, 0.055, { sample: "Clay, sage and bone" }),
+        P(0.07, 0.145, 0.86, 0.4),
+        ...PALETTE.flatMap((c, i) => [S(r3(0.07 + i * 0.176), 0.57, 0.156, 0.17, c), T("body", r3(0.07 + i * 0.176), 0.748, 0.156, 0.022, { sample: c.toUpperCase() })]),
+        T("body", 0.07, 0.8, 0.42, 0.13, { sample: "Warm neutrals for skin and fabric; one deep green to hold the frame together." }),
+        P(0.53, 0.8, 0.19, 0.13), P(0.74, 0.8, 0.19, 0.13)
+      ],
+      mb_styling: [
+        T("kicker", 0.07, 0.045, 0.5, 0.022, { sample: "STYLING · LOOK 1" }),
+        T("head", 0.07, 0.07, 0.86, 0.055, { sample: "City linen" }),
+        P(0.07, 0.145, 0.4, 0.79),
+        ...["Linen blazer", "Wide trousers", "Leather loafers", "Gold hoops", "Canvas tote", "Silk scarf"].flatMap((sample, i) => {
+          const x = i % 2 ? 0.73 : 0.51, y = r3(0.145 + Math.floor(i / 2) * 0.265);
+          return [P(x, y, 0.2, 0.21), T("body", x, r3(y + 0.216), 0.2, 0.022, { sample })];
+        })
+      ],
+      mb_pinboard: [
+        T("head", 0.07, 0.04, 0.6, 0.055, { sample: "Ideas for the shoot" }),
+        P(0.06, 0.12, 0.4, 0.3, { r: -4, edge: "white", edgeWidth: "broad" }),
+        P(0.5, 0.1, 0.42, 0.28, { r: 3, edge: "white", edgeWidth: "broad" }),
+        P(0.1, 0.44, 0.32, 0.3, { r: 2, edge: "white", edgeWidth: "broad" }),
+        P(0.45, 0.41, 0.46, 0.3, { r: -3, edge: "white", edgeWidth: "broad" }),
+        P(0.07, 0.76, 0.3, 0.19, { r: -2, edge: "white", edgeWidth: "broad" }),
+        P(0.4, 0.75, 0.27, 0.2, { r: 4, edge: "white", edgeWidth: "broad" }),
+        T("body", 0.7, 0.77, 0.24, 0.15, { fill: "#f2e3a0", r: -3, sample: "Bring: the linen set, gold hoops, the old film camera." })
+      ]
+    });
+  })();
   // A layout's small picture, worked out from the layout itself.
   function layoutIconSpec(blocks) {
     const r = (v) => Math.round(v * 10) / 10;
@@ -6904,9 +7177,10 @@
     for (const b of blocks || []) {
       const x = r(Math.max(0, b.x) * 44), y = r(Math.max(0, b.y) * 60), w = r(Math.min(1 - Math.max(0, b.x), b.w) * 44), h = r(Math.min(1 - Math.max(0, b.y), b.h || 0.01) * 60);
       if (b.k === "photo") out.push(`p${x},${y},${w},${h}`);
-      else if (b.k === "shape") out.push(`${b.fill === "ink" ? "q" : "b"}${x},${y},${w},${h}`);
+      else if (b.k === "shape") out.push(/^#[0-9a-f]{6}$/i.test(b.fill || "") ? `h${x},${y},${w},${h},${b.fill}` : `${b.fill === "ink" ? "q" : "b"}${x},${y},${w},${h}`);
       else if (b.k === "line") out.push(`b${x},${y},${w},1`);
       else if (b.k === "text") {
+        if (b.fill) out.push(/^#[0-9a-f]{6}$/i.test(b.fill) ? `h${x},${y},${w},${h},${b.fill}` : `b${x},${y},${w},${h}`);
         const white = b.style && /^#fff/i.test(b.style.color || "") ? "w" : "t";
         if (b.role === "head") out.push(`${white}${x},${y},${r(w * 0.8)},${r(Math.min(h, 4))}`);
         else if (b.role === "kicker") out.push(`${white}${x},${y},${r(w * 0.5)},1.2`);
@@ -7523,7 +7797,7 @@
       }
       if (ids.length) placeDropped(ids, t, ev.clientX, ev.clientY);
     };
-    function stopDrops() { document.removeEventListener("dragover", onDragOver); document.removeEventListener("drop", onDrop); document.removeEventListener("dragend", onDragEnd); }
+    function stopDrops() { document.removeEventListener("dragover", onDragOver); document.removeEventListener("drop", onDrop); document.removeEventListener("dragend", onDragEnd); document.removeEventListener("paste", onPaste); }
     const shotOf = (id) => {
       const hit = library().byId.get(id);
       const f = hit && !hit.photo.diagram ? API.photoFocus(hit.photo) : { x: 0.5, y: 0.5 };
@@ -7592,6 +7866,115 @@
       if (entry.type === "photos") drawFields();
       API.toast("Added to this page · Ctrl+Z to undo");
     }
+    /* Pictures pasted in (Oct 2026, the owner: "i can copy picks from
+       pinterest, google and anywhere on interent and just paste it", and
+       "when i right click and copy image.. can i directly paste it"). Copy
+       image in any tab, then Ctrl+V (⌘V on a Mac) anywhere in the builder but
+       a box of words, or the Paste picture button. A picture from the
+       internet is somebody else's, so it is kept on this computer only and
+       never offered to the site. On an Anything page it goes into the photo
+       chosen, then the empty frames in order, then on as new photos; on any
+       other page where a dropped photograph would. The site's own rules
+       (its Content-Security-Policy) let this page fetch nothing from another
+       site, so a copied address can't be followed: it says so instead. */
+    const readDataUrl = (file) => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result || "")); r.onerror = () => rej(r.error); r.readAsDataURL(file); });
+    // Shrunk the way an uploaded photo is; a see-through PNG stays a PNG, where a JPEG would turn its background black.
+    async function pastedPicture(file) {
+      const raw = await readDataUrl(file);
+      const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error("unreadable")); im.src = raw; });
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if (!w || !h) return null;
+      const k = Math.min(1, 1600 / Math.max(w, h)); w = Math.max(1, Math.round(w * k)); h = Math.max(1, Math.round(h * k));
+      const c = document.createElement("canvas"); c.width = w; c.height = h;
+      const x = c.getContext("2d"); x.drawImage(img, 0, 0, w, h);
+      let clear = false;
+      if (!/jpe?g/i.test(file.type || "")) { const d = x.getImageData(0, 0, w, h).data; for (let i = 3; i < d.length; i += 16) if (d[i] < 250) { clear = true; break; } }
+      return { dataUrl: clear ? c.toDataURL("image/png") : c.toDataURL("image/jpeg", 0.86), aspect: w / h };
+    }
+    const pastedName = () => `Pasted picture · ${new Date().toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`;
+    async function pasteFiles(files) {
+      if (!book) return;
+      if (!files.length) { API.toast("There's no picture on the clipboard. Right-click a picture, choose “Copy image”, then paste here."); return; }
+      { const m = $("#sbAddMenu"); if (m && !m.hidden) closeAdd(false); }
+      pageHint("Pasting…");
+      const ids = []; let refused = 0;
+      for (const file of files.slice(0, FREE_PHOTO_MAX)) {
+        try {
+          const got = await pastedPicture(file);
+          if (!got) { refused++; continue; }
+          const id = `out_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+          await outPut({ id, name: pastedName(), dataUrl: got.dataUrl, forSite: false, pasted: true, at: Date.now() });
+          aspects.set(id, got.aspect);
+          ids.push(id);
+        } catch (e) { refused++; }
+      }
+      pageHint("");
+      if (!ids.length) { API.toast("NOT pasted — this browser couldn't read that picture. Save it, then add it with Photo → From this computer."); return; }
+      await outsideRefresh();
+      placePasted(ids);
+    }
+    /* The frame the last paste filled is chosen afterwards, to show where it
+       went; it is not a frame chosen for the next one. Copy, paste, copy,
+       paste fills a moodboard frame after frame (it kept replacing the
+       first, v574's own test). */
+    let pastedInto = null;
+    function placePasted(ids) {
+      const e = freePage();
+      if (!e) { placeDropped(ids, { kind: "page" }); return; }
+      const bl = blocksOf(e);
+      const open = (b) => b && b.k === "photo" && !b.lock && !b.hide;
+      const slots = [];
+      const shown = pastedInto && pastedInto.e === e && pastedInto.i === blockSel && bl[blockSel] && bl[blockSel].p && bl[blockSel].p.id === pastedInto.id;
+      if (!multiNow() && blockSel >= 0 && open(bl[blockSel]) && !shown) slots.push(blockSel);
+      bl.forEach((b, i) => { if (open(b) && !(b.p && b.p.id) && !slots.includes(i)) slots.push(i); });
+      const G = geometry(book);
+      mark();
+      const made = [];
+      let added = 0, full = 0;
+      ids.forEach((id, k) => {
+        if (k < slots.length) { bl[slots[k]].p = shotOf(id); made.push(slots[k]); return; }
+        if (bl.length >= FREE_MAX || bl.filter((b) => b.k === "photo").length >= FREE_PHOTO_MAX) { full++; return; }
+        const asp = aspects.get(id) || 0.75;
+        const w = 0.34, h = round4(Math.min(0.6, (w * G.Wa) / asp / G.Ha));
+        bl.push({ k: "photo", x: round4(Math.min(1 - w, 0.33 + added * 0.03)), y: round4(Math.min(1 - h, 0.25 + added * 0.03)), w, h, p: shotOf(id) });
+        made.push(bl.length - 1); added++;
+      });
+      change({ rail: true, photos: true });
+      if (made.length) chooseBlocks(made);
+      pastedInto = made.length === 1 ? { e, i: made[0], id: bl[made[0]].p.id } : null;
+      const n = made.length, framed = n - added;
+      API.toast(`${n > 1 ? `${n} pictures` : "Picture"} pasted${framed && added ? ` · ${framed} into empty frames` : framed ? ` into ${framed > 1 ? "the frames" : "the frame"}` : ""}${full ? ` · ${full} didn't fit: they're under From this computer` : ""} · kept on this computer only · Ctrl+Z to undo`);
+    }
+    const onPaste = (ev) => {
+      if (!root.isConnected) { stopDrops(); return; }
+      if (!book || $("#sbRead") || document.querySelector(".sb-modal-back")) return;
+      const el = ev.target;
+      if (el && el.nodeType === 1 && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable)) return;
+      const cd = ev.clipboardData; if (!cd) return;
+      const files = [...(cd.items || [])].filter((it) => it.kind === "file" && /^image\//.test(it.type)).map((it) => it.getAsFile()).filter(Boolean);
+      if (!files.length) {
+        // The picture's address, or a piece of a web page, copied instead of the picture.
+        const html = cd.getData("text/html") || "", txt = (cd.getData("text/plain") || "").trim();
+        if (/<img\b/i.test(html) || /^https?:\/\/\S+$/i.test(txt)) { ev.preventDefault(); API.toast("That copied the picture's address, not the picture. Right-click the picture, choose “Copy image”, then paste here."); }
+        return;
+      }
+      ev.preventDefault();
+      pasteFiles(files);
+    };
+    // The button: the clipboard read when asked (the browser asks once whether this site may).
+    async function pasteFromButton() {
+      if (!navigator.clipboard || typeof navigator.clipboard.read !== "function") { API.toast(`Press ${MOD}V to paste a picture you copied.`); return; }
+      let items = [];
+      try { items = await navigator.clipboard.read(); }
+      catch (e) { API.toast(`The browser didn't let the button read the clipboard. Press ${MOD}V instead.`); return; }
+      const files = [];
+      for (const it of items) {
+        const type = (it.types || []).find((t) => /^image\//.test(t));
+        if (type) { try { const blob = await it.getType(type); files.push(new File([blob], "pasted", { type })); } catch (e) {} }
+      }
+      pasteFiles(files);
+    }
+    document.addEventListener("paste", onPaste);
     document.addEventListener("dragover", onDragOver);
     document.addEventListener("drop", onDrop);
     document.addEventListener("dragend", onDragEnd);
@@ -7688,7 +8071,7 @@
     function openKeys() {
       if (document.getElementById("sbKeys")) return;
       const rows = [
-        ["Anywhere", [["Find a command", `${MOD}K`], ["Undo", `${MOD}Z`], ["Redo", `${MOD}Shift+Z`], ["Zoom in · out", `${MOD}+ · ${MOD}−`], ["Fit the page", `${MOD}0`], ["Zoom with the wheel", `${MOD}scroll`], ["Let go · close", "Esc"], ["This sheet", "?"]]],
+        ["Anywhere", [["Find a command", `${MOD}K`], ["Paste a picture you copied", `${MOD}V`], ["Undo", `${MOD}Z`], ["Redo", `${MOD}Shift+Z`], ["Zoom in · out", `${MOD}+ · ${MOD}−`], ["Fit the page", `${MOD}0`], ["Zoom with the wheel", `${MOD}scroll`], ["Let go · close", "Esc"], ["This sheet", "?"]]],
         ["On an Anything page", [["Choose everything", `${MOD}A`], ["Choose several", "Shift+click"], ["Group · ungroup", `${MOD}G · ${MOD}Shift+G`], ["Nudge · nudge further", "Arrows · Shift+arrows"], ["Forward · backward", "] · ["], ["To the front · to the back", "Shift+] · Shift+["], ["Remove", "Del"], ["Turn in 15° steps", "Shift while turning"], ["More", "Right-click"]]],
         ["On a photograph", [["Move it in its frame", "Drag"], ["Zoom it", "Wheel"], ["Fill · whole · width · height", "Double-click"]]],
         ["Reading it through", [["Turn the page", "← · →"], ["Close", "Esc"]]]
@@ -9719,8 +10102,8 @@
       const entry = { type };
       if (type === "free") {
         const card = start === "compcard" ? compCardBlocks(book) : null;
-        const shots = samplePhotos(6); let k = 0;
-        entry.blocks = ((card && card.blocks) || FREE_STARTS[start] || []).map((b) => {
+        const shots = samplePhotos(9); let k = 0;
+        entry.blocks = ((card && card.blocks) || startBlocks(start, book, "preview")).map((b) => {
           const c = JSON.parse(JSON.stringify(b));
           if (c.k === "photo" && !(c.p && c.p.id) && shots.length) c.p = { ...shots[k++ % shots.length] };
           if (c.k === "text" && !c.t) c.t = words[SAMPLE_ROLE[c.role] || "text1"] || words.text1;
@@ -9953,7 +10336,7 @@
       const entry = { type };
       const card = type === "free" && start === "compcard" ? compCardBlocks(book) : null;
       if (card) entry.blocks = card.blocks;
-      else if (type === "free") entry.blocks = (FREE_STARTS[start] || []).map((b) => ({ ...b, ...(b.k === "text" ? { t: "" } : {}), ...(b.style ? { style: { ...b.style } } : {}) }));
+      else if (type === "free") entry.blocks = startBlocks(start, book, "add");
       if (["photos", "spread", "story", "note", "quote", "feature", "article", "look"].includes(type)) entry.photos = [];
       if (type === "divider") { entry.heading = "Selected work"; entry.line = ""; }
       // Writing pages start empty: nothing is ever written for the studio.
@@ -11397,20 +11780,18 @@
        it was, on top. The old layout's own colour blocks and lines give way to
        the new one's. */
     function applyLayout(entry, key) {
-      const tpl = FREE_STARTS[key]; if (!tpl || !entry) return;
+      if (!FREE_STARTS[key] || !entry) return;
       const old = blocksOf(entry);
       const photos = old.filter((b) => b.k === "photo" && b.p && b.p.id);
       const texts = old.filter((b) => b.k === "text" && String(b.t || "").trim());
       const usedP = new Set(), usedT = new Set();
-      const out = tpl.map((t) => {
-        const nb = { ...t, ...(t.style ? { style: { ...t.style } } : {}) };
-        if (t.k === "text") nb.t = "";
-        if (t.k === "photo") {
+      const out = startBlocks(key, book, "layout").map((nb) => {
+        if (nb.k === "photo") {
           const ph = photos.find((x) => !usedP.has(x));
           if (ph) { usedP.add(ph); nb.p = { ...ph.p, zoom: 1 }; }
         }
-        if (t.k === "text") {
-          const same = texts.find((x) => !usedT.has(x) && (x.role || "body") === (t.role || "body"));
+        if (nb.k === "text" && !nb.t) {
+          const same = texts.find((x) => !usedT.has(x) && (x.role || "body") === (nb.role || "body"));
           if (same) { usedT.add(same); nb.t = same.t; if (same.style) nb.style = { ...(nb.style || {}), ...same.style }; if (same.fit) nb.fit = same.fit; }
         }
         return nb;
@@ -11506,6 +11887,7 @@
         <div class="sb-tools">
           <button type="button" data-addblk="text">${uiIc("type", 20)}<span>Words</span></button>
           <button type="button" data-addblk="photo">${uiIc("image", 20)}<span>Photo</span></button>
+          <button type="button" data-addblk="paste" title="Copy a picture anywhere (right-click → Copy image), then this, or ${MOD}V">${uiIc("paste", 20)}<span>Paste picture</span></button>
           <button type="button" data-addblk="shape">${uiIc("shape", 20)}<span>Shape</span></button>
           <button type="button" data-addblk="line">${uiIc("line", 20)}<span>Line</span></button>
           <button type="button" data-addblk="drawing">${uiIc("star", 20)}<span>Drawing</span></button>
@@ -11538,7 +11920,7 @@
           <div class="sb-cphost" data-bgpick hidden></div></div>`;
 
       const redraw = () => { change({ rail: true }); drawInspector(); };
-      $$("[data-addblk]").forEach((x) => x.addEventListener("click", () => { if (x.dataset.addblk === "draw") { setDrawing(!drawing); return; } addBlock(x.dataset.addblk); }));
+      $$("[data-addblk]").forEach((x) => x.addEventListener("click", () => { if (x.dataset.addblk === "draw") { setDrawing(!drawing); return; } if (x.dataset.addblk === "paste") { pasteFromButton(); return; } addBlock(x.dataset.addblk); }));
       box.querySelectorAll("[data-layout]").forEach((x) => x.addEventListener("click", () => applyLayout(entry, x.dataset.layout)));
       $$("[data-pickblk]").forEach((x) => x.addEventListener("click", (ev) => {
         const i = +x.dataset.pickblk;
@@ -12037,7 +12419,7 @@
           <div class="sb-outside">
             <button type="button" class="sb-btn" id="sbOutsideAdd">Add from this computer…</button>
             <input type="file" id="sbOutsideFile" multiple accept="image/*" hidden>
-            <span class="sb-hint" id="sbOutsideNote"></span>
+            <span class="sb-hint" id="sbOutsideNote">Or copy a picture anywhere (right-click → Copy image) and press ${MOD}V: it goes on the page, kept on this computer only.</span>
           </div>
           <div class="sb-grid">${shown.map(([id, hit]) => {
             const pos = list.findIndex((s) => s.id === id);
