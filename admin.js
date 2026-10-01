@@ -1343,6 +1343,8 @@ function cleanStudioPortfolios(o) {
       ...cleanMadeFor(v.madeFor),
       // Named here or a moodboard would lose its section on the next save (v575).
       ...(STUDIO_BOOK_LIMITS.plans.includes(v.plan) ? { plan: v.plan } : {}),
+      // Started as a lookbook (v579): its section on the Books screen, whatever style it wears.
+      ...(v.kind === "lookbook" ? { kind: "lookbook" } : {}),
       pages,
       texts: { about: str(t.about, STUDIO_BOOK_LIMITS.text), phone: str(t.phone, 24), showPrices: t.showPrices === true },
       updatedAt: num(v.updatedAt, 0, 8.64e15, 0)

@@ -5775,6 +5775,7 @@
   .sb-homehead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 24px; margin-bottom: 28px; }
   .sb-eyebrow { display: inline-flex; align-items: center; gap: 6px; margin: 0; font: 500 12px/1 var(--sb-font); letter-spacing: 0; text-transform: none; color: var(--sb-text-3); }
   .sb-eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--sb-sel); }
+  .sb-sect { margin-top: 8px; }
   .sb-plans { margin-top: 34px; padding-top: 22px; border-top: 1px solid var(--sb-line); }
   .sb-plansh { margin: 0 0 4px; font: 650 19px/1.25 var(--sb-font); letter-spacing: -.01em; color: var(--sb-text); }
   .sb-plans > .sb-hint { margin: 0 0 14px; max-width: 70ch; }
@@ -6619,6 +6620,33 @@
       ["quotephoto", "Quote on a photograph", "Big words written across a darkened photograph."]] },
     /* Three that are kinds of page in their own right (Oct 2026): each is a
        section of the Add-page gallery of its own, not a "Layouts ·" one. */
+    /* v579 (the owner: "magazine and look books … sections will have their own
+       templates with covers and back"), from fashion-magazine and lookbook kits. */
+    { group: "Magazine", top: true, items: [
+      ["mg_cover", "Magazine cover", "Masthead, issue line, cover lines and a barcode box over one photograph."],
+      ["mg_cover_min", "Minimal cover", "The title across the top, the photograph framed under it, one line."],
+      ["mg_letter", "Editor's letter", "A portrait, the letter in two columns, and a signature."],
+      ["mg_feature", "Feature opener", "A photograph across the top, the headline, the standfirst, a byline and the story in columns."],
+      ["mg_qa", "Interview", "A portrait, the name, a pull quote, and the questions and answers in two columns."],
+      ["mg_fashion", "Fashion story opener", "One photograph to the edges, the story's title and its credits on a dark panel."],
+      ["mg_essay", "Photo essay", "A big photograph and three under it, numbered."],
+      ["mg_edit", "The Edit", "Six pieces, each with its price and brand."],
+      ["mg_contributors", "Contributors", "Who made the issue: a round portrait and a few lines each."],
+      ["mg_stockists", "Stockists", "Where to buy what is in the issue, in three columns, and a photograph."],
+      ["mg_back", "Back cover · campaign", "One photograph to the edges with a line of credit, the way a back-page campaign runs."],
+      ["mg_back_contact", "Back cover · contact", "A photograph, your name and how to reach you."]] },
+    { group: "Lookbook", inside: true, items: [
+      ["lb_cover", "Lookbook cover", "One photograph to the edges, the season and the collection's name."],
+      ["lb_cover_min", "Minimal cover", "The name, a small photograph in the middle, the season under it."],
+      ["lb_cover_split", "Split cover", "A photograph on one half, a block of colour with the name on the other."],
+      ["lb_intro", "The collection", "Its name, a few lines about it, a mood photograph and its palette."],
+      ["lb_look", "One look", "One look to the edges, its number large, what it is made of and the price."],
+      ["lb_look2", "Two looks", "Two looks side by side, numbered, each with its pieces."],
+      ["lb_lookdetail", "Look and details", "The look large, two close-ups beside it."],
+      ["lb_details", "Details", "Six close-ups: the fabric, the finish, the hardware."],
+      ["lb_index", "All the looks", "Every look small and numbered, on one page."],
+      ["lb_credits", "Credits", "Who made it, and a photograph."],
+      ["lb_order", "How to order", "Email, WhatsApp, the showroom, the minimum and the delivery."]] },
     { group: "Moodboard", top: true, items: [
       ["mb_blank", "Blank page", "Nothing on it: add your photographs, paste pictures from anywhere, write, draw — every part moves, like an Anything page."],
       ["mb_grid", "Grid of nine", "A title, nine pictures three by three, a row of colours and a note. Copy a picture anywhere and paste it in."],
@@ -6706,7 +6734,8 @@
       ["photos", "Photos", "One to six photos, laid out by their shapes."],
       ["spread", "Two-page spread", "One photo across two facing pages."]] },
     { group: "Lookbook", items: [
-      ["look", "Look", "One or two photographs of one look, its number, its name, and the lines under it: garments, who made them, who styled it."]] },
+      ["look", "Look", "One or two photographs of one look, its number, its name, and the lines under it: garments, who made them, who styled it."],
+      ...LAYOUT_GROUPS.find((g) => g.group === "Lookbook").items.map(([k, n, note]) => [`free:${k}`, n, note])] },
     ...LAYOUT_GROUPS.filter((g) => g.top).map((g) => ({ group: g.group, items: g.items.map(([k, n, note]) => [`free:${k}`, n, note]) })),
     { group: "Words", items: [
       ["story", "Story", "A photo with a headline, an intro and a story about a shoot or a brief."],
@@ -6723,7 +6752,7 @@
       ["free", "Anything page", "An empty page. Put words, photographs, colour blocks and lines wherever you like."],
       ["free:blank", "Empty page", "Nothing on it but the page colour: for the end of the book, or to keep a two-page spread on facing pages."]] },
     // The layout library: every one an Anything page, so everything on it can move.
-    ...LAYOUT_GROUPS.filter((g) => !g.top).map((g) => ({ group: `Layouts · ${g.group}`, items: g.items.map(([k, n, note]) => [`free:${k}`, n, note]) })),
+    ...LAYOUT_GROUPS.filter((g) => !g.top && !g.inside).map((g) => ({ group: `Layouts · ${g.group}`, items: g.items.map(([k, n, note]) => [`free:${k}`, n, note]) })),
     { group: "Studio pages", items: [
       ["contents", "Contents", "Every chapter and titled page with its page number, always up to date."],
       ["divider", "Chapter page", "A pause between sections, e.g. “Fashion & editorial”."],
@@ -6875,6 +6904,7 @@
     if (bind === "pitchfor") return m && m.name ? `A pitch for ${m.name}`.toUpperCase() : "";
     if (bind === "byline") return `${studio()} · ${new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" })}`;
     if (bind === "studio") return studio().toUpperCase();
+    if (bind === "title") return String(book.title || "").toUpperCase();
     return "";
   }
   function startBlocks(key, book, how = "add") {
@@ -7444,6 +7474,160 @@
             T("body", 0.52, r3(y + 0.365), 0.41, 0.022, { sample: ["No hard flash", "No heavy retouching"][i] })
           ];
         })
+      ]
+      ,
+      // ---- v579: a magazine's own pages, covers and backs (research: fashion-magazine InDesign kits) ----
+      /* Cover anatomy: masthead in the top 15–20%, an issue line under it, the
+         main cover line large, three to six smaller lines in the left third,
+         a barcode box at the foot on the right, the photograph full-bleed. */
+      mg_cover: [
+        P(0, 0, 1, 1),
+        T("head", 0.05, 0.03, 0.9, 0.13, { bind: "title", sample: "SELECTED", style: { size: 1.6, weight: "bold", align: "center", color: "#ffffff" } }),
+        T("kicker", 0.05, 0.163, 0.9, 0.02, { sample: "ISSUE 04 · OCTOBER 2026 · ₹250", style: { align: "center", color: "#ffffff" } }),
+        T("body", 0.05, 0.42, 0.3, 0.22, { sample: "The monsoon edit\n\nTwelve looks for slow days\n\nInside the studio", style: { weight: "bold", color: "#ffffff" } }),
+        T("head", 0.05, 0.7, 0.62, 0.13, { sample: "Light first, then the pose", style: { size: 1.3, color: "#ffffff" } }),
+        S(0.78, 0.865, 0.17, 0.085, "#ffffff")
+      ],
+      mg_cover_min: [
+        T("head", 0.06, 0.04, 0.88, 0.1, { bind: "title", sample: "SELECTED", style: { size: 1.6, weight: "bold" } }),
+        L(0.06, 0.152, 0.88, { thick: "narrow" }),
+        T("kicker", 0.06, 0.162, 0.88, 0.02, { sample: "ISSUE 04 · OCTOBER 2026" }),
+        P(0.06, 0.2, 0.88, 0.66),
+        T("head", 0.06, 0.885, 0.88, 0.06, { sample: "The monsoon issue" })
+      ],
+      mg_back: [
+        P(0, 0, 1, 1),
+        T("kicker", 0.1, 0.93, 0.8, 0.022, { sample: "THE MONSOON CAMPAIGN · ACME", style: { align: "center", color: "#ffffff" } })
+      ],
+      mg_back_contact: [
+        P(0.3, 0.12, 0.4, 0.45),
+        T("head", 0.1, 0.62, 0.8, 0.06, { bind: "studio", sample: "NERDYPHOTOGRAPHER.IN", style: { align: "center" } }),
+        T("body", 0.1, 0.7, 0.8, 0.1, { sample: "hello@example.com · @handle\nNoida, India", style: { align: "center" } })
+      ],
+      mg_letter: [
+        label(0.06, 0.06, 0.88, "FROM THE EDITOR"),
+        T("head", 0.06, 0.09, 0.88, 0.07, { sample: "A slower season" }),
+        P(0.06, 0.19, 0.3, 0.38),
+        T("body", 0.4, 0.19, 0.54, 0.62, { sample: "This issue began on a rainy morning in the studio, with one window and no plan. What followed was a month of slow days, real people and clothes made to be lived in.\n\nInside, twelve looks for the season, a conversation with the designer behind them, and the stories we found along the way.", style: { columns: 2 } }),
+        T("quote", 0.4, 0.83, 0.54, 0.06, { sample: "— The editor", style: { size: 0.8 } })
+      ],
+      mg_feature: [
+        P(0, 0, 1, 0.56),
+        T("kicker", 0.06, 0.59, 0.6, 0.022, { sample: "FEATURE" }),
+        T("head", 0.06, 0.62, 0.88, 0.1, { sample: "Made for the rain" }),
+        T("intro", 0.06, 0.73, 0.88, 0.06, { sample: "A week with the weavers who make linen for slow days, and the people who wear it." }),
+        T("kicker", 0.06, 0.8, 0.88, 0.02, { sample: "WORDS AND PHOTOGRAPHS · THE STUDIO" }),
+        T("body", 0.06, 0.835, 0.88, 0.11, { sample: "It starts before dawn. The looms are already running when the light comes in sideways through the shed, and the first bolt of the day is ready by nine.", style: { columns: 3 } })
+      ],
+      mg_qa: [
+        P(0.06, 0.06, 0.42, 0.5),
+        label(0.53, 0.07, 0.41, "IN CONVERSATION"),
+        T("head", 0.53, 0.1, 0.41, 0.12, { sample: "Ritu, on making less" }),
+        T("intro", 0.53, 0.24, 0.41, 0.14, { sample: "The designer talks about slow fashion, the monsoon and why she never shoots in a studio." }),
+        T("quote", 0.53, 0.41, 0.41, 0.14, { sample: "“The best clothes look better the second year.”" }),
+        T("body", 0.06, 0.6, 0.88, 0.34, { sample: "Where does a collection start for you?\nWith a fabric, always. I hold it before I draw anything.\n\nAnd the monsoon?\nIt is the season that tells you the truth about a cloth.", style: { columns: 2 } })
+      ],
+      mg_fashion: [
+        P(0, 0, 1, 1),
+        S(0.06, 0.66, 0.52, 0.28, "#111111", { o: 0.55 }),
+        T("head", 0.09, 0.685, 0.46, 0.09, { sample: "Monsoon linen", style: { color: "#ffffff" } }),
+        T("body", 0.09, 0.79, 0.46, 0.13, { sample: "Photographs · the studio\nStyling · Aanya\nHair & make-up · Meera\nModel · Kabir @agency", style: { color: "#ffffff", size: 0.85 } })
+      ],
+      mg_essay: [
+        T("kicker", 0.06, 0.05, 0.6, 0.022, { sample: "PHOTO ESSAY" }),
+        T("head", 0.06, 0.08, 0.88, 0.06, { sample: "A morning on the roof" }),
+        P(0.06, 0.16, 0.88, 0.42), T("kicker", 0.06, 0.585, 0.1, 0.02, { keep: "01" }),
+        P(0.06, 0.62, 0.28, 0.3), T("kicker", 0.06, 0.925, 0.1, 0.02, { keep: "02" }),
+        P(0.36, 0.62, 0.28, 0.3), T("kicker", 0.36, 0.925, 0.1, 0.02, { keep: "03" }),
+        P(0.66, 0.62, 0.28, 0.3), T("kicker", 0.66, 0.925, 0.1, 0.02, { keep: "04" })
+      ],
+      mg_edit: [
+        label(0.06, 0.05, 0.6, "THE EDIT"),
+        T("head", 0.06, 0.08, 0.88, 0.06, { sample: "Twelve things for the rain" }),
+        ...["Linen shirt, ₹2,400, Acme", "Wide trousers, ₹3,100, Acme", "Leather sandals, ₹1,800", "Gold hoops, ₹950", "Canvas tote, ₹1,200", "Silk scarf, ₹1,500"].flatMap((sample, i) => {
+          const x = r3(0.06 + (i % 3) * 0.3), y = r3(0.17 + Math.floor(i / 3) * 0.4);
+          return [P(x, y, 0.27, 0.32), T("body", x, r3(y + 0.33), 0.27, 0.04, { sample, style: { size: 0.8 } })];
+        })
+      ],
+      mg_contributors: [
+        label(0.06, 0.05, 0.88, "CONTRIBUTORS"),
+        ...["Aanya — stylist", "Meera — hair & make-up", "Kabir — model", "Ritu — designer"].flatMap((sample, i) => {
+          const y = r3(0.1 + i * 0.215);
+          return [P(0.06, y, 0.18, 0.13, { shape: "ellipse" }), T("body", 0.28, y, 0.66, 0.024, { sample, style: { weight: "bold" } }), T("body", 0.28, r3(y + 0.03), 0.66, 0.1, { sample: "A few lines about them: where they work, what they made for this issue and where to find them.", style: { size: 0.85 } })];
+        })
+      ],
+      mg_stockists: [
+        label(0.06, 0.05, 0.88, "STOCKISTS"),
+        T("body", 0.06, 0.09, 0.88, 0.5, { sample: "Acme · acme.in\nAnother brand · brand.com\nA shop · Khan Market, Delhi\nOne more · @handle", style: { columns: 3 } }),
+        P(0.06, 0.62, 0.88, 0.31)
+      ],
+      // ---- v579: a lookbook's own pages, covers and backs (research: lookbook InDesign kits, line sheets) ----
+      lb_cover: [
+        P(0, 0, 1, 1),
+        T("kicker", 0.07, 0.84, 0.86, 0.022, { sample: "SS27 · LOOKBOOK", style: { color: "#ffffff" } }),
+        T("head", 0.07, 0.87, 0.86, 0.08, { bind: "title", sample: "MONSOON", style: { size: 1.4, weight: "bold", color: "#ffffff" } })
+      ],
+      lb_cover_min: [
+        T("head", 0.1, 0.12, 0.8, 0.1, { bind: "title", sample: "MONSOON", style: { size: 1.5, align: "center" } }),
+        P(0.3, 0.28, 0.4, 0.44),
+        T("kicker", 0.1, 0.76, 0.8, 0.022, { sample: "LOOKBOOK · SPRING / SUMMER 2027", style: { align: "center" } })
+      ],
+      lb_cover_split: [
+        P(0, 0, 0.5, 1),
+        S(0.5, 0, 0.5, 1, "accent"),
+        T("kicker", 0.56, 0.7, 0.38, 0.022, { sample: "LOOKBOOK · SS27", style: { color: "#ffffff" } }),
+        T("head", 0.56, 0.73, 0.38, 0.16, { bind: "title", sample: "MONSOON", style: { size: 1.4, weight: "bold", color: "#ffffff" } })
+      ],
+      lb_intro: [
+        label(0.07, 0.07, 0.86, "THE COLLECTION"),
+        T("head", 0.07, 0.1, 0.86, 0.08, { sample: "Clothes for slow days" }),
+        T("intro", 0.07, 0.2, 0.86, 0.16, { sample: "Washed linen and soft cotton in the colours of wet earth: twelve looks made to be lived in through the rains, cut loose and finished by hand." }),
+        P(0.07, 0.38, 0.86, 0.44),
+        label(0.07, 0.85, 0.4, "PALETTE"),
+        ...swatches(0.07, 0.878, 0.08, 0.05, 0.015, 5)
+      ],
+      // The number and the pieces on the paper under the look: white words on a photograph vanished on a light backdrop.
+      lb_look: [
+        P(0, 0, 1, 0.9),
+        T("head", 0.05, 0.915, 0.3, 0.045, { sample: "LOOK 01", style: { weight: "bold" } }),
+        T("kicker", 0.36, 0.925, 0.59, 0.03, { sample: "LINEN SHIRT — LN104 — ₹2,400 · WIDE TROUSERS — LN212 — ₹3,100" })
+      ],
+      lb_look2: [
+        P(0, 0, 0.495, 0.86), P(0.505, 0, 0.495, 0.86),
+        T("head", 0.04, 0.875, 0.42, 0.04, { sample: "LOOK 01", style: { weight: "bold" } }),
+        T("kicker", 0.04, 0.92, 0.42, 0.04, { sample: "Linen shirt — LN104 — ₹2,400" }),
+        T("head", 0.545, 0.875, 0.42, 0.04, { sample: "LOOK 02", style: { weight: "bold" } }),
+        T("kicker", 0.545, 0.92, 0.42, 0.04, { sample: "Wrap dress — LN301 — ₹3,800" })
+      ],
+      lb_lookdetail: [
+        P(0, 0, 0.655, 0.9),
+        P(0.67, 0, 0.33, 0.445), P(0.67, 0.455, 0.33, 0.445),
+        T("head", 0.05, 0.915, 0.3, 0.045, { sample: "LOOK 03", style: { weight: "bold" } }),
+        T("kicker", 0.36, 0.925, 0.59, 0.03, { sample: "LINEN BLAZER — LN410 — ₹5,200" })
+      ],
+      lb_details: [
+        label(0.07, 0.05, 0.86, "DETAILS"),
+        ...Array.from({ length: 6 }, (_, i) => P(r3(0.07 + (i % 2) * 0.44), r3(0.09 + Math.floor(i / 2) * 0.3), 0.42, 0.28))
+      ],
+      lb_index: [
+        label(0.07, 0.05, 0.86, "THE LOOKS"),
+        ...Array.from({ length: 12 }, (_, i) => {
+          const x = r3(0.07 + (i % 4) * 0.2225), y = r3(0.09 + Math.floor(i / 4) * 0.29);
+          return [P(x, y, 0.2, 0.24), T("kicker", x, r3(y + 0.245), 0.2, 0.02, { keep: `LOOK ${String(i + 1).padStart(2, "0")}` })];
+        }).flat()
+      ],
+      lb_credits: [
+        label(0.07, 0.07, 0.86, "CREDITS"),
+        T("head", 0.07, 0.1, 0.86, 0.06, { sample: "With thanks" }),
+        ...rows(0.07, 0.2, 0.045, 0.26, 0.6, [["Photographs", "", "nerdyphotographer.in"], ["Styling", "", "@name"], ["Hair & make-up", "", "@name"], ["Models", "", "@name, @name"], ["Location", "", "@place"]]),
+        P(0.07, 0.48, 0.86, 0.45)
+      ],
+      lb_order: [
+        label(0.07, 0.07, 0.86, "ORDERS"),
+        T("head", 0.07, 0.1, 0.86, 0.06, { sample: "How to order" }),
+        ...rows(0.07, 0.2, 0.045, 0.26, 0.6, [["Email", "", "orders@acme.in"], ["WhatsApp", "", "+91 98100 00000"], ["Showroom", "", "Shahpur Jat, Delhi"], ["Minimum order", "", "Six pieces a style"], ["Delivery", "", "From March"]]),
+        T("body", 0.07, 0.45, 0.86, 0.08, { sample: "Prices are wholesale, before tax. Sizes XS to XL in every style." }),
+        P(0.07, 0.56, 0.86, 0.37)
       ]
     });
   })();
@@ -8423,10 +8607,16 @@
               </div>
             </div>
           </article>`;
-          const books = state.versions.filter((v) => !v.plan), plans = state.versions.filter((v) => v.plan);
-          return `${books.length ? `<div class="sb-cards">${books.map(card).join("")}
-          <button type="button" class="sb-card sb-newcard" data-new ${atLimit ? "disabled" : ""}>New book<small>A cover and a first page of photographs</small></button></div>`
-        : `<div class="sb-empty"><p class="sb-hint">No books yet. A book is a cover plus pages of your photographs and words. Start one for your own studio, or one for a brand, a client or a talent — those are kept on this computer and never published.</p></div>`}
+          /* A section for each kind (v579, the owner: "like you have for moodboard create a section for … magazine and
+             look books"). A lookbook is one started as a lookbook, or one in the Lookbook style from before. */
+          const lookbook = (v) => v.kind === "lookbook" || (!v.kind && v.style === "lookbook");
+          const books = state.versions.filter((v) => !v.plan && !lookbook(v)), looks = state.versions.filter((v) => !v.plan && lookbook(v)), plans = state.versions.filter((v) => v.plan);
+          return `<section class="sb-sect" aria-labelledby="sbMagHead"><h2 class="sb-plansh" id="sbMagHead">Magazines &amp; portfolios</h2>
+            <p class="sb-hint">Your own book of work, and magazines for brands, clients and talents: a cover, pages, a back cover.</p>
+            <div class="sb-cards">${books.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-new data-newkind="magazine" ${atLimit ? "disabled" : ""}>New magazine<small>A cover, a page of photographs and a back cover</small></button></div></section>
+          <section class="sb-plans" aria-labelledby="sbLookHead"><h2 class="sb-plansh" id="sbLookHead">Lookbooks</h2>
+            <p class="sb-hint">A collection look by look, for a brand or a designer: its own covers, the collection, the looks, details, credits and how to order.</p>
+            <div class="sb-cards">${looks.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-newkind="lookbook" ${atLimit ? "disabled" : ""}>New lookbook<small>A cover, the collection, six looks and a back cover</small></button></div></section>
           <section class="sb-plans" aria-labelledby="sbPlansHead"><h2 class="sb-plansh" id="sbPlansHead">Moodboards &amp; plans</h2>
             <p class="sb-hint">Moodboards to pitch an idea, plan a shoot or get the team on the same page — your photographs, and pictures pasted from anywhere. Kept on this computer only and never published, whoever they're for.</p>
             <div class="sb-cards">${plans.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-newplan ${atLimit ? "disabled" : ""}>New moodboard<small>Plug in your photographs, or paste pictures from anywhere</small></button></div></section>`;
@@ -8446,7 +8636,9 @@
       // A rename in progress is saved first, then the click does what it says.
       let finishRename = null;
       const settle = () => { if (finishRename) { const f = finishRename; finishRename = null; f(true, false); } };
-      $$("#sbNew, [data-new]").forEach((b) => b.addEventListener("click", () => { settle(); if (!atLimit) openStart(); }));
+      $$("#sbNew").forEach((b) => b.addEventListener("click", () => { settle(); if (!atLimit) openStart(); }));
+      // Each section's New starts that kind.
+      $$("[data-newkind]").forEach((b) => b.addEventListener("click", () => { settle(); if (atLimit) return; openStart(); const k = $(`#sbStart [data-kind="${b.dataset.newkind}"]`); if (k) k.click(); }));
       $$("[data-newplan]").forEach((b) => b.addEventListener("click", () => { settle(); if (atLimit) return; openStart(); const k = $('#sbStart [data-kind="moodboard"]'); if (k) k.click(); }));
       /* A new book begins with its cover: the five layouts, each drawn small
          for real, "From scratch" among them for a cover made by hand. The
@@ -8456,12 +8648,14 @@
       let kind = "magazine";
       const BOARDS = LAYOUT_GROUPS.find((g) => g.group === "Moodboard").items;
       let board = "mb_grid";
-      const KIND_NOTE = { magazine: "A cover and a page of photographs; add any pages after.",
+      const KIND_NOTE = { magazine: "A cover, a page of photographs and a back cover; add pages in between — a magazine has its own covers, contents, letter, features, interviews and back covers in Add page.",
         pitch: "A pitch to win a shoot, eleven pages to fill: a cover, the idea and its mood words, references, colours, the model, styling, hair & make-up, location, light, deliverables and your past work. Kept on this computer only and never published, whoever it's for.",
         shootplan: "Everything for the day, eleven pages: a cover, the brief, the moodboard in six parts, a page for each of three looks, hair & make-up, this-not-that, the shot list, the call sheet and the credits. Kept on this computer only and never published, whoever it's for.",
         moodboard: `A cover, the board you pick below and a back cover, like a magazine. Plug in your own photographs, or copy any picture from Pinterest, Google or anywhere and paste it with ${MOD}V. Pick the board's layout — or a blank page to make your own; more boards come from Add page → Moodboard. Kept on this computer only and never published, whoever it's for.`, lookbook: "A cover, a page about the collection, six looks and a back cover. Each look is one or two photographs with its number, its name and its lines.",
         compcard: "One page, like a printed comp card: a big photograph with three beside it, their name, what they do, their measurements and the brands they have worked with — filled from their card. Every part can be moved, edited or deleted, and a brand's logo added as a photo from this computer." };
       const withKind = (nb, k) => {
+        // A magazine, like every kind now, has a back (the owner: "with covers and back").
+        if (k === "magazine") { nb.pages = [...(nb.pages || []), { type: "end", layout: "back" }]; return nb; }
         /* A moodboard: the board is the book's first page, laid out from
            scratch like a comp card, with nothing after it. */
         // A pitch or a shoot plan: its cover and pages, filled once it knows who it is for (planPages).
@@ -8484,6 +8678,7 @@
           return nb;
         }
         if (k !== "lookbook") return nb;
+        nb.kind = "lookbook";   // its section on the Books screen, whatever style it later wears
         nb.name = nb.name.replace(/^Book /, "Lookbook ");
         nb.style = "lookbook";
         nb.title = "Lookbook"; nb.subtitle = `Collection ${year()}`;
@@ -8595,13 +8790,18 @@
       function closeStart() { const el = $("#sbStart"); if (el) el.remove(); document.removeEventListener("keydown", startEsc); }
       // Escape closes the chooser wherever the focus happens to be.
       function startEsc(e) { if (e.key === "Escape" && $("#sbStart")) { e.preventDefault(); closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); } }
-      function startBook(k, pick) {
+      // Covers of a kind's own (v579): made from a layout, arranged from scratch.
+      const KIND_COVERS = { magazine: [["mg_cover", "Magazine cover", "Masthead, issue line and cover lines over one photograph."], ["mg_cover_min", "Minimal", "The title across the top, the photograph framed under it."]],
+        lookbook: [["lb_cover", "Lookbook", "One photograph to the edges, the season and the name."], ["lb_cover_min", "Minimal", "The name, a small photograph, the season."], ["lb_cover_split", "Split", "Half photograph, half colour with the name."]] };
+      function startBook(k, pick, coverTpl) {
         settle(); if (atLimit) return;
         // Their name (or the model) first: the book wears it everywhere.
         if (missingWho()) return;
         if (pick) board = pick;
         closeStart();
+        const tplCover = coverTpl && FREE_STARTS[coverTpl] ? coverTpl : "";
         const nb = planPages(withWho(withKind(withLayout(newBook(`Book ${state.versions.length + 1}`), k), kind)));
+        if (tplCover) { nb.coverLayout = "custom"; nb.coverPage = { blocks: startBlocks(tplCover, nb, "add") }; }
         // The studio's own books can start in its brand (Design → Brand kit).
         if (forWho === "studio" && brandOf().start && brandHas(brandOf())) applyBrand(nb);
         openBook(nb, true, { sel: -1 });
@@ -8669,7 +8869,7 @@
           <div class="sb-startcc" id="sbStartCC" hidden><button type="button" class="sb-btn" data-start="custom" data-compcard="1">Make the comp card →</button><button type="button" class="sb-btn dark" data-start="custom" data-makeplan="1" hidden>Make it →</button></div>
           <div class="sb-starts" id="sbStartBoards" ${kind === "moodboard" ? "" : "hidden"}>${BOARDS.map(([k, nm, note]) => `<button type="button" class="sb-startitem" data-board="${k}"><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(nm)}</b><span>${esc(note)}</span></button>`).join("")}</div>
           <p class="sb-hint" id="sbCoverHint">Then the cover to begin with. It can be changed any time on the cover's own panel.</p>
-          <div class="sb-starts" id="sbStartCovers">${COVER_LAYOUTS.map(([k, nm]) => `<button type="button" class="sb-startitem" data-start="${k}"><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(k === "custom" ? "From scratch (blank)" : nm)}</b><span>${esc(COVER_LAYOUT_NOTE[k])}</span></button>`).join("")}</div>
+          <div class="sb-starts" id="sbStartCovers">${Object.entries(KIND_COVERS).flatMap(([kk, list]) => list.map(([t, nm, note]) => `<button type="button" class="sb-startitem" data-start="custom" data-covertpl="${t}" data-kindonly="${kk}" ${kind === kk ? "" : "hidden"}><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(nm)}</b><span>${esc(note)}</span></button>`)).join("")}${COVER_LAYOUTS.map(([k, nm]) => `<button type="button" class="sb-startitem" data-start="${k}"><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(k === "custom" ? "From scratch (blank)" : nm)}</b><span>${esc(COVER_LAYOUT_NOTE[k])}</span></button>`).join("")}</div>
           ${tplCache.some((t) => t.kind === "book") ? `<div id="sbStartTpls"><p class="sb-hint">Or start from one of your templates: its pages, words and look, as you saved them.</p>
           <div class="sb-starts">${tplCache.filter((t) => t.kind === "book").map((t) => `<span class="sb-tplwrap"><button type="button" class="sb-startitem" data-starttpl="${esc(t.id)}"><span class="sb-startpic" data-tplpic="${esc(t.id)}"><span class="sb-hint">…</span></span><b>${esc(t.name)}</b><span>Your template · ${t.pages || 1} page${(t.pages || 1) === 1 ? "" : "s"}</span></button><button type="button" class="sb-tplrm" data-tpldel="${esc(t.id)}" aria-label="Delete the template ${esc(t.name)}" title="Delete this template">×</button></span>`).join("")}</div></div>` : ""}
         </div>`;
@@ -8678,7 +8878,7 @@
         box.addEventListener("click", (e) => { if (e.target === box) { closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); } });
         box.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); } });
         box.querySelector("#sbStartClose").addEventListener("click", () => { closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); });
-        box.querySelectorAll("[data-start]").forEach((b) => b.addEventListener("click", () => startBook(b.dataset.start)));
+        box.querySelectorAll("[data-start]").forEach((b) => b.addEventListener("click", () => startBook(b.dataset.start, null, b.dataset.covertpl)));
         box.querySelectorAll("[data-board]").forEach((b) => b.addEventListener("click", () => startBook("classic", b.dataset.board)));
         box.querySelectorAll("[data-starttpl]").forEach((b) => b.addEventListener("click", () => startFromTemplate(b.dataset.starttpl)));
         box.querySelectorAll("[data-tpldel]").forEach((b) => b.addEventListener("click", async () => {
@@ -8735,6 +8935,7 @@
           box.querySelector("#sbCoverHint").hidden = cc || mb || pl;
           box.querySelector("#sbStartCovers").hidden = cc || mb || pl;
           box.querySelector("#sbStartBoards").hidden = !mb;
+          box.querySelectorAll("[data-kindonly]").forEach((x) => { x.hidden = x.dataset.kindonly !== kind; });
           if (box.drawPreviews) box.drawPreviews();
         }));
         const first = box.querySelector("[data-start]"); if (first) first.focus();
@@ -8751,6 +8952,21 @@
             try {
               for await (const r of renderPages(nb, { dpi: 22, cache, only: -1 })) {
                 const slot = box.querySelector(`[data-start="${k}"] .sb-startpic`);
+                if (slot && box.isConnected && token === previewToken) slot.replaceChildren(r.page.canvas);
+              }
+            } catch (e) { /* the words stay */ }
+          }
+          // A kind's own covers, with sample words and the studio's photographs.
+          for (const [t] of KIND_COVERS[kind] || []) {
+            if (!box.isConnected || token !== previewToken) return;
+            const ids = []; try { for (const [id, hit] of library().byId) { if (!hit.photo.diagram && !hit.photo.outside) ids.push(id); if (ids.length >= 6) break; } } catch (e) { /* frames stay empty */ }
+            const nb = newBook("Preview"); let n = 0;
+            nb.coverLayout = "custom"; nb.title = kind === "lookbook" ? "Monsoon" : "Selected";
+            nb.coverPage = { blocks: startBlocks(t, nb, "preview").map((b) => (b.k === "photo" && ids.length ? { ...b, p: { id: ids[n++ % ids.length], x: 0.5, y: 0.35, zoom: 1 } } : b)) };
+            nb.pages = [];
+            try {
+              for await (const r of renderPages(nb, { dpi: 22, cache, only: -1 })) {
+                const slot = box.querySelector(`[data-covertpl="${t}"] .sb-startpic`);
                 if (slot && box.isConnected && token === previewToken) slot.replaceChildren(r.page.canvas);
               }
             } catch (e) { /* the words stay */ }
@@ -10678,7 +10894,8 @@
       const mf = forOf(book);
       const ORDER = book.plan ? ["Planning", "Pages", "Cards", "Layouts", "Start"] : mf && (mf.kind === "talent" || mf.kind === "brand") ? ["Start", "Cards", "Pages", "Planning", "Layouts"] : ["Start", "Pages", "Planning", "Cards", "Layouts"];
       groups.forEach((g, i) => { g.section = sectionOf(g); g.at = i; });
-      groups.sort((a, b) => ORDER.indexOf(a.section) - ORDER.indexOf(b.section) || a.at - b.at);
+      const lead = book.plan ? "" : (book.kind === "lookbook" || book.style === "lookbook") ? "Lookbook" : "Magazine";
+      groups.sort((a, b) => ORDER.indexOf(a.section) - ORDER.indexOf(b.section) || (b.name === lead) - (a.name === lead) || a.at - b.at);
       groups.forEach((g, i) => { g.navHead = i === 0 || groups[i - 1].section !== g.section ? g.section : ""; });
       menu.innerHTML = `
         <div class="sb-addhead"><strong>Add a page</strong><span class="sb-hint">It goes after the page you're on. The book has ${count} page${count === 1 ? "" : "s"}.</span>
