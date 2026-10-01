@@ -1148,6 +1148,8 @@ function cleanStudioPortfolios(o) {
     const pages = (Array.isArray(v.pages) ? v.pages : []).slice(0, STUDIO_BOOK_LIMITS.pages).map((pg) => {
       if (!pg || !PAGE_TYPES.includes(pg.type)) return null;
       const out = { type: pg.type };
+      // Left out of the client copy (v577). Named here or it vanishes on save.
+      if (pg.teamOnly === true) out.teamOnly = true;
       if (pg.type === "photos") {
         out.photos = (Array.isArray(pg.photos) ? pg.photos : []).map(shot).filter(Boolean).slice(0, 6);
         // Written only when there is one, so every book saved before captions

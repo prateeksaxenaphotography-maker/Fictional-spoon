@@ -5531,6 +5531,11 @@
      refuses to publish — whoever it is for, the studio included. `plan` says
      which kind, and puts it under its own heading in Books. */
   const PLAN_NAME = { moodboard: "Moodboard", pitch: "Pitch", shoot: "Shoot plan" };
+  // Said once at the foot of a page that holds pasted pictures (v577).
+  const REF_LINE = "References are directional and not licensed for use.";
+  // The site a pasted picture's address names, for its credit (the photographer, when known, is better).
+  const SOURCE_SITES = [[/pinimg\.com|pinterest\./i, "Pinterest"], [/gstatic\.com|googleusercontent\.com|google\./i, "Google"], [/cdninstagram\.com|instagram\.|fbcdn\.net/i, "Instagram"], [/unsplash\./i, "Unsplash"], [/pexels\./i, "Pexels"], [/behance\.|adobe\./i, "Behance"]];
+  const sourceName = (url) => { if (!url) return ""; for (const [re, nm] of SOURCE_SITES) if (re.test(url)) return nm; try { return new URL(url).hostname.replace(/^www\./, ""); } catch (e) { return String(url).slice(0, 60); } };
   // The pages each starts with (v576), in the order the research found them read.
   const PLAN_PAGES = {
     pitch: ["pt_idea", "pt_refs", "mb_palette", "pt_model", "tm_styling", "tm_hairmakeup", "tm_set", "tm_light", "pt_deliver", "pt_why"],
@@ -5589,6 +5594,7 @@
      square, a 1.75 stroke, round ends — in place of the glyphs (⧉ ⇈ ⟳ ✕ ‹)
      that each font drew at its own size and weight. */
   const UI_PATHS = {
+    palette: '<path d="M12 22a10 10 0 1 1 10-10c0 2.2-1.8 3.5-4 3.5h-2a2 2 0 0 0-1.5 3.3c.4.5.5 1 .5 1.5 0 .9-.8 1.7-3 1.7Z"/><circle cx="7.5" cy="10.5" r="1"/><circle cx="10.5" cy="6.5" r="1"/><circle cx="15.5" cy="7.5" r="1"/>',
     paste: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M16 4h2a2 2 0 0 1 2 2v4"/><path d="M21 14H11"/><path d="m15 10-4 4 4 4"/>',
     back: '<path d="m15 18-6-6 6-6"/>',
     left: '<path d="m15 18-6-6 6-6"/>', right: '<path d="m9 18 6-6-6-6"/>', up: '<path d="m18 15-6-6-6 6"/>', down: '<path d="m6 9 6 6 6-6"/>',
@@ -6573,6 +6579,7 @@
     /* Three that are kinds of page in their own right (Oct 2026): each is a
        section of the Add-page gallery of its own, not a "Layouts ·" one. */
     { group: "Moodboard", top: true, items: [
+      ["mb_blank", "Blank page", "Nothing on it: add your photographs, paste pictures from anywhere, write, draw — every part moves, like an Anything page."],
       ["mb_grid", "Grid of nine", "A title, nine pictures three by three, a row of colours and a note. Copy a picture anywhere and paste it in."],
       ["mb_collage", "Collage", "One big picture and five around it, four colours and a line about the mood."],
       ["mb_sections", "Mood, light, styling, location", "Four parts, each named, with two pictures and a note."],
@@ -7209,6 +7216,8 @@
         T("intro", 0.07, 0.865, 0.86, 0.06, { sample: "New season, in stores and online from June.", style: { color: "#ffffff" } })
       ],
       // ---- Moodboards ----
+      // A blank board (v577, the owner: "a blank page where in i can edit it fully"): nothing on it to start.
+      mb_blank: [],
       mb_grid: [
         T("kicker", 0.07, 0.04, 0.6, 0.022, { sample: "MOODBOARD · THE BRIEF" }),
         T("head", 0.07, 0.065, 0.86, 0.055, { sample: "Quiet mornings" }),
@@ -8115,8 +8124,18 @@
       if (!/jpe?g/i.test(file.type || "")) { const d = x.getImageData(0, 0, w, h).data; for (let i = 3; i < d.length; i += 16) if (d[i] < 250) { clear = true; break; } }
       return { dataUrl: clear ? c.toDataURL("image/png") : c.toDataURL("image/jpeg", 0.86), aspect: w / h };
     }
+    /* The picture's address, as the browser hands it over with a copied image
+       (Chrome's "Copy image" carries <img src="…">), and the site it names. */
+    const sourceOf = (cd) => {
+      try {
+        const html = cd.getData("text/html") || "";
+        const m = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+        const src = m ? m[1].replace(/&amp;/g, "&") : (cd.getData("text/plain") || "").trim();
+        return /^https?:\/\//i.test(src) ? src.slice(0, 500) : "";
+      } catch (e) { return ""; }
+    };
     const pastedName = () => `Pasted picture · ${new Date().toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`;
-    async function pasteFiles(files) {
+    async function pasteFiles(files, source = "") {
       if (!book) return;
       if (!files.length) { API.toast("There's no picture on the clipboard. Right-click a picture, choose “Copy image”, then paste here."); return; }
       { const m = $("#sbAddMenu"); if (m && !m.hidden) closeAdd(false); }
@@ -8127,7 +8146,7 @@
           const got = await pastedPicture(file);
           if (!got) { refused++; continue; }
           const id = `out_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
-          await outPut({ id, name: pastedName(), dataUrl: got.dataUrl, forSite: false, pasted: true, at: Date.now() });
+          await outPut({ id, name: pastedName(), dataUrl: got.dataUrl, forSite: false, pasted: true, at: Date.now(), ...(source ? { source, credit: sourceName(source) } : {}) });
           aspects.set(id, got.aspect);
           ids.push(id);
         } catch (e) { refused++; }
@@ -8163,6 +8182,8 @@
         bl.push({ k: "photo", x: round4(Math.min(1 - w, 0.33 + added * 0.03)), y: round4(Math.min(1 - h, 0.25 + added * 0.03)), w, h, p: shotOf(id) });
         made.push(bl.length - 1); added++;
       });
+      // Pictures from elsewhere are references: said once, small, at the foot of the page (the research's wording).
+      if (made.length && !bl.some((x) => x && x.k === "text" && x.t === REF_LINE) && bl.length < FREE_MAX) bl.push({ k: "text", role: "body", t: REF_LINE, x: 0.15, y: 0.972, w: 0.7, h: 0.016, style: { size: 0.6, align: "center" } });
       change({ rail: true, photos: true });
       if (made.length) chooseBlocks(made);
       pastedInto = made.length === 1 ? { e, i: made[0], id: bl[made[0]].p.id } : null;
@@ -8183,7 +8204,7 @@
         return;
       }
       ev.preventDefault();
-      pasteFiles(files);
+      pasteFiles(files, sourceOf(cd));
     };
     // The button: the clipboard read when asked (the browser asks once whether this site may).
     async function pasteFromButton() {
@@ -8191,12 +8212,13 @@
       let items = [];
       try { items = await navigator.clipboard.read(); }
       catch (e) { API.toast(`The browser didn't let the button read the clipboard. Press ${MOD}V instead.`); return; }
-      const files = [];
+      const files = []; let source = "";
       for (const it of items) {
         const type = (it.types || []).find((t) => /^image\//.test(t));
         if (type) { try { const blob = await it.getType(type); files.push(new File([blob], "pasted", { type })); } catch (e) {} }
+        if (!source && (it.types || []).includes("text/html")) { try { const h = await (await it.getType("text/html")).text(); source = sourceOf({ getData: (t) => (t === "text/html" ? h : "") }); } catch (e) {} }
       }
-      pasteFiles(files);
+      pasteFiles(files, source);
     }
     document.addEventListener("paste", onPaste);
     document.addEventListener("dragover", onDragOver);
@@ -8214,6 +8236,13 @@
       window.removeEventListener("resize", closeCtx); window.removeEventListener("blur", closeCtx);
     }
     function ctxAway(e) { const m = document.getElementById("sbCtx"); if (m && !m.contains(e.target)) closeCtx(); }
+    // A page only the team reads (v577): a call sheet, a shot list. Left out of the client copy.
+    function toggleTeam(i) {
+      const pg = book.pages[i]; if (!pg) return;
+      mark(); if (pg.teamOnly) delete pg.teamOnly; else pg.teamOnly = true;
+      change({ rail: true });
+      API.toast(pg.teamOnly ? "Team only: left out when you download the client copy · Ctrl+Z to undo" : "Back in the client copy · Ctrl+Z to undo");
+    }
     function ctxMenu(x, y, items) {
       closeCtx();
       const m = document.createElement("div");
@@ -8257,6 +8286,7 @@
           { label: "Move later", icon: "arrowDown", run: click("down"), off: off("down") },
           "-",
           { label: "Save as a template…", icon: "save", run: () => saveTemplate("page") },
+          { label: book.pages[i] && book.pages[i].teamOnly ? "Put it back in the client copy" : "Team only — leave it out of the client copy", icon: "eyeOff", run: () => toggleTeam(i) },
           "-",
           { label: "Remove the page", icon: "trash", danger: true, run: click("rm"), off: off("rm") }
         ]);
@@ -8278,7 +8308,7 @@
       const b = bl[i];
       ctxMenu(e.clientX, e.clientY, [
         { label: "Duplicate", icon: "copy", run: () => dupeBlock(i), off: n >= FREE_MAX },
-        ...(b && b.k === "photo" ? [{ label: "Change photo", icon: "replace", run: () => { const x = $('#sbBlkBar [data-order="change"]'); if (x) x.click(); } }, { label: "Add a note under it", icon: "type", run: () => noteUnder(i), off: n >= FREE_MAX }] : []),
+        ...(b && b.k === "photo" ? [{ label: "Change photo", icon: "replace", run: () => { const x = $('#sbBlkBar [data-order="change"]'); if (x) x.click(); } }, { label: "Add a note under it", icon: "type", run: () => noteUnder(i), off: n >= FREE_MAX }, { label: "Colours from it", icon: "palette", run: () => coloursFrom(i), off: !(b.p && b.p.id) || n + 10 > FREE_MAX }] : []),
         "-",
         { label: "Bring to the front", icon: "toFront", kbd: "Shift+]", run: () => moveBlockTo(i, "front"), off: i === n - 1 },
         { label: "Bring forward", icon: "arrowUp", kbd: "]", run: () => moveBlock(i, 1), off: i === n - 1 },
@@ -8387,7 +8417,7 @@
       const KIND_NOTE = { magazine: "A cover and a page of photographs; add any pages after.",
         pitch: "A pitch to win a shoot, eleven pages to fill: a cover, the idea and its mood words, references, colours, the model, styling, hair & make-up, location, light, deliverables and your past work. Kept on this computer only and never published, whoever it's for.",
         shootplan: "Everything for the day, eleven pages: a cover, the brief, the moodboard in six parts, a page for each of three looks, hair & make-up, this-not-that, the shot list, the call sheet and the credits. Kept on this computer only and never published, whoever it's for.",
-        moodboard: `One page to start: a moodboard to plug pictures into — your own photographs, or copy any picture from Pinterest, Google or anywhere and paste it with ${MOD}V. Pick its layout; more boards come from Add page → Moodboard. Kept on this computer only and never published, whoever it's for.`, lookbook: "A cover, a page about the collection, six looks and a back cover. Each look is one or two photographs with its number, its name and its lines.",
+        moodboard: `A cover, the board you pick below and a back cover, like a magazine. Plug in your own photographs, or copy any picture from Pinterest, Google or anywhere and paste it with ${MOD}V. Pick the board's layout — or a blank page to make your own; more boards come from Add page → Moodboard. Kept on this computer only and never published, whoever it's for.`, lookbook: "A cover, a page about the collection, six looks and a back cover. Each look is one or two photographs with its number, its name and its lines.",
         compcard: "One page, like a printed comp card: a big photograph with three beside it, their name, what they do, their measurements and the brands they have worked with — filled from their card. Every part can be moved, edited or deleted, and a brand's logo added as a photo from this computer." };
       const withKind = (nb, k) => {
         /* A moodboard: the board is the book's first page, laid out from
@@ -8400,13 +8430,15 @@
           nb.coverLayout = "custom"; nb.coverPage = { blocks: [] }; nb.pages = [];
           return nb;
         }
+        /* A moodboard (the owner, Oct 1 2026: "should have cover and ending
+           page", like a magazine): its cover, the board chosen, a back cover.
+           More boards go in between from Add page → Moodboard. */
         if (k === "moodboard") {
           nb.id = uid(true); nb.plan = "moodboard";
           nb.name = nb.name.replace(/^Book /, "Moodboard ");
-          nb.title = "Moodboard"; nb.subtitle = "";
-          nb.coverLayout = "custom";
-          nb.coverPage = { blocks: startBlocks(board, nb, "add") };
-          nb.pages = [];
+          nb.title = "Moodboard"; nb.subtitle = new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+          delete nb.coverPage; if (nb.coverLayout === "custom") delete nb.coverLayout;
+          nb.pages = [{ type: "free", blocks: startBlocks(board, nb, "add") }, { type: "end", layout: "back" }];
           return nb;
         }
         if (k !== "lookbook") return nb;
@@ -8431,10 +8463,12 @@
         nb.pages = PLAN_PAGES[nb.plan].map((key) => {
           const blocks = startBlocks(key, nb, "add");
           if (key === "sp_look") { look++; const lab = blocks.find((b) => b.k === "text" && b.t === "LOOK 1"); if (lab) lab.t = `LOOK ${look}`; }
-          return { type: "free", blocks };
+          return { type: "free", blocks, ...(nb.plan === "shoot" && TEAM_PAGES.has(key) ? { teamOnly: true } : {}) };
         });
+        nb.pages.push({ type: "end", layout: "back" });
         return nb;
       };
+      const TEAM_PAGES = new Set(["sp_shots", "sp_call", "tm_hairmakeup"]);
       const forNoteNow = () => (forWho === "studio" && KIND_PLAN[kind] ? "Your own moodboard: kept on this computer only and never published — it is planning work, often with pictures that aren't yours." : FOR_NOTE[forWho]);
       const FOR_NOTE = {
         studio: "Your own book. Publishing puts it in your site's files, so it opens on any device.",
@@ -8461,6 +8495,7 @@
         nb.colourway = "silver-print";
         nb.name = `${name} — ${kind === "lookbook" ? "lookbook" : KIND_PLAN[kind] ? PLAN_NAME[KIND_PLAN[kind]].toLowerCase() : forWho === "talent" && kind === "compcard" ? "comp card" : forWho === "talent" ? "portfolio" : "book"}`;
         if (kind !== "lookbook" && !KIND_PLAN[kind]) { nb.title = name; nb.subtitle = forWho === "talent" ? "Portfolio" : ""; }
+        else if (kind === "moodboard") nb.subtitle = `For ${name}`;
         /* A talent's book starts with the pages that carry what their record
            holds: About (their type and measurements), a page of photographs,
            Contact (their email and Instagram, as their record lets a PDF
@@ -8602,7 +8637,7 @@
         box.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); } });
         box.querySelector("#sbStartClose").addEventListener("click", () => { closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); });
         box.querySelectorAll("[data-start]").forEach((b) => b.addEventListener("click", () => startBook(b.dataset.start)));
-        box.querySelectorAll("[data-board]").forEach((b) => b.addEventListener("click", () => startBook("custom", b.dataset.board)));
+        box.querySelectorAll("[data-board]").forEach((b) => b.addEventListener("click", () => startBook("classic", b.dataset.board)));
         box.querySelectorAll("[data-starttpl]").forEach((b) => b.addEventListener("click", () => startFromTemplate(b.dataset.starttpl)));
         box.querySelectorAll("[data-tpldel]").forEach((b) => b.addEventListener("click", async () => {
           await tplDel(b.dataset.tpldel); await tplRefresh();
@@ -8881,6 +8916,10 @@
                 <p class="sb-hint">For a sample you send before a job is agreed. Leave it off for the file the client keeps.</p>
               </div>
             </div>
+            <div class="sb-sec" id="sbClientSec" hidden>
+              <label class="sb-check-row"><input type="checkbox" id="sbClient"> <span id="sbClientText">Client copy</span></label>
+              <p class="sb-hint">Leaves out the pages marked team only — right-click a page in the list to mark one. The file's name ends “client”.</p>
+            </div>
             <div class="sb-sec"><span class="sb-label">Resolution</span>
               <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Resolution">
                 <button type="button" role="radio" data-dpi="150" aria-checked="true">150 dpi</button>
@@ -9017,10 +9056,17 @@
       }));
       // Download menu
       const pop = $("#sbDlPop"), dlBtn = $("#sbDlToggle");
+      // The client copy is offered only when some page is the team's alone.
+      const drawClientRow = () => {
+        const n = (book.pages || []).filter((pg) => pg && pg.teamOnly).length, sec = $("#sbClientSec"), box = $("#sbClient"), t = $("#sbClientText");
+        if (!sec) return;
+        sec.hidden = !n; if (!n && box) box.checked = false;
+        if (t) t.textContent = `Client copy: leave out the ${n} team-only page${n === 1 ? "" : "s"}`;
+      };
       dlBtn.addEventListener("click", () => {
         const open = pop.hidden;
         pop.hidden = !open; dlBtn.setAttribute("aria-expanded", String(open));
-        if (open) { flush(); drawCheck(); }
+        if (open) { flush(); drawCheck(); drawClientRow(); }
       });
       $("#sbDlClose").addEventListener("click", () => { pop.hidden = true; dlBtn.setAttribute("aria-expanded", "false"); dlBtn.focus(); });
       $("#sbPdf").addEventListener("click", (e) => download(e.currentTarget, printMode === "fold" ? "booklet" : "pdf", $("#sbMark").checked));
@@ -10005,7 +10051,7 @@
     }
     /* A line of words under a photograph, as wide as it, ready to type: why
        it is on the board (v576). Above it when there is no room below. */
-    function noteUnder(i) {
+    function noteUnder(i, words = "") {
       const e = freePage(); if (!e) return;
       const bl = blocksOf(e), p = bl[i];
       if (!p || p.k !== "photo") return;
@@ -10013,11 +10059,64 @@
       mark();
       const h = 0.03, below = p.y + (p.h || 0) + 0.008;
       const y = below + h <= 0.99 ? below : Math.max(0, p.y - h - 0.008);
-      bl.push({ k: "text", role: "body", t: "", x: round4(p.x), y: round4(y), w: round4(p.w), h, style: { size: 0.8 } });
+      bl.push({ k: "text", role: "body", t: words, x: round4(p.x), y: round4(y), w: round4(p.w), h, style: { size: 0.8 } });
       blockSel = bl.length - 1; multi = null;
       change({ rail: true }); drawLayer(); drawInspector();
-      const f = $("#sbF_blocktext"); if (f) f.focus();
-      API.toast("A note under the picture: type why it's there · Ctrl+Z to take it off");
+      const f = $("#sbF_blocktext"); if (f) { f.focus(); if (words) f.setSelectionRange(f.value.length, f.value.length); }
+      API.toast(words ? "The credit is under the picture · Ctrl+Z to take it off" : "A note under the picture: type why it's there · Ctrl+Z to take it off");
+    }
+    /* The five colours a photograph is made of (v577; the research: pull a
+       palette out of a picture, with its codes). Its pixels, small, grouped
+       five ways from seeds as far apart as the picture allows, the biggest
+       group first. */
+    function paletteOf(img, n = 5) {
+      const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height, k = Math.min(1, 96 / Math.max(iw, ih));
+      const c = document.createElement("canvas"); c.width = Math.max(1, Math.round(iw * k)); c.height = Math.max(1, Math.round(ih * k));
+      const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(img, 0, 0, c.width, c.height);
+      const d = x.getImageData(0, 0, c.width, c.height).data, px = [];
+      for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 200) px.push([d[i], d[i + 1], d[i + 2]]);
+      if (!px.length) return [];
+      const dist = (a, q) => (a[0] - q[0]) ** 2 + (a[1] - q[1]) ** 2 + (a[2] - q[2]) ** 2;
+      const mean = px.reduce((m, q) => [m[0] + q[0], m[1] + q[1], m[2] + q[2]], [0, 0, 0]).map((v) => v / px.length);
+      const near = (q, list) => Math.min(...list.map((t) => dist(q, t)));
+      const seeds = [px.reduce((best, q) => (dist(q, mean) < dist(best, mean) ? q : best), px[0])];
+      while (seeds.length < n) seeds.push(px.reduce((best, q) => (near(q, seeds) > near(best, seeds) ? q : best), px[0]));
+      let cs = seeds.map((q) => q.slice()), groups = [];
+      for (let r = 0; r < 12; r++) {
+        groups = cs.map(() => ({ n: 0, s: [0, 0, 0] }));
+        for (const q of px) { let bi = 0, bd = Infinity; cs.forEach((cc, j) => { const dd = dist(q, cc); if (dd < bd) { bd = dd; bi = j; } }); const g = groups[bi]; g.n++; g.s[0] += q[0]; g.s[1] += q[1]; g.s[2] += q[2]; }
+        cs = cs.map((cc, j) => (groups[j].n ? groups[j].s.map((v) => v / groups[j].n) : cc));
+      }
+      const hex = (cc) => "#" + cc.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("");
+      return cs.map((cc, j) => ({ hex: hex(cc), n: groups[j].n })).filter((g) => g.n).sort((a, q) => q.n - a.n).map((g) => g.hex).filter((h, i, all) => all.indexOf(h) === i);
+    }
+    // Laid under the photograph as swatches with their codes, or over it when there is no room below.
+    async function coloursFrom(i) {
+      const e = freePage(); if (!e) return;
+      const bl = blocksOf(e), p = bl[i];
+      if (!p || p.k !== "photo" || !p.p || !p.p.id) { API.toast("Put a picture in this frame first."); return; }
+      if (bl.length + 10 > FREE_MAX) { API.toast(`Five colours and their codes take ten places; this page has room for ${FREE_MAX - bl.length}.`); return; }
+      const hit = library().byId.get(p.p.id);
+      let img = null;
+      try { img = hit ? await API.loadImage(hit.photo.outside ? hit.photo.dataUrl : previewSrc(hit.photo), cache) : null; } catch (er) { img = null; }
+      if (!img) { API.toast("This photograph couldn't be read."); return; }
+      let cols = [];
+      try { cols = paletteOf(img); } catch (er) { cols = []; }
+      if (!cols.length) { API.toast("No colours could be read from this picture."); return; }
+      const G = geometry(book), gap = 0.01, lh = 0.02;
+      const w = Math.max(0.3, p.w), x0 = Math.min(Math.max(0, p.x), 1 - w);
+      const sw = (w - gap * (cols.length - 1)) / cols.length, sh = Math.min(0.08, (sw * G.Wa) / G.Ha);
+      const below = p.y + (p.h || 0) + 0.01;
+      const y = below + sh + lh + 0.006 <= 0.99 ? below : Math.max(0, p.y - sh - lh - 0.016);
+      mark();
+      const made = [];
+      cols.forEach((hx, k) => {
+        const x = round4(x0 + k * (sw + gap));
+        bl.push({ k: "shape", x, y: round4(y), w: round4(sw), h: round4(sh), fill: hx }); made.push(bl.length - 1);
+        bl.push({ k: "text", role: "body", t: hx.toUpperCase(), x, y: round4(y + sh + 0.004), w: round4(sw), h: lh, style: { size: 0.7 } }); made.push(bl.length - 1);
+      });
+      change({ rail: true }); chooseBlocks(made);
+      API.toast(`${cols.length} colours from the picture, with their codes — chosen together, so drag them where you like · Ctrl+Z to take them off`);
     }
     function addBlock(k) {
       const e = freePage(); if (!e) return;
@@ -10882,7 +10981,7 @@
         <li data-i="${it.i}" class="${sel === it.i ? "sel" : ""}">
           <button type="button" class="sb-pg" data-sel="${it.i}" aria-current="${sel === it.i}">
             <span class="sb-pgimg" aria-hidden="true"></span>
-            <span class="sb-pglabel"><b>${it.n}</b><span>${esc(railLabel(it.entry))}</span><i class="sb-chip" ${tooLong.get(it.entry || COVER) ? "" : "hidden"}>too long</i>${it.i >= 0 && splitByTurn(it.i) ? `<i class="sb-chip">split by a turn</i>` : ""}</span>
+            <span class="sb-pglabel"><b>${it.n}</b><span>${esc(railLabel(it.entry))}</span><i class="sb-chip" ${tooLong.get(it.entry || COVER) ? "" : "hidden"}>too long</i>${it.i >= 0 && splitByTurn(it.i) ? `<i class="sb-chip">split by a turn</i>` : ""}${it.entry && it.entry.teamOnly ? `<i class="sb-chip" title="Left out of the client copy">team only</i>` : ""}</span>
           </button>
           ${sel === it.i && it.i >= 0 ? `<span class="sb-pgacts">
             <button type="button" data-up="${it.i}" aria-label="Move this page earlier" title="Move earlier" ${it.i === 0 ? "disabled" : ""}>${uiIc("arrowUp")}</button>
@@ -12269,7 +12368,13 @@
         ${b ? "" : pageLookHtml(entry, blocks.filter((x) => x.k === "photo").length, true)}
         ${b ? `<div class="sb-sec sb-rowbox"><h3>${esc(BLOCK_NAME[b.k] || "Thing")} ${blockSel + 1}</h3>
           ${words}${paint}${photoShape}${effects}
-          ${b.k === "photo" ? `<div class="sb-adds"><button type="button" data-noteunder>${uiIc("type")}Add a note under it</button></div>` : ""}
+          ${b.k === "photo" ? `<div class="sb-adds"><button type="button" data-noteunder>${uiIc("type")}Add a note under it</button><button type="button" data-colours ${b.p && b.p.id ? "" : "disabled"}>${uiIc("palette")}Colours from it</button></div>` : ""}
+          ${(() => {
+            const rec = b.k === "photo" && b.p && /^out_/.test(String(b.p.id)) ? (outsideCache || []).find((r) => r.id === b.p.id && r.pasted) : null;
+            return rec ? `<div class="sb-field"><label for="sbCredit">Whose picture it is</label><input type="text" id="sbCredit" maxlength="80" value="${esc(rec.credit || "")}" placeholder="The photographer, or where it's from" autocomplete="off">
+              <p class="sb-hint">Pasted${rec.source ? ` from ${esc(sourceName(rec.source))}` : ""}, kept on this computer only. Credit the photographer when you know them, not just the site it was on.</p>
+              <div class="sb-adds"><button type="button" data-creditunder>${uiIc("type")}Credit it under the picture</button></div></div>` : "";
+          })()}
           ${b.k === "photo" ? `<p class="sb-hint">Choose the photograph, and how it sits in its box, below.</p>` : ""}
           ${step("Across", "nudx", "-1", "1", mmX(b.x))}
           ${step("Down", "nudy", "-1", "1", mmY(b.y))}
@@ -12340,6 +12445,13 @@
       box.querySelectorAll(".sb-rowbox [data-malign]").forEach((x) => x.addEventListener("click", () => alignChosen(x.dataset.malign)));
       { const sl = $("[data-slock]"); if (sl) sl.addEventListener("click", () => setLocked([blockSel], true)); }
       { const nu = $("[data-noteunder]"); if (nu) nu.addEventListener("click", () => noteUnder(blockSel)); }
+      { const cl = $("[data-colours]"); if (cl) cl.addEventListener("click", () => coloursFrom(blockSel)); }
+      {
+        const cr = $("#sbCredit"), pid = b && b.p && b.p.id;
+        if (cr && pid) cr.addEventListener("change", async () => { const rec = (outsideCache || []).find((r) => r.id === pid); if (!rec) return; try { await outPut({ ...rec, credit: cr.value.trim().slice(0, 80) }); await outsideRefresh(); } catch (e) { API.toast("Not saved: this computer's storage for the site refused it."); } });
+        const cu = $("[data-creditunder]");
+        if (cu) cu.addEventListener("click", () => { const v = ((cr || {}).value || "").trim(); noteUnder(blockSel, v ? `Photo: ${v}` : "Photo: "); });
+      }
       { const sh = $("[data-shide]"); if (sh) sh.addEventListener("click", () => setHidden([blockSel], true)); }
       const toFront = $("[data-tofront]"); if (toFront) toFront.addEventListener("click", () => moveBlockTo(blockSel, "front"));
       const toBack = $("[data-toback]"); if (toBack) toBack.addEventListener("click", () => moveBlockTo(blockSel, "back"));
@@ -14117,6 +14229,9 @@
       // A frozen copy: an edit made while pages are being drawn must not end up
       // half in the file, mixing two styles or losing a page it had counted.
       const snap = JSON.parse(JSON.stringify(book));
+      // The client copy: the same book without the team's pages.
+      const client = !!($("#sbClient") && $("#sbClient").checked && !$("#sbClientSec").hidden);
+      if (client) snap.pages = snap.pages.filter((pg) => !(pg && pg.teamOnly));
       const list = await problems(snap);
       // Things to look at are listed in the menu; the first press says so and
       // turns the button into "anyway", the second goes ahead. No pop-up.
@@ -14148,8 +14263,8 @@
       // for the studio or the book's working name.
       const mf = forOf(snap);
       const base = mf
-        ? `${slugOf(mf.name)}-${slugOf(snap.title || (mf.kind === "talent" ? "portfolio" : "book"))}${format === "booklet" ? "-booklet" : ""}${watermarked ? "-watermarked" : ""}`
-        : `nerdyphotographer${slug ? `-${slug}` : "-portfolio"}${format === "booklet" ? "-booklet" : ""}${watermarked ? "-watermarked" : ""}`;
+        ? `${slugOf(mf.name)}-${slugOf(snap.title || (mf.kind === "talent" ? "portfolio" : "book"))}${format === "booklet" ? "-booklet" : ""}${watermarked ? "-watermarked" : ""}${client ? "-client" : ""}`
+        : `nerdyphotographer${slug ? `-${slug}` : "-portfolio"}${format === "booklet" ? "-booklet" : ""}${watermarked ? "-watermarked" : ""}${client ? "-client" : ""}`;
       try {
         // The chosen resolution first, then softer if the device runs short of memory.
         let result = null, lastErr = null, madeAt = 0, fullSize = 0;

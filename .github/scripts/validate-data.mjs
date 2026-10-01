@@ -567,7 +567,8 @@ if (books !== undefined && books !== null) {
       look: ["type", "photos", "label", "title", "lines", "credit", "style"]
     };
     // Any page can carry its own colour behind everything.
-    const KNOWN_KEYS = Object.fromEntries(Object.entries(KNOWN_KEYS_BASE).map(([k, v]) => [k, v.includes("bg") ? v : [...v, "bg"]]));
+    // Any page can be the team's alone, left out of the client copy (v577).
+    const KNOWN_KEYS = Object.fromEntries(Object.entries(KNOWN_KEYS_BASE).map(([k, v]) => [k, [...(v.includes("bg") ? v : [...v, "bg"]), "teamOnly"]]));
     // An Anything page: what the studio placed, as fractions of the A4 frame.
     const BLOCK_KINDS = new Set(["text", "photo", "shape", "line"]);
     const BLOCK_ROLES = new Set(["head", "intro", "body", "kicker", "quote"]);
@@ -685,6 +686,7 @@ if (books !== undefined && books !== null) {
         const where = `studio portfolio book ${name} page entry ${i + 1}`;
         if (!pg || !PAGE_TYPES.has(pg.type)) { fail(`${where} has an unknown type ${JSON.stringify(pg && pg.type)}`); return; }
         const extra = Object.keys(pg).filter((k) => !KNOWN_KEYS[pg.type].includes(k));
+        if (pg.teamOnly !== undefined && pg.teamOnly !== true) fail(`${where} has teamOnly ${JSON.stringify(pg.teamOnly)}; the app writes true, and nothing otherwise`);
         if (extra.length) fail(`${where} (${pg.type}) has ${extra.map((k) => JSON.stringify(k)).join(", ")}, which the app drops when the book loads`);
         for (const [k, max] of Object.entries(FIELD_MAX[pg.type] || {})) {
           if (pg[k] === undefined) continue;
