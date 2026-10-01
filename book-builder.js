@@ -5868,6 +5868,20 @@
      each edge; double-click puts it back. */
   .sb-split { position: absolute; top: 0; bottom: 0; z-index: 16; width: 9px; margin-left: -4px; cursor: col-resize; touch-action: none; }
   .sb-split[data-split="rail"] { left: var(--sb-rail-w, 168px); }
+  /* The photo library's column (v578): beside the pages while what is chosen takes a photograph. */
+  /* Adding a page (v578): the menu has the whole width beside the page list; the panel and the library step aside. */
+  .sb-work.adding, .sb-work.adding.lib-on { grid-template-columns: var(--sb-rail-w, 168px) minmax(0, 1fr); }
+  .sb-work.adding > .sb-insp, .sb-work.adding > .sb-lib, .sb-work.adding > .sb-split[data-split="insp"] { display: none; }
+  .sb-work.lib-on { grid-template-columns: var(--sb-rail-w, 168px) var(--sb-lib-w, 340px) minmax(0, 1fr) var(--sb-insp-w, 360px); }
+  .sb-lib { display: flex; flex-direction: column; min-height: 0; overflow: hidden; background: var(--sb-panel); border-right: 1px solid var(--sb-line); }
+  .sb-lib[hidden] { display: none; }
+  .sb-libhead { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 14px 14px 10px; border-bottom: 1px solid var(--sb-line); }
+  .sb-libhead h3 { margin: 0; font: 600 14px/1.3 var(--sb-font); color: var(--sb-text); }
+  .sb-libsub { display: block; margin-top: 2px; font: 400 12px/1.35 var(--sb-font); color: var(--sb-text-3); }
+  .sb-libbody { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 12px 14px 18px; scrollbar-width: thin; }
+  .sb-lib .sb-pick > summary { display: none; }
+  .sb-lib .sb-grid { max-height: none; overflow: visible; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+  .sb-libbtn { margin-top: 6px; }
   .sb-split[data-split="insp"] { right: var(--sb-insp-w, 360px); margin-left: 0; margin-right: -4px; }
   .sb-split::after { content: ""; position: absolute; left: 4px; top: 0; bottom: 0; width: 1px; background: transparent; transition: background .15s, box-shadow .15s; }
   .sb-split:hover::after, .sb-split:focus-visible::after, .sb-split.on::after { background: var(--sb-sel); box-shadow: 0 0 0 1px var(--sb-sel); }
@@ -6143,6 +6157,33 @@
   .sb-adds button .sb-i { color: var(--sb-text-2); }
   /* The Anything page's tools: a drawing over its name, three to a row. */
   .sb-tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 6px; }
+  /* v578: the insert toolbar floats at the top of the page, like the page bar at its foot. */
+  .sb-insert { position: absolute; left: 50%; top: 12px; z-index: 12; max-width: calc(100% - 24px); padding: 4px; transform: translateX(-50%); background: var(--sb-raised); border: 1px solid var(--sb-line); border-radius: var(--sb-r-lg); box-shadow: var(--sb-sh-2); }
+  .sb-insert[hidden] { display: none; }
+  .sb-insert .sb-tools { display: flex; flex-wrap: nowrap; gap: 2px; margin: 0; overflow-x: auto; scrollbar-width: none; }
+  .sb-insert .sb-tools button { flex: none; flex-direction: row; gap: 6px; min-height: 32px; padding: 6px 10px; background: transparent; border-radius: var(--sb-r); font-size: 12.5px; }
+  .sb-insert .sb-tools button:hover { background: var(--sb-hover); }
+  .sb-insert .sb-tools button[aria-pressed="true"] { background: var(--sb-sel-bg, var(--sb-hover)); color: var(--sb-sel); }
+  .sb-insert .sb-tools button svg { width: 16px; height: 16px; }
+  .sb-stage.has-insert .sb-preview { padding-top: 88px; }   /* clear of the toolbar, with room for a turn handle above a block at the top */
+  @media (max-width: 1280px) { .sb-insert .sb-tools button span { display: none; } .sb-insert .sb-tools button { padding: 6px 9px; } }
+  /* The thing chosen: its name with the way back to the page. */
+  .sb-itemhead { display: flex; align-items: center; gap: 8px; margin: -2px 0 10px; }
+  .sb-itemhead h3 { margin: 0; }
+  .sb-backpage { min-height: 28px; padding: 4px 8px 4px 4px; font-size: 12px; }
+  .sb-more { margin: 10px 0 0; border-top: 1px solid var(--sb-line); padding-top: 8px; }
+  .sb-more > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px; padding: 4px 0; font: 600 12.5px/1.3 var(--sb-font); color: var(--sb-text-2); }
+  .sb-more > summary::-webkit-details-marker { display: none; }
+  .sb-more > summary::before { content: ""; width: 14px; height: 14px; background: var(--sb-chev) no-repeat center / 14px; transform: rotate(-90deg); transition: transform .18s var(--sb-ease); }
+  .sb-more[open] > summary::before { transform: none; }
+  .sb-more[open] > summary { margin-bottom: 8px; color: var(--sb-text); }
+  /* Tips: the panel stays quiet until they are asked for. */
+  .sb-insp:not(.tips) .sb-tip { display: none; }
+  .sb-tipsbtn { flex: none; width: 30px; margin-left: 4px; border: 0; border-radius: var(--sb-r); background: transparent; color: var(--sb-text-3); font: 600 13px/1 var(--sb-font); cursor: pointer; }
+  .sb-tipsbtn:hover { color: var(--sb-text); background: var(--sb-hover); }
+  .sb-tipsbtn[aria-pressed="true"] { color: var(--sb-sel); background: var(--sb-seg-on); }
+  /* The top bar: history and find as icons, their names in the tooltip. */
+  #sbHistory > span, #sbCmd > span, #sbCmd > kbd { display: none; }
   .sb-tools button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 64px; padding: 8px 4px; border: 0; border-radius: var(--sb-r); background: var(--sb-sunk); color: var(--sb-text); font: 500 12px/1.2 var(--sb-font); text-align: center; cursor: pointer; transition: background .12s, color .12s, box-shadow .12s; }
   .sb-tools button .sb-i { width: 20px; height: 20px; color: var(--sb-text-2); transition: color .12s; }
   .sb-tools button:hover { background: var(--sb-sunk-2); }
@@ -6482,7 +6523,7 @@
     html.sb-editing.sb-has-pubbar .sb-root { padding-bottom: 74px; }
   }
   @media (max-width: 1280px) { .sb-status { display: none; } }
-  @media (max-width: 1200px) { .sb-work { grid-template-columns: var(--sb-rail-w, 140px) minmax(0, 1fr) var(--sb-insp-w, 320px); } .sb-pgimg canvas { height: 76px; } .sb-pgimg { min-height: 80px; } #sbCmd > span { display: none; } }
+  @media (max-width: 1200px) { .sb-work { grid-template-columns: var(--sb-rail-w, 140px) minmax(0, 1fr) var(--sb-insp-w, 320px); } .sb-work.lib-on { grid-template-columns: var(--sb-rail-w, 140px) var(--sb-lib-w, 280px) minmax(0, 1fr) var(--sb-insp-w, 320px); } .sb-pgimg canvas { height: 76px; } .sb-pgimg { min-height: 80px; } #sbCmd > span { display: none; } }
   @media (max-width: 1080px) { .sb-stagebar strong { display: none; } .sb-backbtn > span { display: none; } }
   @media (max-width: 900px) {
     /* A phone: the name and Publish on the first line, the tools on the second. */
@@ -7973,6 +8014,7 @@
       if ($(".sb-hits") || editing) drawHits(lastRender);
       drawGuides();
       if ($("#sbWork")) applyPanes();
+      schedulePreview(200);   // the page's size follows the window's
     };
     /* Drag and drop (Sep 29 2026, from the owner's list): a thumbnail from the
        picker, or photographs straight from the desktop, dropped on the page.
@@ -8970,6 +9012,10 @@
             <ol class="sb-pages" id="sbPages"></ol>
             <div class="sb-addwrap"><button type="button" class="sb-addbtn" id="sbAddToggle" aria-expanded="false" aria-controls="sbAddMenu">${uiIc("plus")}<span>Add page</span></button></div>
           </nav>
+          <aside class="sb-lib" id="sbLib" aria-labelledby="sbLibTitle" hidden>
+            <div class="sb-libhead"><div><h3 id="sbLibTitle">Photos</h3><span class="sb-libsub" id="sbLibSub"></span></div><button type="button" class="sb-btn quiet sb-iconbtn" id="sbLibClose" aria-label="Hide the photos" data-tip="Hide the photos">${uiIc("x")}</button></div>
+            <div class="sb-libbody" id="sbLibBody"></div>
+          </aside>
           <section class="sb-stage" aria-label="Page preview">
             <div class="sb-stagebar">
               <button type="button" class="sb-nav" id="sbPrev" aria-label="Previous page" data-tip="Previous page" data-tip-up>${uiIc("left")}</button>
@@ -8985,6 +9031,7 @@
                 <button type="button" class="sb-btn quiet" id="sbReadBtn" title="Read it through, the way a client will" aria-label="Read it through">${uiIc("read")}<span>Read</span></button>
               </span>
             </div>
+            <div class="sb-insert" id="sbInsert" role="toolbar" aria-label="Add to this page" hidden></div>
             <div class="sb-preview" id="sbPreview"><p class="sb-hint">Drawing…</p></div>
             <p class="sb-pagehint" id="sbPageHint"></p>
             <div class="sb-addmenu" id="sbAddMenu" role="dialog" aria-label="Add a page" hidden></div>
@@ -8993,6 +9040,7 @@
             <div class="sb-tabs" role="tablist" aria-label="Edit">
               <button type="button" role="tab" id="sbTabPage" aria-controls="sbPanelPage" aria-selected="${tab === "page"}">This page</button>
               <button type="button" role="tab" id="sbTabDesign" aria-controls="sbPanelDesign" aria-selected="${tab === "design"}">Design</button>
+              <button type="button" class="sb-tipsbtn" id="sbTips" aria-pressed="false" aria-label="Show the tips" data-tip="Show the tips under the settings">?</button>
             </div>
             <div class="sb-panel" role="tabpanel" id="sbPanelPage" aria-labelledby="sbTabPage" ${tab === "page" ? "" : "hidden"}></div>
             <div class="sb-panel" role="tabpanel" id="sbPanelDesign" aria-labelledby="sbTabDesign" ${tab === "design" ? "" : "hidden"}></div>
@@ -9002,6 +9050,19 @@
       $("#sbBack").addEventListener("click", () => { flush(); forget(); showList(); });
       $("#sbName").addEventListener("input", (e) => { book.name = e.target.value; change({ rail: false, typing: true }); });
       $("#sbCmd").addEventListener("click", () => openCmd());
+      {
+        const insp = root.querySelector(".sb-insp"), tipsBtn = $("#sbTips");
+        let on = false; try { on = localStorage.getItem("wps_sb_tips") === "1"; } catch (e) { on = false; }
+        const set = (v) => { on = v; insp.classList.toggle("tips", v); tipsBtn.setAttribute("aria-pressed", String(v)); tipsBtn.setAttribute("aria-label", v ? "Hide the tips" : "Show the tips"); try { localStorage.setItem("wps_sb_tips", v ? "1" : "0"); } catch (e) { /* private window */ } };
+        set(on);
+        tipsBtn.addEventListener("click", () => set(!on));
+        // Anything longer than a line is a tip; a short line says how things stand, and stays.
+        let tipRaf = 0;
+        const tag = () => { tipRaf = 0; insp.querySelectorAll("p.sb-hint:not(.sb-tip)").forEach((p) => { if (p.textContent.trim().length > 72) p.classList.add("sb-tip"); }); };
+        new MutationObserver(() => { if (!tipRaf) tipRaf = requestAnimationFrame(tag); }).observe(insp, { childList: true, subtree: true });
+        tag();
+      }
+      $("#sbLibClose").addEventListener("click", () => { setLibHidden(true); drawPhotoBlock(); });
       wireSplits();
       $("#sbSave").addEventListener("click", () => {
         if (!flush()) return;   // persist() has already said why it could not
@@ -10600,30 +10661,37 @@
           <p class="sb-hint">Its photographs, paired and grouped by their shapes — two portraits side by side, landscapes stacked, a grid now and then, a spread for a wide one — on as many pages as they need. Photographs already in the book are left out.</p></div>`, cls: "sb-auto" });
       groups.push({ id: "tpl", name: "My templates", n: pageTpls.length, cls: "sb-tplgroup", html: `${pageTpls.length ? `<div class="sb-additems">${pageTpls.map((t) => `<span class="sb-tplwrap">${tile(`tpl:${t.id}`, t.name, `Saved ${whenLabel(t.at)}`, "my template", full(t.pageType) || (forOf(book) && STUDIO_ONLY.has(t.pageType)))}<button type="button" class="sb-tplrm" data-tpldel="${esc(t.id)}" aria-label="Delete the template ${esc(t.name)}" title="Delete this template">×</button></span>`).join("")}</div>` : `<p class="sb-hint">Pages you save as templates appear here, ready to add to any book.</p>`}
           <div class="sb-adds sb-tplsave"><button type="button" data-savetpl="page">${uiIc("save")}Save the page you're on as a template…</button></div>` });
-      let layoutsSeen = false;
       for (const g of addMenuFor(book)) {
         const lay = /^Layouts · /.test(g.group);
         const name = lay ? g.group.replace(/^Layouts · /, "") : g.group;
-        groups.push({ id: `g${groups.length}`, name, n: g.items.length, navHead: lay && !layoutsSeen ? "Layouts" : "", title: lay ? `Layouts · ${name}` : name,
+        groups.push({ id: `g${groups.length}`, name, lay, n: g.items.length, title: lay ? `Layouts · ${name}` : name,
           html: `<div class="sb-additems">${g.items.map(([type, nm, note]) => tile(type, nm, note, g.group, type !== "cover" && full(type.split(":")[0]))).join("")}</div>` });
-        if (lay) layoutsSeen = true;
       }
-      /* In a moodboard, a pitch or a shoot plan the planning layouts come first;
-         an album laid out and your templates go after them (the owner, on
-         v575: "why cant i make a moodboard without any album" — it opened on
-         From an album). */
-      if (book.plan) groups.push(...groups.splice(0, 2));
+      /* Five kinds, under a heading each (v578, the owner: "everything
+         happening at one place"): Start, Pages, Planning, Cards, Layouts. A
+         moodboard, a pitch or a shoot plan leads with Planning and ends with
+         Start (v577: "why cant i make a moodboard without any album" — it
+         opened on From an album); a talent's or a brand's book leads with
+         their cards. Within a kind, the order the menu gives. */
+      const PLANNING = new Set(["Moodboard", "Pitch", "Shoot plan", "Team pages"]), CARDS = new Set(["Comp cards", "For brands"]);
+      const sectionOf = (g) => (g.id === "auto" || g.id === "tpl" ? "Start" : g.lay ? "Layouts" : PLANNING.has(g.name) ? "Planning" : CARDS.has(g.name) ? "Cards" : "Pages");
+      const mf = forOf(book);
+      const ORDER = book.plan ? ["Planning", "Pages", "Cards", "Layouts", "Start"] : mf && (mf.kind === "talent" || mf.kind === "brand") ? ["Start", "Cards", "Pages", "Planning", "Layouts"] : ["Start", "Pages", "Planning", "Cards", "Layouts"];
+      groups.forEach((g, i) => { g.section = sectionOf(g); g.at = i; });
+      groups.sort((a, b) => ORDER.indexOf(a.section) - ORDER.indexOf(b.section) || a.at - b.at);
+      groups.forEach((g, i) => { g.navHead = i === 0 || groups[i - 1].section !== g.section ? g.section : ""; });
       menu.innerHTML = `
         <div class="sb-addhead"><strong>Add a page</strong><span class="sb-hint">It goes after the page you're on. The book has ${count} page${count === 1 ? "" : "s"}.</span>
           <label class="sb-addsearch">${uiIc("search")}<span class="sb-vh">Find a kind of page</span><input type="search" id="sbAddFind" placeholder="Find a page…" autocomplete="off"></label>
           <button type="button" class="sb-btn quiet sb-iconbtn" id="sbAddClose" aria-label="Close" data-tip="Close · Esc">${uiIc("x")}</button></div>
-        <nav class="sb-addnav" aria-label="Kinds of page">${groups.map((g) => `${g.navHead ? `<span class="sb-addnavhead">${esc(g.navHead)}</span>` : ""}<button type="button" data-addnav="${g.id}"${g.navHead || /^Layouts/.test(g.title || "") ? ` class="sub"` : ""}><span>${esc(g.name)}</span>${g.n ? `<small>${g.n}</small>` : ""}</button>`).join("")}</nav>
+        <nav class="sb-addnav" aria-label="Kinds of page">${groups.map((g) => `${g.navHead ? `<span class="sb-addnavhead">${esc(g.navHead)}</span>` : ""}<button type="button" data-addnav="${g.id}"><span>${esc(g.name)}</span>${g.n ? `<small>${g.n}</small>` : ""}</button>`).join("")}</nav>
         <div class="sb-addscroll" id="sbAddScroll">
           ${groups.map((g) => `<section class="sb-addgroup ${g.cls || ""}" id="sbAddG_${g.id}" data-group="${g.id}"><h3>${esc(g.title || g.name)}</h3>${g.html}</section>`).join("")}
           <p class="sb-hint sb-addnone" id="sbAddNone" hidden>No page by that name. Try “photo”, “words” or “cover”.</p>
         </div>`;
       menu.hidden = false;
       $("#sbAddToggle").setAttribute("aria-expanded", "true");
+      { const w = $("#sbWork"); if (w && !w.classList.contains("adding")) { w.classList.add("adding"); applyPanes(); } }
       menu.querySelector("#sbAddClose").addEventListener("click", closeAdd);
       menu.querySelectorAll("[data-add]").forEach((b) => b.addEventListener("click", () => { closeAdd(false); addPage(b.dataset.add); }));
       menu.querySelectorAll("[data-savetpl]").forEach((b) => b.addEventListener("click", () => { closeAdd(false); saveTemplate(b.dataset.savetpl); }));
@@ -10752,6 +10820,7 @@
     function closeAdd(refocus = true) {
       const menu = $("#sbAddMenu"); if (!menu) return;
       menu.hidden = true;
+      { const w = $("#sbWork"); if (w && w.classList.contains("adding")) { w.classList.remove("adding"); applyPanes(); afterPanes(); } }
       $("#sbAddToggle").setAttribute("aria-expanded", "false");
       if (refocus) $("#sbAddToggle").focus();
     }
@@ -11111,13 +11180,25 @@
     /* --- previews --- */
     function schedulePreview(ms) { clearTimeout(previewTimer); previewTimer = setTimeout(drawPreview, ms); }
     function scheduleStrip(ms) { clearTimeout(stripTimer); stripTimer = setTimeout(drawStrip, ms); }
+    /* The resolution that makes the page (or the pair) fill the stage at Fit:
+       72 dpi at the least, as it always was, and up to 120 on a big screen. */
+    function fitDpi() {
+      const box = $("#sbPreview"); if (!box || !book) return 72;
+      const cs = getComputedStyle(box);
+      const w = box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const h = box.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      const G = geometry(book), inW = ((G.pw || 210) / 25.4) * (view.two ? 2.06 : 1), inH = (G.ph || 297) / 25.4;
+      if (!(w > 0 && h > 0)) return 72;
+      return Math.max(72, Math.min(120, Math.floor(Math.min(w / inW, h / inH))));
+    }
     async function drawPreview() {
       const token = ++renderToken;
       const box = $("#sbPreview"); if (!box || !book) return;
       try {
         const got = [];
         const only = view.two ? facing(sel) : sel;
-        const pdpi = zoomAt > 1 ? Math.round(72 * Math.min(2.5, zoomAt)) : 72;
+        const fit = fitDpi();
+        const pdpi = zoomAt > 1 ? Math.round(fit * Math.min(2.5, zoomAt)) : fit;
         for await (const r of renderPages(book, { dpi: pdpi, cache, only, guides: true, skip: editing ? editing.field : null })) { got.push(r); if (token !== renderToken) return; }
         if (token !== renderToken) return;
         got.forEach((r) => {
@@ -11178,8 +11259,21 @@
     }
 
     /* --- the inspector: this page --- */
+    /* What can be added to an Anything page (v578): a toolbar on the page
+       itself, not a block of tiles in the panel. Moved there once wired. */
+    const moreOpen = { pos: false, order: false };
+    function placeInsert(box) {
+      const ins = $("#sbInsert"); if (!ins) return;
+      const tools = box ? box.querySelector(".sb-tools") : null;
+      if (tools) ins.replaceChildren(tools); else ins.replaceChildren();
+      ins.hidden = !tools;
+      const st = ins.closest(".sb-stage"); if (st) st.classList.toggle("has-insert", !!tools);
+    }
     function drawInspector() {
       const panel = $("#sbPanelPage"); if (!panel) return;
+      // Taken away only when the page is no Anything page: on one, the redraw puts the new tools in place without the
+      // page jumping (taking it away and back moved the page under a drag, and a crop or a turn missed).
+      if (!freePage()) placeInsert(null);
       const entry = curEntry();
       // On a page that IS its photographs, choosing them comes first; on a
       // writing page the words do, and the photo is the second thing.
@@ -12345,11 +12439,18 @@
           <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Thickness">${[["hair", "Hair"], ["narrow", "Narrow"], ["medium", "Medium"], ["broad", "Broad"], ["heavy", "Heavy"]].map(([k, n]) => `<button type="button" role="radio" data-thick="${k}" aria-checked="${typeof b.width !== "number" && (b.thick || "narrow") === k}">${n}</button>`).join("")}</div>
           <div class="sb-ptrow" style="margin-top:6px"><input type="range" min="0.2" max="12" step="0.1" value="${lineThick(b)}" data-lwidth aria-label="Thickness in millimetres" style="flex:1"><input type="number" min="0.2" max="12" step="0.1" value="${lineThick(b)}" data-lwidthbox aria-label="Thickness in millimetres"><span>mm</span></div></div>` : ""}
         ${b.k === "text" && !b.fill ? "" : `<label class="sb-range">Fade <input type="range" min="10" max="100" step="5" value="${Math.round(fade * 100)}" data-blkfade aria-valuetext="${Math.round(fade * 100)} percent"></label>`}` : "";
+      // What is on the page, front to back: at the page's level near the top, after the chosen thing's settings when one is chosen.
+      const layersHtml = `
+        <div class="sb-layhead"><h3>On this page</h3><span class="sb-laycount" title="${blocks.length} of ${FREE_MAX} things a page can hold">${blocks.length} / ${FREE_MAX}</span></div>
+        ${ml ? `<div class="sb-sec sb-rowbox sb-multisec"><h3>${ml.length} things chosen</h3>
+          <div class="sb-alignrow">${multiBtns(ml, blocks)}</div>
+          <p class="sb-hint">Line them up with each other, space three or more evenly, group them to move as one. Shift-click or drag a box on the page to choose more · Ctrl+G groups · arrow keys move them all · Esc lets go.</p></div>` : ""}
+        ${blocks.length ? `<p class="sb-hint sb-layhint">Front to back. Drag on the page to move · Shift-click or drag a box to choose several · corner to resize · a photo's edge to crop · arrow keys nudge.</p>${layerListHtml(blocks)}` : `<p class="sb-hint">Nothing on this page yet. Add something above, or start again from an arrangement in “+ Add page”.</p>`}
+`;
       box.innerHTML = `
         ${b ? "" : `<details class="sb-pick sb-layouts"><summary>Change the layout</summary>
           ${LAYOUT_GROUPS.map((g) => `<p class="sb-label">${esc(g.group)}</p><div class="sb-layoutgrid">${g.items.map(([k, n]) => `<button type="button" class="sb-layoutbtn" data-layout="${k}" title="${esc(n)}">${addIcon(`free:${k}`)}<span>${esc(n)}</span></button>`).join("")}</div>`).join("")}
           <p class="sb-hint">Your photographs and words move into the new layout, headlines to headlines and photographs in order; anything it has no place for stays where it is. Ctrl+Z goes back.</p></details>`}
-        <h3>Add to this page</h3>
         <div class="sb-tools">
           <button type="button" data-addblk="text">${uiIc("type", 20)}<span>Words</span></button>
           <button type="button" data-addblk="photo">${uiIc("image", 20)}<span>Photo</span></button>
@@ -12360,13 +12461,9 @@
           <button type="button" data-addblk="draw" aria-pressed="${drawing}">${uiIc("pen", 20)}<span>Draw by hand</span></button>
           ${brandOf().logo && (outsideCache || []).some((r) => r.id === brandOf().logo) ? `<button type="button" data-addblk="logo">${uiIc("badge", 20)}<span>Your logo</span></button>` : ""}
         </div>
-        <div class="sb-layhead"><h3>On this page</h3><span class="sb-laycount" title="${blocks.length} of ${FREE_MAX} things a page can hold">${blocks.length} / ${FREE_MAX}</span></div>
-        ${ml ? `<div class="sb-sec sb-rowbox sb-multisec"><h3>${ml.length} things chosen</h3>
-          <div class="sb-alignrow">${multiBtns(ml, blocks)}</div>
-          <p class="sb-hint">Line them up with each other, space three or more evenly, group them to move as one. Shift-click or drag a box on the page to choose more · Ctrl+G groups · arrow keys move them all · Esc lets go.</p></div>` : ""}
-        ${blocks.length ? `<p class="sb-hint sb-layhint">Front to back. Drag on the page to move · Shift-click or drag a box to choose several · corner to resize · a photo's edge to crop · arrow keys nudge.</p>${layerListHtml(blocks)}` : `<p class="sb-hint">Nothing on this page yet. Add something above, or start again from an arrangement in “+ Add page”.</p>`}
+        ${b ? "" : layersHtml}
         ${b ? "" : pageLookHtml(entry, blocks.filter((x) => x.k === "photo").length, true)}
-        ${b ? `<div class="sb-sec sb-rowbox"><h3>${esc(BLOCK_NAME[b.k] || "Thing")} ${blockSel + 1}</h3>
+        ${b ? `<div class="sb-sec sb-rowbox sb-item"><div class="sb-itemhead"><button type="button" class="sb-btn quiet sb-backpage" data-backpage aria-label="Back to the page">${uiIc("left", 14)}<span>Page</span></button><h3>${esc(BLOCK_NAME[b.k] || "Thing")} ${blockSel + 1}</h3></div>
           ${words}${paint}${photoShape}${effects}
           ${b.k === "photo" ? `<div class="sb-adds"><button type="button" data-noteunder>${uiIc("type")}Add a note under it</button><button type="button" data-colours ${b.p && b.p.id ? "" : "disabled"}>${uiIc("palette")}Colours from it</button></div>` : ""}
           ${(() => {
@@ -12376,23 +12473,33 @@
               <div class="sb-adds"><button type="button" data-creditunder>${uiIc("type")}Credit it under the picture</button></div></div>` : "";
           })()}
           ${b.k === "photo" ? `<p class="sb-hint">Choose the photograph, and how it sits in its box, below.</p>` : ""}
+          <details class="sb-more" data-more="pos" ${moreOpen.pos ? "open" : ""}><summary>Position, size and turn</summary>
           ${step("Across", "nudx", "-1", "1", mmX(b.x))}
           ${step("Down", "nudy", "-1", "1", mmY(b.y))}
           ${step("Width", "sizw", "-1", "1", mmX(b.w))}
           ${b.k === "line" && linePath(b) === "h" ? "" : step("Height", "sizh", "-1", "1", mmY(b.h || 0.15))}
           <div class="sb-step sb-turnstep"><span>Turn</span><button type="button" data-turn="-1" aria-label="Turn 1° left (Shift: 15°)" title="1° (Shift: 15°)">−</button><label class="sb-turnin"><input type="number" inputmode="decimal" step="0.1" min="-360" max="360" value="${b.r || 0}" data-turnto aria-label="Turn, in degrees">°</label><button type="button" data-turn="1" aria-label="Turn 1° right (Shift: 15°)" title="1° (Shift: 15°)">+</button></div>
           <div class="sb-field"><span class="sb-label">Line up with the page</span><div class="sb-alignrow">${alignBtns(true)}</div></div>
+          <div class="sb-adds"><button type="button" data-fillw>Fill the width</button>${b.k === "line" && linePath(b) === "h" ? "" : `<button type="button" data-fillp>Fill the page</button>`}</div>
+          </details>
+          <details class="sb-more" data-more="order" ${moreOpen.order ? "open" : ""}><summary>Order, lock and hide</summary>
           <div class="sb-adds"><button type="button" data-slock>${ALIGN_ICON.lock} Lock in place</button><button type="button" data-shide>${ALIGN_ICON.eyeOff} Hide</button></div>
           <div class="sb-field"><span class="sb-label">In front or behind</span>
             <div class="sb-adds"><button type="button" data-tofront ${blockSel === blocks.length - 1 ? "disabled" : ""}>Bring to the front</button><button type="button" data-toback ${blockSel === 0 ? "disabled" : ""}>Send to the back</button></div>
             <p class="sb-hint">Words over a photograph: bring the words to the front, or send the photograph to the back.</p></div>
-          <div class="sb-adds"><button type="button" data-fillw>Fill the width</button>${b.k === "line" && linePath(b) === "h" ? "" : `<button type="button" data-fillp>Fill the page</button>`}</div>
+          </details>
         </div>` : ""}
-        <div class="sb-field"><span class="sb-label">Page colour</span>
+        ${b ? layersHtml : ""}
+        ${b ? "" : `<div class="sb-field"><span class="sb-label">Page colour</span>
           <span class="sb-swatches" role="group" aria-label="Page colour">${swatch("bg", "", "The style's own", "linear-gradient(135deg, #fff 45%, #999 50%, #fff 55%)", !entry.bg)}${fills.map(([k, n, c]) => swatch("bg", k, n, c, entry.bg === k)).join("")}${anySwatch("bgany", /^#/.test(entry.bg || "") ? entry.bg : "")}</span>
-          <div class="sb-cphost" data-bgpick hidden></div></div>`;
+          <div class="sb-cphost" data-bgpick hidden></div></div>`}`;
 
       const redraw = () => { change({ rail: true }); drawInspector(); };
+      // Back to the page's own settings; the open groups are remembered across redraws.
+      { const bp = box.querySelector("[data-backpage]"); if (bp) bp.addEventListener("click", () => { blockSel = -1; multi = null; drawLayer(); drawInspector(); }); }
+      box.querySelectorAll("details[data-more]").forEach((d) => d.addEventListener("toggle", () => { moreOpen[d.dataset.more] = d.open; }));
+      { const ph = $("#sbPageHead"); if (ph) ph.hidden = !!b; }
+      placeInsert(box);
       $$("[data-addblk]").forEach((x) => x.addEventListener("click", () => { if (x.dataset.addblk === "draw") { setDrawing(!drawing); return; } if (x.dataset.addblk === "paste") { pasteFromButton(); return; } addBlock(x.dataset.addblk); }));
       box.querySelectorAll("[data-layout]").forEach((x) => x.addEventListener("click", () => applyLayout(entry, x.dataset.layout)));
       $$("[data-pickblk]").forEach((x) => x.addEventListener("click", (ev) => {
@@ -12830,7 +12937,7 @@
       const box = $("#sbPhotoBlock"); if (!box) return;
       const entry = curEntry();
       const t = photoTarget();
-      if (!t) { box.innerHTML = ""; box.hidden = true; return; }
+      if (!t) { box.innerHTML = ""; box.hidden = true; dockPicker(null); return; }
       box.hidden = false;
       const lib = library();
       const list = t.list;
@@ -12850,6 +12957,7 @@
       const tfp = talentOf(book);
       const isTalentBook = !!(forOf(book) && forOf(book).kind === "talent");
       if (isTalentBook && filter === "" && tfp && !tfp.own) filter = "talent";
+      if (filter === "") filter = "all";
       const shown = [];
       for (const [id, hit] of lib.byId) {
         if (filter === "talent" ? !!(tfp && tfp.cleared.has(id)) : filter === "diagrams" ? hit.photo.diagram : (filter === "all" || hit.shoot.id === filter)) shown.push([id, hit]);
@@ -13100,14 +13208,53 @@
         pickerOpen = tt.max > 1 ? true : l.length === 0;
         const grid = box.querySelector(".sb-grid"), scroll = grid ? grid.scrollTop : 0, gridTop = grid ? grid.getBoundingClientRect().top : null;
         change({ photos: true });
-        const g2 = $("#sbPhotoBlock .sb-grid"); if (g2) { g2.scrollTop = scroll; if (gridTop !== null) holdInView(g2, gridTop); }
+        const g2 = $("#sbLibBody .sb-grid") || $("#sbPhotoBlock .sb-grid"); if (g2) { g2.scrollTop = scroll; if (gridTop !== null) holdInView(g2, gridTop); }
         patchRail();
         if (entry && entry.type === "photos") drawFields();   // a border depends on how many photos
-        const again = $(`#sbPhotoBlock [data-pick="${window.CSS && window.CSS.escape ? window.CSS.escape(id) : id}"]`);
+        const again = $(`#sbLibBody [data-pick="${window.CSS && window.CSS.escape ? window.CSS.escape(id) : id}"]`) || $(`#sbPhotoBlock [data-pick="${window.CSS && window.CSS.escape ? window.CSS.escape(id) : id}"]`);
         if (again) again.focus({ preventScroll: true }); else refocus("summary");
       }));
+      dockPicker(box);
     }
 
+    /* The photographs to choose from (v578, the owner: "everything happening
+       at one place … structure it well"): on a wide screen the library opens
+       in a column of its own beside the pages whenever what is chosen takes a
+       photograph — as big as a library should be — and the panel on the right
+       keeps only that photo's settings. Closed with ×, it stays closed until
+       "Show the photos" is pressed. On a phone it stays in the panel. */
+    let libHidden = false; try { libHidden = localStorage.getItem("wps_sb_lib_hidden") === "1"; } catch (e) { libHidden = false; }
+    const setLibHidden = (v) => { libHidden = v; try { localStorage.setItem("wps_sb_lib_hidden", v ? "1" : "0"); } catch (e) { /* private window */ } };
+    const wideLib = () => matchMedia("(min-width: 1000px)").matches;
+    function dockPicker(box) {
+      const lib = $("#sbLib"), body = $("#sbLibBody"), work = $("#sbWork");
+      if (!lib || !body || !work) return;
+      const pick = box ? box.querySelector("details.sb-pick") : null;
+      const was = work.classList.contains("lib-on");
+      /* An Anything page keeps the picker with the chosen frame's settings: a column opening on each click on a photo
+         narrowed the page under the pointer, and a crop or a turn that began on its edge missed. */
+      const inPanel = !!freePage();
+      const on = !!pick && wideLib() && !libHidden && !inPanel;
+      if (on) {
+        pick.open = true;
+        const sum = pick.querySelector("summary");
+        $("#sbLibSub").textContent = sum ? sum.textContent.trim() : "";
+        const keep = body.scrollTop;   // where the studio had scrolled to, kept through every redraw
+        body.replaceChildren(pick);
+        body.scrollTop = keep;
+        box.insertAdjacentHTML("beforeend", `<p class="sb-hint sb-libnote">Pick from the photos on the left, or drag one onto the page.</p>`);
+      } else {
+        body.replaceChildren();
+        if (pick && libHidden && wideLib() && !inPanel) {
+          pick.remove();
+          box.insertAdjacentHTML("beforeend", `<button type="button" class="sb-btn sb-libbtn" data-libshow>${uiIc("image")}Show the photos</button>`);
+          box.querySelector("[data-libshow]").addEventListener("click", () => { setLibHidden(false); drawPhotoBlock(); });
+        }
+      }
+      lib.hidden = !on;
+      work.classList.toggle("lib-on", on);
+      if (was !== on) { applyPanes(); afterPanes(); }
+    }
     // The grid of photos stays where it was under the finger: the panel (or
     // the page, on a phone, where the document is what scrolls) moves by
     // exactly what grew above it when the photo's own tools appeared.
@@ -13201,8 +13348,9 @@
       const total = work.clientWidth || innerWidth;
       let rail = Math.min(360, Math.max(96, +saved.rail || d.rail));
       let insp = Math.min(760, Math.max(280, +saved.insp || d.insp));
-      // The page in the middle keeps at least 360 px, whatever was saved.
-      const over = rail + insp + 24 + 360 - total;
+      // The page in the middle keeps at least 360 px, whatever was saved — the photo library's column counted.
+      const libW = work.classList.contains("lib-on") ? (innerWidth <= 1200 ? 280 : 340) : 0;
+      const over = rail + libW + insp + 24 + 360 - total;
       if (over > 0) { const cut = Math.min(over, insp - 280); insp -= cut; rail = Math.max(96, rail - (over - cut)); }
       work.style.setProperty("--sb-rail-w", `${Math.round(rail)}px`);
       work.style.setProperty("--sb-insp-w", `${Math.round(insp)}px`);
