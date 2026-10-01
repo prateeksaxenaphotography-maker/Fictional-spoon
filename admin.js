@@ -863,7 +863,10 @@ const STUDIO_BOOK_LIMITS = {
      to "can these books ever go on the site?" was no. `credit` is where the
      studio's own credit goes: absent = a line on the last page, "none" =
      nowhere at all, not even the PDF's details (a contract can forbid it). */
-  madeFor: { kinds: ["brand", "client", "talent"], credits: ["none"], name: 60, email: 120, site: 120, instagram: 40, modelKey: 160, logo: 40 },
+  // A moodboard or plan (v575): kept on this computer, never published, whoever it is for.
+  plans: ["moodboard", "pitch", "shoot"],
+  // roles … statValue: a talent not on the studio's list (v575), whose details live in the book alone.
+  madeFor: { kinds: ["brand", "client", "talent"], credits: ["none"], name: 60, email: 120, site: 120, instagram: 40, modelKey: 160, logo: 40, roles: 80, phone: 30, stats: 10, statLabel: 24, statValue: 40 },
   pageTypes: ["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process", "free", "end", "look", "contents", "more"],
   // The cover's layout: absent means the style's own; "custom" is a cover
   // arranged like an Anything page (book.coverPage). The end page is the
@@ -1336,6 +1339,8 @@ function cleanStudioPortfolios(o) {
         return Object.keys(out).length ? { watermark: out } : {};
       })(),
       ...cleanMadeFor(v.madeFor),
+      // Named here or a moodboard would lose its section on the next save (v575).
+      ...(STUDIO_BOOK_LIMITS.plans.includes(v.plan) ? { plan: v.plan } : {}),
       pages,
       texts: { about: str(t.about, STUDIO_BOOK_LIMITS.text), phone: str(t.phone, 24), showPrices: t.showPrices === true },
       updatedAt: num(v.updatedAt, 0, 8.64e15, 0)
@@ -1373,7 +1378,17 @@ function cleanMadeFor(m) {
   const s = (x, n) => (typeof x === "string" ? x.trim().slice(0, n) : "");
   const out = { kind: m.kind };
   for (const k of ["name", "email", "site", "instagram"]) { const v = s(m[k], M[k]); if (v) out[k] = v; }
-  if (m.kind === "talent") { const v = s(m.modelKey, M.modelKey); if (v) out.modelKey = v; }
+  if (m.kind === "talent") {
+    const v = s(m.modelKey, M.modelKey);
+    if (v) out.modelKey = v;
+    else {
+      // Not on the studio's list: what was typed for them (v575). Named here or it vanishes on save.
+      const r = s(m.roles, M.roles); if (r) out.roles = r;
+      const ph = s(m.phone, M.phone); if (ph) out.phone = ph;
+      const st = (Array.isArray(m.stats) ? m.stats : []).map((c) => ({ label: s(c && c.label, M.statLabel), value: s(c && c.value, M.statValue) })).filter((c) => c.label && c.value).slice(0, M.stats);
+      if (st.length) out.stats = st;
+    }
+  }
   else if (/^lg_[a-z0-9]{4,36}$/.test(String(m.logo || ""))) out.logo = m.logo;
   if (M.credits.includes(m.credit)) out.credit = m.credit;
   return { madeFor: out };

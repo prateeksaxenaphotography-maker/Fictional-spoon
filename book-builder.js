@@ -1531,7 +1531,9 @@
   const talentMemo = new Map();
   function talentOf(book) {
     const m = forOf(book);
-    if (!m || m.kind !== "talent" || !m.modelKey || typeof API.talent !== "function") return null;
+    if (!m || m.kind !== "talent") return null;
+    if (!m.modelKey) return ownTalent(m);
+    if (typeof API.talent !== "function") return null;
     const hit = talentMemo.get(m.modelKey);
     if (hit && Date.now() - hit.at < 4000) return hit.v;
     const got = API.talent(m.modelKey);
@@ -1539,9 +1541,31 @@
     talentMemo.set(m.modelKey, { at: Date.now(), v });
     return v;
   }
-  // In a talent's book a photograph prints only while it is cleared for their
-  // card — or it came from this computer. The owner's rule: no exceptions.
-  const clearedIn = (book, id) => { const m = forOf(book); if (!m || m.kind !== "talent") return true; if (/^out_/.test(String(id || ""))) return true; const t = talentOf(book); return !!(t && t.cleared.has(id)); };
+  /* Someone not on the studio's list (Oct 1 2026, the owner: "this should be
+     able to take input for things that are not in album like others or random
+     name"): what was typed for them when the book was started, or since in
+     Design → Made for. It lives in the book alone, on this computer — never
+     in Models, which is published. No photographs are cleared for them. */
+  function ownTalent(m) {
+    const ig = handleOf(m.instagram || ""), tel = String(m.phone || "").replace(/[^\d+]/g, "");
+    return {
+      key: "", own: true, name: m.name || "", types: m.roles ? [m.roles] : [],
+      stats: (Array.isArray(m.stats) ? m.stats : []).filter((c) => c && c.label && c.value),
+      contacts: [
+        ...(m.email ? [{ label: "Email", value: m.email, url: linkFor(m.email, "email") }] : []),
+        ...(m.phone ? [{ label: "Phone", value: m.phone, url: tel.length >= 8 ? `tel:${tel}` : "" }] : []),
+        ...(ig ? [{ label: "Instagram", value: `@${ig}`, url: linkFor(ig, "instagram") }] : [])
+      ],
+      brands: [], photos: [], photoIds: [], cleared: new Set()
+    };
+  }
+  /* Which photographs a talent's book may hold. Until Oct 1 2026 only those
+     cleared for their card, plus files from this computer; the owner then
+     opened it to every album, on every page ("moodboard will have pics that
+     i may or may not have clicked" → "Yes, everywhere"). The cleared ones
+     still come first: the picker opens on them and a comp card fills from
+     them. Kept as a function so every place that asked still asks. */
+  const clearedIn = () => true;
   const handleOf = (v) => String(v || "").trim().replace(/\/+$/, "").split("/").pop().replace(/^@/, "").split("?")[0];
   /* Where a line of words should take a reader. A contact row the studio
      rewrote used to keep its old link — a page reading "Website: brand.com"
@@ -5501,6 +5525,12 @@
   // public file even if a future bug dropped its madeFor.
   const uid = (forOthers) => `${forOthers ? "bf" : "bk"}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
   const isForOthers = (v) => !!(v && (v.madeFor || /^bf/.test(String(v.id || ""))));
+  /* Moodboards and plans (Oct 1 2026, the owner chose: "own section, never
+     published"): planning work full of other people's pictures, so it lives
+     on the shelf with the books made for others — a "bf" id, which CI also
+     refuses to publish — whoever it is for, the studio included. `plan` says
+     which kind, and puts it under its own heading in Books. */
+  const PLAN_NAME = { moodboard: "Moodboard", pitch: "Pitch", shoot: "Shoot plan" };
   function newBook(name) {
     return {
       id: uid(), name: name || "New book", style: "modern", colourway: "terracotta", orientation: "portrait",
@@ -5733,6 +5763,9 @@
   .sb-homehead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 24px; margin-bottom: 28px; }
   .sb-eyebrow { display: inline-flex; align-items: center; gap: 6px; margin: 0; font: 500 12px/1 var(--sb-font); letter-spacing: 0; text-transform: none; color: var(--sb-text-3); }
   .sb-eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--sb-sel); }
+  .sb-plans { margin-top: 34px; padding-top: 22px; border-top: 1px solid var(--sb-line); }
+  .sb-plansh { margin: 0 0 4px; font: 650 19px/1.25 var(--sb-font); letter-spacing: -.01em; color: var(--sb-text); }
+  .sb-plans > .sb-hint { margin: 0 0 14px; max-width: 70ch; }
   .sb-h1 { margin: 10px 0 6px !important; font: 650 30px/1.1 var(--sb-font) !important; letter-spacing: -.025em !important; color: var(--sb-text); }
   .sb-lede { margin: 0; max-width: 60ch; font: 400 14px/1.55 var(--sb-font); color: var(--sb-text-2); }
   .sb-homeacts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -6231,6 +6264,16 @@
   /* Books made for someone else. */
   .sb-forwho { display: grid; gap: 10px; margin: 4px 0 2px; }
   .sb-forwho[hidden] { display: none; }
+  .sb-forown { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--sb-line); border-radius: 10px; background: var(--sb-sunk); }
+  .sb-forown[hidden] { display: none; }
+  .sb-owngrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 10px; }
+  .sb-owngrid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .sb-owngrid .sb-field { margin: 0; min-width: 0; }
+  .sb-owngrid input { width: 100%; min-width: 0; }
+  /* Chest or bust: a label that can be changed, so it looks like the other labels with a small arrow. */
+  .sb-root .sb-owngrid label select { width: auto; min-height: 0; height: auto; margin: 0; padding: 0 18px 0 0; border: 0; border-radius: 0; box-shadow: none; font: inherit; color: inherit; line-height: inherit; background: transparent var(--sb-chev) no-repeat right 0 center / 14px 14px; }
+  .sb-root .sb-owngrid label select:focus { box-shadow: none; text-decoration: underline; }
+  @media (max-width: 600px) { .sb-owngrid, .sb-owngrid.three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .sb-logorow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .sb-logoimg { max-width: 140px; max-height: 44px; object-fit: contain; padding: 4px; border: 1px solid var(--sb-line); border-radius: 6px; background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0 / 12px 12px; }
   .sb-moveshelf { margin-top: 6px; }
@@ -7014,7 +7057,7 @@
         P(0.05, 0.53, 0.28, 0.33, { bind: "full-body,three-quarter,*" }),
         P(0.345, 0.53, 0.28, 0.33, { bind: "left-profile,right-profile,*" }),
         label(0.67, 0.19, 0.28, "DETAILS"),
-        ...rows(0.67, 0.225, 0.031, 0.13, 0.15, [["Height", "stat:Height", "5′ 7″"], ["Age", "", "24"], ["Eyes", "stat:Eyes", "Brown"], ["Chest", "label:Chest|Bust", "34″"], ["Waist", "stat:Waist", "26″"], ["Hips", "stat:Hips", "36″"]]),
+        ...rows(0.67, 0.225, 0.031, 0.13, 0.15, [["Height", "stat:Height", "5′ 7″"], ["Age", "stat:Age", "24"], ["Eyes", "stat:Eyes", "Brown"], ["Chest", "label:Chest|Bust", "34″"], ["Waist", "stat:Waist", "26″"], ["Hips", "stat:Hips", "36″"]]),
         label(0.67, 0.44, 0.28, "WORK EXPERIENCE"),
         ...rows(0.67, 0.475, 0.031, 0.13, 0.15, [["Theatre", "", "3 plays"], ["Short films", "", "4"], ["TVC ads", "", "2"], ["Digitals", "", "6 brands"], ["Feature films", "", "1"]]),
         label(0.67, 0.665, 0.28, "CONTACT"),
@@ -7804,9 +7847,6 @@
       return { id, x: +f.x.toFixed(3), y: +f.y.toFixed(3), zoom: 1 };
     };
     function placeDropped(ids, t, cx, cy) {
-      // A talent's book takes only their cleared photographs, or ones from this computer.
-      ids = ids.filter((id) => clearedIn(book, id));
-      if (!ids.length) { API.toast("That photograph isn't cleared for this model's card."); return; }
       if (t.kind === "block") {
         const b = blocksOf(freePage())[t.i]; if (!b) return;
         mark(); b.p = shotOf(ids[0]); blockSel = t.i; multi = null;
@@ -8110,14 +8150,15 @@
             <button type="button" class="sb-btn dark" id="sbNew" ${atLimit ? "disabled" : ""}>${uiIc("plus")}New book</button>
           </div>
         </div>
-        ${state.versions.length ? `<div class="sb-cards">${state.versions.map((v) => `
+        ${(() => {
+          const card = (v) => `
           <article class="sb-card">
             <button type="button" class="sb-cardcover" data-open="${esc(v.id)}" aria-label="Open ${esc(v.name)}"><span class="sb-hint">…</span></button>
             <div class="sb-cardbody">
               <h4 data-name="${esc(v.id)}">${esc(v.name)}</h4>
               <span class="sb-meta">${esc((STYLES.find((s) => s.key === v.style) || {}).name || "")} · ${esc(colourway(v.colourway).name)} · ${esc((PAPERS[v.paper] || PAPERS.a4).name)} ${esc(v.orientation)} · ${renderedCount(v)} page${renderedCount(v) === 1 ? "" : "s"}</span>
               <span class="sb-meta">Edited ${esc(new Date(v.updatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }))}</span>
-              ${isForOthers(v) ? (() => { const cs = copyState(v); return `<span class="sb-meta sb-shelftag">For ${esc((v.madeFor && v.madeFor.name) || "someone else")} · on this computer only · <span class="${cs.ok ? "" : "sb-copydue"}">${esc(cs.text)}</span></span>`; })() : ""}
+              ${isForOthers(v) ? (() => { const cs = copyState(v); const who = v.plan ? `${PLAN_NAME[v.plan] || "Moodboard"}${v.madeFor && v.madeFor.name ? ` for ${v.madeFor.name}` : ""}` : `For ${(v.madeFor && v.madeFor.name) || "someone else"}`; return `<span class="sb-meta sb-shelftag">${esc(who)} · on this computer only · <span class="${cs.ok ? "" : "sb-copydue"}">${esc(cs.text)}</span></span>`; })() : ""}
               <div class="sb-cardacts">
                 <button type="button" class="sb-btn dark" data-open="${esc(v.id)}">Open</button>
                 <button type="button" class="sb-btn quiet" data-rename="${esc(v.id)}" title="Rename">${uiIc("pencil")}<span>Rename</span></button>
@@ -8125,10 +8166,16 @@
                 <button type="button" class="sb-btn quiet sb-iconbtn" data-del="${esc(v.id)}" aria-label="Delete" title="Delete">${uiIc("trash")}</button>
               </div>
             </div>
-          </article>`).join("")}
+          </article>`;
+          const books = state.versions.filter((v) => !v.plan), plans = state.versions.filter((v) => v.plan);
+          return `${books.length ? `<div class="sb-cards">${books.map(card).join("")}
           <button type="button" class="sb-card sb-newcard" data-new ${atLimit ? "disabled" : ""}>New book<small>A cover and a first page of photographs</small></button></div>`
         : `<div class="sb-empty"><p class="sb-hint">No books yet. A book is a cover plus pages of your photographs and words. Start one for your own studio, or one for a brand, a client or a talent — those are kept on this computer and never published.</p></div>`}
-        <p class="sb-hint sb-foot">Your own books save on this device as you work, and go into your site's files when you publish, so they open on any device — visitors see no page, but anyone can read those files. Books made for a brand, a client or a talent stay on this computer only: save a copy of each to move it or keep it safe.${atLimit ? ` You have ${LIMIT} books, the most there can be: delete one to start another.` : ""}</p>`;
+          <section class="sb-plans" aria-labelledby="sbPlansHead"><h2 class="sb-plansh" id="sbPlansHead">Moodboards &amp; plans</h2>
+            <p class="sb-hint">Moodboards to pitch an idea, plan a shoot or get the team on the same page — your photographs, and pictures pasted from anywhere. Kept on this computer only and never published, whoever they're for.</p>
+            <div class="sb-cards">${plans.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-newplan ${atLimit ? "disabled" : ""}>New moodboard<small>Plug in your photographs, or paste pictures from anywhere</small></button></div></section>`;
+        })()}
+        <p class="sb-hint sb-foot">Your own books save on this device as you work, and go into your site's files when you publish, so they open on any device — visitors see no page, but anyone can read those files. Books made for a brand, a client or a talent, and every moodboard, stay on this computer only: save a copy of each to move it or keep it safe.${atLimit ? ` You have ${LIMIT} books, the most there can be: delete one to start another.` : ""}</p>`;
       const copyFile = $("#sbCopyFile");
       $("#sbOpenCopy").addEventListener("click", () => copyFile.click());
       copyFile.addEventListener("change", async () => {
@@ -8144,15 +8191,30 @@
       let finishRename = null;
       const settle = () => { if (finishRename) { const f = finishRename; finishRename = null; f(true, false); } };
       $$("#sbNew, [data-new]").forEach((b) => b.addEventListener("click", () => { settle(); if (!atLimit) openStart(); }));
+      $$("[data-newplan]").forEach((b) => b.addEventListener("click", () => { settle(); if (atLimit) return; openStart(); const k = $('#sbStart [data-kind="moodboard"]'); if (k) k.click(); }));
       /* A new book begins with its cover: the five layouts, each drawn small
          for real, "From scratch" among them for a cover made by hand. The
          book then opens on that cover. */
       const withLayout = (nb, k) => { if (k && k !== "classic") nb.coverLayout = k; if (k === "custom") nb.coverPage = { blocks: [] }; return nb; };
       // A lookbook: a page about the collection, six looks, a back cover.
       let kind = "magazine";
-      const KIND_NOTE = { magazine: "A cover and a page of photographs; add any pages after.", lookbook: "A cover, a page about the collection, six looks and a back cover. Each look is one or two photographs with its number, its name and its lines.",
+      const BOARDS = LAYOUT_GROUPS.find((g) => g.group === "Moodboard").items;
+      let board = "mb_grid";
+      const KIND_NOTE = { magazine: "A cover and a page of photographs; add any pages after.",
+        moodboard: `One page to start: a moodboard to plug pictures into — your own photographs, or copy any picture from Pinterest, Google or anywhere and paste it with ${MOD}V. Pick its layout; more boards come from Add page → Moodboard. Kept on this computer only and never published, whoever it's for.`, lookbook: "A cover, a page about the collection, six looks and a back cover. Each look is one or two photographs with its number, its name and its lines.",
         compcard: "One page, like a printed comp card: a big photograph with three beside it, their name, what they do, their measurements and the brands they have worked with — filled from their card. Every part can be moved, edited or deleted, and a brand's logo added as a photo from this computer." };
       const withKind = (nb, k) => {
+        /* A moodboard: the board is the book's first page, laid out from
+           scratch like a comp card, with nothing after it. */
+        if (k === "moodboard") {
+          nb.id = uid(true); nb.plan = "moodboard";
+          nb.name = nb.name.replace(/^Book /, "Moodboard ");
+          nb.title = "Moodboard"; nb.subtitle = "";
+          nb.coverLayout = "custom";
+          nb.coverPage = { blocks: startBlocks(board, nb, "add") };
+          nb.pages = [];
+          return nb;
+        }
         if (k !== "lookbook") return nb;
         nb.name = nb.name.replace(/^Book /, "Lookbook ");
         nb.style = "lookbook";
@@ -8165,11 +8227,13 @@
          kept on this computer and never published, and wears their name
          where the studio's would be. */
       let forWho = "studio", forName = "", forModel = "", kindByBrand = false;
+      const OWN_MODEL = "__own";   // "Someone not on your list…"
+      const forNoteNow = () => (forWho === "studio" && PLAN_NAME[kind] ? "Your own moodboard: kept on this computer only and never published — it is planning work, often with pictures that aren't yours." : FOR_NOTE[forWho]);
       const FOR_NOTE = {
         studio: "Your own book. Publishing puts it in your site's files, so it opens on any device.",
         brand: "Kept on this computer only — never published to your site. Their name goes where yours would be; your credit is a line on the last page, or nowhere if the contract says so.",
         client: "Kept on this computer only — never published to your site. Their name goes where yours would be; your credit is a line on the last page, or nowhere if the contract says so.",
-        talent: "Kept on this computer only — never published to your site. Only the photos cleared for this model's card can go in, plus files from this computer."
+        talent: "Kept on this computer only — never published to your site. Their cleared photos come first and fill a comp card; any of your albums, files from this computer and pasted pictures can go in too."
       };
       // Every model, with how many photographs are cleared for their card; a
       // model with none can't have a book yet, and the list says why.
@@ -8183,20 +8247,19 @@
       };
       const withWho = (nb) => {
         if (forWho === "studio") return nb;
-        const m = forWho === "talent" ? modelsList().find((x) => x.key === forModel) : null;
-        const name = (m ? m.name : forName).trim().slice(0, 60);
         nb.id = uid(true);
-        nb.madeFor = forWho === "talent" ? { kind: "talent", name, modelKey: m.key } : { kind: forWho, name };
+        nb.madeFor = madeForNow();
+        const name = nb.madeFor.name;
         // Their book, not in the studio's own terracotta.
         nb.colourway = "silver-print";
-        nb.name = `${name} — ${kind === "lookbook" ? "lookbook" : forWho === "talent" && kind === "compcard" ? "comp card" : forWho === "talent" ? "portfolio" : "book"}`;
-        if (kind !== "lookbook") { nb.title = name; nb.subtitle = forWho === "talent" ? "Portfolio" : ""; }
+        nb.name = `${name} — ${kind === "lookbook" ? "lookbook" : kind === "moodboard" ? "moodboard" : forWho === "talent" && kind === "compcard" ? "comp card" : forWho === "talent" ? "portfolio" : "book"}`;
+        if (kind !== "lookbook" && kind !== "moodboard") { nb.title = name; nb.subtitle = forWho === "talent" ? "Portfolio" : ""; }
         /* A talent's book starts with the pages that carry what their record
            holds: About (their type and measurements), a page of photographs,
            Contact (their email and Instagram, as their record lets a PDF
            show them) and a back cover — so the details are there without
            hunting for which page prints them (owner's question, 26 Sep 2026). */
-        if (forWho === "talent" && kind !== "lookbook") nb.pages = [{ type: "about" }, { type: "photos", photos: [] }, { type: "contact" }, { type: "end", layout: "back" }];
+        if (forWho === "talent" && kind !== "lookbook" && kind !== "moodboard") nb.pages = [{ type: "about" }, { type: "photos", photos: [] }, { type: "contact" }, { type: "end", layout: "back" }];
         /* A comp card from the start (the owner, Sep 29 2026, looking for it
            on this screen: "comp cards are generally 1 page"). The card is the
            whole book: its one page is the cover, arranged from scratch and
@@ -8208,20 +8271,51 @@
         }
         return nb;
       };
+      /* Who the book is for, as the chooser says now. A model typed in (not on
+         the list) carries what was typed, in the book only. Read while the
+         chooser is open and kept, since the book is made after it closes (the
+         first try saved only "talent"). */
+      let lastOwn = null;
+      function ownFromForm() {
+        const box = $("#sbStart");
+        if (!box) return lastOwn || { kind: "talent", name: "" };
+        const v = (id) => { const el = box.querySelector(`#${id}`); return el ? el.value.trim() : ""; };
+        const chest = v("sbOwnChestLab") || "Chest";
+        const stats = [["Height", "Height"], ["Chest", chest], ["Waist", "Waist"], ["Hips", "Hips"], ["Shoes", "Shoes"], ["Hair", "Hair"], ["Eyes", "Eyes"], ["Age", "Age"]]
+          .map(([k, label]) => ({ label, value: v(`sbOwn${k}`).slice(0, 40) })).filter((c) => c.value);
+        const out = { kind: "talent", name: v("sbOwnName").slice(0, 60) };
+        const roles = v("sbOwnRoles").slice(0, 80); if (roles) out.roles = roles;
+        if (stats.length) out.stats = stats;
+        for (const [id, k, n] of [["sbOwnEmail", "email", 120], ["sbOwnPhone", "phone", 30], ["sbOwnIg", "instagram", 40]]) { const x = v(id).slice(0, n); if (x) out[k] = x; }
+        lastOwn = out;
+        return out;
+      }
+      function madeForNow() {
+        if (forWho === "talent" && forModel === OWN_MODEL) return ownFromForm();
+        const m = forWho === "talent" ? modelsList().find((x) => x.key === forModel) : null;
+        const name = (m ? m.name : forName).trim().slice(0, 60);
+        return forWho === "talent" ? { kind: "talent", name, modelKey: m.key } : { kind: forWho, name };
+      }
+      // Nothing chosen yet to start with: says what, and puts the cursor there.
+      function missingWho() {
+        const box = $("#sbStart");
+        const own = forWho === "talent" && forModel === OWN_MODEL;
+        lastOwn = null; if (own) ownFromForm();
+        const gap = forWho === "talent" ? (!forModel ? "#sbForModel" : own && !ownFromForm().name ? "#sbOwnName" : "") : (forWho !== "studio" && !forName.trim() ? "#sbForName" : "");
+        if (!gap) return false;
+        const need = box && box.querySelector(gap), say = box && box.querySelector("#sbForNeed");
+        if (say) { say.hidden = false; say.textContent = gap === "#sbForModel" ? "Pick the model first." : "Type their name first."; }
+        if (need) need.focus();
+        return true;
+      }
       function closeStart() { const el = $("#sbStart"); if (el) el.remove(); document.removeEventListener("keydown", startEsc); }
       // Escape closes the chooser wherever the focus happens to be.
       function startEsc(e) { if (e.key === "Escape" && $("#sbStart")) { e.preventDefault(); closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); } }
-      function startBook(k) {
+      function startBook(k, pick) {
         settle(); if (atLimit) return;
         // Their name (or the model) first: the book wears it everywhere.
-        const box = $("#sbStart");
-        if (forWho === "talent" ? !forModel : (forWho !== "studio" && !forName.trim())) {
-          const need = box && box.querySelector(forWho === "talent" ? "#sbForModel" : "#sbForName");
-          const say = box && box.querySelector("#sbForNeed");
-          if (say) { say.hidden = false; say.textContent = forWho === "talent" ? "Pick the model first." : "Type their name first."; }
-          if (need) need.focus();
-          return;
-        }
+        if (missingWho()) return;
+        if (pick) board = pick;
         closeStart();
         const nb = withWho(withKind(withLayout(newBook(`Book ${state.versions.length + 1}`), k), kind));
         // The studio's own books can start in its brand (Design → Brand kit).
@@ -8231,14 +8325,7 @@
       // A book from one of My templates, for whoever the chooser says.
       function startFromTemplate(id) {
         settle(); if (atLimit) return;
-        const box = $("#sbStart");
-        if (forWho === "talent" ? !forModel : (forWho !== "studio" && !forName.trim())) {
-          const need = box && box.querySelector(forWho === "talent" ? "#sbForModel" : "#sbForName");
-          const say = box && box.querySelector("#sbForNeed");
-          if (say) { say.hidden = false; say.textContent = forWho === "talent" ? "Pick the model first." : "Type their name first."; }
-          if (need) need.focus();
-          return;
-        }
+        if (missingWho()) return;
         const t = tplCache.find((x) => x.id === id && x.kind === "book");
         let v = null; try { v = t ? JSON.parse(t.json) : null; } catch (e) { v = null; }
         if (!v || !Array.isArray(v.pages)) { API.toast("That template couldn't be read."); return; }
@@ -8248,9 +8335,8 @@
         v.name = `${t.name} ${state.versions.length + 1}`.slice(0, 80);
         v.updatedAt = Date.now();
         if (forWho !== "studio") {
-          const m = forWho === "talent" ? modelsList().find((x) => x.key === forModel) : null;
-          const name = (m ? m.name : forName).trim().slice(0, 60);
-          v.madeFor = forWho === "talent" ? { kind: "talent", name, modelKey: m.key } : { kind: forWho, name };
+          v.madeFor = madeForNow();
+          const name = v.madeFor.name;
           v.name = `${name} — ${t.name}`.slice(0, 80);
           // Their book never carries the studio-only pages.
           v.pages = v.pages.filter((pg) => pg && !STUDIO_ONLY.has(pg.type));
@@ -8261,7 +8347,7 @@
       function openStart() {
         closeStart();
         forWho = "studio"; forName = ""; forModel = ""; kindByBrand = false;
-        if (kind === "compcard") kind = "magazine";   // a comp card is chosen for a model, each time
+        if (kind === "compcard" || kind === "moodboard") kind = "magazine";   // a comp card is chosen for a model, and a moodboard for a board, each time
         const box = document.createElement("div");
         box.className = "sb-start"; box.id = "sbStart"; box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true"); box.setAttribute("aria-label", "Start a new book");
         box.innerHTML = `<div class="sb-startbox">
@@ -8269,14 +8355,35 @@
           <div class="sb-cpbase"><span>Who is it for?</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Who the book is for">${[["studio", "My studio"], ["brand", "A brand"], ["client", "A client"], ["talent", "A talent"]].map(([k, nm]) => `<button type="button" role="radio" data-for="${k}" aria-checked="${forWho === k}">${nm}</button>`).join("")}</div></div>
           <div class="sb-forwho" id="sbForWho" ${forWho === "studio" ? "hidden" : ""}>
             <div class="sb-field" id="sbForNameRow" ${forWho === "talent" ? "hidden" : ""}><label for="sbForName">Their name</label><input type="text" id="sbForName" maxlength="60" value="${esc(forName)}" placeholder="e.g. Acme Studio, or Aanya &amp; Kabir" autocomplete="off"></div>
-            <div class="sb-field" id="sbForModelRow" ${forWho === "talent" ? "" : "hidden"}><label for="sbForModel">The model</label><select id="sbForModel"><option value="">Choose from your models…</option>${modelsList().map((m) => `<option value="${esc(m.key)}" ${forModel === m.key ? "selected" : ""} ${m.cleared ? "" : "disabled"}>${esc(m.name)} — ${m.cleared ? `${m.cleared} photo${m.cleared === 1 ? "" : "s"} cleared` : "no photos cleared for their card yet"}</option>`).join("")}</select></div>
-            <p class="sb-hint" id="sbForModelNote" ${forWho === "talent" ? "" : "hidden"}>A photo is cleared when it is tagged with the model, in an album that lets its photos go on the models' cards, with a Usage that allows a portfolio — set in Upload.</p>
+            <div class="sb-field" id="sbForModelRow" ${forWho === "talent" ? "" : "hidden"}><label for="sbForModel">The model</label><select id="sbForModel"><option value="">Choose from your models…</option>${modelsList().map((m) => `<option value="${esc(m.key)}" ${forModel === m.key ? "selected" : ""}>${esc(m.name)} — ${m.cleared ? `${m.cleared} photo${m.cleared === 1 ? "" : "s"} cleared` : "no photos cleared for their card yet"}</option>`).join("")}<option value="${OWN_MODEL}" ${forModel === OWN_MODEL ? "selected" : ""}>Someone not on your list…</option></select></div>
+            <p class="sb-hint" id="sbForModelNote" ${forWho === "talent" && forModel !== OWN_MODEL ? "" : "hidden"}>A comp card fills itself from the photos cleared for their card: tagged with the model, in an album that lets its photos go on the models' cards, with a Usage that allows a portfolio — set in Upload. Any of your albums can go in too.</p>
+            <div class="sb-forown" id="sbForOwn" ${forWho === "talent" && forModel === OWN_MODEL ? "" : "hidden"}>
+              <div class="sb-field"><label for="sbOwnName">Their name</label><input type="text" id="sbOwnName" maxlength="60" placeholder="e.g. Aanya Rao" autocomplete="off"></div>
+              <div class="sb-field"><label for="sbOwnRoles">What they do</label><input type="text" id="sbOwnRoles" maxlength="80" placeholder="e.g. Actor – Model" autocomplete="off"></div>
+              <div class="sb-owngrid">
+                <div class="sb-field"><label for="sbOwnHeight">Height</label><input type="text" id="sbOwnHeight" maxlength="40" placeholder="5′ 7″" autocomplete="off"></div>
+                <div class="sb-field"><label for="sbOwnChest"><select id="sbOwnChestLab" aria-label="Chest or bust"><option>Chest</option><option>Bust</option></select></label><input type="text" id="sbOwnChest" maxlength="40" placeholder="34″" autocomplete="off"></div>
+                <div class="sb-field"><label for="sbOwnWaist">Waist</label><input type="text" id="sbOwnWaist" maxlength="40" placeholder="26″" autocomplete="off"></div>
+                <div class="sb-field"><label for="sbOwnHips">Hips</label><input type="text" id="sbOwnHips" maxlength="40" placeholder="36″" autocomplete="off"></div>
+                <div class="sb-field"><label for="sbOwnShoes">Shoes</label><input type="text" id="sbOwnShoes" maxlength="40" placeholder="6 UK" autocomplete="off"></div>
+                <div class="sb-field"><label for="sbOwnHair">Hair</label><input type="text" id="sbOwnHair" maxlength="40" placeholder="Brown" autocomplete="off"></div>
+                <div class="sb-field"><label for="sbOwnEyes">Eyes</label><input type="text" id="sbOwnEyes" maxlength="40" placeholder="Brown" autocomplete="off"></div>
+                <div class="sb-field"><label for="sbOwnAge">Age</label><input type="text" id="sbOwnAge" maxlength="40" placeholder="24" autocomplete="off"></div>
+              </div>
+              <div class="sb-owngrid three">
+                <div class="sb-field"><label for="sbOwnEmail">Email</label><input type="email" id="sbOwnEmail" maxlength="120" autocomplete="off"></div>
+                <div class="sb-field"><label for="sbOwnPhone">Phone</label><input type="tel" id="sbOwnPhone" maxlength="30" autocomplete="off"></div>
+                <div class="sb-field"><label for="sbOwnIg">Instagram</label><input type="text" id="sbOwnIg" maxlength="40" placeholder="@handle" autocomplete="off"></div>
+              </div>
+              <p class="sb-hint">Only the name is needed; the rest fills the comp card pages, and can be changed later in Design → Made for. Kept in this book on this computer only — not added to Models, never published.</p>
+            </div>
             <p class="sb-warn" id="sbForNeed" hidden></p>
           </div>
-          <p class="sb-hint" id="sbForNote">${esc(FOR_NOTE[forWho])}</p>
-          <div class="sb-cpbase"><span>Start with</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="What kind of book">${[["magazine", "A magazine"], ["lookbook", "A lookbook"], ["compcard", "A comp card"]].map(([k, nm]) => `<button type="button" role="radio" data-kind="${k}" aria-checked="${kind === k}" ${k === "compcard" && forWho !== "talent" ? "hidden" : ""}>${nm}</button>`).join("")}</div></div>
+          <p class="sb-hint" id="sbForNote">${esc(forNoteNow())}</p>
+          <div class="sb-cpbase"><span>Start with</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="What kind of book">${[["magazine", "A magazine"], ["lookbook", "A lookbook"], ["moodboard", "A moodboard"], ["compcard", "A comp card"]].map(([k, nm]) => `<button type="button" role="radio" data-kind="${k}" aria-checked="${kind === k}" ${k === "compcard" && forWho !== "talent" ? "hidden" : ""}>${nm}</button>`).join("")}</div></div>
           <p class="sb-hint" id="sbKindNote">${esc(KIND_NOTE[kind])}</p>
           <div class="sb-startcc" id="sbStartCC" hidden><button type="button" class="sb-btn" data-start="custom" data-compcard="1">Make the comp card →</button></div>
+          <div class="sb-starts" id="sbStartBoards" ${kind === "moodboard" ? "" : "hidden"}>${BOARDS.map(([k, nm, note]) => `<button type="button" class="sb-startitem" data-board="${k}"><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(nm)}</b><span>${esc(note)}</span></button>`).join("")}</div>
           <p class="sb-hint" id="sbCoverHint">Then the cover to begin with. It can be changed any time on the cover's own panel.</p>
           <div class="sb-starts" id="sbStartCovers">${COVER_LAYOUTS.map(([k, nm]) => `<button type="button" class="sb-startitem" data-start="${k}"><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(k === "custom" ? "From scratch (blank)" : nm)}</b><span>${esc(COVER_LAYOUT_NOTE[k])}</span></button>`).join("")}</div>
           ${tplCache.some((t) => t.kind === "book") ? `<div id="sbStartTpls"><p class="sb-hint">Or start from one of your templates: its pages, words and look, as you saved them.</p>
@@ -8288,6 +8395,7 @@
         box.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); } });
         box.querySelector("#sbStartClose").addEventListener("click", () => { closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); });
         box.querySelectorAll("[data-start]").forEach((b) => b.addEventListener("click", () => startBook(b.dataset.start)));
+        box.querySelectorAll("[data-board]").forEach((b) => b.addEventListener("click", () => startBook("custom", b.dataset.board)));
         box.querySelectorAll("[data-starttpl]").forEach((b) => b.addEventListener("click", () => startFromTemplate(b.dataset.starttpl)));
         box.querySelectorAll("[data-tpldel]").forEach((b) => b.addEventListener("click", async () => {
           await tplDel(b.dataset.tpldel); await tplRefresh();
@@ -8301,9 +8409,10 @@
           box.querySelector("#sbForWho").hidden = w === "studio";
           box.querySelector("#sbForNameRow").hidden = w === "talent";
           box.querySelector("#sbForModelRow").hidden = w !== "talent";
-          box.querySelector("#sbForModelNote").hidden = w !== "talent";
+          box.querySelector("#sbForModelNote").hidden = w !== "talent" || forModel === OWN_MODEL;
+          box.querySelector("#sbForOwn").hidden = w !== "talent" || forModel !== OWN_MODEL;
           box.querySelector("#sbForNeed").hidden = true;
-          box.querySelector("#sbForNote").textContent = FOR_NOTE[w];
+          box.querySelector("#sbForNote").textContent = forNoteNow();
           // A comp card is only for a model's book.
           const cc = box.querySelector('[data-kind="compcard"]');
           if (cc) cc.hidden = w !== "talent";
@@ -8318,17 +8427,27 @@
         let namePreview = 0;
         box.querySelectorAll("[data-for]").forEach((b) => b.addEventListener("click", () => setWho(b.dataset.for)));
         box.querySelector("#sbForName").addEventListener("input", (e) => { forName = e.target.value; box.querySelector("#sbForNeed").hidden = true; clearTimeout(namePreview); namePreview = setTimeout(() => { if (box.drawPreviews) box.drawPreviews(); }, 450); });
-        box.querySelector("#sbForModel").addEventListener("change", (e) => { forModel = e.target.value; box.querySelector("#sbForNeed").hidden = true; if (box.drawPreviews) box.drawPreviews(); });
+        box.querySelector("#sbForModel").addEventListener("change", (e) => {
+          forModel = e.target.value; box.querySelector("#sbForNeed").hidden = true;
+          const own = forModel === OWN_MODEL;
+          box.querySelector("#sbForOwn").hidden = !own; box.querySelector("#sbForModelNote").hidden = own;
+          if (own) box.querySelector("#sbOwnName").focus();
+          if (box.drawPreviews) box.drawPreviews();
+        });
+        box.querySelector("#sbForOwn").addEventListener("input", (e) => { if (e.target.id !== "sbOwnName") return; box.querySelector("#sbForNeed").hidden = true; clearTimeout(namePreview); namePreview = setTimeout(() => { if (box.drawPreviews) box.drawPreviews(); }, 450); });
         box.querySelectorAll("[data-kind]").forEach((b) => b.addEventListener("click", (e) => {
           if (e.isTrusted) kindByBrand = false;
           kind = b.dataset.kind;
           box.querySelectorAll("[data-kind]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
           const note = box.querySelector("#sbKindNote"); if (note) note.textContent = KIND_NOTE[kind];
+          box.querySelector("#sbForNote").textContent = forNoteNow();
           // A comp card is one page with no cover to choose: one button instead.
-          const cc = kind === "compcard";
+          // A moodboard starts on a board: its layouts stand where the covers would.
+          const cc = kind === "compcard", mb = kind === "moodboard";
           box.querySelector("#sbStartCC").hidden = !cc;
-          box.querySelector("#sbCoverHint").hidden = cc;
-          box.querySelector("#sbStartCovers").hidden = cc;
+          box.querySelector("#sbCoverHint").hidden = cc || mb;
+          box.querySelector("#sbStartCovers").hidden = cc || mb;
+          box.querySelector("#sbStartBoards").hidden = !mb;
           if (box.drawPreviews) box.drawPreviews();
         }));
         const first = box.querySelector("[data-start]"); if (first) first.focus();
@@ -8338,16 +8457,33 @@
           const token = ++previewToken;
           const cache = new Map();
           try { await ensureFonts(); } catch (e) { /* the covers draw in what is there */ }
-          for (const [k] of COVER_LAYOUTS) {
+          for (const [k] of kind === "moodboard" ? [] : COVER_LAYOUTS) {
             if (!box.isConnected || token !== previewToken) return;
             const nb = withKind(withLayout(newBook("Preview"), k), kind);
-            if (forWho !== "studio") { nb.id = "bfpreview"; nb.madeFor = { kind: forWho, name: (forWho === "talent" ? ((modelsList().find((m) => m.key === forModel) || {}).name || "") : forName).trim() || "Their name" }; nb.colourway = "silver-print"; if (kind !== "lookbook") { nb.title = nb.madeFor.name; nb.subtitle = forWho === "talent" ? "Portfolio" : ""; } }
+            if (forWho !== "studio") { nb.id = "bfpreview"; nb.madeFor = { kind: forWho, name: (forWho === "talent" ? (forModel === OWN_MODEL ? ownFromForm().name : ((modelsList().find((m) => m.key === forModel) || {}).name || "")) : forName).trim() || "Their name" }; nb.colourway = "silver-print"; if (kind !== "lookbook") { nb.title = nb.madeFor.name; nb.subtitle = forWho === "talent" ? "Portfolio" : ""; } }
             try {
               for await (const r of renderPages(nb, { dpi: 22, cache, only: -1 })) {
                 const slot = box.querySelector(`[data-start="${k}"] .sb-startpic`);
                 if (slot && box.isConnected && token === previewToken) slot.replaceChildren(r.page.canvas);
               }
             } catch (e) { /* the words stay */ }
+          }
+          // The moodboards, with sample words and the studio's own photographs.
+          if (kind === "moodboard") {
+            const ids = []; try { for (const [id, hit] of library().byId) { if (!hit.photo.diagram && !hit.photo.outside) ids.push(id); if (ids.length >= 12) break; } } catch (e) { /* frames stay empty */ }
+            for (const [k] of BOARDS) {
+              if (!box.isConnected || token !== previewToken) return;
+              const nb = newBook("Preview"); let n = 0;
+              nb.coverLayout = "custom";
+              nb.coverPage = { blocks: startBlocks(k, nb, "preview").map((b) => (b.k === "photo" && ids.length ? { ...b, p: { id: ids[n++ % ids.length], x: 0.5, y: 0.35, zoom: 1 } } : b)) };
+              nb.pages = [];
+              try {
+                for await (const r of renderPages(nb, { dpi: 22, cache, only: -1 })) {
+                  const slot = box.querySelector(`[data-board="${k}"] .sb-startpic`);
+                  if (slot && box.isConnected && token === previewToken) slot.replaceChildren(r.page.canvas);
+                }
+              } catch (e) { /* the words stay */ }
+            }
           }
           // Your templates' covers, as they were saved.
           for (const t of tplCache.filter((x) => x.kind === "book")) {
@@ -10246,7 +10382,7 @@
       if (mf && mf.kind === "talent") {
         const t = talentOf(book), lib = library();
         const n = t ? [...t.cleared].filter((id) => lib.byId.has(id)).length : 0;
-        return [{ id: "talent", name: `Cleared for ${mf.name}`, count: n }];
+        return [...(t && !t.own ? [{ id: "talent", name: `Cleared for ${mf.name}`, count: n }] : []), ...lib.albums.filter((a) => a.count)];
       }
       return library().albums.filter((a) => a.count);
     }
@@ -12368,7 +12504,7 @@
          card (the owner's rule), plus files from this computer. */
       const tfp = talentOf(book);
       const isTalentBook = !!(forOf(book) && forOf(book).kind === "talent");
-      if (isTalentBook && filter !== OUTSIDE_ALBUM) filter = "talent";
+      if (isTalentBook && filter === "" && tfp && !tfp.own) filter = "talent";
       const shown = [];
       for (const [id, hit] of lib.byId) {
         if (filter === "talent" ? !!(tfp && tfp.cleared.has(id)) : filter === "diagrams" ? hit.photo.diagram : (filter === "all" || hit.shoot.id === filter)) shown.push([id, hit]);
@@ -12403,12 +12539,11 @@
           ${replacing ? `<p class="sb-replacing">Replacing ${t.max > 1 ? `photo ${active + 1}` : "this photo"}: click the new one below and it takes the same place. <button type="button" class="sb-linkbtn" data-cancelchange>Cancel</button></p>` : ""}
           <label class="sb-vh" for="sbAlbum">Show</label>
           <select id="sbAlbum">
-            ${isTalentBook ? `<option value="talent" ${filter === "talent" ? "selected" : ""}>Cleared for ${esc(forOf(book).name)} (${tfp ? [...tfp.cleared].filter((id) => lib.byId.has(id)).length : 0})</option>
-            ${lib.albums.filter((a) => a.outside).map((a) => `<option value="${esc(a.id)}" ${filter === a.id ? "selected" : ""}>${esc(a.name)} (${a.count})</option>`).join("")}` : `
+            ${isTalentBook && tfp && !tfp.own ? `<option value="talent" ${filter === "talent" ? "selected" : ""}>Cleared for ${esc(forOf(book).name)} (${[...tfp.cleared].filter((id) => lib.byId.has(id)).length})</option>` : ""}
             <option value="" disabled ${filter === "" ? "selected" : ""}>Choose an album…</option>
             <option value="all" ${filter === "all" ? "selected" : ""}>All albums (${lib.byId.size})</option>
             <option value="diagrams" ${filter === "diagrams" ? "selected" : ""}>Lighting diagrams (${lib.diagrams})</option>
-            ${lib.albums.map((a) => `<option value="${esc(a.id)}" ${filter === a.id ? "selected" : ""}>${esc(a.name)} (${a.count})${a.hidden ? " · not on the site" : ""}</option>`).join("")}`}
+            ${lib.albums.map((a) => `<option value="${esc(a.id)}" ${filter === a.id ? "selected" : ""}>${esc(a.name)} (${a.count})${a.hidden ? " · not on the site" : ""}</option>`).join("")}
           </select>
           ${isTalentBook && filter === "talent" ? `<p class="sb-hint">${!tfp ? `No model card was found for ${esc(forOf(book).name)}. Check them in Models.` : "Only the photographs cleared for their model card: tagged with them, in an album that lets its photos go on the models' cards, with a Usage that allows a portfolio. Change those in Upload. Photos from this computer can go in too."}</p>` : ""}
           ${(lib.albums.find((a) => a.id === filter) || {}).outside
@@ -12862,7 +12997,7 @@
     function madeForHtml() {
       const m = forOf(book), LM = (window.STUDIO_BOOK_LIMITS || {}).madeFor || {};
       if (!m) return `<div class="sb-sec" id="sbMadeFor"><h3>Made for</h3>
-          <p class="sb-hint">Your studio's own book: your name, mark and details are on it, and Publish puts it in your site's files.</p>
+          <p class="sb-hint">${book.plan ? `Your studio's own ${esc((PLAN_NAME[book.plan] || "moodboard").toLowerCase())}: kept on this computer only and never published. Save a copy (top right) to keep it safe or to open it on another computer.` : "Your studio's own book: your name, mark and details are on it, and Publish puts it in your site's files."}</p>
           <details class="sb-moveshelf"><summary>Make a copy of it for a brand or a client…</summary>
             <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Who it is for">${[["brand", "A brand"], ["client", "A client"]].map(([k, n], i) => `<button type="button" role="radio" data-movekind="${k}" aria-checked="${i === 0}">${n}</button>`).join("")}</div>
             <div class="sb-field"><label for="sbMoveName">Their name</label><input type="text" id="sbMoveName" maxlength="${LM.name || 60}" placeholder="e.g. Acme Studio" autocomplete="off"></div>
@@ -12873,7 +13008,8 @@
       const KIND = { brand: "A brand", client: "A client", talent: "A talent" };
       const logoRec = m.logo ? (outsideCache || []).find((r) => r.id === m.logo) : null;
       return `<div class="sb-sec" id="sbMadeFor"><h3>Made for</h3>
-          ${m.kind === "talent" ? `<p class="sb-hint"><b>${esc(m.name)}</b> — a talent's book. Kept on this computer only; never published.</p>`
+          ${m.kind === "talent" && !m.modelKey ? ownMadeForHtml(m, LM)
+          : m.kind === "talent" ? `<p class="sb-hint"><b>${esc(m.name)}</b> — a talent's book. Kept on this computer only; never published.</p>`
           : `<div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Who it is for">${["brand", "client"].map((k) => `<button type="button" role="radio" data-forkind="${k}" aria-checked="${m.kind === k}">${KIND[k]}</button>`).join("")}</div>
           <div class="sb-field"><label for="sbForNameE">Their name</label><input type="text" id="sbForNameE" maxlength="${LM.name || 60}" value="${esc(m.name || "")}" autocomplete="off"></div>`}
           ${m.kind === "talent" ? "" : `<div class="sb-field"><label for="sbForEmail">Their email</label><input type="email" id="sbForEmail" maxlength="${LM.email || 120}" value="${esc(m.email || "")}" placeholder="Empty: left off" autocomplete="off"></div>
@@ -12891,6 +13027,20 @@
             <p class="sb-hint">${m.credit === "none" ? "Not on any page and not in the file's details — for a contract that forbids it." : `“Photographs · ${esc(studio())}”, small, on the last page and in the file's details.`}</p>
           </div>
         </div>`;
+    }
+    // Someone not on the list: everything typed for them, to change here.
+    const OWN_STATS = ["Height", "Chest", "Waist", "Hips", "Shoes", "Hair", "Eyes", "Age"];
+    function ownMadeForHtml(m, LM) {
+      const st = (lab) => ((m.stats || []).find((c) => c.label === lab || (lab === "Chest" && c.label === "Bust")) || {});
+      const chestLab = st("Chest").label === "Bust" ? "Bust" : "Chest";
+      return `<p class="sb-hint">A talent not on your list. Kept in this book on this computer only — not in Models, never published.</p>
+          <div class="sb-field"><label for="sbForNameE">Their name</label><input type="text" id="sbForNameE" maxlength="${LM.name || 60}" value="${esc(m.name || "")}" autocomplete="off"></div>
+          <div class="sb-field"><label for="sbOwnRolesE">What they do</label><input type="text" id="sbOwnRolesE" maxlength="${LM.roles || 80}" value="${esc(m.roles || "")}" placeholder="e.g. Actor – Model" autocomplete="off"></div>
+          <div class="sb-owngrid">${OWN_STATS.map((k) => `<div class="sb-field"><label for="sbOwnE_${k}">${k === "Chest" ? `<select id="sbOwnChestLabE" aria-label="Chest or bust">${["Chest", "Bust"].map((x) => `<option ${x === chestLab ? "selected" : ""}>${x}</option>`).join("")}</select>` : k}</label><input type="text" id="sbOwnE_${k}" data-ownstat="${k}" maxlength="${LM.statValue || 40}" value="${esc(st(k).value || "")}" autocomplete="off"></div>`).join("")}</div>
+          <div class="sb-field"><label for="sbForEmail">Email</label><input type="email" id="sbForEmail" maxlength="${LM.email || 120}" value="${esc(m.email || "")}" placeholder="Empty: left off" autocomplete="off"></div>
+          <div class="sb-field"><label for="sbOwnPhoneE">Phone</label><input type="tel" id="sbOwnPhoneE" maxlength="${LM.phone || 30}" value="${esc(m.phone || "")}" placeholder="Empty: left off" autocomplete="off"></div>
+          <div class="sb-field"><label for="sbForIg">Instagram</label><input type="text" id="sbForIg" maxlength="${LM.instagram || 40}" value="${esc(m.instagram || "")}" placeholder="@handle — empty: left off" autocomplete="off"></div>
+          <p class="sb-hint">These fill comp card pages added from now on; a page already made keeps the words on it.</p>`;
     }
     function wireMadeFor(panel) {
       const m = forOf(book);
@@ -12930,6 +13080,15 @@
         nameEl.addEventListener("blur", () => { if (!nameEl.value.trim()) nameEl.value = book.madeFor.name; flush(); schedulePreview(0); });
       }
       typed("sbForEmail", "email"); typed("sbForSite", "site"); typed("sbForIg", "instagram");
+      typed("sbOwnRolesE", "roles"); typed("sbOwnPhoneE", "phone");
+      // The measurements, written back as one list whenever one changes.
+      const statsNow = () => {
+        const lab = (panel.querySelector("#sbOwnChestLabE") || {}).value || "Chest";
+        const list = OWN_STATS.map((k) => ({ label: k === "Chest" ? lab : k, value: ((panel.querySelector(`#sbOwnE_${k}`) || {}).value || "").trim() })).filter((c) => c.value);
+        if (list.length) book.madeFor.stats = list; else delete book.madeFor.stats;
+      };
+      panel.querySelectorAll("[data-ownstat]").forEach((el) => { el.addEventListener("input", () => { statsNow(); change({ rail: false, typing: true }); }); el.addEventListener("blur", () => { flush(); schedulePreview(0); }); });
+      { const cl = panel.querySelector("#sbOwnChestLabE"); if (cl) cl.addEventListener("change", () => { mark(); statsNow(); change({ rail: false }); }); }
       panel.querySelectorAll("[data-forkind]").forEach((b) => b.addEventListener("click", () => { mark(); book.madeFor.kind = b.dataset.forkind; change(); drawDesign(); }));
       panel.querySelectorAll("[data-credit]").forEach((b) => b.addEventListener("click", () => { mark(); if (b.dataset.credit) book.madeFor.credit = b.dataset.credit; else delete book.madeFor.credit; change(); drawDesign(); }));
       const add = panel.querySelector("#sbLogoAdd"), file = panel.querySelector("#sbLogoFile"), drop = panel.querySelector("#sbLogoDrop");
@@ -13316,14 +13475,7 @@
       {
         const mf = forOf(b);
         const ids = [b.cover && b.cover.id, ...(b.pages || []).flatMap((pg) => [...(pg.photos || []).map((x) => x && x.id), ...freeBlocks(pg).filter((x) => x && x.k === "photo" && x.p).map((x) => x.p.id)]), ...freeBlocks({ ...(b.coverPage || {}), type: "free" }).filter((x) => x && x.k === "photo" && x.p).map((x) => x.p.id)].filter(Boolean);
-        if (mf && mf.kind === "talent") {
-          const t = talentOf(b);
-          if (!t) out.push({ i: -1, text: `${mf.name}: no model card found, so no photograph of theirs can print — check them in Models` });
-          else {
-            const not = [...new Set(ids.filter((id) => !clearedIn(b, id)))];
-            if (not.length) out.push({ i: -1, text: `${not.length} photograph${not.length === 1 ? " is" : "s are"} no longer cleared for ${t.name}'s card and print${not.length === 1 ? "s" : ""} as missing — change the album's tick, the tag or the Usage in Upload, or take ${not.length === 1 ? "it" : "them"} out` });
-          }
-        }
+        if (mf && mf.kind === "talent" && mf.modelKey && !talentOf(b)) out.push({ i: -1, text: `${mf.name}: no model card found, so new pages can't fill in their name, measurements and contacts — check them in Models` });
         if (mf) {
           // Words the studio typed that still name the studio: their book
           // should not (the owl and the defaults are handled; this is the rest).
