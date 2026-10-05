@@ -95,7 +95,9 @@
     // a small label over its value.
     const cell = (label, value) => `<div style="min-width: 0;"><div style="font-family:var(--mono-font); font-size: calc(8px * var(--print-scale, 1)); font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #8a8782; margin-bottom: calc(2px * var(--print-scale, 1));">${label}</div><div style="font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: calc(11px * var(--print-scale, 1)); font-weight: 700; color: #000;">${value}</div></div>`;
     const modelCells = visibleModelLinks(shoot, "Pdf").map(l => cell(SOCIAL_LABEL[l.kind], esc(socialPrintText(l))));
-    if (shoot.modelEmail && showRep(shoot, "Email", "Pdf") && !modelCells.some(c => c.includes(esc(shoot.modelEmail)))) modelCells.push(cell("Email", esc(shoot.modelEmail)));
+    // The free comp card keeps the model's email for the paid portfolio PDF (v582, the owner: "should say something
+    // like it will come in paid version"); the studio's own copy carries it.
+    if (shoot.modelEmail && showRep(shoot, "Email", "Pdf") && !modelCells.some(c => c.includes(esc(shoot.modelEmail)))) modelCells.push(cell("Email", isAdmin() ? esc(shoot.modelEmail) : "in the paid portfolio PDF"));
     const agencyCells = [];
     if (shoot.agency && showRep(shoot, "Agency", "Pdf")) {
       agencyCells.push(cell("Agency", esc(shoot.agency)));
