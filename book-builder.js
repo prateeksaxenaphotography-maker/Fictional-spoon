@@ -3985,6 +3985,7 @@
     letter: { name: "Letter", w: 215.9, h: 279.4, note: "8.5 × 11 in · US printers" },
     // v580: calendars and posters (sizes from Vistaprint India, printposters.in and the print shops' guides).
     a3: { name: "A3", w: 297, h: 420, note: "297 × 420 mm · wall calendars, posters" },
+    a6: { name: "A6", w: 105, h: 148, note: "105 × 148 mm · postcards, cards, invitations" },
     a2: { name: "A2", w: 420, h: 594, note: "420 × 594 mm · posters, a year on one page" },
     in1218: { name: "12 × 18 in", w: 304.8, h: 457.2, note: "12 × 18 in · India's usual wall calendar" },
     sq12: { name: "12 × 12 in", w: 304.8, h: 304.8, note: "12 × 12 in · square calendars" },
@@ -3997,16 +3998,27 @@
     story: { name: "Story 9:16", w: 182.88, h: 325.12, social: true, note: "Stories, Reels and WhatsApp status" }
   };
   const isSocial = (book) => !!(PAPERS[book && book.paper] || {}).social;
+  /* The paper a book is on (v581): one of PAPERS, or a size of the studio's
+     own. Like every paper it is kept upright, short side first, and the
+     page's shape (portrait or landscape) turns it. */
+  function paperOf(book) {
+    if (book && book.paper === "custom" && book.paperW > 0 && book.paperH > 0) {
+      const a = Math.min(book.paperW, book.paperH), b = Math.max(book.paperW, book.paperH), L = book.orientation === "landscape";
+      const size = L ? `${b} × ${a} mm` : `${a} × ${b} mm`;
+      return { name: size, w: a, h: b, note: `${size} · your own size` };
+    }
+    return PAPERS[book && book.paper] || PAPERS.a4;
+  }
   // The paper's note, and for a social size the pixels each page comes out at.
   const paperNote = (book) => {
-    const p = PAPERS[book.paper] || PAPERS.a4;
+    const p = paperOf(book);
     if (!p.social) return `${p.note}. Every size keeps the same layout; the words and photos scale with the page.`;
     const G = geometry(book), px = (mm, dpi) => Math.round(mm / 25.4 * dpi);
     return `${p.note}: each page is ${px(G.pw, 150)} × ${px(G.ph, 150)} px (at 150 dpi in Download; 300 dpi doubles it). Download PNG pages and post them together as a carousel. The layouts are the book's own, fitted to the shape.`;
   };
   /* Booklets: pages printed two to a sheet, in the order that folds into a
      book. The sheet is the size up from the page (A5 pages on A4 sheets). */
-  const SHEETS = { a5: { w: 297, h: 210, name: "A4", page: "A5" }, a4: { w: 420, h: 297, name: "A3", page: "A4" }, b5: { w: 353, h: 250, name: "B4", page: "B5" }, letter: { w: 431.8, h: 279.4, name: "Tabloid (11 × 17 in)", page: "Letter" } };
+  const SHEETS = { a5: { w: 297, h: 210, name: "A4", page: "A5" }, a4: { w: 420, h: 297, name: "A3", page: "A4" }, b5: { w: 353, h: 250, name: "B4", page: "B5" }, letter: { w: 431.8, h: 279.4, name: "Tabloid (11 × 17 in)", page: "Letter" }, a6: { w: 210, h: 148, name: "A5", page: "A6" } };
   // Which pages share each side of each sheet, front then back, left then
   // right, 1 being the cover: the outside of the first sheet carries the last
   // page and the cover, its inside page 2 and the page before last, and so on
@@ -4023,7 +4035,7 @@
   }
   function geometry(book) {
     const L = book.orientation === "landscape";
-    const p = PAPERS[book.paper] || PAPERS.a4;
+    const p = paperOf(book);
     const pw = L ? p.h : p.w, ph = L ? p.w : p.h;          // the printed page, mm
     const Wa = L ? 297 : 210, Ha = L ? 210 : 297;           // the A4 design frame
     const s = Math.min(pw / Wa, ph / Ha);                   // design mm → printed mm
@@ -5094,7 +5106,9 @@
   function calOf(book) {
     const c = (book && book.calendar) || {}, now = new Date();
     const year = Number.isInteger(c.year) ? c.year : now.getFullYear() + (now.getMonth() >= 8 ? 1 : 0);
-    return { year, start: Number.isInteger(c.start) && c.start >= 0 && c.start < 12 ? c.start : 0, week: c.week === 1 ? 1 : 0, ghost: c.ghost !== false, fixed: c.fixed !== false, dates: Array.isArray(c.dates) ? c.dates.filter((x) => x && typeof x.d === "string") : [] };
+    return { year, start: Number.isInteger(c.start) && c.start >= 0 && c.start < 12 ? c.start : 0, week: c.week === 1 ? 1 : 0, ghost: c.ghost !== false, fixed: c.fixed !== false, dates: Array.isArray(c.dates) ? c.dates.filter((x) => x && typeof x.d === "string") : [],
+      weekNo: c.weekNo === "num" || c.weekNo === "roman" ? c.weekNo : "",
+      habits: Array.isArray(c.habits) ? c.habits.filter((x) => typeof x === "string").slice(0, 20) : [], habitRows: Number.isInteger(c.habitRows) && c.habitRows >= 4 && c.habitRows <= 20 ? c.habitRows : 8 };
   }
   // The year as a page says it: "2027", or "2027–28" for a calendar starting after January.
   const calYearLabel = (book) => { const c = calOf(book); return c.start === 0 ? String(c.year) : `${c.year}–${String(c.year + 1).slice(-2)}`; };
@@ -5114,6 +5128,20 @@
     return { cells, rows: Math.ceil((lead + n) / 7), lead };
   }
   const two = (v) => String(v).padStart(2, "0");
+  /* A week's number (v581). Monday first: ISO 8601, as Europe counts — week 1 holds the year's first Thursday, so
+     a year can have 53. Sunday first: week 1 is the one holding 1 January, as India's and America's calendars count. */
+  function weekNumber(y, m, d, week) {
+    const DAY = 86400000, t = Date.UTC(y, m, d);
+    if (week === 1) {
+      const thu = t + (3 - ((new Date(t).getUTCDay() + 6) % 7)) * DAY;
+      return 1 + Math.floor((thu - Date.UTC(new Date(thu).getUTCFullYear(), 0, 1)) / DAY / 7);
+    }
+    const sun = t - new Date(t).getUTCDay() * DAY, j1 = Date.UTC(new Date(sun + 6 * DAY).getUTCFullYear(), 0, 1);
+    return 1 + Math.round((sun - (j1 - new Date(j1).getUTCDay() * DAY)) / DAY / 7);
+  }
+  const roman = (n) => { let out = ""; for (const [v, r] of [[50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]]) while (n >= v) { out += r; n -= v; } return out; };
+  // The calendar's pages that track habits, so Design asks for the habits only then.
+  const hasHabits = (book) => [...(book && book.coverPage ? [book.coverPage] : []), ...((book && book.pages) || [])].some((pg) => ((pg && pg.blocks) || []).some((x) => x && x.k === "cal" && x.look === "habits"));
   // What a day says: one of the studio's own dates (on that day, or that day every year), or a national day.
   function dayNote(cal, y, m, d) {
     const iso = `${y}-${two(m + 1)}-${two(d)}`, md = `${two(m + 1)}-${two(d)}`;
@@ -5142,27 +5170,62 @@
       txt(mini ? MONTHS[m].toUpperCase() : `${MONTHS[m].toUpperCase()} ${y}`, box.x, top + ts * 0.95, ts, mini ? K : H1, ink, "left", mini ? Math.max(600, K.w || 600) : (H1.w || 700));
       top += th;
     }
-    const cw = box.w / 7;
+    // A habit tracker (v581): the habits down the side, the month's days across, a box each; Sundays and national days tinted.
+    if (b.look === "habits") {
+      const n = monthDays(y, m), nameW = Math.min(box.w * 0.24, 62), dw = (box.w - nameW) / n, bottom = box.y + box.h;
+      const R = Math.max(cal.habitRows, cal.habits.length), hh = Math.min(box.h * 0.1, 10);
+      const s1 = Math.min(hh * 0.3, dw * 0.5), s2 = Math.min(hh * 0.36, dw * 0.46);
+      for (let d = 1; d <= n; d++) {
+        const x = box.x + nameW + dw * (d - 1), dow = dayOfWeek(y, m, d), note = dayNote(cal, y, m, d), red = dow === 0 || (note && !note.own);
+        if (red) op({ k: "rect", x, y: top, w: dw, h: bottom - top, c: accent, a: 0.08, rot: turn });
+        txt(WEEKDAYS[dow][0], x + dw / 2, top + s1 * 1.2, s1, K, red ? accent : soft, "center", Math.max(600, K.w || 600));
+        txt(d, x + dw / 2, top + hh - s2 * 0.45, s2, Bd, red ? accent : ink, "center", 600);
+      }
+      top += hh;
+      const rh = (bottom - top) / R, s3 = Math.min(rh * 0.42, 4.2);
+      op({ k: "rect", x: box.x, y: top - 0.15, w: box.w, h: 0.3, c: ink, rot: turn });
+      for (let d = 0; d <= n; d++) op({ k: "rect", x: box.x + nameW + dw * d - 0.075, y: top, w: 0.15, h: bottom - top, c: rule, rot: turn });
+      for (let r = 0; r < R; r++) {
+        const ry = top + rh * r;
+        op({ k: "rect", x: box.x, y: ry + rh - 0.075, w: box.w, h: 0.15, c: rule, rot: turn });
+        let t = String(cal.habits[r] || "").trim();
+        if (!t) continue;   // a blank row, to write in by hand
+        font(page, 500, s3, Bd.f);
+        if (measure(page, t) > nameW - 3) { while (t.length > 1 && measure(page, `${t}…`) > nameW - 3) t = t.slice(0, -1); t = `${t}…`; }
+        txt(t, box.x + 1.2, ry + rh / 2 + s3 * 0.36, s3, Bd, ink, "left", 500);
+      }
+      return;
+    }
+    // Week numbers (v581): a narrow column before the days, in figures or Roman numerals; not on the small months.
+    const wkCol = !mini && cal.weekNo ? Math.min(box.w * (cal.weekNo === "roman" ? 0.105 : 0.07), 16) : 0;
+    const gx = box.x + wkCol, cw = (box.w - wkCol) / 7;
     const hh = mini ? Math.min(box.h * 0.1, 4.5) : Math.min(box.h * 0.08, 7.5);
     const hs = Math.min(hh * 0.55, cw * (mini ? 0.42 : 0.3));
     for (let i = 0; i < 7; i++) {
       const dow = (i + cal.week) % 7;
       const name = mini || cw < 16 ? WEEKDAYS[dow][0] : WEEKDAYS[dow].slice(0, 3).toUpperCase();
-      txt(name, mini ? box.x + cw * i + cw / 2 : box.x + cw * i + 1.4, top + hs * 1.15, hs, K, dow === 0 ? accent : soft, mini ? "center" : "left", Math.max(600, K.w || 600));
+      txt(name, mini ? gx + cw * i + cw / 2 : gx + cw * i + 1.4, top + hs * 1.15, hs, K, dow === 0 ? accent : soft, mini ? "center" : "left", Math.max(600, K.w || 600));
     }
+    if (wkCol) txt("WK", box.x + 1.2, top + hs * 1.15, hs * 0.85, K, soft, "left", Math.max(600, K.w || 600));
     top += hh;
     if (!mini) op({ k: "rect", x: box.x, y: top - 0.9, w: box.w, h: 0.3, c: ink, rot: turn });
     const rows = 6, ch = (box.y + box.h - top) / rows;
     const ns = mini ? Math.min(ch * 0.58, cw * 0.46) : Math.min(ch * 0.3, cw * 0.28, 7.5);
     for (let r = 0; r < rows; r++) {
       if (!mini && r > 0) op({ k: "rect", x: box.x, y: top + ch * r - 0.4, w: box.w, h: 0.15, c: rule, rot: turn });
+      if (wkCol && (cal.ghost || g.cells.slice(r * 7, r * 7 + 7).some((c) => !c.out))) {
+        const c0 = g.cells[r * 7], wn = weekNumber(c0.y, c0.m, c0.d, cal.week), t = cal.weekNo === "roman" ? roman(wn) : String(wn);
+        let sz = Math.min(ns * 0.66, 4.6); font(page, 600, sz, Bd.f);
+        while (sz > 1.4 && measure(page, t) > wkCol - 2.2) { sz -= 0.2; font(page, 600, sz, Bd.f); }
+        txt(t, box.x + 1.2, top + ch * r + ns * 1.08, sz, Bd, soft, "left", 600);
+      }
       for (let i = 0; i < 7; i++) {
         const cell = g.cells[r * 7 + i];
         if (cell.out && (mini || !cal.ghost)) continue;
         const dow = (i + cal.week) % 7;
         const note = cell.out ? null : dayNote(cal, cell.y, cell.m, cell.d);
         const col = cell.out ? rule : dow === 0 || (note && !note.own) ? accent : ink;
-        const x0 = box.x + cw * i, y0 = top + ch * r;
+        const x0 = gx + cw * i, y0 = top + ch * r;
         if (mini) { txt(cell.d, x0 + cw / 2, y0 + ch * 0.5 + ns * 0.36, ns, Bd, col, "center", 500); continue; }
         txt(cell.d, x0 + 1.4, y0 + ns * 1.08, ns, H1, col, "left", Math.max(500, Math.min(700, H1.w || 600)));
         if (note && note.t) {
@@ -5643,7 +5706,33 @@
      on the shelf with the books made for others — a "bf" id, which CI also
      refuses to publish — whoever it is for, the studio included. `plan` says
      which kind, and puts it under its own heading in Books. */
-  const PLAN_NAME = { moodboard: "Moodboard", pitch: "Pitch", shoot: "Shoot plan", calendar: "Calendar" };
+  const PLAN_NAME = { moodboard: "Moodboard", pitch: "Pitch", shoot: "Shoot plan", calendar: "Calendar", misc: "One-off" };
+  /* Misc (v581, the owner: "last section should be misc wherein something
+     which is unique can be made"): the one-offs a photographer prints, from
+     the print shops' standard sizes — and any size at all. Each is a front
+     (the cover, arranged from scratch) and, for cards, a back. */
+  const MISC_FORMATS = {
+    postcard: { name: "Postcard", note: "A6 on its side: a photograph on the front; the message, address and stamp box on the back.", paper: "a6", land: true, cover: "ms_post_front", pages: ["ms_post_back"] },
+    poster: { name: "Poster", note: "A3: the photograph in a gallery border, its title and your name under it. A2 in Design.", paper: "a3", land: false, cover: "ms_poster", pages: [] },
+    zine: { name: "Zine", note: "A5, eight pages: a cover, six pages of photographs and words, a back.", paper: "a5", land: false, cover: "ms_zine_cover", pages: ["single", "edge2", "quote", "sheet", "bigtwo", "ms_zine_back"] },
+    voucher: { name: "Gift voucher", note: "A5 on its side, for a C5 envelope: what it is for, who from, the code and until when.", paper: "a5", land: true, cover: "ms_voucher", pages: [] },
+    rates: { name: "Rate card", note: "A4: your packages side by side, what each includes, how to book.", paper: "a4", land: false, cover: "ms_rates", pages: [] },
+    thanks: { name: "Thank-you card", note: "A6: a photograph on the front, a note on the back.", paper: "a6", land: false, cover: "ms_thanks_front", pages: ["ms_thanks_back"] },
+    cert: { name: "Certificate of authenticity", note: "A5 on its side, for a print you sell: its edition, paper, size, date and your signature.", paper: "a5", land: true, cover: "ms_cert", pages: [] },
+    invite: { name: "Invitation", note: "A6: a photograph and the occasion on the front; when, where and how to reply on the back.", paper: "a6", land: false, cover: "ms_invite_front", pages: ["ms_invite_back"] }
+  };
+  // A one-off laid out: its paper (or the size typed), its front and its back.
+  function miscBook(nb, fmt, size) {
+    const f = MISC_FORMATS[fmt];
+    nb.plan = "misc";
+    nb.title = f ? f.name : "Something of my own"; nb.subtitle = "";
+    if (f) { if (f.paper !== "a4") nb.paper = f.paper; else delete nb.paper; nb.orientation = f.land ? "landscape" : "portrait"; }
+    else { nb.paper = "custom"; nb.paperW = size.w; nb.paperH = size.h; nb.orientation = size.w > size.h ? "landscape" : "portrait"; }
+    nb.coverLayout = "custom";
+    nb.coverPage = { blocks: startBlocks(f ? f.cover : "ms_blank", nb, "add") };
+    nb.pages = (f ? f.pages : []).map((k) => ({ type: "free", blocks: startBlocks(k, nb, "add") }));
+    return nb;
+  }
   /* The calendars to start from (v580): wall portrait and landscape, the
      12 × 18 in office calendar, square, desk (A5 and 6 × 8 in, on their side),
      and the year on one poster. Each is a cover, twelve months and a back of
@@ -5656,13 +5745,14 @@
     square: { name: "Square · 12 × 12 in", note: "The photograph above, the month below.", paper: "sq12", land: false, cover: "cal_cover_type", month: "cal_square", back: "cal_back" },
     desk: { name: "Desk · A5", note: "On its side, for a stand: the photograph left, the month right.", paper: "a5", land: true, cover: "cal_cover_land", month: "cal_desk", back: "cal_back_land" },
     desk86: { name: "Desk · 6 × 8 in", note: "India's usual table calendar: the photograph above the month.", paper: "desk86", land: true, cover: "cal_cover_land", month: "cal_desk2", back: "cal_back_land" },
+    habits: { name: "Habit tracker", note: "A4 on its side: your habits down the side, every day of the month across, a box to tick.", paper: "a4", land: true, cover: "cal_cover_land", month: "cal_habits", back: "cal_back_land" },
     year: { name: "The year on one page", note: "An A3 poster: a photograph and all twelve months.", paper: "a3", land: false, year: true, cover: "cal_year" }
   };
   // A calendar laid out: its paper, its cover, a page a month (each block on its month) and the back.
   function calendarBook(nb, fmt, cal) {
     const f = CAL_FORMATS[fmt] || CAL_FORMATS.wall;
     nb.plan = "calendar";
-    nb.calendar = { year: cal.year, start: cal.start, ...(cal.week === 1 ? { week: 1 } : {}) };
+    nb.calendar = { year: cal.year, start: cal.start, ...(cal.week === 1 ? { week: 1 } : {}), ...(cal.weekNo ? { weekNo: cal.weekNo } : {}) };
     if (f.paper !== "a4") nb.paper = f.paper; else delete nb.paper;
     nb.orientation = f.land ? "landscape" : "portrait";
     nb.title = "Calendar"; nb.subtitle = "";
@@ -5916,6 +6006,9 @@
   .sb-eyebrow { display: inline-flex; align-items: center; gap: 6px; margin: 0; font: 500 12px/1 var(--sb-font); letter-spacing: 0; text-transform: none; color: var(--sb-text-3); }
   .sb-eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--sb-sel); }
   .sb-sect { margin-top: 8px; }
+  .sb-seg-wrap { flex-wrap: wrap; }
+  .sb-ownsize { margin-top: 12px; align-items: flex-end; }
+  .sb-ownsize .sb-field input { width: 110px; }
   .sb-calrow { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; margin-bottom: 12px; }
   .sb-calrow .sb-field { margin: 0; min-width: 120px; }
   .sb-calyear { display: flex; align-items: center; gap: 4px; }
@@ -6585,8 +6678,21 @@
   .sb-startbox .sb-cpbase { margin-top: 0; }
   .sb-startbox .sb-cpbase > span { min-width: 92px; font-weight: 500; color: var(--sb-text); }
   .sb-starts { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
-  .sb-starts[hidden], .sb-startcc[hidden] { display: none; }
+  .sb-starts[hidden], .sb-startcc[hidden], .sb-startrest[hidden], .sb-kinds[hidden], #sbStart .sb-cpbase[hidden] { display: none; }
+  .sb-startrest { display: grid; gap: 16px; align-content: start; }
+  .sb-kinds { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .sb-kindtile { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto 1fr; column-gap: 14px; row-gap: 3px; align-items: start; padding: 14px 16px 14px 14px; border: 0; border-radius: var(--sb-r-lg); background: var(--sb-sunk); box-shadow: inset 0 0 0 1px var(--sb-line); color: inherit; text-align: left; cursor: pointer; transition: background .15s, box-shadow .15s; }
+  .sb-kindtile > svg { grid-row: 1 / 3; width: 44px; height: 60px; }
+  .sb-kindtile b { align-self: end; font: 600 14px var(--sb-font); }
+  .sb-kindtile > span { font: 400 12px/1.45 var(--sb-font); color: var(--sb-text-3); }
+  .sb-kindtile:hover, .sb-kindtile:focus-visible { background: var(--sb-sel-soft); box-shadow: inset 0 0 0 1.5px var(--sb-sel); outline: none; }
+  #sbStartBack { margin-right: 4px; }
+  #sbStartTitle { flex: 1; }
+  @media (max-width: 600px) { .sb-kinds { grid-template-columns: 1fr; } }
   .sb-startcc { margin: 4px 0 2px; }
+  .sb-startsub { grid-column: 1 / -1; margin: 6px 0 -6px; font: 600 11px var(--sb-font); letter-spacing: .08em; text-transform: uppercase; color: var(--sb-text-3); }
+  .sb-stale { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 100000; display: flex; gap: 14px; align-items: center; justify-content: space-between; padding: 12px 14px 12px 18px; background: #b3261e; color: #fff; border-radius: 12px; font: 500 14px/1.45 var(--sb-font, system-ui, sans-serif); box-shadow: 0 12px 32px rgba(0,0,0,.35); }
+  .sb-stale .sb-btn { flex: none; background: #fff; color: #1d1d1f; }
   .sb-startitem { display: grid; align-content: start; gap: 3px; padding: 0; border: 0; border-radius: var(--sb-r-lg); background: none; color: inherit; text-align: left; cursor: pointer; }
   .sb-startpic { display: grid; place-items: center; height: 176px; margin-bottom: 8px; padding: 14px; background: var(--sb-sunk); border-radius: var(--sb-r-lg); box-shadow: inset 0 0 0 1px var(--sb-line); transition: background .15s, box-shadow .15s; }
   .sb-startpic canvas { max-height: 148px; max-width: 100%; box-shadow: 0 0 0 1px rgba(16,16,20,.05), 0 8px 20px -8px rgba(16,16,20,.35); transition: transform .2s var(--sb-ease); }
@@ -6770,6 +6876,20 @@
        section of the Add-page gallery of its own, not a "Layouts ·" one. */
     /* v579 (the owner: "magazine and look books … sections will have their own
        templates with covers and back"), from fashion-magazine and lookbook kits. */
+    { group: "One-offs", top: true, items: [
+      ["ms_blank", "Blank page", "Nothing on it: a page to make anything."],
+      ["ms_post_front", "Postcard · front", "One photograph to the edges and a line."],
+      ["ms_post_back", "Postcard · back", "A message on the left, the address lines and a stamp box on the right."],
+      ["ms_poster", "Poster", "The photograph inside a white gallery border, its title and your name under it."],
+      ["ms_zine_cover", "Zine cover", "One photograph to the edges, the title large across the top."],
+      ["ms_zine_back", "Zine back", "A line about it and your name, centred."],
+      ["ms_voucher", "Gift voucher", "A photograph down one side; what it is for, who for, who from, until when and its code."],
+      ["ms_rates", "Rate card", "A strip of photographs, three packages side by side, how to book."],
+      ["ms_thanks_front", "Thank-you card · front", "A photograph with Thank you on it."],
+      ["ms_thanks_back", "Thank-you card · back", "A few words and your name."],
+      ["ms_cert", "Certificate of authenticity", "For a print sold: the photograph, its title, edition, paper, size, date and your signature."],
+      ["ms_invite_front", "Invitation · front", "A photograph and the occasion."],
+      ["ms_invite_back", "Invitation · back", "When, where and how to reply."]] },
     { group: "Calendar", top: true, items: [
       ["cal_wall", "Photograph over the month", "A photograph across the top, the month to write in under it."],
       ["cal_overlay", "Month on the photograph", "The photograph to the edges, the month on a pale panel at its foot."],
@@ -6777,6 +6897,7 @@
       ["cal_side", "Beside the photograph", "On its side: the photograph left, the month right."],
       ["cal_desk", "Desk", "On its side, half and half: the photograph and the month."],
       ["cal_desk2", "Desk, photograph on top", "On its side: the photograph above, the month below."],
+      ["cal_habits", "Habit tracker", "Your habits down the side, every day of the month across, a box to tick."],
       ["cal_cover", "Calendar cover", "One photograph to the edges, the year large."],
       ["cal_cover_type", "Cover, the year first", "The year large, a photograph under it."],
       ["cal_cover_land", "Cover, on its side", "One photograph to the edges, the year large, for a landscape calendar."],
@@ -6859,17 +6980,33 @@
      be given a proper cover (the owner, Sep 29 2026: "option to add cover
      page is also missing"): the hand-made cover becomes the first page. */
   const COVER_ITEM = { group: "Cover", items: [["cover", "Cover in front", "A cover before what is on the first page now, which moves to page 2 unchanged. It starts as one photograph filling the page; change its look on the cover's own panel."]] };
-  /* A moodboard, a pitch or a shoot plan opens Add page on the planning
-     layouts (the owner, Oct 1 2026: "moodboard can have templates relevant to
-     moodboard"), its own kind first; the studio's "how we work" pages and the
-     lookbook's look pages are not offered; everything else follows. */
-  const PLAN_FIRST = { calendar: ["Calendar", "Moodboard"], moodboard: ["Moodboard", "Pitch", "Shoot plan", "Team pages"], pitch: ["Pitch", "Moodboard", "Team pages", "Shoot plan"], shoot: ["Shoot plan", "Moodboard", "Team pages", "Pitch"] };
-  const PLAN_NOT = new Set(["How we work", "Lookbook"]);
+  /* Which templates a book is offered (v581, the owner: "i opened pitch why am i getting a magazine template, or a
+     look book template in it or a moodboard", and "for free things make a section called miscellaneous"): its own
+     kind's first, then the free pages and layouts every book shares, under Miscellaneous; another kind's, never. A
+     talent's comp cards or a brand's pages still lead their book. */
+  const OWN_GROUPS = {
+    magazine: ["Cover", "Magazine", "Comp cards", "For brands", "Studio pages", "Book pages", "How we work"],
+    lookbook: ["Cover", "Lookbook", "For brands", "Studio pages", "Book pages"],
+    pitch: ["Cover", "Pitch", "Team pages"],
+    moodboard: ["Cover", "Moodboard", "Shoot plan", "Team pages"],
+    shoot: ["Cover", "Shoot plan", "Moodboard", "Team pages"],
+    calendar: ["Cover", "Calendar"],
+    misc: ["Cover", "One-offs"]
+  };
+  const FREE_GROUPS = ["Put it where you want", "Photographs", "Words", "Openers", "Photo stories", "Words and pictures"];
+  const OWN_LABEL = { magazine: "Magazine", lookbook: "Lookbook", pitch: "Pitch", moodboard: "Moodboard", shoot: "Shoot plan", calendar: "Calendar", misc: "One-offs" };
+  const familyOf = (book) => (book && book.plan && OWN_GROUPS[book.plan] ? book.plan : book && (book.kind === "lookbook" || (!book.kind && book.style === "lookbook")) ? "lookbook" : "magazine");
+  const bareGroup = (name) => String(name || "").replace(/^Layouts · /, "");
+  const isOwnGroup = (book, name) => OWN_GROUPS[familyOf(book)].includes(bareGroup(name));
+  const groupFits = (book, name) => isOwnGroup(book, name) || FREE_GROUPS.includes(bareGroup(name));
+  const layoutGroupsFor = (book) => [...LAYOUT_GROUPS.filter((g) => isOwnGroup(book, g.group)), ...LAYOUT_GROUPS.filter((g) => !isOwnGroup(book, g.group) && groupFits(book, g.group))];
   const addMenuFor = (book) => {
-    // Calendar pages only in a calendar: a month needs the calendar's year to be one.
-    const menu = addMenuBase(book).filter((g) => g.group !== "Calendar" || (book && book.plan === "calendar")), first = PLAN_FIRST[book && book.plan];
-    if (!first) return menu;
-    return [...first.map((g) => menu.find((x) => x.group === g)).filter(Boolean), ...menu.filter((x) => !first.includes(x.group) && !PLAN_NOT.has(x.group))];
+    const own = OWN_GROUPS[familyOf(book)], mf = forOf(book);
+    const lead = mf && mf.kind === "talent" ? "Comp cards" : mf && mf.kind === "brand" ? "For brands" : "";
+    const menu = addMenuBase(book).filter((g) => groupFits(book, g.group));
+    const rank = (g) => (g.group === "Cover" ? -2 : g.group === lead ? -1 : own.indexOf(g.group));
+    const freeRank = (g) => { const i = FREE_GROUPS.indexOf(bareGroup(g.group)); return i < 0 ? FREE_GROUPS.length : i; };
+    return [...menu.filter((g) => isOwnGroup(book, g.group)).sort((a, b) => rank(a) - rank(b)), ...menu.filter((g) => !isOwnGroup(book, g.group)).sort((a, b) => freeRank(a) - freeRank(b))];
   };
   const addMenuBase = (book) => {
     const withCover = (menu) => (coverLayoutOf(book) === "custom" ? [COVER_ITEM, ...menu] : menu);
@@ -7847,11 +7984,101 @@
         P(0, 0, 1, 0.55),
         { k: "cal", x: 0.06, y: 0.59, w: 0.88, h: 0.37 }
       ],
+      // A habit tracker (v581): the month across, the habits down the side; on its side, A4.
+      cal_habits: [
+        { k: "cal", look: "habits", x: 0.05, y: 0.07, w: 0.9, h: 0.83 },
+        T("kicker", 0.05, 0.94, 0.9, 0.03, { bind: "studio", sample: "NERDYPHOTOGRAPHER.IN" })
+      ],
       cal_back_land: [
         label(0.05, 0.05, 0.9, "THE YEAR"),
         ...Array.from({ length: 12 }, (_, i) => ({ k: "cal", look: "mini", m: i, x: r3(0.05 + (i % 4) * 0.23), y: r3(0.13 + Math.floor(i / 4) * 0.27), w: 0.21, h: 0.24 })),
         T("kicker", 0.05, 0.94, 0.9, 0.03, { bind: "studio", sample: "NERDYPHOTOGRAPHER.IN" })
       ]
+      ,
+      // ---- v581: misc — one-offs a photographer prints (research: Moo, Vistaprint, printposters.in, 4over4) ----
+      // A postcard, A6 on its side: the photograph front; the message left, the address right, a stamp box.
+      ms_post_front: [
+        P(0, 0, 1, 1),
+        T("kicker", 0.05, 0.9, 0.9, 0.04, { sample: "GREETINGS FROM THE STUDIO", style: { color: "#ffffff" } })
+      ],
+      ms_post_back: [
+        T("body", 0.06, 0.1, 0.4, 0.7, { sample: "Thank you for a lovely shoot — your photographs are on their way.\n\nSee you soon." }),
+        { k: "line", path: "v", x: 0.495, y: 0.1, w: 0.01, h: 0.78, thick: "hair", color: "rule" },
+        S(0.8, 0.08, 0.14, 0.2, "rule", { o: 0.5 }),
+        ...[0.5, 0.6, 0.7, 0.8].map((y) => L(0.55, y, 0.39, { color: "rule" })),
+        T("kicker", 0.06, 0.88, 0.4, 0.04, { bind: "studio", sample: "NERDYPHOTOGRAPHER.IN" })
+      ],
+      // A poster: the photograph inside a white gallery border, its title and credit under it.
+      ms_poster: [
+        P(0.08, 0.06, 0.84, 0.76),
+        T("head", 0.08, 0.85, 0.84, 0.06, { sample: "Monsoon, 2026" }),
+        T("kicker", 0.08, 0.92, 0.84, 0.022, { bind: "studio", sample: "NERDYPHOTOGRAPHER.IN" })
+      ],
+      // A zine: a bold cover and a quiet back.
+      ms_zine_cover: [
+        P(0, 0, 1, 1),
+        T("head", 0.07, 0.06, 0.86, 0.16, { bind: "title", sample: "SLOW DAYS", style: { size: 1.6, weight: "bold", color: "#ffffff" } }),
+        T("kicker", 0.07, 0.92, 0.86, 0.022, { sample: "A ZINE · ISSUE 1", style: { color: "#ffffff" } })
+      ],
+      ms_zine_back: [
+        T("body", 0.15, 0.42, 0.7, 0.1, { sample: "Printed in a small run. Photographs and words by the studio.", style: { align: "center" } }),
+        T("kicker", 0.15, 0.56, 0.7, 0.022, { bind: "studio", sample: "NERDYPHOTOGRAPHER.IN", style: { align: "center" } })
+      ],
+      // A gift voucher, A5 on its side (fits a C5 envelope).
+      ms_voucher: [
+        P(0, 0, 0.4, 1),
+        label(0.45, 0.1, 0.5, "GIFT VOUCHER"),
+        T("head", 0.45, 0.15, 0.5, 0.12, { sample: "A portrait session" }),
+        ...rows(0.45, 0.33, 0.07, 0.15, 0.35, [["For", "", "Aanya"], ["From", "", "Kabir"], ["Valid until", "", "31 March 2027"], ["Code", "", "GIFT-2027-014"]]),
+        T("body", 0.45, 0.66, 0.5, 0.14, { sample: "One session at the studio, edited photographs included. Book it on the website with the code.", style: { size: 0.85 } }),
+        T("kicker", 0.45, 0.88, 0.5, 0.03, { bind: "studio", sample: "NERDYPHOTOGRAPHER.IN" })
+      ],
+      // A rate card, A4: a strip of photographs, three packages side by side, how to book.
+      ms_rates: [
+        P(0, 0, 1, 0.28),
+        T("kicker", 0.07, 0.31, 0.86, 0.022, { sample: "RATES 2027" }),
+        T("head", 0.07, 0.335, 0.86, 0.06, { sample: "Portraits and portfolios" }),
+        ...[["Portrait", "₹8,000", "Two hours\nTwo looks\n15 edited photographs"], ["Portfolio", "₹15,000", "Half a day\nFour looks\n30 edited photographs"], ["Brand day", "₹35,000", "A full day\nA team on set\n60 edited photographs"]].flatMap(([n, price, inc], i) => {
+          const x = r3(0.07 + i * 0.3);
+          return [T("head", x, 0.43, 0.26, 0.04, { sample: n, style: { size: 0.8 } }), T("intro", x, 0.48, 0.26, 0.04, { sample: price }), T("body", x, 0.53, 0.26, 0.18, { sample: inc })];
+        }),
+        L(0.07, 0.75, 0.86),
+        T("body", 0.07, 0.77, 0.86, 0.12, { sample: "Half the fee books the date; the rest is paid on the day. Travel outside Noida is added at cost." }),
+        T("kicker", 0.07, 0.93, 0.86, 0.022, { bind: "studio", sample: "NERDYPHOTOGRAPHER.IN" })
+      ],
+      // A thank-you card, A6: the photograph and the words on the front, a note on the back.
+      ms_thanks_front: [
+        P(0, 0, 1, 1),
+        T("head", 0.08, 0.8, 0.84, 0.1, { sample: "Thank you", style: { size: 1.4, color: "#ffffff" } })
+      ],
+      ms_thanks_back: [
+        T("body", 0.12, 0.4, 0.76, 0.12, { sample: "It was lovely to photograph you. Your photographs will be with you within a week.", style: { align: "center" } }),
+        T("kicker", 0.12, 0.54, 0.76, 0.022, { bind: "studio", sample: "NERDYPHOTOGRAPHER.IN", style: { align: "center" } })
+      ],
+      // A certificate of authenticity for a print sold, A5 on its side: edition, paper, size, date, signature.
+      ms_cert: [
+        L(0.04, 0.05, 0.92), L(0.04, 0.95, 0.92),
+        { k: "line", path: "v", x: 0.04, y: 0.05, w: 0.01, h: 0.9, thick: "hair", color: "ink" },
+        { k: "line", path: "v", x: 0.95, y: 0.05, w: 0.01, h: 0.9, thick: "hair", color: "ink" },
+        T("head", 0.08, 0.085, 0.84, 0.07, { keep: "CERTIFICATE OF AUTHENTICITY", style: { align: "center", size: 0.6 } }),
+        P(0.08, 0.2, 0.3, 0.62),
+        ...rows(0.44, 0.22, 0.075, 0.16, 0.36, [["Title", "", "Monsoon, 2026"], ["Edition", "", "3 of 25"], ["Paper", "", "Hahnemühle Photo Rag 308"], ["Size", "", "A3"], ["Date", "", "1 October 2026"]]),
+        L(0.44, 0.78, 0.4),
+        T("kicker", 0.44, 0.8, 0.4, 0.03, { keep: "SIGNED" })
+      ],
+      // An invitation, A6: the photograph and the occasion; when, where and how to reply.
+      ms_invite_front: [
+        P(0, 0, 1, 0.68),
+        T("kicker", 0.08, 0.72, 0.84, 0.022, { sample: "YOU ARE INVITED" }),
+        T("head", 0.08, 0.76, 0.84, 0.14, { sample: "An evening of portraits" })
+      ],
+      ms_invite_back: [
+        label(0.08, 0.1, 0.84, "THE EVENING"),
+        ...rows(0.08, 0.17, 0.07, 0.22, 0.62, [["When", "", "Saturday 14 November, 7 pm"], ["Where", "", "The studio, Noida"], ["Reply", "", "By 7 November, on WhatsApp"]]),
+        T("body", 0.08, 0.42, 0.84, 0.2, { sample: "Prints from the year, a little music and good company." }),
+        T("kicker", 0.08, 0.88, 0.84, 0.022, { bind: "studio", sample: "NERDYPHOTOGRAPHER.IN" })
+      ],
+      ms_blank: []
     });
   })();
   // A layout's small picture, worked out from the layout itself.
@@ -8034,6 +8261,23 @@
     // page, the strip and the Design panel (its list and menus) draw again.
     loadOwnFonts().then(() => { if (OWN_FONTS.length && book && root.isConnected) { schedulePreview(0); scheduleStrip(200); if ($("#sbPanelDesign")) drawDesign(); } });
     nameOnHover(root);
+    /* A tab left open from before a release runs the older site, and an older site re-saves books through its own
+       cleaner, dropping what it doesn't know (Oct 1 2026: a calendar became an empty A4 magazine). A newer page
+       opened since leaves its build number behind; this tab, finding it, says so until it is reloaded. */
+    if (!window.__sbStaleWired) {
+      window.__sbStaleWired = true;
+      const staleSay = () => {
+        const stale = typeof window.siteBuildIsStale === "function" && window.siteBuildIsStale();
+        let bar = document.getElementById("sbStale");
+        if (!stale) { if (bar) bar.remove(); return; }
+        if (bar) return;
+        bar = document.createElement("div"); bar.id = "sbStale"; bar.className = "sb-stale"; bar.setAttribute("role", "alert");
+        bar.innerHTML = `<span>This tab is an older version of the site — a newer one has been opened since. Reload it before changing any book, or it can undo what the newer version saved.</span><button type="button" class="sb-btn">Reload</button>`;
+        bar.querySelector("button").addEventListener("click", () => location.reload());
+        document.body.appendChild(bar);
+      };
+      staleSay(); window.addEventListener("focus", staleSay); document.addEventListener("visibilitychange", staleSay);
+    }
     document.documentElement.classList.add("sb-book");
     // The site's router replaces the page's contents to leave: the moment the
     // builder's root is gone, the page is the site's own again. Every
@@ -8820,7 +9064,7 @@
             <button type="button" class="sb-cardcover" data-open="${esc(v.id)}" aria-label="Open ${esc(v.name)}"><span class="sb-hint">…</span></button>
             <div class="sb-cardbody">
               <h4 data-name="${esc(v.id)}">${esc(v.name)}</h4>
-              <span class="sb-meta">${esc((STYLES.find((s) => s.key === v.style) || {}).name || "")} · ${esc(colourway(v.colourway).name)} · ${esc((PAPERS[v.paper] || PAPERS.a4).name)} ${esc(v.orientation)} · ${renderedCount(v)} page${renderedCount(v) === 1 ? "" : "s"}</span>
+              <span class="sb-meta">${esc((STYLES.find((s) => s.key === v.style) || {}).name || "")} · ${esc(colourway(v.colourway).name)} · ${esc(paperOf(v).name)} ${esc(v.orientation)} · ${renderedCount(v)} page${renderedCount(v) === 1 ? "" : "s"}</span>
               <span class="sb-meta">Edited ${esc(new Date(v.updatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }))}</span>
               ${isForOthers(v) ? (() => { const cs = copyState(v); const who = v.plan ? `${PLAN_NAME[v.plan] || "Moodboard"}${v.madeFor && v.madeFor.name ? ` for ${v.madeFor.name}` : ""}` : `For ${(v.madeFor && v.madeFor.name) || "someone else"}`; return `<span class="sb-meta sb-shelftag">${esc(who)} · on this computer only · <span class="${cs.ok ? "" : "sb-copydue"}">${esc(cs.text)}</span></span>`; })() : ""}
               <div class="sb-cardacts">
@@ -8834,19 +9078,25 @@
           /* A section for each kind (v579, the owner: "like you have for moodboard create a section for … magazine and
              look books"). A lookbook is one started as a lookbook, or one in the Lookbook style from before. */
           const lookbook = (v) => v.kind === "lookbook" || (!v.kind && v.style === "lookbook");
-          const books = state.versions.filter((v) => !v.plan && !lookbook(v)), looks = state.versions.filter((v) => !v.plan && lookbook(v)), plans = state.versions.filter((v) => v.plan && v.plan !== "calendar"), cals = state.versions.filter((v) => v.plan === "calendar");
+          const books = state.versions.filter((v) => !v.plan && !lookbook(v)), looks = state.versions.filter((v) => !v.plan && lookbook(v)), pitches = state.versions.filter((v) => v.plan === "pitch"), plans = state.versions.filter((v) => v.plan && !["calendar", "misc", "pitch"].includes(v.plan)), cals = state.versions.filter((v) => v.plan === "calendar"), miscs = state.versions.filter((v) => v.plan === "misc");
           return `<section class="sb-sect" aria-labelledby="sbMagHead"><h2 class="sb-plansh" id="sbMagHead">Magazines &amp; portfolios</h2>
             <p class="sb-hint">Your own book of work, and magazines for brands, clients and talents: a cover, pages, a back cover.</p>
             <div class="sb-cards">${books.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-new data-newkind="magazine" ${atLimit ? "disabled" : ""}>New magazine<small>A cover, a page of photographs and a back cover</small></button></div></section>
           <section class="sb-plans" aria-labelledby="sbLookHead"><h2 class="sb-plansh" id="sbLookHead">Lookbooks</h2>
             <p class="sb-hint">A collection look by look, for a brand or a designer: its own covers, the collection, the looks, details, credits and how to order.</p>
             <div class="sb-cards">${looks.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-newkind="lookbook" ${atLimit ? "disabled" : ""}>New lookbook<small>A cover, the collection, six looks and a back cover</small></button></div></section>
-          <section class="sb-plans" aria-labelledby="sbPlansHead"><h2 class="sb-plansh" id="sbPlansHead">Moodboards &amp; plans</h2>
-            <p class="sb-hint">Moodboards to pitch an idea, plan a shoot or get the team on the same page — your photographs, and pictures pasted from anywhere. Kept on this computer only and never published, whoever they're for.</p>
-            <div class="sb-cards">${plans.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-newplan ${atLimit ? "disabled" : ""}>New moodboard<small>Plug in your photographs, or paste pictures from anywhere</small></button></div></section>
+          <section class="sb-plans" aria-labelledby="sbPitchHead"><h2 class="sb-plansh" id="sbPitchHead">Pitches</h2>
+            <p class="sb-hint">To win a shoot from a brand or a client: the idea, references, the team, what they get and your past work. Kept on this computer only and never published.</p>
+            <div class="sb-cards">${pitches.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-newkind="pitch" ${atLimit ? "disabled" : ""}>New pitch<small>The idea, the references, the team and what they get</small></button></div></section>
+          <section class="sb-plans" aria-labelledby="sbPlansHead"><h2 class="sb-plansh" id="sbPlansHead">Moodboards &amp; shoot plans</h2>
+            <p class="sb-hint">Plan the shoot and get the team on the same page: a board of your photographs and pictures pasted from anywhere, or the whole plan — looks, shot list, call sheet. Kept on this computer only and never published, whoever they're for.</p>
+            <div class="sb-cards">${plans.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-newkind="moodboard" ${atLimit ? "disabled" : ""}>New moodboard or shoot plan<small>Plug in your photographs, or paste pictures from anywhere</small></button></div></section>
           <section class="sb-plans" aria-labelledby="sbCalHead"><h2 class="sb-plansh" id="sbCalHead">Calendars</h2>
             <p class="sb-hint">Wall, desk and poster calendars for any year — a hundred ahead if you like — in the standard sizes. Kept on this computer only: save a copy for the print shop.</p>
-            <div class="sb-cards">${cals.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-newkind="calendar" ${atLimit ? "disabled" : ""}>New calendar<small>A cover, twelve months and the year on the back</small></button></div></section>`;
+            <div class="sb-cards">${cals.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-newkind="calendar" ${atLimit ? "disabled" : ""}>New calendar<small>A cover, twelve months and the year on the back</small></button></div></section>
+          <section class="sb-plans" aria-labelledby="sbMiscHead"><h2 class="sb-plansh" id="sbMiscHead">Miscellaneous</h2>
+            <p class="sb-hint">Postcards, a poster, a zine, gift vouchers, a rate card, cards, certificates for prints you sell, invitations — or a page of any size for something nobody else makes. Kept on this computer only.</p>
+            <div class="sb-cards">${miscs.map(card).join("")}<button type="button" class="sb-card sb-newcard" data-newkind="misc" ${atLimit ? "disabled" : ""}>Make something<small>A postcard, a poster, a voucher… or any size</small></button></div></section>`;
         })()}
         <p class="sb-hint sb-foot">Your own books save on this device as you work, and go into your site's files when you publish, so they open on any device — visitors see no page, but anyone can read those files. Books made for a brand, a client or a talent, and every moodboard, stay on this computer only: save a copy of each to move it or keep it safe.${atLimit ? ` You have ${LIMIT} books, the most there can be: delete one to start another.` : ""}</p>`;
       const copyFile = $("#sbCopyFile");
@@ -8864,9 +9114,8 @@
       let finishRename = null;
       const settle = () => { if (finishRename) { const f = finishRename; finishRename = null; f(true, false); } };
       $$("#sbNew").forEach((b) => b.addEventListener("click", () => { settle(); if (!atLimit) openStart(); }));
-      // Each section's New starts that kind.
-      $$("[data-newkind]").forEach((b) => b.addEventListener("click", () => { settle(); if (atLimit) return; openStart(); const k = $(`#sbStart [data-kind="${b.dataset.newkind}"]`); if (k) k.click(); }));
-      $$("[data-newplan]").forEach((b) => b.addEventListener("click", () => { settle(); if (atLimit) return; openStart(); const k = $('#sbStart [data-kind="moodboard"]'); if (k) k.click(); }));
+      // Each section's New goes straight to that kind's choices; New book asks what first.
+      $$("[data-newkind]").forEach((b) => b.addEventListener("click", () => { settle(); if (atLimit) return; openStart(b.dataset.newkind); }));
       /* A new book begins with its cover: the five layouts, each drawn small
          for real, "From scratch" among them for a cover made by hand. The
          book then opens on that cover. */
@@ -8875,18 +9124,24 @@
       let kind = "magazine";
       const BOARDS = LAYOUT_GROUPS.find((g) => g.group === "Moodboard").items;
       let board = "mb_grid";
-      const KIND_NOTE = { magazine: "A cover, a page of photographs and a back cover; add pages in between — a magazine has its own covers, contents, letter, features, interviews and back covers in Add page.",
-        pitch: "A pitch to win a shoot, eleven pages to fill: a cover, the idea and its mood words, references, colours, the model, styling, hair & make-up, location, light, deliverables and your past work. Kept on this computer only and never published, whoever it's for.",
-        calendar: "Twelve months for any year — a hundred years ahead if you like: a cover, a page a month with a photograph and a back of the whole year; or the year on one poster. Pick the year, the month it starts in and the day weeks start on, then its shape. Kept on this computer only.",
-        shootplan: "Everything for the day, eleven pages: a cover, the brief, the moodboard in six parts, a page for each of three looks, hair & make-up, this-not-that, the shot list, the call sheet and the credits. Kept on this computer only and never published, whoever it's for.",
-        moodboard: `A cover, the board you pick below and a back cover, like a magazine. Plug in your own photographs, or copy any picture from Pinterest, Google or anywhere and paste it with ${MOD}V. Pick the board's layout — or a blank page to make your own; more boards come from Add page → Moodboard. Kept on this computer only and never published, whoever it's for.`, lookbook: "A cover, a page about the collection, six looks and a back cover. Each look is one or two photographs with its number, its name and its lines.",
-        compcard: "One page, like a printed comp card: a big photograph with three beside it, their name, what they do, their measurements and the brands they have worked with — filled from their card. Every part can be moved, edited or deleted, and a brand's logo added as a photo from this computer." };
+      const KIND_NOTE = { magazine: "A cover, a page of photographs and a back cover. Contents, a letter, features and interviews are in Add page.",
+        pitch: "Eleven pages to fill: a cover, the idea and its mood words, references, colours, the model, styling, hair & make-up, location, light, what they get and your past work.",
+        misc: "Pick one, or type a size of your own for a blank page. Kept on this computer only.",
+        calendar: "Any year, a hundred ahead if you like. Pick the year, the month it starts in and the first day of the week, then its shape. Kept on this computer only.",
+        shootplan: "Everything for the day, eleven pages: the brief, the moodboard in six parts, three looks, hair & make-up, this-not-that, the shot list, the call sheet and the credits.",
+        moodboard: `A cover, the board you pick and a back cover. Your photographs, or any picture copied from Pinterest, Google or anywhere and pasted with ${MOD}V; more boards are in Add page → Moodboard.`, lookbook: "A cover, a page about the collection, six looks and a back cover. Each look is one or two photographs with its number, its name and its lines.",
+        compcard: "One page, like a printed comp card — a big photograph, three beside it, their name, measurements and brands — filled from their card. Every part can be changed." };
       const withKind = (nb, k) => {
         // A magazine, like every kind now, has a back (the owner: "with covers and back").
         if (k === "magazine") { nb.pages = [...(nb.pages || []), { type: "end", layout: "back" }]; return nb; }
         /* A moodboard: the board is the book's first page, laid out from
            scratch like a comp card, with nothing after it. */
         // A pitch or a shoot plan: its cover and pages, filled once it knows who it is for (planPages).
+        if (k === "misc") {
+          nb.id = uid(true);
+          nb.name = (MISC_FORMATS[miscPick.fmt] || { name: `${miscPick.w} × ${miscPick.h} mm` }).name + nb.name.replace(/^Book/, "");
+          return miscBook(nb, miscPick.fmt, miscPick);
+        }
         if (k === "calendar") {
           nb.id = uid(true);
           nb.name = nb.name.replace(/^Book /, "Calendar ");
@@ -8925,9 +9180,10 @@
       let forWho = "studio", forName = "", forModel = "", kindByBrand = false;
       const OWN_MODEL = "__own";   // "Someone not on your list…"
       // A kind of book that is a plan, and the plan it makes.
-      const KIND_PLAN = { moodboard: "moodboard", pitch: "pitch", shootplan: "shoot", calendar: "calendar" };
+      const KIND_PLAN = { moodboard: "moodboard", pitch: "pitch", shootplan: "shoot", calendar: "calendar", misc: "misc" };
+      let miscPick = { fmt: "postcard", w: 200, h: 200 };
       // What the calendar's chooser said, read before it closes (as the model typed in is).
-      let calPick = { fmt: "wall", year: calOf(null).year, start: 0, week: 0 };
+      let calPick = { fmt: "wall", year: calOf(null).year, start: 0, week: 0, weekNo: "" };
       const planPages = (nb) => {
         if (!PLAN_COVER[nb.plan]) return nb;
         nb.coverPage = { blocks: startBlocks(PLAN_COVER[nb.plan], nb, "add") };
@@ -8941,12 +9197,12 @@
         return nb;
       };
       const TEAM_PAGES = new Set(["sp_shots", "sp_call", "tm_hairmakeup"]);
-      const forNoteNow = () => (forWho === "studio" && KIND_PLAN[kind] ? (kind === "calendar" ? "Your own calendar: kept on this computer only and never published — save a copy to take it to a print shop." : `Your own ${PLAN_NAME[KIND_PLAN[kind]].toLowerCase()}: kept on this computer only and never published — it is planning work, often with pictures that aren't yours.`) : FOR_NOTE[forWho]);
+      const forNoteNow = () => (forWho === "studio" && KIND_PLAN[kind] ? (kind === "calendar" || kind === "misc" ? `Your own ${kind === "calendar" ? "calendar" : "one-off"}: kept on this computer only and never published — save a copy to take it to a print shop.` : `Your own ${PLAN_NAME[KIND_PLAN[kind]].toLowerCase()}: kept on this computer only and never published — it is planning work, often with pictures that aren't yours.`) : FOR_NOTE[forWho]);
       const FOR_NOTE = {
         studio: "Your own book. Publishing puts it in your site's files, so it opens on any device.",
         brand: "Kept on this computer only — never published to your site. Their name goes where yours would be; your credit is a line on the last page, or nowhere if the contract says so.",
         client: "Kept on this computer only — never published to your site. Their name goes where yours would be; your credit is a line on the last page, or nowhere if the contract says so.",
-        talent: "Kept on this computer only — never published to your site. Their cleared photos come first and fill a comp card; any of your albums, files from this computer and pasted pictures can go in too."
+        talent: "Kept on this computer only — never published to your site."
       };
       // Every model, with how many photographs are cleared for their card; a
       // model with none can't have a book yet, and the list says why.
@@ -9063,15 +9319,34 @@
         openBook(v, true, { sel: -1 });
         API.toast(`Started from your template “${t.name}”.`);
       }
-      function openStart() {
+      /* What can be made, each a family of kinds: the Start with row shows only
+         the family's own (a magazine or — for a talent — a comp card; a
+         moodboard or a shoot plan), and none when there is one. Calendars and
+         one-offs are the studio's own, so they don't ask who for. */
+      const FAMILY_OF = { magazine: ["magazine", "compcard"], lookbook: ["lookbook"], pitch: ["pitch"], moodboard: ["moodboard", "shootplan"], calendar: ["calendar"], misc: ["misc"] };
+      const KIND_TITLE = { magazine: "New magazine", compcard: "New comp card", lookbook: "New lookbook", pitch: "New pitch", moodboard: "New moodboard", shootplan: "New shoot plan", calendar: "New calendar", misc: "Make something" };
+      const FAMILY_TITLE = { magazine: "New magazine", lookbook: "New lookbook", pitch: "New pitch", moodboard: "New moodboard or shoot plan", calendar: "New calendar", misc: "Make something" };
+      const KIND_TILES = [
+        ["magazine", "Magazine", "Your book of work, or one for a brand, a client or a talent.", "mg_cover"],
+        ["lookbook", "Lookbook", "A collection, look by look.", "lb_cover"],
+        ["pitch", "Pitch", "To win a shoot: the idea, references, the team, what they get.", "pt_cover"],
+        ["moodboard", "Moodboard or shoot plan", "Plan the shoot: the board, the looks, the shot list, the call sheet.", "mb_grid"],
+        ["calendar", "Calendar", "Wall, desk or poster, for any year.", "cal_wall"],
+        ["misc", "Miscellaneous", "Postcards, posters, vouchers, cards — or any size.", "ms_post_front"],
+        ["compcard", "Comp card", "One page for a model, filled from their card.", "cc_actor"]
+      ];
+      let family = null;
+      function openStart(fam = null) {
         closeStart();
-        forWho = "studio"; forName = ""; forModel = ""; kindByBrand = false;
+        forWho = "studio"; forName = ""; forModel = ""; kindByBrand = false; family = null;
         if (kind === "compcard" || KIND_PLAN[kind]) kind = "magazine";   // a comp card is chosen for a model, and a moodboard for a board, each time
         const box = document.createElement("div");
         box.className = "sb-start"; box.id = "sbStart"; box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true"); box.setAttribute("aria-label", "Start a new book");
         box.innerHTML = `<div class="sb-startbox">
-          <div class="sb-addhead"><strong>Start a new book</strong><button type="button" class="sb-btn quiet sb-iconbtn" id="sbStartClose" aria-label="Cancel" title="Cancel (Esc)">${uiIc("x")}</button></div>
-          <div class="sb-cpbase"><span>Who is it for?</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Who the book is for">${[["studio", "My studio"], ["brand", "A brand"], ["client", "A client"], ["talent", "A talent"]].map(([k, nm]) => `<button type="button" role="radio" data-for="${k}" aria-checked="${forWho === k}">${nm}</button>`).join("")}</div></div>
+          <div class="sb-addhead"><button type="button" class="sb-btn quiet sb-iconbtn" id="sbStartBack" aria-label="Make something else" title="Something else" hidden>${uiIc("back")}</button><strong id="sbStartTitle">What are you making?</strong><button type="button" class="sb-btn quiet sb-iconbtn" id="sbStartClose" aria-label="Cancel" title="Cancel (Esc)">${uiIc("x")}</button></div>
+          <div class="sb-kinds" id="sbStartKinds">${KIND_TILES.map(([f, nm, note, key]) => `<button type="button" class="sb-kindtile" data-pickkind="${f}">${addIcon("free:" + key)}<b>${esc(nm)}</b><span>${esc(note)}</span></button>`).join("")}</div>
+          <div class="sb-startrest" id="sbStartRest" hidden>
+          <div class="sb-cpbase" id="sbForRow"><span>Who is it for?</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Who the book is for">${[["studio", "My studio"], ["brand", "A brand"], ["client", "A client"], ["talent", "A talent"]].map(([k, nm]) => `<button type="button" role="radio" data-for="${k}" aria-checked="${forWho === k}">${nm}</button>`).join("")}</div></div>
           <div class="sb-forwho" id="sbForWho" ${forWho === "studio" ? "hidden" : ""}>
             <div class="sb-field" id="sbForNameRow" ${forWho === "talent" ? "hidden" : ""}><label for="sbForName">Their name</label><input type="text" id="sbForName" maxlength="60" value="${esc(forName)}" placeholder="e.g. Acme Studio, or Aanya &amp; Kabir" autocomplete="off"></div>
             <div class="sb-field" id="sbForModelRow" ${forWho === "talent" ? "" : "hidden"}><label for="sbForModel">The model</label><select id="sbForModel"><option value="">Choose from your models…</option>${modelsList().map((m) => `<option value="${esc(m.key)}" ${forModel === m.key ? "selected" : ""}>${esc(m.name)} — ${m.cleared ? `${m.cleared} photo${m.cleared === 1 ? "" : "s"} cleared` : "no photos cleared for their card yet"}</option>`).join("")}<option value="${OWN_MODEL}" ${forModel === OWN_MODEL ? "selected" : ""}>Someone not on your list…</option></select></div>
@@ -9099,20 +9374,29 @@
             <p class="sb-warn" id="sbForNeed" hidden></p>
           </div>
           <p class="sb-hint" id="sbForNote">${esc(forNoteNow())}</p>
-          <div class="sb-cpbase"><span>Start with</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="What kind of book">${[["magazine", "A magazine"], ["lookbook", "A lookbook"], ["moodboard", "A moodboard"], ["pitch", "A pitch"], ["shootplan", "A shoot plan"], ["calendar", "A calendar"], ["compcard", "A comp card"]].map(([k, nm]) => `<button type="button" role="radio" data-kind="${k}" aria-checked="${kind === k}" ${k === "compcard" && forWho !== "talent" ? "hidden" : ""}>${nm}</button>`).join("")}</div></div>
+          <div class="sb-cpbase" id="sbKindRow"><span>Start with</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="What kind of book">${[["magazine", "A magazine"], ["lookbook", "A lookbook"], ["moodboard", "A moodboard"], ["pitch", "A pitch"], ["shootplan", "A shoot plan"], ["calendar", "A calendar"], ["misc", "Miscellaneous"], ["compcard", "A comp card"]].map(([k, nm]) => `<button type="button" role="radio" data-kind="${k}" aria-checked="${kind === k}" ${k === "compcard" && forWho !== "talent" ? "hidden" : ""}>${nm}</button>`).join("")}</div></div>
           <p class="sb-hint" id="sbKindNote">${esc(KIND_NOTE[kind])}</p>
           <div class="sb-startcc" id="sbStartCC" hidden><button type="button" class="sb-btn" data-start="custom" data-compcard="1">Make the comp card →</button><button type="button" class="sb-btn dark" data-start="custom" data-makeplan="1" hidden>Make it →</button></div>
+          <div class="sb-startcal" id="sbStartMisc" ${kind === "misc" ? "" : "hidden"}>
+            <div class="sb-starts">${Object.entries(MISC_FORMATS).map(([k, f]) => `<button type="button" class="sb-startitem" data-miscfmt="${k}"><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(f.name)}</b><span>${esc(f.note)}</span></button>`).join("")}</div>
+            <div class="sb-calrow sb-ownsize"><span class="sb-label">Or your own size</span>
+              <div class="sb-field"><label for="sbNewMiscW">Width, mm</label><input type="number" id="sbNewMiscW" min="30" max="1500" value="${miscPick.w}"></div>
+              <div class="sb-field"><label for="sbNewMiscH">Height, mm</label><input type="number" id="sbNewMiscH" min="30" max="1500" value="${miscPick.h}"></div>
+              <button type="button" class="sb-btn dark" data-miscown>Make it →</button></div>
+          </div>
           <div class="sb-startcal" id="sbStartCal" ${kind === "calendar" ? "" : "hidden"}>
             <div class="sb-calrow">
               <div class="sb-field"><label for="sbNewCalYear">Year</label><input type="number" id="sbNewCalYear" min="1900" max="2200" value="${calPick.year}"></div>
               <div class="sb-field"><label for="sbNewCalStart">Starts in</label><select id="sbNewCalStart">${MONTHS.map((n, i) => `<option value="${i}" ${calPick.start === i ? "selected" : ""}>${n}${i === 3 ? " (financial year)" : ""}</option>`).join("")}</select></div>
               <div class="sb-field"><span class="sb-label">Weeks start on</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Weeks start on">${[[0, "Sunday"], [1, "Monday"]].map(([k, n]) => `<button type="button" role="radio" data-newcalweek="${k}" aria-checked="${calPick.week === k}">${n}</button>`).join("")}</div></div>
+              <div class="sb-field"><span class="sb-label">Week numbers</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Week numbers">${[["", "None"], ["num", "1 2 3"], ["roman", "I II III"]].map(([k, n]) => `<button type="button" role="radio" data-newcalwkno="${k}" aria-checked="${calPick.weekNo === k}">${n}</button>`).join("")}</div></div>
             </div>
             <div class="sb-starts">${Object.entries(CAL_FORMATS).map(([k, f]) => `<button type="button" class="sb-startitem" data-calfmt="${k}"><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(f.name)}</b><span>${esc(f.note)}</span></button>`).join("")}</div>
           </div>
           <div class="sb-starts" id="sbStartBoards" ${kind === "moodboard" ? "" : "hidden"}>${BOARDS.map(([k, nm, note]) => `<button type="button" class="sb-startitem" data-board="${k}"><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(nm)}</b><span>${esc(note)}</span></button>`).join("")}</div>
-          <p class="sb-hint" id="sbCoverHint">Then the cover to begin with. It can be changed any time on the cover's own panel.</p>
-          <div class="sb-starts" id="sbStartCovers">${Object.entries(KIND_COVERS).flatMap(([kk, list]) => list.map(([t, nm, note]) => `<button type="button" class="sb-startitem" data-start="custom" data-covertpl="${t}" data-kindonly="${kk}" ${kind === kk ? "" : "hidden"}><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(nm)}</b><span>${esc(note)}</span></button>`)).join("")}${COVER_LAYOUTS.map(([k, nm]) => `<button type="button" class="sb-startitem" data-start="${k}"><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(k === "custom" ? "From scratch (blank)" : nm)}</b><span>${esc(COVER_LAYOUT_NOTE[k])}</span></button>`).join("")}</div>
+          <p class="sb-hint" id="sbCoverHint">Its cover — it can be changed any time.</p>
+          <div class="sb-starts" id="sbStartCovers">${Object.entries(KIND_COVERS).flatMap(([kk, list]) => list.map(([t, nm, note]) => `<button type="button" class="sb-startitem" data-start="custom" data-covertpl="${t}" data-kindonly="${kk}" ${kind === kk ? "" : "hidden"}><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(nm)}</b><span>${esc(note)}</span></button>`)).join("")}<p class="sb-startsub">Miscellaneous</p>${COVER_LAYOUTS.map(([k, nm]) => `<button type="button" class="sb-startitem" data-start="${k}"><span class="sb-startpic"><span class="sb-hint">…</span></span><b>${esc(k === "custom" ? "From scratch (blank)" : nm)}</b><span>${esc(COVER_LAYOUT_NOTE[k])}</span></button>`).join("")}</div>
+          </div>
           ${tplCache.some((t) => t.kind === "book") ? `<div id="sbStartTpls"><p class="sb-hint">Or start from one of your templates: its pages, words and look, as you saved them.</p>
           <div class="sb-starts">${tplCache.filter((t) => t.kind === "book").map((t) => `<span class="sb-tplwrap"><button type="button" class="sb-startitem" data-starttpl="${esc(t.id)}"><span class="sb-startpic" data-tplpic="${esc(t.id)}"><span class="sb-hint">…</span></span><b>${esc(t.name)}</b><span>Your template · ${t.pages || 1} page${(t.pages || 1) === 1 ? "" : "s"}</span></button><button type="button" class="sb-tplrm" data-tpldel="${esc(t.id)}" aria-label="Delete the template ${esc(t.name)}" title="Delete this template">×</button></span>`).join("")}</div></div>` : ""}
         </div>`;
@@ -9123,9 +9407,19 @@
         box.querySelector("#sbStartClose").addEventListener("click", () => { closeStart(); const nb = $("#sbNew"); if (nb) nb.focus(); });
         box.querySelectorAll("[data-start]").forEach((b) => b.addEventListener("click", () => startBook(b.dataset.start, null, b.dataset.covertpl)));
         box.querySelectorAll("[data-board]").forEach((b) => b.addEventListener("click", () => startBook("classic", b.dataset.board)));
+        // A one-off: its shape now, or the size typed (30 to 1500 mm each way).
+        box.querySelectorAll("[data-miscfmt]").forEach((b) => b.addEventListener("click", () => { miscPick.fmt = b.dataset.miscfmt; startBook("custom"); }));
+        box.querySelector("[data-miscown]").addEventListener("click", () => {
+          const w = parseFloat(box.querySelector("#sbNewMiscW").value), h = parseFloat(box.querySelector("#sbNewMiscH").value);
+          const okSize = (v) => v >= 30 && v <= 1500;
+          if (!okSize(w) || !okSize(h)) { const say = box.querySelector("#sbForNeed"); if (say) { say.hidden = false; say.textContent = "A size from 30 to 1500 mm each way."; } return; }
+          miscPick = { fmt: "own", w: Math.round(w * 10) / 10, h: Math.round(h * 10) / 10 };
+          startBook("custom");
+        });
         // A calendar: its choices read now, the chooser closes, then the book is made.
         const readCal = () => { const yv = parseInt((box.querySelector("#sbNewCalYear") || {}).value, 10); calPick.year = yv >= 1900 && yv <= 2200 ? yv : calOf(null).year; calPick.start = +(box.querySelector("#sbNewCalStart") || {}).value || 0; };
         box.querySelectorAll("[data-calfmt]").forEach((b) => b.addEventListener("click", () => { readCal(); calPick.fmt = b.dataset.calfmt; startBook("custom"); }));
+        box.querySelectorAll("[data-newcalwkno]").forEach((b) => b.addEventListener("click", () => { calPick.weekNo = b.dataset.newcalwkno; box.querySelectorAll("[data-newcalwkno]").forEach((x) => x.setAttribute("aria-checked", String(x === b))); readCal(); if (box.drawPreviews) box.drawPreviews(); }));
         box.querySelectorAll("[data-newcalweek]").forEach((b) => b.addEventListener("click", () => { calPick.week = +b.dataset.newcalweek; box.querySelectorAll("[data-newcalweek]").forEach((x) => x.setAttribute("aria-checked", String(x === b))); readCal(); if (box.drawPreviews) box.drawPreviews(); }));
         ["#sbNewCalYear", "#sbNewCalStart"].forEach((sel) => { const el = box.querySelector(sel); if (el) el.addEventListener("change", () => { readCal(); if (box.drawPreviews) box.drawPreviews(); }); });
         box.querySelectorAll("[data-starttpl]").forEach((b) => b.addEventListener("click", () => startFromTemplate(b.dataset.starttpl)));
@@ -9135,6 +9429,13 @@
           const all = box.querySelector("#sbStartTpls"); if (all && !all.querySelector("[data-starttpl]")) all.remove();
           API.toast("Template deleted.");
         }));
+        // The Start with row: the family's own kinds, and only when there is a choice.
+        const inFamily = (k) => !family || FAMILY_OF[family].includes(k);
+        const fitKindRow = () => {
+          let shown = 0;
+          box.querySelectorAll("[data-kind]").forEach((x) => { x.hidden = !inFamily(x.dataset.kind) || (x.dataset.kind === "compcard" && forWho !== "talent"); if (!x.hidden) shown++; });
+          box.querySelector("#sbKindRow").hidden = shown < 2;
+        };
         const setWho = (w) => {
           forWho = w;
           box.querySelectorAll("[data-for]").forEach((x) => x.setAttribute("aria-checked", String(x.dataset.for === w)));
@@ -9146,12 +9447,11 @@
           box.querySelector("#sbForNeed").hidden = true;
           box.querySelector("#sbForNote").textContent = forNoteNow();
           // A comp card is only for a model's book.
-          const cc = box.querySelector('[data-kind="compcard"]');
-          if (cc) cc.hidden = w !== "talent";
+          fitKindRow();
           if (w !== "talent" && kind === "compcard") { const mg = box.querySelector('[data-kind="magazine"]'); if (mg) mg.click(); }
           // A brand's book is usually a lookbook; it can still be changed. Put
           // back if the audience changes again and the studio never chose it.
-          if (w === "brand" && kind !== "lookbook") { const lb = box.querySelector('[data-kind="lookbook"]'); if (lb) { lb.click(); kindByBrand = true; } }
+          if (w === "brand" && kind !== "lookbook" && inFamily("lookbook")) { const lb = box.querySelector('[data-kind="lookbook"]'); if (lb) { lb.click(); kindByBrand = true; } }
           else if (w !== "brand" && kindByBrand && kind === "lookbook") { const mg = box.querySelector('[data-kind="magazine"]'); if (mg) mg.click(); kindByBrand = false; }
           const f = box.querySelector(w === "talent" ? "#sbForModel" : "#sbForName"); if (w !== "studio" && f) f.focus();
           if (box.drawPreviews) box.drawPreviews();
@@ -9172,12 +9472,14 @@
           kind = b.dataset.kind;
           box.querySelectorAll("[data-kind]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
           const note = box.querySelector("#sbKindNote"); if (note) note.textContent = KIND_NOTE[kind];
+          if (family) box.querySelector("#sbStartTitle").textContent = KIND_TITLE[kind] || FAMILY_TITLE[family];
           box.querySelector("#sbForNote").textContent = forNoteNow();
           // A comp card is one page with no cover to choose: one button instead.
           // A moodboard starts on a board: its layouts stand where the covers would.
           // A pitch or a shoot plan has its own cover: one button too.
-          const cc = kind === "compcard", mb = kind === "moodboard", pl = kind === "pitch" || kind === "shootplan", cal = kind === "calendar";
-          box.querySelector("#sbStartCal").hidden = !cal;
+          const cc = kind === "compcard", mb = kind === "moodboard", pl = kind === "pitch" || kind === "shootplan", cal = kind === "calendar" || kind === "misc";
+          box.querySelector("#sbStartCal").hidden = kind !== "calendar";
+          box.querySelector("#sbStartMisc").hidden = kind !== "misc";
           box.querySelector("#sbStartCC").hidden = !cc && !pl;
           box.querySelector('[data-compcard="1"]').hidden = !cc;
           { const mk = box.querySelector("[data-makeplan]"); mk.hidden = !pl; mk.textContent = kind === "pitch" ? "Make the pitch →" : "Make the shoot plan →"; }
@@ -9187,11 +9489,11 @@
           box.querySelectorAll("[data-kindonly]").forEach((x) => { x.hidden = x.dataset.kindonly !== kind; });
           if (box.drawPreviews) box.drawPreviews();
         }));
-        const first = box.querySelector("[data-start]"); if (first) first.focus();
         // The five covers, drawn small in the style the book will have.
         let previewToken = 0;
         const drawPreviews = async () => {
           const token = ++previewToken;
+          if (!family) return;   // the first step draws nothing yet
           const cache = new Map();
           try { await ensureFonts(); } catch (e) { /* the covers draw in what is there */ }
           for (const [k] of KIND_PLAN[kind] ? [] : COVER_LAYOUTS) {
@@ -9204,6 +9506,22 @@
                 if (slot && box.isConnected && token === previewToken) slot.replaceChildren(r.page.canvas);
               }
             } catch (e) { /* the words stay */ }
+          }
+          // The one-offs, each drawn as its front.
+          if (kind === "misc") {
+            const ids = []; try { for (const [id, hit] of library().byId) { if (!hit.photo.diagram && !hit.photo.outside) ids.push(id); if (ids.length >= 6) break; } } catch (e) { /* frames stay empty */ }
+            for (const [k] of Object.entries(MISC_FORMATS)) {
+              if (!box.isConnected || token !== previewToken) return;
+              const nb = miscBook(newBook("Preview"), k, null); let n = 0;
+              nb.coverPage = { blocks: startBlocks(MISC_FORMATS[k].cover, nb, "preview").map((b) => (b.k === "photo" && ids.length ? { ...b, p: { id: ids[n++ % ids.length], x: 0.5, y: 0.35, zoom: 1 } } : b)) };
+              nb.pages = [];
+              try {
+                for await (const r of renderPages(nb, { dpi: 22, cache, only: -1 })) {
+                  const slot = box.querySelector(`[data-miscfmt="${k}"] .sb-startpic`);
+                  if (slot && box.isConnected && token === previewToken) slot.replaceChildren(r.page.canvas);
+                }
+              } catch (e) { /* the words stay */ }
+            }
           }
           // The calendars, each drawn as its first month (the poster whole), in the year chosen.
           if (kind === "calendar") {
@@ -9267,7 +9585,37 @@
           }
         };
         box.drawPreviews = drawPreviews;
-        drawPreviews();
+        // Step one: what is being made. Step two: that kind's own choices, with a way back.
+        const pickFamily = (f, k) => {
+          family = f;
+          box.querySelector("#sbStartKinds").hidden = true;
+          box.querySelector("#sbStartRest").hidden = false;
+          box.querySelector("#sbStartBack").hidden = false;
+          box.querySelector("#sbStartTitle").textContent = FAMILY_TITLE[f];
+          const noWho = f === "calendar" || f === "misc";
+          box.querySelector("#sbForRow").hidden = noWho;
+          box.querySelector("#sbForNote").hidden = noWho;
+          if (noWho && forWho !== "studio") setWho("studio");
+          fitKindRow();
+          const b = box.querySelector(`[data-kind="${k || FAMILY_OF[f][0]}"]`); if (b) b.click();
+          const go = box.querySelector("#sbStartRest .sb-startitem:not([hidden]), #sbStartRest [data-start]:not([hidden])"); if (go && go.offsetParent) go.focus();
+        };
+        const pickTile = (f) => {
+          if (f !== "compcard") { pickFamily(f); return; }
+          pickFamily("magazine"); setWho("talent");
+          const cc = box.querySelector('[data-kind="compcard"]'); if (cc) cc.click();
+        };
+        const toKinds = () => {
+          family = null; previewToken++;
+          box.querySelector("#sbStartKinds").hidden = false;
+          box.querySelector("#sbStartRest").hidden = true;
+          box.querySelector("#sbStartBack").hidden = true;
+          box.querySelector("#sbStartTitle").textContent = "What are you making?";
+          const t = box.querySelector("[data-pickkind]"); if (t) t.focus();
+        };
+        box.querySelectorAll("[data-pickkind]").forEach((b) => b.addEventListener("click", () => pickTile(b.dataset.pickkind)));
+        box.querySelector("#sbStartBack").addEventListener("click", toKinds);
+        if (fam) pickTile(fam); else toKinds();
       }
       $$("[data-open]").forEach((b) => b.addEventListener("click", () => {
         settle();
@@ -9910,7 +10258,7 @@
         if (b.k === "text") { const t = String(b.t || "").trim(); return t ? { text: t.split("\n")[0].slice(0, 40), empty: false } : { text: "Empty text", empty: true }; }
         if (b.k === "photo") return b.p && b.p.id ? { text: "Photo", empty: false } : { text: "Empty photo frame", empty: true };
         if (b.k === "line") return { text: linePath(b) === "free" ? "Drawn line" : "Line", empty: false };
-        if (b.k === "cal") { const at = calMonth(book, b.m || 0); return { text: `${MONTHS[at.m]} ${at.y}`, empty: false }; }
+        if (b.k === "cal") { const at = calMonth(book, b.m || 0); return { text: `${b.look === "habits" ? "Habits · " : ""}${MONTHS[at.m]} ${at.y}`, empty: false }; }
         return { text: BLOCK_NAME[b.k] || b.k, empty: false };
       };
       const last = blocks.length - 1;
@@ -11129,7 +11477,7 @@
       return entry;
     }
     const addPics = new Map();   // look + item → the canvases drawn for it
-    const addLookKey = () => JSON.stringify([book.style, book.colourway, book.paper, book.orientation, book.bg || "", book.edgeBar, book.typeset || null, bookPhotoIds(book).slice(0, 6)]);
+    const addLookKey = () => JSON.stringify([book.style, book.colourway, book.paper, book.paperW, book.paperH, book.orientation, book.bg || "", book.edgeBar, book.typeset || null, bookPhotoIds(book).slice(0, 6)]);
     function openAdd() {
       const menu = $("#sbAddMenu");
       const count = renderedCount(book);
@@ -11150,19 +11498,13 @@
         groups.push({ id: `g${groups.length}`, name, lay, n: g.items.length, title: lay ? `Layouts · ${name}` : name,
           html: `<div class="sb-additems">${g.items.map(([type, nm, note]) => tile(type, nm, note, g.group, type !== "cover" && full(type.split(":")[0]))).join("")}</div>` });
       }
-      /* Five kinds, under a heading each (v578, the owner: "everything
-         happening at one place"): Start, Pages, Planning, Cards, Layouts. A
-         moodboard, a pitch or a shoot plan leads with Planning and ends with
-         Start (v577: "why cant i make a moodboard without any album" — it
-         opened on From an album); a talent's or a brand's book leads with
-         their cards. Within a kind, the order the menu gives. */
-      const PLANNING = new Set(["Calendar", "Moodboard", "Pitch", "Shoot plan", "Team pages"]), CARDS = new Set(["Comp cards", "For brands"]);
-      const sectionOf = (g) => (g.id === "auto" || g.id === "tpl" ? "Start" : g.lay ? "Layouts" : PLANNING.has(g.name) ? "Planning" : CARDS.has(g.name) ? "Cards" : "Pages");
-      const mf = forOf(book);
-      const ORDER = book.plan ? ["Planning", "Pages", "Cards", "Layouts", "Start"] : mf && (mf.kind === "talent" || mf.kind === "brand") ? ["Start", "Cards", "Pages", "Planning", "Layouts"] : ["Start", "Pages", "Planning", "Cards", "Layouts"];
+      /* Three headings (v581): the book's own kind, Miscellaneous — the free pages and layouts every book shares —
+         and Start (an album, your templates), which leads a magazine or a lookbook and closes a planning book. */
+      const ownLabel = OWN_LABEL[familyOf(book)];
+      const sectionOf = (g) => (g.id === "auto" || g.id === "tpl" ? "Start" : isOwnGroup(book, g.lay ? `Layouts · ${g.name}` : g.name) ? ownLabel : "Miscellaneous");
+      const ORDER = book.plan ? [ownLabel, "Miscellaneous", "Start"] : ["Start", ownLabel, "Miscellaneous"];
       groups.forEach((g, i) => { g.section = sectionOf(g); g.at = i; });
-      const lead = book.plan ? "" : (book.kind === "lookbook" || book.style === "lookbook") ? "Lookbook" : "Magazine";
-      groups.sort((a, b) => ORDER.indexOf(a.section) - ORDER.indexOf(b.section) || (b.name === lead) - (a.name === lead) || a.at - b.at);
+      groups.sort((a, b) => ORDER.indexOf(a.section) - ORDER.indexOf(b.section) || a.at - b.at);
       groups.forEach((g, i) => { g.navHead = i === 0 || groups[i - 1].section !== g.section ? g.section : ""; });
       menu.innerHTML = `
         <div class="sb-addhead"><strong>Add a page</strong><span class="sb-hint">It goes after the page you're on. The book has ${count} page${count === 1 ? "" : "s"}.</span>
@@ -12895,10 +13237,10 @@
       // A month (v580): which one, how it looks, its name on top or not, the colour of its numbers.
       const calFields = b && b.k === "cal" ? `
           <div class="sb-field"><label for="sbCalM">Which month</label><select id="sbCalM" data-calm>${Array.from({ length: 13 }, (_, i) => { const at = calMonth(book, i); return `<option value="${i}" ${(b.m || 0) === i ? "selected" : ""}>${MONTHS[at.m]} ${at.y}</option>`; }).join("")}</select></div>
-          <div class="sb-field"><span class="sb-label">How it looks</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="How the month looks">${[["grid", "A month to write in"], ["mini", "Small"]].map(([k, n]) => `<button type="button" role="radio" data-callook="${k}" aria-checked="${(b.look || "grid") === k}">${n}</button>`).join("")}</div></div>
+          <div class="sb-field"><span class="sb-label">How it looks</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="How the month looks">${[["grid", "A month to write in"], ["mini", "Small"], ["habits", "Habit tracker"]].map(([k, n]) => `<button type="button" role="radio" data-callook="${k}" aria-checked="${(b.look || "grid") === k}">${n}</button>`).join("")}</div></div>
           <label class="sb-check-row"><input type="checkbox" data-caltitle ${b.title === false ? "" : "checked"}> The month's name on top</label>
           <div class="sb-field"><span class="sb-label">Colour of the numbers</span><span class="sb-swatches" role="group" aria-label="Colour of the numbers">${swatch("calcol", "", "The style's own", P.ink, !b.color)}${fills.filter(([k]) => k !== "ink").map(([k, n, c]) => swatch("calcol", k, n, c, b.color === k)).join("")}</span></div>
-          <p class="sb-hint">The year, the month it starts in and the day weeks start on are the whole calendar's: Design → Calendar.</p>` : "";
+          <p class="sb-hint">The year, the month it starts in and the day weeks start on are the whole calendar's: Design → Calendar${b.look === "habits" ? " — and so are the habits a tracker lists" : ""}.</p>` : "";
       const words = b && b.k === "text" ? `
         <div class="sb-field"><span class="sb-label">What kind of words</span>
           <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="What kind of words">${[["kicker", "Small line"], ["head", "Headline"], ["intro", "Intro"], ["body", "Words"], ["quote", "Quote"]].map(([k, n]) => `<button type="button" role="radio" data-role="${k}" aria-checked="${(b.role || "body") === k}">${n}</button>`).join("")}</div></div>
@@ -12947,7 +13289,7 @@
 `;
       box.innerHTML = `
         ${b ? "" : `<details class="sb-pick sb-layouts"><summary>Change the layout</summary>
-          ${LAYOUT_GROUPS.filter((g) => g.group !== "Calendar" || book.plan === "calendar").map((g) => `<p class="sb-label">${esc(g.group)}</p><div class="sb-layoutgrid">${g.items.map(([k, n]) => `<button type="button" class="sb-layoutbtn" data-layout="${k}" title="${esc(n)}">${addIcon(`free:${k}`)}<span>${esc(n)}</span></button>`).join("")}</div>`).join("")}
+          ${layoutGroupsFor(book).map((g) => `<p class="sb-label">${esc(g.group)}</p><div class="sb-layoutgrid">${g.items.map(([k, n]) => `<button type="button" class="sb-layoutbtn" data-layout="${k}" title="${esc(n)}">${addIcon(`free:${k}`)}<span>${esc(n)}</span></button>`).join("")}</div>`).join("")}
           <p class="sb-hint">Your photographs and words move into the new layout, headlines to headlines and photographs in order; anything it has no place for stays where it is. Ctrl+Z goes back.</p></details>`}
         <div class="sb-tools">
           <button type="button" data-addblk="text">${uiIc("type", 20)}<span>Words</span></button>
@@ -12998,7 +13340,7 @@
       box.querySelectorAll("details[data-more]").forEach((d) => d.addEventListener("toggle", () => { moreOpen[d.dataset.more] = d.open; }));
       if (b && b.k === "cal") {
         { const sm = box.querySelector("[data-calm]"); if (sm) sm.addEventListener("change", () => { mark(); b.m = +sm.value; redraw(); }); }
-        box.querySelectorAll("[data-callook]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.callook === "mini") b.look = "mini"; else delete b.look; redraw(); }));
+        box.querySelectorAll("[data-callook]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.callook === "mini" || x.dataset.callook === "habits") b.look = x.dataset.callook; else delete b.look; redraw(); }));
         { const ct = box.querySelector("[data-caltitle]"); if (ct) ct.addEventListener("change", () => { mark(); if (ct.checked) delete b.title; else b.title = false; redraw(); }); }
         box.querySelectorAll("[data-calcol]").forEach((x) => x.addEventListener("click", () => { mark(); if (x.dataset.calcol) b.color = x.dataset.calcol; else delete b.color; redraw(); }));
       }
@@ -13794,7 +14136,7 @@
     async function drawStylePics(force) {
       const panel = $("#sbPanelDesign"); if (!panel || panel.hidden || !panel.querySelector(".sb-stylepic")) return;   // drawn when Design is looked at
       const first = book.pages.findIndex((pg) => pg && pageSpan(pg) === 1);
-      const sig = JSON.stringify([book.colourway, book.orientation, book.paper, book.title, book.subtitle, book.cover, book.coverLayout, book.coverText, book.coverStyle, book.bg, first >= 0 ? book.pages[first] : null]);
+      const sig = JSON.stringify([book.colourway, book.orientation, book.paper, book.paperW, book.paperH, book.title, book.subtitle, book.cover, book.coverLayout, book.coverText, book.coverStyle, book.bg, first >= 0 ? book.pages[first] : null]);
       if (!force && sig === stylePicsFor && !panel.querySelector(".sb-stylepic:empty")) return;
       stylePicsFor = sig;
       const token = ++stylePicToken, cache = new Map(), snap = JSON.parse(JSON.stringify(book));
@@ -13829,13 +14171,15 @@
       const frag = document.createDocumentFragment();
       const base = forOf(book) ? DESIGN_GROUPS : [...DESIGN_GROUPS.slice(1), DESIGN_GROUPS[0]];
       // A calendar's own settings come first, open until closed (v580).
-      const groups = book.plan === "calendar" ? [["calendar", "Calendar", "Year · first month · week · holidays · your dates", ["Calendar"]], ...base] : base;
+      // …and a one-off's paper, its size being the thing (v581).
+      const firstOpen = book.plan === "calendar" ? "calendar" : book.plan === "misc" ? "paper" : "";
+      const groups = book.plan === "calendar" ? [["calendar", "Calendar", "Year · first month · week · holidays · your dates", ["Calendar"]], ...base] : book.plan === "misc" ? [...base.filter((g) => g[0] === "paper"), ...base.filter((g) => g[0] !== "paper")] : base;
       for (const [key, name, note, titles] of groups) {
         const d = document.createElement("details");
-        d.className = "sb-group"; d.dataset.group = key; d.open = key === "calendar" ? !designOpen.has("calendar-shut") : designOpen.has(key);
+        d.className = "sb-group"; d.dataset.group = key; d.open = key === firstOpen ? !designOpen.has(`${key}-shut`) : designOpen.has(key);
         d.innerHTML = `<summary>${esc(name)}<small>${esc(note)}</small></summary>`;
         for (const t of titles) { const el = byTitle.get(t); if (el) { d.appendChild(el); used.add(el); } }
-        d.addEventListener("toggle", () => { if (key === "calendar") { if (d.open) designOpen.delete("calendar-shut"); else designOpen.add("calendar-shut"); } else if (d.open) designOpen.add(key); else designOpen.delete(key); keepDesignOpen(); if (d.open && key === "look") drawStylePics(); });
+        d.addEventListener("toggle", () => { if (key === firstOpen) { if (d.open) designOpen.delete(`${key}-shut`); else designOpen.add(`${key}-shut`); } else if (d.open) designOpen.add(key); else designOpen.delete(key); keepDesignOpen(); if (d.open && key === "look") drawStylePics(); });
         frag.appendChild(d);
       }
       for (const el of secs) if (!used.has(el)) frag.appendChild(el);
@@ -14276,6 +14620,11 @@
             <div class="sb-field"><label for="sbCalStart">Starts in</label><select id="sbCalStart">${MONTHS.map((n, i) => `<option value="${i}" ${c.start === i ? "selected" : ""}>${n}${i === 3 ? " (financial year)" : ""}</option>`).join("")}</select></div>
           </div>
           <div class="sb-field"><span class="sb-label">Weeks start on</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Weeks start on">${[[0, "Sunday"], [1, "Monday"]].map(([k, n]) => `<button type="button" role="radio" data-calweek="${k}" aria-checked="${c.week === k}">${n}</button>`).join("")}</div></div>
+          <div class="sb-field"><span class="sb-label">Week numbers</span><div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Week numbers">${[["", "None"], ["num", "1 2 3"], ["roman", "I II III"]].map(([k, n]) => `<button type="button" role="radio" data-calwkno="${k}" aria-checked="${c.weekNo === k}">${n}</button>`).join("")}</div>
+            ${c.weekNo ? `<p class="sb-hint">${c.week === 1 ? "Counted the ISO way, with Monday first: week 1 holds the year's first Thursday, so some years have 53." : "With Sunday first, week 1 is the week that holds 1 January."} Each number stands before its week.</p>` : ""}</div>
+          ${hasHabits(book) ? `<div class="sb-field"><label for="sbCalHabits">Habits, one a line</label><textarea id="sbCalHabits" rows="5" maxlength="640" placeholder="e.g. Workout" spellcheck="true">${esc(c.habits.join("\n"))}</textarea></div>
+          <div class="sb-field"><label for="sbCalHabitRows">Rows on a tracker</label><select id="sbCalHabitRows">${[4, 6, 8, 10, 12, 15, 20].map((n) => `<option value="${n}" ${c.habitRows === n ? "selected" : ""}>${n}</option>`).join("")}</select>
+            <p class="sb-hint">Every tracker month lists these. A row without a habit stays blank, to write in by hand.</p></div>` : ""}
           <label class="sb-check-row"><input type="checkbox" id="sbCalGhost" ${c.ghost ? "checked" : ""}> The days of the months either side, faint</label>
           <label class="sb-check-row"><input type="checkbox" id="sbCalFixed" ${c.fixed ? "checked" : ""}> National holidays: 26 Jan, 15 Aug, 2 Oct, 25 Dec</label>
           <div class="sb-field"><span class="sb-label">Your dates</span>
@@ -14303,6 +14652,9 @@
       { const yi = panel.querySelector("#sbCalYear"); yi.addEventListener("change", () => { const v = parseInt(yi.value, 10); if (v >= 1900 && v <= 2200) setYear(v); else yi.value = calOf(book).year; }); }
       panel.querySelector("#sbCalStart").addEventListener("change", (e) => setYear(undefined, +e.target.value));
       panel.querySelectorAll("[data-calweek]").forEach((x) => x.addEventListener("click", () => { mark(); const c = cur(); if (+x.dataset.calweek === 1) c.week = 1; else delete c.week; change({ rail: true }); drawDesign(); }));
+      panel.querySelectorAll("[data-calwkno]").forEach((x) => x.addEventListener("click", () => { mark(); const c = cur(); if (x.dataset.calwkno) c.weekNo = x.dataset.calwkno; else delete c.weekNo; change({ rail: true }); drawDesign(); }));
+      { const ht = panel.querySelector("#sbCalHabits"); if (ht) ht.addEventListener("input", () => { const c = cur(), list = ht.value.split("\n").map((x) => x.trim().slice(0, 30)).slice(0, 20); while (list.length && !list[list.length - 1]) list.pop(); if (list.length) c.habits = list; else delete c.habits; change({ rail: false, typing: true }); }); }
+      { const hr = panel.querySelector("#sbCalHabitRows"); if (hr) hr.addEventListener("change", () => { mark(); const c = cur(), v = +hr.value; if (v === 8) delete c.habitRows; else c.habitRows = v; change({ rail: true }); }); }
       panel.querySelector("#sbCalGhost").addEventListener("change", (e) => { mark(); const c = cur(); if (e.target.checked) delete c.ghost; else c.ghost = false; change({ rail: true }); });
       panel.querySelector("#sbCalFixed").addEventListener("change", (e) => { mark(); const c = cur(); if (e.target.checked) delete c.fixed; else c.fixed = false; change({ rail: true }); });
       const dates = () => { const c = cur(); c.dates = Array.isArray(c.dates) ? c.dates.map((x) => ({ ...x })) : []; return c.dates; };
@@ -14332,7 +14684,8 @@
           <div class="sb-seg" role="radiogroup" aria-label="Page shape">${["portrait", "landscape"].map((o) => { const n = o === "portrait" ? "Portrait" : "Landscape"; return `<button type="button" role="radio" data-orient="${o}" aria-checked="${book.orientation === o}" title="${n}" aria-label="Page shape: ${n}">${sbIcon(o, n)}</button>`; }).join("")}</div>
         </div>
         <div class="sb-sec"><h3>Paper size</h3>
-          <div class="sb-seg" role="radiogroup" aria-label="Paper size">${Object.entries(PAPERS).filter(([, p]) => !p.social).map(([k, p]) => `<button type="button" role="radio" data-paper="${k}" aria-checked="${(book.paper || "a4") === k}">${esc(p.name)}</button>`).join("")}</div>
+          <div class="sb-seg sb-seg-wrap" role="radiogroup" aria-label="Paper size">${Object.entries(PAPERS).filter(([, p]) => !p.social).map(([k, p]) => `<button type="button" role="radio" data-paper="${k}" aria-checked="${(book.paper || "a4") === k}">${esc(p.name)}</button>`).join("")}<button type="button" role="radio" data-paper="custom" aria-checked="${book.paper === "custom"}">Your own size</button></div>
+          ${book.paper === "custom" ? `<div class="sb-calrow sb-ownsize"><div class="sb-field"><label for="sbPaperW">Width, mm</label><input type="number" id="sbPaperW" min="30" max="1500" value="${Math.round(geometry(book).pw * 10) / 10}"></div><div class="sb-field"><label for="sbPaperH">Height, mm</label><input type="number" id="sbPaperH" min="30" max="1500" value="${Math.round(geometry(book).ph * 10) / 10}"></div></div>` : ""}
           <span class="sb-label" style="display:block;margin-top:10px">For social media</span>
           <div class="sb-seg sb-seg-sm" role="radiogroup" aria-label="Social media size">${Object.entries(PAPERS).filter(([, p]) => p.social).map(([k, p]) => `<button type="button" role="radio" data-paper="${k}" aria-checked="${book.paper === k}">${esc(p.name)}</button>`).join("")}</div>
           <p class="sb-hint" id="sbPaperNote">${esc(paperNote(book))}</p>
@@ -14490,9 +14843,23 @@
         if (note) note.textContent = `${(book.spacing || "medium") === "medium" ? "The style's own spacing." : (book.spacing === "none" ? "The photographs meet with no gutter at all." : book.spacing === "narrow" ? "Half the style's gutter." : "Nearly twice the style's gutter.")} It scales each style's own number, so the styles keep their proportions to one another.`;
       }, (b) => (book.spacing || "medium") === b.dataset.gap);
       radio("[data-paper]", (b) => {
-        if (b.dataset.paper === "a4") delete book.paper; else book.paper = b.dataset.paper;
+        // Your own size starts from the page as it is, and its two boxes appear (v581).
+        const was = book.paper === "custom";
+        if (b.dataset.paper === "custom") { const G = geometry(book); if (!(book.paperW > 0)) { book.paperW = Math.round(G.pw); book.paperH = Math.round(G.ph); } book.paper = "custom"; }
+        else if (b.dataset.paper === "a4") { delete book.paper; delete book.paperW; delete book.paperH; } else { book.paper = b.dataset.paper; delete book.paperW; delete book.paperH; }
+        if (was !== (book.paper === "custom")) setTimeout(drawDesign, 0);
         const note = $("#sbPaperNote"); if (note) note.textContent = paperNote(book);
       }, (b) => (book.paper || "a4") === b.dataset.paper);
+      // The own size's boxes: 30 to 1500 mm each way; the frame turns to match.
+      ["#sbPaperW", "#sbPaperH"].forEach((sel) => { const el = $(sel); if (!el) return; el.addEventListener("change", () => {
+        const v = parseFloat(el.value);
+        const G = geometry(book), now = { w: Math.round(G.pw * 10) / 10, h: Math.round(G.ph * 10) / 10 };
+        if (!(v >= 30 && v <= 1500)) { el.value = sel === "#sbPaperW" ? now.w : now.h; return; }
+        mark(); if (sel === "#sbPaperW") now.w = Math.round(v * 10) / 10; else now.h = Math.round(v * 10) / 10;
+        book.paperW = now.w; book.paperH = now.h; book.orientation = now.w > now.h ? "landscape" : "portrait";
+        const note = $("#sbPaperNote"); if (note) note.textContent = paperNote(book);
+        change({ rail: true }); drawDesign();
+      }); });
       // A copy at a social media size: a new book, opened; this one untouched.
       $$("[data-socialcopy]").forEach((x) => x.addEventListener("click", () => {
         flush();
@@ -14597,8 +14964,9 @@
     function bookletNote() {
       const el = $("#sbBookletNote"), fold = $('[data-print="fold"]'), pdf = $("#sbPdf"); if (!el || !fold) return;
       wrapNote();
-      const sheet = SHEETS[book.paper || "a4"] || SHEETS.a4, social = isSocial(book);
-      const can = book.orientation !== "landscape" && !social;
+      // Only a paper with a sheet to fold it on can fold (v581: an A3 calendar offered it and failed).
+      const sheet = SHEETS[book.paper || "a4"], social = isSocial(book), pageName = sheet ? sheet.page : paperOf(book).name;
+      const can = book.orientation !== "landscape" && !social && !!sheet;
       fold.disabled = !can;
       if (!can && printMode === "fold") { printMode = "normal"; $$("[data-print]").forEach((x) => x.setAttribute("aria-checked", String(x.dataset.print === "normal"))); }
       if (pdf) pdf.textContent = printMode === "fold" ? "Download PDF to fold" : "Download PDF";
@@ -14607,8 +14975,8 @@
       { const row = $("#sbMarksRow"); if (row && social) row.hidden = true; }
       { const row = $("#sbCmykRow"); if (row && social) row.hidden = true; }
       if (social) { el.textContent = `A ${(PAPERS[book.paper] || {}).name || "social media"} book is for screens: PNG pages are the files to post, one image a page. Folding, crop marks and print colours are for printed books.`; return; }
-      if (!can) { el.textContent = `Normal: one ${sheet.page} page per sheet. Folding needs a portrait book — a landscape one would fold along the top edge.`; return; }
-      if (printMode !== "fold") { el.textContent = `Normal: one ${sheet.page} page per sheet, the size you chose in Design.`; return; }
+      if (!can) { el.textContent = sheet ? `Normal: one ${pageName} page per sheet. Folding needs a portrait book — a landscape one would fold along the top edge.` : `Normal: one ${pageName} page per sheet. Folding into a booklet is for A4, A5, A6, B5 and Letter books; a ${pageName} page goes to the print shop as it is.`; return; }
+      if (printMode !== "fold") { el.textContent = `Normal: one ${pageName} page per sheet, the size you chose in Design.`; return; }
       const n = renderedCount(book), padded = Math.ceil(n / 4) * 4;
       el.textContent = `Fold in half: ${sheet.page} pages two to a ${sheet.name} sheet, in folding order${padded > n ? ` (${padded - n} blank page${padded - n === 1 ? "" : "s"} added to fill the last sheet)` : ""}. Print two-sided, flipping on the short edge, then fold the stack down the middle and staple.${book.paper !== "a5" ? " For A4 sheets from a home printer, set the paper to A5 in Design first." : ""}`;
     }
@@ -14988,7 +15356,10 @@
         }
         const G0 = geometry(snap);
         const ascii = (x) => String(x || "").normalize("NFKD").replace(/[^\x20-\x7e]/g, "").trim();
-        for (const dpi of (exportDpi === 300 ? [300, 150, 110] : [150, 110])) {
+        // A page is drawn at its printed size; a browser canvas holds about 268 million pixels, so a
+        // very big page (an own size up to 1.5 m) skips a resolution it could not hold — 110 dpi always fits.
+        const fitsPx = (d) => d <= 110 || G0.pw * G0.ph * (d / 25.4) ** 2 <= 1.2e8;
+        for (const dpi of (exportDpi === 300 ? [300, 150, 110] : [150, 110]).filter(fitsPx)) {
           const orig = await originalsFor(snap, dpi);
           try {
             const out = [];
@@ -15110,5 +15481,5 @@
     if (again) openBook(JSON.parse(JSON.stringify(again)), false, reopen); else showList();
   }
 
-  window.StudioBook = { calendar: { monthGrid, monthDays, dayOfWeek, calOf, calMonth, isLeap }, mount, renderPages, subjectOf, cutoutCanvas, planWriting, planFree, FREE_STARTS, COLOURWAYS, STYLES, newBook, geometry, PAPERS, WAYS_COPY, PROCESS_COPY, bookletSides, SHEETS, fingerprint, fpScore, fpColour, imageHeader, originalsStore, originalLoader };
+  window.StudioBook = { calendar: { monthGrid, monthDays, dayOfWeek, calOf, calMonth, isLeap, weekNumber, roman }, mount, renderPages, subjectOf, cutoutCanvas, planWriting, planFree, FREE_STARTS, COLOURWAYS, STYLES, newBook, geometry, PAPERS, WAYS_COPY, PROCESS_COPY, bookletSides, SHEETS, fingerprint, fpScore, fpColour, imageHeader, originalsStore, originalLoader };
 })();

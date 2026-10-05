@@ -864,7 +864,7 @@ const STUDIO_BOOK_LIMITS = {
      studio's own credit goes: absent = a line on the last page, "none" =
      nowhere at all, not even the PDF's details (a contract can forbid it). */
   // A moodboard or plan (v575): kept on this computer, never published, whoever it is for.
-  plans: ["moodboard", "pitch", "shoot", "calendar"],
+  plans: ["moodboard", "pitch", "shoot", "calendar", "misc"],
   // roles … statValue: a talent not on the studio's list (v575), whose details live in the book alone.
   madeFor: { kinds: ["brand", "client", "talent"], credits: ["none"], name: 60, email: 120, site: 120, instagram: 40, modelKey: 160, logo: 40, roles: 80, phone: 30, stats: 10, statLabel: 24, statValue: 40 },
   pageTypes: ["photos", "spread", "about", "services", "contact", "divider", "story", "note", "quote", "letter", "feature", "article", "ways", "process", "free", "end", "look", "contents", "more"],
@@ -880,7 +880,7 @@ const STUDIO_BOOK_LIMITS = {
   fits: ["fill", "whole", "width", "height"],
   // Paper a book prints on; absent means A4. Where a writing page's photo sits;
   // absent means the page shape's usual place.
-  papers: ["a4", "b5", "a5", "letter", "ig45", "square", "story", "a3", "a2", "in1218", "sq12", "desk86"],
+  papers: ["a4", "b5", "a5", "letter", "ig45", "square", "story", "a3", "a2", "in1218", "sq12", "desk86", "a6", "custom"],
   /* How much air sits between photographs, as a multiple of the style's own
      gutter. Absent means the style's number, so a book made before the studio
      could ask is stored exactly as it was. */
@@ -1097,7 +1097,7 @@ function cleanStudioPortfolios(o) {
       // A month (v580): which (0–12 after the calendar's first), small or not, its name, its numbers' colour.
       if (x.k === "cal") {
         one.m = Math.round(num(x.m, 0, 12, 0));
-        if (x.look === "mini") one.look = "mini";
+        if (x.look === "mini" || x.look === "habits") one.look = x.look;
         if (x.title === false) one.title = false;
         if (colourOk(x.color)) one.color = String(x.color).toLowerCase();
       }
@@ -1272,7 +1272,9 @@ function cleanStudioPortfolios(o) {
     return {
       id: v.id.slice(0, 40), name: str(v.name, 80) || "Untitled book",
       style: STUDIO_BOOK_STYLES.includes(v.style) ? v.style : "modern",
-      ...(STUDIO_BOOK_LIMITS.papers.includes(v.paper) && v.paper !== "a4" ? { paper: v.paper } : {}),
+      ...(STUDIO_BOOK_LIMITS.papers.includes(v.paper) && v.paper !== "a4" && (v.paper !== "custom" || (v.paperW >= 30 && v.paperW <= 1500 && v.paperH >= 30 && v.paperH <= 1500)) ? { paper: v.paper } : {}),
+      // A size of the studio's own (v581), in mm.
+      ...(v.paper === "custom" && v.paperW >= 30 && v.paperW <= 1500 && v.paperH >= 30 && v.paperH <= 1500 ? { paperW: Math.round(v.paperW * 10) / 10, paperH: Math.round(v.paperH * 10) / 10 } : {}),
       /* Named here or it would be dropped: this normaliser keeps only the
          fields it lists, which is how a new setting silently vanishes on the
          next reload. "medium" is the style's own, so it is not stored. */
@@ -1357,6 +1359,11 @@ function cleanStudioPortfolios(o) {
         if (c.week === 1) out.week = 1;
         if (c.ghost === false) out.ghost = false;
         if (c.fixed === false) out.fixed = false;
+        // Week numbers and a habit tracker's habits (v581).
+        if (c.weekNo === "num" || c.weekNo === "roman") out.weekNo = c.weekNo;
+        const hb = (Array.isArray(c.habits) ? c.habits : []).filter((x) => typeof x === "string").slice(0, 20).map((x) => x.slice(0, 30));
+        if (hb.some((x) => x.trim())) out.habits = hb;
+        const hr = Math.round(num(c.habitRows, 4, 20, 8)); if (hr !== 8) out.habitRows = hr;
         const d = (Array.isArray(c.dates) ? c.dates : []).filter((x) => x && typeof x.d === "string" && /^(\d{4}-)?\d{2}-\d{2}$/.test(x.d)).slice(0, 100).map((x) => ({ d: x.d, t: typeof x.t === "string" ? x.t.slice(0, 30) : "" }));
         if (d.length) out.dates = d;
         return { calendar: out };
@@ -1419,10 +1426,46 @@ function cleanMadeFor(m) {
    computer, which nothing that publishes ever reads. Its id starts "bf", so
    even a copy that somehow lost `madeFor` is still known for what it is. */
 const BOOKS_FOR_OTHERS_KEY = "wps_books_for_others";
+/* A whole copy of each book as this build saved it (v581). An older copy of the site — a tab left open from before a
+   release — re-saves every book through its own cleaner, which drops what it doesn't know: on Oct 1 2026 a v579 tab
+   turned a new calendar into an empty A4 magazine. Older builds never touch this key, so a book they rewrote without
+   editing it (its updatedAt unchanged) is put back from here as it is read, and a book a newer build saved is never
+   written down by an older one. Each page also leaves its build number behind, so an older tab can say it is one. */
+const SITE_BUILD = Number((String((document.querySelector('script[src*="app.js?v="]') || { getAttribute: () => "" }).getAttribute("src")).match(/[?&]v=(\d+)/) || [])[1]) || 0;
+try { if (SITE_BUILD > (Number(localStorage.getItem("wps_build_seen")) || 0)) localStorage.setItem("wps_build_seen", String(SITE_BUILD)); } catch (e) { /* private window */ }
+window.siteBuildIsStale = () => { try { return SITE_BUILD > 0 && (Number(localStorage.getItem("wps_build_seen")) || 0) > SITE_BUILD; } catch (e) { return false; } };
+const wholeKey = (key) => `${key}_whole`;
+function readWhole(key) { try { const w = JSON.parse(localStorage.getItem(wholeKey(key)) || "null"); return w && typeof w === "object" && !Array.isArray(w) ? w : {}; } catch (e) { return {}; } }
+// Reading: a book an older build rewrote but didn't edit comes back as this build (or an older one of ours) saved it.
+function mendBooks(key, versions) {
+  const whole = readWhole(key);
+  return (versions || []).map((v) => { const w = v && whole[v.id]; return w && w.by <= SITE_BUILD && w.at === v.updatedAt && w.v && w.v.id === v.id ? w.v : v; });
+}
+// Saving: what goes down for each book, and the whole copy to write after it.
+function wholeFor(key, versions) {
+  const was = readWhole(key), next = {};
+  const out = versions.map((v) => {
+    const w = was[v.id];
+    // A newer build saved this book and this one hasn't changed it: its book stands, whole.
+    if (w && w.by > SITE_BUILD && w.at === v.updatedAt && w.v && w.v.id === v.id) { next[v.id] = w; return w.v; }
+    next[v.id] = { by: SITE_BUILD, at: v.updatedAt, v };
+    return v;
+  });
+  return { versions: out, whole: next };
+}
+// The main copy first; if the browser is full, the whole copy (only a safety net) makes way for it.
+function putBooks(key, state, whole) {
+  const json = JSON.stringify(state);
+  try { localStorage.setItem(key, json); } catch (e) { try { localStorage.removeItem(wholeKey(key)); localStorage.setItem(key, json); } catch (e2) { return false; } }
+  try { localStorage.setItem(wholeKey(key), JSON.stringify(whole)); } catch (e) { try { localStorage.removeItem(wholeKey(key)); } catch (e2) { /* nothing more to do */ } }
+  return true;
+}
 const isBookForOthers = (v) => !!(v && (v.madeFor || /^bf/.test(String(v.id || ""))));
 function getBooksForOthers() {
   try {
-    const got = cleanStudioPortfolios(JSON.parse(localStorage.getItem(BOOKS_FOR_OTHERS_KEY) || "null"));
+    const raw = JSON.parse(localStorage.getItem(BOOKS_FOR_OTHERS_KEY) || "null");
+    if (raw && Array.isArray(raw.versions)) raw.versions = mendBooks(BOOKS_FOR_OTHERS_KEY, raw.versions);
+    const got = cleanStudioPortfolios(raw);
     if (got) return { versions: got.versions.filter(isBookForOthers), deleted: got.deleted };
   } catch (e) {}
   return { versions: [], deleted: [] };
@@ -1431,9 +1474,9 @@ function saveBooksForOthers(state) {
   // Never markUnpublished: there is nothing to publish.
   const clean = cleanStudioPortfolios(state);
   if (!clean) return false;
-  clean.versions = clean.versions.filter(isBookForOthers);
-  try { localStorage.setItem(BOOKS_FOR_OTHERS_KEY, JSON.stringify(clean)); } catch (e) { return false; }
-  return true;
+  const w = wholeFor(BOOKS_FOR_OTHERS_KEY, clean.versions.filter(isBookForOthers));
+  clean.versions = w.versions;
+  return putBooks(BOOKS_FOR_OTHERS_KEY, clean, w.whole);
 }
 window.getBooksForOthers = getBooksForOthers;
 window.saveBooksForOthers = saveBooksForOthers;
@@ -1453,15 +1496,18 @@ function getStudioPortfolios(live) {
     if (!have || v.updatedAt > have.updatedAt) byId.set(v.id, v);
   }
   // A book made for someone else is never one of these, wherever it came from.
-  const versions = [...byId.values()].filter((v) => !deleted.includes(v.id) && !isBookForOthers(v)).sort((a, b) => b.updatedAt - a.updatedAt);
+  // A book an older build rewrote but didn't edit, whichever copy it was read from, comes back whole (v581).
+  const mended = mendBooks("wps_studio_portfolios", [...byId.values()]).map((v) => (byId.get(v.id) === v ? v : ((cleanStudioPortfolios({ versions: [v], deleted: [] }) || { versions: [] }).versions[0] || byId.get(v.id))));
+  const versions = mended.filter((v) => !deleted.includes(v.id) && !isBookForOthers(v)).sort((a, b) => b.updatedAt - a.updatedAt);
   return { versions, deleted };
 }
 function saveStudioPortfolios(state) {
   if (typeof window.markUnpublished === "function") window.markUnpublished("books");
   const clean = cleanStudioPortfolios(state);
   if (!clean) return false;
-  clean.versions = clean.versions.filter((v) => !isBookForOthers(v));
-  try { localStorage.setItem("wps_studio_portfolios", JSON.stringify(clean)); } catch (e) { return false; }
+  const w = wholeFor("wps_studio_portfolios", clean.versions.filter((v) => !isBookForOthers(v)));
+  clean.versions = w.versions;
+  if (!putBooks("wps_studio_portfolios", clean, w.whole)) return false;
   /* One safety copy, under the newest key. The same copy used to be written
      under all eight older keys as well — ten copies of the library per save,
      so six books with hand-drawn lines filled the browser's 5 MB, which the

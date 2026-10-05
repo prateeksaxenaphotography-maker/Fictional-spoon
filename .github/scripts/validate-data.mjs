@@ -541,7 +541,7 @@ if (books !== undefined && books !== null) {
         checkOneFormat(p, `${what} paragraph ${at}`);
       }
     };
-    const PAPERS = new Set(["a4", "b5", "a5", "letter", "ig45", "square", "story", "a3", "a2", "in1218", "sq12", "desk86"]);
+    const PAPERS = new Set(["a4", "b5", "a5", "letter", "ig45", "square", "story", "a3", "a2", "in1218", "sq12", "desk86", "a6", "custom"]);
     const PHOTO_AT = { story: ["top", "bottom", "left", "right"], note: ["top", "bottom", "left", "right"], quote: ["top", "bottom", "left", "right"], feature: ["left", "right"], article: ["left", "right"] };
     const FITS = new Set(["fill", "whole", "width", "height"]);
     // Lines a page draws for itself that the studio can write over, and the
@@ -633,7 +633,7 @@ if (books !== undefined && books !== null) {
         if (x.r !== undefined && (typeof x.r !== "number" || !(x.r >= -180 && x.r <= 180) || x.r === 0)) fail(`${at} is turned ${JSON.stringify(x.r)}; it must be a number from -180 to 180, and 0 is not written`);
         if (x.k === "cal") {
           if (!Number.isInteger(x.m) || x.m < 0 || x.m > 12) fail(`${at} shows month ${JSON.stringify(x.m)}; the app writes 0 to 12 after the calendar's first`);
-          if (x.look !== undefined && x.look !== "mini") fail(`${at} looks ${JSON.stringify(x.look)}; the app writes "mini", and nothing for a month to write in`);
+          if (x.look !== undefined && x.look !== "mini" && x.look !== "habits") fail(`${at} looks ${JSON.stringify(x.look)}; the app writes "mini" or "habits", and nothing for a month to write in`);
           if (x.title !== undefined && x.title !== false) fail(`${at} has title ${JSON.stringify(x.title)}; the app writes false, and nothing otherwise`);
           if (x.color !== undefined && !isFill(x.color)) fail(`${at} has numbers in ${JSON.stringify(x.color)}`);
         }
