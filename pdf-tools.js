@@ -1549,7 +1549,11 @@
     const { w: PW, margin: M } = PDF_PAGE;
     const CW = PW - M * 2;
     const stats = portfolioPdfStatCells(spec.shoot);
-    const contact = portfolioPdfContactCells(spec.shoot, spec);
+    /* A watermarked page — the free preview, the free PNGs, a studio sample — keeps the phone and email for the
+       paid PDF, saying where they go (v582, the owner: "if I give number and email id with watermark then why
+       will anyone pay me, won't they like to directly connect with them?"). The same width of row either way is
+       not promised: a long email may wrap where "on your PDF" didn't. */
+    const contact = portfolioPdfContactCells(spec.shoot, spec).map((c) => (spec.preview && (c.label === "Phone" || c.label === "Email") ? { label: c.label, value: "on your PDF" } : c));
     /* Two rows, two answers. The measurements and the ways to reach the model
        are different things saying different work — the studio wanted the
        stats centred over a centred page while the contact line stayed left,
@@ -1821,6 +1825,7 @@
   }
 
   async function renderPortfolioPdfPages(spec, { dpi, watermark, markAlpha, cache }) {
+    if (watermark) spec = { ...spec, preview: true };   // the phone and email wait for the paid PDF
     const slots = [spec.lead, ...spec.others];
     // The preview is small, so it draws from the 960px copies when they exist.
     const srcFor = (photo) => photoSrc(dpi < 100 && photo.medium ? { url: photo.medium } : photo);
@@ -2944,7 +2949,7 @@
             <label><span class="pp-sr">Based in</span><input type="text" id="ppLocation" maxlength="40" placeholder="Based in (optional)" value="${esc(state.location)}" /></label>
             <label><span class="pp-sr">Phone</span><input type="tel" id="ppPhone" maxlength="20" placeholder="Phone (optional)" value="${esc(state.phone)}" /></label>
           </div>
-          <p class="pp-hint">Fill in either, both or neither — they are independent. Printed on your PDF only, never saved.</p>
+          <p class="pp-hint">Fill in either, both or neither — they are independent. ${admin ? "Printed on your PDF only, never saved." : "Never saved. The phone prints on the PDF you pay for; the free preview shows “on your PDF” in its place."}</p>
         </details>
         </div>
         <div class="pp-choose-main">
@@ -3602,7 +3607,7 @@ ${admin ? `
             <label><span class="pp-sr">Based in</span><input type="text" id="ppLocation" maxlength="40" placeholder="Based in (optional)" value="${esc(state.location)}" /></label>
             <label><span class="pp-sr">Phone</span><input type="tel" id="ppPhone" maxlength="20" placeholder="Phone (optional)" value="${esc(state.phone)}" /></label>
           </div>
-          <p class="pp-hint">Fill in either, both or neither — they are independent. Printed on your PDF only, never saved.</p>
+          <p class="pp-hint">Fill in either, both or neither — they are independent. ${admin ? "Printed on your PDF only, never saved." : "Never saved. The phone prints on the PDF you pay for; the free preview shows “on your PDF” in its place."}</p>
         </details>
         ${payable ? `
           <p class="pp-hint">Free with the watermark, as ${pngs}. Pay below for the PDF without it.</p>
