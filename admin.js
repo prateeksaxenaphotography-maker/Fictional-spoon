@@ -1682,6 +1682,7 @@ function cleanModels(state) {
     Object.keys(m).forEach((k) => {
       if (/^show[A-Za-z]+On(CompCard|Home|Pdf)$/.test(k) && typeof m[k] === "boolean") out[k] = m[k];
     });
+    if (m.socialsChosen === true) out.socialsChosen = true;   // v585: its switches were chosen, not the form's first ticks
     return out;
   }).filter(Boolean);
   // One record per key: a duplicate key would give the model two cards, which
@@ -6349,12 +6350,12 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
               </div>
               <div class="vis-matrix" id="repVisibility">
                 <p class="vis-matrix-title">Contact details</p>
-                <p class="vis-matrix-sub">Tick where each detail should appear. Only the model's Instagram is on by default. Agency links only appear where the agency name does.</p>
+                <p class="vis-matrix-sub">Tick where each detail should appear. Everything starts off: only names show until you tick a detail on. Agency links only appear where the agency name does.</p>
                 <table class="vis-table">
                   <thead><tr><th></th><th>Comp cards &amp; portfolio</th><th>Homepage</th><th>PDFs</th></tr></thead>
                   <tbody>
                     <tr class="vis-group"><th colspan="4">Model</th></tr>
-                    <tr><th>Instagram</th><td><input id="f_show_ig_cc" type="checkbox" checked aria-label="Model Instagram on comp cards and portfolio" /></td><td><input id="f_show_ig_home" type="checkbox" checked aria-label="Model Instagram on homepage" /></td><td><input id="f_show_ig_pdf" type="checkbox" checked aria-label="Model Instagram on PDFs" /></td></tr>
+                    <tr><th>Instagram</th><td><input id="f_show_ig_cc" type="checkbox" aria-label="Model Instagram on comp cards and portfolio" /></td><td><input id="f_show_ig_home" type="checkbox" aria-label="Model Instagram on homepage" /></td><td><input id="f_show_ig_pdf" type="checkbox" aria-label="Model Instagram on PDFs" /></td></tr>
                     <tr><th>Kavyar</th><td><input id="f_show_kavyar_cc" type="checkbox" aria-label="Model Kavyar on comp cards and portfolio" /></td><td><input id="f_show_kavyar_home" type="checkbox" aria-label="Model Kavyar on homepage" /></td><td><input id="f_show_kavyar_pdf" type="checkbox" aria-label="Model Kavyar on PDFs" /></td></tr>
                     <tr><th>LinkedIn</th><td><input id="f_show_linkedin_cc" type="checkbox" aria-label="Model LinkedIn on comp cards and portfolio" /></td><td><input id="f_show_linkedin_home" type="checkbox" aria-label="Model LinkedIn on homepage" /></td><td><input id="f_show_linkedin_pdf" type="checkbox" aria-label="Model LinkedIn on PDFs" /></td></tr>
                     <tr><th>Behance</th><td><input id="f_show_behance_cc" type="checkbox" aria-label="Model Behance on comp cards and portfolio" /></td><td><input id="f_show_behance_home" type="checkbox" aria-label="Model Behance on homepage" /></td><td><input id="f_show_behance_pdf" type="checkbox" aria-label="Model Behance on PDFs" /></td></tr>
@@ -6370,6 +6371,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
                     <tr><th>Email</th><td><input id="f_show_agency_email_cc" type="checkbox" aria-label="Agency email on comp cards and portfolio" /></td><td><input id="f_show_agency_email_home" type="checkbox" aria-label="Agency email on homepage" /></td><td><input id="f_show_agency_email_pdf" type="checkbox" aria-label="Agency email on PDFs" /></td></tr>
                   </tbody>
                 </table>
+                <label class="vis-crew" style="display: flex; gap: 8px; align-items: center; margin-top: 10px; font-size: 13px;"><input id="f_show_crew_socials" type="checkbox" style="width: 16px; height: 16px; accent-color: var(--accent-text);" /> The crew's handles in the credits — make-up, hair, styling, mentor, location (off: names only)</label>
               </div>
               <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 4px 0 0;">On the album page, show:</p>
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
@@ -7073,6 +7075,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         });
         // Agency defaults to shown, the email to hidden: it is personal data.
         REP_SWITCHES.forEach(([id, what]) => REP_SURFACES.forEach(([sfx, sf]) => { const el = $(`#f_show_${id}_${sfx}`); if (el) el.checked = showRep(editingShoot, what, sf); }));
+        { const el = $("#f_show_crew_socials"); if (el) el.checked = editingShoot.showCrewSocials === true; }
 
         staged = editingShoot.photos.map(p => {
           const isCover = editingShoot.coverPhotoId ? (p.id.split("-")[0] === editingShoot.coverPhotoId) : false;
@@ -7950,6 +7953,7 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         showGear: $("#f_show_gear")?.checked ?? true,
         showLocation: $("#f_show_location")?.checked ?? true,
         ...repSwitchValues(),
+        showCrewSocials: $("#f_show_crew_socials")?.checked === true,
         coverPhotoId: (coverItem ? coverItem.id : null),
         // When this copy was last changed, and which photos were taken out of
         // it: the two things that let a publish from another device tell a

@@ -4392,3 +4392,23 @@ main[data-static-path] .pr-links a { display: inline-block; padding: 4px 2px; }
   .admin-pkg-editor-row { grid-template-columns: 1fr 1fr !important; }
   .admin-pkg-editor-row > div:last-child { grid-column: 1 / -1; justify-content: flex-start !important; padding-top: 4px !important; }
 }
+
+/* The photo viewer on a phone scrolls as one page (Oct 2026, the owner: "on mobile when we open an album the image gets
+   stuck on top and then album details come down with scroll its a wrong function"). Before, the photo held three
+   quarters of the screen and the details scrolled in a strip of their own under it. Now the photo comes first, as
+   large as the screen allows with the top of the details peeking below it, and one scroll carries it away to the
+   album's details. The bar — counter, Details & PDFs, × — stays at the top. These rules come last so they win over
+   the strip's. */
+@media (max-width: 767px) {
+  /* Only while open: a closed viewer keeps its [hidden] (an id rule would outrank it and cover the page). */
+  #lightbox:not([hidden]) { display: block !important; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  /* A blur behind a box makes it the frame its pinned children hold to, so the bar scrolled away with the photo;
+     the viewer's ground is 95% opaque already, so on a phone it goes without the blur and the bar stays put. */
+  #lightbox:not([hidden]) { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+  #lightbox .lightbox-main { height: auto !important; min-height: 0; padding: 6px 6px 0; }
+  #lightbox .lightbox-main > div:first-child { position: fixed !important; }
+  #lightbox .lightbox-figure { padding: 64px 0 0 !important; }
+  #lightbox img, #lightboxImg { height: auto !important; max-height: calc(86svh - 64px) !important; }
+  #lightbox .lightbox-sidebar, #lightbox.lb-details-open .lightbox-sidebar { max-height: none !important; height: auto !important; overflow: visible !important; padding: 18px 18px 48px; }
+  #lightbox.lb-details-open img, #lightbox.lb-details-open #lightboxImg { max-height: calc(86svh - 64px) !important; }
+}

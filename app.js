@@ -1498,7 +1498,7 @@ window.resolveContractArchive = function(version) {
     return `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent-text); font-weight:700; text-decoration:none; margin-left:${margin}; display:inline-flex; align-items:center; gap:2px;">${esc(label)}${arrow}</a>`;
   }
 
-  function renderCreditLinks(text, delimiter = ";", compact = false) {
+  function renderCreditLinks(text, delimiter = ";", compact = false, allow = null) {
     if (!text || text === "—") return "—";
     const items = text.split(",").map(item => item.trim()).filter(Boolean);
     const renderedItems = items.map(item => {
@@ -1508,8 +1508,8 @@ window.resolveContractArchive = function(version) {
       if (match) {
         const rawName = item.replace(parenRegex, "").trim();
         const rawSocials = match[1].split(delimiter).map(s => s.trim()).filter(Boolean);
-        const socialLinks = rawSocials.map(s => buildSocialLinkHtml(s, compact)).join(" ");
-        return `${esc(rawName)} ${socialLinks}`;
+        const socialLinks = rawSocials.filter(s => !allow || allow(s)).map(s => buildSocialLinkHtml(s, compact)).join(" ");
+        return socialLinks ? `${esc(rawName)} ${socialLinks}` : esc(rawName);
       }
       
       // 2. Inline format: Name @handle or Name instagram.com/handle
@@ -1519,8 +1519,8 @@ window.resolveContractArchive = function(version) {
         let cleanName = item;
         handles.forEach(h => { cleanName = cleanName.replace(h, ""); });
         cleanName = cleanName.replace(/—|-/g, "").trim();
-        const socialLinks = handles.map(h => buildSocialLinkHtml(h, compact)).join(" ");
-        return `${esc(cleanName)} ${socialLinks}`;
+        const socialLinks = handles.filter(h => !allow || allow(h)).map(h => buildSocialLinkHtml(h, compact)).join(" ");
+        return socialLinks ? `${esc(cleanName)} ${socialLinks}` : esc(cleanName);
       }
 
       return esc(item);
@@ -1537,16 +1537,22 @@ window.resolveContractArchive = function(version) {
   // Pdf). Older albums saved a single switch (showAgency / showModelEmail);
   // that is honoured when no per-surface value exists. Agency defaults to
   // shown, the email to hidden: it is personal data.
-  // Every visibility switch: [input id stem, what, default]. Only the
-  // model's Instagram is on unless switched on.
+  // Every visibility switch: [input id stem, what, default]. All start off:
+  // only names show until the studio ticks a detail on (v585, the owner: "only
+  // names should be visible").
   const REP_SWITCHES = [
-    ["ig", "ModelInstagram", true], ["kavyar", "ModelKavyar", false], ["linkedin", "ModelLinkedin", false], ["behance", "ModelBehance", false], ["website", "ModelWebsite", false], ["email", "Email", false],
+    ["ig", "ModelInstagram", false], ["kavyar", "ModelKavyar", false], ["linkedin", "ModelLinkedin", false], ["behance", "ModelBehance", false], ["website", "ModelWebsite", false], ["email", "Email", false],
     ["agency", "Agency", false], ["agency_ig", "AgencyInstagram", false], ["agency_kavyar", "AgencyKavyar", false], ["agency_linkedin", "AgencyLinkedin", false], ["agency_behance", "AgencyBehance", false], ["agency_website", "AgencyWebsite", false], ["agency_email", "AgencyEmail", false]
   ];
   const REP_SURFACES = [["cc", "CompCard"], ["home", "Home"], ["pdf", "Pdf"]];
-  const repSwitchValues = () => { const o = {}; REP_SWITCHES.forEach(([id, what, def]) => REP_SURFACES.forEach(([sfx, sf]) => { o[`show${what}On${sf}`] = $(`#f_show_${id}_${sfx}`)?.checked ?? def; })); return o; };
+  // Saved from the form: each switch as ticked, and that they were chosen (see showRep).
+  const repSwitchValues = () => { const o = { socialsChosen: true }; REP_SWITCHES.forEach(([id, what, def]) => REP_SURFACES.forEach(([sfx, sf]) => { o[`show${what}On${sf}`] = $(`#f_show_${id}_${sfx}`)?.checked ?? def; })); return o; };
   const showRep = (shoot, what, surface) => {
     if (!shoot) return false;
+    // The model's Instagram started ticked before v585, so an "on" saved then was
+    // the form's, not the studio's (the owner: "unless i as admin turn it on"). It
+    // counts once the album is saved again, with the switch chosen.
+    if (what === "ModelInstagram" && shoot.socialsChosen !== true) return false;
     const v = shoot[`show${what}On${surface}`];
     if (v !== undefined) return v === true;
     // Only the model's Instagram is shown unless a switch says otherwise.
@@ -1554,8 +1560,13 @@ window.resolveContractArchive = function(version) {
     if (what === "Email") return shoot.showModelEmail === true;
     // Kavyar / LinkedIn / Behance / website briefly shared one switch.
     if (["ModelKavyar", "ModelLinkedin", "ModelBehance", "ModelWebsite"].includes(what)) return shoot[`showModelSocialsOn${surface}`] === true;
-    return what === "ModelInstagram";
+    return false;
   };
+  // Which switch a model's handle answers to, by what it is.
+  const MODEL_SOCIAL = { instagram: "ModelInstagram", kavyar: "ModelKavyar", linkedin: "ModelLinkedin", behance: "ModelBehance", website: "ModelWebsite", email: "Email" };
+  // A credit's handles allowed on a surface: the model's under their switches; the crew's under "Crew's socials".
+  const modelHandleOk = (shoot, surface) => (h) => showRep(shoot, MODEL_SOCIAL[(classifySocial(h) || {}).kind] || "ModelWebsite", surface);
+  const crewHandleOk = (shoot) => () => !!shoot && shoot.showCrewSocials === true;
   // The agency is typed like every other credit — "Name (@handle; site.com)" —
   // and stored split, because comp cards and PDFs print the name and link
   // the handle separately.
@@ -2834,8 +2845,24 @@ window.resolveContractArchive = function(version) {
   // there by the time the builder calls one of these.
   window.closeLb = (keep) => closeLb(keep);
   // Phone: "Details & PDFs" opens the info panel to most of the screen (V5).
+  const lbOnePage = () => window.matchMedia("(max-width: 767px)").matches;
+  const lbDetailsLabel = () => {
+    const box = document.getElementById("lightbox"), side = document.getElementById("lightboxSidebar"), btn = document.getElementById("lbDetailsBtn");
+    if (!box || !side || !btn || !lbOnePage()) return;
+    const there = box.scrollTop > side.offsetTop - 140;
+    btn.textContent = there ? "Back to photo" : "Details & PDFs"; btn.setAttribute("aria-expanded", String(there));
+  };
+  document.getElementById("lightbox")?.addEventListener("scroll", lbDetailsLabel, { passive: true });
   document.getElementById("lbDetailsBtn")?.addEventListener("click", (e) => {
     const box = document.getElementById("lightbox");
+    // A phone (v585, the owner: the photo "gets stuck on top" and the details "come down with scroll"): the viewer is
+    // one page, so the button goes to the details and back rather than squeezing the photo.
+    if (lbOnePage()) {
+      const side = document.getElementById("lightboxSidebar");
+      const there = box.scrollTop > side.offsetTop - 140;
+      box.scrollTo({ top: there ? 0 : Math.max(0, side.offsetTop - 58), behavior: "smooth" });
+      return;
+    }
     const open = !box.classList.contains("lb-details-open");
     box.classList.toggle("lb-details-open", open);
     e.currentTarget.setAttribute("aria-expanded", String(open));
@@ -2999,7 +3026,8 @@ window.resolveContractArchive = function(version) {
     
     // Parse social handle
     let igHtml = "";
-    if (shoot.instagram && shouldShowField(shoot, "Instagram")) {
+    const viewSurface = isCurrentlyCompCardView() ? "CompCard" : "Home";
+    if (shoot.instagram && shouldShowField(shoot, "Instagram") && showRep(shoot, "ModelInstagram", viewSurface)) {
       const handles = compCardOwnHandles(shoot, shoot.instagram.split(",").map(x => x.trim()).filter(Boolean), isIgHandle);
       if (handles.length) {
         const links = handles.map(h => {
@@ -3110,7 +3138,7 @@ window.resolveContractArchive = function(version) {
       const items = String(val).split(",").map(x => x.trim()).filter(Boolean);
       if (!items.length) return;
       const rendered = items.map(item => {
-        let html = isCcPage ? esc(getTalentCleanName(item)) : (opts.plain ? renderCreditsValue(item) : renderCreditValue(item));
+        let html = isCcPage ? esc(getTalentCleanName(item)) : renderCreditLinks(item, ";", !!opts.plain, opts.allow || crewHandleOk(shoot));
         // A model line with no link of its own borrows the album's handle.
         if (opts.attachIg && igHtml && !html.includes("href=") && !html.includes("@")) html += ` <span class="lb-ig">${igHtml}</span>`;
         return `<span class="lb-person">${html}</span>`;
@@ -3120,7 +3148,7 @@ window.resolveContractArchive = function(version) {
     const hasTalent = !!(shoot.talent && shoot.talent !== "—");
     // "Talent" everywhere, the owner's word (Sep 25 2026, audit L17): the cards
     // and credits already said it; this viewer said "Model".
-    if (hasTalent) addGroup("Talent", shoot.talent, { plural: "Talent", attachIg: true });
+    if (hasTalent) addGroup("Talent", shoot.talent, { plural: "Talent", attachIg: true, allow: modelHandleOk(shoot, viewSurface) });
     if (shoot.photographer || shoot.secondaryPhotographers) addGroup("Photography", [photographerCredit(shoot.photographer), shoot.secondaryPhotographers].filter(Boolean).join(", "));
     if (shoot.mentor) addGroup("Mentor", shoot.mentor, { plural: "Mentors" });
     if (shoot.artDirector) addGroup("Art direction", shoot.artDirector);
@@ -3139,7 +3167,7 @@ window.resolveContractArchive = function(version) {
     const studioLinkHtml = (href, platform) =>
       `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer" title="${esc(cfg.studioName || "the studio")} on ${platform}" aria-label="${esc(cfg.studioName || "the studio")} on ${platform} (opens in a new tab)">${platform} ↗</a>`;
     const locBits = [];
-    if (shoot.location && shoot.location !== "—") locBits.push(`<span class="lb-person">${renderCreditLinks(shoot.location)}</span>`);
+    if (shoot.location && shoot.location !== "—") locBits.push(`<span class="lb-person">${renderCreditLinks(shoot.location, ";", false, crewHandleOk(shoot))}</span>`);
     if (locBits.length) groups.push({ label: "Location", rendered: locBits });
     const studioLinks = [];
     if (cfg.instagram) studioLinks.push(studioLinkHtml(cfg.instagram, "Instagram"));
@@ -3338,6 +3366,7 @@ window.resolveContractArchive = function(version) {
   // own — so Back means "close this", and the page under it never moves.
   let lbHistoryEntry = false;
   function openLb(list, idx) {
+    { const box = document.getElementById("lightbox"); if (box) box.scrollTop = 0; }
     if (!list || !list.length) return;   // nothing to show is not a lightbox
     lbReturnFocus = document.activeElement;
     lbList = list; lbIdx = idx; paintLb(); lb.hidden = false;
@@ -3541,16 +3570,17 @@ window.resolveContractArchive = function(version) {
     // area (.lightbox-main), not the whole overlay: attaching to `lb` meant a
     // diagonal scroll gesture inside the scrollable credits/stats sidebar
     // could register as a left/right swipe and jump to the next photo.
-    let touchStartX = 0;
+    let touchStartX = 0, touchStartY = 0;
     let touchEndX = 0;
     let lastSwipeAt = 0;
     const lbMain = $(".lightbox-main") || lb;
     lbMain.addEventListener("touchstart", (e) => {
-      touchStartX = e.changedTouches[0].screenX;
+      touchStartX = e.changedTouches[0].screenX; touchStartY = e.changedTouches[0].screenY;
     }, { passive: true });
     lbMain.addEventListener("touchend", (e) => {
       touchEndX = e.changedTouches[0].screenX;
       const diff = touchEndX - touchStartX;
+      if (Math.abs(diff) < 1.5 * Math.abs(e.changedTouches[0].screenY - touchStartY)) return;   // mostly up or down: a scroll
       if (diff < -50) { lastSwipeAt = Date.now(); stepLb(1); }       // Swipe left -> Next
       else if (diff > 50) { lastSwipeAt = Date.now(); stepLb(-1); }  // Swipe right -> Prev
     }, { passive: true });
@@ -3994,7 +4024,7 @@ window.resolveContractArchive = function(version) {
       // album can list several models, each with their own handle inlined,
       // and s.instagram won't necessarily carry them. This strips the
       // parentheses AND renders each handle as a link, so no link is lost.
-      if (s.talent && s.talent !== "—") creditsList.push(`Talent <strong>${renderCreditValue(s.talent)}</strong>`);
+      if (s.talent && s.talent !== "—") creditsList.push(`Talent <strong>${renderCreditLinks(s.talent, ";", false, modelHandleOk(s, repSurface))}</strong>`);
       // The talent line already links the handle when it carries one; the
       // Socials line printed the same @handle again (V12).
       if (igHtml && showRep(s, "ModelInstagram", repSurface) && !/@|https?:/i.test(String(s.talent || ""))) creditsList.push(`Socials ${igHtml}`);
@@ -5459,6 +5489,8 @@ window.resolveContractArchive = function(version) {
         const emailSrc = minor ? null : sources.find((x) => x.modelEmail && String(x.modelEmail).trim());
         const repFlags = {};
         REP_SWITCHES.forEach(([, what]) => REP_SURFACES.forEach(([, sf]) => { const src = what.startsWith("Agency") ? agencySrc : what === "Email" ? emailSrc : sources[0]; repFlags[`show${what}On${sf}`] = showRep(src, what, sf); }));
+        repFlags.socialsChosen = true;   // decided above, album by album
+        repFlags.showCrewSocials = sources.some((x) => x && x.showCrewSocials === true);
 
         // Model type merges across the group instead of taking the latest
         // shoot's value: a model tagged Fashion on one shoot and Fitness on
