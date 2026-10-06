@@ -12131,8 +12131,11 @@ window.resolveContractArchive = function(version) {
        for it, and they were better than the ones below: the home title
        became a 97-character list and every album's own description a
        template (Sep 2026 audit, G3). On that page they are kept; the app's
-       own apply only once the visitor moves elsewhere. */
-    if (BUILT_SEO && location.pathname === BUILT_SEO.path && !location.search) {
+       own apply only once the visitor moves elsewhere. Not on Testimonials:
+       its shell always says "Client Testimonials & Reviews", the same words
+       as below, and only the app knows whether any are published — with
+       none, the tab must invite the first (Oct 2026, test-testimonials). */
+    if (BUILT_SEO && key !== "testimonials" && location.pathname === BUILT_SEO.path && !location.search) {
       document.title = BUILT_SEO.title;
       const d = document.querySelector('meta[name="description"]');
       if (d && BUILT_SEO.desc) d.setAttribute("content", BUILT_SEO.desc);
@@ -12345,7 +12348,7 @@ window.resolveContractArchive = function(version) {
      count. Both the menu and the footer, on every shell. */
   function syncTestimonialsNavLink() {
     const live = isAdmin() || getAllTestimonials().length > 0;
-    document.querySelectorAll('a[href="/testimonials/"], a[href="/testimonials/"]').forEach((a) => {
+    document.querySelectorAll('a[href="/testimonials/"]').forEach((a) => {
       const holder = a.closest(".nav-links li") || a;
       holder.style.display = live ? "" : "none";
     });
