@@ -620,7 +620,23 @@
     }
     ctx.restore();
   }
+  /* A template's frame (v584): a soft grey box with a sun over two hills in it, so it reads "a photograph goes
+     here". renderPages draws every photo this way when asked for a blank picture, from this stand-in, which knows
+     only its shape and is never loaded. */
+  const BLANK_IMG = { width: 800, height: 1000, naturalWidth: 800, naturalHeight: 1000, blank: true };
+  function blankPhoto(page, x, y, w, h) {
+    rect(page, x, y, w, h, "#E4E1DB");
+    const s = Math.min(w, h) * 0.36, cx = x + w / 2, cy = y + h / 2, u = page.u, ctx = page.ctx;
+    if (s >= 1.5) {
+      ctx.save(); ctx.fillStyle = "#C6C1B8";
+      ctx.beginPath(); ctx.arc(u(cx + s * 0.24), u(cy - s * 0.2), u(s * 0.12), 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(u(cx - s * 0.5), u(cy + s * 0.32)); ctx.lineTo(u(cx - s * 0.14), u(cy - s * 0.1)); ctx.lineTo(u(cx + s * 0.1), u(cy + s * 0.14));
+      ctx.lineTo(u(cx + s * 0.26), u(cy)); ctx.lineTo(u(cx + s * 0.5), u(cy + s * 0.32)); ctx.closePath(); ctx.fill(); ctx.restore();
+    }
+    return { x, y, w, h };
+  }
   function drawPhoto(page, img, shot, x, y, w, h) {
+    if (img && img.blank) return blankPhoto(page, x, y, w, h);
     const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
     if (!iw || !ih) return;
     // A lighting diagram is a drawing with labels: shown whole on white,
@@ -697,6 +713,7 @@
   // A missing photo (its album deleted since) leaves a quiet, labelled gap
   // rather than breaking the page.
   function missing(page, P, x, y, w, h) {
+    if (page.blank) { blankPhoto(page, x, y, w, h); return; }
     rect(page, x, y, w, h, P.rule);
     font(page, 500, 2.4, F.plex, 0.3);
     text(page, "PHOTO REMOVED", x + w / 2, y + h / 2, P.soft, "center");
@@ -2303,6 +2320,7 @@
      `mode` is "crop" to fill the box, or "fit" (also "fit-left", "fit-right")
      to show the photograph whole inside it. */
   function decoPhoto(page, P, deco, img, shot, x, y, w, h, mode = "crop", seed = 0, index = 0) {
+    if (img && img.blank) return blankPhoto(page, x, y, w, h);
     const kind = deco && deco.kind, crop = mode === "crop";
     const align = mode === "fit-right" ? "right" : mode === "fit-left" ? "left" : "center";
     // A placement the studio chose for the photo wins over showing it whole.
@@ -4025,6 +4043,95 @@
   // inward. A count that isn't a multiple of four is filled with blank pages
   // (0) just before the last page, so the cover and the last page still come
   // out on the outside of the folded stack.
+  /* ---------- Word and PowerPoint (v584) ------------------------------------------
+     Each page goes in as the picture the PNG would be — the look exactly; the words
+     are not editable there — one to a Word page or a PowerPoint slide the book's own
+     size. Both are a zip of XML, written here and stored rather than compressed (the
+     pictures are JPEGs already). Word's pages stop at 22 inches and PowerPoint's
+     slides at 56, so a bigger page is scaled down to fit, the same shape. */
+  const OFFICE_MAX = { docx: 558.8, pptx: 1422.4 };
+  const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  const crc32 = (b) => { let c = 0xffffffff; for (let i = 0; i < b.length; i++) c = CRC_T[(c ^ b[i]) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+  function zipStore(files) {
+    const enc = new TextEncoder(), parts = [], central = [];
+    const d = new Date(), time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+    let offset = 0;
+    for (const f of files) {
+      const name = enc.encode(f.name), data = typeof f.data === "string" ? enc.encode(f.data) : f.data instanceof Uint8Array ? f.data : new Uint8Array(f.data), crc = crc32(data);
+      const h = new DataView(new ArrayBuffer(30));
+      h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(10, time, true); h.setUint16(12, date, true);
+      h.setUint32(14, crc, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, name.length, true);
+      parts.push(new Uint8Array(h.buffer), name, data);
+      const c = new DataView(new ArrayBuffer(46));
+      c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(12, time, true); c.setUint16(14, date, true);
+      c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, data.length, true); c.setUint16(28, name.length, true); c.setUint32(42, offset, true);
+      central.push(new Uint8Array(c.buffer), name);
+      offset += 30 + name.length + data.length;
+    }
+    const size = central.reduce((n, x) => n + x.length, 0), e = new DataView(new ArrayBuffer(22));
+    e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, size, true); e.setUint32(16, offset, true);
+    return [...parts, ...central, new Uint8Array(e.buffer)];
+  }
+  const xmlEsc = (v) => String(v || "").replace(/[<>&"']/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&apos;" })[c]);
+  const XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+  const NS_A = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"', NS_R = 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"', NS_P = 'xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"';
+  const REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+  const rels = (list) => `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${list.map(([id, type, target]) => `<Relationship Id="${id}" Type="${type}" Target="${target}"/>`).join("")}</Relationships>`;
+  const coreXml = (meta) => `${XML}<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${xmlEsc(meta.title)}</dc:title><dc:creator>${xmlEsc(meta.author)}</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">${new Date().toISOString().replace(/\.\d+Z$/, "Z")}</dcterms:created></cp:coreProperties>`;
+  const appXml = () => `${XML}<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><Application>nerdyphotographer.in</Application></Properties>`;
+  const types = (overrides) => `${XML}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpeg" ContentType="image/jpeg"/>${overrides.map(([p, t]) => `<Override PartName="${p}" ContentType="${t}"/>`).join("")}<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`;
+  const rootRels = (main) => rels([["rId1", `${REL}/officeDocument`, main], ["rId2", "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties", "docProps/core.xml"], ["rId3", `${REL}/extended-properties`, "docProps/app.xml"]]);
+  // The page in mm, scaled down (same shape) to the largest the program takes.
+  const officeSize = (G, kind) => { const k = Math.min(1, OFFICE_MAX[kind] / Math.max(G.pw, G.ph)); return { w: G.pw * k, h: G.ph * k }; };
+  const emu = (mm) => Math.round(mm * 36000);
+  function officeDocx(pages, G, meta) {
+    const S = officeSize(G, "docx"), tw = (mm) => Math.round((mm * 1440) / 25.4), cx = emu(S.w), cy = emu(S.h);
+    // Each page a paragraph of its own, from the top of a new page, holding its picture inline — the form every
+    // program reads (a picture pinned to the page's corner was stacked on page one by Apple's preview). The line's
+    // own type is 1 pt, so the line is no taller than the picture and nothing spills onto a page of its own.
+    const tiny = '<w:rPr><w:sz w:val="2"/><w:szCs w:val="2"/></w:rPr>';
+    const body = pages.map((p, i) => `<w:p><w:pPr>${i ? "<w:pageBreakBefore/>" : ""}<w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>${tiny}</w:pPr><w:r>${tiny}<w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="${i + 1}" name="Page ${i + 1}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="${i + 1}" name="page${i + 1}.jpeg"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdP${i + 1}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`).join("");
+    const doc = `${XML}<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" ${NS_R} xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" ${NS_A} xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><w:body>${body}<w:sectPr><w:pgSz w:w="${tw(S.w)}" w:h="${tw(S.h)}"${S.w > S.h ? ' w:orient="landscape"' : ""}/><w:pgMar w:top="0" w:right="0" w:bottom="0" w:left="0" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+    return new Blob(zipStore([
+      { name: "[Content_Types].xml", data: types([["/word/document.xml", "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"]]) },
+      { name: "_rels/.rels", data: rootRels("word/document.xml") },
+      { name: "docProps/core.xml", data: coreXml(meta) }, { name: "docProps/app.xml", data: appXml() },
+      { name: "word/document.xml", data: doc },
+      { name: "word/_rels/document.xml.rels", data: rels(pages.map((p, i) => [`rIdP${i + 1}`, `${REL}/image`, `media/page${i + 1}.jpeg`])) },
+      ...pages.map((p, i) => ({ name: `word/media/page${i + 1}.jpeg`, data: p.jpeg }))
+    ]), { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+  }
+  function officePptx(pages, G, meta) {
+    const S = officeSize(G, "pptx"), cx = emu(S.w), cy = emu(S.h);
+    const tree = (inner) => `<p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>${inner}</p:spTree>`;
+    const fill3 = '<a:solidFill><a:schemeClr val="phClr"/></a:solidFill>'.repeat(3);
+    const theme = `${XML}<a:theme ${NS_A} name="Office Theme"><a:themeElements><a:clrScheme name="Office"><a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1><a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1><a:dk2><a:srgbClr val="44546A"/></a:dk2><a:lt2><a:srgbClr val="E7E6E6"/></a:lt2><a:accent1><a:srgbClr val="4472C4"/></a:accent1><a:accent2><a:srgbClr val="ED7D31"/></a:accent2><a:accent3><a:srgbClr val="A5A5A5"/></a:accent3><a:accent4><a:srgbClr val="FFC000"/></a:accent4><a:accent5><a:srgbClr val="5B9BD5"/></a:accent5><a:accent6><a:srgbClr val="70AD47"/></a:accent6><a:hlink><a:srgbClr val="0563C1"/></a:hlink><a:folHlink><a:srgbClr val="954F72"/></a:folHlink></a:clrScheme><a:fontScheme name="Office"><a:majorFont><a:latin typeface="Calibri Light"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont><a:minorFont><a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont></a:fontScheme><a:fmtScheme name="Office"><a:fillStyleLst>${fill3}</a:fillStyleLst><a:lnStyleLst>${[6350, 12700, 19050].map((w) => `<a:ln w="${w}"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln>`).join("")}</a:lnStyleLst><a:effectStyleLst>${"<a:effectStyle><a:effectLst/></a:effectStyle>".repeat(3)}</a:effectStyleLst><a:bgFillStyleLst>${fill3}</a:bgFillStyleLst></a:fmtScheme></a:themeElements><a:objectDefaults/><a:extraClrSchemeLst/></a:theme>`;
+    const master = `${XML}<p:sldMaster ${NS_A} ${NS_R} ${NS_P}><p:cSld><p:bg><p:bgRef idx="1001"><a:schemeClr val="bg1"/></p:bgRef></p:bg>${tree("")}</p:cSld><p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/><p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst><p:txStyles><p:titleStyle/><p:bodyStyle/><p:otherStyle/></p:txStyles></p:sldMaster>`;
+    const layout = `${XML}<p:sldLayout ${NS_A} ${NS_R} ${NS_P} type="blank" preserve="1"><p:cSld name="Blank">${tree("")}</p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>`;
+    const slide = (i) => `${XML}<p:sld ${NS_A} ${NS_R} ${NS_P}><p:cSld>${tree(`<p:pic><p:nvPicPr><p:cNvPr id="2" name="Page ${i + 1}"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="rId2"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`)}</p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`;
+    const n = pages.length, PML = "application/vnd.openxmlformats-officedocument.presentationml";
+    const pres = `${XML}<p:presentation ${NS_A} ${NS_R} ${NS_P} saveSubsetFonts="1"><p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst><p:sldIdLst>${pages.map((p, i) => `<p:sldId id="${256 + i}" r:id="rId${i + 2}"/>`).join("")}</p:sldIdLst><p:sldSz cx="${cx}" cy="${cy}"/><p:notesSz cx="6858000" cy="9144000"/></p:presentation>`;
+    return new Blob(zipStore([
+      { name: "[Content_Types].xml", data: types([["/ppt/presentation.xml", `${PML}.presentation.main+xml`], ["/ppt/slideMasters/slideMaster1.xml", `${PML}.slideMaster+xml`], ["/ppt/slideLayouts/slideLayout1.xml", `${PML}.slideLayout+xml`], ["/ppt/theme/theme1.xml", "application/vnd.openxmlformats-officedocument.theme+xml"], ["/ppt/presProps.xml", `${PML}.presProps+xml`], ["/ppt/viewProps.xml", `${PML}.viewProps+xml`], ["/ppt/tableStyles.xml", `${PML}.tableStyles+xml`], ...pages.map((p, i) => [`/ppt/slides/slide${i + 1}.xml`, `${PML}.slide+xml`])]) },
+      { name: "_rels/.rels", data: rootRels("ppt/presentation.xml") },
+      { name: "docProps/core.xml", data: coreXml(meta) }, { name: "docProps/app.xml", data: appXml() },
+      { name: "ppt/presentation.xml", data: pres },
+      { name: "ppt/_rels/presentation.xml.rels", data: rels([["rId1", `${REL}/slideMaster`, "slideMasters/slideMaster1.xml"], ...pages.map((p, i) => [`rId${i + 2}`, `${REL}/slide`, `slides/slide${i + 1}.xml`]), [`rId${n + 2}`, `${REL}/theme`, "theme/theme1.xml"], [`rId${n + 3}`, `${REL}/presProps`, "presProps.xml"], [`rId${n + 4}`, `${REL}/viewProps`, "viewProps.xml"], [`rId${n + 5}`, `${REL}/tableStyles`, "tableStyles.xml"]]) },
+      { name: "ppt/presProps.xml", data: `${XML}<p:presentationPr ${NS_A} ${NS_R} ${NS_P}/>` },
+      { name: "ppt/viewProps.xml", data: `${XML}<p:viewPr ${NS_A} ${NS_R} ${NS_P}><p:normalViewPr><p:restoredLeft sz="15620"/><p:restoredTop sz="94660"/></p:normalViewPr><p:gridSpacing cx="76200" cy="76200"/></p:viewPr>` },
+      { name: "ppt/tableStyles.xml", data: `${XML}<a:tblStyleLst ${NS_A} def="{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"/>` },
+      { name: "ppt/theme/theme1.xml", data: theme },
+      { name: "ppt/slideMasters/slideMaster1.xml", data: master },
+      { name: "ppt/slideMasters/_rels/slideMaster1.xml.rels", data: rels([["rId1", `${REL}/slideLayout`, "../slideLayouts/slideLayout1.xml"], ["rId2", `${REL}/theme`, "../theme/theme1.xml"]]) },
+      { name: "ppt/slideLayouts/slideLayout1.xml", data: layout },
+      { name: "ppt/slideLayouts/_rels/slideLayout1.xml.rels", data: rels([["rId1", `${REL}/slideMaster`, "../slideMasters/slideMaster1.xml"]]) },
+      ...pages.flatMap((p, i) => [
+        { name: `ppt/slides/slide${i + 1}.xml`, data: slide(i) },
+        { name: `ppt/slides/_rels/slide${i + 1}.xml.rels`, data: rels([["rId1", `${REL}/slideLayout`, "../slideLayouts/slideLayout1.xml"], ["rId2", `${REL}/image`, `../media/page${i + 1}.jpeg`]]) },
+        { name: `ppt/media/page${i + 1}.jpeg`, data: p.jpeg }
+      ])
+    ]), { type: "application/vnd.openxmlformats-officedocument.presentationml.presentation" });
+  }
   function bookletSides(n) {
     const N = Math.ceil(n / 4) * 4, sides = [];
     for (let s = 0; s < N / 4; s++) { sides.push([N - 2 * s, 2 * s + 1]); sides.push([2 * s + 2, N - 2 * s - 1]); }
@@ -5385,7 +5492,8 @@
         const shot = o.shot !== undefined ? o.shot : shots[o.i || 0];
         const img = o.shot !== undefined ? ownImgs.get(o) : imgs[o.i || 0];
         if (!shot) {
-          if (o.empty) around(o, () => { rect(page, o.x, o.y, o.w, o.h, P.rule); font(page, 500, 3.2, F.plex, 0.4); text(page, o.empty, o.x + o.w / 2, o.y + o.h / 2, P.soft, "center"); });
+          if (page.blank) around(o, () => blankPhoto(page, o.x, o.y, o.w, o.h));
+          else if (o.empty) around(o, () => { rect(page, o.x, o.y, o.w, o.h, P.rule); font(page, 500, 3.2, F.plex, 0.4); text(page, o.empty, o.x + o.w / 2, o.y + o.h / 2, P.soft, "center"); });
           continue;
         }
         if (!img) { around(o, () => missing(page, P, o.x, o.y, o.w, o.h)); continue; }
@@ -5402,8 +5510,8 @@
         // Where words will go, in the editor's preview only; never exported.
         const ctx = page.ctx;
         ctx.save();
-        ctx.setLineDash([page.u(1.4), page.u(1.1)]);
-        ctx.strokeStyle = P.soft; ctx.globalAlpha = 0.5; ctx.lineWidth = Math.max(1, page.u(0.25));
+        ctx.setLineDash([page.u(0.05), page.u(1.15)]); ctx.lineCap = "round";
+        ctx.strokeStyle = P.soft; ctx.globalAlpha = 0.45; ctx.lineWidth = Math.max(1.2, page.u(0.42));
         ctx.strokeRect(page.u(o.x), page.u(o.y), page.u(o.w), page.u(o.h));
         ctx.restore();
       }
@@ -5454,7 +5562,7 @@
     drawTurn = mine;
     return Promise.race([before, new Promise((r) => setTimeout(r, 20000))]).then(() => release);
   }
-  async function* renderPages(book, { dpi, watermarked = false, cache, only = null, guides = false, skip = null, originals = null, print = null }) {
+  async function* renderPages(book, { dpi, watermarked = false, cache, only = null, guides = false, skip = null, originals = null, print = null, blank = false }) {
     const mark = watermarked ? markSettings(book) : null;
     await ensureFonts();
     await ensureBookFonts(book);
@@ -5466,11 +5574,12 @@
     const W = G.W, H = G.H, size = { w: W, h: H };
     const pt = { w: G.pw * 72 / 25.4, h: G.ph * 72 / 25.4 };
     // A print file catches the words as they are drawn, to set them as type (book-print.js).
-    const newPage = () => { const pg = API.newPdfPage(dpi * G.s, size); pg.pt = pt; pg.scale = G.s; if (print && window.BookPrint) window.BookPrint.hook(pg, print, dpi); return pg; };
+    const newPage = () => { const pg = API.newPdfPage(dpi * G.s, size); pg.pt = pt; pg.scale = G.s; pg.blank = blank; if (print && window.BookPrint) window.BookPrint.hook(pg, print, dpi); return pg; };
     const S = STYLE_IMPL[styleKey(book)];
     const lib = library();
     const full = dpi >= 100;
     const imgOf = async (shot) => {
+      if (blank) return shot ? BLANK_IMG : null;   // a template's picture: the frame, not a photograph
       const hit = shot && lib.byId.get(shot.id);
       if (!hit || !clearedIn(book, shot.id)) return null;
       // The studio's own full-size file, when one was matched (print files only).
@@ -6188,18 +6297,25 @@
   .sb-zoom #sbZoom { min-width: 54px; padding: 0 6px; font-variant-numeric: tabular-nums; }
   .sb-zoom #sbZoomOut, .sb-zoom #sbZoomIn { width: 30px; padding: 0; }
   /* Rulers (millimetres, from the page's top-left corner) and the studio's guides. */
-  .sb-ruler { position: absolute; z-index: 6; background: var(--sb-panel); box-shadow: 0 0 0 1px var(--sb-line); cursor: copy; touch-action: none; }
-  .sb-ruler.top { height: 16px; cursor: row-resize; }
-  .sb-ruler.left { width: 16px; cursor: col-resize; }
+  /* Rulers (v584, the owner: "too mechanical"): no bar — a hairline along the page, a soft dot every 10 mm, a quiet
+     number every 50, and a dot on each that follows the pointer. */
+  .sb-ruler { position: absolute; z-index: 6; background: transparent; cursor: copy; touch-action: none; }
+  .sb-ruler.top { height: 18px; cursor: row-resize; }
+  .sb-ruler.left { width: 18px; cursor: col-resize; }
+  .sb-rulmark { position: absolute; z-index: 7; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: var(--sb-sel); box-shadow: 0 0 0 2px var(--sb-sel-soft); pointer-events: none; opacity: 0; transition: opacity .15s; }
+  .sb-rulmark.on { opacity: 1; }
+  /* A ruler is a canvas in the preview too: not a page — no paper, no shadow, its own size. */
+  .sb-preview canvas.sb-ruler { background: transparent; box-shadow: none; max-width: none; max-height: none; }
   .sb-guides { position: absolute; z-index: 5; pointer-events: none; }
   .sb-ug { position: absolute; pointer-events: auto; touch-action: none; }
   .sb-ug.v { top: 0; bottom: 0; width: 7px; margin-left: -3px; cursor: col-resize; }
   .sb-ug.h { left: 0; right: 0; height: 7px; margin-top: -3px; cursor: row-resize; }
-  .sb-ug::after { content: ""; position: absolute; background: var(--sb-guide); }
+  .sb-ug::after { content: ""; position: absolute; background: var(--sb-sel); opacity: .42; transition: opacity .15s; }
+  .sb-ug:hover::after { opacity: .95; }
   .sb-ug.v::after { left: 3px; top: 0; bottom: 0; width: 1px; }
   .sb-ug.h::after { top: 3px; left: 0; right: 0; height: 1px; }
-  .sb-ug.ghost::after { background: var(--sb-guide); opacity: .6; }
-  .sb-ugtag { position: absolute; z-index: 7; padding: 2px 6px; border-radius: 5px; background: var(--sb-guide); color: #fff; font: 600 11px/1.3 var(--sb-font); pointer-events: none; white-space: nowrap; }
+  .sb-ug.ghost::after { background: var(--sb-sel); opacity: .85; }
+  .sb-ugtag { position: absolute; z-index: 7; padding: 3px 9px; border-radius: 999px; background: rgba(20,20,22,.86); color: #fff; font: 500 11px/1.3 var(--sb-font); box-shadow: var(--sb-sh-2); pointer-events: none; white-space: nowrap; }
   .sb-preview { position: relative; display: flex; align-items: center; justify-content: center; padding: 32px 32px 76px; min-height: 0; background: var(--sb-board); overflow: hidden; }
   .sb-preview canvas { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; background: #fff; box-shadow: var(--sb-page-sh); }
   .sb-preview canvas + canvas { max-width: 50%; }
@@ -6257,9 +6373,9 @@
   @media (pointer: coarse) { .sb-h { width: 18px; height: 18px; margin: -9px 0 0 -9px; } .sb-h[data-h="n"], .sb-h[data-h="s"], .sb-h[data-h="e"], .sb-h[data-h="w"] { width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; } }
   .sb-guide { position: absolute; background: var(--sb-snap); pointer-events: none; }
   /* The style's margins and the page's middle, faint, in the editor only. */
-  .sb-mg { position: absolute; pointer-events: none; border: 0 dashed rgba(53, 101, 240, .35); }
+  .sb-mg { position: absolute; pointer-events: none; border: 0 solid rgba(128, 128, 140, .2); }
   .sb-mg.v { top: 0; height: 100%; width: 0; border-left-width: 1px; } .sb-mg.h { left: 0; width: 100%; height: 0; border-top-width: 1px; }
-  .sb-mg.mid { border-color: rgba(20, 20, 22, .18); }
+  .sb-mg.mid { display: none; }
   .sb-measure { position: absolute; z-index: 4; padding: 3px 7px; border-radius: 5px; background: var(--sb-snap); color: #fff; font: 600 11px/1.3 var(--sb-font); font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
   .sb-measure b { color: #fff; font-weight: 700; opacity: .85; }
   /* The floating bars: on the chosen thing, on a photograph, on words. */
@@ -9501,7 +9617,7 @@
             const nb = withKind(withLayout(newBook("Preview"), k), kind);
             if (forWho !== "studio") { nb.id = "bfpreview"; nb.madeFor = { kind: forWho, name: (forWho === "talent" ? (forModel === OWN_MODEL ? ownFromForm().name : ((modelsList().find((m) => m.key === forModel) || {}).name || "")) : forName).trim() || "Their name" }; nb.colourway = "silver-print"; if (kind !== "lookbook") { nb.title = nb.madeFor.name; nb.subtitle = forWho === "talent" ? "Portfolio" : ""; } }
             try {
-              for await (const r of renderPages(nb, { dpi: 22, cache, only: -1 })) {
+              for await (const r of renderPages(nb, { dpi: 22, cache, only: -1, blank: true })) {
                 const slot = box.querySelector(`[data-start="${k}"] .sb-startpic`);
                 if (slot && box.isConnected && token === previewToken) slot.replaceChildren(r.page.canvas);
               }
@@ -9516,7 +9632,7 @@
               nb.coverPage = { blocks: startBlocks(MISC_FORMATS[k].cover, nb, "preview").map((b) => (b.k === "photo" && ids.length ? { ...b, p: { id: ids[n++ % ids.length], x: 0.5, y: 0.35, zoom: 1 } } : b)) };
               nb.pages = [];
               try {
-                for await (const r of renderPages(nb, { dpi: 22, cache, only: -1 })) {
+                for await (const r of renderPages(nb, { dpi: 22, cache, only: -1, blank: true })) {
                   const slot = box.querySelector(`[data-miscfmt="${k}"] .sb-startpic`);
                   if (slot && box.isConnected && token === previewToken) slot.replaceChildren(r.page.canvas);
                 }
@@ -9533,7 +9649,7 @@
               nb.coverPage = { blocks: first.map((b) => (b.k === "photo" && ids.length ? { ...b, p: { id: ids[n++ % ids.length], x: 0.5, y: 0.35, zoom: 1 } } : b)) };
               nb.pages = [];
               try {
-                for await (const r of renderPages(nb, { dpi: 22, cache, only: -1 })) {
+                for await (const r of renderPages(nb, { dpi: 22, cache, only: -1, blank: true })) {
                   const slot = box.querySelector(`[data-calfmt="${k}"] .sb-startpic`);
                   if (slot && box.isConnected && token === previewToken) slot.replaceChildren(r.page.canvas);
                 }
@@ -9549,7 +9665,7 @@
             nb.coverPage = { blocks: startBlocks(t, nb, "preview").map((b) => (b.k === "photo" && ids.length ? { ...b, p: { id: ids[n++ % ids.length], x: 0.5, y: 0.35, zoom: 1 } } : b)) };
             nb.pages = [];
             try {
-              for await (const r of renderPages(nb, { dpi: 22, cache, only: -1 })) {
+              for await (const r of renderPages(nb, { dpi: 22, cache, only: -1, blank: true })) {
                 const slot = box.querySelector(`[data-covertpl="${t}"] .sb-startpic`);
                 if (slot && box.isConnected && token === previewToken) slot.replaceChildren(r.page.canvas);
               }
@@ -9565,7 +9681,7 @@
               nb.coverPage = { blocks: startBlocks(k, nb, "preview").map((b) => (b.k === "photo" && ids.length ? { ...b, p: { id: ids[n++ % ids.length], x: 0.5, y: 0.35, zoom: 1 } } : b)) };
               nb.pages = [];
               try {
-                for await (const r of renderPages(nb, { dpi: 22, cache, only: -1 })) {
+                for await (const r of renderPages(nb, { dpi: 22, cache, only: -1, blank: true })) {
                   const slot = box.querySelector(`[data-board="${k}"] .sb-startpic`);
                   if (slot && box.isConnected && token === previewToken) slot.replaceChildren(r.page.canvas);
                 }
@@ -9822,7 +9938,7 @@
               <input type="file" id="sbOrigFile" multiple accept="image/*" hidden>
               <div id="sbOrigStatus"></div>
             </div>
-            <p class="sb-hint">The words in the PDF are real type in their own fonts: sharp at any size, and they can be searched and copied.</p>
+            <p class="sb-hint">The words in the PDF are real type in their own fonts: sharp at any size, and they can be searched and copied. Word and PowerPoint get each page as a picture, a page or a slide the book's own size: the look exactly, the words not editable there. The watermark switch above works for all four.</p>
             </div>
             <div class="sb-popfoot">
               <p class="sb-warn" id="sbAnyway" hidden></p>
@@ -9830,6 +9946,8 @@
               <div class="sb-dlrow">
                 <button type="button" class="sb-btn dark" id="sbPdf" data-dl>Download PDF</button>
                 <button type="button" class="sb-btn" id="sbPng" data-dl>PNG pages</button>
+                <button type="button" class="sb-btn" id="sbDocx" data-dl>Word</button>
+                <button type="button" class="sb-btn" id="sbPptx" data-dl>PowerPoint</button>
               </div>
             </div>
           </div>
@@ -9968,6 +10086,8 @@
         bookletNote();
       }));
       $("#sbPng").addEventListener("click", (e) => download(e.currentTarget, "png", $("#sbMark").checked));
+      $("#sbDocx").addEventListener("click", (e) => download(e.currentTarget, "docx", $("#sbMark").checked));
+      $("#sbPptx").addEventListener("click", (e) => download(e.currentTarget, "pptx", $("#sbMark").checked));
       $("#sbWrap").addEventListener("click", (e) => downloadWrap(e.currentTarget));
       $$("[data-bind]").forEach((x) => x.addEventListener("click", () => { setWrapPrefs({ ...wrapPrefs(), bind: x.dataset.bind }); wrapNote(); }));
       $("#sbWrapPaper").addEventListener("change", (e) => { setWrapPrefs({ ...wrapPrefs(), paper: e.target.value, spine: null }); wrapNote(); });
@@ -10311,7 +10431,7 @@
     function drawGuides() {
       const box = $("#sbPreview");
       if (!box) return;
-      box.querySelectorAll(".sb-ruler, #sbGuides, .sb-ugtag").forEach((x) => x.remove());
+      box.querySelectorAll(".sb-ruler, #sbGuides, .sb-ugtag, .sb-rulmark").forEach((x) => x.remove());
       if (!book) return;
       const mine = lastRender[0] && lastRender[0].page && lastRender[0].page.canvas;
       const canvas = mine && mine.isConnected ? mine : box.querySelector("canvas");
@@ -10371,34 +10491,58 @@
       ov.querySelectorAll(".sb-ug").forEach((el) => el.addEventListener("pointerdown", (ev) => dragGuide(el.dataset.ug, +el.dataset.i, ev, el)));
       if (!rulersOn) return;
       const dpr = window.devicePixelRatio || 1;
+      // The editor's own colours, light or dark.
+      const cs = getComputedStyle(document.documentElement);
+      const soft = cs.getPropertyValue("--sb-text-3").trim() || "#8b8b94", hair = cs.getPropertyValue("--sb-line-2").trim() || "rgba(24,24,27,.16)";
       const ruler = (axis) => {
         const len = axis === "v" ? Wd : Hd, full = axis === "v" ? G.W : G.H;
         const c = document.createElement("canvas");
         c.className = `sb-ruler ${axis === "v" ? "top" : "left"}`;
         c.setAttribute("role", "img"); c.setAttribute("aria-label", `Ruler, ${Math.round(full)} mm ${axis === "v" ? "across" : "down"}; drag from it to make a guide`);
-        const W2 = axis === "v" ? len : 16, H2 = axis === "v" ? 16 : len;
+        const W2 = axis === "v" ? len : 18, H2 = axis === "v" ? 18 : len;
         c.width = Math.round(W2 * dpr); c.height = Math.round(H2 * dpr);
-        Object.assign(c.style, { width: `${W2}px`, height: `${H2}px`, left: `${axis === "v" ? L : L - 18}px`, top: `${axis === "v" ? T - 18 : T}px` });
+        Object.assign(c.style, { width: `${W2}px`, height: `${H2}px`, left: `${axis === "v" ? L : L - 22}px`, top: `${axis === "v" ? T - 22 : T}px` });
         const x = c.getContext("2d"); x.scale(dpr, dpr);
         const per = len / full;
-        const minor = per >= 4 ? 1 : per >= 1.2 ? 5 : 10, label = per * 10 >= 26 ? 10 : per * 50 >= 26 ? 50 : 100;
-        x.strokeStyle = "rgba(20,20,22,.55)"; x.fillStyle = "rgba(20,20,22,.8)"; x.lineWidth = 1;
-        x.font = "9px Inter, system-ui, sans-serif"; x.textBaseline = "top";
-        for (let mm = 0; mm <= full + 1e-6; mm += minor) {
-          const p = Math.round(mm * per) + 0.5, big = mm % label === 0, mid = mm % 5 === 0;
-          const tick = big ? 8 : mid ? 5 : 3;
-          x.beginPath();
-          if (axis === "v") { x.moveTo(p, 16); x.lineTo(p, 16 - tick); } else { x.moveTo(16, p); x.lineTo(16 - tick, p); }
-          x.stroke();
-          if (big && mm > 0) {
-            if (axis === "v") x.fillText(String(mm), p + 2, 1);
-            else { x.save(); x.translate(1, p + 2); x.rotate(Math.PI / 2); x.translate(0, -9); x.fillText(String(mm), 0, 0); x.restore(); }
+        const step = per * 10 >= 5 ? 10 : 50, label = per * 50 >= 30 ? 50 : 100;
+        // A hairline along the page's edge.
+        x.strokeStyle = hair; x.lineWidth = 1; x.beginPath();
+        if (axis === "v") { x.moveTo(0, 17.5); x.lineTo(len, 17.5); } else { x.moveTo(17.5, 0); x.lineTo(17.5, len); }
+        x.stroke();
+        // A soft dot every 10 mm; every 50 (100 on a small page), a quiet number in its place.
+        x.fillStyle = soft; x.font = "500 9px Inter, system-ui, sans-serif"; x.textBaseline = "middle"; x.textAlign = "center";
+        for (let mm = step; mm < full - 1e-6; mm += step) {
+          const q = Math.round(mm * per) + 0.5;
+          if (mm % label === 0) {
+            if (axis === "v") x.fillText(String(mm), q, 8.5);
+            else { x.save(); x.translate(8.5, q); x.rotate(-Math.PI / 2); x.fillText(String(mm), 0, 0); x.restore(); }
+          } else {
+            x.globalAlpha = 0.5; x.beginPath();
+            if (axis === "v") x.arc(q, 13.5, 1, 0, Math.PI * 2); else x.arc(13.5, q, 1, 0, Math.PI * 2);
+            x.fill(); x.globalAlpha = 1;
           }
         }
         c.addEventListener("pointerdown", (ev) => dragGuide(axis === "v" ? "h" : "v", -1, ev, c));
         return c;
       };
       box.appendChild(ruler("v")); box.appendChild(ruler("h"));
+      // A dot on each ruler follows the pointer across the page, as a design tool's does.
+      const dot = (cls) => { const m = document.createElement("i"); m.className = `sb-rulmark ${cls}`; box.appendChild(m); return m; };
+      dot("x").style.top = `${T - 22 + 13.5}px`; dot("y").style.left = `${L - 22 + 13.5}px`;
+      box.__rulPage = { L, T, Wd, Hd };
+      if (!box.__rulFollow) {
+        box.__rulFollow = true;
+        const follow = (ev) => {
+          const mx = box.querySelector(".sb-rulmark.x"), my = box.querySelector(".sb-rulmark.y"), pg = box.__rulPage;
+          if (!mx || !my || !pg) return;
+          const r = box.getBoundingClientRect(), px = ev.clientX - r.left + box.scrollLeft, py = ev.clientY - r.top + box.scrollTop;
+          const over = px >= pg.L && px <= pg.L + pg.Wd && py >= pg.T && py <= pg.T + pg.Hd;
+          mx.classList.toggle("on", over); my.classList.toggle("on", over);
+          if (over) { mx.style.left = `${px}px`; my.style.top = `${py}px`; }
+        };
+        box.addEventListener("pointermove", follow);
+        box.addEventListener("pointerleave", () => box.querySelectorAll(".sb-rulmark").forEach((m) => m.classList.remove("on")));
+      }
     }
     function drawLayer() {
       const box = $("#sbPreview"); if (!box) return;
@@ -11575,11 +11719,11 @@
           let entry = null;
           if (want.startsWith("tpl:")) { const t = pageTpls.find((x) => x.id === want.slice(4)); try { entry = t ? JSON.parse(t.json) : null; } catch (e) { entry = null; } }
           else entry = sampleEntry(want);
-          if (want === "cover") { const v = JSON.parse(JSON.stringify(book)); delete v.coverLayout; delete v.coverPage; v.cover = v.cover || (samplePhotos(1)[0] || null); try { for await (const r of renderPages(v, { dpi: 14, cache: cache2, only: -1 })) { addPics.set(key, [r.page.canvas]); place(btn, [r.page.canvas]); } } catch (e) { /* the drawing stays */ } continue; }
+          if (want === "cover") { const v = JSON.parse(JSON.stringify(book)); delete v.coverLayout; delete v.coverPage; v.cover = v.cover || (samplePhotos(1)[0] || null); try { for await (const r of renderPages(v, { dpi: 14, cache: cache2, only: -1, blank: true })) { addPics.set(key, [r.page.canvas]); place(btn, [r.page.canvas]); } } catch (e) { /* the drawing stays */ } continue; }
           if (!entry) continue;
           const v = { ...JSON.parse(JSON.stringify(book)), pages: [entry] };
           const got = [];
-          try { for await (const r of renderPages(v, { dpi: 14, cache: cache2, only: 0 })) got.push(r.page.canvas); } catch (e) { /* the drawing stays */ }
+          try { for await (const r of renderPages(v, { dpi: 14, cache: cache2, only: 0, blank: !want.startsWith("tpl:") })) got.push(r.page.canvas); } catch (e) { /* the drawing stays */ }
           if (got.length) { addPics.set(key, got); place(btn, got); }
           await new Promise((res) => setTimeout(res, 0));
         }
@@ -14288,6 +14432,8 @@
       add("Use my brand on this book", "Design", design("[data-brandapply]", "brand"));
       add("Keyboard shortcuts", "Help", () => openKeys());
       add("Download PNG pages", "File", () => { const pop = $("#sbDlPop"); if (pop && pop.hidden) $("#sbDlToggle").click(); $("#sbPng").click(); });
+      add("Download a Word file", "File", () => { const pop = $("#sbDlPop"); if (pop && pop.hidden) $("#sbDlToggle").click(); $("#sbDocx").click(); });
+      add("Download a PowerPoint file", "File", () => { const pop = $("#sbDlPop"); if (pop && pop.hidden) $("#sbDlToggle").click(); $("#sbPptx").click(); });
       add("Save", "File", () => $("#sbSave").click());
       add(book && isForOthers(book) ? "Save a copy" : "Publish", "File", () => $("#sbPublish").click());
       add("Undo", "Edit", () => undo());
@@ -15292,6 +15438,9 @@
         btn.innerHTML = label;
       }
     }
+    // What each download is called, and the file it saves as.
+    const FORMAT_NOUN = { png: "images", booklet: "booklet", pdf: "PDF", docx: "Word file", pptx: "PowerPoint file" };
+    const FORMAT_FILE = { pdf: ["application/pdf", "pdf"], booklet: ["application/pdf", "pdf"], docx: ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", "docx"], pptx: ["application/vnd.openxmlformats-officedocument.presentationml.presentation", "pptx"] };
     async function download(btn, format, watermarked) {
       flush();
       // A frozen copy: an edit made while pages are being drawn must not end up
@@ -15321,7 +15470,7 @@
       const label = btn.textContent;
       const ready = $("#sbReady");
       buttons.forEach((b) => { b.disabled = true; });
-      btn.textContent = format === "png" ? "Making the images…" : format === "booklet" ? "Making the booklet…" : "Making the PDF…";
+      btn.textContent = `Making the ${FORMAT_NOUN[format]}…`;
       ready.replaceChildren(); dropFiles();
       /* Named for the studio and the book, in the book's own letters: "Book 2"
          came out as "book-2.pdf", and a name in Hindi as "portfolio.pdf"
@@ -15342,7 +15491,8 @@
            watermarked sample keeps its words in the picture, under the mark. */
         const marks = format === "pdf" && printMarks;
         const cmyk = format === "pdf" && printCmyk;
-        const BP = format !== "png" ? await loadPrint() : null;
+        // Real type is the PDF's; Word and PowerPoint, like PNG, take each page as its picture.
+        const BP = format === "pdf" || format === "booklet" ? await loadPrint() : null;
         if (BP && BP.addOwnFace) { await loadOwnFonts(); for (const f of OWN_FONTS) BP.addOwnFace(ownFamily(f.id), f.bytes, f.name); }
         let print = null;
         if (BP && !watermarked) {
@@ -15379,9 +15529,10 @@
                 if (img !== canvas) { img.width = 0; img.height = 0; }
               }
               else if (format === "booklet") pageJpeg[r.n] = { jpeg: await API.canvasJpeg(canvas, 0.92), w: canvas.width, h: canvas.height, runs };
+              else if (format === "docx" || format === "pptx") out.push({ jpeg: await API.canvasJpeg(canvas, 0.9), n: r.n });
               else out.push({ blob: await API.canvasPng(canvas), n: r.n });
               canvas.width = 0; canvas.height = 0;            // release before the next page
-              done++; btn.textContent = `${format === "png" ? "Making the images" : format === "booklet" ? "Making the booklet" : "Making the PDF"}… ${done}/${renderedCount(snap)}`;
+              done++; btn.textContent = `Making the ${FORMAT_NOUN[format]}… ${done}/${renderedCount(snap)}`;
             }
             if (format === "booklet") {
               // Each side of each sheet: two pages side by side, decoded two at
@@ -15417,33 +15568,34 @@
             // or no mention of the studio at all when the contract says so.
             const title = mf ? `${snap.title || snap.name} — ${mf.name}${format === "booklet" ? " (booklet)" : ""}` : `${snap.name} — ${studio()}${format === "booklet" ? " (booklet)" : ""}`;
             const who = mf ? { author: mf.name, creator: creditOf(snap), producer: creditOf(snap) ? studio() : "" } : null;
-            result = format === "png" ? out : BP ? (await BP.buildPdf(out, { title, author: who ? who.author : studio(), ...(who ? { creator: who.creator, producer: who.producer } : {}), marks, cmyk: !!(cmyk && BP) })).bytes : await API.buildPdf(out, title, who);
+            result = format === "png" ? out : format === "docx" ? officeDocx(out, G0, { title, author: who ? who.author : studio() }) : format === "pptx" ? officePptx(out, G0, { title, author: who ? who.author : studio() }) : BP ? (await BP.buildPdf(out, { title, author: who ? who.author : studio(), ...(who ? { creator: who.creator, producer: who.producer } : {}), marks, cmyk: !!(cmyk && BP) })).bytes : await API.buildPdf(out, title, who);
             madeAt = dpi; fullSize = orig ? orig.used.size : 0;
             break;
           } catch (err) { lastErr = err; } finally { if (orig) await orig.release(); }
         }
-        const madeNote = `${madeAt} dpi${fullSize ? ` · ${fullSize} full-size photo${fullSize === 1 ? "" : "s"}` : ""}${format !== "png" ? (print ? " · real type" : watermarked ? "" : " · words as picture: fonts didn't load") : ""}${marks ? " · crop marks + bleed" : ""}${cmyk ? " · CMYK" : ""}`;
+        const madeNote = `${madeAt} dpi${fullSize ? ` · ${fullSize} full-size photo${fullSize === 1 ? "" : "s"}` : ""}${format === "pdf" || format === "booklet" ? (print ? " · real type" : watermarked ? "" : " · words as picture: fonts didn't load") : ""}${OFFICE_MAX[format] ? ` · a picture a ${format === "docx" ? "page" : "slide"}${Math.max(G0.pw, G0.ph) > OFFICE_MAX[format] ? `, scaled to ${format === "docx" ? "Word" : "PowerPoint"}'s largest` : ""}` : ""}${marks ? " · crop marks + bleed" : ""}${cmyk ? " · CMYK" : ""}`;
         const softer = madeAt && madeAt < exportDpi ? `<p class="sb-warn">Made at ${madeAt} dpi: this device ran short of memory at ${exportDpi}. Try on a computer, or with fewer pages.</p>` : "";
         if (!result) throw lastErr || new Error("unknown error");
         if (!ready.isConnected) return;
         if (format !== "png") {
-          const blob = new Blob([result], { type: "application/pdf" });
+          const [mime, ext] = FORMAT_FILE[format];
+          const blob = result instanceof Blob ? result : new Blob([result], { type: mime });
           const url = URL.createObjectURL(blob); fileUrls.push(url);
-          const name = `${base}.pdf`;
+          const name = `${base}.${ext}`;
           // A phone can't save a file from a link the way a laptop does — an
           // iPhone opens it instead — so it also gets the share sheet, where
           // "Save to Files", AirDrop and WhatsApp live.
           let file = null;
-          try { file = new File([blob], name, { type: "application/pdf" }); } catch (e) { file = null; }
+          try { file = new File([blob], name, { type: mime }); } catch (e) { file = null; }
           const canShare = !!(file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] }));
-          ready.innerHTML = `<a href="${url}" download="${esc(name)}">Save ${watermarked ? "watermarked " : ""}${format === "booklet" ? "booklet" : "PDF"} (${(blob.size / 1048576).toFixed(1)} MB · ${madeNote})</a>${canShare ? `<button type="button" class="sb-btn dark" id="sbShare">Share or save to Files</button>` : ""}${softer}`;
+          ready.innerHTML = `<a href="${url}" download="${esc(name)}">Save ${watermarked ? "watermarked " : ""}${FORMAT_NOUN[format]} (${(blob.size / 1048576).toFixed(1)} MB · ${madeNote})</a>${canShare ? `<button type="button" class="sb-btn dark" id="sbShare">Share or save to Files</button>` : ""}${softer}`;
           const share = $("#sbShare");
           if (share) share.addEventListener("click", () => navigator.share({ files: [file], title: snap.name }).catch(() => { /* the sheet was closed */ }));
           if (!matchMedia("(pointer: coarse)").matches) ready.querySelector("a").click();
           else {
             const pop = $("#sbDlPop"); if (pop) { pop.hidden = false; $("#sbDlToggle").setAttribute("aria-expanded", "true"); }
             (share || ready.querySelector("a")).focus();
-            API.toast(canShare ? "Your PDF is ready: tap “Share or save to Files” in Download." : "Your PDF is ready: tap “Save PDF” in Download.");
+            API.toast(canShare ? `Your ${FORMAT_NOUN[format]} is ready: tap “Share or save to Files” in Download.` : `Your ${FORMAT_NOUN[format]} is ready: tap “Save ${FORMAT_NOUN[format]}” in Download.`);
           }
         } else {
           ready.innerHTML = result.map((r) => {
@@ -15458,7 +15610,7 @@
           }
         }
       } catch (err) {
-        ready.innerHTML = `<p class="sb-warn">Couldn't make the ${format === "png" ? "images" : format === "booklet" ? "booklet" : "PDF"} (${esc(err.message || err)}). Try again, or with fewer pages.</p>`;
+        ready.innerHTML = `<p class="sb-warn">Couldn't make the ${FORMAT_NOUN[format]} (${esc(err.message || err)}). Try again, or with fewer pages.</p>`;
       } finally {
         buttons.forEach((b) => { b.disabled = false; });
         btn.textContent = label.replace(/ anyway$/, "");
