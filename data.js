@@ -2924,8 +2924,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1790833871439,
-    "syncedAt": 1790833871439
+    "updatedAt": 1791283822699,
+    "syncedAt": 1791283822699
   },
   "INVITE_CODES": [
     {
@@ -3119,6 +3119,13 @@ window.WPS_DATA = {
   "HOME_SLIDESHOW": {
     "seconds": 4
   },
+  "STUDIO": {
+    "kind": "home",
+    "name": "",
+    "area": "Sector 46, Noida",
+    "capacity": 3,
+    "finishBy": "7:00 PM"
+  },
   "MEASURE_UNITS": {
     "display": "metric"
   },
@@ -3129,8 +3136,9 @@ window.WPS_DATA = {
     "PACKAGES": 1790833862540,
     "TFP_PACKAGE": 1790661324121,
     "HOME_STUDIO_RATE": 1790661324121,
-    "PORTFOLIO_PDF": 1790786320186,
+    "PORTFOLIO_PDF": 1791282581060,
     "HOME_SLIDESHOW": 1790354674280,
+    "STUDIO": 0,
     "MEASURE_UNITS": 1790269147688,
     "HOME_STUDIO_RATE_TFP": 1790661324121
   },
@@ -3778,7 +3786,7 @@ window.WPS_DATA = {
         "shootId": "comp-card-Atharv%20Sharma%20(https%3A%2F%2Fwww.instagram.com%2Fectogainsss%2F%3Fhl%3Den)",
         "modelKey": "atharv-sharma",
         "name": "Test 2",
-        "updatedAt": 1790786320186,
+        "updatedAt": 1791282581059,
         "spec": {
           "pages": 2,
           "count": 8,
@@ -3827,6 +3835,9 @@ window.WPS_DATA = {
           "detailsAlign": "centre",
           "statsAlign": "centre",
           "contactAlign": "left",
+          "contactOn": {
+            "email": false
+          },
           "spacing": "none",
           "order": [
             "muca56vgez53vb-0",
@@ -3910,7 +3921,11 @@ window.WPS_DATA = {
       "bkmuax7ucfco12",
       "bkmunjf0vyndfr",
       "bkmunm8y3ed2r3",
-      "bkmuo4ld41l6pu"
+      "bkmuo4ld41l6pu",
+      "bkmupgw30l242i",
+      "bkmuw70qr8g019",
+      "bkmuwjhikcfeul",
+      "bkmuwjti8j8und"
     ]
   }
 };
