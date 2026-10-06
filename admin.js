@@ -1831,6 +1831,20 @@ function cleanModelPdfs(state) {
         detailsAlign: ["left", "centre", "right"].includes(sp.detailsAlign) ? sp.detailsAlign : "left",
         ...(["left", "centre", "right"].includes(sp.statsAlign) ? { statsAlign: sp.statsAlign } : {}),
         ...(["left", "centre", "right"].includes(sp.contactAlign) ? { contactAlign: sp.contactAlign } : {}),
+        /* Which contact details this PDF shows where the studio overruled the
+           album (v587). Named here or this normaliser drops it, and the studio
+           would find the switch back where it was on reopening. Kinds and
+           true/false only — the details themselves never come here: this file
+           is public. Absent means "as the album has them". */
+        ...(() => {
+          const out = {};
+          if (sp.contactOn && typeof sp.contactOn === "object") {
+            for (const [k, x] of Object.entries(sp.contactOn).slice(0, 24)) {
+              if (/^[a-z][a-z0-9-]{0,30}$/.test(k) && typeof x === "boolean") out[k] = x;
+            }
+          }
+          return Object.keys(out).length ? { contactOn: out } : {};
+        })(),
         // How much air between the photographs. Absent means "medium".
         ...(["none", "narrow", "wide"].includes(sp.spacing) ? { spacing: sp.spacing } : {}),
         order: ids(sp.order),

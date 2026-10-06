@@ -1185,18 +1185,46 @@
     ].filter(([, v]) => v && String(v).trim()).map(([label, v]) => ({ label, value: String(v).trim() }));
   }
 
-  // The same contact details, under the same per-surface switches, as the
-  // comp card PDF, plus the two a client may type in for this PDF alone.
+  /* Every detail the contact line could carry for this model, each with the
+     album's own answer (its PDF switch). The studio may answer differently for
+     one PDF without touching the album (v587, the owner: "as admin i should
+     have manual control of showing contact information of the model … i dont
+     need to change 1 setting for whole album for 1 pdf"). A key names a kind
+     of detail, never the detail: it is what a saved portfolio stores, and that
+     file is public. */
+  const MODEL_SWITCH = { instagram: "ModelInstagram", kavyar: "ModelKavyar", linkedin: "ModelLinkedin", behance: "ModelBehance", website: "ModelWebsite", email: "Email" };
+  const AGENCY_SWITCH = { instagram: "AgencyInstagram", kavyar: "AgencyKavyar", linkedin: "AgencyLinkedin", behance: "AgencyBehance", website: "AgencyWebsite", email: "AgencyEmail" };
+  function portfolioPdfContactChoices(shoot) {
+    const out = [], seen = {};
+    const keyFor = (base) => { seen[base] = (seen[base] || 0) + 1; return seen[base] > 1 ? `${base}-${seen[base]}` : base; };
+    // An app.js older than this file has no unfiltered lists: the album's answer is all there is.
+    (A.printModelLinks ? A.printModelLinks(shoot) : visibleModelLinks(shoot, "Pdf")).forEach((l) => out.push({
+      key: keyFor(l.kind), label: SOCIAL_LABEL[l.kind] || "Link", value: socialPrintText(l), url: l.url,
+      on: showRep(shoot, MODEL_SWITCH[l.kind] || "ModelWebsite", "Pdf")
+    }));
+    if (shoot.modelEmail && !out.some((c) => c.value === shoot.modelEmail)) {
+      out.push({ key: keyFor("email"), label: "Email", value: shoot.modelEmail, url: `mailto:${shoot.modelEmail}`, on: showRep(shoot, "Email", "Pdf") });
+    }
+    if (shoot.agency) {
+      out.push({ key: "agency", label: "Agency", value: shoot.agency, on: showRep(shoot, "Agency", "Pdf") });
+      // The agency's links print only with its name, as they always have.
+      (A.agencyLinksOf ? A.agencyLinksOf(shoot) : visibleAgencyLinks(shoot, "Pdf")).forEach((l) => out.push({
+        key: keyFor(`agency-${l.kind}`), label: `Agency ${SOCIAL_LABEL[l.kind] || "link"}`, value: socialPrintText(l), url: l.url,
+        on: showRep(shoot, AGENCY_SWITCH[l.kind] || "AgencyWebsite", "Pdf"), underAgency: true
+      }));
+    }
+    return out;
+  }
+  // This PDF's answer where it has one, the album's where it doesn't.
+  const contactChosen = (c, contactOn) => (contactOn && typeof contactOn[c.key] === "boolean" ? contactOn[c.key] : c.on);
+  // The contact line: the details switched on for this PDF, plus the two
+  // typed in for it alone. With no answers of its own, exactly the album's.
   function portfolioPdfContactCells(shoot, extra) {
-    const cells = [];
-    visibleModelLinks(shoot, "Pdf").forEach((l) => cells.push({ label: SOCIAL_LABEL[l.kind] || "Link", value: socialPrintText(l), url: l.url }));
-    if (shoot.modelEmail && showRep(shoot, "Email", "Pdf") && !cells.some((c) => c.value === shoot.modelEmail)) {
-      cells.push({ label: "Email", value: shoot.modelEmail, url: `mailto:${shoot.modelEmail}` });
-    }
-    if (shoot.agency && showRep(shoot, "Agency", "Pdf")) {
-      cells.push({ label: "Agency", value: shoot.agency });
-      visibleAgencyLinks(shoot, "Pdf").forEach((l) => cells.push({ label: `Agency ${SOCIAL_LABEL[l.kind] || "link"}`, value: socialPrintText(l), url: l.url }));
-    }
+    const all = portfolioPdfContactChoices(shoot);
+    const agency = all.find((c) => c.key === "agency");
+    const agencyOn = !!agency && contactChosen(agency, extra.contactOn);
+    const cells = all.filter((c) => contactChosen(c, extra.contactOn) && (!c.underAgency || agencyOn))
+      .map(({ label, value, url }) => (url ? { label, value, url } : { label, value }));
     if (extra.location) cells.push({ label: "Based in", value: extra.location });
     if (extra.phone) cells.push({ label: "Phone", value: extra.phone, url: `tel:${extra.phone.replace(/[^\d+]/g, "")}` });
     return cells;
@@ -2093,6 +2121,7 @@
       spacing: "medium",   // air between the photographs: none/narrow/medium/wide
       statsAlign: "left",  // the measurements row: left, centre or right
       contactAlign: "left",// the Instagram/email row, answered separately
+      contactOn: {},       // contact detail key → shown on this PDF, where the studio overruled the album
       // Print the pose under each photograph, or don't. It used to be decided
       // for the client: tags appeared only when EVERY photograph across the
       // whole PDF had a pose, so one untagged shot anywhere silently stripped
@@ -2119,7 +2148,7 @@
        new one quietly inherited them — and since v543 the builder opens on
        the latest saved portfolio, a new one always began from it. */
     const FRESH = ["pages", "count", "lead", "cover", "coverId", "coverStyle", "layout", "perPage", "span", "order",
-      "fewerOnTop", "cols", "sheetView", "layouts", "bigAt", "detailsAlign", "spacing", "statsAlign", "contactAlign",
+      "fewerOnTop", "cols", "sheetView", "layouts", "bigAt", "detailsAlign", "spacing", "statsAlign", "contactAlign", "contactOn",
       "tags", "tagPlace", "tagAlign", "filter", "adjust"].reduce((o, k) => { o[k] = JSON.parse(JSON.stringify(state[k])); return o; }, {});
     const cache = new Map();
     let renderToken = 0;
@@ -2317,6 +2346,8 @@
            the studio changed where the contact line sits, pressed Update,
            reopened it and found it back where it was (Sep 25 2026). */
         statsAlign: state.statsAlign, contactAlign: state.contactAlign,
+        // Which contact details this PDF shows where it differs from the album (v587).
+        contactOn: { ...(state.contactOn || {}) },
         tags: tagsPerPage(), tagPlace: state.tagPlace, tagAlign: state.tagAlign, perPage: perPage(),
         spacing: state.spacing,
         span: JSON.parse(JSON.stringify(state.span || {})),
@@ -2526,6 +2557,7 @@
         detailsAlign: state.detailsAlign,
         statsAlign: state.statsAlign,
         contactAlign: state.contactAlign,
+        contactOn: admin ? { ...(state.contactOn || {}) } : {},
         spacing: state.spacing,
         tagPlace: state.tagPlace,
         tagAlign: state.tagAlign,
@@ -2628,6 +2660,8 @@
       // setting said, so an old arrangement reopens looking as it did.
       state.statsAlign = okAlign(sp.statsAlign, state.detailsAlign);
       state.contactAlign = okAlign(sp.contactAlign, state.detailsAlign);
+      // Saved before a PDF could answer for itself: the album's switches, as before.
+      state.contactOn = sp.contactOn && typeof sp.contactOn === "object" ? { ...sp.contactOn } : {};
       // Saved before the studio could choose it: the page's own gutter.
       state.spacing = ["none", "narrow", "medium", "wide"].includes(sp.spacing) ? sp.spacing : "medium";
       // An arrangement saved before the switch existed has no answer, and
@@ -2689,7 +2723,7 @@
     const store = () => (typeof window.getModelPdfs === "function" ? window.getModelPdfs() : { versions: [], deleted: [] });
     const mine = () => store().versions.filter(isMine);
     let paintSaved = () => {};
-    const LOST_WORDS = { pages: "the number of pages", count: "the photos", picks: "the photos", cleared: "the photos", order: "the order of the photos", lead: "the big photo", cover: "the cover", coverId: "the cover photo", coverStyle: "the cover's look", layout: "the layout", layouts: "the layout", bigAt: "where the big photo sits", cols: "the columns", fewerOnTop: "the short row", detailsAlign: "the alignment", statsAlign: "the measurements' alignment", contactAlign: "the contact line's alignment", tags: "the pose labels", tagPlace: "where the pose labels sit", tagAlign: "how the pose labels line up", perPage: "photos per page", spacing: "the spacing", span: "a photo's width", adjust: "a photo's position or zoom" };
+    const LOST_WORDS = { pages: "the number of pages", count: "the photos", picks: "the photos", cleared: "the photos", order: "the order of the photos", lead: "the big photo", cover: "the cover", coverId: "the cover photo", coverStyle: "the cover's look", layout: "the layout", layouts: "the layout", bigAt: "where the big photo sits", cols: "the columns", fewerOnTop: "the short row", detailsAlign: "the alignment", statsAlign: "the measurements' alignment", contactAlign: "the contact line's alignment", contactOn: "which contact details show", tags: "the pose labels", tagPlace: "where the pose labels sit", tagAlign: "how the pose labels line up", perPage: "photos per page", spacing: "the spacing", span: "a photo's width", adjust: "a photo's position or zoom" };
     // What reopening the stored copy would put on screen, against what is on
     // screen now. applySpec replaces every setting it touches with a new value,
     // so a shallow copy of the state puts everything back afterwards.
@@ -3273,6 +3307,54 @@
       });
     }
 
+    /* The contact line, detail by detail, for this PDF alone (v587). Each
+       switch starts where the album has it; a tap answers for this PDF and
+       leaves the album and its other PDFs as they were. Tapping one back to
+       the album's answer forgets this PDF's, so "changed" always means
+       changed. */
+    function contactChipsHtml() {
+      const all = portfolioPdfContactChoices(shoot);
+      if (!all.length) return `<p class="pp-hint pp-contact-none">No Instagram, email or agency on this model's albums. Only a phone or place typed in below would print.</p>`;
+      const agency = all.find((c) => c.key === "agency");
+      const agencyOn = !!agency && contactChosen(agency, state.contactOn);
+      const changed = all.some((c) => typeof (state.contactOn || {})[c.key] === "boolean");
+      return `<div class="pp-contact-on">
+          <p class="pp-contact-cap">Contact details on this PDF</p>
+          <div class="pp-contact-chips" role="group" aria-label="Contact details on this PDF">
+            ${all.map((c) => {
+              const held = c.underAgency && !agencyOn;
+              const on = contactChosen(c, state.contactOn) && !held;
+              return `<button type="button" class="pp-contact-chip" data-contact-key="${esc(c.key)}" aria-pressed="${on}"${held ? " disabled" : ""} title="${esc(held ? `${c.value} — prints with the agency's name` : `${on ? "Showing" : "Hidden"}: ${c.value}`)}"><span class="pp-contact-k">${esc(c.label)}</span><span class="pp-contact-v">${esc(c.value)}</span></button>`;
+            }).join("")}
+          </div>
+          <p class="pp-hint pp-contact-note">${changed
+            ? `Changed for this PDF only. The album and its other PDFs are as they were. <button type="button" class="pp-link" id="ppContactReset">Use the album's settings</button>`
+            : "As the album has them. Tap one to show or hide it on this PDF only."}</p>
+        </div>`;
+    }
+    function wireContactChips() {
+      const wrap = body.querySelector("#ppContactOnWrap");
+      if (!wrap) return;
+      wrap.addEventListener("click", (e) => {
+        const reset = e.target.closest("#ppContactReset");
+        const chip = e.target.closest("[data-contact-key]");
+        if (!reset && (!chip || chip.disabled)) return;
+        if (reset) state.contactOn = {};
+        else {
+          const c = portfolioPdfContactChoices(shoot).find((x) => x.key === chip.dataset.contactKey);
+          if (!c) return;
+          const next = { ...(state.contactOn || {}) };
+          const want = !contactChosen(c, next);
+          if (want === c.on) delete next[c.key]; else next[c.key] = want;
+          state.contactOn = next;
+        }
+        wrap.innerHTML = contactChipsHtml();
+        const again = wrap.querySelector(reset ? ".pp-contact-chip" : `[data-contact-key="${chip.dataset.contactKey}"]`);
+        if (again) again.focus();
+        drawPreview();
+      });
+    }
+
     // Which alignment the stats row is showing as chosen.
     function syncDetailsAlign() {
       body.querySelectorAll("#ppDetailsAlignSeg [data-details-align]").forEach((btn) =>
@@ -3598,6 +3680,7 @@ ${admin ? `
               <button type="button" role="radio" data-contact-align="centre" title="Contact line centred" aria-label="Contact line centred">${iconBtn("alignCentre", "Centre")}</button>
               <button type="button" role="radio" data-contact-align="right" title="Contact line to the right" aria-label="Contact line to the right">${iconBtn("alignRight", "Right")}</button>
             </div>
+            ${admin ? `<div id="ppContactOnWrap" data-forsheet="first">${contactChipsHtml()}</div>` : ""}
           </section>
           ` : ""}
         </div>
@@ -3867,6 +3950,7 @@ ${admin ? `
       /* Only the studio has this one, so it may not be on the page.
          Gating the markup without gating the wiring threw on null and
          took the client's whole preview down with it. */
+      wireContactChips();
       const seg_ContactAlignSeg = body.querySelector("#ppContactAlignSeg");
       if (seg_ContactAlignSeg) seg_ContactAlignSeg.addEventListener("click", (e) => {
         const btn = e.target.closest("[data-contact-align]");

@@ -12632,6 +12632,8 @@ window.resolveContractArchive = function(version) {
     modelTypeLabel, modelTypesOf, photoSrc, portfolioPdfMailLink,
     portfolioPdfPhotos, portfolioPdfSalesOpen, prefersReduced, showRep, shuffleArray,
     slugify, socialPrintText, toast, trapTabKey, visibleAgencyLinks, visibleModelLinks,
+    // Every link, before the album's switches: a PDF may answer for itself (v587).
+    printModelLinks, agencyLinksOf,
   };
 
   // Every social we have for the model: the album's Instagram / Kavyar
