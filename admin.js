@@ -87,30 +87,20 @@ window.codesAreUnpublished = function() {
 // the id prefix ("newPromo" / "newInvite"). The end is a choice rather than a
 // bare date box because "no end date" is the usual answer and an empty date
 // input does not say so: it reads as a field someone forgot to fill in.
-window.codeDatesFieldsHtml = function(prefix, span) {
-  const box = "padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); font-weight: 700; background: var(--paper); color: var(--ink); font-family: inherit;";
-  const cap = "font-size: var(--font-xs); font-weight: 700; color: var(--ink-soft); display: block; margin-bottom: 4px;";
+window.codeDatesFieldsHtml = function(prefix) {
   return `
-    <div style="grid-column: span ${span}; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;">
-      <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 6px;">📅 When it works</label>
-      <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
-        <div style="flex: 1; min-width: 150px;">
-          <label for="${prefix}StartDate" style="${cap}">Starts</label>
-          <input type="date" id="${prefix}StartDate" style="width: 100%; ${box}" />
-        </div>
-        <div style="flex: 1; min-width: 190px;">
-          <label for="${prefix}Ends" style="${cap}">Ends</label>
-          <select id="${prefix}Ends" onchange="window.syncCodeEndsField('${prefix}')" style="width: 100%; ${box}">
-            <option value="open">Runs until I switch it off</option>
-            <option value="date">Ends on a date</option>
-          </select>
-        </div>
-        <div id="${prefix}EndDateWrap" style="flex: 1; min-width: 150px; display: none;">
-          <label for="${prefix}EndDate" style="${cap}">Last day it works</label>
-          <input type="date" id="${prefix}EndDate" style="width: 100%; ${box}" />
-        </div>
+    <div class="cx-section cx-dates">
+      <h4>When it works</h4>
+      <div class="cx-inline is-wrap">
+        <label class="cx-field"><span class="cx-label">Starts</span><input type="date" id="${prefix}StartDate" /></label>
+        <label class="cx-field"><span class="cx-label">Ends</span>
+          <select id="${prefix}Ends" onchange="window.syncCodeEndsField('${prefix}')">
+            <option value="open">When I switch it off</option>
+            <option value="date">On a date</option>
+          </select></label>
+        <label class="cx-field" id="${prefix}EndDateWrap" style="display: none;"><span class="cx-label">Last day it works</span><input type="date" id="${prefix}EndDate" /></label>
       </div>
-      <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 6px; line-height: 1.4;">Leave Starts empty and the code works straight away. The dates are checked on the day the client fills in the booking form, not the day of the shoot, and both days are included — a code ending on the 31st works all day on the 31st.</div>
+      <p class="cx-hint">A blank start means it works straight away. Dates are checked on the day the client books, not the day of the shoot, and both days count — a code ending on the 31st works all day on the 31st.</p>
     </div>`;
 };
 
@@ -139,7 +129,7 @@ window.readCodeDatesFields = function(prefix) {
   const endsOnDate = document.getElementById(prefix + "Ends")?.value === "date";
   const endDate = endsOnDate ? window.cleanCodeDate(document.getElementById(prefix + "EndDate")?.value) : "";
   if (endsOnDate && !endDate) {
-    alert("Pick the last day this code should work — or change Ends to \"Runs until I switch it off\".");
+    alert("Pick the last day this code should work — or change Ends to \"When I switch it off\".");
     return null;
   }
   if (startDate && endDate && endDate < startDate) {
@@ -168,10 +158,10 @@ window.codeDatesLine = function(entry) {
 // quiet as it was — so a badge always means "clients cannot use this today".
 window.codeStatusBadgeHtml = function(entry) {
   const st = window.codeStatus(entry);
-  const pill = (bg, fg, text, title) => `<span style="font-size: var(--font-xs); font-weight: 700; background: ${bg}; color: ${fg}; padding: 2px 6px; border-radius: 4px; white-space: nowrap;" title="${title}">${text}</span>`;
-  if (st === "off") return pill("rgba(120,120,120,0.18)", "var(--ink-soft)", "OFF", "Switched off — clients cannot use this code");
-  if (st === "early") return pill("rgba(217,119,6,0.14)", "#d97706", "NOT STARTED", "Clients cannot use this code until its start date");
-  if (st === "ended") return pill("rgba(120,120,120,0.18)", "var(--ink-soft)", "ENDED", "Past its end date — clients cannot use this code. Edit it to set a new end date.");
+  const pill = (cls, text, title) => `<span class="cx-live is-${cls}" title="${title}">${text}</span>`;
+  if (st === "off") return pill("off", "OFF", "Switched off — clients cannot use this code");
+  if (st === "early") return pill("early", "NOT STARTED", "Clients cannot use this code until its start date");
+  if (st === "ended") return pill("ended", "ENDED", "Past its end date — clients cannot use this code. Edit it to set a new end date.");
   return "";
 };
 
@@ -286,7 +276,7 @@ window.openPromoCodeModal = function(codeKey) {
      used to refuse the fingerprint as "not a code", so no such code could be
      edited or published at all (Sep 29 2026, P0). */
   const fp = !!(editing && window.isCodeFingerprint(editing));
-  if (title) title.textContent = editing ? `✏️ Edit Promo Code — ${fp ? "made on another device" : editing}` : "🎟️ Create New Custom Promotional Discount Code";
+  if (title) title.textContent = editing ? `Edit promo code — ${fp ? "made on another device" : editing}` : "New promo code";
   const entry = editing ? codes[editing] : null;
   if (nameEl) { nameEl.value = fp ? window.codeForDisplay(editing) : (editing || ""); nameEl.readOnly = fp; nameEl.title = fp ? "Made on another device: its name can only be seen there. Everything else here can be changed." : ""; }
   // 'in' rather than truthiness: a home-studio-only code can legitimately
@@ -312,6 +302,7 @@ window.openPromoCodeModal = function(codeKey) {
   if (activeEl) activeEl.checked = entry ? window.promoCodeIsActive(entry) : true;
   window.fillCodeDatesFields("newPromo", entry);
   if (typeof window.togglePromoHomeStudioValField === "function") window.togglePromoHomeStudioValField();
+  if (typeof window.paintPromoFormSummary === "function") window.paintPromoFormSummary();
 
   form.style.display = "block";
   form.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -693,7 +684,7 @@ window.openInviteCodeModal = function(codeStr) {
   const locationEl = document.getElementById("newInviteLocation");
   // Made on another device: edited like any other, but its name stays hidden (see openPromoCodeModal).
   const fp = !!(existing && window.isCodeFingerprint(existing.code));
-  if (title) title.textContent = existing ? `✏️ Edit Invite Code — ${fp ? "made on another device" : existing.code}` : "🔑 Add New Invite Code";
+  if (title) title.textContent = existing ? `Edit invite code — ${fp ? "made on another device" : existing.code}` : "New invite code";
   if (codeEl) { codeEl.value = fp ? window.codeForDisplay(existing.code) : (existing ? existing.code : target); codeEl.readOnly = fp; codeEl.title = fp ? "Made on another device: its name can only be seen there. Everything else here can be changed." : ""; }
   if (descEl) descEl.value = existing ? (existing.desc || "") : "";
   if (locationEl) locationEl.value = existing ? (existing.location || "") : "";
@@ -714,6 +705,9 @@ window.openInviteCodeModal = function(codeStr) {
   window.fillCodeDatesFields("newInvite", existing);
   if (typeof window.toggleInviteHomeStudioValField === "function") window.toggleInviteHomeStudioValField();
   if (typeof window.syncInviteWaiveVisibility === "function") window.syncInviteWaiveVisibility();
+  if (typeof window.paintInviteFormSummary === "function") window.paintInviteFormSummary();
+  // A code made elsewhere keeps its name: nothing to make up.
+  { const sug = document.getElementById("newInviteSuggest"); if (sug) sug.hidden = !!fp; }
 
   form.style.display = "block";
   form.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -729,6 +723,75 @@ window.syncInviteWaiveVisibility = function() {
   const note = document.getElementById("newInviteVenueNote");
   if (row) row.style.display = hasVenue ? "" : "none";
   if (note) note.style.display = hasVenue ? "none" : "block";
+};
+
+/* What a code will do, in one sentence under its form, rewritten as it is
+   filled in (v589). Read straight off the form's own boxes, so it says what
+   Save would keep — the studio sees "Clients who type SUMMER30 get 30% off
+   the package and a free home studio rental" before pressing it. */
+const codeFormEsc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const codeFormVal = (id) => ((document.getElementById(id) || {}).value || "").trim();
+const codeFormInr = (n) => `₹${Math.max(0, Math.round(Number(n) || 0)).toLocaleString("en-IN")}`;
+const codeFormDates = (prefix) => window.codeDatesLine({
+  startDate: codeFormVal(prefix + "StartDate"),
+  endDate: codeFormVal(prefix + "Ends") === "date" ? codeFormVal(prefix + "EndDate") : ""
+}) || "Works straight away, until you switch it off";
+const codeFormName = (id, fallback) => {
+  const el = document.getElementById(id);
+  return el && !el.readOnly && codeFormVal(id) ? codeFormVal(id).toUpperCase() : fallback;
+};
+window.paintPromoFormSummary = function() {
+  const el = document.getElementById("promoFormSummary");
+  if (!el) return;
+  const val = Number(codeFormVal("newPromoVal")) || 0;
+  const pct = codeFormVal("newPromoType") !== "flat";
+  const pkg = val > 0
+    ? (pct ? `${val}% off the package${document.getElementById("newPromoIncludeAddons")?.checked ? " and the home studio rental" : ""}` : `${codeFormInr(val)} off the package`)
+    : "";
+  const hs = codeFormVal("newPromoHomeStudioType"), hv = codeFormVal("newPromoHomeStudioVal");
+  const rent = hs === "free" ? "a free home studio rental"
+    : hs === "flat" && hv ? `${codeFormInr(hv)} off the home studio rental`
+    : hs === "pct" && hv ? `${Number(hv)}% off the home studio rental`
+    : hs === "fixed" && hv !== "" ? `the home studio rental at ${codeFormInr(hv)}`
+    : "";
+  const gets = [pkg, rent].filter(Boolean).join(" and ");
+  const dl = codeFormVal("newPromoDeliverables");
+  const on = document.getElementById("newPromoActive")?.checked !== false;
+  el.innerHTML = `Clients who type <b>${codeFormEsc(codeFormName("newPromoName", "this code"))}</b> get ${gets ? codeFormEsc(gets) : "nothing off yet"}${dl ? `, with ${codeFormEsc(dl)} as their deliverables` : ""}. ${codeFormEsc(codeFormDates("newPromo"))}.${on ? "" : " <b>Switched off for now.</b>"}`;
+};
+window.paintInviteFormSummary = function() {
+  const el = document.getElementById("inviteFormSummary");
+  if (!el) return;
+  const loc = codeFormVal("newInviteLocation"), cost = codeFormVal("newInviteVenueCost");
+  const venue = loc ? `at ${loc}, ${Number(cost) > 0 ? `for ${codeFormInr(cost)}` : "complimentary"}` : "at a venue they choose";
+  const hs = codeFormVal("newInviteHomeStudioType"), hv = codeFormVal("newInviteHomeStudioVal");
+  const rent = hs === "free" ? " The home studio rental is free."
+    : hs === "flat" && hv ? ` ${codeFormInr(hv)} off the home studio rental.`
+    : hs === "pct" && hv ? ` ${Number(hv)}% off the home studio rental.`
+    : "";
+  const dl = codeFormVal("newInviteDeliverables") || ((typeof window.getAdminTfpPackage === "function" && window.getAdminTfpPackage()) || {}).specs || "";
+  const on = document.getElementById("newInviteActive")?.checked !== false;
+  el.innerHTML = `Talent who type <b>${codeFormEsc(codeFormName("newInviteCode", "this code"))}</b> can book a test shoot ${codeFormEsc(venue)}.${codeFormEsc(rent)}${dl ? ` They get ${codeFormEsc(dl)}.` : ""} ${codeFormEsc(codeFormDates("newInvite"))}.${on ? "" : " <b>Switched off for now.</b>"}`;
+};
+// "Make one up", inside the invite form: a code in the studio's own style,
+// put in the box rather than reopening the form (v589).
+window.suggestInviteCode = function() {
+  const el = document.getElementById("newInviteCode");
+  if (!el || el.readOnly) return;
+  const prefixes = ["VIP", "NERDY", "MODEL", "STUDIO", "TALENT", "SHOOT"];
+  const taken = new Set((window.getAdminInviteCodes() || []).map((c) => String(typeof c === "object" ? c.code : c).toUpperCase()));
+  let code = "";
+  for (let i = 0; i < 20 && (!code || taken.has(code)); i++) code = `${prefixes[Math.floor(Math.random() * prefixes.length)]}-${Math.floor(1000 + Math.random() * 9000)}`;
+  el.value = code;
+  el.focus();
+  window.paintInviteFormSummary();
+};
+// Cancel and × on both forms: put the form away and forget which code it had open.
+window.closeCodeForm = function(id) {
+  const form = document.getElementById(id);
+  if (form) form.style.display = "none";
+  if (id === "promoCreatorForm") window._editingPromoKey = null;
+  if (id === "inviteCreatorForm") window._editingInviteCode = null;
 };
 
 // Returns true once the code is saved (see saveNewPromoCodeFromForm).
@@ -3991,10 +4054,12 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
               <span id="adminPromoArrow" style="font-size: var(--font-xs); color: var(--ink-soft); font-weight: 700;">▼</span>
             </div>
           </div>
-          <div id="adminPromoBody" style="display: none; margin-top: 12px;">
-            <span class="admin-save-status" style="font-size: var(--font-xs); font-weight: 700; color: #059669; background: rgba(5,150,105,0.12); padding: 4px 10px; border-radius: 12px; border: 1px solid #059669; font-family: var(--mono-font); display: inline-block; margin-bottom: 8px;">🟢 ALL CHANGES SAVED TO LIVE SITE</span>
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 12px 0;">A change here is kept on this device straight away. Clients get it once you press <strong>Save &amp; push live</strong> above — the same button publishes rates, promo codes and invite codes together.</p>
-            <div id="adminPromoCodesGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;"></div>
+          <div id="adminPromoBody" class="cx-body" style="display: none;">
+            <div class="cx-status">
+              <span class="admin-save-status cx-pill">🟢 ALL CHANGES SAVED TO LIVE SITE</span>
+              <span class="cx-status-note">Saved on this computer as you go. Clients get a change once you press <b>Save &amp; push live</b>, which sends rates, promo codes and invite codes together.</span>
+            </div>
+            <div id="adminPromoCodesGrid" class="cx-grid"></div>
           </div>
         </div>
 
@@ -4010,10 +4075,12 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
               <span id="adminInviteArrow" style="font-size: var(--font-xs); color: var(--ink-soft); font-weight: 700;">▼</span>
             </div>
           </div>
-          <div id="adminInviteBody" style="display: none; margin-top: 12px;">
-            <span class="admin-save-status" style="font-size: var(--font-xs); font-weight: 700; color: #059669; background: rgba(5,150,105,0.12); padding: 4px 10px; border-radius: 12px; border: 1px solid #059669; font-family: var(--mono-font); display: inline-block; margin-bottom: 8px;">🟢 ALL CHANGES SAVED TO LIVE SITE</span>
-            <p style="font-size: var(--font-xs); color: var(--ink-soft); margin: 0 0 12px 0;">A change here is kept on this device straight away. Invited talent get it once you press <strong>Save &amp; push live</strong> above — the same button publishes rates, promo codes and invite codes together.</p>
-            <div id="adminInviteCodesGrid" style="display: grid; grid-template-columns: 1fr; gap: 12px;"></div>
+          <div id="adminInviteBody" class="cx-body" style="display: none;">
+            <div class="cx-status">
+              <span class="admin-save-status cx-pill">🟢 ALL CHANGES SAVED TO LIVE SITE</span>
+              <span class="cx-status-note">An invite code unlocks the test-shoot form. Saved on this computer as you go; talent get a change once you press <b>Save &amp; push live</b>.</span>
+            </div>
+            <div id="adminInviteCodesGrid" class="cx-grid"></div>
           </div>
         </div>
 
@@ -4852,9 +4919,8 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
   };
   const livePill = (state) => {
     const look = LIVE_LOOK[state];
-    return look ? `<span data-live-state="${state}" style="font-size: var(--font-xs); font-weight: 800; background: ${look[1]}; color: ${look[2]}; padding: 2px 6px; border-radius: 4px; white-space: nowrap;" title="${esc(look[3])}">${look[0]}</span>` : "";
+    return look ? `<span data-live-state="${state}" class="cx-live is-${state}" title="${esc(look[3])}">${look[0]}</span>` : "";
   };
-  const smallBtn = "background: none; border: 1px solid currentColor; color: inherit; border-radius: 4px; padding: 1px 7px; font: inherit; font-weight: 700; cursor: pointer;";
   const clockNow = (t) => new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   function paintCodeLive() {
@@ -4886,17 +4952,15 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
             ? "You removed it on this computer, but clients can still use it until you press Save & push live."
             : "Clients can use it, but it isn't in this computer's list (it was made or changed on another device). Save & push live from here would take it off the site — press Keep it to stop that.";
           return `
-            <div class="code-live-ghost" style="background: var(--paper); border: 1.5px dashed #d97706; border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
-              <div style="min-width: 0; flex: 1 1 190px;">
-                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                  <strong style="font-size: var(--font-sm); font-family: var(--mono-font); letter-spacing: 0.04em; color: var(--ink);">${esc(nameHere || "••••")}</strong>
-                  <span style="font-size: var(--font-xs); font-weight: 800; background: rgba(217,119,6,0.14); color: #d97706; padding: 2px 6px; border-radius: 4px; white-space: nowrap;">${wasRemoved ? "REMOVED HERE — STILL LIVE" : "LIVE — NOT ON THIS COMPUTER"}</span>
-                </div>
-                <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">${esc(what)}</div>
-                <div style="font-size: var(--font-xs); color: #d97706; font-weight: 700; margin-top: 4px; line-height: 1.4;">${why}</div>
+            <article class="code-live-ghost cx-card is-ghost">
+              <div class="cx-card-head">
+                <span class="cx-headline">${esc(what)}</span>
+                <span class="cx-badges"><span class="cx-live is-warn">${wasRemoved ? "REMOVED HERE — STILL LIVE" : "LIVE — NOT ON THIS COMPUTER"}</span></span>
               </div>
-              <button type="button" onclick="window.keepLiveCode('${kind}', '${fp}')" style="background: var(--bone); color: var(--ink); border: 1px solid var(--line); padding: 5px 10px; border-radius: 4px; font-size: var(--font-xs); cursor: pointer; font-weight: 700;">${wasRemoved ? "↩ Put it back" : "➕ Keep it"}</button>
-            </div>`;
+              <div class="cx-code">${nameHere ? `<code>${esc(nameHere)}</code>` : `<span class="cx-code-hidden">Name only on the device that made it</span>`}</div>
+              <p class="cx-live-note">${why}</p>
+              <div class="cx-card-foot"><span></span><button type="button" class="cx-btn tiny" onclick="window.keepLiveCode('${kind}', '${fp}')">${wasRemoved ? "↩ Put it back" : "Keep it"}</button></div>
+            </article>`;
         }).join("");
       }
 
@@ -4905,19 +4969,19 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
       let html;
       if (!live) {
         html = codeLive.failed
-          ? `Couldn't reach the live site to check which of these clients can use. <button type="button" onclick="window.checkCodesLive(true)" style="${smallBtn}">↻ Check again</button>`
+          ? `Couldn't reach the live site to check which of these clients can use. <button type="button" onclick="window.checkCodesLive(true)" class="cx-btn tiny">↻ Check again</button>`
           : "Checking which of these clients can use…";
       } else {
         const parts = [];
-        if (counts.live) parts.push(`<b style="color: #059669;">${counts.live} live</b>`);
-        if (counts.going) parts.push(`<b style="color: #2563eb;">${counts.going} going live</b>`);
-        if (counts.new) parts.push(`<b style="color: #d97706;">${counts.new} only on this computer</b>`);
-        if (counts.changed) parts.push(`<b style="color: #d97706;">${counts.changed} edited here, not live yet</b>`);
-        if (ghosts.length) parts.push(`<b style="color: #d97706;">${ghosts.length} live but not on this computer</b>`);
-        html = `On the live site: ${parts.join(" · ") || "no codes yet"} <span style="white-space: nowrap;">— checked ${clockNow(codeLive.at)} <button type="button" onclick="window.checkCodesLive(true)" style="${smallBtn}">↻ Check again</button></span>`;
+        if (counts.live) parts.push(`<b class="cx-ok">${counts.live} live</b>`);
+        if (counts.going) parts.push(`<b class="cx-info">${counts.going} going live</b>`);
+        if (counts.new) parts.push(`<b class="cx-warn">${counts.new} only on this computer</b>`);
+        if (counts.changed) parts.push(`<b class="cx-warn">${counts.changed} edited here, not live yet</b>`);
+        if (ghosts.length) parts.push(`<b class="cx-warn">${ghosts.length} live but not on this computer</b>`);
+        html = `On the live site: ${parts.join(" · ") || "no codes yet"} <span style="white-space: nowrap;">— checked ${clockNow(codeLive.at)} <button type="button" onclick="window.checkCodesLive(true)" class="cx-btn tiny">↻ Check again</button></span>`;
       }
       if (codeLive.stale) {
-        html = `<div style="color: #d97706; font-weight: 700; margin-bottom: 4px;">⚠️ This page is out of date (v${codeLive.stale.loaded}; the site is on v${codeLive.stale.live}), and an out-of-date page is not allowed to publish. Your codes are saved on this computer. <button type="button" onclick="window.reloadToLatestBuild(${Number(codeLive.stale.live)})" style="${smallBtn}">Reload now</button></div>` + html;
+        html = `<div style="color: #d97706; font-weight: 700; margin-bottom: 4px;">⚠️ This page is out of date (v${codeLive.stale.loaded}; the site is on v${codeLive.stale.live}), and an out-of-date page is not allowed to publish. Your codes are saved on this computer. <button type="button" onclick="window.reloadToLatestBuild(${Number(codeLive.stale.live)})" class="cx-btn tiny">Reload now</button></div>` + html;
       }
       sum.innerHTML = html;
     });
@@ -4998,257 +5062,197 @@ window.MODELS = (window.WPS_DATA.MODELS && window.WPS_DATA.MODELS.items) || [];
         const codes = getAdminPromoCodes();
         const activeInviteCode = typeof window.getAdminInviteCode === "function" ? window.getAdminInviteCode() : "NERDYBRAND";
 
+        /* Promo and invite codes, redrawn (v589, the owner: "can you enhance UX
+           Promo codes and Invite codes"). One calm card for both kinds: what
+           the code gives as its headline, the code itself with a Copy, the
+           studio's note, the facts that are set (and only those), and an
+           On/Off switch with Edit and Delete beneath. A code made on another
+           device can't show its name here — codes are published as
+           fingerprints — so its card leans on what it gives and its note
+           instead of a row of dots. The forms ask in plain words, in the
+           order a code is thought about, and say in one sentence what the
+           code will do before it is saved. Every id, handler and live badge
+           is the one it was. */
+        const codeLine = (stored, kindWord, extra = "") => window.isCodeFingerprint(stored)
+          ? `<div class="cx-code"><span class="cx-code-hidden" title="Codes are published as fingerprints, so only the computer that made this one can show its name. Everything else about it can be changed here.">Name only on the device that made it</span>${extra}</div>`
+          : `<div class="cx-code"><code>${esc(stored)}</code><button type="button" class="cx-copy" onclick="navigator.clipboard.writeText('${escJs(stored)}').then(() => { if (typeof toast === 'function') toast('Copied ${escJs(stored)}'); }).catch(() => {});" title="Copy this ${esc(kindWord)}">Copy</button>${extra}</div>`;
+        const facts = (rows) => {
+          const shown = rows.filter((r) => r && r[1]);
+          return shown.length ? `<dl class="cx-facts">${shown.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>` : "";
+        };
+        const switchBtn = (on, onclick, what) => `<button type="button" role="switch" aria-checked="${on}" class="cx-switch" onclick="${onclick}" title="${on ? `Switch this ${what} off. It keeps everything set on it.` : `Switch this ${what} back on.`}"><span class="cx-switch-track" aria-hidden="true"></span><span class="cx-switch-text">${on ? "On" : "Off"}</span></button>`;
+        const rentalWords = (d) => d.type === "free" ? "Free"
+          : d.type === "flat" ? `₹${Number(d.value || 0).toLocaleString("en-IN")} off`
+          : d.type === "pct" ? `${d.value}% off`
+          : d.type === "fixed" ? `Set to ₹${Number(d.value || 0).toLocaleString("en-IN")}`
+          : "";
+        const cardFoot = (isOn, kind, codeStr) => `
+              <div class="cx-card-foot">
+                ${switchBtn(isOn, `window.toggleAdmin${kind}Active('${escJs(codeStr)}')`, kind === "Promo" ? "code" : "invite")}
+                <span class="cx-foot-actions">
+                  <button type="button" class="cx-link" onclick="window.editAdmin${kind}Code('${escJs(codeStr)}')">Edit</button>
+                  <button type="button" class="cx-link is-danger" onclick="window.deleteAdmin${kind}Code('${escJs(codeStr)}')">Delete</button>
+                </span>
+              </div>`;
+
         const creatorFormHtml = `
-          <div id="promoCreatorForm" style="grid-column: 1 / -1; display: none; background: var(--paper); border: 1.5px solid var(--accent); border-radius: 8px; padding: 16px 18px; margin-bottom: 8px; box-shadow: var(--shadow-sm); animation: modalFadeIn 0.3s ease;">
-            <div style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
-              <span id="promoCreatorFormTitle">🎟️ Create New Custom Promotional Discount Code</span>
-              <button type="button" onclick="document.getElementById('promoCreatorForm').style.display='none'" style="background:none; border:none; color:var(--ink-soft); font-size: var(--font-sm); cursor:pointer;">✕</button>
+          <div id="promoCreatorForm" class="cx-form" style="display: none;" oninput="window.paintPromoFormSummary && window.paintPromoFormSummary()" onchange="window.paintPromoFormSummary && window.paintPromoFormSummary()">
+            <div class="cx-form-head">
+              <h3 id="promoCreatorFormTitle">New promo code</h3>
+              <button type="button" class="cx-x" aria-label="Close without saving" onclick="window.closeCodeForm('promoCreatorForm')">×</button>
             </div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; align-items: flex-end;">
-              <div>
-                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">Promo Code String *</label>
-                <input type="text" id="newPromoName" placeholder="e.g. SUMMER30" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-weight: 700; font-family: var(--mono-font); text-transform: uppercase; background: var(--bone); color: var(--ink);" />
+            <div class="cx-row">
+              <label class="cx-field"><span class="cx-label">Code clients type</span>
+                <input type="text" id="newPromoName" class="cx-mono" maxlength="24" autocomplete="off" spellcheck="false" placeholder="e.g. SUMMER30" /></label>
+              <label class="cx-field"><span class="cx-label">Note <em>for you — clients never see it</em></span>
+                <input type="text" id="newPromoDesc" placeholder="e.g. Summer shoots, for Instagram followers" /></label>
+            </div>
+            <div class="cx-section">
+              <h4>Off the package</h4>
+              <div class="cx-inline">
+                <select id="newPromoType" aria-label="Kind of discount"><option value="pct">% off</option><option value="flat">₹ off</option></select>
+                <input type="number" id="newPromoVal" min="0" inputmode="numeric" aria-label="How much off the package" placeholder="e.g. 30" />
               </div>
-              <div>
-                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">Discount Type *</label>
-                <select id="newPromoType" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); font-weight: 700; background: var(--bone); color: var(--ink);">
-                  <option value="pct">Percentage Off (%)</option>
-                  <option value="flat">Flat Amount (INR ₹)</option>
+              <p class="cx-hint">0 makes a code that only changes the home studio rental.</p>
+              <label class="cx-check"><input type="checkbox" id="newPromoIncludeAddons" /><span>Take the % off the home studio rental too <em>— a ₹ code saves the same either way</em></span></label>
+            </div>
+            <div class="cx-section">
+              <h4>Home studio rental</h4>
+              <div class="cx-inline">
+                <select id="newPromoHomeStudioType" onchange="window.togglePromoHomeStudioValField()" aria-label="The home studio rental with this code">
+                  <option value="none">As usual</option>
+                  <option value="free">Free</option>
+                  <option value="flat">₹ off</option>
+                  <option value="pct">% off</option>
+                  <option value="fixed">Set the price</option>
                 </select>
+                <input type="number" id="newPromoHomeStudioVal" min="0" inputmode="numeric" oninput="window.paintPromoRentalHint()" aria-label="Rental amount" placeholder="e.g. 500" style="display: none;" />
               </div>
-              <div>
-                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">Value Amount *</label>
-                <input type="number" id="newPromoVal" placeholder="e.g. 30 or 1500, or 0 for home studio only" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-weight: 700; color: #059669; background: var(--bone);" />
+              <div id="newPromoHomeStudioHint" class="cx-hint"></div>
+            </div>
+            <div class="cx-section">
+              <h4><label for="newPromoDeliverables">Deliverables</label> <em>optional</em></h4>
+              <input type="text" id="newPromoDeliverables" maxlength="200" placeholder="e.g. 25 proofs + 6 retouched photos" />
+              <p class="cx-hint">Blank: each package keeps its own. Filled: replaces the deliverables of whichever package the client picks, on their quote and in their signed record.</p>
+            </div>
+            ${window.codeDatesFieldsHtml("newPromo")}
+            <label class="cx-check cx-on"><input type="checkbox" id="newPromoActive" checked /><span><b>Switched on</b> — clients can use it. Switch it off to pause it; it keeps everything set here.</span></label>
+            <p class="cx-sum" id="promoFormSummary" aria-live="polite"></p>
+            <div class="cx-form-foot">
+              <button type="button" class="cx-btn" onclick="window.closeCodeForm('promoCreatorForm')">Cancel</button>
+              <button type="button" class="cx-btn primary" onclick="window.saveNewPromoCodeFromForm()">Save promo code</button>
+            </div>
+          </div>
+        `;
+
+        const tfpDefault = ((typeof getAdminTfpPackage === "function" && getAdminTfpPackage()) || {}).specs || "";
+        const homeRate = (typeof getHomeStudioRate === "function" ? getHomeStudioRate() : 3000);
+        const inviteFormHtml = `
+          <div id="inviteCreatorForm" class="cx-form" style="display: none;" oninput="window.paintInviteFormSummary && window.paintInviteFormSummary()" onchange="window.paintInviteFormSummary && window.paintInviteFormSummary()">
+            <div class="cx-form-head">
+              <h3 id="inviteCreatorFormTitle">New invite code</h3>
+              <button type="button" class="cx-x" aria-label="Close without saving" onclick="window.closeCodeForm('inviteCreatorForm')">×</button>
+            </div>
+            <div class="cx-row">
+              <label class="cx-field"><span class="cx-label">Code talent type</span>
+                <span class="cx-with-btn"><input type="text" id="newInviteCode" class="cx-mono" maxlength="24" autocomplete="off" spellcheck="false" placeholder="e.g. VIP-2431" /><button type="button" class="cx-btn small" id="newInviteSuggest" onclick="window.suggestInviteCode()">Make one up</button></span></label>
+              <label class="cx-field"><span class="cx-label">Note <em>for you — talent never see it</em></span>
+                <input type="text" id="newInviteDesc" placeholder="e.g. Agency models, October" /></label>
+            </div>
+            <div class="cx-section">
+              <h4><label for="newInviteLocation">Venue</label></h4>
+              <input type="text" id="newInviteLocation" placeholder="Blank lets the talent choose — or e.g. ${esc(window.studioLabel())}" oninput="window.syncInviteWaiveVisibility && window.syncInviteWaiveVisibility()" />
+              <div id="newInviteWaiveRow" style="display: none;">
+                <label class="cx-field cx-gap"><span class="cx-label">What the venue costs them <em>blank = complimentary</em></span>
+                  <input type="number" min="0" inputmode="numeric" id="newInviteVenueCost" placeholder="Blank = complimentary" /></label>
+                <p class="cx-hint">You chose the venue, so you set its cost. An amount is billed as its own line in their quote, payable in full before the shoot.</p>
               </div>
-              <div style="grid-column: span 2;">
-                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">Description Label</label>
-                <input type="text" id="newPromoDesc" placeholder="e.g. 30% Off Summer Shoots" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
+              <p id="newInviteVenueNote" class="cx-hint">No venue set, so the talent chooses. At your home studio they pay your standard rate (now ₹${homeRate.toLocaleString("en-IN")}).</p>
+            </div>
+            <div class="cx-section">
+              <h4>Home studio rental</h4>
+              <div class="cx-inline">
+                <select id="newInviteHomeStudioType" onchange="window.toggleInviteHomeStudioValField()" aria-label="The home studio rental with this code">
+                  <option value="none">As usual</option>
+                  <option value="free">Free</option>
+                  <option value="flat">₹ off</option>
+                  <option value="pct">% off</option>
+                </select>
+                <input type="number" id="newInviteHomeStudioVal" min="0" inputmode="numeric" aria-label="Rental amount" placeholder="e.g. 500" style="display: none;" />
               </div>
-                <div style="grid-column: span 2;">
-                  <label for="newPromoDeliverables" style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">📦 Deliverables with this code <span style="font-weight:400;text-transform:none;color:var(--ink-soft);">(optional, paid shoots)</span></label>
-                  <input type="text" id="newPromoDeliverables" maxlength="200" placeholder="e.g. 25 proofs + 6 retouched photos" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
-                  <span style="display: block; margin-top: 5px; font-size: var(--font-xs); line-height: 1.5; color: var(--ink-soft);">Blank: each package keeps its own. Filled: replaces the deliverables of whichever package the client picks, on their quote and in their signed record.</span>
-                </div>
-              <div style="grid-column: span 2; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px;">
-                <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">🏠 Home Studio Rental Discount</label>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                  <select id="newPromoHomeStudioType" onchange="window.togglePromoHomeStudioValField()" style="flex: 1; min-width: 150px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); font-weight: 700; background: var(--paper); color: var(--ink);">
-                    <option value="none">No discount on the rental</option>
-                    <option value="free">Free — 100% off</option>
-                    <option value="flat">Flat ₹ off</option>
-                    <option value="pct">% off</option>
-                    <option value="fixed">Set the rental price</option>
-                  </select>
-                  <input type="number" id="newPromoHomeStudioVal" oninput="window.paintPromoRentalHint()" placeholder="e.g. 500" style="flex: 1; min-width: 100px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-weight: 700; color: #059669; background: var(--paper); display: none;" />
-                </div>
-                <div id="newPromoHomeStudioHint" style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 6px; line-height: 1.4;"></div>
-                <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 4px; line-height: 1.4;">Only applies when the booking actually carries a home studio rental (dropdown pick, or a locked invite venue with a cost).</div>
-              </div>
-              ${window.codeDatesFieldsHtml("newPromo", 2)}
-              <div style="grid-column: span 2;">
-                <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;">
-                  <input type="checkbox" id="newPromoActive" checked style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent-text); cursor: pointer;" />
-                  <span style="font-size: var(--font-xs); color: var(--ink); font-family: 'Archivo', sans-serif; line-height: 1.4;">
-                    <strong>Active</strong> — clients can use this code.<br/>
-                    <span style="color: var(--ink-soft);">Untick to switch it off without deleting it. The code keeps its wording and settings, and anyone typing it is told it is not valid. Tick it again whenever you want it back.</span>
-                  </span>
-                </label>
-                <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px;">
-                  <input type="checkbox" id="newPromoIncludeAddons" style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent-text); cursor: pointer;" />
-                  <span style="font-size: var(--font-xs); color: var(--ink); font-family: 'Archivo', sans-serif; line-height: 1.4;">
-                    <strong>Also discount the rental</strong> — the % also comes off the home studio rental, instead of the package rate alone.<br/>
-                    <span style="color: var(--ink-soft);">Only changes anything on a <strong>% code</strong>. On a flat ₹ code the saving is the same either way, so leave it unticked.</span>
-                  </span>
-                </label>
-              </div>
-              <div>
-                <button type="button" class="admin-cal-btn primary" onclick="window.saveNewPromoCodeFromForm()" style="width: 100%; font-weight: 700; padding: 8px 12px;">💾 Save Promo Code</button>
-              </div>
+              <p class="cx-hint">Only when the booking carries a home studio rental — your standard rate, or the venue cost above.</p>
+            </div>
+            <div class="cx-section">
+              <h4><label for="newInviteDeliverables">Deliverables</label> <em>optional</em></h4>
+              <input type="text" id="newInviteDeliverables" maxlength="200" placeholder="e.g. Full proof gallery + 5 retouched photos" />
+              <p class="cx-hint">Blank: your test-shoot default (${esc(tfpDefault)}). Filled: talent booking with this code see this instead, and it is named in their signed record.</p>
+            </div>
+            ${window.codeDatesFieldsHtml("newInvite")}
+            <label class="cx-check cx-on"><input type="checkbox" id="newInviteActive" checked /><span><b>Switched on</b> — invited talent can use it. Switch it off to pause it; it keeps everything set here.</span></label>
+            <p class="cx-sum" id="inviteFormSummary" aria-live="polite"></p>
+            <div class="cx-form-foot">
+              <button type="button" class="cx-btn" onclick="window.closeCodeForm('inviteCreatorForm')">Cancel</button>
+              <button type="button" class="cx-btn primary" onclick="window.saveInviteCodeFromForm()">Save invite code</button>
             </div>
           </div>
         `;
 
         const allInviteCodes = typeof window.getAdminInviteCodes === "function" ? window.getAdminInviteCodes() : [{ code: activeInviteCode, desc: 'Default Code' }];
-        const inviteItemsHtml = allInviteCodes.map((itemObj, idx) => {
-          const codeStr = typeof itemObj === 'object' ? itemObj.code : itemObj;
-          const descStr = typeof itemObj === 'object' ? (itemObj.desc || 'Admin VIP Code') : 'Admin VIP Code';
+        const inviteItemsHtml = allInviteCodes.map((itemObj) => {
+          const o = typeof itemObj === 'object' && itemObj ? itemObj : { code: String(itemObj) };
+          const codeStr = o.code;
           // Off and ended are dimmed; a code waiting for its start date is not
           // — it is set up and healthy, it just has not begun.
-          const inviteState = window.codeStatus(itemObj);
-          const inviteIsOn = !(itemObj && typeof itemObj === 'object' && itemObj.active === false);
-          const inviteDates = window.codeDatesLine(itemObj);
-          const inviteFp = lowFp(window.publishedInviteEntry(itemObj).code);
+          const state = window.codeStatus(o);
+          const isOn = o.active !== false;
+          const fp = lowFp(window.publishedInviteEntry(o).code);
+          const venueCost = o.location ? (Number(o.venueCost) > 0 ? `₹${Number(o.venueCost).toLocaleString("en-IN")}` : "Complimentary") : "";
           return `
-            <div style="background: var(--paper); border: 1px solid var(--accent); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; justify-content: space-between; gap: 10px;${inviteState === "off" || inviteState === "ended" ? " opacity: 0.55;" : ""} box-shadow: var(--shadow-sm); overflow: hidden;">
-              <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap;">
-                <!-- A real basis, not flex: 1 alone: with four buttons beside it
-                     the text column used to shrink until the code broke across
-                     four lines. Now the buttons drop underneath instead. -->
-                <div style="min-width: 0; flex: 1 1 190px;">
-                  <span style="font-size: var(--font-xs); font-weight: 800; color: var(--accent-text); text-transform: uppercase; font-family: var(--mono-font); display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"><span>${codeStr === activeInviteCode ? '⭐ Primary Code' : '🔑 VIP Invite'}</span>${window.codeStatusBadgeHtml(itemObj)}<span class="code-live-slot" data-kind="invite" data-fp="${inviteFp}"></span></span>
-                  <strong style="font-size: var(--font-md); font-family: var(--mono-font); color: var(--ink); letter-spacing: 0.04em; display: block; margin-top: 2px; word-break: break-all;">${esc(window.codeForDisplay(codeStr))}</strong>
-                  <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 4px; line-height: 1.3;">📝 ${esc(descStr)}</div>
-                  ${itemObj && typeof itemObj === 'object' && itemObj.location ? `<div style="font-size: var(--font-xs); color: #059669; font-weight: 700; margin-top: 4px;">🏠 Location Locked: ${esc(itemObj.location)}</div>` : ''}
-                  ${inviteDates ? `<div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 4px;">📅 ${esc(inviteDates)}</div>` : ''}
-                  ${itemObj && typeof itemObj === 'object' && itemObj.deliverables ? `<div style="font-size: var(--font-xs); color: var(--ink); margin-top: 4px;" title="This invite's deliverables, in place of the test-shoot default">📦 ${esc(itemObj.deliverables)}</div>` : ''}
-                  <div class="code-live-note" data-kind="invite" data-fp="${inviteFp}" hidden style="font-size: var(--font-xs); color: #d97706; font-weight: 700; margin-top: 4px;"></div>
-                </div>
-                <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap; flex-shrink: 0; margin-top: 2px;">
-                  <button type="button" onclick="navigator.clipboard.writeText('${escJs(codeStr)}'); if(typeof toast==='function') toast('📋 Invite Code ${escJs(codeStr)} copied!'); else alert('Copied!');" style="background: var(--accent); color: #ffffff; border: none; padding: 5px 9px; border-radius: 4px; font-size: var(--font-xs); cursor: pointer; font-weight: 700; font-family: var(--mono-font);" title="Copy Invite Code">📋 Copy</button>
-                  <button type="button" onclick="window.toggleAdminInviteActive('${escJs(codeStr)}')" style="background: var(--bone); color: var(--ink); border: 1px solid var(--line); padding: 5px 8px; border-radius: 4px; font-size: var(--font-xs); cursor: pointer; font-weight: 700;" title="${inviteIsOn ? "Switch this code off" : "Switch this code back on"}">${inviteIsOn ? "⏸️" : "▶️"}</button>
-                  <button type="button" onclick="window.editAdminInviteCode('${escJs(codeStr)}')" style="background: var(--bone); color: var(--ink); border: 1px solid var(--line); padding: 5px 8px; border-radius: 4px; font-size: var(--font-xs); cursor: pointer; font-weight: 700;" title="Edit Code">✏️ Edit</button>
-                  <button type="button" onclick="window.deleteAdminInviteCode('${escJs(codeStr)}')" style="background: rgba(255,77,77,0.1); color: #ff4d4d; border: 1px solid rgba(255,77,77,0.3); padding: 5px 8px; border-radius: 4px; font-size: var(--font-xs); cursor: pointer; font-weight: 700;" title="Delete Code">🗑️</button>
-                </div>
+            <article class="cx-card${state === "off" || state === "ended" ? " is-dim" : ""}">
+              <div class="cx-card-head">
+                <span class="cx-headline">${esc(o.desc || "Invite code")}</span>
+                <span class="cx-badges">${window.codeStatusBadgeHtml(o)}<span class="code-live-slot" data-kind="invite" data-fp="${fp}"></span></span>
               </div>
-            </div>
-          `;
+              ${codeLine(codeStr, "invite code", codeStr === activeInviteCode ? `<span class="cx-tag" title="The code the studio's share links carry">Share-link code</span>` : "")}
+              ${facts([["Venue", o.location || "The talent chooses"], ["Venue cost", venueCost], ["Rental", rentalWords(window.getPromoHomeStudioDiscount(o))], ["Dates", window.codeDatesLine(o)], ["Deliverables", o.deliverables || ""]])}
+              <div class="code-live-note cx-live-note" data-kind="invite" data-fp="${fp}" hidden></div>
+              ${cardFoot(isOn, "Invite", codeStr)}
+            </article>`;
         }).join("");
 
-        const inviteCardHtml = `
-          <div style="grid-column: 1 / -1; background: rgba(255, 69, 0, 0.06); border: 1.5px solid var(--accent); border-radius: 10px; padding: 16px 18px; margin-bottom: 6px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
-              <div>
-                <div style="font-size: var(--font-xs); font-weight: 800; color: var(--accent-text); text-transform: uppercase; letter-spacing: 0.06em;">🔑 Photographer Direct Invite Codes (VIP / TFP Unlock Manager)</div>
-                <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">Create, edit, auto-generate, or delete multiple active invite codes. Invited talent entering ANY active code on /book unlocks a Test Shoot / TFP session.</div>
-              </div>
-              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button type="button" onclick="window.addNewAdminInviteCode()" class="admin-cal-btn primary" style="font-size: var(--font-xs); padding: 5px 12px; font-weight: 700;">➕ Add Custom Code</button>
-                <button type="button" onclick="window.generateRandomAdminInviteCode()" class="admin-cal-btn" style="font-size: var(--font-xs); padding: 5px 12px; font-weight: 700; border-color: var(--accent-text); color: var(--accent-text);">🎲 Auto-Generate Random VIP Code</button>
-              </div>
-            </div>
-            <div id="inviteCreatorForm" style="display: none; background: var(--paper); border: 1.5px solid var(--accent); border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; box-shadow: var(--shadow-sm); animation: modalFadeIn 0.3s ease;">
-              <div style="font-family: 'Archivo', sans-serif; font-size: var(--font-sm); font-weight: 700; color: var(--ink); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-                <span id="inviteCreatorFormTitle">🔑 Add New Invite Code</span>
-                <button type="button" onclick="document.getElementById('inviteCreatorForm').style.display='none'" style="background:none; border:none; color:var(--ink-soft); font-size: var(--font-sm); cursor:pointer;">✕</button>
-              </div>
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; align-items: flex-end;">
-                <div>
-                  <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">Invite Code String *</label>
-                  <input type="text" id="newInviteCode" placeholder="e.g. VIP-2431" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-weight: 700; font-family: var(--mono-font); text-transform: uppercase; background: var(--bone); color: var(--ink);" />
-                </div>
-                <div style="grid-column: span 2;">
-                  <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">Description Label</label>
-                  <input type="text" id="newInviteDesc" placeholder="e.g. Agency model unlock pass" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
-                </div>
-                <div style="grid-column: span 3;">
-                  <label for="newInviteDeliverables" style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">📦 Deliverables for this invite <span style="font-weight:400;text-transform:none;color:var(--ink-soft);">(optional)</span></label>
-                  <input type="text" id="newInviteDeliverables" maxlength="200" placeholder="e.g. Full proof gallery + 5 retouched photos" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
-                  <span style="display: block; margin-top: 5px; font-size: var(--font-xs); line-height: 1.5; color: var(--ink-soft);">Blank: your test-shoot default (${esc(((typeof getAdminTfpPackage === "function" && getAdminTfpPackage()) || {}).specs || "")}). Filled: talent booking with this code see this instead, and it is named in their signed record.</span>
-                </div>
-                <div style="grid-column: span 3;">
-                  <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">🏠 Lock Location for Client <span style="font-weight:400;text-transform:none;color:var(--ink-soft);">(optional — leave blank to let client fill)</span></label>
-                  <input type="text" id="newInviteLocation" placeholder="e.g. ${esc(window.studioLabel())} — or leave blank" oninput="window.syncInviteWaiveVisibility && window.syncInviteWaiveVisibility()" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); background: var(--bone); color: var(--ink);" />
-                </div>
-                <!-- Only shown when the code leaves the venue to the talent. A
-                     code that names a venue has already had it chosen for them
-                     by the studio, so the rental is waived and there is nothing
-                     here to decide. -->
-                <div id="newInviteWaiveRow" style="grid-column: span 3; display: none;">
-                  <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">💰 Venue cost for this code <span style="font-weight:400;text-transform:none;color:var(--ink-soft);">(optional — leave blank if it is free)</span></label>
-                  <input type="number" min="0" id="newInviteVenueCost" placeholder="Blank = complimentary" style="width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); font-weight: 700; color: #059669; background: var(--bone);" />
-                  <span style="display: block; margin-top: 5px; font-size: var(--font-xs); line-height: 1.5; color: var(--ink-soft);">You picked the venue above, so you decide what it costs. Leave this blank and the shoot is complimentary. Enter an amount and the talent is billed exactly that, shown as its own line in their quote and payable in full before the shoot.</span>
-                </div>
-                <div id="newInviteVenueNote" style="grid-column: span 3; font-size: var(--font-xs); line-height: 1.5; color: var(--ink-soft); background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;">
-                  🏠 <strong style="color: var(--ink);">No venue locked, so the talent chooses.</strong> If they pick your home studio they are billed your standard home studio rate (currently ₹${(typeof getHomeStudioRate === "function" ? getHomeStudioRate() : 3000).toLocaleString('en-IN')}). Fill in an address above to choose the venue for them and set its cost.
-                </div>
-                <!-- Same discount shape as a promo code's (none/flat/pct/free),
-                     so a VIP invite can waive or reduce the home studio rate on
-                     its own, without needing a separate promo code entered too.
-                     Applies to whatever fee the code carries above — the
-                     standard rate when no venue is locked, or the locked
-                     venue's own cost when one is. -->
-                <div style="grid-column: span 3; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;">
-                  <label style="font-size: var(--font-xs); font-weight: 700; color: var(--accent-text); text-transform: uppercase; display: block; margin-bottom: 4px;">🏠 Home Studio Rental Discount</label>
-                  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <select id="newInviteHomeStudioType" onchange="window.toggleInviteHomeStudioValField()" style="flex: 1; min-width: 150px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: var(--font-xs); font-weight: 700; background: var(--paper); color: var(--ink);">
-                      <option value="none">No discount on the rental</option>
-                      <option value="free">Free — 100% off</option>
-                      <option value="flat">Flat ₹ off</option>
-                      <option value="pct">% off</option>
-                    </select>
-                    <input type="number" id="newInviteHomeStudioVal" placeholder="e.g. 500" style="flex: 1; min-width: 100px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-weight: 700; color: #059669; background: var(--paper); display: none;" />
-                  </div>
-                  <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 4px; line-height: 1.4;">Only applies when the booking actually carries a home studio rental (standard rate, or this code's own locked venue cost above).</div>
-                </div>
-                ${window.codeDatesFieldsHtml("newInvite", 3)}
-                <div style="grid-column: span 3;">
-                  <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; background: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;">
-                    <input type="checkbox" id="newInviteActive" checked style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent-text); cursor: pointer;" />
-                    <span style="font-size: var(--font-xs); color: var(--ink); font-family: 'Archivo', sans-serif; line-height: 1.4;">
-                      <strong>Active</strong> — invited talent can use this code.<br/>
-                      <span style="color: var(--ink-soft);">Untick to switch it off without deleting it. The code keeps everything set here, and anyone typing it is told it is not recognised. Tick it again whenever you want it back.</span>
-                    </span>
-                  </label>
-                </div>
-                <div>
-                  <button type="button" class="admin-cal-btn primary" onclick="window.saveInviteCodeFromForm()" style="width: 100%; font-weight: 700; padding: 8px 12px;">💾 Save Invite Code</button>
-                </div>
-              </div>
-            </div>
-            <div id="inviteLiveSummary" class="code-live-summary" style="font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5; margin-bottom: 10px;"></div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;">
-              ${inviteItemsHtml}
-              <div id="inviteLiveGhosts" style="display: contents;"></div>
-            </div>
-          </div>
-        `;
-
-        const codeCardsHtml = Object.keys(codes).map(codeKey => {
-          const item = codes[codeKey];
+        const codeCardsHtml = Object.keys(codes).map((codeKey) => {
+          const item = codes[codeKey] || {};
           // A package value of 0 means this code exists only to compensate
-          // the home studio rental — "0% Off" would misstate that as a
+          // the home studio rental — "0% off" would misstate that as a
           // discount the code does not actually give.
           const hasPackageDiscount = !!(item.flat || item.pct);
-          const tagDesc = !hasPackageDiscount
-            ? "Home Studio Only"
-            : (item.flat ? `Flat ₹${item.flat.toLocaleString('en-IN')} Off` : `${item.pct}% Off`);
-          const hsDiscount = window.getPromoHomeStudioDiscount(item);
-          const hsBadge = hsDiscount.type === "free"
-            ? `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(5,150,105,0.12); color: #059669; padding: 2px 6px; border-radius: 4px;" title="Home studio rental is free with this code">🏠 FREE</span>`
-            : hsDiscount.type === "flat"
-              ? `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(5,150,105,0.12); color: #059669; padding: 2px 6px; border-radius: 4px;" title="Home studio rental discount">🏠 ₹${Number(hsDiscount.value || 0).toLocaleString('en-IN')} OFF</span>`
-              : hsDiscount.type === "pct"
-                ? `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(5,150,105,0.12); color: #059669; padding: 2px 6px; border-radius: 4px;" title="Home studio rental discount">🏠 ${hsDiscount.value}% OFF</span>`
-                : "";
-          // Off and ended are dimmed; a code waiting for its start date is not.
-          const promoState = window.codeStatus(item);
-          const promoDates = window.codeDatesLine(item);
-          const promoFp = lowFp(window.publishedPromoEntry(codeKey, item)[0]);
+          const headline = !hasPackageDiscount ? "Home studio rental only"
+            : (item.flat ? `₹${Number(item.flat).toLocaleString("en-IN")} off` : `${item.pct}% off`);
+          const state = window.codeStatus(item);
+          const fp = lowFp(window.publishedPromoEntry(codeKey, item)[0]);
           return `
-            <div style="background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px;${promoState === "off" || promoState === "ended" ? " opacity: 0.55;" : ""} box-shadow: var(--shadow-sm); overflow: hidden; flex-wrap: wrap;">
-              <div style="min-width: 0; flex: 1 1 190px;">
-                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                  <strong style="color: #059669; font-size: var(--font-sm); font-family: var(--mono-font); letter-spacing: 0.04em;">${esc(window.codeForDisplay(codeKey))}</strong>
-                  <span style="font-size: var(--font-xs); font-weight: 700; background: rgba(5,150,105,0.12); color: #059669; padding: 2px 6px; border-radius: 4px;">${esc(tagDesc)}</span>
-                  ${!hasPackageDiscount
-                    ? ""
-                    : item.includeAddons
-                      ? `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(217,119,6,0.14); color: #d97706; padding: 2px 6px; border-radius: 4px;" title="This discount also comes off the home studio rental">+ ADD-ONS</span>`
-                      : `<span style="font-size: var(--font-xs); font-weight: 700; background: rgba(120,120,120,0.14); color: var(--ink-soft); padding: 2px 6px; border-radius: 4px;" title="Discount applies to the package rate only">PACKAGE ONLY</span>`}
-                  ${hsBadge}
-                  ${window.codeStatusBadgeHtml(item)}
-                  <span class="code-live-slot" data-kind="promo" data-fp="${promoFp}"></span>
-                </div>
-                <div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">${esc(item.label)}</div>
-                ${promoDates ? `<div style="font-size: var(--font-xs); color: var(--ink-soft); margin-top: 2px;">📅 ${esc(promoDates)}</div>` : ""}
-                ${item.deliverables ? `<div style="font-size: var(--font-xs); color: var(--ink); margin-top: 2px;" title="Replaces the package's deliverables when this code is used">📦 ${esc(item.deliverables)}</div>` : ""}
-                <div class="code-live-note" data-kind="promo" data-fp="${promoFp}" hidden style="font-size: var(--font-xs); color: #d97706; font-weight: 700; margin-top: 4px;"></div>
+            <article class="cx-card${state === "off" || state === "ended" ? " is-dim" : ""}">
+              <div class="cx-card-head">
+                <span class="cx-headline">${esc(headline)}</span>
+                <span class="cx-badges">${window.codeStatusBadgeHtml(item)}<span class="code-live-slot" data-kind="promo" data-fp="${fp}"></span></span>
               </div>
-              <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap; flex-shrink: 0;">
-                <button type="button" onclick="navigator.clipboard.writeText('${escJs(codeKey)}'); if(typeof toast==='function') toast('📋 Promo Code ${escJs(codeKey)} copied!'); else alert('Copied!');" style="background: #059669; color: #ffffff; border: none; padding: 5px 10px; border-radius: 4px; font-size: var(--font-xs); cursor: pointer; font-weight: 700; font-family: var(--mono-font);" title="Copy Code">📋 Copy</button>
-                <button type="button" onclick="window.toggleAdminPromoActive('${escJs(codeKey)}')" style="background: var(--bone); color: var(--ink); border: 1px solid var(--line); padding: 5px 8px; border-radius: 4px; font-size: var(--font-xs); cursor: pointer; font-weight: 700;" title="${window.promoCodeIsActive(item) ? "Switch this code off" : "Switch this code back on"}">${window.promoCodeIsActive(item) ? "⏸️" : "▶️"}</button>
-                <button type="button" onclick="window.editAdminPromoCode('${escJs(codeKey)}')" style="background: var(--bone); color: var(--ink); border: 1px solid var(--line); padding: 5px 8px; border-radius: 4px; font-size: var(--font-xs); cursor: pointer; font-weight: 700;" title="Edit Code">✏️ Edit</button>
-                <button type="button" onclick="window.deleteAdminPromoCode('${escJs(codeKey)}')" style="background: rgba(255,77,77,0.1); color: #ff4d4d; border: 1px solid rgba(255,77,77,0.3); padding: 5px 8px; border-radius: 4px; font-size: var(--font-xs); cursor: pointer; font-weight: 700;" title="Delete Code">🗑️</button>
-              </div>
-            </div>
-          `;
+              ${codeLine(codeKey, "promo code")}
+              ${item.label ? `<p class="cx-note">${esc(item.label)}</p>` : ""}
+              ${facts([["Comes off", hasPackageDiscount ? (item.includeAddons ? "The package and the rental" : "The package") : ""], ["Rental", rentalWords(window.getPromoHomeStudioDiscount(item))], ["Dates", window.codeDatesLine(item)], ["Deliverables", item.deliverables || ""]])}
+              <div class="code-live-note cx-live-note" data-kind="promo" data-fp="${fp}" hidden></div>
+              ${cardFoot(window.promoCodeIsActive(item), "Promo", codeKey)}
+            </article>`;
         }).join("");
 
         promoGrid.innerHTML = creatorFormHtml
-          + `<div id="promoLiveSummary" class="code-live-summary" style="grid-column: 1 / -1; font-size: var(--font-xs); color: var(--ink-soft); line-height: 1.5;"></div>`
-          + codeCardsHtml + `<div id="promoLiveGhosts" style="display: contents;"></div>`;
+          + `<div id="promoLiveSummary" class="code-live-summary cx-summary"></div>`
+          + (codeCardsHtml || `<p class="cx-empty">No promo codes yet. Press <b>Add promo code</b> above to make the first one.</p>`)
+          + `<div id="promoLiveGhosts" style="display: contents;"></div>`;
         const inviteGrid = $("#adminInviteCodesGrid");
-        if (inviteGrid) inviteGrid.innerHTML = inviteCardHtml;
+        if (inviteGrid) inviteGrid.innerHTML = inviteFormHtml
+          + `<div id="inviteLiveSummary" class="code-live-summary cx-summary"></div>`
+          + (inviteItemsHtml || `<p class="cx-empty">No invite codes yet. Press <b>Add invite code</b> above to make the first one.</p>`)
+          + `<div id="inviteLiveGhosts" style="display: contents;"></div>`;
         if (window.codesAreUnpublished()) markUnsavedChanges();
         // Each code's LIVE / NOT LIVE badge: at once from what is known, then
         // from the live site itself.
