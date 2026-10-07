@@ -2924,8 +2924,8 @@ window.WPS_DATA = {
     ],
     "paymentScheduleType": "5050",
     "productionScheduleType": "503020",
-    "updatedAt": 1791283822699,
-    "syncedAt": 1791283822699
+    "updatedAt": 1791363381144,
+    "syncedAt": 1791363381144
   },
   "INVITE_CODES": [
     {
@@ -3050,9 +3050,9 @@ window.WPS_DATA = {
     "upiId": "",
     "type": {
       "name": {
-        "family": "sans",
+        "family": "display",
         "weight": 800,
-        "color": "#000000"
+        "color": "#ffffff"
       },
       "role": {
         "family": "sans",
@@ -3064,13 +3064,15 @@ window.WPS_DATA = {
         "family": "mono",
         "weight": 600,
         "color": "#8a8782",
-        "size": 2
+        "size": 2,
+        "align": "left"
       },
       "statValue": {
         "family": "mono",
         "weight": 600,
         "color": "#000000",
-        "size": 3.3
+        "size": 3.3,
+        "align": "left"
       },
       "header": {
         "family": "mono",
@@ -3088,7 +3090,8 @@ window.WPS_DATA = {
         "family": "mono",
         "weight": 600,
         "color": "#000000",
-        "size": 2
+        "size": 2,
+        "fill": "auto"
       },
       "note": {
         "family": "sans",
@@ -3131,12 +3134,12 @@ window.WPS_DATA = {
   },
   "HOME_STUDIO_RATE_TFP": 4000,
   "SETTINGS_AT": {
-    "INVITE_CODES": 1790661324121,
+    "INVITE_CODES": 1791363367935,
     "PROMO_CODES": 1790675065627,
     "PACKAGES": 1790833862540,
     "TFP_PACKAGE": 1790661324121,
     "HOME_STUDIO_RATE": 1790661324121,
-    "PORTFOLIO_PDF": 1791282581060,
+    "PORTFOLIO_PDF": 1791302275441,
     "HOME_SLIDESHOW": 1790354674280,
     "STUDIO": 0,
     "MEASURE_UNITS": 1790269147688,
@@ -3781,6 +3784,60 @@ window.WPS_DATA = {
   },
   "MODEL_PDFS": {
     "versions": [
+      {
+        "id": "mp_muwv4edi_zr7ss",
+        "shootId": "comp-card-Kunaal%20Raghav%20(%40https%3A%2F%2Fwww.instagram.com%2Fkunaal_raghav07%2F%3Fhl%3Den)",
+        "modelKey": "kunaal-raghav",
+        "name": "test 1",
+        "updatedAt": 1791302275441,
+        "spec": {
+          "pages": 1,
+          "count": 5,
+          "perPage": [
+            5
+          ],
+          "span": {},
+          "firstPage": 0,
+          "picks": [
+            "mr5526tu5qjzd9-12",
+            "mr5525z3emtds3-7",
+            "mr55268fnt3bp6-8",
+            "mr5525kbficskl-5",
+            "mr5526qyua40ad-11"
+          ],
+          "cleared": [],
+          "lead": "mr5526tu5qjzd9-12",
+          "cover": true,
+          "coverId": "mr5525erdhzei6-4",
+          "coverStyle": "full",
+          "tags": [
+            false
+          ],
+          "tagPlace": "in",
+          "tagAlign": "left",
+          "layout": "equal",
+          "layouts": [
+            "lead"
+          ],
+          "cols": [
+            0
+          ],
+          "bigAt": [
+            "top"
+          ],
+          "detailsAlign": "centre",
+          "statsAlign": "centre",
+          "contactAlign": "left",
+          "contactOn": {
+            "agency-instagram": false,
+            "agency-website": false
+          },
+          "spacing": "wide",
+          "order": [],
+          "fewerOnTop": false,
+          "adjust": {}
+        }
+      },
       {
         "id": "mp_muibi3wg_q4nmp",
         "shootId": "comp-card-Atharv%20Sharma%20(https%3A%2F%2Fwww.instagram.com%2Fectogainsss%2F%3Fhl%3Den)",
